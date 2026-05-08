@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(rm -f .claude/.rwf-counter)",
+      "Bash(RWF_REFRESH_EVERY=2 .claude/hooks/rwf-refresh.sh)",
+      "Bash(echo \"---exit=$?\")",
+      "Bash(rm -f .rwf-counter .claude/.rwf-counter)",
+      "Bash(bash -n .claude/hooks/rwf-refresh.sh)",
+      "Bash(python3 -m json.tool)",
+      "Bash(echo \"exit=$?\")",
+      "WebFetch(domain:docs.anthropic.com)"
+    ]
+  }
+}
