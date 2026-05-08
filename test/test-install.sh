@@ -63,7 +63,7 @@ t7_hook_json_output() {
     "$INSTALL" "$DIR" >/dev/null
     # Seed counter at THRESHOLD-1 so next increment hits threshold
     echo 19 >"$DIR/.rwf-prompt-counter"
-    local out
+    local out ret
     out="$(mktemp)"
     (cd "$DIR" && RWF_REFRESH_EVERY=20 .claude/hooks/rwf-refresh.sh >"$out")
     python3 - "$out" <<'EOF'
@@ -71,7 +71,9 @@ import json, sys
 data = json.load(open(sys.argv[1]))
 assert 'additionalContext' in data, f"missing additionalContext; got: {data}"
 EOF
+    ret=$?
     rm -f "$out"
+    return $ret
 }
 
 t8a_threshold_invalid_rejected() {
