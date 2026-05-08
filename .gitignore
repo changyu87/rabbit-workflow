@@ -6,3 +6,4 @@
 
 # Rabbit Workflow runtime state
 .rwf-prompt-counter
+.claude/settings.local.json

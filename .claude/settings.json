@@ -1,6 +1,6 @@
 {
   "env": {
-    "RWF_REFRESH_EVERY": "10"
+    "RWF_REFRESH_EVERY": "20"
   },
   "hooks": {
     "SessionStart": [
