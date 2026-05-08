@@ -4,6 +4,9 @@
 .*.swp
 .*.swo
 
+# NFS open-file artifacts
+.nfs*
+
 # Rabbit Workflow runtime state
 .rwf-prompt-counter
 .claude/settings.local.json
