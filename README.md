@@ -8,16 +8,9 @@ Policy is auto-injected every 20 prompts (configurable). Two slash commands incl
 
 ## For developers (contributing to rabbit-workflow)
 
-**git**
 ```bash
 git clone https://github.com/USER/rabbit-workflow
 git clone https://github.com/USER/rabbit-workflow my-name  # custom workspace name
-```
-
-**curl** (installs to current directory)
-```bash
-mkdir my-rabbit && cd my-rabbit
-bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/install.sh)
 ```
 
 ---
