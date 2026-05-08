@@ -97,6 +97,11 @@ assert data['env']['RWF_REFRESH_EVERY'] == '15', repr(data)
 "
 }
 
+t9_no_settings_local_installed() {
+    "$INSTALL" "$DIR" >/dev/null
+    [[ ! -f "$DIR/.claude/settings.local.json" ]]
+}
+
 # ── run all ───────────────────────────────────────────────────────────────────
 
 run "1: clean install — files present"          t1_clean_install
@@ -108,6 +113,7 @@ run "6: no arg installs to \$PWD"               t6_no_arg_installs_to_pwd
 run "7: hook emits valid JSON at threshold"     t7_hook_json_output
 run "8a: threshold rejects invalid arg"         t8a_threshold_invalid_rejected
 run "8b: threshold writes correct JSON"         t8b_threshold_valid_writes_json
+run "9: settings.local.json not installed"      t9_no_settings_local_installed
 
 echo ""
 printf "%d passed, %d failed\n" "$PASS" "$FAIL"

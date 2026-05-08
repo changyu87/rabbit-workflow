@@ -26,4 +26,7 @@ fi
 chmod +x "$TARGET/.claude/hooks/rwf-refresh.sh"
 # Remove rabbit-workflow dev-only docs; users accumulate their own
 rm -f "$TARGET/.claude/docs/specs/"*.md "$TARGET/.claude/docs/plans/"*.md
+# Remove runtime-only and OS-level artifacts
+rm -f "$TARGET/.claude/settings.local.json"
+rm -f "$TARGET/.claude/".nfs*
 echo "rabbit-workflow installed to $TARGET"
