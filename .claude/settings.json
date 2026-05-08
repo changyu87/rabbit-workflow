@@ -1,6 +1,6 @@
 {
   "env": {
-    "RWF_REFRESH_EVERY": "10"
+    "RWF_REFRESH_EVERY": "20"
   },
   "hooks": {
     "SessionStart": [
@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo 0 > .rwf-counter"
+            "command": "echo 0 > .rwf-prompt-counter"
           }
         ]
       }
