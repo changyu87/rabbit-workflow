@@ -3,3 +3,6 @@
 *.swo
 .*.swp
 .*.swo
+
+# Rabbit Workflow runtime state
+.claude/.rwf-counter
