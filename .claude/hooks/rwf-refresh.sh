@@ -56,10 +56,14 @@ trap 'rm -f "$payload_file"' EXIT
     done <<< "$imports"
 } > "$payload_file"
 
-# Emit JSON for Claude Code: additionalContext is read from stdout
+# Emit JSON for Claude Code: additionalContext (Claude-visible) + systemMessage (user-visible)
+files_label=$(echo "$imports" | tr '\n' ' ')
 python3 -c "
 import json
 with open('$payload_file', 'r') as f:
     payload = f.read()
-print(json.dumps({'additionalContext': payload}))
+print(json.dumps({
+    'additionalContext': payload,
+    'systemMessage': '[rwf] Policy refreshed — $files_label'
+}))
 "
