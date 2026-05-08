@@ -51,7 +51,7 @@ t4_claude_imports() {
 
 t5_existing_claude_blocked() {
     mkdir "$DIR/.claude"
-    ! "$INSTALL" "$DIR" >/dev/null
+    [[ -x "$INSTALL" ]] && ! "$INSTALL" "$DIR" >/dev/null
 }
 
 t6_no_arg_installs_to_pwd() {
