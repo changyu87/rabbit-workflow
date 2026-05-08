@@ -16,7 +16,7 @@ if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/.claude" ]]; then
     cp "$SCRIPT_DIR/CLAUDE.md" "$TARGET/CLAUDE.md"
 else
     TMP="$(mktemp -d)"
-    trap "rm -rf '$TMP'" EXIT
+    trap "rm -rf '$TMP'" EXIT INT TERM
     curl -fsSL https://github.com/USER/rabbit-workflow/archive/refs/heads/main.tar.gz \
         | tar -xz -C "$TMP" --strip-components=1
     cp -r "$TMP/.claude" "$TARGET/.claude"
@@ -24,4 +24,6 @@ else
 fi
 
 chmod +x "$TARGET/.claude/hooks/rwf-refresh.sh"
+# Remove rabbit-workflow dev-only docs; users accumulate their own
+rm -f "$TARGET/.claude/docs/specs/"*.md "$TARGET/.claude/docs/plans/"*.md
 echo "rabbit-workflow installed to $TARGET"
