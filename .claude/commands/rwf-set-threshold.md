@@ -5,9 +5,9 @@ allowed-tools: Bash
 
 Setting auto-refresh threshold to $ARGUMENTS prompts.
 
-!`python3 -c "
-import json, pathlib, sys
-val = '$ARGUMENTS'.strip()
+!`THRESHOLD="$ARGUMENTS" python3 -c "
+import json, os, pathlib, sys
+val = os.environ['THRESHOLD'].strip()
 if not val.isdigit() or int(val) < 1:
     print('Error: argument must be a positive integer (e.g. /rwf-set-threshold 15)', file=sys.stderr)
     sys.exit(1)

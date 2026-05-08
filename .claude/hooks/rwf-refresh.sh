@@ -2,7 +2,7 @@
 # rwf-refresh.sh — periodic re-injection of CLAUDE.md @-imports.
 #
 # Wired to UserPromptSubmit. Each prompt: increment counter; if counter
-# reaches RWF_REFRESH_EVERY (default 10), emit JSON additionalContext
+# reaches RWF_REFRESH_EVERY (default 20), emit JSON additionalContext
 # containing the full content of every file that CLAUDE.md @-imports,
 # then reset the counter to 0.
 #
@@ -13,7 +13,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
 COUNTER_FILE="$REPO_ROOT/.rwf-prompt-counter"
-THRESHOLD="${RWF_REFRESH_EVERY:-10}"
+THRESHOLD="${RWF_REFRESH_EVERY:-20}"
 
 # Initialize counter on first run
 [ -f "$COUNTER_FILE" ] || echo 0 > "$COUNTER_FILE"
