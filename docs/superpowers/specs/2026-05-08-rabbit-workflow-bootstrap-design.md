@@ -48,7 +48,7 @@ user (full Q&A log in §7):
    `.claude/settings.json`. Default: 10 prompts.
 6. **All user-facing artifacts are prefixed `rwf-` / `RWF_`** (slash command
    `/rwf-refresh`, env var `RWF_REFRESH_EVERY`, runtime file
-   `.claude/.rwf-counter`, hook script `rwf-refresh.sh`). Prefix avoids
+   `.rwf-counter`, hook script `rwf-refresh.sh`). Prefix avoids
    collision with the `rw` (read-write) and `rm` (remove) shell mnemonics.
 7. **GitHub repo renamed** from `changyu87/ai-workflow-philosophy` to
    `changyu87/rabbit-workflow`. Local origin URL updated. Local directory
@@ -98,7 +98,7 @@ To add more, append `@./<filename>.md` below.
         "hooks": [
           {
             "type": "command",
-            "command": "echo 0 > .claude/.rwf-counter"
+            "command": "echo 0 > .rwf-counter"
           }
         ]
       }
@@ -135,7 +135,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
-COUNTER_FILE="$REPO_ROOT/.claude/.rwf-counter"
+COUNTER_FILE="$REPO_ROOT/.rwf-counter"
 THRESHOLD="${RWF_REFRESH_EVERY:-10}"
 
 # Initialize counter on first run
@@ -198,7 +198,7 @@ allowed-tools: Bash
 
 Refreshing rabbit-workflow policy files.
 
-!`echo 0 > .claude/.rwf-counter`
+!`echo 0 > .rwf-counter`
 
 !`for p in $(grep -oE '^@[^[:space:]]+' CLAUDE.md | sed 's/^@//'); do echo "=== $p ==="; cat "$p"; echo; done`
 
@@ -211,7 +211,7 @@ Append:
 
 ```
 # Rabbit Workflow runtime state
-.claude/.rwf-counter
+.rwf-counter
 ```
 
 ## 4. Out of Scope
@@ -241,7 +241,7 @@ must satisfy:
 - `CLAUDE.md` is auto-loaded; both `philosophy.md` and `work-guide.md`
   contents are visible to the model from prompt 1.
 - After 10 user prompts in a session, the model receives a re-injection of
-  both files (verifiable by inspecting the counter file `.claude/.rwf-counter`
+  both files (verifiable by inspecting the counter file `.rwf-counter`
   resetting to 0 and the hook payload appearing in the conversation).
 - `/rwf-refresh` invoked at any time prints both files' contents into the
   conversation, resets the counter to 0, and Claude responds with a
@@ -253,7 +253,7 @@ must satisfy:
   or editing any other file.
 - Setting `RWF_REFRESH_EVERY` to `5` in `.claude/settings.json` and
   starting a new session causes refresh to fire every 5 prompts.
-- `.claude/.rwf-counter` is gitignored — `git status` never shows it.
+- `.rwf-counter` is gitignored — `git status` never shows it.
 - All committed artifacts:
   - `CLAUDE.md`
   - `.claude/settings.json`
@@ -269,9 +269,9 @@ After implementation, verify by:
 
 1. `cat CLAUDE.md` — confirm content matches §3.1.
 2. `bash -n .claude/hooks/rwf-refresh.sh` — confirm script syntax is valid.
-3. `RWF_REFRESH_EVERY=2 .claude/hooks/rwf-refresh.sh; cat .claude/.rwf-counter`
+3. `RWF_REFRESH_EVERY=2 .claude/hooks/rwf-refresh.sh; cat .rwf-counter`
    — should print no JSON (counter increments to 1), then `echo 1`.
-4. Run again: `RWF_REFRESH_EVERY=2 .claude/hooks/rwf-refresh.sh; cat .claude/.rwf-counter`
+4. Run again: `RWF_REFRESH_EVERY=2 .claude/hooks/rwf-refresh.sh; cat .rwf-counter`
    — should print JSON with `additionalContext` field containing both
    `philosophy.md` and `work-guide.md` contents, and counter resets to 0.
 5. `jq . <(echo '<output of step 4>')` — confirm valid JSON.

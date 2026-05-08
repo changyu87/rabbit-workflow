@@ -12,7 +12,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
-COUNTER_FILE="$REPO_ROOT/.claude/.rwf-counter"
+COUNTER_FILE="$REPO_ROOT/.rwf-counter"
 THRESHOLD="${RWF_REFRESH_EVERY:-10}"
 
 # Initialize counter on first run

@@ -4,7 +4,7 @@
 
 **Goal:** Bootstrap the repository as an agent-aware Claude Code workspace where `philosophy.md` and `work-guide.md` load at session start and refresh periodically.
 
-**Architecture:** A short `CLAUDE.md` at repo root uses `@./...` imports to pull both governing files into context at startup. A `UserPromptSubmit` hook (`.claude/hooks/rwf-refresh.sh`) re-injects them every N prompts (counter at `.claude/.rwf-counter`, default N=10 via env var `RWF_REFRESH_EVERY`). A `SessionStart` hook resets the counter on session begin. A `/rwf-refresh` slash command does the same on demand and resets the counter.
+**Architecture:** A short `CLAUDE.md` at repo root uses `@./...` imports to pull both governing files into context at startup. A `UserPromptSubmit` hook (`.claude/hooks/rwf-refresh.sh`) re-injects them every N prompts (counter at `.rwf-counter`, default N=10 via env var `RWF_REFRESH_EVERY`). A `SessionStart` hook resets the counter on session begin. A `/rwf-refresh` slash command does the same on demand and resets the counter.
 
 **Tech Stack:** Markdown, JSON, bash, Python3 (only for safe JSON encoding inside the hook script).
 
@@ -18,8 +18,8 @@
 | `.claude/settings.json` | Create | Wires SessionStart + UserPromptSubmit hooks; declares `RWF_REFRESH_EVERY` env var |
 | `.claude/hooks/rwf-refresh.sh` | Create (mode 755) | Counter increment; on threshold, parse CLAUDE.md @-imports, emit JSON `additionalContext` |
 | `.claude/commands/rwf-refresh.md` | Create | `/rwf-refresh` slash command — manual refresh + counter reset |
-| `.gitignore` | Modify (append) | Exclude `.claude/.rwf-counter` runtime state |
-| `.claude/.rwf-counter` | Runtime artifact | Created on first hook invocation; never committed |
+| `.gitignore` | Modify (append) | Exclude `.rwf-counter` runtime state |
+| `.rwf-counter` | Runtime artifact | Created on first hook invocation; never committed |
 | `philosophy.md` | Untouched | Loaded by CLAUDE.md @ import |
 | `work-guide.md` | Untouched | Loaded by CLAUDE.md @ import |
 
@@ -81,7 +81,7 @@ Use the Write tool to write the following exact content to `/home/cyxu/ai-workfl
         "hooks": [
           {
             "type": "command",
-            "command": "echo 0 > .claude/.rwf-counter"
+            "command": "echo 0 > .rwf-counter"
           }
         ]
       }
@@ -146,7 +146,7 @@ New string:
 .*.swo
 
 # Rabbit Workflow runtime state
-.claude/.rwf-counter
+.rwf-counter
 ```
 
 - [ ] **Step 2: Verify**
@@ -181,7 +181,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
-COUNTER_FILE="$REPO_ROOT/.claude/.rwf-counter"
+COUNTER_FILE="$REPO_ROOT/.rwf-counter"
 THRESHOLD="${RWF_REFRESH_EVERY:-10}"
 
 # Initialize counter on first run
@@ -248,7 +248,7 @@ Expected: `syntax OK` on stdout. Any stderr means a syntax error — fix before 
 
 - [ ] **Step 4: Functional test — silent mode (counter < threshold)**
 
-Run: `cd /home/cyxu/ai-workflow-philosophy && rm -f .claude/.rwf-counter && RWF_REFRESH_EVERY=2 .claude/hooks/rwf-refresh.sh; echo "exit=$?"; cat .claude/.rwf-counter`
+Run: `cd /home/cyxu/ai-workflow-philosophy && rm -f .rwf-counter && RWF_REFRESH_EVERY=2 .claude/hooks/rwf-refresh.sh; echo "exit=$?"; cat .rwf-counter`
 
 Expected output:
 ```
@@ -260,17 +260,17 @@ exit=0
 
 - [ ] **Step 5: Functional test — refresh mode (counter hits threshold)**
 
-Run: `cd /home/cyxu/ai-workflow-philosophy && RWF_REFRESH_EVERY=2 .claude/hooks/rwf-refresh.sh; echo "exit=$?"; cat .claude/.rwf-counter`
+Run: `cd /home/cyxu/ai-workflow-philosophy && RWF_REFRESH_EVERY=2 .claude/hooks/rwf-refresh.sh; echo "exit=$?"; cat .rwf-counter`
 
 Expected: a JSON object printed to stdout with one key `additionalContext` whose value contains the literal strings `philosophy.md` and `work-guide.md` (because the payload includes their content). Then `exit=0` and counter `0`.
 
-To confirm JSON validity, run: `cd /home/cyxu/ai-workflow-philosophy && rm -f .claude/.rwf-counter && RWF_REFRESH_EVERY=1 .claude/hooks/rwf-refresh.sh | python3 -m json.tool > /dev/null && echo "JSON valid"`
+To confirm JSON validity, run: `cd /home/cyxu/ai-workflow-philosophy && rm -f .rwf-counter && RWF_REFRESH_EVERY=1 .claude/hooks/rwf-refresh.sh | python3 -m json.tool > /dev/null && echo "JSON valid"`
 
 Expected: `JSON valid` on stdout, exit 0.
 
 - [ ] **Step 6: Clean up runtime state**
 
-Run: `rm -f /home/cyxu/ai-workflow-philosophy/.claude/.rwf-counter && ls /home/cyxu/ai-workflow-philosophy/.claude/.rwf-counter 2>&1`
+Run: `rm -f /home/cyxu/ai-workflow-philosophy/.rwf-counter && ls /home/cyxu/ai-workflow-philosophy/.rwf-counter 2>&1`
 
 Expected: `ls: cannot access ...: No such file or directory`. (Counter is gitignored anyway, but cleaning leaves a tidy working tree.)
 
@@ -293,7 +293,7 @@ allowed-tools: Bash
 
 Refreshing rabbit-workflow policy files.
 
-!`echo 0 > .claude/.rwf-counter`
+!`echo 0 > .rwf-counter`
 
 !`for p in $(grep -oE '^@[^[:space:]]+' CLAUDE.md | sed 's/^@//'); do echo "=== $p ==="; cat "$p"; echo; done`
 
@@ -312,7 +312,7 @@ Expected: the file content matches the block above, with the YAML frontmatter in
 
 **Files staged:** `CLAUDE.md`, `.gitignore`, `.claude/settings.json`, `.claude/hooks/rwf-refresh.sh`, `.claude/commands/rwf-refresh.md`
 
-**Files NOT staged:** `.claude/.rwf-counter` (gitignored; should not appear)
+**Files NOT staged:** `.rwf-counter` (gitignored; should not appear)
 
 - [ ] **Step 1: View git status**
 
@@ -373,7 +373,7 @@ teaches users to extend with one more @-import line.
 
 The /rwf-refresh slash command does a manual reload + counter reset.
 
-The runtime counter file (.claude/.rwf-counter) is gitignored.
+The runtime counter file (.rwf-counter) is gitignored.
 
 Design spec: docs/superpowers/specs/2026-05-08-rabbit-workflow-bootstrap-design.md
 
