@@ -121,8 +121,8 @@ echo "rabbit-workflow installed to $TARGET"
 | 4 | `CLAUDE.md` imports | references `.claude/philosophy.md` and `.claude/work-guide.md` |
 | 5 | Existing `TARGET/.claude` | exit 1 |
 | 6 | No argument | installs to `$PWD`, exit 0 in fresh dir |
-| 7 | `rwf-refresh.sh` invoked directly | produces valid JSON |
-| 8 | Threshold command | invalid arg → exit 1; valid arg → correct JSON in `settings.local.json` |
+| 7 | `rwf-refresh.sh` invoked directly | seed counter at threshold, run hook from installed workspace dir, stdout is valid JSON with `additionalContext` key |
+| 8 | Threshold command (Python block extracted from `rwf-set-threshold.md`, run directly) | invalid arg → exit 1; valid arg → `settings.local.json` contains `{"env": {"RWF_REFRESH_EVERY": "<N>"}}` |
 
 ### 4.3 `README.md`
 
@@ -180,7 +180,13 @@ Remove `.claude/` and `CLAUDE.md` from the installed workspace.
 
 ---
 
-## 5. Out of Scope
+## 5. Known Placeholders
+
+`USER` appears in all GitHub URLs throughout this spec and in the generated files. Replace with the actual GitHub username/org when the repo is published.
+
+---
+
+## 6. Out of Scope
 
 - Package manager distribution (brew, npm, etc.)
 - Windows support
@@ -189,7 +195,7 @@ Remove `.claude/` and `CLAUDE.md` from the installed workspace.
 
 ---
 
-## 6. Acceptance Criteria
+## 7. Acceptance Criteria
 
 - `./install.sh ~/fresh-workspace` copies `.claude/` and `CLAUDE.md`, exits 0
 - `./install.sh` with no argument installs to `$PWD`, exits 0 in fresh directory
