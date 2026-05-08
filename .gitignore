@@ -5,4 +5,4 @@
 .*.swo
 
 # Rabbit Workflow runtime state
-.rwf-counter
+.rwf-prompt-counter
