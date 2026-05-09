@@ -14,7 +14,8 @@
   "contract": {
     "reads": [
       ".claude/docs/bugs/<bug-name>/bug.json",
-      "$BUG_ROOT (env override, defaults to .claude/docs/bugs)"
+      "$BUG_ROOT (env override, defaults to .claude/docs/bugs)",
+      ".claude/docs/bugs/<bug-name>/vet-triage.json (existence check on close transition)"
     ],
     "writes": [
       ".claude/docs/bugs/<bug-name>/bug.json",

@@ -84,10 +84,16 @@ rule). Validates severity enum and required fields. Exits 0 on success;
 ```
 bug-status.sh get <bug-dir>
 bug-status.sh set <bug-dir> <new-status> --note <reason> [--actor <a>]
+                  [--skip-vet-reason <reason>]
 ```
 
 Reads or transitions the status. Validates the transition rules above.
 Appends to `history` on real transitions; silent no-op for same-status sets.
+
+**Vet gate:** Closing a bug (`open→closed` or `reopened→closed`) requires
+`vet-triage.json` to exist in the bug directory, OR `--skip-vet-reason` to
+be supplied. When `--skip-vet-reason` is provided, the history note records
+`"vet skipped: <reason> | <original-note>"`. See R7 in `hard-rules/spec.md`.
 
 ### `list-bugs.sh`
 
@@ -121,13 +127,15 @@ operations**. Higher-level workflow lives in `vet`.
 
 ## Tests
 
-`test/run.sh` runs three test files (31 cases total):
+`test/run.sh` runs three test files (35 cases total):
 
 - `test-file-bug.sh` (15) — auto-ID generation (FEATURE-N), counter
   increment, hyphenated prefix, `$BUG_PREFIX` fallback, `--name` rejection,
   severity enum, required fields, `related_feature` persistence, default
   status, history seeding, ID in output line.
-- `test-bug-status.sh` (9) — get, allowed transitions, denied transitions,
-  invalid status, no-op behavior, history growth, missing-dir error.
+- `test-bug-status.sh` (13) — get, allowed transitions, denied transitions,
+  invalid status, no-op behavior, history growth, missing-dir error,
+  vet-gate blocked, vet-gate allowed, --skip-vet-reason bypass with note
+  concatenation, reopened→closed gate enforcement.
 - `test-list-bugs.sh` (7) — list all, filter by status, filter by feature,
   combined filters, `--text` mode, empty store.

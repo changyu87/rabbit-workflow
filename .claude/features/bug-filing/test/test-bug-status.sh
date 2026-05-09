@@ -139,15 +139,17 @@ s11() {
     || ko "s11: rc=$rc s=$s stderr=$(cat "$TMPROOT/stderr")"
 }
 
-# s12: --skip-vet-reason bypasses gate and logs "vet skipped" in history
+# s12: --skip-vet-reason bypasses gate; history contains both skip-reason and original note
 s12() {
   mkbug ts12
   local rc; rc=$(run set "$(bdir ts12)" closed \
     --note "fixed inline" --skip-vet-reason "closed by breeder in active scope")
   local s; s=$(jq -r '.status' "$(bdir ts12)/bug.json")
   local note; note=$(jq -r '.history[-1].note' "$(bdir ts12)/bug.json")
-  [ "$rc" = "0" ] && [ "$s" = "closed" ] && echo "$note" | grep -q "vet skipped" \
-    && ok "s12: --skip-vet-reason bypasses gate, logs 'vet skipped'" \
+  [ "$rc" = "0" ] && [ "$s" = "closed" ] \
+    && echo "$note" | grep -q "vet skipped" \
+    && echo "$note" | grep -q "fixed inline" \
+    && ok "s12: --skip-vet-reason bypasses gate, history has skip-reason and original note" \
     || ko "s12: rc=$rc s=$s note='$note'"
 }
 

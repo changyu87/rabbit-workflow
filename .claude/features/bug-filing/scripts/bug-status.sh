@@ -89,7 +89,7 @@ case "$cmd" in
     case "$new" in
       closed)
         hist_note="$note"
-        [ -n "$skip_vet_reason" ] && hist_note="vet skipped: $skip_vet_reason"
+        [ -n "$skip_vet_reason" ] && hist_note="vet skipped: $skip_vet_reason | $note"
         jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$hist_note" \
           '.status = $s
            | .closed = $ts
