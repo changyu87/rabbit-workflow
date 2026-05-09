@@ -71,12 +71,13 @@ unambiguous.
 ### `file-bug.sh`
 
 ```
-file-bug.sh --name <YYYY-MM-DD-slug> --title <t> --severity <l|m|h|c> \
-            --description <d> [--related-feature <name>] [--filed-by <actor>]
+file-bug.sh --title T --severity {low|medium|high|critical} --description D \
+            [--related-feature F] [--filed-by A]
 ```
 
-Creates a new bug. Validates name format, severity enum, dedup, required
-fields. Exits 0 on success; 1 on validation error; 2 on bad invocation.
+Creates a new bug. Auto-computes the bug ID as `<PREFIX>-<N>` (see Naming
+rule). Validates severity enum and required fields. Exits 0 on success;
+1 on validation error; 2 on bad invocation.
 
 ### `bug-status.sh`
 
@@ -120,11 +121,12 @@ operations**. Higher-level workflow lives in `vet`.
 
 ## Tests
 
-`test/run.sh` runs three test files (26 cases total):
+`test/run.sh` runs three test files (30 cases total):
 
-- `test-file-bug.sh` (10) — name validation, dedup, severity enum, required
-  fields, `related_feature` persistence, default status, history seeding,
-  length cap.
+- `test-file-bug.sh` (14) — auto-ID generation (FEATURE-N), counter
+  increment, hyphenated prefix, `$BUG_PREFIX` fallback, `--name` rejection,
+  severity enum, required fields, `related_feature` persistence, default
+  status, history seeding, ID in output line.
 - `test-bug-status.sh` (9) — get, allowed transitions, denied transitions,
   invalid status, no-op behavior, history growth, missing-dir error.
 - `test-list-bugs.sh` (7) — list all, filter by status, filter by feature,
