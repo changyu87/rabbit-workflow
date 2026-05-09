@@ -43,11 +43,18 @@ done
   && ok "t4: tools list includes Write, Edit, Read, Bash" \
   || ko "t4: tools missing one of Write/Edit/Read/Bash; line: $TOOLS_LINE"
 
-# t5: body mentions "sole writer" or equivalent enforcement language
-if echo "$BODY" | grep -qiE 'sole writer|only writer|only.*write.*\.claude|sole.*\.claude'; then
-  ok "t5: body asserts sole-writer constraint"
+# t5: body asserts scope-parameterized writer constraint (NOT hardcoded .claude/)
+if echo "$BODY" | grep -qiE 'scope-parameterized|scope.*per dispatch|<SCOPE>|single explicit scope'; then
+  ok "t5: body asserts scope-parameterized constraint"
 else
-  ko "t5: body lacks sole-writer assertion"
+  ko "t5: body lacks scope-parameterized framing"
+fi
+
+# t5b: body explicitly states .claude/ is NOT special in the work model
+if echo "$BODY" | grep -qiE 'unified|same agent.*different scope|same code path|no.*rabbit dev mode|nothing.*special'; then
+  ok "t5b: body asserts unified work model (.claude/ not special)"
+else
+  ko "t5b: body lacks unified work-model assertion"
 fi
 
 # t6: body references philosophy.md AND work-guide.md
@@ -56,11 +63,18 @@ echo "$BODY" | grep -q "philosophy.md" \
   && ok "t6: body references philosophy.md and work-guide.md" \
   || ko "t6: body missing reference to philosophy.md or work-guide.md"
 
-# t7: body explicitly refuses writes outside .claude/
-if echo "$BODY" | grep -qiE 'refuse.*outside|reject.*outside|refuse.*non-\.claude|outside.*\.claude.*refus|never write outside|write only.*\.claude'; then
-  ok "t7: body refuses writes outside .claude/"
+# t7: body explicitly refuses writes outside <SCOPE>
+if echo "$BODY" | grep -qiE 'refuse.*outside.*scope|REJECTED: out-of-scope|outside.*<SCOPE>|out.*of.*scope'; then
+  ok "t7: body refuses out-of-scope writes"
 else
   ko "t7: body lacks refusal-of-out-of-scope-writes language"
+fi
+
+# t7b: body references the scope-guard hook / .rabbit-scope-active marker
+if echo "$BODY" | grep -qE '\.rabbit-scope-active|scope-guard'; then
+  ok "t7b: body references scope-guard hook / marker"
+else
+  ko "t7b: body lacks scope-guard hook reference"
 fi
 
 # t8: body references the feature-skeleton validator (writes to .claude/features/<name>/ should be validated)
