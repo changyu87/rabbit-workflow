@@ -1,6 +1,7 @@
 # install-distribute
 
-> Source of truth: [`feature.json`](./feature.json).
+> **Note:** LLM-prose view (machine-targeted, like everything in rabbit).
+> Structured source of truth is [`feature.json`](./feature.json).
 > Implementation files (NOT in this directory):
 > - Installer: [`/install.sh`](../../../install.sh) (repo root)
 > - Test suite: [`/test/test-install.sh`](../../../test/test-install.sh) (repo root)
@@ -8,30 +9,45 @@
 
 ## Purpose
 
-Distribute the rabbit workflow into a target workspace by copying just two
-artifacts: `.claude/` and `CLAUDE.md`. Everything else (the installer, this
-feature directory, archived docs, the test suite, the README) stays in the
-source repo and never reaches the user's workspace.
+Distribute the rabbit workflow into a target workspace. Default install
+copies just two artifacts: `.claude/` and `CLAUDE.md`. The runtime work
+model (unified, scope-parameterized — see breeder spec) is identical
+regardless of install variant.
 
 This feature is a **documentation overlay** over the existing `install.sh`
 and its test suite. The implementation predates the
 `.claude/features/<name>/` schema and lives at the historical paths above.
 
-## Two install modes
+## Install variants
+
+| Variant | What's copied | When to use |
+|---|---|---|
+| **default** (no flag) | `.claude/` + `CLAUDE.md`; strips `.claude/docs/specs/*.md` and `.claude/docs/plans/*.md`; no `archive/` or `test/` | Most users. Minimal footprint, runtime is fully functional. |
+| **`--all`** | Everything in default + `archive/` + `test/` + `.claude/docs/specs/` + `.claude/docs/plans/` kept | Rabbit fans / contributors who want a closer look at how rabbit is built. Inspection material only — runtime behavior unchanged. |
+
+`--all` does NOT change runtime semantics. The same scope-guard hook,
+the same breeder, the same TDD scripts. Only what's available on disk
+for inspection differs.
+
+## Two install modes (orthogonal to --all)
 
 1. **Local (git clone) mode** — `SCRIPT_DIR/.claude` exists; the script
-   copies directly.
+   copies directly from the local checkout.
 2. **Download (curl-pipe) mode** — no local `.claude/`; the script
    downloads a GitHub tarball, extracts, copies.
 
-Mode is auto-detected. The README documents both invocations:
+Mode is auto-detected. Both work with or without `--all`.
 
 ```
-# Local
+# Local, default install
 git clone https://github.com/USER/rabbit-workflow
 ./rabbit-workflow/install.sh /path/to/workspace
 
-# Curl
+# Local, --all (for inspection)
+./rabbit-workflow/install.sh --all /path/to/workspace
+./rabbit-workflow/install.sh /path/to/workspace --all   # arg order flexible
+
+# Curl-pipe, default install
 cd /path/to/workspace
 bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/install.sh)
 ```
@@ -54,17 +70,11 @@ already installed (or has their own `.claude/` for unrelated reasons).
 
 ## Tests
 
-`test/run.sh` (4 cases):
+`test/run.sh` (4 cases) sanity-checks installer presence, the fail-safe
+on existing `.claude/`, and delegates to the full
+`test/test-install.sh` suite at the repo root (16 cases including the new
+`--all` variants — t10 through t15 cover default vs --all behavior, flag
+ordering flexibility, and unknown-flag rejection).
 
-- t1: `install.sh` exists and is executable.
-- t2: `test/test-install.sh` exists and is executable.
-- t3: Running `install.sh` against a directory that already has `.claude/`
-  refuses (sanity check of the fail-safe).
-- t4: Delegates to the full existing `test/test-install.sh` suite (which
-  exercises clean install, file permissions, settings.json content,
-  CLAUDE.md imports, fail-safe on existing `.claude/`, no-arg default,
-  hook JSON output, threshold command validation).
-
-This delegation pattern keeps the feature wrapper thin while the canonical
-test suite remains where it has always been (`test/test-install.sh` at the
-repo root).
+The delegation pattern keeps the feature wrapper thin while the canonical
+test suite remains where it has always been.
