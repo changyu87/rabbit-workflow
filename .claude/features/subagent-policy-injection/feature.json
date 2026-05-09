@@ -1,0 +1,27 @@
+{
+  "name": "subagent-policy-injection",
+  "version": "1.0.0",
+  "owner": {
+    "primary": "rabbit-workflow team",
+    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
+  },
+  "status": "active",
+  "tdd_state": "test-green",
+  "deprecation": {
+    "criterion": "When the Claude Code harness exposes an Agent-tool hook (PreToolUse on Agent dispatches) that allows policy injection at the harness level, this script-based dispatcher discipline can be replaced by automatic injection.",
+    "successor": null
+  },
+  "contract": {
+    "reads": [
+      "<repo>/.claude/philosophy.md",
+      "<repo>/.claude/work-guide.md",
+      "any path passed via --include"
+    ],
+    "writes": [],
+    "invokes": [
+      "cat, basename, sed (standard utilities)"
+    ]
+  },
+  "created": "2026-05-09",
+  "updated": "2026-05-09"
+}
