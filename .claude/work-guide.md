@@ -140,3 +140,38 @@ Strong success criteria let you loop independently. Weak criteria ("make it
 work") require constant clarification.
 
 ---
+
+## Part III — Hard Rules
+
+The rules in this section are operational add-ons enforced by deterministic
+checks shipped with the workflow. The full text and the check scripts live
+in `.claude/features/hard-rules/`. This section is a one-line index.
+
+- **R1 — Branch per feature; never work on main.** Every feature mutation
+  goes on a new branch and through a PR. Direct commits to `main`/`master`/
+  `trunk`/`develop` are forbidden. Check:
+  `.claude/features/hard-rules/scripts/check-no-main-edits.sh`.
+
+- **R2 — Opus for brainstorming / spec / planning subagents.** Any subagent
+  whose description matches `brainstorm|spec|plan|design|architect` MUST
+  declare `model: opus` in its frontmatter. Check:
+  `.claude/features/hard-rules/scripts/check-opus-for-planning-agents.sh`.
+
+- **R3 — Tests are end-to-end, no human intervention.** No `read`,
+  `select`, or other interactive constructs in any feature's `test/`. Check:
+  `.claude/features/hard-rules/scripts/check-tests-non-interactive.sh
+  <feature-dir>`.
+
+- **R4 — TDD step transitions go through `tdd-step.sh`.** Manual edits to
+  `feature.json:tdd_state` bypass the forward-only gate and the drift
+  check. Documented policy enforced by the `breeder` subagent and PR review.
+
+- **R5 — Non-rabbit features follow the same pattern under a user-specified
+  root.** Validators, TDD scripts, and bug-filing scripts all accept
+  arbitrary paths and honor `$BUG_ROOT`. Spawn subagents scoped to the
+  target feature's folder.
+
+The full statement, rationale, and tests for each rule live in
+[`hard-rules/spec.md`](./features/hard-rules/spec.md).
+
+---
