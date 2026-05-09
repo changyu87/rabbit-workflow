@@ -1,29 +1,15 @@
 {
   "name": "naming-convention",
   "version": "1.0.0",
-  "owner": {
-    "primary": "rabbit-workflow team",
-    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
-  },
-  "status": "active",
+  "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "deprecation": {
-    "criterion": "When the rabbit/rbt naming scheme is replaced (e.g. by a different brand or a harness-level enforcement that obviates the convention).",
-    "successor": null
+  "summary": "Hardens the project naming scheme: user-facing artifacts must use rabbit- prefix and internal scripts use rbt- prefix.",
+  "surface": {
+    "hooks":    [],
+    "commands": [],
+    "agents":   [],
+    "skills":   []
   },
-  "contract": {
-    "reads": [
-      "<root>/.claude/commands/*.md",
-      "<root>/.claude/agents/*.md",
-      "<root>/.claude/skills/*/",
-      "<root>/.claude/** (basenames, excluding .claude/docs/)"
-    ],
-    "writes": [],
-    "invokes": [
-      "find",
-      "basename"
-    ]
-  },
-  "created": "2026-05-08",
-  "updated": "2026-05-08"
+  "bugs_root": ".claude/features/naming-convention/docs/bugs",
+  "deprecation_criterion": "When the rabbit/rbt naming scheme is replaced (e.g. by a different brand or a harness-level enforcement that obviates the convention)."
 }

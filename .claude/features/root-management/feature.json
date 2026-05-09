@@ -1,29 +1,15 @@
 {
   "name": "root-management",
   "version": "1.0.0",
-  "owner": {
-    "primary": "rabbit-workflow team",
-    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
-  },
-  "status": "active",
+  "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "deprecation": {
-    "criterion": "When root files are generated from a template system rather than hand-authored, this feature is superseded by that template feature.",
-    "successor": null
+  "summary": "Owns the three root-level files users and Claude Code interact with directly: install.sh, CLAUDE.md, and README.md.",
+  "surface": {
+    "hooks":    [],
+    "commands": [],
+    "agents":   [],
+    "skills":   []
   },
-  "contract": {
-    "reads": [
-      "artifacts/install.sh",
-      "artifacts/CLAUDE.md",
-      "artifacts/README.md"
-    ],
-    "writes": [
-      "artifacts/install.sh",
-      "artifacts/CLAUDE.md",
-      "artifacts/README.md"
-    ],
-    "invokes": []
-  },
-  "created": "2026-05-09",
-  "updated": "2026-05-09"
+  "bugs_root": ".claude/features/root-management/docs/bugs",
+  "deprecation_criterion": "When root files are generated from a template system rather than hand-authored, this feature is superseded by that template feature."
 }

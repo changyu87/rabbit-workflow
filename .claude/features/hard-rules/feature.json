@@ -1,31 +1,15 @@
 {
   "name": "hard-rules",
   "version": "1.0.0",
-  "owner": {
-    "primary": "rabbit-workflow team",
-    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
-  },
-  "status": "active",
+  "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "deprecation": {
-    "criterion": "When the rule set folds into philosophy.md/work-guide.md as canonical sections (the hard-rules feature is a transitional staging area), or when individual rules are superseded by harness-level enforcement.",
-    "successor": null
+  "summary": "Staging area for operational rules too specific for philosophy.md or work-guide.md, with deterministic check scripts.",
+  "surface": {
+    "hooks":    [],
+    "commands": [],
+    "agents":   [],
+    "skills":   []
   },
-  "contract": {
-    "reads": [
-      ".claude/agents/*.md",
-      "<feature-dir>/test/*.sh",
-      "git rev-parse, git config (read-only)"
-    ],
-    "writes": [],
-    "invokes": [
-      "git",
-      "find",
-      "grep",
-      "awk",
-      "sed"
-    ]
-  },
-  "created": "2026-05-08",
-  "updated": "2026-05-08"
+  "bugs_root": ".claude/features/hard-rules/docs/bugs",
+  "deprecation_criterion": "When the rule set folds into philosophy.md/work-guide.md as canonical sections, or when individual rules are superseded by harness-level enforcement."
 }

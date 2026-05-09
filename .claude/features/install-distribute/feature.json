@@ -1,32 +1,15 @@
 {
   "name": "install-distribute",
   "version": "1.0.0",
-  "owner": {
-    "primary": "rabbit-workflow team",
-    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
-  },
-  "status": "active",
+  "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "deprecation": {
-    "criterion": "When a packaged distribution mechanism (e.g. an npm/pip/brew package, a managed Claude Code plugin marketplace entry) replaces the bash installer.",
-    "successor": null
+  "summary": "Distribute the rabbit workflow into a target workspace via a bash installer that copies .claude/ and CLAUDE.md.",
+  "surface": {
+    "hooks":    [],
+    "commands": [],
+    "agents":   [],
+    "skills":   []
   },
-  "contract": {
-    "reads": [
-      "install.sh (the installer script itself)",
-      "TARGET/.claude/ (collision check)",
-      "GitHub tarball (download mode only)"
-    ],
-    "writes": [
-      "TARGET/.claude/ (entire workflow footprint)",
-      "TARGET/CLAUDE.md (policy anchor)"
-    ],
-    "invokes": [
-      "install.sh",
-      "test/test-install.sh (delegated)",
-      "git, curl, tar (depending on mode)"
-    ]
-  },
-  "created": "2026-05-08",
-  "updated": "2026-05-08"
+  "bugs_root": ".claude/features/install-distribute/docs/bugs",
+  "deprecation_criterion": "When a packaged distribution mechanism (e.g. an npm/pip/brew package, a managed Claude Code plugin marketplace entry) replaces the bash installer."
 }
