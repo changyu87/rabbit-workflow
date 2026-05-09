@@ -166,10 +166,12 @@ in `.claude/features/hard-rules/`. This section is a one-line index.
   `feature.json:tdd_state` bypass the forward-only gate and the drift
   check. Documented policy enforced by the `breeder` subagent and PR review.
 
-- **R5 — Non-rabbit features follow the same pattern under a user-specified
-  root.** Validators, TDD scripts, and bug-filing scripts all accept
-  arbitrary paths and honor `$BUG_ROOT`. Spawn subagents scoped to the
-  target feature's folder.
+- **R5 — Unified work model: features live anywhere, same discipline
+  applies.** A feature directory is a feature directory regardless of
+  parent path; `.claude/features/<x>/` and `projA/features/<y>/` are
+  treated identically by every script and subagent. The scope-guard hook
+  detects feature dirs by `feature.json` presence, not path prefix. No
+  rabbit-dev-mode vs user-mode dichotomy in the runtime.
 
 The full statement, rationale, and tests for each rule live in
 [`hard-rules/spec.md`](./features/hard-rules/spec.md).
