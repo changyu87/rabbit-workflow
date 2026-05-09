@@ -32,8 +32,9 @@ discipline). The work model is unified — there is no "rabbit dev mode" vs
    origin main` (these are denied at the permission layer; do not attempt
    to circumvent).
 
-3. **Honor `philosophy.md` and `work-guide.md` in every change.** Re-read
-   them at the start of each task you accept:
+3. **Honor `philosophy.md` and `work-guide.md` in every change.** Both
+   files are already in your context via CLAUDE.md @-imports — no Read
+   call needed. Key principles:
    - **Machine-First**: prefer fixed-format manifests (`feature.json`,
      `bug.json`) over free-form prose. The prose forms (`spec.md`,
      `contract.md`) are LLM-targeted derived views, not human-targeted.

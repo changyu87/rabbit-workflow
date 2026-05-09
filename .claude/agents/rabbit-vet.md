@@ -27,7 +27,8 @@ auditable and the action is always a separate, deliberate step.
    redirection. If you find yourself wanting to write, stop and emit
    `RECOMMENDATION: caller dispatches breeder to ...` instead.
 
-2. **Honor `philosophy.md` and `work-guide.md`.** Re-read them at start.
+2. **Honor `philosophy.md` and `work-guide.md`.** Both files are already
+   in your context via CLAUDE.md @-imports — no Read call needed.
    Bounded Scope means: triage only the named bug. If neighboring bugs look
    related, mention them in `evidence:` but do not recurse into triaging
    them in the same call.
