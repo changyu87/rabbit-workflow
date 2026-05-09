@@ -1,0 +1,26 @@
+{
+  "name": "VET-1",
+  "title": "agent definitions say re-read philosophy/work-guide at start but give no paths",
+  "status": "closed",
+  "severity": "low",
+  "description": "rabbit-breeder.md and rabbit-vet.md both instruct the agent to 'honor philosophy.md and work-guide.md — re-read them at the start of each task' but neither file gives the paths. In practice the content is already injected via CLAUDE.md @-imports, so this instruction is dead/misleading. An agent that takes it literally could try to Read those files (path guessable: .claude/philosophy.md), or could silently skip. The instruction should either be removed (CLAUDE.md handles injection) or replaced with an explicit path reference. Related: R6 policy-block.sh is also redundant for same-repo agents but remains useful for cross-repo dispatches.",
+  "related_feature": "vet",
+  "filed": "2026-05-09T08:48:18Z",
+  "filed_by": "cyxu",
+  "closed": "2026-05-09T13:21:29Z",
+  "closed_by": "cyxu",
+  "history": [
+    {
+      "ts": "2026-05-09T08:48:18Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-09T13:21:29Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "removed misleading re-read instruction from rabbit-vet.md and rabbit-breeder.md; replaced with accurate note that CLAUDE.md @-imports already inject the content"
+    }
+  ]
+}
