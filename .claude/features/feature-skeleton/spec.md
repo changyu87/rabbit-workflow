@@ -1,7 +1,9 @@
 # feature-skeleton
 
-> **Note:** This file is the human-readable view. The machine-first source of
-> truth is [`feature.json`](./feature.json). If they drift, `feature.json` wins.
+> **Note:** Like everything in rabbit, this file is machine-targeted — it is
+> the LLM-prose view of the feature. The structured source of truth is
+> [`feature.json`](./feature.json), parsed by deterministic tools. If the two
+> drift, `feature.json` wins.
 
 ## Purpose
 
@@ -15,9 +17,9 @@ Every feature directory MUST contain:
 
 ```
 .claude/features/<name>/
-├── feature.json   # machine-first manifest (REQUIRED, see fields below)
-├── spec.md        # human-readable spec (REQUIRED)
-├── contract.md    # what this feature reads, writes, invokes (REQUIRED)
+├── feature.json   # structured manifest, parsed by jq/validators (REQUIRED, see fields below)
+├── spec.md        # LLM-prose spec, derived view of feature.json (REQUIRED)
+├── contract.md    # LLM-prose contract: what this feature reads, writes, invokes (REQUIRED)
 ├── test/          # end-to-end tests, runnable unattended (REQUIRED)
 │   └── run.sh     # entrypoint; exit 0 = pass; exit non-zero = fail
 └── scripts/       # optional, feature-local executables
