@@ -53,7 +53,8 @@ needed; the hook reads its own state from disk).
 - Current version: `1.0.0`.
 - Changing the JSON output shape is breaking (Claude Code's hook protocol
   consumes specific keys). Bump major.
-- Adding a new env var (e.g. `RWF_REFRESH_PROMPT`) is non-breaking.
+- Adding a new env var (e.g. `RBT_REFRESH_PROMPT`) is non-breaking.
 - Renaming `.rbt-prompt-counter` is breaking (callers that read it will
-  break); already done once (`.rwf-counter` → `.rbt-prompt-counter`),
-  documented in the historical hierarchy migration plan.
+  break); already done twice in this codebase's history
+  (`.rwf-counter` → `.rwf-prompt-counter` → `.rbt-prompt-counter`),
+  documented in the historical hierarchy and naming-convention plans.

@@ -58,7 +58,7 @@ tokens. `20` is the team default.
   `policy-enforcement` (separate feature).
 - The install mechanism that places the hook into a user's workspace —
   that is `install-distribute`.
-- The command files (`rwf-refresh.md`, `rwf-set-threshold.md`) themselves —
+- The command files (`rabbit-refresh.md`, `rabbit-set-threshold.md`) themselves —
   they predate the feature schema. Future PRs may move them into
   `.claude/features/auto-refresh/commands/` if desired; for now they remain
   at their historical paths and this feature documents them.
