@@ -1,16 +1,23 @@
 # vet
 
-> Source of truth: [`feature.json`](./feature.json).
+> **Note:** LLM-prose view (machine-targeted, like everything in rabbit).
+> Structured source of truth is [`feature.json`](./feature.json).
 > Agent definition: [`../../agents/rabbit-vet.md`](../../agents/rabbit-vet.md).
 
 ## Purpose
 
-Read-only triage subagent for bugs. Reads a bug filed at
-`.claude/docs/bugs/<bug-name>/`, classifies it, and emits a structured
-`TRIAGE:` block. **Never writes anything.** All resulting actions
-(transitioning the bug, filing follow-up bugs, adding tests) are dispatched
-separately by the caller — typically routed through the `breeder` for
-`.claude/` writes or through the relevant feature owner for test additions.
+Read-only triage subagent for bugs. Reads a bug at
+`<bugs-root>/<bug-name>/bug.json` (where `<bugs-root>` is whatever path
+the dispatcher provides — `.claude/docs/bugs/` for rabbit's own bugs,
+`projA/bugs/` for any project's bugs), classifies it, and emits a
+structured `TRIAGE:` block. **Never writes anything.** All resulting
+actions (transitioning the bug, filing follow-up bugs, adding tests) are
+dispatched separately by the caller — typically through `rabbit-breeder`
+with the appropriate scope.
+
+Like every subagent in rabbit, vet is **scope-parameterized**: same agent
+semantics regardless of where the bug lives. The unified work model means
+no rabbit-dev-mode vs user-mode dichotomy.
 
 ## Why a separate agent (bounded scope rationale)
 
