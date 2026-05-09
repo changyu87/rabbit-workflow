@@ -121,6 +121,48 @@ feature-dir signal. No special-case code for `.claude/`.
 
 ---
 
+### R6 — Every Agent dispatch prepends the canonical policy block
+
+Source: user instruction during PR review (subagent drift gap).
+
+**Statement:** Every invocation of the `Agent` tool — for rabbit's own
+subagents (`rabbit-breeder`, `rabbit-vet`) AND for Claude's built-in
+subagents (`Plan`, `Explore`, `code-reviewer`, `general-purpose`, etc.)
+— MUST have its `prompt` field prefixed with the canonical policy block.
+
+The block is produced by:
+
+```
+bash .claude/features/subagent-policy-injection/scripts/policy-block.sh \
+    [--include <related-rule-file>]...
+```
+
+It contains `philosophy.md` + `work-guide.md` (always) plus any
+dispatch-relevant rule files (via `--include`), wrapped in hard-command
+framing (MANDATORY / NOT optional / STOP / constitution language) with
+visual banners.
+
+**Why:** subagents do not auto-load `CLAUDE.md` and are not covered by
+the auto-refresh hook. Without this prepend, a subagent sees only its
+own agent-definition system prompt + the dispatcher's prompt — no
+constitution. This rule guarantees the constitution is present at
+invocation start.
+
+**Honest limitation:** this rule protects against drift at invocation
+START only. In-invocation drift (over many turns within one Agent call)
+is not addressed by this rule — see `auto-refresh` spec for that
+discussion. Pair this rule with the discipline of keeping subagent
+invocations short.
+
+**Enforcement:** Dispatcher discipline + PR review. Claude Code does not
+expose an Agent-tool `PreToolUse` hook, so there is no harness-level
+verification that an Agent dispatch included the block. The
+`rabbit-breeder` and `rabbit-vet` system prompts both expect the block
+to precede their task instructions; if it's missing, those agents are
+free to refuse with `CLARIFY: missing policy block`.
+
+---
+
 ## Scripts
 
 ### `scripts/check-no-main-edits.sh`

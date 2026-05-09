@@ -173,6 +173,15 @@ in `.claude/features/hard-rules/`. This section is a one-line index.
   detects feature dirs by `feature.json` presence, not path prefix. No
   rabbit-dev-mode vs user-mode dichotomy in the runtime.
 
+- **R6 — Every Agent dispatch prepends the canonical policy block.**
+  Universal: rabbit's own subagents AND Claude's built-in subagents.
+  The block is produced by
+  `.claude/features/subagent-policy-injection/scripts/policy-block.sh`
+  (with optional `--include <path>` flags for dispatch-relevant rule
+  files) and prepended to the `prompt` field of every Agent call. This
+  closes the subagent drift gap at invocation start. Dispatcher
+  discipline + PR review (no Agent-tool hook in Claude Code).
+
 The full statement, rationale, and tests for each rule live in
 [`hard-rules/spec.md`](./features/hard-rules/spec.md).
 
