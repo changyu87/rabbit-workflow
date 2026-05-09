@@ -56,6 +56,10 @@ walk_up_find() {
 decide() {
   local target="$1"
   local abs; abs="$(abspath "$target")"
+  # Resolve symlinks so a symlink into a feature dir is caught by walk_up_find.
+  if [ -L "$abs" ]; then
+    abs="$(readlink -f "$abs" 2>/dev/null || realpath "$abs" 2>/dev/null || echo "$abs")"
+  fi
   local base; base="$(basename "$abs")"
 
   if [ "$base" = ".rabbit-scope-active" ]; then
