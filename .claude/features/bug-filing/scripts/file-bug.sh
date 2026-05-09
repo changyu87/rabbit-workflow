@@ -50,6 +50,13 @@ case "$SEV" in
   *) echo "ERROR: invalid severity '$SEV' (allowed: low|medium|high|critical)" >&2; exit 1 ;;
 esac
 
+if [ -n "$FEAT" ]; then
+  if ! echo "$FEAT" | grep -qE '^[a-z][a-z0-9-]{0,49}$'; then
+    echo "ERROR: --related-feature '$FEAT' must match [a-z][a-z0-9-]* (max 50 chars)" >&2
+    exit 1
+  fi
+fi
+
 # Derive prefix: related-feature uppercased, or $BUG_PREFIX fallback.
 if [ -n "$FEAT" ]; then
   PREFIX="$(echo "$FEAT" | tr '[:lower:]' '[:upper:]')"

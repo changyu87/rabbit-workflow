@@ -121,9 +121,9 @@ operations**. Higher-level workflow lives in `vet`.
 
 ## Tests
 
-`test/run.sh` runs three test files (30 cases total):
+`test/run.sh` runs three test files (31 cases total):
 
-- `test-file-bug.sh` (14) — auto-ID generation (FEATURE-N), counter
+- `test-file-bug.sh` (15) — auto-ID generation (FEATURE-N), counter
   increment, hyphenated prefix, `$BUG_PREFIX` fallback, `--name` rejection,
   severity enum, required fields, `related_feature` persistence, default
   status, history seeding, ID in output line.

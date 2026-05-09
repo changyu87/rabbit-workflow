@@ -138,8 +138,16 @@ t14() {
     || ko "t14: stdout='$(cat "$TMPROOT/stdout")'"
 }
 
+# t15: --related-feature with invalid chars rejected
+t15() {
+  local rc; rc=$(run --related-feature "bad.name" --title "x" --severity low --description "x")
+  [ "$rc" != "0" ] && grep -qi "related-feature" "$TMPROOT/stderr" \
+    && ok "t15: invalid related-feature rejected" \
+    || ko "t15: rc=$rc stderr=$(cat "$TMPROOT/stderr")"
+}
+
 echo "running file-bug tests against $FILE_BUG"
-t1; t2; t3; t4; t5; t6; t7; t8; t9; t10; t11; t12; t13; t14
+t1; t2; t3; t4; t5; t6; t7; t8; t9; t10; t11; t12; t13; t14; t15
 echo
 echo "summary: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1
