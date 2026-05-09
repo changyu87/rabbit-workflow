@@ -3,7 +3,7 @@
 set -u
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
-AGENT_FILE="$REPO_ROOT/.claude/agents/bug-handler.md"
+AGENT_FILE="$REPO_ROOT/.claude/agents/rabbit-bug-handler.md"
 
 PASS=0; FAIL=0
 ok() { echo "  ok   $*"; PASS=$((PASS+1)); }
@@ -14,9 +14,9 @@ ko() { echo "  FAIL $*"; FAIL=$((FAIL+1)); }
 FRONT="$(awk '/^---$/{c++; next} c==1{print} c==2{exit}' "$AGENT_FILE")"
 BODY="$(awk 'BEGIN{c=0} /^---$/{c++; next} c>=2{print}' "$AGENT_FILE")"
 
-# t2: name = bug-handler
-echo "$FRONT" | grep -qE '^name: *bug-handler$' \
-  && ok "t2: frontmatter name: bug-handler" \
+# t2: name = rabbit-bug-handler
+echo "$FRONT" | grep -qE '^name: *rabbit-bug-handler$' \
+  && ok "t2: frontmatter name: rabbit-bug-handler" \
   || ko "t2: name field missing or wrong"
 
 # t3: description present and substantive

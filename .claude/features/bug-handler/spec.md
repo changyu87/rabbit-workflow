@@ -1,7 +1,7 @@
-# bug-handler
+# rabbit-bug-handler
 
 > Source of truth: [`feature.json`](./feature.json).
-> Agent definition: [`../../agents/bug-handler.md`](../../agents/bug-handler.md).
+> Agent definition: [`../../agents/rabbit-bug-handler.md`](../../agents/rabbit-bug-handler.md).
 
 ## Purpose
 
@@ -63,7 +63,7 @@ downstream automation parses.
 
 ```
 Agent({
-  subagent_type: "bug-handler",
+  subagent_type: "rabbit-bug-handler",
   prompt: "Triage bug <bug-name>. Bug dir: .claude/docs/bugs/<bug-name>/."
 })
 ```

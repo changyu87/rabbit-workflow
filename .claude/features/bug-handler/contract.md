@@ -1,4 +1,4 @@
-# Contract — bug-handler
+# Contract — rabbit-bug-handler
 
 ## Reads
 
