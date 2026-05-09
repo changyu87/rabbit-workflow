@@ -11,20 +11,20 @@ manifest) and any supporting artifacts (repro scripts, fix specs, etc.).
 
 ## Naming rule
 
-Bug names obey the regex:
+Bug identifiers follow the pattern `<PREFIX>-<N>`:
 
-```
-^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z][a-z0-9-]{0,49}$
-```
+- `PREFIX` = `related_feature` value, uppercased (hyphens preserved).
+  Example: `related_feature: install-distribute` → `INSTALL-DISTRIBUTE`.
+  When `--related-feature` is omitted, `$BUG_PREFIX` env var is used
+  (default: `RBT`).
+- `N` = positive integer, no padding, no ceiling. Auto-incremented by
+  scanning `$BUG_ROOT` for existing IDs with the same prefix and taking
+  `max + 1`.
 
-That is: ISO date prefix, then a lowercase kebab-case slug (max 50 chars).
-Total maximum length: 61 characters.
+Examples: `RBT-1`, `WORKLOG-3`, `INSTALL-DISTRIBUTE-12`.
 
-Names are unique. `file-bug.sh` rejects duplicates with a non-zero exit and
-a message like `ERROR: bug name '...' already exists at <path>`.
-
-This satisfies the user requirement: "bug name must obey some rule,
-extendable with no duplication."
+`file-bug.sh` never accepts a `--name` arg. The name is always computed.
+Collisions are prevented by the scan; no counter file needed.
 
 ## Schema (`bug.json`)
 

@@ -15,16 +15,20 @@ ko() { echo "  FAIL $*"; FAIL=$((FAIL+1)); }
 export BUG_ROOT="$TMPROOT/bugs"
 mkdir -p "$BUG_ROOT"
 
+# mkbug <prefix> — files a bug and returns the path to its bug dir.
 mkbug() {
-  "$FILE_BUG" --name "$1" --title "t" --severity low --description "d" >/dev/null
+  local prefix="$1"
+  local out; out=$("$FILE_BUG" --related-feature "$prefix" --title "t" --severity low --description "d" 2>/dev/null)
+  # stdout: "filed: <path>  [<NAME>]"
+  echo "$out" | sed -E 's/^filed: ([^ ]+) .*/\1/' | xargs dirname
 }
 
 run() { "$STATUS" "$@" 2>"$TMPROOT/stderr" >"$TMPROOT/stdout"; echo $?; }
 
 # s1: read status of an open bug
 s1() {
-  mkbug "2026-05-08-s1"
-  local rc; rc=$(run get "$BUG_ROOT/2026-05-08-s1")
+  local dir; dir=$(mkbug "status-s1")
+  local rc; rc=$(run get "$dir")
   [ "$rc" = "0" ] && [ "$(cat "$TMPROOT/stdout")" = "open" ] \
     && ok "s1: get returns open" \
     || ko "s1: rc=$rc out='$(cat "$TMPROOT/stdout")'"
@@ -32,9 +36,9 @@ s1() {
 
 # s2: open -> closed succeeds
 s2() {
-  mkbug "2026-05-08-s2"
-  local rc; rc=$(run set "$BUG_ROOT/2026-05-08-s2" closed --note "fixed in #42")
-  local s; s=$(jq -r '.status' "$BUG_ROOT/2026-05-08-s2/bug.json")
+  local dir; dir=$(mkbug "status-s2")
+  local rc; rc=$(run set "$dir" closed --note "fixed in #42")
+  local s; s=$(jq -r '.status' "$dir/bug.json")
   [ "$rc" = "0" ] && [ "$s" = "closed" ] \
     && ok "s2: open -> closed succeeds" \
     || ko "s2: rc=$rc s=$s stderr=$(cat "$TMPROOT/stderr")"
@@ -42,10 +46,10 @@ s2() {
 
 # s3: closed -> reopened succeeds
 s3() {
-  mkbug "2026-05-08-s3"
-  run set "$BUG_ROOT/2026-05-08-s3" closed --note "first close" >/dev/null
-  local rc; rc=$(run set "$BUG_ROOT/2026-05-08-s3" reopened --note "regression")
-  local s; s=$(jq -r '.status' "$BUG_ROOT/2026-05-08-s3/bug.json")
+  local dir; dir=$(mkbug "status-s3")
+  run set "$dir" closed --note "first close" >/dev/null
+  local rc; rc=$(run set "$dir" reopened --note "regression")
+  local s; s=$(jq -r '.status' "$dir/bug.json")
   [ "$rc" = "0" ] && [ "$s" = "reopened" ] \
     && ok "s3: closed -> reopened succeeds" \
     || ko "s3: rc=$rc s=$s stderr=$(cat "$TMPROOT/stderr")"
@@ -53,11 +57,11 @@ s3() {
 
 # s4: reopened -> closed succeeds
 s4() {
-  mkbug "2026-05-08-s4"
-  run set "$BUG_ROOT/2026-05-08-s4" closed --note "x" >/dev/null
-  run set "$BUG_ROOT/2026-05-08-s4" reopened --note "y" >/dev/null
-  local rc; rc=$(run set "$BUG_ROOT/2026-05-08-s4" closed --note "second close")
-  local s; s=$(jq -r '.status' "$BUG_ROOT/2026-05-08-s4/bug.json")
+  local dir; dir=$(mkbug "status-s4")
+  run set "$dir" closed --note "x" >/dev/null
+  run set "$dir" reopened --note "y" >/dev/null
+  local rc; rc=$(run set "$dir" closed --note "second close")
+  local s; s=$(jq -r '.status' "$dir/bug.json")
   [ "$rc" = "0" ] && [ "$s" = "closed" ] \
     && ok "s4: reopened -> closed succeeds" \
     || ko "s4: rc=$rc s=$s"
@@ -65,10 +69,10 @@ s4() {
 
 # s5: closed -> open denied (must use 'reopened')
 s5() {
-  mkbug "2026-05-08-s5"
-  run set "$BUG_ROOT/2026-05-08-s5" closed --note "x" >/dev/null
-  local rc; rc=$(run set "$BUG_ROOT/2026-05-08-s5" open --note "wrong way")
-  local s; s=$(jq -r '.status' "$BUG_ROOT/2026-05-08-s5/bug.json")
+  local dir; dir=$(mkbug "status-s5")
+  run set "$dir" closed --note "x" >/dev/null
+  local rc; rc=$(run set "$dir" open --note "wrong way")
+  local s; s=$(jq -r '.status' "$dir/bug.json")
   [ "$rc" != "0" ] && [ "$s" = "closed" ] \
     && ok "s5: closed -> open denied (use reopened)" \
     || ko "s5: rc=$rc s=$s"
@@ -76,16 +80,16 @@ s5() {
 
 # s6: invalid target status rejected
 s6() {
-  mkbug "2026-05-08-s6"
-  local rc; rc=$(run set "$BUG_ROOT/2026-05-08-s6" weird --note "x")
+  local dir; dir=$(mkbug "status-s6")
+  local rc; rc=$(run set "$dir" weird --note "x")
   [ "$rc" != "0" ] && ok "s6: invalid status rejected" || ko "s6: rc=$rc"
 }
 
 # s7: setting same status is a no-op (allowed but not history-spammed twice)
 s7() {
-  mkbug "2026-05-08-s7"
-  local rc; rc=$(run set "$BUG_ROOT/2026-05-08-s7" open --note "redundant")
-  local len; len=$(jq '.history | length' "$BUG_ROOT/2026-05-08-s7/bug.json")
+  local dir; dir=$(mkbug "status-s7")
+  local rc; rc=$(run set "$dir" open --note "redundant")
+  local len; len=$(jq '.history | length' "$dir/bug.json")
   [ "$rc" = "0" ] && [ "$len" = "1" ] \
     && ok "s7: same-status set is no-op (history len=1)" \
     || ko "s7: rc=$rc history len=$len"
@@ -93,11 +97,11 @@ s7() {
 
 # s8: history grows on each transition
 s8() {
-  mkbug "2026-05-08-s8"
-  run set "$BUG_ROOT/2026-05-08-s8" closed --note "a" >/dev/null
-  run set "$BUG_ROOT/2026-05-08-s8" reopened --note "b" >/dev/null
-  run set "$BUG_ROOT/2026-05-08-s8" closed --note "c" >/dev/null
-  local len; len=$(jq '.history | length' "$BUG_ROOT/2026-05-08-s8/bug.json")
+  local dir; dir=$(mkbug "status-s8")
+  run set "$dir" closed --note "a" >/dev/null
+  run set "$dir" reopened --note "b" >/dev/null
+  run set "$dir" closed --note "c" >/dev/null
+  local len; len=$(jq '.history | length' "$dir/bug.json")
   [ "$len" = "4" ] \
     && ok "s8: history len=4 (open + 3 transitions)" \
     || ko "s8: history len=$len (expected 4)"

@@ -16,11 +16,19 @@ ko() { echo "  FAIL $*"; FAIL=$((FAIL+1)); }
 export BUG_ROOT="$TMPROOT/bugs"
 mkdir -p "$BUG_ROOT"
 
+# Helper: file a bug and echo the computed bug name (FEAT-N).
+mkbug() {
+  local feature="$1"; local title="$2"
+  "$FILE_BUG" --related-feature "$feature" --title "$title" --severity low \
+              --description "d" 2>/dev/null \
+    | sed -E 's/.*\[([^]]+)\]/\1/'
+}
+
 # Seed: 3 bugs, 2 open / 1 closed; 2 attached to 'feat-a' and 1 to 'feat-b'.
-"$FILE_BUG" --name "2026-05-08-l1" --title "open A" --severity low --description d --related-feature feat-a >/dev/null
-"$FILE_BUG" --name "2026-05-08-l2" --title "open B" --severity low --description d --related-feature feat-b >/dev/null
-"$FILE_BUG" --name "2026-05-08-l3" --title "closed A" --severity low --description d --related-feature feat-a >/dev/null
-"$STATUS" set "$BUG_ROOT/2026-05-08-l3" closed --note "x" >/dev/null
+NAME_L1=$(mkbug "feat-a" "open A")
+NAME_L2=$(mkbug "feat-b" "open B")
+NAME_L3=$(mkbug "feat-a" "closed A")
+"$STATUS" set "$BUG_ROOT/$NAME_L3" closed --note "x" >/dev/null
 
 run() { "$LIST" "$@" 2>"$TMPROOT/stderr" >"$TMPROOT/stdout"; echo $?; }
 
@@ -59,14 +67,14 @@ l5() {
   [ "$n" = "1" ] && ok "l5: status=open + feature=feat-a returns 1" || ko "l5: n=$n"
 }
 
-# l6: --text mode returns non-JSON output
+# l6: --text mode returns non-JSON output containing seeded bug name
 l6() {
   run --text >/dev/null
   local out; out="$(cat "$TMPROOT/stdout")"
   echo "$out" | jq empty 2>/dev/null && { ko "l6: --text should NOT be JSON"; return; }
-  echo "$out" | grep -q "2026-05-08-l1" \
+  echo "$out" | grep -q "$NAME_L1" \
     && ok "l6: --text lists bug names" \
-    || ko "l6: missing bug name in output"
+    || ko "l6: missing bug name ($NAME_L1) in output"
 }
 
 # l7: empty bug root returns []

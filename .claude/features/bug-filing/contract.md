@@ -23,9 +23,11 @@
 
 ### `file-bug.sh`
 
-- **Inputs:** flag args (`--name`, `--title`, `--severity`, `--description`,
-  optional `--related-feature`, `--filed-by`).
-- **Stdout:** `filed: <path-to-bug.json>` on success.
+- **Inputs:** flag args (`--title`, `--severity`, `--description`,
+  optional `--related-feature` (prefix falls back to `$BUG_PREFIX` env var,
+  default `RBT`), optional `--filed-by`). `--name` is not accepted; the bug
+  ID is always auto-computed as `<PREFIX>-<N>`.
+- **Stdout:** `filed: <path-to-bug.json>  [<ID>]` on success.
 - **Stderr:** `ERROR: ...` on validation error.
 - **Exit:** `0` success; `1` validation error; `2` bad invocation.
 - **Side effects:** creates a directory and a JSON file; no other writes.
