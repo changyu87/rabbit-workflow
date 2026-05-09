@@ -1,9 +1,9 @@
 {
   "name": "scope-guard",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "summary": "Active enforcement of the unified work model: Write/Edit/Bash targeting a feature directory requires an active scope marker.",
+  "summary": "Repo-wide default-deny write hook; allows only scoped writes and settings files.",
   "surface": {
     "hooks":    [".claude/hooks/scope-guard.sh"],
     "commands": [],
@@ -11,5 +11,5 @@
     "skills":   []
   },
   "bugs_root": ".claude/features/scope-guard/docs/bugs",
-  "deprecation_criterion": "When the Claude Code harness exposes subagent invocation identity in hook input, enabling strict per-invocation scope enforcement that supersedes the marker-file convention."
+  "deprecation_criterion": "when Claude Code exposes per-feature write boundaries natively."
 }

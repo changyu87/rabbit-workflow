@@ -179,6 +179,26 @@ or `--skip-vet-reason`) + PR review. Same pattern as R4.
 
 ---
 
+### R8 — Every feature touch runs full TDD
+
+**Statement:** Any add, edit, or delete of a feature — regardless of scope or size — MUST go through the full TDD step sequence managed by `tdd-step.sh`. There is no partial-TDD path.
+
+**Enforcement:** `scope-guard.sh` v2.0.0 denies writes without an active scope marker; `tdd-step.sh` gates all state transitions forward-only. These two locks together mean the only write path is through a properly scoped, TDD-sequenced dispatch.
+
+**Check:** Covered by scope-guard tests + tdd-step tests.
+
+---
+
+### R9 — Project-level contract wins over rabbit contract at conflict
+
+**Statement:** The project-level contract takes precedence over the rabbit contract at every conflict. When `dispatch-feature-edit.sh` assembles a dispatch for a project feature, it loads the project's `contract/` first and rabbit's `contract/` second. Project values shadow rabbit values at every conflict.
+
+**Enforcement:** Load order in `dispatch-feature-edit.sh` + PR review.
+
+**Check:** `contract/scripts/dispatch-feature-edit.sh` load-order test (Step 7).
+
+---
+
 ## Scripts
 
 ### `scripts/check-no-main-edits.sh`

@@ -7,8 +7,14 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FEATURE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 HOOK="$FEATURE_DIR/../../hooks/scope-guard.sh"
-TMPROOT="$(mktemp -d)"
-trap 'rm -rf "$TMPROOT"' EXIT INT TERM
+
+# v2: fixtures that must be DENIED live inside the repo root so the
+# repo-wide default-deny logic can reach them.
+REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"
+TMPROOT="$(mktemp -d "$REPO_ROOT/.sg-test-XXXXXX")"
+# Fixtures that should be ALLOWED because they are outside the repo live in /tmp.
+OUTSIDE_ROOT="$(mktemp -d)"
+trap 'rm -rf "$TMPROOT" "$OUTSIDE_ROOT"' EXIT INT TERM
 
 PASS=0; FAIL=0
 ok() { echo "  ok   $*"; PASS=$((PASS+1)); }
@@ -42,11 +48,11 @@ mk_bash_json() {
   printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$cmd"
 }
 
-# g1: Write to file outside any feature dir -> allow
-mkdir -p "$TMPROOT/g1"
-echo "test" > "$TMPROOT/g1/random.txt"
-rc=$(run_hook "$(mk_write_json "$TMPROOT/g1/foo.txt")")
-[ "$rc" = "0" ] && ok "g1: Write outside feature dir -> allow" \
+# g1: Write to file outside the repo entirely -> allow
+mkdir -p "$OUTSIDE_ROOT/g1"
+echo "test" > "$OUTSIDE_ROOT/g1/random.txt"
+rc=$(run_hook "$(mk_write_json "$OUTSIDE_ROOT/g1/foo.txt")")
+[ "$rc" = "0" ] && ok "g1: Write outside repo root -> allow" \
   || ko "g1: rc=$rc err=$(cat "$TMPROOT/err")"
 
 # g2: Write to file in feature dir without marker -> DENY
@@ -75,9 +81,9 @@ rc=$(run_hook "$(mk_bash_json "echo x > $TMPROOT/g5/file.txt")")
 [ "$rc" = "2" ] && ok "g5: Bash > into feature dir without marker -> deny" \
   || ko "g5: rc=$rc err=$(cat "$TMPROOT/err")"
 
-# g6: Bash redirection > to non-feature path -> allow
-rc=$(run_hook "$(mk_bash_json "echo x > $TMPROOT/anywhere.txt")")
-[ "$rc" = "0" ] && ok "g6: Bash > to non-feature path -> allow" \
+# g6: Bash redirection > to path outside repo -> allow
+rc=$(run_hook "$(mk_bash_json "echo x > $OUTSIDE_ROOT/anywhere.txt")")
+[ "$rc" = "0" ] && ok "g6: Bash > to path outside repo -> allow" \
   || ko "g6: rc=$rc err=$(cat "$TMPROOT/err")"
 
 # g7: Write to .rabbit-scope-active itself -> allow (chicken-and-egg exempt)
@@ -151,6 +157,19 @@ rc=$(echo '{"tool_name":"Read","tool_input":{"file_path":"/anywhere"}}' \
      | bash "$HOOK"; echo $?)
 [ "$rc" = "0" ] && ok "g16: ungated tool (Read) -> allow" \
   || ko "g16: rc=$rc"
+
+# g17: v2 — write to a plain file at repo root (not a feature dir, not settings) is denied without marker
+mkdir -p "$TMPROOT/g17plain"
+rc=$(run_hook "$(mk_write_json "$TMPROOT/g17plain/readme.txt")")
+[ "$rc" = "2" ] && ok "g17: v2 plain repo-root write without marker -> deny" \
+  || ko "g17: rc=$rc err=$(cat "$TMPROOT/err")"
+
+# g18: v2 — same write is allowed when a .rabbit-scope-active marker exists in an ancestor
+mkdir -p "$TMPROOT/g18plain"
+touch "$TMPROOT/g18plain/.rabbit-scope-active"
+rc=$(run_hook "$(mk_write_json "$TMPROOT/g18plain/readme.txt")")
+[ "$rc" = "0" ] && ok "g18: v2 plain repo-root write with ancestor marker -> allow" \
+  || ko "g18: rc=$rc err=$(cat "$TMPROOT/err")"
 
 echo
 echo "summary: $PASS passed, $FAIL failed"

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /home/cyxu/workflow-dev/rabbit-run/.claude/features/policy/docs/spec /home/cyxu/workflow-dev/rabbit-run/.claude/features/policy/docs/bugs /home/cyxu/workflow-dev/rabbit-run/.claude/features/policy/test)",
+      "Bash(touch /home/cyxu/workflow-dev/rabbit-run/.claude/features/policy/docs/bugs/.gitkeep)"
+    ]
+  }
+}
