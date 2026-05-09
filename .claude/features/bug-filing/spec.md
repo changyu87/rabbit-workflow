@@ -108,14 +108,14 @@ the test seam — fixtures point `$BUG_ROOT` at a temp directory.
 
 ## What this feature does NOT define
 
-- **Triaging or routing** of bugs to feature owners — that is `bug-handler`.
+- **Triaging or routing** of bugs to feature owners — that is `vet`.
 - **Test-coverage gap detection** when a bug reveals an untested code path —
-  also `bug-handler`'s responsibility (it dispatches a follow-up to the
+  also `vet`'s responsibility (it dispatches a follow-up to the
   affected feature's owner).
 - **Cross-tool sync** with external bug trackers — out of scope for v1.
 
 Bounded scope: this feature owns the **format** and the **mechanical
-operations**. Higher-level workflow lives in `bug-handler`.
+operations**. Higher-level workflow lives in `vet`.
 
 ## Tests
 

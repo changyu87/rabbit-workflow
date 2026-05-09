@@ -53,7 +53,7 @@
 
 ## Cross-scope handoff
 
-- **Triage and routing** — out of scope. Caller dispatches `bug-handler`
+- **Triage and routing** — out of scope. Caller dispatches `vet`
   (separate feature) to triage a bug and route it to the affected feature's
   owner.
 - **Filing a bug from inside the breeder** — supported: `breeder` may
