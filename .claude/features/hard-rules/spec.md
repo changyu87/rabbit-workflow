@@ -163,6 +163,22 @@ free to refuse with `CLARIFY: missing policy block`.
 
 ---
 
+### R7 — Vet before close; main session never skips
+
+Source: session 2026-05-09 workflow hardening.
+
+**Statement:** Before closing any bug, the main session MUST dispatch
+`rabbit-vet`, receive a `TRIAGE:` block, and write `vet-triage.json` into
+the bug dir. Only then may it call `bug-status.sh set ... closed`. The
+`--skip-vet-reason` flag is reserved for scoped agents (breeder in active
+scope) that close a bug as a direct consequence of their own fix. The main
+session passing `--skip-vet-reason` is a policy violation.
+
+**Enforcement:** Script gate in `bug-status.sh` (requires `vet-triage.json`
+or `--skip-vet-reason`) + PR review. Same pattern as R4.
+
+---
+
 ## Scripts
 
 ### `scripts/check-no-main-edits.sh`

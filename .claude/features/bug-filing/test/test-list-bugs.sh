@@ -28,6 +28,7 @@ mkbug() {
 NAME_L1=$(mkbug "feat-a" "open A")
 NAME_L2=$(mkbug "feat-b" "open B")
 NAME_L3=$(mkbug "feat-a" "closed A")
+echo '{}' > "$BUG_ROOT/$NAME_L3/vet-triage.json"
 "$STATUS" set "$BUG_ROOT/$NAME_L3" closed --note "x" >/dev/null
 
 run() { "$LIST" "$@" 2>"$TMPROOT/stderr" >"$TMPROOT/stdout"; echo $?; }

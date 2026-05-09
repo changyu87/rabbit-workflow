@@ -39,10 +39,12 @@ case "$cmd" in
   set)
     dir="${1:-}"; new="${2:-}"; note=""; actor="${USER:-unknown}"
     shift 2 2>/dev/null || true
+    skip_vet_reason=""
     while [ $# -gt 0 ]; do
       case "$1" in
-        --note)  note="$2"; shift 2 ;;
-        --actor) actor="$2"; shift 2 ;;
+        --note)             note="$2"; shift 2 ;;
+        --actor)            actor="$2"; shift 2 ;;
+        --skip-vet-reason)  skip_vet_reason="$2"; shift 2 ;;
         *) echo "unknown arg: $1" >&2; exit 2 ;;
       esac
     done
@@ -75,10 +77,20 @@ case "$cmd" in
       exit 1
     fi
 
+    # Vet gate: closing requires vet-triage.json unless --skip-vet-reason provided.
+    if [ "$new" = "closed" ]; then
+      if [ ! -f "$dir/vet-triage.json" ] && [ -z "$skip_vet_reason" ]; then
+        echo "ERROR: cannot close without vet triage. Run rabbit-vet first, or pass --skip-vet-reason if closing from an active breeder scope." >&2
+        exit 1
+      fi
+    fi
+
     TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     case "$new" in
       closed)
-        jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$note" \
+        hist_note="$note"
+        [ -n "$skip_vet_reason" ] && hist_note="vet skipped: $skip_vet_reason | $note"
+        jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$hist_note" \
           '.status = $s
            | .closed = $ts
            | .closed_by = $actor
