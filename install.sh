@@ -23,7 +23,7 @@ else
     cp "$TMP/CLAUDE.md" "$TARGET/CLAUDE.md"
 fi
 
-chmod +x "$TARGET/.claude/hooks/rwf-refresh.sh"
+chmod +x "$TARGET/.claude/hooks/rbt-refresh.sh"
 # Remove rabbit-workflow dev-only docs; users accumulate their own
 rm -f "$TARGET/.claude/docs/specs/"*.md "$TARGET/.claude/docs/plans/"*.md
 # Remove runtime-only and OS-level artifacts
