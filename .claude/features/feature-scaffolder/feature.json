@@ -1,0 +1,32 @@
+{
+  "name": "feature-scaffolder",
+  "version": "1.1.0",
+  "owner": {
+    "primary": "rabbit-workflow team",
+    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
+  },
+  "status": "active",
+  "tdd_state": "test-green",
+  "deprecation": {
+    "criterion": "When a higher-level scaffolding system (e.g. a published CLI tool, an installer wizard) replaces these shell scripts as the canonical way to create feature directories.",
+    "successor": null
+  },
+  "contract": {
+    "reads": [
+      "$FEATURES_ROOT (env, default .claude/features) — for validate-all",
+      "<root>/<name>/feature.json (autodetected feature-skeleton validator)"
+    ],
+    "writes": [
+      "<root>/<name>/feature.json",
+      "<root>/<name>/spec.md",
+      "<root>/<name>/contract.md",
+      "<root>/<name>/test/run.sh"
+    ],
+    "invokes": [
+      "jq",
+      "feature-skeleton/scripts/validate-feature.sh (autodetected, optional)"
+    ]
+  },
+  "created": "2026-05-08",
+  "updated": "2026-05-09"
+}
