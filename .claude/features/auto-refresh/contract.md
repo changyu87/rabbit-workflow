@@ -5,12 +5,12 @@
 - `CLAUDE.md` — parses lines beginning with `@` to identify policy files.
 - Each file referenced by a `CLAUDE.md` `@`-import (typically
   `.claude/philosophy.md` and `.claude/work-guide.md`).
-- `.rwf-prompt-counter` — current count.
-- `RWF_REFRESH_EVERY` (env, default 20) — threshold.
+- `.rbt-prompt-counter` — current count.
+- `RBT_REFRESH_EVERY` (env, default 20) — threshold.
 
 ## Writes
 
-- `.rwf-prompt-counter` — integer, incremented or reset.
+- `.rbt-prompt-counter` — integer, incremented or reset.
 
 ## Invokes
 
@@ -39,13 +39,13 @@ needed; the hook reads its own state from disk).
 
 ## Cross-scope handoff
 
-- **Adjusting threshold:** use the `/rwf-set-threshold N` command, NOT
+- **Adjusting threshold:** use the `/rabbit-set-threshold N` command, NOT
   manual `settings.local.json` edits (the command validates the input).
 - **Changing what's re-injected:** edit `CLAUDE.md` to add/remove
   `@`-imports. The hook re-reads `CLAUDE.md` on every threshold hit, so
   changes are picked up without restart.
 - **Disabling:** remove the `UserPromptSubmit` hook from
-  `.claude/settings.json`, OR set `RWF_REFRESH_EVERY` to a very high
+  `.claude/settings.json`, OR set `RBT_REFRESH_EVERY` to a very high
   value (e.g. `999999`).
 
 ## Versioning
@@ -54,6 +54,6 @@ needed; the hook reads its own state from disk).
 - Changing the JSON output shape is breaking (Claude Code's hook protocol
   consumes specific keys). Bump major.
 - Adding a new env var (e.g. `RWF_REFRESH_PROMPT`) is non-breaking.
-- Renaming `.rwf-prompt-counter` is breaking (callers that read it will
-  break); already done once (`.rwf-counter` → `.rwf-prompt-counter`),
+- Renaming `.rbt-prompt-counter` is breaking (callers that read it will
+  break); already done once (`.rwf-counter` → `.rbt-prompt-counter`),
   documented in the historical hierarchy migration plan.

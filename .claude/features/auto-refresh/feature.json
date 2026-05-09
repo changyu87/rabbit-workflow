@@ -15,11 +15,11 @@
     "reads": [
       "CLAUDE.md (parses lines starting with '@')",
       "every file referenced by a CLAUDE.md @-import",
-      ".rwf-prompt-counter",
-      "$RWF_REFRESH_EVERY (env, default 20)"
+      ".rbt-prompt-counter",
+      "$RBT_REFRESH_EVERY (env, default 20)"
     ],
     "writes": [
-      ".rwf-prompt-counter"
+      ".rbt-prompt-counter"
     ],
     "invokes": [
       "python3 (for JSON encoding)",

@@ -2,10 +2,10 @@
 
 > Source of truth: [`feature.json`](./feature.json).
 > Implementation files (NOT in this directory):
-> - Hook: [`../../hooks/rwf-refresh.sh`](../../hooks/rwf-refresh.sh)
+> - Hook: [`../../hooks/rbt-refresh.sh`](../../hooks/rbt-refresh.sh)
 > - Wired in: [`../../settings.json`](../../settings.json) (UserPromptSubmit + SessionStart hooks)
-> - User command: [`../../commands/rwf-set-threshold.md`](../../commands/rwf-set-threshold.md)
-> - Manual trigger command: [`../../commands/rwf-refresh.md`](../../commands/rwf-refresh.md)
+> - User command: [`../../commands/rabbit-set-threshold.md`](../../commands/rabbit-set-threshold.md)
+> - Manual trigger command: [`../../commands/rabbit-refresh.md`](../../commands/rabbit-refresh.md)
 
 ## Purpose
 
@@ -23,10 +23,10 @@ adds the schema-required artifacts (`feature.json`, `spec.md`, `contract.md`,
 ## Mechanism
 
 ```
-UserPromptSubmit hook → rwf-refresh.sh
-  ├── increment .rwf-prompt-counter
-  ├── if count < $RWF_REFRESH_EVERY: silent exit 0
-  └── if count >= $RWF_REFRESH_EVERY:
+UserPromptSubmit hook → rbt-refresh.sh
+  ├── increment .rbt-prompt-counter
+  ├── if count < $RBT_REFRESH_EVERY: silent exit 0
+  └── if count >= $RBT_REFRESH_EVERY:
         ├── reset counter to 0
         ├── parse @-imports from CLAUDE.md
         ├── concatenate file bodies into a payload
@@ -37,11 +37,11 @@ UserPromptSubmit hook → rwf-refresh.sh
 
 ## Configuration
 
-`RWF_REFRESH_EVERY` (env var, default `20`):
+`RBT_REFRESH_EVERY` (env var, default `20`):
 
 - Set globally in `.claude/settings.json` (committed default).
 - User override in `.claude/settings.local.json` (gitignored).
-- The `/rwf-set-threshold N` slash command writes the user override.
+- The `/rabbit-set-threshold N` slash command writes the user override.
 
 A lower value (e.g. `5`) gives tighter policy adherence at the cost of
 context-window churn. A higher value (`50+`) is more permissive and saves
@@ -49,7 +49,7 @@ tokens. `20` is the team default.
 
 ## State files
 
-- `.rwf-prompt-counter` — single integer, incremented per prompt, reset on
+- `.rbt-prompt-counter` — single integer, incremented per prompt, reset on
   threshold or session start. Gitignored.
 
 ## What this feature does NOT define
@@ -76,5 +76,5 @@ Cases:
 - t2: under threshold → silent
 - t3: at threshold → JSON with `additionalContext` containing fixture body
 - t4: missing counter file is initialized
-- t5: `RWF_REFRESH_EVERY=1` refreshes every call
+- t5: `RBT_REFRESH_EVERY=1` refreshes every call
 - t6: `systemMessage` announces refresh
