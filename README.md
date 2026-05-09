@@ -46,6 +46,37 @@ bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/in
 
 Default refresh interval: 20 prompts. Change with `/rwf-set-threshold N`.
 
+## Applying rabbit to your own project
+
+The feature schema and tooling are portable — they work on any directory,
+not just `.claude/features/`. After installing rabbit into your workspace,
+you can apply the same disciplined feature-oriented workflow to your own code:
+
+```bash
+# Scaffold a new feature in your project
+bash .claude/features/user-features/scripts/new-feature.sh \
+    projA/features auth-redirect --owner alice
+
+# Sweep all features in projA, validating each against the schema
+FEATURES_ROOT=projA/features \
+    bash .claude/features/user-features/scripts/validate-all.sh
+
+# File a bug under your project's bug tracker
+BUG_ROOT=projA/bugs \
+    bash .claude/features/bug-filing/scripts/file-bug.sh \
+        --name 2026-05-09-login-loop --title "login redirects loop on safari" \
+        --severity high --description "..." --related-feature auth-redirect
+
+# Track TDD state for a user-mode feature
+bash .claude/features/tdd-state-machine/scripts/tdd-step.sh \
+    transition projA/features/auth-redirect test-red
+```
+
+The `breeder` and `claude-write-lockdown` rules apply ONLY to `.claude/`.
+Your own project paths are yours to write directly.
+
+See `.claude/features/user-features/spec.md` for the full guide.
+
 ## Uninstall
 
 Remove `.claude/` and `CLAUDE.md` from the installed workspace.
