@@ -38,7 +38,7 @@ Collisions are prevented by the scan; no counter file needed.
 | `related_feature` | string?   | Name of the affected feature, or `null`                   |
 | `filed`           | ISO-8601  | UTC timestamp of initial filing                           |
 | `filed_by`        | string    | Actor name (defaults to `$USER`)                          |
-| `closed`          | ISO-8601? | UTC timestamp of close, or `null` if open/reopened        |
+| `closed`          | ISO-8601? | UTC timestamp of close, or `null` if open, reopened, or refused |
 | `closed_by`       | string?   | Actor who closed, or `null`                               |
 | `history`         | array     | Append-only list of `{ts, actor, action, note}` entries   |
 

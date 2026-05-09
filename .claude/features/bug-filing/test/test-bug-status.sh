@@ -157,11 +157,11 @@ s16() {
 s17() {
   mkbug ts17
   run set "$(bdir ts17)" refused --note "by design" >/dev/null
-  local rc; rc=$(run set "$(bdir ts17)" closed --note "try close" --skip-vet-reason "test")
+  local rc; rc=$(run set "$(bdir ts17)" closed --note "try close")
   local s; s=$(jq -r '.status' "$(bdir ts17)/bug.json")
-  [ "$rc" != "0" ] && [ "$s" = "refused" ] \
+  [ "$rc" = "1" ] && [ "$s" = "refused" ] \
     && ok "s17: refused -> closed denied (must use reopened)" \
-    || ko "s17: rc=$rc s=$s"
+    || ko "s17: rc=$rc s=$s stderr=$(cat "$TMPROOT/stderr")"
 }
 
 # s18: refused -> refused is a no-op
