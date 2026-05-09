@@ -1,0 +1,17 @@
+{
+  "template_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "id": "{{bug_id}}",
+  "feature": "{{feature_name}}",
+  "title": "{{title}}",
+  "severity": "{{severity}}",
+  "status": "open",
+  "description": "{{description}}",
+  "reproduction_steps": [
+    "{{step_1}}",
+    "{{step_2}}"
+  ],
+  "expected": "{{expected_behavior}}",
+  "actual": "{{actual_behavior}}",
+  "filed_date": "{{filed_date}}"
+}

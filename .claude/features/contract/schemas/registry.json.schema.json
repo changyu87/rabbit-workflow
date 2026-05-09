@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "registry.json.schema.json",
+  "title": "Registry JSON Schema",
+  "description": "Validates registry.json files for rabbit-workflow feature registries.",
+  "type": "object",
+  "required": ["schema_version", "owner", "features"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Version of this registry schema."
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Named individual or team accountable for this registry."
+    },
+    "features": {
+      "type": "object",
+      "description": "Map of feature name to feature entry.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "version", "owner", "tdd_state", "summary", "path"],
+        "additionalProperties": true,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "version": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+          },
+          "owner": { "type": "string", "minLength": 1 },
+          "tdd_state": {
+            "type": "string",
+            "enum": ["spec", "test-red", "impl", "test-green", "review"]
+          },
+          "summary": { "type": "string", "minLength": 1 },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Repo-relative path to the feature directory."
+          }
+        }
+      }
+    }
+  }
+}

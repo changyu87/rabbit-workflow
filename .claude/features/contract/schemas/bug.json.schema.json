@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "bug.json.schema.json",
+  "title": "Bug Filing Schema",
+  "description": "Validates bug filing JSON files for rabbit-workflow features.",
+  "type": "object",
+  "required": ["schema_version", "id", "feature", "title", "severity", "status", "description", "filed_date"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique bug identifier."
+    },
+    "feature": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Feature name this bug belongs to."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short descriptive title for the bug."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "closed"]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reproduction_steps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "expected": {
+      "type": "string"
+    },
+    "actual": {
+      "type": "string"
+    },
+    "filed_date": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ISO 8601 date string."
+    }
+  }
+}
