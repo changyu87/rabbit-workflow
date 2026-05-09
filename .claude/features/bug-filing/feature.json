@@ -1,0 +1,30 @@
+{
+  "name": "bug-filing",
+  "version": "1.0.0",
+  "owner": {
+    "primary": "rabbit-workflow team",
+    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
+  },
+  "status": "active",
+  "tdd_state": "test-green",
+  "deprecation": {
+    "criterion": "When the rabbit workflow integrates with an external bug tracker (Jira, GitHub Issues) as the canonical store and the local filesystem store is no longer the source of truth.",
+    "successor": null
+  },
+  "contract": {
+    "reads": [
+      ".claude/docs/bugs/<bug-name>/bug.json",
+      "$BUG_ROOT (env override, defaults to .claude/docs/bugs)"
+    ],
+    "writes": [
+      ".claude/docs/bugs/<bug-name>/bug.json",
+      ".claude/docs/bugs/<bug-name>/ (directory creation)"
+    ],
+    "invokes": [
+      "jq",
+      "date"
+    ]
+  },
+  "created": "2026-05-08",
+  "updated": "2026-05-08"
+}
