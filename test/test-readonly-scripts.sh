@@ -19,17 +19,17 @@ t2() {
     || ko "t2: make-writable.sh missing or not executable"
 }
 
-# t3: make-readonly.sh removes write bit (uses tmpdir via env vars)
+# t3: make-readonly.sh removes write bit from both archive/ and test/
 t3() {
   local tmp; tmp="$(mktemp -d)"
   mkdir -p "$tmp/archive" "$tmp/test"
   echo "data" > "$tmp/archive/sample.txt"
   echo "data" > "$tmp/test/sample.sh"
   ARCHIVE_DIR="$tmp/archive" TEST_DIR="$tmp/test" bash "$REPO_ROOT/make-readonly.sh" >/dev/null
-  if [ ! -w "$tmp/archive/sample.txt" ]; then
-    ok "t3: make-readonly.sh removes write bit from archive/"
+  if [ ! -w "$tmp/archive/sample.txt" ] && [ ! -w "$tmp/test/sample.sh" ]; then
+    ok "t3: make-readonly.sh removes write bit from archive/ and test/"
   else
-    ko "t3: archive/ still writable after make-readonly.sh"
+    ko "t3: write bit not removed (archive writable=$([ -w "$tmp/archive/sample.txt" ] && echo yes || echo no) test writable=$([ -w "$tmp/test/sample.sh" ] && echo yes || echo no))"
   fi
   chmod -R u+w "$tmp" && rm -rf "$tmp"
 }
