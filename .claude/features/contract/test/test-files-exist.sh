@@ -63,6 +63,7 @@ check_file "test/test-templates-have-version.sh"
 check_file "test/test-schemas-valid-json.sh"
 check_file "test/test-rabbit-triage.sh"
 check_file "test/test-dispatch.sh"
+check_file "test/test-relink.sh"
 
 if [ $FAIL -ne 0 ]; then
   echo "test-files-exist: FAIL" >&2

@@ -21,5 +21,6 @@ run_test "test-templates-have-version.sh"
 run_test "test-schemas-valid-json.sh"
 run_test "test-rabbit-triage.sh"
 run_test "test-dispatch.sh"
+run_test "test-relink.sh"
 
 echo "ALL TESTS PASSED"

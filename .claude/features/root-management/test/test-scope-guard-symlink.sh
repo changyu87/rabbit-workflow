@@ -1,84 +1,96 @@
 #!/bin/bash
-# Test: scope-guard blocks edits to a symlink that resolves into a feature dir.
+# Test: scope-guard v2 behavior — default-deny inside repo root, allow outside.
+#
+# v2 scope model:
+#   1. Outside repo root            -> ALLOW
+#   2. Basename is .rabbit-scope-active -> ALLOW (always exempt)
+#   3. Basename in allowlist (settings.json, settings.local.json, .gitignore) -> ALLOW
+#   4. .rabbit-scope-active found in ancestor chain -> ALLOW
+#   5. Default                      -> DENY (exit 2)
+#
+# Old symlink-resolution tests (v1 feature-dir detection) are replaced here
+# because v2 guards by repo root, not by feature.json presence.
 set -u
 REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
 SCOPE_GUARD="$REPO_ROOT/.claude/hooks/scope-guard.sh"
-TMPROOT="$(mktemp -d)"
+
+# Temp dir INSIDE the repo so scope-guard v2 actually guards it.
+TMPROOT="$REPO_ROOT/.tmp-sgtest-$$"
 trap 'rm -rf "$TMPROOT"' EXIT INT TERM
 
 PASS=0; FAIL=0
 ok() { echo "  ok   $*"; PASS=$((PASS+1)); }
 ko() { echo "  FAIL $*"; FAIL=$((FAIL+1)); }
 
-# FEAT_DIR: the target feature dir (will have the scope marker in t3)
-FEAT_DIR="$TMPROOT/feat"
-mkdir -p "$FEAT_DIR/artifacts"
-echo '{}' > "$FEAT_DIR/feature.json"
-echo "canonical content" > "$FEAT_DIR/artifacts/myfile.sh"
-
-# OUTER_DIR: a second feature dir with NO marker — owns the symlink location.
-# Without symlink resolution, writes here are denied (no marker in ancestry).
-# With symlink resolution, the resolved path is inside FEAT_DIR which has a marker.
-OUTER_DIR="$TMPROOT/outer"
-mkdir -p "$OUTER_DIR"
-echo '{}' > "$OUTER_DIR/feature.json"
-
-SYMLINK="$OUTER_DIR/myfile.sh"
-ln -s "$FEAT_DIR/artifacts/myfile.sh" "$SYMLINK"
-
 send_write_event() {
   local path="$1"
   printf '{"tool_name":"Write","tool_input":{"file_path":"%s","content":"x"}}' "$path"
 }
 
-# t1: direct write to canonical path inside feature dir is blocked (no marker)
+# t1: Write to a path inside the repo root (no scope marker) -> exit 2 (deny)
 t1() {
+  mkdir -p "$TMPROOT"
+  local target="$TMPROOT/somefile.txt"
   local rc
-  send_write_event "$FEAT_DIR/artifacts/myfile.sh" | bash "$SCOPE_GUARD" >/dev/null 2>&1
+  send_write_event "$target" | bash "$SCOPE_GUARD" >/dev/null 2>&1
   rc=$?
   [ "$rc" = "2" ] \
-    && ok "t1: direct write to canonical feature-dir path blocked (exit 2)" \
+    && ok "t1: write inside repo root with no scope marker denied (exit 2)" \
     || ko "t1: expected exit 2, got $rc"
 }
 
-# t2: write via symlink is blocked — resolved path is inside a feature dir with no marker
+# t2: Write to an allowlisted filename inside the repo root -> exit 0 (allow)
 t2() {
+  mkdir -p "$TMPROOT"
+  local target="$TMPROOT/settings.json"
   local rc
-  send_write_event "$SYMLINK" | bash "$SCOPE_GUARD" >/dev/null 2>&1
+  send_write_event "$target" | bash "$SCOPE_GUARD" >/dev/null 2>&1
   rc=$?
-  [ "$rc" = "2" ] \
-    && ok "t2: write via symlink into feature dir blocked (exit 2)" \
-    || ko "t2: expected exit 2, got $rc (symlink resolution not implemented or not working)"
+  [ "$rc" = "0" ] \
+    && ok "t2: write to allowlisted filename (settings.json) allowed (exit 0)" \
+    || ko "t2: expected exit 0, got $rc"
 }
 
-# t3: write via symlink allowed when the RESOLVED path's ancestor has the scope marker.
-# The symlink lives in OUTER_DIR (has feature.json but NO marker → deny without fix).
-# The symlink resolves into FEAT_DIR (has feature.json AND marker → allow with fix).
-# This test distinguishes whether the guard checks the marker on the resolved path
-# vs the symlink's own path.
+# t3: Write to a path inside the repo root WITH .rabbit-scope-active in ancestor -> exit 0 (allow)
 t3() {
-  touch "$FEAT_DIR/.rabbit-scope-active"
+  mkdir -p "$TMPROOT"
+  touch "$TMPROOT/.rabbit-scope-active"
+  local target="$TMPROOT/somefile.txt"
   local rc
-  send_write_event "$SYMLINK" | bash "$SCOPE_GUARD" >/dev/null 2>&1
+  send_write_event "$target" | bash "$SCOPE_GUARD" >/dev/null 2>&1
   rc=$?
-  rm -f "$FEAT_DIR/.rabbit-scope-active"
+  rm -f "$TMPROOT/.rabbit-scope-active"
   [ "$rc" = "0" ] \
-    && ok "t3: write via symlink allowed when resolved path's ancestor has scope marker (exit 0)" \
+    && ok "t3: write inside repo root with scope marker in ancestor allowed (exit 0)" \
     || ko "t3: expected exit 0, got $rc"
 }
 
-# t4: write to path outside any feature dir is always allowed
+# t4: Write to a path OUTSIDE the repo root -> exit 0 (allow)
 t4() {
+  local outside; outside="$(mktemp)"
   local rc
-  send_write_event "$TMPROOT/not-in-any-feature.sh" | bash "$SCOPE_GUARD" >/dev/null 2>&1
+  send_write_event "$outside" | bash "$SCOPE_GUARD" >/dev/null 2>&1
   rc=$?
+  rm -f "$outside"
   [ "$rc" = "0" ] \
-    && ok "t4: write outside feature dir always allowed (exit 0)" \
+    && ok "t4: write outside repo root always allowed (exit 0)" \
     || ko "t4: expected exit 0, got $rc"
 }
 
-echo "running scope-guard symlink tests"
-t1; t2; t3; t4
+# t5: Write to .rabbit-scope-active itself (anywhere in repo) -> exit 0 (always exempt)
+t5() {
+  mkdir -p "$TMPROOT"
+  local target="$TMPROOT/.rabbit-scope-active"
+  local rc
+  send_write_event "$target" | bash "$SCOPE_GUARD" >/dev/null 2>&1
+  rc=$?
+  [ "$rc" = "0" ] \
+    && ok "t5: write to .rabbit-scope-active itself is always exempt (exit 0)" \
+    || ko "t5: expected exit 0, got $rc"
+}
+
+echo "running scope-guard v2 tests"
+t1; t2; t3; t4; t5
 echo
 echo "summary: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

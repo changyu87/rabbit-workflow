@@ -19,7 +19,7 @@ mkdir -p "$TMPROOT/projA/features"
 rc=$(run "$TMPROOT/projA/features" "my-feature")
 target="$TMPROOT/projA/features/my-feature"
 ALL=1
-for f in feature.json spec.md contract.md test/run.sh; do
+for f in feature.json docs/spec/spec.md docs/spec/contract.md docs/bugs test/run.sh; do
   [ -e "$target/$f" ] || ALL=0
 done
 [ "$rc" = "0" ] && [ "$ALL" = "1" ] \
@@ -30,15 +30,17 @@ done
 target="$TMPROOT/projA/features/my-feature"
 name=$(jq -r '.name' "$target/feature.json")
 state=$(jq -r '.tdd_state' "$target/feature.json")
-status=$(jq -r '.status' "$target/feature.json")
 ver=$(jq -r '.version' "$target/feature.json")
-owner=$(jq -r '.owner.primary' "$target/feature.json")
-crit=$(jq -r '.deprecation.criterion' "$target/feature.json")
-if [ "$name" = "my-feature" ] && [ "$state" = "spec" ] && [ "$status" = "experimental" ] \
-   && [ "$ver" = "0.1.0" ] && [ -n "$owner" ] && [ -n "$crit" ]; then
-  ok "t2: defaults: name=$name state=$state status=$status ver=$ver owner=$owner"
+owner=$(jq -r '.owner' "$target/feature.json")
+summary=$(jq -r '.summary' "$target/feature.json")
+bugs_root=$(jq -r '.bugs_root' "$target/feature.json")
+crit=$(jq -r '.deprecation_criterion' "$target/feature.json")
+if [ "$name" = "my-feature" ] && [ "$state" = "spec" ] \
+   && [ "$ver" = "0.1.0" ] && [ -n "$owner" ] && [ -n "$summary" ] \
+   && [ -n "$bugs_root" ] && [ -n "$crit" ]; then
+  ok "t2: defaults: name=$name state=$state ver=$ver owner=$owner"
 else
-  ko "t2: name=$name state=$state status=$status ver=$ver owner=$owner crit_len=${#crit}"
+  ko "t2: name=$name state=$state ver=$ver owner=$owner summary_len=${#summary} bugs_root_len=${#bugs_root} crit_len=${#crit}"
 fi
 
 # t3: test/run.sh is executable AND exits non-zero (TDD red state by default)
@@ -66,9 +68,9 @@ rc=$(run "$TMPROOT/projA/features" "1bad")
 
 # t7: --owner flag overrides default
 rc=$(run "$TMPROOT/projA/features" "with-owner" --owner "alice")
-got=$(jq -r '.owner.primary' "$TMPROOT/projA/features/with-owner/feature.json" 2>/dev/null)
+got=$(jq -r '.owner' "$TMPROOT/projA/features/with-owner/feature.json" 2>/dev/null)
 [ "$rc" = "0" ] && [ "$got" = "alice" ] \
-  && ok "t7: --owner sets owner.primary" \
+  && ok "t7: --owner sets flat owner string" \
   || ko "t7: rc=$rc got=$got"
 
 # t8: works at any path (proves portability — not tied to .claude/features)
@@ -91,18 +93,14 @@ else
   ko "t9: rc=$rc err=$(cat "$TMPROOT/err")"
 fi
 
-# t10: scaffolded contract.md contains the three required headers (Reads/Writes/Invokes)
-for header in "Reads" "Writes" "Invokes"; do
-  grep -qE "^#+ *$header" "$target/contract.md" 2>/dev/null \
-    || { ko "t10: contract.md missing '$header' header"; return; } 2>/dev/null
-done
+# t10: scaffolded docs/spec/contract.md contains the three required headers (Reads/Writes/Invokes)
 target="$TMPROOT/projA/features/my-feature"
 HAS_ALL=1
 for header in "Reads" "Writes" "Invokes"; do
-  grep -qE "^#+ *$header" "$target/contract.md" || HAS_ALL=0
+  grep -qE "^#+ *$header" "$target/docs/spec/contract.md" 2>/dev/null || HAS_ALL=0
 done
-[ "$HAS_ALL" = "1" ] && ok "t10: contract.md has Reads/Writes/Invokes headers" \
-  || ko "t10: contract.md missing one of the headers"
+[ "$HAS_ALL" = "1" ] && ok "t10: docs/spec/contract.md has Reads/Writes/Invokes headers" \
+  || ko "t10: docs/spec/contract.md missing one of the headers"
 
 echo
 echo "summary: $PASS passed, $FAIL failed"

@@ -55,39 +55,33 @@ OWNER="${OWNER:-${USER:-unknown}}"
 DESC="${DESC:-TODO: one-sentence purpose}"
 TODAY="$(date +%Y-%m-%d)"
 
-mkdir -p "$TARGET/test" "$TARGET/scripts"
+mkdir -p "$TARGET/test" "$TARGET/scripts" "$TARGET/docs/spec" "$TARGET/docs/bugs"
 
 # feature.json — structured manifest, source of truth
 cat > "$TARGET/feature.json" <<JSON
 {
   "name": "$NAME",
   "version": "0.1.0",
-  "owner": {
-    "primary": "$OWNER",
-    "contact": ""
-  },
-  "status": "experimental",
+  "owner": "$OWNER",
   "tdd_state": "spec",
-  "deprecation": {
-    "criterion": "TODO: declare the condition under which this feature will be superseded BEFORE moving to status=active",
-    "successor": null
+  "summary": "$NAME feature",
+  "surface": {
+    "hooks": [],
+    "commands": [],
+    "agents": [],
+    "skills": []
   },
-  "contract": {
-    "reads": [],
-    "writes": [],
-    "invokes": []
-  },
-  "created": "$TODAY",
-  "updated": "$TODAY"
+  "bugs_root": "$TARGET/docs/bugs",
+  "deprecation_criterion": "TBD — set after first review"
 }
 JSON
 
-# spec.md — LLM-prose view
-cat > "$TARGET/spec.md" <<MD
+# docs/spec/spec.md — LLM-prose view
+cat > "$TARGET/docs/spec/spec.md" <<MD
 # $NAME
 
 > **Note:** LLM-prose view (machine-targeted, like everything in rabbit).
-> Structured source of truth is [\`feature.json\`](./feature.json).
+> Structured source of truth is [\`feature.json\`](../../feature.json).
 
 ## Purpose
 
@@ -110,8 +104,8 @@ Per the TDD state machine: author tests next, transition to \`test-red\`,
 then implement, transition to \`impl\`, etc.
 MD
 
-# contract.md — LLM-prose contract
-cat > "$TARGET/contract.md" <<MD
+# docs/spec/contract.md — LLM-prose contract
+cat > "$TARGET/docs/spec/contract.md" <<MD
 # Contract — $NAME
 
 ## Reads
@@ -139,6 +133,9 @@ TODO: name what this feature delegates to other features.
 - Current version: \`0.1.0\`.
 - Bump rules: TODO.
 MD
+
+# docs/bugs/.gitkeep — ensure bugs directory is tracked
+touch "$TARGET/docs/bugs/.gitkeep"
 
 # test/run.sh — placeholder, exits non-zero (TDD red)
 cat > "$TARGET/test/run.sh" <<'SH'

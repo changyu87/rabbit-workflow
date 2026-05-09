@@ -102,7 +102,7 @@
       "name": "policy",
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
-      "tdd_state": "spec",
+      "tdd_state": "test-green",
       "summary": "Canonical rule files fed to subagents; split of work-guide.md and philosophy.md.",
       "path": ".claude/features/policy"
     },
@@ -110,7 +110,7 @@
       "name": "contract",
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
-      "tdd_state": "spec",
+      "tdd_state": "test-green",
       "summary": "Meta-feature owning all cross-feature templates, schemas, and dispatch scripts.",
       "path": ".claude/features/contract"
     }
