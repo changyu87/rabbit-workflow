@@ -1,0 +1,35 @@
+{
+  "name": "breeder",
+  "version": "1.0.0",
+  "owner": {
+    "primary": "rabbit-workflow team",
+    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
+  },
+  "status": "active",
+  "tdd_state": "test-green",
+  "deprecation": {
+    "criterion": "When a stronger enforcement model (e.g. per-subagent path permissions in the Claude Code harness) makes a documented sole-writer convention unnecessary.",
+    "successor": null
+  },
+  "contract": {
+    "reads": [
+      ".claude/philosophy.md",
+      ".claude/work-guide.md",
+      ".claude/features/<name>/feature.json",
+      ".claude/features/<name>/spec.md",
+      ".claude/features/<name>/contract.md"
+    ],
+    "writes": [
+      ".claude/**"
+    ],
+    "invokes": [
+      "bash .claude/features/feature-skeleton/scripts/validate-feature.sh",
+      "bash .claude/features/tdd-state-machine/scripts/tdd-step.sh",
+      "bash .claude/features/tdd-state-machine/scripts/tdd-drift-check.sh",
+      "git",
+      "gh (except 'gh pr merge' which is denied)"
+    ]
+  },
+  "created": "2026-05-08",
+  "updated": "2026-05-08"
+}
