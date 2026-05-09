@@ -62,6 +62,7 @@ check_file "test/test-policy-block.sh"
 check_file "test/test-templates-have-version.sh"
 check_file "test/test-schemas-valid-json.sh"
 check_file "test/test-rabbit-triage.sh"
+check_file "test/test-dispatch.sh"
 
 if [ $FAIL -ne 0 ]; then
   echo "test-files-exist: FAIL" >&2

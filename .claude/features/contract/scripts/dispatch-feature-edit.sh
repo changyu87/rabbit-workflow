@@ -5,11 +5,12 @@
 #   dispatch-feature-edit.sh <feature-name> <task-description>
 #
 # Reads registry.json to find the feature root, sets a scope marker, builds
-# the policy block, and prints the assembled prompt header (stub — does NOT
-# invoke Agent yet; full implementation in Step 7).
+# the policy block, and prints the assembled prompt to stdout. The caller
+# passes stdout as the prompt field to an Agent call. This script never
+# invokes Agent directly — keeping it deterministic and testable.
 #
 # Exit:
-#   0 success (stub mode: prompt printed, no Agent invoked)
+#   0 success (prompt printed to stdout)
 #   1 feature not found in registry
 #   2 invocation error
 
@@ -46,7 +47,7 @@ features = reg.get('features', {})
 entry = features.get('$FEATURE_NAME')
 if not entry:
     sys.exit(1)
-print(entry.get('path', ''))
+print(entry.get('root', ''))
 " 2>/dev/null)"
   PY_EXIT=$?
   if [ $PY_EXIT -ne 0 ] || [ -z "$FEATURE_PATH" ]; then
@@ -54,7 +55,7 @@ print(entry.get('path', ''))
     exit 1
   fi
 elif command -v jq >/dev/null 2>&1; then
-  FEATURE_PATH="$(jq -r ".features[\"$FEATURE_NAME\"].path // empty" "$REGISTRY" 2>/dev/null)"
+  FEATURE_PATH="$(jq -r ".features[\"$FEATURE_NAME\"].root // empty" "$REGISTRY" 2>/dev/null)"
   if [ -z "$FEATURE_PATH" ]; then
     echo "ERROR: feature '$FEATURE_NAME' not found in registry: $REGISTRY" >&2
     exit 1
@@ -91,7 +92,7 @@ if [ -f "$CONTRACT_PATH" ]; then
   FEATURE_CONTRACT="$(cat "$CONTRACT_PATH")"
 fi
 
-# Assemble prompt header (stub — prints to stdout, does not invoke Agent).
+# Assemble prompt — prints to stdout for caller to pass as Agent prompt field.
 cat <<PROMPT
 RABBIT-POLICY-BLOCK-v1
 $POLICY_BLOCK
@@ -121,6 +122,6 @@ FEATURE CONTRACT
 $FEATURE_CONTRACT
 PROMPT
 
-echo "[stub] dispatch-feature-edit: prompt assembled for feature '$FEATURE_NAME'. Agent invocation not implemented (Step 7)." >&2
+echo "dispatch-feature-edit: prompt ready for feature '$FEATURE_NAME' — caller passes stdout to Agent." >&2
 
 exit 0
