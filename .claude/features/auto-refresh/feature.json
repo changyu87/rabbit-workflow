@@ -1,0 +1,31 @@
+{
+  "name": "auto-refresh",
+  "version": "1.0.0",
+  "owner": {
+    "primary": "rabbit-workflow team",
+    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
+  },
+  "status": "active",
+  "tdd_state": "test-green",
+  "deprecation": {
+    "criterion": "When Claude Code's harness gains native periodic re-injection of policy files, the userland hook becomes redundant and this feature is archived.",
+    "successor": null
+  },
+  "contract": {
+    "reads": [
+      "CLAUDE.md (parses lines starting with '@')",
+      "every file referenced by a CLAUDE.md @-import",
+      ".rwf-prompt-counter",
+      "$RWF_REFRESH_EVERY (env, default 20)"
+    ],
+    "writes": [
+      ".rwf-prompt-counter"
+    ],
+    "invokes": [
+      "python3 (for JSON encoding)",
+      "grep, sed, cat (standard utilities)"
+    ]
+  },
+  "created": "2026-05-08",
+  "updated": "2026-05-08"
+}
