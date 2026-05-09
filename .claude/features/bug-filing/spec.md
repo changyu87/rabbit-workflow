@@ -98,8 +98,9 @@ list-bugs.sh --status s --feature f # combine filters
 list-bugs.sh --text                 # human-readable text instead of JSON
 ```
 
-Default output is a JSON array (machine-first). `--text` is the derived
-human view.
+Default output is a JSON array, parsed by deterministic tools. `--text` is
+the LLM-prose view, useful when piping into a subagent prompt or quick
+inspection.
 
 ## `$BUG_ROOT` override
 
