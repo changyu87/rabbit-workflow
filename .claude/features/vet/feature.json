@@ -1,0 +1,32 @@
+{
+  "name": "vet",
+  "version": "1.0.0",
+  "owner": {
+    "primary": "rabbit-workflow team",
+    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
+  },
+  "status": "active",
+  "tdd_state": "test-green",
+  "deprecation": {
+    "criterion": "When triage logic moves into the breeder or into an external bug tracker's triage workflow, this read-only intermediary is no longer needed.",
+    "successor": null
+  },
+  "contract": {
+    "reads": [
+      ".claude/docs/bugs/<bug-name>/bug.json",
+      ".claude/docs/bugs/<bug-name>/* (any supporting files)",
+      ".claude/features/<related-feature>/feature.json",
+      ".claude/features/<related-feature>/spec.md",
+      ".claude/features/<related-feature>/contract.md",
+      ".claude/features/<related-feature>/test/"
+    ],
+    "writes": [],
+    "invokes": [
+      "bash .claude/features/bug-filing/scripts/list-bugs.sh",
+      "bash .claude/features/bug-filing/scripts/bug-status.sh get",
+      "bash .claude/features/feature-skeleton/scripts/validate-feature.sh"
+    ]
+  },
+  "created": "2026-05-08",
+  "updated": "2026-05-08"
+}
