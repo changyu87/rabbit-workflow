@@ -1,4 +1,4 @@
-# Contract — breeder
+# Contract — rabbit-breeder
 
 ## Reads
 

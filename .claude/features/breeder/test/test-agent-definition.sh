@@ -4,7 +4,7 @@
 set -u
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
-AGENT_FILE="$REPO_ROOT/.claude/agents/breeder.md"
+AGENT_FILE="$REPO_ROOT/.claude/agents/rabbit-breeder.md"
 
 PASS=0; FAIL=0
 ok() { echo "  ok   $*"; PASS=$((PASS+1)); }
@@ -22,9 +22,9 @@ fi
 FRONT="$(awk '/^---$/{c++; next} c==1{print} c==2{exit}' "$AGENT_FILE")"
 BODY="$(awk 'BEGIN{c=0} /^---$/{c++; next} c>=2{print}' "$AGENT_FILE")"
 
-# t2: name field is breeder
-echo "$FRONT" | grep -qE '^name: *breeder$' \
-  && ok "t2: frontmatter name: breeder" \
+# t2: name field is rabbit-breeder
+echo "$FRONT" | grep -qE '^name: *rabbit-breeder$' \
+  && ok "t2: frontmatter name: rabbit-breeder" \
   || ko "t2: name field missing or wrong"
 
 # t3: description present and non-trivial

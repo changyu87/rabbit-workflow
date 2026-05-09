@@ -1,14 +1,14 @@
-# breeder
+# rabbit-breeder
 
 > Source of truth: [`feature.json`](./feature.json).
-> Agent definition: [`../../agents/breeder.md`](../../agents/breeder.md).
+> Agent definition: [`../../agents/rabbit-breeder.md`](../../agents/rabbit-breeder.md).
 
 ## Purpose
 
 The `breeder` is a Claude Code subagent that owns all writes to `.claude/`.
 The convention is: **no other agent — including the main session — writes to
 `.claude/` directly**. Every mutation of a file under `.claude/` is dispatched
-to the breeder via the `Agent` tool with `subagent_type: "breeder"`.
+to the breeder via the `Agent` tool with `subagent_type: "rabbit-breeder"`.
 
 Why bind writes to one agent? Because `.claude/` is the workflow's
 constitution. When every change passes through one funnel that knows the
@@ -38,8 +38,8 @@ path of accidental writes, and the convention plus PR review handles the
 
 ```
 Agent({
-  subagent_type: "breeder",
-  prompt: <structured request, see Input contract in agents/breeder.md>
+  subagent_type: "rabbit-breeder",
+  prompt: <structured request, see Input contract in agents/rabbit-breeder.md>
 })
 ```
 
