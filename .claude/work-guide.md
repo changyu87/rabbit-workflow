@@ -140,3 +140,49 @@ Strong success criteria let you loop independently. Weak criteria ("make it
 work") require constant clarification.
 
 ---
+
+## Part III — Hard Rules
+
+The rules in this section are operational add-ons enforced by deterministic
+checks shipped with the workflow. The full text and the check scripts live
+in `.claude/features/hard-rules/`. This section is a one-line index.
+
+- **R1 — Branch per feature; never work on main.** Every feature mutation
+  goes on a new branch and through a PR. Direct commits to `main`/`master`/
+  `trunk`/`develop` are forbidden. Check:
+  `.claude/features/hard-rules/scripts/check-no-main-edits.sh`.
+
+- **R2 — Opus for brainstorming / spec / planning subagents.** Any subagent
+  whose description matches `brainstorm|spec|plan|design|architect` MUST
+  declare `model: opus` in its frontmatter. Check:
+  `.claude/features/hard-rules/scripts/check-opus-for-planning-agents.sh`.
+
+- **R3 — Tests are end-to-end, no human intervention.** No `read`,
+  `select`, or other interactive constructs in any feature's `test/`. Check:
+  `.claude/features/hard-rules/scripts/check-tests-non-interactive.sh
+  <feature-dir>`.
+
+- **R4 — TDD step transitions go through `tdd-step.sh`.** Manual edits to
+  `feature.json:tdd_state` bypass the forward-only gate and the drift
+  check. Documented policy enforced by the `breeder` subagent and PR review.
+
+- **R5 — Unified work model: features live anywhere, same discipline
+  applies.** A feature directory is a feature directory regardless of
+  parent path; `.claude/features/<x>/` and `projA/features/<y>/` are
+  treated identically by every script and subagent. The scope-guard hook
+  detects feature dirs by `feature.json` presence, not path prefix. No
+  rabbit-dev-mode vs user-mode dichotomy in the runtime.
+
+- **R6 — Every Agent dispatch prepends the canonical policy block.**
+  Universal: rabbit's own subagents AND Claude's built-in subagents.
+  The block is produced by
+  `.claude/features/subagent-policy-injection/scripts/policy-block.sh`
+  (with optional `--include <path>` flags for dispatch-relevant rule
+  files) and prepended to the `prompt` field of every Agent call. This
+  closes the subagent drift gap at invocation start. Dispatcher
+  discipline + PR review (no Agent-tool hook in Claude Code).
+
+The full statement, rationale, and tests for each rule live in
+[`hard-rules/spec.md`](./features/hard-rules/spec.md).
+
+---
