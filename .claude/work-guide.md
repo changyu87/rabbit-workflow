@@ -141,6 +141,26 @@ work") require constant clarification.
 
 ---
 
+### 8. Main Session Is a Dispatcher, Not an Implementer
+
+**Dispatch subagents for all implementation work. Never edit code directly.**
+
+For any task that involves writing or modifying implementation artifacts
+(code, specs, tests, config), the main session MUST dispatch a subagent:
+
+- Bug triage → dispatch `rabbit-vet`; write `vet-triage.json` from its output.
+- Code fix or feature → dispatch `rabbit-breeder` with the appropriate
+  `SCOPE` path (per R6). Touch the scope marker before dispatch; remove after.
+- The main session reads, decides, dispatches, verifies. It does not edit.
+
+**Exceptions (direct calls allowed without subagent):**
+- Read-only queries (`list-bugs.sh`, `bug-status.sh get`, grep)
+- Status transitions performed by a scoped agent within its own active scope
+  (e.g. breeder calling `bug-status.sh set ... closed --skip-vet-reason ...`)
+- Simple answers to questions that don't touch any file
+
+---
+
 ## Part III — Hard Rules
 
 The rules in this section are operational add-ons enforced by deterministic
@@ -181,6 +201,11 @@ in `.claude/features/hard-rules/`. This section is a one-line index.
   files) and prepended to the `prompt` field of every Agent call. This
   closes the subagent drift gap at invocation start. Dispatcher
   discipline + PR review (no Agent-tool hook in Claude Code).
+
+- **R7 — Vet before close; main session never skips.** Before closing any
+  bug, main session dispatches `rabbit-vet`, receives a `TRIAGE:` block,
+  and writes `vet-triage.json`. Only scoped agents may use `--skip-vet-reason`.
+  Enforcement: `bug-status.sh` gate + PR review.
 
 The full statement, rationale, and tests for each rule live in
 [`hard-rules/spec.md`](./features/hard-rules/spec.md).
