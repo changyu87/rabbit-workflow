@@ -1,0 +1,80 @@
+# Workflow Rules
+
+---
+
+## Section 1 — Subagent-driven by construction
+
+Every implementation touch goes through a dispatched subagent via `dispatch-feature-edit.sh`. The main session reads, decides, dispatches, and verifies. It does not write files. This is not a convention — it is enforced by scope-guard (R8) and the sentinel check (R6).
+
+---
+
+## Section 2 — Full TDD on every feature touch
+
+Any add, edit, or delete of a feature — including a one-character typo fix or a comment deletion — MUST go through the full TDD step sequence managed by `tdd-step.sh`. There is no partial-TDD shortcut. The discipline is uniform because partial flows are where drift enters undetected.
+
+---
+
+## Section 3 — Token/compliance tradeoff is the user's call
+
+Full TDD costs tokens. The cost is intentional: accumulated drift costs more than any individual dispatch. The user always retains the judgment of whether to initiate a dispatch at all. The rule is: if you touch a feature, run the full discipline. Choosing not to touch is always available and always free.
+
+---
+
+## Section 4 — Hard rules index (R1–R9)
+
+The rules below are operational add-ons enforced by deterministic checks shipped with the workflow. The full text and the check scripts live in `.claude/features/hard-rules/`. This section is a one-line index.
+
+- **R1 — Branch per feature; never work on main.** Every feature mutation
+  goes on a new branch and through a PR. Direct commits to `main`/`master`/
+  `trunk`/`develop` are forbidden. Check:
+  `.claude/features/hard-rules/scripts/check-no-main-edits.sh`.
+
+- **R2 — Opus for brainstorming / spec / planning subagents.** Any subagent
+  whose description matches `brainstorm|spec|plan|design|architect` MUST
+  declare `model: opus` in its frontmatter. Check:
+  `.claude/features/hard-rules/scripts/check-opus-for-planning-agents.sh`.
+
+- **R3 — Tests are end-to-end, no human intervention.** No `read`,
+  `select`, or other interactive constructs in any feature's `test/`. Check:
+  `.claude/features/hard-rules/scripts/check-tests-non-interactive.sh
+  <feature-dir>`.
+
+- **R4 — TDD step transitions go through `tdd-step.sh`.** Manual edits to
+  `feature.json:tdd_state` bypass the forward-only gate and the drift
+  check. Documented policy enforced by the `breeder` subagent and PR review.
+
+- **R5 — Unified work model: features live anywhere, same discipline
+  applies.** A feature directory is a feature directory regardless of
+  parent path; `.claude/features/<x>/` and `projA/features/<y>/` are
+  treated identically by every script and subagent. The scope-guard hook
+  detects feature dirs by `feature.json` presence, not path prefix. No
+  rabbit-dev-mode vs user-mode dichotomy in the runtime.
+
+- **R6 — Every Agent dispatch prepends the canonical policy block.**
+  Universal: rabbit's own subagents AND Claude's built-in subagents.
+  The block is produced by
+  `.claude/features/subagent-policy-injection/scripts/policy-block.sh`
+  (with optional `--include <path>` flags for dispatch-relevant rule
+  files) and prepended to the `prompt` field of every Agent call. This
+  closes the subagent drift gap at invocation start. Dispatcher
+  discipline + PR review (no Agent-tool hook in Claude Code).
+
+- **R7 — Vet before close; main session never skips.** Before closing any
+  bug, main session dispatches `rabbit-vet`, receives a `TRIAGE:` block,
+  and writes `vet-triage.json`. Only scoped agents may use `--skip-vet-reason`.
+  Enforcement: `bug-status.sh` gate + PR review.
+
+- **R8 — Every feature touch runs full TDD.** Any scope, any size. Enforcement: scope-guard v2 denies writes without an active scope marker; `tdd-step.sh` gates all state transitions.
+
+- **R9 — Project-level contract wins over rabbit contract at conflict.** `dispatch-feature-edit.sh` loads project contract first, rabbit contract second; project values shadow rabbit values. Enforcement: `dispatch-feature-edit.sh` load order + PR review.
+
+The full statement, rationale, and tests for each rule live in
+[`hard-rules/spec.md`](../hard-rules/spec.md).
+
+---
+
+## Section 5 — Cross-component handoffs use schemas, not prose
+
+Every handoff between components uses a declared, versioned schema. Free-form text at a boundary is a bug. Schema fields are typed, named, and validated at the boundary by the receiving component.
+
+---
