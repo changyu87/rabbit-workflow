@@ -46,36 +46,46 @@ bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/in
 
 Default refresh interval: 20 prompts. Change with `/rwf-set-threshold N`.
 
-## Applying rabbit to your own project
+## Applying rabbit anywhere
 
-The feature schema and tooling are portable — they work on any directory,
-not just `.claude/features/`. After installing rabbit into your workspace,
-you can apply the same disciplined feature-oriented workflow to your own code:
+There is **one** work model. Every feature schema, every script, every
+subagent works the same regardless of where the feature directory lives:
+`.claude/features/<x>/` (rabbit improving itself), `projA/features/<y>/`
+(any project applying the rabbit discipline), or any other path.
+
+The rabbit-breeder is dispatched with a SCOPE per invocation; the
+scope-guard hook enforces that scope. There is no rabbit-dev-mode vs
+user-mode dichotomy in the runtime.
 
 ```bash
-# Scaffold a new feature in your project
-bash .claude/features/user-features/scripts/new-feature.sh \
+# Scaffold a new feature anywhere
+bash .claude/features/feature-scaffolder/scripts/new-feature.sh \
     projA/features auth-redirect --owner alice
 
-# Sweep all features in projA, validating each against the schema
+# Sweep validate every feature in a tree
 FEATURES_ROOT=projA/features \
-    bash .claude/features/user-features/scripts/validate-all.sh
+    bash .claude/features/feature-scaffolder/scripts/validate-all.sh
 
-# File a bug under your project's bug tracker
+# File a bug
 BUG_ROOT=projA/bugs \
     bash .claude/features/bug-filing/scripts/file-bug.sh \
         --name 2026-05-09-login-loop --title "login redirects loop on safari" \
         --severity high --description "..." --related-feature auth-redirect
 
-# Track TDD state for a user-mode feature
+# Transition TDD state — same script for any feature dir
 bash .claude/features/tdd-state-machine/scripts/tdd-step.sh \
     transition projA/features/auth-redirect test-red
+
+# Dispatch the breeder onto a scope (sketched — typically the main session
+# orchestrates this; the main session writes/removes the marker around
+# the Agent call)
+touch projA/features/auth-redirect/.rabbit-scope-active
+# (Agent dispatch with subagent_type: rabbit-breeder, prompt with SCOPE: ...)
+rm projA/features/auth-redirect/.rabbit-scope-active
 ```
 
-The `breeder` and `claude-write-lockdown` rules apply ONLY to `.claude/`.
-Your own project paths are yours to write directly.
-
-See `.claude/features/user-features/spec.md` for the full guide.
+See `.claude/features/feature-scaffolder/spec.md` for scaffolder details
+and `.claude/features/breeder/spec.md` for the dispatcher protocol.
 
 ## Uninstall
 

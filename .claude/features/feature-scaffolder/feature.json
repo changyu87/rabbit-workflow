@@ -1,6 +1,6 @@
 {
-  "name": "user-features",
-  "version": "1.0.0",
+  "name": "feature-scaffolder",
+  "version": "1.1.0",
   "owner": {
     "primary": "rabbit-workflow team",
     "contact": "https://github.com/changyu87/rabbit-workflow/issues"
@@ -8,7 +8,7 @@
   "status": "active",
   "tdd_state": "test-green",
   "deprecation": {
-    "criterion": "When a higher-level scaffolding system (e.g. a published CLI tool, an installer wizard) replaces these shell scripts as the canonical way to create user-mode features.",
+    "criterion": "When a higher-level scaffolding system (e.g. a published CLI tool, an installer wizard) replaces these shell scripts as the canonical way to create feature directories.",
     "successor": null
   },
   "contract": {
@@ -28,5 +28,5 @@
     ]
   },
   "created": "2026-05-08",
-  "updated": "2026-05-08"
+  "updated": "2026-05-09"
 }

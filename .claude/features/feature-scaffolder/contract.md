@@ -1,4 +1,4 @@
-# Contract — user-features
+# Contract — feature-scaffolder
 
 ## Reads
 
@@ -45,18 +45,21 @@ if missing.
 
 ## Cross-scope handoff
 
-- **Editing the scaffolded files** — the user does this directly. No agent
-  is dispatched for user-mode work (the breeder is `.claude/`-only).
-- **Filing a bug for a user-mode feature** — use `bug-filing/scripts/
-  file-bug.sh` with `$BUG_ROOT` pointed at the user's project's bugs
-  directory, e.g. `BUG_ROOT=projA/bugs`.
-- **Tracking TDD state for user-mode features** — use `tdd-state-machine/
-  scripts/tdd-step.sh` with the user's feature path. The state-machine
-  scripts are path-agnostic.
+- **Editing the scaffolded files after creation** — the dispatcher (the
+  user, or the rabbit-breeder if dispatched onto the new scope) does
+  this. The scope-guard hook applies once `feature.json` exists in the
+  directory; the dispatcher must touch `<scope>/.rabbit-scope-active`
+  before further writes.
+- **Filing a bug** — use `bug-filing/scripts/file-bug.sh` with `$BUG_ROOT`
+  pointed at the relevant bugs directory (could be `.claude/docs/bugs/`
+  or `projA/bugs/` — the script is path-agnostic).
+- **Tracking TDD state** — use `tdd-state-machine/scripts/tdd-step.sh`
+  with the feature path. State-machine scripts are path-agnostic.
 
 ## Versioning
 
-- Current version: `1.0.0`.
+- Current version: `1.1.0` (bumped from 1.0.0 — same scripts but reframed
+  to drop user/dev mode language; behavior unchanged).
 - Adding a new optional flag to `new-feature.sh` (e.g. `--initial-state`,
   `--skip-test-stub`) is non-breaking.
 - Changing the scaffolded `feature.json` shape is breaking (downstream
