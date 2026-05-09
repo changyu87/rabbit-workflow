@@ -67,7 +67,7 @@ decide() {
   fi
 
   # 3. Allowlisted filenames -> always allow
-  if [ "$base" = "settings.json" ] || [ "$base" = "settings.local.json" ]; then
+  if [ "$base" = "settings.json" ] || [ "$base" = "settings.local.json" ] || [ "$base" = ".gitignore" ]; then
     echo "ALLOW (allowlisted filename)"
     return 0
   fi
