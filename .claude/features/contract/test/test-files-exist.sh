@@ -55,12 +55,13 @@ check_exec "scripts/render-template.sh"
 check_exec "scripts/check-maps-consistent.sh"
 check_exec "scripts/rabbit-triage.sh"
 
-# Tests (4)
+# Tests (5)
 check_exec "test/run.sh"
 check_file "test/test-files-exist.sh"
 check_file "test/test-policy-block.sh"
 check_file "test/test-templates-have-version.sh"
 check_file "test/test-schemas-valid-json.sh"
+check_file "test/test-rabbit-triage.sh"
 
 if [ $FAIL -ne 0 ]; then
   echo "test-files-exist: FAIL" >&2

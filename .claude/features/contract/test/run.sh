@@ -19,5 +19,6 @@ run_test "test-files-exist.sh"
 run_test "test-policy-block.sh"
 run_test "test-templates-have-version.sh"
 run_test "test-schemas-valid-json.sh"
+run_test "test-rabbit-triage.sh"
 
 echo "ALL TESTS PASSED"
