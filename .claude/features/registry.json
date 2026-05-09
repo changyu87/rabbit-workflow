@@ -4,10 +4,10 @@
   "features": {
     "scope-guard": {
       "name": "scope-guard",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "owner": "rabbit-workflow team",
       "tdd_state": "test-green",
-      "summary": "Active enforcement of the unified work model: Write/Edit/Bash targeting a feature directory requires an active scope marker.",
+      "summary": "Repo-wide default-deny write hook; allows only scoped writes and settings files.",
       "path": ".claude/features/scope-guard"
     },
     "feature-scaffolder": {
@@ -60,7 +60,7 @@
     },
     "hard-rules": {
       "name": "hard-rules",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "owner": "rabbit-workflow team",
       "tdd_state": "test-green",
       "summary": "Staging area for operational rules too specific for philosophy.md or work-guide.md, with deterministic check scripts.",
@@ -81,6 +81,14 @@
       "tdd_state": "test-green",
       "summary": "Hardens TDD discipline by defining tdd_state transitions, drift detection, and the context block for spawned subagents.",
       "path": ".claude/features/tdd-state-machine"
+    },
+    "onboard": {
+      "name": "onboard",
+      "version": "1.0.0",
+      "owner": "rabbit-workflow team",
+      "tdd_state": "test-green",
+      "summary": "Scaffold and maintain project-{name}/ directories and their maps.",
+      "path": ".claude/features/onboard"
     },
     "install-distribute": {
       "name": "install-distribute",

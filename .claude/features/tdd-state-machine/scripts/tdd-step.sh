@@ -96,11 +96,45 @@ case "$cmd" in
     fi
     if [ "$new" = "$expected" ]; then
       write_state "$dir" "$new"
+      # Post-transition hooks for test-green.
+      if [ "$new" = "test-green" ]; then
+        FEATURES_DIR="$(dirname "$dir")"
+        REBUILD_SH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../contract/scripts/rebuild-registry.sh"
+        if [ -f "$REBUILD_SH" ]; then
+          bash "$REBUILD_SH" "$FEATURES_DIR" >/dev/null 2>&1 || true
+        fi
+        # If a project-map.json exists two levels up, consolidate the project map.
+        PROJECT_MAP="$(dirname "$FEATURES_DIR")/project-map.json"
+        if [ -f "$PROJECT_MAP" ]; then
+          PROJECT_NAME="$(basename "$(dirname "$FEATURES_DIR")")"
+          ONBOARD_SH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../onboard/scripts/rabbit-project.sh"
+          if [ -f "$ONBOARD_SH" ]; then
+            bash "$ONBOARD_SH" consolidate "$PROJECT_NAME" >/dev/null 2>&1 || true
+          fi
+        fi
+      fi
       echo "$cur -> $new"
       exit 0
     fi
     if [ "$flag" = "--force" ]; then
       write_state "$dir" "$new"
+      # Post-transition hooks for test-green.
+      if [ "$new" = "test-green" ]; then
+        FEATURES_DIR="$(dirname "$dir")"
+        REBUILD_SH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../contract/scripts/rebuild-registry.sh"
+        if [ -f "$REBUILD_SH" ]; then
+          bash "$REBUILD_SH" "$FEATURES_DIR" >/dev/null 2>&1 || true
+        fi
+        # If a project-map.json exists two levels up, consolidate the project map.
+        PROJECT_MAP="$(dirname "$FEATURES_DIR")/project-map.json"
+        if [ -f "$PROJECT_MAP" ]; then
+          PROJECT_NAME="$(basename "$(dirname "$FEATURES_DIR")")"
+          ONBOARD_SH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../onboard/scripts/rabbit-project.sh"
+          if [ -f "$ONBOARD_SH" ]; then
+            bash "$ONBOARD_SH" consolidate "$PROJECT_NAME" >/dev/null 2>&1 || true
+          fi
+        fi
+      fi
       echo "FORCED: $cur -> $new" >&2
       echo "$cur -> $new"
       exit 0
