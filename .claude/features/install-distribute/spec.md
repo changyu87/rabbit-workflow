@@ -72,9 +72,11 @@ already installed (or has their own `.claude/` for unrelated reasons).
 
 `test/run.sh` (4 cases) sanity-checks installer presence, the fail-safe
 on existing `.claude/`, and delegates to the full
-`test/test-install.sh` suite at the repo root (16 cases including the new
+`test/test-install.sh` suite at the repo root (17 cases including the new
 `--all` variants — t10 through t15 cover default vs --all behavior, flag
-ordering flexibility, and unknown-flag rejection).
+ordering flexibility, and unknown-flag rejection; t16 regression-protects
+the curl-pipe / stdin invocation mode against BASH_SOURCE unbound-variable
+warnings).
 
 The delegation pattern keeps the feature wrapper thin while the canonical
 test suite remains where it has always been.

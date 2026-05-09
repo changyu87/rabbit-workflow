@@ -46,9 +46,14 @@ if [[ -d "$TARGET/.claude" ]]; then
     exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
+RAW_SOURCE="${BASH_SOURCE[0]:-}"
+if [[ -n "$RAW_SOURCE" && -f "$RAW_SOURCE" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "$RAW_SOURCE")" && pwd)"
+else
+    SCRIPT_DIR=""
+fi
 
-if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/.claude" ]]; then
+if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/.claude" && -f "$SCRIPT_DIR/install.sh" ]]; then
     SRC="$SCRIPT_DIR"
 else
     TMP="$(mktemp -d)"

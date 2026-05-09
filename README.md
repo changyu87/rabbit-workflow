@@ -28,9 +28,17 @@ git clone https://github.com/USER/rabbit-workflow
 ```
 
 **curl** (installs to current directory)
+
+bash / zsh:
 ```bash
 cd /path/to/your/workspace
 bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/install.sh)
+```
+
+tcsh / csh (process substitution `<(...)` is not supported; use pipe form):
+```tcsh
+cd /path/to/your/workspace
+curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/install.sh | bash
 ```
 
 ---

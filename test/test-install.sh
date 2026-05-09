@@ -148,6 +148,12 @@ t15_all_works_with_target_first_then_flag() {
     [[ -d "$DIR/.claude" ]]
 }
 
+t16_curl_pipe_mode_no_warning() {
+    out="$(cat "$INSTALL" | bash -s -- "$DIR" 2>&1)"
+    [[ -d "$DIR/.claude" && -f "$DIR/CLAUDE.md" ]] && \
+        ! echo "$out" | grep -qi 'unbound variable'
+}
+
 # ── run all ───────────────────────────────────────────────────────────────────
 
 run "1: clean install — files present"          t1_clean_install
@@ -166,6 +172,7 @@ run "12: --all keeps docs/specs/ and docs/plans/" t12_all_keeps_specs_and_plans_
 run "13: --all includes archive/ and test/ when source has them" t13_all_includes_archive_and_test_when_present
 run "14: unknown flag rejected"                 t14_unknown_flag_rejected
 run "15: --all works after target arg"          t15_all_works_with_target_first_then_flag
+run "16: curl-pipe mode: no unbound-variable warning" t16_curl_pipe_mode_no_warning
 
 echo ""
 printf "%d passed, %d failed\n" "$PASS" "$FAIL"
