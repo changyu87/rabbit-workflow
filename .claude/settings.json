@@ -2,12 +2,6 @@
   "env": {
     "RWF_REFRESH_EVERY": "20"
   },
-  "permissions": {
-    "deny": [
-      "Write(.claude/**)",
-      "Edit(.claude/**)"
-    ]
-  },
   "hooks": {
     "SessionStart": [
       {
@@ -27,6 +21,17 @@
           {
             "type": "command",
             "command": ".claude/hooks/rwf-refresh.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/scope-guard.sh"
           }
         ]
       }
