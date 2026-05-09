@@ -1,0 +1,28 @@
+{
+  "name": "claude-write-lockdown",
+  "version": "1.0.0",
+  "owner": {
+    "primary": "rabbit-workflow team",
+    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
+  },
+  "status": "active",
+  "tdd_state": "test-green",
+  "deprecation": {
+    "criterion": "When Claude Code's harness gains per-subagent path-scoped permissions, the convention plus deny-rule combo can be replaced by an authoritative per-agent permission model.",
+    "successor": null
+  },
+  "contract": {
+    "reads": [
+      ".claude/settings.json (the shared, committed settings file)"
+    ],
+    "writes": [
+      ".claude/settings.json (this feature adds deny rules to the shared file)"
+    ],
+    "invokes": [
+      "jq",
+      "grep"
+    ]
+  },
+  "created": "2026-05-08",
+  "updated": "2026-05-08"
+}

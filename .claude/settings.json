@@ -2,6 +2,12 @@
   "env": {
     "RWF_REFRESH_EVERY": "20"
   },
+  "permissions": {
+    "deny": [
+      "Write(.claude/**)",
+      "Edit(.claude/**)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
