@@ -32,13 +32,13 @@ Collisions are prevented by the scan; no counter file needed.
 |-------------------|-----------|-----------------------------------------------------------|
 | `name`            | string    | Same as the directory name                                |
 | `title`           | string    | One-line human title                                      |
-| `status`          | enum      | `open` \| `closed` \| `reopened`                          |
+| `status`          | enum      | `open` \| `closed` \| `reopened` \| `refused`             |
 | `severity`        | enum      | `low` \| `medium` \| `high` \| `critical`                 |
 | `description`     | string    | Free-form details                                         |
 | `related_feature` | string?   | Name of the affected feature, or `null`                   |
 | `filed`           | ISO-8601  | UTC timestamp of initial filing                           |
 | `filed_by`        | string    | Actor name (defaults to `$USER`)                          |
-| `closed`          | ISO-8601? | UTC timestamp of close, or `null` if open/reopened        |
+| `closed`          | ISO-8601? | UTC timestamp of close, or `null` if open, reopened, or refused |
 | `closed_by`       | string?   | Actor who closed, or `null`                               |
 | `history`         | array     | Append-only list of `{ts, actor, action, note}` entries   |
 
@@ -50,8 +50,11 @@ but does NOT append to history.
 
 ```
 open       → closed
+open       → refused
 closed     → reopened
 reopened   → closed
+reopened   → refused
+refused    → reopened
 (any)      → (same)   # no-op, no history append
 ```
 
@@ -60,11 +63,17 @@ reopened   → closed
 ```
 closed   → open
 reopened → open
+refused  → open
+refused  → closed
 ```
 
-`open` is the initial state only. Once a bug has been closed, future cycles
-use `closed` and `reopened` exclusively. This keeps the audit log
-unambiguous.
+`open` is the initial state only. Once a bug has been closed or refused, future
+cycles use `closed`, `reopened`, and `refused` exclusively. This keeps the audit
+log unambiguous.
+
+`refused` is a terminal decline (won't-fix/by-design). Unlike `closed`, refused
+does not set the `closed` timestamp — it records intent, not resolution. It can
+be revived via `reopened`.
 
 ## Scripts
 
@@ -84,16 +93,10 @@ rule). Validates severity enum and required fields. Exits 0 on success;
 ```
 bug-status.sh get <bug-dir>
 bug-status.sh set <bug-dir> <new-status> --note <reason> [--actor <a>]
-                  [--skip-vet-reason <reason>]
 ```
 
 Reads or transitions the status. Validates the transition rules above.
 Appends to `history` on real transitions; silent no-op for same-status sets.
-
-**Vet gate:** Closing a bug (`open→closed` or `reopened→closed`) requires
-`vet-triage.json` to exist in the bug directory, OR `--skip-vet-reason` to
-be supplied. When `--skip-vet-reason` is provided, the history note records
-`"vet skipped: <reason> | <original-note>"`. See R7 in `hard-rules/spec.md`.
 
 ### `list-bugs.sh`
 
@@ -127,15 +130,14 @@ operations**. Higher-level workflow lives in `vet`.
 
 ## Tests
 
-`test/run.sh` runs three test files (35 cases total):
+`test/run.sh` runs three test files (38 cases total):
 
 - `test-file-bug.sh` (15) — auto-ID generation (FEATURE-N), counter
   increment, hyphenated prefix, `$BUG_PREFIX` fallback, `--name` rejection,
   severity enum, required fields, `related_feature` persistence, default
   status, history seeding, ID in output line.
-- `test-bug-status.sh` (13) — get, allowed transitions, denied transitions,
-  invalid status, no-op behavior, history growth, missing-dir error,
-  vet-gate blocked, vet-gate allowed, --skip-vet-reason bypass with note
-  concatenation, reopened→closed gate enforcement.
+- `test-bug-status.sh` (16) — get, allowed transitions (including refused),
+  denied transitions, invalid status, no-op behavior, history growth,
+  missing-dir error, list-bugs filter by refused status.
 - `test-list-bugs.sh` (7) — list all, filter by status, filter by feature,
   combined filters, `--text` mode, empty store.

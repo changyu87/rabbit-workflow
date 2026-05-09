@@ -1,0 +1,26 @@
+{
+  "name": "BUG-FILING-1",
+  "title": "add refused as a terminal bug state",
+  "status": "closed",
+  "severity": "medium",
+  "description": "The bug lifecycle currently has two terminal states: closed (fixed) and reopened->closed. There is no way to express that a bug was explicitly declined (won't-fix, by-design, out-of-scope). A 'refused' state should be added as a third terminal state alongside 'closed'.",
+  "related_feature": "bug-filing",
+  "filed": "2026-05-09T13:37:00Z",
+  "filed_by": "cyxu",
+  "closed": "2026-05-09T13:37:03Z",
+  "closed_by": "cyxu",
+  "history": [
+    {
+      "ts": "2026-05-09T13:37:00Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-09T13:37:03Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "refused terminal state implemented in bug-status.sh; bug-filing v2.0.0"
+    }
+  ]
+}
