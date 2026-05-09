@@ -113,8 +113,92 @@ s9() {
   [ "$rc" != "0" ] && ok "s9: missing bug dir errors" || ko "s9: rc=$rc"
 }
 
+# bdir <prefix> — returns the bug directory for a bug filed under prefix (by mkbug)
+bdir() {
+  local prefix="$1"
+  ls -dt "$BUG_ROOT/${prefix^^}"-* 2>/dev/null | head -1
+}
+
+# s14: open -> refused succeeds
+s14() {
+  mkbug ts14
+  local rc; rc=$(run set "$(bdir ts14)" refused --note "by design")
+  local s; s=$(jq -r '.status' "$(bdir ts14)/bug.json")
+  [ "$rc" = "0" ] && [ "$s" = "refused" ] \
+    && ok "s14: open -> refused succeeds" \
+    || ko "s14: rc=$rc s=$s stderr=$(cat "$TMPROOT/stderr")"
+}
+
+# s15: reopened -> refused succeeds
+s15() {
+  mkbug ts15
+  echo '{}' > "$(bdir ts15)/vet-triage.json"
+  run set "$(bdir ts15)" closed --note "first close" >/dev/null
+  run set "$(bdir ts15)" reopened --note "regression" >/dev/null
+  local rc; rc=$(run set "$(bdir ts15)" refused --note "still by design")
+  local s; s=$(jq -r '.status' "$(bdir ts15)/bug.json")
+  [ "$rc" = "0" ] && [ "$s" = "refused" ] \
+    && ok "s15: reopened -> refused succeeds" \
+    || ko "s15: rc=$rc s=$s stderr=$(cat "$TMPROOT/stderr")"
+}
+
+# s16: refused -> open denied
+s16() {
+  mkbug ts16
+  run set "$(bdir ts16)" refused --note "by design" >/dev/null
+  local rc; rc=$(run set "$(bdir ts16)" open --note "try reopen")
+  local s; s=$(jq -r '.status' "$(bdir ts16)/bug.json")
+  [ "$rc" != "0" ] && [ "$s" = "refused" ] \
+    && ok "s16: refused -> open denied" \
+    || ko "s16: rc=$rc s=$s"
+}
+
+# s17: refused -> closed denied (must use reopened first)
+s17() {
+  mkbug ts17
+  run set "$(bdir ts17)" refused --note "by design" >/dev/null
+  local rc; rc=$(run set "$(bdir ts17)" closed --note "try close" --skip-vet-reason "test")
+  local s; s=$(jq -r '.status' "$(bdir ts17)/bug.json")
+  [ "$rc" != "0" ] && [ "$s" = "refused" ] \
+    && ok "s17: refused -> closed denied (must use reopened)" \
+    || ko "s17: rc=$rc s=$s"
+}
+
+# s18: refused -> refused is a no-op
+s18() {
+  mkbug ts18
+  run set "$(bdir ts18)" refused --note "by design" >/dev/null
+  local rc; rc=$(run set "$(bdir ts18)" refused --note "redundant")
+  local len; len=$(jq '.history | length' "$(bdir ts18)/bug.json")
+  [ "$rc" = "0" ] && [ "$len" = "2" ] \
+    && ok "s18: refused -> refused no-op (history len=2)" \
+    || ko "s18: rc=$rc history len=$len"
+}
+
+# s19: refused -> reopened allowed (to revive)
+s19() {
+  mkbug ts19
+  run set "$(bdir ts19)" refused --note "by design" >/dev/null
+  local rc; rc=$(run set "$(bdir ts19)" reopened --note "reconsidered")
+  local s; s=$(jq -r '.status' "$(bdir ts19)/bug.json")
+  [ "$rc" = "0" ] && [ "$s" = "reopened" ] \
+    && ok "s19: refused -> reopened allowed" \
+    || ko "s19: rc=$rc s=$s stderr=$(cat "$TMPROOT/stderr")"
+}
+
+# s20: list-bugs --status refused returns the bug
+s20() {
+  mkbug ts20
+  run set "$(bdir ts20)" refused --note "by design" >/dev/null
+  local result
+  result=$(BUG_ROOT="$BUG_ROOT" bash "$(dirname "$STATUS")/../scripts/list-bugs.sh" --status refused 2>/dev/null)
+  echo "$result" | grep -q "TS20" \
+    && ok "s20: list-bugs --status refused returns refused bugs" \
+    || ko "s20: result='$result'"
+}
+
 echo "running bug-status tests against $STATUS"
-s1; s2; s3; s4; s5; s6; s7; s8; s9
+s1; s2; s3; s4; s5; s6; s7; s8; s9; s14; s15; s16; s17; s18; s19; s20
 echo
 echo "summary: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

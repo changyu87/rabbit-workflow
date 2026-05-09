@@ -7,13 +7,18 @@
 #
 # Allowed transitions:
 #   open       -> closed
+#   open       -> refused
 #   closed     -> reopened
 #   reopened   -> closed
+#   reopened   -> refused
+#   refused    -> reopened
 #   (any)      -> (same)   no-op, history not appended
 #
 # Disallowed (must use 'reopened' instead):
 #   closed     -> open
 #   reopened   -> open
+#   refused    -> open
+#   refused    -> closed
 #
 # Exit: 0 success; 1 denied / invalid; 2 invocation error.
 
@@ -51,8 +56,8 @@ case "$cmd" in
     [ -f "$dir/bug.json" ] || { echo "ERROR: missing $dir/bug.json" >&2; exit 2; }
 
     case "$new" in
-      open|closed|reopened) ;;
-      *) echo "ERROR: invalid status '$new' (allowed: open|closed|reopened)" >&2; exit 1 ;;
+      open|closed|reopened|refused) ;;
+      *) echo "ERROR: invalid status '$new' (allowed: open|closed|reopened|refused)" >&2; exit 1 ;;
     esac
 
     cur=$(jq -r '.status' "$dir/bug.json")
@@ -69,9 +74,12 @@ case "$cmd" in
       "open->closed")     allowed=1 ;;
       "closed->reopened") allowed=1 ;;
       "reopened->closed") allowed=1 ;;
+      "open->refused")    allowed=1 ;;
+      "reopened->refused") allowed=1 ;;
+      "refused->reopened") allowed=1 ;;
     esac
     if [ "$allowed" -ne 1 ]; then
-      echo "ERROR: $cur -> $new not allowed (use 'reopened' to revive a closed bug)" >&2
+      echo "ERROR: $cur -> $new not allowed (use 'reopened' to revive a closed or refused bug)" >&2
       exit 1
     fi
 
@@ -91,6 +99,14 @@ case "$cmd" in
            | .closed = null
            | .closed_by = null
            | .history += [{ ts: $ts, actor: $actor, action: "reopened", note: $note }]' \
+          "$dir/bug.json" > "$dir/bug.json.tmp"
+        ;;
+      refused)
+        jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$note" \
+          '.status = $s
+           | .closed = null
+           | .closed_by = null
+           | .history += [{ ts: $ts, actor: $actor, action: "refused", note: $note }]' \
           "$dir/bug.json" > "$dir/bug.json.tmp"
         ;;
       open)

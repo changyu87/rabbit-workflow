@@ -35,16 +35,18 @@
 ### `bug-status.sh get`
 
 - **Inputs:** `<bug-dir>`.
-- **Stdout:** current status (`open` / `closed` / `reopened`).
+- **Stdout:** current status (`open` / `closed` / `reopened` / `refused`).
 - **Exit:** `0` success; `2` missing dir or file.
 
 ### `bug-status.sh set`
 
 - **Inputs:** `<bug-dir> <new-status> --note <reason> [--actor <a>]`.
+  Allowed values for `<new-status>`: `open` / `closed` / `reopened` / `refused`.
 - **Stdout:** `<old> -> <new>` on transition; `no-op: already <s>` for same.
 - **Stderr:** `ERROR: ...` on denied transition or invalid input.
 - **Exit:** `0` success; `1` denied/invalid; `2` bad invocation.
 - **Side effects:** updates `bug.json` (status, closed, closed_by, history).
+  `refused` does not set `closed`/`closed_by`; it appends `action: "refused"` to history.
 
 ### `list-bugs.sh`
 
@@ -66,8 +68,8 @@
 
 ## Versioning
 
-- Current version: `1.0.0`.
+- Current version: `2.0.0`.
 - Adding a new severity is non-breaking (additive).
-- Adding a new status would require updating the transition table. That's a
-  major version bump.
+- Adding a new status requires updating the transition table. That's a
+  major version bump (done: v1.0.0 → v2.0.0 for `refused` state).
 - Adding a new optional field (e.g. `assignee`, `due_date`) is non-breaking.

@@ -32,7 +32,7 @@ Collisions are prevented by the scan; no counter file needed.
 |-------------------|-----------|-----------------------------------------------------------|
 | `name`            | string    | Same as the directory name                                |
 | `title`           | string    | One-line human title                                      |
-| `status`          | enum      | `open` \| `closed` \| `reopened`                          |
+| `status`          | enum      | `open` \| `closed` \| `reopened` \| `refused`             |
 | `severity`        | enum      | `low` \| `medium` \| `high` \| `critical`                 |
 | `description`     | string    | Free-form details                                         |
 | `related_feature` | string?   | Name of the affected feature, or `null`                   |
@@ -50,8 +50,11 @@ but does NOT append to history.
 
 ```
 open       → closed
+open       → refused
 closed     → reopened
 reopened   → closed
+reopened   → refused
+refused    → reopened
 (any)      → (same)   # no-op, no history append
 ```
 
@@ -60,11 +63,17 @@ reopened   → closed
 ```
 closed   → open
 reopened → open
+refused  → open
+refused  → closed
 ```
 
-`open` is the initial state only. Once a bug has been closed, future cycles
-use `closed` and `reopened` exclusively. This keeps the audit log
-unambiguous.
+`open` is the initial state only. Once a bug has been closed or refused, future
+cycles use `closed`, `reopened`, and `refused` exclusively. This keeps the audit
+log unambiguous.
+
+`refused` is a terminal decline (won't-fix/by-design). Unlike `closed`, refused
+does not set the `closed` timestamp — it records intent, not resolution. It can
+be revived via `reopened`.
 
 ## Scripts
 
@@ -121,13 +130,14 @@ operations**. Higher-level workflow lives in `vet`.
 
 ## Tests
 
-`test/run.sh` runs three test files (31 cases total):
+`test/run.sh` runs three test files (38 cases total):
 
 - `test-file-bug.sh` (15) — auto-ID generation (FEATURE-N), counter
   increment, hyphenated prefix, `$BUG_PREFIX` fallback, `--name` rejection,
   severity enum, required fields, `related_feature` persistence, default
   status, history seeding, ID in output line.
-- `test-bug-status.sh` (9) — get, allowed transitions, denied transitions,
-  invalid status, no-op behavior, history growth, missing-dir error.
+- `test-bug-status.sh` (16) — get, allowed transitions (including refused),
+  denied transitions, invalid status, no-op behavior, history growth,
+  missing-dir error, list-bugs filter by refused status.
 - `test-list-bugs.sh` (7) — list all, filter by status, filter by feature,
   combined filters, `--text` mode, empty store.
