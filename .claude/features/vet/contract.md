@@ -1,4 +1,4 @@
-# Contract — rabbit-bug-handler
+# Contract — vet
 
 ## Reads
 

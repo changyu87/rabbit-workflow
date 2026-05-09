@@ -1,5 +1,5 @@
 {
-  "name": "bug-handler",
+  "name": "vet",
   "version": "1.0.0",
   "owner": {
     "primary": "rabbit-workflow team",
