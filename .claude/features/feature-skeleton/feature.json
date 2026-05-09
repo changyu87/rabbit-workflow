@@ -1,0 +1,26 @@
+{
+  "name": "feature-skeleton",
+  "version": "1.0.0",
+  "owner": {
+    "primary": "rabbit-workflow team",
+    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
+  },
+  "status": "active",
+  "tdd_state": "test-green",
+  "deprecation": {
+    "criterion": "When a v2 feature schema is introduced and all live features migrate; this feature is then archived.",
+    "successor": null
+  },
+  "contract": {
+    "reads": [
+      ".claude/features/<name>/feature.json",
+      ".claude/features/<name>/spec.md",
+      ".claude/features/<name>/contract.md",
+      ".claude/features/<name>/test/run.sh"
+    ],
+    "writes": [],
+    "invokes": []
+  },
+  "created": "2026-05-08",
+  "updated": "2026-05-08"
+}

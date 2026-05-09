@@ -1,0 +1,97 @@
+everything should be feature oriented.
+
+Folder hierarchy should be:
+
+$ROOT
+  |- CLAUDE.md            # linked to features/rabbit-cage
+  |- README.md            # linked to features/rabbit-cage
+  |- install.sh           # linked to features/rabbit-cage
+  |- ...
+  |- .claude
+  | |- settings.json      # linked to features/rabbit-cage/settings.json, recommended to stay default, use settings.local.json to override
+  | |- agents/            # linked to features/rabbit-cage/agents/...
+  | |- commands/          # linked to features/rabbit-cage/commands/...
+  | |- hooks/             # linked to features/rabbit-cage/hooks/...
+  | |- skills/            # linked to features/rabbit-cage/hooks/...
+  | |- features/
+  | |- maps.json          # or yaml or whatever format good for machine
+  | | |- rabbit-cage/
+  | | | |- agents/
+  | | | |- commands/
+  | | | |- skills/
+  | | | |- hooks/
+  | | | |- docs/
+  | | |   |- spec/        # spec of the feature
+  | | |   |- bugs/        # bugs of the feature, prefixed with feature name, here will be "rabbit-cage"
+  | | |
+  | | |- policy/
+  | | |- ...              # files
+  | | | |- docs/
+  | | |   |- spec/        # spec of the feature
+  | | |   |- bugs/        # bugs of the feature, prefixed with feature name, here will be "policy"
+  | | |
+  | | |- contract/
+  | | |- ...              # files, schemas, spec template, bug template, subagent launch template, projct map template and so on
+  | |   |- docs/
+  | |     |- spec/        # spec of the feature
+  | |     |- bugs/        # bugs of the feature, prefixed with feature name, here will be "contract"
+  | |
+  | |- policy/                         # soft linked from feature
+  | | |- philosophy.md                 # feed to all subagents
+  | | |- spec-rules.md                 # Part I of work-guid, feed to spec/plan subagents only
+  | | |- coding-rules.md               # Part II of work-guide, feed to subagents who touches code
+  | | |- workflow-rules.md             # feed to all the subagents if necessary, need further investigate
+  | |
+  | |- contract/                       # soft linked from feature
+  |
+  |
+  |- project-wang/          # user project, follows the same structure
+  | |- project-map.json     # where is the physical location of this project, each feature's mapped scope and so on
+  | |- features/
+  | | |- maps.json
+  | |- contract/            # project specific contract
+  |
+  |- project-lee/           # user project, follows the same structure
+  | |- project-map.json     # where is the physical location of this project, each feature's mapped scope and so on
+  | |- features/
+  | | |- maps.json
+  | |- contract/            # project specific contract
+  |
+  |- project-joe/           # user project, follows the same structure
+  | |- project-map.json     # where is the physical location of this project, each feature's mapped scope and so on
+  | |- features/
+  | | |- maps.json
+  | |- contract/            # project specific contract
+
+        
+----------------------------------------------------------------
+
+1. If we do hierarchy like this, I assume the soft link shall be done at installation time. Also shall we have a post development hook/script that after a feature is implemented, and it requires softlink to somewehre, we call the command to do the link?
+
+2. Now except for the main session can write settings.json and settings.local.json, every files are feature controlled and protected. We make a hard hook on that. Also let's add one more rule in workflow-rules that, any request of add/editing/deletion of a feature MUST launch full TDD steps.
+
+3. Now the bug filing system become a common layer to every subagent who ownes the feature because each features bugs are separately managed. So the subagent of vet seems overkill, a simple command with script will do I think. Recommend me.
+
+4. Also now to treat .claude itself as a feature, the breeder seems obsolete too, becasue any workflow touches any feature will launch full TDD steps and no need a special agent who work on rabbit-cage itself.
+
+5. Now since we don't have any specialized subagent, the policy MUST MUST MUST be injected to claude subagent launch with 100% guarantee.
+
+6. Policy wise, philosophy, spec-rules and coding-rules are battle tested, but I'd like to do a full brainstorm and review and simplification of workflow-rules. Also in the workflow rules, emphasize that this is a subagent driven workflow, every feature touch will be subagent driven and udner go full steps of TDD even if a typo change or a comment deletion, so user must use best judge to decide what to do to balance token and workflow compliance. You do the wording based on my draft description.
+
+7. maps.json/yaml tells you where is what feature and what does it do. Main session will need this to locate a feature upon user's request of editing/deleting. We must figure out a way of refresh the map after there is a change to a feature, post action hook is preferted if there is such a thing or harden it into TDD steps.
+
+8. contract is also a feature. What I had in mind is that we harden the TDD flow's every step with the template. For example all the subagent should be launched with a fixed injection prompt (our policy), spec should be generated following the same style ( easy for LLM to understand, easy for script to extract), bugs should be filed with a template that mandatory fields must be filled and so on, anything we thing of can be and should be hardened, we put into contract.
+
+9. If project level contract has a high precedence over rabbit contract, wins at conflict.
+----------------------------------------------------------------
+
+This should be very heavy redesign, if you feel old version is on your way, you can move everything in archive and implement new versions, and you can do a good reference to older version while do that.
+
+
+
+
+
+
+
+
+

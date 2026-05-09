@@ -1,0 +1,35 @@
+{
+  "name": "breeder",
+  "version": "2.0.0",
+  "owner": {
+    "primary": "rabbit-workflow team",
+    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
+  },
+  "status": "active",
+  "tdd_state": "test-green",
+  "deprecation": {
+    "criterion": "When the Claude Code harness exposes subagent invocation identity in hook input, enabling strict per-invocation scope enforcement that supersedes the marker-file convention.",
+    "successor": null
+  },
+  "contract": {
+    "reads": [
+      "<repo>/.claude/philosophy.md",
+      "<repo>/.claude/work-guide.md",
+      "<SCOPE>/feature.json",
+      "<SCOPE>/spec.md",
+      "<SCOPE>/contract.md"
+    ],
+    "writes": [
+      "<SCOPE>/** (provided by dispatcher; refused outside)"
+    ],
+    "invokes": [
+      "bash <repo>/.claude/features/feature-skeleton/scripts/validate-feature.sh <SCOPE>",
+      "bash <repo>/.claude/features/tdd-state-machine/scripts/tdd-step.sh ... <SCOPE> ...",
+      "bash <repo>/.claude/features/tdd-state-machine/scripts/tdd-drift-check.sh <SCOPE>",
+      "git",
+      "gh (except 'gh pr merge' which is denied)"
+    ]
+  },
+  "created": "2026-05-08",
+  "updated": "2026-05-09"
+}

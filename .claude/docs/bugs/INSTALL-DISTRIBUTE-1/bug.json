@@ -1,0 +1,26 @@
+{
+  "name": "INSTALL-DISTRIBUTE-1",
+  "title": "install.sh: BASH_SOURCE[0] unbound-variable warning under curl-pipe mode",
+  "status": "closed",
+  "severity": "medium",
+  "description": "When install.sh is invoked via 'curl ... | bash', BASH_SOURCE is unset and 'set -u' triggers an unbound-variable warning before the script falls into curl-tarball mode. Install completes successfully but the warning is confusing for first-time users. One-line fix available: add :- default expansion to ${BASH_SOURCE[0]:-}.",
+  "related_feature": "install-distribute",
+  "filed": "2026-05-09T07:34:20Z",
+  "filed_by": "cyxu",
+  "closed": "2026-05-09T00:00:00Z",
+  "closed_by": "claude",
+  "history": [
+    {
+      "ts": "2026-05-09T07:34:20Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-09T00:00:00Z",
+      "actor": "claude",
+      "action": "closed",
+      "note": "Applied Option B fix: RAW_SOURCE guard + local-mode double-check (-f install.sh). Added t16 regression test (curl-pipe no-warning). Updated README to document curl|bash variant for tcsh/csh. Updated spec.md test count to 17. All 17 tests pass."
+    }
+  ]
+}
