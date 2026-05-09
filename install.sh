@@ -53,7 +53,7 @@ if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/.claude" ]]; then
 else
     TMP="$(mktemp -d)"
     trap "rm -rf '$TMP'" EXIT INT TERM
-    curl -fsSL https://github.com/USER/rabbit-workflow/archive/refs/heads/main.tar.gz \
+    curl -fsSL https://github.com/changyu87/rabbit-workflow/archive/refs/heads/main.tar.gz \
         | tar -xz -C "$TMP" --strip-components=1
     SRC="$TMP"
 fi
