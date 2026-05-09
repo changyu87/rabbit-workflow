@@ -87,19 +87,37 @@ unauthorized direct edits, but adds little value over PR review.)
 
 ---
 
-### R5 — Non-rabbit features follow the same pattern under a user-specified root
+### R5 — Unified work model: features live anywhere, same discipline applies
 
-Source: `my_request.txt` rule #11.
+Source: `my_request.txt` rule #11, refined.
 
-**Statement:** When the same workflow is applied to a user's own project
-(e.g. `projA/features/<name>/`), the schema and the scripts work without
-modification. Validators, TDD scripts, and bug-filing scripts all accept
-arbitrary directory paths and honor `$BUG_ROOT`. Spawned subagents working
-on a user feature should be scoped (in their prompt) to that feature's
-folder.
+**Statement:** A feature directory is a feature directory regardless of
+its parent path. `.claude/features/<x>/` (rabbit improving itself) and
+`projA/features/<y>/` (any project applying the rabbit discipline) are
+treated identically by every part of the workflow:
 
-**Enforcement:** None at file level. The schema is intentionally portable;
-the rule is documentation.
+- The **schema** (feature.json, spec.md, contract.md, test/run.sh) is the
+  same.
+- The **validators** (validate-feature.sh, tdd-step.sh, tdd-drift-check.sh,
+  tdd-context.sh) accept any feature dir path.
+- The **subagents** (rabbit-breeder, rabbit-vet) are scope-parameterized
+  per dispatch. Same agent semantics regardless of which directory the
+  scope points at.
+- The **bug-filing scripts** honor `$BUG_ROOT` for any bug tree.
+- The **scope-guard hook** treats every directory containing
+  `feature.json` as a feature dir; the marker discipline applies
+  identically everywhere.
+
+There is **no** "rabbit dev mode" vs "user mode" in the runtime. The only
+"mode" difference is at install time: `install.sh --all` brings extra
+inspection material (archive/, docs/specs/, docs/plans/, test/) for those
+who want a closer look at how rabbit is built; the default install ships
+just `.claude/` + `CLAUDE.md`. Either way, the runtime work model is
+identical.
+
+**Enforcement:** Path-agnostic by construction in every script; the
+scope-guard hook treats `feature.json` presence (not path prefix) as the
+feature-dir signal. No special-case code for `.claude/`.
 
 ---
 
