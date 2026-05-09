@@ -22,7 +22,11 @@
     ],
     "invokes": [
       "jq",
-      "date"
+      "date",
+      "find",
+      "tr",
+      "sed",
+      "grep"
     ]
   },
   "created": "2026-05-08",
