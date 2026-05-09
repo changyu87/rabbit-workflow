@@ -1,6 +1,7 @@
 # tdd-state-machine
 
-> **Note:** Human view. Source of truth is [`feature.json`](./feature.json).
+> **Note:** LLM-prose view (machine-targeted, like everything in rabbit).
+> Structured source of truth is [`feature.json`](./feature.json).
 
 ## Purpose
 
