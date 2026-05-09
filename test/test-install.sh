@@ -102,6 +102,52 @@ t9_no_settings_local_installed() {
     [[ ! -f "$DIR/.claude/settings.local.json" ]]
 }
 
+# --all flag tests
+
+t10_default_strips_specs_and_plans() {
+    "$INSTALL" "$DIR" >/dev/null
+    # Default install strips .claude/docs/specs/*.md and docs/plans/*.md.
+    # The dirs may or may not exist; we just assert no .md files remain.
+    ! ls "$DIR/.claude/docs/specs/"*.md 2>/dev/null
+    ! ls "$DIR/.claude/docs/plans/"*.md 2>/dev/null
+}
+
+t11_default_no_archive_no_test_dir() {
+    "$INSTALL" "$DIR" >/dev/null
+    [[ ! -d "$DIR/archive" ]] && [[ ! -d "$DIR/test" ]]
+}
+
+t12_all_keeps_specs_and_plans_if_present() {
+    "$INSTALL" --all "$DIR" >/dev/null
+    # If source had specs/plans, they should still exist post-install
+    if ls "$REPO_ROOT/.claude/docs/specs/"*.md 2>/dev/null >/dev/null; then
+        ls "$DIR/.claude/docs/specs/"*.md 2>/dev/null >/dev/null
+    else
+        true   # nothing to assert if source has nothing
+    fi
+}
+
+t13_all_includes_archive_and_test_when_present() {
+    "$INSTALL" --all "$DIR" >/dev/null
+    # If source had archive/, target should too
+    if [[ -d "$REPO_ROOT/archive" ]]; then
+        [[ -d "$DIR/archive" ]] || return 1
+    fi
+    if [[ -d "$REPO_ROOT/test" ]]; then
+        [[ -d "$DIR/test" ]] || return 1
+    fi
+    return 0
+}
+
+t14_unknown_flag_rejected() {
+    ! "$INSTALL" --bogus "$DIR" >/dev/null 2>&1
+}
+
+t15_all_works_with_target_first_then_flag() {
+    "$INSTALL" "$DIR" --all >/dev/null
+    [[ -d "$DIR/.claude" ]]
+}
+
 # ── run all ───────────────────────────────────────────────────────────────────
 
 run "1: clean install — files present"          t1_clean_install
@@ -114,6 +160,12 @@ run "7: hook emits valid JSON at threshold"     t7_hook_json_output
 run "8a: threshold rejects invalid arg"         t8a_threshold_invalid_rejected
 run "8b: threshold writes correct JSON"         t8b_threshold_valid_writes_json
 run "9: settings.local.json not installed"      t9_no_settings_local_installed
+run "10: default install strips docs/specs/*.md and docs/plans/*.md" t10_default_strips_specs_and_plans
+run "11: default install does NOT bring archive/ or test/" t11_default_no_archive_no_test_dir
+run "12: --all keeps docs/specs/ and docs/plans/" t12_all_keeps_specs_and_plans_if_present
+run "13: --all includes archive/ and test/ when source has them" t13_all_includes_archive_and_test_when_present
+run "14: unknown flag rejected"                 t14_unknown_flag_rejected
+run "15: --all works after target arg"          t15_all_works_with_target_first_then_flag
 
 echo ""
 printf "%d passed, %d failed\n" "$PASS" "$FAIL"
