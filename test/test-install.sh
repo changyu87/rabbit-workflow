@@ -31,7 +31,7 @@ t1_clean_install() {
 
 t2_hook_executable() {
     "$INSTALL" "$DIR" >/dev/null
-    [[ -x "$DIR/.claude/hooks/rwf-refresh.sh" ]]
+    [[ -x "$DIR/.claude/hooks/rbt-refresh.sh" ]]
 }
 
 t3_settings_content() {
@@ -39,7 +39,7 @@ t3_settings_content() {
     python3 -c "
 import json
 data = json.load(open('$DIR/.claude/settings.json'))
-assert data['env']['RWF_REFRESH_EVERY'] == '20', repr(data)
+assert data['env']['RBT_REFRESH_EVERY'] == '20', repr(data)
 "
 }
 
@@ -62,10 +62,10 @@ t6_no_arg_installs_to_pwd() {
 t7_hook_json_output() {
     "$INSTALL" "$DIR" >/dev/null
     # Seed counter at THRESHOLD-1 so next increment hits threshold
-    echo 19 >"$DIR/.rwf-prompt-counter"
+    echo 19 >"$DIR/.rbt-prompt-counter"
     local out ret
     out="$(mktemp)"
-    (cd "$DIR" && RWF_REFRESH_EVERY=20 .claude/hooks/rwf-refresh.sh >"$out")
+    (cd "$DIR" && RBT_REFRESH_EVERY=20 .claude/hooks/rbt-refresh.sh >"$out")
     python3 - "$out" <<'EOF'
 import json, sys
 data = json.load(open(sys.argv[1]))
@@ -80,7 +80,7 @@ t8a_threshold_invalid_rejected() {
     "$INSTALL" "$DIR" >/dev/null
     local pyblock
     pyblock=$(sed -n '/python3 -c "/,/^"`$/{/python3 -c "/d; /^"`$/d; p}' \
-        "$DIR/.claude/commands/rwf-set-threshold.md")
+        "$DIR/.claude/commands/rabbit-set-threshold.md")
     ! (cd "$DIR" && THRESHOLD="abc" python3 -c "$pyblock")
 }
 
@@ -88,12 +88,12 @@ t8b_threshold_valid_writes_json() {
     "$INSTALL" "$DIR" >/dev/null
     local pyblock
     pyblock=$(sed -n '/python3 -c "/,/^"`$/{/python3 -c "/d; /^"`$/d; p}' \
-        "$DIR/.claude/commands/rwf-set-threshold.md")
+        "$DIR/.claude/commands/rabbit-set-threshold.md")
     (cd "$DIR" && THRESHOLD="15" python3 -c "$pyblock" >/dev/null)
     python3 -c "
 import json
 data = json.load(open('$DIR/.claude/settings.local.json'))
-assert data['env']['RWF_REFRESH_EVERY'] == '15', repr(data)
+assert data['env']['RBT_REFRESH_EVERY'] == '15', repr(data)
 "
 }
 
@@ -106,7 +106,7 @@ t9_no_settings_local_installed() {
 
 run "1: clean install — files present"          t1_clean_install
 run "2: hook is executable"                     t2_hook_executable
-run "3: settings.json has RWF_REFRESH_EVERY=20" t3_settings_content
+run "3: settings.json has RBT_REFRESH_EVERY=20" t3_settings_content
 run "4: CLAUDE.md imports .claude files"        t4_claude_imports
 run "5: existing .claude/ blocks install"       t5_existing_claude_blocked
 run "6: no arg installs to \$PWD"               t6_no_arg_installs_to_pwd

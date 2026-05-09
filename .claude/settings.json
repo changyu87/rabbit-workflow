@@ -1,6 +1,6 @@
 {
   "env": {
-    "RWF_REFRESH_EVERY": "20"
+    "RBT_REFRESH_EVERY": "20"
   },
   "hooks": {
     "SessionStart": [
@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo 0 > .rwf-prompt-counter"
+            "command": "echo 0 > .rbt-prompt-counter"
           }
         ]
       }
@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/rwf-refresh.sh"
+            "command": ".claude/hooks/rbt-refresh.sh"
           }
         ]
       }

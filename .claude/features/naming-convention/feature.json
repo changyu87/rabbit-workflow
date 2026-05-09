@@ -1,0 +1,29 @@
+{
+  "name": "naming-convention",
+  "version": "1.0.0",
+  "owner": {
+    "primary": "rabbit-workflow team",
+    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
+  },
+  "status": "active",
+  "tdd_state": "test-green",
+  "deprecation": {
+    "criterion": "When the rabbit/rbt naming scheme is replaced (e.g. by a different brand or a harness-level enforcement that obviates the convention).",
+    "successor": null
+  },
+  "contract": {
+    "reads": [
+      "<root>/.claude/commands/*.md",
+      "<root>/.claude/agents/*.md",
+      "<root>/.claude/skills/*/",
+      "<root>/.claude/** (basenames, excluding .claude/docs/)"
+    ],
+    "writes": [],
+    "invokes": [
+      "find",
+      "basename"
+    ]
+  },
+  "created": "2026-05-08",
+  "updated": "2026-05-08"
+}

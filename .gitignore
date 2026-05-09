@@ -8,5 +8,5 @@
 .nfs*
 
 # Rabbit Workflow runtime state
-.rwf-prompt-counter
+.rbt-prompt-counter
 .claude/settings.local.json

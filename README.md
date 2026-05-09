@@ -39,12 +39,12 @@ bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/in
 
 | Command | Description |
 |---|---|
-| `/rwf-refresh` | Manually re-inject policy |
-| `/rwf-set-threshold N` | Set auto-refresh interval (takes effect next session) |
+| `/rabbit-refresh` | Manually re-inject policy |
+| `/rabbit-set-threshold N` | Set auto-refresh interval (takes effect next session) |
 
 ## Configuration
 
-Default refresh interval: 20 prompts. Change with `/rwf-set-threshold N`.
+Default refresh interval: 20 prompts. Change with `/rabbit-set-threshold N`.
 
 ## Uninstall
 
