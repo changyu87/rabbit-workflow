@@ -114,8 +114,10 @@ When editing existing code:
 - If you notice unrelated dead code, mention it — don't delete it.
 
 When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
+- Remove imports/variables/functions that YOUR changes made unused in the
+  current (uncommitted) edit. This is "cleaning up your own mess."
+- The exception does NOT extend to previously committed artifacts. Once
+  code is committed it is pre-existing — mention it, don't delete it.
 
 The test: every changed line should trace directly to the user's request.
 
