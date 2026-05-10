@@ -2,7 +2,7 @@
   "name": "rabbit-cage",
   "version": "2.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "review",
   "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, scripts for bug-filing, scaffolding, project management, and installation.",
   "surface": {
     "hooks": [

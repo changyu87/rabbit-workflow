@@ -1,40 +1,38 @@
+---
+feature: rabbit-cage
+version: 2.0.0
+template_version: 2.0.0
+---
+
 # rabbit-cage — Contract
 
-**Version**: 1.0.0
-**Owner**: rabbit-workflow team
-
----
-
-## Provides
-
-All files listed under "Owned Files" in `spec.md`:
-
-- `rabbit-cage/agents/` — agent definition `.md` files
-- `rabbit-cage/commands/` — slash command `.md` files
-- `rabbit-cage/hooks/rbt-refresh.sh`
-- `rabbit-cage/hooks/scope-guard.sh`
-- `rabbit-cage/skills/` — empty until a skill is added
-- `rabbit-cage/settings.json` — the Claude Code settings object
-- `rabbit-cage/CLAUDE.md`
-- `rabbit-cage/README.md`
-- `rabbit-cage/install.sh`
-
----
-
-## Reads
-
-Nothing from other features at runtime. Symlink wiring is performed at install time by `relink.sh`, not by any runtime rabbit-cage script.
-
----
-
-## Invokes
-
-- `relink.sh` — called by `install.sh` at install time to wire all symlinks from the surface paths to their targets inside `rabbit-cage/`.
-
----
-
-## Never Does
-
-- Modifies other features' directories.
-- Writes `settings.local.json`.
-- Reads or generates any artifact outside `.claude/features/rabbit-cage/` at runtime.
+```json
+{
+  "provides": {
+    "files": [".claude/agents", ".claude/commands", ".claude/hooks", ".claude/skills", ".claude/settings.json", ".claude/policy", ".claude/contract", "CLAUDE.md", "README.md", "install.sh"],
+    "scripts": [
+      {"path": ".claude/features/rabbit-cage/scripts/file-bug.sh", "stdin": "none", "stdout": "bug dir path", "exit": "0=created 1=error 2=usage"},
+      {"path": ".claude/features/rabbit-cage/scripts/bug-status.sh", "stdin": "none", "stdout": "status", "exit": "0=ok 1=error 2=usage"},
+      {"path": ".claude/features/rabbit-cage/scripts/list-bugs.sh", "stdin": "none", "stdout": "bug list", "exit": "0=ok"},
+      {"path": ".claude/features/rabbit-cage/scripts/new-feature.sh", "stdin": "none", "stdout": "scaffold path", "exit": "0=created 1=error 2=usage"},
+      {"path": ".claude/features/rabbit-cage/scripts/validate-all.sh", "stdin": "none", "stdout": "validation report", "exit": "0=all pass 1=failures"},
+      {"path": ".claude/features/rabbit-cage/scripts/rabbit-project.sh", "stdin": "none", "stdout": "operation result", "exit": "0=ok 1=error 2=usage"}
+    ],
+    "schemas": [],
+    "templates": []
+  },
+  "reads": {
+    "files": [".claude/features/registry.json", "project-*/project-map.json", ".claude/features/contract/templates/"],
+    "external": ["env-var:RABBIT_ROOT", "env-var:BUG_ROOT"]
+  },
+  "invokes": {
+    "scripts": [".claude/features/contract/scripts/relink.sh"],
+    "agents":   []
+  },
+  "never": [
+    "writes .claude/settings.local.json",
+    "modifies files inside another feature's directory",
+    "writes outside its declared scope without an active scope marker"
+  ]
+}
+```
