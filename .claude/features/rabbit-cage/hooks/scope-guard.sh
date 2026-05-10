@@ -72,8 +72,27 @@ decide() {
     return 0
   fi
 
-  # 4. Active scope marker anywhere in ancestor chain -> allow
+  # 4. Active scope marker anywhere in ancestor chain -> check further
   if walk_up_find "$abs" ".rabbit-scope-active" >/dev/null; then
+    # 4b. Scope marker exists — verify target is within the scoped feature directory
+    #     Read feature name from marker -> look up path in registry -> restrict to subtree
+    SCOPE_FEATURE="$(cat "$REPO_ROOT/.rabbit-scope-active" 2>/dev/null)"
+    REGISTRY="$REPO_ROOT/.claude/features/registry.json"
+    FEATURE_PATH=$(python3 -c "import json,sys; r=json.load(open('$REGISTRY')); print(r.get('features',{}).get('$SCOPE_FEATURE',{}).get('path',''))" 2>/dev/null)
+    if [ -n "$FEATURE_PATH" ]; then
+      FEATURE_ABS="$REPO_ROOT/$FEATURE_PATH"
+      if [[ "$abs" != "$FEATURE_ABS"* ]]; then
+        echo "DENY write to '$abs' denied: outside active scope '$SCOPE_FEATURE' (allowed: $FEATURE_ABS/). Use dispatch-feature-edit.sh for cross-feature work."
+        return 1
+      fi
+      # 4c. Within scoped feature — deny if feature is in test-green state
+      FEATURE_JSON="$FEATURE_ABS/feature.json"
+      TDD_STATE=$(python3 -c "import json; print(json.load(open('$FEATURE_JSON')).get('tdd_state',''))" 2>/dev/null)
+      if [ "$TDD_STATE" = "test-green" ]; then
+        echo "DENY write to '$abs' denied: feature '$SCOPE_FEATURE' is in test-green state. Invoke the rabbit-feature-touch skill to reset the TDD state before editing."
+        return 1
+      fi
+    fi
     echo "ALLOW (under active scope)"
     return 0
   fi

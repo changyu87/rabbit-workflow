@@ -65,6 +65,28 @@ else
     fail_t 6 ".claude/work-guide.md still exists (not yet removed)"
 fi
 
+# t7: CLAUDE.md contains "subagent-driven development"
+if grep -q "subagent-driven development" "$CLAUDE_MD" 2>/dev/null; then
+    ok 7 "CLAUDE.md contains 'subagent-driven development'"
+else
+    fail_t 7 "CLAUDE.md does not contain 'subagent-driven development' (not yet added)"
+fi
+
+# t8: CLAUDE.md does NOT contain "two source-of-truth" (old phrase should be gone)
+if ! grep -q "two source-of-truth" "$CLAUDE_MD" 2>/dev/null; then
+    ok 8 "CLAUDE.md does not contain old phrase 'two source-of-truth'"
+else
+    fail_t 8 "CLAUDE.md still contains old phrase 'two source-of-truth' (not yet removed)"
+fi
+
+# t9: test-backlog-e2e-tdd.sh IS registered in run.sh
+RUN_SH="$REPO_ROOT/.claude/features/rabbit-cage/test/run.sh"
+if grep -q "test-backlog-e2e-tdd.sh" "$RUN_SH" 2>/dev/null; then
+    ok 9 "test-backlog-e2e-tdd.sh is registered in run.sh"
+else
+    fail_t 9 "test-backlog-e2e-tdd.sh is NOT registered in run.sh (not yet added)"
+fi
+
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
