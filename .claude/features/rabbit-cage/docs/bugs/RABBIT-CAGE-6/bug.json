@@ -1,0 +1,20 @@
+{
+  "name": "RABBIT-CAGE-6",
+  "title": "bug-filing scripts route all bugs to global .claude/docs/bugs/ instead of per-feature bugs_root",
+  "status": "open",
+  "severity": "high",
+  "description": "file-bug.sh defaults BUG_ROOT to .claude/docs/bugs/ and does not consult feature.json:bugs_root even when --related-feature is supplied. Three legacy bugs still exist at .claude/docs/bugs/ (BUG-FILING-1, HARD-RULES-1, INSTALL-DISTRIBUTE-1). Per design, each feature's bugs go under its own bugs_root (e.g. .claude/features/install-distribute/docs/bugs/). The test suite uses a synthetic BUG_ROOT and never tests per-feature routing. Spec also still describes the global model.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-10T03:29:34Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-10T03:29:34Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}

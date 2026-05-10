@@ -1,0 +1,20 @@
+{
+  "name": "RABBIT-CAGE-8",
+  "title": "No RABBIT_ROOT anchor: ~30 scripts independently count ../ levels to find repo root — fragile under any file move",
+  "status": "open",
+  "severity": "high",
+  "description": "Every script in the repo independently computes the repo root by counting parent directory levels from its own location (e.g. cd \"$SCRIPT_DIR/../../../..\" && pwd). Three different computation strategies are in use: counted-../, git rev-parse --show-toplevel, and $0-relative. The count is wrong in at least one case (dispatch-feature-edit.sh uses 5 levels instead of 4). Moving any script silently breaks its root computation. No shared RABBIT_ROOT variable or helper exists. The onboard/scripts/rabbit-project.sh already has the right pattern (REPO_ROOT=\"${REPO_ROOT:-$(cd ...)}\") — this should be the universal pattern with RABBIT_ROOT as the env var name.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-10T03:29:49Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-10T03:29:49Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "RABBIT-CAGE-2",
+  "title": "dispatch-feature-edit.sh computes REPO_ROOT 5 levels up (should be 4) — silently resolves to wrong directory",
+  "status": "open",
+  "severity": "high",
+  "description": "contract/scripts/dispatch-feature-edit.sh line 20 uses cd \"$SCRIPT_DIR/../../../../..\" (5 levels) to compute REPO_ROOT. The script lives at .claude/features/contract/scripts/dispatch-feature-edit.sh — 4 levels below the repo root. Five levels resolves to the parent of the repo root (e.g. /home/cyxu/workflow-dev instead of /home/cyxu/workflow-dev/rabbit-run). This means REGISTRY, FEATURE_DIR, SCOPE_MARKER, and all paths derived from REPO_ROOT point at the wrong tree and the script silently fails or operates on wrong files.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-10T03:29:06Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-10T03:29:06Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
