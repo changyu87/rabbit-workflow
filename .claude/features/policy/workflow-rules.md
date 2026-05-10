@@ -12,6 +12,8 @@ Every implementation touch goes through a dispatched subagent via `dispatch-feat
 
 Any add, edit, or delete of a feature — including a one-character typo fix or a comment deletion — MUST go through the full TDD step sequence managed by `tdd-step.sh`. There is no partial-TDD shortcut. The discipline is uniform because partial flows are where drift enters undetected.
 
+  Exception: metadata-only writes (bug filing via file-bug.sh, backlog filing via file-backlog-item.sh) require schema compliance only — the scripts enforce format at write time. No TDD cycle needed for bookkeeping artifacts.
+
 ---
 
 ## Section 3 — Token/compliance tradeoff is the user's call
