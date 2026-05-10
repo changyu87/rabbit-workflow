@@ -1,0 +1,19 @@
+{
+  "name": "BACKLOG-005",
+  "title": "rabbit-project command description is misleading \u2014 clarify it is a scaffolding tool",
+  "status": "open",
+  "priority": "low",
+  "description": "The rabbit-project command file gives no hint it is a scaffolding tool (init, set-path, map, consolidate). Sessions trying to find open items or get project status invoke it and get nothing useful. Fix: add a one-line description to rabbit-project.md clarifying its purpose, e.g. \"Scaffold and manage user project directories \u2014 not a status command.\" Low priority: affects discoverability only, not functionality.",
+  "owner": "rabbit-workflow-team",
+  "filed": "2026-05-10T16:01:54Z",
+  "filed_by": "rabbit-workflow-team",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-10T16:01:54Z",
+      "actor": "rabbit-workflow-team",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}

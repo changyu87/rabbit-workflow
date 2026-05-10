@@ -1,0 +1,20 @@
+{
+  "name": "RABBIT-CAGE-13",
+  "title": "rabbit-workspace is a skill but should be a slash command — violates Tool-Choice Tier",
+  "status": "open",
+  "severity": "medium",
+  "description": "rabbit-workspace SKILL.md does nothing but run workspace-tree.sh and display output. No AI judgment, no branching. Per spec-rules.md Tool-Choice Tier (script beats CLI beats spec beats prompt), a skill is the lowest tier — prompt-level. Fix: convert to a slash command like rabbit-project.md, delegating to workspace-tree.sh. Retire the skill. Auto-trigger benefit can be achieved with a one-line note in CLAUDE.md.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-10T16:01:50Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-10T16:01:50Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
