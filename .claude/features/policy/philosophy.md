@@ -1,7 +1,4 @@
-
----
-
-## Philosophy
+# Philosophy
 
 *These three principles guard against silent drift — the slow, unattributable
 decay of a system into a state where no one can answer "why did it do that?"
@@ -14,7 +11,7 @@ Engineering judgment is the chooser of how to act — it is not itself ranked.*
 
 ---
 
-### 1. Machine First
+## 1. Machine First
 
 Every state, metadata, interface, and artifact is designed for machine
 consumption first. Handoffs use fixed-format, structured representations —
@@ -25,7 +22,7 @@ machine-first artifact, never authored alongside it.
 
 ---
 
-### 2. Bounded Scope
+## 2. Bounded Scope
 
 Every component operates strictly within its declared scope. Work that falls
 outside that scope returns to the scope's owner; it is never assumed by the
@@ -36,7 +33,7 @@ contract. Generate nothing outside the contract.
 
 ---
 
-### 3. Designed Deprecation
+## 3. Designed Deprecation
 
 Every artifact is created with an explicit end-of-life criterion. Every
 contract carries a version. Every component carries an owner. An unowned,
