@@ -14,6 +14,8 @@
 
 set -u
 
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
+
 usage() {
   cat >&2 <<EOF
 usage:
@@ -99,7 +101,7 @@ case "$cmd" in
       # Post-transition hooks for test-green.
       if [ "$new" = "test-green" ]; then
         FEATURES_DIR="$(dirname "$dir")"
-        REBUILD_SH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../contract/scripts/rebuild-registry.sh"
+        REBUILD_SH="$REPO_ROOT/.claude/features/contract/scripts/rebuild-registry.sh"
         if [ -f "$REBUILD_SH" ]; then
           bash "$REBUILD_SH" "$FEATURES_DIR" >/dev/null 2>&1 || true
         fi
@@ -107,7 +109,7 @@ case "$cmd" in
         PROJECT_MAP="$(dirname "$FEATURES_DIR")/project-map.json"
         if [ -f "$PROJECT_MAP" ]; then
           PROJECT_NAME="$(basename "$(dirname "$FEATURES_DIR")")"
-          ONBOARD_SH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../onboard/scripts/rabbit-project.sh"
+          ONBOARD_SH="$REPO_ROOT/.claude/features/onboard/scripts/rabbit-project.sh"
           if [ -f "$ONBOARD_SH" ]; then
             bash "$ONBOARD_SH" consolidate "$PROJECT_NAME" >/dev/null 2>&1 || true
           fi
@@ -121,7 +123,7 @@ case "$cmd" in
       # Post-transition hooks for test-green.
       if [ "$new" = "test-green" ]; then
         FEATURES_DIR="$(dirname "$dir")"
-        REBUILD_SH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../contract/scripts/rebuild-registry.sh"
+        REBUILD_SH="$REPO_ROOT/.claude/features/contract/scripts/rebuild-registry.sh"
         if [ -f "$REBUILD_SH" ]; then
           bash "$REBUILD_SH" "$FEATURES_DIR" >/dev/null 2>&1 || true
         fi
@@ -129,7 +131,7 @@ case "$cmd" in
         PROJECT_MAP="$(dirname "$FEATURES_DIR")/project-map.json"
         if [ -f "$PROJECT_MAP" ]; then
           PROJECT_NAME="$(basename "$(dirname "$FEATURES_DIR")")"
-          ONBOARD_SH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../onboard/scripts/rabbit-project.sh"
+          ONBOARD_SH="$REPO_ROOT/.claude/features/onboard/scripts/rabbit-project.sh"
           if [ -f "$ONBOARD_SH" ]; then
             bash "$ONBOARD_SH" consolidate "$PROJECT_NAME" >/dev/null 2>&1 || true
           fi

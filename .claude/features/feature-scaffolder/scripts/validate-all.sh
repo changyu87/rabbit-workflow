@@ -33,8 +33,9 @@ ROOT="${ROOT:-${FEATURES_ROOT:-.claude/features}}"
 # Autodetect validator if not given
 if [ -z "$VALIDATOR" ]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  REPO_ROOT="${RABBIT_ROOT:-$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)}"
   for candidate in \
-      "$SCRIPT_DIR/../../feature-skeleton/scripts/validate-feature.sh" \
+      "$REPO_ROOT/.claude/features/feature-skeleton/scripts/validate-feature.sh" \
       ".claude/features/feature-skeleton/scripts/validate-feature.sh"; do
     if [ -x "$candidate" ]; then VALIDATOR="$candidate"; break; fi
   done

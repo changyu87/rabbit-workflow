@@ -9,7 +9,7 @@
 # matching counter file name, env var, and systemMessage tag.
 set -u
 
-REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null)}"
 TMPROOT="$(mktemp -d)"
 trap 'rm -rf "$TMPROOT"' EXIT INT TERM
 
@@ -56,7 +56,7 @@ echo "work-guide fixture content" > "$WS/.claude/work-guide.md"
 
 # t2: under threshold -> hook is silent (count incremented, no JSON)
 echo "0" > "$COUNTER"
-env "$ENV_VAR=10" bash "$HOOK" >"$TMPROOT/out" 2>"$TMPROOT/err"
+env "$ENV_VAR=10" RABBIT_ROOT="$WS" bash "$HOOK" >"$TMPROOT/out" 2>"$TMPROOT/err"
 rc=$?
 counter=$(cat "$COUNTER")
 out_size=$(wc -c < "$TMPROOT/out")
@@ -68,7 +68,7 @@ fi
 
 # t3: at threshold -> hook emits JSON, counter reset, additionalContext non-empty
 echo "9" > "$COUNTER"
-env "$ENV_VAR=10" bash "$HOOK" >"$TMPROOT/out" 2>"$TMPROOT/err"
+env "$ENV_VAR=10" RABBIT_ROOT="$WS" bash "$HOOK" >"$TMPROOT/out" 2>"$TMPROOT/err"
 rc=$?
 counter=$(cat "$COUNTER")
 out=$(cat "$TMPROOT/out")
@@ -85,7 +85,7 @@ fi
 
 # t4: counter file initialized to 0 if missing
 rm -f "$COUNTER"
-env "$ENV_VAR=10" bash "$HOOK" >/dev/null 2>"$TMPROOT/err"
+env "$ENV_VAR=10" RABBIT_ROOT="$WS" bash "$HOOK" >/dev/null 2>"$TMPROOT/err"
 rc=$?
 counter=$(cat "$COUNTER" 2>/dev/null || echo "missing")
 [ "$counter" = "1" ] && ok "t4: missing counter initialized then incremented to 1" \
@@ -93,7 +93,7 @@ counter=$(cat "$COUNTER" 2>/dev/null || echo "missing")
 
 # t5: with $ENV_VAR=1, every call refreshes
 echo "0" > "$COUNTER"
-env "$ENV_VAR=1" bash "$HOOK" >"$TMPROOT/out" 2>"$TMPROOT/err"
+env "$ENV_VAR=1" RABBIT_ROOT="$WS" bash "$HOOK" >"$TMPROOT/out" 2>"$TMPROOT/err"
 rc=$?
 out=$(cat "$TMPROOT/out")
 echo "$out" | jq empty 2>/dev/null && refreshed=1 || refreshed=0
@@ -103,7 +103,7 @@ echo "$out" | jq empty 2>/dev/null && refreshed=1 || refreshed=0
 
 # t6: systemMessage present in output JSON when refreshed; tag matches variant
 echo "0" > "$COUNTER"
-env "$ENV_VAR=1" bash "$HOOK" >"$TMPROOT/out" 2>"$TMPROOT/err"
+env "$ENV_VAR=1" RABBIT_ROOT="$WS" bash "$HOOK" >"$TMPROOT/out" 2>"$TMPROOT/err"
 sm=$(jq -r '.systemMessage // ""' "$TMPROOT/out" 2>/dev/null)
 echo "$sm" | grep -q "$SM_TAG" && ok "t6: systemMessage announces refresh ([$SM_TAG])" \
   || ko "t6: sm='$sm'"

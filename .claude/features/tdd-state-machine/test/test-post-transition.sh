@@ -101,8 +101,8 @@ STUB
   # Place feature.json
   fix "$mirror_feat" "my-feat" "impl"
 
-  # Run transition to test-green
-  "$mirror_tdd_scripts/tdd-step.sh" transition "$mirror_feat" test-green \
+  # Run transition to test-green; set RABBIT_ROOT so the mirrored script finds stub scripts.
+  RABBIT_ROOT="$mirror_base" "$mirror_tdd_scripts/tdd-step.sh" transition "$mirror_feat" test-green \
     >"$TMPROOT/stdout" 2>"$TMPROOT/stderr"
   local rc=$?
 
@@ -135,7 +135,7 @@ STUB
 
   fix "$mirror_feat" "my-feat2" "spec"
 
-  "$mirror_tdd_scripts/tdd-step.sh" transition "$mirror_feat" test-red \
+  RABBIT_ROOT="$mirror_base" "$mirror_tdd_scripts/tdd-step.sh" transition "$mirror_feat" test-red \
     >"$TMPROOT/stdout" 2>"$TMPROOT/stderr"
   local rc=$?
 
@@ -168,7 +168,7 @@ STUB
   # Start from spec and force to test-green (skip states)
   fix "$mirror_feat" "my-feat3" "spec"
 
-  "$mirror_tdd_scripts/tdd-step.sh" transition "$mirror_feat" test-green --force \
+  RABBIT_ROOT="$mirror_base" "$mirror_tdd_scripts/tdd-step.sh" transition "$mirror_feat" test-green --force \
     >"$TMPROOT/stdout" 2>"$TMPROOT/stderr"
   local rc=$?
 

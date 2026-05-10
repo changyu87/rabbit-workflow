@@ -1,20 +1,26 @@
 {
   "name": "RABBIT-CAGE-7",
   "title": "hard-rules spec and work-guide R6 reference deleted subagent-policy-injection feature path",
-  "status": "open",
+  "status": "closed",
   "severity": "medium",
   "description": "R6 in hard-rules/docs/spec/spec.md and in .claude/work-guide.md states: 'The block is produced by .claude/features/subagent-policy-injection/scripts/policy-block.sh'. That feature and script path is obsolete — the canonical script is now .claude/features/contract/scripts/policy-block.sh. Any agent or human reading the rules will look at the wrong path. The actual dispatch mechanism (dispatch-feature-edit.sh) calls the correct contract script, but the documented rule is wrong.",
   "related_feature": "rabbit-cage",
   "filed": "2026-05-10T03:29:41Z",
   "filed_by": "cyxu",
-  "closed": null,
-  "closed_by": null,
+  "closed": "2026-05-10T03:41:37Z",
+  "closed_by": "cyxu",
   "history": [
     {
       "ts": "2026-05-10T03:29:41Z",
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-10T03:41:37Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "Fixed: updated R6 in hard-rules/docs/spec/spec.md to reference contract/scripts/policy-block.sh"
     }
   ]
 }

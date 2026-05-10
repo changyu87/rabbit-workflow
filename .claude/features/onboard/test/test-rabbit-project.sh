@@ -7,7 +7,7 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REAL_SCRIPT="$(cd "$SCRIPT_DIR/.." && pwd)/scripts/rabbit-project.sh"
-REAL_CONTRACT_TEMPLATES="$(cd "$SCRIPT_DIR/../../../.." && pwd)/.claude/features/contract/templates"
+REAL_CONTRACT_TEMPLATES="${RABBIT_ROOT:-$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)}/.claude/features/contract/templates"
 
 PASS=0; FAIL=0
 ok()   { echo "  ok   $*"; PASS=$((PASS+1)); }
@@ -26,7 +26,7 @@ mkdir -p "$TMPROOT/.claude/features/onboard/scripts"
 cp "$REAL_SCRIPT" "$TMPROOT/.claude/features/onboard/scripts/rabbit-project.sh"
 chmod +x "$TMPROOT/.claude/features/onboard/scripts/rabbit-project.sh"
 
-RUN() { REPO_ROOT="$TMPROOT" "$TMPROOT/.claude/features/onboard/scripts/rabbit-project.sh" "$@" 2>"$TMPROOT/stderr" >"$TMPROOT/stdout"; echo $?; }
+RUN() { RABBIT_ROOT="$TMPROOT" "$TMPROOT/.claude/features/onboard/scripts/rabbit-project.sh" "$@" 2>"$TMPROOT/stderr" >"$TMPROOT/stdout"; echo $?; }
 
 # t1: init creates expected directories and files.
 t1() {

@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
 COUNTER_FILE="$REPO_ROOT/.rbt-prompt-counter"
 THRESHOLD="${RBT_REFRESH_EVERY:-20}"

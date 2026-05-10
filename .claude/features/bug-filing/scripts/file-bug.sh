@@ -17,6 +17,7 @@
 
 set -u
 
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 BUG_ROOT="${BUG_ROOT:-.claude/docs/bugs}"
 BUG_PREFIX="${BUG_PREFIX:-RBT}"
 
@@ -54,6 +55,27 @@ if [ -n "$FEAT" ]; then
   if ! echo "$FEAT" | grep -qE '^[a-z][a-z0-9-]{0,49}$'; then
     echo "ERROR: --related-feature '$FEAT' must match [a-z][a-z0-9-]* (max 50 chars)" >&2
     exit 1
+  fi
+fi
+
+# When --related-feature is given, look up bugs_root from that feature's feature.json.
+if [ -n "$FEAT" ]; then
+  FEAT_JSON="$REPO_ROOT/.claude/features/$FEAT/feature.json"
+  # Fall back to registry.json path if direct path doesn't exist.
+  if [ ! -f "$FEAT_JSON" ]; then
+    REGISTRY="$REPO_ROOT/.claude/features/registry.json"
+    if [ -f "$REGISTRY" ]; then
+      FEAT_PATH="$(jq -r --arg f "$FEAT" '.features[$f].path // ""' "$REGISTRY" 2>/dev/null)"
+      [ -n "$FEAT_PATH" ] && FEAT_JSON="$REPO_ROOT/$FEAT_PATH/feature.json"
+    fi
+  fi
+  if [ -f "$FEAT_JSON" ]; then
+    FEAT_BUGS_ROOT="$(jq -r '.bugs_root // ""' "$FEAT_JSON" 2>/dev/null)"
+    if [ -n "$FEAT_BUGS_ROOT" ]; then
+      BUG_ROOT="$REPO_ROOT/$FEAT_BUGS_ROOT"
+    fi
+  else
+    echo "WARNING: feature '$FEAT' not found; using global bug root" >&2
   fi
 fi
 

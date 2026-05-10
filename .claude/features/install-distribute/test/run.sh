@@ -5,7 +5,7 @@
 # both exist with the expected modes.
 set -u
 
-REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null)}"
 INSTALL="$REPO_ROOT/install.sh"
 EXISTING_TEST="$REPO_ROOT/test/test-install.sh"
 

@@ -133,7 +133,7 @@ subagents (`Plan`, `Explore`, `code-reviewer`, `general-purpose`, etc.)
 The block is produced by:
 
 ```
-bash .claude/features/subagent-policy-injection/scripts/policy-block.sh \
+bash .claude/features/contract/scripts/policy-block.sh \
     [--include <related-rule-file>]...
 ```
 

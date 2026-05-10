@@ -110,7 +110,7 @@ fail_line=$(grep -i '^FAIL:' "$TMPROOT/err" | tail -1)
 # Run against the actual repo root. After the rename portion of this PR,
 # all commands/agents on this branch should be rabbit-prefixed and no rwf-
 # prefixed files should remain outside docs/.
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)}"
 rc=$("$CHECK" "$REPO_ROOT" 2>"$TMPROOT/err" >"$TMPROOT/out"; echo $?)
 [ "$rc" = "0" ] && ok "t11: repo's own .claude/ passes naming check" \
   || ko "t11: rc=$rc err=$(cat "$TMPROOT/err")"

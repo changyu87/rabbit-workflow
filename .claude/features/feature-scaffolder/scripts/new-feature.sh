@@ -152,10 +152,11 @@ echo "scaffolded: $TARGET"
 
 # Optional self-validation if feature-skeleton's validator is reachable
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Try common locations: relative to this script, then well-known repo path.
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)}"
+# Try common locations: repo-anchored path first, then well-known fallback.
 VAL=""
 for candidate in \
-    "$SCRIPT_DIR/../../feature-skeleton/scripts/validate-feature.sh" \
+    "$REPO_ROOT/.claude/features/feature-skeleton/scripts/validate-feature.sh" \
     ".claude/features/feature-skeleton/scripts/validate-feature.sh"; do
   if [ -x "$candidate" ]; then VAL="$candidate"; break; fi
 done

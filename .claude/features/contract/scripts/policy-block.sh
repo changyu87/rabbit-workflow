@@ -25,7 +25,7 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)}"
 POLICY_DIR="$REPO_ROOT/.claude/features/policy"
 PHIL="$POLICY_DIR/philosophy.md"
 SPEC_RULES="$POLICY_DIR/spec-rules.md"

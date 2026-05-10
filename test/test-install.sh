@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # E2E tests for install.sh. Run: bash test/test-install.sh
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
 INSTALL="$REPO_ROOT/install.sh"
 
 PASS=0
@@ -45,8 +45,8 @@ assert data['env']['RBT_REFRESH_EVERY'] == '20', repr(data)
 
 t4_claude_imports() {
     "$INSTALL" "$DIR" >/dev/null
-    grep -q '@./.claude/philosophy.md' "$DIR/CLAUDE.md" &&
-    grep -q '@./.claude/work-guide.md' "$DIR/CLAUDE.md"
+    grep -q '@./.claude/policy/philosophy.md' "$DIR/CLAUDE.md" &&
+    grep -q '@./.claude/policy/workflow-rules.md' "$DIR/CLAUDE.md"
 }
 
 t5_existing_claude_blocked() {
@@ -65,7 +65,7 @@ t7_hook_json_output() {
     echo 19 >"$DIR/.rbt-prompt-counter"
     local out ret
     out="$(mktemp)"
-    (cd "$DIR" && RBT_REFRESH_EVERY=20 .claude/hooks/rbt-refresh.sh >"$out")
+    (cd "$DIR" && RABBIT_ROOT="$DIR" RBT_REFRESH_EVERY=20 .claude/hooks/rbt-refresh.sh >"$out")
     python3 - "$out" <<'EOF'
 import json, sys
 data = json.load(open(sys.argv[1]))
@@ -153,7 +153,7 @@ t15_all_works_with_target_first_then_flag() {
 run "1: clean install — files present"          t1_clean_install
 run "2: hook is executable"                     t2_hook_executable
 run "3: settings.json has RBT_REFRESH_EVERY=20" t3_settings_content
-run "4: CLAUDE.md imports .claude files"        t4_claude_imports
+run "4: CLAUDE.md imports from policy/ feature"  t4_claude_imports
 run "5: existing .claude/ blocks install"       t5_existing_claude_blocked
 run "6: no arg installs to \$PWD"               t6_no_arg_installs_to_pwd
 run "7: hook emits valid JSON at threshold"     t7_hook_json_output

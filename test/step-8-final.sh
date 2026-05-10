@@ -4,7 +4,7 @@
 # Non-interactive, exits 0 on full pass.
 set -u
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null)}"
 PASS=0; FAIL=0
 ok()   { echo "  ok   $*"; PASS=$((PASS+1)); }
 ko()   { echo "  FAIL $*"; FAIL=$((FAIL+1)); }

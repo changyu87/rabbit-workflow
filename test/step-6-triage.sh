@@ -3,7 +3,7 @@
 # Non-interactive. All assertions are file-content and existence checks.
 set -u
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null)}"
 TRIAGE_SH="$REPO_ROOT/.claude/features/contract/scripts/rabbit-triage.sh"
 VET_MD="$REPO_ROOT/.claude/agents/rabbit-vet.md"
 VET_ARCHIVE="$REPO_ROOT/archive/2026-05-09-pre-redesign/agents/rabbit-vet.md"

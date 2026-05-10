@@ -4,7 +4,7 @@
 # Non-interactive; exits 0 on success, non-zero on first failure.
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null)}"
 ARCHIVE="${REPO_ROOT}/archive/2026-05-09-pre-redesign"
 FEATURES="${REPO_ROOT}/.claude/features"
 

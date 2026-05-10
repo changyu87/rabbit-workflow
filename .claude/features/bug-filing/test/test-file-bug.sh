@@ -36,11 +36,11 @@ t2() {
   fi
 }
 
-# t3: hyphenated feature name uppercased and preserved
+# t3: hyphenated feature name uppercased and preserved (use unknown feature so BUG_ROOT is respected)
 t3() {
-  local rc; rc=$(run --related-feature install-distribute --title "x" --severity low --description "x")
-  if [ "$rc" = "0" ] && [ -f "$BUG_ROOT/INSTALL-DISTRIBUTE-1/bug.json" ]; then
-    ok "t3: install-distribute → INSTALL-DISTRIBUTE-1"
+  local rc; rc=$(run --related-feature some-feature --title "x" --severity low --description "x")
+  if [ "$rc" = "0" ] && [ -f "$BUG_ROOT/SOME-FEATURE-1/bug.json" ]; then
+    ok "t3: some-feature → SOME-FEATURE-1"
   else
     ko "t3: rc=$rc stderr=$(cat "$TMPROOT/stderr")"
   fi
@@ -146,8 +146,41 @@ t15() {
     || ko "t15: rc=$rc stderr=$(cat "$TMPROOT/stderr")"
 }
 
+# t-pf1: --related-feature policy routes bug into that feature's bugs_root
+REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
+POLICY_BUGS_ROOT="$REPO_ROOT/.claude/features/policy/docs/bugs"
+t_pf1() {
+  local rc
+  # Capture bug name from stdout so we can clean up
+  "$FILE_BUG" --related-feature policy --title "pf1 test bug" --severity low \
+    --description "per-feature routing test" >"$TMPROOT/pf1_out" 2>"$TMPROOT/pf1_err"
+  rc=$?
+  local bugname
+  bugname=$(grep -oE 'POLICY-[0-9]+' "$TMPROOT/pf1_out" | head -1)
+  if [ "$rc" = "0" ] && [ -n "$bugname" ] && [ -f "$POLICY_BUGS_ROOT/$bugname/bug.json" ] \
+      && [ ! -f "$BUG_ROOT/$bugname/bug.json" ]; then
+    ok "t-pf1: --related-feature policy → bug in $POLICY_BUGS_ROOT (not global)"
+    # clean up
+    rm -rf "$POLICY_BUGS_ROOT/$bugname"
+  else
+    ko "t-pf1: rc=$rc bugname=$bugname stderr=$(cat "$TMPROOT/pf1_err")"
+    [ -n "$bugname" ] && rm -rf "$POLICY_BUGS_ROOT/$bugname"
+  fi
+}
+
+# t-pf2: --related-feature nonexistent falls back to global BUG_ROOT with a warning
+t_pf2() {
+  local rc; rc=$(run --related-feature nonexistent --title "pf2 fallback" --severity low --description "fallback test")
+  if [ "$rc" = "0" ] && [ -f "$BUG_ROOT/NONEXISTENT-1/bug.json" ] \
+      && grep -qi "warning" "$TMPROOT/stderr"; then
+    ok "t-pf2: nonexistent feature falls back to global BUG_ROOT with warning"
+  else
+    ko "t-pf2: rc=$rc stderr=$(cat "$TMPROOT/stderr") bug_exists=$([ -f "$BUG_ROOT/NONEXISTENT-1/bug.json" ] && echo yes || echo no)"
+  fi
+}
+
 echo "running file-bug tests against $FILE_BUG"
-t1; t2; t3; t4; t5; t6; t7; t8; t9; t10; t11; t12; t13; t14; t15
+t1; t2; t3; t4; t5; t6; t7; t8; t9; t10; t11; t12; t13; t14; t15; t_pf1; t_pf2
 echo
 echo "summary: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

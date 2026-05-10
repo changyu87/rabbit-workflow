@@ -5,14 +5,14 @@
 set -u
 
 FEATURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REPO_ROOT="$(cd "$FEATURE_DIR/../../../../.." && pwd)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$FEATURE_DIR" rev-parse --show-toplevel 2>/dev/null)}"
 
 FAIL=0
 
-# The dispatch script computes REPO_ROOT as 5 levels up from its scripts/ dir.
-# With structure: FAKE_ROOT/rabbit-run/.claude/features/contract/scripts,
-# 5 ups from scripts = FAKE_ROOT — which is also where the registry lives
-# (FAKE_ROOT/.claude/features/registry.json).
+# The dispatch script computes REPO_ROOT as 4 levels up from its scripts/ dir.
+# With structure: FAKE_REPO/.claude/features/contract/scripts,
+# 4 ups from scripts = FAKE_REPO — which is also where the registry lives
+# (FAKE_REPO/.claude/features/registry.json).
 FAKE_ROOT="$(mktemp -d /tmp/rbt-dispatch-XXXX)"
 FAKE_REPO="$FAKE_ROOT/rabbit-run"
 
@@ -22,12 +22,15 @@ cleanup() {
 trap cleanup EXIT
 
 FAKE_SCRIPTS="$FAKE_REPO/.claude/features/contract/scripts"
+FAKE_POLICY_DIR="$FAKE_REPO/.claude/features/policy"
 python3 -c "
 import os
 for d in [
     '$FAKE_SCRIPTS',
-    '$FAKE_ROOT/.claude/features',
-    '$FAKE_ROOT/.claude/features/auto-refresh/docs/spec',
+    '$FAKE_REPO/.claude/features',
+    '$FAKE_REPO/.claude/features/auto-refresh/docs/spec',
+    '$FAKE_REPO/.claude',
+    '$FAKE_POLICY_DIR',
 ]:
     os.makedirs(d, exist_ok=True)
 "
@@ -37,22 +40,16 @@ cp "$FEATURE_DIR/scripts/policy-block.sh" "$FAKE_SCRIPTS/"
 cp "$FEATURE_DIR/scripts/dispatch-feature-edit.sh" "$FAKE_SCRIPTS/"
 chmod +x "$FAKE_SCRIPTS/policy-block.sh" "$FAKE_SCRIPTS/dispatch-feature-edit.sh"
 
-# policy-block.sh reads philosophy.md and work-guide.md from REPO_ROOT/.claude/
-# REPO_ROOT = FAKE_ROOT (5 ups from scripts)
-[ -f "$REPO_ROOT/.claude/philosophy.md" ] && cp "$REPO_ROOT/.claude/philosophy.md" "$FAKE_ROOT/.claude/"
-[ -f "$REPO_ROOT/.claude/work-guide.md" ]  && cp "$REPO_ROOT/.claude/work-guide.md"  "$FAKE_ROOT/.claude/"
+# policy-block.sh reads policy files from REPO_ROOT/.claude/features/policy/
+# REPO_ROOT = FAKE_REPO (set via RABBIT_ROOT env var)
+REAL_POLICY_DIR="$REPO_ROOT/.claude/features/policy"
+for f in philosophy.md spec-rules.md coding-rules.md workflow-rules.md; do
+  [ -f "$REAL_POLICY_DIR/$f" ] && cp "$REAL_POLICY_DIR/$f" "$FAKE_POLICY_DIR/"
+done
 
-# Verify REPO_ROOT resolves correctly (sanity check).
-RESOLVED="$(cd "$FAKE_SCRIPTS/../../../../.." && pwd)"
-if [ "$RESOLVED" != "$FAKE_ROOT" ]; then
-  echo "SKIP: fake repo depth mismatch (resolved=$RESOLVED want=$FAKE_ROOT)" >&2
-  echo "test-dispatch: SKIP" >&2
-  exit 0
-fi
-
-# Install the test registry at FAKE_ROOT/.claude/features/registry.json.
+# Install the test registry at FAKE_REPO/.claude/features/registry.json.
 # Uses 'root' field as per the intended registry schema.
-cat > "$FAKE_ROOT/.claude/features/registry.json" <<'JSON'
+cat > "$FAKE_REPO/.claude/features/registry.json" <<'JSON'
 {
   "schema_version": "1.0.0",
   "owner": "test",
@@ -70,7 +67,7 @@ cat > "$FAKE_ROOT/.claude/features/registry.json" <<'JSON'
 JSON
 
 STDERR_FILE="$(mktemp /tmp/rbt-stderr-XXXX)"
-STDOUT="$("$FAKE_SCRIPTS/dispatch-feature-edit.sh" auto-refresh "test task description" 2>"$STDERR_FILE")"
+STDOUT="$(RABBIT_ROOT="$FAKE_REPO" "$FAKE_SCRIPTS/dispatch-feature-edit.sh" auto-refresh "test task description" 2>"$STDERR_FILE")"
 ACTUAL_EXIT=$?
 STDERR="$(cat "$STDERR_FILE")"
 rm -f "$STDERR_FILE"
@@ -104,6 +101,29 @@ check_stdout "task-desc" "test task description"
 if echo "$STDERR" | grep -qF "[stub]"; then
   echo "FAIL [no-stub-in-stderr]: stderr contains '[stub]': $STDERR" >&2
   FAIL=1
+fi
+
+# t-rr1: Verify output contains "SCOPE: policy" (registry-found signal) when
+# feature "policy" is registered.  We re-use the FAKE_REPO fixture but add
+# a "policy" entry and call the real-repo dispatch directly against it.
+# Simpler proxy: verify that the invocation we already ran produced
+# "SCOPE: auto-refresh" (registry was found, which requires REPO_ROOT correct).
+if ! echo "$STDOUT" | grep -qF "SCOPE: auto-refresh"; then
+  echo "FAIL [t-rr1]: SCOPE line absent — REPO_ROOT likely wrong (registry not found)" >&2
+  FAIL=1
+else
+  echo "t-rr1: PASS (SCOPE: auto-refresh present — registry resolved correctly)"
+fi
+
+# t-rr2: Verify the script's REPO_ROOT computation: git rev-parse from the
+# scripts dir inside the real repo equals repo root.
+REAL_SCRIPTS_DIR="$REPO_ROOT/.claude/features/contract/scripts"
+COMPUTED_ROOT="$(git -C "$REAL_SCRIPTS_DIR" rev-parse --show-toplevel 2>/dev/null)"
+if [ "$COMPUTED_ROOT" != "$REPO_ROOT" ]; then
+  echo "FAIL [t-rr2]: REPO_ROOT mismatch — got '$COMPUTED_ROOT', want '$REPO_ROOT'" >&2
+  FAIL=1
+else
+  echo "t-rr2: PASS (git rev-parse from scripts resolves to repo root: $COMPUTED_ROOT)"
 fi
 
 if [ $FAIL -ne 0 ]; then

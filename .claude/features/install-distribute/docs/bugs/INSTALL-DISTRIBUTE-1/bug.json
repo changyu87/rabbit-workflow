@@ -1,0 +1,20 @@
+{
+  "name": "INSTALL-DISTRIBUTE-1",
+  "title": "x",
+  "status": "open",
+  "severity": "low",
+  "description": "x",
+  "related_feature": "install-distribute",
+  "filed": "2026-05-10T03:44:13Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-10T03:44:13Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}

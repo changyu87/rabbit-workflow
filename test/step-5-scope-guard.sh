@@ -3,7 +3,7 @@
 # Non-interactive. All assertions are file-content checks.
 set -u
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null)}"
 SCOPE_GUARD="$REPO_ROOT/.claude/hooks/scope-guard.sh"
 SCOPE_GUARD_FJ="$REPO_ROOT/.claude/features/scope-guard/feature.json"
 HARD_RULES_SPEC="$REPO_ROOT/.claude/features/hard-rules/docs/spec/spec.md"

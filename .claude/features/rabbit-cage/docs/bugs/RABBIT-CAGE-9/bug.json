@@ -1,20 +1,26 @@
 {
   "name": "RABBIT-CAGE-9",
   "title": "contract/templates/bug-template.json schema diverges from authoritative bug-filing spec and file-bug.sh output",
-  "status": "open",
+  "status": "closed",
   "severity": "high",
   "description": "The bug-template.json in contract/templates/ declares fields: schema_version, id, feature, title, severity, status, description, reproduction_steps, expected, actual, filed_date. The actual bug.json schema produced by file-bug.sh and defined in bug-filing/docs/spec/spec.md uses: name (not id), filed (not filed_date), filed_by, history array, related_feature, closed, closed_by — and has no schema_version field. The schema.json in contract/schemas/bug.json.schema.json is also inconsistent (requires id and filed_date but file-bug.sh writes name and filed). Any agent that hand-crafts a bug.json from the template produces a file that is incompatible with bug-status.sh and list-bugs.sh, which read .name, .filed, and .history. This caused the previous filing session to create structurally wrong bug.json files.",
   "related_feature": "rabbit-cage",
   "filed": "2026-05-10T03:30:00Z",
   "filed_by": "cyxu",
-  "closed": null,
-  "closed_by": null,
+  "closed": "2026-05-10T03:41:35Z",
+  "closed_by": "cyxu",
   "history": [
     {
       "ts": "2026-05-10T03:30:00Z",
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-10T03:41:35Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "Fixed: rewrote bug-template.json to match actual file-bug.sh output schema"
     }
   ]
 }

@@ -50,7 +50,7 @@ fi
 if [ $# -eq 2 ]; then
   REPO_ROOT="$2"
 else
-  REPO_ROOT="$(cd "$FEATURES_DIR/../.." && pwd)"
+  REPO_ROOT="${RABBIT_ROOT:-$(git -C "$FEATURES_DIR" rev-parse --show-toplevel 2>/dev/null)}"
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then

@@ -1,17 +1,21 @@
 {
-  "template_version": "1.0.0",
-  "schema_version": "1.0.0",
-  "id": "{{bug_id}}",
-  "feature": "{{feature_name}}",
-  "title": "{{title}}",
-  "severity": "{{severity}}",
+  "_template_version": "1.0.0",
+  "name": "FEATURE-N",
+  "title": "Short description of the bug",
   "status": "open",
-  "description": "{{description}}",
-  "reproduction_steps": [
-    "{{step_1}}",
-    "{{step_2}}"
-  ],
-  "expected": "{{expected_behavior}}",
-  "actual": "{{actual_behavior}}",
-  "filed_date": "{{filed_date}}"
+  "severity": "low|medium|high|critical",
+  "description": "Full description of the problem",
+  "related_feature": "feature-name-or-null",
+  "filed": "2026-01-01T00:00:00Z",
+  "filed_by": "actor-name",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-01-01T00:00:00Z",
+      "actor": "actor-name",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
 }
