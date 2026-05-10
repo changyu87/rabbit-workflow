@@ -26,6 +26,8 @@ run_suite test-structure.sh
 run_suite test-symlinks.sh
 run_suite test-claude-md.sh
 run_suite test-obsolete-removed.sh
+run_suite test-backlog-e2e-tdd.sh
+run_suite test-hook-enforcement.sh
 
 if [ "$total_fail" -eq 0 ]; then
     echo "ALL SUITES PASSED"
