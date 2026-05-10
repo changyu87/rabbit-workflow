@@ -88,6 +88,50 @@ else
     fail_t 6 "item.json missing or title does not contain \"E2E\""
 fi
 
+ITEM_002="${CAGE_DIR}/docs/backlog/BACKLOG-002/item.json"
+
+# t7: BACKLOG-002/item.json exists
+if [ -f "${ITEM_002}" ]; then
+    ok 7 "BACKLOG-002/item.json exists"
+else
+    fail_t 7 "BACKLOG-002/item.json does not exist (path: ${ITEM_002})"
+fi
+
+# t8: BACKLOG-002 item.json has priority="medium" and title contains "philosophy"
+if [ -f "${ITEM_002}" ] && python3 - "${ITEM_002}" <<'PYEOF' 2>/dev/null
+import sys, json
+data = json.load(open(sys.argv[1]))
+ok = data.get("priority") == "medium" and "philosophy" in data.get("title", "")
+sys.exit(0 if ok else 1)
+PYEOF
+then
+    ok 8 "BACKLOG-002 item.json has priority=\"medium\" and title contains \"philosophy\""
+else
+    fail_t 8 "BACKLOG-002 item.json missing, priority != \"medium\", or title does not contain \"philosophy\""
+fi
+
+ITEM_003="${CAGE_DIR}/docs/backlog/BACKLOG-003/item.json"
+
+# t9: BACKLOG-003/item.json exists
+if [ -f "${ITEM_003}" ]; then
+    ok 9 "BACKLOG-003/item.json exists"
+else
+    fail_t 9 "BACKLOG-003/item.json does not exist (path: ${ITEM_003})"
+fi
+
+# t10: BACKLOG-003 item.json has priority="low" and title contains "numbering"
+if [ -f "${ITEM_003}" ] && python3 - "${ITEM_003}" <<'PYEOF' 2>/dev/null
+import sys, json
+data = json.load(open(sys.argv[1]))
+ok = data.get("priority") == "low" and "numbering" in data.get("title", "")
+sys.exit(0 if ok else 1)
+PYEOF
+then
+    ok 10 "BACKLOG-003 item.json has priority=\"low\" and title contains \"numbering\""
+else
+    fail_t 10 "BACKLOG-003 item.json missing, priority != \"low\", or title does not contain \"numbering\""
+fi
+
 echo ""
 echo "Results: ${pass} passed, ${fail} failed"
 if [ "${fail}" -gt 0 ]; then

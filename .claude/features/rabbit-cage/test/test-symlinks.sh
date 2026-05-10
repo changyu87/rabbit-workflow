@@ -68,12 +68,11 @@ if [ -L "$CLAUDE_DIR/contract" ] && [ -e "$(readlink -f "$CLAUDE_DIR/contract" 2
 _target="$(readlink "$CLAUDE_DIR/contract" 2>/dev/null || true)"
 if echo "$_target" | grep -q "features/contract"; then ok 13 ".claude/contract target contains 'features/contract'"; else fail_t 13 ".claude/contract target '$_target' does not contain 'features/contract'"; fi
 
-# t14: CLAUDE.md at repo root is a symlink targeting rabbit-cage and resolves
-_target="$(readlink "$REPO_ROOT/CLAUDE.md" 2>/dev/null || true)"
-if [ -L "$REPO_ROOT/CLAUDE.md" ] && echo "$_target" | grep -q "rabbit-cage" && [ -e "$(readlink -f "$REPO_ROOT/CLAUDE.md" 2>/dev/null)" ]; then
-    ok 14 "CLAUDE.md at repo root targets rabbit-cage and resolves"
+# t14: CLAUDE.md at repo root is a regular file (generated, not a symlink) with inline policy
+if [ -f "$REPO_ROOT/CLAUDE.md" ] && [ ! -L "$REPO_ROOT/CLAUDE.md" ] && grep -q 'rabbit-policy-start' "$REPO_ROOT/CLAUDE.md" 2>/dev/null; then
+    ok 14 "CLAUDE.md is a generated regular file containing inline policy"
 else
-    fail_t 14 "CLAUDE.md at repo root target '$_target' does not target rabbit-cage or does not resolve"
+    fail_t 14 "CLAUDE.md is missing, is still a symlink, or lacks rabbit-policy-start marker"
 fi
 
 # t15: README.md at repo root is a symlink targeting rabbit-cage and resolves

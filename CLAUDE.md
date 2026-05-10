@@ -1,1 +1,0 @@
-.claude/features/rabbit-cage/CLAUDE.md

@@ -17,7 +17,23 @@ set -euo pipefail
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
 
-# Parse lines like '@./foo.md' or '@/abs/path.md' from CLAUDE.md
+# Try to read inline policy section between rabbit-policy-start and rabbit-policy-end markers
+INLINE=$(sed -n '/rabbit-policy-start/,/rabbit-policy-end/p' "$CLAUDE_MD" 2>/dev/null | grep -v 'rabbit-policy-start\|rabbit-policy-end' || true)
+
+if [ -n "$INLINE" ]; then
+    # Inline section found: inject it as additionalContext
+    python3 -c "
+import json, sys
+payload = sys.stdin.read()
+print(json.dumps({
+    'additionalContext': payload,
+    'systemMessage': '[rbt] Policy injected at session start (inline section from CLAUDE.md)'
+}))
+" <<< "$INLINE"
+    exit 0
+fi
+
+# Fallback: parse lines like '@./foo.md' or '@/abs/path.md' from CLAUDE.md
 imports=$(grep -oE '^@[^[:space:]]+' "$CLAUDE_MD" | sed 's/^@//' || true)
 
 if [ -z "$imports" ]; then

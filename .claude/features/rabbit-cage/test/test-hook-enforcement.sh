@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # test-hook-enforcement.sh
-# Tests three guarantees for hook enforcement hardening.
+# Tests two guarantees for hook enforcement hardening.
 # R3-compliant: no interactive constructs, prints PASS/FAIL per assertion, exits 1 on any failure.
 #
 # GUARANTEE 1: scope-guard restricts writes to active feature directory subtree
 # GUARANTEE 2: scope-guard blocks writes to a feature in test-green state
-# GUARANTEE 3: Agent PreToolUse hook checks for policy sentinel
 
 set -u
 
@@ -14,7 +13,6 @@ REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2
 SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.sh"
 SETTINGS_JSON="$REPO_ROOT/.claude/features/rabbit-cage/settings.json"
 FEATURE_JSON="$REPO_ROOT/.claude/features/rabbit-cage/feature.json"
-POLICY_HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-policy-check.sh"
 
 pass=0
 fail=0
@@ -141,48 +139,21 @@ else
 fi
 
 echo ""
-echo "=== GUARANTEE 3: Agent PreToolUse hook checks for policy sentinel ==="
+echo "=== CLEANUP: inert Agent hook artifacts removed ==="
 
-# t5: settings.json PreToolUse matcher contains "Agent"
-if grep -q 'Agent' "$SETTINGS_JSON" 2>/dev/null; then
-    ok 5 "settings.json PreToolUse matcher contains 'Agent'"
+# t5: settings.json PreToolUse matcher does NOT contain "Agent" (removed — inert)
+if ! grep -q '"Write|Edit|Bash|Agent"' "$SETTINGS_JSON" 2>/dev/null; then
+    ok 5 "PreToolUse matcher does not contain Agent (inert hook cleaned up)"
 else
-    fail_t 5 "settings.json PreToolUse matcher does NOT contain 'Agent' — hook not registered for Agent calls"
+    fail_t 5 "PreToolUse matcher still contains Agent — inert hook not cleaned up"
 fi
 
-# t6: rbt-policy-check.sh exists
-if [ -f "$POLICY_HOOK" ]; then
-    ok 6 "rbt-policy-check.sh exists at hooks/rbt-policy-check.sh"
+# t6: rbt-policy-check.sh does NOT exist (removed — inert)
+POLICY_HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-policy-check.sh"
+if [ ! -f "$POLICY_HOOK" ]; then
+    ok 6 "rbt-policy-check.sh does not exist (inert hook removed)"
 else
-    fail_t 6 "rbt-policy-check.sh does NOT exist at $POLICY_HOOK"
-fi
-
-# t7: rbt-policy-check.sh exits 2 when Agent prompt lacks RABBIT-POLICY-BLOCK-v1
-if [ -f "$POLICY_HOOK" ]; then
-    t7_exit=0
-    echo '{"tool_name":"Agent","tool_input":{"prompt":"do something without policy"}}' \
-        | bash "$POLICY_HOOK" > /dev/null 2>&1 || t7_exit=$?
-    if [ "$t7_exit" -eq 2 ]; then
-        ok 7 "rbt-policy-check.sh exits 2 when prompt lacks RABBIT-POLICY-BLOCK-v1"
-    else
-        fail_t 7 "rbt-policy-check.sh exited $t7_exit (expected 2) for prompt without sentinel"
-    fi
-else
-    fail_t 7 "rbt-policy-check.sh does not exist — skipping execution test"
-fi
-
-# t8: rbt-policy-check.sh exits 0 when Agent prompt contains RABBIT-POLICY-BLOCK-v1
-if [ -f "$POLICY_HOOK" ]; then
-    t8_exit=0
-    echo '{"tool_name":"Agent","tool_input":{"prompt":"RABBIT-POLICY-BLOCK-v1\ndo something"}}' \
-        | bash "$POLICY_HOOK" > /dev/null 2>&1 || t8_exit=$?
-    if [ "$t8_exit" -eq 0 ]; then
-        ok 8 "rbt-policy-check.sh exits 0 when prompt contains RABBIT-POLICY-BLOCK-v1"
-    else
-        fail_t 8 "rbt-policy-check.sh exited $t8_exit (expected 0) for prompt with sentinel"
-    fi
-else
-    fail_t 8 "rbt-policy-check.sh does not exist — skipping execution test"
+    fail_t 6 "rbt-policy-check.sh still exists — inert hook not cleaned up"
 fi
 
 echo ""

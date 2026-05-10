@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# rbt-sync-check.sh — Stop hook: detect policy drift in CLAUDE.md and regenerate.
+#
+# Fires on Stop event. Compares the inline policy section of CLAUDE.md against
+# the current policy source files. If drift detected: regenerates CLAUDE.md,
+# emits additionalContext with the refreshed policy, and alerts the user.
+#
+# Counter-gated: only checks every RBT_SYNC_EVERY stops (default 1).
+# Override in .claude/settings.local.json: {"env": {"RBT_SYNC_EVERY": "5"}}
+#
+# Version: 1.0.0
+# Owner: rabbit-workflow team (rabbit-cage)
+# Deprecation criterion: when Claude Code natively resolves @-imports for subagents.
+
+set -euo pipefail
+
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
+CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
+GENERATE_SCRIPT="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+COUNTER_FILE="$REPO_ROOT/.rbt-sync-counter"
+THRESHOLD="${RBT_SYNC_EVERY:-1}"
+
+# Initialize counter
+[ -f "$COUNTER_FILE" ] || echo 0 > "$COUNTER_FILE"
+count=$(cat "$COUNTER_FILE")
+count=$((count + 1))
+if [ "$count" -lt "$THRESHOLD" ]; then
+  echo "$count" > "$COUNTER_FILE"
+  exit 0
+fi
+echo 0 > "$COUNTER_FILE"
+
+# Generate expected content
+EXPECTED="$(bash "$GENERATE_SCRIPT" 2>/dev/null)" || exit 0
+
+# If CLAUDE.md does not exist or differs from expected: regenerate
+if [ ! -f "$CLAUDE_MD" ] || [ "$(cat "$CLAUDE_MD")" != "$EXPECTED" ]; then
+  printf '%s\n' "$EXPECTED" > "$CLAUDE_MD"
+  POLICY_SECTION="$(printf '%s\n' "$EXPECTED" | sed -n '/rabbit-policy-start/,/rabbit-policy-end/p')"
+  python3 -c "
+import json, sys
+payload = sys.stdin.read()
+print(json.dumps({
+    'additionalContext': payload,
+    'systemMessage': '[rbt] Policy drift detected — CLAUDE.md regenerated from source files'
+}))
+" <<< "$POLICY_SECTION"
+fi
+exit 0
