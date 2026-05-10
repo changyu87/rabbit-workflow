@@ -104,7 +104,7 @@ done
 
 cat <<'EOF'
 ═══════════════════════════════════════════════════════════════════════════════
-END POLICY — proceed with your task. Honor the above in every action.
+END POLICY — internalize the above, then proceed. Every action must reflect it.
 ═══════════════════════════════════════════════════════════════════════════════
 EOF
 

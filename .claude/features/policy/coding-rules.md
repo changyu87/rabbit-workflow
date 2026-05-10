@@ -85,7 +85,7 @@ work") require constant clarification.
 For any task that involves writing or modifying implementation artifacts
 (code, specs, tests, config), the main session MUST dispatch a subagent:
 
-- Bug triage → dispatch `rabbit-vet`; write `vet-triage.json` from its output.
+- Bug triage → run `rabbit-triage.sh <feature-dir> <bug-name>`, invoke Agent with the resulting prompt, capture the TRIAGE: block, and write `vet-triage.json`.
 - Code fix or feature → dispatch `rabbit-breeder` with the appropriate
   `SCOPE` path (per R6). Touch the scope marker before dispatch; remove after.
 - The main session reads, decides, dispatches, verifies. It does not edit.

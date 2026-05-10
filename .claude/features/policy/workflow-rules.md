@@ -41,7 +41,7 @@ The rules below are operational add-ons enforced by deterministic checks shipped
 
 - **R4 — TDD step transitions go through `tdd-step.sh`.** Manual edits to
   `feature.json:tdd_state` bypass the forward-only gate and the drift
-  check. Documented policy enforced by the `breeder` subagent and PR review.
+  check. Enforcement: dispatcher discipline (no scoped agent may skip `tdd-step.sh`) + PR review.
 
 - **R5 — Unified work model: features live anywhere, same discipline
   applies.** A feature directory is a feature directory regardless of
@@ -53,15 +53,16 @@ The rules below are operational add-ons enforced by deterministic checks shipped
 - **R6 — Every Agent dispatch prepends the canonical policy block.**
   Universal: rabbit's own subagents AND Claude's built-in subagents.
   The block is produced by
-  `.claude/features/subagent-policy-injection/scripts/policy-block.sh`
+  `.claude/features/contract/scripts/policy-block.sh`
   (with optional `--include <path>` flags for dispatch-relevant rule
   files) and prepended to the `prompt` field of every Agent call. This
   closes the subagent drift gap at invocation start. Dispatcher
   discipline + PR review (no Agent-tool hook in Claude Code).
 
 - **R7 — Vet before close; main session never skips.** Before closing any
-  bug, main session dispatches `rabbit-vet`, receives a `TRIAGE:` block,
-  and writes `vet-triage.json`. Only scoped agents may use `--skip-vet-reason`.
+  bug, main session runs `rabbit-triage.sh <feature-dir> <bug-name>` to build
+  a triage prompt, invokes Agent with it, captures the TRIAGE: block, and
+  writes `vet-triage.json`. Only scoped agents may use `--skip-vet-reason`.
   Enforcement: `bug-status.sh` gate + PR review.
 
 - **R8 — Every feature touch runs full TDD.** Any scope, any size. Enforcement: scope-guard v2 denies writes without an active scope marker; `tdd-step.sh` gates all state transitions.
