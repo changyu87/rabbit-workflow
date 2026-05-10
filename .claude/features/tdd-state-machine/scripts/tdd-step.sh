@@ -119,6 +119,24 @@ case "$cmd" in
               echo "WARNING: naming check failed for $dir" >&2
             }
           fi
+          # Check 4: imports and feature paths resolve
+          if [ -f "$ENFORCEMENT_DIR/check-imports-resolve.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-imports-resolve.sh" "$dir" >/dev/null 2>&1 || {
+              echo "WARNING: R-import-resolve check failed for $dir" >&2
+            }
+          fi
+          # Check 5: symlinks under .claude/ resolve
+          if [ -f "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" "$REPO_ROOT" >/dev/null 2>&1 || {
+              echo "WARNING: symlink-resolve check failed" >&2
+            }
+          fi
+          # Check 6: template-schema-producer consistency
+          if [ -f "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" >/dev/null 2>&1 || {
+              echo "WARNING: template-schema-producer consistency check failed" >&2
+            }
+          fi
         fi
         FEATURES_DIR="$(dirname "$dir")"
         REBUILD_SH="$REPO_ROOT/.claude/features/contract/scripts/rebuild-registry.sh"
@@ -159,6 +177,24 @@ case "$cmd" in
           if [ -f "$ENFORCEMENT_DIR/check-naming.sh" ]; then
             bash "$ENFORCEMENT_DIR/check-naming.sh" "$dir" >/dev/null 2>&1 || {
               echo "WARNING: naming check failed for $dir" >&2
+            }
+          fi
+          # Check 4: imports and feature paths resolve
+          if [ -f "$ENFORCEMENT_DIR/check-imports-resolve.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-imports-resolve.sh" "$dir" >/dev/null 2>&1 || {
+              echo "WARNING: R-import-resolve check failed for $dir" >&2
+            }
+          fi
+          # Check 5: symlinks under .claude/ resolve
+          if [ -f "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" "$REPO_ROOT" >/dev/null 2>&1 || {
+              echo "WARNING: symlink-resolve check failed" >&2
+            }
+          fi
+          # Check 6: template-schema-producer consistency
+          if [ -f "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" >/dev/null 2>&1 || {
+              echo "WARNING: template-schema-producer consistency check failed" >&2
             }
           fi
         fi

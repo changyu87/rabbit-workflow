@@ -15,6 +15,7 @@ run_test() {
 run_test "test-files-exist.sh"
 run_test "test-workflow-rules-sections.sh"
 run_test "test-rule-files-content.sh"
+run_test "test-imports-resolve.sh"
 
 echo ""
 echo "All tests passed."

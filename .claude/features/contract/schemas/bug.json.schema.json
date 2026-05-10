@@ -1,57 +1,60 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "bug.json.schema.json",
   "title": "Bug Filing Schema",
   "description": "Validates bug filing JSON files for rabbit-workflow features.",
   "type": "object",
-  "required": ["schema_version", "id", "feature", "title", "severity", "status", "description", "filed_date"],
+  "required": ["name", "title", "status", "severity", "description", "filed_by"],
   "additionalProperties": true,
   "properties": {
-    "schema_version": {
-      "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
-    },
-    "id": {
+    "name": {
       "type": "string",
       "minLength": 1,
-      "description": "Unique bug identifier."
-    },
-    "feature": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Feature name this bug belongs to."
+      "description": "Unique bug identifier (e.g. RABBIT-CAGE-1)."
     },
     "title": {
       "type": "string",
       "minLength": 1,
       "description": "Short descriptive title for the bug."
     },
-    "severity": {
-      "type": "string",
-      "enum": ["critical", "high", "medium", "low"]
-    },
     "status": {
       "type": "string",
-      "enum": ["open", "closed"]
+      "enum": ["open", "closed", "reopened", "in_progress", "in_triage"]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
     },
     "description": {
       "type": "string",
       "minLength": 1
     },
-    "reproduction_steps": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "expected": {
-      "type": "string"
-    },
-    "actual": {
-      "type": "string"
-    },
-    "filed_date": {
+    "filed_by": {
       "type": "string",
       "minLength": 1,
-      "description": "ISO 8601 date string."
+      "description": "Actor who filed the bug."
+    },
+    "related_feature": {
+      "type": ["string", "null"],
+      "description": "Feature name this bug belongs to, or null."
+    },
+    "filed": {
+      "type": ["string", "null"],
+      "description": "ISO 8601 timestamp when the bug was filed."
+    },
+    "closed": {
+      "type": ["string", "null"],
+      "description": "ISO 8601 timestamp when the bug was closed, or null."
+    },
+    "closed_by": {
+      "type": ["string", "null"],
+      "description": "Actor who closed the bug, or null."
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Audit trail of status transitions."
     }
   }
 }

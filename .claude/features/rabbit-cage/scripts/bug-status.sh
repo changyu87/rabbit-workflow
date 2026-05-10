@@ -84,6 +84,11 @@ case "$cmd" in
     fi
 
     TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    # Warn when closing without tdd-gap.json
+    if [ "$new" = "closed" ] && [ ! -f "$dir/tdd-gap.json" ]; then
+      echo "WARNING: closing bug without tdd-gap.json — did you reflect on the test gap?" >&2
+    fi
+
     case "$new" in
       closed)
         jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$note" \
