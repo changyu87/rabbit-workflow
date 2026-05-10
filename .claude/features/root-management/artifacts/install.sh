@@ -64,7 +64,9 @@ cp "$SRC/CLAUDE.md" "$TARGET/CLAUDE.md"
 # Always strip runtime-only and OS-level artifacts.
 rm -f "$TARGET/.claude/settings.local.json"
 rm -f "$TARGET/.claude/".nfs*
-chmod +x "$TARGET/.claude/hooks/"*.sh 2>/dev/null || true
+
+# Wire symlinks declared in each feature's surface block.
+bash "$TARGET/.claude/features/contract/scripts/relink.sh" "$TARGET/.claude/features" "$TARGET"
 
 if [[ $ALL -eq 1 ]]; then
     # Bring extra inspection material along.

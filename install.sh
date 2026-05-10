@@ -1,1 +1,1 @@
-.claude/features/root-management/artifacts/install.sh
+/home/cyxu/workflow-dev/rabbit-run/.claude/features/root-management/artifacts/install.sh

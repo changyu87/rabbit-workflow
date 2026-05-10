@@ -1,27 +1,15 @@
 {
   "name": "policy-enforcement",
   "version": "1.0.0",
-  "owner": {
-    "primary": "rabbit-workflow team",
-    "contact": "https://github.com/changyu87/rabbit-workflow/issues"
-  },
-  "status": "active",
+  "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "deprecation": {
-    "criterion": "When the philosophy + work-guide model is replaced by a different governance approach (e.g. embedded policy in a dedicated harness, or external compliance tooling). Until then, this feature owns the policy anchor.",
-    "successor": null
+  "summary": "Owns the policy anchor documents (philosophy.md and work-guide.md) that govern every agent in the rabbit workflow.",
+  "surface": {
+    "hooks":    [],
+    "commands": [],
+    "agents":   [],
+    "skills":   []
   },
-  "contract": {
-    "reads": [
-      ".claude/philosophy.md",
-      ".claude/work-guide.md",
-      "CLAUDE.md"
-    ],
-    "writes": [],
-    "invokes": [
-      "grep, wc (standard utilities)"
-    ]
-  },
-  "created": "2026-05-08",
-  "updated": "2026-05-08"
+  "bugs_root": ".claude/features/policy-enforcement/docs/bugs",
+  "deprecation_criterion": "When the philosophy + work-guide model is replaced by a different governance approach (e.g. embedded policy in a dedicated harness, or external compliance tooling)."
 }

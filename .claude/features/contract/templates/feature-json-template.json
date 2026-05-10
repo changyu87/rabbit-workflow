@@ -1,0 +1,16 @@
+{
+  "template_version": "1.0.0",
+  "name": "{{feature_name}}",
+  "version": "{{version}}",
+  "owner": "{{owner}}",
+  "tdd_state": "spec",
+  "summary": "{{summary}}",
+  "surface": {
+    "hooks": [],
+    "commands": [],
+    "agents": [],
+    "skills": []
+  },
+  "bugs_root": "{{bugs_root}}",
+  "deprecation_criterion": "{{deprecation_criterion}}"
+}

@@ -1,12 +1,3 @@
-# Vim swap files
+.rabbit-scope-active
 *.swp
-*.swo
-.*.swp
-.*.swo
-
-# NFS open-file artifacts
 .nfs*
-
-# Rabbit Workflow runtime state
-.rbt-prompt-counter
-.claude/settings.local.json

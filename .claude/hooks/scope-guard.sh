@@ -1,28 +1,20 @@
 #!/bin/bash
-# scope-guard.sh — PreToolUse hook that enforces breeder/vet scope discipline.
+# scope-guard.sh v2.0.0 — PreToolUse hook enforcing repo-wide default-deny.
 #
-# Reads the standard PreToolUse JSON on stdin. For Write/Edit, extracts
-# tool_input.file_path. For Bash, parses the command for write targets via
-# simple heuristics (redirections, cp/mv/tee/sed -i, rm/touch). Each target
-# is checked: if it lives inside a feature directory (any ancestor contains
-# feature.json) AND no ancestor of the target contains the
-# .rabbit-scope-active marker, the call is denied (exit 2). Targets outside
-# any feature directory are allowed unconditionally.
+# Any write inside the repo root is denied unless:
+#   (a) the target basename is settings.json or settings.local.json, or
+#   (b) a .rabbit-scope-active marker exists in some ancestor of the target.
 #
-# Exempt: writes to or removals of the .rabbit-scope-active marker file
-# itself (chicken-and-egg — the dispatcher needs to create/remove it).
+# Writes outside the repo root are unrestricted.
+# The .rabbit-scope-active marker file itself is always exempt.
 #
-# Exit:
-#   0 allow (no in-scope check needed, or in-scope check passed)
-#   2 deny (out-of-scope write inside a feature directory; reason on stderr)
-#
-# This hook is the active enforcement of the unified work model. The
-# dispatcher (typically the main session) protocol:
-#   touch <SCOPE>/.rabbit-scope-active
-#   Agent({ subagent_type: "rabbit-breeder", prompt: "SCOPE: <SCOPE>; ..." })
-#   rm    <SCOPE>/.rabbit-scope-active
+# Version: 2.0.0
+# Owner: rabbit-workflow team (scope-guard feature)
+# Deprecation criterion: when Claude Code exposes per-feature write boundaries natively.
 
 set -u
+
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null || echo "")"
 
 INPUT="$(cat)"
 TOOL_NAME="$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null)"
@@ -56,30 +48,39 @@ walk_up_find() {
 decide() {
   local target="$1"
   local abs; abs="$(abspath "$target")"
-  # Resolve symlinks so a symlink into a feature dir is caught by walk_up_find.
+  # Resolve symlinks so a symlink into a protected area is caught.
   if [ -L "$abs" ]; then
     abs="$(readlink -f "$abs" 2>/dev/null || realpath "$abs" 2>/dev/null || echo "$abs")"
   fi
   local base; base="$(basename "$abs")"
 
+  # 1. Outside the repo entirely -> always allow
+  if [ -z "$REPO_ROOT" ] || [ "${abs#"$REPO_ROOT/"}" = "$abs" ]; then
+    echo "ALLOW (outside repo root)"
+    return 0
+  fi
+
+  # 2. Marker file itself is always exempt
   if [ "$base" = ".rabbit-scope-active" ]; then
     echo "ALLOW (marker file is exempt)"
     return 0
   fi
 
+  # 3. Allowlisted filenames -> always allow
+  if [ "$base" = "settings.json" ] || [ "$base" = "settings.local.json" ] || [ "$base" = ".gitignore" ]; then
+    echo "ALLOW (allowlisted filename)"
+    return 0
+  fi
+
+  # 4. Active scope marker anywhere in ancestor chain -> allow
   if walk_up_find "$abs" ".rabbit-scope-active" >/dev/null; then
     echo "ALLOW (under active scope)"
     return 0
   fi
 
-  local feat_dir
-  if feat_dir="$(walk_up_find "$abs" "feature.json")"; then
-    echo "DENY '$abs' is inside feature dir '$feat_dir' but no .rabbit-scope-active marker found in any ancestor (dispatcher must touch the marker before Agent call)"
-    return 1
-  fi
-
-  echo "ALLOW (not under any feature directory)"
-  return 0
+  # 5. Default deny
+  echo "DENY write to '$abs' denied: no active scope marker and file is not on the allowlist (settings.json, settings.local.json). Dispatcher must touch .rabbit-scope-active before calling Agent."
+  return 1
 }
 
 # Extract write targets from a Bash command string. Conservative.

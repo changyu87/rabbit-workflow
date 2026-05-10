@@ -79,17 +79,19 @@ rc=$(env FEATURES_ROOT="$TMPROOT/r5" "$SWEEP" --validator "$STUB" 2>"$TMPROOT/er
   && ok "v5: \$FEATURES_ROOT env honored" \
   || ko "v5: rc=$rc out=$(cat "$TMPROOT/out") err=$(cat "$TMPROOT/err")"
 
-# v6: validate-feature.sh from feature-skeleton autodetected if --validator omitted
-# This branch doesn't have feature-skeleton (it's on a separate PR), so we expect:
-# - autodetect fails -> exit 2 with clear "validator not found" error
-# Or after merge: autodetect succeeds and runs against fixtures.
-rc=$("$SWEEP" "$TMPROOT/r2" 2>"$TMPROOT/err" >"$TMPROOT/out"; echo $?)
+# v6: validate-feature.sh from feature-skeleton autodetected if --validator omitted.
+# Scaffold real features via new-feature.sh so the real validator passes them.
+SCAFFOLD="$FEATURE_DIR/scripts/new-feature.sh"
+mkdir -p "$TMPROOT/r6"
+"$SCAFFOLD" "$TMPROOT/r6" "feat-alpha" >/dev/null 2>&1
+"$SCAFFOLD" "$TMPROOT/r6" "feat-beta"  >/dev/null 2>&1
+rc=$("$SWEEP" "$TMPROOT/r6" 2>"$TMPROOT/err" >"$TMPROOT/out"; echo $?)
 if [ "$rc" = "0" ]; then
-  ok "v6: autodetected feature-skeleton validator works (post-merge case)"
+  ok "v6: autodetected feature-skeleton validator passes freshly scaffolded features"
 elif [ "$rc" = "2" ] && grep -qi "validate-feature\|validator" "$TMPROOT/err"; then
   ok "v6: missing validator reported clearly with rc=2"
 else
-  ko "v6: rc=$rc err=$(cat "$TMPROOT/err")"
+  ko "v6: rc=$rc out=$(cat "$TMPROOT/out") err=$(cat "$TMPROOT/err")"
 fi
 
 echo

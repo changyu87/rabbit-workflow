@@ -1,0 +1,16 @@
+{
+  "name": "policy",
+  "version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "tdd_state": "test-green",
+  "summary": "Canonical rule files fed to subagents; split of work-guide.md and philosophy.md.",
+  "surface": {
+    "hooks": [],
+    "commands": [],
+    "agents": [],
+    "skills": []
+  },
+  "bugs_root": ".claude/features/policy/docs/bugs",
+  "deprecation_criterion": "when Claude Code exposes a native subagent-policy injection point",
+  "updated": "2026-05-09"
+}

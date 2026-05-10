@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "feature.json.schema.json",
+  "title": "Feature JSON Schema",
+  "description": "Validates feature.json files for rabbit-workflow features.",
+  "type": "object",
+  "required": ["name", "version", "owner", "tdd_state", "summary", "surface", "bugs_root", "deprecation_criterion"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique feature name (kebab-case)."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version string (MAJOR.MINOR.PATCH)."
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Named individual or team accountable for this feature."
+    },
+    "tdd_state": {
+      "type": "string",
+      "enum": ["spec", "test-red", "impl", "test-green", "review"],
+      "description": "Current TDD state."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-line summary of what this feature does."
+    },
+    "surface": {
+      "type": "object",
+      "required": ["hooks", "commands", "agents", "skills"],
+      "additionalProperties": false,
+      "properties": {
+        "hooks": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "commands": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "agents": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "skills": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "bugs_root": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path to the directory holding bug filings for this feature."
+    },
+    "deprecation_criterion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The condition under which this feature will be superseded."
+    }
+  }
+}

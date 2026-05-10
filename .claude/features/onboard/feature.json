@@ -1,0 +1,15 @@
+{
+  "name": "onboard",
+  "version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "tdd_state": "test-green",
+  "summary": "Scaffold and maintain project-{name}/ directories and their maps.",
+  "surface": {
+    "hooks": [],
+    "commands": [".claude/commands/rabbit-project.md"],
+    "agents": [],
+    "skills": []
+  },
+  "bugs_root": ".claude/features/onboard/docs/bugs",
+  "deprecation_criterion": "when project scaffolding is offered by a native Claude Code mechanism"
+}

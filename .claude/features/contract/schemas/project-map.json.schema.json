@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "project-map.json.schema.json",
+  "title": "Project Map Schema",
+  "description": "Validates project-map.json files for rabbit-workflow projects.",
+  "type": "object",
+  "required": ["schema_version", "name", "path", "source_map"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Project name."
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absolute path to the source root."
+    },
+    "source_map": {
+      "type": "object",
+      "description": "Map of logical name to source path (strings).",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  }
+}
