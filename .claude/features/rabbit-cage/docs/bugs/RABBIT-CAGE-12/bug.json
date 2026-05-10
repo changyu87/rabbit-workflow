@@ -1,20 +1,26 @@
 {
   "name": "RABBIT-CAGE-12",
   "title": "rbt-sync-check.sh: additionalContext from Stop hook not injected — only systemMessage processed",
-  "status": "open",
+  "status": "closed",
   "severity": "high",
   "description": "When rbt-sync-check.sh detects CLAUDE.md drift, it emits JSON with both additionalContext (the refreshed policy section) and systemMessage. Claude Code processes the systemMessage (alert appears: '[rbt] Policy drift detected') but silently drops the additionalContext for Stop hooks. The refreshed policy is never injected into the running session's context. The user must start a new session to pick up the regenerated CLAUDE.md. Expected: additionalContext from Stop hooks is prepended to the next user turn's context, giving immediate policy refresh. Actual: only systemMessage works for Stop hooks; additionalContext is not supported at this hook event type. Verified in rabbit-sprint: drift alert appeared, context was not refreshed, session continued with stale policy knowledge.",
   "related_feature": "rabbit-cage",
   "filed": "2026-05-10T15:50:46Z",
   "filed_by": "cyxu",
-  "closed": null,
-  "closed_by": null,
+  "closed": "2026-05-10T16:02:58Z",
+  "closed_by": "cyxu",
   "history": [
     {
       "ts": "2026-05-10T15:50:46Z",
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-10T16:02:58Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "[skip-vet: vet-triage.json written by main session triage agent] "
     }
   ]
 }
