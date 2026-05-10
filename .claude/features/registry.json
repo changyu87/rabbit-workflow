@@ -6,7 +6,7 @@
       "name": "tdd-state-machine",
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
+      "tdd_state": "review",
       "summary": "Hardens TDD discipline by defining tdd_state transitions, drift detection, and the context block for spawned subagents.",
       "path": ".claude/features/tdd-state-machine"
     },
@@ -14,7 +14,7 @@
       "name": "contract",
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
+      "tdd_state": "review",
       "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R7, naming-convention).",
       "path": ".claude/features/contract"
     },
@@ -22,7 +22,7 @@
       "name": "policy",
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
+      "tdd_state": "review",
       "summary": "Canonical rule files fed to subagents; split of work-guide.md and philosophy.md.",
       "path": ".claude/features/policy"
     },

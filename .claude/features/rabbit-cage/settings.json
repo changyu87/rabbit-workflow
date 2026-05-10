@@ -10,6 +10,10 @@
           {
             "type": "command",
             "command": "echo 0 > .rbt-prompt-counter"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/rbt-session-init.sh"
           }
         ]
       }

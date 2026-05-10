@@ -2,11 +2,12 @@
   "name": "rabbit-cage",
   "version": "2.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "review",
+  "tdd_state": "test-green",
   "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, scripts for bug-filing, scaffolding, project management, and installation.",
   "surface": {
     "hooks": [
       ".claude/hooks/rbt-refresh.sh",
+      ".claude/hooks/rbt-session-init.sh",
       ".claude/hooks/scope-guard.sh"
     ],
     "commands": [
@@ -15,7 +16,10 @@
       ".claude/commands/rabbit-project.md"
     ],
     "agents": [],
-    "skills": [],
+    "skills": [
+      "rabbit-feature-touch",
+      "rabbit-workspace"
+    ],
     "root": [
       "CLAUDE.md",
       "README.md",

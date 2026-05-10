@@ -1,0 +1,26 @@
+{
+  "name": "RABBIT-CAGE-10",
+  "title": "@-imported policy files in CLAUDE.md are not expanded into session context at startup",
+  "status": "closed",
+  "severity": "high",
+  "description": "CLAUDE.md lists four @-import directives (@./.claude/policy/philosophy.md, spec-rules.md, coding-rules.md, workflow-rules.md). Claude Code does not expand these at session startup — the system-reminder only injects the raw CLAUDE.md text with literal @./path references. The policy file contents are never loaded. As a result, Claude must manually Read each policy file to answer workflow questions; the intended 'internalized at startup' behavior is absent. Per spec invariant 11, CLAUDE.md must contain @-imports sourcing files from .claude/policy/ — the implicit contract is that this mechanism loads the files into context. Actual: @-imports appear as inert text; policy is not in context without manual intervention. Expected: philosophy, spec-rules, coding-rules, and workflow-rules are in context from first token of every session.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-10T06:21:54Z",
+  "filed_by": "cyxu",
+  "closed": "2026-05-10T06:45:51Z",
+  "closed_by": "cyxu",
+  "history": [
+    {
+      "ts": "2026-05-10T06:21:54Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-10T06:45:51Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "[skip-vet: vet-triage.json written by main session; fix verified: rbt-session-init.sh deployed, wired, test-green] "
+    }
+  ]
+}
