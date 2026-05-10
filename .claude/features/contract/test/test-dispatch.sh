@@ -48,7 +48,7 @@ for f in philosophy.md spec-rules.md coding-rules.md workflow-rules.md; do
 done
 
 # Install the test registry at FAKE_REPO/.claude/features/registry.json.
-# Uses 'root' field as per the intended registry schema.
+# Uses 'path' field as per the current registry schema.
 cat > "$FAKE_REPO/.claude/features/registry.json" <<'JSON'
 {
   "schema_version": "1.0.0",
@@ -60,7 +60,7 @@ cat > "$FAKE_REPO/.claude/features/registry.json" <<'JSON'
       "owner": "test",
       "tdd_state": "test-green",
       "summary": "Test entry for dispatch test.",
-      "root": ".claude/features/auto-refresh"
+      "path": ".claude/features/auto-refresh"
     }
   }
 }

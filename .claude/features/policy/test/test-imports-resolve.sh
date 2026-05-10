@@ -8,8 +8,10 @@ ok() { echo "  ok   $*"; PASS=$((PASS+1)); }
 ko() { echo "  FAIL $*"; FAIL=$((FAIL+1)); }
 
 # Find all CLAUDE.md files
-while IFS= read -r claude_md; do
-  while IFS= read -r import_path; do
+mapfile -t claude_mds < <(find "$REPO_ROOT" -name "CLAUDE.md" -not -path "*/archive/*" -not -path "*/.git/*")
+for claude_md in "${claude_mds[@]}"; do
+  mapfile -t import_paths < <(grep -oE '^@\./[^[:space:]]+' "$claude_md" 2>/dev/null || true)
+  for import_path in "${import_paths[@]}"; do
     # Strip leading @./
     resolved="${import_path#@./}"
     full="$REPO_ROOT/$resolved"
@@ -18,8 +20,8 @@ while IFS= read -r claude_md; do
     else
       ko "$claude_md: $resolved DOES NOT EXIST"
     fi
-  done < <(grep -oE '^@\./[^[:space:]]+' "$claude_md" 2>/dev/null || true)
-done < <(find "$REPO_ROOT" -name "CLAUDE.md" -not -path "*/archive/*" -not -path "*/.git/*")
+  done
+done
 
 echo ""
 echo "summary: $PASS passed, $FAIL failed"

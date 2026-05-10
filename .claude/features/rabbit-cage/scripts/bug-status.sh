@@ -28,7 +28,7 @@ usage() {
   cat >&2 <<EOF
 usage:
   bug-status.sh get <bug-dir>
-  bug-status.sh set <bug-dir> <new-status> --note <reason>
+  bug-status.sh set <bug-dir> <new-status> --note <reason> [--skip-vet-reason <reason>]
 EOF
 }
 
@@ -42,12 +42,13 @@ case "$cmd" in
     jq -r '.status' "$dir/bug.json"
     ;;
   set)
-    dir="${1:-}"; new="${2:-}"; note=""; actor="${USER:-unknown}"
+    dir="${1:-}"; new="${2:-}"; note=""; actor="${USER:-unknown}"; skip_vet_reason=""
     shift 2 2>/dev/null || true
     while [ $# -gt 0 ]; do
       case "$1" in
-        --note)  note="$2"; shift 2 ;;
-        --actor) actor="$2"; shift 2 ;;
+        --note)            note="$2"; shift 2 ;;
+        --actor)           actor="$2"; shift 2 ;;
+        --skip-vet-reason) skip_vet_reason="$2"; shift 2 ;;
         *) echo "unknown arg: $1" >&2; exit 2 ;;
       esac
     done
@@ -84,9 +85,15 @@ case "$cmd" in
     fi
 
     TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    # Warn when closing without tdd-gap.json
-    if [ "$new" = "closed" ] && [ ! -f "$dir/tdd-gap.json" ]; then
-      echo "WARNING: closing bug without tdd-gap.json — did you reflect on the test gap?" >&2
+    # R7: block close without vet artifact unless --skip-vet-reason is given
+    if [ "$new" = "closed" ]; then
+      if [ -n "$skip_vet_reason" ]; then
+        # Record the skip reason as a history note before closing
+        note="[skip-vet: $skip_vet_reason] $note"
+      elif [ ! -f "$dir/vet-triage.json" ] && [ ! -f "$dir/tdd-gap.json" ]; then
+        echo "ERROR (R7): cannot close bug without vet-triage.json or tdd-gap.json. Run rabbit-triage.sh first, or pass --skip-vet-reason <reason>." >&2
+        exit 1
+      fi
     fi
 
     case "$new" in

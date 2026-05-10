@@ -58,7 +58,7 @@ features = reg.get('features', {})
 entry = features.get('$FEATURE_NAME')
 if not entry:
     sys.exit(1)
-print(entry.get('root', ''))
+print(entry.get('path', ''))
 " 2>/dev/null)"
   PY_EXIT=$?
   if [ $PY_EXIT -ne 0 ] || [ -z "$FEATURE_PATH" ]; then
@@ -66,7 +66,7 @@ print(entry.get('root', ''))
     exit 1
   fi
 elif command -v jq >/dev/null 2>&1; then
-  FEATURE_PATH="$(jq -r ".features[\"$FEATURE_NAME\"].root // empty" "$REGISTRY" 2>/dev/null)"
+  FEATURE_PATH="$(jq -r ".features[\"$FEATURE_NAME\"].path // empty" "$REGISTRY" 2>/dev/null)"
   if [ -z "$FEATURE_PATH" ]; then
     echo "ERROR: feature '$FEATURE_NAME' not found in registry: $REGISTRY" >&2
     exit 1
@@ -117,6 +117,17 @@ TDDBLOCK
 )"
 fi
 
+# Detect if this is a project feature (lives under project-*/features/).
+PROJECT_CONTRACT=""
+case "$FEATURE_PATH" in
+  project-*/features/*)
+    PROJECT_ROOT="$(echo "$FEATURE_PATH" | sed 's|/features/.*||')"
+    if [ -d "$REPO_ROOT/$PROJECT_ROOT/contract" ]; then
+      PROJECT_CONTRACT="$REPO_ROOT/$PROJECT_ROOT/contract"
+    fi
+    ;;
+esac
+
 SCOPE_MARKER="$REPO_ROOT/.rabbit-scope-active"
 
 # Set scope marker; remove it in a trap.
@@ -126,8 +137,8 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Build policy block.
-POLICY_BLOCK="$("$SCRIPT_DIR/policy-block.sh")"
+# Build policy block (strip leading sentinel line — template emits it as line 1).
+POLICY_BLOCK="$("$SCRIPT_DIR/policy-block.sh" | sed '1s/^RABBIT-POLICY-BLOCK-v1$//')"
 
 # Load feature spec and contract if available.
 FEATURE_DIR="$REPO_ROOT/$FEATURE_PATH"
@@ -144,6 +155,12 @@ if [ -f "$CONTRACT_PATH" ]; then
   FEATURE_CONTRACT="$(cat "$CONTRACT_PATH")"
 fi
 
+# Load project-level contract if present (project contract wins over rabbit contract at conflict).
+PROJECT_CONTRACT_CONTENT=""
+if [ -n "$PROJECT_CONTRACT" ]; then
+  PROJECT_CONTRACT_CONTENT="$(ls "$PROJECT_CONTRACT"/*.md 2>/dev/null | xargs cat 2>/dev/null || true)"
+fi
+
 # Assemble prompt — prints to stdout for caller to pass as Agent prompt field.
 # Load the launch template and substitute placeholders.
 TEMPLATE_PATH="$SCRIPT_DIR/../templates/subagent-launch-template.txt"
@@ -155,6 +172,7 @@ if [ -f "$TEMPLATE_PATH" ]; then
   PROMPT_TEXT="${PROMPT_TEXT//\{\{tdd_gap_reflection\}\}/$TDD_GAP_REFLECTION}"
   PROMPT_TEXT="${PROMPT_TEXT//\{\{feature_spec\}\}/$FEATURE_SPEC}"
   PROMPT_TEXT="${PROMPT_TEXT//\{\{feature_contract\}\}/$FEATURE_CONTRACT}"
+  PROMPT_TEXT="${PROMPT_TEXT//\{\{project_contract\}\}/$PROJECT_CONTRACT_CONTENT}"
   printf '%s\n' "$PROMPT_TEXT"
 else
   # Fallback: build prompt inline (template missing).

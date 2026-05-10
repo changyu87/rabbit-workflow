@@ -22,21 +22,21 @@ Full TDD costs tokens. The cost is intentional: accumulated drift costs more tha
 
 ## Section 4 — Hard rules index (R1–R9)
 
-The rules below are operational add-ons enforced by deterministic checks shipped with the workflow. The full text and the check scripts live in `.claude/features/hard-rules/`. This section is a one-line index.
+The rules below are operational add-ons enforced by deterministic checks shipped with the workflow. The full text and the check scripts live in `.claude/features/contract/scripts/enforcement/`. This section is a one-line index.
 
 - **R1 — Branch per feature; never work on main.** Every feature mutation
   goes on a new branch and through a PR. Direct commits to `main`/`master`/
   `trunk`/`develop` are forbidden. Check:
-  `.claude/features/hard-rules/scripts/check-no-main-edits.sh`.
+  `.claude/features/contract/scripts/enforcement/check-no-main-edits.sh`.
 
 - **R2 — Opus for brainstorming / spec / planning subagents.** Any subagent
   whose description matches `brainstorm|spec|plan|design|architect` MUST
   declare `model: opus` in its frontmatter. Check:
-  `.claude/features/hard-rules/scripts/check-opus-for-planning-agents.sh`.
+  `.claude/features/contract/scripts/enforcement/check-opus-for-planning-agents.sh`.
 
 - **R3 — Tests are end-to-end, no human intervention.** No `read`,
   `select`, or other interactive constructs in any feature's `test/`. Check:
-  `.claude/features/hard-rules/scripts/check-tests-non-interactive.sh
+  `.claude/features/contract/scripts/enforcement/check-tests-non-interactive.sh
   <feature-dir>`.
 
 - **R4 — TDD step transitions go through `tdd-step.sh`.** Manual edits to
@@ -70,7 +70,7 @@ The rules below are operational add-ons enforced by deterministic checks shipped
 - **R9 — Project-level contract wins over rabbit contract at conflict.** `dispatch-feature-edit.sh` loads project contract first, rabbit contract second; project values shadow rabbit values. Enforcement: `dispatch-feature-edit.sh` load order + PR review.
 
 The full statement, rationale, and tests for each rule live in
-[`hard-rules/spec.md`](../hard-rules/spec.md).
+[`contract/scripts/enforcement/`](../contract/scripts/enforcement/).
 
 ---
 

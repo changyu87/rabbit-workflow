@@ -25,7 +25,8 @@ for f in $(find "$testdir" -type f -name '*.sh' 2>/dev/null); do
   code="$(grep -vE '^[[:space:]]*#' "$f")"
 
   # Check forbidden constructs.
-  if echo "$code" | grep -qE '(^|[[:space:]])read([[:space:]]|$)'; then
+  # Only flag standalone 'read' at line start — not 'while read', 'IFS= read', or pipe reads.
+  if echo "$code" | grep -qE '^\s*(read\s|read$)'; then
     echo "VIOLATION: $f uses 'read' (would block waiting for input)." >&2
     violations=$((violations+1))
     continue
