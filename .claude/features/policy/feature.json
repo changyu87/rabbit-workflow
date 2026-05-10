@@ -2,7 +2,7 @@
   "name": "policy",
   "version": "1.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "review",
+  "tdd_state": "test-green",
   "summary": "Canonical rule files fed to subagents; split of work-guide.md and philosophy.md.",
   "surface": {
     "hooks": [],

@@ -67,3 +67,32 @@ check_phrase_absent "philosophy.md" "## Philosophy"
 
 # t_phil_subsections: philosophy.md subsections use ## (H2), not ### (H3)
 check_phrase "philosophy.md" "## 1. Machine First"
+
+# t15 — metadata exception: workflow-rules.md Section 2 states metadata writes are exempt from TDD
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
+WFMD="$REPO_ROOT/.claude/features/policy/workflow-rules.md"
+
+pass=0
+fail=0
+
+ok() {
+    echo "  PASS t$1: $2"
+    pass=$((pass + 1))
+}
+
+fail_t() {
+    echo "  FAIL t$1: $2"
+    fail=$((fail + 1))
+}
+
+if grep -qiE 'bug.fil|backlog.fil|schema.compliance|metadata.only' "$WFMD" 2>/dev/null; then
+    ok 15 "workflow-rules.md documents metadata-write TDD exception"
+else
+    fail_t 15 "workflow-rules.md does not document the metadata-write exception"
+fi
+
+echo ""
+echo "Results: $pass passed, $fail failed"
+if [ "$fail" -gt 0 ]; then
+    exit 1
+fi

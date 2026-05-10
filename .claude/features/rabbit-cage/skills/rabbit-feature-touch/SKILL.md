@@ -1,6 +1,6 @@
 ---
 name: rabbit-feature-touch
-description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries. Ensures the formal TDD state machine is advanced via tdd-step.sh on every feature touch, preventing test-green drift.
+description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing) which require schema compliance only. Ensures the formal TDD state machine is advanced via tdd-step.sh on every feature touch, preventing test-green drift.
 version: 1.0.0
 owner: rabbit-cage
 deprecation_criterion: when dispatch-feature-edit.sh natively enforces tdd-step.sh transitions
@@ -13,6 +13,7 @@ This skill enforces the full TDD step sequence around every feature modification
 ## When to Use
 
 Trigger on any write/edit/delete/add to a feature directory, or new feature creation. Do NOT use for read-only queries or status checks.
+  Do NOT use for metadata-only writes (bug filing via file-bug.sh, backlog filing via file-backlog-item.sh). These require schema compliance only — not TDD.
 
 ## Core Orchestration Steps
 
