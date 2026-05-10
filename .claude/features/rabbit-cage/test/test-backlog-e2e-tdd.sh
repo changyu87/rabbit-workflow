@@ -132,6 +132,28 @@ else
     fail_t 10 "BACKLOG-003 item.json missing, priority != \"low\", or title does not contain \"numbering\""
 fi
 
+ITEM_004="${CAGE_DIR}/docs/backlog/BACKLOG-004/item.json"
+
+# t11: BACKLOG-004/item.json exists
+if [ -f "${ITEM_004}" ]; then
+    ok 11 "BACKLOG-004/item.json exists"
+else
+    fail_t 11 "BACKLOG-004/item.json does not exist (path: ${ITEM_004})"
+fi
+
+# t12: BACKLOG-004 item.json has priority="medium" and title contains "R6"
+if [ -f "${ITEM_004}" ] && python3 - "${ITEM_004}" <<'PYEOF' 2>/dev/null
+import sys, json
+data = json.load(open(sys.argv[1]))
+ok = data.get("priority") == "medium" and "R6" in data.get("title", "")
+sys.exit(0 if ok else 1)
+PYEOF
+then
+    ok 12 "BACKLOG-004 item.json has priority=\"medium\" and title contains \"R6\""
+else
+    fail_t 12 "BACKLOG-004 item.json missing, priority != \"medium\", or title does not contain \"R6\""
+fi
+
 echo ""
 echo "Results: ${pass} passed, ${fail} failed"
 if [ "${fail}" -gt 0 ]; then

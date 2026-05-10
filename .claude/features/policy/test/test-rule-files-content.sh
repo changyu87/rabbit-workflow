@@ -28,3 +28,42 @@ check_phrase "coding-rules.md" "Karpathy"
 check_phrase "philosophy.md" "Machine First"
 check_phrase "philosophy.md" "Bounded Scope"
 check_phrase "philosophy.md" "Designed Deprecation"
+
+check_phrase_absent() {
+  local file="$1"
+  local phrase="$2"
+  local path="$FEATURE_DIR/$file"
+  if grep -q "$phrase" "$path"; then
+    echo "FAIL: '$phrase' should NOT be in $path but was found" >&2
+    exit 1
+  fi
+}
+
+check_first_heading() {
+  local file="$1"
+  local expected="$2"
+  local path="$FEATURE_DIR/$file"
+  local actual
+  actual="$(grep -m1 '^#' "$path")"
+  if [ "$actual" != "$expected" ]; then
+    echo "FAIL: first heading in $path is '$actual', expected '$expected'" >&2
+    exit 1
+  fi
+}
+
+# CHANGE A — workflow-rules.md R6 updated text
+# t_r6_new: workflow-rules.md R6 contains "generate-claude-md.sh"
+check_phrase "workflow-rules.md" "generate-claude-md.sh"
+
+# t_r6_old: workflow-rules.md R6 does NOT contain the old stale phrase
+check_phrase_absent "workflow-rules.md" "no Agent-tool hook in Claude Code"
+
+# CHANGE B — philosophy.md heading hierarchy fixed
+# t_phil_h1: philosophy.md first non-empty line is "# Philosophy" (H1, not H2)
+check_first_heading "philosophy.md" "# Philosophy"
+
+# t_phil_no_h2: philosophy.md does NOT contain "## Philosophy" (the old H2)
+check_phrase_absent "philosophy.md" "## Philosophy"
+
+# t_phil_subsections: philosophy.md subsections use ## (H2), not ### (H3)
+check_phrase "philosophy.md" "## 1. Machine First"
