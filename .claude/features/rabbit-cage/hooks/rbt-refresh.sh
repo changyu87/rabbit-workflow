@@ -64,6 +64,6 @@ with open('$payload_file', 'r') as f:
     payload = f.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '[rbt] Policy refreshed — $files_label'
+    'systemMessage': '[rabbit] Policy refreshed — $files_label'
 }))
 "

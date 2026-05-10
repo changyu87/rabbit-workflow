@@ -36,13 +36,14 @@ EXPECTED="$(bash "$GENERATE_SCRIPT" 2>/dev/null)" || exit 0
 # If CLAUDE.md does not exist or differs from expected: regenerate
 if [ ! -f "$CLAUDE_MD" ] || [ "$(cat "$CLAUDE_MD")" != "$EXPECTED" ]; then
   printf '%s\n' "$EXPECTED" > "$CLAUDE_MD"
+  echo "0" > "${REPO_ROOT}/.rbt-prompt-counter"
   POLICY_SECTION="$(printf '%s\n' "$EXPECTED" | sed -n '/rabbit-policy-start/,/rabbit-policy-end/p')"
   python3 -c "
 import json, sys
 payload = sys.stdin.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '[rbt] Policy drift detected — CLAUDE.md regenerated from source files'
+    'systemMessage': '[rabbit] Policy drift detected — CLAUDE.md regenerated from source files'
 }))
 " <<< "$POLICY_SECTION"
 fi

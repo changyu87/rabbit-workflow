@@ -2,14 +2,6 @@
   "schema_version": "1.0.0",
   "owner": "rabbit-workflow team",
   "features": {
-    "tdd-state-machine": {
-      "name": "tdd-state-machine",
-      "version": "1.0.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "review",
-      "summary": "Hardens TDD discipline by defining tdd_state transitions, drift detection, and the context block for spawned subagents.",
-      "path": ".claude/features/tdd-state-machine"
-    },
     "contract": {
       "name": "contract",
       "version": "1.0.0",
@@ -22,7 +14,7 @@
       "name": "policy",
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
-      "tdd_state": "review",
+      "tdd_state": "test-green",
       "summary": "Canonical rule files fed to subagents; split of work-guide.md and philosophy.md.",
       "path": ".claude/features/policy"
     },
@@ -33,6 +25,14 @@
       "tdd_state": "test-green",
       "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, scripts for bug-filing, scaffolding, project management, and installation.",
       "path": ".claude/features/rabbit-cage"
+    },
+    "tdd-state-machine": {
+      "name": "tdd-state-machine",
+      "version": "1.0.0",
+      "owner": "rabbit-workflow team",
+      "tdd_state": "review",
+      "summary": "Hardens TDD discipline by defining tdd_state transitions, drift detection, and the context block for spawned subagents.",
+      "path": ".claude/features/tdd-state-machine"
     }
   }
 }

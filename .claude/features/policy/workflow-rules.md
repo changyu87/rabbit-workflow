@@ -36,7 +36,7 @@ The rules below are operational add-ons enforced by deterministic checks shipped
   declare `model: opus` in its frontmatter. Check:
   `.claude/features/contract/scripts/enforcement/check-opus-for-planning-agents.sh`.
 
-- **R3 — Tests are end-to-end, no human intervention.** No `read`,
+- **R3 — Tests are end-to-end, full-stack, no human intervention.** Tests must exercise the full-stack chain from invocation through output; no `read`,
   `select`, or other interactive constructs in any feature's `test/`. Check:
   `.claude/features/contract/scripts/enforcement/check-tests-non-interactive.sh
   <feature-dir>`.
