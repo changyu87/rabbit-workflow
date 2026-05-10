@@ -59,7 +59,7 @@ else
 fi
 
 cp -r "$SRC/.claude" "$TARGET/.claude"
-cp "$SRC/CLAUDE.md" "$TARGET/CLAUDE.md"
+bash "$TARGET/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" --write "$TARGET"
 
 # Always strip runtime-only and OS-level artifacts.
 rm -f "$TARGET/.claude/settings.local.json"

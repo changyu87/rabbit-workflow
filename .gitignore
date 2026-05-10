@@ -1,3 +1,5 @@
 .rabbit-scope-active
 *.swp
 .nfs*
+CLAUDE.md
+.rbt-sync-counter

@@ -31,15 +31,22 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|Bash|Agent",
+        "matcher": "Write|Edit|Bash",
         "hooks": [
           {
             "type": "command",
             "command": ".claude/hooks/scope-guard.sh"
-          },
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/rbt-policy-check.sh"
+            "command": ".claude/hooks/rbt-sync-check.sh"
           }
         ]
       }

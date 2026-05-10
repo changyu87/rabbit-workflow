@@ -1,0 +1,19 @@
+{
+  "name": "BACKLOG-003",
+  "title": "Cross-file rule numbering: make each policy file independently numbered",
+  "status": "open",
+  "priority": "low",
+  "description": "spec-rules.md numbers rules 1-3 and coding-rules.md continues at 4-8, creating a cross-file dependency. Each file should be independently readable. Options: reset to 1 per file, or add file-scoped prefixes (S1-S3, C4-C8). Style change only — no semantic impact. Low priority: current numbering works fine when files are concatenated into CLAUDE.md.",
+  "owner": "rabbit-workflow-team",
+  "filed": "2026-05-10T14:16:31Z",
+  "filed_by": "rabbit-workflow-team",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-10T14:16:31Z",
+      "actor": "rabbit-workflow-team",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
