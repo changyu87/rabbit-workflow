@@ -1,20 +1,26 @@
 {
   "name": "RABBIT-CAGE-1",
   "title": "rabbit-cage feature missing: agents, commands, hooks, skills, settings not owned by any feature",
-  "status": "open",
+  "status": "closed",
   "severity": "critical",
   "description": "The rabbit-cage feature did not exist. All of .claude/agents/, .claude/commands/, .claude/hooks/, .claude/settings.json, and the root artifacts (CLAUDE.md, README.md, install.sh) are plain files/dirs not owned by any feature. Per design, rabbit-cage must own all of these. Also: .claude/policy/ and .claude/contract/ symlinks do not exist. All six .claude/-level symlinks are missing.",
   "related_feature": "rabbit-cage",
   "filed": "2026-05-10T03:28:58Z",
   "filed_by": "cyxu",
-  "closed": null,
-  "closed_by": null,
+  "closed": "2026-05-10T03:39:57Z",
+  "closed_by": "cyxu",
   "history": [
     {
       "ts": "2026-05-10T03:28:58Z",
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-10T03:39:57Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "Resolved as part of rabbit-cage feature implementation (commit fcd4dd4)."
     }
   ]
 }

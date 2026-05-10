@@ -1,20 +1,26 @@
 {
   "name": "RABBIT-CAGE-3",
   "title": "registry.json lists 14 features but 17 feature.json dirs exist on disk — breeder, vet, subagent-policy-injection are orphaned",
-  "status": "open",
+  "status": "closed",
   "severity": "high",
   "description": "Three directories under .claude/features/ contain feature.json files but are not listed in registry.json: breeder/, vet/, subagent-policy-injection/. Running rebuild-registry.sh would re-include them. These are intended-to-be-archived features. Additionally, root-management is in the registry but is an intermediate product to delete. registry.json is the source of truth for dispatch-feature-edit.sh and other tools — drift causes silent failures.",
   "related_feature": "rabbit-cage",
   "filed": "2026-05-10T03:29:13Z",
   "filed_by": "cyxu",
-  "closed": null,
-  "closed_by": null,
+  "closed": "2026-05-10T03:39:57Z",
+  "closed_by": "cyxu",
   "history": [
     {
       "ts": "2026-05-10T03:29:13Z",
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-10T03:39:57Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "Resolved as part of rabbit-cage feature implementation (commit fcd4dd4)."
     }
   ]
 }

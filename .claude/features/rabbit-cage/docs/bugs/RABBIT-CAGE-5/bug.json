@@ -1,20 +1,26 @@
 {
   "name": "RABBIT-CAGE-5",
   "title": "Five obsolete feature directories remain on disk: root-management, policy-enforcement, subagent-policy-injection, breeder, vet",
-  "status": "open",
+  "status": "closed",
   "severity": "high",
   "description": "Five feature dirs should be deleted or archived but still exist on disk: (1) root-management — absorbed by rabbit-cage; (2) policy-enforcement — superseded by policy/ feature; (3) subagent-policy-injection — superseded by contract/scripts/policy-block.sh; (4) breeder — superseded by dispatch-feature-edit.sh; (5) vet — superseded by contract/scripts/rabbit-triage.sh. Three of these (breeder, vet, subagent-policy-injection) are already excluded from registry.json but still have feature.json on disk, causing registry/disk drift.",
   "related_feature": "rabbit-cage",
   "filed": "2026-05-10T03:29:27Z",
   "filed_by": "cyxu",
-  "closed": null,
-  "closed_by": null,
+  "closed": "2026-05-10T03:39:58Z",
+  "closed_by": "cyxu",
   "history": [
     {
       "ts": "2026-05-10T03:29:27Z",
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-10T03:39:58Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "Resolved as part of rabbit-cage feature implementation (commit fcd4dd4)."
     }
   ]
 }

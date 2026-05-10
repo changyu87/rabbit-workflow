@@ -1,20 +1,26 @@
 {
   "name": "RABBIT-CAGE-4",
   "title": "CLAUDE.md imports .claude/philosophy.md and .claude/work-guide.md (old flat files) instead of policy/ feature files",
-  "status": "open",
+  "status": "closed",
   "severity": "high",
   "description": "CLAUDE.md (the root file that controls what auto-refresh and /rabbit-refresh inject into context) still @-imports .claude/philosophy.md and .claude/work-guide.md — the pre-redesign monolithic files. The redesign created .claude/features/policy/ with four split files: philosophy.md, spec-rules.md, coding-rules.md, workflow-rules.md. These are never injected by auto-refresh. Meanwhile dispatch-feature-edit.sh injects the correct new files. Two divergent policy injection paths exist. Also: the old .claude/philosophy.md and .claude/work-guide.md duplicate content that is now canonical under features/policy/.",
   "related_feature": "rabbit-cage",
   "filed": "2026-05-10T03:29:20Z",
   "filed_by": "cyxu",
-  "closed": null,
-  "closed_by": null,
+  "closed": "2026-05-10T03:39:57Z",
+  "closed_by": "cyxu",
   "history": [
     {
       "ts": "2026-05-10T03:29:20Z",
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-10T03:39:57Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "Resolved as part of rabbit-cage feature implementation (commit fcd4dd4)."
     }
   ]
 }
