@@ -1,9 +1,9 @@
 {
   "name": "rabbit-cage",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "review",
-  "summary": "Owns the Claude Code surface of the rabbit workflow: agents, commands, hooks, skills, settings, and root artifacts.",
+  "tdd_state": "test-green",
+  "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, scripts for bug-filing, scaffolding, project management, and installation.",
   "surface": {
     "hooks": [
       ".claude/hooks/rbt-refresh.sh",
@@ -27,5 +27,5 @@
   },
   "bugs_root": ".claude/features/rabbit-cage/docs/bugs",
   "deprecation_criterion": "when Claude Code exposes a native feature-container mechanism that subsumes this role",
-  "updated": "2026-05-09"
+  "updated": "2026-05-10"
 }

@@ -150,20 +150,20 @@ chmod +x "$TARGET/test/run.sh"
 
 echo "scaffolded: $TARGET"
 
-# Optional self-validation if feature-skeleton's validator is reachable
+# Optional self-validation if contract's validator is reachable
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)}"
 # Try common locations: repo-anchored path first, then well-known fallback.
 VAL=""
 for candidate in \
-    "$REPO_ROOT/.claude/features/feature-skeleton/scripts/validate-feature.sh" \
-    ".claude/features/feature-skeleton/scripts/validate-feature.sh"; do
+    "$REPO_ROOT/.claude/features/contract/scripts/validate-feature.sh" \
+    ".claude/features/contract/scripts/validate-feature.sh"; do
   if [ -x "$candidate" ]; then VAL="$candidate"; break; fi
 done
 
 if [ -n "$VAL" ]; then
   if "$VAL" "$TARGET" >/dev/null 2>&1; then
-    echo "validated: passes feature-skeleton schema"
+    echo "validated: passes feature schema"
   else
     echo "WARNING: scaffolded feature does not yet pass validate-feature.sh (expected — fill in TODOs)" >&2
   fi

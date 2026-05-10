@@ -100,6 +100,26 @@ case "$cmd" in
       write_state "$dir" "$new"
       # Post-transition hooks for test-green.
       if [ "$new" = "test-green" ]; then
+        # Run enforcement checks (contract/scripts/enforcement/).
+        ENFORCEMENT_DIR="$REPO_ROOT/.claude/features/contract/scripts/enforcement"
+        if [ -d "$ENFORCEMENT_DIR" ]; then
+          # R3: tests must be non-interactive
+          if [ -f "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" "$dir" >/dev/null 2>&1 || {
+              echo "WARNING: R3 check failed for $dir — tests may have interactive constructs" >&2
+            }
+          fi
+          # R6: sentinel check on any dispatch scripts in feature
+          if [ -f "$ENFORCEMENT_DIR/check-sentinel.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-sentinel.sh" "$dir" >/dev/null 2>&1 || true
+          fi
+          # Naming convention check
+          if [ -f "$ENFORCEMENT_DIR/check-naming.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-naming.sh" "$dir" >/dev/null 2>&1 || {
+              echo "WARNING: naming check failed for $dir" >&2
+            }
+          fi
+        fi
         FEATURES_DIR="$(dirname "$dir")"
         REBUILD_SH="$REPO_ROOT/.claude/features/contract/scripts/rebuild-registry.sh"
         if [ -f "$REBUILD_SH" ]; then
@@ -109,7 +129,7 @@ case "$cmd" in
         PROJECT_MAP="$(dirname "$FEATURES_DIR")/project-map.json"
         if [ -f "$PROJECT_MAP" ]; then
           PROJECT_NAME="$(basename "$(dirname "$FEATURES_DIR")")"
-          ONBOARD_SH="$REPO_ROOT/.claude/features/onboard/scripts/rabbit-project.sh"
+          ONBOARD_SH="$REPO_ROOT/.claude/features/rabbit-cage/scripts/rabbit-project.sh"
           if [ -f "$ONBOARD_SH" ]; then
             bash "$ONBOARD_SH" consolidate "$PROJECT_NAME" >/dev/null 2>&1 || true
           fi
@@ -122,6 +142,26 @@ case "$cmd" in
       write_state "$dir" "$new"
       # Post-transition hooks for test-green.
       if [ "$new" = "test-green" ]; then
+        # Run enforcement checks (contract/scripts/enforcement/).
+        ENFORCEMENT_DIR="$REPO_ROOT/.claude/features/contract/scripts/enforcement"
+        if [ -d "$ENFORCEMENT_DIR" ]; then
+          # R3: tests must be non-interactive
+          if [ -f "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" "$dir" >/dev/null 2>&1 || {
+              echo "WARNING: R3 check failed for $dir — tests may have interactive constructs" >&2
+            }
+          fi
+          # R6: sentinel check on any dispatch scripts in feature
+          if [ -f "$ENFORCEMENT_DIR/check-sentinel.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-sentinel.sh" "$dir" >/dev/null 2>&1 || true
+          fi
+          # Naming convention check
+          if [ -f "$ENFORCEMENT_DIR/check-naming.sh" ]; then
+            bash "$ENFORCEMENT_DIR/check-naming.sh" "$dir" >/dev/null 2>&1 || {
+              echo "WARNING: naming check failed for $dir" >&2
+            }
+          fi
+        fi
         FEATURES_DIR="$(dirname "$dir")"
         REBUILD_SH="$REPO_ROOT/.claude/features/contract/scripts/rebuild-registry.sh"
         if [ -f "$REBUILD_SH" ]; then
@@ -131,7 +171,7 @@ case "$cmd" in
         PROJECT_MAP="$(dirname "$FEATURES_DIR")/project-map.json"
         if [ -f "$PROJECT_MAP" ]; then
           PROJECT_NAME="$(basename "$(dirname "$FEATURES_DIR")")"
-          ONBOARD_SH="$REPO_ROOT/.claude/features/onboard/scripts/rabbit-project.sh"
+          ONBOARD_SH="$REPO_ROOT/.claude/features/rabbit-cage/scripts/rabbit-project.sh"
           if [ -f "$ONBOARD_SH" ]; then
             bash "$ONBOARD_SH" consolidate "$PROJECT_NAME" >/dev/null 2>&1 || true
           fi

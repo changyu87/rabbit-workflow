@@ -35,14 +35,14 @@ if [ -z "$VALIDATOR" ]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   REPO_ROOT="${RABBIT_ROOT:-$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)}"
   for candidate in \
-      "$REPO_ROOT/.claude/features/feature-skeleton/scripts/validate-feature.sh" \
-      ".claude/features/feature-skeleton/scripts/validate-feature.sh"; do
+      "$REPO_ROOT/.claude/features/contract/scripts/validate-feature.sh" \
+      ".claude/features/contract/scripts/validate-feature.sh"; do
     if [ -x "$candidate" ]; then VALIDATOR="$candidate"; break; fi
   done
 fi
 
 if [ -z "$VALIDATOR" ] || [ ! -x "$VALIDATOR" ]; then
-  echo "ERROR: validate-feature.sh not found (set --validator <path> or install feature-skeleton)" >&2
+  echo "ERROR: validate-feature.sh not found (set --validator <path> or install contract scripts)" >&2
   exit 2
 fi
 

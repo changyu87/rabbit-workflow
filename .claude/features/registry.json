@@ -2,62 +2,6 @@
   "schema_version": "1.0.0",
   "owner": "rabbit-workflow team",
   "features": {
-    "scope-guard": {
-      "name": "scope-guard",
-      "version": "2.0.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Repo-wide default-deny write hook; allows only scoped writes and settings files.",
-      "path": ".claude/features/scope-guard"
-    },
-    "feature-scaffolder": {
-      "name": "feature-scaffolder",
-      "version": "1.1.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Scripts that create and validate feature directories at any path, used to bootstrap new features.",
-      "path": ".claude/features/feature-scaffolder"
-    },
-    "auto-refresh": {
-      "name": "auto-refresh",
-      "version": "1.0.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Periodically re-inject rabbit policy files into the Claude Code session context to defend against silent drift.",
-      "path": ".claude/features/auto-refresh"
-    },
-    "bug-filing": {
-      "name": "bug-filing",
-      "version": "2.0.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Schema and operations for filing, transitioning, and querying bugs as filesystem-native artifacts.",
-      "path": ".claude/features/bug-filing"
-    },
-    "feature-skeleton": {
-      "name": "feature-skeleton",
-      "version": "1.0.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Defines and enforces the canonical layout of every feature directory, giving every feature the same shape and lifecycle hooks.",
-      "path": ".claude/features/feature-skeleton"
-    },
-    "hard-rules": {
-      "name": "hard-rules",
-      "version": "1.1.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Staging area for operational rules too specific for philosophy.md or work-guide.md, with deterministic check scripts.",
-      "path": ".claude/features/hard-rules"
-    },
-    "naming-convention": {
-      "name": "naming-convention",
-      "version": "1.0.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Hardens the project naming scheme: user-facing artifacts must use rabbit- prefix and internal scripts use rbt- prefix.",
-      "path": ".claude/features/naming-convention"
-    },
     "tdd-state-machine": {
       "name": "tdd-state-machine",
       "version": "1.0.0",
@@ -66,29 +10,13 @@
       "summary": "Hardens TDD discipline by defining tdd_state transitions, drift detection, and the context block for spawned subagents.",
       "path": ".claude/features/tdd-state-machine"
     },
-    "install-distribute": {
-      "name": "install-distribute",
-      "version": "1.0.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Distribute the rabbit workflow into a target workspace via a bash installer that copies .claude/ and CLAUDE.md.",
-      "path": ".claude/features/install-distribute"
-    },
     "contract": {
       "name": "contract",
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
       "tdd_state": "test-green",
-      "summary": "Meta-feature owning all cross-feature templates, schemas, and dispatch scripts.",
+      "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R7, naming-convention).",
       "path": ".claude/features/contract"
-    },
-    "onboard": {
-      "name": "onboard",
-      "version": "1.0.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Scaffold and maintain project-{name}/ directories and their maps.",
-      "path": ".claude/features/onboard"
     },
     "policy": {
       "name": "policy",
@@ -100,10 +28,10 @@
     },
     "rabbit-cage": {
       "name": "rabbit-cage",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "owner": "rabbit-workflow team",
       "tdd_state": "test-green",
-      "summary": "Owns the Claude Code surface of the rabbit workflow: agents, commands, hooks, skills, settings, and root artifacts.",
+      "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, scripts for bug-filing, scaffolding, project management, and installation.",
       "path": ".claude/features/rabbit-cage"
     }
   }

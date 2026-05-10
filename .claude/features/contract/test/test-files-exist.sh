@@ -55,6 +55,14 @@ check_exec "scripts/render-template.sh"
 check_exec "scripts/check-maps-consistent.sh"
 check_exec "scripts/rabbit-triage.sh"
 
+# Validator and enforcement scripts (6)
+check_exec "scripts/validate-feature.sh"
+check_exec "scripts/enforcement/check-no-main-edits.sh"
+check_exec "scripts/enforcement/check-opus-for-planning-agents.sh"
+check_exec "scripts/enforcement/check-tests-non-interactive.sh"
+check_exec "scripts/enforcement/check-sentinel.sh"
+check_exec "scripts/enforcement/check-naming.sh"
+
 # Tests (5)
 check_exec "test/run.sh"
 check_file "test/test-files-exist.sh"
