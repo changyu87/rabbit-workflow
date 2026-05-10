@@ -28,7 +28,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-ONE_LINER="# Rabbit Workflow — subagent-driven development; every feature touch must invoke the rabbit-feature-touch skill to advance the full TDD state machine before the user decides on each dispatch."
+POLICY_HEADER_JSON="$REPO_ROOT/.claude/features/rabbit-cage/policy-header.json"
+ONE_LINER="$(python3 -c "import json; print(json.load(open('$POLICY_HEADER_JSON'))['header'])" 2>/dev/null)"
+[ -z "$ONE_LINER" ] && { echo "ERROR: could not read header from policy-header.json" >&2; exit 1; }
 
 emit() {
   printf '%s\n' "$ONE_LINER"

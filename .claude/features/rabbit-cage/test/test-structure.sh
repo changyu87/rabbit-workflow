@@ -7,6 +7,7 @@ set -euo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 CAGE_DIR="$REPO_ROOT/.claude/features/rabbit-cage"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 pass=0
 fail=0
@@ -42,14 +43,25 @@ else
     fail_t 5 "settings.json missing or invalid JSON"
 fi
 
-# t6: CLAUDE.md exists (moved from root-management)
-if [ -f "$CAGE_DIR/CLAUDE.md" ]; then ok 6 "CLAUDE.md exists in rabbit-cage"; else fail_t 6 "CLAUDE.md not found in rabbit-cage"; fi
+# t6: policy-header.json exists in rabbit-cage (replaces CLAUDE.md — machine-readable header source)
+if [ -f "$SCRIPT_DIR/../policy-header.json" ]; then
+    ok 6 "policy-header.json exists in rabbit-cage"
+else
+    fail_t 6 "policy-header.json does not exist in rabbit-cage"
+fi
 
 # t7: README.md exists
 if [ -f "$CAGE_DIR/README.md" ]; then ok 7 "README.md exists in rabbit-cage"; else fail_t 7 "README.md not found in rabbit-cage"; fi
 
 # t8: install.sh exists and is executable
 if [ -f "$CAGE_DIR/install.sh" ] && [ -x "$CAGE_DIR/install.sh" ]; then ok 8 "install.sh exists and is executable"; else fail_t 8 "install.sh missing or not executable"; fi
+
+# t9: CLAUDE.md does NOT exist in rabbit-cage (replaced by policy-header.json)
+if [ ! -f "$SCRIPT_DIR/../CLAUDE.md" ]; then
+    ok 9 "CLAUDE.md does not exist in rabbit-cage (replaced by policy-header.json)"
+else
+    fail_t 9 "CLAUDE.md still exists in rabbit-cage — should be replaced by policy-header.json"
+fi
 
 echo ""
 echo "Results: $pass passed, $fail failed"

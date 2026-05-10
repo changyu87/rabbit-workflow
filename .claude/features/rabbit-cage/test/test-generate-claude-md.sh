@@ -121,6 +121,36 @@ else
     fail_t 9 "test-generate-claude-md.sh is NOT registered in run.sh"
 fi
 
+# t10: policy-header.json is valid JSON
+POLICY_HEADER="$REPO_ROOT/.claude/features/rabbit-cage/policy-header.json"
+if python3 -c "import json; json.load(open('$POLICY_HEADER'))" 2>/dev/null; then
+    ok 10 "policy-header.json is valid JSON"
+else
+    fail_t 10 "policy-header.json does not exist or is not valid JSON"
+fi
+
+# t11: policy-header.json has required fields: header and version
+if python3 -c "
+import json, sys
+d = json.load(open('$POLICY_HEADER'))
+assert 'header' in d, 'missing header field'
+assert 'version' in d, 'missing version field'
+assert d['header'].startswith('#'), 'header must start with #'
+" 2>/dev/null; then
+    ok 11 "policy-header.json has required fields: header (starts with #) and version"
+else
+    fail_t 11 "policy-header.json missing required fields or header does not start with #"
+fi
+
+# t12: generate-claude-md.sh output first line matches header field from policy-header.json
+EXPECTED_HEADER="$(python3 -c "import json; print(json.load(open('$POLICY_HEADER'))['header'])" 2>/dev/null)" || true
+ACTUAL_FIRST="$(bash "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null | head -1)" || true
+if [ "$EXPECTED_HEADER" = "$ACTUAL_FIRST" ]; then
+    ok 12 "generate-claude-md.sh first line matches policy-header.json header field"
+else
+    fail_t 12 "generate-claude-md.sh first line does not match policy-header.json header field"
+fi
+
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
