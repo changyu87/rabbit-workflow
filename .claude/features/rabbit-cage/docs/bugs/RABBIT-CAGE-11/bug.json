@@ -1,0 +1,26 @@
+{
+  "name": "RABBIT-CAGE-11",
+  "title": "Dispatch template does not require subagents to call tdd-step.sh — full TDD state machine bypassed",
+  "status": "closed",
+  "severity": "high",
+  "description": "The subagent-launch-template.txt injected by dispatch-feature-edit.sh instructs subagents to perform TDD (write test, confirm fail, implement, confirm pass) but never requires or instructs them to call tdd-step.sh. As a result, subagents do ad-hoc testing without advancing the formal TDD state machine. This violates R4 (TDD step transitions go through tdd-step.sh) and workflow-rules Section 2 (full TDD step sequence managed by tdd-step.sh on every feature touch, no partial shortcuts). Observed: the CLAUDE.md one-liner dispatch wrote a test and ran it manually but never called tdd-step.sh; the feature.json tdd_state was never transitioned. The fix must ensure the dispatch template explicitly instructs subagents to call tdd-step.sh at each state boundary (test-red, impl, test-green), or alternatively that the main session orchestrates tdd-step.sh transitions around each dispatch leg.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-10T06:22:04Z",
+  "filed_by": "cyxu",
+  "closed": "2026-05-10T00:00:00Z",
+  "closed_by": "cyxu",
+  "history": [
+    {
+      "ts": "2026-05-10T06:22:04Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-10T00:00:00Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "Fixed via option B: created rabbit-feature-touch skill that orchestrates tdd-step.sh transitions in main session around each dispatch leg. Registered in feature.json surface.skills. Test test-RABBIT-CAGE-11-feature-touch-skill.sh added and passing."
+    }
+  ]
+}

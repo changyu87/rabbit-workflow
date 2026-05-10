@@ -1,0 +1,13 @@
+{
+  "bug_name": "RABBIT-CAGE-10",
+  "current_status": "open",
+  "related_feature": "rabbit-cage",
+  "classification": "new",
+  "severity_assessed": "high",
+  "evidence": "Fix fully implemented and consistent across all artifacts. rbt-session-init.sh exists at both feature-space authoring path and deployed surface path referenced by settings.json and feature.json. Hook parses @-import lines from CLAUDE.md, resolves paths against REPO_ROOT, and emits additionalContext+systemMessage JSON at session start (no counter gate). settings.json wires it under SessionStart. feature.json surface.hooks lists the hook. test-RABBIT-CAGE-10-session-init.sh covers 6 assertions (exists, executable, exit 0, valid JSON, additionalContext key, content contains 'Machine First') — all pass.",
+  "recommended_action": "close_fixed",
+  "recommended_test": "test-RABBIT-CAGE-10-session-init.sh",
+  "proposed_handoff": "Bug resolved — hook deployed, wired, test-green; close RABBIT-CAGE-10.",
+  "vetted_by": "main-session",
+  "vetted_at": "2026-05-10"
+}
