@@ -1,1 +1,1 @@
-.claude/features/root-management/artifacts/CLAUDE.md
+.claude/features/rabbit-cage/CLAUDE.md

@@ -2,7 +2,7 @@
   "name": "rabbit-cage",
   "version": "1.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "Owns the Claude Code surface of the rabbit workflow: agents, commands, hooks, skills, settings, and root artifacts.",
   "surface": {
     "hooks": [

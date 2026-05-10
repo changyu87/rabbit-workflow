@@ -18,22 +18,6 @@
       "summary": "Scripts that create and validate feature directories at any path, used to bootstrap new features.",
       "path": ".claude/features/feature-scaffolder"
     },
-    "policy-enforcement": {
-      "name": "policy-enforcement",
-      "version": "1.0.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Owns the policy anchor documents (philosophy.md and work-guide.md) that govern every agent in the rabbit workflow.",
-      "path": ".claude/features/policy-enforcement"
-    },
-    "root-management": {
-      "name": "root-management",
-      "version": "1.0.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Owns the three root-level files users and Claude Code interact with directly: install.sh, CLAUDE.md, and README.md.",
-      "path": ".claude/features/root-management"
-    },
     "auto-refresh": {
       "name": "auto-refresh",
       "version": "1.0.0",
@@ -82,14 +66,6 @@
       "summary": "Hardens TDD discipline by defining tdd_state transitions, drift detection, and the context block for spawned subagents.",
       "path": ".claude/features/tdd-state-machine"
     },
-    "onboard": {
-      "name": "onboard",
-      "version": "1.0.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Scaffold and maintain project-{name}/ directories and their maps.",
-      "path": ".claude/features/onboard"
-    },
     "install-distribute": {
       "name": "install-distribute",
       "version": "1.0.0",
@@ -97,6 +73,22 @@
       "tdd_state": "test-green",
       "summary": "Distribute the rabbit workflow into a target workspace via a bash installer that copies .claude/ and CLAUDE.md.",
       "path": ".claude/features/install-distribute"
+    },
+    "contract": {
+      "name": "contract",
+      "version": "1.0.0",
+      "owner": "rabbit-workflow team",
+      "tdd_state": "test-green",
+      "summary": "Meta-feature owning all cross-feature templates, schemas, and dispatch scripts.",
+      "path": ".claude/features/contract"
+    },
+    "onboard": {
+      "name": "onboard",
+      "version": "1.0.0",
+      "owner": "rabbit-workflow team",
+      "tdd_state": "test-green",
+      "summary": "Scaffold and maintain project-{name}/ directories and their maps.",
+      "path": ".claude/features/onboard"
     },
     "policy": {
       "name": "policy",
@@ -106,13 +98,13 @@
       "summary": "Canonical rule files fed to subagents; split of work-guide.md and philosophy.md.",
       "path": ".claude/features/policy"
     },
-    "contract": {
-      "name": "contract",
+    "rabbit-cage": {
+      "name": "rabbit-cage",
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
       "tdd_state": "test-green",
-      "summary": "Meta-feature owning all cross-feature templates, schemas, and dispatch scripts.",
-      "path": ".claude/features/contract"
+      "summary": "Owns the Claude Code surface of the rabbit workflow: agents, commands, hooks, skills, settings, and root artifacts.",
+      "path": ".claude/features/rabbit-cage"
     }
   }
 }
