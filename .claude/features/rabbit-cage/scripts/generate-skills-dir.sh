@@ -11,7 +11,7 @@
 # saves sha256 baseline to .rbt-skills-hash. Idempotent. Prints changes.
 #
 # Symlink convention:
-#   .claude/skills/<name>  →  ../../features/<feat>/skills/<name>
+#   .claude/skills/<name>  →  ../features/<feat>/skills/<name>
 #
 # Version: 1.0.0
 # Owner: rabbit-cage

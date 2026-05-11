@@ -100,6 +100,18 @@ else
   fail_t 8 ".rbt-skills-hash not found at $WORK after default run"
 fi
 
+# t9: header comment uses correct symlink path (../features/ not ../../features/)
+if grep -n "Symlink convention" "$GENERATE" -A1 | grep -q "\.\./features/"; then
+  # Make sure the wrong path is NOT present in the header
+  if ! grep -n "Symlink convention" "$GENERATE" -A1 | grep -q "\.\./\.\./features/"; then
+    ok 9 "header comment uses '../features/' (not '../../features/')"
+  else
+    fail_t 9 "header comment still contains '../../features/' (stale comment)"
+  fi
+else
+  fail_t 9 "header comment does not contain '../features/' at all"
+fi
+
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
