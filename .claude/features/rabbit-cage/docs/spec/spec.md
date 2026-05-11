@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 1.1.0
+version: 1.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -43,3 +43,12 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 - Content authored by other features — rabbit-cage wires their surface, not their content.
 - `settings.local.json` — user-local overrides; never written by rabbit-cage.
 - Scripts: rabbit-cage owns no runtime scripts beyond `install.sh` and those registered in its contract.
+
+## Visual Styling
+
+Every `systemMessage` emitted by rabbit-cage hooks (`rbt-sync-check.sh`,
+`rbt-session-init.sh`, `rbt-refresh.sh`) is wrapped in ANSI deep-green color
+codes (`\x1b[32m` … `\x1b[0m`). Markdown is not rendered in `systemMessage`
+output; ANSI escape codes are. The deep-green color marks all `[rabbit]`
+status/drift/refresh messages as system-emitted (not user-emitted), making
+them visually distinguishable in the Claude Code transcript.

@@ -43,7 +43,7 @@ import json, sys
 payload = sys.stdin.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '📋 ━━━ [rabbit] Policy initialized — CLAUDE.md created for first time ━━━ 📋'
+    'systemMessage': '\x1b[32m📋 ━━━ [rabbit] Policy initialized — CLAUDE.md created for first time ━━━ 📋\x1b[0m'
 }))
 " <<< "$POLICY_SECTION"
   exit 0
@@ -59,7 +59,7 @@ import json, sys
 payload = sys.stdin.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '⚠️ ━━━ [rabbit] Policy drift detected — CLAUDE.md regenerated from source files ━━━ ⚠️'
+    'systemMessage': '\x1b[32m⚠️ ━━━ [rabbit] Policy drift detected — CLAUDE.md regenerated from source files ━━━ ⚠️\x1b[0m'
 }))
 " <<< "$POLICY_SECTION"
   exit 0
@@ -72,7 +72,7 @@ if [ -f "$_GENERATE_SKILLS" ] && ! bash "$_GENERATE_SKILLS" --check "$REPO_ROOT"
   python3 -c "
 import json
 print(json.dumps({
-    'systemMessage': '🔄 ━━━ [rabbit] Skills updated — run /reload-plugins or restart session to activate changes ━━━ 🔄'
+    'systemMessage': '\x1b[32m🔄 ━━━ [rabbit] Skills updated — run /reload-plugins or restart session to activate changes ━━━ 🔄\x1b[0m'
 }))
 "
 fi
