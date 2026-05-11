@@ -47,4 +47,16 @@ print(json.dumps({
 }))
 " <<< "$POLICY_SECTION"
 fi
+
+# Skills drift check — structural and content.
+_GENERATE_SKILLS="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
+if [ -f "$_GENERATE_SKILLS" ] && ! bash "$_GENERATE_SKILLS" --check "$REPO_ROOT" >/dev/null 2>&1; then
+  bash "$_GENERATE_SKILLS" "$REPO_ROOT" >/dev/null 2>&1 || true
+  python3 -c "
+import json
+print(json.dumps({
+    'systemMessage': '[rabbit] Skills updated — run /reload-plugins or restart session to activate changes'
+}))
+"
+fi
 exit 0

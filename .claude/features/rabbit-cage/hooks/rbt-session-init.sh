@@ -17,6 +17,10 @@ set -euo pipefail
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
 
+# Ensure .claude/skills/ is generated and hash baseline is saved.
+_GENERATE_SKILLS="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
+[ -f "$_GENERATE_SKILLS" ] && bash "$_GENERATE_SKILLS" "$REPO_ROOT" >/dev/null 2>&1 || true
+
 # Try to read inline policy section between rabbit-policy-start and rabbit-policy-end markers
 INLINE=$(sed -n '/rabbit-policy-start/,/rabbit-policy-end/p' "$CLAUDE_MD" 2>/dev/null | grep -v 'rabbit-policy-start\|rabbit-policy-end' || true)
 

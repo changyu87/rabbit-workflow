@@ -31,6 +31,7 @@ run_suite test-hook-enforcement.sh
 run_suite test-generate-claude-md.sh
 run_suite test-split-validation.sh
 run_suite test-RABBIT-CAGE-15-workspace-tree.sh
+run_suite test-generate-skills-dir.sh
 
 if [ "$total_fail" -eq 0 ]; then
     echo "ALL SUITES PASSED"
