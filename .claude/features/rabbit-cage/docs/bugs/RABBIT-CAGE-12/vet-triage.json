@@ -1,11 +1,11 @@
 {
   "bug": "RABBIT-CAGE-12",
   "verdict": "close",
-  "confidence": "medium",
+  "confidence": "high",
   "root_cause_addressed": true,
   "regressions_found": false,
   "test_sufficient": true,
-  "notes": "Fix correctly sidesteps the Stop hook additionalContext limitation by resetting the prompt counter so rbt-refresh.sh delivers the regenerated policy on the next user prompt. Test verifies counter reset path directly. One pre-existing coverage gap: no test confirms rbt-refresh.sh injects policy when counter is 0, but this is not a regression introduced by this fix.",
+  "notes": "Fix confirmed complete. rbt-sync-check.sh writes RBT_REFRESH_EVERY (20) to .rbt-prompt-counter on drift — not 0. rbt-refresh.sh fires injection on the next UserPromptSubmit. Tests t5, t6, t7 pass.",
   "triage_ts": "2026-05-10T00:00:00Z",
   "triage_by": "main-session"
 }

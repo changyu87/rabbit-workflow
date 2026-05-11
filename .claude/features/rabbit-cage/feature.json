@@ -13,12 +13,12 @@
     "commands": [
       ".claude/commands/rabbit-refresh.md",
       ".claude/commands/rabbit-set-threshold.md",
-      ".claude/commands/rabbit-project.md"
+      ".claude/commands/rabbit-project.md",
+      ".claude/commands/rabbit-workspace.md"
     ],
     "agents": [],
     "skills": [
-      "rabbit-feature-touch",
-      "rabbit-workspace"
+      "rabbit-feature-touch"
     ],
     "root": [
       "CLAUDE.md",

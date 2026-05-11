@@ -2,6 +2,8 @@
 
 Scaffold and maintain project directories managed by rabbit.
 
+> Scaffold and manage user project directories — not a status command.
+
 ## Usage
 
 /rabbit-project init <name>
