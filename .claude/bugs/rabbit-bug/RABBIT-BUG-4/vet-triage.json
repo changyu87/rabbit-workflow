@@ -1,0 +1,8 @@
+{
+  "bug": "RABBIT-BUG-4",
+  "triaged_at": "2026-05-11T00:00:00Z",
+  "triaged_by": "Changyu",
+  "root_cause": "file-bug.sh, bug-status.sh, file-backlog-item.sh, and backlog-item-status.sh all call git commit after lifecycle operations. Tests in test-bug-scripts.sh and test-backlog-scripts.sh invoked these scripts against paths inside the live repo, causing real commits to land in branch history.",
+  "fix_approach": "Rewrote affected test cases to use an isolated mktemp+git-init repo (ISO_REPO). Tests cd into ISO_REPO before calling scripts so git rev-parse resolves the temp repo; commits land in ISO_REPO. Scripts themselves unchanged — production behavior (git commit into the bug/item dir's repo) is correct. Added test-bug-git-isolation.sh with t_iso1/t_iso2 to verify isolation holds (live count unchanged, ISO_REPO gains commit).",
+  "scope": "test files only — no script behavior changed"
+}
