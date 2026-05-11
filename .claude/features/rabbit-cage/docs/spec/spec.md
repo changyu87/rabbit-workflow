@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 1.3.0
+version: 1.4.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -88,6 +88,15 @@ marker.
 13. A `one-time` override consumed by `scope-guard.sh` is acknowledged exactly
     once by `rbt-sync-check.sh`, after which `.rabbit-scope-override-used` is
     removed.
+
+## Scope-Guard Quote Awareness
+
+`extract_bash_targets()` in `scope-guard.sh` is quote-aware. Before applying
+any redirect or write-command pattern matching, it strips single-quoted and
+double-quoted regions from each command segment using python3. This prevents
+false positives when string data (e.g., inside `python3 -c '...'` arguments
+or heredoc bodies) contains `>`, `>>`, or command names such as `tee`, `cp`,
+`mv`, or `rm`. Real unquoted redirects are still detected correctly.
 
 ## Visual Styling
 
