@@ -135,7 +135,7 @@ STUB
 
   fix "$mirror_feat" "my-feat2" "spec"
 
-  RABBIT_ROOT="$mirror_base" "$mirror_tdd_scripts/tdd-step.sh" transition "$mirror_feat" test-red \
+  RABBIT_ROOT="$mirror_base" "$mirror_tdd_scripts/tdd-step.sh" transition "$mirror_feat" spec-update \
     >"$TMPROOT/stdout" 2>"$TMPROOT/stderr"
   local rc=$?
 

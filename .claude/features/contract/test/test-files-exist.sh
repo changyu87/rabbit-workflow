@@ -76,6 +76,20 @@ check_file "test/test-rabbit-triage.sh"
 check_file "test/test-dispatch.sh"
 check_file "test/test-relink.sh"
 
+# dispatch-spec-update artifacts
+[ -f "$FEATURE_DIR/scripts/dispatch-spec-update.sh" ] && \
+  [ -x "$FEATURE_DIR/scripts/dispatch-spec-update.sh" ] \
+  && echo "ok: dispatch-spec-update.sh exists and is executable" \
+  || { echo "ko: dispatch-spec-update.sh missing or not executable" >&2; FAIL=1; }
+
+[ -f "$FEATURE_DIR/templates/spec-update-template.txt" ] \
+  && echo "ok: spec-update-template.txt exists" \
+  || { echo "ko: spec-update-template.txt missing" >&2; FAIL=1; }
+
+[ -f "$FEATURE_DIR/test/test-dispatch-spec-update.sh" ] \
+  && echo "ok: test-dispatch-spec-update.sh exists" \
+  || { echo "ko: test-dispatch-spec-update.sh missing" >&2; FAIL=1; }
+
 if [ $FAIL -ne 0 ]; then
   echo "test-files-exist: FAIL" >&2
   exit 1

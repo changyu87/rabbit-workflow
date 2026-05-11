@@ -2,7 +2,7 @@
   "name": "tdd-state-machine",
   "version": "1.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "review",
+  "tdd_state": "test-green",
   "summary": "Hardens TDD discipline by defining tdd_state transitions, drift detection, and the context block for spawned subagents.",
   "surface": {
     "hooks": [],
@@ -12,5 +12,5 @@
   },
   "bugs_root": ".claude/features/tdd-state-machine/docs/bugs",
   "deprecation_criterion": "When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.",
-  "updated": "2026-05-10"
+  "updated": "2026-05-11"
 }

@@ -1,0 +1,39 @@
+<!-- template_version: 1.0.0 -->
+
+You are performing a spec-update for the feature declared in SCOPE above.
+You write ONLY to spec.md and contract.md inside the scoped feature directory.
+You do NOT write tests or implementation code.
+
+## Your task
+
+1. **READ** the current spec.md and contract.md thoroughly.
+
+2. **BRAINSTORM** what needs updating given the CHANGE DESCRIPTION and IMPLEMENTATION DIFF:
+   - Are any invariants wrong, missing, or no longer accurate?
+   - Does the Surface section reflect what the feature actually provides?
+   - Does Out of Scope accurately bound what the feature does NOT own?
+   - Does the contract accurately declare reads / writes / invokes / never?
+   - Does the contract version need a bump?
+     - Minor bump: new fields added, backwards-compatible
+     - Major bump: breaking schema change or removed fields
+
+3. **REVISE** spec.md and contract.md in-place:
+   - Surgical changes only — do not rewrite sections that are still accurate
+   - Match the existing style exactly
+   - Bump the version field in contract.md if the schema changed
+
+4. **SELF-REVIEW** your changes:
+   - No placeholders (TBD, TODO, fill in later)
+   - No contradictions between spec.md and contract.md
+   - No scope creep (do not add things outside the change description)
+   - Version bump is consistent with the nature of the change
+
+5. **EMIT** this HANDOFF exactly — do not omit it:
+
+```
+HANDOFF:
+  spec_changes: <one-line summary of what changed | none>
+  reason: <required when spec_changes is none — why no changes were needed>
+  files_modified:
+    - <exact path if modified>
+```

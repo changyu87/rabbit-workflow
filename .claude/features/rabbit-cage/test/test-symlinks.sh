@@ -23,12 +23,12 @@ fail_t() {
 
 echo "test-symlinks.sh"
 
-# t1: .claude/agents is a symlink and resolves to an existing path
-if [ -L "$CLAUDE_DIR/agents" ] && [ -e "$(readlink -f "$CLAUDE_DIR/agents" 2>/dev/null)" ]; then ok 1 ".claude/agents is a symlink and resolves"; else fail_t 1 ".claude/agents is not a symlink or does not resolve"; fi
+# t1: .claude/agents does NOT exist (agents removed from rabbit-cage surface)
+if [ ! -e "$CLAUDE_DIR/agents" ] && [ ! -L "$CLAUDE_DIR/agents" ]; then ok 1 ".claude/agents is not a symlink or does not resolve"; else fail_t 1 ".claude/agents still exists — must be removed"; fi
 
-# t2: .claude/agents symlink target contains "rabbit-cage/agents"
+# t2: .claude/agents has no symlink target pointing to rabbit-cage/agents (removed)
 _target="$(readlink "$CLAUDE_DIR/agents" 2>/dev/null || true)"
-if echo "$_target" | grep -q "rabbit-cage/agents"; then ok 2 ".claude/agents target contains 'rabbit-cage/agents'"; else fail_t 2 ".claude/agents target '$_target' does not contain 'rabbit-cage/agents'"; fi
+if [ -z "$_target" ]; then ok 2 ".claude/agents target '' does not contain 'rabbit-cage/agents'"; else fail_t 2 ".claude/agents target '$_target' still contains 'rabbit-cage/agents' — must be removed"; fi
 
 # t3: .claude/commands is a symlink and resolves to an existing path
 if [ -L "$CLAUDE_DIR/commands" ] && [ -e "$(readlink -f "$CLAUDE_DIR/commands" 2>/dev/null)" ]; then ok 3 ".claude/commands is a symlink and resolves"; else fail_t 3 ".claude/commands is not a symlink or does not resolve"; fi
@@ -89,6 +89,17 @@ if [ -L "$REPO_ROOT/install.sh" ] && echo "$_target" | grep -q "rabbit-cage" && 
     ok 16 "install.sh at repo root targets rabbit-cage and resolves"
 else
     fail_t 16 "install.sh at repo root target '$_target' does not target rabbit-cage or does not resolve"
+fi
+
+# t17: .claude/agents does NOT exist as a symlink (dangling agents symlink must be removed from git)
+if [ ! -L "$CLAUDE_DIR/agents" ]; then ok 17 ".claude/agents is not a symlink (removed from git)"; else fail_t 17 ".claude/agents still exists as a symlink — must be removed from git tracking"; fi
+
+# t18: feature.json surface does NOT contain an 'agents' key (vestigial key must be removed)
+_feature_json="$REPO_ROOT/.claude/features/rabbit-cage/feature.json"
+if python3 -c "import json,sys; d=json.load(open('$_feature_json')); sys.exit(0 if 'agents' not in d.get('surface',{}) else 1)" 2>/dev/null; then
+    ok 18 "feature.json surface has no 'agents' key"
+else
+    fail_t 18 "feature.json surface still has an 'agents' key — must be removed"
 fi
 
 echo ""
