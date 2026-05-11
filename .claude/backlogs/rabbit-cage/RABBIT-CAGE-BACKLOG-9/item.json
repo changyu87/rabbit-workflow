@@ -1,13 +1,13 @@
 {
   "name": "RABBIT-CAGE-BACKLOG-9",
   "title": "Research and apply richer text styling to [rabbit] system messages (bold, color — red/golden)",
-  "status": "in-progress",
+  "status": "implemented",
   "priority": "low",
   "description": "",
   "owner": "cyxu",
   "filed": "2026-05-11T12:41:28Z",
   "filed_by": "cyxu",
-  "closed": null,
+  "closed": "2026-05-11T12:52:32Z",
   "history": [
     {
       "ts": "2026-05-11T12:41:28Z",
@@ -20,6 +20,13 @@
       "actor": "cyxu",
       "action": "in-progress",
       "note": "Research complete: ANSI color codes work in systemMessage. Using \\x1b[32m deep green for all [rabbit] prompts."
+    },
+    {
+      "ts": "2026-05-11T12:52:32Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "Applied ANSI deep green (\\x1b[32m) to all 7 [rabbit] systemMessage strings across rbt-sync-check.sh, rbt-session-init.sh, rbt-refresh.sh. Empirically verified ANSI colors render in Claude Code UI.",
+      "fix_commits": "b273a70"
     }
   ]
 }
