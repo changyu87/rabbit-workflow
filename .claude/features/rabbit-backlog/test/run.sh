@@ -29,6 +29,7 @@ echo "=== rabbit-backlog test runner ==="
 echo ""
 
 run_suite "$TEST_DIR/test-backlog-scripts.sh"
+run_suite "$TEST_DIR/test-backlog-skill.sh"
 
 echo "=== Summary ==="
 if [ "${#errors[@]}" -gt 0 ]; then
