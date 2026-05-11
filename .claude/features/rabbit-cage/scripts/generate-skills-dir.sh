@@ -83,6 +83,10 @@ PYEOF
 
 declare -A EXPECTED
 while IFS='|' read -r feat skill; do
+  if [ -n "${EXPECTED[$skill]:-}" ]; then
+    echo "Warning: skill name '$skill' declared by both '${EXPECTED[$skill]}' and '$feat' — '$feat' ignored" >&2
+    continue
+  fi
   EXPECTED["$skill"]="$feat"
 done < <(collect_expected)
 
