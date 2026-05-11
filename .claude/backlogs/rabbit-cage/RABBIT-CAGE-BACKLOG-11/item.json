@@ -1,0 +1,19 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-11",
+  "title": "Auto-close in-progress backlog items when feature reaches test-green",
+  "status": "open",
+  "priority": "high",
+  "description": "",
+  "owner": "cyxu",
+  "filed": "2026-05-11T14:43:31Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-11T14:43:31Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
