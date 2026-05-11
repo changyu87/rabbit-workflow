@@ -95,12 +95,43 @@ decide() {
       FEATURE_JSON="$FEATURE_ABS/feature.json"
       TDD_STATE=$(python3 -c "import json; print(json.load(open('$FEATURE_JSON')).get('tdd_state',''))" 2>/dev/null)
       if [ "$TDD_STATE" = "test-green" ]; then
+        # 4b-override. Override marker — human-approved bypass of test-green deny
+        OVERRIDE_FILE="$REPO_ROOT/.rabbit-scope-override"
+        USED_FILE="$REPO_ROOT/.rabbit-scope-override-used"
+        if [ -f "$OVERRIDE_FILE" ]; then
+          override_mode="$(cat "$OVERRIDE_FILE" | tr -d '[:space:]')"
+          if [ "$override_mode" = "session" ]; then
+            echo "ALLOW (session override active)"
+            return 0
+          elif [ "$override_mode" = "one-time" ]; then
+            rm -f "$OVERRIDE_FILE"
+            touch "$USED_FILE"
+            echo "ALLOW (one-time override consumed)"
+            return 0
+          fi
+        fi
         echo "DENY write to '$abs' denied: feature '$SCOPE_FEATURE' is in test-green state. Invoke the rabbit-feature-touch skill to reset the TDD state before editing."
         return 1
       fi
     fi
     echo "ALLOW (under active scope)"
     return 0
+  fi
+
+  # 4b-override. Override marker — human-approved bypass for no-scope-marker case
+  OVERRIDE_FILE="$REPO_ROOT/.rabbit-scope-override"
+  USED_FILE="$REPO_ROOT/.rabbit-scope-override-used"
+  if [ -f "$OVERRIDE_FILE" ]; then
+    override_mode="$(cat "$OVERRIDE_FILE" | tr -d '[:space:]')"
+    if [ "$override_mode" = "session" ]; then
+      echo "ALLOW (session override active)"
+      return 0
+    elif [ "$override_mode" = "one-time" ]; then
+      rm -f "$OVERRIDE_FILE"
+      touch "$USED_FILE"
+      echo "ALLOW (one-time override consumed)"
+      return 0
+    fi
   fi
 
   # 5. Default deny

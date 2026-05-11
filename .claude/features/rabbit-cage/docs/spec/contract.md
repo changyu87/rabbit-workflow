@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.1.0
+version: 3.2.0
 template_version: 2.0.0
 ---
 
@@ -22,7 +22,7 @@ template_version: 2.0.0
     "skills": [{"name": "rabbit-feature-touch", "path": ".claude/features/rabbit-cage/skills/rabbit-feature-touch/SKILL.md", "purpose": "orchestrates TDD state transitions in main session around every feature dispatch"}]
   },
   "reads": {
-    "files": [".claude/features/registry.json", "project-*/project-map.json", ".claude/features/contract/templates/"],
+    "files": [".claude/features/registry.json", "project-*/project-map.json", ".claude/features/contract/templates/", ".rabbit-scope-override", ".rabbit-scope-override-used"],
     "external": ["env-var:RABBIT_ROOT"]
   },
   "invokes": {
@@ -32,10 +32,17 @@ template_version: 2.0.0
     ],
     "agents":   []
   },
+  "manages": {
+    "runtime_markers": [
+      {"path": ".rabbit-scope-override", "writer": "human", "reader": "scope-guard.sh, rbt-sync-check.sh", "lifecycle": "human creates; scope-guard.sh deletes on one-time consumption; persists for session mode", "gitignored": true},
+      {"path": ".rabbit-scope-override-used", "writer": "scope-guard.sh", "reader": "rbt-sync-check.sh", "lifecycle": "created by scope-guard.sh on one-time consumption; deleted by rbt-sync-check.sh after one alert", "gitignored": true}
+    ]
+  },
   "never": [
     "writes .claude/settings.local.json",
     "modifies files inside another feature's directory",
-    "writes outside its declared scope without an active scope marker"
+    "writes outside its declared scope without an active scope marker or scope-guard override",
+    "creates .rabbit-scope-override (human-only authoring)"
   ]
 }
 ```

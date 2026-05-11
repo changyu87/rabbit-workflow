@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 1.2.0
+version: 1.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -43,6 +43,51 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 - Content authored by other features — rabbit-cage wires their surface, not their content.
 - `settings.local.json` — user-local overrides; never written by rabbit-cage.
 - Scripts: rabbit-cage owns no runtime scripts beyond `install.sh` and those registered in its contract.
+- Authoring `.rabbit-scope-override` — only a human creates this file. rabbit-cage hooks read and consume it but never create it.
+
+## Scope-Guard Override
+
+A human-approved override mechanism allows the scope-guard to permit a write
+that would otherwise be denied. The override is granted by the human creating
+a marker file at the repo root; the act of running the command IS the
+approval.
+
+**Marker files (both gitignored, repo-root):**
+
+- `.rabbit-scope-override` — contents are exactly `one-time` or `session`.
+  Created by the human (e.g. `echo one-time > .rabbit-scope-override`).
+- `.rabbit-scope-override-used` — created by `scope-guard.sh` when a
+  `one-time` override is consumed. Acts as a single-shot post-event signal
+  for `rbt-sync-check.sh` to surface the consumption.
+
+**`scope-guard.sh` semantics** (evaluated before the default-deny step):
+
+- `.rabbit-scope-override` = `session` → ALLOW; marker is left in place so
+  the guard remains down for the rest of the session.
+- `.rabbit-scope-override` = `one-time` → ALLOW; `scope-guard.sh` DELETES
+  `.rabbit-scope-override` and CREATES `.rabbit-scope-override-used`.
+- Absent or other content → fall through to the default-deny path.
+
+**`rbt-sync-check.sh` semantics** (Stop hook, after the normal drift check):
+
+- `.rabbit-scope-override` = `session` → emit a red `[rabbit]` systemMessage
+  on every Stop, signalling that the guard is currently off.
+- `.rabbit-scope-override-used` exists → emit the same red alert once, then
+  DELETE `.rabbit-scope-override-used`.
+
+**Human approval flow:** when scope-guard blocks a write, Claude instructs
+the user to run `echo one-time > .rabbit-scope-override` or
+`echo session > .rabbit-scope-override`. Claude itself never writes either
+marker.
+
+## Invariants (additional)
+
+11. `.rabbit-scope-override` and `.rabbit-scope-override-used` are gitignored.
+12. `scope-guard.sh` never creates `.rabbit-scope-override`; it only reads it
+    and (for `one-time`) deletes it after consumption.
+13. A `one-time` override consumed by `scope-guard.sh` is acknowledged exactly
+    once by `rbt-sync-check.sh`, after which `.rabbit-scope-override-used` is
+    removed.
 
 ## Visual Styling
 
@@ -52,3 +97,9 @@ codes (`\x1b[32m` … `\x1b[0m`). Markdown is not rendered in `systemMessage`
 output; ANSI escape codes are. The deep-green color marks all `[rabbit]`
 status/drift/refresh messages as system-emitted (not user-emitted), making
 them visually distinguishable in the Claude Code transcript.
+
+Scope-guard override alerts emitted by `rbt-sync-check.sh` use ANSI red
+(`\x1b[31m` … `\x1b[0m`) instead of deep-green, marking them as elevated
+warnings:
+
+    \x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD OFF (session override active) ━━━ 🔓\x1b[0m

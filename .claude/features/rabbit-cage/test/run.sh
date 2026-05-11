@@ -35,6 +35,7 @@ run_suite test-generate-skills-dir.sh
 run_suite test-RABBIT-CAGE-16-first-stop-no-false-drift.sh
 run_suite test-RABBIT-CAGE-BACKLOG7-visual-messages.sh
 run_suite test-RABBIT-CAGE-BACKLOG9-green-messages.sh
+run_suite test-RABBIT-CAGE-BACKLOG10-override.sh
 
 if [ "$total_fail" -eq 0 ]; then
     echo "ALL SUITES PASSED"
