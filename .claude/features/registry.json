@@ -18,6 +18,22 @@
       "summary": "Canonical rule files fed to subagents; split of work-guide.md and philosophy.md.",
       "path": ".claude/features/policy"
     },
+    "rabbit-backlog": {
+      "name": "rabbit-backlog",
+      "version": "0.1.0",
+      "owner": "rabbit-workflow team",
+      "tdd_state": "test-green",
+      "summary": "Owns backlog item filing and lifecycle for all rabbit features. Provides file-backlog-item.sh and backlog-item-status.sh.",
+      "path": ".claude/features/rabbit-backlog"
+    },
+    "rabbit-bug": {
+      "name": "rabbit-bug",
+      "version": "0.1.0",
+      "owner": "rabbit-workflow team",
+      "tdd_state": "test-green",
+      "summary": "Owns bug filing, tracking, and lifecycle for all rabbit features. Provides file-bug.sh, bug-status.sh, and list-bugs.sh.",
+      "path": ".claude/features/rabbit-bug"
+    },
     "rabbit-cage": {
       "name": "rabbit-cage",
       "version": "3.0.0",
@@ -33,22 +49,6 @@
       "tdd_state": "review",
       "summary": "Hardens TDD discipline by defining tdd_state transitions, drift detection, and the context block for spawned subagents.",
       "path": ".claude/features/tdd-state-machine"
-    },
-    "rabbit-bug": {
-      "name": "rabbit-bug",
-      "version": "0.1.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Owns bug filing, tracking, and lifecycle for all rabbit features. Provides file-bug.sh, bug-status.sh, and list-bugs.sh.",
-      "path": ".claude/features/rabbit-bug"
-    },
-    "rabbit-backlog": {
-      "name": "rabbit-backlog",
-      "version": "0.1.0",
-      "owner": "rabbit-workflow team",
-      "tdd_state": "test-green",
-      "summary": "Owns backlog item filing and lifecycle for all rabbit features. Provides file-backlog-item.sh and backlog-item-status.sh.",
-      "path": ".claude/features/rabbit-backlog"
     }
   }
 }
