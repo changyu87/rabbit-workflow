@@ -2,13 +2,13 @@
 
 ---
 
-## Subagent-driven by construction
+## 1. Subagent-driven by construction
 
 Every implementation touch goes through a dispatched subagent via `dispatch-feature-edit.sh`. The main session reads, decides, dispatches, and verifies. It does not write files.
 
 ---
 
-## Main Session Is a Dispatcher, Not an Implementer
+## 2. Main Session Is a Dispatcher, Not an Implementer
 
 **Dispatch subagents for all implementation work. Never edit code directly.**
 
@@ -22,19 +22,19 @@ For any task that involves writing or modifying implementation artifacts
 
 ---
 
-## Full TDD on every feature touch
+## 3. Full TDD on every feature touch
 
 Any add, edit, or delete of a feature — including a one-character typo fix or a comment deletion — MUST go through the full TDD step sequence managed by `tdd-step.sh`. There is no partial-TDD shortcut. The discipline is uniform because partial flows are where drift enters undetected.
 
 ---
 
-## Token/compliance tradeoff is the user's call
+## 4. Token/compliance tradeoff is the user's call
 
 Full TDD costs tokens. The cost is intentional: accumulated drift costs more than any individual dispatch. The user always retains the judgment of whether to initiate a dispatch at all. The rule is: if you touch a feature, run the full discipline. Choosing not to touch is always available and always free.
 
 ---
 
-## Hard rules index (R1–R9)
+## 5. Hard rules index (R1–R9)
 
 - **R1** — Branch per feature; never commit directly to main.
 - **R2** — Use Opus for brainstorm, spec, plan, design, and architect subagents.
@@ -48,7 +48,7 @@ Full TDD costs tokens. The cost is intentional: accumulated drift costs more tha
 
 ---
 
-## Cross-component handoffs use schemas, not prose
+## 6. Cross-component handoffs use schemas, not prose
 
 Every handoff between components uses a declared, versioned schema. Free-form text at a boundary is a bug. Schema fields are typed, named, and validated at the boundary by the receiving component.
 

@@ -55,15 +55,15 @@ else
     fail 6 "R9 not found as one-liner bullet '- **R9**'"
 fi
 
-# t7: 'Subagent-driven by construction' section still exists
-if grep -q '## Subagent-driven by construction' "$WF"; then
+# t7: 'Subagent-driven by construction' section still exists (with number)
+if grep -q '## 1\. Subagent-driven by construction' "$WF"; then
     ok 7 "'Subagent-driven by construction' section present"
 else
     fail 7 "'Subagent-driven by construction' section missing"
 fi
 
-# t8: 'Full TDD on every feature touch' section still exists
-if grep -q '## Full TDD on every feature touch' "$WF"; then
+# t8: 'Full TDD on every feature touch' section still exists (with number)
+if grep -q '## 3\. Full TDD on every feature touch' "$WF"; then
     ok 8 "'Full TDD on every feature touch' section present"
 else
     fail 8 "'Full TDD on every feature touch' section missing"
