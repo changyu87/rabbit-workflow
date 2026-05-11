@@ -1,9 +1,0 @@
-
-I think the current TDD flow is good, but need to be enhance because our feature SPEC is a little off.
-From what I had in mind is that a feature's SPEC contains implementation constraints and deliver criterias. But sometimes I don't see SPEC get updated for a TDD flow.
-So I want to do two things first.
-
-1. review our TDD flow, and check if read spec is a must on every feature touch. Then on a feature update/edit condition, do we harden in script that flow wise, we re-brainstorm and plan wirting and do everything we need to update feature spec, review the spec, and then let subsequent subagents to handle the implementation according to spec. By all means, spec should be a golden document that feature's implementation should follow, not main session's analysis
-
-2. after above thing is done, we run a full deep TDD on every existing feature to consolidate current implementation and tests with spec. During this, don't guess, if you are not clear about spec or any design intention, ask me. During the review, I want you not only check the spec against design intention, but also our policy, this is important too.
-
