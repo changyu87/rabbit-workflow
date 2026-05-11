@@ -46,7 +46,7 @@
       "name": "tdd-state-machine",
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
-      "tdd_state": "review",
+      "tdd_state": "test-green",
       "summary": "Hardens TDD discipline by defining tdd_state transitions, drift detection, and the context block for spawned subagents.",
       "path": ".claude/features/tdd-state-machine"
     }
