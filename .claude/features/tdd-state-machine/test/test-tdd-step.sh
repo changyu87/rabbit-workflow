@@ -50,18 +50,18 @@ t1() {
 t2() {
   local d="$TMPROOT/t2"; fix "$d" t2 spec
   local rc; rc=$(run next "$d")
-  [ "$rc" = "0" ] && [ "$(cat "$TMPROOT/stdout")" = "test-red" ] \
-    && ok "t2: next from spec is test-red" \
+  [ "$rc" = "0" ] && [ "$(cat "$TMPROOT/stdout")" = "spec-update" ] \
+    && ok "t2: next from spec is spec-update" \
     || ko "t2: rc=$rc out='$(cat "$TMPROOT/stdout")'"
 }
 
 # t3: transition to next-allowed succeeds and writes file
 t3() {
   local d="$TMPROOT/t3"; fix "$d" t3 spec
-  local rc; rc=$(run transition "$d" test-red)
+  local rc; rc=$(run transition "$d" spec-update)
   local newstate; newstate=$(jq -r '.tdd_state' "$d/feature.json")
-  [ "$rc" = "0" ] && [ "$newstate" = "test-red" ] \
-    && ok "t3: spec -> test-red succeeds" \
+  [ "$rc" = "0" ] && [ "$newstate" = "spec-update" ] \
+    && ok "t3: spec -> spec-update succeeds" \
     || ko "t3: rc=$rc newstate=$newstate stderr=$(cat "$TMPROOT/stderr")"
 }
 
@@ -99,7 +99,7 @@ t6() {
 t7() {
   local d="$TMPROOT/t7"; fix "$d" t7 spec
   jq '.updated = "1999-01-01"' "$d/feature.json" > "$d/tmp" && mv "$d/tmp" "$d/feature.json"
-  run transition "$d" test-red >/dev/null
+  run transition "$d" spec-update >/dev/null
   local upd; upd=$(jq -r '.updated' "$d/feature.json")
   [ "$upd" != "1999-01-01" ] && echo "$upd" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' \
     && ok "t7: 'updated' field refreshed to $upd" \
@@ -119,8 +119,10 @@ t8() {
 t9() {
   local d="$TMPROOT/t9"; fix "$d" t9 spec
   local ok=1
-  for next in test-red impl test-green review merged deprecated; do
-    run transition "$d" "$next" >/dev/null || { ok=0; break; }
+  run transition "$d" spec-update >/dev/null || ok=0
+  [ "$ok" = "1" ] && run transition "$d" test-red --spec-no-change-reason "t9 full-path fixture" >/dev/null || ok=0
+  for next in impl test-green review merged deprecated; do
+    [ "$ok" = "1" ] && run transition "$d" "$next" >/dev/null || { ok=0; break; }
   done
   local final; final=$(jq -r '.tdd_state' "$d/feature.json")
   [ "$ok" = "1" ] && [ "$final" = "deprecated" ] \
@@ -147,8 +149,95 @@ t11() {
     || ko "t11: rc=$rc out='$out'"
 }
 
+# t_su1: spec-update is a valid state (--force into spec-update must succeed)
+t_su1() {
+  local d="$TMPROOT/tsu1"; fix "$d" tsu1 spec
+  local rc; rc=$(run transition "$d" spec-update --force)
+  local newstate; newstate=$(jq -r '.tdd_state' "$d/feature.json")
+  [ "$rc" = "0" ] && [ "$newstate" = "spec-update" ] \
+    && ok "tsu1: spec-update is a valid state (--force accepted)" \
+    || ko "tsu1: rc=$rc newstate=$newstate stderr=$(cat "$TMPROOT/stderr")"
+}
+
+# t_su2: spec → spec-update is the forward transition from spec
+t_su2() {
+  local d="$TMPROOT/tsu2"; fix "$d" tsu2 spec
+  local rc; rc=$(run transition "$d" spec-update)
+  local newstate; newstate=$(jq -r '.tdd_state' "$d/feature.json")
+  [ "$rc" = "0" ] && [ "$newstate" = "spec-update" ] \
+    && ok "tsu2: spec -> spec-update forward transition succeeds" \
+    || ko "tsu2: rc=$rc newstate=$newstate stderr=$(cat "$TMPROOT/stderr")"
+}
+
+# t_su3: spec-update → test-red allowed when --spec-no-change-reason provided
+t_su3() {
+  local d="$TMPROOT/tsu3"; fix "$d" tsu3 spec-update
+  local rc; rc=$(run transition "$d" test-red --spec-no-change-reason "bug fix; spec already correct")
+  local newstate; newstate=$(jq -r '.tdd_state' "$d/feature.json")
+  [ "$rc" = "0" ] && [ "$newstate" = "test-red" ] \
+    && ok "tsu3: spec-update -> test-red with --spec-no-change-reason succeeds" \
+    || ko "tsu3: rc=$rc newstate=$newstate stderr=$(cat "$TMPROOT/stderr")"
+}
+
+# t_su4: spec-update → test-red blocked when spec unmodified and no reason given
+t_su4() {
+  local d="$TMPROOT/tsu4_repo"
+  git init "$d" >/dev/null 2>&1
+  git -C "$d" config user.email "test@test.com"
+  git -C "$d" config user.name "Test"
+  local feat="$d/feat"; fix "$feat" tsu4 spec-update
+  mkdir -p "$feat/docs/spec"
+  echo "spec content" > "$feat/docs/spec/spec.md"
+  git -C "$d" add -A >/dev/null 2>&1
+  git -C "$d" commit -m "init" >/dev/null 2>&1
+  # spec.md NOT modified after commit → gate must block
+  # Cannot use run() helper — must inject RABBIT_ROOT to point at the temp git repo.
+  local rc
+  RABBIT_ROOT="$d" "$TDD_STEP" transition "$feat" test-red >"$TMPROOT/stdout_tsu4" 2>"$TMPROOT/err_tsu4"
+  rc=$?
+  local newstate; newstate=$(jq -r '.tdd_state' "$feat/feature.json")
+  # Currently passes because spec-update is not yet a valid state (rc!=0 for wrong reason).
+  # After Task 2 implementation, this tests the actual spec-diff enforcement gate.
+  [ "$rc" != "0" ] && [ "$newstate" = "spec-update" ] \
+    && ok "tsu4: spec-update -> test-red blocked when spec unmodified and no reason" \
+    || ko "tsu4: rc=$rc newstate=$newstate stderr=$(cat "$TMPROOT/err_tsu4")"
+}
+
+# t_su5: spec-update → test-red allowed when spec.md modified (git diff detects change)
+t_su5() {
+  local d="$TMPROOT/tsu5_repo"
+  git init "$d" >/dev/null 2>&1
+  git -C "$d" config user.email "test@test.com"
+  git -C "$d" config user.name "Test"
+  local feat="$d/feat"; fix "$feat" tsu5 spec-update
+  mkdir -p "$feat/docs/spec"
+  echo "original spec" > "$feat/docs/spec/spec.md"
+  git -C "$d" add -A >/dev/null 2>&1
+  git -C "$d" commit -m "init" >/dev/null 2>&1
+  # Modify spec.md → git diff will show changes → gate must allow
+  echo "updated spec" >> "$feat/docs/spec/spec.md"
+  # Cannot use run() helper — must inject RABBIT_ROOT to point at the temp git repo.
+  local rc
+  RABBIT_ROOT="$d" "$TDD_STEP" transition "$feat" test-red >"$TMPROOT/stdout_tsu5" 2>"$TMPROOT/err_tsu5"
+  rc=$?
+  local newstate; newstate=$(jq -r '.tdd_state' "$feat/feature.json")
+  [ "$rc" = "0" ] && [ "$newstate" = "test-red" ] \
+    && ok "tsu5: spec-update -> test-red allowed when spec.md modified in git" \
+    || ko "tsu5: rc=$rc newstate=$newstate stderr=$(cat "$TMPROOT/err_tsu5")"
+}
+
+# t_su6: next from spec-update is test-red
+t_su6() {
+  local d="$TMPROOT/tsu6"; fix "$d" tsu6 spec-update
+  local rc; rc=$(run next "$d")
+  [ "$rc" = "0" ] && [ "$(cat "$TMPROOT/stdout")" = "test-red" ] \
+    && ok "tsu6: next from spec-update is test-red" \
+    || ko "tsu6: rc=$rc out='$(cat "$TMPROOT/stdout")'"
+}
+
 echo "running tdd-step tests against $TDD_STEP"
 t1; t2; t3; t4; t5; t6; t7; t8; t9; t10; t11
+t_su1; t_su2; t_su3; t_su4; t_su5; t_su6
 echo
 echo "summary: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

@@ -5,7 +5,7 @@
 #   tdd-step.sh show <feature-dir>
 #   tdd-step.sh next <feature-dir>
 #   tdd-step.sh transitions <feature-dir>
-#   tdd-step.sh transition <feature-dir> <new-state> [--force]
+#   tdd-step.sh transition <feature-dir> <new-state> [--force] [--spec-no-change-reason <reason>]
 #
 # Exit:
 #   0 success
@@ -22,14 +22,15 @@ usage:
   tdd-step.sh show <feature-dir>
   tdd-step.sh next <feature-dir>
   tdd-step.sh transitions <feature-dir>
-  tdd-step.sh transition <feature-dir> <new-state> [--force]
+  tdd-step.sh transition <feature-dir> <new-state> [--force] [--spec-no-change-reason <reason>]
 EOF
 }
 
 # Forward transitions only. Anything else requires --force.
 forward_next() {
   case "$1" in
-    spec)       echo "test-red" ;;
+    spec)        echo "spec-update" ;;
+    spec-update) echo "test-red" ;;
     test-red)   echo "impl" ;;
     impl)       echo "test-green" ;;
     test-green) echo "review" ;;
@@ -42,7 +43,7 @@ forward_next() {
 
 is_valid_state() {
   case "$1" in
-    spec|test-red|impl|test-green|review|merged|deprecated) return 0 ;;
+    spec|spec-update|test-red|impl|test-green|review|merged|deprecated) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -87,11 +88,35 @@ case "$cmd" in
     fi
     ;;
   transition)
-    dir="${1:-}"; new="${2:-}"; flag="${3:-}"
+    dir="${1:-}"; new="${2:-}"
     [ -z "$dir" ] || [ -z "$new" ] && { usage; exit 2; }
+    shift 2 || true
+    FORCE=0
+    SPEC_NO_CHANGE_REASON=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --force) FORCE=1; shift ;;
+        --spec-no-change-reason)
+          [ -z "${2:-}" ] && { echo "ERROR: --spec-no-change-reason requires a non-empty reason" >&2; exit 2; }
+          SPEC_NO_CHANGE_REASON="$2"; shift 2 ;;
+        *) echo "ERROR: unknown flag '$1'" >&2; exit 2 ;;
+      esac
+    done
     is_valid_state "$new" || { echo "ERROR: '$new' is not a valid tdd_state" >&2; exit 1; }
     cur=$(read_state "$dir") || exit $?
     expected=$(forward_next "$cur")
+    # Enforcement gate: spec-update → test-red requires spec change or documented reason
+    if [ "$cur" = "spec-update" ] && [ "$new" = "test-red" ]; then
+      if [ -n "$SPEC_NO_CHANGE_REASON" ]; then
+        : # Reason documented — allowed
+      else
+        SPEC_DIFF="$(git -C "$REPO_ROOT" diff HEAD -- "$dir/docs/spec/" 2>/dev/null || true)"
+        if [ -z "$SPEC_DIFF" ]; then
+          echo "ERROR: spec-update -> test-red requires spec changes (git diff) or --spec-no-change-reason <reason>" >&2
+          exit 1
+        fi
+      fi
+    fi
     if [ "$cur" = "deprecated" ]; then
       echo "ERROR: '$cur' is terminal; cannot transition (even with --force)" >&2
       exit 1
@@ -156,7 +181,7 @@ case "$cmd" in
       echo "$cur -> $new"
       exit 0
     fi
-    if [ "$flag" = "--force" ]; then
+    if [ "$FORCE" = "1" ]; then
       write_state "$dir" "$new"
       # Post-transition hooks for test-green.
       if [ "$new" = "test-green" ]; then
