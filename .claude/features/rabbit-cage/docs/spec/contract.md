@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.0.0
+version: 3.1.0
 template_version: 2.0.0
 ---
 
@@ -9,7 +9,7 @@ template_version: 2.0.0
 ```json
 {
   "provides": {
-    "files": [".claude/agents", ".claude/commands", ".claude/hooks", ".claude/skills", ".claude/settings.json", ".claude/policy", ".claude/contract", "CLAUDE.md", "README.md", "install.sh"],
+    "files": [".claude/commands", ".claude/hooks", ".claude/skills", ".claude/settings.json", ".claude/policy", ".claude/contract", "CLAUDE.md", "README.md", "install.sh"],
     "scripts": [
       {"path": ".claude/features/rabbit-cage/scripts/new-feature.sh", "stdin": "none", "stdout": "scaffold path", "exit": "0=created 1=error 2=usage"},
       {"path": ".claude/features/rabbit-cage/scripts/validate-all.sh", "stdin": "none", "stdout": "validation report", "exit": "0=all pass 1=failures"},

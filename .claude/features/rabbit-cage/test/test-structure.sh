@@ -24,8 +24,8 @@ fail_t() {
 
 echo "test-structure.sh"
 
-# t1: agents/ exists as a directory
-if [ -d "$CAGE_DIR/agents" ]; then ok 1 "agents/ exists as directory"; else fail_t 1 "agents/ does not exist or is not a directory"; fi
+# t1: agents/ does NOT exist (removed from rabbit-cage surface — agents are gone)
+if [ ! -e "$CAGE_DIR/agents" ]; then ok 1 "agents/ does not exist or is not a directory"; else fail_t 1 "agents/ still exists — must be removed from rabbit-cage"; fi
 
 # t2: commands/ exists as a directory
 if [ -d "$CAGE_DIR/commands" ]; then ok 2 "commands/ exists as directory"; else fail_t 2 "commands/ does not exist or is not a directory"; fi

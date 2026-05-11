@@ -16,7 +16,6 @@
       ".claude/commands/rabbit-project.md",
       ".claude/commands/rabbit-workspace.md"
     ],
-    "agents": [],
     "skills": [
       "rabbit-feature-touch"
     ],
