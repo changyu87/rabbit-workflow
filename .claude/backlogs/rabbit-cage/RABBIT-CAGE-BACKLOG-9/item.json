@@ -1,7 +1,7 @@
 {
   "name": "RABBIT-CAGE-BACKLOG-9",
   "title": "Research and apply richer text styling to [rabbit] system messages (bold, color — red/golden)",
-  "status": "open",
+  "status": "in-progress",
   "priority": "low",
   "description": "",
   "owner": "cyxu",
@@ -14,6 +14,12 @@
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-11T12:48:22Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "Research complete: ANSI color codes work in systemMessage. Using \\x1b[32m deep green for all [rabbit] prompts."
     }
   ]
 }
