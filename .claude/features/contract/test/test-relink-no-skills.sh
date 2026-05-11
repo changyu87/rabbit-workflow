@@ -26,6 +26,13 @@ else
   fail_t 1 "$T1_LABEL — found unexpected $REPO_ROOT/rabbit-feature-touch"
 fi
 
+T2_LABEL="t2: relink.sh header comment does not mention 'skills'"
+if ! grep -q 'surface\.{hooks,commands,agents,skills}' "$RELINK"; then
+  ok 2 "$T2_LABEL"
+else
+  fail_t 2 "$T2_LABEL — header still documents 'skills'"
+fi
+
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

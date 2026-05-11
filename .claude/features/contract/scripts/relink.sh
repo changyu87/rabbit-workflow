@@ -10,7 +10,7 @@
 #                   default: parent of parent of features-dir
 #                   (so .claude/features -> .claude -> repo root)
 #
-# For each feature, reads surface.{hooks,commands,agents,skills}:
+# For each feature, reads surface.{hooks,commands,agents}:
 #   Each value is a repo-relative symlink path. Creates:
 #     <repo-root>/<surface-path> -> <features-dir>/<feature-name>/<basename>
 #   Skips if the target already exists as a regular file (not a symlink).
