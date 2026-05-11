@@ -1,0 +1,19 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-12",
+  "title": "Document .rabbit-scope-active requirement: spec-update and impl dispatches must go through dispatch scripts, never direct Agent call",
+  "status": "open",
+  "priority": "medium",
+  "description": "",
+  "owner": "cyxu",
+  "filed": "2026-05-11T14:46:04Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-11T14:46:04Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
