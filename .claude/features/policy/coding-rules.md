@@ -1,6 +1,6 @@
 # Coding Rules
 
-## Part II — Code-Editing Discipline
+## Code-Editing Discipline
 
 *The four sections below are reproduced verbatim from Andrej Karpathy's
 [CLAUDE.md](https://github.com/forrestchang/andrej-karpathy-skills/blob/main/CLAUDE.md).
@@ -11,7 +11,7 @@ tasks, use judgment.*
 
 ---
 
-### 4. Think Before Coding
+### 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
 
@@ -23,7 +23,7 @@ Before implementing:
 
 ---
 
-### 5. Simplicity First
+### 2. Simplicity First
 
 **Minimum code that solves the problem. Nothing speculative.**
 
@@ -38,7 +38,7 @@ simplify.
 
 ---
 
-### 6. Surgical Changes
+### 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
 
@@ -58,7 +58,7 @@ The test: every changed line should trace directly to the user's request.
 
 ---
 
-### 7. Goal-Driven Execution
+### 4. Goal-Driven Execution
 
 **Define success criteria. Loop until verified.**
 
@@ -78,7 +78,7 @@ work") require constant clarification.
 
 ---
 
-### 8. Main Session Is a Dispatcher, Not an Implementer
+### 5. Main Session Is a Dispatcher, Not an Implementer
 
 **Dispatch subagents for all implementation work. Never edit code directly.**
 
