@@ -33,9 +33,8 @@ echo 0 > "$COUNTER_FILE"
 # Generate expected content
 EXPECTED="$(bash "$GENERATE_SCRIPT" 2>/dev/null)" || exit 0
 
-# If CLAUDE.md does not exist or differs from expected: regenerate and exit immediately.
-# (Policy must be re-injected urgently; skills check is skipped in this invocation.)
-if [ ! -f "$CLAUDE_MD" ] || [ "$(cat "$CLAUDE_MD")" != "$EXPECTED" ]; then
+# If CLAUDE.md does not exist: first-run scenario — create it with first-run message.
+if [ ! -f "$CLAUDE_MD" ]; then
   printf '%s\n' "$EXPECTED" > "$CLAUDE_MD"
   echo "${RBT_REFRESH_EVERY:-20}" > "${REPO_ROOT}/.rbt-prompt-counter"
   POLICY_SECTION="$(printf '%s\n' "$EXPECTED" | sed -n '/rabbit-policy-start/,/rabbit-policy-end/p')"
@@ -44,7 +43,23 @@ import json, sys
 payload = sys.stdin.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '[rabbit] Policy drift detected — CLAUDE.md regenerated from source files'
+    'systemMessage': '📋 ━━━ [rabbit] Policy initialized — CLAUDE.md created for first time ━━━ 📋'
+}))
+" <<< "$POLICY_SECTION"
+  exit 0
+fi
+
+# If CLAUDE.md exists but differs from expected: genuine drift — regenerate and alert.
+if [ "$(cat "$CLAUDE_MD")" != "$EXPECTED" ]; then
+  printf '%s\n' "$EXPECTED" > "$CLAUDE_MD"
+  echo "${RBT_REFRESH_EVERY:-20}" > "${REPO_ROOT}/.rbt-prompt-counter"
+  POLICY_SECTION="$(printf '%s\n' "$EXPECTED" | sed -n '/rabbit-policy-start/,/rabbit-policy-end/p')"
+  python3 -c "
+import json, sys
+payload = sys.stdin.read()
+print(json.dumps({
+    'additionalContext': payload,
+    'systemMessage': '⚠️ ━━━ [rabbit] Policy drift detected — CLAUDE.md regenerated from source files ━━━ ⚠️'
 }))
 " <<< "$POLICY_SECTION"
   exit 0
@@ -57,7 +72,7 @@ if [ -f "$_GENERATE_SKILLS" ] && ! bash "$_GENERATE_SKILLS" --check "$REPO_ROOT"
   python3 -c "
 import json
 print(json.dumps({
-    'systemMessage': '[rabbit] Skills updated — run /reload-plugins or restart session to activate changes'
+    'systemMessage': '🔄 ━━━ [rabbit] Skills updated — run /reload-plugins or restart session to activate changes ━━━ 🔄'
 }))
 "
 fi
