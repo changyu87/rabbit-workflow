@@ -2,13 +2,33 @@
 
 ---
 
-## Section 1 — Subagent-driven by construction
+## Subagent-driven by construction
 
 Every implementation touch goes through a dispatched subagent via `dispatch-feature-edit.sh`. The main session reads, decides, dispatches, and verifies. It does not write files. This is not a convention — it is enforced by scope-guard (R8) and the sentinel check (R6).
 
 ---
 
-## Section 2 — Full TDD on every feature touch
+## Main Session Is a Dispatcher, Not an Implementer
+
+**Dispatch subagents for all implementation work. Never edit code directly.**
+
+For any task that involves writing or modifying implementation artifacts
+(code, specs, tests, config), the main session MUST dispatch a subagent:
+
+- Bug triage → run `rabbit-triage.sh <feature-dir> <bug-name>` (via `.claude/features/contract/scripts/`), invoke Agent with the resulting prompt, capture the TRIAGE: block, and write `vet-triage.json`.
+- Code fix or feature → dispatch via `dispatch-feature-edit.sh` (via `.claude/features/contract/scripts/`) with the appropriate
+  `SCOPE` path (per R6). Touch the scope marker before dispatch; remove after.
+- The main session reads, decides, dispatches, verifies. It does not edit.
+
+**Exceptions (direct calls allowed without subagent):**
+- Read-only queries (`list-bugs.sh`, `bug-status.sh get`, grep)
+- Status transitions performed by a scoped agent within its own active scope
+  (e.g. a scoped agent calling `bug-status.sh set ... closed --skip-vet-reason ...`)
+- Simple answers to questions that don't touch any file
+
+---
+
+## Full TDD on every feature touch
 
 Any add, edit, or delete of a feature — including a one-character typo fix or a comment deletion — MUST go through the full TDD step sequence managed by `tdd-step.sh`. There is no partial-TDD shortcut. The discipline is uniform because partial flows are where drift enters undetected.
 
@@ -16,13 +36,13 @@ Any add, edit, or delete of a feature — including a one-character typo fix or 
 
 ---
 
-## Section 3 — Token/compliance tradeoff is the user's call
+## Token/compliance tradeoff is the user's call
 
 Full TDD costs tokens. The cost is intentional: accumulated drift costs more than any individual dispatch. The user always retains the judgment of whether to initiate a dispatch at all. The rule is: if you touch a feature, run the full discipline. Choosing not to touch is always available and always free.
 
 ---
 
-## Section 4 — Hard rules index (R1–R9)
+## Hard rules index (R1–R9)
 
 The rules below are operational add-ons enforced by deterministic checks shipped with the workflow. The full text and the check scripts live in `.claude/features/contract/scripts/enforcement/`. This section is a one-line index.
 
@@ -80,7 +100,7 @@ The full statement, rationale, and tests for each rule live in
 
 ---
 
-## Section 5 — Cross-component handoffs use schemas, not prose
+## Cross-component handoffs use schemas, not prose
 
 Every handoff between components uses a declared, versioned schema. Free-form text at a boundary is a bug. Schema fields are typed, named, and validated at the boundary by the receiving component.
 

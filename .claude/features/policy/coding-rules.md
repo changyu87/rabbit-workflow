@@ -1,17 +1,10 @@
 # Coding Rules
 
-## Code-Editing Discipline
-
-*The four sections below are reproduced verbatim from Andrej Karpathy's
-[CLAUDE.md](https://github.com/forrestchang/andrej-karpathy-skills/blob/main/CLAUDE.md).
-They are battle-tested for reducing common LLM coding mistakes.*
-
-*Tradeoff: these guidelines bias toward caution over speed. For trivial
-tasks, use judgment.*
+*Adapted from Andrej Karpathy's CLAUDE.md — battle-tested for reducing common LLM coding mistakes.*
 
 ---
 
-### 1. Think Before Coding
+## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
 
@@ -23,7 +16,7 @@ Before implementing:
 
 ---
 
-### 2. Simplicity First
+## 2. Simplicity First
 
 **Minimum code that solves the problem. Nothing speculative.**
 
@@ -38,7 +31,7 @@ simplify.
 
 ---
 
-### 3. Surgical Changes
+## 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
 
@@ -58,7 +51,7 @@ The test: every changed line should trace directly to the user's request.
 
 ---
 
-### 4. Goal-Driven Execution
+## 4. Goal-Driven Execution
 
 **Define success criteria. Loop until verified.**
 
@@ -75,25 +68,3 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it
 work") require constant clarification.
-
----
-
-### 5. Main Session Is a Dispatcher, Not an Implementer
-
-**Dispatch subagents for all implementation work. Never edit code directly.**
-
-For any task that involves writing or modifying implementation artifacts
-(code, specs, tests, config), the main session MUST dispatch a subagent:
-
-- Bug triage → run `rabbit-triage.sh <feature-dir> <bug-name>` (via `.claude/features/contract/scripts/`), invoke Agent with the resulting prompt, capture the TRIAGE: block, and write `vet-triage.json`.
-- Code fix or feature → dispatch via `dispatch-feature-edit.sh` (via `.claude/features/contract/scripts/`) with the appropriate
-  `SCOPE` path (per R6). Touch the scope marker before dispatch; remove after.
-- The main session reads, decides, dispatches, verifies. It does not edit.
-
-**Exceptions (direct calls allowed without subagent):**
-- Read-only queries (`list-bugs.sh`, `bug-status.sh get`, grep)
-- Status transitions performed by a scoped agent within its own active scope
-  (e.g. a scoped agent calling `bug-status.sh set ... closed --skip-vet-reason ...`)
-- Simple answers to questions that don't touch any file
-
----

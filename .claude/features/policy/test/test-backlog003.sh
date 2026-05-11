@@ -18,11 +18,11 @@ else
   echo "PASS: t1: coding-rules.md does not contain '### 4. Think Before Coding'"
 fi
 
-# t2: must contain '### 1.' (first rule starts at 1)
-if grep -q '### 1\.' "$CODING_RULES"; then
-  echo "PASS: t2: coding-rules.md contains '### 1.'"
+# t2: must contain '## 1.' (first rule starts at 1, promoted to H2)
+if grep -qE '^## 1\.' "$CODING_RULES"; then
+  echo "PASS: t2: coding-rules.md contains '## 1.'"
 else
-  echo "FAIL: t2: coding-rules.md should contain '### 1.' (rules start at 1)"
+  echo "FAIL: t2: coding-rules.md should contain '## 1.' (rules start at 1)"
   FAILURES=$((FAILURES + 1))
 fi
 
@@ -52,12 +52,12 @@ else
   echo "PASS: t5: coding-rules.md does not contain 'Part II'"
 fi
 
-# t6: must contain '## Code-Editing Discipline' (clean heading without 'Part II')
+# t6: must NOT contain '## Code-Editing Discipline' (heading removed in restructure)
 if grep -q '^## Code-Editing Discipline$' "$CODING_RULES"; then
-  echo "PASS: t6: coding-rules.md contains '## Code-Editing Discipline'"
-else
-  echo "FAIL: t6: coding-rules.md should contain '## Code-Editing Discipline' (clean heading)"
+  echo "FAIL: t6: coding-rules.md should NOT contain '## Code-Editing Discipline' (heading removed)"
   FAILURES=$((FAILURES + 1))
+else
+  echo "PASS: t6: coding-rules.md does not contain '## Code-Editing Discipline'"
 fi
 
 # --- Summary ---
