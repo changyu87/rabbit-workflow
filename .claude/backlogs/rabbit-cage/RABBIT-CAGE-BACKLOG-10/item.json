@@ -1,9 +1,9 @@
 {
   "name": "RABBIT-CAGE-BACKLOG-10",
   "title": "Add scope-guard override mode with human approval: one-time or session-long, with red [rabbit] alert when guard is off",
-  "status": "open",
+  "status": "in-progress",
   "priority": "medium",
-  "description": "",
+  "description": "Add a human-approved override mechanism to scope-guard.sh.\n\nOverride modes:\n  one-time  \u2014 lets the current denied write through; guard re-arms immediately after.\n              A single red [rabbit] alert fires at the NEXT Stop event, then stops.\n  session   \u2014 guard stays down for the whole session until manually re-armed.\n              Red [rabbit] alert fires at EVERY Stop until re-armed.\n\nImplementation:\n  Marker files: .rabbit-scope-override (one-time|session) and .rabbit-scope-override-used\n  scope-guard: before default deny, check marker; one-time=ALLOW+delete+create-used; session=ALLOW\n  rbt-sync-check Stop hook: session marker exists=red alert; used marker exists=red alert+delete\n\nHuman approval: scope-guard blocks, Claude tells user to create the marker (one-time or session).\nUser creating the marker IS the approval act.",
   "owner": "cyxu",
   "filed": "2026-05-11T13:00:47Z",
   "filed_by": "cyxu",
@@ -14,6 +14,12 @@
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-11T13:07:21Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "Starting implementation"
     }
   ]
 }
