@@ -117,5 +117,12 @@ jq -n \
     ]
   }' > "$ITEM_DIR/item.json" || { echo "ERROR: failed to write item.json" >&2; exit 1; }
 
+# Git commit after filing — silent on failure
+REPO_ROOT="$(git -C "$ITEM_DIR" rev-parse --show-toplevel 2>/dev/null)" || true
+if [ -n "$REPO_ROOT" ]; then
+  git -C "$REPO_ROOT" add "$ITEM_DIR/item.json" 2>/dev/null && \
+    git -C "$REPO_ROOT" commit -m "backlog: file $ITEM_ID ($TITLE)" 2>/dev/null || true
+fi
+
 echo "$ITEM_DIR"
 exit 0

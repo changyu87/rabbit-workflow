@@ -3,16 +3,21 @@
 #
 # Usage:
 #   backlog-item-status.sh get <item-dir>
-#   backlog-item-status.sh set <item-dir> <new-status> [--reason <text>]
+#   backlog-item-status.sh set <item-dir> <new-status> --reason <text> [--fix-commits <sha>] [--actor <name>]
 #
-# Valid status values: open | in-progress | done | cancelled
+# Valid status values: open | in-progress | implemented | refused | reopened
 #
 # Allowed transitions:
-#   open        -> in-progress
-#   in-progress -> done
-#   open        -> cancelled
-#   in-progress -> cancelled
-#   (any)       -> (same)     no-op, history not appended
+#   open        -> in-progress  (--reason required)
+#   open        -> refused      (--reason required)
+#   in-progress -> implemented  (--reason required, --fix-commits required)
+#   in-progress -> refused      (--reason required)
+#   implemented -> reopened     (--reason required)
+#   refused     -> reopened     (--reason required)
+#   reopened    -> in-progress  (--reason required)
+#   reopened    -> refused      (--reason required)
+#
+# Invalid statuses: done, cancelled — rejected with exit 1
 #
 # Exit: 0=ok  1=error  2=usage
 
@@ -22,7 +27,7 @@ usage() {
   cat >&2 <<EOF
 usage:
   backlog-item-status.sh get <item-dir>
-  backlog-item-status.sh set <item-dir> <new-status> [--reason <text>]
+  backlog-item-status.sh set <item-dir> <new-status> --reason <text> [--fix-commits <sha>] [--actor <name>]
 EOF
 }
 
@@ -39,13 +44,14 @@ case "$cmd" in
     ;;
 
   set)
-    dir="${1:-}"; new="${2:-}"; reason=""; actor="${USER:-unknown}"
+    dir="${1:-}"; new="${2:-}"; reason=""; fix_commits=""; actor="${USER:-unknown}"
     shift 2 2>/dev/null || true
 
     while [ $# -gt 0 ]; do
       case "$1" in
-        --reason) reason="$2"; shift 2 ;;
-        --actor)  actor="$2";  shift 2 ;;
+        --reason)      reason="$2";      shift 2 ;;
+        --fix-commits) fix_commits="$2"; shift 2 ;;
+        --actor)       actor="$2";       shift 2 ;;
         *) echo "ERROR: unknown arg: $1" >&2; usage; exit 2 ;;
       esac
     done
@@ -54,11 +60,30 @@ case "$cmd" in
     [ -d "$dir" ] || { echo "ERROR: not a directory: $dir" >&2; exit 1; }
     [ -f "$dir/item.json" ] || { echo "ERROR: missing $dir/item.json" >&2; exit 1; }
 
+    # Enforce --reason is required
+    if [ -z "$reason" ]; then
+      echo "ERROR: --reason is required" >&2
+      exit 1
+    fi
+
     # Validate new status
     case "$new" in
-      open|in-progress|done|cancelled) ;;
-      *) echo "ERROR: invalid status '$new' (allowed: open|in-progress|done|cancelled)" >&2; exit 1 ;;
+      open|in-progress|implemented|refused|reopened) ;;
+      done|cancelled) echo "ERROR: invalid status '$new' — 'done' and 'cancelled' are no longer valid; use 'implemented' or 'refused'" >&2; exit 1 ;;
+      *) echo "ERROR: invalid status '$new' (allowed: open|in-progress|implemented|refused|reopened)" >&2; exit 1 ;;
     esac
+
+    # Reject --fix-commits on non-implemented transitions
+    if [ -n "$fix_commits" ] && [ "$new" != "implemented" ]; then
+      echo "ERROR: --fix-commits is only valid when transitioning to 'implemented'" >&2
+      exit 1
+    fi
+
+    # Require --fix-commits when transitioning to implemented
+    if [ "$new" = "implemented" ] && [ -z "$fix_commits" ]; then
+      echo "ERROR: --fix-commits is required when transitioning to 'implemented'" >&2
+      exit 1
+    fi
 
     cur="$(jq -r '.status' "$dir/item.json")"
 
@@ -71,10 +96,14 @@ case "$cmd" in
     # Validate allowed transitions
     allowed=0
     case "${cur}->${new}" in
-      "open->in-progress")    allowed=1 ;;
-      "in-progress->done")    allowed=1 ;;
-      "open->cancelled")      allowed=1 ;;
-      "in-progress->cancelled") allowed=1 ;;
+      "open->in-progress")       allowed=1 ;;
+      "open->refused")           allowed=1 ;;
+      "in-progress->implemented") allowed=1 ;;
+      "in-progress->refused")    allowed=1 ;;
+      "implemented->reopened")   allowed=1 ;;
+      "refused->reopened")       allowed=1 ;;
+      "reopened->in-progress")   allowed=1 ;;
+      "reopened->refused")       allowed=1 ;;
     esac
 
     if [ "$allowed" -ne 1 ]; then
@@ -84,11 +113,17 @@ case "$cmd" in
 
     TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-    # Determine closed timestamp for terminal states
-    if [ "$new" = "done" ] || [ "$new" = "cancelled" ]; then
-      jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$reason" \
+    # Build history entry — include fix_commits when transitioning to implemented
+    if [ "$new" = "implemented" ]; then
+      jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$reason" --arg fc "$fix_commits" \
         '.status = $s
          | .closed = $ts
+         | .history += [{ ts: $ts, actor: $actor, action: $s, note: $note, fix_commits: $fc }]' \
+        "$dir/item.json" > "$dir/item.json.tmp"
+    elif [ "$new" = "reopened" ]; then
+      jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$reason" \
+        '.status = $s
+         | .closed = null
          | .history += [{ ts: $ts, actor: $actor, action: $s, note: $note }]' \
         "$dir/item.json" > "$dir/item.json.tmp"
     else
@@ -99,6 +134,16 @@ case "$cmd" in
     fi
 
     mv "$dir/item.json.tmp" "$dir/item.json"
+
+    # Git commit after successful transition — silent on failure
+    REASON_SUMMARY="${reason:0:60}"
+    NAME="$(jq -r '.name // "unknown"' "$dir/item.json" 2>/dev/null)"
+    REPO_ROOT="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)" || true
+    if [ -n "$REPO_ROOT" ]; then
+      git -C "$REPO_ROOT" add "$dir/item.json" 2>/dev/null && \
+        git -C "$REPO_ROOT" commit -m "backlog: $NAME $cur -> $new ($REASON_SUMMARY)" 2>/dev/null || true
+    fi
+
     echo "$cur -> $new"
     ;;
 
