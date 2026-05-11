@@ -8,7 +8,9 @@
     "hooks": [],
     "commands": [],
     "agents": [],
-    "skills": [],
+    "skills": [
+      "rabbit-bug"
+    ],
     "scripts": [
       "scripts/file-bug.sh",
       "scripts/bug-status.sh",
