@@ -66,6 +66,8 @@ Trigger on any write/edit/delete/add to a feature directory, or new feature crea
     ```
     Must output `test-green`. If not, do not proceed.
 
+    > Note: tdd-step.sh automatically closes any in-progress backlog items linked to the feature (transitions them to `implemented`, setting `fix_commits` to the HEAD commit SHA).
+
 ## New Feature Variant
 
 If the feature does not exist yet, scaffold it first:

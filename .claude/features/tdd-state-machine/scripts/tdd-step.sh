@@ -62,6 +62,31 @@ write_state() {
     && mv "$dir/feature.json.tmp" "$dir/feature.json"
 }
 
+# auto_close_backlog: close any in-progress backlog items for a feature.
+# Best-effort — never fails the caller.
+auto_close_backlog() {
+  local dir="$1"
+  local feature_name
+  feature_name="$(jq -r '.name // ""' "$dir/feature.json" 2>/dev/null)" || return 0
+  [ -z "$feature_name" ] && return 0
+  local backlog_dir="$REPO_ROOT/.claude/backlogs/$feature_name"
+  [ -d "$backlog_dir" ] || return 0
+  local backlog_status_sh="$REPO_ROOT/.claude/features/rabbit-backlog/scripts/backlog-item-status.sh"
+  [ -f "$backlog_status_sh" ] || return 0
+  local fix_commit
+  fix_commit="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)" || fix_commit="HEAD"
+  local item_dir
+  for item_dir in "$backlog_dir"/*/; do
+    [ -f "$item_dir/item.json" ] || continue
+    local status
+    status="$(jq -r '.status // ""' "$item_dir/item.json" 2>/dev/null)" || continue
+    [ "$status" = "in-progress" ] || continue
+    bash "$backlog_status_sh" set "$item_dir" implemented \
+      --reason "auto-closed by tdd-step.sh test-green" \
+      --fix-commits "$fix_commit" 2>/dev/null || true
+  done
+}
+
 cmd="${1:-}"; shift || true
 
 case "$cmd" in
@@ -177,6 +202,8 @@ case "$cmd" in
             bash "$ONBOARD_SH" consolidate "$PROJECT_NAME" >/dev/null 2>&1 || true
           fi
         fi
+        # Spec invariant 4: auto-close in-progress backlog items.
+        auto_close_backlog "$dir" || true
       fi
       echo "$cur -> $new"
       exit 0
@@ -237,6 +264,8 @@ case "$cmd" in
             bash "$ONBOARD_SH" consolidate "$PROJECT_NAME" >/dev/null 2>&1 || true
           fi
         fi
+        # Spec invariant 4: auto-close in-progress backlog items.
+        auto_close_backlog "$dir" || true
       fi
       echo "FORCED: $cur -> $new" >&2
       echo "$cur -> $new"

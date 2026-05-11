@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.0.0
+version: 1.1.0
 template_version: 2.0.0
 ---
 
@@ -38,7 +38,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "reads": {
     "files": [
       "<feature-dir>/feature.json (tdd_state field)",
-      "<feature-dir>/test/run.sh"
+      "<feature-dir>/test/run.sh",
+      ".claude/backlogs/<feature-name>/ (in-progress items, scanned at test-green)"
     ],
     "external": [
       "env-var:RABBIT_ROOT"
@@ -48,7 +49,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "scripts": [
       ".claude/features/contract/scripts/rebuild-registry.sh",
       ".claude/features/contract/scripts/enforcement/ (all scripts at test-green)",
-      ".claude/features/rabbit-cage/scripts/rabbit-project.sh consolidate"
+      ".claude/features/rabbit-cage/scripts/rabbit-project.sh consolidate",
+      ".claude/features/rabbit-backlog/scripts/backlog-item-status.sh (conditional: only on test-green, best-effort)"
     ],
     "agents": []
   },

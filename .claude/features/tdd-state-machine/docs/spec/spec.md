@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.0.0
+version: 1.1.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -24,6 +24,7 @@ Provides the `tdd-step.sh` CLI for forward-only TDD state transitions, drift det
 1. `tdd_state` transitions are forward-only without `--force`.
 2. `test-green` transition triggers `rebuild-registry.sh` and enforcement checks.
 3. All three scripts are executable.
+4. `test-green` transition auto-closes any in-progress backlog items under `.claude/backlogs/<feature-name>/` via `backlog-item-status.sh` with `fix_commits=HEAD` (best-effort).
 
 ## Out of Scope
 
