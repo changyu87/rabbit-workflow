@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# test-backlog-scripts.sh — failing tests for centralized storage + per-feature ID scheme.
-# ALL tests are expected to FAIL until the new design is implemented.
+# test-backlog-scripts.sh — tests for centralized storage + per-feature ID scheme.
 #
 # New design being tested:
 #   - file-backlog-item.sh uses --related-feature <name> (not --dir / --name)
@@ -14,8 +13,6 @@ set -u
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
 FEATURE_DIR="${REPO_ROOT}/.claude/features/rabbit-backlog"
 SCRIPTS_DIR="${FEATURE_DIR}/scripts"
-REGISTRY="${REPO_ROOT}/.claude/features/registry.json"
-CENTRAL_BACKLOGS="${REPO_ROOT}/.claude/backlogs"
 
 FILE_BACKLOG="${SCRIPTS_DIR}/file-backlog-item.sh"
 ITEM_STATUS="${SCRIPTS_DIR}/backlog-item-status.sh"
@@ -50,21 +47,57 @@ else
     fail_t "t2: backlog-item-status.sh exists and is executable" "not found or not executable: $ITEM_STATUS"
 fi
 
-# t3: file-backlog-item.sh --related-feature rabbit-backlog creates item at centralized path
-# Expected path: .claude/backlogs/rabbit-backlog/RABBIT-BACKLOG-BACKLOG-1/item.json
-EXPECTED_DIR="${CENTRAL_BACKLOGS}/rabbit-backlog/RABBIT-BACKLOG-BACKLOG-1"
-EXPECTED_ITEM="${EXPECTED_DIR}/item.json"
+# ---------------------------------------------------------------------------
+# Isolated git repo for t3–t6.
+#
+# file-backlog-item.sh resolves REPO_ROOT via:
+#   git -C "$(dirname "$0")" rev-parse --show-toplevel
+# So the script must run from a directory INSIDE ISO_REPO.
+# We copy the scripts into ISO_REPO/scripts/ so dirname "$0" resolves there.
+# ---------------------------------------------------------------------------
+ISO_REPO="$(mktemp -d)"
+trap 'rm -rf "$ISO_REPO"' EXIT
 
-# Remove any leftover from a previous partial run to get a clean counter
-rm -rf "${CENTRAL_BACKLOGS}/rabbit-backlog" 2>/dev/null || true
+git -C "$ISO_REPO" init --quiet
+git -C "$ISO_REPO" config user.email "test@rabbit"
+git -C "$ISO_REPO" config user.name "rabbit-test"
+git -C "$ISO_REPO" commit --allow-empty -m "init" --quiet
+
+# Registry with a rabbit-backlog entry so file-backlog-item.sh validation passes.
+mkdir -p "$ISO_REPO/.claude/features"
+cat > "$ISO_REPO/.claude/features/registry.json" <<'REGEOF'
+{
+  "features": {
+    "rabbit-backlog": { "dir": ".claude/features/rabbit-backlog" }
+  }
+}
+REGEOF
+mkdir -p "$ISO_REPO/.claude/features/rabbit-backlog"
+
+# Copy scripts into ISO_REPO so dirname "$0" resolves inside ISO_REPO.
+# This makes git -C "$(dirname "$0")" find ISO_REPO as the git root.
+ISO_SCRIPTS_DIR="$ISO_REPO/scripts"
+mkdir -p "$ISO_SCRIPTS_DIR"
+cp "$FILE_BACKLOG" "$ISO_SCRIPTS_DIR/file-backlog-item.sh"
+cp "$ITEM_STATUS" "$ISO_SCRIPTS_DIR/backlog-item-status.sh"
+chmod +x "$ISO_SCRIPTS_DIR/file-backlog-item.sh" "$ISO_SCRIPTS_DIR/backlog-item-status.sh"
+
+ISO_FILE_BACKLOG="$ISO_SCRIPTS_DIR/file-backlog-item.sh"
+
+ISO_CENTRAL_BACKLOGS="${ISO_REPO}/.claude/backlogs"
+
+# t3: file-backlog-item.sh --related-feature rabbit-backlog creates item at centralized path
+# Expected path in isolated repo: .claude/backlogs/rabbit-backlog/RABBIT-BACKLOG-BACKLOG-1/item.json
+ISO_EXPECTED_DIR="${ISO_CENTRAL_BACKLOGS}/rabbit-backlog/RABBIT-BACKLOG-BACKLOG-1"
+ISO_EXPECTED_ITEM="${ISO_EXPECTED_DIR}/item.json"
 
 if [ -x "$FILE_BACKLOG" ]; then
-    if "$FILE_BACKLOG" --related-feature rabbit-backlog --title "Test item" 2>/dev/null; then
-        if [ -f "$EXPECTED_ITEM" ]; then
+    if (cd "$ISO_REPO" && "$ISO_FILE_BACKLOG" --related-feature rabbit-backlog --title "Test item" 2>/dev/null); then
+        if [ -f "$ISO_EXPECTED_ITEM" ]; then
             ok "t3: --related-feature creates .claude/backlogs/rabbit-backlog/RABBIT-BACKLOG-BACKLOG-1/item.json"
         else
             fail_t "t3: --related-feature creates .claude/backlogs/rabbit-backlog/RABBIT-BACKLOG-BACKLOG-1/item.json" \
-                   "item.json not at expected path: $EXPECTED_ITEM"
+                   "item.json not at expected path: $ISO_EXPECTED_ITEM"
         fi
     else
         fail_t "t3: --related-feature creates .claude/backlogs/rabbit-backlog/RABBIT-BACKLOG-BACKLOG-1/item.json" \
@@ -76,8 +109,8 @@ else
 fi
 
 # t4: created item.json has status=open, name=RABBIT-BACKLOG-BACKLOG-1, history[0].action=opened
-if [ -f "$EXPECTED_ITEM" ]; then
-    result=$(python3 - "$EXPECTED_ITEM" <<'PYEOF' 2>/dev/null
+if [ -f "$ISO_EXPECTED_ITEM" ]; then
+    result=$(python3 - "$ISO_EXPECTED_ITEM" <<'PYEOF' 2>/dev/null
 import sys, json
 d = json.load(open(sys.argv[1]))
 issues = []
@@ -103,15 +136,15 @@ else
 fi
 
 # t5: a second call creates RABBIT-BACKLOG-BACKLOG-2 (counter increments per-feature)
-EXPECTED_ITEM2="${CENTRAL_BACKLOGS}/rabbit-backlog/RABBIT-BACKLOG-BACKLOG-2/item.json"
+ISO_EXPECTED_ITEM2="${ISO_CENTRAL_BACKLOGS}/rabbit-backlog/RABBIT-BACKLOG-BACKLOG-2/item.json"
 
 if [ -x "$FILE_BACKLOG" ]; then
-    if "$FILE_BACKLOG" --related-feature rabbit-backlog --title "Second test item" 2>/dev/null; then
-        if [ -f "$EXPECTED_ITEM2" ]; then
+    if (cd "$ISO_REPO" && "$ISO_FILE_BACKLOG" --related-feature rabbit-backlog --title "Second test item" 2>/dev/null); then
+        if [ -f "$ISO_EXPECTED_ITEM2" ]; then
             ok "t5: second call creates RABBIT-BACKLOG-BACKLOG-2 (counter increments)"
         else
             fail_t "t5: second call creates RABBIT-BACKLOG-BACKLOG-2 (counter increments)" \
-                   "item.json not at: $EXPECTED_ITEM2"
+                   "item.json not at: $ISO_EXPECTED_ITEM2"
         fi
     else
         fail_t "t5: second call creates RABBIT-BACKLOG-BACKLOG-2 (counter increments)" \
@@ -122,12 +155,10 @@ else
            "script not found or not executable"
 fi
 
-# Clean up temporary items created by t3/t5 to avoid polluting .claude/backlogs
-rm -rf "${CENTRAL_BACKLOGS}/rabbit-backlog" 2>/dev/null || true
-
 # t6: --related-feature nonexistent-xyz fails with non-zero exit (registry validation)
+# Run from ISO_REPO so the isolated registry.json is used.
 if [ -x "$FILE_BACKLOG" ]; then
-    if "$FILE_BACKLOG" --related-feature nonexistent-xyz --title "Should fail" 2>/dev/null; then
+    if (cd "$ISO_REPO" && "$ISO_FILE_BACKLOG" --related-feature nonexistent-xyz --title "Should fail" 2>/dev/null); then
         fail_t "t6: --related-feature nonexistent-xyz fails with non-zero exit" \
                "command succeeded but should have failed (registry validation)"
     else
@@ -138,16 +169,14 @@ else
            "script not found or not executable"
 fi
 
-# t7: backlog-item-status.sh set ITEM_DIR in-progress succeeds (existing behavior still works)
-# The current script supports --dir / --name; if those are removed, this test probes
-# whether the new interface still allows status transitions on an existing item directory.
+# t7: backlog-item-status.sh set ITEM_DIR in-progress succeeds
 TMPDIR_T7="$(mktemp -d)"
 cleanup_all() {
     rm -rf "$TMPDIR_T7" "${TMPDIR_T8:-}"
 }
 trap cleanup_all EXIT
 
-# Create a bare item.json directly so we can test status transitions independent of
+# Create a bare item.json directly to test status transitions independent of
 # how the item was originally filed (avoids coupling to old --dir API).
 cat > "$TMPDIR_T7/item.json" <<'JSON'
 {
@@ -178,7 +207,7 @@ else
            "backlog-item-status.sh not found or not executable"
 fi
 
-# t8: backlog-item-status.sh direct open-to-done is denied (existing behavior)
+# t8: backlog-item-status.sh direct open-to-done is denied (invalid status)
 TMPDIR_T8="$(mktemp -d)"
 
 cat > "$TMPDIR_T8/item.json" <<'JSON'
@@ -232,7 +261,7 @@ else
 fi
 
 # t10: .claude/backlogs/rabbit-cage/ exists with RABBIT-CAGE-BACKLOG-1 through RABBIT-CAGE-BACKLOG-6
-CAGE_BACKLOGS="${CENTRAL_BACKLOGS}/rabbit-cage"
+CAGE_BACKLOGS="${REPO_ROOT}/.claude/backlogs/rabbit-cage"
 if [ -d "$CAGE_BACKLOGS" ]; then
     all_present=1
     missing=()

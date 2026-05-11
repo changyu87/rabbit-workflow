@@ -1,0 +1,10 @@
+{
+  "bug": "RABBIT-BUG-4",
+  "gap_identified": "Tests exercising filing scripts ran against live repo, producing spurious git commits. No test existed to catch this regression.",
+  "tests_added": [
+    ".claude/features/rabbit-bug/test/test-bug-git-isolation.sh (t_iso1, t_iso2)",
+    "test-bug-scripts.sh t4-t9 refactored to use ISO_REPO",
+    "test-backlog-scripts.sh t3-t6 refactored to use ISO_REPO"
+  ],
+  "verified_at": "2026-05-11T00:00:00Z"
+}

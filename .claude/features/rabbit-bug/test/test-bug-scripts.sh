@@ -5,13 +5,13 @@
 # t1:  scripts/file-bug.sh exists and is executable
 # t2:  scripts/bug-status.sh exists and is executable
 # t3:  scripts/list-bugs.sh exists and is executable
-# t4:  file-bug.sh --related-feature rabbit-bug writes to .claude/bugs/rabbit-bug/RABBIT-BUG-1/bug.json
-# t5:  bug.json has status=open, first history entry action=opened, name=RABBIT-BUG-1
+# t4:  file-bug.sh --related-feature test-feature writes to isolated repo's .claude/bugs/test-feature/TEST-FEATURE-1/bug.json
+# t5:  bug.json has status=open, first history entry action=opened, name=TEST-FEATURE-1
 # t6:  file-bug.sh --related-feature nonexistent-feature-xyz fails with non-zero exit (registry validation)
-# t7:  bug-status.sh set BUG_DIR refused --note r --skip-vet-reason s --fix-commits abc --touched-files f.sh
+# t7:  bug-status.sh set BUG_DIR refused --reason r --skip-vet-reason s --fix-commits abc --touched-files f.sh
 #        stores fix_commits and touched_files in history entry
 # t8:  description field is unchanged after status transition
-# t9:  list-bugs.sh --feature rabbit-bug --text returns the bug created in t4 (scans centralized path)
+# t9:  list-bugs.sh --feature test-feature --text returns the bug created in t4 (scans centralized path)
 # t10: feature.json does NOT contain bugs_root key
 #
 # Exit: 1 if any assertion fails.
@@ -20,7 +20,6 @@ set -uo pipefail
 
 FEATURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPTS_DIR="$FEATURE_DIR/scripts"
-REPO_ROOT="$(git -C "$FEATURE_DIR" rev-parse --show-toplevel)"
 
 pass=0
 fail=0
@@ -81,27 +80,44 @@ if [ ! -x "$SCRIPTS_DIR/file-bug.sh" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# t4: file-bug.sh --related-feature rabbit-bug writes to centralized path
-#     .claude/bugs/rabbit-bug/RABBIT-BUG-<N>/bug.json
-#     (NOT inside any feature directory)
+# Isolated git repo setup for t4–t9
+# All file-bug.sh / bug-status.sh calls run from inside this isolated repo so
+# any git commits land there, not in the live repo.
 # ---------------------------------------------------------------------------
-T4_LABEL="t4: file-bug.sh --related-feature rabbit-bug creates .claude/bugs/rabbit-bug/RABBIT-BUG-1/bug.json"
+ISO_REPO="$(mktemp -d)"
+trap 'rm -rf "$ISO_REPO"' EXIT
 
-CENTRALIZED_BUGS_ROOT="$REPO_ROOT/.claude/bugs"
-EXPECTED_FEATURE_BUG_DIR="$CENTRALIZED_BUGS_ROOT/rabbit-bug"
+git -C "$ISO_REPO" init --quiet
+git -C "$ISO_REPO" config user.email "test@rabbit"
+git -C "$ISO_REPO" config user.name "rabbit-test"
+git -C "$ISO_REPO" commit --allow-empty -m "init" --quiet
 
-# Clean up any prior test artifact so numbering starts at 1
-rm -rf "$EXPECTED_FEATURE_BUG_DIR/RABBIT-BUG-1"
+# Registry with a test-feature entry so file-bug.sh registry validation passes.
+mkdir -p "$ISO_REPO/.claude/features"
+cat > "$ISO_REPO/.claude/features/registry.json" <<'REGEOF'
+{
+  "features": {
+    "test-feature": { "dir": ".claude/features/test-feature" }
+  }
+}
+REGEOF
+mkdir -p "$ISO_REPO/.claude/features/test-feature"
 
-bash "$SCRIPTS_DIR/file-bug.sh" \
+# ---------------------------------------------------------------------------
+# t4: file-bug.sh --related-feature test-feature writes to centralized path
+#     inside the isolated repo (.claude/bugs/test-feature/TEST-FEATURE-1/bug.json)
+# ---------------------------------------------------------------------------
+T4_LABEL="t4: file-bug.sh --related-feature test-feature creates .claude/bugs/test-feature/TEST-FEATURE-1/bug.json"
+
+EXPECTED_BUG_JSON="$ISO_REPO/.claude/bugs/test-feature/TEST-FEATURE-1/bug.json"
+
+(cd "$ISO_REPO" && bash "$SCRIPTS_DIR/file-bug.sh" \
     --title "T" \
     --severity low \
     --description "D" \
-    --related-feature rabbit-bug \
-    > /dev/null 2>&1
+    --related-feature test-feature \
+    > /dev/null 2>&1)
 FILE_EXIT=$?
-
-EXPECTED_BUG_JSON="$EXPECTED_FEATURE_BUG_DIR/RABBIT-BUG-1/bug.json"
 
 if [ $FILE_EXIT -ne 0 ]; then
     assert_fail "$T4_LABEL" "file-bug.sh exited with code $FILE_EXIT (expected 0)"
@@ -114,9 +130,9 @@ fi
 BUG_JSON="$EXPECTED_BUG_JSON"
 
 # ---------------------------------------------------------------------------
-# t5: bug.json has status=open, first history entry action=opened, name=RABBIT-BUG-1
+# t5: bug.json has status=open, first history entry action=opened, name=TEST-FEATURE-1
 # ---------------------------------------------------------------------------
-T5_LABEL="t5: bug.json status=open, first history entry action=opened, name=RABBIT-BUG-1"
+T5_LABEL="t5: bug.json status=open, first history entry action=opened, name=TEST-FEATURE-1"
 
 if [ ! -f "$BUG_JSON" ]; then
     assert_fail "$T5_LABEL" "no bug.json available (t4 failed)"
@@ -124,24 +140,25 @@ else
     STATUS="$(jq -r '.status' "$BUG_JSON" 2>/dev/null)"
     FIRST_ACTION="$(jq -r '.history[0].action' "$BUG_JSON" 2>/dev/null)"
     NAME_VAL="$(jq -r '.name' "$BUG_JSON" 2>/dev/null)"
-    if [ "$STATUS" = "open" ] && [ "$FIRST_ACTION" = "opened" ] && [ "$NAME_VAL" = "RABBIT-BUG-1" ]; then
+    if [ "$STATUS" = "open" ] && [ "$FIRST_ACTION" = "opened" ] && [ "$NAME_VAL" = "TEST-FEATURE-1" ]; then
         assert_pass "$T5_LABEL"
     else
-        assert_fail "$T5_LABEL" "status=$STATUS (want open), first history action=$FIRST_ACTION (want opened), name=$NAME_VAL (want RABBIT-BUG-1)"
+        assert_fail "$T5_LABEL" "status=$STATUS (want open), first history action=$FIRST_ACTION (want opened), name=$NAME_VAL (want TEST-FEATURE-1)"
     fi
 fi
 
 # ---------------------------------------------------------------------------
 # t6: file-bug.sh --related-feature nonexistent-feature-xyz fails (registry validation)
+# Run from ISO_REPO so the isolated registry is used.
 # ---------------------------------------------------------------------------
 T6_LABEL="t6: file-bug.sh --related-feature nonexistent-feature-xyz fails with non-zero exit"
 
-bash "$SCRIPTS_DIR/file-bug.sh" \
+(cd "$ISO_REPO" && bash "$SCRIPTS_DIR/file-bug.sh" \
     --title "T" \
     --severity low \
     --description "D" \
     --related-feature nonexistent-feature-xyz \
-    > /dev/null 2>&1
+    > /dev/null 2>&1)
 T6_EXIT=$?
 
 if [ $T6_EXIT -ne 0 ]; then
@@ -151,17 +168,19 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# t7: bug-status.sh set BUG_DIR refused stores fix_commits and touched_files
+# t7: bug-status.sh set BUG_DIR closed --fix-commits abc --touched-files f.sh
+#     stores fix_commits and touched_files in history entry.
+#     (closed is the valid status for fix_commits; refused rejects fix_commits)
 # ---------------------------------------------------------------------------
-T7_LABEL="t7: bug-status.sh set refused --fix-commits abc --touched-files f.sh stores those fields in history"
+T7_LABEL="t7: bug-status.sh set closed --fix-commits abc --touched-files f.sh stores those fields in history"
 
 BUG_DIR="$(dirname "${BUG_JSON:-/nonexistent}")"
 
 if [ ! -x "$SCRIPTS_DIR/bug-status.sh" ] || [ ! -f "$BUG_JSON" ]; then
     assert_fail "$T7_LABEL" "bug-status.sh not executable or no bug.json"
 else
-    bash "$SCRIPTS_DIR/bug-status.sh" set "$BUG_DIR" refused \
-        --note "r" \
+    bash "$SCRIPTS_DIR/bug-status.sh" set "$BUG_DIR" closed \
+        --reason "r" \
         --skip-vet-reason "s" \
         --fix-commits "abc" \
         --touched-files "f.sh" \
@@ -170,8 +189,8 @@ else
     if [ $SET7_EXIT -ne 0 ]; then
         assert_fail "$T7_LABEL" "bug-status.sh exited with code $SET7_EXIT"
     else
-        FIX_COMMITS="$(jq -r '[.history[] | select(.action=="refused")] | last | .fix_commits // ""' "$BUG_JSON" 2>/dev/null)"
-        TOUCHED_FILES="$(jq -r '[.history[] | select(.action=="refused")] | last | .touched_files // ""' "$BUG_JSON" 2>/dev/null)"
+        FIX_COMMITS="$(jq -r '[.history[] | select(.action=="closed")] | last | .fix_commits // ""' "$BUG_JSON" 2>/dev/null)"
+        TOUCHED_FILES="$(jq -r '[.history[] | select(.action=="closed")] | last | .touched_files // ""' "$BUG_JSON" 2>/dev/null)"
         if [ -n "$FIX_COMMITS" ] && [ -n "$TOUCHED_FILES" ]; then
             assert_pass "$T7_LABEL"
         else
@@ -197,16 +216,16 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# t9: list-bugs.sh --feature rabbit-bug --text returns the bug from t4
-#     (must scan centralized path .claude/bugs/rabbit-bug/, not feature.json bugs_root)
+# t9: list-bugs.sh --feature test-feature --text returns the bug from t4
+#     Run from ISO_REPO so list-bugs.sh resolves REPO_ROOT to the isolated repo.
 # ---------------------------------------------------------------------------
-T9_LABEL="t9: list-bugs.sh --feature rabbit-bug --text returns bug created in t4"
+T9_LABEL="t9: list-bugs.sh --feature test-feature --text returns bug created in t4"
 
 if [ ! -x "$SCRIPTS_DIR/list-bugs.sh" ] || [ ! -f "$BUG_JSON" ]; then
     assert_fail "$T9_LABEL" "list-bugs.sh not executable or no bug.json"
 else
     BUG_NAME="$(jq -r '.name' "$BUG_JSON" 2>/dev/null)"
-    TEXT_OUT="$(bash "$SCRIPTS_DIR/list-bugs.sh" --feature rabbit-bug --text 2>&1)"
+    TEXT_OUT="$(cd "$ISO_REPO" && bash "$SCRIPTS_DIR/list-bugs.sh" --feature test-feature --text 2>&1)"
     LIST_EXIT=$?
     if [ $LIST_EXIT -ne 0 ]; then
         assert_fail "$T9_LABEL" "list-bugs.sh exited with code $LIST_EXIT"
