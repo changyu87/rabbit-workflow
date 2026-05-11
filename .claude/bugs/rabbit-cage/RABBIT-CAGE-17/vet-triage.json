@@ -1,0 +1,11 @@
+{
+  "bug_name": "RABBIT-CAGE-17",
+  "triage_ts": "2026-05-11T13:30:00Z",
+  "classification": "new",
+  "severity_assessed": "medium",
+  "evidence": "extract_bash_targets() applies redirect regex patterns to the full segment string without stripping quoted regions. '-> in-progress' inside a Python string matched the '>>' pattern, yielding 'in-progress' as a write target. Actual write was to an allowlisted .claude/backlogs/ path. False positives affect any command whose string data contains '>', '>>', 'tee', 'cp', 'mv', 'rm', 'touch', or 'mkdir' tokens.",
+  "recommended_action": "keep_open",
+  "recommended_test": "test_extract_bash_targets_ignores_redirect_inside_quoted_string",
+  "proposed_handoff": "Make extract_bash_targets() quote-aware by stripping single-quoted and double-quoted regions before applying redirect regexes. Add regression tests for heredoc body with '->', single/double-quoted strings with '> path', and confirm real redirects still detected.",
+  "triaged_by": "main-session"
+}
