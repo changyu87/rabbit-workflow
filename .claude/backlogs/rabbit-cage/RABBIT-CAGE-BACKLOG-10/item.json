@@ -1,0 +1,19 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-10",
+  "title": "Add scope-guard override mode with human approval: one-time or session-long, with red [rabbit] alert when guard is off",
+  "status": "open",
+  "priority": "medium",
+  "description": "",
+  "owner": "cyxu",
+  "filed": "2026-05-11T13:00:47Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-11T13:00:47Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
