@@ -22,5 +22,7 @@ run_test "test-schemas-valid-json.sh"
 run_test "test-rabbit-triage.sh"
 run_test "test-dispatch.sh"
 run_test "test-relink.sh"
+run_test "test-validate-no-bugs-root.sh"
+run_test "test-audit-orphan-storage.sh"
 
 echo "ALL TESTS PASSED"

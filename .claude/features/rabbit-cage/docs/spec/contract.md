@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 2.0.0
+version: 3.0.0
 template_version: 2.0.0
 ---
 
@@ -11,22 +11,19 @@ template_version: 2.0.0
   "provides": {
     "files": [".claude/agents", ".claude/commands", ".claude/hooks", ".claude/skills", ".claude/settings.json", ".claude/policy", ".claude/contract", "CLAUDE.md", "README.md", "install.sh"],
     "scripts": [
-      {"path": ".claude/features/rabbit-cage/scripts/file-bug.sh", "stdin": "none", "stdout": "bug dir path", "exit": "0=created 1=error 2=usage"},
-      {"path": ".claude/features/rabbit-cage/scripts/bug-status.sh", "stdin": "none", "stdout": "status", "exit": "0=ok 1=error 2=usage"},
-      {"path": ".claude/features/rabbit-cage/scripts/list-bugs.sh", "stdin": "none", "stdout": "bug list", "exit": "0=ok"},
       {"path": ".claude/features/rabbit-cage/scripts/new-feature.sh", "stdin": "none", "stdout": "scaffold path", "exit": "0=created 1=error 2=usage"},
       {"path": ".claude/features/rabbit-cage/scripts/validate-all.sh", "stdin": "none", "stdout": "validation report", "exit": "0=all pass 1=failures"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project.sh", "stdin": "none", "stdout": "operation result", "exit": "0=ok 1=error 2=usage"},
-      {"path": ".claude/features/rabbit-cage/scripts/file-backlog-item.sh", "stdin": "none", "stdout": "item dir path", "exit": "0=created 1=error 2=usage"},
-      {"path": ".claude/features/rabbit-cage/scripts/backlog-item-status.sh", "stdin": "none", "stdout": "status", "exit": "0=ok 1=error 2=usage"}
+      {"path": ".claude/features/rabbit-cage/scripts/generate-claude-md.sh", "stdin": "none", "stdout": "CLAUDE.md content", "exit": "0=ok 1=error"},
+      {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.sh", "stdin": "none", "stdout": "workspace tree", "exit": "0=ok 1=error"}
     ],
-    "schemas": [{"name": "backlog-item", "path": "docs/backlog/backlog-contract.md", "version": "1.0.0"}],
+    "schemas": [],
     "templates": [],
     "skills": [{"name": "rabbit-feature-touch", "path": ".claude/features/rabbit-cage/skills/rabbit-feature-touch/SKILL.md", "purpose": "orchestrates TDD state transitions in main session around every feature dispatch"}]
   },
   "reads": {
     "files": [".claude/features/registry.json", "project-*/project-map.json", ".claude/features/contract/templates/"],
-    "external": ["env-var:RABBIT_ROOT", "env-var:BUG_ROOT"]
+    "external": ["env-var:RABBIT_ROOT"]
   },
   "invokes": {
     "scripts": [

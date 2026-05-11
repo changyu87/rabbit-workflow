@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-BUG-3",
+  "title": "migration left double-nested RABBIT-CAGE-1/RABBIT-CAGE-1/ under .claude/bugs/",
+  "status": "closed",
+  "severity": "low",
+  "description": "During the rabbit-bug impl migration (cp -r from docs/bugs/ to .claude/bugs/rabbit-cage/), RABBIT-CAGE-1 was double-nested: .claude/bugs/rabbit-cage/RABBIT-CAGE-1/RABBIT-CAGE-1/bug.json exists alongside the correct .claude/bugs/rabbit-cage/RABBIT-CAGE-1/bug.json. Root cause: cp -r source already contained RABBIT-CAGE-1 as a subdir. Fix: rm -rf .claude/bugs/rabbit-cage/RABBIT-CAGE-1/RABBIT-CAGE-1.",
+  "related_feature": "rabbit-bug",
+  "filed": "2026-05-11T06:25:18Z",
+  "filed_by": "cyxu",
+  "closed": "2026-05-11T06:26:12Z",
+  "closed_by": "cyxu",
+  "history": [
+    {
+      "ts": "2026-05-11T06:25:18Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-11T06:26:12Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "[skip-vet: data-only artifact deletion, no code change; verified dir no longer exists] Deleted .claude/bugs/rabbit-cage/RABBIT-CAGE-1/RABBIT-CAGE-1/ via python3. RABBIT-CAGE-1/bug.json is correct; inner duplicate is gone.",
+      "touched_files": ".claude/bugs/rabbit-cage/RABBIT-CAGE-1/RABBIT-CAGE-1/"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-15",
+  "title": "workspace-tree.sh: stale annotations and broken is_bug_dir regex after centralized storage refactor",
+  "status": "closed",
+  "severity": "medium",
+  "description": "workspace-tree.sh has four categories of staleness after the bug/backlog centralization refactor: (1) ANNOTATIONS contains bugs_root reference in feature.json entry, and stale docs/bugs and docs/backlog entries that no longer exist inside features; rabbit-cage annotation still says 'bugs' in its description; (2) ANNOTATIONS missing new entries for .claude/bugs/, .claude/backlogs/, rabbit-bug, and rabbit-backlog; (3) STRUCTURAL_DIRS missing 'backlogs', 'rabbit-bug', 'rabbit-backlog'; (4) is_bug_dir() regex matches RABBIT-CAGE-12 but not RABBIT-CAGE-BACKLOG-1 — backlog item dirs are invisible in the workspace tree output.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-11T06:10:53Z",
+  "filed_by": "cyxu",
+  "closed": "2026-05-11T06:16:47Z",
+  "closed_by": "cyxu",
+  "history": [
+    {
+      "ts": "2026-05-11T06:10:53Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-11T06:16:47Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "[skip-vet: regression test in test-RABBIT-CAGE-15-workspace-tree.sh verifies all 6 failure modes fixed] Fixed workspace-tree.sh: updated ANNOTATIONS (removed bugs_root, docs/bugs, docs/backlog; added bugs, backlogs, rabbit-bug, rabbit-backlog), added backlogs/rabbit-bug/rabbit-backlog to STRUCTURAL_DIRS, fixed is_bug_dir regex to match BACKLOG IDs",
+      "fix_commits": "f7ead74",
+      "touched_files": ".claude/features/rabbit-cage/scripts/workspace-tree.sh"
+    }
+  ]
+}

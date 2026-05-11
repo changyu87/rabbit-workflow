@@ -6,7 +6,7 @@
       "name": "contract",
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
-      "tdd_state": "review",
+      "tdd_state": "test-green",
       "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R7, naming-convention).",
       "path": ".claude/features/contract"
     },
@@ -20,10 +20,10 @@
     },
     "rabbit-cage": {
       "name": "rabbit-cage",
-      "version": "2.0.0",
+      "version": "3.0.0",
       "owner": "rabbit-workflow team",
       "tdd_state": "test-green",
-      "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, scripts for bug-filing, scaffolding, project management, and installation.",
+      "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, skills for scaffolding, project management, and installation. Bug-filing and backlog management are now owned by rabbit-bug and rabbit-backlog respectively.",
       "path": ".claude/features/rabbit-cage"
     },
     "tdd-state-machine": {
@@ -33,6 +33,22 @@
       "tdd_state": "review",
       "summary": "Hardens TDD discipline by defining tdd_state transitions, drift detection, and the context block for spawned subagents.",
       "path": ".claude/features/tdd-state-machine"
+    },
+    "rabbit-bug": {
+      "name": "rabbit-bug",
+      "version": "0.1.0",
+      "owner": "rabbit-workflow team",
+      "tdd_state": "test-green",
+      "summary": "Owns bug filing, tracking, and lifecycle for all rabbit features. Provides file-bug.sh, bug-status.sh, and list-bugs.sh.",
+      "path": ".claude/features/rabbit-bug"
+    },
+    "rabbit-backlog": {
+      "name": "rabbit-backlog",
+      "version": "0.1.0",
+      "owner": "rabbit-workflow team",
+      "tdd_state": "test-green",
+      "summary": "Owns backlog item filing and lifecycle for all rabbit features. Provides file-backlog-item.sh and backlog-item-status.sh.",
+      "path": ".claude/features/rabbit-backlog"
     }
   }
 }

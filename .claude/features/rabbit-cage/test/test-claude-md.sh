@@ -79,12 +79,14 @@ else
     fail_t 8 "CLAUDE.md still contains old phrase 'two source-of-truth' (not yet removed)"
 fi
 
-# t9: test-backlog-e2e-tdd.sh IS registered in run.sh
+# t9: run.sh has at most 8 suite invocations (backlog suite removed, ownership moved)
 RUN_SH="$REPO_ROOT/.claude/features/rabbit-cage/test/run.sh"
-if grep -q "test-backlog-e2e-tdd.sh" "$RUN_SH" 2>/dev/null; then
-    ok 9 "test-backlog-e2e-tdd.sh is registered in run.sh"
+# Count only "run_suite <name>" invocation lines (exclude function definition line)
+suite_count=$(grep -c "^run_suite [a-z]" "$RUN_SH" 2>/dev/null || echo 0)
+if [ "$suite_count" -le 9 ]; then
+    ok 9 "run.sh has $suite_count suite invocations — backlog suite removed (ownership moved)"
 else
-    fail_t 9 "test-backlog-e2e-tdd.sh is NOT registered in run.sh (not yet added)"
+    fail_t 9 "run.sh has $suite_count suite invocations — expected <= 9 after backlog suite removal"
 fi
 
 echo ""

@@ -7,8 +7,8 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-CAGE_DIR="${REPO_ROOT}/.claude/features/rabbit-cage"
-ITEM_JSON="${CAGE_DIR}/docs/backlog/BACKLOG-001/item.json"
+BACKLOG_DIR="${REPO_ROOT}/.claude/features/rabbit-backlog"
+ITEM_JSON="${BACKLOG_DIR}/docs/backlog/BACKLOG-001/item.json"
 
 pass=0
 fail=0
@@ -88,7 +88,7 @@ else
     fail_t 6 "item.json missing or title does not contain \"E2E\""
 fi
 
-ITEM_002="${CAGE_DIR}/docs/backlog/BACKLOG-002/item.json"
+ITEM_002="${BACKLOG_DIR}/docs/backlog/BACKLOG-002/item.json"
 
 # t7: BACKLOG-002/item.json exists
 if [ -f "${ITEM_002}" ]; then
@@ -110,7 +110,7 @@ else
     fail_t 8 "BACKLOG-002 item.json missing, priority != \"medium\", or title does not contain \"philosophy\""
 fi
 
-ITEM_003="${CAGE_DIR}/docs/backlog/BACKLOG-003/item.json"
+ITEM_003="${BACKLOG_DIR}/docs/backlog/BACKLOG-003/item.json"
 
 # t9: BACKLOG-003/item.json exists
 if [ -f "${ITEM_003}" ]; then
@@ -132,7 +132,7 @@ else
     fail_t 10 "BACKLOG-003 item.json missing, priority != \"low\", or title does not contain \"numbering\""
 fi
 
-ITEM_004="${CAGE_DIR}/docs/backlog/BACKLOG-004/item.json"
+ITEM_004="${BACKLOG_DIR}/docs/backlog/BACKLOG-004/item.json"
 
 # t11: BACKLOG-004/item.json exists
 if [ -f "${ITEM_004}" ]; then

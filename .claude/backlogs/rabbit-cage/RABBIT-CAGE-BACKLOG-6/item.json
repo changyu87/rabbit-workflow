@@ -1,0 +1,31 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-6",
+  "title": "workflow-rules.md sections not numbered — inconsistent with other policy files",
+  "status": "done",
+  "priority": "low",
+  "description": "",
+  "owner": "rabbit-workflow-team",
+  "filed": "2026-05-11T03:51:11Z",
+  "filed_by": "rabbit-workflow-team",
+  "closed": "2026-05-11T03:53:23Z",
+  "history": [
+    {
+      "ts": "2026-05-11T03:51:11Z",
+      "actor": "rabbit-workflow-team",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-11T03:53:21Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": ""
+    },
+    {
+      "ts": "2026-05-11T03:53:23Z",
+      "actor": "cyxu",
+      "action": "done",
+      "note": ""
+    }
+  ]
+}

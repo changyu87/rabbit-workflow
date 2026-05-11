@@ -2,7 +2,7 @@
   "name": "contract",
   "version": "1.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "review",
+  "tdd_state": "test-green",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R7, naming-convention).",
   "surface": {
     "hooks": [],
@@ -12,5 +12,5 @@
   },
   "bugs_root": ".claude/features/contract/docs/bugs",
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
-  "updated": "2026-05-10"
+  "updated": "2026-05-11"
 }

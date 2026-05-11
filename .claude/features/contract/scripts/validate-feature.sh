@@ -90,9 +90,6 @@ jq -e '.surface.agents   | type == "array"' "$FEATURE_DIR/feature.json" >/dev/nu
 jq -e '.surface.skills   | type == "array"' "$FEATURE_DIR/feature.json" >/dev/null 2>&1 \
   || err "feature.json: surface.skills must be an array"
 
-BUGS_ROOT=$(jq -r '.bugs_root // ""' "$FEATURE_DIR/feature.json")
-[ -z "$BUGS_ROOT" ] && err "feature.json: missing bugs_root"
-
 CRITERION=$(jq -r '.deprecation_criterion // ""' "$FEATURE_DIR/feature.json")
 [ -z "$CRITERION" ] && err "feature.json: missing deprecation_criterion"
 
