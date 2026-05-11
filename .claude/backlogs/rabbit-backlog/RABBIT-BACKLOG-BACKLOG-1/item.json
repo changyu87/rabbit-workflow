@@ -1,13 +1,13 @@
 {
   "name": "RABBIT-BACKLOG-BACKLOG-1",
   "title": "Redesign backlog state machine: refused/implemented/reopened, enforce reason, add fix-commits, git-commit on transitions",
-  "status": "in-progress",
+  "status": "implemented",
   "priority": "high",
   "description": "",
   "owner": "cyxu",
   "filed": "2026-05-11T12:10:55Z",
   "filed_by": "cyxu",
-  "closed": null,
+  "closed": "2026-05-11T14:45:58Z",
   "history": [
     {
       "ts": "2026-05-11T12:10:55Z",
@@ -20,6 +20,13 @@
       "actor": "cyxu",
       "action": "in-progress",
       "note": "Starting implementation"
+    },
+    {
+      "ts": "2026-05-11T14:45:58Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "Backlog state machine redesign (implemented/refused/reopened, reason enforcement, fix-commits, git-commit) implemented in commit 14f7c66 (PR #40)",
+      "fix_commits": "14f7c66"
     }
   ]
 }

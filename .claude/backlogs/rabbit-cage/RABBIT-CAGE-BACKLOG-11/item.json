@@ -1,0 +1,32 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-11",
+  "title": "Auto-close in-progress backlog items when feature reaches test-green",
+  "status": "implemented",
+  "priority": "high",
+  "description": "",
+  "owner": "cyxu",
+  "filed": "2026-05-11T14:43:31Z",
+  "filed_by": "cyxu",
+  "closed": "2026-05-11T14:45:34Z",
+  "history": [
+    {
+      "ts": "2026-05-11T14:43:31Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-11T14:43:36Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "Implementation done (tdd-step.sh); redoing lost spec/contract/SKILL artifacts after branch squash"
+    },
+    {
+      "ts": "2026-05-11T14:45:34Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "auto-closed by tdd-step.sh test-green",
+      "fix_commits": "0b89dca1a807f88f0bd2626b708be2538066c852"
+    }
+  ]
+}
