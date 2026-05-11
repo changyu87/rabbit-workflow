@@ -1,0 +1,31 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-7",
+  "title": "Make [rabbit] system messages visually outstanding so users cannot miss them",
+  "status": "done",
+  "priority": "medium",
+  "description": "",
+  "owner": "Changyu",
+  "filed": "2026-05-11T06:53:20Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-11T08:41:26Z",
+  "history": [
+    {
+      "ts": "2026-05-11T06:53:20Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-11T08:30:07Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "Starting visual outstanding system messages work"
+    },
+    {
+      "ts": "2026-05-11T08:41:26Z",
+      "actor": "cyxu",
+      "action": "done",
+      "note": "Implemented: all system messages in rbt-sync-check.sh, rbt-session-init.sh, rbt-refresh.sh now include emoji + ━━━ box-drawing borders. 4/4 visual-message tests pass."
+    }
+  ]
+}

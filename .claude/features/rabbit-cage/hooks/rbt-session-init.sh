@@ -31,7 +31,7 @@ import json, sys
 payload = sys.stdin.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '[rabbit] Policy injected at session start (inline section from CLAUDE.md)'
+    'systemMessage': '✅ ━━━ [rabbit] Policy injected at session start (inline section from CLAUDE.md) ━━━ ✅'
 }))
 " <<< "$INLINE"
     exit 0
@@ -72,6 +72,6 @@ with open('$payload_file', 'r') as f:
     payload = f.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '[rabbit] Policy injected at session start — $files_label'
+    'systemMessage': '✅ ━━━ [rabbit] Policy injected at session start — $files_label ━━━ ✅'
 }))
 "

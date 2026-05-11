@@ -1,0 +1,11 @@
+{
+  "bug_name": "RABBIT-CAGE-16",
+  "triage_ts": "2026-05-11T08:30:00Z",
+  "classification": "new",
+  "severity_assessed": "medium",
+  "evidence": "rbt-sync-check.sh conflates two distinct cases under the same 'Policy drift detected' message: (1) CLAUDE.md does not exist (absent-file path, triggered on fresh clone since CLAUDE.md is gitignored), and (2) CLAUDE.md exists but content mismatches. Case 1 is not drift — there is no prior file state to drift from. The condition [ ! -f \"$CLAUDE_MD\" ] fires the misleading message. Also reveals a test-gap: no end-to-end test for first-Stop-after-install behavior.",
+  "recommended_action": "keep_open",
+  "recommended_test": "test-RABBIT-CAGE-16-first-stop-no-false-drift.sh",
+  "proposed_handoff": "dispatch rabbit-cage feature owner to: (1) add E2E test asserting absent CLAUDE.md does not emit 'drift detected', and (2) split rbt-sync-check.sh systemMessage into distinct 'first run' vs 'drift' branches",
+  "triaged_by": "main-session"
+}
