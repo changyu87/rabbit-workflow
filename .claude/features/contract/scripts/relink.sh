@@ -10,7 +10,7 @@
 #                   default: parent of parent of features-dir
 #                   (so .claude/features -> .claude -> repo root)
 #
-# For each feature, reads surface.{hooks,commands,agents,skills}:
+# For each feature, reads surface.{hooks,commands,agents}:
 #   Each value is a repo-relative symlink path. Creates:
 #     <repo-root>/<surface-path> -> <features-dir>/<feature-name>/<basename>
 #   Skips if the target already exists as a regular file (not a symlink).
@@ -111,8 +111,9 @@ for name, entry in features.items():
 
     surface = data.get("surface", {})
 
-    # Process hooks, commands, agents, skills — each value is a repo-relative symlink path
-    for category in ("hooks", "commands", "agents", "skills"):
+    # Process hooks, commands, agents — each value is a repo-relative symlink path
+    # Note: skills are now managed by generate-skills-dir.sh (not relink.sh)
+    for category in ("hooks", "commands", "agents"):
         for surface_path in surface.get(category, []):
             # The surface_path is the repo-relative path where the symlink should appear
             link_abs = os.path.join(repo_root, surface_path)

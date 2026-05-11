@@ -79,14 +79,14 @@ else
     fail_t 8 "CLAUDE.md still contains old phrase 'two source-of-truth' (not yet removed)"
 fi
 
-# t9: run.sh has at most 8 suite invocations (backlog suite removed, ownership moved)
+# t9: run.sh has at least 9 suite invocations (ensures no suites were accidentally deleted)
 RUN_SH="$REPO_ROOT/.claude/features/rabbit-cage/test/run.sh"
 # Count only "run_suite <name>" invocation lines (exclude function definition line)
 suite_count=$(grep -c "^run_suite [a-z]" "$RUN_SH" 2>/dev/null || echo 0)
-if [ "$suite_count" -le 9 ]; then
-    ok 9 "run.sh has $suite_count suite invocations — backlog suite removed (ownership moved)"
+if [ "$suite_count" -ge 9 ]; then
+    ok 9 "run.sh has at least 9 suite invocations"
 else
-    fail_t 9 "run.sh has $suite_count suite invocations — expected <= 9 after backlog suite removal"
+    fail_t 9 "run.sh has only $suite_count suite invocations — expected >= 9"
 fi
 
 echo ""

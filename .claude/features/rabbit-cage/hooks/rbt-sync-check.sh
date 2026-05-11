@@ -33,7 +33,8 @@ echo 0 > "$COUNTER_FILE"
 # Generate expected content
 EXPECTED="$(bash "$GENERATE_SCRIPT" 2>/dev/null)" || exit 0
 
-# If CLAUDE.md does not exist or differs from expected: regenerate
+# If CLAUDE.md does not exist or differs from expected: regenerate and exit immediately.
+# (Policy must be re-injected urgently; skills check is skipped in this invocation.)
 if [ ! -f "$CLAUDE_MD" ] || [ "$(cat "$CLAUDE_MD")" != "$EXPECTED" ]; then
   printf '%s\n' "$EXPECTED" > "$CLAUDE_MD"
   echo "${RBT_REFRESH_EVERY:-20}" > "${REPO_ROOT}/.rbt-prompt-counter"
@@ -46,5 +47,18 @@ print(json.dumps({
     'systemMessage': '[rabbit] Policy drift detected — CLAUDE.md regenerated from source files'
 }))
 " <<< "$POLICY_SECTION"
+  exit 0
+fi
+
+# Skills drift check — only reached when CLAUDE.md is clean (no double JSON output).
+_GENERATE_SKILLS="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
+if [ -f "$_GENERATE_SKILLS" ] && ! bash "$_GENERATE_SKILLS" --check "$REPO_ROOT" >/dev/null 2>&1; then
+  bash "$_GENERATE_SKILLS" "$REPO_ROOT" >/dev/null 2>&1 || true
+  python3 -c "
+import json
+print(json.dumps({
+    'systemMessage': '[rabbit] Skills updated — run /reload-plugins or restart session to activate changes'
+}))
+"
 fi
 exit 0

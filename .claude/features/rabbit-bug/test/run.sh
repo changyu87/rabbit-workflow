@@ -23,6 +23,7 @@ echo "rabbit-bug test runner"
 echo ""
 
 run_suite test-bug-scripts.sh
+run_suite test-bug-skill.sh
 
 if [ "$total_fail" -eq 0 ]; then
     echo "ALL SUITES PASSED"
