@@ -17,6 +17,7 @@ run_test "test-workflow-rules-sections.sh"
 run_test "test-rule-files-content.sh"
 run_test "test-imports-resolve.sh"
 run_test "test-backlog003.sh"
+run_test "test-policy-consolidation.sh"
 
 echo ""
 echo "All tests passed."
