@@ -4,9 +4,7 @@ This guide applies to AI agents that author or modify code or specifications.
 
 ---
 
-## Part I — Construction Rules
-
-### 1. Tool-Choice Tier: `script > CLI > spec > prompt`
+## 1. Tool-Choice Tier: `script > CLI > spec > prompt`
 
 When choosing how a task gets done, reach for determinism first, AI last.
 
@@ -25,7 +23,7 @@ input.
 
 ---
 
-### 2. Schemas and Contracts
+## 2. Schemas and Contracts
 
 Every cross-component handoff uses a fixed-format, declared schema. Never
 free-form text. Schema fields are typed, named, and validated at the boundary.
@@ -44,7 +42,7 @@ appears trivial.
 
 ---
 
-### 3. Lifecycle and Ownership
+## 3. Lifecycle and Ownership
 
 At creation time, every artifact records:
 
