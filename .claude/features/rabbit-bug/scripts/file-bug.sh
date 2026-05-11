@@ -5,7 +5,7 @@
 
 set -u
 
-REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 REGISTRY="$REPO_ROOT/.claude/features/registry.json"
 BUG_PREFIX="${BUG_PREFIX:-RBT}"
 
@@ -73,6 +73,7 @@ fi
 
 MAX=0
 if [ -d "$BUG_ROOT" ]; then
+  # Scan bug.json name fields
   while IFS= read -r f; do
     [ -f "$f" ] || continue
     existing_name="$(jq -r '.name // ""' "$f" 2>/dev/null)"
@@ -81,6 +82,14 @@ if [ -d "$BUG_ROOT" ]; then
       [ "$n" -gt "$MAX" ] 2>/dev/null && MAX="$n"
     fi
   done < <(find "$BUG_ROOT" -name "bug.json" -maxdepth 2)
+  # Also scan directory names to avoid collisions with misnamed bugs
+  while IFS= read -r d; do
+    dname="$(basename "$d")"
+    if echo "$dname" | grep -qE "^${PREFIX}-([1-9][0-9]*)$"; then
+      n="$(echo "$dname" | sed -E "s/^${PREFIX}-//")"
+      [ "$n" -gt "$MAX" ] 2>/dev/null && MAX="$n"
+    fi
+  done < <(find "$BUG_ROOT" -mindepth 1 -maxdepth 1 -type d)
 fi
 N=$((MAX + 1))
 NAME="${PREFIX}-${N}"
@@ -99,6 +108,12 @@ jq -n --arg name "$NAME" --arg title "$TITLE" --arg sev "$SEV" \
     filed:$ts,filed_by:$filer,closed:null,closed_by:null,
     history:[{ts:$ts,actor:$filer,action:"opened",note:"initial filing"}]}' \
   > "$BUG_DIR/bug.json"
+
+REPO_ROOT="$(git -C "$BUG_DIR" rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -n "$REPO_ROOT" ]; then
+  git -C "$REPO_ROOT" add "$BUG_DIR/bug.json" 2>/dev/null && \
+  git -C "$REPO_ROOT" commit -m "bug: file $NAME ($TITLE)" 2>/dev/null || true
+fi
 
 echo "filed: $BUG_DIR/bug.json  [$NAME]"
 exit 0

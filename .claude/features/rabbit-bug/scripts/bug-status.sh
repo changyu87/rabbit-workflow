@@ -25,7 +25,7 @@ case "$cmd" in
     shift 2 2>/dev/null || true
     while [ $# -gt 0 ]; do
       case "$1" in
-        --note)            note="$2"; shift 2 ;;
+        --reason)          note="$2"; shift 2 ;;
         --actor)           actor="$2"; shift 2 ;;
         --skip-vet-reason) skip_vet_reason="$2"; shift 2 ;;
         --fix-commits)     fix_commits="$2"; shift 2 ;;
@@ -34,6 +34,7 @@ case "$cmd" in
       esac
     done
     [ -z "$dir" ] || [ -z "$new" ] && { usage; exit 2; }
+    [ -z "$note" ] && { echo "ERROR: --reason is required" 1>&2; exit 1; }
     [ -d "$dir" ] || { echo "ERROR: not a directory: $dir" 1>&2; exit 2; }
     [ -f "$dir/bug.json" ] || { echo "ERROR: missing $dir/bug.json" 1>&2; exit 2; }
 
@@ -65,6 +66,13 @@ case "$cmd" in
       elif [ ! -f "$dir/vet-triage.json" ] && [ ! -f "$dir/tdd-gap.json" ]; then
         echo "ERROR (R7): cannot close without vet artifact" 1>&2; exit 1
       fi
+      if [ -z "$fix_commits" ] && [ -z "$skip_vet_reason" ]; then
+        echo "ERROR: --fix-commits is required when closing a bug (use --skip-vet-reason to bypass)" 1>&2; exit 1
+      fi
+    fi
+
+    if [ "$new" = "refused" ] && [ -n "$fix_commits" ]; then
+      echo "ERROR: --fix-commits is not applicable for refused status" 1>&2; exit 1
     fi
 
     case "$new" in
@@ -104,6 +112,12 @@ case "$cmd" in
       open) echo "ERROR: cannot transition to open" 1>&2; exit 1 ;;
     esac
 mv "$dir/bug.json.tmp" "$dir/bug.json"
+    REPO_ROOT="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null || true)"
+    if [ -n "$REPO_ROOT" ]; then
+      _reason_short="$(echo "$note" | head -c 60)"
+      git -C "$REPO_ROOT" add "$dir/bug.json" 2>/dev/null && \
+      git -C "$REPO_ROOT" commit -m "bug: $cur -> $new ($_reason_short)" 2>/dev/null || true
+    fi
     echo "transitioned"
     ;;
   ""|--help|help|-h) usage; [ -z "$cmd" ] && exit 2 || exit 0 ;;
