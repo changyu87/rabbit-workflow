@@ -6,10 +6,17 @@ Structured source of truth is feature.json.
 
 Owns bug filing, tracking, and lifecycle for all rabbit features. Provides file-bug.sh, bug-status.sh, and list-bugs.sh. Bugs are stored under docs/bugs/BUG-ID/bug.json.
 
+Bug lifecycle is version-controlled: `file-bug.sh` commits the new `bug.json`
+to git after creation, and every `bug-status.sh set` transition commits the
+mutated `bug.json`. This makes the audit trail inspectable through `git log`
+in addition to the in-file `history` array. Git commit failures are silent
+(non-fatal) so that lifecycle operations succeed even outside a git
+worktree.
+
 ## Behavior
 
-- file-bug.sh: Creates bug.json with fields: name, title, status (always open), severity, description, related_feature, filed, filed_by, closed, closed_by, history. description is never modified after filing.
-- bug-status.sh: Reads or transitions bug status. The set subcommand supports optional --fix-commits and --touched-files that are stored in history when provided (omitted when absent). Enforces R7 for closing.
+- file-bug.sh: Creates bug.json with fields: name, title, status (always open), severity, description, related_feature, filed, filed_by, closed, closed_by, history. description is never modified after filing. Commits the new bug.json to git.
+- bug-status.sh: Reads or transitions bug status. The `set` subcommand requires `--reason <text>` on every transition (missing or empty value exits 1). When transitioning to `closed`, `--fix-commits <sha>[,<sha>...]` is required unless `--skip-vet-reason <text>` is provided (the skip-vet path is the existing emergency bypass that also satisfies R7). `--fix-commits` is rejected when transitioning to `refused`. Optional `--touched-files` is stored in history when provided. After every successful `set`, the mutated `bug.json` is committed to git.
 - list-bugs.sh: Lists bugs from all features by scanning feature.json files for bugs_root. Supports --status, --feature, --text filters.
 
 ## Out of scope

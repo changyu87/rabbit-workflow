@@ -43,7 +43,7 @@ import json, sys
 payload = sys.stdin.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '📋 ━━━ [rabbit] Policy initialized — CLAUDE.md created for first time ━━━ 📋'
+    'systemMessage': '\x1b[32m📋 ━━━ [rabbit] Policy initialized — CLAUDE.md created for first time ━━━ 📋\x1b[0m'
 }))
 " <<< "$POLICY_SECTION"
   exit 0
@@ -59,7 +59,7 @@ import json, sys
 payload = sys.stdin.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '⚠️ ━━━ [rabbit] Policy drift detected — CLAUDE.md regenerated from source files ━━━ ⚠️'
+    'systemMessage': '\x1b[32m⚠️ ━━━ [rabbit] Policy drift detected — CLAUDE.md regenerated from source files ━━━ ⚠️\x1b[0m'
 }))
 " <<< "$POLICY_SECTION"
   exit 0
@@ -72,8 +72,34 @@ if [ -f "$_GENERATE_SKILLS" ] && ! bash "$_GENERATE_SKILLS" --check "$REPO_ROOT"
   python3 -c "
 import json
 print(json.dumps({
-    'systemMessage': '🔄 ━━━ [rabbit] Skills updated — run /reload-plugins or restart session to activate changes ━━━ 🔄'
+    'systemMessage': '\x1b[32m🔄 ━━━ [rabbit] Skills updated — run /reload-plugins or restart session to activate changes ━━━ 🔄\x1b[0m'
 }))
 "
 fi
+
+# Override alert — fires when guard was bypassed this session
+OVERRIDE_FILE="${REPO_ROOT}/.rabbit-scope-override"
+USED_FILE="${REPO_ROOT}/.rabbit-scope-override-used"
+
+_alert=""
+if [ -f "$OVERRIDE_FILE" ]; then
+  _mode="$(cat "$OVERRIDE_FILE" | tr -d '[:space:]')"
+  if [ "$_mode" = "session" ]; then
+    _alert="session"
+  fi
+fi
+if [ -f "$USED_FILE" ]; then
+  _alert="used"
+  rm -f "$USED_FILE"
+fi
+
+if [ -n "$_alert" ]; then
+  python3 -c "
+import json
+print(json.dumps({
+    'systemMessage': '\x1b[31m\xf0\x9f\x94\x93 \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 [rabbit] SCOPE GUARD OFF (session override active) \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 \xf0\x9f\x94\x93\x1b[0m'
+}))
+"
+fi
+
 exit 0

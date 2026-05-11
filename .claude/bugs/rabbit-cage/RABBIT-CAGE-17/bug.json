@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-17",
+  "title": "scope-guard false positive: detects write targets inside string literals",
+  "status": "closed",
+  "severity": "medium",
+  "description": "extract_bash_targets() in scope-guard.sh scans the full bash command string for redirect patterns without excluding content inside quoted strings. When a script contains example commands as string data (e.g. in a heredoc or Python string), the scope guard extracts those example paths as write targets and denies the tool call. The actual write destination was an allowlisted .claude/backlogs/ path; the detected path was only in a string literal. Fix: skip pattern matching inside single-quoted or double-quoted regions, or at minimum skip inside heredoc content.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-11T13:06:53Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-11T13:52:07Z",
+  "closed_by": "cyxu",
+  "history": [
+    {
+      "ts": "2026-05-11T13:06:53Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-11T13:52:07Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "Fixed: extract_bash_targets now strips quoted regions before pattern matching",
+      "fix_commits": "996e163",
+      "touched_files": ".claude/features/rabbit-cage/hooks/scope-guard.sh"
+    }
+  ]
+}

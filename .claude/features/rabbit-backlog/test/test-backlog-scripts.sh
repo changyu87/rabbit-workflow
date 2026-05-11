@@ -167,7 +167,7 @@ cat > "$TMPDIR_T7/item.json" <<'JSON'
 JSON
 
 if [ -x "$ITEM_STATUS" ]; then
-    if "$ITEM_STATUS" set "$TMPDIR_T7" in-progress 2>/dev/null; then
+    if "$ITEM_STATUS" set "$TMPDIR_T7" in-progress --reason "starting work" 2>/dev/null; then
         ok "t7: backlog-item-status.sh set in-progress succeeds"
     else
         fail_t "t7: backlog-item-status.sh set in-progress succeeds" \

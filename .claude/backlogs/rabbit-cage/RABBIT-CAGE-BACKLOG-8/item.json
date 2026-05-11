@@ -1,0 +1,31 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-8",
+  "title": "Create agents/ directory in rabbit-cage to fix dangling symlink and plugin load errors",
+  "status": "done",
+  "priority": "medium",
+  "description": "",
+  "owner": "cyxu",
+  "filed": "2026-05-11T11:44:41Z",
+  "filed_by": "cyxu",
+  "closed": "2026-05-11T11:51:46Z",
+  "history": [
+    {
+      "ts": "2026-05-11T11:44:41Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-11T11:46:31Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "Removing .claude/agents symlink — agents/ is a runtime artifact, not a git-tracked surface"
+    },
+    {
+      "ts": "2026-05-11T11:51:46Z",
+      "actor": "cyxu",
+      "action": "done",
+      "note": "Removed dangling .claude/agents symlink and agents from surface declarations. Plugin load errors resolved."
+    }
+  ]
+}

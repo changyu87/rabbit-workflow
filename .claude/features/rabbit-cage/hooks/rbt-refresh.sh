@@ -37,7 +37,7 @@ import json, sys
 payload = sys.stdin.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '🔄 ━━━ [rabbit] Policy refreshed (inline section from CLAUDE.md) ━━━ 🔄'
+    'systemMessage': '\x1b[32m🔄 ━━━ [rabbit] Policy refreshed (inline section from CLAUDE.md) ━━━ 🔄\x1b[0m'
 }))
 " <<< "$INLINE"
     exit 0
@@ -78,6 +78,6 @@ with open('$payload_file', 'r') as f:
     payload = f.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '🔄 ━━━ [rabbit] Policy refreshed — $files_label ━━━ 🔄'
+    'systemMessage': '\x1b[32m🔄 ━━━ [rabbit] Policy refreshed — $files_label ━━━ 🔄\x1b[0m'
 }))
 "

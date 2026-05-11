@@ -95,12 +95,43 @@ decide() {
       FEATURE_JSON="$FEATURE_ABS/feature.json"
       TDD_STATE=$(python3 -c "import json; print(json.load(open('$FEATURE_JSON')).get('tdd_state',''))" 2>/dev/null)
       if [ "$TDD_STATE" = "test-green" ]; then
+        # 4b-override. Override marker — human-approved bypass of test-green deny
+        OVERRIDE_FILE="$REPO_ROOT/.rabbit-scope-override"
+        USED_FILE="$REPO_ROOT/.rabbit-scope-override-used"
+        if [ -f "$OVERRIDE_FILE" ]; then
+          override_mode="$(cat "$OVERRIDE_FILE" | tr -d '[:space:]')"
+          if [ "$override_mode" = "session" ]; then
+            echo "ALLOW (session override active)"
+            return 0
+          elif [ "$override_mode" = "one-time" ]; then
+            rm -f "$OVERRIDE_FILE"
+            touch "$USED_FILE"
+            echo "ALLOW (one-time override consumed)"
+            return 0
+          fi
+        fi
         echo "DENY write to '$abs' denied: feature '$SCOPE_FEATURE' is in test-green state. Invoke the rabbit-feature-touch skill to reset the TDD state before editing."
         return 1
       fi
     fi
     echo "ALLOW (under active scope)"
     return 0
+  fi
+
+  # 4b-override. Override marker — human-approved bypass for no-scope-marker case
+  OVERRIDE_FILE="$REPO_ROOT/.rabbit-scope-override"
+  USED_FILE="$REPO_ROOT/.rabbit-scope-override-used"
+  if [ -f "$OVERRIDE_FILE" ]; then
+    override_mode="$(cat "$OVERRIDE_FILE" | tr -d '[:space:]')"
+    if [ "$override_mode" = "session" ]; then
+      echo "ALLOW (session override active)"
+      return 0
+    elif [ "$override_mode" = "one-time" ]; then
+      rm -f "$OVERRIDE_FILE"
+      touch "$USED_FILE"
+      echo "ALLOW (one-time override consumed)"
+      return 0
+    fi
   fi
 
   # 5. Default deny
@@ -111,44 +142,76 @@ decide() {
 # Extract write targets from a Bash command string. Conservative.
 extract_bash_targets() {
   local cmd="$1"
-  local segments; segments="$(echo "$cmd" | tr ';|&' '\n')"
+  # Strip heredoc bodies from the full command before segment splitting
+  # to avoid false positives from heredoc content containing > or command names.
+  local cmd_stripped_heredocs
+  local _py_strip; _py_strip="$(mktemp /tmp/scope-guard-strip.XXXXXX.py 2>/dev/null)"
+  if [ -n "$_py_strip" ]; then
+    # Write the python stripping script to a temp file to avoid shell-quoting conflicts
+    cat > "$_py_strip" << 'STRIP_HEREDOCS_PY'
+import re, sys
+s = sys.stdin.read()
+# Remove heredoc bodies: << [-] [optional-quote] DELIM [optional-quote] [rest-of-line] \n body \n DELIM [\n]
+s = re.sub(r"<<[- ]*['\"]?([A-Za-z_]\w*)['\"]?[^\n]*\n(.*\n)*?\1\n?", ' ', s, flags=re.DOTALL)
+print(s, end='')
+STRIP_HEREDOCS_PY
+    cmd_stripped_heredocs="$(printf '%s' "$cmd" | python3 "$_py_strip" 2>/dev/null)" \
+      || cmd_stripped_heredocs="$cmd"
+    rm -f "$_py_strip"
+  else
+    cmd_stripped_heredocs="$cmd"
+  fi
+  local segments; segments="$(echo "$cmd_stripped_heredocs" | tr ';|&' '\n')"
   while IFS= read -r seg; do
     seg="${seg#"${seg%%[![:space:]]*}"}"
     [ -z "$seg" ] && continue
 
+    # Strip single/double quoted regions from segment before pattern matching
+    # to avoid false positives when string data contains >, >>, tee, cp, mv, etc.
+    local stripped
+    stripped="$(echo "$seg" | python3 -c "
+import re, sys
+s = sys.stdin.read()
+# Remove single-quoted regions
+s = re.sub(r\"'[^']*'\", ' ', s)
+# Remove double-quoted regions
+s = re.sub(r'\"[^\"]*\"', ' ', s)
+print(s, end='')
+" 2>/dev/null)" || stripped="$seg"
+
     # > path or >> path
-    echo "$seg" | grep -oE '>>?[[:space:]]*[^[:space:]<>|&;]+' \
+    echo "$stripped" | grep -oE '>>?[[:space:]]*[^[:space:]<>|&;]+' \
       | sed -E 's/^>>?[[:space:]]*//' || true
 
     # tee path / tee -a path
-    echo "$seg" | grep -oE '\btee[[:space:]]+(-[a-z]+[[:space:]]+)?[^[:space:]<>|&;]+' \
+    echo "$stripped" | grep -oE '\btee[[:space:]]+(-[a-z]+[[:space:]]+)?[^[:space:]<>|&;]+' \
       | sed -E 's/.*tee[[:space:]]+(-[a-z]+[[:space:]]+)?//' || true
 
     # sed -i ... path
-    echo "$seg" | grep -oE "\bsed[[:space:]]+-i[[:space:]]+[^[:space:]<>|&;]+([[:space:]]+[^[:space:]<>|&;]+)*" \
+    echo "$stripped" | grep -oE "\bsed[[:space:]]+-i[[:space:]]+[^[:space:]<>|&;]+([[:space:]]+[^[:space:]<>|&;]+)*" \
       | awk '{print $NF}' || true
 
     # cp src dst, mv src dst — last word is target
-    echo "$seg" | grep -oE '\bcp[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*[^[:space:]<>|&;]+([[:space:]]+[^[:space:]<>|&;]+)+' \
+    echo "$stripped" | grep -oE '\bcp[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*[^[:space:]<>|&;]+([[:space:]]+[^[:space:]<>|&;]+)+' \
       | awk '{print $NF}' || true
-    echo "$seg" | grep -oE '\bmv[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*[^[:space:]<>|&;]+([[:space:]]+[^[:space:]<>|&;]+)+' \
+    echo "$stripped" | grep -oE '\bmv[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*[^[:space:]<>|&;]+([[:space:]]+[^[:space:]<>|&;]+)+' \
       | awk '{print $NF}' || true
 
     # rm path[s] — every non-flag arg is a target
-    if echo "$seg" | grep -qE '^[[:space:]]*rm[[:space:]]'; then
-      echo "$seg" | sed -E 's/^[[:space:]]*rm[[:space:]]+//' \
+    if echo "$stripped" | grep -qE '^[[:space:]]*rm[[:space:]]'; then
+      echo "$stripped" | sed -E 's/^[[:space:]]*rm[[:space:]]+//' \
         | tr ' ' '\n' | grep -v '^-' | grep -v '^$' || true
     fi
 
     # touch path[s]
-    if echo "$seg" | grep -qE '^[[:space:]]*touch[[:space:]]'; then
-      echo "$seg" | sed -E 's/^[[:space:]]*touch[[:space:]]+//' \
+    if echo "$stripped" | grep -qE '^[[:space:]]*touch[[:space:]]'; then
+      echo "$stripped" | sed -E 's/^[[:space:]]*touch[[:space:]]+//' \
         | tr ' ' '\n' | grep -v '^-' | grep -v '^$' || true
     fi
 
     # mkdir path[s]
-    if echo "$seg" | grep -qE '^[[:space:]]*mkdir[[:space:]]'; then
-      echo "$seg" | sed -E 's/^[[:space:]]*mkdir[[:space:]]+//' \
+    if echo "$stripped" | grep -qE '^[[:space:]]*mkdir[[:space:]]'; then
+      echo "$stripped" | sed -E 's/^[[:space:]]*mkdir[[:space:]]+//' \
         | tr ' ' '\n' | grep -v '^-' | grep -v '^$' || true
     fi
   done <<< "$segments"
