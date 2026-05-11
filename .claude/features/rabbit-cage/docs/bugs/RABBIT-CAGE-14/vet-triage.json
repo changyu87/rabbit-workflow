@@ -1,0 +1,9 @@
+{
+  "bug_name": "RABBIT-CAGE-14",
+  "triage_ts": "2026-05-10T00:00:00Z",
+  "classification": "test-gap",
+  "severity_assessed": "medium",
+  "evidence": "rbt-refresh.sh now checks for rabbit-policy-start/end inline section before @-imports (mirroring rbt-session-init.sh). Triage agent flagged missing inline coverage in t7 of test-RABBIT-CAGE-12, but test-RABBIT-CAGE-14-refresh-inline.sh (added this session) already covers the inline-policy path against a CLAUDE.md with no @-imports. E2E confirmed: counter set to 20 after drift, UserPromptSubmit fired injection, [rabbit] Policy refreshed banner emitted.",
+  "recommended_action": "close",
+  "triaged_by": "main-session"
+}

@@ -29,6 +29,20 @@ fi
 # Threshold reached: gather @-imports from CLAUDE.md, emit additionalContext
 echo 0 > "$COUNTER_FILE"
 
+# Check for inline policy section (rabbit-policy-start/end markers)
+INLINE=$(sed -n '/rabbit-policy-start/,/rabbit-policy-end/p' "$CLAUDE_MD" 2>/dev/null | grep -v 'rabbit-policy-start\|rabbit-policy-end' || true)
+if [ -n "$INLINE" ]; then
+    python3 -c "
+import json, sys
+payload = sys.stdin.read()
+print(json.dumps({
+    'additionalContext': payload,
+    'systemMessage': '[rabbit] Policy refreshed (inline section from CLAUDE.md)'
+}))
+" <<< "$INLINE"
+    exit 0
+fi
+
 # Parse lines like '@./foo.md' or '@/abs/path.md' from CLAUDE.md
 imports=$(grep -oE '^@[^[:space:]]+' "$CLAUDE_MD" | sed 's/^@//' || true)
 
