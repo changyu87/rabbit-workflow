@@ -72,6 +72,12 @@ decide() {
     return 0
   fi
 
+  # 3b. Centralized bug/backlog storage — always allow (metadata-only writes, no TDD)
+  if [[ "$abs" == "$REPO_ROOT/.claude/bugs/"* ]] || [[ "$abs" == "$REPO_ROOT/.claude/backlogs/"* ]]; then
+    echo "ALLOW (centralized bug/backlog storage)"
+    return 0
+  fi
+
   # 4. Active scope marker anywhere in ancestor chain -> check further
   if walk_up_find "$abs" ".rabbit-scope-active" >/dev/null; then
     # 4b. Scope marker exists — verify target is within the scoped feature directory

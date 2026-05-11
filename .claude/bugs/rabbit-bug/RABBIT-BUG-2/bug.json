@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-BUG-2",
+  "title": "orphan .claude/docs/bugs/ created by test leg running pre-impl file-bug.sh",
+  "status": "closed",
+  "severity": "low",
+  "description": "During the rabbit-bug Phase 2 TEST leg, the test script for t6 invoked file-bug.sh (the pre-impl version) with --related-feature nonexistent-feature-xyz. The old script had no registry validation and defaulted BUG_ROOT to .claude/docs/bugs, creating NONEXISTENT-FEATURE-XYZ-1 and NONEXISTENT-FEATURE-XYZ-2 artifacts there. The new file-bug.sh (impl leg) exits non-zero for unknown features and never writes. Fix: rm -rf .claude/docs/ (entire accidental dir).",
+  "related_feature": "rabbit-bug",
+  "filed": "2026-05-11T06:25:17Z",
+  "filed_by": "cyxu",
+  "closed": "2026-05-11T06:26:12Z",
+  "closed_by": "cyxu",
+  "history": [
+    {
+      "ts": "2026-05-11T06:25:17Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-11T06:26:12Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "[skip-vet: data-only artifact deletion, no code change; verified dir no longer exists] Deleted .claude/docs/ via python3 shutil.rmtree. Root cause was test leg running pre-impl file-bug.sh which had .claude/docs/bugs as default BUG_ROOT.",
+      "touched_files": ".claude/docs/"
+    }
+  ]
+}

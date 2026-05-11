@@ -22,13 +22,15 @@ run_suite() {
 echo "rabbit-cage test runner"
 echo ""
 
+run_suite test-scope-guard-centralized.sh
 run_suite test-structure.sh
 run_suite test-symlinks.sh
 run_suite test-claude-md.sh
 run_suite test-obsolete-removed.sh
-run_suite test-backlog-e2e-tdd.sh
 run_suite test-hook-enforcement.sh
 run_suite test-generate-claude-md.sh
+run_suite test-split-validation.sh
+run_suite test-RABBIT-CAGE-15-workspace-tree.sh
 
 if [ "$total_fail" -eq 0 ]; then
     echo "ALL SUITES PASSED"

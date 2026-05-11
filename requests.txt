@@ -1,3 +1,16 @@
-1. I want a /rabbit-feature-touch skill, which shall belongs to features:rabbit-cage. I think this is alo related to rabbig-cage bug-11. When main session detected anything regarding touching anything within a feature, or adding a new one, TDD flow must be hornored, and the way to obey it, shall be the feature-touch skill. Agree?
-2. I need a visual aid skill/command. On execution, it will print the workspace hierarchy similar to what I did in /home/cyxu/workflow-dev/rabbit-run/archive/2026-05-09-pre-redesign/requests.txt. Note that it should comes with comment to explian things a bit too. But only structual subfolders and important files are shown, trivial files can be ommited. But if user appended --full, we will show all, execpt for non-related files like .swp and .git*
-3. need a command/skill of rabbit-cage to quickly locate all bugs, script way, not with main session LLM to trnasvers cross all features, too low efficiency. That skill/command shall be albe to list all bugs, or bugs of a certain status of a feature or selected features.
+what's the process of filing a backlog or a bug now?
+doest TDD feature needs to be udpated accordingly?
+
+
+----------------------------------------------------------------
+
+I think the current TDD flow is good, but need to be enhance because our feature SPEC is a little off.
+From what I had in mind is that a feature's SPEC contains implementation constraints and deliver criterias. But sometimes I don't see SPEC get updated for a TDD flow.
+So I want to do two things first.
+
+1. review our TDD flow, and check if read spec is must on every feature touch. Then on a feature update/edit condition, do we hardend in script that flow wise we re-brainstorm and plan wirting and do everything we need to update spec, review the spec, and then let subsequent subagents to handle the implementation according to spec. By all means, spec should be a golden document that feature's implementation should follow, not main session's analysis
+
+2. after above thing is done, we run a full deep TDD on every existing feature to consolidate current implementation and tests with spec. During this, don't guess, if you are not clear about spec or any design intention, ask me. During the review, I want you not only check the spec against design intention, but also our policy, this is important too.
+
+
+I want the bug and backlog system to have a CLI/script skill and link to .claude/skill. The installation script shall be changed right? Currently skill itself is a link to rabbit-cage's skill, let's make the skills/ a folder and all features shall have right to link it's own skill into it.

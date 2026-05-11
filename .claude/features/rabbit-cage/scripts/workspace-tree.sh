@@ -32,33 +32,36 @@ ANNOTATIONS = {
     "skills/":                "skill library",
     "features":               "all feature source directories (rabbit-cage, contract, policy, tdd-state-machine, ...)",
     "features/":              "all feature source directories (rabbit-cage, contract, policy, tdd-state-machine, ...)",
-    "rabbit-cage":            "owns the Claude Code surface; bugs, skills, hooks, commands",
-    "rabbit-cage/":           "owns the Claude Code surface; bugs, skills, hooks, commands",
+    "rabbit-cage":            "owns the Claude Code surface: skills, hooks, commands, scope-guard",
+    "rabbit-cage/":           "owns the Claude Code surface: skills, hooks, commands, scope-guard",
     "contract":               "dispatch scripts, enforcement, templates",
     "contract/":              "dispatch scripts, enforcement, templates",
     "policy":                 "philosophy, spec-rules, coding-rules, workflow-rules",
     "policy/":                "philosophy, spec-rules, coding-rules, workflow-rules",
     "tdd-state-machine":      "tdd-step.sh forward-only state machine",
     "tdd-state-machine/":     "tdd-step.sh forward-only state machine",
-    "feature.json":           "feature manifest: owner, tdd_state, surface, bugs_root",
+    "feature.json":           "feature manifest: owner, tdd_state, surface, deprecation_criterion",
     "docs/spec":              "spec and contract for this feature",
     "docs/spec/":             "spec and contract for this feature",
-    "docs/bugs":              "per-feature bug tracker",
-    "docs/bugs/":             "per-feature bug tracker",
-    "docs/backlog":           "backlog items",
-    "docs/backlog/":          "backlog items",
     "registry.json":          "feature registry (name → path map)",
     "SKILL.md":               "skill definition",
     "backlog-contract.md":    "backlog item contract",
+    "bugs":                   "centralized bug tracker (.claude/bugs, subdirs by feature name)",
+    "backlogs":               "centralized backlog tracker (.claude/backlogs, subdirs by feature name)",
+    "rabbit-bug":             "bug filing, tracking, and lifecycle (file-bug.sh, bug-status.sh, list-bugs.sh)",
+    "rabbit-bug/":            "bug filing, tracking, and lifecycle (file-bug.sh, bug-status.sh, list-bugs.sh)",
+    "rabbit-backlog":         "backlog item filing and lifecycle (file-backlog-item.sh, backlog-item-status.sh)",
+    "rabbit-backlog/":        "backlog item filing and lifecycle (file-backlog-item.sh, backlog-item-status.sh)",
 }
 
 # Structural directory names to always include in default mode
 STRUCTURAL_DIRS = {
-    "features", "docs", "bugs", "spec", "backlog",
+    "features", "docs", "bugs", "spec", "backlog", "backlogs",
     "commands", "hooks", "skills", "agents", "scripts",
     "test", "enforcement", ".claude",
     # feature-named dirs
     "rabbit-cage", "contract", "policy", "tdd-state-machine",
+    "rabbit-bug", "rabbit-backlog",
 }
 
 # Key filenames always included in default mode
@@ -90,9 +93,9 @@ def is_key_file(name, relpath):
 
 
 def is_bug_dir(name):
-    # Matches RABBIT-CAGE-*, RABBIT-CONTRACT-*, etc.
+    # Matches RABBIT-CAGE-12, RABBIT-CAGE-BACKLOG-1, etc.
     import re
-    return bool(re.match(r'^[A-Z]+-[A-Z]+-\d+$', name))
+    return bool(re.match(r'^[A-Z][A-Z-]+-\d+$', name))
 
 
 def annotation_for(name, relpath):
