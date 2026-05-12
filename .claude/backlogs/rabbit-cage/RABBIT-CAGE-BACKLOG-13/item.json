@@ -3,7 +3,7 @@
   "title": "Commit CLAUDE.md to git and validate against policy files on every stop",
   "status": "open",
   "priority": "critical",
-  "description": "",
+  "description": "CLAUDE.md is currently gitignored (.gitignore line 4) and generated at install/setup time but not tracked. Goal: (1) remove CLAUDE.md from .gitignore, (2) commit CLAUDE.md as a versioned artifact like skills, (3) add a stop hook that diffs the committed CLAUDE.md against a fresh generation from policy files and warns on discrepancy. Working mechanism (branch, tdd-step.sh, dispatch) unchanged.",
   "owner": "Changyu",
   "filed": "2026-05-12T03:30:10Z",
   "filed_by": "Changyu",
