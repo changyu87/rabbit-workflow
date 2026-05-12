@@ -14,7 +14,7 @@ in its own directory under `.claude/features/<name>/` and bundles:
 - Optional `scripts/` — feature-local executables (validators, runners, etc.).
 
 This layout is not optional. It is the schema enforced by
-`feature-skeleton/scripts/validate-feature.sh`.
+`contract/scripts/validate-feature.sh`.
 
 > **All artifacts in rabbit are machine-targeted.** `feature.json` targets
 > deterministic parsers; `spec.md` and `contract.md` target LLMs. The "prose"
@@ -54,6 +54,5 @@ A feature without these is not a reliable feature.
 - **Never edit `feature.json` and `spec.md` in lockstep.** `feature.json` is
   authored; `spec.md` is the LLM-prose view of the same information. If they
   drift, `feature.json` wins.
-- **Never edit a feature outside a branch + PR** (see `branch-per-feature`).
-- **Never write to `.claude/**` outside the `breeder` subagent** once the
-  lockdown is active (see `claude-write-lockdown`).
+- **Never edit a feature outside a branch + PR** (see R1 in CLAUDE.md).
+- **All feature writes go through a dispatched subagent** via `dispatch-feature-edit.sh` — the main session never edits directly (see Workflow Rules in CLAUDE.md).

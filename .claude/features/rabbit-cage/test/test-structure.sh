@@ -33,8 +33,8 @@ if [ -d "$CAGE_DIR/commands" ]; then ok 2 "commands/ exists as directory"; else 
 # t3: hooks/ exists as a directory
 if [ -d "$CAGE_DIR/hooks" ]; then ok 3 "hooks/ exists as directory"; else fail_t 3 "hooks/ does not exist or is not a directory"; fi
 
-# t4: skills/ exists as a directory
-if [ -d "$CAGE_DIR/skills" ]; then ok 4 "skills/ exists as directory"; else fail_t 4 "skills/ does not exist or is not a directory"; fi
+# t4: skills/ does NOT exist in rabbit-cage (skill ownership moved to tdd-state-machine)
+if [ ! -d "$CAGE_DIR/skills" ]; then ok 4 "skills/ does not exist in rabbit-cage (correctly moved to tdd-state-machine)"; else fail_t 4 "skills/ still exists in rabbit-cage — orphan dir should be removed"; fi
 
 # t5: settings.json exists and is valid JSON
 if [ -f "$CAGE_DIR/settings.json" ] && python3 -c "import sys,json; json.load(open('$CAGE_DIR/settings.json'))" 2>/dev/null; then

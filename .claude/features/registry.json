@@ -7,7 +7,7 @@
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
       "tdd_state": "test-green",
-      "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R7, naming-convention).",
+      "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
       "path": ".claude/features/contract"
     },
     "policy": {
@@ -15,7 +15,7 @@
       "version": "1.0.0",
       "owner": "rabbit-workflow team",
       "tdd_state": "test-green",
-      "summary": "Canonical rule files fed to subagents; split of work-guide.md and philosophy.md.",
+      "summary": "Canonical rule files fed to subagents; four policy docs (philosophy, spec-rules, coding-rules, workflow-rules).",
       "path": ".claude/features/policy"
     },
     "rabbit-backlog": {

@@ -11,7 +11,7 @@ status: active
 
 ## Purpose
 
-rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing all feature content to Claude Code via symlinks.
+rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing all feature content to Claude Code via symlinks and committed generated artifacts.
 
 ## Surface
 
@@ -21,7 +21,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 - `.claude/settings.json` — symlink to `rabbit-cage/settings.json`
 - `.claude/policy/` — symlink to `.claude/features/policy/`
 - `.claude/contract/` — symlink to `.claude/features/contract/`
-- `CLAUDE.md` — symlink to `rabbit-cage/CLAUDE.md`
+- `CLAUDE.md` — generated file (by `generate-claude-md.sh`); gitignored; not a symlink
 - `README.md` — symlink to `rabbit-cage/README.md`
 - `install.sh` — symlink to `rabbit-cage/install.sh`
 
@@ -33,7 +33,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 4. `.claude/settings.json` is a symlink pointing to `.claude/features/rabbit-cage/settings.json`.
 5. `.claude/policy` is a symlink pointing to `.claude/features/policy`.
 6. `.claude/contract` is a symlink pointing to `.claude/features/contract`.
-7. `CLAUDE.md` at repo root is a symlink pointing to `.claude/features/rabbit-cage/CLAUDE.md`.
+7. `CLAUDE.md` at repo root is a generated regular file (not a symlink); produced by `generate-claude-md.sh`; gitignored; contains inline `rabbit-policy-start`/`rabbit-policy-end` section.
 8. `README.md` at repo root is a symlink pointing to `.claude/features/rabbit-cage/README.md`.
 9. `install.sh` at repo root is a symlink pointing to `.claude/features/rabbit-cage/install.sh`.
 10. `CLAUDE.md` contains `@`-imports sourcing files from `.claude/policy/`.

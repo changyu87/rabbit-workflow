@@ -111,9 +111,9 @@ for name, entry in features.items():
 
     surface = data.get("surface", {})
 
-    # Process hooks, commands, agents — each value is a repo-relative symlink path
-    # Note: skills are now managed by generate-skills-dir.sh (not relink.sh)
-    for category in ("hooks", "commands", "agents"):
+    # Process hooks and commands — each value is a repo-relative symlink path
+    # Note: skills are managed by generate-skills-dir.sh (not relink.sh)
+    for category in ("hooks", "commands"):
         for surface_path in surface.get(category, []):
             # The surface_path is the repo-relative path where the symlink should appear
             link_abs = os.path.join(repo_root, surface_path)
@@ -133,15 +133,6 @@ for name, entry in features.items():
                 print(f"  [skip] source not in feature dir, surface path is canonical: {surface_path}")
                 continue
             make_symlink(link_abs, actual_file, f"{surface_path} -> {actual_file}")
-
-    # Process root[] — filenames relative to repo root, sourced from artifacts/
-    for filename in surface.get("root", []):
-        link_abs = os.path.join(repo_root, filename)
-        artifacts_file = os.path.join(features_dir, name, "artifacts", filename)
-        if not os.path.isfile(artifacts_file):
-            print(f"  [skip] artifact not found: {artifacts_file}")
-            continue
-        make_symlink(link_abs, artifacts_file, f"{filename} -> {artifacts_file}")
 
 print("relink complete")
 sys.exit(0)

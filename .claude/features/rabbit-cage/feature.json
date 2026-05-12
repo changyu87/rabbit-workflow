@@ -8,7 +8,8 @@
     "hooks": [
       ".claude/hooks/rbt-refresh.sh",
       ".claude/hooks/rbt-session-init.sh",
-      ".claude/hooks/scope-guard.sh"
+      ".claude/hooks/scope-guard.sh",
+      ".claude/hooks/rbt-sync-check.sh"
     ],
     "commands": [
       ".claude/commands/rabbit-refresh.md",
@@ -22,12 +23,8 @@
       ".claude/features/rabbit-cage/scripts/validate-all.sh",
       ".claude/features/rabbit-cage/scripts/rabbit-project.sh",
       ".claude/features/rabbit-cage/scripts/generate-claude-md.sh",
-      ".claude/features/rabbit-cage/scripts/workspace-tree.sh"
-    ],
-    "root": [
-      "CLAUDE.md",
-      "README.md",
-      "install.sh"
+      ".claude/features/rabbit-cage/scripts/workspace-tree.sh",
+      ".claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
     ],
     "settings": [
       ".claude/settings.json"

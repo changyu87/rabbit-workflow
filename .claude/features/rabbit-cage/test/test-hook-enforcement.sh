@@ -159,7 +159,7 @@ fi
 echo ""
 echo "=== METADATA EXCEPTION: rabbit-feature-touch excludes bug/backlog filing ==="
 
-SKILL_MD="$REPO_ROOT/.claude/features/rabbit-cage/skills/rabbit-feature-touch/SKILL.md"
+SKILL_MD="$REPO_ROOT/.claude/features/tdd-state-machine/skills/rabbit-feature-touch/SKILL.md"
 # t7: skill description explicitly excludes metadata-only operations
 if grep -qiE 'bug.filing|backlog.filing|metadata.only|not for.*bug|not for.*backlog' "$SKILL_MD" 2>/dev/null; then
     ok 7 "rabbit-feature-touch SKILL.md excludes metadata-only operations (bug/backlog filing)"
