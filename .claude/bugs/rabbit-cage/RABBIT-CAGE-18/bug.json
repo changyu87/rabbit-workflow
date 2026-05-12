@@ -1,7 +1,7 @@
 {
   "name": "RABBIT-CAGE-18",
   "title": "Workflow scripts assume bash — break on tcsh: xargs quoting failure",
-  "status": "open",
+  "status": "refused",
   "severity": "high",
   "description": "When Claude runs ad-hoc backlog/bug listing commands on a tcsh host, the xargs -I{} approach fails because the shell interprets Python parentheses as shell subshell syntax before Python sees them. Error: 'sh: command substitution: line 1: syntax error near unexpected token \"(\"'. Root cause: scripts and contracts do not account for tcsh as the user shell. Requirement: all workflow scripts and contracts must support both bash and csh/tcsh.",
   "related_feature": "rabbit-cage",
@@ -15,6 +15,12 @@
       "actor": "changyu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-12T07:21:50Z",
+      "actor": "cyxu",
+      "action": "refused",
+      "note": "Root cause was Claude generating ad-hoc find|xargs pipelines in tcsh because list-bugs.sh lacked severity in --text output and list-backlog.sh did not exist. Both gaps are now closed: list-bugs.sh --text includes severity, list-backlog.sh added with priority and --text support. All workflow scripts use explicit #!/bin/bash shebangs and are shell-agnostic at the OS level. No script defect remains."
     }
   ]
 }
