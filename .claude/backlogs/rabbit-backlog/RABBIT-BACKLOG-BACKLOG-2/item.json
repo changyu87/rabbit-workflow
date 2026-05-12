@@ -1,7 +1,7 @@
 {
   "name": "RABBIT-BACKLOG-BACKLOG-2",
   "title": "Audit rabbit-backlog skill trigger reliability: does it auto-fire on fresh session for 'file a backlog item' intent?",
-  "status": "open",
+  "status": "refused",
   "priority": "high",
   "description": "",
   "owner": "changyu",
@@ -14,6 +14,12 @@
       "actor": "changyu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-12T07:28:10Z",
+      "actor": "cyxu",
+      "action": "refused",
+      "note": "Same class as RABBIT-BUG-5 (refused). Concern was symlink-based skill loading preventing auto-fire on fresh session. Resolved by rabbit-cage switching generate-skills-dir.sh to copy mode (v2.0.0). Skills confirmed loading correctly via /reload-plugins. Audit no longer needed."
     }
   ]
 }
