@@ -26,5 +26,6 @@ run_test "test-validate-no-bugs-root.sh"
 run_test "test-audit-orphan-storage.sh"
 run_test "test-relink-no-skills.sh"
 run_test "test-dispatch-spec-update.sh"
+run_test "test-skill-command-templates.sh"
 
 echo "ALL TESTS PASSED"

@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.0.0
+version: 1.1.0
 template_version: 2.0.0
 ---
 
@@ -19,7 +19,9 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/templates/feature-json-template.json",
       ".claude/features/contract/templates/subagent-launch-template.txt",
       ".claude/features/contract/templates/project-map-template.json",
-      ".claude/features/contract/templates/registry-template.json"
+      ".claude/features/contract/templates/registry-template.json",
+      ".claude/features/contract/templates/skill-template.md",
+      ".claude/features/contract/templates/command-template.md"
     ],
     "schemas": [
       ".claude/features/contract/schemas/feature.json.schema.json",

@@ -4,8 +4,6 @@
 CLAUDE.md
 .rbt-sync-counter
 .rbt-prompt-counter
-.claude/skills/
-.rbt-skills-hash
 .rabbit-scope-override
 .rabbit-scope-override-used
 requests.txt

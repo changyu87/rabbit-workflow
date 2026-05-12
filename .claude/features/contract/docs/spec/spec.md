@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.0.0
+version: 1.1.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -24,6 +24,8 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 - `.claude/features/contract/templates/subagent-launch-template.txt`
 - `.claude/features/contract/templates/project-map-template.json`
 - `.claude/features/contract/templates/registry-template.json`
+- `.claude/features/contract/templates/skill-template.md`
+- `.claude/features/contract/templates/command-template.md`
 
 **schemas/**
 - `.claude/features/contract/schemas/feature.json.schema.json`

@@ -32,6 +32,7 @@ run_suite test-generate-claude-md.sh
 run_suite test-split-validation.sh
 run_suite test-RABBIT-CAGE-15-workspace-tree.sh
 run_suite test-generate-skills-dir.sh
+run_suite test-generate-skills-copy-mode.sh
 run_suite test-RABBIT-CAGE-16-first-stop-no-false-drift.sh
 run_suite test-RABBIT-CAGE-BACKLOG7-visual-messages.sh
 run_suite test-RABBIT-CAGE-BACKLOG9-green-messages.sh

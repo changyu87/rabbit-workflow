@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.1.0
+version: 1.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -11,13 +11,14 @@ status: active
 
 ## Purpose
 
-Provides the `tdd-step.sh` CLI for forward-only TDD state transitions, drift detection, and enforcement gates at `test-green`.
+Provides the `tdd-step.sh` CLI for forward-only TDD state transitions, drift detection, and enforcement gates at `test-green`. Owns the `rabbit-feature-touch` user-facing skill that ensures every feature touch advances the TDD state machine.
 
 ## Surface
 
 - `.claude/features/tdd-state-machine/scripts/tdd-step.sh`
 - `.claude/features/tdd-state-machine/scripts/tdd-drift-check.sh`
 - `.claude/features/tdd-state-machine/scripts/tdd-context.sh`
+- `.claude/features/tdd-state-machine/skills/rabbit-feature-touch/` (skill that triggers on any feature write/edit/delete/add to drive `tdd-step.sh` through the full state sequence)
 
 ## Invariants
 
