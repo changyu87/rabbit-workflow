@@ -20,6 +20,7 @@ run_test "test-backlog003.sh"
 run_test "test-backlog006.sh"
 run_test "test-policy-consolidation.sh"
 run_test "test-backlog001-r3-e2e.sh"
+run_test "test-backlog-policy1-r1-branch-enforcement.sh"
 
 echo ""
 echo "All tests passed."
