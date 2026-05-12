@@ -24,25 +24,29 @@ fail_t() {
 
 echo "test-hook-rename.sh"
 
+OLD1="rbt-refresh.sh"
+OLD2="rbt-session-init.sh"
+OLD3="rbt-sync-check.sh"
+
 # t1: rbt-refresh.sh does NOT exist in hooks/
-if [ ! -f "$HOOKS_DIR/rbt-refresh.sh" ]; then
-    ok 1 "rbt-refresh.sh does not exist in hooks/ (old name gone)"
+if [ ! -f "$HOOKS_DIR/$OLD1" ]; then
+    ok 1 "$OLD1 does not exist in hooks/ (old name gone)"
 else
-    fail_t 1 "rbt-refresh.sh still exists in hooks/ — rename not done"
+    fail_t 1 "$OLD1 still exists in hooks/ — rename not done"
 fi
 
 # t2: rbt-session-init.sh does NOT exist in hooks/
-if [ ! -f "$HOOKS_DIR/rbt-session-init.sh" ]; then
-    ok 2 "rbt-session-init.sh does not exist in hooks/ (old name gone)"
+if [ ! -f "$HOOKS_DIR/$OLD2" ]; then
+    ok 2 "$OLD2 does not exist in hooks/ (old name gone)"
 else
-    fail_t 2 "rbt-session-init.sh still exists in hooks/ — rename not done"
+    fail_t 2 "$OLD2 still exists in hooks/ — rename not done"
 fi
 
 # t3: rbt-sync-check.sh does NOT exist in hooks/
-if [ ! -f "$HOOKS_DIR/rbt-sync-check.sh" ]; then
-    ok 3 "rbt-sync-check.sh does not exist in hooks/ (old name gone)"
+if [ ! -f "$HOOKS_DIR/$OLD3" ]; then
+    ok 3 "$OLD3 does not exist in hooks/ (old name gone)"
 else
-    fail_t 3 "rbt-sync-check.sh still exists in hooks/ — rename not done"
+    fail_t 3 "$OLD3 still exists in hooks/ — rename not done"
 fi
 
 # t4: refresh.sh exists in hooks/
@@ -70,25 +74,25 @@ fi
 # We check git-tracked files only; grep -l returns filenames; exclude this test file itself.
 OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-refresh\.sh' -- ':!archive/' ':!'"$SCRIPT_NAME" 2>/dev/null || true)"
 if [ -z "$OLD_REFS" ]; then
-    ok 7 "no tracked file (outside archive/) references rbt-refresh.sh"
+    ok 7 "no tracked file (outside archive/) references $OLD1"
 else
-    fail_t 7 "tracked files still reference rbt-refresh.sh: $(echo "$OLD_REFS" | tr '\n' ' ')"
+    fail_t 7 "tracked files still reference $OLD1: $(echo "$OLD_REFS" | tr '\n' ' ')"
 fi
 
 # t8: no tracked file outside archive/ references rbt-session-init.sh
 OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-session-init\.sh' -- ':!archive/' ':!'"$SCRIPT_NAME" 2>/dev/null || true)"
 if [ -z "$OLD_REFS" ]; then
-    ok 8 "no tracked file (outside archive/) references rbt-session-init.sh"
+    ok 8 "no tracked file (outside archive/) references $OLD2"
 else
-    fail_t 8 "tracked files still reference rbt-session-init.sh: $(echo "$OLD_REFS" | tr '\n' ' ')"
+    fail_t 8 "tracked files still reference $OLD2: $(echo "$OLD_REFS" | tr '\n' ' ')"
 fi
 
 # t9: no tracked file outside archive/ references rbt-sync-check.sh
 OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-sync-check\.sh' -- ':!archive/' ':!'"$SCRIPT_NAME" 2>/dev/null || true)"
 if [ -z "$OLD_REFS" ]; then
-    ok 9 "no tracked file (outside archive/) references rbt-sync-check.sh"
+    ok 9 "no tracked file (outside archive/) references $OLD3"
 else
-    fail_t 9 "tracked files still reference rbt-sync-check.sh: $(echo "$OLD_REFS" | tr '\n' ' ')"
+    fail_t 9 "tracked files still reference $OLD3: $(echo "$OLD_REFS" | tr '\n' ' ')"
 fi
 
 echo ""

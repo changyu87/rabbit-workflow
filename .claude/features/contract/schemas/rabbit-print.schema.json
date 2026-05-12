@@ -23,9 +23,9 @@
     }
   },
   "producers": [
-    ".claude/features/rabbit-cage/hooks/rbt-sync-check.sh",
-    ".claude/features/rabbit-cage/hooks/rbt-session-init.sh",
-    ".claude/features/rabbit-cage/hooks/rbt-refresh.sh",
+    ".claude/features/rabbit-cage/hooks/sync-check.sh",
+    ".claude/features/rabbit-cage/hooks/session-init.sh",
+    ".claude/features/rabbit-cage/hooks/refresh.sh",
     ".claude/features/tdd-state-machine/scripts/tdd-step.sh"
   ]
 }

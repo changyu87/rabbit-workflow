@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rbt-session-init.sh — session-start injection of CLAUDE.md @-imports.
+# session-init.sh — session-start injection of CLAUDE.md @-imports.
 #
 # Wired to SessionStart. Fires immediately at session start (no counter gate).
 # Reads all @-import paths from CLAUDE.md and emits them as additionalContext

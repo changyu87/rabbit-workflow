@@ -13,7 +13,7 @@
           },
           {
             "type": "command",
-            "command": ".claude/hooks/rbt-session-init.sh"
+            "command": ".claude/hooks/session-init.sh"
           }
         ]
       }
@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/rbt-refresh.sh"
+            "command": ".claude/hooks/refresh.sh"
           }
         ]
       }
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/rbt-sync-check.sh"
+            "command": ".claude/hooks/sync-check.sh"
           }
         ]
       }

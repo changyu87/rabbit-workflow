@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # test-RABBIT-CAGE-20-untracked-skills.sh
-# Tests that rbt-sync-check.sh detects untracked skill directories under
+# Tests that sync-check.sh detects untracked skill directories under
 # .claude/skills/ or .claude/features/*/skills/ (RABBIT-CAGE-20).
 #
 # Bug: when a new skill directory is added to source AND deployed to
@@ -8,7 +8,7 @@
 # so no skills-updated alert is emitted. The new files can sit untracked
 # in git indefinitely with no notification.
 #
-# Fix: rbt-sync-check.sh must additionally call git ls-files --others to
+# Fix: sync-check.sh must additionally call git ls-files --others to
 # find untracked files under .claude/skills/ or .claude/features/*/skills/
 # and treat their presence as skills drift, emitting the same alert.
 #
@@ -19,7 +19,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-sync-check.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
 GENERATE_CLAUDE_MD="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
 GENERATE_SKILLS="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
 POLICY_HEADER="$REPO_ROOT/.claude/features/rabbit-cage/policy-header.json"
@@ -32,11 +32,11 @@ fail_t() { echo "  FAIL t$1: $2"; FAILURES=$(( FAILURES + 1 )); }
 echo "test-RABBIT-CAGE-20-untracked-skills.sh"
 echo ""
 
-# t1: rbt-sync-check.sh exists and is executable
+# t1: sync-check.sh exists and is executable
 if [ -f "$SYNC_CHECK" ] && [ -x "$SYNC_CHECK" ]; then
-    ok 1 "rbt-sync-check.sh exists and is executable"
+    ok 1 "sync-check.sh exists and is executable"
 else
-    fail_t 1 "rbt-sync-check.sh missing or not executable at $SYNC_CHECK"
+    fail_t 1 "sync-check.sh missing or not executable at $SYNC_CHECK"
 fi
 
 # Set up minimal temp repo with rabbit-cage layout and an untracked skill dir
@@ -123,9 +123,9 @@ sync_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev
 
 # t4: hook exits 0
 if [ "$sync_exit" -eq 0 ]; then
-    ok 4 "rbt-sync-check.sh exits 0"
+    ok 4 "sync-check.sh exits 0"
 else
-    fail_t 4 "rbt-sync-check.sh exited $sync_exit (expected 0); output: '$sync_output'"
+    fail_t 4 "sync-check.sh exited $sync_exit (expected 0); output: '$sync_output'"
 fi
 
 # t5: hook output contains a skills-updated systemMessage JSON object

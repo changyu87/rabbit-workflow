@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rbt-sync-check.sh — Stop hook: detect policy drift in CLAUDE.md and regenerate.
+# sync-check.sh — Stop hook: detect policy drift in CLAUDE.md and regenerate.
 #
 # Fires on Stop event. Compares the inline policy section of CLAUDE.md against
 # the current policy source files. If drift detected: regenerates CLAUDE.md,

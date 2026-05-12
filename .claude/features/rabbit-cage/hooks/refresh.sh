@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rbt-refresh.sh — periodic re-injection of CLAUDE.md @-imports.
+# refresh.sh — periodic re-injection of CLAUDE.md @-imports.
 #
 # Wired to UserPromptSubmit. Each prompt: increment counter; if counter
 # reaches RBT_REFRESH_EVERY (default 20), emit JSON additionalContext

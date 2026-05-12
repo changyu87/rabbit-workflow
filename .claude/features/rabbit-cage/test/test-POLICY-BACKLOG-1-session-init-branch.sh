@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # test-POLICY-BACKLOG-1-session-init-branch.sh
-# Tests for rbt-session-init.sh R1 branch-per-session enforcement.
+# Tests for session-init.sh R1 branch-per-session enforcement.
 #
 # Spec invariants tested:
-#   t1: When on 'main', rbt-session-init.sh creates and checks out a session/YYYYMMDD-HHMMSS branch
-#   t2: When on a non-main branch, rbt-session-init.sh does NOT create or switch branches
+#   t1: When on 'main', session-init.sh creates and checks out a session/YYYYMMDD-HHMMSS branch
+#   t2: When on a non-main branch, session-init.sh does NOT create or switch branches
 #   t3: Created branch name follows the session/ prefix and YYYYMMDD-HHMMSS timestamp format
 #
 # R3-compliant: no interactive constructs, exits 1 on any failure.
@@ -12,7 +12,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-session-init.sh"
+HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.sh"
 
 FAILURES=0
 TOTAL=0

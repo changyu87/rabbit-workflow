@@ -31,7 +31,7 @@ t1_clean_install() {
 
 t2_hook_executable() {
     "$INSTALL" "$DIR" >/dev/null
-    [[ -x "$DIR/.claude/hooks/rbt-refresh.sh" ]]
+    [[ -x "$DIR/.claude/hooks/refresh.sh" ]]
 }
 
 t3_settings_content() {
@@ -65,7 +65,7 @@ t7_hook_json_output() {
     echo 19 >"$DIR/.rbt-prompt-counter"
     local out ret
     out="$(mktemp)"
-    (cd "$DIR" && RABBIT_ROOT="$DIR" RBT_REFRESH_EVERY=20 .claude/hooks/rbt-refresh.sh >"$out")
+    (cd "$DIR" && RABBIT_ROOT="$DIR" RBT_REFRESH_EVERY=20 .claude/hooks/refresh.sh >"$out")
     python3 - "$out" <<'EOF'
 import json, sys
 data = json.load(open(sys.argv[1]))

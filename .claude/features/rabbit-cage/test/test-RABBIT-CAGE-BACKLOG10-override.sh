@@ -10,7 +10,7 @@
 #   session  -> ALLOW, file stays
 #   one-time -> ALLOW, delete the file, create .rabbit-scope-override-used
 #
-# rbt-sync-check.sh Stop hook new behaviors:
+# sync-check.sh Stop hook new behaviors:
 #   .rabbit-scope-override = "session"  -> emit red alert
 #   .rabbit-scope-override-used exists  -> emit red alert once, delete file
 #
@@ -23,7 +23,7 @@ set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
 SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.sh"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-sync-check.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
 GITIGNORE="$REPO_ROOT/.gitignore"
 
 FAILURES=0
@@ -52,7 +52,7 @@ except Exception:
 " 2>/dev/null
 }
 
-# Helper: build a minimal temp RABBIT_ROOT with enough structure for rbt-sync-check.sh
+# Helper: build a minimal temp RABBIT_ROOT with enough structure for sync-check.sh
 # to pass its normal drift check (CLAUDE.md matches generated output).
 build_tmproot_clean() {
     local tmproot
@@ -239,9 +239,9 @@ print('yes' if RED in msg and RESET in msg else 'no')
 " 2>/dev/null)"
 
 if [ "$t8_has_red" = "yes" ]; then
-    ok "rbt-sync-check.sh emits red ANSI alert when .rabbit-scope-override=session"
+    ok "sync-check.sh emits red ANSI alert when .rabbit-scope-override=session"
 else
-    fail_t "rbt-sync-check.sh did NOT emit red ANSI alert for session override (msg: $(printf '%q' "$t8_msg"))"
+    fail_t "sync-check.sh did NOT emit red ANSI alert for session override (msg: $(printf '%q' "$t8_msg"))"
 fi
 
 # t9: Stop hook emits red alert when .rabbit-scope-override-used exists
@@ -263,16 +263,16 @@ print('yes' if RED in msg and RESET in msg else 'no')
 " 2>/dev/null)"
 
 if [ "$t9_has_red" = "yes" ]; then
-    ok "rbt-sync-check.sh emits red ANSI alert when .rabbit-scope-override-used exists"
+    ok "sync-check.sh emits red ANSI alert when .rabbit-scope-override-used exists"
 else
-    fail_t "rbt-sync-check.sh did NOT emit red ANSI alert for override-used flag (msg: $(printf '%q' "$t9_msg"))"
+    fail_t "sync-check.sh did NOT emit red ANSI alert for override-used flag (msg: $(printf '%q' "$t9_msg"))"
 fi
 
 # t10: Stop hook DELETES .rabbit-scope-override-used after emitting alert (one-shot consumption)
 if [ ! -f "$TMPROOT9/.rabbit-scope-override-used" ]; then
-    ok ".rabbit-scope-override-used is deleted by rbt-sync-check.sh after alert (one-shot)"
+    ok ".rabbit-scope-override-used is deleted by sync-check.sh after alert (one-shot)"
 else
-    fail_t ".rabbit-scope-override-used still exists after rbt-sync-check.sh ran — one-shot deletion not implemented"
+    fail_t ".rabbit-scope-override-used still exists after sync-check.sh ran — one-shot deletion not implemented"
 fi
 
 echo ""

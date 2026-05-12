@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # test-RABBIT-CAGE-18-scope-alert-messages.sh
-# Tests that rbt-sync-check.sh emits distinct messages for _alert=session vs _alert=used.
+# Tests that sync-check.sh emits distinct messages for _alert=session vs _alert=used.
 #
 # Spec invariants (from spec.md Scope-Guard Override section):
 #   _alert=session → "[rabbit] SCOPE GUARD OFF (session override active)"
@@ -12,7 +12,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-sync-check.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
 
 FAILURES=0
 TOTAL=0

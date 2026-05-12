@@ -8,7 +8,7 @@ set -euo pipefail
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 CAGE_DIR="$REPO_ROOT/.claude/features/rabbit-cage"
 GENERATE_SCRIPT="$CAGE_DIR/scripts/generate-claude-md.sh"
-SYNC_HOOK="$CAGE_DIR/hooks/rbt-sync-check.sh"
+SYNC_HOOK="$CAGE_DIR/hooks/sync-check.sh"
 SETTINGS_JSON="$REPO_ROOT/.claude/settings.json"
 
 pass=0
@@ -35,11 +35,11 @@ else
     fail_t 1 "generate-claude-md.sh missing or not executable"
 fi
 
-# t2: rbt-sync-check.sh exists and is executable
+# t2: sync-check.sh exists and is executable
 if [ -f "$SYNC_HOOK" ] && [ -x "$SYNC_HOOK" ]; then
-    ok 2 "rbt-sync-check.sh exists and is executable"
+    ok 2 "sync-check.sh exists and is executable"
 else
-    fail_t 2 "rbt-sync-check.sh missing or not executable"
+    fail_t 2 "sync-check.sh missing or not executable"
 fi
 
 # t3: settings.json contains the string "Stop" (PreToolUse matcher or Stop event)
