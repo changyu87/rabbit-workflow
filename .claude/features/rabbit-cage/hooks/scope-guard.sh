@@ -67,7 +67,7 @@ decide() {
   fi
 
   # 3. Allowlisted filenames -> always allow
-  if [ "$base" = "settings.json" ] || [ "$base" = "settings.local.json" ] || [ "$base" = ".gitignore" ]; then
+  if [ "$base" = "settings.json" ] || [ "$base" = "settings.local.json" ] || [ "$base" = ".gitignore" ] || [ "$base" = ".rabbit-scope-override" ]; then
     echo "ALLOW (allowlisted filename)"
     return 0
   fi

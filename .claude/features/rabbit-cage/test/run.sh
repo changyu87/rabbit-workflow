@@ -37,7 +37,10 @@ run_suite test-RABBIT-CAGE-BACKLOG7-visual-messages.sh
 run_suite test-RABBIT-CAGE-BACKLOG9-green-messages.sh
 run_suite test-RABBIT-CAGE-BACKLOG10-override.sh
 run_suite test-RABBIT-CAGE-17-quoted-strings.sh
+run_suite test-RABBIT-CAGE-18-scope-alert-messages.sh
 run_suite test-scope-per-feature-marker.sh
+run_suite test-RABBIT-CAGE-19-confirm-token-override.sh
+run_suite test-scope-guard-allowlist.sh
 
 if [ "$total_fail" -eq 0 ]; then
     echo "ALL SUITES PASSED"

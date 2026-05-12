@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 1.7.0
+version: 1.8.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -43,7 +43,6 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 - Content authored by other features — rabbit-cage wires their surface, not their content.
 - `settings.local.json` — user-local overrides; never written by rabbit-cage.
 - Scripts: rabbit-cage owns no runtime scripts beyond `install.sh` and those registered in its contract.
-- Authoring `.rabbit-scope-override` — only a human creates this file. rabbit-cage hooks read and consume it but never create it.
 
 ## Scope-Guard Override
 
@@ -71,20 +70,43 @@ approval.
 **`rbt-sync-check.sh` semantics** (Stop hook, after the normal drift check):
 
 - `.rabbit-scope-override` = `session` → emit a red `[rabbit]` systemMessage
-  on every Stop, signalling that the guard is currently off.
-- `.rabbit-scope-override-used` exists → emit the same red alert once, then
-  DELETE `.rabbit-scope-override-used`.
+  on every Stop, signalling that the guard is **currently off**:
+  `[rabbit] SCOPE GUARD OFF (session override active)`
+- `.rabbit-scope-override-used` exists → emit a **distinct** red `[rabbit]`
+  systemMessage once, signalling that the guard was bypassed once and is now
+  re-armed, then DELETE `.rabbit-scope-override-used`:
+  `[rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed)`
 
-**Human approval flow:** when scope-guard blocks a write, Claude instructs
-the user to run `echo one-time > .rabbit-scope-override` or
-`echo session > .rabbit-scope-override`. Claude itself never writes either
-marker.
+**Confirm-token approval flow:** when scope-guard blocks a write, the main
+session surfaces an explicit confirm token to the user in-conversation,
+asking whether to grant a one-time or session override. The token asks one
+binary question (one-time or session). Upon explicit in-conversation user
+approval, the main session writes `.rabbit-scope-override` itself with the
+approved mode (`one-time` or `session`), then proceeds with the write.
+`scope-guard.sh` never creates `.rabbit-scope-override`; it only reads
+and (for `one-time`) deletes it.
+
+**Filename allowlist:** `scope-guard.sh` maintains a filename allowlist that
+always permits writes regardless of scope-marker state. The allowlisted
+basenames are: `settings.json`, `settings.local.json`, `.gitignore`, and
+`.rabbit-scope-override`. The `.rabbit-scope-override` entry is required so
+that the confirm-token approval flow is not a catch-22: Claude must be able to
+write the override file after receiving user approval, even when no scope
+marker is active.
 
 ## Invariants (additional)
 
 11. `.rabbit-scope-override` and `.rabbit-scope-override-used` are gitignored.
+20. `scope-guard.sh` filename allowlist contains exactly: `settings.json`,
+    `settings.local.json`, `.gitignore`, and `.rabbit-scope-override`. Writes
+    to any of these basenames are always permitted, regardless of scope-marker
+    state. This allowlist must include `.rabbit-scope-override` to enable the
+    confirm-token approval flow (Claude writes the override file after
+    in-conversation user approval without a scope marker active).
 12. `scope-guard.sh` never creates `.rabbit-scope-override`; it only reads it
-    and (for `one-time`) deletes it after consumption.
+    and (for `one-time`) deletes it after consumption. The main session (Claude)
+    may write `.rabbit-scope-override` after receiving explicit in-conversation
+    user approval via the confirm-token flow.
 13. A `one-time` override consumed by `scope-guard.sh` is acknowledged exactly
     once by `rbt-sync-check.sh`, after which `.rabbit-scope-override-used` is
     removed.
@@ -149,6 +171,7 @@ Color convention (binding):
   (CLAUDE.md drift, skills drift, policy drift) and scope-guard-off
   messages.
 
-Example red alert:
+Example red alerts:
 
     \x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD OFF (session override active) ━━━ 🔓\x1b[0m
+    \x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed) ━━━ 🔓\x1b[0m
