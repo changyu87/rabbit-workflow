@@ -42,6 +42,7 @@ run_suite test-RABBIT-CAGE-19-confirm-token-override.sh
 run_suite test-scope-guard-allowlist.sh
 run_suite test-rabbit-workspace-map-wiring.sh
 run_suite test-POLICY-BACKLOG-1-session-init-branch.sh
+run_suite test-build-non-git-dir.sh
 
 if [ "$total_fail" -eq 0 ]; then
     echo "ALL SUITES PASSED"
