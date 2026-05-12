@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.3.0
+version: 1.4.0
 template_version: 2.0.0
 ---
 
@@ -38,8 +38,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.sh",
-        "stdin": "none (feature-name as $1, request-description as $2)",
-        "stdout": "per-feature full-TDD-cycle subagent prompt that runs spec-update → test-red → impl → test-green for ONE feature using .rabbit-scope-active-<feature-name> as scope marker (parallel-dispatch safe); the script itself does not call any agent",
+        "stdin": "none (feature-name as $1, request-description as $2; optional flags: --bug <bug-dir>, --backlog <item-dir>)",
+        "stdout": "per-feature full-TDD-cycle subagent prompt that runs spec-update → test-red → impl → test-green for ONE feature using .rabbit-scope-active-<feature-name> as scope marker (parallel-dispatch safe); after test-green the orchestrator closes the linked bug or marks the backlog item implemented using the impl commit SHA; the script itself does not call any agent",
         "exit": "0=success, 2=bad invocation (missing feature-name or request-description)"
       }
     ],
