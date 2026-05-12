@@ -8,12 +8,7 @@ deprecation_criterion: when dispatch-feature-edit.sh natively enforces tdd-step.
 
 ## Overview
 
-This skill enforces the full TDD step sequence around every feature modification by orchestrating tdd-step.sh transitions before and after each dispatch leg. It closes the test-green drift gap caused by subagents doing ad-hoc testing without advancing the formal state machine.
-
-## When to Use
-
-Trigger on any write/edit/delete/add to a feature directory, or new feature creation. Do NOT use for read-only queries or status checks.
-  Do NOT use for metadata-only writes (bug filing via file-bug.sh, backlog filing via file-backlog-item.sh). These require schema compliance only — not TDD.
+**Owner:** tdd-state-machine feature. This skill is the authoritative TDD orchestration reference — all TDD discipline is self-contained here.
 
 ## Core Orchestration Steps
 

@@ -18,7 +18,7 @@ Provides the `tdd-step.sh` CLI for forward-only TDD state transitions, drift det
 - `.claude/features/tdd-state-machine/scripts/tdd-step.sh`
 - `.claude/features/tdd-state-machine/scripts/tdd-drift-check.sh`
 - `.claude/features/tdd-state-machine/scripts/tdd-context.sh`
-- `.claude/features/tdd-state-machine/skills/rabbit-feature-touch/` (skill that triggers on any feature write/edit/delete/add to drive `tdd-step.sh` through the full state sequence)
+- `.claude/features/tdd-state-machine/skills/rabbit-feature-touch/` (self-contained TDD orchestration reference; triggers on any feature write/edit/delete/add to drive `tdd-step.sh` through the full state sequence — no external documents required)
 
 ## Invariants
 
@@ -26,6 +26,7 @@ Provides the `tdd-step.sh` CLI for forward-only TDD state transitions, drift det
 2. `test-green` transition triggers `rebuild-registry.sh` and enforcement checks.
 3. All three scripts are executable.
 4. `test-green` transition auto-closes any in-progress backlog items under `.claude/backlogs/<feature-name>/` via `backlog-item-status.sh` with `fix_commits=HEAD` (best-effort).
+5. `tdd-step.sh transition` stdout uses the `[rabbit] ━━━ ... ━━━` format with ANSI colors — green (`\x1b[32m`) for normal transition messages on stdout, red (`\x1b[31m`) for FORCED/WARNING/ERROR messages on stderr. The `show`, `next`, and `transitions` subcommands remain plain-text (consumed by tests and downstream parsers).
 
 ## Out of Scope
 

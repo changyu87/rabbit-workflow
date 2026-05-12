@@ -77,6 +77,35 @@ else:
 echo "test-RABBIT-CAGE-BACKLOG9-green-messages.sh"
 echo ""
 
+# Helper: assert systemMessage contains \x1b[31m and \x1b[0m (red alert)
+assert_red_msg() {
+    local label="$1"
+    local msg="$2"
+
+    if [ -z "$msg" ]; then
+        fail_t "$label — systemMessage is empty (no output emitted)"
+        return
+    fi
+
+    local result
+    result="$(MSG="$msg" python3 -c "
+import os
+msg = os.environ['MSG']
+RED = '\x1b[31m'
+RESET = '\x1b[0m'
+if RED in msg and RESET in msg:
+    print('ok')
+else:
+    print('missing')
+" 2>/dev/null)"
+
+    if [ "$result" = "ok" ]; then
+        ok "$label — systemMessage contains ANSI red wrap (\\x1b[31m … \\x1b[0m)"
+    else
+        fail_t "$label — systemMessage missing ANSI red codes; got: $(printf '%q' "$msg")"
+    fi
+}
+
 # ─── Fixture builder ─────────────────────────────────────────────────────────
 build_tmproot() {
     local tmproot
@@ -115,7 +144,7 @@ trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1"' EXIT
 printf 'STALE CONTENT\n' > "$TMPROOT1/CLAUDE.md"
 drift_output="$(RABBIT_ROOT="$TMPROOT1" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 drift_msg="$(printf '%s' "$drift_output" | extract_sys_msg)"
-assert_green_msg "rbt-sync-check.sh DRIFT case" "$drift_msg"
+assert_red_msg "rbt-sync-check.sh DRIFT case" "$drift_msg"
 
 # ─── Test 3: rbt-sync-check.sh SKILLS UPDATE case ────────────────────────────
 TMPROOT2="$(build_tmproot)"
@@ -222,6 +251,14 @@ printf '%s\n' "$THRESHOLD" > "$TMPROOT4B/.rbt-prompt-counter"
 refresh2_output="$(RABBIT_ROOT="$TMPROOT4B" RBT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
 refresh2_msg="$(printf '%s' "$refresh2_output" | extract_sys_msg)"
 assert_green_msg "rbt-refresh.sh @-import fallback case" "$refresh2_msg"
+
+# ─── Test 8: rbt-sync-check.sh DRIFT case must be RED ────────────────────────
+TMPROOT_DRIFT8="$(build_tmproot)"
+trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1" "$TMPROOT2" "$TMPROOT3" "$TMPROOT3B" "$TMPROOT4" "$TMPROOT4B" "$TMPROOT_DRIFT8"' EXIT
+printf 'STALE CONTENT\n' > "$TMPROOT_DRIFT8/CLAUDE.md"
+drift8_output="$(RABBIT_ROOT="$TMPROOT_DRIFT8" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+drift8_msg="$(printf '%s' "$drift8_output" | extract_sys_msg)"
+assert_red_msg "rbt-sync-check.sh DRIFT case must be RED (alert)" "$drift8_msg"
 
 echo ""
 echo "Results: $(( TOTAL - FAILURES )) passed, $FAILURES failed"

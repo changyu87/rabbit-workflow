@@ -84,8 +84,24 @@ t5() {
   fi
 }
 
+# t6: tdd-state-machine SKILL.md does NOT contain "## When to Use" section
+t6() {
+  local skill_md="$FEATURES_DIR/tdd-state-machine/skills/rabbit-feature-touch/SKILL.md"
+  if ! [ -f "$skill_md" ]; then
+    ko "t6: $skill_md not found"
+    return
+  fi
+  local count
+  count=$(grep -c '## When to Use' "$skill_md" 2>/dev/null; true)
+  if [ "$count" = "0" ]; then
+    ok "t6: SKILL.md does not contain '## When to Use' (no duplication)"
+  else
+    ko "t6: SKILL.md still contains '## When to Use' ($count occurrence(s))"
+  fi
+}
+
 echo "running rabbit-feature-touch skill ownership tests"
-t1; t2; t3; t4; t5
+t1; t2; t3; t4; t5; t6
 echo
 echo "summary: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

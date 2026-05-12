@@ -98,10 +98,15 @@ marker.
     not appear in `.gitignore`.
 17. On every Stop event, `rbt-sync-check.sh` compares the committed
     `CLAUDE.md` against a fresh regeneration from the policy source files.
-    On discrepancy it regenerates `CLAUDE.md` in place and emits a
-    deep-green `[rabbit]` `systemMessage` warning that the committed copy
-    drifted from the policy sources, instructing the human to commit the
-    regenerated file.
+    On discrepancy it regenerates `CLAUDE.md` in place and emits a red
+    `[rabbit]` `systemMessage` warning that the committed copy drifted from
+    the policy sources, instructing the human to commit the regenerated
+    file.
+18. `[rabbit]` `systemMessage` color convention: normal/info messages use
+    ANSI green (`\x1b[32m`); alert/error messages use ANSI red
+    (`\x1b[31m`). Specifically: drift detection (CLAUDE.md drift, skills
+    drift, policy drift) and scope-guard-off messages are red;
+    session-init, refresh, and skills-updated messages are green.
 
 ## Scope-Guard Quote Awareness
 
@@ -115,14 +120,21 @@ or heredoc bodies) contains `>`, `>>`, or command names such as `tee`, `cp`,
 ## Visual Styling
 
 Every `systemMessage` emitted by rabbit-cage hooks (`rbt-sync-check.sh`,
-`rbt-session-init.sh`, `rbt-refresh.sh`) is wrapped in ANSI deep-green color
-codes (`\x1b[32m` … `\x1b[0m`). Markdown is not rendered in `systemMessage`
-output; ANSI escape codes are. The deep-green color marks all `[rabbit]`
-status/drift/refresh messages as system-emitted (not user-emitted), making
-them visually distinguishable in the Claude Code transcript.
+`rbt-session-init.sh`, `rbt-refresh.sh`) is wrapped in ANSI color codes
+(`\x1b[32m` for green or `\x1b[31m` for red, terminated by `\x1b[0m`).
+Markdown is not rendered in `systemMessage` output; ANSI escape codes are.
+The color marks all `[rabbit]` messages as system-emitted (not
+user-emitted), making them visually distinguishable in the Claude Code
+transcript.
 
-Scope-guard override alerts emitted by `rbt-sync-check.sh` use ANSI red
-(`\x1b[31m` … `\x1b[0m`) instead of deep-green, marking them as elevated
-warnings:
+Color convention (binding):
+
+- **Green (`\x1b[32m`)** — normal/info messages. Includes session-init,
+  refresh, and skills-updated notifications.
+- **Red (`\x1b[31m`)** — alert/error messages. Includes drift detection
+  (CLAUDE.md drift, skills drift, policy drift) and scope-guard-off
+  messages.
+
+Example red alert:
 
     \x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD OFF (session override active) ━━━ 🔓\x1b[0m

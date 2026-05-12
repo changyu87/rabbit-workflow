@@ -15,7 +15,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       {
         "path": ".claude/features/tdd-state-machine/scripts/tdd-step.sh",
         "stdin": "none",
-        "stdout": "current state (show), next state (next), allowed next states (transitions), or transition message",
+        "stdout": "show/next/transitions=plain-text (parser-stable); transition=ANSI-colored '[rabbit] ━━━ ... ━━━' format (green on stdout for normal, red on stderr for FORCED/WARNING/ERROR)",
         "exit": "0=success, 1=denied/invalid, 2=bad invocation"
       },
       {
@@ -37,7 +37,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "skills": [
       {
         "path": ".claude/features/tdd-state-machine/skills/rabbit-feature-touch/",
-        "purpose": "Triggers on any feature write/edit/delete/add intent and drives the full TDD state sequence via tdd-step.sh, preventing test-green drift."
+        "purpose": "Self-contained TDD orchestration reference. Triggers on any feature write/edit/delete/add intent and drives the full TDD state sequence via tdd-step.sh, preventing test-green drift; requires no external documents."
       }
     ]
   },
