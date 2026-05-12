@@ -104,6 +104,12 @@ list-backlog.sh -h|--help
 - Every `history` entry has a non-empty `reason`.
 - `reopened` is only reachable from `implemented` or `refused`.
 
+### feature.json Surface Invariants
+
+- `surface.skills` MUST be `[]` (empty array). Skills are now managed via
+  explicit copy-file entries in `build-contract.json`. The `surface.skills`
+  field in `feature.json` is the retired mechanism and must not be populated.
+
 ## Dependencies
 
 ### `workspace-map.sh` (from contract)
