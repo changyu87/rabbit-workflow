@@ -42,6 +42,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 27. `generate-skills-dir.sh` does NOT exist in `.claude/features/rabbit-cage/scripts/` (deleted; superseded by build.sh + build-contract.json).
 28. `test-symlinks.sh` does NOT exist in `.claude/features/rabbit-cage/test/` (deleted; superseded by test-generated-surface.sh).
 29. `surface.hooks`, `surface.commands`, and `surface.settings` in `feature.json` are all `[]` (empty arrays); hooks, commands, and settings are now managed via build-contract.json copy-file targets.
+30. `build.sh` passes `RABBIT_ROOT=<repo_root>` as an environment variable when invoking `generate-claude-md.sh` for `generate-claude-md` targets, so that installs into non-git directories (e.g., temp dirs during `install.sh`) succeed without `git rev-parse` errors.
 
 ## Out of Scope
 
