@@ -25,12 +25,13 @@ else
   fail_t 2 "$T2_LABEL"
 fi
 
-T3_LABEL="t3: feature.json surface.skills includes 'rabbit-backlog'"
+T3_LABEL="t3: feature.json surface.skills is [] (skills managed via build-contract.json)"
 FJ="$FEATURE_DIR/feature.json"
 if python3 -c "
 import json, sys
 d = json.load(open('$FJ'))
-assert 'rabbit-backlog' in d.get('surface', {}).get('skills', []), 'not found'
+skills = d.get('surface', {}).get('skills', None)
+assert isinstance(skills, list) and len(skills) == 0, f'expected [], got {skills!r}'
 " 2>/dev/null; then
   ok 3 "$T3_LABEL"
 else
