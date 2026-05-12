@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.2.0
+version: 1.3.0
 template_version: 2.0.0
 ---
 
@@ -29,13 +29,16 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/schemas/bug.json.schema.json",
       ".claude/features/contract/schemas/project-map.json.schema.json",
       ".claude/features/contract/schemas/rabbit-print.schema.json",
-      ".claude/features/contract/schemas/workspace-map.json.schema.json"
+      ".claude/features/contract/schemas/workspace-map.json.schema.json",
+      ".claude/features/contract/schemas/build-contract.schema.json"
+    ],
+    "data": [
+      ".claude/features/contract/build-contract.json"
     ],
     "scripts": [
       ".claude/features/contract/scripts/policy-block.sh",
       ".claude/features/contract/scripts/dispatch-feature-edit.sh",
       ".claude/features/contract/scripts/rebuild-registry.sh",
-      ".claude/features/contract/scripts/relink.sh",
       ".claude/features/contract/scripts/render-template.sh",
       ".claude/features/contract/scripts/check-maps-consistent.sh",
       ".claude/features/contract/scripts/rabbit-triage.sh",
