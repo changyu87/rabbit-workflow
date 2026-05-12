@@ -1,0 +1,19 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-13",
+  "title": "Commit CLAUDE.md to git and validate against policy files on every stop",
+  "status": "open",
+  "priority": "critical",
+  "description": "",
+  "owner": "Changyu",
+  "filed": "2026-05-12T03:30:10Z",
+  "filed_by": "Changyu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-12T03:30:10Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
