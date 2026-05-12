@@ -36,6 +36,23 @@ PROMPT_B=$(bash .claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.
 # Dispatch Agent(prompt: PROMPT_A) and Agent(prompt: PROMPT_B) simultaneously
 ```
 
+### Optional: Linking a Bug or Backlog Item
+
+When the request originated from a tracked bug or backlog item, pass the optional flag so the
+orchestrator automatically closes/marks-implemented the item after reaching test-green:
+
+```bash
+# Link a bug (closes it after test-green):
+PROMPT=$(bash .claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.sh feat-a "<request>" --bug .claude/bugs/<bug-dir>)
+
+# Link a backlog item (marks it implemented after test-green):
+PROMPT=$(bash .claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.sh feat-a "<request>" --backlog .claude/backlogs/<feature-name>/<item-dir>)
+```
+
+The dispatched subagent captures the impl commit SHA after test-green and calls the appropriate
+status script (`bug-status.sh set ... closed` or `backlog-item-status.sh set ... implemented`).
+The HANDOFF block includes `linked_item: <path> (status: <new-status>)` when a flag was passed.
+
 Each dispatched agent:
 - Sets `.rabbit-scope-active-<feature>` at the repo root (parallel-safe, no race)
 - Runs the full TDD cycle: spec-update → test-red → impl → test-green

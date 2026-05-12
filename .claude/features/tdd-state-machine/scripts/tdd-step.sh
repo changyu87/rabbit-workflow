@@ -90,6 +90,25 @@ auto_close_backlog() {
   done
 }
 
+# sync_deployed_skills: copy skills/*/SKILL.md from the feature to .claude/skills/*/SKILL.md.
+# Best-effort — never fails the caller. Only copies when deployed file already exists.
+sync_deployed_skills() {
+  local dir="$1"
+  local skills_src_dir="$dir/skills"
+  [ -d "$skills_src_dir" ] || return 0
+  local deployed_base="$REPO_ROOT/.claude/skills"
+  local skill_dir skill_name src_skill dst_skill
+  for skill_dir in "$skills_src_dir"/*/; do
+    [ -d "$skill_dir" ] || continue
+    skill_name="$(basename "$skill_dir")"
+    src_skill="$skill_dir/SKILL.md"
+    dst_skill="$deployed_base/$skill_name/SKILL.md"
+    [ -f "$src_skill" ] || continue
+    [ -f "$dst_skill" ] || continue
+    cp "$src_skill" "$dst_skill" 2>/dev/null || true
+  done
+}
+
 cmd="${1:-}"; shift || true
 
 case "$cmd" in
@@ -207,6 +226,8 @@ case "$cmd" in
         fi
         # Spec invariant 4: auto-close in-progress backlog items.
         auto_close_backlog "$dir" || true
+        # Sync deployed skills: copy skills/*/SKILL.md to .claude/skills/*/SKILL.md (best-effort).
+        sync_deployed_skills "$dir" || true
       fi
       _rbt_ok "$cur -> $new"
       exit 0
@@ -269,6 +290,8 @@ case "$cmd" in
         fi
         # Spec invariant 4: auto-close in-progress backlog items.
         auto_close_backlog "$dir" || true
+        # Sync deployed skills: copy skills/*/SKILL.md to .claude/skills/*/SKILL.md (best-effort).
+        sync_deployed_skills "$dir" || true
       fi
       _rbt_alert "FORCED: $cur -> $new"
       _rbt_ok "$cur -> $new"
