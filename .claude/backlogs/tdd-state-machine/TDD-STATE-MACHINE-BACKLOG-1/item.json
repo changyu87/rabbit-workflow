@@ -1,13 +1,13 @@
 {
   "name": "TDD-STATE-MACHINE-BACKLOG-1",
   "title": "TDD cycle completion must auto-transition linked bug/backlog to steady state with fix-commit token",
-  "status": "in-progress",
+  "status": "implemented",
   "priority": "high",
   "description": "",
   "owner": "changyu",
   "filed": "2026-05-12T07:28:34Z",
   "filed_by": "changyu",
-  "closed": null,
+  "closed": "2026-05-12T07:52:51Z",
   "history": [
     {
       "ts": "2026-05-12T07:28:34Z",
@@ -20,6 +20,13 @@
       "actor": "cyxu",
       "action": "in-progress",
       "note": "TDD dispatch started"
+    },
+    {
+      "ts": "2026-05-12T07:52:51Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "dispatch-feature-tdd.sh v1.1.0 accepts --bug/--backlog flags; captures impl SHA; auto-calls bug-status.sh or backlog-item-status.sh on test-green; 67 tests passing",
+      "fix_commits": "c1ef564"
     }
   ]
 }
