@@ -58,7 +58,7 @@ approval.
   Created by the human (e.g. `echo one-time > .rabbit-scope-override`).
 - `.rabbit-scope-override-used` — created by `scope-guard.sh` when a
   `one-time` override is consumed. Acts as a single-shot post-event signal
-  for `rbt-sync-check.sh` to surface the consumption.
+  for `sync-check.sh` to surface the consumption.
 
 **`scope-guard.sh` semantics** (evaluated before the default-deny step):
 
@@ -68,7 +68,7 @@ approval.
   `.rabbit-scope-override` and CREATES `.rabbit-scope-override-used`.
 - Absent or other content → fall through to the default-deny path.
 
-**`rbt-sync-check.sh` semantics** (Stop hook, after the normal drift check):
+**`sync-check.sh` semantics** (Stop hook, after the normal drift check):
 
 - `.rabbit-scope-override` = `session` → emit a red `[rabbit]` systemMessage
   on every Stop, signalling that the guard is **currently off**:
@@ -109,7 +109,7 @@ marker is active.
     may write `.rabbit-scope-override` after receiving explicit in-conversation
     user approval via the confirm-token flow.
 13. A `one-time` override consumed by `scope-guard.sh` is acknowledged exactly
-    once by `rbt-sync-check.sh`, after which `.rabbit-scope-override-used` is
+    once by `sync-check.sh`, after which `.rabbit-scope-override-used` is
     removed.
 14. `generate-skills-dir.sh --check` detects drift by comparing the sha256 of
     each source `SKILL.md` directly against the sha256 of the corresponding
@@ -119,7 +119,7 @@ marker is active.
     `.claude/skills/` nor `.rbt-skills-hash` appears in `.gitignore`.
 16. `CLAUDE.md` at the repo root is committed to the repo; `CLAUDE.md` does
     not appear in `.gitignore`.
-17. On every Stop event, `rbt-sync-check.sh` compares the committed
+17. On every Stop event, `sync-check.sh` compares the committed
     `CLAUDE.md` against a fresh regeneration from the policy source files.
     On discrepancy it regenerates `CLAUDE.md` in place and emits a red
     `[rabbit]` `systemMessage` warning that the committed copy drifted from
@@ -147,7 +147,7 @@ marker is active.
 
 ## Session-Init Branch Enforcement (R1)
 
-`rbt-session-init.sh` enforces R1 (branch-per-feature; never commit directly to main) at
+`session-init.sh` enforces R1 (branch-per-feature; never commit directly to main) at
 session start. When the current branch is `main` or any protected branch (defined as any
 branch whose name is exactly `main` or `master`), the hook automatically:
 
@@ -165,14 +165,14 @@ If the current branch is already a non-protected branch (anything other than `ma
 
 ## Invariants (additional continued)
 
-21. On `SessionStart`, `rbt-session-init.sh` checks `git branch --show-current`. If the
+21. On `SessionStart`, `session-init.sh` checks `git branch --show-current`. If the
     result is `main` or `master`, it runs `git checkout -b session/$(date +%Y%m%d-%H%M%S)`
     and emits a green `[rabbit]` systemMessage naming the new branch.
-22. If the current branch is not `main` or `master`, `rbt-session-init.sh` does NOT create
+22. If the current branch is not `main` or `master`, `session-init.sh` does NOT create
     or switch to any branch — the branch-enforcement block is a no-op.
 23. The created branch name always begins with the prefix `session/` followed by exactly
     eight digits, a hyphen, and six digits (`session/YYYYMMDD-HHMMSS`).
-24. `rbt-sync-check.sh` detects untracked skill directories under
+24. `sync-check.sh` detects untracked skill directories under
     `.claude/skills/` or `.claude/features/*/skills/` by invoking
     `git ls-files --others --exclude-standard` against those paths. If any
     untracked path beneath a `skills/` segment is reported, the hook treats
@@ -193,8 +193,8 @@ or heredoc bodies) contains `>`, `>>`, or command names such as `tee`, `cp`,
 
 ## Visual Styling
 
-Every `systemMessage` emitted by rabbit-cage hooks (`rbt-sync-check.sh`,
-`rbt-session-init.sh`, `rbt-refresh.sh`) is wrapped in ANSI color codes
+Every `systemMessage` emitted by rabbit-cage hooks (`sync-check.sh`,
+`session-init.sh`, `refresh.sh`) is wrapped in ANSI color codes
 (`\x1b[32m` for green or `\x1b[31m` for red, terminated by `\x1b[0m`).
 Markdown is not rendered in `systemMessage` output; ANSI escape codes are.
 The color marks all `[rabbit]` messages as system-emitted (not

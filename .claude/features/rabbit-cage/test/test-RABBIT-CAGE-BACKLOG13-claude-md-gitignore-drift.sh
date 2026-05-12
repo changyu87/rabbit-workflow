@@ -2,13 +2,13 @@
 # test-RABBIT-CAGE-BACKLOG13-claude-md-gitignore-drift.sh
 # Tests for BACKLOG-13 invariants:
 #   Invariant 16: CLAUDE.md is committed to the repo; NOT listed in .gitignore.
-#   Invariant 17: rbt-sync-check.sh detects committed-vs-generated drift and
+#   Invariant 17: sync-check.sh detects committed-vs-generated drift and
 #                 emits a [rabbit] warning systemMessage.
-#   Contract:     rbt-sync-check.sh creates CLAUDE.md on first run if absent.
+#   Contract:     sync-check.sh creates CLAUDE.md on first run if absent.
 #
 # These tests MUST FAIL until:
 #   - CLAUDE.md is removed from .gitignore and committed to git.
-#   - rbt-sync-check.sh (already handles drift and first-run) is verified
+#   - sync-check.sh (already handles drift and first-run) is verified
 #     to emit a [rabbit]-tagged systemMessage on drift.
 #
 # R3-compliant: no interactive constructs, PASS/FAIL per assertion, exits 1 on failure.
@@ -16,7 +16,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-sync-check.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
 GENERATE_SCRIPT="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
 GITIGNORE="$REPO_ROOT/.gitignore"
 
@@ -56,7 +56,7 @@ else
 fi
 
 # t_bl13_3: CLAUDE.md exists on disk at repo root
-# This may already pass if generate-claude-md.sh or rbt-sync-check.sh ran,
+# This may already pass if generate-claude-md.sh or sync-check.sh ran,
 # but the above two tests guard the git-committed state.
 if [ -f "$REPO_ROOT/CLAUDE.md" ]; then
     ok 3 "CLAUDE.md exists on disk at repo root"
@@ -66,13 +66,13 @@ fi
 
 echo ""
 
-# ─── Invariant 17: rbt-sync-check.sh detects drift and emits [rabbit] warning ─
+# ─── Invariant 17: sync-check.sh detects drift and emits [rabbit] warning ─
 
 echo "=== Invariant 17: drift detection emits [rabbit] systemMessage warning ==="
 
-# Pre-condition: rbt-sync-check.sh and generate-claude-md.sh must exist
+# Pre-condition: sync-check.sh and generate-claude-md.sh must exist
 if [ ! -f "$SYNC_CHECK" ] || [ ! -x "$SYNC_CHECK" ]; then
-    fail_t 4 "rbt-sync-check.sh missing or not executable — cannot test drift detection"
+    fail_t 4 "sync-check.sh missing or not executable — cannot test drift detection"
     echo ""
     echo "Results: 0 passed, $FAILURES failed"
     echo "$FAILURES TEST(S) FAILED"
@@ -87,7 +87,7 @@ if [ ! -f "$GENERATE_SCRIPT" ] || [ ! -x "$GENERATE_SCRIPT" ]; then
     exit 1
 fi
 
-ok 4 "rbt-sync-check.sh and generate-claude-md.sh exist and are executable"
+ok 4 "sync-check.sh and generate-claude-md.sh exist and are executable"
 
 # Set up a temporary RABBIT_ROOT with:
 #   - a valid CLAUDE.md that differs from what generate-claude-md.sh would produce
@@ -117,7 +117,7 @@ cp "$GENERATE_SCRIPT" "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-cl
 printf '# Rabbit Workflow — STALE OUTDATED CONTENT\nThis is old and differs from source.\n' \
     > "$TMPROOT/CLAUDE.md"
 
-# Run rbt-sync-check.sh with drift scenario (CLAUDE.md exists but stale)
+# Run sync-check.sh with drift scenario (CLAUDE.md exists but stale)
 drift_output=""
 drift_exit=0
 drift_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" \
@@ -125,18 +125,18 @@ drift_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/de
 
 # t_bl13_5: hook exits 0 (drift detection is not a fatal error)
 if [ "$drift_exit" -eq 0 ]; then
-    ok 5 "rbt-sync-check.sh exits 0 when drift detected"
+    ok 5 "sync-check.sh exits 0 when drift detected"
 else
-    fail_t 5 "rbt-sync-check.sh exited $drift_exit on drift (expected 0)"
+    fail_t 5 "sync-check.sh exited $drift_exit on drift (expected 0)"
 fi
 
 # t_bl13_6: hook produces JSON output (systemMessage)
 json_valid=false
 if echo "$drift_output" | python3 -c "import sys, json; json.load(sys.stdin)" 2>/dev/null; then
     json_valid=true
-    ok 6 "rbt-sync-check.sh emits valid JSON on drift"
+    ok 6 "sync-check.sh emits valid JSON on drift"
 else
-    fail_t 6 "rbt-sync-check.sh did not emit valid JSON on drift; got: '$drift_output'"
+    fail_t 6 "sync-check.sh did not emit valid JSON on drift; got: '$drift_output'"
 fi
 
 # t_bl13_7: systemMessage contains "[rabbit]" tag (invariant 17 requirement)
@@ -207,7 +207,7 @@ else
     fail_t 10 "pre-condition failed: CLAUDE.md already exists in temp tree"
 fi
 
-# Run rbt-sync-check.sh with absent CLAUDE.md (first-run)
+# Run sync-check.sh with absent CLAUDE.md (first-run)
 first_run_output=""
 first_run_exit=0
 first_run_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" \
@@ -215,14 +215,14 @@ first_run_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 
 
 # t_bl13_11: hook exits 0 on first-run
 if [ "$first_run_exit" -eq 0 ]; then
-    ok 11 "rbt-sync-check.sh exits 0 on first-run (absent CLAUDE.md)"
+    ok 11 "sync-check.sh exits 0 on first-run (absent CLAUDE.md)"
 else
-    fail_t 11 "rbt-sync-check.sh exited $first_run_exit on first-run (expected 0)"
+    fail_t 11 "sync-check.sh exited $first_run_exit on first-run (expected 0)"
 fi
 
 # t_bl13_12: CLAUDE.md was created on first run
 if [ -f "$TMPROOT2/CLAUDE.md" ]; then
-    ok 12 "CLAUDE.md was created by rbt-sync-check.sh on first run"
+    ok 12 "CLAUDE.md was created by sync-check.sh on first run"
 else
     fail_t 12 "CLAUDE.md was NOT created on first run — hook must create it when absent"
 fi

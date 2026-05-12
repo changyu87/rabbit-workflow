@@ -15,9 +15,9 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-sync-check.sh"
-SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-session-init.sh"
-REFRESH_HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-refresh.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
+SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.sh"
+REFRESH_HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/refresh.sh"
 
 FAILURES=0
 TOTAL=0
@@ -108,7 +108,7 @@ build_tmproot() {
     python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
         > "$tmproot/.claude/features/rabbit-cage/policy-header.json"
 
-    # Copy generate-claude-md.sh so rbt-sync-check.sh can invoke it
+    # Copy generate-claude-md.sh so sync-check.sh can invoke it
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
        "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
 
@@ -119,7 +119,7 @@ build_tmproot() {
     echo "$tmproot"
 }
 
-# ─── Test group 1: rbt-sync-check.sh DRIFT case ──────────────────────────────
+# ─── Test group 1: sync-check.sh DRIFT case ──────────────────────────────
 # CLAUDE.md exists but content differs from generated → drift branch fires.
 TMPROOT1="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT1"' EXIT
@@ -131,9 +131,9 @@ drift_output=""
 drift_output="$(RABBIT_ROOT="$TMPROOT1" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 drift_msg="$(echo "$drift_output" | extract_sys_msg)"
 
-assert_visual_msg "rbt-sync-check.sh DRIFT case" "$drift_msg"
+assert_visual_msg "sync-check.sh DRIFT case" "$drift_msg"
 
-# ─── Test group 2: rbt-sync-check.sh SKILLS UPDATE case ──────────────────────
+# ─── Test group 2: sync-check.sh SKILLS UPDATE case ──────────────────────
 # CLAUDE.md is up-to-date (no drift) but skills need updating → skills branch fires.
 TMPROOT2="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT1" "$TMPROOT2"' EXIT
@@ -159,9 +159,9 @@ skills_output=""
 skills_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 skills_msg="$(echo "$skills_output" | extract_sys_msg)"
 
-assert_visual_msg "rbt-sync-check.sh SKILLS UPDATE case" "$skills_msg"
+assert_visual_msg "sync-check.sh SKILLS UPDATE case" "$skills_msg"
 
-# ─── Test group 3: rbt-session-init.sh session-start message ─────────────────
+# ─── Test group 3: session-init.sh session-start message ─────────────────
 # CLAUDE.md contains an inline policy section → session-init emits additionalContext.
 TMPROOT3="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT1" "$TMPROOT2" "$TMPROOT3"' EXIT
@@ -196,9 +196,9 @@ init_output=""
 init_output="$(RABBIT_ROOT="$TMPROOT3" bash "$SESSION_INIT" 2>/dev/null)" || true
 init_msg="$(echo "$init_output" | extract_sys_msg)"
 
-assert_visual_msg "rbt-session-init.sh session-start injection" "$init_msg"
+assert_visual_msg "session-init.sh session-start injection" "$init_msg"
 
-# ─── Test group 4: rbt-refresh.sh periodic refresh message ───────────────────
+# ─── Test group 4: refresh.sh periodic refresh message ───────────────────
 # CLAUDE.md with inline policy, counter at threshold → refresh fires.
 TMPROOT4="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT1" "$TMPROOT2" "$TMPROOT3" "$TMPROOT4"' EXIT
@@ -228,7 +228,7 @@ refresh_output=""
 refresh_output="$(RABBIT_ROOT="$TMPROOT4" RBT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
 refresh_msg="$(echo "$refresh_output" | extract_sys_msg)"
 
-assert_visual_msg "rbt-refresh.sh periodic refresh" "$refresh_msg"
+assert_visual_msg "refresh.sh periodic refresh" "$refresh_msg"
 
 echo ""
 echo "Results: $(( TOTAL - FAILURES )) passed, $FAILURES failed"

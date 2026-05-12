@@ -25,7 +25,7 @@
       "ts": "2026-05-11T12:52:32Z",
       "actor": "cyxu",
       "action": "implemented",
-      "note": "Applied ANSI deep green (\\x1b[32m) to all 7 [rabbit] systemMessage strings across rbt-sync-check.sh, rbt-session-init.sh, rbt-refresh.sh. Empirically verified ANSI colors render in Claude Code UI.",
+      "note": "Applied ANSI deep green (\\x1b[32m) to all 7 [rabbit] systemMessage strings across sync-check.sh, session-init.sh, refresh.sh. Empirically verified ANSI colors render in Claude Code UI.",
       "fix_commits": "b273a70"
     }
   ]

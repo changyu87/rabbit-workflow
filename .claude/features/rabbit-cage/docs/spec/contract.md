@@ -34,8 +34,8 @@ template_version: 2.0.0
   },
   "manages": {
     "runtime_markers": [
-      {"path": ".rabbit-scope-override", "writer": "human or Claude (after explicit in-conversation user approval via confirm-token flow)", "reader": "scope-guard.sh, rbt-sync-check.sh", "lifecycle": "human or Claude creates (after in-conversation approval); scope-guard.sh deletes on one-time consumption; persists for session mode", "gitignored": true},
-      {"path": ".rabbit-scope-override-used", "writer": "scope-guard.sh", "reader": "rbt-sync-check.sh", "lifecycle": "created by scope-guard.sh on one-time consumption; deleted by rbt-sync-check.sh after one alert", "gitignored": true}
+      {"path": ".rabbit-scope-override", "writer": "human or Claude (after explicit in-conversation user approval via confirm-token flow)", "reader": "scope-guard.sh, sync-check.sh", "lifecycle": "human or Claude creates (after in-conversation approval); scope-guard.sh deletes on one-time consumption; persists for session mode", "gitignored": true},
+      {"path": ".rabbit-scope-override-used", "writer": "scope-guard.sh", "reader": "sync-check.sh", "lifecycle": "created by scope-guard.sh on one-time consumption; deleted by sync-check.sh after one alert", "gitignored": true}
     ]
   },
   "never": [
@@ -51,7 +51,7 @@ template_version: 2.0.0
 `CLAUDE.md` at the repo root is a committed artifact produced by
 `generate-claude-md.sh`. It is not gitignored.
 
-On every Stop event, `rbt-sync-check.sh` computes the expected `CLAUDE.md`
+On every Stop event, `sync-check.sh` computes the expected `CLAUDE.md`
 content from the current policy source files and compares it byte-for-byte
 against the committed `CLAUDE.md`. If they differ, the hook regenerates
 `CLAUDE.md` in place and emits a deep-green `[rabbit]` `systemMessage`

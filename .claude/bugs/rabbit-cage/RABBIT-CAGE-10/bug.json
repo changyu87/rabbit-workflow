@@ -20,7 +20,7 @@
       "ts": "2026-05-10T06:45:51Z",
       "actor": "cyxu",
       "action": "closed",
-      "note": "[skip-vet: vet-triage.json written by main session; fix verified: rbt-session-init.sh deployed, wired, test-green] "
+      "note": "[skip-vet: vet-triage.json written by main session; fix verified: session-init.sh deployed, wired, test-green] "
     }
   ]
 }

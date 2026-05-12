@@ -1,9 +1,9 @@
 {
   "name": "RABBIT-CAGE-14",
-  "title": "rbt-refresh.sh: does not inject inline policy — only handles @-import style CLAUDE.md",
+  "title": "refresh.sh: does not inject inline policy — only handles @-import style CLAUDE.md",
   "status": "closed",
   "severity": "high",
-  "description": "rbt-refresh.sh (UserPromptSubmit hook) greps CLAUDE.md for @-import lines to know what to inject. CLAUDE.md now uses inline policy between rabbit-policy-start/end markers — no @-import lines. So rbt-refresh.sh finds nothing, resets counter to 0, and exits silently. No injection fires, no [rabbit] Policy refreshed banner appears. rbt-session-init.sh already handles inline policy correctly (checks for the inline section first). rbt-refresh.sh needs the same logic: check for rabbit-policy-start/end inline section first; if found, inject that. Fall back to @-imports only if no inline section exists. Surfaced during E2E test of RABBIT-CAGE-12 fix: counter was correctly set to 20 after drift, UserPromptSubmit fired, counter reset to 0 — but no banner and no injection because rbt-refresh.sh exited silently on inline CLAUDE.md. Test t7 in test-RABBIT-CAGE-12-counter-reset.sh also failed to catch this because it ran rbt-refresh.sh against a synthetic tmproot CLAUDE.md with @-imports, not the actual inline CLAUDE.md.",
+  "description": "refresh.sh (UserPromptSubmit hook) greps CLAUDE.md for @-import lines to know what to inject. CLAUDE.md now uses inline policy between rabbit-policy-start/end markers — no @-import lines. So refresh.sh finds nothing, resets counter to 0, and exits silently. No injection fires, no [rabbit] Policy refreshed banner appears. session-init.sh already handles inline policy correctly (checks for the inline section first). refresh.sh needs the same logic: check for rabbit-policy-start/end inline section first; if found, inject that. Fall back to @-imports only if no inline section exists. Surfaced during E2E test of RABBIT-CAGE-12 fix: counter was correctly set to 20 after drift, UserPromptSubmit fired, counter reset to 0 — but no banner and no injection because refresh.sh exited silently on inline CLAUDE.md. Test t7 in test-RABBIT-CAGE-12-counter-reset.sh also failed to catch this because it ran refresh.sh against a synthetic tmproot CLAUDE.md with @-imports, not the actual inline CLAUDE.md.",
   "related_feature": "rabbit-cage",
   "filed": "2026-05-10T16:43:41Z",
   "filed_by": "cyxu",
@@ -20,7 +20,7 @@
       "ts": "2026-05-11T01:27:16Z",
       "actor": "cyxu",
       "action": "closed",
-      "note": "Fix: rbt-refresh.sh now handles inline policy section (rabbit-policy-start/end). Test: test-RABBIT-CAGE-14-refresh-inline.sh covers inline-policy path. E2E verified this session."
+      "note": "Fix: refresh.sh now handles inline policy section (rabbit-policy-start/end). Test: test-RABBIT-CAGE-14-refresh-inline.sh covers inline-policy path. E2E verified this session."
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "name": "RABBIT-CAGE-20",
-  "title": "rbt-sync-check.sh silent when new skill directories are untracked by git",
+  "title": "sync-check.sh silent when new skill directories are untracked by git",
   "status": "closed",
   "severity": "medium",
   "description": "When a new skill directory is created under .claude/features/<feat>/skills/<name>/ and deployed to .claude/skills/<name>/, generate-skills-dir.sh --check returns 0 (no drift) because source and deployed are byte-identical. The sync-check hook therefore never emits the [rabbit] skills-updated alert. New skill directories can sit untracked by git indefinitely with no user notification. Root cause: the drift check compares filesystem content only (sha256 source vs deployed) and has no awareness of git tracking status.",
@@ -20,9 +20,9 @@
       "ts": "2026-05-12T09:01:31Z",
       "actor": "changyu",
       "action": "closed",
-      "note": "[skip-vet: fix is self-evident from the hook diff; triage documented in bug description] Extended rbt-sync-check.sh to detect untracked skill dirs via git ls-files --others",
+      "note": "[skip-vet: fix is self-evident from the hook diff; triage documented in bug description] Extended sync-check.sh to detect untracked skill dirs via git ls-files --others",
       "fix_commits": "997079b177dd128d9e81ea54631e6d0b5daf7477",
-      "touched_files": ".claude/features/rabbit-cage/hooks/rbt-sync-check.sh"
+      "touched_files": ".claude/features/rabbit-cage/hooks/sync-check.sh"
     }
   ]
 }

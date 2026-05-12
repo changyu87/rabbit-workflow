@@ -5,7 +5,7 @@
   "root_cause_addressed": true,
   "regressions_found": false,
   "test_sufficient": true,
-  "notes": "Fix confirmed complete. rbt-sync-check.sh writes RBT_REFRESH_EVERY (20) to .rbt-prompt-counter on drift — not 0. rbt-refresh.sh fires injection on the next UserPromptSubmit. Tests t5, t6, t7 pass.",
+  "notes": "Fix confirmed complete. sync-check.sh writes RBT_REFRESH_EVERY (20) to .rbt-prompt-counter on drift — not 0. refresh.sh fires injection on the next UserPromptSubmit. Tests t5, t6, t7 pass.",
   "triage_ts": "2026-05-10T00:00:00Z",
   "triage_by": "main-session"
 }

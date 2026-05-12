@@ -15,9 +15,9 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-sync-check.sh"
-SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-session-init.sh"
-REFRESH_HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/rbt-refresh.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
+SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.sh"
+REFRESH_HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/refresh.sh"
 
 FAILURES=0
 TOTAL=0
@@ -130,23 +130,23 @@ build_tmproot() {
     echo "$tmproot"
 }
 
-# ─── Test 1: rbt-sync-check.sh FIRST-RUN case ────────────────────────────────
+# ─── Test 1: sync-check.sh FIRST-RUN case ────────────────────────────────
 TMPROOT_FR="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR"' EXIT
 # No CLAUDE.md → first-run branch fires
 firstrun_output="$(RABBIT_ROOT="$TMPROOT_FR" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 firstrun_msg="$(printf '%s' "$firstrun_output" | extract_sys_msg)"
-assert_green_msg "rbt-sync-check.sh FIRST-RUN case" "$firstrun_msg"
+assert_green_msg "sync-check.sh FIRST-RUN case" "$firstrun_msg"
 
-# ─── Test 2: rbt-sync-check.sh DRIFT case ────────────────────────────────────
+# ─── Test 2: sync-check.sh DRIFT case ────────────────────────────────────
 TMPROOT1="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1"' EXIT
 printf 'STALE CONTENT\n' > "$TMPROOT1/CLAUDE.md"
 drift_output="$(RABBIT_ROOT="$TMPROOT1" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 drift_msg="$(printf '%s' "$drift_output" | extract_sys_msg)"
-assert_red_msg "rbt-sync-check.sh DRIFT case" "$drift_msg"
+assert_red_msg "sync-check.sh DRIFT case" "$drift_msg"
 
-# ─── Test 3: rbt-sync-check.sh SKILLS UPDATE case ────────────────────────────
+# ─── Test 3: sync-check.sh SKILLS UPDATE case ────────────────────────────
 TMPROOT2="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1" "$TMPROOT2"' EXIT
 correct_claude="$(RABBIT_ROOT="$TMPROOT2" bash "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
@@ -161,9 +161,9 @@ chmod +x "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
 
 skills_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 skills_msg="$(printf '%s' "$skills_output" | extract_sys_msg)"
-assert_green_msg "rbt-sync-check.sh SKILLS UPDATE case" "$skills_msg"
+assert_green_msg "sync-check.sh SKILLS UPDATE case" "$skills_msg"
 
-# ─── Test 4: rbt-session-init.sh inline-section case ─────────────────────────
+# ─── Test 4: session-init.sh inline-section case ─────────────────────────
 TMPROOT3="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1" "$TMPROOT2" "$TMPROOT3"' EXIT
 
@@ -187,9 +187,9 @@ chmod +x "$TMPROOT3/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
 
 init_output="$(RABBIT_ROOT="$TMPROOT3" bash "$SESSION_INIT" 2>/dev/null)" || true
 init_msg="$(printf '%s' "$init_output" | extract_sys_msg)"
-assert_green_msg "rbt-session-init.sh inline-section case" "$init_msg"
+assert_green_msg "session-init.sh inline-section case" "$init_msg"
 
-# ─── Test 5: rbt-session-init.sh @-import fallback case ──────────────────────
+# ─── Test 5: session-init.sh @-import fallback case ──────────────────────
 TMPROOT3B="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1" "$TMPROOT2" "$TMPROOT3" "$TMPROOT3B"' EXIT
 
@@ -210,9 +210,9 @@ chmod +x "$TMPROOT3B/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh
 
 init2_output="$(RABBIT_ROOT="$TMPROOT3B" bash "$SESSION_INIT" 2>/dev/null)" || true
 init2_msg="$(printf '%s' "$init2_output" | extract_sys_msg)"
-assert_green_msg "rbt-session-init.sh @-import fallback case" "$init2_msg"
+assert_green_msg "session-init.sh @-import fallback case" "$init2_msg"
 
-# ─── Test 6: rbt-refresh.sh inline-section case ──────────────────────────────
+# ─── Test 6: refresh.sh inline-section case ──────────────────────────────
 TMPROOT4="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1" "$TMPROOT2" "$TMPROOT3" "$TMPROOT3B" "$TMPROOT4"' EXIT
 
@@ -232,9 +232,9 @@ THRESHOLD=5
 printf '%s\n' "$THRESHOLD" > "$TMPROOT4/.rbt-prompt-counter"
 refresh_output="$(RABBIT_ROOT="$TMPROOT4" RBT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
 refresh_msg="$(printf '%s' "$refresh_output" | extract_sys_msg)"
-assert_green_msg "rbt-refresh.sh inline-section case" "$refresh_msg"
+assert_green_msg "refresh.sh inline-section case" "$refresh_msg"
 
-# ─── Test 7: rbt-refresh.sh @-import fallback case ───────────────────────────
+# ─── Test 7: refresh.sh @-import fallback case ───────────────────────────
 TMPROOT4B="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1" "$TMPROOT2" "$TMPROOT3" "$TMPROOT3B" "$TMPROOT4" "$TMPROOT4B"' EXIT
 
@@ -250,15 +250,15 @@ THRESHOLD=5
 printf '%s\n' "$THRESHOLD" > "$TMPROOT4B/.rbt-prompt-counter"
 refresh2_output="$(RABBIT_ROOT="$TMPROOT4B" RBT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
 refresh2_msg="$(printf '%s' "$refresh2_output" | extract_sys_msg)"
-assert_green_msg "rbt-refresh.sh @-import fallback case" "$refresh2_msg"
+assert_green_msg "refresh.sh @-import fallback case" "$refresh2_msg"
 
-# ─── Test 8: rbt-sync-check.sh DRIFT case must be RED ────────────────────────
+# ─── Test 8: sync-check.sh DRIFT case must be RED ────────────────────────
 TMPROOT_DRIFT8="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1" "$TMPROOT2" "$TMPROOT3" "$TMPROOT3B" "$TMPROOT4" "$TMPROOT4B" "$TMPROOT_DRIFT8"' EXIT
 printf 'STALE CONTENT\n' > "$TMPROOT_DRIFT8/CLAUDE.md"
 drift8_output="$(RABBIT_ROOT="$TMPROOT_DRIFT8" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 drift8_msg="$(printf '%s' "$drift8_output" | extract_sys_msg)"
-assert_red_msg "rbt-sync-check.sh DRIFT case must be RED (alert)" "$drift8_msg"
+assert_red_msg "sync-check.sh DRIFT case must be RED (alert)" "$drift8_msg"
 
 echo ""
 echo "Results: $(( TOTAL - FAILURES )) passed, $FAILURES failed"
