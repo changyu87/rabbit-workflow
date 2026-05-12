@@ -13,7 +13,7 @@
     ],
     "commands": [
       ".claude/commands/rabbit-refresh.md",
-      ".claude/commands/rabbit-set-threshold.md",
+      ".claude/commands/rabbit-config.md",
       ".claude/commands/rabbit-project.md"
     ],
     "skills": [],
