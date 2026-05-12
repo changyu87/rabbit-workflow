@@ -223,7 +223,7 @@ Full TDD costs tokens. The cost is intentional: accumulated drift costs more tha
 
 ## 5. Hard rules index (R1–R9)
 
-- **R1** — Branch per feature; never commit directly to main.
+- **R1** — Branch per feature; never commit directly to main. The session-init hook automatically creates a feature branch when the session starts on main. All commits must land on a feature branch. A PR/merge is the only path back to main.
 - **R2** — Use Opus for brainstorm, spec, plan, design, and architect subagents.
 - **R3** — Tests are end-to-end and non-interactive — no `read` or `select`.
 - **R4** — TDD state transitions go through `tdd-step.sh` only.
