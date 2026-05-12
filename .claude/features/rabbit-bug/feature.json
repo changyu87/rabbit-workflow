@@ -2,15 +2,13 @@
   "name": "rabbit-bug",
   "version": "0.1.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "Owns bug filing, tracking, and lifecycle for all rabbit features. Provides file-bug.sh, bug-status.sh, and list-bugs.sh.",
   "surface": {
     "hooks": [],
     "commands": [],
     "agents": [],
-    "skills": [
-      "rabbit-bug"
-    ],
+    "skills": [],
     "scripts": [
       "scripts/file-bug.sh",
       "scripts/bug-status.sh",
