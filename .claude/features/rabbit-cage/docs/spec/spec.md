@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 1.4.0
+version: 1.5.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -17,7 +17,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 
 - `.claude/commands/` — symlink to `rabbit-cage/commands/`
 - `.claude/hooks/` — symlink to `rabbit-cage/hooks/`
-- `.claude/skills/` — symlink to `rabbit-cage/skills/`
+- `.claude/skills/` — directory of recursive copies (`cp -rp`) of feature skill source dirs; committed to the repo
 - `.claude/settings.json` — symlink to `rabbit-cage/settings.json`
 - `.claude/policy/` — symlink to `.claude/features/policy/`
 - `.claude/contract/` — symlink to `.claude/features/contract/`
@@ -29,7 +29,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 
 1. `.claude/commands` is a symlink pointing to `.claude/features/rabbit-cage/commands`.
 2. `.claude/hooks` is a symlink pointing to `.claude/features/rabbit-cage/hooks`.
-3. `.claude/skills` is a symlink pointing to `.claude/features/rabbit-cage/skills`.
+3. `.claude/skills` is a real directory (not a symlink) populated by `generate-skills-dir.sh` via recursive copy (`cp -rp`) of each feature's skill source directory; the directory and its contents are committed to the repo (not gitignored).
 4. `.claude/settings.json` is a symlink pointing to `.claude/features/rabbit-cage/settings.json`.
 5. `.claude/policy` is a symlink pointing to `.claude/features/policy`.
 6. `.claude/contract` is a symlink pointing to `.claude/features/contract`.
@@ -88,6 +88,12 @@ marker.
 13. A `one-time` override consumed by `scope-guard.sh` is acknowledged exactly
     once by `rbt-sync-check.sh`, after which `.rabbit-scope-override-used` is
     removed.
+14. `generate-skills-dir.sh --check` detects drift by comparing the sha256 of
+    each source `SKILL.md` directly against the sha256 of the corresponding
+    copy at `.claude/skills/<name>/SKILL.md`. No external baseline file
+    (`.rbt-skills-hash`) is used or maintained.
+15. `.claude/skills/` and its contents are committed to the repo; neither
+    `.claude/skills/` nor `.rbt-skills-hash` appears in `.gitignore`.
 
 ## Scope-Guard Quote Awareness
 

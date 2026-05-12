@@ -7,13 +7,13 @@
 #   --check    Dry-run: exit 0 if up-to-date, 1 if structural or content drift detected.
 #   REPO_ROOT  Optional; defaults to git rev-parse --show-toplevel.
 #
-# Default mode: creates .claude/skills/, creates/updates/removes symlinks,
-# saves sha256 baseline to .rbt-skills-hash. Idempotent. Prints changes.
+# Default mode: creates .claude/skills/, copies (cp -rp) each declared skill directory,
+# removes stale copies. Idempotent. Prints changes.
 #
-# Symlink convention:
-#   .claude/skills/<name>  →  ../features/<feat>/skills/<name>
+# Copy convention:
+#   .claude/skills/<name>  ←  copy of  ../features/<feat>/skills/<name>
 #
-# Version: 1.0.0
+# Version: 2.0.0
 # Owner: rabbit-cage
 
 set -euo pipefail
@@ -32,7 +32,6 @@ REPO_ROOT="${REPO_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --sh
 FEATURES_DIR="$REPO_ROOT/.claude/features"
 REGISTRY="$FEATURES_DIR/registry.json"
 SKILLS_DIR="$REPO_ROOT/.claude/skills"
-HASH_FILE="$REPO_ROOT/.rbt-skills-hash"
 
 [ -f "$REGISTRY" ] || { echo "Error: registry.json not found at $REGISTRY" >&2; exit 1; }
 
@@ -56,31 +55,6 @@ for feat_name in registry.get("features", {}):
 PYEOF
 }
 
-# Computes a deterministic sha256 hash over all source SKILL.md files.
-compute_hash() {
-  python3 - "$REGISTRY" "$FEATURES_DIR" <<'PYEOF'
-import hashlib, json, os, sys
-registry_path, features_dir = sys.argv[1], sys.argv[2]
-with open(registry_path) as f:
-    registry = json.load(f)
-lines = []
-for feat_name in sorted(registry.get("features", {})):
-    fj = os.path.join(features_dir, feat_name, "feature.json")
-    if not os.path.isfile(fj):
-        continue
-    with open(fj) as f:
-        data = json.load(f)
-    for skill_name in sorted(data.get("surface", {}).get("skills", [])):
-        skill_md = os.path.join(features_dir, feat_name, "skills", skill_name, "SKILL.md")
-        if os.path.isfile(skill_md):
-            with open(skill_md, "rb") as f:
-                h = hashlib.sha256(f.read()).hexdigest()
-            lines.append(f"{h}  {feat_name}/{skill_name}/SKILL.md")
-for l in lines:
-    print(l)
-PYEOF
-}
-
 declare -A EXPECTED
 while IFS='|' read -r feat skill; do
   if [ -n "${EXPECTED[$skill]:-}" ]; then
@@ -93,79 +67,75 @@ done < <(collect_expected)
 if [ "$CHECK" -eq 1 ]; then
   DRIFT=0
 
-  # Structural: verify every expected skill has a valid symlink
+  # Content: verify every expected skill has a copy with matching sha256
   for name in "${!EXPECTED[@]}"; do
-    link="$SKILLS_DIR/$name"
-    if [ ! -L "$link" ] || [ ! -e "$link" ]; then
-      echo "drift: missing or broken symlink .claude/skills/$name"
+    feat="${EXPECTED[$name]}"
+    src_md="$FEATURES_DIR/$feat/skills/$name/SKILL.md"
+    copy_md="$SKILLS_DIR/$name/SKILL.md"
+    if [ ! -d "$SKILLS_DIR/$name" ] || [ ! -f "$copy_md" ]; then
+      echo "drift: missing copy .claude/skills/$name"
+      DRIFT=1
+    elif ! sha256sum "$src_md" "$copy_md" 2>/dev/null | awk '{print $1}' | sort -u | wc -l | grep -q "^1$"; then
+      echo "drift: SKILL.md content differs for .claude/skills/$name"
       DRIFT=1
     fi
   done
 
-  # Structural: flag stale symlinks not in expected set
+  # Structural: flag stale entries in skills dir not in expected set
   if [ -d "$SKILLS_DIR" ]; then
-    for link in "$SKILLS_DIR"/*; do
-      [ -L "$link" ] || continue
-      name="$(basename "$link")"
+    for entry in "$SKILLS_DIR"/*; do
+      [ -e "$entry" ] || continue
+      name="$(basename "$entry")"
       if [ -z "${EXPECTED[$name]:-}" ]; then
-        echo "drift: stale symlink .claude/skills/$name"
+        echo "drift: stale entry .claude/skills/$name"
         DRIFT=1
       fi
     done
   fi
 
-  # Content: compare current hash against saved baseline
-  if [ -f "$HASH_FILE" ]; then
-    CURRENT="$(compute_hash)"
-    SAVED="$(cat "$HASH_FILE")"
-    if [ "$CURRENT" != "$SAVED" ]; then
-      echo "drift: SKILL.md content changed since session start"
-      DRIFT=1
-    fi
-  else
-    if [ "${#EXPECTED[@]}" -gt 0 ]; then
-      echo "drift: no hash baseline (.rbt-skills-hash absent)"
-      DRIFT=1
-    fi
-  fi
-
   exit "$DRIFT"
 fi
 
-# Default mode: generate / refresh
+# Default mode: generate / refresh via copy
 mkdir -p "$SKILLS_DIR"
 CHANGED=0
 
 for name in "${!EXPECTED[@]}"; do
   feat="${EXPECTED[$name]}"
-  target="../features/$feat/skills/$name"
-  link="$SKILLS_DIR/$name"
-  if [ -L "$link" ]; then
-    existing="$(readlink "$link")"
-    [ "$existing" = "$target" ] && continue
-    rm "$link"
-    echo "  [update] .claude/skills/$name"
+  source_dir="$FEATURES_DIR/$feat/skills/$name"
+  copy_dir="$SKILLS_DIR/$name"
+
+  if [ -L "$copy_dir" ]; then
+    # Remove old symlink and replace with real copy
+    rm "$copy_dir"
+    cp -rp "$source_dir" "$copy_dir"
+    echo "  [update] .claude/skills/$name (replaced symlink with copy)"
+    CHANGED=1
+  elif [ -d "$copy_dir" ]; then
+    # Real directory exists; re-copy to ensure freshness
+    rm -rf "$copy_dir"
+    cp -rp "$source_dir" "$copy_dir"
+    echo "  [refresh] .claude/skills/$name"
     CHANGED=1
   else
-    echo "  [link] .claude/skills/$name → $target"
+    cp -rp "$source_dir" "$copy_dir"
+    echo "  [copy] .claude/skills/$name"
     CHANGED=1
   fi
-  ln -s "$target" "$link"
 done
 
-# Remove stale symlinks
+# Remove stale entries (symlinks or directories) not in expected set
 if [ -d "$SKILLS_DIR" ]; then
-  for link in "$SKILLS_DIR"/*; do
-    [ -L "$link" ] || continue
-    name="$(basename "$link")"
+  for entry in "$SKILLS_DIR"/*; do
+    [ -e "$entry" ] || [ -L "$entry" ] || continue
+    name="$(basename "$entry")"
     if [ -z "${EXPECTED[$name]:-}" ]; then
-      rm "$link"
+      rm -rf "$entry"
       echo "  [remove] stale .claude/skills/$name"
       CHANGED=1
     fi
   done
 fi
 
-compute_hash > "$HASH_FILE"
 [ "$CHANGED" -eq 0 ] && echo "skills directory up to date" || echo "skills directory refreshed"
 exit 0

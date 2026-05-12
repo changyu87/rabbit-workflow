@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.2.0
+version: 3.3.0
 template_version: 2.0.0
 ---
 
@@ -15,11 +15,12 @@ template_version: 2.0.0
       {"path": ".claude/features/rabbit-cage/scripts/validate-all.sh", "stdin": "none", "stdout": "validation report", "exit": "0=all pass 1=failures"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project.sh", "stdin": "none", "stdout": "operation result", "exit": "0=ok 1=error 2=usage"},
       {"path": ".claude/features/rabbit-cage/scripts/generate-claude-md.sh", "stdin": "none", "stdout": "CLAUDE.md content", "exit": "0=ok 1=error"},
-      {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.sh", "stdin": "none", "stdout": "workspace tree", "exit": "0=ok 1=error"}
+      {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.sh", "stdin": "none", "stdout": "workspace tree", "exit": "0=ok 1=error"},
+      {"path": ".claude/features/rabbit-cage/scripts/generate-skills-dir.sh", "stdin": "none", "stdout": "status messages", "exit": "0=ok/up-to-date 1=drift-detected(check-mode)"}
     ],
     "schemas": [],
     "templates": [],
-    "skills": [{"name": "rabbit-feature-touch", "path": ".claude/features/rabbit-cage/skills/rabbit-feature-touch/SKILL.md", "purpose": "orchestrates TDD state transitions in main session around every feature dispatch"}]
+    "skills": []
   },
   "reads": {
     "files": [".claude/features/registry.json", "project-*/project-map.json", ".claude/features/contract/templates/", ".rabbit-scope-override", ".rabbit-scope-override-used"],
@@ -47,11 +48,16 @@ template_version: 2.0.0
 }
 ```
 
-## Skill–Template Boundary
+## generate-skills-dir.sh Behavior
 
-The `rabbit-feature-touch` skill and the `subagent-launch-template` are complementary, not redundant:
+`generate-skills-dir.sh` populates `.claude/skills/` by recursively copying
+each registered feature's skill source directory using `cp -rp` (preserving
+mode and timestamps). It does not create or follow symlinks for skill content.
 
-- **Skill** (main session) — controls *when* dispatches happen and *which leg* (test-only vs impl-only); calls `tdd-step.sh` at each boundary to advance the formal TDD state machine.
-- **Template** (subagent payload) — provides the policy block (R6), scope declaration, and feature context for each dispatch leg. Subagents do not call `tdd-step.sh`; the main session orchestrates all state transitions via the skill.
-
-This division is intentional: retiring the template would remove R6 compliance and scope-guard support; retiring the skill would leave TDD state machine advancement ungoverned.
+`--check` mode compares the sha256 of every source `SKILL.md` directly
+against the sha256 of the corresponding copy at
+`.claude/skills/<name>/SKILL.md`. No baseline hash file is read or written;
+the prior `.rbt-skills-hash` file and any associated `compute_hash` helper
+are removed. Exit `1` indicates drift in check mode; exit `0` indicates
+the copy tree matches source (or, in non-check mode, that the copy
+operation completed successfully).

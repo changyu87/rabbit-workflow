@@ -1,0 +1,20 @@
+{
+  "name": "RABBIT-CAGE-19",
+  "title": "Workflow scripts assume bash — break on tcsh: while-read and status variable",
+  "status": "open",
+  "severity": "high",
+  "description": "When Claude runs backlog listing commands on a tcsh host, bash-specific constructs fail: (1) 'while read f; do ...' is bash syntax — tcsh has no while-read loop; (2) 'status' is a reserved read-only variable in tcsh, making 'status=$(...)' illegal. Error: '(eval):3: read-only variable: status'. Root cause: scripts and contracts do not account for tcsh as the user shell. Requirement: all workflow scripts and contracts must support both bash and csh/tcsh.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-11T14:59:34Z",
+  "filed_by": "changyu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-11T14:59:34Z",
+      "actor": "changyu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}

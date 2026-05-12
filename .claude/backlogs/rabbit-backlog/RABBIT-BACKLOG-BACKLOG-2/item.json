@@ -1,0 +1,19 @@
+{
+  "name": "RABBIT-BACKLOG-BACKLOG-2",
+  "title": "Audit rabbit-backlog skill trigger reliability: does it auto-fire on fresh session for 'file a backlog item' intent?",
+  "status": "open",
+  "priority": "high",
+  "description": "",
+  "owner": "changyu",
+  "filed": "2026-05-11T15:02:43Z",
+  "filed_by": "changyu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-11T15:02:43Z",
+      "actor": "changyu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}

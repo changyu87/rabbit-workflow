@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.1.0
+version: 1.2.0
 template_version: 2.0.0
 ---
 
@@ -33,7 +33,13 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ],
     "files": [],
     "schemas": [],
-    "templates": []
+    "templates": [],
+    "skills": [
+      {
+        "path": ".claude/features/tdd-state-machine/skills/rabbit-feature-touch/",
+        "purpose": "Triggers on any feature write/edit/delete/add intent and drives the full TDD state sequence via tdd-step.sh, preventing test-green drift."
+      }
+    ]
   },
   "reads": {
     "files": [

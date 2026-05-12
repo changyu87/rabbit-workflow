@@ -16,9 +16,7 @@
       ".claude/commands/rabbit-project.md",
       ".claude/commands/rabbit-workspace.md"
     ],
-    "skills": [
-      "rabbit-feature-touch"
-    ],
+    "skills": [],
     "scripts": [
       ".claude/features/rabbit-cage/scripts/new-feature.sh",
       ".claude/features/rabbit-cage/scripts/validate-all.sh",
