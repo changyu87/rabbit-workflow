@@ -133,8 +133,8 @@ drift_msg="$(echo "$drift_output" | extract_sys_msg)"
 
 assert_visual_msg "sync-check.sh DRIFT case" "$drift_msg"
 
-# ─── Test group 2: sync-check.sh SKILLS UPDATE case ──────────────────────
-# CLAUDE.md is up-to-date (no drift) but skills need updating → skills branch fires.
+# ─── Test group 2: sync-check.sh SURFACE DRIFT case ─────────────────────
+# CLAUDE.md is up-to-date (no drift) but surface drift is detected → surface drift branch fires.
 TMPROOT2="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT1" "$TMPROOT2"' EXIT
 
@@ -142,24 +142,29 @@ trap 'rm -rf "$TMPROOT1" "$TMPROOT2"' EXIT
 correct_claude="$(RABBIT_ROOT="$TMPROOT2" bash "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
 printf '%s\n' "$correct_claude" > "$TMPROOT2/CLAUDE.md"
 
-# Install generate-skills-dir.sh so the skills-check code path can be exercised.
-# We provide a version that always exits 1 from --check (simulating drift) and
-# exits 0 from the update call — without touching any real skills directory.
-cat > "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh" <<'FAKESKILLS'
+# Install fake test-generated-surface.sh (exits 1 = surface drift detected)
+mkdir -p "$TMPROOT2/.claude/features/rabbit-cage/test"
+cat > "$TMPROOT2/.claude/features/rabbit-cage/test/test-generated-surface.sh" <<'FAKESURFACE'
 #!/usr/bin/env bash
-# Fake generate-skills-dir.sh: --check always reports drift (exit 1)
-if [[ "$*" == *"--check"* ]]; then
-    exit 1
-fi
+# Fake test-generated-surface.sh: always reports drift (exit 1)
+exit 1
+FAKESURFACE
+chmod +x "$TMPROOT2/.claude/features/rabbit-cage/test/test-generated-surface.sh"
+
+# Install fake build.sh (exits 0 = build succeeds)
+mkdir -p "$TMPROOT2/.claude/features/rabbit-cage/scripts"
+cat > "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.sh" <<'FAKEBUILD'
+#!/usr/bin/env bash
+# Fake build.sh: no-op, exits 0
 exit 0
-FAKESKILLS
-chmod +x "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
+FAKEBUILD
+chmod +x "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.sh"
 
 skills_output=""
 skills_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 skills_msg="$(echo "$skills_output" | extract_sys_msg)"
 
-assert_visual_msg "sync-check.sh SKILLS UPDATE case" "$skills_msg"
+assert_visual_msg "sync-check.sh SURFACE DRIFT case" "$skills_msg"
 
 # ─── Test group 3: session-init.sh session-start message ─────────────────
 # CLAUDE.md contains an inline policy section → session-init emits additionalContext.
