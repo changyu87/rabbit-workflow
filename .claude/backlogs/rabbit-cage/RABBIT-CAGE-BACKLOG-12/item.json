@@ -1,7 +1,7 @@
 {
   "name": "RABBIT-CAGE-BACKLOG-12",
   "title": "Document .rabbit-scope-active requirement: spec-update and impl dispatches must go through dispatch scripts, never direct Agent call",
-  "status": "open",
+  "status": "refused",
   "priority": "medium",
   "description": "",
   "owner": "cyxu",
@@ -14,6 +14,12 @@
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-12T07:28:11Z",
+      "actor": "cyxu",
+      "action": "refused",
+      "note": "Already documented: CLAUDE.md workflow-rules mandate dispatch via dispatch-feature-edit.sh, and rabbit-feature-touch SKILL.md explicitly states the main session must not call Agent directly for spec-update or impl steps. Adding redundant documentation would drift from single-source-of-truth principle."
     }
   ]
 }
