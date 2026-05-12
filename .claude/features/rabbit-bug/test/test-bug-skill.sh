@@ -25,12 +25,12 @@ else
   fail_t 2 "$T2_LABEL"
 fi
 
-T3_LABEL="t3: feature.json surface.skills includes 'rabbit-bug'"
+T3_LABEL="t3: feature.json surface.skills is [] (skills retired from feature.json)"
 FJ="$FEATURE_DIR/feature.json"
 if python3 -c "
 import json, sys
 d = json.load(open('$FJ'))
-assert 'rabbit-bug' in d.get('surface', {}).get('skills', []), 'not found'
+assert d.get('surface', {}).get('skills', None) == [], 'not empty'
 " 2>/dev/null; then
   ok 3 "$T3_LABEL"
 else
