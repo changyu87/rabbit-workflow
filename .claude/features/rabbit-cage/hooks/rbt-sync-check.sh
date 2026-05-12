@@ -67,7 +67,23 @@ fi
 
 # Skills drift check — only reached when CLAUDE.md is clean (no double JSON output).
 _GENERATE_SKILLS="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
+SKILLS_DRIFT=0
 if [ -f "$_GENERATE_SKILLS" ] && ! bash "$_GENERATE_SKILLS" --check "$REPO_ROOT" >/dev/null 2>&1; then
+  SKILLS_DRIFT=1
+fi
+# Detect untracked skill directories under .claude/skills/ or .claude/features/*/skills/
+# (RABBIT-CAGE-20: byte-identical source/deployed pairs hide newly-added skill dirs
+# from the --check drift detector, but they still need to be surfaced so the user
+# notices and commits them).
+if [ "$SKILLS_DRIFT" -eq 0 ]; then
+  _UNTRACKED="$(git -C "$REPO_ROOT" ls-files --others --exclude-standard -- \
+      ".claude/skills/" ".claude/features/" 2>/dev/null \
+      | grep -E '(^|/)skills/' || true)"
+  if [ -n "$_UNTRACKED" ]; then
+    SKILLS_DRIFT=1
+  fi
+fi
+if [ "$SKILLS_DRIFT" -eq 1 ]; then
   bash "$_GENERATE_SKILLS" "$REPO_ROOT" >/dev/null 2>&1 || true
   python3 -c "
 import json
