@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 1.9.0
+version: 2.0.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -144,6 +144,34 @@ marker is active.
     corresponding per-feature marker exists. Both marker formats are
     gitignored runtime artifacts; neither is ever created by rabbit-cage
     itself.
+
+## Session-Init Branch Enforcement (R1)
+
+`rbt-session-init.sh` enforces R1 (branch-per-feature; never commit directly to main) at
+session start. When the current branch is `main` or any protected branch (defined as any
+branch whose name is exactly `main` or `master`), the hook automatically:
+
+1. Creates a new branch named `session/YYYYMMDD-HHMMSS` (timestamp in local time).
+2. Checks out that branch (`git checkout -b session/<timestamp>`).
+3. Emits a green `[rabbit]` `systemMessage` naming the branch created, e.g.:
+   `[rabbit] R1: created branch session/20260512-143000`
+
+If the current branch is already a non-protected branch (anything other than `main` or
+`master`), the hook does nothing related to branch enforcement.
+
+**Protected branches:** `main`, `master`.
+
+**Branch naming:** `session/YYYYMMDD-HHMMSS` using `date +%Y%m%d-%H%M%S`.
+
+## Invariants (additional continued)
+
+21. On `SessionStart`, `rbt-session-init.sh` checks `git branch --show-current`. If the
+    result is `main` or `master`, it runs `git checkout -b session/$(date +%Y%m%d-%H%M%S)`
+    and emits a green `[rabbit]` systemMessage naming the new branch.
+22. If the current branch is not `main` or `master`, `rbt-session-init.sh` does NOT create
+    or switch to any branch — the branch-enforcement block is a no-op.
+23. The created branch name always begins with the prefix `session/` followed by exactly
+    eight digits, a hyphen, and six digits (`session/YYYYMMDD-HHMMSS`).
 
 ## Scope-Guard Quote Awareness
 
