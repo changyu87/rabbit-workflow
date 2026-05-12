@@ -1,0 +1,19 @@
+{
+  "name": "POLICY-BACKLOG-1",
+  "title": "Enforce R1 branch-per-session: main session must create and work on a feature branch, never commit directly to main",
+  "status": "open",
+  "priority": "high",
+  "description": "",
+  "owner": "changyu",
+  "filed": "2026-05-12T07:58:34Z",
+  "filed_by": "changyu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-12T07:58:34Z",
+      "actor": "changyu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
