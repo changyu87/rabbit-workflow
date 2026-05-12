@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.2.0
+version: 1.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -18,15 +18,19 @@ Provides the `tdd-step.sh` CLI for forward-only TDD state transitions, drift det
 - `.claude/features/tdd-state-machine/scripts/tdd-step.sh`
 - `.claude/features/tdd-state-machine/scripts/tdd-drift-check.sh`
 - `.claude/features/tdd-state-machine/scripts/tdd-context.sh`
-- `.claude/features/tdd-state-machine/skills/rabbit-feature-touch/` (self-contained TDD orchestration reference; triggers on any feature write/edit/delete/add to drive `tdd-step.sh` through the full state sequence — no external documents required)
+- `.claude/features/tdd-state-machine/scripts/resolve-feature-scope.sh` (builds an Opus-targeted prompt that, given a natural-language request, instructs the agent to read the feature registry — names, summaries, spec Purpose sections — and emit a structured JSON list of features the request targets; prompt goes to stdout for caller dispatch)
+- `.claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.sh` (assembles a per-feature full-TDD-cycle subagent prompt; the dispatched subagent runs spec-update → test-red → impl → test-green autonomously for ONE feature, using `.rabbit-scope-active-<feature>` as its scope marker so multiple features can be dispatched in parallel; prompt goes to stdout for caller dispatch)
+- `.claude/features/tdd-state-machine/skills/rabbit-feature-touch/` (self-contained TDD orchestration reference; triggers on any feature write/edit/delete/add and orchestrates via parallel per-feature subagents — Step 0 resolves scope by dispatching `resolve-feature-scope.sh` to Opus, Step 1 dispatches one `dispatch-feature-tdd.sh` subagent per resolved feature in parallel; the main session only orchestrates and never reads feature code itself)
 
 ## Invariants
 
 1. `tdd_state` transitions are forward-only without `--force`.
 2. `test-green` transition triggers `rebuild-registry.sh` and enforcement checks.
-3. All three scripts are executable.
+3. All five scripts are executable.
 4. `test-green` transition auto-closes any in-progress backlog items under `.claude/backlogs/<feature-name>/` via `backlog-item-status.sh` with `fix_commits=HEAD` (best-effort).
 5. `tdd-step.sh transition` stdout uses the `[rabbit] ━━━ ... ━━━` format with ANSI colors — green (`\x1b[32m`) for normal transition messages on stdout, red (`\x1b[31m`) for FORCED/WARNING/ERROR messages on stderr. The `show`, `next`, and `transitions` subcommands remain plain-text (consumed by tests and downstream parsers).
+6. `resolve-feature-scope.sh` emits a prompt to stdout only; it does not call any agent itself. The caller dispatches the prompt to an Opus Agent, which reads the feature registry and returns structured JSON of the form `{"features": ["feat-a", "feat-b"], "rationale": "..."}`. The main session parses this JSON to drive parallel dispatch.
+7. `dispatch-feature-tdd.sh` emits a prompt to stdout only; it does not call any agent itself. The assembled prompt instructs the per-feature subagent to run the full TDD cycle (spec-update → test-red → impl → test-green) for ONE feature, using `.rabbit-scope-active-<feature-name>` as its scope marker. Distinct per-feature scope markers enable simultaneous dispatch across features without scope collision.
 
 ## Out of Scope
 

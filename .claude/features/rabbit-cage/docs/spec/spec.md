@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 1.6.0
+version: 1.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -107,6 +107,20 @@ marker.
     (`\x1b[31m`). Specifically: drift detection (CLAUDE.md drift, skills
     drift, policy drift) and scope-guard-off messages are red;
     session-init, refresh, and skills-updated messages are green.
+19. The scope guard recognizes two coexisting scope-marker formats at the
+    repo root: a single global marker `.rabbit-scope-active` (contains one
+    feature name; legacy / serial-dispatch form) and per-feature markers
+    named `.rabbit-scope-active-<feature>` (presence alone declares scope
+    for `<feature>`; designed for parallel per-feature TDD subagents that
+    write to different features simultaneously without racing on a shared
+    marker file). When evaluating whether a write to feature `F` is
+    permitted, the scope guard treats the per-feature marker
+    `.rabbit-scope-active-<F>` as authoritative for `F` and takes priority
+    over the global `.rabbit-scope-active` for that named feature; the
+    global marker continues to govern any feature for which no
+    corresponding per-feature marker exists. Both marker formats are
+    gitignored runtime artifacts; neither is ever created by rabbit-cage
+    itself.
 
 ## Scope-Guard Quote Awareness
 

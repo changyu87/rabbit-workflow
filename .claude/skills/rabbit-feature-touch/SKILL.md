@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing) which require schema compliance only. Ensures the formal TDD state machine is advanced via tdd-step.sh on every feature touch, preventing test-green drift.
-version: 1.0.0
+version: 2.0.0
 owner: tdd-state-machine
 deprecation_criterion: when dispatch-feature-edit.sh natively enforces tdd-step.sh transitions
 ---
@@ -10,83 +10,57 @@ deprecation_criterion: when dispatch-feature-edit.sh natively enforces tdd-step.
 
 **Owner:** tdd-state-machine feature. This skill is the authoritative TDD orchestration reference — all TDD discipline is self-contained here.
 
-## Core Orchestration Steps
+The main session's role is **orchestration only**: resolve which features are touched, dispatch one parallel subagent per feature, collect HANDOFFs. The main session does NOT read feature code or reason about implementation — those responsibilities belong to the dispatched subagents.
 
-1. **Identify feature dir** — locate via feature registry (`find .claude/features -name feature.json`) or by path convention.
+## Step 0 — Resolve Feature Scope
 
-2. **Check current state**
-   ```
-   tdd-step.sh show <feature-dir>
-   ```
+Before any TDD cycle, identify which features the request targets:
 
-3. **Force to spec-update** (always `--force` — feature may be at any state)
-   ```
-   tdd-step.sh transition <feature-dir> spec-update --force
-   ```
+```bash
+# Build the scope-resolution prompt and dispatch to Opus:
+SCOPE_PROMPT=$(bash .claude/features/tdd-state-machine/scripts/resolve-feature-scope.sh "<request-description>")
+# Dispatch Agent(model: opus, prompt: SCOPE_PROMPT)
+# Opus responds with JSON: {"features": ["feat-a", "feat-b"], "rationale": "..."}
+```
 
-4. **Dispatch SPEC-UPDATE subagent** (Opus — R2) via `dispatch-spec-update.sh`. Pass `model: opus` to Agent.
-   ```
-   bash .claude/features/contract/scripts/dispatch-spec-update.sh <feature-name> "<what you are building or fixing>"
-   ```
+The Opus response is the authoritative feature list. Main session does not second-guess it.
 
-5. **Read HANDOFF** — verify `spec_changes` field is present. Read the git diff of the spec dir to understand what changed:
-   ```
-   git diff HEAD -- <feature-dir>/docs/spec/
-   ```
+## Step 1 — Parallel TDD Dispatch (one Agent per feature)
 
-6. **Advance to test-red** — pass `--spec-no-change-reason` if spec was unchanged:
-   ```
-   # spec was modified (normal case):
-   tdd-step.sh transition <feature-dir> test-red
+For each feature in the Opus response, build a full-TDD-cycle prompt and dispatch simultaneously:
 
-   # spec was NOT modified (e.g. bug fix where spec is already correct):
-   tdd-step.sh transition <feature-dir> test-red --spec-no-change-reason "<reason from HANDOFF>"
-   ```
-   The state machine enforces that one of these conditions holds before advancing.
+```bash
+# For each feature (dispatch ALL in parallel — single Agent tool call with multiple invocations):
+PROMPT_A=$(bash .claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.sh feat-a "<request-description>")
+PROMPT_B=$(bash .claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.sh feat-b "<request-description>")
+# Dispatch Agent(prompt: PROMPT_A) and Agent(prompt: PROMPT_B) simultaneously
+```
 
-7. **Dispatch TEST subagent** via `dispatch-feature-edit.sh` with task: "Write failing tests only. Tests must assert the updated spec's invariants. Do NOT implement. Run tests, confirm they fail."
+Each dispatched agent:
+- Sets `.rabbit-scope-active-<feature>` at the repo root (parallel-safe, no race)
+- Runs the full TDD cycle: spec-update → test-red → impl → test-green
+- Emits a structured HANDOFF when complete
 
-8. **Confirm test fails** — read subagent HANDOFF, verify `test_result: fail`. If not fail, STOP and investigate.
+## Step 2 — Collect and Verify HANDOFFs
 
-9. **Advance to impl**
-   ```
-   tdd-step.sh transition <feature-dir> impl
-   ```
+After all agents complete, verify each HANDOFF:
+- `tdd_state: test-green` for every feature
+- `test_result: pass` for every feature
 
-10. **Dispatch IMPLEMENTATION subagent** via `dispatch-feature-edit.sh` with task: "Implement to make the test pass. Follow spec.md invariants — do not deviate. Run all tests, confirm they pass. Then call: `tdd-step.sh transition <feature-dir> test-green`"
-
-11. **Verify test-green**
-    ```
-    tdd-step.sh show <feature-dir>
-    ```
-    Must output `test-green`. If not, do not proceed.
-
-    > Note: tdd-step.sh automatically closes any in-progress backlog items linked to the feature (transitions them to `implemented`, setting `fix_commits` to the HEAD commit SHA).
+If any feature fails, investigate that feature's agent output before proceeding.
 
 ## New Feature Variant
 
-If the feature does not exist yet, scaffold it first:
-```
+If a feature does not exist yet, scaffold it first (before Step 0):
+```bash
 new-feature.sh <feature-name>
 ```
-Then start at Step 1. The initial state will be `spec`; use `transition test-red` without `--force`.
-
-## Common Mistakes
-
-| Mistake | Consequence |
-|---|---|
-| Skipping spec-update and jumping straight to test dispatch | Spec stays stale; tests and impl follow main session's analysis, not the spec |
-| Dispatching IMPL before reading HANDOFF from spec-update | No confirmation spec was considered; TDD gap enters silently |
-| Advancing to test-red without checking git diff of spec | State machine accepts reason but you may have missed a needed change |
-| Dispatching impl before confirming test fails | No proof the test is real; green state is meaningless |
-| Omitting `--force` when resetting from test-green | Transition rejected; workflow stalls |
-| Single dispatch for both test and impl | Test/impl boundary collapsed; R4 violated |
+Then proceed from Step 0. The feature-tdd subagent will start from `spec` state (no `--force` needed for its first transition).
 
 ## Red Flags — STOP
 
-- Any thought of "I'll skip spec-update, this is a simple fix"
-- Any thought of "the spec is probably fine, I'll go straight to test-red"
-- Any thought of "I'll just dispatch once and do both test and impl"
-- Any thought of "tests-after is fine, I'll write impl first"
-- Subagent HANDOFF shows `test_result: pass` at the test-only dispatch stage
-- Advancing to test-red without reading the spec diff output
+- Any thought of "I'll read the feature files myself to understand what needs changing" → STOP. That's the subagent's job.
+- Any thought of "I'll skip Step 0 and just pick the features myself" → STOP. Scope resolution must go through resolve-feature-scope.sh.
+- Any thought of "I'll dispatch features sequentially to be safe" → STOP. Dispatch in parallel; per-feature scope markers prevent races.
+- Subagent HANDOFF shows `tdd_state` other than `test-green` → STOP and investigate.
+- Subagent HANDOFF shows `test_result: pass` at the test-only dispatch stage → STOP, the test subagent did not fail correctly.

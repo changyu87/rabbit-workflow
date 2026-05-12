@@ -78,6 +78,24 @@ decide() {
     return 0
   fi
 
+  # 4a. Per-feature scope markers (.rabbit-scope-active-<feature>) at repo root
+  # Enables parallel per-feature subagent dispatch without scope marker races.
+  if [ -n "$REPO_ROOT" ]; then
+    for per_marker in "$REPO_ROOT"/.rabbit-scope-active-*; do
+      [ -f "$per_marker" ] || continue
+      per_feature="${per_marker##*/.rabbit-scope-active-}"
+      [ -z "$per_feature" ] || [ "$per_feature" = "*" ] && continue
+      REGISTRY="$REPO_ROOT/.claude/features/registry.json"
+      per_path=$(python3 -c "import json,sys; r=json.load(open('$REGISTRY')); print(r.get('features',{}).get('$per_feature',{}).get('path',''))" 2>/dev/null)
+      [ -z "$per_path" ] && continue
+      per_abs="$REPO_ROOT/$per_path"
+      if [[ "$abs" == "$per_abs"* ]]; then
+        echo "ALLOW (per-feature scope marker: $per_feature)"
+        return 0
+      fi
+    done
+  fi
+
   # 4. Active scope marker anywhere in ancestor chain -> check further
   if walk_up_find "$abs" ".rabbit-scope-active" >/dev/null; then
     # 4b. Scope marker exists — verify target is within the scoped feature directory
