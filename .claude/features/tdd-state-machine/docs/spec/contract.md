@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.2.0
+version: 1.3.0
 template_version: 2.0.0
 ---
 
@@ -29,6 +29,18 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
         "stdin": "none",
         "stdout": "JSON block (default) or formatted text (--text)",
         "exit": "0=success, 2=bad invocation"
+      },
+      {
+        "path": ".claude/features/tdd-state-machine/scripts/resolve-feature-scope.sh",
+        "stdin": "none (request-description passed as $1)",
+        "stdout": "Opus subagent prompt that, when dispatched, instructs the agent to read the feature registry and emit JSON of the form {\"features\": [...], \"rationale\": \"...\"}; the script itself does not call any agent",
+        "exit": "0=success, 2=bad invocation (missing request-description)"
+      },
+      {
+        "path": ".claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.sh",
+        "stdin": "none (feature-name as $1, request-description as $2)",
+        "stdout": "per-feature full-TDD-cycle subagent prompt that runs spec-update → test-red → impl → test-green for ONE feature using .rabbit-scope-active-<feature-name> as scope marker (parallel-dispatch safe); the script itself does not call any agent",
+        "exit": "0=success, 2=bad invocation (missing feature-name or request-description)"
       }
     ],
     "files": [],
