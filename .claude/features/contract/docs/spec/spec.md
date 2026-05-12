@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.2.0
+version: 1.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -69,6 +69,9 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 6. `workspace-map.sh` exists, is executable, and produces valid JSON (conforming to `workspace-map.json.schema.json`) when called without flags; with `--human` it produces human-readable terminal output.
 7. `workspace-map.json.schema.json` declares `schemaVersion` and covers: features, scripts, schemas, commands, skills, hooks, and user project directories.
 8. `rabbit-workspace-map/SKILL.md` exists under `.claude/features/contract/skills/` (source of truth, deployed to `.claude/skills/` by generate-skills-dir.sh) and instructs Claude to directly execute `workspace-map.sh` on invocation — using `--human` for readable terminal output and the default JSON mode for programmatic use — rather than merely describing how to invoke it.
+9. `build-contract.json` exists at `.claude/features/contract/build-contract.json`, is valid JSON, and validates against `.claude/features/contract/schemas/build-contract.schema.json`.
+10. All `copy-file` targets declared in `build-contract.json` have a `source` field whose path exists on disk (relative to the repo root).
+11. `relink.sh` does NOT exist at `.claude/features/contract/scripts/relink.sh`.
 
 ## Out of Scope
 
