@@ -43,7 +43,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 - Content authored by other features — rabbit-cage wires their surface, not their content.
 - `settings.local.json` — user-local overrides; never written by rabbit-cage.
 - Scripts: rabbit-cage owns no runtime scripts beyond `install.sh` and those registered in its contract.
-- Workspace hierarchy display — owned by the `rabbit-workspace-map` skill (in contract feature); rabbit-cage wires it via its `feature.json` skills list.
+- Workspace hierarchy display — owned and wired by the `rabbit-workspace-map` skill in the contract feature; rabbit-cage no longer declares it in its `feature.json` skills list.
 
 ## Scope-Guard Override
 
@@ -172,6 +172,15 @@ If the current branch is already a non-protected branch (anything other than `ma
     or switch to any branch — the branch-enforcement block is a no-op.
 23. The created branch name always begins with the prefix `session/` followed by exactly
     eight digits, a hyphen, and six digits (`session/YYYYMMDD-HHMMSS`).
+24. `rbt-sync-check.sh` detects untracked skill directories under
+    `.claude/skills/` or `.claude/features/*/skills/` by invoking
+    `git ls-files --others --exclude-standard` against those paths. If any
+    untracked path beneath a `skills/` segment is reported, the hook treats
+    this as skills drift and emits the green `[rabbit] Skills updated`
+    `systemMessage` alert (the same alert emitted when
+    `generate-skills-dir.sh --check` reports content drift). This prevents
+    new skill directories from sitting untracked indefinitely without user
+    notification.
 
 ## Scope-Guard Quote Awareness
 
