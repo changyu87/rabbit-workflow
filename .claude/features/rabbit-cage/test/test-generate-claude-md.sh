@@ -49,11 +49,11 @@ else
     fail_t 3 "settings.json does not contain \"Stop\""
 fi
 
-# t4: .gitignore at repo root contains "CLAUDE.md" as a gitignored entry
-if grep -qxF 'CLAUDE.md' "$REPO_ROOT/.gitignore" 2>/dev/null; then
-    ok 4 ".gitignore contains CLAUDE.md as an exact entry"
+# t4: .gitignore at repo root does NOT contain "CLAUDE.md" (BACKLOG-13: CLAUDE.md is now committed)
+if ! grep -qxF 'CLAUDE.md' "$REPO_ROOT/.gitignore" 2>/dev/null; then
+    ok 4 ".gitignore does NOT contain CLAUDE.md (committed to git per BACKLOG-13)"
 else
-    fail_t 4 ".gitignore missing or does not contain CLAUDE.md as exact entry"
+    fail_t 4 ".gitignore still lists CLAUDE.md — must be removed so file can be committed"
 fi
 
 # ─── generate-claude-md.sh output (t5–t8) ───────────────────────────────────
