@@ -19,7 +19,7 @@ template_version: 2.0.0
     ],
     "schemas": [],
     "templates": [],
-    "skills": ["rabbit-workspace-map"]
+    "skills": []
   },
   "reads": {
     "files": [".claude/features/registry.json", "project-*/project-map.json", ".claude/features/contract/templates/", ".rabbit-scope-override", ".rabbit-scope-override-used"],

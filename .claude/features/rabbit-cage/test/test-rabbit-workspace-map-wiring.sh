@@ -37,13 +37,15 @@ else
     fail_t 1 "commands/rabbit-workspace.md still exists — must be removed (workspace hierarchy owned by rabbit-workspace-map)"
 fi
 
-# t2: feature.json skills list must contain "rabbit-workspace-map"
-# generate-skills-dir.sh uses feature.json skills to install skills under .claude/skills/.
-SKILLS_LIST="$(python3 -c "import json; d=json.load(open('$FEATURE_JSON')); print(json.dumps(d.get('surface',{}).get('skills',[])))" 2>/dev/null)"
+# t2: contract/feature.json skills list must contain "rabbit-workspace-map"
+# Ownership of the rabbit-workspace-map skill moved from rabbit-cage to contract.
+# generate-skills-dir.sh aggregates skills from all features' feature.json surface.skills lists.
+CONTRACT_FEATURE_JSON="$REPO_ROOT/.claude/features/contract/feature.json"
+SKILLS_LIST="$(python3 -c "import json; d=json.load(open('$CONTRACT_FEATURE_JSON')); print(json.dumps(d.get('surface',{}).get('skills',[])))" 2>/dev/null)"
 if echo "$SKILLS_LIST" | python3 -c "import json,sys; s=json.load(sys.stdin); sys.exit(0 if 'rabbit-workspace-map' in s else 1)" 2>/dev/null; then
-    ok 2 "feature.json skills list contains 'rabbit-workspace-map'"
+    ok 2 "contract/feature.json skills list contains 'rabbit-workspace-map'"
 else
-    fail_t 2 "feature.json skills list does NOT contain 'rabbit-workspace-map' (current: $SKILLS_LIST)"
+    fail_t 2 "contract/feature.json skills list does NOT contain 'rabbit-workspace-map' (current: $SKILLS_LIST)"
 fi
 
 # t3: feature.json commands list must NOT contain rabbit-workspace
@@ -62,11 +64,12 @@ else
     ok 4 "contract.md does not reference workspace-tree.sh (correctly removed from contract)"
 fi
 
-# t5: The contract.md skills list must reference rabbit-workspace-map
+# t5: The rabbit-cage contract.md skills list must NOT reference rabbit-workspace-map
+# Ownership moved to the contract feature; rabbit-cage no longer declares this skill.
 if grep -q "rabbit-workspace-map" "$CONTRACT_MD" 2>/dev/null; then
-    ok 5 "contract.md references rabbit-workspace-map skill"
+    fail_t 5 "rabbit-cage contract.md still references rabbit-workspace-map — ownership moved to contract feature; remove from rabbit-cage contract.md"
 else
-    fail_t 5 "contract.md does NOT reference rabbit-workspace-map skill — must be added to skills list"
+    ok 5 "rabbit-cage contract.md does not reference rabbit-workspace-map (correctly removed; owned by contract)"
 fi
 
 echo ""

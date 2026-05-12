@@ -51,7 +51,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/scripts/enforcement/check-tests-non-interactive.sh"
     ],
     "skills": [
-      ".claude/skills/rabbit-workspace-map/SKILL.md"
+      ".claude/features/contract/skills/rabbit-workspace-map/SKILL.md"
     ]
   },
   "reads": {
