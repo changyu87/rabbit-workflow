@@ -1,7 +1,7 @@
 {
   "name": "RABBIT-CAGE-BACKLOG-1",
   "title": "E2E TDD enforcement: tests must cover full feature stack",
-  "status": "open",
+  "status": "in-progress",
   "priority": "high",
   "description": "When a feature includes multiple layers (UI, backend, data), tests must exercise the full chain — from the user-facing entry point through to the final state change. R3 currently requires automated non-interactive tests but does not explicitly mandate full-stack coverage. This item tracks adding an explicit full-stack E2E requirement to workflow-rules R3.",
   "owner": "rabbit-workflow-team",
@@ -14,6 +14,12 @@
       "actor": "rabbit-workflow-team",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-12T07:52:50Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "TDD dispatch started"
     }
   ]
 }
