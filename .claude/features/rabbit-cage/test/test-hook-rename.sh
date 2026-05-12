@@ -7,7 +7,8 @@ set -euo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 HOOKS_DIR="$REPO_ROOT/.claude/features/rabbit-cage/hooks"
-SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
+# Relative path from repo root for git grep exclusion (e.g. .claude/features/rabbit-cage/test/test-hook-rename.sh)
+SCRIPT_REL="$(realpath --relative-to="$REPO_ROOT" "${BASH_SOURCE[0]}")"
 
 pass=0
 fail=0
@@ -72,7 +73,7 @@ fi
 
 # t7: no tracked file outside archive/ references rbt-refresh.sh
 # We check git-tracked files only; grep -l returns filenames; exclude this test file itself.
-OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-refresh\.sh' -- ':!archive/' ':!'"$SCRIPT_NAME" 2>/dev/null || true)"
+OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-refresh\.sh' -- ':!archive/' ':!'"$SCRIPT_REL" 2>/dev/null || true)"
 if [ -z "$OLD_REFS" ]; then
     ok 7 "no tracked file (outside archive/) references $OLD1"
 else
@@ -80,7 +81,7 @@ else
 fi
 
 # t8: no tracked file outside archive/ references rbt-session-init.sh
-OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-session-init\.sh' -- ':!archive/' ':!'"$SCRIPT_NAME" 2>/dev/null || true)"
+OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-session-init\.sh' -- ':!archive/' ':!'"$SCRIPT_REL" 2>/dev/null || true)"
 if [ -z "$OLD_REFS" ]; then
     ok 8 "no tracked file (outside archive/) references $OLD2"
 else
@@ -88,7 +89,7 @@ else
 fi
 
 # t9: no tracked file outside archive/ references rbt-sync-check.sh
-OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-sync-check\.sh' -- ':!archive/' ':!'"$SCRIPT_NAME" 2>/dev/null || true)"
+OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-sync-check\.sh' -- ':!archive/' ':!'"$SCRIPT_REL" 2>/dev/null || true)"
 if [ -z "$OLD_REFS" ]; then
     ok 9 "no tracked file (outside archive/) references $OLD3"
 else
