@@ -22,7 +22,7 @@
       "name": "rabbit-backlog",
       "version": "0.1.0",
       "owner": "rabbit-workflow team",
-      "tdd_state": "impl",
+      "tdd_state": "test-green",
       "summary": "Owns backlog item filing and lifecycle for all rabbit features. Provides file-backlog-item.sh, backlog-item-status.sh, and list-backlog.sh.",
       "path": ".claude/features/rabbit-backlog"
     },
