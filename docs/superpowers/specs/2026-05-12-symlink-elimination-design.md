@@ -130,12 +130,11 @@ Same script used by both the TDD test suite and the Stop hook — one drift orac
 **Migration sequence** (implementation order):
 1. Create `build-contract.json` (contract feature) and its schema
 2. Create `build.sh` (rabbit-cage)
-3. Create `test-generated-surface.sh` (rabbit-cage test)
-4. Run `build.sh` to produce real files at all destination paths
-5. `git rm` the symlinks
+3. Create `test-generated-surface.sh` (rabbit-cage test); delete `test-symlinks.sh`
+4. `git rm` all symlinks — removes them from git and the filesystem before build.sh runs
+5. Run `build.sh` to produce real files at all destination paths
 6. `git add` the real files
 7. Update `sync-check.sh` — replace drift-check blocks with `test-generated-surface.sh` / `build.sh` pattern
 8. Update `install.sh` — replace three generation calls with `build.sh TARGET`
 9. Delete `relink.sh` and `generate-skills-dir.sh`
 10. Retire surface blocks in each `feature.json` (hooks, commands, settings, skills)
-11. Rewrite `test-symlinks.sh` → `test-generated-surface.sh`
