@@ -1,7 +1,7 @@
 {
   "name": "RABBIT-BUG-5",
   "title": "rabbit-bug skill not triggered on fresh session when user says 'file a bug'",
-  "status": "open",
+  "status": "refused",
   "severity": "critical",
   "description": "On a clean session start, when the user explicitly says 'file a bug', the rabbit-bug skill is not detected and invoked before action. Instead Claude proceeds directly to implementation (e.g. exploring registry.json) without calling the Skill tool first. The using-superpowers skill mandates: invoke relevant skills BEFORE any response or action, even at 1% chance of applicability. 'File a bug' is an unambiguous trigger phrase for rabbit-bug. Observed session: user said 'file a bug on those two errors', Claude did NOT invoke rabbit-bug skill, explored registry instead, and only invoked the skill after being called out. Root cause unknown — could be skill description mismatch, skill trigger logic gap, or Claude reasoning error. Must investigate and fix so the skill fires automatically on any bug-filing intent without user prompting.",
   "related_feature": "rabbit-bug",
@@ -15,6 +15,12 @@
       "actor": "changyu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-12T07:18:48Z",
+      "actor": "cyxu",
+      "action": "refused",
+      "note": "Root cause was symlink-based skill installation failing in Claude Code's plugin loader, not a defect in rabbit-bug scripts or skill trigger logic. Fixed by rabbit-cage switching generate-skills-dir.sh from symlinks to cp -rp copies (v2.0.0). Skills now load correctly — confirmed by /reload-plugins output and correct skill invocation behavior in subsequent sessions. No fix needed in rabbit-bug itself."
     }
   ]
 }
