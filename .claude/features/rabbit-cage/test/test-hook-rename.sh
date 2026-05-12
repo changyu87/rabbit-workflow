@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# test-hook-rename.sh
+# Tests that hook files in rabbit-cage/hooks/ have been renamed to drop the rbt- prefix.
+# Also asserts no tracked file in the repo (outside archive/) still references the old names.
+
+set -euo pipefail
+
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+HOOKS_DIR="$REPO_ROOT/.claude/features/rabbit-cage/hooks"
+SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
+
+pass=0
+fail=0
+
+ok() {
+    echo "  PASS t$1: $2"
+    pass=$((pass + 1))
+}
+
+fail_t() {
+    echo "  FAIL t$1: $2"
+    fail=$((fail + 1))
+}
+
+echo "test-hook-rename.sh"
+
+# t1: rbt-refresh.sh does NOT exist in hooks/
+if [ ! -f "$HOOKS_DIR/rbt-refresh.sh" ]; then
+    ok 1 "rbt-refresh.sh does not exist in hooks/ (old name gone)"
+else
+    fail_t 1 "rbt-refresh.sh still exists in hooks/ — rename not done"
+fi
+
+# t2: rbt-session-init.sh does NOT exist in hooks/
+if [ ! -f "$HOOKS_DIR/rbt-session-init.sh" ]; then
+    ok 2 "rbt-session-init.sh does not exist in hooks/ (old name gone)"
+else
+    fail_t 2 "rbt-session-init.sh still exists in hooks/ — rename not done"
+fi
+
+# t3: rbt-sync-check.sh does NOT exist in hooks/
+if [ ! -f "$HOOKS_DIR/rbt-sync-check.sh" ]; then
+    ok 3 "rbt-sync-check.sh does not exist in hooks/ (old name gone)"
+else
+    fail_t 3 "rbt-sync-check.sh still exists in hooks/ — rename not done"
+fi
+
+# t4: refresh.sh exists in hooks/
+if [ -f "$HOOKS_DIR/refresh.sh" ]; then
+    ok 4 "refresh.sh exists in hooks/ (new name present)"
+else
+    fail_t 4 "refresh.sh does not exist in hooks/ — rename not done"
+fi
+
+# t5: session-init.sh exists in hooks/
+if [ -f "$HOOKS_DIR/session-init.sh" ]; then
+    ok 5 "session-init.sh exists in hooks/ (new name present)"
+else
+    fail_t 5 "session-init.sh does not exist in hooks/ — rename not done"
+fi
+
+# t6: sync-check.sh exists in hooks/
+if [ -f "$HOOKS_DIR/sync-check.sh" ]; then
+    ok 6 "sync-check.sh exists in hooks/ (new name present)"
+else
+    fail_t 6 "sync-check.sh does not exist in hooks/ — rename not done"
+fi
+
+# t7: no tracked file outside archive/ references rbt-refresh.sh
+# We check git-tracked files only; grep -l returns filenames; exclude this test file itself.
+OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-refresh\.sh' -- ':!archive/' ':!'"$SCRIPT_NAME" 2>/dev/null || true)"
+if [ -z "$OLD_REFS" ]; then
+    ok 7 "no tracked file (outside archive/) references rbt-refresh.sh"
+else
+    fail_t 7 "tracked files still reference rbt-refresh.sh: $(echo "$OLD_REFS" | tr '\n' ' ')"
+fi
+
+# t8: no tracked file outside archive/ references rbt-session-init.sh
+OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-session-init\.sh' -- ':!archive/' ':!'"$SCRIPT_NAME" 2>/dev/null || true)"
+if [ -z "$OLD_REFS" ]; then
+    ok 8 "no tracked file (outside archive/) references rbt-session-init.sh"
+else
+    fail_t 8 "tracked files still reference rbt-session-init.sh: $(echo "$OLD_REFS" | tr '\n' ' ')"
+fi
+
+# t9: no tracked file outside archive/ references rbt-sync-check.sh
+OLD_REFS="$(git -C "$REPO_ROOT" grep -l 'rbt-sync-check\.sh' -- ':!archive/' ':!'"$SCRIPT_NAME" 2>/dev/null || true)"
+if [ -z "$OLD_REFS" ]; then
+    ok 9 "no tracked file (outside archive/) references rbt-sync-check.sh"
+else
+    fail_t 9 "tracked files still reference rbt-sync-check.sh: $(echo "$OLD_REFS" | tr '\n' ' ')"
+fi
+
+echo ""
+echo "Results: $pass passed, $fail failed"
+[ "$fail" -eq 0 ]
