@@ -32,6 +32,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 - `.claude/features/contract/schemas/registry.json.schema.json`
 - `.claude/features/contract/schemas/bug.json.schema.json`
 - `.claude/features/contract/schemas/project-map.json.schema.json`
+- `.claude/features/contract/schemas/rabbit-print.schema.json`
 
 **scripts/**
 - `.claude/features/contract/scripts/policy-block.sh`
@@ -59,6 +60,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 2. `dispatch-feature-edit.sh` output begins with the sentinel `RABBIT-POLICY-BLOCK-v1`.
 3. All scripts in `scripts/` and `scripts/enforcement/` are executable.
 4. Every schema file in `schemas/` is valid JSON.
+5. `rabbit-print.schema.json` is the authoritative definition of the `[rabbit]` print format used by all rabbit-workflow hooks and CLI scripts.
 
 ## Out of Scope
 

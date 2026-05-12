@@ -59,7 +59,7 @@ import json, sys
 payload = sys.stdin.read()
 print(json.dumps({
     'additionalContext': payload,
-    'systemMessage': '\x1b[32m⚠️ ━━━ [rabbit] Policy drift detected — CLAUDE.md regenerated from source files ━━━ ⚠️\x1b[0m'
+    'systemMessage': '\x1b[31m⚠️ ━━━ [rabbit] Policy drift detected — CLAUDE.md regenerated from source files ━━━ ⚠️\x1b[0m'
 }))
 " <<< "$POLICY_SECTION"
   exit 0

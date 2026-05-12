@@ -14,6 +14,9 @@
 
 set -u
 
+_rbt_ok()    { printf '\033[32m[rabbit] \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 %s \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81\033[0m\n' "$*"; }
+_rbt_alert() { printf '\033[31m[rabbit] \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 %s \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81\033[0m\n' "$*" >&2; }
+
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
 
 usage() {
@@ -156,7 +159,7 @@ case "$cmd" in
           # R3: tests must be non-interactive
           if [ -f "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" ]; then
             bash "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" "$dir" >/dev/null 2>&1 || {
-              echo "WARNING: R3 check failed for $dir — tests may have interactive constructs" >&2
+              _rbt_alert "WARNING: R3 check failed for $dir — tests may have interactive constructs"
             }
           fi
           # R6: sentinel check on any dispatch scripts in feature
@@ -166,25 +169,25 @@ case "$cmd" in
           # Naming convention check
           if [ -f "$ENFORCEMENT_DIR/check-naming.sh" ]; then
             bash "$ENFORCEMENT_DIR/check-naming.sh" "$dir" >/dev/null 2>&1 || {
-              echo "WARNING: naming check failed for $dir" >&2
+              _rbt_alert "WARNING: naming check failed for $dir"
             }
           fi
           # Check 4: imports and feature paths resolve
           if [ -f "$ENFORCEMENT_DIR/check-imports-resolve.sh" ]; then
             bash "$ENFORCEMENT_DIR/check-imports-resolve.sh" "$dir" >/dev/null 2>&1 || {
-              echo "WARNING: R-import-resolve check failed for $dir" >&2
+              _rbt_alert "WARNING: R-import-resolve check failed for $dir"
             }
           fi
           # Check 5: symlinks under .claude/ resolve
           if [ -f "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" ]; then
             bash "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" "$REPO_ROOT" >/dev/null 2>&1 || {
-              echo "WARNING: symlink-resolve check failed" >&2
+              _rbt_alert "WARNING: symlink-resolve check failed"
             }
           fi
           # Check 6: template-schema-producer consistency
           if [ -f "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" ]; then
             bash "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" >/dev/null 2>&1 || {
-              echo "WARNING: template-schema-producer consistency check failed" >&2
+              _rbt_alert "WARNING: template-schema-producer consistency check failed"
             }
           fi
         fi
@@ -205,7 +208,7 @@ case "$cmd" in
         # Spec invariant 4: auto-close in-progress backlog items.
         auto_close_backlog "$dir" || true
       fi
-      echo "$cur -> $new"
+      _rbt_ok "$cur -> $new"
       exit 0
     fi
     if [ "$FORCE" = "1" ]; then
@@ -218,7 +221,7 @@ case "$cmd" in
           # R3: tests must be non-interactive
           if [ -f "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" ]; then
             bash "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" "$dir" >/dev/null 2>&1 || {
-              echo "WARNING: R3 check failed for $dir — tests may have interactive constructs" >&2
+              _rbt_alert "WARNING: R3 check failed for $dir — tests may have interactive constructs"
             }
           fi
           # R6: sentinel check on any dispatch scripts in feature
@@ -228,25 +231,25 @@ case "$cmd" in
           # Naming convention check
           if [ -f "$ENFORCEMENT_DIR/check-naming.sh" ]; then
             bash "$ENFORCEMENT_DIR/check-naming.sh" "$dir" >/dev/null 2>&1 || {
-              echo "WARNING: naming check failed for $dir" >&2
+              _rbt_alert "WARNING: naming check failed for $dir"
             }
           fi
           # Check 4: imports and feature paths resolve
           if [ -f "$ENFORCEMENT_DIR/check-imports-resolve.sh" ]; then
             bash "$ENFORCEMENT_DIR/check-imports-resolve.sh" "$dir" >/dev/null 2>&1 || {
-              echo "WARNING: R-import-resolve check failed for $dir" >&2
+              _rbt_alert "WARNING: R-import-resolve check failed for $dir"
             }
           fi
           # Check 5: symlinks under .claude/ resolve
           if [ -f "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" ]; then
             bash "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" "$REPO_ROOT" >/dev/null 2>&1 || {
-              echo "WARNING: symlink-resolve check failed" >&2
+              _rbt_alert "WARNING: symlink-resolve check failed"
             }
           fi
           # Check 6: template-schema-producer consistency
           if [ -f "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" ]; then
             bash "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" >/dev/null 2>&1 || {
-              echo "WARNING: template-schema-producer consistency check failed" >&2
+              _rbt_alert "WARNING: template-schema-producer consistency check failed"
             }
           fi
         fi
@@ -267,8 +270,8 @@ case "$cmd" in
         # Spec invariant 4: auto-close in-progress backlog items.
         auto_close_backlog "$dir" || true
       fi
-      echo "FORCED: $cur -> $new" >&2
-      echo "$cur -> $new"
+      _rbt_alert "FORCED: $cur -> $new"
+      _rbt_ok "$cur -> $new"
       exit 0
     fi
     echo "ERROR: $cur -> $new not allowed (forward expected: $expected). Use --force to override." >&2

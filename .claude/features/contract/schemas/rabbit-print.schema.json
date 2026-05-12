@@ -1,0 +1,31 @@
+{
+  "schema_id": "rabbit-print",
+  "version": "1.0.0",
+  "owner": "rabbit-workflow team (contract)",
+  "deprecation_criterion": "when the [rabbit] print convention is replaced by a structured logging facility",
+  "description": "Defines the [rabbit] print convention used by all rabbit-workflow hooks and CLI scripts for user-visible systemMessage and terminal output.",
+  "format": "[rabbit] ━━━ <message> ━━━",
+  "decoration": {
+    "prefix": "[rabbit] ",
+    "bar": "━━━",
+    "pattern": "<ansi_color>[rabbit] ━━━ <message> ━━━<ansi_reset>"
+  },
+  "colors": {
+    "normal": {
+      "ansi_code": "\\x1b[32m",
+      "ansi_reset": "\\x1b[0m",
+      "description": "ANSI green — used for informational/success messages on stdout (session-init, policy refresh, skills updated)"
+    },
+    "alert": {
+      "ansi_code": "\\x1b[31m",
+      "ansi_reset": "\\x1b[0m",
+      "description": "ANSI red — used for warning/alert messages on stderr (policy drift, scope-guard violations, forced transitions)"
+    }
+  },
+  "producers": [
+    ".claude/features/rabbit-cage/hooks/rbt-sync-check.sh",
+    ".claude/features/rabbit-cage/hooks/rbt-session-init.sh",
+    ".claude/features/rabbit-cage/hooks/rbt-refresh.sh",
+    ".claude/features/tdd-state-machine/scripts/tdd-step.sh"
+  ]
+}

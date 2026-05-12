@@ -235,9 +235,41 @@ t_su6() {
     || ko "tsu6: rc=$rc out='$(cat "$TMPROOT/stdout")'"
 }
 
+# t_rbt1: tdd-step.sh transition stdout contains literal "[rabbit]"
+t_rbt1() {
+  local d="$TMPROOT/t_rbt1"; fix "$d" t_rbt1 spec
+  run transition "$d" spec-update >/dev/null
+  local out; out="$(cat "$TMPROOT/stdout")"
+  echo "$out" | grep -q '\[rabbit\]' \
+    && ok "t_rbt1: transition stdout contains [rabbit]" \
+    || ko "t_rbt1: [rabbit] not found in stdout: '$out'"
+}
+
+# t_rbt2: tdd-step.sh transition stdout contains ANSI green code
+t_rbt2() {
+  local d="$TMPROOT/t_rbt2"; fix "$d" t_rbt2 spec
+  run transition "$d" spec-update >/dev/null
+  local out; out="$(cat "$TMPROOT/stdout")"
+  # Check for ESC character followed by [32m
+  printf '%s' "$out" | python3 -c "import sys; s=sys.stdin.read(); exit(0 if '\x1b[32m' in s else 1)" \
+    && ok "t_rbt2: transition stdout contains ANSI green (\x1b[32m)" \
+    || ko "t_rbt2: ANSI green not found in stdout"
+}
+
+# t_rbt3: tdd-step.sh transition --force stderr contains ANSI red code
+t_rbt3() {
+  local d="$TMPROOT/t_rbt3"; fix "$d" t_rbt3 impl
+  run transition "$d" test-red --force >/dev/null
+  local err; err="$(cat "$TMPROOT/stderr")"
+  printf '%s' "$err" | python3 -c "import sys; s=sys.stdin.read(); exit(0 if '\x1b[31m' in s else 1)" \
+    && ok "t_rbt3: forced transition stderr contains ANSI red (\x1b[31m)" \
+    || ko "t_rbt3: ANSI red not found in stderr: '$(printf '%s' "$err" | cat -v)'"
+}
+
 echo "running tdd-step tests against $TDD_STEP"
 t1; t2; t3; t4; t5; t6; t7; t8; t9; t10; t11
 t_su1; t_su2; t_su3; t_su4; t_su5; t_su6
+t_rbt1; t_rbt2; t_rbt3
 echo
 echo "summary: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1
