@@ -53,7 +53,7 @@ case "$PRIORITY" in
   *) echo "ERROR: invalid priority '$PRIORITY' (allowed: low|medium|high|critical)" >&2; exit 1 ;;
 esac
 
-REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 REGISTRY="$REPO_ROOT/.claude/features/registry.json"
 
 # Validate feature exists in registry
@@ -65,7 +65,18 @@ fi
 # Build prefix: rabbit-cage → RABBIT-CAGE, rabbit-backlog → RABBIT-BACKLOG
 PREFIX="$(echo "$FEATURE_NAME" | tr '[:lower:]' '[:upper:]')"
 
-BACKLOG_ROOT="$REPO_ROOT/.claude/backlogs/$FEATURE_NAME"
+# Resolve canonical backlog storage path via workspace-map.sh (contract).
+# workspace-map.sh is located at .claude/features/contract/scripts/workspace-map.sh
+# and may also be found via PATH if injected by callers or tests.
+_WORKSPACE_MAP="$(command -v workspace-map.sh 2>/dev/null || echo "$REPO_ROOT/.claude/features/contract/scripts/workspace-map.sh")"
+if [ ! -x "$_WORKSPACE_MAP" ]; then
+  echo "ERROR: workspace-map.sh not found or not executable: $_WORKSPACE_MAP" >&2
+  exit 1
+fi
+BACKLOG_ROOT="$(RABBIT_ROOT="$REPO_ROOT" "$_WORKSPACE_MAP" backlog "$FEATURE_NAME")" || {
+  echo "ERROR: workspace-map.sh failed to resolve path for feature '$FEATURE_NAME'" >&2
+  exit 1
+}
 mkdir -p "$BACKLOG_ROOT"
 
 # Scan for existing items matching PREFIX-BACKLOG-<N>, find max N

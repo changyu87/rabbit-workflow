@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.4.0
+version: 3.5.0
 template_version: 2.0.0
 ---
 
@@ -15,12 +15,11 @@ template_version: 2.0.0
       {"path": ".claude/features/rabbit-cage/scripts/validate-all.sh", "stdin": "none", "stdout": "validation report", "exit": "0=all pass 1=failures"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project.sh", "stdin": "none", "stdout": "operation result", "exit": "0=ok 1=error 2=usage"},
       {"path": ".claude/features/rabbit-cage/scripts/generate-claude-md.sh", "stdin": "none", "stdout": "CLAUDE.md content", "exit": "0=ok 1=error"},
-      {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.sh", "stdin": "none", "stdout": "workspace tree", "exit": "0=ok 1=error"},
       {"path": ".claude/features/rabbit-cage/scripts/generate-skills-dir.sh", "stdin": "none", "stdout": "status messages", "exit": "0=ok/up-to-date 1=drift-detected(check-mode)"}
     ],
     "schemas": [],
     "templates": [],
-    "skills": []
+    "skills": ["rabbit-workspace-map"]
   },
   "reads": {
     "files": [".claude/features/registry.json", "project-*/project-map.json", ".claude/features/contract/templates/", ".rabbit-scope-override", ".rabbit-scope-override-used"],

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 1.8.0
+version: 1.9.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -43,6 +43,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 - Content authored by other features — rabbit-cage wires their surface, not their content.
 - `settings.local.json` — user-local overrides; never written by rabbit-cage.
 - Scripts: rabbit-cage owns no runtime scripts beyond `install.sh` and those registered in its contract.
+- Workspace hierarchy display — owned by the `rabbit-workspace-map` skill (in contract feature); rabbit-cage wires it via its `feature.json` skills list.
 
 ## Scope-Guard Override
 

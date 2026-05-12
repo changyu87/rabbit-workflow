@@ -90,6 +90,10 @@ check_file "test/test-relink.sh"
   && echo "ok: test-dispatch-spec-update.sh exists" \
   || { echo "ko: test-dispatch-spec-update.sh missing" >&2; FAIL=1; }
 
+# workspace-map artifacts
+check_exec "scripts/workspace-map.sh"
+check_file "schemas/workspace-map.json.schema.json"
+
 if [ $FAIL -ne 0 ]; then
   echo "test-files-exist: FAIL" >&2
   exit 1

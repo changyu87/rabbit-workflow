@@ -26,6 +26,8 @@ For any task that involves writing or modifying implementation artifacts
 
 Any add, edit, or delete of a feature — including a one-character typo fix or a comment deletion — MUST go through the full TDD step sequence managed by `tdd-step.sh`. There is no partial-TDD shortcut. The discipline is uniform because partial flows are where drift enters undetected.
 
+Tests must exercise the full chain from the user-facing entry point through to the final state change. Testing individual script behavior in isolation is not sufficient — E2E coverage across all feature layers is required.
+
 ---
 
 ## 4. Token/compliance tradeoff is the user's call

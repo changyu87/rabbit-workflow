@@ -25,6 +25,7 @@ Owns the four canonical rule files fed to every subagent dispatch.
 1. All four rule files exist and are non-empty.
 2. `workflow-rules.md` contains sections: "Subagent-driven", "Full TDD", "Token/compliance", "Hard rules", "Cross-component handoffs".
 3. R8 and R9 appear in `workflow-rules.md`.
+4. R3 in `workflow-rules.md` explicitly mandates full-stack E2E coverage: tests must exercise the full chain from the user-facing entry point through to the final state change, not just individual script behavior in isolation.
 
 ## Out of Scope
 

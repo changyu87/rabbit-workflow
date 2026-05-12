@@ -82,6 +82,17 @@ cp "$FILE_BACKLOG" "$ISO_SCRIPTS_DIR/file-backlog-item.sh"
 cp "$ITEM_STATUS" "$ISO_SCRIPTS_DIR/backlog-item-status.sh"
 chmod +x "$ISO_SCRIPTS_DIR/file-backlog-item.sh" "$ISO_SCRIPTS_DIR/backlog-item-status.sh"
 
+# file-backlog-item.sh now invokes workspace-map.sh (from contract).
+# Copy workspace-map.sh to the expected contract path inside ISO_REPO so
+# the isolated test environment has access to it.
+WORKSPACE_MAP_SRC="$REPO_ROOT/.claude/features/contract/scripts/workspace-map.sh"
+ISO_CONTRACT_SCRIPTS="$ISO_REPO/.claude/features/contract/scripts"
+mkdir -p "$ISO_CONTRACT_SCRIPTS"
+if [ -f "$WORKSPACE_MAP_SRC" ]; then
+  cp "$WORKSPACE_MAP_SRC" "$ISO_CONTRACT_SCRIPTS/workspace-map.sh"
+  chmod +x "$ISO_CONTRACT_SCRIPTS/workspace-map.sh"
+fi
+
 ISO_FILE_BACKLOG="$ISO_SCRIPTS_DIR/file-backlog-item.sh"
 
 ISO_CENTRAL_BACKLOGS="${ISO_REPO}/.claude/backlogs"

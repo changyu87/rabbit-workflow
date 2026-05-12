@@ -237,6 +237,26 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# t11: list-bugs.sh --text output includes severity in [SEVERITY] format
+# ---------------------------------------------------------------------------
+T11_LABEL="t11: list-bugs.sh --text output includes [SEVERITY] field"
+
+if [ ! -x "$SCRIPTS_DIR/list-bugs.sh" ] || [ ! -f "$BUG_JSON" ]; then
+    assert_fail "$T11_LABEL" "list-bugs.sh not executable or no bug.json"
+else
+    SEVERITY_VAL="$(jq -r '.severity' "$BUG_JSON" 2>/dev/null)"
+    TEXT_OUT11="$(cd "$ISO_REPO" && bash "$SCRIPTS_DIR/list-bugs.sh" --feature test-feature --text 2>&1)"
+    LIST11_EXIT=$?
+    if [ $LIST11_EXIT -ne 0 ]; then
+        assert_fail "$T11_LABEL" "list-bugs.sh exited with code $LIST11_EXIT"
+    elif echo "$TEXT_OUT11" | grep -qF "[$SEVERITY_VAL]"; then
+        assert_pass "$T11_LABEL"
+    else
+        assert_fail "$T11_LABEL" "severity '[$SEVERITY_VAL]' not found in --text output: $(echo "$TEXT_OUT11" | head -c 300)"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # t10: feature.json does NOT contain bugs_root key
 # ---------------------------------------------------------------------------
 T10_LABEL="t10: feature.json does NOT contain bugs_root key"

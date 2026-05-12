@@ -19,6 +19,7 @@ run_test "test-imports-resolve.sh"
 run_test "test-backlog003.sh"
 run_test "test-backlog006.sh"
 run_test "test-policy-consolidation.sh"
+run_test "test-backlog001-r3-e2e.sh"
 
 echo ""
 echo "All tests passed."

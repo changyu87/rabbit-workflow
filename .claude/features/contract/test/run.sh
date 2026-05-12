@@ -29,4 +29,6 @@ run_test "test-dispatch-spec-update.sh"
 run_test "test-skill-command-templates.sh"
 run_test "test-rabbit-print-schema.sh"
 
+run_test "test-workspace-map.sh"
+
 echo "ALL TESTS PASSED"

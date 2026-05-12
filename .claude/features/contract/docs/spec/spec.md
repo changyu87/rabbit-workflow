@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.1.0
+version: 1.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -33,6 +33,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 - `.claude/features/contract/schemas/bug.json.schema.json`
 - `.claude/features/contract/schemas/project-map.json.schema.json`
 - `.claude/features/contract/schemas/rabbit-print.schema.json`
+- `.claude/features/contract/schemas/workspace-map.json.schema.json`
 
 **scripts/**
 - `.claude/features/contract/scripts/policy-block.sh`
@@ -43,6 +44,10 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 - `.claude/features/contract/scripts/check-maps-consistent.sh`
 - `.claude/features/contract/scripts/rabbit-triage.sh`
 - `.claude/features/contract/scripts/validate-feature.sh`
+- `.claude/features/contract/scripts/workspace-map.sh`
+
+**skills/**
+- `.claude/skills/rabbit-workspace-map/SKILL.md`
 
 **scripts/enforcement/**
 - `.claude/features/contract/scripts/enforcement/check-imports-resolve.sh`
@@ -61,6 +66,9 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 3. All scripts in `scripts/` and `scripts/enforcement/` are executable.
 4. Every schema file in `schemas/` is valid JSON.
 5. `rabbit-print.schema.json` is the authoritative definition of the `[rabbit]` print format used by all rabbit-workflow hooks and CLI scripts.
+6. `workspace-map.sh` exists, is executable, and produces valid JSON (conforming to `workspace-map.json.schema.json`) when called without flags; with `--human` it produces human-readable terminal output.
+7. `workspace-map.json.schema.json` declares `schemaVersion` and covers: features, scripts, schemas, commands, skills, hooks, and user project directories.
+8. `rabbit-workspace-map/SKILL.md` exists under `.claude/skills/` and documents how Claude invokes `workspace-map.sh`.
 
 ## Out of Scope
 

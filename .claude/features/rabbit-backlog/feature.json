@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "summary": "Owns backlog item filing and lifecycle for all rabbit features. Provides file-backlog-item.sh and backlog-item-status.sh.",
+  "summary": "Owns backlog item filing and lifecycle for all rabbit features. Provides file-backlog-item.sh, backlog-item-status.sh, and list-backlog.sh.",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -13,9 +13,10 @@
     ],
     "scripts": [
       "scripts/file-backlog-item.sh",
-      "scripts/backlog-item-status.sh"
+      "scripts/backlog-item-status.sh",
+      "scripts/list-backlog.sh"
     ]
   },
   "deprecation_criterion": "when rabbit features are retired or a unified project management system replaces file-based backlog",
-  "updated": "2026-05-11"
+  "updated": "2026-05-12"
 }

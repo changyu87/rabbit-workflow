@@ -5,9 +5,10 @@
 
 ## Purpose
 
-Owns backlog item filing and lifecycle for all rabbit features. Provides two
-scripts: `file-backlog-item.sh` (creates new backlog items) and
-`backlog-item-status.sh` (reads and transitions item status).
+Owns backlog item filing and lifecycle for all rabbit features. Provides three
+scripts: `file-backlog-item.sh` (creates new backlog items),
+`backlog-item-status.sh` (reads and transitions item status), and
+`list-backlog.sh` (lists backlog items with optional filtering).
 
 Backlog items live under `docs/backlog/<ITEM-ID>/item.json`. The schema and
 valid status transitions are declared in `docs/backlog/backlog-contract.md`.
@@ -77,6 +78,24 @@ Direct `open -> implemented` is rejected. Any transition not listed above
 (e.g. `refused -> in-progress`, `implemented -> in-progress`) is rejected;
 revival must go through `reopened`.
 
+### `list-backlog.sh`
+
+Lists backlog items from centralized `.claude/backlogs/` storage with optional
+filtering.
+
+```
+list-backlog.sh                         # all items, JSON array
+list-backlog.sh --status open|in-progress|implemented|refused|reopened
+list-backlog.sh --feature NAME[,NAME2]  # only named features (comma-separated)
+list-backlog.sh --text                  # human-readable: NAME  [STATUS]  [PRIORITY]  TITLE per line
+list-backlog.sh -h|--help
+```
+
+- Default output: JSON array of `item.json` objects.
+- `--text` prints one line per item: `NAME  [STATUS]  [PRIORITY]  TITLE`.
+- `--status` filters by exact status value.
+- `--feature` filters by feature bucket name(s); comma-separated values accepted.
+
 ### Invariants
 
 - `closed` is non-null iff current `status` is `implemented` or `refused`.
@@ -85,12 +104,26 @@ revival must go through `reopened`.
 - Every `history` entry has a non-empty `reason`.
 - `reopened` is only reachable from `implemented` or `refused`.
 
+## Dependencies
+
+### `workspace-map.sh` (from contract)
+
+`file-backlog-item.sh` invokes `workspace-map.sh` (located at
+`.claude/features/contract/scripts/workspace-map.sh`) to resolve the canonical
+backlog storage path for a given feature name. The scripts do NOT construct
+the path by convention — they delegate path resolution to `workspace-map.sh`.
+
+`backlog-item-status.sh` does not invoke `workspace-map.sh` directly; callers
+pass a resolved `<item-dir>` path. Path resolution happens upstream at filing
+time via `file-backlog-item.sh`.
+
 ## What this feature does NOT define
 
 - Bug filing (`docs/bugs/`) — that remains within each feature's own scope
   (managed by `file-bug.sh` in rabbit-cage).
 - Feature scaffolding — owned by rabbit-cage.
 - TDD state machine — owned by `tdd-state-machine`.
+- Backlog storage path convention — owned by `workspace-map.sh` in contract.
 
 ## Tests
 

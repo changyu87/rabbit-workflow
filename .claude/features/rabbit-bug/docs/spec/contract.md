@@ -25,6 +25,7 @@
   after filing and after every status transition)
 - python3 (in list-bugs.sh for feature.json parsing)
 - find (in list-bugs.sh)
+- workspace-map.sh (rabbit-workspace-map contract interface; invoked by file-bug.sh and list-bugs.sh to resolve the canonical bug storage path for a given feature, replacing path construction by convention)
 
 ## Inputs / Outputs
 
@@ -35,11 +36,11 @@
   - `--fix-commits` is required when `STATUS` is `closed` and is the only acceptable proof of vet completion unless `--skip-vet-reason` is supplied (existing emergency bypass per R7).
   - `--fix-commits` is rejected when `STATUS` is `refused`.
   - On success, the mutated bug.json is committed to git.
-- list-bugs.sh: prints JSON array or text of bug summaries.
+- list-bugs.sh: prints JSON array or text of bug summaries. Text format (--text): `NAME  [STATUS]  [SEVERITY]  TITLE`.
 
 ## Versioning
 
-- Current version: 1.0.0
+- Current version: 1.2.0
 - Bump rules: minor for additive new arguments; major for CLI flag renames or
   enforcement changes.
 - Breaking changes in 1.0.0 (from 0.1.0):

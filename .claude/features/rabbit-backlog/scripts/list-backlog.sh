@@ -1,22 +1,22 @@
 #!/bin/bash
-# list-bugs.sh -- list bugs from centralized .claude/bugs/ storage.
+# list-backlog.sh -- list backlog items from centralized .claude/backlogs/ storage.
 #
 # Usage:
-#   list-bugs.sh                         # all bugs, JSON array
-#   list-bugs.sh --status open|closed|reopened|refused
-#   list-bugs.sh --feature NAME[,NAME2]  # only named features
-#   list-bugs.sh --text                  # human-readable: NAME  [STATUS]  TITLE per line
-#   list-bugs.sh -h|--help
+#   list-backlog.sh                                # all items, JSON array
+#   list-backlog.sh --status open|in-progress|implemented|refused|reopened
+#   list-backlog.sh --feature NAME[,NAME2]         # only named features
+#   list-backlog.sh --text                         # human-readable: NAME  [STATUS]  [PRIORITY]  TITLE per line
+#   list-backlog.sh -h|--help
 #
 # Algorithm:
-#   1. Find REPO_ROOT (git or RABBIT_ROOT)
-#   2. Find all subdirectories under $REPO_ROOT/.claude/bugs/ (one level deep)
-#   3. Each subdir is a feature bucket; collect all bug.json files from each
+#   1. Find REPO_ROOT (RABBIT_ROOT or git)
+#   2. Find all subdirectories under $REPO_ROOT/.claude/backlogs/ (one level deep)
+#   3. Each subdir is a feature bucket; collect all item.json files from each
 #   4. Apply --feature filter by matching subdir name
 #   5. Apply --status filter
 #   6. Output JSON array or text
 #
-# Exit: 0 on success.
+# Exit: 0 on success, 2 on usage error.
 
 set -u
 
@@ -59,16 +59,15 @@ feature_wanted() {
   return 1
 }
 
-# Resolve canonical bugs root via workspace-map.sh (rabbit-workspace-map contract interface)
-BUGS_ROOT="$(workspace-map.sh 2>/dev/null || echo "$REPO_ROOT/.claude/bugs")"
+BACKLOGS_ROOT="$REPO_ROOT/.claude/backlogs"
 
-if [ -d "$BUGS_ROOT" ]; then
-  for bucket_dir in "$BUGS_ROOT"/*/; do
+if [ -d "$BACKLOGS_ROOT" ]; then
+  for bucket_dir in "$BACKLOGS_ROOT"/*/; do
     [ -d "$bucket_dir" ] || continue
     bucket_name="$(basename "$bucket_dir")"
     feature_wanted "$bucket_name" || continue
     for d in "$bucket_dir"*/; do
-      [ -f "$d/bug.json" ] && echo "$d/bug.json" >> "$tmpfiles"
+      [ -f "$d/item.json" ] && echo "$d/item.json" >> "$tmpfiles"
     done
   done
 fi
@@ -76,7 +75,7 @@ fi
 mapfile -t files < "$tmpfiles"
 
 if [ "${#files[@]}" -eq 0 ]; then
-  if [ "$mode" = "text" ]; then echo "(no bugs)"; else echo "[]"; fi
+  if [ "$mode" = "text" ]; then echo "(no items)"; else echo "[]"; fi
   exit 0
 fi
 
@@ -89,9 +88,9 @@ JSON_ARR="$(jq -s "[ .[] | $JQ_FILTER ]" "${files[@]}")"
 
 if [ "$mode" = "text" ]; then
   if [ "$(echo "$JSON_ARR" | jq 'length')" = "0" ]; then
-    echo "(no bugs match)"
+    echo "(no items match)"
   else
-    echo "$JSON_ARR" | jq -r '.[] | "\(.name)  [\(.status)]  [\(.severity)]  \(.title)"'
+    echo "$JSON_ARR" | jq -r '.[] | "\(.name)  [\(.status)]  [\(.priority)]  \(.title)"'
   fi
 else
   echo "$JSON_ARR"

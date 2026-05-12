@@ -18,5 +18,5 @@
     ]
   },
   "deprecation_criterion": "when rabbit features are retired or a unified tracking system replaces file-based bugs",
-  "updated": "2026-05-11"
+  "updated": "2026-05-12"
 }

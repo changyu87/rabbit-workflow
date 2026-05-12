@@ -15,9 +15,9 @@ worktree.
 
 ## Behavior
 
-- file-bug.sh: Creates bug.json with fields: name, title, status (always open), severity, description, related_feature, filed, filed_by, closed, closed_by, history. description is never modified after filing. Commits the new bug.json to git.
+- file-bug.sh: Creates bug.json with fields: name, title, status (always open), severity, description, related_feature, filed, filed_by, closed, closed_by, history. description is never modified after filing. Commits the new bug.json to git. Resolves the canonical bug storage path for a given feature by invoking `workspace-map.sh` from the rabbit-workspace-map contract interface rather than constructing paths by convention.
 - bug-status.sh: Reads or transitions bug status. The `set` subcommand requires `--reason <text>` on every transition (missing or empty value exits 1). When transitioning to `closed`, `--fix-commits <sha>[,<sha>...]` is required unless `--skip-vet-reason <text>` is provided (the skip-vet path is the existing emergency bypass that also satisfies R7). `--fix-commits` is rejected when transitioning to `refused`. Optional `--touched-files` is stored in history when provided. After every successful `set`, the mutated `bug.json` is committed to git.
-- list-bugs.sh: Lists bugs from all features by scanning feature.json files for bugs_root. Supports --status, --feature, --text filters.
+- list-bugs.sh: Lists bugs from all features by invoking `workspace-map.sh` from the rabbit-workspace-map contract interface to resolve the canonical bug storage path per feature, rather than constructing paths by convention. Supports --status, --feature, --text filters. The --text output format is `NAME  [STATUS]  [SEVERITY]  TITLE`.
 
 ## Out of scope
 

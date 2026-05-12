@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.1.0
+version: 1.2.0
 template_version: 2.0.0
 ---
 
@@ -28,7 +28,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/schemas/registry.json.schema.json",
       ".claude/features/contract/schemas/bug.json.schema.json",
       ".claude/features/contract/schemas/project-map.json.schema.json",
-      ".claude/features/contract/schemas/rabbit-print.schema.json"
+      ".claude/features/contract/schemas/rabbit-print.schema.json",
+      ".claude/features/contract/schemas/workspace-map.json.schema.json"
     ],
     "scripts": [
       ".claude/features/contract/scripts/policy-block.sh",
@@ -39,6 +40,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/scripts/check-maps-consistent.sh",
       ".claude/features/contract/scripts/rabbit-triage.sh",
       ".claude/features/contract/scripts/validate-feature.sh",
+      ".claude/features/contract/scripts/workspace-map.sh",
       ".claude/features/contract/scripts/enforcement/check-imports-resolve.sh",
       ".claude/features/contract/scripts/enforcement/check-naming.sh",
       ".claude/features/contract/scripts/enforcement/check-no-main-edits.sh",
@@ -47,6 +49,9 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/scripts/enforcement/check-symlinks-resolve.sh",
       ".claude/features/contract/scripts/enforcement/check-template-schema-producer-consistency.sh",
       ".claude/features/contract/scripts/enforcement/check-tests-non-interactive.sh"
+    ],
+    "skills": [
+      ".claude/skills/rabbit-workspace-map/SKILL.md"
     ]
   },
   "reads": {

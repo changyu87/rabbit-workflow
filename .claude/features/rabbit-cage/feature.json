@@ -14,10 +14,11 @@
     "commands": [
       ".claude/commands/rabbit-refresh.md",
       ".claude/commands/rabbit-set-threshold.md",
-      ".claude/commands/rabbit-project.md",
-      ".claude/commands/rabbit-workspace.md"
+      ".claude/commands/rabbit-project.md"
     ],
-    "skills": [],
+    "skills": [
+      "rabbit-workspace-map"
+    ],
     "scripts": [
       ".claude/features/rabbit-cage/scripts/new-feature.sh",
       ".claude/features/rabbit-cage/scripts/validate-all.sh",

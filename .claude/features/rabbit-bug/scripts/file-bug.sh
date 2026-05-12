@@ -65,9 +65,13 @@ PYEOF
   fi
   FEATURE_NAME="$FEAT"
   PREFIX="$(echo "$FEAT" | tr '[:lower:]' '[:upper:]')"
-  BUG_ROOT="$REPO_ROOT/.claude/bugs/$FEATURE_NAME"
+  # Resolve canonical bugs root via workspace-map.sh (rabbit-workspace-map contract interface)
+  BUGS_BASE="$(workspace-map.sh "$FEATURE_NAME" 2>/dev/null || echo "$REPO_ROOT/.claude/bugs")"
+  BUG_ROOT="$BUGS_BASE/$FEATURE_NAME"
 else
-  BUG_ROOT="$REPO_ROOT/.claude/bugs/unassigned"
+  # Resolve canonical bugs root via workspace-map.sh (rabbit-workspace-map contract interface)
+  BUGS_BASE="$(workspace-map.sh 2>/dev/null || echo "$REPO_ROOT/.claude/bugs")"
+  BUG_ROOT="$BUGS_BASE/unassigned"
   PREFIX="$BUG_PREFIX"
 fi
 

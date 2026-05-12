@@ -3,6 +3,7 @@
 ## Reads
 
 - `<item-dir>/item.json` — backlog item status and history (via `backlog-item-status.sh get`)
+- `.claude/backlogs/<feature>/<ITEM-ID>/item.json` — read by `list-backlog.sh` when listing items
 
 ## Writes
 
@@ -18,8 +19,16 @@
 
 - `jq` — JSON manipulation for item.json read/write
 - `git` — `git add` and `git commit` after filing and after every status transition
+- `.claude/features/contract/scripts/workspace-map.sh` — invoked by `file-backlog-item.sh` to resolve the canonical backlog storage path for a given feature; must be present and executable
 
 ## Inputs / Outputs
+
+### `list-backlog.sh`
+
+- Input: `[--status <status>] [--feature <name[,name2]>] [--text]`
+- Output (default): JSON array of `item.json` objects to stdout
+- Output (`--text`): one line per item `NAME  [STATUS]  [PRIORITY]  TITLE` to stdout
+- Exit: 0=ok, 2=usage
 
 ### `file-backlog-item.sh`
 
@@ -39,10 +48,11 @@
 
 ## Cross-scope handoff
 
-This feature does not delegate to other features. Callers (rabbit-cage, other
-features) invoke these scripts to file and manage their own backlog items.
-The `--dir` argument determines where items are stored; this feature does not
-enforce a storage path on callers.
+`file-backlog-item.sh` delegates storage path resolution to `workspace-map.sh`
+(contract feature). Callers (rabbit-cage, other features) invoke these scripts
+to file and manage their own backlog items; `file-backlog-item.sh` calls
+`workspace-map.sh` internally to locate the canonical backlog directory for the
+given feature and does not construct that path by convention.
 
 The status enum (`open | in-progress | implemented | refused | reopened`) is
 the canonical backlog terminology and is unified with the bug system's
@@ -50,9 +60,17 @@ terminal-state vocabulary (`refused`).
 
 ## Versioning
 
-- Current version: `1.0.0`.
-- Bump rules: minor bump on new fields added to item.json schema; major bump
-  on breaking schema changes or removed fields.
+- Current version: `1.2.0`.
+- Bump rules: minor bump on new fields added to item.json schema or new
+  external invocations declared; major bump on breaking schema changes or
+  removed fields.
+- Changes in 1.2.0 (from 1.1.0):
+  - New script `list-backlog.sh` added. Reads item.json files from centralized
+    backlog storage. No breaking changes; existing callers unaffected.
+- Changes in 1.1.0 (from 1.0.0):
+  - New dependency declared: `workspace-map.sh` (contract feature) invoked by
+    `file-backlog-item.sh` for storage path resolution. Callers are unaffected;
+    the change is internal to `file-backlog-item.sh`.
 - Breaking changes in 1.0.0 (from 0.1.0):
   - Status `done` renamed to `implemented`.
   - Status `cancelled` renamed to `refused`.
