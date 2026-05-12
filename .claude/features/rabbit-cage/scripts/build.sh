@@ -32,9 +32,12 @@ for target in contract.get("targets", []):
     destination = os.path.join(repo_root, target["destination"])
 
     if ttype == "generate-claude-md":
+        env = dict(os.environ)
+        env["RABBIT_ROOT"] = repo_root
         result = subprocess.run(
             ["bash", generate_script, "--write", repo_root],
-            capture_output=True, text=True
+            capture_output=True, text=True,
+            env=env
         )
         if result.returncode != 0:
             print(f"  [error] {name}: generate-claude-md failed\n{result.stderr}", file=sys.stderr)
