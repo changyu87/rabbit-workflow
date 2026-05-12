@@ -2,15 +2,13 @@
   "name": "rabbit-backlog",
   "version": "0.1.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "impl",
   "summary": "Owns backlog item filing and lifecycle for all rabbit features. Provides file-backlog-item.sh, backlog-item-status.sh, and list-backlog.sh.",
   "surface": {
     "hooks": [],
     "commands": [],
     "agents": [],
-    "skills": [
-      "rabbit-backlog"
-    ],
+    "skills": [],
     "scripts": [
       "scripts/file-backlog-item.sh",
       "scripts/backlog-item-status.sh",
