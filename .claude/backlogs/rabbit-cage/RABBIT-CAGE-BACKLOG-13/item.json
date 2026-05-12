@@ -1,13 +1,13 @@
 {
   "name": "RABBIT-CAGE-BACKLOG-13",
   "title": "Commit CLAUDE.md to git and validate against policy files on every stop",
-  "status": "in-progress",
+  "status": "implemented",
   "priority": "critical",
   "description": "CLAUDE.md is currently gitignored (.gitignore line 4) and generated at install/setup time but not tracked. Goal: (1) remove CLAUDE.md from .gitignore, (2) commit CLAUDE.md as a versioned artifact like skills, (3) add a stop hook that diffs the committed CLAUDE.md against a fresh generation from policy files and warns on discrepancy. Working mechanism (branch, tdd-step.sh, dispatch) unchanged.",
   "owner": "Changyu",
   "filed": "2026-05-12T03:30:10Z",
   "filed_by": "Changyu",
-  "closed": null,
+  "closed": "2026-05-12T03:52:39Z",
   "history": [
     {
       "ts": "2026-05-12T03:30:10Z",
@@ -20,6 +20,13 @@
       "actor": "cyxu",
       "action": "in-progress",
       "note": "Implementation complete via TDD discipline"
+    },
+    {
+      "ts": "2026-05-12T03:52:39Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "Merged in PR #45: CLAUDE.md removed from .gitignore, committed to git, drift-check confirmed working",
+      "fix_commits": "2ddb6b6"
     }
   ]
 }
