@@ -6,4 +6,4 @@ CLAUDE.md
 .rbt-prompt-counter
 .rabbit-scope-override
 .rabbit-scope-override-used
-requests.txt
+.claude/settings.local.json

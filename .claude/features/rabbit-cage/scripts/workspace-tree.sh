@@ -168,7 +168,7 @@ def build_tree(root):
                     if item == ".git":
                         continue
                     # Include all child dirs when parent is a structural dir
-                    # (e.g. skills/ → rabbit-feature-touch/, rabbit-workspace/)
+                    # (e.g. skills/ → rabbit-feature-touch/)
                     if is_structural_dir(parent_name) or is_structural_dir(item) or is_bug_dir(item):
                         dirs.append((item, item_path, item_rel))
                 else:

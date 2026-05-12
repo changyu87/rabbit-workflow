@@ -68,10 +68,8 @@ cat > "$TARGET/feature.json" <<JSON
   "surface": {
     "hooks": [],
     "commands": [],
-    "agents": [],
     "skills": []
   },
-  "bugs_root": "$TARGET/docs/bugs",
   "deprecation_criterion": "TBD — set after first review"
 }
 JSON

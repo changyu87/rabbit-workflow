@@ -7,12 +7,10 @@
   "surface": {
     "hooks": [],
     "commands": [],
-    "agents": [],
     "skills": [
       "rabbit-feature-touch"
     ]
   },
-  "bugs_root": ".claude/features/tdd-state-machine/docs/bugs",
   "deprecation_criterion": "When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.",
-  "updated": "2026-05-11"
+  "updated": "2026-05-12"
 }
