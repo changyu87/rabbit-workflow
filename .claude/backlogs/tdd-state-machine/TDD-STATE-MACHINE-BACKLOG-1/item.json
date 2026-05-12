@@ -1,7 +1,7 @@
 {
   "name": "TDD-STATE-MACHINE-BACKLOG-1",
   "title": "TDD cycle completion must auto-transition linked bug/backlog to steady state with fix-commit token",
-  "status": "open",
+  "status": "in-progress",
   "priority": "high",
   "description": "",
   "owner": "changyu",
@@ -14,6 +14,12 @@
       "actor": "changyu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-12T07:52:51Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "TDD dispatch started"
     }
   ]
 }
