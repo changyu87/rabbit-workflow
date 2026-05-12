@@ -37,6 +37,7 @@ run_suite test-RABBIT-CAGE-BACKLOG7-visual-messages.sh
 run_suite test-RABBIT-CAGE-BACKLOG9-green-messages.sh
 run_suite test-RABBIT-CAGE-BACKLOG10-override.sh
 run_suite test-RABBIT-CAGE-17-quoted-strings.sh
+run_suite test-RABBIT-CAGE-18-scope-alert-messages.sh
 run_suite test-scope-per-feature-marker.sh
 
 if [ "$total_fail" -eq 0 ]; then

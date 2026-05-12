@@ -71,9 +71,12 @@ approval.
 **`rbt-sync-check.sh` semantics** (Stop hook, after the normal drift check):
 
 - `.rabbit-scope-override` = `session` → emit a red `[rabbit]` systemMessage
-  on every Stop, signalling that the guard is currently off.
-- `.rabbit-scope-override-used` exists → emit the same red alert once, then
-  DELETE `.rabbit-scope-override-used`.
+  on every Stop, signalling that the guard is **currently off**:
+  `[rabbit] SCOPE GUARD OFF (session override active)`
+- `.rabbit-scope-override-used` exists → emit a **distinct** red `[rabbit]`
+  systemMessage once, signalling that the guard was bypassed once and is now
+  re-armed, then DELETE `.rabbit-scope-override-used`:
+  `[rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed)`
 
 **Human approval flow:** when scope-guard blocks a write, Claude instructs
 the user to run `echo one-time > .rabbit-scope-override` or
@@ -149,6 +152,7 @@ Color convention (binding):
   (CLAUDE.md drift, skills drift, policy drift) and scope-guard-off
   messages.
 
-Example red alert:
+Example red alerts:
 
     \x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD OFF (session override active) ━━━ 🔓\x1b[0m
+    \x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed) ━━━ 🔓\x1b[0m

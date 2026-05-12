@@ -93,11 +93,18 @@ if [ -f "$USED_FILE" ]; then
   rm -f "$USED_FILE"
 fi
 
-if [ -n "$_alert" ]; then
+if [ "$_alert" = "session" ]; then
   python3 -c "
 import json
 print(json.dumps({
     'systemMessage': '\x1b[31m\xf0\x9f\x94\x93 \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 [rabbit] SCOPE GUARD OFF (session override active) \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 \xf0\x9f\x94\x93\x1b[0m'
+}))
+"
+elif [ "$_alert" = "used" ]; then
+  python3 -c "
+import json
+print(json.dumps({
+    'systemMessage': '\x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed) ━━━ 🔓\x1b[0m'
 }))
 "
 fi
