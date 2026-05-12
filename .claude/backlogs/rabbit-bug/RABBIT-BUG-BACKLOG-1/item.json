@@ -1,13 +1,13 @@
 {
   "name": "RABBIT-BUG-BACKLOG-1",
   "title": "Align bug lifecycle to unified conventions: rename --note to --reason, enforce reason, enforce fix-commits on close, git-commit on transitions",
-  "status": "in-progress",
+  "status": "implemented",
   "priority": "high",
   "description": "",
   "owner": "cyxu",
   "filed": "2026-05-11T12:10:56Z",
   "filed_by": "cyxu",
-  "closed": null,
+  "closed": "2026-05-12T06:51:05Z",
   "history": [
     {
       "ts": "2026-05-11T12:10:56Z",
@@ -20,6 +20,13 @@
       "actor": "cyxu",
       "action": "in-progress",
       "note": "Starting implementation"
+    },
+    {
+      "ts": "2026-05-12T06:51:05Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "auto-closed by tdd-step.sh test-green",
+      "fix_commits": "4bcd675108371343e38b2a9fa090dd3082e688ff"
     }
   ]
 }
