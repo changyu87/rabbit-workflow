@@ -47,7 +47,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 - `.claude/features/contract/scripts/workspace-map.sh`
 
 **skills/**
-- `.claude/skills/rabbit-workspace-map/SKILL.md`
+- `.claude/features/contract/skills/rabbit-workspace-map/SKILL.md`
 
 **scripts/enforcement/**
 - `.claude/features/contract/scripts/enforcement/check-imports-resolve.sh`
@@ -68,7 +68,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 5. `rabbit-print.schema.json` is the authoritative definition of the `[rabbit]` print format used by all rabbit-workflow hooks and CLI scripts.
 6. `workspace-map.sh` exists, is executable, and produces valid JSON (conforming to `workspace-map.json.schema.json`) when called without flags; with `--human` it produces human-readable terminal output.
 7. `workspace-map.json.schema.json` declares `schemaVersion` and covers: features, scripts, schemas, commands, skills, hooks, and user project directories.
-8. `rabbit-workspace-map/SKILL.md` exists under `.claude/skills/` and documents how Claude invokes `workspace-map.sh`.
+8. `rabbit-workspace-map/SKILL.md` exists under `.claude/features/contract/skills/` (source of truth, deployed to `.claude/skills/` by generate-skills-dir.sh) and instructs Claude to directly execute `workspace-map.sh` on invocation — using `--human` for readable terminal output and the default JSON mode for programmatic use — rather than merely describing how to invoke it.
 
 ## Out of Scope
 
