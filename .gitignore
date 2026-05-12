@@ -1,7 +1,6 @@
 .rabbit-scope-active
 *.swp
 .nfs*
-CLAUDE.md
 .rbt-sync-counter
 .rbt-prompt-counter
 .rabbit-scope-override

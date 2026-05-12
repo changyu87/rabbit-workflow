@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 1.5.0
+version: 1.6.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -21,7 +21,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 - `.claude/settings.json` — symlink to `rabbit-cage/settings.json`
 - `.claude/policy/` — symlink to `.claude/features/policy/`
 - `.claude/contract/` — symlink to `.claude/features/contract/`
-- `CLAUDE.md` — generated file (by `generate-claude-md.sh`); gitignored; not a symlink
+- `CLAUDE.md` — generated file (by `generate-claude-md.sh`); committed to the repo (not gitignored); not a symlink; validated on every Stop against a fresh regeneration from policy sources
 - `README.md` — symlink to `rabbit-cage/README.md`
 - `install.sh` — symlink to `rabbit-cage/install.sh`
 
@@ -33,7 +33,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 4. `.claude/settings.json` is a symlink pointing to `.claude/features/rabbit-cage/settings.json`.
 5. `.claude/policy` is a symlink pointing to `.claude/features/policy`.
 6. `.claude/contract` is a symlink pointing to `.claude/features/contract`.
-7. `CLAUDE.md` at repo root is a generated regular file (not a symlink); produced by `generate-claude-md.sh`; gitignored; contains inline `rabbit-policy-start`/`rabbit-policy-end` section.
+7. `CLAUDE.md` at repo root is a generated regular file (not a symlink); produced by `generate-claude-md.sh`; committed to the repo (not gitignored); contains inline `rabbit-policy-start`/`rabbit-policy-end` section.
 8. `README.md` at repo root is a symlink pointing to `.claude/features/rabbit-cage/README.md`.
 9. `install.sh` at repo root is a symlink pointing to `.claude/features/rabbit-cage/install.sh`.
 10. `CLAUDE.md` contains `@`-imports sourcing files from `.claude/policy/`.
@@ -94,6 +94,14 @@ marker.
     (`.rbt-skills-hash`) is used or maintained.
 15. `.claude/skills/` and its contents are committed to the repo; neither
     `.claude/skills/` nor `.rbt-skills-hash` appears in `.gitignore`.
+16. `CLAUDE.md` at the repo root is committed to the repo; `CLAUDE.md` does
+    not appear in `.gitignore`.
+17. On every Stop event, `rbt-sync-check.sh` compares the committed
+    `CLAUDE.md` against a fresh regeneration from the policy source files.
+    On discrepancy it regenerates `CLAUDE.md` in place and emits a
+    deep-green `[rabbit]` `systemMessage` warning that the committed copy
+    drifted from the policy sources, instructing the human to commit the
+    regenerated file.
 
 ## Scope-Guard Quote Awareness
 

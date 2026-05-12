@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.3.0
+version: 3.4.0
 template_version: 2.0.0
 ---
 
@@ -47,6 +47,19 @@ template_version: 2.0.0
   ]
 }
 ```
+
+## CLAUDE.md Drift-Check Behavior
+
+`CLAUDE.md` at the repo root is a committed artifact produced by
+`generate-claude-md.sh`. It is not gitignored.
+
+On every Stop event, `rbt-sync-check.sh` computes the expected `CLAUDE.md`
+content from the current policy source files and compares it byte-for-byte
+against the committed `CLAUDE.md`. If they differ, the hook regenerates
+`CLAUDE.md` in place and emits a deep-green `[rabbit]` `systemMessage`
+indicating that the committed copy drifted from the policy sources and that
+the human should commit the regenerated file. If the committed file is
+absent, the hook treats it as the first-run scenario and creates it.
 
 ## generate-skills-dir.sh Behavior
 
