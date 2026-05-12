@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.4.0
+version: 1.5.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -32,6 +32,7 @@ Provides the `tdd-step.sh` CLI for forward-only TDD state transitions, drift det
 6. `resolve-feature-scope.sh` emits a prompt to stdout only; it does not call any agent itself. The caller dispatches the prompt to an Opus Agent, which reads the feature registry and returns structured JSON of the form `{"features": ["feat-a", "feat-b"], "rationale": "..."}`. The main session parses this JSON to drive parallel dispatch.
 7. `dispatch-feature-tdd.sh` emits a prompt to stdout only; it does not call any agent itself. The assembled prompt instructs the per-feature subagent to run the full TDD cycle (spec-update → test-red → impl → test-green) for ONE feature, using `.rabbit-scope-active-<feature-name>` as its scope marker. Distinct per-feature scope markers enable simultaneous dispatch across features without scope collision.
 8. When `--bug <bug-dir>` is provided to `dispatch-feature-tdd.sh`, the orchestrator calls `bug-status.sh set <bug-dir> closed --reason 'TDD cycle complete' --fix-commits <impl-sha>` after test-green. When `--backlog <item-dir>` is provided, it calls `backlog-item-status.sh set <item-dir> implemented --reason 'TDD cycle complete' --fix-commits <impl-sha>`. These calls commit the item automatically. The HANDOFF block must include the linked item path and its new status.
+9. `surface.skills` in `feature.json` MUST be `[]`. Skills are now managed via explicit copy-file entries in `build-contract.json`; the `surface.skills` field is retired and must remain an empty array.
 
 ## Confirm-Token Bypass Path
 
