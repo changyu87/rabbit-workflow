@@ -63,7 +63,7 @@ print(d.get('schemaVersion', ''))
   fi
 fi
 
-# (d) workspace-map.sh produces valid JSON without flags
+# (d) workspace-map.sh produces valid JSON with v2 shape (schemaVersion 2.0.0, roots array)
 if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
   JSON_OUT=$(bash "$SCRIPT" 2>/dev/null || true)
   if [ -z "$JSON_OUT" ]; then
@@ -73,7 +73,21 @@ if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
     echo "FAIL (d): workspace-map.sh output is not valid JSON" >&2
     FAIL=1
   else
-    echo "ok (d): workspace-map.sh produces valid JSON"
+    echo "ok (d1): workspace-map.sh produces valid JSON"
+    D_VER=$(echo "$JSON_OUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('schemaVersion',''))" 2>/dev/null)
+    if [ "$D_VER" = "2.0.0" ]; then
+      echo "ok (d2): output schemaVersion is 2.0.0"
+    else
+      echo "FAIL (d2): output schemaVersion is '$D_VER' (expected 2.0.0)" >&2
+      FAIL=1
+    fi
+    HAS_ROOTS=$(echo "$JSON_OUT" | python3 -c "import json,sys; d=json.load(sys.stdin); print('yes' if 'roots' in d else 'no')" 2>/dev/null)
+    if [ "$HAS_ROOTS" = "yes" ]; then
+      echo "ok (d3): output has 'roots' key"
+    else
+      echo "FAIL (d3): output missing 'roots' key" >&2
+      FAIL=1
+    fi
   fi
 fi
 
@@ -130,6 +144,12 @@ if [ -f "$SKILL_MD" ]; then
     FAIL=1
   else
     echo "ok (h2): SKILL.md references --human flag"
+  fi
+  if ! grep -q -- "--audit" "$SKILL_MD"; then
+    echo "FAIL (h3): SKILL.md does not reference --audit flag" >&2
+    FAIL=1
+  else
+    echo "ok (h3): SKILL.md references --audit flag"
   fi
 fi
 
@@ -479,6 +499,41 @@ print(f['severity'] if f else 'NOT_FOUND')
   else
     echo "FAIL (u): missing_declaration finding not found or wrong severity (got: '$BT_U')" >&2
     FAIL=1
+  fi
+fi
+
+# (v) workspace-map.sh --audit produces valid JSON with findings key
+if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
+  AUDIT_OUT=$(bash "$SCRIPT" --audit 2>/dev/null || true)
+  if [ -z "$AUDIT_OUT" ]; then
+    echo "FAIL (v): workspace-map.sh --audit produced no output" >&2
+    FAIL=1
+  elif ! echo "$AUDIT_OUT" | python3 -c "import json,sys; json.load(sys.stdin)" 2>/dev/null; then
+    echo "FAIL (v): workspace-map.sh --audit output is not valid JSON" >&2
+    FAIL=1
+  else
+    echo "ok (v1): workspace-map.sh --audit produces valid JSON"
+    V_FIND=$(echo "$AUDIT_OUT" | python3 -c "import json,sys; d=json.load(sys.stdin); print('yes' if 'findings' in d else 'no')" 2>/dev/null)
+    if [ "$V_FIND" = "yes" ]; then
+      echo "ok (v2): audit output has 'findings' key"
+    else
+      echo "FAIL (v2): audit output missing 'findings' key" >&2
+      FAIL=1
+    fi
+  fi
+fi
+
+# (w) workspace-map.sh --audit --human produces non-JSON human-readable output
+if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
+  AUDIT_H_OUT=$(bash "$SCRIPT" --audit --human 2>/dev/null || true)
+  if [ -z "$AUDIT_H_OUT" ]; then
+    echo "FAIL (w): workspace-map.sh --audit --human produced no output" >&2
+    FAIL=1
+  elif echo "$AUDIT_H_OUT" | python3 -c "import json,sys; json.load(sys.stdin)" 2>/dev/null; then
+    echo "FAIL (w): workspace-map.sh --audit --human output is JSON (expected human-readable text)" >&2
+    FAIL=1
+  else
+    echo "ok (w): workspace-map.sh --audit --human produces non-JSON output"
   fi
 fi
 
