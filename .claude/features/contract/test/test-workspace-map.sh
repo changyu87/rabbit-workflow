@@ -537,6 +537,31 @@ if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
   fi
 fi
 
+# (x) spec.md prose checks — invariant 6 and 7 wording
+SPEC_MD="$FEATURE_DIR/docs/spec/spec.md"
+if [ -f "$SPEC_MD" ]; then
+  if grep -q "conforms to its own" "$SPEC_MD"; then
+    echo "FAIL (x1): spec.md still contains stale self-conformance wording in invariant 7" >&2
+    FAIL=1
+  else
+    echo "ok (x1): spec.md invariant 7 does not claim self-conformance"
+  fi
+
+  if grep -q "keyed on" "$SPEC_MD"; then
+    echo "FAIL (x2): spec.md still contains 'keyed on' wording in invariant 7" >&2
+    FAIL=1
+  else
+    echo "ok (x2): spec.md invariant 7 does not use 'keyed on'"
+  fi
+
+  if grep -q "missing_declaration" "$SPEC_MD"; then
+    echo "ok (x3): spec.md invariant 6 mentions missing_declaration"
+  else
+    echo "FAIL (x3): spec.md invariant 6 missing 'missing_declaration' finding type" >&2
+    FAIL=1
+  fi
+fi
+
 if [ "$FAIL" -ne 0 ]; then
   echo "test-workspace-map: FAIL" >&2
   exit 1
