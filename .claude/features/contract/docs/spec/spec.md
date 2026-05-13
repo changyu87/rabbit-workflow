@@ -81,6 +81,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 11. `relink.sh` does NOT exist at `.claude/features/contract/scripts/relink.sh`.
 12. `.claude/workspace-structure.json` exists, is valid JSON, conforms to the `workspace-structure.json` schema (requires `schema_version`, `owner`, `root`, `nodes` at top level), has `root` equal to `"rabbit"`, and declares nodes for `features`, `skills`, `hooks`, and `commands`.
 13. `check-naming.sh` documents that the `rbt-` prefix is fully deprecated with no remaining valid use cases; comments and flag messages in that script must not reference `rbt-` as a valid or recommended prefix. The current naming policy is: user-facing artifacts use `rabbit-`; the `rbt-` prefix is banned.
+14. `rabbit-triage.sh` is called as `rabbit-triage.sh <feature-dir> <bug-name>` and locates bug.json at `<repo-root>/.claude/bugs/<feature-name>/<bug-name>/bug.json` (centralized bug storage, where `<feature-name>` is the basename of `<feature-dir>`). It does NOT look in `<feature-dir>/docs/bugs/`.
 
 ## Out of Scope
 

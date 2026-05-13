@@ -9,9 +9,13 @@
 #   rabbit-triage.sh <feature-dir> <bug-name>
 #
 # Validates:
-#   <feature-dir>/docs/bugs/<bug-name>/bug.json   (required)
-#   <feature-dir>/docs/spec/spec.md               (required)
-#   <feature-dir>/docs/spec/contract.md           (optional)
+#   <repo-root>/.claude/bugs/<feature-name>/<bug-name>/bug.json  (required)
+#   <feature-dir>/docs/spec/spec.md                              (required)
+#   <feature-dir>/docs/spec/contract.md                          (optional)
+#
+# Bug storage uses the centralized .claude/bugs/ location as written by rabbit-bug.
+# <feature-name> is derived from the basename of <feature-dir>.
+# <repo-root> is resolved from RABBIT_ROOT env var or git rev-parse.
 #
 # Exit:
 #   0  prompt printed to stdout
@@ -32,7 +36,9 @@ fi
 FEATURE_DIR="$1"
 BUG_NAME="$2"
 
-BUG_FILE="$FEATURE_DIR/docs/bugs/${BUG_NAME}/bug.json"
+REPO_ROOT="${RABBIT_ROOT:-$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)}"
+FEATURE_BASENAME="$(basename "$FEATURE_DIR")"
+BUG_FILE="$REPO_ROOT/.claude/bugs/${FEATURE_BASENAME}/${BUG_NAME}/bug.json"
 SPEC_FILE="$FEATURE_DIR/docs/spec/spec.md"
 CONTRACT_FILE="$FEATURE_DIR/docs/spec/contract.md"
 
@@ -51,7 +57,6 @@ if [ ! -f "$SPEC_FILE" ]; then
   exit 1
 fi
 
-FEATURE_BASENAME="$(basename "$FEATURE_DIR")"
 BUG_CONTENT="$(cat "$BUG_FILE")"
 SPEC_CONTENT="$(cat "$SPEC_FILE")"
 
