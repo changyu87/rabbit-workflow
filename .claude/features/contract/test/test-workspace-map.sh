@@ -223,6 +223,44 @@ print('yes' if '$field' in props else 'no')
   done
 fi
 
+# (m) .claude/workspace-structure.json exists and is valid JSON
+RABBIT_DECL="$REPO_ROOT/.claude/workspace-structure.json"
+if [ ! -f "$RABBIT_DECL" ]; then
+  echo "FAIL (m): .claude/workspace-structure.json missing: $RABBIT_DECL" >&2
+  FAIL=1
+elif ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$RABBIT_DECL" 2>/dev/null; then
+  echo "FAIL (m): .claude/workspace-structure.json is not valid JSON" >&2
+  FAIL=1
+else
+  echo "ok (m): .claude/workspace-structure.json exists and is valid JSON"
+fi
+
+# (n) rabbit declaration has root "rabbit" and required top-level nodes
+if [ -f "$RABBIT_DECL" ]; then
+  RABBIT_ROOT_TAG=$(python3 -c "import json; d=json.load(open('$RABBIT_DECL')); print(d.get('root',''))" 2>/dev/null)
+  if [ "$RABBIT_ROOT_TAG" != "rabbit" ]; then
+    echo "FAIL (n): .claude/workspace-structure.json root is not 'rabbit' (got: $RABBIT_ROOT_TAG)" >&2
+    FAIL=1
+  else
+    echo "ok (n): declaration root is 'rabbit'"
+  fi
+
+  for req_node in features skills hooks commands; do
+    HAS_NODE=$(python3 -c "
+import json
+d = json.load(open('$RABBIT_DECL'))
+names = [n['name'] for n in d.get('nodes', [])]
+print('yes' if '$req_node' in names else 'no')
+" 2>/dev/null)
+    if [ "$HAS_NODE" != "yes" ]; then
+      echo "FAIL (n): rabbit declaration missing required node: $req_node" >&2
+      FAIL=1
+    else
+      echo "ok (n): rabbit declaration declares node: $req_node"
+    fi
+  done
+fi
+
 if [ "$FAIL" -ne 0 ]; then
   echo "test-workspace-map: FAIL" >&2
   exit 1
