@@ -1,116 +1,79 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "schemaVersion": "1.0.0",
-  "title": "workspace-map",
-  "description": "Versioned JSON schema for workspace-map.sh output. Sole source of truth for workspace hierarchy structure covering .claude internals and user project directories. Consumed by rabbit-bug, rabbit-backlog, and any feature that needs workspace structure without doing its own recursive file search.",
+  "schemaVersion": "2.0.0",
+  "title": "workspace-map output",
+  "description": "Versioned JSON schema for workspace-map.sh v2 output. Two shapes: show mode (roots array) and audit mode (findings array).",
   "owner": "rabbit-workflow team (contract feature)",
   "deprecation_criterion": "when a native Claude Code workspace registry supersedes this schema",
-  "type": "object",
-  "required": ["schemaVersion", "repoRoot", "features", "scripts", "schemas", "commands", "skills", "hooks", "userProjectDirs"],
-  "properties": {
-    "schemaVersion": {
-      "type": "string",
-      "description": "Semantic version of this schema (e.g. '1.0.0'). Consumers must reject documents whose major version does not match the expected major version.",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
-    },
-    "repoRoot": {
-      "type": "string",
-      "description": "Absolute path to the repository root."
-    },
-    "features": {
-      "type": "array",
-      "description": "All features registered in .claude/features/registry.json, enriched with tdd_state from each feature.json.",
-      "items": {
-        "type": "object",
-        "required": ["name", "path", "version", "tdd_state"],
-        "properties": {
-          "name": {"type": "string"},
-          "path": {"type": "string", "description": "Relative path from repo root to the feature directory."},
-          "version": {"type": "string"},
-          "tdd_state": {"type": "string", "enum": ["spec", "spec-update", "test-red", "impl", "test-green", "review", "merged", "deprecated", ""]}
-        },
-        "additionalProperties": false
+  "oneOf": [
+    {
+      "title": "show mode output",
+      "type": "object",
+      "required": ["schemaVersion", "repoRoot", "roots"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "type": "string", "const": "2.0.0" },
+        "repoRoot": { "type": "string", "description": "Absolute path to the repository root." },
+        "roots": {
+          "type": "array",
+          "description": "One entry per recognized project root (rabbit .claude/ root first, then user project roots).",
+          "items": {
+            "type": "object",
+            "required": ["root", "path", "declaration", "nodes"],
+            "additionalProperties": false,
+            "properties": {
+              "root": { "type": "string" },
+              "path": { "type": "string" },
+              "declaration": { "type": "string", "enum": ["found", "missing"] },
+              "nodes": {
+                "type": "array",
+                "items": { "$ref": "#/definitions/annotated_node" }
+              }
+            }
+          }
+        }
       }
     },
-    "scripts": {
-      "type": "array",
-      "description": "All .sh files under .claude/features/*/scripts/ (recursive).",
-      "items": {
-        "type": "object",
-        "required": ["path", "executable"],
-        "properties": {
-          "path": {"type": "string", "description": "Relative path from repo root."},
-          "executable": {"type": "boolean"}
-        },
-        "additionalProperties": false
-      }
-    },
-    "schemas": {
-      "type": "array",
-      "description": "All .json schema files under .claude/features/*/schemas/.",
-      "items": {
-        "type": "object",
-        "required": ["path", "feature"],
-        "properties": {
-          "path": {"type": "string"},
-          "feature": {"type": "string"}
-        },
-        "additionalProperties": false
-      }
-    },
-    "commands": {
-      "type": "array",
-      "description": "Slash commands from .claude/commands/*.md.",
-      "items": {
-        "type": "object",
-        "required": ["name", "path"],
-        "properties": {
-          "name": {"type": "string"},
-          "path": {"type": "string"}
-        },
-        "additionalProperties": false
-      }
-    },
-    "skills": {
-      "type": "array",
-      "description": "Skills from .claude/skills/*/SKILL.md.",
-      "items": {
-        "type": "object",
-        "required": ["name", "path"],
-        "properties": {
-          "name": {"type": "string"},
-          "path": {"type": "string"}
-        },
-        "additionalProperties": false
-      }
-    },
-    "hooks": {
-      "type": "array",
-      "description": "Hook scripts from .claude/hooks/*.sh (may be symlinks).",
-      "items": {
-        "type": "object",
-        "required": ["name", "path"],
-        "properties": {
-          "name": {"type": "string"},
-          "path": {"type": "string"},
-          "symlink_target": {"type": ["string", "null"], "description": "Relative path to the real file if this is a symlink, null otherwise."}
-        },
-        "additionalProperties": false
-      }
-    },
-    "userProjectDirs": {
-      "type": "array",
-      "description": "Non-hidden top-level directories in the repo root that are not .claude internals. Represents user project directories.",
-      "items": {
-        "type": "object",
-        "required": ["name", "path"],
-        "properties": {
-          "name": {"type": "string"},
-          "path": {"type": "string"}
-        },
-        "additionalProperties": false
+    {
+      "title": "audit mode output",
+      "type": "object",
+      "required": ["schemaVersion", "findings"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "type": "string", "const": "2.0.0" },
+        "findings": {
+          "type": "array",
+          "description": "Deviations from contract: missing required nodes and unknown filesystem entries.",
+          "items": {
+            "type": "object",
+            "required": ["severity", "type", "path", "root"],
+            "additionalProperties": false,
+            "properties": {
+              "severity": { "type": "string", "enum": ["error", "warn"] },
+              "type": { "type": "string", "enum": ["missing_required", "unknown", "missing_declaration"] },
+              "path": { "type": "string" },
+              "root": { "type": "string" }
+            }
+          }
+        }
       }
     }
-  },
-  "additionalProperties": false
+  ],
+  "definitions": {
+    "annotated_node": {
+      "type": "object",
+      "required": ["name", "status", "children"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "required": { "type": ["boolean", "null"] },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["present", "missing", "unknown"] },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/annotated_node" }
+        }
+      }
+    }
+  }
 }

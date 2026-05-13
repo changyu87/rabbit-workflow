@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "root": "rabbit",
+  "nodes": [
+    {
+      "name": "features",
+      "required": true,
+      "description": "all feature source directories",
+      "children": [
+        { "name": "contract",         "required": true,  "description": "cross-feature schemas, dispatch scripts, enforcement", "children": [] },
+        { "name": "policy",           "required": true,  "description": "canonical rule docs (philosophy, spec-rules, coding-rules, workflow-rules)", "children": [] },
+        { "name": "rabbit-backlog",   "required": true,  "description": "backlog item filing and lifecycle", "children": [] },
+        { "name": "rabbit-bug",       "required": true,  "description": "bug filing, tracking, and lifecycle", "children": [] },
+        { "name": "rabbit-cage",      "required": true,  "description": "Claude Code surface owner", "children": [] },
+        { "name": "tdd-state-machine","required": true,  "description": "forward-only TDD state machine", "children": [] }
+      ]
+    },
+    { "name": "skills",    "required": true,  "description": "skill library (copied from feature sources via build-contract.json)", "children": [] },
+    { "name": "hooks",     "required": true,  "description": "hook scripts (copied from rabbit-cage via build-contract.json)", "children": [] },
+    { "name": "commands",  "required": true,  "description": "slash commands (copied from feature sources via build-contract.json)", "children": [] },
+    { "name": "bugs",      "required": false, "description": "centralized bug tracker (created on first bug filing)", "children": [] },
+    { "name": "backlogs",  "required": false, "description": "centralized backlog tracker (created on first backlog filing)", "children": [] }
+  ]
+}
