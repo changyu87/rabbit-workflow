@@ -1,0 +1,19 @@
+{
+  "name": "CONTRACT-BACKLOG-1",
+  "title": "Fix misleading spec.md invariant 7 wording (workspace-structure.json self-conformance claim)",
+  "status": "open",
+  "priority": "low",
+  "description": "",
+  "owner": "Changyu",
+  "filed": "2026-05-13T04:05:30Z",
+  "filed_by": "Changyu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-13T04:05:30Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
