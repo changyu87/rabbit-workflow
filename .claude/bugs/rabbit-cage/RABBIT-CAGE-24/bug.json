@@ -1,0 +1,20 @@
+{
+  "name": "RABBIT-CAGE-24",
+  "title": "plugin-stale alert persists entire session after /reload-plugins: no within-session marker clear mechanism",
+  "status": "open",
+  "severity": "medium",
+  "description": "When build.sh writes .rabbit-plugins-stale, sync-check.sh alerts on every Stop until the marker is cleared. The marker is only cleared by session-init.sh (session start, /clear, /compact, restart). There is no way to clear it when the user runs /reload-plugins within an active session — Claude Code exposes no hook event for /reload-plugins execution, and custom commands cannot shadow built-ins. Result: the user runs /reload-plugins (skills actually reloaded) but the alert keeps firing for the rest of the session. A mechanism to clear the marker within-session is needed.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-13T08:04:52Z",
+  "filed_by": "changyu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-13T08:04:52Z",
+      "actor": "changyu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
