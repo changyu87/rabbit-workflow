@@ -65,6 +65,9 @@ print(json.dumps({
   exit 0
 fi
 
+# Track whether any JSON was emitted below (single-JSON-per-invocation invariant).
+_json_emitted=0
+
 # Surface drift check — only reached when CLAUDE.md is clean (no double JSON output).
 _TEST_SURFACE="$REPO_ROOT/.claude/features/rabbit-cage/test/test-generated-surface.sh"
 _BUILD="$REPO_ROOT/.claude/features/rabbit-cage/scripts/build.sh"
@@ -76,6 +79,7 @@ print(json.dumps({
     'systemMessage': '\x1b[32m🔄 ━━━ [rabbit] Surface drift detected — workspace rebuilt from sources ━━━ 🔄\x1b[0m'
 }))
 "
+  _json_emitted=1
 fi
 
 # Override alert — fires when guard was bypassed this session
@@ -94,20 +98,51 @@ if [ -f "$USED_FILE" ]; then
   rm -f "$USED_FILE"
 fi
 
-if [ "$_alert" = "session" ]; then
-  python3 -c "
+if [ "$_json_emitted" -eq 0 ]; then
+  if [ "$_alert" = "session" ]; then
+    python3 -c "
 import json
 print(json.dumps({
     'systemMessage': '\x1b[31m\xf0\x9f\x94\x93 \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 [rabbit] SCOPE GUARD OFF (session override active) \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 \xf0\x9f\x94\x93\x1b[0m'
 }))
 "
-elif [ "$_alert" = "used" ]; then
-  python3 -c "
+    _json_emitted=1
+  elif [ "$_alert" = "used" ]; then
+    python3 -c "
 import json
 print(json.dumps({
     'systemMessage': '\x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed) ━━━ 🔓\x1b[0m'
 }))
 "
+    _json_emitted=1
+  fi
+fi
+
+# Plugin-change detection — detects any changes to plugin dirs since session branch-point.
+# Emits green [rabbit] alert listing changed files and instructing /reload-plugins.
+# Only fires if no prior check emitted JSON (single-JSON-per-invocation invariant).
+if [ "$_json_emitted" -eq 0 ]; then
+  _BASE=""
+  if git -C "$REPO_ROOT" rev-parse main >/dev/null 2>&1; then
+    _BASE="$(git -C "$REPO_ROOT" merge-base HEAD main 2>/dev/null)" || true
+  fi
+  if [ -z "$_BASE" ] && git -C "$REPO_ROOT" rev-parse origin/main >/dev/null 2>&1; then
+    _BASE="$(git -C "$REPO_ROOT" merge-base HEAD origin/main 2>/dev/null)" || true
+  fi
+  if [ -n "$_BASE" ]; then
+    _CHANGED="$(git -C "$REPO_ROOT" diff --name-only "$_BASE" HEAD -- .claude/skills/ .claude/commands/ .claude/agents/ 2>/dev/null)" || true
+    if [ -n "$_CHANGED" ]; then
+      _FILE_LIST="$(printf '%s' "$_CHANGED" | python3 -c "import sys; files=sys.stdin.read().strip().splitlines(); print('\n'.join('  • ' + f for f in files))")"
+      python3 -c "
+import json, os
+file_list = os.environ.get('_FILE_LIST', '')
+msg = '\x1b[32m[rabbit] Plugins updated this session \xe2\x80\x94 run /reload-plugins to load the latest skills/commands into Claude.\x1b[0m'
+if file_list:
+    msg += '\nChanged files:\n' + file_list
+print(json.dumps({'systemMessage': msg}))
+" _FILE_LIST="$_FILE_LIST"
+    fi
+  fi
 fi
 
 exit 0
