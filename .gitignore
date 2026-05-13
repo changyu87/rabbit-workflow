@@ -3,6 +3,8 @@
 .nfs*
 .rbt-sync-counter
 .rbt-prompt-counter
+.rabbit-sync-counter
+.rabbit-prompt-counter
 .rabbit-scope-override
 .rabbit-scope-override-used
 .rabbit-skills-updated
