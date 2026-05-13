@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.3.0
+version: 1.4.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -40,6 +40,9 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 **data/**
 - `.claude/features/contract/build-contract.json`
 
+**declarations/**
+- `.claude/workspace-structure.json`
+
 **scripts/**
 - `.claude/features/contract/scripts/policy-block.sh`
 - `.claude/features/contract/scripts/dispatch-feature-edit.sh`
@@ -76,6 +79,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 9. `build-contract.json` exists at `.claude/features/contract/build-contract.json`, is valid JSON, and validates against `.claude/features/contract/schemas/build-contract.schema.json`.
 10. All `copy-file` targets declared in `build-contract.json` have a `source` field whose path exists on disk (relative to the repo root).
 11. `relink.sh` does NOT exist at `.claude/features/contract/scripts/relink.sh`.
+12. `.claude/workspace-structure.json` exists, is valid JSON, conforms to the `workspace-structure.json` schema (requires `schema_version`, `owner`, `root`, `nodes` at top level), has `root` equal to `"rabbit"`, and declares nodes for `features`, `skills`, `hooks`, and `commands`.
 
 ## Out of Scope
 
