@@ -79,8 +79,7 @@ mode and timestamps). It does not create or follow symlinks for skill content.
 
 `--check` mode compares the sha256 of every source `SKILL.md` directly
 against the sha256 of the corresponding copy at
-`.claude/skills/<name>/SKILL.md`. No baseline hash file is read or written;
-the prior `.rbt-skills-hash` file and any associated `compute_hash` helper
-are removed. Exit `1` indicates drift in check mode; exit `0` indicates
-the copy tree matches source (or, in non-check mode, that the copy
-operation completed successfully).
+`.claude/skills/<name>/SKILL.md`. No baseline hash file is read or written.
+Exit `1` indicates drift in check mode; exit `0` indicates the copy tree
+matches source (or, in non-check mode, that the copy operation completed
+successfully).

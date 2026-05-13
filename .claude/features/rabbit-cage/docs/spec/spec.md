@@ -144,10 +144,10 @@ marker is active.
     removed.
 14. `generate-skills-dir.sh --check` detects drift by comparing the sha256 of
     each source `SKILL.md` directly against the sha256 of the corresponding
-    copy at `.claude/skills/<name>/SKILL.md`. No external baseline file
-    (`.rbt-skills-hash`) is used or maintained.
-15. `.claude/skills/` and its contents are committed to the repo; neither
-    `.claude/skills/` nor `.rbt-skills-hash` appears in `.gitignore`.
+    copy at `.claude/skills/<name>/SKILL.md`. No external baseline file is
+    used or maintained.
+15. `.claude/skills/` and its contents are committed to the repo;
+    `.claude/skills/` does not appear in `.gitignore`.
 16. `CLAUDE.md` at the repo root is committed to the repo; `CLAUDE.md` does
     not appear in `.gitignore`.
 17. On every Stop event, `sync-check.sh` compares the committed
@@ -271,20 +271,13 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
 - Prompt threshold env var: `RABBIT_REFRESH_EVERY` (default `20`, in `settings.json` and `settings.local.json`)
 - Sync threshold env var: `RABBIT_SYNC_EVERY` (default `1`)
 
-### Migration
-
-At session start, `session-init.sh` detects legacy counter files and renames them:
-- `.rbt-prompt-counter` → `.rabbit-prompt-counter` (if `.rabbit-prompt-counter` does not already exist)
-- `.rbt-sync-counter` → `.rabbit-sync-counter` (if `.rabbit-sync-counter` does not already exist)
-
 ### Invariants
 
-31. `refresh.sh` reads and writes `.rabbit-prompt-counter` (not `.rbt-prompt-counter`); reads `RABBIT_REFRESH_EVERY` (not `RBT_REFRESH_EVERY`).
-32. `sync-check.sh` reads and writes `.rabbit-sync-counter` (not `.rbt-sync-counter`); reads `RABBIT_SYNC_EVERY` (not `RBT_SYNC_EVERY`); writes `.rabbit-prompt-counter` on first-run and drift paths (not `.rbt-prompt-counter`); reads `RABBIT_REFRESH_EVERY` (not `RBT_REFRESH_EVERY`) for that counter write.
-33. `settings.json` declares env key `RABBIT_REFRESH_EVERY` (not `RBT_REFRESH_EVERY`); its `SessionStart` command resets `.rabbit-prompt-counter` (not `.rbt-prompt-counter`).
-34. `rabbit-refresh.md` command resets `.rabbit-prompt-counter` (not `.rbt-prompt-counter`).
-35. `workspace-tree.sh` excludes `.rabbit-prompt-counter` from full listings (not `.rbt-prompt-counter`).
-36. At session start, `session-init.sh` renames any legacy `.rbt-prompt-counter` to `.rabbit-prompt-counter` and any legacy `.rbt-sync-counter` to `.rabbit-sync-counter`, unless the target already exists.
+31. `refresh.sh` reads and writes `.rabbit-prompt-counter`; reads `RABBIT_REFRESH_EVERY`.
+32. `sync-check.sh` reads and writes `.rabbit-sync-counter`; reads `RABBIT_SYNC_EVERY`; writes `.rabbit-prompt-counter` on first-run and drift paths; reads `RABBIT_REFRESH_EVERY` for that counter write.
+33. `settings.json` declares env key `RABBIT_REFRESH_EVERY`; its `SessionStart` command resets `.rabbit-prompt-counter`.
+34. `rabbit-refresh.md` command resets `.rabbit-prompt-counter`.
+35. `workspace-tree.sh` excludes `.rabbit-prompt-counter` from full listings.
 
 ## sync-check.sh Output Schema
 

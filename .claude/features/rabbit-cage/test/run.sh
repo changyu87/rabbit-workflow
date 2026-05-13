@@ -45,6 +45,8 @@ run_suite test-POLICY-BACKLOG-1-session-init-branch.sh
 run_suite test-build-non-git-dir.sh
 run_suite test-rabbit-config.sh
 run_suite test-RABBIT-CAGE-21-plugin-change-alert.sh
+run_suite test-RABBIT-CAGE-23-rename-rbt-prefix.sh
+run_suite test-no-rbt-refs.sh
 
 if [ "$total_fail" -eq 0 ]; then
     echo "ALL SUITES PASSED"

@@ -39,14 +39,14 @@ t3_settings_content() {
     python3 -c "
 import json
 data = json.load(open('$DIR/.claude/settings.json'))
-assert data['env']['RBT_REFRESH_EVERY'] == '20', repr(data)
+assert data['env']['RABBIT_REFRESH_EVERY'] == '20', repr(data)
 "
 }
 
 t4_claude_imports() {
     "$INSTALL" "$DIR" >/dev/null
-    grep -q '@./.claude/policy/philosophy.md' "$DIR/CLAUDE.md" &&
-    grep -q '@./.claude/policy/workflow-rules.md' "$DIR/CLAUDE.md"
+    grep -q 'rabbit-policy-start' "$DIR/CLAUDE.md" &&
+    grep -q 'rabbit-policy-end' "$DIR/CLAUDE.md"
 }
 
 t5_existing_claude_blocked() {
@@ -62,10 +62,10 @@ t6_no_arg_installs_to_pwd() {
 t7_hook_json_output() {
     "$INSTALL" "$DIR" >/dev/null
     # Seed counter at THRESHOLD-1 so next increment hits threshold
-    echo 19 >"$DIR/.rbt-prompt-counter"
+    echo 19 >"$DIR/.rabbit-prompt-counter"
     local out ret
     out="$(mktemp)"
-    (cd "$DIR" && RABBIT_ROOT="$DIR" RBT_REFRESH_EVERY=20 .claude/hooks/refresh.sh >"$out")
+    (cd "$DIR" && RABBIT_ROOT="$DIR" RABBIT_REFRESH_EVERY=20 .claude/hooks/refresh.sh >"$out")
     python3 - "$out" <<'EOF'
 import json, sys
 data = json.load(open(sys.argv[1]))
@@ -80,20 +80,20 @@ t8a_threshold_invalid_rejected() {
     "$INSTALL" "$DIR" >/dev/null
     local pyblock
     pyblock=$(sed -n '/python3 -c "/,/^"`$/{/python3 -c "/d; /^"`$/d; p}' \
-        "$DIR/.claude/commands/rabbit-set-threshold.md")
-    ! (cd "$DIR" && THRESHOLD="abc" python3 -c "$pyblock")
+        "$DIR/.claude/commands/rabbit-config.md")
+    ! (cd "$DIR" && ARGUMENTS="prompt-threshold abc" python3 -c "$pyblock")
 }
 
 t8b_threshold_valid_writes_json() {
     "$INSTALL" "$DIR" >/dev/null
     local pyblock
     pyblock=$(sed -n '/python3 -c "/,/^"`$/{/python3 -c "/d; /^"`$/d; p}' \
-        "$DIR/.claude/commands/rabbit-set-threshold.md")
-    (cd "$DIR" && THRESHOLD="15" python3 -c "$pyblock" >/dev/null)
+        "$DIR/.claude/commands/rabbit-config.md")
+    (cd "$DIR" && ARGUMENTS="prompt-threshold 15" python3 -c "$pyblock" >/dev/null)
     python3 -c "
 import json
 data = json.load(open('$DIR/.claude/settings.local.json'))
-assert data['env']['RBT_REFRESH_EVERY'] == '15', repr(data)
+assert data['env']['RABBIT_REFRESH_EVERY'] == '15', repr(data)
 "
 }
 
@@ -152,7 +152,7 @@ t15_all_works_with_target_first_then_flag() {
 
 run "1: clean install — files present"          t1_clean_install
 run "2: hook is executable"                     t2_hook_executable
-run "3: settings.json has RBT_REFRESH_EVERY=20" t3_settings_content
+run "3: settings.json has RABBIT_REFRESH_EVERY=20" t3_settings_content
 run "4: CLAUDE.md imports from policy/ feature"  t4_claude_imports
 run "5: existing .claude/ blocks install"       t5_existing_claude_blocked
 run "6: no arg installs to \$PWD"               t6_no_arg_installs_to_pwd
