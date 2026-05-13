@@ -110,6 +110,17 @@ list-backlog.sh -h|--help
   explicit copy-file entries in `build-contract.json`. The `surface.skills`
   field in `feature.json` is the retired mechanism and must not be populated.
 
+### SKILL.md Documentation Invariants
+
+The `skills/rabbit-backlog/SKILL.md` (deployed to `.claude/skills/rabbit-backlog/SKILL.md`)
+MUST document `list-backlog.sh` with the same completeness as `rabbit-bug` SKILL.md
+documents `list-bugs.sh`. Specifically:
+
+- A `list-backlog.sh` section with a **Usage** block showing all flags.
+- A **Parameters** table listing every flag, whether it is required, and its description.
+- At least three **Example** invocations covering: no-args JSON, `--text`, `--status`,
+  and `--feature` (with comma-separated values).
+
 ## Dependencies
 
 ### `workspace-map.sh` (from contract)

@@ -5,7 +5,7 @@ description: Invoke when the user intends to file a backlog item, check backlog 
 
 # rabbit-backlog skill
 
-This skill covers two CLI scripts for filing and managing backlog items in the rabbit-workflow repository. All backlog data lives under `.claude/backlogs/`.
+This skill covers three CLI scripts for filing, managing, and listing backlog items in the rabbit-workflow repository. All backlog data lives under `.claude/backlogs/`.
 
 ## Script 1 — file-backlog-item.sh
 
@@ -133,4 +133,60 @@ echo "Created: $ITEM_DIR"
 ### Check the current status of an item
 ```bash
 .claude/features/rabbit-backlog/scripts/backlog-item-status.sh get "$ITEM_DIR"
+```
+
+---
+
+## Script 3 — list-backlog.sh
+
+**Location:** `scripts/list-backlog.sh` (relative to this feature root)
+**Repo path:** `.claude/features/rabbit-backlog/scripts/list-backlog.sh`
+
+### Purpose
+Lists backlog items from centralized `.claude/backlogs/` storage with optional
+filtering by status and/or feature. Outputs a JSON array by default, or a
+human-readable one-line-per-item summary with `--text`.
+
+### Usage
+
+```
+list-backlog.sh [--status STATUS] [--feature NAME[,NAME2]] [--text]
+list-backlog.sh -h|--help
+```
+
+### Parameters
+
+| Flag | Description |
+|------|-------------|
+| *(no args)* | Print JSON array of all backlog items |
+| `--status {open\|in-progress\|implemented\|refused\|reopened}` | Filter by exact status value |
+| `--feature NAME[,NAME2,...]` | Filter by feature bucket name (comma-separated for multiple) |
+| `--text` | Human-readable output: `NAME  [STATUS]  [PRIORITY]  TITLE` per line |
+| `-h\|--help` | Print usage and exit 0 |
+
+### Output
+
+- Default (no `--text`): JSON array of `item.json` objects matching the filter(s).
+  Empty result yields `[]`.
+- `--text`: one line per item in the format `NAME  [STATUS]  [PRIORITY]  TITLE`.
+  Empty result prints `(no items)` or `(no items match)`.
+- Exit codes: `0` = success, `2` = usage error.
+
+### Examples
+
+```bash
+# All backlog items as JSON
+.claude/features/rabbit-backlog/scripts/list-backlog.sh
+
+# All open items, human-readable
+.claude/features/rabbit-backlog/scripts/list-backlog.sh --status open --text
+
+# Items for a specific feature
+.claude/features/rabbit-backlog/scripts/list-backlog.sh --feature rabbit-cage
+
+# Multiple features, JSON output
+.claude/features/rabbit-backlog/scripts/list-backlog.sh --feature rabbit-cage,rabbit-bug
+
+# Open items for a specific feature, human-readable
+.claude/features/rabbit-backlog/scripts/list-backlog.sh --status open --feature rabbit-cage --text
 ```
