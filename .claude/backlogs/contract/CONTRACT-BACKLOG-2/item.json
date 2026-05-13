@@ -1,0 +1,19 @@
+{
+  "name": "CONTRACT-BACKLOG-2",
+  "title": "Fix invariant 7 wording: 'keyed on repoRoot' should be 'accompanied by a repoRoot string field'",
+  "status": "open",
+  "priority": "low",
+  "description": "",
+  "owner": "Changyu",
+  "filed": "2026-05-13T04:17:06Z",
+  "filed_by": "Changyu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-13T04:17:06Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
