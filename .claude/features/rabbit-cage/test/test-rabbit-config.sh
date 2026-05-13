@@ -98,7 +98,7 @@ if not val:
     p = pathlib.Path(settings_local)
     if p.exists():
         cfg = json.loads(p.read_text())
-        cfg.get('env', {}).pop('RBT_REFRESH_EVERY', None)
+        cfg.get('env', {}).pop('RABBIT_REFRESH_EVERY', None)
         if not cfg.get('env'):
             cfg.pop('env', None)
         p.write_text(json.dumps(cfg, indent=2) + '\n')
@@ -111,16 +111,16 @@ if not val.isdigit() or int(val) < 1:
 
 p = pathlib.Path(settings_local)
 cfg = json.loads(p.read_text()) if p.exists() else {}
-cfg.setdefault('env', {})['RBT_REFRESH_EVERY'] = val
+cfg.setdefault('env', {})['RABBIT_REFRESH_EVERY'] = val
 p.write_text(json.dumps(cfg, indent=2) + '\n')
 print('Written to ' + settings_local)
 " 2>&1)"
     EXIT_CODE=$?
 
     if [ $EXIT_CODE -eq 0 ] && [ -f "$FAKE_LOCAL" ]; then
-        WRITTEN_VAL="$(python3 -c "import json; d=json.load(open('$FAKE_LOCAL')); print(d.get('env',{}).get('RBT_REFRESH_EVERY',''))" 2>/dev/null)"
+        WRITTEN_VAL="$(python3 -c "import json; d=json.load(open('$FAKE_LOCAL')); print(d.get('env',{}).get('RABBIT_REFRESH_EVERY',''))" 2>/dev/null)"
         if [ "$WRITTEN_VAL" = "15" ]; then
-            ok 5 "prompt-threshold 15 writes RBT_REFRESH_EVERY=15 to settings.local.json"
+            ok 5 "prompt-threshold 15 writes RABBIT_REFRESH_EVERY=15 to settings.local.json"
         else
             fail_t 5 "prompt-threshold 15 did not write expected value (got '$WRITTEN_VAL')"
         fi
@@ -135,7 +135,7 @@ fi
 if [ -f "$COMMANDS_DIR/rabbit-config.md" ]; then
     FAKE_LOCAL2="$TMPDIR_TEST/settings.local.json"
     # Pre-populate with a value
-    printf '{"env":{"RBT_REFRESH_EVERY":"15"}}\n' > "$FAKE_LOCAL2"
+    printf '{"env":{"RABBIT_REFRESH_EVERY":"15"}}\n' > "$FAKE_LOCAL2"
 
     RESULT2="$(ARGUMENTS="prompt-threshold" SETTINGS_LOCAL="$FAKE_LOCAL2" python3 -c "
 import json, os, pathlib, sys
@@ -152,7 +152,7 @@ if not val:
     p = pathlib.Path(settings_local)
     if p.exists():
         cfg = json.loads(p.read_text())
-        cfg.get('env', {}).pop('RBT_REFRESH_EVERY', None)
+        cfg.get('env', {}).pop('RABBIT_REFRESH_EVERY', None)
         if not cfg.get('env'):
             cfg.pop('env', None)
         p.write_text(json.dumps(cfg, indent=2) + '\n')
@@ -162,9 +162,9 @@ if not val:
     EXIT_CODE2=$?
 
     if [ $EXIT_CODE2 -eq 0 ]; then
-        REMAINING="$(python3 -c "import json; d=json.load(open('$FAKE_LOCAL2')); print(d.get('env',{}).get('RBT_REFRESH_EVERY','REMOVED'))" 2>/dev/null)"
+        REMAINING="$(python3 -c "import json; d=json.load(open('$FAKE_LOCAL2')); print(d.get('env',{}).get('RABBIT_REFRESH_EVERY','REMOVED'))" 2>/dev/null)"
         if [ "$REMAINING" = "REMOVED" ]; then
-            ok 6 "prompt-threshold (no value) removes RBT_REFRESH_EVERY from settings.local.json"
+            ok 6 "prompt-threshold (no value) removes RABBIT_REFRESH_EVERY from settings.local.json"
         else
             fail_t 6 "prompt-threshold (no value) did not remove key (value='$REMAINING')"
         fi

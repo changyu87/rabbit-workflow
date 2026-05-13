@@ -1,0 +1,32 @@
+{
+  "name": "CONTRACT-BACKLOG-4",
+  "title": "rabbit-triage.sh looks for bugs in <feature-dir>/docs/bugs/ but rabbit-bug stores them in .claude/bugs/<feature>/ — contract violation between contract and rabbit-bug",
+  "status": "implemented",
+  "priority": "medium",
+  "description": "",
+  "owner": "changyu",
+  "filed": "2026-05-13T08:15:21Z",
+  "filed_by": "changyu",
+  "closed": "2026-05-13T08:55:41Z",
+  "history": [
+    {
+      "ts": "2026-05-13T08:15:21Z",
+      "actor": "changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-13T08:55:37Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "TDD cycle started for centralized bug path fix"
+    },
+    {
+      "ts": "2026-05-13T08:55:41Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "TDD cycle complete — rabbit-triage.sh now reads from .claude/bugs/ (commit 3ecca4d33f413d07c3a94dc16897cbfab39762f9)",
+      "fix_commits": "3ecca4d33f413d07c3a94dc16897cbfab39762f9"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 2.1.0
+version: 2.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -54,8 +54,8 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 
 Sets or restores the auto-refresh threshold (number of prompts between policy re-injections).
 
-- `/rabbit-config prompt-threshold <N>` — writes `RBT_REFRESH_EVERY=N` to `.claude/settings.local.json`. `N` must be a positive integer. Takes effect on the next session start.
-- `/rabbit-config prompt-threshold` (no value) — removes the `RBT_REFRESH_EVERY` key from `.claude/settings.local.json`, restoring the default value defined in `.claude/settings.json`.
+- `/rabbit-config prompt-threshold <N>` — writes `RABBIT_REFRESH_EVERY=N` to `.claude/settings.local.json`. `N` must be a positive integer. Takes effect on the next session start.
+- `/rabbit-config prompt-threshold` (no value) — removes the `RABBIT_REFRESH_EVERY` key from `.claude/settings.local.json`, restoring the default value defined in `.claude/settings.json`.
 
 **Error handling:** unknown subcommands produce a usage message listing available subcommands. An invalid value (non-positive-integer) for `prompt-threshold` produces an error and exits without modifying any file.
 
@@ -65,8 +65,8 @@ Sets or restores the auto-refresh threshold (number of prompts between policy re
 
 25. `/rabbit-config` command file exists at `commands/rabbit-config.md`.
 26. `/rabbit-set-threshold` command file does NOT exist anywhere in the repository.
-27. `/rabbit-config prompt-threshold <N>` writes `{"env": {"RBT_REFRESH_EVERY": "<N>"}}` merged into `.claude/settings.local.json`.
-28. `/rabbit-config prompt-threshold` (no argument) removes the `RBT_REFRESH_EVERY` key from the `env` object in `.claude/settings.local.json`; if `env` becomes empty the key is also removed.
+27. `/rabbit-config prompt-threshold <N>` writes `{"env": {"RABBIT_REFRESH_EVERY": "<N>"}}` merged into `.claude/settings.local.json`.
+28. `/rabbit-config prompt-threshold` (no argument) removes the `RABBIT_REFRESH_EVERY` key from the `env` object in `.claude/settings.local.json`; if `env` becomes empty the key is also removed.
 29. An unknown subcommand to `/rabbit-config` emits a usage message and exits non-zero without modifying any file.
 
 ## Out of Scope
@@ -204,27 +204,31 @@ If the current branch is already a non-protected branch (anything other than `ma
 23. The created branch name always begins with the prefix `session/` followed by exactly
     eight digits, a hyphen, and six digits (`session/YYYYMMDD-HHMMSS`).
 24. On every Stop event, after the existing drift checks, `sync-check.sh`
-    detects rebuilt skills via a self-clearing marker file:
-    (a) `build.sh` appends the skill directory name (one per line) to
-    `.rabbit-skills-updated` at the repo root whenever it copies a target
-    whose destination matches `.claude/skills/<name>/SKILL.md` exactly.
-    No other target types (commands, agents, hooks) trigger this marker.
-    (b) `sync-check.sh` checks if `.rabbit-skills-updated` exists at the repo root.
-    If it does: read the skill names (newline-separated), delete the marker,
-    then emit one green `[rabbit]` `systemMessage` naming the skills and stating
-    they reload automatically on next invocation. Exact message format:
-    `[rabbit] Skills updated: <comma-separated names> — will reload automatically on next invocation.`
-    If `.rabbit-skills-updated` is absent: silent (no output).
-    The marker is deleted before the JSON emit (fire-at-most-once semantics:
-    a crash between deletion and emit loses the notification rather than
-    risking a repeat).
-    (c) `session-init.sh` does NOT manage `.rabbit-skills-updated` — the
-    marker self-clears via `sync-check.sh` on the next Stop.
-    (d) `.rabbit-skills-updated` is gitignored.
+    detects plugin updates via a stale-marker file:
+    (a) `build.sh` writes `.rabbit-plugins-stale` at the repo root whenever it
+    copies any target whose destination is under `.claude/skills/`,
+    `.claude/commands/`, or `.claude/agents/`.
+    (b) `sync-check.sh` checks if `.rabbit-plugins-stale` exists at the repo root.
+    If it does: emit a green `[rabbit]` `systemMessage` instructing the user to
+    run `/rabbit-refresh` to reload skills/commands into Claude. Exact message:
+    `[rabbit] Plugins updated — run /rabbit-refresh to reload skills/commands into Claude.`
+    If `.rabbit-plugins-stale` is absent: silent (no output).
+    No git diff is performed; the marker file IS the signal.
+    (c) `session-init.sh` removes `.rabbit-plugins-stale` at session start
+    (plugins are freshly loaded on startup/resume/clear/compact).
+    (d) The `/rabbit-refresh` command clears `.rabbit-plugins-stale` so the
+    alert is not re-raised after the user has reloaded.
+    (e) `.rabbit-plugins-stale` is gitignored.
     This check runs only when all previous checks (CLAUDE.md drift, surface
     drift, override alerts) did NOT emit JSON. The single-JSON-per-invocation
     invariant is preserved: at most one JSON object is emitted per
     sync-check.sh invocation.
+    (f) The multi-message output strategy is **conditional-priority**: only the
+    highest-priority pending condition emits per Stop invocation. Lower-priority
+    conditions are suppressed until the higher-priority condition clears.
+    This strategy is chosen because the Claude Code Stop hook protocol accepts
+    at most one JSON object per invocation; emitting multiple would violate the
+    hook contract. The priority order is declared explicitly in Invariant 37.
 
 ## Scope-Guard Quote Awareness
 
@@ -257,3 +261,59 @@ Example red alerts:
 
     \x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD OFF (session override active) ━━━ 🔓\x1b[0m
     \x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed) ━━━ 🔓\x1b[0m
+
+## Runtime Artifact Naming
+
+Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
+
+- Prompt counter: `.rabbit-prompt-counter` (repo root, gitignored)
+- Sync counter: `.rabbit-sync-counter` (repo root, gitignored)
+- Prompt threshold env var: `RABBIT_REFRESH_EVERY` (default `20`, in `settings.json` and `settings.local.json`)
+- Sync threshold env var: `RABBIT_SYNC_EVERY` (default `1`)
+
+### Migration
+
+At session start, `session-init.sh` detects legacy counter files and renames them:
+- `.rbt-prompt-counter` → `.rabbit-prompt-counter` (if `.rabbit-prompt-counter` does not already exist)
+- `.rbt-sync-counter` → `.rabbit-sync-counter` (if `.rabbit-sync-counter` does not already exist)
+
+### Invariants
+
+31. `refresh.sh` reads and writes `.rabbit-prompt-counter` (not `.rbt-prompt-counter`); reads `RABBIT_REFRESH_EVERY` (not `RBT_REFRESH_EVERY`).
+32. `sync-check.sh` reads and writes `.rabbit-sync-counter` (not `.rbt-sync-counter`); reads `RABBIT_SYNC_EVERY` (not `RBT_SYNC_EVERY`); writes `.rabbit-prompt-counter` on first-run and drift paths (not `.rbt-prompt-counter`); reads `RABBIT_REFRESH_EVERY` (not `RBT_REFRESH_EVERY`) for that counter write.
+33. `settings.json` declares env key `RABBIT_REFRESH_EVERY` (not `RBT_REFRESH_EVERY`); its `SessionStart` command resets `.rabbit-prompt-counter` (not `.rbt-prompt-counter`).
+34. `rabbit-refresh.md` command resets `.rabbit-prompt-counter` (not `.rbt-prompt-counter`).
+35. `workspace-tree.sh` excludes `.rabbit-prompt-counter` from full listings (not `.rbt-prompt-counter`).
+36. At session start, `session-init.sh` renames any legacy `.rbt-prompt-counter` to `.rabbit-prompt-counter` and any legacy `.rbt-sync-counter` to `.rabbit-sync-counter`, unless the target already exists.
+
+## sync-check.sh Output Schema
+
+`sync-check.sh` emits at most one JSON object per invocation to stdout. The output schema is:
+
+```json
+{
+  "additionalContext": "<string — optional; only present on first-run or drift-detected paths>",
+  "systemMessage": "<string — ANSI-colored [rabbit] message>"
+}
+```
+
+`systemMessage` is always present when JSON is emitted. `additionalContext` is present only on CLAUDE.md-related paths (first-run and drift-detected). All other conditions emit `systemMessage` only.
+
+### Invariants
+
+37. `sync-check.sh` uses the **conditional-priority** multi-message strategy: exactly one
+    condition emits per Stop invocation; lower-priority conditions are suppressed until
+    the higher-priority condition clears. The explicit priority order (highest to lowest):
+    1. CLAUDE.md drift or first-run (always exits immediately after emitting)
+    2. Surface drift (copy-file targets out of sync with sources)
+    3. Scope-guard-off (session override active or one-time override consumed)
+    4. Plugins-stale (`.rabbit-plugins-stale` marker present)
+    Conditions at the same priority level do not coexist in the current implementation;
+    each has a distinct marker or detection path.
+
+38. Every JSON object emitted by `sync-check.sh` conforms to the output schema above:
+    `{"systemMessage": "<ANSI-colored string>"}` for conditions 2–4; 
+    `{"additionalContext": "<string>", "systemMessage": "<ANSI-colored string>"}` for
+    condition 1 (CLAUDE.md drift/first-run). No other top-level keys are emitted.
+    This schema is machine-first: downstream consumers (Claude Code Stop hook handler)
+    read `systemMessage` and optionally `additionalContext`; they never parse free-form text.

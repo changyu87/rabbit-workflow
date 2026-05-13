@@ -226,7 +226,7 @@ trap 'rm -rf "$TMPROOT8"' EXIT
 echo "session" > "$TMPROOT8/.rabbit-scope-override"
 
 t8_output=""
-t8_output="$(RABBIT_ROOT="$TMPROOT8" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t8_output="$(RABBIT_ROOT="$TMPROOT8" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t8_msg="$(printf '%s' "$t8_output" | extract_sys_msg)"
 
 # The alert must exist and contain red ANSI code \x1b[31m
@@ -251,7 +251,7 @@ trap 'rm -rf "$TMPROOT8" "$TMPROOT9"' EXIT
 touch "$TMPROOT9/.rabbit-scope-override-used"
 
 t9_output=""
-t9_output="$(RABBIT_ROOT="$TMPROOT9" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t9_output="$(RABBIT_ROOT="$TMPROOT9" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t9_msg="$(printf '%s' "$t9_output" | extract_sys_msg)"
 
 t9_has_red="$(MSG="$t9_msg" python3 -c "

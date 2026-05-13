@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.6.0
+version: 3.7.0
 template_version: 2.0.0
 ---
 
@@ -20,7 +20,15 @@ template_version: 2.0.0
       {"path": ".claude/features/rabbit-cage/scripts/generate-claude-md.sh", "stdin": "none", "stdout": "CLAUDE.md content", "exit": "0=ok 1=error"},
       {"path": ".claude/features/rabbit-cage/scripts/generate-skills-dir.sh", "stdin": "none", "stdout": "status messages", "exit": "0=ok/up-to-date 1=drift-detected(check-mode)"}
     ],
-    "schemas": [],
+    "schemas": [
+      {
+        "name": "sync-check-output",
+        "version": "1.0.0",
+        "description": "JSON emitted by sync-check.sh to stdout on Stop. At most one object per invocation (conditional-priority strategy). Fields: systemMessage (always present, ANSI-colored string); additionalContext (optional, string, only on CLAUDE.md drift/first-run paths).",
+        "strategy": "conditional-priority",
+        "priority_order": ["CLAUDE.md-drift-or-first-run", "surface-drift", "scope-guard-off", "plugins-stale"]
+      }
+    ],
     "templates": [],
     "skills": []
   },

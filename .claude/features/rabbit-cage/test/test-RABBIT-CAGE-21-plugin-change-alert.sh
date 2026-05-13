@@ -74,7 +74,7 @@ echo "=== t1: .rabbit-skills-updated exists → [rabbit] notification emitted ==
 TMPROOT="$(make_clean_repo)"
 trap 'rm -rf "$TMPROOT" "$TMPROOT2"' EXIT
 printf 'rabbit-bug\n' > "$TMPROOT/.rabbit-skills-updated"
-t1_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t1_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t1_msg="$(printf '%s' "$t1_output" | extract_sys_msg)"
 if printf '%s' "$t1_msg" | grep -q '\[rabbit\]'; then
     ok "systemMessage contains '[rabbit]'"
@@ -130,7 +130,7 @@ fi
 # t6: Second run of sync-check (marker deleted) → no notification
 # ---------------------------------------------------------------------------
 echo "=== t6: second sync-check run → silent (marker already consumed) ==="
-t6_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t6_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t6_msg="$(printf '%s' "$t6_output" | extract_sys_msg)"
 if printf '%s' "$t6_msg" | grep -q 'Skills updated\|rabbit-bug\|next invocation'; then
     fail_t "notification fired again on second run — must be one-time only"
@@ -144,7 +144,7 @@ fi
 echo "=== t7: .rabbit-skills-updated absent → no notification ==="
 TMPROOT2="$(make_clean_repo)"
 rm -f "$TMPROOT2/.rabbit-skills-updated"
-t7_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t7_output="$(RABBIT_ROOT="$TMPROOT2" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t7_msg="$(printf '%s' "$t7_output" | extract_sys_msg)"
 if printf '%s' "$t7_msg" | grep -q 'Skills updated\|next invocation'; then
     fail_t "notification fired when .rabbit-skills-updated was absent (false positive)"
@@ -167,7 +167,7 @@ fi
 # ---------------------------------------------------------------------------
 echo "=== t9: sync-check.sh emits at most one JSON object (single-JSON invariant) ==="
 printf 'rabbit-cage\n' > "$TMPROOT/.rabbit-skills-updated"
-t9_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t9_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t9_count="$(printf '%s' "$t9_output" | python3 -c "
 import sys, json
 data = sys.stdin.read().strip()
@@ -199,7 +199,7 @@ fi
 # ---------------------------------------------------------------------------
 echo "=== t10: multiple skill names shown comma-separated ==="
 printf 'rabbit-bug\nrabbit-cage\n' > "$TMPROOT/.rabbit-skills-updated"
-t10_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t10_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t10_msg="$(printf '%s' "$t10_output" | extract_sys_msg)"
 if printf '%s' "$t10_msg" | grep -q 'rabbit-bug' && printf '%s' "$t10_msg" | grep -q 'rabbit-cage'; then
     ok "both skill names appear in message"

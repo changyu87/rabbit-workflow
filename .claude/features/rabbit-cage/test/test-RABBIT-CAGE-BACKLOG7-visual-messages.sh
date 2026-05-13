@@ -128,7 +128,7 @@ trap 'rm -rf "$TMPROOT1"' EXIT
 printf 'STALE CONTENT\n' > "$TMPROOT1/CLAUDE.md"
 
 drift_output=""
-drift_output="$(RABBIT_ROOT="$TMPROOT1" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+drift_output="$(RABBIT_ROOT="$TMPROOT1" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 drift_msg="$(echo "$drift_output" | extract_sys_msg)"
 
 assert_visual_msg "sync-check.sh DRIFT case" "$drift_msg"
@@ -161,7 +161,7 @@ FAKEBUILD
 chmod +x "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.sh"
 
 skills_output=""
-skills_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+skills_output="$(RABBIT_ROOT="$TMPROOT2" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 skills_msg="$(echo "$skills_output" | extract_sys_msg)"
 
 assert_visual_msg "sync-check.sh SURFACE DRIFT case" "$skills_msg"
@@ -227,10 +227,10 @@ REFRESHCLAUDEMD
 
 # Seed counter at threshold so refresh fires immediately
 THRESHOLD=5
-printf '%s\n' "$THRESHOLD" > "$TMPROOT4/.rbt-prompt-counter"
+printf '%s\n' "$THRESHOLD" > "$TMPROOT4/.rabbit-prompt-counter"
 
 refresh_output=""
-refresh_output="$(RABBIT_ROOT="$TMPROOT4" RBT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
+refresh_output="$(RABBIT_ROOT="$TMPROOT4" RABBIT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
 refresh_msg="$(echo "$refresh_output" | extract_sys_msg)"
 
 assert_visual_msg "refresh.sh periodic refresh" "$refresh_msg"

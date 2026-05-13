@@ -17,6 +17,19 @@ set -euo pipefail
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
 
+# Migrate legacy rbt- counter files to rabbit- prefix (RABBIT-CAGE-23).
+# Only migrate if the target does not already exist (new name wins).
+if [ -f "$REPO_ROOT/.rbt-prompt-counter" ] && [ ! -f "$REPO_ROOT/.rabbit-prompt-counter" ]; then
+    mv "$REPO_ROOT/.rbt-prompt-counter" "$REPO_ROOT/.rabbit-prompt-counter"
+elif [ -f "$REPO_ROOT/.rbt-prompt-counter" ]; then
+    rm -f "$REPO_ROOT/.rbt-prompt-counter"
+fi
+if [ -f "$REPO_ROOT/.rbt-sync-counter" ] && [ ! -f "$REPO_ROOT/.rabbit-sync-counter" ]; then
+    mv "$REPO_ROOT/.rbt-sync-counter" "$REPO_ROOT/.rabbit-sync-counter"
+elif [ -f "$REPO_ROOT/.rbt-sync-counter" ]; then
+    rm -f "$REPO_ROOT/.rbt-sync-counter"
+fi
+
 # R1 enforcement: if on main or master, create and checkout a session/ branch.
 _current_branch="$(git -C "$REPO_ROOT" branch --show-current 2>/dev/null || true)"
 if [ "$_current_branch" = "main" ] || [ "$_current_branch" = "master" ]; then

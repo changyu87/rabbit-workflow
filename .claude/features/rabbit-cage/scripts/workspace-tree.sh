@@ -2,7 +2,7 @@
 # workspace-tree.sh — print annotated workspace hierarchy
 # Usage:
 #   workspace-tree.sh          # structural view (dirs + key files only)
-#   workspace-tree.sh --full   # all files (excl .swp, .git/*, .rbt-prompt-counter)
+#   workspace-tree.sh --full   # all files (excl .swp, .git/*, .rabbit-prompt-counter)
 set -u
 
 REPO_ROOT="${RABBIT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null)}"
@@ -114,7 +114,7 @@ def annotation_for(name, relpath):
 def should_skip_full(name, dirpath):
     if name.endswith(".swp"):
         return True
-    if name == ".rbt-prompt-counter":
+    if name == ".rabbit-prompt-counter":
         return True
     return False
 
@@ -161,7 +161,7 @@ def build_tree(root):
                     files.append((item, item_path, item_rel))
             else:
                 # Default mode: structural filter
-                if item == ".rbt-prompt-counter":
+                if item == ".rabbit-prompt-counter":
                     continue
                 if is_dir:
                     # Skip .git

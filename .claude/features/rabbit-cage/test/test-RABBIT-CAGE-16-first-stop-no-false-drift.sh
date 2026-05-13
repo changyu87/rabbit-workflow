@@ -72,10 +72,10 @@ else
     fail_t 2 "pre-condition failed: CLAUDE.md already exists in temp tree — test setup error"
 fi
 
-# Run sync-check.sh with RBT_SYNC_EVERY=1 so it fires (no counter skip)
+# Run sync-check.sh with RABBIT_SYNC_EVERY=1 so it fires (no counter skip)
 sync_output=""
 sync_exit=0
-sync_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" \
+sync_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" \
     || sync_exit=$?
 
 # t3: hook exits 0 (it should succeed; creating a missing CLAUDE.md is not an error)

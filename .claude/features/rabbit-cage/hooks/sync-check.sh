@@ -5,8 +5,8 @@
 # the current policy source files. If drift detected: regenerates CLAUDE.md,
 # emits additionalContext with the refreshed policy, and alerts the user.
 #
-# Counter-gated: only checks every RBT_SYNC_EVERY stops (default 1).
-# Override in .claude/settings.local.json: {"env": {"RBT_SYNC_EVERY": "5"}}
+# Counter-gated: only checks every RABBIT_SYNC_EVERY stops (default 1).
+# Override in .claude/settings.local.json: {"env": {"RABBIT_SYNC_EVERY": "5"}}
 #
 # Version: 1.0.0
 # Owner: rabbit-workflow team (rabbit-cage)
@@ -17,8 +17,8 @@ set -euo pipefail
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
 GENERATE_SCRIPT="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
-COUNTER_FILE="$REPO_ROOT/.rbt-sync-counter"
-THRESHOLD="${RBT_SYNC_EVERY:-1}"
+COUNTER_FILE="$REPO_ROOT/.rabbit-sync-counter"
+THRESHOLD="${RABBIT_SYNC_EVERY:-1}"
 
 # Initialize counter
 [ -f "$COUNTER_FILE" ] || echo 0 > "$COUNTER_FILE"
@@ -36,7 +36,7 @@ EXPECTED="$(bash "$GENERATE_SCRIPT" 2>/dev/null)" || exit 0
 # If CLAUDE.md does not exist: first-run scenario — create it with first-run message.
 if [ ! -f "$CLAUDE_MD" ]; then
   printf '%s\n' "$EXPECTED" > "$CLAUDE_MD"
-  echo "${RBT_REFRESH_EVERY:-20}" > "${REPO_ROOT}/.rbt-prompt-counter"
+  echo "${RABBIT_REFRESH_EVERY:-20}" > "${REPO_ROOT}/.rabbit-prompt-counter"
   POLICY_SECTION="$(printf '%s\n' "$EXPECTED" | sed -n '/rabbit-policy-start/,/rabbit-policy-end/p')"
   python3 -c "
 import json, sys
@@ -52,7 +52,7 @@ fi
 # If CLAUDE.md exists but differs from expected: genuine drift — regenerate and alert.
 if [ "$(cat "$CLAUDE_MD")" != "$EXPECTED" ]; then
   printf '%s\n' "$EXPECTED" > "$CLAUDE_MD"
-  echo "${RBT_REFRESH_EVERY:-20}" > "${REPO_ROOT}/.rbt-prompt-counter"
+  echo "${RABBIT_REFRESH_EVERY:-20}" > "${REPO_ROOT}/.rabbit-prompt-counter"
   POLICY_SECTION="$(printf '%s\n' "$EXPECTED" | sed -n '/rabbit-policy-start/,/rabbit-policy-end/p')"
   python3 -c "
 import json, sys

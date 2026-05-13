@@ -80,14 +80,14 @@ if [ -d "$CLAUDE/skills" ]; then
 fi
 
 # Second check: no file under .claude/ (excluding .claude/docs/) should have
-# 'rwf-' as a basename prefix. Internal artifacts use 'rbt-'; user-facing use
-# 'rabbit-'. The legacy 'rwf-' prefix is banned everywhere except historical
+# 'rwf-' as a basename prefix. All artifacts use 'rabbit-' or no prefix;
+# the legacy 'rwf-' prefix is banned everywhere except historical
 # docs (specs/plans that record what was true at the time).
 while IFS= read -r f; do
   base="$(basename "$f")"
   case "$base" in
     rwf-*)
-      flag "file" "$base" "$f" "legacy 'rwf-' prefix banned (use 'rbt-' for internal, 'rabbit-' for user-facing)"
+      flag "file" "$base" "$f" "legacy 'rwf-' prefix banned (use 'rabbit-' or no prefix)"
       ;;
   esac
 done < <(find "$CLAUDE" -mindepth 1 -path "$CLAUDE/docs" -prune -o -type f -print)

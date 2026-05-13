@@ -2,7 +2,7 @@
 # refresh.sh — periodic re-injection of CLAUDE.md @-imports.
 #
 # Wired to UserPromptSubmit. Each prompt: increment counter; if counter
-# reaches RBT_REFRESH_EVERY (default 20), emit JSON additionalContext
+# reaches RABBIT_REFRESH_EVERY (default 20), emit JSON additionalContext
 # containing the full content of every file that CLAUDE.md @-imports,
 # then reset the counter to 0.
 #
@@ -12,8 +12,8 @@ set -euo pipefail
 
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
-COUNTER_FILE="$REPO_ROOT/.rbt-prompt-counter"
-THRESHOLD="${RBT_REFRESH_EVERY:-20}"
+COUNTER_FILE="$REPO_ROOT/.rabbit-prompt-counter"
+THRESHOLD="${RABBIT_REFRESH_EVERY:-20}"
 
 # Initialize counter on first run
 [ -f "$COUNTER_FILE" ] || echo 0 > "$COUNTER_FILE"
