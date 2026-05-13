@@ -17,9 +17,6 @@ set -euo pipefail
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
 
-# Clear plugins-stale marker: plugins are freshly loaded on session start/resume/clear/compact.
-rm -f "$REPO_ROOT/.rabbit-plugins-stale"
-
 # Migrate legacy rbt- counter files to rabbit- prefix (RABBIT-CAGE-23).
 # Only migrate if the target does not already exist (new name wins).
 if [ -f "$REPO_ROOT/.rbt-prompt-counter" ] && [ ! -f "$REPO_ROOT/.rabbit-prompt-counter" ]; then

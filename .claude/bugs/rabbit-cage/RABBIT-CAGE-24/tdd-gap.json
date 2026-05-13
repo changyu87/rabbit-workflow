@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "bug": "RABBIT-CAGE-24",
+  "gaps_identified": [
+    "No test verified the stale marker was self-clearing (tests only checked it existed)",
+    "No test verified the notification named specific skills (only checked [rabbit] present)",
+    "No test verified the correct prescription (next invocation vs /reload-plugins)"
+  ],
+  "gaps_addressed": [
+    "test-RABBIT-CAGE-21 t3: asserts 'next invocation' in message",
+    "test-RABBIT-CAGE-21 t2: asserts skill name in message",
+    "test-RABBIT-CAGE-21 t5/t6: asserts marker deleted and second run silent",
+    "test-RABBIT-CAGE-22 t3/t4: asserts commands/non-skills targets do not trigger marker"
+  ],
+  "reviewed_by": "changyu"
+}

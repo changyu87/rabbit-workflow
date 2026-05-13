@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "bug": "RABBIT-CAGE-24",
+  "triage_date": "2026-05-13",
+  "root_cause": "Official Claude Code docs confirm local .claude/skills/ files have live change detection. /reload-plugins is irrelevant for project-level skills. The stale-marker mechanism was solving a non-problem and prescribing the wrong command.",
+  "fix_approach": "Replace .rabbit-plugins-stale (persistent, wrong prescription) with .rabbit-skills-updated (self-clearing, names skills, correct prescription).",
+  "triaged_by": "changyu"
+}
