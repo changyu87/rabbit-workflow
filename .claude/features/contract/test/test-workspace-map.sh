@@ -326,7 +326,7 @@ git -C "$BT_TMP" config user.name "t"
 git -C "$BT_TMP" commit --allow-empty -m "init" --quiet
 
 mkdir -p "$BT_TMP/.claude/declared_req" "$BT_TMP/.claude/extra_unknown"
-# declared_opt intentionally NOT created
+# declared_opt intentionally NOT created; declared_req_missing intentionally NOT created
 
 cat > "$BT_TMP/.claude/workspace-structure.json" <<'DECL'
 {
@@ -334,8 +334,9 @@ cat > "$BT_TMP/.claude/workspace-structure.json" <<'DECL'
   "owner": "test",
   "root": "rabbit",
   "nodes": [
-    { "name": "declared_req", "required": true,  "description": "required dir", "children": [] },
-    { "name": "declared_opt", "required": false, "description": "optional dir", "children": [] }
+    { "name": "declared_req",         "required": true,  "description": "required dir, present", "children": [] },
+    { "name": "declared_opt",         "required": false, "description": "optional dir, absent",  "children": [] },
+    { "name": "declared_req_missing", "required": true,  "description": "required dir, absent",  "children": [] }
   ]
 }
 DECL
@@ -409,7 +410,7 @@ if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
   BT_S2=$(echo "$BT_AUDIT" | python3 -c "
 import json, sys
 d = json.load(sys.stdin)
-f = next((x for x in d['findings'] if x['type'] == 'missing_required' and 'declared_req' in x['path']), None)
+f = next((x for x in d['findings'] if x['type'] == 'missing_required' and 'declared_req_missing' in x['path']), None)
 print(f['severity'] if f else 'NOT_FOUND')
 " 2>/dev/null)
   if [ "$BT_S2" = "error" ]; then
