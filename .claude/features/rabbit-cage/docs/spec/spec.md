@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 2.1.0
+version: 2.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -223,6 +223,12 @@ If the current branch is already a non-protected branch (anything other than `ma
     drift, override alerts) did NOT emit JSON. The single-JSON-per-invocation
     invariant is preserved: at most one JSON object is emitted per
     sync-check.sh invocation.
+    (f) The multi-message output strategy is **conditional-priority**: only the
+    highest-priority pending condition emits per Stop invocation. Lower-priority
+    conditions are suppressed until the higher-priority condition clears.
+    This strategy is chosen because the Claude Code Stop hook protocol accepts
+    at most one JSON object per invocation; emitting multiple would violate the
+    hook contract. The priority order is declared explicitly in Invariant 37.
 
 ## Scope-Guard Quote Awareness
 
@@ -279,3 +285,35 @@ At session start, `session-init.sh` detects legacy counter files and renames the
 34. `rabbit-refresh.md` command resets `.rabbit-prompt-counter` (not `.rbt-prompt-counter`).
 35. `workspace-tree.sh` excludes `.rabbit-prompt-counter` from full listings (not `.rbt-prompt-counter`).
 36. At session start, `session-init.sh` renames any legacy `.rbt-prompt-counter` to `.rabbit-prompt-counter` and any legacy `.rbt-sync-counter` to `.rabbit-sync-counter`, unless the target already exists.
+
+## sync-check.sh Output Schema
+
+`sync-check.sh` emits at most one JSON object per invocation to stdout. The output schema is:
+
+```json
+{
+  "additionalContext": "<string — optional; only present on first-run or drift-detected paths>",
+  "systemMessage": "<string — ANSI-colored [rabbit] message>"
+}
+```
+
+`systemMessage` is always present when JSON is emitted. `additionalContext` is present only on CLAUDE.md-related paths (first-run and drift-detected). All other conditions emit `systemMessage` only.
+
+### Invariants
+
+37. `sync-check.sh` uses the **conditional-priority** multi-message strategy: exactly one
+    condition emits per Stop invocation; lower-priority conditions are suppressed until
+    the higher-priority condition clears. The explicit priority order (highest to lowest):
+    1. CLAUDE.md drift or first-run (always exits immediately after emitting)
+    2. Surface drift (copy-file targets out of sync with sources)
+    3. Scope-guard-off (session override active or one-time override consumed)
+    4. Plugins-stale (`.rabbit-plugins-stale` marker present)
+    Conditions at the same priority level do not coexist in the current implementation;
+    each has a distinct marker or detection path.
+
+38. Every JSON object emitted by `sync-check.sh` conforms to the output schema above:
+    `{"systemMessage": "<ANSI-colored string>"}` for conditions 2–4; 
+    `{"additionalContext": "<string>", "systemMessage": "<ANSI-colored string>"}` for
+    condition 1 (CLAUDE.md drift/first-run). No other top-level keys are emitted.
+    This schema is machine-first: downstream consumers (Claude Code Stop hook handler)
+    read `systemMessage` and optionally `additionalContext`; they never parse free-form text.
