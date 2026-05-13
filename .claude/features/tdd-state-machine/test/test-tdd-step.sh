@@ -274,11 +274,11 @@ t_ref1() {
 }
 
 # t_ref2: enforcement check block appears only once (no copy-paste duplication)
-# Count occurrences of a distinctive enforcement check line that should only appear
-# in the function body, not duplicated at call sites.
+# Count bash invocations of the non-interactive check — should appear exactly once
+# (in the function body), not duplicated at each former call site.
 t_ref2() {
   local count
-  count=$(grep -c 'check-tests-non-interactive.sh' "$TDD_STEP" 2>/dev/null || echo 0)
+  count=$(grep -c 'bash.*check-tests-non-interactive.sh' "$TDD_STEP" 2>/dev/null || echo 0)
   [ "$count" -eq 1 ] \
     && ok "t_ref2: enforcement check block appears exactly once (count=$count)" \
     || ko "t_ref2: enforcement check block appears $count times (expected 1 — deduplication required)"

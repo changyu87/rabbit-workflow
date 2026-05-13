@@ -109,6 +109,49 @@ sync_deployed_skills() {
   done
 }
 
+# Run all enforcement checks for a feature directory.
+# $1 = feature_dir  $2 = repo_root
+_run_enforcement_checks() {
+  local dir="$1" REPO_ROOT="$2"
+  local ENFORCEMENT_DIR="$REPO_ROOT/.claude/features/contract/scripts/enforcement"
+  if [ -d "$ENFORCEMENT_DIR" ]; then
+    # R3: tests must be non-interactive
+    if [ -f "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" ]; then
+      bash "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" "$dir" >/dev/null 2>&1 || {
+        _rbt_alert "WARNING: R3 check failed for $dir — tests may have interactive constructs"
+      }
+    fi
+    # R6: sentinel check on any dispatch scripts in feature
+    if [ -f "$ENFORCEMENT_DIR/check-sentinel.sh" ]; then
+      bash "$ENFORCEMENT_DIR/check-sentinel.sh" "$dir" >/dev/null 2>&1 || true
+    fi
+    # Naming convention check
+    if [ -f "$ENFORCEMENT_DIR/check-naming.sh" ]; then
+      bash "$ENFORCEMENT_DIR/check-naming.sh" "$dir" >/dev/null 2>&1 || {
+        _rbt_alert "WARNING: naming check failed for $dir"
+      }
+    fi
+    # Check 4: imports and feature paths resolve
+    if [ -f "$ENFORCEMENT_DIR/check-imports-resolve.sh" ]; then
+      bash "$ENFORCEMENT_DIR/check-imports-resolve.sh" "$dir" >/dev/null 2>&1 || {
+        _rbt_alert "WARNING: R-import-resolve check failed for $dir"
+      }
+    fi
+    # Check 5: symlinks under .claude/ resolve
+    if [ -f "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" ]; then
+      bash "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" "$REPO_ROOT" >/dev/null 2>&1 || {
+        _rbt_alert "WARNING: symlink-resolve check failed"
+      }
+    fi
+    # Check 6: template-schema-producer consistency
+    if [ -f "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" ]; then
+      bash "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" >/dev/null 2>&1 || {
+        _rbt_alert "WARNING: template-schema-producer consistency check failed"
+      }
+    fi
+  fi
+}
+
 cmd="${1:-}"; shift || true
 
 case "$cmd" in
@@ -172,44 +215,7 @@ case "$cmd" in
       write_state "$dir" "$new"
       # Post-transition hooks for test-green.
       if [ "$new" = "test-green" ]; then
-        # Run enforcement checks (contract/scripts/enforcement/).
-        ENFORCEMENT_DIR="$REPO_ROOT/.claude/features/contract/scripts/enforcement"
-        if [ -d "$ENFORCEMENT_DIR" ]; then
-          # R3: tests must be non-interactive
-          if [ -f "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" "$dir" >/dev/null 2>&1 || {
-              _rbt_alert "WARNING: R3 check failed for $dir — tests may have interactive constructs"
-            }
-          fi
-          # R6: sentinel check on any dispatch scripts in feature
-          if [ -f "$ENFORCEMENT_DIR/check-sentinel.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-sentinel.sh" "$dir" >/dev/null 2>&1 || true
-          fi
-          # Naming convention check
-          if [ -f "$ENFORCEMENT_DIR/check-naming.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-naming.sh" "$dir" >/dev/null 2>&1 || {
-              _rbt_alert "WARNING: naming check failed for $dir"
-            }
-          fi
-          # Check 4: imports and feature paths resolve
-          if [ -f "$ENFORCEMENT_DIR/check-imports-resolve.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-imports-resolve.sh" "$dir" >/dev/null 2>&1 || {
-              _rbt_alert "WARNING: R-import-resolve check failed for $dir"
-            }
-          fi
-          # Check 5: symlinks under .claude/ resolve
-          if [ -f "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" "$REPO_ROOT" >/dev/null 2>&1 || {
-              _rbt_alert "WARNING: symlink-resolve check failed"
-            }
-          fi
-          # Check 6: template-schema-producer consistency
-          if [ -f "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" >/dev/null 2>&1 || {
-              _rbt_alert "WARNING: template-schema-producer consistency check failed"
-            }
-          fi
-        fi
+        _run_enforcement_checks "$dir" "$REPO_ROOT"
         FEATURES_DIR="$(dirname "$dir")"
         REBUILD_SH="$REPO_ROOT/.claude/features/contract/scripts/rebuild-registry.sh"
         if [ -f "$REBUILD_SH" ]; then
@@ -236,44 +242,7 @@ case "$cmd" in
       write_state "$dir" "$new"
       # Post-transition hooks for test-green.
       if [ "$new" = "test-green" ]; then
-        # Run enforcement checks (contract/scripts/enforcement/).
-        ENFORCEMENT_DIR="$REPO_ROOT/.claude/features/contract/scripts/enforcement"
-        if [ -d "$ENFORCEMENT_DIR" ]; then
-          # R3: tests must be non-interactive
-          if [ -f "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-tests-non-interactive.sh" "$dir" >/dev/null 2>&1 || {
-              _rbt_alert "WARNING: R3 check failed for $dir — tests may have interactive constructs"
-            }
-          fi
-          # R6: sentinel check on any dispatch scripts in feature
-          if [ -f "$ENFORCEMENT_DIR/check-sentinel.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-sentinel.sh" "$dir" >/dev/null 2>&1 || true
-          fi
-          # Naming convention check
-          if [ -f "$ENFORCEMENT_DIR/check-naming.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-naming.sh" "$dir" >/dev/null 2>&1 || {
-              _rbt_alert "WARNING: naming check failed for $dir"
-            }
-          fi
-          # Check 4: imports and feature paths resolve
-          if [ -f "$ENFORCEMENT_DIR/check-imports-resolve.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-imports-resolve.sh" "$dir" >/dev/null 2>&1 || {
-              _rbt_alert "WARNING: R-import-resolve check failed for $dir"
-            }
-          fi
-          # Check 5: symlinks under .claude/ resolve
-          if [ -f "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-symlinks-resolve.sh" "$REPO_ROOT" >/dev/null 2>&1 || {
-              _rbt_alert "WARNING: symlink-resolve check failed"
-            }
-          fi
-          # Check 6: template-schema-producer consistency
-          if [ -f "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" ]; then
-            bash "$ENFORCEMENT_DIR/check-template-schema-producer-consistency.sh" >/dev/null 2>&1 || {
-              _rbt_alert "WARNING: template-schema-producer consistency check failed"
-            }
-          fi
-        fi
+        _run_enforcement_checks "$dir" "$REPO_ROOT"
         FEATURES_DIR="$(dirname "$dir")"
         REBUILD_SH="$REPO_ROOT/.claude/features/contract/scripts/rebuild-registry.sh"
         if [ -f "$REBUILD_SH" ]; then
