@@ -193,6 +193,36 @@ else
   echo "ok (j): deployed SKILL.md matches source"
 fi
 
+# (k) workspace-structure.json schema exists and is valid JSON
+WS_SCHEMA="$FEATURE_DIR/schemas/workspace-structure.json"
+if [ ! -f "$WS_SCHEMA" ]; then
+  echo "FAIL (k): workspace-structure.json schema missing: $WS_SCHEMA" >&2
+  FAIL=1
+elif ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$WS_SCHEMA" 2>/dev/null; then
+  echo "FAIL (k): workspace-structure.json schema is not valid JSON" >&2
+  FAIL=1
+else
+  echo "ok (k): workspace-structure.json schema exists and is valid JSON"
+fi
+
+# (l) workspace-structure.json schema has required top-level properties
+if [ -f "$WS_SCHEMA" ]; then
+  for field in schema_version owner root nodes; do
+    HAS=$(python3 -c "
+import json, sys
+d = json.load(open(sys.argv[1]))
+props = d.get('properties', {})
+print('yes' if '$field' in props else 'no')
+" "$WS_SCHEMA" 2>/dev/null)
+    if [ "$HAS" != "yes" ]; then
+      echo "FAIL (l): workspace-structure.json schema missing property: $field" >&2
+      FAIL=1
+    else
+      echo "ok (l): schema has property: $field"
+    fi
+  done
+fi
+
 if [ "$FAIL" -ne 0 ]; then
   echo "test-workspace-map: FAIL" >&2
   exit 1
