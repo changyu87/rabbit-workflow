@@ -1,20 +1,27 @@
 {
   "name": "RABBIT-CAGE-21",
   "title": "sync-check.sh silent on SKILL.md changes: no [rabbit] alert when skills are modified during a session",
-  "status": "open",
+  "status": "closed",
   "severity": "high",
   "description": "When a SKILL.md file changes during a session (e.g. via TDD subagent commit), sync-check.sh emits no [rabbit] alert. The surface-drift check (test-generated-surface.sh) only detects source vs deployed-copy mismatch. When TDD commits both the source and deployed copy together, drift is zero and the check passes silently. There is no mechanism that compares current SKILL.md content against the session-start git baseline, so the human never learns which skills changed.",
   "related_feature": "rabbit-cage",
   "filed": "2026-05-13T06:12:35Z",
   "filed_by": "changyu",
-  "closed": null,
-  "closed_by": null,
+  "closed": "2026-05-13T06:24:49Z",
+  "closed_by": "cyxu",
   "history": [
     {
       "ts": "2026-05-13T06:12:35Z",
       "actor": "changyu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-13T06:24:49Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "TDD cycle complete: sync-check.sh now detects session plugin changes and alerts user to /reload-plugins",
+      "fix_commits": "7910192510db7ae8b97962473481069800e33ae9"
     }
   ]
 }
