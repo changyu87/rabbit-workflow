@@ -136,7 +136,7 @@ if [ "$_json_emitted" -eq 0 ]; then
       python3 -c "
 import json, os
 file_list = os.environ.get('_FILE_LIST', '')
-msg = '\x1b[32m[rabbit] Plugins updated this session \xe2\x80\x94 run /reload-plugins to load the latest skills/commands into Claude.\x1b[0m'
+msg = '\x1b[32m[rabbit] Plugins updated this session — run /reload-plugins to load the latest skills/commands into Claude.\x1b[0m'
 if file_list:
     msg += '\nChanged files:\n' + file_list
 print(json.dumps({'systemMessage': msg}))
