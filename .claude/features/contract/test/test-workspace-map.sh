@@ -316,6 +316,171 @@ print('yes' if has_findings(d) else 'no')
   fi
 fi
 
+# Behavioral tests using --repo-root with a controlled temp directory.
+BT_TMP=$(mktemp -d)
+trap 'rm -rf "$BT_TMP"' EXIT
+
+git -C "$BT_TMP" init --quiet
+git -C "$BT_TMP" config user.email "test@rabbit"
+git -C "$BT_TMP" config user.name "t"
+git -C "$BT_TMP" commit --allow-empty -m "init" --quiet
+
+mkdir -p "$BT_TMP/.claude/declared_req" "$BT_TMP/.claude/extra_unknown"
+# declared_opt intentionally NOT created
+
+cat > "$BT_TMP/.claude/workspace-structure.json" <<'DECL'
+{
+  "schema_version": "1.0.0",
+  "owner": "test",
+  "root": "rabbit",
+  "nodes": [
+    { "name": "declared_req", "required": true,  "description": "required dir", "children": [] },
+    { "name": "declared_opt", "required": false, "description": "optional dir", "children": [] }
+  ]
+}
+DECL
+
+# (r) show mode JSON: schemaVersion 2.0.0, declared_req present, declared_opt missing, extra_unknown annotated
+if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
+  BT_OUT=$(bash "$SCRIPT" --repo-root "$BT_TMP" 2>/dev/null)
+  BT_VER=$(echo "$BT_OUT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('schemaVersion',''))" 2>/dev/null)
+  if [ "$BT_VER" = "2.0.0" ]; then
+    echo "ok (r1): show mode schemaVersion is 2.0.0"
+  else
+    echo "FAIL (r1): show mode schemaVersion is '$BT_VER' (expected 2.0.0)" >&2
+    FAIL=1
+  fi
+
+  BT_REQ=$(echo "$BT_OUT" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+nodes = d['roots'][0]['nodes']
+n = next((x for x in nodes if x['name'] == 'declared_req'), None)
+print(n['status'] if n else 'NOT_FOUND')
+" 2>/dev/null)
+  if [ "$BT_REQ" = "present" ]; then
+    echo "ok (r2): declared_req status is 'present'"
+  else
+    echo "FAIL (r2): declared_req status is '$BT_REQ' (expected 'present')" >&2
+    FAIL=1
+  fi
+
+  BT_OPT=$(echo "$BT_OUT" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+nodes = d['roots'][0]['nodes']
+n = next((x for x in nodes if x['name'] == 'declared_opt'), None)
+print(n['status'] if n else 'NOT_FOUND')
+" 2>/dev/null)
+  if [ "$BT_OPT" = "missing" ]; then
+    echo "ok (r3): declared_opt status is 'missing'"
+  else
+    echo "FAIL (r3): declared_opt status is '$BT_OPT' (expected 'missing')" >&2
+    FAIL=1
+  fi
+
+  BT_UNK=$(echo "$BT_OUT" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+nodes = d['roots'][0]['nodes']
+n = next((x for x in nodes if x['name'] == 'extra_unknown'), None)
+print('{},{}'.format(n['status'] if n else 'NOT_FOUND', str(n['required']) if n else 'X'))
+" 2>/dev/null)
+  if [ "$BT_UNK" = "unknown,None" ]; then
+    echo "ok (r4): extra_unknown status is 'unknown' with required null"
+  else
+    echo "FAIL (r4): extra_unknown is '$BT_UNK' (expected 'unknown,None')" >&2
+    FAIL=1
+  fi
+fi
+
+# (s) audit mode: missing required→error, unknown→warn, missing optional→NO finding
+if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
+  BT_AUDIT=$(bash "$SCRIPT" --repo-root "$BT_TMP" --audit 2>/dev/null)
+
+  HAS_FINDINGS=$(echo "$BT_AUDIT" | python3 -c "import json,sys; d=json.load(sys.stdin); print('yes' if 'findings' in d else 'no')" 2>/dev/null)
+  if [ "$HAS_FINDINGS" = "yes" ]; then
+    echo "ok (s1): audit output has findings array"
+  else
+    echo "FAIL (s1): audit output missing findings array" >&2
+    FAIL=1
+  fi
+
+  BT_S2=$(echo "$BT_AUDIT" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+f = next((x for x in d['findings'] if x['type'] == 'missing_required' and 'declared_req' in x['path']), None)
+print(f['severity'] if f else 'NOT_FOUND')
+" 2>/dev/null)
+  if [ "$BT_S2" = "error" ]; then
+    echo "ok (s2): missing required node emits severity 'error'"
+  else
+    echo "FAIL (s2): missing_required finding not found or wrong severity (got: '$BT_S2')" >&2
+    FAIL=1
+  fi
+
+  BT_S3=$(echo "$BT_AUDIT" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+f = next((x for x in d['findings'] if x['type'] == 'unknown' and 'extra_unknown' in x['path']), None)
+print(f['severity'] if f else 'NOT_FOUND')
+" 2>/dev/null)
+  if [ "$BT_S3" = "warn" ]; then
+    echo "ok (s3): unknown node emits severity 'warn'"
+  else
+    echo "FAIL (s3): unknown finding not found or wrong severity (got: '$BT_S3')" >&2
+    FAIL=1
+  fi
+
+  BT_S4=$(echo "$BT_AUDIT" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+f = next((x for x in d['findings'] if 'declared_opt' in x['path']), None)
+print('found' if f else 'not_found')
+" 2>/dev/null)
+  if [ "$BT_S4" = "not_found" ]; then
+    echo "ok (s4): missing optional node emits no audit finding"
+  else
+    echo "FAIL (s4): missing optional node unexpectedly emitted a finding" >&2
+    FAIL=1
+  fi
+fi
+
+# (t) user project without declaration → declaration "missing"
+if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
+  mkdir -p "$BT_TMP/my-project"
+  BT_OUT2=$(bash "$SCRIPT" --repo-root "$BT_TMP" 2>/dev/null)
+  BT_PROJ_DECL=$(echo "$BT_OUT2" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+proj = next((r for r in d['roots'] if r['root'] == 'my-project'), None)
+print(proj['declaration'] if proj else 'NOT_FOUND')
+" 2>/dev/null)
+  if [ "$BT_PROJ_DECL" = "missing" ]; then
+    echo "ok (t): user project without declaration has declaration 'missing'"
+  else
+    echo "FAIL (t): user project declaration status is '$BT_PROJ_DECL' (expected 'missing')" >&2
+    FAIL=1
+  fi
+fi
+
+# (u) audit emits missing_declaration warn for user project without workspace-structure.json
+if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
+  BT_AUDIT2=$(bash "$SCRIPT" --repo-root "$BT_TMP" --audit 2>/dev/null)
+  BT_U=$(echo "$BT_AUDIT2" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+f = next((x for x in d['findings'] if x['type'] == 'missing_declaration' and 'my-project' in x['path']), None)
+print(f['severity'] if f else 'NOT_FOUND')
+" 2>/dev/null)
+  if [ "$BT_U" = "warn" ]; then
+    echo "ok (u): missing user project declaration emits 'warn' finding"
+  else
+    echo "FAIL (u): missing_declaration finding not found or wrong severity (got: '$BT_U')" >&2
+    FAIL=1
+  fi
+fi
+
 if [ "$FAIL" -ne 0 ]; then
   echo "test-workspace-map: FAIL" >&2
   exit 1
