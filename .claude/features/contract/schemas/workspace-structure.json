@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "schemaVersion": "1.0.0",
+  "title": "workspace-structure",
+  "description": "Schema for workspace-structure.json declaration files. Each project root carries one to declare its expected directory hierarchy.",
+  "owner": "rabbit-workflow team (contract feature)",
+  "deprecation_criterion": "when a native Claude Code workspace registry supersedes this schema",
+  "type": "object",
+  "required": ["schema_version", "owner", "root", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semver of the workspace-structure schema this declaration conforms to."
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Owner of this declaration."
+    },
+    "root": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Tag identifying this root (e.g. 'rabbit', 'my-project')."
+    },
+    "nodes": {
+      "type": "array",
+      "description": "Top-level declared directory nodes.",
+      "items": { "$ref": "#/definitions/node" }
+    }
+  },
+  "definitions": {
+    "node": {
+      "type": "object",
+      "required": ["name", "required", "description", "children"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean" },
+        "description": { "type": "string" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/node" }
+        }
+      }
+    }
+  }
+}
