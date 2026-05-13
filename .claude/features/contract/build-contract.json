@@ -1,0 +1,112 @@
+{
+  "schema_version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "deprecation_criterion": "when Claude Code natively manages workspace artifact generation",
+  "updated": "2026-05-12",
+  "targets": [
+    {
+      "name": "CLAUDE.md",
+      "type": "generate-claude-md",
+      "destination": "CLAUDE.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "hooks/refresh.sh",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-cage/hooks/refresh.sh",
+      "destination": ".claude/hooks/refresh.sh",
+      "check_on_stop": true
+    },
+    {
+      "name": "hooks/scope-guard.sh",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-cage/hooks/scope-guard.sh",
+      "destination": ".claude/hooks/scope-guard.sh",
+      "check_on_stop": true
+    },
+    {
+      "name": "hooks/session-init.sh",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-cage/hooks/session-init.sh",
+      "destination": ".claude/hooks/session-init.sh",
+      "check_on_stop": true
+    },
+    {
+      "name": "hooks/sync-check.sh",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-cage/hooks/sync-check.sh",
+      "destination": ".claude/hooks/sync-check.sh",
+      "check_on_stop": true
+    },
+    {
+      "name": "commands/rabbit-refresh.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-cage/commands/rabbit-refresh.md",
+      "destination": ".claude/commands/rabbit-refresh.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "commands/rabbit-config.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-cage/commands/rabbit-config.md",
+      "destination": ".claude/commands/rabbit-config.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "commands/rabbit-project.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-cage/commands/rabbit-project.md",
+      "destination": ".claude/commands/rabbit-project.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "settings.json",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-cage/settings.json",
+      "destination": ".claude/settings.json",
+      "check_on_stop": true
+    },
+    {
+      "name": "skills/rabbit-backlog/SKILL.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-backlog/skills/rabbit-backlog/SKILL.md",
+      "destination": ".claude/skills/rabbit-backlog/SKILL.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "skills/rabbit-bug/SKILL.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-bug/skills/rabbit-bug/SKILL.md",
+      "destination": ".claude/skills/rabbit-bug/SKILL.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "skills/rabbit-feature-touch/SKILL.md",
+      "type": "copy-file",
+      "source": ".claude/features/tdd-state-machine/skills/rabbit-feature-touch/SKILL.md",
+      "destination": ".claude/skills/rabbit-feature-touch/SKILL.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "skills/rabbit-workspace-map/SKILL.md",
+      "type": "copy-file",
+      "source": ".claude/features/contract/skills/rabbit-workspace-map/SKILL.md",
+      "destination": ".claude/skills/rabbit-workspace-map/SKILL.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "README.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-cage/README.md",
+      "destination": "README.md",
+      "check_on_stop": false
+    },
+    {
+      "name": "install.sh",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-cage/install.sh",
+      "destination": "install.sh",
+      "check_on_stop": false
+    }
+  ]
+}

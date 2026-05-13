@@ -50,7 +50,6 @@ check_file "schemas/project-map.json.schema.json"
 check_exec "scripts/policy-block.sh"
 check_exec "scripts/dispatch-feature-edit.sh"
 check_exec "scripts/rebuild-registry.sh"
-check_exec "scripts/relink.sh"
 check_exec "scripts/render-template.sh"
 check_exec "scripts/check-maps-consistent.sh"
 check_exec "scripts/rabbit-triage.sh"
@@ -74,7 +73,7 @@ check_file "test/test-templates-have-version.sh"
 check_file "test/test-schemas-valid-json.sh"
 check_file "test/test-rabbit-triage.sh"
 check_file "test/test-dispatch.sh"
-check_file "test/test-relink.sh"
+check_file "test/test-build-contract.sh"
 
 # dispatch-spec-update artifacts
 [ -f "$FEATURE_DIR/scripts/dispatch-spec-update.sh" ] && \

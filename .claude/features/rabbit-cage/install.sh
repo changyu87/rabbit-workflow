@@ -59,17 +59,11 @@ else
 fi
 
 cp -r "$SRC/.claude" "$TARGET/.claude"
-bash "$TARGET/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" --write "$TARGET"
+bash "$TARGET/.claude/features/rabbit-cage/scripts/build.sh" "$TARGET"
 
 # Always strip runtime-only and OS-level artifacts.
 rm -f "$TARGET/.claude/settings.local.json"
 rm -f "$TARGET/.claude/".nfs*
-
-# Wire symlinks declared in each feature's surface block.
-bash "$TARGET/.claude/features/contract/scripts/relink.sh" "$TARGET/.claude/features" "$TARGET"
-
-# Generate .claude/skills/ from feature surface declarations.
-bash "$TARGET/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh" "$TARGET"
 
 if [[ $ALL -eq 1 ]]; then
     # Bring extra inspection material along.

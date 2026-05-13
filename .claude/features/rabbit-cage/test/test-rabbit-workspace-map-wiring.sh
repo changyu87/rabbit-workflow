@@ -37,15 +37,15 @@ else
     fail_t 1 "commands/rabbit-workspace.md still exists — must be removed (workspace hierarchy owned by rabbit-workspace-map)"
 fi
 
-# t2: contract/feature.json skills list must contain "rabbit-workspace-map"
-# Ownership of the rabbit-workspace-map skill moved from rabbit-cage to contract.
-# generate-skills-dir.sh aggregates skills from all features' feature.json surface.skills lists.
+# t2: contract/feature.json surface.skills must be [] (skills retired from surface.skills)
+# The surface.skills mechanism was retired — skills are now declared as explicit copy-file
+# entries in build-contract.json. contract/feature.json surface.skills is intentionally [].
 CONTRACT_FEATURE_JSON="$REPO_ROOT/.claude/features/contract/feature.json"
 SKILLS_LIST="$(python3 -c "import json; d=json.load(open('$CONTRACT_FEATURE_JSON')); print(json.dumps(d.get('surface',{}).get('skills',[])))" 2>/dev/null)"
-if echo "$SKILLS_LIST" | python3 -c "import json,sys; s=json.load(sys.stdin); sys.exit(0 if 'rabbit-workspace-map' in s else 1)" 2>/dev/null; then
-    ok 2 "contract/feature.json skills list contains 'rabbit-workspace-map'"
+if echo "$SKILLS_LIST" | python3 -c "import json,sys; s=json.load(sys.stdin); sys.exit(0 if s == [] else 1)" 2>/dev/null; then
+    ok 2 "contract/feature.json surface.skills is [] (skills retired from surface.skills mechanism)"
 else
-    fail_t 2 "contract/feature.json skills list does NOT contain 'rabbit-workspace-map' (current: $SKILLS_LIST)"
+    fail_t 2 "contract/feature.json surface.skills is not [] (expected retirement; current: $SKILLS_LIST)"
 fi
 
 # t3: feature.json commands list must NOT contain rabbit-workspace

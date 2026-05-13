@@ -7,9 +7,7 @@
   "surface": {
     "hooks": [],
     "commands": [],
-    "skills": [
-      "rabbit-workspace-map"
-    ]
+    "skills": []
   },
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-12"

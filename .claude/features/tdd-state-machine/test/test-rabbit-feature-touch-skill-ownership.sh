@@ -31,19 +31,19 @@ t2() {
   fi
 }
 
-# t3: tdd-state-machine/feature.json surface.skills includes "rabbit-feature-touch"
+# t3: tdd-state-machine/feature.json surface.skills is [] (retired; skills managed via build-contract.json)
 t3() {
   local feature_json="$FEATURES_DIR/tdd-state-machine/feature.json"
   if ! [ -f "$feature_json" ]; then
     ko "t3: $feature_json not found"
     return
   fi
-  local found
-  found=$(jq -r '.surface.skills // [] | map(select(. == "rabbit-feature-touch")) | length' "$feature_json" 2>/dev/null)
-  if [ "$found" = "1" ]; then
-    ok "t3: tdd-state-machine/feature.json surface.skills includes rabbit-feature-touch"
+  local skills
+  skills=$(jq -c '.surface.skills // []' "$feature_json" 2>/dev/null)
+  if [ "$skills" = "[]" ]; then
+    ok "t3: tdd-state-machine/feature.json surface.skills is [] (retired)"
   else
-    ko "t3: tdd-state-machine/feature.json surface.skills does NOT include rabbit-feature-touch (found=$found)"
+    ko "t3: tdd-state-machine/feature.json surface.skills is not [] — got: $skills (must be empty per invariant 9)"
   fi
 }
 

@@ -25,6 +25,10 @@ worktree.
 - Backlog items (rabbit-backlog)
 - Feature scaffolding (rabbit-cage)
 
+## Invariants
+
+- surface.skills in feature.json MUST be []. Skills are managed via explicit copy-file entries in build-contract.json; the surface.skills declaration is retired.
+
 ## Tests
 
 test/run.sh runs 9 tests. Transitions via tdd-step.sh.

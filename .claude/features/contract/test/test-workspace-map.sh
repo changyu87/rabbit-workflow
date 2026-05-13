@@ -115,22 +115,21 @@ else
   echo "ok (f): rabbit-workspace-map/SKILL.md exists at source location"
 fi
 
-# (g) feature.json surface.skills contains 'rabbit-workspace-map'
+# (g) feature.json surface.skills is [] (surface.skills retired — skill now declared in build-contract.json)
 if [ ! -f "$FEATURE_JSON" ]; then
   echo "FAIL (g): feature.json missing: $FEATURE_JSON" >&2
   FAIL=1
 else
-  HAS_SKILL=$(python3 -c "
+  SKILLS=$(python3 -c "
 import json, sys
 d = json.load(open(sys.argv[1]))
-skills = d.get('surface', {}).get('skills', [])
-print('yes' if 'rabbit-workspace-map' in skills else 'no')
+print(json.dumps(d.get('surface', {}).get('skills', [])))
 " "$FEATURE_JSON" 2>/dev/null)
-  if [ "$HAS_SKILL" != "yes" ]; then
-    echo "FAIL (g): feature.json surface.skills does not contain 'rabbit-workspace-map'" >&2
+  if [ "$SKILLS" != "[]" ]; then
+    echo "FAIL (g): feature.json surface.skills is not [] (was: $SKILLS)" >&2
     FAIL=1
   else
-    echo "ok (g): feature.json declares rabbit-workspace-map skill"
+    echo "ok (g): feature.json surface.skills is [] (retired)"
   fi
 fi
 

@@ -29,7 +29,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 
 1. `.claude/commands` is a symlink pointing to `.claude/features/rabbit-cage/commands`.
 2. `.claude/hooks` is a symlink pointing to `.claude/features/rabbit-cage/hooks`.
-3. `.claude/skills` is a real directory (not a symlink) populated by `generate-skills-dir.sh` via recursive copy (`cp -rp`) of each feature's skill source directory; the directory and its contents are committed to the repo (not gitignored).
+3. `.claude/skills` is a real directory (not a symlink) populated by `build.sh` (via `build-contract.json` copy-file targets) from each feature's skill source directory; the directory and its contents are committed to the repo (not gitignored).
 4. `.claude/settings.json` is a symlink pointing to `.claude/features/rabbit-cage/settings.json`.
 5. `.claude/policy` is a symlink pointing to `.claude/features/policy`.
 6. `.claude/contract` is a symlink pointing to `.claude/features/contract`.
@@ -37,6 +37,12 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 8. `README.md` at repo root is a symlink pointing to `.claude/features/rabbit-cage/README.md`.
 9. `install.sh` at repo root is a symlink pointing to `.claude/features/rabbit-cage/install.sh`.
 10. `CLAUDE.md` contains `@`-imports sourcing files from `.claude/policy/`.
+25. `.claude/features/rabbit-cage/scripts/build.sh` exists and is executable; reads `build-contract.json` and builds all declared targets.
+26. `.claude/features/rabbit-cage/test/test-generated-surface.sh` exists and exits 0 on a clean workspace (all check_on_stop copy-file targets match their sources).
+27. `generate-skills-dir.sh` does NOT exist in `.claude/features/rabbit-cage/scripts/` (deleted; superseded by build.sh + build-contract.json).
+28. `test-symlinks.sh` does NOT exist in `.claude/features/rabbit-cage/test/` (deleted; superseded by test-generated-surface.sh).
+29. `surface.hooks`, `surface.commands`, and `surface.settings` in `feature.json` are all `[]` (empty arrays); hooks, commands, and settings are now managed via build-contract.json copy-file targets.
+30. `build.sh` passes `RABBIT_ROOT=<repo_root>` as an environment variable when invoking `generate-claude-md.sh` for `generate-claude-md` targets, so that installs into non-git directories (e.g., temp dirs during `install.sh`) succeed without `git rev-parse` errors.
 
 ## /rabbit-config Command
 

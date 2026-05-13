@@ -146,22 +146,30 @@ drift_output="$(RABBIT_ROOT="$TMPROOT1" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/d
 drift_msg="$(printf '%s' "$drift_output" | extract_sys_msg)"
 assert_red_msg "sync-check.sh DRIFT case" "$drift_msg"
 
-# ─── Test 3: sync-check.sh SKILLS UPDATE case ────────────────────────────
+# ─── Test 3: sync-check.sh SURFACE DRIFT case ────────────────────────────
 TMPROOT2="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1" "$TMPROOT2"' EXIT
 correct_claude="$(RABBIT_ROOT="$TMPROOT2" bash "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
 printf '%s\n' "$correct_claude" > "$TMPROOT2/CLAUDE.md"
 
-cat > "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh" <<'FAKESKILLS'
+# Install fake test-generated-surface.sh (exits 1 = surface drift detected)
+mkdir -p "$TMPROOT2/.claude/features/rabbit-cage/test"
+cat > "$TMPROOT2/.claude/features/rabbit-cage/test/test-generated-surface.sh" <<'FAKESURFACE'
 #!/usr/bin/env bash
-if [[ "$*" == *"--check"* ]]; then exit 1; fi
+exit 1
+FAKESURFACE
+chmod +x "$TMPROOT2/.claude/features/rabbit-cage/test/test-generated-surface.sh"
+
+# Install fake build.sh (exits 0 = build succeeds)
+cat > "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.sh" <<'FAKEBUILD'
+#!/usr/bin/env bash
 exit 0
-FAKESKILLS
-chmod +x "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
+FAKEBUILD
+chmod +x "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.sh"
 
 skills_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 skills_msg="$(printf '%s' "$skills_output" | extract_sys_msg)"
-assert_green_msg "sync-check.sh SKILLS UPDATE case" "$skills_msg"
+assert_green_msg "sync-check.sh SURFACE DRIFT case" "$skills_msg"
 
 # ─── Test 4: session-init.sh inline-section case ─────────────────────────
 TMPROOT3="$(build_tmproot)"

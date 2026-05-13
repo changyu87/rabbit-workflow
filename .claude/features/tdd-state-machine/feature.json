@@ -7,9 +7,7 @@
   "surface": {
     "hooks": [],
     "commands": [],
-    "skills": [
-      "rabbit-feature-touch"
-    ]
+    "skills": []
   },
   "deprecation_criterion": "When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.",
   "updated": "2026-05-12"

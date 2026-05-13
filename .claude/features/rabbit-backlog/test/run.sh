@@ -33,6 +33,7 @@ run_suite "$TEST_DIR/test-backlog-skill.sh"
 run_suite "$TEST_DIR/test-backlog-state-machine.sh"
 run_suite "$TEST_DIR/test-workspace-map-invocation.sh"
 run_suite "$TEST_DIR/test-list-backlog.sh"
+run_suite "$TEST_DIR/test-surface-skills-empty.sh"
 
 echo "=== Summary ==="
 if [ "${#errors[@]}" -gt 0 ]; then

@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "build-contract",
+  "type": "object",
+  "required": ["schema_version", "owner", "targets"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "owner": {"type": "string"},
+    "deprecation_criterion": {"type": "string"},
+    "updated": {"type": "string"},
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "destination", "check_on_stop"],
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string", "enum": ["copy-file", "generate-claude-md"]},
+          "source": {"type": "string"},
+          "destination": {"type": "string"},
+          "check_on_stop": {"type": "boolean"}
+        },
+        "if": {"properties": {"type": {"const": "copy-file"}}},
+        "then": {"required": ["source"]}
+      }
+    }
+  }
+}

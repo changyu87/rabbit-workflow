@@ -8,9 +8,7 @@
     "hooks": [],
     "commands": [],
     "agents": [],
-    "skills": [
-      "rabbit-backlog"
-    ],
+    "skills": [],
     "scripts": [
       "scripts/file-backlog-item.sh",
       "scripts/backlog-item-status.sh",
