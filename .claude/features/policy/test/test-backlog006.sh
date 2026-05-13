@@ -2,7 +2,8 @@
 
 set -u
 
-WORKFLOW_RULES="/home/cyxu/workflow-dev/rabbit-sprint/.claude/features/policy/workflow-rules.md"
+FEATURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+WORKFLOW_RULES="$FEATURE_DIR/workflow-rules.md"
 PASS=0
 FAIL=0
 

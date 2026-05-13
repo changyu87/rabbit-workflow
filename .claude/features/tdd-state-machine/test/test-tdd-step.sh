@@ -266,10 +266,29 @@ t_rbt3() {
     || ko "t_rbt3: ANSI red not found in stderr: '$(printf '%s' "$err" | cat -v)'"
 }
 
+# t_ref1: _run_enforcement_checks is defined as a function in tdd-step.sh
+t_ref1() {
+  grep -q "^_run_enforcement_checks()" "$TDD_STEP" \
+    && ok "t_ref1: _run_enforcement_checks function is defined in tdd-step.sh" \
+    || ko "t_ref1: _run_enforcement_checks function NOT found in tdd-step.sh"
+}
+
+# t_ref2: enforcement check block appears only once (no copy-paste duplication)
+# Count occurrences of a distinctive enforcement check line that should only appear
+# in the function body, not duplicated at call sites.
+t_ref2() {
+  local count
+  count=$(grep -c 'check-tests-non-interactive.sh' "$TDD_STEP" 2>/dev/null || echo 0)
+  [ "$count" -eq 1 ] \
+    && ok "t_ref2: enforcement check block appears exactly once (count=$count)" \
+    || ko "t_ref2: enforcement check block appears $count times (expected 1 — deduplication required)"
+}
+
 echo "running tdd-step tests against $TDD_STEP"
 t1; t2; t3; t4; t5; t6; t7; t8; t9; t10; t11
 t_su1; t_su2; t_su3; t_su4; t_su5; t_su6
 t_rbt1; t_rbt2; t_rbt3
+t_ref1; t_ref2
 echo
 echo "summary: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1
