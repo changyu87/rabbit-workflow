@@ -1,13 +1,13 @@
 {
   "name": "RABBIT-CAGE-BACKLOG-14",
   "title": "Design schema for multiple [rabbit] systemMessage outputs at Stop: print-all vs conditional-priority",
-  "status": "in-progress",
+  "status": "implemented",
   "priority": "medium",
   "description": "",
   "owner": "changyu",
   "filed": "2026-05-13T06:54:05Z",
   "filed_by": "changyu",
-  "closed": null,
+  "closed": "2026-05-13T08:45:42Z",
   "history": [
     {
       "ts": "2026-05-13T06:54:05Z",
@@ -20,6 +20,13 @@
       "actor": "cyxu",
       "action": "in-progress",
       "note": "TDD cycle started for multi-systemMessage schema"
+    },
+    {
+      "ts": "2026-05-13T08:45:42Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "TDD cycle complete — conditional-priority schema declared in spec+contract, 15-point E2E test suite added",
+      "fix_commits": "2793226dfaafdf9b59149faa515d4a233def7667"
     }
   ]
 }
