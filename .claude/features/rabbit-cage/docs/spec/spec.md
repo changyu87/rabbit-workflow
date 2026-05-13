@@ -54,8 +54,8 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 
 Sets or restores the auto-refresh threshold (number of prompts between policy re-injections).
 
-- `/rabbit-config prompt-threshold <N>` — writes `RBT_REFRESH_EVERY=N` to `.claude/settings.local.json`. `N` must be a positive integer. Takes effect on the next session start.
-- `/rabbit-config prompt-threshold` (no value) — removes the `RBT_REFRESH_EVERY` key from `.claude/settings.local.json`, restoring the default value defined in `.claude/settings.json`.
+- `/rabbit-config prompt-threshold <N>` — writes `RABBIT_REFRESH_EVERY=N` to `.claude/settings.local.json`. `N` must be a positive integer. Takes effect on the next session start.
+- `/rabbit-config prompt-threshold` (no value) — removes the `RABBIT_REFRESH_EVERY` key from `.claude/settings.local.json`, restoring the default value defined in `.claude/settings.json`.
 
 **Error handling:** unknown subcommands produce a usage message listing available subcommands. An invalid value (non-positive-integer) for `prompt-threshold` produces an error and exits without modifying any file.
 
@@ -65,8 +65,8 @@ Sets or restores the auto-refresh threshold (number of prompts between policy re
 
 25. `/rabbit-config` command file exists at `commands/rabbit-config.md`.
 26. `/rabbit-set-threshold` command file does NOT exist anywhere in the repository.
-27. `/rabbit-config prompt-threshold <N>` writes `{"env": {"RBT_REFRESH_EVERY": "<N>"}}` merged into `.claude/settings.local.json`.
-28. `/rabbit-config prompt-threshold` (no argument) removes the `RBT_REFRESH_EVERY` key from the `env` object in `.claude/settings.local.json`; if `env` becomes empty the key is also removed.
+27. `/rabbit-config prompt-threshold <N>` writes `{"env": {"RABBIT_REFRESH_EVERY": "<N>"}}` merged into `.claude/settings.local.json`.
+28. `/rabbit-config prompt-threshold` (no argument) removes the `RABBIT_REFRESH_EVERY` key from the `env` object in `.claude/settings.local.json`; if `env` becomes empty the key is also removed.
 29. An unknown subcommand to `/rabbit-config` emits a usage message and exits non-zero without modifying any file.
 
 ## Out of Scope
@@ -255,3 +255,27 @@ Example red alerts:
 
     \x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD OFF (session override active) ━━━ 🔓\x1b[0m
     \x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed) ━━━ 🔓\x1b[0m
+
+## Runtime Artifact Naming
+
+Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
+
+- Prompt counter: `.rabbit-prompt-counter` (repo root, gitignored)
+- Sync counter: `.rabbit-sync-counter` (repo root, gitignored)
+- Prompt threshold env var: `RABBIT_REFRESH_EVERY` (default `20`, in `settings.json` and `settings.local.json`)
+- Sync threshold env var: `RABBIT_SYNC_EVERY` (default `1`)
+
+### Migration
+
+At session start, `session-init.sh` detects legacy counter files and renames them:
+- `.rbt-prompt-counter` → `.rabbit-prompt-counter` (if `.rabbit-prompt-counter` does not already exist)
+- `.rbt-sync-counter` → `.rabbit-sync-counter` (if `.rabbit-sync-counter` does not already exist)
+
+### Invariants
+
+31. `refresh.sh` reads and writes `.rabbit-prompt-counter` (not `.rbt-prompt-counter`); reads `RABBIT_REFRESH_EVERY` (not `RBT_REFRESH_EVERY`).
+32. `sync-check.sh` reads and writes `.rabbit-sync-counter` (not `.rbt-sync-counter`); reads `RABBIT_SYNC_EVERY` (not `RBT_SYNC_EVERY`); writes `.rabbit-prompt-counter` on first-run and drift paths (not `.rbt-prompt-counter`); reads `RABBIT_REFRESH_EVERY` (not `RBT_REFRESH_EVERY`) for that counter write.
+33. `settings.json` declares env key `RABBIT_REFRESH_EVERY` (not `RBT_REFRESH_EVERY`); its `SessionStart` command resets `.rabbit-prompt-counter` (not `.rbt-prompt-counter`).
+34. `rabbit-refresh.md` command resets `.rabbit-prompt-counter` (not `.rbt-prompt-counter`).
+35. `workspace-tree.sh` excludes `.rabbit-prompt-counter` from full listings (not `.rbt-prompt-counter`).
+36. At session start, `session-init.sh` renames any legacy `.rbt-prompt-counter` to `.rabbit-prompt-counter` and any legacy `.rbt-sync-counter` to `.rabbit-sync-counter`, unless the target already exists.

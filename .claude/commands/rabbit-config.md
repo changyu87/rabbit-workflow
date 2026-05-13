@@ -24,8 +24,8 @@ if subcmd == 'prompt-threshold':
     cfg = json.loads(p.read_text()) if p.exists() else {}
 
     if not val:
-        # Restore default: remove RBT_REFRESH_EVERY key
-        cfg.get('env', {}).pop('RBT_REFRESH_EVERY', None)
+        # Restore default: remove RABBIT_REFRESH_EVERY key
+        cfg.get('env', {}).pop('RABBIT_REFRESH_EVERY', None)
         if 'env' in cfg and not cfg['env']:
             del cfg['env']
         p.write_text(json.dumps(cfg, indent=2) + '\n')
@@ -35,7 +35,7 @@ if subcmd == 'prompt-threshold':
         if not val.isdigit() or int(val) < 1:
             print('Error: value must be a positive integer (e.g. /rabbit-config prompt-threshold 15)', file=sys.stderr)
             sys.exit(1)
-        cfg.setdefault('env', {})['RBT_REFRESH_EVERY'] = val
+        cfg.setdefault('env', {})['RABBIT_REFRESH_EVERY'] = val
         p.write_text(json.dumps(cfg, indent=2) + '\n')
         print(f'Threshold set to {val} prompts in .claude/settings.local.json.')
         print('Takes effect on next session start.')

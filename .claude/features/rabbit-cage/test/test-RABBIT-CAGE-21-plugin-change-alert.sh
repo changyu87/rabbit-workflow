@@ -95,7 +95,7 @@ trap 'rm -rf "$TMPROOT" "$TMPROOT2"' EXIT
 
 touch "$TMPROOT/.rabbit-plugins-stale"
 
-t1_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t1_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t1_msg="$(printf '%s' "$t1_output" | extract_sys_msg)"
 
 if printf '%s' "$t1_msg" | grep -q '\[rabbit\]' 2>/dev/null; then
@@ -154,7 +154,7 @@ echo "=== t5: .rabbit-plugins-stale absent → no plugin alert ==="
 TMPROOT2="$(make_clean_repo)"
 rm -f "$TMPROOT2/.rabbit-plugins-stale"
 
-t5_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t5_output="$(RABBIT_ROOT="$TMPROOT2" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t5_msg="$(printf '%s' "$t5_output" | extract_sys_msg)"
 
 if printf '%s' "$t5_msg" | grep -q 'rabbit-refresh\|reload-plugins\|Plugins updated' 2>/dev/null; then

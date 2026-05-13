@@ -134,7 +134,7 @@ build_tmproot() {
 TMPROOT_FR="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR"' EXIT
 # No CLAUDE.md → first-run branch fires
-firstrun_output="$(RABBIT_ROOT="$TMPROOT_FR" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+firstrun_output="$(RABBIT_ROOT="$TMPROOT_FR" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 firstrun_msg="$(printf '%s' "$firstrun_output" | extract_sys_msg)"
 assert_green_msg "sync-check.sh FIRST-RUN case" "$firstrun_msg"
 
@@ -142,7 +142,7 @@ assert_green_msg "sync-check.sh FIRST-RUN case" "$firstrun_msg"
 TMPROOT1="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1"' EXIT
 printf 'STALE CONTENT\n' > "$TMPROOT1/CLAUDE.md"
-drift_output="$(RABBIT_ROOT="$TMPROOT1" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+drift_output="$(RABBIT_ROOT="$TMPROOT1" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 drift_msg="$(printf '%s' "$drift_output" | extract_sys_msg)"
 assert_red_msg "sync-check.sh DRIFT case" "$drift_msg"
 
@@ -167,7 +167,7 @@ exit 0
 FAKEBUILD
 chmod +x "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.sh"
 
-skills_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+skills_output="$(RABBIT_ROOT="$TMPROOT2" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 skills_msg="$(printf '%s' "$skills_output" | extract_sys_msg)"
 assert_green_msg "sync-check.sh SURFACE DRIFT case" "$skills_msg"
 
@@ -237,8 +237,8 @@ Machine First.
 REFRESHCLAUDEMD
 
 THRESHOLD=5
-printf '%s\n' "$THRESHOLD" > "$TMPROOT4/.rbt-prompt-counter"
-refresh_output="$(RABBIT_ROOT="$TMPROOT4" RBT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
+printf '%s\n' "$THRESHOLD" > "$TMPROOT4/.rabbit-prompt-counter"
+refresh_output="$(RABBIT_ROOT="$TMPROOT4" RABBIT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
 refresh_msg="$(printf '%s' "$refresh_output" | extract_sys_msg)"
 assert_green_msg "refresh.sh inline-section case" "$refresh_msg"
 
@@ -255,8 +255,8 @@ cat > "$TMPROOT4B/CLAUDE.md" <<REFRESHCLAUDEMD2
 REFRESHCLAUDEMD2
 
 THRESHOLD=5
-printf '%s\n' "$THRESHOLD" > "$TMPROOT4B/.rbt-prompt-counter"
-refresh2_output="$(RABBIT_ROOT="$TMPROOT4B" RBT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
+printf '%s\n' "$THRESHOLD" > "$TMPROOT4B/.rabbit-prompt-counter"
+refresh2_output="$(RABBIT_ROOT="$TMPROOT4B" RABBIT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
 refresh2_msg="$(printf '%s' "$refresh2_output" | extract_sys_msg)"
 assert_green_msg "refresh.sh @-import fallback case" "$refresh2_msg"
 
@@ -264,7 +264,7 @@ assert_green_msg "refresh.sh @-import fallback case" "$refresh2_msg"
 TMPROOT_DRIFT8="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1" "$TMPROOT2" "$TMPROOT3" "$TMPROOT3B" "$TMPROOT4" "$TMPROOT4B" "$TMPROOT_DRIFT8"' EXIT
 printf 'STALE CONTENT\n' > "$TMPROOT_DRIFT8/CLAUDE.md"
-drift8_output="$(RABBIT_ROOT="$TMPROOT_DRIFT8" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+drift8_output="$(RABBIT_ROOT="$TMPROOT_DRIFT8" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 drift8_msg="$(printf '%s' "$drift8_output" | extract_sys_msg)"
 assert_red_msg "sync-check.sh DRIFT case must be RED (alert)" "$drift8_msg"
 

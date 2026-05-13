@@ -1,0 +1,11 @@
+{
+  "bug_name": "RABBIT-CAGE-23",
+  "triage_ts": "2026-05-13T00:00:00Z",
+  "classification": "new",
+  "severity_assessed": "medium",
+  "evidence": "Verified all four claims plus one additional finding. (1) .rbt-prompt-counter written in settings.json SessionStart hook, refresh.sh, sync-check.sh, rabbit-refresh.md, workspace-tree.sh — both deployed and feature-mirror copies. (2) .rbt-sync-counter written in sync-check.sh (deployed and feature mirror). (3) RBT_REFRESH_EVERY env var declared in settings.json env block, read in refresh.sh and sync-check.sh. (4) check-naming.sh line 83 comment says 'Internal artifacts use rbt-' and line 90 flag message reinforces deprecated policy — actively misdirects future contributors. Additional: RBT_SYNC_EVERY env var found in feature-source sync-check.sh lines 8, 9, 21 — also requires renaming. No spec invariant preserves the rbt- prefix; renaming is unblocked.",
+  "recommended_action": "keep_open",
+  "recommended_test": null,
+  "proposed_handoff": "dispatch rabbit-cage feature owner to rename all rbt- artifacts: .rbt-prompt-counter -> .rabbit-prompt-counter, .rbt-sync-counter -> .rabbit-sync-counter, RBT_REFRESH_EVERY -> RABBIT_REFRESH_EVERY, RBT_SYNC_EVERY -> RABBIT_SYNC_EVERY across all read/write sites; separately dispatch contract owner to update check-naming.sh comment (line 83) and flag message (line 90) to document current policy",
+  "triaged_by": "main-session"
+}

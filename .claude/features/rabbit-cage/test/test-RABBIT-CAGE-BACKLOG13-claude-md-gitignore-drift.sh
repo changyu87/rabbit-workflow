@@ -120,7 +120,7 @@ printf '# Rabbit Workflow — STALE OUTDATED CONTENT\nThis is old and differs fr
 # Run sync-check.sh with drift scenario (CLAUDE.md exists but stale)
 drift_output=""
 drift_exit=0
-drift_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" \
+drift_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" \
     || drift_exit=$?
 
 # t_bl13_5: hook exits 0 (drift detection is not a fatal error)
@@ -210,7 +210,7 @@ fi
 # Run sync-check.sh with absent CLAUDE.md (first-run)
 first_run_output=""
 first_run_exit=0
-first_run_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" \
+first_run_output="$(RABBIT_ROOT="$TMPROOT2" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" \
     || first_run_exit=$?
 
 # t_bl13_11: hook exits 0 on first-run

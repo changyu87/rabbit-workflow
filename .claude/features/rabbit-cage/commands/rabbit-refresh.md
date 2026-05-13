@@ -5,7 +5,7 @@ allowed-tools: Bash
 
 Refreshing rabbit-workflow policy files.
 
-!`echo 0 > .rbt-prompt-counter`
+!`echo 0 > .rabbit-prompt-counter`
 
 !`for p in $(grep -oE '^@[^[:space:]]+' CLAUDE.md | sed 's/^@//'); do echo "=== $p ==="; cat "$p"; echo; done`
 

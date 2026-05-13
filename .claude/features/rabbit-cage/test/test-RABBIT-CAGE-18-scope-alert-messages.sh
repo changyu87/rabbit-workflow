@@ -92,7 +92,7 @@ TMPROOT_SESSION="$(build_tmproot_clean)"
 echo "session" > "$TMPROOT_SESSION/.rabbit-scope-override"
 
 t1_output=""
-t1_output="$(RABBIT_ROOT="$TMPROOT_SESSION" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t1_output="$(RABBIT_ROOT="$TMPROOT_SESSION" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t1_msg="$(printf '%s' "$t1_output" | extract_sys_msg)"
 
 EXPECTED_SESSION="SCOPE GUARD OFF (session override active)"
@@ -111,7 +111,7 @@ TMPROOT_USED="$(build_tmproot_clean)"
 touch "$TMPROOT_USED/.rabbit-scope-override-used"
 
 t2_output=""
-t2_output="$(RABBIT_ROOT="$TMPROOT_USED" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t2_output="$(RABBIT_ROOT="$TMPROOT_USED" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t2_msg="$(printf '%s' "$t2_output" | extract_sys_msg)"
 
 EXPECTED_USED="SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed)"
