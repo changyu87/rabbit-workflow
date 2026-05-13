@@ -1,7 +1,7 @@
 {
   "name": "RABBIT-BACKLOG-BACKLOG-3",
   "title": "Add list-backlog.sh to rabbit-backlog skill docs so main session never needs raw find",
-  "status": "open",
+  "status": "in-progress",
   "priority": "high",
   "description": "",
   "owner": "changyu",
@@ -14,6 +14,12 @@
       "actor": "changyu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-13T06:06:07Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "TDD cycle started: adding list-backlog.sh documentation to SKILL.md"
     }
   ]
 }
