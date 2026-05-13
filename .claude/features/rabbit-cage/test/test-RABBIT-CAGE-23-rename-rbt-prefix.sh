@@ -2,13 +2,12 @@
 # test-RABBIT-CAGE-23-rename-rbt-prefix.sh
 # Tests for RABBIT-CAGE-23: rename rbt- prefixed runtime artifacts and env vars to rabbit- prefix.
 #
-# Spec invariants 31-36:
+# Spec invariants 31-35:
 # 31. refresh.sh uses .rabbit-prompt-counter and RABBIT_REFRESH_EVERY
 # 32. sync-check.sh uses .rabbit-sync-counter, RABBIT_SYNC_EVERY, .rabbit-prompt-counter, RABBIT_REFRESH_EVERY
 # 33. settings.json declares RABBIT_REFRESH_EVERY and resets .rabbit-prompt-counter
 # 34. rabbit-refresh.md resets .rabbit-prompt-counter
-# 35. workspace-tree.sh excludes .rabbit-prompt-counter (not .rbt-prompt-counter)
-# 36. session-init.sh migrates legacy .rbt-* counter files to .rabbit-* names
+# 35. workspace-tree.sh excludes .rabbit-prompt-counter
 #
 # R3-compliant: no interactive constructs, fully automated.
 
@@ -230,171 +229,9 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# t12: session-init.sh migrates .rbt-prompt-counter -> .rabbit-prompt-counter
+# t12: deployed .claude/hooks/refresh.sh uses new names (not rbt-)
 # ---------------------------------------------------------------------------
-echo "=== t12: session-init.sh migrates legacy .rbt-prompt-counter ==="
-
-TMPROOT_MIGRATE=""
-TMPROOT_MIGRATE="$(mktemp -d)"
-git init -q "$TMPROOT_MIGRATE"
-git -C "$TMPROOT_MIGRATE" config user.email "test@test.com"
-git -C "$TMPROOT_MIGRATE" config user.name "Test"
-git -C "$TMPROOT_MIGRATE" checkout -q -b main 2>/dev/null || true
-
-mkdir -p "$TMPROOT_MIGRATE/.claude/features/rabbit-cage/scripts"
-mkdir -p "$TMPROOT_MIGRATE/.claude/features/policy"
-
-printf '# Philosophy\nMachine First.\n'   > "$TMPROOT_MIGRATE/.claude/features/policy/philosophy.md"
-printf '# Spec Rules\nSpec.\n'            > "$TMPROOT_MIGRATE/.claude/features/policy/spec-rules.md"
-printf '# Coding Rules\nCode.\n'          > "$TMPROOT_MIGRATE/.claude/features/policy/coding-rules.md"
-printf '# Workflow Rules\nWorkflow.\n'    > "$TMPROOT_MIGRATE/.claude/features/policy/workflow-rules.md"
-
-python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
-    > "$TMPROOT_MIGRATE/.claude/features/rabbit-cage/policy-header.json"
-
-cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-   "$TMPROOT_MIGRATE/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
-
-python3 -c "import json; print(json.dumps({'schema_version':'1.0.0','features':{}}))" \
-    > "$TMPROOT_MIGRATE/.claude/features/registry.json"
-
-CORRECT="$(RABBIT_ROOT="$TMPROOT_MIGRATE" bash "$TMPROOT_MIGRATE/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
-printf '%s\n' "$CORRECT" > "$TMPROOT_MIGRATE/CLAUDE.md"
-
-git -C "$TMPROOT_MIGRATE" add -A
-git -C "$TMPROOT_MIGRATE" commit -q -m "init"
-
-# Place legacy counter file
-printf '5\n' > "$TMPROOT_MIGRATE/.rbt-prompt-counter"
-
-# Run session-init.sh
-RABBIT_ROOT="$TMPROOT_MIGRATE" bash "$SESSION_INIT" >/dev/null 2>&1 || true
-
-if [ -f "$TMPROOT_MIGRATE/.rabbit-prompt-counter" ]; then
-    ok "session-init.sh created .rabbit-prompt-counter from legacy .rbt-prompt-counter"
-else
-    fail_t "session-init.sh did NOT create .rabbit-prompt-counter from legacy .rbt-prompt-counter"
-fi
-
-if [ ! -f "$TMPROOT_MIGRATE/.rbt-prompt-counter" ]; then
-    ok "session-init.sh removed legacy .rbt-prompt-counter after migration"
-else
-    fail_t "session-init.sh did NOT remove legacy .rbt-prompt-counter after migration"
-fi
-
-rm -rf "$TMPROOT_MIGRATE"
-
-# ---------------------------------------------------------------------------
-# t13: session-init.sh migrates .rbt-sync-counter -> .rabbit-sync-counter
-# ---------------------------------------------------------------------------
-echo "=== t13: session-init.sh migrates legacy .rbt-sync-counter ==="
-
-TMPROOT_MIGRATE2=""
-TMPROOT_MIGRATE2="$(mktemp -d)"
-git init -q "$TMPROOT_MIGRATE2"
-git -C "$TMPROOT_MIGRATE2" config user.email "test@test.com"
-git -C "$TMPROOT_MIGRATE2" config user.name "Test"
-git -C "$TMPROOT_MIGRATE2" checkout -q -b main 2>/dev/null || true
-
-mkdir -p "$TMPROOT_MIGRATE2/.claude/features/rabbit-cage/scripts"
-mkdir -p "$TMPROOT_MIGRATE2/.claude/features/policy"
-
-printf '# Philosophy\nMachine First.\n'   > "$TMPROOT_MIGRATE2/.claude/features/policy/philosophy.md"
-printf '# Spec Rules\nSpec.\n'            > "$TMPROOT_MIGRATE2/.claude/features/policy/spec-rules.md"
-printf '# Coding Rules\nCode.\n'          > "$TMPROOT_MIGRATE2/.claude/features/policy/coding-rules.md"
-printf '# Workflow Rules\nWorkflow.\n'    > "$TMPROOT_MIGRATE2/.claude/features/policy/workflow-rules.md"
-
-python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
-    > "$TMPROOT_MIGRATE2/.claude/features/rabbit-cage/policy-header.json"
-
-cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-   "$TMPROOT_MIGRATE2/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
-
-python3 -c "import json; print(json.dumps({'schema_version':'1.0.0','features':{}}))" \
-    > "$TMPROOT_MIGRATE2/.claude/features/registry.json"
-
-CORRECT2="$(RABBIT_ROOT="$TMPROOT_MIGRATE2" bash "$TMPROOT_MIGRATE2/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
-printf '%s\n' "$CORRECT2" > "$TMPROOT_MIGRATE2/CLAUDE.md"
-
-git -C "$TMPROOT_MIGRATE2" add -A
-git -C "$TMPROOT_MIGRATE2" commit -q -m "init"
-
-# Place legacy counter file
-printf '3\n' > "$TMPROOT_MIGRATE2/.rbt-sync-counter"
-
-# Run session-init.sh
-RABBIT_ROOT="$TMPROOT_MIGRATE2" bash "$SESSION_INIT" >/dev/null 2>&1 || true
-
-if [ -f "$TMPROOT_MIGRATE2/.rabbit-sync-counter" ]; then
-    ok "session-init.sh created .rabbit-sync-counter from legacy .rbt-sync-counter"
-else
-    fail_t "session-init.sh did NOT create .rabbit-sync-counter from legacy .rbt-sync-counter"
-fi
-
-if [ ! -f "$TMPROOT_MIGRATE2/.rbt-sync-counter" ]; then
-    ok "session-init.sh removed legacy .rbt-sync-counter after migration"
-else
-    fail_t "session-init.sh did NOT remove legacy .rbt-sync-counter after migration"
-fi
-
-rm -rf "$TMPROOT_MIGRATE2"
-
-# ---------------------------------------------------------------------------
-# t14: session-init.sh does NOT overwrite existing .rabbit-prompt-counter
-# ---------------------------------------------------------------------------
-echo "=== t14: session-init.sh does NOT overwrite existing .rabbit-prompt-counter ==="
-
-TMPROOT_MIGRATE3=""
-TMPROOT_MIGRATE3="$(mktemp -d)"
-git init -q "$TMPROOT_MIGRATE3"
-git -C "$TMPROOT_MIGRATE3" config user.email "test@test.com"
-git -C "$TMPROOT_MIGRATE3" config user.name "Test"
-git -C "$TMPROOT_MIGRATE3" checkout -q -b main 2>/dev/null || true
-
-mkdir -p "$TMPROOT_MIGRATE3/.claude/features/rabbit-cage/scripts"
-mkdir -p "$TMPROOT_MIGRATE3/.claude/features/policy"
-
-printf '# Philosophy\nMachine First.\n'   > "$TMPROOT_MIGRATE3/.claude/features/policy/philosophy.md"
-printf '# Spec Rules\nSpec.\n'            > "$TMPROOT_MIGRATE3/.claude/features/policy/spec-rules.md"
-printf '# Coding Rules\nCode.\n'          > "$TMPROOT_MIGRATE3/.claude/features/policy/coding-rules.md"
-printf '# Workflow Rules\nWorkflow.\n'    > "$TMPROOT_MIGRATE3/.claude/features/policy/workflow-rules.md"
-
-python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
-    > "$TMPROOT_MIGRATE3/.claude/features/rabbit-cage/policy-header.json"
-
-cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-   "$TMPROOT_MIGRATE3/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
-
-python3 -c "import json; print(json.dumps({'schema_version':'1.0.0','features':{}}))" \
-    > "$TMPROOT_MIGRATE3/.claude/features/registry.json"
-
-CORRECT3="$(RABBIT_ROOT="$TMPROOT_MIGRATE3" bash "$TMPROOT_MIGRATE3/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
-printf '%s\n' "$CORRECT3" > "$TMPROOT_MIGRATE3/CLAUDE.md"
-
-git -C "$TMPROOT_MIGRATE3" add -A
-git -C "$TMPROOT_MIGRATE3" commit -q -m "init"
-
-# Both files exist — new one should win (not be overwritten by migration)
-printf '99\n' > "$TMPROOT_MIGRATE3/.rabbit-prompt-counter"
-printf '5\n' > "$TMPROOT_MIGRATE3/.rbt-prompt-counter"
-
-# Run session-init.sh
-RABBIT_ROOT="$TMPROOT_MIGRATE3" bash "$SESSION_INIT" >/dev/null 2>&1 || true
-
-EXISTING_VAL="$(cat "$TMPROOT_MIGRATE3/.rabbit-prompt-counter" 2>/dev/null || echo '')"
-if printf '%s' "$EXISTING_VAL" | grep -qx '0\|99' 2>/dev/null; then
-    # session-init resets to 0 normally, so 0 is also valid; 99 means it wasn't clobbered
-    ok "session-init.sh did not destroy existing .rabbit-prompt-counter with legacy migration"
-else
-    fail_t "session-init.sh may have incorrectly overwritten existing .rabbit-prompt-counter (value: $EXISTING_VAL)"
-fi
-
-rm -rf "$TMPROOT_MIGRATE3"
-
-# ---------------------------------------------------------------------------
-# t15: deployed .claude/hooks/refresh.sh uses new names (not rbt-)
-# ---------------------------------------------------------------------------
-echo "=== t15: deployed refresh.sh uses new names ==="
+echo "=== t12: deployed refresh.sh uses new names ==="
 
 DEPLOYED_REFRESH="$REPO_ROOT/.claude/hooks/refresh.sh"
 if [ -f "$DEPLOYED_REFRESH" ]; then
@@ -408,9 +245,9 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# t16: deployed .claude/hooks/sync-check.sh uses new names (not rbt-)
+# t13: deployed .claude/hooks/sync-check.sh uses new names (not rbt-)
 # ---------------------------------------------------------------------------
-echo "=== t16: deployed sync-check.sh uses new names ==="
+echo "=== t13: deployed sync-check.sh uses new names ==="
 
 DEPLOYED_SYNC="$REPO_ROOT/.claude/hooks/sync-check.sh"
 if [ -f "$DEPLOYED_SYNC" ]; then
@@ -424,9 +261,9 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# t17: deployed .claude/settings.json uses new names (not rbt-)
+# t14: deployed .claude/settings.json uses new names (not rbt-)
 # ---------------------------------------------------------------------------
-echo "=== t17: deployed settings.json uses new names ==="
+echo "=== t14: deployed settings.json uses new names ==="
 
 DEPLOYED_SETTINGS="$REPO_ROOT/.claude/settings.json"
 # Resolve symlink to check actual content
