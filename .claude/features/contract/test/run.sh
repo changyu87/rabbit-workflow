@@ -30,5 +30,6 @@ run_test "test-rabbit-print-schema.sh"
 
 run_test "test-workspace-map.sh"
 run_test "test-build-contract.sh"
+run_test "test-check-naming-no-rbt.sh"
 
 echo "ALL TESTS PASSED"
