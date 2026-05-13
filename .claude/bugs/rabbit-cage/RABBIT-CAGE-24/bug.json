@@ -1,20 +1,34 @@
 {
   "name": "RABBIT-CAGE-24",
   "title": "plugin-stale alert persists entire session after /reload-plugins: no within-session marker clear mechanism",
-  "status": "open",
+  "status": "closed",
   "severity": "medium",
   "description": "When build.sh writes .rabbit-plugins-stale, sync-check.sh alerts on every Stop until the marker is cleared. The marker is only cleared by session-init.sh (session start, /clear, /compact, restart). There is no way to clear it when the user runs /reload-plugins within an active session — Claude Code exposes no hook event for /reload-plugins execution, and custom commands cannot shadow built-ins. Result: the user runs /reload-plugins (skills actually reloaded) but the alert keeps firing for the rest of the session. A mechanism to clear the marker within-session is needed.",
   "related_feature": "rabbit-cage",
   "filed": "2026-05-13T08:04:52Z",
   "filed_by": "changyu",
-  "closed": null,
-  "closed_by": null,
+  "closed": "2026-05-13T09:01:21Z",
+  "closed_by": "cyxu",
   "history": [
     {
       "ts": "2026-05-13T08:04:52Z",
       "actor": "changyu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-13T12:00:00Z",
+      "actor": "changyu",
+      "action": "research",
+      "note": "Official Claude Code docs confirm: local .claude/skills/ files have live change detection — changes take effect within the current session without restarting. /reload-plugins is irrelevant for project-level skills. Once invoked, skill content is cached in the conversation; re-invoking the skill reads the fresh file. Source: code.claude.com/docs/en/skills (Live change detection + Skill content lifecycle sections). The .rabbit-plugins-stale mechanism was solving a non-problem and prescribing the wrong command. Fix: replace with .rabbit-skills-updated self-clearing one-time notification naming updated skills."
+    },
+    {
+      "ts": "2026-05-13T09:01:21Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "Fixed: replaced .rabbit-plugins-stale with .rabbit-skills-updated self-clearing model. Research confirmed /reload-plugins is irrelevant for local project skills (live change detection). One-time notification names updated skills and states correct behavior.",
+      "fix_commits": "2e4a8ec37fcd4750c119495249b39829bd7d54d7",
+      "touched_files": ".claude/features/rabbit-cage/scripts/build.sh,.claude/features/rabbit-cage/hooks/sync-check.sh,.claude/features/rabbit-cage/hooks/session-init.sh"
     }
   ]
 }

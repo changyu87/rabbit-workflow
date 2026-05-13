@@ -17,9 +17,6 @@ set -euo pipefail
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)}"
 CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
 
-# Clear plugins-stale marker: plugins are freshly loaded on session start/resume/clear/compact.
-rm -f "$REPO_ROOT/.rabbit-plugins-stale"
-
 # R1 enforcement: if on main or master, create and checkout a session/ branch.
 _current_branch="$(git -C "$REPO_ROOT" branch --show-current 2>/dev/null || true)"
 if [ "$_current_branch" = "main" ] || [ "$_current_branch" = "master" ]; then

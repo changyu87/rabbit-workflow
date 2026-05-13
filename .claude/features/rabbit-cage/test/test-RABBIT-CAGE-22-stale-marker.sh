@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # test-RABBIT-CAGE-22-stale-marker.sh
-# Tests for RABBIT-CAGE-22: .rabbit-plugins-stale marker model.
+# Tests for RABBIT-CAGE-22/24: .rabbit-skills-updated marker model.
 #
-# Spec invariant 24 (updated): plugin-change alert uses .rabbit-plugins-stale marker:
-# (a) sync-check.sh emits /rabbit-refresh alert when marker exists
-# (b) sync-check.sh is silent when marker is absent
-# (c) build.sh writes .rabbit-plugins-stale when copying skill/command/agent targets
-# (d) rabbit-refresh.md contains rm -f .rabbit-plugins-stale
-# (e) session-init.sh removes .rabbit-plugins-stale at session start
+# Spec invariant 24 (updated by RABBIT-CAGE-24):
+# (a) build.sh appends skill name to .rabbit-skills-updated for SKILL.md targets only
+# (b) build.sh does NOT write marker for commands/agents/other targets
+# (c) session-init.sh does NOT reference .rabbit-plugins-stale
+# (d) sync-check.sh does NOT reference .rabbit-plugins-stale
 #
 # R3-compliant: no interactive constructs, fully automated.
 
@@ -17,327 +16,170 @@ REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2
 SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
 SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.sh"
 BUILD_SH="$REPO_ROOT/.claude/features/rabbit-cage/scripts/build.sh"
-RABBIT_REFRESH_MD="$REPO_ROOT/.claude/features/rabbit-cage/commands/rabbit-refresh.md"
 
 FAILURES=0
 TOTAL=0
 
-ok() {
-    TOTAL=$(( TOTAL + 1 ))
-    echo "  PASS t$TOTAL: $1"
-}
+ok() { TOTAL=$(( TOTAL + 1 )); echo "  PASS t$TOTAL: $1"; }
+fail_t() { TOTAL=$(( TOTAL + 1 )); FAILURES=$(( FAILURES + 1 )); echo "  FAIL t$TOTAL: $1"; }
 
-fail_t() {
-    TOTAL=$(( TOTAL + 1 ))
-    FAILURES=$(( FAILURES + 1 ))
-    echo "  FAIL t$TOTAL: $1"
-}
-
-extract_sys_msg() {
-    python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('systemMessage', ''), end='')
-except Exception:
-    pass
-" 2>/dev/null
-}
-
-# Build a minimal temp git repo with clean CLAUDE.md and no drift conditions.
-make_clean_repo() {
+make_build_repo() {
     local d
     d="$(mktemp -d)"
     git init -q "$d"
     git -C "$d" config user.email "test@test.com"
     git -C "$d" config user.name "Test"
     git -C "$d" checkout -q -b main 2>/dev/null || true
-
     mkdir -p "$d/.claude/features/rabbit-cage/scripts"
     mkdir -p "$d/.claude/features/policy"
-
     printf '# Philosophy\nMachine First.\n'   > "$d/.claude/features/policy/philosophy.md"
     printf '# Spec Rules\nSpec.\n'            > "$d/.claude/features/policy/spec-rules.md"
     printf '# Coding Rules\nCode.\n'          > "$d/.claude/features/policy/coding-rules.md"
     printf '# Workflow Rules\nWorkflow.\n'    > "$d/.claude/features/policy/workflow-rules.md"
-
     python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
         > "$d/.claude/features/rabbit-cage/policy-header.json"
-
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
        "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
-
     python3 -c "import json; print(json.dumps({'schema_version':'1.0.0','features':{}}))" \
         > "$d/.claude/features/registry.json"
-
     local correct
     correct="$(RABBIT_ROOT="$d" bash "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
     printf '%s\n' "$correct" > "$d/CLAUDE.md"
-
     git -C "$d" add -A
     git -C "$d" commit -q -m "init"
-
     echo "$d"
+}
+
+make_contract() {
+    local d="$1" targets="$2"
+    mkdir -p "$d/.claude/features/contract"
+    python3 -c "
+import json, sys
+targets = json.loads(sys.argv[1])
+contract = {
+    'schema_version': '1.0.0',
+    'owner': 'test',
+    'deprecation_criterion': 'test',
+    'updated': '2026-01-01',
+    'targets': targets
+}
+print(json.dumps(contract, indent=2))
+" "$targets" > "$d/.claude/features/contract/build-contract.json"
 }
 
 echo "test-RABBIT-CAGE-22-stale-marker.sh"
 echo ""
 
 TMPROOT=""
-TMPROOT2=""
-TMPROOT3=""
+trap 'rm -rf "$TMPROOT"' EXIT
 
 # ---------------------------------------------------------------------------
-# t1: When .rabbit-plugins-stale exists, sync-check.sh emits /rabbit-refresh alert
+# t1: build.sh writes .rabbit-skills-updated with skill name for SKILL.md target
 # ---------------------------------------------------------------------------
-echo "=== t1: .rabbit-plugins-stale exists → sync-check emits /rabbit-refresh alert ==="
-
-TMPROOT="$(make_clean_repo)"
-trap 'rm -rf "$TMPROOT" "$TMPROOT2" "$TMPROOT3"' EXIT
-
-# Create the stale marker
-touch "$TMPROOT/.rabbit-plugins-stale"
-
-t1_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
-t1_msg="$(printf '%s' "$t1_output" | extract_sys_msg)"
-
-if printf '%s' "$t1_msg" | grep -q '\[rabbit\]' 2>/dev/null; then
-    ok "systemMessage contains '[rabbit]'"
+echo "=== t1: build.sh writes .rabbit-skills-updated for .claude/skills/*/SKILL.md target ==="
+TMPROOT="$(make_build_repo)"
+mkdir -p "$TMPROOT/.claude/features/test-skill/skills/test-skill"
+printf '# Test skill\n' > "$TMPROOT/.claude/features/test-skill/skills/test-skill/SKILL.md"
+make_contract "$TMPROOT" '[{"name":"skills/test-skill/SKILL.md","type":"copy-file","source":".claude/features/test-skill/skills/test-skill/SKILL.md","destination":".claude/skills/test-skill/SKILL.md"}]'
+rm -f "$TMPROOT/.rabbit-skills-updated"
+bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+if [ -f "$TMPROOT/.rabbit-skills-updated" ]; then
+    ok "build.sh wrote .rabbit-skills-updated after copying a SKILL.md target"
 else
-    fail_t "systemMessage does NOT contain '[rabbit]' (actual: $(printf '%q' "$t1_msg"))"
+    fail_t "build.sh did NOT write .rabbit-skills-updated after copying a SKILL.md target"
 fi
 
 # ---------------------------------------------------------------------------
-# t2: Alert instructs /rabbit-refresh (not /reload-plugins)
+# t2: .rabbit-skills-updated content is the skill name
 # ---------------------------------------------------------------------------
-echo "=== t2: alert instructs /rabbit-refresh ==="
-
-if printf '%s' "$t1_msg" | grep -q 'rabbit-refresh' 2>/dev/null; then
-    ok "systemMessage contains 'rabbit-refresh'"
+echo "=== t2: .rabbit-skills-updated contains the skill name ==="
+if [ -f "$TMPROOT/.rabbit-skills-updated" ]; then
+    _content="$(cat "$TMPROOT/.rabbit-skills-updated")"
+    if printf '%s' "$_content" | grep -q 'test-skill'; then
+        ok ".rabbit-skills-updated contains skill name 'test-skill'"
+    else
+        fail_t ".rabbit-skills-updated does NOT contain 'test-skill' (content: $(printf '%q' "$_content"))"
+    fi
 else
-    fail_t "systemMessage does NOT contain 'rabbit-refresh' (actual: $(printf '%q' "$t1_msg"))"
+    fail_t ".rabbit-skills-updated missing (covered by t1)"
 fi
 
 # ---------------------------------------------------------------------------
-# t3: Alert does NOT mention /reload-plugins (old command removed)
+# t3: build.sh does NOT write .rabbit-skills-updated for commands target
 # ---------------------------------------------------------------------------
-echo "=== t3: alert does NOT mention /reload-plugins ==="
-
-if printf '%s' "$t1_msg" | grep -q 'reload-plugins' 2>/dev/null; then
-    fail_t "systemMessage still references 'reload-plugins' — must be /rabbit-refresh (actual: $(printf '%q' "$t1_msg"))"
+echo "=== t3: build.sh does NOT write .rabbit-skills-updated for .claude/commands/ target ==="
+mkdir -p "$TMPROOT/.claude/features/rabbit-cage/commands"
+printf '# Test cmd\n' > "$TMPROOT/.claude/features/rabbit-cage/commands/test-cmd.md"
+make_contract "$TMPROOT" '[{"name":"commands/test-cmd.md","type":"copy-file","source":".claude/features/rabbit-cage/commands/test-cmd.md","destination":".claude/commands/test-cmd.md"}]'
+rm -f "$TMPROOT/.rabbit-skills-updated"
+bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+if [ -f "$TMPROOT/.rabbit-skills-updated" ]; then
+    fail_t "build.sh incorrectly wrote .rabbit-skills-updated for a commands target"
 else
-    ok "alert correctly omits 'reload-plugins'"
+    ok "build.sh did NOT write .rabbit-skills-updated for a commands target"
 fi
 
 # ---------------------------------------------------------------------------
-# t4: Alert is green (invariant 18)
+# t4: build.sh does NOT write .rabbit-skills-updated for a generic copy target
 # ---------------------------------------------------------------------------
-echo "=== t4: alert is green (ANSI invariant 18) ==="
-
-t4_green="$(MSG="$t1_msg" python3 -c "
-import os
-msg = os.environ.get('MSG', '')
-GREEN = '\x1b[32m'
-RESET = '\x1b[0m'
-print('yes' if GREEN in msg and RESET in msg else 'no')
-" 2>/dev/null)"
-
-if [ "$t4_green" = "yes" ]; then
-    ok "alert is green (ANSI)"
+echo "=== t4: build.sh does NOT write .rabbit-skills-updated for non-skills copy target ==="
+printf '# README\n' > "$TMPROOT/source-readme.md"
+make_contract "$TMPROOT" '[{"name":"README.md","type":"copy-file","source":"source-readme.md","destination":"README.md"}]'
+rm -f "$TMPROOT/.rabbit-skills-updated"
+bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+if [ -f "$TMPROOT/.rabbit-skills-updated" ]; then
+    fail_t "build.sh incorrectly wrote .rabbit-skills-updated for a non-skills target"
 else
-    fail_t "alert is NOT green (actual: $(printf '%q' "$t1_msg"))"
+    ok "build.sh did NOT write .rabbit-skills-updated for a non-skills target"
 fi
 
 # ---------------------------------------------------------------------------
-# t5: When .rabbit-plugins-stale absent, no alert fires
+# t5: build.sh appends multiple skill names for multiple SKILL.md targets
 # ---------------------------------------------------------------------------
-echo "=== t5: .rabbit-plugins-stale absent → no alert fires ==="
-
-TMPROOT2="$(make_clean_repo)"
-
-# Ensure marker is NOT present
-rm -f "$TMPROOT2/.rabbit-plugins-stale"
-
-t5_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
-t5_msg="$(printf '%s' "$t5_output" | extract_sys_msg)"
-
-if printf '%s' "$t5_msg" | grep -q 'rabbit-refresh\|reload-plugins\|Plugins updated' 2>/dev/null; then
-    fail_t "plugin alert fired when .rabbit-plugins-stale was absent (false positive)"
+echo "=== t5: build.sh appends multiple skill names for multiple SKILL.md targets ==="
+mkdir -p "$TMPROOT/.claude/features/feat-a/skills/feat-a"
+mkdir -p "$TMPROOT/.claude/features/feat-b/skills/feat-b"
+printf '# Feat A\n' > "$TMPROOT/.claude/features/feat-a/skills/feat-a/SKILL.md"
+printf '# Feat B\n' > "$TMPROOT/.claude/features/feat-b/skills/feat-b/SKILL.md"
+make_contract "$TMPROOT" '[
+  {"name":"skills/feat-a/SKILL.md","type":"copy-file","source":".claude/features/feat-a/skills/feat-a/SKILL.md","destination":".claude/skills/feat-a/SKILL.md"},
+  {"name":"skills/feat-b/SKILL.md","type":"copy-file","source":".claude/features/feat-b/skills/feat-b/SKILL.md","destination":".claude/skills/feat-b/SKILL.md"}
+]'
+rm -f "$TMPROOT/.rabbit-skills-updated"
+bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+if [ -f "$TMPROOT/.rabbit-skills-updated" ]; then
+    _content="$(cat "$TMPROOT/.rabbit-skills-updated")"
+    if printf '%s' "$_content" | grep -q 'feat-a' && printf '%s' "$_content" | grep -q 'feat-b'; then
+        ok ".rabbit-skills-updated contains both skill names"
+    else
+        fail_t ".rabbit-skills-updated missing skill names (content: $(printf '%q' "$_content"))"
+    fi
 else
-    ok "no plugin alert when .rabbit-plugins-stale is absent"
+    fail_t "build.sh did NOT write .rabbit-skills-updated for multiple SKILL.md targets"
 fi
 
 # ---------------------------------------------------------------------------
-# t6: build.sh writes .rabbit-plugins-stale when copying skill/command/agent targets
+# t6: session-init.sh does NOT reference .rabbit-plugins-stale
 # ---------------------------------------------------------------------------
-echo "=== t6: build.sh writes .rabbit-plugins-stale when copying skill/command/agent targets ==="
-
-TMPROOT3="$(make_clean_repo)"
-
-# Create a minimal build-contract.json with a skills target
-mkdir -p "$TMPROOT3/.claude/features/contract"
-mkdir -p "$TMPROOT3/.claude/features/rabbit-cage/hooks"
-mkdir -p "$TMPROOT3/.claude/features/rabbit-cage/commands"
-mkdir -p "$TMPROOT3/.claude/features/rabbit-cage/scripts"
-mkdir -p "$TMPROOT3/.claude/features/test-skill/skills/test-skill"
-
-# Copy the generate-claude-md script
-cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-   "$TMPROOT3/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
-
-printf '# Test skill\n' > "$TMPROOT3/.claude/features/test-skill/skills/test-skill/SKILL.md"
-
-python3 -c "
-import json
-contract = {
-    'schema_version': '1.0.0',
-    'owner': 'test',
-    'deprecation_criterion': 'test',
-    'updated': '2026-01-01',
-    'targets': [
-        {
-            'name': 'skills/test-skill/SKILL.md',
-            'type': 'copy-file',
-            'source': '.claude/features/test-skill/skills/test-skill/SKILL.md',
-            'destination': '.claude/skills/test-skill/SKILL.md'
-        }
-    ]
-}
-print(json.dumps(contract, indent=2))
-" > "$TMPROOT3/.claude/features/contract/build-contract.json"
-
-# Remove any stale marker before running build
-rm -f "$TMPROOT3/.rabbit-plugins-stale"
-
-bash "$BUILD_SH" "$TMPROOT3" >/dev/null 2>&1 || true
-
-if [ -f "$TMPROOT3/.rabbit-plugins-stale" ]; then
-    ok "build.sh wrote .rabbit-plugins-stale after copying a skills target"
+echo "=== t6: session-init.sh does NOT reference .rabbit-plugins-stale ==="
+if grep -q '\.rabbit-plugins-stale' "$SESSION_INIT" 2>/dev/null; then
+    fail_t "session-init.sh still references .rabbit-plugins-stale — must be removed"
 else
-    fail_t "build.sh did NOT write .rabbit-plugins-stale after copying a skills target"
+    ok "session-init.sh has no .rabbit-plugins-stale reference"
 fi
 
 # ---------------------------------------------------------------------------
-# t7: build.sh writes .rabbit-plugins-stale for commands targets too
+# t7: sync-check.sh does NOT reference .rabbit-plugins-stale
 # ---------------------------------------------------------------------------
-echo "=== t7: build.sh writes .rabbit-plugins-stale for commands targets ==="
-
-# Reuse TMPROOT3 but update contract to a commands target
-printf '# Test command\n' > "$TMPROOT3/.claude/features/rabbit-cage/commands/test-cmd.md"
-
-python3 -c "
-import json
-contract = {
-    'schema_version': '1.0.0',
-    'owner': 'test',
-    'deprecation_criterion': 'test',
-    'updated': '2026-01-01',
-    'targets': [
-        {
-            'name': 'commands/test-cmd.md',
-            'type': 'copy-file',
-            'source': '.claude/features/rabbit-cage/commands/test-cmd.md',
-            'destination': '.claude/commands/test-cmd.md'
-        }
-    ]
-}
-print(json.dumps(contract, indent=2))
-" > "$TMPROOT3/.claude/features/contract/build-contract.json"
-
-rm -f "$TMPROOT3/.rabbit-plugins-stale"
-
-bash "$BUILD_SH" "$TMPROOT3" >/dev/null 2>&1 || true
-
-if [ -f "$TMPROOT3/.rabbit-plugins-stale" ]; then
-    ok "build.sh wrote .rabbit-plugins-stale after copying a commands target"
+echo "=== t7: sync-check.sh does NOT reference .rabbit-plugins-stale ==="
+if grep -q '\.rabbit-plugins-stale' "$SYNC_CHECK" 2>/dev/null; then
+    fail_t "sync-check.sh still references .rabbit-plugins-stale — must be removed"
 else
-    fail_t "build.sh did NOT write .rabbit-plugins-stale after copying a commands target"
+    ok "sync-check.sh has no .rabbit-plugins-stale reference"
 fi
 
-# ---------------------------------------------------------------------------
-# t8: build.sh does NOT write .rabbit-plugins-stale for non-plugin copy-file targets
-# ---------------------------------------------------------------------------
-echo "=== t8: build.sh does NOT write .rabbit-plugins-stale for non-plugin copy-file targets ==="
-
-printf '# README\n' > "$TMPROOT3/source-readme.md"
-
-python3 -c "
-import json
-contract = {
-    'schema_version': '1.0.0',
-    'owner': 'test',
-    'deprecation_criterion': 'test',
-    'updated': '2026-01-01',
-    'targets': [
-        {
-            'name': 'README.md',
-            'type': 'copy-file',
-            'source': 'source-readme.md',
-            'destination': 'README.md'
-        }
-    ]
-}
-print(json.dumps(contract, indent=2))
-" > "$TMPROOT3/.claude/features/contract/build-contract.json"
-
-rm -f "$TMPROOT3/.rabbit-plugins-stale"
-
-bash "$BUILD_SH" "$TMPROOT3" >/dev/null 2>&1 || true
-
-if [ -f "$TMPROOT3/.rabbit-plugins-stale" ]; then
-    fail_t "build.sh incorrectly wrote .rabbit-plugins-stale for a non-plugin copy-file target"
-else
-    ok "build.sh did NOT write .rabbit-plugins-stale for a non-plugin target"
-fi
-
-# ---------------------------------------------------------------------------
-# t9: rabbit-refresh.md contains rm -f .rabbit-plugins-stale
-# ---------------------------------------------------------------------------
-echo "=== t9: rabbit-refresh.md contains 'rm -f .rabbit-plugins-stale' ==="
-
-if grep -q 'rm -f .*\.rabbit-plugins-stale' "$RABBIT_REFRESH_MD" 2>/dev/null; then
-    ok "rabbit-refresh.md contains rm -f .rabbit-plugins-stale"
-else
-    fail_t "rabbit-refresh.md does NOT contain 'rm -f .rabbit-plugins-stale'"
-fi
-
-# ---------------------------------------------------------------------------
-# t10: session-init.sh removes .rabbit-plugins-stale at session start
-# ---------------------------------------------------------------------------
-echo "=== t10: session-init.sh removes .rabbit-plugins-stale at session start ==="
-
-TMPROOT_SI="$(make_clean_repo)"
-
-# Create stale marker
-touch "$TMPROOT_SI/.rabbit-plugins-stale"
-
-# Run session-init.sh (suppress all output including git branch/checkout operations)
-RABBIT_ROOT="$TMPROOT_SI" bash "$SESSION_INIT" >/dev/null 2>&1 || true
-
-if [ -f "$TMPROOT_SI/.rabbit-plugins-stale" ]; then
-    fail_t "session-init.sh did NOT remove .rabbit-plugins-stale"
-else
-    ok "session-init.sh removed .rabbit-plugins-stale"
-fi
-
-rm -rf "$TMPROOT_SI"
-
-# ---------------------------------------------------------------------------
-# Cleanup
-# ---------------------------------------------------------------------------
-rm -rf "$TMPROOT" "$TMPROOT2" "$TMPROOT3" 2>/dev/null || true
+rm -rf "$TMPROOT" 2>/dev/null || true
 trap - EXIT
-
-# ---------------------------------------------------------------------------
-# Results
-# ---------------------------------------------------------------------------
 echo ""
 echo "Results: $(( TOTAL - FAILURES )) passed, $FAILURES failed"
-
-if [ "$FAILURES" -eq 0 ]; then
-    echo "ALL TESTS PASSED"
-    exit 0
-else
-    echo "$FAILURES TEST(S) FAILED"
-    exit 1
-fi
+[ "$FAILURES" -eq 0 ] && { echo "ALL TESTS PASSED"; exit 0; } || { echo "$FAILURES TEST(S) FAILED"; exit 1; }

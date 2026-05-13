@@ -204,21 +204,23 @@ If the current branch is already a non-protected branch (anything other than `ma
 23. The created branch name always begins with the prefix `session/` followed by exactly
     eight digits, a hyphen, and six digits (`session/YYYYMMDD-HHMMSS`).
 24. On every Stop event, after the existing drift checks, `sync-check.sh`
-    detects plugin updates via a stale-marker file:
-    (a) `build.sh` writes `.rabbit-plugins-stale` at the repo root whenever it
-    copies any target whose destination is under `.claude/skills/`,
-    `.claude/commands/`, or `.claude/agents/`.
-    (b) `sync-check.sh` checks if `.rabbit-plugins-stale` exists at the repo root.
-    If it does: emit a green `[rabbit]` `systemMessage` instructing the user to
-    run `/rabbit-refresh` to reload skills/commands into Claude. Exact message:
-    `[rabbit] Plugins updated — run /rabbit-refresh to reload skills/commands into Claude.`
-    If `.rabbit-plugins-stale` is absent: silent (no output).
-    No git diff is performed; the marker file IS the signal.
-    (c) `session-init.sh` removes `.rabbit-plugins-stale` at session start
-    (plugins are freshly loaded on startup/resume/clear/compact).
-    (d) The `/rabbit-refresh` command clears `.rabbit-plugins-stale` so the
-    alert is not re-raised after the user has reloaded.
-    (e) `.rabbit-plugins-stale` is gitignored.
+    detects rebuilt skills via a self-clearing marker file:
+    (a) `build.sh` appends the skill directory name (one per line) to
+    `.rabbit-skills-updated` at the repo root whenever it copies a target
+    whose destination matches `.claude/skills/<name>/SKILL.md` exactly.
+    No other target types (commands, agents, hooks) trigger this marker.
+    (b) `sync-check.sh` checks if `.rabbit-skills-updated` exists at the repo root.
+    If it does: read the skill names (newline-separated), delete the marker,
+    then emit one green `[rabbit]` `systemMessage` naming the skills and stating
+    they reload automatically on next invocation. Exact message format:
+    `[rabbit] Skills updated: <comma-separated names> — will reload automatically on next invocation.`
+    If `.rabbit-skills-updated` is absent: silent (no output).
+    The marker is deleted before the JSON emit (fire-at-most-once semantics:
+    a crash between deletion and emit loses the notification rather than
+    risking a repeat).
+    (c) `session-init.sh` does NOT manage `.rabbit-skills-updated` — the
+    marker self-clears via `sync-check.sh` on the next Stop.
+    (d) `.rabbit-skills-updated` is gitignored.
     This check runs only when all previous checks (CLAUDE.md drift, surface
     drift, override alerts) did NOT emit JSON. The single-JSON-per-invocation
     invariant is preserved: at most one JSON object is emitted per
