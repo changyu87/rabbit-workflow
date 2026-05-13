@@ -118,14 +118,17 @@ print(json.dumps({
   fi
 fi
 
-# Plugin-change detection — checks for .rabbit-plugins-stale marker written by build.sh.
-# Emits green [rabbit] alert instructing /reload-plugins. Marker clears at next session start.
+# Skill-update detection — checks for .rabbit-skills-updated marker written by build.sh.
+# Self-clearing: deleted on first read so alert fires exactly once per build.
 # Only fires if no prior check emitted JSON (single-JSON-per-invocation invariant).
-if [ -f "$REPO_ROOT/.rabbit-plugins-stale" ] && [ "$_json_emitted" -eq 0 ]; then
+if [ -f "$REPO_ROOT/.rabbit-skills-updated" ] && [ "$_json_emitted" -eq 0 ]; then
+  _names="$(tr '\n' ',' < "$REPO_ROOT/.rabbit-skills-updated" | sed 's/,$//')"
+  rm -f "$REPO_ROOT/.rabbit-skills-updated"
   python3 -c "
-import json
-print(json.dumps({'systemMessage': '\x1b[32m[rabbit] Plugins updated — run /reload-plugins to reload the latest skills/commands into Claude.\x1b[0m'}))
-"
+import json, sys
+names = sys.argv[1]
+print(json.dumps({'systemMessage': '\x1b[32m[rabbit] Skills updated: ' + names + ' — will reload automatically on next invocation.\x1b[0m'}))
+" "$_names"
 fi
 
 exit 0
