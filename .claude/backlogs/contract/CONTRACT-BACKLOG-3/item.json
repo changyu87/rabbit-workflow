@@ -1,7 +1,7 @@
 {
   "name": "CONTRACT-BACKLOG-3",
   "title": "Extend invariant 6: add missing_declaration audit finding type for user projects without workspace-structure.json",
-  "status": "open",
+  "status": "in-progress",
   "priority": "low",
   "description": "",
   "owner": "Changyu",
@@ -14,6 +14,12 @@
       "actor": "Changyu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-13T04:46:44Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "implementing spec.md invariant 6 missing_declaration extension"
     }
   ]
 }
