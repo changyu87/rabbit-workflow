@@ -1,0 +1,20 @@
+{
+  "name": "RABBIT-CAGE-23",
+  "title": "active .rbt-prompt-counter and .rbt-sync-counter artifacts use deprecated rbt- prefix",
+  "status": "open",
+  "severity": "medium",
+  "description": "The rbt- prefix is deprecated. Active violations: (1) .rbt-prompt-counter — written in settings.json hook, refresh.sh, sync-check.sh, rabbit-refresh.md, workspace-tree.sh; (2) .rbt-sync-counter — written in sync-check.sh; (3) RBT_REFRESH_EVERY env var — read in sync-check.sh; (4) check-naming.sh comment line 83 says 'Internal artifacts use rbt-' which documents the wrong (deprecated) policy. All rbt- file artifacts and env vars must be renamed to use the rabbit- prefix (or no prefix).",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-13T06:42:26Z",
+  "filed_by": "changyu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-13T06:42:26Z",
+      "actor": "changyu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
