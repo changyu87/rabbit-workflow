@@ -18,7 +18,7 @@ GENERATE_CLAUDE_MD="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-cla
 [ -f "$CONTRACT" ] || { echo "build: contract not found: $CONTRACT" >&2; exit 1; }
 
 python3 - "$REPO_ROOT" "$CONTRACT" "$GENERATE_CLAUDE_MD" <<'PYEOF'
-import json, os, shutil, subprocess, sys
+import json, os, re, shutil, subprocess, sys
 
 repo_root, contract_path, generate_script = sys.argv[1], sys.argv[2], sys.argv[3]
 
@@ -54,13 +54,12 @@ for target in contract.get("targets", []):
         os.makedirs(os.path.dirname(destination), exist_ok=True)
         shutil.copy2(source, destination)
         print(f"  [built] {name}")
-        # Mark plugins stale if this target writes to skills/, commands/, or agents/
-        dest_rel = target["destination"]
-        if (dest_rel.startswith(".claude/skills/") or
-                dest_rel.startswith(".claude/commands/") or
-                dest_rel.startswith(".claude/agents/")):
-            stale_marker = os.path.join(repo_root, ".rabbit-plugins-stale")
-            open(stale_marker, "a").close()
+        # Record which SKILL.md files were rebuilt for the one-time session notification.
+        m = re.match(r'^\.claude/skills/([^/]+)/SKILL\.md$', target["destination"])
+        if m:
+            marker = os.path.join(repo_root, ".rabbit-skills-updated")
+            with open(marker, "a") as f:
+                f.write(m.group(1) + "\n")
 
     else:
         print(f"  [error] unknown type '{ttype}' for target '{name}'", file=sys.stderr)
