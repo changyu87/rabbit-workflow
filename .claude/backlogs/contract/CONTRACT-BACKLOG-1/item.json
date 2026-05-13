@@ -1,13 +1,13 @@
 {
   "name": "CONTRACT-BACKLOG-1",
   "title": "Fix misleading spec.md invariant 7 wording (workspace-structure.json self-conformance claim)",
-  "status": "in-progress",
+  "status": "implemented",
   "priority": "low",
   "description": "",
   "owner": "Changyu",
   "filed": "2026-05-13T04:05:30Z",
   "filed_by": "Changyu",
-  "closed": null,
+  "closed": "2026-05-13T04:46:51Z",
   "history": [
     {
       "ts": "2026-05-13T04:05:30Z",
@@ -20,6 +20,13 @@
       "actor": "cyxu",
       "action": "in-progress",
       "note": "implementing spec.md invariant 7 self-conformance fix"
+    },
+    {
+      "ts": "2026-05-13T04:46:51Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "spec.md invariant 7 self-conformance wording fixed",
+      "fix_commits": "c57f7cd"
     }
   ]
 }
