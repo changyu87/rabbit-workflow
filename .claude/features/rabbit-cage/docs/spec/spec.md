@@ -203,15 +203,22 @@ If the current branch is already a non-protected branch (anything other than `ma
     or switch to any branch — the branch-enforcement block is a no-op.
 23. The created branch name always begins with the prefix `session/` followed by exactly
     eight digits, a hyphen, and six digits (`session/YYYYMMDD-HHMMSS`).
-24. `sync-check.sh` detects untracked skill directories under
-    `.claude/skills/` or `.claude/features/*/skills/` by invoking
-    `git ls-files --others --exclude-standard` against those paths. If any
-    untracked path beneath a `skills/` segment is reported, the hook treats
-    this as skills drift and emits the green `[rabbit] Skills updated`
-    `systemMessage` alert (the same alert emitted when
-    `generate-skills-dir.sh --check` reports content drift). This prevents
-    new skill directories from sitting untracked indefinitely without user
-    notification.
+24. On every Stop event, after the existing drift checks, `sync-check.sh`
+    detects session plugin changes by:
+    (a) Computing the branch-point: `BASE=$(git merge-base HEAD main)`, with
+    fallback to `origin/main` if `main` is not available.
+    (b) Running `git diff --name-only "$BASE" HEAD -- .claude/skills/ .claude/commands/ .claude/agents/`
+    to list any files under those directories changed since the branch-point.
+    (c) If any such files are found: emit a green `[rabbit]` `systemMessage`
+    listing the changed files and instructing the user to run `/reload-plugins`
+    to load the latest skills/commands into Claude. Example:
+    `[rabbit] Plugins updated this session — run /reload-plugins to load the latest skills/commands into Claude.`
+    followed by the list of changed files.
+    (d) If no such files changed: silent (no output).
+    This check runs only when all previous checks (CLAUDE.md drift, surface
+    drift, override alerts) did NOT emit JSON. The single-JSON-per-invocation
+    invariant is preserved: at most one JSON object is emitted per
+    sync-check.sh invocation.
 
 ## Scope-Guard Quote Awareness
 
