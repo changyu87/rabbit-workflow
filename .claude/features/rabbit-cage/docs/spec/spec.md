@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 2.0.0
+version: 2.1.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -44,10 +44,35 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 29. `surface.hooks`, `surface.commands`, and `surface.settings` in `feature.json` are all `[]` (empty arrays); hooks, commands, and settings are now managed via build-contract.json copy-file targets.
 30. `build.sh` passes `RABBIT_ROOT=<repo_root>` as an environment variable when invoking `generate-claude-md.sh` for `generate-claude-md` targets, so that installs into non-git directories (e.g., temp dirs during `install.sh`) succeed without `git rev-parse` errors.
 
+## /rabbit-config Command
+
+`/rabbit-config` is the extensible configuration command for the rabbit workflow. It uses a subcommand pattern to group configuration operations under one entry point.
+
+**Syntax:** `/rabbit-config <subcommand> [value]`
+
+### Subcommand: prompt-threshold
+
+Sets or restores the auto-refresh threshold (number of prompts between policy re-injections).
+
+- `/rabbit-config prompt-threshold <N>` — writes `RBT_REFRESH_EVERY=N` to `.claude/settings.local.json`. `N` must be a positive integer. Takes effect on the next session start.
+- `/rabbit-config prompt-threshold` (no value) — removes the `RBT_REFRESH_EVERY` key from `.claude/settings.local.json`, restoring the default value defined in `.claude/settings.json`.
+
+**Error handling:** unknown subcommands produce a usage message listing available subcommands. An invalid value (non-positive-integer) for `prompt-threshold` produces an error and exits without modifying any file.
+
+**Replaces:** `/rabbit-set-threshold` — that command is removed; `prompt-threshold` is its direct functional replacement. The subcommand pattern makes it straightforward to add future configuration subcommands (e.g., `/rabbit-config set-something-else [value]`).
+
+### Invariants
+
+25. `/rabbit-config` command file exists at `commands/rabbit-config.md`.
+26. `/rabbit-set-threshold` command file does NOT exist anywhere in the repository.
+27. `/rabbit-config prompt-threshold <N>` writes `{"env": {"RBT_REFRESH_EVERY": "<N>"}}` merged into `.claude/settings.local.json`.
+28. `/rabbit-config prompt-threshold` (no argument) removes the `RBT_REFRESH_EVERY` key from the `env` object in `.claude/settings.local.json`; if `env` becomes empty the key is also removed.
+29. An unknown subcommand to `/rabbit-config` emits a usage message and exits non-zero without modifying any file.
+
 ## Out of Scope
 
 - Content authored by other features — rabbit-cage wires their surface, not their content.
-- `settings.local.json` — user-local overrides; never written by rabbit-cage.
+- `settings.local.json` — user-local overrides; never written by rabbit-cage except via the `/rabbit-config` command on explicit user request.
 - Scripts: rabbit-cage owns no runtime scripts beyond `install.sh` and those registered in its contract.
 - Workspace hierarchy display — owned and wired by the `rabbit-workspace-map` skill in the contract feature; rabbit-cage no longer declares it in its `feature.json` skills list.
 

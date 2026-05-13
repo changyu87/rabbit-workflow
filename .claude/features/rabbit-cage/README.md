@@ -40,11 +40,12 @@ bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/in
 | Command | Description |
 |---|---|
 | `/rabbit-refresh` | Manually re-inject policy |
-| `/rabbit-set-threshold N` | Set auto-refresh interval (takes effect next session) |
+| `/rabbit-config prompt-threshold N` | Set auto-refresh interval to N prompts (takes effect next session) |
+| `/rabbit-config prompt-threshold` | Restore default auto-refresh interval |
 
 ## Configuration
 
-Default refresh interval: 20 prompts. Change with `/rabbit-set-threshold N`.
+Default refresh interval: 20 prompts. Change with `/rabbit-config prompt-threshold N`.
 
 ## Applying rabbit anywhere
 

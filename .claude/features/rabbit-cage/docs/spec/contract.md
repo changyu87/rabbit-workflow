@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.5.0
+version: 3.6.0
 template_version: 2.0.0
 ---
 
@@ -10,6 +10,9 @@ template_version: 2.0.0
 {
   "provides": {
     "files": [".claude/commands", ".claude/hooks", ".claude/skills", ".claude/settings.json", ".claude/policy", ".claude/contract", "CLAUDE.md", "README.md", "install.sh"],
+    "commands": [
+      {"path": ".claude/commands/rabbit-config.md", "subcommands": ["prompt-threshold [value]"]}
+    ],
     "scripts": [
       {"path": ".claude/features/rabbit-cage/scripts/new-feature.sh", "stdin": "none", "stdout": "scaffold path", "exit": "0=created 1=error 2=usage"},
       {"path": ".claude/features/rabbit-cage/scripts/validate-all.sh", "stdin": "none", "stdout": "validation report", "exit": "0=all pass 1=failures"},
@@ -39,9 +42,10 @@ template_version: 2.0.0
     ]
   },
   "never": [
-    "writes .claude/settings.local.json",
+    "writes .claude/settings.local.json except via the /rabbit-config command on explicit user request",
     "modifies files inside another feature's directory",
-    "writes outside its declared scope without an active scope marker or scope-guard override"
+    "writes outside its declared scope without an active scope marker or scope-guard override",
+    "exposes /rabbit-set-threshold (replaced by /rabbit-config prompt-threshold)"
   ]
 }
 ```

@@ -46,10 +46,10 @@
       "check_on_stop": true
     },
     {
-      "name": "commands/rabbit-set-threshold.md",
+      "name": "commands/rabbit-config.md",
       "type": "copy-file",
-      "source": ".claude/features/rabbit-cage/commands/rabbit-set-threshold.md",
-      "destination": ".claude/commands/rabbit-set-threshold.md",
+      "source": ".claude/features/rabbit-cage/commands/rabbit-config.md",
+      "destination": ".claude/commands/rabbit-config.md",
       "check_on_stop": true
     },
     {
