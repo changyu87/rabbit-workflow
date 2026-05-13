@@ -65,6 +65,9 @@ print(json.dumps({
   exit 0
 fi
 
+# Track whether any JSON was emitted below (single-JSON-per-invocation invariant).
+_json_emitted=0
+
 # Surface drift check — only reached when CLAUDE.md is clean (no double JSON output).
 _TEST_SURFACE="$REPO_ROOT/.claude/features/rabbit-cage/test/test-generated-surface.sh"
 _BUILD="$REPO_ROOT/.claude/features/rabbit-cage/scripts/build.sh"
@@ -76,6 +79,7 @@ print(json.dumps({
     'systemMessage': '\x1b[32m🔄 ━━━ [rabbit] Surface drift detected — workspace rebuilt from sources ━━━ 🔄\x1b[0m'
 }))
 "
+  _json_emitted=1
 fi
 
 # Override alert — fires when guard was bypassed this session
@@ -94,19 +98,33 @@ if [ -f "$USED_FILE" ]; then
   rm -f "$USED_FILE"
 fi
 
-if [ "$_alert" = "session" ]; then
-  python3 -c "
+if [ "$_json_emitted" -eq 0 ]; then
+  if [ "$_alert" = "session" ]; then
+    python3 -c "
 import json
 print(json.dumps({
     'systemMessage': '\x1b[31m\xf0\x9f\x94\x93 \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 [rabbit] SCOPE GUARD OFF (session override active) \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 \xf0\x9f\x94\x93\x1b[0m'
 }))
 "
-elif [ "$_alert" = "used" ]; then
-  python3 -c "
+    _json_emitted=1
+  elif [ "$_alert" = "used" ]; then
+    python3 -c "
 import json
 print(json.dumps({
     'systemMessage': '\x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed) ━━━ 🔓\x1b[0m'
 }))
+"
+    _json_emitted=1
+  fi
+fi
+
+# Plugin-change detection — checks for .rabbit-plugins-stale marker written by build.sh.
+# Emits green [rabbit] alert instructing /reload-plugins. Marker clears at next session start.
+# Only fires if no prior check emitted JSON (single-JSON-per-invocation invariant).
+if [ -f "$REPO_ROOT/.rabbit-plugins-stale" ] && [ "$_json_emitted" -eq 0 ]; then
+  python3 -c "
+import json
+print(json.dumps({'systemMessage': '\x1b[32m[rabbit] Plugins updated — run /reload-plugins to reload the latest skills/commands into Claude.\x1b[0m'}))
 "
 fi
 

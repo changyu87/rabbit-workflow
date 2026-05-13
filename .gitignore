@@ -5,4 +5,5 @@
 .rbt-prompt-counter
 .rabbit-scope-override
 .rabbit-scope-override-used
+.rabbit-plugins-stale
 .claude/settings.local.json

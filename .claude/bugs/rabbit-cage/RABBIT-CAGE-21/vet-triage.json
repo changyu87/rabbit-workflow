@@ -1,0 +1,11 @@
+{
+  "bug_name": "RABBIT-CAGE-21",
+  "triage_ts": "2026-05-13T02:30:00Z",
+  "classification": "confirmed",
+  "severity_assessed": "high",
+  "evidence": "sync-check.sh surface-drift check detects source vs deployed-copy mismatch only. When TDD subagent commits both source and deployed copy together (via build.sh), drift is zero and the check passes silently. Claude in-memory plugin cache still holds old skill content with no user notification. Root cause: no mechanism compared plugin dirs against session branch-point git baseline.",
+  "recommended_action": "fix",
+  "recommended_test": "test-RABBIT-CAGE-21-plugin-change-alert.sh",
+  "proposed_handoff": "Implemented: add git merge-base branch-point detection to sync-check.sh; emit green [rabbit] systemMessage listing changed files and instructing /reload-plugins when any .claude/skills/, .claude/commands/, or .claude/agents/ files changed since branch-point. Single-JSON-per-invocation invariant enforced via _json_emitted flag.",
+  "triaged_by": "tdd-subagent"
+}

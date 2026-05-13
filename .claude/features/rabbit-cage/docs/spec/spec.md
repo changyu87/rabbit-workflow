@@ -203,15 +203,26 @@ If the current branch is already a non-protected branch (anything other than `ma
     or switch to any branch — the branch-enforcement block is a no-op.
 23. The created branch name always begins with the prefix `session/` followed by exactly
     eight digits, a hyphen, and six digits (`session/YYYYMMDD-HHMMSS`).
-24. `sync-check.sh` detects untracked skill directories under
-    `.claude/skills/` or `.claude/features/*/skills/` by invoking
-    `git ls-files --others --exclude-standard` against those paths. If any
-    untracked path beneath a `skills/` segment is reported, the hook treats
-    this as skills drift and emits the green `[rabbit] Skills updated`
-    `systemMessage` alert (the same alert emitted when
-    `generate-skills-dir.sh --check` reports content drift). This prevents
-    new skill directories from sitting untracked indefinitely without user
-    notification.
+24. On every Stop event, after the existing drift checks, `sync-check.sh`
+    detects plugin updates via a stale-marker file:
+    (a) `build.sh` writes `.rabbit-plugins-stale` at the repo root whenever it
+    copies any target whose destination is under `.claude/skills/`,
+    `.claude/commands/`, or `.claude/agents/`.
+    (b) `sync-check.sh` checks if `.rabbit-plugins-stale` exists at the repo root.
+    If it does: emit a green `[rabbit]` `systemMessage` instructing the user to
+    run `/rabbit-refresh` to reload skills/commands into Claude. Exact message:
+    `[rabbit] Plugins updated — run /rabbit-refresh to reload skills/commands into Claude.`
+    If `.rabbit-plugins-stale` is absent: silent (no output).
+    No git diff is performed; the marker file IS the signal.
+    (c) `session-init.sh` removes `.rabbit-plugins-stale` at session start
+    (plugins are freshly loaded on startup/resume/clear/compact).
+    (d) The `/rabbit-refresh` command clears `.rabbit-plugins-stale` so the
+    alert is not re-raised after the user has reloaded.
+    (e) `.rabbit-plugins-stale` is gitignored.
+    This check runs only when all previous checks (CLAUDE.md drift, surface
+    drift, override alerts) did NOT emit JSON. The single-JSON-per-invocation
+    invariant is preserved: at most one JSON object is emitted per
+    sync-check.sh invocation.
 
 ## Scope-Guard Quote Awareness
 
