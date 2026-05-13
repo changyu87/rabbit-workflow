@@ -48,35 +48,19 @@ else
   fi
 fi
 
-# (c) schema declares schemaVersion and required property keys
+# (c) output schema schemaVersion is 2.0.0 (top-level field)
 if [ -f "$SCHEMA" ]; then
   SCHEMA_VERSION=$(python3 -c "
 import json, sys
 d = json.load(open(sys.argv[1]))
-print(d.get('properties', {}).get('schemaVersion', {}).get('type', ''))
+print(d.get('schemaVersion', ''))
 " "$SCHEMA" 2>/dev/null)
-  if [ -z "$SCHEMA_VERSION" ]; then
-    echo "FAIL (c): workspace-map.json.schema.json missing properties.schemaVersion" >&2
-    FAIL=1
+  if [ "$SCHEMA_VERSION" = "2.0.0" ]; then
+    echo "ok (c): workspace-map.json.schema.json schemaVersion is 2.0.0"
   else
-    echo "ok (c): workspace-map.json.schema.json declares schemaVersion"
+    echo "FAIL (c): workspace-map.json.schema.json schemaVersion is '$SCHEMA_VERSION' (expected 2.0.0)" >&2
+    FAIL=1
   fi
-
-  REQUIRED_KEYS="features scripts schemas commands skills hooks"
-  for key in $REQUIRED_KEYS; do
-    HAS_KEY=$(python3 -c "
-import json, sys
-d = json.load(open(sys.argv[1]))
-props = d.get('properties', {})
-print('yes' if '$key' in props else 'no')
-" "$SCHEMA" 2>/dev/null)
-    if [ "$HAS_KEY" != "yes" ]; then
-      echo "FAIL (c): workspace-map.json.schema.json missing property: $key" >&2
-      FAIL=1
-    else
-      echo "ok (c): schema has property: $key"
-    fi
-  done
 fi
 
 # (d) workspace-map.sh produces valid JSON without flags
@@ -259,6 +243,77 @@ print('yes' if '$req_node' in names else 'no')
       echo "ok (n): rabbit declaration declares node: $req_node"
     fi
   done
+fi
+
+# (o) output schema declares schemaVersion 2.0.0 at top level
+if [ -f "$SCHEMA" ]; then
+  O_VER=$(python3 -c "
+import json, sys
+d = json.load(open(sys.argv[1]))
+print(d.get('schemaVersion', ''))
+" "$SCHEMA" 2>/dev/null)
+  if [ "$O_VER" = "2.0.0" ]; then
+    echo "ok (o): output schema schemaVersion is 2.0.0"
+  else
+    echo "FAIL (o): output schema schemaVersion is '$O_VER' (expected 2.0.0)" >&2
+    FAIL=1
+  fi
+fi
+
+# (p) output schema has 'roots' property (show mode) and not stale 'features' flat array
+if [ -f "$SCHEMA" ]; then
+  HAS_ROOTS=$(python3 -c "
+import json, sys
+d = json.load(open(sys.argv[1]))
+def has_roots(obj):
+    if 'roots' in obj.get('properties', {}):
+        return True
+    for branch in obj.get('oneOf', []):
+        if 'roots' in branch.get('properties', {}):
+            return True
+    return False
+print('yes' if has_roots(d) else 'no')
+" "$SCHEMA" 2>/dev/null)
+  if [ "$HAS_ROOTS" = "yes" ]; then
+    echo "ok (p1): output schema has 'roots' property"
+  else
+    echo "FAIL (p1): output schema missing 'roots' property" >&2
+    FAIL=1
+  fi
+
+  HAS_OLD_FEATURES=$(python3 -c "
+import json, sys
+d = json.load(open(sys.argv[1]))
+print('yes' if 'features' in d.get('properties', {}) else 'no')
+" "$SCHEMA" 2>/dev/null)
+  if [ "$HAS_OLD_FEATURES" = "no" ]; then
+    echo "ok (p2): output schema does not have stale 'features' flat array"
+  else
+    echo "FAIL (p2): output schema still has old 'features' flat array (must be removed in v2)" >&2
+    FAIL=1
+  fi
+fi
+
+# (q) output schema has 'findings' property (audit mode)
+if [ -f "$SCHEMA" ]; then
+  HAS_FINDINGS=$(python3 -c "
+import json, sys
+d = json.load(open(sys.argv[1]))
+def has_findings(obj):
+    if 'findings' in obj.get('properties', {}):
+        return True
+    for branch in obj.get('oneOf', []):
+        if 'findings' in branch.get('properties', {}):
+            return True
+    return False
+print('yes' if has_findings(d) else 'no')
+" "$SCHEMA" 2>/dev/null)
+  if [ "$HAS_FINDINGS" = "yes" ]; then
+    echo "ok (q): output schema has 'findings' property (audit mode)"
+  else
+    echo "FAIL (q): output schema missing 'findings' property" >&2
+    FAIL=1
+  fi
 fi
 
 if [ "$FAIL" -ne 0 ]; then
