@@ -1,7 +1,7 @@
 {
   "name": "CONTRACT-BACKLOG-2",
   "title": "Fix invariant 7 wording: 'keyed on repoRoot' should be 'accompanied by a repoRoot string field'",
-  "status": "open",
+  "status": "in-progress",
   "priority": "low",
   "description": "",
   "owner": "Changyu",
@@ -14,6 +14,12 @@
       "actor": "Changyu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-13T04:46:44Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "implementing spec.md invariant 7 keyed-on wording fix"
     }
   ]
 }
