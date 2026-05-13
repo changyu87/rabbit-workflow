@@ -1,0 +1,19 @@
+{
+  "name": "RABBIT-BACKLOG-BACKLOG-3",
+  "title": "Add list-backlog.sh to rabbit-backlog skill docs so main session never needs raw find",
+  "status": "open",
+  "priority": "high",
+  "description": "",
+  "owner": "changyu",
+  "filed": "2026-05-13T05:58:03Z",
+  "filed_by": "changyu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-13T05:58:03Z",
+      "actor": "changyu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
