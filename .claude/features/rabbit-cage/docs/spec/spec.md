@@ -204,17 +204,21 @@ If the current branch is already a non-protected branch (anything other than `ma
 23. The created branch name always begins with the prefix `session/` followed by exactly
     eight digits, a hyphen, and six digits (`session/YYYYMMDD-HHMMSS`).
 24. On every Stop event, after the existing drift checks, `sync-check.sh`
-    detects session plugin changes by:
-    (a) Computing the branch-point: `BASE=$(git merge-base HEAD main)`, with
-    fallback to `origin/main` if `main` is not available.
-    (b) Running `git diff --name-only "$BASE" HEAD -- .claude/skills/ .claude/commands/ .claude/agents/`
-    to list any files under those directories changed since the branch-point.
-    (c) If any such files are found: emit a green `[rabbit]` `systemMessage`
-    listing the changed files and instructing the user to run `/reload-plugins`
-    to load the latest skills/commands into Claude. Example:
-    `[rabbit] Plugins updated this session — run /reload-plugins to load the latest skills/commands into Claude.`
-    followed by the list of changed files.
-    (d) If no such files changed: silent (no output).
+    detects plugin updates via a stale-marker file:
+    (a) `build.sh` writes `.rabbit-plugins-stale` at the repo root whenever it
+    copies any target whose destination is under `.claude/skills/`,
+    `.claude/commands/`, or `.claude/agents/`.
+    (b) `sync-check.sh` checks if `.rabbit-plugins-stale` exists at the repo root.
+    If it does: emit a green `[rabbit]` `systemMessage` instructing the user to
+    run `/rabbit-refresh` to reload skills/commands into Claude. Exact message:
+    `[rabbit] Plugins updated — run /rabbit-refresh to reload skills/commands into Claude.`
+    If `.rabbit-plugins-stale` is absent: silent (no output).
+    No git diff is performed; the marker file IS the signal.
+    (c) `session-init.sh` removes `.rabbit-plugins-stale` at session start
+    (plugins are freshly loaded on startup/resume/clear/compact).
+    (d) The `/rabbit-refresh` command clears `.rabbit-plugins-stale` so the
+    alert is not re-raised after the user has reloaded.
+    (e) `.rabbit-plugins-stale` is gitignored.
     This check runs only when all previous checks (CLAUDE.md drift, surface
     drift, override alerts) did NOT emit JSON. The single-JSON-per-invocation
     invariant is preserved: at most one JSON object is emitted per

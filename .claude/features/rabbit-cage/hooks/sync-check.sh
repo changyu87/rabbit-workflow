@@ -118,31 +118,14 @@ print(json.dumps({
   fi
 fi
 
-# Plugin-change detection — detects any changes to plugin dirs since session branch-point.
-# Emits green [rabbit] alert listing changed files and instructing /reload-plugins.
+# Plugin-change detection — checks for .rabbit-plugins-stale marker written by build.sh.
+# Emits green [rabbit] alert instructing /rabbit-refresh.
 # Only fires if no prior check emitted JSON (single-JSON-per-invocation invariant).
-if [ "$_json_emitted" -eq 0 ]; then
-  _BASE=""
-  if git -C "$REPO_ROOT" rev-parse main >/dev/null 2>&1; then
-    _BASE="$(git -C "$REPO_ROOT" merge-base HEAD main 2>/dev/null)" || true
-  fi
-  if [ -z "$_BASE" ] && git -C "$REPO_ROOT" rev-parse origin/main >/dev/null 2>&1; then
-    _BASE="$(git -C "$REPO_ROOT" merge-base HEAD origin/main 2>/dev/null)" || true
-  fi
-  if [ -n "$_BASE" ]; then
-    _CHANGED="$(git -C "$REPO_ROOT" diff --name-only "$_BASE" HEAD -- .claude/skills/ .claude/commands/ .claude/agents/ 2>/dev/null)" || true
-    if [ -n "$_CHANGED" ]; then
-      _FILE_LIST="$(printf '%s' "$_CHANGED" | python3 -c "import sys; files=sys.stdin.read().strip().splitlines(); print('\n'.join('  • ' + f for f in files))")"
-      python3 -c "
-import json, os
-file_list = os.environ.get('_FILE_LIST', '')
-msg = '\x1b[32m[rabbit] Plugins updated this session — run /reload-plugins to load the latest skills/commands into Claude.\x1b[0m'
-if file_list:
-    msg += '\nChanged files:\n' + file_list
-print(json.dumps({'systemMessage': msg}))
-" _FILE_LIST="$_FILE_LIST"
-    fi
-  fi
+if [ -f "$REPO_ROOT/.rabbit-plugins-stale" ] && [ "$_json_emitted" -eq 0 ]; then
+  python3 -c "
+import json
+print(json.dumps({'systemMessage': '\x1b[32m[rabbit] Plugins updated — run /rabbit-refresh to reload skills/commands into Claude.\x1b[0m'}))
+"
 fi
 
 exit 0

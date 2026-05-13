@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # test-RABBIT-CAGE-21-plugin-change-alert.sh
-# Tests that sync-check.sh detects session plugin changes via git diff and
-# emits a green [rabbit] systemMessage instructing /reload-plugins.
+# Tests that sync-check.sh emits a green [rabbit] systemMessage when plugins were updated.
 #
-# Spec invariant 24 (updated): On every Stop, after existing drift checks,
-# sync-check.sh:
-# (a) Computes BASE = git merge-base HEAD main (fallback origin/main).
-# (b) Runs git diff --name-only "$BASE" HEAD -- .claude/skills/ .claude/commands/ .claude/agents/
-# (c) If any files changed: emits green [rabbit] systemMessage containing
-#     '[rabbit]' and 'reload-plugins'.
-# (d) If no files changed: silent (no output / no reload-plugins message).
+# Spec invariant 24 (updated by RABBIT-CAGE-22): On every Stop, after existing drift checks,
+# sync-check.sh checks for .rabbit-plugins-stale marker:
+# (a) If .rabbit-plugins-stale exists: emit green [rabbit] systemMessage instructing /rabbit-refresh.
+# (b) If .rabbit-plugins-stale absent: silent (no output / no plugin alert).
+# (c) Single-JSON-per-invocation invariant preserved.
+#
+# Note: RABBIT-CAGE-21 originally tested the git-diff mechanism replaced by RABBIT-CAGE-22.
+# This test now validates the same feature (plugin-change alert) under the new model.
 #
 # R3-compliant: no interactive constructs, fully automated.
 
@@ -43,10 +43,8 @@ except Exception:
 " 2>/dev/null
 }
 
-# Build a minimal temp git repo with CLAUDE.md matching generated output,
-# surface check stubbed out, and no override markers.
-# Returns path via stdout.
-make_clean_repo_with_main() {
+# Build a minimal temp git repo with CLAUDE.md matching generated output.
+make_clean_repo() {
     local d
     d="$(mktemp -d)"
     git init -q "$d"
@@ -54,10 +52,8 @@ make_clean_repo_with_main() {
     git -C "$d" config user.name "Test"
     git -C "$d" checkout -q -b main 2>/dev/null || true
 
-    # Minimal directory structure for sync-check.sh
     mkdir -p "$d/.claude/features/rabbit-cage/scripts"
     mkdir -p "$d/.claude/features/policy"
-    mkdir -p "$d/.claude/skills/test-skill"
 
     printf '# Philosophy\nMachine First.\n'   > "$d/.claude/features/policy/philosophy.md"
     printf '# Spec Rules\nSpec.\n'            > "$d/.claude/features/policy/spec-rules.md"
@@ -73,14 +69,12 @@ make_clean_repo_with_main() {
     python3 -c "import json; print(json.dumps({'schema_version':'1.0.0','features':{}}))" \
         > "$d/.claude/features/registry.json"
 
-    # Generate a clean CLAUDE.md so the drift check passes
-    local correct_claude
-    correct_claude="$(RABBIT_ROOT="$d" bash "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
-    printf '%s\n' "$correct_claude" > "$d/CLAUDE.md"
+    local correct
+    correct="$(RABBIT_ROOT="$d" bash "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
+    printf '%s\n' "$correct" > "$d/CLAUDE.md"
 
-    # Commit everything to main
     git -C "$d" add -A
-    git -C "$d" commit -q -m "init on main"
+    git -C "$d" commit -q -m "init"
 
     echo "$d"
 }
@@ -89,31 +83,18 @@ echo "test-RABBIT-CAGE-21-plugin-change-alert.sh"
 echo ""
 
 TMPROOT=""
+TMPROOT2=""
 
 # ---------------------------------------------------------------------------
-# t1: When skills file changed since branch-point, emits systemMessage
-#     containing '[rabbit]' and 'reload-plugins'
+# t1: When .rabbit-plugins-stale exists, sync-check.sh emits [rabbit] systemMessage
 # ---------------------------------------------------------------------------
-echo "=== t1: skills changed since branch-point → [rabbit] reload-plugins alert ==="
+echo "=== t1: .rabbit-plugins-stale exists → [rabbit] plugin-change alert ==="
 
-TMPROOT="$(make_clean_repo_with_main)"
-trap 'rm -rf "$TMPROOT"' EXIT
+TMPROOT="$(make_clean_repo)"
+trap 'rm -rf "$TMPROOT" "$TMPROOT2"' EXIT
 
-# Create a session branch off main
-git -C "$TMPROOT" checkout -q -b session/test-branch 2>/dev/null
+touch "$TMPROOT/.rabbit-plugins-stale"
 
-# Add a change to .claude/skills/ on the session branch
-mkdir -p "$TMPROOT/.claude/skills/test-skill"
-printf '# Updated skill\n' > "$TMPROOT/.claude/skills/test-skill/SKILL.md"
-
-# Regenerate CLAUDE.md so drift check passes
-correct="$(RABBIT_ROOT="$TMPROOT" bash "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
-printf '%s\n' "$correct" > "$TMPROOT/CLAUDE.md"
-
-git -C "$TMPROOT" add -A
-git -C "$TMPROOT" commit -q -m "update skills on session branch"
-
-t1_output=""
 t1_output="$(RABBIT_ROOT="$TMPROOT" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t1_msg="$(printf '%s' "$t1_output" | extract_sys_msg)"
 
@@ -124,18 +105,18 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# t2: The message instructs the user to run /reload-plugins
+# t2: The message mentions /rabbit-refresh
 # ---------------------------------------------------------------------------
-echo "=== t2: plugin-change alert contains 'reload-plugins' ==="
+echo "=== t2: plugin-change alert contains 'rabbit-refresh' ==="
 
-if printf '%s' "$t1_msg" | grep -q 'reload-plugins' 2>/dev/null; then
-    ok "systemMessage contains 'reload-plugins'"
+if printf '%s' "$t1_msg" | grep -q 'rabbit-refresh' 2>/dev/null; then
+    ok "systemMessage contains 'rabbit-refresh'"
 else
-    fail_t "systemMessage does NOT contain 'reload-plugins' (actual: $(printf '%q' "$t1_msg"))"
+    fail_t "systemMessage does NOT contain 'rabbit-refresh' (actual: $(printf '%q' "$t1_msg"))"
 fi
 
 # ---------------------------------------------------------------------------
-# t3: The message is green (info convention, not red)
+# t3: The message is green (info convention, spec invariant 18)
 # ---------------------------------------------------------------------------
 echo "=== t3: plugin-change alert is green (spec invariant 18) ==="
 
@@ -154,43 +135,32 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# t4: The changed files are listed in the message
+# t4: sync-check.sh does NOT use git merge-base / git diff for plugin detection
+# (old git-diff mechanism removed in RABBIT-CAGE-22)
 # ---------------------------------------------------------------------------
-echo "=== t4: changed skill file is listed in the message ==="
+echo "=== t4: sync-check.sh does NOT contain git merge-base plugin detection ==="
 
-if printf '%s' "$t1_msg" | grep -q 'SKILL.md\|test-skill\|skills' 2>/dev/null; then
-    ok "message references the changed skill file/directory"
+if grep -q 'merge-base.*main\|git diff.*skills\|git diff.*commands' "$SYNC_CHECK" 2>/dev/null; then
+    fail_t "sync-check.sh still contains git merge-base/diff plugin detection (must use .rabbit-plugins-stale marker)"
 else
-    fail_t "message does NOT reference changed files (actual: $(printf '%q' "$t1_msg"))"
+    ok "sync-check.sh does not use git merge-base/diff for plugin detection"
 fi
 
 # ---------------------------------------------------------------------------
-# t5: When no plugin files changed since branch-point, no reload-plugins message
+# t5: When .rabbit-plugins-stale absent, no plugin alert fires
 # ---------------------------------------------------------------------------
-echo "=== t5: no skills changed since branch-point → no reload-plugins message ==="
+echo "=== t5: .rabbit-plugins-stale absent → no plugin alert ==="
 
-TMPROOT2="$(make_clean_repo_with_main)"
-trap 'rm -rf "$TMPROOT" "$TMPROOT2"' EXIT
+TMPROOT2="$(make_clean_repo)"
+rm -f "$TMPROOT2/.rabbit-plugins-stale"
 
-# Create a session branch off main but change only a non-plugin file
-git -C "$TMPROOT2" checkout -q -b session/test-no-plugin-change 2>/dev/null
-printf '# Some non-plugin change\n' > "$TMPROOT2/some-non-plugin-file.txt"
-
-# Keep CLAUDE.md matching (regenerate)
-correct2="$(RABBIT_ROOT="$TMPROOT2" bash "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
-printf '%s\n' "$correct2" > "$TMPROOT2/CLAUDE.md"
-
-git -C "$TMPROOT2" add -A
-git -C "$TMPROOT2" commit -q -m "non-plugin change on session branch"
-
-t5_output=""
 t5_output="$(RABBIT_ROOT="$TMPROOT2" RBT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
 t5_msg="$(printf '%s' "$t5_output" | extract_sys_msg)"
 
-if printf '%s' "$t5_msg" | grep -q 'reload-plugins' 2>/dev/null; then
-    fail_t "reload-plugins message emitted when no plugin files changed (false positive)"
+if printf '%s' "$t5_msg" | grep -q 'rabbit-refresh\|reload-plugins\|Plugins updated' 2>/dev/null; then
+    fail_t "plugin alert fired when .rabbit-plugins-stale was absent (false positive)"
 else
-    ok "no reload-plugins message when no plugin files changed"
+    ok "no plugin alert when .rabbit-plugins-stale is absent"
 fi
 
 # ---------------------------------------------------------------------------
@@ -204,12 +174,10 @@ data = sys.stdin.read().strip()
 if not data:
     print(0)
 else:
-    # Try to parse as one JSON object
     try:
         json.loads(data)
         print(1)
     except Exception:
-        # Count the number of JSON objects by trying to decode sequentially
         decoder = json.JSONDecoder()
         idx = 0
         count = 0
@@ -229,7 +197,6 @@ else:
 if [ "$t6_json_count" = "1" ]; then
     ok "exactly one JSON object emitted"
 elif [ "$t6_json_count" = "0" ]; then
-    # t1 should have produced output, so 0 is actually a t1 failure already captured
     ok "no JSON emitted (already caught in t1/t2)"
 else
     fail_t "more than one JSON object emitted (count=$t6_json_count) — violates single-JSON-per-invocation invariant"
