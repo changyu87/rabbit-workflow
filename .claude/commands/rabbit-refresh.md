@@ -7,8 +7,6 @@ Refreshing rabbit-workflow policy files.
 
 !`echo 0 > .rbt-prompt-counter`
 
-!`rm -f .rabbit-plugins-stale`
-
 !`for p in $(grep -oE '^@[^[:space:]]+' CLAUDE.md | sed 's/^@//'); do echo "=== $p ==="; cat "$p"; echo; done`
 
 In one sentence, confirm which files were refreshed.

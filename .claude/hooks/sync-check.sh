@@ -119,12 +119,12 @@ print(json.dumps({
 fi
 
 # Plugin-change detection — checks for .rabbit-plugins-stale marker written by build.sh.
-# Emits green [rabbit] alert instructing /rabbit-refresh.
+# Emits green [rabbit] alert instructing /reload-plugins. Marker clears at next session start.
 # Only fires if no prior check emitted JSON (single-JSON-per-invocation invariant).
 if [ -f "$REPO_ROOT/.rabbit-plugins-stale" ] && [ "$_json_emitted" -eq 0 ]; then
   python3 -c "
 import json
-print(json.dumps({'systemMessage': '\x1b[32m[rabbit] Plugins updated — run /rabbit-refresh to reload skills/commands into Claude.\x1b[0m'}))
+print(json.dumps({'systemMessage': '\x1b[32m[rabbit] Plugins updated — run /reload-plugins to reload the latest skills/commands into Claude.\x1b[0m'}))
 "
 fi
 
