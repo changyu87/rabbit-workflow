@@ -1,0 +1,20 @@
+{
+  "name": "RABBIT-CAGE-25",
+  "title": "rabbit-bug skill dispatches raw Agent for scope resolution instead of invoking rabbit-feature-scope skill",
+  "status": "open",
+  "severity": "low",
+  "description": "The rabbit-bug Filing Protocol calls resolve-scope.sh and dispatches a bare Agent, duplicating the logic already encapsulated in the rabbit-feature-scope skill. It should invoke the skill instead.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-14T09:39:49Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-14T09:39:49Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
