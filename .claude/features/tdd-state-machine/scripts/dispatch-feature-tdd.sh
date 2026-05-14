@@ -2,17 +2,17 @@
 # dispatch-feature-tdd.sh — assemble the prompt for a per-feature full-TDD-cycle subagent.
 #
 # Usage:
-#   dispatch-feature-tdd.sh <feature-name> "<request-description>" [--bug <bug-dir>] [--backlog <item-dir>]
+#   dispatch-feature-tdd.sh <feature-name> "<request-description>" [--linked-item <dir> --item-type <bug|backlog>]
 #
 # Output: assembled prompt to stdout. Caller passes stdout to Agent.
-# The subagent runs spec-update → test-red → impl → test-green for the named feature.
+# The subagent runs spec-update → test-red → impl → test-green for the named feature,
+# then writes tdd-report.json to repo root. The calling skill handles status updates.
 #
-# Optional flags (mutually exclusive):
-#   --bug <bug-dir>       After test-green, close the bug at <bug-dir> with the impl commit SHA.
-#   --backlog <item-dir>  After test-green, mark the backlog item at <item-dir> implemented
-#                         with the impl commit SHA.
+# Optional flags:
+#   --linked-item <dir>   Directory of the linked bug or backlog item.
+#   --item-type <type>    Required with --linked-item: bug|backlog
 #
-# Version: 1.1.0
+# Version: 2.0.0
 # Owner: rabbit-workflow team (tdd-state-machine)
 # Deprecation criterion: when the TDD cycle is natively supported by the dispatch infrastructure.
 
@@ -22,7 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)}"
 
 if [ $# -lt 2 ]; then
-  echo "ERROR: usage: dispatch-feature-tdd.sh <feature-name> <request-description> [--bug <bug-dir>] [--backlog <item-dir>]" >&2
+  echo "ERROR: usage: dispatch-feature-tdd.sh <feature-name> <request-description> [--linked-item <dir> --item-type <bug|backlog>]" >&2
   exit 2
 fi
 
@@ -30,20 +30,29 @@ FEATURE_NAME="$1"
 REQUEST="$2"
 shift 2
 
-BUG_DIR=""
-BACKLOG_DIR=""
+LINKED_ITEM_DIR=""
+ITEM_TYPE=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --bug)
-      [ -z "${2:-}" ] && { echo "ERROR: --bug requires a directory argument" >&2; exit 2; }
-      BUG_DIR="$2"; shift 2 ;;
-    --backlog)
-      [ -z "${2:-}" ] && { echo "ERROR: --backlog requires a directory argument" >&2; exit 2; }
-      BACKLOG_DIR="$2"; shift 2 ;;
+    --linked-item)
+      [ -z "${2:-}" ] && { echo "ERROR: --linked-item requires a directory argument" >&2; exit 2; }
+      LINKED_ITEM_DIR="$2"; shift 2 ;;
+    --item-type)
+      [ -z "${2:-}" ] && { echo "ERROR: --item-type requires bug|backlog" >&2; exit 2; }
+      ITEM_TYPE="$2"; shift 2 ;;
+    --bug|--backlog)
+      echo "ERROR: $1 is removed. Use --linked-item <dir> --item-type <bug|backlog>" >&2
+      exit 2 ;;
     *)
       echo "ERROR: unknown argument: $1" >&2; exit 2 ;;
   esac
 done
+if [ -n "$LINKED_ITEM_DIR" ] && [ -z "$ITEM_TYPE" ]; then
+  echo "ERROR: --linked-item requires --item-type <bug|backlog>" >&2; exit 2
+fi
+if [ -n "$ITEM_TYPE" ] && [ -z "$LINKED_ITEM_DIR" ]; then
+  echo "ERROR: --item-type requires --linked-item <dir>" >&2; exit 2
+fi
 
 FIND_FEATURE="$REPO_ROOT/.claude/features/contract/scripts/find-feature.sh"
 FEATURE_PATH=$(bash "$FIND_FEATURE" "$FEATURE_NAME" 2>/dev/null) || {
@@ -67,32 +76,6 @@ POLICY_BLOCK=""
 DISPATCH_SPEC_SH="$REPO_ROOT/.claude/features/contract/scripts/dispatch-spec-update.sh"
 DISPATCH_EDIT_SH="$REPO_ROOT/.claude/features/contract/scripts/dispatch-feature-edit.sh"
 TDD_STEP_SH="$REPO_ROOT/.claude/features/tdd-state-machine/scripts/tdd-step.sh"
-BUG_STATUS_SH="$REPO_ROOT/.claude/features/rabbit-bug/scripts/bug-status.sh"
-BACKLOG_STATUS_SH="$REPO_ROOT/.claude/features/rabbit-backlog/scripts/backlog-item-status.sh"
-
-# Build optional post-test-green status update block
-STATUS_UPDATE_BLOCK=""
-if [ -n "$BUG_DIR" ]; then
-  STATUS_UPDATE_BLOCK="Step 8b: Close linked bug after test-green
-  IMPL_SHA=\$(git -C ${REPO_ROOT} rev-parse HEAD)
-  bash ${BUG_STATUS_SH} set ${BUG_DIR} closed --reason 'TDD cycle complete' --fix-commits \"\$IMPL_SHA\"
-  linked_item: ${BUG_DIR} (status: closed)
-"
-elif [ -n "$BACKLOG_DIR" ]; then
-  STATUS_UPDATE_BLOCK="Step 8b: Mark linked backlog item implemented after test-green
-  IMPL_SHA=\$(git -C ${REPO_ROOT} rev-parse HEAD)
-  bash ${BACKLOG_STATUS_SH} set ${BACKLOG_DIR} implemented --reason 'TDD cycle complete' --fix-commits \"\$IMPL_SHA\"
-  linked_item: ${BACKLOG_DIR} (status: implemented)
-"
-fi
-
-# Build HANDOFF linked_item line
-HANDOFF_LINKED_ITEM=""
-if [ -n "$BUG_DIR" ]; then
-  HANDOFF_LINKED_ITEM="  linked_item: ${BUG_DIR} (status: closed)"
-elif [ -n "$BACKLOG_DIR" ]; then
-  HANDOFF_LINKED_ITEM="  linked_item: ${BACKLOG_DIR} (status: implemented)"
-fi
 
 cat <<PROMPT
 RABBIT-POLICY-BLOCK-v1
@@ -166,10 +149,35 @@ Step 7: Dispatch IMPLEMENTATION subagent
   PROMPT=\$(bash ${DISPATCH_EDIT_SH} ${FEATURE_NAME} "Implement to make tests pass. Follow spec invariants. Run all tests, confirm pass. Then: bash ${TDD_STEP_SH} transition ${FEATURE_DIR} test-green")
   Dispatch Agent(prompt: PROMPT)
 
-Step 8: Verify test-green
-  bash ${TDD_STEP_SH} show ${FEATURE_DIR}  # must output: test-green
+Step 7b: Inline spec-review (performed by you — do NOT dispatch another Agent)
+  Read: ${SPEC_PATH}
+  Run:  git diff HEAD -- ${FEATURE_DIR}/
+  Compare each spec invariant to the implementation diff.
+  Produce two values:
+    spec_compliance: "pass" if all invariants addressed, "fail" if any are missing
+    spec_compliance_notes: list any unaddressed invariants, or null if pass
 
-${STATUS_UPDATE_BLOCK}Step 9: Scope marker removed by trap (EXIT fires automatically)
+Step 8: Write tdd-report.json to repo root (gitignored — NEVER commit this file)
+  Path: ${REPO_ROOT}/tdd-report.json
+  Write exactly this JSON schema:
+  {
+    "schema_version": "1.0.0",
+    "feature": "${FEATURE_NAME}",
+    "request": "<original request text>",
+    "linked_item": "${LINKED_ITEM_DIR:-null}",
+    "item_type": "${ITEM_TYPE:-null}",
+    "spec_changes": "<yes|no>",
+    "spec_no_change_reason": "<reason or null>",
+    "test_gap_analysis": "<what was missing in test coverage before this fix, or 'none'>",
+    "impl_summary": "<one paragraph describing what was implemented>",
+    "spec_compliance": "<pass|fail>",
+    "spec_compliance_notes": "<unaddressed invariants or null>",
+    "test_result": "pass",
+    "tdd_state": "test-green",
+    "impl_commit": "<output of: git rev-parse HEAD>"
+  }
+
+Step 9: Scope marker removed by trap (EXIT fires automatically)
 
 ════════════════════════════════════════════════════════════════════════
 HANDOFF (emit when complete)
@@ -178,10 +186,10 @@ HANDOFF (emit when complete)
 HANDOFF:
   feature: ${FEATURE_NAME}
   tdd_state: test-green
-  spec_changed: <yes|no>
   test_result: pass
-${HANDOFF_LINKED_ITEM}
-  notes: <brief>
+  spec_compliance: <pass|fail>
+  tdd_report_path: ${REPO_ROOT}/tdd-report.json
+  notes: <brief summary>
 
 PROMPT
 
