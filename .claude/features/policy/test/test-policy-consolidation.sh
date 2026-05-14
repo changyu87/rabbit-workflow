@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # test-policy-consolidation.sh
-# Asserts workflow-rules.md contains no exception prose or script-path refs.
+# After archival: workflow-rules.md contains only Section 4.
+# Asserts removed sections are gone; Section 4 content is intact; no stale prose.
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -38,35 +39,35 @@ fi
 if ! grep -q 'check-no-main-edits' "$WF"; then
     ok 4 "workflow-rules.md contains no script paths"
 else
-    fail 4 "workflow-rules.md still contains script paths in R1–R9 — compress to one-liners"
+    fail 4 "workflow-rules.md still contains script paths — remove them"
 fi
 
-# t5: R1 present as one-liner bullet
-if grep -q '^\- \*\*R1\*\*' "$WF"; then
-    ok 5 "R1 present as one-liner bullet"
+# t5: Section 4 (Token/compliance) present
+if grep -q '## 4\. Token/compliance tradeoff is the user' "$WF"; then
+    ok 5 "Section 4 (Token/compliance tradeoff) present"
 else
-    fail 5 "R1 not found as one-liner bullet '- **R1**'"
+    fail 5 "Section 4 missing from workflow-rules.md"
 fi
 
-# t6: R9 present as one-liner bullet
-if grep -q '^\- \*\*R9\*\*' "$WF"; then
-    ok 6 "R9 present as one-liner bullet"
+# t6: 'Subagent-driven by construction' section removed
+if ! grep -q '## 1\. Subagent-driven by construction' "$WF"; then
+    ok 6 "'Subagent-driven by construction' section correctly absent (archived)"
 else
-    fail 6 "R9 not found as one-liner bullet '- **R9**'"
+    fail 6 "'Subagent-driven by construction' section still present — should be archived"
 fi
 
-# t7: 'Subagent-driven by construction' section still exists (with number)
-if grep -q '## 1\. Subagent-driven by construction' "$WF"; then
-    ok 7 "'Subagent-driven by construction' section present"
+# t7: 'Full TDD on every feature touch' section removed
+if ! grep -q '## 3\. Full TDD on every feature touch' "$WF"; then
+    ok 7 "'Full TDD on every feature touch' section correctly absent (archived)"
 else
-    fail 7 "'Subagent-driven by construction' section missing"
+    fail 7 "'Full TDD on every feature touch' section still present — should be archived"
 fi
 
-# t8: 'Full TDD on every feature touch' section still exists (with number)
-if grep -q '## 3\. Full TDD on every feature touch' "$WF"; then
-    ok 8 "'Full TDD on every feature touch' section present"
+# t8: Hard rules index removed
+if ! grep -q '## 5\. Hard rules index' "$WF"; then
+    ok 8 "'Hard rules index' section correctly absent (archived)"
 else
-    fail 8 "'Full TDD on every feature touch' section missing"
+    fail 8 "'Hard rules index' section still present — should be archived"
 fi
 
 echo ""

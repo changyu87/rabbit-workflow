@@ -1,4 +1,4 @@
-# Rabbit Workflow — subagent-driven development; every feature touch must invoke the rabbit-feature-touch skill to advance the full TDD state machine before the user decides on each dispatch.
+# Rabbit Workflow — feature-oriented, subagent-driven, drift-protected. The .claude folder is scope-guarded: every feature write requires an active scope marker. Use /rabbit-feature-touch for any feature change — it runs a full TDD cycle (spec → test-green). TDD is token-heavy; skip it only for trivial edits via the one-time or session override.
 
 @.claude/features/policy/philosophy.md
 @.claude/features/policy/spec-rules.md

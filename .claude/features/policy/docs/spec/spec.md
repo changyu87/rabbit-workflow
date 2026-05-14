@@ -23,10 +23,7 @@ Owns the four canonical rule files fed to every subagent dispatch.
 ## Invariants
 
 1. All four rule files exist and are non-empty.
-2. `workflow-rules.md` contains sections: "Subagent-driven", "Full TDD", "Token/compliance", "Hard rules", "Cross-component handoffs".
-3. R8 and R9 appear in `workflow-rules.md`.
-4. R3 in `workflow-rules.md` explicitly mandates full-stack E2E coverage: tests must exercise the full chain from the user-facing entry point through to the final state change, not just individual script behavior in isolation.
-5. R1 in `workflow-rules.md` explicitly states branch enforcement: (a) the session-init hook automatically creates a feature branch when the session starts on main, (b) all commits must land on a feature branch and never directly on main, and (c) the PR/merge step is the only path back to main.
+2. `workflow-rules.md` contains only Section 4 (Token/compliance tradeoff is the user's call).
 
 ## Out of Scope
 

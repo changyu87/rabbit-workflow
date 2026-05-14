@@ -65,11 +65,11 @@ else
     fail_t 6 ".claude/work-guide.md still exists (not yet removed)"
 fi
 
-# t7: CLAUDE.md contains "subagent-driven development"
-if grep -q "subagent-driven development" "$CLAUDE_MD" 2>/dev/null; then
-    ok 7 "CLAUDE.md contains 'subagent-driven development'"
+# t7: CLAUDE.md contains "feature-oriented" (new introductive one-liner)
+if grep -q "feature-oriented" "$CLAUDE_MD" 2>/dev/null; then
+    ok 7 "CLAUDE.md contains 'feature-oriented'"
 else
-    fail_t 7 "CLAUDE.md does not contain 'subagent-driven development' (not yet added)"
+    fail_t 7 "CLAUDE.md does not contain 'feature-oriented' (one-liner not yet updated)"
 fi
 
 # t8: CLAUDE.md does NOT contain "two source-of-truth" (old phrase should be gone)
