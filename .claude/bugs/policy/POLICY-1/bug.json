@@ -1,0 +1,20 @@
+{
+  "name": "POLICY-1",
+  "title": "CLAUDE.md has stale @include for workflow-rules.md which no longer exists",
+  "status": "open",
+  "severity": "low",
+  "description": "CLAUDE.md contains the directive '@.claude/features/policy/workflow-rules.md' in its @-include block, but the file .claude/features/policy/workflow-rules.md has been deleted. This causes the open-message context block to reference a missing file. Reproduction: run 'ls .claude/features/policy/workflow-rules.md' — file not found; check CLAUDE.md @-includes — directive still present.",
+  "related_feature": "policy",
+  "filed": "2026-05-14T10:28:29Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-14T10:28:29Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
