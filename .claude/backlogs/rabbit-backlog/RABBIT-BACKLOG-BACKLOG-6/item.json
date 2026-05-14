@@ -1,7 +1,7 @@
 {
   "name": "RABBIT-BACKLOG-BACKLOG-6",
   "title": "B/B filing: check current branch is main, prompt user for confirm before filing on any other branch",
-  "status": "open",
+  "status": "in-progress",
   "priority": "medium",
   "description": "",
   "owner": "cyxu",
@@ -14,6 +14,12 @@
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-14T10:10:22Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "TDD cycle started: main-branch guard in filing scripts"
     }
   ]
 }
