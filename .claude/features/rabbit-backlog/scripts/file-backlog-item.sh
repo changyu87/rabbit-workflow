@@ -7,7 +7,7 @@
 #                        [--owner <name>]
 #
 # Options:
-#   --related-feature  feature name (must exist in registry.json)
+#   --related-feature  feature name (must exist in feature index)
 #   --title            short human-readable title
 #   --priority         low | medium | high | critical (default: medium)
 #   --owner            owner name (default: $USER or "unknown")

@@ -9,15 +9,19 @@ SCRIPTS_DIR="$FEATURE_DIR/scripts"
 TMPROOT="$(mktemp -d)"
 trap 'rm -rf "$TMPROOT"' EXIT INT TERM
 
+FIND_FEATURE_SH="$(cd "$SCRIPT_DIR/../.." && pwd)/contract/scripts/find-feature.sh"
+
 PASS=0; FAIL=0
 ok() { echo "  ok   $*"; PASS=$((PASS+1)); }
 ko() { echo "  FAIL $*"; FAIL=$((FAIL+1)); }
 
-# Build a minimal RABBIT_ROOT fixture with registry.json + one feature.
+# Build a minimal RABBIT_ROOT fixture with registry.json, find-feature.sh, and one feature.
 make_rabbit_root() {
   local root="$1"
   mkdir -p "$root/.claude/features/tdd-state-machine/docs/spec"
+  mkdir -p "$root/.claude/features/contract/scripts"
 
+  # registry.json — still needed by resolve-feature-scope.sh (not migrated; deleted in Task 5).
   cat > "$root/.claude/features/registry.json" <<'JSON'
 {
   "schema_version": "1.0.0",
@@ -35,6 +39,7 @@ make_rabbit_root() {
 }
 JSON
 
+  # feature.json — needed by find-feature.sh (used by dispatch-feature-tdd.sh).
   cat > "$root/.claude/features/tdd-state-machine/feature.json" <<'JSON'
 {
   "name": "tdd-state-machine",
@@ -44,6 +49,9 @@ JSON
   "summary": "fixture feature"
 }
 JSON
+
+  # Copy find-feature.sh so dispatch-feature-tdd.sh can locate the feature.
+  cp "$FIND_FEATURE_SH" "$root/.claude/features/contract/scripts/find-feature.sh"
 
   echo "# Spec\nMinimal spec content." > "$root/.claude/features/tdd-state-machine/docs/spec/spec.md"
   echo "# Contract\nMinimal contract content." > "$root/.claude/features/tdd-state-machine/docs/spec/contract.md"

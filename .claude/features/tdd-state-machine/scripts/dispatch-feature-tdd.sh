@@ -47,7 +47,7 @@ done
 
 FIND_FEATURE="$REPO_ROOT/.claude/features/contract/scripts/find-feature.sh"
 FEATURE_PATH=$(bash "$FIND_FEATURE" "$FEATURE_NAME" 2>/dev/null) || {
-  echo "ERROR: feature '$FEATURE_NAME' not found in registry" >&2; exit 1
+  echo "ERROR: feature '$FEATURE_NAME' not found" >&2; exit 1
 }
 
 FEATURE_DIR="$REPO_ROOT/$FEATURE_PATH"
