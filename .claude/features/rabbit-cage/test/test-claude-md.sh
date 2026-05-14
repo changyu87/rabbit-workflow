@@ -37,18 +37,18 @@ else
     fail_t 2 "CLAUDE.md still @-imports work-guide.md"
 fi
 
-# t3: CLAUDE.md contains inline policy start marker
-if grep -q 'rabbit-policy-start' "$CLAUDE_MD" 2>/dev/null; then
-    ok 3 "CLAUDE.md contains inline rabbit-policy-start marker"
+# t3: CLAUDE.md does NOT contain inline policy marker (pure @-import pointer)
+if ! grep -q 'rabbit-policy-start' "$CLAUDE_MD" 2>/dev/null; then
+    ok 3 "CLAUDE.md does not contain rabbit-policy-start marker (pure @-import pointer)"
 else
-    fail_t 3 "CLAUDE.md does not contain rabbit-policy-start marker (not yet generated)"
+    fail_t 3 "CLAUDE.md still contains rabbit-policy-start marker (inline content not removed)"
 fi
 
-# t4: CLAUDE.md contains verbatim policy content (spot-check: "Machine First")
-if grep -q 'Machine First' "$CLAUDE_MD" 2>/dev/null; then
-    ok 4 "CLAUDE.md contains verbatim policy content ('Machine First' present)"
+# t4: CLAUDE.md @-imports point to .claude/features/policy/ files
+if grep -qE '^@\.claude/features/policy/' "$CLAUDE_MD" 2>/dev/null; then
+    ok 4 "CLAUDE.md contains @-imports pointing to .claude/features/policy/"
 else
-    fail_t 4 "CLAUDE.md does not contain 'Machine First' — inline policy content missing"
+    fail_t 4 "CLAUDE.md does not contain @-imports to .claude/features/policy/"
 fi
 
 # t5: .claude/philosophy.md does NOT exist (removed as part of migration)

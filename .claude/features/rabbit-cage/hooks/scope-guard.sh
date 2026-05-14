@@ -81,12 +81,12 @@ decide() {
   # 4a. Per-feature scope markers (.rabbit-scope-active-<feature>) at repo root
   # Enables parallel per-feature subagent dispatch without scope marker races.
   if [ -n "$REPO_ROOT" ]; then
+    FIND_FEATURE="$REPO_ROOT/.claude/features/contract/scripts/find-feature.sh"
     for per_marker in "$REPO_ROOT"/.rabbit-scope-active-*; do
       [ -f "$per_marker" ] || continue
       per_feature="${per_marker##*/.rabbit-scope-active-}"
       [ -z "$per_feature" ] || [ "$per_feature" = "*" ] && continue
-      REGISTRY="$REPO_ROOT/.claude/features/registry.json"
-      per_path=$(python3 -c "import json,sys; r=json.load(open('$REGISTRY')); print(r.get('features',{}).get('$per_feature',{}).get('path',''))" 2>/dev/null)
+      per_path=$(bash "$FIND_FEATURE" "$per_feature" 2>/dev/null) || true
       [ -z "$per_path" ] && continue
       per_abs="$REPO_ROOT/$per_path"
       if [[ "$abs" == "$per_abs"* ]]; then
@@ -99,10 +99,10 @@ decide() {
   # 4. Active scope marker anywhere in ancestor chain -> check further
   if walk_up_find "$abs" ".rabbit-scope-active" >/dev/null; then
     # 4b. Scope marker exists — verify target is within the scoped feature directory
-    #     Read feature name from marker -> look up path in registry -> restrict to subtree
+    #     Read feature name from marker -> look up path via find-feature.sh -> restrict to subtree
     SCOPE_FEATURE="$(cat "$REPO_ROOT/.rabbit-scope-active" 2>/dev/null)"
-    REGISTRY="$REPO_ROOT/.claude/features/registry.json"
-    FEATURE_PATH=$(python3 -c "import json,sys; r=json.load(open('$REGISTRY')); print(r.get('features',{}).get('$SCOPE_FEATURE',{}).get('path',''))" 2>/dev/null)
+    FIND_FEATURE="${FIND_FEATURE:-$REPO_ROOT/.claude/features/contract/scripts/find-feature.sh}"
+    FEATURE_PATH=$(bash "$FIND_FEATURE" "$SCOPE_FEATURE" 2>/dev/null) || true
     if [ -n "$FEATURE_PATH" ]; then
       FEATURE_ABS="$REPO_ROOT/$FEATURE_PATH"
       if [[ "$abs" != "$FEATURE_ABS"* ]]; then

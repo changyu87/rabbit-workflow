@@ -1,6 +1,6 @@
 #!/bin/bash
-# Tests for resolve-feature-scope.sh and dispatch-feature-tdd.sh.
-# These scripts do not yet exist; t1 and t4 are expected to FAIL.
+# Tests for dispatch-feature-tdd.sh.
+# resolve-feature-scope.sh was deleted in Task 5 (replaced by rabbit-feature-scope feature).
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -9,15 +9,19 @@ SCRIPTS_DIR="$FEATURE_DIR/scripts"
 TMPROOT="$(mktemp -d)"
 trap 'rm -rf "$TMPROOT"' EXIT INT TERM
 
+FIND_FEATURE_SH="$(cd "$SCRIPT_DIR/../.." && pwd)/contract/scripts/find-feature.sh"
+
 PASS=0; FAIL=0
 ok() { echo "  ok   $*"; PASS=$((PASS+1)); }
 ko() { echo "  FAIL $*"; FAIL=$((FAIL+1)); }
 
-# Build a minimal RABBIT_ROOT fixture with registry.json + one feature.
+# Build a minimal RABBIT_ROOT fixture with registry.json, find-feature.sh, and one feature.
 make_rabbit_root() {
   local root="$1"
   mkdir -p "$root/.claude/features/tdd-state-machine/docs/spec"
+  mkdir -p "$root/.claude/features/contract/scripts"
 
+  # registry.json — still needed by resolve-feature-scope.sh (not migrated; deleted in Task 5).
   cat > "$root/.claude/features/registry.json" <<'JSON'
 {
   "schema_version": "1.0.0",
@@ -35,6 +39,7 @@ make_rabbit_root() {
 }
 JSON
 
+  # feature.json — needed by find-feature.sh (used by dispatch-feature-tdd.sh).
   cat > "$root/.claude/features/tdd-state-machine/feature.json" <<'JSON'
 {
   "name": "tdd-state-machine",
@@ -45,46 +50,20 @@ JSON
 }
 JSON
 
+  # Copy find-feature.sh so dispatch-feature-tdd.sh can locate the feature.
+  cp "$FIND_FEATURE_SH" "$root/.claude/features/contract/scripts/find-feature.sh"
+
   echo "# Spec\nMinimal spec content." > "$root/.claude/features/tdd-state-machine/docs/spec/spec.md"
   echo "# Contract\nMinimal contract content." > "$root/.claude/features/tdd-state-machine/docs/spec/contract.md"
 }
 
 # ---------------------------------------------------------------------------
-# t1: resolve-feature-scope.sh exists and is executable
+# t1: resolve-feature-scope.sh does NOT exist (deleted in Task 5)
 # ---------------------------------------------------------------------------
 t1() {
-  [ -x "$SCRIPTS_DIR/resolve-feature-scope.sh" ] \
-    && ok "t1: resolve-feature-scope.sh exists and is executable" \
-    || ko "t1: resolve-feature-scope.sh not found or not executable at $SCRIPTS_DIR/resolve-feature-scope.sh"
-}
-
-# ---------------------------------------------------------------------------
-# t2: resolve-feature-scope.sh exits 0 and emits non-empty stdout
-# ---------------------------------------------------------------------------
-t2() {
-  local root="$TMPROOT/t2_root"
-  make_rabbit_root "$root"
-  local out
-  out=$(RABBIT_ROOT="$root" bash "$SCRIPTS_DIR/resolve-feature-scope.sh" "add color to rabbit print" 2>/dev/null)
-  local rc=$?
-  if [ "$rc" = "0" ] && [ -n "$out" ]; then
-    ok "t2: resolve-feature-scope.sh exits 0 with non-empty stdout"
-  else
-    ko "t2: rc=$rc stdout_empty=$([ -z "$out" ] && echo yes || echo no)"
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# t3: resolve-feature-scope.sh stdout contains the word "features"
-# ---------------------------------------------------------------------------
-t3() {
-  local root="$TMPROOT/t3_root"
-  make_rabbit_root "$root"
-  local out
-  out=$(RABBIT_ROOT="$root" bash "$SCRIPTS_DIR/resolve-feature-scope.sh" "add color to rabbit print" 2>/dev/null)
-  echo "$out" | grep -qi "features" \
-    && ok "t3: resolve-feature-scope.sh output contains 'features'" \
-    || ko "t3: 'features' not found in output"
+  [ ! -f "$SCRIPTS_DIR/resolve-feature-scope.sh" ] \
+    && ok "t1: resolve-feature-scope.sh correctly absent (deleted in Task 5)" \
+    || ko "t1: resolve-feature-scope.sh still exists but should have been deleted"
 }
 
 # ---------------------------------------------------------------------------
@@ -154,7 +133,7 @@ t8() {
 echo "running parallel-orchestration-scripts tests"
 echo "  SCRIPTS_DIR=$SCRIPTS_DIR"
 echo
-t1; t2; t3; t4; t5; t6; t7; t8
+t1; t4; t5; t6; t7; t8
 echo
 echo "summary: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

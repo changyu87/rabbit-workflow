@@ -88,19 +88,19 @@ d6() {
     || ko "d6: rc1=$rc1 rc2=$rc2"
 }
 
-# d7: review state behaves like test-green (must pass)
+# d7: spec-update state -> not checked against tests (no claim about test outcome)
 d7() {
-  local d="$TMPROOT/d7"; fix "$d" d7 review 1
+  local d="$TMPROOT/d7"; fix "$d" d7 spec-update 1
   local rc; rc=$(run "$d")
-  [ "$rc" != "0" ] && ok "d7: review + failing tests -> drift" \
+  [ "$rc" = "0" ] && ok "d7: spec-update state -> ok regardless of tests" \
     || ko "d7: rc=$rc"
 }
 
-# d8: merged state behaves like test-green
+# d8: deprecated state -> not checked against tests
 d8() {
-  local d="$TMPROOT/d8"; fix "$d" d8 merged 1
+  local d="$TMPROOT/d8"; fix "$d" d8 deprecated 1
   local rc; rc=$(run "$d")
-  [ "$rc" != "0" ] && ok "d8: merged + failing tests -> drift" \
+  [ "$rc" = "0" ] && ok "d8: deprecated state -> ok regardless of tests" \
     || ko "d8: rc=$rc"
 }
 

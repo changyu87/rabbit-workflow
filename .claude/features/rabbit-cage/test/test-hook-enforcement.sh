@@ -31,11 +31,11 @@ echo "test-hook-enforcement.sh"
 echo ""
 echo "=== GUARANTEE 1: scope-guard restricts writes to active feature directory ==="
 
-# t1: scope-guard.sh contains logic that reads the feature name / looks up registry.json
-if grep -qE 'registry\.json|REGISTRY' "$SCOPE_GUARD" 2>/dev/null; then
-    ok 1 "scope-guard.sh references registry.json for feature path lookup"
+# t1: scope-guard.sh uses find-feature.sh (not registry.json) for feature path lookup
+if grep -q 'find-feature.sh' "$SCOPE_GUARD" 2>/dev/null && ! grep -qE 'registry\.json' "$SCOPE_GUARD" 2>/dev/null; then
+    ok 1 "scope-guard.sh uses find-feature.sh for feature path lookup (no registry.json)"
 else
-    fail_t 1 "scope-guard.sh does NOT reference registry.json — missing directory-restriction logic"
+    fail_t 1 "scope-guard.sh does NOT use find-feature.sh for feature path lookup (or still references registry.json)"
 fi
 
 # t2: scope-guard.sh rejects a Write to .claude/features/contract/ when scope is rabbit-cage

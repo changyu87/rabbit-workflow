@@ -109,7 +109,7 @@ t7() {
 # t8: terminal state - deprecated cannot transition
 t8() {
   local d="$TMPROOT/t8"; fix "$d" t8 deprecated
-  local rc; rc=$(run transition "$d" merged --force)
+  local rc; rc=$(run transition "$d" spec --force)
   [ "$rc" != "0" ] \
     && ok "t8: deprecated is terminal (no exit even with --force)" \
     || ko "t8: rc=$rc - deprecated should not be exitable"
@@ -121,7 +121,7 @@ t9() {
   local ok=1
   run transition "$d" spec-update >/dev/null || ok=0
   [ "$ok" = "1" ] && run transition "$d" test-red --spec-no-change-reason "t9 full-path fixture" >/dev/null || ok=0
-  for next in impl test-green review merged deprecated; do
+  for next in impl test-green deprecated; do
     [ "$ok" = "1" ] && run transition "$d" "$next" >/dev/null || { ok=0; break; }
   done
   local final; final=$(jq -r '.tdd_state' "$d/feature.json")
@@ -141,11 +141,11 @@ t10() {
 
 # t11: transitions sub-command lists allowed next states (forward without --force)
 t11() {
-  local d="$TMPROOT/t11"; fix "$d" t11 review
+  local d="$TMPROOT/t11"; fix "$d" t11 test-green
   local rc; rc=$(run transitions "$d")
   local out; out=$(cat "$TMPROOT/stdout")
-  [ "$rc" = "0" ] && echo "$out" | grep -q "merged" \
-    && ok "t11: transitions from review includes merged" \
+  [ "$rc" = "0" ] && echo "$out" | grep -q "deprecated" \
+    && ok "t11: transitions from test-green includes deprecated" \
     || ko "t11: rc=$rc out='$out'"
 }
 

@@ -48,16 +48,24 @@ git -C "$GIT_REPO" config user.email "test@rabbit"
 git -C "$GIT_REPO" config user.name "rabbit-test"
 git -C "$GIT_REPO" commit --allow-empty -m "init" --quiet
 
-# Registry with test-feature
-mkdir -p "$GIT_REPO/.claude/features"
-cat > "$GIT_REPO/.claude/features/registry.json" <<'REGEOF'
-{
-  "features": {
-    "test-feature": { "dir": ".claude/features/test-feature" }
-  }
-}
-REGEOF
+# Install find-feature.sh so file-bug.sh can validate the feature.
+REPO_ROOT_REAL="${RABBIT_ROOT:-$(git -C "$FEATURE_DIR" rev-parse --show-toplevel 2>/dev/null)}"
+FIND_FEATURE_SRC="$REPO_ROOT_REAL/.claude/features/contract/scripts/find-feature.sh"
+mkdir -p "$GIT_REPO/.claude/features/contract/scripts"
+cp "$FIND_FEATURE_SRC" "$GIT_REPO/.claude/features/contract/scripts/find-feature.sh"
+chmod +x "$GIT_REPO/.claude/features/contract/scripts/find-feature.sh"
+
+# Create feature.json for test-feature so find-feature.sh can discover it.
 mkdir -p "$GIT_REPO/.claude/features/test-feature"
+cat > "$GIT_REPO/.claude/features/test-feature/feature.json" <<'FEATEOF'
+{
+  "name": "test-feature",
+  "version": "1.0.0",
+  "owner": "test",
+  "tdd_state": "test-green",
+  "summary": "Test feature for workspace-map bug filing tests."
+}
+FEATEOF
 
 # Canonical bugs root that workspace-map.sh would return
 WM_BUGS_ROOT="$GIT_REPO/.claude/bugs"

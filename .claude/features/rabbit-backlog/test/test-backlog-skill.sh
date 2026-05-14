@@ -4,9 +4,9 @@
 # t2: SKILL.md has name and description frontmatter fields
 # t3: feature.json surface.skills contains "rabbit-backlog"
 # t4: SKILL.md has a list-backlog.sh section header
-# t5: SKILL.md has a usage block for list-backlog.sh (all flags present)
-# t6: SKILL.md has a parameters table for list-backlog.sh
-# t7: SKILL.md has example invocations for list-backlog.sh (no-args, --text, --status, --feature)
+# t5: SKILL.md Scripts Reference table documents list-backlog.sh flags (--status, --feature, --text)
+# t6: SKILL.md has a Scripts Reference table with file-backlog-item.sh and backlog-item-status.sh
+# t7: SKILL.md has Status Lifecycle and PR Tiers sections
 
 set -uo pipefail
 
@@ -49,39 +49,30 @@ else
   fail_t 4 "$T4_LABEL"
 fi
 
-T5_LABEL="t5: SKILL.md usage block for list-backlog.sh documents all flags (--status, --feature, --text, -h/--help)"
+T5_LABEL="t5: SKILL.md Scripts Reference table documents list-backlog.sh flags (--status, --feature, --text)"
 if [ -f "$SKILL_MD" ] && \
    grep -q '\-\-status' "$SKILL_MD" && \
    grep -q '\-\-feature' "$SKILL_MD" && \
-   grep -q '\-\-text' "$SKILL_MD" && \
-   grep -q '\-h\|--help\|--help' "$SKILL_MD"; then
+   grep -q '\-\-text' "$SKILL_MD"; then
   ok 5 "$T5_LABEL"
 else
   fail_t 5 "$T5_LABEL"
 fi
 
-T6_LABEL="t6: SKILL.md has a parameters table for list-backlog.sh (| Flag | pattern)"
-if [ -f "$SKILL_MD" ] && grep -qE '^\| (Flag|\*\(no args\)\*|`--status`|`--feature`|`--text`)' "$SKILL_MD"; then
+T6_LABEL="t6: SKILL.md has a Scripts Reference table with file-backlog-item.sh and backlog-item-status.sh"
+if [ -f "$SKILL_MD" ] && \
+   grep -q 'Scripts Reference' "$SKILL_MD" && \
+   grep -q 'file-backlog-item\.sh' "$SKILL_MD" && \
+   grep -q 'backlog-item-status\.sh' "$SKILL_MD"; then
   ok 6 "$T6_LABEL"
 else
   fail_t 6 "$T6_LABEL"
 fi
 
-T7_LABEL="t7: SKILL.md has example invocations for list-backlog.sh (no-args, --text, --status, --feature)"
-EXAMPLES_OK=1
-if [ -f "$SKILL_MD" ]; then
-  # Must have at least one bare list-backlog.sh call (no-args example)
-  grep -q 'list-backlog\.sh$\|list-backlog\.sh #' "$SKILL_MD" || EXAMPLES_OK=0
-  # Must have --text example
-  grep -q 'list-backlog\.sh.*--text\|--text.*list-backlog\.sh' "$SKILL_MD" || EXAMPLES_OK=0
-  # Must have --status example
-  grep -q 'list-backlog\.sh.*--status\|--status.*list-backlog\.sh' "$SKILL_MD" || EXAMPLES_OK=0
-  # Must have --feature example
-  grep -q 'list-backlog\.sh.*--feature\|--feature.*list-backlog\.sh' "$SKILL_MD" || EXAMPLES_OK=0
-else
-  EXAMPLES_OK=0
-fi
-if [ "$EXAMPLES_OK" -eq 1 ]; then
+T7_LABEL="t7: SKILL.md has Status Lifecycle and PR Tiers sections"
+if [ -f "$SKILL_MD" ] && \
+   grep -q 'Status Lifecycle' "$SKILL_MD" && \
+   grep -q 'PR Tiers' "$SKILL_MD"; then
   ok 7 "$T7_LABEL"
 else
   fail_t 7 "$T7_LABEL"

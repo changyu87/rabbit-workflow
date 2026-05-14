@@ -1,0 +1,29 @@
+{
+  "name": "rabbit-feature-scope",
+  "version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "tdd_state": "test-green",
+  "summary": "Shared skill for resolving natural-language requests to the list of rabbit features whose files will be modified.",
+  "status": "active",
+  "updated": "2026-05-14",
+  "deprecation": {
+    "criterion": "When feature-scope resolution is automated natively by the dispatch infrastructure."
+  },
+  "contract": {
+    "reads": [
+      "feature.json files via find-feature.sh --list-json"
+    ],
+    "writes": [
+      "nothing — emits prompt to stdout only"
+    ],
+    "invokes": [
+      ".claude/features/contract/scripts/find-feature.sh"
+    ]
+  },
+  "surface": {
+    "scripts": [
+      "scripts/resolve-scope.sh"
+    ],
+    "skills": []
+  }
+}

@@ -28,17 +28,10 @@ fi
 FEATURE_NAME="$1"
 CHANGE_DESC="$2"
 
-REGISTRY="$REPO_ROOT/.claude/features/registry.json"
-[ -f "$REGISTRY" ] || { echo "ERROR: registry.json not found at $REGISTRY" >&2; exit 1; }
-
-FEATURE_PATH="$(python3 -c "
-import json, sys
-reg = json.load(open('$REGISTRY'))
-entry = reg.get('features', {}).get('$FEATURE_NAME')
-if not entry:
-    sys.exit(1)
-print(entry.get('path', ''))
-" 2>/dev/null)" || { echo "ERROR: feature '$FEATURE_NAME' not found in registry" >&2; exit 1; }
+FIND_FEATURE="$SCRIPT_DIR/find-feature.sh"
+FEATURE_PATH="$(bash "$FIND_FEATURE" "$FEATURE_NAME" 2>/dev/null)" || {
+  echo "ERROR: feature '$FEATURE_NAME' not found in registry" >&2; exit 1
+}
 
 FEATURE_DIR="$REPO_ROOT/$FEATURE_PATH"
 SPEC_PATH="$FEATURE_DIR/docs/spec/spec.md"

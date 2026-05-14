@@ -44,14 +44,17 @@ case "$cmd" in
     ;;
 
   set)
-    dir="${1:-}"; new="${2:-}"; reason=""; fix_commits=""; actor="${USER:-unknown}"
+    dir="${1:-}"; new="${2:-}"; reason=""; fix_commits=""; tdd_report_path=""; actor="${USER:-unknown}"
     shift 2 2>/dev/null || true
 
     while [ $# -gt 0 ]; do
       case "$1" in
-        --reason)      reason="$2";      shift 2 ;;
-        --fix-commits) fix_commits="$2"; shift 2 ;;
-        --actor)       actor="$2";       shift 2 ;;
+        --reason)      reason="$2";           shift 2 ;;
+        --fix-commits) fix_commits="$2";      shift 2 ;;
+        --tdd-report)
+          [ -z "${2:-}" ] && { echo "ERROR: --tdd-report requires a path" >&2; exit 2; }
+          tdd_report_path="$2"; shift 2 ;;
+        --actor)       actor="$2";            shift 2 ;;
         *) echo "ERROR: unknown arg: $1" >&2; usage; exit 2 ;;
       esac
     done
@@ -113,12 +116,16 @@ case "$cmd" in
 
     TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-    # Build history entry — include fix_commits when transitioning to implemented
+    # Build history entry — include fix_commits and tdd_report when transitioning to implemented
     if [ "$new" = "implemented" ]; then
-      jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$reason" --arg fc "$fix_commits" \
+      tdd_report_json="null"
+      if [ -n "$tdd_report_path" ] && [ -f "$tdd_report_path" ]; then
+        tdd_report_json=$(cat "$tdd_report_path")
+      fi
+      jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$reason" --arg fc "$fix_commits" --argjson rpt "$tdd_report_json" \
         '.status = $s
          | .closed = $ts
-         | .history += [{ ts: $ts, actor: $actor, action: $s, note: $note, fix_commits: $fc }]' \
+         | .history += [{ ts: $ts, actor: $actor, action: $s, note: $note, fix_commits: $fc, tdd_report: $rpt }]' \
         "$dir/item.json" > "$dir/item.json.tmp"
     elif [ "$new" = "reopened" ]; then
       jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$reason" \

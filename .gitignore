@@ -9,3 +9,7 @@
 .rabbit-scope-override-used
 .rabbit-skills-updated
 .claude/settings.local.json
+
+# Ephemeral TDD artifacts
+tdd-report.json
+.claude/tdd-report.json

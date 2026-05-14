@@ -5,12 +5,6 @@
   "updated": "2026-05-12",
   "targets": [
     {
-      "name": "CLAUDE.md",
-      "type": "generate-claude-md",
-      "destination": "CLAUDE.md",
-      "check_on_stop": true
-    },
-    {
       "name": "hooks/refresh.sh",
       "type": "copy-file",
       "source": ".claude/features/rabbit-cage/hooks/refresh.sh",
@@ -92,6 +86,13 @@
       "type": "copy-file",
       "source": ".claude/features/contract/skills/rabbit-workspace-map/SKILL.md",
       "destination": ".claude/skills/rabbit-workspace-map/SKILL.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "skills/rabbit-feature-scope/SKILL.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-feature-scope/skills/rabbit-feature-scope/SKILL.md",
+      "destination": ".claude/skills/rabbit-feature-scope/SKILL.md",
       "check_on_stop": true
     },
     {

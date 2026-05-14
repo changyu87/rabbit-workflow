@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # test-POLICY-BACKLOG-1-session-init-branch.sh
-# Tests for session-init.sh R1 branch-per-session enforcement.
+# Tests that session-init.sh does NOT create session/ branches (R1 removed).
 #
 # Spec invariants tested:
-#   t1: When on 'main', session-init.sh creates and checks out a session/YYYYMMDD-HHMMSS branch
-#   t2: When on a non-main branch, session-init.sh does NOT create or switch branches
-#   t3: Created branch name follows the session/ prefix and YYYYMMDD-HHMMSS timestamp format
+#   t1: When on 'main', session-init.sh does NOT create or switch branches
+#   t2: When on a feature branch, session-init.sh does NOT create or switch branches
+#   t3: session-init.sh emits valid JSON (additionalContext present) when @-imports resolve
 #
 # R3-compliant: no interactive constructs, exits 1 on any failure.
 
@@ -48,9 +48,9 @@ make_repo() {
 }
 
 # ---------------------------------------------------------------------------
-# t1: When on 'main', hook creates and checks out a session/... branch
+# t1: When on 'main', hook does NOT create or switch branches
 # ---------------------------------------------------------------------------
-echo "=== t1: on main → creates session/ branch ==="
+echo "=== t1: on main → branch unchanged ==="
 
 REPO1="$(make_repo)"
 trap 'rm -rf "$REPO1"' EXIT
@@ -59,14 +59,14 @@ RABBIT_ROOT="$REPO1" bash "$HOOK" > /dev/null 2>&1 || true
 
 BRANCH_T1="$(git -C "$REPO1" branch --show-current 2>/dev/null)"
 
-if [ "$BRANCH_T1" != "main" ] && [[ "$BRANCH_T1" == session/* ]]; then
-    ok "hook switched away from main to '$BRANCH_T1'"
+if [ "$BRANCH_T1" = "main" ]; then
+    ok "hook left branch unchanged at 'main'"
 else
-    fail_t "hook did NOT switch from main; current branch: '$BRANCH_T1' (expected session/...)"
+    fail_t "hook changed branch from 'main' to '$BRANCH_T1' (R1 branch creation should be removed)"
 fi
 
 # ---------------------------------------------------------------------------
-# t2: When on a non-main branch, hook does nothing to the branch
+# t2: When on a feature branch, hook does NOT create or switch branches
 # ---------------------------------------------------------------------------
 echo ""
 echo "=== t2: on feature branch → no branch change ==="
@@ -81,28 +81,23 @@ RABBIT_ROOT="$REPO2" bash "$HOOK" > /dev/null 2>&1 || true
 BRANCH_T2="$(git -C "$REPO2" branch --show-current 2>/dev/null)"
 
 if [ "$BRANCH_T2" = "feature/keep-this" ]; then
-    ok "hook left branch unchanged at '$BRANCH_T2'"
+    ok "hook left branch unchanged at 'feature/keep-this'"
 else
-    fail_t "hook changed branch from 'feature/keep-this' to '$BRANCH_T2' when already on non-main branch"
+    fail_t "hook changed branch from 'feature/keep-this' to '$BRANCH_T2'"
 fi
 
 # ---------------------------------------------------------------------------
-# t3: Branch name follows session/YYYYMMDD-HHMMSS format
+# t3: session-init.sh emits valid JSON with additionalContext when @-imports resolve
 # ---------------------------------------------------------------------------
 echo ""
-echo "=== t3: branch name follows session/YYYYMMDD-HHMMSS format ==="
+echo "=== t3: @-import injection emits valid JSON ==="
 
-REPO3="$(make_repo)"
-trap 'rm -rf "$REPO1" "$REPO2" "$REPO3"' EXIT
+OUTPUT="$(RABBIT_ROOT="$REPO_ROOT" bash "$HOOK" 2>/dev/null || true)"
 
-RABBIT_ROOT="$REPO3" bash "$HOOK" > /dev/null 2>&1 || true
-
-BRANCH_T3="$(git -C "$REPO3" branch --show-current 2>/dev/null)"
-
-if [[ "$BRANCH_T3" =~ ^session/[0-9]{8}-[0-9]{6}$ ]]; then
-    ok "branch '$BRANCH_T3' matches session/YYYYMMDD-HHMMSS format"
+if echo "$OUTPUT" | python3 -c "import json,sys; d=json.load(sys.stdin); assert 'additionalContext' in d" 2>/dev/null; then
+    ok "@-import injection emits valid JSON with additionalContext"
 else
-    fail_t "branch '$BRANCH_T3' does NOT match session/YYYYMMDD-HHMMSS format (expected e.g. session/20260512-143000)"
+    fail_t "@-import injection did not emit valid JSON with additionalContext"
 fi
 
 # ---------------------------------------------------------------------------

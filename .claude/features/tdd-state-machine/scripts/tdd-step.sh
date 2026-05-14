@@ -36,9 +36,7 @@ forward_next() {
     spec-update) echo "test-red" ;;
     test-red)   echo "impl" ;;
     impl)       echo "test-green" ;;
-    test-green) echo "review" ;;
-    review)     echo "merged" ;;
-    merged)     echo "deprecated" ;;
+    test-green) echo "deprecated" ;;
     deprecated) echo "" ;;        # terminal
     *)          echo "" ;;
   esac
@@ -46,7 +44,7 @@ forward_next() {
 
 is_valid_state() {
   case "$1" in
-    spec|spec-update|test-red|impl|test-green|review|merged|deprecated) return 0 ;;
+    spec|spec-update|test-red|impl|test-green|deprecated) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -217,10 +215,6 @@ case "$cmd" in
       if [ "$new" = "test-green" ]; then
         _run_enforcement_checks "$dir" "$REPO_ROOT"
         FEATURES_DIR="$(dirname "$dir")"
-        REBUILD_SH="$REPO_ROOT/.claude/features/contract/scripts/rebuild-registry.sh"
-        if [ -f "$REBUILD_SH" ]; then
-          bash "$REBUILD_SH" "$FEATURES_DIR" >/dev/null 2>&1 || true
-        fi
         # If a project-map.json exists two levels up, consolidate the project map.
         PROJECT_MAP="$(dirname "$FEATURES_DIR")/project-map.json"
         if [ -f "$PROJECT_MAP" ]; then
@@ -244,10 +238,6 @@ case "$cmd" in
       if [ "$new" = "test-green" ]; then
         _run_enforcement_checks "$dir" "$REPO_ROOT"
         FEATURES_DIR="$(dirname "$dir")"
-        REBUILD_SH="$REPO_ROOT/.claude/features/contract/scripts/rebuild-registry.sh"
-        if [ -f "$REBUILD_SH" ]; then
-          bash "$REBUILD_SH" "$FEATURES_DIR" >/dev/null 2>&1 || true
-        fi
         # If a project-map.json exists two levels up, consolidate the project map.
         PROJECT_MAP="$(dirname "$FEATURES_DIR")/project-map.json"
         if [ -f "$PROJECT_MAP" ]; then

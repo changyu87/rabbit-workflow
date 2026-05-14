@@ -65,16 +65,18 @@ git -C "$ISO_REPO" config user.email "test@rabbit"
 git -C "$ISO_REPO" config user.name "rabbit-test"
 git -C "$ISO_REPO" commit --allow-empty -m "init" --quiet
 
-# Registry so validation passes.
-mkdir -p "$ISO_REPO/.claude/features"
-cat > "$ISO_REPO/.claude/features/registry.json" <<'REGEOF'
-{
-  "features": {
-    "test-feature": { "path": ".claude/features/test-feature" }
-  }
-}
-REGEOF
+# Install find-feature.sh so file-backlog-item.sh can validate the feature.
+FIND_FEATURE_SRC="${CONTRACT_SCRIPTS}/find-feature.sh"
+ISO_CONTRACT_SCRIPTS="$ISO_REPO/.claude/features/contract/scripts"
+mkdir -p "$ISO_CONTRACT_SCRIPTS"
+cp "$FIND_FEATURE_SRC" "$ISO_CONTRACT_SCRIPTS/find-feature.sh"
+chmod +x "$ISO_CONTRACT_SCRIPTS/find-feature.sh"
+
+# Create feature.json for test-feature so find-feature.sh can discover it.
 mkdir -p "$ISO_REPO/.claude/features/test-feature"
+cat > "$ISO_REPO/.claude/features/test-feature/feature.json" <<'FEATEOF'
+{"name":"test-feature","version":"1.0.0","owner":"test","tdd_state":"test-green","summary":"test"}
+FEATEOF
 
 # Stub dir injected into PATH ahead of real contract scripts.
 STUB_DIR="$(mktemp -d)"
@@ -138,15 +140,15 @@ git -C "$ISO_REPO2" config user.email "test@rabbit"
 git -C "$ISO_REPO2" config user.name "rabbit-test"
 git -C "$ISO_REPO2" commit --allow-empty -m "init" --quiet
 
-mkdir -p "$ISO_REPO2/.claude/features"
-cat > "$ISO_REPO2/.claude/features/registry.json" <<'REGEOF2'
-{
-  "features": {
-    "test-feature": { "path": ".claude/features/test-feature" }
-  }
-}
-REGEOF2
+# Install find-feature.sh and feature.json for ISO_REPO2
+ISO_CONTRACT_SCRIPTS2="$ISO_REPO2/.claude/features/contract/scripts"
+mkdir -p "$ISO_CONTRACT_SCRIPTS2"
+cp "$FIND_FEATURE_SRC" "$ISO_CONTRACT_SCRIPTS2/find-feature.sh"
+chmod +x "$ISO_CONTRACT_SCRIPTS2/find-feature.sh"
 mkdir -p "$ISO_REPO2/.claude/features/test-feature"
+cat > "$ISO_REPO2/.claude/features/test-feature/feature.json" <<'FEATEOF2'
+{"name":"test-feature","version":"1.0.0","owner":"test","tdd_state":"test-green","summary":"test"}
+FEATEOF2
 
 cat > "$STUB_DIR2/workspace-map.sh" <<STUBEOF2
 #!/usr/bin/env bash

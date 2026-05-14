@@ -2,13 +2,12 @@
 # tdd-drift-check.sh — verify a feature's claimed tdd_state matches reality.
 #
 # Rules:
-#   spec       : not test-checked (no claim about test outcome)
-#   test-red   : test/run.sh MUST exit non-zero
-#   impl       : transitional; no test-outcome check
-#   test-green : test/run.sh MUST exit 0
-#   review     : same as test-green
-#   merged     : same as test-green
-#   deprecated : not test-checked (terminal)
+#   spec        : not test-checked (no claim about test outcome)
+#   spec-update : not test-checked (no claim about test outcome)
+#   test-red    : test/run.sh MUST exit non-zero
+#   impl        : transitional; no test-outcome check
+#   test-green  : test/run.sh MUST exit 0
+#   deprecated  : not test-checked (terminal)
 #
 # Usage: tdd-drift-check.sh <feature-dir>
 # Exit:  0 ok; 1 drift detected; 2 invocation error.
@@ -33,7 +32,7 @@ run_tests_get_rc() {
 }
 
 case "$state" in
-  spec|impl|deprecated)
+  spec|spec-update|impl|deprecated)
     echo "OK ($state, no test-outcome check)"
     exit 0
     ;;
@@ -46,7 +45,7 @@ case "$state" in
     echo "OK (test-red, tests failing as expected, rc=$rc)"
     exit 0
     ;;
-  test-green|review|merged)
+  test-green)
     rc=$(run_tests_get_rc) || exit $?
     if [ "$rc" != "0" ]; then
       echo "DRIFT: claim '$state' but tests failed (rc=$rc). Either fix tests or transition back." >&2

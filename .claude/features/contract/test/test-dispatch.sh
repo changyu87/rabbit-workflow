@@ -11,8 +11,8 @@ FAIL=0
 
 # The dispatch script computes REPO_ROOT as 4 levels up from its scripts/ dir.
 # With structure: FAKE_REPO/.claude/features/contract/scripts,
-# 4 ups from scripts = FAKE_REPO — which is also where the registry lives
-# (FAKE_REPO/.claude/features/registry.json).
+# 4 ups from scripts = FAKE_REPO — which is also where feature.json files live
+# (FAKE_REPO/.claude/features/<feature-name>/feature.json).
 FAKE_ROOT="$(mktemp -d /tmp/rbt-dispatch-XXXX)"
 FAKE_REPO="$FAKE_ROOT/rabbit-run"
 
@@ -35,10 +35,11 @@ for d in [
     os.makedirs(d, exist_ok=True)
 "
 
-# Copy scripts — policy-block.sh must be adjacent to dispatch-feature-edit.sh.
+# Copy scripts — policy-block.sh and find-feature.sh must be adjacent to dispatch-feature-edit.sh.
 cp "$FEATURE_DIR/scripts/policy-block.sh" "$FAKE_SCRIPTS/"
 cp "$FEATURE_DIR/scripts/dispatch-feature-edit.sh" "$FAKE_SCRIPTS/"
-chmod +x "$FAKE_SCRIPTS/policy-block.sh" "$FAKE_SCRIPTS/dispatch-feature-edit.sh"
+cp "$FEATURE_DIR/scripts/find-feature.sh" "$FAKE_SCRIPTS/"
+chmod +x "$FAKE_SCRIPTS/policy-block.sh" "$FAKE_SCRIPTS/dispatch-feature-edit.sh" "$FAKE_SCRIPTS/find-feature.sh"
 
 # policy-block.sh reads policy files from REPO_ROOT/.claude/features/policy/
 # REPO_ROOT = FAKE_REPO (set via RABBIT_ROOT env var)
@@ -47,22 +48,16 @@ for f in philosophy.md spec-rules.md coding-rules.md workflow-rules.md; do
   [ -f "$REAL_POLICY_DIR/$f" ] && cp "$REAL_POLICY_DIR/$f" "$FAKE_POLICY_DIR/"
 done
 
-# Install the test registry at FAKE_REPO/.claude/features/registry.json.
-# Uses 'path' field as per the current registry schema.
-cat > "$FAKE_REPO/.claude/features/registry.json" <<'JSON'
+# Install a feature.json for the test feature so find-feature.sh can discover it.
+# find-feature.sh scans for .claude/features/*/feature.json — no registry.json needed.
+python3 -c "import os; os.makedirs('$FAKE_REPO/.claude/features/auto-refresh', exist_ok=True)"
+cat > "$FAKE_REPO/.claude/features/auto-refresh/feature.json" <<'JSON'
 {
-  "schema_version": "1.0.0",
+  "name": "auto-refresh",
+  "version": "1.0.0",
   "owner": "test",
-  "features": {
-    "auto-refresh": {
-      "name": "auto-refresh",
-      "version": "1.0.0",
-      "owner": "test",
-      "tdd_state": "test-green",
-      "summary": "Test entry for dispatch test.",
-      "path": ".claude/features/auto-refresh"
-    }
-  }
+  "tdd_state": "test-green",
+  "summary": "Test entry for dispatch test."
 }
 JSON
 
@@ -103,16 +98,14 @@ if echo "$STDERR" | grep -qF "[stub]"; then
   FAIL=1
 fi
 
-# t-rr1: Verify output contains "SCOPE: policy" (registry-found signal) when
-# feature "policy" is registered.  We re-use the FAKE_REPO fixture but add
-# a "policy" entry and call the real-repo dispatch directly against it.
-# Simpler proxy: verify that the invocation we already ran produced
-# "SCOPE: auto-refresh" (registry was found, which requires REPO_ROOT correct).
+# t-rr1: Verify output contains "SCOPE: auto-refresh" (feature-found signal).
+# The invocation we already ran must produce this when REPO_ROOT is correct
+# and find-feature.sh can locate the feature via its feature.json.
 if ! echo "$STDOUT" | grep -qF "SCOPE: auto-refresh"; then
-  echo "FAIL [t-rr1]: SCOPE line absent — REPO_ROOT likely wrong (registry not found)" >&2
+  echo "FAIL [t-rr1]: SCOPE line absent — REPO_ROOT likely wrong (feature not found by find-feature.sh)" >&2
   FAIL=1
 else
-  echo "t-rr1: PASS (SCOPE: auto-refresh present — registry resolved correctly)"
+  echo "t-rr1: PASS (SCOPE: auto-refresh present — feature resolved correctly)"
 fi
 
 # t-rr2: Verify the script's REPO_ROOT computation: git rev-parse from the
