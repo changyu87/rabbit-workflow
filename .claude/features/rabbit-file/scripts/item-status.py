@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+import branch_ops
+
+VALID_STATUSES = {"open", "close"}
+VALID_TYPES = {"bug", "backlog"}
+
+
+def _git_user():
+    r = subprocess.run(["git", "config", "user.name"], capture_output=True, text=True)
+    return r.stdout.strip() or "unknown"
+
+
+def _now():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def cmd_get(args):
+    try:
+        item = branch_ops.fetch_item(args.feature, args.type_, args.id)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+    if item is None:
+        print(f"ERROR: item {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+    print(item["status"])
+
+
+def cmd_set(args):
+    if not args.reason or not args.reason.strip():
+        print("ERROR: --reason is required and must be non-empty", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        item = branch_ops.fetch_item(args.feature, args.type_, args.id)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+    if item is None:
+        print(f"ERROR: item {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+
+    now = _now()
+    actor = _git_user()
+    action = "closed" if args.status == "close" else "opened"
+
+    item["status"] = args.status
+    item["closed"] = now if args.status == "close" else None
+
+    history_entry = {"ts": now, "actor": actor, "action": action, "note": args.reason.strip()}
+    if args.fix_commits:
+        history_entry["fix_commits"] = args.fix_commits
+    item.setdefault("history", []).append(history_entry)
+
+    try:
+        branch_ops.commit_item(args.feature, args.type_, args.id, item)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Status set: {args.id} -> {args.status}")
+
+
+def main():
+    p = argparse.ArgumentParser()
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    g = sub.add_parser("get")
+    g.add_argument("--feature", required=True)
+    g.add_argument("--type", dest="type_", required=True, choices=sorted(VALID_TYPES))
+    g.add_argument("--id", required=True)
+
+    s = sub.add_parser("set")
+    s.add_argument("--feature", required=True)
+    s.add_argument("--type", dest="type_", required=True, choices=sorted(VALID_TYPES))
+    s.add_argument("--id", required=True)
+    s.add_argument("--status", required=True, choices=sorted(VALID_STATUSES))
+    s.add_argument("--reason", required=True)
+    s.add_argument("--fix-commits", dest="fix_commits")
+
+    args = p.parse_args()
+    if args.cmd == "get":
+        cmd_get(args)
+    else:
+        cmd_set(args)
+
+
+if __name__ == "__main__":
+    main()
