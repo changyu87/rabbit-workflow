@@ -1,192 +1,101 @@
 ---
 name: rabbit-backlog
 description: Invoke when the user intends to file a backlog item, check backlog item status, transition a backlog item, or manage any backlog lifecycle in this repository. Use this skill whenever the user mentions filing, creating, or adding a backlog item; asking about a backlog item's status; moving a backlog item to in-progress, done, or cancelled; or any other backlog lifecycle operation — even if they phrase it as "log a todo", "track an issue", "mark that backlog as done", or similar casual language.
+version: 2.0.0
+owner: rabbit-backlog
+deprecation_criterion: when a unified tracking system replaces file-based backlog management
 ---
 
-# rabbit-backlog skill
+## Overview
 
-This skill covers three CLI scripts for filing, managing, and listing backlog items in the rabbit-workflow repository. All backlog data lives under `.claude/backlogs/`.
-
-## Script 1 — file-backlog-item.sh
-
-**Location:** `scripts/file-backlog-item.sh` (relative to this feature root)
-**Repo path:** `.claude/features/rabbit-backlog/scripts/file-backlog-item.sh`
-
-### Purpose
-Files a new backlog item for a given rabbit feature. Creates a structured `item.json` directory under `.claude/backlogs/<feature-name>/`.
-
-### Parameters
-
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--related-feature F` | **Yes** | Feature name. Must match a key in `.claude/features/registry.json`. |
-| `--title T` | **Yes** | Short human-readable title for the backlog item. |
-| `--priority {low\|medium\|high\|critical}` | No | Priority level. Default: `medium`. |
-| `--owner O` | No | Owner name. Default: `$USER` (or `"unknown"` if unset). |
-
-### Output
-- Creates: `.claude/backlogs/<feature-name>/<PREFIX>-BACKLOG-N/item.json`
-- Prints: the full path of the created item directory to stdout
-- Exit codes: `0` = created, `1` = error, `2` = usage/bad args
-
-### Example invocations
-
-```bash
-# Minimal — required flags only
-.claude/features/rabbit-backlog/scripts/file-backlog-item.sh \
-  --related-feature rabbit-cage \
-  --title "Add retry logic to install hook"
-
-# Full options
-.claude/features/rabbit-backlog/scripts/file-backlog-item.sh \
-  --related-feature rabbit-bug \
-  --title "Improve error message for missing registry key" \
-  --priority high \
-  --owner alice
-```
-
-### Common errors
-- `ERROR: --related-feature and --title are required` — one or both required flags missing.
-- `ERROR: invalid priority '...'` — priority must be exactly `low`, `medium`, `high`, or `critical`.
-- Feature not found in `registry.json` — the `--related-feature` value must match a key in `.claude/features/registry.json`.
+Two distinct protocols: **Filing** and **Working**. Scripts live at
+`.claude/features/rabbit-backlog/scripts/`. Items stored under `.claude/backlogs/`.
 
 ---
 
-## Script 2 — backlog-item-status.sh
+## Filing Protocol
 
-**Location:** `scripts/backlog-item-status.sh` (relative to this feature root)
-**Repo path:** `.claude/features/rabbit-backlog/scripts/backlog-item-status.sh`
+When the user confirms they want to file a backlog item:
 
-### Purpose
-Reads or transitions the status of an existing backlog item.
-
-### Subcommands
-
-#### `get <item-dir>`
-Prints the current status string of the item.
-
-```bash
-.claude/features/rabbit-backlog/scripts/backlog-item-status.sh get \
-  .claude/backlogs/rabbit-cage/RC-BACKLOG-1
-# Output: open
-```
-
-#### `set <item-dir> <new-status> [--reason R]`
-Transitions the item to a new status. Prints `"<old> -> <new>"` on success.
-
-```bash
-.claude/features/rabbit-backlog/scripts/backlog-item-status.sh set \
-  .claude/backlogs/rabbit-cage/RC-BACKLOG-1 in-progress --reason "Picked up in sprint 4"
-# Output: open -> in-progress
-```
-
-### Valid statuses
-`open` | `in-progress` | `done` | `cancelled`
-
-### Valid transitions
-
-| From | To |
-|------|----|
-| `open` | `in-progress` |
-| `open` | `cancelled` |
-| `in-progress` | `done` |
-| `in-progress` | `cancelled` |
-
-Any other transition (e.g., `done → open`) is rejected with an error. Transitioning to the same status is a no-op.
-
-### Parameters for `set`
-
-| Arg | Required | Description |
-|-----|----------|-------------|
-| `<item-dir>` | **Yes** | Path to the backlog item directory (must contain `item.json`). |
-| `<new-status>` | **Yes** | Target status: `open`, `in-progress`, `done`, or `cancelled`. |
-| `--reason R` | No | Free-text reason for the transition; stored in item history. |
-
-### Exit codes
-`0` = ok, `1` = error, `2` = usage/bad args
+1. Invoke `rabbit-feature-scope` to identify the related feature (or ask user if ambiguous).
+2. Ask clarifying questions if item description is unclear.
+3. Run `file-backlog-item.sh` to create the item and capture its directory path:
+   ```bash
+   ITEM_DIR=$(bash .claude/features/rabbit-backlog/scripts/file-backlog-item.sh \
+     --related-feature <feature-name> \
+     --title "..." \
+     [--priority <low|medium|high|critical>])
+   # ITEM_DIR is e.g. .claude/backlogs/rabbit-cage/RABBIT-CAGE-BACKLOG-5/
+   ITEM_ID=$(basename "$ITEM_DIR")
+   ```
+4. Create branch and commit:
+   ```bash
+   git checkout -b "filing/${ITEM_ID}"
+   git add "$ITEM_DIR"
+   git commit -m "filing: ${ITEM_ID} — <title>"
+   ```
+5. Create **auto-merge PR** to main (metadata only).
 
 ---
 
-## Typical workflows
+## Working Protocol
 
-### File a new backlog item and capture its path
-```bash
-ITEM_DIR=$(.claude/features/rabbit-backlog/scripts/file-backlog-item.sh \
-  --related-feature rabbit-cage \
-  --title "Handle missing registry.json gracefully" \
-  --priority medium)
-echo "Created: $ITEM_DIR"
-```
+When the user asks to work a backlog item:
 
-### Start work on a backlog item
-```bash
-.claude/features/rabbit-backlog/scripts/backlog-item-status.sh set \
-  "$ITEM_DIR" in-progress --reason "Starting implementation"
-```
+1. **Eval subagent** — dispatch a read-only default-model subagent:
+   - Reads `item.json` + current feature spec (`docs/spec/spec.md`)
+   - Returns verdict: `valid` (still relevant and correctly scoped) or `stale/invalid` with reason
 
-### Mark a backlog item done
-```bash
-.claude/features/rabbit-backlog/scripts/backlog-item-status.sh set \
-  "$ITEM_DIR" done --reason "Fix merged in PR #42"
-```
+2. **If stale/invalid:**
+   - Confirm with user before proceeding.
+   ```bash
+   git checkout -b "filing/${ITEM_ID}-cancel"
+   bash .claude/features/rabbit-backlog/scripts/backlog-item-status.sh set "$ITEM_DIR" cancelled \
+     --reason "<why it's no longer relevant>"
+   git add "$ITEM_DIR/item.json"
+   git commit -m "cancel: ${ITEM_ID} — <reason>"
+   ```
+   - Create **auto-merge PR** to main.
 
-### Check the current status of an item
-```bash
-.claude/features/rabbit-backlog/scripts/backlog-item-status.sh get "$ITEM_DIR"
-```
+3. **If valid:**
+   - Invoke `rabbit-feature-touch` in B/B mode, passing the item dir.
+     feature-touch reads `related_feature` from `item.json` and creates the `task/` branch.
+   - Receive handoff: `{branch, tdd_report_path, status}`
+   - **If `status: failed`:** surface error to user. Stop.
+   - **If `status: success`:**
+     ```bash
+     # TDD_REPORT_PATH = handoff["tdd_report_path"] (where tdd-report.json path is given)
+     bash .claude/features/rabbit-backlog/scripts/backlog-item-status.sh set "$ITEM_DIR" implemented \
+       --reason "TDD cycle complete" \
+       --tdd-report "$TDD_REPORT_PATH" \
+       --fix-commits "$(python3 -c "import json; print(json.load(open('$TDD_REPORT_PATH'))['impl_commit'])")"
+     git add "$ITEM_DIR/item.json"
+     git commit -m "implement: ${ITEM_ID} — done"
+     ```
+   - Create **review PR** (same `task/` branch — contains implementation + updated `item.json`).
 
 ---
 
-## Script 3 — list-backlog.sh
+## Scripts Reference
 
-**Location:** `scripts/list-backlog.sh` (relative to this feature root)
-**Repo path:** `.claude/features/rabbit-backlog/scripts/list-backlog.sh`
+| Script | Usage |
+|---|---|
+| `file-backlog-item.sh` | `file-backlog-item.sh --related-feature F --title T [--priority P]` |
+| `backlog-item-status.sh get <dir>` | Print current status |
+| `backlog-item-status.sh set <dir> <status> [--reason R] [--tdd-report P] [--fix-commits C]` | Transition |
+| `list-backlog.sh [--status S] [--feature F] [--text]` | List items |
 
-### Purpose
-Lists backlog items from centralized `.claude/backlogs/` storage with optional
-filtering by status and/or feature. Outputs a JSON array by default, or a
-human-readable one-line-per-item summary with `--text`.
-
-### Usage
+## Status Lifecycle
 
 ```
-list-backlog.sh [--status STATUS] [--feature NAME[,NAME2]] [--text]
-list-backlog.sh -h|--help
+open → in-progress | cancelled
+in-progress → implemented | cancelled
 ```
 
-### Parameters
+## PR Tiers
 
-| Flag | Description |
-|------|-------------|
-| *(no args)* | Print JSON array of all backlog items |
-| `--status {open\|in-progress\|implemented\|refused\|reopened}` | Filter by exact status value |
-| `--feature NAME[,NAME2,...]` | Filter by feature bucket name (comma-separated for multiple) |
-| `--text` | Human-readable output: `NAME  [STATUS]  [PRIORITY]  TITLE` per line |
-| `-h\|--help` | Print usage and exit 0 |
-
-### Output
-
-- Default (no `--text`): JSON array of `item.json` objects matching the filter(s).
-  Empty result yields `[]`.
-- `--text`: one line per item in the format `NAME  [STATUS]  [PRIORITY]  TITLE`.
-  Empty result prints `(no items)` or `(no items match)`.
-- Exit codes: `0` = success, `2` = usage error.
-
-### Examples
-
-```bash
-# All backlog items as JSON
-.claude/features/rabbit-backlog/scripts/list-backlog.sh
-
-# All open items, human-readable
-.claude/features/rabbit-backlog/scripts/list-backlog.sh --status open --text
-
-# Items for a specific feature
-.claude/features/rabbit-backlog/scripts/list-backlog.sh --feature rabbit-cage
-
-# Multiple features, JSON output
-.claude/features/rabbit-backlog/scripts/list-backlog.sh --feature rabbit-cage,rabbit-bug
-
-# Open items for a specific feature, human-readable
-.claude/features/rabbit-backlog/scripts/list-backlog.sh --status open --feature rabbit-cage --text
-```
+| PR type | Branch | Merge |
+|---|---|---|
+| Filing | `filing/RABBIT-BACKLOG-N` | Auto-merge |
+| Cancel | `filing/RABBIT-BACKLOG-N-cancel` | Auto-merge |
+| Implement + close | `task/<backlog-id>-<keywords>` | Requires review |
