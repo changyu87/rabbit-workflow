@@ -103,12 +103,31 @@ list-backlog.sh -h|--help
   (the array persists across a subsequent `reopened` transition).
 - Every `history` entry has a non-empty `reason`.
 - `reopened` is only reachable from `implemented` or `refused`.
+- **Branch guard:** `file-backlog-item.sh` MUST detect the current git branch
+  via `git branch --show-current`. If the branch is not `main`, the script
+  MUST print a warning to stderr. In interactive environments (`/dev/tty`
+  available), the script MUST read an explicit confirmation; if the user does
+  not confirm (types anything other than `y` or `yes`), the script MUST exit
+  non-zero without creating any item. In non-interactive environments (no
+  `/dev/tty`), the script MUST also exit non-zero (cannot obtain confirmation).
 
 ### feature.json Surface Invariants
 
 - `surface.skills` MUST be `[]` (empty array). Skills are now managed via
   explicit copy-file entries in `build-contract.json`. The `surface.skills`
   field in `feature.json` is the retired mechanism and must not be populated.
+
+### Working Protocol Invariants
+
+The Working Protocol in `skills/rabbit-backlog/SKILL.md` MUST include a
+user-decision gate after the eval subagent returns its verdict:
+
+- After the eval subagent returns `valid` or `stale/invalid`, the skill MUST
+  present the user with a summary of the verdict and any recommendation before
+  taking action.
+- The skill MUST then explicitly ask the user whether to refuse/cancel the item
+  or proceed to work it via `rabbit-feature-touch`.
+- The skill MUST NOT dispatch `rabbit-feature-touch` until the user confirms.
 
 ### SKILL.md Documentation Invariants
 

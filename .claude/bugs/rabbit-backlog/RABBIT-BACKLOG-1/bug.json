@@ -1,20 +1,28 @@
 {
   "name": "RABBIT-BACKLOG-1",
   "title": "B/B filing scripts commit to active branch without main-branch check",
-  "status": "open",
+  "status": "closed",
   "severity": "medium",
   "description": "file-bug.sh and file-backlog-item.sh auto-commit to whatever branch is currently checked out, with no guard that the caller is on main. Filing on a non-main branch silently misplaces the metadata commit.",
   "related_feature": "rabbit-backlog",
   "filed": "2026-05-14T09:39:31Z",
   "filed_by": "cyxu",
-  "closed": null,
-  "closed_by": null,
+  "closed": "2026-05-14T10:10:14Z",
+  "closed_by": "cyxu",
   "history": [
     {
       "ts": "2026-05-14T09:39:31Z",
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-14T10:10:14Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "[skip-vet: Evaluated inline against spec and TDD report: invariant implemented and test-green confirmed] Branch guard added to file-backlog-item.sh and file-bug.sh; TDD cycle complete",
+      "tdd_report": null,
+      "fix_commits": "ad81749,fc0c1d1"
     }
   ]
 }

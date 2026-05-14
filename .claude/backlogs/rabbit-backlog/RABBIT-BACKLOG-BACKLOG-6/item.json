@@ -1,19 +1,33 @@
 {
   "name": "RABBIT-BACKLOG-BACKLOG-6",
   "title": "B/B filing: check current branch is main, prompt user for confirm before filing on any other branch",
-  "status": "open",
+  "status": "implemented",
   "priority": "medium",
   "description": "",
   "owner": "cyxu",
   "filed": "2026-05-14T09:39:36Z",
   "filed_by": "cyxu",
-  "closed": null,
+  "closed": "2026-05-14T10:10:22Z",
   "history": [
     {
       "ts": "2026-05-14T09:39:36Z",
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-14T10:10:22Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "TDD cycle started: main-branch guard in filing scripts"
+    },
+    {
+      "ts": "2026-05-14T10:10:22Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "Main-branch check added to file-backlog-item.sh and file-bug.sh with interactive confirmation; TDD test-green",
+      "fix_commits": "ad81749,fc0c1d1",
+      "tdd_report": null
     }
   ]
 }

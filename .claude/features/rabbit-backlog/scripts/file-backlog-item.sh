@@ -54,6 +54,25 @@ case "$PRIORITY" in
 esac
 
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
+
+# Branch guard: warn and prompt if not on main branch.
+_CURRENT_BRANCH="$(git -C "$REPO_ROOT" branch --show-current 2>/dev/null)"
+if [ -n "$_CURRENT_BRANCH" ] && [ "$_CURRENT_BRANCH" != "main" ]; then
+  if [ -t 0 ] && [ -e /dev/tty ]; then
+    echo "WARNING: current branch is '$_CURRENT_BRANCH', not 'main'." >&2
+    echo "Backlog items are normally filed on the main branch." >&2
+    printf "Proceed anyway? [y/N] " >&2
+    read -r _CONFIRM < /dev/tty || _CONFIRM=""
+    case "$_CONFIRM" in
+      y|Y|yes|YES) ;;
+      *) echo "Aborted." >&2; exit 1 ;;
+    esac
+  else
+    echo "WARNING: current branch is '$_CURRENT_BRANCH', not 'main'. Proceeding (no tty)." >&2
+    exit 1
+  fi
+fi
+
 FIND_FEATURE="$REPO_ROOT/.claude/features/contract/scripts/find-feature.sh"
 
 # Validate feature exists via find-feature.sh

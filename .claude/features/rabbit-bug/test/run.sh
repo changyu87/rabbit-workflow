@@ -28,6 +28,7 @@ run_suite test-bug-changes.sh
 run_suite test-bug-git-isolation.sh
 run_suite test-bug-workspace-map.sh
 run_suite test-bug-surface-skills.sh
+run_suite test-bug-main-branch.sh
 
 if [ "$total_fail" -eq 0 ]; then
     echo "ALL SUITES PASSED"

@@ -64,6 +64,9 @@ git -C "$ISO_REPO" init --quiet
 git -C "$ISO_REPO" config user.email "test@rabbit"
 git -C "$ISO_REPO" config user.name "rabbit-test"
 git -C "$ISO_REPO" commit --allow-empty -m "init" --quiet
+# Ensure 'main' branch for branch guard compatibility.
+_B="$(git -C "$ISO_REPO" branch --show-current 2>/dev/null)"
+[ "$_B" != "main" ] && git -C "$ISO_REPO" branch -m "$_B" main 2>/dev/null || true
 
 # Install find-feature.sh so file-backlog-item.sh can validate the feature.
 FIND_FEATURE_SRC="${CONTRACT_SCRIPTS}/find-feature.sh"
@@ -139,6 +142,9 @@ git -C "$ISO_REPO2" init --quiet
 git -C "$ISO_REPO2" config user.email "test@rabbit"
 git -C "$ISO_REPO2" config user.name "rabbit-test"
 git -C "$ISO_REPO2" commit --allow-empty -m "init" --quiet
+# Ensure 'main' branch for branch guard compatibility.
+_B2="$(git -C "$ISO_REPO2" branch --show-current 2>/dev/null)"
+[ "$_B2" != "main" ] && git -C "$ISO_REPO2" branch -m "$_B2" main 2>/dev/null || true
 
 # Install find-feature.sh and feature.json for ISO_REPO2
 ISO_CONTRACT_SCRIPTS2="$ISO_REPO2/.claude/features/contract/scripts"
