@@ -21,17 +21,25 @@ CMD="${1:-}"
 
 case "$CMD" in
   --list)
-    for fj in "$REPO_ROOT/.claude/features"/*/feature.json; do
-      [ -f "$fj" ] || continue
-      python3 -c "import json; print(json.load(open('$fj')).get('name',''))" 2>/dev/null | grep -v '^$' || true
-    done
-    for proj_feats in "$REPO_ROOT"/*/features; do
-      [ -d "$proj_feats" ] || continue
-      for fj in "$proj_feats"/*/feature.json; do
-        [ -f "$fj" ] || continue
-        python3 -c "import json; print(json.load(open('$fj')).get('name',''))" 2>/dev/null | grep -v '^$' || true
-      done
-    done
+    python3 - "$REPO_ROOT" <<'PYEOF'
+import json, os, sys, glob
+repo = sys.argv[1]
+paths = sorted(glob.glob(os.path.join(repo, '.claude', 'features', '*', 'feature.json')))
+for entry in sorted(os.listdir(repo)):
+    feat_base = os.path.join(repo, entry, 'features')
+    if os.path.isdir(feat_base):
+        for fname in sorted(os.listdir(feat_base)):
+            fj = os.path.join(feat_base, fname, 'feature.json')
+            if os.path.isfile(fj):
+                paths.append(fj)
+for fj in paths:
+    try:
+        name = json.load(open(fj)).get('name', '')
+        if name:
+            print(name)
+    except Exception:
+        pass
+PYEOF
     exit 0
     ;;
 
@@ -86,34 +94,37 @@ PYEOF
     ;;
 
   *)
-    # Feature name lookup
     FEATURE_NAME="$CMD"
-    result=""
-    for fj in "$REPO_ROOT/.claude/features"/*/feature.json; do
-      [ -f "$fj" ] || continue
-      found=$(python3 -c "
-import json, os
-f = json.load(open('$fj'))
-if f.get('name','') == '$FEATURE_NAME':
-    print(os.path.relpath(os.path.dirname('$fj'), '$REPO_ROOT'))
-" 2>/dev/null)
-      if [ -n "$found" ]; then result="$found"; break; fi
-    done
-    if [ -z "$result" ]; then
-      for proj_feats in "$REPO_ROOT"/*/features; do
-        [ -d "$proj_feats" ] || continue
-        for fj in "$proj_feats"/*/feature.json; do
-          [ -f "$fj" ] || continue
-          found=$(python3 -c "
-import json, os
-f = json.load(open('$fj'))
-if f.get('name','') == '$FEATURE_NAME':
-    print(os.path.relpath(os.path.dirname('$fj'), '$REPO_ROOT'))
-" 2>/dev/null)
-          if [ -n "$found" ]; then result="$found"; break 2; fi
-        done
-      done
-    fi
+    result=$(python3 - "$REPO_ROOT" "$FEATURE_NAME" <<'PYEOF'
+import json, os, sys, glob
+repo = sys.argv[1]
+target = sys.argv[2]
+# Search rabbit-level features
+for fj in sorted(glob.glob(os.path.join(repo, '.claude', 'features', '*', 'feature.json'))):
+    try:
+        f = json.load(open(fj))
+        if f.get('name', '') == target:
+            print(os.path.relpath(os.path.dirname(fj), repo))
+            sys.exit(0)
+    except Exception:
+        pass
+# Search project-level features
+for entry in sorted(os.listdir(repo)):
+    feat_base = os.path.join(repo, entry, 'features')
+    if not os.path.isdir(feat_base):
+        continue
+    for fname in sorted(os.listdir(feat_base)):
+        fj = os.path.join(feat_base, fname, 'feature.json')
+        if os.path.isfile(fj):
+            try:
+                f = json.load(open(fj))
+                if f.get('name', '') == target:
+                    print(os.path.relpath(os.path.dirname(fj), repo))
+                    sys.exit(0)
+            except Exception:
+                pass
+PYEOF
+)
     if [ -z "$result" ]; then
       echo "ERROR: feature '$FEATURE_NAME' not found" >&2
       exit 1
