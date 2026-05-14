@@ -1,0 +1,20 @@
+{
+  "name": "TDD-STATE-MACHINE-1",
+  "title": "rabbit-feature-touch Step 1 calls resolve-scope.sh directly instead of invoking rabbit-feature-scope skill",
+  "status": "open",
+  "severity": "medium",
+  "description": "In the rabbit-feature-touch skill Step 1, scope resolution is performed by running resolve-scope.sh directly and dispatching a raw Agent with the resulting prompt. This bypasses the rabbit-feature-scope Skill tool entirely. The rabbit-feature-scope skill description states it 'emits a prompt for a default-model Agent; caller parses the JSON response' — meaning it is designed to be invoked via the Skill tool, not circumvented via its internal script. The consequence: any future changes to rabbit-feature-scope skill logic (pre-dispatch validation, output format changes, additional steps) will be silently bypassed by feature-touch executions. Fix: rabbit-feature-touch Step 1 should invoke Skill('rabbit-feature-scope', args) via the Skill tool rather than shelling into resolve-scope.sh directly.",
+  "related_feature": "tdd-state-machine",
+  "filed": "2026-05-14T09:01:13Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-14T09:01:13Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
