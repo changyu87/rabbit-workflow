@@ -1,0 +1,19 @@
+{
+  "name": "TDD-STATE-MACHINE-BACKLOG-2",
+  "title": "Move tdd-report.json to a hidden folder and add it to .gitignore",
+  "status": "open",
+  "priority": "medium",
+  "description": "",
+  "owner": "cyxu",
+  "filed": "2026-05-14T09:02:23Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-14T09:02:23Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
