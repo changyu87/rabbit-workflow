@@ -1,0 +1,19 @@
+{
+  "name": "RABBIT-BACKLOG-BACKLOG-5",
+  "title": "B/B workflow enhance: after evaluation, brief user with recommendations and let user decide to refuse or work",
+  "status": "open",
+  "priority": "medium",
+  "description": "",
+  "owner": "cyxu",
+  "filed": "2026-05-14T09:29:08Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-14T09:29:08Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
