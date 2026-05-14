@@ -13,7 +13,8 @@
         { "name": "rabbit-backlog",   "required": true,  "description": "backlog item filing and lifecycle", "children": [] },
         { "name": "rabbit-bug",       "required": true,  "description": "bug filing, tracking, and lifecycle", "children": [] },
         { "name": "rabbit-cage",      "required": true,  "description": "Claude Code surface owner", "children": [] },
-        { "name": "tdd-state-machine","required": true,  "description": "forward-only TDD state machine", "children": [] }
+        { "name": "tdd-state-machine",     "required": true,  "description": "forward-only TDD state machine", "children": [] },
+        { "name": "rabbit-feature-scope", "required": true,  "description": "shared skill for resolving natural-language requests to affected rabbit features", "children": [] }
       ]
     },
     { "name": "skills",    "required": true,  "description": "skill library (copied from feature sources via build-contract.json)", "children": [] },
