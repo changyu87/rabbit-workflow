@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
-# test-backlog-policy1-r1-branch-enforcement.sh — Verifies R1 in workflow-rules.md contains
-# explicit branch-enforcement language.
-# Spec invariant 5: R1 must explicitly state:
-#   (a) session-init hook automatically creates a feature branch when started on main
-#   (b) all commits must land on a feature branch, never directly on main
-#   (c) PR/merge step is the only path back to main
+# test-backlog-policy1-r1-branch-enforcement.sh — Verifies R1 content is NOT in workflow-rules.md
+# after archival. workflow-rules.md now contains only Section 4.
 set -euo pipefail
 
 FEATURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -13,25 +9,21 @@ FILE="$FEATURE_DIR/workflow-rules.md"
 PASS=0
 FAIL=0
 
-check_phrase() {
+check_phrase_absent() {
   local phrase="$1"
-  if grep -q "$phrase" "$FILE"; then
-    echo "PASS: '$phrase' found in workflow-rules.md"
+  if ! grep -q "$phrase" "$FILE"; then
+    echo "PASS: '$phrase' correctly absent from workflow-rules.md (archived)"
     PASS=$((PASS + 1))
   else
-    echo "FAIL: '$phrase' NOT found in workflow-rules.md" >&2
+    echo "FAIL: '$phrase' found in workflow-rules.md (should have been archived out)" >&2
     FAIL=$((FAIL + 1))
   fi
 }
 
-# t1: R1 mentions session-init hook creating a feature branch when on main
-check_phrase "session-init"
-
-# t2: R1 states commits must land on a feature branch (never on main)
-check_phrase "never commit directly to main"
-
-# t3: R1 states PR/merge is the only path to main
-check_phrase "PR"
+# R1 content was removed during archival — confirm it is gone
+check_phrase_absent "session-init"
+check_phrase_absent "never commit directly to main"
+check_phrase_absent "R1"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
