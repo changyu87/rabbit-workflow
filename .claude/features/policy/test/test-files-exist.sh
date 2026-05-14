@@ -20,6 +20,5 @@ check_file() {
 check_file "philosophy.md"
 check_file "spec-rules.md"
 check_file "coding-rules.md"
-check_file "workflow-rules.md"
 check_file "docs/spec/spec.md"
 check_file "docs/spec/contract.md"

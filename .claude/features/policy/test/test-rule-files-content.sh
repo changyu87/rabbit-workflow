@@ -51,10 +51,6 @@ check_first_heading() {
   fi
 }
 
-# CHANGE A — workflow-rules.md R6 updated text
-# t_r6_old: workflow-rules.md R6 does NOT contain the old stale phrase
-check_phrase_absent "workflow-rules.md" "no Agent-tool hook in Claude Code"
-
 # CHANGE B — philosophy.md heading hierarchy fixed
 # t_phil_h1: philosophy.md first non-empty line is "# Philosophy" (H1, not H2)
 check_first_heading "philosophy.md" "# Philosophy"
