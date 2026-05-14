@@ -14,3 +14,4 @@
 tdd-report.json
 .claude/tdd-report.json
 .rabbit/
+.claude/worktrees/
