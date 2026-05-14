@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.0.0
+version: 1.1.0
 template_version: 2.0.0
 ---
 
@@ -14,8 +14,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "files": [
       ".claude/features/policy/philosophy.md",
       ".claude/features/policy/spec-rules.md",
-      ".claude/features/policy/coding-rules.md",
-      ".claude/features/policy/workflow-rules.md"
+      ".claude/features/policy/coding-rules.md"
     ],
     "scripts": [],
     "schemas": [],

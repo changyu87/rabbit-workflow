@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.1.0
+version: 1.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native subagent-policy injection point
@@ -11,19 +11,18 @@ status: active
 
 ## Purpose
 
-Owns the four canonical rule files fed to every subagent dispatch.
+Owns the three canonical rule files fed to every subagent dispatch.
 
 ## Surface
 
 - `.claude/features/policy/philosophy.md`
 - `.claude/features/policy/spec-rules.md`
 - `.claude/features/policy/coding-rules.md`
-- `.claude/features/policy/workflow-rules.md`
 
 ## Invariants
 
-1. All four rule files exist and are non-empty.
-2. `workflow-rules.md` contains only Section 4 (Token/compliance tradeoff is the user's call).
+1. All three rule files (`philosophy.md`, `spec-rules.md`, `coding-rules.md`) exist and are non-empty.
+2. `workflow-rules.md` does not exist.
 
 ## Out of Scope
 
