@@ -1,180 +1,110 @@
 ---
 name: rabbit-bug
-description: Use when Claude detects intent to file a bug, check bug status, list bugs, close/reopen/refuse a bug, or perform any bug lifecycle operation (triage, resolution, reopen, refuse) in this repository. Trigger this skill whenever the user mentions filing a bug, reporting an issue, checking bug status, listing open bugs, closing or refusing a bug report, or any other bug tracking action in rabbit-workflow.
-version: 1.0.0
+description: Use when Claude detects intent to file a bug, check bug status, list bugs, close/reopen/refuse a bug, or perform any bug lifecycle operation in this repository.
+version: 2.0.0
 owner: rabbit-bug
 deprecation_criterion: when a unified tracking system replaces file-based bug management
 ---
 
 ## Overview
 
-The `rabbit-bug` feature provides three CLI scripts for managing bug lifecycle in this repository. All scripts live at `.claude/features/rabbit-bug/scripts/` relative to the repo root. Bugs are stored under `.claude/bugs/` in JSON files.
+Two distinct protocols: **Filing** and **Working**. Scripts live at
+`.claude/features/rabbit-bug/scripts/`. Bugs stored under `.claude/bugs/`.
 
 ---
 
-## Scripts
+## Filing Protocol
 
-### 1. `file-bug.sh` — File a new bug
+When the user confirms they want to file a bug:
 
-**Path:** `.claude/features/rabbit-bug/scripts/file-bug.sh`
-
-**Usage:**
-```
-file-bug.sh --title T --severity S --description D [--related-feature F] [--filed-by A]
-```
-
-**Parameters:**
-
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--title T` | Yes | Short title for the bug |
-| `--severity {low\|medium\|high\|critical}` | Yes | Bug severity level |
-| `--description D` | Yes | Full description — **never modified after filing** |
-| `--related-feature F` | No | Feature name; must match a key in `registry.json` |
-| `--filed-by A` | No | Who is filing; defaults to `$USER` |
-
-**Output:**
-- Prints the path of the created bug directory on success
-- Creates: `.claude/bugs/<feature-name>/<PREFIX>-N/bug.json`
-
-**Example:**
-```bash
-.claude/features/rabbit-bug/scripts/file-bug.sh \
-  --title "scope-guard ignores symlinks" \
-  --severity high \
-  --description "When a symlink points into a protected feature dir, the scope-guard does not resolve it and allows the write." \
-  --related-feature rabbit-cage \
-  --filed-by changyu
-```
+1. Invoke `rabbit-feature-scope` to identify the related feature (or ask user if ambiguous).
+2. Ask clarifying questions if bug description is insufficient for reproduction.
+3. Run `file-bug.sh` to create the bug record and capture its directory path:
+   ```bash
+   BUG_DIR=$(bash .claude/features/rabbit-bug/scripts/file-bug.sh \
+     --title "..." \
+     --severity <low|medium|high|critical> \
+     --description "..." \
+     --related-feature <feature-name>)
+   # BUG_DIR is e.g. .claude/bugs/rabbit-cage/RABBIT-BUG-5/
+   BUG_ID=$(basename "$BUG_DIR")  # e.g. RABBIT-BUG-5
+   ```
+4. Create branch and commit:
+   ```bash
+   git checkout -b "filing/${BUG_ID}"
+   git add "$BUG_DIR"
+   git commit -m "filing: ${BUG_ID} — <title>"
+   ```
+5. Create **auto-merge PR** to main (metadata only, no code change).
 
 ---
 
-### 2. `bug-status.sh` — Read or transition bug status
+## Working Protocol
 
-**Path:** `.claude/features/rabbit-bug/scripts/bug-status.sh`
+When the user asks to work/fix a bug:
 
-**Subcommands:**
+1. **Eval subagent** — dispatch a read-only default-model subagent:
+   - Reads `bug.json` + current feature spec (`docs/spec/spec.md`)
+   - Returns verdict: `valid` (bug still reproducible per spec) or `stale/invalid` with reason
 
-#### `get` — Print current status
-```
-bug-status.sh get <bug-dir>
-```
-Prints the current status string (`open`, `closed`, `reopened`, or `refused`).
+2. **If stale/invalid:**
+   - Confirm with user before proceeding.
+   ```bash
+   git checkout -b "filing/${BUG_ID}-invalidate"
+   bash .claude/features/rabbit-bug/scripts/bug-status.sh set "$BUG_DIR" refused \
+     --reason "<why it's invalid>"
+   git add "$BUG_DIR/bug.json"
+   git commit -m "refuse: ${BUG_ID} — <reason>"
+   ```
+   - Create **auto-merge PR** to main.
 
-#### `set` — Transition to a new status
-```
-bug-status.sh set <bug-dir> <status> --note R [--actor A] [--skip-vet-reason S] [--fix-commits C] [--touched-files F]
-```
-
-**Parameters:**
-
-| Flag | Required | Description |
-|------|----------|-------------|
-| `<bug-dir>` | Yes | Path to the bug directory (contains `bug.json`) |
-| `<status>` | Yes | Target status (see valid values below) |
-| `--note R` | Yes | Reason or note for the transition |
-| `--actor A` | No | Who is making the transition; defaults to `$USER` |
-| `--skip-vet-reason S` | No | Skip vet artifact check with this justification |
-| `--fix-commits C` | No | Commit SHA(s) that fix the bug |
-| `--touched-files F` | No | Files modified by the fix |
-
-**Valid statuses:** `open`, `closed`, `reopened`, `refused`
-
-**Valid transitions:**
-
-| From | To |
-|------|----|
-| `open` | `closed` |
-| `open` | `refused` |
-| `closed` | `reopened` |
-| `reopened` | `closed` |
-| `reopened` | `refused` |
-| `refused` | `reopened` |
-
-**R7 enforcement:** Closing a bug (`open→closed` or `reopened→closed`) requires both `vet-triage.json` and `tdd-gap.json` to exist in the bug directory. To skip this check, provide `--skip-vet-reason` with a justification.
-
-**Examples:**
-```bash
-# Check current status
-.claude/features/rabbit-bug/scripts/bug-status.sh get .claude/bugs/rabbit-cage/RBT-1/
-
-# Close a bug with vet artifacts present
-.claude/features/rabbit-bug/scripts/bug-status.sh set .claude/bugs/rabbit-cage/RBT-1/ closed \
-  --note "Fixed in commit abc123" \
-  --fix-commits abc123 \
-  --touched-files ".claude/hooks/scope-guard.sh"
-
-# Close a bug skipping vet check
-.claude/features/rabbit-bug/scripts/bug-status.sh set .claude/bugs/rabbit-cage/RBT-1/ closed \
-  --note "Hotfix applied" \
-  --skip-vet-reason "urgent prod fix, vet deferred to follow-up"
-
-# Refuse a bug
-.claude/features/rabbit-bug/scripts/bug-status.sh set .claude/bugs/rabbit-cage/RBT-2/ refused \
-  --note "Not a bug — expected behavior per spec"
-```
+3. **If valid:**
+   - Invoke `rabbit-feature-touch` in B/B mode, passing the bug dir.
+     feature-touch reads `related_feature` from `bug.json` and creates the `fix/` branch.
+   - Receive handoff: `{branch, tdd_report_path, status}` where `tdd_report_path` points to `tdd-report.json`
+   - **If `status: failed`:** surface error to user. Stop.
+   - **If `status: success`:**
+     ```bash
+     # TDD_REPORT_PATH = handoff["tdd_report_path"]
+     bash .claude/features/rabbit-bug/scripts/bug-status.sh set "$BUG_DIR" closed \
+       --reason "TDD cycle complete" \
+       --tdd-report "$TDD_REPORT_PATH" \
+       --fix-commits "$(python3 -c "import json; print(json.load(open('$TDD_REPORT_PATH'))['impl_commit'])")"
+     git add "$BUG_DIR/bug.json"
+     git commit -m "close: ${BUG_ID} — fix applied and verified"
+     ```
+   - Create **review PR** (same `fix/` branch — contains code fix + updated `bug.json`).
 
 ---
 
-### 3. `list-bugs.sh` — List bugs with optional filtering
+## Scripts Reference
 
-**Path:** `.claude/features/rabbit-bug/scripts/list-bugs.sh`
+| Script | Usage |
+|---|---|
+| `file-bug.sh` | `file-bug.sh --title T --severity S --description D [--related-feature F]` |
+| `bug-status.sh get <dir>` | Print current status |
+| `bug-status.sh set <dir> <status> --reason R [--tdd-report P] [--fix-commits C]` | Transition status |
+| `list-bugs.sh [--status S] [--feature F] [--text]` | List bugs |
 
-**Usage:**
-```
-list-bugs.sh [--status STATUS] [--feature NAME[,NAME2]] [--text]
-```
+## Bug Close Requirements (R7)
 
-**Parameters:**
-
-| Flag | Description |
-|------|-------------|
-| *(no args)* | Print JSON array of all bugs |
-| `--status {open\|closed\|reopened\|refused}` | Filter by status |
-| `--feature NAME[,NAME2,...]` | Filter by feature name (comma-separated for multiple) |
-| `--text` | Human-readable output: `NAME  [STATUS]  TITLE` per line |
-
-**Examples:**
-```bash
-# All bugs as JSON
-.claude/features/rabbit-bug/scripts/list-bugs.sh
-
-# All open bugs, human-readable
-.claude/features/rabbit-bug/scripts/list-bugs.sh --status open --text
-
-# Bugs for a specific feature
-.claude/features/rabbit-bug/scripts/list-bugs.sh --feature rabbit-cage
-
-# Multiple features, JSON
-.claude/features/rabbit-bug/scripts/list-bugs.sh --feature rabbit-cage,rabbit-bug
-
-# Open bugs for a feature, human-readable
-.claude/features/rabbit-bug/scripts/list-bugs.sh --status open --feature rabbit-cage --text
-```
-
----
-
-## Bug Storage Layout
-
-```
-.claude/bugs/
-└── <feature-name>/          # matches --related-feature value, or "unlinked"
-    └── <PREFIX>-N/          # e.g. RBT-1, RBT-2
-        ├── bug.json         # canonical bug record (title, severity, status, history)
-        ├── vet-triage.json  # required to close (R7)
-        └── tdd-gap.json     # required to close (R7)
-```
+Closing requires:
+- `vet-triage.json` present in bug dir (run `rabbit-triage.sh` first, or use `--skip-vet-reason`)
+- `--tdd-report <path>` flag provided to `bug-status.sh set closed`
 
 ## Status Lifecycle
 
 ```
-         ┌──────────────────────┐
-         │         open         │
-         └──┬───────────────────┘
-            │                 │
-         closed            refused
-            │                 │
-         reopened ◄───────────┘
-            │
-         closed / refused
+open → closed | refused
+closed → reopened
+reopened → closed | refused
+refused → reopened
 ```
+
+## PR Tiers
+
+| PR type | Branch | Merge |
+|---|---|---|
+| Filing | `filing/RABBIT-BUG-N` | Auto-merge |
+| Refuse/invalidate | `filing/RABBIT-BUG-N-invalidate` | Auto-merge |
+| Fix + close | `fix/<bug-id>-<keywords>` | Requires review |
