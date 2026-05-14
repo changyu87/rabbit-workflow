@@ -8,7 +8,7 @@
 #   generate-claude-md.sh                    # emit to stdout
 #   generate-claude-md.sh --write [TARGET]   # write to TARGET/CLAUDE.md (default: REPO_ROOT)
 #
-# Version: 2.0.0
+# Version: 2.0.1
 # Owner: rabbit-workflow team (rabbit-cage)
 # Deprecation criterion: when Claude Code natively manages CLAUDE.md generation.
 
@@ -36,7 +36,6 @@ emit() {
   printf '@.claude/features/policy/philosophy.md\n'
   printf '@.claude/features/policy/spec-rules.md\n'
   printf '@.claude/features/policy/coding-rules.md\n'
-  printf '@.claude/features/policy/workflow-rules.md\n'
 }
 
 if [ "$WRITE_MODE" -eq 1 ]; then

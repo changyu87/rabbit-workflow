@@ -10,10 +10,10 @@ ko() { echo "  FAIL $*"; FAIL=$((FAIL+1)); }
 # Find all CLAUDE.md files
 mapfile -t claude_mds < <(find "$REPO_ROOT" -name "CLAUDE.md" -not -path "*/archive/*" -not -path "*/.git/*")
 for claude_md in "${claude_mds[@]}"; do
-  mapfile -t import_paths < <(grep -oE '^@\./[^[:space:]]+' "$claude_md" 2>/dev/null || true)
+  mapfile -t import_paths < <(grep -oE '^@[^[:space:]]+' "$claude_md" 2>/dev/null || true)
   for import_path in "${import_paths[@]}"; do
-    # Strip leading @./
-    resolved="${import_path#@./}"
+    # Strip leading @
+    resolved="${import_path#@}"
     full="$REPO_ROOT/$resolved"
     if [ -e "$full" ]; then
       ok "$claude_md: $resolved"

@@ -3,4 +3,3 @@
 @.claude/features/policy/philosophy.md
 @.claude/features/policy/spec-rules.md
 @.claude/features/policy/coding-rules.md
-@.claude/features/policy/workflow-rules.md
