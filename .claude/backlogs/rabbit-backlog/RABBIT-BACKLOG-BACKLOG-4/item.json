@@ -1,0 +1,19 @@
+{
+  "name": "RABBIT-BACKLOG-BACKLOG-4",
+  "title": "scope guard specific pass channel for B/B filing",
+  "status": "open",
+  "priority": "medium",
+  "description": "",
+  "owner": "cyxu",
+  "filed": "2026-05-14T09:26:23Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "history": [
+    {
+      "ts": "2026-05-14T09:26:23Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
