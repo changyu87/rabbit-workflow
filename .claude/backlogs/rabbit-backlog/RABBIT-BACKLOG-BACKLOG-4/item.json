@@ -1,13 +1,13 @@
 {
   "name": "RABBIT-BACKLOG-BACKLOG-4",
   "title": "scope guard specific pass channel for B/B filing",
-  "status": "in-progress",
+  "status": "implemented",
   "priority": "medium",
   "description": "",
   "owner": "cyxu",
   "filed": "2026-05-14T09:26:23Z",
   "filed_by": "cyxu",
-  "closed": null,
+  "closed": "2026-05-14T10:00:17Z",
   "history": [
     {
       "ts": "2026-05-14T09:26:23Z",
@@ -20,6 +20,14 @@
       "actor": "cyxu",
       "action": "in-progress",
       "note": "Evaluating: fix already present in codebase"
+    },
+    {
+      "ts": "2026-05-14T10:00:17Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "Pass channel already implemented in scope-guard.sh section 3b (landed in 7d29d0d): .claude/bugs/ and .claude/backlogs/ are unconditionally allowed",
+      "fix_commits": "7d29d0d",
+      "tdd_report": null
     }
   ]
 }
