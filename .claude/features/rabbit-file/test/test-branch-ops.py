@@ -81,7 +81,7 @@ def isolated_repo(tmp_path):
 @pytest.fixture(autouse=True)
 def patch_repo_root(isolated_repo, monkeypatch):
     """Make branch_ops use the isolated repo instead of the real one."""
-    monkeypatch.setattr(branch_ops, "_REPO_ROOT", str(isolated_repo))
+    monkeypatch.setattr(branch_ops, "_get_repo_root", lambda: str(isolated_repo))
 
 
 # ---------------------------------------------------------------------------

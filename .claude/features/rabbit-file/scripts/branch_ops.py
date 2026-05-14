@@ -13,14 +13,21 @@ import subprocess
 from contextlib import contextmanager
 from pathlib import Path
 
-# Repo root — overridden by tests via monkeypatch
-_REPO_ROOT = subprocess.run(
-    ["git", "rev-parse", "--show-toplevel"],
-    capture_output=True, text=True
-).stdout.strip()
-
 _BRANCH = "bug-backlog-files"
 _WT_REL = ".claude/tmp/bug-backlog-files"
+
+
+def _get_repo_root() -> str:
+    """Return the git repo root. Called lazily at use sites."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"git rev-parse --show-toplevel failed: {result.stderr.strip()}"
+        )
+    return result.stdout.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +54,8 @@ def _branch_exists_on_remote(repo_root):
          "origin", _BRANCH],
         capture_output=True, text=True
     )
+    if result.returncode != 0:
+        raise RuntimeError(f"ls-remote failed: {result.stderr.strip()}")
     return bool(result.stdout.strip())
 
 
@@ -110,24 +119,28 @@ def _worktree(repo_root):
     _git(repo_root, "worktree", "add", str(wt),
          f"origin/{_BRANCH}", "--no-checkout")
 
-    # Checkout the branch inside the worktree
-    subprocess.run(
-        ["git", "-C", str(wt), "checkout", _BRANCH],
-        capture_output=True
-    )
-    # If local tracking branch doesn't exist, create it
-    result = subprocess.run(
-        ["git", "-C", str(wt), "checkout",
-         "-b", _BRANCH, f"origin/{_BRANCH}"],
-        capture_output=True
-    )
-    _ = result  # either checkout succeeded or branch already exists
-
-    # Configure identity inside worktree
-    _git(wt, "config", "user.email", "rabbit-file@localhost")
-    _git(wt, "config", "user.name", "rabbit-file")
-
     try:
+        # Checkout the branch inside the worktree
+        checkout_result = subprocess.run(
+            ["git", "-C", str(wt), "checkout", _BRANCH],
+            capture_output=True
+        )
+        if checkout_result.returncode != 0:
+            # Local tracking branch doesn't exist yet; create it
+            new_branch_result = subprocess.run(
+                ["git", "-C", str(wt), "checkout",
+                 "-b", _BRANCH, f"origin/{_BRANCH}"],
+                capture_output=True
+            )
+            if new_branch_result.returncode != 0:
+                raise RuntimeError(
+                    f"git checkout failed: {new_branch_result.stderr.strip()}"
+                )
+
+        # Configure identity inside worktree
+        _git(wt, "config", "user.email", "rabbit-file@localhost")
+        _git(wt, "config", "user.name", "rabbit-file")
+
         yield wt
     finally:
         shutil.rmtree(wt, ignore_errors=True)
@@ -183,7 +196,7 @@ def write_counter(wt: Path, feature: str, type_: str, n: int) -> None:
 
 def _format_id(feature: str, type_: str, n: int) -> str:
     """e.g. feature="rabbit-cage", type_="bug", n=17 -> "RABBIT-CAGE-BUG-17"."""
-    feature_upper = feature.upper().replace("-", "-")  # keep hyphens
+    feature_upper = feature.upper()
     type_upper = type_.upper()
     return f"{feature_upper}-{type_upper}-{n}"
 
@@ -201,7 +214,7 @@ def allocate_id(feature: str, type_: str) -> str:
     - Commits "counter: reserve <ID>" and pushes
     - Returns id_str e.g. "RABBIT-CAGE-BUG-17"
     """
-    repo_root = _REPO_ROOT
+    repo_root = _get_repo_root()
     with _worktree(repo_root) as wt:
         n = read_counter(wt, feature, type_)
         id_str = _format_id(feature, type_, n)
@@ -221,7 +234,7 @@ def commit_item(feature: str, type_: str, id_str: str, item: dict) -> str:
     commit "item: <id_str>", push, backfill commit_sha, commit "sha: backfill <id_str>", push.
     Returns the commit SHA.
     """
-    repo_root = _REPO_ROOT
+    repo_root = _get_repo_root()
     with _worktree(repo_root) as wt:
         item_dir = _item_dir(wt, feature, type_, id_str)
         item_dir.mkdir(parents=True, exist_ok=True)
@@ -235,9 +248,9 @@ def commit_item(feature: str, type_: str, id_str: str, item: dict) -> str:
 
         sha = _git(wt, "rev-parse", "HEAD")
 
-        # Backfill commit_sha into item.json
-        item["commit_sha"] = sha
-        item_file.write_text(json.dumps(item, indent=2))
+        # Backfill commit_sha into item.json without mutating caller's dict
+        stored = {**item, "commit_sha": sha}
+        item_file.write_text(json.dumps(stored, indent=2))
         _git(wt, "add", rel)
         _git(wt, "commit", "-m", f"sha: backfill {id_str}")
         _git(wt, "push", "origin", f"HEAD:{_BRANCH}")
@@ -251,7 +264,7 @@ def fetch_item(feature: str, type_: str, id_str: str) -> "dict | None":
     Returns dict or None if not found.
     If the branch doesn't exist, returns None.
     """
-    repo_root = _REPO_ROOT
+    repo_root = _get_repo_root()
     if not _branch_exists_on_remote(repo_root):
         return None
 
@@ -268,7 +281,7 @@ def read_branch(feature: str = None, type_: str = None,
     Walk all item.json under rabbit/features/, filter by feature/type_/status.
     Returns list[dict]. Returns [] if branch doesn't exist.
     """
-    repo_root = _REPO_ROOT
+    repo_root = _get_repo_root()
     if not _branch_exists_on_remote(repo_root):
         return []
 
