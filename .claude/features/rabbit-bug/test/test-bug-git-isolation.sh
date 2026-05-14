@@ -47,6 +47,9 @@ git -C "$ISO_REPO" init --quiet
 git -C "$ISO_REPO" config user.email "test@rabbit"
 git -C "$ISO_REPO" config user.name "rabbit-test"
 git -C "$ISO_REPO" commit --allow-empty -m "init" --quiet
+# Ensure branch is 'main' so file-bug.sh main-branch guard passes
+_INIT_BRANCH="$(git -C "$ISO_REPO" branch --show-current 2>/dev/null)"
+[ "$_INIT_BRANCH" != "main" ] && git -C "$ISO_REPO" branch -m "$_INIT_BRANCH" main 2>/dev/null || true
 
 # Install find-feature.sh in ISO_REPO so file-bug.sh can validate the feature.
 REPO_ROOT_REAL="${RABBIT_ROOT:-$(git -C "$FEATURE_DIR" rev-parse --show-toplevel 2>/dev/null)}"

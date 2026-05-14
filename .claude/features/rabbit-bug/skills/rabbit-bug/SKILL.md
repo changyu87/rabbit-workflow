@@ -47,8 +47,13 @@ When the user asks to work/fix a bug:
    - Reads `bug.json` + current feature spec (`docs/spec/spec.md`)
    - Returns verdict: `valid` (bug still reproducible per spec) or `stale/invalid` with reason
 
-2. **If stale/invalid:**
-   - Confirm with user before proceeding.
+2. **User-decision gate** — after the eval subagent returns its verdict, brief the user:
+   - Summarize the eval findings (what the subagent found, why it reached its verdict).
+   - State a clear recommendation: refuse (if stale/invalid) or work the bug (if valid).
+   - Ask the user explicitly: "Should I **refuse** this bug or **work** it?" — do NOT dispatch
+     `rabbit-feature-touch` or proceed with any status transition until the user confirms.
+
+3. **If user decides: refuse (stale/invalid):**
    ```bash
    git checkout -b "filing/${BUG_ID}-invalidate"
    bash .claude/features/rabbit-bug/scripts/bug-status.sh set "$BUG_DIR" refused \
@@ -58,7 +63,7 @@ When the user asks to work/fix a bug:
    ```
    - Create **auto-merge PR** to main.
 
-3. **If valid:**
+4. **If user decides: work (valid):**
    - Invoke `rabbit-feature-touch` in B/B mode, passing the bug dir.
      feature-touch reads `related_feature` from `bug.json` and creates the `fix/` branch.
    - Receive handoff: `{branch, tdd_report_path, status}` where `tdd_report_path` points to `tdd-report.json`

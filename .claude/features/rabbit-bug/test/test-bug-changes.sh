@@ -50,6 +50,9 @@ git -C "$GIT_REPO" config user.name "Test User"
 touch "$GIT_REPO/README"
 git -C "$GIT_REPO" add README
 git -C "$GIT_REPO" commit -q -m "init"
+# Ensure branch is 'main' so file-bug.sh main-branch guard passes
+_INIT_BRANCH="$(git -C "$GIT_REPO" branch --show-current 2>/dev/null)"
+[ "$_INIT_BRANCH" != "main" ] && git -C "$GIT_REPO" branch -m "$_INIT_BRANCH" main 2>/dev/null || true
 
 # Install find-feature.sh so file-bug.sh can validate the feature.
 REPO_ROOT_REAL="${RABBIT_ROOT:-$(git -C "$SCRIPTS_DIR" rev-parse --show-toplevel 2>/dev/null)}"

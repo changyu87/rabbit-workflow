@@ -87,6 +87,24 @@ BUG_DIR="$BUG_ROOT/$NAME"
 [ -e "$BUG_DIR" ] && { echo "ERROR: bug already exists at $BUG_DIR" 1>&2; exit 1; }
 [ -z "$FILER" ] && FILER="${USER:-unknown}"
 
+# Main-branch guard: warn and prompt if not on main
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+if [ "$CURRENT_BRANCH" != "main" ]; then
+  echo "WARNING: current git branch is '${CURRENT_BRANCH:-unknown}', not 'main'." 1>&2
+  echo "Bugs filed on non-main branches may not be tracked in the main bug index." 1>&2
+  if [ -t 0 ] && [ -e /dev/tty ]; then
+    printf "File bug on branch '%s'? [y/N] " "${CURRENT_BRANCH:-unknown}" 1>&2
+    read -r CONFIRM < /dev/tty
+    case "$CONFIRM" in
+      [Yy]|[Yy][Ee][Ss]) ;;
+      *) echo "Aborted." 1>&2; exit 1 ;;
+    esac
+  else
+    echo "No tty available — aborting. Run on main branch or confirm interactively." 1>&2
+    exit 1
+  fi
+fi
+
 mkdir -p "$BUG_DIR"
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 

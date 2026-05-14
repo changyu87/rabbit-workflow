@@ -28,6 +28,8 @@ worktree.
 ## Invariants
 
 - surface.skills in feature.json MUST be []. Skills are managed via explicit copy-file entries in build-contract.json; the surface.skills declaration is retired.
+- file-bug.sh MUST check if the current git branch is `main` before committing. If the current branch is not `main`, it MUST print a warning to stderr and prompt the user for explicit confirmation by reading from /dev/tty. If /dev/tty is unavailable or the user does not confirm, file-bug.sh MUST exit non-zero without filing.
+- SKILL.md Working Protocol MUST include a user-decision gate after the eval subagent returns its verdict: the skill MUST brief the user with a summary of the eval findings and a recommendation, then ask whether to refuse or work the item — it MUST NOT dispatch rabbit-feature-touch until the user confirms.
 
 ## Tests
 
