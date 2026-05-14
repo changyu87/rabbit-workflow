@@ -14,5 +14,6 @@ run_suite test-branch-ops.sh
 run_suite test-file-item.sh
 run_suite test-item-status.sh
 run_suite test-list-items.sh
+run_suite test-skill.sh
 if [ "$total_fail" -eq 0 ]; then echo "ALL SUITES PASSED"; exit 0
 else echo "FAILED: $total_fail suite(s) had failures"; exit 1; fi
