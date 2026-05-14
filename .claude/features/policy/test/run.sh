@@ -13,14 +13,11 @@ run_test() {
 }
 
 run_test "test-files-exist.sh"
-run_test "test-workflow-rules-sections.sh"
 run_test "test-rule-files-content.sh"
 run_test "test-imports-resolve.sh"
 run_test "test-backlog003.sh"
-run_test "test-backlog006.sh"
-run_test "test-policy-consolidation.sh"
-run_test "test-backlog001-r3-e2e.sh"
-run_test "test-backlog-policy1-r1-branch-enforcement.sh"
+run_test "test-policy-invariants-v1-2-0.sh"
+run_test "test-POLICY-1-no-stale-imports.sh"
 
 echo ""
 echo "All tests passed."
