@@ -18,6 +18,7 @@ will modify. Makes no assumptions about callers or use cases.
 ## Surface
 
 - `.claude/features/rabbit-feature-scope/scripts/resolve-scope.sh`
+- `.claude/features/rabbit-feature-scope/scripts/format-feature-context.py`
 - `.claude/features/rabbit-feature-scope/skills/rabbit-feature-scope/SKILL.md`
 
 ## Invariants
@@ -28,3 +29,5 @@ will modify. Makes no assumptions about callers or use cases.
 4. Agent response JSON schema: `{"features": ["name1", ...], "rationale": "one sentence"}`.
 5. `resolve-scope.sh` is executable.
 6. An empty `features` list `[]` is a valid response (no features touched).
+7. `resolve-scope.sh` contains no inline `python3 -c` calls or python3 heredocs; all Python logic is in `format-feature-context.py`.
+8. `format-feature-context.py` reads JSON from stdin and writes the formatted feature context to stdout; it is invoked as `python3 format-feature-context.py`.

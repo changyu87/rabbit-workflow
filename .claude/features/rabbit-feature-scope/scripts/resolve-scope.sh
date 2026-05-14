@@ -26,17 +26,7 @@ REQUEST="$1"
 
 [ -x "$FIND_FEATURE" ] || { echo "ERROR: find-feature.sh not found: $FIND_FEATURE" >&2; exit 1; }
 
-FEATURE_CONTEXT=$(bash "$FIND_FEATURE" --list-json 2>/dev/null | python3 -c "
-import json, sys
-features = json.load(sys.stdin)
-lines = []
-for f in features:
-    lines.append(f'Feature: {f[\"name\"]}')
-    lines.append(f'  Path: {f[\"path\"]}')
-    lines.append(f'  Summary: {f[\"summary\"]}')
-    lines.append('')
-print('\n'.join(lines))
-" 2>/dev/null)
+FEATURE_CONTEXT=$(bash "$FIND_FEATURE" --list-json 2>/dev/null | python3 "$SCRIPT_DIR/format-feature-context.py" 2>/dev/null)
 
 cat <<PROMPT
 You are a feature-scope resolver for a rabbit-workflow repository.
