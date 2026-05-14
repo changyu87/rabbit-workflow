@@ -65,10 +65,10 @@ c2() {
     || ko "c2: missing keywords; out=$out"
 }
 
-# c3: guidance differs by state (test-red guides toward impl; review guides toward merge)
+# c3: guidance differs by state (test-red guides toward impl; spec-update guides toward spec edit)
 c3() {
   local d1="$TMPROOT/c3a"; fix "$d1" c3a test-red
-  local d2="$TMPROOT/c3b"; fix "$d2" c3b review
+  local d2="$TMPROOT/c3b"; fix "$d2" c3b spec-update
   run "$d1" >/dev/null
   local g1; g1=$(jq -r '.guidance' "$TMPROOT/stdout")
   cp "$TMPROOT/stdout" "$TMPROOT/c3a-out"

@@ -36,9 +36,7 @@ forward_next() {
     spec-update) echo "test-red" ;;
     test-red)   echo "impl" ;;
     impl)       echo "test-green" ;;
-    test-green) echo "review" ;;
-    review)     echo "merged" ;;
-    merged)     echo "deprecated" ;;
+    test-green) echo "deprecated" ;;
     deprecated) echo "" ;;        # terminal
     *)          echo "" ;;
   esac
@@ -46,7 +44,7 @@ forward_next() {
 
 is_valid_state() {
   case "$1" in
-    spec|spec-update|test-red|impl|test-green|review|merged|deprecated) return 0 ;;
+    spec|spec-update|test-red|impl|test-green|deprecated) return 0 ;;
     *) return 1 ;;
   esac
 }

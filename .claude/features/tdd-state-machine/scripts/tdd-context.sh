@@ -33,12 +33,11 @@ crit=$(jq -r '.deprecation.criterion // ""' "$dir/feature.json")
 # Forward-only allowed next state per current state.
 allowed_next() {
   case "$1" in
-    spec)       echo '["test-red"]' ;;
+    spec)        echo '["spec-update"]' ;;
+    spec-update) echo '["test-red"]' ;;
     test-red)   echo '["impl"]' ;;
     impl)       echo '["test-green"]' ;;
-    test-green) echo '["review"]' ;;
-    review)     echo '["merged"]' ;;
-    merged)     echo '["deprecated"]' ;;
+    test-green) echo '["deprecated"]' ;;
     deprecated) echo '[]' ;;
     *)          echo '[]' ;;
   esac
@@ -48,17 +47,15 @@ allowed_next() {
 guidance_for() {
   case "$1" in
     spec)
-      echo "Author end-to-end tests under test/. They MUST be runnable unattended (no human input). They MUST fail (red) when run, since no implementation exists yet. Then transition to test-red." ;;
+      echo "Author end-to-end tests under test/. They MUST be runnable unattended (no human input). They MUST fail (red) when run, since no implementation exists yet. Then transition to spec-update." ;;
+    spec-update)
+      echo "Update docs/spec/spec.md to describe the planned change. A git diff showing spec edits must be present before transitioning to test-red (or provide --spec-no-change-reason). Then transition to test-red." ;;
     test-red)
       echo "Tests exist and fail. Begin implementation under scripts/ (or wherever the spec dictates). Do NOT modify the tests to make them pass. Then transition to impl when implementation work has started." ;;
     impl)
       echo "Implementation in progress. Run test/run.sh frequently. When all tests pass, transition to test-green." ;;
     test-green)
-      echo "All tests pass. Open a pull request now (branch should already exist per branch-per-feature). Then transition to review." ;;
-    review)
-      echo "PR is open. Address review feedback. If feedback requires more work, use --force to step back to impl. When merged, transition to merged." ;;
-    merged)
-      echo "Feature is on main. Only mutation allowed now is documentation or deprecation. Transition to deprecated only when superseded per the deprecation criterion." ;;
+      echo "All tests pass. Open a pull request now (branch should already exist per branch-per-feature). The PR/merge process handles review and merge; transition to deprecated when superseded per the deprecation criterion." ;;
     deprecated)
       echo "TERMINAL. Do not extend or modify behavior. Direct callers to the successor (if any). This feature should be removed when the deprecation criterion is fully met." ;;
     *)
