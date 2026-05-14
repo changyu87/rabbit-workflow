@@ -46,8 +46,14 @@ When the user asks to work a backlog item:
    - Reads `item.json` + current feature spec (`docs/spec/spec.md`)
    - Returns verdict: `valid` (still relevant and correctly scoped) or `stale/invalid` with reason
 
-2. **If stale/invalid:**
-   - Confirm with user before proceeding.
+2. **User-decision gate** — after the eval subagent returns its verdict, BEFORE taking any action:
+   - Present the user with a brief summary of the verdict and any recommendation.
+   - If verdict is `stale/invalid`: summarize why and recommend refusing/cancelling the item.
+   - If verdict is `valid`: confirm the item is still relevant and recommend proceeding.
+   - Explicitly ask: **"Refuse/cancel this item, or proceed to work it?"**
+   - **Do NOT dispatch `rabbit-feature-touch` until the user confirms.**
+
+3. **If user chooses to refuse/cancel (or eval returned stale/invalid and user agrees):**
    ```bash
    git checkout -b "filing/${ITEM_ID}-cancel"
    bash .claude/features/rabbit-backlog/scripts/backlog-item-status.sh set "$ITEM_DIR" cancelled \
@@ -57,7 +63,7 @@ When the user asks to work a backlog item:
    ```
    - Create **auto-merge PR** to main.
 
-3. **If valid:**
+4. **If user confirms to proceed (and eval returned valid):**
    - Invoke `rabbit-feature-touch` in B/B mode, passing the item dir.
      feature-touch reads `related_feature` from `item.json` and creates the `task/` branch.
    - Receive handoff: `{branch, tdd_report_path, status}`

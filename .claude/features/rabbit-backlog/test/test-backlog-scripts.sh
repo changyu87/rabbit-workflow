@@ -62,6 +62,11 @@ git -C "$ISO_REPO" init --quiet
 git -C "$ISO_REPO" config user.email "test@rabbit"
 git -C "$ISO_REPO" config user.name "rabbit-test"
 git -C "$ISO_REPO" commit --allow-empty -m "init" --quiet
+# Ensure the default branch is named 'main' for branch guard compatibility.
+_INIT_BRANCH="$(git -C "$ISO_REPO" branch --show-current 2>/dev/null)"
+if [ "$_INIT_BRANCH" != "main" ]; then
+  git -C "$ISO_REPO" branch -m "$_INIT_BRANCH" main 2>/dev/null || true
+fi
 
 # Create feature.json for rabbit-backlog so find-feature.sh can discover it.
 mkdir -p "$ISO_REPO/.claude/features/rabbit-backlog"
