@@ -12,9 +12,16 @@ origin/bug-backlog-files branch, never on main.
 
 - branch_ops.py: All git operations against origin/bug-backlog-files.
   Uses git worktree at .claude/tmp/bug-backlog-files (gitignored).
-  Exposes: allocate_id(feature, type), commit_item(feature, type, id, item_dict),
-  fetch_item(feature, type, id), read_branch(feature, type, status).
+  Exposes: allocate_id(feature, type_), commit_item(feature, type_, id_str, item),
+  fetch_item(feature, type_, id_str), read_branch(feature, type_, status).
   Auto-initializes orphan branch and counter.json on first use.
+  ID format: <FEATURE-UPPER>-BUG-N or <FEATURE-UPPER>-BACKLOG-N
+  e.g. feature="rabbit-cage", type_="bug", N=17 → "RABBIT-CAGE-BUG-17".
+  counter.json schema: {"next": N} where N is the next unused integer (starts at 1).
+  allocate_id reads N, writes N+1, commits "counter: reserve <ID>", pushes.
+  commit_item writes item.json, commits "item: <id_str>", pushes, backfills commit_sha.
+  Internal helpers (not exported): _worktree(repo_root), counter_path(wt, feature, type_),
+  read_counter(wt, feature, type_), write_counter(wt, feature, type_, n).
 
 - file-item.py: Files a new bug or backlog item. Args: --type bug|backlog
   --feature F --title T --priority low|medium|high|critical --description D.
