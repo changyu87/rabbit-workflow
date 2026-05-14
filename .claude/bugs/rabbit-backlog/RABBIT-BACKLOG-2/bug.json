@@ -1,0 +1,20 @@
+{
+  "name": "RABBIT-BACKLOG-2",
+  "title": "rabbit-backlog skill bypasses Skill tool for rabbit-feature-scope — runs resolve-scope.sh directly via Bash",
+  "status": "open",
+  "severity": "medium",
+  "description": "During backlog filing, the rabbit-backlog skill instructs the agent to 'invoke rabbit-feature-scope'. The agent skipped Skill('rabbit-feature-scope') and instead ran .claude/features/rabbit-feature-scope/scripts/resolve-scope.sh directly via the Bash tool, then dispatched a raw Agent call. This bypasses the skill indirection layer — skill updates to rabbit-feature-scope will not be picked up, and the contract between rabbit-backlog and rabbit-feature-scope is violated. The rabbit-backlog skill text should be explicit that invocation must go through the Skill tool, not direct script execution.",
+  "related_feature": "rabbit-backlog",
+  "filed": "2026-05-14T10:23:46Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-14T10:23:46Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
