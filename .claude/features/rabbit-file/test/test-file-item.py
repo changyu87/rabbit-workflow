@@ -41,20 +41,6 @@ def isolated_repo(tmp_path, monkeypatch):
     return clone
 
 
-def run_file_item(repo, *args):
-    """Run file-item.py with given args in the context of repo."""
-    import branch_ops
-    # Patch _get_repo_root so branch_ops uses our isolated repo
-    env_patch = {"HOME": str(repo)}
-    result = subprocess.run(
-        [sys.executable, str(SCRIPTS / "file-item.py")] + list(args),
-        capture_output=True, text=True,
-        env={**__import__("os").environ, "HOME": str(repo)},
-        cwd=str(repo),
-    )
-    return result
-
-
 def test_missing_title_exits_1(isolated_repo):
     r = subprocess.run(
         [sys.executable, str(SCRIPTS / "file-item.py"),
@@ -82,8 +68,8 @@ def test_invalid_priority_exits_1(isolated_repo):
          "--title", "T", "--priority", "EXTREME", "--description", "desc"],
         capture_output=True, text=True, cwd=str(isolated_repo)
     )
-    assert r.returncode == 1
-    assert "invalid priority" in r.stderr.lower()
+    assert r.returncode != 0
+    assert "invalid choice" in r.stderr.lower()
 
 
 def test_valid_bug_filing(isolated_repo):

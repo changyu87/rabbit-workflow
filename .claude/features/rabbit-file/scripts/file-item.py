@@ -23,19 +23,19 @@ def main():
     p.add_argument("--type", dest="type_", required=True, choices=list(VALID_TYPES))
     p.add_argument("--feature", required=True)
     p.add_argument("--title", required=True)
-    p.add_argument("--priority", required=True)
+    p.add_argument("--priority", required=True, choices=sorted(VALID_PRIORITIES))
     p.add_argument("--description", required=True)
     p.add_argument("--filed-by")
     args = p.parse_args()
 
-    if args.priority not in VALID_PRIORITIES:
-        print(f"ERROR: invalid priority '{args.priority}' (allowed: {', '.join(sorted(VALID_PRIORITIES))})", file=sys.stderr)
-        sys.exit(1)
-
     filed_by = args.filed_by or _git_user()
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    id_str = branch_ops.allocate_id(args.feature, args.type_)
+    try:
+        id_str = branch_ops.allocate_id(args.feature, args.type_)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
 
     item = {
         "name": id_str,
@@ -51,7 +51,11 @@ def main():
         "history": [{"ts": now, "actor": filed_by, "action": "opened", "note": "initial filing"}],
     }
 
-    sha = branch_ops.commit_item(args.feature, args.type_, id_str, item)
+    try:
+        sha = branch_ops.commit_item(args.feature, args.type_, id_str, item)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"Filed: {id_str}  sha: {sha}")
 
 
