@@ -7,7 +7,7 @@
 #   find-feature.sh --list            # print all feature names, one per line
 #   find-feature.sh --list-json       # print [{name,path,summary,tdd_state},...] as JSON
 #
-# Version: 1.0.0
+# Version: 1.1.0
 # Owner: rabbit-workflow team (contract)
 # Deprecation criterion: when feature discovery is handled natively by the dispatch infrastructure.
 
@@ -21,66 +21,13 @@ CMD="${1:-}"
 
 case "$CMD" in
   --list)
-    python3 - "$REPO_ROOT" <<'PYEOF'
-import json, os, sys, glob
-repo = sys.argv[1]
-paths = sorted(glob.glob(os.path.join(repo, '.claude', 'features', '*', 'feature.json')))
-for entry in sorted(os.listdir(repo)):
-    feat_base = os.path.join(repo, entry, 'features')
-    if os.path.isdir(feat_base):
-        for fname in sorted(os.listdir(feat_base)):
-            fj = os.path.join(feat_base, fname, 'feature.json')
-            if os.path.isfile(fj):
-                paths.append(fj)
-for fj in paths:
-    try:
-        name = json.load(open(fj)).get('name', '')
-        if name:
-            print(name)
-    except Exception:
-        pass
-PYEOF
-    exit 0
+    python3 "$SCRIPT_DIR/find-feature.py" "$REPO_ROOT" list
+    exit $?
     ;;
 
   --list-json)
-    python3 - "$REPO_ROOT" <<'PYEOF'
-import json, os, sys, glob
-repo = sys.argv[1]
-results = []
-# Rabbit-level features
-for fj in sorted(glob.glob(os.path.join(repo, '.claude', 'features', '*', 'feature.json'))):
-    try:
-        f = json.load(open(fj))
-        results.append({
-            'name': f.get('name', ''),
-            'path': os.path.relpath(os.path.dirname(fj), repo),
-            'summary': f.get('summary', ''),
-            'tdd_state': f.get('tdd_state', '')
-        })
-    except Exception:
-        pass
-# Project-level features
-for entry in sorted(os.listdir(repo)):
-    feat_base = os.path.join(repo, entry, 'features')
-    if not os.path.isdir(feat_base):
-        continue
-    for fname in sorted(os.listdir(feat_base)):
-        fj = os.path.join(feat_base, fname, 'feature.json')
-        if os.path.isfile(fj):
-            try:
-                f = json.load(open(fj))
-                results.append({
-                    'name': f.get('name', ''),
-                    'path': os.path.relpath(os.path.dirname(fj), repo),
-                    'summary': f.get('summary', ''),
-                    'tdd_state': f.get('tdd_state', '')
-                })
-            except Exception:
-                pass
-print(json.dumps(results))
-PYEOF
-    exit 0
+    python3 "$SCRIPT_DIR/find-feature.py" "$REPO_ROOT" list-json
+    exit $?
     ;;
 
   ""|--help|-h)
@@ -95,37 +42,9 @@ PYEOF
 
   *)
     FEATURE_NAME="$CMD"
-    result=$(python3 - "$REPO_ROOT" "$FEATURE_NAME" <<'PYEOF'
-import json, os, sys, glob
-repo = sys.argv[1]
-target = sys.argv[2]
-# Search rabbit-level features
-for fj in sorted(glob.glob(os.path.join(repo, '.claude', 'features', '*', 'feature.json'))):
-    try:
-        f = json.load(open(fj))
-        if f.get('name', '') == target:
-            print(os.path.relpath(os.path.dirname(fj), repo))
-            sys.exit(0)
-    except Exception:
-        pass
-# Search project-level features
-for entry in sorted(os.listdir(repo)):
-    feat_base = os.path.join(repo, entry, 'features')
-    if not os.path.isdir(feat_base):
-        continue
-    for fname in sorted(os.listdir(feat_base)):
-        fj = os.path.join(feat_base, fname, 'feature.json')
-        if os.path.isfile(fj):
-            try:
-                f = json.load(open(fj))
-                if f.get('name', '') == target:
-                    print(os.path.relpath(os.path.dirname(fj), repo))
-                    sys.exit(0)
-            except Exception:
-                pass
-PYEOF
-)
-    if [ -z "$result" ]; then
+    result=$(python3 "$SCRIPT_DIR/find-feature.py" "$REPO_ROOT" lookup "$FEATURE_NAME")
+    status=$?
+    if [ $status -ne 0 ] || [ -z "$result" ]; then
       echo "ERROR: feature '$FEATURE_NAME' not found" >&2
       exit 1
     fi

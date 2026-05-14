@@ -7,6 +7,10 @@
 # Exit codes:
 #   0  no orphans found
 #   1  one or more orphans found
+#
+# Version: 1.1.0
+# Owner: rabbit-workflow team (contract)
+# Deprecation criterion: when feature registry lookup is natively provided.
 
 set -u
 
@@ -27,47 +31,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-ORPHAN_FOUND=0
-
-# Read all feature names from registry.json
 if [ ! -f "$REGISTRY" ]; then
   echo "ERROR: registry not found: $REGISTRY" >&2
   exit 1
 fi
 
-KNOWN_FEATURES="$(python3 -c "
-import json, sys
-r = json.load(open('$REGISTRY'))
-for name in r.get('features', {}).keys():
-    print(name)
-")"
-
-check_dir() {
-  local root="$1"
-  local label="$2"
-  if [ ! -d "$root" ]; then
-    echo "INFO  ${label}/ (directory does not exist)"
-    return
-  fi
-  for subdir in "$root"/*/; do
-    [ -d "$subdir" ] || continue
-    name="$(basename "$subdir")"
-    if ! echo "$KNOWN_FEATURES" | grep -qx "$name"; then
-      echo "ORPHAN  ${label}/${name}/"
-      ORPHAN_FOUND=1
-    fi
-  done
-}
-
-check_dir "$BUGS_ROOT"     "bugs"
-check_dir "$BACKLOGS_ROOT" "backlogs"
-
-# Report known features with no bugs subdir
-while IFS= read -r feature; do
-  [ -z "$feature" ] && continue
-  if [ ! -d "$BUGS_ROOT/$feature" ]; then
-    echo "INFO  bugs/${feature}/ (never filed)"
-  fi
-done <<< "$KNOWN_FEATURES"
-
-exit $ORPHAN_FOUND
+python3 "$SCRIPT_DIR/audit-orphan-storage.py" "$REGISTRY" "$BUGS_ROOT" "$BACKLOGS_ROOT"
