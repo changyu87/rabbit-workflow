@@ -1,0 +1,20 @@
+{
+  "name": "RABBIT-BUG-6",
+  "title": "rabbit-bug skill bypasses Skill tool for rabbit-feature-scope — runs resolve-scope.sh directly via Bash",
+  "status": "open",
+  "severity": "medium",
+  "description": "During bug filing, the rabbit-bug skill instructs the agent to 'invoke rabbit-feature-scope'. The agent skips Skill('rabbit-feature-scope') and instead runs .claude/features/rabbit-feature-scope/scripts/resolve-scope.sh directly via the Bash tool, then dispatches a raw Agent call. This bypasses the skill indirection layer — updates to the rabbit-feature-scope skill will not be picked up, and the contract between rabbit-bug and rabbit-feature-scope is violated. The rabbit-bug skill text must be explicit that invocation must go through the Skill tool.",
+  "related_feature": "rabbit-bug",
+  "filed": "2026-05-14T10:25:01Z",
+  "filed_by": "cyxu",
+  "closed": null,
+  "closed_by": null,
+  "history": [
+    {
+      "ts": "2026-05-14T10:25:01Z",
+      "actor": "cyxu",
+      "action": "opened",
+      "note": "initial filing"
+    }
+  ]
+}
