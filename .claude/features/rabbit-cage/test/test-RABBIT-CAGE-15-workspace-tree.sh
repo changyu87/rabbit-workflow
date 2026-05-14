@@ -20,6 +20,7 @@ set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
 WORKSPACE_TREE="$REPO_ROOT/.claude/features/rabbit-cage/scripts/workspace-tree.sh"
+WORKSPACE_TREE_PY="$REPO_ROOT/.claude/features/rabbit-cage/scripts/workspace-tree.py"
 
 FAILURES=0
 
@@ -66,24 +67,24 @@ fi
 
 # t4: workspace-tree.sh source must declare "backlogs" inside STRUCTURAL_DIRS
 # Without this entry the backlogs/ directory is excluded from default-mode structural view.
-if grep -q '"backlogs"' "$WORKSPACE_TREE"; then
-    ok 4 "STRUCTURAL_DIRS in workspace-tree.sh contains 'backlogs'"
+if grep -q '"backlogs"' "$WORKSPACE_TREE_PY"; then
+    ok 4 "STRUCTURAL_DIRS in workspace-tree.py contains 'backlogs'"
 else
-    fail_t 4 "STRUCTURAL_DIRS in workspace-tree.sh does NOT contain 'backlogs'"
+    fail_t 4 "STRUCTURAL_DIRS in workspace-tree.py does NOT contain 'backlogs'"
 fi
 
 # t5: workspace-tree.sh source must declare "rabbit-bug" inside STRUCTURAL_DIRS
 # Without this entry the rabbit-bug feature directory is excluded from the default-mode tree.
-if grep -q '"rabbit-bug"' "$WORKSPACE_TREE"; then
-    ok 5 "STRUCTURAL_DIRS in workspace-tree.sh contains 'rabbit-bug'"
+if grep -q '"rabbit-bug"' "$WORKSPACE_TREE_PY"; then
+    ok 5 "STRUCTURAL_DIRS in workspace-tree.py contains 'rabbit-bug'"
 else
-    fail_t 5 "STRUCTURAL_DIRS in workspace-tree.sh does NOT contain 'rabbit-bug'"
+    fail_t 5 "STRUCTURAL_DIRS in workspace-tree.py does NOT contain 'rabbit-bug'"
 fi
 
 # t6: is_bug_dir regex in workspace-tree.sh must match RABBIT-CAGE-BACKLOG-1
 # Current regex: ^[A-Z]+-[A-Z]+-\d+$  — matches RABBIT-CAGE-15 but NOT RABBIT-CAGE-BACKLOG-1
 # The regex must be updated to accept IDs with more than two uppercase segments before the number.
-REGEX_RESULT="$(python3 - "$WORKSPACE_TREE" <<'PYEOF'
+REGEX_RESULT="$(python3 - "$WORKSPACE_TREE_PY" <<'PYEOF'
 import sys, re
 
 script_path = sys.argv[1]
@@ -106,9 +107,9 @@ PYEOF
 )"
 
 if [ "$REGEX_RESULT" = "matches" ]; then
-    ok 6 "is_bug_dir regex in workspace-tree.sh matches RABBIT-CAGE-BACKLOG-1"
+    ok 6 "is_bug_dir regex in workspace-tree.py matches RABBIT-CAGE-BACKLOG-1"
 else
-    fail_t 6 "is_bug_dir regex does NOT match RABBIT-CAGE-BACKLOG-1 (result: $REGEX_RESULT) — backlog item dirs not recognized as valid dir names"
+    fail_t 6 "is_bug_dir regex in workspace-tree.py does NOT match RABBIT-CAGE-BACKLOG-1 (result: $REGEX_RESULT) — backlog item dirs not recognized as valid dir names"
 fi
 
 echo ""

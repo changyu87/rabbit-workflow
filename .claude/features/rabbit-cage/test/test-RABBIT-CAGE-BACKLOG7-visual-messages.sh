@@ -111,6 +111,8 @@ build_tmproot() {
     # Copy generate-claude-md.sh so sync-check.sh can invoke it
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
        "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
+       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
     # Minimal registry.json (needed by generate-skills-dir.sh --check, which may be called)
     python3 -c "import json; print(json.dumps({'schema_version':'1.0.0','features':{}}))" \

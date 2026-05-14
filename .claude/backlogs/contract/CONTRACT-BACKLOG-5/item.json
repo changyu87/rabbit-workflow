@@ -1,19 +1,48 @@
 {
   "name": "CONTRACT-BACKLOG-5",
   "title": "Tech stack unification: replace mixed shell/bash/python with a single clean portable stack",
-  "status": "open",
+  "status": "implemented",
   "priority": "medium",
-  "description": "",
+  "description": "Tech stack unified to python. All bash scripts with embedded python3 heredocs or inline python3 -c calls across contract, rabbit-cage, and rabbit-feature-scope features must be converted to pure Python scripts invoked as 'python3 script.py'. Callers must be updated to match.",
   "owner": "cyxu",
   "filed": "2026-05-14T10:21:42Z",
   "filed_by": "cyxu",
-  "closed": null,
+  "closed": "2026-05-14T11:33:12Z",
   "history": [
     {
       "ts": "2026-05-14T10:21:42Z",
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-14T11:33:11Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "TDD cycle running"
+    },
+    {
+      "ts": "2026-05-14T11:33:12Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "TDD cycle complete across contract, rabbit-cage, rabbit-feature-scope",
+      "fix_commits": "11643b55b3d9a68671a83e6299b80f984131aad3",
+      "tdd_report": {
+        "schema_version": "1.0.0",
+        "feature": "contract",
+        "request": "Tech stack unified to python. Convert all bash scripts with embedded python3 heredocs or inline python3 -c calls to pure Python scripts invoked as python3 script.py. Update all callers.",
+        "linked_item": ".claude/backlogs/contract/CONTRACT-BACKLOG-5",
+        "item_type": "backlog",
+        "spec_changes": "yes",
+        "spec_no_change_reason": null,
+        "test_gap_analysis": "No tests existed for python-extraction invariant. Tests were written to assert that each affected .sh has no embedded python3 heredocs/inline calls and that a companion .py file exists.",
+        "impl_summary": "Extracted Python logic from six bash scripts into standalone .py files: find-feature.py, check-maps-consistent.py, render-template.py, workspace-map.py, audit-orphan-storage.py, check-template-schema-producer-consistency.py. Each .sh caller was updated to invoke the corresponding .py via 'python3 script.py' with shell-safe argument passing. The render-template.py was redesigned to accept key=value pairs directly as argv, eliminating the last remaining inline python3 -c call used for JSON escaping. All new .py files are executable. Functional behavior is preserved: find-feature --list/--list-json/lookup, workspace-map show/audit/human/backlog modes, render-template substitution, check-maps-consistent registry sync, audit-orphan-storage, and check-template-schema-producer-consistency all produce identical outputs to the original implementations.",
+        "spec_compliance": "pass",
+        "spec_compliance_notes": null,
+        "test_result": "pass",
+        "tdd_state": "test-green",
+        "impl_commit": "11643b55b3d9a68671a83e6299b80f984131aad3"
+      }
     }
   ]
 }

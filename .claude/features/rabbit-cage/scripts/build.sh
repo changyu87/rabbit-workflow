@@ -17,55 +17,5 @@ GENERATE_CLAUDE_MD="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-cla
 
 [ -f "$CONTRACT" ] || { echo "build: contract not found: $CONTRACT" >&2; exit 1; }
 
-python3 - "$REPO_ROOT" "$CONTRACT" "$GENERATE_CLAUDE_MD" <<'PYEOF'
-import json, os, re, shutil, subprocess, sys
-
-repo_root, contract_path, generate_script = sys.argv[1], sys.argv[2], sys.argv[3]
-
-with open(contract_path) as f:
-    contract = json.load(f)
-
-errors = 0
-for target in contract.get("targets", []):
-    name = target["name"]
-    ttype = target["type"]
-    destination = os.path.join(repo_root, target["destination"])
-
-    if ttype == "generate-claude-md":
-        env = dict(os.environ)
-        env["RABBIT_ROOT"] = repo_root
-        result = subprocess.run(
-            ["bash", generate_script, "--write", repo_root],
-            capture_output=True, text=True,
-            env=env
-        )
-        if result.returncode != 0:
-            print(f"  [error] {name}: generate-claude-md failed\n{result.stderr}", file=sys.stderr)
-            errors += 1
-        else:
-            print(f"  [built] {name}")
-
-    elif ttype == "copy-file":
-        source = os.path.join(repo_root, target["source"])
-        if not os.path.isfile(source):
-            print(f"  [error] build: source not found: {target['source']}", file=sys.stderr)
-            errors += 1
-            continue
-        os.makedirs(os.path.dirname(destination), exist_ok=True)
-        shutil.copy2(source, destination)
-        print(f"  [built] {name}")
-        # Record which SKILL.md files were rebuilt for the one-time session notification.
-        m = re.match(r'^\.claude/skills/([^/]+)/SKILL\.md$', target["destination"])
-        if m:
-            marker = os.path.join(repo_root, ".rabbit-skills-updated")
-            with open(marker, "a") as f:
-                f.write(m.group(1) + "\n")
-
-    else:
-        print(f"  [error] unknown type '{ttype}' for target '{name}'", file=sys.stderr)
-        errors += 1
-
-if errors:
-    print(f"\nbuild: {errors} error(s)", file=sys.stderr)
-    sys.exit(1)
-PYEOF
+# Pass RABBIT_ROOT so generate-claude-md.sh works in non-git directories (invariant 30)
+RABBIT_ROOT="$REPO_ROOT" python3 "$SCRIPT_DIR/build-targets.py" "$REPO_ROOT" "$CONTRACT" "$GENERATE_CLAUDE_MD"

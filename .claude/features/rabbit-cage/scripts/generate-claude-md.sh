@@ -28,7 +28,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-HEADER="$(python3 -c "import json; print(json.load(open('$POLICY_HEADER_JSON'))['header'])")"
+HEADER="$(python3 "$SCRIPT_DIR/generate-claude-md-header.py" "$POLICY_HEADER_JSON")"
 
 emit() {
   printf '%s\n' "$HEADER"

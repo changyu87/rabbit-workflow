@@ -111,6 +111,7 @@ python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test
 
 # Copy generate-claude-md.sh into temp tree
 cp "$GENERATE_SCRIPT" "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+cp "$(dirname "$GENERATE_SCRIPT")/generate-claude-md-header.py" "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
 # Write a CLAUDE.md that intentionally differs from what generate-claude-md.sh produces
 # (simulating a stale committed copy that has drifted from policy sources)
@@ -199,6 +200,7 @@ python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test
     > "$TMPROOT2/.claude/features/rabbit-cage/policy-header.json"
 
 cp "$GENERATE_SCRIPT" "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+cp "$(dirname "$GENERATE_SCRIPT")/generate-claude-md-header.py" "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
 # Confirm CLAUDE.md is absent (first-run condition)
 if [ ! -f "$TMPROOT2/CLAUDE.md" ]; then

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 2.2.0
+version: 2.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -43,6 +43,8 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 28. `test-symlinks.sh` does NOT exist in `.claude/features/rabbit-cage/test/` (deleted; superseded by test-generated-surface.sh).
 29. `surface.hooks`, `surface.commands`, and `surface.settings` in `feature.json` are all `[]` (empty arrays); hooks, commands, and settings are now managed via build-contract.json copy-file targets.
 30. `build.sh` passes `RABBIT_ROOT=<repo_root>` as an environment variable when invoking `generate-claude-md.sh` for `generate-claude-md` targets, so that installs into non-git directories (e.g., temp dirs during `install.sh`) succeed without `git rev-parse` errors.
+39. All Python logic extracted from bash scripts lives in standalone `.py` helper files under `.claude/features/rabbit-cage/scripts/`; the `.sh` scripts invoke them as `python3 <helper>.py`. No bash script in rabbit-cage contains embedded python3 heredocs (`python3 - ... <<'PYEOF'`) or inline `python3 -c` calls.
+40. The standalone Python helpers are: `workspace-tree.py` (invoked by `workspace-tree.sh`), `rabbit-project-set-path.py`, `rabbit-project-map.py`, `rabbit-project-consolidate.py` (invoked by `rabbit-project.sh`), `build-targets.py` (invoked by `build.sh`), and `generate-claude-md-header.py` (invoked by `generate-claude-md.sh`).
 
 ## /rabbit-config Command
 

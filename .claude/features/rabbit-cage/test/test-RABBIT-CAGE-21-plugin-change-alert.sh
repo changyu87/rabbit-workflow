@@ -52,6 +52,8 @@ make_clean_repo() {
         > "$d/.claude/features/rabbit-cage/policy-header.json"
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
        "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
+       "$d/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
     python3 -c "import json; print(json.dumps({'schema_version':'1.0.0','features':{}}))" \
         > "$d/.claude/features/registry.json"
     local correct
