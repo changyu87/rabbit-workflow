@@ -1,7 +1,7 @@
 {
   "name": "RABBIT-BACKLOG-BACKLOG-5",
   "title": "B/B workflow enhance: after evaluation, brief user with recommendations and let user decide to refuse or work",
-  "status": "open",
+  "status": "in-progress",
   "priority": "medium",
   "description": "",
   "owner": "cyxu",
@@ -14,6 +14,12 @@
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-14T10:10:21Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "TDD cycle started: user-decision gate in Working Protocol"
     }
   ]
 }
