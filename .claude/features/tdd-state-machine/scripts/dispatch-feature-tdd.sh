@@ -6,7 +6,7 @@
 #
 # Output: assembled prompt to stdout. Caller passes stdout to Agent.
 # The subagent runs spec-update → test-red → impl → test-green for the named feature,
-# then writes tdd-report.json to repo root. The calling skill handles status updates.
+# then writes tdd-report.json to .rabbit/tdd-report.json. The calling skill handles status updates.
 #
 # Optional flags:
 #   --linked-item <dir>   Directory of the linked bug or backlog item.
@@ -157,8 +157,9 @@ Step 7b: Inline spec-review (performed by you — do NOT dispatch another Agent)
     spec_compliance: "pass" if all invariants addressed, "fail" if any are missing
     spec_compliance_notes: list any unaddressed invariants, or null if pass
 
-Step 8: Write tdd-report.json to repo root (gitignored — NEVER commit this file)
-  Path: ${REPO_ROOT}/tdd-report.json
+Step 8: Write tdd-report.json to .rabbit/ (gitignored — NEVER commit this file)
+  mkdir -p ${REPO_ROOT}/.rabbit/
+  Path: ${REPO_ROOT}/.rabbit/tdd-report.json
   Write exactly this JSON schema:
   {
     "schema_version": "1.0.0",
@@ -188,7 +189,7 @@ HANDOFF:
   tdd_state: test-green
   test_result: pass
   spec_compliance: <pass|fail>
-  tdd_report_path: ${REPO_ROOT}/tdd-report.json
+  tdd_report_path: ${REPO_ROOT}/.rabbit/tdd-report.json
   notes: <brief summary>
 
 PROMPT
