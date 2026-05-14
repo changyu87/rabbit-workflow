@@ -5,12 +5,6 @@
   "updated": "2026-05-12",
   "targets": [
     {
-      "name": "CLAUDE.md",
-      "type": "generate-claude-md",
-      "destination": "CLAUDE.md",
-      "check_on_stop": true
-    },
-    {
       "name": "hooks/refresh.sh",
       "type": "copy-file",
       "source": ".claude/features/rabbit-cage/hooks/refresh.sh",

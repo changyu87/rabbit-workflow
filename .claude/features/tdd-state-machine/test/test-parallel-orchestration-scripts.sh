@@ -1,6 +1,6 @@
 #!/bin/bash
-# Tests for resolve-feature-scope.sh and dispatch-feature-tdd.sh.
-# These scripts do not yet exist; t1 and t4 are expected to FAIL.
+# Tests for dispatch-feature-tdd.sh.
+# resolve-feature-scope.sh was deleted in Task 5 (replaced by rabbit-feature-scope feature).
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -58,41 +58,12 @@ JSON
 }
 
 # ---------------------------------------------------------------------------
-# t1: resolve-feature-scope.sh exists and is executable
+# t1: resolve-feature-scope.sh does NOT exist (deleted in Task 5)
 # ---------------------------------------------------------------------------
 t1() {
-  [ -x "$SCRIPTS_DIR/resolve-feature-scope.sh" ] \
-    && ok "t1: resolve-feature-scope.sh exists and is executable" \
-    || ko "t1: resolve-feature-scope.sh not found or not executable at $SCRIPTS_DIR/resolve-feature-scope.sh"
-}
-
-# ---------------------------------------------------------------------------
-# t2: resolve-feature-scope.sh exits 0 and emits non-empty stdout
-# ---------------------------------------------------------------------------
-t2() {
-  local root="$TMPROOT/t2_root"
-  make_rabbit_root "$root"
-  local out
-  out=$(RABBIT_ROOT="$root" bash "$SCRIPTS_DIR/resolve-feature-scope.sh" "add color to rabbit print" 2>/dev/null)
-  local rc=$?
-  if [ "$rc" = "0" ] && [ -n "$out" ]; then
-    ok "t2: resolve-feature-scope.sh exits 0 with non-empty stdout"
-  else
-    ko "t2: rc=$rc stdout_empty=$([ -z "$out" ] && echo yes || echo no)"
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# t3: resolve-feature-scope.sh stdout contains the word "features"
-# ---------------------------------------------------------------------------
-t3() {
-  local root="$TMPROOT/t3_root"
-  make_rabbit_root "$root"
-  local out
-  out=$(RABBIT_ROOT="$root" bash "$SCRIPTS_DIR/resolve-feature-scope.sh" "add color to rabbit print" 2>/dev/null)
-  echo "$out" | grep -qi "features" \
-    && ok "t3: resolve-feature-scope.sh output contains 'features'" \
-    || ko "t3: 'features' not found in output"
+  [ ! -f "$SCRIPTS_DIR/resolve-feature-scope.sh" ] \
+    && ok "t1: resolve-feature-scope.sh correctly absent (deleted in Task 5)" \
+    || ko "t1: resolve-feature-scope.sh still exists but should have been deleted"
 }
 
 # ---------------------------------------------------------------------------
@@ -162,7 +133,7 @@ t8() {
 echo "running parallel-orchestration-scripts tests"
 echo "  SCRIPTS_DIR=$SCRIPTS_DIR"
 echo
-t1; t2; t3; t4; t5; t6; t7; t8
+t1; t4; t5; t6; t7; t8
 echo
 echo "summary: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

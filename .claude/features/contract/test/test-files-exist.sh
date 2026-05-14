@@ -46,13 +46,19 @@ check_file "schemas/registry.json.schema.json"
 check_file "schemas/bug.json.schema.json"
 check_file "schemas/project-map.json.schema.json"
 
-# Scripts (7) — also check executable
+# Scripts (6) — also check executable
 check_exec "scripts/policy-block.sh"
 check_exec "scripts/dispatch-feature-edit.sh"
-check_exec "scripts/rebuild-registry.sh"
 check_exec "scripts/render-template.sh"
 check_exec "scripts/check-maps-consistent.sh"
 check_exec "scripts/rabbit-triage.sh"
+
+# find-feature.sh and absence of registry.json
+REPO_ROOT="$(cd "$FEATURE_DIR/../../.." && pwd)"
+[ -f "$REPO_ROOT/.claude/features/contract/scripts/find-feature.sh" ] \
+  || { echo "MISSING FILE: find-feature.sh" >&2; FAIL=1; }
+[ ! -f "$REPO_ROOT/.claude/features/registry.json" ] \
+  || { echo "UNEXPECTED FILE: registry.json should not exist (distributed registry design)" >&2; FAIL=1; }
 
 # Validator and enforcement scripts (9)
 check_exec "scripts/validate-feature.sh"
