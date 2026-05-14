@@ -1,7 +1,7 @@
 {
   "name": "TDD-STATE-MACHINE-BACKLOG-2",
   "title": "Move tdd-report.json to a hidden folder and add it to .gitignore",
-  "status": "open",
+  "status": "in-progress",
   "priority": "medium",
   "description": "",
   "owner": "cyxu",
@@ -14,6 +14,12 @@
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-14T09:18:44Z",
+      "actor": "cyxu",
+      "action": "in-progress",
+      "note": "TDD cycle started"
     }
   ]
 }
