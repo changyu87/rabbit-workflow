@@ -48,10 +48,17 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 - `.claude/features/contract/scripts/dispatch-feature-edit.sh`
 - `.claude/features/contract/scripts/rebuild-registry.sh`
 - `.claude/features/contract/scripts/render-template.sh`
+- `.claude/features/contract/scripts/render-template.py`
 - `.claude/features/contract/scripts/check-maps-consistent.sh`
+- `.claude/features/contract/scripts/check-maps-consistent.py`
+- `.claude/features/contract/scripts/find-feature.sh`
+- `.claude/features/contract/scripts/find-feature.py`
 - `.claude/features/contract/scripts/rabbit-triage.sh`
 - `.claude/features/contract/scripts/validate-feature.sh`
 - `.claude/features/contract/scripts/workspace-map.sh`
+- `.claude/features/contract/scripts/workspace-map.py`
+- `.claude/features/contract/scripts/audit-orphan-storage.sh`
+- `.claude/features/contract/scripts/audit-orphan-storage.py`
 
 **skills/**
 - `.claude/features/contract/skills/rabbit-workspace-map/SKILL.md`
@@ -64,6 +71,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 - `.claude/features/contract/scripts/enforcement/check-sentinel.sh`
 - `.claude/features/contract/scripts/enforcement/check-symlinks-resolve.sh`
 - `.claude/features/contract/scripts/enforcement/check-template-schema-producer-consistency.sh`
+- `.claude/features/contract/scripts/enforcement/check-template-schema-producer-consistency.py`
 - `.claude/features/contract/scripts/enforcement/check-tests-non-interactive.sh`
 
 ## Invariants

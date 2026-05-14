@@ -11,8 +11,14 @@
 #   0 consistent
 #   1 inconsistency found (descriptive error printed to stderr)
 #   2 invocation error
+#
+# Version: 1.1.0
+# Owner: rabbit-workflow team (contract)
+# Deprecation criterion: when registry.json is replaced by a native feature index.
 
 set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ $# -ne 1 ]; then
   echo "ERROR: usage: check-maps-consistent.sh <features-dir>" >&2
@@ -38,47 +44,4 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
-python3 - "$FEATURES_DIR" "$REGISTRY" <<'PYEOF'
-import json
-import os
-import sys
-
-features_dir = sys.argv[1]
-registry_path = sys.argv[2]
-
-# Collect all directories with feature.json.
-fs_features = set()
-for dirpath, dirnames, filenames in os.walk(features_dir):
-    if "feature.json" in filenames:
-        fj_path = os.path.join(dirpath, "feature.json")
-        try:
-            with open(fj_path) as f:
-                data = json.load(f)
-            name = data.get("name")
-            if name:
-                fs_features.add(name)
-        except Exception as e:
-            print(f"WARNING: could not parse {fj_path}: {e}", file=sys.stderr)
-
-# Load registry features.
-with open(registry_path) as f:
-    registry = json.load(f)
-reg_features = set(registry.get("features", {}).keys())
-
-in_fs_not_reg = fs_features - reg_features
-in_reg_not_fs = reg_features - fs_features
-
-errors = []
-if in_fs_not_reg:
-    errors.append(f"Features on disk but not in registry: {sorted(in_fs_not_reg)}")
-if in_reg_not_fs:
-    errors.append(f"Features in registry but not on disk: {sorted(in_reg_not_fs)}")
-
-if errors:
-    for e in errors:
-        print(f"ERROR: {e}", file=sys.stderr)
-    sys.exit(1)
-
-print(f"OK: {len(fs_features)} features consistent between disk and registry.")
-sys.exit(0)
-PYEOF
+python3 "$SCRIPT_DIR/check-maps-consistent.py" "$FEATURES_DIR" "$REGISTRY"
