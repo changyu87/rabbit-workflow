@@ -63,16 +63,17 @@ git -C "$ISO_REPO" config user.email "test@rabbit"
 git -C "$ISO_REPO" config user.name "rabbit-test"
 git -C "$ISO_REPO" commit --allow-empty -m "init" --quiet
 
-# Registry with a rabbit-backlog entry so file-backlog-item.sh validation passes.
-mkdir -p "$ISO_REPO/.claude/features"
-cat > "$ISO_REPO/.claude/features/registry.json" <<'REGEOF'
-{
-  "features": {
-    "rabbit-backlog": { "dir": ".claude/features/rabbit-backlog" }
-  }
-}
-REGEOF
+# Create feature.json for rabbit-backlog so find-feature.sh can discover it.
 mkdir -p "$ISO_REPO/.claude/features/rabbit-backlog"
+cat > "$ISO_REPO/.claude/features/rabbit-backlog/feature.json" <<'FEATEOF'
+{
+  "name": "rabbit-backlog",
+  "version": "1.0.0",
+  "owner": "test",
+  "tdd_state": "test-green",
+  "summary": "Test feature for backlog filing tests."
+}
+FEATEOF
 
 # Copy scripts into ISO_REPO so dirname "$0" resolves inside ISO_REPO.
 # This makes git -C "$(dirname "$0")" find ISO_REPO as the git root.
@@ -82,15 +83,18 @@ cp "$FILE_BACKLOG" "$ISO_SCRIPTS_DIR/file-backlog-item.sh"
 cp "$ITEM_STATUS" "$ISO_SCRIPTS_DIR/backlog-item-status.sh"
 chmod +x "$ISO_SCRIPTS_DIR/file-backlog-item.sh" "$ISO_SCRIPTS_DIR/backlog-item-status.sh"
 
-# file-backlog-item.sh now invokes workspace-map.sh (from contract).
-# Copy workspace-map.sh to the expected contract path inside ISO_REPO so
-# the isolated test environment has access to it.
-WORKSPACE_MAP_SRC="$REPO_ROOT/.claude/features/contract/scripts/workspace-map.sh"
+# Copy workspace-map.sh and find-feature.sh to the expected contract path inside ISO_REPO.
 ISO_CONTRACT_SCRIPTS="$ISO_REPO/.claude/features/contract/scripts"
 mkdir -p "$ISO_CONTRACT_SCRIPTS"
+WORKSPACE_MAP_SRC="$REPO_ROOT/.claude/features/contract/scripts/workspace-map.sh"
+FIND_FEATURE_SRC="$REPO_ROOT/.claude/features/contract/scripts/find-feature.sh"
 if [ -f "$WORKSPACE_MAP_SRC" ]; then
   cp "$WORKSPACE_MAP_SRC" "$ISO_CONTRACT_SCRIPTS/workspace-map.sh"
   chmod +x "$ISO_CONTRACT_SCRIPTS/workspace-map.sh"
+fi
+if [ -f "$FIND_FEATURE_SRC" ]; then
+  cp "$FIND_FEATURE_SRC" "$ISO_CONTRACT_SCRIPTS/find-feature.sh"
+  chmod +x "$ISO_CONTRACT_SCRIPTS/find-feature.sh"
 fi
 
 ISO_FILE_BACKLOG="$ISO_SCRIPTS_DIR/file-backlog-item.sh"

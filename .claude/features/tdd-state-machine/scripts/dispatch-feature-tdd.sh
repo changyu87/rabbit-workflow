@@ -45,11 +45,10 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-REGISTRY="$REPO_ROOT/.claude/features/registry.json"
-[ -f "$REGISTRY" ] || { echo "ERROR: registry.json not found" >&2; exit 1; }
-
-FEATURE_PATH=$(python3 -c "import json; r=json.load(open('$REGISTRY')); print(r.get('features',{}).get('$FEATURE_NAME',{}).get('path',''))" 2>/dev/null)
-[ -z "$FEATURE_PATH" ] && { echo "ERROR: feature '$FEATURE_NAME' not found in registry" >&2; exit 1; }
+FIND_FEATURE="$REPO_ROOT/.claude/features/contract/scripts/find-feature.sh"
+FEATURE_PATH=$(bash "$FIND_FEATURE" "$FEATURE_NAME" 2>/dev/null) || {
+  echo "ERROR: feature '$FEATURE_NAME' not found in registry" >&2; exit 1
+}
 
 FEATURE_DIR="$REPO_ROOT/$FEATURE_PATH"
 SPEC_PATH="$FEATURE_DIR/docs/spec/spec.md"

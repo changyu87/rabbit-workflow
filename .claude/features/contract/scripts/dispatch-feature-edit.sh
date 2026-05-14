@@ -4,7 +4,7 @@
 # Usage:
 #   dispatch-feature-edit.sh <feature-name> <task-description>
 #
-# Reads registry.json to find the feature root, sets a scope marker, builds
+# Uses find-feature.sh to locate the feature root, sets a scope marker, builds
 # the policy block, and prints the assembled prompt to stdout. The caller
 # passes stdout as the prompt field to an Agent call. This script never
 # invokes Agent directly — keeping it deterministic and testable.
@@ -38,43 +38,11 @@ fi
 FEATURE_NAME="$1"
 TASK_DESC="$2"
 
-# Find registry.json — try the canonical location first.
-REGISTRY="$REPO_ROOT/.claude/features/registry.json"
-if [ ! -f "$REGISTRY" ]; then
-  # Fallback: try project-level features directory.
-  REGISTRY="$REPO_ROOT/features/registry.json"
-fi
-if [ ! -f "$REGISTRY" ]; then
-  echo "ERROR: registry.json not found (tried .claude/features/registry.json and features/registry.json)" >&2
+FIND_FEATURE="$SCRIPT_DIR/find-feature.sh"
+FEATURE_PATH="$(bash "$FIND_FEATURE" "$FEATURE_NAME" 2>/dev/null)" || {
+  echo "ERROR: feature '$FEATURE_NAME' not found" >&2
   exit 1
-fi
-
-# Extract feature path from registry (requires python3 or jq).
-if command -v python3 >/dev/null 2>&1; then
-  FEATURE_PATH="$(python3 -c "
-import json, sys
-reg = json.load(open('$REGISTRY'))
-features = reg.get('features', {})
-entry = features.get('$FEATURE_NAME')
-if not entry:
-    sys.exit(1)
-print(entry.get('path', ''))
-" 2>/dev/null)"
-  PY_EXIT=$?
-  if [ $PY_EXIT -ne 0 ] || [ -z "$FEATURE_PATH" ]; then
-    echo "ERROR: feature '$FEATURE_NAME' not found in registry: $REGISTRY" >&2
-    exit 1
-  fi
-elif command -v jq >/dev/null 2>&1; then
-  FEATURE_PATH="$(jq -r ".features[\"$FEATURE_NAME\"].path // empty" "$REGISTRY" 2>/dev/null)"
-  if [ -z "$FEATURE_PATH" ]; then
-    echo "ERROR: feature '$FEATURE_NAME' not found in registry: $REGISTRY" >&2
-    exit 1
-  fi
-else
-  echo "ERROR: neither python3 nor jq found; cannot parse registry" >&2
-  exit 1
-fi
+}
 
 # Build TDD_GAP_REFLECTION if --bug was provided.
 TDD_GAP_REFLECTION=""

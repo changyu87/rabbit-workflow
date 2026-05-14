@@ -92,16 +92,24 @@ git -C "$ISO_REPO" config user.email "test@rabbit"
 git -C "$ISO_REPO" config user.name "rabbit-test"
 git -C "$ISO_REPO" commit --allow-empty -m "init" --quiet
 
-# Registry with a test-feature entry so file-bug.sh registry validation passes.
-mkdir -p "$ISO_REPO/.claude/features"
-cat > "$ISO_REPO/.claude/features/registry.json" <<'REGEOF'
-{
-  "features": {
-    "test-feature": { "dir": ".claude/features/test-feature" }
-  }
-}
-REGEOF
+# Install find-feature.sh in ISO_REPO so file-bug.sh can call it.
+REPO_ROOT_REAL="${RABBIT_ROOT:-$(git -C "$FEATURE_DIR" rev-parse --show-toplevel 2>/dev/null)}"
+FIND_FEATURE_SRC="$REPO_ROOT_REAL/.claude/features/contract/scripts/find-feature.sh"
+mkdir -p "$ISO_REPO/.claude/features/contract/scripts"
+cp "$FIND_FEATURE_SRC" "$ISO_REPO/.claude/features/contract/scripts/find-feature.sh"
+chmod +x "$ISO_REPO/.claude/features/contract/scripts/find-feature.sh"
+
+# Create feature.json for test-feature so find-feature.sh can discover it.
 mkdir -p "$ISO_REPO/.claude/features/test-feature"
+cat > "$ISO_REPO/.claude/features/test-feature/feature.json" <<'FEATEOF'
+{
+  "name": "test-feature",
+  "version": "1.0.0",
+  "owner": "test",
+  "tdd_state": "test-green",
+  "summary": "Test feature for bug filing tests."
+}
+FEATEOF
 
 # ---------------------------------------------------------------------------
 # t4: file-bug.sh --related-feature test-feature writes to centralized path

@@ -6,7 +6,7 @@
 set -u
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
-REGISTRY="$REPO_ROOT/.claude/features/registry.json"
+FIND_FEATURE="$REPO_ROOT/.claude/features/contract/scripts/find-feature.sh"
 BUG_PREFIX="${BUG_PREFIX:-RBT}"
 
 usage() {
@@ -44,25 +44,10 @@ fi
 
 # Determine BUG_ROOT and PREFIX based on --related-feature
 if [ -n "$FEAT" ]; then
-  # Validate feature exists in registry.json
-  FEAT_EXISTS="$(python3 - "$REGISTRY" "$FEAT" <<'PYEOF'
-import json, sys
-registry_path, feat_name = sys.argv[1], sys.argv[2]
-try:
-    with open(registry_path) as f:
-        d = json.load(f)
-    features = d.get("features", {})
-    if feat_name in features:
-        print("found")
-    else:
-        print("not_found")
-except Exception:
-    print("not_found")
-PYEOF
-)"
-  if [ "$FEAT_EXISTS" != "found" ]; then
-    echo "ERROR: feature '$FEAT' not found in registry.json" 1>&2; exit 1
-  fi
+  # Validate feature exists via find-feature.sh
+  bash "$FIND_FEATURE" "$FEAT" >/dev/null 2>&1 || {
+    echo "ERROR: related-feature '$FEAT' not found in feature index" 1>&2; exit 1
+  }
   FEATURE_NAME="$FEAT"
   PREFIX="$(echo "$FEAT" | tr '[:lower:]' '[:upper:]')"
   # Resolve canonical bugs root via workspace-map.sh (rabbit-workspace-map contract interface)

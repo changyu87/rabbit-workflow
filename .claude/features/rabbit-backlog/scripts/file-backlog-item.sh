@@ -54,13 +54,13 @@ case "$PRIORITY" in
 esac
 
 REPO_ROOT="${RABBIT_ROOT:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
-REGISTRY="$REPO_ROOT/.claude/features/registry.json"
+FIND_FEATURE="$REPO_ROOT/.claude/features/contract/scripts/find-feature.sh"
 
-# Validate feature exists in registry
-if ! jq -e --arg f "$FEATURE_NAME" '.features[$f]' "$REGISTRY" > /dev/null 2>&1; then
-  echo "ERROR: feature '$FEATURE_NAME' not found in registry.json" >&2
+# Validate feature exists via find-feature.sh
+bash "$FIND_FEATURE" "$FEATURE_NAME" >/dev/null 2>&1 || {
+  echo "ERROR: feature '$FEATURE_NAME' not found in feature index" >&2
   exit 1
-fi
+}
 
 # Build prefix: rabbit-cage → RABBIT-CAGE, rabbit-backlog → RABBIT-BACKLOG
 PREFIX="$(echo "$FEATURE_NAME" | tr '[:lower:]' '[:upper:]')"
