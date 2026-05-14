@@ -64,6 +64,8 @@ python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test
 # Copy generate-claude-md.sh into the temp tree so sync-check.sh can invoke it
 cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
    "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
+   "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
 # Verify: CLAUDE.md does NOT exist in temp tree (simulates fresh install/clone)
 if [ ! -f "$TMPROOT/CLAUDE.md" ]; then

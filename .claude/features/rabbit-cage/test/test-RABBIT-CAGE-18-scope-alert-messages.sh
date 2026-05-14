@@ -58,6 +58,8 @@ build_tmproot_clean() {
 
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
        "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
+       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
     python3 -c "import json; print(json.dumps({'schema_version':'1.0.0','features':{}}))" \
         > "$tmproot/.claude/features/registry.json"

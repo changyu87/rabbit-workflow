@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.7.0
+version: 3.8.0
 template_version: 2.0.0
 ---
 
@@ -18,7 +18,13 @@ template_version: 2.0.0
       {"path": ".claude/features/rabbit-cage/scripts/validate-all.sh", "stdin": "none", "stdout": "validation report", "exit": "0=all pass 1=failures"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project.sh", "stdin": "none", "stdout": "operation result", "exit": "0=ok 1=error 2=usage"},
       {"path": ".claude/features/rabbit-cage/scripts/generate-claude-md.sh", "stdin": "none", "stdout": "CLAUDE.md content", "exit": "0=ok 1=error"},
-      {"path": ".claude/features/rabbit-cage/scripts/generate-skills-dir.sh", "stdin": "none", "stdout": "status messages", "exit": "0=ok/up-to-date 1=drift-detected(check-mode)"}
+      {"path": ".claude/features/rabbit-cage/scripts/generate-skills-dir.sh", "stdin": "none", "stdout": "status messages", "exit": "0=ok/up-to-date 1=drift-detected(check-mode)"},
+      {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.py", "stdin": "none", "stdout": "annotated workspace tree", "exit": "0=ok 1=error", "note": "Python helper for workspace tree rendering"},
+      {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-set-path.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.sh set-path"},
+      {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-map.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.sh map"},
+      {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-consolidate.py", "stdin": "none", "stdout": "warnings to stderr", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.sh consolidate"},
+      {"path": ".claude/features/rabbit-cage/scripts/build-targets.py", "stdin": "none", "stdout": "build log", "exit": "0=ok 1=error", "note": "helper invoked by build.sh"},
+      {"path": ".claude/features/rabbit-cage/scripts/generate-claude-md-header.py", "stdin": "none", "stdout": "CLAUDE.md header line", "exit": "0=ok 1=error", "note": "helper invoked by generate-claude-md.sh"}
     ],
     "schemas": [
       {
