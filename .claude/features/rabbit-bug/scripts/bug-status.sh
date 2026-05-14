@@ -21,7 +21,7 @@ case "$cmd" in
     ;;
   set)
     dir="${1:-}"; new="${2:-}"; note=""; actor="${USER:-unknown}"
-    skip_vet_reason=""; fix_commits=""; touched_files=""
+    skip_vet_reason=""; fix_commits=""; touched_files=""; tdd_report_path=""
     shift 2 2>/dev/null || true
     while [ $# -gt 0 ]; do
       case "$1" in
@@ -30,6 +30,7 @@ case "$cmd" in
         --skip-vet-reason) skip_vet_reason="$2"; shift 2 ;;
         --fix-commits)     fix_commits="$2"; shift 2 ;;
         --touched-files)   touched_files="$2"; shift 2 ;;
+        --tdd-report)      tdd_report_path="$2"; shift 2 ;;
         *) echo "unknown arg: $1" 1>&2; exit 2 ;;
       esac
     done
@@ -63,11 +64,22 @@ case "$cmd" in
     if [ "$new" = "closed" ]; then
       if [ -n "$skip_vet_reason" ]; then
         note="[skip-vet: $skip_vet_reason] $note"
-      elif [ ! -f "$dir/vet-triage.json" ] && [ ! -f "$dir/tdd-gap.json" ]; then
-        echo "ERROR (R7): cannot close without vet artifact" 1>&2; exit 1
-      fi
-      if [ -z "$fix_commits" ] && [ -z "$skip_vet_reason" ]; then
-        echo "ERROR: --fix-commits is required when closing a bug (use --skip-vet-reason to bypass)" 1>&2; exit 1
+      else
+        [ -f "$dir/vet-triage.json" ] || {
+          echo "ERROR (R7): vet-triage.json missing — run rabbit-triage.sh first, or use --skip-vet-reason" >&2
+          exit 1
+        }
+        [ -n "$tdd_report_path" ] || {
+          echo "ERROR (R7): --tdd-report <path> required to close bug" >&2
+          exit 1
+        }
+        [ -f "$tdd_report_path" ] || {
+          echo "ERROR: tdd-report file not found: $tdd_report_path" >&2
+          exit 1
+        }
+        if [ -z "$fix_commits" ]; then
+          echo "ERROR: --fix-commits is required when closing a bug (use --skip-vet-reason to bypass)" 1>&2; exit 1
+        fi
       fi
     fi
 
@@ -75,12 +87,19 @@ case "$cmd" in
       echo "ERROR: --fix-commits is not applicable for refused status" 1>&2; exit 1
     fi
 
+    # Read tdd_report JSON (null if not provided or skip-vet)
+    tdd_report_json="null"
+    if [ -n "$tdd_report_path" ] && [ -f "$tdd_report_path" ]; then
+      tdd_report_json=$(cat "$tdd_report_path")
+    fi
+
     case "$new" in
       closed)
         jq --arg s "$new" --arg ts "$TS" --arg actor "$actor" --arg note "$note" \
            --arg fc "$fix_commits" --arg tf "$touched_files" \
+           --argjson rpt "$tdd_report_json" \
            '.status = $s | .closed = $ts | .closed_by = $actor |
-            .history += [{ ts: $ts, actor: $actor, action: "closed", note: $note } +
+            .history += [{ ts: $ts, actor: $actor, action: "closed", note: $note, tdd_report: $rpt } +
               if $fc != "" and $tf != "" then { fix_commits: $fc, touched_files: $tf }
               elif $fc != "" then { fix_commits: $fc }
               elif $tf != "" then { touched_files: $tf }
