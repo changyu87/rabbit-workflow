@@ -1,20 +1,43 @@
 {
   "name": "TDD-STATE-MACHINE-1",
   "title": "rabbit-feature-touch Step 1 calls resolve-scope.sh directly instead of invoking rabbit-feature-scope skill",
-  "status": "open",
+  "status": "closed",
   "severity": "medium",
   "description": "In the rabbit-feature-touch skill Step 1, scope resolution is performed by running resolve-scope.sh directly and dispatching a raw Agent with the resulting prompt. This bypasses the rabbit-feature-scope Skill tool entirely. The rabbit-feature-scope skill description states it 'emits a prompt for a default-model Agent; caller parses the JSON response' — meaning it is designed to be invoked via the Skill tool, not circumvented via its internal script. The consequence: any future changes to rabbit-feature-scope skill logic (pre-dispatch validation, output format changes, additional steps) will be silently bypassed by feature-touch executions. Fix: rabbit-feature-touch Step 1 should invoke Skill('rabbit-feature-scope', args) via the Skill tool rather than shelling into resolve-scope.sh directly.",
   "related_feature": "tdd-state-machine",
   "filed": "2026-05-14T09:01:13Z",
   "filed_by": "cyxu",
-  "closed": null,
-  "closed_by": null,
+  "closed": "2026-05-14T09:18:34Z",
+  "closed_by": "cyxu",
   "history": [
     {
       "ts": "2026-05-14T09:01:13Z",
       "actor": "cyxu",
       "action": "opened",
       "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-14T09:18:34Z",
+      "actor": "cyxu",
+      "action": "closed",
+      "note": "[skip-vet: Bug was evaluated inline: spec Invariant 6 confirmed the issue; fix verified by new test test-skill-invocation-and-rabbit-report-path.sh passing in TDD cycle] TDD cycle complete",
+      "tdd_report": {
+        "schema_version": "1.0.0",
+        "feature": "tdd-state-machine",
+        "request": "Fix rabbit-feature-touch Step 1 to use Skill tool; move tdd-report.json to .rabbit/",
+        "linked_item": ".claude/bugs/tdd-state-machine/TDD-STATE-MACHINE-1",
+        "item_type": "bug",
+        "spec_changes": "yes",
+        "spec_no_change_reason": null,
+        "test_gap_analysis": "No tests existed for Skill-tool invocation in SKILL.md or for tdd-report output path",
+        "impl_summary": "Updated SKILL.md Step 1 to document Skill() tool invocation for scope resolution. Updated dispatch-feature-tdd.sh to write tdd-report.json to .rabbit/ hidden folder with auto-mkdir. Added .rabbit/ to .gitignore.",
+        "spec_compliance": "pass",
+        "spec_compliance_notes": null,
+        "test_result": "pass",
+        "tdd_state": "test-green",
+        "impl_commit": "1bb0b4b"
+      },
+      "fix_commits": "1bb0b4b"
     }
   ]
 }

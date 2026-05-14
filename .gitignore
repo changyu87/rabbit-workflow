@@ -13,3 +13,4 @@
 # Ephemeral TDD artifacts
 tdd-report.json
 .claude/tdd-report.json
+.rabbit/

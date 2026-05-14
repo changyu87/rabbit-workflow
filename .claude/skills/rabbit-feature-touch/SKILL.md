@@ -21,11 +21,10 @@ All modes follow these five steps. Mode determines branch name and step 5 behavi
 
 ### Step 1 — Scope Resolution
 
-**Normal mode:** Invoke `rabbit-feature-scope`:
-```bash
-PROMPT=$(bash .claude/features/rabbit-feature-scope/scripts/resolve-scope.sh "<request>")
-# Dispatch Agent(prompt: PROMPT)  — default model
-# Parse JSON: {"features": ["feat-a", "feat-b"], "rationale": "..."}
+**Normal mode:** Invoke `rabbit-feature-scope` via the Skill tool:
+```
+Skill("rabbit-feature-scope", args: "<request>")
+# Parse JSON response: {"features": [...], "rationale": "..."}
 ```
 
 **B/B mode:** Skip — feature name comes from `related_feature` in the bug/item JSON:
@@ -64,7 +63,7 @@ PROMPT=$(bash .claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.sh
 
 Each subagent: sets `.rabbit-scope-active-<feature>`, runs full TDD cycle
 (spec-update → test-red → impl → inline spec-review → test-green), writes
-`tdd-report.json` to repo root, emits HANDOFF.
+`tdd-report.json` to `.rabbit/tdd-report.json` (hidden folder at repo root), emits HANDOFF.
 
 ### Step 4 — Collect and Verify HANDOFFs
 
@@ -90,7 +89,7 @@ Summarize the TDD report to the user.
   "linked_item": "<path>",
   "feature": "<name>",
   "branch": "<branch-name>",
-  "tdd_report_path": "<repo-root>/tdd-report.json",
+  "tdd_report_path": "<repo-root>/.rabbit/tdd-report.json",
   "status": "success|failed"
 }
 ```
