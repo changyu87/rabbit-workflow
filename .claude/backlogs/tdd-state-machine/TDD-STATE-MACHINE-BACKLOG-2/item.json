@@ -1,13 +1,13 @@
 {
   "name": "TDD-STATE-MACHINE-BACKLOG-2",
   "title": "Move tdd-report.json to a hidden folder and add it to .gitignore",
-  "status": "in-progress",
+  "status": "implemented",
   "priority": "medium",
   "description": "",
   "owner": "cyxu",
   "filed": "2026-05-14T09:02:23Z",
   "filed_by": "cyxu",
-  "closed": null,
+  "closed": "2026-05-14T09:18:44Z",
   "history": [
     {
       "ts": "2026-05-14T09:02:23Z",
@@ -20,6 +20,29 @@
       "actor": "cyxu",
       "action": "in-progress",
       "note": "TDD cycle started"
+    },
+    {
+      "ts": "2026-05-14T09:18:44Z",
+      "actor": "cyxu",
+      "action": "implemented",
+      "note": "TDD cycle complete",
+      "fix_commits": "1bb0b4b",
+      "tdd_report": {
+        "schema_version": "1.0.0",
+        "feature": "tdd-state-machine",
+        "request": "Fix rabbit-feature-touch Step 1 to use Skill tool; move tdd-report.json to .rabbit/",
+        "linked_item": ".claude/bugs/tdd-state-machine/TDD-STATE-MACHINE-1",
+        "item_type": "bug",
+        "spec_changes": "yes",
+        "spec_no_change_reason": null,
+        "test_gap_analysis": "No tests existed for Skill-tool invocation in SKILL.md or for tdd-report output path",
+        "impl_summary": "Updated SKILL.md Step 1 to document Skill() tool invocation for scope resolution. Updated dispatch-feature-tdd.sh to write tdd-report.json to .rabbit/ hidden folder with auto-mkdir. Added .rabbit/ to .gitignore.",
+        "spec_compliance": "pass",
+        "spec_compliance_notes": null,
+        "test_result": "pass",
+        "tdd_state": "test-green",
+        "impl_commit": "1bb0b4b"
+      }
     }
   ]
 }
