@@ -16,3 +16,6 @@ tdd-report.json
 .rabbit/
 .claude/worktrees/
 .claude/tmp/
+
+__pycache__/
+*.pyc
