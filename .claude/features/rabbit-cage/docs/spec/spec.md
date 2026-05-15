@@ -259,11 +259,13 @@ If the current branch is already a non-protected branch (anything other than `ma
 24. On every Stop event, after the existing drift checks, `sync-check.sh`
     detects skill updates via a self-clearing marker file:
     (a) `build-targets.py` (invoked by `build.sh`) appends the skill name to
-    `.rabbit-skills-updated` at the repo root whenever it copies a `copy-file`
-    target whose destination matches the regex `^\.claude/skills/([^/]+)/SKILL\.md$`.
-    Each appended line is the captured skill name followed by a newline. The
-    marker is NOT written for non-SKILL.md targets, nor for targets under
-    `.claude/commands/` or `.claude/agents/`.
+    `.rabbit-skills-updated` at the repo root ONLY when it copies a `copy-file`
+    target whose destination matches `^\.claude/skills/([^/]+)/SKILL\.md$` AND
+    whose content actually changed (sha256 of source differs from sha256 of
+    destination, or destination does not exist). A no-op copy (identical sha256)
+    does NOT write the marker and the underlying `shutil.copy2` is also skipped.
+    Non-SKILL.md targets (`.claude/commands/`, `.claude/agents/`, etc.) never
+    trigger the marker.
     (b) `sync-check.sh` checks if `.rabbit-skills-updated` exists at the repo root.
     If it does: read the comma-joined list of skill names, delete the marker
     (self-clearing — alert fires exactly once per build), and emit a green
