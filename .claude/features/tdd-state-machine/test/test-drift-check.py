@@ -47,10 +47,10 @@ def fix(d, n, s, rc_code):
         f.write('\n')
     with open(os.path.join(d, 'contract.md'), 'w') as f:
         f.write('\n')
-    run_sh = os.path.join(d, 'test', 'run.sh')
-    with open(run_sh, 'w') as f:
-        f.write(f'#!/bin/bash\nexit {rc_code}\n')
-    os.chmod(run_sh, 0o755)
+    run_py = os.path.join(d, 'test', 'run.py')
+    with open(run_py, 'w') as f:
+        f.write(f'#!/usr/bin/env python3\nimport sys\nsys.exit({rc_code})\n')
+    os.chmod(run_py, 0o755)
 
 
 def run(*args):

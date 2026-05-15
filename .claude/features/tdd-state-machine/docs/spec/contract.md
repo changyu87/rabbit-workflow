@@ -31,12 +31,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
         "exit": "0=success, 2=bad invocation"
       },
       {
-        "path": ".claude/features/tdd-state-machine/scripts/resolve-feature-scope.sh",
-        "stdin": "none (request-description passed as $1)",
-        "stdout": "Opus subagent prompt that, when dispatched, instructs the agent to read the feature registry and emit JSON of the form {\"features\": [...], \"rationale\": \"...\"}; the script itself does not call any agent",
-        "exit": "0=success, 2=bad invocation (missing request-description)"
-      },
-      {
         "path": ".claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.py",
         "stdin": "none (feature-name as $1, request-description as $2; optional flags: --bug <bug-dir>, --backlog <item-dir>)",
         "stdout": "per-feature full-TDD-cycle subagent prompt that runs spec-update → test-red → impl → test-green for ONE feature using .rabbit-scope-active-<feature-name> as scope marker (parallel-dispatch safe); after test-green the orchestrator closes the linked bug or marks the backlog item implemented using the impl commit SHA; the script itself does not call any agent",
@@ -56,7 +50,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "reads": {
     "files": [
       "<feature-dir>/feature.json (tdd_state field)",
-      "<feature-dir>/test/run.sh",
+      "<feature-dir>/test/run.py",
       ".claude/backlogs/<feature-name>/ (in-progress items, scanned at test-green)"
     ],
     "external": [
@@ -65,10 +59,9 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   },
   "invokes": {
     "scripts": [
-      ".claude/features/contract/scripts/rebuild-registry.sh",
       ".claude/features/contract/scripts/enforcement/ (all scripts at test-green)",
-      ".claude/features/rabbit-cage/scripts/rabbit-project.sh consolidate",
-      ".claude/features/rabbit-backlog/scripts/backlog-item-status.sh (conditional: only on test-green, best-effort)"
+      ".claude/features/rabbit-cage/scripts/rabbit-project.py consolidate",
+      ".claude/features/rabbit-backlog/scripts/backlog-item-status.py (conditional: only on test-green, best-effort)"
     ],
     "agents": []
   },

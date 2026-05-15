@@ -4,9 +4,9 @@
 # Rules:
 #   spec        : not test-checked (no claim about test outcome)
 #   spec-update : not test-checked (no claim about test outcome)
-#   test-red    : test/run.sh MUST exit non-zero
+#   test-red    : test/run.py MUST exit non-zero
 #   impl        : transitional; no test-outcome check
-#   test-green  : test/run.sh MUST exit 0
+#   test-green  : test/run.py MUST exit 0
 #   deprecated  : not test-checked (terminal)
 #
 # Usage: tdd-drift-check.py <feature-dir>
@@ -24,7 +24,7 @@ def run_tests_get_rc(runner):
         return None, 2
     try:
         res = subprocess.run(
-            ["bash", runner],
+            [sys.executable, runner],
             capture_output=True, check=False,
         )
         return res.returncode, 0
@@ -54,7 +54,7 @@ def main(argv):
         return 2
 
     state = data.get("tdd_state", "") or ""
-    runner = os.path.join(d, "test", "run.sh")
+    runner = os.path.join(d, "test", "run.py")
 
     if state in ("spec", "spec-update", "impl", "deprecated"):
         print(f"OK ({state}, no test-outcome check)")
