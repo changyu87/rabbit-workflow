@@ -61,8 +61,9 @@ def make_rabbit_root(root):
 def t1():
     root = os.path.join(TMPROOT, 't1_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
+        ['python3', DISPATCH_SH, '--scope', 'tdd-subagent', '--spec', spec,
          '--linked-item', '/some/bug/dir', '--item-type', 'bug'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -77,8 +78,9 @@ def t1():
 def t2():
     root = os.path.join(TMPROOT, 't2_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
+        ['python3', DISPATCH_SH, '--scope', 'tdd-subagent', '--spec', spec,
          '--linked-item', '/some/backlog/item', '--item-type', 'backlog'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -89,28 +91,30 @@ def t2():
         ko(f"t2: rc={result.returncode}; expected 0. stderr/stdout: {result.stdout}{result.stderr}")
 
 
-# t3: when --linked-item bug is given, emitted prompt contains tdd-report.json
+# t3: when --linked-item bug is given, emitted prompt contains tdd-report-<feature>.json
 def t3():
     root = os.path.join(TMPROOT, 't3_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
+        ['python3', DISPATCH_SH, '--scope', 'tdd-subagent', '--spec', spec,
          '--linked-item', '/bugs/my-bug', '--item-type', 'bug'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
     )
-    if 'tdd-report.json' in result.stdout:
-        ok("t3: prompt contains 'tdd-report.json'")
+    if 'tdd-report-tdd-subagent.json' in result.stdout:
+        ok("t3: prompt contains 'tdd-report-tdd-subagent.json'")
     else:
-        ko("t3: 'tdd-report.json' not found in prompt")
+        ko("t3: 'tdd-report-tdd-subagent.json' not found in prompt")
 
 
 # t4: when --linked-item bug is given, emitted prompt contains the bug dir path
 def t4():
     root = os.path.join(TMPROOT, 't4_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
+        ['python3', DISPATCH_SH, '--scope', 'tdd-subagent', '--spec', spec,
          '--linked-item', '/bugs/my-bug', '--item-type', 'bug'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -125,8 +129,9 @@ def t4():
 def t5():
     root = os.path.join(TMPROOT, 't5_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
+        ['python3', DISPATCH_SH, '--scope', 'tdd-subagent', '--spec', spec,
          '--linked-item', '/bugs/my-bug', '--item-type', 'bug'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -137,28 +142,30 @@ def t5():
         ko("t5: 'spec_compliance' not found in prompt")
 
 
-# t6: when --linked-item backlog is given, emitted prompt contains tdd-report.json
+# t6: when --linked-item backlog is given, emitted prompt contains tdd-report-<feature>.json
 def t6():
     root = os.path.join(TMPROOT, 't6_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
+        ['python3', DISPATCH_SH, '--scope', 'tdd-subagent', '--spec', spec,
          '--linked-item', '/backlogs/my-item', '--item-type', 'backlog'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
     )
-    if 'tdd-report.json' in result.stdout:
-        ok("t6: prompt contains 'tdd-report.json'")
+    if 'tdd-report-tdd-subagent.json' in result.stdout:
+        ok("t6: prompt contains 'tdd-report-tdd-subagent.json'")
     else:
-        ko("t6: 'tdd-report.json' not found in prompt")
+        ko("t6: 'tdd-report-tdd-subagent.json' not found in prompt")
 
 
 # t7: when --linked-item backlog is given, emitted prompt contains the item dir path
 def t7():
     root = os.path.join(TMPROOT, 't7_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
+        ['python3', DISPATCH_SH, '--scope', 'tdd-subagent', '--spec', spec,
          '--linked-item', '/backlogs/my-item', '--item-type', 'backlog'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -169,28 +176,30 @@ def t7():
         ko("t7: backlog item dir path '/backlogs/my-item' not found in prompt")
 
 
-# t8: when --linked-item backlog is given, emitted prompt contains test_gap_analysis
+# t8: when --linked-item backlog is given, emitted prompt contains spec_compliance field
 def t8():
     root = os.path.join(TMPROOT, 't8_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
+        ['python3', DISPATCH_SH, '--scope', 'tdd-subagent', '--spec', spec,
          '--linked-item', '/backlogs/my-item', '--item-type', 'backlog'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
     )
-    if 'test_gap_analysis' in result.stdout:
-        ok("t8: prompt contains 'test_gap_analysis' field")
+    if 'spec_compliance' in result.stdout:
+        ok("t8: prompt contains 'spec_compliance' field")
     else:
-        ko("t8: 'test_gap_analysis' not found in prompt")
+        ko("t8: 'spec_compliance' not found in prompt")
 
 
 # t9: when neither --linked-item nor --item-type is given, prompt is still valid
 def t9():
     root = os.path.join(TMPROOT, 't9_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature'],
+        ['python3', DISPATCH_SH, '--scope', 'tdd-subagent', '--spec', spec],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
     )
@@ -204,8 +213,9 @@ def t9():
 def t10():
     root = os.path.join(TMPROOT, 't10_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
+        ['python3', DISPATCH_SH, '--scope', 'tdd-subagent', '--spec', spec,
          '--linked-item', '/bugs/my-bug', '--item-type', 'bug'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}

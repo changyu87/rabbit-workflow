@@ -47,15 +47,16 @@ if re.search(r'resolve-scope\.sh', skill_content):
 else:
     ok("SKILL.md Step 1 does not reference resolve-scope.sh")
 
-# Fix 2a: dispatch-tdd-subagent.py must write tdd-report.json to .rabbit/ path
+# Fix 2a: dispatch-tdd-subagent.py must write tdd-report-<feature>.json to .rabbit/ path
+SPEC = os.path.join(REPO_ROOT, '.claude/features/contract/docs/spec/spec.md')
 result = subprocess.run(
-    ['python3', DISPATCH, 'contract', 'test request'],
+    ['python3', DISPATCH, '--scope', 'contract', '--spec', SPEC],
     capture_output=True, text=True
 )
 prompt = result.stdout
 
-if re.search(r'\.rabbit/tdd-report\.json', prompt):
-    ok("dispatch-tdd-subagent.sh prompt references .rabbit/tdd-report.json")
+if re.search(r'\.rabbit/tdd-report-contract\.json', prompt):
+    ok("dispatch-tdd-subagent.sh prompt references .rabbit/tdd-report-contract.json")
 else:
     fail("dispatch-tdd-subagent.sh prompt does not reference .rabbit/tdd-report.json")
 
