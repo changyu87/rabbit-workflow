@@ -120,6 +120,16 @@ approved mode (`one-time` or `session`), then proceeds with the write.
 `scope-guard.sh` never creates `.rabbit-scope-override`; it only reads
 and (for `one-time`) deletes it.
 
+**Revoking a session override (scope guard back on):** A session override
+stays in place until explicitly revoked. To revoke it, run:
+
+    bash .claude/features/rabbit-cage/scripts/scope-guard-on.sh
+
+`scope-guard-on.sh` deletes `.rabbit-scope-override` (if present) and
+emits a confirmation message. After revocation the guard returns to its
+default-deny posture immediately — no session restart is required. The
+script is a no-op if no override is active.
+
 **Filename allowlist:** `scope-guard.sh` maintains a filename allowlist that
 always permits writes regardless of scope-marker state. The allowlisted
 basenames are: `settings.json`, `settings.local.json`, `.gitignore`, and
@@ -144,6 +154,14 @@ marker is active.
 13. A `one-time` override consumed by `scope-guard.sh` is acknowledged exactly
     once by `sync-check.sh`, after which `.rabbit-scope-override-used` is
     removed.
+41. `scope-guard-on.sh` exists at `.claude/features/rabbit-cage/scripts/scope-guard-on.sh`
+    and is executable. It deletes `.rabbit-scope-override` (if present) and prints a
+    confirmation to stdout. It is a no-op if no override file exists. It is the
+    canonical answer to "scope guard back on" / "revoke the session override".
+42. The double-quoted region stripping `re.sub` in `extract_bash_targets()` of
+    `scope-guard.sh` uses the `re.DOTALL` flag so that multi-line double-quoted
+    strings (e.g., from backslash-newline continuations) are fully removed before
+    pattern matching, preventing false-positive DENY on content inside the string.
 14. `generate-skills-dir.sh --check` detects drift by comparing the sha256 of
     each source `SKILL.md` directly against the sha256 of the corresponding
     copy at `.claude/skills/<name>/SKILL.md`. No external baseline file is
@@ -240,6 +258,14 @@ double-quoted regions from each command segment using python3. This prevents
 false positives when string data (e.g., inside `python3 -c '...'` arguments
 or heredoc bodies) contains `>`, `>>`, or command names such as `tee`, `cp`,
 `mv`, or `rm`. Real unquoted redirects are still detected correctly.
+
+The double-quoted region stripping `re.sub` call uses the `re.DOTALL` flag
+(or equivalently `re.S`) so that quoted regions spanning multiple lines
+(e.g., a `--description "..."` argument split across lines with
+backslash-newline continuations) are fully removed before pattern matching.
+Without `re.DOTALL`, `.` does not match newlines, so multi-line quoted
+strings are only partially stripped, causing false-positive DENY on content
+inside the string (e.g., `-> U+00F0`).
 
 ## Visual Styling
 

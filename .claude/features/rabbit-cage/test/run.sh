@@ -48,6 +48,7 @@ run_suite test-RABBIT-CAGE-21-plugin-change-alert.sh
 run_suite test-RABBIT-CAGE-23-rename-rbt-prefix.sh
 run_suite test-no-rbt-refs.sh
 run_suite test-no-embedded-python3.sh
+run_suite test-RABBIT-CAGE-BUG123.sh
 
 if [ "$total_fail" -eq 0 ]; then
     echo "ALL SUITES PASSED"
