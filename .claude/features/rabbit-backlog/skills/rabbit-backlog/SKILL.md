@@ -19,9 +19,9 @@ When the user confirms they want to file a backlog item:
 
 1. Invoke `rabbit-feature-scope` to identify the related feature (or ask user if ambiguous).
 2. Ask clarifying questions if item description is unclear.
-3. Run `file-backlog-item.sh` to create the item and capture its directory path:
+3. Run `file-backlog-item.py` to create the item and capture its directory path:
    ```bash
-   ITEM_DIR=$(bash .claude/features/rabbit-backlog/scripts/file-backlog-item.sh \
+   ITEM_DIR=$(bash .claude/features/rabbit-backlog/scripts/file-backlog-item.py \
      --related-feature <feature-name> \
      --title "..." \
      [--priority <low|medium|high|critical>])
@@ -56,7 +56,7 @@ When the user asks to work a backlog item:
 3. **If user chooses to refuse/cancel (or eval returned stale/invalid and user agrees):**
    ```bash
    git checkout -b "filing/${ITEM_ID}-cancel"
-   bash .claude/features/rabbit-backlog/scripts/backlog-item-status.sh set "$ITEM_DIR" cancelled \
+   bash .claude/features/rabbit-backlog/scripts/backlog-item-status.py set "$ITEM_DIR" cancelled \
      --reason "<why it's no longer relevant>"
    git add "$ITEM_DIR/item.json"
    git commit -m "cancel: ${ITEM_ID} — <reason>"
@@ -71,7 +71,7 @@ When the user asks to work a backlog item:
    - **If `status: success`:**
      ```bash
      # TDD_REPORT_PATH = handoff["tdd_report_path"] (where tdd-report.json path is given)
-     bash .claude/features/rabbit-backlog/scripts/backlog-item-status.sh set "$ITEM_DIR" implemented \
+     bash .claude/features/rabbit-backlog/scripts/backlog-item-status.py set "$ITEM_DIR" implemented \
        --reason "TDD cycle complete" \
        --tdd-report "$TDD_REPORT_PATH" \
        --fix-commits "$(python3 -c "import json; print(json.load(open('$TDD_REPORT_PATH'))['impl_commit'])")"
@@ -86,10 +86,10 @@ When the user asks to work a backlog item:
 
 | Script | Usage |
 |---|---|
-| `file-backlog-item.sh` | `file-backlog-item.sh --related-feature F --title T [--priority P]` |
-| `backlog-item-status.sh get <dir>` | Print current status |
-| `backlog-item-status.sh set <dir> <status> [--reason R] [--tdd-report P] [--fix-commits C]` | Transition |
-| `list-backlog.sh [--status S] [--feature F] [--text]` | List items |
+| `file-backlog-item.py` | `file-backlog-item.py --related-feature F --title T [--priority P]` |
+| `backlog-item-status.py get <dir>` | Print current status |
+| `backlog-item-status.py set <dir> <status> [--reason R] [--tdd-report P] [--fix-commits C]` | Transition |
+| `list-backlog.py [--status S] [--feature F] [--text]` | List items |
 
 ## Status Lifecycle
 

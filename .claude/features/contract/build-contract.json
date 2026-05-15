@@ -96,10 +96,10 @@
       "check_on_stop": false
     },
     {
-      "name": "install.sh",
+      "name": "install.py",
       "type": "copy-file",
-      "source": ".claude/features/rabbit-cage/install.sh",
-      "destination": "install.sh",
+      "source": ".claude/features/rabbit-cage/install.py",
+      "destination": "install.py",
       "check_on_stop": false
     }
   ]

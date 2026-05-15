@@ -1,17 +1,32 @@
 #!/usr/bin/env python3
 # workspace-map.py — contract-driven workspace hierarchy map.
 #
-# Usage (invoked by workspace-map.sh):
-#   python3 workspace-map.py <repo-root> <human:0|1> <audit:0|1>
+# Usage (show mode, default):
+#   workspace-map.py [--human] [--repo-root <path>]
+#   Produces JSON conforming to workspace-map.json.schema.json v2.0.0.
 #
-# Produces JSON conforming to workspace-map.json.schema.json v2.0.0.
+# Usage (audit mode):
+#   workspace-map.py --audit [--human] [--repo-root <path>]
+#   Produces findings-only JSON (deviations from contract).
 #
-# Version: 1.0.0
+# Usage (backlog path, legacy subcommand):
+#   workspace-map.py backlog <feature-name> [--repo-root <path>]
+#   Outputs the canonical backlog directory path for the named feature.
+#
+# Legacy positional form (for internal callers):
+#   workspace-map.py <repo-root> <human:0|1> <audit:0|1>
+#
+# Exit:
+#   0  success
+#   1  error
+#
+# Version: 2.0.0
 # Owner: rabbit-workflow team (contract feature)
 # Deprecation criterion: when rabbit features adopt a native workspace registry.
 
 import json
 import os
+import subprocess
 import sys
 
 
@@ -82,15 +97,77 @@ def print_nodes_human(nodes, indent):
             print_nodes_human(node["children"], indent + 1)
 
 
-def main():
-    if len(sys.argv) != 4:
-        print("usage: workspace-map.py <repo-root> <human:0|1> <audit:0|1>", file=sys.stderr)
+def resolve_root(root_arg, script_dir):
+    if root_arg:
+        return root_arg
+    env_root = os.environ.get("RABBIT_ROOT")
+    if env_root:
+        return env_root
+    try:
+        result = subprocess.run(
+            ["git", "-C", script_dir, "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        print("ERROR: cannot resolve repo root", file=sys.stderr)
         sys.exit(1)
 
-    REPO_ROOT = sys.argv[1]
-    HUMAN = int(sys.argv[2])
-    AUDIT = int(sys.argv[3])
-    CLAUDE_DIR = os.path.join(REPO_ROOT, ".claude")
+
+def main():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    args = sys.argv[1:]
+
+    # Legacy positional form: workspace-map.py <repo-root> <human:0|1> <audit:0|1>
+    if len(args) == 3 and args[1] in ("0", "1") and args[2] in ("0", "1"):
+        REPO_ROOT = args[0]
+        HUMAN = int(args[1])
+        AUDIT = int(args[2])
+        CLAUDE_DIR = os.path.join(REPO_ROOT, ".claude")
+    else:
+        # New flag-based interface.
+        # Handle backlog subcommand.
+        if args and args[0] == "backlog":
+            args = args[1:]
+            feature_name = args[0] if args else ""
+            if not feature_name or feature_name.startswith("-"):
+                print("ERROR: feature-name is required", file=sys.stderr)
+                sys.exit(1)
+            args = args[1:]
+            root_arg = ""
+            while args:
+                if args[0] == "--repo-root":
+                    root_arg = args[1] if len(args) > 1 else ""
+                    args = args[2:]
+                else:
+                    print(f"ERROR: unknown arg: {args[0]}", file=sys.stderr)
+                    sys.exit(1)
+            resolved = resolve_root(root_arg, script_dir)
+            print(f"{resolved}/.claude/backlogs/{feature_name}")
+            sys.exit(0)
+
+        HUMAN = 0
+        AUDIT = 0
+        root_arg = ""
+        while args:
+            a = args[0]
+            if a == "--human":
+                HUMAN = 1
+                args = args[1:]
+            elif a == "--audit":
+                AUDIT = 1
+                args = args[1:]
+            elif a == "--repo-root":
+                root_arg = args[1] if len(args) > 1 else ""
+                args = args[2:]
+            elif a in ("-h", "--help"):
+                print("usage: workspace-map.py [--human] [--audit] [--repo-root <path>]")
+                sys.exit(0)
+            else:
+                print(f"ERROR: unknown arg: {a}", file=sys.stderr)
+                sys.exit(1)
+        REPO_ROOT = resolve_root(root_arg, script_dir)
+        CLAUDE_DIR = os.path.join(REPO_ROOT, ".claude")
 
     # Rabbit root
     rabbit_decl = load_declaration(os.path.join(CLAUDE_DIR, "workspace-structure.json"))

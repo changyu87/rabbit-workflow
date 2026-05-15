@@ -5,7 +5,7 @@ description: Use when the user asks to see, inspect, understand, or audit the ra
 
 # rabbit-workspace-map skill
 
-Execute `.claude/features/contract/scripts/workspace-map.sh` immediately on invocation. Do not describe it, do not paraphrase its output — run it.
+Execute `.claude/features/contract/scripts/workspace-map.py` immediately on invocation. Do not describe it, do not paraphrase its output — run it.
 
 ## Action
 
@@ -14,25 +14,25 @@ Run one of the following, based on what the user wants:
 - User wants to **see** the map (human-readable):
 
   ```bash
-  .claude/features/contract/scripts/workspace-map.sh --human
+  .claude/features/contract/scripts/workspace-map.py --human
   ```
 
 - User wants to **process** the map (JSON for machine/programmatic use):
 
   ```bash
-  .claude/features/contract/scripts/workspace-map.sh
+  .claude/features/contract/scripts/workspace-map.py
   ```
 
 - User wants to **audit** conformance (human-readable findings):
 
   ```bash
-  .claude/features/contract/scripts/workspace-map.sh --audit --human
+  .claude/features/contract/scripts/workspace-map.py --audit --human
   ```
 
 - User wants to **audit** conformance (machine-oriented findings):
 
   ```bash
-  .claude/features/contract/scripts/workspace-map.sh --audit
+  .claude/features/contract/scripts/workspace-map.py --audit
   ```
 
 The default JSON output conforms to `.claude/features/contract/schemas/workspace-map.json.schema.json` (v2.0.0) with a `roots` array. Audit mode emits a `findings` array of deviations.
@@ -50,7 +50,7 @@ If unsure between show and audit, prefer `--human` for overviews, `--audit` for 
 
 ## Do Not
 
-- Do not re-implement the workspace walk inline (no ad-hoc `find` / `ls` loops). Always invoke `workspace-map.sh`.
+- Do not re-implement the workspace walk inline (no ad-hoc `find` / `ls` loops). Always invoke `workspace-map.py`.
 - Do not call `.claude/skills/rabbit-workspace-map/...` as a script — that path holds only this SKILL.md. The executable lives under `.claude/features/contract/scripts/`.
 - Do not dump raw JSON to a user who asked to *see* the map; use `--human`.
 - Do not run `--audit` when the user asked for an overview; do not omit `--audit` when the user asked for conformance checking.

@@ -33,4 +33,4 @@ worktree.
 
 ## Tests
 
-test/run.sh runs 9 tests. Transitions via tdd-step.sh.
+test/run.sh runs 9 tests. Transitions via tdd-step.py.

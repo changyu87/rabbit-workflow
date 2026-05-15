@@ -15,7 +15,7 @@ not prescribed.
 ## Usage
 
 ```bash
-PROMPT=$(bash .claude/features/rabbit-feature-scope/scripts/resolve-scope.sh "<request-description>")
+PROMPT=$(.claude/features/rabbit-feature-scope/scripts/resolve-scope.py "<request-description>")
 # Dispatch Agent(prompt: PROMPT)   ← default model, no override
 # Agent responds with JSON:
 # {"features": ["feature-name-1"], "rationale": "one sentence"}
@@ -27,13 +27,13 @@ PROMPT=$(bash .claude/features/rabbit-feature-scope/scripts/resolve-scope.sh "<r
 {"features": ["name1", "name2"], "rationale": "one sentence"}
 ```
 
-- `features`: list of feature names matching `find-feature.sh --list`. May be empty `[]`.
+- `features`: list of feature names matching `find-feature.py --list`. May be empty `[]`.
 - `rationale`: one sentence explaining the selection.
 - The feature list is authoritative — caller does not second-guess it.
 
 ## Notes
 
-- `resolve-scope.sh` emits a prompt to stdout only; it does not call Agent itself.
-- Uses `find-feature.sh --list-json` — not `registry.json`.
+- `resolve-scope.py` emits a prompt to stdout only; it does not call Agent itself.
+- Uses `find-feature.py --list-json` — not `registry.json`.
 - Default model (no Opus override).
 - Prompt instructs Agent to respond with ONLY valid JSON on a single line.

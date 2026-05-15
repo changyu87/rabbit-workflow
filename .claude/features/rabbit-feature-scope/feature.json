@@ -11,18 +11,18 @@
   },
   "contract": {
     "reads": [
-      "feature.json files via find-feature.sh --list-json"
+      "feature.json files via find-feature.py list-json"
     ],
     "writes": [
       "nothing — emits prompt to stdout only"
     ],
     "invokes": [
-      ".claude/features/contract/scripts/find-feature.sh"
+      ".claude/features/contract/scripts/find-feature.py"
     ]
   },
   "surface": {
     "scripts": [
-      "scripts/resolve-scope.sh"
+      "scripts/resolve-scope.py"
     ],
     "skills": []
   }

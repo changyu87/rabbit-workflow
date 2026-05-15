@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "schemaVersion": "2.0.0",
   "title": "workspace-map output",
-  "description": "Versioned JSON schema for workspace-map.sh v2 output. Two shapes: show mode (roots array) and audit mode (findings array).",
+  "description": "Versioned JSON schema for workspace-map.py v2 output. Two shapes: show mode (roots array) and audit mode (findings array).",
   "owner": "rabbit-workflow team (contract feature)",
   "deprecation_criterion": "when a native Claude Code workspace registry supersedes this schema",
   "oneOf": [

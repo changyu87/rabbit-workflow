@@ -68,4 +68,4 @@ origin/bug-backlog-files root:
 
 ## Tests
 
-test/run.sh runs all test suites. Transitions via tdd-step.sh.
+test/run.sh runs all test suites. Transitions via tdd-step.py.

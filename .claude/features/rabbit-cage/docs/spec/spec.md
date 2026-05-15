@@ -23,7 +23,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 - `.claude/contract/` — symlink to `.claude/features/contract/`
 - `CLAUDE.md` — generated file (by `generate-claude-md.py`); committed to the repo (not gitignored); not a symlink; validated on every Stop against a fresh regeneration from policy sources
 - `README.md` — symlink to `rabbit-cage/README.md`
-- `install.sh` — symlink to `rabbit-cage/install.sh` (kept as bash; bootstrap entry point — see Tech Stack section)
+- `install.py` — copy of `rabbit-cage/install.py` (Python bootstrap installer; see Tech Stack section)
 
 ## Invariants
 
@@ -35,7 +35,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 6. `.claude/contract` is a symlink pointing to `.claude/features/contract`.
 7. `CLAUDE.md` at repo root is a generated regular file (not a symlink); produced by `generate-claude-md.py`; committed to the repo (not gitignored); contains inline `rabbit-policy-start`/`rabbit-policy-end` section.
 8. `README.md` at repo root is a symlink pointing to `.claude/features/rabbit-cage/README.md`.
-9. `install.sh` at repo root is a symlink pointing to `.claude/features/rabbit-cage/install.sh`. `install.sh` is the only `.sh` file in rabbit-cage; it is retained as bash because it is the bootstrap entry point — operators invoke it before any rabbit-managed Python state exists. See Tech Stack section.
+9. `install.py` at repo root is a copy of `.claude/features/rabbit-cage/install.py` (managed by `build-contract.json`). `install.py` is the bootstrap installer; it is a standalone Python script requiring only the stdlib. No `.sh` files exist in rabbit-cage.
 10. `CLAUDE.md` contains `@`-imports sourcing files from `.claude/policy/`.
 25. `.claude/features/rabbit-cage/scripts/build.py` exists and is executable; reads `build-contract.json` and builds all declared targets.
 26. `.claude/features/rabbit-cage/test/test-generated-surface.sh` exists and exits 0 on a clean workspace (all check_on_stop copy-file targets match their sources).
@@ -43,7 +43,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 28. `test-symlinks.sh` does NOT exist in `.claude/features/rabbit-cage/test/` (deleted; superseded by test-generated-surface.sh).
 29. `surface.hooks`, `surface.commands`, and `surface.settings` in `feature.json` are all `[]` (empty arrays); hooks, commands, and settings are now managed via build-contract.json copy-file targets.
 30. `build.py` passes `RABBIT_ROOT=<repo_root>` as an environment variable when invoking `generate-claude-md.py` for `generate-claude-md` targets, so that installs into non-git directories (e.g., temp dirs during `install.sh`) succeed without `git rev-parse` errors.
-39. Every runtime script under `.claude/features/rabbit-cage/hooks/` and `.claude/features/rabbit-cage/scripts/` is a standalone executable Python file (`#!/usr/bin/env python3`). No `.sh` files exist under either directory. `install.sh` at the rabbit-cage root is the sole permitted exception (bootstrap entry point; see Tech Stack section). Tests under `.claude/features/rabbit-cage/test/` are out of scope for this rule and may remain `.sh`.
+39. Every runtime script under `.claude/features/rabbit-cage/hooks/` and `.claude/features/rabbit-cage/scripts/` is a standalone executable Python file (`#!/usr/bin/env python3`). No `.sh` files exist under either directory. `install.py` at the rabbit-cage root is the bootstrap installer (also Python). Tests under `.claude/features/rabbit-cage/test/` are out of scope for this rule and may remain `.sh`.
 40. The Python runtime scripts in rabbit-cage are: in `hooks/` — `refresh.py`, `scope-guard.py`, `session-init.py`, `sync-check.py`; in `scripts/` — `build.py`, `build-targets.py`, `generate-claude-md.py`, `generate-claude-md-header.py`, `new-feature.py`, `rabbit-project.py`, `rabbit-project-consolidate.py`, `rabbit-project-map.py`, `rabbit-project-set-path.py`, `scope-guard-on.py`, `validate-all.py`, `workspace-tree.py`. Each preserves the stdin/stdout/exit-code contract of the `.sh` predecessor it replaces.
 
 ## /rabbit-config Command
@@ -108,7 +108,7 @@ Manages bash-command allowlist entries (e.g. `touch`, `cat`, `echo`, `ls`, `pyth
 
 - Content authored by other features — rabbit-cage wires their surface, not their content.
 - `settings.local.json` — user-local overrides; never written by rabbit-cage except via the `/rabbit-config` command on explicit user request.
-- Scripts: rabbit-cage owns no runtime scripts beyond `install.sh` and those registered in its contract.
+- Scripts: rabbit-cage owns no runtime scripts beyond `install.py` and those registered in its contract.
 - Workspace hierarchy display — owned and wired by the `rabbit-workspace-map` skill in the contract feature; rabbit-cage no longer declares it in its `feature.json` skills list.
 
 ## Tech Stack
@@ -119,15 +119,10 @@ Python file (`#!/usr/bin/env python3`) with the same stdin/stdout/exit-code
 contract as the `.sh` predecessor it replaces. Bash is not a runtime
 dependency for any rabbit-cage hook or script.
 
-**Sole exception — `install.sh`:** the rabbit-cage installer remains a bash
-script. Rationale: `install.sh` is the bootstrap entry point invoked by
-operators on a fresh checkout, before any rabbit-managed Python state
-exists. It must execute on systems where the operator has not yet confirmed
-which Python interpreter is on `PATH`. POSIX `sh`/`bash` is universally
-available; Python 3 may not be. Migrating `install.sh` to Python would
-require operators to know the correct interpreter before installation,
-defeating the bootstrap purpose. `install.sh` is therefore the only `.sh`
-file in rabbit-cage and is documented as such in Inv 9 and Inv 39.
+**Bootstrap installer — `install.py`:** the rabbit-cage installer is a
+standalone Python 3 script (`#!/usr/bin/env python3`, stdlib only). It is
+the bootstrap entry point invoked by operators on a fresh checkout.
+No `.sh` files remain in rabbit-cage.
 
 **Tests are out of scope for this rule.** Tests under
 `.claude/features/rabbit-cage/test/` may be `.sh` or `.py`; they verify the

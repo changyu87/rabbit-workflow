@@ -2,14 +2,15 @@
 # audit-orphan-storage.py — scan .claude/bugs/ and .claude/backlogs/ for
 # subdirectory names not present in registry.json features; alert on orphans.
 #
-# Usage (invoked by audit-orphan-storage.sh):
-#   python3 audit-orphan-storage.py <registry> <bugs-root> <backlogs-root>
+# Usage:
+#   audit-orphan-storage.py --registry <path> --bugs-root <path> --backlogs-root <path>
+#   audit-orphan-storage.py <registry> <bugs-root> <backlogs-root>   (legacy positional)
 #
 # Exit codes:
 #   0  no orphans found
 #   1  one or more orphans found
 #
-# Version: 1.0.0
+# Version: 1.1.0
 # Owner: rabbit-workflow team (contract)
 # Deprecation criterion: when feature registry lookup is natively provided.
 
@@ -19,13 +20,38 @@ import sys
 
 
 def main():
-    if len(sys.argv) != 4:
-        print("usage: audit-orphan-storage.py <registry> <bugs-root> <backlogs-root>", file=sys.stderr)
-        sys.exit(2)
+    args = sys.argv[1:]
 
-    registry_path = sys.argv[1]
-    bugs_root = sys.argv[2]
-    backlogs_root = sys.argv[3]
+    # Flag-based interface
+    if args and args[0].startswith("--"):
+        registry_path = ""
+        bugs_root = ""
+        backlogs_root = ""
+        while args:
+            a = args[0]
+            if a == "--registry":
+                registry_path = args[1] if len(args) > 1 else ""
+                args = args[2:]
+            elif a == "--bugs-root":
+                bugs_root = args[1] if len(args) > 1 else ""
+                args = args[2:]
+            elif a == "--backlogs-root":
+                backlogs_root = args[1] if len(args) > 1 else ""
+                args = args[2:]
+            else:
+                print(f"ERROR: unknown arg: {a}", file=sys.stderr)
+                sys.exit(2)
+        if not registry_path:
+            print("ERROR: --registry required", file=sys.stderr)
+            sys.exit(2)
+    else:
+        # Legacy positional form
+        if len(args) != 3:
+            print("usage: audit-orphan-storage.py --registry <path> --bugs-root <path> --backlogs-root <path>", file=sys.stderr)
+            sys.exit(2)
+        registry_path = args[0]
+        bugs_root = args[1]
+        backlogs_root = args[2]
 
     with open(registry_path) as f:
         r = json.load(f)

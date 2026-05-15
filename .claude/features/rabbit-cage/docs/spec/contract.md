@@ -9,7 +9,7 @@ template_version: 2.0.0
 ```json
 {
   "provides": {
-    "files": [".claude/commands", ".claude/hooks", ".claude/skills", ".claude/settings.json", ".claude/policy", ".claude/contract", "CLAUDE.md", "README.md", "install.sh"],
+    "files": [".claude/commands", ".claude/hooks", ".claude/skills", ".claude/settings.json", ".claude/policy", ".claude/contract", "CLAUDE.md", "README.md", "install.py"],
     "commands": [
       {"path": ".claude/commands/rabbit-config.md", "subcommands": ["prompt-threshold [value]", "allowed-tools [add|remove <tool>]", "bash-allow [add|remove <command>]"]}
     ],
@@ -61,7 +61,7 @@ template_version: 2.0.0
     "modifies files inside another feature's directory",
     "writes outside its declared scope without an active scope marker or scope-guard override",
     "exposes /rabbit-set-threshold (replaced by /rabbit-config prompt-threshold)",
-    "introduces a new .sh runtime script under hooks/ or scripts/ (Python is the sole runtime tech stack; install.sh is the documented bootstrap exception)"
+    "introduces a new .sh runtime script under hooks/ or scripts/ (Python is the sole runtime tech stack)"
   ]
 }
 ```
@@ -73,9 +73,7 @@ runtime script under `hooks/` and `scripts/` is a standalone executable
 Python file (`#!/usr/bin/env python3`); each preserves the
 stdin/stdout/exit-code contract of the `.sh` predecessor it replaces. Bash
 is not a runtime dependency for any rabbit-cage hook or script. The sole
-exception is `install.sh` at the rabbit-cage root, which remains bash
-because it is the bootstrap entry point invoked before any rabbit-managed
-Python state exists.
+The bootstrap installer is `install.py` at the rabbit-cage root (stdlib-only Python).
 
 ## CLAUDE.md Drift-Check Behavior
 
