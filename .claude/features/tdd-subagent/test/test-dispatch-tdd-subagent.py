@@ -106,6 +106,12 @@ def test_impl_suggestion_included_when_provided():
         os.unlink(impl_path)
 
 
+def test_max_iterations_zero_fails():
+    spec = os.path.join(REPO_ROOT, ".claude/features/tdd-subagent/docs/spec/spec.md")
+    r = run(["--scope", "tdd-subagent", "--spec", spec, "--max-iterations", "0"])
+    assert r.returncode == 2, f"Expected 2, got {r.returncode}"
+
+
 def test_tdd_report_path_uses_feature_name():
     spec = os.path.join(REPO_ROOT, ".claude/features/tdd-subagent/docs/spec/spec.md")
     r = run(["--scope", "tdd-subagent", "--spec", spec])
