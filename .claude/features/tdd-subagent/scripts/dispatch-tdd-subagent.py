@@ -106,6 +106,9 @@ def main(argv):
     if args.item_type and not args.linked_item:
         sys.stderr.write("ERROR: --item-type requires --linked-item\n")
         return 2
+    if args.max_iterations < 1:
+        sys.stderr.write("ERROR: --max-iterations must be >= 1\n")
+        return 2
 
     feature_name = args.scope
     feature_path = _find_feature(repo_root, feature_name)
@@ -154,8 +157,7 @@ If the user requests changes, update and re-present. Do NOT proceed without appr
             "CODE-REVIEW changed functional code or tests. HUMAN-APPROVAL (Step 2) does NOT re-run on loop-back."
         )
 
-    prompt = f"""RABBIT-POLICY-BLOCK-v1
-{policy_block}
+    prompt = f"""{policy_block}
 
 ════════════════════════════════════════════════════════════════════════
 TDD SUBAGENT — SCOPE: {feature_name}
