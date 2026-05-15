@@ -14,12 +14,12 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-REFRESH_SH="$REPO_ROOT/.claude/features/rabbit-cage/hooks/refresh.sh"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
-SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.sh"
+REFRESH_SH="$REPO_ROOT/.claude/features/rabbit-cage/hooks/refresh.py"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.py"
+SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.py"
 SETTINGS_JSON="$REPO_ROOT/.claude/features/rabbit-cage/settings.json"
 RABBIT_REFRESH_MD="$REPO_ROOT/.claude/features/rabbit-cage/commands/rabbit-refresh.md"
-WORKSPACE_TREE="$REPO_ROOT/.claude/features/rabbit-cage/scripts/workspace-tree.sh"
+WORKSPACE_TREE="$REPO_ROOT/.claude/features/rabbit-cage/scripts/workspace-tree.py"
 RABBIT_CONFIG_MD="$REPO_ROOT/.claude/features/rabbit-cage/commands/rabbit-config.md"
 
 FAILURES=0
@@ -229,11 +229,11 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# t12: deployed .claude/hooks/refresh.sh uses new names (not rbt-)
+# t12: deployed .claude/hooks/refresh.py uses new names (not rbt-)
 # ---------------------------------------------------------------------------
 echo "=== t12: deployed refresh.sh uses new names ==="
 
-DEPLOYED_REFRESH="$REPO_ROOT/.claude/hooks/refresh.sh"
+DEPLOYED_REFRESH="$REPO_ROOT/.claude/hooks/refresh.py"
 if [ -f "$DEPLOYED_REFRESH" ]; then
     if grep -q '\.rbt-prompt-counter\|RBT_REFRESH_EVERY' "$DEPLOYED_REFRESH" 2>/dev/null; then
         fail_t "deployed refresh.sh still references old rbt- names"
@@ -245,11 +245,11 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# t13: deployed .claude/hooks/sync-check.sh uses new names (not rbt-)
+# t13: deployed .claude/hooks/sync-check.py uses new names (not rbt-)
 # ---------------------------------------------------------------------------
 echo "=== t13: deployed sync-check.sh uses new names ==="
 
-DEPLOYED_SYNC="$REPO_ROOT/.claude/hooks/sync-check.sh"
+DEPLOYED_SYNC="$REPO_ROOT/.claude/hooks/sync-check.py"
 if [ -f "$DEPLOYED_SYNC" ]; then
     if grep -q '\.rbt-sync-counter\|\.rbt-prompt-counter\|RBT_SYNC_EVERY\|RBT_REFRESH_EVERY' "$DEPLOYED_SYNC" 2>/dev/null; then
         fail_t "deployed sync-check.sh still references old rbt- names"

@@ -19,7 +19,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-WORKSPACE_TREE="$REPO_ROOT/.claude/features/rabbit-cage/scripts/workspace-tree.sh"
+WORKSPACE_TREE="$REPO_ROOT/.claude/features/rabbit-cage/scripts/workspace-tree.py"
 WORKSPACE_TREE_PY="$REPO_ROOT/.claude/features/rabbit-cage/scripts/workspace-tree.py"
 
 FAILURES=0
@@ -37,7 +37,7 @@ echo "test-RABBIT-CAGE-15-workspace-tree.sh"
 echo ""
 
 # Capture --full output once for tests t1-t3
-FULL_OUT="$(bash "$WORKSPACE_TREE" --full 2>/dev/null)"
+FULL_OUT="$(python3 "$WORKSPACE_TREE" --full 2>/dev/null)"
 
 # t1: --full output must NOT contain "bugs_root"
 # ANNOTATIONS entry for feature.json still says "feature manifest: owner, tdd_state, surface, bugs_root"

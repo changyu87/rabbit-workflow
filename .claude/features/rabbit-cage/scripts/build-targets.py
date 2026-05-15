@@ -25,7 +25,7 @@ for target in contract.get("targets", []):
         env = dict(os.environ)
         env["RABBIT_ROOT"] = repo_root
         result = subprocess.run(
-            ["bash", generate_script, "--write", repo_root],
+            [sys.executable, generate_script, "--write", repo_root],
             capture_output=True, text=True,
             env=env
         )

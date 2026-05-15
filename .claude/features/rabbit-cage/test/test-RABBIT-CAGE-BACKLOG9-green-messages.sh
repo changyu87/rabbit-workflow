@@ -15,9 +15,9 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
-SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.sh"
-REFRESH_HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/refresh.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.py"
+SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.py"
+REFRESH_HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/refresh.py"
 
 FAILURES=0
 TOTAL=0
@@ -121,8 +121,8 @@ build_tmproot() {
     python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
         > "$tmproot/.claude/features/rabbit-cage/policy-header.json"
 
-    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" \
+       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
        "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
@@ -136,7 +136,7 @@ build_tmproot() {
 TMPROOT_FR="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR"' EXIT
 # No CLAUDE.md → first-run branch fires
-firstrun_output="$(RABBIT_ROOT="$TMPROOT_FR" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+firstrun_output="$(RABBIT_ROOT="$TMPROOT_FR" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 firstrun_msg="$(printf '%s' "$firstrun_output" | extract_sys_msg)"
 assert_green_msg "sync-check.sh FIRST-RUN case" "$firstrun_msg"
 
@@ -144,14 +144,14 @@ assert_green_msg "sync-check.sh FIRST-RUN case" "$firstrun_msg"
 TMPROOT1="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1"' EXIT
 printf 'STALE CONTENT\n' > "$TMPROOT1/CLAUDE.md"
-drift_output="$(RABBIT_ROOT="$TMPROOT1" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+drift_output="$(RABBIT_ROOT="$TMPROOT1" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 drift_msg="$(printf '%s' "$drift_output" | extract_sys_msg)"
 assert_red_msg "sync-check.sh DRIFT case" "$drift_msg"
 
 # ─── Test 3: sync-check.sh SURFACE DRIFT case ────────────────────────────
 TMPROOT2="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1" "$TMPROOT2"' EXIT
-correct_claude="$(RABBIT_ROOT="$TMPROOT2" bash "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
+correct_claude="$(RABBIT_ROOT="$TMPROOT2" python3 "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md.py" 2>/dev/null)"
 printf '%s\n' "$correct_claude" > "$TMPROOT2/CLAUDE.md"
 
 # Install fake test-generated-surface.sh (exits 1 = surface drift detected)
@@ -163,13 +163,13 @@ FAKESURFACE
 chmod +x "$TMPROOT2/.claude/features/rabbit-cage/test/test-generated-surface.sh"
 
 # Install fake build.sh (exits 0 = build succeeds)
-cat > "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.sh" <<'FAKEBUILD'
+cat > "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.py" <<'FAKEBUILD'
 #!/usr/bin/env bash
 exit 0
 FAKEBUILD
-chmod +x "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.sh"
+chmod +x "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.py"
 
-skills_output="$(RABBIT_ROOT="$TMPROOT2" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+skills_output="$(RABBIT_ROOT="$TMPROOT2" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 skills_msg="$(printf '%s' "$skills_output" | extract_sys_msg)"
 assert_green_msg "sync-check.sh SURFACE DRIFT case" "$skills_msg"
 
@@ -192,7 +192,7 @@ exit 0
 NOSKILLS
 chmod +x "$TMPROOT3/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
 
-init_output="$(RABBIT_ROOT="$TMPROOT3" bash "$SESSION_INIT" 2>/dev/null)" || true
+init_output="$(RABBIT_ROOT="$TMPROOT3" python3 "$SESSION_INIT" 2>/dev/null)" || true
 init_msg="$(printf '%s' "$init_output" | extract_sys_msg)"
 assert_green_msg "session-init.sh @-import case" "$init_msg"
 
@@ -215,7 +215,7 @@ exit 0
 NOSKILLS2
 chmod +x "$TMPROOT3B/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
 
-init2_output="$(RABBIT_ROOT="$TMPROOT3B" bash "$SESSION_INIT" 2>/dev/null)" || true
+init2_output="$(RABBIT_ROOT="$TMPROOT3B" python3 "$SESSION_INIT" 2>/dev/null)" || true
 init2_msg="$(printf '%s' "$init2_output" | extract_sys_msg)"
 assert_green_msg "session-init.sh @-import fallback case" "$init2_msg"
 
@@ -237,7 +237,7 @@ REFRESHCLAUDEMD
 
 THRESHOLD=5
 printf '%s\n' "$THRESHOLD" > "$TMPROOT4/.rabbit-prompt-counter"
-refresh_output="$(RABBIT_ROOT="$TMPROOT4" RABBIT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
+refresh_output="$(RABBIT_ROOT="$TMPROOT4" RABBIT_REFRESH_EVERY="$THRESHOLD" python3 "$REFRESH_HOOK" 2>/dev/null)" || true
 refresh_msg="$(printf '%s' "$refresh_output" | extract_sys_msg)"
 assert_green_msg "refresh.sh inline-section case" "$refresh_msg"
 
@@ -255,7 +255,7 @@ REFRESHCLAUDEMD2
 
 THRESHOLD=5
 printf '%s\n' "$THRESHOLD" > "$TMPROOT4B/.rabbit-prompt-counter"
-refresh2_output="$(RABBIT_ROOT="$TMPROOT4B" RABBIT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
+refresh2_output="$(RABBIT_ROOT="$TMPROOT4B" RABBIT_REFRESH_EVERY="$THRESHOLD" python3 "$REFRESH_HOOK" 2>/dev/null)" || true
 refresh2_msg="$(printf '%s' "$refresh2_output" | extract_sys_msg)"
 assert_green_msg "refresh.sh @-import fallback case" "$refresh2_msg"
 
@@ -263,7 +263,7 @@ assert_green_msg "refresh.sh @-import fallback case" "$refresh2_msg"
 TMPROOT_DRIFT8="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT_FR" "$TMPROOT1" "$TMPROOT2" "$TMPROOT3" "$TMPROOT3B" "$TMPROOT4" "$TMPROOT4B" "$TMPROOT_DRIFT8"' EXIT
 printf 'STALE CONTENT\n' > "$TMPROOT_DRIFT8/CLAUDE.md"
-drift8_output="$(RABBIT_ROOT="$TMPROOT_DRIFT8" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+drift8_output="$(RABBIT_ROOT="$TMPROOT_DRIFT8" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 drift8_msg="$(printf '%s' "$drift8_output" | extract_sys_msg)"
 assert_red_msg "sync-check.sh DRIFT case must be RED (alert)" "$drift8_msg"
 

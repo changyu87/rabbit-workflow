@@ -59,7 +59,7 @@ else
 fi
 
 cp -r "$SRC/.claude" "$TARGET/.claude"
-bash "$TARGET/.claude/features/rabbit-cage/scripts/build.sh" "$TARGET"
+python3 "$TARGET/.claude/features/rabbit-cage/scripts/build.py" "$TARGET"
 
 # Always strip runtime-only and OS-level artifacts.
 rm -f "$TARGET/.claude/settings.local.json"

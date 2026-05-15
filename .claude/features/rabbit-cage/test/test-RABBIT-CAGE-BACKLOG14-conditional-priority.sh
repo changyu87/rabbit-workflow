@@ -16,7 +16,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.py"
 
 FAILURES=0
 TOTAL=0
@@ -95,8 +95,8 @@ make_clean_repo() {
     python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
         > "$d/.claude/features/rabbit-cage/policy-header.json"
 
-    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-       "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" \
+       "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
        "$d/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
@@ -104,7 +104,7 @@ make_clean_repo() {
         > "$d/.claude/features/registry.json"
 
     local correct
-    correct="$(RABBIT_ROOT="$d" bash "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
+    correct="$(RABBIT_ROOT="$d" python3 "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.py" 2>/dev/null)"
     printf '%s\n' "$correct" > "$d/CLAUDE.md"
 
     git -C "$d" add -A
@@ -130,7 +130,7 @@ echo "=== t1: schema conformance — systemMessage always present when emitting 
 TMPROOT="$(make_clean_repo)"
 touch "$TMPROOT/.rabbit-plugins-stale"
 
-t1_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t1_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 t1_has_sys_msg="$(printf '%s' "$t1_output" | python3 -c "
 import sys, json
 try:
@@ -180,7 +180,7 @@ TMPROOT="$(make_clean_repo)"
 printf 'session' > "$TMPROOT/.rabbit-scope-override"
 touch "$TMPROOT/.rabbit-plugins-stale"
 
-t3_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t3_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 t3_msg="$(printf '%s' "$t3_output" | extract_sys_msg)"
 t3_json_count="$(printf '%s' "$t3_output" | count_json_objects)"
 
@@ -218,7 +218,7 @@ TMPROOT="$(make_clean_repo)"
 touch "$TMPROOT/.rabbit-scope-override-used"
 touch "$TMPROOT/.rabbit-plugins-stale"
 
-t4_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t4_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 t4_msg="$(printf '%s' "$t4_output" | extract_sys_msg)"
 t4_json_count="$(printf '%s' "$t4_output" | count_json_objects)"
 

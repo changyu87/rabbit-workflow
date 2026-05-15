@@ -12,7 +12,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.sh"
+HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.py"
 
 FAILURES=0
 TOTAL=0
@@ -55,7 +55,7 @@ echo "=== t1: on main → branch unchanged ==="
 REPO1="$(make_repo)"
 trap 'rm -rf "$REPO1"' EXIT
 
-RABBIT_ROOT="$REPO1" bash "$HOOK" > /dev/null 2>&1 || true
+RABBIT_ROOT="$REPO1" python3 "$HOOK" > /dev/null 2>&1 || true
 
 BRANCH_T1="$(git -C "$REPO1" branch --show-current 2>/dev/null)"
 
@@ -76,7 +76,7 @@ trap 'rm -rf "$REPO1" "$REPO2"' EXIT
 
 git -C "$REPO2" checkout -q -b "feature/keep-this" 2>/dev/null
 
-RABBIT_ROOT="$REPO2" bash "$HOOK" > /dev/null 2>&1 || true
+RABBIT_ROOT="$REPO2" python3 "$HOOK" > /dev/null 2>&1 || true
 
 BRANCH_T2="$(git -C "$REPO2" branch --show-current 2>/dev/null)"
 
@@ -92,7 +92,7 @@ fi
 echo ""
 echo "=== t3: @-import injection emits valid JSON ==="
 
-OUTPUT="$(RABBIT_ROOT="$REPO_ROOT" bash "$HOOK" 2>/dev/null || true)"
+OUTPUT="$(RABBIT_ROOT="$REPO_ROOT" python3 "$HOOK" 2>/dev/null || true)"
 
 if echo "$OUTPUT" | python3 -c "import json,sys; d=json.load(sys.stdin); assert 'additionalContext' in d" 2>/dev/null; then
     ok "@-import injection emits valid JSON with additionalContext"

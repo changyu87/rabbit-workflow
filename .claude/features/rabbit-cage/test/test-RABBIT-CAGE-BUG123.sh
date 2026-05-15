@@ -18,9 +18,9 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
-SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.sh"
-SCOPE_GUARD_ON="$REPO_ROOT/.claude/features/rabbit-cage/scripts/scope-guard-on.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.py"
+SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.py"
+SCOPE_GUARD_ON="$REPO_ROOT/.claude/features/rabbit-cage/scripts/scope-guard-on.py"
 
 FAILURES=0
 TOTAL=0
@@ -63,8 +63,8 @@ build_tmproot_clean() {
     python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
         > "$tmproot/.claude/features/rabbit-cage/policy-header.json"
 
-    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" \
+       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
        "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
@@ -72,19 +72,24 @@ build_tmproot_clean() {
         > "$tmproot/.claude/features/registry.json"
 
     local correct_claude
-    correct_claude="$(RABBIT_ROOT="$tmproot" bash "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
+    correct_claude="$(RABBIT_ROOT="$tmproot" python3 "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.py" 2>/dev/null)"
     printf '%s\n' "$correct_claude" > "$tmproot/CLAUDE.md"
 
     echo "$tmproot"
 }
 
-# Source the extract_bash_targets function from scope-guard.sh
+# Call extract_bash_targets from scope-guard.py via direct module import.
+# (The bash-source approach used pre-migration is no longer applicable.)
 source_and_extract() {
     local cmd="$1"
-    bash -c "
-$(sed -n '/^extract_bash_targets/,/^}/p' "$SCOPE_GUARD")
-extract_bash_targets $(printf '%q' "$cmd")
-"
+    SCOPE_GUARD="$SCOPE_GUARD" CMD="$cmd" python3 - <<'PYEOF'
+import importlib.util, os
+spec = importlib.util.spec_from_file_location('sg', os.environ['SCOPE_GUARD'])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+for t in m.extract_bash_targets(os.environ['CMD']):
+    print(t)
+PYEOF
 }
 
 echo "test-RABBIT-CAGE-BUG123.sh"
@@ -100,7 +105,7 @@ TMPROOT_BUG1="$(build_tmproot_clean)"
 echo "session" > "$TMPROOT_BUG1/.rabbit-scope-override"
 
 bug1_output=""
-bug1_output="$(RABBIT_ROOT="$TMPROOT_BUG1" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+bug1_output="$(RABBIT_ROOT="$TMPROOT_BUG1" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 bug1_msg="$(printf '%s' "$bug1_output" | extract_sys_msg)"
 
 # BUG-1a: message contains the literal lock emoji 🔓 (U+1F513)
@@ -180,7 +185,7 @@ TMPDIR_BUG2="$(mktemp -d)"
 echo "session" > "$TMPDIR_BUG2/.rabbit-scope-override"
 
 if [ -x "$SCOPE_GUARD_ON" ]; then
-    RABBIT_ROOT="$TMPDIR_BUG2" bash "$SCOPE_GUARD_ON" >/dev/null 2>&1 || true
+    RABBIT_ROOT="$TMPDIR_BUG2" python3 "$SCOPE_GUARD_ON" >/dev/null 2>&1 || true
     if [ ! -f "$TMPDIR_BUG2/.rabbit-scope-override" ]; then
         ok "BUG-2b: scope-guard-on.sh removed .rabbit-scope-override (session override revoked)"
     else
@@ -192,7 +197,7 @@ fi
 
 # BUG-2c: script is a no-op when no override exists (exits 0, no error)
 if [ -x "$SCOPE_GUARD_ON" ]; then
-    RABBIT_ROOT="$TMPDIR_BUG2" bash "$SCOPE_GUARD_ON" >/dev/null 2>&1
+    RABBIT_ROOT="$TMPDIR_BUG2" python3 "$SCOPE_GUARD_ON" >/dev/null 2>&1
     noop_exit=$?
     if [ "$noop_exit" -eq 0 ]; then
         ok "BUG-2c: scope-guard-on.sh exits 0 when no override is active (no-op)"
@@ -210,7 +215,7 @@ TMPDIR_BUG2D="$(mktemp -d)"
 echo "one-time" > "$TMPDIR_BUG2D/.rabbit-scope-override"
 
 if [ -x "$SCOPE_GUARD_ON" ]; then
-    RABBIT_ROOT="$TMPDIR_BUG2D" bash "$SCOPE_GUARD_ON" >/dev/null 2>&1 || true
+    RABBIT_ROOT="$TMPDIR_BUG2D" python3 "$SCOPE_GUARD_ON" >/dev/null 2>&1 || true
     if [ ! -f "$TMPDIR_BUG2D/.rabbit-scope-override" ]; then
         ok "BUG-2d: scope-guard-on.sh removed .rabbit-scope-override (one-time override revoked)"
     else

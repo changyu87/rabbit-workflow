@@ -13,7 +13,7 @@
           },
           {
             "type": "command",
-            "command": ".claude/hooks/session-init.sh"
+            "command": ".claude/hooks/session-init.py"
           }
         ]
       }
@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/refresh.sh"
+            "command": ".claude/hooks/refresh.py"
           }
         ]
       }
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/scope-guard.sh"
+            "command": ".claude/hooks/scope-guard.py"
           }
         ]
       }
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/sync-check.sh"
+            "command": ".claude/hooks/sync-check.py"
           }
         ]
       }

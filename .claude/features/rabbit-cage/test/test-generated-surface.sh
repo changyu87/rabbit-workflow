@@ -15,7 +15,7 @@ set -euo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 CONTRACT="$REPO_ROOT/.claude/features/contract/build-contract.json"
-BUILD_SH="$REPO_ROOT/.claude/features/rabbit-cage/scripts/build.sh"
+BUILD_SH="$REPO_ROOT/.claude/features/rabbit-cage/scripts/build.py"
 
 pass=0
 fail=0

@@ -7,8 +7,8 @@ set -euo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 CAGE_DIR="$REPO_ROOT/.claude/features/rabbit-cage"
-GENERATE_SCRIPT="$CAGE_DIR/scripts/generate-claude-md.sh"
-SYNC_HOOK="$CAGE_DIR/hooks/sync-check.sh"
+GENERATE_SCRIPT="$CAGE_DIR/scripts/generate-claude-md.py"
+SYNC_HOOK="$CAGE_DIR/hooks/sync-check.py"
 SETTINGS_JSON="$REPO_ROOT/.claude/settings.json"
 
 pass=0
@@ -144,7 +144,7 @@ fi
 
 # t12: generate-claude-md.sh output first line matches header field from policy-header.json
 EXPECTED_HEADER="$(python3 -c "import json; print(json.load(open('$POLICY_HEADER'))['header'])" 2>/dev/null)" || true
-ACTUAL_FIRST="$(bash "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null | head -1)" || true
+ACTUAL_FIRST="$(python3 "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" 2>/dev/null | head -1)" || true
 if [ "$EXPECTED_HEADER" = "$ACTUAL_FIRST" ]; then
     ok 12 "generate-claude-md.sh first line matches policy-header.json header field"
 else

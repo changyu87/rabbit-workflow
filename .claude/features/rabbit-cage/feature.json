@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, skills for scaffolding, project management, and installation. Bug-filing and backlog management are now owned by rabbit-bug and rabbit-backlog respectively.",
@@ -9,15 +9,15 @@
     "commands": [],
     "skills": [],
     "scripts": [
-      ".claude/features/rabbit-cage/scripts/new-feature.sh",
-      ".claude/features/rabbit-cage/scripts/validate-all.sh",
-      ".claude/features/rabbit-cage/scripts/rabbit-project.sh",
-      ".claude/features/rabbit-cage/scripts/generate-claude-md.sh",
-      ".claude/features/rabbit-cage/scripts/workspace-tree.sh",
-      ".claude/features/rabbit-cage/scripts/build.sh"
+      ".claude/features/rabbit-cage/scripts/new-feature.py",
+      ".claude/features/rabbit-cage/scripts/validate-all.py",
+      ".claude/features/rabbit-cage/scripts/rabbit-project.py",
+      ".claude/features/rabbit-cage/scripts/generate-claude-md.py",
+      ".claude/features/rabbit-cage/scripts/workspace-tree.py",
+      ".claude/features/rabbit-cage/scripts/build.py"
     ],
     "settings": []
   },
   "deprecation_criterion": "when Claude Code exposes a native feature-container mechanism that subsumes this role",
-  "updated": "2026-05-14"
+  "updated": "2026-05-15"
 }

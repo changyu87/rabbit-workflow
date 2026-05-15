@@ -10,7 +10,7 @@ set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
 
-SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.sh"
+SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.py"
 SETTINGS_JSON="$REPO_ROOT/.claude/features/rabbit-cage/settings.json"
 FEATURE_JSON="$REPO_ROOT/.claude/features/rabbit-cage/feature.json"
 
@@ -52,7 +52,7 @@ echo "rabbit-cage" > "$MARKER"
 
 t2_input='{"tool_name":"Write","tool_input":{"file_path":".claude/features/contract/foo.txt"}}'
 t2_exit=0
-echo "$t2_input" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t2_exit=$?
+echo "$t2_input" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t2_exit=$?
 
 if [ "$t2_exit" -eq 2 ]; then
     ok 2 "scope-guard exits 2 (deny) for Write to .claude/features/contract/ when scope is rabbit-cage"
@@ -103,7 +103,7 @@ with open('$FEATURE_JSON', 'w') as f:
 " 2>/dev/null
 t4a_input='{"tool_name":"Write","tool_input":{"file_path":".claude/features/rabbit-cage/somefile.txt"}}'
 t4a_exit=0
-echo "$t4a_input" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t4a_exit=$?
+echo "$t4a_input" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t4a_exit=$?
 
 # --- Part B: temporarily set tdd_state=test-green in feature.json ---
 python3 -c "
@@ -117,7 +117,7 @@ with open('$FEATURE_JSON', 'w') as f:
 
 t4b_input='{"tool_name":"Write","tool_input":{"file_path":".claude/features/rabbit-cage/somefile.txt"}}'
 t4b_exit=0
-echo "$t4b_input" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t4b_exit=$?
+echo "$t4b_input" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t4b_exit=$?
 
 # Restore feature.json
 echo "$FEATURE_JSON_BACKUP" > "$FEATURE_JSON"
