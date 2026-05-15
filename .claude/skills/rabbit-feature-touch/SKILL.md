@@ -1,9 +1,9 @@
 ---
 name: rabbit-feature-touch
-description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing). Ensures the formal TDD state machine is advanced via tdd-step.sh on every feature touch.
+description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
 version: 3.0.0
 owner: tdd-state-machine
-deprecation_criterion: when dispatch-feature-edit.sh natively enforces tdd-step.sh transitions
+deprecation_criterion: when dispatch-feature-edit.py natively enforces tdd-step.py transitions
 ---
 
 ## Overview
@@ -55,7 +55,7 @@ One subagent per feature. Dispatch all in parallel if multiple features.
 
 ```bash
 # For each feature:
-PROMPT=$(bash .claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.sh \
+PROMPT=$(python3 .claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.py \
   <feature-name> "<request>" \
   [--linked-item <bug-or-item-dir> --item-type <bug|backlog>])
 # Dispatch Agent(prompt: PROMPT)

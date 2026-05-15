@@ -2,7 +2,7 @@
   "name": "tdd-state-machine",
   "version": "1.1.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "impl",
+  "tdd_state": "test-green",
   "summary": "Hardens TDD discipline by defining tdd_state transitions, drift detection, and the context block for spawned subagents. Owns the rabbit-feature-touch skill that enforces full TDD discipline on every feature touch.",
   "surface": {
     "hooks": [],
@@ -10,5 +10,5 @@
     "skills": []
   },
   "deprecation_criterion": "When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.",
-  "updated": "2026-05-14"
+  "updated": "2026-05-15"
 }

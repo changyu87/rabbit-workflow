@@ -165,8 +165,8 @@ def main() -> int:
             repo_root = ""
     candidates = []
     if repo_root:
-        candidates.append(Path(repo_root) / ".claude/features/contract/scripts/validate-feature.sh")
-    candidates.append(Path(".claude/features/contract/scripts/validate-feature.sh"))
+        candidates.append(Path(repo_root) / ".claude/features/contract/scripts/validate-feature.py")
+    candidates.append(Path(".claude/features/contract/scripts/validate-feature.py"))
     validator = None
     for c in candidates:
         if c.is_file() and os.access(str(c), os.X_OK):
@@ -174,7 +174,7 @@ def main() -> int:
             break
     if validator is not None:
         rc = subprocess.call(
-            [str(validator), str(target)],
+            [sys.executable, str(validator), str(target)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -182,7 +182,7 @@ def main() -> int:
             print("validated: passes feature schema")
         else:
             sys.stderr.write(
-                "WARNING: scaffolded feature does not yet pass validate-feature.sh "
+                "WARNING: scaffolded feature does not yet pass validate-feature.py "
                 "(expected — fill in TODOs)\n"
             )
     return 0

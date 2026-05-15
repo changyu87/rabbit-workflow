@@ -6,15 +6,18 @@
 ## Purpose
 
 Owns backlog item filing and lifecycle for all rabbit features. Provides three
-scripts: `file-backlog-item.sh` (creates new backlog items),
-`backlog-item-status.sh` (reads and transitions item status), and
-`list-backlog.sh` (lists backlog items with optional filtering).
+scripts: `file-backlog-item.py` (creates new backlog items),
+`backlog-item-status.py` (reads and transitions item status), and
+`list-backlog.py` (lists backlog items with optional filtering).
+
+All runtime scripts and test harnesses are implemented in Python 3. No shell
+scripts (`.sh`) exist in this feature.
 
 Backlog items live under `docs/backlog/<ITEM-ID>/item.json`. The schema and
 valid status transitions are declared in `docs/backlog/backlog-contract.md`.
 
-Item lifecycle is version-controlled: `file-backlog-item.sh` commits the new
-`item.json` to git after creation, and every `backlog-item-status.sh set`
+Item lifecycle is version-controlled: `file-backlog-item.py` commits the new
+`item.json` to git after creation, and every `backlog-item-status.py set`
 transition commits the mutated `item.json`. This makes the audit trail
 inspectable through `git log` in addition to the in-file `history` array.
 
@@ -38,25 +41,25 @@ Each backlog item is a directory containing one `item.json` file. Fields:
   `from`, `to`, `at`, `by`, and `reason` (reason is required on every
   transition).
 
-### `file-backlog-item.sh`
+### `file-backlog-item.py`
 
 Creates a new backlog item directory with an `item.json` in initial `open`
 status, then `git add`s and `git commit`s the new file.
 
 ```
-file-backlog-item.sh --name <item-id> --title <title> \
+file-backlog-item.py --name <item-id> --title <title> \
                      [--priority low|medium|high|critical] \
                      [--owner <name>] --dir <item-dir>
 ```
 
-### `backlog-item-status.sh`
+### `backlog-item-status.py`
 
 Reads or transitions an item's status. Every `set` invocation requires a
 `--reason` argument and commits the mutated `item.json` to git.
 
 ```
-backlog-item-status.sh get <item-dir>
-backlog-item-status.sh set <item-dir> <new-status> --reason <text> \
+backlog-item-status.py get <item-dir>
+backlog-item-status.py set <item-dir> <new-status> --reason <text> \
                        [--fix-commits <sha>[,<sha>...]]
 ```
 
@@ -78,17 +81,17 @@ Direct `open -> implemented` is rejected. Any transition not listed above
 (e.g. `refused -> in-progress`, `implemented -> in-progress`) is rejected;
 revival must go through `reopened`.
 
-### `list-backlog.sh`
+### `list-backlog.py`
 
 Lists backlog items from centralized `.claude/backlogs/` storage with optional
 filtering.
 
 ```
-list-backlog.sh                         # all items, JSON array
-list-backlog.sh --status open|in-progress|implemented|refused|reopened
-list-backlog.sh --feature NAME[,NAME2]  # only named features (comma-separated)
-list-backlog.sh --text                  # human-readable: NAME  [STATUS]  [PRIORITY]  TITLE per line
-list-backlog.sh -h|--help
+list-backlog.py                         # all items, JSON array
+list-backlog.py --status open|in-progress|implemented|refused|reopened
+list-backlog.py --feature NAME[,NAME2]  # only named features (comma-separated)
+list-backlog.py --text                  # human-readable: NAME  [STATUS]  [PRIORITY]  TITLE per line
+list-backlog.py -h|--help
 ```
 
 - Default output: JSON array of `item.json` objects.
@@ -103,7 +106,7 @@ list-backlog.sh -h|--help
   (the array persists across a subsequent `reopened` transition).
 - Every `history` entry has a non-empty `reason`.
 - `reopened` is only reachable from `implemented` or `refused`.
-- **Branch guard:** `file-backlog-item.sh` MUST detect the current git branch
+- **Branch guard:** `file-backlog-item.py` MUST detect the current git branch
   via `git branch --show-current`. If the branch is not `main`, the script
   MUST print a warning to stderr. In interactive environments (`/dev/tty`
   available), the script MUST read an explicit confirmation; if the user does
@@ -135,33 +138,33 @@ The `skills/rabbit-backlog/SKILL.md` (deployed to `.claude/skills/rabbit-backlog
 MUST document `list-backlog.sh` with the same completeness as `rabbit-bug` SKILL.md
 documents `list-bugs.sh`. Specifically:
 
-- A `list-backlog.sh` section with a **Usage** block showing all flags.
+- A `list-backlog.py` section with a **Usage** block showing all flags.
 - A **Parameters** table listing every flag, whether it is required, and its description.
 - At least three **Example** invocations covering: no-args JSON, `--text`, `--status`,
   and `--feature` (with comma-separated values).
 
 ## Dependencies
 
-### `workspace-map.sh` (from contract)
+### `workspace-map.py` (from contract)
 
-`file-backlog-item.sh` invokes `workspace-map.sh` (located at
-`.claude/features/contract/scripts/workspace-map.sh`) to resolve the canonical
+`file-backlog-item.py` invokes `workspace-map.py` (located at
+`.claude/features/contract/scripts/workspace-map.py`) to resolve the canonical
 backlog storage path for a given feature name. The scripts do NOT construct
-the path by convention — they delegate path resolution to `workspace-map.sh`.
+the path by convention — they delegate path resolution to `workspace-map.py`.
 
-`backlog-item-status.sh` does not invoke `workspace-map.sh` directly; callers
+`backlog-item-status.py` does not invoke `workspace-map.py` directly; callers
 pass a resolved `<item-dir>` path. Path resolution happens upstream at filing
-time via `file-backlog-item.sh`.
+time via `file-backlog-item.py`.
 
 ## What this feature does NOT define
 
 - Bug filing (`docs/bugs/`) — that remains within each feature's own scope
-  (managed by `file-bug.sh` in rabbit-cage).
+  (managed by `file-bug.py` in rabbit-cage).
 - Feature scaffolding — owned by rabbit-cage.
 - TDD state machine — owned by `tdd-state-machine`.
-- Backlog storage path convention — owned by `workspace-map.sh` in contract.
+- Backlog storage path convention — owned by `workspace-map.py` in contract.
 
 ## Tests
 
-`test/run.sh` runs the end-to-end suite. All tests must pass when
+`test/run.py` runs the end-to-end suite. All tests must pass when
 `tdd_state` is `test-green`.

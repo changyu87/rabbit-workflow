@@ -11,27 +11,30 @@ status: active
 
 ## Purpose
 
-Provides the `tdd-step.sh` CLI for forward-only TDD state transitions, drift detection, and enforcement gates at `test-green`. Owns the `rabbit-feature-touch` user-facing skill that ensures every feature touch advances the TDD state machine.
+Provides the `tdd-step.py` CLI for forward-only TDD state transitions, drift detection, and enforcement gates at `test-green`. Owns the `rabbit-feature-touch` user-facing skill that ensures every feature touch advances the TDD state machine.
+
+## Scripting Tech Stack
+
+All scripts in this feature are Python 3. Bash is not used anywhere in this feature — not in runtime scripts, test harnesses, or fixtures. The sole test runner for each feature is `test/run.py`.
 
 ## Surface
 
-- `.claude/features/tdd-state-machine/scripts/tdd-step.sh`
-- `.claude/features/tdd-state-machine/scripts/tdd-drift-check.sh`
-- `.claude/features/tdd-state-machine/scripts/tdd-context.sh`
-- `.claude/features/tdd-state-machine/scripts/resolve-feature-scope.sh` (builds an Opus-targeted prompt that, given a natural-language request, instructs the agent to read the feature registry — names, summaries, spec Purpose sections — and emit a structured JSON list of features the request targets; prompt goes to stdout for caller dispatch)
-- `.claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.sh` (assembles a per-feature full-TDD-cycle subagent prompt; the dispatched subagent runs spec-update → test-red → impl → test-green autonomously for ONE feature, using `.rabbit-scope-active-<feature>` as its scope marker so multiple features can be dispatched in parallel; accepts optional `--bug <bug-dir>` and `--backlog <item-dir>` — after the subagent reaches test-green the orchestrator captures the impl commit SHA and calls `bug-status.sh set <bug-dir> closed` or `backlog-item-status.sh set <item-dir> implemented` accordingly; prompt goes to stdout for caller dispatch)
-- `.claude/features/tdd-state-machine/skills/rabbit-feature-touch/` (self-contained TDD orchestration reference; triggers on any feature write/edit/delete/add and orchestrates via parallel per-feature subagents — Step 1 resolves scope by invoking the `rabbit-feature-scope` Skill via the Skill tool, Step 3 dispatches one `dispatch-feature-tdd.sh` subagent per resolved feature in parallel; the main session only orchestrates and never reads feature code itself)
+- `.claude/features/tdd-state-machine/scripts/tdd-step.py`
+- `.claude/features/tdd-state-machine/scripts/tdd-drift-check.py`
+- `.claude/features/tdd-state-machine/scripts/tdd-context.py`
+- `.claude/features/tdd-state-machine/scripts/dispatch-feature-tdd.py` (assembles a per-feature full-TDD-cycle subagent prompt; the dispatched subagent runs spec-update → test-red → impl → test-green autonomously for ONE feature, using `.rabbit-scope-active-<feature>` as its scope marker so multiple features can be dispatched in parallel; accepts optional `--linked-item <item-dir>` and `--item-type <bug|backlog>` — after the subagent reaches test-green the orchestrator captures the impl commit SHA and closes the linked item accordingly; prompt goes to stdout for caller dispatch)
+- `.claude/features/tdd-state-machine/skills/rabbit-feature-touch/` (self-contained TDD orchestration reference; triggers on any feature write/edit/delete/add and orchestrates via parallel per-feature subagents — Step 1 resolves scope by invoking the `rabbit-feature-scope` Skill via the Skill tool, Step 3 dispatches one `dispatch-feature-tdd.py` subagent per resolved feature in parallel; the main session only orchestrates and never reads feature code itself)
 
 ## Invariants
 
 1. `tdd_state` transitions are forward-only without `--force`.
-2. `test-green` transition triggers `rebuild-registry.sh` and enforcement checks.
-3. All five scripts are executable.
-4. `test-green` transition auto-closes any in-progress backlog items under `.claude/backlogs/<feature-name>/` via `backlog-item-status.sh` with `fix_commits=HEAD` (best-effort).
-5. `tdd-step.sh transition` stdout uses the `[rabbit] ━━━ ... ━━━` format with ANSI colors — green (`\x1b[32m`) for normal transition messages on stdout, red (`\x1b[31m`) for FORCED/WARNING/ERROR messages on stderr. The `show`, `next`, and `transitions` subcommands remain plain-text (consumed by tests and downstream parsers).
+2. `test-green` transition triggers enforcement checks.
+3. All four scripts are executable.
+4. `test-green` transition auto-closes any in-progress backlog items under `.claude/backlogs/<feature-name>/` via `backlog-item-status.py` with `fix_commits=HEAD` (best-effort).
+5. `tdd-step.py transition` stdout uses the `[rabbit] ━━━ ... ━━━` format with ANSI colors — green (`\x1b[32m`) for normal transition messages on stdout, red (`\x1b[31m`) for FORCED/WARNING/ERROR messages on stderr. The `show`, `next`, and `transitions` subcommands remain plain-text (consumed by tests and downstream parsers).
 6. In `rabbit-feature-touch` Step 1 (normal mode), scope resolution is performed by invoking the `rabbit-feature-scope` Skill via the Skill tool (`Skill("rabbit-feature-scope", args: "<request>")`), NOT by shelling out to `resolve-scope.sh` directly. The Skill emits a prompt for caller dispatch; the caller parses the JSON response `{"features": [...], "rationale": "..."}` to drive parallel dispatch.
-7. `dispatch-feature-tdd.sh` emits a prompt to stdout only; it does not call any agent itself. The assembled prompt instructs the per-feature subagent to run the full TDD cycle (spec-update → test-red → impl → test-green) for ONE feature, using `.rabbit-scope-active-<feature-name>` as its scope marker. Distinct per-feature scope markers enable simultaneous dispatch across features without scope collision. The subagent writes `tdd-report.json` to `.rabbit/tdd-report.json` (a hidden folder at repo root); the `.rabbit/` directory is created automatically if it doesn't exist and is listed in `.gitignore`.
-8. When `--bug <bug-dir>` is provided to `dispatch-feature-tdd.sh`, the orchestrator calls `bug-status.sh set <bug-dir> closed --reason 'TDD cycle complete' --fix-commits <impl-sha>` after test-green. When `--backlog <item-dir>` is provided, it calls `backlog-item-status.sh set <item-dir> implemented --reason 'TDD cycle complete' --fix-commits <impl-sha>`. These calls commit the item automatically. The HANDOFF block must include the linked item path and its new status.
+7. `dispatch-feature-tdd.py` emits a prompt to stdout only; it does not call any agent itself. The assembled prompt instructs the per-feature subagent to run the full TDD cycle (spec-update → test-red → impl → test-green) for ONE feature, using `.rabbit-scope-active-<feature-name>` as its scope marker. Distinct per-feature scope markers enable simultaneous dispatch across features without scope collision. The subagent writes `tdd-report.json` to `.rabbit/tdd-report.json` (a hidden folder at repo root); the `.rabbit/` directory is created automatically if it doesn't exist and is listed in `.gitignore`.
+8. When `--linked-item <item-dir> --item-type bug` is provided to `dispatch-feature-tdd.py`, the orchestrator calls `bug-status.py set <item-dir> closed --reason 'TDD cycle complete' --fix-commits <impl-sha>` after test-green. When `--item-type backlog` is provided, it calls `backlog-item-status.py set <item-dir> implemented --reason 'TDD cycle complete' --fix-commits <impl-sha>`. These calls commit the item automatically. The HANDOFF block must include the linked item path and its new status.
 9. `surface.skills` in `feature.json` MUST be `[]`. Skills are now managed via explicit copy-file entries in `build-contract.json`; the `surface.skills` field is retired and must remain an empty array.
 
 ## Confirm-Token Bypass Path

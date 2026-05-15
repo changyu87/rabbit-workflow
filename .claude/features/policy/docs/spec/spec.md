@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.2.0
+version: 1.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native subagent-policy injection point
@@ -19,10 +19,15 @@ Owns the three canonical rule files fed to every subagent dispatch.
 - `.claude/features/policy/spec-rules.md`
 - `.claude/features/policy/coding-rules.md`
 
+## Tech Stack
+
+- All runtime scripts and test harnesses are Python 3. No `.sh` files are present.
+
 ## Invariants
 
 1. All three rule files (`philosophy.md`, `spec-rules.md`, `coding-rules.md`) exist and are non-empty.
 2. `workflow-rules.md` does not exist.
+3. No `.sh` files exist anywhere within the feature directory.
 
 ## Out of Scope
 

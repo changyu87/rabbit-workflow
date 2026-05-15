@@ -66,6 +66,10 @@ origin/bug-backlog-files root:
 - Feature scaffolding (rabbit-cage)
 - Legacy data in .claude/archive/
 
+## Tech Stack
+
+All runtime scripts and test harnesses are Python. No shell (.sh) scripts are used.
+
 ## Tests
 
-test/run.sh runs all test suites. Transitions via tdd-step.sh.
+test/run.py runs all test suites. Transitions via tdd-step.py.

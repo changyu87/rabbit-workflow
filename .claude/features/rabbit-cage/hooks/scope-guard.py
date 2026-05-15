@@ -56,13 +56,14 @@ def walk_up_find(target: str, want: str) -> Optional[str]:
 
 
 def find_feature_path(repo_root: Path, feature: str) -> Optional[str]:
-    """Run find-feature.sh; return repo-relative path or None."""
-    script = repo_root / ".claude" / "features" / "contract" / "scripts" / "find-feature.sh"
+    """Run find-feature.py; return repo-relative path or None."""
+    script = repo_root / ".claude" / "features" / "contract" / "scripts" / "find-feature.py"
     if not script.exists():
         return None
     try:
+        import sys
         out = subprocess.check_output(
-            ["bash", str(script), feature],
+            [sys.executable, str(script), str(repo_root), "lookup", feature],
             stderr=subprocess.DEVNULL,
         )
         s = out.decode().strip()
@@ -130,7 +131,7 @@ def decide(target: str) -> Tuple[bool, str]:
                 return False, (
                     f"DENY write to '{abs_path}' denied: outside active scope "
                     f"'{scope_feature}' (allowed: {feature_abs}/). "
-                    "Use dispatch-feature-edit.sh for cross-feature work."
+                    "Use dispatch-feature-edit.py for cross-feature work."
                 )
             # 4c. Within scoped feature — deny if feature is in test-green state
             feature_json = Path(feature_abs) / "feature.json"

@@ -23,14 +23,14 @@ Your target workspace must not have an existing `.claude/` directory.
 **git**
 ```bash
 git clone https://github.com/USER/rabbit-workflow
-./rabbit-workflow/install.sh /path/to/your/workspace   # explicit target
-./rabbit-workflow/install.sh                           # or install to $PWD
+./rabbit-workflow/install.py /path/to/your/workspace   # explicit target
+./rabbit-workflow/install.py                           # or install to $PWD
 ```
 
 **curl** (installs to current directory)
 ```bash
 cd /path/to/your/workspace
-bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/install.py)
 ```
 
 ---
@@ -74,7 +74,7 @@ BUG_ROOT=projA/bugs \
         --severity high --description "..." --related-feature auth-redirect
 
 # Transition TDD state — same script for any feature dir
-bash .claude/features/tdd-state-machine/scripts/tdd-step.sh \
+python3 .claude/features/tdd-state-machine/scripts/tdd-step.py \
     transition projA/features/auth-redirect test-red
 
 # Dispatch the breeder onto a scope (sketched — typically the main session

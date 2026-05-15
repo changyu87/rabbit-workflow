@@ -46,7 +46,7 @@ repo_root, full_mode = _resolve_args()
 ANNOTATIONS = {
     "CLAUDE.md":              "session policy anchor (@-imports policy files)",
     "README.md":              "project overview",
-    "install.sh":             "wires symlinks from features/ to .claude/",
+    "install.py":             "bootstrap installer — copies rabbit-workflow into a target workspace",
     ".claude":                "Claude Code surface (mostly symlinks to features/)",
     ".claude/":               "Claude Code surface (mostly symlinks to features/)",
     "settings.json":          "hooks and env — symlinked from rabbit-cage",
@@ -64,8 +64,8 @@ ANNOTATIONS = {
     "contract/":              "dispatch scripts, enforcement, templates",
     "policy":                 "philosophy, spec-rules, coding-rules",
     "policy/":                "philosophy, spec-rules, coding-rules",
-    "tdd-state-machine":      "tdd-step.sh forward-only state machine",
-    "tdd-state-machine/":     "tdd-step.sh forward-only state machine",
+    "tdd-state-machine":      "tdd-step.py forward-only state machine",
+    "tdd-state-machine/":     "tdd-step.py forward-only state machine",
     "feature.json":           "feature manifest: owner, tdd_state, surface, deprecation_criterion",
     "docs/spec":              "spec and contract for this feature",
     "docs/spec/":             "spec and contract for this feature",
@@ -76,8 +76,8 @@ ANNOTATIONS = {
     "backlogs":               "centralized backlog tracker (.claude/backlogs, subdirs by feature name)",
     "rabbit-bug":             "bug filing, tracking, and lifecycle (file-bug.sh, bug-status.sh, list-bugs.sh)",
     "rabbit-bug/":            "bug filing, tracking, and lifecycle (file-bug.sh, bug-status.sh, list-bugs.sh)",
-    "rabbit-backlog":         "backlog item filing and lifecycle (file-backlog-item.sh, backlog-item-status.sh)",
-    "rabbit-backlog/":        "backlog item filing and lifecycle (file-backlog-item.sh, backlog-item-status.sh)",
+    "rabbit-backlog":         "backlog item filing and lifecycle (file-backlog-item.py, backlog-item-status.py)",
+    "rabbit-backlog/":        "backlog item filing and lifecycle (file-backlog-item.py, backlog-item-status.py)",
 }
 
 STRUCTURAL_DIRS = {
@@ -89,7 +89,7 @@ STRUCTURAL_DIRS = {
 }
 
 KEY_FILES = {
-    "CLAUDE.md", "README.md", "install.sh", "feature.json",
+    "CLAUDE.md", "README.md", "install.py", "feature.json",
     "registry.json", "settings.json", "project-map.json",
     "bug.json", "item.json", "SKILL.md", "backlog-contract.md",
 }

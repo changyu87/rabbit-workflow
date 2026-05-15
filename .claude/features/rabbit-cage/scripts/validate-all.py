@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""validate-all.py — sweep validate-feature.sh across every feature directory
+"""validate-all.py — sweep validate-feature.py across every feature directory
 under a given root.
 
 Usage:
@@ -55,15 +55,15 @@ def main() -> int:
                 repo_root = ""
         candidates = []
         if repo_root:
-            candidates.append(Path(repo_root) / ".claude/features/contract/scripts/validate-feature.sh")
-        candidates.append(Path(".claude/features/contract/scripts/validate-feature.sh"))
+            candidates.append(Path(repo_root) / ".claude/features/contract/scripts/validate-feature.py")
+        candidates.append(Path(".claude/features/contract/scripts/validate-feature.py"))
         for c in candidates:
             if c.is_file() and os.access(str(c), os.X_OK):
                 validator = str(c); break
 
-    if not validator or not (Path(validator).is_file() and os.access(validator, os.X_OK)):
+    if not validator or not Path(validator).is_file():
         sys.stderr.write(
-            "ERROR: validate-feature.sh not found "
+            "ERROR: validate-feature.py not found "
             "(set --validator <path> or install contract scripts)\n"
         )
         return 2
@@ -90,7 +90,7 @@ def main() -> int:
     for d in features:
         name = d.name
         rc = subprocess.call(
-            [validator, str(d)],
+            [sys.executable, validator, str(d)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )

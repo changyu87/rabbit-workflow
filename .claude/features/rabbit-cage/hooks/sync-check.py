@@ -101,12 +101,12 @@ def main() -> int:
 
     json_emitted = False
 
-    # Surface drift check (calls test-generated-surface.sh; rebuilds via build.py)
-    test_surface = root / ".claude/features/rabbit-cage/test/test-generated-surface.sh"
+    # Surface drift check (calls test-generated-surface.py; rebuilds via build.py)
+    test_surface = root / ".claude/features/rabbit-cage/test/test-generated-surface.py"
     build_py = root / ".claude/features/rabbit-cage/scripts/build.py"
     if test_surface.is_file():
         rc = subprocess.call(
-            ["bash", str(test_surface)],
+            [sys.executable, str(test_surface)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
