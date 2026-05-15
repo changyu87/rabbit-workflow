@@ -26,6 +26,7 @@ make_rabbit_root() {
 
   # Copy find-feature.sh so dispatch-feature-tdd.sh can locate the feature.
   cp "$FIND_FEATURE_SH" "$root/.claude/features/contract/scripts/find-feature.sh"
+  cp "$(dirname "$FIND_FEATURE_SH")/find-feature.py" "$root/.claude/features/contract/scripts/find-feature.py"
 
   cat > "$root/.claude/features/tdd-state-machine/feature.json" <<'JSON'
 {

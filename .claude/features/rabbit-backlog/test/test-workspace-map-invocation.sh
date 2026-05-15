@@ -74,6 +74,7 @@ ISO_CONTRACT_SCRIPTS="$ISO_REPO/.claude/features/contract/scripts"
 mkdir -p "$ISO_CONTRACT_SCRIPTS"
 cp "$FIND_FEATURE_SRC" "$ISO_CONTRACT_SCRIPTS/find-feature.sh"
 chmod +x "$ISO_CONTRACT_SCRIPTS/find-feature.sh"
+cp "$(dirname "$FIND_FEATURE_SRC")/find-feature.py" "$ISO_CONTRACT_SCRIPTS/find-feature.py"
 
 # Create feature.json for test-feature so find-feature.sh can discover it.
 mkdir -p "$ISO_REPO/.claude/features/test-feature"
@@ -151,6 +152,7 @@ ISO_CONTRACT_SCRIPTS2="$ISO_REPO2/.claude/features/contract/scripts"
 mkdir -p "$ISO_CONTRACT_SCRIPTS2"
 cp "$FIND_FEATURE_SRC" "$ISO_CONTRACT_SCRIPTS2/find-feature.sh"
 chmod +x "$ISO_CONTRACT_SCRIPTS2/find-feature.sh"
+cp "$(dirname "$FIND_FEATURE_SRC")/find-feature.py" "$ISO_CONTRACT_SCRIPTS2/find-feature.py"
 mkdir -p "$ISO_REPO2/.claude/features/test-feature"
 cat > "$ISO_REPO2/.claude/features/test-feature/feature.json" <<'FEATEOF2'
 {"name":"test-feature","version":"1.0.0","owner":"test","tdd_state":"test-green","summary":"test"}

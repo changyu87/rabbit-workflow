@@ -88,8 +88,8 @@ def decide(target: str) -> Tuple[bool, str]:
         return True, "ALLOW (outside repo root)"
 
     # 2. Marker file itself is always exempt
-    if base == ".rabbit-scope-active":
-        return True, "ALLOW (marker file is exempt)"
+    if base == ".rabbit-scope-active" or base.startswith(".rabbit-scope-active-"):
+        return True, "ALLOW (scope marker is exempt)"
 
     # 3. Allowlisted filenames -> always allow
     if base in ("settings.json", "settings.local.json", ".gitignore", ".rabbit-scope-override"):
@@ -243,7 +243,13 @@ def extract_bash_targets(cmd: str) -> List[str]:
                 r"[^\s<>|&;]+(?:\s+[^\s<>|&;]+)+"
             )
             for m in re.finditer(pattern, stripped):
-                parts = m.group(0).split()
+                parts = [
+                    p for p in m.group(0).split()
+                    if p not in (verb,)
+                    and not p.startswith("-")
+                    and not re.match(r"^\d+$", p)
+                    and not re.match(r"^\d*>>?", p)
+                ]
                 if parts:
                     targets.append(parts[-1])
 

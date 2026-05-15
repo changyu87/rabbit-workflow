@@ -56,6 +56,7 @@ REPO_ROOT_REAL="${RABBIT_ROOT:-$(git -C "$FEATURE_DIR" rev-parse --show-toplevel
 FIND_FEATURE_SRC="$REPO_ROOT_REAL/.claude/features/contract/scripts/find-feature.sh"
 mkdir -p "$ISO_REPO/.claude/features/contract/scripts"
 cp "$FIND_FEATURE_SRC" "$ISO_REPO/.claude/features/contract/scripts/find-feature.sh"
+cp "$(dirname "$FIND_FEATURE_SRC")/find-feature.py" "$ISO_REPO/.claude/features/contract/scripts/find-feature.py"
 chmod +x "$ISO_REPO/.claude/features/contract/scripts/find-feature.sh"
 
 # Create feature.json for test-feature so find-feature.sh can discover it.

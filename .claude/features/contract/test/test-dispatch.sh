@@ -39,7 +39,8 @@ for d in [
 cp "$FEATURE_DIR/scripts/policy-block.sh" "$FAKE_SCRIPTS/"
 cp "$FEATURE_DIR/scripts/dispatch-feature-edit.sh" "$FAKE_SCRIPTS/"
 cp "$FEATURE_DIR/scripts/find-feature.sh" "$FAKE_SCRIPTS/"
-chmod +x "$FAKE_SCRIPTS/policy-block.sh" "$FAKE_SCRIPTS/dispatch-feature-edit.sh" "$FAKE_SCRIPTS/find-feature.sh"
+cp "$FEATURE_DIR/scripts/find-feature.py" "$FAKE_SCRIPTS/find-feature.py"
+chmod +x "$FAKE_SCRIPTS/policy-block.sh" "$FAKE_SCRIPTS/dispatch-feature-edit.sh" "$FAKE_SCRIPTS/find-feature.sh" "$FAKE_SCRIPTS/find-feature.py"
 
 # policy-block.sh reads policy files from REPO_ROOT/.claude/features/policy/
 # REPO_ROOT = FAKE_REPO (set via RABBIT_ROOT env var)
