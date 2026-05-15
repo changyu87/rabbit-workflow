@@ -36,6 +36,15 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 7. `dispatch-tdd-subagent.py` emits a prompt to stdout only; it does not call any agent itself. The assembled prompt instructs the per-feature subagent to run the full TDD cycle (spec-update → test-red → impl → test-green) for ONE feature, using `.rabbit-scope-active-<feature-name>` as its scope marker. Distinct per-feature scope markers enable simultaneous dispatch across features without scope collision. The subagent writes `tdd-report.json` to `.rabbit/tdd-report.json` (a hidden folder at repo root); the `.rabbit/` directory is created automatically if it doesn't exist and is listed in `.gitignore`.
 8. When `--linked-item <item-dir> --item-type bug` is provided to `dispatch-tdd-subagent.py`, the orchestrator calls `bug-status.py set <item-dir> closed --reason 'TDD cycle complete' --fix-commits <impl-sha>` after test-green. When `--item-type backlog` is provided, it calls `backlog-item-status.py set <item-dir> implemented --reason 'TDD cycle complete' --fix-commits <impl-sha>`. These calls commit the item automatically. The HANDOFF block must include the linked item path and its new status.
 9. `surface.skills` in `feature.json` MUST be `[]`. Skills are now managed via explicit copy-file entries in `build-contract.json`; the `surface.skills` field is retired and must remain an empty array.
+10. E2E tests are always required — every behaviour described in a feature spec MUST
+    have a corresponding end-to-end test. Unit tests alone are insufficient. The TDD
+    subagent enforces this rule in the TEST-WRITE step without exception.
+11. The 9 named steps (SPEC-READ, HUMAN-APPROVAL, LOCK, TEST-WRITE, TEST-RED,
+    IMPLEMENT, CODE-REVIEW, TEST-GREEN, UNLOCK) are labelled sections in the assembled
+    subagent prompt. tdd-step.py state transitions remain forward-only and unchanged.
+12. dispatch-tdd-subagent.py interface: --scope (mandatory), --spec (mandatory),
+    --impl-suggestion (optional), --linked-item / --item-type (B/B mode),
+    --no-human-approval, --code-review-full-loop, --max-iterations (default 3, min 1).
 
 ## Confirm-Token Bypass Path
 
