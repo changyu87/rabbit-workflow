@@ -59,6 +59,7 @@ REPO_ROOT_REAL="${RABBIT_ROOT:-$(git -C "$SCRIPTS_DIR" rev-parse --show-toplevel
 FIND_FEATURE_SRC="$REPO_ROOT_REAL/.claude/features/contract/scripts/find-feature.sh"
 mkdir -p "$GIT_REPO/.claude/features/contract/scripts"
 cp "$FIND_FEATURE_SRC" "$GIT_REPO/.claude/features/contract/scripts/find-feature.sh"
+cp "$(dirname "$FIND_FEATURE_SRC")/find-feature.py" "$GIT_REPO/.claude/features/contract/scripts/find-feature.py"
 chmod +x "$GIT_REPO/.claude/features/contract/scripts/find-feature.sh"
 
 # Create feature.json for test-feature

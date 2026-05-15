@@ -12,7 +12,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.py"
 
 FAILURES=0
 TOTAL=0
@@ -51,13 +51,12 @@ build_tmproot_clean() {
     printf '# Philosophy\nMachine First.\n'   > "$tmproot/.claude/features/policy/philosophy.md"
     printf '# Spec Rules\nSpec.\n'            > "$tmproot/.claude/features/policy/spec-rules.md"
     printf '# Coding Rules\nCode.\n'          > "$tmproot/.claude/features/policy/coding-rules.md"
-    printf '# Workflow Rules\nWorkflow.\n'    > "$tmproot/.claude/features/policy/workflow-rules.md"
 
     python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
         > "$tmproot/.claude/features/rabbit-cage/policy-header.json"
 
-    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" \
+       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
        "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
@@ -73,7 +72,7 @@ NOSKILLS
 
     # Generate the correct CLAUDE.md so the normal drift check passes
     local correct_claude
-    correct_claude="$(RABBIT_ROOT="$tmproot" bash "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
+    correct_claude="$(RABBIT_ROOT="$tmproot" python3 "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.py" 2>/dev/null)"
     printf '%s\n' "$correct_claude" > "$tmproot/CLAUDE.md"
 
     echo "$tmproot"
@@ -94,7 +93,7 @@ TMPROOT_SESSION="$(build_tmproot_clean)"
 echo "session" > "$TMPROOT_SESSION/.rabbit-scope-override"
 
 t1_output=""
-t1_output="$(RABBIT_ROOT="$TMPROOT_SESSION" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t1_output="$(RABBIT_ROOT="$TMPROOT_SESSION" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 t1_msg="$(printf '%s' "$t1_output" | extract_sys_msg)"
 
 EXPECTED_SESSION="SCOPE GUARD OFF (session override active)"
@@ -113,7 +112,7 @@ TMPROOT_USED="$(build_tmproot_clean)"
 touch "$TMPROOT_USED/.rabbit-scope-override-used"
 
 t2_output=""
-t2_output="$(RABBIT_ROOT="$TMPROOT_USED" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t2_output="$(RABBIT_ROOT="$TMPROOT_USED" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 t2_msg="$(printf '%s' "$t2_output" | extract_sys_msg)"
 
 EXPECTED_USED="SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed)"

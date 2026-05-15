@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 2.4.0
+version: 2.5.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -21,30 +21,30 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 - `.claude/settings.json` — symlink to `rabbit-cage/settings.json`
 - `.claude/policy/` — symlink to `.claude/features/policy/`
 - `.claude/contract/` — symlink to `.claude/features/contract/`
-- `CLAUDE.md` — generated file (by `generate-claude-md.sh`); committed to the repo (not gitignored); not a symlink; validated on every Stop against a fresh regeneration from policy sources
+- `CLAUDE.md` — generated file (by `generate-claude-md.py`); committed to the repo (not gitignored); not a symlink; validated on every Stop against a fresh regeneration from policy sources
 - `README.md` — symlink to `rabbit-cage/README.md`
-- `install.sh` — symlink to `rabbit-cage/install.sh`
+- `install.sh` — symlink to `rabbit-cage/install.sh` (kept as bash; bootstrap entry point — see Tech Stack section)
 
 ## Invariants
 
 1. `.claude/commands` is a symlink pointing to `.claude/features/rabbit-cage/commands`.
 2. `.claude/hooks` is a symlink pointing to `.claude/features/rabbit-cage/hooks`.
-3. `.claude/skills` is a real directory (not a symlink) populated by `build.sh` (via `build-contract.json` copy-file targets) from each feature's skill source directory; the directory and its contents are committed to the repo (not gitignored).
+3. `.claude/skills` is a real directory (not a symlink) populated by `build.py` (via `build-contract.json` copy-file targets) from each feature's skill source directory; the directory and its contents are committed to the repo (not gitignored).
 4. `.claude/settings.json` is a symlink pointing to `.claude/features/rabbit-cage/settings.json`.
 5. `.claude/policy` is a symlink pointing to `.claude/features/policy`.
 6. `.claude/contract` is a symlink pointing to `.claude/features/contract`.
-7. `CLAUDE.md` at repo root is a generated regular file (not a symlink); produced by `generate-claude-md.sh`; committed to the repo (not gitignored); contains inline `rabbit-policy-start`/`rabbit-policy-end` section.
+7. `CLAUDE.md` at repo root is a generated regular file (not a symlink); produced by `generate-claude-md.py`; committed to the repo (not gitignored); contains inline `rabbit-policy-start`/`rabbit-policy-end` section.
 8. `README.md` at repo root is a symlink pointing to `.claude/features/rabbit-cage/README.md`.
-9. `install.sh` at repo root is a symlink pointing to `.claude/features/rabbit-cage/install.sh`.
+9. `install.sh` at repo root is a symlink pointing to `.claude/features/rabbit-cage/install.sh`. `install.sh` is the only `.sh` file in rabbit-cage; it is retained as bash because it is the bootstrap entry point — operators invoke it before any rabbit-managed Python state exists. See Tech Stack section.
 10. `CLAUDE.md` contains `@`-imports sourcing files from `.claude/policy/`.
-25. `.claude/features/rabbit-cage/scripts/build.sh` exists and is executable; reads `build-contract.json` and builds all declared targets.
+25. `.claude/features/rabbit-cage/scripts/build.py` exists and is executable; reads `build-contract.json` and builds all declared targets.
 26. `.claude/features/rabbit-cage/test/test-generated-surface.sh` exists and exits 0 on a clean workspace (all check_on_stop copy-file targets match their sources).
-27. `generate-skills-dir.sh` does NOT exist in `.claude/features/rabbit-cage/scripts/` (deleted; superseded by build.sh + build-contract.json).
+27. `generate-skills-dir.py` does NOT exist in `.claude/features/rabbit-cage/scripts/` (deleted; superseded by build.py + build-contract.json).
 28. `test-symlinks.sh` does NOT exist in `.claude/features/rabbit-cage/test/` (deleted; superseded by test-generated-surface.sh).
 29. `surface.hooks`, `surface.commands`, and `surface.settings` in `feature.json` are all `[]` (empty arrays); hooks, commands, and settings are now managed via build-contract.json copy-file targets.
-30. `build.sh` passes `RABBIT_ROOT=<repo_root>` as an environment variable when invoking `generate-claude-md.sh` for `generate-claude-md` targets, so that installs into non-git directories (e.g., temp dirs during `install.sh`) succeed without `git rev-parse` errors.
-39. All Python logic extracted from bash scripts lives in standalone `.py` helper files under `.claude/features/rabbit-cage/scripts/`; the `.sh` scripts invoke them as `python3 <helper>.py`. No bash script in rabbit-cage contains embedded python3 heredocs (`python3 - ... <<'PYEOF'`) or inline `python3 -c` calls.
-40. The standalone Python helpers are: `workspace-tree.py` (invoked by `workspace-tree.sh`), `rabbit-project-set-path.py`, `rabbit-project-map.py`, `rabbit-project-consolidate.py` (invoked by `rabbit-project.sh`), `build-targets.py` (invoked by `build.sh`), and `generate-claude-md-header.py` (invoked by `generate-claude-md.sh`).
+30. `build.py` passes `RABBIT_ROOT=<repo_root>` as an environment variable when invoking `generate-claude-md.py` for `generate-claude-md` targets, so that installs into non-git directories (e.g., temp dirs during `install.sh`) succeed without `git rev-parse` errors.
+39. Every runtime script under `.claude/features/rabbit-cage/hooks/` and `.claude/features/rabbit-cage/scripts/` is a standalone executable Python file (`#!/usr/bin/env python3`). No `.sh` files exist under either directory. `install.sh` at the rabbit-cage root is the sole permitted exception (bootstrap entry point; see Tech Stack section). Tests under `.claude/features/rabbit-cage/test/` are out of scope for this rule and may remain `.sh`.
+40. The Python runtime scripts in rabbit-cage are: in `hooks/` — `refresh.py`, `scope-guard.py`, `session-init.py`, `sync-check.py`; in `scripts/` — `build.py`, `build-targets.py`, `generate-claude-md.py`, `generate-claude-md-header.py`, `new-feature.py`, `rabbit-project.py`, `rabbit-project-consolidate.py`, `rabbit-project-map.py`, `rabbit-project-set-path.py`, `scope-guard-on.py`, `validate-all.py`, `workspace-tree.py`. Each preserves the stdin/stdout/exit-code contract of the `.sh` predecessor it replaces.
 
 ## /rabbit-config Command
 
@@ -111,6 +111,29 @@ Manages bash-command allowlist entries (e.g. `touch`, `cat`, `echo`, `ls`, `pyth
 - Scripts: rabbit-cage owns no runtime scripts beyond `install.sh` and those registered in its contract.
 - Workspace hierarchy display — owned and wired by the `rabbit-workspace-map` skill in the contract feature; rabbit-cage no longer declares it in its `feature.json` skills list.
 
+## Tech Stack
+
+Python 3 is the sole runtime scripting language for rabbit-cage. Every
+runtime script under `hooks/` and `scripts/` is a standalone executable
+Python file (`#!/usr/bin/env python3`) with the same stdin/stdout/exit-code
+contract as the `.sh` predecessor it replaces. Bash is not a runtime
+dependency for any rabbit-cage hook or script.
+
+**Sole exception — `install.sh`:** the rabbit-cage installer remains a bash
+script. Rationale: `install.sh` is the bootstrap entry point invoked by
+operators on a fresh checkout, before any rabbit-managed Python state
+exists. It must execute on systems where the operator has not yet confirmed
+which Python interpreter is on `PATH`. POSIX `sh`/`bash` is universally
+available; Python 3 may not be. Migrating `install.sh` to Python would
+require operators to know the correct interpreter before installation,
+defeating the bootstrap purpose. `install.sh` is therefore the only `.sh`
+file in rabbit-cage and is documented as such in Inv 9 and Inv 39.
+
+**Tests are out of scope for this rule.** Tests under
+`.claude/features/rabbit-cage/test/` may be `.sh` or `.py`; they verify the
+runtime, not constitute it. Migrating them to Python is a separate
+follow-on; it is not required by this Tech Stack rule.
+
 ## Scope-Guard Override
 
 A human-approved override mechanism allows the scope-guard to permit a write
@@ -122,19 +145,19 @@ approval.
 
 - `.rabbit-scope-override` — contents are exactly `one-time` or `session`.
   Created by the human (e.g. `echo one-time > .rabbit-scope-override`).
-- `.rabbit-scope-override-used` — created by `scope-guard.sh` when a
+- `.rabbit-scope-override-used` — created by `scope-guard.py` when a
   `one-time` override is consumed. Acts as a single-shot post-event signal
-  for `sync-check.sh` to surface the consumption.
+  for `sync-check.py` to surface the consumption.
 
-**`scope-guard.sh` semantics** (evaluated before the default-deny step):
+**`scope-guard.py` semantics** (evaluated before the default-deny step):
 
 - `.rabbit-scope-override` = `session` → ALLOW; marker is left in place so
   the guard remains down for the rest of the session.
-- `.rabbit-scope-override` = `one-time` → ALLOW; `scope-guard.sh` DELETES
+- `.rabbit-scope-override` = `one-time` → ALLOW; `scope-guard.py` DELETES
   `.rabbit-scope-override` and CREATES `.rabbit-scope-override-used`.
 - Absent or other content → fall through to the default-deny path.
 
-**`sync-check.sh` semantics** (Stop hook, after the normal drift check):
+**`sync-check.py` semantics** (Stop hook, after the normal drift check):
 
 - `.rabbit-scope-override` = `session` → emit a red `[rabbit]` systemMessage
   on every Stop, signalling that the guard is **currently off**:
@@ -150,20 +173,20 @@ asking whether to grant a one-time or session override. The token asks one
 binary question (one-time or session). Upon explicit in-conversation user
 approval, the main session writes `.rabbit-scope-override` itself with the
 approved mode (`one-time` or `session`), then proceeds with the write.
-`scope-guard.sh` never creates `.rabbit-scope-override`; it only reads
+`scope-guard.py` never creates `.rabbit-scope-override`; it only reads
 and (for `one-time`) deletes it.
 
 **Revoking a session override (scope guard back on):** A session override
 stays in place until explicitly revoked. To revoke it, run:
 
-    bash .claude/features/rabbit-cage/scripts/scope-guard-on.sh
+    .claude/features/rabbit-cage/scripts/scope-guard-on.py
 
-`scope-guard-on.sh` deletes `.rabbit-scope-override` (if present) and
+`scope-guard-on.py` deletes `.rabbit-scope-override` (if present) and
 emits a confirmation message. After revocation the guard returns to its
 default-deny posture immediately — no session restart is required. The
 script is a no-op if no override is active.
 
-**Filename allowlist:** `scope-guard.sh` maintains a filename allowlist that
+**Filename allowlist:** `scope-guard.py` maintains a filename allowlist that
 always permits writes regardless of scope-marker state. The allowlisted
 basenames are: `settings.json`, `settings.local.json`, `.gitignore`, and
 `.rabbit-scope-override`. The `.rabbit-scope-override` entry is required so
@@ -174,36 +197,38 @@ marker is active.
 ## Invariants (additional)
 
 11. `.rabbit-scope-override` and `.rabbit-scope-override-used` are gitignored.
-20. `scope-guard.sh` filename allowlist contains exactly: `settings.json`,
+20. `scope-guard.py` filename allowlist contains exactly: `settings.json`,
     `settings.local.json`, `.gitignore`, and `.rabbit-scope-override`. Writes
     to any of these basenames are always permitted, regardless of scope-marker
     state. This allowlist must include `.rabbit-scope-override` to enable the
     confirm-token approval flow (Claude writes the override file after
     in-conversation user approval without a scope marker active).
-12. `scope-guard.sh` never creates `.rabbit-scope-override`; it only reads it
+12. `scope-guard.py` never creates `.rabbit-scope-override`; it only reads it
     and (for `one-time`) deletes it after consumption. The main session (Claude)
     may write `.rabbit-scope-override` after receiving explicit in-conversation
     user approval via the confirm-token flow.
-13. A `one-time` override consumed by `scope-guard.sh` is acknowledged exactly
-    once by `sync-check.sh`, after which `.rabbit-scope-override-used` is
+13. A `one-time` override consumed by `scope-guard.py` is acknowledged exactly
+    once by `sync-check.py`, after which `.rabbit-scope-override-used` is
     removed.
-41. `scope-guard-on.sh` exists at `.claude/features/rabbit-cage/scripts/scope-guard-on.sh`
+41. `scope-guard-on.py` exists at `.claude/features/rabbit-cage/scripts/scope-guard-on.py`
     and is executable. It deletes `.rabbit-scope-override` (if present) and prints a
     confirmation to stdout. It is a no-op if no override file exists. It is the
     canonical answer to "scope guard back on" / "revoke the session override".
 42. The double-quoted region stripping `re.sub` in `extract_bash_targets()` of
-    `scope-guard.sh` uses the `re.DOTALL` flag so that multi-line double-quoted
+    `scope-guard.py` uses the `re.DOTALL` flag so that multi-line double-quoted
     strings (e.g., from backslash-newline continuations) are fully removed before
     pattern matching, preventing false-positive DENY on content inside the string.
-14. `generate-skills-dir.sh --check` detects drift by comparing the sha256 of
+14. `generate-skills-dir.py --check` detects drift by comparing the sha256 of
     each source `SKILL.md` directly against the sha256 of the corresponding
     copy at `.claude/skills/<name>/SKILL.md`. No external baseline file is
-    used or maintained.
+    used or maintained. (Note: this functionality is supplied by `build.py`
+    via `build-contract.json` copy-file targets; the standalone
+    `generate-skills-dir.py` does not exist — see Inv 27.)
 15. `.claude/skills/` and its contents are committed to the repo;
     `.claude/skills/` does not appear in `.gitignore`.
 16. `CLAUDE.md` at the repo root is committed to the repo; `CLAUDE.md` does
     not appear in `.gitignore`.
-17. On every Stop event, `sync-check.sh` compares the committed
+17. On every Stop event, `sync-check.py` compares the committed
     `CLAUDE.md` against a fresh regeneration from the policy source files.
     On discrepancy it regenerates `CLAUDE.md` in place and emits a red
     `[rabbit]` `systemMessage` warning that the committed copy drifted from
@@ -231,7 +256,7 @@ marker is active.
 
 ## Session-Init Branch Enforcement (R1)
 
-`session-init.sh` enforces R1 (branch-per-feature; never commit directly to main) at
+`session-init.py` enforces R1 (branch-per-feature; never commit directly to main) at
 session start. When the current branch is `main` or any protected branch (defined as any
 branch whose name is exactly `main` or `master`), the hook automatically:
 
@@ -249,16 +274,16 @@ If the current branch is already a non-protected branch (anything other than `ma
 
 ## Invariants (additional continued)
 
-21. On `SessionStart`, `session-init.sh` checks `git branch --show-current`. If the
+21. On `SessionStart`, `session-init.py` checks `git branch --show-current`. If the
     result is `main` or `master`, it runs `git checkout -b session/$(date +%Y%m%d-%H%M%S)`
     and emits a green `[rabbit]` systemMessage naming the new branch.
-22. If the current branch is not `main` or `master`, `session-init.sh` does NOT create
+22. If the current branch is not `main` or `master`, `session-init.py` does NOT create
     or switch to any branch — the branch-enforcement block is a no-op.
 23. The created branch name always begins with the prefix `session/` followed by exactly
     eight digits, a hyphen, and six digits (`session/YYYYMMDD-HHMMSS`).
-24. On every Stop event, after the existing drift checks, `sync-check.sh`
+24. On every Stop event, after the existing drift checks, `sync-check.py`
     detects skill updates via a self-clearing marker file:
-    (a) `build-targets.py` (invoked by `build.sh`) appends the skill name to
+    (a) `build-targets.py` (invoked by `build.py`) appends the skill name to
     `.rabbit-skills-updated` at the repo root ONLY when it copies a `copy-file`
     target whose destination matches `^\.claude/skills/([^/]+)/SKILL\.md$` AND
     whose content actually changed (sha256 of source differs from sha256 of
@@ -266,7 +291,7 @@ If the current branch is already a non-protected branch (anything other than `ma
     does NOT write the marker and the underlying `shutil.copy2` is also skipped.
     Non-SKILL.md targets (`.claude/commands/`, `.claude/agents/`, etc.) never
     trigger the marker.
-    (b) `sync-check.sh` checks if `.rabbit-skills-updated` exists at the repo root.
+    (b) `sync-check.py` checks if `.rabbit-skills-updated` exists at the repo root.
     If it does: read the comma-joined list of skill names, delete the marker
     (self-clearing — alert fires exactly once per build), and emit a green
     `[rabbit]` `systemMessage` naming the updated skills. Exact message format:
@@ -274,16 +299,16 @@ If the current branch is already a non-protected branch (anything other than `ma
     where `<names>` is the comma-joined skill names from the marker.
     If `.rabbit-skills-updated` is absent: silent (no output).
     No git diff is performed; the marker file IS the signal.
-    (c) `session-init.sh` does NOT reference `.rabbit-skills-updated`. Session-
-    start clearing is unnecessary because `sync-check.sh` self-clears the marker
+    (c) `session-init.py` does NOT reference `.rabbit-skills-updated`. Session-
+    start clearing is unnecessary because `sync-check.py` self-clears the marker
     on first read.
     (d) The `/rabbit-refresh` command does NOT reference `.rabbit-skills-updated`
-    for the same reason — the marker is consumed by `sync-check.sh`.
+    for the same reason — the marker is consumed by `sync-check.py`.
     (e) `.rabbit-skills-updated` is gitignored.
     This check runs only when all previous checks (CLAUDE.md drift, surface
     drift, override alerts) did NOT emit JSON. The single-JSON-per-invocation
     invariant is preserved: at most one JSON object is emitted per
-    sync-check.sh invocation.
+    sync-check.py invocation.
     (f) The multi-message output strategy is **conditional-priority**: only the
     highest-priority pending condition emits per Stop invocation. Lower-priority
     conditions are suppressed until the higher-priority condition clears.
@@ -293,12 +318,12 @@ If the current branch is already a non-protected branch (anything other than `ma
 
 ## Scope-Guard Quote Awareness
 
-`extract_bash_targets()` in `scope-guard.sh` is quote-aware. Before applying
+`extract_bash_targets()` in `scope-guard.py` is quote-aware. Before applying
 any redirect or write-command pattern matching, it strips single-quoted and
-double-quoted regions from each command segment using python3. This prevents
-false positives when string data (e.g., inside `python3 -c '...'` arguments
-or heredoc bodies) contains `>`, `>>`, or command names such as `tee`, `cp`,
-`mv`, or `rm`. Real unquoted redirects are still detected correctly.
+double-quoted regions from each command segment using Python's `re` module.
+This prevents false positives when string data (e.g., inside `python3 -c '...'`
+arguments or heredoc bodies) contains `>`, `>>`, or command names such as
+`tee`, `cp`, `mv`, or `rm`. Real unquoted redirects are still detected correctly.
 
 The double-quoted region stripping `re.sub` call uses the `re.DOTALL` flag
 (or equivalently `re.S`) so that quoted regions spanning multiple lines
@@ -310,8 +335,8 @@ inside the string (e.g., `-> U+00F0`).
 
 ## Visual Styling
 
-Every `systemMessage` emitted by rabbit-cage hooks (`sync-check.sh`,
-`session-init.sh`, `refresh.sh`) is wrapped in ANSI color codes
+Every `systemMessage` emitted by rabbit-cage hooks (`sync-check.py`,
+`session-init.py`, `refresh.py`) is wrapped in ANSI color codes
 (`\x1b[32m` for green or `\x1b[31m` for red, terminated by `\x1b[0m`).
 Markdown is not rendered in `systemMessage` output; ANSI escape codes are.
 The color marks all `[rabbit]` messages as system-emitted (not
@@ -342,15 +367,15 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
 
 ### Invariants
 
-31. `refresh.sh` reads and writes `.rabbit-prompt-counter`; reads `RABBIT_REFRESH_EVERY`.
-32. `sync-check.sh` reads and writes `.rabbit-sync-counter`; reads `RABBIT_SYNC_EVERY`; writes `.rabbit-prompt-counter` on first-run and drift paths; reads `RABBIT_REFRESH_EVERY` for that counter write.
+31. `refresh.py` reads and writes `.rabbit-prompt-counter`; reads `RABBIT_REFRESH_EVERY`.
+32. `sync-check.py` reads and writes `.rabbit-sync-counter`; reads `RABBIT_SYNC_EVERY`; writes `.rabbit-prompt-counter` on first-run and drift paths; reads `RABBIT_REFRESH_EVERY` for that counter write.
 33. `settings.json` declares env key `RABBIT_REFRESH_EVERY`; its `SessionStart` command resets `.rabbit-prompt-counter`.
 34. `rabbit-refresh.md` command resets `.rabbit-prompt-counter`.
-35. `workspace-tree.sh` excludes `.rabbit-prompt-counter` from full listings.
+35. `workspace-tree.py` excludes `.rabbit-prompt-counter` from full listings.
 
-## sync-check.sh Output Schema
+## sync-check.py Output Schema
 
-`sync-check.sh` emits at most one JSON object per invocation to stdout. The output schema is:
+`sync-check.py` emits at most one JSON object per invocation to stdout. The output schema is:
 
 ```json
 {
@@ -363,7 +388,7 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
 
 ### Invariants
 
-37. `sync-check.sh` uses the **conditional-priority** multi-message strategy: exactly one
+37. `sync-check.py` uses the **conditional-priority** multi-message strategy: exactly one
     condition emits per Stop invocation; lower-priority conditions are suppressed until
     the higher-priority condition clears. The explicit priority order (highest to lowest):
     1. CLAUDE.md drift or first-run (always exits immediately after emitting)
@@ -373,7 +398,7 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
     Conditions at the same priority level do not coexist in the current implementation;
     each has a distinct marker or detection path.
 
-38. Every JSON object emitted by `sync-check.sh` conforms to the output schema above:
+38. Every JSON object emitted by `sync-check.py` conforms to the output schema above:
     `{"systemMessage": "<ANSI-colored string>"}` for conditions 2–4; 
     `{"additionalContext": "<string>", "systemMessage": "<ANSI-colored string>"}` for
     condition 1 (CLAUDE.md drift/first-run). No other top-level keys are emitted.

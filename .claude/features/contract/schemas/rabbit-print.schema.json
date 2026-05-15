@@ -23,9 +23,9 @@
     }
   },
   "producers": [
-    ".claude/features/rabbit-cage/hooks/sync-check.sh",
-    ".claude/features/rabbit-cage/hooks/session-init.sh",
-    ".claude/features/rabbit-cage/hooks/refresh.sh",
+    ".claude/features/rabbit-cage/hooks/sync-check.py",
+    ".claude/features/rabbit-cage/hooks/session-init.py",
+    ".claude/features/rabbit-cage/hooks/refresh.py",
     ".claude/features/tdd-state-machine/scripts/tdd-step.sh"
   ]
 }

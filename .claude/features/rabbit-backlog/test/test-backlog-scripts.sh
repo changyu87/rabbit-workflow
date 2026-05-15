@@ -100,6 +100,7 @@ fi
 if [ -f "$FIND_FEATURE_SRC" ]; then
   cp "$FIND_FEATURE_SRC" "$ISO_CONTRACT_SCRIPTS/find-feature.sh"
   chmod +x "$ISO_CONTRACT_SCRIPTS/find-feature.sh"
+  cp "$(dirname "$FIND_FEATURE_SRC")/find-feature.py" "$ISO_CONTRACT_SCRIPTS/find-feature.py"
 fi
 
 ISO_FILE_BACKLOG="$ISO_SCRIPTS_DIR/file-backlog-item.sh"
@@ -280,27 +281,20 @@ else
            "feature.json not found: $FEATURE_JSON"
 fi
 
-# t10: .claude/backlogs/rabbit-cage/ exists with RABBIT-CAGE-BACKLOG-1 through RABBIT-CAGE-BACKLOG-6
-CAGE_BACKLOGS="${REPO_ROOT}/.claude/backlogs/rabbit-cage"
-if [ -d "$CAGE_BACKLOGS" ]; then
-    all_present=1
-    missing=()
-    for n in 1 2 3 4 5 6; do
-        item="${CAGE_BACKLOGS}/RABBIT-CAGE-BACKLOG-${n}/item.json"
-        if [ ! -f "$item" ]; then
-            all_present=0
-            missing+=("RABBIT-CAGE-BACKLOG-${n}")
-        fi
-    done
-    if [ "$all_present" -eq 1 ]; then
-        ok "t10: .claude/backlogs/rabbit-cage/ has RABBIT-CAGE-BACKLOG-1 through RABBIT-CAGE-BACKLOG-6"
+# t10: workspace-map.sh backlog rabbit-cage returns expected path convention
+WORKSPACE_MAP_BIN="${REPO_ROOT}/.claude/features/contract/scripts/workspace-map.sh"
+if [ -x "$WORKSPACE_MAP_BIN" ]; then
+    wm_out="$(RABBIT_ROOT="$REPO_ROOT" "$WORKSPACE_MAP_BIN" backlog rabbit-cage 2>/dev/null)"
+    expected_suffix=".claude/backlogs/rabbit-cage"
+    if [[ "$wm_out" == *"$expected_suffix" ]]; then
+        ok "t10: workspace-map.sh backlog rabbit-cage returns expected path"
     else
-        fail_t "t10: .claude/backlogs/rabbit-cage/ has RABBIT-CAGE-BACKLOG-1 through RABBIT-CAGE-BACKLOG-6" \
-               "missing: ${missing[*]}"
+        fail_t "t10: workspace-map.sh backlog rabbit-cage returns expected path" \
+               "got: '$wm_out' (expected suffix: '$expected_suffix')"
     fi
 else
-    fail_t "t10: .claude/backlogs/rabbit-cage/ has RABBIT-CAGE-BACKLOG-1 through RABBIT-CAGE-BACKLOG-6" \
-           "directory does not exist: $CAGE_BACKLOGS"
+    fail_t "t10: workspace-map.sh backlog rabbit-cage returns expected path" \
+           "workspace-map.sh not found or not executable: $WORKSPACE_MAP_BIN"
 fi
 
 echo ""

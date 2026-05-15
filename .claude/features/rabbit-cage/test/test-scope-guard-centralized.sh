@@ -11,7 +11,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
-SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.sh"
+SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.py"
 RUN_SH="$REPO_ROOT/.claude/features/rabbit-cage/test/run.sh"
 TEST_CLAUDE_MD="$REPO_ROOT/.claude/features/rabbit-cage/test/test-claude-md.sh"
 

@@ -9,7 +9,7 @@
       "description": "all feature source directories",
       "children": [
         { "name": "contract",         "required": true,  "description": "cross-feature schemas, dispatch scripts, enforcement", "children": [] },
-        { "name": "policy",           "required": true,  "description": "canonical rule docs (philosophy, spec-rules, coding-rules, workflow-rules)", "children": [] },
+        { "name": "policy",           "required": true,  "description": "canonical rule docs (philosophy, spec-rules, coding-rules)", "children": [] },
         { "name": "rabbit-backlog",   "required": true,  "description": "backlog item filing and lifecycle", "children": [] },
         { "name": "rabbit-bug",       "required": true,  "description": "bug filing, tracking, and lifecycle", "children": [] },
         { "name": "rabbit-cage",      "required": true,  "description": "Claude Code surface owner", "children": [] },

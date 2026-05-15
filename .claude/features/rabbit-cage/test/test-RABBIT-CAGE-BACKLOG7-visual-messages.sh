@@ -15,9 +15,9 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
-SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.sh"
-REFRESH_HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/refresh.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.py"
+SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.py"
+REFRESH_HOOK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/refresh.py"
 
 FAILURES=0
 TOTAL=0
@@ -102,15 +102,14 @@ build_tmproot() {
     printf '# Philosophy\nMachine First.\n'   > "$tmproot/.claude/features/policy/philosophy.md"
     printf '# Spec Rules\nSpec.\n'            > "$tmproot/.claude/features/policy/spec-rules.md"
     printf '# Coding Rules\nCode.\n'          > "$tmproot/.claude/features/policy/coding-rules.md"
-    printf '# Workflow Rules\nWorkflow.\n'    > "$tmproot/.claude/features/policy/workflow-rules.md"
 
     # policy-header.json
     python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
         > "$tmproot/.claude/features/rabbit-cage/policy-header.json"
 
     # Copy generate-claude-md.sh so sync-check.sh can invoke it
-    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" \
+       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
        "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
@@ -130,7 +129,7 @@ trap 'rm -rf "$TMPROOT1"' EXIT
 printf 'STALE CONTENT\n' > "$TMPROOT1/CLAUDE.md"
 
 drift_output=""
-drift_output="$(RABBIT_ROOT="$TMPROOT1" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+drift_output="$(RABBIT_ROOT="$TMPROOT1" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 drift_msg="$(echo "$drift_output" | extract_sys_msg)"
 
 assert_visual_msg "sync-check.sh DRIFT case" "$drift_msg"
@@ -141,7 +140,7 @@ TMPROOT2="$(build_tmproot)"
 trap 'rm -rf "$TMPROOT1" "$TMPROOT2"' EXIT
 
 # Generate a correct CLAUDE.md so the drift branch is NOT taken
-correct_claude="$(RABBIT_ROOT="$TMPROOT2" bash "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
+correct_claude="$(RABBIT_ROOT="$TMPROOT2" python3 "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md.py" 2>/dev/null)"
 printf '%s\n' "$correct_claude" > "$TMPROOT2/CLAUDE.md"
 
 # Install fake test-generated-surface.sh (exits 1 = surface drift detected)
@@ -155,15 +154,15 @@ chmod +x "$TMPROOT2/.claude/features/rabbit-cage/test/test-generated-surface.sh"
 
 # Install fake build.sh (exits 0 = build succeeds)
 mkdir -p "$TMPROOT2/.claude/features/rabbit-cage/scripts"
-cat > "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.sh" <<'FAKEBUILD'
+cat > "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.py" <<'FAKEBUILD'
 #!/usr/bin/env bash
 # Fake build.sh: no-op, exits 0
 exit 0
 FAKEBUILD
-chmod +x "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.sh"
+chmod +x "$TMPROOT2/.claude/features/rabbit-cage/scripts/build.py"
 
 skills_output=""
-skills_output="$(RABBIT_ROOT="$TMPROOT2" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+skills_output="$(RABBIT_ROOT="$TMPROOT2" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 skills_msg="$(echo "$skills_output" | extract_sys_msg)"
 
 assert_visual_msg "sync-check.sh SURFACE DRIFT case" "$skills_msg"
@@ -180,7 +179,6 @@ cat > "$TMPROOT3/CLAUDE.md" <<INITCLAUDEMD
 @.claude/features/policy/philosophy.md
 @.claude/features/policy/spec-rules.md
 @.claude/features/policy/coding-rules.md
-@.claude/features/policy/workflow-rules.md
 INITCLAUDEMD
 
 # Disable generate-skills-dir.sh in this tree (no real skills to generate)
@@ -192,7 +190,7 @@ NOSKILLS
 chmod +x "$TMPROOT3/.claude/features/rabbit-cage/scripts/generate-skills-dir.sh"
 
 init_output=""
-init_output="$(RABBIT_ROOT="$TMPROOT3" bash "$SESSION_INIT" 2>/dev/null)" || true
+init_output="$(RABBIT_ROOT="$TMPROOT3" python3 "$SESSION_INIT" 2>/dev/null)" || true
 init_msg="$(echo "$init_output" | extract_sys_msg)"
 
 assert_visual_msg "session-init.sh session-start injection" "$init_msg"
@@ -224,7 +222,7 @@ THRESHOLD=5
 printf '%s\n' "$THRESHOLD" > "$TMPROOT4/.rabbit-prompt-counter"
 
 refresh_output=""
-refresh_output="$(RABBIT_ROOT="$TMPROOT4" RABBIT_REFRESH_EVERY="$THRESHOLD" bash "$REFRESH_HOOK" 2>/dev/null)" || true
+refresh_output="$(RABBIT_ROOT="$TMPROOT4" RABBIT_REFRESH_EVERY="$THRESHOLD" python3 "$REFRESH_HOOK" 2>/dev/null)" || true
 refresh_msg="$(echo "$refresh_output" | extract_sys_msg)"
 
 assert_visual_msg "refresh.sh periodic refresh" "$refresh_msg"

@@ -52,6 +52,7 @@ JSON
 
   # Copy find-feature.sh so dispatch-feature-tdd.sh can locate the feature.
   cp "$FIND_FEATURE_SH" "$root/.claude/features/contract/scripts/find-feature.sh"
+  cp "$(dirname "$FIND_FEATURE_SH")/find-feature.py" "$root/.claude/features/contract/scripts/find-feature.py"
 
   echo "# Spec\nMinimal spec content." > "$root/.claude/features/tdd-state-machine/docs/spec/spec.md"
   echo "# Contract\nMinimal contract content." > "$root/.claude/features/tdd-state-machine/docs/spec/contract.md"

@@ -22,8 +22,8 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.sh"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
+SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.py"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.py"
 GITIGNORE="$REPO_ROOT/.gitignore"
 
 FAILURES=0
@@ -63,13 +63,12 @@ build_tmproot_clean() {
     printf '# Philosophy\nMachine First.\n'   > "$tmproot/.claude/features/policy/philosophy.md"
     printf '# Spec Rules\nSpec.\n'            > "$tmproot/.claude/features/policy/spec-rules.md"
     printf '# Coding Rules\nCode.\n'          > "$tmproot/.claude/features/policy/coding-rules.md"
-    printf '# Workflow Rules\nWorkflow.\n'    > "$tmproot/.claude/features/policy/workflow-rules.md"
 
     python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
         > "$tmproot/.claude/features/rabbit-cage/policy-header.json"
 
-    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" \
+       "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
        "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
@@ -85,7 +84,7 @@ NOSKILLS
 
     # Generate the correct CLAUDE.md so the normal drift check passes
     local correct_claude
-    correct_claude="$(RABBIT_ROOT="$tmproot" bash "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
+    correct_claude="$(RABBIT_ROOT="$tmproot" python3 "$tmproot/.claude/features/rabbit-cage/scripts/generate-claude-md.py" 2>/dev/null)"
     printf '%s\n' "$correct_claude" > "$tmproot/CLAUDE.md"
 
     echo "$tmproot"
@@ -147,7 +146,7 @@ with open('$FEATURE_JSON', 'w') as f:
 # Confirm without override it is DENIED (sanity / pre-condition)
 t3_pre_input='{"tool_name":"Write","tool_input":{"file_path":".claude/features/rabbit-cage/somefile.txt"}}'
 t3_pre_exit=0
-echo "$t3_pre_input" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t3_pre_exit=$?
+echo "$t3_pre_input" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t3_pre_exit=$?
 
 # Now place the session override
 echo "session" > "$OVERRIDE_MARKER"
@@ -156,7 +155,7 @@ echo "session" > "$OVERRIDE_MARKER"
 #     even though tdd_state=test-green (currently denies without override).
 t3_input='{"tool_name":"Write","tool_input":{"file_path":".claude/features/rabbit-cage/somefile.txt"}}'
 t3_exit=0
-echo "$t3_input" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t3_exit=$?
+echo "$t3_input" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t3_exit=$?
 
 if [ "$t3_exit" -eq 0 ] && [ "$t3_pre_exit" -eq 2 ]; then
     ok "scope-guard exits 0 (ALLOW) when .rabbit-scope-override=session (overrides test-green deny)"
@@ -186,7 +185,7 @@ rm -f "$OVERRIDE_USED"
 
 t5_input='{"tool_name":"Write","tool_input":{"file_path":".claude/features/rabbit-cage/somefile.txt"}}'
 t5_exit=0
-echo "$t5_input" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t5_exit=$?
+echo "$t5_input" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t5_exit=$?
 
 # t5: one-time override — Write is ALLOWED (despite test-green state)
 if [ "$t5_exit" -eq 0 ]; then
@@ -228,7 +227,7 @@ trap 'rm -rf "$TMPROOT8"' EXIT
 echo "session" > "$TMPROOT8/.rabbit-scope-override"
 
 t8_output=""
-t8_output="$(RABBIT_ROOT="$TMPROOT8" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t8_output="$(RABBIT_ROOT="$TMPROOT8" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 t8_msg="$(printf '%s' "$t8_output" | extract_sys_msg)"
 
 # The alert must exist and contain red ANSI code \x1b[31m
@@ -253,7 +252,7 @@ trap 'rm -rf "$TMPROOT8" "$TMPROOT9"' EXIT
 touch "$TMPROOT9/.rabbit-scope-override-used"
 
 t9_output=""
-t9_output="$(RABBIT_ROOT="$TMPROOT9" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" || true
+t9_output="$(RABBIT_ROOT="$TMPROOT9" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" || true
 t9_msg="$(printf '%s' "$t9_output" | extract_sys_msg)"
 
 t9_has_red="$(MSG="$t9_msg" python3 -c "

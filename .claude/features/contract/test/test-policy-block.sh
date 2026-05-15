@@ -27,7 +27,7 @@ check_contains() {
 check_contains "sentinel line" "RABBIT-POLICY-BLOCK-v1"
 check_contains "banner" "MANDATORY POLICY"
 check_contains "philosophy.md section header" "philosophy.md"
-check_contains "workflow-rules.md section header" "workflow-rules.md"
+check_contains "coding-rules.md section header" "coding-rules.md"
 
 if [ $FAIL -ne 0 ]; then
   echo "test-policy-block: FAIL" >&2

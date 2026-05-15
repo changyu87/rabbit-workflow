@@ -7,8 +7,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
-BUILD_SH="$REPO_ROOT/.claude/features/rabbit-cage/scripts/build.sh"
-GENERATE_SCRIPT="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+BUILD_SH="$REPO_ROOT/.claude/features/rabbit-cage/scripts/build.py"
+GENERATE_SCRIPT="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
 
 pass=0
 fail=0
@@ -90,7 +90,7 @@ for target in contract.get("targets", []):
         env = dict(os.environ)
         env["RABBIT_ROOT"] = actual_repo_root
         result = subprocess.run(
-            ["bash", generate_script, "--write", target_root],
+            [sys.executable, generate_script, "--write", target_root],
             capture_output=True, text=True,
             env=env
         )

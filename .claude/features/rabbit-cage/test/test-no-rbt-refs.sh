@@ -35,9 +35,9 @@ echo ""
 # ---------------------------------------------------------------------------
 # t1: session-init.sh (feature copy) has no .rbt- references
 # ---------------------------------------------------------------------------
-echo "=== t1: .claude/features/rabbit-cage/hooks/session-init.sh has no .rbt- refs ==="
+echo "=== t1: .claude/features/rabbit-cage/hooks/session-init.py has no .rbt- refs ==="
 
-SESSION_INIT_FEATURE="$FEATURE_DIR/hooks/session-init.sh"
+SESSION_INIT_FEATURE="$FEATURE_DIR/hooks/session-init.py"
 if grep -q '\.rbt-' "$SESSION_INIT_FEATURE" 2>/dev/null; then
     MATCHES="$(grep -n '\.rbt-' "$SESSION_INIT_FEATURE" | head -5)"
     fail_t "session-init.sh (feature) still contains .rbt- references:
@@ -49,9 +49,9 @@ fi
 # ---------------------------------------------------------------------------
 # t2: session-init.sh (deployed hooks copy) has no .rbt- references
 # ---------------------------------------------------------------------------
-echo "=== t2: .claude/hooks/session-init.sh has no .rbt- refs ==="
+echo "=== t2: .claude/hooks/session-init.py has no .rbt- refs ==="
 
-SESSION_INIT_DEPLOYED="$REPO_ROOT/.claude/hooks/session-init.sh"
+SESSION_INIT_DEPLOYED="$REPO_ROOT/.claude/hooks/session-init.py"
 if [ -L "$SESSION_INIT_DEPLOYED" ]; then
     SESSION_INIT_DEPLOYED_REAL="$(readlink -f "$SESSION_INIT_DEPLOYED" 2>/dev/null || echo "$SESSION_INIT_DEPLOYED")"
 else

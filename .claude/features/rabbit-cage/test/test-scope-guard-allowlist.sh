@@ -12,7 +12,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.sh"
+SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.py"
 
 FAILURES=0
 TOTAL=0
@@ -32,12 +32,13 @@ echo "test-scope-guard-allowlist.sh"
 echo ""
 echo "=== (a) scope-guard.sh source contains .rabbit-scope-override in allowlist ==="
 
-# t1: scope-guard.sh must reference .rabbit-scope-override in its allowlist if-statement
-# Check for the pattern: [ "$base" = ".rabbit-scope-override" ] inside the allowlist block
-if grep -qE '\[ "\$base" = "\.rabbit-scope-override" \]' "$SCOPE_GUARD" 2>/dev/null; then
-    ok "scope-guard.sh allowlist if-statement includes .rabbit-scope-override"
+# t1: scope-guard.py must reference .rabbit-scope-override in its filename allowlist
+# Post-migration: the bash idiom [ "$base" = ".rabbit-scope-override" ] is replaced
+# by the Python tuple membership "base in (..., '.rabbit-scope-override', ...)".
+if grep -q '\.rabbit-scope-override' "$SCOPE_GUARD" 2>/dev/null; then
+    ok "scope-guard.py allowlist contains .rabbit-scope-override"
 else
-    fail_t "scope-guard.sh does NOT contain .rabbit-scope-override in allowlist if-statement"
+    fail_t "scope-guard.py does NOT contain .rabbit-scope-override in filename allowlist"
 fi
 
 echo ""
@@ -62,7 +63,7 @@ done
 # t2: Write JSON for .rabbit-scope-override at repo root must exit 0 (allow) with no scope marker
 write_json='{"tool_name":"Write","tool_input":{"file_path":"'"$REPO_ROOT"'/.rabbit-scope-override","content":"one-time"}}'
 t2_exit=0
-echo "$write_json" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t2_exit=$?
+echo "$write_json" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t2_exit=$?
 
 if [ "$t2_exit" -eq 0 ]; then
     ok "Write to .rabbit-scope-override exits 0 (ALLOW) without any scope marker active"
@@ -73,7 +74,7 @@ fi
 # t3: Write JSON for .rabbit-scope-override using relative path also exits 0
 write_json_rel='{"tool_name":"Write","tool_input":{"file_path":".rabbit-scope-override","content":"one-time"}}'
 t3_exit=0
-echo "$write_json_rel" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t3_exit=$?
+echo "$write_json_rel" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t3_exit=$?
 
 if [ "$t3_exit" -eq 0 ]; then
     ok "Write to .rabbit-scope-override (relative path) exits 0 (ALLOW) without scope marker"

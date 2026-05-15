@@ -20,7 +20,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.py"
 
 FAILURES=0
 
@@ -55,15 +55,14 @@ mkdir -p "$TMPROOT/.claude/features/policy"
 printf '# Philosophy\nMachine First.\n'    > "$TMPROOT/.claude/features/policy/philosophy.md"
 printf '# Spec Rules\nSpec.\n'             > "$TMPROOT/.claude/features/policy/spec-rules.md"
 printf '# Coding Rules\nCode.\n'           > "$TMPROOT/.claude/features/policy/coding-rules.md"
-printf '# Workflow Rules\nWorkflow.\n'     > "$TMPROOT/.claude/features/policy/workflow-rules.md"
 
 # Minimal policy-header.json so generate-claude-md.sh can read the header line
 python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
     > "$TMPROOT/.claude/features/rabbit-cage/policy-header.json"
 
 # Copy generate-claude-md.sh into the temp tree so sync-check.sh can invoke it
-cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-   "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" \
+   "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
 cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
    "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
@@ -77,7 +76,7 @@ fi
 # Run sync-check.sh with RABBIT_SYNC_EVERY=1 so it fires (no counter skip)
 sync_output=""
 sync_exit=0
-sync_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" \
+sync_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" \
     || sync_exit=$?
 
 # t3: hook exits 0 (it should succeed; creating a missing CLAUDE.md is not an error)

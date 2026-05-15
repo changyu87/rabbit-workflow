@@ -69,6 +69,7 @@ fi
 if [ -f "$FIND_FEATURE_SRC" ]; then
   cp "$FIND_FEATURE_SRC" "$ISO_CONTRACT_SCRIPTS/find-feature.sh"
   chmod +x "$ISO_CONTRACT_SCRIPTS/find-feature.sh"
+  cp "$(dirname "$FIND_FEATURE_SRC")/find-feature.py" "$ISO_CONTRACT_SCRIPTS/find-feature.py"
 fi
 
 ISO_FILE_BACKLOG="$ISO_SCRIPTS_DIR/file-backlog-item.sh"

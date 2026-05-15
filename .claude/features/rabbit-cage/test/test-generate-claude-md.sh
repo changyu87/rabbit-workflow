@@ -7,8 +7,8 @@ set -euo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 CAGE_DIR="$REPO_ROOT/.claude/features/rabbit-cage"
-GENERATE_SCRIPT="$CAGE_DIR/scripts/generate-claude-md.sh"
-SYNC_HOOK="$CAGE_DIR/hooks/sync-check.sh"
+GENERATE_SCRIPT="$CAGE_DIR/scripts/generate-claude-md.py"
+SYNC_HOOK="$CAGE_DIR/hooks/sync-check.py"
 SETTINGS_JSON="$REPO_ROOT/.claude/settings.json"
 
 pass=0
@@ -67,34 +67,34 @@ if [ -x "$GENERATE_SCRIPT" ]; then
     fi
 fi
 
-# t5: output contains the sync start marker "rabbit-policy-start"
+# t5: output contains "@-import line for philosophy.md"
 if $GENERATE_OK; then
-    if echo "$GENERATED_OUTPUT" | grep -q 'rabbit-policy-start'; then
-        ok 5 "output contains 'rabbit-policy-start'"
+    if echo "$GENERATED_OUTPUT" | grep -q '@.claude/features/policy/philosophy.md'; then
+        ok 5 "output contains '@.claude/features/policy/philosophy.md'"
     else
-        fail_t 5 "output does not contain 'rabbit-policy-start'"
+        fail_t 5 "output does not contain '@.claude/features/policy/philosophy.md'"
     fi
 else
     fail_t 5 "generate-claude-md.sh missing or failed"
 fi
 
-# t6: output contains "Machine First" (verbatim content from philosophy.md)
+# t6: output contains "@-import line for spec-rules.md"
 if $GENERATE_OK; then
-    if echo "$GENERATED_OUTPUT" | grep -q 'Machine First'; then
-        ok 6 "output contains 'Machine First'"
+    if echo "$GENERATED_OUTPUT" | grep -q '@.claude/features/policy/spec-rules.md'; then
+        ok 6 "output contains '@.claude/features/policy/spec-rules.md'"
     else
-        fail_t 6 "output does not contain 'Machine First'"
+        fail_t 6 "output does not contain '@.claude/features/policy/spec-rules.md'"
     fi
 else
     fail_t 6 "generate-claude-md.sh missing or failed"
 fi
 
-# t7: output contains "# Spec Rules" (H1 heading from spec-rules.md)
+# t7: output contains "@-import line for coding-rules.md"
 if $GENERATE_OK; then
-    if echo "$GENERATED_OUTPUT" | grep -q '# Spec Rules'; then
-        ok 7 "output contains '# Spec Rules'"
+    if echo "$GENERATED_OUTPUT" | grep -q '@.claude/features/policy/coding-rules.md'; then
+        ok 7 "output contains '@.claude/features/policy/coding-rules.md'"
     else
-        fail_t 7 "output does not contain '# Spec Rules'"
+        fail_t 7 "output does not contain '@.claude/features/policy/coding-rules.md'"
     fi
 else
     fail_t 7 "generate-claude-md.sh missing or failed"
@@ -144,7 +144,7 @@ fi
 
 # t12: generate-claude-md.sh output first line matches header field from policy-header.json
 EXPECTED_HEADER="$(python3 -c "import json; print(json.load(open('$POLICY_HEADER'))['header'])" 2>/dev/null)" || true
-ACTUAL_FIRST="$(bash "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null | head -1)" || true
+ACTUAL_FIRST="$(python3 "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" 2>/dev/null | head -1)" || true
 if [ "$EXPECTED_HEADER" = "$ACTUAL_FIRST" ]; then
     ok 12 "generate-claude-md.sh first line matches policy-header.json header field"
 else

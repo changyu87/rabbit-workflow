@@ -1,13 +1,47 @@
 #!/usr/bin/env python3
 # workspace-tree.py — print annotated workspace hierarchy
-# Called by workspace-tree.sh with: python3 workspace-tree.py <repo_root> <full_mode>
-# full_mode: 0 = structural view, 1 = all files
+# Usage:
+#   workspace-tree.py            # structural view (dirs + key files only)
+#   workspace-tree.py --full     # all files (excl .swp, .git/*, .rabbit-prompt-counter)
+#
+# Legacy 2-arg form (kept for backward compat): workspace-tree.py <repo_root> <0|1>
 
-import sys
 import os
+import subprocess
+import sys
 
-repo_root = sys.argv[1]
-full_mode = sys.argv[2] == "1"
+
+def _resolve_args():
+    args = sys.argv[1:]
+    full = False
+    repo = None
+    if len(args) == 2 and args[1] in ("0", "1"):
+        # Legacy: <repo_root> <full_mode>
+        repo = args[0]
+        full = args[1] == "1"
+    else:
+        for a in args:
+            if a == "--full":
+                full = True
+            elif not a.startswith("--") and repo is None:
+                repo = a
+            else:
+                sys.stderr.write(f"workspace-tree: unknown arg '{a}'\n")
+                sys.exit(2)
+    if not repo:
+        repo = os.environ.get("RABBIT_ROOT")
+    if not repo:
+        try:
+            repo = subprocess.check_output(
+                ["git", "rev-parse", "--show-toplevel"],
+                stderr=subprocess.DEVNULL,
+            ).decode().strip()
+        except Exception:
+            repo = ""
+    return repo, full
+
+
+repo_root, full_mode = _resolve_args()
 
 ANNOTATIONS = {
     "CLAUDE.md":              "session policy anchor (@-imports policy files)",
@@ -28,8 +62,8 @@ ANNOTATIONS = {
     "rabbit-cage/":           "owns the Claude Code surface: skills, hooks, commands, scope-guard",
     "contract":               "dispatch scripts, enforcement, templates",
     "contract/":              "dispatch scripts, enforcement, templates",
-    "policy":                 "philosophy, spec-rules, coding-rules, workflow-rules",
-    "policy/":                "philosophy, spec-rules, coding-rules, workflow-rules",
+    "policy":                 "philosophy, spec-rules, coding-rules",
+    "policy/":                "philosophy, spec-rules, coding-rules",
     "tdd-state-machine":      "tdd-step.sh forward-only state machine",
     "tdd-state-machine/":     "tdd-step.sh forward-only state machine",
     "feature.json":           "feature manifest: owner, tdd_state, surface, deprecation_criterion",

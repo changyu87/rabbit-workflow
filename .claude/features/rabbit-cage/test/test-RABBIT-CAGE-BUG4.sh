@@ -18,7 +18,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-BUILD_SH="$REPO_ROOT/.claude/features/rabbit-cage/scripts/build.sh"
+BUILD_SH="$REPO_ROOT/.claude/features/rabbit-cage/scripts/build.py"
 
 FAILURES=0
 TOTAL=0
@@ -38,17 +38,16 @@ make_build_repo() {
     printf '# Philosophy\nMachine First.\n'   > "$d/.claude/features/policy/philosophy.md"
     printf '# Spec Rules\nSpec.\n'            > "$d/.claude/features/policy/spec-rules.md"
     printf '# Coding Rules\nCode.\n'          > "$d/.claude/features/policy/coding-rules.md"
-    printf '# Workflow Rules\nWorkflow.\n'    > "$d/.claude/features/policy/workflow-rules.md"
     python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
         > "$d/.claude/features/rabbit-cage/policy-header.json"
-    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-       "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" \
+       "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
        "$d/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
     python3 -c "import json; print(json.dumps({'schema_version':'1.0.0','features':{}}))" \
         > "$d/.claude/features/registry.json"
     local correct
-    correct="$(RABBIT_ROOT="$d" bash "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
+    correct="$(RABBIT_ROOT="$d" python3 "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.py" 2>/dev/null)"
     printf '%s\n' "$correct" > "$d/CLAUDE.md"
     git -C "$d" add -A
     git -C "$d" commit -q -m "init"
@@ -95,7 +94,7 @@ make_contract "$TMPROOT" '[{"name":"skills/test-skill/SKILL.md","type":"copy-fil
 echo "=== t1: destination absent → marker IS written ==="
 rm -f "$MARKER"
 rm -f "$DEST"
-bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+python3 "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
 if [ -f "$MARKER" ]; then
     ok "marker written when destination did not exist"
 else
@@ -108,10 +107,10 @@ fi
 echo "=== t2: destination identical to source → marker NOT written ==="
 # First build to create destination matching source.
 rm -f "$MARKER"
-bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+python3 "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
 # Now destination exists and equals source. Second build should be a no-op.
 rm -f "$MARKER"
-bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+python3 "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
 if [ -f "$MARKER" ]; then
     fail_t "marker WAS written on no-op build (source == destination); BUG-4 not fixed"
 else
@@ -125,7 +124,7 @@ echo "=== t3: destination differs from source → marker IS written ==="
 # Modify the source to make it differ from the existing destination.
 printf '# Test skill v2\nbody changed\n' > "$SRC"
 rm -f "$MARKER"
-bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+python3 "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
 if [ -f "$MARKER" ]; then
     ok "marker written when source content changed"
 else

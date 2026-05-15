@@ -5,31 +5,31 @@
   "updated": "2026-05-12",
   "targets": [
     {
-      "name": "hooks/refresh.sh",
+      "name": "hooks/refresh.py",
       "type": "copy-file",
-      "source": ".claude/features/rabbit-cage/hooks/refresh.sh",
-      "destination": ".claude/hooks/refresh.sh",
+      "source": ".claude/features/rabbit-cage/hooks/refresh.py",
+      "destination": ".claude/hooks/refresh.py",
       "check_on_stop": true
     },
     {
-      "name": "hooks/scope-guard.sh",
+      "name": "hooks/scope-guard.py",
       "type": "copy-file",
-      "source": ".claude/features/rabbit-cage/hooks/scope-guard.sh",
-      "destination": ".claude/hooks/scope-guard.sh",
+      "source": ".claude/features/rabbit-cage/hooks/scope-guard.py",
+      "destination": ".claude/hooks/scope-guard.py",
       "check_on_stop": true
     },
     {
-      "name": "hooks/session-init.sh",
+      "name": "hooks/session-init.py",
       "type": "copy-file",
-      "source": ".claude/features/rabbit-cage/hooks/session-init.sh",
-      "destination": ".claude/hooks/session-init.sh",
+      "source": ".claude/features/rabbit-cage/hooks/session-init.py",
+      "destination": ".claude/hooks/session-init.py",
       "check_on_stop": true
     },
     {
-      "name": "hooks/sync-check.sh",
+      "name": "hooks/sync-check.py",
       "type": "copy-file",
-      "source": ".claude/features/rabbit-cage/hooks/sync-check.sh",
-      "destination": ".claude/hooks/sync-check.sh",
+      "source": ".claude/features/rabbit-cage/hooks/sync-check.py",
+      "destination": ".claude/hooks/sync-check.py",
       "check_on_stop": true
     },
     {

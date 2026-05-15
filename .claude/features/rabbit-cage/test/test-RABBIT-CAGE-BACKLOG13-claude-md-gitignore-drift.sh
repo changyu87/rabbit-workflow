@@ -16,8 +16,8 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
-GENERATE_SCRIPT="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.py"
+GENERATE_SCRIPT="$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
 GITIGNORE="$REPO_ROOT/.gitignore"
 
 FAILURES=0
@@ -103,14 +103,13 @@ mkdir -p "$TMPROOT/.claude/features/policy"
 printf '# Philosophy\nMachine First.\n'    > "$TMPROOT/.claude/features/policy/philosophy.md"
 printf '# Spec Rules\nSpec.\n'             > "$TMPROOT/.claude/features/policy/spec-rules.md"
 printf '# Coding Rules\nCode.\n'           > "$TMPROOT/.claude/features/policy/coding-rules.md"
-printf '# Workflow Rules\nWorkflow.\n'     > "$TMPROOT/.claude/features/policy/workflow-rules.md"
 
 # Minimal policy-header.json
 python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header', 'version': '0.0.1'}))" \
     > "$TMPROOT/.claude/features/rabbit-cage/policy-header.json"
 
 # Copy generate-claude-md.sh into temp tree
-cp "$GENERATE_SCRIPT" "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+cp "$GENERATE_SCRIPT" "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
 cp "$(dirname "$GENERATE_SCRIPT")/generate-claude-md-header.py" "$TMPROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
 # Write a CLAUDE.md that intentionally differs from what generate-claude-md.sh produces
@@ -121,7 +120,7 @@ printf '# Rabbit Workflow — STALE OUTDATED CONTENT\nThis is old and differs fr
 # Run sync-check.sh with drift scenario (CLAUDE.md exists but stale)
 drift_output=""
 drift_exit=0
-drift_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" \
+drift_output="$(RABBIT_ROOT="$TMPROOT" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" \
     || drift_exit=$?
 
 # t_bl13_5: hook exits 0 (drift detection is not a fatal error)
@@ -194,12 +193,11 @@ mkdir -p "$TMPROOT2/.claude/features/policy"
 printf '# Philosophy\nMachine First.\n'    > "$TMPROOT2/.claude/features/policy/philosophy.md"
 printf '# Spec Rules\nSpec.\n'             > "$TMPROOT2/.claude/features/policy/spec-rules.md"
 printf '# Coding Rules\nCode.\n'           > "$TMPROOT2/.claude/features/policy/coding-rules.md"
-printf '# Workflow Rules\nWorkflow.\n'     > "$TMPROOT2/.claude/features/policy/workflow-rules.md"
 
 python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header', 'version': '0.0.1'}))" \
     > "$TMPROOT2/.claude/features/rabbit-cage/policy-header.json"
 
-cp "$GENERATE_SCRIPT" "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+cp "$GENERATE_SCRIPT" "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
 cp "$(dirname "$GENERATE_SCRIPT")/generate-claude-md-header.py" "$TMPROOT2/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
 
 # Confirm CLAUDE.md is absent (first-run condition)
@@ -212,7 +210,7 @@ fi
 # Run sync-check.sh with absent CLAUDE.md (first-run)
 first_run_output=""
 first_run_exit=0
-first_run_output="$(RABBIT_ROOT="$TMPROOT2" RABBIT_SYNC_EVERY=1 bash "$SYNC_CHECK" 2>/dev/null)" \
+first_run_output="$(RABBIT_ROOT="$TMPROOT2" RABBIT_SYNC_EVERY=1 python3 "$SYNC_CHECK" 2>/dev/null)" \
     || first_run_exit=$?
 
 # t_bl13_11: hook exits 0 on first-run

@@ -20,7 +20,7 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.sh"
+SCOPE_GUARD="$REPO_ROOT/.claude/features/rabbit-cage/hooks/scope-guard.py"
 FEATURE_JSON_CAGE="$REPO_ROOT/.claude/features/rabbit-cage/feature.json"
 
 FAILURES=0
@@ -83,7 +83,7 @@ set_cage_tdd_state "test-red"
 
 t1_input='{"tool_name":"Write","tool_input":{"file_path":".claude/features/rabbit-cage/somefile.txt"}}'
 t1_exit=0
-echo "$t1_input" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t1_exit=$?
+echo "$t1_input" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t1_exit=$?
 
 if [ "$t1_exit" -eq 0 ]; then
     ok "scope-guard exits 0 (ALLOW) for write to rabbit-cage/ when .rabbit-scope-active-rabbit-cage exists (no global marker)"
@@ -106,7 +106,7 @@ printf 'rabbit-cage' > "$MARKER_CAGE"
 
 t2_input='{"tool_name":"Write","tool_input":{"file_path":".claude/features/contract/foo.txt"}}'
 t2_exit=0
-echo "$t2_input" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t2_exit=$?
+echo "$t2_input" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t2_exit=$?
 
 # After per-feature support: write to contract/ must be denied (exit 2) because
 # only .rabbit-scope-active-rabbit-cage exists, not .rabbit-scope-active-contract.
@@ -149,7 +149,7 @@ printf 'tdd-state-machine' > "$MARKER_TDD"
 # t3a: write to rabbit-cage/ must be ALLOWED
 t3a_input='{"tool_name":"Write","tool_input":{"file_path":".claude/features/rabbit-cage/somefile.txt"}}'
 t3a_exit=0
-echo "$t3a_input" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t3a_exit=$?
+echo "$t3a_input" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t3a_exit=$?
 
 if [ "$t3a_exit" -eq 0 ]; then
     ok "scope-guard exits 0 (ALLOW) for write to rabbit-cage/ when both per-feature markers coexist"
@@ -167,7 +167,7 @@ fi
 # (the structural test above already covers this; the behavioural outcome may coincidentally pass).
 t3b_input='{"tool_name":"Write","tool_input":{"file_path":".claude/features/tdd-state-machine/somefile.txt"}}'
 t3b_exit=0
-echo "$t3b_input" | bash "$SCOPE_GUARD" > /dev/null 2>&1 || t3b_exit=$?
+echo "$t3b_input" | python3 "$SCOPE_GUARD" > /dev/null 2>&1 || t3b_exit=$?
 
 if [ "$t3b_exit" -eq 0 ]; then
     ok "scope-guard exits 0 (ALLOW) for write to tdd-state-machine/ when both per-feature markers coexist"

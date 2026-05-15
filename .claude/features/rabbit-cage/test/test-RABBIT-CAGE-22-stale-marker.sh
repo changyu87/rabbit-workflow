@@ -13,9 +13,9 @@
 set -u
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"
-SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.sh"
-SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.sh"
-BUILD_SH="$REPO_ROOT/.claude/features/rabbit-cage/scripts/build.sh"
+SYNC_CHECK="$REPO_ROOT/.claude/features/rabbit-cage/hooks/sync-check.py"
+SESSION_INIT="$REPO_ROOT/.claude/features/rabbit-cage/hooks/session-init.py"
+BUILD_SH="$REPO_ROOT/.claude/features/rabbit-cage/scripts/build.py"
 
 FAILURES=0
 TOTAL=0
@@ -35,17 +35,16 @@ make_build_repo() {
     printf '# Philosophy\nMachine First.\n'   > "$d/.claude/features/policy/philosophy.md"
     printf '# Spec Rules\nSpec.\n'            > "$d/.claude/features/policy/spec-rules.md"
     printf '# Coding Rules\nCode.\n'          > "$d/.claude/features/policy/coding-rules.md"
-    printf '# Workflow Rules\nWorkflow.\n'    > "$d/.claude/features/policy/workflow-rules.md"
     python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
         > "$d/.claude/features/rabbit-cage/policy-header.json"
-    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" \
-       "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.sh"
+    cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" \
+       "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.py"
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py" \
        "$d/.claude/features/rabbit-cage/scripts/generate-claude-md-header.py"
     python3 -c "import json; print(json.dumps({'schema_version':'1.0.0','features':{}}))" \
         > "$d/.claude/features/registry.json"
     local correct
-    correct="$(RABBIT_ROOT="$d" bash "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.sh" 2>/dev/null)"
+    correct="$(RABBIT_ROOT="$d" python3 "$d/.claude/features/rabbit-cage/scripts/generate-claude-md.py" 2>/dev/null)"
     printf '%s\n' "$correct" > "$d/CLAUDE.md"
     git -C "$d" add -A
     git -C "$d" commit -q -m "init"
@@ -84,7 +83,7 @@ mkdir -p "$TMPROOT/.claude/features/test-skill/skills/test-skill"
 printf '# Test skill\n' > "$TMPROOT/.claude/features/test-skill/skills/test-skill/SKILL.md"
 make_contract "$TMPROOT" '[{"name":"skills/test-skill/SKILL.md","type":"copy-file","source":".claude/features/test-skill/skills/test-skill/SKILL.md","destination":".claude/skills/test-skill/SKILL.md"}]'
 rm -f "$TMPROOT/.rabbit-skills-updated"
-bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+python3 "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
 if [ -f "$TMPROOT/.rabbit-skills-updated" ]; then
     ok "build.sh wrote .rabbit-skills-updated after copying a SKILL.md target"
 else
@@ -114,7 +113,7 @@ mkdir -p "$TMPROOT/.claude/features/rabbit-cage/commands"
 printf '# Test cmd\n' > "$TMPROOT/.claude/features/rabbit-cage/commands/test-cmd.md"
 make_contract "$TMPROOT" '[{"name":"commands/test-cmd.md","type":"copy-file","source":".claude/features/rabbit-cage/commands/test-cmd.md","destination":".claude/commands/test-cmd.md"}]'
 rm -f "$TMPROOT/.rabbit-skills-updated"
-bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+python3 "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
 if [ -f "$TMPROOT/.rabbit-skills-updated" ]; then
     fail_t "build.sh incorrectly wrote .rabbit-skills-updated for a commands target"
 else
@@ -128,7 +127,7 @@ echo "=== t4: build.sh does NOT write .rabbit-skills-updated for non-skills copy
 printf '# README\n' > "$TMPROOT/source-readme.md"
 make_contract "$TMPROOT" '[{"name":"README.md","type":"copy-file","source":"source-readme.md","destination":"README.md"}]'
 rm -f "$TMPROOT/.rabbit-skills-updated"
-bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+python3 "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
 if [ -f "$TMPROOT/.rabbit-skills-updated" ]; then
     fail_t "build.sh incorrectly wrote .rabbit-skills-updated for a non-skills target"
 else
@@ -148,7 +147,7 @@ make_contract "$TMPROOT" '[
   {"name":"skills/feat-b/SKILL.md","type":"copy-file","source":".claude/features/feat-b/skills/feat-b/SKILL.md","destination":".claude/skills/feat-b/SKILL.md"}
 ]'
 rm -f "$TMPROOT/.rabbit-skills-updated"
-bash "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
+python3 "$BUILD_SH" "$TMPROOT" >/dev/null 2>&1 || true
 if [ -f "$TMPROOT/.rabbit-skills-updated" ]; then
     _content="$(cat "$TMPROOT/.rabbit-skills-updated")"
     if printf '%s' "$_content" | grep -q 'feat-a' && printf '%s' "$_content" | grep -q 'feat-b'; then
