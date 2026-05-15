@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "summary": "Owns bug filing, tracking, and lifecycle for all rabbit features. Provides file-bug.sh, bug-status.sh, and list-bugs.sh.",
+  "summary": "Owns bug filing, tracking, and lifecycle for all rabbit features. Provides file-bug.py, bug-status.py, and list-bugs.py.",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -16,5 +16,5 @@
     ]
   },
   "deprecation_criterion": "when rabbit features are retired or a unified tracking system replaces file-based bugs",
-  "updated": "2026-05-14"
+  "updated": "2026-05-15"
 }
