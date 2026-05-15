@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 2.3.0
+version: 2.4.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -59,7 +59,32 @@ Sets or restores the auto-refresh threshold (number of prompts between policy re
 - `/rabbit-config prompt-threshold <N>` — writes `RABBIT_REFRESH_EVERY=N` to `.claude/settings.local.json`. `N` must be a positive integer. Takes effect on the next session start.
 - `/rabbit-config prompt-threshold` (no value) — removes the `RABBIT_REFRESH_EVERY` key from `.claude/settings.local.json`, restoring the default value defined in `.claude/settings.json`.
 
-**Error handling:** unknown subcommands produce a usage message listing available subcommands. An invalid value (non-positive-integer) for `prompt-threshold` produces an error and exits without modifying any file.
+### Subcommand: allowed-tools
+
+Manages entries in `permissions.allow` of `.claude/settings.json`. Operators use this to register Claude Code tool names (e.g. `Edit`, `Write`, `WebFetch`) that should always be permitted without a runtime prompt.
+
+- `/rabbit-config allowed-tools add <tool>` — adds `<tool>` to `permissions.allow` in `.claude/settings.json`. No-op if the entry is already present (idempotent). `<tool>` must be a non-empty string. Takes effect on the next session start.
+- `/rabbit-config allowed-tools remove <tool>` — removes `<tool>` from `permissions.allow`. No-op if the entry is absent.
+- `/rabbit-config allowed-tools` (no action) — lists the current entries in `permissions.allow`, one per line, in array order.
+
+Bash-rule entries (strings of the form `Bash(<command>:*)`) are managed by the `bash-allow` subcommand and are not affected by `allowed-tools`. The `allowed-tools` subcommand operates only on entries that do NOT match the `Bash(...)` pattern; `add`/`remove` reject inputs that begin with `Bash(` so the two subcommands stay in their own lanes.
+
+### Subcommand: bash-allow
+
+Manages bash-command allowlist entries (e.g. `touch`, `cat`, `echo`, `ls`, `python`) in `permissions.allow` of `.claude/settings.json`. Each entry is stored as a string of the form `Bash(<command>:*)` so Claude Code matches it against the configured command verb.
+
+- `/rabbit-config bash-allow add <command>` — adds the entry `Bash(<command>:*)` to `permissions.allow` in `.claude/settings.json`. No-op if the entry is already present (idempotent). `<command>` must be a non-empty string composed of characters that do not include `(`, `)`, `:`, or whitespace. Takes effect on the next session start.
+- `/rabbit-config bash-allow remove <command>` — removes the entry `Bash(<command>:*)` from `permissions.allow`. No-op if the entry is absent.
+- `/rabbit-config bash-allow` (no action) — lists the current bash-allow entries, one `<command>` per line, in array order.
+
+**Common rules for permission subcommands (`allowed-tools`, `bash-allow`):**
+
+- The target file is `.claude/settings.json` (not `.claude/settings.local.json`); writes to `settings.json` are unconditionally permitted by the scope-guard filename allowlist.
+- If `permissions` or `permissions.allow` is missing from `settings.json`, `add` creates it as needed. `remove` on a missing key is a no-op (exit 0).
+- After removal, if `permissions.allow` becomes empty, the key remains as an empty array (it is not deleted); if `permissions` itself becomes the only key and is `{"allow": []}`, it is left in place. The shape of `settings.json` other than the `permissions.allow` array is never modified by these subcommands.
+- Output of `add` and `remove` is a single confirmation line on stdout (e.g. `Added Bash(touch:*) to .claude/settings.json`); no output if the operation was a no-op other than `Already present` / `Not present`.
+
+**Error handling:** unknown subcommands produce a usage message listing available subcommands. An invalid value (non-positive-integer) for `prompt-threshold`, an empty `<tool>`/`<command>`, an invalid `<command>` for `bash-allow` (containing `(`, `)`, `:`, or whitespace), an unknown action for `allowed-tools` or `bash-allow` (anything other than `add`, `remove`, or no action), or a `Bash(...)`-shaped value passed to `allowed-tools add`/`remove` all produce an error and exit non-zero without modifying any file.
 
 **Replaces:** `/rabbit-set-threshold` — that command is removed; `prompt-threshold` is its direct functional replacement. The subcommand pattern makes it straightforward to add future configuration subcommands (e.g., `/rabbit-config set-something-else [value]`).
 
@@ -70,6 +95,14 @@ Sets or restores the auto-refresh threshold (number of prompts between policy re
 27. `/rabbit-config prompt-threshold <N>` writes `{"env": {"RABBIT_REFRESH_EVERY": "<N>"}}` merged into `.claude/settings.local.json`.
 28. `/rabbit-config prompt-threshold` (no argument) removes the `RABBIT_REFRESH_EVERY` key from the `env` object in `.claude/settings.local.json`; if `env` becomes empty the key is also removed.
 29. An unknown subcommand to `/rabbit-config` emits a usage message and exits non-zero without modifying any file.
+43. `/rabbit-config allowed-tools add <tool>` adds `<tool>` to the `permissions.allow` array in `.claude/settings.json`, creating the `permissions` and `permissions.allow` keys if they do not exist; the operation is idempotent (already-present entries are not duplicated).
+44. `/rabbit-config allowed-tools remove <tool>` removes `<tool>` from `permissions.allow` in `.claude/settings.json`; absence of the entry is a no-op (exit 0). The `permissions.allow` key is left as an empty array when emptied; it is not deleted.
+45. `/rabbit-config bash-allow add <command>` adds the literal string `Bash(<command>:*)` to `permissions.allow` in `.claude/settings.json`; idempotent.
+46. `/rabbit-config bash-allow remove <command>` removes the literal string `Bash(<command>:*)` from `permissions.allow`; absence is a no-op (exit 0).
+47. `/rabbit-config allowed-tools` (no action) and `/rabbit-config bash-allow` (no action) print current entries one per line to stdout and exit 0; they do not modify any file. `bash-allow` lists prints only the inner `<command>` (with `Bash(` and `:*)` stripped) and skips entries that do not match the `Bash(<command>:*)` shape.
+48. `/rabbit-config allowed-tools add <tool>` and `/rabbit-config allowed-tools remove <tool>` reject inputs whose value begins with `Bash(` and exit non-zero with an error directing the operator to use `bash-allow` instead.
+49. `/rabbit-config bash-allow add <command>` rejects `<command>` values containing any of `(`, `)`, `:`, or whitespace, and exits non-zero without modifying any file.
+50. The permission subcommands (`allowed-tools`, `bash-allow`) write to `.claude/settings.json` (which is on the scope-guard filename allowlist); they never write to `.claude/settings.local.json`.
 
 ## Out of Scope
 

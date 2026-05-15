@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.8.0
+version: 3.9.0
 template_version: 2.0.0
 ---
 
@@ -11,7 +11,7 @@ template_version: 2.0.0
   "provides": {
     "files": [".claude/commands", ".claude/hooks", ".claude/skills", ".claude/settings.json", ".claude/policy", ".claude/contract", "CLAUDE.md", "README.md", "install.sh"],
     "commands": [
-      {"path": ".claude/commands/rabbit-config.md", "subcommands": ["prompt-threshold [value]"]}
+      {"path": ".claude/commands/rabbit-config.md", "subcommands": ["prompt-threshold [value]", "allowed-tools [add|remove <tool>]", "bash-allow [add|remove <command>]"]}
     ],
     "scripts": [
       {"path": ".claude/features/rabbit-cage/scripts/new-feature.sh", "stdin": "none", "stdout": "scaffold path", "exit": "0=created 1=error 2=usage"},
