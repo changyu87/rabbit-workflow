@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# format-feature-context.py — read find-feature.sh --list-json output from stdin,
+# format-feature-context.py — read find-feature.py list-json output from stdin,
 # emit a human-readable feature context block to stdout.
 #
 # Usage:
-#   find-feature.sh --list-json | python3 format-feature-context.py
+#   python3 find-feature.py <repo-root> list-json | python3 format-feature-context.py
 #
 # Input:  JSON array of {name, path, summary, tdd_state} objects on stdin.
 # Output: formatted text block, one feature per entry, to stdout.

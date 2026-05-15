@@ -23,6 +23,7 @@ run_test("test-rule-files-content.py")
 run_test("test-imports-resolve.py")
 run_test("test-backlog003.py")
 run_test("test-policy-invariants-v1-2-0.py")
+run_test("test-policy-invariants-v1-3-0.py")
 run_test("test-POLICY-1-no-stale-imports.py")
 
 print()

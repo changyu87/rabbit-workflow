@@ -15,6 +15,6 @@
 ```
 
 Rules:
-- `features` contains only names present in `find-feature.sh --list`
+- `features` contains only names present in `find-feature.py list`
 - `rationale` is one sentence max
 - Empty `features` list is valid

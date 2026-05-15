@@ -93,6 +93,7 @@ check_file("test/test-schemas-valid-json.py")
 check_file("test/test-rabbit-triage.py")
 check_file("test/test-dispatch.py")
 check_file("test/test-build-contract.py")
+check_file("test/test-python-only-stack.py")
 
 # dispatch-spec-update artifacts
 dsu = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-update.py")

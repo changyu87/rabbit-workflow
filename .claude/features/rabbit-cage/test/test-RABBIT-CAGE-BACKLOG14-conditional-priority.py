@@ -120,7 +120,7 @@ try:
     print("=== t1: schema conformance — systemMessage always present when emitting ===")
     tmproot = make_clean_repo()
     tmproots.append(tmproot)
-    open(os.path.join(tmproot, ".rabbit-plugins-stale"), "a").close()
+    open(os.path.join(tmproot, ".rabbit-skills-updated"), "a").close()
     t1_output = run_sync(tmproot)
     has_sys_msg = "no"
     try:
@@ -149,18 +149,18 @@ try:
         fail_t("additionalContext present on plugins-stale path — must only appear on CLAUDE.md paths (Invariant 38)")
 
     # t3
-    print("=== t3: scope-guard-off suppresses plugins-stale (Invariant 37, priority 3>4) ===")
+    print("=== t3: scope-guard-off suppresses skills-updated (Invariant 37, priority 3>4) ===")
     tmproot = make_clean_repo()
     tmproots.append(tmproot)
     with open(os.path.join(tmproot, ".rabbit-scope-override"), "w") as f:
         f.write("session")
-    open(os.path.join(tmproot, ".rabbit-plugins-stale"), "a").close()
+    open(os.path.join(tmproot, ".rabbit-skills-updated"), "a").close()
     t3_output = run_sync(tmproot)
     t3_msg = extract_sys_msg(t3_output)
     t3_count = count_json_objects(t3_output)
 
     if t3_count == 1:
-        ok("exactly one JSON object emitted when scope-guard-off AND plugins-stale (Invariant 37)")
+        ok("exactly one JSON object emitted when scope-guard-off AND skills-updated (Invariant 37)")
     else:
         fail_t(f"expected 1 JSON object, got {t3_count} — violates single-JSON invariant")
 
@@ -169,23 +169,23 @@ try:
     else:
         fail_t(f"scope-guard-off alert NOT emitted — expected SCOPE GUARD message, got: {t3_msg!r}")
 
-    if any(s in t3_msg for s in ("rabbit-refresh", "reload-plugins", "Plugins updated")):
-        fail_t("plugins-stale alert leaked through — lower priority should be suppressed (Invariant 37)")
+    if any(s in t3_msg for s in ("rabbit-refresh", "reload-plugins", "Skills updated")):
+        fail_t("skills-updated alert leaked through — lower priority should be suppressed (Invariant 37)")
     else:
-        ok("plugins-stale suppressed when scope-guard-off active (Invariant 37)")
+        ok("skills-updated suppressed when scope-guard-off active (Invariant 37)")
 
     # t4
-    print("=== t4: scope-guard-bypass suppresses plugins-stale (Invariant 37) ===")
+    print("=== t4: scope-guard-bypass suppresses skills-updated (Invariant 37) ===")
     tmproot = make_clean_repo()
     tmproots.append(tmproot)
     open(os.path.join(tmproot, ".rabbit-scope-override-used"), "a").close()
-    open(os.path.join(tmproot, ".rabbit-plugins-stale"), "a").close()
+    open(os.path.join(tmproot, ".rabbit-skills-updated"), "a").close()
     t4_output = run_sync(tmproot)
     t4_msg = extract_sys_msg(t4_output)
     t4_count = count_json_objects(t4_output)
 
     if t4_count == 1:
-        ok("exactly one JSON object when scope-guard-bypass AND plugins-stale")
+        ok("exactly one JSON object when scope-guard-bypass AND skills-updated")
     else:
         fail_t(f"expected 1 JSON object, got {t4_count}")
 
@@ -195,10 +195,10 @@ try:
     else:
         fail_t(f"scope-guard-bypass alert NOT emitted — expected BYPASSED message, got: {t4_msg!r}")
 
-    if any(s in t4_msg for s in ("rabbit-refresh", "reload-plugins", "Plugins updated")):
-        fail_t("plugins-stale leaked through when scope-guard-bypass active (Invariant 37)")
+    if any(s in t4_msg for s in ("rabbit-refresh", "reload-plugins", "Skills updated")):
+        fail_t("skills-updated leaked through when scope-guard-bypass active (Invariant 37)")
     else:
-        ok("plugins-stale suppressed when scope-guard-bypass active (Invariant 37)")
+        ok("skills-updated suppressed when scope-guard-bypass active (Invariant 37)")
 finally:
     for d in tmproots:
         shutil.rmtree(d, ignore_errors=True)
@@ -224,7 +224,7 @@ if _re.search(r"Surface drift|surface-drift", spec_content, _re.IGNORECASE):
     priority_count += 1
 if _re.search(r"Scope-guard-off|scope guard off", spec_content, _re.IGNORECASE):
     priority_count += 1
-if _re.search(r"Plugins-stale|plugins stale", spec_content, _re.IGNORECASE):
+if _re.search(r"Skills-updated|skills updated|skills-updated", spec_content, _re.IGNORECASE):
     priority_count += 1
 
 if priority_count >= 4:

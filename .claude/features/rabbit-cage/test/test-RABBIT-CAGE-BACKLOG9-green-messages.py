@@ -125,13 +125,13 @@ try:
         f.write(res.stdout.rstrip("\n") + "\n")
 
     os.makedirs(os.path.join(tmp2, ".claude/features/rabbit-cage/test"), exist_ok=True)
-    fakesurf = os.path.join(tmp2, ".claude/features/rabbit-cage/test/test-generated-surface.sh")
+    fakesurf = os.path.join(tmp2, ".claude/features/rabbit-cage/test/test-generated-surface.py")
     with open(fakesurf, "w") as f:
-        f.write("#!/usr/bin/env bash\nexit 1\n")
+        f.write("#!/usr/bin/env python3\nimport sys\nsys.exit(1)\n")
     os.chmod(fakesurf, 0o755)
     fakebuild = os.path.join(tmp2, ".claude/features/rabbit-cage/scripts/build.py")
     with open(fakebuild, "w") as f:
-        f.write("#!/usr/bin/env bash\nexit 0\n")
+        f.write("#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n")
     os.chmod(fakebuild, 0o755)
 
     msg = extract_sys_msg(run_sync(tmp2))

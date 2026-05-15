@@ -25,7 +25,7 @@ will modify. Makes no assumptions about callers or use cases.
 
 1. `resolve-scope.py` emits a prompt to stdout only; it never calls Agent itself.
 2. The dispatched Agent uses the default model — no Opus override.
-3. The script uses `find-feature.sh --list-json` for feature enumeration; never reads `registry.json`.
+3. The script uses `find-feature.py list-json` for feature enumeration; never reads `registry.json`.
 4. Agent response JSON schema: `{"features": ["name1", ...], "rationale": "one sentence"}`.
 5. `resolve-scope.py` is executable.
 6. An empty `features` list `[]` is a valid response (no features touched).
