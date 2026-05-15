@@ -103,7 +103,7 @@ if [ "$_json_emitted" -eq 0 ]; then
     python3 -c "
 import json
 print(json.dumps({
-    'systemMessage': '\x1b[31m\xf0\x9f\x94\x93 \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 [rabbit] SCOPE GUARD OFF (session override active) \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 \xf0\x9f\x94\x93\x1b[0m'
+    'systemMessage': '\x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD OFF (session override active) ━━━ 🔓\x1b[0m'
 }))
 "
     _json_emitted=1

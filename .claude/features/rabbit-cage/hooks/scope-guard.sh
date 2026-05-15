@@ -169,6 +169,9 @@ extract_bash_targets() {
     cat > "$_py_strip" << 'STRIP_HEREDOCS_PY'
 import re, sys
 s = sys.stdin.read()
+# Join backslash-newline continuation lines so multi-line quoted arguments are on one line.
+# This prevents the segment loop (which reads line-by-line) from splitting inside quotes.
+s = s.replace('\\\n', ' ')
 # Remove heredoc bodies: << [-] [optional-quote] DELIM [optional-quote] [rest-of-line] \n body \n DELIM [\n]
 s = re.sub(r"<<[- ]*['\"]?([A-Za-z_]\w*)['\"]?[^\n]*\n(.*\n)*?\1\n?", ' ', s, flags=re.DOTALL)
 print(s, end='')
@@ -192,8 +195,8 @@ import re, sys
 s = sys.stdin.read()
 # Remove single-quoted regions
 s = re.sub(r\"'[^']*'\", ' ', s)
-# Remove double-quoted regions
-s = re.sub(r'\"[^\"]*\"', ' ', s)
+# Remove double-quoted regions (re.DOTALL so multi-line quoted strings are fully stripped)
+s = re.sub(r'\"[^\"]*\"', ' ', s, flags=re.DOTALL)
 print(s, end='')
 " 2>/dev/null)" || stripped="$seg"
 
