@@ -6,7 +6,7 @@
 # prepends to the prompt field of the Agent tool call. Per hard-rules R6.
 #
 # Usage:
-#   policy-block.sh                                # philosophy.md + spec-rules.md + coding-rules.md + workflow-rules.md
+#   policy-block.sh                                # philosophy.md + spec-rules.md + coding-rules.md
 #   policy-block.sh --include <path>               # plus the named file
 #   policy-block.sh --include a --include b ...    # multiple includes compose
 #
@@ -14,7 +14,6 @@
 #   <repo>/.claude/features/policy/philosophy.md
 #   <repo>/.claude/features/policy/spec-rules.md
 #   <repo>/.claude/features/policy/coding-rules.md
-#   <repo>/.claude/features/policy/workflow-rules.md
 # where <repo> is computed from this script's location.
 #
 # Exit:
@@ -30,7 +29,6 @@ POLICY_DIR="$REPO_ROOT/.claude/features/policy"
 PHIL="$POLICY_DIR/philosophy.md"
 SPEC_RULES="$POLICY_DIR/spec-rules.md"
 CODING_RULES="$POLICY_DIR/coding-rules.md"
-WORKFLOW_RULES="$POLICY_DIR/workflow-rules.md"
 
 INCLUDES=()
 while [ $# -gt 0 ]; do
@@ -59,7 +57,7 @@ for p in "${INCLUDES[@]}"; do
 done
 
 # Sanity: the canonical files must exist.
-for f in "$PHIL" "$SPEC_RULES" "$CODING_RULES" "$WORKFLOW_RULES"; do
+for f in "$PHIL" "$SPEC_RULES" "$CODING_RULES"; do
   if [ ! -f "$f" ]; then
     echo "ERROR: missing canonical policy file: $f" >&2
     exit 1
@@ -96,7 +94,6 @@ emit_section() {
 emit_section "philosophy.md" "$PHIL"
 emit_section "spec-rules.md" "$SPEC_RULES"
 emit_section "coding-rules.md" "$CODING_RULES"
-emit_section "workflow-rules.md" "$WORKFLOW_RULES"
 
 for p in "${INCLUDES[@]}"; do
   emit_section "$(basename "$p")" "$p"

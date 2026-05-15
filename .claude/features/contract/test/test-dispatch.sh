@@ -45,7 +45,7 @@ chmod +x "$FAKE_SCRIPTS/policy-block.sh" "$FAKE_SCRIPTS/dispatch-feature-edit.sh
 # policy-block.sh reads policy files from REPO_ROOT/.claude/features/policy/
 # REPO_ROOT = FAKE_REPO (set via RABBIT_ROOT env var)
 REAL_POLICY_DIR="$REPO_ROOT/.claude/features/policy"
-for f in philosophy.md spec-rules.md coding-rules.md workflow-rules.md; do
+for f in philosophy.md spec-rules.md coding-rules.md; do
   [ -f "$REAL_POLICY_DIR/$f" ] && cp "$REAL_POLICY_DIR/$f" "$FAKE_POLICY_DIR/"
 done
 
