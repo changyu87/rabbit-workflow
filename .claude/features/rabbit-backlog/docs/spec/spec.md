@@ -161,7 +161,7 @@ time via `file-backlog-item.py`.
 - Bug filing (`docs/bugs/`) — that remains within each feature's own scope
   (managed by `file-bug.py` in rabbit-cage).
 - Feature scaffolding — owned by rabbit-cage.
-- TDD state machine — owned by `tdd-state-machine`.
+- TDD state machine — owned by `tdd-subagent`.
 - Backlog storage path convention — owned by `workspace-map.py` in contract.
 
 ## Tests

@@ -9,8 +9,8 @@ import tempfile
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], cwd=SCRIPT_DIR).decode().strip()
-TDD_STEP = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/scripts/tdd-step.py')
-TDD_CTX = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/scripts/tdd-context.py')
+TDD_STEP = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/scripts/tdd-step.py')
+TDD_CTX = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/scripts/tdd-context.py')
 
 PASS = 0
 FAIL = 0

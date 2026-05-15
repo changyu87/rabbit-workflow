@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Test: surface.skills in tdd-state-machine/feature.json must be []
+# Test: surface.skills in tdd-subagent/feature.json must be []
 # Invariant 9: skills are managed via build-contract.json copy-file entries;
 # the surface.skills field is retired and must be an empty array.
 import json
@@ -8,7 +8,7 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../../../..'))
-FEATURE_JSON = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/feature.json')
+FEATURE_JSON = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/feature.json')
 
 PASS = 0
 FAIL = 0
@@ -48,7 +48,7 @@ def t2():
         ko(f"t2: surface.skills is not [] — got: {skills} (must be empty; skills managed via build-contract.json)")
 
 
-print("running surface.skills retirement tests (tdd-state-machine)")
+print("running surface.skills retirement tests (tdd-subagent)")
 t1(); t2()
 print()
 print(f"summary: {PASS} passed, {FAIL} failed")

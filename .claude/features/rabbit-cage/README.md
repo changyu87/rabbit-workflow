@@ -74,7 +74,7 @@ BUG_ROOT=projA/bugs \
         --severity high --description "..." --related-feature auth-redirect
 
 # Transition TDD state — same script for any feature dir
-python3 .claude/features/tdd-state-machine/scripts/tdd-step.py \
+python3 .claude/features/tdd-subagent/scripts/tdd-step.py \
     transition projA/features/auth-redirect test-red
 
 # Dispatch the breeder onto a scope (sketched — typically the main session

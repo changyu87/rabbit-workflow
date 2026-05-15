@@ -31,7 +31,7 @@ def ko(msg):
 
 
 def setup_mirror(mirror_base, feat_name, feat_state):
-    mirror_tdd_scripts = os.path.join(mirror_base, '.claude/features/tdd-state-machine/scripts')
+    mirror_tdd_scripts = os.path.join(mirror_base, '.claude/features/tdd-subagent/scripts')
     mirror_contract_scripts = os.path.join(mirror_base, '.claude/features/contract/scripts')
     mirror_features = os.path.join(mirror_base, '.claude/features')
     mirror_feat = os.path.join(mirror_features, feat_name)
@@ -106,7 +106,7 @@ def ab1():
     with open(os.path.join(TMPROOT, 'ab1.out'), 'w') as out, \
          open(os.path.join(TMPROOT, 'ab1.err'), 'w') as err:
         result = subprocess.run(
-            ['python3', os.path.join(mirror_base, '.claude/features/tdd-state-machine/scripts/tdd-step.py'),
+            ['python3', os.path.join(mirror_base, '.claude/features/tdd-subagent/scripts/tdd-step.py'),
              'transition', feat_dir, 'test-green'],
             stdout=out, stderr=err,
             env={**os.environ, 'RABBIT_ROOT': mirror_base}
@@ -132,7 +132,7 @@ def ab2():
     with open(os.path.join(TMPROOT, 'ab2.out'), 'w') as out, \
          open(os.path.join(TMPROOT, 'ab2.err'), 'w') as err:
         result = subprocess.run(
-            ['python3', os.path.join(mirror_base, '.claude/features/tdd-state-machine/scripts/tdd-step.py'),
+            ['python3', os.path.join(mirror_base, '.claude/features/tdd-subagent/scripts/tdd-step.py'),
              'transition', feat_dir, 'test-green'],
             stdout=out, stderr=err,
             env={**os.environ, 'RABBIT_ROOT': mirror_base}
@@ -158,7 +158,7 @@ def ab3():
     with open(os.path.join(TMPROOT, 'ab3.out'), 'w') as out, \
          open(os.path.join(TMPROOT, 'ab3.err'), 'w') as err:
         result = subprocess.run(
-            ['python3', os.path.join(mirror_base, '.claude/features/tdd-state-machine/scripts/tdd-step.py'),
+            ['python3', os.path.join(mirror_base, '.claude/features/tdd-subagent/scripts/tdd-step.py'),
              'transition', feat_dir, 'test-green'],
             stdout=out, stderr=err,
             env={**os.environ, 'RABBIT_ROOT': mirror_base}
@@ -182,7 +182,7 @@ def ab4():
     with open(os.path.join(TMPROOT, 'ab4.out'), 'w') as out, \
          open(os.path.join(TMPROOT, 'ab4.err'), 'w') as err:
         result = subprocess.run(
-            ['python3', os.path.join(mirror_base, '.claude/features/tdd-state-machine/scripts/tdd-step.py'),
+            ['python3', os.path.join(mirror_base, '.claude/features/tdd-subagent/scripts/tdd-step.py'),
              'transition', feat_dir, 'test-green'],
             stdout=out, stderr=err,
             env={**os.environ, 'RABBIT_ROOT': mirror_base}
@@ -210,7 +210,7 @@ def ab5():
     with open(os.path.join(TMPROOT, 'ab5.out'), 'w') as out, \
          open(os.path.join(TMPROOT, 'ab5.err'), 'w') as err:
         result = subprocess.run(
-            ['python3', os.path.join(mirror_base, '.claude/features/tdd-state-machine/scripts/tdd-step.py'),
+            ['python3', os.path.join(mirror_base, '.claude/features/tdd-subagent/scripts/tdd-step.py'),
              'transition', feat_dir, 'test-green', '--force'],
             stdout=out, stderr=err,
             env={**os.environ, 'RABBIT_ROOT': mirror_base}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Tests for rabbit-feature-touch skill ownership migration from rabbit-cage to tdd-state-machine.
+# Tests for rabbit-feature-touch skill ownership migration from rabbit-cage to tdd-subagent.
 import json
 import os
 import subprocess
@@ -25,27 +25,27 @@ def ko(msg):
     FAIL += 1
 
 
-# t1: tdd-state-machine/skills/rabbit-feature-touch/ directory exists
+# t1: tdd-subagent/skills/rabbit-feature-touch/ directory exists
 def t1():
-    skill_dir = os.path.join(FEATURES_DIR, 'tdd-state-machine/skills/rabbit-feature-touch')
+    skill_dir = os.path.join(FEATURES_DIR, 'tdd-subagent/skills/rabbit-feature-touch')
     if os.path.isdir(skill_dir):
         ok(f"t1: {skill_dir} exists")
     else:
         ko(f"t1: {skill_dir} does not exist")
 
 
-# t2: tdd-state-machine/skills/rabbit-feature-touch/SKILL.md exists
+# t2: tdd-subagent/skills/rabbit-feature-touch/SKILL.md exists
 def t2():
-    skill_md = os.path.join(FEATURES_DIR, 'tdd-state-machine/skills/rabbit-feature-touch/SKILL.md')
+    skill_md = os.path.join(FEATURES_DIR, 'tdd-subagent/skills/rabbit-feature-touch/SKILL.md')
     if os.path.isfile(skill_md):
         ok(f"t2: {skill_md} exists")
     else:
         ko(f"t2: {skill_md} does not exist")
 
 
-# t3: tdd-state-machine/feature.json surface.skills is [] (retired)
+# t3: tdd-subagent/feature.json surface.skills is [] (retired)
 def t3():
-    feature_json = os.path.join(FEATURES_DIR, 'tdd-state-machine/feature.json')
+    feature_json = os.path.join(FEATURES_DIR, 'tdd-subagent/feature.json')
     if not os.path.isfile(feature_json):
         ko(f"t3: {feature_json} not found")
         return
@@ -53,9 +53,9 @@ def t3():
         data = json.load(f)
     skills = data.get('surface', {}).get('skills', [])
     if skills == []:
-        ok("t3: tdd-state-machine/feature.json surface.skills is [] (retired)")
+        ok("t3: tdd-subagent/feature.json surface.skills is [] (retired)")
     else:
-        ko(f"t3: tdd-state-machine/feature.json surface.skills is not [] — got: {skills} (must be empty per invariant 9)")
+        ko(f"t3: tdd-subagent/feature.json surface.skills is not [] — got: {skills} (must be empty per invariant 9)")
 
 
 # t4: rabbit-cage/feature.json surface.skills does NOT include "rabbit-feature-touch"
@@ -74,30 +74,30 @@ def t4():
 
 
 # t5: if .claude/skills/rabbit-feature-touch/SKILL.md exists, its content matches
-#     tdd-state-machine/skills/rabbit-feature-touch/SKILL.md
+#     tdd-subagent/skills/rabbit-feature-touch/SKILL.md
 def t5():
     deployed = os.path.join(REPO_ROOT, '.claude/skills/rabbit-feature-touch/SKILL.md')
-    source = os.path.join(FEATURES_DIR, 'tdd-state-machine/skills/rabbit-feature-touch/SKILL.md')
+    source = os.path.join(FEATURES_DIR, 'tdd-subagent/skills/rabbit-feature-touch/SKILL.md')
 
     if not os.path.isfile(deployed):
         ok('t5: .claude/skills/rabbit-feature-touch/SKILL.md absent — nothing to compare (skip)')
         return
     if not os.path.isfile(source):
-        ko(f"t5: source {source} missing; cannot verify deployed SKILL.md was sourced from tdd-state-machine")
+        ko(f"t5: source {source} missing; cannot verify deployed SKILL.md was sourced from tdd-subagent")
         return
     with open(source) as f:
         src_content = f.read()
     with open(deployed) as f:
         dep_content = f.read()
     if src_content == dep_content:
-        ok('t5: deployed SKILL.md matches tdd-state-machine source')
+        ok('t5: deployed SKILL.md matches tdd-subagent source')
     else:
-        ko('t5: deployed SKILL.md differs from tdd-state-machine source (content mismatch)')
+        ko('t5: deployed SKILL.md differs from tdd-subagent source (content mismatch)')
 
 
-# t6: tdd-state-machine SKILL.md does NOT contain "## When to Use" section
+# t6: tdd-subagent SKILL.md does NOT contain "## When to Use" section
 def t6():
-    skill_md = os.path.join(FEATURES_DIR, 'tdd-state-machine/skills/rabbit-feature-touch/SKILL.md')
+    skill_md = os.path.join(FEATURES_DIR, 'tdd-subagent/skills/rabbit-feature-touch/SKILL.md')
     if not os.path.isfile(skill_md):
         ko(f"t6: {skill_md} not found")
         return

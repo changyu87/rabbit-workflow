@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Tests for dispatch-feature-tdd.py --linked-item / --item-type parameters.
+# Tests for dispatch-tdd-subagent.py --linked-item / --item-type parameters.
 import json
 import os
 import shutil
@@ -10,7 +10,7 @@ import tempfile
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 SCRIPTS_DIR = os.path.join(FEATURE_DIR, 'scripts')
-DISPATCH_SH = os.path.join(SCRIPTS_DIR, 'dispatch-feature-tdd.py')
+DISPATCH_SH = os.path.join(SCRIPTS_DIR, 'dispatch-tdd-subagent.py')
 TMPROOT = tempfile.mkdtemp()
 
 FIND_FEATURE_PY = os.path.join(
@@ -35,25 +35,25 @@ def ko(msg):
 
 
 def make_rabbit_root(root):
-    os.makedirs(os.path.join(root, '.claude/features/tdd-state-machine/docs/spec'), exist_ok=True)
+    os.makedirs(os.path.join(root, '.claude/features/tdd-subagent/docs/spec'), exist_ok=True)
     os.makedirs(os.path.join(root, '.claude/features/contract/scripts'), exist_ok=True)
 
     shutil.copy(FIND_FEATURE_PY, os.path.join(root, '.claude/features/contract/scripts/find-feature.py'))
     os.chmod(os.path.join(root, '.claude/features/contract/scripts/find-feature.py'), 0o755)
 
     feature_json = {
-        "name": "tdd-state-machine",
+        "name": "tdd-subagent",
         "version": "1.0.0",
         "owner": "test",
         "tdd_state": "test-green",
         "summary": "fixture feature",
     }
-    with open(os.path.join(root, '.claude/features/tdd-state-machine/feature.json'), 'w') as f:
+    with open(os.path.join(root, '.claude/features/tdd-subagent/feature.json'), 'w') as f:
         json.dump(feature_json, f)
 
-    with open(os.path.join(root, '.claude/features/tdd-state-machine/docs/spec/spec.md'), 'w') as f:
+    with open(os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md'), 'w') as f:
         f.write('# Spec\nMinimal spec content.')
-    with open(os.path.join(root, '.claude/features/tdd-state-machine/docs/spec/contract.md'), 'w') as f:
+    with open(os.path.join(root, '.claude/features/tdd-subagent/docs/spec/contract.md'), 'w') as f:
         f.write('# Contract\nMinimal contract content.')
 
 
@@ -62,7 +62,7 @@ def t1():
     root = os.path.join(TMPROOT, 't1_root')
     make_rabbit_root(root)
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-state-machine', 'add feature',
+        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
          '--linked-item', '/some/bug/dir', '--item-type', 'bug'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -78,7 +78,7 @@ def t2():
     root = os.path.join(TMPROOT, 't2_root')
     make_rabbit_root(root)
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-state-machine', 'add feature',
+        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
          '--linked-item', '/some/backlog/item', '--item-type', 'backlog'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -94,7 +94,7 @@ def t3():
     root = os.path.join(TMPROOT, 't3_root')
     make_rabbit_root(root)
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-state-machine', 'add feature',
+        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
          '--linked-item', '/bugs/my-bug', '--item-type', 'bug'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -110,7 +110,7 @@ def t4():
     root = os.path.join(TMPROOT, 't4_root')
     make_rabbit_root(root)
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-state-machine', 'add feature',
+        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
          '--linked-item', '/bugs/my-bug', '--item-type', 'bug'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -126,7 +126,7 @@ def t5():
     root = os.path.join(TMPROOT, 't5_root')
     make_rabbit_root(root)
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-state-machine', 'add feature',
+        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
          '--linked-item', '/bugs/my-bug', '--item-type', 'bug'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -142,7 +142,7 @@ def t6():
     root = os.path.join(TMPROOT, 't6_root')
     make_rabbit_root(root)
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-state-machine', 'add feature',
+        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
          '--linked-item', '/backlogs/my-item', '--item-type', 'backlog'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -158,7 +158,7 @@ def t7():
     root = os.path.join(TMPROOT, 't7_root')
     make_rabbit_root(root)
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-state-machine', 'add feature',
+        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
          '--linked-item', '/backlogs/my-item', '--item-type', 'backlog'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -174,7 +174,7 @@ def t8():
     root = os.path.join(TMPROOT, 't8_root')
     make_rabbit_root(root)
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-state-machine', 'add feature',
+        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
          '--linked-item', '/backlogs/my-item', '--item-type', 'backlog'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
@@ -190,7 +190,7 @@ def t9():
     root = os.path.join(TMPROOT, 't9_root')
     make_rabbit_root(root)
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-state-machine', 'add feature'],
+        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
     )
@@ -205,7 +205,7 @@ def t10():
     root = os.path.join(TMPROOT, 't10_root')
     make_rabbit_root(root)
     result = subprocess.run(
-        ['python3', DISPATCH_SH, 'tdd-state-machine', 'add feature',
+        ['python3', DISPATCH_SH, 'tdd-subagent', 'add feature',
          '--linked-item', '/bugs/my-bug', '--item-type', 'bug'],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}

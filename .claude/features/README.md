@@ -37,7 +37,7 @@ values, in order:
 | `merged`     | PR merged into main.                                        |
 | `deprecated` | Superseded; consult `deprecation.successor`.                |
 
-States advance forward only. Skipping is a hard ban (see `tdd-state-machine`).
+States advance forward only. Skipping is a hard ban (see `tdd-subagent`).
 
 ## Ownership and deprecation
 

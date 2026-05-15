@@ -53,7 +53,7 @@ def pt1():
 # pt2: test-green hook NOT called for other transitions (e.g., spec -> spec-update).
 def pt2():
     mirror_base = os.path.join(TMPROOT, 'mirror2')
-    mirror_tdd_scripts = os.path.join(mirror_base, '.claude/features/tdd-state-machine/scripts')
+    mirror_tdd_scripts = os.path.join(mirror_base, '.claude/features/tdd-subagent/scripts')
     mirror_contract_scripts = os.path.join(mirror_base, '.claude/features/contract/scripts')
     mirror_features = os.path.join(mirror_base, '.claude/features')
     mirror_feat = os.path.join(mirror_features, 'my-feat')
@@ -91,7 +91,7 @@ def pt2():
 # pt3: --force path to test-green succeeds and does not call rebuild-registry.sh.
 def pt3():
     mirror_base = os.path.join(TMPROOT, 'mirror3')
-    mirror_tdd_scripts = os.path.join(mirror_base, '.claude/features/tdd-state-machine/scripts')
+    mirror_tdd_scripts = os.path.join(mirror_base, '.claude/features/tdd-subagent/scripts')
     mirror_contract_scripts = os.path.join(mirror_base, '.claude/features/contract/scripts')
     mirror_features = os.path.join(mirror_base, '.claude/features')
     mirror_feat = os.path.join(mirror_features, 'my-feat')
