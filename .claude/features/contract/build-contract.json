@@ -61,20 +61,6 @@
       "check_on_stop": true
     },
     {
-      "name": "skills/rabbit-backlog/SKILL.md",
-      "type": "copy-file",
-      "source": ".claude/features/rabbit-backlog/skills/rabbit-backlog/SKILL.md",
-      "destination": ".claude/skills/rabbit-backlog/SKILL.md",
-      "check_on_stop": true
-    },
-    {
-      "name": "skills/rabbit-bug/SKILL.md",
-      "type": "copy-file",
-      "source": ".claude/features/rabbit-bug/skills/rabbit-bug/SKILL.md",
-      "destination": ".claude/skills/rabbit-bug/SKILL.md",
-      "check_on_stop": true
-    },
-    {
       "name": "skills/rabbit-feature-touch/SKILL.md",
       "type": "copy-file",
       "source": ".claude/features/tdd-state-machine/skills/rabbit-feature-touch/SKILL.md",
@@ -93,6 +79,13 @@
       "type": "copy-file",
       "source": ".claude/features/rabbit-feature-scope/skills/rabbit-feature-scope/SKILL.md",
       "destination": ".claude/skills/rabbit-feature-scope/SKILL.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "skills/rabbit-file/SKILL.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-file/skills/rabbit-file/SKILL.md",
+      "destination": ".claude/skills/rabbit-file/SKILL.md",
       "check_on_stop": true
     },
     {
