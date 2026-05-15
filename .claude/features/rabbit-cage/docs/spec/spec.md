@@ -225,20 +225,28 @@ If the current branch is already a non-protected branch (anything other than `ma
     eight digits, a hyphen, and six digits (`session/YYYYMMDD-HHMMSS`).
 24. On every Stop event, after the existing drift checks, `sync-check.sh`
     detects plugin updates via a stale-marker file:
-    (a) `build.sh` writes `.rabbit-plugins-stale` at the repo root whenever it
-    copies any target whose destination is under `.claude/skills/`,
-    `.claude/commands/`, or `.claude/agents/`.
-    (b) `sync-check.sh` checks if `.rabbit-plugins-stale` exists at the repo root.
+    (a) `build.sh` writes `.rabbit-skills-updated` at the repo root ONLY when
+    it copies a `SKILL.md` target (destination matches
+    `.claude/skills/<name>/SKILL.md`) whose content actually changed: the
+    sha256 of the source differs from the sha256 of the destination, or the
+    destination does not exist. A no-op copy where source and destination
+    sha256 are identical does NOT write the marker (and the underlying file
+    copy may also be skipped, since `shutil.copy2` would be a byte-for-byte
+    no-op anyway). Targets whose destination is NOT under
+    `.claude/skills/<name>/SKILL.md` never trigger the marker. The marker
+    file's content is the newline-separated list of skill names whose
+    `SKILL.md` actually changed during the build.
+    (b) `sync-check.sh` checks if `.rabbit-skills-updated` exists at the repo root.
     If it does: emit a green `[rabbit]` `systemMessage` instructing the user to
     run `/rabbit-refresh` to reload skills/commands into Claude. Exact message:
     `[rabbit] Plugins updated — run /rabbit-refresh to reload skills/commands into Claude.`
-    If `.rabbit-plugins-stale` is absent: silent (no output).
+    If `.rabbit-skills-updated` is absent: silent (no output).
     No git diff is performed; the marker file IS the signal.
-    (c) `session-init.sh` removes `.rabbit-plugins-stale` at session start
+    (c) `session-init.sh` removes `.rabbit-skills-updated` at session start
     (plugins are freshly loaded on startup/resume/clear/compact).
-    (d) The `/rabbit-refresh` command clears `.rabbit-plugins-stale` so the
+    (d) The `/rabbit-refresh` command clears `.rabbit-skills-updated` so the
     alert is not re-raised after the user has reloaded.
-    (e) `.rabbit-plugins-stale` is gitignored.
+    (e) `.rabbit-skills-updated` is gitignored.
     This check runs only when all previous checks (CLAUDE.md drift, surface
     drift, override alerts) did NOT emit JSON. The single-JSON-per-invocation
     invariant is preserved: at most one JSON object is emitted per
@@ -328,7 +336,7 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
     1. CLAUDE.md drift or first-run (always exits immediately after emitting)
     2. Surface drift (copy-file targets out of sync with sources)
     3. Scope-guard-off (session override active or one-time override consumed)
-    4. Plugins-stale (`.rabbit-plugins-stale` marker present)
+    4. Plugins-stale (`.rabbit-skills-updated` marker present)
     Conditions at the same priority level do not coexist in the current implementation;
     each has a distinct marker or detection path.
 
