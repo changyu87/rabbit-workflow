@@ -78,9 +78,10 @@ def t4():
 def t5():
     root = os.path.join(TMPROOT, 't5_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
         ['python3', os.path.join(SCRIPTS_DIR, 'dispatch-tdd-subagent.py'),
-         'tdd-subagent', 'add color'],
+         '--scope', 'tdd-subagent', '--spec', spec],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
     )
@@ -94,9 +95,10 @@ def t5():
 def t6():
     root = os.path.join(TMPROOT, 't6_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
         ['python3', os.path.join(SCRIPTS_DIR, 'dispatch-tdd-subagent.py'),
-         'tdd-subagent', 'add color'],
+         '--scope', 'tdd-subagent', '--spec', spec],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
     )
@@ -106,29 +108,31 @@ def t6():
         ko("t6: 'SCOPE' not found in output")
 
 
-# t7: dispatch-tdd-subagent.py stdout contains "spec-update"
+# t7: dispatch-tdd-subagent.py stdout contains "SPEC-READ" (9-step step name)
 def t7():
     root = os.path.join(TMPROOT, 't7_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
         ['python3', os.path.join(SCRIPTS_DIR, 'dispatch-tdd-subagent.py'),
-         'tdd-subagent', 'add color'],
+         '--scope', 'tdd-subagent', '--spec', spec],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
     )
-    if 'spec-update' in result.stdout:
-        ok("t7: dispatch-tdd-subagent.sh output contains 'spec-update'")
+    if 'SPEC-READ' in result.stdout:
+        ok("t7: dispatch-tdd-subagent.sh output contains 'SPEC-READ'")
     else:
-        ko("t7: 'spec-update' not found in output")
+        ko("t7: 'SPEC-READ' not found in output")
 
 
 # t8: dispatch-tdd-subagent.py stdout contains ".rabbit-scope-active-"
 def t8():
     root = os.path.join(TMPROOT, 't8_root')
     make_rabbit_root(root)
+    spec = os.path.join(root, '.claude/features/tdd-subagent/docs/spec/spec.md')
     result = subprocess.run(
         ['python3', os.path.join(SCRIPTS_DIR, 'dispatch-tdd-subagent.py'),
-         'tdd-subagent', 'add color'],
+         '--scope', 'tdd-subagent', '--spec', spec],
         capture_output=True, text=True,
         env={**os.environ, 'RABBIT_ROOT': root}
     )
