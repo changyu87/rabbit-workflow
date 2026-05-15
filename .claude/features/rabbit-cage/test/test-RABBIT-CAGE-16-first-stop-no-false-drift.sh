@@ -55,7 +55,6 @@ mkdir -p "$TMPROOT/.claude/features/policy"
 printf '# Philosophy\nMachine First.\n'    > "$TMPROOT/.claude/features/policy/philosophy.md"
 printf '# Spec Rules\nSpec.\n'             > "$TMPROOT/.claude/features/policy/spec-rules.md"
 printf '# Coding Rules\nCode.\n'           > "$TMPROOT/.claude/features/policy/coding-rules.md"
-printf '# Workflow Rules\nWorkflow.\n'     > "$TMPROOT/.claude/features/policy/workflow-rules.md"
 
 # Minimal policy-header.json so generate-claude-md.sh can read the header line
 python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \

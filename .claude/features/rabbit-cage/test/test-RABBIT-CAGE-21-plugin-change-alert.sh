@@ -47,7 +47,6 @@ make_clean_repo() {
     printf '# Philosophy\nMachine First.\n'   > "$d/.claude/features/policy/philosophy.md"
     printf '# Spec Rules\nSpec.\n'            > "$d/.claude/features/policy/spec-rules.md"
     printf '# Coding Rules\nCode.\n'          > "$d/.claude/features/policy/coding-rules.md"
-    printf '# Workflow Rules\nWorkflow.\n'    > "$d/.claude/features/policy/workflow-rules.md"
     python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header'}))" \
         > "$d/.claude/features/rabbit-cage/policy-header.json"
     cp "$REPO_ROOT/.claude/features/rabbit-cage/scripts/generate-claude-md.py" \

@@ -103,7 +103,6 @@ mkdir -p "$TMPROOT/.claude/features/policy"
 printf '# Philosophy\nMachine First.\n'    > "$TMPROOT/.claude/features/policy/philosophy.md"
 printf '# Spec Rules\nSpec.\n'             > "$TMPROOT/.claude/features/policy/spec-rules.md"
 printf '# Coding Rules\nCode.\n'           > "$TMPROOT/.claude/features/policy/coding-rules.md"
-printf '# Workflow Rules\nWorkflow.\n'     > "$TMPROOT/.claude/features/policy/workflow-rules.md"
 
 # Minimal policy-header.json
 python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header', 'version': '0.0.1'}))" \
@@ -194,7 +193,6 @@ mkdir -p "$TMPROOT2/.claude/features/policy"
 printf '# Philosophy\nMachine First.\n'    > "$TMPROOT2/.claude/features/policy/philosophy.md"
 printf '# Spec Rules\nSpec.\n'             > "$TMPROOT2/.claude/features/policy/spec-rules.md"
 printf '# Coding Rules\nCode.\n'           > "$TMPROOT2/.claude/features/policy/coding-rules.md"
-printf '# Workflow Rules\nWorkflow.\n'     > "$TMPROOT2/.claude/features/policy/workflow-rules.md"
 
 python3 -c "import json; print(json.dumps({'header': '# Rabbit Workflow — test header', 'version': '0.0.1'}))" \
     > "$TMPROOT2/.claude/features/rabbit-cage/policy-header.json"
