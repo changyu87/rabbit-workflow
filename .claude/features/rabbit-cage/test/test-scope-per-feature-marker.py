@@ -57,7 +57,7 @@ print()
 
 GLOBAL_MARKER = os.path.join(REPO_ROOT, ".rabbit-scope-active")
 MARKER_CAGE = os.path.join(REPO_ROOT, ".rabbit-scope-active-rabbit-cage")
-MARKER_TDD = os.path.join(REPO_ROOT, ".rabbit-scope-active-tdd-state-machine")
+MARKER_TDD = os.path.join(REPO_ROOT, ".rabbit-scope-active-tdd-subagent")
 
 global_existed = os.path.isfile(GLOBAL_MARKER)
 global_backup = read(GLOBAL_MARKER) if global_existed else ""
@@ -121,7 +121,7 @@ if os.path.isfile(GLOBAL_MARKER):
 with open(MARKER_CAGE, "w") as f:
     f.write("rabbit-cage")
 with open(MARKER_TDD, "w") as f:
-    f.write("tdd-state-machine")
+    f.write("tdd-subagent")
 
 t3a_input = '{"tool_name":"Write","tool_input":{"file_path":".claude/features/rabbit-cage/somefile.txt"}}'
 t3a_exit = run_scope_guard(t3a_input)
@@ -130,12 +130,12 @@ if t3a_exit == 0:
 else:
     fail_t(f"scope-guard exited {t3a_exit} (expected 0/ALLOW) for rabbit-cage/ with both per-feature markers — rabbit-cage marker not recognized")
 
-t3b_input = '{"tool_name":"Write","tool_input":{"file_path":".claude/features/tdd-state-machine/somefile.txt"}}'
+t3b_input = '{"tool_name":"Write","tool_input":{"file_path":".claude/features/tdd-subagent/somefile.txt"}}'
 t3b_exit = run_scope_guard(t3b_input)
 if t3b_exit == 0:
-    ok("scope-guard exits 0 (ALLOW) for write to tdd-state-machine/ when both per-feature markers coexist")
+    ok("scope-guard exits 0 (ALLOW) for write to tdd-subagent/ when both per-feature markers coexist")
 else:
-    fail_t(f"scope-guard exited {t3b_exit} (expected 0/ALLOW) for tdd-state-machine/ with both per-feature markers")
+    fail_t(f"scope-guard exited {t3b_exit} (expected 0/ALLOW) for tdd-subagent/ with both per-feature markers")
 
 if os.path.isfile(MARKER_CAGE):
     os.remove(MARKER_CAGE)

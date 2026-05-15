@@ -12,11 +12,11 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], cwd=SCRIPT_DIR).decode().strip()
 
-DRIFT_CHECK = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/scripts/tdd-drift-check.py')
-SPEC_MD = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/docs/spec/spec.md')
-TEST_DRIFT = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/test/test-drift-check.py')
-TEST_TDD_STEP = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/test/test-tdd-step.py')
-TEST_CONTEXT = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/test/test-context.py')
+DRIFT_CHECK = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/scripts/tdd-drift-check.py')
+SPEC_MD = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/docs/spec/spec.md')
+TEST_DRIFT = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/test/test-drift-check.py')
+TEST_TDD_STEP = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/test/test-tdd-step.py')
+TEST_CONTEXT = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/test/test-context.py')
 
 PASS = 0
 FAIL = 0

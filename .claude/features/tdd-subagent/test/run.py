@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# End-to-end runner for tdd-state-machine tests.
+# End-to-end runner for tdd-subagent tests.
 import os
 import subprocess
 import sys

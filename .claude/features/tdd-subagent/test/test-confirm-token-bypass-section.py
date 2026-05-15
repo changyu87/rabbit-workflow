@@ -5,7 +5,7 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../../../..'))
-SKILL_MD = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/skills/rabbit-feature-touch/SKILL.md')
+SKILL_MD = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md')
 
 PASS = 0
 FAIL = 0

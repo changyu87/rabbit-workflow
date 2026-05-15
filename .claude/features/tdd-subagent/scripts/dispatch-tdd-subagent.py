@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# dispatch-feature-tdd.py — assemble the prompt for a per-feature full-TDD-cycle subagent.
+# dispatch-tdd-subagent.py — assemble the prompt for a per-feature full-TDD-cycle subagent.
 #
 # Usage:
-#   dispatch-feature-tdd.py <feature-name> "<request-description>" [--linked-item <dir> --item-type <bug|backlog>]
+#   dispatch-tdd-subagent.py <feature-name> "<request-description>" [--linked-item <dir> --item-type <bug|backlog>]
 #
 # Output: assembled prompt to stdout. Caller passes stdout to Agent.
 # The subagent runs spec-update -> test-red -> impl -> test-green for the named feature,
@@ -13,7 +13,7 @@
 #   --item-type <type>    Required with --linked-item: bug|backlog
 #
 # Version: 2.0.0
-# Owner: rabbit-workflow team (tdd-state-machine)
+# Owner: rabbit-workflow team (tdd-subagent)
 # Deprecation criterion: when the TDD cycle is natively supported by the dispatch infrastructure.
 
 import os
@@ -43,7 +43,7 @@ def main(argv):
 
     if len(argv) < 2:
         sys.stderr.write(
-            "ERROR: usage: dispatch-feature-tdd.py <feature-name> <request-description> "
+            "ERROR: usage: dispatch-tdd-subagent.py <feature-name> <request-description> "
             "[--linked-item <dir> --item-type <bug|backlog>]\n"
         )
         return 2
@@ -148,7 +148,7 @@ def main(argv):
         repo_root, ".claude", "features", "contract", "scripts", "dispatch-feature-edit.py"
     )
     tdd_step_py = os.path.join(
-        repo_root, ".claude", "features", "tdd-state-machine", "scripts", "tdd-step.py"
+        repo_root, ".claude", "features", "tdd-subagent", "scripts", "tdd-step.py"
     )
 
     linked_item_value = linked_item_dir if linked_item_dir else "null"
@@ -270,7 +270,7 @@ HANDOFF:
 
 """
     sys.stdout.write(prompt)
-    sys.stderr.write(f"dispatch-feature-tdd: prompt ready for feature '{feature_name}'\n")
+    sys.stderr.write(f"dispatch-tdd-subagent: prompt ready for feature '{feature_name}'\n")
     return 0
 
 

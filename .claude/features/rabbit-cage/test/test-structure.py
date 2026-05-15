@@ -50,7 +50,7 @@ else:
 
 # t4: skills/ does NOT exist in rabbit-cage
 if not os.path.isdir(os.path.join(CAGE_DIR, "skills")):
-    ok(4, "skills/ does not exist in rabbit-cage (correctly moved to tdd-state-machine)")
+    ok(4, "skills/ does not exist in rabbit-cage (correctly moved to tdd-subagent)")
 else:
     fail_t(4, "skills/ still exists in rabbit-cage — orphan dir should be removed")
 

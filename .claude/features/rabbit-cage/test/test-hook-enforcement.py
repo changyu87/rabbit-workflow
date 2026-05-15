@@ -157,7 +157,7 @@ else:
 print()
 print("=== METADATA EXCEPTION: rabbit-feature-touch excludes bug/backlog filing ===")
 
-skill_md = os.path.join(REPO_ROOT, ".claude/features/tdd-state-machine/skills/rabbit-feature-touch/SKILL.md")
+skill_md = os.path.join(REPO_ROOT, ".claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md")
 skill_src = read(skill_md)
 if re.search(r"bug.filing|backlog.filing|metadata.only|not for.*bug|not for.*backlog", skill_src, re.IGNORECASE):
     ok(7, "rabbit-feature-touch SKILL.md excludes metadata-only operations (bug/backlog filing)")

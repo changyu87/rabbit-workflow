@@ -7,7 +7,7 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], cwd=SCRIPT_DIR).decode().strip()
-SKILL = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/skills/rabbit-feature-touch/SKILL.md')
+SKILL = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md')
 DEPLOYED = os.path.join(REPO_ROOT, '.claude/skills/rabbit-feature-touch/SKILL.md')
 
 PASS = 0
