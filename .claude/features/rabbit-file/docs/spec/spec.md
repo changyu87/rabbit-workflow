@@ -55,6 +55,13 @@ origin/bug-backlog-files root:
 
 - branch_ops.py MUST use git worktree at .claude/tmp/bug-backlog-files for
   all writes. Worktree is always cleaned up via try/finally.
+- branch_ops._worktree() MUST check out the worktree branch using
+  `git checkout -B bug-backlog-files origin/bug-backlog-files` (capital -B)
+  after fetching origin/bug-backlog-files. This unconditionally resets the
+  local tracking branch to the freshly-fetched remote tip, so that reads see
+  the latest committed items and writes never push from a stale base
+  (preventing non-fast-forward push failures). The fallback two-step
+  try/checkout-local + checkout-b sequence MUST NOT be used.
 - branch_ops.allocate_id MUST be called before commit_item (counter reserves the ID slot).
 - item-status.py set MUST require --reason on every transition.
 - SKILL.md MUST include a user-decision gate in Work Protocol before invoking

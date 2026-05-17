@@ -120,22 +120,16 @@ def _worktree(repo_root):
          f"origin/{_BRANCH}", "--no-checkout")
 
     try:
-        # Checkout the branch inside the worktree
-        checkout_result = subprocess.run(
-            ["git", "-C", str(wt), "checkout", _BRANCH],
-            capture_output=True
+        # Unconditionally reset the local tracking branch to the freshly-fetched
+        # remote tip. Capital -B is mandatory: it eliminates stale-read failures
+        # (BUG-4) and non-fast-forward push failures (BUG-5). The earlier
+        # two-step try/checkout-local + fallback checkout-b sequence is
+        # forbidden by spec invariant.
+        subprocess.run(
+            ["git", "-C", str(wt), "checkout", "-B",
+             _BRANCH, f"origin/{_BRANCH}"],
+            check=True, capture_output=True
         )
-        if checkout_result.returncode != 0:
-            # Local tracking branch doesn't exist yet; create it
-            new_branch_result = subprocess.run(
-                ["git", "-C", str(wt), "checkout",
-                 "-b", _BRANCH, f"origin/{_BRANCH}"],
-                capture_output=True
-            )
-            if new_branch_result.returncode != 0:
-                raise RuntimeError(
-                    f"git checkout failed: {new_branch_result.stderr.strip()}"
-                )
 
         # Configure identity inside worktree
         _git(wt, "config", "user.email", "rabbit-file@localhost")
