@@ -31,3 +31,13 @@ will modify. Makes no assumptions about callers or use cases.
 6. An empty `features` list `[]` is a valid response (no features touched).
 7. `resolve-scope.py` contains no inline `python3 -c` calls or python3 heredocs; all Python logic is in `format-feature-context.py`.
 8. `format-feature-context.py` reads JSON from stdin and writes the formatted feature context to stdout; it is invoked as `python3 format-feature-context.py`.
+9. `SKILL.md` Usage section MUST present shell-executable commands and Claude
+   tool-invocation pseudo-code in **separate code blocks with distinct fence
+   labels**. The shell command that generates the prompt (`PROMPT=$(...)`) is
+   in a ```bash``` fence; the `Agent(...)` tool invocation is in a non-shell
+   fence (e.g., ```text```) and is preceded by a sentence explicitly stating
+   that it is a Claude tool call and must NOT be shell-executed. Mixing the
+   two in one bash fence is prohibited because agents reading the SKILL
+   literally will attempt to shell-exec the `Agent(...)` call, which always
+   fails (tcsh raises `no matches found: Agent(prompt: ...)`, bash returns
+   command-not-found).

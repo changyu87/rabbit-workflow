@@ -14,9 +14,18 @@ not prescribed.
 
 ## Usage
 
+Step 1 — generate the prompt. This is a shell command; run it in your shell:
+
 ```bash
 PROMPT=$(.claude/features/rabbit-feature-scope/scripts/resolve-scope.py "<request-description>")
-# Dispatch Agent(prompt: PROMPT)   ← default model, no override
+```
+
+Step 2 — dispatch the Agent. The following is a **Claude tool call**, not a
+shell command. Do NOT shell-execute it; invoke the Agent tool from Claude with
+the default model (no Opus override):
+
+```text
+Agent(prompt: PROMPT)
 # Agent responds with JSON:
 # {"features": ["feature-name-1"], "rationale": "one sentence"}
 ```
