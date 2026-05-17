@@ -3,7 +3,7 @@
 #
 # Bug.json is stored at the centralized location:
 #   <repo-root>/.claude/bugs/<feature-name>/<bug-name>/bug.json
-# as written by rabbit-bug and per invariant 14.
+# as written by rabbit-file and per invariant 14.
 
 import os
 import sys
@@ -39,7 +39,7 @@ os.makedirs(os.path.join(FIXTURE, "docs/spec"), exist_ok=True)
 with open(os.path.join(FIXTURE, "docs/spec/spec.md"), "w") as f:
     f.write("# test-feature spec\nMinimal spec for triage test fixture.\n")
 
-# Create bug.json at the centralized location (per invariant 14 and rabbit-bug storage).
+# Create bug.json at the centralized location (per invariant 14 and rabbit-file storage).
 CENTRALIZED_BUG_DIR = os.path.join(REPO_ROOT, ".claude/bugs", FIXTURE_FEATURE_NAME, BUG_NAME)
 os.makedirs(CENTRALIZED_BUG_DIR, exist_ok=True)
 

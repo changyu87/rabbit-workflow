@@ -58,7 +58,7 @@ r4 = subprocess.run(
     capture_output=True, text=True
 )
 lst = r4.stdout
-for fname in ["contract", "policy", "rabbit-bug", "rabbit-backlog", "rabbit-cage", "tdd-subagent"]:
+for fname in ["contract", "policy", "rabbit-cage", "tdd-subagent"]:
     lines = [line.strip() for line in lst.split("\n")]
     if fname in lines:
         ok(f"list includes {fname}")
