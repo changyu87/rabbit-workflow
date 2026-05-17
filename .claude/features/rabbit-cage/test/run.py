@@ -40,6 +40,7 @@ SUITES = [
     "test-RABBIT-CAGE-BUG4.py",
     "test-python-migration.py",
     "test-repo-permissions.py",
+    "test-team-wide-permissions.py",
 ]
 
 
