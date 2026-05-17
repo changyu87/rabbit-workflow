@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 2.8.0
+version: 2.9.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -55,7 +55,11 @@ per-user configuration.
 
 The current team-wide defaults are:
 
-- **allow**: `Bash(*)` — every bash command runs without prompting.
+- **allow**: `Bash(*)`, `Write`, `Edit` — every bash command, file-write tool, and
+  file-edit tool runs without prompting. `Write` and `Edit` are scope-guarded at the
+  hook layer (see "Scope-Guard Override" below); allowing them at the permission
+  layer means the scope-guard hook is the single decision point for write
+  authorization, not Claude Code's permission-prompt UI.
 - **deny**: `Bash(git merge *)`, `Bash(git push * main)`, `Bash(git push origin main)` —
   blocks direct merges (target branch cannot be inferred from the command string, so
   all direct merges are blocked) and pushes to `main`. Deny rules take precedence over
@@ -74,11 +78,14 @@ than replace) the team-wide defaults.
 ### Invariants
 
 51. `.claude/features/rabbit-cage/settings.json` declares a top-level `permissions`
-    object whose `allow` array contains exactly the entry `Bash(*)` and whose `deny`
-    array contains exactly the entries `Bash(git merge *)`, `Bash(git push * main)`,
-    and `Bash(git push origin main)`. The build-managed copy at `.claude/settings.json`
-    holds the same `permissions` block by virtue of being a `copy-file` target of the
-    source. No other top-level keys (`env`, `hooks`) are altered by this invariant.
+    object whose `allow` array contains exactly the entries `Bash(*)`, `Write`,
+    and `Edit` (in that order), and whose `deny` array contains exactly the entries
+    `Bash(git merge *)`, `Bash(git push * main)`, and `Bash(git push origin main)`.
+    The build-managed copy at `.claude/settings.json` holds the same `permissions`
+    block by virtue of being a `copy-file` target of the source. No other top-level
+    keys (`env`, `hooks`) are altered by this invariant. `Write` and `Edit` at the
+    permission layer move all write authorization to the scope-guard hook, which is
+    the single decision point for whether a write is allowed.
 
 ## /rabbit-config Command
 
