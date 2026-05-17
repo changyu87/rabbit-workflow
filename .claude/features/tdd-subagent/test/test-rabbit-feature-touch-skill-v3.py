@@ -38,9 +38,9 @@ phrases = [
     r"feat/<feature-name>",
     r"fix/<bug-id>",
     r"task/<backlog-id>",
-    "tdd-report.json",
+    "tdd-report-",
     "rabbit-feature-scope",
-    "Unified Five-Step",
+    "Unified Six-Step",
     r"primary.*first",
     r"status: success|failed",
 ]
@@ -60,6 +60,47 @@ if os.path.isfile(DEPLOYED):
         fail("deployed copy differs from source")
 else:
     fail(f"deployed copy not found at {DEPLOYED}")
+
+def test_rabbit_spec_is_step_3():
+    """rabbit-feature-touch must list rabbit-spec as Step 3."""
+    skill_path = os.path.join(
+        REPO_ROOT, ".claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md"
+    )
+    with open(skill_path) as f:
+        content = f.read()
+    assert "Step 3" in content and "rabbit-spec" in content, \
+        "SKILL.md must list rabbit-spec as Step 3"
+
+
+def test_six_steps_total():
+    """rabbit-feature-touch must have 6 steps total."""
+    skill_path = os.path.join(
+        REPO_ROOT, ".claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md"
+    )
+    with open(skill_path) as f:
+        content = f.read()
+    assert "Step 6" in content, "SKILL.md must have 6 steps total"
+
+
+def test_dispatch_tdd_subagent_referenced():
+    """rabbit-feature-touch must reference dispatch-tdd-subagent.py."""
+    skill_path = os.path.join(
+        REPO_ROOT, ".claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md"
+    )
+    with open(skill_path) as f:
+        content = f.read()
+    assert "dispatch-tdd-subagent" in content, \
+        "SKILL.md must reference dispatch-tdd-subagent.py"
+
+
+# Run function-based tests
+for fn_name in ['test_rabbit_spec_is_step_3', 'test_six_steps_total', 'test_dispatch_tdd_subagent_referenced']:
+    fn = locals()[fn_name]
+    try:
+        fn()
+        ok(fn_name)
+    except AssertionError as e:
+        fail(fn_name + ": " + str(e))
 
 print()
 print(f"Results: {PASS} passed, {FAIL} failed")
