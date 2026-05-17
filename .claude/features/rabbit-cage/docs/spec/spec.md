@@ -46,6 +46,40 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 39. Every runtime script under `.claude/features/rabbit-cage/hooks/` and `.claude/features/rabbit-cage/scripts/` is a standalone executable Python file (`#!/usr/bin/env python3`). No `.sh` files exist under either directory. `install.py` at the rabbit-cage root is the bootstrap installer (also Python). Tests under `.claude/features/rabbit-cage/test/` are also Python (`.py`); no `.sh` test files exist in rabbit-cage.
 40. The Python runtime scripts in rabbit-cage are: in `hooks/` — `refresh.py`, `scope-guard.py`, `session-init.py`, `sync-check.py`; in `scripts/` — `build.py`, `build-targets.py`, `generate-claude-md.py`, `generate-claude-md-header.py`, `new-feature.py`, `rabbit-project.py`, `rabbit-project-consolidate.py`, `rabbit-project-map.py`, `rabbit-project-set-path.py`, `scope-guard-on.py`, `validate-all.py`, `workspace-tree.py`. Each preserves the stdin/stdout/exit-code contract of the `.sh` predecessor it replaces.
 
+## Team-wide Permissions
+
+`.claude/features/rabbit-cage/settings.json` (the canonical source for the build-managed
+copy at `.claude/settings.json`) declares a `permissions` block holding **team-wide
+defaults** that ship with the repo. These defaults apply to every checkout without
+per-user configuration.
+
+The current team-wide defaults are:
+
+- **allow**: `Bash(*)` — every bash command runs without prompting.
+- **deny**: `Bash(git merge *)`, `Bash(git push * main)`, `Bash(git push origin main)` —
+  blocks direct merges (target branch cannot be inferred from the command string, so
+  all direct merges are blocked) and pushes to `main`. Deny rules take precedence over
+  allow rules in Claude Code's permission evaluation.
+
+Team-wide permissions live in the **source** file (not the build-managed destination)
+so that `build.py`'s `copy-file` regeneration propagates them on every drift rebuild.
+Writing the same block directly to `.claude/settings.json` (the destination) would be
+destroyed by the next surface rebuild — Inv 50.
+
+Personal overrides continue to live in `.claude/settings.local.json` (gitignored) and
+are managed via `/rabbit-config bash-allow` / `/rabbit-config allowed-tools`. Claude
+Code merges permission arrays across all sources, so personal entries add to (rather
+than replace) the team-wide defaults.
+
+### Invariants
+
+51. `.claude/features/rabbit-cage/settings.json` declares a top-level `permissions`
+    object whose `allow` array contains exactly the entry `Bash(*)` and whose `deny`
+    array contains exactly the entries `Bash(git merge *)`, `Bash(git push * main)`,
+    and `Bash(git push origin main)`. The build-managed copy at `.claude/settings.json`
+    holds the same `permissions` block by virtue of being a `copy-file` target of the
+    source. No other top-level keys (`env`, `hooks`) are altered by this invariant.
+
 ## /rabbit-config Command
 
 `/rabbit-config` is the extensible configuration command for the rabbit workflow. It uses a subcommand pattern to group configuration operations under one entry point.
@@ -83,7 +117,7 @@ Manages bash-command allowlist entries (e.g. `touch`, `cat`, `echo`, `ls`, `pyth
 - If `permissions` or `permissions.allow` is missing from `settings.local.json`, `add` creates it as needed. `remove` on a missing key is a no-op (exit 0).
 - After removal, if `permissions.allow` becomes empty, the key remains as an empty array (it is not deleted); if `permissions` itself becomes the only key and is `{"allow": []}`, it is left in place. The shape of `settings.local.json` other than the `permissions.allow` array is never modified by these subcommands.
 - Output of `add` and `remove` is a single confirmation line on stdout (e.g. `Added Bash(touch:*) to .claude/settings.local.json`); no output if the operation was a no-op other than `Already present` / `Not present`.
-- List operations (no-action form of `allowed-tools` and `bash-allow`) read from `.claude/settings.local.json` only. The canonical surface source `.claude/features/rabbit-cage/settings.json` does not declare a `permissions` block, and `.claude/settings.json` is its build-managed copy; neither file is consulted by list operations.
+- List operations (no-action form of `allowed-tools` and `bash-allow`) read from `.claude/settings.local.json` only. The canonical surface source `.claude/features/rabbit-cage/settings.json` MAY declare a `permissions` block holding team-wide defaults (see "Team-wide Permissions" below); `.claude/settings.json` is its build-managed copy. Claude Code merges permission arrays across all settings sources (user → project → local), so team-wide defaults from `settings.json` and personal entries from `settings.local.json` compose. Neither `settings.json` nor its source is consulted by list operations — list operations remain scoped to personal `settings.local.json` entries.
 
 **Error handling:** unknown subcommands produce a usage message listing available subcommands. An invalid value (non-positive-integer) for `prompt-threshold`, an empty `<tool>`/`<command>`, an invalid `<command>` for `bash-allow` (containing `(`, `)`, `:`, or whitespace), an unknown action for `allowed-tools` or `bash-allow` (anything other than `add`, `remove`, or no action), or a `Bash(...)`-shaped value passed to `allowed-tools add`/`remove` all produce an error and exit non-zero without modifying any file.
 
