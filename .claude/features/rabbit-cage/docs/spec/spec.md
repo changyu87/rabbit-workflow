@@ -255,6 +255,25 @@ routine workflow writes.
     and (for `one-time`) deletes it after consumption. The main session (Claude)
     may write `.rabbit-scope-override` after receiving explicit in-conversation
     user approval via the confirm-token flow.
+52. When `scope-guard.py` reaches the default-deny path (no scope marker, no
+    override, no allowlist match), the DENY message printed to stderr MUST
+    present three explicit options in a structured form, in this order:
+    (1) SESSION OVERRIDE — bypasses scope-guard for the entire session;
+        requires explicit in-conversation user confirmation before writing
+        `.rabbit-scope-override` with content `session`.
+    (2) ONE-TIME OVERRIDE — bypasses scope-guard for a single write only;
+        requires explicit in-conversation user confirmation before writing
+        `.rabbit-scope-override` with content `one-time`.
+    (3) USE rabbit-feature-touch (recommended) — the correct governed path
+        for feature edits; invokes TDD cycle, advances `tdd_state`, creates
+        a PR; no override needed.
+    The message MUST explicitly state that both override options require
+    in-conversation user confirmation and MUST NOT be written speculatively.
+    The terse "Dispatcher must touch .rabbit-scope-active before calling Agent"
+    instruction is removed — it framed the override as a procedural step,
+    which is the rationalization pattern that BUG-1 captured. The new
+    structured form forces a decision point: pick one of three explicit
+    paths, none of which is silent compliance.
 13. A `one-time` override consumed by `scope-guard.py` is acknowledged exactly
     once by `sync-check.py`, after which `.rabbit-scope-override-used` is
     removed.
