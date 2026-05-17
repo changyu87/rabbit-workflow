@@ -223,6 +223,17 @@ that the confirm-token approval flow is not a catch-22: Claude must be able to
 write the override file after receiving user approval, even when no scope
 marker is active.
 
+**Path-prefix allowlist:** `scope-guard.py` additionally permits writes to
+specific repo-root path prefixes regardless of scope-marker state. The
+allowlisted prefixes are: `.claude/bugs/`, `.claude/backlogs/`, and `.rabbit/`.
+The `.rabbit/` prefix is required because the `rabbit-feature-touch` protocol
+routinely writes `.rabbit/impl-suggestion-<feature>.json` (Step 3, via
+`rabbit-spec`) and `.rabbit/tdd-report-<feature>.json` (Step 8, via the TDD
+subagent) as part of normal feature work. These writes are dispatcher
+metadata, not feature code, and must not require a session override —
+override semantics are reserved for exceptional human-approved bypasses, not
+routine workflow writes.
+
 ## Invariants (additional)
 
 11. `.rabbit-scope-override` and `.rabbit-scope-override-used` are gitignored.
@@ -232,6 +243,14 @@ marker is active.
     state. This allowlist must include `.rabbit-scope-override` to enable the
     confirm-token approval flow (Claude writes the override file after
     in-conversation user approval without a scope marker active).
+    Additionally, `scope-guard.py` maintains a path-prefix allowlist that
+    permits writes anywhere under the following repo-root prefixes regardless
+    of scope-marker state: `.claude/bugs/`, `.claude/backlogs/`, and
+    `.rabbit/`. The `.rabbit/` prefix is required so that the
+    `rabbit-feature-touch` dispatcher can write `.rabbit/impl-suggestion-<feature>.json`
+    and `.rabbit/tdd-report-<feature>.json` during normal feature work without
+    needing a session override (override is reserved for exceptional
+    human-approved bypasses, not routine workflow writes).
 12. `scope-guard.py` never creates `.rabbit-scope-override`; it only reads it
     and (for `one-time`) deletes it after consumption. The main session (Claude)
     may write `.rabbit-scope-override` after receiving explicit in-conversation

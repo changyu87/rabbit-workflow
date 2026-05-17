@@ -96,11 +96,16 @@ def decide(target: str) -> Tuple[bool, str]:
     if base in ("settings.json", "settings.local.json", ".gitignore", ".rabbit-scope-override"):
         return True, "ALLOW (allowlisted filename)"
 
-    # 3b. Centralized bug/backlog storage — always allow (metadata-only writes, no TDD)
-    if abs_path.startswith(str(REPO_ROOT) + "/.claude/bugs/") or abs_path.startswith(
-        str(REPO_ROOT) + "/.claude/backlogs/"
+    # 3b. Path-prefix allowlist — always allow (dispatcher metadata + bug/backlog storage).
+    # .rabbit/ is required so rabbit-feature-touch can write
+    # .rabbit/impl-suggestion-<feature>.json and .rabbit/tdd-report-<feature>.json
+    # during normal feature work without needing a session override.
+    if (
+        abs_path.startswith(str(REPO_ROOT) + "/.claude/bugs/")
+        or abs_path.startswith(str(REPO_ROOT) + "/.claude/backlogs/")
+        or abs_path.startswith(str(REPO_ROOT) + "/.rabbit/")
     ):
-        return True, "ALLOW (centralized bug/backlog storage)"
+        return True, "ALLOW (path-prefix allowlist: bug/backlog/dispatcher metadata)"
 
     # 4a. Per-feature scope markers
     for per_marker in glob.glob(str(REPO_ROOT) + "/.rabbit-scope-active-*"):
