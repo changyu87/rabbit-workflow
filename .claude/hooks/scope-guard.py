@@ -112,7 +112,7 @@ def decide(target: str) -> Tuple[bool, str]:
         return True, "ALLOW (scope marker is exempt)"
 
     # 3. Allowlisted filenames -> always allow
-    if base in ("settings.json", "settings.local.json", ".gitignore", ".rabbit-scope-override"):
+    if base in ("settings.local.json", ".gitignore", ".rabbit-scope-override"):
         return True, "ALLOW (allowlisted filename)"
 
     # 3b. Path-prefix allowlist — always allow (dispatcher metadata + bug/backlog storage).
@@ -195,7 +195,7 @@ def decide(target: str) -> Tuple[bool, str]:
     # procedural next step (the rationalization pattern BUG-1 captured).
     return False, (
         f"DENY write to '{abs_path}' denied: no active scope marker and "
-        "file is not on the allowlist (settings.json, settings.local.json, "
+        "file is not on the allowlist (settings.local.json, "
         ".gitignore, .rabbit-scope-override).\n"
         "\n"
         "Choose one of the three options below. Both override options "

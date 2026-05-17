@@ -109,23 +109,33 @@ try:
         )
 
     print()
-    print("=== (b) BUG-10: Write to .claude/settings.json ALLOWED with rabbit-cage scope marker ===")
+    print("=== (b) BUG-10: Write to rabbit-cage source settings.json ALLOWED with rabbit-cage scope marker ===")
 
-    # t2: with per-feature marker for rabbit-cage, settings.json write should ALLOW
+    # t2: with per-feature marker for rabbit-cage, write to the canonical
+    # source `.claude/features/rabbit-cage/settings.json` should ALLOW.
+    # (The build-managed destination `.claude/settings.json` is regenerated
+    # by build.py from the source — per Inv 50, agents must edit the source,
+    # not the destination, so a marker test on the source path is the right
+    # ALLOW check after removing the basename bypass.)
     per_marker = os.path.join(REPO_ROOT, ".rabbit-scope-active-rabbit-cage")
     with open(per_marker, "w") as f:
         f.write("")
     try:
-        exit_code, stderr = run_scope_guard(write_json)
+        write_json_src = (
+            '{"tool_name":"Write","tool_input":{"file_path":"'
+            + REPO_ROOT + '/.claude/features/rabbit-cage/settings.json","content":"{}"}}'
+        )
+        exit_code, stderr = run_scope_guard(write_json_src)
         if exit_code == 0:
             ok(
-                "Write to .claude/settings.json exits 0 (ALLOW) with "
+                "Write to .claude/features/rabbit-cage/settings.json exits 0 (ALLOW) with "
                 ".rabbit-scope-active-rabbit-cage marker"
             )
         else:
             fail_t(
-                f"Write to .claude/settings.json exits {exit_code} (expected 0/ALLOW) "
-                f"with rabbit-cage scope marker; stderr: {stderr.strip()}"
+                f"Write to .claude/features/rabbit-cage/settings.json exits {exit_code} "
+                f"(expected 0/ALLOW) with rabbit-cage scope marker; "
+                f"stderr: {stderr.strip()}"
             )
     finally:
         if os.path.isfile(per_marker):
