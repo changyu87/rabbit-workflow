@@ -1,12 +1,12 @@
 ---
 name: rabbit-spec
-description: Use when Step 3 of rabbit-feature-touch needs to author or update a feature spec before TDD dispatch. Invoke as Skill("rabbit-spec", args: "<feature-name> <request>") from rabbit-feature-touch or any context where a feature spec needs to be comprehended and updated. Also use when a user asks to update, review, or author a spec for any rabbit feature — even if they don't say "spec" explicitly (e.g., "think about what we need to build", "plan this feature", "what should change in the design").
+description: Use when a feature spec needs to be authored or updated, in any context. Invoke as Skill("rabbit-spec", args: "<feature-name> <request>") from any skill, process, or directly. Reads the current spec, judges the request type, invokes superpowers as needed, updates the spec surgically, and produces an implementation suggestion file for whoever invoked it. Also use when a user asks to update, review, or author a spec for any rabbit feature — even if they don't say "spec" explicitly (e.g., "think about what we need to build", "plan this feature", "what should change in the design", "update the design for this bug fix").
 model: opus
 ---
 
 # rabbit-spec — Spec Authoring Skill
 
-You are invoked as **Step 3 in rabbit-feature-touch**, before the TDD subagent is dispatched. Your job: understand the request, update the feature spec, and produce an implementation suggestion file that the TDD subagent will read as context.
+Your job: understand the request, update the feature spec, and produce an implementation suggestion file. You are a general-purpose spec skill — any process can invoke you. You don't assume who called you or what comes next.
 
 ## Inputs
 
@@ -78,12 +78,11 @@ Write `.rabbit/impl-suggestion-<feature-name>.json` (create `.rabbit/` if it doe
 }
 ```
 
-The TDD subagent reads this file in its SPEC-READ step. Make `implementation_approach` genuinely useful — it should save the implementer from having to re-derive the approach from scratch.
+Make `implementation_approach` genuinely useful — it should save any downstream implementer from having to re-derive the approach from scratch.
 
 ## What You Do NOT Do
 
-- Run tests (that is the TDD subagent's job)
+- Run tests
 - Write implementation code
 - File bugs or backlog items (that is rabbit-file's job)
-- Dispatch the TDD subagent (that is rabbit-feature-touch's job after you return)
-- Invoke `Skill("rabbit-feature-touch")` — you are already inside it
+- Invoke any other skill — your output is the impl-suggestion file; what happens next is the caller's concern
