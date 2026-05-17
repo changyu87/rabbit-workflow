@@ -21,6 +21,10 @@ Your task input contains:
 - Feature-specific file paths and tdd-step.py commands
 - The 9 named steps to execute in sequence
 
+Scripts are available at `scripts/tdd-step.py` (agent-local, relative to `.claude/agents/tdd-subagent/`)
+or `.claude/features/tdd-subagent/scripts/` (feature source). Use the
+deployed path when invoking from outside the feature directory.
+
 Follow the steps exactly as given in your task. The steps are:
 SPEC-READ → HUMAN-APPROVAL → LOCK → TEST-WRITE → TEST-RED → IMPLEMENT → CODE-REVIEW → TEST-GREEN → UNLOCK
 
