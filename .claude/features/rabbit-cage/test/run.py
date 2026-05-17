@@ -25,6 +25,7 @@ SUITES = [
     "test-scope-per-feature-marker.py",
     "test-RABBIT-CAGE-19-confirm-token-override.py",
     "test-scope-guard-allowlist.py",
+    "test-scope-guard-deny-message.py",
     "test-scope-guard-rabbit-allowlist.py",
     "test-rabbit-workspace-map-wiring.py",
     "test-POLICY-BACKLOG-1-session-init-branch.py",
