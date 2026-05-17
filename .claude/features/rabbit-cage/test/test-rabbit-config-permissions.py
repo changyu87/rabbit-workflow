@@ -55,18 +55,29 @@ def run_config(argstr, wd):
 def setup_workspace():
     wd = tempfile.mkdtemp()
     os.makedirs(os.path.join(wd, ".claude"), exist_ok=True)
+    # settings.json is the build-managed copy of features/rabbit-cage/settings.json;
+    # permission subcommands must NOT touch it. Pre-populate with a sentinel to
+    # detect any accidental writes.
     with open(os.path.join(wd, ".claude/settings.json"), "w") as f:
-        f.write("{}")
+        f.write('{"sentinel": "DO-NOT-TOUCH"}')
     return wd
 
 
 def read_perm_allow(wd):
-    p = os.path.join(wd, ".claude/settings.json")
+    p = os.path.join(wd, ".claude/settings.local.json")
     if not os.path.isfile(p):
         return "[]"
     with open(p) as f:
         d = json.load(f)
     return json.dumps(d.get("permissions", {}).get("allow", []))
+
+
+def read_settings_json(wd):
+    p = os.path.join(wd, ".claude/settings.json")
+    if not os.path.isfile(p):
+        return None
+    with open(p) as f:
+        return f.read()
 
 
 print("test-rabbit-config-permissions.py")
@@ -202,13 +213,15 @@ else:
     fail_t(12, f"allowed-tools accepted unknown action (rc={rc}, allow={allow})")
 shutil.rmtree(wd, ignore_errors=True)
 
-# t13
+# t13: target file is settings.local.json (Inv 50)
 wd = setup_workspace()
 run_config("bash-allow add touch", wd)
-if not os.path.isfile(os.path.join(wd, ".claude/settings.local.json")) and os.path.isfile(os.path.join(wd, ".claude/settings.json")):
-    ok(13, "permission subcommands write to settings.json, not settings.local.json")
+local_present = os.path.isfile(os.path.join(wd, ".claude/settings.local.json"))
+settings_unchanged = read_settings_json(wd) == '{"sentinel": "DO-NOT-TOUCH"}'
+if local_present and settings_unchanged:
+    ok(13, "permission subcommands write to settings.local.json, never to settings.json")
 else:
-    fail_t(13, "settings.local.json was created (or settings.json missing) — wrong target file")
+    fail_t(13, f"wrong target file (local_present={local_present}, settings_unchanged={settings_unchanged})")
 shutil.rmtree(wd, ignore_errors=True)
 
 # t14
@@ -238,6 +251,51 @@ if rc != 0 and allow == "[]":
 else:
     fail_t(16, f"bash-allow add with no value accepted (rc={rc}, allow={allow})")
 shutil.rmtree(wd, ignore_errors=True)
+
+# t17: allowed-tools add also writes to settings.local.json, not settings.json (Inv 43)
+wd = setup_workspace()
+run_config("allowed-tools add WebFetch", wd)
+local_present = os.path.isfile(os.path.join(wd, ".claude/settings.local.json"))
+settings_unchanged = read_settings_json(wd) == '{"sentinel": "DO-NOT-TOUCH"}'
+if local_present and settings_unchanged:
+    ok(17, "allowed-tools add writes to settings.local.json, leaves settings.json untouched")
+else:
+    fail_t(17, f"allowed-tools wrong target (local_present={local_present}, settings_unchanged={settings_unchanged})")
+shutil.rmtree(wd, ignore_errors=True)
+
+# t18: list operations read from settings.local.json only (Inv 47)
+wd = setup_workspace()
+# Seed settings.json with permissions that MUST NOT appear in the list output.
+with open(os.path.join(wd, ".claude/settings.json"), "w") as f:
+    f.write('{"permissions": {"allow": ["GhostTool", "Bash(ghost:*)"]}}')
+_, list_at, _ = run_config("allowed-tools", wd)
+_, list_ba, _ = run_config("bash-allow", wd)
+if "GhostTool" not in list_at.splitlines() and "ghost" not in list_ba.splitlines():
+    ok(18, "list operations do not read permissions from settings.json")
+else:
+    fail_t(18, f"list operations leaked from settings.json (allowed-tools={list_at!r}, bash-allow={list_ba!r})")
+shutil.rmtree(wd, ignore_errors=True)
+
+# t19: confirmation strings reference settings.local.json (Common rules: Output)
+wd = setup_workspace()
+_, out_at, _ = run_config("allowed-tools add WebFetch", wd)
+_, out_ba, _ = run_config("bash-allow add touch", wd)
+if "settings.local.json" in out_at and "settings.local.json" in out_ba \
+        and ".claude/settings.json" not in out_at and ".claude/settings.json" not in out_ba:
+    ok(19, "add confirmation strings reference settings.local.json (not settings.json)")
+else:
+    fail_t(19, f"confirmation strings wrong (allowed-tools out={out_at!r}, bash-allow out={out_ba!r})")
+shutil.rmtree(wd, ignore_errors=True)
+
+# t20: USAGE inline text references settings.local.json for allowed-tools and bash-allow (Inv 50 prose)
+with open(CONFIG_MD) as f:
+    md = f.read()
+# Strict: the literal phrase 'permissions.allow in settings.json' is the bug fingerprint
+# and must not appear (would mean the USAGE text still names the wrong file).
+if "permissions.allow in settings.json" not in md and "permissions.allow in settings.local.json" in md:
+    ok(20, "USAGE text references settings.local.json (not settings.json) for permission subcommands")
+else:
+    fail_t(20, "USAGE text still mentions 'permissions.allow in settings.json' or omits 'settings.local.json'")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")
