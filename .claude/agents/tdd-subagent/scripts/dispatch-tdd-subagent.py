@@ -278,6 +278,12 @@ Write tdd-report (gitignored — NEVER commit):
 STEP 9 — UNLOCK
 ════════════════════════════════════════════════════════════════════════
 
+Before emitting HANDOFF, commit the tdd_state transition so the dispatcher
+does not have to commit feature.json manually:
+
+  git add {feature_dir}/feature.json
+  git commit -m "chore({feature_name}): advance tdd_state to test-green"
+
 Scope marker removed automatically by trap on EXIT.
 
 ════════════════════════════════════════════════════════════════════════

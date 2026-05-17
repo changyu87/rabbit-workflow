@@ -60,6 +60,21 @@ In B/B mode, pass the bug/backlog item description as the request.
 rabbit-spec reads the current spec, judges open vs. specific, invokes superpowers,
 updates the feature spec, and writes `.rabbit/impl-suggestion-<feature-name>.json`.
 
+**Commit spec changes BEFORE Step 5.** After rabbit-spec returns, stage and
+commit any modifications under `.claude/features/<feature-name>/` (the spec
+and any other files rabbit-spec touched). If no changes were made (empty
+diff), skip the commit.
+
+```bash
+git add .claude/features/<feature-name>/
+if ! git diff --cached --quiet -- .claude/features/<feature-name>/docs/spec/spec.md; then
+  git commit -m "spec(<feature-name>): update spec for <one-line request summary>"
+fi
+```
+
+This prevents spec edits from falling through uncommitted and ensures the
+TDD subagent reads a clean committed baseline.
+
 ### Step 4 — Human Approval
 
 A full TDD cycle is about to run — tests will be written, code implemented, a PR

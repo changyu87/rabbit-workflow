@@ -61,6 +61,23 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     requested autonomous execution. The bypass is signalled by passing
     `--no-human-approval` to the `dispatch-tdd-subagent.py` invocation in Step 5.
     Silent bypass without user direction is prohibited.
+16. After `rabbit-spec` returns in Step 3, the `rabbit-feature-touch` dispatcher
+    MUST commit any modifications to the feature's `docs/spec/spec.md` (and any
+    other files in `.claude/features/<feature>/` that `rabbit-spec` edited)
+    BEFORE proceeding to Step 5 (Dispatch TDD Subagents). The commit message
+    follows the pattern `spec(<feature>): update spec for <one-line request
+    summary>`. This prevents spec changes from falling through uncommitted
+    and ensures the TDD subagent reads a clean committed baseline. If
+    `rabbit-spec` made no changes (or only wrote the impl-suggestion
+    artifact), the commit is skipped.
+17. In Step 9 (UNLOCK) of the per-feature TDD subagent prompt assembled by
+    `dispatch-tdd-subagent.py`, the subagent MUST commit `feature.json`
+    (which holds the final `tdd_state: test-green` transition written by
+    `tdd-step.py`) BEFORE emitting the HANDOFF block. The commit message
+    follows the pattern `chore(<feature>): advance tdd_state to test-green`.
+    This prevents the state transition from falling through uncommitted and
+    ensures the dispatcher does not need to commit `feature.json` manually
+    after collecting HANDOFFs.
 
 ## Confirm-Token Bypass Path
 
