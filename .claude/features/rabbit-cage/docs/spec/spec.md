@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 2.7.0
+version: 2.8.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -217,11 +217,18 @@ script is a no-op if no override is active.
 
 **Filename allowlist:** `scope-guard.py` maintains a filename allowlist that
 always permits writes regardless of scope-marker state. The allowlisted
-basenames are: `settings.json`, `settings.local.json`, `.gitignore`, and
+basenames are: `settings.local.json`, `.gitignore`, and
 `.rabbit-scope-override`. The `.rabbit-scope-override` entry is required so
 that the confirm-token approval flow is not a catch-22: Claude must be able to
 write the override file after receiving user approval, even when no scope
 marker is active.
+
+`settings.json` is NOT on the basename allowlist. The repo-root
+`.claude/settings.json` is owned by rabbit-cage and is the canonical Claude
+Code config (permissions, hooks, env); changes to it must follow the
+rabbit-cage scope discipline like any other rabbit-cage file. Permitting
+blanket writes via a basename allowlist would let any agent silently edit
+Claude Code permissions without going through `rabbit-feature-touch`.
 
 **Path-prefix allowlist:** `scope-guard.py` additionally permits writes to
 specific repo-root path prefixes regardless of scope-marker state. The
@@ -248,12 +255,18 @@ rules.
 ## Invariants (additional)
 
 11. `.rabbit-scope-override` and `.rabbit-scope-override-used` are gitignored.
-20. `scope-guard.py` filename allowlist contains exactly: `settings.json`,
-    `settings.local.json`, `.gitignore`, and `.rabbit-scope-override`. Writes
-    to any of these basenames are always permitted, regardless of scope-marker
-    state. This allowlist must include `.rabbit-scope-override` to enable the
+20. `scope-guard.py` filename allowlist contains exactly: `settings.local.json`,
+    `.gitignore`, and `.rabbit-scope-override`. Writes to any of these
+    basenames are always permitted, regardless of scope-marker state. This
+    allowlist must include `.rabbit-scope-override` to enable the
     confirm-token approval flow (Claude writes the override file after
     in-conversation user approval without a scope marker active).
+    `settings.json` is NOT on this allowlist: `.claude/settings.json` is
+    owned by rabbit-cage (canonical Claude Code config — permissions, hooks,
+    env) and writes to it must require an active rabbit-cage scope marker
+    like any other rabbit-cage file. A basename allowlist for `settings.json`
+    would let agents silently edit Claude Code permissions without going
+    through `rabbit-feature-touch`.
     Additionally, `scope-guard.py` maintains a path-prefix allowlist that
     permits writes anywhere under the following repo-root prefixes regardless
     of scope-marker state: `.claude/bugs/`, `.claude/backlogs/`, and
