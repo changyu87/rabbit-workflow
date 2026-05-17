@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.0.0
+version: 1.1.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When spec authoring is natively handled by the rabbit CLI.
@@ -11,9 +11,12 @@ status: active
 
 ## Purpose
 
-Standalone skill for spec authoring. Peeled off from the TDD cycle so it can be
-invoked independently during backlog grooming, design, or any feature touch.
-Invoked as Step 3 in rabbit-feature-touch before TDD subagent dispatch.
+General-purpose skill for spec authoring. Reads a feature's current spec,
+judges the request type (open-ended vs specific), invokes the appropriate
+superpowers, updates the spec surgically, and writes an implementation
+suggestion file. The skill is process-agnostic — any caller (rabbit-feature-touch,
+backlog grooming, standalone design review, direct user invocation) can use it,
+and the skill makes no assumptions about who called it or what happens next.
 
 ## Scripting Tech Stack
 
@@ -37,6 +40,15 @@ The sole test runner is test/run.py which validates structural invariants.
    before writing the impl-suggestion file.
 6. `surface.skills` in `feature.json` MUST be `[]`. Skills are managed via
    explicit copy-file entries in `build-contract.json`.
+7. SKILL.md MUST be process-agnostic. It MUST NOT identify any specific caller
+   (e.g., "you are invoked as Step 3 in rabbit-feature-touch") as the primary
+   or sole invocation context, and MUST NOT reference a specific downstream
+   consumer (e.g., "the TDD subagent reads this file") as a guaranteed next
+   step. The skill is invocable by any process; its output (the impl-suggestion
+   file) is for whoever called it.
+8. SKILL.md "What You Do NOT Do" section MUST NOT instruct the skill to avoid
+   invoking specific named skills (e.g., rabbit-feature-touch). A generic rule
+   like "do not invoke other skills" is acceptable; a process-specific one is not.
 
 ## impl-suggestion Schema (v1.0.0)
 

@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.5.0
+version: 1.6.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -23,7 +23,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 - `.claude/features/tdd-subagent/scripts/tdd-drift-check.py`
 - `.claude/features/tdd-subagent/scripts/tdd-context.py`
 - `.claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py` (assembles a per-feature full-TDD-cycle subagent prompt; the dispatched subagent runs spec-update → test-red → impl → test-green autonomously for ONE feature, using `.rabbit-scope-active-<feature>` as its scope marker so multiple features can be dispatched in parallel; accepts optional `--linked-item <item-dir>` and `--item-type <bug|backlog>` — after the subagent reaches test-green the orchestrator captures the impl commit SHA and closes the linked item accordingly; prompt goes to stdout for caller dispatch)
-- `.claude/features/tdd-subagent/skills/rabbit-feature-touch/` (self-contained TDD orchestration reference; triggers on any feature write/edit/delete/add and orchestrates via parallel per-feature subagents — Step 1 resolves scope by invoking the `rabbit-feature-scope` Skill via the Skill tool, Step 3 dispatches one `dispatch-tdd-subagent.py` subagent per resolved feature in parallel; the main session only orchestrates and never reads feature code itself)
+- `.claude/features/tdd-subagent/skills/rabbit-feature-touch/` (self-contained TDD orchestration reference; triggers on any feature write/edit/delete/add and orchestrates via parallel per-feature subagents — Step 1 resolves scope by invoking the `rabbit-feature-scope` Skill via the Skill tool, Step 3 invokes `rabbit-spec` inline to author/update the spec and produce an impl-suggestion, Step 4 surfaces the impl-suggestion to the user for explicit approval (bypassable via `--no-human-approval`), Step 5 dispatches one `dispatch-tdd-subagent.py` subagent per resolved feature in parallel; the main session only orchestrates and never reads feature code itself)
 
 ## Invariants
 
@@ -45,6 +45,22 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 12. dispatch-tdd-subagent.py interface: --scope (mandatory), --spec (mandatory),
     --impl-suggestion (optional), --linked-item / --item-type (B/B mode),
     --no-human-approval, --code-review-full-loop, --max-iterations (default 3, min 1).
+13. `rabbit-feature-touch` SKILL.md describes a **seven-step** unified sequence
+    (not six). The seven steps in order are: (1) Scope Resolution, (2) Create
+    Branch, (3) Spec Authoring, (4) Human Approval, (5) Dispatch TDD Subagents,
+    (6) Collect and Verify HANDOFFs, (7) PR / Hand Off. Both the overview heading
+    and every step heading reflect this numbering.
+14. Step 4 (Human Approval) is a **dispatcher-side** gate that lives in the main
+    session, not inside the TDD subagent. The dispatcher reads the impl-suggestion
+    JSON for each affected feature, surfaces a summary (request, spec changes,
+    affected files, implementation approach) to the user, and waits for explicit
+    approval before proceeding to Step 5 (Dispatch). The gate exists at the
+    dispatcher because dispatched subagents run to completion and cannot pause
+    for interactive user input.
+15. Step 4 (Human Approval) is bypassable only when the user has explicitly
+    requested autonomous execution. The bypass is signalled by passing
+    `--no-human-approval` to the `dispatch-tdd-subagent.py` invocation in Step 5.
+    Silent bypass without user direction is prohibited.
 
 ## Confirm-Token Bypass Path
 
