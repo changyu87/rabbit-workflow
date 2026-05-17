@@ -8,9 +8,19 @@
 #     [--impl-suggestion <path>] \
 #     [--linked-item <dir>] \
 #     [--item-type bug|backlog] \
+#     [--linked-items <feature>:<type>:<id>[,<feature>:<type>:<id>...]] \
 #     [--no-human-approval] \
 #     [--code-review-full-loop] \
 #     [--max-iterations N]
+#
+# --linked-items accepts a comma-separated list of `<feature>:<type>:<id>`
+# triples identifying secondary bugs/backlog items resolved by the same TDD
+# cycle. Each triple must have exactly two colons, non-empty fields, and a
+# type in {bug, backlog}. Malformed triples cause a non-zero exit BEFORE the
+# prompt is emitted. After test-green, the dispatched subagent closes the
+# primary --linked-item (if any) plus every secondary item via
+# `item-status.py set --feature <f> --type <t> --id <id> --status close
+# --fix-commits <impl-sha>`, and lists all closed items in HANDOFF.closed_items.
 #
 # Output: assembled prompt to stdout. Caller: Agent(model: opus, prompt: stdout).
 # Version: 2.0.0
@@ -86,6 +96,10 @@ def main(argv):
     parser.add_argument("--impl-suggestion", default=None)
     parser.add_argument("--linked-item", default=None)
     parser.add_argument("--item-type", default=None, choices=["bug", "backlog"])
+    parser.add_argument("--linked-items", default=None,
+                        help="Comma-separated <feature>:<type>:<id> triples for secondary "
+                             "items closed by the same impl commit (type in {bug, backlog}). "
+                             "Malformed triples cause non-zero exit before prompt emit.")
     parser.add_argument("--no-human-approval", action="store_true")
     parser.add_argument("--code-review-full-loop", action="store_true")
     parser.add_argument("--max-iterations", type=int, default=3)
@@ -96,6 +110,7 @@ def main(argv):
         sys.stderr.write(
             "ERROR: usage: dispatch-tdd-subagent.py --scope <feature> --spec <path> "
             "[--impl-suggestion <path>] [--linked-item <dir>] [--item-type bug|backlog] "
+            "[--linked-items <feature>:<type>:<id>[,...]] "
             "[--no-human-approval] [--code-review-full-loop] [--max-iterations N]\n"
         )
         return 2
@@ -109,6 +124,41 @@ def main(argv):
     if args.max_iterations < 1:
         sys.stderr.write("ERROR: --max-iterations must be >= 1\n")
         return 2
+
+    # Parse and validate --linked-items into a list of (feature, type, id) tuples.
+    # Each malformed entry causes exit(2) BEFORE any prompt is emitted on stdout.
+    secondary_items = []
+    if args.linked_items:
+        allowed_types = {"bug", "backlog"}
+        for raw in args.linked_items.split(","):
+            entry = raw.strip()
+            if not entry:
+                sys.stderr.write(
+                    "ERROR: --linked-items contains an empty entry "
+                    "(check for stray commas)\n"
+                )
+                return 2
+            parts = entry.split(":")
+            if len(parts) != 3:
+                sys.stderr.write(
+                    f"ERROR: --linked-items entry '{entry}' is malformed: "
+                    f"expected exactly two colons in '<feature>:<type>:<id>'\n"
+                )
+                return 2
+            feat, typ, iid = parts[0].strip(), parts[1].strip(), parts[2].strip()
+            if not feat or not typ or not iid:
+                sys.stderr.write(
+                    f"ERROR: --linked-items entry '{entry}' has an empty field; "
+                    f"all of <feature>, <type>, <id> must be non-empty\n"
+                )
+                return 2
+            if typ not in allowed_types:
+                sys.stderr.write(
+                    f"ERROR: --linked-items entry '{entry}' has invalid type '{typ}'; "
+                    f"allowed types: bug, backlog\n"
+                )
+                return 2
+            secondary_items.append((feat, typ, iid))
 
     feature_name = args.scope
     feature_path = _find_feature(repo_root, feature_name)
@@ -129,6 +179,62 @@ def main(argv):
     policy_block = _policy_block(repo_root)
     linked_item_value = args.linked_item or "null"
     item_type_value = args.item_type or "null"
+
+    item_status_py = os.path.join(
+        repo_root, ".claude", "features", "rabbit-file", "scripts", "item-status.py"
+    )
+
+    # Build close-call block for STEP 9 UNLOCK. Emit lines only when there is
+    # something to close, so the baseline prompt (no items) is unchanged.
+    close_call_lines = []
+    handoff_closed_items_lines = []
+    if args.linked_item and args.item_type:
+        if args.item_type == "bug":
+            primary_status_word = "closed"
+            primary_script = os.path.join(
+                repo_root, ".claude", "features", "rabbit-file", "scripts", "bug-status.py"
+            )
+        else:
+            primary_status_word = "implemented"
+            primary_script = os.path.join(
+                repo_root, ".claude", "features", "rabbit-file", "scripts",
+                "backlog-item-status.py"
+            )
+        close_call_lines.append(
+            "  # Primary linked item (closed by impl commit):\n"
+            f"  python3 {primary_script} set {args.linked_item} {primary_status_word} \\\n"
+            "    --reason 'TDD cycle complete' --fix-commits $IMPL_SHA\n"
+        )
+        handoff_closed_items_lines.append(
+            f"    - {args.linked_item} (primary, type={args.item_type})"
+        )
+    for feat, typ, iid in secondary_items:
+        close_call_lines.append(
+            "  # Secondary linked item (resolved by same impl commit):\n"
+            f"  python3 {item_status_py} set \\\n"
+            f"    --feature {feat} --type {typ} --id {iid} \\\n"
+            "    --status close \\\n"
+            "    --reason 'TDD cycle complete (secondary item resolved by same commit)' \\\n"
+            "    --fix-commits $IMPL_SHA\n"
+        )
+        handoff_closed_items_lines.append(f"    - {feat}:{typ}:{iid} (secondary)")
+
+    if close_call_lines:
+        close_calls_block = (
+            "\nAfter the test-green transition is committed, capture the impl commit SHA\n"
+            "and close the linked item(s):\n\n"
+            "  IMPL_SHA=$(git rev-parse HEAD)\n\n"
+            + "\n".join(close_call_lines)
+        )
+    else:
+        close_calls_block = ""
+
+    if handoff_closed_items_lines:
+        handoff_closed_items_block = (
+            "\n  closed_items:\n" + "\n".join(handoff_closed_items_lines)
+        )
+    else:
+        handoff_closed_items_block = ""
 
     if args.no_human_approval:
         human_approval_section = (
@@ -283,7 +389,7 @@ does not have to commit feature.json manually:
 
   git add {feature_dir}/feature.json
   git commit -m "chore({feature_name}): advance tdd_state to test-green"
-
+{close_calls_block}
 Scope marker removed automatically by trap on EXIT.
 
 ════════════════════════════════════════════════════════════════════════
@@ -296,7 +402,7 @@ HANDOFF:
   test_result: pass
   spec_compliance: <pass|fail>
   tdd_report_path: {repo_root}/.rabbit/tdd-report-{feature_name}.json
-  notes: <brief summary>
+  notes: <brief summary>{handoff_closed_items_block}
 """
 
     sys.stdout.write(prompt)

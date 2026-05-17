@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.6.0
+version: 1.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -22,7 +22,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 - `.claude/features/tdd-subagent/scripts/tdd-step.py`
 - `.claude/features/tdd-subagent/scripts/tdd-drift-check.py`
 - `.claude/features/tdd-subagent/scripts/tdd-context.py`
-- `.claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py` (assembles a per-feature full-TDD-cycle subagent prompt; the dispatched subagent runs spec-update → test-red → impl → test-green autonomously for ONE feature, using `.rabbit-scope-active-<feature>` as its scope marker so multiple features can be dispatched in parallel; accepts optional `--linked-item <item-dir>` and `--item-type <bug|backlog>` — after the subagent reaches test-green the orchestrator captures the impl commit SHA and closes the linked item accordingly; prompt goes to stdout for caller dispatch)
+- `.claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py` (assembles a per-feature full-TDD-cycle subagent prompt; the dispatched subagent runs spec-update → test-red → impl → test-green autonomously for ONE feature, using `.rabbit-scope-active-<feature>` as its scope marker so multiple features can be dispatched in parallel; accepts optional `--linked-item <item-dir>` and `--item-type <bug|backlog>` for a single primary item, AND an optional `--linked-items <feature>:<type>:<id>,...` for additional secondary items resolved by the same cycle — after the subagent reaches test-green the orchestrator captures the impl commit SHA and closes ALL linked items accordingly; prompt goes to stdout for caller dispatch)
 - `.claude/features/tdd-subagent/skills/rabbit-feature-touch/` (self-contained TDD orchestration reference; triggers on any feature write/edit/delete/add and orchestrates via parallel per-feature subagents — Step 1 resolves scope by invoking the `rabbit-feature-scope` Skill via the Skill tool, Step 3 invokes `rabbit-spec` inline to author/update the spec and produce an impl-suggestion, Step 4 surfaces the impl-suggestion to the user for explicit approval (bypassable via `--no-human-approval`), Step 5 dispatches one `dispatch-tdd-subagent.py` subagent per resolved feature in parallel; the main session only orchestrates and never reads feature code itself)
 
 ## Invariants
@@ -34,7 +34,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 5. `tdd-step.py transition` stdout uses the `[rabbit] ━━━ ... ━━━` format with ANSI colors — green (`\x1b[32m`) for normal transition messages on stdout, red (`\x1b[31m`) for FORCED/WARNING/ERROR messages on stderr. The `show`, `next`, and `transitions` subcommands remain plain-text (consumed by tests and downstream parsers).
 6. In `rabbit-feature-touch` Step 1 (normal mode), scope resolution is performed by invoking the `rabbit-feature-scope` Skill via the Skill tool (`Skill("rabbit-feature-scope", args: "<request>")`), NOT by shelling out to `resolve-scope.sh` directly. The Skill emits a prompt for caller dispatch; the caller parses the JSON response `{"features": [...], "rationale": "..."}` to drive parallel dispatch.
 7. `dispatch-tdd-subagent.py` emits a prompt to stdout only; it does not call any agent itself. The assembled prompt instructs the per-feature subagent to run the full TDD cycle (spec-update → test-red → impl → test-green) for ONE feature, using `.rabbit-scope-active-<feature-name>` as its scope marker. Distinct per-feature scope markers enable simultaneous dispatch across features without scope collision. The subagent writes `tdd-report.json` to `.rabbit/tdd-report.json` (a hidden folder at repo root); the `.rabbit/` directory is created automatically if it doesn't exist and is listed in `.gitignore`.
-8. When `--linked-item <item-dir> --item-type bug` is provided to `dispatch-tdd-subagent.py`, the orchestrator calls `bug-status.py set <item-dir> closed --reason 'TDD cycle complete' --fix-commits <impl-sha>` after test-green. When `--item-type backlog` is provided, it calls `backlog-item-status.py set <item-dir> implemented --reason 'TDD cycle complete' --fix-commits <impl-sha>`. These calls commit the item automatically. The HANDOFF block must include the linked item path and its new status.
+8. When `--linked-item <item-dir> --item-type bug` is provided to `dispatch-tdd-subagent.py`, the orchestrator calls `bug-status.py set <item-dir> closed --reason 'TDD cycle complete' --fix-commits <impl-sha>` after test-green. When `--item-type backlog` is provided, it calls `backlog-item-status.py set <item-dir> implemented --reason 'TDD cycle complete' --fix-commits <impl-sha>`. These calls commit the item automatically. The HANDOFF block must include the linked item path and its new status. Additionally, when `--linked-items <feature>:<type>:<id>[,<feature>:<type>:<id>...]` is provided (a comma-separated list of triples), the orchestrator closes each listed item via `item-status.py set --feature <feature> --type <type> --id <id> --status close --reason 'TDD cycle complete (secondary item resolved by same commit)' --fix-commits <impl-sha>` after test-green. Each triple is validated for shape (exactly two colons, non-empty fields, type in {bug, backlog}); malformed triples cause dispatch-tdd-subagent.py to exit non-zero before emitting the prompt. The HANDOFF block must list all closed items (primary --linked-item plus every --linked-items entry).
 9. `surface.skills` in `feature.json` MUST be `[]`. Skills are now managed via explicit copy-file entries in `build-contract.json`; the `surface.skills` field is retired and must remain an empty array.
 10. E2E tests are always required — every behaviour described in a feature spec MUST
     have a corresponding end-to-end test. Unit tests alone are insufficient. The TDD
@@ -43,8 +43,10 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     IMPLEMENT, CODE-REVIEW, TEST-GREEN, UNLOCK) are labelled sections in the assembled
     subagent prompt. tdd-step.py state transitions remain forward-only and unchanged.
 12. dispatch-tdd-subagent.py interface: --scope (mandatory), --spec (mandatory),
-    --impl-suggestion (optional), --linked-item / --item-type (B/B mode),
-    --no-human-approval, --code-review-full-loop, --max-iterations (default 3, min 1).
+    --impl-suggestion (optional), --linked-item / --item-type (B/B mode, primary item),
+    --linked-items (optional, comma-separated `<feature>:<type>:<id>` triples for
+    secondary items resolved by the same cycle), --no-human-approval,
+    --code-review-full-loop, --max-iterations (default 3, min 1).
 13. `rabbit-feature-touch` SKILL.md describes a **seven-step** unified sequence
     (not six). The seven steps in order are: (1) Scope Resolution, (2) Create
     Branch, (3) Spec Authoring, (4) Human Approval, (5) Dispatch TDD Subagents,
