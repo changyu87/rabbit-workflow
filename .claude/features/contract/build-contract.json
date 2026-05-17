@@ -40,13 +40,6 @@
       "check_on_stop": true
     },
     {
-      "name": "commands/rabbit-config.md",
-      "type": "copy-file",
-      "source": ".claude/features/rabbit-cage/commands/rabbit-config.md",
-      "destination": ".claude/commands/rabbit-config.md",
-      "check_on_stop": true
-    },
-    {
       "name": "commands/rabbit-project.md",
       "type": "copy-file",
       "source": ".claude/features/rabbit-cage/commands/rabbit-project.md",
