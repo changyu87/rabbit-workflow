@@ -15,9 +15,9 @@ dispatch TDD subagents, verify HANDOFFs. It does NOT read feature code.
 - **Normal mode** — invoked directly for a feature work request
 - **B/B mode** — invoked by the bug or backlog skill, which passes a bug/item dir
 
-## Unified Five-Step Sequence
+## Unified Six-Step Sequence
 
-All modes follow these five steps. Mode determines branch name and step 5 behaviour.
+All modes follow these six steps. Mode determines branch name and step 6 behaviour.
 
 ### Step 1 — Scope Resolution
 
@@ -49,32 +49,45 @@ Create before any dispatch. Never write to main.
 git checkout -b <branch-name>
 ```
 
-### Step 3 — Dispatch TDD Subagents
+### Step 3 — Spec Authoring
+
+Invoke rabbit-spec inline:
+```
+Skill("rabbit-spec", args: "<feature-name> <request-or-item-description>")
+```
+In B/B mode, pass the bug/backlog item description as the request.
+
+rabbit-spec reads the current spec, judges open vs. specific, invokes superpowers,
+updates the feature spec, and writes `.rabbit/impl-suggestion-<feature-name>.json`.
+
+### Step 4 — Dispatch TDD Subagents
 
 One subagent per feature. Dispatch all in parallel if multiple features.
 
 ```bash
-# For each feature:
 PROMPT=$(python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py \
-  <feature-name> "<request>" \
+  --scope <feature-name> \
+  --spec .claude/features/<feature-name>/docs/spec/spec.md \
+  --impl-suggestion .rabbit/impl-suggestion-<feature-name>.json \
   [--linked-item <bug-or-item-dir> --item-type <bug|backlog>])
-# Dispatch Agent(prompt: PROMPT)
+Agent(model: opus, prompt: PROMPT)
 ```
 
-Each subagent: sets `.rabbit-scope-active-<feature>`, runs full TDD cycle
-(spec-update → test-red → impl → inline spec-review → test-green), writes
-`tdd-report.json` to `.rabbit/tdd-report.json` (hidden folder at repo root), emits HANDOFF.
+Each subagent runs 9 named steps (SPEC-READ → UNLOCK), writes
+`.rabbit/tdd-report-<feature-name>.json`, and emits HANDOFF.
 
-### Step 4 — Collect and Verify HANDOFFs
+### Step 5 — Collect and Verify HANDOFFs
 
 Verify each HANDOFF:
 - `tdd_state: test-green` for every feature
 - `test_result: pass` for every feature
 - `spec_compliance: pass` (investigate if fail before proceeding)
 
-If any feature fails: surface failure to user. Do NOT proceed to step 5.
+If any feature fails: surface failure to user. Do NOT proceed to step 6.
 
-### Step 5 — PR / Hand Off
+Read `.rabbit/tdd-report-<feature-name>.json` for full details.
+
+### Step 6 — PR / Hand Off
 
 **Normal mode:**
 ```bash
@@ -89,7 +102,7 @@ Summarize the TDD report to the user.
   "linked_item": "<path>",
   "feature": "<name>",
   "branch": "<branch-name>",
-  "tdd_report_path": "<repo-root>/.rabbit/tdd-report.json",
+  "tdd_report_path": "<repo-root>/.rabbit/tdd-report-<feature-name>.json",
   "status": "success|failed"
 }
 ```
