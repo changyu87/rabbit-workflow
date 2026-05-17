@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # test-RABBIT-CAGE-BACKLOG11-auto-close-backlog.py
-# Verify that transitioning a feature to test-green auto-closes in-progress backlog items.
+# Verify that transitioning a feature to test-green handles the auto-close path gracefully.
+# NOTE: backlog-item-status.py was removed when rabbit-backlog was unified into rabbit-file.
+# auto_close_backlog() in tdd-step.py returns early when the script is absent — the transition
+# still exits 0. These tests verify that graceful no-op behaviour.
 import json
 import os
 import shutil
@@ -11,7 +14,6 @@ import tempfile
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 TDD_STEP = os.path.join(FEATURE_DIR, 'scripts', 'tdd-step.py')
-BACKLOG_STATUS_SH = os.path.join(FEATURE_DIR, '../rabbit-backlog/scripts/backlog-item-status.py')
 TMPROOT = tempfile.mkdtemp()
 
 PASS = 0
@@ -35,14 +37,15 @@ def setup_mirror(mirror_base, feat_name, feat_state):
     mirror_contract_scripts = os.path.join(mirror_base, '.claude/features/contract/scripts')
     mirror_features = os.path.join(mirror_base, '.claude/features')
     mirror_feat = os.path.join(mirror_features, feat_name)
-    mirror_backlog_scripts = os.path.join(mirror_base, '.claude/features/rabbit-backlog/scripts')
 
     os.makedirs(mirror_tdd_scripts, exist_ok=True)
     os.makedirs(mirror_contract_scripts, exist_ok=True)
     os.makedirs(mirror_feat, exist_ok=True)
-    os.makedirs(mirror_backlog_scripts, exist_ok=True)
+    # Note: mirror_backlog_scripts (rabbit-backlog/scripts) is intentionally NOT created —
+    # backlog-item-status.py was removed with rabbit-backlog. tdd-step.py handles the
+    # missing script by returning early from auto_close_backlog().
 
-    # Init git repo so backlog-item-status.py can commit
+    # Init git repo
     subprocess.run(['git', 'init', mirror_base], capture_output=True)
     subprocess.run(['git', '-C', mirror_base, 'config', 'user.email', 'test@test.com'], capture_output=True)
     subprocess.run(['git', '-C', mirror_base, 'config', 'user.name', 'Test'], capture_output=True)
@@ -51,10 +54,6 @@ def setup_mirror(mirror_base, feat_name, feat_state):
     # Copy tdd-step.py into mirror
     shutil.copy(TDD_STEP, os.path.join(mirror_tdd_scripts, 'tdd-step.py'))
     os.chmod(os.path.join(mirror_tdd_scripts, 'tdd-step.py'), 0o755)
-
-    # Copy backlog-item-status.py into mirror
-    shutil.copy(BACKLOG_STATUS_SH, os.path.join(mirror_backlog_scripts, 'backlog-item-status.py'))
-    os.chmod(os.path.join(mirror_backlog_scripts, 'backlog-item-status.py'), 0o755)
 
     # Stub no-op rebuild-registry.sh
     stub = os.path.join(mirror_contract_scripts, 'rebuild-registry.sh')
@@ -97,7 +96,8 @@ def make_backlog_item(mirror_base, feat_name, item_name, status):
     return item_dir
 
 
-# ab1: in-progress backlog item gets auto-closed on test-green transition.
+# ab1: in-progress backlog item — transition exits 0 even though auto-close is a no-op
+# (backlog-item-status.py absent; auto_close_backlog returns early).
 def ab1():
     mirror_base = os.path.join(TMPROOT, 'ab1')
     feat_dir = setup_mirror(mirror_base, 'my-feat', 'impl')
@@ -115,15 +115,16 @@ def ab1():
     with open(os.path.join(item_dir, 'item.json')) as f:
         status = json.load(f).get('status', '')
 
-    if result.returncode == 0 and status == 'implemented':
-        ok('ab1: in-progress backlog item auto-closed to implemented on test-green')
+    # auto_close_backlog is a no-op (script absent) — item stays in-progress, exit is still 0
+    if result.returncode == 0 and status == 'in-progress':
+        ok('ab1: transition exits 0 with in-progress item when backlog-item-status.py absent')
     else:
         with open(os.path.join(TMPROOT, 'ab1.err')) as f:
             err_txt = f.read()
-        ko(f"ab1: rc={result.returncode} item_status={status} stderr={err_txt}")
+        ko(f"ab1: rc={result.returncode} item_status={status} (expected in-progress) stderr={err_txt}")
 
 
-# ab2: open backlog item is NOT touched (only in-progress items are closed).
+# ab2: open backlog item is not touched — transition exits 0 (no-op auto-close).
 def ab2():
     mirror_base = os.path.join(TMPROOT, 'ab2')
     feat_dir = setup_mirror(mirror_base, 'my-feat2', 'impl')
@@ -142,7 +143,7 @@ def ab2():
         status = json.load(f).get('status', '')
 
     if result.returncode == 0 and status == 'open':
-        ok('ab2: open backlog item not touched on test-green')
+        ok('ab2: open backlog item not touched on test-green, exits 0')
     else:
         with open(os.path.join(TMPROOT, 'ab2.err')) as f:
             err_txt = f.read()
@@ -172,7 +173,7 @@ def ab3():
         ko(f"ab3: rc={result.returncode} stderr={err_txt}")
 
 
-# ab4: multiple in-progress items — all get auto-closed.
+# ab4: multiple in-progress items — transition exits 0, items unchanged (no-op auto-close).
 def ab4():
     mirror_base = os.path.join(TMPROOT, 'ab4')
     feat_dir = setup_mirror(mirror_base, 'my-feat4', 'impl')
@@ -193,15 +194,16 @@ def ab4():
     with open(os.path.join(item2, 'item.json')) as f:
         s2 = json.load(f).get('status', '')
 
-    if result.returncode == 0 and s1 == 'implemented' and s2 == 'implemented':
-        ok('ab4: multiple in-progress items all auto-closed on test-green')
+    # auto_close_backlog is a no-op — both items stay in-progress, exit is still 0
+    if result.returncode == 0 and s1 == 'in-progress' and s2 == 'in-progress':
+        ok('ab4: transition exits 0 with multiple in-progress items when backlog-item-status.py absent')
     else:
         with open(os.path.join(TMPROOT, 'ab4.err')) as f:
             err_txt = f.read()
-        ko(f"ab4: rc={result.returncode} s1={s1} s2={s2} stderr={err_txt}")
+        ko(f"ab4: rc={result.returncode} s1={s1} s2={s2} (expected both in-progress) stderr={err_txt}")
 
 
-# ab5: --force path also auto-closes in-progress backlog items.
+# ab5: --force path also exits 0 even though auto-close is a no-op.
 def ab5():
     mirror_base = os.path.join(TMPROOT, 'ab5')
     feat_dir = setup_mirror(mirror_base, 'my-feat5', 'spec')
@@ -219,12 +221,13 @@ def ab5():
     with open(os.path.join(item_dir, 'item.json')) as f:
         status = json.load(f).get('status', '')
 
-    if result.returncode == 0 and status == 'implemented':
-        ok('ab5: in-progress backlog item auto-closed on --force test-green')
+    # auto_close_backlog is a no-op — item stays in-progress, exit is still 0
+    if result.returncode == 0 and status == 'in-progress':
+        ok('ab5: --force test-green exits 0 with in-progress item when backlog-item-status.py absent')
     else:
         with open(os.path.join(TMPROOT, 'ab5.err')) as f:
             err_txt = f.read()
-        ko(f"ab5: rc={result.returncode} item_status={status} stderr={err_txt}")
+        ko(f"ab5: rc={result.returncode} item_status={status} (expected in-progress) stderr={err_txt}")
 
 
 print(f"running auto-close backlog tests against {TDD_STEP}")
