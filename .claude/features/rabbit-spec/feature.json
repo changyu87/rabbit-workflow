@@ -10,5 +10,5 @@
     "skills": []
   },
   "deprecation_criterion": "When spec authoring is natively handled by the rabbit CLI or a successor skill.",
-  "updated": "2026-05-15"
+  "updated": "2026-05-17"
 }
