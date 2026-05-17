@@ -9,7 +9,8 @@ Counter-gated: only checks every RABBIT_SYNC_EVERY stops (default 1).
 Override in .claude/settings.local.json: {"env": {"RABBIT_SYNC_EVERY": "5"}}
 
 Output strategy: conditional-priority (at most one JSON object per invocation).
-Priority order: CLAUDE.md drift/first-run > surface drift > scope-guard-off > skills-updated.
+Priority order: CLAUDE.md drift/first-run > surface drift > scope-guard-off >
+human-approval-bypass > skills-updated.
 """
 
 import json
@@ -153,6 +154,16 @@ def main() -> int:
                 "systemMessage": "\x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed) ━━━ 🔓\x1b[0m",
             })
             json_emitted = True
+
+    # Human-approval-bypass marker (priority level 4 — between scope-guard-off
+    # and skills-updated). Not consumed; persists until /rabbit-config
+    # human-approval gated.
+    human_approval_marker = root / ".rabbit-human-approval-bypass"
+    if human_approval_marker.is_file() and not json_emitted:
+        emit({
+            "systemMessage": "\x1b[31m[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches.\x1b[0m",
+        })
+        json_emitted = True
 
     # Skills-updated marker
     skills_marker = root / ".rabbit-skills-updated"

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 2.9.0
+version: 3.0.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -19,6 +19,7 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 - `.claude/hooks/` — symlink to `rabbit-cage/hooks/`
 - `.claude/skills/` — directory of recursive copies (`cp -rp`) of feature skill source dirs; committed to the repo
 - `.claude/settings.json` — symlink to `rabbit-cage/settings.json`
+- `.claude/features/rabbit-cage/skills/rabbit-config/` — `/rabbit-config` skill source directory (SKILL.md + scripts/)
 - `.claude/policy/` — symlink to `.claude/features/policy/`
 - `.claude/contract/` — symlink to `.claude/features/contract/`
 - `CLAUDE.md` — generated file (by `generate-claude-md.py`); committed to the repo (not gitignored); not a symlink; validated on every Stop against a fresh regeneration from policy sources
@@ -87,11 +88,19 @@ than replace) the team-wide defaults.
     permission layer move all write authorization to the scope-guard hook, which is
     the single decision point for whether a write is allowed.
 
-## /rabbit-config Command
+## /rabbit-config Skill
 
-`/rabbit-config` is the extensible configuration command for the rabbit workflow. It uses a subcommand pattern to group configuration operations under one entry point.
+`/rabbit-config` is the extensible configuration skill for the rabbit workflow. It uses a subcommand pattern to group configuration operations under one entry point.
 
-**Syntax:** `/rabbit-config <subcommand> [value]`
+The skill source lives at `.claude/features/rabbit-cage/skills/rabbit-config/`:
+
+- `SKILL.md` — the skill manifest. The frontmatter `description` documents when dispatchers should invoke the skill (config changes for prompt threshold, tool permissions, human-approval bypass, etc.). The body enumerates every subcommand and its CLI surface so the dispatcher can read the full interface without opening the script.
+- `scripts/rabbit-config.py` — the implementation. A standalone Python 3 script (stdlib only) parsing argv and dispatching to one subcommand handler per call. No inline Python in command files.
+- `.claude/features/rabbit-cage/commands/rabbit-config.md` — the slash-command shim that exec's `python3 .claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py $ARGUMENTS`. The shim contains no logic of its own.
+
+**Syntax:** `/rabbit-config <subcommand> [args...]`
+
+**Subcommands:** `prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`. Each is documented below.
 
 ### Subcommand: prompt-threshold
 
@@ -118,6 +127,26 @@ Manages bash-command allowlist entries (e.g. `touch`, `cat`, `echo`, `ls`, `pyth
 - `/rabbit-config bash-allow remove <command>` — removes the entry `Bash(<command>:*)` from `permissions.allow`. No-op if the entry is absent.
 - `/rabbit-config bash-allow` (no action) — lists the current bash-allow entries, one `<command>` per line, in array order.
 
+### Subcommand: permissions
+
+Manages owner write permission on `archive/` and `test/` directories by delegating to `.claude/features/rabbit-cage/scripts/repo-permissions.py`. Used after `git clone` to lock or before editing to unlock.
+
+- `/rabbit-config permissions lock` — strips owner write bit from `archive/` and `test/` so the worktree resists accidental edits.
+- `/rabbit-config permissions unlock` — restores owner write to those directories before authoring edits.
+
+### Subcommand: human-approval
+
+Manages the Step 4 (HUMAN-APPROVAL) bypass marker `.rabbit-human-approval-bypass` at the repo root. The marker is gitignored. When the marker is present, `rabbit-feature-touch` dispatchers pass `--no-human-approval` to `dispatch-tdd-subagent.py`; when absent, the dispatcher waits for explicit in-conversation user approval as the default.
+
+- `/rabbit-config human-approval bypass` — writes `.rabbit-human-approval-bypass` at the repo root with content `session`. Step 4 (Human Approval) is skipped for every subsequent `rabbit-feature-touch` dispatch until the marker is removed. Use ONLY after explicit user authorization.
+- `/rabbit-config human-approval gated` — deletes `.rabbit-human-approval-bypass`. Step 4 returns to the default-wait posture immediately.
+- `/rabbit-config human-approval` (no action) — prints the current state to stdout: either `bypass` (marker present) or `gated` (marker absent). No file is modified.
+
+`sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event while `.rabbit-human-approval-bypass` is present, so the bypass cannot be silently forgotten:
+`[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches.`
+
+The marker stays in place across sessions until explicitly revoked via `/rabbit-config human-approval gated` or manual deletion. It is a hard state, not conversation memory — the dispatcher reads the file at every dispatch, not Claude's recollection of prior approval.
+
 **Common rules for permission subcommands (`allowed-tools`, `bash-allow`):**
 
 - The target file is `.claude/settings.local.json` (not `.claude/settings.json`). `settings.local.json` is outside the build system's copy-file target set, so permissions persist across `sync-check.py` surface-drift rebuilds. Writes to `settings.local.json` are unconditionally permitted by the scope-guard filename allowlist.
@@ -132,7 +161,7 @@ Manages bash-command allowlist entries (e.g. `touch`, `cat`, `echo`, `ls`, `pyth
 
 ### Invariants
 
-25. `/rabbit-config` command file exists at `commands/rabbit-config.md`.
+25. `/rabbit-config` command file exists at `commands/rabbit-config.md` and is a thin shim that delegates to `python3 .claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py $ARGUMENTS`. The command file contains no inline Python implementation; all logic lives in the script.
 26. `/rabbit-set-threshold` command file does NOT exist anywhere in the repository.
 27. `/rabbit-config prompt-threshold <N>` writes `{"env": {"RABBIT_REFRESH_EVERY": "<N>"}}` merged into `.claude/settings.local.json`.
 28. `/rabbit-config prompt-threshold` (no argument) removes the `RABBIT_REFRESH_EVERY` key from the `env` object in `.claude/settings.local.json`; if `env` becomes empty the key is also removed.
@@ -145,6 +174,14 @@ Manages bash-command allowlist entries (e.g. `touch`, `cat`, `echo`, `ls`, `pyth
 48. `/rabbit-config allowed-tools add <tool>` and `/rabbit-config allowed-tools remove <tool>` reject inputs whose value begins with `Bash(` and exit non-zero with an error directing the operator to use `bash-allow` instead.
 49. `/rabbit-config bash-allow add <command>` rejects `<command>` values containing any of `(`, `)`, `:`, or whitespace, and exits non-zero without modifying any file.
 50. The permission subcommands (`allowed-tools`, `bash-allow`) write to `.claude/settings.local.json` (which is on the scope-guard filename allowlist); they never write to `.claude/settings.json`. This isolates permission grants from the build system: `.claude/settings.json` is a copy-file target regenerated by `build.py` on surface drift (see `build-contract.json`), which would silently destroy any `permissions` block written there. `.claude/settings.local.json` is outside the build system's copy-file target set and persists across surface-drift rebuilds.
+53. `.claude/features/rabbit-cage/skills/rabbit-config/SKILL.md` exists. Its YAML frontmatter declares `name: rabbit-config` and a `description` field that names all five subcommands (`prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`) so the dispatcher can decide to invoke it. Its body enumerates the full CLI for every subcommand verbatim — no opening the script needed to read the interface.
+54. `.claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py` exists, is executable (`chmod +x`), and is the sole implementation of `/rabbit-config`. It is a standalone Python 3 script using stdlib only. The slash-command shim at `commands/rabbit-config.md` contains no inline Python — it `exec`s this script.
+55. `/rabbit-config human-approval bypass` writes the file `.rabbit-human-approval-bypass` at the repo root with content `session` and prints a single confirmation line. Idempotent: re-invoking when the marker already exists is a no-op exit 0 with the same confirmation.
+56. `/rabbit-config human-approval gated` deletes `.rabbit-human-approval-bypass` from the repo root and prints a single confirmation line. Idempotent: invoking when the marker is absent is a no-op exit 0.
+57. `/rabbit-config human-approval` (no action) prints exactly one line to stdout: `bypass` if `.rabbit-human-approval-bypass` exists at repo root, otherwise `gated`. No file is modified. Exits 0.
+58. `.rabbit-human-approval-bypass` is gitignored (appears in `.gitignore`). The marker is a runtime artifact, never committed.
+59. `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event while `.rabbit-human-approval-bypass` exists at the repo root: `[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches`. The marker is NOT consumed by `sync-check.py` — it persists across Stops until explicitly removed via `/rabbit-config human-approval gated`. This human-approval-bypass alert sits between scope-guard-off and skills-updated in the conditional-priority order (see Inv 37).
+60. `permissions [lock|unlock]` is a `/rabbit-config` subcommand that shells out to `.claude/features/rabbit-cage/scripts/repo-permissions.py` with the same action. Unknown actions exit non-zero with a usage message; no other file is modified.
 
 ## Out of Scope
 
@@ -525,7 +562,8 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
     1. CLAUDE.md drift or first-run (always exits immediately after emitting)
     2. Surface drift (copy-file targets out of sync with sources)
     3. Scope-guard-off (session override active or one-time override consumed)
-    4. Skills-updated (`.rabbit-skills-updated` marker present)
+    4. Human-approval-bypass active (`.rabbit-human-approval-bypass` marker present at repo root)
+    5. Skills-updated (`.rabbit-skills-updated` marker present)
     Conditions at the same priority level do not coexist in the current implementation;
     each has a distinct marker or detection path.
 

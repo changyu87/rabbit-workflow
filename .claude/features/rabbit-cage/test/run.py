@@ -33,6 +33,7 @@ SUITES = [
     "test-build-non-git-dir.py",
     "test-rabbit-config.py",
     "test-rabbit-config-permissions.py",
+    "test-BACKLOG-11-rabbit-config-skill.py",
     "test-RABBIT-CAGE-21-plugin-change-alert.py",
     "test-RABBIT-CAGE-23-rename-rbt-prefix.py",
     "test-no-rbt-refs.py",

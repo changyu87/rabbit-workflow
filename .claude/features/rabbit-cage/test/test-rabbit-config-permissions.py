@@ -2,7 +2,6 @@
 """Tests /rabbit-config permission subcommands (allowed-tools, bash-allow)."""
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -15,6 +14,8 @@ REPO_ROOT = subprocess.run(
 ).stdout.strip()
 COMMANDS_DIR = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/commands")
 CONFIG_MD = os.path.join(COMMANDS_DIR, "rabbit-config.md")
+# Inv 25 (updated): logic lives in the extracted script, not inline in CONFIG_MD.
+CONFIG_PY = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py")
 
 pass_n = 0
 fail_n = 0
@@ -32,22 +33,10 @@ def fail_t(t, msg):
     fail_n += 1
 
 
-def extract_pyscript():
-    with open(CONFIG_MD) as f:
-        text = f.read()
-    m = re.search(r'python3 -c "(.*?)"`', text, re.DOTALL)
-    if not m:
-        return ""
-    return m.group(1)
-
-
 def run_config(argstr, wd):
-    script = extract_pyscript()
-    if not script:
-        print("EXTRACT_FAILED", file=sys.stderr)
-        return 1, "", ""
-    env = {**os.environ, "ARGUMENTS": argstr}
-    res = subprocess.run([sys.executable, "-c", script], cwd=wd, env=env,
+    """Invoke the extracted script directly, splitting argstr into argv."""
+    args = argstr.split() if argstr else []
+    res = subprocess.run([sys.executable, CONFIG_PY] + args, cwd=wd,
                          capture_output=True, text=True)
     return res.returncode, res.stdout, res.stderr
 
@@ -287,12 +276,13 @@ else:
     fail_t(19, f"confirmation strings wrong (allowed-tools out={out_at!r}, bash-allow out={out_ba!r})")
 shutil.rmtree(wd, ignore_errors=True)
 
-# t20: USAGE inline text references settings.local.json for allowed-tools and bash-allow (Inv 50 prose)
-with open(CONFIG_MD) as f:
-    md = f.read()
+# t20: USAGE text (now in CONFIG_PY; CONFIG_MD is a shim per Inv 25) references
+# settings.local.json for allowed-tools and bash-allow (Inv 50 prose).
+with open(CONFIG_PY) as f:
+    py = f.read()
 # Strict: the literal phrase 'permissions.allow in settings.json' is the bug fingerprint
 # and must not appear (would mean the USAGE text still names the wrong file).
-if "permissions.allow in settings.json" not in md and "permissions.allow in settings.local.json" in md:
+if "permissions.allow in settings.json" not in py and "permissions.allow in settings.local.json" in py:
     ok(20, "USAGE text references settings.local.json (not settings.json) for permission subcommands")
 else:
     fail_t(20, "USAGE text still mentions 'permissions.allow in settings.json' or omits 'settings.local.json'")
