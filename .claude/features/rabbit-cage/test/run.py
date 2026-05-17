@@ -27,6 +27,7 @@ SUITES = [
     "test-scope-guard-allowlist.py",
     "test-scope-guard-deny-message.py",
     "test-scope-guard-rabbit-allowlist.py",
+    "test-RABBIT-CAGE-BUG10-settings-json-allowlist.py",
     "test-rabbit-workspace-map-wiring.py",
     "test-POLICY-BACKLOG-1-session-init-branch.py",
     "test-build-non-git-dir.py",
