@@ -15,9 +15,9 @@ dispatch TDD subagents, verify HANDOFFs. It does NOT read feature code.
 - **Normal mode** — invoked directly for a feature work request
 - **B/B mode** — invoked by the bug or backlog skill, which passes a bug/item dir
 
-## Unified Six-Step Sequence
+## Unified Seven-Step Sequence
 
-All modes follow these six steps. Mode determines branch name and step 6 behaviour.
+All modes follow these seven steps. Mode determines branch name and step 7 behaviour.
 
 ### Step 1 — Scope Resolution
 
@@ -60,7 +60,33 @@ In B/B mode, pass the bug/backlog item description as the request.
 rabbit-spec reads the current spec, judges open vs. specific, invokes superpowers,
 updates the feature spec, and writes `.rabbit/impl-suggestion-<feature-name>.json`.
 
-### Step 4 — Dispatch TDD Subagents
+### Step 4 — Human Approval
+
+A full TDD cycle is about to run — tests will be written, code implemented, a PR
+created. Catching a design mismatch now costs one conversation turn; catching it
+after costs a full cycle. This gate lives here, in the main session, because
+subagents run to completion and cannot pause for user input mid-execution.
+
+For each feature, read `.rabbit/impl-suggestion-<feature-name>.json` and surface
+to the user:
+- **Request summary** — what was asked
+- **Spec changes** — what changed in the spec and why
+- **Affected files** — what will be written
+- **Implementation approach** — how the subagent will tackle it
+
+For multiple features, present all summaries together and collect one approval
+decision before dispatching any subagent.
+
+Wait for explicit user approval ("looks good", "go ahead", or equivalent). If the
+user requests changes, invoke rabbit-spec again for the affected features, then
+return to this step.
+
+**Bypass:** when the user has indicated they want fully autonomous execution for
+this session, skip the wait and pass `--no-human-approval` to the Step 5 dispatch
+command. Do not silently bypass — only bypass when the user has explicitly asked
+for it.
+
+### Step 5 — Dispatch TDD Subagents
 
 One subagent per feature. Dispatch all in parallel if multiple features.
 
@@ -69,25 +95,26 @@ PROMPT=$(python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py 
   --scope <feature-name> \
   --spec .claude/features/<feature-name>/docs/spec/spec.md \
   --impl-suggestion .rabbit/impl-suggestion-<feature-name>.json \
-  [--linked-item <bug-or-item-dir> --item-type <bug|backlog>])
+  [--linked-item <bug-or-item-dir> --item-type <bug|backlog>] \
+  [--no-human-approval])
 Agent(model: opus, prompt: PROMPT)
 ```
 
-Each subagent runs 9 named steps (SPEC-READ → UNLOCK), writes
+Each subagent runs its named steps (SPEC-READ → UNLOCK), writes
 `.rabbit/tdd-report-<feature-name>.json`, and emits HANDOFF.
 
-### Step 5 — Collect and Verify HANDOFFs
+### Step 6 — Collect and Verify HANDOFFs
 
 Verify each HANDOFF:
 - `tdd_state: test-green` for every feature
 - `test_result: pass` for every feature
 - `spec_compliance: pass` (investigate if fail before proceeding)
 
-If any feature fails: surface failure to user. Do NOT proceed to step 6.
+If any feature fails: surface failure to user. Do NOT proceed to step 7.
 
 Read `.rabbit/tdd-report-<feature-name>.json` for full details.
 
-### Step 6 — PR / Hand Off
+### Step 7 — PR / Hand Off
 
 **Normal mode:**
 ```bash
@@ -109,6 +136,7 @@ Summarize the TDD report to the user.
 
 If `status: failed`, calling skill surfaces the failure before any item close.
 PR creation is the calling skill's responsibility in B/B mode.
+
 
 ## Red Flags — STOP
 
