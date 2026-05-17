@@ -29,6 +29,7 @@ SUITES = [
     "test-POLICY-BACKLOG-1-session-init-branch.py",
     "test-build-non-git-dir.py",
     "test-rabbit-config.py",
+    "test-rabbit-config-permissions.py",
     "test-RABBIT-CAGE-21-plugin-change-alert.py",
     "test-RABBIT-CAGE-23-rename-rbt-prefix.py",
     "test-no-rbt-refs.py",
