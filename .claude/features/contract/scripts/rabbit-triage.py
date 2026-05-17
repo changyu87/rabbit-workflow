@@ -13,7 +13,7 @@
 #   <feature-dir>/docs/spec/spec.md                              (required)
 #   <feature-dir>/docs/spec/contract.md                          (optional)
 #
-# Bug storage uses the centralized .claude/bugs/ location as written by rabbit-bug.
+# Bug storage uses the centralized .claude/bugs/ location as written by rabbit-file.
 # <feature-name> is derived from the basename of <feature-dir>.
 # <repo-root> is resolved from RABBIT_ROOT env var or git rev-parse.
 #
