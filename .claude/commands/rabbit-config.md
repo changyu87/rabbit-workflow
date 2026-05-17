@@ -15,11 +15,11 @@ USAGE = '''Usage:
       prompt-threshold <N>           set auto-refresh threshold to N (positive integer)
       prompt-threshold               remove threshold override, restoring default
   /rabbit-config allowed-tools [add|remove <tool>]
-      allowed-tools add <tool>       add <tool> to permissions.allow in settings.json
+      allowed-tools add <tool>       add <tool> to permissions.allow in settings.local.json
       allowed-tools remove <tool>    remove <tool> from permissions.allow
       allowed-tools                  list current entries (excluding Bash(...) entries managed by bash-allow)
   /rabbit-config bash-allow [add|remove <command>]
-      bash-allow add <command>       add Bash(<command>:*) to permissions.allow in settings.json
+      bash-allow add <command>       add Bash(<command>:*) to permissions.allow in settings.local.json
       bash-allow remove <command>    remove Bash(<command>:*) from permissions.allow
       bash-allow                     list current bash-allow commands (inner names)
   /rabbit-config permissions lock|unlock
@@ -71,8 +71,8 @@ elif subcmd == 'allowed-tools':
     value  = args[2] if len(args) > 2 else ''
 
     if action == '':
-        # List current non-Bash entries
-        p, cfg = load_settings()
+        # List current non-Bash entries from settings.local.json
+        p, cfg = load_local()
         for entry in cfg.get('permissions', {}).get('allow', []):
             if not entry.startswith('Bash('):
                 print(entry)
@@ -88,7 +88,7 @@ elif subcmd == 'allowed-tools':
         print(f'Error: {value!r} looks like a Bash rule; use /rabbit-config bash-allow instead', file=sys.stderr)
         sys.exit(1)
 
-    p, cfg = load_settings()
+    p, cfg = load_local()
     allow = perm_allow(cfg)
     if action == 'add':
         if value in allow:
@@ -96,12 +96,12 @@ elif subcmd == 'allowed-tools':
         else:
             allow.append(value)
             write_json(p, cfg)
-            print(f'Added {value} to .claude/settings.json')
+            print(f'Added {value} to .claude/settings.local.json')
     else:  # remove
         if value in allow:
             allow.remove(value)
             write_json(p, cfg)
-            print(f'Removed {value} from .claude/settings.json')
+            print(f'Removed {value} from .claude/settings.local.json')
         else:
             print(f'Not present: {value}')
 
@@ -110,8 +110,8 @@ elif subcmd == 'bash-allow':
     value  = args[2] if len(args) > 2 else ''
 
     if action == '':
-        # List current Bash(<cmd>:*) inner names
-        p, cfg = load_settings()
+        # List current Bash(<cmd>:*) inner names from settings.local.json
+        p, cfg = load_local()
         pat = re.compile(r'^Bash\(([^():\s]+):\*\)$')
         for entry in cfg.get('permissions', {}).get('allow', []):
             m = pat.match(entry)
@@ -130,7 +130,7 @@ elif subcmd == 'bash-allow':
         sys.exit(1)
 
     entry = f'Bash({value}:*)'
-    p, cfg = load_settings()
+    p, cfg = load_local()
     allow = perm_allow(cfg)
     if action == 'add':
         if entry in allow:
@@ -138,12 +138,12 @@ elif subcmd == 'bash-allow':
         else:
             allow.append(entry)
             write_json(p, cfg)
-            print(f'Added {entry} to .claude/settings.json')
+            print(f'Added {entry} to .claude/settings.local.json')
     else:  # remove
         if entry in allow:
             allow.remove(entry)
             write_json(p, cfg)
-            print(f'Removed {entry} from .claude/settings.json')
+            print(f'Removed {entry} from .claude/settings.local.json')
         else:
             print(f'Not present: {entry}')
 
