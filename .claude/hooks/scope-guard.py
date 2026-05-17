@@ -36,6 +36,25 @@ def _git_toplevel(start: Path) -> Optional[Path]:
 REPO_ROOT = _git_toplevel(Path(__file__).resolve().parent)
 
 
+_SPEC_MD_PATTERN = None
+
+
+def _spec_md_pattern():
+    """Cached regex matching <REPO_ROOT>/.claude/features/<feature>/docs/spec/spec.md.
+
+    <feature> is a single path segment (matched as `[^/]+`). Inv 20 (extended):
+    writes to the feature spec.md are permitted regardless of scope-marker state
+    so rabbit-feature-touch Step 3 spec-authoring can update specs without an
+    override.
+    """
+    global _SPEC_MD_PATTERN
+    if _SPEC_MD_PATTERN is None and REPO_ROOT is not None:
+        _SPEC_MD_PATTERN = re.compile(
+            r"^" + re.escape(str(REPO_ROOT)) + r"/\.claude/features/[^/]+/docs/spec/spec\.md$"
+        )
+    return _SPEC_MD_PATTERN
+
+
 def abspath(p: str) -> str:
     if p.startswith("/"):
         return p
@@ -106,6 +125,15 @@ def decide(target: str) -> Tuple[bool, str]:
         or abs_path.startswith(str(REPO_ROOT) + "/.rabbit/")
     ):
         return True, "ALLOW (path-prefix allowlist: bug/backlog/dispatcher metadata)"
+
+    # 3c. Path-pattern allowlist — feature spec.md (Inv 20 extended, BUG-8).
+    # Permits rabbit-feature-touch Step 3 spec-authoring (which runs in the
+    # main session before any per-feature scope marker is set) to write
+    # `.claude/features/<feature>/docs/spec/spec.md` without an override.
+    # Pattern is narrowly scoped to that exact basename.
+    pattern = _spec_md_pattern()
+    if pattern and pattern.match(abs_path):
+        return True, "ALLOW (path-pattern allowlist: feature spec.md)"
 
     # 4a. Per-feature scope markers
     for per_marker in glob.glob(str(REPO_ROOT) + "/.rabbit-scope-active-*"):
@@ -236,6 +264,11 @@ def extract_bash_targets(cmd: str) -> List[str]:
     cmd = cmd.replace("\\\n", " ")
     # Strip heredoc bodies
     cmd = _HEREDOC_RE.sub(" ", cmd)
+    # Strip quoted regions on the FULL command BEFORE segment split (Inv 42
+    # extended, BUG-9). Per-segment stripping after splitting on ;|& leaves
+    # unbalanced-quote segments whenever ;|& appears inside a quoted argument
+    # value, causing false-positive write-target extraction.
+    cmd = _strip_quotes(cmd)
     # Split on ; | &
     segments = re.split(r"[;|&]", cmd)
     targets: List[str] = []
@@ -244,7 +277,7 @@ def extract_bash_targets(cmd: str) -> List[str]:
         seg = seg.lstrip()
         if not seg:
             continue
-        stripped = _strip_quotes(seg)
+        stripped = seg
 
         # > path or >> path
         for m in re.finditer(r">>?\s*([^\s<>|&;]+)", stripped):

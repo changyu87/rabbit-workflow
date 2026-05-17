@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 2.6.0
+version: 2.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -234,6 +234,17 @@ metadata, not feature code, and must not require a session override —
 override semantics are reserved for exceptional human-approved bypasses, not
 routine workflow writes.
 
+**Path-pattern allowlist:** `scope-guard.py` additionally permits writes to
+the path pattern `.claude/features/<feature>/docs/spec/spec.md` regardless
+of scope-marker state, where `<feature>` is any single path segment
+(matched as `[^/]+`). This permits the `rabbit-feature-touch` Step 3
+spec-authoring step — which invokes `rabbit-spec` from the main session
+before any per-feature scope marker is set by the TDD subagent — to update
+the spec without requiring a manual one-time override. The pattern is
+narrowly scoped to the `docs/spec/spec.md` file only; other files under
+`.claude/features/<feature>/docs/` remain governed by the default scope
+rules.
+
 ## Invariants (additional)
 
 11. `.rabbit-scope-override` and `.rabbit-scope-override-used` are gitignored.
@@ -251,6 +262,15 @@ routine workflow writes.
     and `.rabbit/tdd-report-<feature>.json` during normal feature work without
     needing a session override (override is reserved for exceptional
     human-approved bypasses, not routine workflow writes).
+    `scope-guard.py` also maintains a path-pattern allowlist permitting
+    writes to `.claude/features/<feature>/docs/spec/spec.md` for any single
+    path segment `<feature>` (matched as `[^/]+`), regardless of
+    scope-marker state. This pattern is required so that
+    `rabbit-feature-touch` Step 3 spec-authoring (which runs in the main
+    session before any per-feature scope marker is set) can update the spec
+    via `rabbit-spec` without a manual override. The pattern is narrowly
+    scoped to `docs/spec/spec.md`; other files under `.claude/features/<feature>/docs/`
+    remain governed by the default scope rules.
 12. `scope-guard.py` never creates `.rabbit-scope-override`; it only reads it
     and (for `one-time`) deletes it after consumption. The main session (Claude)
     may write `.rabbit-scope-override` after receiving explicit in-conversation
@@ -285,6 +305,15 @@ routine workflow writes.
     `scope-guard.py` uses the `re.DOTALL` flag so that multi-line double-quoted
     strings (e.g., from backslash-newline continuations) are fully removed before
     pattern matching, preventing false-positive DENY on content inside the string.
+    Additionally, the entire quote-stripping pass runs on the FULL command
+    string BEFORE splitting on `;|&` segment delimiters (not per-segment
+    after splitting). This ensures that `;|&` characters inside quoted
+    argument values (e.g., a `--description "..."` text containing
+    semicolons or pipes) are stripped along with the rest of the quoted
+    content, preventing spurious segment boundaries that would leave
+    residual unbalanced-quote segments and cause false-positive DENY on
+    write-pattern characters (`>`, `>>`, `tee`, etc.) inside the original
+    quoted text.
 14. `generate-skills-dir.py --check` detects drift by comparing the sha256 of
     each source `SKILL.md` directly against the sha256 of the corresponding
     copy at `.claude/skills/<name>/SKILL.md`. No external baseline file is
@@ -386,11 +415,26 @@ If the current branch is already a non-protected branch (anything other than `ma
 ## Scope-Guard Quote Awareness
 
 `extract_bash_targets()` in `scope-guard.py` is quote-aware. Before applying
-any redirect or write-command pattern matching, it strips single-quoted and
-double-quoted regions from each command segment using Python's `re` module.
-This prevents false positives when string data (e.g., inside `python3 -c '...'`
-arguments or heredoc bodies) contains `>`, `>>`, or command names such as
-`tee`, `cp`, `mv`, or `rm`. Real unquoted redirects are still detected correctly.
+any redirect or write-command pattern matching, AND before splitting the
+command string on `;|&` segment delimiters, it strips single-quoted and
+double-quoted regions from the FULL command string using Python's `re`
+module. This prevents false positives when string data (e.g., inside
+`python3 -c '...'` arguments, `--description "..."` argument values, or
+heredoc bodies) contains `>`, `>>`, `;`, `|`, `&`, or command names such as
+`tee`, `cp`, `mv`, or `rm`. Real unquoted redirects, separators, and write
+commands are still detected correctly.
+
+The strip-before-split order is required because if quote stripping runs
+per-segment after a naive `re.split(r'[;|&]', cmd)`, then any `;|&`
+character inside a quoted string causes the quoted region to be split
+across multiple segments. Each resulting segment has an unbalanced quote,
+so the non-greedy `'[^']*'` / `"[^"]*"` patterns cannot match the quoted
+region, leaving the quoted text exposed to pattern matching as if it were
+unquoted shell. This produces false-positive DENY on write-pattern
+characters inside the original quoted text — for example, the substring
+`<feature>).` inside a `--description "..."` value would be extracted as a
+write target `).` because the unbalanced segment matches
+`>>?\s*([^\s<>|&;]+)` against `<feature>).`.
 
 The double-quoted region stripping `re.sub` call uses the `re.DOTALL` flag
 (or equivalently `re.S`) so that quoted regions spanning multiple lines
