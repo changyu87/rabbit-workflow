@@ -40,6 +40,7 @@ SUITES = [
     "test-RABBIT-CAGE-BACKLOG14-conditional-priority.py",
     "test-RABBIT-CAGE-22-stale-marker.py",
     "test-RABBIT-CAGE-BUG4.py",
+    "test-RABBIT-CAGE-BUG89.py",
     "test-python-migration.py",
     "test-repo-permissions.py",
     "test-team-wide-permissions.py",
