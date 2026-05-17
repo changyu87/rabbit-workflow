@@ -96,13 +96,6 @@
       "check_on_stop": true
     },
     {
-      "name": "skills/repo-permissions/SKILL.md",
-      "type": "copy-file",
-      "source": ".claude/features/rabbit-cage/skills/repo-permissions/SKILL.md",
-      "destination": ".claude/skills/repo-permissions/SKILL.md",
-      "check_on_stop": true
-    },
-    {
       "name": "agents/tdd-subagent.md",
       "type": "copy-file",
       "source": ".claude/features/tdd-subagent/agents/tdd-subagent.md",
