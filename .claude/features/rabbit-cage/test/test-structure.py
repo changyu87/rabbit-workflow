@@ -48,11 +48,12 @@ if os.path.isdir(os.path.join(CAGE_DIR, "hooks")):
 else:
     fail_t(3, "hooks/ does not exist or is not a directory")
 
-# t4: skills/ does NOT exist in rabbit-cage
-if not os.path.isdir(os.path.join(CAGE_DIR, "skills")):
-    ok(4, "skills/ does not exist in rabbit-cage (correctly moved to tdd-subagent)")
+# t4: skills/repo-permissions/SKILL.md exists in rabbit-cage (BACKLOG-8)
+repo_perms_skill = os.path.join(CAGE_DIR, "skills", "repo-permissions", "SKILL.md")
+if os.path.isfile(repo_perms_skill):
+    ok(4, "skills/repo-permissions/SKILL.md exists in rabbit-cage (BACKLOG-8)")
 else:
-    fail_t(4, "skills/ still exists in rabbit-cage — orphan dir should be removed")
+    fail_t(4, "skills/repo-permissions/SKILL.md missing from rabbit-cage — required by BACKLOG-8")
 
 # t5: settings.json exists and is valid JSON
 settings_path = os.path.join(CAGE_DIR, "settings.json")

@@ -38,6 +38,7 @@ SUITES = [
     "test-RABBIT-CAGE-22-stale-marker.py",
     "test-RABBIT-CAGE-BUG4.py",
     "test-python-migration.py",
+    "test-repo-permissions.py",
 ]
 
 
