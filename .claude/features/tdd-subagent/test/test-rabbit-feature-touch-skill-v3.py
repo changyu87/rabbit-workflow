@@ -40,7 +40,7 @@ phrases = [
     r"task/<backlog-id>",
     "tdd-report-",
     "rabbit-feature-scope",
-    "Unified Six-Step",
+    "Unified Seven-Step",
     r"primary.*first",
     r"status: success|failed",
 ]
@@ -72,14 +72,15 @@ def test_rabbit_spec_is_step_3():
         "SKILL.md must list rabbit-spec as Step 3"
 
 
-def test_six_steps_total():
-    """rabbit-feature-touch must have 6 steps total."""
+def test_seven_steps_total():
+    """rabbit-feature-touch must have 7 steps total (spec invariant 13)."""
     skill_path = os.path.join(
         REPO_ROOT, ".claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md"
     )
     with open(skill_path) as f:
         content = f.read()
-    assert "Step 6" in content, "SKILL.md must have 6 steps total"
+    assert "Step 7" in content, "SKILL.md must have 7 steps total"
+    assert "Step 8" not in content, "SKILL.md must not have a Step 8"
 
 
 def test_dispatch_tdd_subagent_referenced():
@@ -94,7 +95,7 @@ def test_dispatch_tdd_subagent_referenced():
 
 
 # Run function-based tests
-for fn_name in ['test_rabbit_spec_is_step_3', 'test_six_steps_total', 'test_dispatch_tdd_subagent_referenced']:
+for fn_name in ['test_rabbit_spec_is_step_3', 'test_seven_steps_total', 'test_dispatch_tdd_subagent_referenced']:
     fn = locals()[fn_name]
     try:
         fn()
