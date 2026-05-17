@@ -162,11 +162,29 @@ def decide(target: str) -> Tuple[bool, str]:
     if allow_msg:
         return True, allow_msg
 
-    # 5. Default deny
+    # 5. Default deny — Inv 52: present three explicit options.
+    # Force a decision point rather than framing override as a silent
+    # procedural next step (the rationalization pattern BUG-1 captured).
     return False, (
-        f"DENY write to '{abs_path}' denied: no active scope marker and file "
-        "is not on the allowlist (settings.json, settings.local.json). "
-        "Dispatcher must touch .rabbit-scope-active before calling Agent."
+        f"DENY write to '{abs_path}' denied: no active scope marker and "
+        "file is not on the allowlist (settings.json, settings.local.json, "
+        ".gitignore, .rabbit-scope-override).\n"
+        "\n"
+        "Choose one of the three options below. Both override options "
+        "require explicit in-conversation user confirmation and MUST NOT "
+        "be written speculatively.\n"
+        "\n"
+        "  (1) SESSION OVERRIDE — bypasses scope-guard for the entire "
+        "session. Requires explicit in-conversation user confirmation "
+        "before writing '.rabbit-scope-override' with content 'session'.\n"
+        "\n"
+        "  (2) ONE-TIME OVERRIDE — bypasses scope-guard for a single "
+        "write only. Requires explicit in-conversation user confirmation "
+        "before writing '.rabbit-scope-override' with content 'one-time'.\n"
+        "\n"
+        "  (3) USE rabbit-feature-touch (recommended) — the correct "
+        "governed path for feature edits. Invokes the TDD cycle, advances "
+        "tdd_state, and creates a PR; no override needed."
     )
 
 
