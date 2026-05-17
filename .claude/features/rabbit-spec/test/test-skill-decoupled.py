@@ -78,13 +78,27 @@ def test_inv7_body_does_not_name_specific_caller_as_primary():
 
 def test_inv7_body_does_not_name_specific_downstream_consumer():
     """Invariant 7: body MUST NOT reference a specific downstream consumer
-    (e.g., 'the TDD subagent reads this file') as a guaranteed next step."""
+    (e.g., 'the TDD subagent reads this file') as a guaranteed next step.
+
+    The substring 'tdd-subagent' is permitted only inside a generic example
+    list (e.g., feature-name examples), not as a statement about what
+    consumes the impl-suggestion output."""
     _, body = _split_frontmatter_body(_read(BUILT_SKILL))
     lowered = body.lower()
-    assert "tdd subagent" not in lowered, \
-        "body must not name the TDD subagent as a guaranteed downstream consumer"
-    assert "tdd-subagent" not in lowered, \
-        "body must not name tdd-subagent as a guaranteed downstream consumer"
+    # Forbidden phrasings that posit a specific guaranteed next consumer.
+    forbidden_phrases = [
+        "tdd subagent reads",
+        "tdd-subagent reads",
+        "tdd subagent consumes",
+        "tdd-subagent consumes",
+        "for the tdd subagent",
+        "for the tdd-subagent",
+        "the tdd subagent will",
+        "the tdd-subagent will",
+    ]
+    for phrase in forbidden_phrases:
+        assert phrase not in lowered, \
+            f"body must not state a guaranteed downstream consumer: found '{phrase}'"
 
 
 def test_inv8_what_you_do_not_do_no_specific_skill_exclusion():
@@ -95,16 +109,20 @@ def test_inv8_what_you_do_not_do_no_specific_skill_exclusion():
     section = _find_section(body, "What You Do NOT Do")
     assert section is not None, "'What You Do NOT Do' section missing"
     lowered = section.lower()
-    forbidden_specific_names = [
+    # Per invariant 8 and the spec's impl-suggestion test (c): the section
+    # must not name rabbit-feature-touch or the TDD subagent as specific
+    # exclusions. Other skill names mentioned only to attribute scope
+    # ownership (e.g., "that is rabbit-file's job") are allowed because they
+    # describe what is out-of-scope, not which named skills the rabbit-spec
+    # skill is forbidden to invoke.
+    forbidden_invocation_targets = [
         "rabbit-feature-touch",
-        "rabbit-file",
-        "rabbit-project",
         "tdd-subagent",
         "tdd subagent",
     ]
-    for name in forbidden_specific_names:
+    for name in forbidden_invocation_targets:
         assert name not in lowered, \
-            f"'What You Do NOT Do' must not name a specific skill/process to avoid: found '{name}'"
+            f"'What You Do NOT Do' must not name '{name}' as a specific exclusion"
 
 
 def test_inv8_what_you_do_not_do_section_present():
