@@ -96,6 +96,13 @@
       "check_on_stop": true
     },
     {
+      "name": "agents/tdd-subagent.md",
+      "type": "copy-file",
+      "source": ".claude/features/tdd-subagent/agents/tdd-subagent.md",
+      "destination": ".claude/agents/tdd-subagent.md",
+      "check_on_stop": true
+    },
+    {
       "name": "README.md",
       "type": "copy-file",
       "source": ".claude/features/rabbit-cage/README.md",
