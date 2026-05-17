@@ -8,6 +8,7 @@
 .rabbit-scope-override
 .rabbit-scope-override-used
 .rabbit-skills-updated
+.rabbit-human-approval-bypass
 .claude/settings.local.json
 
 # Ephemeral TDD artifacts

@@ -16,6 +16,7 @@ SETTINGS_JSON = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/settings.j
 RABBIT_REFRESH_MD = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/commands/rabbit-refresh.md")
 WORKSPACE_TREE = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/scripts/workspace-tree.py")
 RABBIT_CONFIG_MD = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/commands/rabbit-config.md")
+RABBIT_CONFIG_PY = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py")
 
 failures = 0
 total = 0
@@ -167,16 +168,18 @@ else:
     ok("workspace-tree.py does NOT reference old .rbt-prompt-counter")
 
 # t11
-print("=== t11: rabbit-config.md uses RABBIT_REFRESH_EVERY ===")
-rc = read(RABBIT_CONFIG_MD)
+# Inv 25 (updated): rabbit-config.md is a shim with no inline Python. The
+# RABBIT_REFRESH_EVERY reference now lives in skills/rabbit-config/scripts/rabbit-config.py.
+print("=== t11: rabbit-config.py uses RABBIT_REFRESH_EVERY ===")
+rc = read(RABBIT_CONFIG_PY)
 if "RABBIT_REFRESH_EVERY" in rc:
-    ok("rabbit-config.md references RABBIT_REFRESH_EVERY")
+    ok("rabbit-config.py references RABBIT_REFRESH_EVERY")
 else:
-    fail_t("rabbit-config.md does NOT reference RABBIT_REFRESH_EVERY")
+    fail_t("rabbit-config.py does NOT reference RABBIT_REFRESH_EVERY")
 if "RBT_REFRESH_EVERY" in rc:
-    fail_t("rabbit-config.md still references old RBT_REFRESH_EVERY")
+    fail_t("rabbit-config.py still references old RBT_REFRESH_EVERY")
 else:
-    ok("rabbit-config.md does NOT reference old RBT_REFRESH_EVERY")
+    ok("rabbit-config.py does NOT reference old RBT_REFRESH_EVERY")
 
 # t12
 print("=== t12: deployed refresh.py uses new names ===")
