@@ -164,7 +164,7 @@ def _unlock_section(prompt):
     # Step 9 — UNLOCK section extends until the next "═══" block heading
     # (HANDOFF) or end of text.
     m = re.search(
-        r"STEP\s+9\s+[-—]\s+UNLOCK\s*\n=+\s*\n(.*?)(?=\n=+\s*\n|\Z)",
+        r"STEP\s+9\s+[-—]\s+UNLOCK\s*\n[═=]+\s*\n(.*?)(?=\n[═=]{5,}\s*\n|\Z)",
         prompt, re.DOTALL,
     )
     return m.group(1) if m else ""
@@ -202,22 +202,26 @@ def t_inv17_unlock_commits_before_handoff():
     prompt = _run_dispatch()
     if not prompt:
         return
-    # Find positions of UNLOCK commit instruction and HANDOFF block.
-    m_commit = re.search(
-        r"chore\([^)]+\):\s*advance\s+tdd_state\s+to\s+test-green",
-        prompt, re.IGNORECASE,
-    )
+    # Locate the UNLOCK section start, HANDOFF block, and the commit
+    # instruction inside the UNLOCK body (not the spec embed earlier in
+    # the prompt).
+    m_unlock_hdr = re.search(r"STEP\s+9\s+[-—]\s+UNLOCK\s*\n[═=]+\s*\n", prompt)
     m_handoff = re.search(r"HANDOFF\s*\(emit on completion\)", prompt)
-    if not m_commit:
-        ko("inv17: feature.json commit instruction not found in prompt")
+    if not m_unlock_hdr:
+        ko("inv17: STEP 9 — UNLOCK header not found in prompt")
         return
     if not m_handoff:
         ko("inv17: HANDOFF block not found in prompt")
         return
-    if m_commit.start() < m_handoff.start():
-        ok("inv17: UNLOCK commit instruction appears before HANDOFF block")
-    else:
-        ko("inv17: UNLOCK commit instruction does not appear before HANDOFF block")
+    unlock_body = prompt[m_unlock_hdr.end():m_handoff.start()]
+    m_commit = re.search(
+        r"chore\([^)]+\):\s*advance\s+tdd_state\s+to\s+test-green",
+        unlock_body, re.IGNORECASE,
+    )
+    if not m_commit:
+        ko("inv17: feature.json commit instruction not found inside UNLOCK section (before HANDOFF)")
+        return
+    ok("inv17: UNLOCK commit instruction appears between UNLOCK header and HANDOFF block")
 
 
 def t_inv17_substitutes_feature_name_in_commit_msg():
