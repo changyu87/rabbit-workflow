@@ -25,7 +25,7 @@ BUILD_PY = os.path.join(
     REPO_ROOT, ".claude", "features", "rabbit-cage", "scripts", "build.py"
 )
 
-EXPECTED_ALLOW = ["Bash(*)"]
+EXPECTED_ALLOW = ["Bash(*)", "Write", "Edit"]
 EXPECTED_DENY = [
     "Bash(git merge *)",
     "Bash(git push * main)",
@@ -49,6 +49,27 @@ def test_source_settings_has_permissions_block():
     )
     assert perms.get("deny") == EXPECTED_DENY, (
         f"permissions.deny must be exactly {EXPECTED_DENY}, got {perms.get('deny')!r}"
+    )
+
+
+def test_source_settings_allow_order_is_exact():
+    """Inv 51 (v2.9.0): allow must contain exactly Bash(*), Write, Edit in that order."""
+    data = _load(SOURCE_SETTINGS)
+    allow = data["permissions"]["allow"]
+    # Exact list equality (order-sensitive) already enforced above; this test
+    # asserts the spec's "in that order" requirement explicitly as a separate
+    # behaviour so a regression to alphabetical / set-based output is obvious.
+    assert allow == ["Bash(*)", "Write", "Edit"], (
+        f"allow order must be [Bash(*), Write, Edit], got {allow!r}"
+    )
+
+
+def test_destination_settings_allow_order_is_exact():
+    """Inv 51 (v2.9.0): build-managed copy must hold the same ordered allow list."""
+    data = _load(DEST_SETTINGS)
+    allow = data["permissions"]["allow"]
+    assert allow == ["Bash(*)", "Write", "Edit"], (
+        f"dest allow order must be [Bash(*), Write, Edit], got {allow!r}"
     )
 
 
