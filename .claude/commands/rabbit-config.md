@@ -1,5 +1,5 @@
 ---
-description: Configure rabbit-workflow settings. Subcommands: prompt-threshold [value]; allowed-tools [add|remove <tool>]; bash-allow [add|remove <command>].
+description: Configure rabbit-workflow settings. Subcommands: prompt-threshold [value]; allowed-tools [add|remove <tool>]; bash-allow [add|remove <command>]; permissions [lock|unlock].
 allowed-tools: Bash
 ---
 
@@ -21,7 +21,10 @@ USAGE = '''Usage:
   /rabbit-config bash-allow [add|remove <command>]
       bash-allow add <command>       add Bash(<command>:*) to permissions.allow in settings.json
       bash-allow remove <command>    remove Bash(<command>:*) from permissions.allow
-      bash-allow                     list current bash-allow commands (inner names)'''
+      bash-allow                     list current bash-allow commands (inner names)
+  /rabbit-config permissions lock|unlock
+      lock     remove owner write permission from archive/ and test/ (run after git clone)
+      unlock   restore owner write permission to archive/ and test/ (run before editing)'''
 
 if not args:
     print(USAGE)
@@ -143,6 +146,16 @@ elif subcmd == 'bash-allow':
             print(f'Removed {entry} from .claude/settings.json')
         else:
             print(f'Not present: {entry}')
+
+elif subcmd == 'permissions':
+    import subprocess
+    action = args[1] if len(args) > 1 else ''
+    if action not in ('lock', 'unlock'):
+        print('Error: permissions requires lock or unlock', file=sys.stderr)
+        sys.exit(1)
+    script = pathlib.Path('.claude/features/rabbit-cage/scripts/repo-permissions.py')
+    result = subprocess.run([sys.executable, str(script), action])
+    sys.exit(result.returncode)
 
 else:
     print(f'Unknown subcommand: {subcmd!r}', file=sys.stderr)
