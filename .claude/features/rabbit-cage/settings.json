@@ -2,6 +2,16 @@
   "env": {
     "RABBIT_REFRESH_EVERY": "20"
   },
+  "permissions": {
+    "allow": [
+      "Bash(*)"
+    ],
+    "deny": [
+      "Bash(git merge *)",
+      "Bash(git push * main)",
+      "Bash(git push origin main)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
