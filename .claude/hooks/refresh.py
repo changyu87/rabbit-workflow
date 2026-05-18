@@ -59,27 +59,9 @@ def main() -> int:
 
     text = claude_md.read_text()
 
-    # Inline policy section between rabbit-policy-start and rabbit-policy-end
-    inline_re = re.compile(
-        r"rabbit-policy-start.*?rabbit-policy-end", re.DOTALL
-    )
-    m = inline_re.search(text)
-    inline_payload = ""
-    if m:
-        # Extract lines BETWEEN the markers (exclude the marker lines themselves,
-        # matching the original sed -n '/start/,/end/p' | grep -v 'start\|end').
-        block_lines = m.group(0).splitlines()
-        body = [
-            ln for ln in block_lines
-            if "rabbit-policy-start" not in ln and "rabbit-policy-end" not in ln
-        ]
-        inline_payload = "\n".join(body)
-        if inline_payload.strip():
-            print(json.dumps({
-                "additionalContext": inline_payload + "\n",
-                "systemMessage": "\x1b[32m🔄 ━━━ [rabbit] Policy refreshed (inline section from CLAUDE.md) ━━━ 🔄\x1b[0m",
-            }))
-            return 0
+    # BUG-80: inline rabbit-policy-start/rabbit-policy-end section detection
+    # removed — generate-claude-md.py no longer emits those markers, so this
+    # branch was dead code.
 
     # Parse @-imports: lines starting with '@'
     imports = []
@@ -98,7 +80,13 @@ def main() -> int:
         if path.startswith("/"):
             full = Path(path)
         else:
-            full = root / path.lstrip("./")
+            # BUG-59: lstrip('./') is a character-set strip and would also
+            # strip leading dots from '.claude/foo'. Strip a single leading
+            # './' prefix only if present, then join under root.
+            rel = path
+            while rel.startswith("./"):
+                rel = rel[2:]
+            full = root / rel
         if full.is_file():
             parts.append(f"--- {path} ---\n")
             parts.append(full.read_text())

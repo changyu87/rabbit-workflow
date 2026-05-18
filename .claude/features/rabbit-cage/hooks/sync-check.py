@@ -41,6 +41,16 @@ def emit(obj: dict) -> None:
 
 
 def main() -> int:
+    # BUG-48: surface a minimal --help so operators can introspect the hook.
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        sys.stdout.write(
+            "sync-check.py — Stop hook.\n"
+            "Detects CLAUDE.md / surface drift, scope-guard override state, "
+            "human-approval bypass, and skill updates; emits at most one JSON "
+            "object to stdout per invocation (conditional-priority strategy).\n"
+            "Takes no command-line arguments.\n"
+        )
+        return 0
     root = repo_root()
     claude_md = root / "CLAUDE.md"
     generate_script = root / ".claude/features/rabbit-cage/scripts/generate-claude-md.py"
@@ -60,14 +70,16 @@ def main() -> int:
         return 0
     counter_file.write_text("0\n")
 
-    # Generate expected CLAUDE.md
+    # Generate expected CLAUDE.md. Narrow except to the specific failure modes
+    # (missing/unexecutable generator script or non-zero exit) so we do not
+    # silently mask programming errors elsewhere (BUG-47).
     try:
         expected = subprocess.check_output(
             [str(generate_script)],
             stderr=subprocess.DEVNULL,
             env={**os.environ, "RABBIT_ROOT": str(root)},
         ).decode()
-    except Exception:
+    except (FileNotFoundError, PermissionError, subprocess.CalledProcessError, OSError):
         return 0
 
     def policy_section(text: str) -> str:

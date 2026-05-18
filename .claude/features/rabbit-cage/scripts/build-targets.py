@@ -3,6 +3,16 @@
 # Usage: python3 build-targets.py <repo_root> <contract_path> <generate_script>
 import hashlib, json, os, re, shutil, subprocess, sys
 
+USAGE = "Usage: build-targets.py <repo_root> <contract_path> <generate_script>\n"
+
+if len(sys.argv) == 2 and sys.argv[1] in ("-h", "--help"):
+    sys.stdout.write(USAGE)
+    sys.exit(0)
+if len(sys.argv) < 4:
+    sys.stderr.write(USAGE)
+    sys.exit(2)
+
+
 def _sha256(path):
     h = hashlib.sha256()
     with open(path, "rb") as fh:
@@ -49,12 +59,17 @@ for target in contract.get("targets", []):
                           (_sha256(source) != _sha256(destination))
         if content_changed:
             shutil.copy2(source, destination)
-        print(f"  [built] {name}")
-        m = re.match(r'^\.claude/skills/([^/]+)/SKILL\.md$', target["destination"])
-        if m and content_changed:
+            print(f"  [built] {name}")
+        else:
+            print(f"  [no-op] {name}")
+        # BUG-81: widen marker write to any copy-file destination under
+        # .claude/skills/<name>/ (scripts, resources, SKILL.md). Capture the
+        # skill name from the first path segment after .claude/skills/.
+        skill_match = re.match(r'^\.claude/skills/([^/]+)/', target["destination"])
+        if skill_match and content_changed:
             marker = os.path.join(repo_root, ".rabbit-skills-updated")
             with open(marker, "a") as f:
-                f.write(m.group(1) + "\n")
+                f.write(skill_match.group(1) + "\n")
 
     else:
         print(f"  [error] unknown type '{ttype}' for target '{name}'", file=sys.stderr)

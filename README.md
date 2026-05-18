@@ -2,7 +2,7 @@
 
 Structured Claude Code workflow enforcing Machine First, Bounded Scope, and Designed Deprecation.
 
-Policy is auto-injected every 20 prompts (configurable). Two slash commands included.
+Policy is auto-injected every 20 prompts (configurable). Slash commands and skills included.
 
 ---
 
@@ -42,6 +42,11 @@ bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/in
 | `/rabbit-refresh` | Manually re-inject policy |
 | `/rabbit-config prompt-threshold N` | Set auto-refresh interval to N prompts (takes effect next session) |
 | `/rabbit-config prompt-threshold` | Restore default auto-refresh interval |
+| `/rabbit-config allowed-tools [add\|remove <tool>]` | Manage Claude Code tool permissions |
+| `/rabbit-config bash-allow [add\|remove <cmd>]` | Manage Bash command permissions |
+| `/rabbit-config permissions [lock\|unlock]` | Lock/unlock archive/ and test/ owner write bit |
+| `/rabbit-config human-approval [true\|false]` | Manage Step 4 HUMAN-APPROVAL gate |
+| `/rabbit-project init <name>` | Scaffold a new project directory |
 
 ## Configuration
 
@@ -54,39 +59,38 @@ subagent works the same regardless of where the feature directory lives:
 `.claude/features/<x>/` (rabbit improving itself), `projA/features/<y>/`
 (any project applying the rabbit discipline), or any other path.
 
-The rabbit-breeder is dispatched with a SCOPE per invocation; the
+The TDD subagent is dispatched with a SCOPE per invocation; the
 scope-guard hook enforces that scope. There is no rabbit-dev-mode vs
 user-mode dichotomy in the runtime.
 
 ```bash
-# Scaffold a new feature anywhere
-bash .claude/features/feature-scaffolder/scripts/new-feature.sh \
+# Scaffold a new feature anywhere (Python — no .sh scripts in rabbit)
+python3 .claude/features/rabbit-cage/scripts/new-feature.py \
     projA/features auth-redirect --owner alice
 
 # Sweep validate every feature in a tree
-FEATURES_ROOT=projA/features \
-    bash .claude/features/feature-scaffolder/scripts/validate-all.sh
+python3 .claude/features/rabbit-cage/scripts/validate-all.py projA/features
 
-# File a bug
-BUG_ROOT=projA/bugs \
-    bash .claude/features/bug-filing/scripts/file-bug.sh \
-        --name 2026-05-09-login-loop --title "login redirects loop on safari" \
-        --severity high --description "..." --related-feature auth-redirect
+# File a bug (rabbit-file owns bug/backlog item lifecycle)
+python3 .claude/features/rabbit-file/scripts/file-item.py \
+    --feature auth-redirect --type bug \
+    --title "login redirects loop on safari" --priority high
 
 # Transition TDD state — same script for any feature dir
 python3 .claude/features/tdd-subagent/scripts/tdd-step.py \
     transition projA/features/auth-redirect test-red
 
-# Dispatch the breeder onto a scope (sketched — typically the main session
-# orchestrates this; the main session writes/removes the marker around
-# the Agent call)
-touch projA/features/auth-redirect/.rabbit-scope-active
-# (Agent dispatch with subagent_type: rabbit-breeder, prompt with SCOPE: ...)
-rm projA/features/auth-redirect/.rabbit-scope-active
+# Dispatch the TDD subagent onto a scope (sketched — typically the main session
+# orchestrates this; the main session writes/removes the marker around the
+# Agent call)
+touch .rabbit-scope-active-auth-redirect
+# (Agent dispatch with subagent_type: tdd-subagent, prompt with SCOPE: ...)
+rm .rabbit-scope-active-auth-redirect
 ```
 
-See `.claude/features/feature-scaffolder/spec.md` for scaffolder details
-and `.claude/features/breeder/spec.md` for the dispatcher protocol.
+See `.claude/features/rabbit-cage/docs/spec/spec.md` for the rabbit-cage spec
+and `.claude/features/tdd-subagent/docs/spec/spec.md` for the TDD subagent
+protocol.
 
 ## Uninstall
 

@@ -9,7 +9,8 @@ Subcommands:
   human-approval [true|false]          manage Step 4 (HUMAN-APPROVAL) gate state
 
 All argv parsing comes from sys.argv[1:]; this script is the sole implementation
-of /rabbit-config. The slash-command shim at commands/rabbit-config.md execs it.
+of /rabbit-config. There is no slash-command shim file (per spec Inv 25);
+the rabbit-config skill is the sole entry point.
 """
 import json
 import pathlib
@@ -93,8 +94,11 @@ def cmd_allowed_tools(args):
         print(f'Error: {value!r} looks like a Bash rule; use /rabbit-config bash-allow instead', file=sys.stderr)
         return 1
     p, cfg = load_local()
-    allow = perm_allow(cfg)
+    # BUG-66: avoid setdefault on the remove-of-absent path so we don't write
+    # an empty {"permissions": {"allow": []}} back to disk.
+    existing_allow = cfg.get('permissions', {}).get('allow', [])
     if action == 'add':
+        allow = perm_allow(cfg)
         if value in allow:
             print(f'Already present: {value}')
         else:
@@ -102,7 +106,8 @@ def cmd_allowed_tools(args):
             write_json(p, cfg)
             print(f'Added {value} to .claude/settings.local.json')
     else:
-        if value in allow:
+        if value in existing_allow:
+            allow = perm_allow(cfg)
             allow.remove(value)
             write_json(p, cfg)
             print(f'Removed {value} from .claude/settings.local.json')
@@ -133,8 +138,10 @@ def cmd_bash_allow(args):
         return 1
     entry = f'Bash({value}:*)'
     p, cfg = load_local()
-    allow = perm_allow(cfg)
+    # BUG-66: avoid setdefault on the remove-of-absent path.
+    existing_allow = cfg.get('permissions', {}).get('allow', [])
     if action == 'add':
+        allow = perm_allow(cfg)
         if entry in allow:
             print(f'Already present: {entry}')
         else:
@@ -142,7 +149,8 @@ def cmd_bash_allow(args):
             write_json(p, cfg)
             print(f'Added {entry} to .claude/settings.local.json')
     else:
-        if entry in allow:
+        if entry in existing_allow:
+            allow = perm_allow(cfg)
             allow.remove(entry)
             write_json(p, cfg)
             print(f'Removed {entry} from .claude/settings.local.json')
@@ -169,21 +177,20 @@ def cmd_human_approval(args):
         print('false' if marker.exists() else 'true')
         return 0
     if action == 'false':
-        already = marker.exists()
-        if not already:
-            marker.write_text('session')
-        if already:
+        if marker.exists():
+            # Idempotent no-op: do not rewrite the marker file.
             print(
-                f'Human-approval gate already BYPASSED (marker {marker} already present). '
+                f'Human-approval gate already BYPASSED (marker {marker} already present; no rewrite). '
                 'Step 4 will be skipped for all dispatches until you run '
                 '/rabbit-config human-approval true.'
             )
-        else:
-            print(
-                f'Human-approval gate BYPASSED. Marker {marker} written. '
-                'Step 4 will be skipped for all dispatches until you run '
-                '/rabbit-config human-approval true.'
-            )
+            return 0
+        marker.write_text('session')
+        print(
+            f'Human-approval gate BYPASSED. Marker {marker} written. '
+            'Step 4 will be skipped for all dispatches until you run '
+            '/rabbit-config human-approval true.'
+        )
         return 0
     if action == 'true':
         if marker.exists():

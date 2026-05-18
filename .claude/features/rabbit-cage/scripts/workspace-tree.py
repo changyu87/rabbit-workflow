@@ -69,15 +69,13 @@ ANNOTATIONS = {
     "feature.json":           "feature manifest: owner, tdd_state, surface, deprecation_criterion",
     "docs/spec":              "spec and contract for this feature",
     "docs/spec/":             "spec and contract for this feature",
-    "registry.json":          "feature registry (name â path map)",
+    "registry.json":          "feature registry (name -> path map)",
     "SKILL.md":               "skill definition",
     "backlog-contract.md":    "backlog item contract",
     "bugs":                   "centralized bug tracker (.claude/bugs, subdirs by feature name)",
     "backlogs":               "centralized backlog tracker (.claude/backlogs, subdirs by feature name)",
-    "rabbit-bug":             "bug filing, tracking, and lifecycle (file-bug.sh, bug-status.sh, list-bugs.sh)",
-    "rabbit-bug/":            "bug filing, tracking, and lifecycle (file-bug.sh, bug-status.sh, list-bugs.sh)",
-    "rabbit-backlog":         "backlog item filing and lifecycle (file-backlog-item.py, backlog-item-status.py)",
-    "rabbit-backlog/":        "backlog item filing and lifecycle (file-backlog-item.py, backlog-item-status.py)",
+    "rabbit-file":            "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
+    "rabbit-file/":           "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
 }
 
 STRUCTURAL_DIRS = {
@@ -85,7 +83,7 @@ STRUCTURAL_DIRS = {
     "commands", "hooks", "skills", "agents", "scripts",
     "test", "enforcement", ".claude",
     "rabbit-cage", "contract", "policy", "tdd-subagent",
-    "rabbit-bug", "rabbit-backlog",
+    "rabbit-file",
 }
 
 KEY_FILES = {
@@ -214,9 +212,9 @@ def render_tree(root, entries):
             if depth_last.get(d, False):
                 prefix += "    "
             else:
-                prefix += "â   "
+                prefix += "│   "
 
-        connector = "âââ " if is_last else "âââ "
+        connector = "└── " if is_last else "├── "
 
         display_name = name + "/" if is_dir else name
         ann = annotation_for(name, relpath)

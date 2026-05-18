@@ -85,7 +85,7 @@ def main() -> int:
 
     feature_json = (
         '{\n'
-        '  "template_version": "1.0.0",\n'
+        '  "template_version": "2.0.0",\n'
         f'  "name": "{name}",\n'
         '  "version": "0.1.0",\n'
         f'  "owner": "{owner}",\n'
@@ -120,21 +120,39 @@ def main() -> int:
     )
     (target / "docs/spec/spec.md").write_text(spec_md)
 
+    # BUG-71: scaffold the template_version 2.0.0 structure
+    # (frontmatter + provides/reads/invokes/manages/never JSON block).
     contract_md = (
-        f"# Contract — {name}\n\n"
-        "## Reads\n\n"
-        "- TODO: list paths or patterns this feature reads.\n\n"
-        "## Writes\n\n"
-        '- TODO: list paths this feature writes (or "None" if read-only).\n\n'
-        "## Invokes\n\n"
-        "- TODO: list external tools, scripts, or other features this feature invokes.\n\n"
-        "## Inputs / Outputs\n\n"
-        "TODO: per-script I/O documentation.\n\n"
-        "## Cross-scope handoff\n\n"
-        "TODO: name what this feature delegates to other features.\n\n"
-        "## Versioning\n\n"
-        "- Current version: `0.1.0`.\n"
-        "- Bump rules: TODO.\n"
+        "---\n"
+        f"feature: {name}\n"
+        "version: 0.1.0\n"
+        "template_version: 2.0.0\n"
+        "---\n\n"
+        f"# {name} — Contract\n\n"
+        "```json\n"
+        "{\n"
+        '  "provides": {\n'
+        '    "files": [],\n'
+        '    "commands": [],\n'
+        '    "scripts": [],\n'
+        '    "schemas": [],\n'
+        '    "templates": [],\n'
+        '    "skills": []\n'
+        '  },\n'
+        '  "reads": {\n'
+        '    "files": [],\n'
+        '    "external": []\n'
+        '  },\n'
+        '  "invokes": {\n'
+        '    "scripts": [],\n'
+        '    "agents": []\n'
+        '  },\n'
+        '  "manages": {\n'
+        '    "runtime_markers": []\n'
+        '  },\n'
+        '  "never": []\n'
+        "}\n"
+        "```\n"
     )
     (target / "docs/spec/contract.md").write_text(contract_md)
 
