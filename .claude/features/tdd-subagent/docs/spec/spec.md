@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.7.0
+version: 1.8.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -23,7 +23,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 - `.claude/features/tdd-subagent/scripts/tdd-drift-check.py`
 - `.claude/features/tdd-subagent/scripts/tdd-context.py`
 - `.claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py` (assembles a per-feature full-TDD-cycle subagent prompt; the dispatched subagent runs spec-update → test-red → impl → test-green autonomously for ONE feature, using `.rabbit-scope-active-<feature>` as its scope marker so multiple features can be dispatched in parallel; accepts optional `--linked-item <item-dir>` and `--item-type <bug|backlog>` for a single primary item, AND an optional `--linked-items <feature>:<type>:<id>,...` for additional secondary items resolved by the same cycle — after the subagent reaches test-green the orchestrator captures the impl commit SHA and closes ALL linked items accordingly; prompt goes to stdout for caller dispatch)
-- `.claude/features/tdd-subagent/skills/rabbit-feature-touch/` (self-contained TDD orchestration reference; triggers on any feature write/edit/delete/add and orchestrates via parallel per-feature subagents — Step 1 resolves scope by invoking the `rabbit-feature-scope` Skill via the Skill tool, Step 3 invokes `rabbit-spec` inline to author/update the spec and produce an impl-suggestion, Step 4 surfaces the impl-suggestion to the user for explicit approval (bypassable via `--no-human-approval`), Step 5 dispatches one `dispatch-tdd-subagent.py` subagent per resolved feature in parallel; the main session only orchestrates and never reads feature code itself)
+- `.claude/features/tdd-subagent/skills/rabbit-feature-touch/` (self-contained TDD orchestration reference; triggers on any feature write/edit/delete/add and orchestrates via parallel per-feature subagents — Step 1 resolves scope by invoking the `rabbit-feature-scope` Skill via the Skill tool, Step 3 invokes `rabbit-spec` inline to author/update the spec and produce an impl-suggestion, Step 4 surfaces the impl-suggestion to the user for explicit approval (bypass via `.rabbit-human-approval-bypass` marker file at repo root, managed by `/rabbit-config human-approval bypass|gated`), Step 5 dispatches one `dispatch-tdd-subagent.py` subagent per resolved feature in parallel; the main session only orchestrates and never reads feature code itself)
 
 ## Invariants
 
@@ -60,9 +60,21 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     dispatcher because dispatched subagents run to completion and cannot pause
     for interactive user input.
 15. Step 4 (Human Approval) is bypassable only when the user has explicitly
-    requested autonomous execution. The bypass is signalled by passing
-    `--no-human-approval` to the `dispatch-tdd-subagent.py` invocation in Step 5.
-    Silent bypass without user direction is prohibited.
+    requested autonomous execution. The bypass authorization is encoded as a
+    hard file marker `.rabbit-human-approval-bypass` at the repo root, managed
+    via the `/rabbit-config human-approval bypass|gated` skill (owned by
+    rabbit-cage). At Step 4, the dispatcher MUST check for this marker file:
+    - If `.rabbit-human-approval-bypass` exists: skip the in-conversation wait,
+      emit a visible `[rabbit]` warning naming the bypass marker and the path
+      `/rabbit-config human-approval gated` to revoke it, and pass
+      `--no-human-approval` to the Step 5 `dispatch-tdd-subagent.py`
+      invocation.
+    - If the marker is absent: surface the impl-suggestion summary and wait
+      for explicit in-conversation user approval as the default.
+    In-conversation acknowledgements ("you have permission to bypass") are
+    NOT a valid mechanism on their own — the marker file is the system of
+    record. Silent bypass without either an explicit in-session direction
+    backed by the marker, or a pre-existing marker, is prohibited.
 16. After `rabbit-spec` returns in Step 3, the `rabbit-feature-touch` dispatcher
     MUST commit any modifications to the feature's `docs/spec/spec.md` (and any
     other files in `.claude/features/<feature>/` that `rabbit-spec` edited)
@@ -80,6 +92,35 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     This prevents the state transition from falling through uncommitted and
     ensures the dispatcher does not need to commit `feature.json` manually
     after collecting HANDOFFs.
+18. The TDD subagent for declared scope feature `F` MUST NOT create any
+    `.rabbit-scope-active-<X>` marker where `X != F`. The only scope marker
+    it may write is its own (`.rabbit-scope-active-<F>`) at LOCK. If
+    implementation work requires a write to a file outside `F`'s directory
+    (i.e., inside another feature's `.claude/features/<X>/` subtree), the
+    subagent MUST STOP, set `tdd_state: blocked`, and emit a HANDOFF with:
+    - `tdd_state: blocked`
+    - `test_result: not_run`
+    - `cross_feature_dependency: <X>` — the other feature
+    - `unwritten_paths: [<path1>, <path2>, ...]` — the files the subagent
+      could not write
+    - `notes: <one sentence explaining the cross-feature dependency>`
+    The dispatcher reads the HANDOFF and surfaces the cross-feature
+    dependency to the user, who decides whether to split the work into a
+    separate `rabbit-feature-touch` cycle for `<X>` or to abort. The
+    subagent NEVER attempts to bypass scope-guard by writing an
+    out-of-scope marker, even temporarily. This rule is non-negotiable; it
+    closes a constitution violation observed in PR #107 where the subagent
+    wrote `.rabbit-scope-active-contract` while scoped to rabbit-cage.
+    `dispatch-tdd-subagent.py` MUST include this rule verbatim in the
+    assembled prompt's Red Flags section.
+19. The dispatcher-side Step 4 check for `.rabbit-human-approval-bypass`
+    (see Inv 15) MUST be documented in `rabbit-feature-touch` SKILL.md as
+    the first action of Step 4 (Human Approval), BEFORE any in-conversation
+    wait or impl-suggestion surfacing. When the marker is found, the
+    warning emitted to the user MUST name the marker path
+    (`.rabbit-human-approval-bypass`) and the revoke command
+    (`/rabbit-config human-approval gated`) so the user can audit and
+    revoke without searching.
 
 ## Confirm-Token Bypass Path
 
