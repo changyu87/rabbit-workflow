@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.2.0
+version: 3.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -183,6 +183,11 @@ The marker stays in place across sessions until explicitly revoked via `/rabbit-
 58. `.rabbit-human-approval-bypass` is gitignored (appears in `.gitignore`). The marker is a runtime artifact, never committed.
 59. `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event while `.rabbit-human-approval-bypass` exists at the repo root: `[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches`. The marker is NOT consumed by `sync-check.py` — it persists across Stops until explicitly removed via `/rabbit-config human-approval true`. This human-approval-bypass alert sits between scope-guard-off and skills-updated in the conditional-priority order (see Inv 37).
 60. `permissions [lock|unlock]` is a `/rabbit-config` subcommand that shells out to `.claude/features/rabbit-cage/scripts/repo-permissions.py` with the same action. Unknown actions exit non-zero with a usage message; no other file is modified.
+61. `session-init.py` MUST implement the R1 branch enforcement behavior described in Invariants 21-23 exactly. On `SessionStart`, it MUST run `git branch --show-current`; if the result is `main` or `master`, it MUST run `git checkout -b session/<YYYYMMDD-HHMMSS>` (timestamp from `date +%Y%m%d-%H%M%S`) and emit a green `[rabbit]` systemMessage naming the created branch. The implementation MUST be present and active in the deployed hook; a documented-only or no-op implementation is a constitution violation. Tests MUST exercise the on-main path (assert branch created and message emitted) and the off-main path (assert no-op).
+62. `sync-check.py` surface-drift alert MUST be RED (`\x1b[31m`), consistent with Inv 18's color convention (alert/error messages are red). A GREEN surface-drift alert violates the convention and silently downgrades the visibility of a real drift condition.
+63. `sync-check.py` first-run and drift-detected paths emit `additionalContext` to surface the CLAUDE.md policy block. The `additionalContext` value MUST be either (a) the fully-expanded policy content with `@`-imports resolved, OR (b) accompanied by a clear in-message note that the agent must independently load the referenced policy files. Emitting raw unexpanded `@<path>` import lines as `additionalContext` without expansion AND without a note is a silent failure: the policy is not re-injected because Claude Code does not follow `@`-imports inside `additionalContext` strings.
+64. rabbit-cage tests MUST NOT mutate live source files in `.claude/features/rabbit-cage/` (including `settings.json`, `settings.local.json`, `feature.json`, and any committed source file) without restoring them on test exit. Tests that need to write to these paths MUST do so inside an isolated temporary directory (e.g., via `tempfile.mkdtemp` + a clean repo copy) so that test interruption, crash, or parallel execution cannot leave the working tree in a corrupted state.
+65. `scope-guard.py` MUST DENY (exit 2) writes when an active scope marker `.rabbit-scope-active` or `.rabbit-scope-active-<feature>` names a feature that `find-feature.py` cannot resolve to a real feature path (i.e., `find_feature_path` returns None). The current silent-ALLOW behavior on unresolvable markers defeats the scope-guard's default-deny posture: a typo'd or malicious marker bypasses the entire write gate. The DENY message MUST name the unresolvable feature and direct the user to verify the marker name.
 
 ## Out of Scope
 
