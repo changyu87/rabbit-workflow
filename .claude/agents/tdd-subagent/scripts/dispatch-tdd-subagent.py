@@ -326,6 +326,21 @@ The dispatcher will read the HANDOFF, surface the cross-feature dependency to
 the user, and split the work into a separate cycle for <X> if the user approves.
 
 ════════════════════════════════════════════════════════════════════════
+SKILL.md ROUTING — RED FLAG (non-negotiable)
+════════════════════════════════════════════════════════════════════════
+
+If any file your implementation must edit has the basename `SKILL.md`
+(e.g., .claude/features/<X>/skills/<Y>/SKILL.md or
+.claude/skills/<Y>/SKILL.md), you MUST invoke
+Skill("skill-creator:skill-creator") and let it drive the edit.
+
+Using Write or Edit directly on a SKILL.md is a CONSTITUTION VIOLATION:
+it bypasses skill-creator's eval loop and description optimization,
+and produces SKILL.md files that drift from the skill-authoring contract.
+
+This rule applies at STEP 6 (IMPLEMENT). It has no exceptions.
+
+════════════════════════════════════════════════════════════════════════
 STEP 1 — SPEC-READ
 ════════════════════════════════════════════════════════════════════════
 
