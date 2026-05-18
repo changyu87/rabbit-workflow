@@ -206,20 +206,28 @@ class TestPushRetry:
         # Prime the branch.
         branch_ops.allocate_id("retry-feat", "bug")  # ID 1
 
-        original_git = branch_ops._git
+        original_run = subprocess.run
         competing_fired = {"done": False}
+        wt_marker = "bug-backlog-files-"  # per-process wt path fragment
 
-        def wrapped_git(repo, *args):
-            # Intercept the FIRST push call inside allocate_id, fire a
+        def wrapped_run(cmd, *args, **kwargs):
+            # Intercept the FIRST `git push` call from branch_ops' own
+            # worktree (path contains bug-backlog-files-<pid>). Fire a
             # competing commit, then let the push proceed (which will fail
             # with non-fast-forward and trigger the retry).
-            if (not competing_fired["done"]
-                    and len(args) >= 1 and args[0] == "push"):
+            is_push_from_wt = (
+                not competing_fired["done"]
+                and isinstance(cmd, list) and len(cmd) >= 4
+                and cmd[0].endswith("git")
+                and "push" in cmd
+                and any(wt_marker in str(c) for c in cmd)
+            )
+            if is_push_from_wt:
                 competing_fired["done"] = True
                 _inject_competing_commit(isolated_repo, "retry-feat")
-            return original_git(repo, *args)
+            return original_run(cmd, *args, **kwargs)
 
-        monkeypatch.setattr(branch_ops, "_git", wrapped_git)
+        monkeypatch.setattr(branch_ops.subprocess, "run", wrapped_run)
 
         # This call must succeed via retry even though the first push fails
         # with non-fast-forward.
@@ -238,29 +246,43 @@ class TestPushRetry:
         """
         branch_ops.allocate_id("giveup-feat", "bug")
 
-        original_git = branch_ops._git
+        original_run = subprocess.run
         push_attempts = {"count": 0}
+        wt_marker = "bug-backlog-files-"
 
-        def wrapped_git(repo, *args):
-            # Inject a competing commit before EVERY push attempt so
-            # non-fast-forward persists.
-            if len(args) >= 1 and args[0] == "push":
+        def wrapped_run(cmd, *args, **kwargs):
+            # Inject a competing commit before every push attempt FROM the
+            # branch_ops worktree (path contains bug-backlog-files-<pid>),
+            # so non-fast-forward persists across attempts. Other push
+            # commands (from injection helper itself) are passed through.
+            is_push_from_wt = (
+                isinstance(cmd, list) and len(cmd) >= 4
+                and cmd[0].endswith("git")
+                and "push" in cmd
+                and any(wt_marker in str(c) for c in cmd)
+            )
+            if is_push_from_wt:
                 push_attempts["count"] += 1
                 _inject_competing_commit(isolated_repo, "giveup-feat")
-            return original_git(repo, *args)
+            return original_run(cmd, *args, **kwargs)
 
-        monkeypatch.setattr(branch_ops, "_git", wrapped_git)
+        monkeypatch.setattr(branch_ops.subprocess, "run", wrapped_run)
 
         with pytest.raises(RuntimeError) as exc_info:
             branch_ops.allocate_id("giveup-feat", "bug")
 
-        # Must have attempted exactly 3 times before giving up.
-        assert push_attempts["count"] == 3, (
-            f"expected 3 push attempts, got {push_attempts['count']}"
+        # Must have attempted at least 3 times (spec floor) before giving up.
+        assert push_attempts["count"] >= 3, (
+            f"expected at least 3 push attempts, got {push_attempts['count']}"
+        )
+        # Match the implementation's bounded retry count exactly.
+        assert push_attempts["count"] == branch_ops._MAX_PUSH_ATTEMPTS, (
+            f"expected {branch_ops._MAX_PUSH_ATTEMPTS} push attempts "
+            f"(impl _MAX_PUSH_ATTEMPTS), got {push_attempts['count']}"
         )
         # Error message must reference the retry exhaustion.
         msg = str(exc_info.value).lower()
-        assert "3" in msg or "attempt" in msg or "retry" in msg, (
+        assert "attempt" in msg or "retry" in msg or str(branch_ops._MAX_PUSH_ATTEMPTS) in msg, (
             f"error message must mention retry exhaustion, got: {exc_info.value}"
         )
 

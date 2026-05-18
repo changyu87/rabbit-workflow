@@ -75,22 +75,31 @@ origin/bug-backlog-files root:
   always cleaned up via try/finally. The legacy fixed path
   .claude/tmp/bug-backlog-files MUST NOT be used (it caused FileNotFoundError
   and stale-state races under concurrent agent dispatch — RABBIT-FILE-BUG-18).
-- branch_ops._worktree() MUST check out the worktree branch using
-  `git checkout -B bug-backlog-files origin/bug-backlog-files` (capital -B)
-  after fetching origin/bug-backlog-files. This unconditionally resets the
-  local tracking branch to the freshly-fetched remote tip, so that reads see
-  the latest committed items and writes never push from a stale base
-  (preventing non-fast-forward push failures). The fallback two-step
-  try/checkout-local + checkout-b sequence MUST NOT be used.
+- branch_ops._worktree() MUST set the worktree HEAD to the freshly-fetched
+  origin/bug-backlog-files tip after `git fetch origin bug-backlog-files`.
+  This guarantees reads see the latest committed items and writes never push
+  from a stale base (preventing non-fast-forward push failures). The
+  implementation MUST use either (a) `git checkout -B bug-backlog-files
+  origin/bug-backlog-files` (capital -B) when no other worktree currently
+  has bug-backlog-files checked out, OR (b) a detached HEAD pointing at
+  origin/bug-backlog-files for concurrent-safe operation when the shared
+  local branch ref would otherwise collide across per-process worktrees.
+  Push from a detached HEAD MUST use the refspec `HEAD:bug-backlog-files`.
+  The fallback two-step try/checkout-local + checkout-b sequence MUST NOT
+  be used.
 - branch_ops push operations (counter commit, item commit, commit_sha
-  backfill) MUST be wrapped in a retry loop with up to 3 attempts. On a
-  non-fast-forward push failure, the retry MUST re-fetch
-  origin/bug-backlog-files, reset the worktree branch to the freshly-fetched
-  remote tip (`git checkout -B bug-backlog-files origin/bug-backlog-files`),
-  re-apply the local changes (re-write counter.json or item.json with the
-  same values, or reserve a fresh ID if the counter slot was taken by
-  another process), and retry the commit + push. After 3 failed attempts
-  the operation raises RuntimeError with a clear diagnostic.
+  backfill) MUST be wrapped in a retry loop with a bounded number of
+  attempts (implementation-defined, at least 3, currently 8). On a
+  non-fast-forward push failure OR a transient remote ref-lock contention
+  error ("cannot lock ref", "failed to update ref"), the retry MUST
+  re-fetch origin/bug-backlog-files, reset the worktree HEAD to the
+  freshly-fetched remote tip, re-apply the local changes (re-write
+  counter.json or item.json with the same values, or reserve a fresh ID
+  if the counter slot was taken by another process), and retry the
+  commit + push. A short jittered backoff between attempts decorrelates
+  concurrent pushers. After the configured attempt budget is exhausted
+  the operation raises RuntimeError with a clear diagnostic that names
+  the attempt count and the last underlying error.
 - branch_ops.allocate_id MUST be called before commit_item (counter reserves the ID slot).
 - item-status.py set MUST require --reason on every transition.
 - item-status.py update MUST require --field, --value, and --reason.
