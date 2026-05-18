@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-# check-no-main-edits.py — fail if the current git branch is main / master.
-# Intended as a pre-commit / pre-PR guard for the rabbit workflow:
-#   "Never work on main; every feature mutation must be on a new branch."
-#
-# Exit: 0 not on main; 1 on main (or master); 2 not in a git repo.
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when branch enforcement is provided by a native CI check.
+"""check-no-main-edits.py — fail if the current git branch is main / master.
+Intended as a pre-commit / pre-PR guard for the rabbit workflow:
+  "Never work on main; every feature mutation must be on a new branch."
+
+Exit: 0 not on main; 1 on main (or master); 2 not in a git repo.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when branch enforcement is provided by a native CI check.
+"""
 
 import subprocess
 import sys

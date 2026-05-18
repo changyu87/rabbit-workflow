@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-# dispatch-spec-update.py — assemble an Opus subagent prompt for the spec-update leg.
-#
-# Usage:
-#   dispatch-spec-update.py <feature-name> "<change-description>"
-#
-# Output: assembled prompt to stdout. Caller passes stdout to Agent with model: opus.
-#
-# Exit:
-#   0 success (prompt printed to stdout)
-#   1 feature not found in registry
-#   2 invocation error
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when spec-update is superseded by a native spec-management tool.
+"""dispatch-spec-update.py — assemble an Opus subagent prompt for the spec-update leg.
+
+Usage:
+  dispatch-spec-update.py <feature-name> "<change-description>"
+
+Output: assembled prompt to stdout. Caller passes stdout to Agent with model: opus.
+
+Exit:
+  0 success (prompt printed to stdout)
+  1 feature not found in registry
+  2 invocation error
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when spec-update is superseded by a native spec-management tool.
+"""
 
 import os
 import subprocess

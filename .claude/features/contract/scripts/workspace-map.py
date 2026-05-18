@@ -1,28 +1,29 @@
 #!/usr/bin/env python3
-# workspace-map.py — contract-driven workspace hierarchy map.
-#
-# Usage (show mode, default):
-#   workspace-map.py [--human] [--repo-root <path>]
-#   Produces JSON conforming to workspace-map.json.schema.json v2.0.0.
-#
-# Usage (audit mode):
-#   workspace-map.py --audit [--human] [--repo-root <path>]
-#   Produces findings-only JSON (deviations from contract).
-#
-# Usage (backlog path, legacy subcommand):
-#   workspace-map.py backlog <feature-name> [--repo-root <path>]
-#   Outputs the canonical backlog directory path for the named feature.
-#
-# Legacy positional form (for internal callers):
-#   workspace-map.py <repo-root> <human:0|1> <audit:0|1>
-#
-# Exit:
-#   0  success
-#   1  error
-#
-# Version: 2.0.0
-# Owner: rabbit-workflow team (contract feature)
-# Deprecation criterion: when rabbit features adopt a native workspace registry.
+"""workspace-map.py — contract-driven workspace hierarchy map.
+
+Usage (show mode, default):
+  workspace-map.py [--human] [--repo-root <path>]
+  Produces JSON conforming to workspace-map.json.schema.json v2.0.0.
+
+Usage (audit mode):
+  workspace-map.py --audit [--human] [--repo-root <path>]
+  Produces findings-only JSON (deviations from contract).
+
+Usage (backlog path, legacy subcommand):
+  workspace-map.py backlog <feature-name> [--repo-root <path>]
+  Outputs the canonical backlog directory path for the named feature.
+
+Legacy positional form (for internal callers):
+  workspace-map.py <repo-root> <human:0|1> <audit:0|1>
+
+Exit:
+  0  success
+  1  error
+
+Version: 2.0.0
+Owner: rabbit-workflow team (contract feature)
+Deprecation criterion: when rabbit features adopt a native workspace registry.
+"""
 
 import json
 import os

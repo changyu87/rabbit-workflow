@@ -1,30 +1,31 @@
 #!/usr/bin/env python3
-# rabbit-triage.py — build a complete triage prompt for a bug filing and print to stdout.
-#
-# The caller captures this output, invokes an Agent with it, captures the
-# TRIAGE: block from the response, and writes vet-triage.json itself.
-# This script is deterministic and non-interactive.
-#
-# Usage:
-#   rabbit-triage.py <feature-dir> <bug-name>
-#
-# Validates:
-#   <repo-root>/.claude/bugs/<feature-name>/<bug-name>/bug.json  (required)
-#   <feature-dir>/docs/spec/spec.md                              (required)
-#   <feature-dir>/docs/spec/contract.md                          (optional)
-#
-# Bug storage uses the centralized .claude/bugs/ location as written by rabbit-file.
-# <feature-name> is derived from the basename of <feature-dir>.
-# <repo-root> is resolved from RABBIT_ROOT env var or git rev-parse.
-#
-# Exit:
-#   0  prompt printed to stdout
-#   1  missing required file
-#   2  bad invocation
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when triage is integrated into the native bug lifecycle tool.
+"""rabbit-triage.py — build a complete triage prompt for a bug filing and print to stdout.
+
+The caller captures this output, invokes an Agent with it, captures the
+TRIAGE: block from the response, and writes vet-triage.json itself.
+This script is deterministic and non-interactive.
+
+Usage:
+  rabbit-triage.py <feature-dir> <bug-name>
+
+Validates:
+  <repo-root>/.claude/bugs/<feature-name>/<bug-name>/bug.json  (required)
+  <feature-dir>/docs/spec/spec.md                              (required)
+  <feature-dir>/docs/spec/contract.md                          (optional)
+
+Bug storage uses the centralized .claude/bugs/ location as written by rabbit-file.
+<feature-name> is derived from the basename of <feature-dir>.
+<repo-root> is resolved from RABBIT_ROOT env var or git rev-parse.
+
+Exit:
+  0  prompt printed to stdout
+  1  missing required file
+  2  bad invocation
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when triage is integrated into the native bug lifecycle tool.
+"""
 
 import os
 import subprocess

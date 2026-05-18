@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-# render-template.py — substitute {{key}} placeholders in a template file.
-#
-# Usage (invoked by render-template.sh):
-#   python3 render-template.py <template-path> <output-path> [key=value ...]
-#
-# key=value pairs are accepted directly; values are treated as plain strings.
-# Unresolved placeholders are left as-is.
-#
-# Exit:
-#   0 success
-#   1 template file missing or parse error
-#   2 invocation error
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when template rendering is provided by a native feature mechanism.
+"""render-template.py — substitute {{key}} placeholders in a template file.
+
+Usage (invoked by render-template.sh):
+  python3 render-template.py <template-path> <output-path> [key=value ...]
+
+key=value pairs are accepted directly; values are treated as plain strings.
+Unresolved placeholders are left as-is.
+
+Exit:
+  0 success
+  1 template file missing or parse error
+  2 invocation error
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when template rendering is provided by a native feature mechanism.
+"""
 
 import sys
 

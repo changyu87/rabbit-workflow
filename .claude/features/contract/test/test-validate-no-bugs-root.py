@@ -31,11 +31,11 @@ def make_fixture():
     with open(os.path.join(d, "docs/spec/contract.md"), "w") as f:
         f.write("# Minimal contract\nContent for test fixture.\n")
 
-    # test/run.sh must exist and be executable (validate-feature.py checks for run.sh)
-    run_sh = os.path.join(d, "test/run.sh")
-    with open(run_sh, "w") as f:
-        f.write('#!/bin/bash\necho "stub run.sh"\n')
-    os.chmod(run_sh, 0o755)
+    # test/run.py must exist and be executable (validate-feature.py checks for run.py per Inv 18)
+    run_py = os.path.join(d, "test/run.py")
+    with open(run_py, "w") as f:
+        f.write('#!/usr/bin/env python3\nimport sys; sys.exit(0)\n')
+    os.chmod(run_py, 0o755)
 
     feature_data = {
         "name": name,
@@ -91,10 +91,10 @@ with open(os.path.join(FIXTURE2, "docs/spec/spec.md"), "w") as f:
 with open(os.path.join(FIXTURE2, "docs/spec/contract.md"), "w") as f:
     f.write("# Minimal contract\nContent.\n")
 
-run_sh2 = os.path.join(FIXTURE2, "test/run.sh")
-with open(run_sh2, "w") as f:
-    f.write('#!/bin/bash\necho "stub"\n')
-os.chmod(run_sh2, 0o755)
+run_py2 = os.path.join(FIXTURE2, "test/run.py")
+with open(run_py2, "w") as f:
+    f.write('#!/usr/bin/env python3\nimport sys; sys.exit(0)\n')
+os.chmod(run_py2, 0o755)
 
 FIXTURE2_NAME = os.path.basename(FIXTURE2)
 feature_data2 = {

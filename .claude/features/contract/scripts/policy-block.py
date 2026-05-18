@@ -1,29 +1,30 @@
 #!/usr/bin/env python3
-# policy-block.py — emit the canonical rabbit-workflow policy block to stdout.
-#
-# This block is the MANDATORY prepend for every Agent dispatch (rabbit's own
-# subagents AND Claude's built-in ones). The dispatcher captures stdout and
-# prepends to the prompt field of the Agent tool call. Per hard-rules R6.
-#
-# Usage:
-#   policy-block.py                                # philosophy.md + spec-rules.md + coding-rules.md
-#   policy-block.py --include <path>               # plus the named file
-#   policy-block.py --include a --include b ...    # multiple includes compose
-#
-# Files are looked up at:
-#   <repo>/.claude/features/policy/philosophy.md
-#   <repo>/.claude/features/policy/spec-rules.md
-#   <repo>/.claude/features/policy/coding-rules.md
-# where <repo> is computed from this script's location.
-#
-# Exit:
-#   0 success
-#   1 a --include path is missing
-#   2 invocation error
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when policy injection is handled natively by the dispatch infrastructure.
+"""policy-block.py — emit the canonical rabbit-workflow policy block to stdout.
+
+This block is the MANDATORY prepend for every Agent dispatch (rabbit's own
+subagents AND Claude's built-in ones). The dispatcher captures stdout and
+prepends to the prompt field of the Agent tool call. Per hard-rules R6.
+
+Usage:
+  policy-block.py                                # philosophy.md + spec-rules.md + coding-rules.md
+  policy-block.py --include <path>               # plus the named file
+  policy-block.py --include a --include b ...    # multiple includes compose
+
+Files are looked up at:
+  <repo>/.claude/features/policy/philosophy.md
+  <repo>/.claude/features/policy/spec-rules.md
+  <repo>/.claude/features/policy/coding-rules.md
+where <repo> is computed from this script's location.
+
+Exit:
+  0 success
+  1 a --include path is missing
+  2 invocation error
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when policy injection is handled natively by the dispatch infrastructure.
+"""
 
 import os
 import subprocess

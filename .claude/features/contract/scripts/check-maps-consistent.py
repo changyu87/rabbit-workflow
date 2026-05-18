@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-# check-maps-consistent.py — verify registry and filesystem are in sync.
-#
-# Usage (invoked by check-maps-consistent.sh):
-#   python3 check-maps-consistent.py <features-dir> <registry-path>
-#
-# Verifies that every directory under <features-dir> containing a feature.json
-# is listed in <registry-path>, and vice versa.
-#
-# Exit:
-#   0 consistent
-#   1 inconsistency found (descriptive error printed to stderr)
-#   2 invocation error
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when registry.json is replaced by a native feature index.
+"""check-maps-consistent.py — verify registry and filesystem are in sync.
+
+Usage (invoked by check-maps-consistent.sh):
+  python3 check-maps-consistent.py <features-dir> <registry-path>
+
+Verifies that every directory under <features-dir> containing a feature.json
+is listed in <registry-path>, and vice versa.
+
+Exit:
+  0 consistent
+  1 inconsistency found (descriptive error printed to stderr)
+  2 invocation error
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when registry.json is replaced by a native feature index.
+"""
 
 import json
 import os

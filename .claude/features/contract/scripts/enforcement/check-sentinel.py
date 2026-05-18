@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-# check-sentinel.py — verify RABBIT-POLICY-BLOCK-v1 sentinel in dispatch scripts.
-#
-# Usage: check-sentinel.py <file-or-dir>
-#
-# If given a file: checks that file for the sentinel string.
-# If given a directory: recursively finds all .py and .sh files and checks each.
-# Exits 0 if all checked files contain the sentinel, 1 if any are missing it.
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when sentinel enforcement is provided by a native linter.
+"""check-sentinel.py — verify RABBIT-POLICY-BLOCK-v1 sentinel in dispatch scripts.
+
+Usage: check-sentinel.py <file-or-dir>
+
+If given a file: checks that file for the sentinel string.
+If given a directory: recursively finds all .py and .sh files and checks each.
+Exits 0 if all checked files contain the sentinel, 1 if any are missing it.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when sentinel enforcement is provided by a native linter.
+"""
 
 import os
 import sys

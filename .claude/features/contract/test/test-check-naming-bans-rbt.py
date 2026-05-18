@@ -50,19 +50,19 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         fail_t(1, f"expected exit 1 + 'rbt-' in stderr; got rc={r1.returncode}, stderr={r1.stderr!r}")
 
-# t2: rwf- prefix is NOT in banned prefix list (stderr must not mention rwf-)
+# t2: rwf- prefix is NOT in banned prefix list. We place an rwf- file outside
+# .claude/{commands,agents,skills} so the 'must start with rabbit-' rule does
+# not apply; only a banned-prefix scan would flag it. Expect exit 0 (no violation).
 with tempfile.TemporaryDirectory() as tmp:
-    agents_dir = os.path.join(tmp, ".claude", "agents")
-    os.makedirs(agents_dir)
-    # Also create a properly-prefixed agent so the dir isn't empty
-    with open(os.path.join(agents_dir, "rwf-legacy.md"), "w") as f:
-        f.write("---\nname: rwf-legacy\n---\n")
+    hooks_dir = os.path.join(tmp, ".claude", "hooks")
+    os.makedirs(hooks_dir)
+    with open(os.path.join(hooks_dir, "rwf-legacy.sh"), "w") as f:
+        f.write("#!/bin/bash\n")
     r2 = subprocess.run(["python3", SCRIPT, tmp], capture_output=True, text=True)
-    # The agent fails the 'must start with rabbit-' rule, but rwf- should NOT be flagged as a banned prefix.
-    if "rwf-" not in r2.stderr:
-        ok(2, "rwf- prefix is not flagged as banned (stderr does not mention rwf-)")
+    if r2.returncode == 0:
+        ok(2, "rwf- prefix is not flagged as banned (rwf- is no longer in BANNED_PREFIXES)")
     else:
-        fail_t(2, f"check-naming.py still flags rwf-; stderr={r2.stderr!r}")
+        fail_t(2, f"check-naming.py still flags rwf- as banned; rc={r2.returncode}, stderr={r2.stderr!r}")
 
 # t3: script source contains no 'rwf-' literal
 with open(SCRIPT) as f:

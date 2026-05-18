@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
-# dispatch-feature-edit.py — the only legal Agent dispatch path for feature edits.
-#
-# Usage:
-#   dispatch-feature-edit.py [--bug <bug-dir>] <feature-name> <task-description>
-#
-# Uses find-feature.py to locate the feature root, sets a scope marker, builds
-# the policy block, and prints the assembled prompt to stdout. The caller
-# passes stdout as the prompt field to an Agent call. This script never
-# invokes Agent directly — keeping it deterministic and testable.
-#
-# Exit:
-#   0 success (prompt printed to stdout)
-#   1 feature not found in registry
-#   2 invocation error
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when feature dispatch is handled natively by the rabbit CLI.
+"""dispatch-feature-edit.py — the only legal Agent dispatch path for feature edits.
+
+Usage:
+  dispatch-feature-edit.py [--bug <bug-dir>] <feature-name> <task-description>
+
+Uses find-feature.py to locate the feature root, sets a scope marker, builds
+the policy block, and prints the assembled prompt to stdout. The caller
+passes stdout as the prompt field to an Agent call. This script never
+invokes Agent directly — keeping it deterministic and testable.
+
+Exit:
+  0 success (prompt printed to stdout)
+  1 feature not found in registry
+  2 invocation error
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when feature dispatch is handled natively by the rabbit CLI.
+"""
 
 import json
 import os

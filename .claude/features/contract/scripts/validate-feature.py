@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-# validate-feature.py — verify a feature directory against the feature-skeleton schema.
-#
-# Usage: validate-feature.py <feature-dir>
-#
-# Exit codes:
-#   0  pass
-#   1  validation error(s); details on stderr
-#   2  invocation error (bad usage, missing dir)
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when feature validation is provided natively by the rabbit CLI.
+"""validate-feature.py — verify a feature directory against the feature-skeleton schema.
+
+Usage: validate-feature.py <feature-dir>
+
+Exit codes:
+  0  pass
+  1  validation error(s); details on stderr
+  2  invocation error (bad usage, missing dir)
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when feature validation is provided natively by the rabbit CLI.
+"""
 
 import json
 import os
@@ -54,11 +55,11 @@ def main():
     if not os.path.isdir(os.path.join(feature_dir, "docs", "bugs")):
         err("missing docs/bugs/ directory")
 
-    run_sh = os.path.join(feature_dir, "test", "run.sh")
-    if not os.path.isfile(run_sh):
-        err("missing test/run.sh")
-    elif not os.access(run_sh, os.X_OK):
-        err("test/run.sh not executable")
+    run_py = os.path.join(feature_dir, "test", "run.py")
+    if not os.path.isfile(run_py):
+        err("missing test/run.py")
+    elif not os.access(run_py, os.X_OK):
+        err("test/run.py not executable")
 
     # Bail early if feature.json is absent or invalid JSON.
     feature_json_path = os.path.join(feature_dir, "feature.json")
