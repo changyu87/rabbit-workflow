@@ -11,6 +11,8 @@ import branch_ops
 
 VALID_STATUSES = {"open", "close"}
 VALID_TYPES = {"bug", "backlog"}
+MUTABLE_FIELDS = {"priority", "title", "description"}
+VALID_PRIORITIES = {"low", "medium", "high", "critical"}
 
 
 def _git_user():
@@ -69,6 +71,71 @@ def cmd_set(args):
     print(f"Status set: {args.id} -> {args.status}")
 
 
+def cmd_update(args):
+    if not args.reason or not args.reason.strip():
+        print("ERROR: --reason is required and must be non-empty", file=sys.stderr)
+        sys.exit(1)
+    if args.field not in MUTABLE_FIELDS:
+        print(
+            f"ERROR: field {args.field!r} is not mutable "
+            f"(allowed: {sorted(MUTABLE_FIELDS)})",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if args.value == "" or args.value is None:
+        print("ERROR: --value is required and must be non-empty", file=sys.stderr)
+        sys.exit(1)
+    if args.field == "priority" and args.value not in VALID_PRIORITIES:
+        print(
+            f"ERROR: priority must be one of {sorted(VALID_PRIORITIES)}, "
+            f"got {args.value!r}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    try:
+        item = branch_ops.fetch_item(args.feature, args.type_, args.id)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+    if item is None:
+        print(f"ERROR: item {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+
+    if item.get("status") != "open":
+        print(
+            f"ERROR: item {args.id} is closed; reopen via "
+            f"`set --status open --reason ...` before updating fields",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    old_value = item.get(args.field)
+    if old_value == args.value:
+        print(f"No change: {args.field} already {args.value!r}")
+        sys.exit(0)
+
+    item[args.field] = args.value
+    history_entry = {
+        "ts": _now(),
+        "actor": _git_user(),
+        "action": "updated",
+        "field": args.field,
+        "old_value": old_value,
+        "new_value": args.value,
+        "note": args.reason.strip(),
+    }
+    item.setdefault("history", []).append(history_entry)
+
+    try:
+        branch_ops.commit_item(args.feature, args.type_, args.id, item)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Updated {args.id}: {args.field} = {args.value!r}")
+
+
 def main():
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -86,11 +153,21 @@ def main():
     s.add_argument("--reason", required=True)
     s.add_argument("--fix-commits", dest="fix_commits")
 
+    u = sub.add_parser("update")
+    u.add_argument("--feature", required=True)
+    u.add_argument("--type", dest="type_", required=True, choices=sorted(VALID_TYPES))
+    u.add_argument("--id", required=True)
+    u.add_argument("--field", required=True)
+    u.add_argument("--value", required=True)
+    u.add_argument("--reason", required=True)
+
     args = p.parse_args()
     if args.cmd == "get":
         cmd_get(args)
-    else:
+    elif args.cmd == "set":
         cmd_set(args)
+    else:
+        cmd_update(args)
 
 
 if __name__ == "__main__":
