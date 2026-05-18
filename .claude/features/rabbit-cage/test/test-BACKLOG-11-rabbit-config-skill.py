@@ -2,9 +2,9 @@
 """Tests rabbit-config skill structure + human-approval subcommand (BACKLOG-11).
 
 Spec invariants covered:
-- Inv 25 (updated): commands/rabbit-config.md is a thin shim, no inline Python.
+- Inv 25 (inverted): commands/rabbit-config.md does NOT exist; must not be recreated.
 - Inv 53: SKILL.md exists at skills/rabbit-config/SKILL.md with required frontmatter.
-- Inv 54: scripts/rabbit-config.py exists, executable, stdlib only, sole impl.
+- Inv 54: scripts/rabbit-config.py exists, executable, stdlib only, sole impl (no shim).
 - Inv 55: human-approval bypass writes .rabbit-human-approval-bypass with 'session'.
 - Inv 56: human-approval gated deletes the marker; idempotent.
 - Inv 57: human-approval (no action) prints 'bypass' or 'gated'.
@@ -30,6 +30,7 @@ SKILL_DIR = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/skills/rabbit-
 SKILL_MD = os.path.join(SKILL_DIR, "SKILL.md")
 SKILL_PY = os.path.join(SKILL_DIR, "scripts/rabbit-config.py")
 CMD_MD = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/commands/rabbit-config.md")
+DEPLOYED_CMD_MD = os.path.join(REPO_ROOT, ".claude/commands/rabbit-config.md")
 SYNC_CHECK = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/hooks/sync-check.py")
 GITIGNORE = os.path.join(REPO_ROOT, ".gitignore")
 CONTRACT = os.path.join(REPO_ROOT, ".claude/features/contract/build-contract.json")
@@ -95,18 +96,18 @@ if os.path.isfile(SKILL_PY) and os.access(SKILL_PY, os.X_OK):
 else:
     fail_t(3, f"scripts/rabbit-config.py missing or not executable at {SKILL_PY}")
 
-# t4: commands/rabbit-config.md is a shim — invokes the extracted script and contains no Python imports
-if os.path.isfile(CMD_MD):
-    with open(CMD_MD) as f:
-        cmd_text = f.read()
-    invokes_script = "skills/rabbit-config/scripts/rabbit-config.py" in cmd_text
-    has_imports = bool(re.search(r"^\s*import\s+\w", cmd_text, re.MULTILINE))
-    if invokes_script and not has_imports:
-        ok(4, "commands/rabbit-config.md is a thin shim (invokes script, no inline imports)")
-    else:
-        fail_t(4, f"commands/rabbit-config.md not a shim (invokes_script={invokes_script}, has_imports={has_imports})")
+# t4: commands/rabbit-config.md does NOT exist (Inv 25 inverted); deployed
+# .claude/commands/rabbit-config.md does NOT exist either (symlink propagation).
+src_absent = not os.path.lexists(CMD_MD)
+deployed_absent = not os.path.lexists(DEPLOYED_CMD_MD)
+if src_absent and deployed_absent:
+    ok(4, "commands/rabbit-config.md does not exist (source and deployed)")
 else:
-    fail_t(4, "commands/rabbit-config.md missing")
+    fail_t(
+        4,
+        f"commands/rabbit-config.md must not exist "
+        f"(source_absent={src_absent}, deployed_absent={deployed_absent})",
+    )
 
 # t5: .gitignore contains .rabbit-human-approval-bypass
 if os.path.isfile(GITIGNORE):
