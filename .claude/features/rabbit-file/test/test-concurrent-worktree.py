@@ -233,23 +233,36 @@ class TestPushRetry:
     def test_push_gives_up_after_3_attempts(self, isolated_repo, monkeypatch):
         """
         If non-fast-forward persists across 3 attempts, allocate_id raises
-        RuntimeError with a clear diagnostic.
+        RuntimeError with a clear diagnostic mentioning the retry exhaustion.
+        Also counts push attempts to verify exactly 3 attempts were made.
         """
         branch_ops.allocate_id("giveup-feat", "bug")
 
         original_git = branch_ops._git
+        push_attempts = {"count": 0}
 
         def wrapped_git(repo, *args):
             # Inject a competing commit before EVERY push attempt so
             # non-fast-forward persists.
             if len(args) >= 1 and args[0] == "push":
+                push_attempts["count"] += 1
                 _inject_competing_commit(isolated_repo, "giveup-feat")
             return original_git(repo, *args)
 
         monkeypatch.setattr(branch_ops, "_git", wrapped_git)
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError) as exc_info:
             branch_ops.allocate_id("giveup-feat", "bug")
+
+        # Must have attempted exactly 3 times before giving up.
+        assert push_attempts["count"] == 3, (
+            f"expected 3 push attempts, got {push_attempts['count']}"
+        )
+        # Error message must reference the retry exhaustion.
+        msg = str(exc_info.value).lower()
+        assert "3" in msg or "attempt" in msg or "retry" in msg, (
+            f"error message must mention retry exhaustion, got: {exc_info.value}"
+        )
 
 
 def _inject_competing_commit(isolated_repo, feature):
