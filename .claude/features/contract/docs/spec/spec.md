@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.7.0
+version: 1.8.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -86,6 +86,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 14. `rabbit-triage.py` is called as `rabbit-triage.py <feature-dir> <bug-name>` and locates bug.json at `<repo-root>/.claude/bugs/<feature-name>/<bug-name>/bug.json` (centralized bug storage, where `<feature-name>` is the basename of `<feature-dir>`). It does NOT look in `<feature-dir>/docs/bugs/`.
 15. Boolean CLI flag values and subcommand values across the rabbit workflow use the literal strings `true` and `false` exclusively. The values `enabled`, `disabled`, `on`, `off`, `yes`, `no` are prohibited as boolean values (action verbs like `lock`, `unlock`, `add`, `remove` remain allowed when the subcommand itself denotes an action, not a boolean state).
 16. CLI flag names, subcommand names, and configuration variable names in the rabbit workflow MUST be positive-streamlined: they describe what is present/active, never what is absent/disabled. Names beginning with `no-`, `disable-`, `skip-`, `without-`, or any negating prefix are prohibited. If such a name exists, it must be renamed to describe what IS active when the flag/variable is true. Boolean state is encoded in the value (`true`/`false`), never in the name.
+17. `check-tests-non-interactive.py` MUST scan Python test files (`.py`) under `<feature-dir>/test/`, not shell scripts (`.sh`). The repo is Python-only (rabbit-cage Inv 39, rabbit-file Tech Stack); a `.sh`-only scanner is silently vacuous on every invocation. The script MUST detect Python interactive constructs that would block an end-to-end run: bare `input(` calls, `getpass.getpass(`, `click.prompt(`, `click.confirm(`, and any `sys.stdin.read*()` call that is not preceded by an `isatty()` guard or a piped-input fixture. A violation MUST exit 1 with stderr naming the file and the offending construct.
 
 ## CLI Naming Convention
 
