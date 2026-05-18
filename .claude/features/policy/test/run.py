@@ -26,6 +26,7 @@ run_test("test-backlog003.py")
 run_test("test-policy-invariants-v1-3-0.py")
 run_test("test-POLICY-1-no-stale-imports.py")
 run_test("test-policy-bug-fixes.py")
+run_test("test-backlog-11-12.py")
 
 print()
 print("All tests passed.")
