@@ -67,9 +67,11 @@ def isolated_repo(tmp_path):
 
     yield local
 
-    wt = local / ".claude" / "tmp" / "bug-backlog-files"
-    if wt.exists():
-        shutil.rmtree(wt, ignore_errors=True)
+    tmp_dir = local / ".claude" / "tmp"
+    if tmp_dir.exists():
+        for child in tmp_dir.iterdir():
+            if child.name.startswith("bug-backlog-files"):
+                shutil.rmtree(child, ignore_errors=True)
     subprocess.run(["git", "-C", str(local), "worktree", "prune"],
                    capture_output=True)
 
@@ -127,34 +129,30 @@ def _simulate_concurrent_remote_commit(isolated_repo):
 
 
 class TestWorktreeFreshCheckout:
-    def test_worktree_head_matches_origin_tip_when_local_branch_is_stale(
+    def test_worktree_head_matches_origin_tip_after_concurrent_remote_advance(
             self, isolated_repo):
         """
-        Setup: allocate one ID (creates branch and local tracking ref pointing
-        at the old tip). Then simulate a concurrent push that advances
-        origin/bug-backlog-files past the local ref. Calling _worktree() again
-        must reset to the fresh origin tip, not the stale local tip.
+        After a concurrent remote push advances origin/bug-backlog-files,
+        the next _worktree() invocation must yield a worktree whose HEAD
+        equals the freshly-fetched remote tip (not a stale view). The
+        implementation now uses detached HEAD on origin/bug-backlog-files
+        for concurrent-safe operation, so there is no shared local branch
+        ref to grow stale — instead we verify the detached HEAD itself
+        matches the fresh origin tip.
         """
-        # 1. First allocation initialises branch + local tracking ref.
+        # 1. First allocation initialises the remote branch and fetches it.
         branch_ops.allocate_id("rabbit-cage", "bug")
-        stale_local = _local_branch_sha(isolated_repo, "bug-backlog-files")
-        assert stale_local is not None, "local tracking branch must exist after first use"
 
         # 2. Another actor pushes a new commit to origin/bug-backlog-files.
         new_origin_tip = _simulate_concurrent_remote_commit(isolated_repo)
-        assert new_origin_tip != stale_local, "simulated concurrent push must advance origin"
 
-        # 3. Confirm local tracking ref is now stale relative to origin.
-        assert _local_branch_sha(isolated_repo, "bug-backlog-files") == stale_local
-
-        # 4. Enter _worktree() again. With the spec-mandated `checkout -B`,
-        #    the worktree HEAD must equal the freshly-fetched origin tip.
+        # 3. Enter _worktree() again. The worktree HEAD MUST equal the
+        #    freshly-fetched origin tip (no stale base).
         with branch_ops._worktree(str(isolated_repo)) as wt:
             wt_head = _git(wt, "rev-parse", "HEAD")
             assert wt_head == new_origin_tip, (
                 f"worktree HEAD={wt_head} does not match "
-                f"origin/bug-backlog-files tip={new_origin_tip}; "
-                f"stale local tip was {stale_local}"
+                f"origin/bug-backlog-files tip={new_origin_tip}"
             )
 
     def test_concurrent_remote_commit_visible_to_reads(self, isolated_repo):

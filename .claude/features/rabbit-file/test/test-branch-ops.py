@@ -66,10 +66,14 @@ def isolated_repo(tmp_path):
 
     yield local
 
-    # Clean up any worktree that tests may have left
-    wt = local / ".claude" / "tmp" / "bug-backlog-files"
-    if wt.exists():
-        shutil.rmtree(wt, ignore_errors=True)
+    # Clean up any per-process worktree that tests may have left under
+    # .claude/tmp/bug-backlog-files-<pid>. The legacy fixed path
+    # .claude/tmp/bug-backlog-files is no longer used.
+    tmp_dir = local / ".claude" / "tmp"
+    if tmp_dir.exists():
+        for child in tmp_dir.iterdir():
+            if child.name.startswith("bug-backlog-files"):
+                shutil.rmtree(child, ignore_errors=True)
     subprocess.run(["git", "-C", str(local), "worktree", "prune"],
                    capture_output=True)
 
@@ -326,14 +330,16 @@ class TestReadBranch:
 
 class TestWorktreeCleanup:
     def test_worktree_cleaned_up_on_success(self, isolated_repo):
-        wt_path = Path(isolated_repo) / ".claude" / "tmp" / "bug-backlog-files"
+        pid = os.getpid()
+        wt_path = Path(isolated_repo) / ".claude" / "tmp" / f"bug-backlog-files-{pid}"
         branch_ops.allocate_id("cleanup-test", "bug")
         # After allocate_id returns, worktree must not exist
         assert not wt_path.exists(), "worktree was not cleaned up after success"
 
     def test_worktree_cleaned_up_on_exception(self, isolated_repo, monkeypatch):
         """Even when an exception occurs inside _worktree, the WT is cleaned up."""
-        wt_path = Path(isolated_repo) / ".claude" / "tmp" / "bug-backlog-files"
+        pid = os.getpid()
+        wt_path = Path(isolated_repo) / ".claude" / "tmp" / f"bug-backlog-files-{pid}"
 
         # Patch write_counter to raise after first allocation (forces exception inside with block)
         original_write_counter = branch_ops.write_counter
