@@ -10,5 +10,5 @@
     "skills": []
   },
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
-  "updated": "2026-05-17"
+  "updated": "2026-05-18"
 }
