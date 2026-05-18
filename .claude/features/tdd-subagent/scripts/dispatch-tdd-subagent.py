@@ -349,7 +349,11 @@ This rule applies at STEP 6 (IMPLEMENT). It has no exceptions.
 STEP 1 — SPEC-READ
 ════════════════════════════════════════════════════════════════════════
 
-Run:  git diff HEAD -- {feature_dir}/docs/spec/
+Run:  git diff HEAD~1 -- {feature_dir}/docs/spec/
+(HEAD~1, not HEAD: rabbit-feature-touch Step 3 commits the spec change BEFORE
+dispatching this subagent (Inv 16), so HEAD already includes the spec edit and
+the working tree is clean. `git diff HEAD` would always be empty; HEAD~1 is
+the pre-spec state, which makes the actual spec delta visible.)
 Read the diff carefully. If an impl-suggestion was provided, read it now.
 Summarise what has changed and what the implementation must achieve before proceeding.
 
