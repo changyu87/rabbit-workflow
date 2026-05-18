@@ -5,9 +5,11 @@ Spec invariants covered:
 - Inv 25 (inverted): commands/rabbit-config.md does NOT exist; must not be recreated.
 - Inv 53: SKILL.md exists at skills/rabbit-config/SKILL.md with required frontmatter.
 - Inv 54: scripts/rabbit-config.py exists, executable, stdlib only, sole impl (no shim).
-- Inv 55: human-approval bypass writes .rabbit-human-approval-bypass with 'session'.
-- Inv 56: human-approval gated deletes the marker; idempotent.
-- Inv 57: human-approval (no action) prints 'bypass' or 'gated'.
+- Inv 55: human-approval false writes .rabbit-human-approval-bypass with 'session';
+  legacy verbs (bypass, gated, enabled, disabled) are rejected.
+- Inv 56: human-approval true deletes the marker; idempotent.
+- Inv 57: human-approval (no action) prints 'true' (marker absent, gate active) or
+  'false' (marker present, gate bypassed).
 - Inv 58: .rabbit-human-approval-bypass is gitignored.
 - Inv 59: sync-check.py emits red alert while marker present (not consumed),
   priority level 4 between scope-guard-off and skills-updated.
@@ -198,90 +200,90 @@ if os.path.isfile(SKILL_PY):
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # ---- human-approval subcommand ----
+    # ---- human-approval subcommand (true/false vocabulary, Inv 55–57) ----
 
-    # t10: bypass writes marker with 'session' content
+    # t10: 'false' writes marker with 'session' content (Inv 55)
     wd = tempfile.mkdtemp()
     try:
-        res = run_script(["human-approval", "bypass"], wd)
+        res = run_script(["human-approval", "false"], wd)
         marker = os.path.join(wd, ".rabbit-human-approval-bypass")
         if res.returncode == 0 and os.path.isfile(marker):
             with open(marker) as f:
                 content = f.read()
             if content == "session":
-                ok(10, "human-approval bypass writes marker with 'session' content")
+                ok(10, "human-approval false writes marker with 'session' content")
             else:
                 fail_t(10, f"marker content wrong: {content!r}")
         else:
-            fail_t(10, f"bypass failed: rc={res.returncode} marker_exists={os.path.isfile(marker)} stderr={res.stderr}")
+            fail_t(10, f"'false' failed: rc={res.returncode} marker_exists={os.path.isfile(marker)} stderr={res.stderr}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t11: (no action) prints 'bypass' when marker present
+    # t11: (no action) prints 'false' when marker present (Inv 57: bypass = false)
     wd = tempfile.mkdtemp()
     try:
         marker = os.path.join(wd, ".rabbit-human-approval-bypass")
         with open(marker, "w") as f:
             f.write("session")
         res = run_script(["human-approval"], wd)
-        if res.returncode == 0 and res.stdout.strip() == "bypass":
-            ok(11, "human-approval (no action) prints 'bypass' when marker present")
+        if res.returncode == 0 and res.stdout.strip() == "false":
+            ok(11, "human-approval (no action) prints 'false' when marker present (gate bypassed)")
         else:
-            fail_t(11, f"expected 'bypass', got rc={res.returncode} stdout={res.stdout!r}")
+            fail_t(11, f"expected 'false', got rc={res.returncode} stdout={res.stdout!r}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t12: (no action) prints 'gated' when marker absent
+    # t12: (no action) prints 'true' when marker absent (Inv 57: gate active = true)
     wd = tempfile.mkdtemp()
     try:
         res = run_script(["human-approval"], wd)
-        if res.returncode == 0 and res.stdout.strip() == "gated":
-            ok(12, "human-approval (no action) prints 'gated' when marker absent")
+        if res.returncode == 0 and res.stdout.strip() == "true":
+            ok(12, "human-approval (no action) prints 'true' when marker absent (gate active)")
         else:
-            fail_t(12, f"expected 'gated', got rc={res.returncode} stdout={res.stdout!r}")
+            fail_t(12, f"expected 'true', got rc={res.returncode} stdout={res.stdout!r}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t13: gated removes marker
+    # t13: 'true' removes marker (Inv 56)
     wd = tempfile.mkdtemp()
     try:
         marker = os.path.join(wd, ".rabbit-human-approval-bypass")
         with open(marker, "w") as f:
             f.write("session")
-        res = run_script(["human-approval", "gated"], wd)
+        res = run_script(["human-approval", "true"], wd)
         if res.returncode == 0 and not os.path.isfile(marker):
-            ok(13, "human-approval gated removes the marker")
+            ok(13, "human-approval true removes the marker")
         else:
-            fail_t(13, f"gated did not remove marker: rc={res.returncode} marker_exists={os.path.isfile(marker)}")
+            fail_t(13, f"'true' did not remove marker: rc={res.returncode} marker_exists={os.path.isfile(marker)}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t14: bypass is idempotent (re-invoking when marker exists is no-op exit 0)
+    # t14: 'false' is idempotent (re-invoking when marker exists is no-op exit 0)
     wd = tempfile.mkdtemp()
     try:
-        run_script(["human-approval", "bypass"], wd)
-        res = run_script(["human-approval", "bypass"], wd)
+        run_script(["human-approval", "false"], wd)
+        res = run_script(["human-approval", "false"], wd)
         marker = os.path.join(wd, ".rabbit-human-approval-bypass")
         if res.returncode == 0 and os.path.isfile(marker):
             with open(marker) as f:
                 content = f.read()
             if content == "session":
-                ok(14, "human-approval bypass is idempotent")
+                ok(14, "human-approval false is idempotent")
             else:
-                fail_t(14, f"idempotent bypass changed marker content: {content!r}")
+                fail_t(14, f"idempotent 'false' changed marker content: {content!r}")
         else:
-            fail_t(14, f"idempotent bypass failed: rc={res.returncode}")
+            fail_t(14, f"idempotent 'false' failed: rc={res.returncode}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t15: gated is idempotent (no-op when marker absent, exit 0)
+    # t15: 'true' is idempotent (no-op when marker absent, exit 0)
     wd = tempfile.mkdtemp()
     try:
-        res = run_script(["human-approval", "gated"], wd)
+        res = run_script(["human-approval", "true"], wd)
         if res.returncode == 0:
-            ok(15, "human-approval gated is idempotent (exit 0 when marker absent)")
+            ok(15, "human-approval true is idempotent (exit 0 when marker absent)")
         else:
-            fail_t(15, f"gated on absent marker failed: rc={res.returncode} stderr={res.stderr}")
+            fail_t(15, f"'true' on absent marker failed: rc={res.returncode} stderr={res.stderr}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
@@ -293,6 +295,58 @@ if os.path.isfile(SKILL_PY):
             ok(16, "human-approval with unknown action exits non-zero")
         else:
             fail_t(16, f"unknown action did not fail: rc={res.returncode} stdout={res.stdout!r}")
+    finally:
+        shutil.rmtree(wd, ignore_errors=True)
+
+    # ---- Legacy verbs rejected (Inv 55, 56: only true/false accepted) ----
+
+    # t16a: legacy 'bypass' verb is rejected with exit 1
+    wd = tempfile.mkdtemp()
+    try:
+        res = run_script(["human-approval", "bypass"], wd)
+        marker = os.path.join(wd, ".rabbit-human-approval-bypass")
+        if res.returncode != 0 and not os.path.isfile(marker):
+            ok("16a", "legacy 'bypass' verb rejected (exit non-zero, marker NOT written)")
+        else:
+            fail_t("16a", f"legacy 'bypass' not rejected: rc={res.returncode} marker_exists={os.path.isfile(marker)}")
+    finally:
+        shutil.rmtree(wd, ignore_errors=True)
+
+    # t16b: legacy 'gated' verb is rejected with exit 1
+    wd = tempfile.mkdtemp()
+    try:
+        marker = os.path.join(wd, ".rabbit-human-approval-bypass")
+        with open(marker, "w") as f:
+            f.write("session")
+        res = run_script(["human-approval", "gated"], wd)
+        if res.returncode != 0 and os.path.isfile(marker):
+            ok("16b", "legacy 'gated' verb rejected (exit non-zero, marker NOT removed)")
+        else:
+            fail_t("16b", f"legacy 'gated' not rejected: rc={res.returncode} marker_exists={os.path.isfile(marker)}")
+    finally:
+        shutil.rmtree(wd, ignore_errors=True)
+
+    # t16c: 'enabled' (plausible alternative) is rejected with exit 1
+    wd = tempfile.mkdtemp()
+    try:
+        res = run_script(["human-approval", "enabled"], wd)
+        marker = os.path.join(wd, ".rabbit-human-approval-bypass")
+        if res.returncode != 0 and not os.path.isfile(marker):
+            ok("16c", "'enabled' verb rejected (only true/false accepted)")
+        else:
+            fail_t("16c", f"'enabled' not rejected: rc={res.returncode}")
+    finally:
+        shutil.rmtree(wd, ignore_errors=True)
+
+    # t16d: 'disabled' (plausible alternative) is rejected with exit 1
+    wd = tempfile.mkdtemp()
+    try:
+        res = run_script(["human-approval", "disabled"], wd)
+        marker = os.path.join(wd, ".rabbit-human-approval-bypass")
+        if res.returncode != 0 and not os.path.isfile(marker):
+            ok("16d", "'disabled' verb rejected (only true/false accepted)")
+        else:
+            fail_t("16d", f"'disabled' not rejected: rc={res.returncode}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 else:
