@@ -50,6 +50,16 @@ def cmd_set(args):
         print(f"ERROR: item {args.id} not found", file=sys.stderr)
         sys.exit(1)
 
+    # No-op short-circuit: a `set` to the current status must not append a
+    # misleading "opened"/"closed" history entry or create a commit on
+    # bug-backlog-files. Exit 0 with a clear message naming the current status.
+    if item.get("status") == args.status:
+        print(
+            f"No-op: {args.id} already in status {args.status!r}; "
+            f"no transition recorded."
+        )
+        sys.exit(0)
+
     now = _now()
     actor = _git_user()
     action = "closed" if args.status == "close" else "opened"

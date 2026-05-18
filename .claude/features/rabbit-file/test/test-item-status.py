@@ -309,3 +309,76 @@ def test_update_missing_reason_arg_argparse_exit(filed_item):
     r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
                 "--id", id_str, "--field", "priority", "--value", "low")
     assert r.returncode == 2
+
+
+# --- BUG-11: set must short-circuit no-op transitions ---
+
+
+def test_set_open_to_open_is_noop(filed_item, monkeypatch):
+    """A `set --status open` on an already-open item must exit 0, print a
+    no-op message naming the current status, append NO history entry, and
+    create NO commit on bug-backlog-files."""
+    clone, id_str = filed_item
+
+    item_before = _fetch(clone, monkeypatch, id_str)
+    assert item_before["status"] == "open"
+    history_len_before = len(item_before["history"])
+
+    r = run_cmd(clone, "set", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--status", "open", "--reason", "redundant open")
+    assert r.returncode == 0, r.stderr
+    # stdout names the no-op and the current status
+    assert "no-op" in r.stdout.lower(), (
+        f"expected stdout to contain 'no-op', got: {r.stdout!r}"
+    )
+    assert "open" in r.stdout, (
+        f"expected stdout to name current status 'open', got: {r.stdout!r}"
+    )
+
+    item_after = _fetch(clone, monkeypatch, id_str)
+    # No history entry was appended
+    assert len(item_after["history"]) == history_len_before, (
+        f"history grew on no-op transition: before={history_len_before} "
+        f"after={len(item_after['history'])}"
+    )
+    # Status unchanged, closed timestamp unchanged
+    assert item_after["status"] == "open"
+    assert item_after["closed"] is None
+
+
+def test_set_close_to_close_is_noop(filed_item, monkeypatch):
+    """A `set --status close` on an already-closed item must exit 0, print a
+    no-op message, append NO history entry, and NOT mutate the closed timestamp."""
+    clone, id_str = filed_item
+
+    # First close it (real transition).
+    r1 = run_cmd(clone, "set", "--feature", "test-feat", "--type", "bug",
+                 "--id", id_str, "--status", "close", "--reason", "fixed")
+    assert r1.returncode == 0, r1.stderr
+
+    item_after_close = _fetch(clone, monkeypatch, id_str)
+    assert item_after_close["status"] == "close"
+    closed_ts_before = item_after_close["closed"]
+    history_len_before = len(item_after_close["history"])
+
+    # Re-close: must be a no-op.
+    r2 = run_cmd(clone, "set", "--feature", "test-feat", "--type", "bug",
+                 "--id", id_str, "--status", "close", "--reason", "redundant close")
+    assert r2.returncode == 0, r2.stderr
+    assert "no-op" in r2.stdout.lower(), (
+        f"expected stdout to contain 'no-op', got: {r2.stdout!r}"
+    )
+    assert "close" in r2.stdout, (
+        f"expected stdout to name current status 'close', got: {r2.stdout!r}"
+    )
+
+    item_after = _fetch(clone, monkeypatch, id_str)
+    assert len(item_after["history"]) == history_len_before, (
+        "history grew on redundant close"
+    )
+    assert item_after["status"] == "close"
+    # The closed timestamp must not be rewritten by a no-op.
+    assert item_after["closed"] == closed_ts_before, (
+        f"closed timestamp changed on no-op: before={closed_ts_before!r} "
+        f"after={item_after['closed']!r}"
+    )

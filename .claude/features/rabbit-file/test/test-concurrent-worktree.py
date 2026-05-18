@@ -287,6 +287,128 @@ class TestPushRetry:
         )
 
 
+# ---------------------------------------------------------------------------
+# Tests: commit_item's commit_sha-backfill push uses retry parity (BUG-14)
+# ---------------------------------------------------------------------------
+
+
+class TestBackfillPushRetry:
+    """The second push in commit_item (commit_sha backfill) MUST use the
+    same retry-with-fetch+reset+reapply mechanism as the primary push. A
+    silent failure on the backfill push leaves item.json without commit_sha
+    and breaks every downstream consumer (PR creation, release notes)."""
+
+    def test_backfill_push_retries_on_non_fast_forward(self, isolated_repo,
+                                                       monkeypatch):
+        """Inject a competing commit AFTER the primary item push succeeds
+        but BEFORE the backfill push. The backfill must retry, re-fetch,
+        re-apply the commit_sha write on top of the fresh tip, and succeed
+        — leaving item.json with commit_sha populated."""
+        # Prime the branch and reserve an ID.
+        id_str = branch_ops.allocate_id("backfill-feat", "bug")
+
+        original_run = subprocess.run
+        wt_marker = "bug-backlog-files-"
+        # State machine: count pushes from the branch_ops worktree.
+        # Push 1 = primary item commit. Push 2 = backfill (we inject before it).
+        # After we've injected once, allow subsequent pushes through cleanly so
+        # the retry can land.
+        state = {"wt_pushes": 0, "injected": False}
+
+        def wrapped_run(cmd, *args, **kwargs):
+            is_push_from_wt = (
+                isinstance(cmd, list) and len(cmd) >= 4
+                and cmd[0].endswith("git")
+                and "push" in cmd
+                and any(wt_marker in str(c) for c in cmd)
+            )
+            if is_push_from_wt:
+                state["wt_pushes"] += 1
+                # Inject right before the SECOND wt push (the backfill).
+                if state["wt_pushes"] == 2 and not state["injected"]:
+                    state["injected"] = True
+                    _inject_competing_commit(isolated_repo, "backfill-feat")
+            return original_run(cmd, *args, **kwargs)
+
+        monkeypatch.setattr(branch_ops.subprocess, "run", wrapped_run)
+
+        item = {
+            "name": id_str, "type": "bug", "title": "Backfill retry test",
+            "status": "open", "priority": "low",
+            "description": "verify backfill push retries",
+            "related_feature": "backfill-feat",
+            "filed": "2026-01-01T00:00:00Z", "filed_by": "tester",
+            "closed": None, "history": [],
+        }
+
+        # Must succeed despite the injected non-fast-forward on the backfill push.
+        sha = branch_ops.commit_item("backfill-feat", "bug", id_str, item)
+        assert sha, "commit_item must return a non-empty SHA after backfill retry"
+        assert state["injected"], "test fixture did not inject competing commit"
+
+        # The fetched item MUST have commit_sha populated; a silent backfill
+        # failure would leave it absent.
+        fetched = branch_ops.fetch_item("backfill-feat", "bug", id_str)
+        assert fetched is not None
+        assert fetched.get("commit_sha"), (
+            f"commit_sha is missing from item.json after backfill retry; "
+            f"fetched={fetched!r}"
+        )
+
+    def test_backfill_push_gives_up_after_max_attempts(self, isolated_repo,
+                                                       monkeypatch):
+        """If non-fast-forward persists on the backfill push across the full
+        retry budget, commit_item raises RuntimeError with retry diagnostics.
+        Verifies parity with primary push retry budget (_MAX_PUSH_ATTEMPTS)."""
+        id_str = branch_ops.allocate_id("backfill-giveup", "bug")
+
+        original_run = subprocess.run
+        wt_marker = "bug-backlog-files-"
+        state = {"wt_pushes": 0, "backfill_attempts": 0}
+
+        def wrapped_run(cmd, *args, **kwargs):
+            is_push_from_wt = (
+                isinstance(cmd, list) and len(cmd) >= 4
+                and cmd[0].endswith("git")
+                and "push" in cmd
+                and any(wt_marker in str(c) for c in cmd)
+            )
+            if is_push_from_wt:
+                state["wt_pushes"] += 1
+                # Push 1 = primary item (allow through). Pushes 2+ = backfill
+                # attempts (inject every time so non-fast-forward persists).
+                if state["wt_pushes"] >= 2:
+                    state["backfill_attempts"] += 1
+                    _inject_competing_commit(isolated_repo, "backfill-giveup")
+            return original_run(cmd, *args, **kwargs)
+
+        monkeypatch.setattr(branch_ops.subprocess, "run", wrapped_run)
+
+        item = {
+            "name": id_str, "type": "bug", "title": "Backfill giveup",
+            "status": "open", "priority": "low",
+            "description": "verify backfill retry budget",
+            "related_feature": "backfill-giveup",
+            "filed": "2026-01-01T00:00:00Z", "filed_by": "tester",
+            "closed": None, "history": [],
+        }
+
+        with pytest.raises(RuntimeError) as exc_info:
+            branch_ops.commit_item("backfill-giveup", "bug", id_str, item)
+
+        # Backfill push must have honoured the full retry budget (parity
+        # with primary push).
+        assert state["backfill_attempts"] == branch_ops._MAX_PUSH_ATTEMPTS, (
+            f"backfill push must attempt exactly _MAX_PUSH_ATTEMPTS="
+            f"{branch_ops._MAX_PUSH_ATTEMPTS}, got {state['backfill_attempts']}"
+        )
+        msg = str(exc_info.value).lower()
+        assert (
+            "attempt" in msg or "retry" in msg
+            or str(branch_ops._MAX_PUSH_ATTEMPTS) in msg
+        ), f"error message must mention retry exhaustion, got: {exc_info.value}"
+
+
 def _inject_competing_commit(isolated_repo, feature):
     """
     Simulate another agent pushing a competing counter.json commit to
