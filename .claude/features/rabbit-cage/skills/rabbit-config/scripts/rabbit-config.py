@@ -169,15 +169,34 @@ def cmd_human_approval(args):
         print('false' if marker.exists() else 'true')
         return 0
     if action == 'false':
-        marker.write_text('session')
-        print(f'Human-approval gate DISABLED (false). Marker written: {marker}')
+        already = marker.exists()
+        if not already:
+            marker.write_text('session')
+        if already:
+            print(
+                f'Human-approval gate already BYPASSED (marker {marker} already present). '
+                'Step 4 will be skipped for all dispatches until you run '
+                '/rabbit-config human-approval true.'
+            )
+        else:
+            print(
+                f'Human-approval gate BYPASSED. Marker {marker} written. '
+                'Step 4 will be skipped for all dispatches until you run '
+                '/rabbit-config human-approval true.'
+            )
         return 0
     if action == 'true':
         if marker.exists():
             marker.unlink()
-            print(f'Human-approval gate ENABLED (true). Marker removed: {marker}')
+            print(
+                f'Human-approval gate ENABLED. Marker {marker} removed. '
+                'Step 4 will wait for in-conversation approval on each dispatch.'
+            )
         else:
-            print('Human-approval gate already enabled (no marker present).')
+            print(
+                'Human-approval gate already ENABLED (no marker present). '
+                'Step 4 will wait for in-conversation approval on each dispatch.'
+            )
         return 0
     print(f'Error: unknown value {action!r} for human-approval (expected true, false, or no action)', file=sys.stderr)
     return 1
