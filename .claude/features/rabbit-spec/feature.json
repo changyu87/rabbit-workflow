@@ -1,6 +1,6 @@
 {
   "name": "rabbit-spec",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Standalone spec-authoring skill. Comprehends user requests, judges open vs. specific intent, invokes brainstorming and/or writing-plans superpowers, updates feature specs, and writes impl-suggestion files for the TDD subagent.",
@@ -10,5 +10,5 @@
     "skills": []
   },
   "deprecation_criterion": "When spec authoring is natively handled by the rabbit CLI or a successor skill.",
-  "updated": "2026-05-17"
+  "updated": "2026-05-18"
 }

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.1.0
+version: 1.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When spec authoring is natively handled by the rabbit CLI.
@@ -49,6 +49,17 @@ The sole test runner is test/run.py which validates structural invariants.
 8. SKILL.md "What You Do NOT Do" section MUST NOT instruct the skill to avoid
    invoking specific named skills (e.g., rabbit-feature-touch). A generic rule
    like "do not invoke other skills" is acceptable; a process-specific one is not.
+9. `feature.json` `version` MUST equal `docs/spec/spec.md` frontmatter `version`
+   at every commit. Drift between the two means consumers reading one source see
+   stale lifecycle/contract information. A test MUST enforce equality.
+10. Every numbered spec invariant MUST have at least one corresponding test in
+    `.claude/features/rabbit-spec/test/`. Specifically, Inv 3 (impl-suggestion
+    schema conformance) is covered by a structural test asserting the SKILL.md
+    body documents every required field of the impl-suggestion schema. Inv 5
+    (spec.md updated before impl-suggestion written) is covered by parsing
+    SKILL.md and asserting the "Update the Spec" step heading appears textually
+    before the "Write impl-suggestion File" step heading. Missing tests for
+    Inv 3 and Inv 5 were filed as RABBIT-SPEC-BUG-6 and BUG-7 (Wave 3).
 
 ## impl-suggestion Schema (v1.0.0)
 
