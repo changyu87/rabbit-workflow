@@ -46,6 +46,7 @@ SUITES = [
     "test-python-migration.py",
     "test-repo-permissions.py",
     "test-team-wide-permissions.py",
+    "test-RABBIT-CAGE-WAVE2-inv61-65.py",
 ]
 
 
