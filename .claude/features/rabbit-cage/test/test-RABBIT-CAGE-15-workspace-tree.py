@@ -58,11 +58,13 @@ if '"backlogs"' in wt_src:
 else:
     fail_t(4, "STRUCTURAL_DIRS in workspace-tree.py does NOT contain 'backlogs'")
 
-# t5
-if '"rabbit-bug"' in wt_src:
-    ok(5, "STRUCTURAL_DIRS in workspace-tree.py contains 'rabbit-bug'")
+# t5 (updated, BUG-46): rabbit-bug and rabbit-backlog features were
+# consolidated into rabbit-file; STRUCTURAL_DIRS must reference the new
+# feature name instead.
+if '"rabbit-file"' in wt_src:
+    ok(5, "STRUCTURAL_DIRS in workspace-tree.py contains 'rabbit-file' (post BUG-46 consolidation)")
 else:
-    fail_t(5, "STRUCTURAL_DIRS in workspace-tree.py does NOT contain 'rabbit-bug'")
+    fail_t(5, "STRUCTURAL_DIRS in workspace-tree.py does NOT contain 'rabbit-file' — annotations not updated for the consolidated feature")
 
 # t6: regex check
 m = re.search(r"re\.match\(r'([^']+)'", wt_src)

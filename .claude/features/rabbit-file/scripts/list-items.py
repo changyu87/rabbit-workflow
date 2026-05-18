@@ -18,7 +18,20 @@ def main():
     args = p.parse_args()
 
     type_filter = None if args.type_ == "all" else args.type_
-    has_filters = bool(type_filter or args.feature or args.status)
+
+    # BUG-28: distinguish 'branch does not exist' from 'branch exists but
+    # no items match filters' — they are operationally distinct conditions.
+    try:
+        if not branch_ops.branch_exists():
+            print(
+                "No items filed yet (origin/bug-backlog-files does not exist). "
+                "Run python3 .claude/features/rabbit-file/scripts/file-item.py "
+                "to file the first item."
+            )
+            return
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
 
     try:
         items = branch_ops.read_branch(
@@ -31,13 +44,12 @@ def main():
         sys.exit(1)
 
     if not items:
-        if has_filters:
-            print("No items found.")
-        else:
-            print("No items filed yet. Use /rabbit-file file bug or /rabbit-file file backlog.")
+        print("No items found.")
         return
 
-    for item in items:
+    # BUG-30: deterministic order — sort by name (ID string).
+    items_sorted = sorted(items, key=lambda i: i.get("name", ""))
+    for item in items_sorted:
         name = item.get("name", "?")
         type_ = item.get("type", "?")
         status = item.get("status", "?")

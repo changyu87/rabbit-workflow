@@ -173,9 +173,9 @@ def t8():
     fix(d, 't8', 'deprecated')
     rc = run('transition', d, 'spec', '--force')
     if rc != 0:
-        ok('t8: deprecated is terminal (no exit even with --force)')
+        ok('t8: deprecated is terminal (no forward transitions allowed, even with --force)')
     else:
-        ko(f"t8: rc={rc} - deprecated should not be exitable")
+        ko(f"t8: rc={rc} - deprecated must reject all transitions (terminal state)")
 
 
 # t9: full forward path works end-to-end

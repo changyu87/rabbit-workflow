@@ -40,7 +40,24 @@ def main() -> int:
         else:
             root_arg = a; i += 1
 
-    root = root_arg or os.environ.get("FEATURES_ROOT", ".claude/features")
+    # BUG-82: resolve the default root relative to the repo root (from git or
+    # RABBIT_ROOT), not relative to the caller's CWD. Explicit args still win.
+    root = root_arg or os.environ.get("FEATURES_ROOT", "")
+    if not root:
+        script_dir = Path(__file__).resolve().parent
+        rr = os.environ.get("RABBIT_ROOT", "")
+        if not rr:
+            try:
+                rr = subprocess.check_output(
+                    ["git", "-C", str(script_dir), "rev-parse", "--show-toplevel"],
+                    stderr=subprocess.DEVNULL,
+                ).decode().strip()
+            except Exception:
+                rr = ""
+        if rr:
+            root = str(Path(rr) / ".claude/features")
+        else:
+            root = ".claude/features"
 
     if not validator:
         script_dir = Path(__file__).resolve().parent

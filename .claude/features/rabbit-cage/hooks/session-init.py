@@ -91,7 +91,14 @@ def _inject_policy(root: Path) -> None:
         if path.startswith("/"):
             full = Path(path)
         else:
-            full = root / path.lstrip("./")
+            # BUG-59: lstrip('./') is a character-set strip; it would also
+            # strip leading dots from any path starting with '.' (e.g.
+            # '.claude/foo' -> 'claude/foo'). Strip a single leading './'
+            # prefix only if present, then join under root.
+            rel = path
+            while rel.startswith("./"):
+                rel = rel[2:]
+            full = root / rel
         if full.is_file():
             parts.append(f"--- {path} ---\n")
             parts.append(full.read_text())
@@ -106,6 +113,16 @@ def _inject_policy(root: Path) -> None:
 
 
 def main() -> int:
+    # BUG-48: surface a minimal --help so operators can introspect the hook.
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        sys.stdout.write(
+            "session-init.py — SessionStart hook.\n"
+            "Reads stdin (JSON payload from Claude Code, ignored), enforces R1 "
+            "branch policy, and emits CLAUDE.md @-import policy as "
+            "additionalContext on stdout.\n"
+            "Takes no command-line arguments.\n"
+        )
+        return 0
     root = repo_root()
     _enforce_r1_branch(root)
     _inject_policy(root)

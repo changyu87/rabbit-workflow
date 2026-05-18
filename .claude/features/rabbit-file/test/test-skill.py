@@ -40,6 +40,37 @@ for section in [
     else:
         assert_fail(f"contains '{section}'", "section not found in SKILL.md")
 
+def assert_contains(needle, msg):
+    if needle in skill_text:
+        assert_pass(msg)
+    else:
+        assert_fail(msg, f"missing substring: {needle!r}")
+
+
+def assert_not_contains(needle, msg):
+    if needle in skill_text:
+        assert_fail(msg, f"forbidden substring present: {needle!r}")
+    else:
+        assert_pass(msg)
+
+
+# BACKLOG-2: impl-suggestion must mention test gap analysis in Work Protocol.
+assert_contains("test gap", "Work Protocol mentions test-gap analysis (BACKLOG-2)")
+
+# BACKLOG-6: legacy slash commands /rabbit-file file|work|list must NOT appear
+# as harness invocations (the table header is fine but the canonical
+# invocations must use the python3 script paths).
+assert_not_contains(
+    "$TDD_REPORT_PATH",
+    "no undefined $TDD_REPORT_PATH variable in SKILL.md (BACKLOG-6)",
+)
+# Snippet that resolves the tdd_report_path from the handoff payload —
+# replaces the previous undefined-shell-variable form.
+assert_contains(
+    "tdd_report_path",
+    "SKILL.md references tdd_report_path from handoff payload (BACKLOG-6)",
+)
+
 print()
 print(f"Results: {pass_} passed, {fail} failed")
 sys.exit(0 if fail == 0 else 1)

@@ -33,7 +33,14 @@ def _git_toplevel(start: Path) -> Optional[Path]:
         return None
 
 
-REPO_ROOT = _git_toplevel(Path(__file__).resolve().parent)
+# BUG-57: normalize REPO_ROOT through os.path.realpath so the string-prefix
+# comparisons in decide() are not defeated by a symlinked cwd or worktree
+# (e.g., /tmp/work -> /var/folders/.../work). Without realpath, abs_path
+# may begin with the resolved path while REPO_ROOT remains the symlink, so
+# `abs_path.startswith(REPO_ROOT)` returns False and every write is treated
+# as "outside the repo" -> silently ALLOWED.
+_raw_root = _git_toplevel(Path(__file__).resolve().parent)
+REPO_ROOT = Path(os.path.realpath(str(_raw_root))) if _raw_root else None
 
 
 _SPEC_MD_PATTERN = None
@@ -56,9 +63,13 @@ def _spec_md_pattern():
 
 
 def abspath(p: str) -> str:
+    # BUG-57: resolve symlinks in the resulting absolute path so REPO_ROOT
+    # prefix checks succeed even when cwd is a symlink to the actual repo
+    # root. realpath collapses both relative components and intermediate
+    # symlinks.
     if p.startswith("/"):
-        return p
-    return os.path.join(os.getcwd(), p)
+        return os.path.realpath(p)
+    return os.path.realpath(os.path.join(os.getcwd(), p))
 
 
 def walk_up_find(target: str, want: str) -> Optional[str]:
@@ -80,7 +91,7 @@ def find_feature_path(repo_root: Path, feature: str) -> Optional[str]:
     if not script.exists():
         return None
     try:
-        import sys
+        # sys is already imported at module level; do not re-import here.
         out = subprocess.check_output(
             [sys.executable, str(script), str(repo_root), "lookup", feature],
             stderr=subprocess.DEVNULL,
@@ -262,8 +273,13 @@ def _consume_override() -> Optional[str]:
 
 # ---------- Bash command target extraction ----------
 
+# BUG-72: match `<<` and `<<-` heredoc forms. With `<<-`, bash strips leading
+# tab indentation on every body line AND on the closing delimiter, so the
+# delimiter may appear indented (preceded by leading whitespace) rather than
+# only at column zero. Allow optional leading whitespace before the closing
+# delimiter on its own line.
 _HEREDOC_RE = re.compile(
-    r"<<[- ]*['\"]?([A-Za-z_]\w*)['\"]?[^\n]*\n(.*\n)*?\1\n?",
+    r"<<[- ]*['\"]?([A-Za-z_]\w*)['\"]?[^\n]*\n(.*\n)*?[ \t]*\1\n?",
     re.DOTALL,
 )
 
@@ -360,6 +376,16 @@ def extract_bash_targets(cmd: str) -> List[str]:
 
 
 def main() -> int:
+    # BUG-48: surface a minimal --help so operators can introspect the hook.
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        sys.stdout.write(
+            "scope-guard.py — PreToolUse hook.\n"
+            "Reads a tool-invocation JSON payload on stdin and DENIES (exit 2) "
+            "writes that fall outside the active scope; otherwise exits 0.\n"
+            "Takes no command-line arguments (state lives in repo-root marker "
+            "and override files).\n"
+        )
+        return 0
     raw = sys.stdin.read()
     try:
         payload = json.loads(raw) if raw.strip() else {}

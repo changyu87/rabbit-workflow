@@ -27,9 +27,10 @@ Skill("rabbit-feature-scope", args: "<request>")
 # Parse JSON response: {"features": [...], "rationale": "..."}
 ```
 
-**B/B mode:** Skip — feature name comes from `related_feature` in the bug/item JSON:
+**B/B mode:** Skip — feature name comes from `related_feature` in the bug/item JSON.
+Use Python 3 (always available) rather than `jq` (not a declared dependency):
 ```bash
-FEATURE=$(jq -r '.related_feature' "<item-dir>/item.json")
+FEATURE=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('related_feature',''))" "<item-dir>/item.json")
 ```
 The rabbit-file schema stores both bug and backlog items as `item.json`
 (unified storage).
@@ -117,6 +118,8 @@ writes the marker — gate disabled — and `true` deletes it).
 
 One subagent per feature. Dispatch all in parallel if multiple features.
 
+Shell (assemble the prompt — deterministic):
+
 ```bash
 PROMPT=$(python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py \
   --scope <feature-name> \
@@ -124,7 +127,12 @@ PROMPT=$(python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py 
   --impl-suggestion .rabbit/impl-suggestion-<feature-name>.json \
   [--linked-item <bug-or-item-dir> --item-type <bug|backlog>] \
   [--human-approval-gate false])
-Agent(model: opus, prompt: PROMPT)
+```
+
+Agent tool call (dispatch the assembled prompt — main session only):
+
+```
+Agent(model: opus, prompt: $PROMPT)
 ```
 
 Each subagent runs its named steps (SPEC-READ → UNLOCK), writes

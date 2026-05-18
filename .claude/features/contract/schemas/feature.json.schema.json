@@ -37,7 +37,7 @@
     },
     "tdd_state": {
       "type": "string",
-      "enum": ["spec", "test-red", "impl", "test-green", "review"],
+      "enum": ["spec", "test-red", "impl", "test-green", "review", "merged", "deprecated"],
       "description": "Current TDD state."
     },
     "summary": {

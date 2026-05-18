@@ -18,7 +18,15 @@ import re
 import sys
 
 
-PATTERN = re.compile(r'brainstorm|spec|plan|design|architect', re.IGNORECASE)
+# BACKLOG-14: word-boundary anchors prevent matches on innocuous words
+# (e.g. 'span' for 'spec', 'planet' for 'plan'). Explicit allowed inflections
+# keep the rule predictable.
+PATTERN = re.compile(
+    r'\b(brainstorm|brainstorming|spec|specs|specification|specifications|'
+    r'plan|plans|planning|design|designs|designing|'
+    r'architect|architecture|architecting)\b',
+    re.IGNORECASE,
+)
 
 
 def parse_frontmatter(filepath):

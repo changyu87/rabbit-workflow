@@ -104,6 +104,24 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 32. `check-imports-resolve.py` import-target regex MUST cover all paths where imports can appear: `.claude/features/`, `.claude/hooks/`, `.claude/skills/`, `.claude/commands/`, `.claude/agents/`. The current `.claude/features/`-only pattern misses imports from deployed surface files, producing false-OK on real drift.
 33. `workspace-structure.json` schema field naming MUST be internally consistent: either all snake_case or all camelCase, not mixed. The current mixed-case form (camelCase metadata keys with snake_case enforcement targets) confuses readers and triggers spurious schema-vs-data mismatches.
 
+## Template marker convention
+
+Every template file in `templates/` MUST carry exactly one `template_version` marker. The marker placement depends on the template's body language:
+
+- **JSON templates** — top-level `"template_version"` field (e.g. `bug-template.json`, `feature-json-template.json`).
+- **Markdown templates with YAML frontmatter** — `template_version:` key inside the frontmatter (e.g. `skill-template.md`, `command-template.md`).
+- **Markdown templates without frontmatter** — HTML comment `<!-- template_version: X.Y.Z -->` on the first non-empty line (e.g. `handoff-template.md`, `triage-template.md`, `spec-update-template.txt`).
+- **Markdown templates with Jinja-style placeholders** — `{# template_version: X.Y.Z #}` on the first line (e.g. `spec-template.md`, `contract-template.md`).
+- **Plain-text templates** — `# template_version: X.Y.Z` comment on a leading line (e.g. `subagent-launch-template.txt`).
+
+The legacy `_template_version` underscore-prefix form is prohibited (Inv 25); `test-templates-have-version.py` uses a word-boundary regex that rejects it. `handoff-template.md` is the reference marker for HTML-comment style.
+
+## Invariant enforcement limitations
+
+Some invariants are **test-only** — the test suite verifies them at CI time, but no edit-time hook prevents drift between runs.
+
+- **Inv 9** (build-contract validation): only `test-build-contract.py` verifies that `build-contract.json` validates against `build-contract.schema.json`. There is no edit-time enforcement; an unvalidated `build-contract.json` will only be flagged when tests run. This is acceptable because the contract is small and changes infrequently; promoting it to a hook would add startup latency disproportionate to the protection delivered.
+
 ## CLI Naming Convention
 
 All CLI flags, subcommand values, and configuration variable names in the

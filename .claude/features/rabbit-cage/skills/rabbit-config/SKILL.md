@@ -12,9 +12,8 @@ deprecation_criterion: when Claude Code provides a native typed-config mechanism
 workflow. The dispatcher invokes this skill whenever the user asks to read or
 change one of the workflow's runtime knobs.
 
-All logic lives in `scripts/rabbit-config.py`. The slash-command shim at
-`.claude/features/rabbit-cage/commands/rabbit-config.md` execs that script
-with `$ARGUMENTS`.
+All logic lives in `scripts/rabbit-config.py`. There is no slash-command
+shim file (per spec Inv 25); the skill itself is the sole entry point.
 
 ## CLI Surface
 

@@ -11,5 +11,5 @@
   },
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-18",
-  "tdd_last_cycle_impl_commit": "049975f680408912bcb2ed6f62550e83870c4c1d"
+  "tdd_last_cycle_impl_commit": "eae35f270bb84a6a14bb814bc57b9f08613f49a0"
 }

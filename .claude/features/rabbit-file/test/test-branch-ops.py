@@ -4,12 +4,10 @@ Tests for branch_ops.py — isolated temp-git-repo harness.
 All git operations run against a local bare repo (no real remote needed).
 """
 
-import json
 import os
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# test-rule-files-content.py — Spot-checks content of the four rule files.
+# test-rule-files-content.py — Spot-checks content of the three rule files.
 import os
 import sys
 

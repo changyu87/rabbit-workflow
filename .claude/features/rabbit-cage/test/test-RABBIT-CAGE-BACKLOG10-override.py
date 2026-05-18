@@ -82,10 +82,9 @@ def build_tmproot_clean():
     with open(os.path.join(tmproot, ".claude/features/registry.json"), "w") as f:
         json.dump({"schema_version": "1.0.0", "features": {}}, f)
 
-    noskills = os.path.join(tmproot, ".claude/features/rabbit-cage/scripts/generate-skills-dir.sh")
-    with open(noskills, "w") as f:
-        f.write("#!/usr/bin/env bash\nexit 0\n")
-    os.chmod(noskills, 0o755)
+    # BUG-39: Python-only stack — no .sh stubs. The generate-skills-dir step
+    # is now driven entirely by build.py + build-contract.json; no separate
+    # generate-skills-dir.* script exists or is invoked here.
 
     env = {**os.environ, "RABBIT_ROOT": tmproot}
     result = subprocess.run([sys.executable, os.path.join(tmproot, ".claude/features/rabbit-cage/scripts/generate-claude-md.py")],

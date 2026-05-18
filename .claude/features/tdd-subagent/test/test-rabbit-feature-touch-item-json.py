@@ -33,11 +33,18 @@ def check_skill(path, label):
         return
     with open(path) as f:
         src = f.read()
-    # B/B mode jq line must reference item.json
-    if "'.related_feature'" in src and "item.json" in src:
-        ok(f"{label}: contains `.related_feature` jq referencing item.json")
+    # B/B mode must extract `related_feature` from `item.json`. We accept any
+    # tool (jq syntax `'.related_feature'` OR Python `'related_feature'`),
+    # since jq is no longer a declared dependency of this feature (BUG-36).
+    extracts_related = (
+        "'.related_feature'" in src
+        or "'related_feature'" in src
+        or '"related_feature"' in src
+    )
+    if extracts_related and "item.json" in src:
+        ok(f"{label}: extracts `related_feature` from item.json")
     else:
-        ko(f"{label}: missing `.related_feature` jq referencing item.json")
+        ko(f"{label}: missing related_feature extraction from item.json")
     # B/B mode must NOT reference legacy bug.json path
     if "bug.json" in src:
         ko(f"{label}: stale `bug.json` reference still present")

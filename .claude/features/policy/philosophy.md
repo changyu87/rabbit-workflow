@@ -29,7 +29,10 @@ outside that scope returns to the scope's owner; it is never assumed by the
 boundary-crosser.
 
 Cross-scope communication is contract-bound. Read nothing outside the
-contract. Generate nothing outside the contract.
+contract. Generate nothing outside the contract. The concrete shape of every
+inter-feature contract is captured by the schema in each feature's
+`docs/spec/contract.md` (the JSON `provides` / `reads` / `invokes` / `never`
+block); cross-scope reads and writes MUST conform to that schema.
 
 ---
 

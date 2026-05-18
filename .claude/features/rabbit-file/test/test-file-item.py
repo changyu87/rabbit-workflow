@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """Tests for file-item.py"""
-import json
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest

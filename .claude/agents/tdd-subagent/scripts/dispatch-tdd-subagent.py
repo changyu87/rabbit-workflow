@@ -90,7 +90,12 @@ def main(argv):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     repo_root = _repo_root(script_dir)
 
-    parser = argparse.ArgumentParser(add_help=False)
+    parser = argparse.ArgumentParser(
+        prog="dispatch-tdd-subagent.py",
+        description=("Assemble a per-feature TDD subagent prompt that runs the "
+                     "9-step TDD cycle (spec-update -> test-red -> impl -> "
+                     "test-green) for ONE feature. Prompt is written to stdout."),
+    )
     parser.add_argument("--scope", required=True)
     parser.add_argument("--spec", required=True)
     parser.add_argument("--impl-suggestion", default=None)
@@ -113,7 +118,11 @@ def main(argv):
 
     try:
         args = parser.parse_args(argv)
-    except SystemExit:
+    except SystemExit as exc:
+        # argparse exits 0 on --help (already printed full help); pass through.
+        # Any other code (typically 2 for arg errors) becomes our usage hint.
+        if exc.code == 0:
+            return 0
         sys.stderr.write(
             "ERROR: usage: dispatch-tdd-subagent.py --scope <feature> --spec <path> "
             "[--impl-suggestion <path>] [--linked-item <dir>] [--item-type bug|backlog] "
@@ -131,6 +140,14 @@ def main(argv):
         return 2
     if args.max_iterations < 1:
         sys.stderr.write("ERROR: --max-iterations must be >= 1\n")
+        return 2
+    # --spec path must be a real file. Without this guard the embedded SPEC
+    # block in the prompt silently becomes "(not found)" and the subagent has
+    # nothing to implement against. Fail fast at invocation time.
+    if not os.path.isfile(args.spec):
+        sys.stderr.write(
+            f"ERROR: --spec file does not exist: {args.spec}\n"
+        )
         return 2
 
     # Parse and validate --linked-items into a list of (feature, type, id) tuples.
@@ -172,7 +189,9 @@ def main(argv):
     feature_path = _find_feature(repo_root, feature_name)
     if not feature_path:
         sys.stderr.write(f"ERROR: feature '{feature_name}' not found\n")
-        return 1
+        # Inv: invocation errors return 2 (see contract.md exit codes).
+        # A missing feature is a caller-side mistake, not a runtime failure.
+        return 2
 
     feature_dir = os.path.join(repo_root, feature_path)
     tdd_step_py = os.path.join(repo_root, ".claude", "features", "tdd-subagent", "scripts", "tdd-step.py")
@@ -206,30 +225,37 @@ def main(argv):
             return parts[-3], parts[-1]
         return "unknown", os.path.basename(item_dir_path) or "unknown"
 
+    def _close_call(feat, typ, iid, comment, reason):
+        # Single source of truth for the item-status.py close-call template.
+        # All callers (primary + secondary) go through here so the call shape
+        # cannot drift between them.
+        return (
+            f"  # {comment}\n"
+            f"  python3 {item_status_py} set \\\n"
+            f"    --feature {feat} --type {typ} --id {iid} \\\n"
+            f"    --status close \\\n"
+            f"    --reason '{reason}' \\\n"
+            f"    --fix-commits $IMPL_SHA\n"
+        )
+
     close_call_lines = []
     handoff_closed_items_lines = []
     if args.linked_item and args.item_type:
         primary_feature, primary_id = _derive_feature_and_id(args.linked_item)
-        close_call_lines.append(
-            "  # Primary linked item (closed by impl commit):\n"
-            f"  python3 {item_status_py} set \\\n"
-            f"    --feature {primary_feature} --type {args.item_type} --id {primary_id} \\\n"
-            "    --status close \\\n"
-            "    --reason 'TDD cycle complete' \\\n"
-            "    --fix-commits $IMPL_SHA\n"
-        )
+        close_call_lines.append(_close_call(
+            primary_feature, args.item_type, primary_id,
+            "Primary linked item (closed by impl commit):",
+            "TDD cycle complete",
+        ))
         handoff_closed_items_lines.append(
             f"    - {args.linked_item} (primary, type={args.item_type})"
         )
     for feat, typ, iid in secondary_items:
-        close_call_lines.append(
-            "  # Secondary linked item (resolved by same impl commit):\n"
-            f"  python3 {item_status_py} set \\\n"
-            f"    --feature {feat} --type {typ} --id {iid} \\\n"
-            "    --status close \\\n"
-            "    --reason 'TDD cycle complete (secondary item resolved by same commit)' \\\n"
-            "    --fix-commits $IMPL_SHA\n"
-        )
+        close_call_lines.append(_close_call(
+            feat, typ, iid,
+            "Secondary linked item (resolved by same impl commit):",
+            "TDD cycle complete (secondary item resolved by same commit)",
+        ))
         handoff_closed_items_lines.append(f"    - {feat}:{typ}:{iid} (secondary)")
 
     if close_call_lines:
@@ -249,21 +275,31 @@ def main(argv):
     else:
         handoff_closed_items_block = ""
 
+    # All step banners use the uniform ═════ banner format. Both gated and
+    # bypassed forms use the same heading style for visual consistency.
     if args.human_approval_gate == "false":
         human_approval_section = (
-            "\n## Step 2 — HUMAN-APPROVAL\n\nSkipped (--human-approval-gate false).\n"
+            "\n"
+            "════════════════════════════════════════════════════════════════════════\n"
+            "STEP 2 — HUMAN-APPROVAL\n"
+            "════════════════════════════════════════════════════════════════════════\n"
+            "\n"
+            "Skipped (--human-approval-gate false).\n"
         )
     else:
-        human_approval_section = """
-## Step 2 — HUMAN-APPROVAL
-
-Invoke `Skill("superpowers:writing-plans")` to produce an implementation summary with:
-- Key implementation points (bullet list)
-- Affected files (explicit paths)
-
-Present this summary to the user and wait for explicit approval before Step 3 (LOCK).
-If the user requests changes, update and re-present. Do NOT proceed without approval.
-"""
+        human_approval_section = (
+            "\n"
+            "════════════════════════════════════════════════════════════════════════\n"
+            "STEP 2 — HUMAN-APPROVAL\n"
+            "════════════════════════════════════════════════════════════════════════\n"
+            "\n"
+            "Invoke `Skill(\"superpowers:writing-plans\")` to produce an implementation summary with:\n"
+            "- Key implementation points (bullet list)\n"
+            "- Affected files (explicit paths)\n"
+            "\n"
+            "Present this summary to the user and wait for explicit approval before Step 3 (LOCK).\n"
+            "If the user requests changes, update and re-present. Do NOT proceed without approval.\n"
+        )
 
     if args.code_review_full_loop:
         code_review_loop_note = (
@@ -384,6 +420,11 @@ STEP 4 — TEST-WRITE
    git add {feature_dir}/test/
    git commit -m "test({feature_name}): add e2e tests for spec behaviours"
 
+Note on ordering: the commit above happens BEFORE STEP 5 (TEST-RED) runs.
+That is intentional — STEP 5 verifies the suite is failing as expected after
+the commit. The tests are committed in their failing state so the diff is
+captured atomically alongside the implementation that will turn them green.
+
 ════════════════════════════════════════════════════════════════════════
 STEP 5 — TEST-RED
 ════════════════════════════════════════════════════════════════════════
@@ -469,6 +510,14 @@ substituted into `impl_commit` BEFORE STEP 9 UNLOCK begins.
 Write tdd-report (gitignored — NEVER commit):
   mkdir -p {repo_root}/.rabbit/
   Path: {repo_root}/.rabbit/tdd-report-{feature_name}.json
+
+IMPORTANT: the JSON below is a TEMPLATE. You MUST substitute actual values
+for every `<...>` placeholder and for `$IMPL_SHA`. Do NOT copy the template
+literally — replace the placeholders with the real values you have just
+captured. Specifically: replace `$IMPL_SHA` with the captured commit SHA,
+`<yes|no>` with `yes` or `no`, `<reason or null>` with the actual reason
+string or the JSON literal `null`, and so on.
+
   {{
     "schema_version": "1.0.0",
     "feature": "{feature_name}",

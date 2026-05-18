@@ -12,15 +12,15 @@ Two modes — **File** and **Work** — for two types: **bug** and **backlog**. 
 
 All items are stored on the dedicated branch `origin/bug-backlog-files`, never on `main` or any fix/task branch. Scripts live at `.claude/features/rabbit-file/scripts/`.
 
-Invocation surface:
+Invocation surface — there are NO slash commands; all surface is direct
+script invocation:
 
-| Command | Purpose |
-|---|---|
-| `/rabbit-file file bug` | File a new bug |
-| `/rabbit-file file backlog` | File a new backlog item |
-| `/rabbit-file work bug <ID>` | Work or close a bug |
-| `/rabbit-file work backlog <ID>` | Work or close a backlog item |
-| `/rabbit-file list [bug\|backlog\|all] [--feature F] [--status open\|close]` | List items |
+| Mode | Script | Purpose |
+|---|---|---|
+| File  | `python3 .claude/features/rabbit-file/scripts/file-item.py …`     | File a new bug or backlog item |
+| Work  | `python3 .claude/features/rabbit-file/scripts/item-status.py …`   | Read or transition item state |
+| List  | `python3 .claude/features/rabbit-file/scripts/list-items.py …`    | List items with filters |
+| Show  | `python3 .claude/features/rabbit-file/scripts/item-status.py show …` | Print full item.json |
 
 ---
 
@@ -99,6 +99,11 @@ When the user asks to work or close a bug or backlog item:
 2. **Eval subagent** — dispatch a read-only default-model subagent:
    - Reads fetched `item.json` + current feature spec (`docs/spec/spec.md`)
    - Returns verdict: `valid` (still relevant and reproducible) or `stale/invalid` with reason
+   - Its impl-suggestion output MUST include a **test gap analysis**
+     section that names the existing tests covering the affected
+     behaviour and lists any missing tests the implementer should add
+     before turning RED → GREEN (BACKLOG-2). A bug fix without an
+     accompanying regression test is incomplete.
 
 3. **User-decision gate** — after the eval subagent returns, brief the user:
    - Summarize verdict and reasoning
@@ -116,11 +121,14 @@ When the user asks to work or close a bug or backlog item:
 
 5. **If user confirms to proceed:**
    - Invoke `rabbit-feature-touch` in B/B mode, passing the item dir path on the dedicated branch.
-   - Receive handoff: `{branch, tdd_report_path, status}`
+   - Receive handoff: `{branch, tdd_report_path, status}` where
+     `tdd_report_path` is an absolute path emitted by the subagent.
    - If `status: failed` — surface error to user. Stop.
-   - If `status: success`:
+   - If `status: success`, extract `impl_commit` from the report file at
+     the path returned in the handoff (substitute the actual path
+     reported in the handoff for `<tdd_report_path>` below):
      ```bash
-     IMPL_COMMIT=$(python3 -c "import json; print(json.load(open('$TDD_REPORT_PATH'))['impl_commit'])")
+     IMPL_COMMIT=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['impl_commit'])" <tdd_report_path>)
      python3 .claude/features/rabbit-file/scripts/item-status.py set \
        --feature <feature> --type bug|backlog --id <ID> \
        --status close \

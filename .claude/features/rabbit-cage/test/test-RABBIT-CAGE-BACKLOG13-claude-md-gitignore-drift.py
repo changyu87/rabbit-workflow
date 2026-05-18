@@ -140,14 +140,19 @@ try:
     else:
         fail_t(8, f"systemMessage missing drift-related term; got: '{sys_msg_drift}'")
 
-    # t9
+    # t9: CLAUDE.md is now an @-import manifest (BUG-80 / generate-claude-md.py
+    # no longer inlines policy bodies). Assert that the regenerated file
+    # contains @-imports for the three policy files.
     cm = os.path.join(tmproot, "CLAUDE.md")
     if os.path.isfile(cm):
         regen = read(cm)
-        if "Machine First" in regen:
-            ok(9, "CLAUDE.md was regenerated with current policy content after drift")
+        expected_imports = ("@.claude/features/policy/philosophy.md",
+                            "@.claude/features/policy/spec-rules.md",
+                            "@.claude/features/policy/coding-rules.md")
+        if all(imp in regen for imp in expected_imports):
+            ok(9, "CLAUDE.md regenerated with current policy @-imports after drift")
         else:
-            fail_t(9, "CLAUDE.md exists but does not contain current policy content after drift")
+            fail_t(9, f"CLAUDE.md exists but missing one or more @-imports after drift; got: {regen!r}")
     else:
         fail_t(9, "CLAUDE.md missing after drift detection — hook should regenerate it")
 
@@ -196,11 +201,11 @@ try:
         else:
             fail_t(12, "CLAUDE.md was NOT created on first run — hook must create it when absent")
 
-        # t13
-        if os.path.isfile(cm2) and "Machine First" in read(cm2):
-            ok(13, "created CLAUDE.md contains current policy content ('Machine First' present)")
+        # t13: CLAUDE.md is now an @-import manifest (see t9 comment).
+        if os.path.isfile(cm2) and "@.claude/features/policy/philosophy.md" in read(cm2):
+            ok(13, "created CLAUDE.md contains expected @-imports to policy/")
         else:
-            fail_t(13, "created CLAUDE.md does not contain current policy content")
+            fail_t(13, "created CLAUDE.md does not contain expected @-import lines")
     finally:
         shutil.rmtree(tmproot2, ignore_errors=True)
 finally:

@@ -36,6 +36,8 @@ if not run_pytest_suite("test-item-status.py"):
     total_fail += 1
 if not run_pytest_suite("test-list-items.py"):
     total_fail += 1
+if not run_pytest_suite("test-bug-fixes.py"):
+    total_fail += 1
 if not run_suite("test-skill.py"):
     total_fail += 1
 

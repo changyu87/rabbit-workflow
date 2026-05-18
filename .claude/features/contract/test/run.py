@@ -59,5 +59,6 @@ run_test("test-check-symlinks-deep.py")
 run_test("test-check-no-main-edits-protected-set.py")
 run_test("test-check-imports-resolve-surface-dirs.py")
 run_test("test-workspace-structure-naming.py")
+run_test("test-bug-fixes-cycle.py")
 
 print("ALL TESTS PASSED")

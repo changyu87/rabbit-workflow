@@ -5,10 +5,11 @@
 #   install.py [TARGET] [--all]
 #
 #   TARGET   directory to install into (default: $PWD)
-#   --all    also copy archive material (archive/, .claude/docs/specs/,
-#            .claude/docs/plans/, test/) — useful for fans / contributors
-#            who want a closer look at how rabbit is built. Default is
-#            minimal: just .claude/ + CLAUDE.md.
+#   --all    also copy archive material (archive/, test/) — useful for fans
+#            / contributors who want a closer look at how rabbit is built.
+#            Without --all, dev-only docs under .claude/docs/specs/ and
+#            .claude/docs/plans/ are stripped from the installed tree;
+#            default install is .claude/ + CLAUDE.md only.
 #
 # The runtime work model is identical regardless of --all. The flag only
 # affects which files come along for inspection; rabbit's behavior in the
@@ -91,11 +92,19 @@ def main():
             sys.exit(1)
         src = tmp_dir
 
+    # BUG-61: track files we created so we can roll back on failure.
+    target_claude = os.path.join(target, ".claude")
     try:
-        shutil.copytree(os.path.join(src, ".claude"), os.path.join(target, ".claude"))
-        subprocess.check_call(
-            ["python3", os.path.join(target, ".claude/features/rabbit-cage/scripts/build.py"), target]
-        )
+        shutil.copytree(os.path.join(src, ".claude"), target_claude)
+        try:
+            subprocess.check_call(
+                ["python3", os.path.join(target, ".claude/features/rabbit-cage/scripts/build.py"), target]
+            )
+        except Exception:
+            # Build failed after copytree succeeded — roll back the partial
+            # .claude/ tree so the operator can retry on a clean target.
+            shutil.rmtree(target_claude, ignore_errors=True)
+            raise
 
         # Always strip runtime-only and OS-level artifacts.
         settings_local = os.path.join(target, ".claude", "settings.local.json")

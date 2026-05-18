@@ -8,17 +8,10 @@
     "hooks": [],
     "commands": [],
     "skills": [],
-    "scripts": [
-      ".claude/features/rabbit-cage/scripts/new-feature.py",
-      ".claude/features/rabbit-cage/scripts/validate-all.py",
-      ".claude/features/rabbit-cage/scripts/rabbit-project.py",
-      ".claude/features/rabbit-cage/scripts/generate-claude-md.py",
-      ".claude/features/rabbit-cage/scripts/workspace-tree.py",
-      ".claude/features/rabbit-cage/scripts/build.py"
-    ],
     "settings": []
   },
   "deprecation_criterion": "when Claude Code exposes a native feature-container mechanism that subsumes this role",
+  "updated_note": "the `updated` field is hand-maintained at the close of each TDD cycle; bump it whenever feature contents materially change",
   "updated": "2026-05-18",
   "tdd_last_cycle_impl_commit": "e96b24a670c558f5b2874b04ec56ebf4a2b2807a"
 }

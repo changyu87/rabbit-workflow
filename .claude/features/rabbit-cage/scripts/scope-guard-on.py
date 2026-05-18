@@ -20,6 +20,10 @@ from pathlib import Path
 
 
 def repo_root() -> Path:
+    # BUG-58: prefer git rev-parse from the script location; do not fall back
+    # to a hard-coded .parent.parent.parent.parent chain because that
+    # silently produces the wrong directory if the script ever moves or is
+    # symlinked. If git is unavailable, fail loudly instead of guessing.
     env = os.environ.get("RABBIT_ROOT")
     if env:
         return Path(env)
@@ -31,7 +35,11 @@ def repo_root() -> Path:
         )
         return Path(out.decode().strip())
     except Exception:
-        return here.parent.parent.parent.parent
+        sys.stderr.write(
+            "scope-guard-on.py: cannot determine repo root "
+            "(set RABBIT_ROOT or run inside a git working tree)\n"
+        )
+        sys.exit(2)
 
 
 def main() -> int:

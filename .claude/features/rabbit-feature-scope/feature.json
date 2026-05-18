@@ -22,8 +22,11 @@
   },
   "surface": {
     "scripts": [
-      "scripts/resolve-scope.py"
+      "scripts/resolve-scope.py",
+      "scripts/format-feature-context.py"
     ],
-    "skills": []
+    "skills": [
+      "skills/rabbit-feature-scope/SKILL.md"
+    ]
   }
 }

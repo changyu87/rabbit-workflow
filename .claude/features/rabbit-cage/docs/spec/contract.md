@@ -10,9 +10,7 @@ template_version: 2.0.0
 {
   "provides": {
     "files": [".claude/commands", ".claude/hooks", ".claude/skills", ".claude/settings.json", ".claude/policy", ".claude/contract", "CLAUDE.md", "README.md", "install.py"],
-    "commands": [
-      {"path": ".claude/commands/rabbit-config.md", "subcommands": ["prompt-threshold [value]", "allowed-tools [add|remove <tool>]", "bash-allow [add|remove <command>]"]}
-    ],
+    "commands": [],
     "scripts": [
       {"path": ".claude/features/rabbit-cage/scripts/new-feature.py", "stdin": "none", "stdout": "scaffold path", "exit": "0=created 1=error 2=usage"},
       {"path": ".claude/features/rabbit-cage/scripts/validate-all.py", "stdin": "none", "stdout": "validation report", "exit": "0=all pass 1=failures"},
@@ -37,7 +35,9 @@ template_version: 2.0.0
       }
     ],
     "templates": [],
-    "skills": []
+    "skills": [
+      {"path": ".claude/features/rabbit-cage/skills/rabbit-config/", "subcommands": ["prompt-threshold [value]", "allowed-tools [add|remove <tool>]", "bash-allow [add|remove <command>]", "permissions [lock|unlock]", "human-approval [true|false]"]}
+    ]
   },
   "reads": {
     "files": [".claude/features/registry.json", "project-*/project-map.json", ".claude/features/contract/templates/", ".rabbit-scope-override", ".rabbit-scope-override-used"],

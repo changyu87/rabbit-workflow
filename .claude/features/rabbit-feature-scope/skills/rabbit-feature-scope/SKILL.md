@@ -36,13 +36,13 @@ Agent(prompt: PROMPT)
 {"features": ["name1", "name2"], "rationale": "one sentence"}
 ```
 
-- `features`: list of feature names matching `find-feature.py --list`. May be empty `[]`.
+- `features`: list of feature names matching `find-feature.py list`. May be empty `[]`.
 - `rationale`: one sentence explaining the selection.
 - The feature list is authoritative — caller does not second-guess it.
 
 ## Notes
 
 - `resolve-scope.py` emits a prompt to stdout only; it does not call Agent itself.
-- Uses `find-feature.py --list-json` — not `registry.json`.
+- Uses `find-feature.py list-json` (subcommand, not flag) — never reads `registry.json`.
 - Default model (no Opus override).
 - Prompt instructs Agent to respond with ONLY valid JSON on a single line.

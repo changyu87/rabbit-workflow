@@ -59,6 +59,32 @@ if schema_data is not None:
     else:
         fail("t5: schema missing 'version' field")
 
+# t6 (Inv 5 / BACKLOG-15): schema is the authoritative definition of the
+# [rabbit] print format used by all rabbit-workflow hooks and CLI scripts.
+# Every declared producer in schema['producers'] must (a) exist on disk and
+# (b) reference '[rabbit]' in its source text. Absent producers, or producers
+# that do not emit the [rabbit] prefix, contradict the authority claim.
+if schema_data is not None:
+    producers = schema_data.get("producers", [])
+    repo_root = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "..", "..", ".."))
+    missing = []
+    no_prefix = []
+    for p in producers:
+        full = os.path.join(repo_root, p)
+        if not os.path.isfile(full):
+            missing.append(p)
+            continue
+        with open(full) as f:
+            text = f.read()
+        if "[rabbit]" not in text:
+            no_prefix.append(p)
+    if missing:
+        fail(f"t6 (Inv 5): producers missing on disk: {missing}")
+    if no_prefix:
+        fail(f"t6 (Inv 5): producers do not emit the '[rabbit]' prefix: {no_prefix}")
+    if not missing and not no_prefix:
+        ok("t6 (Inv 5): rabbit-print schema is authoritative — every producer exists and emits '[rabbit]'")
+
 if FAIL != 0:
     print("test-rabbit-print-schema: FAIL")
     sys.exit(1)
