@@ -48,7 +48,7 @@ def guidance_for(state):
                 "Do NOT modify the tests to make them pass. "
                 "Then transition to impl when implementation work has started.")
     if state == "impl":
-        return ("Implementation in progress. Run test/run.sh frequently. "
+        return ("Implementation in progress. Run test/run.py frequently. "
                 "When all tests pass, transition to test-green.")
     if state == "test-green":
         return ("All tests pass. Open a pull request now (branch should already exist per branch-per-feature). "
@@ -99,11 +99,13 @@ def main(argv):
 
     state = data.get("tdd_state", "") or ""
     name = data.get("name", "") or ""
-    deprecation = data.get("deprecation") or {}
-    if isinstance(deprecation, dict):
-        crit = deprecation.get("criterion", "") or ""
-    else:
-        crit = ""
+    # Inv 28: prefer flat `deprecation_criterion` (canonical); fall back to
+    # legacy nested `deprecation.criterion` when flat is absent.
+    crit = data.get("deprecation_criterion") or ""
+    if not crit:
+        deprecation = data.get("deprecation") or {}
+        if isinstance(deprecation, dict):
+            crit = deprecation.get("criterion", "") or ""
 
     if mode == "json":
         out = build_json(data, name, state, crit)
