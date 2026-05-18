@@ -40,5 +40,6 @@ run_test("test-workspace-map.py")
 run_test("test-build-contract.py")
 run_test("test-check-naming-no-rbt.py")
 run_test("test-python-only-stack.py")
+run_test("test-cli-naming-convention.py")
 
 print("ALL TESTS PASSED")
