@@ -188,10 +188,14 @@ def t_inv15_step4_prohibits_silent_bypass():
     if not body:
         ko("inv15: Step 4 section not found")
         return
-    # Spec: "Do not silently bypass — only bypass when the user has
-    # explicitly asked for it." Look for explicit prohibition wording.
-    if re.search(r"not\s+silently\s+bypass|only\s+bypass.*explicit", body, re.IGNORECASE | re.DOTALL):
-        ok("inv15: Step 4 prohibits silent bypass / requires explicit user request")
+    # Spec Inv 15 (v1.8.0): bypass authorization is the
+    # .rabbit-human-approval-bypass marker file; in-conversation
+    # acknowledgements alone are not sufficient. The SKILL.md must encode
+    # the marker as the sole authorization mechanism (silent bypass via
+    # phrase alone is prohibited).
+    if (".rabbit-human-approval-bypass" in body
+            and re.search(r"sole authorization|NOT sufficient|system of record", body)):
+        ok("inv15: Step 4 prohibits silent bypass / requires marker authorization")
     else:
         ko("inv15: Step 4 does not prohibit silent bypass")
 

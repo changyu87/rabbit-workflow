@@ -82,24 +82,32 @@ created. Catching a design mismatch now costs one conversation turn; catching it
 after costs a full cycle. This gate lives here, in the main session, because
 subagents run to completion and cannot pause for user input mid-execution.
 
-For each feature, read `.rabbit/impl-suggestion-<feature-name>.json` and surface
-to the user:
-- **Request summary** — what was asked
-- **Spec changes** — what changed in the spec and why
-- **Affected files** — what will be written
-- **Implementation approach** — how the subagent will tackle it
+**FIRST: check for `.rabbit-human-approval-bypass` marker at repo root.**
 
-For multiple features, present all summaries together and collect one approval
-decision before dispatching any subagent.
+The marker file is the sole authorization mechanism for bypass. In-conversation
+acknowledgements ("you have permission to bypass") are NOT sufficient on their
+own — the marker is the system of record, managed via
+`/rabbit-config human-approval bypass|gated` (owned by rabbit-cage).
 
-Wait for explicit user approval ("looks good", "go ahead", or equivalent). If the
-user requests changes, invoke rabbit-spec again for the affected features, then
-return to this step.
-
-**Bypass:** when the user has indicated they want fully autonomous execution for
-this session, skip the wait and pass `--no-human-approval` to the Step 5 dispatch
-command. Do not silently bypass — only bypass when the user has explicitly asked
-for it.
+- **If `.rabbit-human-approval-bypass` exists:**
+  - Emit a visible warning to the user:
+    `[rabbit] Step 4 SKIPPED: .rabbit-human-approval-bypass marker active. Run /rabbit-config human-approval gated to restore the gate and require approval again.`
+  - Pass `--no-human-approval` to the Step 5 `dispatch-tdd-subagent.py`
+    invocation.
+  - Proceed to Step 5 immediately. Do NOT surface the impl-suggestion summary.
+- **If the marker file does NOT exist (default):**
+  - For each feature, read `.rabbit/impl-suggestion-<feature-name>.json` and
+    surface to the user:
+    - **Request summary** — what was asked
+    - **Spec changes** — what changed in the spec and why
+    - **Affected files** — what will be written
+    - **Implementation approach** — how the subagent will tackle it
+  - For multiple features, present all summaries together and collect one
+    approval decision before dispatching any subagent.
+  - Wait for explicit in-conversation user approval ("looks good", "go ahead",
+    or equivalent). If the user requests changes, invoke rabbit-spec again for
+    the affected features, then return to this step.
+  - Do NOT pass `--no-human-approval`.
 
 ### Step 5 — Dispatch TDD Subagents
 

@@ -287,6 +287,37 @@ Unit tests alone are insufficient. If a spec behaviour has no e2e test, add one 
 This rule applies to ALL TDD cycles without exception.
 
 ════════════════════════════════════════════════════════════════════════
+SCOPE BOUNDARY — RED FLAG (non-negotiable)
+════════════════════════════════════════════════════════════════════════
+
+Your declared scope is feature: {feature_name}. The only scope marker
+you may create is .rabbit-scope-active-{feature_name} (at LOCK).
+
+You MUST NOT create any .rabbit-scope-active-<X> marker where X != {feature_name},
+even temporarily. Creating an out-of-scope scope marker is a CONSTITUTION
+VIOLATION. Never do this.
+
+If implementation work requires writing to a file inside another feature's
+directory (anywhere under .claude/features/<X>/ where X != {feature_name}):
+
+1. STOP. Do not write the file. Do not create another marker.
+2. Emit HANDOFF with:
+     HANDOFF:
+       feature: {feature_name}
+       tdd_state: blocked
+       test_result: not_run
+       cross_feature_dependency: <X>
+       unwritten_paths:
+         - <full path 1>
+         - <full path 2>
+       notes: <one sentence describing the cross-feature dependency>
+3. Do not call tdd-step.py for any further transitions.
+4. Do not run the test suite.
+
+The dispatcher will read the HANDOFF, surface the cross-feature dependency to
+the user, and split the work into a separate cycle for <X> if the user approves.
+
+════════════════════════════════════════════════════════════════════════
 STEP 1 — SPEC-READ
 ════════════════════════════════════════════════════════════════════════
 
