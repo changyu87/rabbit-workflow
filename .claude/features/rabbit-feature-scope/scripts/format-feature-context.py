@@ -6,20 +6,42 @@
 #   python3 find-feature.py <repo-root> list-json | python3 format-feature-context.py
 #
 # Input:  JSON array of {name, path, summary, tdd_state} objects on stdin.
+#         Only 'name' is required per entry; optional keys are tolerated
+#         (Inv 11 / BUG-28). Missing required 'name' or malformed JSON
+#         exits non-zero.
 # Output: formatted text block, one feature per entry, to stdout.
 #
-# Version: 1.0.0
+# Version: 1.1.0
 # Owner: rabbit-workflow team (rabbit-feature-scope)
 # Deprecation criterion: when feature-scope resolution is automated by the dispatch infrastructure.
 
 import json
 import sys
 
-features = json.load(sys.stdin)
+try:
+    features = json.load(sys.stdin)
+except Exception as e:
+    sys.stderr.write(f"ERROR: malformed JSON on stdin: {e}\n")
+    sys.exit(1)
+
+if not isinstance(features, list):
+    sys.stderr.write("ERROR: expected JSON array on stdin\n")
+    sys.exit(1)
+
 lines = []
-for f in features:
-    lines.append(f'Feature: {f["name"]}')
-    lines.append(f'  Path: {f["path"]}')
-    lines.append(f'  Summary: {f["summary"]}')
-    lines.append('')
-print('\n'.join(lines))
+for i, f in enumerate(features):
+    if not isinstance(f, dict):
+        sys.stderr.write(f"ERROR: entry {i} is not an object\n")
+        sys.exit(1)
+    name = f.get("name")
+    if not name:
+        sys.stderr.write(f"ERROR: entry {i} missing required 'name' key\n")
+        sys.exit(1)
+    lines.append(f"Feature: {name}")
+    path = f.get("path", "")
+    if path:
+        lines.append(f"  Path: {path}")
+    summary = f.get("summary", "no summary")
+    lines.append(f"  Summary: {summary}")
+    lines.append("")
+print("\n".join(lines))

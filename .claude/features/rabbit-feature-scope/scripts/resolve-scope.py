@@ -74,9 +74,9 @@ Respond with ONLY valid JSON on a single line — no markdown, no explanation:
 {{"features": ["feature-name-1", "feature-name-2"], "rationale": "one sentence"}}
 
 Rules:
-- Include a feature only if the request requires writing/editing files in that feature's directory.
-- If the request touches cross-cutting infrastructure (dispatch scripts, schemas, enforcement), include "contract".
-- If the request touches hooks, commands, or skills surface, include "rabbit-cage".
+- Pick features whose source files the implementation will modify.
+- The REGISTERED FEATURES list above is the authoritative set; do not include features not in that list.
+- Use each feature's summary above to decide whether the request's work falls inside that feature's surface.
 - Omit features whose files will not be modified.
 - Return an empty features list [] if no features are targeted."""
 

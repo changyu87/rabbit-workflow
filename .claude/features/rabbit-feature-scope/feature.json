@@ -2,7 +2,7 @@
   "name": "rabbit-feature-scope",
   "version": "1.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "spec-update",
+  "tdd_state": "test-red",
   "summary": "Shared skill for resolving natural-language requests to the list of rabbit features whose files will be modified.",
   "status": "active",
   "updated": "2026-05-18",
