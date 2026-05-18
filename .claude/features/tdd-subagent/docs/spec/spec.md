@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.10.0
+version: 1.11.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -34,7 +34,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 5. `tdd-step.py transition` stdout uses the `[rabbit] ━━━ ... ━━━` format with ANSI colors — green (`\x1b[32m`) for normal transition messages on stdout, red (`\x1b[31m`) for FORCED/WARNING/ERROR messages on stderr. The `show`, `next`, and `transitions` subcommands remain plain-text (consumed by tests and downstream parsers).
 6. In `rabbit-feature-touch` Step 1 (normal mode), scope resolution is performed by invoking the `rabbit-feature-scope` Skill via the Skill tool (`Skill("rabbit-feature-scope", args: "<request>")`), NOT by shelling out to `resolve-scope.sh` directly. The Skill emits a prompt for caller dispatch; the caller parses the JSON response `{"features": [...], "rationale": "..."}` to drive parallel dispatch.
 7. `dispatch-tdd-subagent.py` emits a prompt to stdout only; it does not call any agent itself. The assembled prompt instructs the per-feature subagent to run the full TDD cycle (spec-update → test-red → impl → test-green) for ONE feature, using `.rabbit-scope-active-<feature-name>` as its scope marker. Distinct per-feature scope markers enable simultaneous dispatch across features without scope collision. The subagent writes `tdd-report.json` to `.rabbit/tdd-report.json` (a hidden folder at repo root); the `.rabbit/` directory is created automatically if it doesn't exist and is listed in `.gitignore`.
-8. When `--linked-item <item-dir> --item-type bug` is provided to `dispatch-tdd-subagent.py`, the orchestrator calls `bug-status.py set <item-dir> closed --reason 'TDD cycle complete' --fix-commits <impl-sha>` after test-green. When `--item-type backlog` is provided, it calls `backlog-item-status.py set <item-dir> implemented --reason 'TDD cycle complete' --fix-commits <impl-sha>`. These calls commit the item automatically. The HANDOFF block must include the linked item path and its new status. Additionally, when `--linked-items <feature>:<type>:<id>[,<feature>:<type>:<id>...]` is provided (a comma-separated list of triples), the orchestrator closes each listed item via `item-status.py set --feature <feature> --type <type> --id <id> --status close --reason 'TDD cycle complete (secondary item resolved by same commit)' --fix-commits <impl-sha>` after test-green. Each triple is validated for shape (exactly two colons, non-empty fields, type in {bug, backlog}); malformed triples cause dispatch-tdd-subagent.py to exit non-zero before emitting the prompt. The HANDOFF block must list all closed items (primary --linked-item plus every --linked-items entry).
+8. When `--linked-item <item-dir> --item-type bug|backlog` is provided to `dispatch-tdd-subagent.py`, the orchestrator (after test-green) closes the linked item via the rabbit-file unified script: `python3 .claude/features/rabbit-file/scripts/item-status.py set --feature <feature> --type <type> --id <id> --status close --reason 'TDD cycle complete' --fix-commits <impl-sha>`. The `<feature>` and `<id>` are derived from the `--linked-item` path (e.g., `rabbit/features/rabbit-cage/bugs/RABBIT-CAGE-BUG-8` → feature=`rabbit-cage`, id=`RABBIT-CAGE-BUG-8`). The legacy `bug-status.py` and `backlog-item-status.py` scripts no longer exist (consolidated into rabbit-file's `item-status.py` per RABBIT-FILE feature); any reference to them is a constitution violation. The HANDOFF block must include the linked item path and its new status. Additionally, when `--linked-items <feature>:<type>:<id>[,<feature>:<type>:<id>...]` is provided (a comma-separated list of triples), the orchestrator closes each listed item via the same `item-status.py set` invocation with `--reason 'TDD cycle complete (secondary item resolved by same commit)' --fix-commits <impl-sha>` after test-green. Each triple is validated for shape (exactly two colons, non-empty fields, type in {bug, backlog}); malformed triples cause dispatch-tdd-subagent.py to exit non-zero before emitting the prompt. The HANDOFF block must list all closed items (primary `--linked-item` plus every `--linked-items` entry).
 9. `surface.skills` in `feature.json` MUST be `[]`. Skills are now managed via explicit copy-file entries in `build-contract.json`; the `surface.skills` field is retired and must remain an empty array.
 10. E2E tests are always required — every behaviour described in a feature spec MUST
     have a corresponding end-to-end test. Unit tests alone are insufficient. The TDD
@@ -157,6 +157,36 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     distinct from Inv 18 (which prohibits the SUBAGENT from creating
     out-of-scope markers): Inv 22 prohibits the MAIN SESSION from creating
     any marker at all.
+23. The assembled TDD subagent prompt's STEP 3 LOCK section MUST NOT use
+    `trap '... rm -f ...' EXIT` to clean up the scope marker. Each Claude
+    Code `Bash` tool invocation runs in a separate shell process; the trap
+    fires immediately when that shell exits, deleting the marker before
+    subsequent steps run. Cleanup MUST be explicit: STEP 9 UNLOCK
+    executes `rm -f /<repo_root>/.rabbit-scope-active-<feature>` as one of
+    its commands, after the chore commit and before HANDOFF. LOCK does only
+    `touch /<repo_root>/.rabbit-scope-active-<feature>` and nothing else.
+24. The assembled prompt's STEP 7 CODE-REVIEW MUST invoke
+    `Skill("superpowers:requesting-code-review")`, not
+    `Skill("superpowers:code-reviewer")`. The latter does not exist; using
+    it silently no-ops the review step. The skill name is exact and
+    case-sensitive.
+25. The assembled prompt's STEP 6 IMPLEMENT loop MUST include an explicit
+    commit of the implementation files after the test suite passes within an
+    iteration: `git add <feature_dir>/` followed by
+    `git commit -m "fix/feat(<feature>): <one-line summary>"` (verb chosen
+    by the subagent based on whether this is a bugfix or new feature). The
+    commit MUST happen INSIDE the iteration loop, BEFORE the `tdd-step.py
+    transition <feature_dir> impl` call, so that the impl SHA captured by
+    `git rev-parse HEAD` after the impl transition points at the actual
+    implementation commit (not at the prior test commit from STEP 4).
+26. The assembled prompt's STEP 8 TEST-GREEN MUST capture `git rev-parse
+    HEAD` and substitute it into the `impl_commit` field of
+    `tdd-report-<feature>.json` BEFORE STEP 9 UNLOCK runs its `chore(...)`
+    commit. The chore commit advances HEAD past the implementation; if
+    `impl_commit` is captured lazily (after the chore commit), it points at
+    the chore commit, not the implementation. The prompt MUST make the
+    capture order explicit and the tdd-report MUST be fully written before
+    the UNLOCK chore commit begins.
 
 ## Confirm-Token Bypass Path
 
