@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """find-feature.py — distributed feature registry lookup.
 
-Usage (invoked by find-feature.sh):
+Usage:
   python3 find-feature.py <repo-root> list
   python3 find-feature.py <repo-root> list-json
   python3 find-feature.py <repo-root> lookup <feature-name>
 
-Version: 1.0.0
+Scope: scans ONLY `.claude/features/` for feature directories. Directories
+elsewhere in the repo whose basename happens to be `features` (project-side,
+vendor dirs, etc.) are NOT scanned per Inv 28.
+
+Version: 1.1.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when feature discovery is handled natively by the dispatch infrastructure.
 """
@@ -17,29 +21,28 @@ import sys
 import glob
 
 
+def _load_json(path):
+    """Open with context manager to ensure handle is closed."""
+    with open(path) as f:
+        return json.load(f)
+
+
 def iter_feature_jsons(repo):
-    """Yield all feature.json paths: rabbit-level + project-level."""
-    # Rabbit-level features
+    """Yield all feature.json paths under `.claude/features/` only.
+
+    Project-side `<root>/features/` trees are explicitly out of scope per
+    Inv 28 — scanning them would let any directory named `features`
+    masquerade as a feature root.
+    """
     for fj in sorted(glob.glob(os.path.join(repo, '.claude', 'features', '*', 'feature.json'))):
         yield fj
-    # Project-level features
-    try:
-        entries = sorted(os.listdir(repo))
-    except Exception:
-        return
-    for entry in entries:
-        feat_base = os.path.join(repo, entry, 'features')
-        if os.path.isdir(feat_base):
-            for fname in sorted(os.listdir(feat_base)):
-                fj = os.path.join(feat_base, fname, 'feature.json')
-                if os.path.isfile(fj):
-                    yield fj
 
 
 def cmd_list(repo):
     for fj in iter_feature_jsons(repo):
         try:
-            name = json.load(open(fj)).get('name', '')
+            data = _load_json(fj)
+            name = data.get('name', '')
             if name:
                 print(name)
         except Exception:
@@ -50,7 +53,7 @@ def cmd_list_json(repo):
     results = []
     for fj in iter_feature_jsons(repo):
         try:
-            f = json.load(open(fj))
+            f = _load_json(fj)
             results.append({
                 'name': f.get('name', ''),
                 'path': os.path.relpath(os.path.dirname(fj), repo),
@@ -65,7 +68,7 @@ def cmd_list_json(repo):
 def cmd_lookup(repo, target):
     for fj in iter_feature_jsons(repo):
         try:
-            f = json.load(open(fj))
+            f = _load_json(fj)
             if f.get('name', '') == target:
                 print(os.path.relpath(os.path.dirname(fj), repo))
                 sys.exit(0)

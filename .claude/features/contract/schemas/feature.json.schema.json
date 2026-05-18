@@ -4,9 +4,22 @@
   "title": "Feature JSON Schema",
   "description": "Validates feature.json files for rabbit-workflow features.",
   "type": "object",
-  "required": ["name", "version", "owner", "tdd_state", "summary", "surface", "bugs_root", "deprecation_criterion"],
-  "additionalProperties": false,
+  "required": ["name", "version", "owner", "tdd_state", "summary", "surface"],
+  "additionalProperties": true,
   "properties": {
+    "template_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Optional template metadata (present in feature-json-template.json)."
+    },
+    "updated": {
+      "type": "string",
+      "description": "Optional last-modified date (e.g. YYYY-MM-DD or ISO 8601)."
+    },
+    "tdd_last_cycle_impl_commit": {
+      "type": "string",
+      "description": "Optional git SHA of the last TDD-cycle implementation commit."
+    },
     "name": {
       "type": "string",
       "minLength": 1,
@@ -34,8 +47,7 @@
     },
     "surface": {
       "type": "object",
-      "required": ["hooks", "commands", "agents", "skills"],
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "hooks": {
           "type": "array",

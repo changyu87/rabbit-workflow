@@ -11,6 +11,5 @@
     "agents": [],
     "skills": []
   },
-  "bugs_root": "{{bugs_root}}",
   "deprecation_criterion": "{{deprecation_criterion}}"
 }
