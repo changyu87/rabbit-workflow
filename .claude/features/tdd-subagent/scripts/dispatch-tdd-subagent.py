@@ -207,6 +207,23 @@ def main(argv):
     linked_item_value = args.linked_item or "null"
     item_type_value = args.item_type or "null"
 
+    # BACKLOG-4: emit a distinct yellow [rabbit] note in the prompt preamble
+    # when the human-approval bypass marker exists at the repo root. The note
+    # appears on EVERY dispatch while the marker is present; it does not
+    # consume the marker. Yellow (\x1b[33m) is distinct from sync-check's
+    # red (\x1b[31m) alert: red = security/integrity concern, yellow =
+    # workflow convenience choice.
+    bypass_marker_path = os.path.join(repo_root, ".rabbit-human-approval-bypass")
+    if os.path.isfile(bypass_marker_path):
+        bypass_preamble_note = (
+            "\n\x1b[33m[rabbit] NOTE: human-approval bypass marker is active "
+            "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be "
+            "skipped for this dispatch. Revoke via "
+            "`/rabbit-config human-approval true`.\x1b[0m\n"
+        )
+    else:
+        bypass_preamble_note = ""
+
     item_status_py = os.path.join(
         repo_root, ".claude", "features", "rabbit-file", "scripts", "item-status.py"
     )
@@ -313,7 +330,7 @@ def main(argv):
         )
 
     prompt = f"""{policy_block}
-
+{bypass_preamble_note}
 ════════════════════════════════════════════════════════════════════════
 TDD SUBAGENT — SCOPE: {feature_name}
 ════════════════════════════════════════════════════════════════════════
@@ -558,6 +575,25 @@ HANDOFF:
   spec_compliance: <pass|fail>
   tdd_report_path: {repo_root}/.rabbit/tdd-report-{feature_name}.json
   notes: <brief summary>{handoff_closed_items_block}
+
+Also emit the structured JSON HANDOFF below. The JSON block is the
+machine-first source of truth (philosophy.md §1); the YAML-like form above
+remains for human readability and backward-compatible parsers. Substitute
+every `<...>` placeholder with the actual value before emitting.
+
+HANDOFF_JSON:
+```json
+{{
+  "handoff_schema_version": "1.0.0",
+  "feature": "{feature_name}",
+  "tdd_state": "test-green",
+  "test_result": "pass",
+  "spec_compliance": "<pass|fail>",
+  "tdd_report_path": "{repo_root}/.rabbit/tdd-report-{feature_name}.json",
+  "closed_items": [],
+  "notes": "<brief summary>"
+}}
+```
 """
 
     sys.stdout.write(prompt)

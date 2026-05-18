@@ -10,5 +10,6 @@
     "skills": []
   },
   "deprecation_criterion": "when Claude Code exposes a native subagent-policy injection point",
-  "updated": "2026-05-15"
+  "updated": "2026-05-18",
+  "spec_no_change_reason": "spec already committed in prior commit"
 }

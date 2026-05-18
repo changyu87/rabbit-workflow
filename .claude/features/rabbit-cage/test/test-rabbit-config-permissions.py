@@ -266,14 +266,17 @@ else:
 shutil.rmtree(wd, ignore_errors=True)
 
 # t19: confirmation strings reference settings.local.json (Common rules: Output)
+# BUG-70: tightened to assert the literal ' to .claude/settings.local.json' phrase
+# rather than the weaker "settings.local.json present + .claude/settings.json absent" pair.
+# The tighter form guards against future rewordings that drop the path prefix.
 wd = setup_workspace()
 _, out_at, _ = run_config("allowed-tools add WebFetch", wd)
 _, out_ba, _ = run_config("bash-allow add touch", wd)
-if "settings.local.json" in out_at and "settings.local.json" in out_ba \
-        and ".claude/settings.json" not in out_at and ".claude/settings.json" not in out_ba:
-    ok(19, "add confirmation strings reference settings.local.json (not settings.json)")
+needle = " to .claude/settings.local.json"
+if needle in out_at and needle in out_ba:
+    ok(19, "add confirmation strings include literal ' to .claude/settings.local.json'")
 else:
-    fail_t(19, f"confirmation strings wrong (allowed-tools out={out_at!r}, bash-allow out={out_ba!r})")
+    fail_t(19, f"confirmation strings missing '{needle}' (allowed-tools out={out_at!r}, bash-allow out={out_ba!r})")
 shutil.rmtree(wd, ignore_errors=True)
 
 # t20: USAGE text (now in CONFIG_PY; CONFIG_MD is a shim per Inv 25) references

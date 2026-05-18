@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
-# test-backlog003.py — Verify coding-rules.md uses standalone numbering (1-5) and clean heading.
-# BACKLOG-003: coding-rules.md should renumber rules 1-5 and drop 'Part II' from heading.
+# test-backlog003.py — Verify coding-rules.md uses standalone numbering (1-5)
+# and a clean heading (no 'Part II', no '## Code-Editing Discipline').
+#
+# Role / traceability: this test guards the structural outcome of the BACKLOG-003
+# era numbering migration (a pre-rabbit-file workflow ticket ID; no current
+# `BACKLOG-003` lives under `rabbit/features/policy/backlogs/`). It documents
+# the policy-rule-number contract, not a presently-open ticket.
+#
+# End-of-life criterion (per philosophy.md Designed Deprecation): this file may
+# be retired once `test-policy-invariants-v1-*.py` (or a successor) covers the
+# same numbering / heading assertions for `coding-rules.md`. Until then, keep it.
+# Tracked by POLICY-BACKLOG-11.
 import os
 import re
 import sys

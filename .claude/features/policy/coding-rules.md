@@ -44,8 +44,13 @@ When editing existing code:
 When your changes create orphans:
 - Remove imports/variables/functions that YOUR changes made unused in the
   current (uncommitted) edit. This is "cleaning up your own mess."
+- "Uncommitted" includes BOTH staged and unstaged work from the current
+  agent session — if you ran `git add` earlier in this session and a
+  later edit orphans something in those staged hunks, clean it up now;
+  staged-but-not-committed work is still yours to clean.
 - The exception does NOT extend to previously committed artifacts. Once
-  code is committed it is pre-existing — mention it, don't delete it.
+  code is committed (even within the same session) it is pre-existing —
+  mention it, don't delete it.
 
 The test: every changed line should trace directly to the user's request.
 

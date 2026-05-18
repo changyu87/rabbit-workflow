@@ -45,11 +45,14 @@ print("=== SPEC: human-only authoring restriction removed ===")
 spec = read(SPEC)
 contract = read(CONTRACT)
 
-# t1
-if "only a human creates this file" not in spec:
-    ok("spec does not contain 'only a human creates this file' restriction")
+# t1 (BUG-76: regex broadened to catch reformulations of the prohibited concept)
+# Original literal "only a human creates this file" would silently pass on rewordings like
+# "only a human creates the file" or "only humans create this file" — the prohibition
+# would return but the assertion would not notice. Match the concept, not the wording.
+if not re.search(r"only\s+(a\s+)?humans?.*creat\w*.*(this|the)\s+file", spec, re.IGNORECASE):
+    ok("spec does not contain 'only ... human ... creates ... file' restriction")
 else:
-    fail_t("spec still contains 'only a human creates this file' -- human-only restriction not removed")
+    fail_t("spec still contains 'only ... human ... creates ... file' wording -- human-only restriction not removed")
 
 # t2
 if not re.search(r"Authoring.*rabbit-scope-override.*only a human", spec):

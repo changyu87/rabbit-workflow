@@ -13,6 +13,9 @@ FEATURE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 TDD_STEP = os.path.join(FEATURE_DIR, 'scripts', 'tdd-step.py')
 TMPROOT = tempfile.mkdtemp()
 
+sys.path.insert(0, SCRIPT_DIR)
+from test_helpers import make_feature_dir as _make_feature_dir  # noqa: E402
+
 PASS = 0
 FAIL = 0
 
@@ -30,28 +33,9 @@ def ko(msg):
 
 
 def fix(d, n, s):
-    os.makedirs(os.path.join(d, 'test'), exist_ok=True)
-    feature_json = {
-        "name": n,
-        "version": "0.1.0",
-        "owner": {"primary": "test", "contact": ""},
-        "status": "active",
-        "tdd_state": s,
-        "deprecation": {"criterion": "fixture", "successor": None},
-        "contract": {"reads": [], "writes": [], "invokes": []},
-        "created": "2026-05-08",
-        "updated": "2026-05-08",
-    }
-    with open(os.path.join(d, 'feature.json'), 'w') as f:
-        json.dump(feature_json, f, indent=2)
-    with open(os.path.join(d, 'spec.md'), 'w') as f:
-        f.write('spec')
-    with open(os.path.join(d, 'contract.md'), 'w') as f:
-        f.write('contract')
-    run_py = os.path.join(d, 'test', 'run.py')
-    with open(run_py, 'w') as f:
-        f.write('#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n')
-    os.chmod(run_py, 0o755)
+    # BACKLOG-10: thin wrapper around shared test_helpers.make_feature_dir
+    # so the canonical flat-schema feature.json shape lives in ONE place.
+    _make_feature_dir(d, n, s)
 
 
 def run(*args):

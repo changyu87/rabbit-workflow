@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.15.0
+version: 1.16.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -232,6 +232,76 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     running it unconditionally also works because `spec-update →
     spec-update` is a self-no-op (or use `tdd-step.py show` to check
     first).
+32. When `dispatch-tdd-subagent.py` runs and the file
+    `.rabbit-human-approval-bypass` exists at the repo root, the assembled
+    prompt MUST include a distinct yellow-coloured `[rabbit]` note
+    (`\x1b[33m`, distinct from sync-check's red bypass alert) in the
+    prompt preamble. The note MUST name both the marker path
+    (`.rabbit-human-approval-bypass`) and the revoke skill invocation
+    (`/rabbit-config human-approval true`) so the dispatched subagent
+    (and any reviewer of the prompt) sees that the approval gate is
+    currently disabled. The note is emitted EVERY dispatch while the
+    marker exists; it does not consume or delete the marker. When the
+    marker is absent, no such note appears (baseline prompt is
+    unchanged). (BACKLOG-4)
+33. `feature.json` for every rabbit feature conforms to the schema at
+    `.claude/features/contract/schemas/feature.json.schema.json`, which
+    is the canonical declaration. The fields the tdd-subagent feature
+    relies on are: `name` (string), `version` (semver string),
+    `owner` (string), `tdd_state` (string — the tdd-subagent state
+    machine permits `spec`, `spec-update`, `test-red`, `impl`,
+    `test-green`, `deprecated`), `summary` (string), `surface`
+    (object), and the flat `deprecation_criterion` (string). Test
+    fixtures in this feature MUST use this flat shape; the legacy
+    nested form (`owner` as object, `deprecation.criterion` as nested
+    object, top-level `contract` / `status` / `created`) is retired
+    except where an explicit backward-compatibility test exercises it.
+    The contract feature owns the schema file; if the `tdd_state` enum
+    in the schema diverges from the tdd-subagent state machine, the
+    fix lives in the contract feature (filed via a follow-up backlog
+    in `rabbit/features/contract/backlogs/`) and is not in scope for
+    tdd-subagent. (BACKLOG-6)
+34. Shared test fixture helpers live at
+    `.claude/features/tdd-subagent/test/test_helpers.py`. The module
+    exposes at least `make_feature_dir(parent_dir, name, tdd_state,
+    *, run_exit=0)` which writes a flat-schema feature.json (per Inv 33)
+    plus the minimal `test/run.py`, `spec.md`, and `contract.md`
+    siblings the tdd-subagent scripts expect. `test-tdd-step.py`,
+    `test-context.py`, and `test-drift-check.py` MUST import this
+    helper instead of redefining their own `fix(...)` function so the
+    canonical fixture shape lives in one place. (BACKLOG-10)
+35. The assembled TDD subagent prompt MUST include a structured JSON
+    HANDOFF schema at the top of its HANDOFF block. The schema is
+    declared inline in the prompt with `handoff_schema_version: "1.0.0"`
+    and lists the required fields (`feature`, `tdd_state`, `test_result`,
+    `spec_compliance`, `tdd_report_path`, `closed_items` (array),
+    `notes`). The subagent emits BOTH the legacy YAML-like HANDOFF
+    block (for human readability and backward-compatible dispatchers)
+    AND a fenced JSON HANDOFF block immediately after, prefixed
+    `HANDOFF_JSON:` so downstream parsers can locate and validate it
+    without ambiguity. The JSON HANDOFF is the machine-first source
+    of truth per philosophy.md. (BACKLOG-7)
+36. `agents/tdd-subagent.md` MUST NOT describe a dual-path layout for
+    `scripts/tdd-step.py` (i.e., no "agent-local OR
+    .claude/features/tdd-subagent/scripts" fork). The dispatched
+    prompt always provides the absolute feature-scripts path; the
+    agent must use exactly that path. The agent file may name the
+    canonical scripts directory (`.claude/features/tdd-subagent/scripts/`)
+    once for reference, but MUST NOT instruct the subagent to choose
+    between two paths. (BACKLOG-9)
+
+## Contract Schema References
+
+The canonical `feature.json` schema is
+`.claude/features/contract/schemas/feature.json.schema.json` (owned by
+the contract feature). The tdd-subagent feature reads only the fields
+listed in Inv 33; it does not own the schema and changes to it follow
+the contract feature's versioning policy.
+
+The HANDOFF JSON schema (Inv 35) is declared inline in the assembled
+prompt because the dispatcher is the only consumer; if a third
+consumer appears, the schema MUST be promoted to a file under
+`.claude/features/contract/schemas/`.
 
 ## Confirm-Token Bypass Path
 

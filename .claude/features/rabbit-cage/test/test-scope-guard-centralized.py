@@ -43,17 +43,18 @@ sg = read(SCOPE_GUARD)
 run = read(RUN_PY)
 tcm = read(TEST_CLAUDE_MD)
 
-# t1
-if "bugs" in sg:
-    ok(1, "scope-guard.py contains path-based check for .claude/bugs/")
+# t1 (BUG-55: assert the literal path-prefix '/.claude/bugs/', not just the
+# bare token 'bugs', which would also match unrelated comments)
+if "/.claude/bugs/" in sg:
+    ok(1, "scope-guard.py contains literal '/.claude/bugs/' path-prefix")
 else:
-    fail_t(1, "scope-guard.py does NOT contain a path-based check for .claude/bugs/ (not yet implemented)")
+    fail_t(1, "scope-guard.py does NOT contain a literal '/.claude/bugs/' path-prefix")
 
-# t2
-if "backlogs" in sg:
-    ok(2, "scope-guard.py contains path-based check for .claude/backlogs/")
+# t2 (BUG-55: same tightening for backlogs)
+if "/.claude/backlogs/" in sg:
+    ok(2, "scope-guard.py contains literal '/.claude/backlogs/' path-prefix")
 else:
-    fail_t(2, "scope-guard.py does NOT contain a path-based check for .claude/backlogs/ (not yet implemented)")
+    fail_t(2, "scope-guard.py does NOT contain a literal '/.claude/backlogs/' path-prefix")
 
 # t3
 if "test-backlog-e2e-tdd" not in run:

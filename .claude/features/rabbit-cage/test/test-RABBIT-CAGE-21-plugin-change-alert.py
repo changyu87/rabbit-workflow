@@ -5,13 +5,12 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
+
+# BACKLOG-13: shared minimal-repo fixture; see test_helpers.py.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from test_helpers import REPO_ROOT, make_git_repo as make_clean_repo, run_sync as _shared_run_sync  # noqa: E402
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = subprocess.run(
-    ["git", "-C", SCRIPT_DIR, "rev-parse", "--show-toplevel"],
-    capture_output=True, text=True, check=True,
-).stdout.strip()
 SYNC_CHECK = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/hooks/sync-check.py")
 
 failures = 0
@@ -39,53 +38,7 @@ def extract_sys_msg(output):
         return ""
 
 
-def make_clean_repo():
-    d = tempfile.mkdtemp()
-    subprocess.run(["git", "init", "-q", d], check=True)
-    subprocess.run(["git", "-C", d, "config", "user.email", "test@test.com"], check=True)
-    subprocess.run(["git", "-C", d, "config", "user.name", "Test"], check=True)
-    subprocess.run(["git", "-C", d, "checkout", "-q", "-b", "main"], capture_output=True)
-
-    os.makedirs(os.path.join(d, ".claude/features/rabbit-cage/scripts"), exist_ok=True)
-    os.makedirs(os.path.join(d, ".claude/features/policy"), exist_ok=True)
-
-    for fname, content in [
-        ("philosophy.md", "# Philosophy\nMachine First.\n"),
-        ("spec-rules.md", "# Spec Rules\nSpec.\n"),
-        ("coding-rules.md", "# Coding Rules\nCode.\n"),
-    ]:
-        with open(os.path.join(d, ".claude/features/policy", fname), "w") as f:
-            f.write(content)
-
-    with open(os.path.join(d, ".claude/features/rabbit-cage/policy-header.json"), "w") as f:
-        json.dump({"header": "# Rabbit Workflow — test header"}, f)
-
-    for fname in ("generate-claude-md.py", "generate-claude-md-header.py"):
-        shutil.copy(
-            os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/scripts", fname),
-            os.path.join(d, ".claude/features/rabbit-cage/scripts", fname),
-        )
-
-    with open(os.path.join(d, ".claude/features/registry.json"), "w") as f:
-        json.dump({"schema_version": "1.0.0", "features": {}}, f)
-
-    env = {**os.environ, "RABBIT_ROOT": d}
-    result = subprocess.run(
-        [sys.executable, os.path.join(d, ".claude/features/rabbit-cage/scripts/generate-claude-md.py")],
-        env=env, capture_output=True, text=True,
-    )
-    with open(os.path.join(d, "CLAUDE.md"), "w") as f:
-        f.write(result.stdout.rstrip("\n") + "\n")
-
-    subprocess.run(["git", "-C", d, "add", "-A"], check=True, capture_output=True)
-    subprocess.run(["git", "-C", d, "commit", "-q", "-m", "init"], check=True, capture_output=True)
-    return d
-
-
-def run_sync(tmproot):
-    env = {**os.environ, "RABBIT_ROOT": tmproot, "RABBIT_SYNC_EVERY": "1"}
-    result = subprocess.run([sys.executable, SYNC_CHECK], env=env, capture_output=True, text=True)
-    return result.stdout
+run_sync = _shared_run_sync
 
 
 print("test-RABBIT-CAGE-21-plugin-change-alert.py")

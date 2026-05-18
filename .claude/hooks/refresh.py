@@ -93,10 +93,16 @@ def main() -> int:
             parts.append("\n")
 
     payload = "".join(parts)
-    files_label = " ".join(imports)
+    # BACKLOG-7: per-file bullet lines (one file per line) instead of a single
+    # space-joined dense list. Border chars and emoji preserved (Inv 18 + the
+    # BACKLOG-7-visual-messages contract).
+    files_label = "\n  · " + "\n  · ".join(imports)
     print(json.dumps({
         "additionalContext": payload,
-        "systemMessage": f"\x1b[32m🔄 ━━━ [rabbit] Policy refreshed — {files_label} ━━━ 🔄\x1b[0m",
+        "systemMessage": (
+            f"\x1b[32m🔄 ━━━ [rabbit] Policy refreshed ━━━ 🔄"
+            f"{files_label}\x1b[0m"
+        ),
     }))
     return 0
 
