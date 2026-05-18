@@ -13,6 +13,9 @@ FEATURE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 CTX = os.path.join(FEATURE_DIR, 'scripts', 'tdd-context.py')
 TMPROOT = tempfile.mkdtemp()
 
+sys.path.insert(0, SCRIPT_DIR)
+from test_helpers import make_feature_dir as _make_feature_dir  # noqa: E402
+
 PASS = 0
 FAIL = 0
 
@@ -30,28 +33,9 @@ def ko(msg):
 
 
 def fix(d, n, s):
-    os.makedirs(os.path.join(d, 'test'), exist_ok=True)
-    feature_json = {
-        "name": n,
-        "version": "0.1.0",
-        "owner": {"primary": "test"},
-        "status": "active",
-        "tdd_state": s,
-        "deprecation": {"criterion": "fixture"},
-        "contract": {"reads": [], "writes": [], "invokes": []},
-        "created": "2026-05-08",
-        "updated": "2026-05-08",
-    }
-    with open(os.path.join(d, 'feature.json'), 'w') as f:
-        json.dump(feature_json, f, indent=2)
-    with open(os.path.join(d, 'spec.md'), 'w') as f:
-        f.write('\n')
-    with open(os.path.join(d, 'contract.md'), 'w') as f:
-        f.write('\n')
-    run_py = os.path.join(d, 'test', 'run.py')
-    with open(run_py, 'w') as f:
-        f.write('#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n')
-    os.chmod(run_py, 0o755)
+    # BACKLOG-10: thin wrapper around shared test_helpers.make_feature_dir
+    # so the canonical flat-schema feature.json shape lives in ONE place.
+    _make_feature_dir(d, n, s)
 
 
 def run(*args):
@@ -151,18 +135,42 @@ def c4():
         ko(f"c4: crit='{crit}'")
 
 
-# c5: includes contract
+# c5: legacy nested 'contract' object is passed through when present.
+# Per spec Inv 33, the flat shape is canonical and has no nested 'contract'
+# field; this test explicitly exercises the legacy nested form as a
+# backward-compatibility guard for any feature.json that still carries it.
 def c5():
     d = os.path.join(TMPROOT, 'c5')
-    fix(d, 'c5', 'impl')
+    os.makedirs(os.path.join(d, 'test'), exist_ok=True)
+    feature_json = {
+        "name": "c5",
+        "version": "0.1.0",
+        "owner": "test",
+        "tdd_state": "impl",
+        "summary": "legacy fixture",
+        "surface": {},
+        "deprecation_criterion": "fixture",
+        # Legacy nested contract object — backward-compat only.
+        "contract": {"reads": [], "writes": [], "invokes": []},
+    }
+    with open(os.path.join(d, 'feature.json'), 'w') as f:
+        json.dump(feature_json, f, indent=2)
+    with open(os.path.join(d, 'spec.md'), 'w') as f:
+        f.write('\n')
+    with open(os.path.join(d, 'contract.md'), 'w') as f:
+        f.write('\n')
+    run_py = os.path.join(d, 'test', 'run.py')
+    with open(run_py, 'w') as f:
+        f.write('#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n')
+    os.chmod(run_py, 0o755)
     run(d)
     out = read_out()
     try:
         data = json.loads(out)
         if isinstance(data.get('contract', {}).get('reads'), list):
-            ok('c5: contract surfaced')
+            ok('c5: legacy nested contract object passed through (backward-compat)')
         else:
-            ko('c5: contract missing in output')
+            ko('c5: legacy contract.reads missing in output')
     except Exception:
         ko(f"c5: parse error; out={out}")
 

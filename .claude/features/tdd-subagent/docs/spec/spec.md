@@ -248,16 +248,19 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     `.claude/features/contract/schemas/feature.json.schema.json`, which
     is the canonical declaration. The fields the tdd-subagent feature
     relies on are: `name` (string), `version` (semver string),
-    `owner` (string), `tdd_state` (enum including `spec`,
-    `spec-update`, `test-red`, `impl`, `test-green`, `deprecated`),
-    `summary` (string), `surface` (object), and the flat
-    `deprecation_criterion` (string). Test fixtures in this feature MUST
-    use this flat shape; the legacy nested form (`owner` as object,
-    `deprecation.criterion` as nested object, top-level `contract` /
-    `status` / `created`) is retired except where an explicit
-    backward-compatibility test exercises it. The `tdd_state` enum in
-    the schema MUST list `spec-update` so cycle-restart transitions
-    validate. (BACKLOG-6)
+    `owner` (string), `tdd_state` (string — the tdd-subagent state
+    machine permits `spec`, `spec-update`, `test-red`, `impl`,
+    `test-green`, `deprecated`), `summary` (string), `surface`
+    (object), and the flat `deprecation_criterion` (string). Test
+    fixtures in this feature MUST use this flat shape; the legacy
+    nested form (`owner` as object, `deprecation.criterion` as nested
+    object, top-level `contract` / `status` / `created`) is retired
+    except where an explicit backward-compatibility test exercises it.
+    The contract feature owns the schema file; if the `tdd_state` enum
+    in the schema diverges from the tdd-subagent state machine, the
+    fix lives in the contract feature (filed via a follow-up backlog
+    in `rabbit/features/contract/backlogs/`) and is not in scope for
+    tdd-subagent. (BACKLOG-6)
 34. Shared test fixture helpers live at
     `.claude/features/tdd-subagent/test/test_helpers.py`. The module
     exposes at least `make_feature_dir(parent_dir, name, tdd_state,

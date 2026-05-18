@@ -17,6 +17,10 @@ SPEC_MD = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/docs/spec/spec.
 TEST_DRIFT = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/test/test-drift-check.py')
 TEST_TDD_STEP = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/test/test-tdd-step.py')
 TEST_CONTEXT = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/test/test-context.py')
+# BACKLOG-10: the canonical fixture writer lives in test_helpers.py; the
+# legacy fixture tests now delegate to it, so the run.py / run.sh check
+# is performed on the helper (which is the single source of truth).
+TEST_HELPERS = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/test/test_helpers.py')
 
 PASS = 0
 FAIL = 0
@@ -49,6 +53,9 @@ with open(TEST_TDD_STEP) as f:
 with open(TEST_CONTEXT) as f:
     test_ctx_content = f.read()
 
+with open(TEST_HELPERS) as f:
+    test_helpers_content = f.read()
+
 # t1: tdd-drift-check.py looks for run.py, not run.sh
 if 'run.py' in drift_content and 'run.sh' not in drift_content:
     ok('t1: tdd-drift-check.py uses run.py (not run.sh)')
@@ -78,23 +85,29 @@ if surface_match:
 else:
     fail('t4: could not locate Surface section in spec.md')
 
-# t5: test-drift-check.py fixtures use run.py (not run.sh)
-if 'run.py' in test_drift_content and 'run.sh' not in test_drift_content:
-    ok('t5: test-drift-check.py fixtures use run.py (not run.sh)')
+# t5: test-drift-check.py imports the shared helper (no inline .sh references).
+if 'test_helpers' in test_drift_content and 'run.sh' not in test_drift_content:
+    ok('t5: test-drift-check.py uses shared helper (no .sh refs)')
 else:
-    fail('t5: test-drift-check.py fixtures still reference run.sh or missing run.py')
+    fail('t5: test-drift-check.py still references run.sh or missing test_helpers import')
 
-# t6: test-tdd-step.py fixtures use run.py (not run.sh)
-if 'run.py' in test_step_content and 'run.sh' not in test_step_content:
-    ok('t6: test-tdd-step.py fixtures use run.py (not run.sh)')
+# t6: test-tdd-step.py imports the shared helper (no inline .sh references).
+if 'test_helpers' in test_step_content and 'run.sh' not in test_step_content:
+    ok('t6: test-tdd-step.py uses shared helper (no .sh refs)')
 else:
-    fail('t6: test-tdd-step.py fixtures still reference run.sh or missing run.py')
+    fail('t6: test-tdd-step.py still references run.sh or missing test_helpers import')
 
-# t7: test-context.py fixtures use run.py (not run.sh)
-if 'run.py' in test_ctx_content and 'run.sh' not in test_ctx_content:
-    ok('t7: test-context.py fixtures use run.py (not run.sh)')
+# t7: test-context.py uses shared helper or run.py inline (no .sh references).
+if ('test_helpers' in test_ctx_content or 'run.py' in test_ctx_content) and 'run.sh' not in test_ctx_content:
+    ok('t7: test-context.py uses helper or run.py (no .sh refs)')
 else:
-    fail('t7: test-context.py fixtures still reference run.sh or missing run.py')
+    fail('t7: test-context.py still references run.sh')
+
+# t8: the canonical helper itself writes run.py (single source of truth).
+if 'run.py' in test_helpers_content and 'run.sh' not in test_helpers_content:
+    ok('t8: test_helpers.py writes run.py (canonical fixture writer)')
+else:
+    fail('t8: test_helpers.py still references run.sh or missing run.py')
 
 print()
 print(f"Results: {PASS} passed, {FAIL} failed")
