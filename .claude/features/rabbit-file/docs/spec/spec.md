@@ -28,9 +28,23 @@ origin/bug-backlog-files branch, never on main.
   Calls branch_ops.allocate_id then branch_ops.commit_item.
   Prints assigned ID and commit SHA to stdout.
 
-- item-status.py: Reads or transitions item status. Subcommands: get, set.
-  set requires --status open|close --reason R. Optional --fix-commits SHA.
-  Calls branch_ops.fetch_item then branch_ops.commit_item.
+- item-status.py: Reads, transitions, or updates fields on an item.
+  Subcommands: get, set, update.
+  - get --feature F --type T --id ID — prints current status.
+  - set --feature F --type T --id ID --status open|close --reason R
+    [--fix-commits SHA] — transitions status. Appends history entry
+    {ts, actor, action=opened|closed, note=reason, [fix_commits]}.
+  - update --feature F --type T --id ID --field <name> --value <val>
+    --reason R — mutates a single mutable field on an OPEN item.
+    Supported fields: priority, title, description. Other fields
+    (name, type, status, closed, history, related_feature, filed,
+    filed_by, commit_sha) are immutable and rejected with a clear error.
+    For --field priority, --value must be one of low|medium|high|critical.
+    Update is REJECTED on closed items (status != "open") with a clear
+    error directing the user to reopen first. Appends history entry
+    {ts, actor, action=updated, field, old_value, new_value, note=reason}.
+  All subcommands call branch_ops.fetch_item; mutating subcommands call
+  branch_ops.commit_item.
 
 - list-items.py: Lists items from origin/bug-backlog-files. Args:
   --type bug|backlog|all --feature F --status open|close.
@@ -64,6 +78,24 @@ origin/bug-backlog-files root:
   try/checkout-local + checkout-b sequence MUST NOT be used.
 - branch_ops.allocate_id MUST be called before commit_item (counter reserves the ID slot).
 - item-status.py set MUST require --reason on every transition.
+- item-status.py update MUST require --field, --value, and --reason.
+  The set of mutable fields is exactly {priority, title, description}.
+  Any other --field value (including name, type, status, closed,
+  history, related_feature, filed, filed_by, commit_sha) is rejected
+  with exit non-zero and a stderr message naming the rejected field.
+- item-status.py update MUST reject items where status != "open" with a
+  clear stderr error directing the user to reopen the item first; no
+  history entry is appended on rejection.
+- The history entry appended by item-status.py update has shape
+  {ts, actor, action: "updated", field, old_value, new_value, note}
+  where note carries the --reason text. This is distinct from the
+  open/closed entries written by `set`, which have shape
+  {ts, actor, action: "opened"|"closed", note, [fix_commits]}.
+- Direct edits to item.json on the bug-backlog-files branch are
+  prohibited. All mutations go through file-item.py (create),
+  item-status.py set (status transitions), or item-status.py update
+  (field mutations). This guarantees every mutation has an audit
+  trail in the history array.
 - SKILL.md MUST include a user-decision gate in Work Protocol before invoking
   rabbit-feature-touch.
 
