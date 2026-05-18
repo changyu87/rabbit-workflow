@@ -15,8 +15,12 @@ origin/bug-backlog-files branch, never on main.
   Exposes: allocate_id(feature, type_), commit_item(feature, type_, id_str, item),
   fetch_item(feature, type_, id_str), read_branch(feature, type_, status).
   Auto-initializes orphan branch and counter.json on first use.
-  ID format: <FEATURE-UPPER>-BUG-N or <FEATURE-UPPER>-BACKLOG-N
-  e.g. feature="rabbit-cage", type_="bug", N=17 → "RABBIT-CAGE-BUG-17".
+  Canonical ID format: `UPPER(feature)-UPPER(type)-N`. Hyphens already
+  present in the feature name are preserved verbatim (NOT escaped, NOT
+  collapsed). Examples:
+    feature="rabbit-cage",  type_="bug",     N=17 → "RABBIT-CAGE-BUG-17"
+    feature="my-feature-x", type_="backlog", N=3  → "MY-FEATURE-X-BACKLOG-3"
+    feature="single",       type_="bug",     N=1  → "SINGLE-BUG-1"
   counter.json schema: {"next": N} where N is the next unused integer (starts at 1).
   allocate_id reads N, writes N+1, commits "counter: reserve <ID>", pushes.
   commit_item writes item.json, commits "item: <id_str>", pushes, backfills commit_sha.
@@ -29,8 +33,11 @@ origin/bug-backlog-files branch, never on main.
   Prints assigned ID and commit SHA to stdout.
 
 - item-status.py: Reads, transitions, or updates fields on an item.
-  Subcommands: get, set, update.
+  Subcommands: get, set, update, show.
   - get --feature F --type T --id ID — prints current status.
+  - show --feature F --type T --id ID — prints the full item.json
+    (pretty-printed JSON) to stdout. Read-only. Exits non-zero with a
+    clear stderr error if the item is missing.
   - set --feature F --type T --id ID --status open|close --reason R
     [--fix-commits SHA] — transitions status. Appends history entry
     {ts, actor, action=opened|closed, note=reason, [fix_commits]}.
@@ -49,7 +56,13 @@ origin/bug-backlog-files branch, never on main.
 - list-items.py: Lists items from origin/bug-backlog-files. Args:
   --type bug|backlog|all --feature F --status open|close.
   Output format: NAME  [TYPE]  [STATUS]  [PRIORITY]  TITLE.
-  If branch missing, prints guidance to file first.
+  Output MUST be deterministic: items are sorted by `name` (ID string)
+  in ascending order before printing, so repeated invocations against
+  the same branch state always print identical output. When the
+  origin/bug-backlog-files branch does not exist, list-items.py MUST
+  print branch-missing guidance regardless of whether filter flags
+  were passed — "no branch" is a distinct condition from "no items
+  matched filters" and the operator MUST be told which one occurred.
 
 ## item.json Schema
 
@@ -136,6 +149,32 @@ origin/bug-backlog-files root:
   trail in the history array.
 - SKILL.md MUST include a user-decision gate in Work Protocol before invoking
   rabbit-feature-touch.
+- item-status.py update MUST enforce length limits on title and
+  description values: max 500 characters each. Values exceeding the
+  limit are rejected with exit non-zero and a stderr error naming the
+  field, the limit, and the actual length.
+- file-item.py MUST NOT leave an ID slot orphaned on commit_item
+  failure. When commit_item raises after allocate_id succeeded,
+  file-item.py MUST call branch_ops.release_id(feature, type_, id_str)
+  to roll back the counter slot when safe (the counter still points one
+  past the just-allocated ID — i.e. no other process has allocated
+  above it). release_id is best-effort: if the slot has already been
+  consumed by another process, it is left alone (no error) and the
+  counter advances normally. The caller surfaces the original
+  commit_item error to the user; rollback success is reported on stderr.
+- read_branch MUST log a structured warning to stderr for every
+  malformed item.json it encounters (JSONDecodeError, OSError). The
+  warning names the file path and the underlying error. The malformed
+  item is then skipped. Silent skipping (the previous behaviour) hides
+  data corruption from operators.
+- branch_ops.commit_item MUST NOT mutate the caller-supplied item dict.
+  The caller's dict is treated as input-only; commit_sha backfill is
+  performed on an internal copy. This guarantees callers can re-use
+  their item dict for retry/logging without observing surprise fields.
+- branch_ops module MUST expose the canonical branch name and identity
+  as module-level constants (`BRANCH`, `IDENTITY_NAME`,
+  `IDENTITY_EMAIL`) so downstream tooling can reference them without
+  duplicating string literals.
 
 ## Out of scope
 
