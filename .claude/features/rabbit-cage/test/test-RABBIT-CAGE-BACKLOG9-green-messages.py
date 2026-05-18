@@ -135,7 +135,8 @@ try:
     os.chmod(fakebuild, 0o755)
 
     msg = extract_sys_msg(run_sync(tmp2))
-    assert_green_msg("sync-check.py SURFACE DRIFT case", msg)
+    # Inv 62: surface-drift is an alert condition; it MUST be red, not green.
+    assert_red_msg("sync-check.py SURFACE DRIFT case (Inv 62)", msg)
 
     # Test 4: session-init @-import
     tmp3 = build_tmproot()

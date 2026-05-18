@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests session-init.py does not create session/ branches."""
+"""Tests session-init.py R1 branch enforcement (Inv 21-23, 61)."""
 import json
 import os
 import shutil
@@ -52,18 +52,19 @@ print()
 repos = []
 
 try:
-    # t1
-    print("=== t1: on main → branch unchanged ===")
+    # t1: Inv 61 — on main, R1 creates session/YYYYMMDD-HHMMSS branch.
+    print("=== t1: on main → R1 creates session/YYYYMMDD-HHMMSS branch (Inv 61) ===")
+    import re as _re
     repo1 = make_repo()
     repos.append(repo1)
     env = {**os.environ, "RABBIT_ROOT": repo1}
     subprocess.run([sys.executable, HOOK], env=env, capture_output=True)
     branch = subprocess.run(["git", "-C", repo1, "branch", "--show-current"],
                             capture_output=True, text=True).stdout.strip()
-    if branch == "main":
-        ok("hook left branch unchanged at 'main'")
+    if _re.match(r"^session/\d{8}-\d{6}$", branch):
+        ok(f"hook created session branch '{branch}' (Inv 61)")
     else:
-        fail_t(f"hook changed branch from 'main' to '{branch}' (R1 branch creation should be removed)")
+        fail_t(f"hook did NOT create session/YYYYMMDD-HHMMSS branch; got '{branch}' (Inv 61 violation)")
 
     # t2
     print()
