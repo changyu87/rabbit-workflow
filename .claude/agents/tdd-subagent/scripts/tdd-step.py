@@ -68,11 +68,35 @@ _FORWARD = {
     "deprecated":  "",
 }
 
+# Alternate forward transitions. Each state's primary next is in _FORWARD;
+# additional valid forward targets (no --force required) are listed here.
+# test-green has two valid forward paths: deprecated (retirement) and
+# spec-update (next cycle restart, e.g. for rabbit-feature-touch).
+_FORWARD_ALT = {
+    "test-green": ["spec-update"],
+}
+
 _VALID_STATES = {"spec", "spec-update", "test-red", "impl", "test-green", "deprecated"}
 
 
 def forward_next(state):
     return _FORWARD.get(state, "")
+
+
+def forward_targets(state):
+    """Return the list of all valid forward targets from `state` (no --force).
+
+    The primary target (from _FORWARD) comes first; alternates follow.
+    Returns [] when state is terminal.
+    """
+    targets = []
+    primary = _FORWARD.get(state, "")
+    if primary:
+        targets.append(primary)
+    for alt in _FORWARD_ALT.get(state, []):
+        if alt and alt not in targets:
+            targets.append(alt)
+    return targets
 
 
 def is_valid_state(state):
@@ -111,6 +135,13 @@ def write_state(d, new):
 
 
 def auto_close_backlog(d):
+    """Auto-close in-progress backlog items for the feature on test-green.
+
+    Backlog storage was unified into rabbit-file (the `bug-backlog-files`
+    branch). Items are no longer kept in `.claude/backlogs/<feature>/`;
+    the unified `item-status.py` interface owns discovery and writes.
+    This is a best-effort no-op when the unified script is unavailable.
+    """
     fj = _feature_json_path(d)
     try:
         with open(fj, "r") as f:
@@ -120,23 +151,20 @@ def auto_close_backlog(d):
         return
     if not feature_name:
         return
+    item_status = os.path.join(
+        REPO_ROOT, ".claude", "features", "rabbit-file", "scripts",
+        "item-status.py",
+    )
+    if not os.path.isfile(item_status):
+        return
+    # Legacy local backlog dir layout (.claude/backlogs/<feature>/<ID>/item.json)
+    # may still exist in transitional repos. When present, iterate and close
+    # in-progress items via the unified item-status.py interface. When absent,
+    # skip silently — discovery on the bug-backlog-files branch is the caller's
+    # responsibility (via --linked-items in dispatch-tdd-subagent.py).
     backlog_dir = os.path.join(REPO_ROOT, ".claude", "backlogs", feature_name)
     if not os.path.isdir(backlog_dir):
         return
-    backlog_status = os.path.join(
-        REPO_ROOT, ".claude", "features", "rabbit-backlog", "scripts",
-        "backlog-item-status.py",
-    )
-    if not os.path.isfile(backlog_status):
-        return
-    try:
-        out = subprocess.run(
-            ["git", "-C", REPO_ROOT, "rev-parse", "HEAD"],
-            capture_output=True, text=True, check=False,
-        )
-        fix_commit = out.stdout.strip() if out.returncode == 0 else "HEAD"
-    except Exception:
-        fix_commit = "HEAD"
     try:
         items = sorted(os.listdir(backlog_dir))
     except Exception:
@@ -153,11 +181,17 @@ def auto_close_backlog(d):
             continue
         if (item.get("status") or "") != "in-progress":
             continue
+        item_id = item.get("name") or name
         try:
             subprocess.run(
-                [sys.executable, backlog_status, "set", item_dir, "implemented",
+                [sys.executable, item_status,
+                 "set",
+                 "--feature", feature_name,
+                 "--type", "backlog",
+                 "--id", item_id,
+                 "--status", "close",
                  "--reason", "auto-closed by tdd-step.py test-green",
-                 "--fix-commits", fix_commit],
+                 "--fix-commits", "HEAD"],
                 capture_output=True, check=False,
             )
         except Exception:
@@ -283,8 +317,11 @@ def cmd_transitions(args):
     state, rc = read_state(d)
     if rc != 0:
         return rc
-    n = forward_next(state)
-    print(n if n else "(terminal)")
+    targets = forward_targets(state)
+    if not targets:
+        print("(terminal)")
+    else:
+        print(" ".join(targets))
     return 0
 
 
@@ -319,6 +356,7 @@ def cmd_transition(args):
     if rc != 0:
         return rc
     expected = forward_next(cur)
+    valid_forward = forward_targets(cur)
 
     if cur == "spec-update" and new == "test-red":
         if not spec_no_change_reason:
@@ -341,7 +379,7 @@ def cmd_transition(args):
         sys.stderr.write(f"ERROR: '{cur}' is terminal; cannot transition (even with --force)\n")
         return 1
 
-    if new == expected:
+    if new in valid_forward:
         write_state(d, new)
         if new == "test-green":
             _post_test_green_hooks(d)
@@ -356,8 +394,9 @@ def cmd_transition(args):
         _rbt_ok(f"{cur} -> {new}")
         return 0
 
+    forward_msg = " or ".join(valid_forward) if valid_forward else "(terminal)"
     sys.stderr.write(
-        f"ERROR: {cur} -> {new} not allowed (forward expected: {expected}). Use --force to override.\n"
+        f"ERROR: {cur} -> {new} not allowed (forward expected: {forward_msg}). Use --force to override.\n"
     )
     return 1
 
