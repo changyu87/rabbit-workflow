@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.9.0
+version: 1.10.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -127,8 +127,36 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     wait or impl-suggestion surfacing. When the marker is found, the
     warning emitted to the user MUST name the marker path
     (`.rabbit-human-approval-bypass`) and the revoke command
-    (`/rabbit-config human-approval gated`) so the user can audit and
+    (`/rabbit-config human-approval true`) so the user can audit and
     revoke without searching.
+20. The assembled TDD subagent prompt (produced by `dispatch-tdd-subagent.py`)
+    MUST include a rule in its IMPLEMENT step: if the implementation requires
+    editing any file whose basename is `SKILL.md`, the subagent MUST invoke
+    `Skill("skill-creator:skill-creator")` instead of using Write or Edit
+    directly. Direct edits to SKILL.md bypass skill-creator's eval loop and
+    description optimization. This rule is non-negotiable; a subagent that
+    writes a SKILL.md without going through skill-creator commits a
+    constitution violation.
+21. `rabbit-feature-touch` SKILL.md's Red Flags section MUST include the
+    rule: the main session orchestrator MUST NOT use Write or Edit tools on
+    any file under `.claude/features/`. All feature-code edits are the TDD
+    subagent's job, performed under an active scope marker. The main session
+    role is orchestration only — resolve scope, create branch, invoke
+    rabbit-spec, surface impl-suggestion, dispatch subagent, verify HANDOFF.
+    Exceptions exist for explicit confirm-token overrides (see Confirm-Token
+    Bypass Path) and for spec.md writes under the scope-guard path-pattern
+    allowlist (Inv 20 of rabbit-cage) which are invoked by rabbit-spec
+    during Step 3.
+22. `rabbit-feature-touch` SKILL.md's Red Flags section MUST include the
+    rule: the main session MUST NOT create `.rabbit-scope-active` (global) or
+    `.rabbit-scope-active-<feature>` (per-feature) scope markers at the repo
+    root. Scope markers are exclusively the TDD subagent's responsibility,
+    written as the first action at LOCK (Step 3 of the subagent's named
+    steps). Main-session-authored markers bypass scope-guard's intended
+    boundary and have caused constitution violations (PR #93). This rule is
+    distinct from Inv 18 (which prohibits the SUBAGENT from creating
+    out-of-scope markers): Inv 22 prohibits the MAIN SESSION from creating
+    any marker at all.
 
 ## Confirm-Token Bypass Path
 
