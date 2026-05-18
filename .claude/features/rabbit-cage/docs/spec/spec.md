@@ -207,14 +207,18 @@ The marker stays in place across sessions until explicitly revoked via `/rabbit-
     is a per-user preference and MUST live in user-local
     `.claude/settings.local.json` only; it MUST NOT appear in the shared
     `settings.json` source.
-70. Hooks (`scope-guard.py`, `sync-check.py`, `session-init.py`, `refresh.py`)
-    MUST log unexpected exceptions to stderr instead of silently swallowing
-    them with bare `except Exception: pass`. The happy-path contract (exit 0
-    with no stderr noise) is preserved on successful runs; only the
-    error-handler arms gain visibility. A silently-failing hook is
+70. Hooks `sync-check.py` and `session-init.py` MUST log unexpected
+    exceptions to stderr via a `_log_exc()` helper rather than silently
+    swallowing them with bare `except Exception: pass`. The happy-path
+    contract (exit 0 with no stderr noise) is preserved on successful runs;
+    only the error-handler arms gain visibility. A silently-failing hook is
     indistinguishable from a missing one and effectively disables policy
-    enforcement, so the silent-swallow anti-pattern is forbidden
-    (BACKLOG-17).
+    enforcement, so the silent-swallow anti-pattern is forbidden in these
+    hooks (BACKLOG-17). The remaining hooks (`scope-guard.py`, `refresh.py`)
+    are eligible for the same treatment in a follow-up but are NOT covered
+    by this invariant — extending them is out-of-scope here because their
+    failure modes are narrower (pure-function helpers, no subprocess
+    invocations beyond the optional `git rev-parse`).
 
 ## Out of Scope
 
