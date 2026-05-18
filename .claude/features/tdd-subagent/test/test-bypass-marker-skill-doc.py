@@ -34,8 +34,8 @@ def main():
 
     required_substrings = [
         ".rabbit-human-approval-bypass",
-        "/rabbit-config human-approval gated",
-        "--no-human-approval",
+        "/rabbit-config human-approval true",
+        "--human-approval-gate false",
     ]
     missing = [s for s in required_substrings if s not in step4_section]
     if missing:
@@ -46,6 +46,13 @@ def main():
     forbidden = "when the user has indicated they want fully autonomous execution for this session"
     if forbidden in content:
         print(f"FAIL: SKILL.md still contains old bypass phrase: {forbidden!r}")
+        return 1
+
+    # Old flag/command names must be fully purged from SKILL.md.
+    legacy_strings = ["--no-human-approval", "human-approval gated", "human-approval bypass"]
+    leaked = [s for s in legacy_strings if s in content]
+    if leaked:
+        print(f"FAIL: SKILL.md still contains legacy flag/command strings: {leaked}")
         return 1
 
     print("PASS: SKILL.md Step 4 documents bypass-marker-first behaviour")

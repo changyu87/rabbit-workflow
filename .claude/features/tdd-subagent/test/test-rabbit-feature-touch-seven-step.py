@@ -9,7 +9,7 @@
 #       impl-suggestion summary (request, spec changes, affected files,
 #       implementation approach) and waits for explicit user approval. The
 #       rationale that subagents cannot pause mid-execution is documented.
-#   15. Step 4 is bypassable only via --no-human-approval passed to
+#   15. Step 4 is bypassable only via --human-approval-gate false passed to
 #       dispatch-tdd-subagent.py. Silent bypass is prohibited.
 #
 # Reads the built/deployed SKILL.md (the surface artifact downstream consumers
@@ -177,10 +177,10 @@ def t_inv15_step4_documents_bypass_flag():
     if not body:
         ko("inv15: Step 4 section not found")
         return
-    if "--no-human-approval" in body:
-        ok("inv15: Step 4 documents --no-human-approval bypass flag")
+    if "--human-approval-gate false" in body:
+        ok("inv15: Step 4 documents --human-approval-gate false bypass flag")
     else:
-        ko("inv15: Step 4 does not mention --no-human-approval bypass flag")
+        ko("inv15: Step 4 does not mention --human-approval-gate false bypass flag")
 
 
 def t_inv15_step4_prohibits_silent_bypass():
@@ -205,12 +205,12 @@ def t_inv15_step5_dispatch_template_lists_optional_flag():
     if not body:
         ko("inv15: Step 5 section not found")
         return
-    # The dispatch command template must list [--no-human-approval] as an
-    # optional flag.
-    if re.search(r"\[\s*--no-human-approval\s*\]", body):
-        ok("inv15: Step 5 dispatch template lists [--no-human-approval] as optional flag")
+    # The dispatch command template must list [--human-approval-gate false]
+    # as an optional flag.
+    if re.search(r"\[\s*--human-approval-gate\s+false\s*\]", body):
+        ok("inv15: Step 5 dispatch template lists [--human-approval-gate false] as optional flag")
     else:
-        ko("inv15: Step 5 dispatch template does not list [--no-human-approval] as optional flag")
+        ko("inv15: Step 5 dispatch template does not list [--human-approval-gate false] as optional flag")
 
 
 # ---- Run -------------------------------------------------------------------
