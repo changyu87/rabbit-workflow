@@ -88,6 +88,10 @@ if os.path.isfile(spec_path):
         # Skip lines banning .sh references in scripts.
         if "References to `.sh`" in line and "are banned" in line:
             continue
+        # Skip lines that document deleted producers (the .sh names are
+        # historical references being forbidden, not callable tools).
+        if "deleted producer" in line or "deleted producers" in line:
+            continue
         invariant_sh.append(line)
     if invariant_sh:
         fail("t4", f"spec.md invariants still reference .sh scripts as callable tools: {invariant_sh}")

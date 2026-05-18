@@ -153,17 +153,29 @@ def main():
         tdd_gap_reflection = build_tdd_gap_reflection(bug_dir, bug_id, bug_title)
 
     # Detect if this is a project feature.
+    #
+    # Rabbit-level features live under ".claude/features/<name>/".
+    # Project-level features live under "<project_root>/features/<name>/"
+    # where <project_root> is a top-level directory other than ".claude".
+    #
+    # The previous heuristic — `parts[1] == "features"` — misfired on rabbit
+    # paths like ".claude/features/contract" (parts[1] is "features", and the
+    # script would then look for `<repo>/.claude/contract`, which doesn't exist).
+    # We discriminate explicitly: rabbit if the path starts with ".claude/features/",
+    # project if it matches "<top>/features/<name>" with top != ".claude".
     project_contract_content = ""
-    parts = feature_path.split(os.sep)
-    if len(parts) >= 2 and parts[1] == "features":
-        project_root = parts[0]
-        proj_contract_dir = os.path.join(repo_root, project_root, "contract")
-        if os.path.isdir(proj_contract_dir):
-            import glob
-            mds = sorted(glob.glob(os.path.join(proj_contract_dir, "*.md")))
-            for md in mds:
-                with open(md) as f:
-                    project_contract_content += f.read()
+    norm = feature_path.replace(os.sep, "/")
+    if not norm.startswith(".claude/features/"):
+        parts = feature_path.split(os.sep)
+        if len(parts) >= 2 and parts[1] == "features" and parts[0] != ".claude":
+            project_root = parts[0]
+            proj_contract_dir = os.path.join(repo_root, project_root, "contract")
+            if os.path.isdir(proj_contract_dir):
+                import glob
+                mds = sorted(glob.glob(os.path.join(proj_contract_dir, "*.md")))
+                for md in mds:
+                    with open(md) as f:
+                        project_contract_content += f.read()
 
     scope_marker = os.path.join(repo_root, ".rabbit-scope-active")
 

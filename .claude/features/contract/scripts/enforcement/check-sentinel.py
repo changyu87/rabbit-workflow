@@ -4,10 +4,11 @@
 Usage: check-sentinel.py <file-or-dir>
 
 If given a file: checks that file for the sentinel string.
-If given a directory: recursively finds all .py and .sh files and checks each.
+If given a directory: recursively finds all .py files (Python-only stack
+per rabbit-cage Inv 11) and checks each. Shell scripts are out of scope.
 Exits 0 if all checked files contain the sentinel, 1 if any are missing it.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when sentinel enforcement is provided by a native linter.
 """
@@ -45,7 +46,7 @@ def main():
     elif os.path.isdir(target):
         for dirpath, _, filenames in os.walk(target):
             for fname in filenames:
-                if fname.endswith(".sh") or fname.endswith(".py"):
+                if fname.endswith(".py"):
                     fpath = os.path.join(dirpath, fname)
                     if not check_file(fpath):
                         print(f"MISSING sentinel in: {fpath}", file=sys.stderr)

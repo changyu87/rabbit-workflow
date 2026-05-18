@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "schemaVersion": "1.0.0",
+  "schema_version": "1.0.0",
   "title": "workspace-structure",
   "description": "Schema for workspace-structure.json declaration files. Each project root carries one to declare its expected directory hierarchy.",
   "owner": "rabbit-workflow team (contract feature)",

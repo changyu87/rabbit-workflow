@@ -37,7 +37,10 @@ def main():
         print("ERROR: detached HEAD or unknown branch state", file=sys.stderr)
         sys.exit(1)
 
-    if branch in ("main", "master", "trunk", "develop"):
+    # Protected branches MUST mirror rabbit-cage Inv 21 exactly: {main, master}.
+    # Do not add additional branches — keep the set aligned with the single
+    # documented source of truth (Inv 31).
+    if branch in ("main", "master"):
         print(
             f"REJECTED: you are on '{branch}'. Per branch-per-feature rule, "
             "every change goes on a new branch and through a PR.",

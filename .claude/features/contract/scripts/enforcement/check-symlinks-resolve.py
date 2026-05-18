@@ -45,13 +45,10 @@ def main():
         sys.exit(0)
 
     dangling = []
-    # Walk with maxdepth=3 equivalent: only go 3 levels deep
-    for dirpath, dirnames, filenames in os.walk(claude_dir):
-        depth = dirpath[len(claude_dir):].count(os.sep)
-        if depth >= 3:
-            dirnames.clear()
-            continue
-
+    # Walk with no depth limit per Inv 30 — a finite depth would silently miss
+    # nested symlinks (false-OK). `followlinks=False` keeps us from re-walking
+    # symlinked directories (we only want to know they resolve, not recurse).
+    for dirpath, dirnames, filenames in os.walk(claude_dir, followlinks=False):
         for fname in filenames + dirnames:
             full = os.path.join(dirpath, fname)
             if os.path.islink(full):
