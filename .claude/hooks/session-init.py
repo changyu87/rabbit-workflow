@@ -24,6 +24,15 @@ import sys
 from pathlib import Path
 
 
+def _log_exc(where: str, exc: BaseException) -> None:
+    """BACKLOG-17 / Inv 70: log unexpected exceptions to stderr instead of
+    silently swallowing them. Hook keeps its exit-0 happy-path contract."""
+    try:
+        sys.stderr.write(f"[session-init.py] {where}: {type(exc).__name__}: {exc}\n")
+    except Exception:
+        pass
+
+
 def repo_root() -> Path:
     env = os.environ.get("RABBIT_ROOT")
     if env:
@@ -35,7 +44,8 @@ def repo_root() -> Path:
             stderr=subprocess.DEVNULL,
         )
         return Path(out.decode().strip())
-    except Exception:
+    except Exception as e:
+        _log_exc("repo_root: git rev-parse failed; falling back to script dir", e)
         return here
 
 
@@ -50,7 +60,8 @@ def _enforce_r1_branch(root: Path) -> None:
             ["git", "-C", str(root), "branch", "--show-current"],
             stderr=subprocess.DEVNULL,
         ).decode().strip()
-    except Exception:
+    except Exception as e:
+        _log_exc("git branch --show-current failed; skipping R1 enforcement", e)
         return
     if current not in ("main", "master"):
         return
@@ -62,7 +73,8 @@ def _enforce_r1_branch(root: Path) -> None:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-    except Exception:
+    except Exception as e:
+        _log_exc(f"git checkout -b {branch} failed; R1 branch not created", e)
         return
     _emit({
         "systemMessage": f"\x1b[32m🌿 ━━━ [rabbit] R1: created branch {branch} ━━━ 🌿\x1b[0m",
@@ -105,10 +117,16 @@ def _inject_policy(root: Path) -> None:
             parts.append("\n")
 
     payload = "".join(parts)
-    files_label = " ".join(imports)
+    # BACKLOG-7: per-file bullet lines (one file per line) instead of a single
+    # space-joined dense list. Border chars and emoji preserved (Inv 18 + the
+    # BACKLOG-7-visual-messages contract).
+    files_label = "\n  · " + "\n  · ".join(imports)
     _emit({
         "additionalContext": payload,
-        "systemMessage": f"\x1b[32m✅ ━━━ [rabbit] Policy injected at session start — {files_label} ━━━ ✅\x1b[0m",
+        "systemMessage": (
+            f"\x1b[32m✅ ━━━ [rabbit] Policy injected at session start ━━━ ✅"
+            f"{files_label}\x1b[0m"
+        ),
     })
 
 

@@ -18,7 +18,18 @@ import os
 import re
 import subprocess
 import sys
+import traceback
 from pathlib import Path
+
+
+def _log_exc(where: str, exc: BaseException) -> None:
+    """BACKLOG-17 / Inv 70: log unexpected exceptions to stderr instead of
+    silently swallowing them. Hooks keep their exit-0 happy-path contract,
+    but failures are now visible to operators inspecting the transcript."""
+    try:
+        sys.stderr.write(f"[sync-check.py] {where}: {type(exc).__name__}: {exc}\n")
+    except Exception:
+        pass
 
 
 def repo_root() -> Path:
@@ -32,7 +43,8 @@ def repo_root() -> Path:
             stderr=subprocess.DEVNULL,
         )
         return Path(out.decode().strip())
-    except Exception:
+    except Exception as e:
+        _log_exc("repo_root: git rev-parse failed; falling back to script dir", e)
         return here
 
 
@@ -147,8 +159,8 @@ def main() -> int:
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                _log_exc("build.py invocation failed during surface-drift rebuild", e)
             emit({
                 "systemMessage": "\x1b[31m🔄 ━━━ [rabbit] Surface drift detected — workspace rebuilt from sources ━━━ 🔄\x1b[0m",
             })
@@ -161,7 +173,8 @@ def main() -> int:
     if override_file.is_file():
         try:
             mode = "".join(c for c in override_file.read_text() if not c.isspace())
-        except Exception:
+        except Exception as e:
+            _log_exc("could not read .rabbit-scope-override", e)
             mode = ""
         if mode == "session":
             alert = "session"
@@ -169,8 +182,8 @@ def main() -> int:
         alert = "used"
         try:
             used_file.unlink()
-        except Exception:
-            pass
+        except Exception as e:
+            _log_exc("could not unlink .rabbit-scope-override-used", e)
 
     if not json_emitted:
         if alert == "session":
@@ -199,13 +212,14 @@ def main() -> int:
     if skills_marker.is_file() and not json_emitted:
         try:
             content = skills_marker.read_text()
-        except Exception:
+        except Exception as e:
+            _log_exc("could not read .rabbit-skills-updated", e)
             content = ""
         names = ",".join(ln for ln in content.splitlines() if ln).rstrip(",")
         try:
             skills_marker.unlink()
-        except Exception:
-            pass
+        except Exception as e:
+            _log_exc("could not unlink .rabbit-skills-updated", e)
         emit({
             "systemMessage": f"\x1b[32m[rabbit] Skills updated: {names} — will reload automatically on next invocation.\x1b[0m",
         })

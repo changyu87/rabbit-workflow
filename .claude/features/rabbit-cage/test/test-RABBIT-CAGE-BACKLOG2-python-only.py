@@ -3,10 +3,17 @@
 import glob
 import json
 import os
+import subprocess
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "../../../.."))
+# BUG-64: derive REPO_ROOT from git rev-parse so the test is resilient to the
+# feature directory being moved or symlinked. Hard-coded `../../../..` silently
+# computed the wrong root if depth ever changed.
+REPO_ROOT = subprocess.run(
+    ["git", "-C", SCRIPT_DIR, "rev-parse", "--show-toplevel"],
+    capture_output=True, text=True, check=True,
+).stdout.strip()
 CAGE = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage")
 
 fail_n = 0

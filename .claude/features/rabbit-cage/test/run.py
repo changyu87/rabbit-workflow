@@ -51,6 +51,7 @@ SUITES = [
     "test-RABBIT-CAGE-BACKLOG2-python-only.py",
     "test-RABBIT-CAGE-BACKLOG13-claude-md-gitignore-drift.py",
     "test-RABBIT-CAGE-WAVE4-bug-cleanup.py",
+    "test-RABBIT-CAGE-WAVE5-cleanup.py",
 ]
 
 

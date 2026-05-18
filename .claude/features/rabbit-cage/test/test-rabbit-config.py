@@ -52,20 +52,22 @@ if not os.path.lexists(deployed_cfg_md):
 else:
     fail_t(3, "deployed .claude/commands/rabbit-config.md exists (Inv 25 forbids it)")
 
-# t4 (unchanged): feature.json surface.commands does not include rabbit-set-threshold.
+# t4 (BUG-86: schema-level assertion). The prior check iterated cmds looking
+# for a "rabbit-set-threshold" substring, which passed vacuously when
+# surface.commands == [] (the current contract state per Inv 29). Assert the
+# schema directly: surface.commands MUST be exactly [].
 feature_json = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/feature.json")
 if os.path.isfile(feature_json):
     try:
         with open(feature_json) as f:
             d = json.load(f)
         cmds = d.get("surface", {}).get("commands", [])
-        bad = [c for c in cmds if "rabbit-set-threshold" in c]
-        if not bad:
-            ok(4, "feature.json surface.commands does not include rabbit-set-threshold")
+        if cmds == []:
+            ok(4, "feature.json surface.commands == [] (Inv 29; no stale rabbit-set-threshold could survive)")
         else:
-            fail_t(4, "feature.json surface.commands still includes rabbit-set-threshold entry")
-    except Exception:
-        fail_t(4, "feature.json could not be parsed")
+            fail_t(4, f"feature.json surface.commands is not [] (got {cmds!r}) — Inv 29 violated")
+    except Exception as e:
+        fail_t(4, f"feature.json could not be parsed: {e}")
 else:
     fail_t(4, "feature.json not found")
 

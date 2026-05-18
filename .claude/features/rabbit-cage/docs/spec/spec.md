@@ -76,6 +76,14 @@ are managed via `/rabbit-config bash-allow` / `/rabbit-config allowed-tools`. Cl
 Code merges permission arrays across all sources, so personal entries add to (rather
 than replace) the team-wide defaults.
 
+**Bypass mode (Inv 69).** `permissions.defaultMode` is set to `"bypassPermissions"`
+in the team-wide settings.json so the scope-guard PreToolUse hook is the single
+decision point for write authorization; Claude Code's native per-write prompts
+would otherwise be redundant against the hook and disruptive to operators.
+The companion knob `skipDangerousModePermissionPrompt` is a per-user preference
+(suppresses the one-time bypass-mode startup warning) and lives in user-local
+`.claude/settings.local.json`, never in the shared `settings.json`.
+
 ### Invariants
 
 51. `.claude/features/rabbit-cage/settings.json` declares a top-level `permissions`
@@ -191,6 +199,22 @@ The marker stays in place across sessions until explicitly revoked via `/rabbit-
 66. `new-feature.py` MUST scaffold `test/run.py` (Python-only stack per Inv 39), not `test/run.sh`. The scaffolded `feature.json` MUST include `template_version` matching the current contract template version. A scaffolded feature MUST pass `validate-feature.py` immediately with no manual fixups.
 67. `commands/rabbit-project.md` MUST reference only Python scripts that exist (under `.claude/features/rabbit-cage/scripts/`), never `.sh` scripts or stale relocated paths. Any `.sh` reference is a constitution violation per Inv 39.
 68. `rabbit-config.py human-approval false` confirmation message MUST be self-explanatory and consistent with the gate semantics. The output MUST state both the new marker state and the practical effect, e.g., `Human-approval gate BYPASSED. Marker .rabbit-human-approval-bypass written. Step 4 will be skipped for all dispatches until you run /rabbit-config human-approval true.` Conversely `true` MUST say `Human-approval gate ENABLED. Marker .rabbit-human-approval-bypass removed. Step 4 will wait for in-conversation approval on each dispatch.` Avoid bare adjectives like `DISABLED` that read ambiguously against the gate vs the marker.
+69. `.claude/features/rabbit-cage/settings.json` declares
+    `permissions.defaultMode = "bypassPermissions"` so the scope-guard hook
+    is the single decision point for write authorization (Claude Code's
+    native per-write prompts are redundant against the hook and disruptive
+    to operators). The companion key `skipDangerousModePermissionPrompt`
+    is a per-user preference and MUST live in user-local
+    `.claude/settings.local.json` only; it MUST NOT appear in the shared
+    `settings.json` source.
+70. Hooks (`scope-guard.py`, `sync-check.py`, `session-init.py`, `refresh.py`)
+    MUST log unexpected exceptions to stderr instead of silently swallowing
+    them with bare `except Exception: pass`. The happy-path contract (exit 0
+    with no stderr noise) is preserved on successful runs; only the
+    error-handler arms gain visibility. A silently-failing hook is
+    indistinguishable from a missing one and effectively disables policy
+    enforcement, so the silent-swallow anti-pattern is forbidden
+    (BACKLOG-17).
 
 ## Out of Scope
 
@@ -549,6 +573,13 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
 33. `settings.json` declares env key `RABBIT_REFRESH_EVERY`; its `SessionStart` command resets `.rabbit-prompt-counter`.
 34. `rabbit-refresh.md` command resets `.rabbit-prompt-counter`.
 35. `workspace-tree.py` excludes `.rabbit-prompt-counter` from full listings.
+36. Every runtime marker file written at the repo root MUST be listed in `.gitignore`;
+    runtime markers are state, never committed source. The mandated set is:
+    `.rabbit-prompt-counter`, `.rabbit-sync-counter`, `.rabbit-scope-active`,
+    `.rabbit-scope-active-*`, `.rabbit-scope-override`, `.rabbit-scope-override-used`,
+    `.rabbit-skills-updated`, `.rabbit-human-approval-bypass`. A repo `.gitignore` missing
+    any of these is a constitution violation (BACKLOG-16): the marker would
+    otherwise be commit-able and could drift between checkouts.
 
 ## sync-check.py Output Schema
 

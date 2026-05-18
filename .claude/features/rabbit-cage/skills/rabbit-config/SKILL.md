@@ -67,6 +67,27 @@ Revoke explicitly with `/rabbit-config human-approval true` or manual delete.
 - "bypass human approval", "skip Step 4 this session", "revoke the bypass",
   "re-enable the gate", "what's the human-approval state?"
 
+## Suppressing the Bypass-Mode Startup Warning (user-local)
+
+The repo's `settings.json` sets `permissions.defaultMode = "bypassPermissions"`
+so the scope-guard hook is the single decision point for write authorization
+(Claude Code's native permission prompts are redundant). Claude Code surfaces
+a one-time startup warning about bypass mode; suppress it per-user by adding
+this to your gitignored `.claude/settings.local.json` (NOT to the shared
+`settings.json`):
+
+```json
+{
+  "permissions": {
+    "skipDangerousModePermissionPrompt": true
+  }
+}
+```
+
+This is a personal-preference knob — different operators may prefer to keep
+the warning visible — so it lives in `settings.local.json` (user-local,
+gitignored), never in the team-wide `settings.json`.
+
 ## Red Flags — STOP
 
 - Editing `.claude/settings.json` directly → wrong file. Use `settings.local.json`
