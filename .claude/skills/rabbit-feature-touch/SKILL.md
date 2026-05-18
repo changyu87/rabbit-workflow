@@ -169,6 +169,20 @@ PR creation is the calling skill's responsibility in B/B mode.
 - Skipping scope resolution in normal mode → STOP.
 - Dispatching features sequentially when multiple → STOP. Use parallel.
 - HANDOFF shows `tdd_state ≠ test-green` → STOP and investigate.
+- Main session uses Write or Edit on any file under `.claude/features/` → STOP.
+  All feature-code edits are the TDD subagent's job, performed under an active
+  scope marker. Main session role is orchestration only: resolve scope, create
+  branch, invoke rabbit-spec, surface impl-suggestion, dispatch subagent, verify
+  HANDOFF. The only main-session writes permitted are: the confirm-token
+  override flow (see Override Path), and rabbit-spec's writes to
+  `docs/spec/spec.md` under the scope-guard path-pattern allowlist invoked
+  during Step 3.
+- Main session creates `.rabbit-scope-active` (global) or
+  `.rabbit-scope-active-<feature>` (per-feature) scope markers at the repo
+  root → STOP. Scope markers are exclusively the TDD subagent's responsibility,
+  written as the first action at LOCK (Step 3 of the subagent's named steps).
+  Main-session-authored markers bypass scope-guard's intended boundary and
+  have caused constitution violations (PR #93).
 
 ## Override Path
 
