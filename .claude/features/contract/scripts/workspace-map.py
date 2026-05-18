@@ -163,6 +163,8 @@ def main():
                 args = args[2:]
             elif a in ("-h", "--help"):
                 print("usage: workspace-map.py [--human] [--audit] [--repo-root <path>]")
+                print("       workspace-map.py backlog <feature-name> [--repo-root <path>]")
+                print("       workspace-map.py <repo-root> <human:0|1> <audit:0|1>   (legacy positional form, internal callers)")
                 sys.exit(0)
             else:
                 print(f"ERROR: unknown arg: {a}", file=sys.stderr)

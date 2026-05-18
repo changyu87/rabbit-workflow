@@ -61,4 +61,23 @@ documented migration path for consumers.
 Every dependency, schema, and encoding will eventually be superseded. Name
 the deprecation criterion at creation time, or inherit its failure.
 
+**Where the metadata lives.** Each artifact type has a fixed metadata location:
+
+- **Features** — top-level `name`, `version`, `owner`, `deprecation_criterion`
+  fields in the feature's `feature.json`.
+- **Specs / contracts** — YAML frontmatter at the top of `docs/spec/spec.md`
+  and `docs/spec/contract.md` (`feature:`, `version:`, `owner:`,
+  `deprecation_criterion:`).
+- **Skills and commands** — YAML frontmatter at the top of the `SKILL.md`
+  or command `.md` file (`version:`, `owner:`, `deprecation_criterion:`).
+- **Scripts** — module-level docstring, with `Version:`, `Owner:`, and
+  `Deprecation criterion:` lines.
+- **Schemas and JSON contracts** — top-level `schema_version`, `owner`,
+  and `deprecation_criterion` keys.
+- **Templates** — `template_version` marker (placement convention defined
+  by the contract feature's spec).
+
+An artifact missing any of these fields in its declared location is
+considered unowned. Promote it to compliance before extending it.
+
 ---

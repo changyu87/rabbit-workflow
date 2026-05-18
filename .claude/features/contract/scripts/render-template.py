@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """render-template.py — substitute {{key}} placeholders in a template file.
 
-Usage (invoked by render-template.sh):
+Usage:
   python3 render-template.py <template-path> <output-path> [key=value ...]
 
 key=value pairs are accepted directly; values are treated as plain strings.

@@ -29,12 +29,13 @@ else:
     print("FAIL: t2: coding-rules.md should contain '## 1.' (rules start at 1)")
     FAILURES += 1
 
-# t3: must NOT contain '### 6.' (confirms rules stop at 5)
-if re.search(r'### 6\.', content):
-    print("FAIL: t3: coding-rules.md should NOT contain '### 6.' (rules must stop at 5)")
+# t3: rule count is exactly 5 (POLICY-BUG-1 / POLICY-BACKLOG-1/5: fifth rule added).
+# The fifth rule is 'Output Hygiene'; no sixth rule exists yet.
+if re.search(r'^## 6\.', content, re.MULTILINE):
+    print("FAIL: t3: coding-rules.md should NOT contain '## 6.' (rules must stop at 5)")
     FAILURES += 1
 else:
-    print("PASS: t3: coding-rules.md does not contain '### 6.' (rules stop at 5)")
+    print("PASS: t3: coding-rules.md does not contain '## 6.' (rules stop at 5)")
 
 # t4: must NOT contain '### 8.' (old last rule gone)
 if re.search(r'### 8\.', content):

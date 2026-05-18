@@ -32,7 +32,7 @@ check_file("feature.json")
 check_file("docs/spec/spec.md")
 check_file("docs/spec/contract.md")
 
-# Templates (8)
+# Templates
 check_file("templates/spec-template.md")
 check_file("templates/contract-template.md")
 check_file("templates/bug-template.json")
@@ -41,6 +41,9 @@ check_file("templates/feature-json-template.json")
 check_file("templates/subagent-launch-template.txt")
 check_file("templates/project-map-template.json")
 check_file("templates/registry-template.json")
+check_file("templates/skill-template.md")
+check_file("templates/command-template.md")
+check_file("templates/handoff-template.md")
 
 # Schemas (4)
 check_file("schemas/feature.json.schema.json")

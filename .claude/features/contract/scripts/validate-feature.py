@@ -75,6 +75,26 @@ def main():
         print(f"FAIL: {len(errors)} error(s) in {feature_dir}", file=sys.stderr)
         sys.exit(1)
 
+    # BACKLOG-10: validate against feature.json.schema.json when jsonschema is
+    # available. Schema violations are reported as additional errors. The
+    # field-by-field checks below remain as a no-dependency fallback that also
+    # enforces feature-name/directory parity and other validate-only rules.
+    schema_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..", "schemas", "feature.json.schema.json",
+    )
+    if os.path.isfile(schema_path):
+        try:
+            import jsonschema  # type: ignore
+            with open(schema_path) as f:
+                schema = json.load(f)
+            try:
+                jsonschema.validate(data, schema)
+            except jsonschema.ValidationError as e:
+                err(f"feature.json: schema violation: {e.message}")
+        except ImportError:
+            pass
+
     # Field-by-field checks.
     name = data.get("name", "")
     if not name:

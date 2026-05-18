@@ -68,3 +68,26 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it
 work") require constant clarification.
+
+For non-trivial feature edits, the TDD discipline defined in the repo
+`CLAUDE.md` (Rabbit Workflow) supersedes the lighter loop above: go through
+the full spec → test-red → impl → test-green cycle via
+`/rabbit-feature-touch`. Trivial edits may use the session/one-time
+override, but only when explicitly justified.
+
+---
+
+## 5. Output Hygiene
+
+**Do not produce artifacts the user did not ask for.**
+
+- Do NOT create documentation files (`*.md`, `README*`, design notes,
+  findings, summaries) unless the user explicitly requested one. Return
+  findings as your reply, not as a written file.
+- Do NOT add emojis to code, comments, commit messages, or generated files
+  unless the user explicitly requested them. Keep prose plain.
+- Do NOT add speculative scaffolding (placeholder configs, draft schemas,
+  empty test files) "for later use." Add the file when the work demands it.
+
+The test: every file you create should trace directly to the user's request
+or to a clearly named follow-up they approved.

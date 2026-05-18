@@ -37,16 +37,25 @@ def ko(msg):
     FAIL = 1
 
 
-# POLICY-BUG-1: test-backlog003.py rule count assertion matches actual 4 rules.
+# POLICY-BUG-1: test-backlog003.py rule count assertion matches actual count.
+# Originally said 'rules stop at 5' but only 4 rules existed. This cycle added a
+# fifth rule (Output Hygiene), so the assertion is now correct in its claim that
+# no sixth rule exists.
 b003_path = os.path.join(FEATURE_DIR, "test", "test-backlog003.py")
 with open(b003_path) as f:
     b003 = f.read()
-if "rules stop at 5" in b003:
-    ko("POLICY-BUG-1: test-backlog003.py still says 'rules stop at 5' (only 4 rules exist)")
-elif "rules stop at 4" in b003:
-    ok("POLICY-BUG-1: test-backlog003.py asserts 'rules stop at 4'")
+# Count actual top-level '## N.' rules in coding-rules.md.
+coding_path = os.path.join(FEATURE_DIR, "coding-rules.md")
+with open(coding_path) as f:
+    coding_text = f.read()
+rule_headings = re.findall(r'^## (\d+)\.', coding_text, re.MULTILINE)
+rule_count = len(rule_headings)
+# The test must assert the next-after-last heading is absent.
+expected_phrase = f"rules stop at {rule_count}"
+if expected_phrase in b003:
+    ok(f"POLICY-BUG-1: test-backlog003.py asserts '{expected_phrase}' matching {rule_count} actual rules")
 else:
-    ko("POLICY-BUG-1: test-backlog003.py is missing an explicit rule count assertion")
+    ko(f"POLICY-BUG-1: test-backlog003.py rule-count phrase does not match actual ({rule_count} rules)")
 
 
 # POLICY-BUG-2: test-rule-files-content.py comment says 'three' rule files
@@ -101,7 +110,8 @@ else:
 runpy_path = os.path.join(FEATURE_DIR, "test", "run.py")
 with open(runpy_path) as f:
     runpy_text = f.read()
-if "test-policy-invariants-v1-2-0.py" in runpy_text:
+# Look only for an active invocation (run_test("..."))
+if re.search(r'^\s*run_test\(["\']test-policy-invariants-v1-2-0\.py["\']', runpy_text, re.MULTILINE):
     ko("POLICY-BUG-18: run.py still invokes superseded test-policy-invariants-v1-2-0.py")
 else:
     ok("POLICY-BUG-18: run.py no longer invokes test-policy-invariants-v1-2-0.py")

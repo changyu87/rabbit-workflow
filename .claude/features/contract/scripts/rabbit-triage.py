@@ -72,14 +72,15 @@ def main():
         print("ERROR: cannot determine repo root", file=sys.stderr)
         sys.exit(1)
 
+    # BACKLOG-12: validate feature_dir BEFORE dereferencing it via realpath/basename.
+    if not os.path.isdir(feature_dir):
+        print(f"ERROR: feature-dir does not exist: {feature_dir}", file=sys.stderr)
+        sys.exit(1)
+
     feature_basename = os.path.basename(os.path.realpath(feature_dir))
     bug_file = os.path.join(repo_root, ".claude", "bugs", feature_basename, bug_name, "bug.json")
     spec_file = os.path.join(feature_dir, "docs", "spec", "spec.md")
     contract_file = os.path.join(feature_dir, "docs", "spec", "contract.md")
-
-    if not os.path.isdir(feature_dir):
-        print(f"ERROR: feature-dir does not exist: {feature_dir}", file=sys.stderr)
-        sys.exit(1)
 
     if not os.path.isfile(bug_file):
         print(f"ERROR: bug file not found: {bug_file}", file=sys.stderr)

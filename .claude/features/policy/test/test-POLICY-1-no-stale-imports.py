@@ -51,8 +51,10 @@ else:
     ko("t1: CLAUDE.md not found at repo root")
 
 # t2: test-imports-resolve.py must detect @-imports in CLAUDE.md (i.e. correct regex).
-# The actual CLAUDE.md imports are '@.claude/...' format (no dot-slash between @ and path).
-# If the regex '^@\./...' is used, 0 imports are found (regex bug).
+# The actual CLAUDE.md imports use the literal '@<path>' form (e.g. '@.claude/...').
+# test-imports-resolve.py uses r'^(@[^\s]+)' to match a leading '@' followed by any
+# non-whitespace path. The check asserts at least one import is found; zero would
+# indicate either a regex regression or that all imports were removed.
 IMPORTS_TEST = os.path.join(FEATURE_DIR, "test", "test-imports-resolve.py")
 if os.path.isfile(IMPORTS_TEST):
     proc = subprocess.run(
