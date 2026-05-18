@@ -71,13 +71,28 @@ def _section(prompt, step_no, step_name):
     return m.group(1) if m else ""
 
 
+def _strip_spec_embed(prompt):
+    """Strip the embedded SPEC and Implementation Suggestion blocks from the
+    prompt so that BUG-15/BUG-22 checks only inspect operational instructions
+    authored by dispatch-tdd-subagent.py — not the spec text that may
+    legitimately mention banned identifiers (e.g., "bug-status.py no longer
+    exists")."""
+    # Spec block is bounded by the "SPEC" heading and the next "═════" heading.
+    out = re.sub(
+        r"═+\s*\nSPEC\s*\n═+\s*\n.*?(?=\n═{5,}\s*\n)",
+        "═══\nSPEC\n═══\n[stripped]\n",
+        prompt, count=1, flags=re.DOTALL,
+    )
+    return out
+
+
 # ---- BUG-15: close calls use item-status.py, not legacy scripts ----------
 
 def t_bug15_uses_item_status_py_with_linked_item():
-    prompt = _run_dispatch([
+    prompt = _strip_spec_embed(_run_dispatch([
         '--linked-item', 'rabbit/features/rabbit-cage/bugs/RABBIT-CAGE-BUG-99',
         '--item-type', 'bug',
-    ])
+    ]))
     if not prompt:
         return
     if 'item-status.py' in prompt:
@@ -95,10 +110,10 @@ def t_bug15_uses_item_status_py_with_linked_item():
 
 
 def t_bug15_backlog_item_also_uses_item_status_py():
-    prompt = _run_dispatch([
+    prompt = _strip_spec_embed(_run_dispatch([
         '--linked-item', 'rabbit/features/tdd-subagent/backlog/SOMEID',
         '--item-type', 'backlog',
-    ])
+    ]))
     if not prompt:
         return
     if 'item-status.py' in prompt and 'backlog-item-status.py' not in prompt:
@@ -117,10 +132,12 @@ def t_bug18_lock_has_no_trap():
     if not lock:
         ko("bug18: STEP 3 — LOCK section not found")
         return
-    if 'trap' not in lock:
-        ok("bug18: STEP 3 LOCK has no `trap` command")
+    # Operative trap command form: `trap '...' EXIT` (with quoted body + signal).
+    # Prose mentions of the word "trap" in an explanation paragraph are OK.
+    if re.search(r"^\s*trap\s+['\"].*['\"]\s+EXIT\b", lock, re.MULTILINE):
+        ko("bug18: STEP 3 LOCK still contains an operative `trap ... EXIT` command")
     else:
-        ko("bug18: STEP 3 LOCK still contains `trap` command")
+        ok("bug18: STEP 3 LOCK has no operative `trap ... EXIT` command")
 
 
 def t_bug18_unlock_has_explicit_rm_f():
@@ -159,7 +176,7 @@ def t_bug18_lock_has_explanatory_note():
 # ---- BUG-22: CODE-REVIEW uses superpowers:requesting-code-review ---------
 
 def t_bug22_uses_correct_review_skill():
-    prompt = _run_dispatch()
+    prompt = _strip_spec_embed(_run_dispatch())
     if not prompt:
         return
     if 'Skill("superpowers:requesting-code-review")' in prompt:

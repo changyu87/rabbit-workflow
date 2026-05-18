@@ -194,24 +194,29 @@ def main(argv):
 
     # Build close-call block for STEP 9 UNLOCK. Emit lines only when there is
     # something to close, so the baseline prompt (no items) is unchanged.
+    #
+    # Inv 8 (spec v1.11.0): all close calls go through rabbit-file's unified
+    # `item-status.py set --feature F --type T --id ID --status close ...`.
+    # Legacy `bug-status.py` / `backlog-item-status.py` references are a
+    # constitution violation — they no longer exist on disk.
+    def _derive_feature_and_id(item_dir_path):
+        # Path shape: <...>/<feature>/{bugs|backlog}/<ID>
+        parts = [p for p in item_dir_path.replace("\\", "/").split("/") if p]
+        if len(parts) >= 3:
+            return parts[-3], parts[-1]
+        return "unknown", os.path.basename(item_dir_path) or "unknown"
+
     close_call_lines = []
     handoff_closed_items_lines = []
     if args.linked_item and args.item_type:
-        if args.item_type == "bug":
-            primary_status_word = "closed"
-            primary_script = os.path.join(
-                repo_root, ".claude", "features", "rabbit-file", "scripts", "bug-status.py"
-            )
-        else:
-            primary_status_word = "implemented"
-            primary_script = os.path.join(
-                repo_root, ".claude", "features", "rabbit-file", "scripts",
-                "backlog-item-status.py"
-            )
+        primary_feature, primary_id = _derive_feature_and_id(args.linked_item)
         close_call_lines.append(
             "  # Primary linked item (closed by impl commit):\n"
-            f"  python3 {primary_script} set {args.linked_item} {primary_status_word} \\\n"
-            "    --reason 'TDD cycle complete' --fix-commits $IMPL_SHA\n"
+            f"  python3 {item_status_py} set \\\n"
+            f"    --feature {primary_feature} --type {args.item_type} --id {primary_id} \\\n"
+            "    --status close \\\n"
+            "    --reason 'TDD cycle complete' \\\n"
+            "    --fix-commits $IMPL_SHA\n"
         )
         handoff_closed_items_lines.append(
             f"    - {args.linked_item} (primary, type={args.item_type})"
@@ -353,9 +358,16 @@ Summarise what has changed and what the implementation must achieve before proce
 STEP 3 — LOCK
 ════════════════════════════════════════════════════════════════════════
 
-Set scope marker and register cleanup trap as your FIRST write action:
+Set the scope marker as your FIRST write action — and ONLY that:
   touch {repo_root}/.rabbit-scope-active-{feature_name}
-  trap 'rm -f {repo_root}/.rabbit-scope-active-{feature_name}' EXIT
+
+Do NOT register a `trap '... rm -f ...' EXIT` here. Each Claude Code Bash
+tool invocation runs in a separate (per-call) shell process. The trap would
+fire the moment that shell exits — i.e., immediately after `touch` returns —
+deleting the scope marker before any subsequent step (TEST-WRITE, IMPLEMENT,
+etc.) can rely on it. Cleanup is explicit and happens in STEP 9 UNLOCK
+(`rm -f {repo_root}/.rabbit-scope-active-{feature_name}`), AFTER the chore
+commit and BEFORE the HANDOFF block.
 
 ════════════════════════════════════════════════════════════════════════
 STEP 4 — TEST-WRITE
@@ -386,7 +398,12 @@ Max iterations: {args.max_iterations}
 Loop (repeat until green or max iterations reached):
   1. Write/update implementation files for {feature_name}
   2. Run: python3 {feature_dir}/test/run.py
-  3. If tests pass: break loop
+  3. If tests pass:
+       a. git add {feature_dir}/
+       b. git commit -m "fix({feature_name}): <one-line summary>"
+          (use `feat(...)` instead of `fix(...)` when introducing a new
+          feature rather than fixing a bug)
+       c. break loop
   4. If iteration == {args.max_iterations}: emit this HANDOFF and stop:
        HANDOFF:
          feature: {feature_name}
@@ -396,7 +413,12 @@ Loop (repeat until green or max iterations reached):
          tdd_report_path: null
          notes: Reached {args.max_iterations} iterations without test-green
 
-On success — advance state:
+The implementation commit MUST happen INSIDE the loop, BEFORE the
+`tdd-step.py transition ... impl` call below. Otherwise the impl SHA
+captured in STEP 8 (via `git rev-parse HEAD`) would point at the prior
+test commit from STEP 4, not at the actual implementation.
+
+On success — advance state (only AFTER the impl commit above):
   python3 {tdd_step_py} transition {feature_dir} impl
   python3 {tdd_step_py} transition {feature_dir} test-green
 
@@ -404,8 +426,10 @@ On success — advance state:
 STEP 7 — CODE-REVIEW
 ════════════════════════════════════════════════════════════════════════
 
-Invoke: Skill("superpowers:code-reviewer")
+Invoke: Skill("superpowers:requesting-code-review")
 The review covers ALL changed files: tests and functional code.
+(The skill name is exact and case-sensitive. The bare `superpowers:code-reviewer`
+form does not exist — using it silently no-ops the review step.)
 
 {code_review_loop_note}
 
@@ -415,6 +439,16 @@ STEP 8 — TEST-GREEN
 
 Run final test suite to confirm pass:
   python3 {feature_dir}/test/run.py
+
+FIRST — capture the implementation commit SHA BEFORE STEP 9's chore commit:
+  IMPL_SHA=$(git rev-parse HEAD)
+
+This ordering is non-negotiable. STEP 9's `chore({feature_name}): advance
+tdd_state to test-green` commit will advance HEAD past the implementation
+commit; capturing `git rev-parse HEAD` after that point would record the
+chore SHA in `impl_commit`, not the actual implementation SHA. The
+tdd-report MUST be fully written with the captured `$IMPL_SHA` value
+substituted into `impl_commit` BEFORE STEP 9 UNLOCK begins.
 
 Write tdd-report (gitignored — NEVER commit):
   mkdir -p {repo_root}/.rabbit/
@@ -431,7 +465,7 @@ Write tdd-report (gitignored — NEVER commit):
     "spec_compliance_notes": "<unaddressed invariants or null>",
     "test_result": "pass",
     "tdd_state": "test-green",
-    "impl_commit": "<git rev-parse HEAD>"
+    "impl_commit": "$IMPL_SHA"
   }}
 
 ════════════════════════════════════════════════════════════════════════
@@ -444,7 +478,9 @@ does not have to commit feature.json manually:
   git add {feature_dir}/feature.json
   git commit -m "chore({feature_name}): advance tdd_state to test-green"
 {close_calls_block}
-Scope marker removed automatically by trap on EXIT.
+Remove the scope marker explicitly (no `trap` was registered at LOCK — see
+the explanation in STEP 3 about per-call shell process semantics):
+  rm -f {repo_root}/.rabbit-scope-active-{feature_name}
 
 ════════════════════════════════════════════════════════════════════════
 HANDOFF (emit on completion)
