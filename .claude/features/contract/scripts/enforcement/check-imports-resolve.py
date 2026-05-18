@@ -61,8 +61,8 @@ def main():
     # Cover all .claude surface dirs per Inv 32: features, hooks, skills, commands, agents.
     # Strip backticks from path matches before resolving.
     claude_path_pattern = re.compile(
-        r'\.claude/(?:features|hooks|skills|commands|agents)/[a-z][a-z0-9-]*'
-        r'(?:/[^\s`)\]\']+)?'
+        r'\.claude/(?:features|hooks|skills|commands|agents)/[a-z][a-z0-9-]+'
+        r'(?:/[^\s`)\]\'",]+)?'
     )
 
     for filepath in md_files:
