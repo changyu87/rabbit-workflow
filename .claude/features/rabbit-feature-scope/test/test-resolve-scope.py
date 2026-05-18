@@ -46,16 +46,23 @@ if prompt.strip():
 else:
     fail("empty prompt")
 
-# 4. prompt includes at least one feature name from find-feature.py list
-first_feature = subprocess.check_output(
-    [sys.executable, str(find_feature), repo_root, "list"],
-    text=True
-).splitlines()[0] if find_feature.is_file() else ""
-
-if first_feature and first_feature in prompt:
-    ok(f"prompt includes feature name '{first_feature}'")
+# 4. prompt includes EVERY feature name from find-feature.py list — not just
+# the first (BUG-27: depending on "first feature" was brittle to ordering
+# changes). The assertion now requires the full set to appear; if any feature
+# is missing the prompt's REGISTERED FEATURES block is incomplete.
+all_features = []
+if find_feature.is_file():
+    all_features = [
+        line.strip() for line in subprocess.check_output(
+            [sys.executable, str(find_feature), repo_root, "list"],
+            text=True
+        ).splitlines() if line.strip()
+    ]
+missing = [f for f in all_features if f not in prompt]
+if all_features and not missing:
+    ok(f"prompt includes all {len(all_features)} feature names from find-feature.py list")
 else:
-    fail(f"prompt missing feature '{first_feature}'")
+    fail(f"prompt missing features: {missing} (had {len(all_features)} total)")
 
 # 5. prompt includes the request text verbatim
 if "fix the scope guard bug" in prompt:

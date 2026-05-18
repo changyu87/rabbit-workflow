@@ -24,9 +24,15 @@ owner: rabbit-workflow team
 
 ## Does NOT Invoke
 
-- `Skill("rabbit-feature-touch")` — not a feature touch, no TDD cycle
-- Any test runner or implementation tool
+- Any TDD-cycle skill, test runner, or implementation tool. This skill stops
+  after writing the impl-suggestion file; downstream execution is the caller's
+  concern (Inv 7 — process-agnostic).
 
 ## Consumed By
 
-- `rabbit-feature-touch` Step 3 (main session, inline)
+- Any process or caller that needs a feature spec authored or updated
+  (examples include: feature-touch workflows, backlog grooming sessions,
+  standalone design review, direct user invocation). The skill makes no
+  assumption about who invoked it, and its sole output — the
+  `.rabbit/impl-suggestion-<feature>.json` file — is read by whichever
+  process called it (Inv 7).

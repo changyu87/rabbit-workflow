@@ -17,11 +17,25 @@ Args format: `<feature-name> <request-or-item-description>`
 
 ## Step 1 — Read Current State
 
-Before forming any opinion, read:
-1. The feature's current spec: `.claude/features/<feature-name>/docs/spec/spec.md`
-2. Any existing implementation files in `.claude/features/<feature-name>/scripts/` and `.claude/features/<feature-name>/skills/` (read freely — you are not writing to these)
+Before forming any opinion, read what exists. You MAY read any file inside
+the target feature's directory `.claude/features/<feature-name>/`. Examples
+of what you should typically read include:
 
-Understanding what already exists prevents you from re-speccing things that are already implemented and helps you identify what actually needs to change.
+1. The feature's current spec: `.claude/features/<feature-name>/docs/spec/spec.md`
+2. The feature's contract (if present): `.claude/features/<feature-name>/docs/spec/contract.md`
+3. The feature manifest: `.claude/features/<feature-name>/feature.json`
+4. Any existing implementation files under
+   `.claude/features/<feature-name>/scripts/`, `.../skills/`, `.../hooks/`,
+   `.../commands/`, or `.../agents/` — read freely; you are not writing to
+   these.
+
+The list above is illustrative, not exhaustive. Read anything in the
+feature directory that helps you understand what already exists, so you
+don't re-spec implemented behavior.
+
+If `.claude/features/<feature-name>/` does not exist, abort immediately
+with an error message naming the missing feature directory. Do NOT silently
+create or scaffold a new feature — that is rabbit-project's job.
 
 ## Step 2 — Judge Request Type
 
@@ -69,14 +83,26 @@ Write `.rabbit/impl-suggestion-<feature-name>.json` (create `.rabbit/` if it doe
 {
   "schema_version": "1.0.0",
   "feature": "<feature-name>",
-  "generated_at": "<iso8601 timestamp>",
+  "generated_at": "<iso 8601 UTC timestamp, e.g. 2026-05-18T03:42:11Z>",
   "request_summary": "<one sentence: what was asked>",
   "spec_changes": "<one paragraph: what changed in the spec and why>",
   "implementation_approach": "<narrative: how you suggest implementing the spec changes>",
-  "affected_files": ["<explicit path 1>", "<explicit path 2>"],
-  "key_invariants": ["<invariant text that directly constrains implementation>"]
+  "affected_files": ["<repo-relative path 1>", "<repo-relative path 2>"],
+  "key_invariants": ["<invariant text that directly constrains implementation>"],
+  "owner": "<optional: named accountable individual or team>",
+  "deprecation": "<optional: end-of-life criterion if the suggestion creates a new artifact>"
 }
 ```
+
+Field notes:
+
+- `generated_at` MUST be ISO 8601 UTC in the form `YYYY-MM-DDTHH:MM:SSZ`.
+- `affected_files` lists the repo-relative paths the implementer will
+  modify (or create) to satisfy the suggestion. No globs; concrete paths
+  only. Files that are only read (not modified) are excluded.
+- `owner` and `deprecation` are optional fields per the impl-suggestion
+  schema. Include them when the suggestion introduces a new artifact whose
+  lifecycle must be tracked.
 
 Make `implementation_approach` genuinely useful — it should save any downstream implementer from having to re-derive the approach from scratch.
 
@@ -85,4 +111,7 @@ Make `implementation_approach` genuinely useful — it should save any downstrea
 - Run tests
 - Write implementation code
 - File bugs or backlog items (that is rabbit-file's job)
-- Invoke any other skill — your output is the impl-suggestion file; what happens next is the caller's concern
+- Invoke skills other than the superpowers invoked in Step 3
+  (`superpowers:brainstorming` and `superpowers:writing-plans`). Your
+  output is the impl-suggestion file; what happens next is the caller's
+  concern.

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.2.0
+version: 1.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When spec authoring is natively handled by the rabbit CLI.
@@ -67,17 +67,52 @@ The sole test runner is test/run.py which validates structural invariants.
 {
   "schema_version": "1.0.0",
   "feature": "<name>",
-  "generated_at": "<iso timestamp>",
+  "generated_at": "<iso 8601 UTC timestamp, e.g. 2026-05-18T03:42:11Z>",
   "request_summary": "<what was asked>",
   "spec_changes": "<summary of what changed in spec>",
   "implementation_approach": "<narrative suggestion>",
-  "affected_files": ["<file1>", "<file2>"],
-  "key_invariants": ["<invariant1>"]
+  "affected_files": ["<repo-relative path 1>", "<repo-relative path 2>"],
+  "key_invariants": ["<invariant1>"],
+  "owner": "<optional: named individual or team accountable for the suggested change>",
+  "deprecation": "<optional: end-of-life criterion for the suggested artifact, if applicable>"
 }
 ```
 
+### Field Semantics
+
+- `schema_version` — MUST equal `"1.0.0"` for this schema revision.
+- `generated_at` — ISO 8601 UTC timestamp. Format: `YYYY-MM-DDTHH:MM:SSZ`
+  (RFC 3339 profile with `Z` suffix). Test must assert this shape.
+- `affected_files` — list of repo-relative paths the implementer is expected
+  to modify when carrying out the suggestion. Paths SHOULD point at files
+  whose contents will change; new files MAY be included. Globs are not
+  permitted — each entry is a concrete path. Reading-only files are NOT
+  listed.
+- `key_invariants` — invariants from the updated spec that directly
+  constrain the implementation (i.e., that the implementer should re-read
+  before coding).
+- `owner` (optional) — the named individual or team accountable for the
+  suggested change (Designed-Deprecation principle).
+- `deprecation` (optional) — the end-of-life criterion for the suggested
+  artifact, if the suggestion creates a new artifact.
+
+## What the Skill Reads
+
+The skill MAY read any file inside the target feature's directory. At
+minimum, callers SHOULD expect it to read:
+
+- `docs/spec/spec.md` — the current spec (required).
+- `docs/spec/contract.md` — the current contract (if present).
+- `scripts/`, `skills/`, and any other implementation directories — so the
+  skill does not re-spec already-implemented behavior.
+
+When the `feature-name` argument names a directory that does not exist
+under `.claude/features/`, the skill MUST abort gracefully with an explicit
+error message naming the missing feature and the directory it expected to
+find. The skill MUST NOT silently fall back to creating a new feature.
+
 ## Out of Scope
 
-- Running tests or implementing code (that is the TDD subagent's job).
-- Filing bugs or backlog items (that is rabbit-file's job).
-- Scaffolding new features from scratch (that is rabbit-project's job).
+- Running tests or implementing code (out of this skill's scope).
+- Filing bugs or backlog items (out of this skill's scope).
+- Scaffolding new features from scratch (out of this skill's scope).

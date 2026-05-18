@@ -43,5 +43,8 @@ for i, f in enumerate(features):
         lines.append(f"  Path: {path}")
     summary = f.get("summary", "no summary")
     lines.append(f"  Summary: {summary}")
+    tdd_state = f.get("tdd_state", "")
+    if tdd_state:
+        lines.append(f"  TDD state: {tdd_state}")
     lines.append("")
 print("\n".join(lines))
