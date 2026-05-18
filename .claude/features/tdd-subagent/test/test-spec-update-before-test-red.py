@@ -59,31 +59,58 @@ def _run_dispatch():
     return res.stdout
 
 
+def _post_spec_region(prompt):
+    """Return the portion of the prompt AFTER the embedded SPEC section.
+
+    The SPEC content is delimited by the 'SPEC' header box at the top and
+    typically by the 'E2E TEST RULE' or 'SCOPE BOUNDARY' header box that
+    follows it. Tests should only look at the orchestration body, not at
+    the embedded spec.md prose (which references invariant 31 verbatim).
+    """
+    # Cut everything up to and including the E2E TEST RULE header.
+    m = re.search(r"E2E TEST RULE.*?\n[═=]{5,}\s*\n", prompt, re.DOTALL)
+    if not m:
+        return prompt
+    return prompt[m.end():]
+
+
 def t_inv31_prompt_includes_spec_update_transition():
     prompt = _run_dispatch()
     if not prompt:
         return
-    # The prompt MUST mention a `tdd-step.py transition ... spec-update` call.
-    if re.search(r"tdd-step\.py\s+transition\s+\S+\s+spec-update", prompt):
-        ok("inv31: prompt includes a 'tdd-step.py transition <dir> spec-update' call")
+    body = _post_spec_region(prompt)
+    # The orchestration body MUST contain an actual
+    # `python3 .../tdd-step.py transition <dir> spec-update` invocation.
+    if re.search(
+        r"python3\s+\S*tdd-step\.py\s+transition\s+\S+\s+spec-update", body
+    ):
+        ok("inv31: orchestration body includes a 'tdd-step.py transition <dir> spec-update' command")
     else:
-        ko("inv31: prompt does NOT include any 'tdd-step.py transition <dir> spec-update' call")
+        ko(
+            "inv31: orchestration body has no actual "
+            "'python3 .../tdd-step.py transition <dir> spec-update' command"
+        )
 
 
 def t_inv31_spec_update_before_test_red():
     prompt = _run_dispatch()
     if not prompt:
         return
-    m_spec = re.search(r"tdd-step\.py\s+transition\s+\S+\s+spec-update", prompt)
-    m_red = re.search(r"tdd-step\.py\s+transition\s+\S+\s+test-red", prompt)
+    body = _post_spec_region(prompt)
+    m_spec = re.search(
+        r"python3\s+\S*tdd-step\.py\s+transition\s+\S+\s+spec-update", body
+    )
+    m_red = re.search(
+        r"python3\s+\S*tdd-step\.py\s+transition\s+\S+\s+test-red", body
+    )
     if not m_red:
-        ko("inv31: prompt is missing the 'transition <dir> test-red' call")
+        ko("inv31: orchestration body is missing the 'transition <dir> test-red' command")
         return
     if not m_spec:
-        ko("inv31: prompt is missing the 'transition <dir> spec-update' call")
+        ko("inv31: orchestration body is missing the 'transition <dir> spec-update' command")
         return
     if m_spec.start() < m_red.start():
-        ok("inv31: spec-update transition appears BEFORE test-red transition")
+        ok("inv31: spec-update transition appears BEFORE test-red transition in body")
     else:
         ko(
             "inv31: spec-update transition appears AFTER test-red transition "
