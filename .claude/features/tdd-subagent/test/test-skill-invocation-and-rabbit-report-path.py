@@ -56,21 +56,21 @@ result = subprocess.run(
 prompt = result.stdout
 
 if re.search(r'\.rabbit/tdd-report-contract\.json', prompt):
-    ok("dispatch-tdd-subagent.sh prompt references .rabbit/tdd-report-contract.json")
+    ok("dispatch-tdd-subagent.py prompt references .rabbit/tdd-report-contract.json")
 else:
-    fail("dispatch-tdd-subagent.sh prompt does not reference .rabbit/tdd-report.json")
+    fail("dispatch-tdd-subagent.py prompt does not reference .rabbit/tdd-report.json")
 
 # Fix 2b: dispatch-tdd-subagent.py must NOT reference bare repo-root tdd-report.json path
 if re.search(r'\$\{REPO_ROOT\}/tdd-report\.json|REPO_ROOT\}/tdd-report\.json', prompt):
-    fail("dispatch-tdd-subagent.sh prompt still references bare repo-root tdd-report.json")
+    fail("dispatch-tdd-subagent.py prompt still references bare repo-root tdd-report.json")
 else:
-    ok("dispatch-tdd-subagent.sh prompt does not reference bare repo-root tdd-report.json")
+    ok("dispatch-tdd-subagent.py prompt does not reference bare repo-root tdd-report.json")
 
 # Fix 2c: dispatch-tdd-subagent.py must contain mkdir -p for .rabbit/
 if 'mkdir' in dispatch_content and '.rabbit' in dispatch_content:
-    ok("dispatch-tdd-subagent.sh contains mkdir -p for .rabbit/")
+    ok("dispatch-tdd-subagent.py contains mkdir -p for .rabbit/")
 else:
-    fail("dispatch-tdd-subagent.sh missing mkdir -p .rabbit/")
+    fail("dispatch-tdd-subagent.py missing mkdir -p .rabbit/")
 
 # Fix 2d: .gitignore must list .rabbit/
 with open(GITIGNORE) as f:

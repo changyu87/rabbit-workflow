@@ -211,8 +211,9 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     `<item-dir>/item.json`, never from `<item-dir>/bug.json`. The
     rabbit-file schema uses `item.json` for both bug and backlog types
     (unified storage); `bug.json` is a legacy path that no longer exists.
-    The B/B mode `related_feature` extraction MUST use
-    `jq -r '.related_feature' <item-dir>/item.json`.
+    The B/B mode `related_feature` extraction MUST use Python 3 (always
+    available; `jq` is not a declared dependency of this feature):
+    `FEATURE=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('related_feature',''))" <item-dir>/item.json)`.
 31. The `tdd-step.py` state machine MUST permit cycle restart from
     `test-green` by adding the forward transition `test-green → spec-update`
     to its TRANSITIONS table. The current chain

@@ -16,16 +16,17 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from datetime import date
 
 
 def _rbt_ok(msg):
-    sys.stdout.write(f"\033[32m[rabbit] \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 {msg} \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81\033[0m\n")
+    sys.stdout.write(f"\033[32m[rabbit] ━━━ {msg} ━━━\033[0m\n")
     sys.stdout.flush()
 
 
 def _rbt_alert(msg):
-    sys.stderr.write(f"\033[31m[rabbit] \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81 {msg} \xe2\x94\x81\xe2\x94\x81\xe2\x94\x81\033[0m\n")
+    sys.stderr.write(f"\033[31m[rabbit] ━━━ {msg} ━━━\033[0m\n")
     sys.stderr.flush()
 
 
@@ -121,17 +122,45 @@ def read_state(d):
     return data.get("tdd_state", "") or "", 0
 
 
-def write_state(d, new):
+def write_state(d, new, spec_no_change_reason=""):
     fj = _feature_json_path(d)
     with open(fj, "r") as f:
         data = json.load(f)
     data["tdd_state"] = new
     data["updated"] = date.today().isoformat()
-    tmp = fj + ".tmp"
-    with open(tmp, "w") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
-    os.replace(tmp, fj)
+    if spec_no_change_reason:
+        data["spec_no_change_reason"] = spec_no_change_reason
+    # Atomic write: stage to a temp file in the same directory, then rename.
+    # The same-directory tempfile guarantees os.replace is a true atomic rename
+    # on POSIX filesystems and avoids cross-device move issues.
+    fd, tmp = tempfile.mkstemp(prefix=".feature.json.", dir=os.path.dirname(fj) or ".")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+        os.replace(tmp, fj)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except Exception:
+            pass
+        raise
+
+
+def _head_sha():
+    """Return the resolved HEAD commit SHA, or the literal 'HEAD' as a last-resort
+    fallback when git is unavailable. Consumers receive a real SHA in the common
+    case so audit trails remain accurate."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", REPO_ROOT or ".", "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=False,
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
+    except Exception:
+        pass
+    return "HEAD"
 
 
 def auto_close_backlog(d):
@@ -169,6 +198,7 @@ def auto_close_backlog(d):
         items = sorted(os.listdir(backlog_dir))
     except Exception:
         return
+    head_sha = _head_sha()
     for name in items:
         item_dir = os.path.join(backlog_dir, name)
         item_json = os.path.join(item_dir, "item.json")
@@ -191,37 +221,9 @@ def auto_close_backlog(d):
                  "--id", item_id,
                  "--status", "close",
                  "--reason", "auto-closed by tdd-step.py test-green",
-                 "--fix-commits", "HEAD"],
+                 "--fix-commits", head_sha],
                 capture_output=True, check=False,
             )
-        except Exception:
-            pass
-
-
-def sync_deployed_skills(d):
-    skills_src_dir = os.path.join(d, "skills")
-    if not os.path.isdir(skills_src_dir):
-        return
-    deployed_base = os.path.join(REPO_ROOT, ".claude", "skills")
-    try:
-        entries = sorted(os.listdir(skills_src_dir))
-    except Exception:
-        return
-    for skill_name in entries:
-        skill_dir = os.path.join(skills_src_dir, skill_name)
-        if not os.path.isdir(skill_dir):
-            continue
-        src_skill = os.path.join(skill_dir, "SKILL.md")
-        dst_skill = os.path.join(deployed_base, skill_name, "SKILL.md")
-        if not os.path.isfile(src_skill):
-            continue
-        if not os.path.isfile(dst_skill):
-            continue
-        try:
-            with open(src_skill, "rb") as fr:
-                content = fr.read()
-            with open(dst_skill, "wb") as fw:
-                fw.write(content)
         except Exception:
             pass
 
@@ -258,28 +260,31 @@ def _run_enforcement_checks(d, repo_root):
 
 def _post_test_green_hooks(d):
     _run_enforcement_checks(d, REPO_ROOT)
-    features_dir = os.path.dirname(os.path.abspath(d))
-    project_dir = os.path.dirname(features_dir)
-    project_map = os.path.join(project_dir, "project-map.json")
-    if os.path.isfile(project_map):
-        project_name = os.path.basename(project_dir)
-        onboard_py = os.path.join(
-            REPO_ROOT, ".claude", "features", "rabbit-cage", "scripts", "rabbit-project.py",
-        )
-        if os.path.isfile(onboard_py):
-            try:
-                subprocess.run(
-                    [sys.executable, onboard_py, "consolidate", project_name],
-                    capture_output=True, check=False,
-                )
-            except Exception:
-                pass
+    # Project consolidate is a best-effort hook gated by project-map.json. The
+    # outer try/except guards against any unexpected failure (missing script,
+    # broken project layout, etc.) so a test-green transition is never blocked
+    # by a project-side issue.
     try:
-        auto_close_backlog(d)
+        features_dir = os.path.dirname(os.path.abspath(d))
+        project_dir = os.path.dirname(features_dir)
+        project_map = os.path.join(project_dir, "project-map.json")
+        if os.path.isfile(project_map):
+            project_name = os.path.basename(project_dir)
+            onboard_py = os.path.join(
+                REPO_ROOT, ".claude", "features", "rabbit-cage", "scripts", "rabbit-project.py",
+            )
+            if os.path.isfile(onboard_py):
+                try:
+                    subprocess.run(
+                        [sys.executable, onboard_py, "consolidate", project_name],
+                        capture_output=True, check=False,
+                    )
+                except Exception:
+                    pass
     except Exception:
         pass
     try:
-        sync_deployed_skills(d)
+        auto_close_backlog(d)
     except Exception:
         pass
 
@@ -380,14 +385,14 @@ def cmd_transition(args):
         return 1
 
     if new in valid_forward:
-        write_state(d, new)
+        write_state(d, new, spec_no_change_reason=spec_no_change_reason)
         if new == "test-green":
             _post_test_green_hooks(d)
         _rbt_ok(f"{cur} -> {new}")
         return 0
 
     if force:
-        write_state(d, new)
+        write_state(d, new, spec_no_change_reason=spec_no_change_reason)
         if new == "test-green":
             _post_test_green_hooks(d)
         _rbt_alert(f"FORCED: {cur} -> {new}")

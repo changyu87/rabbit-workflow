@@ -299,16 +299,20 @@ def t_bug36_no_undeclared_jq():
 def t_bug38_dispatch_no_duplicated_logic():
     src = _read(DISPATCH_PY)
     # The original concern: linked-items close-call block emitted line-by-line
-    # in two places. We test that the per-item close-call template is defined
-    # once (e.g., a helper function) OR appears only in one loop.
-    # Heuristic: count occurrences of the literal phrase that builds the close
-    # call: "--status close \\".
-    count = src.count("--status close")
-    # 2 occurrences for primary + secondary is acceptable; 4+ indicates duplication.
-    if count <= 2:
-        ok(f"bug38: close-call template appears {count} time(s) (deduplicated)")
+    # in two places. After dedup, the template literal that constructs the
+    # f-string (`--status close \\`) must appear in exactly ONE source
+    # location (a helper function used by both primary and secondary call
+    # sites). Comment-only mentions in the module docstring don't count.
+    code_lines = [
+        ln for ln in src.splitlines()
+        if ln.strip().startswith(('"', "'", 'f"', "f'"))
+    ]
+    code_src = "\n".join(code_lines)
+    count = code_src.count("--status close")
+    if count == 1:
+        ok(f"bug38: close-call template literal appears once in code (deduplicated)")
     else:
-        ko(f"bug38: close-call template appears {count} times (duplication suspected)")
+        ko(f"bug38: close-call template literal appears {count} times in code (expected 1)")
 
 
 # ---- BUG-40: t8 function name accurate ----
@@ -430,15 +434,18 @@ def t_bug49_auto_close_uses_real_sha():
         ko("bug49: auto_close_backlog function not found")
         return
     body = m.group(1)
-    # Look for git rev-parse HEAD invocation (real SHA) instead of literal "HEAD"
-    if 'rev-parse' in body:
-        ok("bug49: auto_close_backlog uses git rev-parse for real SHA")
+    # Look for either a direct git rev-parse HEAD invocation or a call to a
+    # helper that performs it (e.g., _head_sha). Both deliver a real SHA.
+    uses_real_sha = ('rev-parse' in body) or ('_head_sha' in body)
+    has_literal_HEAD = bool(re.search(
+        r'--fix-commits["\']?\s*,\s*["\']HEAD["\']', body
+    ))
+    if uses_real_sha and not has_literal_HEAD:
+        ok("bug49: auto_close_backlog computes real SHA (not literal 'HEAD')")
+    elif has_literal_HEAD:
+        ko("bug49: auto_close_backlog still passes literal 'HEAD' as fix_commits")
     else:
-        # If still using literal "HEAD" as fix_commits arg, that's a fail
-        if re.search(r"--fix-commits[^,)]*['\"]HEAD['\"]", body):
-            ko("bug49: auto_close_backlog still passes literal string 'HEAD' as fix_commits")
-        else:
-            ko("bug49: auto_close_backlog doesn't compute real SHA via git rev-parse")
+        ko("bug49: auto_close_backlog doesn't compute a real SHA")
 
 
 # ---- BUG-50: SKILL.md Step 5 dispatch separates bash from Agent() pseudocode ----

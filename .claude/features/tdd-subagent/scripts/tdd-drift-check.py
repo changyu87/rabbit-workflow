@@ -19,8 +19,12 @@ import sys
 
 
 def run_tests_get_rc(runner):
-    if not (os.path.isfile(runner) and os.access(runner, os.X_OK)):
-        sys.stderr.write(f"ERROR: {runner} missing or not executable\n")
+    # The runner is invoked as `python3 runner` below, so the +x bit is not
+    # required — only that the file exists and is readable. The previous
+    # executability guard was removed because it rejected perfectly-runnable
+    # test/run.py files that simply weren't marked executable.
+    if not os.path.isfile(runner):
+        sys.stderr.write(f"ERROR: {runner} missing\n")
         return None, 2
     try:
         res = subprocess.run(

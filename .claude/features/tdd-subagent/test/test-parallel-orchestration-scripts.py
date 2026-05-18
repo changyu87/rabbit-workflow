@@ -69,9 +69,9 @@ def t1():
 def t4():
     dispatch = os.path.join(SCRIPTS_DIR, 'dispatch-tdd-subagent.py')
     if os.path.isfile(dispatch) and os.access(dispatch, os.X_OK):
-        ok('t4: dispatch-tdd-subagent.sh exists and is executable')
+        ok('t4: dispatch-tdd-subagent.py exists and is executable')
     else:
-        ko(f"t4: dispatch-tdd-subagent.sh not found or not executable at {dispatch}")
+        ko(f"t4: dispatch-tdd-subagent.py not found or not executable at {dispatch}")
 
 
 # t5: dispatch-tdd-subagent.py exits 0 and emits non-empty stdout
@@ -86,7 +86,7 @@ def t5():
         env={**os.environ, 'RABBIT_ROOT': root}
     )
     if result.returncode == 0 and result.stdout.strip():
-        ok('t5: dispatch-tdd-subagent.sh exits 0 with non-empty stdout')
+        ok('t5: dispatch-tdd-subagent.py exits 0 with non-empty stdout')
     else:
         ko(f"t5: rc={result.returncode} stdout_empty={'yes' if not result.stdout.strip() else 'no'}")
 
@@ -103,7 +103,7 @@ def t6():
         env={**os.environ, 'RABBIT_ROOT': root}
     )
     if 'SCOPE' in result.stdout:
-        ok("t6: dispatch-tdd-subagent.sh output contains 'SCOPE'")
+        ok("t6: dispatch-tdd-subagent.py output contains 'SCOPE'")
     else:
         ko("t6: 'SCOPE' not found in output")
 
@@ -120,7 +120,7 @@ def t7():
         env={**os.environ, 'RABBIT_ROOT': root}
     )
     if 'SPEC-READ' in result.stdout:
-        ok("t7: dispatch-tdd-subagent.sh output contains 'SPEC-READ'")
+        ok("t7: dispatch-tdd-subagent.py output contains 'SPEC-READ'")
     else:
         ko("t7: 'SPEC-READ' not found in output")
 
@@ -137,7 +137,7 @@ def t8():
         env={**os.environ, 'RABBIT_ROOT': root}
     )
     if '.rabbit-scope-active-' in result.stdout:
-        ok("t8: dispatch-tdd-subagent.sh output contains '.rabbit-scope-active-'")
+        ok("t8: dispatch-tdd-subagent.py output contains '.rabbit-scope-active-'")
     else:
         ko("t8: '.rabbit-scope-active-' not found in output")
 
