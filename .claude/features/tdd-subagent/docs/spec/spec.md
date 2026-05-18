@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.14.0
+version: 1.15.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -30,7 +30,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 1. `tdd_state` transitions are forward-only without `--force`.
 2. `test-green` transition triggers enforcement checks.
 3. All four scripts are executable.
-4. `test-green` transition auto-closes any in-progress backlog items under `.claude/backlogs/<feature-name>/` via `backlog-item-status.py` with `fix_commits=HEAD` (best-effort).
+4. `test-green` transition auto-closes any in-progress backlog items (stored on the `bug-backlog-files` branch per rabbit-file consolidation) via `python3 .claude/features/rabbit-file/scripts/item-status.py set --feature <feature> --type backlog --id <ID> --status close --reason 'auto-closed by tdd-step.py test-green' --fix-commits HEAD` (best-effort). The legacy `backlog-item-status.py` script no longer exists; tdd-step.py must use the unified `item-status.py` interface.
 5. `tdd-step.py transition` stdout uses the `[rabbit] ━━━ ... ━━━` format with ANSI colors — green (`\x1b[32m`) for normal transition messages on stdout, red (`\x1b[31m`) for FORCED/WARNING/ERROR messages on stderr. The `show`, `next`, and `transitions` subcommands remain plain-text (consumed by tests and downstream parsers).
 6. In `rabbit-feature-touch` Step 1 (normal mode), scope resolution is performed by invoking the `rabbit-feature-scope` Skill via the Skill tool (`Skill("rabbit-feature-scope", args: "<request>")`), NOT by shelling out to `resolve-scope.sh` directly. The Skill emits a prompt for caller dispatch; the caller parses the JSON response `{"features": [...], "rationale": "..."}` to drive parallel dispatch.
 7. `dispatch-tdd-subagent.py` emits a prompt to stdout only; it does not call any agent itself. The assembled prompt instructs the per-feature subagent to run the full TDD cycle (spec-update → test-red → impl → test-green) for ONE feature, using `.rabbit-scope-active-<feature-name>` as its scope marker. Distinct per-feature scope markers enable simultaneous dispatch across features without scope collision. The subagent writes `tdd-report.json` to `.rabbit/tdd-report.json` (a hidden folder at repo root); the `.rabbit/` directory is created automatically if it doesn't exist and is listed in `.gitignore`.
@@ -213,20 +213,24 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     (unified storage); `bug.json` is a legacy path that no longer exists.
     The B/B mode `related_feature` extraction MUST use
     `jq -r '.related_feature' <item-dir>/item.json`.
-31. The assembled TDD subagent prompt MUST handle the case where the
-    starting `tdd_state` (in `feature.json`) is `test-green` from a prior
-    completed cycle. The `tdd-step.py` state machine is forward-only and
-    rejects any backward or sideways transition without `--force`; the
-    only valid forward transition from `test-green` is to `spec-update`
-    (the entry state of the next cycle). The prompt MUST therefore include
-    an explicit transition `tdd-step.py transition <feature_dir>
-    spec-update` BEFORE the STEP 5 `test-red` transition whenever the
-    starting state is `test-green`. The subagent MUST check the starting
-    state via `tdd-step.py show <feature_dir>` at the top of the named
-    steps and conditionally run the spec-update transition; running it
-    unconditionally also works because spec-update → spec-update is a
-    self-loop allowed by the state machine, or because most features at
-    cycle start are at test-green from the prior cycle.
+31. The `tdd-step.py` state machine MUST permit cycle restart from
+    `test-green` by adding the forward transition `test-green → spec-update`
+    to its TRANSITIONS table. The current chain
+    `spec → spec-update → test-red → impl → test-green → deprecated → ""`
+    leaves `test-green` with only one forward transition (to `deprecated`,
+    which is terminal). This is incompatible with the rabbit-feature-touch
+    workflow, which runs multiple TDD cycles for the same feature across
+    different bugs/backlogs; each cycle must be able to start fresh from
+    a prior `test-green` state. The amended chain MUST allow
+    `test-green → spec-update` (next cycle restart) AND
+    `test-green → deprecated` (feature retirement) as the two valid
+    forward transitions from `test-green`. The assembled TDD subagent
+    prompt's STEP 5 (TEST-RED) MUST include an explicit transition
+    `tdd-step.py transition <feature_dir> spec-update` BEFORE the
+    `test-red` transition when the starting state is `test-green`;
+    running it unconditionally also works because `spec-update →
+    spec-update` is a self-no-op (or use `tdd-step.py show` to check
+    first).
 
 ## Confirm-Token Bypass Path
 
