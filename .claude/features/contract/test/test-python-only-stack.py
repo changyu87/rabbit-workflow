@@ -72,8 +72,12 @@ if os.path.isfile(spec_path):
     for line in spec_content.splitlines():
         if not (line.strip() and line[0].isdigit() and ". `" in line and ".sh`" in line):
             continue
-        # Skip lines that document absence (e.g., "does NOT exist")
+        # Skip lines that document absence (e.g., "does NOT exist") or
+        # explicitly forbid .sh as part of a positive Python-only directive
+        # (e.g., "not shell scripts").
         if "does NOT exist" in line or "No `.sh`" in line or "No .sh" in line:
+            continue
+        if "not shell scripts" in line or "not `.sh`" in line:
             continue
         invariant_sh.append(line)
     if invariant_sh:
