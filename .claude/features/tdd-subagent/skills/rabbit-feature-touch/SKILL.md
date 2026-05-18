@@ -29,8 +29,10 @@ Skill("rabbit-feature-scope", args: "<request>")
 
 **B/B mode:** Skip — feature name comes from `related_feature` in the bug/item JSON:
 ```bash
-FEATURE=$(jq -r '.related_feature' "<bug-or-item-dir>/bug.json")
+FEATURE=$(jq -r '.related_feature' "<item-dir>/item.json")
 ```
+The rabbit-file schema stores both bug and backlog items as `item.json`
+(unified storage).
 
 ### Step 2 — Create Branch
 
