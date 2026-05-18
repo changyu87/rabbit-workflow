@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-# find-feature.py — distributed feature registry lookup.
-#
-# Usage (invoked by find-feature.sh):
-#   python3 find-feature.py <repo-root> list
-#   python3 find-feature.py <repo-root> list-json
-#   python3 find-feature.py <repo-root> lookup <feature-name>
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when feature discovery is handled natively by the dispatch infrastructure.
+"""find-feature.py — distributed feature registry lookup.
+
+Usage (invoked by find-feature.sh):
+  python3 find-feature.py <repo-root> list
+  python3 find-feature.py <repo-root> list-json
+  python3 find-feature.py <repo-root> lookup <feature-name>
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when feature discovery is handled natively by the dispatch infrastructure.
+"""
 
 import json
 import os

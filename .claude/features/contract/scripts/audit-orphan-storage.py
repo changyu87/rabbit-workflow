@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-# audit-orphan-storage.py — scan .claude/bugs/ and .claude/backlogs/ for
-# subdirectory names not present in registry.json features; alert on orphans.
-#
-# Usage:
-#   audit-orphan-storage.py --registry <path> --bugs-root <path> --backlogs-root <path>
-#   audit-orphan-storage.py <registry> <bugs-root> <backlogs-root>   (legacy positional)
-#
-# Exit codes:
-#   0  no orphans found
-#   1  one or more orphans found
-#
-# Version: 1.1.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when feature registry lookup is natively provided.
+"""audit-orphan-storage.py — scan .claude/bugs/ and .claude/backlogs/ for
+subdirectory names not present in registry.json features; alert on orphans.
+
+Usage:
+  audit-orphan-storage.py --registry <path> --bugs-root <path> --backlogs-root <path>
+  audit-orphan-storage.py <registry> <bugs-root> <backlogs-root>   (legacy positional)
+
+Exit codes:
+  0  no orphans found
+  1  one or more orphans found
+
+Version: 1.1.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when feature registry lookup is natively provided.
+"""
 
 import json
 import os

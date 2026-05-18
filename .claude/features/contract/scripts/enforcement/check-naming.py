@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
-# check-naming.py — enforce: every slash command, skill, and subagent under
-# <root>/.claude/ MUST have a name beginning with 'rabbit-'.
-#
-# What is checked:
-#   <root>/.claude/commands/*.md  (slash commands; basename without .md)
-#   <root>/.claude/agents/*.md    (subagents;     basename without .md)
-#   <root>/.claude/skills/*/      (skills;        directory name)
-#
-# Ignored (not artifact names):
-#   README.md, CHANGELOG.md, *.txt, *.json
-#
-# Usage:  check-naming.py [root]
-#         (default root: current working directory)
-#
-# Exit:
-#   0 all artifacts conformant (or no .claude tree)
-#   1 one or more violations (each named on stderr)
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when naming enforcement is provided by a native linter.
+"""check-naming.py — enforce: every slash command, skill, and subagent under
+<root>/.claude/ MUST have a name beginning with 'rabbit-'.
+
+What is checked:
+  <root>/.claude/commands/*.md  (slash commands; basename without .md)
+  <root>/.claude/agents/*.md    (subagents;     basename without .md)
+  <root>/.claude/skills/*/      (skills;        directory name)
+
+Ignored (not artifact names):
+  README.md, CHANGELOG.md, *.txt, *.json
+
+Usage:  check-naming.py [root]
+        (default root: current working directory)
+
+Exit:
+  0 all artifacts conformant (or no .claude tree)
+  1 one or more violations (each named on stderr)
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when naming enforcement is provided by a native linter.
+"""
 
 import os
 import sys
@@ -84,7 +85,9 @@ def main():
             if not entry.startswith("rabbit-"):
                 flag("skill", entry, full + "/", "must start with 'rabbit-'")
 
-    # Check for legacy 'rwf-' prefix anywhere under .claude/ except docs/
+    # Check for deprecated 'rbt-' prefix anywhere under .claude/ except docs/
+    # (rabbit-cage Inv 13: runtime artifacts use 'rabbit-', not 'rbt-').
+    BANNED_PREFIXES = ["rbt-"]
     docs_path = os.path.join(claude_dir, "docs")
     for dirpath, dirnames, filenames in os.walk(claude_dir):
         # Skip docs/ subtree
@@ -92,15 +95,17 @@ def main():
             dirnames.clear()
             continue
         for fname in filenames:
-            if fname.startswith("rwf-"):
-                fpath = os.path.join(dirpath, fname)
-                flag("file", fname, fpath, "legacy 'rwf-' prefix banned (use 'rabbit-' or no prefix)")
+            for bad in BANNED_PREFIXES:
+                if fname.startswith(bad):
+                    fpath = os.path.join(dirpath, fname)
+                    flag("file", fname, fpath, f"deprecated '{bad}' prefix banned (use 'rabbit-' or no prefix)")
+                    break
 
     if violations > 0:
         print(f"FAIL: {violations} naming violation(s) under {claude_dir}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"OK: all artifacts under {claude_dir} start with 'rabbit-'; no 'rwf-' prefixes outside docs/")
+    print(f"OK: all artifacts under {claude_dir} start with 'rabbit-'; no banned prefixes ({BANNED_PREFIXES}) outside docs/")
     sys.exit(0)
 
 

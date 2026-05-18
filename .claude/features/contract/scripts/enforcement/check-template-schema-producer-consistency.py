@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-# check-template-schema-producer-consistency.py — validate that bug-template.json
-# top-level keys (excluding _template_version) are a subset of what file-bug.sh
-# actually writes.
-#
-# Known producer set (fields written by file-bug.sh):
-#   name, title, status, severity, description, related_feature,
-#   filed, filed_by, closed, closed_by, history
-#
-# Usage (invoked by check-template-schema-producer-consistency.sh):
-#   python3 check-template-schema-producer-consistency.py <template-path>
-#
-# Exit:  0 template keys are consistent; 1 unknown key(s) found; 2 invocation error.
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when template/producer consistency is enforced by a schema registry.
+"""check-template-schema-producer-consistency.py — validate that bug-template.json
+top-level keys (excluding _template_version) are a subset of what file-bug.sh
+actually writes.
+
+Known producer set (fields written by file-bug.sh):
+  name, title, status, severity, description, related_feature,
+  filed, filed_by, closed, closed_by, history
+
+Usage (invoked by check-template-schema-producer-consistency.sh):
+  python3 check-template-schema-producer-consistency.py <template-path>
+
+Exit:  0 template keys are consistent; 1 unknown key(s) found; 2 invocation error.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when template/producer consistency is enforced by a schema registry.
+"""
 
 import json
 import sys

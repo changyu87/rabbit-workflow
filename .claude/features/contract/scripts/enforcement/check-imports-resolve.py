@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-# check-imports-resolve.py — assert every @<path> import and .claude/features/<name>
-# path reference in docs/ .md files resolves to an existing filesystem path.
-#
-# Usage: check-imports-resolve.py <feature-dir>
-# Exit:  0 all paths resolve (or no docs/); 1 one or more missing paths.
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when import resolution is enforced by a native linter.
+"""check-imports-resolve.py — assert every @<path> import and .claude/features/<name>
+path reference in docs/ .md files resolves to an existing filesystem path.
+
+Usage: check-imports-resolve.py <feature-dir>
+Exit:  0 all paths resolve (or no docs/); 1 one or more missing paths.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when import resolution is enforced by a native linter.
+"""
 
 import os
 import re

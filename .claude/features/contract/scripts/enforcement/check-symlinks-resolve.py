@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-# check-symlinks-resolve.py — assert every symlink under .claude/ resolves to an
-# existing file or directory (no dangling symlinks).
-#
-# Usage: check-symlinks-resolve.py [repo-root]
-# Exit:  0 all symlinks resolve (or none found); 1 dangling symlinks found.
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when symlink validation is provided by a native linter.
+"""check-symlinks-resolve.py — assert every symlink under .claude/ resolves to an
+existing file or directory (no dangling symlinks).
+
+Usage: check-symlinks-resolve.py [repo-root]
+Exit:  0 all symlinks resolve (or none found); 1 dangling symlinks found.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when symlink validation is provided by a native linter.
+"""
 
 import os
 import subprocess

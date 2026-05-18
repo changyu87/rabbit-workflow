@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-# check-tests-non-interactive.py — fail if any Python test file under
-# <feature-dir>/test/ uses interactive constructs that would block an
-# end-to-end run.
-#
-# Per the rabbit workflow rule: "for TDD steps, when you do test, it must be a
-# hard end-to-end test with no human intervention."
-#
-# Scans .py files only — the repo is Python-only (rabbit-cage Inv 39,
-# rabbit-file Tech Stack). Detects bare input(), getpass.getpass(),
-# click.prompt(), click.confirm().
-#
-# Usage: check-tests-non-interactive.py <feature-dir>
-# Exit:  0 ok (no test/ dir, or test/ clean); 1 violations found.
-#
-# Version: 2.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when non-interactive enforcement is provided by a native linter.
+"""check-tests-non-interactive.py — fail if any Python test file under
+<feature-dir>/test/ uses interactive constructs that would block an
+end-to-end run.
+
+Per the rabbit workflow rule: "for TDD steps, when you do test, it must be a
+hard end-to-end test with no human intervention."
+
+Scans .py files only — the repo is Python-only (rabbit-cage Inv 39,
+rabbit-file Tech Stack). Detects bare input(), getpass.getpass(),
+click.prompt(), click.confirm().
+
+Usage: check-tests-non-interactive.py <feature-dir>
+Exit:  0 ok (no test/ dir, or test/ clean); 1 violations found.
+
+Version: 2.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when non-interactive enforcement is provided by a native linter.
+"""
 
 import os
 import re

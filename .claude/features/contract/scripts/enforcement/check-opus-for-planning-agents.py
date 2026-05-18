@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-# check-opus-for-planning-agents.py — enforce: any subagent whose description
-# implies brainstorming, spec-writing, planning, design, or architecture work
-# MUST declare model: opus in its frontmatter.
-#
-# Scans $AGENTS_DIR (default: .claude/agents/), reads YAML frontmatter, and
-# emits a violation per non-conformant agent.
-#
-# Exit: 0 all conformant (or no agents); 1 one or more violations.
-#
-# Version: 1.0.0
-# Owner: rabbit-workflow team (contract)
-# Deprecation criterion: when agent model enforcement is provided by a native linter.
+"""check-opus-for-planning-agents.py — enforce: any subagent whose description
+implies brainstorming, spec-writing, planning, design, or architecture work
+MUST declare model: opus in its frontmatter.
+
+Scans $AGENTS_DIR (default: .claude/agents/), reads YAML frontmatter, and
+emits a violation per non-conformant agent.
+
+Exit: 0 all conformant (or no agents); 1 one or more violations.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when agent model enforcement is provided by a native linter.
+"""
 
 import os
 import re

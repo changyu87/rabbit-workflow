@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.8.0
+version: 1.9.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -87,6 +87,10 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 15. Boolean CLI flag values and subcommand values across the rabbit workflow use the literal strings `true` and `false` exclusively. The values `enabled`, `disabled`, `on`, `off`, `yes`, `no` are prohibited as boolean values (action verbs like `lock`, `unlock`, `add`, `remove` remain allowed when the subcommand itself denotes an action, not a boolean state).
 16. CLI flag names, subcommand names, and configuration variable names in the rabbit workflow MUST be positive-streamlined: they describe what is present/active, never what is absent/disabled. Names beginning with `no-`, `disable-`, `skip-`, `without-`, or any negating prefix are prohibited. If such a name exists, it must be renamed to describe what IS active when the flag/variable is true. Boolean state is encoded in the value (`true`/`false`), never in the name.
 17. `check-tests-non-interactive.py` MUST scan Python test files (`.py`) under `<feature-dir>/test/`, not shell scripts (`.sh`). The repo is Python-only (rabbit-cage Inv 39, rabbit-file Tech Stack); a `.sh`-only scanner is silently vacuous on every invocation. The script MUST detect Python interactive constructs that would block an end-to-end run: bare `input(` calls, `getpass.getpass(`, `click.prompt(`, `click.confirm(`, and any `sys.stdin.read*()` call that is not preceded by an `isatty()` guard or a piped-input fixture. A violation MUST exit 1 with stderr naming the file and the offending construct.
+18. `validate-feature.py` MUST check for `test/run.py` (the Python test runner), not `test/run.sh`. The Python-only stack means `test/run.sh` does not exist; checking for it is silently vacuous and rejects valid features. References to `.sh` test runners are banned across all contract enforcement scripts.
+19. `check-naming.py` MUST enforce that the deprecated prefix `rbt-` is banned (matches rabbit-cage Inv 13). The legacy literal `rwf-` is incorrect — `rwf-` was never a banned prefix in this repo; `rbt-` is. The script's banned-prefix list MUST be exactly `["rbt-"]`.
+20. `.claude/features/contract/scripts/policy-block.py` (and every other Python script under `.claude/features/contract/scripts/` or `.claude/features/contract/scripts/enforcement/`) MUST have a module-level docstring describing its purpose, usage, and exit codes. `print_usage()` functions that print `__doc__` MUST therefore print non-empty text. A `None` usage output is a silent failure mode.
+21. `.claude/features/contract/test/run.py` MUST invoke every active `test-*.py` file in the test directory. Tests intentionally excluded (e.g., archived, superseded) MUST be moved out of the test directory or renamed with a leading underscore (`_test-...py`). Dead test files referencing deleted scripts (e.g., `test-relink-no-skills.py` referencing the removed `relink.sh`) MUST be deleted, not skipped.
 
 ## CLI Naming Convention
 

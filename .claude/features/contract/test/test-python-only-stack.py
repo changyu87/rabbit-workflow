@@ -75,9 +75,18 @@ if os.path.isfile(spec_path):
         # Skip lines that document absence (e.g., "does NOT exist") or
         # explicitly forbid .sh as part of a positive Python-only directive
         # (e.g., "not shell scripts").
-        if "does NOT exist" in line or "No `.sh`" in line or "No .sh" in line:
+        if "does NOT exist" in line or "does not exist" in line:
+            continue
+        if "No `.sh`" in line or "No .sh" in line:
             continue
         if "not shell scripts" in line or "not `.sh`" in line:
+            continue
+        # Skip lines that forbid an .sh runner (e.g., "not `test/run.sh`")
+        # or refer to an .sh script that has been removed.
+        if "not `test/run.sh`" in line or "removed `" in line:
+            continue
+        # Skip lines banning .sh references in scripts.
+        if "References to `.sh`" in line and "are banned" in line:
             continue
         invariant_sh.append(line)
     if invariant_sh:
