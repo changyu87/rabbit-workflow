@@ -390,6 +390,18 @@ STEP 5 — TEST-RED
 
 Run: python3 {feature_dir}/test/run.py
 Verify tests FAIL. If they already pass (no implementation gap), document why and proceed.
+
+Bring tdd_state into this cycle from the prior cycle's `test-green` endpoint.
+The tdd-step.py state machine is forward-only; from `test-green` the only
+valid path into a new cycle starts with `spec-update`. Run this BEFORE the
+`test-red` transition below. If the starting state is already `spec-update`
+or further along, the transition is a no-op-friendly check via `show` first:
+
+  CURRENT_STATE=$(python3 {tdd_step_py} show {feature_dir})
+  if [ "$CURRENT_STATE" = "test-green" ]; then
+    python3 {tdd_step_py} transition {feature_dir} spec-update
+  fi
+
 Advance state:
   python3 {tdd_step_py} transition {feature_dir} test-red
 
