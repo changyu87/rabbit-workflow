@@ -19,5 +19,6 @@
     "settings": []
   },
   "deprecation_criterion": "when Claude Code exposes a native feature-container mechanism that subsumes this role",
-  "updated": "2026-05-18"
+  "updated": "2026-05-18",
+  "tdd_last_cycle_impl_commit": "e96b24a670c558f5b2874b04ec56ebf4a2b2807a"
 }

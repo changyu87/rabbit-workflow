@@ -85,6 +85,7 @@ def main() -> int:
 
     feature_json = (
         '{\n'
+        '  "template_version": "1.0.0",\n'
         f'  "name": "{name}",\n'
         '  "version": "0.1.0",\n'
         f'  "owner": "{owner}",\n'
@@ -93,6 +94,7 @@ def main() -> int:
         '  "surface": {\n'
         '    "hooks": [],\n'
         '    "commands": [],\n'
+        '    "agents": [],\n'
         '    "skills": []\n'
         '  },\n'
         '  "deprecation_criterion": "TBD — set after first review"\n'
@@ -111,7 +113,7 @@ def main() -> int:
         "## What this feature does NOT define\n\n"
         "TODO: name adjacent concerns and which features own them. (Bounded scope.)\n\n"
         "## Tests\n\n"
-        "`test/run.sh` runs the end-to-end suite. Currently red (expected: this\n"
+        "`test/run.py` runs the end-to-end suite. Currently red (expected: this\n"
         "feature is in `tdd_state: spec`; tests have not been authored yet).\n\n"
         "Per the TDD state machine: author tests next, transition to `test-red`,\n"
         "then implement, transition to `impl`, etc.\n"
@@ -138,16 +140,21 @@ def main() -> int:
 
     (target / "docs/bugs/.gitkeep").touch()
 
-    run_sh = (
-        "#!/bin/bash\n"
-        "# Placeholder. Author real tests here, then transition tdd_state to test-red.\n"
-        "# This file exits non-zero so the feature is honestly in TDD red until tests\n"
-        "# are authored.\n"
-        'echo "no tests yet — author tests in this file (or sibling test-*.sh) and transition tdd_state to test-red" >&2\n'
-        "exit 1\n"
+    run_py = (
+        "#!/usr/bin/env python3\n"
+        '"""Placeholder test runner. Author real tests here, then transition\n'
+        'tdd_state to test-red. Exits non-zero so the feature is honestly in\n'
+        'TDD red until tests are authored."""\n'
+        "import sys\n"
+        "\n"
+        "sys.stderr.write(\n"
+        "    \"no tests yet — author tests in this directory (test-*.py) and \"\n"
+        "    \"transition tdd_state to test-red\\n\"\n"
+        ")\n"
+        "sys.exit(1)\n"
     )
-    run_path = target / "test/run.sh"
-    run_path.write_text(run_sh)
+    run_path = target / "test/run.py"
+    run_path.write_text(run_py)
     run_path.chmod(0o755)
 
     print(f"scaffolded: {target}")

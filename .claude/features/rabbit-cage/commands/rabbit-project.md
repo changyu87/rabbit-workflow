@@ -13,4 +13,10 @@ Scaffold and maintain project directories managed by rabbit.
 
 ## Implementation
 
-Delegates to `.claude/features/onboard/scripts/rabbit-project.sh`.
+Delegates to `.claude/features/rabbit-cage/scripts/rabbit-project.py`,
+which dispatches to the per-subcommand Python scripts:
+
+- `init`        → `.claude/features/rabbit-cage/scripts/rabbit-project.py`
+- `set-path`    → `.claude/features/rabbit-cage/scripts/rabbit-project-set-path.py`
+- `map`         → `.claude/features/rabbit-cage/scripts/rabbit-project-map.py`
+- `consolidate` → `.claude/features/rabbit-cage/scripts/rabbit-project-consolidate.py`
