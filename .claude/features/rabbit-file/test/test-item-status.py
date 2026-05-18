@@ -130,3 +130,182 @@ def test_set_with_fix_commits(filed_item, monkeypatch):
 
     item = branch_ops.fetch_item("test-feat", "bug", id_str)
     assert item["history"][-1]["fix_commits"] == "abc123def456"
+
+
+# --- update subcommand tests ---
+
+
+def _fetch(clone, monkeypatch, id_str, type_="bug", feature="test-feat"):
+    monkeypatch.syspath_prepend(str(SCRIPTS))
+    import branch_ops
+    monkeypatch.setattr(branch_ops, "_get_repo_root", lambda: str(clone))
+    return branch_ops.fetch_item(feature, type_, id_str)
+
+
+def test_update_priority_happy_path(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "priority", "--value", "low",
+                "--reason", "lower than thought")
+    assert r.returncode == 0, r.stderr
+
+    item = _fetch(clone, monkeypatch, id_str)
+    assert item["priority"] == "low"
+    h = item["history"][-1]
+    assert h["action"] == "updated"
+    assert h["field"] == "priority"
+    assert h["old_value"] == "high"
+    assert h["new_value"] == "low"
+    assert h["note"] == "lower than thought"
+    assert "ts" in h and h["ts"]
+    assert "actor" in h and h["actor"]
+
+
+def test_update_title_happy_path(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "title", "--value", "New Title",
+                "--reason", "clarify")
+    assert r.returncode == 0, r.stderr
+
+    item = _fetch(clone, monkeypatch, id_str)
+    assert item["title"] == "New Title"
+    h = item["history"][-1]
+    assert h["action"] == "updated"
+    assert h["field"] == "title"
+    assert h["old_value"] == "Test"
+    assert h["new_value"] == "New Title"
+    assert h["note"] == "clarify"
+
+
+def test_update_description_happy_path(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "description", "--value", "more detail",
+                "--reason", "expand")
+    assert r.returncode == 0, r.stderr
+
+    item = _fetch(clone, monkeypatch, id_str)
+    assert item["description"] == "more detail"
+    h = item["history"][-1]
+    assert h["action"] == "updated"
+    assert h["field"] == "description"
+    assert h["old_value"] == "desc"
+    assert h["new_value"] == "more detail"
+
+
+def test_update_rejects_closed_item(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    # close it first
+    run_cmd(clone, "set", "--feature", "test-feat", "--type", "bug",
+            "--id", id_str, "--status", "close", "--reason", "done")
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "priority", "--value", "low",
+                "--reason", "try update")
+    assert r.returncode == 1
+    assert "reopen" in r.stderr.lower()
+
+    item = _fetch(clone, monkeypatch, id_str)
+    assert item["priority"] == "high"
+    # no 'updated' history entry was appended
+    assert all(h.get("action") != "updated" for h in item["history"])
+
+
+def test_update_rejects_unknown_field(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "nonsense", "--value", "x",
+                "--reason", "try")
+    assert r.returncode == 1
+    # error message lists allowed fields
+    assert "priority" in r.stderr
+    assert "title" in r.stderr
+    assert "description" in r.stderr
+
+
+def test_update_rejects_immutable_status_field(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "status", "--value", "close",
+                "--reason", "try")
+    assert r.returncode == 1
+
+
+def test_update_rejects_immutable_history_field(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "history", "--value", "[]",
+                "--reason", "try")
+    assert r.returncode == 1
+
+
+def test_update_rejects_immutable_commit_sha_field(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "commit_sha", "--value", "abc",
+                "--reason", "try")
+    assert r.returncode == 1
+
+
+def test_update_rejects_invalid_priority_value(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "priority", "--value", "medium-high",
+                "--reason", "try")
+    assert r.returncode == 1
+    # error message names the valid set
+    for p in ("low", "medium", "high", "critical"):
+        assert p in r.stderr
+
+
+def test_update_rejects_empty_reason(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "priority", "--value", "low",
+                "--reason", "   ")
+    assert r.returncode == 1
+
+
+def test_update_rejects_empty_value(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "title", "--value", "",
+                "--reason", "try")
+    assert r.returncode == 1
+
+
+def test_update_noop_when_value_unchanged(filed_item, monkeypatch):
+    clone, id_str = filed_item
+    item_before = _fetch(clone, monkeypatch, id_str)
+    history_len_before = len(item_before["history"])
+
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "priority", "--value", "high",
+                "--reason", "no change attempt")
+    assert r.returncode == 0, r.stderr
+
+    item_after = _fetch(clone, monkeypatch, id_str)
+    assert item_after["priority"] == "high"
+    # no history entry appended
+    assert len(item_after["history"]) == history_len_before
+
+
+def test_update_missing_field_arg_argparse_exit(filed_item):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--value", "low", "--reason", "x")
+    assert r.returncode == 2
+
+
+def test_update_missing_value_arg_argparse_exit(filed_item):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "priority", "--reason", "x")
+    assert r.returncode == 2
+
+
+def test_update_missing_reason_arg_argparse_exit(filed_item):
+    clone, id_str = filed_item
+    r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                "--id", id_str, "--field", "priority", "--value", "low")
+    assert r.returncode == 2
