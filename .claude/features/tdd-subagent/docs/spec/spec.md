@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.12.0
+version: 1.13.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -195,6 +195,24 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     tree is clean at subagent start and `git diff HEAD` is always empty.
     Using `HEAD~1` ensures the subagent actually sees the spec delta it is
     expected to implement.
+28. `tdd-context.py` MUST read `deprecation_criterion` (flat key) from
+    `feature.json`, not `deprecation.criterion` (nested). The canonical
+    schema across all rabbit features is the flat form; the nested form is
+    legacy. For backward compatibility, read flat first; fall back to
+    `deprecation.criterion` only if the flat key is absent. Tests MUST use
+    the flat form in fixtures (the legacy nested form should appear only in
+    explicit backward-compatibility tests).
+29. `tdd-context.py` guidance text MUST reference `test/run.py` (the actual
+    Python test runner) when describing how to verify tests pass at the
+    `impl` state. References to `test/run.sh` are stale (no `.sh` files
+    exist in any feature per the Python-only stack invariants in contract
+    and rabbit-cage).
+30. `rabbit-feature-touch` SKILL.md B/B mode MUST read the item JSON from
+    `<item-dir>/item.json`, never from `<item-dir>/bug.json`. The
+    rabbit-file schema uses `item.json` for both bug and backlog types
+    (unified storage); `bug.json` is a legacy path that no longer exists.
+    The B/B mode `related_feature` extraction MUST use
+    `jq -r '.related_feature' <item-dir>/item.json`.
 
 ## Confirm-Token Bypass Path
 
