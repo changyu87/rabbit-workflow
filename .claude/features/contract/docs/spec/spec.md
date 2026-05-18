@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.9.0
+version: 1.10.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -91,6 +91,18 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 19. `check-naming.py` MUST enforce that the deprecated prefix `rbt-` is banned (matches rabbit-cage Inv 13). The legacy literal `rwf-` is incorrect — `rwf-` was never a banned prefix in this repo; `rbt-` is. The script's banned-prefix list MUST be exactly `["rbt-"]`.
 20. `.claude/features/contract/scripts/policy-block.py` (and every other Python script under `.claude/features/contract/scripts/` or `.claude/features/contract/scripts/enforcement/`) MUST have a module-level docstring describing its purpose, usage, and exit codes. `print_usage()` functions that print `__doc__` MUST therefore print non-empty text. A `None` usage output is a silent failure mode.
 21. `.claude/features/contract/test/run.py` MUST invoke every active `test-*.py` file in the test directory. Tests intentionally excluded (e.g., archived, superseded) MUST be moved out of the test directory or renamed with a leading underscore (`_test-...py`). Dead test files referencing deleted scripts (e.g., `test-relink-no-skills.py` referencing the removed `relink.sh`) MUST be deleted, not skipped.
+22. `feature.json.schema.json` MUST NOT require `bugs_root` (item storage was consolidated into rabbit-file's `bug-backlog-files` branch; per-feature `bugs_root` paths no longer apply) and MUST permit the optional top-level `updated` field used by rabbit-cage and other features for the last-modified date. The schema MUST be permissive enough to validate every actual feature.json in the repo without modification.
+23. `check-template-schema-producer-consistency.py` MUST reference only producers that exist. Any reference to `file-bug.sh`, `relink.sh`, or other deleted producers is dead code and MUST be removed. The producer list MUST be derived from the current `build-contract.json` or another live source, not from hardcoded names.
+24. `check-sentinel.py` MUST scan `.py` files (Python-only stack per Inv 11), not `.sh` files. The script's behavior on a `.sh`-only walk in a Python-only repo is silently vacuous.
+25. `bug-template.json` MUST use the field name `template_version` (matching every other template). The legacy `_template_version` underscore-prefix form is prohibited; templates MUST have consistent metadata field names.
+26. `feature-json-template.json` MUST validate against `feature.json.schema.json` (i.e., the template MUST be a legal `feature.json`). Templates carrying top-level fields the schema rejects (e.g., when `additionalProperties: false`) are broken by construction.
+27. `dispatch-feature-edit.py` project-feature path detection MUST handle paths that contain literal `.claude/features/` correctly: a feature reference like `.claude/features/<X>/scripts/foo.py` MUST resolve to feature `<X>`, not be misclassified as a project-relative path. The detection MUST use the `.claude/features/` prefix as a discriminator rather than substring heuristics that misfire.
+28. `find-feature.py` MUST close all opened file handles (use `with open()` context managers) and MUST scan ONLY `.claude/features/` for feature directories — not any directory whose basename happens to be `features` (project-side, dependency vendor dirs, etc.). Scope is `.claude/features/` exclusively.
+29. `audit-orphan-storage.py` MUST audit both bugs AND backlogs for orphaned storage (unmatched item.json without counter slot, or counter slot without item.json). Reporting only bugs creates a blind spot for backlog items, which are now equally first-class per the rabbit-file consolidation.
+30. `check-symlinks-resolve.py` MUST follow symlinks at any depth (use `find -L` or equivalent with no maxdepth limit), or document why a finite depth is sufficient. Hard-coding `maxdepth=3` silently misses symlinks nested deeper, producing false-OK results.
+31. `check-no-main-edits.py` MUST mirror the protected-branch set declared in rabbit-cage Inv 21 (currently `main`, `master`). It MUST NOT forbid additional branches (`trunk`, `develop`, etc.) that are not in any documented invariant. The protected-branch list MUST be a single source of truth, ideally derived from a shared constant or config rather than duplicated.
+32. `check-imports-resolve.py` import-target regex MUST cover all paths where imports can appear: `.claude/features/`, `.claude/hooks/`, `.claude/skills/`, `.claude/commands/`, `.claude/agents/`. The current `.claude/features/`-only pattern misses imports from deployed surface files, producing false-OK on real drift.
+33. `workspace-structure.json` schema field naming MUST be internally consistent: either all snake_case or all camelCase, not mixed. The current mixed-case form (camelCase metadata keys with snake_case enforcement targets) confuses readers and triggers spurious schema-vs-data mismatches.
 
 ## CLI Naming Convention
 
