@@ -2,10 +2,10 @@
   "name": "rabbit-feature-scope",
   "version": "1.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "spec-update",
   "summary": "Shared skill for resolving natural-language requests to the list of rabbit features whose files will be modified.",
   "status": "active",
-  "updated": "2026-05-17",
+  "updated": "2026-05-18",
   "deprecation": {
     "criterion": "When feature-scope resolution is automated natively by the dispatch infrastructure."
   },
