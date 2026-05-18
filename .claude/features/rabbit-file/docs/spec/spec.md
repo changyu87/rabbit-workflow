@@ -67,8 +67,14 @@ origin/bug-backlog-files root:
 
 ## Invariants
 
-- branch_ops.py MUST use git worktree at .claude/tmp/bug-backlog-files for
-  all writes. Worktree is always cleaned up via try/finally.
+- branch_ops.py MUST use git worktree at a UNIQUE per-process path under
+  .claude/tmp/ for all writes. The path format is
+  .claude/tmp/bug-backlog-files-<pid> where <pid> is the current process ID.
+  Each process gets its own isolated worktree so concurrent invocations from
+  different agents do not collide on the same filesystem path. Worktree is
+  always cleaned up via try/finally. The legacy fixed path
+  .claude/tmp/bug-backlog-files MUST NOT be used (it caused FileNotFoundError
+  and stale-state races under concurrent agent dispatch — RABBIT-FILE-BUG-18).
 - branch_ops._worktree() MUST check out the worktree branch using
   `git checkout -B bug-backlog-files origin/bug-backlog-files` (capital -B)
   after fetching origin/bug-backlog-files. This unconditionally resets the
@@ -76,6 +82,15 @@ origin/bug-backlog-files root:
   the latest committed items and writes never push from a stale base
   (preventing non-fast-forward push failures). The fallback two-step
   try/checkout-local + checkout-b sequence MUST NOT be used.
+- branch_ops push operations (counter commit, item commit, commit_sha
+  backfill) MUST be wrapped in a retry loop with up to 3 attempts. On a
+  non-fast-forward push failure, the retry MUST re-fetch
+  origin/bug-backlog-files, reset the worktree branch to the freshly-fetched
+  remote tip (`git checkout -B bug-backlog-files origin/bug-backlog-files`),
+  re-apply the local changes (re-write counter.json or item.json with the
+  same values, or reserve a fresh ID if the counter slot was taken by
+  another process), and retry the commit + push. After 3 failed attempts
+  the operation raises RuntimeError with a clear diagnostic.
 - branch_ops.allocate_id MUST be called before commit_item (counter reserves the ID slot).
 - item-status.py set MUST require --reason on every transition.
 - item-status.py update MUST require --field, --value, and --reason.
