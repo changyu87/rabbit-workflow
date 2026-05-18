@@ -48,6 +48,9 @@ SUITES = [
     "test-team-wide-permissions.py",
     "test-RABBIT-CAGE-WAVE2-inv61-65.py",
     "test-RABBIT-CAGE-WAVE3-inv66-68.py",
+    "test-RABBIT-CAGE-BACKLOG2-python-only.py",
+    "test-RABBIT-CAGE-BACKLOG13-claude-md-gitignore-drift.py",
+    "test-RABBIT-CAGE-WAVE4-bug-cleanup.py",
 ]
 
 
