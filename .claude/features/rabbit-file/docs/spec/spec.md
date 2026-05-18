@@ -102,6 +102,20 @@ origin/bug-backlog-files root:
   the attempt count and the last underlying error.
 - branch_ops.allocate_id MUST be called before commit_item (counter reserves the ID slot).
 - item-status.py set MUST require --reason on every transition.
+- item-status.py set MUST short-circuit a no-op transition (same status)
+  with exit 0 and a clear stdout message naming the current status; no
+  history entry is appended and no commit is created. This prevents the
+  bug-backlog-files branch from accumulating misleading history entries
+  with action=opened|closed that describe transitions that did not
+  actually change state. Tests MUST cover both the close→close and
+  open→open no-op cases.
+- commit_item's second push (commit_sha backfill on the just-written
+  item.json) MUST use the same retry-with-fetch+reset+reapply mechanism
+  as the primary push. The backfill push contains the SHA of the
+  primary commit and is essential for downstream consumers (PR creation,
+  release notes) to find the resolving commit; a silent failure leaves
+  item.json without commit_sha and breaks every consumer. The retry
+  budget and backoff policy MUST be identical to the primary push.
 - item-status.py update MUST require --field, --value, and --reason.
   The set of mutable fields is exactly {priority, title, description}.
   Any other --field value (including name, type, status, closed,
