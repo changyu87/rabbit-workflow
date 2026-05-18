@@ -57,11 +57,11 @@ def test_prompt_contains_all_9_steps():
         assert step in prompt, f"Step {step} missing from prompt"
 
 
-def test_no_human_approval_flag():
+def test_human_approval_gate_false_flag():
     spec = os.path.join(REPO_ROOT, ".claude/features/tdd-subagent/docs/spec/spec.md")
-    r = run(["--scope", "tdd-subagent", "--spec", spec, "--no-human-approval"])
+    r = run(["--scope", "tdd-subagent", "--spec", spec, "--human-approval-gate", "false"])
     assert r.returncode == 0
-    assert "Skipped (--no-human-approval)" in r.stdout
+    assert "Skipped (--human-approval-gate false)" in r.stdout
 
 
 def test_code_review_full_loop_flag():

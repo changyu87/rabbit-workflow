@@ -149,7 +149,7 @@ def _run_dispatch(extra_args=None):
         sys.executable, DISPATCH_PY,
         '--scope', 'tdd-subagent',
         '--spec', SPEC_PATH,
-        '--no-human-approval',
+        '--human-approval-gate', 'false',
     ]
     if extra_args:
         args.extend(extra_args)

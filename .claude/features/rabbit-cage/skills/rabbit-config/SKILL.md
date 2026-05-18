@@ -1,6 +1,6 @@
 ---
 name: rabbit-config
-description: Use to configure rabbit-workflow settings via /rabbit-config. Subcommands - prompt-threshold [N] (refresh threshold), allowed-tools [add|remove <tool>] (Claude Code tool permissions), bash-allow [add|remove <cmd>] (Bash command permissions), permissions [lock|unlock] (repo file write protection), human-approval [bypass|gated] (Step 4 gate state, hard file marker). Trigger on phrases like "change prompt threshold", "add permission", "bypass human approval", "revoke human-approval bypass".
+description: Use to configure rabbit-workflow settings via /rabbit-config. Subcommands - prompt-threshold [N] (refresh threshold), allowed-tools [add|remove <tool>] (Claude Code tool permissions), bash-allow [add|remove <cmd>] (Bash command permissions), permissions [lock|unlock] (repo file write protection), human-approval [true|false] (Step 4 gate state, hard file marker; true=gate active, false=bypass). Trigger on phrases like "change prompt threshold", "add permission", "bypass human approval", "revoke human-approval bypass".
 version: 1.0.0
 owner: rabbit-cage
 deprecation_criterion: when Claude Code provides a native typed-config mechanism that subsumes this skill
@@ -37,24 +37,27 @@ with `$ARGUMENTS`.
     lock     remove owner write permission from archive/ and test/ (run after git clone)
     unlock   restore owner write permission to archive/ and test/ (run before editing)
 
-/rabbit-config human-approval [bypass|gated]
-    human-approval bypass          write .rabbit-human-approval-bypass marker (skip Step 4)
-    human-approval gated           remove the marker (Step 4 returns to default-wait)
-    human-approval                 print current state to stdout: 'bypass' or 'gated'
+/rabbit-config human-approval [true|false]
+    human-approval false           write .rabbit-human-approval-bypass marker (bypass Step 4)
+    human-approval true            remove the marker (Step 4 gate active — default posture)
+    human-approval                 print current gate state to stdout: 'true' (active) or 'false' (bypassed)
 ```
 
 ## human-approval Marker Contract
 
 `.rabbit-human-approval-bypass` is a hard file marker at the repo root,
-gitignored, never committed. When present, `rabbit-feature-touch` dispatchers
-pass `--no-human-approval` to `dispatch-tdd-subagent.py` and Step 4 is skipped
-for every subsequent dispatch until the marker is removed.
+gitignored, never committed. The boolean value follows contract Inv 15
+(boolean CLI values use `true`/`false`): `true` = gate active (marker absent,
+default), `false` = gate bypassed (marker present). When the marker is
+present, `rabbit-feature-touch` dispatchers pass `--human-approval-gate false`
+to `dispatch-tdd-subagent.py` and Step 4 is skipped for every subsequent
+dispatch until the marker is removed.
 
 The marker persists across sessions. It is state, not conversation memory.
 `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event
 while the marker is present so the bypass cannot be silently forgotten.
 
-Revoke explicitly with `/rabbit-config human-approval gated` or manual delete.
+Revoke explicitly with `/rabbit-config human-approval true` or manual delete.
 
 ## When to Invoke
 
@@ -63,7 +66,7 @@ Revoke explicitly with `/rabbit-config human-approval gated` or manual delete.
 - "let bash run touch", "remove cat from bash-allow"
 - "lock the repo", "unlock archive/ and test/"
 - "bypass human approval", "skip Step 4 this session", "revoke the bypass",
-  "go back to gated", "what's the human-approval state?"
+  "re-enable the gate", "what's the human-approval state?"
 
 ## Red Flags — STOP
 
