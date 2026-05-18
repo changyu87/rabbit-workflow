@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.11.0
+version: 1.12.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -187,6 +187,14 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     the chore commit, not the implementation. The prompt MUST make the
     capture order explicit and the tdd-report MUST be fully written before
     the UNLOCK chore commit begins.
+27. The assembled prompt's STEP 1 SPEC-READ MUST diff the spec against the
+    PARENT commit, not against HEAD. Use `git diff HEAD~1 -- <feature_dir>/docs/spec/`
+    (or equivalent ref to the pre-spec-commit state). `git diff HEAD` shows
+    only uncommitted changes; since `rabbit-feature-touch` Step 3 commits
+    the spec change BEFORE dispatching the subagent (Inv 16), the working
+    tree is clean at subagent start and `git diff HEAD` is always empty.
+    Using `HEAD~1` ensures the subagent actually sees the spec delta it is
+    expected to implement.
 
 ## Confirm-Token Bypass Path
 
