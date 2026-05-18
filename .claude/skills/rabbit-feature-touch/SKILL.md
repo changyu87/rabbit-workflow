@@ -87,12 +87,13 @@ subagents run to completion and cannot pause for user input mid-execution.
 The marker file is the sole authorization mechanism for bypass. In-conversation
 acknowledgements ("you have permission to bypass") are NOT sufficient on their
 own — the marker is the system of record, managed via
-`/rabbit-config human-approval bypass|gated` (owned by rabbit-cage).
+`/rabbit-config human-approval true|false` (owned by rabbit-cage; `false`
+writes the marker — gate disabled — and `true` deletes it).
 
 - **If `.rabbit-human-approval-bypass` exists:**
   - Emit a visible warning to the user:
-    `[rabbit] Step 4 SKIPPED: .rabbit-human-approval-bypass marker active. Run /rabbit-config human-approval gated to restore the gate and require approval again.`
-  - Pass `--no-human-approval` to the Step 5 `dispatch-tdd-subagent.py`
+    `[rabbit] Step 4 SKIPPED: .rabbit-human-approval-bypass marker active. Run /rabbit-config human-approval true to restore the gate and require approval again.`
+  - Pass `--human-approval-gate false` to the Step 5 `dispatch-tdd-subagent.py`
     invocation.
   - Proceed to Step 5 immediately. Do NOT surface the impl-suggestion summary.
 - **If the marker file does NOT exist (default):**
@@ -107,7 +108,8 @@ own — the marker is the system of record, managed via
   - Wait for explicit in-conversation user approval ("looks good", "go ahead",
     or equivalent). If the user requests changes, invoke rabbit-spec again for
     the affected features, then return to this step.
-  - Do NOT pass `--no-human-approval`.
+  - Pass `--human-approval-gate true` (or omit the flag, since `true` is the
+    default) to the Step 5 `dispatch-tdd-subagent.py` invocation.
 
 ### Step 5 — Dispatch TDD Subagents
 
@@ -119,7 +121,7 @@ PROMPT=$(python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py 
   --spec .claude/features/<feature-name>/docs/spec/spec.md \
   --impl-suggestion .rabbit/impl-suggestion-<feature-name>.json \
   [--linked-item <bug-or-item-dir> --item-type <bug|backlog>] \
-  [--no-human-approval])
+  [--human-approval-gate false])
 Agent(model: opus, prompt: PROMPT)
 ```
 

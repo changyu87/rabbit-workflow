@@ -9,7 +9,7 @@
 #     [--linked-item <dir>] \
 #     [--item-type bug|backlog] \
 #     [--linked-items <feature>:<type>:<id>[,<feature>:<type>:<id>...]] \
-#     [--no-human-approval] \
+#     [--human-approval-gate true|false] \
 #     [--code-review-full-loop] \
 #     [--max-iterations N]
 #
@@ -100,7 +100,14 @@ def main(argv):
                         help="Comma-separated <feature>:<type>:<id> triples for secondary "
                              "items closed by the same impl commit (type in {bug, backlog}). "
                              "Malformed triples cause non-zero exit before prompt emit.")
-    parser.add_argument("--no-human-approval", action="store_true")
+    parser.add_argument(
+        "--human-approval-gate",
+        choices=["true", "false"],
+        default="true",
+        help="'true' (default) requires explicit user approval in the subagent's "
+             "HUMAN-APPROVAL step; 'false' skips that step. Replaces the legacy "
+             "--no-human-approval flag.",
+    )
     parser.add_argument("--code-review-full-loop", action="store_true")
     parser.add_argument("--max-iterations", type=int, default=3)
 
@@ -111,7 +118,8 @@ def main(argv):
             "ERROR: usage: dispatch-tdd-subagent.py --scope <feature> --spec <path> "
             "[--impl-suggestion <path>] [--linked-item <dir>] [--item-type bug|backlog] "
             "[--linked-items <feature>:<type>:<id>[,...]] "
-            "[--no-human-approval] [--code-review-full-loop] [--max-iterations N]\n"
+            "[--human-approval-gate true|false] [--code-review-full-loop] "
+            "[--max-iterations N]\n"
         )
         return 2
 
@@ -236,9 +244,9 @@ def main(argv):
     else:
         handoff_closed_items_block = ""
 
-    if args.no_human_approval:
+    if args.human_approval_gate == "false":
         human_approval_section = (
-            "\n## Step 2 — HUMAN-APPROVAL\n\nSkipped (--no-human-approval).\n"
+            "\n## Step 2 — HUMAN-APPROVAL\n\nSkipped (--human-approval-gate false).\n"
         )
     else:
         human_approval_section = """
