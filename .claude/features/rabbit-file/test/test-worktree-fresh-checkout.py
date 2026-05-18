@@ -67,9 +67,11 @@ def isolated_repo(tmp_path):
 
     yield local
 
-    wt = local / ".claude" / "tmp" / "bug-backlog-files"
-    if wt.exists():
-        shutil.rmtree(wt, ignore_errors=True)
+    tmp_dir = local / ".claude" / "tmp"
+    if tmp_dir.exists():
+        for child in tmp_dir.iterdir():
+            if child.name.startswith("bug-backlog-files"):
+                shutil.rmtree(child, ignore_errors=True)
     subprocess.run(["git", "-C", str(local), "worktree", "prune"],
                    capture_output=True)
 

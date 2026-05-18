@@ -28,6 +28,8 @@ if not run_pytest_suite("test-branch-ops.py"):
     total_fail += 1
 if not run_pytest_suite("test-worktree-fresh-checkout.py"):
     total_fail += 1
+if not run_pytest_suite("test-concurrent-worktree.py"):
+    total_fail += 1
 if not run_pytest_suite("test-file-item.py"):
     total_fail += 1
 if not run_pytest_suite("test-item-status.py"):
