@@ -42,13 +42,16 @@ if not os.path.exists(dead2):
 else:
     fail_t(2, f"dead test still exists at {dead2}")
 
-# t3: no remaining test file references scripts/relink.sh
+# t3: no remaining test file *invokes* scripts/relink.sh (legitimate
+# absence-assertions like test-build-contract.py's t5 are allowed).
 offenders = []
+SELF = os.path.basename(__file__)
+# test-build-contract.py asserts relink.sh ABSENCE per Inv 11 — that is allowed.
+ALLOWED = {SELF, "test-build-contract.py"}
 for fname in os.listdir(TEST_DIR):
     if not fname.startswith("test-") or not fname.endswith(".py"):
         continue
-    # Skip this very test, which mentions the path as a string.
-    if fname == os.path.basename(__file__):
+    if fname in ALLOWED:
         continue
     fpath = os.path.join(TEST_DIR, fname)
     try:
