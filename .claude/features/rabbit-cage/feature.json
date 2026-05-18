@@ -2,7 +2,7 @@
   "name": "rabbit-cage",
   "version": "3.2.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, skills for scaffolding, project management, and installation. Bug-filing and backlog management are now owned by rabbit-bug and rabbit-backlog respectively.",
   "surface": {
     "hooks": [],
@@ -19,5 +19,5 @@
     "settings": []
   },
   "deprecation_criterion": "when Claude Code exposes a native feature-container mechanism that subsumes this role",
-  "updated": "2026-05-17"
+  "updated": "2026-05-18"
 }

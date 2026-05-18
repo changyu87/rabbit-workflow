@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
-"""session-init.py — session-start injection of CLAUDE.md @-imports.
+"""session-init.py — session-start hook.
 
-Wired to SessionStart. Fires immediately at session start (no counter gate).
-Reads all @-import paths from CLAUDE.md and emits them as additionalContext
-JSON so policy is present from the very first prompt.
+Wired to SessionStart. Two responsibilities:
 
-Output format: {"additionalContext": "...", "systemMessage": "..."}
-Stays silent (exits 0 with no stdout) if no @-imports found in CLAUDE.md.
+1. R1 branch enforcement (Inv 21-23, 61): if `git branch --show-current` is
+   `main` or `master`, create and check out `session/YYYYMMDD-HHMMSS` and emit
+   a green [rabbit] systemMessage naming the branch. Off-main: no-op.
+
+2. Policy injection: read every @-import from CLAUDE.md and emit them as
+   additionalContext so policy is present from the first prompt.
+
+Output: one JSON object per emission, written line by line to stdout. Both
+the R1 emission and the policy-injection emission MAY appear in the same
+invocation (one per line).
 """
 
+import datetime
 import json
 import os
 import re
@@ -32,12 +39,40 @@ def repo_root() -> Path:
         return here
 
 
-def main() -> int:
-    root = repo_root()
-    claude_md = root / "CLAUDE.md"
+def _emit(obj: dict) -> None:
+    sys.stdout.write(json.dumps(obj) + "\n")
 
+
+def _enforce_r1_branch(root: Path) -> None:
+    """If on main/master, create session/YYYYMMDD-HHMMSS branch and emit msg."""
+    try:
+        current = subprocess.check_output(
+            ["git", "-C", str(root), "branch", "--show-current"],
+            stderr=subprocess.DEVNULL,
+        ).decode().strip()
+    except Exception:
+        return
+    if current not in ("main", "master"):
+        return
+    ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    branch = f"session/{ts}"
+    try:
+        subprocess.check_call(
+            ["git", "-C", str(root), "checkout", "-b", branch],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        return
+    _emit({
+        "systemMessage": f"\x1b[32m🌿 ━━━ [rabbit] R1: created branch {branch} ━━━ 🌿\x1b[0m",
+    })
+
+
+def _inject_policy(root: Path) -> None:
+    claude_md = root / "CLAUDE.md"
     if not claude_md.exists():
-        return 0
+        return
 
     text = claude_md.read_text()
     imports = []
@@ -47,7 +82,7 @@ def main() -> int:
             imports.append(m.group(1))
 
     if not imports:
-        return 0
+        return
 
     parts = [
         "Session start policy injection. Governing files from CLAUDE.md @-imports:\n\n"
@@ -64,10 +99,16 @@ def main() -> int:
 
     payload = "".join(parts)
     files_label = " ".join(imports)
-    print(json.dumps({
+    _emit({
         "additionalContext": payload,
         "systemMessage": f"\x1b[32m✅ ━━━ [rabbit] Policy injected at session start — {files_label} ━━━ ✅\x1b[0m",
-    }))
+    })
+
+
+def main() -> int:
+    root = repo_root()
+    _enforce_r1_branch(root)
+    _inject_policy(root)
     return 0
 
 

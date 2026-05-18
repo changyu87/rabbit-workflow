@@ -144,7 +144,16 @@ def decide(target: str) -> Tuple[bool, str]:
             continue
         per_path = find_feature_path(REPO_ROOT, per_feature)
         if not per_path:
-            continue
+            # Inv 65: unresolvable marker MUST DENY (not silently fall through).
+            # A typo'd or stale per-feature marker would otherwise bypass the
+            # write gate. Name the feature and direct the user to verify.
+            return False, (
+                f"DENY write to '{abs_path}' denied: active scope marker "
+                f"'.rabbit-scope-active-{per_feature}' names an unresolvable "
+                f"feature '{per_feature}'. Verify the marker name matches "
+                f"an existing feature (check .claude/features/ directory) "
+                f"and remove the stale marker if needed."
+            )
         per_abs = str(REPO_ROOT) + "/" + per_path
         if abs_path.startswith(per_abs):
             return True, f"ALLOW (per-feature scope marker: {per_feature})"
@@ -158,6 +167,15 @@ def decide(target: str) -> Tuple[bool, str]:
         except Exception:
             pass
         feature_path = find_feature_path(REPO_ROOT, scope_feature) if scope_feature else None
+        if scope_feature and not feature_path:
+            # Inv 65: global marker names an unresolvable feature → DENY.
+            return False, (
+                f"DENY write to '{abs_path}' denied: global scope marker "
+                f"'.rabbit-scope-active' names an unresolvable feature "
+                f"'{scope_feature}'. Verify the marker contents match an "
+                f"existing feature (check .claude/features/ directory) "
+                f"and remove the stale marker if needed."
+            )
         if feature_path:
             feature_abs = str(REPO_ROOT) + "/" + feature_path
             if not abs_path.startswith(feature_abs):

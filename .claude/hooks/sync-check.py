@@ -78,13 +78,30 @@ def main() -> int:
         )
         return m.group(0) if m else ""
 
+    # Inv 63: additionalContext MUST either expand @-imports or carry a clear
+    # note that the agent must independently load referenced files. Claude Code
+    # does NOT auto-follow @-imports inside additionalContext strings, so the
+    # raw policy section embedded below is otherwise a silent no-op for any
+    # `@<path>` line. Choose the note path here: it is small, cheap, and
+    # avoids context blowup on large policy trees.
+    AT_IMPORT_NOTE = (
+        "NOTE: @-imports in the section below are NOT auto-resolved inside "
+        "additionalContext. The agent MUST independently Read each "
+        "referenced file (e.g. `Read('.claude/policy/<file>.md')`) to load "
+        "the actual policy content.\n\n"
+    )
+
+    def _wrap_ctx(section: str, full: str) -> str:
+        body = section + "\n" if section else full
+        return AT_IMPORT_NOTE + body
+
     # First-run scenario
     if not claude_md.exists():
         claude_md.write_text(expected)
         (root / ".rabbit-prompt-counter").write_text(f"{refresh_every}\n")
         section = policy_section(expected)
         emit({
-            "additionalContext": section + "\n" if section else expected,
+            "additionalContext": _wrap_ctx(section, expected),
             "systemMessage": "\x1b[32m📋 ━━━ [rabbit] Policy initialized — CLAUDE.md created for first time ━━━ 📋\x1b[0m",
         })
         return 0
@@ -95,7 +112,7 @@ def main() -> int:
         (root / ".rabbit-prompt-counter").write_text(f"{refresh_every}\n")
         section = policy_section(expected)
         emit({
-            "additionalContext": section + "\n" if section else expected,
+            "additionalContext": _wrap_ctx(section, expected),
             "systemMessage": "\x1b[31m⚠️ ━━━ [rabbit] Policy drift detected — CLAUDE.md regenerated from source files ━━━ ⚠️\x1b[0m",
         })
         return 0
@@ -121,7 +138,7 @@ def main() -> int:
             except Exception:
                 pass
             emit({
-                "systemMessage": "\x1b[32m🔄 ━━━ [rabbit] Surface drift detected — workspace rebuilt from sources ━━━ 🔄\x1b[0m",
+                "systemMessage": "\x1b[31m🔄 ━━━ [rabbit] Surface drift detected — workspace rebuilt from sources ━━━ 🔄\x1b[0m",
             })
             json_emitted = True
 
