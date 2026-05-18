@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.8.0
+version: 1.9.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -45,8 +45,13 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 12. dispatch-tdd-subagent.py interface: --scope (mandatory), --spec (mandatory),
     --impl-suggestion (optional), --linked-item / --item-type (B/B mode, primary item),
     --linked-items (optional, comma-separated `<feature>:<type>:<id>` triples for
-    secondary items resolved by the same cycle), --no-human-approval,
-    --code-review-full-loop, --max-iterations (default 3, min 1).
+    secondary items resolved by the same cycle), --human-approval-gate `true|false`
+    (default `true`; `false` skips the subagent's HUMAN-APPROVAL step),
+    --code-review-full-loop, --max-iterations (default 3, min 1). The legacy
+    `--no-human-approval` flag is removed; all callers must use
+    `--human-approval-gate false` instead. Boolean flag values follow the
+    contract feature's CLI Naming Convention (Inv 15 of contract): exclusively
+    `true` or `false`, never `enabled`/`disabled` or any other vocabulary.
 13. `rabbit-feature-touch` SKILL.md describes a **seven-step** unified sequence
     (not six). The seven steps in order are: (1) Scope Resolution, (2) Create
     Branch, (3) Spec Authoring, (4) Human Approval, (5) Dispatch TDD Subagents,
@@ -62,15 +67,18 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 15. Step 4 (Human Approval) is bypassable only when the user has explicitly
     requested autonomous execution. The bypass authorization is encoded as a
     hard file marker `.rabbit-human-approval-bypass` at the repo root, managed
-    via the `/rabbit-config human-approval bypass|gated` skill (owned by
-    rabbit-cage). At Step 4, the dispatcher MUST check for this marker file:
-    - If `.rabbit-human-approval-bypass` exists: skip the in-conversation wait,
-      emit a visible `[rabbit]` warning naming the bypass marker and the path
-      `/rabbit-config human-approval gated` to revoke it, and pass
-      `--no-human-approval` to the Step 5 `dispatch-tdd-subagent.py`
+    via the `/rabbit-config human-approval true|false` skill (owned by
+    rabbit-cage; `false` writes the marker — gate disabled — and `true`
+    deletes it). At Step 4, the dispatcher MUST check for this marker file:
+    - If `.rabbit-human-approval-bypass` exists: skip the in-conversation
+      wait, emit a visible `[rabbit]` warning naming the bypass marker and
+      the path `/rabbit-config human-approval true` to revoke it, and pass
+      `--human-approval-gate false` to the Step 5 `dispatch-tdd-subagent.py`
       invocation.
     - If the marker is absent: surface the impl-suggestion summary and wait
-      for explicit in-conversation user approval as the default.
+      for explicit in-conversation user approval. The dispatcher passes
+      `--human-approval-gate true` (or omits the flag, since `true` is the
+      default).
     In-conversation acknowledgements ("you have permission to bypass") are
     NOT a valid mechanism on their own — the marker file is the system of
     record. Silent bypass without either an explicit in-session direction

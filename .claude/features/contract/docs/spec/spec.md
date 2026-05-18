@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.6.0
+version: 1.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -84,6 +84,53 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 12. `.claude/workspace-structure.json` exists, is valid JSON, conforms to the `workspace-structure.json` schema (requires `schema_version`, `owner`, `root`, `nodes` at top level), has `root` equal to `"rabbit"`, and declares nodes for `features`, `skills`, `hooks`, and `commands`.
 13. `check-naming.py` documents that the `rbt-` prefix is fully deprecated with no remaining valid use cases; comments and flag messages in that script must not reference `rbt-` as a valid or recommended prefix. The current naming policy is: user-facing artifacts use `rabbit-`; the `rbt-` prefix is banned.
 14. `rabbit-triage.py` is called as `rabbit-triage.py <feature-dir> <bug-name>` and locates bug.json at `<repo-root>/.claude/bugs/<feature-name>/<bug-name>/bug.json` (centralized bug storage, where `<feature-name>` is the basename of `<feature-dir>`). It does NOT look in `<feature-dir>/docs/bugs/`.
+15. Boolean CLI flag values and subcommand values across the rabbit workflow use the literal strings `true` and `false` exclusively. The values `enabled`, `disabled`, `on`, `off`, `yes`, `no` are prohibited as boolean values (action verbs like `lock`, `unlock`, `add`, `remove` remain allowed when the subcommand itself denotes an action, not a boolean state).
+16. CLI flag names, subcommand names, and configuration variable names in the rabbit workflow MUST be positive-streamlined: they describe what is present/active, never what is absent/disabled. Names beginning with `no-`, `disable-`, `skip-`, `without-`, or any negating prefix are prohibited. If such a name exists, it must be renamed to describe what IS active when the flag/variable is true. Boolean state is encoded in the value (`true`/`false`), never in the name.
+
+## CLI Naming Convention
+
+All CLI flags, subcommand values, and configuration variable names in the
+rabbit workflow follow two rules. These rules apply to scripts under any
+feature's `scripts/`, `skills/<name>/scripts/`, and `hooks/`, and to
+subcommand values exposed by skills like `/rabbit-config`.
+
+**Rule 1 — Boolean values use `true`/`false` exclusively.**
+
+Boolean CLI flag values and subcommand values use the literal strings
+`true` and `false`. Do NOT use:
+
+- `enabled` / `disabled`
+- `on` / `off`
+- `yes` / `no`
+- `lock` / `unlock` for boolean state (action verbs are fine when the
+  command itself is the action — e.g. `permissions lock` is an action,
+  not a boolean value)
+
+Examples:
+- PREFER: `--human-approval-gate true`, `/rabbit-config human-approval true`
+- AVOID:  `--human-approval-gate enabled`, `/rabbit-config human-approval bypass`
+
+**Rule 2 — Names must be positive-streamlined.**
+
+Flag names, subcommand names, and configuration variable names describe
+what is present or enabled, not what is absent or disabled. If a name
+would otherwise begin with `no-`, `disable-`, `skip-`, `without-`, or
+any negating prefix, rewrite it to describe what IS active when the
+flag/variable is true.
+
+Examples:
+- PREFER: `--human-approval-gate`, `--enable-review`, `bypass-marker-present`
+- AVOID:  `--no-human-approval`, `--disable-review`, `--skip-review`
+
+The rule is mechanical: read the name without context. If the name
+describes an absence or negation, rename it. Boolean state is encoded
+in the value (`true`/`false`), never in the name.
+
+**Rationale.** Negated names compose poorly with boolean values
+(`--no-human-approval false` means "do require approval" — three
+negations to parse). Positive names compose cleanly
+(`--human-approval-gate false` means "no gate"). Consistent
+`true`/`false` values mean no per-flag value vocabulary to memorize.
 
 ## Out of Scope
 
