@@ -6,7 +6,7 @@ Subcommands:
   allowed-tools [add|remove <tool>]    manage permissions.allow entries (non-Bash)
   bash-allow    [add|remove <command>] manage Bash(<command>:*) permissions.allow entries
   permissions    lock|unlock           delegate to repo-permissions.py
-  human-approval [bypass|gated]        manage Step 4 (HUMAN-APPROVAL) bypass marker
+  human-approval [true|false]          manage Step 4 (HUMAN-APPROVAL) gate state
 
 All argv parsing comes from sys.argv[1:]; this script is the sole implementation
 of /rabbit-config. The slash-command shim at commands/rabbit-config.md execs it.
@@ -33,10 +33,10 @@ USAGE = '''Usage:
   /rabbit-config permissions lock|unlock
       lock     remove owner write permission from archive/ and test/ (run after git clone)
       unlock   restore owner write permission to archive/ and test/ (run before editing)
-  /rabbit-config human-approval [bypass|gated]
-      human-approval bypass          write .rabbit-human-approval-bypass marker (skip Step 4)
-      human-approval gated           remove the marker (Step 4 returns to default-wait)
-      human-approval                 print current state: 'bypass' or 'gated' '''
+  /rabbit-config human-approval [true|false]
+      human-approval false           write .rabbit-human-approval-bypass marker (bypass Step 4)
+      human-approval true            remove the marker (Step 4 gate active — default)
+      human-approval                 print current gate state: 'true' (active) or 'false' (bypassed) '''
 
 
 def load_local():
@@ -165,20 +165,21 @@ def cmd_human_approval(args):
     action = args[0] if args else ''
     marker = pathlib.Path('.rabbit-human-approval-bypass')
     if action == '':
-        print('bypass' if marker.exists() else 'gated')
+        # State query: 'true' = gate active (marker absent); 'false' = bypassed (marker present)
+        print('false' if marker.exists() else 'true')
         return 0
-    if action == 'bypass':
+    if action == 'false':
         marker.write_text('session')
-        print(f'Human-approval BYPASS active. Marker: {marker}')
+        print(f'Human-approval gate DISABLED (false). Marker written: {marker}')
         return 0
-    if action == 'gated':
+    if action == 'true':
         if marker.exists():
             marker.unlink()
-            print(f'Human-approval gated. Marker removed: {marker}')
+            print(f'Human-approval gate ENABLED (true). Marker removed: {marker}')
         else:
-            print('Human-approval already gated (no marker present).')
+            print('Human-approval gate already enabled (no marker present).')
         return 0
-    print(f'Error: unknown action {action!r} for human-approval (expected bypass, gated, or no action)', file=sys.stderr)
+    print(f'Error: unknown value {action!r} for human-approval (expected true, false, or no action)', file=sys.stderr)
     return 1
 
 
