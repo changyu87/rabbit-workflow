@@ -17,7 +17,6 @@ import os
 import shutil
 import subprocess
 import sys
-import threading
 from pathlib import Path
 
 import pytest
@@ -287,26 +286,59 @@ class TestListItemsBranchMissing:
 
 class TestListItemsDeterministicSort:
     def test_output_sorted_by_name(self, isolated_repo, monkeypatch):
-        """list-items.py output MUST be sorted by name."""
-        # File items in an order such that sorted != insertion.
-        for n in (3, 1, 2):
+        """list-items.py output MUST be sorted by name (lexicographically).
+
+        Files 3 items, then directly verifies the output ordering matches
+        sorted(name) — which catches any reliance on filesystem walk order
+        (rglob is generally insertion-stable in CPython but not guaranteed
+        across platforms, so the script MUST sort explicitly)."""
+        ids = []
+        for _ in range(3):
             id_str = branch_ops.allocate_id("sort-feat", "bug")
-            assert id_str.endswith(f"-{n}")
             item = {
-                "name": id_str, "type": "bug", "title": f"Item {n}",
+                "name": id_str, "type": "bug", "title": f"Item {id_str}",
                 "status": "open", "priority": "low", "description": "x",
                 "related_feature": "sort-feat",
                 "filed": "2026-01-01T00:00:00Z", "filed_by": "t",
                 "closed": None, "history": [],
             }
             branch_ops.commit_item("sort-feat", "bug", id_str, item)
+            ids.append(id_str)
 
         r = _run_list(isolated_repo, "--feature", "sort-feat")
         assert r.returncode == 0, r.stderr
         lines = [l for l in r.stdout.strip().splitlines() if "SORT-FEAT" in l]
         names = [l.split()[0] for l in lines]
+        # The list-items.py script MUST sort lexicographically by name —
+        # this matches what `sorted()` does in Python.
         assert names == sorted(names), (
             f"list-items.py output must be sorted by name; got: {names}"
+        )
+        # And the sorted result must contain every filed item.
+        assert set(names) == set(ids), (
+            f"expected exactly the filed IDs {ids}, got {names}"
+        )
+
+    def test_output_sort_is_stable_across_runs(self, isolated_repo, monkeypatch):
+        """Two back-to-back invocations against the same branch state MUST
+        print byte-identical output."""
+        for _ in range(3):
+            id_str = branch_ops.allocate_id("stable-feat", "bug")
+            item = {
+                "name": id_str, "type": "bug", "title": f"S {id_str}",
+                "status": "open", "priority": "low", "description": "x",
+                "related_feature": "stable-feat",
+                "filed": "2026-01-01T00:00:00Z", "filed_by": "t",
+                "closed": None, "history": [],
+            }
+            branch_ops.commit_item("stable-feat", "bug", id_str, item)
+
+        r1 = _run_list(isolated_repo, "--feature", "stable-feat")
+        r2 = _run_list(isolated_repo, "--feature", "stable-feat")
+        assert r1.returncode == 0 and r2.returncode == 0
+        assert r1.stdout == r2.stdout, (
+            f"list-items.py output is non-deterministic:\n"
+            f"run1: {r1.stdout!r}\nrun2: {r2.stdout!r}"
         )
 
 
@@ -315,31 +347,50 @@ class TestListItemsDeterministicSort:
 # ---------------------------------------------------------------------------
 
 class TestAllocateIdRace:
-    def test_threaded_allocate_id_distinct(self, isolated_repo):
-        """Two threads calling allocate_id concurrently MUST produce distinct
-        IDs (explicit in-process race test; complements the cross-process
-        test in test-concurrent-worktree.py)."""
-        branch_ops.allocate_id("race-feat", "bug")  # prime branch
+    def test_subprocess_allocate_id_distinct(self, isolated_repo):
+        """Two file-item.py subprocesses launched simultaneously against the
+        same feature MUST produce distinct IDs. This is an explicit race
+        test that complements the broader 3-way concurrent filing test in
+        test-concurrent-worktree.py (BACKLOG-3)."""
+        # Prime the branch so subprocesses don't race on orphan-branch init.
+        branch_ops.allocate_id("race-feat", "bug")
+
+        file_item = SCRIPTS_DIR / "file-item.py"
+        env = os.environ.copy()
+        procs = []
+        for i in range(2):
+            p = subprocess.Popen(
+                [sys.executable, str(file_item),
+                 "--type", "bug",
+                 "--feature", "race-feat",
+                 "--title", f"race {i}",
+                 "--priority", "low",
+                 "--description", f"race test {i}",
+                 "--filed-by", "tester"],
+                cwd=str(isolated_repo),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+            )
+            procs.append(p)
 
         results = []
-        errors = []
+        for p in procs:
+            out, err = p.communicate(timeout=120)
+            assert p.returncode == 0, (
+                f"file-item.py failed: stdout={out!r} stderr={err!r}"
+            )
+            results.append(out.decode())
 
-        def alloc():
-            try:
-                results.append(branch_ops.allocate_id("race-feat", "bug"))
-            except Exception as e:
-                errors.append(e)
-
-        threads = [threading.Thread(target=alloc) for _ in range(2)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join(timeout=120)
-
-        assert not errors, f"allocation raised: {errors}"
-        assert len(results) == 2
-        assert len(set(results)) == 2, (
-            f"concurrent allocate_id produced duplicate IDs: {results}"
+        ids = []
+        for out in results:
+            for line in out.splitlines():
+                if line.startswith("Filed:"):
+                    ids.append(line.split()[1])
+                    break
+        assert len(ids) == 2
+        assert len(set(ids)) == 2, (
+            f"concurrent file-item.py produced duplicate IDs: {ids}"
         )
 
 

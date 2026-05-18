@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """Tests for item-status.py"""
-import json
 import subprocess
 import sys
-from datetime import timezone, datetime
 from pathlib import Path
 
 import pytest

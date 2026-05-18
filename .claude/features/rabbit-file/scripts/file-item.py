@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import json
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -53,9 +52,34 @@ def main():
 
     try:
         sha = branch_ops.commit_item(args.feature, args.type_, id_str, item)
-    except RuntimeError as e:
+    except Exception as e:
+        # BUG-10: roll back the ID slot so it is not burned. release_id is
+        # best-effort: it only decrements the counter if no other allocation
+        # has happened above us. We always surface the original commit error
+        # to the user; rollback outcome goes to stderr for auditability.
+        try:
+            released = branch_ops.release_id(args.feature, args.type_, id_str)
+            if released:
+                print(
+                    f"NOTE: rolled back unused ID slot {id_str} "
+                    f"after commit_item failed.",
+                    file=sys.stderr,
+                )
+            else:
+                print(
+                    f"NOTE: did not roll back {id_str} (slot already "
+                    f"consumed by another allocation).",
+                    file=sys.stderr,
+                )
+        except Exception as rb_err:  # pragma: no cover - best-effort
+            print(
+                f"WARNING: release_id raised during rollback of {id_str}: "
+                f"{type(rb_err).__name__}: {rb_err}",
+                file=sys.stderr,
+            )
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
+
     print(f"Filed: {id_str}  sha: {sha}")
 
 

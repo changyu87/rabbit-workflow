@@ -15,11 +15,25 @@ import os
 import random
 import shutil
 import subprocess
+import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path
 
-_BRANCH = "bug-backlog-files"
+# ---------------------------------------------------------------------------
+# Public module-level constants (BACKLOG-10)
+# ---------------------------------------------------------------------------
+# Branch name on origin where every bug/backlog item is stored.
+BRANCH = "bug-backlog-files"
+# Git identity used for every commit produced by this module. Set via env
+# vars per-commit (see _git_env_with_identity) so concurrent worktrees do
+# not race on .git/config.
+IDENTITY_NAME = "rabbit-file"
+IDENTITY_EMAIL = "rabbit-file@localhost"
+
+# Legacy private alias retained for internal call sites; the module-level
+# `BRANCH` constant above is the canonical export.
+_BRANCH = BRANCH
 # Spec floor is "at least 3 attempts". Real-world concurrent contention
 # from multiple agent worktrees racing on the same remote ref needs more
 # headroom (each subprocess does 3 pushes: counter + item + sha-backfill,
@@ -57,10 +71,10 @@ def _git_env_with_identity():
     concurrent operation across per-process worktrees (BUG-18 follow-on).
     """
     env = os.environ.copy()
-    env["GIT_AUTHOR_NAME"] = "rabbit-file"
-    env["GIT_AUTHOR_EMAIL"] = "rabbit-file@localhost"
-    env["GIT_COMMITTER_NAME"] = "rabbit-file"
-    env["GIT_COMMITTER_EMAIL"] = "rabbit-file@localhost"
+    env["GIT_AUTHOR_NAME"] = IDENTITY_NAME
+    env["GIT_AUTHOR_EMAIL"] = IDENTITY_EMAIL
+    env["GIT_COMMITTER_NAME"] = IDENTITY_NAME
+    env["GIT_COMMITTER_EMAIL"] = IDENTITY_EMAIL
     return env
 
 
@@ -375,15 +389,22 @@ def commit_item(feature: str, type_: str, id_str: str, item: dict) -> str:
     commit "item: <id_str>", push, backfill commit_sha, commit
     "sha: backfill <id_str>", push. Both pushes use the retry helper to
     survive non-fast-forward (BUG-20). Returns the final commit SHA.
+
+    The caller-supplied `item` dict is treated as input-only and is NOT
+    mutated by this call (BACKLOG-4): commit_sha is added to an internal
+    copy before being persisted, so callers can safely re-use their dict
+    for retry or logging.
     """
     repo_root = _get_repo_root()
     sha_holder = {"sha": None}
+    # Work against a local copy so the caller's dict is never mutated.
+    item_copy = dict(item)
 
     def stage_item(wt):
         item_dir = _item_dir(wt, feature, type_, id_str)
         item_dir.mkdir(parents=True, exist_ok=True)
         item_file = item_dir / "item.json"
-        item_file.write_text(json.dumps(item, indent=2))
+        item_file.write_text(json.dumps(item_copy, indent=2))
         rel = str(item_file.relative_to(wt))
         _git(wt, "add", rel)
         _git(wt, "commit", "-m", f"item: {id_str}")
@@ -392,7 +413,7 @@ def commit_item(feature: str, type_: str, id_str: str, item: dict) -> str:
         item_dir = _item_dir(wt, feature, type_, id_str)
         item_dir.mkdir(parents=True, exist_ok=True)
         item_file = item_dir / "item.json"
-        stored = {**item, "commit_sha": sha_holder["sha"]}
+        stored = {**item_copy, "commit_sha": sha_holder["sha"]}
         item_file.write_text(json.dumps(stored, indent=2))
         rel = str(item_file.relative_to(wt))
         _git(wt, "add", rel)
@@ -404,6 +425,65 @@ def commit_item(feature: str, type_: str, id_str: str, item: dict) -> str:
         _commit_and_push_with_retry(wt, stage_sha_backfill)
 
     return sha_holder["sha"]
+
+
+def release_id(feature: str, type_: str, id_str: str) -> bool:
+    """Best-effort rollback of an allocated-but-unused ID slot (BUG-10).
+
+    If counter.json's `next` value still equals the just-allocated N+1 (i.e.
+    no other process has allocated above us), decrement it back to N and
+    push the rollback commit. Otherwise leave the counter alone — the slot
+    has been overtaken by a competing allocation and reusing it would
+    create a duplicate ID.
+
+    Returns True if the slot was reclaimed; False if left alone.
+    """
+    # Recover N from the trailing "-N" of id_str.
+    try:
+        n_reserved = int(id_str.rsplit("-", 1)[1])
+    except (ValueError, IndexError):
+        return False
+
+    repo_root = _get_repo_root()
+    released = {"ok": False}
+
+    def stage_rollback(wt):
+        cur = read_counter(wt, feature, type_)
+        # Safe to roll back only if counter is exactly one past our reserved N.
+        if cur != n_reserved + 1:
+            # Slot already consumed by another allocation. No rollback.
+            return None  # signal "nothing to commit"
+        write_counter(wt, feature, type_, n_reserved)
+        cp = counter_path(wt, feature, type_)
+        _git(wt, "add", str(cp.relative_to(wt)))
+        nonce = f"{os.getpid()}-{random.randint(0, 1 << 30)}"
+        _git(wt, "commit", "-m", f"counter: release {id_str} [{nonce}]")
+        released["ok"] = True
+
+    with _worktree(repo_root) as wt:
+        # Custom retry: if stage_rollback decides not to commit (slot overtaken),
+        # we abort without pushing.
+        for attempt in range(1, _MAX_PUSH_ATTEMPTS + 1):
+            result = stage_rollback(wt)
+            if result is None and not released["ok"]:
+                # Nothing to commit — slot was overtaken.
+                return False
+            push = subprocess.run(
+                ["git", "-C", str(wt), "push", "origin", f"HEAD:{_BRANCH}"],
+                capture_output=True, text=True,
+            )
+            if push.returncode == 0:
+                return True
+            if not _is_retryable_push_error(push.stderr or ""):
+                # Non-retryable push error during rollback — best-effort, give up.
+                return False
+            if attempt == _MAX_PUSH_ATTEMPTS:
+                return False
+            backoff = min(2.0, 0.05 * (2 ** (attempt - 1))) + random.uniform(0, 0.1)
+            time.sleep(backoff)
+            _reset_worktree_to_origin(wt)
+            released["ok"] = False
+    return False
 
 
 def fetch_item(feature: str, type_: str, id_str: str) -> "dict | None":
@@ -421,6 +501,13 @@ def fetch_item(feature: str, type_: str, id_str: str) -> "dict | None":
         if not item_file.exists():
             return None
         return json.loads(item_file.read_text())
+
+
+def branch_exists() -> bool:
+    """Return True iff origin/bug-backlog-files exists. Public helper
+    for callers that need to distinguish 'no branch' from 'branch exists
+    but no matching items' (BUG-28)."""
+    return _branch_exists_on_remote(_get_repo_root())
 
 
 def read_branch(feature: str = None, type_: str = None,
@@ -442,7 +529,23 @@ def read_branch(feature: str = None, type_: str = None,
         for item_file in base.rglob("item.json"):
             try:
                 item = json.loads(item_file.read_text())
-            except (json.JSONDecodeError, OSError):
+            except (json.JSONDecodeError, OSError) as err:
+                # BUG-24: never silently swallow malformed items. Log a
+                # structured warning that names the offending file (relative
+                # to the worktree root, with the containing ID dir) and the
+                # underlying parse/IO error class. Operators need to see
+                # corruption when it happens.
+                try:
+                    rel = item_file.relative_to(wt)
+                except ValueError:
+                    rel = item_file
+                # Surface the item-dir name (ID) prominently in the message
+                # so it can be grepped/diagnosed quickly.
+                id_dir = item_file.parent.name
+                sys.stderr.write(
+                    f"rabbit-file: malformed item.json skipped: "
+                    f"{rel} (id={id_dir}): {type(err).__name__}: {err}\n"
+                )
                 continue
 
             if feature is not None and item.get("related_feature") != feature:

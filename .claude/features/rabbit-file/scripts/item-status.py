@@ -13,6 +13,10 @@ VALID_STATUSES = {"open", "close"}
 VALID_TYPES = {"bug", "backlog"}
 MUTABLE_FIELDS = {"priority", "title", "description"}
 VALID_PRIORITIES = {"low", "medium", "high", "critical"}
+# BACKLOG-7: enforce a sane length cap on free-text fields so item.json
+# stays small enough to commit/diff cheaply on bug-backlog-files.
+MAX_FREE_TEXT_LEN = 500
+FREE_TEXT_FIELDS = {"title", "description"}
 
 
 def _git_user():
@@ -34,6 +38,19 @@ def cmd_get(args):
         print(f"ERROR: item {args.id} not found", file=sys.stderr)
         sys.exit(1)
     print(item["status"])
+
+
+def cmd_show(args):
+    """BACKLOG-8: print the full item.json (pretty) for inspection."""
+    try:
+        item = branch_ops.fetch_item(args.feature, args.type_, args.id)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+    if item is None:
+        print(f"ERROR: item {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+    print(json.dumps(item, indent=2, sort_keys=False))
 
 
 def cmd_set(args):
@@ -102,6 +119,14 @@ def cmd_update(args):
             file=sys.stderr,
         )
         sys.exit(1)
+    # BACKLOG-7: enforce length cap on free-text fields.
+    if args.field in FREE_TEXT_FIELDS and len(args.value) > MAX_FREE_TEXT_LEN:
+        print(
+            f"ERROR: {args.field} exceeds max length {MAX_FREE_TEXT_LEN} "
+            f"(got {len(args.value)} characters)",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     try:
         item = branch_ops.fetch_item(args.feature, args.type_, args.id)
@@ -155,6 +180,11 @@ def main():
     g.add_argument("--type", dest="type_", required=True, choices=sorted(VALID_TYPES))
     g.add_argument("--id", required=True)
 
+    sh = sub.add_parser("show")
+    sh.add_argument("--feature", required=True)
+    sh.add_argument("--type", dest="type_", required=True, choices=sorted(VALID_TYPES))
+    sh.add_argument("--id", required=True)
+
     s = sub.add_parser("set")
     s.add_argument("--feature", required=True)
     s.add_argument("--type", dest="type_", required=True, choices=sorted(VALID_TYPES))
@@ -174,6 +204,8 @@ def main():
     args = p.parse_args()
     if args.cmd == "get":
         cmd_get(args)
+    elif args.cmd == "show":
+        cmd_show(args)
     elif args.cmd == "set":
         cmd_set(args)
     else:
