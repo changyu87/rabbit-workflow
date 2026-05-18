@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.13.0
+version: 1.14.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -213,6 +213,20 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     (unified storage); `bug.json` is a legacy path that no longer exists.
     The B/B mode `related_feature` extraction MUST use
     `jq -r '.related_feature' <item-dir>/item.json`.
+31. The assembled TDD subagent prompt MUST handle the case where the
+    starting `tdd_state` (in `feature.json`) is `test-green` from a prior
+    completed cycle. The `tdd-step.py` state machine is forward-only and
+    rejects any backward or sideways transition without `--force`; the
+    only valid forward transition from `test-green` is to `spec-update`
+    (the entry state of the next cycle). The prompt MUST therefore include
+    an explicit transition `tdd-step.py transition <feature_dir>
+    spec-update` BEFORE the STEP 5 `test-red` transition whenever the
+    starting state is `test-green`. The subagent MUST check the starting
+    state via `tdd-step.py show <feature_dir>` at the top of the named
+    steps and conditionally run the spec-update transition; running it
+    unconditionally also works because spec-update → spec-update is a
+    self-loop allowed by the state machine, or because most features at
+    cycle start are at test-green from the prior cycle.
 
 ## Confirm-Token Bypass Path
 
