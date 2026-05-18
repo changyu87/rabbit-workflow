@@ -2,7 +2,7 @@
   "name": "tdd-subagent",
   "version": "2.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "Owns the TDD subagent (dispatch-tdd-subagent.py) and rabbit-feature-touch skill. Enforces 9-step TDD discipline (SPEC-READ \u2192 UNLOCK) on every feature touch via tdd-step.py state transitions.",
   "surface": {
     "hooks": [],
