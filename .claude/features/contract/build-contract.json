@@ -105,7 +105,7 @@
     {
       "name": "agents/tdd-subagent/scripts/tdd-step.py",
       "type": "copy-file",
-      "source": ".claude/features/tdd-subagent/scripts/tdd-step.py",
+      "source": ".claude/features/tdd-state-machine/scripts/tdd-step.py",
       "destination": ".claude/agents/tdd-subagent/scripts/tdd-step.py",
       "check_on_stop": true
     },
@@ -119,14 +119,14 @@
     {
       "name": "agents/tdd-subagent/scripts/tdd-drift-check.py",
       "type": "copy-file",
-      "source": ".claude/features/tdd-subagent/scripts/tdd-drift-check.py",
+      "source": ".claude/features/tdd-state-machine/scripts/tdd-drift-check.py",
       "destination": ".claude/agents/tdd-subagent/scripts/tdd-drift-check.py",
       "check_on_stop": true
     },
     {
       "name": "agents/tdd-subagent/scripts/tdd-context.py",
       "type": "copy-file",
-      "source": ".claude/features/tdd-subagent/scripts/tdd-context.py",
+      "source": ".claude/features/tdd-state-machine/scripts/tdd-context.py",
       "destination": ".claude/agents/tdd-subagent/scripts/tdd-context.py",
       "check_on_stop": true
     },
