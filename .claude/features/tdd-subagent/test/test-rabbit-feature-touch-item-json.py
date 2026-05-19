@@ -8,7 +8,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 REPO_ROOT = os.path.abspath(os.path.join(FEATURE_DIR, '..', '..', '..'))
 
-SKILL_SRC = os.path.join(FEATURE_DIR, 'skills', 'rabbit-feature-touch', 'SKILL.md')
+SKILL_SRC = os.path.join(REPO_ROOT, '.claude', 'features', 'rabbit-feature', 'skills', 'rabbit-feature-touch', 'SKILL.md')
 SKILL_BUILT = os.path.join(REPO_ROOT, '.claude', 'skills', 'rabbit-feature-touch', 'SKILL.md')
 
 PASS = 0

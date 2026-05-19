@@ -27,7 +27,7 @@ REPO_ROOT = subprocess.check_output(
 
 SOURCE_SKILL = os.path.join(
     REPO_ROOT,
-    '.claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md',
+    '.claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md',
 )
 DEPLOYED_SKILL = os.path.join(
     REPO_ROOT, '.claude/skills/rabbit-feature-touch/SKILL.md'

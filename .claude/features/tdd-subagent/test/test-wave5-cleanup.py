@@ -26,7 +26,7 @@ TDD_STEP_PY = os.path.join(FEATURE_DIR, 'scripts/tdd-step.py')
 TDD_DRIFT_PY = os.path.join(FEATURE_DIR, 'scripts/tdd-drift-check.py')
 SPEC_PATH = os.path.join(FEATURE_DIR, 'docs/spec/spec.md')
 CONTRACT_PATH = os.path.join(FEATURE_DIR, 'docs/spec/contract.md')
-SKILL_PATH = os.path.join(FEATURE_DIR, 'skills/rabbit-feature-touch/SKILL.md')
+SKILL_PATH = os.path.join(REPO_ROOT, '.claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md')
 FEATURE_JSON = os.path.join(FEATURE_DIR, 'feature.json')
 TEST_TDD_STEP_PY = os.path.join(FEATURE_DIR, 'test/test-tdd-step.py')
 

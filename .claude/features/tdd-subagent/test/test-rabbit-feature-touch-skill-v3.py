@@ -7,7 +7,7 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], cwd=SCRIPT_DIR).decode().strip()
-SKILL = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md')
+SKILL = os.path.join(REPO_ROOT, '.claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md')
 DEPLOYED = os.path.join(REPO_ROOT, '.claude/skills/rabbit-feature-touch/SKILL.md')
 
 PASS = 0
@@ -64,7 +64,7 @@ else:
 def test_rabbit_spec_is_step_3():
     """rabbit-feature-touch must list rabbit-spec as Step 3."""
     skill_path = os.path.join(
-        REPO_ROOT, ".claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md"
+        REPO_ROOT, ".claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md"
     )
     with open(skill_path) as f:
         content = f.read()
@@ -75,7 +75,7 @@ def test_rabbit_spec_is_step_3():
 def test_seven_steps_total():
     """rabbit-feature-touch must have 7 steps total (spec invariant 13)."""
     skill_path = os.path.join(
-        REPO_ROOT, ".claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md"
+        REPO_ROOT, ".claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md"
     )
     with open(skill_path) as f:
         content = f.read()
@@ -86,7 +86,7 @@ def test_seven_steps_total():
 def test_dispatch_tdd_subagent_referenced():
     """rabbit-feature-touch must reference dispatch-tdd-subagent.py."""
     skill_path = os.path.join(
-        REPO_ROOT, ".claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md"
+        REPO_ROOT, ".claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md"
     )
     with open(skill_path) as f:
         content = f.read()

@@ -10,7 +10,7 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], cwd=SCRIPT_DIR).decode().strip()
-SKILL = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md')
+SKILL = os.path.join(REPO_ROOT, '.claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md')
 DISPATCH = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py')
 GITIGNORE = os.path.join(REPO_ROOT, '.gitignore')
 

@@ -23,7 +23,7 @@ SPEC_PATH = os.path.join(
 )
 SKILL_PATHS = [
     os.path.join(
-        REPO_ROOT, ".claude", "features", "tdd-subagent",
+        REPO_ROOT, ".claude", "features", "rabbit-feature",
         "skills", "rabbit-feature-touch", "SKILL.md",
     ),
     os.path.join(REPO_ROOT, ".claude", "skills", "rabbit-feature-touch", "SKILL.md"),

@@ -9,7 +9,7 @@ import sys
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
 SKILL_PATH = os.path.join(
     REPO_ROOT,
-    ".claude", "features", "tdd-subagent",
+    ".claude", "features", "rabbit-feature",
     "skills", "rabbit-feature-touch", "SKILL.md",
 )
 
