@@ -1,52 +1,81 @@
 #!/usr/bin/env python3
-# test-validate-feature-real-features.py — e2e test for spec Inv 39.
+# test-validate-feature-real-features.py — e2e test for spec Inv 39 (BUG-38).
 #
-# validate-feature.py MUST exit 0 on every real feature directory under
-# .claude/features/ in this repo. Per Inv 14, bug storage is centralized
-# to .claude/bugs/<feature-name>/; per-feature docs/bugs/ no longer applies.
-# A spurious requirement for docs/bugs/ fails every feature except those
-# that happen to retain a legacy docs/bugs/ directory.
+# validate-feature.py MUST exit 0 for a feature directory that is otherwise
+# valid (correct feature.json, spec.md, contract.md, executable test/run.py)
+# but lacks the legacy `docs/bugs/` directory. Per Inv 14, bug storage is
+# centralized to `<repo-root>/.claude/bugs/<feature-name>/`; per-feature
+# `docs/bugs/` no longer applies.
+#
+# This is the e2e flavour of `test-validate-no-bugs-root.py`: the existing
+# test creates `docs/bugs/` on the fixture (so it does not actually exercise
+# the BUG-38 condition). This test omits `docs/bugs/` deliberately.
 
+import json
 import os
-import sys
+import shutil
 import subprocess
+import sys
+import tempfile
 
-REPO_ROOT = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..")
-)
-FEATURES_DIR = os.path.join(REPO_ROOT, ".claude", "features")
-VALIDATE = os.path.join(
-    REPO_ROOT, ".claude", "features", "contract", "scripts", "validate-feature.py"
-)
+FEATURE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+VALIDATE = os.path.join(FEATURE_DIR, "scripts/validate-feature.py")
 
-failures = []
-checked = 0
 
-for entry in sorted(os.listdir(FEATURES_DIR)):
-    feature_dir = os.path.join(FEATURES_DIR, entry)
-    if not os.path.isdir(feature_dir):
-        continue
-    if not os.path.isfile(os.path.join(feature_dir, "feature.json")):
-        # Skip non-feature directories (README.md, policy/, etc. without feature.json).
-        continue
-    checked += 1
+def make_fixture_without_docs_bugs():
+    d = tempfile.mkdtemp(prefix="contract-bug-38-fixture-")
+    name = os.path.basename(d)
+
+    os.makedirs(os.path.join(d, "docs/spec"), exist_ok=True)
+    os.makedirs(os.path.join(d, "test"), exist_ok=True)
+    # NOTE: intentionally do NOT create docs/bugs/ — this is the BUG-38 scenario.
+
+    with open(os.path.join(d, "docs/spec/spec.md"), "w") as f:
+        f.write("# Fixture spec\nBody.\n")
+    with open(os.path.join(d, "docs/spec/contract.md"), "w") as f:
+        f.write("# Fixture contract\nBody.\n")
+
+    run_py = os.path.join(d, "test/run.py")
+    with open(run_py, "w") as f:
+        f.write("#!/usr/bin/env python3\nimport sys; sys.exit(0)\n")
+    os.chmod(run_py, 0o755)
+
+    feature_data = {
+        "name": name,
+        "version": "0.1.0",
+        "owner": "test-owner",
+        "tdd_state": "spec",
+        "summary": "Fixture for BUG-38 e2e test.",
+        "surface": {
+            "hooks": [],
+            "commands": [],
+            "agents": [],
+            "skills": [],
+        },
+        "deprecation_criterion": "when test is done",
+    }
+    with open(os.path.join(d, "feature.json"), "w") as f:
+        json.dump(feature_data, f, indent=2)
+
+    return d
+
+
+fixture = make_fixture_without_docs_bugs()
+try:
     proc = subprocess.run(
-        ["python3", VALIDATE, feature_dir],
+        ["python3", VALIDATE, fixture],
         capture_output=True, text=True
     )
-    if proc.returncode != 0:
-        failures.append((feature_dir, proc.returncode, proc.stdout + proc.stderr))
+finally:
+    shutil.rmtree(fixture, ignore_errors=True)
 
-if checked == 0:
-    print("FAIL: no real features found to validate", file=sys.stderr)
+if proc.returncode != 0:
+    print(
+        f"FAIL: validate-feature.py exited {proc.returncode} on a valid feature dir without docs/bugs/ (expected 0)",
+        file=sys.stderr,
+    )
+    print(f"  stdout: {proc.stdout}", file=sys.stderr)
+    print(f"  stderr: {proc.stderr}", file=sys.stderr)
     sys.exit(1)
 
-if failures:
-    print(f"FAIL: validate-feature.py failed on {len(failures)} real feature(s):", file=sys.stderr)
-    for fd, rc, out in failures:
-        print(f"  {fd}: exit={rc}", file=sys.stderr)
-        for line in out.splitlines():
-            print(f"    {line}", file=sys.stderr)
-    sys.exit(1)
-
-print(f"test-validate-feature-real-features: PASS ({checked} feature(s) validated)")
+print("test-validate-feature-real-features: PASS (BUG-38 — no docs/bugs/ required)")
