@@ -5,6 +5,7 @@ Covers:
   POLICY-BUG-1   test-backlog003.py rule count assertion matches actual 4 rules
   POLICY-BUG-2   test-rule-files-content.py comment says 'three rule files'
   POLICY-BUG-7   spec.md and contract.md version are aligned
+  POLICY-BUG-19  feature.json, spec.md, and contract.md versions all align (three-way)
   POLICY-BUG-9   test-POLICY-1 t2 comment correctly describes the @-import regex
   POLICY-BUG-18  test-policy-invariants-v1-2-0.py is removed from run.py (or deleted)
   POLICY-BACKLOG-1  coding-rules.md has a 'do not create docs unless asked' rule
@@ -18,6 +19,7 @@ Owner: rabbit-workflow team (policy)
 Deprecation criterion: when each bug/backlog has its own targeted test or is closed.
 """
 
+import json
 import os
 import re
 import sys
@@ -90,6 +92,17 @@ if spec_v and contract_v and spec_v == contract_v:
     ok(f"POLICY-BUG-7: spec.md and contract.md aligned at {spec_v}")
 else:
     ko(f"POLICY-BUG-7: spec.md v={spec_v} != contract.md v={contract_v}")
+
+
+# POLICY-BUG-19: feature.json, spec.md, and contract.md versions all match (three-way alignment)
+feature_json_path = os.path.join(FEATURE_DIR, "feature.json")
+with open(feature_json_path) as f:
+    feature_json = json.load(f)
+feature_v = feature_json.get("version")
+if spec_v and contract_v and feature_v and spec_v == contract_v == feature_v:
+    ok(f"POLICY-BUG-19: feature.json, spec.md, contract.md all aligned at {feature_v}")
+else:
+    ko(f"POLICY-BUG-19: three-way mismatch — feature.json={feature_v}, spec.md={spec_v}, contract.md={contract_v}")
 
 
 # POLICY-BUG-9: t2 comment correctly describes the @-import regex format

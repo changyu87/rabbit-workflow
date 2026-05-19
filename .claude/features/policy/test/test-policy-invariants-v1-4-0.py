@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# test-policy-invariants-v1-3-0.py — Verifies spec v1.3.0 invariants:
+# test-policy-invariants-v1-4-0.py — Verifies spec v1.4.0 invariants:
 #   (1) philosophy.md, spec-rules.md, coding-rules.md exist and are non-empty.
 #   (2) workflow-rules.md does NOT exist.
 #   (3) No .sh files exist anywhere within the feature directory.

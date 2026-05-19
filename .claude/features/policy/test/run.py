@@ -23,7 +23,8 @@ run_test("test-rule-files-content.py")
 run_test("test-imports-resolve.py")
 run_test("test-backlog003.py")
 # test-policy-invariants-v1-2-0.py removed: superseded by v1-3-0 (POLICY-BUG-18).
-run_test("test-policy-invariants-v1-3-0.py")
+# test-policy-invariants-v1-3-0.py renamed to v1-4-0 (POLICY-BUG-19: spec is at 1.4.0).
+run_test("test-policy-invariants-v1-4-0.py")
 run_test("test-POLICY-1-no-stale-imports.py")
 run_test("test-policy-bug-fixes.py")
 run_test("test-backlog-11-12.py")
