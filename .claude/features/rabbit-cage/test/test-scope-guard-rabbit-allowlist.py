@@ -191,10 +191,56 @@ try:
     print("=== (d) Spec/source check: .rabbit/ appears in scope-guard.py ===")
 
     sg = read(SCOPE_GUARD)
-    if "/.rabbit/" in sg:
-        ok("scope-guard.py source contains '/.rabbit/' prefix")
+    if "/.rabbit/" in sg or ".rabbit" in sg:
+        ok("scope-guard.py source contains '.rabbit' prefix")
     else:
-        fail_t("scope-guard.py source does NOT contain '/.rabbit/' prefix")
+        fail_t("scope-guard.py source does NOT contain '.rabbit' prefix")
+
+    print()
+    print("=== (e) BUG-87: exact directory path matches path-prefix allowlist ===")
+
+    # t8: Bash `mkdir .rabbit` (exact directory match, no trailing slash) → ALLOW
+    bash_json = (
+        '{"tool_name":"Bash","tool_input":{"command":"mkdir '
+        + REPO_ROOT + '/.rabbit"}}'
+    )
+    exit_code, stderr = run_scope_guard(bash_json)
+    if exit_code == 0:
+        ok("Bash 'mkdir .rabbit' exits 0 (ALLOW) — exact dir match (BUG-87)")
+    else:
+        fail_t(
+            f"Bash 'mkdir .rabbit' exits {exit_code} (expected 0/ALLOW) — BUG-87; "
+            f"stderr: {stderr.strip()}"
+        )
+
+    # t9: Bash `mkdir .rabbit/sub` (path inside .rabbit) → ALLOW (regression guard)
+    bash_json = (
+        '{"tool_name":"Bash","tool_input":{"command":"mkdir '
+        + REPO_ROOT + '/.rabbit/sub"}}'
+    )
+    exit_code, stderr = run_scope_guard(bash_json)
+    if exit_code == 0:
+        ok("Bash 'mkdir .rabbit/sub' exits 0 (ALLOW) — path-inside match")
+    else:
+        fail_t(
+            f"Bash 'mkdir .rabbit/sub' exits {exit_code} (expected 0/ALLOW); "
+            f"stderr: {stderr.strip()}"
+        )
+
+    # t10: Bash write to .rabbit-other-sibling → DENY (sibling, not allowlisted)
+    # Use `touch` so the target is unambiguous and matches a non-marker basename.
+    bash_json = (
+        '{"tool_name":"Bash","tool_input":{"command":"touch '
+        + REPO_ROOT + '/.rabbit-other-sibling"}}'
+    )
+    exit_code, stderr = run_scope_guard(bash_json)
+    if exit_code != 0:
+        ok("Bash 'touch .rabbit-other-sibling' DENIED — sibling not matched by allowlist")
+    else:
+        fail_t(
+            "Bash 'touch .rabbit-other-sibling' unexpectedly ALLOWED — "
+            "exact-match check must be strict equality, not prefix"
+        )
 
 finally:
     # Restore
