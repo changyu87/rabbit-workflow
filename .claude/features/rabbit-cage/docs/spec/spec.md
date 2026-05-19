@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.4.0
+version: 3.5.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -362,6 +362,15 @@ metadata, not feature code, and must not require a session override —
 override semantics are reserved for exceptional human-approved bypasses, not
 routine workflow writes.
 
+For each allowlisted prefix, the match accepts BOTH the exact directory path
+(e.g., `.rabbit`) AND any path inside it (e.g., `.rabbit/foo.json`). The
+exact-directory form is required so that directory-creation operations like
+`mkdir .rabbit` (where the Bash target is `.rabbit` with no trailing slash)
+are permitted; without it, only writes to files inside an already-existing
+directory would match. The exact form is a strict equality check on the
+directory path itself, never a prefix — this prevents accidental matches on
+sibling paths like `.rabbit-scope-active` or `.rabbit-human-approval-bypass`.
+
 **Path-pattern allowlist:** `scope-guard.py` additionally permits writes to
 the path pattern `.claude/features/<feature>/docs/spec/spec.md` regardless
 of scope-marker state, where `<feature>` is any single path segment
@@ -395,7 +404,14 @@ rules.
     `rabbit-feature-touch` dispatcher can write `.rabbit/impl-suggestion-<feature>.json`
     and `.rabbit/tdd-report-<feature>.json` during normal feature work without
     needing a session override (override is reserved for exceptional
-    human-approved bypasses, not routine workflow writes).
+    human-approved bypasses, not routine workflow writes). For each
+    allowlisted prefix, the match permits BOTH the exact directory path
+    (e.g., `abs_path == REPO_ROOT + "/.rabbit"`) AND any path inside it
+    (e.g., `abs_path.startswith(REPO_ROOT + "/.rabbit/")`). The exact form
+    is required for directory-creation operations like `mkdir .rabbit` whose
+    Bash target is `.rabbit` with no trailing slash; the exact form is a
+    strict equality check, never a prefix, so sibling paths such as
+    `.rabbit-scope-active` and `.rabbit-human-approval-bypass` do NOT match.
     `scope-guard.py` also maintains a path-pattern allowlist permitting
     writes to `.claude/features/<feature>/docs/spec/spec.md` for any single
     path segment `<feature>` (matched as `[^/]+`), regardless of
