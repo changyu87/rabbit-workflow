@@ -124,11 +124,13 @@ else:
 settings = json.loads(read(SETTINGS_JSON))
 skill = read(SKILL_MD)
 
-# t9
-if settings.get("permissions", {}).get("defaultMode") == "bypassPermissions":
-    ok(9, "BACKLOG-12: settings.json permissions.defaultMode == 'bypassPermissions'")
+# t9 — INVERTED for BACKLOG-12 reopening: bypass mode is now per-user (Inv 69
+# rewritten), so the shared settings.json MUST NOT declare permissions.defaultMode.
+# Operators opt in via /rabbit-config bypass-permissions true → settings.local.json.
+if "defaultMode" not in settings.get("permissions", {}):
+    ok(9, "BACKLOG-12 (reopened): settings.json no longer declares permissions.defaultMode (now per-user via settings.local.json)")
 else:
-    fail_t(9, "BACKLOG-12: settings.json missing permissions.defaultMode='bypassPermissions'")
+    fail_t(9, "BACKLOG-12 (reopened): settings.json still declares permissions.defaultMode (must be removed; bypass mode is per-user)")
 
 # t10 — SKILL.md documents skipDangerousModePermissionPrompt user-local option.
 if "skipDangerousModePermissionPrompt" in skill and "settings.local.json" in skill:
