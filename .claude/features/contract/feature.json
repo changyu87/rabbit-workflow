@@ -2,7 +2,7 @@
   "name": "contract",
   "version": "1.2.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "surface": {
     "hooks": [],
@@ -12,5 +12,5 @@
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-19",
   "tdd_last_cycle_impl_commit": "eae35f270bb84a6a14bb814bc57b9f08613f49a0",
-  "spec_no_change_reason": "metadata + repoint update; no new invariant"
+  "spec_no_change_reason": "spec changes already committed in a6739faf (BUG-40)"
 }

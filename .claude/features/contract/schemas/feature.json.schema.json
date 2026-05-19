@@ -40,6 +40,11 @@
       "enum": ["spec", "test-red", "impl", "test-green", "review", "merged", "deprecated"],
       "description": "Current TDD state."
     },
+    "status": {
+      "type": "string",
+      "enum": ["active", "retired"],
+      "description": "Feature lifecycle status. Defaults to 'active' when omitted. 'retired' signals the surface has been absorbed into a successor feature; validate-feature.py short-circuits on retired features."
+    },
     "summary": {
       "type": "string",
       "minLength": 1,
