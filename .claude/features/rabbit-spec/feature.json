@@ -10,5 +10,6 @@
     "skills": []
   },
   "deprecation_criterion": "When spec authoring is natively handled by the rabbit CLI or a successor skill.",
-  "updated": "2026-05-18"
+  "updated": "2026-05-19",
+  "spec_no_change_reason": "BACKLOG-9 is a test-only item: closes invariant test gaps for Inv 2, 3, 10 \u2014 no spec edits required by impl-suggestion."
 }
