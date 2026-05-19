@@ -2,7 +2,7 @@
   "name": "rabbit-spec",
   "version": "2.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "RETIRED 2026-05-19 - surface absorbed into rabbit-feature as rabbit-feature-spec.",
   "status": "retired",
   "updated": "2026-05-19",
