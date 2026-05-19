@@ -42,6 +42,8 @@ if not run_pytest_suite("test-RABBIT-FILE-BACKLOG-7-per-field-limits.py"):
     total_fail += 1
 if not run_pytest_suite("test-RABBIT-FILE-BACKLOG-7-control-char-strip.py"):
     total_fail += 1
+if not run_pytest_suite("test-bug-32-chained-workspace-guard.py"):
+    total_fail += 1
 if not run_suite("test-skill.py"):
     total_fail += 1
 
