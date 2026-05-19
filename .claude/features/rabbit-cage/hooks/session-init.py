@@ -1,27 +1,28 @@
 #!/usr/bin/env python3
 """session-init.py — session-start hook.
 
-Wired to SessionStart. Two responsibilities:
+Wired to SessionStart. One responsibility:
 
-1. R1 branch enforcement (Inv 21-23, 61): if `git branch --show-current` is
-   `main` or `master`, create and check out `session/YYYYMMDD-HHMMSS` and emit
-   a green [rabbit] systemMessage naming the branch. Off-main: no-op.
+  Policy injection: read every @-import from CLAUDE.md and emit them as
+  additionalContext so policy is present from the first prompt.
 
-2. Policy injection: read every @-import from CLAUDE.md and emit them as
-   additionalContext so policy is present from the first prompt.
+The legacy R1 branch enforcement (auto-creating session/YYYYMMDD-HHMMSS on
+main/master) is REMOVED per Inv 61 (spec v3.12.0). Operators are responsible
+for creating their own feature branches before editing; direct commits to
+main remain blocked by the Bash(git push * main) deny rules (Inv 51) and by
+check-no-main-edits.py in contract.
 
-Output: AT MOST ONE JSON object per invocation (Inv 75 / BACKLOG-18). When
-both conditions apply, their rendered [rabbit] lines are combined into one
-systemMessage (newline-joined, R1 line first, policy line second) and
-emitted within a single JSON object that also carries additionalContext
-when policy injection applies.
+Output: AT MOST ONE JSON object per invocation (Inv 75). Policy injection is
+the sole pending condition; when it applies the emitted JSON carries the
+policy line in systemMessage and the expanded policy text in
+additionalContext. When CLAUDE.md is missing or has no @-imports, no JSON is
+emitted (exit 0, empty stdout).
 
 Brand/decoration/color/text bodies are sourced from the central registry
 .claude/features/contract/schemas/rabbit-print-messages.json via the shared
 renderer rabbit_print.py (Inv 18, 77).
 """
 
-import datetime
 import json
 import os
 import re
@@ -42,7 +43,7 @@ for _candidate in [_HERE, *_HERE.parents]:
         break
 from rabbit_print import (  # noqa: E402
     rabbit_block, rabbit_subline,
-    r1_branch, welcome,
+    welcome,
 )
 
 
@@ -79,39 +80,6 @@ def repo_root() -> Path:
     except Exception as e:
         _log_exc("repo_root: git rev-parse failed; falling back to script dir", e)
         return here
-
-
-def render_r1_branch(root: Path) -> Optional[dict]:
-    """Inv 21-23, 61, 76. Pure-function renderer for R1 branch enforcement.
-
-    If currently on main/master, create session/YYYYMMDD-HHMMSS branch (side
-    effect: git checkout -b) and return the alert payload. Off-main: return
-    None and do nothing.
-    """
-    try:
-        current = subprocess.check_output(
-            ["git", "-C", str(root), "branch", "--show-current"],
-            stderr=subprocess.DEVNULL,
-        ).decode().strip()
-    except Exception as e:
-        _log_exc("git branch --show-current failed; skipping R1 enforcement", e)
-        return None
-    if current not in ("main", "master"):
-        return None
-    ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    branch = f"session/{ts}"
-    try:
-        subprocess.check_call(
-            ["git", "-C", str(root), "checkout", "-b", branch],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except Exception as e:
-        _log_exc(f"git checkout -b {branch} failed; R1 branch not created", e)
-        return None
-    return {
-        "systemMessage": r1_branch(branch=branch),
-    }
 
 
 def render_policy(root: Path) -> Optional[dict]:
@@ -185,30 +153,23 @@ def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
         sys.stdout.write(
             "session-init.py — SessionStart hook.\n"
-            "Reads stdin (JSON payload from Claude Code, ignored), enforces R1 "
-            "branch policy, and emits CLAUDE.md @-import policy as "
-            "additionalContext on stdout.\n"
-            "Emits AT MOST ONE JSON object per invocation (Inv 75); R1 and "
-            "policy lines are aggregated into one systemMessage when both apply.\n"
+            "Reads stdin (JSON payload from Claude Code, ignored) and emits "
+            "CLAUDE.md @-import policy as additionalContext on stdout.\n"
+            "Emits AT MOST ONE JSON object per invocation (Inv 75); policy "
+            "injection is the sole pending condition.\n"
             "Takes no command-line arguments.\n"
         )
         return 0
     root = repo_root()
-    payloads = []
-    for payload in (render_r1_branch(root), render_policy(root)):
-        if payload is not None:
-            payloads.append(payload)
-
-    if not payloads:
+    payload = render_policy(root)
+    if payload is None:
         return 0
 
     aggregated = {
-        "systemMessage": rabbit_block(*(p["systemMessage"] for p in payloads)),
+        "systemMessage": rabbit_block(payload["systemMessage"]),
     }
-    for p in payloads:
-        if "additionalContext" in p:
-            aggregated["additionalContext"] = p["additionalContext"]
-            break
+    if "additionalContext" in payload:
+        aggregated["additionalContext"] = payload["additionalContext"]
 
     sys.stdout.write(json.dumps(aggregated) + "\n")
     return 0
