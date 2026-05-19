@@ -161,7 +161,7 @@ RABBIT_PRINT_PRODUCERS = [
     ".claude/features/rabbit-cage/hooks/sync-check.py",
     ".claude/features/rabbit-cage/hooks/session-init.py",
     ".claude/features/rabbit-cage/hooks/refresh.py",
-    ".claude/features/tdd-subagent/scripts/tdd-step.py",
+    ".claude/features/tdd-state-machine/scripts/tdd-step.py",
 ]
 missing_producers = [p for p in RABBIT_PRINT_PRODUCERS if not os.path.isfile(os.path.join(REPO_ROOT, p))]
 if not missing_producers:
