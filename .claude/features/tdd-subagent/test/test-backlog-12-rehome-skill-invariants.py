@@ -58,10 +58,14 @@ def main():
         spec = f.read()
 
     # 1. Version bump.
-    if re.search(r"^version:\s*1\.20\.0\s*$", spec, re.MULTILINE):
-        ok("spec version bumped to 1.20.0")
+    # BACKLOG-12 bumped the spec to 1.20.0; later cycles may bump further
+    # (e.g., BACKLOG-13 -> 1.21.0). Accept any 1.x version with x >= 20
+    # rather than pinning to a single value.
+    m = re.search(r"^version:\s*1\.(\d+)\.(\d+)\s*$", spec, re.MULTILINE)
+    if m and int(m.group(1)) >= 20:
+        ok(f"spec version is 1.{m.group(1)}.{m.group(2)} (>= 1.20.0)")
     else:
-        ko("spec version is not 1.20.0")
+        ko(f"spec version is not >= 1.20.0 (got: {m.group(0) if m else 'no match'})")
 
     # 2. Slice the Invariants section body (between "## Invariants"
     #    heading and the next "## " heading).

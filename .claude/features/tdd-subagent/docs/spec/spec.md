@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.20.0
+version: 1.21.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -35,7 +35,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 1. `tdd_state` transitions are forward-only without `--force`.
 2. `test-green` transition triggers enforcement checks.
 3. All four scripts are executable.
-4. `test-green` transition auto-closes any in-progress backlog items (stored on the `bug-backlog-files` branch per rabbit-file consolidation) via `python3 .claude/features/rabbit-file/scripts/item-status.py set --feature <feature> --type backlog --id <ID> --status close --reason 'auto-closed by tdd-step.py test-green' --fix-commits HEAD` (best-effort). The legacy `backlog-item-status.py` script no longer exists; tdd-step.py must use the unified `item-status.py` interface.
+4. Auto-closing in-progress backlog items on `test-green` is the dispatcher's responsibility, not `tdd-step.py`'s. `dispatch-tdd-subagent.py` (via `--linked-item` / `--linked-items`) invokes `python3 .claude/features/rabbit-file/scripts/item-status.py set --feature <feature> --type <type> --id <ID> --status close --reason '...' --fix-commits <impl-sha>` for each item after the subagent reaches `test-green`. `tdd-step.py`'s `auto_close_backlog` hook is retained as a best-effort no-op stub for backward compatibility; it MUST NOT scan a legacy `.claude/backlogs/<feature>/` directory (that layout was retired when rabbit-file consolidated backlog storage onto the `bug-backlog-files` branch). The legacy `backlog-item-status.py` script no longer exists; any auto-close call site MUST use `item-status.py`. (BACKLOG-13)
 5. `tdd-step.py transition` output uses the named-wrapper API from
    `rabbit_print` (contract Inv 35, v1.12.0). The format is
    `[🐇 rabbit 🐇] 🔧 ━━━ FROM_STATE -> TO_STATE ━━━ 🔧` (green) for

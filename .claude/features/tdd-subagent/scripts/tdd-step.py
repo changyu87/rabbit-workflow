@@ -156,85 +156,18 @@ def write_state(d, new, spec_no_change_reason=""):
         raise
 
 
-def _head_sha():
-    """Return the resolved HEAD commit SHA, or the literal 'HEAD' as a last-resort
-    fallback when git is unavailable. Consumers receive a real SHA in the common
-    case so audit trails remain accurate."""
-    try:
-        out = subprocess.run(
-            ["git", "-C", REPO_ROOT or ".", "rev-parse", "HEAD"],
-            capture_output=True, text=True, check=False,
-        )
-        if out.returncode == 0 and out.stdout.strip():
-            return out.stdout.strip()
-    except Exception:
-        pass
-    return "HEAD"
-
-
 def auto_close_backlog(d):
-    """Auto-close in-progress backlog items for the feature on test-green.
+    """Best-effort no-op stub retained for backward compatibility.
 
-    Backlog storage was unified into rabbit-file (the `bug-backlog-files`
-    branch). Items are no longer kept in `.claude/backlogs/<feature>/`;
-    the unified `item-status.py` interface owns discovery and writes.
-    This is a best-effort no-op when the unified script is unavailable.
+    Auto-closing in-progress backlog items on `test-green` is the dispatcher's
+    responsibility (see spec Inv 4 + Inv 7). `dispatch-tdd-subagent.py` invokes
+    `item-status.py set --status close --fix-commits <impl-sha>` for each
+    `--linked-item` / `--linked-items` entry after the subagent reaches
+    `test-green`. The legacy local backlog directory scan was removed in
+    BACKLOG-13 now that rabbit-file consolidated backlogs onto the
+    `bug-backlog-files` branch.
     """
-    fj = _feature_json_path(d)
-    try:
-        with open(fj, "r") as f:
-            data = json.load(f)
-        feature_name = data.get("name", "") or ""
-    except Exception:
-        return
-    if not feature_name:
-        return
-    item_status = os.path.join(
-        REPO_ROOT, ".claude", "features", "rabbit-file", "scripts",
-        "item-status.py",
-    )
-    if not os.path.isfile(item_status):
-        return
-    # Legacy local backlog dir layout (.claude/backlogs/<feature>/<ID>/item.json)
-    # may still exist in transitional repos. When present, iterate and close
-    # in-progress items via the unified item-status.py interface. When absent,
-    # skip silently — discovery on the bug-backlog-files branch is the caller's
-    # responsibility (via --linked-items in dispatch-tdd-subagent.py).
-    backlog_dir = os.path.join(REPO_ROOT, ".claude", "backlogs", feature_name)
-    if not os.path.isdir(backlog_dir):
-        return
-    try:
-        items = sorted(os.listdir(backlog_dir))
-    except Exception:
-        return
-    head_sha = _head_sha()
-    for name in items:
-        item_dir = os.path.join(backlog_dir, name)
-        item_json = os.path.join(item_dir, "item.json")
-        if not os.path.isfile(item_json):
-            continue
-        try:
-            with open(item_json, "r") as f:
-                item = json.load(f)
-        except Exception:
-            continue
-        if (item.get("status") or "") != "in-progress":
-            continue
-        item_id = item.get("name") or name
-        try:
-            subprocess.run(
-                [sys.executable, item_status,
-                 "set",
-                 "--feature", feature_name,
-                 "--type", "backlog",
-                 "--id", item_id,
-                 "--status", "close",
-                 "--reason", "auto-closed by tdd-step.py test-green",
-                 "--fix-commits", head_sha],
-                capture_output=True, check=False,
-            )
-        except Exception:
-            pass
+    return
 
 
 def _run_enforcement_checks(d, repo_root):
