@@ -76,13 +76,16 @@ are managed via `/rabbit-config bash-allow` / `/rabbit-config allowed-tools`. Cl
 Code merges permission arrays across all sources, so personal entries add to (rather
 than replace) the team-wide defaults.
 
-**Bypass mode (Inv 69).** `permissions.defaultMode` is set to `"bypassPermissions"`
-in the team-wide settings.json so the scope-guard PreToolUse hook is the single
-decision point for write authorization; Claude Code's native per-write prompts
-would otherwise be redundant against the hook and disruptive to operators.
-The companion knob `skipDangerousModePermissionPrompt` is a per-user preference
-(suppresses the one-time bypass-mode startup warning) and lives in user-local
-`.claude/settings.local.json`, never in the shared `settings.json`.
+**Bypass mode (Inv 69).** Bypass mode is a per-user preference, not a team-wide
+default. The shared `settings.json` MUST NOT declare `permissions.defaultMode`;
+operators who want native per-write prompts suppressed (so the scope-guard
+PreToolUse hook becomes the single decision point for write authorization)
+opt in by writing `permissions.defaultMode = "bypassPermissions"` to their
+own user-local `.claude/settings.local.json` via `/rabbit-config
+bypass-permissions true`. The companion knob `skipDangerousModePermissionPrompt`
+(suppresses the one-time bypass-mode startup warning) is likewise per-user and
+lives in `.claude/settings.local.json`. Neither key MAY appear in the shared
+`settings.json` source.
 
 ### Invariants
 
@@ -109,7 +112,7 @@ There is NO slash-command file for `/rabbit-config`. The skill is the sole inter
 
 **Syntax (skill invocation):** `Skill("rabbit-config", args: "<subcommand> [args...]")`
 
-**Subcommands:** `prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`. Each is documented below.
+**Subcommands:** `prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`, `bypass-permissions`. Each is documented below.
 
 ### Subcommand: prompt-threshold
 
@@ -156,6 +159,14 @@ Manages the Step 4 (HUMAN-APPROVAL) gate state via the marker file `.rabbit-huma
 
 The marker stays in place across sessions until explicitly revoked via `/rabbit-config human-approval true` or manual deletion. It is a hard state, not conversation memory — the dispatcher reads the file at every dispatch, not Claude's recollection of prior approval.
 
+### Subcommand: bypass-permissions
+
+Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.claude/settings.local.json`. Bypass mode tells Claude Code to skip its native per-write permission prompts so the scope-guard PreToolUse hook becomes the single decision point for write authorization. Because different operators may want different behavior, this is a per-user opt-in — it lives in `settings.local.json` (gitignored), never in the shared `settings.json`. The subcommand takes a boolean value following contract Inv 15 (boolean CLI values use `true`/`false`):
+
+- `/rabbit-config bypass-permissions true` — writes `{"permissions": {"defaultMode": "bypassPermissions"}}` merged into `.claude/settings.local.json`. Idempotent: re-invoking when the key already holds `"bypassPermissions"` is a no-op (exit 0) with a confirmation line. Takes effect on the next session start.
+- `/rabbit-config bypass-permissions false` — removes the `permissions.defaultMode` key from `.claude/settings.local.json`. If `permissions` becomes `{}` it is removed; if the resulting `settings.local.json` is `{}` the file is left as an empty object (not deleted). Idempotent: invoking when the key is absent is a no-op (exit 0). Takes effect on the next session start.
+- `/rabbit-config bypass-permissions` (no action) — prints exactly one line to stdout: `true` if `.claude/settings.local.json` declares `permissions.defaultMode = "bypassPermissions"`, otherwise `false`. No file is modified.
+
 **Common rules for permission subcommands (`allowed-tools`, `bash-allow`):**
 
 - The target file is `.claude/settings.local.json` (not `.claude/settings.json`). `settings.local.json` is outside the build system's copy-file target set, so permissions persist across `sync-check.py` surface-drift rebuilds. Writes to `settings.local.json` are unconditionally permitted by the scope-guard filename allowlist.
@@ -183,7 +194,7 @@ The marker stays in place across sessions until explicitly revoked via `/rabbit-
 48. `/rabbit-config allowed-tools add <tool>` and `/rabbit-config allowed-tools remove <tool>` reject inputs whose value begins with `Bash(` and exit non-zero with an error directing the operator to use `bash-allow` instead.
 49. `/rabbit-config bash-allow add <command>` rejects `<command>` values containing any of `(`, `)`, `:`, or whitespace, and exits non-zero without modifying any file.
 50. The permission subcommands (`allowed-tools`, `bash-allow`) write to `.claude/settings.local.json` (which is on the scope-guard filename allowlist); they never write to `.claude/settings.json`. This isolates permission grants from the build system: `.claude/settings.json` is a copy-file target regenerated by `build.py` on surface drift (see `build-contract.json`), which would silently destroy any `permissions` block written there. `.claude/settings.local.json` is outside the build system's copy-file target set and persists across surface-drift rebuilds.
-53. `.claude/features/rabbit-cage/skills/rabbit-config/SKILL.md` exists. Its YAML frontmatter declares `name: rabbit-config` and a `description` field that names all five subcommands (`prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`) so the dispatcher can decide to invoke it. Its body enumerates the full CLI for every subcommand verbatim — no opening the script needed to read the interface.
+53. `.claude/features/rabbit-cage/skills/rabbit-config/SKILL.md` exists. Its YAML frontmatter declares `name: rabbit-config` and a `description` field that names all six subcommands (`prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`, `bypass-permissions`) so the dispatcher can decide to invoke it. Its body enumerates the full CLI for every subcommand verbatim — no opening the script needed to read the interface.
 54. `.claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py` exists, is executable (`chmod +x`), and is the sole implementation of `/rabbit-config`. It is a standalone Python 3 script using stdlib only. There is no slash-command file; invocation goes through the skill entry only.
 55. `/rabbit-config human-approval false` writes the file `.rabbit-human-approval-bypass` at the repo root with content `session` and prints a single confirmation line. Idempotent: re-invoking when the marker already exists is a no-op exit 0 with the same confirmation. The legacy verbs `bypass` and `gated` are removed; only `true` and `false` are accepted (per contract Inv 15).
 56. `/rabbit-config human-approval true` deletes `.rabbit-human-approval-bypass` from the repo root and prints a single confirmation line. Idempotent: invoking when the marker is absent is a no-op exit 0.
@@ -199,14 +210,16 @@ The marker stays in place across sessions until explicitly revoked via `/rabbit-
 66. `new-feature.py` MUST scaffold `test/run.py` (Python-only stack per Inv 39), not `test/run.sh`. The scaffolded `feature.json` MUST include `template_version` matching the current contract template version. A scaffolded feature MUST pass `validate-feature.py` immediately with no manual fixups.
 67. `commands/rabbit-project.md` MUST reference only Python scripts that exist (under `.claude/features/rabbit-cage/scripts/`), never `.sh` scripts or stale relocated paths. Any `.sh` reference is a constitution violation per Inv 39.
 68. `rabbit-config.py human-approval false` confirmation message MUST be self-explanatory and consistent with the gate semantics. The output MUST state both the new marker state and the practical effect, e.g., `Human-approval gate BYPASSED. Marker .rabbit-human-approval-bypass written. Step 4 will be skipped for all dispatches until you run /rabbit-config human-approval true.` Conversely `true` MUST say `Human-approval gate ENABLED. Marker .rabbit-human-approval-bypass removed. Step 4 will wait for in-conversation approval on each dispatch.` Avoid bare adjectives like `DISABLED` that read ambiguously against the gate vs the marker.
-69. `.claude/features/rabbit-cage/settings.json` declares
-    `permissions.defaultMode = "bypassPermissions"` so the scope-guard hook
-    is the single decision point for write authorization (Claude Code's
-    native per-write prompts are redundant against the hook and disruptive
-    to operators). The companion key `skipDangerousModePermissionPrompt`
-    is a per-user preference and MUST live in user-local
-    `.claude/settings.local.json` only; it MUST NOT appear in the shared
-    `settings.json` source.
+69. Bypass mode is a per-user preference. The shared
+    `.claude/features/rabbit-cage/settings.json` source and its build copy
+    `.claude/settings.json` MUST NOT declare `permissions.defaultMode`.
+    Operators who want native per-write prompts suppressed opt in by
+    writing `permissions.defaultMode = "bypassPermissions"` to their own
+    `.claude/settings.local.json` via `/rabbit-config bypass-permissions
+    true`. The companion key `skipDangerousModePermissionPrompt` is
+    likewise a per-user preference and MUST live in
+    `.claude/settings.local.json` only; neither key MAY appear in the
+    shared `settings.json` source.
 70. Hooks `sync-check.py` and `session-init.py` MUST log unexpected
     exceptions to stderr via a `_log_exc()` helper rather than silently
     swallowing them with bare `except Exception: pass`. The happy-path
@@ -219,6 +232,33 @@ The marker stays in place across sessions until explicitly revoked via `/rabbit-
     by this invariant — extending them is out-of-scope here because their
     failure modes are narrower (pure-function helpers, no subprocess
     invocations beyond the optional `git rev-parse`).
+71. `/rabbit-config bypass-permissions true` writes
+    `{"permissions": {"defaultMode": "bypassPermissions"}}` merged into
+    `.claude/settings.local.json`, creating the `permissions` key if it
+    does not exist. Idempotent: a second invocation while the key already
+    equals `"bypassPermissions"` is a no-op (exit 0) and does not rewrite
+    the file. The target file is `.claude/settings.local.json` only; the
+    shared `.claude/settings.json` MUST NOT be modified.
+72. `/rabbit-config bypass-permissions false` removes the
+    `permissions.defaultMode` key from `.claude/settings.local.json`. If
+    `permissions` becomes empty (`{}`) after removal, the `permissions`
+    key is also removed. Idempotent: invoking when the key is already
+    absent is a no-op (exit 0). Other keys inside `permissions` (e.g.,
+    `allow`, `skipDangerousModePermissionPrompt`) are left untouched.
+73. `/rabbit-config bypass-permissions` (no action) prints exactly one
+    line to stdout: `true` if `.claude/settings.local.json` declares
+    `permissions.defaultMode == "bypassPermissions"`, otherwise `false`.
+    No file is modified. Exits 0. An invalid value (anything other than
+    `true`, `false`, or no action) exits non-zero with an error message
+    and modifies no file.
+74. Confirmation output for `/rabbit-config bypass-permissions true|false`
+    follows the same self-explanatory pattern as `human-approval` (Inv 68):
+    `true` MUST say `Bypass permissions ENABLED in .claude/settings.local.json.
+    Claude Code will skip native per-write prompts on next session start.`
+    and `false` MUST say `Bypass permissions DISABLED. permissions.defaultMode
+    removed from .claude/settings.local.json. Claude Code will prompt for
+    writes again on next session start.` Idempotent invocations MUST state
+    that the file was not rewritten.
 
 ## Out of Scope
 
