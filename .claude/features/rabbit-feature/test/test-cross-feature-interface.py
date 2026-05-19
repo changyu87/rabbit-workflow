@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Smoke test locking the rabbit-feature -> tdd-subagent cross-feature script interface.
+"""Smoke test locking rabbit-feature's cross-feature script interfaces.
 
-Runs `--help` on the two tdd-subagent scripts that rabbit-feature's
+Runs `--help` on `tdd-state-machine`'s `tdd-step.py` and `tdd-subagent`'s
+`dispatch-tdd-subagent.py` — the two scripts rabbit-feature's
 `rabbit-feature-touch` skill invokes. Both must exit 0 and emit recognizable
 usage text. Any rename, removed flag, or signature break in those scripts
 fails this test and forces rabbit-feature into red state (spec Inv 3).
 
-Version: 0.1.0
+Version: 0.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: When feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -18,7 +19,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-TDD_STEP = REPO_ROOT / ".claude/features/tdd-subagent/scripts/tdd-step.py"
+TDD_STEP = REPO_ROOT / ".claude/features/tdd-state-machine/scripts/tdd-step.py"
 DISPATCH = REPO_ROOT / ".claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py"
 
 
