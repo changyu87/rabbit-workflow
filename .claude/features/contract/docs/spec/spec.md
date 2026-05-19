@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.12.0
+version: 1.13.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -129,7 +129,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
         `r1_branch(branch: str) -> str`
         `welcome() -> str`
         `policy_drift() -> str`
-        `surface_drift() -> str`
+        `surface_drift(files: str) -> str` — `files` is the comma-joined list of rebuilt target names that the sync-check hook collected from the drift-detection pass (e.g. `"hooks/sync-check.py, settings.json"`). Required (no default) so callers cannot silently emit an empty file list; the rendered message reads `Surface drift detected — rebuilt: {files}` (BACKLOG-21).
         `scope_guard_off() -> str`
         `scope_guard_bypassed() -> str`
         `human_approval_bypass() -> str`

@@ -157,6 +157,18 @@ if messages is not None:
             else:
                 ok(f"t7: messages.{mid} has icon/color/text; color={m['color']}")
 
+# t7b: surface-drift text MUST contain the {files} placeholder (Inv 35(d),
+# BACKLOG-21). The named wrapper surface_drift(files: str) substitutes this
+# placeholder; an empty/missing placeholder would silently allow callers to
+# emit an empty file list.
+if messages is not None:
+    msgs = messages.get("messages", {})
+    sd = msgs.get("surface-drift", {})
+    if "{files}" in sd.get("text", ""):
+        ok("t7b: surface-drift text contains '{files}' placeholder")
+    else:
+        fail(f"t7b: surface-drift text missing '{{files}}' placeholder: {sd.get('text')!r}")
+
 # t8: top-level metadata fields present (schema-as-artifact)
 if messages is not None:
     for fld in ("schema_version", "owner", "deprecation_criterion"):

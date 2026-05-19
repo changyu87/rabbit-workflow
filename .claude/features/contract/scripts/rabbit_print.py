@@ -17,7 +17,7 @@ Public API:
         r1_branch(branch) -> str
         welcome() -> str
         policy_drift() -> str
-        surface_drift() -> str
+        surface_drift(files) -> str
         scope_guard_off() -> str
         scope_guard_bypassed() -> str
         human_approval_bypass() -> str
@@ -107,8 +107,8 @@ def policy_drift():
     return rabbit_print("policy-drift")
 
 
-def surface_drift():
-    return rabbit_print("surface-drift")
+def surface_drift(files):
+    return rabbit_print("surface-drift", files=files)
 
 
 def scope_guard_off():
