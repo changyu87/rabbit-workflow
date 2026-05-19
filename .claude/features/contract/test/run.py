@@ -66,5 +66,6 @@ run_test("test-check-imports-resolve-surface-dirs.py")
 run_test("test-workspace-structure-naming.py")
 run_test("test-bug-fixes-cycle.py")
 run_test("test-workspace-declares-all-features.py")
+run_test("test-check-numbered-lists.py")
 
 print("ALL TESTS PASSED")
