@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.0.0
+version: 1.2.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -18,13 +18,26 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "provides": {
     "files": [],
     "commands": [],
-    "scripts": [],
+    "scripts": [
+      {
+        "path": ".claude/features/rabbit-feature/scripts/resolve-scope.py",
+        "purpose": "Absorbed from rabbit-feature-scope (Inv 15-19). Builds the prompt that maps a natural-language request to the list of rabbit features the request will modify; emits prompt to stdout for default-model Agent dispatch."
+      },
+      {
+        "path": ".claude/features/rabbit-feature/scripts/format-feature-context.py",
+        "purpose": "Absorbed from rabbit-feature-scope (Inv 20, 23). Reads find-feature.py list-json output from stdin and writes the formatted feature-context block to stdout."
+      }
+    ],
     "schemas": [],
     "templates": [],
     "skills": [
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-touch/",
         "purpose": "rabbit-feature-touch orchestration skill — authoritative source for the deployed .claude/skills/rabbit-feature-touch/SKILL.md, populated via the build-contract.json copy-file entry (Inv 1)."
+      },
+      {
+        "path": ".claude/features/rabbit-feature/skills/rabbit-feature-scope/",
+        "purpose": "Absorbed from rabbit-feature-scope (Inv 21-22). General-purpose shared skill: resolves a natural-language request to the list of rabbit features whose files it will modify; emits a prompt for a default-model Agent dispatch."
       }
     ]
   },

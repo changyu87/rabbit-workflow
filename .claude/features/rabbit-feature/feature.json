@@ -1,19 +1,24 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-feature",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
-  "summary": "Owns the rabbit-feature-touch orchestration skill (active build source). Dispatcher-side surface; executor-side (tdd-step.py, dispatch-tdd-subagent.py, 9-step cycle) lives in tdd-subagent.",
+  "tdd_state": "test-red",
+  "summary": "Owns the rabbit-feature-touch orchestration skill and (absorbed) the rabbit-feature-scope skill with its resolve-scope.py and format-feature-context.py scripts. Dispatcher-side surface; executor-side (tdd-step.py, dispatch-tdd-subagent.py, 9-step cycle) lives in tdd-subagent.",
   "surface": {
     "hooks": [],
     "commands": [],
     "agents": [],
     "skills": [
-      "skills/rabbit-feature-touch/SKILL.md"
+      "skills/rabbit-feature-touch/SKILL.md",
+      "skills/rabbit-feature-scope/SKILL.md"
+    ],
+    "scripts": [
+      "scripts/resolve-scope.py",
+      "scripts/format-feature-context.py"
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
   "updated": "2026-05-19",
-  "spec_no_change_reason": "BUG-2 is a metadata sync only \u2014 no new invariants per impl-suggestion; the existing constitutional 'read nothing outside the contract' rule is sufficient"
+  "spec_no_change_reason": "spec already committed in this cycle (b9a9e1bc); diff vs HEAD is empty"
 }
