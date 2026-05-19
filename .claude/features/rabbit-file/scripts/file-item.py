@@ -27,6 +27,19 @@ def main():
     p.add_argument("--filed-by")
     args = p.parse_args()
 
+    # BACKLOG-7: sanitize then per-field length-validate BEFORE consuming an
+    # ID slot. The sanitized value is what gets persisted.
+    args.title = branch_ops.sanitize_text(args.title)
+    args.description = branch_ops.sanitize_text(args.description)
+    try:
+        branch_ops.validate_field_length(
+            "title", args.title, branch_ops.MAX_TITLE_LEN)
+        branch_ops.validate_field_length(
+            "description", args.description, branch_ops.MAX_DESCRIPTION_LEN)
+    except ValueError as e:
+        sys.stderr.write(f"ERROR: {e}\n")
+        sys.exit(1)
+
     filed_by = args.filed_by or _git_user()
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 

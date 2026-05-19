@@ -13,10 +13,9 @@ VALID_STATUSES = {"open", "close"}
 VALID_TYPES = {"bug", "backlog"}
 MUTABLE_FIELDS = {"priority", "title", "description"}
 VALID_PRIORITIES = {"low", "medium", "high", "critical"}
-# BACKLOG-7: enforce a sane length cap on free-text fields so item.json
-# stays small enough to commit/diff cheaply on bug-backlog-files.
-MAX_FREE_TEXT_LEN = 500
-FREE_TEXT_FIELDS = {"title", "description"}
+# BACKLOG-7: per-field length limits and the sanitize/validate helpers live
+# in branch_ops so file-item.py and item-status.py share a single source of
+# truth (the pre-BACKLOG-7 shared 500-char cap is removed).
 
 
 def _git_user():
@@ -112,18 +111,24 @@ def cmd_update(args):
     if args.value == "" or args.value is None:
         print("ERROR: --value is required and must be non-empty", file=sys.stderr)
         sys.exit(1)
+    # BACKLOG-7: sanitize title/description first (strip ASCII control chars
+    # except \t \n \r), then apply per-field length validation. The
+    # sanitized value is what gets persisted to item.json.
+    if args.field in ("title", "description"):
+        args.value = branch_ops.sanitize_text(args.value)
+        limit = (
+            branch_ops.MAX_TITLE_LEN if args.field == "title"
+            else branch_ops.MAX_DESCRIPTION_LEN
+        )
+        try:
+            branch_ops.validate_field_length(args.field, args.value, limit)
+        except ValueError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
     if args.field == "priority" and args.value not in VALID_PRIORITIES:
         print(
             f"ERROR: priority must be one of {sorted(VALID_PRIORITIES)}, "
             f"got {args.value!r}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    # BACKLOG-7: enforce length cap on free-text fields.
-    if args.field in FREE_TEXT_FIELDS and len(args.value) > MAX_FREE_TEXT_LEN:
-        print(
-            f"ERROR: {args.field} exceeds max length {MAX_FREE_TEXT_LEN} "
-            f"(got {len(args.value)} characters)",
             file=sys.stderr,
         )
         sys.exit(1)
