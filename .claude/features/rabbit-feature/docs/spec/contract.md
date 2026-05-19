@@ -29,7 +29,9 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ]
   },
   "reads": {
-    "files": [],
+    "files": [
+      ".claude/features/contract/build-contract.json"
+    ],
     "external": []
   },
   "invokes": {

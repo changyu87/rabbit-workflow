@@ -3,15 +3,17 @@
   "name": "rabbit-feature",
   "version": "1.1.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Owns the rabbit-feature-touch orchestration skill (active build source). Dispatcher-side surface; executor-side (tdd-step.py, dispatch-tdd-subagent.py, 9-step cycle) lives in tdd-subagent.",
   "surface": {
     "hooks": [],
     "commands": [],
     "agents": [],
-    "skills": []
+    "skills": [
+      "skills/rabbit-feature-touch/SKILL.md"
+    ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
   "updated": "2026-05-19",
-  "spec_no_change_reason": "spec change committed pre-dispatch in commit 99bf813c (rabbit-feature-touch Step 3 commits spec before dispatching subagent); HEAD diff is empty by design"
+  "spec_no_change_reason": "BUG-2 is a metadata sync only \u2014 no new invariants per impl-suggestion; the existing constitutional 'read nothing outside the contract' rule is sufficient"
 }
