@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
-"""Tests session-init.py R1 branch enforcement (Inv 21-23, 61)."""
+"""Tests session-init.py branch behavior (Inv 61 — R1 enforcement REMOVED).
+
+After spec v3.12.0, session-init.py MUST NOT auto-create or auto-switch git
+branches on main/master. The legacy R1 enforcement (auto-creating
+session/YYYYMMDD-HHMMSS) is removed. This test asserts the no-op behavior
+on both main and feature branches, and verifies @-import policy injection
+still emits valid JSON.
+"""
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -52,21 +60,20 @@ print()
 repos = []
 
 try:
-    # t1: Inv 61 — on main, R1 creates session/YYYYMMDD-HHMMSS branch.
-    print("=== t1: on main → R1 creates session/YYYYMMDD-HHMMSS branch (Inv 61) ===")
-    import re as _re
+    # t1: Inv 61 — on main, session-init.py MUST NOT create any branch.
+    print("=== t1: on main → NO branch creation (Inv 61 — R1 removed) ===")
     repo1 = make_repo()
     repos.append(repo1)
     env = {**os.environ, "RABBIT_ROOT": repo1}
     subprocess.run([sys.executable, HOOK], env=env, capture_output=True)
     branch = subprocess.run(["git", "-C", repo1, "branch", "--show-current"],
                             capture_output=True, text=True).stdout.strip()
-    if _re.match(r"^session/\d{8}-\d{6}$", branch):
-        ok(f"hook created session branch '{branch}' (Inv 61)")
+    if branch == "main":
+        ok("hook left branch unchanged at 'main' (Inv 61 — R1 removed)")
     else:
-        fail_t(f"hook did NOT create session/YYYYMMDD-HHMMSS branch; got '{branch}' (Inv 61 violation)")
+        fail_t(f"hook switched branch from 'main' to '{branch}' (Inv 61 violation — R1 was removed)")
 
-    # t2
+    # t2: on feature branch → no branch change (unchanged behavior).
     print()
     print("=== t2: on feature branch → no branch change ===")
     repo2 = make_repo()
@@ -81,7 +88,7 @@ try:
     else:
         fail_t(f"hook changed branch from 'feature/keep-this' to '{branch}'")
 
-    # t3
+    # t3: @-import injection emits valid JSON.
     print()
     print("=== t3: @-import injection emits valid JSON ===")
     env = {**os.environ, "RABBIT_ROOT": REPO_ROOT}
@@ -94,6 +101,20 @@ try:
             fail_t("@-import injection did not emit valid JSON with additionalContext")
     except Exception:
         fail_t("@-import injection did not emit valid JSON with additionalContext")
+
+    # t4: emitted JSON systemMessage MUST NOT contain "R1:" or "session/" prefix.
+    print()
+    print("=== t4: no R1/session-branch text in systemMessage (Inv 61) ===")
+    repo4 = make_repo()
+    repos.append(repo4)
+    env = {**os.environ, "RABBIT_ROOT": repo4}
+    res = subprocess.run([sys.executable, HOOK], env=env, capture_output=True, text=True)
+    out = res.stdout or ""
+    has_r1 = bool(re.search(r"\bR1\b|session/\d{8}-\d{6}|checkout\s*-b", out))
+    if not has_r1:
+        ok("hook output contains no R1/session-branch text on main (Inv 61)")
+    else:
+        fail_t(f"hook output mentions R1 or session-branch text: {out!r}")
 finally:
     for r in repos:
         shutil.rmtree(r, ignore_errors=True)
