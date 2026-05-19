@@ -30,7 +30,10 @@ for _candidate in [_HERE, *_HERE.parents]:
         if str(_maybe) not in sys.path:
             sys.path.insert(0, str(_maybe))
         break
-from rabbit_print import rabbit_print, rabbit_subline  # noqa: E402
+from rabbit_print import (  # noqa: E402
+    rabbit_block, rabbit_subline,
+    policy_refreshed,
+)
 
 
 def repo_root() -> Path:
@@ -109,11 +112,12 @@ def main() -> int:
             parts.append("\n")
 
     payload = "".join(parts)
-    banner = rabbit_print("policy-refreshed")
-    sublines = "\n".join(rabbit_subline(p) for p in imports)
+    # Inv 77, 80: assemble via rabbit_block — the sole owner of the leading
+    # newline. BACKLOG-20 missed refresh.py; this picks it up.
+    banner = policy_refreshed()
     print(json.dumps({
         "additionalContext": payload,
-        "systemMessage": banner + "\n" + sublines,
+        "systemMessage": rabbit_block(banner, *(rabbit_subline(p) for p in imports)),
     }))
     return 0
 

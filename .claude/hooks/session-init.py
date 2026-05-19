@@ -40,7 +40,10 @@ for _candidate in [_HERE, *_HERE.parents]:
         if str(_maybe) not in sys.path:
             sys.path.insert(0, str(_maybe))
         break
-from rabbit_print import rabbit_print, rabbit_subline  # noqa: E402
+from rabbit_print import (  # noqa: E402
+    rabbit_block, rabbit_subline,
+    r1_branch, welcome,
+)
 
 
 # Inv 78 (BACKLOG-19): per-file one-liner descriptions for the welcome
@@ -107,7 +110,7 @@ def render_r1_branch(root: Path) -> Optional[dict]:
         _log_exc(f"git checkout -b {branch} failed; R1 branch not created", e)
         return None
     return {
-        "systemMessage": rabbit_print("r1-branch", branch=branch),
+        "systemMessage": r1_branch(branch=branch),
     }
 
 
@@ -155,8 +158,11 @@ def render_policy(root: Path) -> Optional[dict]:
             parts.append("\n")
 
     payload = "".join(parts)
-    banner = rabbit_print("welcome")
-    sublines = []
+    # Inv 77, 78: assemble the policy block as banner + per-import sub-lines.
+    # The renderer returns a SINGLE multi-line string with NO leading '\n';
+    # main() wraps every payload via rabbit_block() — the sole owner of the
+    # leading newline (Inv 80).
+    lines = [welcome()]
     # Inv 78: pad each name so the em-dash aligns at column 17 (the longest
     # registered name `coding-rules.md` is 15 chars; +2 spaces = 17).
     PAD = 17
@@ -165,12 +171,12 @@ def render_policy(root: Path) -> Optional[dict]:
         desc = _WELCOME_DESCRIPTIONS.get(name)
         if desc:
             pad_spaces = " " * max(2, PAD - len(name))
-            sublines.append(rabbit_subline(f"{name}{pad_spaces}— {desc}"))
+            lines.append(rabbit_subline(f"{name}{pad_spaces}— {desc}"))
         else:
-            sublines.append(rabbit_subline(name))
+            lines.append(rabbit_subline(name))
     return {
         "additionalContext": payload,
-        "systemMessage": banner + "\n" + "\n".join(sublines),
+        "systemMessage": "\n".join(lines),
     }
 
 
@@ -197,7 +203,7 @@ def main() -> int:
         return 0
 
     aggregated = {
-        "systemMessage": "\n" + "\n".join(p["systemMessage"] for p in payloads),
+        "systemMessage": rabbit_block(*(p["systemMessage"] for p in payloads)),
     }
     for p in payloads:
         if "additionalContext" in p:

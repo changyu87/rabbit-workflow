@@ -51,11 +51,16 @@ except Exception as e:
     print("test-rabbit-print-renderer: FAIL", file=sys.stderr)
     sys.exit(1)
 
-# t3: __all__ is exactly ['rabbit_print', 'rabbit_subline']
-expected_all = {"rabbit_print", "rabbit_subline"}
+# t3: __all__ is exactly the 14 names declared in Inv 35
+expected_all = {
+    "rabbit_print", "rabbit_subline", "rabbit_block",
+    "r1_branch", "welcome", "policy_drift", "surface_drift",
+    "scope_guard_off", "scope_guard_bypassed", "human_approval_bypass",
+    "skills_updated", "policy_refreshed", "tdd_transition", "tdd_forced",
+}
 actual_all = set(getattr(mod, "__all__", []))
 if actual_all == expected_all:
-    ok("t3: __all__ is exactly {rabbit_print, rabbit_subline}")
+    ok("t3: __all__ is exactly the 14 declared names")
 else:
     fail(f"t3: __all__ mismatch: expected {expected_all}, got {actual_all}")
 

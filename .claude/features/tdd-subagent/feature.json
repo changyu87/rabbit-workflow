@@ -12,5 +12,5 @@
   },
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
   "updated": "2026-05-19",
-  "spec_no_change_reason": "BACKLOG-11 spec already committed in cc8ada9"
+  "spec_no_change_reason": "spec v1.18.0 Inv 5 already committed before subagent dispatch"
 }

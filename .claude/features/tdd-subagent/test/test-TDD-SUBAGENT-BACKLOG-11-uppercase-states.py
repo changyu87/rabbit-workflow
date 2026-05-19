@@ -91,6 +91,15 @@ if GREEN in out:
 else:
     ko(f'stdout missing green ANSI: {out!r}')
 
+# rabbit_block contract (Inv 5, contract Inv 36): output starts with a
+# leading newline so the [🐇 rabbit 🐇] banner renders on its own row,
+# not inline with surrounding chrome. The ANSI color prefix sits between
+# the newline and the brand text.
+if out.startswith('\n') and out.split('\n', 1)[1].startswith(GREEN + BRAND):
+    ok('stdout starts with leading newline + ANSI + brand (rabbit_block contract)')
+else:
+    ko(f'stdout does not start with newline+ANSI+brand: {out[:80]!r}')
+
 # ---------- Forced transition: impl -> test-red ----------
 d2 = os.path.join(TMPROOT, 'forced')
 make_feature_dir(d2, 'forced', 'impl')
@@ -121,6 +130,17 @@ if GREEN in out and 'IMPL -> TEST-RED' in out:
     ok('stdout (forced cycle) still emits green uppercase transition line')
 else:
     ko(f'stdout missing green uppercase line on forced: {out!r}')
+
+# Both stdout (transition line) and stderr (forced alert) start with the
+# rabbit_block leading newline + ANSI + brand.
+if out.startswith('\n') and out.split('\n', 1)[1].startswith(GREEN + BRAND):
+    ok('stdout (forced) starts with leading newline + ANSI + brand')
+else:
+    ko(f'stdout (forced) does not start with newline+ANSI+brand: {out[:80]!r}')
+if err.startswith('\n') and err.split('\n', 1)[1].startswith(RED + BRAND):
+    ok('stderr (forced) starts with leading newline + ANSI + brand')
+else:
+    ko(f'stderr (forced) does not start with newline+ANSI+brand: {err[:80]!r}')
 
 # ---------- Cleanup ----------
 shutil.rmtree(TMPROOT, ignore_errors=True)

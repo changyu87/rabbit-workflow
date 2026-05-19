@@ -113,12 +113,40 @@ else:
     ko(f'found bar literal at: {bar_hits}')
 
 # (d) Required import present. The line may carry a trailing comment such as
-# `# noqa: E402` so we match the import prefix, not the whole line.
-if re.search(r'^\s*from\s+rabbit_print\s+import\s+rabbit_print\s*,\s*rabbit_subline\b',
-             src, re.MULTILINE):
-    ok('imports "from rabbit_print import rabbit_print, rabbit_subline"')
+# `# noqa: E402` so we match the import prefix, not the whole line. The import
+# MUST include rabbit_block, rabbit_subline, tdd_transition, tdd_forced — the
+# named-wrapper API (Inv 5 of spec v1.18.0). rabbit_print itself MUST NOT be
+# imported because direct rabbit_print('tdd-transition'/'tdd-forced') call
+# sites are forbidden by Inv 5.
+import_match = re.search(
+    r'^\s*from\s+rabbit_print\s+import\s+([^\n#]+)',
+    src, re.MULTILINE,
+)
+if import_match:
+    names = {n.strip() for n in import_match.group(1).split(',')}
+    required = {'rabbit_block', 'rabbit_subline', 'tdd_transition', 'tdd_forced'}
+    missing = required - names
+    if not missing:
+        ok('imports rabbit_block, rabbit_subline, tdd_transition, tdd_forced from rabbit_print')
+    else:
+        ko(f'required import missing names from rabbit_print: {missing}')
 else:
-    ko('required import "from rabbit_print import rabbit_print, rabbit_subline" not found')
+    ko('no `from rabbit_print import ...` line found')
+
+# (e) No rabbit_print( CALL sites in tdd-step.py body (outside imports/comments).
+# Named wrappers (tdd_transition / tdd_forced) MUST be used; direct calls to
+# rabbit_print('tdd-transition', ...) are forbidden by Inv 5.
+call_hits = []
+for ln, content in code_lines:
+    if _is_import_line(content):
+        continue
+    # match the literal `rabbit_print(` as a call
+    if re.search(r'\brabbit_print\s*\(', content):
+        call_hits.append((ln, content.rstrip()))
+if not call_hits:
+    ok('no rabbit_print(...) call sites in tdd-step.py body')
+else:
+    ko(f'found forbidden rabbit_print( call sites at: {call_hits}')
 
 print()
 print(f"summary: {PASS} passed, {FAIL} failed")

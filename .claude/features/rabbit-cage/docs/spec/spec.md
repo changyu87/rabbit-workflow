@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.9.0
+version: 3.10.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -763,27 +763,38 @@ policy text alongside.
     consistency.
 
 77. All rabbit-cage hook scripts (`sync-check.py`, `session-init.py`,
-    `refresh.py`) MUST import the shared renderer module via:
+    `refresh.py`) MUST import the named API from the shared renderer
+    module:
         sys.path.insert(0, str(repo_root / ".claude/features/contract/scripts"))
-        from rabbit_print import rabbit_print, rabbit_subline
-    Every `[🐇 rabbit 🐇]` line in the JSON `systemMessage` MUST be the
-    return value of one `rabbit_print(message_id, **kwargs)` call (banner)
-    or one `rabbit_subline(text, color)` call (sub-line). Inline ANSI
-    escape codes (`\x1b[3...`), the literal brand prefix string
-    (`[rabbit]` or `[🐇 rabbit 🐇]`), and the bar character (`━━━`) MUST
-    NOT appear anywhere in these three hook source files outside of import
+        from rabbit_print import (
+            rabbit_block, rabbit_subline,
+            r1_branch, welcome, policy_drift, surface_drift,
+            scope_guard_off, scope_guard_bypassed,
+            human_approval_bypass, skills_updated, policy_refreshed,
+        )
+    Every JSON `systemMessage` emitted by a hook MUST be assembled as
+    `rabbit_block(<named_wrapper>(), ...)` — the named wrappers produce
+    banner lines, `rabbit_subline(text)` produces sub-lines, and
+    `rabbit_block(*lines)` wraps the set with the mandatory leading
+    newline. Direct calls to `rabbit_print("message-id", ...)` at hook
+    call sites are forbidden (the named wrappers are the public API);
+    manual `"\n" + "\n".join(...)` patterns are forbidden (only
+    `rabbit_block` adds the leading newline). Inline ANSI escape codes
+    (`\x1b[3...`), the literal brand prefix string (`[rabbit]` or
+    `[🐇 rabbit 🐇]`), and the bar character (`━━━`) MUST NOT appear
+    anywhere in these three hook source files outside of import
     statements or comments referring to the contract. This is the
     consumer-side enforcement of contract Inv 36.
 
-78. The message-id mapping per producer (BACKLOG-19):
-    - `session-init.py`: `r1-branch` (with kwarg `branch`), `welcome`
-      (no kwargs; sub-lines list the @-import basenames + one-liner
+78. The named-wrapper mapping per producer:
+    - `session-init.py` uses `r1_branch(branch=...)`, `welcome()`
+      (no args; sub-lines list the @-import basenames + one-liner
       description via `rabbit_subline`).
-    - `refresh.py`: `policy-refreshed` (no kwargs; sub-lines list each
-      @-import full path via `rabbit_subline`).
-    - `sync-check.py`: `policy-drift`, `surface-drift`,
-      `scope-guard-off`, `scope-guard-bypassed`, `human-approval-bypass`,
-      `skills-updated` (the last one takes kwarg `names`).
+    - `refresh.py` uses `policy_refreshed()` (no args; sub-lines list
+      each @-import full path via `rabbit_subline`).
+    - `sync-check.py` uses `policy_drift()`, `surface_drift()`,
+      `scope_guard_off()`, `scope_guard_bypassed()`,
+      `human_approval_bypass()`, `skills_updated(names=...)`.
     The welcome banner sub-line text is fixed to:
       `philosophy.md    — machine-first · bounded scope · designed deprecation`
       `spec-rules.md    — determinism first; schema contracts; lifecycle ownership`
@@ -798,14 +809,18 @@ policy text alongside.
     If CLAUDE.md is genuinely missing, the hook silently exits 0 — bootstrap
     is `install.py`'s responsibility, not `sync-check.py`'s.
 
-80. The aggregated `systemMessage` emitted by `sync-check.py` and
-    `session-init.py` MUST begin with a newline character (`\n`) when at
-    least one pending condition contributes a line (BACKLOG-20). Without
-    the leading newline, Claude Code renders the first `[🐇 rabbit 🐇]`
-    line inline with its own prefix (e.g. `Stop says: [🐇 rabbit 🐇] ...`),
-    visually merging the brand prefix with the harness chrome. The leading
-    `\n` pushes the entire block onto its own row so every `[🐇 rabbit 🐇]`
-    line starts at column 0. Concrete implementation: the aggregation
-    expression is `"\n" + "\n".join(p["systemMessage"] for p in payloads)`,
-    not `"\n".join(...)`. The zero-condition case (no JSON emitted at all)
-    is unaffected — the leading newline only applies when JSON is emitted.
+80. Every `systemMessage` emitted by any rabbit-cage hook
+    (`sync-check.py`, `session-init.py`, `refresh.py`) MUST begin with
+    a newline character (`\n`). Without the leading newline, Claude
+    Code renders the first `[🐇 rabbit 🐇]` line inline with its own
+    prefix (e.g. `Stop says: [🐇 rabbit 🐇] ...`), visually merging the
+    brand prefix with the harness chrome. The leading `\n` pushes the
+    entire block onto its own row so every `[🐇 rabbit 🐇]` line starts
+    at column 0. As of contract spec v1.12.0 the newline is the
+    contract of the `rabbit_block(*lines)` assembler — every hook
+    produces its systemMessage as `rabbit_block(...)` exactly once,
+    which guarantees the leading `\n` without per-hook string manipulation.
+    Manual `"\n" + ...` patterns are forbidden (Inv 77); use
+    `rabbit_block` for every emission. The zero-condition case (no JSON
+    emitted at all) is unaffected — `rabbit_block` is only called when
+    at least one line will be emitted.
