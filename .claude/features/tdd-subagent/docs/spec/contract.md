@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.6.0
+version: 1.6.1
 template_version: 2.0.0
 ---
 
@@ -15,7 +15,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       {
         "path": ".claude/features/tdd-subagent/scripts/tdd-step.py",
         "stdin": "none",
-        "stdout": "show/next/transitions=plain-text (parser-stable); transition=ANSI-colored '[rabbit] ━━━ ... ━━━' format (green on stdout for normal, red on stderr for FORCED/WARNING/ERROR)",
+        "stdout": "show/next/transitions=plain-text (parser-stable); transition uses the named-wrapper API from rabbit_print (spec Inv 5): '[🐇 rabbit 🐇] 🔧 ━━━ FROM_STATE -> TO_STATE ━━━ 🔧' (green on stdout for normal transitions, red on stderr for 'FORCED: FROM_STATE -> TO_STATE'); enforcement warnings use rabbit_subline red prefix without banner bars",
         "exit": "0=success, 1=denied/invalid, 2=bad invocation"
       },
       {
@@ -45,8 +45,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "reads": {
     "files": [
       "<feature-dir>/feature.json (tdd_state field)",
-      "<feature-dir>/test/run.py",
-      ".claude/backlogs/<feature-name>/ (in-progress items, scanned at test-green)"
+      "<feature-dir>/test/run.py"
     ],
     "external": [
       "env-var:RABBIT_ROOT"

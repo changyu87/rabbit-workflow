@@ -25,7 +25,10 @@ _ALLOWED_NEXT = {
     "spec-update": ["test-red"],
     "test-red":    ["impl"],
     "impl":        ["test-green"],
-    "test-green":  ["deprecated"],
+    # BUG-53: test-green has TWO forward transitions per Inv 23 (cycle
+    # restart for the next bug/backlog via spec-update, OR feature
+    # retirement via deprecated). Parity with tdd-step.py _FORWARD_ALT.
+    "test-green":  ["spec-update", "deprecated"],
     "deprecated":  [],
 }
 
@@ -51,9 +54,10 @@ def guidance_for(state):
         return ("Implementation in progress. Run test/run.py frequently. "
                 "When all tests pass, transition to test-green.")
     if state == "test-green":
-        return ("All tests pass. Open a pull request now (branch should already exist per branch-per-feature). "
-                "The PR/merge process handles review and merge; "
-                "transition to deprecated when superseded per the deprecation criterion.")
+        return ("All tests pass. Two forward paths are valid (BUG-53, Inv 23): "
+                "(a) start the next TDD cycle for another bug/backlog by transitioning to spec-update; "
+                "(b) transition to deprecated when this feature is superseded per the deprecation criterion. "
+                "If integrating via PR, open it now (branch-per-feature) before either transition.")
     if state == "deprecated":
         return ("TERMINAL. Do not extend or modify behavior. "
                 "Direct callers to the successor (if any). "
