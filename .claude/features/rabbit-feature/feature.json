@@ -3,7 +3,7 @@
   "name": "rabbit-feature",
   "version": "0.1.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "Owns the rabbit-feature-touch orchestration skill that gates every write/edit/delete/add operation targeting a feature directory through the formal TDD state machine. Dispatcher-side surface; the executor-side surface (tdd-step.py, dispatch-tdd-subagent.py, the 9-step cycle) lives in tdd-subagent.",
   "surface": {
     "hooks": [],
