@@ -50,6 +50,9 @@ check_file("schemas/feature.json.schema.json")
 check_file("schemas/registry.json.schema.json")
 check_file("schemas/bug.json.schema.json")
 check_file("schemas/project-map.json.schema.json")
+check_file("schemas/rabbit-print.schema.json")
+check_file("schemas/rabbit-print-messages.json")
+check_file("scripts/rabbit_print.py")
 
 # Scripts (6) — also check executable
 check_exec("scripts/policy-block.py")

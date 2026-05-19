@@ -159,11 +159,17 @@ else:
     ko("BACKLOG-7: spec.md does not document the template marker convention")
 
 
-# BACKLOG-8: rabbit-print.schema.json producers all exist on disk
-rp_path = os.path.join(FEATURE_DIR, "schemas/rabbit-print.schema.json")
-with open(rp_path) as f:
-    rp = json.load(f)
-missing_producers = [p for p in rp.get("producers", []) if not os.path.isfile(os.path.join(REPO_ROOT, p))]
+# BACKLOG-8 (post-BACKLOG-20): rabbit-print producers all exist on disk.
+# After BACKLOG-20 the `producers` array moved out of rabbit-print.schema.json
+# (now a pure JSON Schema document) and the four producer paths are declared
+# in spec Inv 36. We assert against that hardcoded list here.
+RABBIT_PRINT_PRODUCERS = [
+    ".claude/features/rabbit-cage/hooks/sync-check.py",
+    ".claude/features/rabbit-cage/hooks/session-init.py",
+    ".claude/features/rabbit-cage/hooks/refresh.py",
+    ".claude/features/tdd-subagent/scripts/tdd-step.py",
+]
+missing_producers = [p for p in RABBIT_PRINT_PRODUCERS if not os.path.isfile(os.path.join(REPO_ROOT, p))]
 if not missing_producers:
     ok("BACKLOG-8: all declared rabbit-print producers exist on disk")
 else:
@@ -243,15 +249,17 @@ else:
     ko("BACKLOG-14: check-opus-for-planning-agents.py PATTERN lacks word boundaries")
 
 
-# BACKLOG-15: spec Inv 5 — a test asserts rabbit-print.schema.json is the authority.
-# Either test-rabbit-print-schema.py or this very file checks invariant 5.
-trp_path = os.path.join(FEATURE_DIR, "test/test-rabbit-print-schema.py")
-with open(trp_path) as f:
-    trp_content = f.read()
-if "Inv 5" in trp_content or "invariant 5" in trp_content.lower() or "authoritative" in trp_content.lower():
-    ok("BACKLOG-15: test-rabbit-print-schema.py asserts Inv 5 authority")
+# BACKLOG-15 (post-BACKLOG-20): spec Inv 5 — a test asserts the [rabbit] print
+# architecture. After BACKLOG-20 the three-part architecture (registry data
+# file + JSON Schema + renderer module) is asserted by
+# test-rabbit-print-messages-schema.py (registry shape) and
+# test-rabbit-print-renderer.py (renderer API).
+trp_msgs = os.path.join(FEATURE_DIR, "test/test-rabbit-print-messages-schema.py")
+trp_rend = os.path.join(FEATURE_DIR, "test/test-rabbit-print-renderer.py")
+if os.path.isfile(trp_msgs) and os.path.isfile(trp_rend):
+    ok("BACKLOG-15: rabbit-print Inv 5 architecture asserted by registry-schema and renderer tests")
 else:
-    ko("BACKLOG-15: no test asserts Inv 5 (rabbit-print schema authority)")
+    ko("BACKLOG-15: missing test-rabbit-print-messages-schema.py or test-rabbit-print-renderer.py")
 
 
 # BACKLOG-16: spec Inv 9 documents that build-contract validation is test-only.

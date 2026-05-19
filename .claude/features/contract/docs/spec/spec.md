@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.10.0
+version: 1.11.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -33,6 +33,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 - `.claude/features/contract/schemas/bug.json.schema.json`
 - `.claude/features/contract/schemas/project-map.json.schema.json`
 - `.claude/features/contract/schemas/rabbit-print.schema.json`
+- `.claude/features/contract/schemas/rabbit-print-messages.json`
 - `.claude/features/contract/schemas/workspace-map.json.schema.json`
 - `.claude/features/contract/schemas/build-contract.schema.json`
 - `.claude/features/contract/schemas/workspace-structure.json`
@@ -54,6 +55,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 - `.claude/features/contract/scripts/validate-feature.py`
 - `.claude/features/contract/scripts/workspace-map.py`
 - `.claude/features/contract/scripts/audit-orphan-storage.py`
+- `.claude/features/contract/scripts/rabbit_print.py`
 
 **skills/**
 - `.claude/features/contract/skills/rabbit-workspace-map/SKILL.md`
@@ -74,7 +76,22 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 2. `dispatch-feature-edit.py` output begins with the sentinel `RABBIT-POLICY-BLOCK-v1`.
 3. All scripts in `scripts/` and `scripts/enforcement/` are executable.
 4. Every schema file in `schemas/` is valid JSON.
-5. `rabbit-print.schema.json` is the authoritative definition of the `[rabbit]` print format used by all rabbit-workflow hooks and CLI scripts.
+5. The `[rabbit]` print system is split into three artifacts (CONTRACT-BACKLOG-20):
+   (a) `rabbit-print-messages.json` — the registry data file holding the
+       brand prefix, bar, color palette, and every message entry (each
+       entry has `icon`, `color`, `text` fields). This is the SINGLE
+       SOURCE OF TRUTH for message bodies; editing a message means
+       editing this file only.
+   (b) `rabbit-print.schema.json` — the JSON Schema that validates
+       `rabbit-print-messages.json`. Defines the required structure but
+       does NOT carry message bodies.
+   (c) `rabbit_print.py` — the shared renderer. Consumers (rabbit-cage
+       hooks, tdd-subagent scripts) import this module and call
+       `rabbit_print(message_id, **kwargs) -> str` or
+       `rabbit_subline(text, color="green") -> str` to get a fully
+       composed ANSI-colored string. Direct ANSI/brand/bar composition
+       outside this module is forbidden — producers MUST go through
+       the renderer.
 6. `workspace-map.py` exists, is executable, and produces valid JSON (conforming to `workspace-map.json.schema.json`) when called without flags (show mode); with `--human` it produces human-readable terminal output; with `--audit` it produces a findings-only JSON object (with a `findings` array) listing deviations from the declared workspace structure — missing required nodes emit `error` severity, unknown nodes emit `warn`, missing optional nodes emit no finding; user projects without a `workspace-structure.json` emit a `warn`-severity `missing_declaration` finding. Both show mode and audit mode also accept `--human` for human-readable output.
 7. `workspace-map.json.schema.json` is at schema version 2.0.0 and uses a `oneOf` discriminated union: show mode (with `roots` array of annotated node trees, with a `repoRoot` string field alongside the `roots` array) and audit mode (with `findings` array of severity/type/path/root objects). The v1 flat-array properties (`features`, `scripts`, `schemas`, `commands`, `skills`, `hooks`, `userProjectDirs`) are removed. `workspace-structure.json` exists at `.claude/features/contract/schemas/workspace-structure.json`, is valid JSON, and defines a node-tree schema: documents conforming to it must have `schema_version`, `owner`, `root`, `nodes` at top level; each node must have `name`, `required`, `description`, `children`.
 8. `rabbit-workspace-map/SKILL.md` exists under `.claude/features/contract/skills/` (source of truth, deployed to `.claude/skills/` by generate-skills-dir.sh) and instructs Claude to directly execute `workspace-map.py` on invocation — using `--human` for readable terminal output and the default JSON mode for programmatic use — rather than merely describing how to invoke it.
@@ -103,6 +120,9 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 31. `check-no-main-edits.py` MUST mirror the protected-branch set declared in rabbit-cage Inv 21 (currently `main`, `master`). It MUST NOT forbid additional branches (`trunk`, `develop`, etc.) that are not in any documented invariant. The protected-branch list MUST be a single source of truth, ideally derived from a shared constant or config rather than duplicated.
 32. `check-imports-resolve.py` import-target regex MUST cover all paths where imports can appear: `.claude/features/`, `.claude/hooks/`, `.claude/skills/`, `.claude/commands/`, `.claude/agents/`. The current `.claude/features/`-only pattern misses imports from deployed surface files, producing false-OK on real drift.
 33. `workspace-structure.json` schema field naming MUST be internally consistent: either all snake_case or all camelCase, not mixed. The current mixed-case form (camelCase metadata keys with snake_case enforcement targets) confuses readers and triggers spurious schema-vs-data mismatches.
+34. `rabbit-print-messages.json` exists at `.claude/features/contract/schemas/rabbit-print-messages.json`, is valid JSON, and conforms to `rabbit-print.schema.json`. Top-level keys (required): `schema_version`, `owner`, `deprecation_criterion`, `brand` (the prefix string, exactly `"[🐇 rabbit 🐇]"`), `bar` (the decoration string, exactly `"━━━"`), `colors` (object mapping color name to `{ansi: <code>, reset: <code>}`; required keys `green` = `[32m`/`[0m` and `red` = `[31m`/`[0m`), and `messages` (object mapping message-id to `{icon, color, text}` where `icon` is a single emoji string, `color` is a key into `colors`, and `text` is the body string with `{name}` placeholders for runtime substitution). The required message-ids are: `r1-branch` (🌿 green), `welcome` (✅ green), `policy-drift` (⚠️ red), `surface-drift` (🔄 red), `scope-guard-off` (🔓 red), `scope-guard-bypassed` (🔓 red), `human-approval-bypass` (🔑 red), `skills-updated` (✨ green), `policy-refreshed` (🔄 green), `tdd-transition` (🔧 green), `tdd-forced` (🔧 red). Adding new message-ids is permitted; removing or renaming an id is a breaking change requiring a coexistence window per the Designed Deprecation principle.
+35. `rabbit_print.py` exists at `.claude/features/contract/scripts/rabbit_print.py` and is an importable Python 3 module (underscore form is required by Python's import system; the rest of contract's scripts use hyphens because they are CLI tools, not importable modules). The module exposes exactly two public functions: (a) `rabbit_print(message_id: str, **kwargs) -> str` returns `f"{ansi}{brand} {icon} {bar} {text} {bar} {icon}{reset}"` where `text` has its `{name}` placeholders substituted from `kwargs`; if `message_id` is not in the registry the call raises `KeyError`; if a required `{name}` placeholder is missing from `kwargs` the call raises `KeyError` from `str.format`. (b) `rabbit_subline(text: str, color: str = "green") -> str` returns `f"{ansi}{brand} {text}{reset}"`. Both functions load the registry from disk on first use and cache it. The module MUST NOT print to stdout or stderr; it returns strings only. The module's `__all__` declares exactly these two names.
+36. Every producer that emits a `[rabbit]` message — currently the four declared in `rabbit-print.schema.json` `producers` array — MUST go through `rabbit_print.py` for message composition. Direct in-line ANSI escape codes (`\x1b[3...`), direct brand-prefix strings (`[🐇 rabbit 🐇]` or the legacy `[rabbit]`), or direct bar strings (`━━━`) outside `rabbit_print.py` are forbidden. The producers may compose their own multi-line block (banner + sub-lines) by calling `rabbit_print` and `rabbit_subline` in sequence and joining the results, but each individual line MUST come from one of those two calls.
 
 ## Template marker convention
 
