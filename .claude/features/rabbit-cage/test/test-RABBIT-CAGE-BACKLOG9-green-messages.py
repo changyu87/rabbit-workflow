@@ -113,6 +113,10 @@ try:
     assert_red_msg("sync-check.py DRIFT case", msg)
 
     # Test 3: surface drift
+    # BACKLOG-21 (Inv 78): render_surface_drift now compares build-contract.json
+    # copy-file source/destination sha256 directly. Trigger drift by writing
+    # an intentionally divergent source/destination pair declared in a
+    # local build-contract.json.
     tmp2 = build_tmproot()
     tmproots.append(tmp2)
     env = {**os.environ, "RABBIT_ROOT": tmp2}
@@ -121,15 +125,26 @@ try:
     with open(os.path.join(tmp2, "CLAUDE.md"), "w") as f:
         f.write(res.stdout.rstrip("\n") + "\n")
 
-    os.makedirs(os.path.join(tmp2, ".claude/features/rabbit-cage/test"), exist_ok=True)
-    fakesurf = os.path.join(tmp2, ".claude/features/rabbit-cage/test/test-generated-surface.py")
-    with open(fakesurf, "w") as f:
-        f.write("#!/usr/bin/env python3\nimport sys\nsys.exit(1)\n")
-    os.chmod(fakesurf, 0o755)
-    fakebuild = os.path.join(tmp2, ".claude/features/rabbit-cage/scripts/build.py")
-    with open(fakebuild, "w") as f:
-        f.write("#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n")
-    os.chmod(fakebuild, 0o755)
+    os.makedirs(os.path.join(tmp2, "src"), exist_ok=True)
+    os.makedirs(os.path.join(tmp2, "dst"), exist_ok=True)
+    with open(os.path.join(tmp2, "src/x.py"), "w") as f:
+        f.write("source\n")
+    with open(os.path.join(tmp2, "dst/x.py"), "w") as f:
+        f.write("destination stale\n")
+    os.makedirs(os.path.join(tmp2, ".claude/features/contract"), exist_ok=True)
+    with open(os.path.join(tmp2, ".claude/features/contract/build-contract.json"), "w") as f:
+        json.dump({
+            "schema_version": "1.0.0",
+            "owner": "test",
+            "deprecation_criterion": "test",
+            "targets": [{
+                "name": "hooks/x.py",
+                "type": "copy-file",
+                "source": "src/x.py",
+                "destination": "dst/x.py",
+                "check_on_stop": True,
+            }],
+        }, f)
 
     msg = extract_sys_msg(run_sync(tmp2))
     # Inv 62: surface-drift is an alert condition; it MUST be red, not green.

@@ -22,6 +22,7 @@ Brand/decoration/color/text bodies are sourced from the central registry
 renderer rabbit_print.py (Inv 18, 77).
 """
 
+import hashlib
 import json
 import os
 import re
@@ -125,24 +126,60 @@ def render_claude_md_drift(root: Path, expected: str) -> Optional[dict]:
     return None
 
 
-def render_surface_drift(root: Path) -> Optional[dict]:
-    """Inv 38, 76. Render surface-drift condition.
+def _collect_drifted_targets(root: Path) -> list:
+    """Inv 78 (BACKLOG-21). Compare each copy-file target's source and
+    destination by sha256; return the NAMES of the drifted targets.
 
-    Runs test-generated-surface.py; on non-zero exit, calls build.py to
-    rebuild and returns the alert payload. None if surface is clean (or the
-    surface-test script is missing).
+    Only check_on_stop=true copy-file targets are considered. Missing source
+    files are skipped (build.py is the authority on bootstrap, not the
+    drift detector). A missing destination counts as drift.
     """
-    test_surface = root / ".claude/features/rabbit-cage/test/test-generated-surface.py"
+    contract_path = root / ".claude/features/contract/build-contract.json"
+    try:
+        data = json.loads(contract_path.read_text())
+    except Exception as e:
+        _log_exc("failed to read build-contract.json", e)
+        return []
+    drifted = []
+    for target in data.get("targets", []):
+        if target.get("type") != "copy-file":
+            continue
+        if not target.get("check_on_stop"):
+            continue
+        src = root / target["source"]
+        dst = root / target["destination"]
+        if not src.is_file():
+            continue
+        try:
+            src_sha = hashlib.sha256(src.read_bytes()).hexdigest()
+        except Exception as e:
+            _log_exc(f"failed to hash source for {target.get('name')}", e)
+            continue
+        if dst.is_file():
+            try:
+                dst_sha = hashlib.sha256(dst.read_bytes()).hexdigest()
+            except Exception as e:
+                _log_exc(f"failed to hash destination for {target.get('name')}", e)
+                continue
+            if src_sha != dst_sha:
+                drifted.append(target["name"])
+        else:
+            drifted.append(target["name"])
+    return drifted
+
+
+def render_surface_drift(root: Path) -> Optional[dict]:
+    """Inv 38, 76, 78 (BACKLOG-21). Render surface-drift condition.
+
+    Iterates build-contract.json copy-file targets, collects the names of
+    those whose destination sha256 diverges from the source, then invokes
+    build.py to rebuild. The user-visible message names exactly which
+    targets were rebuilt.
+    """
+    drifted = _collect_drifted_targets(root)
+    if not drifted:
+        return None
     build_py = root / ".claude/features/rabbit-cage/scripts/build.py"
-    if not test_surface.is_file():
-        return None
-    rc = subprocess.call(
-        [sys.executable, str(test_surface)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    if rc == 0:
-        return None
     try:
         subprocess.call(
             [str(build_py), str(root)],
@@ -152,7 +189,7 @@ def render_surface_drift(root: Path) -> Optional[dict]:
     except Exception as e:
         _log_exc("build.py invocation failed during surface-drift rebuild", e)
     return {
-        "systemMessage": surface_drift(),
+        "systemMessage": surface_drift(files=", ".join(drifted)),
     }
 
 

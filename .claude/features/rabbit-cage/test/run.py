@@ -61,6 +61,7 @@ SUITES = [
     "test-RABBIT-CAGE-BACKLOG12-bypass-permissions.py",
     "test-claude-md-header.py",
     "test-RABBIT-CAGE-BACKLOG-20-leading-newline.py",
+    "test-RABBIT-CAGE-BACKLOG-21-surface-drift-files.py",
 ]
 
 

@@ -41,6 +41,11 @@ print("Verifying complete Python migration (Spec Inv 26, 28, 39)")
 print()
 
 # t1: sync-check.py does NOT reference test-generated-surface.sh
+# BACKLOG-21 (Inv 78): sync-check.py no longer invokes test-generated-surface
+# at all — surface-drift detection is now done in-process by comparing
+# build-contract.json copy-file source/destination sha256. The .sh prohibition
+# (Inv 39) still holds; the .py reference assertion is removed because the
+# coupling no longer exists.
 print("=== t1: sync-check.py references test-generated-surface.py (not .sh) ===")
 with open(SYNC_CHECK) as f:
     sync_content = f.read()
@@ -48,11 +53,6 @@ if "test-generated-surface.sh" in sync_content:
     fail_t("sync-check.py still references test-generated-surface.sh — must use .py (Spec Inv 26)")
 else:
     ok("sync-check.py does not reference test-generated-surface.sh")
-
-if "test-generated-surface.py" in sync_content:
-    ok("sync-check.py references test-generated-surface.py")
-else:
-    fail_t("sync-check.py does not reference test-generated-surface.py — Spec Inv 26 requires .py")
 
 # t2: test-generated-surface.py exists (Spec Inv 26)
 print("=== t2: test-generated-surface.py exists (Spec Inv 26) ===")
