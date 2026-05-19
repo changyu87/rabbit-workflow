@@ -120,7 +120,7 @@ KWARGS = {
     "r1-branch": {"branch": "session/20260519-000000"},
     "welcome": {},
     "policy-drift": {},
-    "surface-drift": {},
+    "surface-drift": {"files": "hooks/sync-check.py"},
     "scope-guard-off": {},
     "scope-guard-bypassed": {},
     "human-approval-bypass": {},

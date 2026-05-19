@@ -33,7 +33,7 @@
     "surface-drift": {
       "icon": "🔄",
       "color": "red",
-      "text": "Surface drift detected — workspace rebuilt from sources"
+      "text": "Surface drift detected — rebuilt: {files}"
     },
     "scope-guard-off": {
       "icon": "🔓",

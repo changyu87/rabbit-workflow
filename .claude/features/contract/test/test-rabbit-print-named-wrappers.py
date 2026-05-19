@@ -36,7 +36,6 @@ spec.loader.exec_module(mod)
 ZERO_ARG = [
     ("welcome", "welcome"),
     ("policy_drift", "policy-drift"),
-    ("surface_drift", "surface-drift"),
     ("scope_guard_off", "scope-guard-off"),
     ("scope_guard_bypassed", "scope-guard-bypassed"),
     ("human_approval_bypass", "human-approval-bypass"),
@@ -66,6 +65,39 @@ if callable(fn):
         fail(f"r1_branch mismatch\n  exp: {exp!r}\n  got: {got!r}")
 else:
     fail("r1_branch not callable")
+
+# surface_drift(files) — Inv 35(d), BACKLOG-21: required files kwarg,
+# rendered text ends with the files list followed by bar + icon + reset.
+fn = getattr(mod, "surface_drift", None)
+if callable(fn):
+    got = fn(files="hooks/sync-check.py")
+    exp = mod.rabbit_print("surface-drift", files="hooks/sync-check.py")
+    if got == exp:
+        ok("surface_drift(files=...) == rabbit_print('surface-drift', files=...)")
+    else:
+        fail(f"surface_drift mismatch\n  exp: {exp!r}\n  got: {got!r}")
+
+    # Reach into the registry to compose the expected trailing decoration
+    # (bar + icon + reset) deterministically.
+    reg = mod._load()
+    bar = reg["bar"]
+    icon = reg["messages"]["surface-drift"]["icon"]
+    reset = reg["colors"][reg["messages"]["surface-drift"]["color"]]["reset"]
+    tail = " " + "hooks/sync-check.py" + " " + bar + " " + icon + reset
+    if got.endswith(tail):
+        ok(f"surface_drift output ends with files + bar + icon + reset: {tail!r}")
+    else:
+        fail(f"surface_drift output tail mismatch\n  exp tail: {tail!r}\n  got: {got!r}")
+
+    # Without the files kwarg, the str.format inside rabbit_print MUST raise
+    # KeyError (or TypeError if signature enforces it positionally).
+    try:
+        fn()
+        fail("surface_drift() with no args did not raise")
+    except (TypeError, KeyError):
+        ok("surface_drift() with no args raises TypeError/KeyError")
+else:
+    fail("surface_drift not callable")
 
 # skills_updated(names)
 fn = getattr(mod, "skills_updated", None)
