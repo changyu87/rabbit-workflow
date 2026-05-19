@@ -15,11 +15,6 @@
     }
   },
   "messages": {
-    "r1-branch": {
-      "icon": "🌿",
-      "color": "green",
-      "text": "R1: created branch {branch}"
-    },
     "welcome": {
       "icon": "✅",
       "color": "green",

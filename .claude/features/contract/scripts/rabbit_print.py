@@ -14,7 +14,6 @@ Public API:
     Block assembler (sole owner of the leading newline):
         rabbit_block(*lines) -> str
     Named wrappers (one per message-id; producers MUST use these):
-        r1_branch(branch) -> str
         welcome() -> str
         policy_drift() -> str
         surface_drift(files) -> str
@@ -26,7 +25,7 @@ Public API:
         tdd_transition(from_state, to_state) -> str   (state names upcased)
         tdd_forced(from_state, to_state) -> str       (state names upcased)
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when the [rabbit] print convention is replaced by a
     structured logging facility
@@ -37,7 +36,7 @@ from pathlib import Path
 
 __all__ = [
     "rabbit_print", "rabbit_subline", "rabbit_block",
-    "r1_branch", "welcome", "policy_drift", "surface_drift",
+    "welcome", "policy_drift", "surface_drift",
     "scope_guard_off", "scope_guard_bypassed", "human_approval_bypass",
     "skills_updated", "policy_refreshed", "tdd_transition", "tdd_forced",
 ]
@@ -93,10 +92,6 @@ def rabbit_block(*lines):
     authoritative place the leading newline lives.
     """
     return "\n" + "\n".join(lines)
-
-
-def r1_branch(branch):
-    return rabbit_print("r1-branch", branch=branch)
 
 
 def welcome():
