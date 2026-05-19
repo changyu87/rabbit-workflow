@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.8.0
+version: 3.9.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -797,3 +797,15 @@ policy text alongside.
     diverges from the regenerated content) remains and covers regeneration.
     If CLAUDE.md is genuinely missing, the hook silently exits 0 — bootstrap
     is `install.py`'s responsibility, not `sync-check.py`'s.
+
+80. The aggregated `systemMessage` emitted by `sync-check.py` and
+    `session-init.py` MUST begin with a newline character (`\n`) when at
+    least one pending condition contributes a line (BACKLOG-20). Without
+    the leading newline, Claude Code renders the first `[🐇 rabbit 🐇]`
+    line inline with its own prefix (e.g. `Stop says: [🐇 rabbit 🐇] ...`),
+    visually merging the brand prefix with the harness chrome. The leading
+    `\n` pushes the entire block onto its own row so every `[🐇 rabbit 🐇]`
+    line starts at column 0. Concrete implementation: the aggregation
+    expression is `"\n" + "\n".join(p["systemMessage"] for p in payloads)`,
+    not `"\n".join(...)`. The zero-condition case (no JSON emitted at all)
+    is unaffected — the leading newline only applies when JSON is emitted.
