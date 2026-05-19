@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-# test-byte-identical-import.py — Inv 6 regression guard.
+# test-no-originals-in-tdd-subagent.py — Inv 6 (post-import-cycle) guard.
 #
-# For the duration of the import cycle, the three state-machine scripts under
-# tdd-state-machine/scripts/ MUST be byte-identical to their counterparts in
-# tdd-subagent/scripts/. The follow-up cycle that deletes the tdd-subagent
-# originals will replace this with a "present here, absent in tdd-subagent"
-# guard.
+# After the import + slim cycles, tdd-state-machine OWNS tdd-step.py,
+# tdd-context.py, tdd-drift-check.py. The three scripts MUST:
+#   - exist in .claude/features/tdd-state-machine/scripts/
+#   - NOT exist in .claude/features/tdd-subagent/scripts/
+# Also retains the executable-bit check (Inv 3 — executable bit set;
+# any user-executable mode is acceptable).
 import os
 import subprocess
 import sys
@@ -16,7 +17,7 @@ REPO_ROOT = subprocess.check_output(
 ).decode().strip()
 
 HERE = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/scripts')
-ORIG = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/scripts')
+SUBAGENT = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/scripts')
 
 SCRIPTS = ['tdd-step.py', 'tdd-context.py', 'tdd-drift-check.py']
 
@@ -38,23 +39,17 @@ def ko(msg):
 
 for name in SCRIPTS:
     here = os.path.join(HERE, name)
-    orig = os.path.join(ORIG, name)
-    if not os.path.exists(here):
-        ko(f"{name}: missing in tdd-state-machine/scripts/")
-        continue
-    if not os.path.exists(orig):
-        ko(f"{name}: missing in tdd-subagent/scripts/")
-        continue
-    with open(here, 'rb') as f:
-        h = f.read()
-    with open(orig, 'rb') as f:
-        o = f.read()
-    if h == o:
-        ok(f"{name}: byte-identical to tdd-subagent original")
+    subagent = os.path.join(SUBAGENT, name)
+    if os.path.exists(here):
+        ok(f"{name}: present in tdd-state-machine/scripts/")
     else:
-        ko(f"{name}: byte mismatch with tdd-subagent original")
+        ko(f"{name}: missing in tdd-state-machine/scripts/")
+    if os.path.exists(subagent):
+        ko(f"{name}: must NOT be present in tdd-subagent/scripts/ (originals deleted)")
+    else:
+        ok(f"{name}: absent from tdd-subagent/scripts/ as required")
 
-# Executable-bit invariant (Inv 3)
+# Executable-bit invariant (Inv 3 — relaxed: executable bit set, any user-exec mode ok).
 for name in SCRIPTS:
     p = os.path.join(HERE, name)
     if not os.path.exists(p):
