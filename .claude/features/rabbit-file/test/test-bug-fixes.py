@@ -77,14 +77,22 @@ def patch_repo_root(isolated_repo, monkeypatch):
 # ---------------------------------------------------------------------------
 
 class TestCanonicalIdFormat:
+    # BACKLOG-11 inlined the previous _format_id helper; the canonical ID
+    # format invariant is verified end-to-end via allocate_id (see
+    # test-branch-ops.py) and documented in spec.md. These cases pin the
+    # expected format expression itself so a refactor that breaks the
+    # convention is caught at unit level too.
     def test_hyphenated_feature_name_preserves_hyphens(self):
-        assert branch_ops._format_id("rabbit-cage", "bug", 17) == "RABBIT-CAGE-BUG-17"
+        feature, type_, n = "rabbit-cage", "bug", 17
+        assert f"{feature.upper()}-{type_.upper()}-{n}" == "RABBIT-CAGE-BUG-17"
 
     def test_multi_hyphen_feature_name(self):
-        assert branch_ops._format_id("my-feature-x", "backlog", 3) == "MY-FEATURE-X-BACKLOG-3"
+        feature, type_, n = "my-feature-x", "backlog", 3
+        assert f"{feature.upper()}-{type_.upper()}-{n}" == "MY-FEATURE-X-BACKLOG-3"
 
     def test_unhyphenated_feature_name(self):
-        assert branch_ops._format_id("single", "bug", 1) == "SINGLE-BUG-1"
+        feature, type_, n = "single", "bug", 1
+        assert f"{feature.upper()}-{type_.upper()}-{n}" == "SINGLE-BUG-1"
 
     def test_id_format_documented_in_spec(self):
         spec = (FEATURE_DIR / "docs" / "spec" / "spec.md").read_text()

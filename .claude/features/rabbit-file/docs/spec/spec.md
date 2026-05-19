@@ -13,7 +13,8 @@ origin/bug-backlog-files branch, never on main.
 - branch_ops.py: All git operations against origin/bug-backlog-files.
   Uses git worktree at .claude/tmp/bug-backlog-files (gitignored).
   Exposes: allocate_id(feature, type_), commit_item(feature, type_, id_str, item),
-  fetch_item(feature, type_, id_str), read_branch(feature, type_, status).
+  fetch_item(feature, type_, id_str), read_branch(feature, type_, status),
+  release_id(feature, type_, id_str), branch_exists().
   Auto-initializes orphan branch and counter.json on first use.
   Canonical ID format: `UPPER(feature)-UPPER(type)-N`. Hyphens already
   present in the feature name are preserved verbatim (NOT escaped, NOT
