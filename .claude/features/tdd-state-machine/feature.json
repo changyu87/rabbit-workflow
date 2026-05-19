@@ -1,0 +1,15 @@
+{
+  "template_version": "2.0.0",
+  "name": "tdd-state-machine",
+  "version": "0.1.0",
+  "owner": "rabbit team",
+  "tdd_state": "spec",
+  "summary": "tdd-state-machine feature",
+  "surface": {
+    "hooks": [],
+    "commands": [],
+    "agents": [],
+    "skills": []
+  },
+  "deprecation_criterion": "TBD — set after first review"
+}
