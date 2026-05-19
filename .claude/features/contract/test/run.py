@@ -65,5 +65,6 @@ run_test("test-bug-fixes-cycle.py")
 run_test("test-workspace-declares-all-features.py")
 run_test("test-check-numbered-lists.py")
 run_test("test-no-dead-contract-scripts.py")
+run_test("test-rabbit-feature-spec-deployment.py")
 
 print("ALL TESTS PASSED")
