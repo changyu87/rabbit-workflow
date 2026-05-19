@@ -263,7 +263,8 @@ def _run_enforcement_checks(d, repo_root):
     _run("check-naming.py", [d], f"WARNING: naming check failed for {d}")
     _run("check-imports-resolve.py", [d], f"WARNING: R-import-resolve check failed for {d}")
     _run("check-symlinks-resolve.py", [repo_root], "WARNING: symlink-resolve check failed")
-    _run("check-template-schema-producer-consistency.py", [],
+    _run("check-template-schema-producer-consistency.py",
+         [os.path.join(repo_root, ".claude", "features", "contract", "templates", "bug-template.json")],
          "WARNING: template-schema-producer consistency check failed")
 
 
