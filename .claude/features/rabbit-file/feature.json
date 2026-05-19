@@ -2,7 +2,7 @@
   "name": "rabbit-file",
   "version": "0.1.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Unified bug and backlog filing, tracking, and lifecycle. Stores items on origin/bug-backlog-files branch via Python scripts. Replaces rabbit-bug and rabbit-backlog.",
   "surface": {
     "hooks": [],
@@ -17,5 +17,6 @@
     ]
   },
   "deprecation_criterion": "when a unified tracking system replaces file-based bug and backlog management",
-  "updated": "2026-05-18"
+  "updated": "2026-05-19",
+  "spec_no_change_reason": "spec already committed in HEAD~1 (0b7a93d9) prior to subagent dispatch per rabbit-feature-touch Step 3 (Inv 16); working-tree diff is clean by design"
 }

@@ -26,6 +26,7 @@ SCRIPTS_DIR = FEATURE_DIR / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import branch_ops  # noqa: E402
+from conftest import seed_bug_backlog_branch  # noqa: E402
 
 
 def _git(repo, *args, check=True):
@@ -44,6 +45,7 @@ def isolated_repo(tmp_path):
     remote.mkdir()
     subprocess.run(["git", "init", "--bare", str(remote)], check=True,
                    capture_output=True)
+    seed_bug_backlog_branch(remote)  # BUG-32 guard sidestep
     local = tmp_path / "local"
     subprocess.run(["git", "clone", str(remote), str(local)], check=True,
                    capture_output=True)
@@ -271,6 +273,13 @@ class TestListItemsBranchMissing:
     def test_branch_missing_with_filter_shows_branch_guidance(self, isolated_repo):
         """When the branch does not exist and a filter is passed, the message
         MUST direct the operator to file first (NOT 'No items found.')."""
+        # The fixture pre-seeds bug-backlog-files (BUG-32 guard sidestep).
+        # Delete it on the bare remote so list-items.py sees "no branch".
+        bare = isolated_repo.parent / "remote"
+        subprocess.run(
+            ["git", "-C", str(bare), "branch", "-D", "bug-backlog-files"],
+            check=True, capture_output=True,
+        )
         r = _run_list(isolated_repo, "--feature", "any-feat")
         assert r.returncode == 0
         # The fix: distinguish branch-missing from no-items.

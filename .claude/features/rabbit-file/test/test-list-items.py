@@ -15,6 +15,10 @@ def isolated_repo(tmp_path, monkeypatch):
     bare = tmp_path / "remote.git"
     bare.mkdir()
     sp.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+    # BUG-32: pre-seed bug-backlog-files so _ensure_branch's local-origin
+    # orphan-creation guard does not fire under the bare-local-origin test fixture.
+    from conftest import seed_bug_backlog_branch
+    seed_bug_backlog_branch(bare)
     clone = tmp_path / "repo"
     sp.run(["git", "clone", str(bare), str(clone)], check=True, capture_output=True)
     sp.run(["git", "-C", str(clone), "config", "user.email", "t@t.com"], check=True, capture_output=True)
@@ -68,6 +72,12 @@ def run_list(clone, *args):
 
 
 def test_no_branch_prints_guidance(isolated_repo):
+    # The fixture pre-seeds bug-backlog-files (BUG-32 guard sidestep).
+    # Delete it on the bare remote so list-items.py sees "no branch".
+    import subprocess as sp
+    bare = isolated_repo.parent / "remote.git"
+    sp.run(["git", "-C", str(bare), "branch", "-D", "bug-backlog-files"],
+           check=True, capture_output=True)
     r = run_list(isolated_repo)
     assert r.returncode == 0
     assert "No items filed yet" in r.stdout
