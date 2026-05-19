@@ -52,8 +52,9 @@ def main():
         err("missing docs/spec/contract.md")
     elif os.path.getsize(os.path.join(feature_dir, "docs", "spec", "contract.md")) == 0:
         err("docs/spec/contract.md is empty")
-    if not os.path.isdir(os.path.join(feature_dir, "docs", "bugs")):
-        err("missing docs/bugs/ directory")
+    # Per spec Inv 14 & Inv 39 (BUG-38): bug storage is centralized to
+    # <repo-root>/.claude/bugs/<feature-name>/; the legacy per-feature
+    # docs/bugs/ directory no longer applies and MUST NOT be required here.
 
     run_py = os.path.join(feature_dir, "test", "run.py")
     if not os.path.isfile(run_py):
