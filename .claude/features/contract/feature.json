@@ -12,5 +12,5 @@
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-19",
   "tdd_last_cycle_impl_commit": "eae35f270bb84a6a14bb814bc57b9f08613f49a0",
-  "spec_no_change_reason": "source-path repoint within existing schema; no new invariant required per impl-suggestion"
+  "spec_no_change_reason": "build-contract source path repoint following rabbit-feature-scope absorption into rabbit-feature; no new invariant required"
 }
