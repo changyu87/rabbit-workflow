@@ -65,6 +65,7 @@ SUITES = [
     "test-RABBIT-CAGE-rabbit-config-help.py",
     "test-rabbit-cage-version-alignment.py",
     "test-RABBIT-CAGE-BUG-92-stale-invariants-removed.py",
+    "test-RABBIT-CAGE-BACKLOG-22-cleanup.py",
 ]
 
 
