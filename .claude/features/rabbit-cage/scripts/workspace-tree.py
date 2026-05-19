@@ -57,8 +57,10 @@ ANNOTATIONS = {
     "contract/":              "dispatch scripts, enforcement, templates",
     "policy":                 "philosophy, spec-rules, coding-rules",
     "policy/":                "philosophy, spec-rules, coding-rules",
-    "tdd-subagent":      "tdd-step.py forward-only state machine",
-    "tdd-subagent/":     "tdd-step.py forward-only state machine",
+    "tdd-state-machine":      "tdd-step.py forward-only state machine",
+    "tdd-state-machine/":     "tdd-step.py forward-only state machine",
+    "tdd-subagent":           "TDD subagent dispatch protocol (dispatch-tdd-subagent.py)",
+    "tdd-subagent/":          "TDD subagent dispatch protocol (dispatch-tdd-subagent.py)",
     "feature.json":           "feature manifest: owner, tdd_state, surface, deprecation_criterion",
     "docs/spec":              "spec and contract for this feature",
     "docs/spec/":             "spec and contract for this feature",
@@ -69,20 +71,17 @@ ANNOTATIONS = {
     "backlogs":               "centralized backlog tracker (.claude/backlogs, subdirs by feature name)",
     "rabbit-file":            "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
     "rabbit-file/":           "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
-    "rabbit-feature":         "feature lifecycle orchestration (new, touch, scope resolution)",
-    "rabbit-feature/":        "feature lifecycle orchestration (new, touch, scope resolution)",
-    "rabbit-feature-scope":   "resolve a request to the list of features it touches",
-    "rabbit-feature-scope/":  "resolve a request to the list of features it touches",
-    "rabbit-spec":            "author and update feature specs via the rabbit-spec skill",
-    "rabbit-spec/":           "author and update feature specs via the rabbit-spec skill",
+    "rabbit-feature":         "feature lifecycle orchestration (new, touch, scope resolution, spec authoring)",
+    "rabbit-feature/":        "feature lifecycle orchestration (new, touch, scope resolution, spec authoring)",
 }
 
 STRUCTURAL_DIRS = {
     "features", "docs", "bugs", "spec", "backlog", "backlogs",
     "commands", "hooks", "skills", "agents", "scripts",
     "test", "enforcement", ".claude",
-    "rabbit-cage", "contract", "policy", "tdd-subagent",
-    "rabbit-file", "rabbit-feature", "rabbit-feature-scope", "rabbit-spec",
+    "rabbit-cage", "contract", "policy",
+    "tdd-state-machine", "tdd-subagent",
+    "rabbit-file", "rabbit-feature",
 }
 
 KEY_FILES = {

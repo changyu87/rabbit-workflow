@@ -4,7 +4,8 @@
 Verifies the cleanups specified in the BACKLOG-22 impl-suggestion:
   1) workspace-tree.py: legacy 2-arg form removed; .sh KEY_FILES branch
      removed (Inv 39 forbids .sh); ANNOTATIONS / STRUCTURAL_DIRS include
-     rabbit-feature, rabbit-feature-scope, rabbit-spec.
+     the live post-consolidation features (rabbit-feature,
+     tdd-state-machine).
   2) scope-guard.py: walk_up_find for .rabbit-scope-active collapsed to
      a direct repo-root file check.
   3) sync-check.py: counter-init no longer writes "0\\n" to disk when
@@ -71,7 +72,7 @@ else:
 
 # t3 — new feature names appear in ANNOTATIONS or STRUCTURAL_DIRS so they
 #       render annotated in the structural view.
-for feat in ("rabbit-feature", "rabbit-feature-scope", "rabbit-spec"):
+for feat in ("rabbit-feature", "tdd-state-machine"):
     if feat in wt:
         ok(f"3-{feat}", f"workspace-tree.py: '{feat}' annotated/structured")
     else:
