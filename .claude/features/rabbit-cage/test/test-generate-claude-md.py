@@ -130,11 +130,10 @@ except Exception:
 # t12
 expected_header = ph.get("header", "") if isinstance(ph, dict) else ""
 result = subprocess.run([sys.executable, GENERATE_SCRIPT], capture_output=True, text=True)
-actual_first = result.stdout.splitlines()[0] if result.stdout.splitlines() else ""
-if expected_header == actual_first:
-    ok(12, "generate-claude-md.py first line matches policy-header.json header field")
+if expected_header and result.stdout.startswith(expected_header):
+    ok(12, "generate-claude-md.py output starts with policy-header.json header field")
 else:
-    fail_t(12, "generate-claude-md.py first line does not match policy-header.json header field")
+    fail_t(12, "generate-claude-md.py output does not start with policy-header.json header field")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")
