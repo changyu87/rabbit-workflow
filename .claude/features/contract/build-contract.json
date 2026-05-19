@@ -77,7 +77,7 @@
     {
       "name": "skills/rabbit-feature-scope/SKILL.md",
       "type": "copy-file",
-      "source": ".claude/features/rabbit-feature-scope/skills/rabbit-feature-scope/SKILL.md",
+      "source": ".claude/features/rabbit-feature/skills/rabbit-feature-scope/SKILL.md",
       "destination": ".claude/skills/rabbit-feature-scope/SKILL.md",
       "check_on_stop": true
     },
