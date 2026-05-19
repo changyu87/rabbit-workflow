@@ -196,6 +196,29 @@ origin/bug-backlog-files root:
   as module-level constants (`BRANCH`, `IDENTITY_NAME`,
   `IDENTITY_EMAIL`) so downstream tooling can reference them without
   duplicating string literals.
+- branch_ops._ensure_branch MUST refuse to create a new orphan
+  bug-backlog-files branch when the immediate origin is a local
+  filesystem path (starts with `/`, `file://`, or matches any path that
+  does not look like a network URL — i.e. no `://` AND no `git@`
+  prefix). In a chained-workspace topology (e.g. ws-child → ws-parent →
+  GitHub) the upstream branch may exist genuinely on GitHub but be
+  absent from the intermediate's `refs/heads/`, so the existing
+  `ls-remote --heads origin bug-backlog-files` check returns False even
+  though the branch exists further up the chain. Silently calling
+  `_init_orphan_branch` in this case would push a fresh, empty branch
+  to the intermediate and overwrite the legitimate items at the
+  upstream-of-upstream once divergence is resolved (BUG-32). Instead,
+  `_ensure_branch` MUST raise a `RuntimeError` whose message names the
+  immediate origin URL, the branch name, and the remediation: the
+  operator must materialize the branch locally in the intermediate via
+  `git -C <intermediate> fetch origin bug-backlog-files && git -C
+  <intermediate> checkout bug-backlog-files` before any rabbit-file
+  operation will succeed from the child workspace. The defensive check
+  applies only when origin is local: a true fresh-repo bootstrap
+  against a remote (HTTPS or SSH) origin that lacks the branch
+  continues to create the orphan as before, preserving the
+  bootstrap-on-first-use guarantee declared at the top of the Scripts
+  section.
 
 ## Out of scope
 
