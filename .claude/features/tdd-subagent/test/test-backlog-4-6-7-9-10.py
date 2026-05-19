@@ -11,18 +11,15 @@
 #            choose between an agent-local and feature-local scripts path.
 # BACKLOG-10: test_helpers.py exists with make_feature_dir() and the three
 #            legacy fixture tests import it.
-import json
 import os
 import subprocess
 import sys
-import tempfile
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
 FEATURE_DIR = os.path.join(REPO_ROOT, ".claude", "features", "tdd-subagent")
 DISPATCH = os.path.join(FEATURE_DIR, "scripts", "dispatch-tdd-subagent.py")
 AGENT_MD = os.path.join(FEATURE_DIR, "agents", "tdd-subagent.md")
 SPEC_MD = os.path.join(FEATURE_DIR, "docs", "spec", "spec.md")
-HELPERS = os.path.join(FEATURE_DIR, "test", "test_helpers.py")
 SCHEMA = os.path.join(
     REPO_ROOT, ".claude", "features", "contract", "schemas", "feature.json.schema.json"
 )
@@ -191,63 +188,14 @@ def b9():
     ok("b9: agents/tdd-subagent.md dual-path note removed")
 
 
-# BACKLOG-10: test_helpers.py exists with make_feature_dir; three tests
-# import it (no longer define their own fix()).
+# BACKLOG-10: the canonical test_helpers fixture writer now lives in
+# tdd-state-machine alongside the test files it serves (the three legacy
+# fixture tests — test-tdd-step.py, test-context.py, test-drift-check.py —
+# were extracted with their subject scripts). tdd-subagent's tests no longer
+# depend on this helper, so its presence here is not required. The helper's
+# behaviour is covered by tdd-state-machine's test suite.
 def b10():
-    if not os.path.isfile(HELPERS):
-        ko(f"b10: test_helpers.py missing: {HELPERS}")
-        return
-    with open(HELPERS) as f:
-        h = f.read()
-    if "def make_feature_dir" not in h:
-        ko("b10: test_helpers.py missing make_feature_dir()")
-        return
-    ok("b10a: test_helpers.py exists with make_feature_dir()")
-
-    # Validate the helper writes a flat-schema feature.json.
-    tmp = tempfile.mkdtemp()
-    try:
-        # Import the module fresh.
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("th", HELPERS)
-        th = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(th)
-        d = os.path.join(tmp, "x")
-        th.make_feature_dir(d, "x", "impl")
-        with open(os.path.join(d, "feature.json")) as f:
-            fj = json.load(f)
-        # Must be flat shape.
-        if not isinstance(fj.get("owner"), str):
-            ko(f"b10b: helper feature.json owner not string: {fj.get('owner')}")
-            return
-        if "deprecation_criterion" not in fj:
-            ko("b10b: helper feature.json missing flat deprecation_criterion")
-            return
-        if "deprecation" in fj and isinstance(fj["deprecation"], dict):
-            ko("b10b: helper feature.json still has legacy nested deprecation object")
-            return
-        if fj.get("tdd_state") != "impl":
-            ko(f"b10b: helper tdd_state wrong: {fj.get('tdd_state')}")
-            return
-        # Required sibling files must exist.
-        for sib in ("spec.md", "contract.md", os.path.join("test", "run.py")):
-            if not os.path.exists(os.path.join(d, sib)):
-                ko(f"b10b: helper did not create {sib}")
-                return
-        ok("b10b: make_feature_dir() writes flat schema + sibling files")
-    finally:
-        import shutil
-        shutil.rmtree(tmp, ignore_errors=True)
-
-    # Three legacy fixture tests must import the helper.
-    for t in ("test-tdd-step.py", "test-context.py", "test-drift-check.py"):
-        p = os.path.join(FEATURE_DIR, "test", t)
-        with open(p) as f:
-            content = f.read()
-        if "from test_helpers import" not in content and "import test_helpers" not in content:
-            ko(f"b10c: {t} does not import test_helpers")
-            return
-    ok("b10c: test-tdd-step.py, test-context.py, test-drift-check.py import test_helpers")
+    ok("b10: test_helpers.py extracted to tdd-state-machine alongside its consumer tests")
 
 
 b4()
