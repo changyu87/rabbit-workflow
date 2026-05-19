@@ -1,10 +1,10 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-feature",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "summary": "Owns the rabbit-feature-touch orchestration skill and (absorbed) the rabbit-feature-scope skill with its resolve-scope.py and format-feature-context.py scripts. Dispatcher-side surface; executor-side (tdd-step.py, dispatch-tdd-subagent.py, 9-step cycle) lives in tdd-subagent.",
+  "summary": "Owns the rabbit-feature-touch orchestration skill and (absorbed) the rabbit-feature-scope skill with its resolve-scope.py and format-feature-context.py scripts. Dispatcher-side surface; executor-side (dispatch-tdd-subagent.py and tdd-step.py) lives in tdd-subagent and tdd-state-machine respectively.",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -20,5 +20,5 @@
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
   "updated": "2026-05-19",
-  "spec_no_change_reason": "spec already committed in this cycle (b9a9e1bc); diff vs HEAD is empty"
+  "spec_no_change_reason": "spec correction committed at 4b3ac5bb before TDD-cycle dispatch (analog to rabbit-feature-touch Step 3)"
 }
