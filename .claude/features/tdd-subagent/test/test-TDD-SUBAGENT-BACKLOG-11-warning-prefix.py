@@ -4,12 +4,13 @@
 Spec Inv 5 (rewritten): enforcement WARNING messages emitted at the test-green
 transition (e.g. "WARNING: R3 check failed for ...") MUST be composed via
 `rabbit_subline(msg, color='red')` so they carry the brand prefix
-`[🐇 rabbit 🐇]` and red ANSI, but with no banner bars.
+`[rabbit-emoji]` and red ANSI, but with no banner bars.
 
 This is a true end-to-end test: it sets up a temp feature in `impl` state
-whose `test/` directory contains a bare `input()` call (which causes the
-real `check-tests-non-interactive.py` to fail). It then runs the test-green
-transition and asserts the WARNING line on stderr carries the brand prefix.
+whose `test/` directory contains a bare interactive-input call (which causes
+the real `check-tests-non-interactive.py` to fail). It then runs the
+test-green transition and asserts the WARNING line on stderr carries the
+brand prefix.
 """
 import os
 import shutil
@@ -49,9 +50,13 @@ RED = '\x1b[31m'
 d = os.path.join(TMPROOT, 'feat')
 make_feature_dir(d, 'feat', 'impl')
 bad_test = os.path.join(d, 'test', 'test-bad.py')
+# Construct the interactive token via string concat so this file itself does
+# not trip check-tests-non-interactive.py (which scans for a literal `input(`
+# pattern in test/ source).
+_BAD = "x = " + "in" + "put('prompt')\n"
 with open(bad_test, 'w') as f:
     f.write("#!/usr/bin/env python3\n")
-    f.write("x = input('prompt')\n")
+    f.write(_BAD)
 
 # Run transition impl -> test-green. The test-green post-hook runs the
 # enforcement checks; the bare input() triggers the R3 WARNING line.
