@@ -66,6 +66,7 @@ SUITES = [
     "test-rabbit-cage-version-alignment.py",
     "test-RABBIT-CAGE-BUG-92-stale-invariants-removed.py",
     "test-RABBIT-CAGE-BACKLOG-22-cleanup.py",
+    "test-RABBIT-CAGE-BUG-93-retired-refs.py",
 ]
 
 
