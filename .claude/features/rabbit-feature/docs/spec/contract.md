@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 0.1.0
+version: 1.0.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -24,14 +24,12 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "skills": [
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-touch/",
-        "purpose": "Dormant Cycle-A source for the rabbit-feature-touch orchestration skill (byte-identical body to the tdd-subagent SKILL.md per Inv 1). The deployed .claude/skills/rabbit-feature-touch/ continues to be built from the tdd-subagent source until Cycle B re-points build-contract.json."
+        "purpose": "rabbit-feature-touch orchestration skill — authoritative source for the deployed .claude/skills/rabbit-feature-touch/SKILL.md, populated via the build-contract.json copy-file entry (Inv 1)."
       }
     ]
   },
   "reads": {
-    "files": [
-      ".claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md (verbatim-copy source for Inv 1)"
-    ],
+    "files": [],
     "external": []
   },
   "invokes": {
@@ -55,8 +53,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "runtime_markers": []
   },
   "never": [
-    "modifies build-contract.json (deferred to Cycle B per Inv 4)",
-    "modifies or deletes .claude/features/tdd-subagent/skills/rabbit-feature-touch/ (deferred to Cycle B per Inv 4)",
     "modifies tdd-subagent spec, contract, feature.json, or scripts",
     "modifies workspace-structure.json"
   ]
