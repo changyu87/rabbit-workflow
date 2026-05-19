@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.13.0
+version: 4.0.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -298,6 +298,13 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
     use any subcommand without consulting the spec or the SKILL.md. A
     `help` output that is byte-identical to the error `USAGE` string is
     a violation of this invariant.
+84. The rabbit-cage feature version MUST be identical across all three
+    manifests: the `version` field of `feature.json`, the `version` field
+    of the YAML frontmatter of `docs/spec/spec.md`, and the `version`
+    field of the YAML frontmatter of `docs/spec/contract.md`. Three-way
+    drift (any two manifests disagreeing) is a constitution violation
+    (RABBIT-CAGE-BUG-91); the alignment is enforced by
+    `test/test-rabbit-cage-version-alignment.py`.
 
 ## Out of Scope
 
