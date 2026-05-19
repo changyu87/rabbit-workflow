@@ -33,9 +33,13 @@ def _check_help(script: Path) -> None:
         f"{script.name} --help exited {result.returncode}\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
-    assert "usage:" in result.stdout, (
-        f"{script.name} --help did not print 'usage:' in stdout\n"
-        f"stdout: {result.stdout}"
+    # Spec Inv 3 requires "recognizable usage text"; argparse-style scripts
+    # write to stdout, hand-rolled scripts may write to stderr. Either is
+    # acceptable for the cross-feature interface lock.
+    combined = result.stdout + result.stderr
+    assert "usage:" in combined, (
+        f"{script.name} --help did not print 'usage:' on stdout or stderr\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
 
 
