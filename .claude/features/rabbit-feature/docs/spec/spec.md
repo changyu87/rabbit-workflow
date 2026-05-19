@@ -29,9 +29,9 @@ from `rabbit-spec`), which authors and updates feature specs and produces
 implementation-suggestion files for whatever process invoked it. The
 `rabbit-spec` feature directory still exists at HEAD as the source; a
 separate cleanup cycle will delete that directory, and other separate
-cycles will update build-contract.json (rename the deployed skill path
-from `.claude/skills/rabbit-spec/SKILL.md` to
-`.claude/skills/rabbit-feature-spec/SKILL.md`) and callers
+cycles will update build-contract.json (renaming the deployed skill
+directory from the legacy `rabbit-spec` location to the new
+`rabbit-feature-spec` location under `.claude/skills/`) and callers
 (`rabbit-feature-touch` SKILL.md, `dispatch-tdd-subagent.py`).
 
 The skill is **dispatcher-side**: it resolves scope, creates branches,
