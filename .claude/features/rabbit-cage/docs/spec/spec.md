@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 4.0.0
+version: 4.1.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -34,7 +34,6 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 4. `.claude/settings.json` is a symlink pointing to `.claude/features/rabbit-cage/settings.json`.
 5. `.claude/policy` is a symlink pointing to `.claude/features/policy`.
 6. `.claude/contract` is a symlink pointing to `.claude/features/contract`.
-7. `CLAUDE.md` at repo root is a generated regular file (not a symlink); produced by `generate-claude-md.py`; committed to the repo (not gitignored); contains inline `rabbit-policy-start`/`rabbit-policy-end` section.
 8. `README.md` at repo root is a symlink pointing to `.claude/features/rabbit-cage/README.md`.
 9. `install.py` at repo root is a copy of `.claude/features/rabbit-cage/install.py` (managed by `build-contract.json`). `install.py` is the bootstrap installer; it is a standalone Python script requiring only the stdlib. No `.sh` files exist in rabbit-cage.
 10. `CLAUDE.md` contains `@`-imports sourcing files from `.claude/policy/`.
@@ -510,12 +509,6 @@ rules.
     residual unbalanced-quote segments and cause false-positive DENY on
     write-pattern characters (`>`, `>>`, `tee`, etc.) inside the original
     quoted text.
-14. `generate-skills-dir.py --check` detects drift by comparing the sha256 of
-    each source `SKILL.md` directly against the sha256 of the corresponding
-    copy at `.claude/skills/<name>/SKILL.md`. No external baseline file is
-    used or maintained. (Note: this functionality is supplied by `build.py`
-    via `build-contract.json` copy-file targets; the standalone
-    `generate-skills-dir.py` does not exist — see Inv 27.)
 15. `.claude/skills/` and its contents are committed to the repo;
     `.claude/skills/` does not appear in `.gitignore`.
 16. `CLAUDE.md` at the repo root is committed to the repo; `CLAUDE.md` does
