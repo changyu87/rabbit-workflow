@@ -3,13 +3,15 @@
   "name": "rabbit-feature",
   "version": "0.1.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "spec",
-  "summary": "rabbit-feature feature",
+  "tdd_state": "test-red",
+  "summary": "Owns the rabbit-feature-touch orchestration skill that gates every write/edit/delete/add operation targeting a feature directory through the formal TDD state machine. Dispatcher-side surface; the executor-side surface (tdd-step.py, dispatch-tdd-subagent.py, the 9-step cycle) lives in tdd-subagent.",
   "surface": {
     "hooks": [],
     "commands": [],
     "agents": [],
     "skills": []
   },
-  "deprecation_criterion": "TBD — set after first review"
+  "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
+  "updated": "2026-05-19",
+  "spec_no_change_reason": "spec already committed by dispatcher per rabbit-feature-touch Step 3 (Inv 16); HEAD includes the spec edit"
 }
