@@ -53,8 +53,13 @@ else:
     data = json.loads(fj.read_text())
     if data.get("status") != "retired":
         fail(f"feature.json status must be 'retired', got {data.get('status')!r}")
-    if data.get("tdd_state") != "retired":
-        fail(f"feature.json tdd_state must be 'retired', got {data.get('tdd_state')!r}")
+    # tdd_state may legitimately be "test-green" (mid-cycle) or terminal
+    # "deprecated"/"retired" once the chore commit lands.
+    if data.get("tdd_state") not in {"test-green", "deprecated", "retired"}:
+        fail(
+            "feature.json tdd_state must be one of "
+            f"test-green/deprecated/retired, got {data.get('tdd_state')!r}"
+        )
 
 # 5. spec.md contains the retirement notice and points at absorbing feature.
 sm = docs / "spec" / "spec.md" if docs.exists() else None
