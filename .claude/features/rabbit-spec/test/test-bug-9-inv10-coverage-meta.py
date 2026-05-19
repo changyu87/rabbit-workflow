@@ -20,9 +20,12 @@ SPEC_MD = os.path.join(FEATURE_DIR, "docs", "spec", "spec.md")
 TEST_DIR = os.path.join(FEATURE_DIR, "test")
 
 # Files in TEST_DIR that don't count as invariant tests for this meta-test.
+# This meta-test itself is NOT excluded: its docstring explicitly cites
+# "Invariant 10", which is genuine coverage. (It only mentions other Inv
+# numbers in inline comments naming the gaps it closes, not as primary
+# coverage claims.)
 EXCLUDED_FILES = {
     "run.py",
-    "test-bug-9-inv10-coverage-meta.py",  # this file (it cites every Inv)
 }
 
 

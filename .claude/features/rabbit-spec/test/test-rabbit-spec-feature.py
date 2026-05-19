@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Structural tests for the rabbit-spec feature."""
+"""Structural tests for the rabbit-spec feature.
+
+Covers spec invariants:
+  Inv 1  — SKILL.md MUST declare `model: opus` in YAML frontmatter
+           (test_skill_md_has_opus_model).
+  Inv 6  — `surface.skills` in feature.json MUST be `[]`
+           (test_feature_json_surface_skills_empty).
+"""
 import json
 import os
 import sys
