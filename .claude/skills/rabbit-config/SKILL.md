@@ -1,6 +1,6 @@
 ---
 name: rabbit-config
-description: Use to configure rabbit-workflow settings via /rabbit-config. Subcommands - prompt-threshold [N] (refresh threshold), allowed-tools [add|remove <tool>] (Claude Code tool permissions), bash-allow [add|remove <cmd>] (Bash command permissions), permissions [lock|unlock] (repo file write protection), human-approval [true|false] (Step 4 gate state, hard file marker; true=gate active, false=bypass), bypass-permissions [true|false] (per-user permissions.defaultMode='bypassPermissions' in settings.local.json). Trigger on phrases like "change prompt threshold", "add permission", "bypass human approval", "revoke human-approval bypass", "enable bypass mode", "turn off bypass permissions".
+description: Use to configure rabbit-workflow settings via /rabbit-config. Subcommands - help (illustrated usage with examples for every subcommand), prompt-threshold [N] (refresh threshold), allowed-tools [add|remove <tool>] (Claude Code tool permissions), bash-allow [add|remove <cmd>] (Bash command permissions), permissions [lock|unlock] (repo file write protection), human-approval [true|false] (Step 4 gate state, hard file marker; true=gate active, false=bypass), bypass-permissions [true|false] (per-user permissions.defaultMode='bypassPermissions' in settings.local.json). Trigger on phrases like "change prompt threshold", "add permission", "bypass human approval", "revoke human-approval bypass", "enable bypass mode", "turn off bypass permissions", "what subcommands does rabbit-config have", "rabbit-config help".
 version: 1.0.0
 owner: rabbit-cage
 deprecation_criterion: when Claude Code provides a native typed-config mechanism that subsumes this skill
@@ -15,9 +15,19 @@ change one of the workflow's runtime knobs.
 All logic lives in `scripts/rabbit-config.py`. There is no slash-command
 shim file (per spec Inv 25); the skill itself is the sole entry point.
 
+## Discovering Subcommands
+
+The canonical discovery path is `/rabbit-config help` — it prints an
+illustrated usage message that names every subcommand and shows at least one
+concrete invocation example per subcommand. Operators new to the skill should
+run it once before reaching for the spec or this file.
+
 ## CLI Surface
 
 ```
+/rabbit-config help
+    help                           print illustrated usage with examples for every subcommand
+
 /rabbit-config prompt-threshold [value]
     prompt-threshold <N>           set auto-refresh threshold to N (positive integer)
     prompt-threshold               remove threshold override, restoring default
