@@ -6,7 +6,9 @@
 ## Outputs
 - stdout: assembled prompt for default-model Agent dispatch
 - stderr: status/error messages only
-- exit 0: success; exit 2: invocation error
+- exit 0: success
+- exit 1: runtime error (find-feature.py, format-feature-context.py, or RABBIT_ROOT unresolved)
+- exit 2: invocation error (bad arguments)
 
 ## Agent Response Schema
 

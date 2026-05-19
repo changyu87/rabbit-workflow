@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-scope
 description: Resolve a natural-language request to the list of rabbit features whose files it will modify. Emits a prompt for a default-model Agent; caller parses the JSON response. General-purpose shared skill — no assumptions about callers.
-version: 1.0.0
+version: 1.1.0
 owner: rabbit-feature-scope
 deprecation_criterion: when feature-scope resolution is automated natively by the dispatch infrastructure.
 ---
