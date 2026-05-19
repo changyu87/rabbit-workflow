@@ -76,11 +76,11 @@ if not os.path.isfile(os.path.join(REPO_ROOT, ".claude/work-guide.md")):
 else:
     fail_t(6, ".claude/work-guide.md still exists (not yet removed)")
 
-# t7: contains "feature-oriented"
-if "feature-oriented" in content:
-    ok(7, "CLAUDE.md contains 'feature-oriented'")
+# t7: contains "Feature-oriented" (new structured header per Inv 10a)
+if "Feature-oriented" in content:
+    ok(7, "CLAUDE.md contains 'Feature-oriented'")
 else:
-    fail_t(7, "CLAUDE.md does not contain 'feature-oriented' (one-liner not yet updated)")
+    fail_t(7, "CLAUDE.md does not contain 'Feature-oriented' (header missing trait)")
 
 # t8: does NOT contain "two source-of-truth"
 if "two source-of-truth" not in content:
