@@ -50,19 +50,20 @@ print()
 # ---- BUG-55: tightened scope-guard centralized substring checks ----
 centr = read(os.path.join(TEST_DIR, "test-scope-guard-centralized.py"))
 
-# t1 — assertion must reference the literal path-prefix '.claude/bugs/'
-#       (not just the bare substring 'bugs', which would also match unrelated
-#       comments).
-if ".claude/bugs/" in centr:
-    ok(1, "BUG-55: test-scope-guard-centralized.py asserts literal '.claude/bugs/' path-prefix substring")
+# t1 — assertion must reference the literal path-prefix '.claude/bugs' (not
+#       just the bare substring 'bugs', which would also match unrelated
+#       comments). BUG-87 dropped the trailing slash from the prefix literal
+#       so the assertion accepts either form.
+if ".claude/bugs" in centr:
+    ok(1, "BUG-55: test-scope-guard-centralized.py asserts literal '.claude/bugs' path-prefix substring")
 else:
-    fail_t(1, "BUG-55: test-scope-guard-centralized.py t1 still uses weak 'bugs' substring (not tightened to '.claude/bugs/')")
+    fail_t(1, "BUG-55: test-scope-guard-centralized.py t1 still uses weak 'bugs' substring (not tightened to '.claude/bugs')")
 
 # t2 — same for backlogs.
-if ".claude/backlogs/" in centr:
-    ok(2, "BUG-55: test-scope-guard-centralized.py asserts literal '.claude/backlogs/' path-prefix substring")
+if ".claude/backlogs" in centr:
+    ok(2, "BUG-55: test-scope-guard-centralized.py asserts literal '.claude/backlogs' path-prefix substring")
 else:
-    fail_t(2, "BUG-55: test-scope-guard-centralized.py t2 still uses weak 'backlogs' substring (not tightened to '.claude/backlogs/')")
+    fail_t(2, "BUG-55: test-scope-guard-centralized.py t2 still uses weak 'backlogs' substring (not tightened to '.claude/backlogs')")
 
 # ---- BUG-64: hard-coded ../../../../ depth replaced by git rev-parse ----
 bk2 = read(os.path.join(TEST_DIR, "test-RABBIT-CAGE-BACKLOG2-python-only.py"))

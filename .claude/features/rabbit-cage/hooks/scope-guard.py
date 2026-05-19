@@ -130,12 +130,16 @@ def decide(target: str) -> Tuple[bool, str]:
     # .rabbit/ is required so rabbit-feature-touch can write
     # .rabbit/impl-suggestion-<feature>.json and .rabbit/tdd-report-<feature>.json
     # during normal feature work without needing a session override.
-    if (
-        abs_path.startswith(str(REPO_ROOT) + "/.claude/bugs/")
-        or abs_path.startswith(str(REPO_ROOT) + "/.claude/backlogs/")
-        or abs_path.startswith(str(REPO_ROOT) + "/.rabbit/")
-    ):
-        return True, "ALLOW (path-prefix allowlist: bug/backlog/dispatcher metadata)"
+    # BUG-87: match BOTH the exact directory path AND any path inside it. The
+    # exact form (strict equality, never a prefix) is required for directory-
+    # creation operations like `mkdir .rabbit` whose target is `.rabbit` with
+    # no trailing slash. Strict equality also prevents sibling paths such as
+    # `.rabbit-scope-active` and `.rabbit-human-approval-bypass` from matching.
+    _ALLOWLIST_PREFIXES = (".claude/bugs", ".claude/backlogs", ".rabbit")
+    for _pfx in _ALLOWLIST_PREFIXES:
+        _full = str(REPO_ROOT) + "/" + _pfx
+        if abs_path == _full or abs_path.startswith(_full + "/"):
+            return True, "ALLOW (path-prefix allowlist: bug/backlog/dispatcher metadata)"
 
     # 3c. Path-pattern allowlist — feature spec.md (Inv 20 extended, BUG-8).
     # Permits rabbit-feature-touch Step 3 spec-authoring (which runs in the
