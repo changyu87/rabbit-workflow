@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # workspace-tree.py — print annotated workspace hierarchy
 # Usage:
-#   workspace-tree.py            # structural view (dirs + key files only)
-#   workspace-tree.py --full     # all files (excl .swp, .git/*, .rabbit-prompt-counter)
-#
-# Legacy 2-arg form (kept for backward compat): workspace-tree.py <repo_root> <0|1>
+#   workspace-tree.py [REPO_ROOT]            # structural view (dirs + key files only)
+#   workspace-tree.py [REPO_ROOT] --full     # all files (excl .swp, .git/*, .rabbit-prompt-counter)
 
 import os
 import subprocess
@@ -15,19 +13,14 @@ def _resolve_args():
     args = sys.argv[1:]
     full = False
     repo = None
-    if len(args) == 2 and args[1] in ("0", "1"):
-        # Legacy: <repo_root> <full_mode>
-        repo = args[0]
-        full = args[1] == "1"
-    else:
-        for a in args:
-            if a == "--full":
-                full = True
-            elif not a.startswith("--") and repo is None:
-                repo = a
-            else:
-                sys.stderr.write(f"workspace-tree: unknown arg '{a}'\n")
-                sys.exit(2)
+    for a in args:
+        if a == "--full":
+            full = True
+        elif not a.startswith("--") and repo is None:
+            repo = a
+        else:
+            sys.stderr.write(f"workspace-tree: unknown arg '{a}'\n")
+            sys.exit(2)
     if not repo:
         repo = os.environ.get("RABBIT_ROOT")
     if not repo:
@@ -76,6 +69,12 @@ ANNOTATIONS = {
     "backlogs":               "centralized backlog tracker (.claude/backlogs, subdirs by feature name)",
     "rabbit-file":            "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
     "rabbit-file/":           "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
+    "rabbit-feature":         "feature lifecycle orchestration (new, touch, scope resolution)",
+    "rabbit-feature/":        "feature lifecycle orchestration (new, touch, scope resolution)",
+    "rabbit-feature-scope":   "resolve a request to the list of features it touches",
+    "rabbit-feature-scope/":  "resolve a request to the list of features it touches",
+    "rabbit-spec":            "author and update feature specs via the rabbit-spec skill",
+    "rabbit-spec/":           "author and update feature specs via the rabbit-spec skill",
 }
 
 STRUCTURAL_DIRS = {
@@ -83,7 +82,7 @@ STRUCTURAL_DIRS = {
     "commands", "hooks", "skills", "agents", "scripts",
     "test", "enforcement", ".claude",
     "rabbit-cage", "contract", "policy", "tdd-subagent",
-    "rabbit-file",
+    "rabbit-file", "rabbit-feature", "rabbit-feature-scope", "rabbit-spec",
 }
 
 KEY_FILES = {
@@ -103,8 +102,6 @@ def is_key_file(name, relpath):
     if name.endswith(".md") and "/docs/spec" in ("/" + relpath):
         return True
     if name.endswith(".md") and "docs/spec" in relpath:
-        return True
-    if name.endswith(".sh"):
         return True
     return False
 

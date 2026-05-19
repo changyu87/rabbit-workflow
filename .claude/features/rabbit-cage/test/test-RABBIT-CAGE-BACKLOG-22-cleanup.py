@@ -150,10 +150,16 @@ pm = read(PROJECT_MD)
 # t11 — the self-reference bullet 'init → rabbit-project.py' is removed.
 #       The remaining bullets target the per-subcommand scripts; pointing
 #       'init' back at the same dispatch script is a documentation loop.
-if "init`        → `.claude/features/rabbit-cage/scripts/rabbit-project.py" not in pm and \
-   "`init`" not in pm.split("Delegates to")[-1]:
-    # Accept either: the bullet line is removed entirely, OR the entire
-    # subcommand-bullet list no longer contains an `init` entry.
+#       Detect the exact buggy bullet shape: a list item whose key is
+#       `init` and whose target is the same rabbit-project.py dispatch
+#       script. Prose mentioning 'init' in the surrounding paragraph is
+#       acceptable.
+import re as _re
+if not _re.search(
+    r"^[\-\*]\s+`init`\s*→\s*`.*rabbit-project\.py`",
+    pm,
+    _re.MULTILINE,
+):
     ok(11, "rabbit-project.md: 'init → rabbit-project.py' self-reference bullet removed")
 else:
     fail_t(11, "rabbit-project.md: 'init → rabbit-project.py' self-reference bullet still present")

@@ -265,11 +265,9 @@ def main() -> int:
     counter_file = root / ".rabbit-sync-counter"
     threshold = int(os.environ.get("RABBIT_SYNC_EVERY", "1"))
 
-    if not counter_file.exists():
-        counter_file.write_text("0\n")
     try:
         count = int(counter_file.read_text().strip() or "0")
-    except ValueError:
+    except (FileNotFoundError, ValueError):
         count = 0
     count += 1
     if count < threshold:
