@@ -55,7 +55,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/scripts/enforcement/check-sentinel.py",
       ".claude/features/contract/scripts/enforcement/check-symlinks-resolve.py",
       ".claude/features/contract/scripts/enforcement/check-template-schema-producer-consistency.py",
-      ".claude/features/contract/scripts/enforcement/check-tests-non-interactive.py"
+      ".claude/features/contract/scripts/enforcement/check-tests-non-interactive.py",
+      ".claude/features/contract/scripts/enforcement/check-numbered-lists.py"
     ],
     "skills": [
       ".claude/features/contract/skills/rabbit-workspace-map/SKILL.md"
