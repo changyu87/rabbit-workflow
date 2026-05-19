@@ -77,12 +77,20 @@ if os.path.exists(plural_tests):
 else:
     ok("t2: orphan plural tests/ directory absent")
 
-# --- t3: committed __pycache__ pyc file is absent ---
-pyc = os.path.join(CONTRACT_SCRIPTS_DIR, "__pycache__", "rabbit_print.cpython-37.pyc")
-if os.path.exists(pyc):
-    ko(f"t3: committed pyc file still present: {pyc}")
+# --- t3: no .pyc / __pycache__ artifacts are git-tracked under contract ---
+# pyc files may regenerate on Python import; only tracking is the failure mode.
+result = subprocess.run(
+    ["git", "-C", REPO_ROOT, "ls-files", ".claude/features/contract/"],
+    capture_output=True, text=True,
+)
+tracked_pyc = [
+    p for p in result.stdout.splitlines()
+    if p.endswith(".pyc") or "/__pycache__/" in p
+]
+if tracked_pyc:
+    ko(f"t3: pyc / __pycache__ artifacts tracked in git: {tracked_pyc}")
 else:
-    ok("t3: committed pyc file absent")
+    ok("t3: no pyc / __pycache__ artifacts tracked in git")
 
 # --- t4: registry.json.schema.json is absent ---
 reg_schema = os.path.join(FEATURE_DIR, "schemas", "registry.json.schema.json")
