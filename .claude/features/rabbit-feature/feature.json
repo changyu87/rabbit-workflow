@@ -3,7 +3,7 @@
   "name": "rabbit-feature",
   "version": "1.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "Owns the rabbit-feature-touch orchestration skill (active build source). Dispatcher-side surface; executor-side (tdd-step.py, dispatch-tdd-subagent.py, 9-step cycle) lives in tdd-subagent.",
   "surface": {
     "hooks": [],
