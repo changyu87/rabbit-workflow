@@ -23,7 +23,7 @@
 # --fix-commits <impl-sha>`, and lists all closed items in HANDOFF.closed_items.
 #
 # Output: assembled prompt to stdout. Caller: Agent(model: opus, prompt: stdout).
-# Version: 2.0.0
+# Version: 2.1.0
 # Owner: rabbit-workflow team (tdd-subagent)
 # Deprecation criterion: when TDD cycle is natively supported by rabbit CLI.
 
@@ -257,6 +257,7 @@ def main(argv):
 
     close_call_lines = []
     handoff_closed_items_lines = []
+    handoff_closed_items_json_entries = []
     if args.linked_item and args.item_type:
         primary_feature, primary_id = _derive_feature_and_id(args.linked_item)
         close_call_lines.append(_close_call(
@@ -267,6 +268,9 @@ def main(argv):
         handoff_closed_items_lines.append(
             f"    - {args.linked_item} (primary, type={args.item_type})"
         )
+        handoff_closed_items_json_entries.append(
+            f'"{args.linked_item} (primary, type={args.item_type})"'
+        )
     for feat, typ, iid in secondary_items:
         close_call_lines.append(_close_call(
             feat, typ, iid,
@@ -274,6 +278,9 @@ def main(argv):
             "TDD cycle complete (secondary item resolved by same commit)",
         ))
         handoff_closed_items_lines.append(f"    - {feat}:{typ}:{iid} (secondary)")
+        handoff_closed_items_json_entries.append(
+            f'"{feat}:{typ}:{iid} (secondary)"'
+        )
 
     if close_call_lines:
         close_calls_block = (
@@ -291,6 +298,18 @@ def main(argv):
         )
     else:
         handoff_closed_items_block = ""
+
+    # JSON HANDOFF closed_items reflects the same closures (Inv 19 — JSON
+    # block is the machine-first source of truth; if items are closed they
+    # MUST appear here, not just in the legacy YAML block above).
+    if handoff_closed_items_json_entries:
+        handoff_closed_items_json = (
+            "[\n    "
+            + ",\n    ".join(handoff_closed_items_json_entries)
+            + "\n  ]"
+        )
+    else:
+        handoff_closed_items_json = "[]"
 
     # All step banners use the uniform ═════ banner format. Both gated and
     # bypassed forms use the same heading style for visual consistency.
@@ -590,7 +609,7 @@ HANDOFF_JSON:
   "test_result": "pass",
   "spec_compliance": "<pass|fail>",
   "tdd_report_path": "{repo_root}/.rabbit/tdd-report-{feature_name}.json",
-  "closed_items": [],
+  "closed_items": {handoff_closed_items_json},
   "notes": "<brief summary>"
 }}
 ```

@@ -21,8 +21,8 @@ from datetime import date
 from pathlib import Path as _Path
 
 # Pull in the centralized [rabbit] print renderer from the contract feature
-# (TDD-SUBAGENT-BACKLOG-11; spec Inv 5). tdd-step.py lives at
-# .claude/features/tdd-subagent/scripts/, so parents[2] = .claude/features/.
+# (TDD-SUBAGENT-BACKLOG-11; spec Inv 9). tdd-step.py lives at
+# .claude/features/tdd-state-machine/scripts/, so parents[2] = .claude/features/.
 _CONTRACT_SCRIPTS = _Path(__file__).resolve().parents[2] / "contract" / "scripts"
 if str(_CONTRACT_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_CONTRACT_SCRIPTS))

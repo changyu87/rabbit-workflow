@@ -1,8 +1,8 @@
 ---
 feature: tdd-subagent
-version: 2.0.0
+version: 2.1.0
 owner: rabbit-workflow team
-template_version: 2.0.0
+template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
 status: active
 ---
@@ -109,15 +109,15 @@ sole test runner is `test/run.py`.
    `--human-approval-gate false` instead. Boolean flag values follow the
    contract feature's CLI Naming Convention: exclusively `true` or
    `false`, never `enabled`/`disabled` or any other vocabulary.
-8. After `rabbit-spec` returns in Step 3 of `rabbit-feature-touch`
+8. After `rabbit-feature-spec` returns in Step 3 of `rabbit-feature-touch`
    (owned by rabbit-feature), the dispatcher MUST commit any
    modifications to the feature's `docs/spec/spec.md` (and any other
-   files in `.claude/features/<feature>/` that `rabbit-spec` edited)
+   files in `.claude/features/<feature>/` that `rabbit-feature-spec` edited)
    BEFORE proceeding to Step 5 (Dispatch TDD Subagents). The commit
    message follows the pattern
    `spec(<feature>): update spec for <one-line request summary>`. This
    prevents spec changes from falling through uncommitted and ensures
-   the TDD subagent reads a clean committed baseline. If `rabbit-spec`
+   the TDD subagent reads a clean committed baseline. If `rabbit-feature-spec`
    made no changes (or only wrote the impl-suggestion artifact), the
    commit is skipped. The dispatcher-side commit obligation is
    documented here because `dispatch-tdd-subagent.py` reads the spec via
