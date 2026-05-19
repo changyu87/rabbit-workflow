@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.11.0
+version: 3.12.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -203,7 +203,7 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
 58. `.rabbit-human-approval-bypass` is gitignored (appears in `.gitignore`). The marker is a runtime artifact, never committed.
 59. `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event while `.rabbit-human-approval-bypass` exists at the repo root: `[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches`. The marker is NOT consumed by `sync-check.py` — it persists across Stops until explicitly removed via `/rabbit-config human-approval true`. This human-approval-bypass alert sits between scope-guard-off and skills-updated in the conditional-priority order (see Inv 37).
 60. `permissions [lock|unlock]` is a `/rabbit-config` subcommand that shells out to `.claude/features/rabbit-cage/scripts/repo-permissions.py` with the same action. Unknown actions exit non-zero with a usage message; no other file is modified.
-61. `session-init.py` MUST implement the R1 branch enforcement behavior described in Invariants 21-23 exactly. On `SessionStart`, it MUST run `git branch --show-current`; if the result is `main` or `master`, it MUST run `git checkout -b session/<YYYYMMDD-HHMMSS>` (timestamp from `date +%Y%m%d-%H%M%S`) and emit a green `[rabbit]` systemMessage naming the created branch. The implementation MUST be present and active in the deployed hook; a documented-only or no-op implementation is a constitution violation. Tests MUST exercise the on-main path (assert branch created and message emitted) and the off-main path (assert no-op).
+61. `session-init.py` MUST NOT auto-create or auto-switch git branches. The legacy R1 branch enforcement (auto-creating `session/YYYYMMDD-HHMMSS` on `main`/`master`) is REMOVED — the hook does not call `git checkout -b`, does not invoke the `r1_branch` renderer, and does not emit any `R1:` message. Operators are responsible for creating their own feature branches before editing; direct commits to `main` remain blocked by the `Bash(git push * main)` deny rules (Inv 51) and by the `check-no-main-edits.py` enforcement script in contract.
 62. `sync-check.py` surface-drift alert MUST be RED (`\x1b[31m`), consistent with Inv 18's color convention (alert/error messages are red). A GREEN surface-drift alert violates the convention and silently downgrades the visibility of a real drift condition.
 63. `sync-check.py` drift-detected path emits `additionalContext` to surface the CLAUDE.md policy block. The first-run path (CLAUDE.md not existing on disk) was REMOVED in BACKLOG-19 — in any real checkout CLAUDE.md is committed and the path was dead code. The `additionalContext` value MUST be either (a) the fully-expanded policy content with `@`-imports resolved, OR (b) accompanied by a clear in-message note that the agent must independently load the referenced policy files. Emitting raw unexpanded `@<path>` import lines as `additionalContext` without expansion AND without a note is a silent failure: the policy is not re-injected because Claude Code does not follow `@`-imports inside `additionalContext` strings.
 64. rabbit-cage tests MUST NOT mutate live source files in `.claude/features/rabbit-cage/` (including `settings.json`, `settings.local.json`, `feature.json`, and any committed source file) without restoring them on test exit. Tests that need to write to these paths MUST do so inside an isolated temporary directory (e.g., via `tempfile.mkdtemp` + a clean repo copy) so that test interruption, crash, or parallel execution cannot leave the working tree in a corrupted state.
@@ -511,33 +511,8 @@ rules.
     gitignored runtime artifacts; neither is ever created by rabbit-cage
     itself.
 
-## Session-Init Branch Enforcement (R1)
-
-`session-init.py` enforces R1 (branch-per-feature; never commit directly to main) at
-session start. When the current branch is `main` or any protected branch (defined as any
-branch whose name is exactly `main` or `master`), the hook automatically:
-
-1. Creates a new branch named `session/YYYYMMDD-HHMMSS` (timestamp in local time).
-2. Checks out that branch (`git checkout -b session/<timestamp>`).
-3. Emits a green `[rabbit]` `systemMessage` naming the branch created, e.g.:
-   `[rabbit] R1: created branch session/20260512-143000`
-
-If the current branch is already a non-protected branch (anything other than `main` or
-`master`), the hook does nothing related to branch enforcement.
-
-**Protected branches:** `main`, `master`.
-
-**Branch naming:** `session/YYYYMMDD-HHMMSS` using `date +%Y%m%d-%H%M%S`.
-
 ## Invariants (additional continued)
 
-21. On `SessionStart`, `session-init.py` checks `git branch --show-current`. If the
-    result is `main` or `master`, it runs `git checkout -b session/$(date +%Y%m%d-%H%M%S)`
-    and emits a green `[rabbit]` systemMessage naming the new branch.
-22. If the current branch is not `main` or `master`, `session-init.py` does NOT create
-    or switch to any branch — the branch-enforcement block is a no-op.
-23. The created branch name always begins with the prefix `session/` followed by exactly
-    eight digits, a hyphen, and six digits (`session/YYYYMMDD-HHMMSS`).
 24. On every Stop event, after the existing drift checks, `sync-check.py`
     detects skill updates via a self-clearing marker file:
     (a) `build-targets.py` (invoked by `build.py`) appends the skill name to
@@ -685,10 +660,9 @@ When NO condition is pending, no JSON is emitted (exit 0, empty stdout).
 
 `session-init.py` emits AT MOST ONE JSON object per invocation to stdout
 (Inv 75). The output schema is identical in shape to `sync-check.py`'s,
-with two possible pending conditions (R1 branch enforcement and policy
-injection). When both apply, their `[rabbit]` lines are joined by `\n` in
-`systemMessage`, R1 first, policy second; `additionalContext` carries the
-policy text alongside.
+with policy injection as the sole pending condition. When policy injection
+applies, the emitted JSON carries the policy `[rabbit]` line in
+`systemMessage` and the expanded policy text in `additionalContext`.
 
 ### Invariants
 
@@ -729,17 +703,13 @@ policy text alongside.
     handler) read `systemMessage` and optionally `additionalContext`; they
     never parse free-form text.
 
-75. `session-init.py` emits AT MOST ONE JSON object per invocation
-    (RABBIT-CAGE-BACKLOG-18). When both the R1 branch enforcement and the
-    policy injection conditions apply, their rendered `[rabbit] ━━━ ... ━━━`
-    lines MUST be combined into a single `systemMessage` (newline-joined; R1
-    line first, policy line second), emitted within one JSON object that
-    also carries `additionalContext` when policy injection applies. Emitting
-    two separate JSON objects per invocation (the pre-BACKLOG-18 behaviour)
-    violates the single-emission contract. When neither condition applies,
-    `session-init.py` emits no JSON (exit 0, empty stdout). When only one
-    condition applies, the emitted JSON contains only that condition's
-    line in `systemMessage`.
+75. `session-init.py` emits AT MOST ONE JSON object per invocation. Policy
+    injection is the only pending condition (the R1 branch-enforcement
+    renderer was removed; see Inv 61). When policy injection applies, the
+    emitted JSON contains the policy `[rabbit] ━━━ ... ━━━` line in
+    `systemMessage` and the expanded policy text in `additionalContext`.
+    When policy injection does not apply, `session-init.py` emits no JSON
+    (exit 0, empty stdout).
 
 76. Each `[rabbit]` message-producing condition inside the multi-condition
     hooks (`sync-check.py`, `session-init.py`) is implemented as a
@@ -768,7 +738,7 @@ policy text alongside.
         sys.path.insert(0, str(repo_root / ".claude/features/contract/scripts"))
         from rabbit_print import (
             rabbit_block, rabbit_subline,
-            r1_branch, welcome, policy_drift, surface_drift,
+            welcome, policy_drift, surface_drift,
             scope_guard_off, scope_guard_bypassed,
             human_approval_bypass, skills_updated, policy_refreshed,
         )
@@ -787,9 +757,9 @@ policy text alongside.
     consumer-side enforcement of contract Inv 36.
 
 78. The named-wrapper mapping per producer:
-    - `session-init.py` uses `r1_branch(branch=...)`, `welcome()`
-      (no args; sub-lines list the @-import basenames + one-liner
-      description via `rabbit_subline`).
+    - `session-init.py` uses `welcome()` only (no args; sub-lines list the
+      @-import basenames + one-liner description via `rabbit_subline`).
+      The `r1_branch` wrapper is no longer called by any producer (Inv 61).
     - `refresh.py` uses `policy_refreshed()` (no args; sub-lines list
       each @-import full path via `rabbit_subline`).
     - `sync-check.py` uses `policy_drift()`,
