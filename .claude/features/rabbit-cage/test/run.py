@@ -52,6 +52,7 @@ SUITES = [
     "test-RABBIT-CAGE-BACKLOG13-claude-md-gitignore-drift.py",
     "test-RABBIT-CAGE-WAVE4-bug-cleanup.py",
     "test-RABBIT-CAGE-WAVE5-cleanup.py",
+    "test-RABBIT-CAGE-BACKLOG12-bypass-permissions.py",
 ]
 
 
