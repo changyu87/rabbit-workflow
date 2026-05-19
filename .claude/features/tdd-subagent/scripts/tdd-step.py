@@ -26,7 +26,7 @@ from pathlib import Path as _Path
 _CONTRACT_SCRIPTS = _Path(__file__).resolve().parents[2] / "contract" / "scripts"
 if str(_CONTRACT_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_CONTRACT_SCRIPTS))
-from rabbit_print import rabbit_print, rabbit_subline  # noqa: E402
+from rabbit_print import rabbit_block, rabbit_subline, tdd_transition, tdd_forced  # noqa: E402
 
 
 def _rbt_ok(msg):
@@ -252,10 +252,10 @@ def _run_enforcement_checks(d, repo_root):
                 capture_output=True, check=False,
             )
             if res.returncode != 0 and warn_msg:
-                _rbt_alert(rabbit_subline(warn_msg, color="red"))
+                _rbt_alert(rabbit_block(rabbit_subline(warn_msg, color="red")))
         except Exception:
             if warn_msg:
-                _rbt_alert(rabbit_subline(warn_msg, color="red"))
+                _rbt_alert(rabbit_block(rabbit_subline(warn_msg, color="red")))
 
     _run("check-tests-non-interactive.py", [d],
          f"WARNING: R3 check failed for {d} — tests may have interactive constructs")
@@ -397,15 +397,15 @@ def cmd_transition(args):
         write_state(d, new, spec_no_change_reason=spec_no_change_reason)
         if new == "test-green":
             _post_test_green_hooks(d)
-        _rbt_ok(rabbit_print("tdd-transition", from_state=cur.upper(), to_state=new.upper()))
+        _rbt_ok(rabbit_block(tdd_transition(cur, new)))
         return 0
 
     if force:
         write_state(d, new, spec_no_change_reason=spec_no_change_reason)
         if new == "test-green":
             _post_test_green_hooks(d)
-        _rbt_alert(rabbit_print("tdd-forced", from_state=cur.upper(), to_state=new.upper()))
-        _rbt_ok(rabbit_print("tdd-transition", from_state=cur.upper(), to_state=new.upper()))
+        _rbt_alert(rabbit_block(tdd_forced(cur, new)))
+        _rbt_ok(rabbit_block(tdd_transition(cur, new)))
         return 0
 
     forward_msg = " or ".join(valid_forward) if valid_forward else "(terminal)"
