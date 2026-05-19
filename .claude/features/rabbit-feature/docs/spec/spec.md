@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.2.0
+version: 1.2.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -68,14 +68,14 @@ anywhere in this feature. Test runner is `test/run.py`.
    points at `.claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md`.
 
 2. The skill invokes `tdd-subagent`'s `dispatch-tdd-subagent.py` and
-   `tdd-step.py` as a hard cross-feature dependency declared in
-   `contract.md` under `invokes.scripts`. The contract entry pins the
-   expected CLI signature so any drift in the tdd-subagent script
-   interface is caught by the smoke test in Invariant 3.
+   `tdd-state-machine`'s `tdd-step.py` as hard cross-feature dependencies
+   declared in `contract.md` under `invokes.scripts`. The contract entry
+   pins the expected CLI signature so any drift in those script
+   interfaces is caught by the smoke test in Invariant 3.
 
 3. The cross-feature interface is locked by
    `test/test-cross-feature-interface.py`. The smoke test runs both:
-   - `python3 .claude/features/tdd-subagent/scripts/tdd-step.py --help`
+   - `python3 .claude/features/tdd-state-machine/scripts/tdd-step.py --help`
    - `python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py --help`
    Both invocations must exit 0 and print recognizable usage text. If
    either script's CLI surface changes (rename, removed flag, signature
