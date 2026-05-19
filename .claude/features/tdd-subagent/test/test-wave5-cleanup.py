@@ -427,25 +427,31 @@ def t_bug48_post_hook_guarded():
 
 
 # ---- BUG-49: auto-close uses real SHA via git rev-parse HEAD ----
+# RETIRED (BACKLOG-13): the legacy local backlog scan that needed a real SHA
+# was removed from tdd-step.py. Discovery and closing of in-progress backlog
+# items is now the dispatcher's responsibility (dispatch-tdd-subagent.py
+# --linked-item / --linked-items, which captures impl_sha via git rev-parse
+# HEAD before the chore commit). The invariant moved with the responsibility;
+# the corresponding tests on the dispatcher's close-call template already
+# cover the live behaviour.
 def t_bug49_auto_close_uses_real_sha():
     src = _read(TDD_STEP_PY)
     m = re.search(r"def auto_close_backlog\(.*?\):\s*\n(.*?)(?=\n(?:def|class)\s)", src, re.DOTALL)
     if not m:
-        ko("bug49: auto_close_backlog function not found")
+        ko("bug49: auto_close_backlog function not found (still called by _post_test_green_hooks)")
         return
     body = m.group(1)
-    # Look for either a direct git rev-parse HEAD invocation or a call to a
-    # helper that performs it (e.g., _head_sha). Both deliver a real SHA.
-    uses_real_sha = ('rev-parse' in body) or ('_head_sha' in body)
+    # Post-BACKLOG-13: auto_close_backlog must NOT pass a literal "HEAD" to
+    # --fix-commits if it ever issues a close-call. The remaining body is a
+    # safe no-op stub; the negative assertion guards against regression if
+    # someone reintroduces a half-finished scan that hard-codes "HEAD".
     has_literal_HEAD = bool(re.search(
         r'--fix-commits["\']?\s*,\s*["\']HEAD["\']', body
     ))
-    if uses_real_sha and not has_literal_HEAD:
-        ok("bug49: auto_close_backlog computes real SHA (not literal 'HEAD')")
-    elif has_literal_HEAD:
-        ko("bug49: auto_close_backlog still passes literal 'HEAD' as fix_commits")
+    if not has_literal_HEAD:
+        ok("bug49: auto_close_backlog does not pass literal 'HEAD' as fix_commits")
     else:
-        ko("bug49: auto_close_backlog doesn't compute a real SHA")
+        ko("bug49: auto_close_backlog passes literal 'HEAD' as fix_commits (regression)")
 
 
 # ---- BUG-50: SKILL.md Step 5 dispatch separates bash from Agent() pseudocode ----

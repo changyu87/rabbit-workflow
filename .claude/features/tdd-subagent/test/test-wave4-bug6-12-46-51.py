@@ -86,29 +86,12 @@ def t_bug6_static_no_backlog_item_status():
         ko('bug6: tdd-step.py still references backlog-item-status.py (must use item-status.py)')
 
 
-# bug6_static_uses_item_status: tdd-step.py source must reference item-status.py
-# (rabbit-file's unified script) for backlog auto-close.
-def t_bug6_static_uses_item_status():
-    with open(TDD_STEP) as f:
-        content = f.read()
-    if 'item-status.py' in content and 'rabbit-file' in content:
-        ok('bug6: tdd-step.py references rabbit-file/scripts/item-status.py')
-    else:
-        ko('bug6: tdd-step.py must reference rabbit-file/scripts/item-status.py')
-
-
-# bug6_static_set_type_backlog: the auto-close call must invoke `set --type backlog`.
-def t_bug6_static_set_type_backlog():
-    with open(TDD_STEP) as f:
-        content = f.read()
-    # Look for the call pattern: 'set' + '--type' + 'backlog' all present together.
-    has_set = "'set'" in content or '"set"' in content
-    has_type = '--type' in content
-    has_backlog = "'backlog'" in content or '"backlog"' in content
-    if has_set and has_type and has_backlog:
-        ok('bug6: tdd-step.py auto-close uses item-status.py set --type backlog')
-    else:
-        ko(f'bug6: missing set/--type/backlog pattern (set={has_set} type={has_type} backlog={has_backlog})')
+# NOTE (BACKLOG-13): bug6_static_uses_item_status and bug6_static_set_type_backlog
+# were retired alongside the legacy local backlog scan in auto_close_backlog.
+# Discovery + closing of in-progress backlog items is now the dispatcher's
+# responsibility (dispatch-tdd-subagent.py --linked-item / --linked-items),
+# not tdd-step.py's. The remaining bug6 check (no reference to the deleted
+# backlog-item-status.py script) stays — that script must never reappear.
 
 
 # bug51_test_green_to_spec_update_allowed: cycle restart must be a forward
@@ -166,8 +149,6 @@ def t_bug51_transitions_lists_both_options():
 
 print(f"running Wave 4 (BUG-6/12/46/51) tests against {TDD_STEP}")
 t_bug6_static_no_backlog_item_status()
-t_bug6_static_uses_item_status()
-t_bug6_static_set_type_backlog()
 t_bug51_test_green_to_spec_update_allowed()
 t_bug51_test_green_to_deprecated_still_allowed()
 t_bug51_test_green_to_test_red_denied()
