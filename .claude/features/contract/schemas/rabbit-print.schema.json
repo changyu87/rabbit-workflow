@@ -1,31 +1,67 @@
 {
-  "schema_id": "rabbit-print",
-  "version": "1.0.0",
-  "owner": "rabbit-workflow team (contract)",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "schema_version": "2.0.0",
+  "owner": "rabbit-workflow team",
   "deprecation_criterion": "when the [rabbit] print convention is replaced by a structured logging facility",
-  "description": "Defines the [rabbit] print convention used by all rabbit-workflow hooks and CLI scripts for user-visible systemMessage and terminal output.",
-  "format": "[rabbit] ━━━ <message> ━━━",
-  "decoration": {
-    "prefix": "[rabbit] ",
-    "bar": "━━━",
-    "pattern": "<ansi_color>[rabbit] ━━━ <message> ━━━<ansi_reset>"
-  },
-  "colors": {
-    "normal": {
-      "ansi_code": "\\x1b[32m",
-      "ansi_reset": "\\x1b[0m",
-      "description": "ANSI green — used for informational/success messages on stdout (session-init, policy refresh, skills updated)"
+  "title": "rabbit-print-messages",
+  "description": "JSON Schema validating the rabbit-print-messages.json registry: brand, bar, color palette, and the message dictionary consumed by rabbit_print.py.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "owner",
+    "deprecation_criterion",
+    "brand",
+    "bar",
+    "colors",
+    "messages"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "minLength": 1},
+    "owner":          {"type": "string", "minLength": 1},
+    "deprecation_criterion": {"type": "string", "minLength": 1},
+    "brand": {"type": "string", "minLength": 1},
+    "bar":   {"type": "string", "minLength": 1},
+    "colors": {
+      "type": "object",
+      "required": ["green", "red"],
+      "properties": {
+        "green": {
+          "type": "object",
+          "required": ["ansi", "reset"],
+          "properties": {
+            "ansi":  {"type": "string", "minLength": 1},
+            "reset": {"type": "string", "minLength": 1}
+          }
+        },
+        "red": {
+          "type": "object",
+          "required": ["ansi", "reset"],
+          "properties": {
+            "ansi":  {"type": "string", "minLength": 1},
+            "reset": {"type": "string", "minLength": 1}
+          }
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["ansi", "reset"],
+        "properties": {
+          "ansi":  {"type": "string", "minLength": 1},
+          "reset": {"type": "string", "minLength": 1}
+        }
+      }
     },
-    "alert": {
-      "ansi_code": "\\x1b[31m",
-      "ansi_reset": "\\x1b[0m",
-      "description": "ANSI red — used for warning/alert messages on stderr (policy drift, scope-guard violations, forced transitions)"
+    "messages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["icon", "color", "text"],
+        "properties": {
+          "icon":  {"type": "string", "minLength": 1},
+          "color": {"type": "string", "enum": ["green", "red"]},
+          "text":  {"type": "string", "minLength": 1}
+        }
+      }
     }
-  },
-  "producers": [
-    ".claude/features/rabbit-cage/hooks/sync-check.py",
-    ".claude/features/rabbit-cage/hooks/session-init.py",
-    ".claude/features/rabbit-cage/hooks/refresh.py",
-    ".claude/features/tdd-subagent/scripts/tdd-step.py"
-  ]
+  }
 }
