@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.14.0
+version: 1.15.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -139,6 +139,8 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
       Each wrapper signature exposes exactly the kwargs its message-id requires — no `**kwargs`, no extra parameters. State-name placeholders (`from_state`, `to_state`) for `tdd_transition` and `tdd_forced` are upcased by the wrapper (`s.upper()`) so callers pass internal lowercase names without ceremony.
     All functions load the registry from disk on first use and cache it. The module MUST NOT print to stdout or stderr; it returns strings only. The module's `__all__` declares exactly these names: `rabbit_print`, `rabbit_subline`, `rabbit_block`, and every named wrapper above.
 36. Every producer that emits a `[rabbit]` message — currently the four declared in `rabbit-print.schema.json` `producers` array — MUST go through `rabbit_print.py`. The mandatory call shape is `rabbit_block(<named_wrapper>(), ...)` or `rabbit_block(<named_wrapper>(), rabbit_subline(...), ...)` for messages with sub-lines. Direct calls to `rabbit_print("message-id", ...)` at producer call sites (i.e. inside `sync-check.py`, `session-init.py`, `refresh.py`, `tdd-step.py`) are forbidden — the named wrappers are the public API for producers. Direct in-line ANSI escape codes (`\x1b[3...`), direct brand-prefix strings (`[🐇 rabbit 🐇]` or the legacy `[rabbit]`), bar strings (`━━━`), or leading `"\n"` characters in systemMessage values outside `rabbit_block` are likewise forbidden. The single function `rabbit_block` is the only place the leading newline appears.
+37. The `build-contract.json` copy-file entry whose `name` is `skills/rabbit-feature-touch/SKILL.md` MUST have its `source` field pointing at `.claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md` (the rabbit-feature feature owns the skill source post-Cycle B). The destination remains `.claude/skills/rabbit-feature-touch/SKILL.md`. The verification test is owned by rabbit-feature (`test/test-build-source-points-to-rabbit-feature.py`, rabbit-feature spec Inv 4), not by contract — this invariant exists in contract because contract owns `build-contract.json`, but the cross-feature drift detection lives where the affected consumer is. The legacy `tdd-subagent` source path for this entry is retired as of Cycle B.
+38. `.claude/workspace-structure.json` MUST declare nodes for every feature that exists on disk under `.claude/features/`. Missing declarations cause `workspace-map.py --audit` to emit a `warn`-severity finding. Newly created features MUST be added to the declaration in the same TDD cycle that scaffolds them. (Audit gap as of Cycle B: rabbit-spec, rabbit-file, and rabbit-feature were added to the declaration during Cycle B to close pre-existing audit findings.)
 
 ## Template marker convention
 

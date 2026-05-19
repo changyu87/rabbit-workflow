@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.18.0
+version: 1.19.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -11,7 +11,12 @@ status: active
 
 ## Purpose
 
-Provides the `tdd-step.py` CLI for forward-only TDD state transitions, drift detection, and enforcement gates at `test-green`. Owns the `rabbit-feature-touch` user-facing skill that ensures every feature touch advances the TDD state machine.
+Provides the `tdd-step.py` CLI for forward-only TDD state transitions, drift
+detection, and enforcement gates at `test-green`. Provides the
+`dispatch-tdd-subagent.py` prompt assembler and the `tdd-subagent` agent
+definition that runs the 9-step TDD cycle for a single feature. The
+`rabbit-feature-touch` orchestration skill that consumes these scripts is now
+owned by the `rabbit-feature` feature (Cycle B of the re-home migration).
 
 ## Scripting Tech Stack
 
@@ -23,7 +28,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 - `.claude/features/tdd-subagent/scripts/tdd-drift-check.py`
 - `.claude/features/tdd-subagent/scripts/tdd-context.py`
 - `.claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py` (assembles a per-feature full-TDD-cycle subagent prompt; the dispatched subagent runs spec-update → test-red → impl → test-green autonomously for ONE feature, using `.rabbit-scope-active-<feature>` as its scope marker so multiple features can be dispatched in parallel; accepts optional `--linked-item <item-dir>` and `--item-type <bug|backlog>` for a single primary item, AND an optional `--linked-items <feature>:<type>:<id>,...` for additional secondary items resolved by the same cycle — after the subagent reaches test-green the orchestrator captures the impl commit SHA and closes ALL linked items accordingly; prompt goes to stdout for caller dispatch)
-- `.claude/features/tdd-subagent/skills/rabbit-feature-touch/` (self-contained TDD orchestration reference; triggers on any feature write/edit/delete/add and orchestrates via parallel per-feature subagents — Step 1 resolves scope by invoking the `rabbit-feature-scope` Skill via the Skill tool, Step 3 invokes `rabbit-spec` inline to author/update the spec and produce an impl-suggestion, Step 4 surfaces the impl-suggestion to the user for explicit approval (bypass via `.rabbit-human-approval-bypass` marker file at repo root, managed by `/rabbit-config human-approval bypass|gated`), Step 5 dispatches one `dispatch-tdd-subagent.py` subagent per resolved feature in parallel; the main session only orchestrates and never reads feature code itself)
+- `.claude/features/tdd-subagent/agents/tdd-subagent.md` (the named subagent dispatched by `dispatch-tdd-subagent.py`)
 
 ## Invariants
 
@@ -54,17 +59,16 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
    string, and the bar character (`━━━`) MUST NOT appear in `tdd-step.py`
    source outside of import statements or comments — consumer-side
    enforcement of contract Inv 36.
-6. In `rabbit-feature-touch` Step 1 (normal mode), scope resolution is performed by invoking the `rabbit-feature-scope` Skill via the Skill tool (`Skill("rabbit-feature-scope", args: "<request>")`), NOT by shelling out to `resolve-scope.sh` directly. The Skill emits a prompt for caller dispatch; the caller parses the JSON response `{"features": [...], "rationale": "..."}` to drive parallel dispatch.
-7. `dispatch-tdd-subagent.py` emits a prompt to stdout only; it does not call any agent itself. The assembled prompt instructs the per-feature subagent to run the full TDD cycle (spec-update → test-red → impl → test-green) for ONE feature, using `.rabbit-scope-active-<feature-name>` as its scope marker. Distinct per-feature scope markers enable simultaneous dispatch across features without scope collision. The subagent writes `tdd-report.json` to `.rabbit/tdd-report.json` (a hidden folder at repo root); the `.rabbit/` directory is created automatically if it doesn't exist and is listed in `.gitignore`.
-8. When `--linked-item <item-dir> --item-type bug|backlog` is provided to `dispatch-tdd-subagent.py`, the orchestrator (after test-green) closes the linked item via the rabbit-file unified script: `python3 .claude/features/rabbit-file/scripts/item-status.py set --feature <feature> --type <type> --id <id> --status close --reason 'TDD cycle complete' --fix-commits <impl-sha>`. The `<feature>` and `<id>` are derived from the `--linked-item` path (e.g., `rabbit/features/rabbit-cage/bugs/RABBIT-CAGE-BUG-8` → feature=`rabbit-cage`, id=`RABBIT-CAGE-BUG-8`). The legacy `bug-status.py` and `backlog-item-status.py` scripts no longer exist (consolidated into rabbit-file's `item-status.py` per RABBIT-FILE feature); any reference to them is a constitution violation. The HANDOFF block must include the linked item path and its new status. Additionally, when `--linked-items <feature>:<type>:<id>[,<feature>:<type>:<id>...]` is provided (a comma-separated list of triples), the orchestrator closes each listed item via the same `item-status.py set` invocation with `--reason 'TDD cycle complete (secondary item resolved by same commit)' --fix-commits <impl-sha>` after test-green. Each triple is validated for shape (exactly two colons, non-empty fields, type in {bug, backlog}); malformed triples cause dispatch-tdd-subagent.py to exit non-zero before emitting the prompt. The HANDOFF block must list all closed items (primary `--linked-item` plus every `--linked-items` entry).
-9. `surface.skills` in `feature.json` MUST be `[]`. Skills are now managed via explicit copy-file entries in `build-contract.json`; the `surface.skills` field is retired and must remain an empty array.
-10. E2E tests are always required — every behaviour described in a feature spec MUST
+6. `dispatch-tdd-subagent.py` emits a prompt to stdout only; it does not call any agent itself. The assembled prompt instructs the per-feature subagent to run the full TDD cycle (spec-update → test-red → impl → test-green) for ONE feature, using `.rabbit-scope-active-<feature-name>` as its scope marker. Distinct per-feature scope markers enable simultaneous dispatch across features without scope collision. The subagent writes `tdd-report.json` to `.rabbit/tdd-report.json` (a hidden folder at repo root); the `.rabbit/` directory is created automatically if it doesn't exist and is listed in `.gitignore`.
+7. When `--linked-item <item-dir> --item-type bug|backlog` is provided to `dispatch-tdd-subagent.py`, the orchestrator (after test-green) closes the linked item via the rabbit-file unified script: `python3 .claude/features/rabbit-file/scripts/item-status.py set --feature <feature> --type <type> --id <id> --status close --reason 'TDD cycle complete' --fix-commits <impl-sha>`. The `<feature>` and `<id>` are derived from the `--linked-item` path (e.g., `rabbit/features/rabbit-cage/bugs/RABBIT-CAGE-BUG-8` → feature=`rabbit-cage`, id=`RABBIT-CAGE-BUG-8`). The legacy `bug-status.py` and `backlog-item-status.py` scripts no longer exist (consolidated into rabbit-file's `item-status.py` per RABBIT-FILE feature); any reference to them is a constitution violation. The HANDOFF block must include the linked item path and its new status. Additionally, when `--linked-items <feature>:<type>:<id>[,<feature>:<type>:<id>...]` is provided (a comma-separated list of triples), the orchestrator closes each listed item via the same `item-status.py set` invocation with `--reason 'TDD cycle complete (secondary item resolved by same commit)' --fix-commits <impl-sha>` after test-green. Each triple is validated for shape (exactly two colons, non-empty fields, type in {bug, backlog}); malformed triples cause dispatch-tdd-subagent.py to exit non-zero before emitting the prompt. The HANDOFF block must list all closed items (primary `--linked-item` plus every `--linked-items` entry).
+8. `surface.skills` in `feature.json` MUST be `[]`. Skills are now managed via explicit copy-file entries in `build-contract.json`; the `surface.skills` field is retired and must remain an empty array.
+9. E2E tests are always required — every behaviour described in a feature spec MUST
     have a corresponding end-to-end test. Unit tests alone are insufficient. The TDD
     subagent enforces this rule in the TEST-WRITE step without exception.
-11. The 9 named steps (SPEC-READ, HUMAN-APPROVAL, LOCK, TEST-WRITE, TEST-RED,
+10. The 9 named steps (SPEC-READ, HUMAN-APPROVAL, LOCK, TEST-WRITE, TEST-RED,
     IMPLEMENT, CODE-REVIEW, TEST-GREEN, UNLOCK) are labelled sections in the assembled
     subagent prompt. tdd-step.py state transitions remain forward-only and unchanged.
-12. dispatch-tdd-subagent.py interface: --scope (mandatory), --spec (mandatory),
+11. dispatch-tdd-subagent.py interface: --scope (mandatory), --spec (mandatory),
     --impl-suggestion (optional), --linked-item / --item-type (B/B mode, primary item),
     --linked-items (optional, comma-separated `<feature>:<type>:<id>` triples for
     secondary items resolved by the same cycle), --human-approval-gate `true|false`
@@ -74,47 +78,19 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     `--human-approval-gate false` instead. Boolean flag values follow the
     contract feature's CLI Naming Convention (Inv 15 of contract): exclusively
     `true` or `false`, never `enabled`/`disabled` or any other vocabulary.
-13. `rabbit-feature-touch` SKILL.md describes a **seven-step** unified sequence
-    (not six). The seven steps in order are: (1) Scope Resolution, (2) Create
-    Branch, (3) Spec Authoring, (4) Human Approval, (5) Dispatch TDD Subagents,
-    (6) Collect and Verify HANDOFFs, (7) PR / Hand Off. Both the overview heading
-    and every step heading reflect this numbering.
-14. Step 4 (Human Approval) is a **dispatcher-side** gate that lives in the main
-    session, not inside the TDD subagent. The dispatcher reads the impl-suggestion
-    JSON for each affected feature, surfaces a summary (request, spec changes,
-    affected files, implementation approach) to the user, and waits for explicit
-    approval before proceeding to Step 5 (Dispatch). The gate exists at the
-    dispatcher because dispatched subagents run to completion and cannot pause
-    for interactive user input.
-15. Step 4 (Human Approval) is bypassable only when the user has explicitly
-    requested autonomous execution. The bypass authorization is encoded as a
-    hard file marker `.rabbit-human-approval-bypass` at the repo root, managed
-    via the `/rabbit-config human-approval true|false` skill (owned by
-    rabbit-cage; `false` writes the marker — gate disabled — and `true`
-    deletes it). At Step 4, the dispatcher MUST check for this marker file:
-    - If `.rabbit-human-approval-bypass` exists: skip the in-conversation
-      wait, emit a visible `[rabbit]` warning naming the bypass marker and
-      the path `/rabbit-config human-approval true` to revoke it, and pass
-      `--human-approval-gate false` to the Step 5 `dispatch-tdd-subagent.py`
-      invocation.
-    - If the marker is absent: surface the impl-suggestion summary and wait
-      for explicit in-conversation user approval. The dispatcher passes
-      `--human-approval-gate true` (or omits the flag, since `true` is the
-      default).
-    In-conversation acknowledgements ("you have permission to bypass") are
-    NOT a valid mechanism on their own — the marker file is the system of
-    record. Silent bypass without either an explicit in-session direction
-    backed by the marker, or a pre-existing marker, is prohibited.
-16. After `rabbit-spec` returns in Step 3, the `rabbit-feature-touch` dispatcher
-    MUST commit any modifications to the feature's `docs/spec/spec.md` (and any
-    other files in `.claude/features/<feature>/` that `rabbit-spec` edited)
-    BEFORE proceeding to Step 5 (Dispatch TDD Subagents). The commit message
-    follows the pattern `spec(<feature>): update spec for <one-line request
-    summary>`. This prevents spec changes from falling through uncommitted
-    and ensures the TDD subagent reads a clean committed baseline. If
-    `rabbit-spec` made no changes (or only wrote the impl-suggestion
-    artifact), the commit is skipped.
-17. In Step 9 (UNLOCK) of the per-feature TDD subagent prompt assembled by
+12. After `rabbit-spec` returns in Step 3 of `rabbit-feature-touch` (owned by
+    rabbit-feature), the dispatcher MUST commit any modifications to the
+    feature's `docs/spec/spec.md` (and any other files in
+    `.claude/features/<feature>/` that `rabbit-spec` edited) BEFORE proceeding
+    to Step 5 (Dispatch TDD Subagents). The commit message follows the pattern
+    `spec(<feature>): update spec for <one-line request summary>`. This
+    prevents spec changes from falling through uncommitted and ensures the
+    TDD subagent reads a clean committed baseline. If `rabbit-spec` made no
+    changes (or only wrote the impl-suggestion artifact), the commit is
+    skipped. The dispatcher-side commit obligation is documented here because
+    `dispatch-tdd-subagent.py` reads the spec via the committed file and
+    relies on this invariant.
+13. In Step 9 (UNLOCK) of the per-feature TDD subagent prompt assembled by
     `dispatch-tdd-subagent.py`, the subagent MUST commit `feature.json`
     (which holds the final `tdd_state: test-green` transition written by
     `tdd-step.py`) BEFORE emitting the HANDOFF block. The commit message
@@ -122,7 +98,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     This prevents the state transition from falling through uncommitted and
     ensures the dispatcher does not need to commit `feature.json` manually
     after collecting HANDOFFs.
-18. The TDD subagent for declared scope feature `F` MUST NOT create any
+14. The TDD subagent for declared scope feature `F` MUST NOT create any
     `.rabbit-scope-active-<X>` marker where `X != F`. The only scope marker
     it may write is its own (`.rabbit-scope-active-<F>`) at LOCK. If
     implementation work requires a write to a file outside `F`'s directory
@@ -143,15 +119,17 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     wrote `.rabbit-scope-active-contract` while scoped to rabbit-cage.
     `dispatch-tdd-subagent.py` MUST include this rule verbatim in the
     assembled prompt's Red Flags section.
-19. The dispatcher-side Step 4 check for `.rabbit-human-approval-bypass`
-    (see Inv 15) MUST be documented in `rabbit-feature-touch` SKILL.md as
-    the first action of Step 4 (Human Approval), BEFORE any in-conversation
-    wait or impl-suggestion surfacing. When the marker is found, the
-    warning emitted to the user MUST name the marker path
+15. The dispatcher-side Step 4 check for `.rabbit-human-approval-bypass` MUST
+    be documented in `rabbit-feature-touch` SKILL.md (owned by rabbit-feature)
+    as the first action of Step 4 (Human Approval), BEFORE any in-conversation
+    wait or impl-suggestion surfacing. When the marker is found, the warning
+    emitted to the user MUST name the marker path
     (`.rabbit-human-approval-bypass`) and the revoke command
-    (`/rabbit-config human-approval true`) so the user can audit and
-    revoke without searching.
-20. The assembled TDD subagent prompt (produced by `dispatch-tdd-subagent.py`)
+    (`/rabbit-config human-approval true`) so the user can audit and revoke
+    without searching. (Cross-feature: behaviour owned by
+    rabbit-feature Inv 8; this invariant constrains the SKILL.md
+    documentation requirement.)
+16. The assembled TDD subagent prompt (produced by `dispatch-tdd-subagent.py`)
     MUST include a rule in its IMPLEMENT step: if the implementation requires
     editing any file whose basename is `SKILL.md`, the subagent MUST invoke
     `Skill("skill-creator:skill-creator")` instead of using Write or Edit
@@ -159,27 +137,30 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     description optimization. This rule is non-negotiable; a subagent that
     writes a SKILL.md without going through skill-creator commits a
     constitution violation.
-21. `rabbit-feature-touch` SKILL.md's Red Flags section MUST include the
-    rule: the main session orchestrator MUST NOT use Write or Edit tools on
-    any file under `.claude/features/`. All feature-code edits are the TDD
-    subagent's job, performed under an active scope marker. The main session
-    role is orchestration only — resolve scope, create branch, invoke
-    rabbit-spec, surface impl-suggestion, dispatch subagent, verify HANDOFF.
-    Exceptions exist for explicit confirm-token overrides (see Confirm-Token
-    Bypass Path) and for spec.md writes under the scope-guard path-pattern
-    allowlist (Inv 20 of rabbit-cage) which are invoked by rabbit-spec
-    during Step 3.
-22. `rabbit-feature-touch` SKILL.md's Red Flags section MUST include the
-    rule: the main session MUST NOT create `.rabbit-scope-active` (global) or
-    `.rabbit-scope-active-<feature>` (per-feature) scope markers at the repo
-    root. Scope markers are exclusively the TDD subagent's responsibility,
-    written as the first action at LOCK (Step 3 of the subagent's named
-    steps). Main-session-authored markers bypass scope-guard's intended
-    boundary and have caused constitution violations (PR #93). This rule is
-    distinct from Inv 18 (which prohibits the SUBAGENT from creating
-    out-of-scope markers): Inv 22 prohibits the MAIN SESSION from creating
-    any marker at all.
-23. The assembled TDD subagent prompt's STEP 3 LOCK section MUST NOT use
+17. `rabbit-feature-touch` SKILL.md (owned by rabbit-feature) Red Flags
+    section MUST include the rule: the main session orchestrator MUST NOT use
+    Write or Edit tools on any file under `.claude/features/`. All
+    feature-code edits are the TDD subagent's job, performed under an active
+    scope marker. The main session role is orchestration only — resolve
+    scope, create branch, invoke rabbit-spec, surface impl-suggestion,
+    dispatch subagent, verify HANDOFF. Exceptions exist for explicit
+    confirm-token overrides (see Confirm-Token Bypass Path) and for spec.md
+    writes under the scope-guard path-pattern allowlist (Inv 20 of
+    rabbit-cage) which are invoked by rabbit-spec during Step 3.
+    (Cross-feature: SKILL.md content owned by rabbit-feature; this
+    invariant constrains tdd-subagent's expectation of the consumer.)
+18. `rabbit-feature-touch` SKILL.md (owned by rabbit-feature) Red Flags
+    section MUST include the rule: the main session MUST NOT create
+    `.rabbit-scope-active` (global) or `.rabbit-scope-active-<feature>`
+    (per-feature) scope markers at the repo root. Scope markers are
+    exclusively the TDD subagent's responsibility, written as the first
+    action at LOCK (Step 3 of the subagent's named steps). Main-session-
+    authored markers bypass scope-guard's intended boundary and have caused
+    constitution violations (PR #93). This rule is distinct from Inv 14
+    (which prohibits the SUBAGENT from creating out-of-scope markers):
+    this invariant prohibits the MAIN SESSION from creating any marker at
+    all. (Cross-feature: SKILL.md content owned by rabbit-feature.)
+19. The assembled TDD subagent prompt's STEP 3 LOCK section MUST NOT use
     `trap '... rm -f ...' EXIT` to clean up the scope marker. Each Claude
     Code `Bash` tool invocation runs in a separate shell process; the trap
     fires immediately when that shell exits, deleting the marker before
@@ -187,12 +168,12 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     executes `rm -f /<repo_root>/.rabbit-scope-active-<feature>` as one of
     its commands, after the chore commit and before HANDOFF. LOCK does only
     `touch /<repo_root>/.rabbit-scope-active-<feature>` and nothing else.
-24. The assembled prompt's STEP 7 CODE-REVIEW MUST invoke
+20. The assembled prompt's STEP 7 CODE-REVIEW MUST invoke
     `Skill("superpowers:requesting-code-review")`, not
     `Skill("superpowers:code-reviewer")`. The latter does not exist; using
     it silently no-ops the review step. The skill name is exact and
     case-sensitive.
-25. The assembled prompt's STEP 6 IMPLEMENT loop MUST include an explicit
+21. The assembled prompt's STEP 6 IMPLEMENT loop MUST include an explicit
     commit of the implementation files after the test suite passes within an
     iteration: `git add <feature_dir>/` followed by
     `git commit -m "fix/feat(<feature>): <one-line summary>"` (verb chosen
@@ -201,7 +182,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     transition <feature_dir> impl` call, so that the impl SHA captured by
     `git rev-parse HEAD` after the impl transition points at the actual
     implementation commit (not at the prior test commit from STEP 4).
-26. The assembled prompt's STEP 8 TEST-GREEN MUST capture `git rev-parse
+22. The assembled prompt's STEP 8 TEST-GREEN MUST capture `git rev-parse
     HEAD` and substitute it into the `impl_commit` field of
     `tdd-report-<feature>.json` BEFORE STEP 9 UNLOCK runs its `chore(...)`
     commit. The chore commit advances HEAD past the implementation; if
@@ -209,34 +190,36 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     the chore commit, not the implementation. The prompt MUST make the
     capture order explicit and the tdd-report MUST be fully written before
     the UNLOCK chore commit begins.
-27. The assembled prompt's STEP 1 SPEC-READ MUST diff the spec against the
+23. The assembled prompt's STEP 1 SPEC-READ MUST diff the spec against the
     PARENT commit, not against HEAD. Use `git diff HEAD~1 -- <feature_dir>/docs/spec/`
     (or equivalent ref to the pre-spec-commit state). `git diff HEAD` shows
     only uncommitted changes; since `rabbit-feature-touch` Step 3 commits
-    the spec change BEFORE dispatching the subagent (Inv 16), the working
+    the spec change BEFORE dispatching the subagent (Inv 12), the working
     tree is clean at subagent start and `git diff HEAD` is always empty.
     Using `HEAD~1` ensures the subagent actually sees the spec delta it is
     expected to implement.
-28. `tdd-context.py` MUST read `deprecation_criterion` (flat key) from
+24. `tdd-context.py` MUST read `deprecation_criterion` (flat key) from
     `feature.json`, not `deprecation.criterion` (nested). The canonical
     schema across all rabbit features is the flat form; the nested form is
     legacy. For backward compatibility, read flat first; fall back to
     `deprecation.criterion` only if the flat key is absent. Tests MUST use
     the flat form in fixtures (the legacy nested form should appear only in
     explicit backward-compatibility tests).
-29. `tdd-context.py` guidance text MUST reference `test/run.py` (the actual
+25. `tdd-context.py` guidance text MUST reference `test/run.py` (the actual
     Python test runner) when describing how to verify tests pass at the
     `impl` state. References to `test/run.sh` are stale (no `.sh` files
     exist in any feature per the Python-only stack invariants in contract
     and rabbit-cage).
-30. `rabbit-feature-touch` SKILL.md B/B mode MUST read the item JSON from
-    `<item-dir>/item.json`, never from `<item-dir>/bug.json`. The
-    rabbit-file schema uses `item.json` for both bug and backlog types
-    (unified storage); `bug.json` is a legacy path that no longer exists.
-    The B/B mode `related_feature` extraction MUST use Python 3 (always
-    available; `jq` is not a declared dependency of this feature):
-    `FEATURE=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('related_feature',''))" <item-dir>/item.json)`.
-31. The `tdd-step.py` state machine MUST permit cycle restart from
+26. `rabbit-feature-touch` SKILL.md (owned by rabbit-feature) B/B mode MUST
+    read the item JSON from `<item-dir>/item.json`, never from
+    `<item-dir>/bug.json`. The rabbit-file schema uses `item.json` for both
+    bug and backlog types (unified storage); `bug.json` is a legacy path
+    that no longer exists. The B/B mode `related_feature` extraction MUST
+    use Python 3 (always available; `jq` is not a declared dependency of
+    this feature): `FEATURE=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('related_feature',''))" <item-dir>/item.json)`.
+    (Cross-feature: SKILL.md content owned by rabbit-feature; this invariant
+    constrains tdd-subagent's data contract with the B/B caller.)
+27. The `tdd-step.py` state machine MUST permit cycle restart from
     `test-green` by adding the forward transition `test-green → spec-update`
     to its TRANSITIONS table. The current chain
     `spec → spec-update → test-red → impl → test-green → deprecated → ""`
@@ -254,7 +237,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     running it unconditionally also works because `spec-update →
     spec-update` is a self-no-op (or use `tdd-step.py show` to check
     first).
-32. When `dispatch-tdd-subagent.py` runs and the file
+28. When `dispatch-tdd-subagent.py` runs and the file
     `.rabbit-human-approval-bypass` exists at the repo root, the assembled
     prompt MUST include a distinct yellow-coloured `[rabbit]` note
     (`\x1b[33m`, distinct from sync-check's red bypass alert) in the
@@ -266,7 +249,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     marker exists; it does not consume or delete the marker. When the
     marker is absent, no such note appears (baseline prompt is
     unchanged). (BACKLOG-4)
-33. `feature.json` for every rabbit feature conforms to the schema at
+29. `feature.json` for every rabbit feature conforms to the schema at
     `.claude/features/contract/schemas/feature.json.schema.json`, which
     is the canonical declaration. The fields the tdd-subagent feature
     relies on are: `name` (string), `version` (semver string),
@@ -283,16 +266,16 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     fix lives in the contract feature (filed via a follow-up backlog
     in `rabbit/features/contract/backlogs/`) and is not in scope for
     tdd-subagent. (BACKLOG-6)
-34. Shared test fixture helpers live at
+30. Shared test fixture helpers live at
     `.claude/features/tdd-subagent/test/test_helpers.py`. The module
     exposes at least `make_feature_dir(parent_dir, name, tdd_state,
-    *, run_exit=0)` which writes a flat-schema feature.json (per Inv 33)
+    *, run_exit=0)` which writes a flat-schema feature.json (per Inv 29)
     plus the minimal `test/run.py`, `spec.md`, and `contract.md`
     siblings the tdd-subagent scripts expect. `test-tdd-step.py`,
     `test-context.py`, and `test-drift-check.py` MUST import this
     helper instead of redefining their own `fix(...)` function so the
     canonical fixture shape lives in one place. (BACKLOG-10)
-35. The assembled TDD subagent prompt MUST include a structured JSON
+31. The assembled TDD subagent prompt MUST include a structured JSON
     HANDOFF schema at the top of its HANDOFF block. The schema is
     declared inline in the prompt with `handoff_schema_version: "1.0.0"`
     and lists the required fields (`feature`, `tdd_state`, `test_result`,
@@ -303,7 +286,7 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
     `HANDOFF_JSON:` so downstream parsers can locate and validate it
     without ambiguity. The JSON HANDOFF is the machine-first source
     of truth per philosophy.md. (BACKLOG-7)
-36. `agents/tdd-subagent.md` MUST NOT describe a dual-path layout for
+32. `agents/tdd-subagent.md` MUST NOT describe a dual-path layout for
     `scripts/tdd-step.py` (i.e., no "agent-local OR
     .claude/features/tdd-subagent/scripts" fork). The dispatched
     prompt always provides the absolute feature-scripts path; the
@@ -317,10 +300,10 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 The canonical `feature.json` schema is
 `.claude/features/contract/schemas/feature.json.schema.json` (owned by
 the contract feature). The tdd-subagent feature reads only the fields
-listed in Inv 33; it does not own the schema and changes to it follow
+listed in Inv 29; it does not own the schema and changes to it follow
 the contract feature's versioning policy.
 
-The HANDOFF JSON schema (Inv 35) is declared inline in the assembled
+The HANDOFF JSON schema (Inv 31) is declared inline in the assembled
 prompt because the dispatcher is the only consumer; if a third
 consumer appears, the schema MUST be promoted to a file under
 `.claude/features/contract/schemas/`.
@@ -344,7 +327,7 @@ The full TDD cycle may be bypassed for a single edit when the main session obtai
 
 - The override file MUST be written by the main session after receiving user approval; it MUST NOT be written speculatively or pre-emptively.
 - The confirm token MUST be presented as a visible, explicit choice — never as an implicit default.
-- The `SKILL.md` for `rabbit-feature-touch` documents this path under "Override Path — Bypassing TDD with User Approval".
+- The `SKILL.md` for `rabbit-feature-touch` (owned by rabbit-feature) documents this path under "Override Path — Bypassing TDD with User Approval".
 - Audit: `.rabbit-scope-override-used` (created by scope-guard after one-time consumption) serves as the post-hoc audit trace.
 
 ## Out of Scope
@@ -352,3 +335,4 @@ The full TDD cycle may be bypassed for a single edit when the main session obtai
 - Validating the schema of `feature.json` beyond the `tdd_state` field.
 - Enforcing branch or PR rules around state transitions.
 - Writing `feature.json` in locked-down environments — callers use `breeder` for that.
+- The `rabbit-feature-touch` orchestration skill itself — owned by `rabbit-feature` (post-Cycle B re-home).
