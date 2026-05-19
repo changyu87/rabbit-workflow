@@ -278,7 +278,7 @@ def main() -> int:
         return 0
 
     aggregated = {
-        "systemMessage": "\n".join(p["systemMessage"] for p in payloads),
+        "systemMessage": "\n" + "\n".join(p["systemMessage"] for p in payloads),
     }
     # additionalContext: only render_claude_md_drift emits one today; take
     # the first if present (Inv 38).

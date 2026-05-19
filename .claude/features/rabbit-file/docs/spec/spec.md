@@ -149,10 +149,31 @@ origin/bug-backlog-files root:
   trail in the history array.
 - SKILL.md MUST include a user-decision gate in Work Protocol before invoking
   rabbit-feature-touch.
-- item-status.py update MUST enforce length limits on title and
-  description values: max 500 characters each. Values exceeding the
-  limit are rejected with exit non-zero and a stderr error naming the
-  field, the limit, and the actual length.
+- Both file-item.py (at filing time) and item-status.py update (at
+  field mutation time) MUST enforce PER-FIELD length limits on title
+  and description values (BACKLOG-7):
+    MAX_TITLE_LEN = 200
+    MAX_DESCRIPTION_LEN = 10240   (10 KiB)
+  These limits are asymmetric: titles are short labels, descriptions
+  are long-form. The shared 500-char cap from the pre-BACKLOG-7
+  implementation is REMOVED — it was both too tight (blocking
+  legitimate descriptions) and broke the file/update symmetry (filing
+  accepted any size; only update enforced).
+  Values exceeding the per-field limit are rejected with exit non-zero
+  and a stderr error naming the field, the limit, and the actual length.
+  Both scripts import the constants and the validator from a single
+  source-of-truth module (`branch_ops.py` or a sibling — implementer's
+  choice) so the limits cannot drift between file and update paths.
+- Both file-item.py and item-status.py update MUST sanitize title and
+  description values by stripping ASCII control characters EXCEPT the
+  whitespace characters tab (`\t`), newline (`\n`), and carriage return
+  (`\r`) before length validation (BACKLOG-7). This protects
+  `list-items.py` output from terminal escape injection (a title
+  containing `\x1b[2J` would clear the user's terminal on list).
+  The sanitize step runs first, then the length check runs on the
+  sanitized value. The sanitized value is what gets written to
+  `item.json`, so the on-disk artifact is always free of forbidden
+  control characters.
 - file-item.py MUST NOT leave an ID slot orphaned on commit_item
   failure. When commit_item raises after allocate_id succeeded,
   file-item.py MUST call branch_ops.release_id(feature, type_, id_str)

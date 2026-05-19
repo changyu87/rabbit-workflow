@@ -34,6 +34,33 @@ IDENTITY_EMAIL = "rabbit-file@localhost"
 # Legacy private alias retained for internal call sites; the module-level
 # `BRANCH` constant above is the canonical export.
 _BRANCH = BRANCH
+
+# ---------------------------------------------------------------------------
+# Per-field length limits and text sanitization (BACKLOG-7)
+# ---------------------------------------------------------------------------
+# Both file-item.py (filing time) and item-status.py update (mutation time)
+# import these constants and helpers so the limits cannot drift between the
+# two paths.
+MAX_TITLE_LEN = 200
+MAX_DESCRIPTION_LEN = 10240  # 10 KiB
+# ASCII control characters in this set are preserved by sanitize_text; all
+# other characters with ord < 0x20 are stripped (e.g. NUL, bell, ESC).
+_ALLOWED_CTRL = {"\t", "\n", "\r"}
+
+
+def sanitize_text(s: str) -> str:
+    """Strip ASCII control characters from s, EXCEPT \\t \\n \\r.
+    Protects list-items.py output from terminal escape injection."""
+    return "".join(c for c in s if c >= " " or c in _ALLOWED_CTRL)
+
+
+def validate_field_length(name: str, value: str, limit: int) -> None:
+    """Raise ValueError naming the field, the limit, and the actual length
+    when len(value) > limit."""
+    if len(value) > limit:
+        raise ValueError(
+            f"{name} exceeds max length {limit} (got {len(value)} characters)"
+        )
 # Spec floor is "at least 3 attempts". Real-world concurrent contention
 # from multiple agent worktrees racing on the same remote ref needs more
 # headroom (each subprocess does 3 pushes: counter + item + sha-backfill,

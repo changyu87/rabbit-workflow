@@ -515,29 +515,34 @@ def _run_status(clone, *args):
 
 
 class TestUpdateLengthValidation:
-    def test_title_over_500_chars_rejected(self, filed_item):
+    # BACKLOG-7: the shared 500-char cap was replaced with per-field limits
+    # (title=200, description=10240). Detailed coverage of the new boundaries
+    # lives in test-RABBIT-FILE-BACKLOG-7-per-field-limits.py; the smoke tests
+    # below pin the high-level contract here so it stays visible from this
+    # historical suite.
+    def test_title_over_200_chars_rejected(self, filed_item):
         clone, id_str = filed_item
-        long_title = "x" * 501
+        long_title = "x" * 201
         r = _run_status(clone, "update", "--feature", "len-feat", "--type", "bug",
                         "--id", id_str, "--field", "title", "--value", long_title,
                         "--reason", "test")
         assert r.returncode == 1, r.stderr
-        assert "500" in r.stderr
+        assert "200" in r.stderr
         assert "title" in r.stderr
 
-    def test_description_over_500_chars_rejected(self, filed_item):
+    def test_description_over_10240_chars_rejected(self, filed_item):
         clone, id_str = filed_item
-        long_desc = "y" * 501
+        long_desc = "y" * 10241
         r = _run_status(clone, "update", "--feature", "len-feat", "--type", "bug",
                         "--id", id_str, "--field", "description", "--value", long_desc,
                         "--reason", "test")
         assert r.returncode == 1, r.stderr
-        assert "500" in r.stderr
+        assert "10240" in r.stderr
         assert "description" in r.stderr
 
-    def test_title_at_500_chars_accepted(self, filed_item):
+    def test_title_at_200_chars_accepted(self, filed_item):
         clone, id_str = filed_item
-        ok_title = "z" * 500
+        ok_title = "z" * 200
         r = _run_status(clone, "update", "--feature", "len-feat", "--type", "bug",
                         "--id", id_str, "--field", "title", "--value", ok_title,
                         "--reason", "boundary")
