@@ -123,10 +123,13 @@ def b6():
     if "feature.json.schema.json" not in spec:
         ko("b6: spec does not reference feature.json.schema.json")
         return
-    if "Inv 33" in spec or "33." in spec:
-        ok("b6a: spec declares feature.json schema reference (Inv 33)")
+    # After Cycle B re-home (spec v1.19.0), four invariants were removed
+    # and survivors renumbered gap-free; the schema-reference invariant
+    # moved from Inv 33 to Inv 29.
+    if "Inv 29" in spec or "29." in spec:
+        ok("b6a: spec declares feature.json schema reference (Inv 29)")
     else:
-        ko("b6a: spec missing Inv 33 schema reference")
+        ko("b6a: spec missing Inv 29 schema reference")
         return
     # b6b: spec names the flat-shape fields the tdd-subagent depends on.
     for needed in ("deprecation_criterion", "tdd_state", "surface", "owner"):

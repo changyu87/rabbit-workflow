@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.5.0
+version: 1.6.0
 template_version: 2.0.0
 ---
 
@@ -40,12 +40,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "files": [],
     "schemas": [],
     "templates": [],
-    "skills": [
-      {
-        "path": ".claude/features/tdd-subagent/skills/rabbit-feature-touch/",
-        "purpose": "Self-contained TDD orchestration reference. Triggers on any feature write/edit/delete/add intent and drives the full TDD state sequence via tdd-step.py, preventing test-green drift; requires no external documents."
-      }
-    ]
+    "skills": []
   },
   "reads": {
     "files": [
