@@ -1,6 +1,6 @@
 ---
 name: rabbit-config
-description: Use to configure rabbit-workflow settings via /rabbit-config. Subcommands - prompt-threshold [N] (refresh threshold), allowed-tools [add|remove <tool>] (Claude Code tool permissions), bash-allow [add|remove <cmd>] (Bash command permissions), permissions [lock|unlock] (repo file write protection), human-approval [true|false] (Step 4 gate state, hard file marker; true=gate active, false=bypass). Trigger on phrases like "change prompt threshold", "add permission", "bypass human approval", "revoke human-approval bypass".
+description: Use to configure rabbit-workflow settings via /rabbit-config. Subcommands - prompt-threshold [N] (refresh threshold), allowed-tools [add|remove <tool>] (Claude Code tool permissions), bash-allow [add|remove <cmd>] (Bash command permissions), permissions [lock|unlock] (repo file write protection), human-approval [true|false] (Step 4 gate state, hard file marker; true=gate active, false=bypass), bypass-permissions [true|false] (per-user permissions.defaultMode='bypassPermissions' in settings.local.json). Trigger on phrases like "change prompt threshold", "add permission", "bypass human approval", "revoke human-approval bypass", "enable bypass mode", "turn off bypass permissions".
 version: 1.0.0
 owner: rabbit-cage
 deprecation_criterion: when Claude Code provides a native typed-config mechanism that subsumes this skill
@@ -40,7 +40,26 @@ shim file (per spec Inv 25); the skill itself is the sole entry point.
     human-approval false           write .rabbit-human-approval-bypass marker (bypass Step 4)
     human-approval true            remove the marker (Step 4 gate active — default posture)
     human-approval                 print current gate state to stdout: 'true' (active) or 'false' (bypassed)
+
+/rabbit-config bypass-permissions [true|false]
+    bypass-permissions true        set permissions.defaultMode='bypassPermissions' in .claude/settings.local.json (per-user opt-in)
+    bypass-permissions false       remove permissions.defaultMode from .claude/settings.local.json
+    bypass-permissions             print current state to stdout: 'true' if defaultMode='bypassPermissions' in settings.local.json, else 'false'
 ```
+
+## bypass-permissions Contract
+
+Bypass mode is a per-user preference. The shared `.claude/settings.json` MUST
+NOT declare `permissions.defaultMode`; operators opt in individually by writing
+`permissions.defaultMode = "bypassPermissions"` to their own gitignored
+`.claude/settings.local.json` via this subcommand. When set, Claude Code skips
+its native per-write permission prompts so the scope-guard PreToolUse hook
+becomes the single decision point for write authorization.
+
+`true` and `false` are both idempotent: re-invoking when the key already
+matches is a no-op (exit 0) and does NOT rewrite the file. The no-action form
+prints exactly one line (`true` or `false`) reflecting the current value in
+`settings.local.json`. Takes effect on next session start.
 
 ## human-approval Marker Contract
 
@@ -66,15 +85,26 @@ Revoke explicitly with `/rabbit-config human-approval true` or manual delete.
 - "lock the repo", "unlock archive/ and test/"
 - "bypass human approval", "skip Step 4 this session", "revoke the bypass",
   "re-enable the gate", "what's the human-approval state?"
+- "enable bypass mode", "turn off bypass permissions", "skip native write
+  prompts", "what's my bypass-permissions state?"
 
-## Suppressing the Bypass-Mode Startup Warning (user-local)
+## Enabling Bypass Mode and Suppressing the Startup Warning (user-local)
 
-The repo's `settings.json` sets `permissions.defaultMode = "bypassPermissions"`
-so the scope-guard hook is the single decision point for write authorization
-(Claude Code's native permission prompts are redundant). Claude Code surfaces
-a one-time startup warning about bypass mode; suppress it per-user by adding
-this to your gitignored `.claude/settings.local.json` (NOT to the shared
-`settings.json`):
+Bypass mode (`permissions.defaultMode = "bypassPermissions"`) is per-user.
+The shared `settings.json` MUST NOT declare it. To opt in, run:
+
+```
+/rabbit-config bypass-permissions true
+```
+
+This writes the key to your gitignored `.claude/settings.local.json` and tells
+Claude Code to skip its native per-write permission prompts so the scope-guard
+hook is the single decision point for write authorization.
+
+Claude Code surfaces a one-time startup warning about bypass mode. Suppress
+the warning per-user by adding `skipDangerousModePermissionPrompt` to your
+`.claude/settings.local.json` (this knob is still set manually; it is not
+managed by `/rabbit-config`):
 
 ```json
 {
@@ -84,9 +114,9 @@ this to your gitignored `.claude/settings.local.json` (NOT to the shared
 }
 ```
 
-This is a personal-preference knob — different operators may prefer to keep
-the warning visible — so it lives in `settings.local.json` (user-local,
-gitignored), never in the team-wide `settings.json`.
+Both keys live in `settings.local.json` (user-local, gitignored), never in
+the team-wide `settings.json`. Different operators may prefer different
+behavior.
 
 ## Red Flags — STOP
 

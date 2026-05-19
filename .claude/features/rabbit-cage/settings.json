@@ -3,7 +3,6 @@
     "RABBIT_REFRESH_EVERY": "20"
   },
   "permissions": {
-    "defaultMode": "bypassPermissions",
     "allow": [
       "Bash(*)",
       "Write",

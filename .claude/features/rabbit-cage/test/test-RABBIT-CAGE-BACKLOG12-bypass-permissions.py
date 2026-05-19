@@ -226,8 +226,9 @@ else:
     fail_t(12, "SKILL.md has no YAML frontmatter")
 
 # ---- t13: spec.md asserts shared settings.json MUST NOT declare permissions.defaultMode ----
+# Accept variants with or without backticks/newlines around `permissions.defaultMode`.
 spec = read(SPEC_MD)
-if "MUST NOT declare permissions.defaultMode" in spec or "MUST NOT declare\n    `permissions.defaultMode`" in spec:
+if re.search(r"MUST NOT declare\s+`?permissions\.defaultMode`?", spec):
     ok(13, "spec.md asserts shared settings.json MUST NOT declare permissions.defaultMode")
 else:
     fail_t(13, "spec.md missing prohibition that shared settings.json MUST NOT declare permissions.defaultMode")

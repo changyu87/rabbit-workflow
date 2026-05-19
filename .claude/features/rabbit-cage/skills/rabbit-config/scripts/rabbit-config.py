@@ -7,6 +7,7 @@ Subcommands:
   bash-allow    [add|remove <command>] manage Bash(<command>:*) permissions.allow entries
   permissions    lock|unlock           delegate to repo-permissions.py
   human-approval [true|false]          manage Step 4 (HUMAN-APPROVAL) gate state
+  bypass-permissions [true|false]      manage permissions.defaultMode in settings.local.json
 
 All argv parsing comes from sys.argv[1:]; this script is the sole implementation
 of /rabbit-config. There is no slash-command shim file (per spec Inv 25);
@@ -37,7 +38,11 @@ USAGE = '''Usage:
   /rabbit-config human-approval [true|false]
       human-approval false           write .rabbit-human-approval-bypass marker (bypass Step 4)
       human-approval true            remove the marker (Step 4 gate active — default)
-      human-approval                 print current gate state: 'true' (active) or 'false' (bypassed) '''
+      human-approval                 print current gate state: 'true' (active) or 'false' (bypassed)
+  /rabbit-config bypass-permissions [true|false]
+      bypass-permissions true        set permissions.defaultMode='bypassPermissions' in .claude/settings.local.json (per-user opt-in)
+      bypass-permissions false       remove permissions.defaultMode from .claude/settings.local.json
+      bypass-permissions             print current state: 'true' if defaultMode='bypassPermissions' in settings.local.json, else 'false' '''
 
 
 def load_local():
@@ -209,6 +214,49 @@ def cmd_human_approval(args):
     return 1
 
 
+def cmd_bypass_permissions(args):
+    action = args[0] if args else ''
+    p, cfg = load_local()
+    current = cfg.get('permissions', {}).get('defaultMode')
+    if action == '':
+        # State query: print 'true' if defaultMode == bypassPermissions, else 'false'.
+        print('true' if current == 'bypassPermissions' else 'false')
+        return 0
+    if action == 'true':
+        if current == 'bypassPermissions':
+            # Idempotent no-op: do not rewrite the file.
+            print(
+                'Bypass permissions already ENABLED in .claude/settings.local.json. '
+                '(file unchanged)'
+            )
+            return 0
+        cfg.setdefault('permissions', {})['defaultMode'] = 'bypassPermissions'
+        write_json(p, cfg)
+        print(
+            'Bypass permissions ENABLED in .claude/settings.local.json. '
+            'Claude Code will skip native per-write prompts on next session start.'
+        )
+        return 0
+    if action == 'false':
+        if current is None:
+            print(
+                'Bypass permissions already DISABLED (key absent). (file unchanged)'
+            )
+            return 0
+        del cfg['permissions']['defaultMode']
+        if not cfg['permissions']:
+            del cfg['permissions']
+        write_json(p, cfg)
+        print(
+            'Bypass permissions DISABLED. permissions.defaultMode removed '
+            'from .claude/settings.local.json. Claude Code will prompt for '
+            'writes again on next session start.'
+        )
+        return 0
+    print(f'Error: unknown value {action!r} for bypass-permissions (expected true, false, or no action)', file=sys.stderr)
+    return 1
+
+
 def main(argv):
     if not argv:
         print(USAGE)
@@ -221,6 +269,7 @@ def main(argv):
         'bash-allow': cmd_bash_allow,
         'permissions': cmd_permissions,
         'human-approval': cmd_human_approval,
+        'bypass-permissions': cmd_bypass_permissions,
     }
     handler = dispatch.get(subcmd)
     if handler is None:
