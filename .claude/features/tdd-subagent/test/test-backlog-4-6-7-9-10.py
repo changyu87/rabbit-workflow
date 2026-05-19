@@ -12,6 +12,7 @@
 # BACKLOG-10: test_helpers.py exists with make_feature_dir() and the three
 #            legacy fixture tests import it.
 import os
+import re
 import subprocess
 import sys
 
@@ -120,14 +121,19 @@ def b6():
     if "feature.json.schema.json" not in spec:
         ko("b6: spec does not reference feature.json.schema.json")
         return
-    # After BACKLOG-12 re-home (spec v1.20.0), four cross-feature invariants
-    # were migrated to rabbit-feature and survivors renumbered gap-free; the
-    # schema-reference invariant moved from Inv 33 → Inv 29 (v1.19.0) →
-    # Inv 25 (v1.20.0).
-    if "Inv 25" in spec or "25." in spec:
-        ok("b6a: spec declares feature.json schema reference (Inv 25)")
+    # After the slim-after-extraction renumber (spec v2.0.0), survivors are
+    # numbered 1..20; the schema-reference invariant is now Inv 18. (History:
+    # Inv 33 → Inv 29 (v1.19.0) → Inv 25 (v1.20.0) → Inv 18 (v2.0.0).) Accept
+    # either explicit "Inv 18" reference or any numbered line referencing the
+    # schema file.
+    schema_inv_match = re.search(
+        r"^(\d+)\.\s.*feature\.json\.schema\.json",
+        spec, re.MULTILINE | re.DOTALL,
+    )
+    if schema_inv_match:
+        ok(f"b6a: spec declares feature.json schema reference (Inv {schema_inv_match.group(1)})")
     else:
-        ko("b6a: spec missing Inv 25 schema reference")
+        ko("b6a: spec missing numbered invariant referencing feature.json.schema.json")
         return
     # b6b: spec names the flat-shape fields the tdd-subagent depends on.
     for needed in ("deprecation_criterion", "tdd_state", "surface", "owner"):
