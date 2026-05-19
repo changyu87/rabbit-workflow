@@ -5,8 +5,9 @@ Inv 34 (registry data file).
 
 End-to-end: loads the on-disk registry and schema files; performs minimal
 JSON-Schema-style structural validation (no third-party dependency); then
-asserts the eleven required message-ids, the brand string, the bar string,
-and the per-message field shapes.
+asserts the ten required message-ids, the brand string, the bar string,
+and the per-message field shapes. Also asserts that the previously-required
+'r1-branch' id is absent (removed alongside rabbit-cage Inv 61).
 """
 
 import os
@@ -32,10 +33,13 @@ def fail(msg):
 
 
 REQUIRED_IDS = {
-    "r1-branch", "welcome", "policy-drift", "surface-drift",
+    "welcome", "policy-drift", "surface-drift",
     "scope-guard-off", "scope-guard-bypassed", "human-approval-bypass",
     "skills-updated", "policy-refreshed", "tdd-transition", "tdd-forced",
 }
+# Explicitly removed alongside rabbit-cage Inv 61 (the R1 hook). The id MUST
+# NOT reappear without a new spec change.
+REMOVED_IDS = {"r1-branch"}
 
 
 def validate(instance, schema, path="$"):
@@ -128,14 +132,24 @@ if messages is not None:
         else:
             fail(f"t5: colors.{col} missing or missing ansi/reset")
 
-# t6: all 11 required message-ids present
+# t6: all 10 required message-ids present
 if messages is not None:
     msgs = messages.get("messages", {})
     missing = REQUIRED_IDS - set(msgs.keys())
     if missing:
         fail(f"t6: missing message-ids: {sorted(missing)}")
     else:
-        ok("t6: all 11 required message-ids present")
+        ok("t6: all 10 required message-ids present")
+
+# t6b: removed message-ids MUST be absent (Inv 34 — r1-branch was removed
+# alongside the rabbit-cage R1 enforcement hook).
+if messages is not None:
+    msgs = messages.get("messages", {})
+    leaked = REMOVED_IDS & set(msgs.keys())
+    if leaked:
+        fail(f"t6b: removed message-ids still present: {sorted(leaked)}")
+    else:
+        ok("t6b: removed message-ids absent (r1-branch)")
 
 # t7: each required message has icon, color, text and color in {green,red}
 if messages is not None:

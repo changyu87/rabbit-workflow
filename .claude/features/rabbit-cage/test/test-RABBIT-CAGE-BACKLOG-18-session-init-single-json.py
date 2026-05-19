@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """BACKLOG-18 FULL E2E test for session-init.py single-JSON emission (Inv 75).
 
-Builds a realistic temp repo with real CLAUDE.md and @-import files on the
-'main' branch; invokes session-init.py as a subprocess; asserts:
+After spec v3.12.0, R1 branch enforcement is removed (Inv 61); policy injection
+is the sole pending condition for session-init.py.
 
-  - Exactly ONE JSON object is emitted (no second emission).
-  - systemMessage contains both R1 line and policy line joined by '\\n'.
-  - additionalContext is present and non-empty.
-  - On a non-main branch with no @-imports, no JSON is emitted.
+Builds a realistic temp repo with real CLAUDE.md and @-import files; invokes
+session-init.py as a subprocess; asserts:
+
+  - Exactly ONE JSON object is emitted when @-imports exist.
+  - systemMessage contains the welcome banner; no R1 text appears.
+  - additionalContext is present and non-empty with expanded policy text.
+  - With no @-imports, no JSON is emitted (regardless of branch).
 """
 import json
 import os
@@ -64,16 +67,15 @@ def run_hook(tmproot):
 
 
 print("test-RABBIT-CAGE-BACKLOG-18-session-init-single-json.py")
-print("FULL E2E: session-init.py single-JSON emission")
+print("FULL E2E: session-init.py single-JSON emission (policy-only after Inv 61)")
 print()
 
 tmproots = []
 try:
-    # ---- t1: on main with real CLAUDE.md + @-imports → single JSON ----
-    print("=== t1: on main with real CLAUDE.md and @-imports → ONE JSON object ===")
+    # ---- t1: on main with real CLAUDE.md + @-imports → ONE JSON, policy only ----
+    print("=== t1: on main + @-imports → ONE JSON object (policy only, no R1) ===")
     tmproot = make_git_repo()
     tmproots.append(tmproot)
-    # Append @-imports so policy injection has content.
     claude_md = os.path.join(tmproot, "CLAUDE.md")
     with open(claude_md, "a") as f:
         f.write("\n@.claude/features/policy/philosophy.md\n")
@@ -95,22 +97,14 @@ try:
         obj = {}
 
     msg = obj.get("systemMessage", "")
-    if "R1: created branch session/" in msg:
-        ok("R1 line present in aggregated systemMessage")
+    if "R1" not in msg and "session/" not in msg:
+        ok("R1/session-branch text absent from systemMessage (Inv 61)")
     else:
-        fail_t(f"R1 line missing: {msg!r}")
-    # BACKLOG-19: welcome banner replaces "Policy injected".
+        fail_t(f"R1/session-branch text present: {msg!r}")
     if "Welcome" in msg:
-        ok("welcome banner present in aggregated systemMessage")
+        ok("welcome banner present in systemMessage")
     else:
         fail_t(f"welcome banner missing: {msg!r}")
-
-    idx_r1 = msg.find("R1: created branch")
-    idx_pol = msg.find("Welcome")
-    if 0 <= idx_r1 < idx_pol:
-        ok("R1 line appears before welcome banner (per Inv 75 ordering)")
-    else:
-        fail_t(f"ordering wrong; r1={idx_r1} welcome={idx_pol}")
 
     ac = obj.get("additionalContext", "")
     if ac and len(ac) > 0:
@@ -123,6 +117,17 @@ try:
     else:
         fail_t(f"additionalContext does not contain expected policy text; ac[:200]={ac[:200]!r}")
 
+    # Sanity: branch on tmp repo was 'main' before invocation; assert it's
+    # still 'main' after (Inv 61 — no auto-switch).
+    branch = subprocess.run(
+        ["git", "-C", tmproot, "branch", "--show-current"],
+        capture_output=True, text=True,
+    ).stdout.strip()
+    if branch == "main":
+        ok("on-main branch unchanged after session-init invocation (Inv 61)")
+    else:
+        fail_t(f"branch unexpectedly changed to '{branch}' (Inv 61 violation)")
+
     # ---- t2: off-main with no @-imports → empty stdout ----
     print()
     print("=== t2: off-main with no @-imports → empty stdout ===")
@@ -131,7 +136,6 @@ try:
     subprocess.run(
         ["git", "-C", tmproot, "checkout", "-q", "-b", "feature/test"], capture_output=True,
     )
-    # Replace CLAUDE.md with one that has NO @-imports
     with open(os.path.join(tmproot, "CLAUDE.md"), "w") as f:
         f.write("# CLAUDE.md\nNo imports here.\n")
 
@@ -141,9 +145,9 @@ try:
     else:
         fail_t(f"unexpected output for zero-condition: {out!r}")
 
-    # ---- t3: off-main WITH @-imports → ONE JSON, only policy line ----
+    # ---- t3: off-main WITH @-imports → ONE JSON, policy only ----
     print()
-    print("=== t3: off-main + @-imports → ONE JSON with only policy line ===")
+    print("=== t3: off-main + @-imports → ONE JSON with policy line only ===")
     tmproot = make_git_repo()
     tmproots.append(tmproot)
     subprocess.run(
@@ -162,45 +166,40 @@ try:
     if n == 1:
         obj = json.loads(out.strip())
         msg = obj.get("systemMessage", "")
-        if "R1: created branch" not in msg:
-            ok("R1 line correctly absent on non-main branch")
+        if "R1" not in msg and "session/" not in msg:
+            ok("R1/session-branch text absent on feature branch")
         else:
-            fail_t(f"R1 line should be absent on feature branch: {msg!r}")
+            fail_t(f"R1/session-branch text should be absent: {msg!r}")
         if "Welcome" in msg:
             ok("welcome banner present")
         else:
             fail_t(f"welcome banner missing: {msg!r}")
 
-    # ---- t4: on main but no @-imports → ONE JSON with only R1 line ----
+    # ---- t4: on main but no @-imports → NO JSON (R1 no longer emits) ----
     print()
-    print("=== t4: on main + no @-imports → ONE JSON with only R1 line ===")
+    print("=== t4: on main + no @-imports → no JSON at all (Inv 61) ===")
     tmproot = make_git_repo()
     tmproots.append(tmproot)
     with open(os.path.join(tmproot, "CLAUDE.md"), "w") as f:
         f.write("# CLAUDE.md\nNo imports here.\n")
-    # Commit so working tree is clean for checkout
     subprocess.run(["git", "-C", tmproot, "add", "-A"], check=True, capture_output=True)
     subprocess.run(
         ["git", "-C", tmproot, "commit", "-q", "-m", "remove imports"],
         check=True, capture_output=True,
     )
     out = run_hook(tmproot)
-    n = count_json_objects(out)
-    if n == 1:
-        ok("exactly ONE JSON for R1-only")
+    if out.strip() == "":
+        ok("no JSON emitted on main without @-imports (R1 removed)")
     else:
-        fail_t(f"expected 1 JSON, got {n}; raw: {out!r}")
-    if n == 1:
-        obj = json.loads(out.strip())
-        msg = obj.get("systemMessage", "")
-        if "R1: created branch" in msg:
-            ok("R1 line present")
-        else:
-            fail_t(f"R1 line missing: {msg!r}")
-        if "Welcome" not in msg:
-            ok("welcome banner absent when no @-imports")
-        else:
-            fail_t(f"welcome banner should be absent: {msg!r}")
+        fail_t(f"expected empty stdout, got: {out!r}")
+    branch = subprocess.run(
+        ["git", "-C", tmproot, "branch", "--show-current"],
+        capture_output=True, text=True,
+    ).stdout.strip()
+    if branch == "main":
+        ok("branch unchanged at 'main' (Inv 61 — R1 removed)")
+    else:
+        fail_t(f"branch unexpectedly switched to '{branch}' (Inv 61 violation)")
 finally:
     for d in tmproots:
         shutil.rmtree(d, ignore_errors=True)

@@ -64,8 +64,12 @@ SYNC_RENDERERS = [
     "render_skills_updated",
 ]
 SESSION_RENDERERS = [
-    "render_r1_branch",
     "render_policy",
+]
+
+# Renderers that MUST NOT exist after Inv 61 (R1 enforcement removed).
+SESSION_REMOVED = [
+    "render_r1_branch",
 ]
 
 # ---- t1..t5: sync-check renderers exist and are callable ----
@@ -77,15 +81,25 @@ for name in SYNC_RENDERERS:
     else:
         fail_t(f"{name} missing or not callable on sync-check module")
 
-# ---- t6..t7: session-init renderers exist and callable ----
+# ---- t6: session-init renderer exists and callable ----
 print()
-print("=== t6-7: session-init.py defines both pure renderers ===")
+print("=== t6: session-init.py defines render_policy ===")
 for name in SESSION_RENDERERS:
     fn = getattr(sess, name, None)
     if callable(fn):
         ok(f"{name} exists and is callable")
     else:
         fail_t(f"{name} missing or not callable on session-init module")
+
+# ---- t7: session-init.py MUST NOT define render_r1_branch (Inv 61) ----
+print()
+print("=== t7: session-init.py does NOT define render_r1_branch (Inv 61) ===")
+for name in SESSION_REMOVED:
+    fn = getattr(sess, name, None)
+    if fn is None:
+        ok(f"{name} correctly absent from session-init module (Inv 61)")
+    else:
+        fail_t(f"{name} should be removed (Inv 61) but is still defined")
 
 # ---- t-side-effects: invoking a renderer on an empty repo does NOT write
 # to stdout/stderr ----

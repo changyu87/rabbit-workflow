@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """E2E tests for rabbit-cage Wave 2 Invariants 61-65.
 
-Inv 61: session-init.py implements R1 branch enforcement (on-main path
-        creates session/YYYYMMDD-HHMMSS branch + green systemMessage; off-main
-        path is a no-op).
+Inv 61: session-init.py MUST NOT auto-create or auto-switch git branches.
+        The legacy R1 enforcement (session/YYYYMMDD-HHMMSS on main/master)
+        is REMOVED in spec v3.12.0. The hook is a no-op for branch state
+        on BOTH main and feature branches; no R1: message is emitted.
 Inv 62: sync-check.py surface-drift alert MUST be RED (\\x1b[31m).
 Inv 63: sync-check.py first-run/drift additionalContext MUST either expand
         @-imports OR contain a clear note that @-imports are not auto-followed.
@@ -86,11 +87,12 @@ tmproots = []
 
 try:
     # ====================================================================
-    # Inv 61 — session-init.py R1 branch enforcement
+    # Inv 61 — session-init.py MUST NOT auto-create or switch branches
+    # (R1 enforcement removed in spec v3.12.0)
     # ====================================================================
-    print("=== Inv 61: session-init.py R1 branch enforcement ===")
+    print("=== Inv 61: session-init.py does NOT auto-create branches (R1 removed) ===")
 
-    # t1: on main → creates session/YYYYMMDD-HHMMSS branch
+    # t1: on main → branch UNCHANGED (no auto-switch)
     repo_main = make_repo(initial_branch="main")
     tmproots.append(repo_main)
     env = {**os.environ, "RABBIT_ROOT": repo_main}
@@ -100,37 +102,33 @@ try:
         ["git", "-C", repo_main, "branch", "--show-current"],
         capture_output=True, text=True,
     ).stdout.strip()
-    if re.match(r"^session/\d{8}-\d{6}$", branch):
-        ok(f"on main → created branch matching session/YYYYMMDD-HHMMSS ({branch})")
+    if branch == "main":
+        ok("on main → branch unchanged at 'main' (Inv 61 — R1 removed)")
     else:
-        fail_t(f"on main → expected session/YYYYMMDD-HHMMSS branch, got '{branch}' (Inv 61)")
+        fail_t(f"on main → branch unexpectedly switched to '{branch}'; expected 'main' (Inv 61 violation)")
 
-    # t2: emitted JSON contains green [rabbit] systemMessage naming the branch
-    sys_msg_found = False
-    branch_named = False
-    try:
-        # session-init.py may emit multiple JSON objects; scan all
-        for line in res.stdout.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                d = json.loads(line)
-            except Exception:
-                continue
-            msg = d.get("systemMessage", "")
-            if "\x1b[32m" in msg and "[🐇 rabbit 🐇]" in msg:
-                sys_msg_found = True
-                if branch in msg or "R1" in msg or "session/" in msg:
-                    branch_named = True
-    except Exception:
-        pass
-    if sys_msg_found and branch_named:
-        ok("on main → emitted green [rabbit] systemMessage naming the new branch (Inv 61)")
+    # t2: emitted output MUST NOT contain R1/session-branch text in systemMessage
+    has_r1_text = False
+    has_session_branch = False
+    for line in res.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            d = json.loads(line)
+        except Exception:
+            continue
+        msg = d.get("systemMessage", "")
+        if re.search(r"\bR1\b", msg):
+            has_r1_text = True
+        if re.search(r"session/\d{8}-\d{6}", msg):
+            has_session_branch = True
+    if not has_r1_text and not has_session_branch:
+        ok("on main → no R1: message and no session/YYYYMMDD-HHMMSS in any emitted systemMessage (Inv 61)")
     else:
-        fail_t(f"on main → missing green [rabbit] systemMessage naming branch; stdout={res.stdout!r}, stderr={res.stderr!r} (Inv 61)")
+        fail_t(f"on main → emitted R1/session-branch text (r1={has_r1_text}, session={has_session_branch}); stdout={res.stdout!r} (Inv 61)")
 
-    # t3: off-main → no branch change
+    # t3: off-main → no branch change (unchanged behavior)
     repo_feat = make_repo(initial_branch="feature/keep")
     tmproots.append(repo_feat)
     env = {**os.environ, "RABBIT_ROOT": repo_feat}
@@ -144,6 +142,18 @@ try:
         ok("off-main → no-op, branch unchanged (Inv 61)")
     else:
         fail_t(f"off-main → expected 'feature/keep', got '{branch_after}' (Inv 61)")
+
+    # t4: session-init.py source MUST NOT contain forbidden strings
+    print()
+    print("=== Inv 61: session-init.py source free of R1 artifacts ===")
+    with open(SESSION_INIT) as _f:
+        sess_src = _f.read()
+    forbidden = ["r1_branch", "R1:", "checkout -b"]
+    leaked = [s for s in forbidden if s in sess_src]
+    if not leaked:
+        ok("session-init.py source has no 'r1_branch', 'R1:', or 'checkout -b' (Inv 61)")
+    else:
+        fail_t(f"session-init.py still references R1 artifacts: {leaked} (Inv 61 violation)")
 
     # ====================================================================
     # Inv 62 — surface-drift alert color is RED (sourced from the print
