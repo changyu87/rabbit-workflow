@@ -1,10 +1,10 @@
 {
   "template_version": "2.0.0",
   "name": "tdd-state-machine",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "owner": "rabbit team",
-  "tdd_state": "test-green",
-  "summary": "Forward-only TDD state machine: tdd-step.py, tdd-context.py, tdd-drift-check.py. Imported from tdd-subagent; tdd-subagent slimming and build-contract.json repoint are separate cycles.",
+  "tdd_state": "test-red",
+  "summary": "Forward-only TDD state machine: tdd-step.py, tdd-context.py, tdd-drift-check.py. Owns these scripts; the originals have been removed from tdd-subagent.",
   "surface": {
     "hooks": [],
     "commands": [],

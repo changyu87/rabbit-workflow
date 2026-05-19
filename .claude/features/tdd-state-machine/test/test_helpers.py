@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-# test_helpers.py — shared fixture utilities for tdd-subagent test suite.
+# test_helpers.py — shared fixture utilities for tdd-state-machine test suite.
 #
-# Owner: rabbit-workflow team (tdd-subagent)
+# Owner: rabbit-workflow team (tdd-state-machine)
 # Deprecation criterion: when test fixtures move to a dedicated package or
-# the tdd-subagent feature itself is retired.
+# the tdd-state-machine feature itself is retired.
 #
 # Purpose (BACKLOG-10): the legacy fixture function `fix(...)` was duplicated
 # across `test-tdd-step.py`, `test-context.py`, and `test-drift-check.py` and
-# had drifted from the canonical flat-schema feature.json shape (BACKLOG-6,
-# Inv 25 post-BACKLOG-12 renumber; was Inv 33 in v1.18.x and Inv 29 in
-# v1.19.0). This module is the single source of truth for the feature.json
-# shape used by tdd-subagent unit/e2e tests.
+# had drifted from the canonical flat-schema feature.json shape. This module
+# is the single source of truth for the feature.json shape used by
+# tdd-state-machine unit/e2e tests.
 import json
 import os
 
