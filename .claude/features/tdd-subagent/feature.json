@@ -12,5 +12,5 @@
   },
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
   "updated": "2026-05-19",
-  "spec_no_change_reason": "spec v1.19.0 was committed by dispatcher in commit 03ac513b before subagent dispatch (per Inv 12)"
+  "spec_no_change_reason": "spec change for BACKLOG-12 was committed by rabbit-feature-touch Step 3 (commit 99bf813c); working tree is clean per Inv 20"
 }
