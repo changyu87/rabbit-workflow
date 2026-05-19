@@ -98,39 +98,40 @@ if "test-generated-surface.sh" in b9_content:
 else:
     ok("BACKLOG9 test does not reference test-generated-surface.sh")
 
-# t7: BACKLOG14 test uses .rabbit-skills-updated (not .rabbit-plugins-stale)
-print("=== t7: test-RABBIT-CAGE-BACKLOG14 uses .rabbit-skills-updated marker ===")
-backlog14 = os.path.join(TEST_DIR, "test-RABBIT-CAGE-BACKLOG14-conditional-priority.py")
+# t7: BACKLOG-18 aggregation test uses .rabbit-skills-updated (not .rabbit-plugins-stale).
+# (Renamed from BACKLOG14-conditional-priority.py to BACKLOG-18-aggregation.py per BACKLOG-18.)
+print("=== t7: test-RABBIT-CAGE-BACKLOG-18-aggregation uses .rabbit-skills-updated marker ===")
+backlog14 = os.path.join(TEST_DIR, "test-RABBIT-CAGE-BACKLOG-18-aggregation.py")
 with open(backlog14) as f:
     b14_content = f.read()
 if ".rabbit-plugins-stale" in b14_content:
-    fail_t("BACKLOG14 test still uses .rabbit-plugins-stale — must use .rabbit-skills-updated")
+    fail_t("aggregation test still uses .rabbit-plugins-stale — must use .rabbit-skills-updated")
 else:
-    ok("BACKLOG14 test does not use .rabbit-plugins-stale")
+    ok("aggregation test does not use .rabbit-plugins-stale")
 
 if ".rabbit-skills-updated" in b14_content:
-    ok("BACKLOG14 test uses .rabbit-skills-updated")
+    ok("aggregation test uses .rabbit-skills-updated")
 else:
-    fail_t("BACKLOG14 test does not use .rabbit-skills-updated — test checks wrong marker")
+    fail_t("aggregation test does not use .rabbit-skills-updated — test checks wrong marker")
 
-# t8: BACKLOG14 checks for 'Skills-updated' in spec (not 'Plugins-stale')
-print("=== t8: test-RABBIT-CAGE-BACKLOG14 checks 'Skills-updated' in spec ===")
+# t8: aggregation test checks for 'Skills-updated' / 'Skills updated' (not 'Plugins-stale')
+print("=== t8: aggregation test checks 'Skills updated' ===")
 if "Plugins-stale" in b14_content or "plugins stale" in b14_content.lower():
-    fail_t("BACKLOG14 test still checks for 'Plugins-stale' — must check 'Skills-updated'")
+    fail_t("aggregation test still checks for 'Plugins-stale' — must check 'Skills updated'")
 else:
-    ok("BACKLOG14 test does not check for 'Plugins-stale'")
+    ok("aggregation test does not check for 'Plugins-stale'")
 
 if "Skills-updated" in b14_content or "skills-updated" in b14_content or "skills updated" in b14_content.lower():
-    ok("BACKLOG14 test checks for 'Skills-updated' in spec")
+    ok("aggregation test checks for 'Skills updated'")
 else:
-    fail_t("BACKLOG14 test does not check for 'Skills-updated' — test checks wrong priority label")
+    fail_t("aggregation test does not check for 'Skills updated' — test checks wrong priority label")
 
-# t9: run.py includes BACKLOG14, RABBIT-CAGE-22, and BUG4 tests
-print("=== t9: run.py includes all 3 previously unregistered tests ===")
+# t9: run.py includes the renamed BACKLOG-18 aggregation test plus the other two
+print("=== t9: run.py includes BACKLOG-18 aggregation suite and the other two ===")
 run_py = os.path.join(TEST_DIR, "run.py")
 with open(run_py) as f:
     run_content = f.read()
-for suite in ("test-RABBIT-CAGE-BACKLOG14-conditional-priority.py",
+for suite in ("test-RABBIT-CAGE-BACKLOG-18-aggregation.py",
               "test-RABBIT-CAGE-22-stale-marker.py",
               "test-RABBIT-CAGE-BUG4.py"):
     if suite in run_content:

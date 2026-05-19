@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.6.0
+version: 3.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -552,16 +552,19 @@ If the current branch is already a non-protected branch (anything other than `ma
     (d) The `/rabbit-refresh` command does NOT reference `.rabbit-skills-updated`
     for the same reason — the marker is consumed by `sync-check.py`.
     (e) `.rabbit-skills-updated` is gitignored.
-    This check runs only when all previous checks (CLAUDE.md drift, surface
-    drift, override alerts) did NOT emit JSON. The single-JSON-per-invocation
-    invariant is preserved: at most one JSON object is emitted per
-    sync-check.py invocation.
-    (f) The multi-message output strategy is **conditional-priority**: only the
-    highest-priority pending condition emits per Stop invocation. Lower-priority
-    conditions are suppressed until the higher-priority condition clears.
-    This strategy is chosen because the Claude Code Stop hook protocol accepts
-    at most one JSON object per invocation; emitting multiple would violate the
-    hook contract. The priority order is declared explicitly in Invariant 37.
+    The skills-updated marker check participates in the aggregated emission
+    described by Inv 37; its rendered line is appended to the aggregated
+    `systemMessage` in priority order rather than being suppressed by a
+    higher-priority condition. The single-JSON-per-invocation invariant is
+    preserved: at most one JSON object is emitted per `sync-check.py`
+    invocation, but that one object's `systemMessage` may carry multiple
+    `[rabbit] ━━━ ... ━━━` lines.
+    (f) The multi-message output strategy is **aggregation**: every pending
+    condition contributes a line to the single emitted JSON object's
+    `systemMessage`, ordered by priority. The Claude Code Stop hook protocol
+    accepts at most one JSON object per invocation, so aggregation occurs
+    INSIDE that object, not by emitting multiple objects. The priority order
+    is declared in Invariant 37; the aggregation contract in Inv 38.
 
 ## Scope-Guard Quote Awareness
 
@@ -644,33 +647,107 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
 
 ## sync-check.py Output Schema
 
-`sync-check.py` emits at most one JSON object per invocation to stdout. The output schema is:
+`sync-check.py` emits AT MOST ONE JSON object per invocation to stdout
+(Claude Code Stop hook protocol constraint). The output schema is:
 
 ```json
 {
-  "additionalContext": "<string — optional; only present on first-run or drift-detected paths>",
-  "systemMessage": "<string — ANSI-colored [rabbit] message>"
+  "additionalContext": "<string — optional; only present when CLAUDE.md first-run or drift is among the pending conditions>",
+  "systemMessage": "<string — newline-joined aggregation of every pending condition's ANSI-colored [rabbit] line>"
 }
 ```
 
-`systemMessage` is always present when JSON is emitted. `additionalContext` is present only on CLAUDE.md-related paths (first-run and drift-detected). All other conditions emit `systemMessage` only.
+`systemMessage` is always present when JSON is emitted, and aggregates ALL
+pending conditions in the priority order declared by Inv 37 — earlier-priority
+lines appear first, joined by `\n`. The earlier conditional-priority strategy
+(suppress all but the highest-priority condition) is REPLACED by the
+aggregation strategy in RABBIT-CAGE-BACKLOG-18; a Stop event with N pending
+conditions emits N `[rabbit] ━━━ ... ━━━` lines within one `systemMessage`.
+
+`additionalContext` is present only when CLAUDE.md first-run or drift is one
+of the pending conditions. Consumers (Claude Code Stop hook handler) read
+`systemMessage` and optionally `additionalContext`; they never parse
+free-form text.
+
+When NO condition is pending, no JSON is emitted (exit 0, empty stdout).
+
+## session-init.py Output Schema
+
+`session-init.py` emits AT MOST ONE JSON object per invocation to stdout
+(Inv 75). The output schema is identical in shape to `sync-check.py`'s,
+with two possible pending conditions (R1 branch enforcement and policy
+injection). When both apply, their `[rabbit]` lines are joined by `\n` in
+`systemMessage`, R1 first, policy second; `additionalContext` carries the
+policy text alongside.
 
 ### Invariants
 
-37. `sync-check.py` uses the **conditional-priority** multi-message strategy: exactly one
-    condition emits per Stop invocation; lower-priority conditions are suppressed until
-    the higher-priority condition clears. The explicit priority order (highest to lowest):
-    1. CLAUDE.md drift or first-run (always exits immediately after emitting)
+37. `sync-check.py` uses the **aggregation** multi-message strategy
+    (RABBIT-CAGE-BACKLOG-18): every pending condition emits within a single
+    JSON object per Stop invocation. No condition is suppressed by a
+    higher-priority condition — the priority order controls ORDERING within
+    the aggregated `systemMessage`, not whether each condition appears.
+    The explicit priority order (highest to lowest, used for line ordering
+    within the aggregated message):
+    1. CLAUDE.md drift or first-run
     2. Surface drift (copy-file targets out of sync with sources)
     3. Scope-guard-off (session override active or one-time override consumed)
     4. Human-approval-bypass active (`.rabbit-human-approval-bypass` marker present at repo root)
     5. Skills-updated (`.rabbit-skills-updated` marker present)
-    Conditions at the same priority level do not coexist in the current implementation;
-    each has a distinct marker or detection path.
+    The Claude Code Stop hook protocol accepts at most one JSON object per
+    invocation, so aggregation MUST occur inside that single JSON object:
+    its `systemMessage` is the newline-joined concatenation of each pending
+    condition's rendered `[rabbit] ━━━ ... ━━━` line, ordered by the
+    priority list above. Conditions whose marker is consumed-on-read (e.g.
+    `.rabbit-scope-override-used`, `.rabbit-skills-updated`) MUST still be
+    consumed exactly once per aggregation pass, even when a higher-priority
+    condition is also present in the same emission — suppressing the consume
+    would leak the marker to a later invocation and re-fire the alert.
+    Conditions at the same priority level do not coexist in the current
+    implementation; each has a distinct marker or detection path.
 
-38. Every JSON object emitted by `sync-check.py` conforms to the output schema above:
-    `{"systemMessage": "<ANSI-colored string>"}` for conditions 2–4; 
-    `{"additionalContext": "<string>", "systemMessage": "<ANSI-colored string>"}` for
-    condition 1 (CLAUDE.md drift/first-run). No other top-level keys are emitted.
-    This schema is machine-first: downstream consumers (Claude Code Stop hook handler)
-    read `systemMessage` and optionally `additionalContext`; they never parse free-form text.
+38. The JSON object emitted by `sync-check.py` conforms to the output schema
+    above. Shape: `{"systemMessage": "<aggregated string>"}` when no
+    CLAUDE.md drift/first-run condition is pending; or
+    `{"additionalContext": "<string>", "systemMessage": "<aggregated string>"}`
+    when CLAUDE.md drift or first-run is among the pending conditions. The
+    `systemMessage` MAY contain multiple `[rabbit] ━━━ ... ━━━` lines — one
+    per pending condition, joined by `\n`, in the Inv 37 priority order.
+    No other top-level keys are emitted. When NO condition is pending,
+    `sync-check.py` emits no JSON at all (exit 0, empty stdout). This
+    schema is machine-first: downstream consumers (Claude Code Stop hook
+    handler) read `systemMessage` and optionally `additionalContext`; they
+    never parse free-form text.
+
+75. `session-init.py` emits AT MOST ONE JSON object per invocation
+    (RABBIT-CAGE-BACKLOG-18). When both the R1 branch enforcement and the
+    policy injection conditions apply, their rendered `[rabbit] ━━━ ... ━━━`
+    lines MUST be combined into a single `systemMessage` (newline-joined; R1
+    line first, policy line second), emitted within one JSON object that
+    also carries `additionalContext` when policy injection applies. Emitting
+    two separate JSON objects per invocation (the pre-BACKLOG-18 behaviour)
+    violates the single-emission contract. When neither condition applies,
+    `session-init.py` emits no JSON (exit 0, empty stdout). When only one
+    condition applies, the emitted JSON contains only that condition's
+    line in `systemMessage`.
+
+76. Each `[rabbit]` message-producing condition inside the multi-condition
+    hooks (`sync-check.py`, `session-init.py`) is implemented as a
+    pure-function renderer (RABBIT-CAGE-BACKLOG-18). A renderer takes the
+    state it needs (repo root, marker contents, etc.) and returns either
+    `None` (condition does not apply) or a `dict` payload with the keys
+    `systemMessage: <str>` and optionally `additionalContext: <str>`.
+    Renderers MUST NOT write to stdout, stderr, or any file as a side
+    effect of rendering. The hook's `main()` invokes each renderer in
+    priority order, collects the non-`None` payloads, and emits a single
+    aggregated JSON object via one final `sys.stdout.write` call. Marker
+    consumption (deleting `.rabbit-scope-override-used` /
+    `.rabbit-skills-updated`) is the renderer's responsibility — done as
+    part of the same call that decides the condition applies — so each
+    marker is consumed exactly once per aggregation pass regardless of
+    which other conditions co-emit. Direct emission from inside a
+    condition handler (the pre-BACKLOG-18 pattern of `emit({...}); return 0`
+    after the first matching condition) is forbidden in the
+    multi-condition hooks. `refresh.py` is a single-condition hook and is
+    not required to adopt the renderer pattern, though it MAY for
+    consistency.

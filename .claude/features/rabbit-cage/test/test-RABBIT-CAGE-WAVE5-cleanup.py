@@ -155,7 +155,7 @@ else:
 # t12 — at least one previously-duplicating test file imports from test_helpers.
 adopters = [
     "test-RABBIT-CAGE-21-plugin-change-alert.py",
-    "test-RABBIT-CAGE-BACKLOG14-conditional-priority.py",
+    "test-RABBIT-CAGE-BACKLOG-18-aggregation.py",
     "test-BACKLOG-11-rabbit-config-skill.py",
     "test-RABBIT-CAGE-18-scope-alert-messages.py",
     "test-RABBIT-CAGE-BACKLOG10-override.py",
