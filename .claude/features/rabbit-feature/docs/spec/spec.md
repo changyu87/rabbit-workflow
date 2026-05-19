@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.3.0
+version: 1.4.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -21,18 +21,16 @@ through the formal TDD state machine.
 This feature also owns the absorbed `rabbit-feature-scope` skill and its
 two scripts (`resolve-scope.py`, `format-feature-context.py`) which together
 resolve a natural-language request to the set of features it will modify.
-The `rabbit-feature-scope` feature directory still exists at HEAD as a
-byte-identical source; a separate cleanup cycle will delete that directory.
+The skill, scripts, and tests live exclusively under this feature directory;
+the source-of-truth has moved here, and the legacy `rabbit-feature-scope`
+feature directory has been retired to a residual marker.
 
 This feature also owns the absorbed `rabbit-feature-spec` skill (renamed
 from `rabbit-spec`), which authors and updates feature specs and produces
 implementation-suggestion files for whatever process invoked it. The
-`rabbit-spec` feature directory still exists at HEAD as the source; a
-separate cleanup cycle will delete that directory, and other separate
-cycles will update build-contract.json (renaming the deployed skill
-directory from the legacy `rabbit-spec` location to the new
-`rabbit-feature-spec` location under `.claude/skills/`) and callers
-(`rabbit-feature-touch` SKILL.md, `dispatch-tdd-subagent.py`).
+skill source is hosted exclusively under this feature; `build-contract.json`
+and all callers (`rabbit-feature-touch` SKILL.md, `dispatch-tdd-subagent.py`)
+now point at the new `rabbit-feature-spec` name and location.
 
 The skill is **dispatcher-side**: it resolves scope, creates branches,
 invokes spec authoring, surfaces the human-approval gate, dispatches TDD
@@ -250,14 +248,13 @@ scripts now hosted under this feature.
     (no `feature` key at all). (Absorbed from rabbit-feature-scope
     Inv 11.)
 
-24. The absorbed skill, scripts, and their tests MUST be byte-identical
-    to the rabbit-feature-scope sources while both feature
-    directories coexist. The byte-identical comparison is locked by
-    `test/test-absorbed-rabbit-feature-scope.py`. This invariant is
-    retired the moment the `rabbit-feature-scope` directory is
-    deleted (separate cleanup cycle); at that point the absorbed
-    artifacts become the authoritative source and no source remains
-    to compare against.
+24. **RETIRED in v1.4.0.** Previously required absorbed surface to be
+    byte-identical to the `rabbit-feature-scope` sources while both
+    directories coexisted. The legacy source directory was retired in
+    a subsequent cleanup; the absorbed artifacts under this feature
+    are now the authoritative source and no comparison target remains.
+    The locking test `test-absorbed-rabbit-feature-scope.py` has been
+    removed.
 
 ### Absorbed from rabbit-spec
 
@@ -298,16 +295,17 @@ feature.
     skills" is acceptable; a process-specific one is not.
     (Absorbed from rabbit-spec Inv 8.)
 
-32. The rename is load-bearing: the absorbed skill is named
-    `rabbit-feature-spec` (not `rabbit-spec`). The SKILL.md YAML
-    frontmatter `name:` field MUST equal `rabbit-feature-spec`, and the
-    self-reference example in its `description` and body
-    (`Skill("rabbit-feature-spec", args: ...)`) MUST use the new name.
-    The cross-feature absorption is locked by
-    `test/test-absorbed-rabbit-spec.py`. This invariant retires when
-    the `rabbit-spec` feature directory is deleted (separate cleanup
-    cycle); at that point the absorbed artifact becomes the authoritative
-    source.
+32. **RETIRED in v1.4.0.** Previously locked the byte-identical
+    absorption of the `rabbit-spec` skill (renamed to
+    `rabbit-feature-spec`) while both directories coexisted. The
+    legacy `rabbit-spec` directory has been retired; the absorbed
+    `rabbit-feature-spec` skill under this feature is now the
+    authoritative source. The rename remains load-bearing — the
+    SKILL.md `name:` field is `rabbit-feature-spec` and the
+    self-reference in `description`/body uses that name — but this
+    is enforced by the live SKILL.md content under this feature,
+    not by a cross-source comparison. The locking test
+    `test-absorbed-rabbit-spec.py` has been removed.
 
 ## What this feature does NOT define
 
@@ -321,19 +319,30 @@ feature.
 
 ## Tests
 
-`test/run.py` runs the end-to-end suite:
-- `test-cross-feature-interface.py` — Invariant 3
-- `test-build-source-points-to-rabbit-feature.py` — Invariant 4
-- `test-absorbed-rabbit-feature-scope.py` — Invariant 24 (absorbed
-  surface byte-identical to rabbit-feature-scope source)
-- absorbed `test-*.py` files copied verbatim from
-  `rabbit-feature-scope/test/` — cover Invariants 13-23.
-- `test-absorbed-rabbit-spec.py` — Invariant 32 (absorbed
-  rabbit-feature-spec skill exists with renamed surface, test files
-  copied, feature.json + contract.md declare new surface)
-- absorbed `test-*.py` files copied from `rabbit-spec/test/` — cover
-  Invariants 25-31 in their new home. The `test-bug-fixes-wave4.py`
-  source is copied under the disambiguated filename
-  `test-rabbit-spec-bug-fixes-wave4.py` to avoid colliding with the
-  pre-existing `test-bug-fixes-wave4.py` already in this feature's
-  test/.
+`test/run.py` runs the end-to-end suite. The active tests after the
+v1.4.0 post-consolidation cleanup are:
+- `test-cross-feature-interface.py` — Invariant 3.
+- `test-build-source-points-to-rabbit-feature.py` — Invariant 4.
+- `test-rabbit-feature-bug-2-surface-reads-declared.py` — declared
+  surface and contract reads consistency.
+- `test-rabbit-feature-touch-uses-feature-spec.py` — the touch
+  SKILL.md invokes `rabbit-feature-spec` (not legacy `rabbit-spec`).
+- `test-skill-md-bb-mode-item-json.py` — Invariant 12.
+- `test-skill-md-red-flags-no-marker.py` — Invariant 11.
+- `test-skill-md-red-flags-no-write.py` — Invariant 10.
+- `test-skill-md-step-4-bypass-doc.py` — Invariant 9.
+- `test-skill-md-resolve-scope-path.py` — the scope-skill SKILL.md
+  references the absorbed `resolve-scope.py` path under
+  `.claude/features/rabbit-feature/scripts/` (post-consolidation
+  bug fix, BUG-3).
+- `test-inv9-version-sync.py` — feature.json/spec.md version sync.
+- `test-bug-9-generated-at-format.py` — impl-suggestion timestamp
+  format.
+
+Inv 24 and Inv 32 (byte-identical absorption locks) are RETIRED at
+v1.4.0; the associated locking tests were removed. Many absorbed
+tests that pointed at retired source paths (legacy
+`rabbit-feature-scope` and `rabbit-spec` directories) were deleted
+in the same cleanup — the surviving authoritative content lives
+under this feature's SKILL.md, scripts, and contract files, which
+are checked directly by the surviving tests above.
