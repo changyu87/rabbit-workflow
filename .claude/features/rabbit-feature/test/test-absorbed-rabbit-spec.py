@@ -92,8 +92,10 @@ def test_absorbed_skill_no_residual_old_name_self_reference() -> None:
 
 
 def test_absorbed_test_files_copied() -> None:
-    """Every test-*.py from rabbit-spec/test/ (except run.py) is present in
-    rabbit-feature/test/."""
+    """Every test-*.py from rabbit-spec/test/ is present in rabbit-feature/test/
+    either under its original filename OR under a `test-rabbit-spec-` prefix
+    when the original filename collides with an existing rabbit-feature test.
+    """
     source_tests = sorted(
         p for p in (SOURCE_SPEC_DIR / "test").glob("test-*.py")
     )
@@ -102,8 +104,11 @@ def test_absorbed_test_files_copied() -> None:
     )
     missing = []
     for src in source_tests:
-        dst = FEATURE_DIR / "test" / src.name
-        if not dst.is_file():
+        original = FEATURE_DIR / "test" / src.name
+        # Disambiguated form for collisions: drop the leading "test-" then
+        # prefix "test-rabbit-spec-".
+        renamed = FEATURE_DIR / "test" / f"test-rabbit-spec-{src.name[len('test-'):]}"
+        if not (original.is_file() or renamed.is_file()):
             missing.append(src.name)
     assert not missing, (
         f"absorbed rabbit-spec test files missing in rabbit-feature/test/: "

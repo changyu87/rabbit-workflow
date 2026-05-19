@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.2.1
+version: 1.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -23,6 +23,16 @@ two scripts (`resolve-scope.py`, `format-feature-context.py`) which together
 resolve a natural-language request to the set of features it will modify.
 The `rabbit-feature-scope` feature directory still exists at HEAD as a
 byte-identical source; a separate cleanup cycle will delete that directory.
+
+This feature also owns the absorbed `rabbit-feature-spec` skill (renamed
+from `rabbit-spec`), which authors and updates feature specs and produces
+implementation-suggestion files for whatever process invoked it. The
+`rabbit-spec` feature directory still exists at HEAD as the source; a
+separate cleanup cycle will delete that directory, and other separate
+cycles will update build-contract.json (rename the deployed skill path
+from `.claude/skills/rabbit-spec/SKILL.md` to
+`.claude/skills/rabbit-feature-spec/SKILL.md`) and callers
+(`rabbit-feature-touch` SKILL.md, `dispatch-tdd-subagent.py`).
 
 The skill is **dispatcher-side**: it resolves scope, creates branches,
 invokes spec authoring, surfaces the human-approval gate, dispatches TDD
@@ -48,6 +58,11 @@ anywhere in this feature. Test runner is `test/run.py`.
 - `.claude/features/rabbit-feature/skills/rabbit-feature-scope/SKILL.md`
   — absorbed shared skill that resolves a natural-language request to the
   list of rabbit features whose files the request will modify.
+- `.claude/features/rabbit-feature/skills/rabbit-feature-spec/SKILL.md`
+  — absorbed spec-authoring skill (renamed from `rabbit-spec`). Reads a
+  feature's current spec, judges the request type, invokes superpowers as
+  needed, updates the spec, and writes an impl-suggestion file for whoever
+  invoked it.
 - `.claude/features/rabbit-feature/scripts/resolve-scope.py`
   — absorbed script that builds the Agent-dispatch prompt used by
   `rabbit-feature-scope`.
@@ -244,6 +259,56 @@ scripts now hosted under this feature.
     artifacts become the authoritative source and no source remains
     to compare against.
 
+### Absorbed from rabbit-spec
+
+The following invariants were re-homed from `rabbit-spec` spec v1.3.0 as
+part of the absorption + rename. They govern the absorbed
+`rabbit-feature-spec` skill (formerly `rabbit-spec`) now hosted under this
+feature.
+
+25. The absorbed skill SKILL.md MUST declare `model: opus` in its YAML
+    frontmatter. (Absorbed from rabbit-spec Inv 1.)
+
+26. The absorbed skill MUST judge whether a request is open-ended or
+    specific before deciding which superpowers to invoke (open →
+    brainstorming + writing-plans; specific → writing-plans only).
+    (Absorbed from rabbit-spec Inv 2.)
+
+27. The absorbed skill MUST write `.rabbit/impl-suggestion-<feature>.json`
+    conforming to schema_version 1.0.0 on every invocation. (Absorbed
+    from rabbit-spec Inv 3.)
+
+28. The absorbed skill MAY read any file in the target feature directory
+    freely. (Absorbed from rabbit-spec Inv 4.)
+
+29. The absorbed skill MUST update `docs/spec/spec.md` in the target
+    feature directory BEFORE writing the impl-suggestion file.
+    (Absorbed from rabbit-spec Inv 5.)
+
+30. The absorbed skill SKILL.md MUST be process-agnostic. It MUST NOT
+    identify any specific caller (e.g., "you are invoked as Step 3 in
+    rabbit-feature-touch") as the primary or sole invocation context,
+    and MUST NOT reference a specific downstream consumer (e.g., "the
+    TDD subagent reads this file") as a guaranteed next step.
+    (Absorbed from rabbit-spec Inv 7.)
+
+31. The absorbed skill SKILL.md "What You Do NOT Do" section MUST NOT
+    instruct the skill to avoid invoking specific named skills (e.g.,
+    rabbit-feature-touch). A generic rule like "do not invoke other
+    skills" is acceptable; a process-specific one is not.
+    (Absorbed from rabbit-spec Inv 8.)
+
+32. The rename is load-bearing: the absorbed skill is named
+    `rabbit-feature-spec` (not `rabbit-spec`). The SKILL.md YAML
+    frontmatter `name:` field MUST equal `rabbit-feature-spec`, and the
+    self-reference example in its `description` and body
+    (`Skill("rabbit-feature-spec", args: ...)`) MUST use the new name.
+    The cross-feature absorption is locked by
+    `test/test-absorbed-rabbit-spec.py`. This invariant retires when
+    the `rabbit-spec` feature directory is deleted (separate cleanup
+    cycle); at that point the absorbed artifact becomes the authoritative
+    source.
+
 ## What this feature does NOT define
 
 - The TDD subagent itself, its 9-step cycle, or the `tdd-step.py` state
@@ -263,3 +328,12 @@ scripts now hosted under this feature.
   surface byte-identical to rabbit-feature-scope source)
 - absorbed `test-*.py` files copied verbatim from
   `rabbit-feature-scope/test/` — cover Invariants 13-23.
+- `test-absorbed-rabbit-spec.py` — Invariant 32 (absorbed
+  rabbit-feature-spec skill exists with renamed surface, test files
+  copied, feature.json + contract.md declare new surface)
+- absorbed `test-*.py` files copied from `rabbit-spec/test/` — cover
+  Invariants 25-31 in their new home. The `test-bug-fixes-wave4.py`
+  source is copied under the disambiguated filename
+  `test-rabbit-spec-bug-fixes-wave4.py` to avoid colliding with the
+  pre-existing `test-bug-fixes-wave4.py` already in this feature's
+  test/.
