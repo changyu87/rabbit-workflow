@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
-"""Placeholder test runner. Author real tests here, then transition
-tdd_state to test-red. Exits non-zero so the feature is honestly in
-TDD red until tests are authored."""
+# End-to-end runner for tdd-state-machine tests.
+import os
+import subprocess
 import sys
 
-sys.stderr.write(
-    "no tests yet — author tests in this directory (test-*.py) and "
-    "transition tdd_state to test-red\n"
-)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+fail = 0
+for t in sorted(f for f in os.listdir(SCRIPT_DIR) if f.startswith('test-') and f.endswith('.py')):
+    print(f"=== {t} ===")
+    rc = subprocess.run(['python3', os.path.join(SCRIPT_DIR, t)]).returncode
+    if rc != 0:
+        fail += 1
+    print()
+
+if fail == 0:
+    print("ALL PASS")
+    sys.exit(0)
+print(f"FAILED: {fail} test file(s)")
 sys.exit(1)
