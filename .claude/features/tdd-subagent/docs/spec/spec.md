@@ -52,9 +52,9 @@ sole test runner is `test/run.py`.
    `agents/tdd-subagent.md`. The forward-only TDD state machine
    (`tdd-step.py`, `tdd-context.py`, `tdd-drift-check.py`) was extracted
    to the `tdd-state-machine` feature and MUST NOT reappear under
-   `.claude/features/tdd-subagent/scripts/`. Any reference to a state-
-   machine script path inside this feature's own scripts MUST resolve to
-   `.claude/features/tdd-state-machine/scripts/<name>`.
+   `.claude/features/tdd-subagent/scripts/`. Any reference inside this
+   feature's own scripts to a state-machine script path MUST resolve
+   under the `tdd-state-machine` feature's scripts directory.
 2. `dispatch-tdd-subagent.py` emits a prompt to stdout only; it does not
    call any agent itself. The assembled prompt instructs the per-feature
    subagent to run the full TDD cycle
