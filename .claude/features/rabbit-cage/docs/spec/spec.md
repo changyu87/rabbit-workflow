@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 4.1.0
+version: 4.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -401,7 +401,7 @@ specific repo-root path prefixes regardless of scope-marker state. The
 allowlisted prefixes are: `.claude/bugs/`, `.claude/backlogs/`, and `.rabbit/`.
 The `.rabbit/` prefix is required because the `rabbit-feature-touch` protocol
 routinely writes `.rabbit/impl-suggestion-<feature>.json` (Step 3, via
-`rabbit-spec`) and `.rabbit/tdd-report-<feature>.json` (Step 8, via the TDD
+`rabbit-feature-spec`) and `.rabbit/tdd-report-<feature>.json` (Step 8, via the TDD
 subagent) as part of normal feature work. These writes are dispatcher
 metadata, not feature code, and must not require a session override —
 override semantics are reserved for exceptional human-approved bypasses, not
@@ -420,7 +420,7 @@ sibling paths like `.rabbit-scope-active` or `.rabbit-human-approval-bypass`.
 the path pattern `.claude/features/<feature>/docs/spec/spec.md` regardless
 of scope-marker state, where `<feature>` is any single path segment
 (matched as `[^/]+`). This permits the `rabbit-feature-touch` Step 3
-spec-authoring step — which invokes `rabbit-spec` from the main session
+spec-authoring step — which invokes `rabbit-feature-spec` from the main session
 before any per-feature scope marker is set by the TDD subagent — to update
 the spec without requiring a manual one-time override. The pattern is
 narrowly scoped to the `docs/spec/spec.md` file only; other files under
@@ -463,7 +463,7 @@ rules.
     scope-marker state. This pattern is required so that
     `rabbit-feature-touch` Step 3 spec-authoring (which runs in the main
     session before any per-feature scope marker is set) can update the spec
-    via `rabbit-spec` without a manual override. The pattern is narrowly
+    via `rabbit-feature-spec` without a manual override. The pattern is narrowly
     scoped to `docs/spec/spec.md`; other files under `.claude/features/<feature>/docs/`
     remain governed by the default scope rules.
 12. `scope-guard.py` never creates `.rabbit-scope-override`; it only reads it
