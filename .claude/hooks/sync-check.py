@@ -8,9 +8,14 @@ emits additionalContext with the refreshed policy, and alerts the user.
 Counter-gated: only checks every RABBIT_SYNC_EVERY stops (default 1).
 Override in .claude/settings.local.json: {"env": {"RABBIT_SYNC_EVERY": "5"}}
 
-Output strategy: conditional-priority (at most one JSON object per invocation).
-Priority order: CLAUDE.md drift/first-run > surface drift > scope-guard-off >
-human-approval-bypass > skills-updated.
+Output strategy: aggregation (BACKLOG-18 / Inv 37, 38, 76). Every pending
+condition contributes a [rabbit] line within a single JSON object per
+invocation. Priority order controls line ORDERING (not suppression):
+  1. CLAUDE.md drift/first-run
+  2. Surface drift
+  3. Scope-guard-off (session override or one-time-used)
+  4. Human-approval-bypass
+  5. Skills-updated
 """
 
 import json
@@ -18,8 +23,8 @@ import os
 import re
 import subprocess
 import sys
-import traceback
 from pathlib import Path
+from typing import Optional
 
 
 def _log_exc(where: str, exc: BaseException) -> None:
@@ -48,8 +53,157 @@ def repo_root() -> Path:
         return here
 
 
-def emit(obj: dict) -> None:
-    sys.stdout.write(json.dumps(obj) + "\n")
+# Inv 63: additionalContext MUST either expand @-imports or carry a clear
+# note that the agent must independently load referenced files.
+AT_IMPORT_NOTE = (
+    "NOTE: @-imports in the section below are NOT auto-resolved inside "
+    "additionalContext. The agent MUST independently Read each "
+    "referenced file (e.g. `Read('.claude/policy/<file>.md')`) to load "
+    "the actual policy content.\n\n"
+)
+
+
+def _policy_section(text: str) -> str:
+    m = re.search(
+        r"(?m)^.*rabbit-policy-start.*$.*?(?:^.*rabbit-policy-end.*$)",
+        text,
+        re.DOTALL,
+    )
+    return m.group(0) if m else ""
+
+
+def _wrap_ctx(section: str, full: str) -> str:
+    body = section + "\n" if section else full
+    return AT_IMPORT_NOTE + body
+
+
+def render_claude_md_drift(root: Path, expected: str) -> Optional[dict]:
+    """Inv 17, 38, 76. Renders CLAUDE.md first-run or drift condition.
+
+    Regenerates CLAUDE.md in place when first-run or content drifts. Returns
+    a payload with both systemMessage and additionalContext, or None if no
+    drift.
+    """
+    claude_md = root / "CLAUDE.md"
+    refresh_every = os.environ.get("RABBIT_REFRESH_EVERY", "20")
+
+    if not claude_md.exists():
+        claude_md.write_text(expected)
+        (root / ".rabbit-prompt-counter").write_text(f"{refresh_every}\n")
+        section = _policy_section(expected)
+        return {
+            "additionalContext": _wrap_ctx(section, expected),
+            "systemMessage": "\x1b[32m📋 ━━━ [rabbit] Policy initialized — CLAUDE.md created for first time ━━━ 📋\x1b[0m",
+        }
+
+    if claude_md.read_text() != expected:
+        claude_md.write_text(expected)
+        (root / ".rabbit-prompt-counter").write_text(f"{refresh_every}\n")
+        section = _policy_section(expected)
+        return {
+            "additionalContext": _wrap_ctx(section, expected),
+            "systemMessage": "\x1b[31m⚠️ ━━━ [rabbit] Policy drift detected — CLAUDE.md regenerated from source files ━━━ ⚠️\x1b[0m",
+        }
+
+    return None
+
+
+def render_surface_drift(root: Path) -> Optional[dict]:
+    """Inv 38, 76. Render surface-drift condition.
+
+    Runs test-generated-surface.py; on non-zero exit, calls build.py to
+    rebuild and returns the alert payload. None if surface is clean (or the
+    surface-test script is missing).
+    """
+    test_surface = root / ".claude/features/rabbit-cage/test/test-generated-surface.py"
+    build_py = root / ".claude/features/rabbit-cage/scripts/build.py"
+    if not test_surface.is_file():
+        return None
+    rc = subprocess.call(
+        [sys.executable, str(test_surface)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if rc == 0:
+        return None
+    try:
+        subprocess.call(
+            [str(build_py), str(root)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception as e:
+        _log_exc("build.py invocation failed during surface-drift rebuild", e)
+    return {
+        "systemMessage": "\x1b[31m🔄 ━━━ [rabbit] Surface drift detected — workspace rebuilt from sources ━━━ 🔄\x1b[0m",
+    }
+
+
+def render_scope_guard(root: Path) -> Optional[dict]:
+    """Inv 38, 76. Render scope-guard-off condition.
+
+    Two sub-states: session override active (persistent) or one-time
+    override consumed (consume-on-read of .rabbit-scope-override-used).
+    """
+    override_file = root / ".rabbit-scope-override"
+    used_file = root / ".rabbit-scope-override-used"
+    alert = ""
+    if override_file.is_file():
+        try:
+            mode = "".join(c for c in override_file.read_text() if not c.isspace())
+        except Exception as e:
+            _log_exc("could not read .rabbit-scope-override", e)
+            mode = ""
+        if mode == "session":
+            alert = "session"
+    if used_file.is_file():
+        alert = "used"
+        try:
+            used_file.unlink()
+        except Exception as e:
+            _log_exc("could not unlink .rabbit-scope-override-used", e)
+
+    if alert == "session":
+        return {
+            "systemMessage": "\x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD OFF (session override active) ━━━ 🔓\x1b[0m",
+        }
+    if alert == "used":
+        return {
+            "systemMessage": "\x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed) ━━━ 🔓\x1b[0m",
+        }
+    return None
+
+
+def render_human_approval(root: Path) -> Optional[dict]:
+    """Inv 59, 76. Render human-approval-bypass alert. Persistent marker;
+    not consumed on read."""
+    marker = root / ".rabbit-human-approval-bypass"
+    if not marker.is_file():
+        return None
+    return {
+        "systemMessage": "\x1b[31m[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches.\x1b[0m",
+    }
+
+
+def render_skills_updated(root: Path) -> Optional[dict]:
+    """Inv 24, 76. Render skills-updated alert. Consume-on-read of
+    .rabbit-skills-updated."""
+    marker = root / ".rabbit-skills-updated"
+    if not marker.is_file():
+        return None
+    try:
+        content = marker.read_text()
+    except Exception as e:
+        _log_exc("could not read .rabbit-skills-updated", e)
+        content = ""
+    names = ",".join(ln for ln in content.splitlines() if ln).rstrip(",")
+    try:
+        marker.unlink()
+    except Exception as e:
+        _log_exc("could not unlink .rabbit-skills-updated", e)
+    return {
+        "systemMessage": f"\x1b[32m[rabbit] Skills updated: {names} — will reload automatically on next invocation.\x1b[0m",
+    }
 
 
 def main() -> int:
@@ -59,16 +213,16 @@ def main() -> int:
             "sync-check.py — Stop hook.\n"
             "Detects CLAUDE.md / surface drift, scope-guard override state, "
             "human-approval bypass, and skill updates; emits at most one JSON "
-            "object to stdout per invocation (conditional-priority strategy).\n"
+            "object to stdout per invocation (aggregation strategy — every "
+            "pending condition contributes a [rabbit] line, ordered by "
+            "Inv 37 priority).\n"
             "Takes no command-line arguments.\n"
         )
         return 0
     root = repo_root()
-    claude_md = root / "CLAUDE.md"
     generate_script = root / ".claude/features/rabbit-cage/scripts/generate-claude-md.py"
     counter_file = root / ".rabbit-sync-counter"
     threshold = int(os.environ.get("RABBIT_SYNC_EVERY", "1"))
-    refresh_every = os.environ.get("RABBIT_REFRESH_EVERY", "20")
 
     if not counter_file.exists():
         counter_file.write_text("0\n")
@@ -94,136 +248,34 @@ def main() -> int:
     except (FileNotFoundError, PermissionError, subprocess.CalledProcessError, OSError):
         return 0
 
-    def policy_section(text: str) -> str:
-        m = re.search(
-            r"(?m)^.*rabbit-policy-start.*$.*?(?:^.*rabbit-policy-end.*$)",
-            text,
-            re.DOTALL,
-        )
-        return m.group(0) if m else ""
+    # Inv 37 priority order: invoke each renderer in turn, collect non-None
+    # payloads. The renderer is responsible for any consume-on-read side
+    # effect (markers) when the condition applies.
+    payloads = []
+    for payload in (
+        render_claude_md_drift(root, expected),
+        render_surface_drift(root),
+        render_scope_guard(root),
+        render_human_approval(root),
+        render_skills_updated(root),
+    ):
+        if payload is not None:
+            payloads.append(payload)
 
-    # Inv 63: additionalContext MUST either expand @-imports or carry a clear
-    # note that the agent must independently load referenced files. Claude Code
-    # does NOT auto-follow @-imports inside additionalContext strings, so the
-    # raw policy section embedded below is otherwise a silent no-op for any
-    # `@<path>` line. Choose the note path here: it is small, cheap, and
-    # avoids context blowup on large policy trees.
-    AT_IMPORT_NOTE = (
-        "NOTE: @-imports in the section below are NOT auto-resolved inside "
-        "additionalContext. The agent MUST independently Read each "
-        "referenced file (e.g. `Read('.claude/policy/<file>.md')`) to load "
-        "the actual policy content.\n\n"
-    )
-
-    def _wrap_ctx(section: str, full: str) -> str:
-        body = section + "\n" if section else full
-        return AT_IMPORT_NOTE + body
-
-    # First-run scenario
-    if not claude_md.exists():
-        claude_md.write_text(expected)
-        (root / ".rabbit-prompt-counter").write_text(f"{refresh_every}\n")
-        section = policy_section(expected)
-        emit({
-            "additionalContext": _wrap_ctx(section, expected),
-            "systemMessage": "\x1b[32m📋 ━━━ [rabbit] Policy initialized — CLAUDE.md created for first time ━━━ 📋\x1b[0m",
-        })
+    if not payloads:
         return 0
 
-    # Drift scenario
-    if claude_md.read_text() != expected:
-        claude_md.write_text(expected)
-        (root / ".rabbit-prompt-counter").write_text(f"{refresh_every}\n")
-        section = policy_section(expected)
-        emit({
-            "additionalContext": _wrap_ctx(section, expected),
-            "systemMessage": "\x1b[31m⚠️ ━━━ [rabbit] Policy drift detected — CLAUDE.md regenerated from source files ━━━ ⚠️\x1b[0m",
-        })
-        return 0
+    aggregated = {
+        "systemMessage": "\n".join(p["systemMessage"] for p in payloads),
+    }
+    # additionalContext: only render_claude_md_drift emits one today; take
+    # the first if present (Inv 38).
+    for p in payloads:
+        if "additionalContext" in p:
+            aggregated["additionalContext"] = p["additionalContext"]
+            break
 
-    json_emitted = False
-
-    # Surface drift check (calls test-generated-surface.py; rebuilds via build.py)
-    test_surface = root / ".claude/features/rabbit-cage/test/test-generated-surface.py"
-    build_py = root / ".claude/features/rabbit-cage/scripts/build.py"
-    if test_surface.is_file():
-        rc = subprocess.call(
-            [sys.executable, str(test_surface)],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        if rc != 0:
-            try:
-                subprocess.call(
-                    [str(build_py), str(root)],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            except Exception as e:
-                _log_exc("build.py invocation failed during surface-drift rebuild", e)
-            emit({
-                "systemMessage": "\x1b[31m🔄 ━━━ [rabbit] Surface drift detected — workspace rebuilt from sources ━━━ 🔄\x1b[0m",
-            })
-            json_emitted = True
-
-    # Scope-guard override alert
-    override_file = root / ".rabbit-scope-override"
-    used_file = root / ".rabbit-scope-override-used"
-    alert = ""
-    if override_file.is_file():
-        try:
-            mode = "".join(c for c in override_file.read_text() if not c.isspace())
-        except Exception as e:
-            _log_exc("could not read .rabbit-scope-override", e)
-            mode = ""
-        if mode == "session":
-            alert = "session"
-    if used_file.is_file():
-        alert = "used"
-        try:
-            used_file.unlink()
-        except Exception as e:
-            _log_exc("could not unlink .rabbit-scope-override-used", e)
-
-    if not json_emitted:
-        if alert == "session":
-            emit({
-                "systemMessage": "\x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD OFF (session override active) ━━━ 🔓\x1b[0m",
-            })
-            json_emitted = True
-        elif alert == "used":
-            emit({
-                "systemMessage": "\x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed) ━━━ 🔓\x1b[0m",
-            })
-            json_emitted = True
-
-    # Human-approval-bypass marker (priority level 4 — between scope-guard-off
-    # and skills-updated). Not consumed; persists until /rabbit-config
-    # human-approval gated.
-    human_approval_marker = root / ".rabbit-human-approval-bypass"
-    if human_approval_marker.is_file() and not json_emitted:
-        emit({
-            "systemMessage": "\x1b[31m[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches.\x1b[0m",
-        })
-        json_emitted = True
-
-    # Skills-updated marker
-    skills_marker = root / ".rabbit-skills-updated"
-    if skills_marker.is_file() and not json_emitted:
-        try:
-            content = skills_marker.read_text()
-        except Exception as e:
-            _log_exc("could not read .rabbit-skills-updated", e)
-            content = ""
-        names = ",".join(ln for ln in content.splitlines() if ln).rstrip(",")
-        try:
-            skills_marker.unlink()
-        except Exception as e:
-            _log_exc("could not unlink .rabbit-skills-updated", e)
-        emit({
-            "systemMessage": f"\x1b[32m[rabbit] Skills updated: {names} — will reload automatically on next invocation.\x1b[0m",
-        })
-
+    sys.stdout.write(json.dumps(aggregated) + "\n")
     return 0
 
 

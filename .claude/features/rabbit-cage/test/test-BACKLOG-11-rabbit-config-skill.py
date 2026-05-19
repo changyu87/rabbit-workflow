@@ -427,19 +427,23 @@ try:
     else:
         fail_t(18, "human-approval-bypass marker was consumed (must persist)")
 
-    # t19: human-approval-bypass beats skills-updated (priority level 4 > 5)
+    # t19: human-approval-bypass + skills-updated BOTH emit, human-approval first
+    # (BACKLOG-18: Inv 37 aggregation — no suppression; priority controls ordering)
     tmproot = make_clean_repo()
     tmproots.append(tmproot)
     open(os.path.join(tmproot, ".rabbit-human-approval-bypass"), "w").close()
     open(os.path.join(tmproot, ".rabbit-skills-updated"), "w").close()
     out = run_sync(tmproot)
     msg = extract_msg(out)
-    if "HUMAN APPROVAL BYPASS ACTIVE" in msg and "Skills updated" not in msg:
-        ok(19, "human-approval-bypass suppresses skills-updated (priority 4 > 5)")
+    idx_ha = msg.find("HUMAN APPROVAL BYPASS ACTIVE")
+    idx_sk = msg.find("Skills updated")
+    if idx_ha >= 0 and idx_sk >= 0 and idx_ha < idx_sk:
+        ok(19, "human-approval and skills-updated both emit; human-approval first (priority 4 < 5)")
     else:
-        fail_t(19, f"priority order wrong: msg={msg!r}")
+        fail_t(19, f"aggregation/order wrong: ha={idx_ha} sk={idx_sk} msg={msg!r}")
 
-    # t20: scope-guard-off beats human-approval-bypass (priority 3 > 4)
+    # t20: scope-guard-off + human-approval-bypass BOTH emit, scope-guard first
+    # (BACKLOG-18: Inv 37 aggregation — no suppression)
     tmproot = make_clean_repo()
     tmproots.append(tmproot)
     with open(os.path.join(tmproot, ".rabbit-scope-override"), "w") as f:
@@ -447,10 +451,12 @@ try:
     open(os.path.join(tmproot, ".rabbit-human-approval-bypass"), "w").close()
     out = run_sync(tmproot)
     msg = extract_msg(out)
-    if ("SCOPE GUARD" in msg.upper()) and "HUMAN APPROVAL BYPASS ACTIVE" not in msg:
-        ok(20, "scope-guard-off suppresses human-approval-bypass (priority 3 > 4)")
+    idx_sc = msg.upper().find("SCOPE GUARD")
+    idx_ha = msg.find("HUMAN APPROVAL BYPASS ACTIVE")
+    if idx_sc >= 0 and idx_ha >= 0 and idx_sc < idx_ha:
+        ok(20, "scope-guard and human-approval both emit; scope-guard first (priority 3 < 4)")
     else:
-        fail_t(20, f"priority order wrong: msg={msg!r}")
+        fail_t(20, f"aggregation/order wrong: sc={idx_sc} ha={idx_ha} msg={msg!r}")
 finally:
     for d in tmproots:
         shutil.rmtree(d, ignore_errors=True)

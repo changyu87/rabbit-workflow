@@ -29,9 +29,9 @@ template_version: 2.0.0
       {
         "name": "sync-check-output",
         "version": "1.0.0",
-        "description": "JSON emitted by sync-check.py to stdout on Stop. At most one object per invocation (conditional-priority strategy). Fields: systemMessage (always present, ANSI-colored string); additionalContext (optional, string, only on CLAUDE.md drift/first-run paths).",
-        "strategy": "conditional-priority",
-        "priority_order": ["CLAUDE.md-drift-or-first-run", "surface-drift", "scope-guard-off", "plugins-stale"]
+        "description": "JSON emitted by sync-check.py to stdout on Stop. At most one object per invocation (aggregation strategy — BACKLOG-18). systemMessage is the newline-joined concatenation of every pending condition's ANSI-colored [rabbit] line, ordered by priority. additionalContext (optional) is present only when CLAUDE.md drift/first-run is among the pending conditions.",
+        "strategy": "aggregation",
+        "priority_order": ["CLAUDE.md-drift-or-first-run", "surface-drift", "scope-guard-off", "human-approval-bypass", "skills-updated"]
       }
     ],
     "templates": [],

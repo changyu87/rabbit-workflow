@@ -10,9 +10,11 @@ Wired to SessionStart. Two responsibilities:
 2. Policy injection: read every @-import from CLAUDE.md and emit them as
    additionalContext so policy is present from the first prompt.
 
-Output: one JSON object per emission, written line by line to stdout. Both
-the R1 emission and the policy-injection emission MAY appear in the same
-invocation (one per line).
+Output: AT MOST ONE JSON object per invocation (Inv 75 / BACKLOG-18). When
+both conditions apply, their rendered [rabbit] lines are combined into one
+systemMessage (newline-joined, R1 line first, policy line second) and
+emitted within a single JSON object that also carries additionalContext
+when policy injection applies.
 """
 
 import datetime
@@ -22,6 +24,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 
 def _log_exc(where: str, exc: BaseException) -> None:
@@ -49,12 +52,13 @@ def repo_root() -> Path:
         return here
 
 
-def _emit(obj: dict) -> None:
-    sys.stdout.write(json.dumps(obj) + "\n")
+def render_r1_branch(root: Path) -> Optional[dict]:
+    """Inv 21-23, 61, 76. Pure-function renderer for R1 branch enforcement.
 
-
-def _enforce_r1_branch(root: Path) -> None:
-    """If on main/master, create session/YYYYMMDD-HHMMSS branch and emit msg."""
+    If currently on main/master, create session/YYYYMMDD-HHMMSS branch (side
+    effect: git checkout -b) and return the alert payload. Off-main: return
+    None and do nothing.
+    """
     try:
         current = subprocess.check_output(
             ["git", "-C", str(root), "branch", "--show-current"],
@@ -62,9 +66,9 @@ def _enforce_r1_branch(root: Path) -> None:
         ).decode().strip()
     except Exception as e:
         _log_exc("git branch --show-current failed; skipping R1 enforcement", e)
-        return
+        return None
     if current not in ("main", "master"):
-        return
+        return None
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     branch = f"session/{ts}"
     try:
@@ -75,16 +79,21 @@ def _enforce_r1_branch(root: Path) -> None:
         )
     except Exception as e:
         _log_exc(f"git checkout -b {branch} failed; R1 branch not created", e)
-        return
-    _emit({
+        return None
+    return {
         "systemMessage": f"\x1b[32m🌿 ━━━ [rabbit] R1: created branch {branch} ━━━ 🌿\x1b[0m",
-    })
+    }
 
 
-def _inject_policy(root: Path) -> None:
+def render_policy(root: Path) -> Optional[dict]:
+    """Inv 76. Pure-function renderer for policy injection.
+
+    Reads CLAUDE.md @-imports and assembles an additionalContext payload.
+    Returns None when CLAUDE.md is missing or has no @-imports.
+    """
     claude_md = root / "CLAUDE.md"
     if not claude_md.exists():
-        return
+        return None
 
     text = claude_md.read_text()
     imports = []
@@ -94,7 +103,7 @@ def _inject_policy(root: Path) -> None:
             imports.append(m.group(1))
 
     if not imports:
-        return
+        return None
 
     parts = [
         "Session start policy injection. Governing files from CLAUDE.md @-imports:\n\n"
@@ -121,13 +130,13 @@ def _inject_policy(root: Path) -> None:
     # space-joined dense list. Border chars and emoji preserved (Inv 18 + the
     # BACKLOG-7-visual-messages contract).
     files_label = "\n  · " + "\n  · ".join(imports)
-    _emit({
+    return {
         "additionalContext": payload,
         "systemMessage": (
             f"\x1b[32m✅ ━━━ [rabbit] Policy injected at session start ━━━ ✅"
             f"{files_label}\x1b[0m"
         ),
-    })
+    }
 
 
 def main() -> int:
@@ -138,12 +147,29 @@ def main() -> int:
             "Reads stdin (JSON payload from Claude Code, ignored), enforces R1 "
             "branch policy, and emits CLAUDE.md @-import policy as "
             "additionalContext on stdout.\n"
+            "Emits AT MOST ONE JSON object per invocation (Inv 75); R1 and "
+            "policy lines are aggregated into one systemMessage when both apply.\n"
             "Takes no command-line arguments.\n"
         )
         return 0
     root = repo_root()
-    _enforce_r1_branch(root)
-    _inject_policy(root)
+    payloads = []
+    for payload in (render_r1_branch(root), render_policy(root)):
+        if payload is not None:
+            payloads.append(payload)
+
+    if not payloads:
+        return 0
+
+    aggregated = {
+        "systemMessage": "\n".join(p["systemMessage"] for p in payloads),
+    }
+    for p in payloads:
+        if "additionalContext" in p:
+            aggregated["additionalContext"] = p["additionalContext"]
+            break
+
+    sys.stdout.write(json.dumps(aggregated) + "\n")
     return 0
 
 
