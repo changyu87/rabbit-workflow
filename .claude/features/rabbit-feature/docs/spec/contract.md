@@ -24,7 +24,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "skills": [
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-touch/",
-        "purpose": "Dormant Cycle-A source for the rabbit-feature-touch orchestration skill. Verbatim copy of .claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md. The deployed .claude/skills/rabbit-feature-touch/ continues to be built from the tdd-subagent source until Cycle B re-points build-contract.json."
+        "purpose": "Dormant Cycle-A source for the rabbit-feature-touch orchestration skill (byte-identical body to the tdd-subagent SKILL.md per Inv 1). The deployed .claude/skills/rabbit-feature-touch/ continues to be built from the tdd-subagent source until Cycle B re-points build-contract.json."
       }
     ]
   },
