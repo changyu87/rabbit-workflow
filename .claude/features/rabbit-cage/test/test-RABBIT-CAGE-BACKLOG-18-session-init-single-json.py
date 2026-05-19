@@ -99,17 +99,18 @@ try:
         ok("R1 line present in aggregated systemMessage")
     else:
         fail_t(f"R1 line missing: {msg!r}")
-    if "Policy injected" in msg:
-        ok("policy-injection line present in aggregated systemMessage")
+    # BACKLOG-19: welcome banner replaces "Policy injected".
+    if "Welcome" in msg:
+        ok("welcome banner present in aggregated systemMessage")
     else:
-        fail_t(f"policy-injection line missing: {msg!r}")
+        fail_t(f"welcome banner missing: {msg!r}")
 
     idx_r1 = msg.find("R1: created branch")
-    idx_pol = msg.find("Policy injected")
+    idx_pol = msg.find("Welcome")
     if 0 <= idx_r1 < idx_pol:
-        ok("R1 line appears before policy line (per Inv 75 ordering)")
+        ok("R1 line appears before welcome banner (per Inv 75 ordering)")
     else:
-        fail_t(f"ordering wrong; r1={idx_r1} pol={idx_pol}")
+        fail_t(f"ordering wrong; r1={idx_r1} welcome={idx_pol}")
 
     ac = obj.get("additionalContext", "")
     if ac and len(ac) > 0:
@@ -165,10 +166,10 @@ try:
             ok("R1 line correctly absent on non-main branch")
         else:
             fail_t(f"R1 line should be absent on feature branch: {msg!r}")
-        if "Policy injected" in msg:
-            ok("policy line present")
+        if "Welcome" in msg:
+            ok("welcome banner present")
         else:
-            fail_t(f"policy line missing: {msg!r}")
+            fail_t(f"welcome banner missing: {msg!r}")
 
     # ---- t4: on main but no @-imports → ONE JSON with only R1 line ----
     print()
@@ -196,10 +197,10 @@ try:
             ok("R1 line present")
         else:
             fail_t(f"R1 line missing: {msg!r}")
-        if "Policy injected" not in msg:
-            ok("policy line absent when no @-imports")
+        if "Welcome" not in msg:
+            ok("welcome banner absent when no @-imports")
         else:
-            fail_t(f"policy line should be absent: {msg!r}")
+            fail_t(f"welcome banner should be absent: {msg!r}")
 finally:
     for d in tmproots:
         shutil.rmtree(d, ignore_errors=True)

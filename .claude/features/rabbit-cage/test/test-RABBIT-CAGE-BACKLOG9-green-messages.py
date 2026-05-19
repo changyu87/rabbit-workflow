@@ -101,11 +101,8 @@ print()
 
 tmproots = []
 try:
-    # Test 1: first-run
-    tmp_fr = build_tmproot()
-    tmproots.append(tmp_fr)
-    msg = extract_sys_msg(run_sync(tmp_fr))
-    assert_green_msg("sync-check.py FIRST-RUN case", msg)
+    # Test 1: BACKLOG-19 — first-run path REMOVED; sync-check is silent when
+    # CLAUDE.md is absent. Skip green-message check for the first-run case.
 
     # Test 2: drift
     tmp1 = build_tmproot()

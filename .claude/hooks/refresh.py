@@ -7,6 +7,10 @@ containing the full content of every file that CLAUDE.md @-imports,
 then reset the counter to 0.
 
 Stays silent (exits 0 with no stdout) when not refreshing.
+
+Brand/decoration/color/text bodies are sourced from the central registry
+.claude/features/contract/schemas/rabbit-print-messages.json via the shared
+renderer rabbit_print.py (Inv 18, 77).
 """
 
 import json
@@ -15,6 +19,18 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+
+
+# Inv 77 (BACKLOG-19): import the shared renderer. See sync-check.py for
+# the symmetric path-discovery rationale.
+_HERE = Path(__file__).resolve().parent
+for _candidate in [_HERE, *_HERE.parents]:
+    _maybe = _candidate / "features" / "contract" / "scripts"
+    if (_maybe / "rabbit_print.py").is_file():
+        if str(_maybe) not in sys.path:
+            sys.path.insert(0, str(_maybe))
+        break
+from rabbit_print import rabbit_print, rabbit_subline  # noqa: E402
 
 
 def repo_root() -> Path:
@@ -93,16 +109,11 @@ def main() -> int:
             parts.append("\n")
 
     payload = "".join(parts)
-    # BACKLOG-7: per-file bullet lines (one file per line) instead of a single
-    # space-joined dense list. Border chars and emoji preserved (Inv 18 + the
-    # BACKLOG-7-visual-messages contract).
-    files_label = "\n  · " + "\n  · ".join(imports)
+    banner = rabbit_print("policy-refreshed")
+    sublines = "\n".join(rabbit_subline(p) for p in imports)
     print(json.dumps({
         "additionalContext": payload,
-        "systemMessage": (
-            f"\x1b[32m🔄 ━━━ [rabbit] Policy refreshed ━━━ 🔄"
-            f"{files_label}\x1b[0m"
-        ),
+        "systemMessage": banner + "\n" + sublines,
     }))
     return 0
 

@@ -127,11 +127,11 @@ try:
 
     sys_msg_drift = parsed.get("systemMessage", "") if json_valid and parsed else ""
 
-    # t7
-    if "[rabbit]" in sys_msg_drift:
-        ok(7, "systemMessage contains '[rabbit]' tag on drift")
+    # t7 — BACKLOG-19: brand is now `[🐇 rabbit 🐇]`
+    if "[🐇 rabbit 🐇]" in sys_msg_drift:
+        ok(7, "systemMessage contains '[🐇 rabbit 🐇]' tag on drift")
     else:
-        fail_t(7, f"systemMessage does NOT contain '[rabbit]' tag on drift; got: '{sys_msg_drift}'")
+        fail_t(7, f"systemMessage does NOT contain '[🐇 rabbit 🐇]' tag on drift; got: '{sys_msg_drift}'")
 
     # t8
     msg_lower = sys_msg_drift.lower()
@@ -157,7 +157,7 @@ try:
         fail_t(9, "CLAUDE.md missing after drift detection — hook should regenerate it")
 
     print()
-    print("=== Contract: first-run — CLAUDE.md created when absent ===")
+    print("=== BACKLOG-19 / Inv 79: first-run path REMOVED — silent exit 0, no CLAUDE.md created ===")
 
     tmproot2 = tempfile.mkdtemp()
     try:
@@ -181,7 +181,7 @@ try:
 
         # t10
         if not os.path.isfile(os.path.join(tmproot2, "CLAUDE.md")):
-            ok(10, "pre-condition: CLAUDE.md absent in temp workspace (first-run scenario)")
+            ok(10, "pre-condition: CLAUDE.md absent in temp workspace")
         else:
             fail_t(10, "pre-condition failed: CLAUDE.md already exists in temp tree")
 
@@ -190,22 +190,22 @@ try:
 
         # t11
         if res2.returncode == 0:
-            ok(11, "sync-check.py exits 0 on first-run (absent CLAUDE.md)")
+            ok(11, "sync-check.py exits 0 when CLAUDE.md absent")
         else:
-            fail_t(11, f"sync-check.py exited {res2.returncode} on first-run (expected 0)")
+            fail_t(11, f"sync-check.py exited {res2.returncode} (expected 0)")
 
-        # t12
+        # t12 — BACKLOG-19: first-run path removed; sync-check no longer creates CLAUDE.md
         cm2 = os.path.join(tmproot2, "CLAUDE.md")
-        if os.path.isfile(cm2):
-            ok(12, "CLAUDE.md was created by sync-check.py on first run")
+        if not os.path.isfile(cm2):
+            ok(12, "CLAUDE.md NOT created by sync-check.py (Inv 79 — first-run path removed)")
         else:
-            fail_t(12, "CLAUDE.md was NOT created on first run — hook must create it when absent")
+            fail_t(12, "CLAUDE.md was created — first-run path should be removed (Inv 79)")
 
-        # t13: CLAUDE.md is now an @-import manifest (see t9 comment).
-        if os.path.isfile(cm2) and "@.claude/features/policy/philosophy.md" in read(cm2):
-            ok(13, "created CLAUDE.md contains expected @-imports to policy/")
+        # t13 — stdout should be empty (no first-run JSON)
+        if res2.stdout.strip() == "":
+            ok(13, "sync-check.py emits empty stdout when CLAUDE.md absent (no first-run JSON)")
         else:
-            fail_t(13, "created CLAUDE.md does not contain expected @-import lines")
+            fail_t(13, f"sync-check.py emitted JSON when CLAUDE.md absent: {res2.stdout!r}")
     finally:
         shutil.rmtree(tmproot2, ignore_errors=True)
 finally:

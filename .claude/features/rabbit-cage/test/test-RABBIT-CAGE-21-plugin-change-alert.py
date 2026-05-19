@@ -48,16 +48,16 @@ tmproot = make_clean_repo()
 tmproot2 = None
 
 try:
-    print("=== t1: .rabbit-skills-updated exists → [rabbit] notification emitted ===")
+    print("=== t1: .rabbit-skills-updated exists → [🐇 rabbit 🐇] notification emitted ===")
     with open(os.path.join(tmproot, ".rabbit-skills-updated"), "w") as f:
         f.write("rabbit-bug\n")
     t1_output = run_sync(tmproot)
     t1_msg = extract_sys_msg(t1_output)
 
-    if "[rabbit]" in t1_msg:
-        ok("systemMessage contains '[rabbit]'")
+    if "[🐇 rabbit 🐇]" in t1_msg:
+        ok("systemMessage contains new brand '[🐇 rabbit 🐇]' (BACKLOG-19)")
     else:
-        fail_t(f"systemMessage does NOT contain '[rabbit]' (actual: {t1_msg!r})")
+        fail_t(f"systemMessage does NOT contain '[🐇 rabbit 🐇]' (actual: {t1_msg!r})")
 
     print("=== t2: notification contains the skill name ===")
     if "rabbit-bug" in t1_msg:
