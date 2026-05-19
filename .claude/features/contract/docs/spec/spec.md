@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.15.0
+version: 1.16.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -29,7 +29,6 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 
 **schemas/**
 - `.claude/features/contract/schemas/feature.json.schema.json`
-- `.claude/features/contract/schemas/registry.json.schema.json`
 - `.claude/features/contract/schemas/bug.json.schema.json`
 - `.claude/features/contract/schemas/project-map.json.schema.json`
 - `.claude/features/contract/schemas/rabbit-print.schema.json`
@@ -47,14 +46,9 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 **scripts/** (Python — sole scripting tech stack)
 - `.claude/features/contract/scripts/policy-block.py`
 - `.claude/features/contract/scripts/dispatch-feature-edit.py`
-- `.claude/features/contract/scripts/dispatch-spec-update.py`
-- `.claude/features/contract/scripts/render-template.py`
-- `.claude/features/contract/scripts/check-maps-consistent.py`
 - `.claude/features/contract/scripts/find-feature.py`
-- `.claude/features/contract/scripts/rabbit-triage.py`
 - `.claude/features/contract/scripts/validate-feature.py`
 - `.claude/features/contract/scripts/workspace-map.py`
-- `.claude/features/contract/scripts/audit-orphan-storage.py`
 - `.claude/features/contract/scripts/rabbit_print.py`
 
 **skills/**
@@ -101,7 +95,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 11. `relink.sh` does NOT exist at `.claude/features/contract/scripts/relink.sh`. No `.sh` files exist anywhere in `scripts/` or `scripts/enforcement/`; Python is the sole scripting tech stack.
 12. `.claude/workspace-structure.json` exists, is valid JSON, conforms to the `workspace-structure.json` schema (requires `schema_version`, `owner`, `root`, `nodes` at top level), has `root` equal to `"rabbit"`, and declares nodes for `features`, `skills`, `hooks`, and `commands`.
 13. `check-naming.py` documents that the `rbt-` prefix is fully deprecated with no remaining valid use cases; comments and flag messages in that script must not reference `rbt-` as a valid or recommended prefix. The current naming policy is: user-facing artifacts use `rabbit-`; the `rbt-` prefix is banned.
-14. `rabbit-triage.py` is called as `rabbit-triage.py <feature-dir> <bug-name>` and locates bug.json at `<repo-root>/.claude/bugs/<feature-name>/<bug-name>/bug.json` (centralized bug storage, where `<feature-name>` is the basename of `<feature-dir>`). It does NOT look in `<feature-dir>/docs/bugs/`.
+14. (removed in CONTRACT-BACKLOG-24) `rabbit-triage.py` was deleted as dead production code. The script had no production caller in `.claude/` outside its own self-references.
 15. Boolean CLI flag values and subcommand values across the rabbit workflow use the literal strings `true` and `false` exclusively. The values `enabled`, `disabled`, `on`, `off`, `yes`, `no` are prohibited as boolean values (action verbs like `lock`, `unlock`, `add`, `remove` remain allowed when the subcommand itself denotes an action, not a boolean state).
 16. CLI flag names, subcommand names, and configuration variable names in the rabbit workflow MUST be positive-streamlined: they describe what is present/active, never what is absent/disabled. Names beginning with `no-`, `disable-`, `skip-`, `without-`, or any negating prefix are prohibited. If such a name exists, it must be renamed to describe what IS active when the flag/variable is true. Boolean state is encoded in the value (`true`/`false`), never in the name.
 17. `check-tests-non-interactive.py` MUST scan Python test files (`.py`) under `<feature-dir>/test/`, not shell scripts (`.sh`). The repo is Python-only (rabbit-cage Inv 39, rabbit-file Tech Stack); a `.sh`-only scanner is silently vacuous on every invocation. The script MUST detect Python interactive constructs that would block an end-to-end run: bare `input(` calls, `getpass.getpass(`, `click.prompt(`, `click.confirm(`, and any `sys.stdin.read*()` call that is not preceded by an `isatty()` guard or a piped-input fixture. A violation MUST exit 1 with stderr naming the file and the offending construct.
@@ -116,7 +110,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 26. `feature-json-template.json` MUST validate against `feature.json.schema.json` (i.e., the template MUST be a legal `feature.json`). Templates carrying top-level fields the schema rejects (e.g., when `additionalProperties: false`) are broken by construction.
 27. `dispatch-feature-edit.py` project-feature path detection MUST handle paths that contain literal `.claude/features/` correctly: a feature reference like `.claude/features/<X>/scripts/foo.py` MUST resolve to feature `<X>`, not be misclassified as a project-relative path. The detection MUST use the `.claude/features/` prefix as a discriminator rather than substring heuristics that misfire.
 28. `find-feature.py` MUST close all opened file handles (use `with open()` context managers) and MUST scan ONLY `.claude/features/` for feature directories — not any directory whose basename happens to be `features` (project-side, dependency vendor dirs, etc.). Scope is `.claude/features/` exclusively.
-29. `audit-orphan-storage.py` MUST audit both bugs AND backlogs for orphaned storage (unmatched item.json without counter slot, or counter slot without item.json). Reporting only bugs creates a blind spot for backlog items, which are now equally first-class per the rabbit-file consolidation.
+29. (removed in CONTRACT-BACKLOG-24) `audit-orphan-storage.py` was deleted as dead production code. The script had no production caller in `.claude/` outside its own self-references.
 30. `check-symlinks-resolve.py` MUST follow symlinks at any depth (use `find -L` or equivalent with no maxdepth limit), or document why a finite depth is sufficient. Hard-coding `maxdepth=3` silently misses symlinks nested deeper, producing false-OK results.
 31. `check-no-main-edits.py` MUST enforce the protected-branch set `{main, master}` exactly. It MUST NOT forbid additional branches (`trunk`, `develop`, etc.) that are not in any documented invariant. The protected-branch list is the single source of truth for the contract's "never commit on main" guard (the legacy rabbit-cage R1 auto-branch-creation hook was removed; this script is now the sole programmatic enforcement of branch-per-feature).
 32. `check-imports-resolve.py` import-target regex MUST cover all paths where imports can appear: `.claude/features/`, `.claude/hooks/`, `.claude/skills/`, `.claude/commands/`, `.claude/agents/`. The current `.claude/features/`-only pattern misses imports from deployed surface files, producing false-OK on real drift.
@@ -144,6 +138,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 38. `.claude/workspace-structure.json` MUST declare nodes for every feature that exists on disk under `.claude/features/`. Missing declarations cause `workspace-map.py --audit` to emit a `warn`-severity finding. Newly created features MUST be added to the declaration in the same TDD cycle that scaffolds them. (Audit gap as of Cycle B: rabbit-spec, rabbit-file, and rabbit-feature were added to the declaration during Cycle B to close pre-existing audit findings.)
 39. `validate-feature.py` MUST NOT require a per-feature `docs/bugs/` directory. Per Inv 14, bug storage is centralized to `<repo-root>/.claude/bugs/<feature-name>/`; the legacy per-feature `docs/bugs/` directory no longer applies. The script is feature-level structure validation only (feature.json, docs/spec/spec.md, docs/spec/contract.md, test/run.py) — not bug-storage validation. A feature directory that is otherwise valid (correct feature.json, spec.md, contract.md, executable test/run.py) but lacks `docs/bugs/` MUST validate successfully.
 40. `check-numbered-lists.py` MUST exist at `.claude/features/contract/scripts/enforcement/check-numbered-lists.py`, be executable, and reject Markdown files whose ordered-list items or headings use decimal sub-numbers (e.g. `1.1`, `1.2.3`, `## 2.6 Foo`) or letter-suffixed numbering (e.g. `1a`, `3a)`, `## 3a Foo`). The script accepts file paths and/or directories as positional arguments and recursively scans `.md` files. The required in-scope paths for the contract test runner are: `.claude/features/**/docs/spec/*.md`, `.claude/features/**/skills/**/SKILL.md`, `.claude/features/**/agents/**/*.md`, `.claude/features/policy/*.md`, `.claude/features/contract/docs/**/*.md`, and top-level `CLAUDE.md` / `README.md` at the repo root. Out-of-scope (skipped): `archive/**`, `docs/superpowers/**`, and the rabbit-file `bug-backlog-files` branch tree. Exit 0 on no violations; exit 1 on any violation, with each violation printed to stderr as `<path>:<line>: <pattern> <line-content>`. The contract `test/run.py` MUST invoke this script against the live in-scope set and fail if any violation is reported.
+41. Every Python script under `.claude/features/contract/scripts/` (excluding `enforcement/`) MUST have at least one production caller outside the contract feature itself. A "production caller" is any reference in `.claude/` (excluding `archive/`, `__pycache__/`, and the contract feature's own `scripts/`, `tests/`, and `docs/spec/` directories) — i.e. a hook, a command, an agent, a skill, another feature's spec, or another feature's script. Scripts without a production caller are dead code and MUST be deleted per the Designed Deprecation principle. The `test-no-dead-contract-scripts.py` regression test enforces this invariant by grepping the `.claude/` tree for each script's basename and failing if no qualifying caller exists. Deprecation criterion for the regression test: when an automated dead-code detector spanning the whole repo is wired into the Stop hook.
 
 ## Template marker convention
 

@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.4.0
+version: 1.5.0
 template_version: 2.0.0
 ---
 
@@ -25,7 +25,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ],
     "schemas": [
       ".claude/features/contract/schemas/feature.json.schema.json",
-      ".claude/features/contract/schemas/registry.json.schema.json",
       ".claude/features/contract/schemas/bug.json.schema.json",
       ".claude/features/contract/schemas/project-map.json.schema.json",
       ".claude/features/contract/schemas/rabbit-print.schema.json",
@@ -39,13 +38,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "scripts": [
       ".claude/features/contract/scripts/policy-block.py",
       ".claude/features/contract/scripts/dispatch-feature-edit.py",
-      ".claude/features/contract/scripts/dispatch-spec-update.py",
-      ".claude/features/contract/scripts/render-template.py",
-      ".claude/features/contract/scripts/check-maps-consistent.py",
-      ".claude/features/contract/scripts/rabbit-triage.py",
       ".claude/features/contract/scripts/validate-feature.py",
       ".claude/features/contract/scripts/workspace-map.py",
-      ".claude/features/contract/scripts/audit-orphan-storage.py",
       ".claude/features/contract/scripts/find-feature.py",
       ".claude/features/contract/scripts/rabbit_print.py",
       ".claude/features/contract/scripts/enforcement/check-imports-resolve.py",
