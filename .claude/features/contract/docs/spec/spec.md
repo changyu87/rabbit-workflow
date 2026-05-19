@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.11.0
+version: 1.12.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -121,8 +121,25 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 32. `check-imports-resolve.py` import-target regex MUST cover all paths where imports can appear: `.claude/features/`, `.claude/hooks/`, `.claude/skills/`, `.claude/commands/`, `.claude/agents/`. The current `.claude/features/`-only pattern misses imports from deployed surface files, producing false-OK on real drift.
 33. `workspace-structure.json` schema field naming MUST be internally consistent: either all snake_case or all camelCase, not mixed. The current mixed-case form (camelCase metadata keys with snake_case enforcement targets) confuses readers and triggers spurious schema-vs-data mismatches.
 34. `rabbit-print-messages.json` exists at `.claude/features/contract/schemas/rabbit-print-messages.json`, is valid JSON, and conforms to `rabbit-print.schema.json`. Top-level keys (required): `schema_version`, `owner`, `deprecation_criterion`, `brand` (the prefix string, exactly `"[🐇 rabbit 🐇]"`), `bar` (the decoration string, exactly `"━━━"`), `colors` (object mapping color name to `{ansi: <code>, reset: <code>}`; required keys `green` = `[32m`/`[0m` and `red` = `[31m`/`[0m`), and `messages` (object mapping message-id to `{icon, color, text}` where `icon` is a single emoji string, `color` is a key into `colors`, and `text` is the body string with `{name}` placeholders for runtime substitution). The required message-ids are: `r1-branch` (🌿 green), `welcome` (✅ green), `policy-drift` (⚠️ red), `surface-drift` (🔄 red), `scope-guard-off` (🔓 red), `scope-guard-bypassed` (🔓 red), `human-approval-bypass` (🔑 red), `skills-updated` (✨ green), `policy-refreshed` (🔄 green), `tdd-transition` (🔧 green), `tdd-forced` (🔧 red). Adding new message-ids is permitted; removing or renaming an id is a breaking change requiring a coexistence window per the Designed Deprecation principle.
-35. `rabbit_print.py` exists at `.claude/features/contract/scripts/rabbit_print.py` and is an importable Python 3 module (underscore form is required by Python's import system; the rest of contract's scripts use hyphens because they are CLI tools, not importable modules). The module exposes exactly two public functions: (a) `rabbit_print(message_id: str, **kwargs) -> str` returns `f"{ansi}{brand} {icon} {bar} {text} {bar} {icon}{reset}"` where `text` has its `{name}` placeholders substituted from `kwargs`; if `message_id` is not in the registry the call raises `KeyError`; if a required `{name}` placeholder is missing from `kwargs` the call raises `KeyError` from `str.format`. (b) `rabbit_subline(text: str, color: str = "green") -> str` returns `f"{ansi}{brand} {text}{reset}"`. Both functions load the registry from disk on first use and cache it. The module MUST NOT print to stdout or stderr; it returns strings only. The module's `__all__` declares exactly these two names.
-36. Every producer that emits a `[rabbit]` message — currently the four declared in `rabbit-print.schema.json` `producers` array — MUST go through `rabbit_print.py` for message composition. Direct in-line ANSI escape codes (`\x1b[3...`), direct brand-prefix strings (`[🐇 rabbit 🐇]` or the legacy `[rabbit]`), or direct bar strings (`━━━`) outside `rabbit_print.py` are forbidden. The producers may compose their own multi-line block (banner + sub-lines) by calling `rabbit_print` and `rabbit_subline` in sequence and joining the results, but each individual line MUST come from one of those two calls.
+35. `rabbit_print.py` exists at `.claude/features/contract/scripts/rabbit_print.py` and is an importable Python 3 module (underscore form is required by Python's import system; the rest of contract's scripts use hyphens because they are CLI tools, not importable modules). The module exposes:
+    (a) `rabbit_print(message_id: str, **kwargs) -> str` — low-level renderer; returns `f"{ansi}{brand} {icon} {bar} {text} {bar} {icon}{reset}"` where `text` has its `{name}` placeholders substituted from `kwargs`. Raises `KeyError` on unknown `message_id` or missing placeholder.
+    (b) `rabbit_subline(text: str, color: str = "green") -> str` — sub-line renderer; returns `f"{ansi}{brand} {text}{reset}"`.
+    (c) `rabbit_block(*lines: str) -> str` — block assembler; returns `"\n" + "\n".join(lines)`. The leading newline is the contract that Claude Code renders the `[🐇 rabbit 🐇]` output on its own row (not inline with `Stop says:` / `SessionStart says:` chrome). `rabbit_block` is the SINGLE authoritative place the leading newline lives — no caller, no other renderer, embeds `"\n"` at the start of a message.
+    (d) Named wrapper functions, one per message-id, that thinly delegate to `rabbit_print`:
+        `r1_branch(branch: str) -> str`
+        `welcome() -> str`
+        `policy_drift() -> str`
+        `surface_drift() -> str`
+        `scope_guard_off() -> str`
+        `scope_guard_bypassed() -> str`
+        `human_approval_bypass() -> str`
+        `skills_updated(names: str) -> str`
+        `policy_refreshed() -> str`
+        `tdd_transition(from_state: str, to_state: str) -> str`
+        `tdd_forced(from_state: str, to_state: str) -> str`
+      Each wrapper signature exposes exactly the kwargs its message-id requires — no `**kwargs`, no extra parameters. State-name placeholders (`from_state`, `to_state`) for `tdd_transition` and `tdd_forced` are upcased by the wrapper (`s.upper()`) so callers pass internal lowercase names without ceremony.
+    All functions load the registry from disk on first use and cache it. The module MUST NOT print to stdout or stderr; it returns strings only. The module's `__all__` declares exactly these names: `rabbit_print`, `rabbit_subline`, `rabbit_block`, and every named wrapper above.
+36. Every producer that emits a `[rabbit]` message — currently the four declared in `rabbit-print.schema.json` `producers` array — MUST go through `rabbit_print.py`. The mandatory call shape is `rabbit_block(<named_wrapper>(), ...)` or `rabbit_block(<named_wrapper>(), rabbit_subline(...), ...)` for messages with sub-lines. Direct calls to `rabbit_print("message-id", ...)` at producer call sites (i.e. inside `sync-check.py`, `session-init.py`, `refresh.py`, `tdd-step.py`) are forbidden — the named wrappers are the public API for producers. Direct in-line ANSI escape codes (`\x1b[3...`), direct brand-prefix strings (`[🐇 rabbit 🐇]` or the legacy `[rabbit]`), bar strings (`━━━`), or leading `"\n"` characters in systemMessage values outside `rabbit_block` are likewise forbidden. The single function `rabbit_block` is the only place the leading newline appears.
 
 ## Template marker convention
 
