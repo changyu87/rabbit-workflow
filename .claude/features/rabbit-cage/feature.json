@@ -14,5 +14,5 @@
   "updated_note": "the `updated` field is hand-maintained at the close of each TDD cycle; bump it whenever feature contents materially change",
   "updated": "2026-05-19",
   "tdd_last_cycle_impl_commit": "505c834fbb6854b9fecc95a0def66936e951d74a",
-  "spec_no_change_reason": "spec changes for BUG-91 already committed in commit 83f2f439 (version bump to 4.0.0 and three-way alignment invariant 84)"
+  "spec_no_change_reason": "spec changes already committed earlier in this cycle (BUG-92 spec edit)"
 }
