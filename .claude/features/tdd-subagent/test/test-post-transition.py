@@ -10,7 +10,23 @@ import tempfile
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 TDD_STEP = os.path.join(FEATURE_DIR, 'scripts', 'tdd-step.py')
+FEATURES_ROOT = os.path.abspath(os.path.join(FEATURE_DIR, '..'))
+CONTRACT_RABBIT_PRINT = os.path.join(FEATURES_ROOT, 'contract', 'scripts', 'rabbit_print.py')
+CONTRACT_MESSAGES = os.path.join(
+    FEATURES_ROOT, 'contract', 'schemas', 'rabbit-print-messages.json'
+)
 TMPROOT = tempfile.mkdtemp()
+
+
+def _mirror_rabbit_print(mirror_base):
+    """Copy the centralized rabbit_print renderer into the mirror so the
+    tdd-step.py import resolves under RABBIT_ROOT (post-BACKLOG-11)."""
+    dst_scripts = os.path.join(mirror_base, '.claude/features/contract/scripts')
+    dst_schemas = os.path.join(mirror_base, '.claude/features/contract/schemas')
+    os.makedirs(dst_scripts, exist_ok=True)
+    os.makedirs(dst_schemas, exist_ok=True)
+    shutil.copy(CONTRACT_RABBIT_PRINT, os.path.join(dst_scripts, 'rabbit_print.py'))
+    shutil.copy(CONTRACT_MESSAGES, os.path.join(dst_schemas, 'rabbit-print-messages.json'))
 
 PASS = 0
 FAIL = 0
@@ -64,6 +80,7 @@ def pt2():
 
     shutil.copy(TDD_STEP, os.path.join(mirror_tdd_scripts, 'tdd-step.py'))
     os.chmod(os.path.join(mirror_tdd_scripts, 'tdd-step.py'), 0o755)
+    _mirror_rabbit_print(mirror_base)
 
     stub = os.path.join(mirror_contract_scripts, 'rebuild-registry.sh')
     with open(stub, 'w') as f:
@@ -102,6 +119,7 @@ def pt3():
 
     shutil.copy(TDD_STEP, os.path.join(mirror_tdd_scripts, 'tdd-step.py'))
     os.chmod(os.path.join(mirror_tdd_scripts, 'tdd-step.py'), 0o755)
+    _mirror_rabbit_print(mirror_base)
 
     fix(mirror_feat, 'my-feat3', 'spec')
 

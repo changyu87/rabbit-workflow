@@ -15,6 +15,10 @@ both conditions apply, their rendered [rabbit] lines are combined into one
 systemMessage (newline-joined, R1 line first, policy line second) and
 emitted within a single JSON object that also carries additionalContext
 when policy injection applies.
+
+Brand/decoration/color/text bodies are sourced from the central registry
+.claude/features/contract/schemas/rabbit-print-messages.json via the shared
+renderer rabbit_print.py (Inv 18, 77).
 """
 
 import datetime
@@ -25,6 +29,28 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
+
+
+# Inv 77 (BACKLOG-19): import the shared renderer. See sync-check.py for
+# the symmetric path-discovery rationale.
+_HERE = Path(__file__).resolve().parent
+for _candidate in [_HERE, *_HERE.parents]:
+    _maybe = _candidate / "features" / "contract" / "scripts"
+    if (_maybe / "rabbit_print.py").is_file():
+        if str(_maybe) not in sys.path:
+            sys.path.insert(0, str(_maybe))
+        break
+from rabbit_print import rabbit_print, rabbit_subline  # noqa: E402
+
+
+# Inv 78 (BACKLOG-19): per-file one-liner descriptions for the welcome
+# banner sub-lines. Additional @-imports introduced later show as basename
+# only (no suffix).
+_WELCOME_DESCRIPTIONS = {
+    "philosophy.md":   "machine-first · bounded scope · designed deprecation",
+    "spec-rules.md":   "determinism first; schema contracts; lifecycle ownership",
+    "coding-rules.md": "think first; simplicity; surgical edits; goal-driven TDD",
+}
 
 
 def _log_exc(where: str, exc: BaseException) -> None:
@@ -81,15 +107,18 @@ def render_r1_branch(root: Path) -> Optional[dict]:
         _log_exc(f"git checkout -b {branch} failed; R1 branch not created", e)
         return None
     return {
-        "systemMessage": f"\x1b[32m🌿 ━━━ [rabbit] R1: created branch {branch} ━━━ 🌿\x1b[0m",
+        "systemMessage": rabbit_print("r1-branch", branch=branch),
     }
 
 
 def render_policy(root: Path) -> Optional[dict]:
-    """Inv 76. Pure-function renderer for policy injection.
+    """Inv 76, 78. Pure-function renderer for policy injection.
 
     Reads CLAUDE.md @-imports and assembles an additionalContext payload.
     Returns None when CLAUDE.md is missing or has no @-imports.
+    The welcome banner is followed by per-file sub-lines that name each
+    @-imported policy file along with its one-liner description (or just
+    the basename if no description is registered).
     """
     claude_md = root / "CLAUDE.md"
     if not claude_md.exists():
@@ -126,16 +155,22 @@ def render_policy(root: Path) -> Optional[dict]:
             parts.append("\n")
 
     payload = "".join(parts)
-    # BACKLOG-7: per-file bullet lines (one file per line) instead of a single
-    # space-joined dense list. Border chars and emoji preserved (Inv 18 + the
-    # BACKLOG-7-visual-messages contract).
-    files_label = "\n  · " + "\n  · ".join(imports)
+    banner = rabbit_print("welcome")
+    sublines = []
+    # Inv 78: pad each name so the em-dash aligns at column 17 (the longest
+    # registered name `coding-rules.md` is 15 chars; +2 spaces = 17).
+    PAD = 17
+    for p in imports:
+        name = Path(p).name
+        desc = _WELCOME_DESCRIPTIONS.get(name)
+        if desc:
+            pad_spaces = " " * max(2, PAD - len(name))
+            sublines.append(rabbit_subline(f"{name}{pad_spaces}— {desc}"))
+        else:
+            sublines.append(rabbit_subline(name))
     return {
         "additionalContext": payload,
-        "systemMessage": (
-            f"\x1b[32m✅ ━━━ [rabbit] Policy injected at session start ━━━ ✅"
-            f"{files_label}\x1b[0m"
-        ),
+        "systemMessage": banner + "\n" + "\n".join(sublines),
     }
 
 

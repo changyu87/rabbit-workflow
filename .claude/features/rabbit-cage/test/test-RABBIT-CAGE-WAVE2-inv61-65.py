@@ -119,7 +119,7 @@ try:
             except Exception:
                 continue
             msg = d.get("systemMessage", "")
-            if "\x1b[32m" in msg and "[rabbit]" in msg:
+            if "\x1b[32m" in msg and "[🐇 rabbit 🐇]" in msg:
                 sys_msg_found = True
                 if branch in msg or "R1" in msg or "session/" in msg:
                     branch_named = True
@@ -146,51 +146,37 @@ try:
         fail_t(f"off-main → expected 'feature/keep', got '{branch_after}' (Inv 61)")
 
     # ====================================================================
-    # Inv 62 — sync-check.py surface-drift alert color is RED
+    # Inv 62 — surface-drift alert color is RED (sourced from the print
+    # registry, BACKLOG-19). Verify the registry entry has color=red.
     # ====================================================================
     print()
-    print("=== Inv 62: sync-check.py surface-drift alert is RED ===")
-
-    with open(SYNC_CHECK) as f:
-        sync_src = f.read()
-    # Find the surface-drift emit block and check the ANSI prefix.
-    # Look for the systemMessage that contains "Surface drift"
-    drift_match = re.search(
-        r'"systemMessage":\s*"(\\x1b\[\d+m)[^"]*Surface drift[^"]*"',
-        sync_src,
+    print("=== Inv 62: surface-drift alert is RED (via rabbit-print-messages.json) ===")
+    registry_path = os.path.join(
+        REPO_ROOT, ".claude/features/contract/schemas/rabbit-print-messages.json",
     )
-    if drift_match:
-        color = drift_match.group(1)
-        if color == r"\x1b[31m":
-            ok("sync-check.py surface-drift systemMessage uses \\x1b[31m (red) — Inv 62")
+    try:
+        with open(registry_path) as f:
+            registry = json.load(f)
+        surface_color = registry.get("messages", {}).get("surface-drift", {}).get("color")
+        if surface_color == "red":
+            ok("rabbit-print-messages.json declares surface-drift color=red (Inv 62)")
         else:
-            fail_t(f"sync-check.py surface-drift systemMessage uses {color} (expected \\x1b[31m red) — Inv 62 violation")
-    else:
-        fail_t("sync-check.py: could not locate surface-drift systemMessage emit line — Inv 62 cannot be verified")
+            fail_t(f"surface-drift color is {surface_color!r}, expected 'red' (Inv 62)")
+    except Exception as e:
+        fail_t(f"could not load rabbit-print-messages.json: {e}")
 
     # ====================================================================
-    # Inv 63 — sync-check.py additionalContext expands @-imports OR contains note
+    # Inv 63 — sync-check.py additionalContext expands @-imports OR contains note.
+    # BACKLOG-19: first-run path removed; the drift path is the only emitter
+    # of additionalContext, so we corrupt an existing CLAUDE.md to force drift.
     # ====================================================================
     print()
-    print("=== Inv 63: sync-check.py additionalContext handles @-imports ===")
-
-    # Inspect the additionalContext emitted by sync-check.py for first-run/drift.
-    # Acceptable: (a) raw @path text replaced with file content, OR (b) note about
-    # @-imports not being followed.
-    # We check the source for either: a function that expands @-imports, OR
-    # the presence of a warning note string.
-    expands = bool(re.search(r"(expand[_\s-]?import|@\\?-?imports?\s*(not\s+)?(auto-)?(resolv|follow))",
-                              sync_src, re.IGNORECASE))
-    has_note = bool(re.search(r"(NOTE|Note).*@-?import", sync_src))
-    # Also check: does emit additionalContext contain a marker that imports are handled?
-    # Stronger test — run sync-check.py against a fresh tmp repo with @-import in CLAUDE.md
-    # and check additionalContext content.
+    print("=== Inv 63: sync-check.py additionalContext handles @-imports (drift path) ===")
     tmp_drift = tempfile.mkdtemp(prefix="rabbit-cage-wave2-drift-")
     tmproots.append(tmp_drift)
     subprocess.run(["git", "init", "-q", tmp_drift], check=True)
     subprocess.run(["git", "-C", tmp_drift, "config", "user.email", "t@t"], check=True)
     subprocess.run(["git", "-C", tmp_drift, "config", "user.name", "t"], check=True)
-    # No CLAUDE.md → first-run path. Set up minimal generator dependency.
     os.makedirs(os.path.join(tmp_drift, ".claude/features/rabbit-cage/scripts"), exist_ok=True)
     os.makedirs(os.path.join(tmp_drift, ".claude/features/policy"), exist_ok=True)
     for fname, content in [
@@ -207,6 +193,9 @@ try:
             os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/scripts", fname),
             os.path.join(tmp_drift, ".claude/features/rabbit-cage/scripts", fname),
         )
+    # Force the drift path: write a stale CLAUDE.md.
+    with open(os.path.join(tmp_drift, "CLAUDE.md"), "w") as f:
+        f.write("STALE CONTENT — will be regenerated\n")
     env = {**os.environ, "RABBIT_ROOT": tmp_drift, "RABBIT_SYNC_EVERY": "1"}
     res = subprocess.run([sys.executable, SYNC_CHECK], env=env,
                          capture_output=True, text=True)
@@ -217,14 +206,11 @@ try:
     except Exception:
         pass
 
-    # Check the additionalContext does NOT contain a bare unresolved "@path" import
-    # without either expansion or a note.
     if addl_ctx:
         bare_at_lines = [
             ln for ln in addl_ctx.splitlines()
             if re.match(r"^@\S+", ln.strip())
         ]
-        # Look for a warning note about @-imports anywhere in the additionalContext
         has_warning = bool(
             re.search(r"NOTE.*@.?import|not\s+(auto-)?resolv|not\s+(auto-)?follow|load.*referenced",
                        addl_ctx, re.IGNORECASE)
@@ -236,9 +222,7 @@ try:
         else:
             fail_t(f"additionalContext contains bare @-import lines without a warning note: {bare_at_lines!r} (Inv 63 violation)")
     else:
-        # If no additionalContext was emitted on first-run, that's a regression in
-        # itself. Mark as fail.
-        fail_t(f"sync-check.py first-run did NOT emit additionalContext; stdout={res.stdout!r} (Inv 63 cannot be checked)")
+        fail_t(f"sync-check.py drift did NOT emit additionalContext; stdout={res.stdout!r} (Inv 63 cannot be checked)")
 
     # ====================================================================
     # Inv 64 — tests do not mutate live source files

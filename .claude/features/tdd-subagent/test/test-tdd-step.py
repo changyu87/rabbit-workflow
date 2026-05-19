@@ -325,16 +325,17 @@ def t_su6():
         ko(f"tsu6: rc={rc} out='{out}'")
 
 
-# t_rbt1: tdd-step.py transition stdout contains literal "[rabbit]"
+# t_rbt1: tdd-step.py transition stdout contains the centralized brand
+# `[🐇 rabbit 🐇]` (post-BACKLOG-11; renderer is rabbit_print).
 def t_rbt1():
     d = os.path.join(TMPROOT, 't_rbt1')
     fix(d, 't_rbt1', 'spec')
     run('transition', d, 'spec-update')
     out = read_out()
-    if '[rabbit]' in out:
-        ok('t_rbt1: transition stdout contains [rabbit]')
+    if '[\U0001f407 rabbit \U0001f407]' in out:
+        ok('t_rbt1: transition stdout contains [🐇 rabbit 🐇] brand')
     else:
-        ko(f"t_rbt1: [rabbit] not found in stdout: '{out}'")
+        ko(f"t_rbt1: brand not found in stdout: '{out}'")
 
 
 # t_rbt2: tdd-step.py transition stdout contains ANSI green code

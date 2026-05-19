@@ -105,21 +105,23 @@ else:
     fail_t(6, "BUG-86: test-rabbit-config.py t4 still uses loose substring check (no 'cmds == []' assertion)")
 
 # ---- BACKLOG-7: refresh.py / session-init.py break multi-file lists into newlines ----
+# BACKLOG-19: the per-file lines are now emitted via rabbit_subline(...) calls
+# (one per @-import) rather than a literal "\n  · " join. Assert that each
+# hook produces per-file lines via the rabbit_subline renderer.
 refresh_py = read(os.path.join(HOOKS_DIR, "refresh.py"))
 sess_init = read(os.path.join(HOOKS_DIR, "session-init.py"))
 
-# t7 — refresh.py: per-file lines, not space-joined dense format.
-# Look for newline-joined files_label (literal \n in the join expression).
-if "\\n  · " in refresh_py or '"\\n  · "' in refresh_py:
-    ok(7, "BACKLOG-7: refresh.py emits per-file bullet lines in policy-refresh message")
+# t7 — refresh.py: per-file lines via rabbit_subline.
+if "rabbit_subline" in refresh_py and "imports" in refresh_py:
+    ok(7, "BACKLOG-7/19: refresh.py emits per-file lines via rabbit_subline()")
 else:
-    fail_t(7, "BACKLOG-7: refresh.py still emits dense space-joined files_label")
+    fail_t(7, "BACKLOG-7/19: refresh.py does not emit per-file lines via rabbit_subline()")
 
 # t8 — session-init.py likewise.
-if "\\n  · " in sess_init or '"\\n  · "' in sess_init:
-    ok(8, "BACKLOG-7: session-init.py emits per-file bullet lines in session-start message")
+if "rabbit_subline" in sess_init and "imports" in sess_init:
+    ok(8, "BACKLOG-7/19: session-init.py emits per-file lines via rabbit_subline()")
 else:
-    fail_t(8, "BACKLOG-7: session-init.py still emits dense space-joined files_label")
+    fail_t(8, "BACKLOG-7/19: session-init.py does not emit per-file lines via rabbit_subline()")
 
 # ---- BACKLOG-12: bypassPermissions in settings.json + SKILL.md doc ----
 settings = json.loads(read(SETTINGS_JSON))

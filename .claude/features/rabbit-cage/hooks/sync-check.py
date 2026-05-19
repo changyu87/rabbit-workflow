@@ -11,11 +11,15 @@ Override in .claude/settings.local.json: {"env": {"RABBIT_SYNC_EVERY": "5"}}
 Output strategy: aggregation (BACKLOG-18 / Inv 37, 38, 76). Every pending
 condition contributes a [rabbit] line within a single JSON object per
 invocation. Priority order controls line ORDERING (not suppression):
-  1. CLAUDE.md drift/first-run
+  1. CLAUDE.md drift (BACKLOG-19: bootstrap path REMOVED — Inv 79)
   2. Surface drift
   3. Scope-guard-off (session override or one-time-used)
   4. Human-approval-bypass
   5. Skills-updated
+
+Brand/decoration/color/text bodies are sourced from the central registry
+.claude/features/contract/schemas/rabbit-print-messages.json via the shared
+renderer rabbit_print.py (Inv 18, 77).
 """
 
 import json
@@ -25,6 +29,20 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
+
+
+# Inv 77 (BACKLOG-19): import the shared renderer. Walk up from this file's
+# location to find .claude/features/contract/scripts/rabbit_print.py. Works
+# from both the source path (.claude/features/rabbit-cage/hooks/) and the
+# build-managed copy (.claude/hooks/).
+_HERE = Path(__file__).resolve().parent
+for _candidate in [_HERE, *_HERE.parents]:
+    _maybe = _candidate / "features" / "contract" / "scripts"
+    if (_maybe / "rabbit_print.py").is_file():
+        if str(_maybe) not in sys.path:
+            sys.path.insert(0, str(_maybe))
+        break
+from rabbit_print import rabbit_print, rabbit_subline  # noqa: E402
 
 
 def _log_exc(where: str, exc: BaseException) -> None:
@@ -78,23 +96,17 @@ def _wrap_ctx(section: str, full: str) -> str:
 
 
 def render_claude_md_drift(root: Path, expected: str) -> Optional[dict]:
-    """Inv 17, 38, 76. Renders CLAUDE.md first-run or drift condition.
+    """Inv 17, 38, 76, 79. Renders CLAUDE.md drift condition.
 
-    Regenerates CLAUDE.md in place when first-run or content drifts. Returns
-    a payload with both systemMessage and additionalContext, or None if no
-    drift.
+    BACKLOG-19 / Inv 79: the missing-CLAUDE.md path was removed; in any real
+    checkout CLAUDE.md is committed. If CLAUDE.md is genuinely missing, this
+    renderer returns None (silent) — bootstrap is install.py's responsibility.
     """
     claude_md = root / "CLAUDE.md"
     refresh_every = os.environ.get("RABBIT_REFRESH_EVERY", "20")
 
     if not claude_md.exists():
-        claude_md.write_text(expected)
-        (root / ".rabbit-prompt-counter").write_text(f"{refresh_every}\n")
-        section = _policy_section(expected)
-        return {
-            "additionalContext": _wrap_ctx(section, expected),
-            "systemMessage": "\x1b[32m📋 ━━━ [rabbit] Policy initialized — CLAUDE.md created for first time ━━━ 📋\x1b[0m",
-        }
+        return None
 
     if claude_md.read_text() != expected:
         claude_md.write_text(expected)
@@ -102,7 +114,7 @@ def render_claude_md_drift(root: Path, expected: str) -> Optional[dict]:
         section = _policy_section(expected)
         return {
             "additionalContext": _wrap_ctx(section, expected),
-            "systemMessage": "\x1b[31m⚠️ ━━━ [rabbit] Policy drift detected — CLAUDE.md regenerated from source files ━━━ ⚠️\x1b[0m",
+            "systemMessage": rabbit_print("policy-drift"),
         }
 
     return None
@@ -135,7 +147,7 @@ def render_surface_drift(root: Path) -> Optional[dict]:
     except Exception as e:
         _log_exc("build.py invocation failed during surface-drift rebuild", e)
     return {
-        "systemMessage": "\x1b[31m🔄 ━━━ [rabbit] Surface drift detected — workspace rebuilt from sources ━━━ 🔄\x1b[0m",
+        "systemMessage": rabbit_print("surface-drift"),
     }
 
 
@@ -165,11 +177,11 @@ def render_scope_guard(root: Path) -> Optional[dict]:
 
     if alert == "session":
         return {
-            "systemMessage": "\x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD OFF (session override active) ━━━ 🔓\x1b[0m",
+            "systemMessage": rabbit_print("scope-guard-off"),
         }
     if alert == "used":
         return {
-            "systemMessage": "\x1b[31m🔓 ━━━ [rabbit] SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed) ━━━ 🔓\x1b[0m",
+            "systemMessage": rabbit_print("scope-guard-bypassed"),
         }
     return None
 
@@ -181,7 +193,7 @@ def render_human_approval(root: Path) -> Optional[dict]:
     if not marker.is_file():
         return None
     return {
-        "systemMessage": "\x1b[31m[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches.\x1b[0m",
+        "systemMessage": rabbit_print("human-approval-bypass"),
     }
 
 
@@ -202,7 +214,7 @@ def render_skills_updated(root: Path) -> Optional[dict]:
     except Exception as e:
         _log_exc("could not unlink .rabbit-skills-updated", e)
     return {
-        "systemMessage": f"\x1b[32m[rabbit] Skills updated: {names} — will reload automatically on next invocation.\x1b[0m",
+        "systemMessage": rabbit_print("skills-updated", names=names),
     }
 
 
@@ -214,7 +226,7 @@ def main() -> int:
             "Detects CLAUDE.md / surface drift, scope-guard override state, "
             "human-approval bypass, and skill updates; emits at most one JSON "
             "object to stdout per invocation (aggregation strategy — every "
-            "pending condition contributes a [rabbit] line, ordered by "
+            "pending condition contributes a rendered banner line, ordered by "
             "Inv 37 priority).\n"
             "Takes no command-line arguments.\n"
         )

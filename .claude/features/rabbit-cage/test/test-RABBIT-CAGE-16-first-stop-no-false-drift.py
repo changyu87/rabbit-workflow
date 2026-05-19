@@ -77,11 +77,12 @@ try:
     else:
         fail_t(3, f"sync-check.py exited {sync_exit} (expected 0)")
 
-    # t4
-    if os.path.isfile(os.path.join(tmproot, "CLAUDE.md")):
-        ok(4, "CLAUDE.md was created by sync-check.py when absent")
+    # t4 — BACKLOG-19 / Inv 79: first-run path removed; sync-check no longer
+    # creates CLAUDE.md when absent. Bootstrap is install.py's job.
+    if not os.path.isfile(os.path.join(tmproot, "CLAUDE.md")):
+        ok(4, "CLAUDE.md NOT created by sync-check.py (Inv 79 — first-run path removed)")
     else:
-        fail_t(4, "CLAUDE.md was NOT created — hook did not write the file")
+        fail_t(4, "CLAUDE.md was created — first-run path should be removed (Inv 79)")
 
     # Extract systemMessage
     sys_msg = ""
@@ -93,18 +94,15 @@ try:
 
     # t5
     if "drift" in sys_msg.lower():
-        fail_t(5, f"systemMessage contains 'drift' on first-run (absent CLAUDE.md) — should NOT; got: '{sys_msg}'")
+        fail_t(5, f"systemMessage contains 'drift' when CLAUDE.md absent — should NOT; got: '{sys_msg}'")
     else:
-        ok(5, "systemMessage does NOT contain 'drift' on first-run (absent CLAUDE.md)")
+        ok(5, "systemMessage does NOT contain 'drift' when CLAUDE.md absent")
 
-    # t6: first-run terms
-    first_run_terms = ["first run", "first.run", "creat", "initiali", "install"]
-    msg_lower = sys_msg.lower()
-    has_term = any(t.replace(".", "") in msg_lower or t in msg_lower for t in first_run_terms)
-    if not sys_msg or has_term:
-        ok(6, "systemMessage is absent or contains a first-run term (not a false drift alarm)")
+    # t6 — BACKLOG-19: when CLAUDE.md absent, hook exits silently (no JSON).
+    if not sys_msg:
+        ok(6, "no systemMessage emitted when CLAUDE.md absent (Inv 79 — silent exit)")
     else:
-        fail_t(6, f"systemMessage is present but does not contain a first-run term; got: '{sys_msg}'")
+        fail_t(6, f"systemMessage should be empty/absent; got: '{sys_msg}'")
 finally:
     shutil.rmtree(tmproot, ignore_errors=True)
 

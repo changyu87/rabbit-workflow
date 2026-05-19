@@ -14,6 +14,11 @@ import tempfile
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 TDD_STEP = os.path.join(FEATURE_DIR, 'scripts', 'tdd-step.py')
+FEATURES_ROOT = os.path.abspath(os.path.join(FEATURE_DIR, '..'))
+CONTRACT_RABBIT_PRINT = os.path.join(FEATURES_ROOT, 'contract', 'scripts', 'rabbit_print.py')
+CONTRACT_MESSAGES = os.path.join(
+    FEATURES_ROOT, 'contract', 'schemas', 'rabbit-print-messages.json'
+)
 TMPROOT = tempfile.mkdtemp()
 
 PASS = 0
@@ -54,6 +59,14 @@ def setup_mirror(mirror_base, feat_name, feat_state):
     # Copy tdd-step.py into mirror
     shutil.copy(TDD_STEP, os.path.join(mirror_tdd_scripts, 'tdd-step.py'))
     os.chmod(os.path.join(mirror_tdd_scripts, 'tdd-step.py'), 0o755)
+
+    # tdd-step.py imports the centralized [rabbit] renderer from
+    # contract/scripts/rabbit_print.py (post-BACKLOG-11). Mirror that module
+    # and its message registry so the import resolves under RABBIT_ROOT.
+    shutil.copy(CONTRACT_RABBIT_PRINT, os.path.join(mirror_contract_scripts, 'rabbit_print.py'))
+    mirror_contract_schemas = os.path.join(mirror_base, '.claude/features/contract/schemas')
+    os.makedirs(mirror_contract_schemas, exist_ok=True)
+    shutil.copy(CONTRACT_MESSAGES, os.path.join(mirror_contract_schemas, 'rabbit-print-messages.json'))
 
     # Stub no-op rebuild-registry.sh
     stub = os.path.join(mirror_contract_scripts, 'rebuild-registry.sh')

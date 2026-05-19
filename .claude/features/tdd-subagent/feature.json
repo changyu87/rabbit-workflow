@@ -11,6 +11,6 @@
     "skills": []
   },
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
-  "updated": "2026-05-18",
-  "spec_no_change_reason": "spec already committed in prior commit"
+  "updated": "2026-05-19",
+  "spec_no_change_reason": "BACKLOG-11 spec already committed in cc8ada9"
 }

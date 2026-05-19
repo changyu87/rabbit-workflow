@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.7.0
+version: 3.8.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -205,7 +205,7 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
 60. `permissions [lock|unlock]` is a `/rabbit-config` subcommand that shells out to `.claude/features/rabbit-cage/scripts/repo-permissions.py` with the same action. Unknown actions exit non-zero with a usage message; no other file is modified.
 61. `session-init.py` MUST implement the R1 branch enforcement behavior described in Invariants 21-23 exactly. On `SessionStart`, it MUST run `git branch --show-current`; if the result is `main` or `master`, it MUST run `git checkout -b session/<YYYYMMDD-HHMMSS>` (timestamp from `date +%Y%m%d-%H%M%S`) and emit a green `[rabbit]` systemMessage naming the created branch. The implementation MUST be present and active in the deployed hook; a documented-only or no-op implementation is a constitution violation. Tests MUST exercise the on-main path (assert branch created and message emitted) and the off-main path (assert no-op).
 62. `sync-check.py` surface-drift alert MUST be RED (`\x1b[31m`), consistent with Inv 18's color convention (alert/error messages are red). A GREEN surface-drift alert violates the convention and silently downgrades the visibility of a real drift condition.
-63. `sync-check.py` first-run and drift-detected paths emit `additionalContext` to surface the CLAUDE.md policy block. The `additionalContext` value MUST be either (a) the fully-expanded policy content with `@`-imports resolved, OR (b) accompanied by a clear in-message note that the agent must independently load the referenced policy files. Emitting raw unexpanded `@<path>` import lines as `additionalContext` without expansion AND without a note is a silent failure: the policy is not re-injected because Claude Code does not follow `@`-imports inside `additionalContext` strings.
+63. `sync-check.py` drift-detected path emits `additionalContext` to surface the CLAUDE.md policy block. The first-run path (CLAUDE.md not existing on disk) was REMOVED in BACKLOG-19 — in any real checkout CLAUDE.md is committed and the path was dead code. The `additionalContext` value MUST be either (a) the fully-expanded policy content with `@`-imports resolved, OR (b) accompanied by a clear in-message note that the agent must independently load the referenced policy files. Emitting raw unexpanded `@<path>` import lines as `additionalContext` without expansion AND without a note is a silent failure: the policy is not re-injected because Claude Code does not follow `@`-imports inside `additionalContext` strings.
 64. rabbit-cage tests MUST NOT mutate live source files in `.claude/features/rabbit-cage/` (including `settings.json`, `settings.local.json`, `feature.json`, and any committed source file) without restoring them on test exit. Tests that need to write to these paths MUST do so inside an isolated temporary directory (e.g., via `tempfile.mkdtemp` + a clean repo copy) so that test interruption, crash, or parallel execution cannot leave the working tree in a corrupted state.
 65. `scope-guard.py` MUST DENY (exit 2) writes when an active scope marker `.rabbit-scope-active` or `.rabbit-scope-active-<feature>` names a feature that `find-feature.py` cannot resolve to a real feature path (i.e., `find_feature_path` returns None). The current silent-ALLOW behavior on unresolvable markers defeats the scope-guard's default-deny posture: a typo'd or malicious marker bypasses the entire write gate. The DENY message MUST name the unresolvable feature and direct the user to verify the marker name.
 66. `new-feature.py` MUST scaffold `test/run.py` (Python-only stack per Inv 39), not `test/run.sh`. The scaffolded `feature.json` MUST include `template_version` matching the current contract template version. A scaffolded feature MUST pass `validate-feature.py` immediately with no manual fixups.
@@ -481,11 +481,21 @@ rules.
     `[rabbit]` `systemMessage` warning that the committed copy drifted from
     the policy sources, instructing the human to commit the regenerated
     file.
-18. `[rabbit]` `systemMessage` color convention: normal/info messages use
-    ANSI green (`\x1b[32m`); alert/error messages use ANSI red
-    (`\x1b[31m`). Specifically: drift detection (CLAUDE.md drift, skills
-    drift, policy drift) and scope-guard-off messages are red;
-    session-init, refresh, and skills-updated messages are green.
+18. `[🐇 rabbit 🐇]` `systemMessage` brand, decoration, color, and message
+    bodies are sourced from the centralized print registry
+    `.claude/features/contract/schemas/rabbit-print-messages.json` via the
+    shared renderer `.claude/features/contract/scripts/rabbit_print.py`
+    (CONTRACT-BACKLOG-20 / contract Inv 5, 34, 35, 36). Rabbit-cage hooks
+    MUST NOT compose ANSI codes, the brand prefix, or the bar (`━━━`)
+    inline; every `[🐇 rabbit 🐇]` line is the return value of one
+    `rabbit_print(message_id, **kwargs)` call (banner) or one
+    `rabbit_subline(text, color)` call (sub-line under a banner). The
+    legacy bare `[rabbit]` prefix and any inline `\x1b[3...` escape codes
+    in rabbit-cage hook source are forbidden — they are a constitution
+    violation (BACKLOG-19). The color/format rule (green for info, red
+    for alerts) is now encoded by the `color` field of each entry in
+    `rabbit-print-messages.json`; the spec defers the per-message color
+    assignment to that registry.
 19. The scope guard recognizes two coexisting scope-marker formats at the
     repo root: a single global marker `.rabbit-scope-active` (contains one
     feature name; legacy / serial-dispatch form) and per-feature markers
@@ -633,7 +643,7 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
 ### Invariants
 
 31. `refresh.py` reads and writes `.rabbit-prompt-counter`; reads `RABBIT_REFRESH_EVERY`.
-32. `sync-check.py` reads and writes `.rabbit-sync-counter`; reads `RABBIT_SYNC_EVERY`; writes `.rabbit-prompt-counter` on first-run and drift paths; reads `RABBIT_REFRESH_EVERY` for that counter write.
+32. `sync-check.py` reads and writes `.rabbit-sync-counter`; reads `RABBIT_SYNC_EVERY`; writes `.rabbit-prompt-counter` on the drift path; reads `RABBIT_REFRESH_EVERY` for that counter write. The first-run path was removed in BACKLOG-19.
 33. `settings.json` declares env key `RABBIT_REFRESH_EVERY`; its `SessionStart` command resets `.rabbit-prompt-counter`.
 34. `rabbit-refresh.md` command resets `.rabbit-prompt-counter`.
 35. `workspace-tree.py` excludes `.rabbit-prompt-counter` from full listings.
@@ -652,7 +662,7 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
 
 ```json
 {
-  "additionalContext": "<string — optional; only present when CLAUDE.md first-run or drift is among the pending conditions>",
+  "additionalContext": "<string — optional; only present when CLAUDE.md drift is among the pending conditions>",
   "systemMessage": "<string — newline-joined aggregation of every pending condition's ANSI-colored [rabbit] line>"
 }
 ```
@@ -664,7 +674,7 @@ lines appear first, joined by `\n`. The earlier conditional-priority strategy
 aggregation strategy in RABBIT-CAGE-BACKLOG-18; a Stop event with N pending
 conditions emits N `[rabbit] ━━━ ... ━━━` lines within one `systemMessage`.
 
-`additionalContext` is present only when CLAUDE.md first-run or drift is one
+`additionalContext` is present only when CLAUDE.md drift is one
 of the pending conditions. Consumers (Claude Code Stop hook handler) read
 `systemMessage` and optionally `additionalContext`; they never parse
 free-form text.
@@ -689,7 +699,7 @@ policy text alongside.
     the aggregated `systemMessage`, not whether each condition appears.
     The explicit priority order (highest to lowest, used for line ordering
     within the aggregated message):
-    1. CLAUDE.md drift or first-run
+    1. CLAUDE.md drift (regenerated from policy sources)
     2. Surface drift (copy-file targets out of sync with sources)
     3. Scope-guard-off (session override active or one-time override consumed)
     4. Human-approval-bypass active (`.rabbit-human-approval-bypass` marker present at repo root)
@@ -751,3 +761,39 @@ policy text alongside.
     multi-condition hooks. `refresh.py` is a single-condition hook and is
     not required to adopt the renderer pattern, though it MAY for
     consistency.
+
+77. All rabbit-cage hook scripts (`sync-check.py`, `session-init.py`,
+    `refresh.py`) MUST import the shared renderer module via:
+        sys.path.insert(0, str(repo_root / ".claude/features/contract/scripts"))
+        from rabbit_print import rabbit_print, rabbit_subline
+    Every `[🐇 rabbit 🐇]` line in the JSON `systemMessage` MUST be the
+    return value of one `rabbit_print(message_id, **kwargs)` call (banner)
+    or one `rabbit_subline(text, color)` call (sub-line). Inline ANSI
+    escape codes (`\x1b[3...`), the literal brand prefix string
+    (`[rabbit]` or `[🐇 rabbit 🐇]`), and the bar character (`━━━`) MUST
+    NOT appear anywhere in these three hook source files outside of import
+    statements or comments referring to the contract. This is the
+    consumer-side enforcement of contract Inv 36.
+
+78. The message-id mapping per producer (BACKLOG-19):
+    - `session-init.py`: `r1-branch` (with kwarg `branch`), `welcome`
+      (no kwargs; sub-lines list the @-import basenames + one-liner
+      description via `rabbit_subline`).
+    - `refresh.py`: `policy-refreshed` (no kwargs; sub-lines list each
+      @-import full path via `rabbit_subline`).
+    - `sync-check.py`: `policy-drift`, `surface-drift`,
+      `scope-guard-off`, `scope-guard-bypassed`, `human-approval-bypass`,
+      `skills-updated` (the last one takes kwarg `names`).
+    The welcome banner sub-line text is fixed to:
+      `philosophy.md    — machine-first · bounded scope · designed deprecation`
+      `spec-rules.md    — determinism first; schema contracts; lifecycle ownership`
+      `coding-rules.md  — think first; simplicity; surgical edits; goal-driven TDD`
+    Other @-imports (if added later) appear as the basename only with no
+    description suffix.
+
+79. `sync-check.py` first-run path (CLAUDE.md not on disk) is REMOVED
+    (BACKLOG-19). In any real checkout, CLAUDE.md is committed and exists
+    on disk; the path was dead code. The drift path (CLAUDE.md exists but
+    diverges from the regenerated content) remains and covers regeneration.
+    If CLAUDE.md is genuinely missing, the hook silently exits 0 — bootstrap
+    is `install.py`'s responsibility, not `sync-check.py`'s.
