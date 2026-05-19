@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.0.0
+version: 3.0.1
 owner: rabbit-feature
 deprecation_criterion: when dispatch-feature-edit.py natively enforces tdd-step.py transitions
 ---
@@ -54,18 +54,18 @@ git checkout -b <branch-name>
 
 ### Step 3 — Spec Authoring
 
-Invoke rabbit-spec inline:
+Invoke rabbit-feature-spec inline:
 ```
-Skill("rabbit-spec", args: "<feature-name> <request-or-item-description>")
+Skill("rabbit-feature-spec", args: "<feature-name> <request-or-item-description>")
 ```
 In B/B mode, pass the bug/backlog item description as the request.
 
-rabbit-spec reads the current spec, judges open vs. specific, invokes superpowers,
+rabbit-feature-spec reads the current spec, judges open vs. specific, invokes superpowers,
 updates the feature spec, and writes `.rabbit/impl-suggestion-<feature-name>.json`.
 
-**Commit spec changes BEFORE Step 5.** After rabbit-spec returns, stage and
+**Commit spec changes BEFORE Step 5.** After rabbit-feature-spec returns, stage and
 commit any modifications under `.claude/features/<feature-name>/` (the spec
-and any other files rabbit-spec touched). If no changes were made (empty
+and any other files rabbit-feature-spec touched). If no changes were made (empty
 diff), skip the commit.
 
 ```bash
@@ -182,9 +182,9 @@ PR creation is the calling skill's responsibility in B/B mode.
 - Main session uses Write or Edit on any file under `.claude/features/` → STOP.
   All feature-code edits are the TDD subagent's job, performed under an active
   scope marker. Main session role is orchestration only: resolve scope, create
-  branch, invoke rabbit-spec, surface impl-suggestion, dispatch subagent, verify
+  branch, invoke rabbit-feature-spec, surface impl-suggestion, dispatch subagent, verify
   HANDOFF. The only main-session writes permitted are: the confirm-token
-  override flow (see Override Path), and rabbit-spec's writes to
+  override flow (see Override Path), and rabbit-feature-spec's writes to
   `docs/spec/spec.md` under the scope-guard path-pattern allowlist invoked
   during Step 3.
 - Main session creates `.rabbit-scope-active` (global) or

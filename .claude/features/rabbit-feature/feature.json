@@ -3,7 +3,7 @@
   "name": "rabbit-feature",
   "version": "1.3.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Owns the rabbit-feature-touch orchestration skill and (absorbed) the rabbit-feature-scope skill with its resolve-scope.py and format-feature-context.py scripts, plus the absorbed rabbit-feature-spec skill (renamed from rabbit-spec) for spec authoring. Dispatcher-side surface; executor-side (dispatch-tdd-subagent.py and tdd-step.py) lives in tdd-subagent and tdd-state-machine respectively.",
   "surface": {
     "hooks": [],
@@ -21,5 +21,5 @@
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
   "updated": "2026-05-19",
-  "spec_no_change_reason": "spec change is part of this cycle's implementation step; updated alongside skill copy"
+  "spec_no_change_reason": "Spec invariants 25-32 (rabbit-feature-spec absorption) already committed in HEAD; this cycle only updates the caller path per impl-suggestion"
 }
