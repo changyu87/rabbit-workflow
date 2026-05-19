@@ -197,7 +197,7 @@ def main() -> int:
         return 0
 
     aggregated = {
-        "systemMessage": "\n".join(p["systemMessage"] for p in payloads),
+        "systemMessage": "\n" + "\n".join(p["systemMessage"] for p in payloads),
     }
     for p in payloads:
         if "additionalContext" in p:

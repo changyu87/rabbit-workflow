@@ -60,6 +60,7 @@ SUITES = [
     "test-RABBIT-CAGE-WAVE5-cleanup.py",
     "test-RABBIT-CAGE-BACKLOG12-bypass-permissions.py",
     "test-claude-md-header.py",
+    "test-RABBIT-CAGE-BACKLOG-20-leading-newline.py",
 ]
 
 
