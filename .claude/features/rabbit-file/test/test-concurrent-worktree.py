@@ -186,17 +186,6 @@ class TestConcurrentFiling:
 # ---------------------------------------------------------------------------
 
 class TestPushRetry:
-    def _competing_commit_then_call(self, isolated_repo, call_fn):
-        """
-        Install a pre-push hook of sorts: monkey-patch _git so the first
-        push attempt is preceded by a competing push from a sibling clone.
-        Implemented by wrapping subprocess.run via a one-shot flag.
-
-        Simpler approach: directly trigger a competing commit between
-        worktree-checkout and push using a monkeypatched commit step.
-        """
-        raise NotImplementedError  # See concrete tests below.
-
     def test_allocate_id_retries_on_non_fast_forward(self, isolated_repo,
                                                      monkeypatch):
         """

@@ -22,8 +22,6 @@ print("rabbit-file test runner")
 print()
 
 total_fail = 0
-if not run_suite("test-scripts-exist.py"):
-    total_fail += 1
 if not run_pytest_suite("test-branch-ops.py"):
     total_fail += 1
 if not run_pytest_suite("test-worktree-fresh-checkout.py"):
@@ -43,6 +41,8 @@ if not run_pytest_suite("test-RABBIT-FILE-BACKLOG-7-per-field-limits.py"):
 if not run_pytest_suite("test-RABBIT-FILE-BACKLOG-7-control-char-strip.py"):
     total_fail += 1
 if not run_pytest_suite("test-bug-32-chained-workspace-guard.py"):
+    total_fail += 1
+if not run_pytest_suite("test-bug-11-cleanup-and-coverage.py"):
     total_fail += 1
 if not run_suite("test-skill.py"):
     total_fail += 1
