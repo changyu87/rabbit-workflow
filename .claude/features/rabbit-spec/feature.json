@@ -1,15 +1,18 @@
 {
   "name": "rabbit-spec",
-  "version": "1.3.0",
+  "version": "2.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
-  "summary": "Standalone spec-authoring skill. Comprehends user requests, judges open vs. specific intent, invokes brainstorming and/or writing-plans superpowers, updates feature specs, and writes impl-suggestion files for whatever process invoked the skill.",
+  "tdd_state": "test-red",
+  "summary": "RETIRED 2026-05-19 - surface absorbed into rabbit-feature as rabbit-feature-spec.",
+  "status": "retired",
+  "updated": "2026-05-19",
+  "deprecation": {
+    "criterion": "RETIRED 2026-05-19 - absorbed into rabbit-feature as rabbit-feature-spec"
+  },
+  "successor": "rabbit-feature",
   "surface": {
     "hooks": [],
     "commands": [],
     "skills": []
-  },
-  "deprecation_criterion": "When spec authoring is natively handled by the rabbit CLI or a successor skill.",
-  "updated": "2026-05-19",
-  "spec_no_change_reason": "BACKLOG-9 is a test-only item: closes invariant test gaps for Inv 2, 3, 10 \u2014 no spec edits required by impl-suggestion."
+  }
 }
