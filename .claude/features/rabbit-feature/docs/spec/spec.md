@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.0.0
+version: 1.1.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -110,6 +110,55 @@ anywhere in this feature. Test runner is `test/run.py`.
    Step 5 `dispatch-tdd-subagent.py` invocation. If the marker is
    absent, the dispatcher surfaces the impl-suggestion summary and
    waits for explicit user approval.
+
+9. The dispatcher-side Step 4 check for `.rabbit-human-approval-bypass`
+   MUST be documented in `rabbit-feature-touch` SKILL.md as the first
+   action of Step 4 (Human Approval), BEFORE any in-conversation wait
+   or impl-suggestion surfacing. When the marker is found, the warning
+   emitted to the user MUST name both the marker path
+   (`.rabbit-human-approval-bypass`) and the revoke command
+   (`/rabbit-config human-approval true`) so the user can audit and
+   revoke without searching. This invariant constrains SKILL.md
+   documentation content; the underlying behaviour is Inv 8.
+   (Re-homed from tdd-subagent Inv 15 v1.19.0 per BACKLOG-12.)
+
+10. `rabbit-feature-touch` SKILL.md Red Flags section MUST include the
+    rule: the main session orchestrator MUST NOT use Write or Edit
+    tools on any file under `.claude/features/`. All feature-code
+    edits are the TDD subagent's job, performed under an active scope
+    marker. The main session role is orchestration only — resolve
+    scope, create branch, invoke rabbit-spec, surface impl-suggestion,
+    dispatch subagent, verify HANDOFF. Exceptions exist for explicit
+    confirm-token overrides (see Override Path — tdd-subagent
+    Confirm-Token Bypass Path) and for `spec.md` writes under the
+    scope-guard path-pattern allowlist (rabbit-cage Inv 20) which are
+    invoked by `rabbit-spec` during Step 3.
+    (Re-homed from tdd-subagent Inv 17 v1.19.0 per BACKLOG-12.)
+
+11. `rabbit-feature-touch` SKILL.md Red Flags section MUST include the
+    rule: the main session MUST NOT create `.rabbit-scope-active`
+    (global) or `.rabbit-scope-active-<feature>` (per-feature) scope
+    markers at the repo root. Scope markers are exclusively the TDD
+    subagent's responsibility, written as the first action at LOCK
+    (Step 3 of the subagent's named steps). Main-session-authored
+    markers bypass scope-guard's intended boundary and have caused
+    constitution violations (PR #93). This rule is distinct from
+    tdd-subagent Inv 14 (which prohibits the SUBAGENT from creating
+    out-of-scope markers): this invariant prohibits the MAIN SESSION
+    from creating any marker at all.
+    (Re-homed from tdd-subagent Inv 18 v1.19.0 per BACKLOG-12.)
+
+12. `rabbit-feature-touch` SKILL.md B/B mode MUST read the item JSON
+    from `<item-dir>/item.json`, never from `<item-dir>/bug.json`. The
+    rabbit-file schema uses `item.json` for both bug and backlog types
+    (unified storage); `bug.json` is a legacy path that no longer
+    exists. The B/B mode `related_feature` extraction MUST use Python
+    3 (always available; `jq` is not a declared dependency of this
+    feature):
+    `FEATURE=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('related_feature',''))" <item-dir>/item.json)`.
+    This invariant constrains tdd-subagent's data contract with the
+    B/B caller, but the SKILL.md content lives here.
+    (Re-homed from tdd-subagent Inv 26 v1.19.0 per BACKLOG-12.)
 
 ## What this feature does NOT define
 
