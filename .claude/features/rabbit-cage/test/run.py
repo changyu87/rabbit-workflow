@@ -64,6 +64,7 @@ SUITES = [
     "test-RABBIT-CAGE-BACKLOG-21-surface-drift-files.py",
     "test-RABBIT-CAGE-rabbit-config-help.py",
     "test-rabbit-cage-version-alignment.py",
+    "test-RABBIT-CAGE-BUG-92-stale-invariants-removed.py",
 ]
 
 
