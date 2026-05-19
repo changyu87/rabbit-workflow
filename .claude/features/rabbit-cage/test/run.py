@@ -62,6 +62,7 @@ SUITES = [
     "test-claude-md-header.py",
     "test-RABBIT-CAGE-BACKLOG-20-leading-newline.py",
     "test-RABBIT-CAGE-BACKLOG-21-surface-drift-files.py",
+    "test-RABBIT-CAGE-rabbit-config-help.py",
 ]
 
 

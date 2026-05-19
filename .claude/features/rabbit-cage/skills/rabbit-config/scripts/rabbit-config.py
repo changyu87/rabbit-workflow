@@ -2,6 +2,7 @@
 """rabbit-config — extensible configuration command for the rabbit workflow.
 
 Subcommands:
+  help                                 print illustrated usage with examples for every subcommand
   prompt-threshold [N]                 set/clear RABBIT_REFRESH_EVERY in settings.local.json
   allowed-tools [add|remove <tool>]    manage permissions.allow entries (non-Bash)
   bash-allow    [add|remove <command>] manage Bash(<command>:*) permissions.allow entries
@@ -21,6 +22,8 @@ import sys
 
 
 USAGE = '''Usage:
+  /rabbit-config help
+      help                           print illustrated usage with examples for every subcommand
   /rabbit-config prompt-threshold [value]
       prompt-threshold <N>           set auto-refresh threshold to N (positive integer)
       prompt-threshold               remove threshold override, restoring default
@@ -57,6 +60,69 @@ def write_json(p, cfg):
 
 def perm_allow(cfg):
     return cfg.setdefault('permissions', {}).setdefault('allow', [])
+
+
+HELP_TEXT = '''/rabbit-config — illustrated usage
+
+Run `/rabbit-config <subcommand> [args...]`. Each subcommand below lists its
+purpose followed by one or more concrete invocations.
+
+  help
+      Purpose: print this illustrated usage with examples for every subcommand.
+      Example: /rabbit-config help
+
+  prompt-threshold [N]
+      Purpose: set or clear RABBIT_REFRESH_EVERY (auto-refresh threshold) in
+               .claude/settings.local.json. Takes effect on next session start.
+      Example: /rabbit-config prompt-threshold 30
+      Example: /rabbit-config prompt-threshold
+
+  allowed-tools [add|remove <tool>]
+      Purpose: manage non-Bash entries in permissions.allow of
+               .claude/settings.local.json. List form prints current entries.
+      Example: /rabbit-config allowed-tools add WebFetch
+      Example: /rabbit-config allowed-tools remove WebFetch
+      Example: /rabbit-config allowed-tools
+
+  bash-allow [add|remove <command>]
+      Purpose: manage Bash(<command>:*) entries in permissions.allow of
+               .claude/settings.local.json. List form prints inner command names.
+      Example: /rabbit-config bash-allow add touch
+      Example: /rabbit-config bash-allow remove touch
+      Example: /rabbit-config bash-allow
+
+  permissions lock|unlock
+      Purpose: lock or unlock owner write permission on archive/ and test/
+               (delegates to .claude/features/rabbit-cage/scripts/repo-permissions.py).
+      Example: /rabbit-config permissions lock
+      Example: /rabbit-config permissions unlock
+
+  human-approval [true|false]
+      Purpose: manage Step 4 (HUMAN-APPROVAL) gate state via the
+               .rabbit-human-approval-bypass marker at the repo root. true =
+               gate active (default); false = gate bypassed for all dispatches.
+      Example: /rabbit-config human-approval false
+      Example: /rabbit-config human-approval true
+      Example: /rabbit-config human-approval
+
+  bypass-permissions [true|false]
+      Purpose: manage per-user permissions.defaultMode='bypassPermissions' in
+               .claude/settings.local.json. When true, Claude Code skips its
+               native per-write permission prompts so the scope-guard hook is
+               the single decision point for write authorization.
+      Example: /rabbit-config bypass-permissions true
+      Example: /rabbit-config bypass-permissions false
+      Example: /rabbit-config bypass-permissions
+'''
+
+
+def cmd_help(args):
+    # Extra positional arguments are ignored (Inv 81): help never fails on
+    # extras — its job is to surface usage even if the operator typed something
+    # extra by mistake.
+    del args
+    print(HELP_TEXT, end='')
+    return 0
 
 
 def cmd_prompt_threshold(args):
@@ -264,6 +330,7 @@ def main(argv):
     subcmd = argv[0]
     rest = argv[1:]
     dispatch = {
+        'help': cmd_help,
         'prompt-threshold': cmd_prompt_threshold,
         'allowed-tools': cmd_allowed_tools,
         'bash-allow': cmd_bash_allow,

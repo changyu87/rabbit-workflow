@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.12.0
+version: 3.13.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -113,7 +113,19 @@ There is NO slash-command file for `/rabbit-config`. The skill is the sole inter
 
 **Syntax (skill invocation):** `Skill("rabbit-config", args: "<subcommand> [args...]")`
 
-**Subcommands:** `prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`, `bypass-permissions`. Each is documented below.
+**Subcommands:** `help`, `prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`, `bypass-permissions`. Each is documented below.
+
+### Subcommand: help
+
+Prints an illustrated, grouped usage message describing every `/rabbit-config` subcommand along with concrete invocation examples. The help output is surfaced through three channels so both the dispatcher (Claude) and the human operator can discover it:
+
+1. As a first-class entry in the SKILL.md `description` frontmatter (so the skill catalogue advertises `help` alongside the other subcommands).
+2. As a first-class entry in the in-script `USAGE` string (so the unknown-subcommand error path also names `help`).
+3. As the dedicated handler executed when the operator runs `/rabbit-config help`.
+
+- `/rabbit-config help` — writes the illustrated usage to stdout and exits 0. No file is modified. The output MUST list every other subcommand, name its arguments, and show at least one concrete example per subcommand so a fresh operator can read the help once and use any subcommand without opening the spec or the SKILL.md.
+
+The `help` subcommand takes no positional arguments. Any extra arguments are ignored (it never fails on extras — its job is to surface usage even when the operator typed something extra by mistake).
 
 ### Subcommand: prompt-threshold
 
@@ -260,6 +272,32 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
     removed from .claude/settings.local.json. Claude Code will prompt for
     writes again on next session start.` Idempotent invocations MUST state
     that the file was not rewritten.
+81. `/rabbit-config help` exits 0, writes ONLY to stdout, modifies no file,
+    and prints an illustrated usage message that names every other
+    subcommand (`prompt-threshold`, `allowed-tools`, `bash-allow`,
+    `permissions`, `human-approval`, `bypass-permissions`) AND `help`
+    itself, with at least one concrete invocation example per subcommand.
+    Extra positional arguments after `help` are ignored (no error). The
+    handler exists in `scripts/rabbit-config.py` and is registered in the
+    subcommand dispatch table.
+82. The `help` subcommand is advertised in both surfaces that operators
+    consult when discovering `/rabbit-config`'s capabilities:
+    (a) the SKILL.md frontmatter `description` field names `help` in its
+        subcommand enumeration, and
+    (b) the in-script `USAGE` string (printed when `argv` is empty or
+        when an unknown subcommand is given) names `help` alongside the
+        other subcommands.
+    Either surface omitting `help` is a constitution violation: the help
+    entry is the discoverability anchor for the entire skill, so it
+    must appear in every place the rest of the surface appears.
+83. The illustrated usage written by `/rabbit-config help` MUST be
+    distinct from the terse one-line-per-action `USAGE` string printed
+    on error. The help output adds (i) per-subcommand purpose lines and
+    (ii) at least one concrete `/rabbit-config <subcommand> <example>`
+    invocation per subcommand, so an operator who runs `help` once can
+    use any subcommand without consulting the spec or the SKILL.md. A
+    `help` output that is byte-identical to the error `USAGE` string is
+    a violation of this invariant.
 
 ## Out of Scope
 
