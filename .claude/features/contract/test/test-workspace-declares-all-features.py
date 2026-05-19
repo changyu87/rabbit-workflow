@@ -74,8 +74,9 @@ unknown_feature_findings = [
     f for f in audit.get("findings", [])
     if f.get("type") == "unknown"
     and f.get("path", "").startswith(".claude/features/")
-    # only top-level feature dirs (one path segment under .claude/features/)
-    and f["path"].count("/") == 3
+    # only top-level feature dirs (one path segment under .claude/features/);
+    # e.g., ".claude/features/rabbit-spec" — 2 slashes, 3 segments.
+    and f["path"].count("/") == 2
 ]
 if unknown_feature_findings:
     fail_t(2, f"audit emits unknown findings for top-level feature dirs: {[f['path'] for f in unknown_feature_findings]}")
