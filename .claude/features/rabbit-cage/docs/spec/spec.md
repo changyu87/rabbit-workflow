@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 3.10.0
+version: 3.11.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -792,9 +792,18 @@ policy text alongside.
       description via `rabbit_subline`).
     - `refresh.py` uses `policy_refreshed()` (no args; sub-lines list
       each @-import full path via `rabbit_subline`).
-    - `sync-check.py` uses `policy_drift()`, `surface_drift()`,
+    - `sync-check.py` uses `policy_drift()`,
+      `surface_drift(files=<comma-joined-target-names>)`,
       `scope_guard_off()`, `scope_guard_bypassed()`,
       `human_approval_bypass()`, `skills_updated(names=...)`.
+      `surface_drift` REQUIRES the `files` kwarg (BACKLOG-21,
+      contract v1.13.0): `render_surface_drift()` iterates
+      `build-contract.json` copy-file targets, compares sha256 of
+      source vs destination, collects the drifted target NAMES (the
+      `name` field in build-contract.json, not the full source path),
+      then invokes `build.py` to rebuild, then emits
+      `surface_drift(files=", ".join(drifted_names))`. The user-visible
+      message names exactly what was rebuilt.
     The welcome banner sub-line text is fixed to:
       `philosophy.md    — machine-first · bounded scope · designed deprecation`
       `spec-rules.md    — determinism first; schema contracts; lifecycle ownership`
