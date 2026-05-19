@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """BACKLOG-20 / Inv 80 FULL E2E test for leading-newline aggregation.
 
-The aggregated systemMessage emitted by sync-check.py and session-init.py
-MUST begin with exactly one '\\n' so the [🐇 rabbit 🐇] banner block starts
-on its own line rather than inline with 'Stop says:' / 'SessionStart says:'
-chrome. Zero-condition case is unchanged (no JSON at all).
+The aggregated systemMessage emitted by sync-check.py, session-init.py, AND
+refresh.py MUST begin with exactly one '\\n' so the [🐇 rabbit 🐇] banner
+block starts on its own line rather than inline with 'Stop says:' /
+'SessionStart says:' / 'UserPromptSubmit says:' chrome. Zero-condition case
+is unchanged (no JSON at all).
 
-Three full e2e cases:
+Four full e2e cases:
   (a) sync-check.py with .rabbit-human-approval-bypass marker active.
   (b) session-init.py on main branch with CLAUDE.md @-imports.
   (c) sync-check.py zero-condition case → empty stdout.
+  (d) refresh.py at-threshold with CLAUDE.md @-imports.
 """
 import json
 import os
@@ -21,6 +23,9 @@ from test_helpers import REPO_ROOT, make_git_repo, run_sync
 
 SESSION_INIT = os.path.join(
     REPO_ROOT, ".claude/features/rabbit-cage/hooks/session-init.py"
+)
+REFRESH = os.path.join(
+    REPO_ROOT, ".claude/features/rabbit-cage/hooks/refresh.py"
 )
 BRAND = "[🐇 rabbit 🐇]"
 
@@ -45,6 +50,15 @@ def run_session_init(tmproot):
     env = {**os.environ, "RABBIT_ROOT": tmproot}
     res = subprocess.run(
         [sys.executable, SESSION_INIT],
+        env=env, capture_output=True, text=True,
+    )
+    return res.stdout
+
+
+def run_refresh(tmproot, threshold="1"):
+    env = {**os.environ, "RABBIT_ROOT": tmproot, "RABBIT_REFRESH_EVERY": threshold}
+    res = subprocess.run(
+        [sys.executable, REFRESH],
         env=env, capture_output=True, text=True,
     )
     return res.stdout
@@ -152,6 +166,51 @@ try:
         ok("zero-condition sync-check emits empty stdout (no JSON)")
     else:
         fail_t(f"zero-condition sync-check emitted unexpected output: {out!r}")
+
+    # ---- (d) refresh.py at-threshold with @-imports ----
+    print()
+    print("=== t-d: refresh.py at-threshold with CLAUDE.md @-imports ===")
+    tmproot = make_git_repo()
+    tmproots.append(tmproot)
+    claude_md = os.path.join(tmproot, "CLAUDE.md")
+    with open(claude_md, "a") as f:
+        f.write("\n@.claude/features/policy/philosophy.md\n")
+        f.write("@.claude/features/policy/spec-rules.md\n")
+        f.write("@.claude/features/policy/coding-rules.md\n")
+
+    # threshold=1 → first invocation triggers refresh path.
+    out = run_refresh(tmproot, threshold="1")
+    if not out.strip():
+        fail_t(f"refresh.py emitted no JSON despite threshold reached: {out!r}")
+    else:
+        try:
+            obj = json.loads(out.strip())
+        except Exception as e:
+            fail_t(f"refresh.py output does not parse as JSON: {e}; raw={out!r}")
+            obj = {}
+        msg = obj.get("systemMessage", "")
+        if msg.startswith("\n"):
+            ok("refresh systemMessage starts with '\\n'")
+        else:
+            fail_t(
+                f"refresh systemMessage does NOT start with '\\n'; "
+                f"first 40 chars: {msg[:40]!r}"
+            )
+        if msg.startswith("\n\n"):
+            fail_t(
+                f"refresh systemMessage starts with DOUBLE '\\n\\n' "
+                f"(expected exactly one leading newline); first 40 chars: {msg[:40]!r}"
+            )
+        else:
+            ok("refresh systemMessage has exactly one leading '\\n' (not double)")
+        first_line = msg[1:].split("\n", 1)[0] if msg.startswith("\n") else ""
+        if BRAND in first_line:
+            ok(f"refresh first line after leading '\\n' contains brand `{BRAND}`")
+        else:
+            fail_t(
+                f"refresh first line after leading '\\n' missing brand `{BRAND}`; "
+                f"first line: {first_line!r}"
+            )
 
 finally:
     for d in tmproots:

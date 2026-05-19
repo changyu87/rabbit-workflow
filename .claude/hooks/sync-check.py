@@ -42,7 +42,12 @@ for _candidate in [_HERE, *_HERE.parents]:
         if str(_maybe) not in sys.path:
             sys.path.insert(0, str(_maybe))
         break
-from rabbit_print import rabbit_print, rabbit_subline  # noqa: E402
+from rabbit_print import (  # noqa: E402
+    rabbit_block,
+    policy_drift, surface_drift,
+    scope_guard_off, scope_guard_bypassed,
+    human_approval_bypass, skills_updated,
+)
 
 
 def _log_exc(where: str, exc: BaseException) -> None:
@@ -114,7 +119,7 @@ def render_claude_md_drift(root: Path, expected: str) -> Optional[dict]:
         section = _policy_section(expected)
         return {
             "additionalContext": _wrap_ctx(section, expected),
-            "systemMessage": rabbit_print("policy-drift"),
+            "systemMessage": policy_drift(),
         }
 
     return None
@@ -147,7 +152,7 @@ def render_surface_drift(root: Path) -> Optional[dict]:
     except Exception as e:
         _log_exc("build.py invocation failed during surface-drift rebuild", e)
     return {
-        "systemMessage": rabbit_print("surface-drift"),
+        "systemMessage": surface_drift(),
     }
 
 
@@ -177,11 +182,11 @@ def render_scope_guard(root: Path) -> Optional[dict]:
 
     if alert == "session":
         return {
-            "systemMessage": rabbit_print("scope-guard-off"),
+            "systemMessage": scope_guard_off(),
         }
     if alert == "used":
         return {
-            "systemMessage": rabbit_print("scope-guard-bypassed"),
+            "systemMessage": scope_guard_bypassed(),
         }
     return None
 
@@ -193,7 +198,7 @@ def render_human_approval(root: Path) -> Optional[dict]:
     if not marker.is_file():
         return None
     return {
-        "systemMessage": rabbit_print("human-approval-bypass"),
+        "systemMessage": human_approval_bypass(),
     }
 
 
@@ -214,7 +219,7 @@ def render_skills_updated(root: Path) -> Optional[dict]:
     except Exception as e:
         _log_exc("could not unlink .rabbit-skills-updated", e)
     return {
-        "systemMessage": rabbit_print("skills-updated", names=names),
+        "systemMessage": skills_updated(names=names),
     }
 
 
@@ -278,7 +283,7 @@ def main() -> int:
         return 0
 
     aggregated = {
-        "systemMessage": "\n" + "\n".join(p["systemMessage"] for p in payloads),
+        "systemMessage": rabbit_block(*(p["systemMessage"] for p in payloads)),
     }
     # additionalContext: only render_claude_md_drift emits one today; take
     # the first if present (Inv 38).
