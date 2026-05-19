@@ -12,5 +12,5 @@
   },
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
   "updated": "2026-05-19",
-  "spec_no_change_reason": "spec change for BACKLOG-12 was committed by rabbit-feature-touch Step 3 (commit 99bf813c); working tree is clean per Inv 20"
+  "spec_no_change_reason": "BUG-53 is internal drift fix between tdd-step.py (existing impl) and tdd-context.py + contract.md; no new invariant needed (see Inv 21-23)"
 }
