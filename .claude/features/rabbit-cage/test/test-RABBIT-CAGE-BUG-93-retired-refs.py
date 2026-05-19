@@ -18,7 +18,6 @@ filesystem entries themselves — it asserts only that the rabbit-cage
 surface does not advertise them as live.
 """
 import os
-import re
 import subprocess
 import sys
 
@@ -112,9 +111,9 @@ spec = read(SPEC)
 
 # t7 — narrative references to the spec-authoring skill use the current
 #       skill name `rabbit-feature-spec`, not retired `rabbit-spec`.
-#       (Retirement-context mentions, e.g. "RETIRED ...", are not expected
-#       in this spec; assert simple absence of bare `rabbit-spec`.)
-if not re.search(r"\brabbit-spec\b", spec):
+#       Since `rabbit-spec` is never a substring of `rabbit-feature-spec`,
+#       a plain substring check is sufficient.
+if "rabbit-spec" not in spec:
     ok(7, "spec.md: no live `rabbit-spec` references remain")
 else:
     fail_t(7, "spec.md: still references retired skill `rabbit-spec`")
@@ -131,7 +130,7 @@ b22 = read(BACKLOG22)
 # t9 — the BACKLOG-22 test no longer enumerates `rabbit-spec` /
 #       `rabbit-feature-scope` as expected-live names (its own fixture
 #       must reflect the post-consolidation topology).
-if "rabbit-feature-scope" not in b22 and re.search(r"\brabbit-spec\b", b22) is None:
+if "rabbit-feature-scope" not in b22 and "rabbit-spec" not in b22:
     ok(9, "test-RABBIT-CAGE-BACKLOG-22-cleanup.py: fixture purged of retired names")
 else:
     fail_t(9, "test-RABBIT-CAGE-BACKLOG-22-cleanup.py: still references retired names")
@@ -141,7 +140,7 @@ b18 = read(SYNC_AGG)
 
 # t10 — sample skill names written into `.rabbit-skills-updated` no longer
 #        include retired `rabbit-spec`.
-if re.search(r"\brabbit-spec\b", b18) is None:
+if "rabbit-spec" not in b18:
     ok(10, "test-RABBIT-CAGE-BACKLOG-18-sync-check-aggregation.py: fixture purged of `rabbit-spec`")
 else:
     fail_t(10, "test-RABBIT-CAGE-BACKLOG-18-sync-check-aggregation.py: still uses retired `rabbit-spec`")
