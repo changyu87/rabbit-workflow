@@ -8,7 +8,8 @@
 # Purpose (BACKLOG-10): the legacy fixture function `fix(...)` was duplicated
 # across `test-tdd-step.py`, `test-context.py`, and `test-drift-check.py` and
 # had drifted from the canonical flat-schema feature.json shape (BACKLOG-6,
-# Inv 33). This module is the single source of truth for the feature.json
+# Inv 25 post-BACKLOG-12 renumber; was Inv 33 in v1.18.x and Inv 29 in
+# v1.19.0). This module is the single source of truth for the feature.json
 # shape used by tdd-subagent unit/e2e tests.
 import json
 import os
@@ -18,7 +19,7 @@ def make_feature_dir(parent_dir, name, tdd_state, *, run_exit=0):
     """Create a minimal feature directory with flat-schema feature.json.
 
     Writes:
-      <parent_dir>/feature.json (flat schema per spec Inv 33)
+      <parent_dir>/feature.json (flat schema per spec Inv 25)
       <parent_dir>/spec.md      (placeholder)
       <parent_dir>/contract.md  (placeholder)
       <parent_dir>/test/run.py  (Python runner that exits `run_exit`)

@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-# E2E test for tdd-subagent spec invariants 16 and 17:
+# E2E test for tdd-subagent spec invariants 12 and 13 (post-BACKLOG-12
+# renumber; were Inv 16 and 17 in v1.19.0):
 #
-#   16. After rabbit-spec returns in Step 3, the rabbit-feature-touch dispatcher
-#       MUST commit any modifications to docs/spec/spec.md BEFORE proceeding to
-#       Step 5. Commit message pattern: "spec(<feature>): update spec for ...".
-#       Skipped if rabbit-spec made no changes.
+#   Inv 12. After rabbit-spec returns in Step 3, the rabbit-feature-touch
+#       dispatcher MUST commit any modifications to docs/spec/spec.md BEFORE
+#       proceeding to Step 5. Commit message pattern:
+#       "spec(<feature>): update spec for ...". Skipped if rabbit-spec made
+#       no changes.
 #
-#   17. In Step 9 (UNLOCK) of the per-feature TDD subagent prompt assembled by
-#       dispatch-tdd-subagent.py, the subagent MUST commit feature.json BEFORE
-#       emitting the HANDOFF block. Commit message pattern:
-#       "chore(<feature>): advance tdd_state to test-green".
+#   Inv 13. In Step 9 (UNLOCK) of the per-feature TDD subagent prompt
+#       assembled by dispatch-tdd-subagent.py, the subagent MUST commit
+#       feature.json BEFORE emitting the HANDOFF block. Commit message
+#       pattern: "chore(<feature>): advance tdd_state to test-green".
 #
-# Inv 16 is asserted against the deployed SKILL.md (the surface artifact
-# downstream consumers see). Inv 17 is asserted against the prompt produced by
+# Inv 12 is asserted against the deployed SKILL.md (the surface artifact
+# downstream consumers see). Inv 13 is asserted against the prompt produced by
 # dispatch-tdd-subagent.py for a real feature.
 
 import os

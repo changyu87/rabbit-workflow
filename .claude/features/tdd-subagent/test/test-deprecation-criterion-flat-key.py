@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# E2E test for Inv 28 (BUG-16): tdd-context.py MUST read flat
+# E2E test for tdd-subagent Inv 21 (BUG-16, was Inv 28 in v1.19.0 before
+# BACKLOG-12 renumber): tdd-context.py MUST read flat
 # `deprecation_criterion` from feature.json, with fallback to nested
 # `deprecation.criterion` for backward compat. Flat wins when both are
 # present.

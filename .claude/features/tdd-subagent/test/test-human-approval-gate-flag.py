@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # test-human-approval-gate-flag.py
 # E2E asserts the renamed --human-approval-gate true|false flag on
-# dispatch-tdd-subagent.py per Inv 12 / Inv 15 of tdd-subagent spec v1.9.0.
+# dispatch-tdd-subagent.py per tdd-subagent Inv 11 (CLI shape) and
+# rabbit-feature Inv 9 (SKILL.md doc requirement; formerly tdd-subagent
+# Inv 15 of v1.9.0, re-homed in BACKLOG-12).
 #
 # Behaviours covered:
 #   - --human-approval-gate true → assembled prompt contains the full

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-# E2E test for Inv 30 (BUG-37): rabbit-feature-touch SKILL.md B/B mode MUST
-# read item JSON from `<item-dir>/item.json`, not `<item-dir>/bug.json`.
+# E2E test for rabbit-feature Inv 12 (formerly tdd-subagent Inv 26/30,
+# BUG-37; re-homed in BACKLOG-12): rabbit-feature-touch SKILL.md B/B mode
+# MUST read item JSON from `<item-dir>/item.json`, not
+# `<item-dir>/bug.json`. This invariant now lives in the rabbit-feature
+# spec because it constrains SKILL.md content owned by rabbit-feature.
 import os
 import sys
 

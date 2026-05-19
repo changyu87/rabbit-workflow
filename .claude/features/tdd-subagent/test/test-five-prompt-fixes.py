@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-# E2E test for the five Wave-1 critical dispatch-tdd-subagent.py prompt fixes:
+# E2E test for the five Wave-1 critical dispatch-tdd-subagent.py prompt
+# fixes (invariant numbers updated for spec v1.20.0 post-BACKLOG-12
+# renumber):
 #
-#   BUG-15 (Inv 8 updated): close calls use rabbit-file/scripts/item-status.py;
+#   BUG-15 (Inv 8): close calls use rabbit-file/scripts/item-status.py;
 #       legacy bug-status.py and backlog-item-status.py references are banned.
-#   BUG-18 (Inv 23): STEP 3 LOCK must NOT use `trap '... rm -f ...' EXIT`.
-#       STEP 9 UNLOCK must do explicit `rm -f .rabbit-scope-active-<feature>`.
-#   BUG-22 (Inv 24): STEP 7 CODE-REVIEW must invoke
+#   BUG-18 (Inv 16, was Inv 23 in v1.19.0): STEP 3 LOCK must NOT use
+#       `trap '... rm -f ...' EXIT`. STEP 9 UNLOCK must do explicit
+#       `rm -f .rabbit-scope-active-<feature>`.
+#   BUG-22 (Inv 17, was Inv 24): STEP 7 CODE-REVIEW must invoke
 #       Skill("superpowers:requesting-code-review") (not "superpowers:code-reviewer").
-#   BUG-28 (Inv 25): STEP 6 IMPLEMENT loop must have `git add` + `git commit`
-#       INSIDE the loop, BEFORE the `tdd-step.py transition ... impl` call.
-#   BUG-29 (Inv 26): STEP 8 TEST-GREEN must capture impl SHA (git rev-parse HEAD)
-#       BEFORE STEP 9's chore commit; tdd-report fully written before UNLOCK chore.
+#   BUG-28 (Inv 18, was Inv 25): STEP 6 IMPLEMENT loop must have `git add` +
+#       `git commit` INSIDE the loop, BEFORE the
+#       `tdd-step.py transition ... impl` call.
+#   BUG-29 (Inv 19, was Inv 26): STEP 8 TEST-GREEN must capture impl SHA
+#       (git rev-parse HEAD) BEFORE STEP 9's chore commit; tdd-report fully
+#       written before UNLOCK chore.
 
 import os
 import re

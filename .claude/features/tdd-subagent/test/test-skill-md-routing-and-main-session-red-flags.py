@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 # test-skill-md-routing-and-main-session-red-flags.py — BACKLOG-2
-# Asserts:
-#   Inv 20: assembled TDD subagent prompt contains the SKILL.md routing
-#           rule directing edits through Skill("skill-creator:skill-creator"),
-#           placed in the IMPLEMENT-step region.
-#   Inv 21: rabbit-feature-touch SKILL.md Red Flags forbids main-session
+# Asserts (post-BACKLOG-12 renumber):
+#   tdd-subagent Inv 15: assembled TDD subagent prompt contains the
+#           SKILL.md routing rule directing edits through
+#           Skill("skill-creator:skill-creator"), placed in the
+#           IMPLEMENT-step region.
+#   rabbit-feature Inv 10 (formerly tdd-subagent Inv 17/21):
+#           rabbit-feature-touch SKILL.md Red Flags forbids main-session
 #           Write/Edit on any file under .claude/features/.
-#   Inv 22: rabbit-feature-touch SKILL.md Red Flags forbids main-session
-#           creation of .rabbit-scope-active markers (global and per-feature).
-#   Inv 19 cleanup: SKILL.md (deployed and source) does NOT contain the
+#   rabbit-feature Inv 11 (formerly tdd-subagent Inv 18/22):
+#           rabbit-feature-touch SKILL.md Red Flags forbids main-session
+#           creation of .rabbit-scope-active markers.
+#   Cleanup: SKILL.md (deployed and source) does NOT contain the
 #           stale string "human-approval gated".
 import os
 import subprocess

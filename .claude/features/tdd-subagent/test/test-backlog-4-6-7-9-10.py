@@ -112,7 +112,7 @@ def b4():
                 f.write("")
 
 
-# BACKLOG-6: spec invariant 33 references the contract schema; spec also
+# BACKLOG-6: spec invariant 25 references the contract schema; spec also
 # names the flat fields used by tdd-subagent (per BACKLOG-6 declaration).
 # Note: the contract-owned schema enum gap (missing `spec-update`) is
 # explicitly out of scope and filed via a follow-up backlog under
@@ -123,13 +123,14 @@ def b6():
     if "feature.json.schema.json" not in spec:
         ko("b6: spec does not reference feature.json.schema.json")
         return
-    # After Cycle B re-home (spec v1.19.0), four invariants were removed
-    # and survivors renumbered gap-free; the schema-reference invariant
-    # moved from Inv 33 to Inv 29.
-    if "Inv 29" in spec or "29." in spec:
-        ok("b6a: spec declares feature.json schema reference (Inv 29)")
+    # After BACKLOG-12 re-home (spec v1.20.0), four cross-feature invariants
+    # were migrated to rabbit-feature and survivors renumbered gap-free; the
+    # schema-reference invariant moved from Inv 33 → Inv 29 (v1.19.0) →
+    # Inv 25 (v1.20.0).
+    if "Inv 25" in spec or "25." in spec:
+        ok("b6a: spec declares feature.json schema reference (Inv 25)")
     else:
-        ko("b6a: spec missing Inv 29 schema reference")
+        ko("b6a: spec missing Inv 25 schema reference")
         return
     # b6b: spec names the flat-shape fields the tdd-subagent depends on.
     for needed in ("deprecation_criterion", "tdd_state", "surface", "owner"):

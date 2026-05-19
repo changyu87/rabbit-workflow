@@ -136,7 +136,8 @@ def c4():
 
 
 # c5: legacy nested 'contract' object is passed through when present.
-# Per spec Inv 33, the flat shape is canonical and has no nested 'contract'
+# Per spec Inv 25 (post-BACKLOG-12 renumber; was Inv 33 in v1.18.x and
+# Inv 29 in v1.19.0), the flat shape is canonical and has no nested 'contract'
 # field; this test explicitly exercises the legacy nested form as a
 # backward-compatibility guard for any feature.json that still carries it.
 def c5():

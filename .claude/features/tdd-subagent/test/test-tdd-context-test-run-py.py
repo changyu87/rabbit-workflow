@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# E2E test for Inv 29 (BUG-17): tdd-context.py guidance text MUST reference
+# E2E test for tdd-subagent Inv 22 (BUG-17, was Inv 29 in v1.19.0 before
+# BACKLOG-12 renumber): tdd-context.py guidance text MUST reference
 # `test/run.py` (Python runner) not stale `test/run.sh`.
 import json
 import os
