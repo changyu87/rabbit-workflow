@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """test-rabbit-print-named-wrappers.py — e2e tests for the named wrapper API.
 
-Verifies Inv 35(d): rabbit_print.py exposes 11 named wrappers, one per
+Verifies Inv 35(d): rabbit_print.py exposes 10 named wrappers, one per
 message-id, each thinly delegating to rabbit_print(<id>, **kwargs). Each
 wrapper signature exposes exactly the kwargs its message-id requires.
 tdd_transition and tdd_forced upcase their state-name placeholders.
+Also asserts that the previously-required r1_branch wrapper is absent
+(removed alongside rabbit-cage Inv 61).
 """
 
 import os
@@ -54,17 +56,17 @@ for wrapper_name, mid in ZERO_ARG:
     else:
         fail(f"{wrapper_name}() mismatch\n  exp: {exp!r}\n  got: {got!r}")
 
-# r1_branch(branch)
-fn = getattr(mod, "r1_branch", None)
-if callable(fn):
-    got = fn("session/abc")
-    exp = mod.rabbit_print("r1-branch", branch="session/abc")
-    if got == exp:
-        ok("r1_branch(branch=...) == rabbit_print('r1-branch', branch=...)")
-    else:
-        fail(f"r1_branch mismatch\n  exp: {exp!r}\n  got: {got!r}")
+# r1_branch removed (Inv 35(d)): wrapper MUST NOT exist and MUST NOT appear
+# in __all__.
+if getattr(mod, "r1_branch", None) is None:
+    ok("r1_branch wrapper absent from module")
 else:
-    fail("r1_branch not callable")
+    fail("r1_branch wrapper still present (should be removed per Inv 35(d))")
+
+if "r1_branch" in getattr(mod, "__all__", []):
+    fail("r1_branch still listed in __all__ (should be removed per Inv 35(d))")
+else:
+    ok("r1_branch absent from __all__")
 
 # surface_drift(files) — Inv 35(d), BACKLOG-21: required files kwarg,
 # rendered text ends with the files list followed by bar + icon + reset.

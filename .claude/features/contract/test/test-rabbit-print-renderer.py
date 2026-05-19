@@ -51,16 +51,17 @@ except Exception as e:
     print("test-rabbit-print-renderer: FAIL", file=sys.stderr)
     sys.exit(1)
 
-# t3: __all__ is exactly the 14 names declared in Inv 35
+# t3: __all__ is exactly the 13 names declared in Inv 35 (r1_branch removed
+# alongside rabbit-cage Inv 61).
 expected_all = {
     "rabbit_print", "rabbit_subline", "rabbit_block",
-    "r1_branch", "welcome", "policy_drift", "surface_drift",
+    "welcome", "policy_drift", "surface_drift",
     "scope_guard_off", "scope_guard_bypassed", "human_approval_bypass",
     "skills_updated", "policy_refreshed", "tdd_transition", "tdd_forced",
 }
 actual_all = set(getattr(mod, "__all__", []))
 if actual_all == expected_all:
-    ok("t3: __all__ is exactly the 14 declared names")
+    ok("t3: __all__ is exactly the 13 declared names")
 else:
     fail(f"t3: __all__ mismatch: expected {expected_all}, got {actual_all}")
 
@@ -98,16 +99,18 @@ def expected_main(mid, **kwargs):
     return f"{c['ansi']}{BRAND} {m['icon']} {BAR} {body} {BAR} {m['icon']}{c['reset']}"
 
 
-# t5: rabbit_print produces the exact expected string for r1-branch
+# t5: rabbit_print produces the exact expected string for a parameterized id.
+# (r1-branch was the previous fixture here; it is removed per Inv 34/35(d), so
+# surface-drift — which also takes a placeholder kwarg — is used instead.)
 captured_out = io.StringIO()
 captured_err = io.StringIO()
 with contextlib.redirect_stdout(captured_out), contextlib.redirect_stderr(captured_err):
-    got = mod.rabbit_print("r1-branch", branch="session/20260519-123456")
-exp = expected_main("r1-branch", branch="session/20260519-123456")
+    got = mod.rabbit_print("surface-drift", files="hooks/sync-check.py")
+exp = expected_main("surface-drift", files="hooks/sync-check.py")
 if got == exp:
-    ok("t5: rabbit_print('r1-branch', branch=...) returns exact expected string")
+    ok("t5: rabbit_print('surface-drift', files=...) returns exact expected string")
 else:
-    fail(f"t5: rabbit_print('r1-branch') mismatch\n  exp: {exp!r}\n  got: {got!r}")
+    fail(f"t5: rabbit_print('surface-drift') mismatch\n  exp: {exp!r}\n  got: {got!r}")
 
 # Capture also: must be empty
 if captured_out.getvalue() == "" and captured_err.getvalue() == "":
@@ -117,7 +120,6 @@ else:
 
 # t6: exercise every required message-id with appropriate kwargs
 KWARGS = {
-    "r1-branch": {"branch": "session/20260519-000000"},
     "welcome": {},
     "policy-drift": {},
     "surface-drift": {"files": "hooks/sync-check.py"},
@@ -152,7 +154,7 @@ except Exception as e:
 
 # t8: KeyError on missing required placeholder
 try:
-    mod.rabbit_print("r1-branch")  # missing 'branch' kwarg
+    mod.rabbit_print("surface-drift")  # missing 'files' kwarg
     fail("t8: missing placeholder did not raise KeyError")
 except KeyError:
     ok("t8: missing placeholder raises KeyError")

@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """test-check-no-main-edits-protected-set.py — Inv 31.
 
-check-no-main-edits.py MUST protect exactly {main, master} (matching
-rabbit-cage Inv 21). It MUST NOT forbid additional branches (trunk, develop).
+check-no-main-edits.py MUST protect exactly {main, master}. It MUST NOT
+forbid additional branches (trunk, develop). This script is now the sole
+programmatic enforcement of branch-per-feature (the legacy rabbit-cage R1
+hook was removed); the inline comment in the script MUST NOT reference
+the deleted rabbit-cage Inv 21.
 """
 
 import os
@@ -37,6 +40,15 @@ if '"master"' not in src and "'master'" not in src:
     FAIL = 1
 else:
     print("PASS t2: 'master' protected")
+
+# t3: the legacy reference to rabbit-cage Inv 21 MUST NOT appear in the
+# script (the R1 hook was removed; the script is now self-authoritative
+# for the {main, master} protected set per contract Inv 31).
+if "rabbit-cage Inv 21" in src or "rabbit-cage Inv21" in src:
+    print("FAIL t3: stale 'rabbit-cage Inv 21' reference still in script", file=sys.stderr)
+    FAIL = 1
+else:
+    print("PASS t3: no stale 'rabbit-cage Inv 21' reference in script")
 
 if FAIL:
     print("test-check-no-main-edits-protected-set: FAIL", file=sys.stderr)
