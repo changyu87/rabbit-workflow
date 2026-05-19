@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 1.16.0
+version: 1.17.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When the TDD step model is replaced by a different lifecycle model; or when state tracking moves out of feature.json into a dedicated event log.
@@ -31,7 +31,27 @@ All scripts in this feature are Python 3. Bash is not used anywhere in this feat
 2. `test-green` transition triggers enforcement checks.
 3. All four scripts are executable.
 4. `test-green` transition auto-closes any in-progress backlog items (stored on the `bug-backlog-files` branch per rabbit-file consolidation) via `python3 .claude/features/rabbit-file/scripts/item-status.py set --feature <feature> --type backlog --id <ID> --status close --reason 'auto-closed by tdd-step.py test-green' --fix-commits HEAD` (best-effort). The legacy `backlog-item-status.py` script no longer exists; tdd-step.py must use the unified `item-status.py` interface.
-5. `tdd-step.py transition` stdout uses the `[rabbit] ━━━ ... ━━━` format with ANSI colors — green (`\x1b[32m`) for normal transition messages on stdout, red (`\x1b[31m`) for FORCED/WARNING/ERROR messages on stderr. The `show`, `next`, and `transitions` subcommands remain plain-text (consumed by tests and downstream parsers).
+5. `tdd-step.py transition` output is produced by the centralized renderer
+   `rabbit_print` from `.claude/features/contract/scripts/rabbit_print.py`
+   (TDD-SUBAGENT-BACKLOG-11; contract Inv 5, 34, 35, 36). The format is
+   `[🐇 rabbit 🐇] 🔧 ━━━ FROM_STATE -> TO_STATE ━━━ 🔧` (green) for
+   normal transitions, `[🐇 rabbit 🐇] 🔧 ━━━ FORCED: FROM_STATE -> TO_STATE ━━━ 🔧`
+   (red) for forced transitions. State names in the rendered output are
+   ALWAYS UPPERCASE (e.g. `SPEC-READ`, `TEST-RED`, `IMPL`, `TEST-GREEN`,
+   `DEPRECATED`, `SPEC-UPDATE`) even though the internal state machine
+   stores them lowercase — the uppercase transformation happens at the
+   render call site (`rabbit_print('tdd-transition', from_state=cur.upper(), to_state=new.upper())`).
+   Normal transitions write to stdout; forced transitions and enforcement
+   WARNING/ERROR messages write to stderr. WARNING messages from
+   enforcement checks (R3 check failed, naming check failed, etc.) use
+   `rabbit_subline(msg, color='red')` so they carry the brand prefix
+   `[🐇 rabbit 🐇]` and red color but no banner bars. The `show`, `next`,
+   and `transitions` subcommands remain plain-text (consumed by tests and
+   downstream parsers — they MUST NOT be styled). Direct ANSI escape
+   codes (`\x1b[3...`), the literal `[rabbit]` or `[🐇 rabbit 🐇]` brand
+   string, and the bar character (`━━━`) MUST NOT appear in `tdd-step.py`
+   source outside of import statements or comments — this is the
+   consumer-side enforcement of contract Inv 36.
 6. In `rabbit-feature-touch` Step 1 (normal mode), scope resolution is performed by invoking the `rabbit-feature-scope` Skill via the Skill tool (`Skill("rabbit-feature-scope", args: "<request>")`), NOT by shelling out to `resolve-scope.sh` directly. The Skill emits a prompt for caller dispatch; the caller parses the JSON response `{"features": [...], "rationale": "..."}` to drive parallel dispatch.
 7. `dispatch-tdd-subagent.py` emits a prompt to stdout only; it does not call any agent itself. The assembled prompt instructs the per-feature subagent to run the full TDD cycle (spec-update → test-red → impl → test-green) for ONE feature, using `.rabbit-scope-active-<feature-name>` as its scope marker. Distinct per-feature scope markers enable simultaneous dispatch across features without scope collision. The subagent writes `tdd-report.json` to `.rabbit/tdd-report.json` (a hidden folder at repo root); the `.rabbit/` directory is created automatically if it doesn't exist and is listed in `.gitignore`.
 8. When `--linked-item <item-dir> --item-type bug|backlog` is provided to `dispatch-tdd-subagent.py`, the orchestrator (after test-green) closes the linked item via the rabbit-file unified script: `python3 .claude/features/rabbit-file/scripts/item-status.py set --feature <feature> --type <type> --id <id> --status close --reason 'TDD cycle complete' --fix-commits <impl-sha>`. The `<feature>` and `<id>` are derived from the `--linked-item` path (e.g., `rabbit/features/rabbit-cage/bugs/RABBIT-CAGE-BUG-8` → feature=`rabbit-cage`, id=`RABBIT-CAGE-BUG-8`). The legacy `bug-status.py` and `backlog-item-status.py` scripts no longer exist (consolidated into rabbit-file's `item-status.py` per RABBIT-FILE feature); any reference to them is a constitution violation. The HANDOFF block must include the linked item path and its new status. Additionally, when `--linked-items <feature>:<type>:<id>[,<feature>:<type>:<id>...]` is provided (a comma-separated list of triples), the orchestrator closes each listed item via the same `item-status.py set` invocation with `--reason 'TDD cycle complete (secondary item resolved by same commit)' --fix-commits <impl-sha>` after test-green. Each triple is validated for shape (exactly two colons, non-empty fields, type in {bug, backlog}); malformed triples cause dispatch-tdd-subagent.py to exit non-zero before emitting the prompt. The HANDOFF block must list all closed items (primary `--linked-item` plus every `--linked-items` entry).
