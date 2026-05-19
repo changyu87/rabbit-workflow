@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.1.0
+version: 1.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -17,6 +17,12 @@ status: active
 Owns the `rabbit-feature-touch` orchestration skill. The skill ensures every
 write, edit, delete, or add operation targeting a feature directory is gated
 through the formal TDD state machine.
+
+This feature also owns the absorbed `rabbit-feature-scope` skill and its
+two scripts (`resolve-scope.py`, `format-feature-context.py`) which together
+resolve a natural-language request to the set of features it will modify.
+The `rabbit-feature-scope` feature directory still exists at HEAD as a
+byte-identical source; a separate cleanup cycle will delete that directory.
 
 The skill is **dispatcher-side**: it resolves scope, creates branches,
 invokes spec authoring, surfaces the human-approval gate, dispatches TDD
@@ -39,6 +45,15 @@ anywhere in this feature. Test runner is `test/run.py`.
   This is the authoritative source for the deployed
   `.claude/skills/rabbit-feature-touch/SKILL.md`, populated via the
   `build-contract.json` copy-file entry.
+- `.claude/features/rabbit-feature/skills/rabbit-feature-scope/SKILL.md`
+  — absorbed shared skill that resolves a natural-language request to the
+  list of rabbit features whose files the request will modify.
+- `.claude/features/rabbit-feature/scripts/resolve-scope.py`
+  — absorbed script that builds the Agent-dispatch prompt used by
+  `rabbit-feature-scope`.
+- `.claude/features/rabbit-feature/scripts/format-feature-context.py`
+  — absorbed helper that reads `find-feature.py list-json` output from
+  stdin and writes the human-readable feature context block to stdout.
 - `.claude/features/rabbit-feature/test/test-cross-feature-interface.py`
   — smoke test locking the cross-feature script interface.
 - `.claude/features/rabbit-feature/test/test-build-source-points-to-rabbit-feature.py`
@@ -160,6 +175,75 @@ anywhere in this feature. Test runner is `test/run.py`.
     B/B caller, but the SKILL.md content lives here.
     (Re-homed from tdd-subagent Inv 26 v1.19.0 per BACKLOG-12.)
 
+### Absorbed from rabbit-feature-scope
+
+The following invariants were re-homed from `rabbit-feature-scope` spec
+v1.1.0 as part of the absorption. They govern the absorbed skill and
+scripts now hosted under this feature.
+
+13. `resolve-scope.py` emits a prompt to stdout only; it never calls
+    Agent itself. (Absorbed from rabbit-feature-scope Inv 1.)
+
+14. The dispatched Agent uses the default model — no Opus override.
+    (Absorbed from rabbit-feature-scope Inv 2.)
+
+15. `resolve-scope.py` uses `find-feature.py list-json` for feature
+    enumeration; never reads `registry.json`. (Absorbed from
+    rabbit-feature-scope Inv 3.)
+
+16. Agent response JSON schema:
+    `{"features": ["name1", ...], "rationale": "one sentence"}`.
+    (Absorbed from rabbit-feature-scope Inv 4.)
+
+17. `resolve-scope.py` is executable. (Absorbed from
+    rabbit-feature-scope Inv 5.)
+
+18. An empty `features` list `[]` is a valid response (no features
+    touched). (Absorbed from rabbit-feature-scope Inv 6.)
+
+19. `resolve-scope.py` contains no inline `python3 -c` calls or
+    python3 heredocs; all Python logic is in
+    `format-feature-context.py`. (Absorbed from rabbit-feature-scope
+    Inv 7.)
+
+20. `format-feature-context.py` reads JSON from stdin and writes the
+    formatted feature context to stdout; it is invoked as
+    `python3 format-feature-context.py`. (Absorbed from
+    rabbit-feature-scope Inv 8.)
+
+21. `rabbit-feature-scope` SKILL.md Usage section MUST present
+    shell-executable commands and Claude tool-invocation pseudo-code
+    in **separate code blocks with distinct fence labels**. The shell
+    command that generates the prompt (`PROMPT=$(...)`) is in a
+    ```bash``` fence; the `Agent(...)` tool invocation is in a
+    non-shell fence (e.g., ```text```) and is preceded by a sentence
+    explicitly stating that it is a Claude tool call and must NOT be
+    shell-executed. (Absorbed from rabbit-feature-scope Inv 9.)
+
+22. The assembled Agent prompt MUST NOT hardcode specific feature
+    names (such as "contract" or "rabbit-cage") in its RULES section.
+    Feature-specific guidance must be derived dynamically from the
+    live feature list (via `find-feature.py list-json`) or generalized
+    so it applies to any feature. (Absorbed from rabbit-feature-scope
+    Inv 10.)
+
+23. `format-feature-context.py` MUST tolerate `feature.json` files
+    that are missing optional keys (e.g., `summary`, `tdd_state`,
+    `version`, `deprecation_criterion`) without crashing. Use
+    `.get(key, default)` semantics with sensible fallbacks; exit
+    non-zero ONLY when JSON is malformed or fundamentally unusable
+    (no `feature` key at all). (Absorbed from rabbit-feature-scope
+    Inv 11.)
+
+24. The absorbed skill, scripts, and their tests MUST be byte-identical
+    to the rabbit-feature-scope sources while both feature
+    directories coexist. The byte-identical comparison is locked by
+    `test/test-absorbed-rabbit-feature-scope.py`. This invariant is
+    retired the moment the `rabbit-feature-scope` directory is
+    deleted (separate cleanup cycle); at that point the absorbed
+    artifacts become the authoritative source and no source remains
+    to compare against.
+
 ## What this feature does NOT define
 
 - The TDD subagent itself, its 9-step cycle, or the `tdd-step.py` state
@@ -169,10 +253,13 @@ anywhere in this feature. Test runner is `test/run.py`.
   build via the copy-file entry but does not define it).
 - Workspace structure declarations — owned by `contract` via
   `workspace-structure.json`.
-- Scope resolution — owned by `rabbit-feature-scope`.
 
 ## Tests
 
 `test/run.py` runs the end-to-end suite:
 - `test-cross-feature-interface.py` — Invariant 3
 - `test-build-source-points-to-rabbit-feature.py` — Invariant 4
+- `test-absorbed-rabbit-feature-scope.py` — Invariant 24 (absorbed
+  surface byte-identical to rabbit-feature-scope source)
+- absorbed `test-*.py` files copied verbatim from
+  `rabbit-feature-scope/test/` — cover Invariants 13-23.
