@@ -56,7 +56,7 @@
     {
       "name": "skills/rabbit-feature-touch/SKILL.md",
       "type": "copy-file",
-      "source": ".claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md",
+      "source": ".claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md",
       "destination": ".claude/skills/rabbit-feature-touch/SKILL.md",
       "check_on_stop": true
     },

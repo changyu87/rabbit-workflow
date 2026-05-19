@@ -2,7 +2,7 @@
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
 version: 3.0.0
-owner: tdd-subagent
+owner: rabbit-feature
 deprecation_criterion: when dispatch-feature-edit.py natively enforces tdd-step.py transitions
 ---
 
