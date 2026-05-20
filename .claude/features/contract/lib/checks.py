@@ -1,0 +1,500 @@
+"""contract.lib.checks — library API for contract enforcement / validation.
+
+Holds the logic that used to live in each scripts/enforcement/check-*.py
+and scripts/validate-feature.py. Each function returns a CheckResult; no
+function calls sys.exit, prints, or raises on contract-violation conditions.
+
+Per spec Inv 44.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (contract)
+Deprecation criterion: when a native rabbit CLI exposes equivalent bindings.
+"""
+
+import json
+import os
+import re
+import subprocess
+from dataclasses import dataclass, field
+from typing import List
+
+
+@dataclass
+class CheckResult:
+    """Outcome of a single check.
+
+    passed   - True iff the check found no violations.
+    messages - Human-readable lines (one per issue or summary line).
+    """
+
+    passed: bool
+    messages: List[str] = field(default_factory=list)
+
+
+# ---------- shared helpers ----------------------------------------------------
+
+def get_repo_root():
+    env_root = os.environ.get("RABBIT_ROOT")
+    if env_root:
+        return env_root
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True,
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+# Backwards-compatible alias for any internal/legacy caller still importing
+# the underscore form. Public callers MUST use `get_repo_root`.
+_get_repo_root = get_repo_root
+
+
+# ---------- check_tests_non_interactive --------------------------------------
+
+_INTERACTIVE_PATTERNS = [
+    (re.compile(r'(?<![A-Za-z0-9_.])input\s*\('), "bare input() call"),
+    (re.compile(r'getpass\s*\.\s*getpass\s*\('), "getpass.getpass()"),
+    (re.compile(r'click\s*\.\s*prompt\s*\('), "click.prompt()"),
+    (re.compile(r'click\s*\.\s*confirm\s*\('), "click.confirm()"),
+]
+
+
+def _strip_comments(code: str) -> str:
+    lines = code.splitlines()
+    filtered = [line for line in lines if not re.match(r'^\s*#', line)]
+    return "\n".join(filtered)
+
+
+def check_tests_non_interactive(feature_dir: str) -> CheckResult:
+    """Inv 17: <feature-dir>/test/*.py must not use interactive constructs."""
+    test_dir = os.path.join(feature_dir, "test")
+    if not os.path.isdir(test_dir):
+        return CheckResult(True, [f"OK: no test/ in {feature_dir} (vacuous)"])
+    messages: List[str] = []
+    for dirpath, _, filenames in os.walk(test_dir):
+        for fname in filenames:
+            if not fname.endswith(".py"):
+                continue
+            fpath = os.path.join(dirpath, fname)
+            with open(fpath) as f:
+                raw = f.read()
+            code = _strip_comments(raw)
+            for pattern, desc in _INTERACTIVE_PATTERNS:
+                if pattern.search(code):
+                    messages.append(f"VIOLATION: {fpath} uses {desc}.")
+                    break
+    if messages:
+        messages.append(f"FAIL: {len(messages)} interactive construct(s) found in {test_dir}.")
+        return CheckResult(False, messages)
+    return CheckResult(True, [f"OK: no interactive constructs in {test_dir}"])
+
+
+# ---------- check_sentinel ---------------------------------------------------
+
+_SENTINEL = "RABBIT-POLICY-BLOCK-v1"
+
+
+def check_sentinel(path: str) -> CheckResult:
+    """Inv 24: dispatch scripts must contain the policy-block sentinel."""
+    if not os.path.exists(path):
+        return CheckResult(False, [f"ERROR: not a file or directory: {path}"])
+    missing: List[str] = []
+    if os.path.isfile(path):
+        with open(path) as f:
+            if _SENTINEL not in f.read():
+                missing.append(f"MISSING sentinel in: {path}")
+    else:
+        for dirpath, _, filenames in os.walk(path):
+            for fname in filenames:
+                if not fname.endswith(".py"):
+                    continue
+                fpath = os.path.join(dirpath, fname)
+                with open(fpath) as f:
+                    if _SENTINEL not in f.read():
+                        missing.append(f"MISSING sentinel in: {fpath}")
+    if missing:
+        return CheckResult(False, missing)
+    return CheckResult(True, [f"OK: sentinel present in {path}"])
+
+
+# ---------- check_naming -----------------------------------------------------
+
+_BANNED_PREFIXES = ["rbt-"]
+
+
+def check_naming(root: str) -> CheckResult:
+    """Inv 13 + Inv 19: artifact names start with 'rabbit-'; 'rbt-' is banned."""
+    if not os.path.isdir(root):
+        return CheckResult(False, [f"ERROR: not a directory: {root}"])
+    claude_dir = os.path.join(root, ".claude")
+    if not os.path.isdir(claude_dir):
+        return CheckResult(True, [f"OK: no .claude tree at {root} (vacuous)"])
+
+    messages: List[str] = []
+    flagged = set()
+
+    def flag(label: str, name: str, path: str, reason: str) -> None:
+        if path in flagged:
+            return
+        flagged.add(path)
+        messages.append(f"VIOLATION: {label} {path} — {reason} ('{name}')")
+
+    for sub, label in (("commands", "command"), ("agents", "agent")):
+        d = os.path.join(claude_dir, sub)
+        if os.path.isdir(d):
+            for fname in os.listdir(d):
+                if not fname.endswith(".md"):
+                    continue
+                base = fname[:-3]
+                if base in ("README", "CHANGELOG"):
+                    continue
+                if not base.startswith("rabbit-"):
+                    flag(label, base, os.path.join(d, fname), "must start with 'rabbit-'")
+
+    skills_dir = os.path.join(claude_dir, "skills")
+    if os.path.isdir(skills_dir):
+        for entry in os.listdir(skills_dir):
+            full = os.path.join(skills_dir, entry)
+            if not os.path.isdir(full):
+                continue
+            if not entry.startswith("rabbit-"):
+                flag("skill", entry, full + "/", "must start with 'rabbit-'")
+
+    docs_path = os.path.join(claude_dir, "docs")
+    for dirpath, dirnames, filenames in os.walk(claude_dir):
+        if os.path.abspath(dirpath).startswith(os.path.abspath(docs_path)):
+            dirnames.clear()
+            continue
+        for fname in filenames:
+            for bad in _BANNED_PREFIXES:
+                if fname.startswith(bad):
+                    flag("file", fname, os.path.join(dirpath, fname),
+                         f"deprecated '{bad}' prefix banned (use 'rabbit-' or no prefix)")
+                    break
+
+    if messages:
+        messages.append(f"FAIL: {len(messages)} naming violation(s) under {claude_dir}")
+        return CheckResult(False, messages)
+    return CheckResult(True, [
+        f"OK: all artifacts under {claude_dir} start with 'rabbit-'; "
+        f"no banned prefixes ({_BANNED_PREFIXES}) outside docs/"
+    ])
+
+
+# ---------- check_imports_resolve --------------------------------------------
+
+_AT_REL_RE = re.compile(r'@\./([^\s]+)')
+_CLAUDE_PATH_RE = re.compile(
+    r'\.claude/(?:features|hooks|skills|commands|agents)/[a-z][a-z0-9-]+'
+    r'(?:/[^\s`)\]\'",]+)?'
+)
+
+
+def check_imports_resolve(feature_dir: str) -> CheckResult:
+    """Inv 32: every @<path> import and .claude/<surface>/<name> path in docs/*.md resolves."""
+    docs_dir = os.path.join(feature_dir, "docs")
+    if not os.path.isdir(docs_dir):
+        return CheckResult(True, [f"OK: no docs/ in {feature_dir} (vacuous)"])
+    repo_root = get_repo_root()
+    if not repo_root:
+        return CheckResult(False, ["ERROR: cannot determine repo root"])
+
+    messages: List[str] = []
+    for root, _, files in os.walk(docs_dir):
+        for fname in files:
+            if not fname.endswith(".md"):
+                continue
+            filepath = os.path.join(root, fname)
+            if "/archive/" in filepath:
+                continue
+            with open(filepath) as f:
+                content = f.read()
+            for match in _AT_REL_RE.finditer(content):
+                path = match.group(1)
+                if "{{" in path:
+                    continue
+                if not os.path.exists(os.path.join(repo_root, path)):
+                    messages.append(f"MISSING: {path} (in {filepath})")
+            for match in _CLAUDE_PATH_RE.finditer(content):
+                path = match.group(0)
+                if "{{" in path:
+                    continue
+                if not os.path.exists(os.path.join(repo_root, path)):
+                    messages.append(f"MISSING: {path} (in {filepath})")
+    if messages:
+        messages.append("FAIL: one or more import/path references are missing")
+        return CheckResult(False, messages)
+    return CheckResult(True, ["OK: all import and feature path references resolve"])
+
+
+# ---------- check_symlinks_resolve -------------------------------------------
+
+def check_symlinks_resolve(root: str) -> CheckResult:
+    """Inv 30: no dangling symlinks under <root>/.claude/."""
+    claude_dir = os.path.join(root, ".claude")
+    if not os.path.isdir(claude_dir):
+        return CheckResult(True, [f"OK: no .claude/ at {root} (vacuous)"])
+    dangling: List[str] = []
+    for dirpath, dirnames, filenames in os.walk(claude_dir, followlinks=False):
+        for fname in filenames + dirnames:
+            full = os.path.join(dirpath, fname)
+            if os.path.islink(full):
+                target = os.path.realpath(full)
+                if not target or not os.path.exists(target):
+                    dangling.append(full)
+    if dangling:
+        messages = [f"DANGLING: {link}" for link in sorted(dangling)]
+        messages.append(f"FAIL: dangling symlinks found under {root}/.claude")
+        return CheckResult(False, messages)
+    return CheckResult(True, ["OK: all symlinks under .claude/ resolve"])
+
+
+# ---------- check_template_producer_consistency ------------------------------
+
+# Inv 23: producer-field set MUST be derived from a live source, not hardcoded.
+# Live source: bug.json.schema.json properties (the contract schema producers
+# write against). Loaded lazily at module-load time from disk; if the schema
+# is unreadable the set falls back to an empty set and the check fails loudly
+# rather than silently passing.
+_BUG_SCHEMA_PATH = os.path.normpath(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "..", "schemas", "bug.json.schema.json",
+))
+
+
+def _load_producer_fields() -> set:
+    try:
+        with open(_BUG_SCHEMA_PATH) as f:
+            schema = json.load(f)
+        return set(schema.get("properties", {}).keys())
+    except (OSError, json.JSONDecodeError):
+        return set()
+
+
+_PRODUCER_FIELDS = _load_producer_fields()
+_TEMPLATE_METADATA = {"template_version"}
+
+
+def check_template_producer_consistency(template_path: str) -> CheckResult:
+    """Inv 23: template top-level keys are a subset of the live producer field set."""
+    try:
+        with open(template_path) as f:
+            data = json.load(f)
+    except Exception as e:
+        return CheckResult(False, [f"ERROR: failed to parse {template_path}: {e}"])
+    messages: List[str] = []
+    for k in data.keys():
+        if k in _TEMPLATE_METADATA:
+            continue
+        if k not in _PRODUCER_FIELDS:
+            messages.append(
+                f"UNKNOWN KEY: '{k}' in {template_path} is not in the producer field set"
+            )
+    if messages:
+        messages.append("FAIL: template-schema-producer consistency check failed")
+        return CheckResult(False, messages)
+    return CheckResult(True, [
+        "OK: all template keys are consistent with the live producer field set"
+    ])
+
+
+# ---------- check_numbered_lists ---------------------------------------------
+
+_NUMBERED_PATTERNS = [
+    (re.compile(r"^\s*#{1,6}\s+\d+\.\d+(?:\.\d+)*\b"), "heading-decimal"),
+    (re.compile(r"^\s*#{1,6}\s+\d+[a-z]\b"), "heading-letter"),
+    (re.compile(r"^\s*[-*+]?\s*\d+\.\d+(?:\.\d+)*\.\s"), "list-decimal"),
+    (re.compile(r"^\s*[-*+]?\s*\d+[a-z][.):]\s"), "list-letter"),
+]
+_NUMBERED_SKIP = ("/archive/", "/docs/superpowers/")
+
+
+def _numbered_is_skipped(path: str) -> bool:
+    norm = path.replace(os.sep, "/")
+    return any(s in norm for s in _NUMBERED_SKIP)
+
+
+def _numbered_check_file(path: str) -> List[tuple]:
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = f.readlines()
+    except (OSError, UnicodeDecodeError) as e:
+        return [(0, "read-error", str(e))]
+    violations = []
+    in_fence = False
+    for i, line in enumerate(lines, start=1):
+        stripped = line.lstrip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        for rx, name in _NUMBERED_PATTERNS:
+            if rx.match(line):
+                violations.append((i, name, line.rstrip("\n")))
+                break
+    return violations
+
+
+def _numbered_collect(target: str):
+    if os.path.isfile(target):
+        if target.endswith(".md") and not _numbered_is_skipped(target):
+            yield target
+        return
+    for dirpath, dirnames, filenames in os.walk(target):
+        if _numbered_is_skipped(dirpath + os.sep):
+            dirnames[:] = []
+            continue
+        for fname in filenames:
+            if fname.endswith(".md"):
+                p = os.path.join(dirpath, fname)
+                if not _numbered_is_skipped(p):
+                    yield p
+
+
+def check_numbered_lists(targets: List[str]) -> CheckResult:
+    """Inv 40: reject decimal/letter-suffix numbering in Markdown ordered lists & headings."""
+    messages: List[str] = []
+    for target in targets:
+        if not os.path.exists(target):
+            messages.append(f"ERROR: not a file or directory: {target}")
+            continue
+        for md in _numbered_collect(target):
+            for line_no, name, content in _numbered_check_file(md):
+                messages.append(f"{md}:{line_no}: {name} {content}")
+    if messages:
+        return CheckResult(False, messages)
+    return CheckResult(True, ["OK: no numbered-list violations"])
+
+
+# ---------- validate_feature -------------------------------------------------
+
+_VALID_TDD_STATES = {"spec", "spec-update", "test-red", "impl", "test-green",
+                     "review", "merged", "deprecated"}
+
+
+def validate_feature(feature_dir: str) -> CheckResult:
+    """Validate a feature directory against the feature-skeleton schema.
+
+    Returns CheckResult(passed=True, [...]) on success.
+    Returns CheckResult(passed=False, [...]) on validation errors.
+    Retired features (status=retired) short-circuit to passed=True with a
+    RETIRED: notice (spec Inv 43b).
+    """
+    if not feature_dir:
+        return CheckResult(False, ["ERROR: feature_dir is empty"])
+    if not os.path.isdir(feature_dir):
+        return CheckResult(False, [f"ERROR: not a directory: {feature_dir}"])
+
+    expected_name = os.path.basename(os.path.realpath(feature_dir))
+    errors: List[str] = []
+
+    feature_json_path = os.path.join(feature_dir, "feature.json")
+
+    # Inv 43b: retired feature short-circuit
+    if os.path.isfile(feature_json_path):
+        try:
+            with open(feature_json_path) as f:
+                early = json.load(f)
+            if early.get("status") == "retired":
+                return CheckResult(True, [
+                    f"RETIRED: {feature_dir} (status=retired; structural checks skipped)"
+                ])
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    def err(msg: str) -> None:
+        errors.append(f"ERROR: {msg}")
+
+    # Required files / dirs
+    if not os.path.isfile(feature_json_path):
+        err("missing feature.json")
+    if not os.path.isfile(os.path.join(feature_dir, "docs", "spec", "spec.md")):
+        err("missing docs/spec/spec.md")
+    elif os.path.getsize(os.path.join(feature_dir, "docs", "spec", "spec.md")) == 0:
+        err("docs/spec/spec.md is empty")
+    if not os.path.isfile(os.path.join(feature_dir, "docs", "spec", "contract.md")):
+        err("missing docs/spec/contract.md")
+    elif os.path.getsize(os.path.join(feature_dir, "docs", "spec", "contract.md")) == 0:
+        err("docs/spec/contract.md is empty")
+    run_py = os.path.join(feature_dir, "test", "run.py")
+    if not os.path.isfile(run_py):
+        err("missing test/run.py")
+    elif not os.access(run_py, os.X_OK):
+        err("test/run.py not executable")
+
+    if not os.path.isfile(feature_json_path):
+        errors.append(f"FAIL: {len(errors)} error(s) in {feature_dir}")
+        return CheckResult(False, errors)
+
+    try:
+        with open(feature_json_path) as f:
+            data = json.load(f)
+    except json.JSONDecodeError:
+        err("feature.json is not valid JSON")
+        errors.append(f"FAIL: {len(errors)} error(s) in {feature_dir}")
+        return CheckResult(False, errors)
+
+    # Schema validation (jsonschema optional dep)
+    schema_path = os.path.normpath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..", "schemas", "feature.json.schema.json",
+    ))
+    if os.path.isfile(schema_path):
+        try:
+            import jsonschema  # type: ignore
+            with open(schema_path) as f:
+                schema = json.load(f)
+            try:
+                jsonschema.validate(data, schema)
+            except jsonschema.ValidationError as e:
+                err(f"feature.json: schema violation: {e.message}")
+        except ImportError:
+            pass
+
+    name = data.get("name", "")
+    if not name:
+        err("feature.json: missing name")
+    elif name != expected_name:
+        err(f"feature.json: name '{name}' does not match directory name '{expected_name}'")
+
+    version = data.get("version", "")
+    if not version:
+        err("feature.json: missing version")
+    elif not re.match(r"^\d+\.\d+\.\d+$", version):
+        err(f"feature.json: version '{version}' is not semver (X.Y.Z)")
+
+    owner = data.get("owner", "")
+    if not owner:
+        err("feature.json: missing owner")
+    elif isinstance(owner, dict):
+        err("feature.json: owner must be a flat string, not an object")
+
+    tdd_state = data.get("tdd_state", "")
+    if not tdd_state:
+        err("feature.json: missing tdd_state")
+    elif tdd_state not in _VALID_TDD_STATES:
+        err(f"feature.json: invalid tdd_state '{tdd_state}' "
+            f"(allowed: {' | '.join(sorted(_VALID_TDD_STATES))})")
+
+    if not data.get("summary", ""):
+        err("feature.json: missing summary")
+
+    surface = data.get("surface")
+    if not isinstance(surface, dict):
+        err("feature.json: surface must be an object")
+    else:
+        for key in ("hooks", "commands", "agents", "skills"):
+            if not isinstance(surface.get(key), list):
+                err(f"feature.json: surface.{key} must be an array")
+
+    if not data.get("deprecation_criterion", ""):
+        err("feature.json: missing deprecation_criterion")
+
+    if errors:
+        errors.append(f"FAIL: {len(errors)} error(s) in {feature_dir}")
+        return CheckResult(False, errors)
+    return CheckResult(True, [f"PASS: {feature_dir}"])

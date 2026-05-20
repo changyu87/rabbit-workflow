@@ -468,13 +468,15 @@ else:
     fail_t(34, "refresh.py still contains dead inline policy-marker detection (BUG-80)")
 
 # ---------------------------------------------------------------------------
-# BUG-82: validate-all.py default root resolves under the repo root, not CWD.
+# BUG-82: validate-all.py default root resolution — obsolete after BACKLOG-24.
+# The script was deleted (BACKLOG-24 — feature-audit now owned by
+# rabbit-feature-audit skill in rabbit-feature). The BUG-82 invariant is
+# preserved here as an absence assertion so the deletion is verified.
 # ---------------------------------------------------------------------------
-va_py = read(os.path.join(SCRIPTS, "validate-all.py"))
-if "rev-parse" in va_py and "RABBIT_ROOT" in va_py:
-    ok(35, "validate-all.py resolves default root against repo root (BUG-82)")
+if not os.path.exists(os.path.join(SCRIPTS, "validate-all.py")):
+    ok(35, "validate-all.py removed (BACKLOG-24 supersedes BUG-82)")
 else:
-    fail_t(35, "validate-all.py default root still CWD-relative (BUG-82)")
+    fail_t(35, "validate-all.py should be deleted (BACKLOG-24)")
 
 # ---------------------------------------------------------------------------
 # BUG-83: scope-guard.py imports sys only once.

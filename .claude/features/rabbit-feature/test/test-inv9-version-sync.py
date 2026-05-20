@@ -14,6 +14,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 FEATURE_JSON = os.path.join(FEATURE_DIR, "feature.json")
 SPEC_MD = os.path.join(FEATURE_DIR, "docs", "spec", "spec.md")
+CONTRACT_MD = os.path.join(FEATURE_DIR, "docs", "spec", "contract.md")
 
 
 def _load_feature_version():
@@ -30,6 +31,17 @@ def _load_spec_version():
     frontmatter = m.group(1)
     vm = re.search(r"^version:\s*(\S+)\s*$", frontmatter, re.MULTILINE)
     assert vm, "spec.md frontmatter must contain a version field"
+    return vm.group(1)
+
+
+def _load_contract_version():
+    with open(CONTRACT_MD) as f:
+        text = f.read()
+    m = re.match(r"^---\n(.*?)\n---", text, re.DOTALL)
+    assert m, "contract.md must start with YAML frontmatter"
+    frontmatter = m.group(1)
+    vm = re.search(r"^version:\s*(\S+)\s*$", frontmatter, re.MULTILINE)
+    assert vm, "contract.md frontmatter must contain a version field"
     return vm.group(1)
 
 
@@ -51,12 +63,23 @@ def test_spec_md_has_version():
     assert v is not None and v != "", "spec.md frontmatter must have a non-empty version"
 
 
+def test_contract_md_exists():
+    assert os.path.isfile(CONTRACT_MD), f"contract.md missing at {CONTRACT_MD}"
+
+
+def test_contract_md_has_version():
+    v = _load_contract_version()
+    assert v is not None and v != "", "contract.md frontmatter must have a non-empty version"
+
+
 def test_versions_equal():
-    """Inv 9: feature.json version MUST equal spec.md frontmatter version."""
+    """Inv 9: feature.json, spec.md, and contract.md versions MUST all match."""
     fv = _load_feature_version()
     sv = _load_spec_version()
-    assert fv == sv, \
-        f"version drift: feature.json={fv!r} vs spec.md={sv!r}"
+    cv = _load_contract_version()
+    assert fv == sv == cv, (
+        f"version drift: feature.json={fv!r} vs spec.md={sv!r} vs contract.md={cv!r}"
+    )
 
 
 if __name__ == "__main__":

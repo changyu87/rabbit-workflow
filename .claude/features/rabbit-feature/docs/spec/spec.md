@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.4.0
+version: 1.6.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -61,6 +61,16 @@ anywhere in this feature. Test runner is `test/run.py`.
   feature's current spec, judges the request type, invokes superpowers as
   needed, updates the spec, and writes an impl-suggestion file for whoever
   invoked it.
+- `.claude/features/rabbit-feature/skills/rabbit-feature-new/SKILL.md`
+  — feature-scaffolding skill. Given a feature name, shells out to the
+  rabbit-cage `new-feature.py` script to create a conforming feature dir
+  (`feature.json`, `docs/spec/spec.md`, `docs/spec/contract.md`,
+  `test/run.py`), then validates the scaffold via
+  `contract.lib.checks.validate_feature`.
+- `.claude/features/rabbit-feature/skills/rabbit-feature-audit/SKILL.md`
+  — feature-audit skill. Validates a single feature or sweeps every
+  feature using `contract.lib.checks.validate_feature` and returns
+  structured pass/fail findings per feature.
 - `.claude/features/rabbit-feature/scripts/resolve-scope.py`
   — absorbed script that builds the Agent-dispatch prompt used by
   `rabbit-feature-scope`.
@@ -307,6 +317,37 @@ feature.
     not by a cross-source comparison. The locking test
     `test-absorbed-rabbit-spec.py` has been removed.
 
+### rabbit-feature-new (v1.5.0, BACKLOG-2)
+
+33. `rabbit-feature` provides a `rabbit-feature-new` skill at
+    `.claude/features/rabbit-feature/skills/rabbit-feature-new/SKILL.md`
+    that scaffolds a new rabbit feature directory with the required
+    structure (`feature.json`, `docs/spec/spec.md`,
+    `docs/spec/contract.md`, `test/run.py`). The skill shells out to
+    `.claude/features/rabbit-cage/scripts/new-feature.py` for the
+    scaffold operation (this cross-feature dependency is TEMPORARY —
+    RABBIT-CAGE-BACKLOG-24, separate cycle, will move the actual
+    script into this feature). After scaffolding, the skill MUST
+    validate the new feature dir via
+    `contract.lib.checks.validate_feature` and report the new feature
+    directory path. The skill SKILL.md is declared in
+    `feature.json.surface.skills` and `contract.md.provides.skills`.
+
+### rabbit-feature-audit (v1.6.0, BACKLOG-3)
+
+34. `rabbit-feature` provides a `rabbit-feature-audit` skill at
+    `.claude/features/rabbit-feature/skills/rabbit-feature-audit/SKILL.md`
+    that validates rabbit feature directories using
+    `contract.lib.checks.validate_feature`. Invocation signature:
+    `Skill("rabbit-feature-audit", args: "all")` sweeps every feature
+    under `.claude/features/` (retired features short-circuit per
+    `validate_feature` semantics); `Skill("rabbit-feature-audit",
+    args: "<feature-name>")` audits a single feature. Output is
+    structured per-feature pass/fail with messages. The skill SKILL.md
+    is declared in `feature.json.surface.skills` and
+    `contract.md.provides.skills`. Depends on the contract library
+    `validate_feature` (CONTRACT-BACKLOG-26, already landed).
+
 ## What this feature does NOT define
 
 - The TDD subagent itself, its 9-step cycle, or the `tdd-step.py` state
@@ -338,6 +379,7 @@ v1.4.0 post-consolidation cleanup are:
 - `test-inv9-version-sync.py` — feature.json/spec.md version sync.
 - `test-bug-9-generated-at-format.py` — impl-suggestion timestamp
   format.
+- `test-skill-rabbit-feature-audit.py` — Invariant 34.
 
 Inv 24 and Inv 32 (byte-identical absorption locks) are RETIRED at
 v1.4.0; the associated locking tests were removed. Many absorbed

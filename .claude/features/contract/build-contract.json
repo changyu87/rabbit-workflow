@@ -68,13 +68,6 @@
       "check_on_stop": true
     },
     {
-      "name": "skills/rabbit-workspace-map/SKILL.md",
-      "type": "copy-file",
-      "source": ".claude/features/contract/skills/rabbit-workspace-map/SKILL.md",
-      "destination": ".claude/skills/rabbit-workspace-map/SKILL.md",
-      "check_on_stop": true
-    },
-    {
       "name": "skills/rabbit-feature-scope/SKILL.md",
       "type": "copy-file",
       "source": ".claude/features/rabbit-feature/skills/rabbit-feature-scope/SKILL.md",
@@ -93,6 +86,20 @@
       "type": "copy-file",
       "source": ".claude/features/rabbit-feature/skills/rabbit-feature-spec/SKILL.md",
       "destination": ".claude/skills/rabbit-feature-spec/SKILL.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "skills/rabbit-feature-new/SKILL.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-feature/skills/rabbit-feature-new/SKILL.md",
+      "destination": ".claude/skills/rabbit-feature-new/SKILL.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "skills/rabbit-feature-audit/SKILL.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-feature/skills/rabbit-feature-audit/SKILL.md",
+      "destination": ".claude/skills/rabbit-feature-audit/SKILL.md",
       "check_on_stop": true
     },
     {

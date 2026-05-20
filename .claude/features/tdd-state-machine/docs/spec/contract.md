@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.1.0
+version: 1.2.1
 template_version: 2.0.0
 owner: rabbit team
 deprecation_criterion: when TDD state machine is replaced by a fundamentally different orchestration approach
@@ -38,14 +38,9 @@ deprecation_criterion: when TDD state machine is replaced by a fundamentally dif
     "files": [
       "<feature-dir>/feature.json",
       "<feature-dir>/test/run.py",
-      "<feature-dir>/docs/spec/spec.md",
+      "<feature-dir>/docs/spec/",
       ".claude/features/contract/scripts/rabbit_print.py",
-      ".claude/features/contract/scripts/enforcement/check-tests-non-interactive.py",
-      ".claude/features/contract/scripts/enforcement/check-sentinel.py",
-      ".claude/features/contract/scripts/enforcement/check-naming.py",
-      ".claude/features/contract/scripts/enforcement/check-imports-resolve.py",
-      ".claude/features/contract/scripts/enforcement/check-symlinks-resolve.py",
-      ".claude/features/contract/scripts/enforcement/check-template-schema-producer-consistency.py",
+      ".claude/features/contract/lib/checks.py",
       ".claude/features/contract/templates/bug-template.json",
       ".claude/features/rabbit-cage/scripts/rabbit-project.py",
       "<project-dir>/project-map.json"
@@ -55,12 +50,6 @@ deprecation_criterion: when TDD state machine is replaced by a fundamentally dif
   "invokes": {
     "scripts": [
       "<feature-dir>/test/run.py",
-      ".claude/features/contract/scripts/enforcement/check-tests-non-interactive.py",
-      ".claude/features/contract/scripts/enforcement/check-sentinel.py",
-      ".claude/features/contract/scripts/enforcement/check-naming.py",
-      ".claude/features/contract/scripts/enforcement/check-imports-resolve.py",
-      ".claude/features/contract/scripts/enforcement/check-symlinks-resolve.py",
-      ".claude/features/contract/scripts/enforcement/check-template-schema-producer-consistency.py",
       ".claude/features/rabbit-cage/scripts/rabbit-project.py"
     ],
     "agents": []

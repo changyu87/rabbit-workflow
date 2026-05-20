@@ -3,7 +3,7 @@
 
 Covers:
   BUG-11    feature.json.schema.json tdd_state enum includes 'deprecated' (and 'merged')
-  BUG-12    render-template.py docstring does not reference render-template.sh
+  BUG-12    (moot, deleted: render-template.py was removed in CONTRACT-BACKLOG-24)
   BUG-27    test-files-exist.py checks skill-template.md, command-template.md, handoff-template.md
   BACKLOG-3 test-templates-have-version.py tightened to reject _template_version
   BACKLOG-4 every feature.json in the repo validates against feature.json.schema.json
@@ -13,9 +13,9 @@ Covers:
   BACKLOG-8 rabbit-print.schema.json declared producers all exist on disk
   BACKLOG-9 spec Surface and contract.md provides entries match actual files
   BACKLOG-10 validate-feature.py invokes feature.json.schema.json validation
-  BACKLOG-12 rabbit-triage.py validates feature_dir before basename-dereferencing it
-  BACKLOG-13 workspace-map.py --help documents legacy positional form
-  BACKLOG-14 check-opus-for-planning-agents.py PATTERN uses word boundaries
+  BACKLOG-12 (moot, deleted: rabbit-triage.py was removed in CONTRACT-BACKLOG-24)
+  BACKLOG-13 (moot, deleted: workspace-map.py was removed in CONTRACT-BACKLOG-27)
+  BACKLOG-14 (moot, deleted: check-opus-for-planning-agents.py was removed in CONTRACT-BACKLOG-27)
   BACKLOG-15 spec Inv 5 (rabbit-print schema authority) asserted by test
   BACKLOG-16 spec Inv 9 (build-contract validation) limitation documented
 
@@ -196,41 +196,28 @@ else:
     ko(f"BACKLOG-9: contract.md missing scripts: {sorted(missing_in_contract)}")
 
 
-# BACKLOG-10: validate-feature.py imports/uses feature.json.schema.json
-vf_path = os.path.join(FEATURE_DIR, "scripts/validate-feature.py")
+# BACKLOG-10: feature.json.schema.json validation lives in the validate_feature
+# library (post-BACKLOG-26 extraction). Check the library, which is where the
+# logic now lives; validate-feature.py is a thin shim that delegates to it.
+vf_path = os.path.join(FEATURE_DIR, "lib/checks.py")
 with open(vf_path) as f:
     vf_content = f.read()
 if "feature.json.schema.json" in vf_content:
-    ok("BACKLOG-10: validate-feature.py references feature.json.schema.json")
+    ok("BACKLOG-10: lib/checks.py references feature.json.schema.json")
 else:
-    ko("BACKLOG-10: validate-feature.py does not reference feature.json.schema.json")
+    ko("BACKLOG-10: lib/checks.py does not reference feature.json.schema.json")
 
 
 # BACKLOG-12: rabbit-triage.py was deleted in CONTRACT-BACKLOG-24 (dead code).
 # Original assertion (isdir/realpath ordering) is moot.
 
 
-# BACKLOG-13: workspace-map.py --help documents legacy positional form
-wm_path = os.path.join(FEATURE_DIR, "scripts/workspace-map.py")
-with open(wm_path) as f:
-    wm_content = f.read()
-# The argparse help path: search for "legacy" in the help-print branch
-help_branch_text = wm_content[wm_content.find('"--help"'):wm_content.find('"--help"') + 800] if '"--help"' in wm_content else ""
-if "legacy" in help_branch_text.lower():
-    ok("BACKLOG-13: workspace-map.py --help documents legacy positional form")
-else:
-    ko("BACKLOG-13: workspace-map.py --help omits legacy positional form")
+# BACKLOG-13: workspace-map.py was deleted in CONTRACT-BACKLOG-27 (orphan).
+# Original --help legacy-form assertion is moot.
 
-
-# BACKLOG-14: check-opus-for-planning-agents.py uses word-boundary regex
-cop_path = os.path.join(FEATURE_DIR, "scripts/enforcement/check-opus-for-planning-agents.py")
-with open(cop_path) as f:
-    cop_content = f.read()
-# Must use \b boundaries OR a list of full words anchored explicitly.
-if r"\b" in cop_content:
-    ok("BACKLOG-14: check-opus-for-planning-agents.py uses word-boundary regex")
-else:
-    ko("BACKLOG-14: check-opus-for-planning-agents.py PATTERN lacks word boundaries")
+# BACKLOG-14: check-opus-for-planning-agents.py was deleted in
+# CONTRACT-BACKLOG-27 (never auto-invoked; fragile premise; retired).
+# Original word-boundary regex assertion is moot.
 
 
 # BACKLOG-15 (post-BACKLOG-20): spec Inv 5 — a test asserts the [rabbit] print

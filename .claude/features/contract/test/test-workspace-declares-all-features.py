@@ -2,15 +2,12 @@
 """test-workspace-declares-all-features.py — Inv 38.
 
 `.claude/workspace-structure.json` MUST declare nodes for every feature that
-exists on disk under `.claude/features/`. Missing declarations cause
-`workspace-map.py --audit` to emit a `warn`-severity finding (Inv 38).
+exists on disk under `.claude/features/`. The runtime check via
+`workspace-map.py --audit` was retired in CONTRACT-BACKLOG-27; this test
+now validates the declaration shape directly.
 
-This is an end-to-end test:
   t1: Every directory under .claude/features/ has a corresponding entry in
       the features node of .claude/workspace-structure.json.
-  t2: Running `workspace-map.py --audit` does NOT emit any
-      `type=unknown` finding whose path is a top-level feature directory
-      (i.e., .claude/features/<feature-name>).
   t3: Specifically — Cycle B-added features rabbit-spec, rabbit-file, and
       rabbit-feature are declared in workspace-structure.json.
 """
@@ -30,7 +27,6 @@ REPO_ROOT = result.stdout.strip() if result.returncode == 0 else ""
 
 DECL = os.path.join(REPO_ROOT, ".claude/workspace-structure.json")
 FEATURES_DIR = os.path.join(REPO_ROOT, ".claude/features")
-MAP_SCRIPT = os.path.join(REPO_ROOT, ".claude/features/contract/scripts/workspace-map.py")
 
 FAIL = 0
 
@@ -66,22 +62,6 @@ if missing:
     fail_t(1, f"features on disk but not declared: {sorted(missing)}")
 else:
     ok(1, f"all {len(on_disk_features)} on-disk features declared in workspace-structure.json")
-
-# t2: workspace-map.py --audit emits no `unknown` finding for top-level feature dirs
-r = subprocess.run(["python3", MAP_SCRIPT, "--audit"], capture_output=True, text=True)
-audit = json.loads(r.stdout)
-unknown_feature_findings = [
-    f for f in audit.get("findings", [])
-    if f.get("type") == "unknown"
-    and f.get("path", "").startswith(".claude/features/")
-    # only top-level feature dirs (one path segment under .claude/features/);
-    # e.g., ".claude/features/rabbit-spec" — 2 slashes, 3 segments.
-    and f["path"].count("/") == 2
-]
-if unknown_feature_findings:
-    fail_t(2, f"audit emits unknown findings for top-level feature dirs: {[f['path'] for f in unknown_feature_findings]}")
-else:
-    ok(2, "audit emits no 'unknown' findings for top-level feature dirs")
 
 # t3: Cycle B features are present in declaration
 required = {"rabbit-spec", "rabbit-file", "rabbit-feature"}
