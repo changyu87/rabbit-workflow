@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.2.0
+version: 1.2.1
 template_version: 2.0.0
 owner: rabbit team
 deprecation_criterion: when TDD state machine is replaced by a fundamentally different orchestration approach
@@ -38,7 +38,7 @@ deprecation_criterion: when TDD state machine is replaced by a fundamentally dif
     "files": [
       "<feature-dir>/feature.json",
       "<feature-dir>/test/run.py",
-      "<feature-dir>/docs/spec/spec.md",
+      "<feature-dir>/docs/spec/",
       ".claude/features/contract/scripts/rabbit_print.py",
       ".claude/features/contract/lib/checks.py",
       ".claude/features/contract/templates/bug-template.json",

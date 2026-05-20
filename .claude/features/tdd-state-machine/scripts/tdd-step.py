@@ -184,7 +184,8 @@ def _load_checks_module(repo_root):
     checks_path = os.path.join(features_dir, "contract", "lib", "checks.py")
     if not os.path.isfile(checks_path):
         return None
-    if features_dir not in sys.path:
+    inserted = features_dir not in sys.path
+    if inserted:
         sys.path.insert(0, features_dir)
     try:
         # Force a fresh import bound to features_dir even if a prior call
@@ -195,6 +196,14 @@ def _load_checks_module(repo_root):
         return importlib.import_module("contract.lib.checks")
     except Exception:
         return None
+    finally:
+        # Remove the entry we added so callers that embed tdd-step.py in a
+        # long-lived process do not inherit a polluted sys.path (BUG-6).
+        if inserted:
+            try:
+                sys.path.remove(features_dir)
+            except ValueError:
+                pass
 
 
 def _run_enforcement_checks(d, repo_root):
@@ -221,7 +230,7 @@ def _run_enforcement_checks(d, repo_root):
 
     _safe(checks.check_tests_non_interactive, (d,),
           f"WARNING: R3 check failed for {d} — tests may have interactive constructs")
-    _safe(checks.check_sentinel, (d,), "")
+    _safe(checks.check_sentinel, (d,), f"WARNING: sentinel check failed for {d}")
     _safe(checks.check_naming, (d,), f"WARNING: naming check failed for {d}")
     _safe(checks.check_imports_resolve, (d,), f"WARNING: R-import-resolve check failed for {d}")
     _safe(checks.check_symlinks_resolve, (repo_root,), "WARNING: symlink-resolve check failed")
@@ -381,21 +390,21 @@ def cmd_transition(args):
         sys.stderr.write(f"ERROR: '{cur}' is terminal; cannot transition (even with --force)\n")
         return 1
 
-    if new in valid_forward:
-        write_state(d, new, spec_no_change_reason=spec_no_change_reason)
+    def _post_write_hooks():
         if new == "test-green":
             _post_test_green_hooks(d)
         if cur == "spec-update" and new == "test-red":
             _run_spec_update_checks(d, REPO_ROOT)
+
+    if new in valid_forward:
+        write_state(d, new, spec_no_change_reason=spec_no_change_reason)
+        _post_write_hooks()
         _rbt_ok(rabbit_block(tdd_transition(cur, new)))
         return 0
 
     if force:
         write_state(d, new, spec_no_change_reason=spec_no_change_reason)
-        if new == "test-green":
-            _post_test_green_hooks(d)
-        if cur == "spec-update" and new == "test-red":
-            _run_spec_update_checks(d, REPO_ROOT)
+        _post_write_hooks()
         _rbt_alert(rabbit_block(tdd_forced(cur, new)))
         _rbt_ok(rabbit_block(tdd_transition(cur, new)))
         return 0
