@@ -17,14 +17,22 @@ Args format: `<feature-name> <request-or-item-description>`
 
 ## Step 1 — Read Current State
 
-Before forming any opinion, read what exists. You MAY read any file inside
-the target feature's directory `.claude/features/<feature-name>/`. Examples
-of what you should typically read include:
+Before forming any opinion, you MUST Read the target feature's
+`.claude/features/<feature-name>/docs/spec/spec.md` via the Read tool
+in this session. Reading is mandatory comprehension, not optional
+context-gathering — it lets you understand current invariants,
+numbering, and section structure before mutating, and it satisfies
+Claude Code's per-session file-state guard that rejects Edit tool
+calls on files not previously Read in-session. Skipping this Read
+causes silent `File must be read first` tool errors at Step 4.
 
-1. The feature's current spec: `.claude/features/<feature-name>/docs/spec/spec.md`
-2. The feature's contract (if present): `.claude/features/<feature-name>/docs/spec/contract.md`
-3. The feature manifest: `.claude/features/<feature-name>/feature.json`
-4. Any existing implementation files under
+You MAY also read any other file inside the target feature's
+directory `.claude/features/<feature-name>/`. Examples of what you
+should typically read include:
+
+1. The feature's contract (if present): `.claude/features/<feature-name>/docs/spec/contract.md`
+2. The feature manifest: `.claude/features/<feature-name>/feature.json`
+3. Any existing implementation files under
    `.claude/features/<feature-name>/scripts/`, `.../skills/`, `.../hooks/`,
    `.../commands/`, or `.../agents/` — read freely; you are not writing to
    these.
@@ -68,6 +76,14 @@ Only. No brainstorming needed when the change is already well-defined.
 Both superpowers run under your current model context (opus). Do not dispatch a subagent — this skill runs inline.
 
 ## Step 4 — Update the Spec
+
+**PRE-CONDITION:** You must have already Read the target
+`.claude/features/<feature-name>/docs/spec/spec.md` in Step 1 of this
+same session. The Claude Code Edit tool will reject any Edit on a
+file not previously Read in-session — this is not optional, it is a
+harness-enforced contract. If for any reason you arrive at Step 4
+without having Read the spec.md in this session, Read it now before
+proceeding to the Edit/Write call below.
 
 Edit `.claude/features/<feature-name>/docs/spec/spec.md` to reflect what the request requires. Be surgical:
 - For specific requests: add/modify only the affected invariants or surface entries
