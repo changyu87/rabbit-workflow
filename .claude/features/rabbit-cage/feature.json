@@ -2,17 +2,17 @@
   "name": "rabbit-cage",
   "version": "4.3.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, skills for scaffolding, project management, and installation. Bug-filing and backlog management are now owned by rabbit-bug and rabbit-backlog respectively.",
   "surface": {
     "hooks": [],
     "commands": [],
-    "skills": [],
+    "skills": ["rabbit-config"],
     "settings": []
   },
   "deprecation_criterion": "when Claude Code exposes a native feature-container mechanism that subsumes this role",
   "updated_note": "the `updated` field is hand-maintained at the close of each TDD cycle; bump it whenever feature contents materially change",
   "updated": "2026-05-19",
   "tdd_last_cycle_impl_commit": "505c834fbb6854b9fecc95a0def66936e951d74a",
-  "spec_no_change_reason": "spec changes for BUG-93 already committed prior to state advance"
+  "spec_no_change_reason": "spec change for Inv 86 already committed by dispatcher prior to subagent dispatch"
 }
