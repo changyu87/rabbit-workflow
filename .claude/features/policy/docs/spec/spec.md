@@ -40,6 +40,27 @@ Owns the three canonical rule files fed to every subagent dispatch.
    `test-policy-invariants-*` test covers the same numbering checks.
    (BACKLOG-11)
 
+6. **Read-before-Edit principle (BACKLOG-13).** `coding-rules.md` MUST
+   include a general principle requiring every actor that edits an
+   existing file to first Read it in the same session. The principle
+   is invariant text — not the wording of any specific tool — and
+   propagates the lesson of rabbit-feature Inv 35 from one skill to
+   every subagent via the policy preamble injected by
+   `dispatch-tdd-subagent.py`. The canonical phrasing MUST express:
+   (a) read before editing existing files, (b) read the surrounding
+   module before writing alongside existing code, (c) edits made
+   without reading are speculative. A regression test
+   (`test-rule-files-content.py` or successor) MUST assert the
+   principle's canonical phrase is present in `coding-rules.md`.
+
+7. **Test file convention (BACKLOG-13).** `test-policy-invariants.py`
+   (non-versioned) is the canonical name for the spec-conformance
+   test suite. The legacy versioned forms
+   (`test-policy-invariants-v1-X-Y.py`) MUST NOT be reintroduced —
+   they triggered a rename cycle on every spec version bump
+   (BACKLOG-13 retired the pattern). `test-files-exist.py` MUST NOT
+   exist (its coverage is subsumed by `test-policy-invariants.py`).
+
 ## Out of Scope
 
 - Generating policy output on demand — consumers read files directly.
