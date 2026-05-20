@@ -6,20 +6,24 @@
 ## Purpose
 
 Owns the forward-only TDD state machine that every rabbit feature touch
-moves through. Three scripts:
+moves through. One script:
 
 - `scripts/tdd-step.py` — the state machine itself (`show`, `next`,
   `transitions`, `transition`).
-- `scripts/tdd-context.py` — emits machine-first JSON describing a
-  feature's current TDD state, allowed next states, and guidance text;
-  consumed by subagent prompts.
-- `scripts/tdd-drift-check.py` — verifies that a feature's claimed
-  `tdd_state` matches the actual test-run outcome.
 
 Extracted from `tdd-subagent` so that `tdd-subagent` itself contains only
 subagent dispatch (`dispatch-tdd-subagent.py` + agent definition). The
-import + slim cycles are complete; the three scripts are owned here and
-absent from `tdd-subagent/scripts/`.
+import + slim cycles are complete; the script is owned here and absent
+from `tdd-subagent/scripts/`.
+
+The legacy helper scripts `tdd-context.py` and `tdd-drift-check.py` were
+removed in BACKLOG-7 — both had zero runtime callers (no consumer in any
+hook, skill, command, agent, or other feature's script) despite being
+deployed and tested. Per Bounded Scope + Designed Deprecation, they were
+deleted rather than speculatively rewired. If a future cycle requires
+either capability (context emission for subagent prompts, or drift
+detection in the Stop hook), it should be added back as a deliberately
+wired feature with a documented consumer.
 
 ## Schema / Behavior
 
@@ -36,40 +40,40 @@ There is exactly one forward-only alternative branch (`_FORWARD_ALT`):
 `test-green -> spec-update`, used to start a new cycle on the same feature
 after the previous cycle reached test-green.
 
-### Inv 2 — Three scripts, named exactly
+### Inv 2 — One script, named exactly
 
-`scripts/tdd-step.py`, `scripts/tdd-context.py`, `scripts/tdd-drift-check.py`.
-No additional scripts are introduced by this feature in this cycle.
+`scripts/tdd-step.py`. No additional scripts are introduced by this
+feature. The legacy `tdd-context.py` and `tdd-drift-check.py` were
+retired in BACKLOG-7 (zero runtime callers; deleted per Bounded Scope +
+Designed Deprecation).
 
-### Inv 3 — Executable bits
+### Inv 3 — Executable bit
 
-All three scripts are stored with the user-executable bit set (any mode
+The script is stored with the user-executable bit set (any mode
 satisfying `mode & 0o100`; in practice `0o755` or `0o775` depending on the
-contributor's umask). The end-to-end test suite invokes them via
+contributor's umask). The end-to-end test suite invokes it via
 `python3 <script>` so the executable bit is not strictly required at
 run-time, but is preserved for direct invocation.
 
-### Inv 4 — `tdd-context.py` guidance aligns with `_FORWARD_ALT`
+### Inv 4 — _FORWARD_ALT test-green → spec-update transition
 
-`tdd-context.py` must surface `spec-update` in `allowed_next_states` when
-`current_state == "test-green"` so callers see the cycle-restart branch
-that `tdd-step.py` honours.
+The state machine's `_FORWARD_ALT` dictionary MUST include
+`test-green` → `spec-update` (also enforced by Inv 10). This lets a
+feature reaching `test-green` start a fresh cycle without `--force`.
+A regression test MUST cover this path end-to-end:
+`tdd-step.py transition <feat> spec-update` from a `test-green` fixture
+exits 0 and feature.json now reads `spec-update`.
 
-### Inv 5 — `tdd-drift-check.py` invocation contract
+### Inv 5 — (retired in BACKLOG-7)
 
-`tdd-drift-check.py <feature-dir>` exits 0 when the claimed state matches
-reality, 1 when drift is detected, 2 on invocation error. The drift rules
-per state:
-
-- `spec`, `spec-update`, `deprecated` — not test-checked.
-- `test-red` — `test/run.py` MUST exit non-zero.
-- `impl` — transitional, no test-outcome check.
-- `test-green` — `test/run.py` MUST exit 0.
+The legacy `tdd-drift-check.py` invocation contract was removed when
+the script itself was deleted as dead code (zero runtime callers). If
+drift detection is reintroduced, it MUST be wired into a real consumer
+(e.g. the Stop hook) at the same time the invariant is added back.
 
 ### Inv 6 — Sole ownership: present here, absent in `tdd-subagent`
 
-`tdd-state-machine` owns `tdd-step.py`, `tdd-context.py`, and
-`tdd-drift-check.py`. These scripts MUST be present in
+`tdd-state-machine` owns `tdd-step.py`. The script MUST be present in
 `.claude/features/tdd-state-machine/scripts/` and MUST be absent from
 `.claude/features/tdd-subagent/scripts/`. Replaces the previous
 byte-identity guard from the import cycle (the `tdd-subagent` originals
@@ -90,8 +94,10 @@ blocks the transition):
   but does not fail the transition.
 - `rabbit-project.py consolidate <project>` — invoked when the enclosing
   project directory carries a `project-map.json`; failure is swallowed.
-- `auto_close_backlog` — retained as a no-op stub (the dispatcher closes
-  linked items).
+
+The legacy `auto_close_backlog` no-op stub was removed in BACKLOG-7 — it
+had been retained as ceremony after the dispatcher took over linked-item
+closure, but the stub did nothing and was never invoked productively.
 
 ### Inv 8 — `--spec-no-change-reason` flag and git-diff gate
 
