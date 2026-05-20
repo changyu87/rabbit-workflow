@@ -68,8 +68,9 @@ user-mode dichotomy in the runtime.
 python3 .claude/features/rabbit-cage/scripts/new-feature.py \
     projA/features auth-redirect --owner alice
 
-# Sweep validate every feature in a tree
-python3 .claude/features/rabbit-cage/scripts/validate-all.py projA/features
+# Audit every feature in a tree (moved to rabbit-feature-audit skill in
+# rabbit-feature; the legacy validate-all.py was removed in BACKLOG-24)
+Skill("rabbit-feature-audit", args: "projA/features")
 
 # File a bug (rabbit-file owns bug/backlog item lifecycle)
 python3 .claude/features/rabbit-file/scripts/file-item.py \
