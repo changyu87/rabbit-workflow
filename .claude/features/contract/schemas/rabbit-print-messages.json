@@ -12,6 +12,10 @@
     "red": {
       "ansi": "\u001b[31m",
       "reset": "\u001b[0m"
+    },
+    "yellow": {
+      "ansi": "\u001b[33m",
+      "reset": "\u001b[0m"
     }
   },
   "messages": {
@@ -69,6 +73,11 @@
       "icon": "🔧",
       "color": "red",
       "text": "FORCED: {from_state} -> {to_state}"
+    },
+    "dispatch-bypass-note": {
+      "icon": "📢",
+      "color": "yellow",
+      "text": "NOTE: human-approval bypass marker is active (.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be skipped for this dispatch. Revoke via `/rabbit-config human-approval true`."
     }
   }
 }

@@ -58,7 +58,7 @@
         "required": ["icon", "color", "text"],
         "properties": {
           "icon":  {"type": "string", "minLength": 1},
-          "color": {"type": "string", "enum": ["green", "red"]},
+          "color": {"type": "string", "minLength": 1},
           "text":  {"type": "string", "minLength": 1}
         }
       }

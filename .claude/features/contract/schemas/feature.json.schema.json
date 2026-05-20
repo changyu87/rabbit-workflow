@@ -72,11 +72,6 @@
         }
       }
     },
-    "bugs_root": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Path to the directory holding bug filings for this feature."
-    },
     "deprecation_criterion": {
       "type": "string",
       "minLength": 1,
