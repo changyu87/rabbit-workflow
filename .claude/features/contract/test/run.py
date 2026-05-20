@@ -62,5 +62,7 @@ run_test("test-no-dead-contract-scripts.py")
 run_test("test-retirement-semantics.py")
 run_test("test-lib-checks.py")
 run_test("test-backlog-27-retirements.py")
+run_test("test-bug-41-cleanup.py")
+run_test("test-rabbit-feature-skills-deployment.py")
 
 print("ALL TESTS PASSED")
