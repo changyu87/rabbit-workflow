@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 4.3.0
+version: 4.4.0
 template_version: 2.0.0
 ---
 
@@ -13,7 +13,6 @@ template_version: 2.0.0
     "commands": [],
     "scripts": [
       {"path": ".claude/features/rabbit-cage/scripts/new-feature.py", "stdin": "none", "stdout": "scaffold path", "exit": "0=created 1=error 2=usage"},
-      {"path": ".claude/features/rabbit-cage/scripts/validate-all.py", "stdin": "none", "stdout": "validation report", "exit": "0=all pass 1=failures"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project.py", "stdin": "none", "stdout": "operation result", "exit": "0=ok 1=error 2=usage"},
       {"path": ".claude/features/rabbit-cage/scripts/generate-claude-md.py", "stdin": "none", "stdout": "CLAUDE.md content", "exit": "0=ok 1=error"},
       {"path": ".claude/features/rabbit-cage/scripts/build.py", "stdin": "none", "stdout": "build log", "exit": "0=ok 1=error", "note": "reads build-contract.json and builds all declared targets"},
