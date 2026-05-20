@@ -86,9 +86,11 @@ absent, the hook treats it as the first-run scenario and creates it.
 
 ## Skills-Directory Build Behavior
 
-`build.py` populates `.claude/skills/` by recursively copying each
-registered feature's skill source directory using shutil (preserving mode
-and timestamps via `shutil.copy2`). It does not create or follow symlinks
+`build.py` populates `.claude/skills/` by copying each registered feature's
+`SKILL.md` file (preserving mode and timestamps via `shutil.copy2`). Only
+the `SKILL.md` file is deployed per skill — implementation scripts under
+`skills/<name>/scripts/` and other subdirs are NOT recursively copied and
+remain at their canonical source path. It does not create or follow symlinks
 for skill content. This functionality is driven by the `copy-file` targets
 in `build-contract.json` (the standalone `generate-skills-dir.py` does not
 exist; see Spec Inv 27).
