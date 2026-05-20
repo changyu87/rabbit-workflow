@@ -40,6 +40,11 @@ AGENT_DEPLOYED_SCRIPTS = os.path.join(REPO_ROOT, ".claude", "agents", "tdd-subag
 
 EXTRACTED = ["tdd-step.py", "tdd-context.py", "tdd-drift-check.py"]
 
+# Scripts that survive in tdd-state-machine after BACKLOG-7.
+# tdd-context.py and tdd-drift-check.py were retired (zero runtime
+# callers; deleted per Bounded Scope + Designed Deprecation).
+EXTRACTED_SURVIVING = ["tdd-step.py"]
+
 PASS = 0
 FAIL = 0
 
@@ -66,14 +71,22 @@ def t_a_absent_from_tdd_subagent():
             ok(f"a: {s} absent from tdd-subagent/scripts/")
 
 
-# (b) extracted scripts present in tdd-state-machine
+# (b) surviving extracted scripts present in tdd-state-machine; retired
+# ones (BACKLOG-7) explicitly absent.
 def t_b_present_in_tdd_state_machine():
-    for s in EXTRACTED:
+    for s in EXTRACTED_SURVIVING:
         p = os.path.join(TDD_SM_SCRIPTS, s)
         if not os.path.isfile(p):
             ko(f"b: {s} missing from tdd-state-machine/scripts/")
         else:
             ok(f"b: {s} present in tdd-state-machine/scripts/")
+    # Retired scripts must remain ABSENT (BACKLOG-7 deletion).
+    for s in [r for r in EXTRACTED if r not in EXTRACTED_SURVIVING]:
+        p = os.path.join(TDD_SM_SCRIPTS, s)
+        if os.path.isfile(p):
+            ko(f"b: retired {s} unexpectedly present at {p} (must stay deleted per BACKLOG-7)")
+        else:
+            ok(f"b: retired {s} stays absent from tdd-state-machine/scripts/ (BACKLOG-7)")
 
 
 # (c) dispatch script's hardcoded path points at tdd-state-machine
@@ -104,7 +117,7 @@ def t_c_dispatch_path_repoint():
 def t_d_build_contract_sources():
     with open(BUILD_CONTRACT) as f:
         bc = json.load(f)
-    for s in EXTRACTED:
+    for s in EXTRACTED_SURVIVING:
         dest = f".claude/agents/tdd-subagent/scripts/{s}"
         targets = [t for t in bc.get("targets", []) if t.get("destination") == dest]
         if len(targets) != 1:
@@ -115,16 +128,31 @@ def t_d_build_contract_sources():
             ok(f"d: build-contract source for {s} points at tdd-state-machine: {src}")
         else:
             ko(f"d: build-contract source for {s} not from tdd-state-machine: {src}")
+    # Retired scripts (BACKLOG-7) must have NO copy-file target.
+    for s in [r for r in EXTRACTED if r not in EXTRACTED_SURVIVING]:
+        dest = f".claude/agents/tdd-subagent/scripts/{s}"
+        targets = [t for t in bc.get("targets", []) if t.get("destination") == dest]
+        if len(targets) == 0:
+            ok(f"d: retired {s} has no copy-file target (BACKLOG-7)")
+        else:
+            ko(f"d: retired {s} still has {len(targets)} copy-file target(s) — should be deleted per BACKLOG-7")
 
 
-# (e) the deployed agent scripts still exist
+# (e) the surviving deployed agent scripts still exist; retired ones
+# (BACKLOG-7) deliberately absent.
 def t_e_deployed_still_present():
-    for s in EXTRACTED:
+    for s in EXTRACTED_SURVIVING:
         p = os.path.join(AGENT_DEPLOYED_SCRIPTS, s)
         if os.path.isfile(p):
             ok(f"e: deployed agent script present at {p}")
         else:
             ko(f"e: deployed agent script missing: {p}")
+    for s in [r for r in EXTRACTED if r not in EXTRACTED_SURVIVING]:
+        p = os.path.join(AGENT_DEPLOYED_SCRIPTS, s)
+        if not os.path.isfile(p):
+            ok(f"e: retired deployed script absent at {p} (BACKLOG-7)")
+        else:
+            ko(f"e: retired deployed script still present at {p} — should be deleted per BACKLOG-7")
 
 
 # (f) tdd-subagent's feature.json declares only the dispatch script as surface scripts
