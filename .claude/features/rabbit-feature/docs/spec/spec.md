@@ -148,10 +148,11 @@ anywhere in this feature. Test runner is `test/run.py`.
    Step 5 `dispatch-tdd-subagent.py` invocation. If the marker is
    absent, the dispatcher surfaces the impl-suggestion summary and
    waits for explicit user approval. The brand prefix in the warning
-   MUST be the canonical emoji-framed form `[🐇 rabbit 🐇]` (per
-   contract Inv 35/36 brand convention), not the bare `[rabbit]`
-   form; LLM-emitted operational messages follow the same brand
-   convention as `rabbit_print` script output.
+   MUST be the canonical emoji-framed form `[🐇 rabbit 🐇]` (per the
+   `contract` feature's Inv 34 brand definition and Inv 36 producer
+   rule), not the bare `[rabbit]` form; LLM-emitted operational
+   messages follow the same brand convention as `rabbit_print` script
+   output.
 
 9. The dispatcher-side Step 4 check for `.rabbit-human-approval-bypass`
    MUST be documented in `rabbit-feature-touch` SKILL.md as the first
@@ -393,7 +394,7 @@ feature.
 ## Tests
 
 `test/run.py` runs the end-to-end suite. The active tests after the
-v1.4.0 post-consolidation cleanup are:
+post-consolidation cleanup and subsequent housekeeping cycles are:
 - `test-cross-feature-interface.py` — Invariant 3.
 - `test-build-source-points-to-rabbit-feature.py` — Invariant 4.
 - `test-rabbit-feature-bug-2-surface-reads-declared.py` — declared
@@ -411,6 +412,20 @@ v1.4.0 post-consolidation cleanup are:
 - `test-inv9-version-sync.py` — feature.json/spec.md version sync.
 - `test-bug-9-generated-at-format.py` — impl-suggestion timestamp
   format.
+- `test-backlog-1-inv-5-8-coverage.py` — coverage assertions for
+  Inv 5 (rabbit-feature-scope invocation) and Inv 8 (Step 4 marker).
+- `test-bug-5-skillmd-brand-prefix.py` — Invariant 8/9 brand-prefix
+  enforcement in SKILL.md Step 4 bypass warning (BUG-5).
+- `test-bug-6-spec-skill-read-before-edit.py` — Invariant 35
+  Read-comprehend-Write contract for rabbit-feature-spec (BUG-6).
+- `test-contract-cross-feature-deps.py` — contract.md reads/invokes
+  consistency with actual code behaviour.
+- `test-skill-md-validate-feature-cli.py` — rabbit-feature-audit
+  skill correctly references `validate_feature` library API.
+- `test-skill-rabbit-feature-audit.py` — Invariant 34 (audit skill
+  surface declaration and behaviour).
+- `test-skill-rabbit-feature-new.py` — Invariant 33 (new skill
+  surface declaration and behaviour).
 - `test-skill-rabbit-feature-audit.py` — Invariant 34.
 
 Inv 24 and Inv 32 (byte-identical absorption locks) are RETIRED at
