@@ -55,7 +55,6 @@ check_file("scripts/rabbit_print.py")
 
 # Scripts — also check executable
 check_exec("scripts/policy-block.py")
-check_exec("scripts/dispatch-feature-edit.py")
 
 # find-feature.py and absence of registry.json
 import subprocess
@@ -75,10 +74,8 @@ if registry_path and os.path.isfile(registry_path):
     print("UNEXPECTED FILE: registry.json should not exist (distributed registry design)", file=sys.stderr)
     FAIL = 1
 
-# Validator and enforcement scripts (9)
+# Validator and enforcement scripts
 check_exec("scripts/validate-feature.py")
-check_exec("scripts/enforcement/check-no-main-edits.py")
-check_exec("scripts/enforcement/check-opus-for-planning-agents.py")
 check_exec("scripts/enforcement/check-tests-non-interactive.py")
 check_exec("scripts/enforcement/check-sentinel.py")
 check_exec("scripts/enforcement/check-naming.py")
@@ -92,13 +89,10 @@ check_file("test/test-files-exist.py")
 check_file("test/test-policy-block.py")
 check_file("test/test-templates-have-version.py")
 check_file("test/test-schemas-valid-json.py")
-check_file("test/test-dispatch.py")
 check_file("test/test-build-contract.py")
 check_file("test/test-python-only-stack.py")
 
-# workspace-map artifacts
-check_exec("scripts/workspace-map.py")
-check_file("schemas/workspace-map.json.schema.json")
+# workspace-map artifacts removed in CONTRACT-BACKLOG-27 (script, skill, schema).
 
 if FAIL != 0:
     print("test-files-exist: FAIL", file=sys.stderr)

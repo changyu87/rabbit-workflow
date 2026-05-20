@@ -212,27 +212,12 @@ else:
 # Original assertion (isdir/realpath ordering) is moot.
 
 
-# BACKLOG-13: workspace-map.py --help documents legacy positional form
-wm_path = os.path.join(FEATURE_DIR, "scripts/workspace-map.py")
-with open(wm_path) as f:
-    wm_content = f.read()
-# The argparse help path: search for "legacy" in the help-print branch
-help_branch_text = wm_content[wm_content.find('"--help"'):wm_content.find('"--help"') + 800] if '"--help"' in wm_content else ""
-if "legacy" in help_branch_text.lower():
-    ok("BACKLOG-13: workspace-map.py --help documents legacy positional form")
-else:
-    ko("BACKLOG-13: workspace-map.py --help omits legacy positional form")
+# BACKLOG-13: workspace-map.py was deleted in CONTRACT-BACKLOG-27 (orphan).
+# Original --help legacy-form assertion is moot.
 
-
-# BACKLOG-14: check-opus-for-planning-agents.py uses word-boundary regex
-cop_path = os.path.join(FEATURE_DIR, "scripts/enforcement/check-opus-for-planning-agents.py")
-with open(cop_path) as f:
-    cop_content = f.read()
-# Must use \b boundaries OR a list of full words anchored explicitly.
-if r"\b" in cop_content:
-    ok("BACKLOG-14: check-opus-for-planning-agents.py uses word-boundary regex")
-else:
-    ko("BACKLOG-14: check-opus-for-planning-agents.py PATTERN lacks word boundaries")
+# BACKLOG-14: check-opus-for-planning-agents.py was deleted in
+# CONTRACT-BACKLOG-27 (never auto-invoked; fragile premise; retired).
+# Original word-boundary regex assertion is moot.
 
 
 # BACKLOG-15 (post-BACKLOG-20): spec Inv 5 — a test asserts the [rabbit] print
