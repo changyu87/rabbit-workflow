@@ -23,5 +23,5 @@
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
   "updated": "2026-05-20",
-  "spec_no_change_reason": "BUG-4 fix: no new invariants; corrections to existing Inv 33/34 SKILL.md snippets and contract.md metadata sync"
+  "spec_no_change_reason": "spec change committed in HEAD (commit 23069a28) by dispatcher prior to subagent launch"
 }
