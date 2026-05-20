@@ -142,12 +142,16 @@ anywhere in this feature. Test runner is `test/run.py`.
    true|false` skill (owned by rabbit-cage; `false` writes the marker
    — gate disabled — and `true` deletes it). At Step 4, the dispatcher
    MUST check for this marker file: if it exists, the dispatcher skips
-   the in-conversation wait, emits a visible `[rabbit]` warning naming
-   the bypass marker and the path `/rabbit-config human-approval true`
-   to revoke it, and passes `--human-approval-gate false` to the
+   the in-conversation wait, emits a visible `[🐇 rabbit 🐇]` warning
+   naming the bypass marker and the path `/rabbit-config human-approval
+   true` to revoke it, and passes `--human-approval-gate false` to the
    Step 5 `dispatch-tdd-subagent.py` invocation. If the marker is
    absent, the dispatcher surfaces the impl-suggestion summary and
-   waits for explicit user approval.
+   waits for explicit user approval. The brand prefix in the warning
+   MUST be the canonical emoji-framed form `[🐇 rabbit 🐇]` (per
+   contract Inv 35/36 brand convention), not the bare `[rabbit]`
+   form; LLM-emitted operational messages follow the same brand
+   convention as `rabbit_print` script output.
 
 9. The dispatcher-side Step 4 check for `.rabbit-human-approval-bypass`
    MUST be documented in `rabbit-feature-touch` SKILL.md as the first
@@ -156,8 +160,10 @@ anywhere in this feature. Test runner is `test/run.py`.
    emitted to the user MUST name both the marker path
    (`.rabbit-human-approval-bypass`) and the revoke command
    (`/rabbit-config human-approval true`) so the user can audit and
-   revoke without searching. This invariant constrains SKILL.md
-   documentation content; the underlying behaviour is Inv 8.
+   revoke without searching, AND MUST use the canonical emoji-framed
+   brand prefix `[🐇 rabbit 🐇]` (per Inv 8 — the bare `[rabbit]`
+   form is a constitution violation). This invariant constrains
+   SKILL.md documentation content; the underlying behaviour is Inv 8.
    (Re-homed from tdd-subagent Inv 15 v1.19.0 per BACKLOG-12.)
 
 10. `rabbit-feature-touch` SKILL.md Red Flags section MUST include the
