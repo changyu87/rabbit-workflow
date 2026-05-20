@@ -1,9 +1,9 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.0.1
+version: 3.0.2
 owner: rabbit-feature
-deprecation_criterion: when dispatch-feature-edit.py natively enforces tdd-step.py transitions
+deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
 
 ## Overview
@@ -109,7 +109,7 @@ writes the marker — gate disabled — and `true` deletes it).
   - For multiple features, present all summaries together and collect one
     approval decision before dispatching any subagent.
   - Wait for explicit in-conversation user approval ("looks good", "go ahead",
-    or equivalent). If the user requests changes, invoke rabbit-spec again for
+    or equivalent). If the user requests changes, invoke rabbit-feature-spec again for
     the affected features, then return to this step.
   - Pass `--human-approval-gate true` (or omit the flag, since `true` is the
     default) to the Step 5 `dispatch-tdd-subagent.py` invocation.
