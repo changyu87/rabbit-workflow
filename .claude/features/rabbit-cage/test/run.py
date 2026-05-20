@@ -72,6 +72,7 @@ SUITES = [
     "test-RABBIT-CAGE-BUG-94-stale-refs.py",
     "test-bug-95-skillmd-paths-resolve.py",
     "test-backlog-27-runtime-flags-display.py",
+    "test-RABBIT-CAGE-BACKLOG-28-housekeeping.py",
 ]
 
 
