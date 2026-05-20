@@ -156,60 +156,18 @@ def _init_orphan_branch(repo_root):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def _is_local_origin(repo_root) -> bool:
-    """Return True iff origin is a local filesystem path (not a network URL).
-
-    Classification:
-      - starts with "/"           -> local
-      - starts with "file://"     -> local
-      - contains "://"            -> remote (http://, https://, ssh://, git://)
-      - starts with "git@"        -> remote (git-over-SSH shorthand)
-      - otherwise                 -> local (relative path)
-
-    This is used by _ensure_branch to refuse silent orphan-branch creation
-    in chained-workspace topologies (BUG-32): when the immediate origin is
-    another local repo, a missing branch may exist further upstream and
-    must not be overwritten by a fresh local orphan.
-    """
-    origin_url = _git(repo_root, "remote", "get-url", "origin")
-    if origin_url.startswith("/"):
-        return True
-    if origin_url.startswith("file://"):
-        return True
-    if "://" in origin_url:
-        return False
-    if origin_url.startswith("git@"):
-        return False
-    return True
-
-
 def _ensure_branch(repo_root):
     """Ensure origin/bug-backlog-files exists; create it if not.
 
-    BUG-32: when origin is a local filesystem path and the branch is not
-    found, refuse to bootstrap an orphan. In a chained-workspace topology
-    the upstream branch may exist genuinely further up the chain but be
-    absent from the intermediate's refs/heads/. Silent orphan creation
-    would push an empty branch to the intermediate and later overwrite
-    legitimate upstream items. Operator must materialize the branch in
-    the intermediate first.
+    Bootstrap-on-first-use, no topology-specific defensive guard
+    (BACKLOG-12). Rabbit assumes a standalone workspace topology where
+    every workspace's `origin` points directly at the authoritative
+    remote (e.g. GitHub). An operator who misconfigures origin to a
+    local filesystem path will surface a normal git error on first push
+    attempt.
     """
     if _branch_exists_on_remote(repo_root):
         return
-    if _is_local_origin(repo_root):
-        origin_url = _git(repo_root, "remote", "get-url", "origin")
-        raise RuntimeError(
-            f"rabbit-file: refusing to create orphan branch "
-            f"{BRANCH!r} against local origin {origin_url!r}.\n"
-            f"This looks like a chained-workspace topology where the "
-            f"branch may exist further upstream but is missing from the "
-            f"intermediate's refs/heads/. Silently bootstrapping an orphan "
-            f"would later overwrite the legitimate upstream items.\n"
-            f"Remediation: materialize the branch in the intermediate first:\n"
-            f"  git -C {origin_url} fetch origin {BRANCH} && "
-            f"git -C {origin_url} checkout {BRANCH}\n"
-            f"Then retry the rabbit-file operation from this workspace."
-        )
     _init_orphan_branch(repo_root)
 
 

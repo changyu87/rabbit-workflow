@@ -37,7 +37,6 @@ SCRIPTS_DIR = FEATURE_DIR / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import branch_ops  # noqa: E402
-from conftest import seed_bug_backlog_branch  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -154,7 +153,6 @@ def isolated_repo(tmp_path):
     remote.mkdir()
     subprocess.run(["git", "init", "--bare", str(remote)], check=True,
                    capture_output=True)
-    seed_bug_backlog_branch(remote)
 
     local = tmp_path / "local"
     subprocess.run(["git", "clone", str(remote), str(local)], check=True,

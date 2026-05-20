@@ -1,6 +1,6 @@
 ---
 feature: rabbit-file
-version: 0.2.0
+version: 0.3.0
 template_version: 2.0.0
 owner: rabbit-workflow team
 deprecation_criterion: when a unified tracking system replaces file-based bug and backlog management
@@ -19,7 +19,7 @@ deprecation_criterion: when a unified tracking system replaces file-based bug an
     "scripts": [
       {
         "path": ".claude/features/rabbit-file/scripts/branch_ops.py",
-        "description": "All git operations against origin/bug-backlog-files. Uses a per-process git worktree at .claude/tmp/bug-backlog-files-<pid> (gitignored). Exposes allocate_id, commit_item, fetch_item, read_branch, release_id, branch_exists. Auto-initializes orphan branch and counter.json on first use against a non-local origin; refuses orphan creation when origin is local (chained-workspace guard, BUG-32). Exposes module-level constants BRANCH, IDENTITY_NAME, IDENTITY_EMAIL."
+        "description": "All git operations against origin/bug-backlog-files. Uses a per-process git worktree at .claude/tmp/bug-backlog-files-<pid> (gitignored). Exposes allocate_id, commit_item, fetch_item, read_branch, release_id, branch_exists. Auto-initializes orphan branch and counter.json on first use; standalone-workspace topology assumed. Exposes module-level constants BRANCH, IDENTITY_NAME, IDENTITY_EMAIL."
       },
       {
         "path": ".claude/features/rabbit-file/scripts/file-item.py",
@@ -68,7 +68,6 @@ deprecation_criterion: when a unified tracking system replaces file-based bug an
     "Skip allocate_id before commit_item; the counter must reserve the ID slot first.",
     "Push from a stale base — every push retries with a fetch + reset + reapply on non-fast-forward or ref-lock contention.",
     "Mutate the caller-supplied item dict in branch_ops.commit_item; commit_sha backfill is applied to an internal copy only.",
-    "Create the orphan bug-backlog-files branch when origin is a local filesystem path (chained-workspace topologies require the intermediate to materialise the branch from upstream first; BUG-32).",
     "Allow item-status.py update on closed items, or on fields outside {priority, title, description}."
   ]
 }
