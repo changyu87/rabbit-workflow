@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-# test-no-originals-in-tdd-subagent.py — Inv 6 (post-import-cycle) guard.
+# test-no-originals-in-tdd-subagent.py — Inv 6 (post-BACKLOG-7) guard.
 #
-# After the import + slim cycles, tdd-state-machine OWNS tdd-step.py,
-# tdd-context.py, tdd-drift-check.py. The three scripts MUST:
+# After BACKLOG-7, tdd-state-machine OWNS exactly one script: tdd-step.py.
+# That script MUST:
 #   - exist in .claude/features/tdd-state-machine/scripts/
 #   - NOT exist in .claude/features/tdd-subagent/scripts/
+# The legacy tdd-context.py and tdd-drift-check.py were deleted as dead
+# code (zero runtime callers); they MUST be absent from BOTH source dirs.
 # Also retains the executable-bit check (Inv 3 — executable bit set;
 # any user-executable mode is acceptable).
 import os
@@ -19,7 +21,8 @@ REPO_ROOT = subprocess.check_output(
 HERE = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/scripts')
 SUBAGENT = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/scripts')
 
-SCRIPTS = ['tdd-step.py', 'tdd-context.py', 'tdd-drift-check.py']
+OWNED_SCRIPTS = ['tdd-step.py']
+DELETED_SCRIPTS = ['tdd-context.py', 'tdd-drift-check.py']
 
 PASS = 0
 FAIL = 0
@@ -37,7 +40,7 @@ def ko(msg):
     FAIL += 1
 
 
-for name in SCRIPTS:
+for name in OWNED_SCRIPTS:
     here = os.path.join(HERE, name)
     subagent = os.path.join(SUBAGENT, name)
     if os.path.exists(here):
@@ -49,8 +52,20 @@ for name in SCRIPTS:
     else:
         ok(f"{name}: absent from tdd-subagent/scripts/ as required")
 
+for name in DELETED_SCRIPTS:
+    here = os.path.join(HERE, name)
+    subagent = os.path.join(SUBAGENT, name)
+    if os.path.exists(here):
+        ko(f"{name}: deleted in BACKLOG-7 but still present in tdd-state-machine/scripts/")
+    else:
+        ok(f"{name}: absent from tdd-state-machine/scripts/ as required (deleted in BACKLOG-7)")
+    if os.path.exists(subagent):
+        ko(f"{name}: deleted in BACKLOG-7 but still present in tdd-subagent/scripts/")
+    else:
+        ok(f"{name}: absent from tdd-subagent/scripts/ as required (deleted in BACKLOG-7)")
+
 # Executable-bit invariant (Inv 3 — relaxed: executable bit set, any user-exec mode ok).
-for name in SCRIPTS:
+for name in OWNED_SCRIPTS:
     p = os.path.join(HERE, name)
     if not os.path.exists(p):
         continue
