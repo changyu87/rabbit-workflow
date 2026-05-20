@@ -2,7 +2,7 @@
   "name": "rabbit-file",
   "version": "0.2.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "Unified bug and backlog filing, tracking, and lifecycle. Stores items on origin/bug-backlog-files branch via Python scripts. Replaces rabbit-bug and rabbit-backlog.",
   "surface": {
     "hooks": [],
