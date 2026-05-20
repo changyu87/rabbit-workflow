@@ -61,15 +61,21 @@ if os.path.isfile(DEPLOYED):
 else:
     fail(f"deployed copy not found at {DEPLOYED}")
 
-def test_rabbit_spec_is_step_3():
-    """rabbit-feature-touch must list rabbit-spec as Step 3."""
+def test_rabbit_feature_spec_is_step_3():
+    """rabbit-feature-touch must list rabbit-feature-spec as Step 3.
+
+    Originally asserted the legacy name `rabbit-spec`; renamed to
+    `rabbit-feature-spec` during the rabbit-feature absorption and
+    enforced via RABBIT-FEATURE-BACKLOG-5 cleanup. Test updated to
+    match.
+    """
     skill_path = os.path.join(
         REPO_ROOT, ".claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md"
     )
     with open(skill_path) as f:
         content = f.read()
-    assert "Step 3" in content and "rabbit-spec" in content, \
-        "SKILL.md must list rabbit-spec as Step 3"
+    assert "Step 3" in content and "rabbit-feature-spec" in content, \
+        "SKILL.md must list rabbit-feature-spec as Step 3"
 
 
 def test_seven_steps_total():
@@ -95,7 +101,7 @@ def test_dispatch_tdd_subagent_referenced():
 
 
 # Run function-based tests
-for fn_name in ['test_rabbit_spec_is_step_3', 'test_seven_steps_total', 'test_dispatch_tdd_subagent_referenced']:
+for fn_name in ['test_rabbit_feature_spec_is_step_3', 'test_seven_steps_total', 'test_dispatch_tdd_subagent_referenced']:
     fn = locals()[fn_name]
     try:
         fn()
