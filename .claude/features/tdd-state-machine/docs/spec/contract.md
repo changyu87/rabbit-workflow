@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.2.1
+version: 1.3.0
 template_version: 2.0.0
 owner: rabbit team
 deprecation_criterion: when TDD state machine is replaced by a fundamentally different orchestration approach
@@ -20,14 +20,6 @@ deprecation_criterion: when TDD state machine is replaced by a fundamentally dif
       {
         "path": ".claude/features/tdd-state-machine/scripts/tdd-step.py",
         "description": "Forward-only TDD state machine: show | next | transitions | transition. Honours _FORWARD_ALT branch test-green -> spec-update. stdout uses the centralized [🐇 rabbit 🐇] brand with ANSI green for accepted transitions; stderr uses ANSI red for forced/denied transitions."
-      },
-      {
-        "path": ".claude/features/tdd-state-machine/scripts/tdd-context.py",
-        "description": "Emits machine-first JSON describing a feature's current TDD state, allowed_next_states, guidance text, deprecation_criterion, and contract; --text flag emits human-readable view."
-      },
-      {
-        "path": ".claude/features/tdd-state-machine/scripts/tdd-drift-check.py",
-        "description": "Verifies a feature's claimed tdd_state matches reality by running test/run.py. Exit 0 ok; 1 drift; 2 invocation error."
       }
     ],
     "schemas": [],
