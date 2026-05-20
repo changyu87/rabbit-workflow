@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.17.0
+version: 1.18.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -50,6 +50,10 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 - `.claude/features/contract/scripts/validate-feature.py`
 - `.claude/features/contract/scripts/workspace-map.py`
 - `.claude/features/contract/scripts/rabbit_print.py`
+
+**lib/** (Python — importable library, not CLI)
+- `.claude/features/contract/lib/__init__.py`
+- `.claude/features/contract/lib/checks.py`
 
 **skills/**
 - `.claude/features/contract/skills/rabbit-workspace-map/SKILL.md`
@@ -147,6 +151,12 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
     (a) `feature.json.schema.json` MUST declare the `status` field with `enum: ["active", "retired"]` and document the default as `"active"`.
     (b) `validate-feature.py` MUST short-circuit (exit 0 with a `RETIRED:` notice) when `feature.json` has `status: retired`. Retired features are exempt from the standard structural checks (spec.md, contract.md, test/run.py, deprecation_criterion) because their successor owns the live surface.
     (c) `.claude/workspace-structure.json` MUST mark retired features as `required: false` so `workspace-map.py --audit` does not emit `error`-severity findings for tombstone directories. The currently retired features are `rabbit-spec` and `rabbit-feature-scope` (both absorbed into `rabbit-feature` per the rename/consolidation work).
+44. Contract MUST expose a library module at `.claude/features/contract/lib/checks.py` that holds the enforcement / validation logic for each `scripts/enforcement/check-*.py` script (excluding `check-no-main-edits.py` and `check-opus-for-planning-agents.py`, both pending retirement under CONTRACT-BACKLOG-27) and for `scripts/validate-feature.py`. The CLI scripts in `scripts/enforcement/` and `scripts/validate-feature.py` MUST be thin wrappers (~10 lines) that import from `contract.lib.checks`, call the matching function, print the returned messages, and exit 0 / 1.
+    (a) The library MUST export a `CheckResult` dataclass with exactly two fields: `passed: bool` and `messages: list[str]`. Each library function returns a `CheckResult`. Messages are human-readable lines (one per issue) that the CLI shim prints to stderr on failure or stdout on success.
+    (b) Required function names and signatures: `check_tests_non_interactive(feature_dir: str) -> CheckResult`, `check_sentinel(path: str) -> CheckResult`, `check_naming(root: str) -> CheckResult`, `check_imports_resolve(feature_dir: str) -> CheckResult`, `check_symlinks_resolve(root: str) -> CheckResult`, `check_template_producer_consistency(template_path: str) -> CheckResult`, `check_numbered_lists(targets: list[str]) -> CheckResult`, `validate_feature(feature_dir: str) -> CheckResult`.
+    (c) `lib/__init__.py` MUST exist so the package is importable (empty file is sufficient).
+    (d) Library functions MUST NOT call `sys.exit`, MUST NOT print to stdout / stderr, and MUST NOT raise on contract-violation conditions — all outcomes flow through the returned `CheckResult`. Invocation errors (missing file, bad JSON, etc.) are reflected as `passed=False` with descriptive messages.
+    (e) CLI consumers of the existing scripts (notably `tdd-step.py`) continue to call the CLI shims with their existing argv shape; the refactor is backward-compatible at the CLI boundary. Rewiring those consumers to import the library directly is out of scope for this invariant.
 
 ## Template marker convention
 

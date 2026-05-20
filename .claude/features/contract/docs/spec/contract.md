@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.5.0
+version: 1.6.0
 template_version: 2.0.0
 ---
 
@@ -51,6 +51,10 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/scripts/enforcement/check-template-schema-producer-consistency.py",
       ".claude/features/contract/scripts/enforcement/check-tests-non-interactive.py",
       ".claude/features/contract/scripts/enforcement/check-numbered-lists.py"
+    ],
+    "lib": [
+      ".claude/features/contract/lib/__init__.py",
+      ".claude/features/contract/lib/checks.py"
     ],
     "skills": [
       ".claude/features/contract/skills/rabbit-workspace-map/SKILL.md"
