@@ -20,5 +20,6 @@
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
-  "updated": "2026-05-19"
+  "updated": "2026-05-19",
+  "spec_no_change_reason": "BACKLOG-1 adds test-only coverage for already-implemented Inv 5-8; SKILL.md already conforms"
 }
