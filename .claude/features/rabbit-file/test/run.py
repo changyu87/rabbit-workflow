@@ -52,6 +52,8 @@ if not run_suite("test-spec-md-frontmatter.py"):
     total_fail += 1
 if not run_suite("test-RABBIT-FILE-BACKLOG-14-operational-characteristics.py"):
     total_fail += 1
+if not run_suite("test-RABBIT-FILE-BACKLOG-14-legacy-skill-cleanup.py"):
+    total_fail += 1
 
 if total_fail == 0:
     print("ALL SUITES PASSED")
