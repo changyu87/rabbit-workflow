@@ -45,11 +45,6 @@ out = result.stdout
 
 # t1: rabbit-feature-scope is retired (per feature.json) and its tree entry
 # must include the [RETIRED] tag.
-retired_line_scope = [
-    ln for ln in out.splitlines()
-    if "rabbit-feature-scope" in ln and ln.rstrip().endswith("/")
-       or ("rabbit-feature-scope" in ln and "[RETIRED]" in ln)
-]
 matching = [
     ln for ln in out.splitlines()
     if "rabbit-feature-scope/" in ln
