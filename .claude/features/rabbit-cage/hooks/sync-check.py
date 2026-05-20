@@ -46,7 +46,7 @@ from rabbit_print import (  # noqa: E402
     rabbit_block, rabbit_subline,
     policy_drift, surface_drift,
     scope_guard_off, scope_guard_bypassed,
-    human_approval_bypass, skills_updated,
+    human_approval_bypass, bypass_permissions_active, skills_updated,
 )
 
 # BACKLOG-27 / Inv 88: canonical bypass-permissions alert text lives in the
@@ -66,7 +66,6 @@ else:
     if (_HERE / "_runtime_flags.py").is_file() and str(_HERE) not in sys.path:
         sys.path.insert(0, str(_HERE))
 from _runtime_flags import (  # noqa: E402
-    BYPASS_PERMISSIONS_BODY,
     is_bypass_permissions_active,
 )
 
@@ -252,11 +251,13 @@ def render_bypass_permissions(root: Path) -> Optional[dict]:
     `.claude/settings.local.json` declares
     `permissions.defaultMode == "bypassPermissions"`. Independent of and
     parallel to render_human_approval — both may fire on the same Stop.
+    Uses the registry-backed banner form so the alert carries the same
+    visual weight (icon + bars) as the human-approval banner.
     """
     if not is_bypass_permissions_active(root):
         return None
     return {
-        "systemMessage": rabbit_subline(BYPASS_PERMISSIONS_BODY, color="red"),
+        "systemMessage": bypass_permissions_active(),
     }
 
 

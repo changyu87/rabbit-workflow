@@ -45,6 +45,11 @@
       "color": "red",
       "text": "HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches"
     },
+    "bypass-permissions-active": {
+      "icon": "🚨",
+      "color": "red",
+      "text": "BYPASS-PERMISSIONS MODE ACTIVE — Claude Code native per-write prompts skipped; scope-guard hook is the sole write-authorization gate"
+    },
     "skills-updated": {
       "icon": "✨",
       "color": "green",
