@@ -150,6 +150,45 @@ origin/bug-backlog-files root:
   trail in the history array.
 - SKILL.md MUST include a user-decision gate in Work Protocol before invoking
   rabbit-feature-touch.
+- SKILL.md MUST NOT illustrate the legacy fixed-path worktree
+  `.claude/tmp/bug-backlog-files` (without the `-<pid>` suffix) in
+  user-facing prose, the File Protocol Phase A/B narrative, or the
+  `branch_ops.py Lifecycle` section. All worktree path references
+  MUST use the per-process form `.claude/tmp/bug-backlog-files-<pid>`
+  so the documented behaviour matches the per-pid invariant above.
+  Documenting a path the code never creates misleads operators who
+  inspect or clean disk state (BUG-34).
+- SKILL.md MUST NOT reference any `/rabbit-file …` slash-command
+  invocation. The Overview declares "there are NO slash commands";
+  every other section (including the List Protocol's branch-missing
+  guidance) MUST be consistent. Canonical user-facing invocations are
+  the direct `python3 .claude/features/rabbit-file/scripts/…` script
+  calls listed in the Overview table (BUG-34).
+- SKILL.md List Protocol MUST document (a) the deterministic
+  sort-by-name output contract mandated for list-items.py and (b) the
+  distinct "branch does not exist" condition versus the "no items
+  matched filters" condition. These two operator-facing facts
+  originate in this spec's invariants for list-items.py; the skill
+  MUST surface them so operators know the guarantees without having
+  to read spec.md (BUG-34).
+- feature.json `surface.skills` MUST be a non-empty array containing
+  the entry `rabbit-file` (matching the deployed skill directory
+  `skills/rabbit-file/SKILL.md`). An empty `surface.skills` while a
+  SKILL.md exists violates the surface-declaration contract: build
+  and scope tooling reads this surface to identify deployable skills,
+  and an empty entry causes the SKILL.md to be silently ignored
+  (BUG-34).
+- The feature MUST declare a `docs/spec/contract.md` document
+  following the schema used by sibling features (top-level JSON block
+  with `provides`, `reads`, `invokes`, `manages`, and `never` keys;
+  YAML frontmatter carrying `feature`, `version`, `template_version`,
+  `owner`, and `deprecation_criterion`). This satisfies the policy
+  mandate "Every component declares its contract"
+  (spec-rules.md §2). The contract enumerates the provided scripts
+  (file-item.py, item-status.py, list-items.py, branch_ops.py), the
+  consumed files and external state, the invoked tools, the runtime
+  markers managed (none), and the explicit "never does" list
+  (BUG-34).
 - Both file-item.py (at filing time) and item-status.py update (at
   field mutation time) MUST enforce PER-FIELD length limits on title
   and description values (BACKLOG-7):
