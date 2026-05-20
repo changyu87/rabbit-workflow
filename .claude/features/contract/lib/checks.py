@@ -47,11 +47,6 @@ def get_repo_root():
         return None
 
 
-# Backwards-compatible alias for any internal/legacy caller still importing
-# the underscore form. Public callers MUST use `get_repo_root`.
-_get_repo_root = get_repo_root
-
-
 # ---------- check_tests_non_interactive --------------------------------------
 
 _INTERACTIVE_PATTERNS = [

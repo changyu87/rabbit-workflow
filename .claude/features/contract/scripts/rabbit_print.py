@@ -3,9 +3,10 @@
 Loads the message registry from
 .claude/features/contract/schemas/rabbit-print-messages.json on first use
 and caches it for the lifetime of the process. Producers (rabbit-cage hooks,
-tdd-subagent scripts) import this module and call the named wrapper API
-to compose ANSI-colored output strings. The module itself does not write to
-stdout or stderr — it returns strings only.
+tdd-state-machine scripts and tdd-subagent dispatch-tdd-subagent.py) import
+this module and call the named wrapper API to compose ANSI-colored output
+strings. The module itself does not write to stdout or stderr — it returns
+strings only.
 
 Public API:
     Low-level:
@@ -21,6 +22,7 @@ Public API:
         scope_guard_bypassed() -> str
         human_approval_bypass() -> str
         bypass_permissions_active() -> str
+        dispatch_bypass_note() -> str
         skills_updated(names) -> str
         policy_refreshed() -> str
         tdd_transition(from_state, to_state) -> str   (state names upcased)
@@ -39,7 +41,7 @@ __all__ = [
     "rabbit_print", "rabbit_subline", "rabbit_block",
     "welcome", "policy_drift", "surface_drift",
     "scope_guard_off", "scope_guard_bypassed", "human_approval_bypass",
-    "bypass_permissions_active",
+    "bypass_permissions_active", "dispatch_bypass_note",
     "skills_updated", "policy_refreshed", "tdd_transition", "tdd_forced",
 ]
 
@@ -122,6 +124,10 @@ def human_approval_bypass():
 
 def bypass_permissions_active():
     return rabbit_print("bypass-permissions-active")
+
+
+def dispatch_bypass_note():
+    return rabbit_print("dispatch-bypass-note")
 
 
 def skills_updated(names):
