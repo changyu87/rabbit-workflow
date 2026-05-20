@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
-# run.py — Master test runner for the policy feature.
-# Executes all test scripts in sequence. Exits non-zero on any failure.
+"""run.py — Master test runner for the policy feature.
+
+Executes all test scripts in sequence. Exits non-zero on any failure.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (policy)
+Deprecation criterion: when a higher-level harness invokes per-feature test
+suites uniformly across the workflow.
+"""
 import os
 import subprocess
 import sys
@@ -18,13 +25,10 @@ def run_test(script):
     print(f"    PASS: {script}")
 
 
-run_test("test-files-exist.py")
 run_test("test-rule-files-content.py")
 run_test("test-imports-resolve.py")
 run_test("test-backlog003.py")
-# test-policy-invariants-v1-2-0.py removed: superseded by v1-3-0 (POLICY-BUG-18).
-# test-policy-invariants-v1-3-0.py renamed to v1-4-0 (POLICY-BUG-19: spec is at 1.4.0).
-run_test("test-policy-invariants-v1-4-0.py")
+run_test("test-policy-invariants.py")
 run_test("test-POLICY-1-no-stale-imports.py")
 run_test("test-policy-bug-fixes.py")
 run_test("test-backlog-11-12.py")

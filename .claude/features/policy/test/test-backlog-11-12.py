@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-# E2E tests for POLICY-BACKLOG-11, 12.
-#
-# BACKLOG-11: test-backlog003.py header must name what its assertions guard
-#             and when they may be retired (traceability + EOL criterion).
-# BACKLOG-12: coding-rules.md Section 3 (Surgical Changes) must clarify
-#             that "uncommitted" includes BOTH staged and unstaged work
-#             from the current agent session.
+"""E2E tests for POLICY-BACKLOG-11, 12.
+
+BACKLOG-11: test-backlog003.py header must name what its assertions guard
+            and when they may be retired (traceability + EOL criterion).
+BACKLOG-12: coding-rules.md Section 3 (Surgical Changes) must clarify
+            that "uncommitted" includes BOTH staged and unstaged work
+            from the current agent session.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (policy)
+Deprecation criterion: when POLICY-BACKLOG-11 and POLICY-BACKLOG-12 are
+both closed and their invariants are absorbed into a successor suite.
+"""
 import os
 import sys
 

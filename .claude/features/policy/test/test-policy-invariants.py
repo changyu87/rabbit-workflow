@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
-# test-policy-invariants.py — Verifies policy spec invariants:
-#   (1) philosophy.md, spec-rules.md, coding-rules.md exist and are non-empty.
-#   (2) workflow-rules.md does NOT exist.
-#   (3) No .sh files exist anywhere within the feature directory.
-#   (7) test-policy-invariants.py is the canonical non-versioned name;
-#       no test-policy-invariants-v1-*.py exists; test-files-exist.py absent.
+"""test-policy-invariants.py — Verifies policy spec invariants.
+
+Covers:
+  (1) philosophy.md, spec-rules.md, coding-rules.md exist and are non-empty.
+  (2) workflow-rules.md does NOT exist.
+  (3) No .sh files exist anywhere within the feature directory.
+  (7) test-policy-invariants.py is the canonical non-versioned name; no
+      test-policy-invariants-v1-*.py exists; test-files-exist.py absent.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (policy)
+Deprecation criterion: when this spec-conformance suite merges into a
+broader cross-feature invariants harness.
+"""
 import glob
 import os
 import sys

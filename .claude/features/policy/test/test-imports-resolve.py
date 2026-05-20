@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-# test-imports-resolve.py — assert every @-import in any CLAUDE.md resolves.
+"""test-imports-resolve.py — assert every @-import in any CLAUDE.md resolves.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (policy)
+Deprecation criterion: when Claude Code enforces @-import resolution natively.
+"""
 import os
 import re
 import subprocess

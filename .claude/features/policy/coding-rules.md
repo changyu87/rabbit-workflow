@@ -14,6 +14,9 @@ Before implementing:
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
 
+**Read before editing.**
+Before editing an existing file, Read it. Before writing alongside existing code, Read the surrounding module. Edits made without reading are speculative.
+
 ---
 
 ## 2. Simplicity First

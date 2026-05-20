@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-# test-rule-files-content.py — Spot-checks content of the three rule files.
+"""test-rule-files-content.py — Spot-checks content of the three rule files.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (policy)
+Deprecation criterion: when the rule-file content is enforced by a richer
+schema-driven check (e.g., declarative section manifest).
+"""
 import os
 import sys
 
