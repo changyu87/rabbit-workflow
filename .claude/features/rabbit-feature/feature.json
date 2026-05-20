@@ -3,7 +3,7 @@
   "name": "rabbit-feature",
   "version": "1.6.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "Owns the rabbit-feature-touch orchestration skill plus the absorbed rabbit-feature-scope skill (with resolve-scope.py and format-feature-context.py scripts), the absorbed rabbit-feature-spec skill (renamed from rabbit-spec) for spec authoring, the rabbit-feature-new scaffolding skill (BACKLOG-2), and the rabbit-feature-audit conformance skill (BACKLOG-3). Post-consolidation: the legacy rabbit-feature-scope and rabbit-spec feature directories are retired and absorbed artifacts under this feature are authoritative. Dispatcher-side surface; executor-side (dispatch-tdd-subagent.py and tdd-step.py) lives in tdd-subagent and tdd-state-machine respectively.",
   "surface": {
     "hooks": [],
