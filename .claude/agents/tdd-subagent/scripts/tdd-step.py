@@ -157,20 +157,6 @@ def write_state(d, new, spec_no_change_reason=""):
         raise
 
 
-def auto_close_backlog(d):
-    """Best-effort no-op stub retained for backward compatibility.
-
-    Auto-closing in-progress backlog items on `test-green` is the dispatcher's
-    responsibility (see spec Inv 4 + Inv 7). `dispatch-tdd-subagent.py` invokes
-    `item-status.py set --status close --fix-commits <impl-sha>` for each
-    `--linked-item` / `--linked-items` entry after the subagent reaches
-    `test-green`. The legacy local backlog directory scan was removed in
-    BACKLOG-13 now that rabbit-file consolidated backlogs onto the
-    `bug-backlog-files` branch.
-    """
-    return
-
-
 def _load_checks_module(repo_root):
     """Load contract.lib.checks from REPO_ROOT/.claude/features/.
 
@@ -287,10 +273,6 @@ def _post_test_green_hooks(d):
                     )
                 except Exception:
                     pass
-    except Exception:
-        pass
-    try:
-        auto_close_backlog(d)
     except Exception:
         pass
 
