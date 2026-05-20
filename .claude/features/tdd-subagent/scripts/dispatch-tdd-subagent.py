@@ -216,7 +216,7 @@ def main(argv):
     bypass_marker_path = os.path.join(repo_root, ".rabbit-human-approval-bypass")
     if os.path.isfile(bypass_marker_path):
         bypass_preamble_note = (
-            "\n\x1b[33m[rabbit] NOTE: human-approval bypass marker is active "
+            "\n\x1b[33m[\U0001f407 rabbit \U0001f407] NOTE: human-approval bypass marker is active "
             "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be "
             "skipped for this dispatch. Revoke via "
             "`/rabbit-config human-approval true`.\x1b[0m\n"
