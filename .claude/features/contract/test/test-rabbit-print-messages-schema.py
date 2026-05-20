@@ -35,6 +35,7 @@ def fail(msg):
 REQUIRED_IDS = {
     "welcome", "policy-drift", "surface-drift",
     "scope-guard-off", "scope-guard-bypassed", "human-approval-bypass",
+    "bypass-permissions-active", "dispatch-bypass-note",
     "skills-updated", "policy-refreshed", "tdd-transition", "tdd-forced",
 }
 # Explicitly removed alongside rabbit-cage Inv 61 (the R1 hook). The id MUST
@@ -123,23 +124,24 @@ if messages is not None:
     else:
         fail(f"t4b: bar mismatch: got {messages.get('bar')!r}")
 
-# t5: required colors green and red
+# t5: required colors green, red, yellow (yellow added in BACKLOG-29 alongside
+# the dispatch-bypass-note message-id).
 if messages is not None:
     colors = messages.get("colors", {})
-    for col in ("green", "red"):
+    for col in ("green", "red", "yellow"):
         if col in colors and "ansi" in colors[col] and "reset" in colors[col]:
             ok(f"t5: colors.{col} present with ansi/reset")
         else:
             fail(f"t5: colors.{col} missing or missing ansi/reset")
 
-# t6: all 10 required message-ids present
+# t6: all required message-ids present (12 as of BACKLOG-29)
 if messages is not None:
     msgs = messages.get("messages", {})
     missing = REQUIRED_IDS - set(msgs.keys())
     if missing:
         fail(f"t6: missing message-ids: {sorted(missing)}")
     else:
-        ok("t6: all 10 required message-ids present")
+        ok(f"t6: all {len(REQUIRED_IDS)} required message-ids present")
 
 # t6b: removed message-ids MUST be absent (Inv 34 — r1-branch was removed
 # alongside the rabbit-cage R1 enforcement hook).
@@ -151,9 +153,12 @@ if messages is not None:
     else:
         ok("t6b: removed message-ids absent (r1-branch)")
 
-# t7: each required message has icon, color, text and color in {green,red}
+# t7: each required message has icon, color, text and color is a key in the
+# colors map (the enum on messages.*.color was relaxed in BACKLOG-29 — the
+# colors map is the single source of truth for valid color names).
 if messages is not None:
     msgs = messages.get("messages", {})
+    valid_colors = set(messages.get("colors", {}).keys())
     for mid in REQUIRED_IDS:
         if mid not in msgs:
             continue
@@ -166,8 +171,8 @@ if messages is not None:
                 fail(f"t7: messages.{mid}.{fld} missing or empty")
                 break
         else:
-            if m["color"] not in ("green", "red"):
-                fail(f"t7: messages.{mid}.color={m['color']!r} not green/red")
+            if m["color"] not in valid_colors:
+                fail(f"t7: messages.{mid}.color={m['color']!r} not in colors map {sorted(valid_colors)}")
             else:
                 ok(f"t7: messages.{mid} has icon/color/text; color={m['color']}")
 
@@ -197,6 +202,42 @@ if schema is not None:
             ok(f"t8b: schema doc has {fld}")
         else:
             fail(f"t8b: schema doc missing {fld}")
+
+# t9: dispatch-bypass-note specifics (Inv 34, BACKLOG-29). The text MUST be
+# the canonical form so the dispatch preamble is grep-stable.
+EXPECTED_DISPATCH_TEXT = (
+    "NOTE: human-approval bypass marker is active "
+    "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be skipped "
+    "for this dispatch. Revoke via `/rabbit-config human-approval true`."
+)
+if messages is not None:
+    msgs = messages.get("messages", {})
+    dbn = msgs.get("dispatch-bypass-note", {})
+    if dbn.get("icon") == "\U0001f4e2":
+        ok("t9a: dispatch-bypass-note icon is 📢")
+    else:
+        fail(f"t9a: dispatch-bypass-note icon mismatch: got {dbn.get('icon')!r}")
+    if dbn.get("color") == "yellow":
+        ok("t9b: dispatch-bypass-note color is yellow")
+    else:
+        fail(f"t9b: dispatch-bypass-note color mismatch: got {dbn.get('color')!r}")
+    if dbn.get("text") == EXPECTED_DISPATCH_TEXT:
+        ok("t9c: dispatch-bypass-note text matches canonical form")
+    else:
+        fail(f"t9c: dispatch-bypass-note text mismatch: got {dbn.get('text')!r}")
+
+# t10: bypass-permissions-active specifics (Inv 34, PR #151). Icon 🚨 / red.
+if messages is not None:
+    msgs = messages.get("messages", {})
+    bpa = msgs.get("bypass-permissions-active", {})
+    if bpa.get("icon") == "\U0001f6a8":
+        ok("t10a: bypass-permissions-active icon is 🚨")
+    else:
+        fail(f"t10a: bypass-permissions-active icon mismatch: got {bpa.get('icon')!r}")
+    if bpa.get("color") == "red":
+        ok("t10b: bypass-permissions-active color is red")
+    else:
+        fail(f"t10b: bypass-permissions-active color mismatch: got {bpa.get('color')!r}")
 
 if FAIL != 0:
     print("test-rabbit-print-messages-schema: FAIL", file=sys.stderr)

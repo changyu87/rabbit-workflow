@@ -41,6 +41,8 @@ ZERO_ARG = [
     ("scope_guard_off", "scope-guard-off"),
     ("scope_guard_bypassed", "scope-guard-bypassed"),
     ("human_approval_bypass", "human-approval-bypass"),
+    ("bypass_permissions_active", "bypass-permissions-active"),
+    ("dispatch_bypass_note", "dispatch-bypass-note"),
     ("policy_refreshed", "policy-refreshed"),
 ]
 
@@ -148,6 +150,24 @@ if callable(fn):
         fail(f"tdd_forced output missing upcased forms: {got!r}")
 else:
     fail("tdd_forced not callable")
+
+# dispatch_bypass_note canonical-text check (Inv 35, BACKLOG-29): the wrapper
+# output MUST embed the canonical preamble body so the dispatch prompt remains
+# grep-stable.
+EXPECTED_DISPATCH_TEXT = (
+    "NOTE: human-approval bypass marker is active "
+    "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be skipped "
+    "for this dispatch. Revoke via `/rabbit-config human-approval true`."
+)
+fn = getattr(mod, "dispatch_bypass_note", None)
+if callable(fn):
+    got = fn()
+    if EXPECTED_DISPATCH_TEXT in got:
+        ok("dispatch_bypass_note output embeds canonical preamble text")
+    else:
+        fail(f"dispatch_bypass_note output missing canonical text\n  got: {got!r}")
+else:
+    fail("dispatch_bypass_note not callable")
 
 if FAIL != 0:
     print("test-rabbit-print-named-wrappers: FAIL", file=sys.stderr)
