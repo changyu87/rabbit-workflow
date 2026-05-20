@@ -20,5 +20,5 @@
   },
   "deprecation_criterion": "when a unified tracking system replaces file-based bug and backlog management",
   "updated": "2026-05-20",
-  "spec_no_change_reason": "spec already committed in HEAD~1 (rabbit-feature-touch Step 3, Inv 16) prior to subagent dispatch; working tree spec diff is clean by design"
+  "spec_no_change_reason": "spec.md frontmatter and retry-count edit already committed at HEAD~1; this cycle implements the related script-side housekeeping"
 }

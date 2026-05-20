@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""item-status.py — read, transition, or update fields on a bug/backlog item.
+
+Version: 0.3.0
+Owner: rabbit-workflow team
+Deprecation criterion: when a unified tracking system replaces file-based bug and backlog management
+"""
 import argparse
 import json
 import subprocess
