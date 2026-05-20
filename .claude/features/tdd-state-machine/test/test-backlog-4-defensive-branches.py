@@ -96,39 +96,56 @@ def b3():
         ko(f"b3: rc={rc} stderr={err!r}")
 
 
-# b4: _run_enforcement_checks invokes the actual scripts and surfaces a
-# WARNING via rabbit_print on stderr when a check exits non-zero.
+# b4: _run_enforcement_checks calls contract.lib.checks library functions
+# (NOT subprocess to CLI scripts) and surfaces a WARNING via rabbit_print on
+# stderr when a check's CheckResult.passed is False.
 #
-# Build a synthetic repo root containing a stub enforcement script that
-# always exits 1; verify the warning message lands on stderr when a
-# test-green transition fires.
+# Build a synthetic repo root containing a stub contract/lib/checks.py whose
+# library functions return a failing CheckResult; verify the warning lands
+# on stderr when a test-green transition fires.
 def b4():
     repo = os.path.join(TMPROOT, 'b4_repo')
-    enforcement_dir = os.path.join(repo, '.claude', 'features', 'contract', 'scripts', 'enforcement')
-    os.makedirs(enforcement_dir, exist_ok=True)
-    # Stub script that always fails - matches the name tdd-step.py invokes
-    # with the warn message "WARNING: R3 check failed for <dir>".
-    stub = os.path.join(enforcement_dir, 'check-tests-non-interactive.py')
-    with open(stub, 'w') as f:
-        f.write('#!/usr/bin/env python3\nimport sys\nsys.exit(1)\n')
-    os.chmod(stub, 0o755)
-    # rabbit_print must be importable from contract/scripts/rabbit_print.py.
     contract_scripts = os.path.join(repo, '.claude', 'features', 'contract', 'scripts')
-    # Symlink the real rabbit_print into the synthetic contract dir so the
-    # tdd-step.py import works under RABBIT_ROOT=repo.
+    contract_lib = os.path.join(repo, '.claude', 'features', 'contract', 'lib')
+    os.makedirs(contract_scripts, exist_ok=True)
+    os.makedirs(contract_lib, exist_ok=True)
+    # rabbit_print must be importable from contract/scripts/rabbit_print.py.
     real_rp = os.path.join(FEATURE_DIR, '..', 'contract', 'scripts', 'rabbit_print.py')
     real_rp = os.path.abspath(real_rp)
     if not os.path.isfile(real_rp):
         ko(f"b4: prerequisite rabbit_print.py missing at {real_rp}")
         return
     shutil.copy(real_rp, os.path.join(contract_scripts, 'rabbit_print.py'))
+    # Stub contract.lib.checks: every called check returns a failing
+    # CheckResult so tdd-step.py emits its warnings via rabbit_print.
+    with open(os.path.join(contract_lib, '__init__.py'), 'w') as f:
+        f.write('')
+    with open(os.path.join(contract_lib, 'checks.py'), 'w') as f:
+        f.write(
+            'class CheckResult:\n'
+            '    def __init__(self, passed, messages=None):\n'
+            '        self.passed = passed\n'
+            '        self.messages = list(messages) if messages else []\n'
+            'def _fail(*a, **k):\n'
+            '    return CheckResult(False, ["VIOLATION: stub check failure"])\n'
+            'check_tests_non_interactive = _fail\n'
+            'check_sentinel = _fail\n'
+            'check_naming = _fail\n'
+            'check_imports_resolve = _fail\n'
+            'check_symlinks_resolve = _fail\n'
+            'check_template_producer_consistency = _fail\n'
+            'check_numbered_lists = _fail\n'
+        )
+    # Also need a contract/__init__.py so `contract.lib.checks` imports.
+    with open(os.path.join(repo, '.claude', 'features', 'contract', '__init__.py'), 'w') as f:
+        f.write('')
     # Feature dir transitioning impl -> test-green.
     feat = os.path.join(repo, '.claude', 'features', 'b4feat')
     _make_feature_dir(feat, 'b4feat', 'impl')
     env = {**os.environ, 'RABBIT_ROOT': repo}
     rc, out, err = _run(['python3', TDD_STEP, 'transition', feat, 'test-green'], env=env)
     if rc == 0 and b'R3 check failed' in err:
-        ok('b4: failing enforcement check surfaces WARNING on stderr')
+        ok('b4: library-based enforcement check surfaces WARNING on stderr')
     else:
         ko(f"b4: rc={rc} stderr={err!r}")
 
