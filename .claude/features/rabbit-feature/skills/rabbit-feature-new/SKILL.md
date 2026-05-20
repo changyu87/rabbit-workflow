@@ -47,18 +47,16 @@ exists — surface that error to the caller and stop.
 ### Step 2 — Validate the scaffold
 
 After the scaffolder succeeds, confirm the new directory conforms by calling
-`contract.lib.checks.validate_feature` on the freshly-created feature dir:
+the contract feature's CLI shim around `validate_feature`:
 
 ```bash
-python3 -c "from importlib import import_module; \
-  m = import_module('claude.features.contract.lib.checks'); \
-  print(m.validate_feature('.claude/features/<feature-name>'))"
+python3 .claude/features/contract/scripts/validate-feature.py .claude/features/<feature-name>
 ```
 
-(Use whichever invocation style matches the current contract library
-surface — the contract feature is the source of truth for the import path.)
-If validation fails, do not silently continue; surface the failure so the
-caller can decide whether to delete the partial scaffold or fix it in place.
+The shim exits 0 on pass, 1 on validation error, and 2 on bad invocation; it
+prints the per-check messages to stdout on pass or stderr on fail. If
+validation fails, do not silently continue; surface the failure so the caller
+can decide whether to delete the partial scaffold or fix it in place.
 
 ### Step 3 — Report the result
 
@@ -79,8 +77,9 @@ request; they just need confirmation and a path to navigate to.
 
 ## Notes
 
-- The scaffolder is currently `rabbit-cage/scripts/new-feature.py`; track
-  `RABBIT-CAGE-BACKLOG-24` for the planned move into `rabbit-feature`.
-- The post-scaffold check uses `contract.lib.checks.validate_feature` so
-  this skill stays in sync with whatever conformance rules `contract` owns
-  — no rules are duplicated here.
+- The scaffolder is currently `rabbit-cage/scripts/new-feature.py`; the
+  planned move into `rabbit-feature` is tracked by this skill's
+  `deprecation_criterion` (see frontmatter).
+- The post-scaffold check uses `contract.lib.checks.validate_feature` (via
+  the `validate-feature.py` CLI shim) so this skill stays in sync with
+  whatever conformance rules `contract` owns — no rules are duplicated here.

@@ -34,17 +34,16 @@ in sync with them automatically.
 
 ### Step 2 — Validate each target
 
-For each target directory, call `validate_feature`:
+For each target directory, call the contract feature's CLI shim around
+`validate_feature`:
 
 ```bash
-python3 -c "from importlib import import_module; \
-  m = import_module('claude.features.contract.lib.checks'); \
-  r = m.validate_feature('<feature-dir>'); \
-  print(r.passed, r.messages)"
+python3 .claude/features/contract/scripts/validate-feature.py <feature-dir>
 ```
 
-(Use whichever invocation style matches the current contract library surface —
-the contract feature is the source of truth for the import path.)
+The shim exits 0 on pass, 1 on validation error, and 2 on bad invocation; it
+prints the per-check messages to stdout on pass or stderr on fail. Collect
+the exit code and messages per target so Step 3 can render them uniformly.
 
 Notes on semantics owned by `validate_feature`:
 - Retired features (`feature.json` `status: retired`) short-circuit to
@@ -79,7 +78,9 @@ caller can detect breakage.
 
 ## Notes
 
-- The checks come from `contract.lib.checks.validate_feature`; if you want
-  to change what "valid" means, change the library, not this skill.
-- This skill replaces the older `rabbit-cage/scripts/validate-all.py`
-  sweep; `RABBIT-CAGE-BACKLOG-24` (separate cycle) retires that script.
+- The checks come from `contract.lib.checks.validate_feature` (called via
+  the `validate-feature.py` CLI shim); if you want to change what "valid"
+  means, change the library, not this skill.
+- This skill replaces the older `rabbit-cage/scripts/validate-all.py` sweep
+  for cross-feature audit. Reach for this skill instead of the retired
+  script.
