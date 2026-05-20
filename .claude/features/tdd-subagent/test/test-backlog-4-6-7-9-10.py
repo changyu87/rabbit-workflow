@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# E2E tests for TDD-SUBAGENT-BACKLOG-4, 6, 7, 9, 10.
+# E2E tests for TDD-SUBAGENT-BACKLOG-4, 6, 7, 9.
 #
 # BACKLOG-4: dispatch-tdd-subagent.py emits a distinct yellow [rabbit] note
 #            in the prompt preamble when .rabbit-human-approval-bypass exists.
@@ -9,8 +9,6 @@
 #            block + handoff_schema_version) alongside YAML HANDOFF.
 # BACKLOG-9: agents/tdd-subagent.md does NOT instruct the subagent to
 #            choose between an agent-local and feature-local scripts path.
-# BACKLOG-10: test_helpers.py exists with make_feature_dir() and the three
-#            legacy fixture tests import it.
 import os
 import re
 import subprocess
@@ -194,25 +192,14 @@ def b9():
     ok("b9: agents/tdd-subagent.md dual-path note removed")
 
 
-# BACKLOG-10: the canonical test_helpers fixture writer now lives in
-# tdd-state-machine alongside the test files it serves (the three legacy
-# fixture tests — test-tdd-step.py, test-context.py, test-drift-check.py —
-# were extracted with their subject scripts). tdd-subagent's tests no longer
-# depend on this helper, so its presence here is not required. The helper's
-# behaviour is covered by tdd-state-machine's test suite.
-def b10():
-    ok("b10: test_helpers.py extracted to tdd-state-machine alongside its consumer tests")
-
-
 b4()
 b6()
 b7()
 b9()
-b10()
 
 print()
 if FAIL == 0:
-    print(f"backlog-4/6/7/9/10: {PASS} passed.")
+    print(f"backlog-4/6/7/9: {PASS} passed.")
     sys.exit(0)
-print(f"backlog-4/6/7/9/10: {FAIL} failure(s), {PASS} passed.")
+print(f"backlog-4/6/7/9: {FAIL} failure(s), {PASS} passed.")
 sys.exit(1)
