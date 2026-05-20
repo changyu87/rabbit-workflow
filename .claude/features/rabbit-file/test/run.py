@@ -46,6 +46,8 @@ if not run_pytest_suite("test-bug-11-cleanup-and-coverage.py"):
     total_fail += 1
 if not run_suite("test-skill.py"):
     total_fail += 1
+if not run_suite("test-metadata.py"):
+    total_fail += 1
 
 if total_fail == 0:
     print("ALL SUITES PASSED")
