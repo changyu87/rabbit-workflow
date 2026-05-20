@@ -13,5 +13,5 @@
   },
   "deprecation_criterion": "when TDD state machine is replaced by a fundamentally different orchestration approach",
   "updated": "2026-05-19",
-  "spec_no_change_reason": "spec already committed in this cycle's spec-update step"
+  "spec_no_change_reason": "BACKLOG-4 closes test gaps for existing defensive branches; no spec/impl change"
 }
