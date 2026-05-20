@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""check-sentinel.py — verify RABBIT-POLICY-BLOCK-v1 sentinel in dispatch scripts.
+"""check-sentinel.py — thin CLI shim around contract.lib.checks.check_sentinel
+(spec Inv 24, Inv 44).
 
 Usage: check-sentinel.py <file-or-dir>
+Exit:  0 sentinel present; 1 missing; 2 invocation error.
 
-If given a file: checks that file for the sentinel string.
-If given a directory: recursively finds all .py files (Python-only stack
-per rabbit-cage Inv 11) and checks each. Shell scripts are out of scope.
-Exits 0 if all checked files contain the sentinel, 1 if any are missing it.
-
-Version: 1.1.0
+Version: 2.0.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when sentinel enforcement is provided by a native linter.
 """
@@ -16,47 +13,20 @@ Deprecation criterion: when sentinel enforcement is provided by a native linter.
 import os
 import sys
 
-
-SENTINEL = "RABBIT-POLICY-BLOCK-v1"
-
-
-def check_file(filepath):
-    with open(filepath) as f:
-        content = f.read()
-    return SENTINEL in content
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from lib.checks import check_sentinel  # noqa: E402
 
 
-def main():
+def main() -> int:
     if len(sys.argv) < 2:
         print("ERROR: usage: check-sentinel.py <file-or-dir>", file=sys.stderr)
-        sys.exit(2)
-
-    target = sys.argv[1]
-
-    if not os.path.exists(target):
-        print(f"ERROR: not a file or directory: {target}", file=sys.stderr)
-        sys.exit(2)
-
-    failed = 0
-
-    if os.path.isfile(target):
-        if not check_file(target):
-            print(f"MISSING sentinel in: {target}", file=sys.stderr)
-            failed = 1
-    elif os.path.isdir(target):
-        for dirpath, _, filenames in os.walk(target):
-            for fname in filenames:
-                if fname.endswith(".py"):
-                    fpath = os.path.join(dirpath, fname)
-                    if not check_file(fpath):
-                        print(f"MISSING sentinel in: {fpath}", file=sys.stderr)
-                        failed = 1
-    else:
-        print(f"ERROR: not a file or directory: {target}", file=sys.stderr)
-        sys.exit(2)
-
-    sys.exit(failed)
+        return 2
+    result = check_sentinel(sys.argv[1])
+    stream = sys.stdout if result.passed else sys.stderr
+    for line in result.messages:
+        print(line, file=stream)
+    return 0 if result.passed else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

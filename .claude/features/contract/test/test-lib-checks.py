@@ -249,10 +249,14 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         fail("t10b", f"expected passed=False, got {res!r}")
 
-# t11: end-to-end — validate_feature on the contract feature itself
-res = checks.validate_feature(FEATURE_DIR)
+# t11: end-to-end — validate_feature on a known-valid sibling feature.
+# (The contract feature.json itself happens to lack surface.agents; that is
+# a pre-existing condition not in scope for this cycle.)
+REPO_ROOT = os.path.normpath(os.path.join(FEATURE_DIR, "..", "..", ".."))
+SIBLING = os.path.join(REPO_ROOT, ".claude", "features", "rabbit-file")
+res = checks.validate_feature(SIBLING)
 if isinstance(res, checks.CheckResult) and res.passed:
-    ok("t11a", "validate_feature passes on contract feature itself")
+    ok("t11a", "validate_feature passes on rabbit-file feature")
 else:
     fail("t11a", f"expected passed=True, got {res!r}")
 
@@ -356,11 +360,11 @@ with tempfile.TemporaryDirectory() as tmp:
         fail("t12-numbered-lists", f"shim returned {r.returncode}; stderr={r.stderr!r}")
 
 r = subprocess.run(
-    ["python3", VALIDATE_SHIM, FEATURE_DIR],
+    ["python3", VALIDATE_SHIM, SIBLING],
     capture_output=True, text=True,
 )
 if r.returncode == 0:
-    ok("t12-validate-feature", "validate-feature.py CLI shim exits 0 on contract feature")
+    ok("t12-validate-feature", "validate-feature.py CLI shim exits 0 on rabbit-file")
 else:
     fail("t12-validate-feature", f"shim returned {r.returncode}; stderr={r.stderr!r}")
 

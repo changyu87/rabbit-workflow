@@ -196,14 +196,16 @@ else:
     ko(f"BACKLOG-9: contract.md missing scripts: {sorted(missing_in_contract)}")
 
 
-# BACKLOG-10: validate-feature.py imports/uses feature.json.schema.json
-vf_path = os.path.join(FEATURE_DIR, "scripts/validate-feature.py")
+# BACKLOG-10: feature.json.schema.json validation lives in the validate_feature
+# library (post-BACKLOG-26 extraction). Check the library, which is where the
+# logic now lives; validate-feature.py is a thin shim that delegates to it.
+vf_path = os.path.join(FEATURE_DIR, "lib/checks.py")
 with open(vf_path) as f:
     vf_content = f.read()
 if "feature.json.schema.json" in vf_content:
-    ok("BACKLOG-10: validate-feature.py references feature.json.schema.json")
+    ok("BACKLOG-10: lib/checks.py references feature.json.schema.json")
 else:
-    ko("BACKLOG-10: validate-feature.py does not reference feature.json.schema.json")
+    ko("BACKLOG-10: lib/checks.py does not reference feature.json.schema.json")
 
 
 # BACKLOG-12: rabbit-triage.py was deleted in CONTRACT-BACKLOG-24 (dead code).

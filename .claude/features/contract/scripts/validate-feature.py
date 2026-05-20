@@ -1,166 +1,36 @@
 #!/usr/bin/env python3
-"""validate-feature.py — verify a feature directory against the feature-skeleton schema.
+"""validate-feature.py — thin CLI shim around
+contract.lib.checks.validate_feature (spec Inv 18, Inv 39, Inv 43b, Inv 44).
 
 Usage: validate-feature.py <feature-dir>
+Exit:  0 pass; 1 validation error(s); 2 invocation error.
 
-Exit codes:
-  0  pass
-  1  validation error(s); details on stderr
-  2  invocation error (bad usage, missing dir)
-
-Version: 1.0.0
+Version: 2.0.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when feature validation is provided natively by the rabbit CLI.
 """
 
-import json
 import os
-import re
 import sys
 
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), "..")))
+from lib.checks import validate_feature  # noqa: E402
 
-def main():
-    if len(sys.argv) < 2:
+
+def main() -> int:
+    if len(sys.argv) < 2 or not sys.argv[1]:
         print("usage: validate-feature.py <feature-dir>", file=sys.stderr)
-        sys.exit(2)
-
+        return 2
     feature_dir = sys.argv[1]
-
-    if not feature_dir:
-        print("usage: validate-feature.py <feature-dir>", file=sys.stderr)
-        sys.exit(2)
-
     if not os.path.isdir(feature_dir):
         print(f"ERROR: not a directory: {feature_dir}", file=sys.stderr)
-        sys.exit(2)
-
-    expected_name = os.path.basename(os.path.realpath(feature_dir))
-    errors = []
-
-    def err(msg):
-        print(f"ERROR: {msg}", file=sys.stderr)
-        errors.append(msg)
-
-    # Per spec Inv 43 (BUG-40): retired features are tombstones. Short-circuit
-    # before any structural checks if feature.json declares status: retired.
-    # The successor feature owns the live surface; the retired directory is
-    # exempt from spec.md/contract.md/test/run.py/deprecation_criterion checks.
-    feature_json_early = os.path.join(feature_dir, "feature.json")
-    if os.path.isfile(feature_json_early):
-        try:
-            with open(feature_json_early) as f:
-                early_data = json.load(f)
-            if early_data.get("status") == "retired":
-                print(f"RETIRED: {feature_dir} (status=retired; structural checks skipped)")
-                sys.exit(0)
-        except (json.JSONDecodeError, OSError):
-            pass  # fall through to standard validation, which will report
-
-    # Required files / dirs
-    if not os.path.isfile(os.path.join(feature_dir, "feature.json")):
-        err("missing feature.json")
-    if not os.path.isfile(os.path.join(feature_dir, "docs", "spec", "spec.md")):
-        err("missing docs/spec/spec.md")
-    elif os.path.getsize(os.path.join(feature_dir, "docs", "spec", "spec.md")) == 0:
-        err("docs/spec/spec.md is empty")
-    if not os.path.isfile(os.path.join(feature_dir, "docs", "spec", "contract.md")):
-        err("missing docs/spec/contract.md")
-    elif os.path.getsize(os.path.join(feature_dir, "docs", "spec", "contract.md")) == 0:
-        err("docs/spec/contract.md is empty")
-    # Per spec Inv 14 & Inv 39 (BUG-38): bug storage is centralized to
-    # <repo-root>/.claude/bugs/<feature-name>/; the legacy per-feature
-    # docs/bugs/ directory no longer applies and MUST NOT be required here.
-
-    run_py = os.path.join(feature_dir, "test", "run.py")
-    if not os.path.isfile(run_py):
-        err("missing test/run.py")
-    elif not os.access(run_py, os.X_OK):
-        err("test/run.py not executable")
-
-    # Bail early if feature.json is absent or invalid JSON.
-    feature_json_path = os.path.join(feature_dir, "feature.json")
-    if not os.path.isfile(feature_json_path):
-        print(f"FAIL: {len(errors)} error(s) in {feature_dir}", file=sys.stderr)
-        sys.exit(1)
-
-    try:
-        with open(feature_json_path) as f:
-            data = json.load(f)
-    except json.JSONDecodeError:
-        err("feature.json is not valid JSON")
-        print(f"FAIL: {len(errors)} error(s) in {feature_dir}", file=sys.stderr)
-        sys.exit(1)
-
-    # BACKLOG-10: validate against feature.json.schema.json when jsonschema is
-    # available. Schema violations are reported as additional errors. The
-    # field-by-field checks below remain as a no-dependency fallback that also
-    # enforces feature-name/directory parity and other validate-only rules.
-    schema_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..", "schemas", "feature.json.schema.json",
-    )
-    if os.path.isfile(schema_path):
-        try:
-            import jsonschema  # type: ignore
-            with open(schema_path) as f:
-                schema = json.load(f)
-            try:
-                jsonschema.validate(data, schema)
-            except jsonschema.ValidationError as e:
-                err(f"feature.json: schema violation: {e.message}")
-        except ImportError:
-            pass
-
-    # Field-by-field checks.
-    name = data.get("name", "")
-    if not name:
-        err("feature.json: missing name")
-    elif name != expected_name:
-        err(f"feature.json: name '{name}' does not match directory name '{expected_name}'")
-
-    version = data.get("version", "")
-    if not version:
-        err("feature.json: missing version")
-    elif not re.match(r"^\d+\.\d+\.\d+$", version):
-        err(f"feature.json: version '{version}' is not semver (X.Y.Z)")
-
-    owner = data.get("owner", "")
-    if not owner:
-        err("feature.json: missing owner")
-    elif isinstance(owner, dict):
-        err("feature.json: owner must be a flat string, not an object")
-
-    tdd_state = data.get("tdd_state", "")
-    valid_states = {"spec", "test-red", "impl", "test-green", "review", "merged", "deprecated"}
-    if not tdd_state:
-        err("feature.json: missing tdd_state")
-    elif tdd_state not in valid_states:
-        err(f"feature.json: invalid tdd_state '{tdd_state}' (allowed: {' | '.join(sorted(valid_states))})")
-
-    summary = data.get("summary", "")
-    if not summary:
-        err("feature.json: missing summary")
-
-    # surface must be an object with arrays: hooks, commands, agents, skills
-    surface = data.get("surface")
-    if not isinstance(surface, dict):
-        err("feature.json: surface must be an object")
-    else:
-        for key in ("hooks", "commands", "agents", "skills"):
-            if not isinstance(surface.get(key), list):
-                err(f"feature.json: surface.{key} must be an array")
-
-    criterion = data.get("deprecation_criterion", "")
-    if not criterion:
-        err("feature.json: missing deprecation_criterion")
-
-    if errors:
-        print(f"FAIL: {len(errors)} error(s) in {feature_dir}", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"PASS: {feature_dir}")
-    sys.exit(0)
+        return 2
+    result = validate_feature(feature_dir)
+    stream = sys.stdout if result.passed else sys.stderr
+    for line in result.messages:
+        print(line, file=stream)
+    return 0 if result.passed else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -14,19 +14,23 @@ import shutil
 
 FEATURE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SCRIPT = os.path.join(FEATURE_DIR, "scripts/enforcement/check-imports-resolve.py")
+LIB = os.path.join(FEATURE_DIR, "lib/checks.py")
 
 FAIL = 0
 
-with open(SCRIPT) as f:
+# Per BACKLOG-26, check-imports-resolve.py is a thin shim around
+# contract.lib.checks.check_imports_resolve; the surface-dir regex now lives
+# in lib/checks.py.
+with open(LIB) as f:
     src = f.read()
 
-# t1: source must reference all five surface dirs
+# t1: library source must reference all five surface dirs
 for surface in ("features", "hooks", "skills", "commands", "agents"):
     if surface not in src:
-        print(f"FAIL t1: script does not handle '{surface}/' imports", file=sys.stderr)
+        print(f"FAIL t1: library does not handle '{surface}/' imports", file=sys.stderr)
         FAIL = 1
     else:
-        print(f"PASS t1: script source mentions '{surface}'")
+        print(f"PASS t1: library source mentions '{surface}'")
 
 # t2 (end-to-end): fixture feature with docs referencing missing .claude/hooks/x.py must fail
 TMPDIR = tempfile.mkdtemp()
