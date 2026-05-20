@@ -1,3 +1,12 @@
+---
+feature: rabbit-file
+version: 0.3.0
+owner: rabbit-workflow team
+template_version: 2.0.0
+deprecation_criterion: when a unified tracking system replaces file-based bug and backlog management
+status: active
+---
+
 # rabbit-file
 
 Structured source of truth is feature.json.
@@ -103,7 +112,7 @@ origin/bug-backlog-files root:
   be used.
 - branch_ops push operations (counter commit, item commit, commit_sha
   backfill) MUST be wrapped in a retry loop with a bounded number of
-  attempts (implementation-defined, at least 3, currently 8). On a
+  attempts (implementation-defined, at least 3, currently 16). On a
   non-fast-forward push failure OR a transient remote ref-lock contention
   error ("cannot lock ref", "failed to update ref"), the retry MUST
   re-fetch origin/bug-backlog-files, reset the worktree HEAD to the
