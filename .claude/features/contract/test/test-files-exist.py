@@ -45,21 +45,17 @@ check_file("templates/skill-template.md")
 check_file("templates/command-template.md")
 check_file("templates/handoff-template.md")
 
-# Schemas (4)
+# Schemas
 check_file("schemas/feature.json.schema.json")
-check_file("schemas/registry.json.schema.json")
 check_file("schemas/bug.json.schema.json")
 check_file("schemas/project-map.json.schema.json")
 check_file("schemas/rabbit-print.schema.json")
 check_file("schemas/rabbit-print-messages.json")
 check_file("scripts/rabbit_print.py")
 
-# Scripts (6) — also check executable
+# Scripts — also check executable
 check_exec("scripts/policy-block.py")
 check_exec("scripts/dispatch-feature-edit.py")
-check_exec("scripts/render-template.py")
-check_exec("scripts/check-maps-consistent.py")
-check_exec("scripts/rabbit-triage.py")
 
 # find-feature.py and absence of registry.json
 import subprocess
@@ -96,32 +92,9 @@ check_file("test/test-files-exist.py")
 check_file("test/test-policy-block.py")
 check_file("test/test-templates-have-version.py")
 check_file("test/test-schemas-valid-json.py")
-check_file("test/test-rabbit-triage.py")
 check_file("test/test-dispatch.py")
 check_file("test/test-build-contract.py")
 check_file("test/test-python-only-stack.py")
-
-# dispatch-spec-update artifacts
-dsu = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-update.py")
-if os.path.isfile(dsu) and os.access(dsu, os.X_OK):
-    print("ok: dispatch-spec-update.py exists and is executable")
-else:
-    print("ko: dispatch-spec-update.py missing or not executable", file=sys.stderr)
-    FAIL = 1
-
-spec_update_tmpl = os.path.join(FEATURE_DIR, "templates/spec-update-template.txt")
-if os.path.isfile(spec_update_tmpl):
-    print("ok: spec-update-template.txt exists")
-else:
-    print("ko: spec-update-template.txt missing", file=sys.stderr)
-    FAIL = 1
-
-dsu_test = os.path.join(FEATURE_DIR, "test/test-dispatch-spec-update.py")
-if os.path.isfile(dsu_test):
-    print("ok: test-dispatch-spec-update.py exists")
-else:
-    print("ko: test-dispatch-spec-update.py missing", file=sys.stderr)
-    FAIL = 1
 
 # workspace-map artifacts
 check_exec("scripts/workspace-map.py")

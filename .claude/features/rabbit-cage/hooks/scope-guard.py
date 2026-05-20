@@ -72,19 +72,6 @@ def abspath(p: str) -> str:
     return os.path.realpath(os.path.join(os.getcwd(), p))
 
 
-def walk_up_find(target: str, want: str) -> Optional[str]:
-    """Walk up from target's parent looking for a directory containing 'want'."""
-    d = os.path.dirname(target)
-    while d not in ("", "/", "."):
-        if os.path.exists(os.path.join(d, want)):
-            return d
-        nd = os.path.dirname(d)
-        if nd == d:
-            break
-        d = nd
-    return None
-
-
 def find_feature_path(repo_root: Path, feature: str) -> Optional[str]:
     """Run find-feature.py; return repo-relative path or None."""
     script = repo_root / ".claude" / "features" / "contract" / "scripts" / "find-feature.py"
@@ -173,9 +160,9 @@ def decide(target: str) -> Tuple[bool, str]:
         if abs_path.startswith(per_abs):
             return True, f"ALLOW (per-feature scope marker: {per_feature})"
 
-    # 4. Active scope marker anywhere in ancestor chain
-    if walk_up_find(abs_path, ".rabbit-scope-active"):
-        scope_marker = REPO_ROOT / ".rabbit-scope-active"
+    # 4. Active scope marker at repo root (the only location ever written).
+    scope_marker = REPO_ROOT / ".rabbit-scope-active"
+    if scope_marker.is_file():
         scope_feature = ""
         try:
             scope_feature = scope_marker.read_text().strip()

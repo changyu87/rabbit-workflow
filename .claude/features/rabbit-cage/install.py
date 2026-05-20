@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-# install.py — copy rabbit-workflow into a target workspace.
-#
-# Usage:
-#   install.py [TARGET] [--all]
-#
-#   TARGET   directory to install into (default: $PWD)
-#   --all    also copy archive material (archive/, test/) — useful for fans
-#            / contributors who want a closer look at how rabbit is built.
-#            Without --all, dev-only docs under .claude/docs/specs/ and
-#            .claude/docs/plans/ are stripped from the installed tree;
-#            default install is .claude/ + CLAUDE.md only.
-#
-# The runtime work model is identical regardless of --all. The flag only
-# affects which files come along for inspection; rabbit's behavior in the
-# installed workspace is unchanged.
+"""install.py — copy rabbit-workflow into a target workspace.
+
+Usage:
+  install.py [TARGET] [--all]
+
+  TARGET   directory to install into (default: $PWD)
+  --all    also copy archive material (archive/, test/) — useful for fans
+           / contributors who want a closer look at how rabbit is built.
+           Without --all, dev-only docs under .claude/docs/specs/ and
+           .claude/docs/plans/ are stripped from the installed tree;
+           default install is .claude/ + CLAUDE.md only.
+
+The runtime work model is identical regardless of --all. The flag only
+affects which files come along for inspection; rabbit's behavior in the
+installed workspace is unchanged.
+"""
 
 import glob
 import os
@@ -25,18 +26,7 @@ import urllib.request
 
 
 def usage():
-    lines = []
-    in_header = False
-    with open(__file__) as f:
-        for i, line in enumerate(f):
-            if i == 0:
-                continue  # skip shebang
-            if line.startswith("# "):
-                lines.append(line[2:].rstrip())
-                in_header = True
-            elif in_header:
-                break
-    print("\n".join(lines), file=sys.stderr)
+    print(__doc__, file=sys.stderr)
 
 
 def main():

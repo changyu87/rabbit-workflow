@@ -1,0 +1,17 @@
+{
+  "template_version": "2.0.0",
+  "name": "tdd-state-machine",
+  "version": "1.1.0",
+  "owner": "rabbit team",
+  "tdd_state": "test-green",
+  "summary": "Forward-only TDD state machine: tdd-step.py, tdd-context.py, tdd-drift-check.py. Owns these scripts; the originals have been removed from tdd-subagent.",
+  "surface": {
+    "hooks": [],
+    "commands": [],
+    "agents": [],
+    "skills": []
+  },
+  "deprecation_criterion": "when TDD state machine is replaced by a fundamentally different orchestration approach",
+  "updated": "2026-05-19",
+  "spec_no_change_reason": "BACKLOG-4 closes test gaps for existing defensive branches; no spec/impl change"
+}

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # Tests for dispatch-tdd-subagent.py.
-# resolve-feature-scope.sh was deleted in Task 5 (replaced by rabbit-feature-scope feature).
 import json
 import os
 import shutil
@@ -55,14 +54,6 @@ def make_rabbit_root(root):
         f.write('# Spec\nMinimal spec content.')
     with open(os.path.join(root, '.claude/features/tdd-subagent/docs/spec/contract.md'), 'w') as f:
         f.write('# Contract\nMinimal contract content.')
-
-
-# t1: resolve-feature-scope.sh does NOT exist (deleted in Task 5)
-def t1():
-    if not os.path.exists(os.path.join(SCRIPTS_DIR, 'resolve-feature-scope.sh')):
-        ok('t1: resolve-feature-scope.sh correctly absent (deleted in Task 5)')
-    else:
-        ko('t1: resolve-feature-scope.sh still exists but should have been deleted')
 
 
 # t4: dispatch-tdd-subagent.py exists and is executable
@@ -145,7 +136,7 @@ def t8():
 print("running parallel-orchestration-scripts tests")
 print(f"  SCRIPTS_DIR={SCRIPTS_DIR}")
 print()
-t1(); t4(); t5(); t6(); t7(); t8()
+t4(); t5(); t6(); t7(); t8()
 print()
 print(f"summary: {PASS} passed, {FAIL} failed")
 shutil.rmtree(TMPROOT, ignore_errors=True)

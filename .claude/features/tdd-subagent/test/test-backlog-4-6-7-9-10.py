@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# E2E tests for TDD-SUBAGENT-BACKLOG-4, 6, 7, 9, 10.
+# E2E tests for TDD-SUBAGENT-BACKLOG-4, 6, 7, 9.
 #
 # BACKLOG-4: dispatch-tdd-subagent.py emits a distinct yellow [rabbit] note
 #            in the prompt preamble when .rabbit-human-approval-bypass exists.
@@ -9,20 +9,16 @@
 #            block + handoff_schema_version) alongside YAML HANDOFF.
 # BACKLOG-9: agents/tdd-subagent.md does NOT instruct the subagent to
 #            choose between an agent-local and feature-local scripts path.
-# BACKLOG-10: test_helpers.py exists with make_feature_dir() and the three
-#            legacy fixture tests import it.
-import json
 import os
+import re
 import subprocess
 import sys
-import tempfile
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
 FEATURE_DIR = os.path.join(REPO_ROOT, ".claude", "features", "tdd-subagent")
 DISPATCH = os.path.join(FEATURE_DIR, "scripts", "dispatch-tdd-subagent.py")
 AGENT_MD = os.path.join(FEATURE_DIR, "agents", "tdd-subagent.md")
 SPEC_MD = os.path.join(FEATURE_DIR, "docs", "spec", "spec.md")
-HELPERS = os.path.join(FEATURE_DIR, "test", "test_helpers.py")
 SCHEMA = os.path.join(
     REPO_ROOT, ".claude", "features", "contract", "schemas", "feature.json.schema.json"
 )
@@ -112,7 +108,7 @@ def b4():
                 f.write("")
 
 
-# BACKLOG-6: spec invariant 33 references the contract schema; spec also
+# BACKLOG-6: spec invariant 25 references the contract schema; spec also
 # names the flat fields used by tdd-subagent (per BACKLOG-6 declaration).
 # Note: the contract-owned schema enum gap (missing `spec-update`) is
 # explicitly out of scope and filed via a follow-up backlog under
@@ -123,10 +119,19 @@ def b6():
     if "feature.json.schema.json" not in spec:
         ko("b6: spec does not reference feature.json.schema.json")
         return
-    if "Inv 33" in spec or "33." in spec:
-        ok("b6a: spec declares feature.json schema reference (Inv 33)")
+    # After the slim-after-extraction renumber (spec v2.0.0), survivors are
+    # numbered 1..20; the schema-reference invariant is now Inv 18. (History:
+    # Inv 33 → Inv 29 (v1.19.0) → Inv 25 (v1.20.0) → Inv 18 (v2.0.0).) Accept
+    # either explicit "Inv 18" reference or any numbered line referencing the
+    # schema file.
+    schema_inv_match = re.search(
+        r"^(\d+)\.\s.*feature\.json\.schema\.json",
+        spec, re.MULTILINE | re.DOTALL,
+    )
+    if schema_inv_match:
+        ok(f"b6a: spec declares feature.json schema reference (Inv {schema_inv_match.group(1)})")
     else:
-        ko("b6a: spec missing Inv 33 schema reference")
+        ko("b6a: spec missing numbered invariant referencing feature.json.schema.json")
         return
     # b6b: spec names the flat-shape fields the tdd-subagent depends on.
     for needed in ("deprecation_criterion", "tdd_state", "surface", "owner"):
@@ -187,74 +192,14 @@ def b9():
     ok("b9: agents/tdd-subagent.md dual-path note removed")
 
 
-# BACKLOG-10: test_helpers.py exists with make_feature_dir; three tests
-# import it (no longer define their own fix()).
-def b10():
-    if not os.path.isfile(HELPERS):
-        ko(f"b10: test_helpers.py missing: {HELPERS}")
-        return
-    with open(HELPERS) as f:
-        h = f.read()
-    if "def make_feature_dir" not in h:
-        ko("b10: test_helpers.py missing make_feature_dir()")
-        return
-    ok("b10a: test_helpers.py exists with make_feature_dir()")
-
-    # Validate the helper writes a flat-schema feature.json.
-    tmp = tempfile.mkdtemp()
-    try:
-        # Import the module fresh.
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("th", HELPERS)
-        th = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(th)
-        d = os.path.join(tmp, "x")
-        th.make_feature_dir(d, "x", "impl")
-        with open(os.path.join(d, "feature.json")) as f:
-            fj = json.load(f)
-        # Must be flat shape.
-        if not isinstance(fj.get("owner"), str):
-            ko(f"b10b: helper feature.json owner not string: {fj.get('owner')}")
-            return
-        if "deprecation_criterion" not in fj:
-            ko("b10b: helper feature.json missing flat deprecation_criterion")
-            return
-        if "deprecation" in fj and isinstance(fj["deprecation"], dict):
-            ko("b10b: helper feature.json still has legacy nested deprecation object")
-            return
-        if fj.get("tdd_state") != "impl":
-            ko(f"b10b: helper tdd_state wrong: {fj.get('tdd_state')}")
-            return
-        # Required sibling files must exist.
-        for sib in ("spec.md", "contract.md", os.path.join("test", "run.py")):
-            if not os.path.exists(os.path.join(d, sib)):
-                ko(f"b10b: helper did not create {sib}")
-                return
-        ok("b10b: make_feature_dir() writes flat schema + sibling files")
-    finally:
-        import shutil
-        shutil.rmtree(tmp, ignore_errors=True)
-
-    # Three legacy fixture tests must import the helper.
-    for t in ("test-tdd-step.py", "test-context.py", "test-drift-check.py"):
-        p = os.path.join(FEATURE_DIR, "test", t)
-        with open(p) as f:
-            content = f.read()
-        if "from test_helpers import" not in content and "import test_helpers" not in content:
-            ko(f"b10c: {t} does not import test_helpers")
-            return
-    ok("b10c: test-tdd-step.py, test-context.py, test-drift-check.py import test_helpers")
-
-
 b4()
 b6()
 b7()
 b9()
-b10()
 
 print()
 if FAIL == 0:
-    print(f"backlog-4/6/7/9/10: {PASS} passed.")
+    print(f"backlog-4/6/7/9: {PASS} passed.")
     sys.exit(0)
-print(f"backlog-4/6/7/9/10: {FAIL} failure(s), {PASS} passed.")
+print(f"backlog-4/6/7/9: {FAIL} failure(s), {PASS} passed.")
 sys.exit(1)

@@ -80,7 +80,7 @@ try:
     with open(os.path.join(tmproot, ".rabbit-human-approval-bypass"), "w") as f:
         f.write("session")
     with open(os.path.join(tmproot, ".rabbit-skills-updated"), "w") as f:
-        f.write("rabbit-config\nrabbit-spec\n")
+        f.write("rabbit-config\nrabbit-feature-spec\n")
 
     out = run_sync(tmproot)
     n = count_json_objects(out)

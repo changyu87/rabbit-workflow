@@ -57,14 +57,8 @@ else:
     ko(f"BUG-11: tdd_state enum missing values — got {enum}")
 
 
-# BUG-12: render-template.py docstring does not reference render-template.sh
-rt_path = os.path.join(FEATURE_DIR, "scripts/render-template.py")
-with open(rt_path) as f:
-    rt_content = f.read()
-if "render-template.sh" in rt_content:
-    ko("BUG-12: render-template.py still references 'render-template.sh'")
-else:
-    ok("BUG-12: render-template.py docstring no longer references render-template.sh")
+# BUG-12: render-template.py was deleted in CONTRACT-BACKLOG-24 (dead code).
+# Original assertion (docstring did not reference render-template.sh) is moot.
 
 
 # BUG-27: test-files-exist.py checks skill-template.md, command-template.md, handoff-template.md
@@ -167,7 +161,7 @@ RABBIT_PRINT_PRODUCERS = [
     ".claude/features/rabbit-cage/hooks/sync-check.py",
     ".claude/features/rabbit-cage/hooks/session-init.py",
     ".claude/features/rabbit-cage/hooks/refresh.py",
-    ".claude/features/tdd-subagent/scripts/tdd-step.py",
+    ".claude/features/tdd-state-machine/scripts/tdd-step.py",
 ]
 missing_producers = [p for p in RABBIT_PRINT_PRODUCERS if not os.path.isfile(os.path.join(REPO_ROOT, p))]
 if not missing_producers:
@@ -212,18 +206,8 @@ else:
     ko("BACKLOG-10: validate-feature.py does not reference feature.json.schema.json")
 
 
-# BACKLOG-12: rabbit-triage.py guards feature_dir existence before dereferencing.
-# The order in main() must check isdir(feature_dir) BEFORE calling realpath/basename.
-rt_path = os.path.join(FEATURE_DIR, "scripts/rabbit-triage.py")
-with open(rt_path) as f:
-    rt_content = f.read()
-# Find offsets — isdir(feature_dir) must come before realpath(feature_dir).
-isdir_idx = rt_content.find("os.path.isdir(feature_dir)")
-realpath_idx = rt_content.find("os.path.realpath(feature_dir)")
-if isdir_idx != -1 and realpath_idx != -1 and isdir_idx < realpath_idx:
-    ok("BACKLOG-12: rabbit-triage.py validates feature_dir before realpath()")
-else:
-    ko(f"BACKLOG-12: rabbit-triage.py ordering wrong (isdir@{isdir_idx}, realpath@{realpath_idx})")
+# BACKLOG-12: rabbit-triage.py was deleted in CONTRACT-BACKLOG-24 (dead code).
+# Original assertion (isdir/realpath ordering) is moot.
 
 
 # BACKLOG-13: workspace-map.py --help documents legacy positional form

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-# E2E test for tdd-subagent spec invariant 31 (BUG-19):
+# E2E test for tdd-subagent spec invariant 23 (BUG-19; was Inv 31 in
+# v1.19.0 before BACKLOG-12 renumber):
 #
-#   31. The assembled TDD subagent prompt MUST handle the case where the
-#       starting tdd_state (in feature.json) is test-green from a prior
+#   Inv 23. The assembled TDD subagent prompt MUST handle the case where
+#       the starting tdd_state (in feature.json) is test-green from a prior
 #       completed cycle. The state machine is forward-only and the only
 #       valid forward transition from test-green is to spec-update. The
 #       prompt MUST therefore include an explicit

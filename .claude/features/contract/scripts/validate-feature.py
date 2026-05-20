@@ -41,6 +41,21 @@ def main():
         print(f"ERROR: {msg}", file=sys.stderr)
         errors.append(msg)
 
+    # Per spec Inv 43 (BUG-40): retired features are tombstones. Short-circuit
+    # before any structural checks if feature.json declares status: retired.
+    # The successor feature owns the live surface; the retired directory is
+    # exempt from spec.md/contract.md/test/run.py/deprecation_criterion checks.
+    feature_json_early = os.path.join(feature_dir, "feature.json")
+    if os.path.isfile(feature_json_early):
+        try:
+            with open(feature_json_early) as f:
+                early_data = json.load(f)
+            if early_data.get("status") == "retired":
+                print(f"RETIRED: {feature_dir} (status=retired; structural checks skipped)")
+                sys.exit(0)
+        except (json.JSONDecodeError, OSError):
+            pass  # fall through to standard validation, which will report
+
     # Required files / dirs
     if not os.path.isfile(os.path.join(feature_dir, "feature.json")):
         err("missing feature.json")
@@ -52,8 +67,9 @@ def main():
         err("missing docs/spec/contract.md")
     elif os.path.getsize(os.path.join(feature_dir, "docs", "spec", "contract.md")) == 0:
         err("docs/spec/contract.md is empty")
-    if not os.path.isdir(os.path.join(feature_dir, "docs", "bugs")):
-        err("missing docs/bugs/ directory")
+    # Per spec Inv 14 & Inv 39 (BUG-38): bug storage is centralized to
+    # <repo-root>/.claude/bugs/<feature-name>/; the legacy per-feature
+    # docs/bugs/ directory no longer applies and MUST NOT be required here.
 
     run_py = os.path.join(feature_dir, "test", "run.py")
     if not os.path.isfile(run_py):

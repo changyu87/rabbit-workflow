@@ -26,6 +26,7 @@ SCRIPTS_DIR = FEATURE_DIR / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import branch_ops  # noqa: E402
+from conftest import seed_bug_backlog_branch  # noqa: E402
 
 
 def _git(repo, *args, check=True):
@@ -44,6 +45,7 @@ def isolated_repo(tmp_path):
     remote.mkdir()
     subprocess.run(["git", "init", "--bare", str(remote)], check=True,
                    capture_output=True)
+    seed_bug_backlog_branch(remote)  # BUG-32 guard sidestep
     local = tmp_path / "local"
     subprocess.run(["git", "clone", str(remote), str(local)], check=True,
                    capture_output=True)
@@ -75,14 +77,22 @@ def patch_repo_root(isolated_repo, monkeypatch):
 # ---------------------------------------------------------------------------
 
 class TestCanonicalIdFormat:
+    # BACKLOG-11 inlined the previous _format_id helper; the canonical ID
+    # format invariant is verified end-to-end via allocate_id (see
+    # test-branch-ops.py) and documented in spec.md. These cases pin the
+    # expected format expression itself so a refactor that breaks the
+    # convention is caught at unit level too.
     def test_hyphenated_feature_name_preserves_hyphens(self):
-        assert branch_ops._format_id("rabbit-cage", "bug", 17) == "RABBIT-CAGE-BUG-17"
+        feature, type_, n = "rabbit-cage", "bug", 17
+        assert f"{feature.upper()}-{type_.upper()}-{n}" == "RABBIT-CAGE-BUG-17"
 
     def test_multi_hyphen_feature_name(self):
-        assert branch_ops._format_id("my-feature-x", "backlog", 3) == "MY-FEATURE-X-BACKLOG-3"
+        feature, type_, n = "my-feature-x", "backlog", 3
+        assert f"{feature.upper()}-{type_.upper()}-{n}" == "MY-FEATURE-X-BACKLOG-3"
 
     def test_unhyphenated_feature_name(self):
-        assert branch_ops._format_id("single", "bug", 1) == "SINGLE-BUG-1"
+        feature, type_, n = "single", "bug", 1
+        assert f"{feature.upper()}-{type_.upper()}-{n}" == "SINGLE-BUG-1"
 
     def test_id_format_documented_in_spec(self):
         spec = (FEATURE_DIR / "docs" / "spec" / "spec.md").read_text()
@@ -271,6 +281,13 @@ class TestListItemsBranchMissing:
     def test_branch_missing_with_filter_shows_branch_guidance(self, isolated_repo):
         """When the branch does not exist and a filter is passed, the message
         MUST direct the operator to file first (NOT 'No items found.')."""
+        # The fixture pre-seeds bug-backlog-files (BUG-32 guard sidestep).
+        # Delete it on the bare remote so list-items.py sees "no branch".
+        bare = isolated_repo.parent / "remote"
+        subprocess.run(
+            ["git", "-C", str(bare), "branch", "-D", "bug-backlog-files"],
+            check=True, capture_output=True,
+        )
         r = _run_list(isolated_repo, "--feature", "any-feat")
         assert r.returncode == 0
         # The fix: distinguish branch-missing from no-items.

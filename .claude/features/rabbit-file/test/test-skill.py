@@ -71,6 +71,71 @@ assert_contains(
     "SKILL.md references tdd_report_path from handoff payload (BACKLOG-6)",
 )
 
+# BUG-34: SKILL.md must NOT document the legacy fixed-path worktree.
+# The per-pid form `.claude/tmp/bug-backlog-files-<pid>` is canonical;
+# any reference to the bare fixed path misleads operators.
+import re as _re
+# Detect any occurrence of the bare fixed path NOT followed by `-<pid>` or
+# `-` + alphanumerics (i.e., the per-pid form). We look for the literal
+# token `.claude/tmp/bug-backlog-files` and require that the next char is
+# `-` (the per-pid suffix start). Anything else is the forbidden legacy.
+_legacy_re = _re.compile(r"\.claude/tmp/bug-backlog-files(?!-)")
+if _legacy_re.search(skill_text):
+    assert_fail(
+        "no legacy fixed worktree path in SKILL.md (BUG-34)",
+        f"forbidden bare path `.claude/tmp/bug-backlog-files` (without `-<pid>` suffix) appears in SKILL.md",
+    )
+else:
+    assert_pass("no legacy fixed worktree path in SKILL.md (BUG-34)")
+
+# BUG-34: SKILL.md must NOT reference any /rabbit-file slash-command
+# invocation. The Overview declares "there are NO slash commands"; all
+# other sections must be consistent.
+assert_not_contains(
+    "/rabbit-file ",
+    "no /rabbit-file slash-command reference in SKILL.md (BUG-34)",
+)
+
+# BUG-34: List Protocol must document (a) deterministic sort-by-name and
+# (b) the distinct branch-missing condition vs. filter-mismatch.
+_list_start = skill_text.find("## List Protocol")
+_list_end = skill_text.find("---", _list_start) if _list_start != -1 else -1
+if _list_start == -1 or _list_end == -1:
+    assert_fail(
+        "List Protocol section located (BUG-34)",
+        "could not find '## List Protocol' delimited section",
+    )
+else:
+    _list_block = skill_text[_list_start:_list_end]
+    _sort_terms = ("sort", "sorted", "deterministic", "ascending")
+    if any(t in _list_block.lower() for t in _sort_terms):
+        assert_pass("List Protocol documents deterministic sort-by-name (BUG-34)")
+    else:
+        assert_fail(
+            "List Protocol documents deterministic sort-by-name (BUG-34)",
+            f"none of {_sort_terms} found in List Protocol section",
+        )
+    # Branch-missing distinction: must mention branch + (does not exist | missing | absent | not been created)
+    _missing_terms = ("does not exist", "missing", "absent", "not been created", "has not been")
+    _block_lower = _list_block.lower()
+    if "branch" in _block_lower and any(t in _block_lower for t in _missing_terms):
+        # And separately, must distinguish from filter-mismatch condition.
+        _distinct_terms = ("distinct", "different", "versus", "vs", "filter")
+        if any(t in _block_lower for t in _distinct_terms):
+            assert_pass(
+                "List Protocol distinguishes branch-missing from filter-mismatch (BUG-34)"
+            )
+        else:
+            assert_fail(
+                "List Protocol distinguishes branch-missing from filter-mismatch (BUG-34)",
+                "branch-missing wording present but no distinction from filter-mismatch found",
+            )
+    else:
+        assert_fail(
+            "List Protocol documents branch-missing condition (BUG-34)",
+            f"branch + missing wording not found in List Protocol section",
+        )
+
 print()
 print(f"Results: {pass_} passed, {fail} failed")
 sys.exit(0 if fail == 0 else 1)

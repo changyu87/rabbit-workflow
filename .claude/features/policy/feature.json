@@ -1,6 +1,6 @@
 {
   "name": "policy",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Canonical rule files fed to subagents; three policy docs (philosophy, spec-rules, coding-rules).",
@@ -10,6 +10,6 @@
     "skills": []
   },
   "deprecation_criterion": "when Claude Code exposes a native subagent-policy injection point",
-  "updated": "2026-05-18",
-  "spec_no_change_reason": "spec already committed in prior commit"
+  "updated": "2026-05-19",
+  "spec_no_change_reason": "BUG-19 is a metadata sync only \u2014 spec.md and contract.md are already at 1.4.0; this fix bumps feature.json to match and adds three-way alignment to the existing POLICY-BUG-7 check"
 }

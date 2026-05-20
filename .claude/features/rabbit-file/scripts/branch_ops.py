@@ -31,10 +31,6 @@ BRANCH = "bug-backlog-files"
 IDENTITY_NAME = "rabbit-file"
 IDENTITY_EMAIL = "rabbit-file@localhost"
 
-# Legacy private alias retained for internal call sites; the module-level
-# `BRANCH` constant above is the canonical export.
-_BRANCH = BRANCH
-
 # ---------------------------------------------------------------------------
 # Per-field length limits and text sanitization (BACKLOG-7)
 # ---------------------------------------------------------------------------
@@ -126,7 +122,7 @@ def _branch_exists_on_remote(repo_root):
     """Return True if origin/bug-backlog-files exists."""
     result = subprocess.run(
         ["git", "-C", str(repo_root), "ls-remote", "--heads",
-         "origin", _BRANCH],
+         "origin", BRANCH],
         capture_output=True, text=True
     )
     if result.returncode != 0:
@@ -144,7 +140,7 @@ def _init_orphan_branch(repo_root):
         subprocess.run(["git", "init", str(tmp)], check=True, capture_output=True)
         # Identity supplied via env vars in _git; the orphan-init tmp repo
         # is private so we don't bother writing to its config.
-        _git(tmp, "checkout", "--orphan", _BRANCH)
+        _git(tmp, "checkout", "--orphan", BRANCH)
         # Empty commit (no files staged)
         subprocess.run(
             ["git", "-C", str(tmp), "commit", "--allow-empty",
@@ -155,15 +151,66 @@ def _init_orphan_branch(repo_root):
         # Push to the real origin
         origin_url = _git(repo_root, "remote", "get-url", "origin")
         _git(tmp, "remote", "add", "origin", origin_url)
-        _git(tmp, "push", "origin", f"HEAD:{_BRANCH}")
+        _git(tmp, "push", "origin", f"HEAD:{BRANCH}")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def _is_local_origin(repo_root) -> bool:
+    """Return True iff origin is a local filesystem path (not a network URL).
+
+    Classification:
+      - starts with "/"           -> local
+      - starts with "file://"     -> local
+      - contains "://"            -> remote (http://, https://, ssh://, git://)
+      - starts with "git@"        -> remote (git-over-SSH shorthand)
+      - otherwise                 -> local (relative path)
+
+    This is used by _ensure_branch to refuse silent orphan-branch creation
+    in chained-workspace topologies (BUG-32): when the immediate origin is
+    another local repo, a missing branch may exist further upstream and
+    must not be overwritten by a fresh local orphan.
+    """
+    origin_url = _git(repo_root, "remote", "get-url", "origin")
+    if origin_url.startswith("/"):
+        return True
+    if origin_url.startswith("file://"):
+        return True
+    if "://" in origin_url:
+        return False
+    if origin_url.startswith("git@"):
+        return False
+    return True
+
+
 def _ensure_branch(repo_root):
-    """Ensure origin/bug-backlog-files exists; create it if not."""
-    if not _branch_exists_on_remote(repo_root):
-        _init_orphan_branch(repo_root)
+    """Ensure origin/bug-backlog-files exists; create it if not.
+
+    BUG-32: when origin is a local filesystem path and the branch is not
+    found, refuse to bootstrap an orphan. In a chained-workspace topology
+    the upstream branch may exist genuinely further up the chain but be
+    absent from the intermediate's refs/heads/. Silent orphan creation
+    would push an empty branch to the intermediate and later overwrite
+    legitimate upstream items. Operator must materialize the branch in
+    the intermediate first.
+    """
+    if _branch_exists_on_remote(repo_root):
+        return
+    if _is_local_origin(repo_root):
+        origin_url = _git(repo_root, "remote", "get-url", "origin")
+        raise RuntimeError(
+            f"rabbit-file: refusing to create orphan branch "
+            f"{BRANCH!r} against local origin {origin_url!r}.\n"
+            f"This looks like a chained-workspace topology where the "
+            f"branch may exist further upstream but is missing from the "
+            f"intermediate's refs/heads/. Silently bootstrapping an orphan "
+            f"would later overwrite the legitimate upstream items.\n"
+            f"Remediation: materialize the branch in the intermediate first:\n"
+            f"  git -C {origin_url} fetch origin {BRANCH} && "
+            f"git -C {origin_url} checkout {BRANCH}\n"
+            f"Then retry the rabbit-file operation from this workspace."
+        )
+    _init_orphan_branch(repo_root)
 
 
 @contextmanager
@@ -188,7 +235,7 @@ def _worktree(repo_root):
     # Fetch latest from remote so we track the current tip. Retry on
     # transient .git lock contention from concurrent worktrees.
     _run_git_with_lock_retry(
-        ["git", "-C", str(repo_root), "fetch", "origin", _BRANCH])
+        ["git", "-C", str(repo_root), "fetch", "origin", BRANCH])
 
     # Add the worktree with HEAD detached at origin/bug-backlog-files.
     # Detached HEAD avoids the cross-worktree branch-checkout collision that
@@ -199,7 +246,7 @@ def _worktree(repo_root):
     # transient .git lock contention.
     _run_git_with_lock_retry(
         ["git", "-C", str(repo_root), "worktree", "add", "--detach",
-         str(wt), f"origin/{_BRANCH}"])
+         str(wt), f"origin/{BRANCH}"])
 
     try:
         # Identity is supplied per-commit via env vars (see _git_env_with_identity)
@@ -219,20 +266,15 @@ def _worktree(repo_root):
 # ---------------------------------------------------------------------------
 
 def counter_path(wt: Path, feature: str, type_: str) -> Path:
-    """Return Path to counter.json for feature+type_, creating parent dirs."""
-    folder = _type_folder(type_)
-    p = wt / "rabbit" / "features" / feature / folder / "counter.json"
+    """Return Path to counter.json for feature+type_, creating parent dirs.
+    type_ "bug" maps to folder "bugs"; "backlog" maps to "backlogs"."""
+    p = wt / "rabbit" / "features" / feature / f"{type_}s" / "counter.json"
     p.parent.mkdir(parents=True, exist_ok=True)
     return p
 
 
 def _item_dir(wt: Path, feature: str, type_: str, id_str: str) -> Path:
-    folder = _type_folder(type_)
-    return wt / "rabbit" / "features" / feature / folder / id_str
-
-
-def _type_folder(type_: str) -> str:
-    return f"{type_}s"  # "bug" -> "bugs", "backlog" -> "backlogs"
+    return wt / "rabbit" / "features" / feature / f"{type_}s" / id_str
 
 
 # ---------------------------------------------------------------------------
@@ -252,17 +294,6 @@ def write_counter(wt: Path, feature: str, type_: str, n: int) -> None:
     """Write {"next": n} to counter.json."""
     cp = counter_path(wt, feature, type_)
     cp.write_text(json.dumps({"next": n}))
-
-
-# ---------------------------------------------------------------------------
-# ID formatting
-# ---------------------------------------------------------------------------
-
-def _format_id(feature: str, type_: str, n: int) -> str:
-    """e.g. feature="rabbit-cage", type_="bug", n=17 -> "RABBIT-CAGE-BUG-17"."""
-    feature_upper = feature.upper()
-    type_upper = type_.upper()
-    return f"{feature_upper}-{type_upper}-{n}"
 
 
 # ---------------------------------------------------------------------------
@@ -309,7 +340,6 @@ def _run_git_with_lock_retry(cmd, max_attempts: int = 5):
                 f"(returncode={result.returncode}): {last_err.strip()}"
             )
         time.sleep(random.uniform(0.05, 0.3) * attempt)
-    raise RuntimeError(f"unreachable: last_err={last_err}")
 
 
 def _reset_worktree_to_origin(wt: Path) -> None:
@@ -321,11 +351,11 @@ def _reset_worktree_to_origin(wt: Path) -> None:
     contention (concurrent worktrees can race on .git/refs and .git/index).
     """
     _run_git_with_lock_retry(
-        ["git", "-C", str(wt), "fetch", "origin", _BRANCH])
+        ["git", "-C", str(wt), "fetch", "origin", BRANCH])
     _run_git_with_lock_retry(
-        ["git", "-C", str(wt), "checkout", "--detach", f"origin/{_BRANCH}"])
+        ["git", "-C", str(wt), "checkout", "--detach", f"origin/{BRANCH}"])
     _run_git_with_lock_retry(
-        ["git", "-C", str(wt), "reset", "--hard", f"origin/{_BRANCH}"])
+        ["git", "-C", str(wt), "reset", "--hard", f"origin/{BRANCH}"])
 
 
 def _commit_and_push_with_retry(wt: Path, stage_and_commit_fn,
@@ -344,7 +374,7 @@ def _commit_and_push_with_retry(wt: Path, stage_and_commit_fn,
     for attempt in range(1, max_attempts + 1):
         stage_and_commit_fn(wt)
         push = subprocess.run(
-            ["git", "-C", str(wt), "push", "origin", f"HEAD:{_BRANCH}"],
+            ["git", "-C", str(wt), "push", "origin", f"HEAD:{BRANCH}"],
             capture_output=True, text=True,
         )
         if push.returncode == 0:
@@ -391,7 +421,8 @@ def allocate_id(feature: str, type_: str) -> str:
         # Re-read counter on every attempt so retries pick up commits made
         # by competing processes after our reset.
         n = read_counter(wt, feature, type_)
-        id_str = _format_id(feature, type_, n)
+        # ID format: UPPER(feature)-UPPER(type)-N (hyphens preserved verbatim).
+        id_str = f"{feature.upper()}-{type_.upper()}-{n}"
         write_counter(wt, feature, type_, n + 1)
         cp = counter_path(wt, feature, type_)
         _git(wt, "add", str(cp.relative_to(wt)))
@@ -496,7 +527,7 @@ def release_id(feature: str, type_: str, id_str: str) -> bool:
                 # Nothing to commit — slot was overtaken.
                 return False
             push = subprocess.run(
-                ["git", "-C", str(wt), "push", "origin", f"HEAD:{_BRANCH}"],
+                ["git", "-C", str(wt), "push", "origin", f"HEAD:{BRANCH}"],
                 capture_output=True, text=True,
             )
             if push.returncode == 0:

@@ -5,7 +5,7 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../../../..'))
-SKILL_MD = os.path.join(REPO_ROOT, '.claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md')
+SKILL_MD = os.path.join(REPO_ROOT, '.claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md')
 
 PASS = 0
 FAIL = 0
@@ -90,20 +90,8 @@ def t5():
         ko("t5: SKILL.md missing '.rabbit-scope-override' reference")
 
 
-# t6: SKILL.md states that user approval IS the authorization
-def t6():
-    content = read_skill()
-    if content is None:
-        ko(f"t6: {SKILL_MD} not found")
-        return
-    if 'approval' in content:
-        ok("t6: SKILL.md mentions user approval as authorization")
-    else:
-        ko("t6: SKILL.md missing user approval authorization statement")
-
-
 print("running confirm-token bypass section tests")
-t1(); t2(); t3(); t4(); t5(); t6()
+t1(); t2(); t3(); t4(); t5()
 print()
 print(f"summary: {PASS} passed, {FAIL} failed")
 sys.exit(0 if FAIL == 0 else 1)

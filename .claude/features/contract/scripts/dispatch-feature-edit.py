@@ -84,7 +84,7 @@ Before you may emit your final HANDOFF, you MUST:
 
   2. Add (or extend) a test under the feature's test/ that fails against
      the un-fixed code and passes against your fix. Name the test after
-     the bug id (e.g. test-{bug_id}-<description>.sh).
+     the bug id (e.g. test-{bug_id}-<description>.py).
 
   3. Verify both directions:
        - Without your fix: the new test MUST fail.

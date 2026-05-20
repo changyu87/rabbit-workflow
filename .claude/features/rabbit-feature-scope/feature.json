@@ -1,32 +1,17 @@
 {
   "name": "rabbit-feature-scope",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "summary": "Shared skill for resolving natural-language requests to the list of rabbit features whose files will be modified.",
-  "status": "active",
-  "updated": "2026-05-18",
+  "summary": "RETIRED 2026-05-19 - surface absorbed into rabbit-feature.",
+  "status": "retired",
+  "updated": "2026-05-19",
   "deprecation": {
-    "criterion": "When feature-scope resolution is automated natively by the dispatch infrastructure."
+    "criterion": "RETIRED 2026-05-19 - absorbed into rabbit-feature"
   },
-  "contract": {
-    "reads": [
-      "feature.json files via find-feature.py list-json"
-    ],
-    "writes": [
-      "nothing \u2014 emits prompt to stdout only"
-    ],
-    "invokes": [
-      ".claude/features/contract/scripts/find-feature.py"
-    ]
-  },
+  "successor": "rabbit-feature",
   "surface": {
-    "scripts": [
-      "scripts/resolve-scope.py",
-      "scripts/format-feature-context.py"
-    ],
-    "skills": [
-      "skills/rabbit-feature-scope/SKILL.md"
-    ]
+    "scripts": [],
+    "skills": []
   }
 }

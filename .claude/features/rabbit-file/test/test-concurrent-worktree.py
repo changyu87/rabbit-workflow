@@ -27,6 +27,7 @@ SCRIPTS_DIR = FEATURE_DIR / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import branch_ops  # noqa: E402
+from conftest import seed_bug_backlog_branch  # noqa: E402
 
 
 def _git(repo, *args, check=True):
@@ -45,6 +46,7 @@ def isolated_repo(tmp_path):
     remote.mkdir()
     subprocess.run(["git", "init", "--bare", str(remote)], check=True,
                    capture_output=True)
+    seed_bug_backlog_branch(remote)  # BUG-32 guard sidestep
 
     local = tmp_path / "local"
     subprocess.run(["git", "clone", str(remote), str(local)], check=True,
@@ -184,17 +186,6 @@ class TestConcurrentFiling:
 # ---------------------------------------------------------------------------
 
 class TestPushRetry:
-    def _competing_commit_then_call(self, isolated_repo, call_fn):
-        """
-        Install a pre-push hook of sorts: monkey-patch _git so the first
-        push attempt is preceded by a competing push from a sibling clone.
-        Implemented by wrapping subprocess.run via a one-shot flag.
-
-        Simpler approach: directly trigger a competing commit between
-        worktree-checkout and push using a monkeypatched commit step.
-        """
-        raise NotImplementedError  # See concrete tests below.
-
     def test_allocate_id_retries_on_non_fast_forward(self, isolated_repo,
                                                      monkeypatch):
         """

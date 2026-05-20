@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 # workspace-tree.py — print annotated workspace hierarchy
 # Usage:
-#   workspace-tree.py            # structural view (dirs + key files only)
-#   workspace-tree.py --full     # all files (excl .swp, .git/*, .rabbit-prompt-counter)
-#
-# Legacy 2-arg form (kept for backward compat): workspace-tree.py <repo_root> <0|1>
+#   workspace-tree.py [REPO_ROOT]            # structural view (dirs + key files only)
+#   workspace-tree.py [REPO_ROOT] --full     # all files (excl .swp, .git/*, .rabbit-prompt-counter)
 
+import json
 import os
 import subprocess
 import sys
@@ -15,19 +14,14 @@ def _resolve_args():
     args = sys.argv[1:]
     full = False
     repo = None
-    if len(args) == 2 and args[1] in ("0", "1"):
-        # Legacy: <repo_root> <full_mode>
-        repo = args[0]
-        full = args[1] == "1"
-    else:
-        for a in args:
-            if a == "--full":
-                full = True
-            elif not a.startswith("--") and repo is None:
-                repo = a
-            else:
-                sys.stderr.write(f"workspace-tree: unknown arg '{a}'\n")
-                sys.exit(2)
+    for a in args:
+        if a == "--full":
+            full = True
+        elif not a.startswith("--") and repo is None:
+            repo = a
+        else:
+            sys.stderr.write(f"workspace-tree: unknown arg '{a}'\n")
+            sys.exit(2)
     if not repo:
         repo = os.environ.get("RABBIT_ROOT")
     if not repo:
@@ -64,8 +58,10 @@ ANNOTATIONS = {
     "contract/":              "dispatch scripts, enforcement, templates",
     "policy":                 "philosophy, spec-rules, coding-rules",
     "policy/":                "philosophy, spec-rules, coding-rules",
-    "tdd-subagent":      "tdd-step.py forward-only state machine",
-    "tdd-subagent/":     "tdd-step.py forward-only state machine",
+    "tdd-state-machine":      "tdd-step.py forward-only state machine",
+    "tdd-state-machine/":     "tdd-step.py forward-only state machine",
+    "tdd-subagent":           "TDD subagent dispatch protocol (dispatch-tdd-subagent.py)",
+    "tdd-subagent/":          "TDD subagent dispatch protocol (dispatch-tdd-subagent.py)",
     "feature.json":           "feature manifest: owner, tdd_state, surface, deprecation_criterion",
     "docs/spec":              "spec and contract for this feature",
     "docs/spec/":             "spec and contract for this feature",
@@ -76,14 +72,17 @@ ANNOTATIONS = {
     "backlogs":               "centralized backlog tracker (.claude/backlogs, subdirs by feature name)",
     "rabbit-file":            "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
     "rabbit-file/":           "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
+    "rabbit-feature":         "feature lifecycle orchestration (new, touch, scope resolution, spec authoring)",
+    "rabbit-feature/":        "feature lifecycle orchestration (new, touch, scope resolution, spec authoring)",
 }
 
 STRUCTURAL_DIRS = {
     "features", "docs", "bugs", "spec", "backlog", "backlogs",
     "commands", "hooks", "skills", "agents", "scripts",
     "test", "enforcement", ".claude",
-    "rabbit-cage", "contract", "policy", "tdd-subagent",
-    "rabbit-file",
+    "rabbit-cage", "contract", "policy",
+    "tdd-state-machine", "tdd-subagent",
+    "rabbit-file", "rabbit-feature",
 }
 
 KEY_FILES = {
@@ -104,14 +103,31 @@ def is_key_file(name, relpath):
         return True
     if name.endswith(".md") and "docs/spec" in relpath:
         return True
-    if name.endswith(".sh"):
-        return True
     return False
 
 
 def is_bug_dir(name):
     import re
     return bool(re.match(r'^[A-Z][A-Z-]+-\d+$', name))
+
+
+def retired_tag_for(item_path, is_dir):
+    """Return ' [RETIRED]' if item_path is a feature dir whose feature.json
+    declares status == 'retired'; otherwise ''. RABBIT-CAGE-BACKLOG-23.
+    """
+    if not is_dir:
+        return ""
+    fj = os.path.join(item_path, "feature.json")
+    if not os.path.isfile(fj):
+        return ""
+    try:
+        with open(fj) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return ""
+    if data.get("status") == "retired":
+        return "  [RETIRED]"
+    return ""
 
 
 def annotation_for(name, relpath):
@@ -185,7 +201,7 @@ def build_tree(root):
 
         for i, (name, item_path, item_rel, is_dir) in enumerate(all_items):
             is_last = (i == len(all_items) - 1)
-            entries.append((depth, is_last, name, item_rel, is_dir))
+            entries.append((depth, is_last, name, item_rel, is_dir, item_path))
             if is_dir:
                 walk(item_path, item_rel, depth + 1, parent_name=name)
 
@@ -201,7 +217,7 @@ def render_tree(root, entries):
     suffix = f"  # {ann}" if ann else ""
     print(f"{root_name}/{suffix}")
 
-    for depth, is_last, name, relpath, is_dir in entries:
+    for depth, is_last, name, relpath, is_dir, item_path in entries:
         depth_last[depth] = is_last
         for d in list(depth_last.keys()):
             if d > depth:
@@ -217,10 +233,11 @@ def render_tree(root, entries):
         connector = "└── " if is_last else "├── "
 
         display_name = name + "/" if is_dir else name
+        retired = retired_tag_for(item_path, is_dir)
         ann = annotation_for(name, relpath)
         suffix = f"  # {ann}" if ann else ""
 
-        print(f"{prefix}{connector}{display_name}{suffix}")
+        print(f"{prefix}{connector}{display_name}{retired}{suffix}")
 
 
 entries = build_tree(repo_root)

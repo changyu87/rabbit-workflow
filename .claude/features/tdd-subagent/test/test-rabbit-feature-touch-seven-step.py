@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
-# E2E test for tdd-subagent spec invariants 13, 14, 15:
-#   13. rabbit-feature-touch SKILL.md describes a seven-step sequence with the
-#       seven step names in order: Scope Resolution, Create Branch, Spec Authoring,
-#       Human Approval, Dispatch TDD Subagents, Collect and Verify HANDOFFs,
-#       PR / Hand Off. Both the overview heading and every step heading reflect
-#       this numbering.
-#   14. Step 4 (Human Approval) is a dispatcher-side gate that surfaces the
-#       impl-suggestion summary (request, spec changes, affected files,
-#       implementation approach) and waits for explicit user approval. The
-#       rationale that subagents cannot pause mid-execution is documented.
-#   15. Step 4 is bypassable only via --human-approval-gate false passed to
-#       dispatch-tdd-subagent.py. Silent bypass is prohibited.
+# E2E test for SKILL.md content invariants now owned by rabbit-feature
+# (post-BACKLOG-12 re-home). The behaviours covered are rabbit-feature
+# Inv 6-9 (formerly labelled in tdd-subagent comments as Inv 13/14/15):
+#   - rabbit-feature Inv 6: rabbit-feature-touch SKILL.md describes a
+#     seven-step sequence with the seven step names in order: Scope
+#     Resolution, Create Branch, Spec Authoring, Human Approval, Dispatch
+#     TDD Subagents, Collect and Verify HANDOFFs, PR / Hand Off. Both the
+#     overview heading and every step heading reflect this numbering.
+#   - rabbit-feature Inv 7: Step 4 (Human Approval) is a dispatcher-side
+#     gate that surfaces the impl-suggestion summary (request, spec
+#     changes, affected files, implementation approach) and waits for
+#     explicit user approval. The rationale that subagents cannot pause
+#     mid-execution is documented.
+#   - rabbit-feature Inv 8/9: Step 4 is bypassable only via
+#     --human-approval-gate false or the .rabbit-human-approval-bypass
+#     marker. Silent bypass is prohibited.
+#
+# This test file still lives in tdd-subagent because the assertions read
+# rabbit-feature's deployed SKILL.md surface — a follow-up cleanup will
+# relocate it to the rabbit-feature suite once that feature's test
+# harness is ready.
 #
 # Reads the built/deployed SKILL.md (the surface artifact downstream consumers
 # see) and asserts the spec invariants hold.
@@ -27,7 +36,7 @@ REPO_ROOT = subprocess.check_output(
 
 SOURCE_SKILL = os.path.join(
     REPO_ROOT,
-    '.claude/features/tdd-subagent/skills/rabbit-feature-touch/SKILL.md',
+    '.claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md',
 )
 DEPLOYED_SKILL = os.path.join(
     REPO_ROOT, '.claude/skills/rabbit-feature-touch/SKILL.md'

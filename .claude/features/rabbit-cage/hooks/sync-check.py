@@ -25,7 +25,6 @@ renderer rabbit_print.py (Inv 18, 77).
 import hashlib
 import json
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -78,27 +77,16 @@ def repo_root() -> Path:
 
 
 # Inv 63: additionalContext MUST either expand @-imports or carry a clear
-# note that the agent must independently load referenced files.
+# note that the agent must independently load referenced files. CLAUDE.md
+# is a pure @-import pointer file (BUG-92 removed the legacy inline policy
+# section), so we surface the regenerated CLAUDE.md verbatim and prepend
+# the at-import note.
 AT_IMPORT_NOTE = (
     "NOTE: @-imports in the section below are NOT auto-resolved inside "
     "additionalContext. The agent MUST independently Read each "
     "referenced file (e.g. `Read('.claude/policy/<file>.md')`) to load "
     "the actual policy content.\n\n"
 )
-
-
-def _policy_section(text: str) -> str:
-    m = re.search(
-        r"(?m)^.*rabbit-policy-start.*$.*?(?:^.*rabbit-policy-end.*$)",
-        text,
-        re.DOTALL,
-    )
-    return m.group(0) if m else ""
-
-
-def _wrap_ctx(section: str, full: str) -> str:
-    body = section + "\n" if section else full
-    return AT_IMPORT_NOTE + body
 
 
 def render_claude_md_drift(root: Path, expected: str) -> Optional[dict]:
@@ -117,9 +105,8 @@ def render_claude_md_drift(root: Path, expected: str) -> Optional[dict]:
     if claude_md.read_text() != expected:
         claude_md.write_text(expected)
         (root / ".rabbit-prompt-counter").write_text(f"{refresh_every}\n")
-        section = _policy_section(expected)
         return {
-            "additionalContext": _wrap_ctx(section, expected),
+            "additionalContext": AT_IMPORT_NOTE + expected,
             "systemMessage": policy_drift(),
         }
 
@@ -278,11 +265,9 @@ def main() -> int:
     counter_file = root / ".rabbit-sync-counter"
     threshold = int(os.environ.get("RABBIT_SYNC_EVERY", "1"))
 
-    if not counter_file.exists():
-        counter_file.write_text("0\n")
     try:
         count = int(counter_file.read_text().strip() or "0")
-    except ValueError:
+    except (FileNotFoundError, ValueError):
         count = 0
     count += 1
     if count < threshold:

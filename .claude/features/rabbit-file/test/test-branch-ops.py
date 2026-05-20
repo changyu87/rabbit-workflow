@@ -18,6 +18,7 @@ SCRIPTS_DIR = FEATURE_DIR / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import branch_ops  # noqa: E402 — must be after sys.path insert
+from conftest import seed_bug_backlog_branch  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +48,10 @@ def isolated_repo(tmp_path):
     remote.mkdir()
     subprocess.run(["git", "init", "--bare", str(remote)], check=True,
                    capture_output=True)
+    # BUG-32: pre-seed the bug-backlog-files branch on the remote so
+    # _ensure_branch's local-origin orphan-creation guard does not fire.
+    # This mirrors production where the branch exists upstream on GitHub.
+    seed_bug_backlog_branch(remote)
 
     local = tmp_path / "local"
     subprocess.run(["git", "clone", str(remote), str(local)], check=True,
@@ -123,14 +128,28 @@ class TestAllocateId:
         id4 = branch_ops.allocate_id("persist-feature", "bug")
         assert id4 == "PERSIST-FEATURE-BUG-4"
 
-    def test_branch_auto_initialized(self, isolated_repo):
-        # Before any call, origin/bug-backlog-files should not exist
+    def test_branch_auto_initialized(self, isolated_repo, monkeypatch):
+        # The isolated_repo fixture pre-seeds bug-backlog-files (since BUG-32
+        # introduced a local-origin orphan-creation guard). To still exercise
+        # the orphan-bootstrap path we (a) delete the seeded branch on the
+        # bare remote, and (b) pretend origin is remote so the guard does
+        # not fire. Then allocate_id must auto-create the orphan as before.
+        remote = isolated_repo.parent / "remote"
+        subprocess.run(
+            ["git", "-C", str(remote), "branch", "-D", "bug-backlog-files"],
+            check=True, capture_output=True,
+        )
+        # Confirm the branch is gone from the remote.
         result = subprocess.run(
             ["git", "-C", str(isolated_repo), "ls-remote", "--heads",
              "origin", "bug-backlog-files"],
             capture_output=True, text=True
         )
         assert result.stdout.strip() == ""
+
+        # Bypass BUG-32 local-origin guard for this bootstrap-path test.
+        monkeypatch.setattr(branch_ops, "_is_local_origin",
+                            lambda repo_root: False)
 
         branch_ops.allocate_id("rabbit-cage", "bug")
 

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-# E2E test for tdd-subagent spec invariant 27 (BUG-31):
+# E2E test for tdd-subagent spec invariant 20 (BUG-31; was Inv 27 in
+# v1.19.0 before BACKLOG-12 renumber):
 #
-#   27. The assembled prompt's STEP 1 SPEC-READ MUST diff the spec against
-#       the PARENT commit, not against HEAD. Use
+#   Inv 20. The assembled prompt's STEP 1 SPEC-READ MUST diff the spec
+#       against the PARENT commit, not against HEAD. Use
 #       `git diff HEAD~1 -- <feature_dir>/docs/spec/`. Using `git diff HEAD`
 #       is always empty because rabbit-feature-touch Step 3 commits the spec
-#       BEFORE dispatching the subagent (Inv 16); the working tree is clean
-#       at subagent start.
+#       BEFORE dispatching the subagent (tdd-subagent Inv 12, was Inv 16);
+#       the working tree is clean at subagent start.
 #
 # Asserts against the prompt produced by dispatch-tdd-subagent.py.
 

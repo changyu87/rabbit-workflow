@@ -54,14 +54,14 @@ When the user confirms they want to file a bug or backlog item:
    Internally `file-item.py` calls `branch_ops` in two phases:
 
    **Phase A — ID allocation** (`branch_ops.allocate_id(feature, type)`):
-   - Sets up worktree at `.claude/tmp/bug-backlog-files` (gitignored)
+   - Sets up a per-process worktree at `.claude/tmp/bug-backlog-files-<pid>` (gitignored)
    - Reads or initializes `rabbit/features/<feature>/<type>s/counter.json`
    - Increments counter, commits and pushes to `origin/bug-backlog-files`
    - Returns assigned ID (e.g. `RABBIT-CAGE-BUG-17`)
    - Cleans up worktree
 
    **Phase B — Item commit** (`branch_ops.commit_item(feature, type, id, item_dict)`):
-   - Sets up worktree again
+   - Sets up a per-process worktree at `.claude/tmp/bug-backlog-files-<pid>` again
    - Writes `item.json` to `rabbit/features/<feature>/<type>s/<ID>/item.json`
    - Commits and pushes to `origin/bug-backlog-files`
    - Backfills commit SHA into `item.json`, pushes update
@@ -84,9 +84,23 @@ python3 .claude/features/rabbit-file/scripts/list-items.py \
 
 `list-items.py` uses `branch_ops.read_branch()` (worktree setup → walk `item.json` files → filter → cleanup). No writes occur.
 
-If `origin/bug-backlog-files` does not exist, inform the user that no items have been filed yet and direct them to `/rabbit-file file`.
-
 Output format: `NAME  [TYPE]  [STATUS]  [PRIORITY]  TITLE`
+
+Output is **deterministic**: items are sorted ascending by `name` (the
+item ID string) before printing, so repeated invocations against the
+same branch state always print identical output.
+
+The script distinguishes two operator-facing conditions, which are
+**distinct** and reported differently:
+
+- **Branch does not exist** — `origin/bug-backlog-files` has not been
+  created yet (no items have ever been filed in this repo). Inform the
+  user the branch is missing versus the filter case below, and direct
+  them to run `file-item.py` to file the first item.
+- **Branch exists but no items match the supplied filters** — the
+  branch is present and may hold items, but none satisfy the requested
+  `--type`/`--feature`/`--status` filter combination. This is a normal
+  empty result, not a missing-branch error.
 
 ---
 
@@ -212,13 +226,13 @@ origin/bug-backlog-files
 
 ## branch_ops.py Lifecycle
 
-Every write operation follows this pattern to prevent item data or commits from leaking into `main` or any fix/task branch:
+Every write operation follows this pattern to prevent item data or commits from leaking into `main` or any fix/task branch. The worktree path is **per-process** — `WT=.claude/tmp/bug-backlog-files-<pid>` where `<pid>` is the current process ID — so concurrent invocations from different agents never collide on the same filesystem path:
 
-1. `git worktree add .claude/tmp/bug-backlog-files origin/bug-backlog-files`
-2. Read/write files inside `.claude/tmp/bug-backlog-files/`
-3. `git -C .claude/tmp/bug-backlog-files add <files>`
-4. `git -C .claude/tmp/bug-backlog-files commit -m "..."`
-5. `git -C .claude/tmp/bug-backlog-files push origin bug-backlog-files`
-6. `git worktree remove --force .claude/tmp/bug-backlog-files` (always — including on failure via try/finally)
+1. `git worktree add "$WT" origin/bug-backlog-files`
+2. Read/write files inside `"$WT"/`
+3. `git -C "$WT" add <files>`
+4. `git -C "$WT" commit -m "..."`
+5. `git -C "$WT" push origin HEAD:bug-backlog-files`
+6. `git worktree remove --force "$WT"` (always — including on failure via try/finally)
 
 `.claude/tmp/` is gitignored by contract.

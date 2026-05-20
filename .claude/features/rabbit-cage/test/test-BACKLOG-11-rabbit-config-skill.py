@@ -13,6 +13,8 @@ Spec invariants covered:
 - Inv 58: .rabbit-human-approval-bypass is gitignored.
 - Inv 59: sync-check.py emits red alert while marker present (not consumed),
   priority level 4 between scope-guard-off and skills-updated.
+- Inv 86: feature.json surface.skills MUST be a non-empty array containing
+  'rabbit-config'.
 """
 import json
 import os
@@ -457,6 +459,16 @@ try:
         ok(20, "scope-guard and human-approval both emit; scope-guard first (priority 3 < 4)")
     else:
         fail_t(20, f"aggregation/order wrong: sc={idx_sc} ha={idx_ha} msg={msg!r}")
+
+    # t21: feature.json surface.skills declares 'rabbit-config' (Inv 86)
+    feature_json = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/feature.json")
+    with open(feature_json) as f:
+        feature_data = json.load(f)
+    skills = feature_data.get("surface", {}).get("skills", [])
+    if isinstance(skills, list) and len(skills) > 0 and "rabbit-config" in skills:
+        ok(21, "feature.json surface.skills is non-empty and contains 'rabbit-config' (Inv 86)")
+    else:
+        fail_t(21, f"surface.skills must be non-empty and contain 'rabbit-config'; got {skills!r}")
 finally:
     for d in tmproots:
         shutil.rmtree(d, ignore_errors=True)

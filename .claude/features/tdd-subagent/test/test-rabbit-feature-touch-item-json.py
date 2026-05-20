@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-# E2E test for Inv 30 (BUG-37): rabbit-feature-touch SKILL.md B/B mode MUST
-# read item JSON from `<item-dir>/item.json`, not `<item-dir>/bug.json`.
+# E2E test for rabbit-feature Inv 12 (formerly tdd-subagent Inv 26/30,
+# BUG-37; re-homed in BACKLOG-12): rabbit-feature-touch SKILL.md B/B mode
+# MUST read item JSON from `<item-dir>/item.json`, not
+# `<item-dir>/bug.json`. This invariant now lives in the rabbit-feature
+# spec because it constrains SKILL.md content owned by rabbit-feature.
 import os
 import sys
 
@@ -8,7 +11,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 REPO_ROOT = os.path.abspath(os.path.join(FEATURE_DIR, '..', '..', '..'))
 
-SKILL_SRC = os.path.join(FEATURE_DIR, 'skills', 'rabbit-feature-touch', 'SKILL.md')
+SKILL_SRC = os.path.join(REPO_ROOT, '.claude', 'features', 'rabbit-feature', 'skills', 'rabbit-feature-touch', 'SKILL.md')
 SKILL_BUILT = os.path.join(REPO_ROOT, '.claude', 'skills', 'rabbit-feature-touch', 'SKILL.md')
 
 PASS = 0
