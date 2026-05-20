@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""test-backlog003.py — Verify coding-rules.md uses standalone numbering (1-5)
-and a clean heading (no 'Part II', no '## Code-Editing Discipline').
+"""test-coding-rules-numbering.py — Verify coding-rules.md uses standalone
+numbering (1-5) and a clean heading (no 'Part II', no '## Code-Editing
+Discipline').
 
 Role / traceability: this test guards the structural outcome of the BACKLOG-003
 era numbering migration (a pre-rabbit-file workflow ticket ID; no current
 `BACKLOG-003` lives under `rabbit/features/policy/backlogs/`). It documents
 the policy-rule-number contract, not a presently-open ticket.
+
+Traces: POLICY-BACKLOG-003 (numbering migration), POLICY-BACKLOG-11 (EOL
+        criterion requirement), POLICY-BACKLOG-14 (rename to behavior-first
+        filename per Inv 9; originally test-backlog003.py).
 
 Version: 1.0.0
 Owner: rabbit-workflow team (policy)

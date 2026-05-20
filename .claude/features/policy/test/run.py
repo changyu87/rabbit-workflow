@@ -27,11 +27,12 @@ def run_test(script):
 
 run_test("test-rule-files-content.py")
 run_test("test-imports-resolve.py")
-run_test("test-backlog003.py")
+run_test("test-coding-rules-numbering.py")
 run_test("test-policy-invariants.py")
-run_test("test-POLICY-1-no-stale-imports.py")
+run_test("test-no-stale-imports.py")
 run_test("test-policy-bug-fixes.py")
-run_test("test-backlog-11-12.py")
+run_test("test-historical-fixes-retirement.py")
+run_test("test-traceability-and-uncommitted-semantics.py")
 
 print()
 print("All tests passed.")
