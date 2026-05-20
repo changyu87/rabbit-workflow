@@ -12,5 +12,5 @@
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-20",
   "tdd_last_cycle_impl_commit": "eae35f270bb84a6a14bb814bc57b9f08613f49a0",
-  "spec_no_change_reason": "BACKLOG-27 spec changes are part of this cycle's impl commit (deletions only); spec edits applied alongside script deletions in STEP 6"
+  "spec_no_change_reason": "spec already committed at HEAD~2 (e573d0be) by rabbit-feature-touch Step 3 before dispatch"
 }
