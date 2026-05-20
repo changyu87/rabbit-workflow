@@ -3,7 +3,7 @@
   "name": "tdd-state-machine",
   "version": "1.3.0",
   "owner": "rabbit team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "Forward-only TDD state machine: tdd-step.py (sole script). The legacy tdd-context.py and tdd-drift-check.py were retired in BACKLOG-7 as dead code (zero runtime callers).",
   "surface": {
     "hooks": [],
