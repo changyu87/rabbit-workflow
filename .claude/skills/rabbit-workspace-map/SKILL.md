@@ -1,6 +1,6 @@
 ---
 name: rabbit-workspace-map
-description: Use when the user asks to see, inspect, understand, or audit the rabbit-workflow workspace layout — the structural hierarchy of rabbit root and user project roots, based on workspace-structure.json declarations. Trigger phrases include "show the workspace map", "workspace overview", "workspace structure", "audit the workspace", "check workspace conformance", "what's out of contract", or any question requiring workspace hierarchy. Use --human when the user wants a readable terminal view; --audit when checking conformance; default JSON output for machine/programmatic use.
+description: "[RETIRED] Do not invoke. This skill is retired and no longer maintained. Its implementation may be stale."
 ---
 
 # rabbit-workspace-map skill
