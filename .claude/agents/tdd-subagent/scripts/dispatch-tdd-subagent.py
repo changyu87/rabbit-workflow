@@ -31,6 +31,17 @@ import argparse
 import os
 import subprocess
 import sys
+from pathlib import Path as _Path
+
+# Pull in the named bypass-note wrapper from the contract feature
+# (Inv 17 — the wrapper is the sole authorized emission path for the
+# preamble bypass note; inline ANSI/brand strings here are a constitution
+# violation). Mirrors the dynamic sys.path insertion pattern that
+# tdd-state-machine's tdd-step.py uses.
+_CONTRACT_SCRIPTS = _Path(__file__).resolve().parents[2] / "contract" / "scripts"
+if str(_CONTRACT_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_CONTRACT_SCRIPTS))
+from rabbit_print import dispatch_bypass_note  # noqa: E402
 
 
 def _repo_root(script_dir):
@@ -207,20 +218,14 @@ def main(argv):
     linked_item_value = args.linked_item or "null"
     item_type_value = args.item_type or "null"
 
-    # BACKLOG-4: emit a distinct yellow [rabbit] note in the prompt preamble
-    # when the human-approval bypass marker exists at the repo root. The note
-    # appears on EVERY dispatch while the marker is present; it does not
-    # consume the marker. Yellow (\x1b[33m) is distinct from sync-check's
-    # red (\x1b[31m) alert: red = security/integrity concern, yellow =
-    # workflow convenience choice.
+    # BACKLOG-4 / BUG-57: emit a distinct yellow [rabbit] note in the prompt
+    # preamble when the human-approval bypass marker exists at the repo root.
+    # The note appears on EVERY dispatch while the marker is present; it does
+    # not consume the marker. Per Inv 17 the wrapper is the sole authorized
+    # emission path — no inline ANSI/brand strings in this file.
     bypass_marker_path = os.path.join(repo_root, ".rabbit-human-approval-bypass")
     if os.path.isfile(bypass_marker_path):
-        bypass_preamble_note = (
-            "\n\x1b[33m[\U0001f407 rabbit \U0001f407] NOTE: human-approval bypass marker is active "
-            "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be "
-            "skipped for this dispatch. Revoke via "
-            "`/rabbit-config human-approval true`.\x1b[0m\n"
-        )
+        bypass_preamble_note = "\n" + dispatch_bypass_note() + "\n"
     else:
         bypass_preamble_note = ""
 
@@ -228,87 +233,61 @@ def main(argv):
         repo_root, ".claude", "features", "rabbit-file", "scripts", "item-status.py"
     )
 
-    # Build close-call block for STEP 9 UNLOCK. Emit lines only when there is
-    # something to close, so the baseline prompt (no items) is unchanged.
-    #
-    # Inv 8 (spec v1.11.0): all close calls go through rabbit-file's unified
-    # `item-status.py set --feature F --type T --id ID --status close ...`.
-    # Legacy `bug-status.py` / `backlog-item-status.py` references are a
-    # constitution violation — they no longer exist on disk.
-    def _derive_feature_and_id(item_dir_path):
-        # Path shape: <...>/<feature>/{bugs|backlog}/<ID>
-        parts = [p for p in item_dir_path.replace("\\", "/").split("/") if p]
-        if len(parts) >= 3:
-            return parts[-3], parts[-1]
-        return "unknown", os.path.basename(item_dir_path) or "unknown"
+    # Build close-call block for STEP 9 UNLOCK (Inv 8: all close calls go
+    # through rabbit-file's unified `item-status.py set ...`). One loop, one
+    # template — primary and secondary differ only by comment, reason, and
+    # the HANDOFF label string. Baseline prompt (no items) is unchanged.
+    items = []
+    if args.linked_item and args.item_type:
+        parts = [p for p in args.linked_item.replace("\\", "/").split("/") if p]
+        feat = parts[-3] if len(parts) >= 3 else "unknown"
+        iid = parts[-1] if parts else "unknown"
+        items.append({
+            "feat": feat, "typ": args.item_type, "iid": iid,
+            "comment": "Primary linked item (closed by impl commit):",
+            "reason": "TDD cycle complete",
+            "handoff_label": f"{args.linked_item} (primary, type={args.item_type})",
+        })
+    for feat, typ, iid in secondary_items:
+        items.append({
+            "feat": feat, "typ": typ, "iid": iid,
+            "comment": "Secondary linked item (resolved by same impl commit):",
+            "reason": "TDD cycle complete (secondary item resolved by same commit)",
+            "handoff_label": f"{feat}:{typ}:{iid} (secondary)",
+        })
 
-    def _close_call(feat, typ, iid, comment, reason):
-        # Single source of truth for the item-status.py close-call template.
-        # All callers (primary + secondary) go through here so the call shape
-        # cannot drift between them.
+    def _render_close(it):
         return (
-            f"  # {comment}\n"
+            f"  # {it['comment']}\n"
             f"  python3 {item_status_py} set \\\n"
-            f"    --feature {feat} --type {typ} --id {iid} \\\n"
+            f"    --feature {it['feat']} --type {it['typ']} --id {it['iid']} \\\n"
             f"    --status close \\\n"
-            f"    --reason '{reason}' \\\n"
+            f"    --reason '{it['reason']}' \\\n"
             f"    --fix-commits $IMPL_SHA\n"
         )
 
-    close_call_lines = []
-    handoff_closed_items_lines = []
-    handoff_closed_items_json_entries = []
-    if args.linked_item and args.item_type:
-        primary_feature, primary_id = _derive_feature_and_id(args.linked_item)
-        close_call_lines.append(_close_call(
-            primary_feature, args.item_type, primary_id,
-            "Primary linked item (closed by impl commit):",
-            "TDD cycle complete",
-        ))
-        handoff_closed_items_lines.append(
-            f"    - {args.linked_item} (primary, type={args.item_type})"
-        )
-        handoff_closed_items_json_entries.append(
-            f'"{args.linked_item} (primary, type={args.item_type})"'
-        )
-    for feat, typ, iid in secondary_items:
-        close_call_lines.append(_close_call(
-            feat, typ, iid,
-            "Secondary linked item (resolved by same impl commit):",
-            "TDD cycle complete (secondary item resolved by same commit)",
-        ))
-        handoff_closed_items_lines.append(f"    - {feat}:{typ}:{iid} (secondary)")
-        handoff_closed_items_json_entries.append(
-            f'"{feat}:{typ}:{iid} (secondary)"'
-        )
-
-    if close_call_lines:
+    if items:
         close_calls_block = (
             "\nAfter the test-green transition is committed, capture the impl commit SHA\n"
             "and close the linked item(s):\n\n"
             "  IMPL_SHA=$(git rev-parse HEAD)\n\n"
-            + "\n".join(close_call_lines)
+            + "\n".join(_render_close(it) for it in items)
         )
-    else:
-        close_calls_block = ""
-
-    if handoff_closed_items_lines:
         handoff_closed_items_block = (
-            "\n  closed_items:\n" + "\n".join(handoff_closed_items_lines)
+            "\n  closed_items:\n"
+            + "\n".join(f"    - {it['handoff_label']}" for it in items)
         )
-    else:
-        handoff_closed_items_block = ""
-
-    # JSON HANDOFF closed_items reflects the same closures (Inv 19 — JSON
-    # block is the machine-first source of truth; if items are closed they
-    # MUST appear here, not just in the legacy YAML block above).
-    if handoff_closed_items_json_entries:
+        # JSON HANDOFF closed_items reflects the same closures (Inv 19 — JSON
+        # block is the machine-first source of truth; if items are closed they
+        # MUST appear here, not just in the legacy YAML block above).
         handoff_closed_items_json = (
             "[\n    "
-            + ",\n    ".join(handoff_closed_items_json_entries)
+            + ",\n    ".join(f'"{it["handoff_label"]}"' for it in items)
             + "\n  ]"
         )
     else:
+        close_calls_block = ""
+        handoff_closed_items_block = ""
         handoff_closed_items_json = "[]"
 
     # All step banners use the uniform ═════ banner format. Both gated and
@@ -487,6 +466,11 @@ STEP 6 — IMPLEMENT
 ════════════════════════════════════════════════════════════════════════
 
 Max iterations: {args.max_iterations}
+
+IMPORTANT: Before issuing any Edit/Write tool call against an existing file,
+Read it in this session first. The Claude Code Edit tool rejects Edits on
+un-Read files (Inv 35 in rabbit-feature codifies this for spec files; the
+same constraint applies to any file you edit).
 
 Loop (repeat until green or max iterations reached):
   1. Write/update implementation files for {feature_name}
