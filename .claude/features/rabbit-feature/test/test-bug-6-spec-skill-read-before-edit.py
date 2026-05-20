@@ -82,10 +82,44 @@ def test_step_4_has_pre_condition_note() -> None:
     )
 
 
+def test_caller_bypass_clause_documented() -> None:
+    """Inv 35 caller-bypass clause.
+
+    The invariant states: 'The obligation extends to any caller of the
+    skill whose invocation path bypasses Step 1 (e.g., direct `Edit`
+    invocation by a downstream consumer is forbidden if the consumer
+    has not Read the file in-session).'
+
+    The SKILL.md MUST surface this caller-side obligation so that a
+    downstream consumer arriving at edit time without Step 1 having
+    run is told what to do. The existing Step 4 PRE-CONDITION note
+    satisfies this by requiring the caller to Read the spec.md before
+    proceeding to the Edit/Write call when they arrive at Step 4
+    without having Read it.
+    """
+    body = SKILL_MD.read_text()
+    step4 = _extract_section(body, r"Step 4.*Update the Spec")
+
+    # The clause must instruct the caller to Read the spec.md if they
+    # arrived at Step 4 without having Read it in-session.
+    assert "without having Read" in step4 or "without having read" in step4, (
+        "Step 4 must document the caller-bypass case: what to do if the "
+        "Read step from Step 1 was skipped (per Inv 35 caller-bypass "
+        "clause)"
+    )
+
+    # The instruction must direct the caller to Read the spec.md now.
+    assert "Read it now" in step4 or "read it now" in step4, (
+        "Step 4 caller-bypass instruction must direct the caller to "
+        "Read the spec.md now before the Edit/Write call (per Inv 35)"
+    )
+
+
 def main() -> int:
     tests = [
         test_step_1_has_must_read_mandate,
         test_step_4_has_pre_condition_note,
+        test_caller_bypass_clause_documented,
     ]
     failures: list[str] = []
     for test in tests:
