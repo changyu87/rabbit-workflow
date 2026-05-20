@@ -81,14 +81,13 @@ On a successful transition to `test-green`, `tdd-step.py` invokes
 `_post_test_green_hooks(<feature-dir>)`. The hook runs (best-effort, never
 blocks the transition):
 
-- `_run_enforcement_checks` — executes the available scripts under
-  `.claude/features/contract/scripts/enforcement/`
-  (`check-tests-non-interactive.py`, `check-sentinel.py`,
-  `check-naming.py`, `check-imports-resolve.py`,
-  `check-symlinks-resolve.py`,
-  `check-template-schema-producer-consistency.py`); a non-zero return
-  emits a warning via `rabbit_print` on stderr but does not fail the
-  transition.
+- `_run_enforcement_checks` — calls the library functions in
+  `contract.lib.checks` directly (no subprocess fan-out to enforcement
+  CLI scripts). The set called: `check_tests_non_interactive`,
+  `check_sentinel`, `check_naming`, `check_imports_resolve`,
+  `check_symlinks_resolve`, `check_template_producer_consistency`.
+  A failed `CheckResult` emits a warning via `rabbit_print` on stderr
+  but does not fail the transition.
 - `rabbit-project.py consolidate <project>` — invoked when the enclosing
   project directory carries a `project-map.json`; failure is swallowed.
 - `auto_close_backlog` — retained as a no-op stub (the dispatcher closes
@@ -118,6 +117,25 @@ brand) on stdout; forced transitions additionally emit `tdd_forced(...)`
 so a feature reaching `test-green` can start a fresh cycle without
 `--force`. This is the structural backing for Inv 1's `_FORWARD_ALT`
 narrative.
+
+### Inv 11 — `_run_enforcement_checks` uses the `contract.lib.checks` library
+
+`tdd-step.py` MUST import the check functions from
+`contract.lib.checks` (located at
+`.claude/features/contract/lib/checks.py`) and call them in-process. It
+MUST NOT fan out via `subprocess` to the
+`.claude/features/contract/scripts/enforcement/check-*.py` CLI shims.
+The library returns a `CheckResult` per call; a non-passed result emits a
+`rabbit_print` warning on stderr and the transition continues.
+
+### Inv 12 — `spec-update -> test-red` runs `check_numbered_lists`
+
+For the transition `spec-update -> test-red`, `tdd-step.py` MUST call
+`contract.lib.checks.check_numbered_lists` against the feature's
+`docs/spec/` directory. A non-passed result emits a warning via
+`rabbit_print` on stderr but does NOT block the transition (the
+git-diff / `--spec-no-change-reason` gate from Inv 8 remains the only
+blocking precondition for this transition).
 
 ## What this feature does NOT define
 
