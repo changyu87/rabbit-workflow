@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""list-items.py — list items from origin/bug-backlog-files.
+
+Version: 0.3.0
+Owner: rabbit-workflow team
+Deprecation criterion: when a unified tracking system replaces file-based bug and backlog management
+"""
 import argparse
 import sys
 from pathlib import Path

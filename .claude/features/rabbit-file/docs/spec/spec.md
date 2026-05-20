@@ -80,6 +80,12 @@ Fields: name, type (bug|backlog), title, status (open|close), priority
 (low|medium|high|critical), description, related_feature, filed (ISO8601),
 filed_by, closed (ISO8601 or null), history (array of {ts, actor, action, note}).
 
+> Note: item.json schema is trusted on read — fetch_item returns whatever
+> JSON loads without semantic validation. Malformed-JSON parse errors are
+> logged (BUG-24); semantic violations (missing required fields) flow
+> through silently. Schema validation is out of scope for now; add
+> validation if a downstream consumer requires it.
+
 ## Branch Layout
 
 origin/bug-backlog-files root:

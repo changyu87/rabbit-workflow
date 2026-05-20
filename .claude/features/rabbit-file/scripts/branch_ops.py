@@ -8,6 +8,10 @@ Uses a unique per-process git worktree at .claude/tmp/bug-backlog-files-<pid>
 Each process gets its own isolated worktree path so concurrent invocations
 from different agents do not collide on the same filesystem path
 (RABBIT-FILE-BUG-18).
+
+Version: 0.3.0
+Owner: rabbit-workflow team
+Deprecation criterion: when a unified tracking system replaces file-based bug and backlog management
 """
 
 import json
@@ -174,7 +178,7 @@ def _ensure_branch(repo_root):
 @contextmanager
 def _worktree(repo_root):
     """
-    Context manager: set up git worktree at .claude/tmp/bug-backlog-files,
+    Context manager: set up git worktree at .claude/tmp/bug-backlog-files-<pid>,
     yield the Path, always clean up in finally.
     """
     _ensure_branch(repo_root)

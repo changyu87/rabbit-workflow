@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""file-item.py — file a new bug or backlog item on origin/bug-backlog-files.
+
+Version: 0.3.0
+Owner: rabbit-workflow team
+Deprecation criterion: when a unified tracking system replaces file-based bug and backlog management
+"""
 import argparse
 import subprocess
 import sys
