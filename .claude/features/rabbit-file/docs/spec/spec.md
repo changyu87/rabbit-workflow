@@ -14,8 +14,10 @@ Structured source of truth is feature.json.
 ## Purpose
 
 Unified bug and backlog filing and lifecycle for all rabbit features.
-Replaces rabbit-bug and rabbit-backlog. All items stored on
-origin/bug-backlog-files branch, never on main.
+Replaces (and retires) the legacy rabbit-bug and rabbit-backlog skills
+(no longer exist; rabbit-file is the sole entry point for bug/backlog
+operations). All items stored on origin/bug-backlog-files branch, never
+on main.
 
 ## Scripts
 
