@@ -89,6 +89,20 @@
       "check_on_stop": true
     },
     {
+      "name": "skills/rabbit-feature-new/SKILL.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-feature/skills/rabbit-feature-new/SKILL.md",
+      "destination": ".claude/skills/rabbit-feature-new/SKILL.md",
+      "check_on_stop": true
+    },
+    {
+      "name": "skills/rabbit-feature-audit/SKILL.md",
+      "type": "copy-file",
+      "source": ".claude/features/rabbit-feature/skills/rabbit-feature-audit/SKILL.md",
+      "destination": ".claude/skills/rabbit-feature-audit/SKILL.md",
+      "check_on_stop": true
+    },
+    {
       "name": "agents/tdd-subagent.md",
       "type": "copy-file",
       "source": ".claude/features/tdd-subagent/agents/tdd-subagent.md",

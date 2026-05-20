@@ -15,9 +15,11 @@ import json
 import os
 import re
 import subprocess
+from dataclasses import dataclass, field
 from typing import List
 
 
+@dataclass
 class CheckResult:
     """Outcome of a single check.
 
@@ -25,24 +27,13 @@ class CheckResult:
     messages - Human-readable lines (one per issue or summary line).
     """
 
-    __slots__ = ("passed", "messages")
-
-    def __init__(self, passed, messages=None):
-        self.passed = bool(passed)
-        self.messages = list(messages) if messages is not None else []
-
-    def __repr__(self):
-        return "CheckResult(passed=%r, messages=%r)" % (self.passed, self.messages)
-
-    def __eq__(self, other):
-        if not isinstance(other, CheckResult):
-            return NotImplemented
-        return self.passed == other.passed and self.messages == other.messages
+    passed: bool
+    messages: List[str] = field(default_factory=list)
 
 
 # ---------- shared helpers ----------------------------------------------------
 
-def _get_repo_root():
+def get_repo_root():
     env_root = os.environ.get("RABBIT_ROOT")
     if env_root:
         return env_root
@@ -54,6 +45,11 @@ def _get_repo_root():
         return result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
+
+
+# Backwards-compatible alias for any internal/legacy caller still importing
+# the underscore form. Public callers MUST use `get_repo_root`.
+_get_repo_root = get_repo_root
 
 
 # ---------- check_tests_non_interactive --------------------------------------
@@ -202,7 +198,7 @@ def check_imports_resolve(feature_dir: str) -> CheckResult:
     docs_dir = os.path.join(feature_dir, "docs")
     if not os.path.isdir(docs_dir):
         return CheckResult(True, [f"OK: no docs/ in {feature_dir} (vacuous)"])
-    repo_root = _get_repo_root()
+    repo_root = get_repo_root()
     if not repo_root:
         return CheckResult(False, ["ERROR: cannot determine repo root"])
 
@@ -258,10 +254,27 @@ def check_symlinks_resolve(root: str) -> CheckResult:
 
 # ---------- check_template_producer_consistency ------------------------------
 
-_PRODUCER_FIELDS = {
-    "name", "title", "status", "severity", "description", "related_feature",
-    "filed", "filed_by", "closed", "closed_by", "history",
-}
+# Inv 23: producer-field set MUST be derived from a live source, not hardcoded.
+# Live source: bug.json.schema.json properties (the contract schema producers
+# write against). Loaded lazily at module-load time from disk; if the schema
+# is unreadable the set falls back to an empty set and the check fails loudly
+# rather than silently passing.
+_BUG_SCHEMA_PATH = os.path.normpath(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "..", "schemas", "bug.json.schema.json",
+))
+
+
+def _load_producer_fields() -> set:
+    try:
+        with open(_BUG_SCHEMA_PATH) as f:
+            schema = json.load(f)
+        return set(schema.get("properties", {}).keys())
+    except (OSError, json.JSONDecodeError):
+        return set()
+
+
+_PRODUCER_FIELDS = _load_producer_fields()
 _TEMPLATE_METADATA = {"template_version"}
 
 

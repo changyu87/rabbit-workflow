@@ -14,14 +14,14 @@ import os
 import sys
 
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from lib.checks import check_symlinks_resolve, _get_repo_root  # noqa: E402
+from lib.checks import check_symlinks_resolve, get_repo_root  # noqa: E402
 
 
 def main() -> int:
     if len(sys.argv) > 1:
         repo_root = sys.argv[1]
     else:
-        repo_root = _get_repo_root()
+        repo_root = get_repo_root()
     if not repo_root:
         print("ERROR: cannot determine repo root", file=sys.stderr)
         return 2

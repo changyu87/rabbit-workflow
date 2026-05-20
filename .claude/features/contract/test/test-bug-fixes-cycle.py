@@ -3,7 +3,7 @@
 
 Covers:
   BUG-11    feature.json.schema.json tdd_state enum includes 'deprecated' (and 'merged')
-  BUG-12    render-template.py docstring does not reference render-template.sh
+  BUG-12    (moot, deleted: render-template.py was removed in CONTRACT-BACKLOG-24)
   BUG-27    test-files-exist.py checks skill-template.md, command-template.md, handoff-template.md
   BACKLOG-3 test-templates-have-version.py tightened to reject _template_version
   BACKLOG-4 every feature.json in the repo validates against feature.json.schema.json
@@ -13,9 +13,9 @@ Covers:
   BACKLOG-8 rabbit-print.schema.json declared producers all exist on disk
   BACKLOG-9 spec Surface and contract.md provides entries match actual files
   BACKLOG-10 validate-feature.py invokes feature.json.schema.json validation
-  BACKLOG-12 rabbit-triage.py validates feature_dir before basename-dereferencing it
-  BACKLOG-13 workspace-map.py --help documents legacy positional form
-  BACKLOG-14 check-opus-for-planning-agents.py PATTERN uses word boundaries
+  BACKLOG-12 (moot, deleted: rabbit-triage.py was removed in CONTRACT-BACKLOG-24)
+  BACKLOG-13 (moot, deleted: workspace-map.py was removed in CONTRACT-BACKLOG-27)
+  BACKLOG-14 (moot, deleted: check-opus-for-planning-agents.py was removed in CONTRACT-BACKLOG-27)
   BACKLOG-15 spec Inv 5 (rabbit-print schema authority) asserted by test
   BACKLOG-16 spec Inv 9 (build-contract validation) limitation documented
 
