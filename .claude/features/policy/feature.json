@@ -10,6 +10,6 @@
     "skills": []
   },
   "deprecation_criterion": "when Claude Code exposes a native subagent-policy injection point",
-  "updated": "2026-05-19",
-  "spec_no_change_reason": "BUG-19 is a metadata sync only \u2014 spec.md and contract.md are already at 1.4.0; this fix bumps feature.json to match and adds three-way alignment to the existing POLICY-BUG-7 check"
+  "updated": "2026-05-20",
+  "spec_no_change_reason": "spec change already committed pre-dispatch at 64d5e34c (rabbit-feature-touch Inv 16: spec commit precedes subagent dispatch)"
 }

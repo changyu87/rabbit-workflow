@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-# test-rule-files-content.py — Spot-checks content of the three rule files.
+"""test-rule-files-content.py — Spot-checks content of the three rule files.
+
+Version: 1.0.0
+Owner: rabbit-workflow team (policy)
+Deprecation criterion: when the rule-file content is enforced by a richer
+schema-driven check (e.g., declarative section manifest).
+"""
 import os
 import sys
 
@@ -50,6 +56,13 @@ check_phrase("spec-rules.md", "Lifecycle and Ownership")
 check_phrase("coding-rules.md", "Think Before Coding")
 check_phrase("coding-rules.md", "Simplicity First")
 check_phrase("coding-rules.md", "Karpathy")
+
+# Inv 6 (BACKLOG-13): Read-before-Edit canonical phrase must appear in coding-rules.md.
+# Phrase propagates rabbit-feature Inv 35 lesson via the policy preamble.
+check_phrase(
+    "coding-rules.md",
+    "Before editing an existing file, Read it. Before writing alongside existing code, Read the surrounding module. Edits made without reading are speculative.",
+)
 
 # philosophy.md
 check_phrase("philosophy.md", "Machine First")
