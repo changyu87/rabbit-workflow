@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.4.0
+version: 1.5.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -61,6 +61,12 @@ anywhere in this feature. Test runner is `test/run.py`.
   feature's current spec, judges the request type, invokes superpowers as
   needed, updates the spec, and writes an impl-suggestion file for whoever
   invoked it.
+- `.claude/features/rabbit-feature/skills/rabbit-feature-new/SKILL.md`
+  — feature-scaffolding skill. Given a feature name, shells out to the
+  rabbit-cage `new-feature.py` script to create a conforming feature dir
+  (`feature.json`, `docs/spec/spec.md`, `docs/spec/contract.md`,
+  `test/run.py`), then validates the scaffold via
+  `contract.lib.checks.validate_feature`.
 - `.claude/features/rabbit-feature/scripts/resolve-scope.py`
   — absorbed script that builds the Agent-dispatch prompt used by
   `rabbit-feature-scope`.
@@ -306,6 +312,22 @@ feature.
     is enforced by the live SKILL.md content under this feature,
     not by a cross-source comparison. The locking test
     `test-absorbed-rabbit-spec.py` has been removed.
+
+### rabbit-feature-new (v1.5.0, BACKLOG-2)
+
+33. `rabbit-feature` provides a `rabbit-feature-new` skill at
+    `.claude/features/rabbit-feature/skills/rabbit-feature-new/SKILL.md`
+    that scaffolds a new rabbit feature directory with the required
+    structure (`feature.json`, `docs/spec/spec.md`,
+    `docs/spec/contract.md`, `test/run.py`). The skill shells out to
+    `.claude/features/rabbit-cage/scripts/new-feature.py` for the
+    scaffold operation (this cross-feature dependency is TEMPORARY —
+    RABBIT-CAGE-BACKLOG-24, separate cycle, will move the actual
+    script into this feature). After scaffolding, the skill MUST
+    validate the new feature dir via
+    `contract.lib.checks.validate_feature` and report the new feature
+    directory path. The skill SKILL.md is declared in
+    `feature.json.surface.skills` and `contract.md.provides.skills`.
 
 ## What this feature does NOT define
 

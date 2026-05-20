@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.3.0
+version: 1.4.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -42,6 +42,10 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-spec/",
         "purpose": "Absorbed from rabbit-spec, renamed to rabbit-feature-spec (Inv 25-32). General-purpose spec-authoring skill: reads a feature's current spec, judges open vs specific request, invokes superpowers, updates spec, and writes an impl-suggestion file for whoever invoked it."
+      },
+      {
+        "path": ".claude/features/rabbit-feature/skills/rabbit-feature-new/",
+        "purpose": "Feature-scaffolding skill (Inv 33). Given a feature name, shells out to rabbit-cage's new-feature.py to scaffold a conforming feature dir, then validates via contract.lib.checks.validate_feature. Cross-feature shell-out to rabbit-cage is temporary (RABBIT-CAGE-BACKLOG-24)."
       }
     ]
   },
