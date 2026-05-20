@@ -21,6 +21,7 @@ both Stop and session-start contexts).
 Per Inv 64, tests MUST NOT mutate live source files — every fixture is
 built inside a tempfile.mkdtemp + clean repo copy.
 """
+import importlib.util
 import json
 import os
 import shutil
@@ -32,14 +33,16 @@ from test_helpers import REPO_ROOT, make_git_repo
 SYNC_CHECK = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/hooks/sync-check.py")
 SESSION_INIT = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/hooks/session-init.py")
 
-BYPASS_PERMISSIONS_BODY = (
-    "BYPASS-PERMISSIONS MODE ACTIVE — Claude Code native per-write prompts "
-    "skipped; scope-guard hook is the sole write-authorization gate"
-)
-HUMAN_APPROVAL_BODY = (
-    "HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all "
-    "rabbit-feature-touch dispatches"
-)
+# BACKLOG-28: import the canonical body text from the helper module so the
+# test cannot drift from the live source. The local re-declarations the
+# original test used were a drift hazard — every spec wording change would
+# silently pass while leaving the test asserting the stale text.
+_RF_PATH = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/hooks/_runtime_flags.py")
+_spec = importlib.util.spec_from_file_location("_runtime_flags_for_test", _RF_PATH)
+_rf = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_rf)
+BYPASS_PERMISSIONS_BODY = _rf.CANONICAL_FLAG_BODIES["bypass_permissions"]
+HUMAN_APPROVAL_BODY = _rf.CANONICAL_FLAG_BODIES["human_approval"]
 
 failures = 0
 total = 0

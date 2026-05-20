@@ -233,7 +233,16 @@ def cmd_bash_allow(args):
 def cmd_permissions(args):
     action = args[0] if args else ''
     if action not in ('lock', 'unlock'):
-        print('Error: permissions requires lock or unlock', file=sys.stderr)
+        # BACKLOG-28: align error wording with the other cmd_* handlers
+        # (cmd_allowed_tools / cmd_bash_allow / cmd_human_approval /
+        # cmd_bypass_permissions). All those use the descriptive
+        # 'Error: unknown <X> {value!r} for <subcmd> (expected ...)' form;
+        # keep this one consistent so the operator sees one shape across
+        # the skill.
+        print(
+            f'Error: unknown action {action!r} for permissions (expected lock or unlock)',
+            file=sys.stderr,
+        )
         return 1
     script = pathlib.Path('.claude/features/rabbit-cage/scripts/repo-permissions.py')
     result = subprocess.run([sys.executable, str(script), action])

@@ -62,7 +62,7 @@ for _candidate in [_HERE, *_HERE.parents]:
 else:
     if (_HERE / "_runtime_flags.py").is_file() and str(_HERE) not in sys.path:
         sys.path.insert(0, str(_HERE))
-from _runtime_flags import active_flags  # noqa: E402
+from _runtime_flags import active_flags, log_exc  # noqa: E402
 
 
 # Inv 78 (BACKLOG-19): per-file one-liner descriptions for the welcome
@@ -75,13 +75,10 @@ _WELCOME_DESCRIPTIONS = {
 }
 
 
-def _log_exc(where: str, exc: BaseException) -> None:
-    """BACKLOG-17 / Inv 70: log unexpected exceptions to stderr instead of
-    silently swallowing them. Hook keeps its exit-0 happy-path contract."""
-    try:
-        sys.stderr.write(f"[session-init.py] {where}: {type(exc).__name__}: {exc}\n")
-    except Exception:
-        pass
+# BACKLOG-28: log_exc is the shared helper from _runtime_flags; this tag is
+# passed at each call site so the centralised helper formats the stderr
+# line with the right `[session-init.py]` prefix.
+_TAG = "session-init.py"
 
 
 def repo_root() -> Path:
@@ -96,7 +93,7 @@ def repo_root() -> Path:
         )
         return Path(out.decode().strip())
     except Exception as e:
-        _log_exc("repo_root: git rev-parse failed; falling back to script dir", e)
+        log_exc(_TAG, "repo_root: git rev-parse failed; falling back to script dir", e)
         return here
 
 

@@ -43,7 +43,7 @@ for _candidate in [_HERE, *_HERE.parents]:
             sys.path.insert(0, str(_maybe))
         break
 from rabbit_print import (  # noqa: E402
-    rabbit_block, rabbit_subline,
+    rabbit_block,
     policy_drift, surface_drift,
     scope_guard_off, scope_guard_bypassed,
     human_approval_bypass, bypass_permissions_active, skills_updated,
@@ -66,18 +66,14 @@ else:
     if (_HERE / "_runtime_flags.py").is_file() and str(_HERE) not in sys.path:
         sys.path.insert(0, str(_HERE))
 from _runtime_flags import (  # noqa: E402
-    is_bypass_permissions_active,
+    is_bypass_permissions_active, log_exc,
 )
 
 
-def _log_exc(where: str, exc: BaseException) -> None:
-    """BACKLOG-17 / Inv 70: log unexpected exceptions to stderr instead of
-    silently swallowing them. Hooks keep their exit-0 happy-path contract,
-    but failures are now visible to operators inspecting the transcript."""
-    try:
-        sys.stderr.write(f"[sync-check.py] {where}: {type(exc).__name__}: {exc}\n")
-    except Exception:
-        pass
+# BACKLOG-28: the shared log_exc lives in _runtime_flags; pass this hook's
+# script tag at each call site so the centralised helper formats the stderr
+# line with the right `[sync-check.py]` prefix.
+_TAG = "sync-check.py"
 
 
 def repo_root() -> Path:
@@ -92,7 +88,7 @@ def repo_root() -> Path:
         )
         return Path(out.decode().strip())
     except Exception as e:
-        _log_exc("repo_root: git rev-parse failed; falling back to script dir", e)
+        log_exc(_TAG, "repo_root: git rev-parse failed; falling back to script dir", e)
         return here
 
 
@@ -145,7 +141,7 @@ def _collect_drifted_targets(root: Path) -> list:
     try:
         data = json.loads(contract_path.read_text())
     except Exception as e:
-        _log_exc("failed to read build-contract.json", e)
+        log_exc(_TAG, "failed to read build-contract.json", e)
         return []
     drifted = []
     for target in data.get("targets", []):
@@ -160,13 +156,13 @@ def _collect_drifted_targets(root: Path) -> list:
         try:
             src_sha = hashlib.sha256(src.read_bytes()).hexdigest()
         except Exception as e:
-            _log_exc(f"failed to hash source for {target.get('name')}", e)
+            log_exc(_TAG, f"failed to hash source for {target.get('name')}", e)
             continue
         if dst.is_file():
             try:
                 dst_sha = hashlib.sha256(dst.read_bytes()).hexdigest()
             except Exception as e:
-                _log_exc(f"failed to hash destination for {target.get('name')}", e)
+                log_exc(_TAG, f"failed to hash destination for {target.get('name')}", e)
                 continue
             if src_sha != dst_sha:
                 drifted.append(target["name"])
@@ -194,7 +190,7 @@ def render_surface_drift(root: Path) -> Optional[dict]:
             stderr=subprocess.DEVNULL,
         )
     except Exception as e:
-        _log_exc("build.py invocation failed during surface-drift rebuild", e)
+        log_exc(_TAG, "build.py invocation failed during surface-drift rebuild", e)
     return {
         "systemMessage": surface_drift(files=", ".join(drifted)),
     }
@@ -213,7 +209,7 @@ def render_scope_guard(root: Path) -> Optional[dict]:
         try:
             mode = "".join(c for c in override_file.read_text() if not c.isspace())
         except Exception as e:
-            _log_exc("could not read .rabbit-scope-override", e)
+            log_exc(_TAG, "could not read .rabbit-scope-override", e)
             mode = ""
         if mode == "session":
             alert = "session"
@@ -222,7 +218,7 @@ def render_scope_guard(root: Path) -> Optional[dict]:
         try:
             used_file.unlink()
         except Exception as e:
-            _log_exc("could not unlink .rabbit-scope-override-used", e)
+            log_exc(_TAG, "could not unlink .rabbit-scope-override-used", e)
 
     if alert == "session":
         return {
@@ -270,13 +266,13 @@ def render_skills_updated(root: Path) -> Optional[dict]:
     try:
         content = marker.read_text()
     except Exception as e:
-        _log_exc("could not read .rabbit-skills-updated", e)
+        log_exc(_TAG, "could not read .rabbit-skills-updated", e)
         content = ""
     names = ",".join(ln for ln in content.splitlines() if ln).rstrip(",")
     try:
         marker.unlink()
     except Exception as e:
-        _log_exc("could not unlink .rabbit-skills-updated", e)
+        log_exc(_TAG, "could not unlink .rabbit-skills-updated", e)
     return {
         "systemMessage": skills_updated(names=names),
     }
