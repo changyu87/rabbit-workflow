@@ -39,7 +39,7 @@ deprecation_criterion: when a unified tracking system replaces file-based bug an
     "skills": [
       {
         "path": ".claude/features/rabbit-file/skills/rabbit-file/SKILL.md",
-        "description": "Operator-facing skill: File, Work, List, Show modes for bug and backlog items. Triggers on lifecycle phrasing (file, log, work, close, reopen, list, what bugs are open). Replaces rabbit-bug and rabbit-backlog skills."
+        "description": "Operator-facing skill: File, Work, List, Show modes for bug and backlog items. Triggers on lifecycle phrasing (file, log, work, close, reopen, list, what bugs are open). Replaces (and retires) the legacy rabbit-bug and rabbit-backlog skills (no longer exist; rabbit-file is the sole entry point for bug/backlog operations)."
       }
     ]
   },

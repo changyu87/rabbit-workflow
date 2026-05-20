@@ -1,6 +1,6 @@
 ---
 name: rabbit-file
-description: Use when Claude detects intent to file a bug or backlog item, check item status, list items, close/reopen an item, or perform any bug or backlog lifecycle operation in this repository. Replaces rabbit-bug and rabbit-backlog. Trigger on phrases like "file a bug", "log a backlog", "work this bug", "close the backlog item", "what bugs are open", "mark that done", "reopen that bug", or any lifecycle phrasing for bugs or backlogs — even casual language. Always use this skill instead of rabbit-bug or rabbit-backlog.
+description: Use when Claude detects intent to file a bug or backlog item, check item status, list items, close/reopen an item, or perform any bug or backlog lifecycle operation in this repository. The legacy rabbit-bug and rabbit-backlog skills no longer exist and have been fully retired — rabbit-file is the sole entry point for bug/backlog operations, so do not attempt to invoke rabbit-bug or rabbit-backlog. Trigger on phrases like "file a bug", "log a backlog", "work this bug", "close the backlog item", "what bugs are open", "mark that done", "reopen that bug", or any lifecycle phrasing for bugs or backlogs — even casual language.
 version: 1.1.0
 owner: rabbit-file
 deprecation_criterion: when a unified tracking system replaces file-based bug and backlog management
