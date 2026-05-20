@@ -15,10 +15,6 @@ def isolated_repo(tmp_path, monkeypatch):
     bare = tmp_path / "remote.git"
     bare.mkdir()
     subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
-    # BUG-32: pre-seed bug-backlog-files so _ensure_branch's local-origin
-    # orphan-creation guard does not fire under the bare-local-origin test fixture.
-    from conftest import seed_bug_backlog_branch
-    seed_bug_backlog_branch(bare)
 
     clone = tmp_path / "repo"
     subprocess.run(["git", "clone", str(bare), str(clone)], check=True, capture_output=True)
