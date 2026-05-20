@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.6.0
+version: 1.7.0
 template_version: 2.0.0
 ---
 
@@ -29,7 +29,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/schemas/project-map.json.schema.json",
       ".claude/features/contract/schemas/rabbit-print.schema.json",
       ".claude/features/contract/schemas/rabbit-print-messages.json",
-      ".claude/features/contract/schemas/workspace-map.json.schema.json",
       ".claude/features/contract/schemas/build-contract.schema.json"
     ],
     "data": [
@@ -37,15 +36,11 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ],
     "scripts": [
       ".claude/features/contract/scripts/policy-block.py",
-      ".claude/features/contract/scripts/dispatch-feature-edit.py",
       ".claude/features/contract/scripts/validate-feature.py",
-      ".claude/features/contract/scripts/workspace-map.py",
       ".claude/features/contract/scripts/find-feature.py",
       ".claude/features/contract/scripts/rabbit_print.py",
       ".claude/features/contract/scripts/enforcement/check-imports-resolve.py",
       ".claude/features/contract/scripts/enforcement/check-naming.py",
-      ".claude/features/contract/scripts/enforcement/check-no-main-edits.py",
-      ".claude/features/contract/scripts/enforcement/check-opus-for-planning-agents.py",
       ".claude/features/contract/scripts/enforcement/check-sentinel.py",
       ".claude/features/contract/scripts/enforcement/check-symlinks-resolve.py",
       ".claude/features/contract/scripts/enforcement/check-template-schema-producer-consistency.py",
@@ -56,9 +51,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/lib/__init__.py",
       ".claude/features/contract/lib/checks.py"
     ],
-    "skills": [
-      ".claude/features/contract/skills/rabbit-workspace-map/SKILL.md"
-    ]
+    "skills": []
   },
   "reads": {
     "files": [
