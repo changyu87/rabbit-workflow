@@ -236,29 +236,17 @@ origin/bug-backlog-files root:
   as module-level constants (`BRANCH`, `IDENTITY_NAME`,
   `IDENTITY_EMAIL`) so downstream tooling can reference them without
   duplicating string literals.
-- branch_ops._ensure_branch MUST refuse to create a new orphan
-  bug-backlog-files branch when the immediate origin is a local
-  filesystem path (starts with `/`, `file://`, or matches any path that
-  does not look like a network URL — i.e. no `://` AND no `git@`
-  prefix). In a chained-workspace topology (e.g. ws-child → ws-parent →
-  GitHub) the upstream branch may exist genuinely on GitHub but be
-  absent from the intermediate's `refs/heads/`, so the existing
-  `ls-remote --heads origin bug-backlog-files` check returns False even
-  though the branch exists further up the chain. Silently calling
-  `_init_orphan_branch` in this case would push a fresh, empty branch
-  to the intermediate and overwrite the legitimate items at the
-  upstream-of-upstream once divergence is resolved (BUG-32). Instead,
-  `_ensure_branch` MUST raise a `RuntimeError` whose message names the
-  immediate origin URL, the branch name, and the remediation: the
-  operator must materialize the branch locally in the intermediate via
-  `git -C <intermediate> fetch origin bug-backlog-files && git -C
-  <intermediate> checkout bug-backlog-files` before any rabbit-file
-  operation will succeed from the child workspace. The defensive check
-  applies only when origin is local: a true fresh-repo bootstrap
-  against a remote (HTTPS or SSH) origin that lacks the branch
-  continues to create the orphan as before, preserving the
-  bootstrap-on-first-use guarantee declared at the top of the Scripts
-  section.
+- branch_ops._ensure_branch bootstraps the orphan bug-backlog-files
+  branch on first use (per the Scripts section), with no
+  topology-specific defensive guard. Rabbit assumes a standalone
+  workspace topology: every workspace's `origin` points directly at the
+  authoritative remote (e.g. GitHub), never at another local workspace.
+  Chained workspaces (wsN → wsN-1 → ... → GitHub) are unsupported; the
+  BUG-32 local-origin guard and `_is_local_origin` helper were removed
+  in BACKLOG-12 as part of that posture. An operator who misconfigures
+  `origin` to a local filesystem path will surface a normal git error
+  on first push attempt — no extra defensive scaffolding sits in the
+  hot path to detect that case.
 
 ## Out of scope
 
