@@ -95,7 +95,7 @@ writes the marker — gate disabled — and `true` deletes it).
 
 - **If `.rabbit-human-approval-bypass` exists:**
   - Emit a visible warning to the user:
-    `[rabbit] Step 4 SKIPPED: .rabbit-human-approval-bypass marker active. Run /rabbit-config human-approval true to restore the gate and require approval again.`
+    `[🐇 rabbit 🐇] Step 4 SKIPPED: .rabbit-human-approval-bypass marker active. Run /rabbit-config human-approval true to restore the gate and require approval again.`
   - Pass `--human-approval-gate false` to the Step 5 `dispatch-tdd-subagent.py`
     invocation.
   - Proceed to Step 5 immediately. Do NOT surface the impl-suggestion summary.
