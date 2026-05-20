@@ -184,7 +184,7 @@ def decide(target: str) -> Tuple[bool, str]:
                 return False, (
                     f"DENY write to '{abs_path}' denied: outside active scope "
                     f"'{scope_feature}' (allowed: {feature_abs}/). "
-                    "Use dispatch-feature-edit.py for cross-feature work."
+                    "Use the rabbit-feature-touch skill for cross-feature work."
                 )
             # 4c. Within scoped feature — deny if feature is in test-green state
             feature_json = Path(feature_abs) / "feature.json"

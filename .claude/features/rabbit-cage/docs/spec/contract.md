@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 4.4.0
+version: 4.5.0
 template_version: 2.0.0
 ---
 
@@ -39,14 +39,11 @@ template_version: 2.0.0
     ]
   },
   "reads": {
-    "files": [".claude/features/registry.json", "project-*/project-map.json", ".claude/features/contract/templates/", ".rabbit-scope-override", ".rabbit-scope-override-used"],
+    "files": ["project-*/project-map.json", ".claude/features/contract/templates/", ".rabbit-scope-override", ".rabbit-scope-override-used"],
     "external": ["env-var:RABBIT_ROOT"]
   },
   "invokes": {
-    "scripts": [
-      ".claude/features/contract/scripts/relink.sh",
-      {"path": ".claude/features/contract/scripts/dispatch-feature-edit.sh", "stdin": "feature-name task-description", "stdout": "agent prompt", "exit": "0=ok 1=not-found 2=usage"}
-    ],
+    "scripts": [],
     "agents":   []
   },
   "manages": {
