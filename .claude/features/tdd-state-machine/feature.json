@@ -1,10 +1,10 @@
 {
   "template_version": "2.0.0",
   "name": "tdd-state-machine",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "owner": "rabbit team",
   "tdd_state": "test-green",
-  "summary": "Forward-only TDD state machine: tdd-step.py, tdd-context.py, tdd-drift-check.py. Owns these scripts; the originals have been removed from tdd-subagent.",
+  "summary": "Forward-only TDD state machine: tdd-step.py (sole script). The legacy tdd-context.py and tdd-drift-check.py were retired in BACKLOG-7 as dead code (zero runtime callers).",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -13,5 +13,5 @@
   },
   "deprecation_criterion": "when TDD state machine is replaced by a fundamentally different orchestration approach",
   "updated": "2026-05-20",
-  "spec_no_change_reason": "BUG-6 is a code-cleanup; Inv 7 already mandates non-empty warning, no spec text change required"
+  "spec_no_change_reason": "Spec changes committed in 28317492 prior to subagent dispatch (per Inv 16 ordering); workdir clean."
 }

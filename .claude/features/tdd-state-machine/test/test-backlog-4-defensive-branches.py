@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # test-backlog-4-defensive-branches.py — close test gaps for uncovered
-# defensive branches in tdd-step.py, tdd-context.py, tdd-drift-check.py.
+# defensive branches in tdd-step.py.
 #
 # Owner: rabbit team
 # Linked: rabbit/features/tdd-state-machine/backlogs/TDD-STATE-MACHINE-BACKLOG-4
@@ -14,10 +14,10 @@
 #   b5: tdd-step.py _post_test_green_hooks invokes rabbit-project.py
 #       consolidate when project-map.json is present alongside the
 #       features directory.
-#   b6: tdd-context.py exits 2 when feature.json is missing.
-#   b7: tdd-context.py exits 2 when feature.json is malformed JSON.
-#   b8: tdd-drift-check.py exits 2 when test/run.py is missing
-#       (state=test-green so the runner is required).
+#
+# Historic b6/b7/b8 exercised tdd-context.py / tdd-drift-check.py defensive
+# branches; both scripts were retired in BACKLOG-7 and their tests removed
+# alongside them.
 import json
 import os
 import shutil
@@ -28,8 +28,6 @@ import tempfile
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 TDD_STEP = os.path.join(FEATURE_DIR, 'scripts', 'tdd-step.py')
-TDD_CTX = os.path.join(FEATURE_DIR, 'scripts', 'tdd-context.py')
-TDD_DRIFT = os.path.join(FEATURE_DIR, 'scripts', 'tdd-drift-check.py')
 TMPROOT = tempfile.mkdtemp()
 
 sys.path.insert(0, SCRIPT_DIR)
@@ -190,45 +188,8 @@ def b5():
         ko(f"b5: rc={rc} sentinel_exists={os.path.isfile(sentinel)}")
 
 
-# b6: tdd-context.py exits 2 when feature.json is missing.
-def b6():
-    d = os.path.join(TMPROOT, 'b6')
-    os.makedirs(d, exist_ok=True)
-    rc, _, err = _run(['python3', TDD_CTX, d])
-    if rc == 2 and b'no feature.json' in err:
-        ok('b6: tdd-context.py exits 2 when feature.json missing')
-    else:
-        ko(f"b6: rc={rc} stderr={err!r}")
-
-
-# b7: tdd-context.py exits 2 when feature.json is malformed JSON.
-def b7():
-    d = os.path.join(TMPROOT, 'b7')
-    os.makedirs(d, exist_ok=True)
-    with open(os.path.join(d, 'feature.json'), 'w') as f:
-        f.write('{ not json')
-    rc, _, err = _run(['python3', TDD_CTX, d])
-    if rc == 2 and b'failed to parse' in err:
-        ok('b7: tdd-context.py exits 2 on malformed feature.json')
-    else:
-        ko(f"b7: rc={rc} stderr={err!r}")
-
-
-# b8: tdd-drift-check.py exits 2 when test/run.py is missing
-# (state=test-green requires running the suite; missing runner = invocation error).
-def b8():
-    d = os.path.join(TMPROOT, 'b8')
-    _make_feature_dir(d, 'b8', 'test-green', run_exit=0)
-    os.remove(os.path.join(d, 'test', 'run.py'))
-    rc, _, err = _run(['python3', TDD_DRIFT, d])
-    if rc == 2 and b'missing' in err:
-        ok('b8: tdd-drift-check.py exits 2 when test/run.py missing')
-    else:
-        ko(f"b8: rc={rc} stderr={err!r}")
-
-
 print(f"running BACKLOG-4 defensive-branch tests")
-b1(); b2(); b3(); b4(); b5(); b6(); b7(); b8()
+b1(); b2(); b3(); b4(); b5()
 print()
 print(f"summary: {PASS} passed, {FAIL} failed")
 shutil.rmtree(TMPROOT, ignore_errors=True)

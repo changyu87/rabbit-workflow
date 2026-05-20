@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-# test-tdd-state-prune.py — verify review/merged removed; spec-update added to tdd-context.py
+# test-tdd-state-prune.py — verify review/merged removed from tdd-step.py.
+# (Historic tdd-context.py allowed_next_states checks retired in BACKLOG-7
+# alongside the script itself.)
 import json
 import os
 import shutil
@@ -10,7 +12,6 @@ import tempfile
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], cwd=SCRIPT_DIR).decode().strip()
 TDD_STEP = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/scripts/tdd-step.py')
-TDD_CTX = os.path.join(REPO_ROOT, '.claude/features/tdd-state-machine/scripts/tdd-context.py')
 
 PASS = 0
 FAIL = 0
@@ -86,36 +87,6 @@ if result.returncode == 0:
     ok("spec -> spec-update still works")
 else:
     fail("spec -> spec-update broken")
-
-# 5. from spec, tdd-context.py allowed_next_states = ["spec-update"]
-make_feature(os.path.join(TMPDIR_TEST, 'f5'), 'spec')
-result = subprocess.run(
-    ['python3', TDD_CTX, os.path.join(TMPDIR_TEST, 'f5')],
-    capture_output=True, text=True
-)
-try:
-    ctx = json.loads(result.stdout)
-    if ctx.get('allowed_next_states') == ['spec-update']:
-        ok("context: spec -> allowed_next = [spec-update]")
-    else:
-        fail(f"context: spec allowed_next wrong: got {ctx.get('allowed_next_states')}")
-except Exception as e:
-    fail(f"context: spec parse error: {e}")
-
-# 6. from spec-update, tdd-context.py allowed_next_states = ["test-red"]
-make_feature(os.path.join(TMPDIR_TEST, 'f6'), 'spec-update')
-result = subprocess.run(
-    ['python3', TDD_CTX, os.path.join(TMPDIR_TEST, 'f6')],
-    capture_output=True, text=True
-)
-try:
-    ctx = json.loads(result.stdout)
-    if ctx.get('allowed_next_states') == ['test-red']:
-        ok("context: spec-update -> allowed_next = [test-red]")
-    else:
-        fail(f"context: spec-update allowed_next wrong: got {ctx.get('allowed_next_states')}")
-except Exception as e:
-    fail(f"context: spec-update parse error: {e}")
 
 print()
 print(f"Results: {PASS} passed, {FAIL} failed")

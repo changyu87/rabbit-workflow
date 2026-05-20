@@ -45,16 +45,10 @@ EXPECTED_ENTRIES = [
         ".claude/features/tdd-state-machine/scripts/tdd-step.py",
         ".claude/agents/tdd-subagent/scripts/tdd-step.py",
     ),
-    (
-        "agents/tdd-subagent/scripts/tdd-context.py",
-        ".claude/features/tdd-state-machine/scripts/tdd-context.py",
-        ".claude/agents/tdd-subagent/scripts/tdd-context.py",
-    ),
-    (
-        "agents/tdd-subagent/scripts/tdd-drift-check.py",
-        ".claude/features/tdd-state-machine/scripts/tdd-drift-check.py",
-        ".claude/agents/tdd-subagent/scripts/tdd-drift-check.py",
-    ),
+    # tdd-context.py and tdd-drift-check.py retired in
+    # TDD-STATE-MACHINE-BACKLOG-7 (zero runtime callers — deleted per
+    # Bounded Scope + Designed Deprecation). Their build-contract.json
+    # entries and deployed copies were removed in the same cycle.
     (
         "skills/rabbit-feature-scope/SKILL.md",
         ".claude/features/rabbit-feature/skills/rabbit-feature-scope/SKILL.md",

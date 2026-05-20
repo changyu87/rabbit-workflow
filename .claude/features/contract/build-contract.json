@@ -124,20 +124,6 @@
       "check_on_stop": true
     },
     {
-      "name": "agents/tdd-subagent/scripts/tdd-drift-check.py",
-      "type": "copy-file",
-      "source": ".claude/features/tdd-state-machine/scripts/tdd-drift-check.py",
-      "destination": ".claude/agents/tdd-subagent/scripts/tdd-drift-check.py",
-      "check_on_stop": true
-    },
-    {
-      "name": "agents/tdd-subagent/scripts/tdd-context.py",
-      "type": "copy-file",
-      "source": ".claude/features/tdd-state-machine/scripts/tdd-context.py",
-      "destination": ".claude/agents/tdd-subagent/scripts/tdd-context.py",
-      "check_on_stop": true
-    },
-    {
       "name": "README.md",
       "type": "copy-file",
       "source": ".claude/features/rabbit-cage/README.md",
@@ -151,5 +137,6 @@
       "destination": "install.py",
       "check_on_stop": false
     }
-  ]
+  ],
+  "copy-file": []
 }
