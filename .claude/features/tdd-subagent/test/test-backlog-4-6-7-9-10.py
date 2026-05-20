@@ -90,13 +90,19 @@ def b4():
         if "/rabbit-config human-approval true" not in out:
             ko("b4b: prompt bypass note does not name the revoke skill")
             return
-        if "[rabbit]" not in out:
-            ko("b4b: prompt bypass note missing [rabbit] tag")
-            return
         # Note must be in preamble, before STEP 1 SPEC-READ.
         pre = out.split("STEP 1")[0]
         if "\x1b[33m" not in pre:
             ko("b4b: yellow bypass note not in preamble (before STEP 1)")
+            return
+        # Inv 17 (spec v2.1.0): brand prefix in the preamble bypass note
+        # MUST be the canonical emoji-framed form `[🐇 rabbit 🐇]` per
+        # contract Inv 35/36 and tdd-subagent Inv 5. The bare `[rabbit]`
+        # form is forbidden. We check the preamble slice (not full output)
+        # because the spec body itself documents both forms when describing
+        # the rule, which would otherwise mask drift in the note literal.
+        if "[\U0001f407 rabbit \U0001f407]" not in pre:
+            ko("b4b: preamble bypass note missing canonical [🐇 rabbit 🐇] brand prefix")
             return
         ok("b4b: yellow bypass note in preamble when marker present")
     finally:

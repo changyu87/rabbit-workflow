@@ -11,6 +11,6 @@
     "skills": []
   },
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
-  "updated": "2026-05-19",
-  "spec_no_change_reason": "BACKLOG-14 is a pure simplification (delete duplicate/vacuous tests); no spec change required"
+  "updated": "2026-05-20",
+  "spec_no_change_reason": "Spec change for Inv 17 already committed in this cycle's spec phase (commit 648702c0) before subagent dispatch"
 }

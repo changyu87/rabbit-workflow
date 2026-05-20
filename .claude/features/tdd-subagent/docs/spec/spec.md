@@ -205,9 +205,12 @@ sole test runner is `test/run.py`.
     expected to implement.
 17. When `dispatch-tdd-subagent.py` runs and the file
     `.rabbit-human-approval-bypass` exists at the repo root, the
-    assembled prompt MUST include a distinct yellow-coloured `[rabbit]`
-    note (`\x1b[33m`, distinct from sync-check's red bypass alert) in
-    the prompt preamble. The note MUST name both the marker path
+    assembled prompt MUST include a distinct yellow-coloured
+    `[🐇 rabbit 🐇]` note (`\x1b[33m`, distinct from sync-check's red
+    bypass alert) in the prompt preamble. The brand prefix MUST be the
+    canonical emoji-framed form per contract Inv 35/36 and tdd-subagent
+    Inv 5; the bare `[rabbit]` form is a constitution violation. The
+    note MUST name both the marker path
     (`.rabbit-human-approval-bypass`) and the revoke skill invocation
     (`/rabbit-config human-approval true`) so the dispatched subagent
     (and any reviewer of the prompt) sees that the approval gate is
