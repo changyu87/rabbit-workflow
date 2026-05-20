@@ -71,6 +71,7 @@ SUITES = [
     "test-RABBIT-CAGE-BACKLOG-24-validate-all-removed.py",
     "test-RABBIT-CAGE-BUG-94-stale-refs.py",
     "test-bug-95-skillmd-paths-resolve.py",
+    "test-backlog-27-runtime-flags-display.py",
 ]
 
 
