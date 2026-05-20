@@ -323,6 +323,32 @@ feature.
     not by a cross-source comparison. The locking test
     `test-absorbed-rabbit-spec.py` has been removed.
 
+35. **Read-comprehend-write contract for spec edits (BUG-6).** The
+    `rabbit-feature-spec` skill MUST Read the target feature's
+    `docs/spec/spec.md` (via the Read tool, in-session) BEFORE
+    issuing any Edit or Write tool call against that same file in
+    the same session. Reading is mandatory comprehension, not
+    optional context-gathering — it lets the actor understand
+    current invariants, numbering, and section structure before
+    mutating, and it satisfies Claude Code's per-session
+    file-state guard that rejects Edits on un-Read files. The
+    SKILL.md MUST express this as a hard MUST in Step 1 (Read
+    Current State), and MUST repeat the obligation as a
+    pre-condition note in Step 4 (Update the Spec). The
+    obligation extends to any caller of the skill whose
+    invocation path bypasses Step 1 (e.g., direct `Edit`
+    invocation by a downstream consumer is forbidden if the
+    consumer has not Read the file in-session). Rationale: in
+    practice, omitting the Read step caused 4+ `File must be
+    read first` tool errors across the 2026-05-20 session
+    bug-wave dispatches; the failure mode is silent (the
+    operator wastes an Edit attempt and a Read attempt, then
+    re-tries the Edit) and corrosive to dispatch throughput.
+    The invariant is enforced by an e2e regression test that
+    parses the `rabbit-feature-spec` SKILL.md and asserts the
+    canonical mandate phrasing appears in both Step 1 and
+    Step 4.
+
 ### rabbit-feature-new (v1.5.0, BACKLOG-2)
 
 33. `rabbit-feature` provides a `rabbit-feature-new` skill at

@@ -23,5 +23,5 @@
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
   "updated": "2026-05-20",
-  "spec_no_change_reason": "spec change committed in HEAD (commit 23069a28) by dispatcher prior to subagent launch"
+  "spec_no_change_reason": "Spec change (Inv 35) was committed by dispatcher in commit 3d1946fc before subagent dispatch; working tree diff is empty by design (Inv 16 of tdd-subagent: spec commit precedes dispatch)."
 }
