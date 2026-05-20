@@ -22,6 +22,6 @@
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
-  "updated": "2026-05-19",
-  "spec_no_change_reason": "Spec edit (Inv 34 + version bump) was committed in this cycle in 5c67be42; HEAD-diff is clean by design"
+  "updated": "2026-05-20",
+  "spec_no_change_reason": "BUG-4 fix: no new invariants; corrections to existing Inv 33/34 SKILL.md snippets and contract.md metadata sync"
 }
