@@ -68,6 +68,7 @@ SUITES = [
     "test-RABBIT-CAGE-BACKLOG-22-cleanup.py",
     "test-RABBIT-CAGE-BUG-93-retired-refs.py",
     "test-RABBIT-CAGE-BACKLOG-23-retired-rendering.py",
+    "test-RABBIT-CAGE-BACKLOG-24-validate-all-removed.py",
 ]
 
 
