@@ -206,11 +206,18 @@ sole test runner is `test/run.py`.
 17. When `dispatch-tdd-subagent.py` runs and the file
     `.rabbit-human-approval-bypass` exists at the repo root, the
     assembled prompt MUST include a distinct yellow-coloured
-    `[🐇 rabbit 🐇]` note (`\x1b[33m`, distinct from sync-check's red
-    bypass alert) in the prompt preamble. The brand prefix MUST be the
-    canonical emoji-framed form per contract Inv 35/36 and tdd-subagent
-    Inv 5; the bare `[rabbit]` form is a constitution violation. The
-    note MUST name both the marker path
+    `[🐇 rabbit 🐇]` note in the prompt preamble. The note MUST be
+    emitted via the `dispatch_bypass_note()` named wrapper from
+    `contract.scripts.rabbit_print` (registered as the
+    `dispatch-bypass-note` message-id in the rabbit-print registry,
+    icon 📢, color yellow). The brand prefix MUST be the canonical
+    emoji-framed form per the `contract` feature's Inv 34 (brand
+    definition) and Inv 36 (producer rule — dispatch-tdd-subagent.py
+    is the 5th authorized producer added in BACKLOG-29); the bare
+    `[rabbit]` form is a constitution violation, and inline ANSI
+    escape codes / brand strings in dispatch-tdd-subagent.py are
+    forbidden (the wrapper is the only authorized emission path).
+    The note text MUST name both the marker path
     (`.rabbit-human-approval-bypass`) and the revoke skill invocation
     (`/rabbit-config human-approval true`) so the dispatched subagent
     (and any reviewer of the prompt) sees that the approval gate is
