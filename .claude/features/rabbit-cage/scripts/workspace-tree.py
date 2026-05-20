@@ -4,6 +4,7 @@
 #   workspace-tree.py [REPO_ROOT]            # structural view (dirs + key files only)
 #   workspace-tree.py [REPO_ROOT] --full     # all files (excl .swp, .git/*, .rabbit-prompt-counter)
 
+import json
 import os
 import subprocess
 import sys
@@ -110,6 +111,25 @@ def is_bug_dir(name):
     return bool(re.match(r'^[A-Z][A-Z-]+-\d+$', name))
 
 
+def retired_tag_for(item_path, is_dir):
+    """Return ' [RETIRED]' if item_path is a feature dir whose feature.json
+    declares status == 'retired'; otherwise ''. RABBIT-CAGE-BACKLOG-23.
+    """
+    if not is_dir:
+        return ""
+    fj = os.path.join(item_path, "feature.json")
+    if not os.path.isfile(fj):
+        return ""
+    try:
+        with open(fj) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return ""
+    if data.get("status") == "retired":
+        return "  [RETIRED]"
+    return ""
+
+
 def annotation_for(name, relpath):
     for key, ann in ANNOTATIONS.items():
         if relpath == key or relpath == key.rstrip("/") or relpath == key.rstrip("/") + "/":
@@ -181,7 +201,7 @@ def build_tree(root):
 
         for i, (name, item_path, item_rel, is_dir) in enumerate(all_items):
             is_last = (i == len(all_items) - 1)
-            entries.append((depth, is_last, name, item_rel, is_dir))
+            entries.append((depth, is_last, name, item_rel, is_dir, item_path))
             if is_dir:
                 walk(item_path, item_rel, depth + 1, parent_name=name)
 
@@ -197,7 +217,7 @@ def render_tree(root, entries):
     suffix = f"  # {ann}" if ann else ""
     print(f"{root_name}/{suffix}")
 
-    for depth, is_last, name, relpath, is_dir in entries:
+    for depth, is_last, name, relpath, is_dir, item_path in entries:
         depth_last[depth] = is_last
         for d in list(depth_last.keys()):
             if d > depth:
@@ -213,10 +233,11 @@ def render_tree(root, entries):
         connector = "└── " if is_last else "├── "
 
         display_name = name + "/" if is_dir else name
+        retired = retired_tag_for(item_path, is_dir)
         ann = annotation_for(name, relpath)
         suffix = f"  # {ann}" if ann else ""
 
-        print(f"{prefix}{connector}{display_name}{suffix}")
+        print(f"{prefix}{connector}{display_name}{retired}{suffix}")
 
 
 entries = build_tree(repo_root)

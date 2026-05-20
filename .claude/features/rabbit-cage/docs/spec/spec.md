@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 4.2.0
+version: 4.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -660,6 +660,16 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
 33. `settings.json` declares env key `RABBIT_REFRESH_EVERY`; its `SessionStart` command resets `.rabbit-prompt-counter`.
 34. `rabbit-refresh.md` command resets `.rabbit-prompt-counter`.
 35. `workspace-tree.py` excludes `.rabbit-prompt-counter` from full listings.
+85. `workspace-tree.py` reflects each feature's `feature.json` `status`
+    field (`active` | `retired`) in its rendered output. Feature
+    directories whose `status` field equals `retired` MUST be rendered
+    with a trailing `[RETIRED]` tag appended after the directory name
+    (e.g. `rabbit-feature-scope/  [RETIRED]`). Features with `status`
+    absent or set to `active` MUST NOT carry the tag. The tag is plain
+    ASCII so it is visible in any terminal and trivial to grep
+    (RABBIT-CAGE-BACKLOG-23). Schema-level changes to `feature.json` and
+    audit behaviour for `workspace-map.py` are owned by the contract
+    feature and are out of scope for this invariant.
 36. Every runtime marker file written at the repo root MUST be listed in `.gitignore`;
     runtime markers are state, never committed source. The mandated set is:
     `.rabbit-prompt-counter`, `.rabbit-sync-counter`, `.rabbit-scope-active`,
