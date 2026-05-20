@@ -2,6 +2,9 @@
 name: rabbit-feature-spec
 description: Use when a feature spec needs to be authored or updated, in any context. Invoke as Skill("rabbit-feature-spec", args: "<feature-name> <request>") from any skill, process, or directly. Reads the current spec, judges the request type, invokes superpowers as needed, updates the spec surgically, and produces an implementation suggestion file for whoever invoked it. Also use when a user asks to update, review, or author a spec for any rabbit feature — even if they don't say "spec" explicitly (e.g., "think about what we need to build", "plan this feature", "what should change in the design", "update the design for this bug fix").
 model: opus
+version: 1.0.0
+owner: rabbit-workflow team
+deprecation_criterion: When spec authoring is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 ---
 
 # rabbit-feature-spec — Spec Authoring Skill
