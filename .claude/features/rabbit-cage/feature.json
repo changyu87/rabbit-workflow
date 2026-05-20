@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "4.5.0",
+  "version": "4.6.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, skills for scaffolding, project management, and installation. Bug-filing and backlog management are owned by the rabbit-file feature.",
@@ -16,5 +16,5 @@
   "updated_note": "the `updated` field is hand-maintained at the close of each TDD cycle; bump it whenever feature contents materially change",
   "updated": "2026-05-20",
   "tdd_last_cycle_impl_commit": "505c834fbb6854b9fecc95a0def66936e951d74a",
-  "spec_no_change_reason": "spec change committed pre-dispatch in 93f36696 (rabbit-feature-touch Step 3, Inv 16); see HEAD~1 diff"
+  "spec_no_change_reason": "spec already committed in HEAD~2 (commit 412a3c9a \u2014 Inv 88, Inv 89 added) per rabbit-feature-touch Step 3 protocol"
 }
