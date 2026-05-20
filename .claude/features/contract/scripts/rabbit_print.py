@@ -20,6 +20,7 @@ Public API:
         scope_guard_off() -> str
         scope_guard_bypassed() -> str
         human_approval_bypass() -> str
+        bypass_permissions_active() -> str
         skills_updated(names) -> str
         policy_refreshed() -> str
         tdd_transition(from_state, to_state) -> str   (state names upcased)
@@ -38,6 +39,7 @@ __all__ = [
     "rabbit_print", "rabbit_subline", "rabbit_block",
     "welcome", "policy_drift", "surface_drift",
     "scope_guard_off", "scope_guard_bypassed", "human_approval_bypass",
+    "bypass_permissions_active",
     "skills_updated", "policy_refreshed", "tdd_transition", "tdd_forced",
 ]
 
@@ -116,6 +118,10 @@ def scope_guard_bypassed():
 
 def human_approval_bypass():
     return rabbit_print("human-approval-bypass")
+
+
+def bypass_permissions_active():
+    return rabbit_print("bypass-permissions-active")
 
 
 def skills_updated(names):
