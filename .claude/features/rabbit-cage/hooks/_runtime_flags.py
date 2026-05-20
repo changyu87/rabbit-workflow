@@ -8,11 +8,17 @@ the text and detection logic here prevents drift between the two producers:
 when a flag's wording (or a new flag) changes, exactly one file is edited.
 
 Public API:
-    BYPASS_PERMISSIONS_BODY: str  — canonical Stop/Startup body for Inv 88.
-    HUMAN_APPROVAL_BODY: str      — canonical Stop body for Inv 59.
+    CANONICAL_FLAG_BODIES: dict[str, str] — per-flag canonical body text,
+        keyed by flag id (`bypass_permissions`, `human_approval`). The
+        dict is the test-facing API; callers do NOT import the per-flag
+        bare-name constants.
     active_flags(repo_root) -> list[dict] — every active flag in priority
         order; each dict carries `body` (canonical alert text) and `revoke`
         (canonical `/rabbit-config <subcmd> <value>` revoke command).
+    log_exc(script_tag, where, exc) — BACKLOG-28: shared exception logger
+        used by every multi-condition hook (sync-check.py, session-init.py)
+        in place of bare `except Exception: pass`. Centralising this keeps
+        Inv 70 honoured in exactly one location.
 
 Implementation notes
 --------------------
@@ -24,28 +30,55 @@ Implementation notes
   directly (per Inv 88). A missing file or malformed JSON is treated as
   "not active" rather than raising — the hooks must keep their exit-0
   happy-path contract.
+* The per-flag bare-name constants are underscore-prefixed (private). The
+  public dict `CANONICAL_FLAG_BODIES` is the only entry point for callers
+  that need the body strings directly (currently the test suite).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when both hooks are refactored into a unified
     rabbit-cage status-emission library that owns the alert text itself.
 """
 
 import json
+import sys
 from pathlib import Path
 
 
-BYPASS_PERMISSIONS_BODY = (
+_BYPASS_PERMISSIONS_BODY = (
     "BYPASS-PERMISSIONS MODE ACTIVE — Claude Code native per-write prompts "
     "skipped; scope-guard hook is the sole write-authorization gate"
 )
-BYPASS_PERMISSIONS_REVOKE = "/rabbit-config bypass-permissions false"
+_BYPASS_PERMISSIONS_REVOKE = "/rabbit-config bypass-permissions false"
 
-HUMAN_APPROVAL_BODY = (
+_HUMAN_APPROVAL_BODY = (
     "HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all "
     "rabbit-feature-touch dispatches"
 )
-HUMAN_APPROVAL_REVOKE = "/rabbit-config human-approval true"
+_HUMAN_APPROVAL_REVOKE = "/rabbit-config human-approval true"
+
+
+# Public test-facing API: lookup canonical body text by flag id. Both
+# producers (sync-check.py, session-init.py) and the rabbit-cage test
+# suite read from this dict so the wording cannot drift between sites.
+CANONICAL_FLAG_BODIES = {
+    "bypass_permissions": _BYPASS_PERMISSIONS_BODY,
+    "human_approval": _HUMAN_APPROVAL_BODY,
+}
+
+
+def log_exc(script_tag: str, where: str, exc: BaseException) -> None:
+    """BACKLOG-17 / Inv 70 / BACKLOG-28: shared exception logger.
+
+    Hooks call this from the formerly-silent error-handler arms (in place of
+    bare `except Exception: pass`). Output goes to stderr only; the hook's
+    exit-0 happy-path contract is preserved. Centralising the implementation
+    keeps Inv 70's wording consistent across every multi-condition hook.
+    """
+    try:
+        sys.stderr.write(f"[{script_tag}] {where}: {type(exc).__name__}: {exc}\n")
+    except Exception:
+        pass
 
 
 def is_bypass_permissions_active(repo_root) -> bool:
@@ -80,12 +113,12 @@ def active_flags(repo_root) -> list:
     flags = []
     if is_human_approval_bypass_active(repo_root):
         flags.append({
-            "body": HUMAN_APPROVAL_BODY,
-            "revoke": HUMAN_APPROVAL_REVOKE,
+            "body": _HUMAN_APPROVAL_BODY,
+            "revoke": _HUMAN_APPROVAL_REVOKE,
         })
     if is_bypass_permissions_active(repo_root):
         flags.append({
-            "body": BYPASS_PERMISSIONS_BODY,
-            "revoke": BYPASS_PERMISSIONS_REVOKE,
+            "body": _BYPASS_PERMISSIONS_BODY,
+            "revoke": _BYPASS_PERMISSIONS_REVOKE,
         })
     return flags

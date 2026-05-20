@@ -218,12 +218,14 @@ def count_bare_swallow(src):
 
 
 # Helper: find at least one except-handler whose body logs to stderr (directly
-# or via a helper named _log_exc/log_error/etc.).
+# or via a helper named _log_exc/log_exc/log_error/etc.). BACKLOG-28: the
+# per-hook _log_exc was centralised into _runtime_flags.log_exc — accept both
+# the original private name and the shared helper.
 def has_stderr_logging_handler(src):
     return bool(
         re.search(
             r"except\s+\w[^\n]*:\s*\n\s*[^\n]*"
-            r"(file=sys\.stderr|sys\.stderr\.write|logging\.|_log_exc\()",
+            r"(file=sys\.stderr|sys\.stderr\.write|logging\.|_log_exc\(|\blog_exc\()",
             src,
         )
     )

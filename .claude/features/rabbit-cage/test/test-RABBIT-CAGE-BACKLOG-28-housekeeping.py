@@ -183,10 +183,14 @@ else:
     fail_t("e1", "_runtime_flags.py missing shared log_exc() definition")
 
 # e2: sync-check.py imports log_exc from _runtime_flags (not its own _log_exc def).
+# The import may span multiple lines via parenthesised form; match the
+# `_runtime_flags import (...)` block as a whole and look for `log_exc` inside.
+m_imp_sc = re.search(
+    r"from\s+_runtime_flags\s+import\s*(?:\(([^)]*)\)|([^\n]+))",
+    sc_src,
+)
 imports_log_exc_sc = bool(
-    re.search(
-        r"from\s+_runtime_flags\s+import[^\n]*\blog_exc\b", sc_src
-    )
+    m_imp_sc and "log_exc" in (m_imp_sc.group(1) or m_imp_sc.group(2) or "")
 )
 defines_log_exc_sc = bool(
     re.search(r"^def\s+_log_exc\s*\(", sc_src, re.MULTILINE)
@@ -200,10 +204,12 @@ else:
     ))
 
 # e3: session-init.py imports log_exc from _runtime_flags (not its own _log_exc def).
+m_imp_si = re.search(
+    r"from\s+_runtime_flags\s+import\s*(?:\(([^)]*)\)|([^\n]+))",
+    si_src,
+)
 imports_log_exc_si = bool(
-    re.search(
-        r"from\s+_runtime_flags\s+import[^\n]*\blog_exc\b", si_src
-    )
+    m_imp_si and "log_exc" in (m_imp_si.group(1) or m_imp_si.group(2) or "")
 )
 defines_log_exc_si = bool(
     re.search(r"^def\s+_log_exc\s*\(", si_src, re.MULTILINE)
