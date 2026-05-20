@@ -23,5 +23,5 @@
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
   "updated": "2026-05-20",
-  "spec_no_change_reason": "Spec change (M5 Tests section sync, M6 Inv 8 cross-ref qualification) committed by dispatcher in 505aeaf8 before subagent dispatch; working tree diff is empty by design (Inv 16 of tdd-subagent: spec commit precedes dispatch)."
+  "spec_no_change_reason": "spec relocation already committed at HEAD~2 by dispatcher; test-red transition has no pending diff to point at"
 }
