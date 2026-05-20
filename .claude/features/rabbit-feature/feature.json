@@ -3,7 +3,7 @@
   "name": "rabbit-feature",
   "version": "1.6.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "spec-update",
+  "tdd_state": "test-red",
   "summary": "Owns the rabbit-feature-touch orchestration skill plus the absorbed rabbit-feature-scope skill (with resolve-scope.py and format-feature-context.py scripts) and the absorbed rabbit-feature-spec skill (renamed from rabbit-spec) for spec authoring. Post-consolidation: the legacy rabbit-feature-scope and rabbit-spec feature directories are retired and absorbed artifacts under this feature are authoritative. Dispatcher-side surface; executor-side (dispatch-tdd-subagent.py and tdd-step.py) lives in tdd-subagent and tdd-state-machine respectively.",
   "surface": {
     "hooks": [],
@@ -23,5 +23,5 @@
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
   "updated": "2026-05-19",
-  "spec_no_change_reason": null
+  "spec_no_change_reason": "Spec edit (Inv 34 + version bump) was committed in this cycle in 5c67be42; HEAD-diff is clean by design"
 }
