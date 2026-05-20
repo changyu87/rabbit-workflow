@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 4.5.0
+version: 4.6.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role

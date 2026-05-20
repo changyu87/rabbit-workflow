@@ -43,10 +43,31 @@ for _candidate in [_HERE, *_HERE.parents]:
             sys.path.insert(0, str(_maybe))
         break
 from rabbit_print import (  # noqa: E402
-    rabbit_block,
+    rabbit_block, rabbit_subline,
     policy_drift, surface_drift,
     scope_guard_off, scope_guard_bypassed,
     human_approval_bypass, skills_updated,
+)
+
+# BACKLOG-27 / Inv 88: canonical bypass-permissions alert text lives in the
+# shared helper module so session-init.py and sync-check.py cannot drift.
+# Resolve the helper from both the source dir (.claude/features/rabbit-cage/
+# hooks/) and the build-managed deployed dir (.claude/hooks/) by walking up
+# until features/rabbit-cage/hooks/ is found — symmetric with the rabbit_print
+# discovery above. Also accept the sibling directly so importlib.module-
+# loading tests resolve without traversing the workspace.
+for _candidate in [_HERE, *_HERE.parents]:
+    _maybe = _candidate / "features" / "rabbit-cage" / "hooks"
+    if (_maybe / "_runtime_flags.py").is_file():
+        if str(_maybe) not in sys.path:
+            sys.path.insert(0, str(_maybe))
+        break
+else:
+    if (_HERE / "_runtime_flags.py").is_file() and str(_HERE) not in sys.path:
+        sys.path.insert(0, str(_HERE))
+from _runtime_flags import (  # noqa: E402
+    BYPASS_PERMISSIONS_BODY,
+    is_bypass_permissions_active,
 )
 
 
@@ -226,6 +247,19 @@ def render_human_approval(root: Path) -> Optional[dict]:
     }
 
 
+def render_bypass_permissions(root: Path) -> Optional[dict]:
+    """Inv 88. Render bypass-permissions Stop alert. Fires while
+    `.claude/settings.local.json` declares
+    `permissions.defaultMode == "bypassPermissions"`. Independent of and
+    parallel to render_human_approval — both may fire on the same Stop.
+    """
+    if not is_bypass_permissions_active(root):
+        return None
+    return {
+        "systemMessage": rabbit_subline(BYPASS_PERMISSIONS_BODY, color="red"),
+    }
+
+
 def render_skills_updated(root: Path) -> Optional[dict]:
     """Inv 24, 76. Render skills-updated alert. Consume-on-read of
     .rabbit-skills-updated."""
@@ -296,6 +330,7 @@ def main() -> int:
         render_surface_drift(root),
         render_scope_guard(root),
         render_human_approval(root),
+        render_bypass_permissions(root),
         render_skills_updated(root),
     ):
         if payload is not None:

@@ -46,6 +46,24 @@ from rabbit_print import (  # noqa: E402
     welcome,
 )
 
+# BACKLOG-27 / Inv 89: canonical runtime-flag text + active-flag detection
+# lives in the shared helper module so session-init.py and sync-check.py
+# cannot drift. Resolve the helper from both the source dir and the build-
+# managed deployed dir by walking up until features/rabbit-cage/hooks/ is
+# found — symmetric with the rabbit_print discovery above. Also accept the
+# sibling directly so importlib.module-loading tests resolve without
+# traversing the workspace.
+for _candidate in [_HERE, *_HERE.parents]:
+    _maybe = _candidate / "features" / "rabbit-cage" / "hooks"
+    if (_maybe / "_runtime_flags.py").is_file():
+        if str(_maybe) not in sys.path:
+            sys.path.insert(0, str(_maybe))
+        break
+else:
+    if (_HERE / "_runtime_flags.py").is_file() and str(_HERE) not in sys.path:
+        sys.path.insert(0, str(_HERE))
+from _runtime_flags import active_flags  # noqa: E402
+
 
 # Inv 78 (BACKLOG-19): per-file one-liner descriptions for the welcome
 # banner sub-lines. Additional @-imports introduced later show as basename
@@ -142,6 +160,19 @@ def render_policy(root: Path) -> Optional[dict]:
             lines.append(rabbit_subline(f"{name}{pad_spaces}— {desc}"))
         else:
             lines.append(rabbit_subline(name))
+    # Inv 89 (BACKLOG-27): append a status-flags block listing every active
+    # runtime override (human-approval bypass, bypass-permissions mode, and
+    # any future override added via the same per-user-marker pattern). The
+    # canonical body text is shared with sync-check.py via _runtime_flags;
+    # each line additionally names the revoke command so the operator sees
+    # a one-line orientation per flag. When no flags are active, the block
+    # is omitted entirely — no empty header, no "all clear" affirmation
+    # (terse baseline banner per Inv 89).
+    for flag in active_flags(root):
+        lines.append(rabbit_subline(
+            f"{flag['body']}  (revoke: {flag['revoke']})",
+            color="red",
+        ))
     return {
         "additionalContext": payload,
         "systemMessage": "\n".join(lines),
