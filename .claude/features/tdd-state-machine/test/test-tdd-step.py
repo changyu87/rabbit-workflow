@@ -374,11 +374,14 @@ def t_ref1():
         ko('t_ref1: _run_enforcement_checks function NOT found in tdd-step.py')
 
 
-# t_ref2: enforcement check block appears only once (no copy-paste duplication)
+# t_ref2: enforcement check block appears only once (no copy-paste duplication).
+# Post BACKLOG-5 (Inv 11): _run_enforcement_checks calls contract.lib.checks
+# library functions rather than subprocess to CLI scripts. The dedup probe
+# follows the lone library reference `checks.check_tests_non_interactive`.
 def t_ref2():
     with open(TDD_STEP) as f:
         content = f.read()
-    count = content.count('check-tests-non-interactive.py')
+    count = content.count('checks.check_tests_non_interactive')
     if count == 1:
         ok(f"t_ref2: enforcement check block appears exactly once (count={count})")
     else:

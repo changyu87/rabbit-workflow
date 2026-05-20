@@ -29,6 +29,7 @@ if str(_CONTRACT_SCRIPTS) not in sys.path:
 from rabbit_print import rabbit_block, rabbit_subline, tdd_transition, tdd_forced  # noqa: E402
 
 
+
 def _rbt_ok(msg):
     sys.stdout.write(msg + "\n")
     sys.stdout.flush()
@@ -170,35 +171,88 @@ def auto_close_backlog(d):
     return
 
 
-def _run_enforcement_checks(d, repo_root):
-    enforcement_dir = os.path.join(repo_root, ".claude", "features", "contract", "scripts", "enforcement")
-    if not os.path.isdir(enforcement_dir):
-        return
+def _load_checks_module(repo_root):
+    """Load contract.lib.checks from REPO_ROOT/.claude/features/.
 
-    def _run(script, args, warn_msg):
-        path = os.path.join(enforcement_dir, script)
-        if not os.path.isfile(path):
-            return
-        try:
-            res = subprocess.run(
-                [sys.executable, path] + args,
-                capture_output=True, check=False,
-            )
-            if res.returncode != 0 and warn_msg:
-                _rbt_alert(rabbit_block(rabbit_subline(warn_msg, color="red")))
-        except Exception:
+    Returns the module on success or None when the library is unavailable.
+    Spec Inv 11: tdd-step.py imports the check functions from
+    contract.lib.checks (NOT subprocess to enforcement CLI scripts).
+    """
+    if not repo_root:
+        return None
+    features_dir = os.path.join(repo_root, ".claude", "features")
+    checks_path = os.path.join(features_dir, "contract", "lib", "checks.py")
+    if not os.path.isfile(checks_path):
+        return None
+    if features_dir not in sys.path:
+        sys.path.insert(0, features_dir)
+    try:
+        # Force a fresh import bound to features_dir even if a prior call
+        # cached a module from a different location (e.g., test isolation).
+        for name in ("contract.lib.checks", "contract.lib", "contract"):
+            sys.modules.pop(name, None)
+        import importlib
+        return importlib.import_module("contract.lib.checks")
+    except Exception:
+        return None
+
+
+def _run_enforcement_checks(d, repo_root):
+    checks = _load_checks_module(repo_root)
+    if checks is None:
+        return
+    template_path = os.path.join(
+        repo_root, ".claude", "features", "contract", "templates", "bug-template.json",
+    )
+
+    def _emit(result, warn_msg):
+        if result is None or not getattr(result, "passed", True):
             if warn_msg:
                 _rbt_alert(rabbit_block(rabbit_subline(warn_msg, color="red")))
 
-    _run("check-tests-non-interactive.py", [d],
-         f"WARNING: R3 check failed for {d} — tests may have interactive constructs")
-    _run("check-sentinel.py", [d], "")
-    _run("check-naming.py", [d], f"WARNING: naming check failed for {d}")
-    _run("check-imports-resolve.py", [d], f"WARNING: R-import-resolve check failed for {d}")
-    _run("check-symlinks-resolve.py", [repo_root], "WARNING: symlink-resolve check failed")
-    _run("check-template-schema-producer-consistency.py",
-         [os.path.join(repo_root, ".claude", "features", "contract", "templates", "bug-template.json")],
-         "WARNING: template-schema-producer consistency check failed")
+    def _safe(fn, args, warn_msg):
+        try:
+            res = fn(*args)
+        except Exception:
+            res = None
+            _emit(res, warn_msg)
+            return
+        _emit(res, warn_msg)
+
+    _safe(checks.check_tests_non_interactive, (d,),
+          f"WARNING: R3 check failed for {d} — tests may have interactive constructs")
+    _safe(checks.check_sentinel, (d,), "")
+    _safe(checks.check_naming, (d,), f"WARNING: naming check failed for {d}")
+    _safe(checks.check_imports_resolve, (d,), f"WARNING: R-import-resolve check failed for {d}")
+    _safe(checks.check_symlinks_resolve, (repo_root,), "WARNING: symlink-resolve check failed")
+    _safe(checks.check_template_producer_consistency, (template_path,),
+          "WARNING: template-schema-producer consistency check failed")
+
+
+def _run_spec_update_checks(d, repo_root):
+    """Inv 12: run check_numbered_lists against <feature-dir>/docs/spec/.
+
+    Non-blocking: a failed CheckResult emits a warning via rabbit_print but
+    does not fail the spec-update -> test-red transition.
+    """
+    checks = _load_checks_module(repo_root)
+    if checks is None:
+        return
+    spec_dir = os.path.join(d, "docs", "spec")
+    if not os.path.isdir(spec_dir):
+        return
+    try:
+        res = checks.check_numbered_lists([spec_dir])
+    except Exception:
+        return
+    if res is None or getattr(res, "passed", True):
+        return
+    messages = getattr(res, "messages", []) or []
+    detail = "; ".join(messages[:3]) if messages else "(no detail)"
+    _rbt_alert(rabbit_block(rabbit_subline(
+        f"WARNING: numbered-list check failed for {spec_dir}: {detail}",
+        color="red",
+    )))
 
 
 def _post_test_green_hooks(d):
@@ -331,6 +385,8 @@ def cmd_transition(args):
         write_state(d, new, spec_no_change_reason=spec_no_change_reason)
         if new == "test-green":
             _post_test_green_hooks(d)
+        if cur == "spec-update" and new == "test-red":
+            _run_spec_update_checks(d, REPO_ROOT)
         _rbt_ok(rabbit_block(tdd_transition(cur, new)))
         return 0
 
@@ -338,6 +394,8 @@ def cmd_transition(args):
         write_state(d, new, spec_no_change_reason=spec_no_change_reason)
         if new == "test-green":
             _post_test_green_hooks(d)
+        if cur == "spec-update" and new == "test-red":
+            _run_spec_update_checks(d, REPO_ROOT)
         _rbt_alert(rabbit_block(tdd_forced(cur, new)))
         _rbt_ok(rabbit_block(tdd_transition(cur, new)))
         return 0
