@@ -20,5 +20,5 @@
   },
   "deprecation_criterion": "when a unified tracking system replaces file-based bug and backlog management",
   "updated": "2026-05-20",
-  "spec_no_change_reason": "spec.md frontmatter and retry-count edit already committed at HEAD~1; this cycle implements the related script-side housekeeping"
+  "spec_no_change_reason": "Informational section only; spec change committed at HEAD~2 (operational characteristics) introduces no normative invariants. Presence test added but already passes \u2014 documented in TDD report as no-implementation-gap cycle."
 }
