@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 4.9.0
+version: 4.10.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -877,3 +877,9 @@ applies, the emitted JSON carries the policy `[rabbit]` line in
     (e.g., the revoke command for an active human-approval bypass is
     `/rabbit-config bypass-human-approval false`, not `/rabbit-config
     human-approval true`).
+
+92. **Inv 18 enumeration completeness (RABBIT-CAGE-BACKLOG-25 part 1).** The script enumeration in Inv 18 MUST be pinned by an end-to-end test that walks `.claude/features/rabbit-cage/hooks/*.py` and `.claude/features/rabbit-cage/scripts/*.py` on disk and asserts: (a) every on-disk Python file is named in the Inv 18 enumeration, and (b) every script named in the Inv 18 enumeration exists on disk. The test MUST live at `.claude/features/rabbit-cage/test/test-rabbit-cage-scripts-enumeration.py` and MUST be wired into `test/run.py`. The intent is to prevent silent drift of the kind that previously let `repo-permissions.py` slip out of the enumeration unnoticed. The test scope is rabbit-cage's own hooks and scripts — `new-feature.py` lives in rabbit-feature post-RABBIT-CAGE-BACKLOG-26 and is therefore out-of-scope for this enumeration.
+
+93. **No `updated_note` field on feature.json (RABBIT-CAGE-BACKLOG-25 part 4).** `rabbit-cage/feature.json` MUST NOT carry an `updated_note` field. The maintenance cadence for the `updated` field belongs in a repo-level contributor note (or a dedicated contract convention), not in per-feature `feature.json` payloads — embedding maintenance documentation in feature.json bloats the machine-first schema with human-prose guidance that consumers do not parse. A regression test in `test/test-RABBIT-CAGE-BACKLOG-28-housekeeping.py` (or an adjacent housekeeping test) asserts the field's absence.
+
+94. **`provides.scripts` existence test (RABBIT-CAGE-BACKLOG-25 part 5).** Every script path declared in `.claude/features/rabbit-cage/docs/spec/contract.md` under `provides.scripts` MUST exist on disk. The test MUST live at `.claude/features/rabbit-cage/test/test-contract-provides-scripts-exist.py` and MUST be wired into `test/run.py`. The intent is to catch contract-vs-reality drift of the kind that previously let `contract.md` retain `relink.sh` and `dispatch-feature-edit.sh` long after those scripts were deleted. (Generalizing this check across every feature's contract.md is out of scope for this cycle and may be filed as a separate contract-feature backlog if desired.)

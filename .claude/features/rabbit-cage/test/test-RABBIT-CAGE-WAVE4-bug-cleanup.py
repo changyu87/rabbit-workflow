@@ -381,12 +381,16 @@ finally:
     shutil.rmtree(tmpd4, ignore_errors=True)
 
 # ---------------------------------------------------------------------------
-# BUG-69: feature.json carries a note explaining the 'updated' field cadence.
+# BUG-69 retired (RABBIT-CAGE-BACKLOG-25 part 4): the legacy `updated_note`
+# field has been dropped from rabbit-cage feature.json — maintenance cadence
+# for the `updated` field belongs in a repo-level contributor note, not in
+# per-feature feature.json payloads. The absence of the field is enforced by
+# Inv 93 and the housekeeping test (test-RABBIT-CAGE-BACKLOG-28-housekeeping.py).
 # ---------------------------------------------------------------------------
-if "updated_note" in fj or "manual" in json.dumps(fj):
-    ok(30, "feature.json has a maintenance note for 'updated' (BUG-69)")
+if "updated_note" not in fj:
+    ok(30, "feature.json no longer carries the legacy 'updated_note' field (Inv 93)")
 else:
-    fail_t(30, "feature.json missing maintenance note for 'updated' (BUG-69)")
+    fail_t(30, "feature.json still carries the deprecated 'updated_note' field — drop per Inv 93")
 
 # ---------------------------------------------------------------------------
 # BUG-71 retired (RABBIT-CAGE-BACKLOG-26): new-feature.py moved into the
