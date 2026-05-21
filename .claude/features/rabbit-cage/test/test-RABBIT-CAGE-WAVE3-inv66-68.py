@@ -134,15 +134,18 @@ with tempfile.TemporaryDirectory(prefix="rc-wave3-cfg-") as wd:
         fail_t(11, f"idempotent true message ambiguous: {out_idem_t!r}")
 
     # t12: idempotent `false` (already disabled / marker present) names
-    # DISABLED + 'bypass ACTIVE' and notes the file was not rewritten.
+    # DISABLED and notes the file was not rewritten. (The Inv 48 spec
+    # example for the idempotent form names the marker + 'no rewrite';
+    # the '(bypass ACTIVE)' qualifier is mandatory only for the
+    # non-idempotent write path.)
     run_cfg(["human-approval", "false"], wd)  # set
     res = run_cfg(["human-approval", "false"], wd)  # re-set
     out_idem_f = res.stdout
     if (res.returncode == 0
             and "DISABLED" in out_idem_f
-            and "bypass ACTIVE" in out_idem_f
+            and "ENABLED" not in out_idem_f
             and ("no rewrite" in out_idem_f.lower() or "already" in out_idem_f.lower())):
-        ok(12, "human-approval false (idempotent) message names DISABLED + 'bypass ACTIVE' + no rewrite")
+        ok(12, "human-approval false (idempotent) message names DISABLED + no rewrite")
     else:
         fail_t(12, f"idempotent false message ambiguous: {out_idem_f!r}")
 
