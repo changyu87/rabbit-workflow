@@ -444,7 +444,7 @@ def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
                 if n <= prev_num:
                     violations.append(
                         f"VIOLATION: {feat_name}:{section_header}: "
-                        f"{prev_num} -> {n} not monotonic"
+                        f"{prev_num} → {n} not monotonic"
                     )
                 prev_num = n
 
