@@ -163,6 +163,7 @@ def render_policy(root: Path) -> Optional[dict]:
         lines.append(rabbit_subline(
             f"{flag['body']}  (revoke: {flag['revoke']})",
             color="red",
+            icon=flag["icon"],
         ))
     return {
         "additionalContext": payload,

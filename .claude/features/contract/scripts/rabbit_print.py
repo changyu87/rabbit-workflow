@@ -11,7 +11,7 @@ strings only.
 Public API:
     Low-level:
         rabbit_print(message_id, **kwargs) -> str
-        rabbit_subline(text, color="green") -> str
+        rabbit_subline(text, color="green", icon=None) -> str
     Block assembler (sole owner of the leading newline):
         rabbit_block(*lines) -> str
     Named wrappers (one per message-id; producers MUST use these):
@@ -28,7 +28,7 @@ Public API:
         tdd_transition(from_state, to_state) -> str   (state names upcased)
         tdd_forced(from_state, to_state) -> str       (state names upcased)
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team
 Deprecation criterion: when the [rabbit] print convention is replaced by a
     structured logging facility
@@ -80,14 +80,23 @@ def rabbit_print(message_id, **kwargs):
     return f"{c['ansi']}{brand} {icon} {body}{c['reset']}"
 
 
-def rabbit_subline(text, color="green"):
+def rabbit_subline(text, color="green", icon=None):
     """Compose a sub-line (brand prefix + free text) in the given color.
 
-    Returns the string:
+    When icon is None (default), returns:
         f"{ansi}{brand} {text}{reset}"
+    Existing callers that omit icon are backwards-compatible.
+
+    When icon is a non-empty string, returns:
+        f"{ansi}{brand} {icon} {text}{reset}"
+    The icon precedes the text so SessionStart active-flag warnings
+    (rabbit-cage session-init.py) can carry a leading visual alert glyph
+    mirroring the icon-bearing compact form used by the named wrappers.
     """
     reg = _load()
     c = reg["colors"][color]
+    if icon:
+        return f"{c['ansi']}{reg['brand']} {icon} {text}{c['reset']}"
     return f"{c['ansi']}{reg['brand']} {text}{c['reset']}"
 
 

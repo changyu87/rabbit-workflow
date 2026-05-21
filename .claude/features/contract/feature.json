@@ -12,5 +12,5 @@
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-21",
   "tdd_last_cycle_impl_commit": "eae35f270bb84a6a14bb814bc57b9f08613f49a0",
-  "spec_no_change_reason": "spec already committed in HEAD (47eba2a9); state machine sees clean tree"
+  "spec_no_change_reason": "spec change for CONTRACT-BACKLOG-33 (rabbit_subline icon param) was committed by rabbit-feature-touch Step 3 in commit bfd1e91a before this subagent dispatched; git diff HEAD is empty because the commit already landed."
 }

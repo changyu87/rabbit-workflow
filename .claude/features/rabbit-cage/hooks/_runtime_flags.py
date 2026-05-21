@@ -34,7 +34,7 @@ Implementation notes
   public dict `CANONICAL_FLAG_BODIES` is the only entry point for callers
   that need the body strings directly (currently the test suite).
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when both hooks are refactored into a unified
     rabbit-cage status-emission library that owns the alert text itself.
@@ -50,12 +50,14 @@ _BYPASS_PERMISSIONS_BODY = (
     "skipped; scope-guard hook is the sole write-authorization gate"
 )
 _BYPASS_PERMISSIONS_REVOKE = "/rabbit-config bypass-permissions false"
+_BYPASS_PERMISSIONS_ICON = "🚨"
 
 _HUMAN_APPROVAL_BODY = (
     "HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all "
     "rabbit-feature-touch dispatches"
 )
 _HUMAN_APPROVAL_REVOKE = "/rabbit-config bypass-human-approval false"
+_HUMAN_APPROVAL_ICON = "🔑"
 
 
 # Public test-facing API: lookup canonical body text by flag id. Both
@@ -108,17 +110,22 @@ def is_human_approval_bypass_active(repo_root) -> bool:
 def active_flags(repo_root) -> list:
     """Return one entry per active runtime override, in the conditional-priority
     order declared by Inv 83 (human-approval before bypass-permissions). Each
-    entry is `{"body": <canonical text>, "revoke": <revoke command>}`. Empty
-    list when no flags are active (caller MUST then omit the block — Inv 62)."""
+    entry is `{"body": <canonical text>, "revoke": <revoke command>, "icon":
+    <leading emoji glyph>}`. Empty list when no flags are active (caller MUST
+    then omit the block — Inv 62). The icon is sourced per-flag so that
+    `session-init.py` can render alert sublines with a leading visual glyph
+    (rabbit-cage Inv 62, contract Inv 28(b))."""
     flags = []
     if is_human_approval_bypass_active(repo_root):
         flags.append({
             "body": _HUMAN_APPROVAL_BODY,
             "revoke": _HUMAN_APPROVAL_REVOKE,
+            "icon": _HUMAN_APPROVAL_ICON,
         })
     if is_bypass_permissions_active(repo_root):
         flags.append({
             "body": _BYPASS_PERMISSIONS_BODY,
             "revoke": _BYPASS_PERMISSIONS_REVOKE,
+            "icon": _BYPASS_PERMISSIONS_ICON,
         })
     return flags

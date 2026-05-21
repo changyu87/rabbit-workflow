@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.20.0
+version: 1.21.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -81,10 +81,10 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
    (c) `rabbit_print.py` — the shared renderer. Consumers (rabbit-cage
        hooks, tdd-subagent scripts) import this module and call
        `rabbit_print(message_id, **kwargs) -> str` or
-       `rabbit_subline(text, color="green") -> str` to get a fully
-       composed ANSI-colored string. Direct ANSI/brand/bar composition
-       outside this module is forbidden — producers MUST go through
-       the renderer.
+       `rabbit_subline(text, color="green", icon=None) -> str` to get
+       a fully composed ANSI-colored string. Direct ANSI/brand/bar
+       composition outside this module is forbidden — producers MUST
+       go through the renderer.
 5. `workspace-structure.json` exists at `.claude/features/contract/schemas/workspace-structure.json`, is valid JSON, and defines a node-tree schema: documents conforming to it must have `schema_version`, `owner`, `root`, `nodes` at top level; each node must have `name`, `required`, `description`, `children`.
 6. `build-contract.json` exists at `.claude/features/contract/build-contract.json`, is valid JSON, and validates against `.claude/features/contract/schemas/build-contract.schema.json`.
 7. All `copy-file` targets declared in `build-contract.json` have a `source` field whose path exists on disk (relative to the repo root).
@@ -110,7 +110,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 27. `rabbit-print-messages.json` exists at `.claude/features/contract/schemas/rabbit-print-messages.json`, is valid JSON, and conforms to `rabbit-print.schema.json`. Top-level keys (required): `schema_version`, `owner`, `deprecation_criterion`, `brand` (the prefix string, exactly `"[🐇 rabbit 🐇]"`), `bar` (the decoration string, exactly `"━━━"`; used only by the `banner` format), `colors` (object mapping color name to `{ansi: <code>, reset: <code>}`; required keys `green` = `[32m`/`[0m`, `red` = `[31m`/`[0m`, and `yellow` = `[33m`/`[0m`), and `messages` (object mapping message-id to `{icon, color, format, text}` where `icon` is a single emoji string, `color` is a key into `colors`, `format` is `"banner"` or `"compact"`, and `text` is the body string with `{name}` placeholders for runtime substitution). The `format` field controls the render shape: `"banner"` produces the decorated `brand icon ━━━ text ━━━ icon` form; `"compact"` produces the lighter `brand icon text` form. The required message-ids are: `welcome` (✅ green, `"banner"`), `policy-drift` (⚠️ red), `surface-drift` (🔄 red), `scope-guard-off` (🔓 red), `scope-guard-bypassed` (🔓 red), `human-approval-bypass` (🔑 red), `bypass-permissions-active` (🚨 red), `dispatch-bypass-note` (📢 yellow), `skills-updated` (✨ green), `policy-refreshed` (🔄 green), `tdd-transition` (🔧 green), `tdd-forced` (🔧 red) — all non-welcome messages use `"compact"`. Message-ids MUST NOT include `r1-branch`. Adding new message-ids is permitted; removing or renaming an id is a breaking change requiring a coexistence window per the Designed Deprecation principle.
 28. `rabbit_print.py` exists at `.claude/features/contract/scripts/rabbit_print.py` and is an importable Python 3 module (underscore form is required by Python's import system; the rest of contract's scripts use hyphens because they are CLI tools, not importable modules). The module exposes:
     (a) `rabbit_print(message_id: str, **kwargs) -> str` — low-level renderer; output shape is controlled by the per-message `format` field. `"banner"` format returns `f"{ansi}{brand} {icon} {bar} {text} {bar} {icon}{reset}"`; `"compact"` format returns `f"{ansi}{brand} {icon} {text}{reset}"`. `text` has its `{name}` placeholders substituted from `kwargs`. Raises `KeyError` on unknown `message_id` or missing placeholder.
-    (b) `rabbit_subline(text: str, color: str = "green") -> str` — sub-line renderer; returns `f"{ansi}{brand} {text}{reset}"`.
+    (b) `rabbit_subline(text: str, color: str = "green", icon: str = None) -> str` — sub-line renderer. When `icon` is `None` (default): returns `f"{ansi}{brand} {text}{reset}"` (unchanged from prior signature; existing callers are backwards-compatible). When `icon` is a non-empty string: returns `f"{ansi}{brand} {icon} {text}{reset}"` so the line carries a leading visual alert glyph. This icon parameter exists so producers of SessionStart active-flag warnings (rabbit-cage `session-init.py`) can render at higher visual weight than icon-less policy-info sublines, mirroring the icon-bearing compact form used by the named wrappers.
     (c) `rabbit_block(*lines: str) -> str` — block assembler; returns `"\n" + "\n".join(lines)`. The leading newline is the contract that Claude Code renders the `[🐇 rabbit 🐇]` output on its own row (not inline with `Stop says:` / `SessionStart says:` chrome). `rabbit_block` is the SINGLE authoritative place the leading newline lives — no caller, no other renderer, embeds `"\n"` at the start of a message.
     (d) Named wrapper functions, one per message-id, that thinly delegate to `rabbit_print`:
         `welcome() -> str`
