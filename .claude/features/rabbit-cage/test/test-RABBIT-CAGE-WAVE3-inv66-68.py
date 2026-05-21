@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""End-to-end tests for rabbit-cage Wave 3 (Inv 46-68).
+"""End-to-end tests for rabbit-cage Wave 3 (Inv 47-48).
 
-Inv 46: new-feature.py scaffolds test/run.py (not test/run.sh), feature.json
-        contains template_version, and the scaffolded feature passes
-        validate-feature.py immediately.
 Inv 47: commands/rabbit-project.md references only existing .py scripts;
         no `.sh` references; any referenced script path actually exists.
 Inv 48 (post-BACKLOG-31): rabbit-config.py bypass-human-approval messages name the marker state
         and the practical effect (BYPASSED / ENABLED + Step 4 verbiage), and
         do not use the bare ambiguous adjective `DISABLED`.
+
+(Inv 46 was retired in RABBIT-CAGE-BACKLOG-26 when new-feature.py moved
+into the rabbit-feature feature; its tests now live at
+.claude/features/rabbit-feature/test/test-new-feature.py.)
 """
-import json
 import os
 import re
 import subprocess
@@ -23,18 +23,12 @@ REPO_ROOT = subprocess.run(
     capture_output=True, text=True, check=True,
 ).stdout.strip()
 
-NEW_FEATURE_PY = os.path.join(
-    REPO_ROOT, ".claude/features/rabbit-cage/scripts/new-feature.py"
-)
 RABBIT_PROJECT_MD = os.path.join(
     REPO_ROOT, ".claude/features/rabbit-cage/commands/rabbit-project.md"
 )
 RABBIT_CONFIG_PY = os.path.join(
     REPO_ROOT,
     ".claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py",
-)
-VALIDATE_FEATURE_PY = os.path.join(
-    REPO_ROOT, ".claude/features/contract/scripts/validate-feature.py"
 )
 
 pass_n = 0
@@ -54,75 +48,6 @@ def fail_t(t, msg):
 
 
 print("test-RABBIT-CAGE-WAVE3-inv66-68.py")
-
-# ---------------------------------------------------------------------------
-# Inv 46: new-feature.py scaffolds test/run.py + template_version
-# ---------------------------------------------------------------------------
-with tempfile.TemporaryDirectory(prefix="rc-wave3-") as tmp:
-    # Pretend RABBIT_ROOT points at the real repo so the optional
-    # validate-feature.py self-check can find the script.
-    env = dict(os.environ)
-    env["RABBIT_ROOT"] = REPO_ROOT
-
-    res = subprocess.run(
-        [sys.executable, NEW_FEATURE_PY, tmp, "wave3-demo",
-         "--owner", "rc-test", "--description", "wave3 e2e"],
-        env=env, capture_output=True, text=True,
-    )
-    if res.returncode != 0:
-        fail_t(1, f"new-feature.py exited {res.returncode}; stderr={res.stderr!r}")
-    else:
-        ok(1, "new-feature.py scaffolds successfully")
-
-    feature_dir = os.path.join(tmp, "wave3-demo")
-    run_py = os.path.join(feature_dir, "test", "run.py")
-    run_sh = os.path.join(feature_dir, "test", "run.sh")
-
-    # t2: test/run.py exists.
-    if os.path.isfile(run_py):
-        ok(2, "scaffold creates test/run.py")
-    else:
-        fail_t(2, "scaffold missing test/run.py")
-
-    # t3: test/run.sh must NOT be scaffolded (Python-only stack per Inv 17).
-    if not os.path.lexists(run_sh):
-        ok(3, "scaffold does NOT create test/run.sh (Python-only per Inv 17)")
-    else:
-        fail_t(3, "scaffold still creates test/run.sh (violates Inv 17/46)")
-
-    # t4: test/run.py is executable.
-    if os.path.isfile(run_py) and os.access(run_py, os.X_OK):
-        ok(4, "scaffolded test/run.py is executable")
-    else:
-        fail_t(4, "scaffolded test/run.py is not executable")
-
-    # t5: feature.json contains template_version.
-    fjson = os.path.join(feature_dir, "feature.json")
-    if os.path.isfile(fjson):
-        try:
-            with open(fjson) as f:
-                data = json.load(f)
-            if data.get("template_version"):
-                ok(5, f"feature.json carries template_version={data['template_version']!r}")
-            else:
-                fail_t(5, "feature.json missing template_version field")
-        except Exception as e:
-            fail_t(5, f"feature.json could not be parsed: {e}")
-    else:
-        fail_t(5, "feature.json was not scaffolded")
-
-    # t6: validate-feature.py passes on the freshly scaffolded feature.
-    if os.path.isfile(VALIDATE_FEATURE_PY):
-        vres = subprocess.run(
-            [sys.executable, VALIDATE_FEATURE_PY, feature_dir],
-            capture_output=True, text=True,
-        )
-        if vres.returncode == 0:
-            ok(6, "scaffolded feature passes validate-feature.py immediately")
-        else:
-            fail_t(6, f"validate-feature.py rc={vres.returncode}; stderr={vres.stderr!r}")
-    else:
-        fail_t(6, f"validate-feature.py not found at {VALIDATE_FEATURE_PY}")
 
 # ---------------------------------------------------------------------------
 # Inv 47: commands/rabbit-project.md references only existing .py scripts

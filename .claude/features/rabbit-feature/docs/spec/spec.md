@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.6.0
+version: 1.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -56,11 +56,16 @@ anywhere in this feature. Test runner is `test/run.py`.
   needed, updates the spec, and writes an impl-suggestion file for whoever
   invoked it.
 - `.claude/features/rabbit-feature/skills/rabbit-feature-new/SKILL.md`
-  — feature-scaffolding skill. Given a feature name, shells out to the
-  rabbit-cage `new-feature.py` script to create a conforming feature dir
-  (`feature.json`, `docs/spec/spec.md`, `docs/spec/contract.md`,
+  — feature-scaffolding skill. Given a feature name, shells out to this
+  feature's own `new-feature.py` script (see below) to create a conforming
+  feature dir (`feature.json`, `docs/spec/spec.md`, `docs/spec/contract.md`,
   `test/run.py`), then validates the scaffold via
   `contract.lib.checks.validate_feature`.
+- `.claude/features/rabbit-feature/scripts/new-feature.py`
+  — feature-scaffolding script invoked by `rabbit-feature-new`. Creates a
+  conforming feature directory at any path; preserves the stdin/stdout/exit
+  code contract documented in the contract block. Moved from rabbit-cage
+  in RABBIT-CAGE-BACKLOG-26.
 - `.claude/features/rabbit-feature/skills/rabbit-feature-audit/SKILL.md`
   — feature-audit skill. Validates a single feature or sweeps every
   feature using `contract.lib.checks.validate_feature` and returns
@@ -309,14 +314,16 @@ feature.
     that scaffolds a new rabbit feature directory with the required
     structure (`feature.json`, `docs/spec/spec.md`,
     `docs/spec/contract.md`, `test/run.py`). The skill shells out to
-    `.claude/features/rabbit-cage/scripts/new-feature.py` for the
-    scaffold operation (this cross-feature dependency is TEMPORARY —
-    RABBIT-CAGE-BACKLOG-24, separate cycle, will move the actual
-    script into this feature). After scaffolding, the skill MUST
-    validate the new feature dir via
+    `.claude/features/rabbit-feature/scripts/new-feature.py` for the
+    scaffold operation — this feature owns the scaffolder directly as
+    of RABBIT-CAGE-BACKLOG-26 (moved from rabbit-cage); the prior
+    cross-feature dependency is retired. After scaffolding, the skill
+    MUST validate the new feature dir via
     `contract.lib.checks.validate_feature` and report the new feature
     directory path. The skill SKILL.md is declared in
-    `feature.json.surface.skills` and `contract.md.provides.skills`.
+    `feature.json.surface.skills` and `contract.md.provides.skills`;
+    the scaffolder script is declared in
+    `contract.md.provides.scripts`.
 
 ### rabbit-feature-audit (v1.6.0, BACKLOG-3)
 

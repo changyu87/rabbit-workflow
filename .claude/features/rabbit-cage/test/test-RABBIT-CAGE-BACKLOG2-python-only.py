@@ -59,7 +59,7 @@ else:
 print("[4] Inv 18 Python script set present and executable")
 expected_hooks = ["refresh.py", "scope-guard.py", "session-init.py", "sync-check.py"]
 expected_scripts = ["build.py", "build-targets.py", "generate-claude-md.py",
-                    "generate-claude-md-header.py", "new-feature.py", "rabbit-project.py",
+                    "generate-claude-md-header.py", "rabbit-project.py",
                     "rabbit-project-consolidate.py", "rabbit-project-map.py",
                     "rabbit-project-set-path.py", "scope-guard-on.py",
                     "workspace-tree.py"]

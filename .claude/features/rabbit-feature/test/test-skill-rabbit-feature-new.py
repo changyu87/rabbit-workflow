@@ -5,7 +5,7 @@ Asserts the `rabbit-feature-new` skill is present and conforms to spec:
 - SKILL.md exists at skills/rabbit-feature-new/SKILL.md
 - frontmatter declares name=rabbit-feature-new with required metadata
   (description, version, owner, deprecation_criterion)
-- body mentions the scaffolding protocol: invokes the rabbit-cage
+- body mentions the scaffolding protocol: invokes this feature's
   new-feature.py script and validates via contract.lib.checks
 - feature.json surface.skills includes the new skill
 - contract.md provides.skills includes the new skill directory
@@ -55,9 +55,11 @@ def test_frontmatter_required_fields() -> None:
 
 def test_body_documents_protocol() -> None:
     text = SKILL_MD.read_text()
-    # Skill must reference the rabbit-cage new-feature.py script it shells out to.
-    assert "new-feature.py" in text, (
-        "SKILL.md body must reference the rabbit-cage new-feature.py scaffolding script"
+    # Skill must reference the new-feature.py script it shells out to (now
+    # owned by this feature — RABBIT-CAGE-BACKLOG-26).
+    assert "rabbit-feature/scripts/new-feature.py" in text, (
+        "SKILL.md body must reference .claude/features/rabbit-feature/scripts/new-feature.py "
+        "(post-RABBIT-CAGE-BACKLOG-26)"
     )
     # Skill must reference the contract.lib.checks validate_feature post-scaffold check.
     assert "validate_feature" in text, (
