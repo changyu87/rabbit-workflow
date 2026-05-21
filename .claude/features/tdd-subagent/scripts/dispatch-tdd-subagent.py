@@ -121,8 +121,7 @@ def main(argv):
         choices=["true", "false"],
         default="true",
         help="'true' (default) requires explicit user approval in the subagent's "
-             "HUMAN-APPROVAL step; 'false' skips that step. Replaces the legacy "
-             "--no-human-approval flag.",
+             "HUMAN-APPROVAL step; 'false' skips that step.",
     )
     parser.add_argument("--code-review-full-loop", action="store_true")
     parser.add_argument("--max-iterations", type=int, default=3)
@@ -279,7 +278,7 @@ def main(argv):
         )
         # JSON HANDOFF closed_items reflects the same closures (Inv 19 — JSON
         # block is the machine-first source of truth; if items are closed they
-        # MUST appear here, not just in the legacy YAML block above).
+        # MUST appear here, not just in the human-readable YAML block above).
         handoff_closed_items_json = (
             "[\n    "
             + ",\n    ".join(f'"{it["handoff_label"]}"' for it in items)
@@ -581,7 +580,7 @@ HANDOFF:
 
 Also emit the structured JSON HANDOFF below. The JSON block is the
 machine-first source of truth (philosophy.md §1); the YAML-like form above
-remains for human readability and backward-compatible parsers. Substitute
+is the human-readable view alongside the machine-first JSON. Substitute
 every `<...>` placeholder with the actual value before emitting.
 
 HANDOFF_JSON:

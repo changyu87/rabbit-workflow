@@ -167,7 +167,7 @@ def t5():
     ok("t5: empty-field triple rejected")
 
 
-# t6: backward compat — no --linked-items, only --linked-item — single close path only
+# t6: primary --linked-item alone produces single close path
 def t6():
     root = os.path.join(TMPROOT, 't6_root')
     make_rabbit_root(root)
@@ -179,7 +179,7 @@ def t6():
         return
     p = r.stdout
     if '/bugs/only-primary' in p:
-        ok("t6: backward-compat single --linked-item still referenced in prompt")
+        ok("t6: primary --linked-item alone is referenced in prompt")
     else:
         ko("t6: primary item path missing from prompt")
 
