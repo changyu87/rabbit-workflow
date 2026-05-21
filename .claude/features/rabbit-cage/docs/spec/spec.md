@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 4.10.0
+version: 4.11.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native feature-container mechanism that subsumes this role
@@ -112,7 +112,7 @@ There is NO slash-command file for `/rabbit-config`. The skill is the sole inter
 
 **Syntax (skill invocation):** `Skill("rabbit-config", args: "<subcommand> [args...]")`
 
-**Subcommands:** `help`, `prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `bypass-human-approval`, `bypass-permissions`. Each is documented below.
+**Subcommands:** `help`, `prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`, `bypass-permissions`. Each is documented below.
 
 ### Subcommand: help
 
@@ -158,20 +158,22 @@ Manages owner write permission on `archive/` and `test/` directories by delegati
 - `/rabbit-config permissions lock` — strips owner write bit from `archive/` and `test/` so the worktree resists accidental edits.
 - `/rabbit-config permissions unlock` — restores owner write to those directories before authoring edits.
 
-### Subcommand: bypass-human-approval
+### Subcommand: human-approval
 
-Manages the Step 4 (HUMAN-APPROVAL) bypass state via the marker file `.rabbit-human-approval-bypass` at the repo root. The marker is gitignored. The subcommand takes a boolean value following contract Inv 11 (boolean CLI values use `true`/`false`) where `true` = bypass ON and `false` = bypass OFF, mirroring the parallel `bypass-permissions` subcommand:
+Manages the Step 4 (HUMAN-APPROVAL) bypass state via the marker file `.rabbit-human-approval-bypass` at the repo root. The marker is gitignored. The subcommand takes a boolean value following contract Inv 11 (boolean CLI values use `true`/`false`) where `true` = human approval gate ACTIVE (marker absent, dispatcher waits) and `false` = gate OFF / bypass ACTIVE (marker written, dispatcher skips Step 4). This naming optimizes for natural-language operator instructions like "turn off human approval" — the subcommand value answers "is human approval in effect?" with the literal `true`/`false`:
 
-- `/rabbit-config bypass-human-approval true` — writes `.rabbit-human-approval-bypass` at the repo root with content `session`. The Step 4 bypass is ACTIVE: every subsequent `rabbit-feature-touch` dispatch passes `--human-approval-gate false` to `dispatch-tdd-subagent.py` and skips the in-conversation wait. Use ONLY after explicit user authorization.
-- `/rabbit-config bypass-human-approval false` — deletes `.rabbit-human-approval-bypass`. The Step 4 bypass is OFF: `rabbit-feature-touch` dispatchers wait for explicit in-conversation user approval. This is the default posture for a fresh checkout.
-- `/rabbit-config bypass-human-approval` (no action) — prints the current state to stdout: either `true` (marker present, bypass active) or `false` (marker absent, bypass off). No file is modified.
+- `/rabbit-config human-approval false` — writes `.rabbit-human-approval-bypass` at the repo root with content `session`. The Step 4 bypass is ACTIVE: every subsequent `rabbit-feature-touch` dispatch passes `--human-approval-gate false` to `dispatch-tdd-subagent.py` and skips the in-conversation wait. Use ONLY after explicit user authorization. Natural-language mapping: "turn off human approval" → `human-approval false` → marker WRITTEN.
+- `/rabbit-config human-approval true` — deletes `.rabbit-human-approval-bypass`. The Step 4 bypass is OFF and the human-approval gate is back in force: `rabbit-feature-touch` dispatchers wait for explicit in-conversation user approval. This is the default posture for a fresh checkout. Natural-language mapping: "turn on human approval", "re-enable approval" → `human-approval true` → marker REMOVED.
+- `/rabbit-config human-approval` (no action) — prints the current gate state to stdout: either `true` (marker absent, gate active) or `false` (marker present, bypass active). No file is modified.
 
 `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event while `.rabbit-human-approval-bypass` is present, so the bypass cannot be silently forgotten:
 `[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches.`
 
-The marker stays in place across sessions until explicitly revoked via `/rabbit-config bypass-human-approval false` or manual deletion. It is a hard state, not conversation memory — the dispatcher reads the file at every dispatch, not Claude's recollection of prior approval.
+The marker stays in place across sessions until explicitly revoked via `/rabbit-config human-approval true` or manual deletion. It is a hard state, not conversation memory — the dispatcher reads the file at every dispatch, not Claude's recollection of prior approval.
 
-**Legacy subcommand name removed:** the prior subcommand name `human-approval` (with inverted boolean semantics where `true` meant "gate active") is REMOVED. The dispatcher rejects `/rabbit-config human-approval` (any form) with a non-zero exit and an error message directing the operator to the new `bypass-human-approval` spelling. No coexistence window is offered: this is a hard rename. The reason for the rename is parallel semantics with `bypass-permissions` — both subcommands now lead with `bypass-`, both `true` means bypass ACTIVE (dangerous), both `false` means bypass OFF (safe/default).
+**Why this differs from `bypass-permissions`.** `bypass-permissions` is pinned to Claude Code's own config value `"bypassPermissions"`; its naming is externally constrained and uses `true`=bypass-ACTIVE. `human-approval` is internally controlled, and optimizes for natural-language clarity instead of cross-subcommand parallelism. The two subcommands deliberately use opposite boolean conventions because the cost of a misparsed `bypass-X` (auto-running with no approval) is asymmetric with the cost of a misparsed `human-approval` (waiting for approval that already happened).
+
+**Legacy subcommand name removed:** the prior subcommand name `bypass-human-approval` (introduced by RABBIT-CAGE-BACKLOG-31 with semantics where `true` meant "bypass ACTIVE") is REMOVED by RABBIT-CAGE-BUG-97. The dispatcher rejects `/rabbit-config bypass-human-approval` (any form) with a non-zero exit and an error message directing the operator to the new `human-approval` spelling with the inverted boolean. No coexistence window is offered: this is a hard rename. The reason for the revert is a natural-language misparse — "turn off human approval" was ambiguously read as "turn off [the bypass-human-approval subcommand]" → `false`, which under bypass-X semantics meant gate ACTIVE, opposite of operator intent. Re-aligning with the original `human-approval` spelling makes the boolean read literally as "is human approval in effect?", which disambiguates the conversational instruction.
 
 ### Subcommand: bypass-permissions
 
@@ -208,13 +210,13 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
 30. `/rabbit-config allowed-tools add <tool>` and `/rabbit-config allowed-tools remove <tool>` reject inputs whose value begins with `Bash(` and exit non-zero with an error directing the operator to use `bash-allow` instead.
 31. `/rabbit-config bash-allow add <command>` rejects `<command>` values containing any of `(`, `)`, `:`, or whitespace, and exits non-zero without modifying any file.
 32. The permission subcommands (`allowed-tools`, `bash-allow`) write to `.claude/settings.local.json` (which is on the scope-guard filename allowlist); they never write to `.claude/settings.json`. This isolates permission grants from the build system: `.claude/settings.json` is a copy-file target regenerated by `build.py` on surface drift (see `build-contract.json`), which would silently destroy any `permissions` block written there. `.claude/settings.local.json` is outside the build system's copy-file target set and persists across surface-drift rebuilds.
-33. `.claude/features/rabbit-cage/skills/rabbit-config/SKILL.md` exists. Its YAML frontmatter declares `name: rabbit-config` and a `description` field that names all seven subcommands (`help`, `prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `bypass-human-approval`, `bypass-permissions`) so the dispatcher can decide to invoke it. Its body enumerates the full CLI for every subcommand verbatim — no opening the script needed to read the interface. (Inv 56 / BACKLOG-28 reconciliation: the count includes `help` per the discoverability invariant; the original "six subcommands" wording predated the `help` addition.)
+33. `.claude/features/rabbit-cage/skills/rabbit-config/SKILL.md` exists. Its YAML frontmatter declares `name: rabbit-config` and a `description` field that names all seven subcommands (`help`, `prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`, `bypass-permissions`) so the dispatcher can decide to invoke it. Its body enumerates the full CLI for every subcommand verbatim — no opening the script needed to read the interface. (Inv 56 / BACKLOG-28 reconciliation: the count includes `help` per the discoverability invariant; the original "six subcommands" wording predated the `help` addition.)
 34. `.claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py` exists, is executable (`chmod +x`), and is the sole implementation of `/rabbit-config`. It is a standalone Python 3 script using stdlib only. There is no slash-command file; invocation goes through the skill entry only.
-35. `/rabbit-config bypass-human-approval true` writes the file `.rabbit-human-approval-bypass` at the repo root with content `session` and prints a single confirmation line. Idempotent: re-invoking when the marker already exists is a no-op exit 0 with the same confirmation. Only `true`, `false`, or no action are accepted (per contract Inv 11); any other value (including the legacy verbs `bypass` and `gated`) is rejected with exit non-zero.
-36. `/rabbit-config bypass-human-approval false` deletes `.rabbit-human-approval-bypass` from the repo root and prints a single confirmation line. Idempotent: invoking when the marker is absent is a no-op exit 0.
-37. `/rabbit-config bypass-human-approval` (no action) prints exactly one line to stdout: `true` if `.rabbit-human-approval-bypass` exists at repo root, otherwise `false`. No file is modified. Exits 0. The state-query value follows the same true=bypass-active convention as the `bypass-permissions` subcommand.
-38. `.rabbit-human-approval-bypass` is gitignored (appears in `.gitignore`). The marker is a runtime artifact, never committed. The marker filename is intentionally unchanged by the `bypass-human-approval` rename — it describes what the marker IS (a bypass record), not the subcommand that toggles it.
-39. `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event while `.rabbit-human-approval-bypass` exists at the repo root: `[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches`. The marker is NOT consumed by `sync-check.py` — it persists across Stops until explicitly removed via `/rabbit-config bypass-human-approval false`. This human-approval-bypass alert sits between scope-guard-off and skills-updated in the conditional-priority order (see Inv 83). See Inv 61 for the parallel bypass-permissions Stop alert.
+35. `/rabbit-config human-approval false` writes the file `.rabbit-human-approval-bypass` at the repo root with content `session` and prints a single confirmation line. Idempotent: re-invoking when the marker already exists is a no-op exit 0 with the same confirmation. Only `true`, `false`, or no action are accepted (per contract Inv 11); any other value (including the legacy verbs `bypass`, `gated`, `enabled`) is rejected with exit non-zero.
+36. `/rabbit-config human-approval true` deletes `.rabbit-human-approval-bypass` from the repo root and prints a single confirmation line. Idempotent: invoking when the marker is absent is a no-op exit 0.
+37. `/rabbit-config human-approval` (no action) prints exactly one line to stdout: `true` if `.rabbit-human-approval-bypass` is ABSENT at repo root (gate active), otherwise `false` (marker present, bypass active). No file is modified. Exits 0. The state-query value follows the "is human approval in effect?" convention — opposite of the `bypass-permissions` true=bypass-active convention, deliberately, so that natural-language "turn off human approval" maps cleanly to `human-approval false`.
+38. `.rabbit-human-approval-bypass` is gitignored (appears in `.gitignore`). The marker is a runtime artifact, never committed. The marker filename is intentionally unchanged across both the BACKLOG-31 rename and the BUG-97 revert — it describes what the marker IS (a bypass record), not the subcommand that toggles it.
+39. `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event while `.rabbit-human-approval-bypass` exists at the repo root: `[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches`. The marker is NOT consumed by `sync-check.py` — it persists across Stops until explicitly removed via `/rabbit-config human-approval true`. This human-approval-bypass alert sits between scope-guard-off and skills-updated in the conditional-priority order (see Inv 83). See Inv 61 for the parallel bypass-permissions Stop alert.
 40. `permissions [lock|unlock]` is a `/rabbit-config` subcommand that shells out to `.claude/features/rabbit-cage/scripts/repo-permissions.py` with the same action. Unknown actions exit non-zero with a usage message; no other file is modified.
 41. `session-init.py` MUST NOT auto-create or auto-switch git branches. Operators are responsible for creating their own feature branches before editing; direct commits to `main` remain blocked by the `Bash(git push * main)` deny rules (Inv 19) and by the `check-no-main-edits.py` enforcement script in contract.
 42. `sync-check.py` surface-drift alert MUST be RED (`\x1b[31m`), consistent with Inv 73's color convention (alert/error messages are red). A GREEN surface-drift alert violates the convention and silently downgrades the visibility of a real drift condition.
@@ -223,7 +225,7 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
 45. `scope-guard.py` MUST DENY (exit 2) writes when an active scope marker `.rabbit-scope-active` or `.rabbit-scope-active-<feature>` names a feature that `find-feature.py` cannot resolve to a real feature path (i.e., `find_feature_path` returns None). The current silent-ALLOW behavior on unresolvable markers defeats the scope-guard's default-deny posture: a typo'd or malicious marker bypasses the entire write gate. The DENY message MUST name the unresolvable feature and direct the user to verify the marker name.
 46. (Retired in RABBIT-CAGE-BACKLOG-26 — `new-feature.py` has moved to the `rabbit-feature` feature; its scaffolding contract is owned by rabbit-feature's spec.)
 47. `commands/rabbit-project.md` MUST reference only Python scripts that exist (under `.claude/features/rabbit-cage/scripts/`), never `.sh` scripts or stale relocated paths. Any `.sh` reference is a constitution violation per Inv 17.
-48. `rabbit-config.py bypass-human-approval <true|false>` confirmation message MUST be self-explanatory and consistent with the bypass semantics (parallel to `bypass-permissions`, Inv 54). The `true` form MUST state that the bypass is ENABLED and the marker was written, e.g., `Human-approval bypass ENABLED. Marker .rabbit-human-approval-bypass written. Step 4 will be skipped for all dispatches until you run /rabbit-config bypass-human-approval false.` Conversely `false` MUST say `Human-approval bypass DISABLED. Marker .rabbit-human-approval-bypass removed. Step 4 will wait for in-conversation approval on each dispatch.` Idempotent invocations MUST state that the file/marker was not rewritten (e.g., `Human-approval bypass already ENABLED (marker .rabbit-human-approval-bypass already present; no rewrite). …`). ENABLED/DISABLED is unambiguous here because the subcommand name itself names the bypass — the same convention as `bypass-permissions`. The legacy framing that talked about a `gate` being ENABLED vs BYPASSED is removed along with the legacy `human-approval` subcommand name.
+48. `rabbit-config.py human-approval <true|false>` confirmation message MUST be self-explanatory and name the literal marker file. The `false` form MUST state that the bypass is ACTIVE and the marker was written, e.g., `Human approval gate DISABLED (bypass ACTIVE). Marker .rabbit-human-approval-bypass written. Step 4 will be skipped for all dispatches until you run /rabbit-config human-approval true.` Conversely `true` MUST say `Human approval gate ENABLED. Marker .rabbit-human-approval-bypass removed. Step 4 will wait for in-conversation approval on each dispatch.` Idempotent invocations MUST state that the file/marker was not rewritten (e.g., `Human approval gate already DISABLED (marker .rabbit-human-approval-bypass already present; no rewrite). …`). The confirmation MUST NOT use the bare verbs ENABLED/DISABLED without naming what is being enabled — the operator should not have to remember which side of the boolean is which. The framing names the "gate" (what `true` activates) and explicitly notes when bypass is "ACTIVE" (what `false` activates), so the operator can read the confirmation cold and know what state the system is in.
 49. Bypass mode is a per-user preference. The shared
     `.claude/features/rabbit-cage/settings.json` source and its build copy
     `.claude/settings.json` MUST NOT declare `permissions.defaultMode`.
@@ -266,7 +268,7 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
     `true`, `false`, or no action) exits non-zero with an error message
     and modifies no file.
 54. Confirmation output for `/rabbit-config bypass-permissions true|false`
-    follows the same self-explanatory pattern as `bypass-human-approval` (Inv 48):
+    follows the same self-explanatory pattern as `human-approval` (Inv 48):
     `true` MUST say `Bypass permissions ENABLED in .claude/settings.local.json.
     Claude Code will skip native per-write prompts on next session start.`
     and `false` MUST say `Bypass permissions DISABLED. permissions.defaultMode
@@ -276,7 +278,7 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
 55. `/rabbit-config help` exits 0, writes ONLY to stdout, modifies no file,
     and prints an illustrated usage message that names every other
     subcommand (`prompt-threshold`, `allowed-tools`, `bash-allow`,
-    `permissions`, `bypass-human-approval`, `bypass-permissions`) AND `help`
+    `permissions`, `human-approval`, `bypass-permissions`) AND `help`
     itself, with at least one concrete invocation example per subcommand.
     Extra positional arguments after `help` are ignored (no error). The
     handler exists in `scripts/rabbit-config.py` and is registered in the
@@ -857,29 +859,34 @@ applies, the emitted JSON carries the policy `[rabbit]` line in
     emitted at all) is unaffected — `rabbit_block` is only called when
     at least one line will be emitted.
 
-91. The legacy `/rabbit-config human-approval` subcommand name (which
-    used inverted boolean semantics where `true` meant "gate active")
-    is REMOVED in favor of `bypass-human-approval` (parallel naming
-    with `bypass-permissions`; `true` means bypass ACTIVE). The hard
-    rename has no coexistence window. Invoking `/rabbit-config
-    human-approval [...]` (any form, with or without arguments) MUST
-    exit non-zero without modifying any file and MUST print an error
-    message to stderr that explicitly names the new spelling
-    `bypass-human-approval` and the inverted boolean semantics so
-    operators can migrate without consulting the spec. The generic
-    unknown-subcommand error (per Inv 24) is NOT sufficient here
-    because the legacy name carries a specific migration path that
-    deserves a directed message; this invariant strengthens Inv 24 for
-    the `human-approval` literal. Cross-feature documentation, hook
-    canonical-revoke text, and contract surface declarations referring
-    to `/rabbit-config human-approval ...` MUST be updated to the
-    `bypass-human-approval` form with the inverted boolean value
-    (e.g., the revoke command for an active human-approval bypass is
-    `/rabbit-config bypass-human-approval false`, not `/rabbit-config
-    human-approval true`).
+91. The interim `/rabbit-config bypass-human-approval` subcommand name
+    (introduced by RABBIT-CAGE-BACKLOG-31 with semantics where `true`
+    meant "bypass ACTIVE") is REMOVED by RABBIT-CAGE-BUG-97 in favor
+    of restoring the original `human-approval` spelling (semantics:
+    `true` = gate ACTIVE / marker absent, `false` = bypass ACTIVE /
+    marker written). The hard rename has no coexistence window. Invoking
+    `/rabbit-config bypass-human-approval [...]` (any form, with or
+    without arguments) MUST exit non-zero without modifying any file
+    and MUST print an error message to stderr that explicitly names
+    the restored spelling `human-approval` and the restored boolean
+    semantics so operators can migrate without consulting the spec.
+    The generic unknown-subcommand error (per Inv 24) is NOT sufficient
+    here because the interim name carries a specific migration path
+    that deserves a directed message; this invariant strengthens Inv 24
+    for the `bypass-human-approval` literal. Cross-feature documentation,
+    hook canonical-revoke text, and contract surface declarations
+    referring to `/rabbit-config bypass-human-approval ...` MUST be
+    updated to the `human-approval` form with the restored boolean
+    value (e.g., the revoke command for an active human-approval bypass
+    is `/rabbit-config human-approval true`, not `/rabbit-config
+    bypass-human-approval false`). The reason for the revert is captured
+    in Inv 95: a natural-language misparse of "turn off X" where X
+    itself led with a negating verb.
 
 92. **Inv 18 enumeration completeness (RABBIT-CAGE-BACKLOG-25 part 1).** The script enumeration in Inv 18 MUST be pinned by an end-to-end test that walks `.claude/features/rabbit-cage/hooks/*.py` and `.claude/features/rabbit-cage/scripts/*.py` on disk and asserts: (a) every on-disk Python file is named in the Inv 18 enumeration, and (b) every script named in the Inv 18 enumeration exists on disk. The test MUST live at `.claude/features/rabbit-cage/test/test-rabbit-cage-scripts-enumeration.py` and MUST be wired into `test/run.py`. The intent is to prevent silent drift of the kind that previously let `repo-permissions.py` slip out of the enumeration unnoticed. The test scope is rabbit-cage's own hooks and scripts — `new-feature.py` lives in rabbit-feature post-RABBIT-CAGE-BACKLOG-26 and is therefore out-of-scope for this enumeration.
 
 93. **No `updated_note` field on feature.json (RABBIT-CAGE-BACKLOG-25 part 4).** `rabbit-cage/feature.json` MUST NOT carry an `updated_note` field. The maintenance cadence for the `updated` field belongs in a repo-level contributor note (or a dedicated contract convention), not in per-feature `feature.json` payloads — embedding maintenance documentation in feature.json bloats the machine-first schema with human-prose guidance that consumers do not parse. A regression test in `test/test-RABBIT-CAGE-BACKLOG-28-housekeeping.py` (or an adjacent housekeeping test) asserts the field's absence.
 
 94. **`provides.scripts` existence test (RABBIT-CAGE-BACKLOG-25 part 5).** Every script path declared in `.claude/features/rabbit-cage/docs/spec/contract.md` under `provides.scripts` MUST exist on disk. The test MUST live at `.claude/features/rabbit-cage/test/test-contract-provides-scripts-exist.py` and MUST be wired into `test/run.py`. The intent is to catch contract-vs-reality drift of the kind that previously let `contract.md` retain `relink.sh` and `dispatch-feature-edit.sh` long after those scripts were deleted. (Generalizing this check across every feature's contract.md is out of scope for this cycle and may be filed as a separate contract-feature backlog if desired.)
+
+95. **Natural-language regression pin (RABBIT-CAGE-BUG-97).** The conversational instruction "turn off human approval" MUST map to `/rabbit-config human-approval false`, which in turn MUST write the marker file `.rabbit-human-approval-bypass` (bypass ACTIVE). Symmetrically, "turn on human approval" / "re-enable approval" MUST map to `/rabbit-config human-approval true`, which MUST delete the marker (bypass OFF / gate ACTIVE). A regression test MUST live at `.claude/features/rabbit-cage/test/test-RABBIT-CAGE-BUG-97-natural-language-mapping.py` and MUST be wired into `test/run.py`. The test asserts BOTH directions of the mapping by invoking `rabbit-config.py` as a subprocess in an isolated temp workspace (per Inv 44) and inspecting the marker file's presence/absence after each invocation. The test is belt-and-suspenders against future re-rename attempts that would re-introduce the natural-language misparse documented in Inv 91; a failure of this test is a hard signal that the subcommand naming has drifted away from the natural-language contract that motivated the BUG-97 revert.
