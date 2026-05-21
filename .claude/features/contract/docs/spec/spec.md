@@ -190,8 +190,8 @@ Boolean CLI flag values and subcommand values use the literal strings
   not a boolean value)
 
 Examples:
-- PREFER: `--human-approval-gate true`, `/rabbit-config human-approval true`
-- AVOID:  `--human-approval-gate enabled`, `/rabbit-config human-approval bypass`
+- PREFER: `--human-approval-gate true`, `/rabbit-config bypass-human-approval false`
+- AVOID:  `--human-approval-gate enabled`, `/rabbit-config bypass-human-approval bypass`
 
 **Rule 2 — Names must be positive-streamlined.**
 
