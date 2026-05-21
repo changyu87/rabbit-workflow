@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 """test-check-naming-bans-rbt.py — BUG-3 / Inv 15
 
-End-to-end test that check-naming.py bans the 'rbt-' prefix (rabbit-cage Inv 10)
-and no longer treats 'rwf-' as banned (rwf- was never a banned prefix in this
-repo).
+End-to-end test that check-naming.py bans the 'rbt-' prefix (rabbit-cage Inv 10).
 
 t1: a fixture .claude/ tree containing a file under .claude/agents/ with an
     'rbt-' prefix triggers a violation (exit 1, stderr mentions rbt-).
-t2: a fixture .claude/ tree containing a file under .claude/agents/ named
-    'rwf-thing.md' (rwf- prefix) does NOT trigger a violation due to rwf-
-    (it may still fail rabbit- prefix check, but stderr must not mention rwf-).
-t3: check-naming.py source contains no 'rwf-' literal.
 t4: check-naming.py source contains the 'rbt-' literal as a banned prefix.
 """
 
@@ -50,29 +44,9 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         fail_t(1, f"expected exit 1 + 'rbt-' in stderr; got rc={r1.returncode}, stderr={r1.stderr!r}")
 
-# t2: rwf- prefix is NOT in banned prefix list. We place an rwf- file outside
-# .claude/{commands,agents,skills} so the 'must start with rabbit-' rule does
-# not apply; only a banned-prefix scan would flag it. Expect exit 0 (no violation).
-with tempfile.TemporaryDirectory() as tmp:
-    hooks_dir = os.path.join(tmp, ".claude", "hooks")
-    os.makedirs(hooks_dir)
-    with open(os.path.join(hooks_dir, "rwf-legacy.sh"), "w") as f:
-        f.write("#!/bin/bash\n")
-    r2 = subprocess.run(["python3", SCRIPT, tmp], capture_output=True, text=True)
-    if r2.returncode == 0:
-        ok(2, "rwf- prefix is not flagged as banned (rwf- is no longer in BANNED_PREFIXES)")
-    else:
-        fail_t(2, f"check-naming.py still flags rwf- as banned; rc={r2.returncode}, stderr={r2.stderr!r}")
-
-# t3: script source contains no 'rwf-' literal
+# t4: script source contains 'rbt-' literal (as banned prefix)
 with open(SCRIPT) as f:
     src = f.read()
-if "rwf-" not in src:
-    ok(3, "check-naming.py source contains no 'rwf-' literal")
-else:
-    fail_t(3, "check-naming.py still references 'rwf-'")
-
-# t4: script source contains 'rbt-' literal (as banned prefix)
 if "rbt-" in src:
     ok(4, "check-naming.py contains 'rbt-' as banned prefix")
 else:

@@ -6,8 +6,8 @@ Inv 27 (registry data file).
 End-to-end: loads the on-disk registry and schema files; performs minimal
 JSON-Schema-style structural validation (no third-party dependency); then
 asserts the ten required message-ids, the brand string, the bar string,
-and the per-message field shapes. Also asserts that the previously-required
-'r1-branch' id is absent (removed alongside rabbit-cage Inv 41).
+and the per-message field shapes. Also asserts that the forbidden
+'r1-branch' id is absent.
 """
 
 import os
