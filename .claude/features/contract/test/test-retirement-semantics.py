@@ -15,8 +15,7 @@ Covers:
       for tombstone directories.
   t5: .claude/workspace-structure.json declares `tdd-state-machine` as
       a feature node (post-consolidation home of tdd-step/context/drift-check).
-  t6: build-contract.json's agents/tdd-subagent/scripts/tdd-step.py
-      copy-file entry sources from tdd-state-machine, not tdd-subagent.
+  t6: tdd-state-machine/publish.json tdd-step.py source points to tdd-state-machine scripts/
 
 Version: 1.0.0
 Owner: rabbit-workflow team (contract)
@@ -38,7 +37,6 @@ REPO_ROOT = os.path.normpath(os.path.join(FEATURE_DIR, "..", "..", ".."))
 SCHEMA = os.path.join(FEATURE_DIR, "schemas/feature.json.schema.json")
 VALIDATE = os.path.join(FEATURE_DIR, "scripts/validate-feature.py")
 WS_STRUCTURE = os.path.join(REPO_ROOT, ".claude/workspace-structure.json")
-BUILD_CONTRACT = os.path.join(FEATURE_DIR, "build-contract.json")
 
 passed = 0
 failed = 0
@@ -154,21 +152,24 @@ else:
     ko(5, "skipped: no features node")
 
 
-# t6: build-contract tdd-step.py source points to tdd-state-machine
-with open(BUILD_CONTRACT) as f:
-    bc = json.load(f)
-tdd_step_entry = next(
-    (t for t in bc.get("targets", [])
-     if t.get("name") == "agents/tdd-subagent/scripts/tdd-step.py"),
-    None,
-)
-if tdd_step_entry is None:
-    ko(6, "build-contract.json missing tdd-step.py copy-file entry")
-elif tdd_step_entry.get("source") != ".claude/features/tdd-state-machine/scripts/tdd-step.py":
-    ko(6, f"tdd-step.py source = {tdd_step_entry.get('source')!r}, "
-          "expected .claude/features/tdd-state-machine/scripts/tdd-step.py")
+# t6: tdd-state-machine/publish.json tdd-step.py source points to tdd-state-machine scripts/
+TDD_SM_PUBLISH = os.path.join(REPO_ROOT, ".claude/features/tdd-state-machine/publish.json")
+if os.path.isfile(TDD_SM_PUBLISH):
+    with open(TDD_SM_PUBLISH) as f:
+        pub = json.load(f)
+    tdd_step_entry = next(
+        (t for t in pub.get("targets", [])
+         if t.get("name") == "agents/tdd-subagent/scripts/tdd-step.py"),
+        None,
+    )
+    if tdd_step_entry is None:
+        ko(6, "tdd-state-machine/publish.json missing tdd-step.py target")
+    elif tdd_step_entry.get("source") != "scripts/tdd-step.py":
+        ko(6, f"tdd-step.py source = {tdd_step_entry.get('source')!r}, expected 'scripts/tdd-step.py'")
+    else:
+        ok(6, "tdd-state-machine/publish.json tdd-step.py source is 'scripts/tdd-step.py'")
 else:
-    ok(6, "build-contract.json tdd-step.py source points to tdd-state-machine")
+    ko(6, f"tdd-state-machine/publish.json not found at {TDD_SM_PUBLISH}")
 
 
 print()

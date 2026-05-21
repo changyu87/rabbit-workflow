@@ -71,7 +71,7 @@ for n, rel in (("a1", "test-relink-no-skills.py"), ("a2", "test-relink.py")):
 # (test-build-contract.py is allowed because it asserts the ABSENCE of relink.sh
 # per Inv 8; this file is also allowed because its docstring names it.)
 SELF = os.path.basename(__file__)
-ALLOWED = {SELF, "test-build-contract.py"}
+ALLOWED = {SELF}
 offenders = []
 for fname in os.listdir(TEST_DIR):
     if not fname.startswith("test-") or not fname.endswith(".py"):
@@ -121,20 +121,27 @@ if os.path.exists(deployed_skill):
 else:
     ok("b6", ".claude/skills/rabbit-workspace-map/ deployed dir is absent")
 
-# b7: build-contract.json does not declare rabbit-workspace-map skill
-bc_path = os.path.join(FEATURE_DIR, "build-contract.json")
-with open(bc_path) as f:
-    bc = json.load(f)
-ws_entries = [
-    t for t in bc.get("targets", [])
-    if "rabbit-workspace-map" in t.get("name", "")
-    or "rabbit-workspace-map" in t.get("source", "")
-    or "rabbit-workspace-map" in t.get("destination", "")
-]
-if ws_entries:
-    ko("b7", f"build-contract.json still declares rabbit-workspace-map: {[e.get('name') for e in ws_entries]}")
-else:
-    ok("b7", "build-contract.json declares no rabbit-workspace-map entry")
+# b7: no feature publish.json declares rabbit-workspace-map skill
+b7_fail = False
+for feature_dir_name in os.listdir(os.path.join(REPO_ROOT, ".claude/features")):
+    pub_path = os.path.join(REPO_ROOT, ".claude/features", feature_dir_name, "publish.json")
+    if not os.path.isfile(pub_path):
+        continue
+    try:
+        data = json.load(open(pub_path))
+    except Exception:
+        continue
+    ws_entries = [
+        t for t in data.get("targets", [])
+        if "rabbit-workspace-map" in t.get("name", "")
+        or "rabbit-workspace-map" in t.get("source", "")
+        or "rabbit-workspace-map" in t.get("destination", "")
+    ]
+    if ws_entries:
+        ko("b7", f"{feature_dir_name}/publish.json declares rabbit-workspace-map: {[e.get('name') for e in ws_entries]}")
+        b7_fail = True
+if not b7_fail:
+    ok("b7", "no feature publish.json declares rabbit-workspace-map entry")
 
 # b8: lib/checks.py does not export retired check functions
 checks = load_checks()

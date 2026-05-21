@@ -89,7 +89,8 @@ check_file("test/test-files-exist.py")
 check_file("test/test-policy-block.py")
 check_file("test/test-templates-have-version.py")
 check_file("test/test-schemas-valid-json.py")
-check_file("test/test-build-contract.py")
+check_file("test/test-publish-manifests.py")
+check_file("test/test-publish-manifest-schema.py")
 check_file("test/test-python-only-stack.py")
 
 # workspace-map artifacts removed in CONTRACT-BACKLOG-27 (script, skill, schema).
