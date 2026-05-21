@@ -1,28 +1,53 @@
 #!/usr/bin/env python3
-"""test-policy-bug-fixes.py — assertions for the policy bug/backlog cleanup cycle.
+"""test-policy-bug-fixes.py — documentary regression guard for closed
+historical policy tickets.
 
-Covers:
-  POLICY-BUG-1   test-backlog003.py rule count assertion matches actual 4 rules
-  POLICY-BUG-2   test-rule-files-content.py comment says 'three rule files'
-  POLICY-BUG-7   spec.md and contract.md version are aligned
-  POLICY-BUG-19  feature.json, spec.md, and contract.md versions all align (three-way)
-  POLICY-BUG-9   test-POLICY-1 t2 comment correctly describes the @-import regex
-  POLICY-BUG-18  test-policy-invariants-v1-2-0.py is removed from run.py (or deleted)
-  POLICY-BACKLOG-1  coding-rules.md has a 'do not create docs unless asked' rule
-  POLICY-BACKLOG-2  spec/coding-rules.md specifies WHERE owner/version/deprecation_criterion lives
-  POLICY-BACKLOG-5  coding-rules.md has an 'avoid emojis unless asked' rule
-  POLICY-BACKLOG-6  coding-rules.md references TDD discipline
-  POLICY-BACKLOG-9  philosophy.md Bounded Scope references contract.md schema
+Role: a single kitchen-sink suite that re-asserts the structural fixes of 11
+closed tickets so they cannot silently regress. It is NOT the canonical home
+for these checks — `test-policy-invariants.py` is. This file exists only until
+each assertion is folded into the invariants suite.
 
-Version: 1.0.0
+TICKETS_COVERED lists every historical ticket this file currently guards. The
+companion watch test (`test-historical-fixes-retirement.py`) parses this list,
+scans `test-policy-invariants.py` for `# Subsumes: <ticket-id>` marker
+comments, and FAILS when every ticket is subsumed — that failure is the
+explicit signal that this file (and the watch test) MUST be deleted together.
+The previous open-ended criterion ('when each bug/backlog has its own
+targeted test or is closed') is REMOVED — it never fired because the tickets
+are already closed.
+
+Traces: POLICY-BUG-1, POLICY-BUG-2, POLICY-BUG-7, POLICY-BUG-9, POLICY-BUG-18,
+        POLICY-BUG-19, POLICY-BACKLOG-1, POLICY-BACKLOG-2, POLICY-BACKLOG-5,
+        POLICY-BACKLOG-6, POLICY-BACKLOG-9. Retirement scaffolding added under
+        POLICY-BACKLOG-14.
+
+Version: 2.0.0
 Owner: rabbit-workflow team (policy)
-Deprecation criterion: when each bug/backlog has its own targeted test or is closed.
+Deprecation criterion: delete this file (and test-historical-fixes-retirement.py)
+once `test-policy-invariants.py` carries a `# Subsumes: <ticket-id>` marker
+comment for every ticket in TICKETS_COVERED below.
 """
 
 import json
 import os
 import re
 import sys
+
+# Module-level constant consumed by test-historical-fixes-retirement.py.
+# Keep names exactly as filed (one per ticket; no aliases).
+TICKETS_COVERED = [
+    "POLICY-BUG-1",
+    "POLICY-BUG-2",
+    "POLICY-BUG-7",
+    "POLICY-BUG-9",
+    "POLICY-BUG-18",
+    "POLICY-BUG-19",
+    "POLICY-BACKLOG-1",
+    "POLICY-BACKLOG-2",
+    "POLICY-BACKLOG-5",
+    "POLICY-BACKLOG-6",
+    "POLICY-BACKLOG-9",
+]
 
 FEATURE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -39,11 +64,11 @@ def ko(msg):
     FAIL = 1
 
 
-# POLICY-BUG-1: test-backlog003.py rule count assertion matches actual count.
+# POLICY-BUG-1: numbering test's rule count assertion matches actual count.
 # Originally said 'rules stop at 5' but only 4 rules existed. This cycle added a
 # fifth rule (Output Hygiene), so the assertion is now correct in its claim that
-# no sixth rule exists.
-b003_path = os.path.join(FEATURE_DIR, "test", "test-backlog003.py")
+# no sixth rule exists. (File renamed under BACKLOG-14 to test-coding-rules-numbering.py.)
+b003_path = os.path.join(FEATURE_DIR, "test", "test-coding-rules-numbering.py")
 with open(b003_path) as f:
     b003 = f.read()
 # Count actual top-level '## N.' rules in coding-rules.md.
@@ -106,7 +131,8 @@ else:
 
 
 # POLICY-BUG-9: t2 comment correctly describes the @-import regex format
-p1_path = os.path.join(FEATURE_DIR, "test", "test-POLICY-1-no-stale-imports.py")
+# (File renamed under BACKLOG-14 to test-no-stale-imports.py.)
+p1_path = os.path.join(FEATURE_DIR, "test", "test-no-stale-imports.py")
 with open(p1_path) as f:
     p1 = f.read()
 # The actual regex used in test-imports-resolve.py is r'^(@[^\s]+)' — no '@./...' form.

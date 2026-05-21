@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""E2E tests for POLICY-BACKLOG-11, 12.
+"""E2E tests for POLICY-BACKLOG-11, 12 (traceability + uncommitted semantics).
 
-BACKLOG-11: test-backlog003.py header must name what its assertions guard
-            and when they may be retired (traceability + EOL criterion).
+BACKLOG-11: test-coding-rules-numbering.py (formerly test-backlog003.py)
+            header must name what its assertions guard and when they may be
+            retired (traceability + EOL criterion).
 BACKLOG-12: coding-rules.md Section 3 (Surgical Changes) must clarify
             that "uncommitted" includes BOTH staged and unstaged work
             from the current agent session.
+
+Traces: POLICY-BACKLOG-11, POLICY-BACKLOG-12, POLICY-BACKLOG-14 (rename to
+        behavior-first filename per Inv 9; originally test-backlog-11-12.py).
 
 Version: 1.0.0
 Owner: rabbit-workflow team (policy)
@@ -17,7 +21,7 @@ import sys
 
 FEATURE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CODING_RULES = os.path.join(FEATURE_DIR, "coding-rules.md")
-BACKLOG003 = os.path.join(FEATURE_DIR, "test", "test-backlog003.py")
+BACKLOG_NUMBERING_TEST = os.path.join(FEATURE_DIR, "test", "test-coding-rules-numbering.py")
 
 PASS = 0
 FAIL = 0
@@ -37,15 +41,15 @@ def ko(msg):
 
 # BACKLOG-11: header must name end-of-life criterion + numbering migration role.
 def b11():
-    with open(BACKLOG003) as f:
-        head = "\n".join(f.read().splitlines()[:20])
+    with open(BACKLOG_NUMBERING_TEST) as f:
+        head = "\n".join(f.read().splitlines()[:25])
     if "BACKLOG-003 era" not in head and "numbering migration" not in head:
-        ko("b11: test-backlog003.py header does not describe BACKLOG-003 era / numbering migration role")
+        ko("b11: test-coding-rules-numbering.py header does not describe BACKLOG-003 era / numbering migration role")
         return
     if "end-of-life" not in head.lower() and "may be retired" not in head and "retire" not in head.lower():
-        ko("b11: test-backlog003.py header does not state when this test may be retired")
+        ko("b11: test-coding-rules-numbering.py header does not state when this test may be retired")
         return
-    ok("b11: test-backlog003.py header documents role and retirement criterion")
+    ok("b11: test-coding-rules-numbering.py header documents role and retirement criterion")
 
 
 # BACKLOG-12: coding-rules.md Section 3 must say staged + unstaged BOTH count as uncommitted.

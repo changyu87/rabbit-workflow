@@ -1,6 +1,6 @@
 {
   "name": "policy",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Canonical rule files fed to subagents; three policy docs (philosophy, spec-rules, coding-rules).",
@@ -11,5 +11,5 @@
   },
   "deprecation_criterion": "when Claude Code exposes a native subagent-policy injection point",
   "updated": "2026-05-20",
-  "spec_no_change_reason": "spec change already committed pre-dispatch at 64d5e34c (rabbit-feature-touch Inv 16: spec commit precedes subagent dispatch)"
+  "spec_no_change_reason": "spec change already committed pre-dispatch at 66105401 (rabbit-feature-touch Inv 16: spec commit precedes subagent dispatch)"
 }

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-# test-POLICY-1-no-stale-imports.py — assert no stale @-imports in any CLAUDE.md.
+# test-no-stale-imports.py — assert no stale @-imports in any CLAUDE.md.
 # Verifies policy spec invariant 2: workflow-rules.md does not exist, so no
 # CLAUDE.md may @-import it. Also verifies test-imports-resolve.py uses a
 # regex that matches the actual @.claude/... import format (not @./..).
 #
+# Traces: POLICY-1 (originally test-POLICY-1-no-stale-imports.py; renamed to
+#         behavior-first form under BACKLOG-14 Inv 9).
 # Version: 1.0.0
 # Owner: rabbit-workflow team (policy)
 # Deprecation criterion: when Claude Code enforces @-import resolution natively.
