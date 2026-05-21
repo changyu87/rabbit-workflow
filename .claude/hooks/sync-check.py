@@ -94,9 +94,8 @@ def repo_root() -> Path:
 
 # Inv 43: additionalContext MUST either expand @-imports or carry a clear
 # note that the agent must independently load referenced files. CLAUDE.md
-# is a pure @-import pointer file (BUG-92 removed the legacy inline policy
-# section), so we surface the regenerated CLAUDE.md verbatim and prepend
-# the at-import note.
+# is a pure @-import pointer file, so we surface the regenerated CLAUDE.md
+# verbatim and prepend the at-import note.
 AT_IMPORT_NOTE = (
     "NOTE: @-imports in the section below are NOT auto-resolved inside "
     "additionalContext. The agent MUST independently Read each "

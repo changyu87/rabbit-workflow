@@ -70,7 +70,7 @@ CANONICAL_FLAG_BODIES = {
 def log_exc(script_tag: str, where: str, exc: BaseException) -> None:
     """BACKLOG-17 / Inv 50 / BACKLOG-28: shared exception logger.
 
-    Hooks call this from the formerly-silent error-handler arms (in place of
+    Hooks call this from error-handler arms (in place of
     bare `except Exception: pass`). Output goes to stderr only; the hook's
     exit-0 happy-path contract is preserved. Centralising the implementation
     keeps Inv 50's wording consistent across every multi-condition hook.
