@@ -3,7 +3,7 @@
   "version": "0.3.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "summary": "Unified bug and backlog filing, tracking, and lifecycle. Stores items on origin/bug-backlog-files branch via Python scripts. Replaces rabbit-bug and rabbit-backlog.",
+  "summary": "Unified bug and backlog filing, tracking, and lifecycle. Stores items on origin/bug-backlog-files branch via Python scripts. Replaces (and retires) the legacy rabbit-bug and rabbit-backlog skills (no longer exist; rabbit-file is the sole entry point for bug/backlog operations).",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -20,5 +20,5 @@
   },
   "deprecation_criterion": "when a unified tracking system replaces file-based bug and backlog management",
   "updated": "2026-05-20",
-  "spec_no_change_reason": "spec.md frontmatter and retry-count edit already committed at HEAD~1; this cycle implements the related script-side housekeeping"
+  "spec_no_change_reason": "spec.md Purpose paragraph already updated at HEAD~1 (commit 6deb183f); this addendum cycle propagates the same retirement-explicit phrasing across the remaining 3 metadata sites (feature.json, contract.md, SKILL.md) \u2014 no further spec edit required"
 }

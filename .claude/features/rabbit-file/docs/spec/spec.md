@@ -14,8 +14,10 @@ Structured source of truth is feature.json.
 ## Purpose
 
 Unified bug and backlog filing and lifecycle for all rabbit features.
-Replaces rabbit-bug and rabbit-backlog. All items stored on
-origin/bug-backlog-files branch, never on main.
+Replaces (and retires) the legacy rabbit-bug and rabbit-backlog skills
+(no longer exist; rabbit-file is the sole entry point for bug/backlog
+operations). All items stored on origin/bug-backlog-files branch, never
+on main.
 
 ## Scripts
 
@@ -262,6 +264,28 @@ origin/bug-backlog-files root:
   `origin` to a local filesystem path will surface a normal git error
   on first push attempt — no extra defensive scaffolding sits in the
   hot path to detect that case.
+
+## Operational characteristics
+
+The retry and backoff invariants above bound the worst-case timing of a
+single script invocation under sustained remote contention or outage.
+This section is informational — it does not introduce new normative
+behaviour; it documents the wall-time envelope implied by the existing
+retry invariant so operators and future maintainers understand the
+budget before tuning it (BACKLOG-14).
+
+- Per-filing worst-case: **48 push attempts** — three push operations
+  (counter commit, item commit, commit_sha backfill), each bounded by
+  the 16-retry budget mandated by the retry invariant above.
+- Per-retry budget: jittered exponential backoff with a per-attempt
+  maximum of ~2.1s.
+- Worst-case wall time: **~30s per script invocation** under sustained
+  outage.
+
+This budget is acceptable under current usage patterns (interactive
+operator flows, occasional concurrent agent dispatch). Revisit only if
+contention measurements show real impact; the current 16-retry budget
+is a conservative cushion, not a tight bound.
 
 ## Out of scope
 
