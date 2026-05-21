@@ -7,8 +7,10 @@ Subcommands:
   allowed-tools [add|remove <tool>]          manage permissions.allow entries (non-Bash)
   bash-allow    [add|remove <command>]       manage Bash(<command>:*) permissions.allow entries
   permissions    lock|unlock                 delegate to repo-permissions.py
-  bypass-human-approval [true|false]         manage Step 4 (HUMAN-APPROVAL) bypass state
-                                             (true=bypass ACTIVE, false=bypass OFF — parallel to bypass-permissions)
+  human-approval [true|false]                manage Step 4 (HUMAN-APPROVAL) bypass state
+                                             (true=gate ACTIVE / marker absent,
+                                              false=bypass ACTIVE / marker written —
+                                              restored from the BACKLOG-31 rename per BUG-97)
   bypass-permissions [true|false]            manage permissions.defaultMode in settings.local.json
 
 All argv parsing comes from sys.argv[1:]; this script is the sole implementation
@@ -39,10 +41,10 @@ USAGE = '''Usage:
   /rabbit-config permissions lock|unlock
       lock     remove owner write permission from archive/ and test/ (run after git clone)
       unlock   restore owner write permission to archive/ and test/ (run before editing)
-  /rabbit-config bypass-human-approval [true|false]
-      bypass-human-approval true     write .rabbit-human-approval-bypass marker (bypass Step 4)
-      bypass-human-approval false    remove the marker (Step 4 wait for approval — default)
-      bypass-human-approval          print current bypass state: 'true' (active) or 'false' (off)
+  /rabbit-config human-approval [true|false]
+      human-approval true            remove .rabbit-human-approval-bypass marker (gate ACTIVE — default posture)
+      human-approval false           write .rabbit-human-approval-bypass marker (bypass ACTIVE, Step 4 skipped)
+      human-approval                 print current gate state: 'true' (gate active) or 'false' (bypass active)
   /rabbit-config bypass-permissions [true|false]
       bypass-permissions true        set permissions.defaultMode='bypassPermissions' in .claude/settings.local.json (per-user opt-in)
       bypass-permissions false       remove permissions.defaultMode from .claude/settings.local.json
@@ -98,16 +100,18 @@ purpose followed by one or more concrete invocations.
       Example: /rabbit-config permissions lock
       Example: /rabbit-config permissions unlock
 
-  bypass-human-approval [true|false]
+  human-approval [true|false]
       Purpose: manage Step 4 (HUMAN-APPROVAL) bypass state via the
                .rabbit-human-approval-bypass marker at the repo root.
-               Parallel semantics with bypass-permissions: true = bypass
-               ACTIVE (marker written, dispatcher skips Step 4); false =
-               bypass OFF (marker removed, dispatcher waits for approval —
-               default).
-      Example: /rabbit-config bypass-human-approval true
-      Example: /rabbit-config bypass-human-approval false
-      Example: /rabbit-config bypass-human-approval
+               Restored semantics (RABBIT-CAGE-BUG-97): the boolean answers
+               "is human approval in effect?" — true = gate ACTIVE (marker
+               absent, dispatcher waits for approval); false = bypass ACTIVE
+               (marker written, dispatcher skips Step 4). Natural-language
+               mapping: "turn off human approval" → human-approval false →
+               marker WRITTEN.
+      Example: /rabbit-config human-approval true
+      Example: /rabbit-config human-approval false
+      Example: /rabbit-config human-approval
 
   bypass-permissions [true|false]
       Purpose: manage per-user permissions.defaultMode='bypassPermissions' in
@@ -253,72 +257,87 @@ def cmd_permissions(args):
     return result.returncode
 
 
-def cmd_bypass_human_approval(args):
-    """RABBIT-CAGE-BACKLOG-31: inverted semantics parallel to bypass-permissions.
+def cmd_human_approval(args):
+    """RABBIT-CAGE-BUG-97: restored semantics ("is human approval in effect?").
 
-    true  = bypass ENABLED  (marker written; Step 4 skipped)
-    false = bypass DISABLED (marker removed; Step 4 waits for approval)
-    (no action) = state query: 'true' iff marker present, else 'false'.
+    true  = gate ACTIVE   (marker removed; Step 4 waits for approval — default)
+    false = bypass ACTIVE (marker written; Step 4 skipped)
+    (no action) = state query: 'true' iff marker ABSENT, else 'false'.
+
+    Inverted from the interim BACKLOG-31 spelling. The natural-language
+    contract is pinned by test-RABBIT-CAGE-BUG-97-natural-language-mapping.py
+    (Inv 95): "turn off human approval" → human-approval false → marker
+    WRITTEN.
     """
     action = args[0] if args else ''
     marker = pathlib.Path('.rabbit-human-approval-bypass')
     if action == '':
-        # Inv 37: 'true' = bypass ACTIVE (marker present); 'false' = bypass OFF.
-        print('true' if marker.exists() else 'false')
+        # Inv 37 (restored): 'true' = gate ACTIVE (marker ABSENT);
+        # 'false' = bypass ACTIVE (marker present).
+        print('true' if not marker.exists() else 'false')
         return 0
     if action == 'true':
-        if marker.exists():
-            # Idempotent no-op: do not rewrite the marker file (Inv 48).
+        if not marker.exists():
+            # Idempotent no-op: do not rewrite anything (Inv 48).
             print(
-                f'Human-approval bypass already ENABLED (marker {marker} already present; no rewrite). '
-                'Step 4 will be skipped for all dispatches until you run '
-                '/rabbit-config bypass-human-approval false.'
+                f'Human approval gate already ENABLED (marker {marker} '
+                'not present; no rewrite). '
+                'Step 4 will wait for in-conversation approval on each dispatch.'
             )
             return 0
-        marker.write_text('session')
+        marker.unlink()
         print(
-            f'Human-approval bypass ENABLED. Marker {marker} written. '
-            'Step 4 will be skipped for all dispatches until you run '
-            '/rabbit-config bypass-human-approval false.'
+            f'Human approval gate ENABLED. Marker {marker} removed. '
+            'Step 4 will wait for in-conversation approval on each dispatch.'
         )
         return 0
     if action == 'false':
         if marker.exists():
-            marker.unlink()
+            # Idempotent no-op: do not rewrite the marker file (Inv 48).
             print(
-                f'Human-approval bypass DISABLED. Marker {marker} removed. '
-                'Step 4 will wait for in-conversation approval on each dispatch.'
+                f'Human approval gate already DISABLED (marker {marker} '
+                'already present; no rewrite). '
+                'Step 4 will be skipped for all dispatches until you run '
+                '/rabbit-config human-approval true.'
             )
-        else:
-            print(
-                f'Human-approval bypass already DISABLED (marker {marker} not present; no change). '
-                'Step 4 will wait for in-conversation approval on each dispatch.'
-            )
+            return 0
+        marker.write_text('session')
+        print(
+            f'Human approval gate DISABLED (bypass ACTIVE). Marker {marker} '
+            'written. Step 4 will be skipped for all dispatches until you '
+            'run /rabbit-config human-approval true.'
+        )
         return 0
     print(
-        f'Error: unknown value {action!r} for bypass-human-approval '
+        f'Error: unknown value {action!r} for human-approval '
         '(expected true, false, or no action)',
         file=sys.stderr,
     )
     return 1
 
 
-def cmd_human_approval_legacy_rejected(args):
-    """Inv 91: hard-rename rejection for the legacy subcommand name.
+def cmd_bypass_human_approval_legacy_rejected(args):
+    """Inv 91 (post-BUG-97 inversion): hard-rename rejection for the interim
+    subcommand name.
 
-    The prior 'human-approval' subcommand used inverted boolean semantics
-    (true meant 'gate active'). It is replaced by 'bypass-human-approval'
-    with parallel semantics to 'bypass-permissions' (true means bypass
-    ACTIVE). Reject any invocation with a directed migration error so
-    operators do not need to consult the spec to recover.
+    The interim 'bypass-human-approval' subcommand was introduced by
+    RABBIT-CAGE-BACKLOG-31 with semantics where 'true' meant 'bypass ACTIVE'.
+    RABBIT-CAGE-BUG-97 reverts that rename: the canonical spelling is again
+    'human-approval' with the restored semantics ('true' = gate ACTIVE,
+    'false' = bypass ACTIVE). Reject any invocation of the interim spelling
+    with a directed migration error so operators do not need to consult the
+    spec to recover.
     """
     del args
     sys.stderr.write(
-        "Error: '/rabbit-config human-approval' is REMOVED (RABBIT-CAGE-BACKLOG-31). "
-        "Use '/rabbit-config bypass-human-approval' instead. "
-        "Boolean semantics are INVERTED to parallel /rabbit-config bypass-permissions: "
-        "'true' now means bypass ACTIVE (marker written, Step 4 skipped) and "
-        "'false' means bypass OFF (marker removed, Step 4 waits for approval).\n"
+        "Error: '/rabbit-config bypass-human-approval' is REMOVED "
+        "(RABBIT-CAGE-BUG-97). Use '/rabbit-config human-approval' instead. "
+        "Boolean semantics are RESTORED to the original 'is human approval "
+        "in effect?' convention: 'true' now means gate ACTIVE (marker "
+        "absent, Step 4 waits for approval — default) and 'false' means "
+        "bypass ACTIVE (marker written, Step 4 skipped). Natural-language "
+        "mapping: \"turn off human approval\" -> /rabbit-config "
+        "human-approval false.\n"
     )
     return 1
 
@@ -378,14 +397,15 @@ def main(argv):
         'allowed-tools': cmd_allowed_tools,
         'bash-allow': cmd_bash_allow,
         'permissions': cmd_permissions,
-        'bypass-human-approval': cmd_bypass_human_approval,
+        'human-approval': cmd_human_approval,
         'bypass-permissions': cmd_bypass_permissions,
-        # Inv 91: legacy subcommand name kept in the dispatch table so the
-        # rejection error names the new spelling with the inverted semantics
-        # (a directed migration error). Without this entry the generic
-        # 'Unknown subcommand' message from the fall-through path would not
-        # tell operators the canonical replacement.
-        'human-approval': cmd_human_approval_legacy_rejected,
+        # Inv 91 (post-BUG-97 inversion): interim subcommand name kept in
+        # the dispatch table so the rejection error names the restored
+        # spelling with the restored semantics (a directed migration
+        # error). Without this entry the generic 'Unknown subcommand'
+        # message from the fall-through path would not tell operators the
+        # canonical replacement.
+        'bypass-human-approval': cmd_bypass_human_approval_legacy_rejected,
     }
     handler = dispatch.get(subcmd)
     if handler is None:

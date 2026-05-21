@@ -90,13 +90,13 @@ subagents run to completion and cannot pause for user input mid-execution.
 The marker file is the sole authorization mechanism for bypass. In-conversation
 acknowledgements ("you have permission to bypass") are NOT sufficient on their
 own — the marker is the system of record, managed via
-`/rabbit-config bypass-human-approval true|false` (owned by rabbit-cage;
-`true` writes the marker — bypass ACTIVE — and `false` removes it — bypass
-OFF, the default).
+`/rabbit-config human-approval true|false` (owned by rabbit-cage;
+`false` writes the marker — bypass ACTIVE — and `true` removes it — gate
+ACTIVE, the default).
 
 - **If `.rabbit-human-approval-bypass` exists:**
   - Emit a visible warning to the user:
-    `[🐇 rabbit 🐇] Step 4 SKIPPED: .rabbit-human-approval-bypass marker active. Run /rabbit-config bypass-human-approval false to turn the bypass off and require approval again.`
+    `[🐇 rabbit 🐇] Step 4 SKIPPED: .rabbit-human-approval-bypass marker active. Run /rabbit-config human-approval true to turn the bypass off and require approval again.`
   - Pass `--human-approval-gate false` to the Step 5 `dispatch-tdd-subagent.py`
     invocation.
   - Proceed to Step 5 immediately. Do NOT surface the impl-suggestion summary.

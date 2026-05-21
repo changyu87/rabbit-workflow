@@ -215,7 +215,7 @@ sole test runner is `test/run.py`.
     forbidden (the wrapper is the only authorized emission path).
     The note text MUST name both the marker path
     (`.rabbit-human-approval-bypass`) and the revoke skill invocation
-    (`/rabbit-config bypass-human-approval false`) so the dispatched subagent
+    (`/rabbit-config human-approval true`) so the dispatched subagent
     (and any reviewer of the prompt) sees that the approval gate is
     currently disabled. The note is emitted EVERY dispatch while the
     marker exists; it does not consume or delete the marker. When the

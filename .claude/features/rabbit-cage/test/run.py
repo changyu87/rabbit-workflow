@@ -70,6 +70,7 @@ SUITES = [
     "test-rabbit-config-section-monotonic.py",
     "test-rabbit-cage-scripts-enumeration.py",
     "test-contract-provides-scripts-exist.py",
+    "test-RABBIT-CAGE-BUG-97-natural-language-mapping.py",
 ]
 
 

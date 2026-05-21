@@ -161,7 +161,7 @@ else:
 EXPECTED_DISPATCH_TEXT = (
     "NOTE: human-approval bypass marker is active "
     "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be skipped "
-    "for this dispatch. Revoke via `/rabbit-config bypass-human-approval false`."
+    "for this dispatch. Revoke via `/rabbit-config human-approval true`."
 )
 fn = getattr(mod, "dispatch_bypass_note", None)
 if callable(fn):

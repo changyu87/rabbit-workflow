@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 4.10.0
+version: 4.11.0
 template_version: 2.0.0
 ---
 
@@ -34,7 +34,7 @@ template_version: 2.0.0
     ],
     "templates": [],
     "skills": [
-      {"path": ".claude/features/rabbit-cage/skills/rabbit-config/", "subcommands": ["prompt-threshold [value]", "allowed-tools [add|remove <tool>]", "bash-allow [add|remove <command>]", "permissions [lock|unlock]", "bypass-human-approval [true|false]", "bypass-permissions [true|false]"]}
+      {"path": ".claude/features/rabbit-cage/skills/rabbit-config/", "subcommands": ["prompt-threshold [value]", "allowed-tools [add|remove <tool>]", "bash-allow [add|remove <command>]", "permissions [lock|unlock]", "human-approval [true|false]", "bypass-permissions [true|false]"]}
     ]
   },
   "reads": {

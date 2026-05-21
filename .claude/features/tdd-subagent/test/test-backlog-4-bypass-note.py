@@ -83,7 +83,7 @@ def b4():
         if ".rabbit-human-approval-bypass" not in out:
             ko("b4b: prompt bypass note does not name the marker path")
             return
-        if "/rabbit-config bypass-human-approval false" not in out:
+        if "/rabbit-config human-approval true" not in out:
             ko("b4b: prompt bypass note does not name the revoke skill")
             return
         # Note must be in preamble, before STEP 1 SPEC-READ.

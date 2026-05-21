@@ -34,7 +34,7 @@ Implementation notes
   public dict `CANONICAL_FLAG_BODIES` is the only entry point for callers
   that need the body strings directly (currently the test suite).
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team
 Deprecation criterion: when both hooks are refactored into a unified
     rabbit-cage status-emission library that owns the alert text itself.
@@ -56,7 +56,7 @@ _HUMAN_APPROVAL_BODY = (
     "HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all "
     "rabbit-feature-touch dispatches"
 )
-_HUMAN_APPROVAL_REVOKE = "/rabbit-config bypass-human-approval false"
+_HUMAN_APPROVAL_REVOKE = "/rabbit-config human-approval true"
 _HUMAN_APPROVAL_ICON = "🔑"
 
 
