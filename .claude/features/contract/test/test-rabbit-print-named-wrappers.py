@@ -5,8 +5,7 @@ Verifies Inv 28(d): rabbit_print.py exposes 10 named wrappers, one per
 message-id, each thinly delegating to rabbit_print(<id>, **kwargs). Each
 wrapper signature exposes exactly the kwargs its message-id requires.
 tdd_transition and tdd_forced upcase their state-name placeholders.
-Also asserts that the previously-required r1_branch wrapper is absent
-(removed alongside rabbit-cage Inv 41).
+Also asserts that the forbidden r1_branch wrapper is absent.
 """
 
 import os

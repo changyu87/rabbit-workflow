@@ -8,7 +8,7 @@ now validates the declaration shape directly.
 
   t1: Every directory under .claude/features/ has a corresponding entry in
       the features node of .claude/workspace-structure.json.
-  t3: Specifically — Cycle B-added features rabbit-spec, rabbit-file, and
+  t3: Specifically — required features rabbit-spec, rabbit-file, and
       rabbit-feature are declared in workspace-structure.json.
 """
 
@@ -63,11 +63,11 @@ if missing:
 else:
     ok(1, f"all {len(on_disk_features)} on-disk features declared in workspace-structure.json")
 
-# t3: Cycle B features are present in declaration
+# t3: required features are present in declaration
 required = {"rabbit-spec", "rabbit-file", "rabbit-feature"}
-missing_cycle_b = required - declared_features
-if missing_cycle_b:
-    fail_t(3, f"Cycle B features missing from declaration: {sorted(missing_cycle_b)}")
+missing_required = required - declared_features
+if missing_required:
+    fail_t(3, f"required features missing from declaration: {sorted(missing_required)}")
 else:
     ok(3, "rabbit-spec, rabbit-file, rabbit-feature declared in workspace-structure.json")
 
