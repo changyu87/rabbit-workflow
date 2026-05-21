@@ -64,13 +64,6 @@ A regression test MUST cover this path end-to-end:
 `tdd-step.py transition <feat> spec-update` from a `test-green` fixture
 exits 0 and feature.json now reads `spec-update`.
 
-### Inv 5 — (retired in BACKLOG-7)
-
-The legacy `tdd-drift-check.py` invocation contract was removed when
-the script itself was deleted as dead code (zero runtime callers). If
-drift detection is reintroduced, it MUST be wired into a real consumer
-(e.g. the Stop hook) at the same time the invariant is added back.
-
 ### Inv 6 — Sole ownership: present here, absent in `tdd-subagent`
 
 `tdd-state-machine` owns `tdd-step.py`. The script MUST be present in

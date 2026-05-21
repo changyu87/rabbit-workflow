@@ -38,8 +38,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "reads": {
     "files": [
       ".claude/features/tdd-state-machine/scripts/tdd-step.py",
-      ".claude/features/tdd-state-machine/scripts/tdd-context.py",
-      ".claude/features/tdd-state-machine/scripts/tdd-drift-check.py",
       "<feature-dir>/feature.json (tdd_state field)",
       "<feature-dir>/test/run.py",
       "<feature-dir>/docs/spec/spec.md"
@@ -62,7 +60,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ]
   },
   "never": [
-    "Modifies state-machine scripts (tdd-step.py, tdd-context.py, tdd-drift-check.py) — owned by tdd-state-machine.",
+    "Modifies tdd-step.py — owned by tdd-state-machine.",
     "Vendors or copies state-machine scripts into this feature's scripts/ directory; the assembled prompt references them at their tdd-state-machine path.",
     "Owns deployment of any script into .claude/agents/ — that is build-contract.json's job.",
     "Writes outside the dispatched subagent's declared scope directory.",
