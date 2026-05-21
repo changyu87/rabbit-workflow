@@ -471,7 +471,7 @@ def validate_feature(feature_dir: str) -> CheckResult:
     Returns CheckResult(passed=True, [...]) on success.
     Returns CheckResult(passed=False, [...]) on validation errors.
     Retired features (status=retired) short-circuit to passed=True with a
-    RETIRED: notice (spec Inv 43b).
+    RETIRED: notice (spec Inv 36b).
     """
     if not feature_dir:
         return CheckResult(False, ["ERROR: feature_dir is empty"])
@@ -483,7 +483,7 @@ def validate_feature(feature_dir: str) -> CheckResult:
 
     feature_json_path = os.path.join(feature_dir, "feature.json")
 
-    # Inv 43b: retired feature short-circuit
+    # Inv 36b: retired feature short-circuit
     if os.path.isfile(feature_json_path):
         try:
             with open(feature_json_path) as f:

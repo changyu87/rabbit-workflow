@@ -211,8 +211,8 @@ sole test runner is `test/run.py`.
     `contract.scripts.rabbit_print` (registered as the
     `dispatch-bypass-note` message-id in the rabbit-print registry,
     icon 📢, color yellow). The brand prefix MUST be the canonical
-    emoji-framed form per the `contract` feature's Inv 34 (brand
-    definition) and Inv 36 (producer rule — dispatch-tdd-subagent.py
+    emoji-framed form per the `contract` feature's Inv 27 (brand
+    definition) and Inv 29 (producer rule — dispatch-tdd-subagent.py
     is the 5th authorized producer added in BACKLOG-29); the bare
     `[rabbit]` form is a constitution violation, and inline ANSI
     escape codes / brand strings in dispatch-tdd-subagent.py are

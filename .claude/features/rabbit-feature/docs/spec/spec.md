@@ -149,7 +149,7 @@ anywhere in this feature. Test runner is `test/run.py`.
    absent, the dispatcher surfaces the impl-suggestion summary and
    waits for explicit user approval. The brand prefix in the warning
    MUST be the canonical emoji-framed form `[🐇 rabbit 🐇]` (per the
-   `contract` feature's Inv 34 brand definition and Inv 36 producer
+   `contract` feature's Inv 27 brand definition and Inv 29 producer
    rule), not the bare `[rabbit]` form; LLM-emitted operational
    messages follow the same brand convention as `rabbit_print` script
    output.
