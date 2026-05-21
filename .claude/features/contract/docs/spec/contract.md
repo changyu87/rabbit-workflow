@@ -45,7 +45,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/scripts/enforcement/check-symlinks-resolve.py",
       ".claude/features/contract/scripts/enforcement/check-template-schema-producer-consistency.py",
       ".claude/features/contract/scripts/enforcement/check-tests-non-interactive.py",
-      ".claude/features/contract/scripts/enforcement/check-numbered-lists.py"
+      ".claude/features/contract/scripts/enforcement/check-numbered-lists.py",
+      ".claude/features/contract/scripts/enforcement/check-invariant-monotonic-order.py"
     ],
     "lib": [
       ".claude/features/contract/lib/__init__.py",

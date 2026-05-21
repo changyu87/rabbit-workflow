@@ -69,7 +69,18 @@ if not os.path.isfile(CHANGELOG):
     sys.exit(1)
 with open(CHANGELOG, encoding="utf-8") as f:
     changelog_text = f.read()
-tombstone_nums = sorted({int(m.group(1)) for m in re.finditer(r"\bInv\s+(\d+)\b", changelog_text)})
+# Tombstones are recognised only by their dedicated heading form
+# (`### Inv <N> —` ...). Prose mentions of invariant numbers (e.g. inside
+# 'Inv 7 parenthetical' sub-sections that explain a moved annotation, or
+# any reference to a still-active invariant in surrounding narrative) are
+# intentionally ignored — only headings count as a tombstone for the
+# one-to-one correspondence check.
+TOMBSTONE_HEADING_RE = re.compile(
+    r"^###\s+Inv\s+(\d+)\s+—", re.MULTILINE
+)
+tombstone_nums = sorted(
+    {int(m.group(1)) for m in TOMBSTONE_HEADING_RE.finditer(changelog_text)}
+)
 if not tombstone_nums:
     ko("t2", "no 'Inv <N>' tombstones found in CHANGELOG.md")
     print(f"Results: {PASS} passed, {FAIL} failed")

@@ -365,6 +365,98 @@ def check_numbered_lists(targets: List[str]) -> CheckResult:
     return CheckResult(True, ["OK: no numbered-list violations"])
 
 
+# ---------- check_invariant_monotonic_order ----------------------------------
+
+# Features listed here are skipped by check_invariant_monotonic_order while
+# their spec.md still has out-of-order invariant numbering. Remove an entry
+# once the corresponding renumber cycle lands:
+#   - "contract"        pending CONTRACT-BACKLOG-31 (this feature's own renumber)
+#   - "rabbit-cage"     pending PR #161 (rabbit-cage monotonic renumber cycle)
+#   - "rabbit-feature"  pending PR #162 (rabbit-feature monotonic renumber cycle)
+# When all three lands, this list reduces to [] and the check covers every
+# feature on disk.
+_MONOTONIC_KNOWN_ISSUES = ["contract", "rabbit-cage", "rabbit-feature"]
+
+_INVARIANTS_HEADING_RE = re.compile(r"^(##|###)\s+Invariants\b")
+_ANY_HEADING_RE = re.compile(r"^(#{1,6})\s+")
+_NUMBERED_ITEM_RE = re.compile(r"^(\d+)\.\s")
+
+
+def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
+    """Inv 45: each '## Invariants' / '### Invariants' section's top-level
+    numbered items MUST appear in strictly increasing order.
+
+    feature_dirs - iterable of feature directory paths. Features named in
+    _MONOTONIC_KNOWN_ISSUES are skipped (pending renumber). Features without
+    docs/spec/spec.md are also silently skipped.
+
+    Returns CheckResult; messages include 'SKIP:' lines for skipped features
+    and 'VIOLATION:' lines for any non-monotonic step.
+    """
+    messages: List[str] = []
+    violations: List[str] = []
+
+    for feat_dir in feature_dirs:
+        feat_name = os.path.basename(os.path.realpath(feat_dir))
+        if feat_name in _MONOTONIC_KNOWN_ISSUES:
+            messages.append(
+                f"SKIP: {feat_name} (in KNOWN_ISSUES — pending renumber)"
+            )
+            continue
+        spec_path = os.path.join(feat_dir, "docs", "spec", "spec.md")
+        if not os.path.isfile(spec_path):
+            continue
+        try:
+            with open(spec_path, encoding="utf-8") as f:
+                lines = f.read().splitlines()
+        except (OSError, UnicodeDecodeError) as e:
+            violations.append(f"VIOLATION: {feat_name}: cannot read spec.md: {e}")
+            continue
+
+        in_section = False
+        section_header = None
+        prev_num = 0
+        in_fence = False
+        for line in lines:
+            stripped = line.strip()
+            # track fenced code blocks so we don't count list-like content inside them
+            if stripped.startswith("```") or stripped.startswith("~~~"):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            # any heading ends or potentially opens a section
+            if _ANY_HEADING_RE.match(line):
+                if _INVARIANTS_HEADING_RE.match(line):
+                    in_section = True
+                    section_header = stripped
+                    prev_num = 0
+                else:
+                    in_section = False
+                    section_header = None
+                    prev_num = 0
+                continue
+            if not in_section:
+                continue
+            m = _NUMBERED_ITEM_RE.match(line)
+            if m:
+                n = int(m.group(1))
+                if n <= prev_num:
+                    violations.append(
+                        f"VIOLATION: {feat_name}:{section_header}: "
+                        f"{prev_num} -> {n} not monotonic"
+                    )
+                prev_num = n
+
+    if violations:
+        return CheckResult(False, messages + violations)
+    if not messages:
+        messages.append("OK: no feature dirs supplied (vacuous)")
+    else:
+        messages.append("OK: all checked features monotonic")
+    return CheckResult(True, messages)
+
+
 # ---------- validate_feature -------------------------------------------------
 
 _VALID_TDD_STATES = {"spec", "spec-update", "test-red", "impl", "test-green",
