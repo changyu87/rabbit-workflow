@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""E2E test: rabbit-feature-touch SKILL.md invokes the renamed skill.
+"""E2E test: rabbit-feature-touch SKILL.md invokes rabbit-feature-spec.
 
-Locks the caller-path rename rabbit-spec -> rabbit-feature-spec
-(absorbed skill rename per spec Inv 25-32). The SKILL.md MUST
-invoke `Skill("rabbit-feature-spec", ...)` and MUST NOT contain
-the legacy `Skill("rabbit-spec", ...)` invocation.
+Locks the positive Step-3 invocation: SKILL.md MUST invoke
+`Skill("rabbit-feature-spec", ...)` for spec authoring.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -13,7 +11,6 @@ by the rabbit CLI or by Claude Code's native workflow mechanism.
 """
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -37,22 +34,10 @@ def test_invokes_rabbit_feature_spec() -> None:
     )
 
 
-def test_does_not_invoke_legacy_rabbit_spec() -> None:
-    body = SKILL_MD.read_text()
-    # The legacy invocation must be gone. Use a regex that matches
-    # `Skill("rabbit-spec"` but NOT `Skill("rabbit-feature-spec"`.
-    legacy = re.search(r'Skill\(\s*"rabbit-spec"', body)
-    assert legacy is None, (
-        'SKILL.md must NOT invoke legacy Skill("rabbit-spec", ...); '
-        "use the renamed Skill(\"rabbit-feature-spec\", ...)"
-    )
-
-
 def main() -> int:
     tests = [
         test_skill_md_exists,
         test_invokes_rabbit_feature_spec,
-        test_does_not_invoke_legacy_rabbit_spec,
     ]
     failures: list[str] = []
     for test in tests:

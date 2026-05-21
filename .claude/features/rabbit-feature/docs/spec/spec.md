@@ -18,19 +18,13 @@ Owns the `rabbit-feature-touch` orchestration skill. The skill ensures every
 write, edit, delete, or add operation targeting a feature directory is gated
 through the formal TDD state machine.
 
-This feature also owns the absorbed `rabbit-feature-scope` skill and its
+This feature also owns the `rabbit-feature-scope` skill and its
 two scripts (`resolve-scope.py`, `format-feature-context.py`) which together
 resolve a natural-language request to the set of features it will modify.
-The skill, scripts, and tests live exclusively under this feature directory;
-the source-of-truth has moved here, and the legacy `rabbit-feature-scope`
-feature directory has been retired to a residual marker.
 
-This feature also owns the absorbed `rabbit-feature-spec` skill (renamed
-from `rabbit-spec`), which authors and updates feature specs and produces
-implementation-suggestion files for whatever process invoked it. The
-skill source is hosted exclusively under this feature; `build-contract.json`
-and all callers (`rabbit-feature-touch` SKILL.md, `dispatch-tdd-subagent.py`)
-now point at the new `rabbit-feature-spec` name and location.
+This feature also owns the `rabbit-feature-spec` skill, which authors
+and updates feature specs and produces implementation-suggestion files
+for whatever process invoked it.
 
 The skill is **dispatcher-side**: it resolves scope, creates branches,
 invokes spec authoring, surfaces the human-approval gate, dispatches TDD
@@ -197,8 +191,7 @@ anywhere in this feature. Test runner is `test/run.py`.
 12. `rabbit-feature-touch` SKILL.md B/B mode MUST read the item JSON
     from `<item-dir>/item.json`, never from `<item-dir>/bug.json`. The
     rabbit-file schema uses `item.json` for both bug and backlog types
-    (unified storage); `bug.json` is a legacy path that no longer
-    exists. The B/B mode `related_feature` extraction MUST use Python
+    (unified storage). The B/B mode `related_feature` extraction MUST use Python
     3 (always available; `jq` is not a declared dependency of this
     feature):
     `FEATURE=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('related_feature',''))" <item-dir>/item.json)`.
@@ -266,13 +259,7 @@ scripts now hosted under this feature.
     (no `feature` key at all). (Absorbed from rabbit-feature-scope
     Inv 11.)
 
-24. **RETIRED in v1.4.0.** Previously required absorbed surface to be
-    byte-identical to the `rabbit-feature-scope` sources while both
-    directories coexisted. The legacy source directory was retired in
-    a subsequent cleanup; the absorbed artifacts under this feature
-    are now the authoritative source and no comparison target remains.
-    The locking test `test-absorbed-rabbit-feature-scope.py` has been
-    removed.
+24. **RETIRED in v1.4.0** — see CHANGELOG.
 
 ### Absorbed from rabbit-spec
 
@@ -313,17 +300,7 @@ feature.
     skills" is acceptable; a process-specific one is not.
     (Absorbed from rabbit-spec Inv 8.)
 
-32. **RETIRED in v1.4.0.** Previously locked the byte-identical
-    absorption of the `rabbit-spec` skill (renamed to
-    `rabbit-feature-spec`) while both directories coexisted. The
-    legacy `rabbit-spec` directory has been retired; the absorbed
-    `rabbit-feature-spec` skill under this feature is now the
-    authoritative source. The rename remains load-bearing — the
-    SKILL.md `name:` field is `rabbit-feature-spec` and the
-    self-reference in `description`/body uses that name — but this
-    is enforced by the live SKILL.md content under this feature,
-    not by a cross-source comparison. The locking test
-    `test-absorbed-rabbit-spec.py` has been removed.
+32. **RETIRED in v1.4.0** — see CHANGELOG.
 
 ### rabbit-feature-new (v1.5.0, BACKLOG-2)
 
@@ -396,8 +373,7 @@ feature.
 
 ## Tests
 
-`test/run.py` runs the end-to-end suite. The active tests after the
-post-consolidation cleanup and subsequent housekeeping cycles are:
+`test/run.py` runs the end-to-end suite. The active tests are:
 - `test-cross-feature-interface.py` — Invariant 3.
 - `test-build-source-points-to-rabbit-feature.py` — Invariant 4.
 - `test-rabbit-feature-bug-2-surface-reads-declared.py` — declared
@@ -430,11 +406,3 @@ post-consolidation cleanup and subsequent housekeeping cycles are:
 - `test-skill-rabbit-feature-new.py` — Invariant 33 (new skill
   surface declaration and behaviour).
 - `test-skill-rabbit-feature-audit.py` — Invariant 34.
-
-Inv 24 and Inv 32 (byte-identical absorption locks) are RETIRED at
-v1.4.0; the associated locking tests were removed. Many absorbed
-tests that pointed at retired source paths (legacy
-`rabbit-feature-scope` and `rabbit-spec` directories) were deleted
-in the same cleanup — the surviving authoritative content lives
-under this feature's SKILL.md, scripts, and contract files, which
-are checked directly by the surviving tests above.

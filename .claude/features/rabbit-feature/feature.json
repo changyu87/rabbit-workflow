@@ -4,7 +4,7 @@
   "version": "1.6.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "summary": "Owns the rabbit-feature-touch orchestration skill plus the absorbed rabbit-feature-scope skill (with resolve-scope.py and format-feature-context.py scripts), the absorbed rabbit-feature-spec skill (renamed from rabbit-spec) for spec authoring, the rabbit-feature-new scaffolding skill (BACKLOG-2), and the rabbit-feature-audit conformance skill (BACKLOG-3). Post-consolidation: the legacy rabbit-feature-scope and rabbit-spec feature directories are retired and absorbed artifacts under this feature are authoritative. Dispatcher-side surface; executor-side (dispatch-tdd-subagent.py and tdd-step.py) lives in tdd-subagent and tdd-state-machine respectively.",
+  "summary": "Owns the rabbit-feature-touch orchestration skill plus the rabbit-feature-scope skill (with resolve-scope.py and format-feature-context.py scripts), the rabbit-feature-spec skill for spec authoring, the rabbit-feature-new scaffolding skill (BACKLOG-2), and the rabbit-feature-audit conformance skill (BACKLOG-3). Dispatcher-side surface; executor-side (dispatch-tdd-subagent.py and tdd-step.py) lives in tdd-subagent and tdd-state-machine respectively.",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -22,6 +22,6 @@
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
-  "updated": "2026-05-20",
-  "spec_no_change_reason": "spec relocation already committed at HEAD~2 by dispatcher; test-red transition has no pending diff to point at"
+  "updated": "2026-05-21",
+  "spec_no_change_reason": "spec relocation already committed at HEAD~1 by dispatcher; test-red transition has no pending diff to point at"
 }
