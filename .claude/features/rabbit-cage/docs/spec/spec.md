@@ -28,15 +28,15 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 
 ## Invariants
 
-1. `.claude/commands` is a symlink pointing to `.claude/features/rabbit-cage/commands`.
-2. `.claude/hooks` is a symlink pointing to `.claude/features/rabbit-cage/hooks`.
-3. `.claude/skills` is a real directory (not a symlink) populated by `build.py` (via `build-contract.json` copy-file targets) from each feature's skill source directory; the directory and its contents are committed to the repo (not gitignored).
-4. `.claude/settings.json` is a symlink pointing to `.claude/features/rabbit-cage/settings.json`.
-5. `.claude/policy` is a symlink pointing to `.claude/features/policy`.
-6. `.claude/contract` is a symlink pointing to `.claude/features/contract`.
-7. `README.md` at repo root is a symlink pointing to `.claude/features/rabbit-cage/README.md`.
-8. `install.py` at repo root is a copy of `.claude/features/rabbit-cage/install.py` (managed by `build-contract.json`). `install.py` is the bootstrap installer; it is a standalone Python script requiring only the stdlib. No `.sh` files exist in rabbit-cage.
-9. `CLAUDE.md` contains `@`-imports sourcing files from `.claude/policy/`.
+1. `.claude/commands/` is a real directory populated by `build.py` from `build-contract.json` copy-file targets whose sources are under `.claude/features/rabbit-cage/commands/`. The directory and its contents are committed to the repo.
+2. `.claude/hooks/` is a real directory populated by `build.py` from `build-contract.json` copy-file targets whose sources are under `.claude/features/rabbit-cage/hooks/`. The directory and its contents are committed to the repo.
+3. `.claude/skills/` is a real directory populated by `build.py` from `build-contract.json` copy-file targets (one `SKILL.md` per skill from each feature's skill source directory). The directory and its contents are committed to the repo.
+4. `.claude/settings.json` is a real file deployed by `build.py` as a `build-contract.json` copy-file target whose source is `.claude/features/rabbit-cage/settings.json`. Committed to the repo.
+5. Policy files are referenced by consumers (CLAUDE.md `@`-imports, dispatch-tdd-subagent.py preamble assembly) via their canonical path `.claude/features/policy/<file>.md` directly. No `.claude/policy/` indirection path exists.
+6. Contract resources (schemas, lib/checks.py, scripts) are referenced by consumers via their canonical path `.claude/features/contract/` directly. No `.claude/contract/` indirection path exists.
+7. `README.md` at the repo root is a real file deployed by `build.py` as a `build-contract.json` copy-file target whose source is `.claude/features/rabbit-cage/README.md`. Committed to the repo.
+8. `install.py` at repo root is a real file deployed by `build.py` as a `build-contract.json` copy-file target whose source is `.claude/features/rabbit-cage/install.py`. It is the bootstrap installer — a standalone Python script requiring only the stdlib. No `.sh` files exist in rabbit-cage.
+9. `CLAUDE.md` contains `@`-imports sourcing files from `.claude/features/policy/` (the canonical policy path; see Inv 5).
 10. The CLAUDE.md header (everything before the `@`-import lines) is sourced from the `header` field of `.claude/features/rabbit-cage/policy-header.json` via `generate-claude-md-header.py`. The header MUST orient a fresh session to the rabbit workflow by stating: (a) the workflow name as an H1, (b) the four core traits as bullets — **Feature-oriented**, **Scope-protected**, **Drift-protected**, **Subagent-driven**, (c) a token-cost judgment note as a trailing bullet on the same list, and (d) a final paragraph naming the reader as "the dispatcher" and forbidding direct edits to scope-protected files without explicit human approval. The exact text is fixed by the `header` field value and verified by `test-claude-md-header.py`.
 11. `.claude/features/rabbit-cage/scripts/build.py` exists and is executable; reads `build-contract.json` and builds all declared targets.
 12. `.claude/features/rabbit-cage/test/test-generated-surface.py` exists and exits 0 on a clean workspace (all check_on_stop copy-file targets match their sources).
