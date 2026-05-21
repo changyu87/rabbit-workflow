@@ -64,5 +64,8 @@ run_test("test-lib-checks.py")
 run_test("test-backlog-27-retirements.py")
 run_test("test-bug-41-cleanup.py")
 run_test("test-rabbit-feature-skills-deployment.py")
+run_test("test-check-invariant-monotonic-order.py")
+run_test("test-changelog-exists.py")
+run_test("test-spec-tombstone-gaps-match-changelog.py")
 
 print("ALL TESTS PASSED")
