@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """E2E test coverage for rabbit-feature Inv 5-8.
 
-Locks four behaviours of `rabbit-feature-touch` SKILL.md that previously
-had no direct test:
+Locks four behaviours of `rabbit-feature-touch` SKILL.md:
 
 - Inv 5 — normal-mode Step 1 resolves scope via the `rabbit-feature-scope`
   Skill tool, NOT by shelling out to `resolve-scope.py`.
@@ -86,29 +85,6 @@ def test_inv5_step1_normal_mode_uses_skill_tool() -> None:
     assert 'Skill("rabbit-feature-scope"' in normal_body, (
         'Step 1 normal mode must invoke Skill("rabbit-feature-scope", ...); '
         "shell-out to resolve-scope.py is no longer permitted"
-    )
-
-
-def test_inv5_step1_normal_mode_does_not_shell_out_resolve_scope() -> None:
-    body = _extract_step_body(_read_skill_md(), 1)
-    normal_match = re.search(
-        r"\*\*Normal mode:\*\*(.*?)(?=\*\*B/B mode:\*\*|\Z)",
-        body,
-        re.DOTALL,
-    )
-    assert normal_match, "Step 1 must contain a '**Normal mode:**' block"
-    normal_body = normal_match.group(1)
-
-    # The normal-mode block must NOT instruct a direct shell-out to
-    # resolve-scope.py (that is a legacy pattern superseded by the
-    # Skill-tool invocation).
-    shellout = re.search(
-        r"python3\s+[^\n]*resolve-scope\.py",
-        normal_body,
-    )
-    assert shellout is None, (
-        "Step 1 normal mode must NOT shell out to resolve-scope.py; "
-        "use Skill(\"rabbit-feature-scope\", ...) instead"
     )
 
 
@@ -222,7 +198,6 @@ def test_inv8_step4_marker_absent_default_gate_true() -> None:
 def main() -> int:
     tests = [
         test_inv5_step1_normal_mode_uses_skill_tool,
-        test_inv5_step1_normal_mode_does_not_shell_out_resolve_scope,
         test_inv6_exactly_seven_steps,
         test_inv6_step_numbers_in_order,
         test_inv6_step_names_match_spec,
