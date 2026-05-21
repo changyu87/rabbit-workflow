@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test invariant 16: build.py passes RABBIT_ROOT to generate-claude-md.py."""
+"""Test invariant 16: build.py federated-discovery model."""
 import json
 import os
 import shutil
@@ -42,48 +42,40 @@ else:
 # t2
 with open(BUILD_SH) as f:
     build_src = f.read()
-if "RABBIT_ROOT" in build_src:
-    ok(2, "build.py source contains RABBIT_ROOT (env var passed to generate-claude-md.py)")
+if "_discover_manifests" in build_src:
+    ok(2, "build.py source contains _discover_manifests (federated discovery)")
 else:
-    fail_t(2, "build.py does NOT contain RABBIT_ROOT — fix not applied (invariant 16 violated)")
+    fail_t(2, "build.py does NOT contain _discover_manifests — federated discovery missing")
 
-# t3
+# t3: build.py processes publish.json targets in a non-git dir when REPO_ROOT arg is given
 tmpdir_target = tempfile.mkdtemp()
 try:
-    os.makedirs(os.path.join(tmpdir_target, ".claude/features/contract"), exist_ok=True)
-    contract = {
-        "version": "1.0.0",
-        "targets": [{"name": "CLAUDE.md", "type": "generate-claude-md", "destination": "CLAUDE.md"}],
+    feature_dir = os.path.join(tmpdir_target, ".claude/features/fake-feature")
+    os.makedirs(feature_dir, exist_ok=True)
+    with open(os.path.join(feature_dir, "feature.json"), "w") as f:
+        json.dump({"name": "fake-feature", "version": "1.0.0", "owner": "test",
+                   "status": "active", "deprecation_criterion": "n/a"}, f)
+    os.makedirs(os.path.join(feature_dir, "src"), exist_ok=True)
+    with open(os.path.join(feature_dir, "src/hello.txt"), "w") as f:
+        f.write("hello\n")
+    publish = {
+        "schema_version": "1.0.0", "feature": "fake-feature",
+        "owner": "test", "deprecation_criterion": "n/a",
+        "targets": [{"name": "hello.txt", "type": "copy-file",
+                     "source": "src/hello.txt", "destination": "dst/hello.txt",
+                     "check_on_stop": False}],
     }
-    with open(os.path.join(tmpdir_target, ".claude/features/contract/build-contract.json"), "w") as f:
-        json.dump(contract, f)
+    with open(os.path.join(feature_dir, "publish.json"), "w") as f:
+        json.dump(publish, f)
 
-    # Replicate build.py's invocation pattern: pass RABBIT_ROOT to subprocess.
-    target_root = tmpdir_target
-    contract_path = os.path.join(tmpdir_target, ".claude/features/contract/build-contract.json")
-    with open(contract_path) as f:
-        c = json.load(f)
-
-    errors = 0
-    for target in c.get("targets", []):
-        if target["type"] == "generate-claude-md":
-            destination = os.path.join(target_root, target["destination"])
-            env = {**os.environ, "RABBIT_ROOT": REPO_ROOT}
-            result = subprocess.run([sys.executable, GENERATE_SCRIPT, "--write", target_root],
-                                    env=env, capture_output=True, text=True)
-            if result.returncode != 0:
-                print(f"  [error] {target['name']}: generate-claude-md failed\n{result.stderr}", file=sys.stderr)
-                errors += 1
-            else:
-                print(f"  [built] {target['name']}")
-
-    if errors == 0:
-        if os.path.isfile(os.path.join(tmpdir_target, "CLAUDE.md")):
-            ok(3, "CLAUDE.md created in non-git temp dir when RABBIT_ROOT is passed to subprocess")
-        else:
-            fail_t(3, "subprocess exited 0 but CLAUDE.md not found in temp dir")
+    result = subprocess.run(
+        [sys.executable, BUILD_SH, tmpdir_target],
+        capture_output=True, text=True,
+    )
+    if result.returncode == 0 and os.path.isfile(os.path.join(tmpdir_target, "dst/hello.txt")):
+        ok(3, "build.py processes publish.json targets in non-git dir when REPO_ROOT arg given")
     else:
-        fail_t(3, "generate-claude-md.py failed when RABBIT_ROOT was passed (unexpected)")
+        fail_t(3, f"build.py failed in non-git dir: rc={result.returncode} stderr={result.stderr!r}")
 finally:
     shutil.rmtree(tmpdir_target, ignore_errors=True)
 

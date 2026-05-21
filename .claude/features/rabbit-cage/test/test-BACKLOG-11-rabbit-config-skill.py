@@ -53,7 +53,6 @@ CMD_MD = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/commands/rabbit-c
 DEPLOYED_CMD_MD = os.path.join(REPO_ROOT, ".claude/commands/rabbit-config.md")
 SYNC_CHECK = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/hooks/sync-check.py")
 GITIGNORE = os.path.join(REPO_ROOT, ".gitignore")
-CONTRACT = os.path.join(REPO_ROOT, ".claude/features/contract/build-contract.json")
 
 pass_n = 0
 fail_n = 0
@@ -142,29 +141,30 @@ if os.path.isfile(GITIGNORE):
 else:
     fail_t(5, ".gitignore missing")
 
-# t6: build-contract.json registers the new SKILL.md as a copy-file target
-if os.path.isfile(CONTRACT):
-    with open(CONTRACT) as f:
-        contract = json.load(f)
-    src = ".claude/features/rabbit-cage/skills/rabbit-config/SKILL.md"
-    dst = ".claude/skills/rabbit-config/SKILL.md"
-    has_target = any(
-        t.get("type") == "copy-file"
-        and t.get("source") == src
-        and t.get("destination") == dst
-        for t in contract.get("targets", [])
-    )
-    if has_target:
-        ok(6, "build-contract.json registers skills/rabbit-config/SKILL.md as copy-file target")
+# t6: rabbit-cage/publish.json registers rabbit-config/SKILL.md and rabbit-config.py script
+publish_path = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/publish.json")
+if os.path.isfile(publish_path):
+    with open(publish_path) as f:
+        publish = json.load(f)
+    by_name = {t.get("name"): t for t in publish.get("targets", [])}
+    skill_entry = by_name.get("skills/rabbit-config/SKILL.md")
+    script_entry = by_name.get("skills/rabbit-config/scripts/rabbit-config.py")
+    if skill_entry and skill_entry.get("destination") == ".claude/skills/rabbit-config/SKILL.md":
+        ok(6, "rabbit-cage/publish.json registers skills/rabbit-config/SKILL.md")
     else:
-        fail_t(6, "build-contract.json missing copy-file target for skills/rabbit-config/SKILL.md")
+        fail_t(6, "rabbit-cage/publish.json missing skills/rabbit-config/SKILL.md entry")
+    if script_entry and script_entry.get("destination") == ".claude/skills/rabbit-config/scripts/rabbit-config.py":
+        ok(7, "rabbit-cage/publish.json registers rabbit-config.py script (root cause fix)")
+    else:
+        fail_t(7, "rabbit-cage/publish.json missing rabbit-config.py script entry")
 else:
-    fail_t(6, "build-contract.json missing")
+    fail_t(6, "rabbit-cage/publish.json missing")
+    fail_t(7, "rabbit-cage/publish.json missing")
 
 # ---- Existing subcommands still work via the extracted script ----
 
 if os.path.isfile(SKILL_PY):
-    # t7: prompt-threshold 15 writes via the extracted script
+    # t8: prompt-threshold 15 writes via the extracted script
     wd = tempfile.mkdtemp()
     try:
         os.makedirs(os.path.join(wd, ".claude"), exist_ok=True)
@@ -174,15 +174,15 @@ if os.path.isfile(SKILL_PY):
             with open(local_path) as f:
                 d = json.load(f)
             if d.get("env", {}).get("RABBIT_REFRESH_EVERY") == "15":
-                ok(7, "extracted script handles prompt-threshold 15")
+                ok(8, "extracted script handles prompt-threshold 15")
             else:
-                fail_t(7, f"prompt-threshold 15 wrote wrong value: {d}")
+                fail_t(8, f"prompt-threshold 15 wrote wrong value: {d}")
         else:
-            fail_t(7, f"prompt-threshold 15 failed: rc={res.returncode} stderr={res.stderr}")
+            fail_t(8, f"prompt-threshold 15 failed: rc={res.returncode} stderr={res.stderr}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t8: allowed-tools add WebFetch via the extracted script
+    # t9: allowed-tools add WebFetch via the extracted script
     wd = tempfile.mkdtemp()
     try:
         os.makedirs(os.path.join(wd, ".claude"), exist_ok=True)
@@ -193,15 +193,15 @@ if os.path.isfile(SKILL_PY):
                 d = json.load(f)
             allow = d.get("permissions", {}).get("allow", [])
             if allow == ["WebFetch"]:
-                ok(8, "extracted script handles allowed-tools add")
+                ok(9, "extracted script handles allowed-tools add")
             else:
-                fail_t(8, f"allowed-tools add wrote wrong value: {allow}")
+                fail_t(9, f"allowed-tools add wrote wrong value: {allow}")
         else:
-            fail_t(8, f"allowed-tools add failed: rc={res.returncode} stderr={res.stderr}")
+            fail_t(9, f"allowed-tools add failed: rc={res.returncode} stderr={res.stderr}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t9: bash-allow add touch via the extracted script
+    # t10: bash-allow add touch via the extracted script
     wd = tempfile.mkdtemp()
     try:
         os.makedirs(os.path.join(wd, ".claude"), exist_ok=True)
@@ -212,11 +212,11 @@ if os.path.isfile(SKILL_PY):
                 d = json.load(f)
             allow = d.get("permissions", {}).get("allow", [])
             if allow == ["Bash(touch:*)"]:
-                ok(9, "extracted script handles bash-allow add")
+                ok(10, "extracted script handles bash-allow add")
             else:
-                fail_t(9, f"bash-allow add wrote wrong value: {allow}")
+                fail_t(10, f"bash-allow add wrote wrong value: {allow}")
         else:
-            fail_t(9, f"bash-allow add failed: rc={res.returncode} stderr={res.stderr}")
+            fail_t(10, f"bash-allow add failed: rc={res.returncode} stderr={res.stderr}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
@@ -224,7 +224,7 @@ if os.path.isfile(SKILL_PY):
     # Restored semantics (BUG-97): true = gate ACTIVE (marker removed);
     # false = bypass ACTIVE (marker written); no-action prints 'true' iff marker ABSENT.
 
-    # t10: 'false' writes marker with 'session' content (Inv 35)
+    # t11: 'false' writes marker with 'session' content (Inv 35)
     wd = tempfile.mkdtemp()
     try:
         res = run_script(["human-approval", "false"], wd)
@@ -233,15 +233,15 @@ if os.path.isfile(SKILL_PY):
             with open(marker) as f:
                 content = f.read()
             if content == "session":
-                ok(10, "human-approval false writes marker with 'session' content (Inv 35)")
+                ok(11, "human-approval false writes marker with 'session' content (Inv 35)")
             else:
-                fail_t(10, f"marker content wrong: {content!r}")
+                fail_t(11, f"marker content wrong: {content!r}")
         else:
-            fail_t(10, f"'false' failed: rc={res.returncode} marker_exists={os.path.isfile(marker)} stderr={res.stderr}")
+            fail_t(11, f"'false' failed: rc={res.returncode} marker_exists={os.path.isfile(marker)} stderr={res.stderr}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t11: (no action) prints 'false' when marker present (Inv 37: bypass active = false)
+    # t12: (no action) prints 'false' when marker present (Inv 37: bypass active = false)
     wd = tempfile.mkdtemp()
     try:
         marker = os.path.join(wd, ".rabbit-human-approval-bypass")
@@ -249,24 +249,24 @@ if os.path.isfile(SKILL_PY):
             f.write("session")
         res = run_script(["human-approval"], wd)
         if res.returncode == 0 and res.stdout.strip() == "false":
-            ok(11, "human-approval (no action) prints 'false' when marker present (bypass active)")
+            ok(12, "human-approval (no action) prints 'false' when marker present (bypass active)")
         else:
-            fail_t(11, f"expected 'false', got rc={res.returncode} stdout={res.stdout!r}")
+            fail_t(12, f"expected 'false', got rc={res.returncode} stdout={res.stdout!r}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t12: (no action) prints 'true' when marker absent (Inv 37: gate active = true)
+    # t13: (no action) prints 'true' when marker absent (Inv 37: gate active = true)
     wd = tempfile.mkdtemp()
     try:
         res = run_script(["human-approval"], wd)
         if res.returncode == 0 and res.stdout.strip() == "true":
-            ok(12, "human-approval (no action) prints 'true' when marker absent (gate active)")
+            ok(13, "human-approval (no action) prints 'true' when marker absent (gate active)")
         else:
-            fail_t(12, f"expected 'true', got rc={res.returncode} stdout={res.stdout!r}")
+            fail_t(13, f"expected 'true', got rc={res.returncode} stdout={res.stdout!r}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t13: 'true' removes marker (Inv 36)
+    # t14: 'true' removes marker (Inv 36)
     wd = tempfile.mkdtemp()
     try:
         marker = os.path.join(wd, ".rabbit-human-approval-bypass")
@@ -274,13 +274,13 @@ if os.path.isfile(SKILL_PY):
             f.write("session")
         res = run_script(["human-approval", "true"], wd)
         if res.returncode == 0 and not os.path.isfile(marker):
-            ok(13, "human-approval true removes the marker (Inv 36)")
+            ok(14, "human-approval true removes the marker (Inv 36)")
         else:
-            fail_t(13, f"'true' did not remove marker: rc={res.returncode} marker_exists={os.path.isfile(marker)}")
+            fail_t(14, f"'true' did not remove marker: rc={res.returncode} marker_exists={os.path.isfile(marker)}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t14: 'false' is idempotent (re-invoking when marker exists is no-op exit 0)
+    # t15: 'false' is idempotent (re-invoking when marker exists is no-op exit 0)
     wd = tempfile.mkdtemp()
     try:
         run_script(["human-approval", "false"], wd)
@@ -290,33 +290,33 @@ if os.path.isfile(SKILL_PY):
             with open(marker) as f:
                 content = f.read()
             if content == "session":
-                ok(14, "human-approval false is idempotent (Inv 35)")
+                ok(15, "human-approval false is idempotent (Inv 35)")
             else:
-                fail_t(14, f"idempotent 'false' changed marker content: {content!r}")
+                fail_t(15, f"idempotent 'false' changed marker content: {content!r}")
         else:
-            fail_t(14, f"idempotent 'false' failed: rc={res.returncode}")
+            fail_t(15, f"idempotent 'false' failed: rc={res.returncode}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t15: 'true' is idempotent (no-op when marker absent, exit 0)
+    # t16: 'true' is idempotent (no-op when marker absent, exit 0)
     wd = tempfile.mkdtemp()
     try:
         res = run_script(["human-approval", "true"], wd)
         if res.returncode == 0:
-            ok(15, "human-approval true is idempotent (exit 0 when marker absent) (Inv 36)")
+            ok(16, "human-approval true is idempotent (exit 0 when marker absent) (Inv 36)")
         else:
-            fail_t(15, f"'true' on absent marker failed: rc={res.returncode} stderr={res.stderr}")
+            fail_t(16, f"'true' on absent marker failed: rc={res.returncode} stderr={res.stderr}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t16: unknown action exits 1
+    # t17: unknown action exits 1
     wd = tempfile.mkdtemp()
     try:
         res = run_script(["human-approval", "what"], wd)
         if res.returncode != 0:
-            ok(16, "human-approval with unknown action exits non-zero")
+            ok(17, "human-approval with unknown action exits non-zero")
         else:
-            fail_t(16, f"unknown action did not fail: rc={res.returncode} stdout={res.stdout!r}")
+            fail_t(17, f"unknown action did not fail: rc={res.returncode} stdout={res.stdout!r}")
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
@@ -433,12 +433,12 @@ if os.path.isfile(SKILL_PY):
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 else:
-    for t in range(7, 17):
+    for t in range(8, 18):
         fail_t(t, "scripts/rabbit-config.py missing — cannot exercise subcommand")
 
 # ---- sync-check.py alert ----
 
-# t17: sync-check.py emits red [rabbit] HUMAN APPROVAL BYPASS ACTIVE alert while marker present
+# t18: sync-check.py emits red [rabbit] HUMAN APPROVAL BYPASS ACTIVE alert while marker present
 # Build a clean minimal repo (mirrors test-RABBIT-CAGE-BACKLOG14 setup).
 def make_clean_repo():
     d = tempfile.mkdtemp()
@@ -492,25 +492,25 @@ def extract_msg(output):
 
 tmproots = []
 try:
-    # t17: marker present → human-approval alert emitted
+    # t18: marker present → human-approval alert emitted
     tmproot = make_clean_repo()
     tmproots.append(tmproot)
     open(os.path.join(tmproot, ".rabbit-human-approval-bypass"), "w").close()
     out = run_sync(tmproot)
     msg = extract_msg(out)
     if "HUMAN APPROVAL BYPASS ACTIVE" in msg and "\x1b[31m" in msg:
-        ok(17, "sync-check.py emits red [rabbit] HUMAN APPROVAL BYPASS ACTIVE alert while marker present")
+        ok(18, "sync-check.py emits red [rabbit] HUMAN APPROVAL BYPASS ACTIVE alert while marker present")
     else:
-        fail_t(17, f"alert missing or not red: {msg!r}")
+        fail_t(18, f"alert missing or not red: {msg!r}")
 
-    # t18: marker is NOT consumed (persists after sync-check)
+    # t19: marker is NOT consumed (persists after sync-check)
     marker = os.path.join(tmproot, ".rabbit-human-approval-bypass")
     if os.path.isfile(marker):
-        ok(18, "human-approval-bypass marker NOT consumed by sync-check.py")
+        ok(19, "human-approval-bypass marker NOT consumed by sync-check.py")
     else:
-        fail_t(18, "human-approval-bypass marker was consumed (must persist)")
+        fail_t(19, "human-approval-bypass marker was consumed (must persist)")
 
-    # t19: human-approval-bypass + skills-updated BOTH emit, human-approval first
+    # t20: human-approval-bypass + skills-updated BOTH emit, human-approval first
     # (BACKLOG-18: Inv 83 aggregation — no suppression; priority controls ordering)
     tmproot = make_clean_repo()
     tmproots.append(tmproot)
@@ -521,11 +521,11 @@ try:
     idx_ha = msg.find("HUMAN APPROVAL BYPASS ACTIVE")
     idx_sk = msg.find("Skills updated")
     if idx_ha >= 0 and idx_sk >= 0 and idx_ha < idx_sk:
-        ok(19, "human-approval and skills-updated both emit; human-approval first (priority 4 < 5)")
+        ok(20, "human-approval and skills-updated both emit; human-approval first (priority 4 < 5)")
     else:
-        fail_t(19, f"aggregation/order wrong: ha={idx_ha} sk={idx_sk} msg={msg!r}")
+        fail_t(20, f"aggregation/order wrong: ha={idx_ha} sk={idx_sk} msg={msg!r}")
 
-    # t20: scope-guard-off + human-approval-bypass BOTH emit, scope-guard first
+    # t21: scope-guard-off + human-approval-bypass BOTH emit, scope-guard first
     # (BACKLOG-18: Inv 83 aggregation — no suppression)
     tmproot = make_clean_repo()
     tmproots.append(tmproot)
@@ -537,19 +537,19 @@ try:
     idx_sc = msg.upper().find("SCOPE GUARD")
     idx_ha = msg.find("HUMAN APPROVAL BYPASS ACTIVE")
     if idx_sc >= 0 and idx_ha >= 0 and idx_sc < idx_ha:
-        ok(20, "scope-guard and human-approval both emit; scope-guard first (priority 3 < 4)")
+        ok(21, "scope-guard and human-approval both emit; scope-guard first (priority 3 < 4)")
     else:
-        fail_t(20, f"aggregation/order wrong: sc={idx_sc} ha={idx_ha} msg={msg!r}")
+        fail_t(21, f"aggregation/order wrong: sc={idx_sc} ha={idx_ha} msg={msg!r}")
 
-    # t21: feature.json surface.skills declares 'rabbit-config' (Inv 59)
+    # t22: feature.json surface.skills declares 'rabbit-config' (Inv 59)
     feature_json = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/feature.json")
     with open(feature_json) as f:
         feature_data = json.load(f)
     skills = feature_data.get("surface", {}).get("skills", [])
     if isinstance(skills, list) and len(skills) > 0 and "rabbit-config" in skills:
-        ok(21, "feature.json surface.skills is non-empty and contains 'rabbit-config' (Inv 59)")
+        ok(22, "feature.json surface.skills is non-empty and contains 'rabbit-config' (Inv 59)")
     else:
-        fail_t(21, f"surface.skills must be non-empty and contain 'rabbit-config'; got {skills!r}")
+        fail_t(22, f"surface.skills must be non-empty and contain 'rabbit-config'; got {skills!r}")
 finally:
     for d in tmproots:
         shutil.rmtree(d, ignore_errors=True)

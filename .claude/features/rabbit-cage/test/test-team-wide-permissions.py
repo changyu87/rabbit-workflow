@@ -29,12 +29,6 @@ DEST_SETTINGS = os.path.join(REPO_ROOT, ".claude", "settings.json")
 BUILD_PY = os.path.join(
     REPO_ROOT, ".claude", "features", "rabbit-cage", "scripts", "build.py"
 )
-BUILD_TARGETS_PY = os.path.join(
-    REPO_ROOT, ".claude", "features", "rabbit-cage", "scripts", "build-targets.py"
-)
-BUILD_CONTRACT = os.path.join(
-    REPO_ROOT, ".claude", "features", "contract", "build-contract.json"
-)
 
 EXPECTED_ALLOW = ["Bash(*)", "Write", "Edit"]
 EXPECTED_DENY = [
@@ -119,67 +113,51 @@ def test_build_py_propagates_permissions_e2e_sandboxed():
     """E2E (sandboxed): mutate sandbox source, run build, observe propagation.
 
     Inv 44: runs entirely inside a temp-dir mirror so a crashed test cannot
-    leave the live worktree corrupted. We copy SOURCE_SETTINGS, build.py,
-    build-targets.py, and the build-contract into a tmp tree under the same
-    relative layout, mutate the sandbox source, and verify build-targets.py
-    propagates the change to the sandbox destination.
+    leave the live worktree corrupted. We create a feature dir with publish.json
+    that declares a copy-file target, mutate the source, run build.py against
+    the sandbox root, and verify propagation to the sandbox destination.
     """
     sandbox = tempfile.mkdtemp(prefix="test-team-wide-permissions-")
     try:
-        # Reproduce minimal layout build-targets.py needs. Source/destination
-        # in the contract are repo-relative (build-targets.py prepends
-        # repo_root). Use the sandbox as repo_root.
-        src_rel = "src/settings.json"
-        dst_rel = ".claude/settings.json"
-        sandbox_src = os.path.join(sandbox, src_rel)
-        sandbox_dst = os.path.join(sandbox, dst_rel)
-        os.makedirs(os.path.dirname(sandbox_src), exist_ok=True)
-        os.makedirs(os.path.dirname(sandbox_dst), exist_ok=True)
+        feature_dir = os.path.join(sandbox, ".claude/features/fake-settings")
+        os.makedirs(feature_dir, exist_ok=True)
+        sandbox_src = os.path.join(feature_dir, "settings.json")
         shutil.copy(SOURCE_SETTINGS, sandbox_src)
 
-        # Mutate sandbox source: add probe deny.
         data = json.loads(open(sandbox_src).read())
         probe = "Bash(test-probe-do-not-keep)"
         data["permissions"]["deny"].append(probe)
         with open(sandbox_src, "w") as f:
             json.dump(data, f, indent=2)
 
-        contract = {
-            "schema_version": "1.0.0",
-            "targets": [
-                {
-                    "name": "settings.json",
-                    "type": "copy-file",
-                    "source": src_rel,
-                    "destination": dst_rel,
-                    "check_on_stop": False,
-                }
-            ],
+        with open(os.path.join(feature_dir, "feature.json"), "w") as f:
+            json.dump({"name": "fake-settings", "version": "1.0.0", "owner": "test",
+                       "status": "active", "deprecation_criterion": "n/a"}, f)
+        dst_rel = ".claude/settings.json"
+        publish = {
+            "schema_version": "1.0.0", "feature": "fake-settings",
+            "owner": "test", "deprecation_criterion": "test",
+            "targets": [{"name": "settings.json", "type": "copy-file",
+                         "source": "settings.json", "destination": dst_rel,
+                         "check_on_stop": False}],
         }
-        contract_path = os.path.join(sandbox, "build-contract.json")
-        with open(contract_path, "w") as f:
-            json.dump(contract, f, indent=2)
+        with open(os.path.join(feature_dir, "publish.json"), "w") as f:
+            json.dump(publish, f, indent=2)
 
-        # Run build-targets.py against the sandbox.
-        env = {**os.environ, "RABBIT_ROOT": sandbox}
-        # Use the live build-targets.py but with sandbox root.
+        sandbox_dst = os.path.join(sandbox, dst_rel)
+        os.makedirs(os.path.dirname(sandbox_dst), exist_ok=True)
+
         result = subprocess.run(
-            [sys.executable, BUILD_TARGETS_PY, sandbox, contract_path,
-             os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/scripts/generate-claude-md.py")],
-            cwd=sandbox,
-            capture_output=True,
-            text=True,
-            env=env,
+            [sys.executable, BUILD_PY, sandbox],
+            cwd=sandbox, capture_output=True, text=True,
         )
         assert result.returncode == 0, (
-            f"build-targets.py failed: rc={result.returncode}\n"
+            f"build.py failed: rc={result.returncode}\n"
             f"stdout: {result.stdout}\nstderr: {result.stderr}"
         )
-
         new_dest = json.loads(open(sandbox_dst).read())
         assert probe in new_dest.get("permissions", {}).get("deny", []), (
-            "build-targets.py did not propagate the probe deny entry in sandbox — "
-            "copy-file propagation broken for permissions"
+            "build.py did not propagate the probe deny entry — copy-file propagation broken"
         )
     finally:
         shutil.rmtree(sandbox, ignore_errors=True)

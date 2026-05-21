@@ -154,20 +154,20 @@ else:
 # BUG-44 / BUG-81: build-targets.py only logs [built] on actual copies, and
 # writes the skills marker for any destination under .claude/skills/.
 # ---------------------------------------------------------------------------
-bt_py = read(os.path.join(SCRIPTS, "build-targets.py"))
+bt_py = read(os.path.join(SCRIPTS, "build.py"))
 if "[no-op]" in bt_py and "content_changed" in bt_py:
-    ok(11, "build-targets.py prints [no-op] for unchanged copies (BUG-44)")
+    ok(11, "build.py prints [no-op] for unchanged copies (BUG-44)")
 else:
-    fail_t(11, "build-targets.py still prints [built] unconditionally (BUG-44)")
+    fail_t(11, "build.py still prints [built] unconditionally (BUG-44)")
 
 if re.search(r"\.claude/skills/\(\[\^/\]\+\)/", bt_py) and "SKILL\\.md" not in bt_py.split(".rabbit-skills-updated")[-1]:
-    ok(12, "build-targets.py marker write covers any skills/<name>/ destination (BUG-81)")
+    ok(12, "build.py marker write covers any skills/<name>/ destination (BUG-81)")
 else:
     # Fallback check: the regex must not restrict to /SKILL.md$.
     if re.search(r"\.claude/skills/\(\[\^/\]\+\)/'", bt_py) is None and "SKILL\\.md$" in bt_py:
-        fail_t(12, "build-targets.py marker still restricted to SKILL.md target (BUG-81)")
+        fail_t(12, "build.py marker still restricted to SKILL.md target (BUG-81)")
     else:
-        ok(12, "build-targets.py marker write widened beyond SKILL.md (BUG-81)")
+        ok(12, "build.py marker write widened beyond SKILL.md (BUG-81)")
 
 # ---------------------------------------------------------------------------
 # BUG-45: rabbit-project-consolidate.py exits non-zero on warnings.
@@ -271,8 +271,7 @@ finally:
 # ---------------------------------------------------------------------------
 # BUG-54: helper scripts emit usage + exit 2 on missing argv.
 # ---------------------------------------------------------------------------
-for t, script in [(21, "scripts/build-targets.py"),
-                  (22, "scripts/rabbit-project-consolidate.py")]:
+for t, script in [(21, "scripts/rabbit-project-consolidate.py")]:
     res = subprocess.run(
         [sys.executable, os.path.join(CAGE, script)],
         capture_output=True, text=True,
