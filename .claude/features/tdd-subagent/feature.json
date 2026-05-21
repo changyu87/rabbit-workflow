@@ -11,6 +11,6 @@
     "skills": []
   },
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
-  "updated": "2026-05-20",
-  "spec_no_change_reason": "spec already committed in HEAD by rabbit-feature-touch step 3"
+  "updated": "2026-05-21",
+  "spec_no_change_reason": "spec already committed by dispatcher in prior commit (Inv 8 ordering)"
 }
