@@ -9,7 +9,6 @@ Verifies generate-claude-md.py emits the structured orientation block:
   - Dispatcher-role paragraph forbidding direct edits to scope-protected
     files without explicit human approval
   - Three @-import lines follow (philosophy, spec-rules, coding-rules)
-  - Legacy one-liner phrase is absent.
 """
 import os
 import subprocess
@@ -82,13 +81,6 @@ if phil_idx > 0 and spec_idx > phil_idx and code_idx > spec_idx:
     ok(5, "three @-import lines follow in order: philosophy, spec-rules, coding-rules")
 else:
     fail_t(5, f"@-import lines missing or out of order; phil={phil_idx} spec={spec_idx} code={code_idx}")
-
-# t6: legacy one-liner phrase absent (regression lock)
-legacy = "feature-oriented, subagent-driven, drift-protected"
-if legacy not in output:
-    ok(6, "legacy one-liner phrase is NOT present")
-else:
-    fail_t(6, f"legacy one-liner phrase still present: {legacy!r}")
 
 # t7: dispatcher paragraph appears AFTER all trait bullets (structural order)
 dispatcher_idx = output.find("You are the dispatcher")

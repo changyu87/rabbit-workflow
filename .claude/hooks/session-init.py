@@ -6,12 +6,6 @@ Wired to SessionStart. One responsibility:
   Policy injection: read every @-import from CLAUDE.md and emit them as
   additionalContext so policy is present from the first prompt.
 
-The legacy R1 branch enforcement (auto-creating session/YYYYMMDD-HHMMSS on
-main/master) is REMOVED per Inv 41 (spec v3.12.0). Operators are responsible
-for creating their own feature branches before editing; direct commits to
-main remain blocked by the Bash(git push * main) deny rules (Inv 19) and by
-check-no-main-edits.py in contract.
-
 Output: AT MOST ONE JSON object per invocation (Inv 85). Policy injection is
 the sole pending condition; when it applies the emitted JSON carries the
 policy line in systemMessage and the expanded policy text in

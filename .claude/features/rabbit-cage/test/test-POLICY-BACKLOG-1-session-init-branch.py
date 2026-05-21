@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Tests session-init.py branch behavior (Inv 41 — R1 enforcement REMOVED).
+"""Tests session-init.py branch behavior (Inv 41).
 
-After spec v3.12.0, session-init.py MUST NOT auto-create or auto-switch git
-branches on main/master. The legacy R1 enforcement (auto-creating
-session/YYYYMMDD-HHMMSS) is removed. This test asserts the no-op behavior
-on both main and feature branches, and verifies @-import policy injection
-still emits valid JSON.
+session-init.py MUST NOT auto-create or auto-switch git branches on
+main/master. This test asserts the no-op behavior on both main and feature
+branches, and verifies @-import policy injection still emits valid JSON.
 """
 import json
 import os

@@ -78,10 +78,6 @@ def main() -> int:
 
     text = claude_md.read_text()
 
-    # BUG-80: inline rabbit-policy-start/rabbit-policy-end section detection
-    # removed — generate-claude-md.py no longer emits those markers, so this
-    # branch was dead code.
-
     # Parse @-imports: lines starting with '@'
     imports = []
     for line in text.splitlines():
