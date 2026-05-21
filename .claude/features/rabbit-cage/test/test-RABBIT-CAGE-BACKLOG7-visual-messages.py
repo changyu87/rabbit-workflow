@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests that all three hooks emit system messages with emoji + box-drawing chars."""
+"""Tests that hooks emit system messages with emoji; welcome keeps border chars (BACKLOG-32)."""
 import json
 import os
 import shutil
@@ -44,6 +44,7 @@ def extract_sys_msg(output):
 
 
 def assert_visual_msg(label, msg):
+    """Assert emoji AND box-drawing border chars — for banner-format messages (welcome)."""
     if not msg:
         fail_t(f"{label} — systemMessage is empty (no output emitted)")
         return
@@ -57,6 +58,21 @@ def assert_visual_msg(label, msg):
         fail_t(f"{label} — systemMessage has border chars but NO emoji; got: '{msg}'")
     else:
         fail_t(f"{label} — systemMessage has emoji but NO border chars; got: '{msg}'")
+
+
+def assert_compact_msg(label, msg):
+    """Assert emoji present, NO box-drawing border chars — for compact-format messages (BACKLOG-32)."""
+    if not msg:
+        fail_t(f"{label} — systemMessage is empty (no output emitted)")
+        return
+    has_emoji = any(ord(c) > 0x2600 for c in msg)
+    has_border = any(c in BORDER_CHARS for c in msg)
+    if has_emoji and not has_border:
+        ok(f"{label} — systemMessage has emoji, no border chars (compact format)")
+    elif not has_emoji:
+        fail_t(f"{label} — systemMessage missing emoji; got: '{msg}'")
+    else:
+        fail_t(f"{label} — systemMessage has border chars (expected compact); got: '{msg}'")
 
 
 def build_tmproot():
@@ -100,7 +116,7 @@ try:
     env = {**os.environ, "RABBIT_ROOT": tmproot1, "RABBIT_SYNC_EVERY": "1"}
     res = subprocess.run([sys.executable, SYNC_CHECK], env=env, capture_output=True, text=True)
     drift_msg = extract_sys_msg(res.stdout)
-    assert_visual_msg("sync-check.py DRIFT case", drift_msg)
+    assert_compact_msg("sync-check.py DRIFT case", drift_msg)
 
     # Test 2: surface drift
     # BACKLOG-21 (Inv 88): surface drift is detected by comparing
@@ -137,7 +153,7 @@ try:
     env = {**os.environ, "RABBIT_ROOT": tmproot2, "RABBIT_SYNC_EVERY": "1"}
     res = subprocess.run([sys.executable, SYNC_CHECK], env=env, capture_output=True, text=True)
     skills_msg = extract_sys_msg(res.stdout)
-    assert_visual_msg("sync-check.py SURFACE DRIFT case", skills_msg)
+    assert_compact_msg("sync-check.py SURFACE DRIFT case", skills_msg)
 
     # Test 3: session-init
     tmproot3 = build_tmproot()
@@ -171,7 +187,7 @@ try:
     env = {**os.environ, "RABBIT_ROOT": tmproot4, "RABBIT_REFRESH_EVERY": THRESHOLD}
     res = subprocess.run([sys.executable, REFRESH_HOOK], env=env, capture_output=True, text=True)
     refresh_msg = extract_sys_msg(res.stdout)
-    assert_visual_msg("refresh.py periodic refresh", refresh_msg)
+    assert_compact_msg("refresh.py periodic refresh", refresh_msg)
 finally:
     for d in tmproots:
         shutil.rmtree(d, ignore_errors=True)

@@ -57,11 +57,13 @@ def _load():
 
 
 def rabbit_print(message_id, **kwargs):
-    """Compose a fully-formed [rabbit] banner line for message_id.
+    """Compose a fully-formed [rabbit] line for message_id.
 
-    Returns the string:
-        f"{ansi}{brand} {icon} {bar} {text} {bar} {icon}{reset}"
-    where text has {name} placeholders substituted from kwargs.
+    Format is controlled by the per-message "format" field in the registry:
+      - "banner": f"{ansi}{brand} {icon} {bar} {text} {bar} {icon}{reset}"
+      - "compact": f"{ansi}{brand} {icon} {text}{reset}"
+
+    text has {name} placeholders substituted from kwargs.
 
     Raises KeyError if message_id is not in the registry, or if a required
     {name} placeholder is missing from kwargs.
@@ -71,9 +73,11 @@ def rabbit_print(message_id, **kwargs):
     c = reg["colors"][m["color"]]
     body = m["text"].format(**kwargs)
     brand = reg["brand"]
-    bar = reg["bar"]
     icon = m["icon"]
-    return f"{c['ansi']}{brand} {icon} {bar} {body} {bar} {icon}{c['reset']}"
+    if m.get("format", "compact") == "banner":
+        bar = reg["bar"]
+        return f"{c['ansi']}{brand} {icon} {bar} {body} {bar} {icon}{c['reset']}"
+    return f"{c['ansi']}{brand} {icon} {body}{c['reset']}"
 
 
 def rabbit_subline(text, color="green"):

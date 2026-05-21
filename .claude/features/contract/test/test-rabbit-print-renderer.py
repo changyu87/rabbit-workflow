@@ -99,7 +99,9 @@ def expected_main(mid, **kwargs):
     m = REG["messages"][mid]
     c = REG["colors"][m["color"]]
     body = m["text"].format(**kwargs)
-    return f"{c['ansi']}{BRAND} {m['icon']} {BAR} {body} {BAR} {m['icon']}{c['reset']}"
+    if m.get("format", "compact") == "banner":
+        return f"{c['ansi']}{BRAND} {m['icon']} {BAR} {body} {BAR} {m['icon']}{c['reset']}"
+    return f"{c['ansi']}{BRAND} {m['icon']} {body}{c['reset']}"
 
 
 # t5: rabbit_print produces the exact expected string for a parameterized id.

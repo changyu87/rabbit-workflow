@@ -81,15 +81,20 @@ if callable(fn):
     else:
         fail(f"surface_drift mismatch\n  exp: {exp!r}\n  got: {got!r}")
 
-    # Reach into the registry to compose the expected trailing decoration
-    # (bar + icon + reset) deterministically.
+    # Verify the files string appears in the rendered output followed by reset.
+    # Tail shape depends on format: compact ends "...{files}{reset}";
+    # banner ends "...{files} {bar} {icon}{reset}" (BACKLOG-32).
     reg = mod._load()
-    bar = reg["bar"]
-    icon = reg["messages"]["surface-drift"]["icon"]
-    reset = reg["colors"][reg["messages"]["surface-drift"]["color"]]["reset"]
-    tail = " " + "hooks/sync-check.py" + " " + bar + " " + icon + reset
+    msg = reg["messages"]["surface-drift"]
+    reset = reg["colors"][msg["color"]]["reset"]
+    if msg.get("format", "compact") == "banner":
+        bar = reg["bar"]
+        icon = msg["icon"]
+        tail = " " + "hooks/sync-check.py" + " " + bar + " " + icon + reset
+    else:
+        tail = "hooks/sync-check.py" + reset
     if got.endswith(tail):
-        ok(f"surface_drift output ends with files + bar + icon + reset: {tail!r}")
+        ok(f"surface_drift output ends with expected tail: {tail!r}")
     else:
         fail(f"surface_drift output tail mismatch\n  exp tail: {tail!r}\n  got: {got!r}")
 

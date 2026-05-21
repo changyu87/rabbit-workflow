@@ -153,9 +153,9 @@ if messages is not None:
     else:
         ok("t6b: removed message-ids absent (r1-branch)")
 
-# t7: each required message has icon, color, text and color is a key in the
-# colors map (the enum on messages.*.color was relaxed in BACKLOG-29 — the
-# colors map is the single source of truth for valid color names).
+# t7: each required message has icon, color, format, text; color is a key in
+# the colors map; format is "banner" or "compact" (BACKLOG-32).
+VALID_FORMATS = {"banner", "compact"}
 if messages is not None:
     msgs = messages.get("messages", {})
     valid_colors = set(messages.get("colors", {}).keys())
@@ -166,15 +166,32 @@ if messages is not None:
         if not isinstance(m, dict):
             fail(f"t7: messages.{mid} not an object")
             continue
-        for fld in ("icon", "color", "text"):
+        for fld in ("icon", "color", "format", "text"):
             if fld not in m or not isinstance(m[fld], str) or not m[fld]:
                 fail(f"t7: messages.{mid}.{fld} missing or empty")
                 break
         else:
             if m["color"] not in valid_colors:
                 fail(f"t7: messages.{mid}.color={m['color']!r} not in colors map {sorted(valid_colors)}")
+            elif m["format"] not in VALID_FORMATS:
+                fail(f"t7: messages.{mid}.format={m['format']!r} not in {VALID_FORMATS}")
             else:
-                ok(f"t7: messages.{mid} has icon/color/text; color={m['color']}")
+                ok(f"t7: messages.{mid} has icon/color/format/text; color={m['color']} format={m['format']}")
+
+# t7c: welcome has format="banner"; all other required messages have "compact"
+# (BACKLOG-32 — welcome is the sole decorated message).
+if messages is not None:
+    msgs = messages.get("messages", {})
+    wfmt = msgs.get("welcome", {}).get("format")
+    if wfmt == "banner":
+        ok("t7c: welcome has format='banner'")
+    else:
+        fail(f"t7c: welcome.format={wfmt!r} expected 'banner'")
+    compact_bad = [m for m in REQUIRED_IDS if m != "welcome" and msgs.get(m, {}).get("format") != "compact"]
+    if compact_bad:
+        fail(f"t7c: non-welcome messages missing format='compact': {sorted(compact_bad)}")
+    else:
+        ok("t7c: all non-welcome required messages have format='compact'")
 
 # t7b: surface-drift text MUST contain the {files} placeholder (Inv 28(d),
 # BACKLOG-21). The named wrapper surface_drift(files: str) substitutes this
