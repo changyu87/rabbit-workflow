@@ -115,3 +115,43 @@ def run_sync(tmproot, **env_overrides):
         [sys.executable, SYNC_CHECK], env=env, capture_output=True, text=True,
     )
     return result.stdout
+
+
+def write_feature_manifest(tmproot, feature_name, targets):
+    """Create an active feature with publish.json in tmproot for test fixtures.
+
+    Each target dict must have: name, source (relative to feature dir),
+    destination (relative to repo root). Optional: check_on_stop (default True).
+    Source files are NOT created — callers create them inside the returned
+    feature_dir path.
+    Returns the absolute path of the created feature dir.
+    """
+    feature_dir = os.path.join(tmproot, ".claude", "features", feature_name)
+    os.makedirs(feature_dir, exist_ok=True)
+    with open(os.path.join(feature_dir, "feature.json"), "w") as f:
+        json.dump({
+            "name": feature_name,
+            "version": "1.0.0",
+            "owner": "test",
+            "status": "active",
+            "deprecation_criterion": "n/a",
+        }, f)
+    manifest = {
+        "schema_version": "1.0.0",
+        "feature": feature_name,
+        "owner": "test",
+        "deprecation_criterion": "test fixture",
+        "targets": [
+            {
+                "name": t["name"],
+                "type": "copy-file",
+                "source": t["source"],
+                "destination": t["destination"],
+                "check_on_stop": t.get("check_on_stop", True),
+            }
+            for t in targets
+        ],
+    }
+    with open(os.path.join(feature_dir, "publish.json"), "w") as f:
+        json.dump(manifest, f, indent=2)
+    return feature_dir
