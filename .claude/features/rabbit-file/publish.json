@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0.0",
+  "feature": "rabbit-file",
+  "owner": "rabbit-workflow team",
+  "deprecation_criterion": "when Claude Code natively supports bug and backlog lifecycle management",
+  "targets": [
+    {"name": "skills/rabbit-file/SKILL.md", "type": "copy-file", "source": "skills/rabbit-file/SKILL.md", "destination": ".claude/skills/rabbit-file/SKILL.md", "check_on_stop": true}
+  ]
+}
