@@ -129,51 +129,62 @@ def render_claude_md_drift(root: Path, expected: str) -> Optional[dict]:
 
 
 def _collect_drifted_targets(root: Path) -> list:
-    """Inv 88 (BACKLOG-21). Compare each copy-file target's source and
-    destination by sha256; return the NAMES of the drifted targets.
+    """Inv 88 (CONTRACT-BACKLOG-21). Discover all active feature publish.json
+    manifests and compare each check_on_stop=true target's source and
+    destination by sha256. Returns names of drifted targets.
 
-    Only check_on_stop=true copy-file targets are considered. Missing source
-    files are skipped (build.py is the authority on bootstrap, not the
-    drift detector). A missing destination counts as drift.
+    Missing source files are skipped. A missing destination counts as drift.
+    Malformed publish.json files are soft-failed with a stderr warning.
     """
-    contract_path = root / ".claude/features/contract/build-contract.json"
-    try:
-        data = json.loads(contract_path.read_text())
-    except Exception as e:
-        log_exc(_TAG, "failed to read build-contract.json", e)
-        return []
     drifted = []
-    for target in data.get("targets", []):
-        if target.get("type") != "copy-file":
+    for feature_json_path in sorted(root.glob(".claude/features/*/feature.json")):
+        try:
+            meta = json.loads(feature_json_path.read_text())
+        except Exception as e:
+            log_exc(_TAG, f"failed to read {feature_json_path.name}", e)
             continue
-        if not target.get("check_on_stop"):
+        if meta.get("status") == "retired":
             continue
-        src = root / target["source"]
-        dst = root / target["destination"]
-        if not src.is_file():
+        publish = feature_json_path.parent / "publish.json"
+        if not publish.exists():
             continue
         try:
-            src_sha = hashlib.sha256(src.read_bytes()).hexdigest()
+            data = json.loads(publish.read_text())
         except Exception as e:
-            log_exc(_TAG, f"failed to hash source for {target.get('name')}", e)
+            log_exc(_TAG, f"failed to read publish.json for {feature_json_path.parent.name}", e)
             continue
-        if dst.is_file():
-            try:
-                dst_sha = hashlib.sha256(dst.read_bytes()).hexdigest()
-            except Exception as e:
-                log_exc(_TAG, f"failed to hash destination for {target.get('name')}", e)
+        feature_dir = feature_json_path.parent
+        for target in data.get("targets", []):
+            if target.get("type") != "copy-file":
                 continue
-            if src_sha != dst_sha:
+            if not target.get("check_on_stop"):
+                continue
+            src = feature_dir / target["source"]
+            dst = root / target["destination"]
+            if not src.is_file():
+                continue
+            try:
+                src_sha = hashlib.sha256(src.read_bytes()).hexdigest()
+            except Exception as e:
+                log_exc(_TAG, f"failed to hash source for {target.get('name')}", e)
+                continue
+            if dst.is_file():
+                try:
+                    dst_sha = hashlib.sha256(dst.read_bytes()).hexdigest()
+                except Exception as e:
+                    log_exc(_TAG, f"failed to hash destination for {target.get('name')}", e)
+                    continue
+                if src_sha != dst_sha:
+                    drifted.append(target["name"])
+            else:
                 drifted.append(target["name"])
-        else:
-            drifted.append(target["name"])
     return drifted
 
 
 def render_surface_drift(root: Path) -> Optional[dict]:
     """Inv 84, 86, 88 (BACKLOG-21). Render surface-drift condition.
 
-    Iterates build-contract.json copy-file targets, collects the names of
+    Iterates per-feature publish.json copy-file targets, collects the names of
     those whose destination sha256 diverges from the source, then invokes
     build.py to rebuild. The user-visible message names exactly which
     targets were rebuilt.
