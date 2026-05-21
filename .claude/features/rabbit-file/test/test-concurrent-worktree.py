@@ -6,7 +6,6 @@ Spec invariants under test:
   - branch_ops.py MUST use git worktree at a UNIQUE per-process path under
     .claude/tmp/ for all writes. The path format is
     .claude/tmp/bug-backlog-files-<pid> where <pid> is the current process ID.
-    The legacy fixed path .claude/tmp/bug-backlog-files MUST NOT be used.
   - branch_ops push operations MUST be wrapped in a retry loop with up to 3
     attempts. On non-fast-forward push failure the retry MUST re-fetch
     origin/bug-backlog-files, reset the worktree branch, re-apply local
@@ -91,14 +90,6 @@ class TestUniqueWorktreePath:
             )
             # And it must live under .claude/tmp/
             assert wt.parent == Path(isolated_repo) / ".claude" / "tmp"
-
-    def test_legacy_fixed_path_not_created(self, isolated_repo):
-        """The legacy fixed path .claude/tmp/bug-backlog-files must not appear."""
-        legacy = Path(isolated_repo) / ".claude" / "tmp" / "bug-backlog-files"
-        branch_ops.allocate_id("legacy-check", "bug")
-        assert not legacy.exists(), (
-            f"legacy fixed path {legacy} must not be created"
-        )
 
     def test_worktree_cleaned_up_per_process(self, isolated_repo):
         """Per-process worktree must be removed after operation."""

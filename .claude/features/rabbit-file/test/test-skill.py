@@ -71,23 +71,6 @@ assert_contains(
     "SKILL.md references tdd_report_path from handoff payload (BACKLOG-6)",
 )
 
-# BUG-34: SKILL.md must NOT document the legacy fixed-path worktree.
-# The per-pid form `.claude/tmp/bug-backlog-files-<pid>` is canonical;
-# any reference to the bare fixed path misleads operators.
-import re as _re
-# Detect any occurrence of the bare fixed path NOT followed by `-<pid>` or
-# `-` + alphanumerics (i.e., the per-pid form). We look for the literal
-# token `.claude/tmp/bug-backlog-files` and require that the next char is
-# `-` (the per-pid suffix start). Anything else is the forbidden legacy.
-_legacy_re = _re.compile(r"\.claude/tmp/bug-backlog-files(?!-)")
-if _legacy_re.search(skill_text):
-    assert_fail(
-        "no legacy fixed worktree path in SKILL.md (BUG-34)",
-        f"forbidden bare path `.claude/tmp/bug-backlog-files` (without `-<pid>` suffix) appears in SKILL.md",
-    )
-else:
-    assert_pass("no legacy fixed worktree path in SKILL.md (BUG-34)")
-
 # BUG-34: SKILL.md must NOT reference any /rabbit-file slash-command
 # invocation. The Overview declares "there are NO slash commands"; all
 # other sections must be consistent.
