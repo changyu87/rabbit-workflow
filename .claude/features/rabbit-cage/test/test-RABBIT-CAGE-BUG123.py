@@ -86,7 +86,7 @@ print("test-RABBIT-CAGE-BUG123.py")
 print()
 
 # BUG-1
-print("=== BUG-1: SCOPE GUARD OFF alert uses literal emoji and box-drawing chars ===")
+print("=== BUG-1: SCOPE GUARD OFF alert uses literal emoji (compact format, no bars — BACKLOG-32) ===")
 
 tmproot_bug1 = build_tmproot_clean()
 try:
@@ -102,10 +102,10 @@ try:
     else:
         fail_t(f"BUG-1a: SCOPE GUARD OFF message does NOT contain literal 🔓 — got: {bug1_msg!r}")
 
-    if "━" in bug1_msg:
-        ok("BUG-1b: SCOPE GUARD OFF message contains literal ━ (U+2501)")
+    if "━" not in bug1_msg:
+        ok("BUG-1b: SCOPE GUARD OFF message has NO ━ bars (compact format per BACKLOG-32)")
     else:
-        fail_t(f"BUG-1b: SCOPE GUARD OFF message does NOT contain literal ━ — got: {bug1_msg!r}")
+        fail_t(f"BUG-1b: SCOPE GUARD OFF message has ━ bars (expected compact format) — got: {bug1_msg!r}")
 
     if "\xf0" not in bug1_msg and "\xe2" not in bug1_msg:
         ok("BUG-1c: SCOPE GUARD OFF message does NOT contain garbled byte-escape artifacts")

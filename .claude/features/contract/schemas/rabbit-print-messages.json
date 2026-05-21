@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "owner": "rabbit-workflow team",
   "deprecation_criterion": "when the [rabbit] print convention is replaced by a structured logging facility",
   "brand": "[🐇 rabbit 🐇]",
@@ -22,61 +22,73 @@
     "welcome": {
       "icon": "✅",
       "color": "green",
+      "format": "banner",
       "text": "Welcome — governing policies loaded"
     },
     "policy-drift": {
       "icon": "⚠️",
       "color": "red",
+      "format": "compact",
       "text": "Policy drift detected — CLAUDE.md regenerated from source files"
     },
     "surface-drift": {
       "icon": "🔄",
       "color": "red",
+      "format": "compact",
       "text": "Surface drift detected — rebuilt: {files}"
     },
     "scope-guard-off": {
       "icon": "🔓",
       "color": "red",
+      "format": "compact",
       "text": "SCOPE GUARD OFF (session override active)"
     },
     "scope-guard-bypassed": {
       "icon": "🔓",
       "color": "red",
+      "format": "compact",
       "text": "SCOPE GUARD BYPASSED (one-time override consumed — guard re-armed)"
     },
     "human-approval-bypass": {
       "icon": "🔑",
       "color": "red",
+      "format": "compact",
       "text": "HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches"
     },
     "bypass-permissions-active": {
       "icon": "🚨",
       "color": "red",
+      "format": "compact",
       "text": "BYPASS-PERMISSIONS MODE ACTIVE — Claude Code native per-write prompts skipped; scope-guard hook is the sole write-authorization gate"
     },
     "skills-updated": {
       "icon": "✨",
       "color": "green",
+      "format": "compact",
       "text": "Skills updated: {names} — will reload automatically on next invocation"
     },
     "policy-refreshed": {
       "icon": "🔄",
       "color": "green",
+      "format": "compact",
       "text": "Policy refreshed"
     },
     "tdd-transition": {
       "icon": "🔧",
       "color": "green",
+      "format": "compact",
       "text": "{from_state} -> {to_state}"
     },
     "tdd-forced": {
       "icon": "🔧",
       "color": "red",
+      "format": "compact",
       "text": "FORCED: {from_state} -> {to_state}"
     },
     "dispatch-bypass-note": {
       "icon": "📢",
       "color": "yellow",
+      "format": "compact",
       "text": "NOTE: human-approval bypass marker is active (.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be skipped for this dispatch. Revoke via `/rabbit-config human-approval true`."
     }
   }

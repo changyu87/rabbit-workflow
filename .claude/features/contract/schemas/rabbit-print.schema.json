@@ -55,11 +55,12 @@
       "type": "object",
       "additionalProperties": {
         "type": "object",
-        "required": ["icon", "color", "text"],
+        "required": ["icon", "color", "format", "text"],
         "properties": {
-          "icon":  {"type": "string", "minLength": 1},
-          "color": {"type": "string", "minLength": 1},
-          "text":  {"type": "string", "minLength": 1}
+          "icon":   {"type": "string", "minLength": 1},
+          "color":  {"type": "string", "minLength": 1},
+          "format": {"type": "string", "enum": ["banner", "compact"]},
+          "text":   {"type": "string", "minLength": 1}
         }
       }
     }
