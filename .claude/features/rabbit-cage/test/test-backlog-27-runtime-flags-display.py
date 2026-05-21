@@ -260,12 +260,12 @@ try:
                 "bypass-permissions revoke command (/rabbit-config "
                 f"bypass-permissions false) not named in banner: {msg!r}"
             )
-        if "/rabbit-config human-approval true" in msg:
-            ok("startup line names the human-approval revoke command")
+        if "/rabbit-config bypass-human-approval false" in msg:
+            ok("startup line names the bypass-human-approval revoke command")
         else:
             fail_t(
-                "human-approval revoke command (/rabbit-config human-approval true) "
-                f"not named in banner: {msg!r}"
+                "bypass-human-approval revoke command (/rabbit-config "
+                f"bypass-human-approval false) not named in banner: {msg!r}"
             )
 
     # t8: only one flag active → only that line appears (no empty 'all clear')

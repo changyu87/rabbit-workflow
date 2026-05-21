@@ -101,7 +101,7 @@ else:
     desc = desc_match.group(1) if desc_match else ""
     seven = (
         "help", "prompt-threshold", "allowed-tools", "bash-allow",
-        "permissions", "human-approval", "bypass-permissions",
+        "permissions", "bypass-human-approval", "bypass-permissions",
     )
     missing = [s for s in seven if s not in desc]
     if not missing:
