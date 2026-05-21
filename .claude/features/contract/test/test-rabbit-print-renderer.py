@@ -192,6 +192,31 @@ else:
 if cap_o.getvalue() or cap_e.getvalue():
     fail("t10b: rabbit_subline red emitted side effects")
 
+# t11: rabbit_subline with icon — icon appears between brand and text
+# (Inv 4(c) and Inv 28(b): icon parameter on rabbit_subline, CONTRACT-BACKLOG-33).
+cap_o, cap_e = io.StringIO(), io.StringIO()
+with contextlib.redirect_stdout(cap_o), contextlib.redirect_stderr(cap_e):
+    got = mod.rabbit_subline("revoke now", color="red", icon="🔑")
+exp = f"{RED_A}{BRAND} 🔑 revoke now{RED_R}"
+if got == exp:
+    ok("t11: rabbit_subline with icon='🔑' returns exact icon-bearing string")
+else:
+    fail(f"t11: rabbit_subline icon mismatch\n  exp: {exp!r}\n  got: {got!r}")
+if cap_o.getvalue() or cap_e.getvalue():
+    fail("t11b: rabbit_subline with icon emitted side effects")
+
+# t12: rabbit_subline icon=None (explicit) matches default behavior — backwards-compat.
+cap_o, cap_e = io.StringIO(), io.StringIO()
+with contextlib.redirect_stdout(cap_o), contextlib.redirect_stderr(cap_e):
+    got = mod.rabbit_subline("plain text", color="green", icon=None)
+exp = f"{GREEN_A}{BRAND} plain text{GREEN_R}"
+if got == exp:
+    ok("t12: rabbit_subline icon=None is backwards-compatible with prior signature")
+else:
+    fail(f"t12: rabbit_subline icon=None mismatch\n  exp: {exp!r}\n  got: {got!r}")
+if cap_o.getvalue() or cap_e.getvalue():
+    fail("t12b: rabbit_subline icon=None emitted side effects")
+
 if FAIL != 0:
     print("test-rabbit-print-renderer: FAIL", file=sys.stderr)
     sys.exit(1)
