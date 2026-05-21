@@ -1,9 +1,9 @@
 ---
 name: rabbit-feature-new
 description: Scaffold a new rabbit feature directory with the standard skeleton (feature.json, docs/spec/spec.md, docs/spec/contract.md, test/run.py). Use when the user asks to create, scaffold, or initialize a new rabbit feature — phrases like "create a new feature", "scaffold a feature called X", "/rabbit-feature-new", "set up a new rabbit feature", "bootstrap a feature dir". Invoke as Skill("rabbit-feature-new", args: "<feature-name>").
-version: 1.0.0
+version: 1.1.0
 owner: rabbit-workflow team
-deprecation_criterion: When rabbit-feature directly owns the feature-scaffolding script (currently delegated to rabbit-cage's new-feature.py; RABBIT-CAGE-BACKLOG-24 will move that script under this feature).
+deprecation_criterion: When this skill's scaffolding step is absorbed into a native `rabbit-feature` CLI subcommand or into the rabbit CLI itself.
 ---
 
 # rabbit-feature-new — Feature Scaffolding Skill
@@ -24,11 +24,11 @@ check. Follow these four steps in order; do not skip the validation step.
 
 ### Step 1 — Scaffold the directory
 
-Shell out to the rabbit-cage scaffolder, pointing it at the rabbit features
+Shell out to the rabbit-feature scaffolder, pointing it at the rabbit features
 root and passing the requested feature name:
 
 ```bash
-python3 .claude/features/rabbit-cage/scripts/new-feature.py \
+python3 .claude/features/rabbit-feature/scripts/new-feature.py \
   .claude/features <feature-name>
 ```
 
@@ -36,13 +36,6 @@ The script creates `.claude/features/<feature-name>/` with the standard
 skeleton: `feature.json`, `docs/spec/spec.md`, `docs/spec/contract.md`,
 `test/run.py`. It exits non-zero on invalid names or if the target already
 exists — surface that error to the caller and stop.
-
-> Why we shell out: feature scaffolding logically belongs in `rabbit-feature`
-> (it is a feature-lifecycle operation), but the scaffolding code currently
-> lives in `rabbit-cage` as `new-feature.py`. This cross-feature dependency
-> is **temporary** — `RABBIT-CAGE-BACKLOG-24` (separate cycle) will move
-> `new-feature.py` into this feature, at which point this skill can call the
-> script directly without crossing a feature boundary.
 
 ### Step 2 — Validate the scaffold
 
@@ -77,9 +70,8 @@ request; they just need confirmation and a path to navigate to.
 
 ## Notes
 
-- The scaffolder is currently `rabbit-cage/scripts/new-feature.py`; the
-  planned move into `rabbit-feature` is tracked by this skill's
-  `deprecation_criterion` (see frontmatter).
+- The scaffolder lives at `.claude/features/rabbit-feature/scripts/new-feature.py`
+  (moved from rabbit-cage in RABBIT-CAGE-BACKLOG-26).
 - The post-scaffold check uses `contract.lib.checks.validate_feature` (via
   the `validate-feature.py` CLI shim) so this skill stays in sync with
   whatever conformance rules `contract` owns — no rules are duplicated here.

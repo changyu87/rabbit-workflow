@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """E2E test for RABBIT-FEATURE-BUG-4 (cross-feature dependency declarations).
 
-The rabbit-feature-new skill shells out to rabbit-cage's new-feature.py
-(Inv 33 + spec narrative), and both the -new and -audit skills depend on
-contract.lib.checks (Inv 33/34). Per the Bounded Scope philosophy, these
-cross-feature dependencies must be declared in contract.md so consumers can
-see the boundary contract without reading the SKILL.md prose.
+Both the -new and -audit skills depend on contract.lib.checks (Inv 33/34).
+Per the Bounded Scope philosophy, this cross-feature dependency must be
+declared in contract.md so consumers can see the boundary contract without
+reading the SKILL.md prose.
 
 Locks:
-- contract.md `invokes.scripts` includes
-  `.claude/features/rabbit-cage/scripts/new-feature.py`.
 - contract.md `reads.files` includes
   `.claude/features/contract/lib/checks.py`.
+- contract.md does NOT list
+  `.claude/features/rabbit-cage/scripts/new-feature.py` under
+  `invokes.scripts` (the scaffolder lives in this feature now —
+  RABBIT-CAGE-BACKLOG-26; no cross-feature boundary remains for it).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team
-Deprecation criterion: When new-feature.py is moved into this feature (the
-invokes entry disappears with the cross-feature boundary) AND when the
-contract library entry path stops being load-bearing for this feature.
+Deprecation criterion: when the contract library entry path stops being
+load-bearing for this feature.
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[4]
 CONTRACT_MD = REPO_ROOT / ".claude/features/rabbit-feature/docs/spec/contract.md"
 
-NEW_FEATURE_SCRIPT = ".claude/features/rabbit-cage/scripts/new-feature.py"
+OLD_NEW_FEATURE_SCRIPT = ".claude/features/rabbit-cage/scripts/new-feature.py"
 CHECKS_LIB_PATH = ".claude/features/contract/lib/checks.py"
 
 
@@ -40,12 +40,13 @@ def _contract_block() -> dict:
     return json.loads(m.group(1))
 
 
-def test_invokes_scripts_lists_new_feature_script() -> None:
+def test_invokes_scripts_no_longer_lists_old_rabbit_cage_new_feature_script() -> None:
     data = _contract_block()
     paths = [s.get("path", "") for s in data.get("invokes", {}).get("scripts", [])]
-    assert NEW_FEATURE_SCRIPT in paths, (
-        f"contract.md invokes.scripts must list {NEW_FEATURE_SCRIPT!r} "
-        f"(rabbit-feature-new shells out to it per Inv 33); got {paths}"
+    assert OLD_NEW_FEATURE_SCRIPT not in paths, (
+        f"contract.md invokes.scripts must NOT list {OLD_NEW_FEATURE_SCRIPT!r} "
+        f"after RABBIT-CAGE-BACKLOG-26 — the scaffolder moved into this feature; "
+        f"got {paths}"
     )
 
 
@@ -61,7 +62,7 @@ def test_reads_files_lists_checks_lib() -> None:
 
 def main() -> int:
     tests = [
-        test_invokes_scripts_lists_new_feature_script,
+        test_invokes_scripts_no_longer_lists_old_rabbit_cage_new_feature_script,
         test_reads_files_lists_checks_lib,
     ]
     failures: list[str] = []

@@ -65,7 +65,7 @@ user-mode dichotomy in the runtime.
 
 ```bash
 # Scaffold a new feature anywhere (Python — no .sh scripts in rabbit)
-python3 .claude/features/rabbit-cage/scripts/new-feature.py \
+python3 .claude/features/rabbit-feature/scripts/new-feature.py \
     projA/features auth-redirect --owner alice
 
 # Audit every feature in a tree (moved to rabbit-feature-audit skill in

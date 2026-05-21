@@ -389,30 +389,10 @@ else:
     fail_t(30, "feature.json missing maintenance note for 'updated' (BUG-69)")
 
 # ---------------------------------------------------------------------------
-# BUG-71: scaffolded contract.md carries template_version 2.0.0 frontmatter
-# and JSON provides/reads/invokes/manages/never block.
+# BUG-71 retired (RABBIT-CAGE-BACKLOG-26): new-feature.py moved into the
+# rabbit-feature feature. The scaffolded-contract.md structure check is
+# covered at .claude/features/rabbit-feature/test/test-new-feature.py.
 # ---------------------------------------------------------------------------
-tmpd5 = tempfile.mkdtemp()
-try:
-    res = subprocess.run(
-        [sys.executable, os.path.join(SCRIPTS, "new-feature.py"),
-         tmpd5, "scaffold-test"],
-        capture_output=True, text=True,
-    )
-    contract_path = os.path.join(tmpd5, "scaffold-test/docs/spec/contract.md")
-    if os.path.isfile(contract_path):
-        c = read(contract_path)
-        ok31 = ("template_version: 2.0.0" in c and '"provides"' in c
-                and '"reads"' in c and '"invokes"' in c)
-        if ok31:
-            ok(31, "new-feature.py scaffolds template_version 2.0.0 contract.md (BUG-71)")
-        else:
-            fail_t(31, "new-feature.py contract.md missing template_version 2.0.0 structure (BUG-71)")
-    else:
-        fail_t(31, f"new-feature.py did not create contract.md ({res.stderr!r})")
-finally:
-    import shutil
-    shutil.rmtree(tmpd5, ignore_errors=True)
 
 # ---------------------------------------------------------------------------
 # BUG-72: scope-guard heredoc regex handles indented closing delimiter.

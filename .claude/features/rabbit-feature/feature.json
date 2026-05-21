@@ -1,7 +1,7 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-feature",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Owns the rabbit-feature-touch orchestration skill plus the rabbit-feature-scope skill (with resolve-scope.py and format-feature-context.py scripts), the rabbit-feature-spec skill for spec authoring, the rabbit-feature-new scaffolding skill (BACKLOG-2), and the rabbit-feature-audit conformance skill (BACKLOG-3). Dispatcher-side surface; executor-side (dispatch-tdd-subagent.py and tdd-step.py) lives in tdd-subagent and tdd-state-machine respectively.",
@@ -18,7 +18,8 @@
     ],
     "scripts": [
       "scripts/resolve-scope.py",
-      "scripts/format-feature-context.py"
+      "scripts/format-feature-context.py",
+      "scripts/new-feature.py"
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
