@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-validate-feature-runner-python.py — BUG-2 / Inv 18
+"""test-validate-feature-runner-python.py — BUG-2 / Inv 14
 
 End-to-end test that validate-feature.py checks for test/run.py (Python runner),
 not test/run.sh (legacy shell runner).

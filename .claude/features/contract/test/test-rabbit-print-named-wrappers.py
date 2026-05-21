@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """test-rabbit-print-named-wrappers.py — e2e tests for the named wrapper API.
 
-Verifies Inv 35(d): rabbit_print.py exposes 10 named wrappers, one per
+Verifies Inv 28(d): rabbit_print.py exposes 10 named wrappers, one per
 message-id, each thinly delegating to rabbit_print(<id>, **kwargs). Each
 wrapper signature exposes exactly the kwargs its message-id requires.
 tdd_transition and tdd_forced upcase their state-name placeholders.
@@ -58,19 +58,19 @@ for wrapper_name, mid in ZERO_ARG:
     else:
         fail(f"{wrapper_name}() mismatch\n  exp: {exp!r}\n  got: {got!r}")
 
-# r1_branch removed (Inv 35(d)): wrapper MUST NOT exist and MUST NOT appear
+# r1_branch removed (Inv 28(d)): wrapper MUST NOT exist and MUST NOT appear
 # in __all__.
 if getattr(mod, "r1_branch", None) is None:
     ok("r1_branch wrapper absent from module")
 else:
-    fail("r1_branch wrapper still present (should be removed per Inv 35(d))")
+    fail("r1_branch wrapper still present (should be removed per Inv 28(d))")
 
 if "r1_branch" in getattr(mod, "__all__", []):
-    fail("r1_branch still listed in __all__ (should be removed per Inv 35(d))")
+    fail("r1_branch still listed in __all__ (should be removed per Inv 28(d))")
 else:
     ok("r1_branch absent from __all__")
 
-# surface_drift(files) — Inv 35(d), BACKLOG-21: required files kwarg,
+# surface_drift(files) — Inv 28(d), BACKLOG-21: required files kwarg,
 # rendered text ends with the files list followed by bar + icon + reset.
 fn = getattr(mod, "surface_drift", None)
 if callable(fn):
@@ -151,7 +151,7 @@ if callable(fn):
 else:
     fail("tdd_forced not callable")
 
-# dispatch_bypass_note canonical-text check (Inv 35, BACKLOG-29): the wrapper
+# dispatch_bypass_note canonical-text check (Inv 28, BACKLOG-29): the wrapper
 # output MUST embed the canonical preamble body so the dispatch prompt remains
 # grep-stable.
 EXPECTED_DISPATCH_TEXT = (

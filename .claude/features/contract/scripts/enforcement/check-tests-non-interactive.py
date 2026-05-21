@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """check-tests-non-interactive.py — thin CLI shim around
-contract.lib.checks.check_tests_non_interactive (spec Inv 17, Inv 44).
+contract.lib.checks.check_tests_non_interactive (spec Inv 13, Inv 37).
 
 Usage: check-tests-non-interactive.py <feature-dir>
 Exit:  0 ok (no test/ dir, or test/ clean); 1 violations found; 2 invocation error.

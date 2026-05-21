@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-changelog-exists.py — Inv 46 / CONTRACT-BACKLOG-30.
+"""test-changelog-exists.py — Inv 39 / CONTRACT-BACKLOG-30.
 
 End-to-end test that .claude/features/contract/CHANGELOG.md exists and is
 structurally well-formed:

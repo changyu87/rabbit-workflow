@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-check-numbered-lists.py — Inv 40.
+"""test-check-numbered-lists.py — Inv 33.
 
 check-numbered-lists.py MUST exist, be executable, and reject Markdown files
 whose ordered-list items or headings use decimal sub-numbers (1.1, 1.2.3) or

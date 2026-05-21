@@ -8,7 +8,7 @@ Usage:
 
 Scope: scans ONLY `.claude/features/` for feature directories. Directories
 elsewhere in the repo whose basename happens to be `features` (project-side,
-vendor dirs, etc.) are NOT scanned per Inv 28.
+vendor dirs, etc.) are NOT scanned per Inv 23.
 
 Version: 1.1.0
 Owner: rabbit-workflow team (contract)
@@ -31,7 +31,7 @@ def iter_feature_jsons(repo):
     """Yield all feature.json paths under `.claude/features/` only.
 
     Project-side `<root>/features/` trees are explicitly out of scope per
-    Inv 28 — scanning them would let any directory named `features`
+    Inv 23 — scanning them would let any directory named `features`
     masquerade as a feature root.
     """
     for fj in sorted(glob.glob(os.path.join(repo, '.claude', 'features', '*', 'feature.json'))):

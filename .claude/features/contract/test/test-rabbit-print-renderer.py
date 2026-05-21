@@ -4,8 +4,8 @@
 Imports the rabbit_print module from
 .claude/features/contract/scripts/rabbit_print.py and exercises both public
 functions (rabbit_print, rabbit_subline) against every required message-id
-declared in Inv 34. Asserts exact rendered strings, KeyError semantics, and
-the no-side-effects requirement of Inv 35.
+declared in Inv 27. Asserts exact rendered strings, KeyError semantics, and
+the no-side-effects requirement of Inv 28.
 """
 
 import os
@@ -51,7 +51,7 @@ except Exception as e:
     print("test-rabbit-print-renderer: FAIL", file=sys.stderr)
     sys.exit(1)
 
-# t3: __all__ is exactly the 15 names declared in Inv 35 (r1_branch removed
+# t3: __all__ is exactly the 15 names declared in Inv 28 (r1_branch removed
 # alongside rabbit-cage Inv 61; bypass_permissions_active added alongside
 # rabbit-cage Inv 88 banner upgrade; dispatch_bypass_note added in BACKLOG-29
 # alongside the tdd-subagent BUG-57 fix).
@@ -103,7 +103,7 @@ def expected_main(mid, **kwargs):
 
 
 # t5: rabbit_print produces the exact expected string for a parameterized id.
-# (r1-branch was the previous fixture here; it is removed per Inv 34/35(d), so
+# (r1-branch was the previous fixture here; it is removed per Inv 27/28(d), so
 # surface-drift — which also takes a placeholder kwarg — is used instead.)
 captured_out = io.StringIO()
 captured_err = io.StringIO()

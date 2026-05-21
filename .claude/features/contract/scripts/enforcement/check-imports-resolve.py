@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """check-imports-resolve.py — thin CLI shim around
-contract.lib.checks.check_imports_resolve (spec Inv 32, Inv 44).
+contract.lib.checks.check_imports_resolve (spec Inv 25, Inv 37).
 
 Usage: check-imports-resolve.py <feature-dir>
 Exit:  0 all paths resolve (or no docs/); 1 missing paths; 2 invocation error.

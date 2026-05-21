@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-template-schema-producer-live-refs.py — Inv 23.
+"""test-template-schema-producer-live-refs.py — Inv 19.
 
 check-template-schema-producer-consistency.py MUST not reference deleted
 producers (file-bug.sh, relink.sh, etc.). End-to-end: invoke it on the real

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-run-invokes-all-active-tests.py — BUG-26 / Inv 21
+"""test-run-invokes-all-active-tests.py — BUG-26 / Inv 17
 
 End-to-end test that test/run.py invokes every active test-*.py file in the
 test directory. Active = filename matches test-*.py and does not begin with

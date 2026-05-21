@@ -4,7 +4,7 @@ Holds the logic that used to live in each scripts/enforcement/check-*.py
 and scripts/validate-feature.py. Each function returns a CheckResult; no
 function calls sys.exit, prints, or raises on contract-violation conditions.
 
-Per spec Inv 44.
+Per spec Inv 37.
 
 Version: 1.0.0
 Owner: rabbit-workflow team (contract)
@@ -64,7 +64,7 @@ def _strip_comments(code: str) -> str:
 
 
 def check_tests_non_interactive(feature_dir: str) -> CheckResult:
-    """Inv 17: <feature-dir>/test/*.py must not use interactive constructs."""
+    """Inv 13: <feature-dir>/test/*.py must not use interactive constructs."""
     test_dir = os.path.join(feature_dir, "test")
     if not os.path.isdir(test_dir):
         return CheckResult(True, [f"OK: no test/ in {feature_dir} (vacuous)"])
@@ -93,7 +93,7 @@ _SENTINEL = "RABBIT-POLICY-BLOCK-v1"
 
 
 def check_sentinel(path: str) -> CheckResult:
-    """Inv 24: dispatch scripts must contain the policy-block sentinel."""
+    """Inv 20: dispatch scripts must contain the policy-block sentinel."""
     if not os.path.exists(path):
         return CheckResult(False, [f"ERROR: not a file or directory: {path}"])
     missing: List[str] = []
@@ -121,7 +121,7 @@ _BANNED_PREFIXES = ["rbt-"]
 
 
 def check_naming(root: str) -> CheckResult:
-    """Inv 13 + Inv 19: artifact names start with 'rabbit-'; 'rbt-' is banned."""
+    """Inv 10 + Inv 15: artifact names start with 'rabbit-'; 'rbt-' is banned."""
     if not os.path.isdir(root):
         return CheckResult(False, [f"ERROR: not a directory: {root}"])
     claude_dir = os.path.join(root, ".claude")
@@ -189,7 +189,7 @@ _CLAUDE_PATH_RE = re.compile(
 
 
 def check_imports_resolve(feature_dir: str) -> CheckResult:
-    """Inv 32: every @<path> import and .claude/<surface>/<name> path in docs/*.md resolves."""
+    """Inv 25: every @<path> import and .claude/<surface>/<name> path in docs/*.md resolves."""
     docs_dir = os.path.join(feature_dir, "docs")
     if not os.path.isdir(docs_dir):
         return CheckResult(True, [f"OK: no docs/ in {feature_dir} (vacuous)"])
@@ -228,7 +228,7 @@ def check_imports_resolve(feature_dir: str) -> CheckResult:
 # ---------- check_symlinks_resolve -------------------------------------------
 
 def check_symlinks_resolve(root: str) -> CheckResult:
-    """Inv 30: no dangling symlinks under <root>/.claude/."""
+    """Inv 24: no dangling symlinks under <root>/.claude/."""
     claude_dir = os.path.join(root, ".claude")
     if not os.path.isdir(claude_dir):
         return CheckResult(True, [f"OK: no .claude/ at {root} (vacuous)"])
@@ -249,7 +249,7 @@ def check_symlinks_resolve(root: str) -> CheckResult:
 
 # ---------- check_template_producer_consistency ------------------------------
 
-# Inv 23: producer-field set MUST be derived from a live source, not hardcoded.
+# Inv 19: producer-field set MUST be derived from a live source, not hardcoded.
 # Live source: bug.json.schema.json properties (the contract schema producers
 # write against). Loaded lazily at module-load time from disk; if the schema
 # is unreadable the set falls back to an empty set and the check fails loudly
@@ -274,7 +274,7 @@ _TEMPLATE_METADATA = {"template_version"}
 
 
 def check_template_producer_consistency(template_path: str) -> CheckResult:
-    """Inv 23: template top-level keys are a subset of the live producer field set."""
+    """Inv 19: template top-level keys are a subset of the live producer field set."""
     try:
         with open(template_path) as f:
             data = json.load(f)
@@ -351,7 +351,7 @@ def _numbered_collect(target: str):
 
 
 def check_numbered_lists(targets: List[str]) -> CheckResult:
-    """Inv 40: reject decimal/letter-suffix numbering in Markdown ordered lists & headings."""
+    """Inv 33: reject decimal/letter-suffix numbering in Markdown ordered lists & headings."""
     messages: List[str] = []
     for target in targets:
         if not os.path.exists(target):
@@ -370,16 +370,17 @@ def check_numbered_lists(targets: List[str]) -> CheckResult:
 # Features listed here are skipped by check_invariant_monotonic_order while
 # their spec.md still has out-of-order invariant numbering. Remove an entry
 # once the corresponding renumber cycle lands:
-#   - "contract"      pending CONTRACT-BACKLOG-31 (this feature's own renumber)
 #   - "rabbit-cage"   pending RABBIT-CAGE-BACKLOG-30 — cycle 3 (BACKLOG-29) was
 #                     scope-limited to relocating Inv 86/87/88/89 only; the
 #                     spec has 7 Invariants sections and several still have
 #                     non-monotonic numbering. Full rabbit-cage renumber +
 #                     cross-reference audit deferred to its own focused cycle.
+# contract was pruned in CONTRACT-BACKLOG-31 (single section, monotonic 1..39
+# after gap-closing renumber).
 # rabbit-feature was pruned when PR #162 merged (single Invariants section,
-# monotonic after Inv 35 relocation). When both deferred renumbers land, this
-# list reduces to [] and the check covers every feature on disk.
-_MONOTONIC_KNOWN_ISSUES = ["contract", "rabbit-cage"]
+# monotonic after Inv 28 relocation). When the rabbit-cage renumber lands,
+# this list reduces to [] and the check covers every feature on disk.
+_MONOTONIC_KNOWN_ISSUES = ["rabbit-cage"]
 
 _INVARIANTS_HEADING_RE = re.compile(r"^(##|###)\s+Invariants\b")
 _ANY_HEADING_RE = re.compile(r"^(#{1,6})\s+")
@@ -387,7 +388,7 @@ _NUMBERED_ITEM_RE = re.compile(r"^(\d+)\.\s")
 
 
 def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
-    """Inv 45: each '## Invariants' / '### Invariants' section's top-level
+    """Inv 38: each '## Invariants' / '### Invariants' section's top-level
     numbered items MUST appear in strictly increasing order.
 
     feature_dirs - iterable of feature directory paths. Features named in

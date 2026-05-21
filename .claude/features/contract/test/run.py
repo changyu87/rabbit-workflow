@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """run.py — run all contract feature tests in sequence.
 
-Non-interactive. Exits non-zero on first failure. Per Inv 21, this runner
+Non-interactive. Exits non-zero on first failure. Per Inv 17, this runner
 MUST invoke every active test-*.py file in this directory.
 """
 
@@ -64,6 +64,5 @@ run_test("test-lib-checks.py")
 run_test("test-rabbit-feature-skills-deployment.py")
 run_test("test-check-invariant-monotonic-order.py")
 run_test("test-changelog-exists.py")
-run_test("test-spec-tombstone-gaps-match-changelog.py")
 
 print("ALL TESTS PASSED")

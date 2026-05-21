@@ -3,9 +3,9 @@
 
 Data-driven consolidation of three legacy single-entry tests:
 
-  - test-build-contract-tdd-state-machine-sources.py (Inv 42 (b))
+  - test-build-contract-tdd-state-machine-sources.py (Inv 35 (b))
   - test-build-contract-absorbed-skill-sources.py
-  - test-rabbit-feature-spec-deployment.py            (Inv 42 (a))
+  - test-rabbit-feature-spec-deployment.py            (Inv 35 (a))
 
 Each legacy test asserted name/source/destination for one (or three)
 build-contract.json copy-file entries. This test loops over a fixture
@@ -16,9 +16,9 @@ Also enforces the negative assertions originally in
 test-rabbit-feature-spec-deployment.py:
 
   - the legacy entry name 'skills/rabbit-spec/SKILL.md' is absent
-    from build-contract.json (Inv 42 (a))
+    from build-contract.json (Inv 35 (a))
   - the orphan deployed dir '.claude/skills/rabbit-spec/' does not
-    exist on disk (Inv 42 (a))
+    exist on disk (Inv 35 (a))
 """
 
 import os

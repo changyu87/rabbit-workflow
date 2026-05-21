@@ -12,14 +12,14 @@ stubs here.
   BUG-27    test-files-exist.py checks skill-template.md, command-template.md, handoff-template.md
   BACKLOG-3 test-templates-have-version.py tightened to reject _template_version
   BACKLOG-4 every feature.json in the repo validates against feature.json.schema.json
-  BACKLOG-5 spec Inv 13 (rbt- banned) asserted by behavioural test (check-naming.py rejects rbt-)
+  BACKLOG-5 spec Inv 10 (rbt- banned) asserted by behavioural test (check-naming.py rejects rbt-)
   BACKLOG-6 build-contract copy-file destinations match sources (basename consistency)
   BACKLOG-7 template marker convention documented and one template marked consistently
   BACKLOG-8 rabbit-print.schema.json declared producers all exist on disk
   BACKLOG-9 spec Surface and contract.md provides entries match actual files
   BACKLOG-10 validate-feature.py invokes feature.json.schema.json validation
-  BACKLOG-15 spec Inv 5 (rabbit-print schema authority) asserted by test
-  BACKLOG-16 spec Inv 9 (build-contract validation) limitation documented
+  BACKLOG-15 spec Inv 4 (rabbit-print schema authority) asserted by test
+  BACKLOG-16 spec Inv 6 (build-contract validation) limitation documented
 
 Version: 1.1.0
 Owner: rabbit-workflow team (contract)
@@ -108,7 +108,7 @@ except ImportError:
     ok("BACKLOG-4: skipped (jsonschema not installed)")
 
 
-# BACKLOG-5: spec Inv 13 — check-naming.py bans rbt-. Run the script against a temp file with rbt- name.
+# BACKLOG-5: spec Inv 10 — check-naming.py bans rbt-. Run the script against a temp file with rbt- name.
 import tempfile
 
 check_naming = os.path.join(FEATURE_DIR, "scripts/enforcement/check-naming.py")
@@ -120,7 +120,7 @@ if os.path.isfile(check_naming):
         open(os.path.join(cmds, "rbt-bogus.md"), "w").close()
         result = subprocess.run([sys.executable, check_naming, td], capture_output=True, text=True)
         if result.returncode != 0 and "rbt-" in (result.stdout + result.stderr):
-            ok("BACKLOG-5: check-naming.py rejects rbt- prefix (Inv 13 enforced)")
+            ok("BACKLOG-5: check-naming.py rejects rbt- prefix (Inv 10 enforced)")
         else:
             ko(f"BACKLOG-5: check-naming.py did not flag rbt- (rc={result.returncode}, out={result.stdout!r}, err={result.stderr!r})")
 else:
@@ -157,7 +157,7 @@ else:
 # BACKLOG-8 (post-BACKLOG-20): rabbit-print producers all exist on disk.
 # After BACKLOG-20 the `producers` array moved out of rabbit-print.schema.json
 # (now a pure JSON Schema document) and the four producer paths are declared
-# in spec Inv 36. We assert against that hardcoded list here.
+# in spec Inv 29. We assert against that hardcoded list here.
 RABBIT_PRINT_PRODUCERS = [
     ".claude/features/rabbit-cage/hooks/sync-check.py",
     ".claude/features/rabbit-cage/hooks/session-init.py",
@@ -209,7 +209,7 @@ else:
     ko("BACKLOG-10: lib/checks.py does not reference feature.json.schema.json")
 
 
-# BACKLOG-15 (post-BACKLOG-20): spec Inv 5 — a test asserts the [rabbit] print
+# BACKLOG-15 (post-BACKLOG-20): spec Inv 4 — a test asserts the [rabbit] print
 # architecture. After BACKLOG-20 the three-part architecture (registry data
 # file + JSON Schema + renderer module) is asserted by
 # test-rabbit-print-messages-schema.py (registry shape) and
@@ -217,18 +217,18 @@ else:
 trp_msgs = os.path.join(FEATURE_DIR, "test/test-rabbit-print-messages-schema.py")
 trp_rend = os.path.join(FEATURE_DIR, "test/test-rabbit-print-renderer.py")
 if os.path.isfile(trp_msgs) and os.path.isfile(trp_rend):
-    ok("BACKLOG-15: rabbit-print Inv 5 architecture asserted by registry-schema and renderer tests")
+    ok("BACKLOG-15: rabbit-print Inv 4 architecture asserted by registry-schema and renderer tests")
 else:
     ko("BACKLOG-15: missing test-rabbit-print-messages-schema.py or test-rabbit-print-renderer.py")
 
 
-# BACKLOG-16: spec Inv 9 documents that build-contract validation is test-only.
+# BACKLOG-16: spec Inv 6 documents that build-contract validation is test-only.
 spec_text_inv9 = spec_text
-# Search for note about test-only enforcement near Inv 9 text.
+# Search for note about test-only enforcement near Inv 6 text.
 if "test-only" in spec_text_inv9 or "not enforced at edit-time" in spec_text_inv9 or "no edit-time enforcement" in spec_text_inv9.lower():
-    ok("BACKLOG-16: spec.md documents Inv 9 enforcement limitation")
+    ok("BACKLOG-16: spec.md documents Inv 6 enforcement limitation")
 else:
-    ko("BACKLOG-16: spec.md does not document Inv 9 test-only enforcement limitation")
+    ko("BACKLOG-16: spec.md does not document Inv 6 test-only enforcement limitation")
 
 
 if FAIL:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """test-rabbit-print-messages-schema.py — validate rabbit-print-messages.json
 against rabbit-print.schema.json and assert the required shape declared in
-Inv 34 (registry data file).
+Inv 27 (registry data file).
 
 End-to-end: loads the on-disk registry and schema files; performs minimal
 JSON-Schema-style structural validation (no third-party dependency); then
@@ -143,7 +143,7 @@ if messages is not None:
     else:
         ok(f"t6: all {len(REQUIRED_IDS)} required message-ids present")
 
-# t6b: removed message-ids MUST be absent (Inv 34 — r1-branch was removed
+# t6b: removed message-ids MUST be absent (Inv 27 — r1-branch was removed
 # alongside the rabbit-cage R1 enforcement hook).
 if messages is not None:
     msgs = messages.get("messages", {})
@@ -176,7 +176,7 @@ if messages is not None:
             else:
                 ok(f"t7: messages.{mid} has icon/color/text; color={m['color']}")
 
-# t7b: surface-drift text MUST contain the {files} placeholder (Inv 35(d),
+# t7b: surface-drift text MUST contain the {files} placeholder (Inv 28(d),
 # BACKLOG-21). The named wrapper surface_drift(files: str) substitutes this
 # placeholder; an empty/missing placeholder would silently allow callers to
 # emit an empty file list.
@@ -203,7 +203,7 @@ if schema is not None:
         else:
             fail(f"t8b: schema doc missing {fld}")
 
-# t9: dispatch-bypass-note specifics (Inv 34, BACKLOG-29). The text MUST be
+# t9: dispatch-bypass-note specifics (Inv 27, BACKLOG-29). The text MUST be
 # the canonical form so the dispatch preamble is grep-stable.
 EXPECTED_DISPATCH_TEXT = (
     "NOTE: human-approval bypass marker is active "
@@ -226,7 +226,7 @@ if messages is not None:
     else:
         fail(f"t9c: dispatch-bypass-note text mismatch: got {dbn.get('text')!r}")
 
-# t10: bypass-permissions-active specifics (Inv 34, PR #151). Icon 🚨 / red.
+# t10: bypass-permissions-active specifics (Inv 27, PR #151). Icon 🚨 / red.
 if messages is not None:
     msgs = messages.get("messages", {})
     bpa = msgs.get("bypass-permissions-active", {})
