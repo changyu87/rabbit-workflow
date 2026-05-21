@@ -103,9 +103,7 @@ origin/bug-backlog-files root:
   .claude/tmp/bug-backlog-files-<pid> where <pid> is the current process ID.
   Each process gets its own isolated worktree so concurrent invocations from
   different agents do not collide on the same filesystem path. Worktree is
-  always cleaned up via try/finally. The legacy fixed path
-  .claude/tmp/bug-backlog-files MUST NOT be used (it caused FileNotFoundError
-  and stale-state races under concurrent agent dispatch — RABBIT-FILE-BUG-18).
+  always cleaned up via try/finally.
 - branch_ops._worktree() MUST set the worktree HEAD to the freshly-fetched
   origin/bug-backlog-files tip after `git fetch origin bug-backlog-files`.
   This guarantees reads see the latest committed items and writes never push
@@ -167,14 +165,9 @@ origin/bug-backlog-files root:
   trail in the history array.
 - SKILL.md MUST include a user-decision gate in Work Protocol before invoking
   rabbit-feature-touch.
-- SKILL.md MUST NOT illustrate the legacy fixed-path worktree
-  `.claude/tmp/bug-backlog-files` (without the `-<pid>` suffix) in
-  user-facing prose, the File Protocol Phase A/B narrative, or the
-  `branch_ops.py Lifecycle` section. All worktree path references
-  MUST use the per-process form `.claude/tmp/bug-backlog-files-<pid>`
-  so the documented behaviour matches the per-pid invariant above.
-  Documenting a path the code never creates misleads operators who
-  inspect or clean disk state (BUG-34).
+- SKILL.md worktree path references MUST use the per-process form
+  `.claude/tmp/bug-backlog-files-<pid>` so the documented behaviour
+  matches the per-pid invariant above (BUG-34).
 - SKILL.md MUST NOT reference any `/rabbit-file …` slash-command
   invocation. The Overview declares "there are NO slash commands";
   every other section (including the List Protocol's branch-missing
