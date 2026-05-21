@@ -8,10 +8,10 @@ emits additionalContext with the refreshed policy, and alerts the user.
 Counter-gated: only checks every RABBIT_SYNC_EVERY stops (default 1).
 Override in .claude/settings.local.json: {"env": {"RABBIT_SYNC_EVERY": "5"}}
 
-Output strategy: aggregation (BACKLOG-18 / Inv 37, 38, 76). Every pending
+Output strategy: aggregation (BACKLOG-18 / Inv 83, 84, 86). Every pending
 condition contributes a [rabbit] line within a single JSON object per
 invocation. Priority order controls line ORDERING (not suppression):
-  1. CLAUDE.md drift (BACKLOG-19: bootstrap path REMOVED — Inv 79)
+  1. CLAUDE.md drift (BACKLOG-19: bootstrap path REMOVED — Inv 89)
   2. Surface drift
   3. Scope-guard-off (session override or one-time-used)
   4. Human-approval-bypass
@@ -19,7 +19,7 @@ invocation. Priority order controls line ORDERING (not suppression):
 
 Brand/decoration/color/text bodies are sourced from the central registry
 .claude/features/contract/schemas/rabbit-print-messages.json via the shared
-renderer rabbit_print.py (Inv 18, 77).
+renderer rabbit_print.py (Inv 73, 87).
 """
 
 import hashlib
@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Optional
 
 
-# Inv 77 (BACKLOG-19): import the shared renderer. Walk up from this file's
+# Inv 87 (BACKLOG-19): import the shared renderer. Walk up from this file's
 # location to find .claude/features/contract/scripts/rabbit_print.py. Works
 # from both the source path (.claude/features/rabbit-cage/hooks/) and the
 # build-managed copy (.claude/hooks/).
@@ -49,7 +49,7 @@ from rabbit_print import (  # noqa: E402
     human_approval_bypass, bypass_permissions_active, skills_updated,
 )
 
-# BACKLOG-27 / Inv 88: canonical bypass-permissions alert text lives in the
+# BACKLOG-27 / Inv 61: canonical bypass-permissions alert text lives in the
 # shared helper module so session-init.py and sync-check.py cannot drift.
 # Resolve the helper from both the source dir (.claude/features/rabbit-cage/
 # hooks/) and the build-managed deployed dir (.claude/hooks/) by walking up
@@ -92,7 +92,7 @@ def repo_root() -> Path:
         return here
 
 
-# Inv 63: additionalContext MUST either expand @-imports or carry a clear
+# Inv 43: additionalContext MUST either expand @-imports or carry a clear
 # note that the agent must independently load referenced files. CLAUDE.md
 # is a pure @-import pointer file (BUG-92 removed the legacy inline policy
 # section), so we surface the regenerated CLAUDE.md verbatim and prepend
@@ -106,9 +106,9 @@ AT_IMPORT_NOTE = (
 
 
 def render_claude_md_drift(root: Path, expected: str) -> Optional[dict]:
-    """Inv 17, 38, 76, 79. Renders CLAUDE.md drift condition.
+    """Inv 72, 84, 86, 89. Renders CLAUDE.md drift condition.
 
-    BACKLOG-19 / Inv 79: the missing-CLAUDE.md path was removed; in any real
+    BACKLOG-19 / Inv 89: the missing-CLAUDE.md path was removed; in any real
     checkout CLAUDE.md is committed. If CLAUDE.md is genuinely missing, this
     renderer returns None (silent) — bootstrap is install.py's responsibility.
     """
@@ -130,7 +130,7 @@ def render_claude_md_drift(root: Path, expected: str) -> Optional[dict]:
 
 
 def _collect_drifted_targets(root: Path) -> list:
-    """Inv 78 (BACKLOG-21). Compare each copy-file target's source and
+    """Inv 88 (BACKLOG-21). Compare each copy-file target's source and
     destination by sha256; return the NAMES of the drifted targets.
 
     Only check_on_stop=true copy-file targets are considered. Missing source
@@ -172,7 +172,7 @@ def _collect_drifted_targets(root: Path) -> list:
 
 
 def render_surface_drift(root: Path) -> Optional[dict]:
-    """Inv 38, 76, 78 (BACKLOG-21). Render surface-drift condition.
+    """Inv 84, 86, 88 (BACKLOG-21). Render surface-drift condition.
 
     Iterates build-contract.json copy-file targets, collects the names of
     those whose destination sha256 diverges from the source, then invokes
@@ -197,7 +197,7 @@ def render_surface_drift(root: Path) -> Optional[dict]:
 
 
 def render_scope_guard(root: Path) -> Optional[dict]:
-    """Inv 38, 76. Render scope-guard-off condition.
+    """Inv 84, 86. Render scope-guard-off condition.
 
     Two sub-states: session override active (persistent) or one-time
     override consumed (consume-on-read of .rabbit-scope-override-used).
@@ -232,7 +232,7 @@ def render_scope_guard(root: Path) -> Optional[dict]:
 
 
 def render_human_approval(root: Path) -> Optional[dict]:
-    """Inv 59, 76. Render human-approval-bypass alert. Persistent marker;
+    """Inv 39, 86. Render human-approval-bypass alert. Persistent marker;
     not consumed on read."""
     marker = root / ".rabbit-human-approval-bypass"
     if not marker.is_file():
@@ -243,7 +243,7 @@ def render_human_approval(root: Path) -> Optional[dict]:
 
 
 def render_bypass_permissions(root: Path) -> Optional[dict]:
-    """Inv 88. Render bypass-permissions Stop alert. Fires while
+    """Inv 61. Render bypass-permissions Stop alert. Fires while
     `.claude/settings.local.json` declares
     `permissions.defaultMode == "bypassPermissions"`. Independent of and
     parallel to render_human_approval — both may fire on the same Stop.
@@ -258,7 +258,7 @@ def render_bypass_permissions(root: Path) -> Optional[dict]:
 
 
 def render_skills_updated(root: Path) -> Optional[dict]:
-    """Inv 24, 76. Render skills-updated alert. Consume-on-read of
+    """Inv 75, 86. Render skills-updated alert. Consume-on-read of
     .rabbit-skills-updated."""
     marker = root / ".rabbit-skills-updated"
     if not marker.is_file():
@@ -287,7 +287,7 @@ def main() -> int:
             "human-approval bypass, and skill updates; emits at most one JSON "
             "object to stdout per invocation (aggregation strategy — every "
             "pending condition contributes a rendered banner line, ordered by "
-            "Inv 37 priority).\n"
+            "Inv 83 priority).\n"
             "Takes no command-line arguments.\n"
         )
         return 0
@@ -318,7 +318,7 @@ def main() -> int:
     except (FileNotFoundError, PermissionError, subprocess.CalledProcessError, OSError):
         return 0
 
-    # Inv 37 priority order: invoke each renderer in turn, collect non-None
+    # Inv 83 priority order: invoke each renderer in turn, collect non-None
     # payloads. The renderer is responsible for any consume-on-read side
     # effect (markers) when the condition applies.
     payloads = []
@@ -340,7 +340,7 @@ def main() -> int:
         "systemMessage": rabbit_block(*(p["systemMessage"] for p in payloads)),
     }
     # additionalContext: only render_claude_md_drift emits one today; take
-    # the first if present (Inv 38).
+    # the first if present (Inv 84).
     for p in payloads:
         if "additionalContext" in p:
             aggregated["additionalContext"] = p["additionalContext"]

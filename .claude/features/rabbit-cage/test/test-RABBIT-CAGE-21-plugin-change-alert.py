@@ -71,7 +71,7 @@ try:
     else:
         fail_t(f"systemMessage does NOT say 'next invocation' (actual: {t1_msg!r})")
 
-    print("=== t4: notification is green (ANSI invariant 18) ===")
+    print("=== t4: notification is green (ANSI invariant 73) ===")
     if "\x1b[32m" in t1_msg and "\x1b[0m" in t1_msg:
         ok("notification is green (ANSI \\x1b[32m)")
     else:

@@ -11,7 +11,7 @@ Subcommands:
   bypass-permissions [true|false]      manage permissions.defaultMode in settings.local.json
 
 All argv parsing comes from sys.argv[1:]; this script is the sole implementation
-of /rabbit-config. There is no slash-command shim file (per spec Inv 25);
+of /rabbit-config. There is no slash-command shim file (per spec Inv 20);
 the rabbit-config skill is the sole entry point.
 """
 import json
@@ -117,7 +117,7 @@ purpose followed by one or more concrete invocations.
 
 
 def cmd_help(args):
-    # Extra positional arguments are ignored (Inv 81): help never fails on
+    # Extra positional arguments are ignored (Inv 55): help never fails on
     # extras — its job is to surface usage even if the operator typed something
     # extra by mistake.
     del args

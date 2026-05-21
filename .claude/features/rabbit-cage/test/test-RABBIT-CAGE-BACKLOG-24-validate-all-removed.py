@@ -2,7 +2,7 @@
 """RABBIT-CAGE-BACKLOG-24: validate-all.py is removed from rabbit-cage.
 
 E2E test verifying the spec change behind BACKLOG-24:
-  * Inv 40 no longer enumerates validate-all.py
+  * Inv 18 no longer enumerates validate-all.py
   * contract.md provides.scripts no longer lists validate-all.py
   * The script file itself is absent from scripts/
   * README.md does not advertise validate-all.py
@@ -48,17 +48,17 @@ if not os.path.exists(os.path.join(CAGE, "scripts", "validate-all.py")):
 else:
     bad("scripts/validate-all.py still exists; BACKLOG-24 not applied")
 
-# [2] spec.md Inv 40 does not list validate-all.py in the live `scripts/`
+# [2] spec.md Inv 18 does not list validate-all.py in the live `scripts/`
 # enumeration. Narrative mention (e.g. "The legacy `validate-all.py` script
 # was removed in RABBIT-CAGE-BACKLOG-24") is permitted; only the live
 # enumeration MUST omit the script.
-print("[2] docs/spec/spec.md Inv 40 live enumeration omits validate-all.py")
+print("[2] docs/spec/spec.md Inv 18 live enumeration omits validate-all.py")
 with open(os.path.join(CAGE, "docs/spec/spec.md")) as f:
     spec_text = f.read()
 inv40_lines = [ln for ln in spec_text.splitlines()
                if "Python runtime scripts in rabbit-cage are" in ln]
 if not inv40_lines:
-    bad("spec.md missing Inv 40 enumeration sentence")
+    bad("spec.md missing Inv 18 enumeration sentence")
 else:
     inv40 = inv40_lines[0]
     # Slice the live enumeration: everything between "in `scripts/`" and the
@@ -66,15 +66,15 @@ else:
     marker = "in `scripts/`"
     idx = inv40.find(marker)
     if idx == -1:
-        bad("Inv 40 enumeration missing `scripts/` marker")
+        bad("Inv 18 enumeration missing `scripts/` marker")
     else:
         tail = inv40[idx + len(marker):]
         terminator = tail.find(". ")
         live_enum = tail[:terminator] if terminator != -1 else tail
         if "`validate-all.py`" in live_enum:
-            bad("Inv 40 live enumeration still lists `validate-all.py`")
+            bad("Inv 18 live enumeration still lists `validate-all.py`")
         else:
-            ok("Inv 40 live enumeration does not list validate-all.py")
+            ok("Inv 18 live enumeration does not list validate-all.py")
 
 # [3] contract.md provides.scripts has no validate-all.py entry
 print("[3] contract.md provides.scripts omits validate-all.py")

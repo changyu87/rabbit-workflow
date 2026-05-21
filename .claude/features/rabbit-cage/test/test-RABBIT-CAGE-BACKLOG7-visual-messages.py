@@ -103,7 +103,7 @@ try:
     assert_visual_msg("sync-check.py DRIFT case", drift_msg)
 
     # Test 2: surface drift
-    # BACKLOG-21 (Inv 78): surface drift is detected by comparing
+    # BACKLOG-21 (Inv 88): surface drift is detected by comparing
     # build-contract.json copy-file source/destination sha256 in-process.
     tmproot2 = build_tmproot()
     tmproots.append(tmproot2)

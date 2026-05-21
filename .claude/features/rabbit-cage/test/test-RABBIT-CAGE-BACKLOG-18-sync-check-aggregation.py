@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BACKLOG-18 FULL E2E test for sync-check.py aggregation (Inv 37, 38, 76).
+"""BACKLOG-18 FULL E2E test for sync-check.py aggregation (Inv 83, 84, 86).
 
 Builds a realistic temp repo (real CLAUDE.md, real @-import files, real git
 history), sets up multiple simultaneous pending conditions by writing actual
@@ -7,7 +7,7 @@ marker files, invokes sync-check.py as a subprocess, and asserts:
 
   - Exactly one JSON object is emitted.
   - systemMessage contains one [rabbit] line per pending condition,
-    ordered by Inv 37 priority.
+    ordered by Inv 83 priority.
   - Consume-on-read markers are consumed exactly once.
   - A second invocation does not leak any condition.
   - The zero-condition case emits no JSON.
@@ -113,7 +113,7 @@ try:
     idx_ha = msg.find("HUMAN APPROVAL BYPASS")
     idx_sk = msg.find("Skills updated")
     if 0 <= idx_scope < idx_ha < idx_sk:
-        ok("lines ordered per Inv 37 priority: scope(3) < human-approval(4) < skills(5)")
+        ok("lines ordered per Inv 83 priority: scope(3) < human-approval(4) < skills(5)")
     else:
         fail_t(f"line ordering wrong: scope={idx_scope} ha={idx_ha} sk={idx_sk}")
 

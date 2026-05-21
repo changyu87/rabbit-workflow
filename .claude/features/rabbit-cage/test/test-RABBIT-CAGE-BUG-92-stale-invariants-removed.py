@@ -4,7 +4,7 @@
 Inv 7 referenced inline `rabbit-policy-start`/`rabbit-policy-end` markers
 in CLAUDE.md that no longer exist (the @-import pointer form replaced the
 inline block long ago). Inv 14 referenced `generate-skills-dir.py`, an
-artifact that no longer exists (Inv 27 asserts its non-existence).
+artifact that no longer exists (Inv 13 asserts its non-existence).
 
 Both invariants document removed artifacts as if they still existed,
 which violates the Designed Deprecation principle.
@@ -67,19 +67,19 @@ else:
     ok("spec.md contains no rabbit-policy-start / rabbit-policy-end mention")
 
 # (a3) Inv 14 paragraph is absent. Inv 14 was the `generate-skills-dir.py
-# --check` paragraph. Inv 27 (which asserts the script does NOT exist) is
+# --check` paragraph. Inv 13 (which asserts the script does NOT exist) is
 # the canonical statement and must remain.
 if re.search(r"(?m)^14\.\s+`generate-skills-dir\.py", spec):
     fail_t("spec.md still contains Inv 14 referencing generate-skills-dir.py")
 else:
     ok("spec.md no longer contains Inv 14 (generate-skills-dir.py claim)")
 
-# (a4) Inv 27 (non-existence assertion) must remain — it is the canonical
+# (a4) Inv 13 (non-existence assertion) must remain — it is the canonical
 # replacement and the only place the script name may appear.
-if re.search(r"(?m)^27\.\s+`generate-skills-dir\.py`\s+does NOT exist", spec):
-    ok("spec.md still contains Inv 27 (canonical non-existence assertion)")
+if re.search(r"(?m)^13\.\s+`generate-skills-dir\.py`\s+does NOT exist", spec):
+    ok("spec.md still contains Inv 13 (canonical non-existence assertion)")
 else:
-    fail_t("spec.md is missing Inv 27 (generate-skills-dir.py does NOT exist)")
+    fail_t("spec.md is missing Inv 13 (generate-skills-dir.py does NOT exist)")
 
 # (b1) sync-check.py source no longer defines _policy_section.
 with open(SYNC_CHECK) as f:

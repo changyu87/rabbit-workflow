@@ -77,12 +77,12 @@ try:
     else:
         fail_t(3, f"sync-check.py exited {sync_exit} (expected 0)")
 
-    # t4 — BACKLOG-19 / Inv 79: first-run path removed; sync-check no longer
+    # t4 — BACKLOG-19 / Inv 89: first-run path removed; sync-check no longer
     # creates CLAUDE.md when absent. Bootstrap is install.py's job.
     if not os.path.isfile(os.path.join(tmproot, "CLAUDE.md")):
-        ok(4, "CLAUDE.md NOT created by sync-check.py (Inv 79 — first-run path removed)")
+        ok(4, "CLAUDE.md NOT created by sync-check.py (Inv 89 — first-run path removed)")
     else:
-        fail_t(4, "CLAUDE.md was created — first-run path should be removed (Inv 79)")
+        fail_t(4, "CLAUDE.md was created — first-run path should be removed (Inv 89)")
 
     # Extract systemMessage
     sys_msg = ""
@@ -100,7 +100,7 @@ try:
 
     # t6 — BACKLOG-19: when CLAUDE.md absent, hook exits silently (no JSON).
     if not sys_msg:
-        ok(6, "no systemMessage emitted when CLAUDE.md absent (Inv 79 — silent exit)")
+        ok(6, "no systemMessage emitted when CLAUDE.md absent (Inv 89 — silent exit)")
     else:
         fail_t(6, f"systemMessage should be empty/absent; got: '{sys_msg}'")
 finally:

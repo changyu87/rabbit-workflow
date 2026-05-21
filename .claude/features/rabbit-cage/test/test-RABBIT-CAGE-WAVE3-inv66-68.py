@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""End-to-end tests for rabbit-cage Wave 3 (Inv 66-68).
+"""End-to-end tests for rabbit-cage Wave 3 (Inv 46-68).
 
-Inv 66: new-feature.py scaffolds test/run.py (not test/run.sh), feature.json
+Inv 46: new-feature.py scaffolds test/run.py (not test/run.sh), feature.json
         contains template_version, and the scaffolded feature passes
         validate-feature.py immediately.
-Inv 67: commands/rabbit-project.md references only existing .py scripts;
+Inv 47: commands/rabbit-project.md references only existing .py scripts;
         no `.sh` references; any referenced script path actually exists.
-Inv 68: rabbit-config.py human-approval messages name both the marker state
+Inv 48: rabbit-config.py human-approval messages name both the marker state
         and the practical effect (BYPASSED / ENABLED + Step 4 verbiage), and
         do not use the bare ambiguous adjective `DISABLED`.
 """
@@ -56,7 +56,7 @@ def fail_t(t, msg):
 print("test-RABBIT-CAGE-WAVE3-inv66-68.py")
 
 # ---------------------------------------------------------------------------
-# Inv 66: new-feature.py scaffolds test/run.py + template_version
+# Inv 46: new-feature.py scaffolds test/run.py + template_version
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory(prefix="rc-wave3-") as tmp:
     # Pretend RABBIT_ROOT points at the real repo so the optional
@@ -84,11 +84,11 @@ with tempfile.TemporaryDirectory(prefix="rc-wave3-") as tmp:
     else:
         fail_t(2, "scaffold missing test/run.py")
 
-    # t3: test/run.sh must NOT be scaffolded (Python-only stack per Inv 39).
+    # t3: test/run.sh must NOT be scaffolded (Python-only stack per Inv 17).
     if not os.path.lexists(run_sh):
-        ok(3, "scaffold does NOT create test/run.sh (Python-only per Inv 39)")
+        ok(3, "scaffold does NOT create test/run.sh (Python-only per Inv 17)")
     else:
-        fail_t(3, "scaffold still creates test/run.sh (violates Inv 39/66)")
+        fail_t(3, "scaffold still creates test/run.sh (violates Inv 17/46)")
 
     # t4: test/run.py is executable.
     if os.path.isfile(run_py) and os.access(run_py, os.X_OK):
@@ -125,7 +125,7 @@ with tempfile.TemporaryDirectory(prefix="rc-wave3-") as tmp:
         fail_t(6, f"validate-feature.py not found at {VALIDATE_FEATURE_PY}")
 
 # ---------------------------------------------------------------------------
-# Inv 67: commands/rabbit-project.md references only existing .py scripts
+# Inv 47: commands/rabbit-project.md references only existing .py scripts
 # ---------------------------------------------------------------------------
 if os.path.isfile(RABBIT_PROJECT_MD):
     with open(RABBIT_PROJECT_MD) as f:
@@ -154,7 +154,7 @@ else:
     fail_t(8, "commands/rabbit-project.md not found")
 
 # ---------------------------------------------------------------------------
-# Inv 68: rabbit-config.py human-approval messages
+# Inv 48: rabbit-config.py human-approval messages
 # ---------------------------------------------------------------------------
 def run_cfg(args, wd):
     return subprocess.run(

@@ -13,7 +13,7 @@ workflow. The dispatcher invokes this skill whenever the user asks to read or
 change one of the workflow's runtime knobs.
 
 All logic lives in `.claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py`. There is no slash-command
-shim file (per spec Inv 25); the skill itself is the sole entry point.
+shim file (per spec Inv 20); the skill itself is the sole entry point.
 
 ## Discovering Subcommands
 

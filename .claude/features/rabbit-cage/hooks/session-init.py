@@ -7,12 +7,12 @@ Wired to SessionStart. One responsibility:
   additionalContext so policy is present from the first prompt.
 
 The legacy R1 branch enforcement (auto-creating session/YYYYMMDD-HHMMSS on
-main/master) is REMOVED per Inv 61 (spec v3.12.0). Operators are responsible
+main/master) is REMOVED per Inv 41 (spec v3.12.0). Operators are responsible
 for creating their own feature branches before editing; direct commits to
-main remain blocked by the Bash(git push * main) deny rules (Inv 51) and by
+main remain blocked by the Bash(git push * main) deny rules (Inv 19) and by
 check-no-main-edits.py in contract.
 
-Output: AT MOST ONE JSON object per invocation (Inv 75). Policy injection is
+Output: AT MOST ONE JSON object per invocation (Inv 85). Policy injection is
 the sole pending condition; when it applies the emitted JSON carries the
 policy line in systemMessage and the expanded policy text in
 additionalContext. When CLAUDE.md is missing or has no @-imports, no JSON is
@@ -20,7 +20,7 @@ emitted (exit 0, empty stdout).
 
 Brand/decoration/color/text bodies are sourced from the central registry
 .claude/features/contract/schemas/rabbit-print-messages.json via the shared
-renderer rabbit_print.py (Inv 18, 77).
+renderer rabbit_print.py (Inv 73, 87).
 """
 
 import json
@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Optional
 
 
-# Inv 77 (BACKLOG-19): import the shared renderer. See sync-check.py for
+# Inv 87 (BACKLOG-19): import the shared renderer. See sync-check.py for
 # the symmetric path-discovery rationale.
 _HERE = Path(__file__).resolve().parent
 for _candidate in [_HERE, *_HERE.parents]:
@@ -46,7 +46,7 @@ from rabbit_print import (  # noqa: E402
     welcome,
 )
 
-# BACKLOG-27 / Inv 89: canonical runtime-flag text + active-flag detection
+# BACKLOG-27 / Inv 62: canonical runtime-flag text + active-flag detection
 # lives in the shared helper module so session-init.py and sync-check.py
 # cannot drift. Resolve the helper from both the source dir and the build-
 # managed deployed dir by walking up until features/rabbit-cage/hooks/ is
@@ -65,7 +65,7 @@ else:
 from _runtime_flags import active_flags, log_exc  # noqa: E402
 
 
-# Inv 78 (BACKLOG-19): per-file one-liner descriptions for the welcome
+# Inv 88 (BACKLOG-19): per-file one-liner descriptions for the welcome
 # banner sub-lines. Additional @-imports introduced later show as basename
 # only (no suffix).
 _WELCOME_DESCRIPTIONS = {
@@ -98,7 +98,7 @@ def repo_root() -> Path:
 
 
 def render_policy(root: Path) -> Optional[dict]:
-    """Inv 76, 78. Pure-function renderer for policy injection.
+    """Inv 86, 88. Pure-function renderer for policy injection.
 
     Reads CLAUDE.md @-imports and assembles an additionalContext payload.
     Returns None when CLAUDE.md is missing or has no @-imports.
@@ -141,12 +141,12 @@ def render_policy(root: Path) -> Optional[dict]:
             parts.append("\n")
 
     payload = "".join(parts)
-    # Inv 77, 78: assemble the policy block as banner + per-import sub-lines.
+    # Inv 87, 88: assemble the policy block as banner + per-import sub-lines.
     # The renderer returns a SINGLE multi-line string with NO leading '\n';
     # main() wraps every payload via rabbit_block() — the sole owner of the
-    # leading newline (Inv 80).
+    # leading newline (Inv 90).
     lines = [welcome()]
-    # Inv 78: pad each name so the em-dash aligns at column 17 (the longest
+    # Inv 88: pad each name so the em-dash aligns at column 17 (the longest
     # registered name `coding-rules.md` is 15 chars; +2 spaces = 17).
     PAD = 17
     for p in imports:
@@ -157,14 +157,14 @@ def render_policy(root: Path) -> Optional[dict]:
             lines.append(rabbit_subline(f"{name}{pad_spaces}— {desc}"))
         else:
             lines.append(rabbit_subline(name))
-    # Inv 89 (BACKLOG-27): append a status-flags block listing every active
+    # Inv 62 (BACKLOG-27): append a status-flags block listing every active
     # runtime override (human-approval bypass, bypass-permissions mode, and
     # any future override added via the same per-user-marker pattern). The
     # canonical body text is shared with sync-check.py via _runtime_flags;
     # each line additionally names the revoke command so the operator sees
     # a one-line orientation per flag. When no flags are active, the block
     # is omitted entirely — no empty header, no "all clear" affirmation
-    # (terse baseline banner per Inv 89).
+    # (terse baseline banner per Inv 62).
     for flag in active_flags(root):
         lines.append(rabbit_subline(
             f"{flag['body']}  (revoke: {flag['revoke']})",
@@ -183,7 +183,7 @@ def main() -> int:
             "session-init.py — SessionStart hook.\n"
             "Reads stdin (JSON payload from Claude Code, ignored) and emits "
             "CLAUDE.md @-import policy as additionalContext on stdout.\n"
-            "Emits AT MOST ONE JSON object per invocation (Inv 75); policy "
+            "Emits AT MOST ONE JSON object per invocation (Inv 85); policy "
             "injection is the sole pending condition.\n"
             "Takes no command-line arguments.\n"
         )

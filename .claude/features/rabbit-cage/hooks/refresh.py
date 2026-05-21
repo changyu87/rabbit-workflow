@@ -10,7 +10,7 @@ Stays silent (exits 0 with no stdout) when not refreshing.
 
 Brand/decoration/color/text bodies are sourced from the central registry
 .claude/features/contract/schemas/rabbit-print-messages.json via the shared
-renderer rabbit_print.py (Inv 18, 77).
+renderer rabbit_print.py (Inv 73, 87).
 """
 
 import json
@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 
-# Inv 77 (BACKLOG-19): import the shared renderer. See sync-check.py for
+# Inv 87 (BACKLOG-19): import the shared renderer. See sync-check.py for
 # the symmetric path-discovery rationale.
 _HERE = Path(__file__).resolve().parent
 for _candidate in [_HERE, *_HERE.parents]:
@@ -112,7 +112,7 @@ def main() -> int:
             parts.append("\n")
 
     payload = "".join(parts)
-    # Inv 77, 80: assemble via rabbit_block — the sole owner of the leading
+    # Inv 87, 90: assemble via rabbit_block — the sole owner of the leading
     # newline. BACKLOG-20 missed refresh.py; this picks it up.
     banner = policy_refreshed()
     print(json.dumps({

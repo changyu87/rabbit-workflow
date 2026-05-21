@@ -369,18 +369,15 @@ def check_numbered_lists(targets: List[str]) -> CheckResult:
 
 # Features listed here are skipped by check_invariant_monotonic_order while
 # their spec.md still has out-of-order invariant numbering. Remove an entry
-# once the corresponding renumber cycle lands:
-#   - "rabbit-cage"   pending RABBIT-CAGE-BACKLOG-30 — cycle 3 (BACKLOG-29) was
-#                     scope-limited to relocating Inv 86/87/88/89 only; the
-#                     spec has 7 Invariants sections and several still have
-#                     non-monotonic numbering. Full rabbit-cage renumber +
-#                     cross-reference audit deferred to its own focused cycle.
-# contract was pruned in CONTRACT-BACKLOG-31 (single section, monotonic 1..39
-# after gap-closing renumber).
-# rabbit-feature was pruned when PR #162 merged (single Invariants section,
-# monotonic after Inv 28 relocation). When the rabbit-cage renumber lands,
-# this list reduces to [] and the check covers every feature on disk.
-_MONOTONIC_KNOWN_ISSUES = ["rabbit-cage"]
+# once the corresponding renumber cycle lands. The list is now empty:
+#   - contract was pruned in CONTRACT-BACKLOG-31 (single section, monotonic
+#     1..39 after gap-closing renumber).
+#   - rabbit-feature was pruned when PR #162 merged (single Invariants section,
+#     monotonic after Inv 28 relocation).
+#   - rabbit-cage was pruned in RABBIT-CAGE-BACKLOG-30 (continuous monotonic
+#     1..90 across all 7 Invariants sections).
+# The check now fully validates every feature on disk without skips.
+_MONOTONIC_KNOWN_ISSUES = []
 
 _INVARIANTS_HEADING_RE = re.compile(r"^(##|###)\s+Invariants\b")
 _ANY_HEADING_RE = re.compile(r"^(#{1,6})\s+")

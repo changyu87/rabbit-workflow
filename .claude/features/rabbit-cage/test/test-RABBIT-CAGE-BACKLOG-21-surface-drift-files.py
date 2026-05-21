@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """BACKLOG-21 E2E test for sync-check.py surface-drift target naming.
 
-Spec Inv 78 (v3.11.0) requires the surface-drift renderer to:
+Spec Inv 88 (v3.11.0) requires the surface-drift renderer to:
   1. Read build-contract.json and identify copy-file targets whose
      destination sha256 differs from their source sha256.
   2. Pass the comma-joined target NAMES to surface_drift(files=...).

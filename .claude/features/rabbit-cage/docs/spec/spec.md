@@ -34,18 +34,18 @@ rabbit-cage owns the Claude Code surface layer of the rabbit workflow, exposing 
 4. `.claude/settings.json` is a symlink pointing to `.claude/features/rabbit-cage/settings.json`.
 5. `.claude/policy` is a symlink pointing to `.claude/features/policy`.
 6. `.claude/contract` is a symlink pointing to `.claude/features/contract`.
-8. `README.md` at repo root is a symlink pointing to `.claude/features/rabbit-cage/README.md`.
-9. `install.py` at repo root is a copy of `.claude/features/rabbit-cage/install.py` (managed by `build-contract.json`). `install.py` is the bootstrap installer; it is a standalone Python script requiring only the stdlib. No `.sh` files exist in rabbit-cage.
-10. `CLAUDE.md` contains `@`-imports sourcing files from `.claude/policy/`.
-11. The CLAUDE.md header (everything before the `@`-import lines) is sourced from the `header` field of `.claude/features/rabbit-cage/policy-header.json` via `generate-claude-md-header.py`. The header MUST orient a fresh session to the rabbit workflow by stating: (a) the workflow name as an H1, (b) the four core traits as bullets — **Feature-oriented**, **Scope-protected**, **Drift-protected**, **Subagent-driven**, (c) a token-cost judgment note as a trailing bullet on the same list, and (d) a final paragraph naming the reader as "the dispatcher" and forbidding direct edits to scope-protected files without explicit human approval. The exact text is fixed by the `header` field value and verified by `test-claude-md-header.py`. The legacy single-paragraph header form is removed; using it is a constitution violation.
-25. `.claude/features/rabbit-cage/scripts/build.py` exists and is executable; reads `build-contract.json` and builds all declared targets.
-26. `.claude/features/rabbit-cage/test/test-generated-surface.py` exists and exits 0 on a clean workspace (all check_on_stop copy-file targets match their sources).
-27. `generate-skills-dir.py` does NOT exist in `.claude/features/rabbit-cage/scripts/` (deleted; superseded by build.py + build-contract.json).
-28. `test-symlinks.sh` does NOT exist in `.claude/features/rabbit-cage/test/` (deleted; superseded by test-generated-surface.py).
-29. `surface.hooks`, `surface.commands`, and `surface.settings` in `feature.json` are all `[]` (empty arrays); hooks, commands, and settings are now managed via build-contract.json copy-file targets.
-30. `build.py` passes `RABBIT_ROOT=<repo_root>` as an environment variable when invoking `generate-claude-md.py` for `generate-claude-md` targets, so that installs into non-git directories (e.g., temp dirs during `install.sh`) succeed without `git rev-parse` errors.
-39. Every runtime script under `.claude/features/rabbit-cage/hooks/` and `.claude/features/rabbit-cage/scripts/` is a standalone executable Python file (`#!/usr/bin/env python3`). No `.sh` files exist under either directory. `install.py` at the rabbit-cage root is the bootstrap installer (also Python). Tests under `.claude/features/rabbit-cage/test/` are also Python (`.py`); no `.sh` test files exist in rabbit-cage.
-40. The Python runtime scripts in rabbit-cage are: in `hooks/` — `refresh.py`, `scope-guard.py`, `session-init.py`, `sync-check.py`; in `scripts/` — `build.py`, `build-targets.py`, `generate-claude-md.py`, `generate-claude-md-header.py`, `new-feature.py`, `rabbit-project.py`, `rabbit-project-consolidate.py`, `rabbit-project-map.py`, `rabbit-project-set-path.py`, `repo-permissions.py`, `scope-guard-on.py`, `workspace-tree.py`. Each preserves the stdin/stdout/exit-code contract of the `.sh` predecessor it replaces. The legacy `validate-all.py` script was removed in RABBIT-CAGE-BACKLOG-24; feature-audit sweeps are now owned by the `rabbit-feature-audit` skill in the `rabbit-feature` feature. The `new-feature.py` script remains in rabbit-cage temporarily because `rabbit-feature-new` still resolves `.claude/features/rabbit-cage/scripts/new-feature.py`. Its move into `rabbit-feature` is tracked as the follow-up cycle RABBIT-CAGE-BACKLOG-26.
+7. `README.md` at repo root is a symlink pointing to `.claude/features/rabbit-cage/README.md`.
+8. `install.py` at repo root is a copy of `.claude/features/rabbit-cage/install.py` (managed by `build-contract.json`). `install.py` is the bootstrap installer; it is a standalone Python script requiring only the stdlib. No `.sh` files exist in rabbit-cage.
+9. `CLAUDE.md` contains `@`-imports sourcing files from `.claude/policy/`.
+10. The CLAUDE.md header (everything before the `@`-import lines) is sourced from the `header` field of `.claude/features/rabbit-cage/policy-header.json` via `generate-claude-md-header.py`. The header MUST orient a fresh session to the rabbit workflow by stating: (a) the workflow name as an H1, (b) the four core traits as bullets — **Feature-oriented**, **Scope-protected**, **Drift-protected**, **Subagent-driven**, (c) a token-cost judgment note as a trailing bullet on the same list, and (d) a final paragraph naming the reader as "the dispatcher" and forbidding direct edits to scope-protected files without explicit human approval. The exact text is fixed by the `header` field value and verified by `test-claude-md-header.py`. The legacy single-paragraph header form is removed; using it is a constitution violation.
+11. `.claude/features/rabbit-cage/scripts/build.py` exists and is executable; reads `build-contract.json` and builds all declared targets.
+12. `.claude/features/rabbit-cage/test/test-generated-surface.py` exists and exits 0 on a clean workspace (all check_on_stop copy-file targets match their sources).
+13. `generate-skills-dir.py` does NOT exist in `.claude/features/rabbit-cage/scripts/` (deleted; superseded by build.py + build-contract.json).
+14. `test-symlinks.sh` does NOT exist in `.claude/features/rabbit-cage/test/` (deleted; superseded by test-generated-surface.py).
+15. `surface.hooks`, `surface.commands`, and `surface.settings` in `feature.json` are all `[]` (empty arrays); hooks, commands, and settings are now managed via build-contract.json copy-file targets.
+16. `build.py` passes `RABBIT_ROOT=<repo_root>` as an environment variable when invoking `generate-claude-md.py` for `generate-claude-md` targets, so that installs into non-git directories (e.g., temp dirs during `install.sh`) succeed without `git rev-parse` errors.
+17. Every runtime script under `.claude/features/rabbit-cage/hooks/` and `.claude/features/rabbit-cage/scripts/` is a standalone executable Python file (`#!/usr/bin/env python3`). No `.sh` files exist under either directory. `install.py` at the rabbit-cage root is the bootstrap installer (also Python). Tests under `.claude/features/rabbit-cage/test/` are also Python (`.py`); no `.sh` test files exist in rabbit-cage.
+18. The Python runtime scripts in rabbit-cage are: in `hooks/` — `refresh.py`, `scope-guard.py`, `session-init.py`, `sync-check.py`; in `scripts/` — `build.py`, `build-targets.py`, `generate-claude-md.py`, `generate-claude-md-header.py`, `new-feature.py`, `rabbit-project.py`, `rabbit-project-consolidate.py`, `rabbit-project-map.py`, `rabbit-project-set-path.py`, `repo-permissions.py`, `scope-guard-on.py`, `workspace-tree.py`. Each preserves the stdin/stdout/exit-code contract of the `.sh` predecessor it replaces. The legacy `validate-all.py` script was removed in RABBIT-CAGE-BACKLOG-24; feature-audit sweeps are now owned by the `rabbit-feature-audit` skill in the `rabbit-feature` feature. The `new-feature.py` script remains in rabbit-cage temporarily because `rabbit-feature-new` still resolves `.claude/features/rabbit-cage/scripts/new-feature.py`. Its move into `rabbit-feature` is tracked as the follow-up cycle RABBIT-CAGE-BACKLOG-26.
 
 ## Team-wide Permissions
 
@@ -69,14 +69,14 @@ The current team-wide defaults are:
 Team-wide permissions live in the **source** file (not the build-managed destination)
 so that `build.py`'s `copy-file` regeneration propagates them on every drift rebuild.
 Writing the same block directly to `.claude/settings.json` (the destination) would be
-destroyed by the next surface rebuild — Inv 50.
+destroyed by the next surface rebuild — Inv 32.
 
 Personal overrides continue to live in `.claude/settings.local.json` (gitignored) and
 are managed via `/rabbit-config bash-allow` / `/rabbit-config allowed-tools`. Claude
 Code merges permission arrays across all sources, so personal entries add to (rather
 than replace) the team-wide defaults.
 
-**Bypass mode (Inv 69).** Bypass mode is a per-user preference, not a team-wide
+**Bypass mode (Inv 49).** Bypass mode is a per-user preference, not a team-wide
 default. The shared `settings.json` MUST NOT declare `permissions.defaultMode`;
 operators who want native per-write prompts suppressed (so the scope-guard
 PreToolUse hook becomes the single decision point for write authorization)
@@ -89,7 +89,7 @@ lives in `.claude/settings.local.json`. Neither key MAY appear in the shared
 
 ### Invariants
 
-51. `.claude/features/rabbit-cage/settings.json` declares a top-level `permissions`
+19. `.claude/features/rabbit-cage/settings.json` declares a top-level `permissions`
     object whose `allow` array contains exactly the entries `Bash(*)`, `Write`,
     and `Edit` (in that order), and whose `deny` array contains exactly the entries
     `Bash(git merge *)`, `Bash(git push * main)`, and `Bash(git push origin main)`.
@@ -193,36 +193,36 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
 
 ### Invariants
 
-25. The slash-command file `.claude/features/rabbit-cage/commands/rabbit-config.md` does NOT exist. `/rabbit-config` is invoked exclusively through the `rabbit-config` skill at `.claude/features/rabbit-cage/skills/rabbit-config/`. Keeping a parallel command file would surface a duplicate entry in the Claude Code skill list (the command file's frontmatter `description` is treated as a skill advertisement) and create two confusable interfaces for the same functionality. The deleted command file MUST NOT be recreated; any new entry point goes through the skill's SKILL.md.
-26. `/rabbit-set-threshold` command file does NOT exist anywhere in the repository.
-27. `/rabbit-config prompt-threshold <N>` writes `{"env": {"RABBIT_REFRESH_EVERY": "<N>"}}` merged into `.claude/settings.local.json`.
-28. `/rabbit-config prompt-threshold` (no argument) removes the `RABBIT_REFRESH_EVERY` key from the `env` object in `.claude/settings.local.json`; if `env` becomes empty the key is also removed.
-29. An unknown subcommand to `/rabbit-config` emits a usage message and exits non-zero without modifying any file.
-43. `/rabbit-config allowed-tools add <tool>` adds `<tool>` to the `permissions.allow` array in `.claude/settings.local.json`, creating the `permissions` and `permissions.allow` keys if they do not exist; the operation is idempotent (already-present entries are not duplicated).
-44. `/rabbit-config allowed-tools remove <tool>` removes `<tool>` from `permissions.allow` in `.claude/settings.local.json`; absence of the entry is a no-op (exit 0). The `permissions.allow` key is left as an empty array when emptied; it is not deleted.
-45. `/rabbit-config bash-allow add <command>` adds the literal string `Bash(<command>:*)` to `permissions.allow` in `.claude/settings.local.json`; idempotent.
-46. `/rabbit-config bash-allow remove <command>` removes the literal string `Bash(<command>:*)` from `permissions.allow` in `.claude/settings.local.json`; absence is a no-op (exit 0).
-47. `/rabbit-config allowed-tools` (no action) and `/rabbit-config bash-allow` (no action) print current entries one per line to stdout from `.claude/settings.local.json` and exit 0; they do not modify any file. `bash-allow` lists prints only the inner `<command>` (with `Bash(` and `:*)` stripped) and skips entries that do not match the `Bash(<command>:*)` shape.
-48. `/rabbit-config allowed-tools add <tool>` and `/rabbit-config allowed-tools remove <tool>` reject inputs whose value begins with `Bash(` and exit non-zero with an error directing the operator to use `bash-allow` instead.
-49. `/rabbit-config bash-allow add <command>` rejects `<command>` values containing any of `(`, `)`, `:`, or whitespace, and exits non-zero without modifying any file.
-50. The permission subcommands (`allowed-tools`, `bash-allow`) write to `.claude/settings.local.json` (which is on the scope-guard filename allowlist); they never write to `.claude/settings.json`. This isolates permission grants from the build system: `.claude/settings.json` is a copy-file target regenerated by `build.py` on surface drift (see `build-contract.json`), which would silently destroy any `permissions` block written there. `.claude/settings.local.json` is outside the build system's copy-file target set and persists across surface-drift rebuilds.
-53. `.claude/features/rabbit-cage/skills/rabbit-config/SKILL.md` exists. Its YAML frontmatter declares `name: rabbit-config` and a `description` field that names all seven subcommands (`help`, `prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`, `bypass-permissions`) so the dispatcher can decide to invoke it. Its body enumerates the full CLI for every subcommand verbatim — no opening the script needed to read the interface. (Inv 82 / BACKLOG-28 reconciliation: the count includes `help` per the discoverability invariant; the original "six subcommands" wording predated the `help` addition.)
-54. `.claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py` exists, is executable (`chmod +x`), and is the sole implementation of `/rabbit-config`. It is a standalone Python 3 script using stdlib only. There is no slash-command file; invocation goes through the skill entry only.
-55. `/rabbit-config human-approval false` writes the file `.rabbit-human-approval-bypass` at the repo root with content `session` and prints a single confirmation line. Idempotent: re-invoking when the marker already exists is a no-op exit 0 with the same confirmation. The legacy verbs `bypass` and `gated` are removed; only `true` and `false` are accepted (per contract Inv 11).
-56. `/rabbit-config human-approval true` deletes `.rabbit-human-approval-bypass` from the repo root and prints a single confirmation line. Idempotent: invoking when the marker is absent is a no-op exit 0.
-57. `/rabbit-config human-approval` (no action) prints exactly one line to stdout: `false` if `.rabbit-human-approval-bypass` exists at repo root, otherwise `true`. No file is modified. Exits 0.
-58. `.rabbit-human-approval-bypass` is gitignored (appears in `.gitignore`). The marker is a runtime artifact, never committed.
-59. `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event while `.rabbit-human-approval-bypass` exists at the repo root: `[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches`. The marker is NOT consumed by `sync-check.py` — it persists across Stops until explicitly removed via `/rabbit-config human-approval true`. This human-approval-bypass alert sits between scope-guard-off and skills-updated in the conditional-priority order (see Inv 37). See Inv 88 for the parallel bypass-permissions Stop alert.
-60. `permissions [lock|unlock]` is a `/rabbit-config` subcommand that shells out to `.claude/features/rabbit-cage/scripts/repo-permissions.py` with the same action. Unknown actions exit non-zero with a usage message; no other file is modified.
-61. `session-init.py` MUST NOT auto-create or auto-switch git branches. The legacy R1 branch enforcement (auto-creating `session/YYYYMMDD-HHMMSS` on `main`/`master`) is REMOVED — the hook does not call `git checkout -b`, does not invoke the `r1_branch` renderer, and does not emit any `R1:` message. Operators are responsible for creating their own feature branches before editing; direct commits to `main` remain blocked by the `Bash(git push * main)` deny rules (Inv 51) and by the `check-no-main-edits.py` enforcement script in contract.
-62. `sync-check.py` surface-drift alert MUST be RED (`\x1b[31m`), consistent with Inv 18's color convention (alert/error messages are red). A GREEN surface-drift alert violates the convention and silently downgrades the visibility of a real drift condition.
-63. `sync-check.py` drift-detected path emits `additionalContext` to surface the CLAUDE.md policy block. The first-run path (CLAUDE.md not existing on disk) was REMOVED in BACKLOG-19 — in any real checkout CLAUDE.md is committed and the path was dead code. The `additionalContext` value MUST be either (a) the fully-expanded policy content with `@`-imports resolved, OR (b) accompanied by a clear in-message note that the agent must independently load the referenced policy files. Emitting raw unexpanded `@<path>` import lines as `additionalContext` without expansion AND without a note is a silent failure: the policy is not re-injected because Claude Code does not follow `@`-imports inside `additionalContext` strings.
-64. rabbit-cage tests MUST NOT mutate live source files in `.claude/features/rabbit-cage/` (including `settings.json`, `settings.local.json`, `feature.json`, and any committed source file) without restoring them on test exit. Tests that need to write to these paths MUST do so inside an isolated temporary directory (e.g., via `tempfile.mkdtemp` + a clean repo copy) so that test interruption, crash, or parallel execution cannot leave the working tree in a corrupted state.
-65. `scope-guard.py` MUST DENY (exit 2) writes when an active scope marker `.rabbit-scope-active` or `.rabbit-scope-active-<feature>` names a feature that `find-feature.py` cannot resolve to a real feature path (i.e., `find_feature_path` returns None). The current silent-ALLOW behavior on unresolvable markers defeats the scope-guard's default-deny posture: a typo'd or malicious marker bypasses the entire write gate. The DENY message MUST name the unresolvable feature and direct the user to verify the marker name.
-66. `new-feature.py` MUST scaffold `test/run.py` (Python-only stack per Inv 39), not `test/run.sh`. The scaffolded `feature.json` MUST include `template_version` matching the current contract template version. A scaffolded feature MUST pass `validate-feature.py` immediately with no manual fixups.
-67. `commands/rabbit-project.md` MUST reference only Python scripts that exist (under `.claude/features/rabbit-cage/scripts/`), never `.sh` scripts or stale relocated paths. Any `.sh` reference is a constitution violation per Inv 39.
-68. `rabbit-config.py human-approval false` confirmation message MUST be self-explanatory and consistent with the gate semantics. The output MUST state both the new marker state and the practical effect, e.g., `Human-approval gate BYPASSED. Marker .rabbit-human-approval-bypass written. Step 4 will be skipped for all dispatches until you run /rabbit-config human-approval true.` Conversely `true` MUST say `Human-approval gate ENABLED. Marker .rabbit-human-approval-bypass removed. Step 4 will wait for in-conversation approval on each dispatch.` Avoid bare adjectives like `DISABLED` that read ambiguously against the gate vs the marker.
-69. Bypass mode is a per-user preference. The shared
+20. The slash-command file `.claude/features/rabbit-cage/commands/rabbit-config.md` does NOT exist. `/rabbit-config` is invoked exclusively through the `rabbit-config` skill at `.claude/features/rabbit-cage/skills/rabbit-config/`. Keeping a parallel command file would surface a duplicate entry in the Claude Code skill list (the command file's frontmatter `description` is treated as a skill advertisement) and create two confusable interfaces for the same functionality. The deleted command file MUST NOT be recreated; any new entry point goes through the skill's SKILL.md.
+21. `/rabbit-set-threshold` command file does NOT exist anywhere in the repository.
+22. `/rabbit-config prompt-threshold <N>` writes `{"env": {"RABBIT_REFRESH_EVERY": "<N>"}}` merged into `.claude/settings.local.json`.
+23. `/rabbit-config prompt-threshold` (no argument) removes the `RABBIT_REFRESH_EVERY` key from the `env` object in `.claude/settings.local.json`; if `env` becomes empty the key is also removed.
+24. An unknown subcommand to `/rabbit-config` emits a usage message and exits non-zero without modifying any file.
+25. `/rabbit-config allowed-tools add <tool>` adds `<tool>` to the `permissions.allow` array in `.claude/settings.local.json`, creating the `permissions` and `permissions.allow` keys if they do not exist; the operation is idempotent (already-present entries are not duplicated).
+26. `/rabbit-config allowed-tools remove <tool>` removes `<tool>` from `permissions.allow` in `.claude/settings.local.json`; absence of the entry is a no-op (exit 0). The `permissions.allow` key is left as an empty array when emptied; it is not deleted.
+27. `/rabbit-config bash-allow add <command>` adds the literal string `Bash(<command>:*)` to `permissions.allow` in `.claude/settings.local.json`; idempotent.
+28. `/rabbit-config bash-allow remove <command>` removes the literal string `Bash(<command>:*)` from `permissions.allow` in `.claude/settings.local.json`; absence is a no-op (exit 0).
+29. `/rabbit-config allowed-tools` (no action) and `/rabbit-config bash-allow` (no action) print current entries one per line to stdout from `.claude/settings.local.json` and exit 0; they do not modify any file. `bash-allow` lists prints only the inner `<command>` (with `Bash(` and `:*)` stripped) and skips entries that do not match the `Bash(<command>:*)` shape.
+30. `/rabbit-config allowed-tools add <tool>` and `/rabbit-config allowed-tools remove <tool>` reject inputs whose value begins with `Bash(` and exit non-zero with an error directing the operator to use `bash-allow` instead.
+31. `/rabbit-config bash-allow add <command>` rejects `<command>` values containing any of `(`, `)`, `:`, or whitespace, and exits non-zero without modifying any file.
+32. The permission subcommands (`allowed-tools`, `bash-allow`) write to `.claude/settings.local.json` (which is on the scope-guard filename allowlist); they never write to `.claude/settings.json`. This isolates permission grants from the build system: `.claude/settings.json` is a copy-file target regenerated by `build.py` on surface drift (see `build-contract.json`), which would silently destroy any `permissions` block written there. `.claude/settings.local.json` is outside the build system's copy-file target set and persists across surface-drift rebuilds.
+33. `.claude/features/rabbit-cage/skills/rabbit-config/SKILL.md` exists. Its YAML frontmatter declares `name: rabbit-config` and a `description` field that names all seven subcommands (`help`, `prompt-threshold`, `allowed-tools`, `bash-allow`, `permissions`, `human-approval`, `bypass-permissions`) so the dispatcher can decide to invoke it. Its body enumerates the full CLI for every subcommand verbatim — no opening the script needed to read the interface. (Inv 56 / BACKLOG-28 reconciliation: the count includes `help` per the discoverability invariant; the original "six subcommands" wording predated the `help` addition.)
+34. `.claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py` exists, is executable (`chmod +x`), and is the sole implementation of `/rabbit-config`. It is a standalone Python 3 script using stdlib only. There is no slash-command file; invocation goes through the skill entry only.
+35. `/rabbit-config human-approval false` writes the file `.rabbit-human-approval-bypass` at the repo root with content `session` and prints a single confirmation line. Idempotent: re-invoking when the marker already exists is a no-op exit 0 with the same confirmation. The legacy verbs `bypass` and `gated` are removed; only `true` and `false` are accepted (per contract Inv 11).
+36. `/rabbit-config human-approval true` deletes `.rabbit-human-approval-bypass` from the repo root and prints a single confirmation line. Idempotent: invoking when the marker is absent is a no-op exit 0.
+37. `/rabbit-config human-approval` (no action) prints exactly one line to stdout: `false` if `.rabbit-human-approval-bypass` exists at repo root, otherwise `true`. No file is modified. Exits 0.
+38. `.rabbit-human-approval-bypass` is gitignored (appears in `.gitignore`). The marker is a runtime artifact, never committed.
+39. `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event while `.rabbit-human-approval-bypass` exists at the repo root: `[rabbit] HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all rabbit-feature-touch dispatches`. The marker is NOT consumed by `sync-check.py` — it persists across Stops until explicitly removed via `/rabbit-config human-approval true`. This human-approval-bypass alert sits between scope-guard-off and skills-updated in the conditional-priority order (see Inv 83). See Inv 61 for the parallel bypass-permissions Stop alert.
+40. `permissions [lock|unlock]` is a `/rabbit-config` subcommand that shells out to `.claude/features/rabbit-cage/scripts/repo-permissions.py` with the same action. Unknown actions exit non-zero with a usage message; no other file is modified.
+41. `session-init.py` MUST NOT auto-create or auto-switch git branches. The legacy R1 branch enforcement (auto-creating `session/YYYYMMDD-HHMMSS` on `main`/`master`) is REMOVED — the hook does not call `git checkout -b`, does not invoke the `r1_branch` renderer, and does not emit any `R1:` message. Operators are responsible for creating their own feature branches before editing; direct commits to `main` remain blocked by the `Bash(git push * main)` deny rules (Inv 19) and by the `check-no-main-edits.py` enforcement script in contract.
+42. `sync-check.py` surface-drift alert MUST be RED (`\x1b[31m`), consistent with Inv 73's color convention (alert/error messages are red). A GREEN surface-drift alert violates the convention and silently downgrades the visibility of a real drift condition.
+43. `sync-check.py` drift-detected path emits `additionalContext` to surface the CLAUDE.md policy block. The first-run path (CLAUDE.md not existing on disk) was REMOVED in BACKLOG-19 — in any real checkout CLAUDE.md is committed and the path was dead code. The `additionalContext` value MUST be either (a) the fully-expanded policy content with `@`-imports resolved, OR (b) accompanied by a clear in-message note that the agent must independently load the referenced policy files. Emitting raw unexpanded `@<path>` import lines as `additionalContext` without expansion AND without a note is a silent failure: the policy is not re-injected because Claude Code does not follow `@`-imports inside `additionalContext` strings.
+44. rabbit-cage tests MUST NOT mutate live source files in `.claude/features/rabbit-cage/` (including `settings.json`, `settings.local.json`, `feature.json`, and any committed source file) without restoring them on test exit. Tests that need to write to these paths MUST do so inside an isolated temporary directory (e.g., via `tempfile.mkdtemp` + a clean repo copy) so that test interruption, crash, or parallel execution cannot leave the working tree in a corrupted state.
+45. `scope-guard.py` MUST DENY (exit 2) writes when an active scope marker `.rabbit-scope-active` or `.rabbit-scope-active-<feature>` names a feature that `find-feature.py` cannot resolve to a real feature path (i.e., `find_feature_path` returns None). The current silent-ALLOW behavior on unresolvable markers defeats the scope-guard's default-deny posture: a typo'd or malicious marker bypasses the entire write gate. The DENY message MUST name the unresolvable feature and direct the user to verify the marker name.
+46. `new-feature.py` MUST scaffold `test/run.py` (Python-only stack per Inv 17), not `test/run.sh`. The scaffolded `feature.json` MUST include `template_version` matching the current contract template version. A scaffolded feature MUST pass `validate-feature.py` immediately with no manual fixups.
+47. `commands/rabbit-project.md` MUST reference only Python scripts that exist (under `.claude/features/rabbit-cage/scripts/`), never `.sh` scripts or stale relocated paths. Any `.sh` reference is a constitution violation per Inv 17.
+48. `rabbit-config.py human-approval false` confirmation message MUST be self-explanatory and consistent with the gate semantics. The output MUST state both the new marker state and the practical effect, e.g., `Human-approval gate BYPASSED. Marker .rabbit-human-approval-bypass written. Step 4 will be skipped for all dispatches until you run /rabbit-config human-approval true.` Conversely `true` MUST say `Human-approval gate ENABLED. Marker .rabbit-human-approval-bypass removed. Step 4 will wait for in-conversation approval on each dispatch.` Avoid bare adjectives like `DISABLED` that read ambiguously against the gate vs the marker.
+49. Bypass mode is a per-user preference. The shared
     `.claude/features/rabbit-cage/settings.json` source and its build copy
     `.claude/settings.json` MUST NOT declare `permissions.defaultMode`.
     Operators who want native per-write prompts suppressed opt in by
@@ -232,7 +232,7 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
     likewise a per-user preference and MUST live in
     `.claude/settings.local.json` only; neither key MAY appear in the
     shared `settings.json` source.
-70. Hooks `sync-check.py` and `session-init.py` MUST log unexpected
+50. Hooks `sync-check.py` and `session-init.py` MUST log unexpected
     exceptions to stderr via a `_log_exc()` helper rather than silently
     swallowing them with bare `except Exception: pass`. The happy-path
     contract (exit 0 with no stderr noise) is preserved on successful runs;
@@ -244,34 +244,34 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
     by this invariant — extending them is out-of-scope here because their
     failure modes are narrower (pure-function helpers, no subprocess
     invocations beyond the optional `git rev-parse`).
-71. `/rabbit-config bypass-permissions true` writes
+51. `/rabbit-config bypass-permissions true` writes
     `{"permissions": {"defaultMode": "bypassPermissions"}}` merged into
     `.claude/settings.local.json`, creating the `permissions` key if it
     does not exist. Idempotent: a second invocation while the key already
     equals `"bypassPermissions"` is a no-op (exit 0) and does not rewrite
     the file. The target file is `.claude/settings.local.json` only; the
     shared `.claude/settings.json` MUST NOT be modified.
-72. `/rabbit-config bypass-permissions false` removes the
+52. `/rabbit-config bypass-permissions false` removes the
     `permissions.defaultMode` key from `.claude/settings.local.json`. If
     `permissions` becomes empty (`{}`) after removal, the `permissions`
     key is also removed. Idempotent: invoking when the key is already
     absent is a no-op (exit 0). Other keys inside `permissions` (e.g.,
     `allow`, `skipDangerousModePermissionPrompt`) are left untouched.
-73. `/rabbit-config bypass-permissions` (no action) prints exactly one
+53. `/rabbit-config bypass-permissions` (no action) prints exactly one
     line to stdout: `true` if `.claude/settings.local.json` declares
     `permissions.defaultMode == "bypassPermissions"`, otherwise `false`.
     No file is modified. Exits 0. An invalid value (anything other than
     `true`, `false`, or no action) exits non-zero with an error message
     and modifies no file.
-74. Confirmation output for `/rabbit-config bypass-permissions true|false`
-    follows the same self-explanatory pattern as `human-approval` (Inv 68):
+54. Confirmation output for `/rabbit-config bypass-permissions true|false`
+    follows the same self-explanatory pattern as `human-approval` (Inv 48):
     `true` MUST say `Bypass permissions ENABLED in .claude/settings.local.json.
     Claude Code will skip native per-write prompts on next session start.`
     and `false` MUST say `Bypass permissions DISABLED. permissions.defaultMode
     removed from .claude/settings.local.json. Claude Code will prompt for
     writes again on next session start.` Idempotent invocations MUST state
     that the file was not rewritten.
-81. `/rabbit-config help` exits 0, writes ONLY to stdout, modifies no file,
+55. `/rabbit-config help` exits 0, writes ONLY to stdout, modifies no file,
     and prints an illustrated usage message that names every other
     subcommand (`prompt-threshold`, `allowed-tools`, `bash-allow`,
     `permissions`, `human-approval`, `bypass-permissions`) AND `help`
@@ -279,7 +279,7 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
     Extra positional arguments after `help` are ignored (no error). The
     handler exists in `scripts/rabbit-config.py` and is registered in the
     subcommand dispatch table.
-82. The `help` subcommand is advertised in both surfaces that operators
+56. The `help` subcommand is advertised in both surfaces that operators
     consult when discovering `/rabbit-config`'s capabilities:
     (a) the SKILL.md frontmatter `description` field names `help` in its
         subcommand enumeration, and
@@ -289,7 +289,7 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
     Either surface omitting `help` is a constitution violation: the help
     entry is the discoverability anchor for the entire skill, so it
     must appear in every place the rest of the surface appears.
-83. The illustrated usage written by `/rabbit-config help` MUST be
+57. The illustrated usage written by `/rabbit-config help` MUST be
     distinct from the terse one-line-per-action `USAGE` string printed
     on error. The help output adds (i) per-subcommand purpose lines and
     (ii) at least one concrete `/rabbit-config <subcommand> <example>`
@@ -297,17 +297,17 @@ Manages the per-user `permissions.defaultMode = "bypassPermissions"` key in `.cl
     use any subcommand without consulting the spec or the SKILL.md. A
     `help` output that is byte-identical to the error `USAGE` string is
     a violation of this invariant.
-84. The rabbit-cage feature version MUST be identical across all three
+58. The rabbit-cage feature version MUST be identical across all three
     manifests: the `version` field of `feature.json`, the `version` field
     of the YAML frontmatter of `docs/spec/spec.md`, and the `version`
     field of the YAML frontmatter of `docs/spec/contract.md`. Three-way
     drift (any two manifests disagreeing) is a constitution violation
     (RABBIT-CAGE-BUG-91); the alignment is enforced by
     `test/test-rabbit-cage-version-alignment.py`.
-86. `feature.json` `surface.skills` MUST be a non-empty array containing the entry `rabbit-config` (matching the deployed skill directory `skills/rabbit-config/SKILL.md` — Inv 53). An empty `surface.skills` while rabbit-config SKILL.md exists violates the surface-declaration contract: build and scope tooling read `surface.skills` to identify deployable skills, and an empty entry causes the SKILL.md to be silently ignored. Skills are declared via `surface.skills` rather than via `build-contract.json` copy-file targets — this is the skill counterpart to Inv 29, which keeps `hooks`/`commands`/`settings` empty because those ARE managed via build-contract.json copy-file targets.
-87. Skills SKILL.md body MUST reference its implementation script(s) via the canonical absolute repo-relative path (e.g. `.claude/features/<owning-feature>/skills/<skill-name>/scripts/<script>.py`), never via a source-relative path like `scripts/<script>.py`. Rationale: only `SKILL.md` is deployed to `.claude/skills/<name>/` (Inv 3); a source-relative path that worked from the source location fails to resolve from the deployed location and forces dispatchers to invent a path or search the filesystem. The absolute repo-relative form resolves identically from both source and deployed locations. This invariant applies to every SKILL.md across all features, but its specific instance for `rabbit-config` is enforced by the rabbit-cage test suite.
-88. `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event while `.claude/settings.local.json` declares `permissions.defaultMode == "bypassPermissions"` (per Inv 69): `[rabbit] BYPASS-PERMISSIONS MODE ACTIVE — Claude Code native per-write prompts skipped; scope-guard hook is the sole write-authorization gate`. The check reads `.claude/settings.local.json` directly (the per-user file managed by `/rabbit-config bypass-permissions`); it does NOT consult `.claude/settings.json`. The alert is independent of the human-approval bypass alert (Inv 59) — both can fire on the same Stop event, in which case both messages are emitted. This alert sits adjacent to the human-approval-bypass alert in the conditional-priority order (immediately after it, before skills-updated). Operators silence it by running `/rabbit-config bypass-permissions false`.
-89. `session-init.py` MUST emit a status-flags block in its startup banner that lists every active runtime override at session start, so a fresh session begins with full visibility into the active configuration. The block MUST include one line per active flag for: (a) human-approval bypass (`.rabbit-human-approval-bypass` exists at repo root); (b) bypass-permissions mode (`.claude/settings.local.json` declares `permissions.defaultMode == "bypassPermissions"`); (c) any future runtime override added to rabbit-cage via the same per-user-marker pattern. Each line MUST use the canonical `[🐇 rabbit 🐇]` brand prefix (per contract Inv 28/29) and name both the active condition and the canonical revoke command (`/rabbit-config <subcommand> <value>`). When no flags are active, the block is omitted entirely (baseline banner is unchanged — no empty header, no "all clear" affirmation, so the banner stays terse when nothing is overridden). The startup-banner emission is parallel to but distinct from the Stop-event emission in Inv 59 / Inv 88: startup-time is a one-shot orientation; Stop-time is a recurring per-event reminder. Both share the SAME canonical message text per flag so operators see one consistent line whether the session is starting or stopping.
+59. `feature.json` `surface.skills` MUST be a non-empty array containing the entry `rabbit-config` (matching the deployed skill directory `skills/rabbit-config/SKILL.md` — Inv 33). An empty `surface.skills` while rabbit-config SKILL.md exists violates the surface-declaration contract: build and scope tooling read `surface.skills` to identify deployable skills, and an empty entry causes the SKILL.md to be silently ignored. Skills are declared via `surface.skills` rather than via `build-contract.json` copy-file targets — this is the skill counterpart to Inv 24, which keeps `hooks`/`commands`/`settings` empty because those ARE managed via build-contract.json copy-file targets.
+60. Skills SKILL.md body MUST reference its implementation script(s) via the canonical absolute repo-relative path (e.g. `.claude/features/<owning-feature>/skills/<skill-name>/scripts/<script>.py`), never via a source-relative path like `scripts/<script>.py`. Rationale: only `SKILL.md` is deployed to `.claude/skills/<name>/` (Inv 3); a source-relative path that worked from the source location fails to resolve from the deployed location and forces dispatchers to invent a path or search the filesystem. The absolute repo-relative form resolves identically from both source and deployed locations. This invariant applies to every SKILL.md across all features, but its specific instance for `rabbit-config` is enforced by the rabbit-cage test suite.
+61. `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event while `.claude/settings.local.json` declares `permissions.defaultMode == "bypassPermissions"` (per Inv 49): `[rabbit] BYPASS-PERMISSIONS MODE ACTIVE — Claude Code native per-write prompts skipped; scope-guard hook is the sole write-authorization gate`. The check reads `.claude/settings.local.json` directly (the per-user file managed by `/rabbit-config bypass-permissions`); it does NOT consult `.claude/settings.json`. The alert is independent of the human-approval bypass alert (Inv 39) — both can fire on the same Stop event, in which case both messages are emitted. This alert sits adjacent to the human-approval-bypass alert in the conditional-priority order (immediately after it, before skills-updated). Operators silence it by running `/rabbit-config bypass-permissions false`.
+62. `session-init.py` MUST emit a status-flags block in its startup banner that lists every active runtime override at session start, so a fresh session begins with full visibility into the active configuration. The block MUST include one line per active flag for: (a) human-approval bypass (`.rabbit-human-approval-bypass` exists at repo root); (b) bypass-permissions mode (`.claude/settings.local.json` declares `permissions.defaultMode == "bypassPermissions"`); (c) any future runtime override added to rabbit-cage via the same per-user-marker pattern. Each line MUST use the canonical `[🐇 rabbit 🐇]` brand prefix (per contract Inv 28/29) and name both the active condition and the canonical revoke command (`/rabbit-config <subcommand> <value>`). When no flags are active, the block is omitted entirely (baseline banner is unchanged — no empty header, no "all clear" affirmation, so the banner stays terse when nothing is overridden). The startup-banner emission is parallel to but distinct from the Stop-event emission in Inv 39 / Inv 61: startup-time is a one-shot orientation; Stop-time is a recurring per-event reminder. Both share the SAME canonical message text per flag so operators see one consistent line whether the session is starting or stopping.
 
 ## Out of Scope
 
@@ -433,8 +433,8 @@ rules.
 
 ## Invariants (additional)
 
-11. `.rabbit-scope-override` and `.rabbit-scope-override-used` are gitignored.
-20. `scope-guard.py` filename allowlist contains exactly: `settings.local.json`,
+63. `.rabbit-scope-override` and `.rabbit-scope-override-used` are gitignored.
+64. `scope-guard.py` filename allowlist contains exactly: `settings.local.json`,
     `.gitignore`, and `.rabbit-scope-override`. Writes to any of these
     basenames are always permitted, regardless of scope-marker state. This
     allowlist must include `.rabbit-scope-override` to enable the
@@ -470,11 +470,11 @@ rules.
     via `rabbit-feature-spec` without a manual override. The pattern is narrowly
     scoped to `docs/spec/spec.md`; other files under `.claude/features/<feature>/docs/`
     remain governed by the default scope rules.
-12. `scope-guard.py` never creates `.rabbit-scope-override`; it only reads it
+65. `scope-guard.py` never creates `.rabbit-scope-override`; it only reads it
     and (for `one-time`) deletes it after consumption. The main session (Claude)
     may write `.rabbit-scope-override` after receiving explicit in-conversation
     user approval via the confirm-token flow.
-52. When `scope-guard.py` reaches the default-deny path (no scope marker, no
+66. When `scope-guard.py` reaches the default-deny path (no scope marker, no
     override, no allowlist match), the DENY message printed to stderr MUST
     present three explicit options in a structured form, in this order:
     (1) SESSION OVERRIDE — bypasses scope-guard for the entire session;
@@ -493,14 +493,14 @@ rules.
     which is the rationalization pattern that BUG-1 captured. The new
     structured form forces a decision point: pick one of three explicit
     paths, none of which is silent compliance.
-13. A `one-time` override consumed by `scope-guard.py` is acknowledged exactly
+67. A `one-time` override consumed by `scope-guard.py` is acknowledged exactly
     once by `sync-check.py`, after which `.rabbit-scope-override-used` is
     removed.
-41. `scope-guard-on.py` exists at `.claude/features/rabbit-cage/scripts/scope-guard-on.py`
+68. `scope-guard-on.py` exists at `.claude/features/rabbit-cage/scripts/scope-guard-on.py`
     and is executable. It deletes `.rabbit-scope-override` (if present) and prints a
     confirmation to stdout. It is a no-op if no override file exists. It is the
     canonical answer to "scope guard back on" / "revoke the session override".
-42. The double-quoted region stripping `re.sub` in `extract_bash_targets()` of
+69. The double-quoted region stripping `re.sub` in `extract_bash_targets()` of
     `scope-guard.py` uses the `re.DOTALL` flag so that multi-line double-quoted
     strings (e.g., from backslash-newline continuations) are fully removed before
     pattern matching, preventing false-positive DENY on content inside the string.
@@ -513,17 +513,17 @@ rules.
     residual unbalanced-quote segments and cause false-positive DENY on
     write-pattern characters (`>`, `>>`, `tee`, etc.) inside the original
     quoted text.
-15. `.claude/skills/` and its contents are committed to the repo;
+70. `.claude/skills/` and its contents are committed to the repo;
     `.claude/skills/` does not appear in `.gitignore`.
-16. `CLAUDE.md` at the repo root is committed to the repo; `CLAUDE.md` does
+71. `CLAUDE.md` at the repo root is committed to the repo; `CLAUDE.md` does
     not appear in `.gitignore`.
-17. On every Stop event, `sync-check.py` compares the committed
+72. On every Stop event, `sync-check.py` compares the committed
     `CLAUDE.md` against a fresh regeneration from the policy source files.
     On discrepancy it regenerates `CLAUDE.md` in place and emits a red
     `[rabbit]` `systemMessage` warning that the committed copy drifted from
     the policy sources, instructing the human to commit the regenerated
     file.
-18. `[🐇 rabbit 🐇]` `systemMessage` brand, decoration, color, and message
+73. `[🐇 rabbit 🐇]` `systemMessage` brand, decoration, color, and message
     bodies are sourced from the centralized print registry
     `.claude/features/contract/schemas/rabbit-print-messages.json` via the
     shared renderer `.claude/features/contract/scripts/rabbit_print.py`
@@ -538,7 +538,7 @@ rules.
     for alerts) is now encoded by the `color` field of each entry in
     `rabbit-print-messages.json`; the spec defers the per-message color
     assignment to that registry.
-19. The scope guard recognizes two coexisting scope-marker formats at the
+74. The scope guard recognizes two coexisting scope-marker formats at the
     repo root: a single global marker `.rabbit-scope-active` (contains one
     feature name; legacy / serial-dispatch form) and per-feature markers
     named `.rabbit-scope-active-<feature>` (presence alone declares scope
@@ -555,7 +555,7 @@ rules.
 
 ## Invariants (additional continued)
 
-24. On every Stop event, after the existing drift checks, `sync-check.py`
+75. On every Stop event, after the existing drift checks, `sync-check.py`
     detects skill updates via a self-clearing marker file:
     (a) `build-targets.py` (invoked by `build.py`) appends the skill name to
     `.rabbit-skills-updated` at the repo root ONLY when it copies a `copy-file`
@@ -580,7 +580,7 @@ rules.
     for the same reason — the marker is consumed by `sync-check.py`.
     (e) `.rabbit-skills-updated` is gitignored.
     The skills-updated marker check participates in the aggregated emission
-    described by Inv 37; its rendered line is appended to the aggregated
+    described by Inv 83; its rendered line is appended to the aggregated
     `systemMessage` in priority order rather than being suppressed by a
     higher-priority condition. The single-JSON-per-invocation invariant is
     preserved: at most one JSON object is emitted per `sync-check.py`
@@ -591,7 +591,7 @@ rules.
     `systemMessage`, ordered by priority. The Claude Code Stop hook protocol
     accepts at most one JSON object per invocation, so aggregation occurs
     INSIDE that object, not by emitting multiple objects. The priority order
-    is declared in Invariant 37; the aggregation contract in Inv 38.
+    is declared in Invariant 83; the aggregation contract in Inv 84.
 
 ## Scope-Guard Quote Awareness
 
@@ -659,12 +659,12 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
 
 ### Invariants
 
-31. `refresh.py` reads and writes `.rabbit-prompt-counter`; reads `RABBIT_REFRESH_EVERY`.
-32. `sync-check.py` reads and writes `.rabbit-sync-counter`; reads `RABBIT_SYNC_EVERY`; writes `.rabbit-prompt-counter` on the drift path; reads `RABBIT_REFRESH_EVERY` for that counter write. The first-run path was removed in BACKLOG-19.
-33. `settings.json` declares env key `RABBIT_REFRESH_EVERY`; its `SessionStart` command resets `.rabbit-prompt-counter`.
-34. `rabbit-refresh.md` command resets `.rabbit-prompt-counter`.
-35. `workspace-tree.py` excludes `.rabbit-prompt-counter` from full listings.
-85. `workspace-tree.py` reflects each feature's `feature.json` `status`
+76. `refresh.py` reads and writes `.rabbit-prompt-counter`; reads `RABBIT_REFRESH_EVERY`.
+77. `sync-check.py` reads and writes `.rabbit-sync-counter`; reads `RABBIT_SYNC_EVERY`; writes `.rabbit-prompt-counter` on the drift path; reads `RABBIT_REFRESH_EVERY` for that counter write. The first-run path was removed in BACKLOG-19.
+78. `settings.json` declares env key `RABBIT_REFRESH_EVERY`; its `SessionStart` command resets `.rabbit-prompt-counter`.
+79. `rabbit-refresh.md` command resets `.rabbit-prompt-counter`.
+80. `workspace-tree.py` excludes `.rabbit-prompt-counter` from full listings.
+81. `workspace-tree.py` reflects each feature's `feature.json` `status`
     field (`active` | `retired`) in its rendered output. Feature
     directories whose `status` field equals `retired` MUST be rendered
     with a trailing `[RETIRED]` tag appended after the directory name
@@ -674,7 +674,7 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
     (RABBIT-CAGE-BACKLOG-23). Schema-level changes to `feature.json` and
     audit behaviour for `workspace-map.py` are owned by the contract
     feature and are out of scope for this invariant.
-36. Every runtime marker file written at the repo root MUST be listed in `.gitignore`;
+82. Every runtime marker file written at the repo root MUST be listed in `.gitignore`;
     runtime markers are state, never committed source. The mandated set is:
     `.rabbit-prompt-counter`, `.rabbit-sync-counter`, `.rabbit-scope-active`,
     `.rabbit-scope-active-*`, `.rabbit-scope-override`, `.rabbit-scope-override-used`,
@@ -695,7 +695,7 @@ Runtime counter and config files use the `rabbit-` prefix (not `rbt-`).
 ```
 
 `systemMessage` is always present when JSON is emitted, and aggregates ALL
-pending conditions in the priority order declared by Inv 37 — earlier-priority
+pending conditions in the priority order declared by Inv 83 — earlier-priority
 lines appear first, joined by `\n`. The earlier conditional-priority strategy
 (suppress all but the highest-priority condition) is REPLACED by the
 aggregation strategy in RABBIT-CAGE-BACKLOG-18; a Stop event with N pending
@@ -711,14 +711,14 @@ When NO condition is pending, no JSON is emitted (exit 0, empty stdout).
 ## session-init.py Output Schema
 
 `session-init.py` emits AT MOST ONE JSON object per invocation to stdout
-(Inv 75). The output schema is identical in shape to `sync-check.py`'s,
+(Inv 85). The output schema is identical in shape to `sync-check.py`'s,
 with policy injection as the sole pending condition. When policy injection
 applies, the emitted JSON carries the policy `[rabbit]` line in
 `systemMessage` and the expanded policy text in `additionalContext`.
 
 ### Invariants
 
-37. `sync-check.py` uses the **aggregation** multi-message strategy
+83. `sync-check.py` uses the **aggregation** multi-message strategy
     (RABBIT-CAGE-BACKLOG-18): every pending condition emits within a single
     JSON object per Stop invocation. No condition is suppressed by a
     higher-priority condition — the priority order controls ORDERING within
@@ -742,28 +742,28 @@ applies, the emitted JSON carries the policy `[rabbit]` line in
     Conditions at the same priority level do not coexist in the current
     implementation; each has a distinct marker or detection path.
 
-38. The JSON object emitted by `sync-check.py` conforms to the output schema
+84. The JSON object emitted by `sync-check.py` conforms to the output schema
     above. Shape: `{"systemMessage": "<aggregated string>"}` when no
     CLAUDE.md drift/first-run condition is pending; or
     `{"additionalContext": "<string>", "systemMessage": "<aggregated string>"}`
     when CLAUDE.md drift or first-run is among the pending conditions. The
     `systemMessage` MAY contain multiple `[rabbit] ━━━ ... ━━━` lines — one
-    per pending condition, joined by `\n`, in the Inv 37 priority order.
+    per pending condition, joined by `\n`, in the Inv 83 priority order.
     No other top-level keys are emitted. When NO condition is pending,
     `sync-check.py` emits no JSON at all (exit 0, empty stdout). This
     schema is machine-first: downstream consumers (Claude Code Stop hook
     handler) read `systemMessage` and optionally `additionalContext`; they
     never parse free-form text.
 
-75. `session-init.py` emits AT MOST ONE JSON object per invocation. Policy
+85. `session-init.py` emits AT MOST ONE JSON object per invocation. Policy
     injection is the only pending condition (the R1 branch-enforcement
-    renderer was removed; see Inv 61). When policy injection applies, the
+    renderer was removed; see Inv 41). When policy injection applies, the
     emitted JSON contains the policy `[rabbit] ━━━ ... ━━━` line in
     `systemMessage` and the expanded policy text in `additionalContext`.
     When policy injection does not apply, `session-init.py` emits no JSON
     (exit 0, empty stdout).
 
-76. Each `[rabbit]` message-producing condition inside the multi-condition
+86. Each `[rabbit]` message-producing condition inside the multi-condition
     hooks (`sync-check.py`, `session-init.py`) is implemented as a
     pure-function renderer (RABBIT-CAGE-BACKLOG-18). A renderer takes the
     state it needs (repo root, marker contents, etc.) and returns either
@@ -784,7 +784,7 @@ applies, the emitted JSON carries the policy `[rabbit]` line in
     not required to adopt the renderer pattern, though it MAY for
     consistency.
 
-77. All rabbit-cage hook scripts (`sync-check.py`, `session-init.py`,
+87. All rabbit-cage hook scripts (`sync-check.py`, `session-init.py`,
     `refresh.py`) MUST import the named API from the shared renderer
     module:
         sys.path.insert(0, str(repo_root / ".claude/features/contract/scripts"))
@@ -808,10 +808,10 @@ applies, the emitted JSON carries the policy `[rabbit]` line in
     statements or comments referring to the contract. This is the
     consumer-side enforcement of contract Inv 29.
 
-78. The named-wrapper mapping per producer:
+88. The named-wrapper mapping per producer:
     - `session-init.py` uses `welcome()` only (no args; sub-lines list the
       @-import basenames + one-liner description via `rabbit_subline`).
-      The `r1_branch` wrapper is no longer called by any producer (Inv 61).
+      The `r1_branch` wrapper is no longer called by any producer (Inv 41).
     - `refresh.py` uses `policy_refreshed()` (no args; sub-lines list
       each @-import full path via `rabbit_subline`).
     - `sync-check.py` uses `policy_drift()`,
@@ -833,14 +833,14 @@ applies, the emitted JSON carries the policy `[rabbit]` line in
     Other @-imports (if added later) appear as the basename only with no
     description suffix.
 
-79. `sync-check.py` first-run path (CLAUDE.md not on disk) is REMOVED
+89. `sync-check.py` first-run path (CLAUDE.md not on disk) is REMOVED
     (BACKLOG-19). In any real checkout, CLAUDE.md is committed and exists
     on disk; the path was dead code. The drift path (CLAUDE.md exists but
     diverges from the regenerated content) remains and covers regeneration.
     If CLAUDE.md is genuinely missing, the hook silently exits 0 — bootstrap
     is `install.py`'s responsibility, not `sync-check.py`'s.
 
-80. Every `systemMessage` emitted by any rabbit-cage hook
+90. Every `systemMessage` emitted by any rabbit-cage hook
     (`sync-check.py`, `session-init.py`, `refresh.py`) MUST begin with
     a newline character (`\n`). Without the leading newline, Claude
     Code renders the first `[🐇 rabbit 🐇]` line inline with its own
@@ -851,7 +851,7 @@ applies, the emitted JSON carries the policy `[rabbit]` line in
     contract of the `rabbit_block(*lines)` assembler — every hook
     produces its systemMessage as `rabbit_block(...)` exactly once,
     which guarantees the leading `\n` without per-hook string manipulation.
-    Manual `"\n" + ...` patterns are forbidden (Inv 77); use
+    Manual `"\n" + ...` patterns are forbidden (Inv 87); use
     `rabbit_block` for every emission. The zero-condition case (no JSON
     emitted at all) is unaffected — `rabbit_block` is only called when
     at least one line will be emitted.

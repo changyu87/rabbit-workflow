@@ -168,7 +168,7 @@ else:
     ok("workspace-tree.py does NOT reference old .rbt-prompt-counter")
 
 # t11
-# Inv 25 (updated): rabbit-config.md is a shim with no inline Python. The
+# Inv 20 (updated): rabbit-config.md is a shim with no inline Python. The
 # RABBIT_REFRESH_EVERY reference now lives in skills/rabbit-config/scripts/rabbit-config.py.
 print("=== t11: rabbit-config.py uses RABBIT_REFRESH_EVERY ===")
 rc = read(RABBIT_CONFIG_PY)

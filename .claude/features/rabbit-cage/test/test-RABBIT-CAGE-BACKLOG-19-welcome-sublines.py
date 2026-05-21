@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BACKLOG-19 / Inv 78: session-init.py welcome banner + per-file sublines.
+"""BACKLOG-19 / Inv 88: session-init.py welcome banner + per-file sublines.
 
 Full e2e: invoke session-init.py on a temp repo on main branch with the
 three standard @-imports (philosophy.md, spec-rules.md, coding-rules.md).

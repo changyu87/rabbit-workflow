@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests scope-guard.py path-prefix allowlist for .rabbit/, .claude/bugs/, .claude/backlogs/.
 
-Covers Invariant 20 path-prefix allowlist:
+Covers Invariant 64 path-prefix allowlist:
 - Writes anywhere under .claude/bugs/, .claude/backlogs/, or .rabbit/ are
   always permitted regardless of scope-marker state.
 - The .rabbit/ prefix is required so rabbit-feature-touch dispatchers can

@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""E2E tests for rabbit-cage Wave 2 Invariants 61-65.
+"""E2E tests for rabbit-cage Wave 2 Invariants 41-65.
 
-Inv 61: session-init.py MUST NOT auto-create or auto-switch git branches.
+Inv 41: session-init.py MUST NOT auto-create or auto-switch git branches.
         The legacy R1 enforcement (session/YYYYMMDD-HHMMSS on main/master)
         is REMOVED in spec v3.12.0. The hook is a no-op for branch state
         on BOTH main and feature branches; no R1: message is emitted.
-Inv 62: sync-check.py surface-drift alert MUST be RED (\\x1b[31m).
-Inv 63: sync-check.py first-run/drift additionalContext MUST either expand
+Inv 42: sync-check.py surface-drift alert MUST be RED (\\x1b[31m).
+Inv 43: sync-check.py first-run/drift additionalContext MUST either expand
         @-imports OR contain a clear note that @-imports are not auto-followed.
-Inv 64: rabbit-cage tests MUST NOT mutate live source files in
+Inv 44: rabbit-cage tests MUST NOT mutate live source files in
         .claude/features/rabbit-cage/ without restoring them.
-Inv 65: scope-guard.py MUST DENY (exit 2) when active per-feature or global
+Inv 45: scope-guard.py MUST DENY (exit 2) when active per-feature or global
         scope marker names an unresolvable feature.
 
 Every test uses isolated temporary directories — no live source mutation.
@@ -87,10 +87,10 @@ tmproots = []
 
 try:
     # ====================================================================
-    # Inv 61 — session-init.py MUST NOT auto-create or switch branches
+    # Inv 41 — session-init.py MUST NOT auto-create or switch branches
     # (R1 enforcement removed in spec v3.12.0)
     # ====================================================================
-    print("=== Inv 61: session-init.py does NOT auto-create branches (R1 removed) ===")
+    print("=== Inv 41: session-init.py does NOT auto-create branches (R1 removed) ===")
 
     # t1: on main → branch UNCHANGED (no auto-switch)
     repo_main = make_repo(initial_branch="main")
@@ -103,9 +103,9 @@ try:
         capture_output=True, text=True,
     ).stdout.strip()
     if branch == "main":
-        ok("on main → branch unchanged at 'main' (Inv 61 — R1 removed)")
+        ok("on main → branch unchanged at 'main' (Inv 41 — R1 removed)")
     else:
-        fail_t(f"on main → branch unexpectedly switched to '{branch}'; expected 'main' (Inv 61 violation)")
+        fail_t(f"on main → branch unexpectedly switched to '{branch}'; expected 'main' (Inv 41 violation)")
 
     # t2: emitted output MUST NOT contain R1/session-branch text in systemMessage
     has_r1_text = False
@@ -124,9 +124,9 @@ try:
         if re.search(r"session/\d{8}-\d{6}", msg):
             has_session_branch = True
     if not has_r1_text and not has_session_branch:
-        ok("on main → no R1: message and no session/YYYYMMDD-HHMMSS in any emitted systemMessage (Inv 61)")
+        ok("on main → no R1: message and no session/YYYYMMDD-HHMMSS in any emitted systemMessage (Inv 41)")
     else:
-        fail_t(f"on main → emitted R1/session-branch text (r1={has_r1_text}, session={has_session_branch}); stdout={res.stdout!r} (Inv 61)")
+        fail_t(f"on main → emitted R1/session-branch text (r1={has_r1_text}, session={has_session_branch}); stdout={res.stdout!r} (Inv 41)")
 
     # t3: off-main → no branch change (unchanged behavior)
     repo_feat = make_repo(initial_branch="feature/keep")
@@ -139,28 +139,28 @@ try:
         capture_output=True, text=True,
     ).stdout.strip()
     if branch_after == "feature/keep":
-        ok("off-main → no-op, branch unchanged (Inv 61)")
+        ok("off-main → no-op, branch unchanged (Inv 41)")
     else:
-        fail_t(f"off-main → expected 'feature/keep', got '{branch_after}' (Inv 61)")
+        fail_t(f"off-main → expected 'feature/keep', got '{branch_after}' (Inv 41)")
 
     # t4: session-init.py source MUST NOT contain forbidden strings
     print()
-    print("=== Inv 61: session-init.py source free of R1 artifacts ===")
+    print("=== Inv 41: session-init.py source free of R1 artifacts ===")
     with open(SESSION_INIT) as _f:
         sess_src = _f.read()
     forbidden = ["r1_branch", "R1:", "checkout -b"]
     leaked = [s for s in forbidden if s in sess_src]
     if not leaked:
-        ok("session-init.py source has no 'r1_branch', 'R1:', or 'checkout -b' (Inv 61)")
+        ok("session-init.py source has no 'r1_branch', 'R1:', or 'checkout -b' (Inv 41)")
     else:
-        fail_t(f"session-init.py still references R1 artifacts: {leaked} (Inv 61 violation)")
+        fail_t(f"session-init.py still references R1 artifacts: {leaked} (Inv 41 violation)")
 
     # ====================================================================
-    # Inv 62 — surface-drift alert color is RED (sourced from the print
+    # Inv 42 — surface-drift alert color is RED (sourced from the print
     # registry, BACKLOG-19). Verify the registry entry has color=red.
     # ====================================================================
     print()
-    print("=== Inv 62: surface-drift alert is RED (via rabbit-print-messages.json) ===")
+    print("=== Inv 42: surface-drift alert is RED (via rabbit-print-messages.json) ===")
     registry_path = os.path.join(
         REPO_ROOT, ".claude/features/contract/schemas/rabbit-print-messages.json",
     )
@@ -169,19 +169,19 @@ try:
             registry = json.load(f)
         surface_color = registry.get("messages", {}).get("surface-drift", {}).get("color")
         if surface_color == "red":
-            ok("rabbit-print-messages.json declares surface-drift color=red (Inv 62)")
+            ok("rabbit-print-messages.json declares surface-drift color=red (Inv 42)")
         else:
-            fail_t(f"surface-drift color is {surface_color!r}, expected 'red' (Inv 62)")
+            fail_t(f"surface-drift color is {surface_color!r}, expected 'red' (Inv 42)")
     except Exception as e:
         fail_t(f"could not load rabbit-print-messages.json: {e}")
 
     # ====================================================================
-    # Inv 63 — sync-check.py additionalContext expands @-imports OR contains note.
+    # Inv 43 — sync-check.py additionalContext expands @-imports OR contains note.
     # BACKLOG-19: first-run path removed; the drift path is the only emitter
     # of additionalContext, so we corrupt an existing CLAUDE.md to force drift.
     # ====================================================================
     print()
-    print("=== Inv 63: sync-check.py additionalContext handles @-imports (drift path) ===")
+    print("=== Inv 43: sync-check.py additionalContext handles @-imports (drift path) ===")
     tmp_drift = tempfile.mkdtemp(prefix="rabbit-cage-wave2-drift-")
     tmproots.append(tmp_drift)
     subprocess.run(["git", "init", "-q", tmp_drift], check=True)
@@ -226,19 +226,19 @@ try:
                        addl_ctx, re.IGNORECASE)
         )
         if not bare_at_lines:
-            ok("additionalContext contains no bare unresolved @-import lines (Inv 63 — expansion path)")
+            ok("additionalContext contains no bare unresolved @-import lines (Inv 43 — expansion path)")
         elif has_warning:
-            ok("additionalContext contains bare @-imports BUT also includes a warning note (Inv 63 — note path)")
+            ok("additionalContext contains bare @-imports BUT also includes a warning note (Inv 43 — note path)")
         else:
-            fail_t(f"additionalContext contains bare @-import lines without a warning note: {bare_at_lines!r} (Inv 63 violation)")
+            fail_t(f"additionalContext contains bare @-import lines without a warning note: {bare_at_lines!r} (Inv 43 violation)")
     else:
-        fail_t(f"sync-check.py drift did NOT emit additionalContext; stdout={res.stdout!r} (Inv 63 cannot be checked)")
+        fail_t(f"sync-check.py drift did NOT emit additionalContext; stdout={res.stdout!r} (Inv 43 cannot be checked)")
 
     # ====================================================================
-    # Inv 64 — tests do not mutate live source files
+    # Inv 44 — tests do not mutate live source files
     # ====================================================================
     print()
-    print("=== Inv 64: rabbit-cage tests do not mutate live source files ===")
+    print("=== Inv 44: rabbit-cage tests do not mutate live source files ===")
 
     # Snapshot key live source files before running the historically-mutating tests
     # twice, then assert byte-identical.
@@ -262,15 +262,15 @@ try:
     post = {k: sha256_file(p) for k, p in targets.items() if os.path.isfile(p)}
     drifted = [k for k in pre if pre[k] != post.get(k)]
     if not drifted:
-        ok("test-hook-enforcement.py and test-team-wide-permissions.py left live source files byte-identical (Inv 64)")
+        ok("test-hook-enforcement.py and test-team-wide-permissions.py left live source files byte-identical (Inv 44)")
     else:
-        fail_t(f"live source files mutated by tests (Inv 64 violation): {drifted}")
+        fail_t(f"live source files mutated by tests (Inv 44 violation): {drifted}")
 
     # ====================================================================
-    # Inv 65 — scope-guard DENIES writes for unresolvable scope markers
+    # Inv 45 — scope-guard DENIES writes for unresolvable scope markers
     # ====================================================================
     print()
-    print("=== Inv 65: scope-guard.py DENIES writes for unresolvable scope marker ===")
+    print("=== Inv 45: scope-guard.py DENIES writes for unresolvable scope marker ===")
 
     # Setup: create an isolated repo mirror with the scope-guard wired up.
     # Simpler approach: create a per-feature marker for a name that
@@ -322,14 +322,14 @@ try:
     os.unlink(marker_path)
 
     if res.returncode == 2:
-        ok("scope-guard exits 2 (DENY) for write when per-feature marker names unresolvable feature (Inv 65)")
+        ok("scope-guard exits 2 (DENY) for write when per-feature marker names unresolvable feature (Inv 45)")
     else:
-        fail_t(f"scope-guard exited {res.returncode} (expected 2/DENY) for unresolvable per-feature marker; stderr={deny_msg!r} (Inv 65 violation)")
+        fail_t(f"scope-guard exited {res.returncode} (expected 2/DENY) for unresolvable per-feature marker; stderr={deny_msg!r} (Inv 45 violation)")
 
     if "nonexistent" in deny_msg:
-        ok("DENY message names the unresolvable feature 'nonexistent' (Inv 65)")
+        ok("DENY message names the unresolvable feature 'nonexistent' (Inv 45)")
     else:
-        fail_t(f"DENY message does NOT name 'nonexistent'; stderr={deny_msg!r} (Inv 65)")
+        fail_t(f"DENY message does NOT name 'nonexistent'; stderr={deny_msg!r} (Inv 45)")
 
     # t-65b: global marker pointing to nonexistent feature → DENY
     marker_path = os.path.join(tmp_sg, ".rabbit-scope-active")
@@ -348,9 +348,9 @@ try:
     # currently flows through the walk_up_find path and may ALLOW silently if
     # find_feature_path returns None.
     if res2.returncode == 2 and "nonexistent" in res2.stderr:
-        ok("scope-guard exits 2 (DENY) for write when global marker names unresolvable feature (Inv 65)")
+        ok("scope-guard exits 2 (DENY) for write when global marker names unresolvable feature (Inv 45)")
     else:
-        fail_t(f"global marker unresolvable-feature did NOT DENY: rc={res2.returncode}, stderr={res2.stderr!r} (Inv 65 violation)")
+        fail_t(f"global marker unresolvable-feature did NOT DENY: rc={res2.returncode}, stderr={res2.stderr!r} (Inv 45 violation)")
 
 finally:
     for d in tmproots:

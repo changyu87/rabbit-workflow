@@ -127,7 +127,7 @@ else:
 settings = json.loads(read(SETTINGS_JSON))
 skill = read(SKILL_MD)
 
-# t9 — INVERTED for BACKLOG-12 reopening: bypass mode is now per-user (Inv 69
+# t9 — INVERTED for BACKLOG-12 reopening: bypass mode is now per-user (Inv 49
 # rewritten), so the shared settings.json MUST NOT declare permissions.defaultMode.
 # Operators opt in via /rabbit-config bypass-permissions true → settings.local.json.
 if "defaultMode" not in settings.get("permissions", {}):

@@ -35,7 +35,7 @@ Originally asserted path-detection behaviour of dispatch-feature-edit.py. Retire
 Originally asserted properties of audit-orphan-storage.py. The script was deleted as dead production code; it had no production caller outside its own self-references.
 
 ### Inv 31 — check-no-main-edits.py deleted (CONTRACT-BACKLOG-27)
-Originally asserted properties of check-no-main-edits.py. The script was deleted; it was never auto-invoked. The live guards against direct edits to main/master are the feature-touch branch + PR workflow plus the Bash(git push * main) deny rules in rabbit-cage Inv 51.
+Originally asserted properties of check-no-main-edits.py. The script was deleted; it was never auto-invoked. The live guards against direct edits to main/master are the feature-touch branch + PR workflow plus the Bash(git push * main) deny rules in rabbit-cage Inv 19.
 
 ## Parenthetical strikes also moved here
 

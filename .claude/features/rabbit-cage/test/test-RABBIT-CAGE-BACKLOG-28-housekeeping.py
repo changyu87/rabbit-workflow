@@ -3,10 +3,10 @@
 
 End-to-end coverage for the BACKLOG-28 cleanup cycle:
 
-  (a) Inv 53 reconciliation: SKILL.md frontmatter description names all
+  (a) Inv 33 reconciliation: SKILL.md frontmatter description names all
       seven subcommands (help included).
 
-  (b) Inv 84 three-way version alignment: feature.json, spec.md, and
+  (b) Inv 58 three-way version alignment: feature.json, spec.md, and
       contract.md all at the new version 4.7.0.
 
   (c) Module-level public-API hygiene in _runtime_flags.py:
@@ -30,7 +30,7 @@ End-to-end coverage for the BACKLOG-28 cleanup cycle:
       explicitly says "expected lock or unlock" and rejects bad/missing
       action without modifying any file.
 
-Per Inv 64, tests MUST NOT mutate live source files — every fixture is
+Per Inv 44, tests MUST NOT mutate live source files — every fixture is
 built inside tempfile.mkdtemp.
 """
 import importlib.util
@@ -90,7 +90,7 @@ def header_version(text):
 print("test-RABBIT-CAGE-BACKLOG-28-housekeeping.py")
 print()
 
-# ---- (a) Inv 53 reconciliation: description names seven subcommands ----
+# ---- (a) Inv 33 reconciliation: description names seven subcommands ----
 skill_text = read(SKILL_MD)
 fm_match = re.match(r"^---\n(.*?)\n---", skill_text, re.DOTALL)
 if not fm_match:
@@ -105,11 +105,11 @@ else:
     )
     missing = [s for s in seven if s not in desc]
     if not missing:
-        ok("a1", "SKILL.md description names all seven subcommands (Inv 53 reconciled)")
+        ok("a1", "SKILL.md description names all seven subcommands (Inv 33 reconciled)")
     else:
         fail_t("a1", f"SKILL.md description omits subcommands: {missing}")
 
-# ---- (b) Inv 84 three-way version alignment at 4.7.0 ----
+# ---- (b) Inv 58 three-way version alignment at 4.7.0 ----
 with open(FEATURE_JSON) as f:
     feature_json = json.load(f)
 feature_v = feature_json.get("version")
@@ -117,7 +117,7 @@ spec_v = header_version(read(SPEC_MD))
 contract_v = header_version(read(CONTRACT_MD))
 EXPECTED = "4.7.0"
 if feature_v == spec_v == contract_v == EXPECTED:
-    ok("b1", f"feature.json/spec.md/contract.md all at {EXPECTED} (Inv 84)")
+    ok("b1", f"feature.json/spec.md/contract.md all at {EXPECTED} (Inv 58)")
 else:
     fail_t("b1", (
         f"three-way version mismatch or wrong target: "

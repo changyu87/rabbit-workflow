@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""E2E tests for Invariant 51 (Team-wide Permissions).
+"""E2E tests for Invariant 19 (Team-wide Permissions).
 
 Verifies that:
   (a) the source file .claude/features/rabbit-cage/settings.json declares the
-      team-wide `permissions` block exactly as specified in Inv 51;
+      team-wide `permissions` block exactly as specified in Inv 19;
   (b) the build-managed copy at .claude/settings.json contains the same block
       after running build.py (verifying copy-file propagation);
   (c) no other top-level keys (env, hooks) are removed by the new key.
 
-Inv 64: this test MUST NOT mutate live source files. The E2E
+Inv 44: this test MUST NOT mutate live source files. The E2E
 propagation test (case (b) E2E) runs inside an isolated temp repo mirror so
 even an interrupted test cannot corrupt the live worktree.
 """
@@ -58,7 +58,7 @@ def _sha(path):
 
 
 def test_source_settings_has_permissions_block():
-    """Inv 51: source settings.json declares the exact permissions block."""
+    """Inv 19: source settings.json declares the exact permissions block."""
     data = _load(SOURCE_SETTINGS)
     assert "permissions" in data, "source settings.json missing 'permissions' key"
     perms = data["permissions"]
@@ -72,7 +72,7 @@ def test_source_settings_has_permissions_block():
 
 
 def test_source_settings_allow_order_is_exact():
-    """Inv 51 (v2.9.0): allow must contain exactly Bash(*), Write, Edit in that order."""
+    """Inv 19 (v2.9.0): allow must contain exactly Bash(*), Write, Edit in that order."""
     data = _load(SOURCE_SETTINGS)
     allow = data["permissions"]["allow"]
     assert allow == ["Bash(*)", "Write", "Edit"], (
@@ -81,7 +81,7 @@ def test_source_settings_allow_order_is_exact():
 
 
 def test_destination_settings_allow_order_is_exact():
-    """Inv 51 (v2.9.0): build-managed copy must hold the same ordered allow list."""
+    """Inv 19 (v2.9.0): build-managed copy must hold the same ordered allow list."""
     data = _load(DEST_SETTINGS)
     allow = data["permissions"]["allow"]
     assert allow == ["Bash(*)", "Write", "Edit"], (
@@ -90,7 +90,7 @@ def test_destination_settings_allow_order_is_exact():
 
 
 def test_source_settings_preserves_env_and_hooks():
-    """Inv 51 mandate: 'No other top-level keys (env, hooks) are altered.'"""
+    """Inv 19 mandate: 'No other top-level keys (env, hooks) are altered.'"""
     data = _load(SOURCE_SETTINGS)
     assert "env" in data, "source settings.json must still contain 'env'"
     assert "hooks" in data, "source settings.json must still contain 'hooks'"
@@ -103,7 +103,7 @@ def test_source_settings_preserves_env_and_hooks():
 
 
 def test_destination_settings_holds_same_permissions_block():
-    """Inv 51: .claude/settings.json (build-managed copy) holds the same block."""
+    """Inv 19: .claude/settings.json (build-managed copy) holds the same block."""
     data = _load(DEST_SETTINGS)
     assert "permissions" in data, ".claude/settings.json missing 'permissions' key"
     perms = data["permissions"]
@@ -118,7 +118,7 @@ def test_destination_settings_holds_same_permissions_block():
 def test_build_py_propagates_permissions_e2e_sandboxed():
     """E2E (sandboxed): mutate sandbox source, run build, observe propagation.
 
-    Inv 64: runs entirely inside a temp-dir mirror so a crashed test cannot
+    Inv 44: runs entirely inside a temp-dir mirror so a crashed test cannot
     leave the live worktree corrupted. We copy SOURCE_SETTINGS, build.py,
     build-targets.py, and the build-contract into a tmp tree under the same
     relative layout, mutate the sandbox source, and verify build-targets.py
@@ -186,23 +186,23 @@ def test_build_py_propagates_permissions_e2e_sandboxed():
 
 
 def test_inv64_live_source_files_unchanged():
-    """Inv 64: this test must not have mutated any live source file.
+    """Inv 44: this test must not have mutated any live source file.
 
     Run last; compares snapshots taken at module import vs current state.
     """
     post = _sha(SOURCE_SETTINGS)
     assert post == _PRE_SOURCE_SHA, (
-        f"Inv 64 violation: SOURCE_SETTINGS sha changed during test "
+        f"Inv 44 violation: SOURCE_SETTINGS sha changed during test "
         f"(pre={_PRE_SOURCE_SHA}, post={post})"
     )
     post_dest = _sha(DEST_SETTINGS)
     assert post_dest == _PRE_DEST_SHA, (
-        f"Inv 64 violation: DEST_SETTINGS sha changed during test "
+        f"Inv 44 violation: DEST_SETTINGS sha changed during test "
         f"(pre={_PRE_DEST_SHA}, post={post_dest})"
     )
 
 
-# Snapshot live source state at import time for the Inv 64 check.
+# Snapshot live source state at import time for the Inv 44 check.
 _PRE_SOURCE_SHA = _sha(SOURCE_SETTINGS) if os.path.isfile(SOURCE_SETTINGS) else ""
 _PRE_DEST_SHA = _sha(DEST_SETTINGS) if os.path.isfile(DEST_SETTINGS) else ""
 

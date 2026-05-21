@@ -41,7 +41,7 @@ print("test-RABBIT-CAGE-BACKLOG13-claude-md-gitignore-drift.py")
 print()
 
 # t1
-print("=== Invariant 16: CLAUDE.md is committed; NOT in .gitignore ===")
+print("=== Invariant 71: CLAUDE.md is committed; NOT in .gitignore ===")
 gi_lines = [line.strip() for line in read(GITIGNORE).splitlines()]
 if "CLAUDE.md" not in gi_lines:
     ok(1, ".gitignore does NOT list CLAUDE.md as an exact entry")
@@ -63,7 +63,7 @@ else:
     fail_t(3, "CLAUDE.md does not exist on disk at repo root")
 
 print()
-print("=== Invariant 17: drift detection emits [rabbit] systemMessage warning ===")
+print("=== Invariant 72: drift detection emits [rabbit] systemMessage warning ===")
 
 if not (os.path.isfile(SYNC_CHECK) and os.access(SYNC_CHECK, os.X_OK)):
     fail_t(4, "sync-check.py missing or not executable — cannot test drift detection")
@@ -157,7 +157,7 @@ try:
         fail_t(9, "CLAUDE.md missing after drift detection — hook should regenerate it")
 
     print()
-    print("=== BACKLOG-19 / Inv 79: first-run path REMOVED — silent exit 0, no CLAUDE.md created ===")
+    print("=== BACKLOG-19 / Inv 89: first-run path REMOVED — silent exit 0, no CLAUDE.md created ===")
 
     tmproot2 = tempfile.mkdtemp()
     try:
@@ -197,9 +197,9 @@ try:
         # t12 — BACKLOG-19: first-run path removed; sync-check no longer creates CLAUDE.md
         cm2 = os.path.join(tmproot2, "CLAUDE.md")
         if not os.path.isfile(cm2):
-            ok(12, "CLAUDE.md NOT created by sync-check.py (Inv 79 — first-run path removed)")
+            ok(12, "CLAUDE.md NOT created by sync-check.py (Inv 89 — first-run path removed)")
         else:
-            fail_t(12, "CLAUDE.md was created — first-run path should be removed (Inv 79)")
+            fail_t(12, "CLAUDE.md was created — first-run path should be removed (Inv 89)")
 
         # t13 — stdout should be empty (no first-run JSON)
         if res2.stdout.strip() == "":

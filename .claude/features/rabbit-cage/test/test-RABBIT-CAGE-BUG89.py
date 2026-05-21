@@ -2,13 +2,13 @@
 """Tests scope-guard.py BUG-8 (spec.md path-pattern allowlist) and BUG-9
 (strip-before-split for ;|& inside quoted args).
 
-BUG-8 — Inv 20 (extended): scope-guard.py must permit writes to
+BUG-8 — Inv 64 (extended): scope-guard.py must permit writes to
 `.claude/features/<feature>/docs/spec/spec.md` for any single path segment
 `<feature>` (matched as `[^/]+`) regardless of scope-marker state. This
 unblocks rabbit-feature-touch Step 3 spec-authoring which runs from the
 main session before any per-feature scope marker is set.
 
-BUG-9 — Inv 42 (extended): the quote-stripping pass in
+BUG-9 — Inv 69 (extended): the quote-stripping pass in
 `extract_bash_targets()` must run on the FULL command string BEFORE
 splitting on `;|&` segment delimiters. Otherwise ;|& inside a quoted
 argument value (e.g., a `--description "text with ; and <feature>)."`)

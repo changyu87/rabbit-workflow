@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BACKLOG-18 aggregation strategy (Inv 37, 38).
+"""BACKLOG-18 aggregation strategy (Inv 83, 84).
 
 Replaces the conditional-priority assertions that previously lived in
 test-RABBIT-CAGE-BACKLOG14-conditional-priority.py. Aggregation means EVERY
@@ -64,13 +64,13 @@ def count_json_objects(data):
 
 
 print("test-RABBIT-CAGE-BACKLOG-18-aggregation.py")
-print("Asserting Inv 37 / 38: aggregation strategy (no suppression)")
+print("Asserting Inv 83 / 84: aggregation strategy (no suppression)")
 print()
 
 tmproots = []
 try:
     # t1: scope-guard-off + skills-updated BOTH emit (was: one suppressed)
-    print("=== t1: scope-guard-off + skills-updated BOTH emit (Inv 37) ===")
+    print("=== t1: scope-guard-off + skills-updated BOTH emit (Inv 83) ===")
     tmproot = make_git_repo()
     tmproots.append(tmproot)
     with open(os.path.join(tmproot, ".rabbit-scope-override"), "w") as f:
@@ -91,13 +91,13 @@ try:
         fail_t(f"scope-guard-off line missing from aggregated systemMessage: {msg!r}")
 
     if "Skills updated" in msg:
-        ok("skills-updated line ALSO present (no suppression — Inv 37 aggregation)")
+        ok("skills-updated line ALSO present (no suppression — Inv 83 aggregation)")
     else:
         fail_t(f"skills-updated line missing — should aggregate, not suppress: {msg!r}")
 
     # t2: ordering — scope-guard (priority 3) before skills-updated (priority 5)
     print()
-    print("=== t2: aggregated lines in Inv 37 priority order ===")
+    print("=== t2: aggregated lines in Inv 83 priority order ===")
     idx_scope = msg.find("SCOPE GUARD OFF")
     idx_skills = msg.find("Skills updated")
     if 0 <= idx_scope < idx_skills:
@@ -177,14 +177,14 @@ else:
 
 import re as _re
 if _re.search(r"^37\.", spec_content, _re.MULTILINE):
-    ok("Invariant 37 still present in spec.md")
+    ok("Invariant 83 still present in spec.md")
 else:
-    fail_t("Invariant 37 missing from spec.md")
+    fail_t("Invariant 83 missing from spec.md")
 
 if _re.search(r"^38\.", spec_content, _re.MULTILINE):
-    ok("Invariant 38 still present in spec.md")
+    ok("Invariant 84 still present in spec.md")
 else:
-    fail_t("Invariant 38 missing from spec.md")
+    fail_t("Invariant 84 missing from spec.md")
 
 print()
 print(f"Results: {total - failures} passed, {failures} failed")

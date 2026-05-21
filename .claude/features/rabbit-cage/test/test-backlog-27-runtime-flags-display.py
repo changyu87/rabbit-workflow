@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""RABBIT-CAGE-BACKLOG-27 — runtime-flags display (Inv 88, Inv 89).
+"""RABBIT-CAGE-BACKLOG-27 — runtime-flags display (Inv 61, Inv 62).
 
 End-to-end coverage for two new spec behaviours:
 
-  - Inv 88: sync-check.py emits a red [rabbit] systemMessage on every Stop
+  - Inv 61: sync-check.py emits a red [rabbit] systemMessage on every Stop
     event when .claude/settings.local.json declares permissions.defaultMode
     == "bypassPermissions". The alert is independent of the human-approval
-    bypass alert (Inv 59); both may fire on the same Stop event.
+    bypass alert (Inv 39); both may fire on the same Stop event.
 
-  - Inv 89: session-init.py emits a status-flags block in its startup
+  - Inv 62: session-init.py emits a status-flags block in its startup
     banner that lists every active runtime override (human-approval bypass +
     bypass-permissions mode). When no flags are active, the block is omitted
     (baseline banner unchanged).
@@ -18,7 +18,7 @@ helper module .claude/features/rabbit-cage/hooks/_runtime_flags.py so the
 two locations cannot drift (test asserts the message body is identical in
 both Stop and session-start contexts).
 
-Per Inv 64, tests MUST NOT mutate live source files — every fixture is
+Per Inv 44, tests MUST NOT mutate live source files — every fixture is
 built inside a tempfile.mkdtemp + clean repo copy.
 """
 import importlib.util
@@ -94,13 +94,13 @@ def parse_one_json(out):
 
 
 print("test-backlog-27-runtime-flags-display.py")
-print("Inv 88 + Inv 89: runtime-flags display (sync-check + session-init)")
+print("Inv 61 + Inv 62: runtime-flags display (sync-check + session-init)")
 print()
 
 tmproots = []
 try:
     # ============================================================
-    # SYNC-CHECK (Inv 88) — bypass-permissions Stop alert
+    # SYNC-CHECK (Inv 61) — bypass-permissions Stop alert
     # ============================================================
 
     # t1: bypass-permissions ACTIVE → alert appears in Stop systemMessage
@@ -124,7 +124,7 @@ try:
             )
         # Red color marker
         if "\x1b[31m" in msg:
-            ok("red ANSI color marker present (Inv 88 — alert color)")
+            ok("red ANSI color marker present (Inv 61 — alert color)")
         else:
             fail_t(f"red ANSI color missing from systemMessage: {msg!r}")
 
@@ -162,7 +162,7 @@ try:
     else:
         ok("no bypass-permissions alert when defaultMode != 'bypassPermissions'")
 
-    # t4: bypass-permissions + human-approval BOTH active → both alerts fire (Inv 88)
+    # t4: bypass-permissions + human-approval BOTH active → both alerts fire (Inv 61)
     print()
     print("=== t4: bypass-permissions + human-approval → BOTH alerts fire ===")
     tmproot = make_git_repo()
@@ -179,7 +179,7 @@ try:
         has_bp = BYPASS_PERMISSIONS_BODY in msg
         has_ha = "HUMAN APPROVAL BYPASS" in msg
         if has_bp and has_ha:
-            ok("both bypass-permissions AND human-approval lines present (Inv 88)")
+            ok("both bypass-permissions AND human-approval lines present (Inv 61)")
         else:
             fail_t(
                 f"both alerts expected to coexist; has_bp={has_bp} has_ha={has_ha}; "
@@ -204,7 +204,7 @@ try:
         ok("malformed settings.local.json handled gracefully (no false alert)")
 
     # ============================================================
-    # SESSION-INIT (Inv 89) — startup status-flags block
+    # SESSION-INIT (Inv 62) — startup status-flags block
     # ============================================================
 
     # t6: baseline (no flags) → status-flags block omitted entirely
@@ -226,7 +226,7 @@ try:
         elif HUMAN_APPROVAL_BODY in msg:
             fail_t(f"human-approval line should NOT appear in baseline banner: {msg!r}")
         else:
-            ok("baseline banner contains no status-flag lines (Inv 89)")
+            ok("baseline banner contains no status-flag lines (Inv 62)")
 
     # t7: BOTH flags active → status-flags block lists both
     print()
@@ -252,7 +252,7 @@ try:
             ok("human-approval line present in startup banner")
         else:
             fail_t(f"human-approval line missing from banner: {msg!r}")
-        # Inv 89: each flag line MUST name the canonical revoke command.
+        # Inv 62: each flag line MUST name the canonical revoke command.
         if "/rabbit-config bypass-permissions false" in msg:
             ok("startup line names the bypass-permissions revoke command")
         else:
@@ -292,7 +292,7 @@ try:
             ok("human-approval line absent (flag not set)")
 
     # ============================================================
-    # SHARED-TEXT INVARIANT (Inv 89) — both producers emit the SAME body text
+    # SHARED-TEXT INVARIANT (Inv 62) — both producers emit the SAME body text
     # ============================================================
 
     # t9: the bypass-permissions body emitted by sync-check.py is BYTE-IDENTICAL
@@ -336,20 +336,20 @@ try:
     else:
         fail_t(f"helper module missing: {helper}")
 
-    # t11: spec invariants 88 and 89 are present in spec.md
+    # t11: spec invariants 61 and 89 are present in spec.md
     print()
-    print("=== t11: spec.md declares Inv 88 and Inv 89 ===")
+    print("=== t11: spec.md declares Inv 61 and Inv 62 ===")
     spec_path = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/docs/spec/spec.md")
     with open(spec_path) as f:
         spec_text = f.read()
-    if "88. `sync-check.py`" in spec_text and "BYPASS-PERMISSIONS MODE ACTIVE" in spec_text:
-        ok("spec.md declares Inv 88 (bypass-permissions Stop alert)")
+    if "61. `sync-check.py`" in spec_text and "BYPASS-PERMISSIONS MODE ACTIVE" in spec_text:
+        ok("spec.md declares Inv 61 (bypass-permissions Stop alert)")
     else:
-        fail_t("Inv 88 (bypass-permissions Stop alert) missing or malformed in spec.md")
-    if "89. `session-init.py`" in spec_text and "status-flags block" in spec_text:
-        ok("spec.md declares Inv 89 (status-flags block in startup banner)")
+        fail_t("Inv 61 (bypass-permissions Stop alert) missing or malformed in spec.md")
+    if "62. `session-init.py`" in spec_text and "status-flags block" in spec_text:
+        ok("spec.md declares Inv 62 (status-flags block in startup banner)")
     else:
-        fail_t("Inv 89 (status-flags block) missing or malformed in spec.md")
+        fail_t("Inv 62 (status-flags block) missing or malformed in spec.md")
 finally:
     for d in tmproots:
         shutil.rmtree(d, ignore_errors=True)
