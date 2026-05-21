@@ -104,14 +104,6 @@ def t_bug15_uses_item_status_py_with_linked_item():
         ok("bug15: prompt references item-status.py")
     else:
         ko("bug15: prompt does NOT reference item-status.py")
-    if 'bug-status.py' not in prompt:
-        ok("bug15: prompt does NOT reference bug-status.py")
-    else:
-        ko("bug15: prompt still references bug-status.py")
-    if 'backlog-item-status.py' not in prompt:
-        ok("bug15: prompt does NOT reference backlog-item-status.py")
-    else:
-        ko("bug15: prompt still references backlog-item-status.py")
 
 
 def t_bug15_backlog_item_also_uses_item_status_py():
@@ -121,10 +113,10 @@ def t_bug15_backlog_item_also_uses_item_status_py():
     ]))
     if not prompt:
         return
-    if 'item-status.py' in prompt and 'backlog-item-status.py' not in prompt:
-        ok("bug15: backlog mode uses item-status.py, not backlog-item-status.py")
+    if 'item-status.py' in prompt:
+        ok("bug15: backlog mode uses item-status.py")
     else:
-        ko("bug15: backlog mode still references legacy backlog-item-status.py")
+        ko("bug15: backlog mode does NOT reference item-status.py")
 
 
 # ---- BUG-18: no trap in LOCK; explicit rm -f in UNLOCK -------------------

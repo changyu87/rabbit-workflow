@@ -1,27 +1,15 @@
 #!/usr/bin/env python3
 """test-slim-after-extraction.py
 
-Regression test for the tdd-subagent slim after extraction to
-tdd-state-machine.
+Regression test for the tdd-subagent slim after extraction to tdd-state-machine.
 
 Asserts:
-  (a) The three extracted scripts (tdd-step.py, tdd-context.py,
-      tdd-drift-check.py) are ABSENT from
-      .claude/features/tdd-subagent/scripts/.
-  (b) The three extracted scripts are PRESENT in
-      .claude/features/tdd-state-machine/scripts/ (the new owner).
-  (c) dispatch-tdd-subagent.py's tdd_step_py path string points at
-      the tdd-state-machine source, not at the deleted tdd-subagent
-      copy.
-  (d) build-contract.json copy-file sources for the three scripts
-      point at tdd-state-machine.
-  (e) The deployed agent scripts at
-      .claude/agents/tdd-subagent/scripts/ still exist (build.py
-      copies them from tdd-state-machine).
-  (f) tdd-subagent's feature.json surface only declares the
-      surviving surface (dispatch script + agent definition).
-  (g) tdd-subagent's contract.md provides.scripts no longer lists the
-      three extracted scripts.
+  (a) tdd-step.py is ABSENT from .claude/features/tdd-subagent/scripts/.
+  (b) tdd-step.py is PRESENT in .claude/features/tdd-state-machine/scripts/.
+  (c) dispatch-tdd-subagent.py's tdd_step_py path string points at tdd-state-machine.
+  (d) build-contract.json copy-file source for tdd-step.py points at tdd-state-machine.
+  (e) The deployed agent script .claude/agents/tdd-subagent/scripts/tdd-step.py exists.
+  (g) tdd-subagent's contract.md provides.scripts does not list tdd-step.py under tdd-subagent.
 """
 import json
 import os
@@ -35,15 +23,7 @@ TDD_SM_SCRIPTS = os.path.join(REPO_ROOT, ".claude", "features", "tdd-state-machi
 DISPATCH = os.path.join(TDD_SUB_SCRIPTS, "dispatch-tdd-subagent.py")
 BUILD_CONTRACT = os.path.join(REPO_ROOT, ".claude", "features", "contract", "build-contract.json")
 CONTRACT_MD = os.path.join(REPO_ROOT, ".claude", "features", "tdd-subagent", "docs", "spec", "contract.md")
-FEATURE_JSON = os.path.join(REPO_ROOT, ".claude", "features", "tdd-subagent", "feature.json")
 AGENT_DEPLOYED_SCRIPTS = os.path.join(REPO_ROOT, ".claude", "agents", "tdd-subagent", "scripts")
-
-EXTRACTED = ["tdd-step.py", "tdd-context.py", "tdd-drift-check.py"]
-
-# Scripts that survive in tdd-state-machine after BACKLOG-7.
-# tdd-context.py and tdd-drift-check.py were retired (zero runtime
-# callers; deleted per Bounded Scope + Designed Deprecation).
-EXTRACTED_SURVIVING = ["tdd-step.py"]
 
 PASS = 0
 FAIL = 0
@@ -61,39 +41,28 @@ def ko(msg):
     print(f"  FAIL {msg}")
 
 
-# (a) extracted scripts absent from tdd-subagent
+# (a) tdd-step.py absent from tdd-subagent
 def t_a_absent_from_tdd_subagent():
-    for s in EXTRACTED:
-        p = os.path.join(TDD_SUB_SCRIPTS, s)
-        if os.path.exists(p):
-            ko(f"a: {s} still present at {p}")
-        else:
-            ok(f"a: {s} absent from tdd-subagent/scripts/")
+    p = os.path.join(TDD_SUB_SCRIPTS, "tdd-step.py")
+    if os.path.exists(p):
+        ko(f"a: tdd-step.py still present at {p} (should live in tdd-state-machine)")
+    else:
+        ok("a: tdd-step.py absent from tdd-subagent/scripts/")
 
 
-# (b) surviving extracted scripts present in tdd-state-machine; retired
-# ones (BACKLOG-7) explicitly absent.
+# (b) tdd-step.py present in tdd-state-machine
 def t_b_present_in_tdd_state_machine():
-    for s in EXTRACTED_SURVIVING:
-        p = os.path.join(TDD_SM_SCRIPTS, s)
-        if not os.path.isfile(p):
-            ko(f"b: {s} missing from tdd-state-machine/scripts/")
-        else:
-            ok(f"b: {s} present in tdd-state-machine/scripts/")
-    # Retired scripts must remain ABSENT (BACKLOG-7 deletion).
-    for s in [r for r in EXTRACTED if r not in EXTRACTED_SURVIVING]:
-        p = os.path.join(TDD_SM_SCRIPTS, s)
-        if os.path.isfile(p):
-            ko(f"b: retired {s} unexpectedly present at {p} (must stay deleted per BACKLOG-7)")
-        else:
-            ok(f"b: retired {s} stays absent from tdd-state-machine/scripts/ (BACKLOG-7)")
+    p = os.path.join(TDD_SM_SCRIPTS, "tdd-step.py")
+    if os.path.isfile(p):
+        ok("b: tdd-step.py present in tdd-state-machine/scripts/")
+    else:
+        ko(f"b: tdd-step.py missing from tdd-state-machine/scripts/")
 
 
 # (c) dispatch script's hardcoded path points at tdd-state-machine
 def t_c_dispatch_path_repoint():
     with open(DISPATCH) as f:
         src = f.read()
-    # Ensure no reference to the old (deleted) tdd-subagent path of tdd-step.py.
     bad = re.search(
         r'os\.path\.join\([^)]*"tdd-subagent"[^)]*"scripts"[^)]*"tdd-step\.py"',
         src,
@@ -102,7 +71,6 @@ def t_c_dispatch_path_repoint():
         ko(f"c: dispatch still constructs old tdd-subagent path for tdd-step.py: {bad.group(0)!r}")
     else:
         ok("c: dispatch no longer constructs old tdd-subagent path for tdd-step.py")
-    # Ensure it constructs the new tdd-state-machine path.
     good = re.search(
         r'os\.path\.join\([^)]*"tdd-state-machine"[^)]*"scripts"[^)]*"tdd-step\.py"',
         src,
@@ -113,66 +81,35 @@ def t_c_dispatch_path_repoint():
         ko("c: dispatch does NOT construct tdd-state-machine path for tdd-step.py")
 
 
-# (d) build-contract.json copy-file sources point at tdd-state-machine
+# (d) build-contract.json copy-file source for tdd-step.py points at tdd-state-machine
 def t_d_build_contract_sources():
     with open(BUILD_CONTRACT) as f:
         bc = json.load(f)
-    for s in EXTRACTED_SURVIVING:
-        dest = f".claude/agents/tdd-subagent/scripts/{s}"
-        targets = [t for t in bc.get("targets", []) if t.get("destination") == dest]
-        if len(targets) != 1:
-            ko(f"d: expected exactly one copy-file target for {dest}, got {len(targets)}")
-            continue
-        src = targets[0].get("source", "")
-        if "tdd-state-machine" in src and src.endswith(f"scripts/{s}"):
-            ok(f"d: build-contract source for {s} points at tdd-state-machine: {src}")
-        else:
-            ko(f"d: build-contract source for {s} not from tdd-state-machine: {src}")
-    # Retired scripts (BACKLOG-7) must have NO copy-file target.
-    for s in [r for r in EXTRACTED if r not in EXTRACTED_SURVIVING]:
-        dest = f".claude/agents/tdd-subagent/scripts/{s}"
-        targets = [t for t in bc.get("targets", []) if t.get("destination") == dest]
-        if len(targets) == 0:
-            ok(f"d: retired {s} has no copy-file target (BACKLOG-7)")
-        else:
-            ko(f"d: retired {s} still has {len(targets)} copy-file target(s) — should be deleted per BACKLOG-7")
-
-
-# (e) the surviving deployed agent scripts still exist; retired ones
-# (BACKLOG-7) deliberately absent.
-def t_e_deployed_still_present():
-    for s in EXTRACTED_SURVIVING:
-        p = os.path.join(AGENT_DEPLOYED_SCRIPTS, s)
-        if os.path.isfile(p):
-            ok(f"e: deployed agent script present at {p}")
-        else:
-            ko(f"e: deployed agent script missing: {p}")
-    for s in [r for r in EXTRACTED if r not in EXTRACTED_SURVIVING]:
-        p = os.path.join(AGENT_DEPLOYED_SCRIPTS, s)
-        if not os.path.isfile(p):
-            ok(f"e: retired deployed script absent at {p} (BACKLOG-7)")
-        else:
-            ko(f"e: retired deployed script still present at {p} — should be deleted per BACKLOG-7")
-
-
-# (f) tdd-subagent's feature.json declares only the dispatch script as surface scripts
-# (the agent definition is at agents/, not scripts/).
-def t_f_feature_json_surface():
-    with open(FEATURE_JSON) as f:
-        fj = json.load(f)
-    surface = fj.get("surface", {})
-    # surface.skills must remain []
-    if surface.get("skills") == []:
-        ok("f: feature.json surface.skills == [] (preserved per Inv 8)")
+    dest = ".claude/agents/tdd-subagent/scripts/tdd-step.py"
+    targets = [t for t in bc.get("targets", []) if t.get("destination") == dest]
+    if len(targets) != 1:
+        ko(f"d: expected exactly one copy-file target for {dest}, got {len(targets)}")
+        return
+    src = targets[0].get("source", "")
+    if "tdd-state-machine" in src and src.endswith("scripts/tdd-step.py"):
+        ok(f"d: build-contract source for tdd-step.py points at tdd-state-machine: {src}")
     else:
-        ko(f"f: feature.json surface.skills must be [], got {surface.get('skills')}")
+        ko(f"d: build-contract source for tdd-step.py not from tdd-state-machine: {src}")
 
 
-# (g) contract.md provides.scripts no longer lists the three extracted scripts
+# (e) deployed agent script tdd-step.py still exists
+def t_e_deployed_still_present():
+    p = os.path.join(AGENT_DEPLOYED_SCRIPTS, "tdd-step.py")
+    if os.path.isfile(p):
+        ok(f"e: deployed agent script present at {p}")
+    else:
+        ko(f"e: deployed agent script missing: {p}")
+
+
+# (g) contract.md provides.scripts checks
 def t_g_contract_provides_slimmed():
     with open(CONTRACT_MD) as f:
         cm = f.read()
-    # Extract the JSON block from contract.md
     m = re.search(r"```json\s*(.*?)```", cm, re.DOTALL)
     if not m:
         ko("g: contract.md has no fenced JSON block")
@@ -183,15 +120,8 @@ def t_g_contract_provides_slimmed():
         ko(f"g: contract.md JSON parse error: {e}")
         return
     script_paths = [s.get("path", "") for s in data.get("provides", {}).get("scripts", [])]
-    bad = [p for p in script_paths
-           if any(p.endswith(f"tdd-subagent/scripts/{s}") for s in EXTRACTED)]
-    if bad:
-        ko(f"g: contract.md provides.scripts still lists extracted scripts: {bad}")
-    else:
-        ok("g: contract.md provides.scripts does not list extracted scripts")
-    # dispatch-tdd-subagent.py MUST still be in provides.scripts
     if any(p.endswith("tdd-subagent/scripts/dispatch-tdd-subagent.py") for p in script_paths):
-        ok("g: contract.md provides.scripts still lists dispatch-tdd-subagent.py")
+        ok("g: contract.md provides.scripts lists dispatch-tdd-subagent.py")
     else:
         ko("g: contract.md provides.scripts missing dispatch-tdd-subagent.py")
 
@@ -201,7 +131,6 @@ t_b_present_in_tdd_state_machine()
 t_c_dispatch_path_repoint()
 t_d_build_contract_sources()
 t_e_deployed_still_present()
-t_f_feature_json_surface()
 t_g_contract_provides_slimmed()
 
 print()

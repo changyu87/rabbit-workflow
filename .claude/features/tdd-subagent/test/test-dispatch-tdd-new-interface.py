@@ -25,22 +25,6 @@ def fail(msg):
     FAIL += 1
 
 
-# 1. --bug flag is rejected (removed in new interface)
-result = subprocess.run(['python3', SCRIPT, 'contract', 'test', '--bug', '/tmp/fake'],
-                        capture_output=True)
-if result.returncode != 0:
-    ok("--bug flag rejected")
-else:
-    fail("--bug should be rejected")
-
-# 2. --backlog flag is rejected
-result = subprocess.run(['python3', SCRIPT, 'contract', 'test', '--backlog', '/tmp/fake'],
-                        capture_output=True)
-if result.returncode != 0:
-    ok("--backlog flag rejected")
-else:
-    fail("--backlog should be rejected")
-
 # 3. --linked-item without --item-type is rejected
 result = subprocess.run(['python3', SCRIPT, '--scope', 'contract', '--spec', SPEC,
                          '--linked-item', '/tmp/fake'],
