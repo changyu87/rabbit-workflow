@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """test-bug-fixes-cycle.py — assertions for the bug/backlog cleanup TDD cycle.
 
-Covers:
-  BUG-11    feature.json.schema.json tdd_state enum includes 'deprecated' (and 'merged')
-  BUG-12    (moot, deleted: render-template.py was removed in CONTRACT-BACKLOG-24)
+Covers the still-live, unique assertions for each bug/backlog in this
+cycle's wave. Entries whose original assertion went moot when their
+referenced script was deleted (BUG-12, BACKLOG-12/13/14) were stripped in
+CONTRACT-BACKLOG-30 F7 — those deletions are now asserted in
+test-retired-artifacts.py (Section B) rather than carried as comment-only
+stubs here.
+
+  BUG-11    feature.json.schema.json tdd_state enum includes 'deprecated' and 'merged'
   BUG-27    test-files-exist.py checks skill-template.md, command-template.md, handoff-template.md
   BACKLOG-3 test-templates-have-version.py tightened to reject _template_version
   BACKLOG-4 every feature.json in the repo validates against feature.json.schema.json
@@ -13,15 +18,15 @@ Covers:
   BACKLOG-8 rabbit-print.schema.json declared producers all exist on disk
   BACKLOG-9 spec Surface and contract.md provides entries match actual files
   BACKLOG-10 validate-feature.py invokes feature.json.schema.json validation
-  BACKLOG-12 (moot, deleted: rabbit-triage.py was removed in CONTRACT-BACKLOG-24)
-  BACKLOG-13 (moot, deleted: workspace-map.py was removed in CONTRACT-BACKLOG-27)
-  BACKLOG-14 (moot, deleted: check-opus-for-planning-agents.py was removed in CONTRACT-BACKLOG-27)
   BACKLOG-15 spec Inv 5 (rabbit-print schema authority) asserted by test
   BACKLOG-16 spec Inv 9 (build-contract validation) limitation documented
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (contract)
-Deprecation criterion: when each bug/backlog has its own targeted test or is closed.
+Deprecation criterion: when the remaining unique assertions absorb into
+per-concern tests (e.g., a successor test-policy-invariants-equivalent
+covering BACKLOG-15 architecturally, or a generic schema-shape test
+covering BUG-11/BACKLOG-3/4/10).
 """
 
 import json
@@ -55,10 +60,6 @@ if "deprecated" in enum and "merged" in enum:
     ok("BUG-11: tdd_state enum includes 'deprecated' and 'merged'")
 else:
     ko(f"BUG-11: tdd_state enum missing values — got {enum}")
-
-
-# BUG-12: render-template.py was deleted in CONTRACT-BACKLOG-24 (dead code).
-# Original assertion (docstring did not reference render-template.sh) is moot.
 
 
 # BUG-27: test-files-exist.py checks skill-template.md, command-template.md, handoff-template.md
@@ -206,18 +207,6 @@ if "feature.json.schema.json" in vf_content:
     ok("BACKLOG-10: lib/checks.py references feature.json.schema.json")
 else:
     ko("BACKLOG-10: lib/checks.py does not reference feature.json.schema.json")
-
-
-# BACKLOG-12: rabbit-triage.py was deleted in CONTRACT-BACKLOG-24 (dead code).
-# Original assertion (isdir/realpath ordering) is moot.
-
-
-# BACKLOG-13: workspace-map.py was deleted in CONTRACT-BACKLOG-27 (orphan).
-# Original --help legacy-form assertion is moot.
-
-# BACKLOG-14: check-opus-for-planning-agents.py was deleted in
-# CONTRACT-BACKLOG-27 (never auto-invoked; fragile premise; retired).
-# Original word-boundary regex assertion is moot.
 
 
 # BACKLOG-15 (post-BACKLOG-20): spec Inv 5 — a test asserts the [rabbit] print
