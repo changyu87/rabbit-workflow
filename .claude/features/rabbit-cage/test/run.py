@@ -15,6 +15,7 @@ SUITES = [
     "test-split-validation.py",
     "test-RABBIT-CAGE-15-workspace-tree.py",
     "test-generated-surface.py",
+    "test-rabbit-cage-bug-96-surface-shape.py",
     "test-RABBIT-CAGE-16-first-stop-no-false-drift.py",
     "test-RABBIT-CAGE-BACKLOG7-visual-messages.py",
     "test-RABBIT-CAGE-BACKLOG9-green-messages.py",
