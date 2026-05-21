@@ -1,0 +1,419 @@
+#!/usr/bin/env python3
+"""rabbit-config — extensible configuration command for the rabbit workflow.
+
+Subcommands:
+  help                                       print illustrated usage with examples for every subcommand
+  prompt-threshold [N]                       set/clear RABBIT_REFRESH_EVERY in settings.local.json
+  allowed-tools [add|remove <tool>]          manage permissions.allow entries (non-Bash)
+  bash-allow    [add|remove <command>]       manage Bash(<command>:*) permissions.allow entries
+  permissions    lock|unlock                 delegate to repo-permissions.py
+  human-approval [true|false]                manage Step 4 (HUMAN-APPROVAL) bypass state
+                                             (true=gate ACTIVE / marker absent,
+                                              false=bypass ACTIVE / marker written —
+                                              restored from the BACKLOG-31 rename per BUG-97)
+  bypass-permissions [true|false]            manage permissions.defaultMode in settings.local.json
+
+All argv parsing comes from sys.argv[1:]; this script is the sole implementation
+of /rabbit-config. There is no slash-command shim file (per spec Inv 20);
+the rabbit-config skill is the sole entry point.
+"""
+import json
+import pathlib
+import re
+import subprocess
+import sys
+
+
+USAGE = '''Usage:
+  /rabbit-config help
+      help                           print illustrated usage with examples for every subcommand
+  /rabbit-config prompt-threshold [value]
+      prompt-threshold <N>           set auto-refresh threshold to N (positive integer)
+      prompt-threshold               remove threshold override, restoring default
+  /rabbit-config allowed-tools [add|remove <tool>]
+      allowed-tools add <tool>       add <tool> to permissions.allow in settings.local.json
+      allowed-tools remove <tool>    remove <tool> from permissions.allow
+      allowed-tools                  list current entries (excluding Bash(...) entries managed by bash-allow)
+  /rabbit-config bash-allow [add|remove <command>]
+      bash-allow add <command>       add Bash(<command>:*) to permissions.allow in settings.local.json
+      bash-allow remove <command>    remove Bash(<command>:*) from permissions.allow
+      bash-allow                     list current bash-allow commands (inner names)
+  /rabbit-config permissions lock|unlock
+      lock     remove owner write permission from archive/ and test/ (run after git clone)
+      unlock   restore owner write permission to archive/ and test/ (run before editing)
+  /rabbit-config human-approval [true|false]
+      human-approval true            remove .rabbit-human-approval-bypass marker (gate ACTIVE — default posture)
+      human-approval false           write .rabbit-human-approval-bypass marker (bypass ACTIVE, Step 4 skipped)
+      human-approval                 print current gate state: 'true' (gate active) or 'false' (bypass active)
+  /rabbit-config bypass-permissions [true|false]
+      bypass-permissions true        set permissions.defaultMode='bypassPermissions' in .claude/settings.local.json (per-user opt-in)
+      bypass-permissions false       remove permissions.defaultMode from .claude/settings.local.json
+      bypass-permissions             print current state: 'true' if defaultMode='bypassPermissions' in settings.local.json, else 'false' '''
+
+
+def load_local():
+    p = pathlib.Path('.claude/settings.local.json')
+    return p, (json.loads(p.read_text()) if p.exists() else {})
+
+
+def write_json(p, cfg):
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(cfg, indent=2) + '\n')
+
+
+def perm_allow(cfg):
+    return cfg.setdefault('permissions', {}).setdefault('allow', [])
+
+
+HELP_TEXT = '''/rabbit-config — illustrated usage
+
+Run `/rabbit-config <subcommand> [args...]`. Each subcommand below lists its
+purpose followed by one or more concrete invocations.
+
+  help
+      Purpose: print this illustrated usage with examples for every subcommand.
+      Example: /rabbit-config help
+
+  prompt-threshold [N]
+      Purpose: set or clear RABBIT_REFRESH_EVERY (auto-refresh threshold) in
+               .claude/settings.local.json. Takes effect on next session start.
+      Example: /rabbit-config prompt-threshold 30
+      Example: /rabbit-config prompt-threshold
+
+  allowed-tools [add|remove <tool>]
+      Purpose: manage non-Bash entries in permissions.allow of
+               .claude/settings.local.json. List form prints current entries.
+      Example: /rabbit-config allowed-tools add WebFetch
+      Example: /rabbit-config allowed-tools remove WebFetch
+      Example: /rabbit-config allowed-tools
+
+  bash-allow [add|remove <command>]
+      Purpose: manage Bash(<command>:*) entries in permissions.allow of
+               .claude/settings.local.json. List form prints inner command names.
+      Example: /rabbit-config bash-allow add touch
+      Example: /rabbit-config bash-allow remove touch
+      Example: /rabbit-config bash-allow
+
+  permissions lock|unlock
+      Purpose: lock or unlock owner write permission on archive/ and test/
+               (delegates to .claude/features/rabbit-cage/scripts/repo-permissions.py).
+      Example: /rabbit-config permissions lock
+      Example: /rabbit-config permissions unlock
+
+  human-approval [true|false]
+      Purpose: manage Step 4 (HUMAN-APPROVAL) bypass state via the
+               .rabbit-human-approval-bypass marker at the repo root.
+               Restored semantics (RABBIT-CAGE-BUG-97): the boolean answers
+               "is human approval in effect?" — true = gate ACTIVE (marker
+               absent, dispatcher waits for approval); false = bypass ACTIVE
+               (marker written, dispatcher skips Step 4). Natural-language
+               mapping: "turn off human approval" → human-approval false →
+               marker WRITTEN.
+      Example: /rabbit-config human-approval true
+      Example: /rabbit-config human-approval false
+      Example: /rabbit-config human-approval
+
+  bypass-permissions [true|false]
+      Purpose: manage per-user permissions.defaultMode='bypassPermissions' in
+               .claude/settings.local.json. When true, Claude Code skips its
+               native per-write permission prompts so the scope-guard hook is
+               the single decision point for write authorization.
+      Example: /rabbit-config bypass-permissions true
+      Example: /rabbit-config bypass-permissions false
+      Example: /rabbit-config bypass-permissions
+'''
+
+
+def cmd_help(args):
+    # Extra positional arguments are ignored (Inv 55): help never fails on
+    # extras — its job is to surface usage even if the operator typed something
+    # extra by mistake.
+    del args
+    print(HELP_TEXT, end='')
+    return 0
+
+
+def cmd_prompt_threshold(args):
+    val = args[0] if args else ''
+    p, cfg = load_local()
+    if not val:
+        cfg.get('env', {}).pop('RABBIT_REFRESH_EVERY', None)
+        if 'env' in cfg and not cfg['env']:
+            del cfg['env']
+        write_json(p, cfg)
+        print('Threshold removed from .claude/settings.local.json - default from settings.json is restored.')
+        print('Takes effect on next session start.')
+        return 0
+    if not val.isdigit() or int(val) < 1:
+        print('Error: value must be a positive integer (e.g. /rabbit-config prompt-threshold 15)', file=sys.stderr)
+        return 1
+    cfg.setdefault('env', {})['RABBIT_REFRESH_EVERY'] = val
+    write_json(p, cfg)
+    print(f'Threshold set to {val} prompts in .claude/settings.local.json.')
+    print('Takes effect on next session start.')
+    return 0
+
+
+def cmd_allowed_tools(args):
+    action = args[0] if args else ''
+    value = args[1] if len(args) > 1 else ''
+    if action == '':
+        p, cfg = load_local()
+        for entry in cfg.get('permissions', {}).get('allow', []):
+            if not entry.startswith('Bash('):
+                print(entry)
+        return 0
+    if action not in ('add', 'remove'):
+        print(f'Error: unknown action {action!r} for allowed-tools (expected add or remove)', file=sys.stderr)
+        return 1
+    if not value:
+        print(f'Error: allowed-tools {action} requires a <tool> value', file=sys.stderr)
+        return 1
+    if value.startswith('Bash('):
+        print(f'Error: {value!r} looks like a Bash rule; use /rabbit-config bash-allow instead', file=sys.stderr)
+        return 1
+    p, cfg = load_local()
+    # BUG-66: avoid setdefault on the remove-of-absent path so we don't write
+    # an empty {"permissions": {"allow": []}} back to disk.
+    existing_allow = cfg.get('permissions', {}).get('allow', [])
+    if action == 'add':
+        allow = perm_allow(cfg)
+        if value in allow:
+            print(f'Already present: {value}')
+        else:
+            allow.append(value)
+            write_json(p, cfg)
+            print(f'Added {value} to .claude/settings.local.json')
+    else:
+        if value in existing_allow:
+            allow = perm_allow(cfg)
+            allow.remove(value)
+            write_json(p, cfg)
+            print(f'Removed {value} from .claude/settings.local.json')
+        else:
+            print(f'Not present: {value}')
+    return 0
+
+
+def cmd_bash_allow(args):
+    action = args[0] if args else ''
+    value = args[1] if len(args) > 1 else ''
+    if action == '':
+        p, cfg = load_local()
+        pat = re.compile(r'^Bash\(([^():\s]+):\*\)$')
+        for entry in cfg.get('permissions', {}).get('allow', []):
+            m = pat.match(entry)
+            if m:
+                print(m.group(1))
+        return 0
+    if action not in ('add', 'remove'):
+        print(f'Error: unknown action {action!r} for bash-allow (expected add or remove)', file=sys.stderr)
+        return 1
+    if not value:
+        print(f'Error: bash-allow {action} requires a <command> value', file=sys.stderr)
+        return 1
+    if re.search(r'[()\s:]', value):
+        print(f'Error: bash-allow command must not contain parens, colons, or whitespace; got {value!r}', file=sys.stderr)
+        return 1
+    entry = f'Bash({value}:*)'
+    p, cfg = load_local()
+    # BUG-66: avoid setdefault on the remove-of-absent path.
+    existing_allow = cfg.get('permissions', {}).get('allow', [])
+    if action == 'add':
+        allow = perm_allow(cfg)
+        if entry in allow:
+            print(f'Already present: {entry}')
+        else:
+            allow.append(entry)
+            write_json(p, cfg)
+            print(f'Added {entry} to .claude/settings.local.json')
+    else:
+        if entry in existing_allow:
+            allow = perm_allow(cfg)
+            allow.remove(entry)
+            write_json(p, cfg)
+            print(f'Removed {entry} from .claude/settings.local.json')
+        else:
+            print(f'Not present: {entry}')
+    return 0
+
+
+def cmd_permissions(args):
+    action = args[0] if args else ''
+    if action not in ('lock', 'unlock'):
+        # BACKLOG-28: align error wording with the other cmd_* handlers
+        # (cmd_allowed_tools / cmd_bash_allow / cmd_human_approval /
+        # cmd_bypass_permissions). All those use the descriptive
+        # 'Error: unknown <X> {value!r} for <subcmd> (expected ...)' form;
+        # keep this one consistent so the operator sees one shape across
+        # the skill.
+        print(
+            f'Error: unknown action {action!r} for permissions (expected lock or unlock)',
+            file=sys.stderr,
+        )
+        return 1
+    script = pathlib.Path('.claude/features/rabbit-cage/scripts/repo-permissions.py')
+    result = subprocess.run([sys.executable, str(script), action])
+    return result.returncode
+
+
+def cmd_human_approval(args):
+    """RABBIT-CAGE-BUG-97: restored semantics ("is human approval in effect?").
+
+    true  = gate ACTIVE   (marker removed; Step 4 waits for approval — default)
+    false = bypass ACTIVE (marker written; Step 4 skipped)
+    (no action) = state query: 'true' iff marker ABSENT, else 'false'.
+
+    Inverted from the interim BACKLOG-31 spelling. The natural-language
+    contract is pinned by test-RABBIT-CAGE-BUG-97-natural-language-mapping.py
+    (Inv 95): "turn off human approval" → human-approval false → marker
+    WRITTEN.
+    """
+    action = args[0] if args else ''
+    marker = pathlib.Path('.rabbit-human-approval-bypass')
+    if action == '':
+        # Inv 37 (restored): 'true' = gate ACTIVE (marker ABSENT);
+        # 'false' = bypass ACTIVE (marker present).
+        print('true' if not marker.exists() else 'false')
+        return 0
+    if action == 'true':
+        if not marker.exists():
+            # Idempotent no-op: do not rewrite anything (Inv 48).
+            print(
+                f'Human approval gate already ENABLED (marker {marker} '
+                'not present; no rewrite). '
+                'Step 4 will wait for in-conversation approval on each dispatch.'
+            )
+            return 0
+        marker.unlink()
+        print(
+            f'Human approval gate ENABLED. Marker {marker} removed. '
+            'Step 4 will wait for in-conversation approval on each dispatch.'
+        )
+        return 0
+    if action == 'false':
+        if marker.exists():
+            # Idempotent no-op: do not rewrite the marker file (Inv 48).
+            print(
+                f'Human approval gate already DISABLED (marker {marker} '
+                'already present; no rewrite). '
+                'Step 4 will be skipped for all dispatches until you run '
+                '/rabbit-config human-approval true.'
+            )
+            return 0
+        marker.write_text('session')
+        print(
+            f'Human approval gate DISABLED (bypass ACTIVE). Marker {marker} '
+            'written. Step 4 will be skipped for all dispatches until you '
+            'run /rabbit-config human-approval true.'
+        )
+        return 0
+    print(
+        f'Error: unknown value {action!r} for human-approval '
+        '(expected true, false, or no action)',
+        file=sys.stderr,
+    )
+    return 1
+
+
+def cmd_bypass_human_approval_legacy_rejected(args):
+    """Inv 91 (post-BUG-97 inversion): hard-rename rejection for the interim
+    subcommand name.
+
+    The interim 'bypass-human-approval' subcommand was introduced by
+    RABBIT-CAGE-BACKLOG-31 with semantics where 'true' meant 'bypass ACTIVE'.
+    RABBIT-CAGE-BUG-97 reverts that rename: the canonical spelling is again
+    'human-approval' with the restored semantics ('true' = gate ACTIVE,
+    'false' = bypass ACTIVE). Reject any invocation of the interim spelling
+    with a directed migration error so operators do not need to consult the
+    spec to recover.
+    """
+    del args
+    sys.stderr.write(
+        "Error: '/rabbit-config bypass-human-approval' is REMOVED "
+        "(RABBIT-CAGE-BUG-97). Use '/rabbit-config human-approval' instead. "
+        "Boolean semantics are RESTORED to the original 'is human approval "
+        "in effect?' convention: 'true' now means gate ACTIVE (marker "
+        "absent, Step 4 waits for approval — default) and 'false' means "
+        "bypass ACTIVE (marker written, Step 4 skipped). Natural-language "
+        "mapping: \"turn off human approval\" -> /rabbit-config "
+        "human-approval false.\n"
+    )
+    return 1
+
+
+def cmd_bypass_permissions(args):
+    action = args[0] if args else ''
+    p, cfg = load_local()
+    current = cfg.get('permissions', {}).get('defaultMode')
+    if action == '':
+        # State query: print 'true' if defaultMode == bypassPermissions, else 'false'.
+        print('true' if current == 'bypassPermissions' else 'false')
+        return 0
+    if action == 'true':
+        if current == 'bypassPermissions':
+            # Idempotent no-op: do not rewrite the file.
+            print(
+                'Bypass permissions already ENABLED in .claude/settings.local.json. '
+                '(file unchanged)'
+            )
+            return 0
+        cfg.setdefault('permissions', {})['defaultMode'] = 'bypassPermissions'
+        write_json(p, cfg)
+        print(
+            'Bypass permissions ENABLED in .claude/settings.local.json. '
+            'Claude Code will skip native per-write prompts on next session start.'
+        )
+        return 0
+    if action == 'false':
+        if current is None:
+            print(
+                'Bypass permissions already DISABLED (key absent). (file unchanged)'
+            )
+            return 0
+        del cfg['permissions']['defaultMode']
+        if not cfg['permissions']:
+            del cfg['permissions']
+        write_json(p, cfg)
+        print(
+            'Bypass permissions DISABLED. permissions.defaultMode removed '
+            'from .claude/settings.local.json. Claude Code will prompt for '
+            'writes again on next session start.'
+        )
+        return 0
+    print(f'Error: unknown value {action!r} for bypass-permissions (expected true, false, or no action)', file=sys.stderr)
+    return 1
+
+
+def main(argv):
+    if not argv:
+        print(USAGE)
+        return 1
+    subcmd = argv[0]
+    rest = argv[1:]
+    dispatch = {
+        'help': cmd_help,
+        'prompt-threshold': cmd_prompt_threshold,
+        'allowed-tools': cmd_allowed_tools,
+        'bash-allow': cmd_bash_allow,
+        'permissions': cmd_permissions,
+        'human-approval': cmd_human_approval,
+        'bypass-permissions': cmd_bypass_permissions,
+        # Inv 91 (post-BUG-97 inversion): interim subcommand name kept in
+        # the dispatch table so the rejection error names the restored
+        # spelling with the restored semantics (a directed migration
+        # error). Without this entry the generic 'Unknown subcommand'
+        # message from the fall-through path would not tell operators the
+        # canonical replacement.
+        'bypass-human-approval': cmd_bypass_human_approval_legacy_rejected,
+    }
+    handler = dispatch.get(subcmd)
+    if handler is None:
+        print(f'Unknown subcommand: {subcmd!r}', file=sys.stderr)
+        print(USAGE, file=sys.stderr)
+        return 1
+    return handler(rest)
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
