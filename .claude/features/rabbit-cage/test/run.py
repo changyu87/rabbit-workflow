@@ -68,6 +68,8 @@ SUITES = [
     "test-backlog-27-runtime-flags-display.py",
     "test-RABBIT-CAGE-BACKLOG-28-housekeeping.py",
     "test-rabbit-config-section-monotonic.py",
+    "test-rabbit-cage-scripts-enumeration.py",
+    "test-contract-provides-scripts-exist.py",
 ]
 
 

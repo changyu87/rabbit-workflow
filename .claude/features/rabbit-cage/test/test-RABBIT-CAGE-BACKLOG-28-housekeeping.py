@@ -7,7 +7,7 @@ End-to-end coverage for the BACKLOG-28 cleanup cycle:
       seven subcommands (help included).
 
   (b) Inv 58 three-way version alignment: feature.json, spec.md, and
-      contract.md all at the new version 4.9.0.
+      contract.md all at the new version 4.10.0.
 
   (c) Module-level public-API hygiene in _runtime_flags.py:
         - per-flag canonical constants are PRIVATE (underscore-prefixed),
@@ -109,13 +109,13 @@ else:
     else:
         fail_t("a1", f"SKILL.md description omits subcommands: {missing}")
 
-# ---- (b) Inv 58 three-way version alignment at 4.9.0 ----
+# ---- (b) Inv 58 three-way version alignment at 4.10.0 ----
 with open(FEATURE_JSON) as f:
     feature_json = json.load(f)
 feature_v = feature_json.get("version")
 spec_v = header_version(read(SPEC_MD))
 contract_v = header_version(read(CONTRACT_MD))
-EXPECTED = "4.9.0"
+EXPECTED = "4.10.0"
 if feature_v == spec_v == contract_v == EXPECTED:
     ok("b1", f"feature.json/spec.md/contract.md all at {EXPECTED} (Inv 58)")
 else:
@@ -124,6 +124,12 @@ else:
         f"feature.json={feature_v!r}, spec.md={spec_v!r}, "
         f"contract.md={contract_v!r}, expected={EXPECTED!r}"
     ))
+
+# ---- (b2) Inv 93: feature.json does not carry the legacy 'updated_note' field ----
+if "updated_note" not in feature_json:
+    ok("b2", "feature.json no longer carries the legacy 'updated_note' field (Inv 93)")
+else:
+    fail_t("b2", "feature.json still carries 'updated_note' — drop per Inv 93")
 
 # ---- (c) module-level public-API hygiene in _runtime_flags.py ----
 spec = importlib.util.spec_from_file_location("_runtime_flags_mod", RUNTIME_FLAGS)
