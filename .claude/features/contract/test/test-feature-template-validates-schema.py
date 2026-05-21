@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-feature-template-validates-schema.py — Inv 26.
+"""test-feature-template-validates-schema.py — Inv 22.
 
 feature-json-template.json MUST validate against feature.json.schema.json.
 """

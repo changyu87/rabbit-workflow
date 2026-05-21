@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-check-naming-bans-rbt.py — BUG-3 / Inv 19
+"""test-check-naming-bans-rbt.py — BUG-3 / Inv 15
 
 End-to-end test that check-naming.py bans the 'rbt-' prefix (rabbit-cage Inv 13)
 and no longer treats 'rwf-' as banned (rwf- was never a banned prefix in this

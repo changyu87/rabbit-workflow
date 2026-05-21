@@ -3,7 +3,7 @@
 
 Consolidates the unique assertions from three predecessor files (deleted in
 CONTRACT-BACKLOG-30 F6 consolidation):
-  - test-dead-relink-tests-deleted.py  (BUG-35 / Inv 21)
+  - test-dead-relink-tests-deleted.py  (BUG-35 / Inv 17)
   - test-backlog-27-retirements.py     (CONTRACT-BACKLOG-27)
   - test-bug-41-cleanup.py             (CONTRACT-BUG-41)
 
@@ -69,7 +69,7 @@ for n, rel in (("a1", "test-relink-no-skills.py"), ("a2", "test-relink.py")):
 
 # a3: no remaining test file references the deleted scripts/relink.sh
 # (test-build-contract.py is allowed because it asserts the ABSENCE of relink.sh
-# per Inv 11; this file is also allowed because its docstring names it.)
+# per Inv 8; this file is also allowed because its docstring names it.)
 SELF = os.path.basename(__file__)
 ALLOWED = {SELF, "test-build-contract.py"}
 offenders = []

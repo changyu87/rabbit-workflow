@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-bug-template-version-field.py — Inv 25.
+"""test-bug-template-version-field.py — Inv 21.
 
 bug-template.json MUST use the field name `template_version` (not the legacy
 underscore-prefixed `_template_version`).

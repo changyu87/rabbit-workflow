@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-retirement-semantics.py — e2e regression for BUG-40 Inv 42/43.
+"""test-retirement-semantics.py — e2e regression for BUG-40 Inv 35/36.
 
 Covers:
   t1: feature.json.schema.json declares the `status` field with enum

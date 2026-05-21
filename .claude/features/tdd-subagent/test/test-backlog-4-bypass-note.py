@@ -5,11 +5,11 @@
 #            in the prompt preamble when .rabbit-human-approval-bypass exists.
 #
 # History: the b4 assertion that the preamble note carries the canonical
-# `[🐇 rabbit 🐇]` brand prefix was originally cited as "contract Inv 35/36
+# `[🐇 rabbit 🐇]` brand prefix was originally cited as "contract Inv 28/29
 # and tdd-subagent Inv 5" (BUG-58). The tdd-subagent Inv 5 citation was
 # wrong (Inv 5 describes the E2E test rule, not the brand convention) and
-# has been dropped. The brand convention lives in contract Inv 34
-# (definition) and Inv 36 (producer rule).
+# has been dropped. The brand convention lives in contract Inv 27
+# (definition) and Inv 29 (producer rule).
 import os
 import re
 import subprocess
@@ -93,7 +93,7 @@ def b4():
             return
         # Inv 17 (spec v2.1.0): brand prefix in the preamble bypass note
         # MUST be the canonical emoji-framed form `[🐇 rabbit 🐇]` per
-        # contract Inv 34 (brand definition) / Inv 36 (producer rule).
+        # contract Inv 27 (brand definition) / Inv 29 (producer rule).
         # The bare `[rabbit]` form is forbidden. We check the preamble
         # slice (not full output) because the spec body itself documents
         # both forms when describing the rule, which would otherwise mask

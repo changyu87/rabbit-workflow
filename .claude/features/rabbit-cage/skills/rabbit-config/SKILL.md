@@ -74,7 +74,7 @@ prints exactly one line (`true` or `false`) reflecting the current value in
 ## human-approval Marker Contract
 
 `.rabbit-human-approval-bypass` is a hard file marker at the repo root,
-gitignored, never committed. The boolean value follows contract Inv 15
+gitignored, never committed. The boolean value follows contract Inv 11
 (boolean CLI values use `true`/`false`): `true` = gate active (marker absent,
 default), `false` = gate bypassed (marker present). When the marker is
 present, `rabbit-feature-touch` dispatchers pass `--human-approval-gate false`

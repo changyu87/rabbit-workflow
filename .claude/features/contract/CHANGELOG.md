@@ -6,9 +6,13 @@ deprecation_criterion: when the contract spec's invariant numbering is folded in
 
 # contract — Retired Invariants Log
 
-This file holds the tombstones for invariants that were previously declared in `docs/spec/spec.md` and have since been retired. Spec.md no longer carries inline tombstones (CONTRACT-BACKLOG-30, F8 partial); the original invariant numbers remain unused in spec.md, creating intentional numeric gaps until the full monotonic renumber lands in CONTRACT-BACKLOG-31.
+This file holds the tombstones for invariants that were previously declared in `docs/spec/spec.md` and have since been retired. Spec.md no longer carries inline tombstones (CONTRACT-BACKLOG-30, F8 partial).
 
-Each entry below carries the original invariant number (as it appeared in spec.md before retirement), a one-line summary of what the invariant asserted and why it was retired, and the backlog ID that drove the retirement.
+Each entry below carries the original invariant number (as it appeared in spec.md at the time of retirement), a one-line summary of what the invariant asserted and why it was retired, and the backlog ID that drove the retirement.
+
+## Renumber events
+
+- **CONTRACT-BACKLOG-31 (this cycle):** Spec.md surviving invariants renumbered monotonically to 1..39, closing all gaps left by previously-retired invariants. The tombstone numbers below (2, 6, 8, 14, 27, 29, 31) are HISTORICAL — they record the spec.md numbers as they existed at retirement time and are NOT updated by the renumber. Post-renumber, those historical numbers may numerically collide with new active invariants in spec.md; the collision is benign because tombstone entries are scoped to "historical numbers in this CHANGELOG" by file/section. The companion `test/test-spec-tombstone-gaps-match-changelog.py` was deleted in the same cycle: its premise was the gap-correspondence between spec.md numbering gaps and CHANGELOG tombstones, which no longer holds once all gaps are closed.
 
 ## Retired invariants
 

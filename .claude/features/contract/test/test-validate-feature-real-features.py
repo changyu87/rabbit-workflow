@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# test-validate-feature-real-features.py — e2e test for spec Inv 39 (BUG-38).
+# test-validate-feature-real-features.py — e2e test for spec Inv 32 (BUG-38).
 #
 # validate-feature.py MUST exit 0 for a feature directory that is otherwise
 # valid (correct feature.json, spec.md, contract.md, executable test/run.py)

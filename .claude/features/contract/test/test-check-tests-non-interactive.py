@@ -2,7 +2,7 @@
 # test-check-tests-non-interactive.py — assert check-tests-non-interactive.py
 # scans Python test files (.py) with Python interactive constructs.
 #
-# Invariant 17: scanner must detect bare input, getpass.getpass,
+# Invariant 13: scanner must detect bare input, getpass.getpass,
 # click.prompt, click.confirm calls in .py files under <feature-dir>/test/.
 # Vacuous case (no test/ dir) exits 0.
 #

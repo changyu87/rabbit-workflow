@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # test-python-only-stack.py — assert Python is the sole scripting tech stack.
 #
-# Invariant 11 (extended): No .sh files exist in scripts/ or scripts/enforcement/.
+# Invariant 8 (extended): No .sh files exist in scripts/ or scripts/enforcement/.
 # Spec accuracy: spec.md must not reference any .sh script files.
 # Contract accuracy: contract.md must not reference any .sh script files.
 #
@@ -65,7 +65,7 @@ else:
     fail("t3", f"contract.md missing at {contract_path}")
 
 # t4: spec.md invariants do not reference named .sh scripts as callable/existing tools.
-# Exception: invariant 11 documents relink.sh's absence; "does NOT exist" lines are allowed.
+# Exception: invariant 8 documents relink.sh's absence; "does NOT exist" lines are allowed.
 if os.path.isfile(spec_path):
     spec_content = open(spec_path).read()
     invariant_sh = []

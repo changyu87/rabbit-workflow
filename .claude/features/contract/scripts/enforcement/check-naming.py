@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """check-naming.py — thin CLI shim around contract.lib.checks.check_naming
-(spec Inv 13, Inv 19, Inv 44).
+(spec Inv 10, Inv 15, Inv 37).
 
 Banned prefixes (mirrored from the library): rbt-.
 

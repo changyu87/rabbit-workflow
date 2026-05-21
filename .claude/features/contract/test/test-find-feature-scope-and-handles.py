@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-find-feature-scope-and-handles.py — Inv 28.
+"""test-find-feature-scope-and-handles.py — Inv 23.
 
 find-feature.py MUST:
   - close all opened file handles (use `with open()`)

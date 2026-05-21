@@ -3,13 +3,13 @@
 
 Asserts the Step 4 bypass warning string in `rabbit-feature-touch`
 SKILL.md uses the canonical emoji-framed brand prefix `[\U0001f407 rabbit \U0001f407]`
-(per spec Inv 8/9 and contract Inv 35/36 brand convention), and does
+(per spec Inv 8/9 and contract Inv 28/29 brand convention), and does
 NOT contain the bare `[rabbit]` form.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
 Deprecation criterion: When the rabbit brand convention changes
-(tied to contract Inv 35/36 lifecycle).
+(tied to contract Inv 28/29 lifecycle).
 """
 from __future__ import annotations
 

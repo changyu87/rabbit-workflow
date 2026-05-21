@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-check-symlinks-deep.py — Inv 30.
+"""test-check-symlinks-deep.py — Inv 24.
 
 check-symlinks-resolve.py MUST follow symlinks at any depth (no maxdepth
 limit). End-to-end: a dangling symlink nested 5 levels deep MUST be found.

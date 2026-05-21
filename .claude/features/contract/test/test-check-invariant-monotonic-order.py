@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-check-invariant-monotonic-order.py — Inv 45 / CONTRACT-BACKLOG-30.
+"""test-check-invariant-monotonic-order.py — Inv 38 / CONTRACT-BACKLOG-30.
 
 End-to-end test for the cross-feature invariant-monotonic-order check:
 
