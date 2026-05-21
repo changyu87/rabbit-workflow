@@ -43,6 +43,11 @@ _rf = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_rf)
 BYPASS_PERMISSIONS_BODY = _rf.CANONICAL_FLAG_BODIES["bypass_permissions"]
 HUMAN_APPROVAL_BODY = _rf.CANONICAL_FLAG_BODIES["human_approval"]
+# Inv 62 (icon prefix per BACKLOG-33): active-flag sublines carry a leading
+# icon glyph between the brand prefix and the body. Sourced from the same
+# _runtime_flags helper so the test cannot drift if icons are renamed.
+BYPASS_PERMISSIONS_ICON = "\U0001f6a8"  # 🚨
+HUMAN_APPROVAL_ICON = "\U0001f511"      # 🔑
 
 failures = 0
 total = 0
@@ -267,6 +272,21 @@ try:
                 "bypass-human-approval revoke command (/rabbit-config "
                 f"bypass-human-approval false) not named in banner: {msg!r}"
             )
+        # Inv 62 + contract Inv 28(b) (BACKLOG-33): the active-flag sublines
+        # MUST carry a leading icon glyph immediately before the body text so
+        # alert sublines are visually distinct from icon-less policy sublines.
+        if HUMAN_APPROVAL_ICON in msg:
+            ok("startup banner includes 🔑 leading icon for human-approval bypass")
+        else:
+            fail_t(
+                f"🔑 (human-approval icon) missing from active-flag subline: {msg!r}"
+            )
+        if BYPASS_PERMISSIONS_ICON in msg:
+            ok("startup banner includes 🚨 leading icon for bypass-permissions mode")
+        else:
+            fail_t(
+                f"🚨 (bypass-permissions icon) missing from active-flag subline: {msg!r}"
+            )
 
     # t8: only one flag active → only that line appears (no empty 'all clear')
     print()
@@ -290,6 +310,16 @@ try:
             fail_t(f"human-approval line should NOT appear (flag not set): {msg!r}")
         else:
             ok("human-approval line absent (flag not set)")
+        # BACKLOG-33: only the icon for the active flag appears; the icon for
+        # the inactive flag is absent (no spurious 🔑 when human-approval is off).
+        if BYPASS_PERMISSIONS_ICON in msg:
+            ok("🚨 icon present for active bypass-permissions subline")
+        else:
+            fail_t(f"🚨 icon missing from bypass-permissions subline: {msg!r}")
+        if HUMAN_APPROVAL_ICON in msg:
+            fail_t(f"🔑 icon should NOT appear when human-approval is inactive: {msg!r}")
+        else:
+            ok("🔑 icon absent (human-approval inactive)")
 
     # ============================================================
     # SHARED-TEXT INVARIANT (Inv 62) — both producers emit the SAME body text

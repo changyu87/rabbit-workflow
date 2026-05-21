@@ -7,7 +7,7 @@ End-to-end coverage for the BACKLOG-28 cleanup cycle:
       seven subcommands (help included).
 
   (b) Inv 58 three-way version alignment: feature.json, spec.md, and
-      contract.md all at the new version 4.7.0.
+      contract.md all at the new version 4.8.0.
 
   (c) Module-level public-API hygiene in _runtime_flags.py:
         - per-flag canonical constants are PRIVATE (underscore-prefixed),
@@ -109,13 +109,13 @@ else:
     else:
         fail_t("a1", f"SKILL.md description omits subcommands: {missing}")
 
-# ---- (b) Inv 58 three-way version alignment at 4.7.0 ----
+# ---- (b) Inv 58 three-way version alignment at 4.8.0 ----
 with open(FEATURE_JSON) as f:
     feature_json = json.load(f)
 feature_v = feature_json.get("version")
 spec_v = header_version(read(SPEC_MD))
 contract_v = header_version(read(CONTRACT_MD))
-EXPECTED = "4.7.0"
+EXPECTED = "4.8.0"
 if feature_v == spec_v == contract_v == EXPECTED:
     ok("b1", f"feature.json/spec.md/contract.md all at {EXPECTED} (Inv 58)")
 else:
