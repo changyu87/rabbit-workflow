@@ -225,7 +225,7 @@ if schema is not None:
 EXPECTED_DISPATCH_TEXT = (
     "NOTE: human-approval bypass marker is active "
     "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be skipped "
-    "for this dispatch. Revoke via `/rabbit-config bypass-human-approval false`."
+    "for this dispatch. Revoke via `/rabbit-config human-approval true`."
 )
 if messages is not None:
     msgs = messages.get("messages", {})

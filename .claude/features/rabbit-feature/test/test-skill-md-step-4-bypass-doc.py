@@ -6,7 +6,7 @@ Asserts `rabbit-feature-touch` SKILL.md documents the
 Step 4 (Human Approval), BEFORE any in-conversation wait or
 impl-suggestion surfacing. The warning content must name both the
 marker path (`.rabbit-human-approval-bypass`) and the revoke command
-(`/rabbit-config bypass-human-approval false`).
+(`/rabbit-config human-approval true`).
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -26,7 +26,7 @@ SKILL_MD = (
 )
 
 MARKER_PATH = ".rabbit-human-approval-bypass"
-REVOKE_CMD = "/rabbit-config bypass-human-approval false"
+REVOKE_CMD = "/rabbit-config human-approval true"
 
 
 def _extract_step_4(text: str) -> str:

@@ -137,13 +137,13 @@ anywhere in this feature. Test runner is `test/run.py`.
 8. Step 4 (Human Approval) is bypassable only when the user has
    explicitly requested autonomous execution. The bypass authorization
    is encoded as a hard file marker `.rabbit-human-approval-bypass` at
-   the repo root, managed via the `/rabbit-config bypass-human-approval
-   true|false` skill (owned by rabbit-cage; `true` writes the marker
-   — bypass ACTIVE — and `false` deletes it). At Step 4, the dispatcher
+   the repo root, managed via the `/rabbit-config human-approval
+   true|false` skill (owned by rabbit-cage; `false` writes the marker
+   — bypass ACTIVE — and `true` deletes it). At Step 4, the dispatcher
    MUST check for this marker file: if it exists, the dispatcher skips
    the in-conversation wait, emits a visible `[🐇 rabbit 🐇]` warning
    naming the bypass marker and the path `/rabbit-config
-   bypass-human-approval false` to turn the bypass off, and passes
+   human-approval true` to turn the bypass off, and passes
    `--human-approval-gate false` to the Step 5
    `dispatch-tdd-subagent.py` invocation. If the marker is absent, the
    dispatcher surfaces the impl-suggestion summary and waits for
@@ -159,7 +159,7 @@ anywhere in this feature. Test runner is `test/run.py`.
    or impl-suggestion surfacing. When the marker is found, the warning
    emitted to the user MUST name both the marker path
    (`.rabbit-human-approval-bypass`) and the revoke command
-   (`/rabbit-config bypass-human-approval false`) so the user can audit
+   (`/rabbit-config human-approval true`) so the user can audit
    and revoke without searching, AND MUST use the canonical
    emoji-framed brand prefix `[🐇 rabbit 🐇]` (per Inv 8 — the bare
    `[rabbit]` form is a constitution violation). This invariant
