@@ -1,6 +1,6 @@
 ---
 name: rabbit-config
-description: Use to configure rabbit-workflow settings via /rabbit-config. Subcommands - help (illustrated usage with examples for every subcommand), prompt-threshold [N] (refresh threshold), allowed-tools [add|remove <tool>] (Claude Code tool permissions), bash-allow [add|remove <cmd>] (Bash command permissions), permissions [lock|unlock] (repo file write protection), human-approval [true|false] (Step 4 gate state, hard file marker; true=gate active, false=bypass), bypass-permissions [true|false] (per-user permissions.defaultMode='bypassPermissions' in settings.local.json). Trigger on phrases like "change prompt threshold", "add permission", "bypass human approval", "revoke human-approval bypass", "enable bypass mode", "turn off bypass permissions", "what subcommands does rabbit-config have", "rabbit-config help".
+description: Use to configure rabbit-workflow settings via /rabbit-config. Subcommands - help (illustrated usage with examples for every subcommand), prompt-threshold [N] (refresh threshold), allowed-tools [add|remove <tool>] (Claude Code tool permissions), bash-allow [add|remove <cmd>] (Bash command permissions), permissions [lock|unlock] (repo file write protection), bypass-human-approval [true|false] (Step 4 bypass state, hard file marker; true=bypass ACTIVE, false=bypass OFF — parallel to bypass-permissions), bypass-permissions [true|false] (per-user permissions.defaultMode='bypassPermissions' in settings.local.json). Trigger on phrases like "change prompt threshold", "add permission", "bypass human approval", "turn off human-approval bypass", "enable bypass mode", "turn off bypass permissions", "what subcommands does rabbit-config have", "rabbit-config help".
 version: 1.0.0
 owner: rabbit-cage
 deprecation_criterion: when Claude Code provides a native typed-config mechanism that subsumes this skill
@@ -46,10 +46,10 @@ run it once before reaching for the spec or this file.
     lock     remove owner write permission from archive/ and test/ (run after git clone)
     unlock   restore owner write permission to archive/ and test/ (run before editing)
 
-/rabbit-config human-approval [true|false]
-    human-approval false           write .rabbit-human-approval-bypass marker (bypass Step 4)
-    human-approval true            remove the marker (Step 4 gate active — default posture)
-    human-approval                 print current gate state to stdout: 'true' (active) or 'false' (bypassed)
+/rabbit-config bypass-human-approval [true|false]
+    bypass-human-approval true     write .rabbit-human-approval-bypass marker (bypass Step 4)
+    bypass-human-approval false    remove the marker (Step 4 waits for approval — default posture)
+    bypass-human-approval          print current bypass state to stdout: 'true' (active) or 'false' (off)
 
 /rabbit-config bypass-permissions [true|false]
     bypass-permissions true        set permissions.defaultMode='bypassPermissions' in .claude/settings.local.json (per-user opt-in)
@@ -71,12 +71,13 @@ matches is a no-op (exit 0) and does NOT rewrite the file. The no-action form
 prints exactly one line (`true` or `false`) reflecting the current value in
 `settings.local.json`. Takes effect on next session start.
 
-## human-approval Marker Contract
+## bypass-human-approval Marker Contract
 
 `.rabbit-human-approval-bypass` is a hard file marker at the repo root,
 gitignored, never committed. The boolean value follows contract Inv 11
-(boolean CLI values use `true`/`false`): `true` = gate active (marker absent,
-default), `false` = gate bypassed (marker present). When the marker is
+(boolean CLI values use `true`/`false`) with semantics parallel to
+`bypass-permissions`: `true` = bypass ACTIVE (marker present, dangerous),
+`false` = bypass OFF (marker absent, safe / default). When the marker is
 present, `rabbit-feature-touch` dispatchers pass `--human-approval-gate false`
 to `dispatch-tdd-subagent.py` and Step 4 is skipped for every subsequent
 dispatch until the marker is removed.
@@ -85,7 +86,13 @@ The marker persists across sessions. It is state, not conversation memory.
 `sync-check.py` emits a red `[rabbit]` `systemMessage` on every Stop event
 while the marker is present so the bypass cannot be silently forgotten.
 
-Revoke explicitly with `/rabbit-config human-approval true` or manual delete.
+Turn the bypass off explicitly with `/rabbit-config bypass-human-approval false`
+or manual delete.
+
+**Legacy name removed.** The prior subcommand `human-approval` (with inverted
+boolean semantics where `true` meant "gate active") is REMOVED. Invoking
+`/rabbit-config human-approval` (any form) exits non-zero with a directed
+migration error naming the new spelling. There is no coexistence window.
 
 ## When to Invoke
 
@@ -93,8 +100,8 @@ Revoke explicitly with `/rabbit-config human-approval true` or manual delete.
 - "allow WebFetch", "remove Edit from permissions", "list allowed tools"
 - "let bash run touch", "remove cat from bash-allow"
 - "lock the repo", "unlock archive/ and test/"
-- "bypass human approval", "skip Step 4 this session", "revoke the bypass",
-  "re-enable the gate", "what's the human-approval state?"
+- "bypass human approval", "skip Step 4 this session", "turn off the bypass",
+  "re-enable approval", "what's the human-approval bypass state?"
 - "enable bypass mode", "turn off bypass permissions", "skip native write
   prompts", "what's my bypass-permissions state?"
 

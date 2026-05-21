@@ -2,7 +2,7 @@
   "name": "rabbit-cage",
   "version": "4.7.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, skills for scaffolding, project management, and installation. Bug-filing and backlog management are owned by the rabbit-file feature.",
   "surface": {
     "hooks": [],
@@ -14,7 +14,7 @@
   },
   "deprecation_criterion": "when Claude Code exposes a native feature-container mechanism that subsumes this role",
   "updated_note": "the `updated` field is hand-maintained at the close of each TDD cycle; bump it whenever feature contents materially change",
-  "updated": "2026-05-20",
+  "updated": "2026-05-21",
   "tdd_last_cycle_impl_commit": "505c834fbb6854b9fecc95a0def66936e951d74a",
-  "spec_no_change_reason": "Spec relocation already committed at HEAD~2 by dispatcher; this cycle adds the in-section monotonic e2e test only (HEAD~1)."
+  "spec_no_change_reason": "spec changes committed by main session in commit fc82df91 (rabbit-feature-touch Step 3); no working-tree diff at TDD subagent dispatch time per Inv 16"
 }
