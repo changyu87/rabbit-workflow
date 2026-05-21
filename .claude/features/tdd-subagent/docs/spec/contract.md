@@ -19,7 +19,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "scripts": [
       {
         "path": ".claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py",
-        "stdin": "none. Required flags: --scope <feature-name>, --spec <spec-path>. Optional: --impl-suggestion <path>, --linked-item <item-dir> + --item-type bug|backlog (primary item), --linked-items <feature>:<type>:<id>[,...] (secondary items), --human-approval-gate true|false (default true), --code-review-full-loop, --max-iterations N (default 3, min 1). Legacy bug-dispatch and backlog-dispatch positional flags have been removed; callers MUST use --linked-item / --linked-items.",
+        "stdin": "none. Required flags: --scope <feature-name>, --spec <spec-path>. Optional: --impl-suggestion <path>, --linked-item <item-dir> + --item-type bug|backlog (primary item), --linked-items <feature>:<type>:<id>[,...] (secondary items), --human-approval-gate true|false (default true), --code-review-full-loop, --max-iterations N (default 3, min 1).",
         "stdout": "per-feature full-TDD-cycle subagent prompt that runs spec-update → test-red → impl → test-green for ONE feature using .rabbit-scope-active-<feature-name> as scope marker (parallel-dispatch safe); after test-green the orchestrator closes the linked bug or marks the backlog item implemented using the impl commit SHA; the script itself does not call any agent",
         "exit": "0=success, 1=feature not found, 2=bad invocation (missing/invalid flag, malformed --linked-items triple, missing --spec file)"
       }

@@ -71,11 +71,9 @@ sole test runner is `test/run.py`.
    `python3 .claude/features/rabbit-file/scripts/item-status.py set --feature <feature> --type <type> --id <id> --status close --reason 'TDD cycle complete' --fix-commits <impl-sha>`.
    The `<feature>` and `<id>` are derived from the `--linked-item` path
    (e.g., `rabbit/features/rabbit-cage/bugs/RABBIT-CAGE-BUG-8` →
-   feature=`rabbit-cage`, id=`RABBIT-CAGE-BUG-8`). The legacy
-   `bug-status.py` and `backlog-item-status.py` scripts no longer exist
-   (consolidated into rabbit-file's `item-status.py`); any reference to
-   them is a constitution violation. The HANDOFF block must include the
-   linked item path and its new status. Additionally, when
+   feature=`rabbit-cage`, id=`RABBIT-CAGE-BUG-8`). The HANDOFF block
+   must include the linked item path and its new status. Additionally,
+   when
    `--linked-items <feature>:<type>:<id>[,<feature>:<type>:<id>...]` is
    provided (a comma-separated list of triples), the orchestrator closes
    each listed item via the same `item-status.py set` invocation with
@@ -104,9 +102,7 @@ sole test runner is `test/run.py`.
    triples for secondary items resolved by the same cycle),
    `--human-approval-gate true|false` (default `true`; `false` skips the
    subagent's HUMAN-APPROVAL step), `--code-review-full-loop`,
-   `--max-iterations` (default 3, min 1). The legacy
-   `--no-human-approval` flag is removed; all callers must use
-   `--human-approval-gate false` instead. Boolean flag values follow the
+   `--max-iterations` (default 3, min 1). Boolean flag values follow the
    contract feature's CLI Naming Convention: exclusively `true` or
    `false`, never `enabled`/`disabled` or any other vocabulary.
 8. After `rabbit-feature-spec` returns in Step 3 of `rabbit-feature-touch`
@@ -231,21 +227,19 @@ sole test runner is `test/run.py`.
     relies on are: `name` (string), `version` (semver string),
     `owner` (string), `tdd_state` (string), `summary` (string),
     `surface` (object), and the flat `deprecation_criterion` (string).
-    Test fixtures in this feature MUST use this flat shape; the legacy
-    nested form is retired except where an explicit backward-
-    compatibility test exercises it. The contract feature owns the
-    schema file.
+    Test fixtures in this feature MUST use this flat shape. The contract
+    feature owns the schema file.
 19. The assembled TDD subagent prompt MUST include a structured JSON
     HANDOFF schema at the top of its HANDOFF block. The schema is
     declared inline in the prompt with `handoff_schema_version: "1.0.0"`
     and lists the required fields (`feature`, `tdd_state`,
     `test_result`, `spec_compliance`, `tdd_report_path`, `closed_items`
-    (array), `notes`). The subagent emits BOTH the legacy YAML-like
-    HANDOFF block (for human readability and backward-compatible
-    dispatchers) AND a fenced JSON HANDOFF block immediately after,
-    prefixed `HANDOFF_JSON:` so downstream parsers can locate and
-    validate it without ambiguity. The JSON HANDOFF is the machine-first
-    source of truth per philosophy.md.
+    (array), `notes`). The subagent emits BOTH a YAML-style HANDOFF
+    block (the human-readable view) AND a fenced JSON HANDOFF block
+    immediately after, prefixed `HANDOFF_JSON:` so downstream parsers
+    can locate and validate it without ambiguity. The JSON HANDOFF is
+    the machine-first source of truth per philosophy.md; the YAML
+    block is the operator's at-a-glance view of the same data.
 20. `agents/tdd-subagent.md` MUST NOT describe a dual-path layout for
     `scripts/tdd-step.py` (i.e., no "agent-local OR
     .claude/features/<X>/scripts" fork). The dispatched prompt always
