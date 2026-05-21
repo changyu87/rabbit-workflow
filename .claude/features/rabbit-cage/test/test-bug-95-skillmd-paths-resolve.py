@@ -2,7 +2,7 @@
 """Regression test for RABBIT-CAGE-BUG-95.
 
 Spec invariants covered:
-- Inv 87 (new): Skills SKILL.md body MUST reference its implementation script(s)
+- Inv 60 (new): Skills SKILL.md body MUST reference its implementation script(s)
   via the canonical absolute repo-relative path (e.g.
   `.claude/features/<feature>/skills/<skill>/scripts/<script>.py`), NEVER via a
   source-relative path like `scripts/<script>.py`.
@@ -95,7 +95,7 @@ for skill_md_path in deployed_skill_mds:
     if src_rel_paths:
         fail_t(
             t,
-            f"{rel}: forbidden source-relative path tokens (Inv 87): "
+            f"{rel}: forbidden source-relative path tokens (Inv 60): "
             f"{src_rel_paths!r}",
         )
     else:

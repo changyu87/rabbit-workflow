@@ -4,7 +4,7 @@
 Bypass mode is now a per-user opt-in via the new subcommand; the shared
 settings.json source and its build copy MUST NOT declare permissions.defaultMode.
 
-Covers Inv 53 (six subcommands), Inv 69 (rewritten), Inv 71-74.
+Covers Inv 33 (six subcommands), Inv 49 (rewritten), Inv 51-74.
 """
 import json
 import os
@@ -211,7 +211,7 @@ if "/rabbit-config bypass-permissions" in skill:
 else:
     fail_t(11, "SKILL.md body missing '/rabbit-config bypass-permissions'")
 
-# ---- t12: SKILL.md frontmatter description field contains 'bypass-permissions' (Inv 53) ----
+# ---- t12: SKILL.md frontmatter description field contains 'bypass-permissions' (Inv 33) ----
 # Extract frontmatter block between leading '---' delimiters.
 m = re.match(r"^---\n(.*?\n)---\n", skill, re.DOTALL)
 if m:
@@ -219,7 +219,7 @@ if m:
     desc_match = re.search(r"^description:\s*(.+?)(?:\n[a-zA-Z_]+:|\Z)", frontmatter, re.DOTALL | re.MULTILINE)
     desc = desc_match.group(1) if desc_match else ""
     if "bypass-permissions" in desc:
-        ok(12, "SKILL.md frontmatter description names bypass-permissions (Inv 53)")
+        ok(12, "SKILL.md frontmatter description names bypass-permissions (Inv 33)")
     else:
         fail_t(12, f"SKILL.md frontmatter description missing 'bypass-permissions' (desc={desc!r})")
 else:

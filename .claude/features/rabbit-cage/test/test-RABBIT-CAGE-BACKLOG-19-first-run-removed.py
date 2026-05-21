@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BACKLOG-19 / Inv 79: sync-check.py first-run path is removed.
+"""BACKLOG-19 / Inv 89: sync-check.py first-run path is removed.
 
 (a) When CLAUDE.md is absent on disk, sync-check.py exits 0 with empty
     stdout (no first-run JSON is emitted, and CLAUDE.md is NOT created by

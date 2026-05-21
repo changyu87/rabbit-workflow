@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests scope-guard.py basename allowlist after removal of `settings.json` (BUG-10).
 
-Covers Invariant 20 (updated): the scope-guard basename allowlist contains
+Covers Invariant 64 (updated): the scope-guard basename allowlist contains
 exactly `settings.local.json`, `.gitignore`, and `.rabbit-scope-override`.
 `settings.json` is NOT on this allowlist; writes to `.claude/settings.json`
 require an active rabbit-cage scope marker.
@@ -114,7 +114,7 @@ try:
     # t2: with per-feature marker for rabbit-cage, write to the canonical
     # source `.claude/features/rabbit-cage/settings.json` should ALLOW.
     # (The build-managed destination `.claude/settings.json` is regenerated
-    # by build.py from the source — per Inv 50, agents must edit the source,
+    # by build.py from the source — per Inv 32, agents must edit the source,
     # not the destination, so a marker test on the source path is the right
     # ALLOW check after removing the basename bypass.)
     per_marker = os.path.join(REPO_ROOT, ".rabbit-scope-active-rabbit-cage")

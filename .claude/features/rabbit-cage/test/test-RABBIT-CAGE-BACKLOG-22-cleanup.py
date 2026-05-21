@@ -3,7 +3,7 @@
 
 Verifies the cleanups specified in the BACKLOG-22 impl-suggestion:
   1) workspace-tree.py: legacy 2-arg form removed; .sh KEY_FILES branch
-     removed (Inv 39 forbids .sh); ANNOTATIONS / STRUCTURAL_DIRS include
+     removed (Inv 17 forbids .sh); ANNOTATIONS / STRUCTURAL_DIRS include
      the live post-consolidation features (rabbit-feature,
      tdd-state-machine).
   2) scope-guard.py: walk_up_find for .rabbit-scope-active collapsed to
@@ -64,7 +64,7 @@ if "Legacy" not in wt and 'args[1] in ("0", "1")' not in wt:
 else:
     fail_t(1, "workspace-tree.py: legacy 2-arg form still present")
 
-# t2 — .sh KEY_FILES branch removed (Inv 39 forbids .sh in rabbit-cage).
+# t2 — .sh KEY_FILES branch removed (Inv 17 forbids .sh in rabbit-cage).
 if 'name.endswith(".sh")' not in wt:
     ok(2, "workspace-tree.py: .sh key-file branch removed from is_key_file")
 else:
@@ -165,12 +165,12 @@ if not _re.search(
 else:
     fail_t(11, "rabbit-project.md: 'init → rabbit-project.py' self-reference bullet still present")
 
-# t12 — Inv 67: rabbit-project.md MUST reference only .py scripts under
+# t12 — Inv 47: rabbit-project.md MUST reference only .py scripts under
 #       .claude/features/rabbit-cage/scripts/, no .sh / stale paths.
 if ".sh" not in pm:
-    ok(12, "rabbit-project.md: no .sh references (Inv 67)")
+    ok(12, "rabbit-project.md: no .sh references (Inv 47)")
 else:
-    fail_t(12, "rabbit-project.md: contains .sh reference (Inv 67 violation)")
+    fail_t(12, "rabbit-project.md: contains .sh reference (Inv 47 violation)")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")

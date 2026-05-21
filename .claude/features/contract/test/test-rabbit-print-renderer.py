@@ -52,8 +52,8 @@ except Exception as e:
     sys.exit(1)
 
 # t3: __all__ is exactly the 15 names declared in Inv 28 (r1_branch removed
-# alongside rabbit-cage Inv 61; bypass_permissions_active added alongside
-# rabbit-cage Inv 88 banner upgrade; dispatch_bypass_note added in BACKLOG-29
+# alongside rabbit-cage Inv 41; bypass_permissions_active added alongside
+# rabbit-cage Inv 61 banner upgrade; dispatch_bypass_note added in BACKLOG-29
 # alongside the tdd-subagent BUG-57 fix).
 expected_all = {
     "rabbit_print", "rabbit_subline", "rabbit_block",

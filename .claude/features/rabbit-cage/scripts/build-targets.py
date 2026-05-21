@@ -54,7 +54,7 @@ for target in contract.get("targets", []):
         os.makedirs(os.path.dirname(destination), exist_ok=True)
         # Gate the copy and the .rabbit-skills-updated marker write on actual
         # content change: skip both when destination already has identical
-        # sha256 to source. (Spec Invariant 24(a).)
+        # sha256 to source. (Spec Invariant 75(a).)
         content_changed = (not os.path.isfile(destination)) or \
                           (_sha256(source) != _sha256(destination))
         if content_changed:

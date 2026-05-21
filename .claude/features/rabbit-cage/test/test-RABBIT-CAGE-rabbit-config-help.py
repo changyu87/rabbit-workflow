@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Tests /rabbit-config help subcommand (Inv 81-83).
+"""Tests /rabbit-config help subcommand (Inv 55-83).
 
 Spec invariants covered:
-- Inv 81: `/rabbit-config help` exits 0, writes only to stdout, modifies no file,
+- Inv 55: `/rabbit-config help` exits 0, writes only to stdout, modifies no file,
   prints illustrated usage naming every other subcommand AND `help` itself,
   with at least one concrete invocation example per subcommand. Extra args
   after `help` are ignored. Handler exists in scripts/rabbit-config.py and is
   registered in the subcommand dispatch table.
-- Inv 82: `help` is advertised in BOTH (a) SKILL.md frontmatter `description`
+- Inv 56: `help` is advertised in BOTH (a) SKILL.md frontmatter `description`
   and (b) the in-script `USAGE` string.
-- Inv 83: The illustrated `help` output is distinct from the terse error
+- Inv 57: The illustrated `help` output is distinct from the terse error
   `USAGE` string: it adds per-subcommand purpose lines and at least one
   concrete invocation example per subcommand.
 """
@@ -169,7 +169,7 @@ try:
 finally:
     shutil.rmtree(wd, ignore_errors=True)
 
-# ---- t6: help output is NOT byte-identical to the script's USAGE string (Inv 83) ----
+# ---- t6: help output is NOT byte-identical to the script's USAGE string (Inv 57) ----
 # Import USAGE from the script module to compare.
 import importlib.util
 spec = importlib.util.spec_from_file_location("rabbit_config_mod", SKILL_PY)
@@ -184,9 +184,9 @@ try:
     if USAGE is None:
         fail_t(6, "USAGE constant not exported by rabbit-config.py")
     elif help_out.rstrip("\n") != USAGE.rstrip("\n"):
-        ok(6, "help output is distinct from terse USAGE string (Inv 83)")
+        ok(6, "help output is distinct from terse USAGE string (Inv 57)")
     else:
-        fail_t(6, "help output is byte-identical to USAGE — Inv 83 violation")
+        fail_t(6, "help output is byte-identical to USAGE — Inv 57 violation")
 finally:
     shutil.rmtree(wd, ignore_errors=True)
 
@@ -238,14 +238,14 @@ try:
 finally:
     shutil.rmtree(wd, ignore_errors=True)
 
-# ---- t10: dispatch table actually registers 'help' (Inv 81 last clause) ----
+# ---- t10: dispatch table actually registers 'help' (Inv 55 last clause) ----
 # Static check: source contains 'help' key in the dispatch dict.
 with open(SKILL_PY) as f:
     src = f.read()
 if re.search(r"['\"]help['\"]\s*:\s*cmd_help\b", src):
-    ok(10, "dispatch table registers 'help' -> cmd_help (Inv 81)")
+    ok(10, "dispatch table registers 'help' -> cmd_help (Inv 55)")
 else:
-    fail_t(10, "dispatch table does not register 'help' -> cmd_help — Inv 81 violation")
+    fail_t(10, "dispatch table does not register 'help' -> cmd_help — Inv 55 violation")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")

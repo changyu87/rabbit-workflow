@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests session-init.py branch behavior (Inv 61 — R1 enforcement REMOVED).
+"""Tests session-init.py branch behavior (Inv 41 — R1 enforcement REMOVED).
 
 After spec v3.12.0, session-init.py MUST NOT auto-create or auto-switch git
 branches on main/master. The legacy R1 enforcement (auto-creating
@@ -60,8 +60,8 @@ print()
 repos = []
 
 try:
-    # t1: Inv 61 — on main, session-init.py MUST NOT create any branch.
-    print("=== t1: on main → NO branch creation (Inv 61 — R1 removed) ===")
+    # t1: Inv 41 — on main, session-init.py MUST NOT create any branch.
+    print("=== t1: on main → NO branch creation (Inv 41 — R1 removed) ===")
     repo1 = make_repo()
     repos.append(repo1)
     env = {**os.environ, "RABBIT_ROOT": repo1}
@@ -69,9 +69,9 @@ try:
     branch = subprocess.run(["git", "-C", repo1, "branch", "--show-current"],
                             capture_output=True, text=True).stdout.strip()
     if branch == "main":
-        ok("hook left branch unchanged at 'main' (Inv 61 — R1 removed)")
+        ok("hook left branch unchanged at 'main' (Inv 41 — R1 removed)")
     else:
-        fail_t(f"hook switched branch from 'main' to '{branch}' (Inv 61 violation — R1 was removed)")
+        fail_t(f"hook switched branch from 'main' to '{branch}' (Inv 41 violation — R1 was removed)")
 
     # t2: on feature branch → no branch change (unchanged behavior).
     print()
@@ -104,7 +104,7 @@ try:
 
     # t4: emitted JSON systemMessage MUST NOT contain "R1:" or "session/" prefix.
     print()
-    print("=== t4: no R1/session-branch text in systemMessage (Inv 61) ===")
+    print("=== t4: no R1/session-branch text in systemMessage (Inv 41) ===")
     repo4 = make_repo()
     repos.append(repo4)
     env = {**os.environ, "RABBIT_ROOT": repo4}
@@ -112,7 +112,7 @@ try:
     out = res.stdout or ""
     has_r1 = bool(re.search(r"\bR1\b|session/\d{8}-\d{6}|checkout\s*-b", out))
     if not has_r1:
-        ok("hook output contains no R1/session-branch text on main (Inv 61)")
+        ok("hook output contains no R1/session-branch text on main (Inv 41)")
     else:
         fail_t(f"hook output mentions R1 or session-branch text: {out!r}")
 finally:

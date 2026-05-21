@@ -6,7 +6,7 @@ message-id, each thinly delegating to rabbit_print(<id>, **kwargs). Each
 wrapper signature exposes exactly the kwargs its message-id requires.
 tdd_transition and tdd_forced upcase their state-name placeholders.
 Also asserts that the previously-required r1_branch wrapper is absent
-(removed alongside rabbit-cage Inv 61).
+(removed alongside rabbit-cage Inv 41).
 """
 
 import os

@@ -7,7 +7,7 @@ End-to-end: loads the on-disk registry and schema files; performs minimal
 JSON-Schema-style structural validation (no third-party dependency); then
 asserts the ten required message-ids, the brand string, the bar string,
 and the per-message field shapes. Also asserts that the previously-required
-'r1-branch' id is absent (removed alongside rabbit-cage Inv 61).
+'r1-branch' id is absent (removed alongside rabbit-cage Inv 41).
 """
 
 import os
@@ -38,7 +38,7 @@ REQUIRED_IDS = {
     "bypass-permissions-active", "dispatch-bypass-note",
     "skills-updated", "policy-refreshed", "tdd-transition", "tdd-forced",
 }
-# Explicitly removed alongside rabbit-cage Inv 61 (the R1 hook). The id MUST
+# Explicitly removed alongside rabbit-cage Inv 41 (the R1 hook). The id MUST
 # NOT reappear without a new spec change.
 REMOVED_IDS = {"r1-branch"}
 

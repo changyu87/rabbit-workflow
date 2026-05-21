@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""BACKLOG-18 FULL E2E test for session-init.py single-JSON emission (Inv 75).
+"""BACKLOG-18 FULL E2E test for session-init.py single-JSON emission (Inv 85).
 
-After spec v3.12.0, R1 branch enforcement is removed (Inv 61); policy injection
+After spec v3.12.0, R1 branch enforcement is removed (Inv 41); policy injection
 is the sole pending condition for session-init.py.
 
 Builds a realistic temp repo with real CLAUDE.md and @-import files; invokes
@@ -67,7 +67,7 @@ def run_hook(tmproot):
 
 
 print("test-RABBIT-CAGE-BACKLOG-18-session-init-single-json.py")
-print("FULL E2E: session-init.py single-JSON emission (policy-only after Inv 61)")
+print("FULL E2E: session-init.py single-JSON emission (policy-only after Inv 41)")
 print()
 
 tmproots = []
@@ -85,7 +85,7 @@ try:
     out = run_hook(tmproot)
     n = count_json_objects(out)
     if n == 1:
-        ok("exactly ONE JSON object emitted (Inv 75)")
+        ok("exactly ONE JSON object emitted (Inv 85)")
     else:
         fail_t(f"expected 1 JSON object, got {n}; raw: {out!r}")
 
@@ -98,7 +98,7 @@ try:
 
     msg = obj.get("systemMessage", "")
     if "R1" not in msg and "session/" not in msg:
-        ok("R1/session-branch text absent from systemMessage (Inv 61)")
+        ok("R1/session-branch text absent from systemMessage (Inv 41)")
     else:
         fail_t(f"R1/session-branch text present: {msg!r}")
     if "Welcome" in msg:
@@ -118,15 +118,15 @@ try:
         fail_t(f"additionalContext does not contain expected policy text; ac[:200]={ac[:200]!r}")
 
     # Sanity: branch on tmp repo was 'main' before invocation; assert it's
-    # still 'main' after (Inv 61 — no auto-switch).
+    # still 'main' after (Inv 41 — no auto-switch).
     branch = subprocess.run(
         ["git", "-C", tmproot, "branch", "--show-current"],
         capture_output=True, text=True,
     ).stdout.strip()
     if branch == "main":
-        ok("on-main branch unchanged after session-init invocation (Inv 61)")
+        ok("on-main branch unchanged after session-init invocation (Inv 41)")
     else:
-        fail_t(f"branch unexpectedly changed to '{branch}' (Inv 61 violation)")
+        fail_t(f"branch unexpectedly changed to '{branch}' (Inv 41 violation)")
 
     # ---- t2: off-main with no @-imports → empty stdout ----
     print()
@@ -177,7 +177,7 @@ try:
 
     # ---- t4: on main but no @-imports → NO JSON (R1 no longer emits) ----
     print()
-    print("=== t4: on main + no @-imports → no JSON at all (Inv 61) ===")
+    print("=== t4: on main + no @-imports → no JSON at all (Inv 41) ===")
     tmproot = make_git_repo()
     tmproots.append(tmproot)
     with open(os.path.join(tmproot, "CLAUDE.md"), "w") as f:
@@ -197,9 +197,9 @@ try:
         capture_output=True, text=True,
     ).stdout.strip()
     if branch == "main":
-        ok("branch unchanged at 'main' (Inv 61 — R1 removed)")
+        ok("branch unchanged at 'main' (Inv 41 — R1 removed)")
     else:
-        fail_t(f"branch unexpectedly switched to '{branch}' (Inv 61 violation)")
+        fail_t(f"branch unexpectedly switched to '{branch}' (Inv 41 violation)")
 finally:
     for d in tmproots:
         shutil.rmtree(d, ignore_errors=True)

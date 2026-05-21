@@ -7,8 +7,8 @@ Covers:
   t3. scope-guard.py DENY message does NOT reference dispatch-feature-edit.py.
   t4. contract.md reads.files does NOT list .claude/features/registry.json.
   t5. feature.json summary does NOT mention retired rabbit-bug/rabbit-backlog skills.
-  t6. spec.md Inv 40 enumerates repo-permissions.py among scripts/.
-  t7. spec.md Inv 40 references a follow-up cycle/backlog for new-feature.py move.
+  t6. spec.md Inv 18 enumerates repo-permissions.py among scripts/.
+  t7. spec.md Inv 18 references a follow-up cycle/backlog for new-feature.py move.
 """
 import json
 import os
@@ -86,23 +86,23 @@ if "rabbit-bug" in summary or "rabbit-backlog" in summary:
 else:
     ok(5, "feature.json summary does not name retired rabbit-bug/rabbit-backlog skills")
 
-# t6 — spec.md Inv 40 enumerates repo-permissions.py
+# t6 — spec.md Inv 18 enumerates repo-permissions.py
 spec = read(os.path.join(FEATURE_DIR, "docs/spec/spec.md"))
-# locate the Inv 40 paragraph
-inv40_match = re.search(r"^40\.\s+.*?(?=^\d+\.\s|\Z)", spec, re.MULTILINE | re.DOTALL)
+# locate the Inv 18 paragraph
+inv40_match = re.search(r"^18\.\s+.*?(?=^\d+\.\s|\Z)", spec, re.MULTILINE | re.DOTALL)
 inv40 = inv40_match.group(0) if inv40_match else ""
 if "`repo-permissions.py`" not in inv40:
-    fail_t(6, "spec.md Inv 40 does not enumerate repo-permissions.py among scripts/")
+    fail_t(6, "spec.md Inv 18 does not enumerate repo-permissions.py among scripts/")
 else:
-    ok(6, "spec.md Inv 40 enumerates repo-permissions.py")
+    ok(6, "spec.md Inv 18 enumerates repo-permissions.py")
 
-# t7 — spec.md Inv 40 references a follow-up backlog/cycle for new-feature.py move
+# t7 — spec.md Inv 18 references a follow-up backlog/cycle for new-feature.py move
 if not inv40:
-    fail_t(7, "Inv 40 not found in spec.md")
+    fail_t(7, "Inv 18 not found in spec.md")
 elif "new-feature.py" in inv40 and ("BACKLOG" in inv40 or "follow-up cycle" in inv40):
-    ok(7, "spec.md Inv 40 references a follow-up cycle/backlog for new-feature.py move")
+    ok(7, "spec.md Inv 18 references a follow-up cycle/backlog for new-feature.py move")
 else:
-    fail_t(7, "spec.md Inv 40 does not reference a follow-up cycle/backlog for new-feature.py move")
+    fail_t(7, "spec.md Inv 18 does not reference a follow-up cycle/backlog for new-feature.py move")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BACKLOG-18 unit test for pure-function renderers (Inv 76).
+"""BACKLOG-18 unit test for pure-function renderers (Inv 86).
 
 Imports the render_* functions from sync-check.py and session-init.py;
 invokes them with controlled state; captures sys.stdout/stderr and asserts
@@ -49,7 +49,7 @@ def load_module(path, name):
 
 
 print("test-RABBIT-CAGE-BACKLOG-18-pure-renderer-no-side-effects.py")
-print("Unit test: pure-function renderers (Inv 76)")
+print("Unit test: pure-function renderers (Inv 86)")
 print()
 
 sync = load_module(SYNC_CHECK, "sync_check_mod")
@@ -67,7 +67,7 @@ SESSION_RENDERERS = [
     "render_policy",
 ]
 
-# Renderers that MUST NOT exist after Inv 61 (R1 enforcement removed).
+# Renderers that MUST NOT exist after Inv 41 (R1 enforcement removed).
 SESSION_REMOVED = [
     "render_r1_branch",
 ]
@@ -91,15 +91,15 @@ for name in SESSION_RENDERERS:
     else:
         fail_t(f"{name} missing or not callable on session-init module")
 
-# ---- t7: session-init.py MUST NOT define render_r1_branch (Inv 61) ----
+# ---- t7: session-init.py MUST NOT define render_r1_branch (Inv 41) ----
 print()
-print("=== t7: session-init.py does NOT define render_r1_branch (Inv 61) ===")
+print("=== t7: session-init.py does NOT define render_r1_branch (Inv 41) ===")
 for name in SESSION_REMOVED:
     fn = getattr(sess, name, None)
     if fn is None:
-        ok(f"{name} correctly absent from session-init module (Inv 61)")
+        ok(f"{name} correctly absent from session-init module (Inv 41)")
     else:
-        fail_t(f"{name} should be removed (Inv 61) but is still defined")
+        fail_t(f"{name} should be removed (Inv 41) but is still defined")
 
 # ---- t-side-effects: invoking a renderer on an empty repo does NOT write
 # to stdout/stderr ----

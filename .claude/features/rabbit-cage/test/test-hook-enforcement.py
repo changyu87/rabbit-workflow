@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Hook enforcement tests for scope-guard.
 
-Inv 64: this test MUST NOT mutate live source files. Marker and feature.json
+Inv 44: this test MUST NOT mutate live source files. Marker and feature.json
 mutations happen in an isolated temp git repo with copies of scope-guard.py
 and find-feature.py. Live repo files are read-only here.
 """
@@ -96,7 +96,7 @@ def run_scope_guard(sg_path, sandbox, input_json):
 print("test-hook-enforcement.py")
 print()
 
-# Snapshot live source files to enforce Inv 64 at the end of this test.
+# Snapshot live source files to enforce Inv 44 at the end of this test.
 LIVE_TARGETS = {
     "settings.json": SETTINGS_JSON,
     "rabbit-cage feature.json": os.path.join(
@@ -199,13 +199,13 @@ else:
     fail_t(7, "rabbit-feature-touch SKILL.md does not exclude metadata-only operations — bug/backlog filing incorrectly triggers TDD")
 
 print()
-print("=== Inv 64: live source files were not mutated ===")
+print("=== Inv 44: live source files were not mutated ===")
 post = {k: sha256_file(p) for k, p in LIVE_TARGETS.items() if os.path.isfile(p)}
 drifted = [k for k in PRE_SNAPSHOT if PRE_SNAPSHOT[k] != post.get(k)]
 if not drifted:
-    ok(8, "live source files byte-identical after test (Inv 64)")
+    ok(8, "live source files byte-identical after test (Inv 44)")
 else:
-    fail_t(8, f"live source files mutated by test (Inv 64 violation): {drifted}")
+    fail_t(8, f"live source files mutated by test (Inv 44 violation): {drifted}")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")

@@ -2,18 +2,18 @@
 """Tests rabbit-config skill structure + human-approval subcommand (BACKLOG-11).
 
 Spec invariants covered:
-- Inv 25 (inverted): commands/rabbit-config.md does NOT exist; must not be recreated.
-- Inv 53: SKILL.md exists at skills/rabbit-config/SKILL.md with required frontmatter.
-- Inv 54: scripts/rabbit-config.py exists, executable, stdlib only, sole impl (no shim).
-- Inv 55: human-approval false writes .rabbit-human-approval-bypass with 'session';
+- Inv 20 (inverted): commands/rabbit-config.md does NOT exist; must not be recreated.
+- Inv 33: SKILL.md exists at skills/rabbit-config/SKILL.md with required frontmatter.
+- Inv 34: scripts/rabbit-config.py exists, executable, stdlib only, sole impl (no shim).
+- Inv 35: human-approval false writes .rabbit-human-approval-bypass with 'session';
   legacy verbs (bypass, gated, enabled, disabled) are rejected.
-- Inv 56: human-approval true deletes the marker; idempotent.
-- Inv 57: human-approval (no action) prints 'true' (marker absent, gate active) or
+- Inv 36: human-approval true deletes the marker; idempotent.
+- Inv 37: human-approval (no action) prints 'true' (marker absent, gate active) or
   'false' (marker present, gate bypassed).
-- Inv 58: .rabbit-human-approval-bypass is gitignored.
-- Inv 59: sync-check.py emits red alert while marker present (not consumed),
+- Inv 38: .rabbit-human-approval-bypass is gitignored.
+- Inv 39: sync-check.py emits red alert while marker present (not consumed),
   priority level 4 between scope-guard-off and skills-updated.
-- Inv 86: feature.json surface.skills MUST be a non-empty array containing
+- Inv 59: feature.json surface.skills MUST be a non-empty array containing
   'rabbit-config'.
 """
 import json
@@ -100,7 +100,7 @@ if os.path.isfile(SKILL_PY) and os.access(SKILL_PY, os.X_OK):
 else:
     fail_t(3, f"scripts/rabbit-config.py missing or not executable at {SKILL_PY}")
 
-# t4: commands/rabbit-config.md does NOT exist (Inv 25 inverted); deployed
+# t4: commands/rabbit-config.md does NOT exist (Inv 20 inverted); deployed
 # .claude/commands/rabbit-config.md does NOT exist either (symlink propagation).
 src_absent = not os.path.lexists(CMD_MD)
 deployed_absent = not os.path.lexists(DEPLOYED_CMD_MD)
@@ -202,9 +202,9 @@ if os.path.isfile(SKILL_PY):
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # ---- human-approval subcommand (true/false vocabulary, Inv 55–57) ----
+    # ---- human-approval subcommand (true/false vocabulary, Inv 35–57) ----
 
-    # t10: 'false' writes marker with 'session' content (Inv 55)
+    # t10: 'false' writes marker with 'session' content (Inv 35)
     wd = tempfile.mkdtemp()
     try:
         res = run_script(["human-approval", "false"], wd)
@@ -221,7 +221,7 @@ if os.path.isfile(SKILL_PY):
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t11: (no action) prints 'false' when marker present (Inv 57: bypass = false)
+    # t11: (no action) prints 'false' when marker present (Inv 37: bypass = false)
     wd = tempfile.mkdtemp()
     try:
         marker = os.path.join(wd, ".rabbit-human-approval-bypass")
@@ -235,7 +235,7 @@ if os.path.isfile(SKILL_PY):
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t12: (no action) prints 'true' when marker absent (Inv 57: gate active = true)
+    # t12: (no action) prints 'true' when marker absent (Inv 37: gate active = true)
     wd = tempfile.mkdtemp()
     try:
         res = run_script(["human-approval"], wd)
@@ -246,7 +246,7 @@ if os.path.isfile(SKILL_PY):
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # t13: 'true' removes marker (Inv 56)
+    # t13: 'true' removes marker (Inv 36)
     wd = tempfile.mkdtemp()
     try:
         marker = os.path.join(wd, ".rabbit-human-approval-bypass")
@@ -300,7 +300,7 @@ if os.path.isfile(SKILL_PY):
     finally:
         shutil.rmtree(wd, ignore_errors=True)
 
-    # ---- Legacy verbs rejected (Inv 55, 56: only true/false accepted) ----
+    # ---- Legacy verbs rejected (Inv 35, 36: only true/false accepted) ----
 
     # t16a: legacy 'bypass' verb is rejected with exit 1
     wd = tempfile.mkdtemp()
@@ -430,7 +430,7 @@ try:
         fail_t(18, "human-approval-bypass marker was consumed (must persist)")
 
     # t19: human-approval-bypass + skills-updated BOTH emit, human-approval first
-    # (BACKLOG-18: Inv 37 aggregation — no suppression; priority controls ordering)
+    # (BACKLOG-18: Inv 83 aggregation — no suppression; priority controls ordering)
     tmproot = make_clean_repo()
     tmproots.append(tmproot)
     open(os.path.join(tmproot, ".rabbit-human-approval-bypass"), "w").close()
@@ -445,7 +445,7 @@ try:
         fail_t(19, f"aggregation/order wrong: ha={idx_ha} sk={idx_sk} msg={msg!r}")
 
     # t20: scope-guard-off + human-approval-bypass BOTH emit, scope-guard first
-    # (BACKLOG-18: Inv 37 aggregation — no suppression)
+    # (BACKLOG-18: Inv 83 aggregation — no suppression)
     tmproot = make_clean_repo()
     tmproots.append(tmproot)
     with open(os.path.join(tmproot, ".rabbit-scope-override"), "w") as f:
@@ -460,13 +460,13 @@ try:
     else:
         fail_t(20, f"aggregation/order wrong: sc={idx_sc} ha={idx_ha} msg={msg!r}")
 
-    # t21: feature.json surface.skills declares 'rabbit-config' (Inv 86)
+    # t21: feature.json surface.skills declares 'rabbit-config' (Inv 59)
     feature_json = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/feature.json")
     with open(feature_json) as f:
         feature_data = json.load(f)
     skills = feature_data.get("surface", {}).get("skills", [])
     if isinstance(skills, list) and len(skills) > 0 and "rabbit-config" in skills:
-        ok(21, "feature.json surface.skills is non-empty and contains 'rabbit-config' (Inv 86)")
+        ok(21, "feature.json surface.skills is non-empty and contains 'rabbit-config' (Inv 59)")
     else:
         fail_t(21, f"surface.skills must be non-empty and contain 'rabbit-config'; got {skills!r}")
 finally:

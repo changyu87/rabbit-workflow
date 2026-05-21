@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests verifying complete Python migration: no .sh references in sync-check.py,
 tests use .rabbit-skills-updated marker, test harnesses are Python files.
-Covers Spec Inv 26, 28, 39 and BACKLOG14 test correctness."""
+Covers Spec Inv 12, 14, 17 and BACKLOG14 test correctness."""
 import glob
 import os
 import subprocess
@@ -37,30 +37,30 @@ def fail_t(msg):
 
 
 print("test-python-migration.py")
-print("Verifying complete Python migration (Spec Inv 26, 28, 39)")
+print("Verifying complete Python migration (Spec Inv 12, 14, 17)")
 print()
 
 # t1: sync-check.py does NOT reference test-generated-surface.sh
-# BACKLOG-21 (Inv 78): sync-check.py no longer invokes test-generated-surface
+# BACKLOG-21 (Inv 88): sync-check.py no longer invokes test-generated-surface
 # at all — surface-drift detection is now done in-process by comparing
 # build-contract.json copy-file source/destination sha256. The .sh prohibition
-# (Inv 39) still holds; the .py reference assertion is removed because the
+# (Inv 17) still holds; the .py reference assertion is removed because the
 # coupling no longer exists.
 print("=== t1: sync-check.py references test-generated-surface.py (not .sh) ===")
 with open(SYNC_CHECK) as f:
     sync_content = f.read()
 if "test-generated-surface.sh" in sync_content:
-    fail_t("sync-check.py still references test-generated-surface.sh — must use .py (Spec Inv 26)")
+    fail_t("sync-check.py still references test-generated-surface.sh — must use .py (Spec Inv 12)")
 else:
     ok("sync-check.py does not reference test-generated-surface.sh")
 
-# t2: test-generated-surface.py exists (Spec Inv 26)
-print("=== t2: test-generated-surface.py exists (Spec Inv 26) ===")
+# t2: test-generated-surface.py exists (Spec Inv 12)
+print("=== t2: test-generated-surface.py exists (Spec Inv 12) ===")
 py_surf = os.path.join(TEST_DIR, "test-generated-surface.py")
 if os.path.isfile(py_surf):
-    ok("test-generated-surface.py exists (Spec Inv 26)")
+    ok("test-generated-surface.py exists (Spec Inv 12)")
 else:
-    fail_t("test-generated-surface.py does NOT exist — violates Spec Inv 26")
+    fail_t("test-generated-surface.py does NOT exist — violates Spec Inv 12")
 
 # t3: test-generated-surface.sh does NOT exist in test/ (replaced by .py)
 print("=== t3: test-generated-surface.sh does NOT exist in test/ ===")
@@ -70,13 +70,13 @@ if not os.path.exists(sh_surf):
 else:
     fail_t("test-generated-surface.sh still exists — should be replaced by test-generated-surface.py")
 
-# t4: no .sh files exist in test/ (Spec Inv 39 updated)
-print("=== t4: no .sh files exist in test/ (Spec Inv 39) ===")
+# t4: no .sh files exist in test/ (Spec Inv 17 updated)
+print("=== t4: no .sh files exist in test/ (Spec Inv 17) ===")
 sh_in_test = sorted(glob.glob(os.path.join(TEST_DIR, "*.sh")))
 if not sh_in_test:
-    ok("test/ has no .sh files (Spec Inv 39)")
+    ok("test/ has no .sh files (Spec Inv 17)")
 else:
-    fail_t(f"test/ still contains .sh files: {' '.join(sh_in_test)} — violates Spec Inv 39")
+    fail_t(f"test/ still contains .sh files: {' '.join(sh_in_test)} — violates Spec Inv 17")
 
 # t5: BACKLOG7 test references test-generated-surface.py (not .sh)
 print("=== t5: test-RABBIT-CAGE-BACKLOG7 uses test-generated-surface.py ===")
@@ -139,15 +139,15 @@ for suite in ("test-RABBIT-CAGE-BACKLOG-18-aggregation.py",
     else:
         fail_t(f"run.py is missing {suite}")
 
-# t10: spec Inv 26 references .py not .sh
-print("=== t10: spec Inv 26 references test-generated-surface.py ===")
+# t10: spec Inv 12 references .py not .sh
+print("=== t10: spec Inv 12 references test-generated-surface.py ===")
 with open(SPEC_FILE) as f:
     spec_content = f.read()
 import re
-if re.search(r"26\. .+test-generated-surface\.py", spec_content):
-    ok("spec Inv 26 correctly references test-generated-surface.py")
+if re.search(r"12\. .+test-generated-surface\.py", spec_content):
+    ok("spec Inv 12 correctly references test-generated-surface.py")
 else:
-    fail_t("spec Inv 26 does NOT reference test-generated-surface.py — spec not updated")
+    fail_t("spec Inv 12 does NOT reference test-generated-surface.py — spec not updated")
 
 # t11: spec Tech Stack no longer says tests may be .sh
 print("=== t11: spec Tech Stack section updated for Python tests ===")

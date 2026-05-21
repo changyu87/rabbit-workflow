@@ -14,7 +14,7 @@ REPO_ROOT = subprocess.run(
 ).stdout.strip()
 COMMANDS_DIR = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/commands")
 CONFIG_MD = os.path.join(COMMANDS_DIR, "rabbit-config.md")
-# Inv 25 (updated): logic lives in the extracted script, not inline in CONFIG_MD.
+# Inv 20 (updated): logic lives in the extracted script, not inline in CONFIG_MD.
 CONFIG_PY = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py")
 
 pass_n = 0
@@ -202,7 +202,7 @@ else:
     fail_t(12, f"allowed-tools accepted unknown action (rc={rc}, allow={allow})")
 shutil.rmtree(wd, ignore_errors=True)
 
-# t13: target file is settings.local.json (Inv 50)
+# t13: target file is settings.local.json (Inv 32)
 wd = setup_workspace()
 run_config("bash-allow add touch", wd)
 local_present = os.path.isfile(os.path.join(wd, ".claude/settings.local.json"))
@@ -241,7 +241,7 @@ else:
     fail_t(16, f"bash-allow add with no value accepted (rc={rc}, allow={allow})")
 shutil.rmtree(wd, ignore_errors=True)
 
-# t17: allowed-tools add also writes to settings.local.json, not settings.json (Inv 43)
+# t17: allowed-tools add also writes to settings.local.json, not settings.json (Inv 25)
 wd = setup_workspace()
 run_config("allowed-tools add WebFetch", wd)
 local_present = os.path.isfile(os.path.join(wd, ".claude/settings.local.json"))
@@ -252,7 +252,7 @@ else:
     fail_t(17, f"allowed-tools wrong target (local_present={local_present}, settings_unchanged={settings_unchanged})")
 shutil.rmtree(wd, ignore_errors=True)
 
-# t18: list operations read from settings.local.json only (Inv 47)
+# t18: list operations read from settings.local.json only (Inv 29)
 wd = setup_workspace()
 # Seed settings.json with permissions that MUST NOT appear in the list output.
 with open(os.path.join(wd, ".claude/settings.json"), "w") as f:
@@ -279,8 +279,8 @@ else:
     fail_t(19, f"confirmation strings missing '{needle}' (allowed-tools out={out_at!r}, bash-allow out={out_ba!r})")
 shutil.rmtree(wd, ignore_errors=True)
 
-# t20: USAGE text (now in CONFIG_PY; CONFIG_MD is a shim per Inv 25) references
-# settings.local.json for allowed-tools and bash-allow (Inv 50 prose).
+# t20: USAGE text (now in CONFIG_PY; CONFIG_MD is a shim per Inv 20) references
+# settings.local.json for allowed-tools and bash-allow (Inv 32 prose).
 with open(CONFIG_PY) as f:
     py = f.read()
 # Strict: the literal phrase 'permissions.allow in settings.json' is the bug fingerprint

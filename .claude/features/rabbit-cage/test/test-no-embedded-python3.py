@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests no .sh files in hooks/scripts and Inv 40 Python helpers exist."""
+"""Tests no .sh files in hooks/scripts and Inv 18 Python helpers exist."""
 import glob
 import os
 import subprocess
@@ -59,7 +59,7 @@ for pyfile in (
     if os.path.isfile(os.path.join(SCRIPTS_DIR, pyfile)):
         ok(f"{pyfile} exists")
     else:
-        fail_t(f"{pyfile} does not exist (expected Python helper per Inv 40)")
+        fail_t(f"{pyfile} does not exist (expected Python helper per Inv 18)")
 
 print()
 print(f"Results: {total - failures} passed, {failures} failed")

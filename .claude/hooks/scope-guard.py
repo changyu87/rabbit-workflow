@@ -49,7 +49,7 @@ _SPEC_MD_PATTERN = None
 def _spec_md_pattern():
     """Cached regex matching <REPO_ROOT>/.claude/features/<feature>/docs/spec/spec.md.
 
-    <feature> is a single path segment (matched as `[^/]+`). Inv 20 (extended):
+    <feature> is a single path segment (matched as `[^/]+`). Inv 64 (extended):
     writes to the feature spec.md are permitted regardless of scope-marker state
     so rabbit-feature-touch Step 3 spec-authoring can update specs without an
     override.
@@ -128,7 +128,7 @@ def decide(target: str) -> Tuple[bool, str]:
         if abs_path == _full or abs_path.startswith(_full + "/"):
             return True, "ALLOW (path-prefix allowlist: bug/backlog/dispatcher metadata)"
 
-    # 3c. Path-pattern allowlist — feature spec.md (Inv 20 extended, BUG-8).
+    # 3c. Path-pattern allowlist — feature spec.md (Inv 64 extended, BUG-8).
     # Permits rabbit-feature-touch Step 3 spec-authoring (which runs in the
     # main session before any per-feature scope marker is set) to write
     # `.claude/features/<feature>/docs/spec/spec.md` without an override.
@@ -146,7 +146,7 @@ def decide(target: str) -> Tuple[bool, str]:
             continue
         per_path = find_feature_path(REPO_ROOT, per_feature)
         if not per_path:
-            # Inv 65: unresolvable marker MUST DENY (not silently fall through).
+            # Inv 45: unresolvable marker MUST DENY (not silently fall through).
             # A typo'd or stale per-feature marker would otherwise bypass the
             # write gate. Name the feature and direct the user to verify.
             return False, (
@@ -170,7 +170,7 @@ def decide(target: str) -> Tuple[bool, str]:
             pass
         feature_path = find_feature_path(REPO_ROOT, scope_feature) if scope_feature else None
         if scope_feature and not feature_path:
-            # Inv 65: global marker names an unresolvable feature → DENY.
+            # Inv 45: global marker names an unresolvable feature → DENY.
             return False, (
                 f"DENY write to '{abs_path}' denied: global scope marker "
                 f"'.rabbit-scope-active' names an unresolvable feature "
@@ -210,7 +210,7 @@ def decide(target: str) -> Tuple[bool, str]:
     if allow_msg:
         return True, allow_msg
 
-    # 5. Default deny — Inv 52: present three explicit options.
+    # 5. Default deny — Inv 66: present three explicit options.
     # Force a decision point rather than framing override as a silent
     # procedural next step (the rationalization pattern BUG-1 captured).
     return False, (
@@ -291,7 +291,7 @@ def extract_bash_targets(cmd: str) -> List[str]:
     cmd = cmd.replace("\\\n", " ")
     # Strip heredoc bodies
     cmd = _HEREDOC_RE.sub(" ", cmd)
-    # Strip quoted regions on the FULL command BEFORE segment split (Inv 42
+    # Strip quoted regions on the FULL command BEFORE segment split (Inv 69
     # extended, BUG-9). Per-segment stripping after splitting on ;|& leaves
     # unbalanced-quote segments whenever ;|& appears inside a quoted argument
     # value, causing false-positive write-target extraction.

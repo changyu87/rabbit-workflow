@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """_runtime_flags.py — single source of truth for runtime-override flag text.
 
-RABBIT-CAGE-BACKLOG-27 / Inv 88, 89. Both `sync-check.py` (Stop-time alert)
+RABBIT-CAGE-BACKLOG-27 / Inv 61, 62. Both `sync-check.py` (Stop-time alert)
 and `session-init.py` (startup-banner status-flags block) need to surface
 the SAME canonical message text for every active runtime override. Hosting
 the text and detection logic here prevents drift between the two producers:
@@ -18,16 +18,16 @@ Public API:
     log_exc(script_tag, where, exc) — BACKLOG-28: shared exception logger
         used by every multi-condition hook (sync-check.py, session-init.py)
         in place of bare `except Exception: pass`. Centralising this keeps
-        Inv 70 honoured in exactly one location.
+        Inv 50 honoured in exactly one location.
 
 Implementation notes
 --------------------
 * No ANSI escape codes, no `[rabbit]` brand prefix, no `━━━` bar appear in
-  this file — Inv 77 forbids those tokens in hook source files. Callers
+  this file — Inv 87 forbids those tokens in hook source files. Callers
   wrap the returned text via `rabbit_subline(..., color="red")` from the
   shared renderer, which is the sole authorized formatter.
 * The bypass-permissions detection reads `.claude/settings.local.json`
-  directly (per Inv 88). A missing file or malformed JSON is treated as
+  directly (per Inv 61). A missing file or malformed JSON is treated as
   "not active" rather than raising — the hooks must keep their exit-0
   happy-path contract.
 * The per-flag bare-name constants are underscore-prefixed (private). The
@@ -68,12 +68,12 @@ CANONICAL_FLAG_BODIES = {
 
 
 def log_exc(script_tag: str, where: str, exc: BaseException) -> None:
-    """BACKLOG-17 / Inv 70 / BACKLOG-28: shared exception logger.
+    """BACKLOG-17 / Inv 50 / BACKLOG-28: shared exception logger.
 
     Hooks call this from the formerly-silent error-handler arms (in place of
     bare `except Exception: pass`). Output goes to stderr only; the hook's
     exit-0 happy-path contract is preserved. Centralising the implementation
-    keeps Inv 70's wording consistent across every multi-condition hook.
+    keeps Inv 50's wording consistent across every multi-condition hook.
     """
     try:
         sys.stderr.write(f"[{script_tag}] {where}: {type(exc).__name__}: {exc}\n")
@@ -82,7 +82,7 @@ def log_exc(script_tag: str, where: str, exc: BaseException) -> None:
 
 
 def is_bypass_permissions_active(repo_root) -> bool:
-    """Inv 88. True iff `.claude/settings.local.json` declares
+    """Inv 61. True iff `.claude/settings.local.json` declares
     permissions.defaultMode == "bypassPermissions". Missing file, malformed
     JSON, or any other shape returns False."""
     settings_path = Path(repo_root) / ".claude" / "settings.local.json"
@@ -101,15 +101,15 @@ def is_bypass_permissions_active(repo_root) -> bool:
 
 
 def is_human_approval_bypass_active(repo_root) -> bool:
-    """Inv 59. True iff `.rabbit-human-approval-bypass` exists at repo root."""
+    """Inv 39. True iff `.rabbit-human-approval-bypass` exists at repo root."""
     return (Path(repo_root) / ".rabbit-human-approval-bypass").is_file()
 
 
 def active_flags(repo_root) -> list:
     """Return one entry per active runtime override, in the conditional-priority
-    order declared by Inv 37 (human-approval before bypass-permissions). Each
+    order declared by Inv 83 (human-approval before bypass-permissions). Each
     entry is `{"body": <canonical text>, "revoke": <revoke command>}`. Empty
-    list when no flags are active (caller MUST then omit the block — Inv 89)."""
+    list when no flags are active (caller MUST then omit the block — Inv 62)."""
     flags = []
     if is_human_approval_bypass_active(repo_root):
         flags.append({

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E2E test for Invariant 52: scope-guard default-deny message structure.
+"""E2E test for Invariant 66: scope-guard default-deny message structure.
 
 Verifies that when scope-guard.py reaches the default-deny path (no scope
 marker, no override, no allowlist match), the DENY message printed to
@@ -82,7 +82,7 @@ def temporarily_clear_markers():
 
 print("test-scope-guard-deny-message.py")
 print()
-print("=== Invariant 52: structured three-option default-deny message ===")
+print("=== Invariant 66: structured three-option default-deny message ===")
 
 restore = temporarily_clear_markers()
 try:

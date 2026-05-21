@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test invariant 30: build.py passes RABBIT_ROOT to generate-claude-md.py."""
+"""Test invariant 16: build.py passes RABBIT_ROOT to generate-claude-md.py."""
 import json
 import os
 import shutil
@@ -45,7 +45,7 @@ with open(BUILD_SH) as f:
 if "RABBIT_ROOT" in build_src:
     ok(2, "build.py source contains RABBIT_ROOT (env var passed to generate-claude-md.py)")
 else:
-    fail_t(2, "build.py does NOT contain RABBIT_ROOT — fix not applied (invariant 30 violated)")
+    fail_t(2, "build.py does NOT contain RABBIT_ROOT — fix not applied (invariant 16 violated)")
 
 # t3
 tmpdir_target = tempfile.mkdtemp()

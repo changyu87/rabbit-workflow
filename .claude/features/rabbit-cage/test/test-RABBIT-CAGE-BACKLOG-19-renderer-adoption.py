@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BACKLOG-19 / Inv 77, 78 (v3.10.0): hooks consume the named-wrapper API
+"""BACKLOG-19 / Inv 87, 88 (v3.10.0): hooks consume the named-wrapper API
 + rabbit_block assembler from rabbit_print.
 
 Asserts that the three rabbit-cage hook source files:
@@ -8,9 +8,9 @@ Asserts that the three rabbit-cage hook source files:
   (c) contain NO literal `━━━` bar in code,
   (d) contain NO direct `rabbit_print(` CALL (the named wrappers are the
       public API; string-id calls at hook call sites are forbidden by
-      Inv 77),
+      Inv 87),
   (e) contain NO manual `"\\n".join(` aggregation pattern (only
-      `rabbit_block` adds the leading newline; Inv 77, 80),
+      `rabbit_block` adds the leading newline; Inv 87, 90),
   (f) import `rabbit_block` from the shared renderer module.
 """
 import os
@@ -114,12 +114,12 @@ for hook_path in HOOKS:
     # no trailing `(` immediately after the module name).
     n_call = len(re.findall(r"\brabbit_print\(", body))
     if n_call == 0:
-        ok(f"{name} contains no direct `rabbit_print(` call (Inv 77)")
+        ok(f"{name} contains no direct `rabbit_print(` call (Inv 87)")
     else:
         fail_t(f"{name} contains {n_call} direct `rabbit_print(` call(s); use named wrappers instead")
 
     # (e) No manual `"\n" + "\n".join(` aggregation in code. rabbit_block is
-    # the sole owner of the leading newline (Inv 77, 80). The forbidden
+    # the sole owner of the leading newline (Inv 87, 90). The forbidden
     # pattern is the leading-newline-then-join shape; plain `"\n".join(`
     # inside a renderer (composing a multi-line banner + sub-lines block
     # WITHOUT a leading newline) is allowed — only the outer aggregation
@@ -128,7 +128,7 @@ for hook_path in HOOKS:
         r"""["']\\n["']\s*\+\s*["']\\n["']\.join\(""", body,
     ))
     if n_join == 0:
-        ok(f"{name} contains no manual `\"\\n\" + \"\\n\".join(` aggregation (Inv 77)")
+        ok(f"{name} contains no manual `\"\\n\" + \"\\n\".join(` aggregation (Inv 87)")
     else:
         fail_t(f"{name} contains {n_join} manual `\"\\n\" + \"\\n\".join(` aggregation(s); use rabbit_block instead")
 
@@ -136,7 +136,7 @@ for hook_path in HOOKS:
     if re.search(r"from rabbit_print import[\s\S]*?\brabbit_block\b", src):
         ok(f"{name} imports `rabbit_block` from rabbit_print")
     else:
-        fail_t(f"{name} does NOT import `rabbit_block` from rabbit_print (Inv 77)")
+        fail_t(f"{name} does NOT import `rabbit_block` from rabbit_print (Inv 87)")
     print()
 
 print(f"Results: {total - failures} passed, {failures} failed")

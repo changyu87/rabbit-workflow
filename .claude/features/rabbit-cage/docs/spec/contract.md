@@ -93,7 +93,7 @@ the `SKILL.md` file is deployed per skill — implementation scripts under
 remain at their canonical source path. It does not create or follow symlinks
 for skill content. This functionality is driven by the `copy-file` targets
 in `build-contract.json` (the standalone `generate-skills-dir.py` does not
-exist; see Spec Inv 27).
+exist; see Spec Inv 13).
 
 `build.py --check` mode compares the sha256 of every source `SKILL.md`
 directly against the sha256 of the corresponding copy at

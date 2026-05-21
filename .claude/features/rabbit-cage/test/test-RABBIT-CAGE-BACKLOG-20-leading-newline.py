@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BACKLOG-20 / Inv 80 FULL E2E test for leading-newline aggregation.
+"""BACKLOG-20 / Inv 90 FULL E2E test for leading-newline aggregation.
 
 The aggregated systemMessage emitted by sync-check.py, session-init.py, AND
 refresh.py MUST begin with exactly one '\\n' so the [🐇 rabbit 🐇] banner

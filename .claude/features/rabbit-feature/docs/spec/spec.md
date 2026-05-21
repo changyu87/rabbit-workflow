@@ -176,7 +176,7 @@ anywhere in this feature. Test runner is `test/run.py`.
     dispatch subagent, verify HANDOFF. Exceptions exist for explicit
     confirm-token overrides (see Override Path — tdd-subagent
     Confirm-Token Bypass Path) and for `spec.md` writes under the
-    scope-guard path-pattern allowlist (rabbit-cage Inv 20) which are
+    scope-guard path-pattern allowlist (rabbit-cage Inv 64) which are
     invoked by `rabbit-spec` during Step 3.
     (Re-homed from tdd-subagent Inv 17 v1.19.0 per BACKLOG-12.)
 
