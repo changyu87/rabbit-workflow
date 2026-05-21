@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """BACKLOG-21 E2E test for sync-check.py surface-drift target naming.
 
-Spec Inv 88 (v3.11.0) requires the surface-drift renderer to:
-  1. Read build-contract.json and identify copy-file targets whose
-     destination sha256 differs from their source sha256.
+Spec Inv 88 (CONTRACT-BACKLOG-21) requires the surface-drift renderer to:
+  1. Discover per-feature publish.json manifests and identify copy-file targets
+     whose destination sha256 differs from their source sha256.
   2. Pass the comma-joined target NAMES to surface_drift(files=...).
   3. Emit no surface-drift line when sources and destinations all match.
 
-This test stands up a temp repo with a curated build-contract.json plus
+This test stands up a temp repo with curated per-feature publish.json files plus
 matching source/destination files in each scenario, then invokes the live
 sync-check.py and asserts on the rendered systemMessage.
 """

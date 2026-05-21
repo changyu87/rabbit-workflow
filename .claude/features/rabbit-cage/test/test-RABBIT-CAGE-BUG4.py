@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for RABBIT-CAGE-BUG-4: build-targets.py sha256-gated marker writes."""
+"""Tests for RABBIT-CAGE-BUG-4: sha256-gated marker writes in build.py."""
 import json
 import os
 import shutil
