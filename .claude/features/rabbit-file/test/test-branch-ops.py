@@ -65,8 +65,7 @@ def isolated_repo(tmp_path):
     yield local
 
     # Clean up any per-process worktree that tests may have left under
-    # .claude/tmp/bug-backlog-files-<pid>. The legacy fixed path
-    # .claude/tmp/bug-backlog-files is no longer used.
+    # .claude/tmp/bug-backlog-files-<pid>.
     tmp_dir = local / ".claude" / "tmp"
     if tmp_dir.exists():
         for child in tmp_dir.iterdir():

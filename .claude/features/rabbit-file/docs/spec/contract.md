@@ -64,7 +64,6 @@ deprecation_criterion: when a unified tracking system replaces file-based bug an
   "never": [
     "Write item data or counter.json to the main branch or any fix/task branch — all writes go through the bug-backlog-files worktree.",
     "Edit item.json on the bug-backlog-files branch directly; all mutations route through file-item.py, item-status.py set, or item-status.py update so every change is recorded in the history array.",
-    "Reuse the legacy fixed worktree path .claude/tmp/bug-backlog-files (without the -<pid> suffix); concurrent agents would race on the same path.",
     "Skip allocate_id before commit_item; the counter must reserve the ID slot first.",
     "Push from a stale base — every push retries with a fetch + reset + reapply on non-fast-forward or ref-lock contention.",
     "Mutate the caller-supplied item dict in branch_ops.commit_item; commit_sha backfill is applied to an internal copy only.",
