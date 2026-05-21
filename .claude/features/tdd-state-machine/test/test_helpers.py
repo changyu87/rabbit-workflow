@@ -5,12 +5,7 @@
 # Deprecation criterion: when test fixtures move to a dedicated package or
 # the tdd-state-machine feature itself is retired.
 #
-# Purpose (BACKLOG-10): the legacy fixture function `fix(...)` was duplicated
-# across multiple test files (historically `test-tdd-step.py`, `test-context.py`,
-# `test-drift-check.py`; the latter two were retired in BACKLOG-7) and had
-# drifted from the canonical flat-schema feature.json shape. This module is
-# the single source of truth for the feature.json shape used by
-# tdd-state-machine unit/e2e tests.
+# Purpose: shared fixture utilities; flat-schema feature.json shape.
 import json
 import os
 
@@ -23,10 +18,6 @@ def make_feature_dir(parent_dir, name, tdd_state, *, run_exit=0):
       <parent_dir>/spec.md      (placeholder)
       <parent_dir>/contract.md  (placeholder)
       <parent_dir>/test/run.py  (Python runner that exits `run_exit`)
-
-    The flat schema is the only canonical shape; the legacy nested form
-    (`owner` as object, `deprecation.criterion` nested) is no longer
-    produced here.
     """
     os.makedirs(os.path.join(parent_dir, "test"), exist_ok=True)
     feature_json = {

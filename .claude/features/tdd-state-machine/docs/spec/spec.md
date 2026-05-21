@@ -11,19 +11,9 @@ moves through. One script:
 - `scripts/tdd-step.py` — the state machine itself (`show`, `next`,
   `transitions`, `transition`).
 
-Extracted from `tdd-subagent` so that `tdd-subagent` itself contains only
-subagent dispatch (`dispatch-tdd-subagent.py` + agent definition). The
-import + slim cycles are complete; the script is owned here and absent
-from `tdd-subagent/scripts/`.
-
-The legacy helper scripts `tdd-context.py` and `tdd-drift-check.py` were
-removed in BACKLOG-7 — both had zero runtime callers (no consumer in any
-hook, skill, command, agent, or other feature's script) despite being
-deployed and tested. Per Bounded Scope + Designed Deprecation, they were
-deleted rather than speculatively rewired. If a future cycle requires
-either capability (context emission for subagent prompts, or drift
-detection in the Stop hook), it should be added back as a deliberately
-wired feature with a documented consumer.
+`tdd-subagent` contains only subagent dispatch
+(`dispatch-tdd-subagent.py` + agent definition); the state-machine
+script is owned here and absent from `tdd-subagent/scripts/`.
 
 ## Schema / Behavior
 
@@ -43,9 +33,7 @@ after the previous cycle reached test-green.
 ### Inv 2 — One script, named exactly
 
 `scripts/tdd-step.py`. No additional scripts are introduced by this
-feature. The legacy `tdd-context.py` and `tdd-drift-check.py` were
-retired in BACKLOG-7 (zero runtime callers; deleted per Bounded Scope +
-Designed Deprecation).
+feature.
 
 ### Inv 3 — Executable bit
 
@@ -68,9 +56,7 @@ exits 0 and feature.json now reads `spec-update`.
 
 `tdd-state-machine` owns `tdd-step.py`. The script MUST be present in
 `.claude/features/tdd-state-machine/scripts/` and MUST be absent from
-`.claude/features/tdd-subagent/scripts/`. Replaces the previous
-byte-identity guard from the import cycle (the `tdd-subagent` originals
-have been deleted).
+`.claude/features/tdd-subagent/scripts/`.
 
 ### Inv 7 — Post `test-green` hooks
 
@@ -87,10 +73,6 @@ blocks the transition):
   but does not fail the transition.
 - `rabbit-project.py consolidate <project>` — invoked when the enclosing
   project directory carries a `project-map.json`; failure is swallowed.
-
-The legacy `auto_close_backlog` no-op stub was removed in BACKLOG-7 — it
-had been retained as ceremony after the dispatcher took over linked-item
-closure, but the stub did nothing and was never invoked productively.
 
 ### Inv 8 — `--spec-no-change-reason` flag and git-diff gate
 

@@ -4,7 +4,7 @@
   "version": "1.3.0",
   "owner": "rabbit team",
   "tdd_state": "test-green",
-  "summary": "Forward-only TDD state machine: tdd-step.py (sole script). The legacy tdd-context.py and tdd-drift-check.py were retired in BACKLOG-7 as dead code (zero runtime callers).",
+  "summary": "Forward-only TDD state machine: tdd-step.py (sole script).",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -12,6 +12,6 @@
     "skills": []
   },
   "deprecation_criterion": "when TDD state machine is replaced by a fundamentally different orchestration approach",
-  "updated": "2026-05-20",
-  "spec_no_change_reason": "Spec changes committed in 28317492 prior to subagent dispatch (per Inv 16 ordering); workdir clean."
+  "updated": "2026-05-21",
+  "spec_no_change_reason": "Wave 7 historical-burden sweep: tombstone-prose trim only; behavioural invariants unchanged."
 }
