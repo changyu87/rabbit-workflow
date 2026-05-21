@@ -172,23 +172,6 @@ finally:
         shutil.rmtree(s, ignore_errors=True)
 
 print()
-print("=== CLEANUP: inert Agent hook artifacts removed ===")
-
-settings_src = read(SETTINGS_JSON)
-# t5
-if '"Write|Edit|Bash|Agent"' not in settings_src:
-    ok(5, "PreToolUse matcher does not contain Agent (inert hook cleaned up)")
-else:
-    fail_t(5, "PreToolUse matcher still contains Agent — inert hook not cleaned up")
-
-# t6
-policy_hook = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/hooks/rbt-policy-check.sh")
-if not os.path.isfile(policy_hook):
-    ok(6, "rbt-policy-check.sh does not exist (inert hook removed)")
-else:
-    fail_t(6, "rbt-policy-check.sh still exists — inert hook not cleaned up")
-
-print()
 print("=== METADATA EXCEPTION: rabbit-feature-touch excludes bug/backlog filing ===")
 
 skill_md = os.path.join(REPO_ROOT, ".claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md")

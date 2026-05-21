@@ -2,9 +2,8 @@
 """E2E tests for rabbit-cage Wave 2 Invariants 41-65.
 
 Inv 41: session-init.py MUST NOT auto-create or auto-switch git branches.
-        The legacy R1 enforcement (session/YYYYMMDD-HHMMSS on main/master)
-        is REMOVED in spec v3.12.0. The hook is a no-op for branch state
-        on BOTH main and feature branches; no R1: message is emitted.
+        The hook is a no-op for branch state on BOTH main and feature
+        branches.
 Inv 42: sync-check.py surface-drift alert MUST be RED (\\x1b[31m).
 Inv 43: sync-check.py first-run/drift additionalContext MUST either expand
         @-imports OR contain a clear note that @-imports are not auto-followed.
