@@ -45,7 +45,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/in
 | `/rabbit-config allowed-tools [add\|remove <tool>]` | Manage Claude Code tool permissions |
 | `/rabbit-config bash-allow [add\|remove <cmd>]` | Manage Bash command permissions |
 | `/rabbit-config permissions [lock\|unlock]` | Lock/unlock archive/ and test/ owner write bit |
-| `/rabbit-config human-approval [true\|false]` | Manage Step 4 HUMAN-APPROVAL gate |
+| `/rabbit-config bypass-human-approval [true\|false]` | Manage Step 4 HUMAN-APPROVAL bypass (true=ACTIVE, false=OFF) |
 | `/rabbit-project init <name>` | Scaffold a new project directory |
 
 ## Configuration

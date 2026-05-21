@@ -55,7 +55,7 @@ _HUMAN_APPROVAL_BODY = (
     "HUMAN APPROVAL BYPASS ACTIVE — Step 4 skipped for all "
     "rabbit-feature-touch dispatches"
 )
-_HUMAN_APPROVAL_REVOKE = "/rabbit-config human-approval true"
+_HUMAN_APPROVAL_REVOKE = "/rabbit-config bypass-human-approval false"
 
 
 # Public test-facing API: lookup canonical body text by flag id. Both

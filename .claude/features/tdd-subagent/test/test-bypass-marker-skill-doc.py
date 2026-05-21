@@ -34,7 +34,7 @@ def main():
 
     required_substrings = [
         ".rabbit-human-approval-bypass",
-        "/rabbit-config human-approval true",
+        "/rabbit-config bypass-human-approval false",
         "--human-approval-gate false",
     ]
     missing = [s for s in required_substrings if s not in step4_section]
