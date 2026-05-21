@@ -36,7 +36,7 @@ OTHER_SUBCMDS = [
     "allowed-tools",
     "bash-allow",
     "permissions",
-    "bypass-human-approval",
+    "human-approval",
     "bypass-permissions",
 ]
 # The full set including help itself.

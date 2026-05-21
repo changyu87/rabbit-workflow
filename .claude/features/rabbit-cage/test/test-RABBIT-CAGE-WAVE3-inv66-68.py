@@ -3,9 +3,11 @@
 
 Inv 47: commands/rabbit-project.md references only existing .py scripts;
         no `.sh` references; any referenced script path actually exists.
-Inv 48 (post-BACKLOG-31): rabbit-config.py bypass-human-approval messages name the marker state
-        and the practical effect (BYPASSED / ENABLED + Step 4 verbiage), and
-        do not use the bare ambiguous adjective `DISABLED`.
+Inv 48 (post-BUG-97 revert): rabbit-config.py human-approval messages name the
+        marker file and use the 'gate ENABLED/DISABLED (bypass ACTIVE)' framing.
+        The bare ENABLED/DISABLED verbs are forbidden — the confirmation must
+        name what is being enabled (the GATE) and call out when bypass is
+        ACTIVE so the operator can read the message cold.
 
 (Inv 46 was retired in RABBIT-CAGE-BACKLOG-26 when new-feature.py moved
 into the rabbit-feature feature; its tests now live at
@@ -79,11 +81,12 @@ else:
     fail_t(8, "commands/rabbit-project.md not found")
 
 # ---------------------------------------------------------------------------
-# Inv 48 (post-BACKLOG-31 rename): rabbit-config.py bypass-human-approval messages.
-# Subcommand renamed to bypass-human-approval with inverted boolean semantics
-# parallel to bypass-permissions: true = bypass ENABLED (marker written);
-# false = bypass DISABLED (marker removed). Confirmation text follows the
-# ENABLED/DISABLED pattern (no more 'BYPASSED'/'ENABLED' gate framing).
+# Inv 48 (post-BUG-97 revert): rabbit-config.py human-approval messages.
+# Subcommand restored to 'human-approval' with the original boolean semantics:
+# true = gate ACTIVE (marker removed); false = bypass ACTIVE (marker written).
+# Confirmation text uses the 'gate ENABLED/DISABLED (bypass ACTIVE)' framing —
+# bare ENABLED/DISABLED is forbidden because it does not name what is being
+# enabled.
 # ---------------------------------------------------------------------------
 def run_cfg(args, wd):
     return subprocess.run(
@@ -93,50 +96,55 @@ def run_cfg(args, wd):
 
 
 with tempfile.TemporaryDirectory(prefix="rc-wave3-cfg-") as wd:
-    # t9: `true` message names ENABLED + marker name + Step 4 effect.
-    res = run_cfg(["bypass-human-approval", "true"], wd)
-    out = res.stdout
-    needed_true = ["ENABLED", ".rabbit-human-approval-bypass", "Step 4"]
-    missing_true = [s for s in needed_true if s not in out]
-    if res.returncode == 0 and not missing_true:
-        ok(9, "bypass-human-approval true message names ENABLED + marker + Step 4")
-    else:
-        fail_t(9, f"missing {missing_true!r} in stdout={out!r}")
-
-    # t10: `true` message must NOT use the legacy 'BYPASSED' framing.
-    if "BYPASSED" not in out:
-        ok(10, "bypass-human-approval true message avoids legacy 'BYPASSED' framing")
-    else:
-        fail_t(10, f"bypass-human-approval true still says 'BYPASSED' in: {out!r}")
-
-    # t11: `false` message names DISABLED + marker removal + Step 4 effect.
-    res = run_cfg(["bypass-human-approval", "false"], wd)
+    # t9: `false` (bypass ACTIVE) message names the marker, Step 4, and the
+    # explicit 'bypass ACTIVE' state. The gate is DISABLED in this path.
+    res = run_cfg(["human-approval", "false"], wd)
     out_false = res.stdout
-    needed_false = ["DISABLED", ".rabbit-human-approval-bypass", "Step 4"]
+    needed_false = [
+        "DISABLED",
+        "bypass ACTIVE",
+        ".rabbit-human-approval-bypass",
+        "Step 4",
+    ]
     missing_false = [s for s in needed_false if s not in out_false]
     if res.returncode == 0 and not missing_false:
-        ok(11, "bypass-human-approval false message names DISABLED + marker + Step 4")
+        ok(9, "human-approval false message names DISABLED + 'bypass ACTIVE' + marker + Step 4")
     else:
-        fail_t(11, f"missing {missing_false!r} in stdout={out_false!r}")
+        fail_t(9, f"missing {missing_false!r} in stdout={out_false!r}")
 
-    # t12: idempotent `false` (already disabled) message still names DISABLED.
-    res = run_cfg(["bypass-human-approval", "false"], wd)
-    out_idem = res.stdout
-    if res.returncode == 0 and "DISABLED" in out_idem and "ENABLED" not in out_idem:
-        ok(12, "bypass-human-approval false (idempotent) message names DISABLED")
+    # t10: `true` (gate ACTIVE) message names ENABLED + marker removed + Step 4.
+    res = run_cfg(["human-approval", "true"], wd)
+    out_true = res.stdout
+    needed_true = ["ENABLED", ".rabbit-human-approval-bypass", "Step 4"]
+    missing_true = [s for s in needed_true if s not in out_true]
+    if res.returncode == 0 and not missing_true:
+        ok(10, "human-approval true message names ENABLED + marker + Step 4")
     else:
-        fail_t(12, f"idempotent false message ambiguous: {out_idem!r}")
+        fail_t(10, f"missing {missing_true!r} in stdout={out_true!r}")
 
-    # t13: idempotent `true` (already enabled) message still names ENABLED.
-    run_cfg(["bypass-human-approval", "true"], wd)  # set
-    res = run_cfg(["bypass-human-approval", "true"], wd)  # re-set
+    # t11: idempotent `true` (already enabled / marker absent) names ENABLED
+    # and notes the file was not rewritten.
+    res = run_cfg(["human-approval", "true"], wd)
     out_idem_t = res.stdout
     if (res.returncode == 0
             and "ENABLED" in out_idem_t
-            and "BYPASSED" not in out_idem_t):
-        ok(13, "bypass-human-approval true (idempotent) message names ENABLED")
+            and "no rewrite" in out_idem_t.lower() or "not present" in out_idem_t.lower() or "no change" in out_idem_t.lower()):
+        ok(11, "human-approval true (idempotent) message names ENABLED and notes no rewrite")
     else:
-        fail_t(13, f"idempotent true message ambiguous: {out_idem_t!r}")
+        fail_t(11, f"idempotent true message ambiguous: {out_idem_t!r}")
+
+    # t12: idempotent `false` (already disabled / marker present) names
+    # DISABLED + 'bypass ACTIVE' and notes the file was not rewritten.
+    run_cfg(["human-approval", "false"], wd)  # set
+    res = run_cfg(["human-approval", "false"], wd)  # re-set
+    out_idem_f = res.stdout
+    if (res.returncode == 0
+            and "DISABLED" in out_idem_f
+            and "bypass ACTIVE" in out_idem_f
+            and ("no rewrite" in out_idem_f.lower() or "already" in out_idem_f.lower())):
+        ok(12, "human-approval false (idempotent) message names DISABLED + 'bypass ACTIVE' + no rewrite")
+    else:
+        fail_t(12, f"idempotent false message ambiguous: {out_idem_f!r}")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")

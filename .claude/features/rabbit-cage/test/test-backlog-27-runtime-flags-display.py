@@ -265,12 +265,12 @@ try:
                 "bypass-permissions revoke command (/rabbit-config "
                 f"bypass-permissions false) not named in banner: {msg!r}"
             )
-        if "/rabbit-config bypass-human-approval false" in msg:
-            ok("startup line names the bypass-human-approval revoke command")
+        if "/rabbit-config human-approval true" in msg:
+            ok("startup line names the human-approval revoke command (post-BUG-97 spelling)")
         else:
             fail_t(
-                "bypass-human-approval revoke command (/rabbit-config "
-                f"bypass-human-approval false) not named in banner: {msg!r}"
+                "human-approval revoke command (/rabbit-config "
+                f"human-approval true) not named in banner: {msg!r}"
             )
         # Inv 62 + contract Inv 28(b) (BACKLOG-33): the active-flag sublines
         # MUST carry a leading icon glyph immediately before the body text so

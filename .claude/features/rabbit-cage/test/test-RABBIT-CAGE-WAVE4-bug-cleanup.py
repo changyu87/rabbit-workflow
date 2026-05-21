@@ -241,9 +241,10 @@ else:
     fail_t(19, "feature.json still has surface.scripts (BUG-51)")
 
 # ---------------------------------------------------------------------------
-# BUG-53 (post-BACKLOG-31): rabbit-config.py bypass-human-approval true is
-# idempotent — no rewrite when the marker exists. (Subcommand renamed +
-# semantics inverted: 'true' now writes/keeps the marker; 'false' removes.)
+# BUG-53 (post-BUG-97 revert): rabbit-config.py human-approval false is
+# idempotent — no rewrite when the marker exists. (Subcommand restored to
+# 'human-approval' with the original semantics: 'false' writes/keeps the
+# marker (bypass ACTIVE); 'true' removes (gate ACTIVE).)
 # ---------------------------------------------------------------------------
 tmpd2 = tempfile.mkdtemp()
 try:
@@ -255,14 +256,14 @@ try:
     _t.sleep(0.05)
     res = subprocess.run(
         [sys.executable, os.path.join(SKILL_DIR, "scripts/rabbit-config.py"),
-         "bypass-human-approval", "true"],
+         "human-approval", "false"],
         cwd=tmpd2, capture_output=True, text=True,
     )
     after = read(marker)
     if after == "INITIAL-SENTINEL" and "already" in res.stdout.lower():
-        ok(20, "bypass-human-approval true is idempotent — marker not rewritten (BUG-53)")
+        ok(20, "human-approval false is idempotent — marker not rewritten (BUG-53)")
     else:
-        fail_t(20, f"bypass-human-approval true rewrote marker (BUG-53); content={after!r}, out={res.stdout!r}")
+        fail_t(20, f"human-approval false rewrote marker (BUG-53); content={after!r}, out={res.stdout!r}")
 finally:
     import shutil
     shutil.rmtree(tmpd2, ignore_errors=True)
