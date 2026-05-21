@@ -14,10 +14,6 @@
 #   b5: tdd-step.py _post_test_green_hooks invokes rabbit-project.py
 #       consolidate when project-map.json is present alongside the
 #       features directory.
-#
-# Historic b6/b7/b8 exercised tdd-context.py / tdd-drift-check.py defensive
-# branches; both scripts were retired in BACKLOG-7 and their tests removed
-# alongside them.
 import json
 import os
 import shutil

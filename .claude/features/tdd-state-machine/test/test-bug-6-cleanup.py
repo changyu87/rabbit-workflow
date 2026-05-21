@@ -19,8 +19,7 @@
 #   r3: the spec-update -> test-red post-write branch must be hoisted into
 #       a single block. Verified by counting source-level occurrences of
 #       `_run_spec_update_checks(d, REPO_ROOT)` in tdd-step.py — only one
-#       call site may exist (previously duplicated across the
-#       forward-accepted and --force branches).
+#       call site may exist.
 #
 #   r4: contract.md `reads.files` must declare the whole docs/spec/
 #       directory (or include contract.md) since check_numbered_lists
