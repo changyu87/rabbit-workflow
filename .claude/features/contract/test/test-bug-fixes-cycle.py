@@ -127,19 +127,25 @@ else:
     ko("BACKLOG-5: check-naming.py not found")
 
 
-# BACKLOG-6: build-contract copy-file destinations match sources by basename
-bc_path = os.path.join(FEATURE_DIR, "build-contract.json")
-with open(bc_path) as f:
-    bc = json.load(f)
+# BACKLOG-6: publish.json copy-file destinations match sources by basename
+features_dir = os.path.join(REPO_ROOT, ".claude/features")
 mismatches = []
-for target in bc.get("targets", []):
-    if target.get("type") == "copy-file":
-        src = target.get("source", "")
-        dst = target.get("destination", "")
-        if os.path.basename(src) != os.path.basename(dst):
-            mismatches.append((src, dst))
+for feature_dir_name in os.listdir(features_dir):
+    pub = os.path.join(features_dir, feature_dir_name, "publish.json")
+    if not os.path.isfile(pub):
+        continue
+    try:
+        data = json.load(open(pub))
+    except Exception:
+        continue
+    for target in data.get("targets", []):
+        if target.get("type") == "copy-file":
+            src = target.get("source", "")
+            dst = target.get("destination", "")
+            if os.path.basename(src) != os.path.basename(dst):
+                mismatches.append((f"{feature_dir_name}/{src}", dst))
 if not mismatches:
-    ok("BACKLOG-6: every copy-file target's source basename matches destination basename")
+    ok("BACKLOG-6: every publish.json copy-file target's source basename matches destination basename")
 else:
     ko(f"BACKLOG-6: copy-file basename mismatches: {mismatches}")
 

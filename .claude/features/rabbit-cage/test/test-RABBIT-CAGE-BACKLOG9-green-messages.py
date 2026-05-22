@@ -6,6 +6,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from test_helpers import write_feature_manifest
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = subprocess.run(
@@ -113,10 +115,10 @@ try:
     assert_red_msg("sync-check.py DRIFT case", msg)
 
     # Test 3: surface drift
-    # BACKLOG-21 (Inv 88): render_surface_drift now compares build-contract.json
+    # BACKLOG-21 (Inv 88): render_surface_drift now compares per-feature publish.json
     # copy-file source/destination sha256 directly. Trigger drift by writing
     # an intentionally divergent source/destination pair declared in a
-    # local build-contract.json.
+    # local publish.json.
     tmp2 = build_tmproot()
     tmproots.append(tmp2)
     env = {**os.environ, "RABBIT_ROOT": tmp2}
@@ -125,26 +127,17 @@ try:
     with open(os.path.join(tmp2, "CLAUDE.md"), "w") as f:
         f.write(res.stdout.rstrip("\n") + "\n")
 
-    os.makedirs(os.path.join(tmp2, "src"), exist_ok=True)
+    feature_dir_drift = write_feature_manifest(tmp2, "fake-drift", [{
+        "name": "hooks/x.py",
+        "source": "x.py",
+        "destination": "dst/x.py",
+        "check_on_stop": True,
+    }])
     os.makedirs(os.path.join(tmp2, "dst"), exist_ok=True)
-    with open(os.path.join(tmp2, "src/x.py"), "w") as f:
+    with open(os.path.join(feature_dir_drift, "x.py"), "w") as f:
         f.write("source\n")
     with open(os.path.join(tmp2, "dst/x.py"), "w") as f:
         f.write("destination stale\n")
-    os.makedirs(os.path.join(tmp2, ".claude/features/contract"), exist_ok=True)
-    with open(os.path.join(tmp2, ".claude/features/contract/build-contract.json"), "w") as f:
-        json.dump({
-            "schema_version": "1.0.0",
-            "owner": "test",
-            "deprecation_criterion": "test",
-            "targets": [{
-                "name": "hooks/x.py",
-                "type": "copy-file",
-                "source": "src/x.py",
-                "destination": "dst/x.py",
-                "check_on_stop": True,
-            }],
-        }, f)
 
     msg = extract_sys_msg(run_sync(tmp2))
     # Inv 42: surface-drift is an alert condition; it MUST be red, not green.

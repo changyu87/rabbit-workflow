@@ -20,7 +20,6 @@ template_version: 2.0.0
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-set-path.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py set-path"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-map.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py map"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-consolidate.py", "stdin": "none", "stdout": "warnings to stderr", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py consolidate"},
-      {"path": ".claude/features/rabbit-cage/scripts/build-targets.py", "stdin": "none", "stdout": "build log", "exit": "0=ok 1=error", "note": "helper invoked by build.py"},
       {"path": ".claude/features/rabbit-cage/scripts/generate-claude-md-header.py", "stdin": "none", "stdout": "CLAUDE.md header line", "exit": "0=ok 1=error", "note": "helper invoked by generate-claude-md.py"}
     ],
     "schemas": [

@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Tests for RABBIT-CAGE-BUG-4: build-targets.py sha256-gated marker writes."""
+"""Tests for RABBIT-CAGE-BUG-4: sha256-gated marker writes in build.py."""
 import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+
+import sys as _sys
+import os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from test_helpers import write_feature_manifest
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = subprocess.run(
@@ -72,19 +77,6 @@ def make_build_repo():
     return d
 
 
-def make_contract(d, targets):
-    os.makedirs(os.path.join(d, ".claude/features/contract"), exist_ok=True)
-    contract = {
-        "schema_version": "1.0.0",
-        "owner": "test",
-        "deprecation_criterion": "test",
-        "updated": "2026-01-01",
-        "targets": targets,
-    }
-    with open(os.path.join(d, ".claude/features/contract/build-contract.json"), "w") as f:
-        json.dump(contract, f, indent=2)
-
-
 def run_build(tmproot):
     subprocess.run([sys.executable, BUILD_SH, tmproot], capture_output=True)
 
@@ -94,15 +86,17 @@ print()
 
 tmproot = make_build_repo()
 try:
-    os.makedirs(os.path.join(tmproot, ".claude/features/test-skill/skills/test-skill"), exist_ok=True)
-    SRC = os.path.join(tmproot, ".claude/features/test-skill/skills/test-skill/SKILL.md")
+    SKILL_FEATURE_DIR = write_feature_manifest(tmproot, "test-skill", [{
+        "name": "skills/test-skill/SKILL.md",
+        "source": "skills/test-skill/SKILL.md",
+        "destination": ".claude/skills/test-skill/SKILL.md",
+    }])
+    os.makedirs(os.path.join(SKILL_FEATURE_DIR, "skills/test-skill"), exist_ok=True)
+    SRC = os.path.join(SKILL_FEATURE_DIR, "skills/test-skill/SKILL.md")
     DEST = os.path.join(tmproot, ".claude/skills/test-skill/SKILL.md")
     MARKER = os.path.join(tmproot, ".rabbit-skills-updated")
     with open(SRC, "w") as f:
         f.write("# Test skill v1\nbody\n")
-    make_contract(tmproot, [{"name": "skills/test-skill/SKILL.md", "type": "copy-file",
-                             "source": ".claude/features/test-skill/skills/test-skill/SKILL.md",
-                             "destination": ".claude/skills/test-skill/SKILL.md"}])
 
     # t1
     print("=== t1: destination absent → marker IS written ===")

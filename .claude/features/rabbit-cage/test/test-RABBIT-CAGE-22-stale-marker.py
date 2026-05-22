@@ -7,6 +7,11 @@ import subprocess
 import sys
 import tempfile
 
+import sys as _sys
+import os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from test_helpers import write_feature_manifest
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = subprocess.run(
     ["git", "-C", SCRIPT_DIR, "rev-parse", "--show-toplevel"],
@@ -76,19 +81,6 @@ def make_build_repo():
     return d
 
 
-def make_contract(d, targets):
-    os.makedirs(os.path.join(d, ".claude/features/contract"), exist_ok=True)
-    contract = {
-        "schema_version": "1.0.0",
-        "owner": "test",
-        "deprecation_criterion": "test",
-        "updated": "2026-01-01",
-        "targets": targets,
-    }
-    with open(os.path.join(d, ".claude/features/contract/build-contract.json"), "w") as f:
-        json.dump(contract, f, indent=2)
-
-
 def run_build(tmproot):
     subprocess.run([sys.executable, BUILD_SH, tmproot], capture_output=True)
 
@@ -101,12 +93,14 @@ tmproot = make_build_repo()
 try:
     # t1
     print("=== t1: build.py writes .rabbit-skills-updated for .claude/skills/*/SKILL.md target ===")
-    os.makedirs(os.path.join(tmproot, ".claude/features/test-skill/skills/test-skill"), exist_ok=True)
-    with open(os.path.join(tmproot, ".claude/features/test-skill/skills/test-skill/SKILL.md"), "w") as f:
+    SKILL_FEATURE_DIR = write_feature_manifest(tmproot, "test-skill", [{
+        "name": "skills/test-skill/SKILL.md",
+        "source": "skills/test-skill/SKILL.md",
+        "destination": ".claude/skills/test-skill/SKILL.md",
+    }])
+    os.makedirs(os.path.join(SKILL_FEATURE_DIR, "skills/test-skill"), exist_ok=True)
+    with open(os.path.join(SKILL_FEATURE_DIR, "skills/test-skill/SKILL.md"), "w") as f:
         f.write("# Test skill\n")
-    make_contract(tmproot, [{"name": "skills/test-skill/SKILL.md", "type": "copy-file",
-                             "source": ".claude/features/test-skill/skills/test-skill/SKILL.md",
-                             "destination": ".claude/skills/test-skill/SKILL.md"}])
     marker = os.path.join(tmproot, ".rabbit-skills-updated")
     if os.path.isfile(marker):
         os.remove(marker)
@@ -130,12 +124,14 @@ try:
 
     # t3
     print("=== t3: build.py does NOT write .rabbit-skills-updated for .claude/commands/ target ===")
-    os.makedirs(os.path.join(tmproot, ".claude/features/rabbit-cage/commands"), exist_ok=True)
-    with open(os.path.join(tmproot, ".claude/features/rabbit-cage/commands/test-cmd.md"), "w") as f:
+    CMD_FEATURE_DIR = write_feature_manifest(tmproot, "fake-cmd-feature", [{
+        "name": "commands/test-cmd.md",
+        "source": "commands/test-cmd.md",
+        "destination": ".claude/commands/test-cmd.md",
+    }])
+    os.makedirs(os.path.join(CMD_FEATURE_DIR, "commands"), exist_ok=True)
+    with open(os.path.join(CMD_FEATURE_DIR, "commands/test-cmd.md"), "w") as f:
         f.write("# Test cmd\n")
-    make_contract(tmproot, [{"name": "commands/test-cmd.md", "type": "copy-file",
-                             "source": ".claude/features/rabbit-cage/commands/test-cmd.md",
-                             "destination": ".claude/commands/test-cmd.md"}])
     if os.path.isfile(marker):
         os.remove(marker)
     run_build(tmproot)
@@ -146,10 +142,13 @@ try:
 
     # t4
     print("=== t4: build.py does NOT write .rabbit-skills-updated for non-skills copy target ===")
-    with open(os.path.join(tmproot, "source-readme.md"), "w") as f:
+    README_FEATURE_DIR = write_feature_manifest(tmproot, "fake-readme-feature", [{
+        "name": "README.md",
+        "source": "readme-source.md",
+        "destination": "README.md",
+    }])
+    with open(os.path.join(README_FEATURE_DIR, "readme-source.md"), "w") as f:
         f.write("# README\n")
-    make_contract(tmproot, [{"name": "README.md", "type": "copy-file",
-                             "source": "source-readme.md", "destination": "README.md"}])
     if os.path.isfile(marker):
         os.remove(marker)
     run_build(tmproot)
@@ -160,20 +159,22 @@ try:
 
     # t5
     print("=== t5: build.py appends multiple skill names for multiple SKILL.md targets ===")
-    os.makedirs(os.path.join(tmproot, ".claude/features/feat-a/skills/feat-a"), exist_ok=True)
-    os.makedirs(os.path.join(tmproot, ".claude/features/feat-b/skills/feat-b"), exist_ok=True)
-    with open(os.path.join(tmproot, ".claude/features/feat-a/skills/feat-a/SKILL.md"), "w") as f:
+    feat_a_dir = write_feature_manifest(tmproot, "feat-a", [{
+        "name": "skills/feat-a/SKILL.md",
+        "source": "skills/feat-a/SKILL.md",
+        "destination": ".claude/skills/feat-a/SKILL.md",
+    }])
+    feat_b_dir = write_feature_manifest(tmproot, "feat-b", [{
+        "name": "skills/feat-b/SKILL.md",
+        "source": "skills/feat-b/SKILL.md",
+        "destination": ".claude/skills/feat-b/SKILL.md",
+    }])
+    os.makedirs(os.path.join(feat_a_dir, "skills/feat-a"), exist_ok=True)
+    os.makedirs(os.path.join(feat_b_dir, "skills/feat-b"), exist_ok=True)
+    with open(os.path.join(feat_a_dir, "skills/feat-a/SKILL.md"), "w") as f:
         f.write("# Feat A\n")
-    with open(os.path.join(tmproot, ".claude/features/feat-b/skills/feat-b/SKILL.md"), "w") as f:
+    with open(os.path.join(feat_b_dir, "skills/feat-b/SKILL.md"), "w") as f:
         f.write("# Feat B\n")
-    make_contract(tmproot, [
-        {"name": "skills/feat-a/SKILL.md", "type": "copy-file",
-         "source": ".claude/features/feat-a/skills/feat-a/SKILL.md",
-         "destination": ".claude/skills/feat-a/SKILL.md"},
-        {"name": "skills/feat-b/SKILL.md", "type": "copy-file",
-         "source": ".claude/features/feat-b/skills/feat-b/SKILL.md",
-         "destination": ".claude/skills/feat-b/SKILL.md"},
-    ])
     if os.path.isfile(marker):
         os.remove(marker)
     run_build(tmproot)

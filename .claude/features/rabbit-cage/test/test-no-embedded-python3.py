@@ -52,7 +52,6 @@ for pyfile in (
     "rabbit-project-set-path.py",
     "rabbit-project-map.py",
     "rabbit-project-consolidate.py",
-    "build-targets.py",
     "generate-claude-md-header.py",
 ):
     print(f"=== {pyfile} exists ===")

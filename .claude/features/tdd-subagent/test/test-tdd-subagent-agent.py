@@ -52,12 +52,12 @@ def test_agent_mentions_e2e_rule():
 
 def test_build_contract_has_agent_entry():
     import json
-    bc_path = os.path.join(REPO_ROOT, ".claude", "features", "contract", "build-contract.json")
-    with open(bc_path) as f:
+    pub_path = os.path.join(REPO_ROOT, ".claude", "features", "tdd-subagent", "publish.json")
+    with open(pub_path) as f:
         bc = json.load(f)
     entries = [t for t in bc.get("targets", [])
                if t.get("destination") == ".claude/agents/tdd-subagent.md"]
-    assert len(entries) == 1, "build-contract.json must have exactly one entry for agents/tdd-subagent.md"
+    assert len(entries) == 1, "tdd-subagent/publish.json must have exactly one entry for agents/tdd-subagent.md"
     assert entries[0].get("check_on_stop") is True, "Entry must have check_on_stop: true"
 
 

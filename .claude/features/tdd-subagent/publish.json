@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "feature": "tdd-subagent",
+  "owner": "rabbit-workflow team",
+  "deprecation_criterion": "when Claude Code natively supports parallel TDD subagent dispatch",
+  "targets": [
+    {"name": "agents/tdd-subagent.md", "type": "copy-file", "source": "agents/tdd-subagent.md", "destination": ".claude/agents/tdd-subagent.md", "check_on_stop": true},
+    {"name": "agents/tdd-subagent/scripts/dispatch-tdd-subagent.py", "type": "copy-file", "source": "scripts/dispatch-tdd-subagent.py", "destination": ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py", "check_on_stop": true}
+  ]
+}

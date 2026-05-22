@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "publish-manifest",
+  "description": "Per-feature publish manifest declaring copy-file targets to the deployed .claude/ surface",
+  "schema_version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "deprecation_criterion": "when Claude Code natively manages workspace artifact generation",
+  "type": "object",
+  "required": ["schema_version", "feature", "owner", "deprecation_criterion", "targets"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "feature": {"type": "string"},
+    "owner": {"type": "string"},
+    "deprecation_criterion": {"type": "string"},
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "source", "destination"],
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string", "enum": ["copy-file"]},
+          "source": {"type": "string"},
+          "destination": {"type": "string"},
+          "check_on_stop": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

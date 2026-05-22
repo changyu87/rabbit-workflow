@@ -58,7 +58,7 @@ else:
 # 4. Expected Python runtime scripts
 print("[4] Inv 18 Python script set present and executable")
 expected_hooks = ["refresh.py", "scope-guard.py", "session-init.py", "sync-check.py"]
-expected_scripts = ["build.py", "build-targets.py", "generate-claude-md.py",
+expected_scripts = ["build.py", "generate-claude-md.py",
                     "generate-claude-md-header.py", "rabbit-project.py",
                     "rabbit-project-consolidate.py", "rabbit-project-map.py",
                     "rabbit-project-set-path.py", "scope-guard-on.py",
@@ -115,21 +115,21 @@ for h in expected_hook_refs:
     else:
         failed(f"settings.json missing reference to .claude/hooks/{h}")
 
-# 7. build-contract.json
-print("[7] build-contract.json copy-file targets reference .py for rabbit-cage hooks")
-BC = os.path.join(REPO_ROOT, ".claude/features/contract/build-contract.json")
-if os.path.isfile(BC):
-    with open(BC) as f:
-        bc_text = f.read()
-    bad = _re.findall(r'rabbit-cage/(?:hooks|scripts)/[^"]+\.sh', bc_text)
-    if not bad:
-        passed("no rabbit-cage .sh paths in build-contract.json hooks/scripts copy targets")
+# [7] rabbit-cage/publish.json targets reference .py for rabbit-cage hooks
+print("[7] rabbit-cage publish.json targets reference .py for rabbit-cage hooks")
+publish_path = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/publish.json")
+if os.path.isfile(publish_path):
+    pub = json.load(open(publish_path))
+    sh_targets = [
+        t.get("source", "") for t in pub.get("targets", [])
+        if t.get("type") == "copy-file" and t.get("source", "").endswith(".sh")
+    ]
+    if not sh_targets:
+        passed("no rabbit-cage .sh paths in rabbit-cage/publish.json targets")
     else:
-        failed("build-contract.json still references rabbit-cage .sh files:")
-        for m in bad:
-            print(f"    {m}")
+        failed(f"rabbit-cage/publish.json still references .sh files: {sh_targets}")
 else:
-    failed(f"build-contract.json not found at {BC}")
+    failed(f"rabbit-cage/publish.json not found at {publish_path}")
 
 print()
 if fail_n == 0:

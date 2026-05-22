@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """BACKLOG-21 E2E test for sync-check.py surface-drift target naming.
 
-Spec Inv 88 (v3.11.0) requires the surface-drift renderer to:
-  1. Read build-contract.json and identify copy-file targets whose
-     destination sha256 differs from their source sha256.
+Spec Inv 88 (CONTRACT-BACKLOG-21) requires the surface-drift renderer to:
+  1. Discover per-feature publish.json manifests and identify copy-file targets
+     whose destination sha256 differs from their source sha256.
   2. Pass the comma-joined target NAMES to surface_drift(files=...).
   3. Emit no surface-drift line when sources and destinations all match.
 
-This test stands up a temp repo with a curated build-contract.json plus
+This test stands up a temp repo with curated per-feature publish.json files plus
 matching source/destination files in each scenario, then invokes the live
 sync-check.py and asserts on the rendered systemMessage.
 """
@@ -17,7 +17,7 @@ import shutil
 import subprocess
 import sys
 
-from test_helpers import REPO_ROOT, make_git_repo, run_sync
+from test_helpers import REPO_ROOT, make_git_repo, run_sync, write_feature_manifest
 
 failures = 0
 total = 0
@@ -42,20 +42,6 @@ def write_file(path, content):
         f.write(content)
 
 
-def write_contract(tmproot, targets):
-    contract = {
-        "schema_version": "1.0.0",
-        "owner": "rabbit-workflow team",
-        "deprecation_criterion": "test fixture",
-        "updated": "2026-05-19",
-        "targets": targets,
-    }
-    path = os.path.join(tmproot, ".claude/features/contract/build-contract.json")
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(contract, f)
-
-
 def parse_msg(out):
     try:
         return json.loads(out.strip()).get("systemMessage", "")
@@ -74,18 +60,15 @@ try:
     root = make_git_repo()
     tmproots.append(root)
 
-    src = os.path.join(root, "src/hooks/sync-check.py")
-    dst = os.path.join(root, "dst/hooks/sync-check.py")
-    write_file(src, "# real source content\n")
-    write_file(dst, "# stale destination content\n")
-
-    write_contract(root, [{
+    feature_dir = write_feature_manifest(root, "fake-drift-t1", [{
         "name": "hooks/sync-check.py",
-        "type": "copy-file",
-        "source": "src/hooks/sync-check.py",
+        "source": "hooks/sync-check.py",
         "destination": "dst/hooks/sync-check.py",
         "check_on_stop": True,
     }])
+    os.makedirs(os.path.join(feature_dir, "hooks"), exist_ok=True)
+    write_file(os.path.join(feature_dir, "hooks/sync-check.py"), "# real source content\n")
+    write_file(os.path.join(root, "dst/hooks/sync-check.py"), "# stale destination content\n")
 
     msg = parse_msg(run_sync(root))
     if "rebuilt:" in msg and "hooks/sync-check.py" in msg:
@@ -99,27 +82,14 @@ try:
     root = make_git_repo()
     tmproots.append(root)
 
-    write_file(os.path.join(root, "src/a.py"), "A source\n")
-    write_file(os.path.join(root, "dst/a.py"), "A destination stale\n")
-    write_file(os.path.join(root, "src/b.json"), "B source\n")
-    write_file(os.path.join(root, "dst/b.json"), "B destination stale\n")
-
-    write_contract(root, [
-        {
-            "name": "hooks/a.py",
-            "type": "copy-file",
-            "source": "src/a.py",
-            "destination": "dst/a.py",
-            "check_on_stop": True,
-        },
-        {
-            "name": "settings/b.json",
-            "type": "copy-file",
-            "source": "src/b.json",
-            "destination": "dst/b.json",
-            "check_on_stop": True,
-        },
+    feature_dir = write_feature_manifest(root, "fake-drift-t2", [
+        {"name": "hooks/a.py", "source": "a.py", "destination": "dst/a.py", "check_on_stop": True},
+        {"name": "settings/b.json", "source": "b.json", "destination": "dst/b.json", "check_on_stop": True},
     ])
+    write_file(os.path.join(feature_dir, "a.py"), "A source\n")
+    write_file(os.path.join(root, "dst/a.py"), "A destination stale\n")
+    write_file(os.path.join(feature_dir, "b.json"), "B source\n")
+    write_file(os.path.join(root, "dst/b.json"), "B destination stale\n")
 
     msg = parse_msg(run_sync(root))
     if "rebuilt:" in msg and "hooks/a.py" in msg and "settings/b.json" in msg:
@@ -139,16 +109,14 @@ try:
     root = make_git_repo()
     tmproots.append(root)
 
-    write_file(os.path.join(root, "src/clean.py"), "identical content\n")
-    write_file(os.path.join(root, "dst/clean.py"), "identical content\n")
-
-    write_contract(root, [{
+    feature_dir = write_feature_manifest(root, "fake-clean-t3", [{
         "name": "hooks/clean.py",
-        "type": "copy-file",
-        "source": "src/clean.py",
+        "source": "clean.py",
         "destination": "dst/clean.py",
         "check_on_stop": True,
     }])
+    write_file(os.path.join(feature_dir, "clean.py"), "identical content\n")
+    write_file(os.path.join(root, "dst/clean.py"), "identical content\n")
 
     out = run_sync(root)
     msg = parse_msg(out)
@@ -163,16 +131,14 @@ try:
     root = make_git_repo()
     tmproots.append(root)
 
-    write_file(os.path.join(root, "src/optional.py"), "src\n")
-    write_file(os.path.join(root, "dst/optional.py"), "dst stale\n")
-
-    write_contract(root, [{
+    feature_dir = write_feature_manifest(root, "fake-optional-t4", [{
         "name": "optional/optional.py",
-        "type": "copy-file",
-        "source": "src/optional.py",
+        "source": "optional.py",
         "destination": "dst/optional.py",
         "check_on_stop": False,
     }])
+    write_file(os.path.join(feature_dir, "optional.py"), "src\n")
+    write_file(os.path.join(root, "dst/optional.py"), "dst stale\n")
 
     msg = parse_msg(run_sync(root))
     if "rebuilt:" not in msg and "optional/optional.py" not in msg:

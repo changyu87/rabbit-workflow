@@ -7,7 +7,7 @@ Asserts:
   (a) tdd-step.py is ABSENT from .claude/features/tdd-subagent/scripts/.
   (b) tdd-step.py is PRESENT in .claude/features/tdd-state-machine/scripts/.
   (c) dispatch-tdd-subagent.py's tdd_step_py path string points at tdd-state-machine.
-  (d) build-contract.json copy-file source for tdd-step.py points at tdd-state-machine.
+  (d) tdd-state-machine/publish.json copy-file source for tdd-step.py points at tdd-state-machine.
   (e) The deployed agent script .claude/agents/tdd-subagent/scripts/tdd-step.py exists.
   (g) tdd-subagent's contract.md provides.scripts does not list tdd-step.py under tdd-subagent.
 """
@@ -21,7 +21,7 @@ REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", "..", ".."))
 TDD_SUB_SCRIPTS = os.path.join(REPO_ROOT, ".claude", "features", "tdd-subagent", "scripts")
 TDD_SM_SCRIPTS = os.path.join(REPO_ROOT, ".claude", "features", "tdd-state-machine", "scripts")
 DISPATCH = os.path.join(TDD_SUB_SCRIPTS, "dispatch-tdd-subagent.py")
-BUILD_CONTRACT = os.path.join(REPO_ROOT, ".claude", "features", "contract", "build-contract.json")
+TDD_SM_PUBLISH = os.path.join(REPO_ROOT, ".claude", "features", "tdd-state-machine", "publish.json")
 CONTRACT_MD = os.path.join(REPO_ROOT, ".claude", "features", "tdd-subagent", "docs", "spec", "contract.md")
 AGENT_DEPLOYED_SCRIPTS = os.path.join(REPO_ROOT, ".claude", "agents", "tdd-subagent", "scripts")
 
@@ -81,20 +81,20 @@ def t_c_dispatch_path_repoint():
         ko("c: dispatch does NOT construct tdd-state-machine path for tdd-step.py")
 
 
-# (d) build-contract.json copy-file source for tdd-step.py points at tdd-state-machine
+# (d) tdd-state-machine/publish.json copy-file source for tdd-step.py points at tdd-state-machine
 def t_d_build_contract_sources():
-    with open(BUILD_CONTRACT) as f:
+    with open(TDD_SM_PUBLISH) as f:
         bc = json.load(f)
     dest = ".claude/agents/tdd-subagent/scripts/tdd-step.py"
     targets = [t for t in bc.get("targets", []) if t.get("destination") == dest]
     if len(targets) != 1:
-        ko(f"d: expected exactly one copy-file target for {dest}, got {len(targets)}")
+        ko(f"d: expected exactly one copy-file target for {dest} in tdd-state-machine/publish.json, got {len(targets)}")
         return
     src = targets[0].get("source", "")
-    if "tdd-state-machine" in src and src.endswith("scripts/tdd-step.py"):
-        ok(f"d: build-contract source for tdd-step.py points at tdd-state-machine: {src}")
+    if src.endswith("tdd-step.py"):
+        ok(f"d: tdd-state-machine/publish.json source for tdd-step.py points at tdd-state-machine: {src}")
     else:
-        ko(f"d: build-contract source for tdd-step.py not from tdd-state-machine: {src}")
+        ko(f"d: tdd-state-machine/publish.json source for tdd-step.py unexpected: {src}")
 
 
 # (e) deployed agent script tdd-step.py still exists

@@ -6,6 +6,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from test_helpers import write_feature_manifest
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = subprocess.run(
@@ -119,8 +121,8 @@ try:
     assert_compact_msg("sync-check.py DRIFT case", drift_msg)
 
     # Test 2: surface drift
-    # BACKLOG-21 (Inv 88): surface drift is detected by comparing
-    # build-contract.json copy-file source/destination sha256 in-process.
+    # BACKLOG-21 (Inv 88): surface drift is detected by comparing per-feature
+    # publish.json copy-file source/destination sha256 in-process.
     tmproot2 = build_tmproot()
     tmproots.append(tmproot2)
     env = {**os.environ, "RABBIT_ROOT": tmproot2}
@@ -129,26 +131,17 @@ try:
     with open(os.path.join(tmproot2, "CLAUDE.md"), "w") as f:
         f.write(res.stdout.rstrip("\n") + "\n")
 
-    os.makedirs(os.path.join(tmproot2, "src"), exist_ok=True)
+    feature_dir_drift = write_feature_manifest(tmproot2, "fake-drift", [{
+        "name": "hooks/x.py",
+        "source": "x.py",
+        "destination": "dst/x.py",
+        "check_on_stop": True,
+    }])
     os.makedirs(os.path.join(tmproot2, "dst"), exist_ok=True)
-    with open(os.path.join(tmproot2, "src/x.py"), "w") as f:
+    with open(os.path.join(feature_dir_drift, "x.py"), "w") as f:
         f.write("source\n")
     with open(os.path.join(tmproot2, "dst/x.py"), "w") as f:
         f.write("destination stale\n")
-    os.makedirs(os.path.join(tmproot2, ".claude/features/contract"), exist_ok=True)
-    with open(os.path.join(tmproot2, ".claude/features/contract/build-contract.json"), "w") as f:
-        json.dump({
-            "schema_version": "1.0.0",
-            "owner": "test",
-            "deprecation_criterion": "test",
-            "targets": [{
-                "name": "hooks/x.py",
-                "type": "copy-file",
-                "source": "src/x.py",
-                "destination": "dst/x.py",
-                "check_on_stop": True,
-            }],
-        }, f)
 
     env = {**os.environ, "RABBIT_ROOT": tmproot2, "RABBIT_SYNC_EVERY": "1"}
     res = subprocess.run([sys.executable, SYNC_CHECK], env=env, capture_output=True, text=True)

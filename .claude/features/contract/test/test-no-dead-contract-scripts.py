@@ -128,8 +128,6 @@ def has_production_caller(basename):
             continue
         if norm.startswith(os.path.join(FEATURE_DIR, "docs", "spec") + os.sep):
             continue
-        if norm == os.path.join(FEATURE_DIR, "build-contract.json"):
-            continue
         qualifying.append(norm)
     return qualifying
 
