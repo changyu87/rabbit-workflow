@@ -92,3 +92,70 @@ def check_marker_consume_alert(path: str, alert: dict, *, repo_root: str) -> dic
     except OSError:
         pass
     return print_result(text, alert["icon"], alert["color"])
+
+
+DEFAULT_REFRESH_THRESHOLD = 20
+
+
+def _read_threshold(env_var: str) -> int:
+    raw = os.environ.get(env_var)
+    if raw is None:
+        return DEFAULT_REFRESH_THRESHOLD
+    try:
+        return int(raw)
+    except ValueError:
+        return DEFAULT_REFRESH_THRESHOLD
+
+
+def _read_source(full_source: str) -> str:
+    """Read source content. If full_source is a directory, concat every
+    *.md file inside it in alphabetical filename order. Raises
+    FileNotFoundError or OSError if the path does not exist.
+    """
+    if os.path.isdir(full_source):
+        parts = []
+        for name in sorted(os.listdir(full_source)):
+            if name.endswith(".md"):
+                with open(os.path.join(full_source, name)) as f:
+                    parts.append(f.read())
+        return "".join(parts)
+    with open(full_source) as f:
+        return f.read()
+
+
+def check_counter_threshold_refresh(counter: str, env_var: str, source: str,
+                                    *, repo_root: str) -> dict:
+    """Increment counter file each invocation; on threshold, reset counter
+    to 0 and return inject_result whose content is read from `source`
+    (repo-root-relative file, OR a directory whose *.md files are
+    concatenated alphabetically). Below threshold returns ok_result.
+    Missing or unreadable source returns error_result.
+    """
+    counter_full = os.path.join(repo_root, counter)
+    threshold = _read_threshold(env_var)
+
+    current = 0
+    if os.path.isfile(counter_full):
+        try:
+            current = int(open(counter_full).read().strip())
+        except (OSError, ValueError):
+            current = 0
+    new_val = current + 1
+
+    if new_val < threshold:
+        parent = os.path.dirname(counter_full)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(counter_full, "w") as f:
+            f.write(str(new_val))
+        return ok_result()
+
+    # at or above threshold: reset and inject
+    source_full = os.path.join(repo_root, source)
+    try:
+        content = _read_source(source_full)
+    except (FileNotFoundError, OSError) as e:
+        return error_result(f"counter refresh source unreadable: {e}")
+    with open(counter_full, "w") as f:
+        f.write("0")
+    return inject_result(content)

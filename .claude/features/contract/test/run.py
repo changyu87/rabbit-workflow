@@ -79,5 +79,6 @@ run_test("test-publish-generated.py")
 run_test("test-runtime-result-helpers.py")
 run_test("test-runtime-check-marker-alert.py")
 run_test("test-runtime-check-marker-consume-alert.py")
+run_test("test-runtime-check-counter-threshold-refresh.py")
 
 print("ALL TESTS PASSED")
