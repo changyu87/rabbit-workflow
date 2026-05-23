@@ -1,6 +1,6 @@
 ---
 feature: rabbit-file
-version: 0.3.0
+version: 0.4.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when a unified tracking system replaces file-based bug and backlog management
@@ -22,7 +22,7 @@ on main.
 ## Scripts
 
 - branch_ops.py: All git operations against origin/bug-backlog-files.
-  Uses git worktree at .claude/tmp/bug-backlog-files (gitignored).
+  Uses git worktree at .claude/tmp/bug-backlog-files-<pid> (gitignored).
   Exposes: allocate_id(feature, type_), commit_item(feature, type_, id_str, item),
   fetch_item(feature, type_, id_str), read_branch(feature, type_, status),
   release_id(feature, type_, id_str), branch_exists().
@@ -84,9 +84,9 @@ filed_by, closed (ISO8601 or null), history (array of {ts, actor, action, note})
 
 > Note: item.json schema is trusted on read — fetch_item returns whatever
 > JSON loads without semantic validation. Malformed-JSON parse errors are
-> logged (BUG-24); semantic violations (missing required fields) flow
-> through silently. Schema validation is out of scope for now; add
-> validation if a downstream consumer requires it.
+> logged; semantic violations (missing required fields) flow through
+> silently. Schema validation is out of scope for now; add validation if a
+> downstream consumer requires it.
 
 ## Branch Layout
 
@@ -104,33 +104,36 @@ origin/bug-backlog-files root:
   Each process gets its own isolated worktree so concurrent invocations from
   different agents do not collide on the same filesystem path. Worktree is
   always cleaned up via try/finally.
+
 - branch_ops._worktree() MUST set the worktree HEAD to the freshly-fetched
   origin/bug-backlog-files tip after `git fetch origin bug-backlog-files`.
   This guarantees reads see the latest committed items and writes never push
-  from a stale base (preventing non-fast-forward push failures). The
-  implementation MUST use either (a) `git checkout -B bug-backlog-files
-  origin/bug-backlog-files` (capital -B) when no other worktree currently
-  has bug-backlog-files checked out, OR (b) a detached HEAD pointing at
-  origin/bug-backlog-files for concurrent-safe operation when the shared
-  local branch ref would otherwise collide across per-process worktrees.
-  Push from a detached HEAD MUST use the refspec `HEAD:bug-backlog-files`.
-  The fallback two-step try/checkout-local + checkout-b sequence MUST NOT
-  be used.
+  from a stale base (preventing non-fast-forward push failures).
+
+- branch_ops._worktree() MUST use a detached HEAD pointing at
+  origin/bug-backlog-files for concurrent-safe operation. Detached HEAD
+  avoids the cross-worktree branch-checkout collision that occurs when
+  concurrent per-process worktrees all try to check out the same shared
+  local branch ref (only one worktree may hold a given branch at a time).
+  Push from the detached HEAD MUST use the refspec `HEAD:bug-backlog-files`.
+
 - branch_ops push operations (counter commit, item commit, commit_sha
-  backfill) MUST be wrapped in a retry loop with a bounded number of
-  attempts (implementation-defined, at least 3, currently 16). On a
-  non-fast-forward push failure OR a transient remote ref-lock contention
-  error ("cannot lock ref", "failed to update ref"), the retry MUST
-  re-fetch origin/bug-backlog-files, reset the worktree HEAD to the
-  freshly-fetched remote tip, re-apply the local changes (re-write
-  counter.json or item.json with the same values, or reserve a fresh ID
-  if the counter slot was taken by another process), and retry the
-  commit + push. A short jittered backoff between attempts decorrelates
-  concurrent pushers. After the configured attempt budget is exhausted
-  the operation raises RuntimeError with a clear diagnostic that names
-  the attempt count and the last underlying error.
+  backfill) MUST be wrapped in a retry loop bounded to exactly 16
+  attempts. On a non-fast-forward push failure OR a transient remote
+  ref-lock contention error ("cannot lock ref", "failed to update ref"),
+  the retry MUST re-fetch origin/bug-backlog-files, reset the worktree
+  HEAD to the freshly-fetched remote tip, re-apply the local changes
+  (re-write counter.json or item.json with the same values, or reserve a
+  fresh ID if the counter slot was taken by another process), and retry
+  the commit + push. A short jittered backoff between attempts
+  decorrelates concurrent pushers. After 16 attempts the operation
+  raises RuntimeError with a clear diagnostic that names the attempt
+  count and the last underlying error.
+
 - branch_ops.allocate_id MUST be called before commit_item (counter reserves the ID slot).
+
 - item-status.py set MUST require --reason on every transition.
+
 - item-status.py set MUST short-circuit a no-op transition (same status)
   with exit 0 and a clear stdout message naming the current status; no
   history entry is appended and no commit is created. This prevents the
@@ -138,6 +141,7 @@ origin/bug-backlog-files root:
   with action=opened|closed that describe transitions that did not
   actually change state. Tests MUST cover both the close→close and
   open→open no-op cases.
+
 - commit_item's second push (commit_sha backfill on the just-written
   item.json) MUST use the same retry-with-fetch+reset+reapply mechanism
   as the primary push. The backfill push contains the SHA of the
@@ -145,85 +149,90 @@ origin/bug-backlog-files root:
   release notes) to find the resolving commit; a silent failure leaves
   item.json without commit_sha and breaks every consumer. The retry
   budget and backoff policy MUST be identical to the primary push.
+
 - item-status.py update MUST require --field, --value, and --reason.
   The set of mutable fields is exactly {priority, title, description}.
   Any other --field value (including name, type, status, closed,
   history, related_feature, filed, filed_by, commit_sha) is rejected
   with exit non-zero and a stderr message naming the rejected field.
+
 - item-status.py update MUST reject items where status != "open" with a
   clear stderr error directing the user to reopen the item first; no
   history entry is appended on rejection.
+
 - The history entry appended by item-status.py update has shape
   {ts, actor, action: "updated", field, old_value, new_value, note}
   where note carries the --reason text. This is distinct from the
   open/closed entries written by `set`, which have shape
   {ts, actor, action: "opened"|"closed", note, [fix_commits]}.
+
 - Direct edits to item.json on the bug-backlog-files branch are
   prohibited. All mutations go through file-item.py (create),
   item-status.py set (status transitions), or item-status.py update
   (field mutations). This guarantees every mutation has an audit
   trail in the history array.
+
 - SKILL.md MUST include a user-decision gate in Work Protocol before invoking
   rabbit-feature-touch.
+
 - SKILL.md worktree path references MUST use the per-process form
   `.claude/tmp/bug-backlog-files-<pid>` so the documented behaviour
-  matches the per-pid invariant above (BUG-34).
+  matches the per-pid invariant above.
+
 - SKILL.md MUST NOT reference any `/rabbit-file …` slash-command
   invocation. The Overview declares "there are NO slash commands";
   every other section (including the List Protocol's branch-missing
   guidance) MUST be consistent. Canonical user-facing invocations are
   the direct `python3 .claude/features/rabbit-file/scripts/…` script
-  calls listed in the Overview table (BUG-34).
+  calls listed in the Overview table.
+
 - SKILL.md List Protocol MUST document (a) the deterministic
   sort-by-name output contract mandated for list-items.py and (b) the
   distinct "branch does not exist" condition versus the "no items
-  matched filters" condition. These two operator-facing facts
-  originate in this spec's invariants for list-items.py; the skill
-  MUST surface them so operators know the guarantees without having
-  to read spec.md (BUG-34).
+  matched filters" condition. These two operator-facing facts originate
+  in this spec's invariants for list-items.py; the skill MUST surface
+  them so operators know the guarantees without having to read spec.md.
+
 - feature.json `surface.skills` MUST be a non-empty array containing
   the entry `rabbit-file` (matching the deployed skill directory
   `skills/rabbit-file/SKILL.md`). An empty `surface.skills` while a
   SKILL.md exists violates the surface-declaration contract: build
   and scope tooling reads this surface to identify deployable skills,
-  and an empty entry causes the SKILL.md to be silently ignored
-  (BUG-34).
+  and an empty entry causes the SKILL.md to be silently ignored.
+
 - The feature MUST declare a `docs/spec/contract.md` document
   following the schema used by sibling features (top-level JSON block
   with `provides`, `reads`, `invokes`, `manages`, and `never` keys;
   YAML frontmatter carrying `feature`, `version`, `template_version`,
   `owner`, and `deprecation_criterion`). This satisfies the policy
-  mandate "Every component declares its contract"
-  (spec-rules.md §2). The contract enumerates the provided scripts
-  (file-item.py, item-status.py, list-items.py, branch_ops.py), the
-  consumed files and external state, the invoked tools, the runtime
-  markers managed (none), and the explicit "never does" list
-  (BUG-34).
+  mandate "Every component declares its contract" (spec-rules.md §2).
+  The contract enumerates the provided scripts (file-item.py,
+  item-status.py, list-items.py, branch_ops.py), the consumed files
+  and external state, the invoked tools, the runtime markers managed
+  (none), and the explicit "never does" list.
+
 - Both file-item.py (at filing time) and item-status.py update (at
   field mutation time) MUST enforce PER-FIELD length limits on title
-  and description values (BACKLOG-7):
+  and description values:
     MAX_TITLE_LEN = 200
     MAX_DESCRIPTION_LEN = 10240   (10 KiB)
   These limits are asymmetric: titles are short labels, descriptions
-  are long-form. The shared 500-char cap from the pre-BACKLOG-7
-  implementation is REMOVED — it was both too tight (blocking
-  legitimate descriptions) and broke the file/update symmetry (filing
-  accepted any size; only update enforced).
-  Values exceeding the per-field limit are rejected with exit non-zero
-  and a stderr error naming the field, the limit, and the actual length.
-  Both scripts import the constants and the validator from a single
-  source-of-truth module (`branch_ops.py` or a sibling — implementer's
-  choice) so the limits cannot drift between file and update paths.
+  are long-form. Values exceeding the per-field limit are rejected
+  with exit non-zero and a stderr error naming the field, the limit,
+  and the actual length. Both scripts import the constants and the
+  validator from a single source-of-truth module so the limits cannot
+  drift between file and update paths.
+
 - Both file-item.py and item-status.py update MUST sanitize title and
   description values by stripping ASCII control characters EXCEPT the
   whitespace characters tab (`\t`), newline (`\n`), and carriage return
-  (`\r`) before length validation (BACKLOG-7). This protects
-  `list-items.py` output from terminal escape injection (a title
-  containing `\x1b[2J` would clear the user's terminal on list).
-  The sanitize step runs first, then the length check runs on the
-  sanitized value. The sanitized value is what gets written to
-  `item.json`, so the on-disk artifact is always free of forbidden
-  control characters.
+  (`\r`) before length validation. This protects `list-items.py`
+  output from terminal escape injection (a title containing `\x1b[2J`
+  would clear the user's terminal on list). The sanitize step runs
+  first, then the length check runs on the sanitized value. The
+  sanitized value is what gets written to `item.json`, so the on-disk
+  artifact is always free of forbidden control characters.
+
 - file-item.py MUST NOT leave an ID slot orphaned on commit_item
   failure. When commit_item raises after allocate_id succeeded,
   file-item.py MUST call branch_ops.release_id(feature, type_, id_str)
@@ -233,30 +242,32 @@ origin/bug-backlog-files root:
   consumed by another process, it is left alone (no error) and the
   counter advances normally. The caller surfaces the original
   commit_item error to the user; rollback success is reported on stderr.
+
 - read_branch MUST log a structured warning to stderr for every
   malformed item.json it encounters (JSONDecodeError, OSError). The
   warning names the file path and the underlying error. The malformed
-  item is then skipped. Silent skipping (the previous behaviour) hides
-  data corruption from operators.
+  item is then skipped. Silent skipping hides data corruption from
+  operators.
+
 - branch_ops.commit_item MUST NOT mutate the caller-supplied item dict.
   The caller's dict is treated as input-only; commit_sha backfill is
   performed on an internal copy. This guarantees callers can re-use
   their item dict for retry/logging without observing surprise fields.
+
 - branch_ops module MUST expose the canonical branch name and identity
   as module-level constants (`BRANCH`, `IDENTITY_NAME`,
   `IDENTITY_EMAIL`) so downstream tooling can reference them without
   duplicating string literals.
+
 - branch_ops._ensure_branch bootstraps the orphan bug-backlog-files
   branch on first use (per the Scripts section), with no
   topology-specific defensive guard. Rabbit assumes a standalone
   workspace topology: every workspace's `origin` points directly at the
   authoritative remote (e.g. GitHub), never at another local workspace.
-  Chained workspaces (wsN → wsN-1 → ... → GitHub) are unsupported; the
-  BUG-32 local-origin guard and `_is_local_origin` helper were removed
-  in BACKLOG-12 as part of that posture. An operator who misconfigures
-  `origin` to a local filesystem path will surface a normal git error
-  on first push attempt — no extra defensive scaffolding sits in the
-  hot path to detect that case.
+  Chained workspaces (wsN → wsN-1 → ... → GitHub) are unsupported. An
+  operator who misconfigures `origin` to a local filesystem path will
+  surface a normal git error on first push attempt — no extra defensive
+  scaffolding sits in the hot path to detect that case.
 
 ## Operational characteristics
 
@@ -265,7 +276,7 @@ single script invocation under sustained remote contention or outage.
 This section is informational — it does not introduce new normative
 behaviour; it documents the wall-time envelope implied by the existing
 retry invariant so operators and future maintainers understand the
-budget before tuning it (BACKLOG-14).
+budget before tuning it.
 
 - Per-filing worst-case: **48 push attempts** — three push operations
   (counter commit, item commit, commit_sha backfill), each bounded by
@@ -277,14 +288,14 @@ budget before tuning it (BACKLOG-14).
 
 This budget is acceptable under current usage patterns (interactive
 operator flows, occasional concurrent agent dispatch). Revisit only if
-contention measurements show real impact; the current 16-retry budget
-is a conservative cushion, not a tight bound.
+contention measurements show real impact; the 16-retry budget is a
+conservative cushion, not a tight bound.
 
 ## Out of scope
 
-- Bug triage (rabbit-triage.sh)
-- Feature scaffolding (rabbit-cage)
-- Legacy data in .claude/archive/
+- Feature scaffolding (owned by rabbit-cage).
+- Legacy data in `.claude/archive/` (read-only historical artifacts;
+  not mutated by rabbit-file).
 
 ## Tech Stack
 
@@ -292,4 +303,7 @@ All runtime scripts and test harnesses are Python. No shell (.sh) scripts are us
 
 ## Tests
 
-test/run.py runs all test suites. Transitions via tdd-step.py.
+Every invariant declared above has at least one named test under
+`test/`. The suite is invoked via `python3 test/run.py`; transitions
+through the TDD state machine use `tdd-step.py`. Tests are organized
+by spec invariant topic, not by historical bug or backlog ID.
