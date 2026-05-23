@@ -645,6 +645,8 @@ def validate_meta_contract(feature_dir):
             data = json.load(f)
     except json.JSONDecodeError as e:
         return CheckResult(passed=False, messages=[f"feature.json invalid JSON: {e}"])
+    if not isinstance(data, dict):
+        return CheckResult(passed=False, messages=[f"feature.json must be a JSON object, got {type(data).__name__}"])
 
     errors = []
     if "manifest" in data:

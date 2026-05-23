@@ -93,6 +93,16 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t6: unknown-api acceptance bug: passed={r.passed}, messages={r.messages}")
 
+with tempfile.TemporaryDirectory() as td:
+    # t7: feature.json is a JSON array, not an object -> fail with descriptive error
+    with open(os.path.join(td, "feature.json"), "w") as f:
+        json.dump([1, 2, 3], f)
+    r = validate_meta_contract(td)
+    if not r.passed and any("must be a JSON object" in m for m in r.messages):
+        ok("t7: non-object feature.json is rejected")
+    else:
+        fail(f"t7: non-object feature.json acceptance bug: passed={r.passed}, messages={r.messages}")
+
 if FAIL:
     print("test-validate-meta-contract-manifest: FAIL", file=sys.stderr)
     sys.exit(1)
