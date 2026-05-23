@@ -45,3 +45,16 @@ def write_marker(path: str, content: str, *, repo_root: str) -> CheckResult:
     with open(dst, "w") as f:
         f.write(content)
     return CheckResult(True, [f"OK: {path} written"])
+
+
+def delete_marker(path: str, *, repo_root: str) -> CheckResult:
+    """Delete a marker file at path (repo-root-relative).
+
+    Idempotent: if the marker is already absent, returns passed=True with a
+    'no-op' message and does not raise.
+    """
+    dst = os.path.join(repo_root, path)
+    if not os.path.exists(dst):
+        return CheckResult(True, [f"OK: {path} absent (no-op)"])
+    os.remove(dst)
+    return CheckResult(True, [f"OK: {path} deleted"])

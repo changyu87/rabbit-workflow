@@ -77,5 +77,6 @@ run_test("test-publish-hook.py")
 run_test("test-publish-settings.py")
 run_test("test-publish-generated.py")
 run_test("test-mutation-write-marker.py")
+run_test("test-mutation-delete-marker.py")
 
 print("ALL TESTS PASSED")
