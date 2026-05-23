@@ -375,3 +375,35 @@ def iterate_configurables_alerts(*, repo_root: str):
                                         alert_msg["icon"],
                                         alert_msg["color"]))
     return out
+
+
+def iterate_configurables_banner(*, repo_root: str):
+    """Like iterate_configurables_alerts but for SessionStart. Each active
+    override emits a multi-line print_result whose text is
+
+        <alert.text>
+          revoke with: /rabbit-config <subcommand> <default>
+
+    If the configurable has no `default`, the revoke target falls back to
+    the literal string '<unknown>'. Icon and color come from
+    alert-message. Returns a list (possibly empty).
+    """
+    out = []
+    for name, fdir, data in _enumerate_features(repo_root):
+        configuration = data.get("configuration")
+        if not isinstance(configuration, list):
+            continue
+        for cfg in configuration:
+            alert_on = cfg.get("alert-on")
+            alert_msg = cfg.get("alert-message")
+            if alert_on is None or not isinstance(alert_msg, dict):
+                continue
+            current = _resolve_current_value(repo_root, cfg)
+            if current is None or current != alert_on:
+                continue
+            subcommand = cfg.get("subcommand", cfg.get("id", "?"))
+            revoke_value = cfg.get("default", "<unknown>")
+            text = (f"{alert_msg['text']}\n"
+                    f"  revoke with: /rabbit-config {subcommand} {revoke_value}")
+            out.append(print_result(text, alert_msg["icon"], alert_msg["color"]))
+    return out
