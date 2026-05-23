@@ -1,5 +1,6 @@
 ---
 name: rabbit-config
+description: Mutate rabbit workflow configurables. Use when the user wants to change human approval, bypass permissions, prompt threshold, allowed tools, or bash allow settings — phrases like "human approval off", "bypass permissions on", "set prompt threshold", "add allowed tool", "bash allow", "permissions lock", or any configuration change to the rabbit workflow.
 version: 1.0.0
 owner: rabbit-workflow team (rabbit-config)
 deprecation_criterion: when the rabbit CLI exposes native configuration mutation
