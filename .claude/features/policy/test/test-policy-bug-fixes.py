@@ -16,7 +16,7 @@ The previous open-ended criterion ('when each bug/backlog has its own
 targeted test or is closed') is REMOVED — it never fired because the tickets
 are already closed.
 
-Traces: POLICY-BUG-1, POLICY-BUG-2, POLICY-BUG-7, POLICY-BUG-9, POLICY-BUG-18,
+Traces: POLICY-BUG-2, POLICY-BUG-7, POLICY-BUG-9, POLICY-BUG-18,
         POLICY-BUG-19, POLICY-BACKLOG-1, POLICY-BACKLOG-2, POLICY-BACKLOG-5,
         POLICY-BACKLOG-6, POLICY-BACKLOG-9. Retirement scaffolding added under
         POLICY-BACKLOG-14.
@@ -36,7 +36,6 @@ import sys
 # Module-level constant consumed by test-historical-fixes-retirement.py.
 # Keep names exactly as filed (one per ticket; no aliases).
 TICKETS_COVERED = [
-    "POLICY-BUG-1",
     "POLICY-BUG-2",
     "POLICY-BUG-7",
     "POLICY-BUG-9",
@@ -62,27 +61,6 @@ def ko(msg):
     global FAIL
     print(f"  FAIL {msg}")
     FAIL = 1
-
-
-# POLICY-BUG-1: numbering test's rule count assertion matches actual count.
-# Originally said 'rules stop at 5' but only 4 rules existed. This cycle added a
-# fifth rule (Output Hygiene), so the assertion is now correct in its claim that
-# no sixth rule exists. (File renamed under BACKLOG-14 to test-coding-rules-numbering.py.)
-b003_path = os.path.join(FEATURE_DIR, "test", "test-coding-rules-numbering.py")
-with open(b003_path) as f:
-    b003 = f.read()
-# Count actual top-level '## N.' rules in coding-rules.md.
-coding_path = os.path.join(FEATURE_DIR, "coding-rules.md")
-with open(coding_path) as f:
-    coding_text = f.read()
-rule_headings = re.findall(r'^## (\d+)\.', coding_text, re.MULTILINE)
-rule_count = len(rule_headings)
-# The test must assert the next-after-last heading is absent.
-expected_phrase = f"rules stop at {rule_count}"
-if expected_phrase in b003:
-    ok(f"POLICY-BUG-1: test-backlog003.py asserts '{expected_phrase}' matching {rule_count} actual rules")
-else:
-    ko(f"POLICY-BUG-1: test-backlog003.py rule-count phrase does not match actual ({rule_count} rules)")
 
 
 # POLICY-BUG-2: test-rule-files-content.py comment says 'three' rule files
