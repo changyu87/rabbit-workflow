@@ -10,6 +10,53 @@
 
 ---
 
+## Plan revisions (applied during execution)
+
+Two universal rules surfaced from Task 1's code-quality review. They apply to every task below; the per-task code blocks pre-date the revisions and have NOT been re-edited inline.
+
+**Revision R1 — Every task that adds a new test must wire it into `run.py` in the same commit.**
+
+The contract test suite contains a self-enforcing meta-test (`test-run-invokes-all-active-tests.py`) that fails if any `test-*.py` file in the directory is not invoked by `run.py`. Deferring wiring to a single bulk Task 9 leaves the suite broken at every intermediate commit. So each task that creates a new test file must add a line of the shape
+
+```python
+run_test("<new-test-name>.py")
+```
+
+to `.claude/features/contract/test/run.py` BEFORE the commit step. This applies to Tasks 1, 2, 3, 4, 5, 6, 7, 8. Task 9 (originally "wire all tests") is collapsed to a final full-suite verification only.
+
+**Revision R2 — Every new schema file must carry top-level `schema_version`, `owner`, `deprecation_criterion` keys.**
+
+Every existing schema in `.claude/features/contract/schemas/` carries these per spec-rules.md. New schemas (Tasks 1, 2, 3) must do the same. Use:
+
+```json
+"schema_version": "1.0.0",
+"owner": "rabbit-workflow team",
+"deprecation_criterion": "<one-line condition for retirement>"
+```
+
+The corresponding shape test must assert all three fields are present and non-empty strings. Append these checks right after the `$schema` draft-07 check:
+
+```python
+if not isinstance(schema.get("schema_version"), str) or not schema["schema_version"]:
+    fail("schema_version is missing or empty (spec-rules.md requires it)")
+else:
+    ok("schema_version is present")
+
+if not isinstance(schema.get("owner"), str) or not schema["owner"]:
+    fail("owner is missing or empty (spec-rules.md requires it)")
+else:
+    ok("owner is present")
+
+if not isinstance(schema.get("deprecation_criterion"), str) or not schema["deprecation_criterion"]:
+    fail("deprecation_criterion is missing or empty (spec-rules.md requires it)")
+else:
+    ok("deprecation_criterion is present")
+```
+
+Task 1 was completed with both revisions applied via a follow-up fix commit (`7f4659cb`). Tasks 2 onward must apply the revisions in their primary commit.
+
+---
+
 ## Files to be created/modified
 
 **Create:**
