@@ -52,6 +52,7 @@ check_file("schemas/project-map.json.schema.json")
 check_file("schemas/rabbit-print.schema.json")
 check_file("schemas/rabbit-print-messages.json")
 check_file("scripts/rabbit_print.py")
+check_file("lib/publish.py")
 
 # Scripts — also check executable
 check_exec("scripts/policy-block.py")

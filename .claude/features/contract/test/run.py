@@ -71,5 +71,6 @@ run_test("test-validate-meta-contract-manifest.py")
 run_test("test-validate-meta-contract-runtime.py")
 run_test("test-validate-meta-contract-configuration.py")
 run_test("test-validate-meta-contract-cli.py")
+run_test("test-publish-file.py")
 
 print("ALL TESTS PASSED")
