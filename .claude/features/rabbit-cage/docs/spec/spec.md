@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.1.0
+version: 5.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -52,11 +52,15 @@ Each event dispatcher (`stop-dispatcher.py`, `session-start-dispatcher.py`,
    declaration order. For each entry `{api, args}`, invokes
    `contract.lib.runtime.<api>(**args, repo_root=<root>)`, forwarding
    `feature_dir=<fdir>` only when the runtime API's signature declares it.
-3. Partitions the typed results: `print` results are rendered via
-   `rabbit_print.rabbit_subline(text, color, icon)` and joined into
-   `systemMessage` via `rabbit_print.rabbit_block`; `inject` results are
-   concatenated into `additionalContext`; `ok` results are dropped; `error`
-   results are written to stderr (one line each) and never surfaced.
+3. Partitions the typed results: `banner` results are rendered via
+   `rabbit_print.rabbit_print(message_id)` (banner format with ━━━ bars);
+   `print` results are rendered via `rabbit_print.rabbit_subline(text, color,
+   icon)` (compact format); `subline` results are rendered via
+   `rabbit_print.rabbit_subline(text, color)` without icon; all rendered
+   lines are joined into `systemMessage` via `rabbit_print.rabbit_block`;
+   `inject` results are concatenated into `additionalContext`; `ok` results
+   are dropped; `error` results are written to stderr (one line each) and
+   never surfaced.
 4. Emits at most one JSON object to stdout per invocation. When no `print`
    and no `inject` result is collected, the dispatcher writes nothing
    (exit 0).
@@ -188,6 +192,3 @@ and `contract.scripts.rabbit_print`. No Bash runtime dependency.
 - Per-feature runtime behavior (each feature owns its own RUNTIME).
 - The `/rabbit-config` skill and its subcommand handlers (owned by the
   rabbit-config feature).
-- Cosmetic sub-line formatting of the SessionStart welcome banner (the
-  generic `welcome_with_policy` runtime API emits a banner + injected
-  policy; ornamental per-import sub-lines are not part of this surface).

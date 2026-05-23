@@ -163,6 +163,60 @@ def test_render_emission_empty_returns_none():
     print("PASS test_render_emission_empty_returns_none")
 
 
+def test_render_emission_banner_type_produces_banner_line():
+    """banner-type results render via rabbit_print (banner format), not subline."""
+    lib = _load_lib()
+    payloads = [
+        {"type": "banner", "message_id": "welcome"},
+    ]
+    out = lib.render_emission(payloads)
+    assert out is not None, "expected non-None emission for banner result"
+    sm = out.get("systemMessage", "")
+    # The 'welcome' banner contains the bar character '━━━' from the banner format
+    assert "━━━" in sm, f"expected banner bar in systemMessage, got: {sm!r}"
+    # The brand prefix must be present
+    assert "[🐇 rabbit 🐇]" in sm, f"brand prefix missing from systemMessage: {sm!r}"
+    print("PASS test_render_emission_banner_type_produces_banner_line")
+
+
+def test_render_emission_subline_type_renders_as_subline():
+    """subline-type results render via rabbit_subline (no bar decoration)."""
+    lib = _load_lib()
+    payloads = [
+        {"type": "subline", "text": "philosophy.md    — machine-first", "color": "green"},
+    ]
+    out = lib.render_emission(payloads)
+    assert out is not None
+    sm = out.get("systemMessage", "")
+    # sublines do NOT carry the ━━━ bar decoration
+    assert "━━━" not in sm, f"subline should not have bar: {sm!r}"
+    assert "philosophy.md" in sm, f"text missing from subline: {sm!r}"
+    assert "[🐇 rabbit 🐇]" in sm, f"brand prefix missing: {sm!r}"
+    print("PASS test_render_emission_subline_type_renders_as_subline")
+
+
+def test_render_emission_banner_and_sublines_order():
+    """banner + sublines appear in order in the systemMessage."""
+    lib = _load_lib()
+    payloads = [
+        {"type": "banner", "message_id": "welcome"},
+        {"type": "subline", "text": "LINE-A", "color": "green"},
+        {"type": "subline", "text": "LINE-B", "color": "green"},
+        {"type": "inject", "content": "POLICY"},
+    ]
+    out = lib.render_emission(payloads)
+    assert out is not None
+    sm = out["systemMessage"]
+    pos_banner = sm.find("━━━")
+    pos_a = sm.find("LINE-A")
+    pos_b = sm.find("LINE-B")
+    assert pos_banner != -1, "banner bar not found"
+    assert pos_a != -1 and pos_b != -1, "subline texts not found"
+    assert pos_banner < pos_a < pos_b, f"ordering wrong: banner={pos_banner} a={pos_a} b={pos_b}"
+    assert out["additionalContext"] == "POLICY"
+    print("PASS test_render_emission_banner_and_sublines_order")
+
+
 def main() -> int:
     test_enumerate_alpha_and_skips()
     test_dispatch_event_invokes_runtime_api()
@@ -170,6 +224,9 @@ def main() -> int:
     test_dispatch_event_unknown_api_emits_error()
     test_render_emission_partitions()
     test_render_emission_empty_returns_none()
+    test_render_emission_banner_type_produces_banner_line()
+    test_render_emission_subline_type_renders_as_subline()
+    test_render_emission_banner_and_sublines_order()
     return 0
 
 

@@ -98,9 +98,49 @@ def test_deployed_dispatchers_emit_valid_json_or_empty():
     print("PASS test_deployed_dispatchers_emit_valid_json_or_empty")
 
 
+def test_session_start_welcome_has_4_line_shape():
+    """session-start-dispatcher systemMessage contains banner + 3 policy sub-lines.
+
+    Verifies RABBIT-CAGE-BUG-99 fix: the SessionStart welcome must be exactly
+    4 lines (banner + 3 sub-lines), not just the banner alone.
+    """
+    EXPECTED_SUBLINES = [
+        "philosophy.md",
+        "spec-rules.md",
+        "coding-rules.md",
+    ]
+    with tempfile.TemporaryDirectory() as td:
+        target = Path(td)
+        _deploy_to(target)
+        proc = _run_deployed_hook(target, "session-start-dispatcher.py")
+        assert proc.returncode == 0, (
+            f"session-start-dispatcher exit={proc.returncode}; stderr={proc.stderr!r}"
+        )
+        assert proc.stdout.strip(), "session-start-dispatcher produced no output"
+        try:
+            out = json.loads(proc.stdout)
+        except json.JSONDecodeError as e:
+            raise AssertionError(
+                f"session-start-dispatcher non-JSON stdout: {proc.stdout!r}; {e}"
+            )
+        sm = out.get("systemMessage", "")
+        # Banner line: must contain the ━━━ bar decoration
+        assert "━━━" in sm, f"banner bar missing from systemMessage: {sm!r}"
+        # All 3 policy sub-lines must appear
+        for marker in EXPECTED_SUBLINES:
+            assert marker in sm, (
+                f"subline marker {marker!r} missing from systemMessage: {sm!r}"
+            )
+        # additionalContext must be non-empty (policy text injected)
+        ctx = out.get("additionalContext", "")
+        assert ctx.strip(), "additionalContext is empty — policy text not injected"
+    print("PASS test_session_start_welcome_has_4_line_shape")
+
+
 def main() -> int:
     test_deployed_dispatchers_import_helpers_successfully()
     test_deployed_dispatchers_emit_valid_json_or_empty()
+    test_session_start_welcome_has_4_line_shape()
     return 0
 
 

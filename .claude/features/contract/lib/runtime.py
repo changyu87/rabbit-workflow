@@ -30,7 +30,7 @@ import os
 
 def print_result(text: str, icon: str, color: str) -> dict:
     """Tagged dict for an alert line that the dispatcher renders via
-    rabbit_print and joins into the Stop hook systemMessage."""
+    rabbit_subline and joins into the Stop hook systemMessage."""
     return {"type": "print", "text": text, "icon": icon, "color": color}
 
 
@@ -49,6 +49,18 @@ def error_result(message: str) -> dict:
     """Tagged dict for an internal failure — dispatcher logs to stderr and
     does NOT surface to Claude."""
     return {"type": "error", "message": message}
+
+
+def banner_result(message_id: str) -> dict:
+    """Tagged dict for a banner line; dispatcher renders via rabbit_print(message_id)
+    using the banner format (decorated with ━━━ bars)."""
+    return {"type": "banner", "message_id": message_id}
+
+
+def subline_result(text: str, color: str = "green") -> dict:
+    """Tagged dict for a sub-line; dispatcher renders via rabbit_subline(text, color)
+    without icon decoration."""
+    return {"type": "subline", "text": text, "color": color}
 
 
 def check_marker_alert(path: str, content, alert: dict, *, repo_root: str) -> dict:
@@ -162,15 +174,16 @@ def check_counter_threshold_refresh(counter: str, env_var: str, source: str,
     return inject_result(content)
 
 
-WELCOME_BANNER = {"text": "Rabbit workflow ready", "icon": "rabbit", "color": "green"}
-
-
-def welcome_with_policy(policy_source: str, *, repo_root: str):
-    """Return [welcome banner print_result, policy inject_result].
+def welcome_with_policy(policy_source: str, sublines=None, *, repo_root: str):
+    """Return [welcome banner_result, *subline_results, policy inject_result].
 
     policy_source is repo-root-relative; may be a single file or a
     directory whose *.md files are concatenated alphabetically (same
     semantics as check_counter_threshold_refresh source).
+
+    sublines is an optional list of {text: str, color: str (default 'green')}.
+    When provided, one subline_result per entry is inserted between the
+    banner and the inject. When absent or empty, only [banner, inject].
 
     On unreadable source returns a single error_result (NOT a list).
     """
@@ -179,12 +192,11 @@ def welcome_with_policy(policy_source: str, *, repo_root: str):
         content = _read_source(full)
     except (FileNotFoundError, OSError) as e:
         return error_result(f"welcome policy source unreadable: {e}")
-    return [
-        print_result(WELCOME_BANNER["text"],
-                     WELCOME_BANNER["icon"],
-                     WELCOME_BANNER["color"]),
-        inject_result(content),
-    ]
+    results = [banner_result("welcome")]
+    for sl in (sublines or []):
+        results.append(subline_result(sl["text"], sl.get("color", "green")))
+    results.append(inject_result(content))
+    return results
 
 
 def check_drift_regenerate(target: str, producer: str, alert: dict,

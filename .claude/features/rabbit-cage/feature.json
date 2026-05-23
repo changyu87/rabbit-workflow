@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
@@ -54,7 +54,14 @@
       }}
     ],
     "SessionStart": [
-      {"api": "welcome_with_policy", "args": {"policy_source": ".claude/features/policy"}}
+      {"api": "welcome_with_policy", "args": {
+        "policy_source": ".claude/features/policy",
+        "sublines": [
+          {"text": "philosophy.md    — machine-first · bounded scope · designed deprecation"},
+          {"text": "spec-rules.md    — determinism first; schema contracts; lifecycle ownership"},
+          {"text": "coding-rules.md  — think first; simplicity; surgical edits; goal-driven TDD"}
+        ]
+      }}
     ],
     "UserPromptSubmit": [
       {"api": "check_counter_threshold_refresh", "args": {

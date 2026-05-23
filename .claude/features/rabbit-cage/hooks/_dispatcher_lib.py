@@ -39,7 +39,7 @@ for _candidate in [_HERE, *_HERE.parents]:
         break
 
 from lib import runtime as _runtime  # noqa: E402
-from rabbit_print import rabbit_block, rabbit_subline  # noqa: E402
+from rabbit_print import rabbit_block, rabbit_print, rabbit_subline  # noqa: E402
 
 
 def enumerate_features(repo_root):
@@ -117,33 +117,34 @@ def dispatch_event(event, repo_root):
 def render_emission(payloads):
     """Partition payloads and assemble the final Claude Code JSON dict.
 
-    print  -> rendered via rabbit_subline(text, color, icon); joined with
-              rabbit_block (sole leading-newline owner).
+    banner -> rendered via rabbit_print(message_id) (banner format with ━━━).
+    print  -> rendered via rabbit_subline(text, color, icon) (compact format).
+    subline-> rendered via rabbit_subline(text, color) without icon.
     inject -> concatenated into additionalContext.
     ok     -> dropped.
     error  -> written to stderr (one line per error); not surfaced.
 
-    Returns None when no print and no inject are present.
+    Returns None when no renderable lines and no inject are present.
     """
-    prints = []
+    lines = []
     injects = []
     for p in payloads:
         t = p.get("type")
-        if t == "print":
-            prints.append(p)
+        if t == "banner":
+            lines.append(rabbit_print(p["message_id"]))
+        elif t == "print":
+            lines.append(rabbit_subline(p["text"], color=p["color"], icon=p["icon"]))
+        elif t == "subline":
+            lines.append(rabbit_subline(p["text"], color=p.get("color", "green")))
         elif t == "inject":
             injects.append(p)
         elif t == "error":
             sys.stderr.write(f"dispatcher: {p.get('message', '')}\n")
         # 'ok' and unknown: drop
-    if not prints and not injects:
+    if not lines and not injects:
         return None
     out = {}
-    if prints:
-        lines = [
-            rabbit_subline(p["text"], color=p["color"], icon=p["icon"])
-            for p in prints
-        ]
+    if lines:
         out["systemMessage"] = rabbit_block(*lines)
     if injects:
         out["additionalContext"] = "".join(p["content"] for p in injects)
