@@ -14,11 +14,11 @@
   "status": "active",
   "updated": "2026-05-23",
   "manifest": [
-    {"api": "publish_hook", "args": {"event": "Stop", "source": "hooks/stop-dispatcher.py"}},
-    {"api": "publish_hook", "args": {"event": "SessionStart", "source": "hooks/session-start-dispatcher.py"}},
-    {"api": "publish_hook", "args": {"event": "UserPromptSubmit", "source": "hooks/user-prompt-submit-dispatcher.py"}},
-    {"api": "publish_hook", "args": {"event": "PreToolUse", "source": "hooks/scope-guard.py"}},
     {"api": "publish_settings", "args": {"source": "settings.json"}},
+    {"api": "publish_hook", "args": {"event": "PreToolUse", "source": "hooks/scope-guard.py", "matcher": "Write|Edit|Bash"}},
+    {"api": "publish_hook", "args": {"event": "Stop", "source": "hooks/stop-dispatcher.py"}},
+    {"api": "publish_hook", "args": {"event": "SessionStart", "source": "hooks/session-start-dispatcher.py", "matcher": "startup|resume|clear|compact"}},
+    {"api": "publish_hook", "args": {"event": "UserPromptSubmit", "source": "hooks/user-prompt-submit-dispatcher.py"}},
     {"api": "publish_generated", "args": {
       "target": "CLAUDE.md",
       "producer": "generate-claude-md",

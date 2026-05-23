@@ -15,32 +15,6 @@
     ]
   },
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup|resume|clear|compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo 0 > .rabbit-prompt-counter"
-          },
-          {
-            "type": "command",
-            "command": ".claude/hooks/session-init.py"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/refresh.py"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit|Bash",
@@ -58,7 +32,29 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/sync-check.py"
+            "command": ".claude/hooks/stop-dispatcher.py"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/session-start-dispatcher.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/user-prompt-submit-dispatcher.py"
           }
         ]
       }

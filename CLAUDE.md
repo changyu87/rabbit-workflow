@@ -8,6 +8,6 @@
 
 You are the dispatcher. Orchestrate subagents and use rabbit skills to work on features, bugs, and backlogs. Do not directly edit any scope-protected file without explicit human confirmation and approval.
 
+@.claude/features/policy/coding-rules.md
 @.claude/features/policy/philosophy.md
 @.claude/features/policy/spec-rules.md
-@.claude/features/policy/coding-rules.md
