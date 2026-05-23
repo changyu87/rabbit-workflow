@@ -67,3 +67,28 @@ def check_marker_alert(path: str, content, alert: dict, *, repo_root: str) -> di
         except OSError:
             return ok_result()
     return print_result(alert["text"], alert["icon"], alert["color"])
+
+
+def check_marker_consume_alert(path: str, alert: dict, *, repo_root: str) -> dict:
+    """If the marker at `path` (repo-root-relative) exists, delete it and
+    return a print result built from `alert`. If `alert.text` contains the
+    literal substring `{marker-content}`, the (stripped) marker contents
+    are substituted in before deletion. Missing marker returns ok_result.
+    Does not mutate the caller's `alert` dict.
+    """
+    full = os.path.join(repo_root, path)
+    if not os.path.isfile(full):
+        return ok_result()
+    text = alert["text"]
+    if "{marker-content}" in text:
+        try:
+            with open(full) as f:
+                marker_content = f.read().strip()
+        except OSError:
+            marker_content = ""
+        text = text.replace("{marker-content}", marker_content)
+    try:
+        os.remove(full)
+    except OSError:
+        pass
+    return print_result(text, alert["icon"], alert["color"])
