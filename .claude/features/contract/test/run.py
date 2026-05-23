@@ -79,5 +79,6 @@ run_test("test-publish-generated.py")
 run_test("test-producers-dispatch.py")
 run_test("test-producers-read-file.py")
 run_test("test-producers-expand-at-imports.py")
+run_test("test-producers-generate-claude-md.py")
 
 print("ALL TESTS PASSED")

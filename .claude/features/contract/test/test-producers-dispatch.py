@@ -26,12 +26,13 @@ def ok(msg):
     print(f"PASS: {msg}")
 
 
-# t1: PRODUCERS registry contains read-file and expand-at-imports
-missing = [n for n in ("read-file", "expand-at-imports") if n not in producers.PRODUCERS]
-if missing:
-    fail(f"t1: registry missing {missing!r}")
+# t1: PRODUCERS registry has exactly the three expected producer names
+expected = {"read-file", "expand-at-imports", "generate-claude-md"}
+actual = set(producers.PRODUCERS.keys())
+if actual != expected:
+    fail(f"t1: registry keys mismatch. expected={expected} actual={actual}")
 else:
-    ok("t1: PRODUCERS registry contains read-file and expand-at-imports")
+    ok("t1: PRODUCERS registry has exactly the three expected producer names")
 
 # t2: call_producer raises KeyError on unknown name
 try:

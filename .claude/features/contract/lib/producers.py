@@ -21,6 +21,7 @@ Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native content producers.
 """
 
+import json
 import os
 
 
@@ -70,11 +71,35 @@ def expand_at_imports(file: str, *, feature_dir: str, repo_root: str) -> str:
     return "".join(out)
 
 
+def generate_claude_md(policy_source: str, header_source: str, *,
+                       feature_dir: str, repo_root: str) -> str:
+    """Compose a CLAUDE.md by emitting the header text from `header_source`
+    (a JSON file with a top-level `header` string) followed by a blank line
+    and one `@<path>` line per `.md` file found under `policy_source`. The
+    @-import paths in the output are written repo-root-relative (the form
+    Claude Code expects). Policy files are emitted in alphabetical filename
+    order — callers control order via filename prefixes if needed.
+    """
+    header_path = _resolve(header_source, feature_dir, repo_root)
+    with open(header_path) as f:
+        header = json.load(f)["header"]
+
+    policy_dir = _resolve(policy_source, feature_dir, repo_root)
+    policy_files = sorted(
+        f for f in os.listdir(policy_dir) if f.endswith(".md")
+    )
+    rel_policy_dir = os.path.relpath(policy_dir, repo_root)
+    imports = "\n".join(f"@{rel_policy_dir}/{f}" for f in policy_files)
+    return f"{header}\n\n{imports}\n"
+
+
 # Registry: MANIFEST kebab-case producer names → Python functions.
 # Populated by Tasks 2-4 (read-file, expand-at-imports, generate-claude-md).
 PRODUCERS = {
     "read-file": read_file,
     "expand-at-imports": expand_at_imports,
+    "generate-claude-md": generate_claude_md,
+    # "compose-template": deferred — see module docstring.
 }
 
 
