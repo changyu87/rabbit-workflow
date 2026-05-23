@@ -590,8 +590,8 @@ def validate_feature(feature_dir: str) -> CheckResult:
 
 
 # ---------------------------------------------------------------------------
-# Meta-contract validation (Plan A — manifest section only; runtime and
-# configuration arms added in Tasks 6 and 7).
+# Meta-contract validation: manifest, runtime, and configuration arms
+# are validated independently; each section is optional in feature.json.
 # ---------------------------------------------------------------------------
 
 _PUBLISH_API_ENUM = frozenset({
@@ -603,6 +603,32 @@ _PUBLISH_API_ENUM = frozenset({
     "publish_file",
     "publish_generated",
 })
+
+
+def _validate_manifest(manifest):
+    """Validate a manifest declaration. Returns list of error message strings."""
+    errors = []
+    if not isinstance(manifest, list):
+        errors.append(f"manifest must be an array, got {type(manifest).__name__}")
+        return errors
+    for i, item in enumerate(manifest):
+        if not isinstance(item, dict):
+            errors.append(f"manifest[{i}] must be an object, got {type(item).__name__}")
+            continue
+        if "api" not in item:
+            errors.append(f"manifest[{i}] missing required 'api' field")
+            continue
+        if "args" not in item:
+            errors.append(f"manifest[{i}] missing required 'args' field")
+            continue
+        if item["api"] not in _PUBLISH_API_ENUM:
+            errors.append(f"manifest[{i}]: unknown publish api {item['api']!r} (valid: {sorted(_PUBLISH_API_ENUM)})")
+        if not isinstance(item["args"], dict):
+            errors.append(f"manifest[{i}].args must be an object, got {type(item['args']).__name__}")
+        extra_keys = set(item.keys()) - {"api", "args"}
+        if extra_keys:
+            errors.append(f"manifest[{i}]: unexpected keys {sorted(extra_keys)} (only api and args allowed)")
+    return errors
 
 
 _RUNTIME_EVENT_ENUM = frozenset({"Stop", "SessionStart", "UserPromptSubmit", "PreToolUse"})
@@ -652,29 +678,92 @@ def _validate_runtime(runtime):
     return errors
 
 
-def _validate_manifest(manifest):
-    """Validate a manifest declaration. Returns list of error message strings."""
+_STORAGE_TYPE_ENUM = frozenset({"marker-file", "json-key", "json-array", "json-array-templated"})
+
+_MUTATION_API_ENUM = frozenset({
+    "write_marker",
+    "delete_marker",
+    "set_json_key",
+    "delete_json_key",
+    "append_json_array",
+    "remove_json_array_value",
+    "run_feature_script",
+})
+
+_COLOR_ENUM = frozenset({"red", "green", "yellow"})
+
+
+def _validate_api_call(item, ctx):
+    """Validate a single {api, args} mutation call. Returns list of errors."""
     errors = []
-    if not isinstance(manifest, list):
-        errors.append(f"manifest must be an array, got {type(manifest).__name__}")
+    if not isinstance(item, dict):
+        errors.append(f"{ctx}: must be an object, got {type(item).__name__}")
         return errors
-    for i, item in enumerate(manifest):
-        if not isinstance(item, dict):
-            errors.append(f"manifest[{i}] must be an object, got {type(item).__name__}")
+    if "api" not in item:
+        errors.append(f"{ctx}: missing required 'api' field")
+        return errors
+    if "args" not in item:
+        errors.append(f"{ctx}: missing required 'args' field")
+        return errors
+    if item["api"] not in _MUTATION_API_ENUM:
+        errors.append(f"{ctx}: unknown mutation api {item['api']!r}")
+    if not isinstance(item["args"], dict):
+        errors.append(f"{ctx}.args must be an object")
+    extra = set(item.keys()) - {"api", "args"}
+    if extra:
+        errors.append(f"{ctx}: unexpected keys {sorted(extra)}")
+    return errors
+
+
+def _validate_configuration(configuration):
+    """Validate a configuration declaration. Returns list of error message strings."""
+    errors = []
+    if not isinstance(configuration, list):
+        errors.append(f"configuration must be an array, got {type(configuration).__name__}")
+        return errors
+    for i, entry in enumerate(configuration):
+        ctx = f"configuration[{i}]"
+        if not isinstance(entry, dict):
+            errors.append(f"{ctx} must be an object")
             continue
-        if "api" not in item:
-            errors.append(f"manifest[{i}] missing required 'api' field")
+        if "id" not in entry:
+            errors.append(f"{ctx} missing required 'id'")
             continue
-        if "args" not in item:
-            errors.append(f"manifest[{i}] missing required 'args' field")
+        if "subcommand" not in entry:
+            errors.append(f"{ctx} missing required 'subcommand'")
             continue
-        if item["api"] not in _PUBLISH_API_ENUM:
-            errors.append(f"manifest[{i}]: unknown publish api {item['api']!r} (valid: {sorted(_PUBLISH_API_ENUM)})")
-        if not isinstance(item["args"], dict):
-            errors.append(f"manifest[{i}].args must be an object, got {type(item['args']).__name__}")
-        extra_keys = set(item.keys()) - {"api", "args"}
-        if extra_keys:
-            errors.append(f"manifest[{i}]: unexpected keys {sorted(extra_keys)} (only api and args allowed)")
+        has_values = "values" in entry
+        has_actions = "actions" in entry
+        if has_values == has_actions:
+            errors.append(f"{ctx} must declare exactly one of 'values' or 'actions' (oneOf)")
+        if has_values:
+            if not isinstance(entry["values"], dict):
+                errors.append(f"{ctx}.values must be an object")
+            else:
+                for k, call in entry["values"].items():
+                    errors.extend(_validate_api_call(call, f"{ctx}.values[{k!r}]"))
+        if has_actions:
+            if not isinstance(entry["actions"], dict):
+                errors.append(f"{ctx}.actions must be an object")
+            else:
+                for k, call in entry["actions"].items():
+                    errors.extend(_validate_api_call(call, f"{ctx}.actions[{k!r}]"))
+        if "storage" in entry:
+            storage = entry["storage"]
+            if not isinstance(storage, dict):
+                errors.append(f"{ctx}.storage must be an object")
+            elif storage.get("type") not in _STORAGE_TYPE_ENUM:
+                errors.append(f"{ctx}.storage: unknown storage type {storage.get('type')!r}")
+        if "alert-message" in entry:
+            am = entry["alert-message"]
+            if not isinstance(am, dict):
+                errors.append(f"{ctx}.alert-message must be an object")
+            else:
+                for k in ("text", "icon", "color"):
+                    if k not in am:
+                        errors.append(f"{ctx}.alert-message missing required '{k}'")
+                if am.get("color") not in _COLOR_ENUM:
+                    errors.append(f"{ctx}.alert-message.color must be one of {sorted(_COLOR_ENUM)}, got {am.get('color')!r}")
     return errors
 
 
@@ -700,7 +789,8 @@ def validate_meta_contract(feature_dir):
         errors.extend(_validate_manifest(data["manifest"]))
     if "runtime" in data:
         errors.extend(_validate_runtime(data["runtime"]))
-    # configuration arm added in Task 7.
+    if "configuration" in data:
+        errors.extend(_validate_configuration(data["configuration"]))
 
     if errors:
         return CheckResult(passed=False, messages=errors)
