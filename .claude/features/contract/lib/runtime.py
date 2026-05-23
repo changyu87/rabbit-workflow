@@ -296,3 +296,82 @@ def check_manifest_drift(alert: dict, *, repo_root: str) -> dict:
     names = ", ".join(sorted(set(drifted)))
     return print_result(alert["text"].replace("{names}", names),
                         alert["icon"], alert["color"])
+
+
+def _resolve_marker_value(repo_root: str, storage: dict) -> str:
+    """marker-file semantics: present -> 'false', absent -> 'true'.
+    Matches the rabbit-cage human-approval CONFIGURATION example
+    (values.true => delete_marker, values.false => write_marker).
+    """
+    path = storage.get("path")
+    if not path:
+        return ""
+    return "false" if os.path.isfile(os.path.join(repo_root, path)) else "true"
+
+
+def _resolve_json_key_value(repo_root: str, storage: dict, default: str) -> str:
+    """Read storage.key (dotted path) from storage.file. Returns stringified
+    value, or `default` if file is missing, unreadable, or key absent.
+    Booleans stringify to 'true' / 'false'.
+    """
+    file_rel = storage.get("file")
+    key_path = storage.get("key")
+    if not file_rel or not key_path:
+        return default
+    full = os.path.join(repo_root, file_rel)
+    if not os.path.isfile(full):
+        return default
+    try:
+        with open(full) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return default
+    cursor = data
+    for part in key_path.split("."):
+        if not isinstance(cursor, dict) or part not in cursor:
+            return default
+        cursor = cursor[part]
+    if isinstance(cursor, bool):
+        return "true" if cursor else "false"
+    return str(cursor)
+
+
+def _resolve_current_value(repo_root: str, configurable: dict):
+    """Return the current string value of a configurable for alert-on
+    comparison, or None if storage type is action-style (json-array*).
+    """
+    storage = configurable.get("storage") or {}
+    stype = storage.get("type")
+    default = configurable.get("default", "")
+    if stype == "marker-file":
+        return _resolve_marker_value(repo_root, storage)
+    if stype == "json-key":
+        return _resolve_json_key_value(repo_root, storage, default)
+    # json-array / json-array-templated are action-style; no scalar value
+    return None
+
+
+def iterate_configurables_alerts(*, repo_root: str):
+    """Walk every feature's CONFIGURATION array; for each configurable whose
+    current value matches alert-on, return its alert-message as a
+    print_result. Order: alphabetical by feature name x declaration order.
+    Returns a list (possibly empty).
+    """
+    out = []
+    for name, fdir, data in _enumerate_features(repo_root):
+        configuration = data.get("configuration")
+        if not isinstance(configuration, list):
+            continue
+        for cfg in configuration:
+            alert_on = cfg.get("alert-on")
+            alert_msg = cfg.get("alert-message")
+            if alert_on is None or not isinstance(alert_msg, dict):
+                continue
+            current = _resolve_current_value(repo_root, cfg)
+            if current is None:
+                continue
+            if current == alert_on:
+                out.append(print_result(alert_msg["text"],
+                                        alert_msg["icon"],
+                                        alert_msg["color"]))
+    return out
