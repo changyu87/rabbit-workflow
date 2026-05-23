@@ -129,3 +129,36 @@ def publish_settings(source: str, *, feature_dir: str, repo_root: str) -> CheckR
     """
     return publish_file(source, ".claude/settings.json",
                         feature_dir=feature_dir, repo_root=repo_root)
+
+
+def publish_generated(target: str, producer: str, args: dict, *,
+                      feature_dir: str, repo_root: str) -> CheckResult:
+    """Invoke a named content producer and write its output to target (idempotent).
+
+    target   — repo-root-relative path to write, e.g. "CLAUDE.md".
+    producer — producer name resolved via lib.producers.call_producer (Plan B.4).
+    args     — arguments forwarded to the producer function.
+
+    Late-imports lib.producers so this module is importable before B.4 lands.
+    Returns CheckResult(passed=False) if lib.producers is unavailable.
+    """
+    try:
+        from lib import producers  # noqa: PLC0415
+        content = producers.call_producer(producer, args,
+                                          feature_dir=feature_dir, repo_root=repo_root)
+    except (ImportError, AttributeError) as e:
+        return CheckResult(False, [f"ERROR: lib.producers unavailable: {e}"])
+
+    target_path = os.path.join(repo_root, target)
+    current = ""
+    if os.path.isfile(target_path):
+        with open(target_path) as f:
+            current = f.read()
+    if content == current:
+        return CheckResult(True, [f"OK: {target} unchanged (no-op)"])
+    target_dir = os.path.dirname(target_path)
+    if target_dir:
+        os.makedirs(target_dir, exist_ok=True)
+    with open(target_path, "w") as f:
+        f.write(content)
+    return CheckResult(True, [f"OK: {target} generated via {producer}"])
