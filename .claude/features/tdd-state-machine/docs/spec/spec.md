@@ -11,130 +11,132 @@ moves through. One script:
 - `scripts/tdd-step.py` — the state machine itself (`show`, `next`,
   `transitions`, `transition`).
 
-`tdd-subagent` contains only subagent dispatch
-(`dispatch-tdd-subagent.py` + agent definition); the state-machine
-script is owned here and absent from `tdd-subagent/scripts/`.
-
 ## Schema / Behavior
 
-### Inv 1 — Forward-only state machine
+### Inv 1 — Valid state set
 
-The state machine is forward-only. The canonical forward order is:
+The valid `tdd_state` values are exactly:
+
+    spec, spec-update, test-red, impl, test-green, deprecated
+
+`transition` rejects any other target value with exit 1.
+
+### Inv 2 — Primary forward order
+
+The primary forward order is:
 
     spec -> spec-update -> test-red -> impl -> test-green -> deprecated
 
-Backward transitions are denied unless `--force` is supplied. `deprecated`
-is terminal and rejects all transitions, even with `--force`.
+Without `--force`, a transition is accepted only when the new state is
+the primary forward target of the current state (or the alternate target
+defined in Inv 3).
 
-There is exactly one forward-only alternative branch (`_FORWARD_ALT`):
-`test-green -> spec-update`, used to start a new cycle on the same feature
-after the previous cycle reached test-green.
+### Inv 3 — Alternate forward edge
 
-### Inv 2 — One script, named exactly
+From `test-green`, the alternate forward target `spec-update` is
+accepted without `--force`. This is the only alternate forward edge in
+the state machine and lets a feature start a fresh cycle without going
+through `deprecated`.
 
-`scripts/tdd-step.py`. No additional scripts are introduced by this
-feature.
+### Inv 4 — Backward transitions require `--force`
 
-### Inv 3 — Executable bit
+Any transition that is not a forward edge (per Inv 2 or Inv 3) is
+rejected with exit 1 unless `--force` is supplied. With `--force`, a
+transition between any two non-terminal states is accepted.
 
-The script is stored with the user-executable bit set (any mode
-satisfying `mode & 0o100`; in practice `0o755` or `0o775` depending on the
-contributor's umask). The end-to-end test suite invokes it via
-`python3 <script>` so the executable bit is not strictly required at
-run-time, but is preserved for direct invocation.
+### Inv 5 — `deprecated` is terminal
 
-### Inv 4 — _FORWARD_ALT test-green → spec-update transition
+From `deprecated`, every transition is rejected with exit 1, including
+when `--force` is supplied.
 
-The state machine's `_FORWARD_ALT` dictionary MUST include
-`test-green` → `spec-update` (also enforced by Inv 10). This lets a
-feature reaching `test-green` start a fresh cycle without `--force`.
-A regression test MUST cover this path end-to-end:
-`tdd-step.py transition <feat> spec-update` from a `test-green` fixture
-exits 0 and feature.json now reads `spec-update`.
+### Inv 6 — Single-script feature
 
-### Inv 6 — Sole ownership: present here, absent in `tdd-subagent`
+This feature owns exactly one script: `scripts/tdd-step.py`. The script
+MUST be present at `.claude/features/tdd-state-machine/scripts/tdd-step.py`
+and MUST be absent from `.claude/features/tdd-subagent/scripts/`.
 
-`tdd-state-machine` owns `tdd-step.py`. The script MUST be present in
-`.claude/features/tdd-state-machine/scripts/` and MUST be absent from
-`.claude/features/tdd-subagent/scripts/`.
+### Inv 7 — Executable bit
 
-### Inv 7 — Post `test-green` hooks
+`scripts/tdd-step.py` is stored with the user-executable bit set (any
+mode satisfying `mode & 0o100`; in practice `0o755` or `0o775` depending
+on the contributor's umask).
 
-On a successful transition to `test-green`, `tdd-step.py` invokes
-`_post_test_green_hooks(<feature-dir>)`. The hook runs (best-effort, never
-blocks the transition):
+### Inv 8 — `spec-update -> test-red` precondition
 
-- `_run_enforcement_checks` — calls the library functions in
-  `contract.lib.checks` directly (no subprocess fan-out to enforcement
-  CLI scripts). The set called: `check_tests_non_interactive`,
-  `check_sentinel`, `check_naming`, `check_imports_resolve`,
-  `check_symlinks_resolve`, `check_template_producer_consistency`.
-  A failed `CheckResult` emits a warning via `rabbit_print` on stderr
-  but does not fail the transition.
-- `rabbit-project.py consolidate <project>` — invoked when the enclosing
-  project directory carries a `project-map.json`; failure is swallowed.
+The transition `spec-update -> test-red` is accepted only when at least
+one of the following holds:
 
-### Inv 8 — `--spec-no-change-reason` flag and git-diff gate
+- `git diff HEAD` under `<feature-dir>/docs/spec/` is non-empty, OR
+- `--spec-no-change-reason <reason>` is supplied with a non-empty
+  reason; the reason is persisted on `feature.json` as
+  `spec_no_change_reason`.
 
-For the transition `spec-update -> test-red`, `tdd-step.py` requires
-either (a) a non-empty `git diff HEAD` under `<feature-dir>/docs/spec/`,
-or (b) the `--spec-no-change-reason <reason>` flag with a non-empty
-reason. When (b) is supplied the reason is persisted on `feature.json`
-as `spec_no_change_reason`. Missing both causes the transition to be
-denied with exit 1.
+When neither holds, the transition is denied with exit 1.
 
-### Inv 9 — `rabbit_print` branding contract
+### Inv 9 — Branding render via `rabbit_print`
 
-`tdd-step.py` MUST render all transition messages through the centralised
-`rabbit_print` module loaded from
-`.claude/features/contract/scripts/rabbit_print.py`. Accepted forward
-transitions emit `tdd_transition(cur, new)` (ANSI green, `[🐇 rabbit 🐇]`
-brand) on stdout; forced transitions additionally emit `tdd_forced(...)`
-(ANSI red) on stderr.
+`tdd-step.py` MUST render every transition message through the
+centralised `rabbit_print` module loaded from
+`.claude/features/contract/scripts/rabbit_print.py`. Accepted
+transitions emit `tdd_transition(cur, new)` on stdout (ANSI green,
+`[🐇 rabbit 🐇]` brand). Forced transitions additionally emit
+`tdd_forced(cur, new)` on stderr (ANSI red).
 
-### Inv 10 — `test-green` has `spec-update` as an alternate forward target
+### Inv 10 — `test-green` enforcement-check hook
 
-`tdd-step.py`'s `_FORWARD_ALT['test-green']` MUST include `spec-update`
-so a feature reaching `test-green` can start a fresh cycle without
-`--force`. This is the structural backing for Inv 1's `_FORWARD_ALT`
-narrative.
+After a successful transition into `test-green`, `tdd-step.py` calls
+each of the following functions from `contract.lib.checks` in-process:
 
-### Inv 11 — `_run_enforcement_checks` uses the `contract.lib.checks` library
+- `check_tests_non_interactive`
+- `check_sentinel`
+- `check_naming`
+- `check_imports_resolve`
+- `check_symlinks_resolve`
+- `check_template_producer_consistency`
 
-`tdd-step.py` MUST import the check functions from
-`contract.lib.checks` (located at
-`.claude/features/contract/lib/checks.py`) and call them in-process. It
-MUST NOT fan out via `subprocess` to the
-`.claude/features/contract/scripts/enforcement/check-*.py` CLI shims.
-The library returns a `CheckResult` per call; a non-passed result emits a
-`rabbit_print` warning on stderr and the transition continues.
+A non-passed `CheckResult` from any of these emits a non-empty warning
+via `rabbit_print` on stderr. The hook is best-effort and never blocks
+the transition.
 
-### Inv 12 — `spec-update -> test-red` runs `check_numbered_lists`
+### Inv 11 — `test-green` project-consolidate hook
 
-For the transition `spec-update -> test-red`, `tdd-step.py` MUST call
-`contract.lib.checks.check_numbered_lists` against the feature's
-`docs/spec/` directory. A non-passed result emits a warning via
-`rabbit_print` on stderr but does NOT block the transition (the
-git-diff / `--spec-no-change-reason` gate from Inv 8 remains the only
-blocking precondition for this transition).
+After a successful transition into `test-green`, when
+`project-map.json` exists in the enclosing project directory (the
+parent of `<feature-dir>`'s parent), `tdd-step.py` invokes
+`rabbit-project.py consolidate <project-name>`. The hook is
+best-effort: any failure (missing script, broken project layout) is
+swallowed and never blocks the transition.
+
+### Inv 12 — `spec-update -> test-red` numbered-list check
+
+After a successful transition `spec-update -> test-red`, `tdd-step.py`
+calls `contract.lib.checks.check_numbered_lists` against
+`<feature-dir>/docs/spec/`. A non-passed `CheckResult` emits a warning
+via `rabbit_print` on stderr but does NOT block the transition. The
+Inv 8 gate remains the only blocking precondition for this transition.
+
+### Inv 13 — In-process library imports (no subprocess to CLI shims)
+
+The check functions used by Inv 10 and Inv 12 are imported from the
+`contract.lib.checks` library module at
+`.claude/features/contract/lib/checks.py` and invoked in-process.
+`tdd-step.py` MUST NOT fan out via `subprocess` to the
+`.claude/features/contract/scripts/enforcement/check-*.py` CLI shims
+for any of these checks.
 
 ## What this feature does NOT define
 
-- **Subagent dispatch** (`dispatch-tdd-subagent.py`, `tdd-subagent` agent
-  markdown) — owned by `tdd-subagent`.
-- **Deployment of the scripts** to
-  `.claude/agents/tdd-subagent/scripts/` — that path mapping is owned by
-  `build-contract.json` (changed in a separate contract-feature cycle).
+- **Subagent dispatch** (`dispatch-tdd-subagent.py`, `tdd-subagent`
+  agent markdown) — owned by `tdd-subagent`.
+- **Deployment of the script** to `.claude/agents/tdd-subagent/scripts/`
+  — owned by `build-contract.json`.
 - **TDD orchestration / state policy at the workflow level**
-  (`/rabbit-feature-touch`, human-approval gates, etc.) — owned by
+  (`/rabbit-feature-touch`, human-approval gates) — owned by
   `rabbit-feature`.
 - **Hook integration** (stop hook, post-tool hooks) — owned by their
   respective hook features.
 
 ## Tests
 
-`test/run.py` runs the end-to-end suite. The suite imports the three
-state-machine scripts from this feature's own `scripts/` directory and
-exercises every documented behaviour above, including the
-present-here-absent-in-`tdd-subagent` check for Inv 6
-(`test-no-originals-in-tdd-subagent.py`).
+`test/run.py` runs the end-to-end suite. The suite exercises every
+invariant above against `scripts/tdd-step.py`.
