@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 36: SKILL.md frontmatter completeness.
+"""Inv 37: SKILL.md frontmatter completeness.
 
 Every SKILL.md declared in `feature.json.surface.skills` MUST declare
 non-empty `version`, `owner`, and `deprecation_criterion` fields in its

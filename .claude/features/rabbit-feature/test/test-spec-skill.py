@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 25-30: rabbit-feature-spec SKILL.md content.
+"""Inv 26-31: rabbit-feature-spec SKILL.md content.
 
 Covers frontmatter model, request classification, impl-suggestion output
 (including generated_at format), spec-update ordering, read-before-edit
@@ -41,8 +41,8 @@ def _section(text: str, heading_re: str) -> str:
     return m.group(1)
 
 
-# Inv 25: frontmatter declares model: opus
-def test_inv25_model_opus_in_frontmatter() -> None:
+# Inv 26: frontmatter declares model: opus
+def test_inv26_model_opus_in_frontmatter() -> None:
     fm = _frontmatter(_text())
     m = re.search(r"^model\s*:\s*(\S+)", fm, re.MULTILINE)
     assert m, "SKILL.md frontmatter must declare 'model:'"
@@ -51,8 +51,8 @@ def test_inv25_model_opus_in_frontmatter() -> None:
     )
 
 
-# Inv 26: request classification gates superpowers invocation
-def test_inv26_classifies_request_before_superpowers() -> None:
+# Inv 27: request classification gates superpowers invocation
+def test_inv27_classifies_request_before_superpowers() -> None:
     text = _text()
     lower = text.lower()
     assert "open-ended" in lower and "specific" in lower, (
@@ -66,8 +66,8 @@ def test_inv26_classifies_request_before_superpowers() -> None:
     )
 
 
-# Inv 27: impl-suggestion output shape (path + schema_version + generated_at format)
-def test_inv27_impl_suggestion_path_and_schema() -> None:
+# Inv 28: impl-suggestion output shape (path + schema_version + generated_at format)
+def test_inv28_impl_suggestion_path_and_schema() -> None:
     text = _text()
     assert ".rabbit/impl-suggestion-" in text, (
         "SKILL.md must document writing '.rabbit/impl-suggestion-<feature-name>.json'"
@@ -77,7 +77,7 @@ def test_inv27_impl_suggestion_path_and_schema() -> None:
     )
 
 
-def test_inv27_generated_at_format() -> None:
+def test_inv28_generated_at_format() -> None:
     text = _text()
     # The documented format must be the strict YYYY-MM-DDTHH:MM:SSZ form.
     assert "YYYY-MM-DDTHH:MM:SSZ" in text, (
@@ -95,8 +95,8 @@ def test_inv27_generated_at_format() -> None:
     )
 
 
-# Inv 28: spec update precedes impl-suggestion write
-def test_inv28_spec_update_before_impl_suggestion() -> None:
+# Inv 29: spec update precedes impl-suggestion write
+def test_inv29_spec_update_before_impl_suggestion() -> None:
     text = _text()
     # The numbered steps in the SKILL.md must place spec update (Step 4)
     # before impl-suggestion write (Step 5).
@@ -115,8 +115,8 @@ def test_inv28_spec_update_before_impl_suggestion() -> None:
     )
 
 
-# Inv 29: read-before-edit contract
-def test_inv29_step_1_must_read_mandate() -> None:
+# Inv 30: read-before-edit contract
+def test_inv30_step_1_must_read_mandate() -> None:
     body = _section(_text(), r"Step 1.*Read Current State")
     assert "MUST Read" in body, (
         "Step 1 must contain the hard 'MUST Read' mandate (capital R)"
@@ -124,7 +124,7 @@ def test_inv29_step_1_must_read_mandate() -> None:
     assert "spec.md" in body, "Step 1 mandate must reference 'spec.md'"
 
 
-def test_inv29_step_4_pre_condition_repeats_obligation() -> None:
+def test_inv30_step_4_pre_condition_repeats_obligation() -> None:
     body = _section(_text(), r"Step 4.*Update the Spec")
     assert "PRE-CONDITION" in body, (
         "Step 4 must contain a 'PRE-CONDITION' note repeating the Read obligation"
@@ -148,8 +148,8 @@ def test_inv29_step_4_pre_condition_repeats_obligation() -> None:
     )
 
 
-# Inv 30: process-agnostic SKILL.md
-def test_inv30_no_caller_identification() -> None:
+# Inv 31: process-agnostic SKILL.md
+def test_inv31_no_caller_identification() -> None:
     text = _text()
     # The SKILL.md must NOT identify a specific caller as the primary
     # invocation context.
@@ -164,7 +164,7 @@ def test_inv30_no_caller_identification() -> None:
     )
 
 
-def test_inv30_what_you_do_not_do_no_named_skills() -> None:
+def test_inv31_what_you_do_not_do_no_named_skills() -> None:
     text = _text()
     m = re.search(
         r"^##\s+What You Do NOT Do\s*$(.*?)(?=^##\s|\Z)",

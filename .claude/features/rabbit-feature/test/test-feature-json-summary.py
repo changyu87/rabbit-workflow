@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 37: feature.json summary mentions every declared skill.
+"""Inv 38: feature.json summary mentions every declared skill.
 
 `feature.json.summary` MUST mention by name every skill declared in
 `feature.json.surface.skills`.

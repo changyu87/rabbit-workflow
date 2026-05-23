@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 38: surface and contract consistency.
+"""Inv 39: surface and contract consistency.
 
 (a) Every skill listed in `feature.json.surface.skills` has a corresponding
     entry under `contract.md.provides.skills`.

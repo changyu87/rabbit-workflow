@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 32: new-feature.py scaffolds a conforming feature dir.
+"""Inv 33: new-feature.py scaffolds a conforming feature dir.
 
 The scaffolder is executable and produces a directory containing feature.json
 (with template_version), docs/spec/spec.md, docs/spec/contract.md, and

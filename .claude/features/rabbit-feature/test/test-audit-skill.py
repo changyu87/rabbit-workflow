@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 33-34: rabbit-feature-audit SKILL.md.
+"""Inv 34-35: rabbit-feature-audit SKILL.md.
 
 Covers invocation surface ('all' / '<feature-name>'), validate-feature.py
 invocation, and surface/contract declarations.
@@ -24,28 +24,28 @@ CONTRACT_MD = FEATURE_DIR / "docs/spec/contract.md"
 VALIDATOR_PATH = ".claude/features/contract/scripts/validate-feature.py"
 
 
-# Inv 33: invocation surface — 'all' and '<feature-name>'
-def test_inv33_documents_all_mode() -> None:
+# Inv 34: invocation surface — 'all' and '<feature-name>'
+def test_inv34_documents_all_mode() -> None:
     text = SKILL_MD.read_text()
     assert "all" in text, "SKILL.md must document the 'all' args mode"
 
 
-def test_inv33_documents_single_feature_mode() -> None:
+def test_inv34_documents_single_feature_mode() -> None:
     text = SKILL_MD.read_text()
     assert "<feature-name>" in text or "feature-name" in text, (
         "SKILL.md must document the single '<feature-name>' args mode"
     )
 
 
-# Inv 34: validate-feature.py invocation
-def test_inv34_skill_references_validator() -> None:
+# Inv 35: validate-feature.py invocation
+def test_inv35_skill_references_validator() -> None:
     text = SKILL_MD.read_text()
     assert VALIDATOR_PATH in text, (
         f"SKILL.md must reference {VALIDATOR_PATH!r} for per-feature validation"
     )
 
 
-def test_inv34_skill_emits_pass_fail() -> None:
+def test_inv35_skill_emits_pass_fail() -> None:
     text = SKILL_MD.read_text().lower()
     assert "pass" in text and "fail" in text, (
         "SKILL.md must document per-feature pass/fail output"

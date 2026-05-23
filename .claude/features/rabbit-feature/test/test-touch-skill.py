@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Inv 4-15: rabbit-feature-touch SKILL.md content.
+"""Inv 4-16: rabbit-feature-touch SKILL.md content.
 
 Locks the rabbit-feature-touch SKILL.md (and the deployed copy) against
 drift on the seven-step sequence, scope-resolution invocation, spec
-authoring invocation, Step 4 human-approval semantics (dispatcher-side
-gate, bypass marker mechanism, branch documentation, brand prefix),
-B/B mode item.json reads, and Red Flags content.
+authoring invocation, Step 3 spec-commit obligation, Step 4 human-approval
+semantics (dispatcher-side gate, bypass marker mechanism, branch
+documentation, brand prefix), B/B mode item.json reads, and Red Flags
+content.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -231,6 +232,26 @@ def test_inv15_red_flags_prohibit_scope_marker_creation() -> None:
     assert "main session" in lower, (
         "Red Flags must mention 'main session' marker-creation prohibition"
     )
+
+
+# Inv 16: Step 3 spec-commit obligation documented in SKILL.md
+def test_inv16_step_3_spec_commit_obligation() -> None:
+    for skill_path in (SOURCE_SKILL, DEPLOYED_SKILL):
+        assert skill_path.exists(), f"missing SKILL.md: {skill_path}"
+        text = skill_path.read_text(encoding="utf-8")
+        body = _step_body(text, 3)
+        assert "Commit spec changes BEFORE Step 5" in body, (
+            f"Step 3 in {skill_path} must contain the literal phrase "
+            "'Commit spec changes BEFORE Step 5'"
+        )
+        assert "spec(<feature-name>): update spec for" in body, (
+            f"Step 3 in {skill_path} must document the commit message pattern "
+            "'spec(<feature-name>): update spec for ...'"
+        )
+        assert "git diff --cached --quiet" in body, (
+            f"Step 3 in {skill_path} must phrase the empty-diff skip condition "
+            "as a 'git diff --cached --quiet' test"
+        )
 
 
 if __name__ == "__main__":

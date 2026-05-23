@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 23: rabbit-feature-scope SKILL.md fence separation.
+"""Inv 24: rabbit-feature-scope SKILL.md fence separation.
 
 The Usage section presents the shell command and the Agent tool invocation
 in separate fenced code blocks with distinct fence labels, with the Agent

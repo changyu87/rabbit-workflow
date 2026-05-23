@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 31: rabbit-feature-new SKILL.md invocation.
+"""Inv 32: rabbit-feature-new SKILL.md invocation.
 
 The SKILL.md instructs the skill to invoke new-feature.py for scaffolding
 and validate-feature.py for validation. The skill is declared in

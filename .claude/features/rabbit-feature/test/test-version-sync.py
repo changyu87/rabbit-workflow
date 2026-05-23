@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 35: three-way version alignment.
+"""Inv 36: three-way version alignment.
 
 `feature.json.version`, `docs/spec/spec.md` frontmatter `version`, and
 `docs/spec/contract.md` frontmatter `version` MUST match exactly.
