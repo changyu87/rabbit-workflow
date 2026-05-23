@@ -9,6 +9,11 @@ Exit:
   0 success
   1 invalid name or target exists
   2 invocation error
+
+Version: 1.0.0
+Owner: rabbit-workflow team (rabbit-feature)
+Deprecation criterion: when feature scaffolding is exposed as a native
+    rabbit CLI subcommand.
 """
 
 import argparse
