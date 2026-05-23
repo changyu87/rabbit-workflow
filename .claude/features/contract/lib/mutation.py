@@ -199,3 +199,34 @@ def append_json_array(file: str, key: str, value, *, repo_root: str) -> CheckRes
         existing.append(value)
     _write_json(path, data)
     return CheckResult(True, [f"OK: {file}::{key} appended"])
+
+
+def remove_json_array_value(file: str, key: str, value, *, repo_root: str) -> CheckResult:
+    """Remove value from JSON array at dotted key path in file.
+
+    Idempotent: absent file, absent key, and absent value are all no-ops.
+    Removes the first occurrence only (deterministic single-removal). The
+    empty array is preserved; the key is not auto-removed.
+
+    If an existing value at the key is not an array, returns passed=False
+    without modifying the file (data preservation).
+    """
+    path = os.path.join(repo_root, file)
+    if not os.path.isfile(path):
+        return CheckResult(True, [f"OK: {file} absent (no-op)"])
+    data, err = _load_json_or_empty(path)
+    if err is not None:
+        return CheckResult(False, [err])
+    try:
+        existing = _get_nested(data, key)
+    except KeyError:
+        return CheckResult(True, [f"OK: {file}::{key} absent (no-op)"])
+    if not isinstance(existing, list):
+        return CheckResult(False, [
+            f"ERROR: {file}::{key} exists but is not an array (type={type(existing).__name__}); refusing to modify"
+        ])
+    if value not in existing:
+        return CheckResult(True, [f"OK: {file}::{key} does not contain value (no-op)"])
+    existing.remove(value)
+    _write_json(path, data)
+    return CheckResult(True, [f"OK: {file}::{key} value removed"])
