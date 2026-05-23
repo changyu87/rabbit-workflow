@@ -78,6 +78,11 @@ else:
     ok("top-level type is array")
 
 items = schema.get("items", {})
+if items.get("type") != "object":
+    fail("items.type must be 'object'")
+else:
+    ok("items.type is object")
+
 required = set(items.get("required", []))
 if not {"id", "subcommand"}.issubset(required):
     fail(f"items.required must include id and subcommand, got {sorted(required)}")
@@ -98,6 +103,13 @@ if api_call_ref != "#/definitions/api_call":
 else:
     ok("values references api_call definition")
 
+actions_prop = items.get("properties", {}).get("actions", {})
+actions_ref = actions_prop.get("additionalProperties", {}).get("$ref")
+if actions_ref != "#/definitions/api_call":
+    fail(f"actions.additionalProperties must $ref api_call, got {actions_ref!r}")
+else:
+    ok("actions references api_call definition")
+
 api_call = schema.get("definitions", {}).get("api_call", {})
 api_enum = set(api_call.get("properties", {}).get("api", {}).get("enum", []))
 if api_enum != EXPECTED_MUTATION_APIS:
@@ -106,6 +118,11 @@ if api_enum != EXPECTED_MUTATION_APIS:
     fail(f"mutation api enum mismatch — missing: {sorted(missing)}, extra: {sorted(extra)}")
 else:
     ok("mutation api enum is the closed mutation API set")
+
+if api_call.get("additionalProperties") is not False:
+    fail("api_call.additionalProperties must be false (closed shape)")
+else:
+    ok("api_call.additionalProperties is false")
 
 one_of = items.get("oneOf", [])
 required_sets = [frozenset(o.get("required", [])) for o in one_of]
