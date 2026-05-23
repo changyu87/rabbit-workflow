@@ -51,7 +51,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ],
     "lib": [
       ".claude/features/contract/lib/__init__.py",
-      ".claude/features/contract/lib/checks.py"
+      ".claude/features/contract/lib/checks.py",
+      ".claude/features/contract/lib/publish.py"
     ],
     "skills": []
   },
