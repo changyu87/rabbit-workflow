@@ -2,7 +2,7 @@
 """test-policy-bug-fixes.py — documentary regression guard for closed
 historical policy tickets.
 
-Role: a single kitchen-sink suite that re-asserts the structural fixes of 11
+Role: a single kitchen-sink suite that re-asserts the structural fixes of 10
 closed tickets so they cannot silently regress. It is NOT the canonical home
 for these checks — `test-policy-invariants.py` is. This file exists only until
 each assertion is folded into the invariants suite.
