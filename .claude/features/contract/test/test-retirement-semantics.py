@@ -9,10 +9,11 @@ Covers:
       structural files (spec.md, contract.md, test/run.py) are absent.
   t3: validate-feature.py still fails (exit 1) on a feature whose
       feature.json carries status=active and is missing required files.
-  t4: .claude/workspace-structure.json marks the retired features
-      `rabbit-spec` and `rabbit-feature-scope` as required: false so
-      workspace-map.py --audit does not emit error-severity findings
-      for tombstone directories.
+  t4: .claude/workspace-structure.json marks the retired feature
+      `rabbit-spec` as required: false so workspace-map.py --audit does
+      not emit error-severity findings for the tombstone directory.
+      The `rabbit-feature-scope` directory was fully retired and removed
+      (no tombstone), so its node is also absent from workspace-structure.json.
   t5: .claude/workspace-structure.json declares `tdd-state-machine` as
       a feature node (post-consolidation home of tdd-step/context/drift-check).
   t6: tdd-state-machine/publish.json tdd-step.py source points to tdd-state-machine scripts/
@@ -121,7 +122,8 @@ with tempfile.TemporaryDirectory() as td:
         ko(3, "validate-feature.py incorrectly passed an active feature missing spec/contract/test")
 
 
-# t4: workspace-structure.json marks retired features as required: false
+# t4: workspace-structure.json marks the rabbit-spec tombstone as required:false,
+# and the fully-retired rabbit-feature-scope directory is absent entirely.
 with open(WS_STRUCTURE) as f:
     ws = json.load(f)
 features_node = next((n for n in ws["nodes"] if n["name"] == "features"), None)
@@ -131,14 +133,17 @@ else:
     feat_children = {c["name"]: c for c in features_node.get("children", [])}
     rs = feat_children.get("rabbit-spec")
     rfs = feat_children.get("rabbit-feature-scope")
-    if rs is None or rfs is None:
-        ko(4, f"workspace-structure.json missing retired feature nodes: rabbit-spec={rs!r}, rabbit-feature-scope={rfs!r}")
-    elif rs.get("required") is True or rfs.get("required") is True:
-        ko(4, f"workspace-structure.json marks retired features as required: "
-              f"rabbit-spec.required={rs.get('required')!r}, "
-              f"rabbit-feature-scope.required={rfs.get('required')!r}")
+    if rs is None:
+        ko(4, "workspace-structure.json missing rabbit-spec tombstone node")
+    elif rs.get("required") is True:
+        ko(4, f"workspace-structure.json marks rabbit-spec tombstone as required: "
+              f"rabbit-spec.required={rs.get('required')!r}")
+    elif rfs is not None:
+        ko(4, "workspace-structure.json must NOT declare rabbit-feature-scope "
+              "(directory was fully retired and removed; no tombstone)")
     else:
-        ok(4, "workspace-structure.json marks rabbit-spec and rabbit-feature-scope as required: false")
+        ok(4, "workspace-structure.json marks rabbit-spec tombstone as required:false "
+              "and omits the fully-retired rabbit-feature-scope")
 
 
 # t5: workspace-structure.json declares tdd-state-machine as a feature node

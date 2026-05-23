@@ -13,7 +13,6 @@
         { "name": "rabbit-cage",      "required": true,  "description": "Claude Code surface owner", "children": [] },
         { "name": "tdd-subagent",     "required": true,  "description": "forward-only TDD state machine", "children": [] },
         { "name": "tdd-state-machine", "required": true, "description": "canonical home of tdd-step/context/drift-check scripts (post-consolidation source for the tdd-subagent agent surface)", "children": [] },
-        { "name": "rabbit-feature-scope", "required": false, "description": "RETIRED — surface absorbed into rabbit-feature; tombstone retained per Inv 43", "children": [] },
         { "name": "rabbit-spec",      "required": false, "description": "RETIRED — surface absorbed into rabbit-feature as rabbit-feature-spec; tombstone retained per Inv 43", "children": [] },
         { "name": "rabbit-file",      "required": true,  "description": "unified bug and backlog filing/tracking on the bug-backlog-files branch", "children": [] },
         { "name": "rabbit-feature",   "required": true,  "description": "owns rabbit-feature-touch orchestration skill; invokes tdd-subagent scripts", "children": [] },
