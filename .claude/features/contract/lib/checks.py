@@ -752,8 +752,10 @@ def _validate_configuration(configuration):
             storage = entry["storage"]
             if not isinstance(storage, dict):
                 errors.append(f"{ctx}.storage must be an object")
-            elif storage.get("type") not in _STORAGE_TYPE_ENUM:
-                errors.append(f"{ctx}.storage: unknown storage type {storage.get('type')!r}")
+            elif "type" not in storage:
+                errors.append(f"{ctx}.storage: missing required 'type' field")
+            elif storage["type"] not in _STORAGE_TYPE_ENUM:
+                errors.append(f"{ctx}.storage: unknown storage type {storage['type']!r}")
         if "alert-message" in entry:
             am = entry["alert-message"]
             if not isinstance(am, dict):
@@ -762,8 +764,8 @@ def _validate_configuration(configuration):
                 for k in ("text", "icon", "color"):
                     if k not in am:
                         errors.append(f"{ctx}.alert-message missing required '{k}'")
-                if am.get("color") not in _COLOR_ENUM:
-                    errors.append(f"{ctx}.alert-message.color must be one of {sorted(_COLOR_ENUM)}, got {am.get('color')!r}")
+                if "color" in am and am["color"] not in _COLOR_ENUM:
+                    errors.append(f"{ctx}.alert-message.color must be one of {sorted(_COLOR_ENUM)}, got {am['color']!r}")
     return errors
 
 

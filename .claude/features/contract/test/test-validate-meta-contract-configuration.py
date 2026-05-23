@@ -133,6 +133,29 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t9: unknown-storage-type acceptance bug: passed={r.passed}, messages={r.messages}")
 
+with tempfile.TemporaryDirectory() as td:
+    # t10: storage object missing 'type' key -> "missing required 'type'" (not "unknown storage type None")
+    bad = dict(VALID_VALUES_ENTRY)
+    bad["storage"] = {}
+    r = validate_meta_contract(write(td, [bad]))
+    if not r.passed and any("missing required 'type'" in m for m in r.messages):
+        ok("t10: storage missing 'type' is reported as missing-key (not as unknown-type 'None')")
+    else:
+        fail(f"t10: missing-storage-type acceptance bug: passed={r.passed}, messages={r.messages}")
+
+with tempfile.TemporaryDirectory() as td:
+    # t11: alert-message missing 'color' must NOT double-report (one missing-key error, no enum-mismatch error)
+    bad = dict(VALID_VALUES_ENTRY)
+    bad["alert-on"] = "false"
+    bad["alert-message"] = {"text": "x", "icon": "x"}
+    r = validate_meta_contract(write(td, [bad]))
+    missing_msgs = [m for m in r.messages if "missing required 'color'" in m]
+    enum_msgs = [m for m in r.messages if "color must be one of" in m]
+    if not r.passed and len(missing_msgs) == 1 and len(enum_msgs) == 0:
+        ok("t11: missing alert-message.color emits exactly one missing-key error (no double-report)")
+    else:
+        fail(f"t11: alert-message.color double-report bug: passed={r.passed}, missing={missing_msgs}, enum={enum_msgs}")
+
 if FAIL:
     print("test-validate-meta-contract-configuration: FAIL", file=sys.stderr)
     sys.exit(1)
