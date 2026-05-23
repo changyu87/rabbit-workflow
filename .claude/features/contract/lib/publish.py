@@ -15,6 +15,7 @@ Deprecation criterion: when the rabbit CLI exposes native artifact publishing.
 import hashlib
 import os
 import shutil
+from pathlib import Path
 
 from lib.checks import CheckResult
 
@@ -42,3 +43,32 @@ def publish_file(source: str, dest: str, *, feature_dir: str, repo_root: str) ->
     os.makedirs(os.path.dirname(dst_path), exist_ok=True)
     shutil.copy(src_path, dst_path)
     return CheckResult(True, [f"OK: {dest} published"])
+
+
+def publish_skill(source: str, *, feature_dir: str, repo_root: str) -> CheckResult:
+    """Deploy a skill's SKILL.md to .claude/skills/<skill-name>/SKILL.md.
+
+    source — feature-dir-relative path, e.g. "skills/rabbit-foo/SKILL.md".
+    Skill name is the name of the source file's parent directory.
+    """
+    skill_name = Path(source).parent.name
+    dest = f".claude/skills/{skill_name}/{Path(source).name}"
+    return publish_file(source, dest, feature_dir=feature_dir, repo_root=repo_root)
+
+
+def publish_command(source: str, *, feature_dir: str, repo_root: str) -> CheckResult:
+    """Deploy a command file to .claude/commands/<basename>.
+
+    source — feature-dir-relative path, e.g. "commands/rabbit-do.md".
+    """
+    dest = f".claude/commands/{Path(source).name}"
+    return publish_file(source, dest, feature_dir=feature_dir, repo_root=repo_root)
+
+
+def publish_agent(source: str, *, feature_dir: str, repo_root: str) -> CheckResult:
+    """Deploy an agent file to .claude/agents/<basename>.
+
+    source — feature-dir-relative path, e.g. "agents/rabbit-helper.md".
+    """
+    dest = f".claude/agents/{Path(source).name}"
+    return publish_file(source, dest, feature_dir=feature_dir, repo_root=repo_root)
