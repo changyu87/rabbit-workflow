@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "configuration.schema.json",
+  "schema_version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "deprecation_criterion": "when Claude Code exposes a native per-feature configuration mechanism that subsumes this schema",
+  "title": "Feature CONFIGURATION",
+  "description": "Declarations of user-mutable configurables. Each declares an id, subcommand, storage location, mutation API per value or action, default state, and optional active-override alert. rabbit-config reads these declarations at runtime to dispatch /rabbit-config calls and emit Stop alerts.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "subcommand"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {"type": "string", "minLength": 1},
+      "subcommand": {"type": "string", "minLength": 1},
+      "storage": {
+        "type": "object",
+        "required": ["type"],
+        "additionalProperties": true,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["marker-file", "json-key", "json-array", "json-array-templated"]
+          }
+        }
+      },
+      "values": {
+        "type": "object",
+        "additionalProperties": {"$ref": "#/definitions/api_call"}
+      },
+      "actions": {
+        "type": "object",
+        "additionalProperties": {"$ref": "#/definitions/api_call"}
+      },
+      "default": {"type": "string"},
+      "alert-on": {"type": "string"},
+      "alert-message": {
+        "type": "object",
+        "required": ["text", "icon", "color"],
+        "additionalProperties": false,
+        "properties": {
+          "text": {"type": "string"},
+          "icon": {"type": "string"},
+          "color": {"type": "string", "enum": ["red", "green", "yellow"]}
+        }
+      },
+      "validation": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "oneOf": [
+      {"required": ["values"]},
+      {"required": ["actions"]}
+    ]
+  },
+  "definitions": {
+    "api_call": {
+      "type": "object",
+      "required": ["api", "args"],
+      "additionalProperties": false,
+      "properties": {
+        "api": {
+          "type": "string",
+          "enum": [
+            "write_marker",
+            "delete_marker",
+            "set_json_key",
+            "delete_json_key",
+            "append_json_array",
+            "remove_json_array_value",
+            "run_feature_script"
+          ]
+        },
+        "args": {"type": "object"}
+      }
+    }
+  }
+}

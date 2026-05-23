@@ -65,5 +65,6 @@ run_test("test-check-invariant-monotonic-order.py")
 run_test("test-changelog-exists.py")
 run_test("test-manifest-schema-shape.py")
 run_test("test-runtime-schema-shape.py")
+run_test("test-configuration-schema-shape.py")
 
 print("ALL TESTS PASSED")
