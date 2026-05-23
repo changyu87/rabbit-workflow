@@ -2,7 +2,7 @@
   "name": "policy",
   "version": "1.6.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "Canonical rule files fed to subagents; three policy docs (philosophy, spec-rules, coding-rules).",
   "surface": {
     "hooks": [],
