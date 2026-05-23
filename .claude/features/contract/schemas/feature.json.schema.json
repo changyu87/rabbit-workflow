@@ -76,6 +76,18 @@
       "type": "string",
       "minLength": 1,
       "description": "The condition under which this feature will be superseded."
+    },
+    "manifest": {
+      "$ref": "manifest.schema.json",
+      "description": "Optional MANIFEST — declarative list of publish API calls executed at install time."
+    },
+    "runtime": {
+      "$ref": "runtime.schema.json",
+      "description": "Optional RUNTIME — per-event lists of runtime API calls invoked by the dispatcher."
+    },
+    "configuration": {
+      "$ref": "configuration.schema.json",
+      "description": "Optional CONFIGURATION — declarations of user-mutable configurables."
     }
   }
 }

@@ -66,5 +66,6 @@ run_test("test-changelog-exists.py")
 run_test("test-manifest-schema-shape.py")
 run_test("test-runtime-schema-shape.py")
 run_test("test-configuration-schema-shape.py")
+run_test("test-feature-json-schema-admits-meta-contract.py")
 
 print("ALL TESTS PASSED")
