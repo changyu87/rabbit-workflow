@@ -184,3 +184,47 @@ def welcome_with_policy(policy_source: str, *, repo_root: str):
                      WELCOME_BANNER["color"]),
         inject_result(content),
     ]
+
+
+def check_drift_regenerate(target: str, producer: str, alert: dict,
+                            *, feature_dir: str, repo_root: str):
+    """Run the named content producer and compare to target on disk.
+
+    On match: return ok_result(). On drift (or missing target): write
+    producer output to target and return [print_result, inject_result].
+    On producer exception or import failure: return error_result(...).
+
+    Lazy-imports lib.producers so this module loads even before the
+    producers sibling lands.
+    """
+    try:
+        from lib import producers  # noqa: PLC0415
+    except ImportError as e:
+        return error_result(f"lib.producers unavailable: {e}")
+    try:
+        content = producers.call_producer(producer, {},
+                                          feature_dir=feature_dir,
+                                          repo_root=repo_root)
+    except Exception as e:  # noqa: BLE001 - dispatcher catches any producer fault
+        return error_result(f"producer {producer!r} failed: {e}")
+
+    full_target = os.path.join(repo_root, target)
+    current = ""
+    if os.path.isfile(full_target):
+        try:
+            with open(full_target) as f:
+                current = f.read()
+        except OSError as e:
+            return error_result(f"target unreadable: {e}")
+    if content == current:
+        return ok_result()
+
+    parent = os.path.dirname(full_target)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(full_target, "w") as f:
+        f.write(content)
+    return [
+        print_result(alert["text"], alert["icon"], alert["color"]),
+        inject_result(content),
+    ]

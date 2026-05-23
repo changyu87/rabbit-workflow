@@ -81,5 +81,6 @@ run_test("test-runtime-check-marker-alert.py")
 run_test("test-runtime-check-marker-consume-alert.py")
 run_test("test-runtime-check-counter-threshold-refresh.py")
 run_test("test-runtime-welcome-with-policy.py")
+run_test("test-runtime-check-drift-regenerate.py")
 
 print("ALL TESTS PASSED")
