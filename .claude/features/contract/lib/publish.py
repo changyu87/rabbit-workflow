@@ -117,3 +117,15 @@ def publish_hook(event: str, source: str, matcher: str = "*", *,
     with open(settings_path, "w") as f:
         json.dump(data, f, indent=2)
     return CheckResult(True, [f"OK: {hook_dest} deployed and registered under {event}"])
+
+
+def publish_settings(source: str, *, feature_dir: str, repo_root: str) -> CheckResult:
+    """Deploy the feature's settings.json to .claude/settings.json (idempotent).
+
+    source — feature-dir-relative path to the settings JSON source file.
+    Rabbit-cage-exclusive by design: only one feature should declare
+    publish_settings in its MANIFEST. The library does not enforce exclusivity;
+    the dispatcher enforces it.
+    """
+    return publish_file(source, ".claude/settings.json",
+                        feature_dir=feature_dir, repo_root=repo_root)

@@ -74,5 +74,6 @@ run_test("test-validate-meta-contract-cli.py")
 run_test("test-publish-file.py")
 run_test("test-publish-skill-command-agent.py")
 run_test("test-publish-hook.py")
+run_test("test-publish-settings.py")
 
 print("ALL TESTS PASSED")
