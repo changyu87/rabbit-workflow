@@ -230,3 +230,34 @@ def remove_json_array_value(file: str, key: str, value, *, repo_root: str) -> Ch
     existing.remove(value)
     _write_json(path, data)
     return CheckResult(True, [f"OK: {file}::{key} value removed"])
+
+
+def run_feature_script(script: str, args: list, *, feature_dir: str) -> CheckResult:
+    """Escape hatch: invoke a feature-owned script with given args.
+
+    script — feature-dir-relative path to the script (must be executable).
+    args   — list of string arguments to forward.
+
+    Returns CheckResult(passed=True) iff the script exits 0. stdout and
+    stderr are captured into the messages list (one entry each, only if
+    non-empty). Missing script returns passed=False without raising.
+
+    Intentionally NOT idempotent at this layer — idempotency is the
+    responsibility of the invoked script. The escape hatch exists for the
+    minority of mutations that don't fit standard primitives (e.g. chmod
+    for repo-permissions); new standard primitives are preferred.
+    """
+    script_path = os.path.join(feature_dir, script)
+    if not os.path.isfile(script_path):
+        return CheckResult(False, [f"ERROR: script not found: {script_path}"])
+    proc = subprocess.run([script_path, *args], capture_output=True, text=True)
+    messages = []
+    if proc.stdout:
+        messages.append(f"stdout: {proc.stdout.rstrip()}")
+    if proc.stderr:
+        messages.append(f"stderr: {proc.stderr.rstrip()}")
+    if proc.returncode != 0:
+        messages.insert(0, f"ERROR: {script} exited {proc.returncode}")
+        return CheckResult(False, messages)
+    messages.insert(0, f"OK: {script} succeeded")
+    return CheckResult(True, messages)
