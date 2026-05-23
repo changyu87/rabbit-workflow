@@ -55,7 +55,6 @@ if schema.get("$schema") != "http://json-schema.org/draft-07/schema#":
 else:
     ok("$schema declares draft-07")
 
-# R2: ownership metadata
 if not isinstance(schema.get("schema_version"), str) or not schema["schema_version"]:
     fail("schema_version is missing or empty (spec-rules.md requires it)")
 else:
@@ -123,6 +122,12 @@ for ev in EXPECTED_EVENTS:
         fail(f"event '{ev}' must $ref #/definitions/call_list, got {ref!r}")
     else:
         ok(f"event '{ev}' references call_list")
+
+args_prop = items.get("properties", {}).get("args", {})
+if args_prop.get("type") != "object":
+    fail("args.type must be 'object'")
+else:
+    ok("call_list.items.args.type is object")
 
 if FAIL:
     print("test-runtime-schema-shape: FAIL", file=sys.stderr)
