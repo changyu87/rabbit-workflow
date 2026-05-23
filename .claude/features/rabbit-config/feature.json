@@ -1,0 +1,25 @@
+{
+  "name": "rabbit-config",
+  "version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "tdd_state": "test-green",
+  "summary": "Configuration manager. Hosts the /rabbit-config skill (mutation surface) that dispatches subcommand invocations to contract.lib.mutation. At Stop and SessionStart, iterates every feature's CONFIGURATION declarations and emits alerts for active overrides.",
+  "surface": {
+    "skills": ["rabbit-config"]
+  },
+  "deprecation_criterion": "when the rabbit CLI exposes native configuration mutation that subsumes this feature",
+  "status": "active",
+  "updated": "2026-05-23",
+  "manifest": [
+    {"api": "publish_skill", "args": {"source": "skills/rabbit-config/SKILL.md"}}
+  ],
+  "runtime": {
+    "Stop": [
+      {"api": "iterate_configurables_alerts", "args": {}}
+    ],
+    "SessionStart": [
+      {"api": "iterate_configurables_banner", "args": {}}
+    ]
+  },
+  "configuration": []
+}
