@@ -1,19 +1,126 @@
 {
   "name": "rabbit-cage",
-  "version": "4.11.0",
+  "version": "5.0.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "summary": "Owns the entire Claude Code surface and all user-facing capabilities: hooks, commands, skills for scaffolding, project management, and installation. Bug-filing and backlog management are owned by the rabbit-file feature.",
+  "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
   "surface": {
     "hooks": [],
     "commands": [],
-    "skills": [
-      "rabbit-config"
-    ],
+    "skills": [],
     "settings": []
   },
-  "deprecation_criterion": "when Claude Code exposes a native feature-container mechanism that subsumes this role",
-  "updated": "2026-05-21",
-  "tdd_last_cycle_impl_commit": "505c834fbb6854b9fecc95a0def66936e951d74a",
-  "spec_no_change_reason": "Spec changes are already committed at HEAD~1 by Step 3 of rabbit-feature-touch dispatch (RABBIT-CAGE-BUG-97); this subagent works from the committed spec without further edits."
+  "deprecation_criterion": "when Claude Code exposes native event dispatchers and artifact publishing that subsume this role",
+  "status": "active",
+  "updated": "2026-05-23",
+  "manifest": [
+    {"api": "publish_hook", "args": {"event": "Stop", "source": "hooks/stop-dispatcher.py"}},
+    {"api": "publish_hook", "args": {"event": "SessionStart", "source": "hooks/session-start-dispatcher.py"}},
+    {"api": "publish_hook", "args": {"event": "UserPromptSubmit", "source": "hooks/user-prompt-submit-dispatcher.py"}},
+    {"api": "publish_hook", "args": {"event": "PreToolUse", "source": "hooks/scope-guard.py"}},
+    {"api": "publish_settings", "args": {"source": "settings.json"}},
+    {"api": "publish_generated", "args": {
+      "target": "CLAUDE.md",
+      "producer": "generate-claude-md",
+      "args": {"policy_source": ".claude/features/policy", "header_source": "policy-header.json"}
+    }},
+    {"api": "publish_file", "args": {"source": "README.md", "dest": "README.md"}},
+    {"api": "publish_file", "args": {"source": "install.py", "dest": "install.py"}},
+    {"api": "publish_command", "args": {"source": "commands/rabbit-refresh.md"}},
+    {"api": "publish_command", "args": {"source": "commands/rabbit-project.md"}}
+  ],
+  "runtime": {
+    "Stop": [
+      {"api": "check_drift_regenerate", "args": {
+        "target": "CLAUDE.md",
+        "producer": "generate-claude-md",
+        "alert": {"text": "CLAUDE.md regenerated from policy drift", "icon": "warn", "color": "red"}
+      }},
+      {"api": "check_manifest_drift", "args": {
+        "alert": {"text": "Surface drift detected - rebuilt: {names}", "icon": "rebuild", "color": "red"}
+      }},
+      {"api": "check_marker_alert", "args": {
+        "path": ".rabbit-scope-override", "content": "session",
+        "alert": {"text": "SCOPE GUARD OFF (session override active)", "icon": "unlock", "color": "red"}
+      }},
+      {"api": "check_marker_consume_alert", "args": {
+        "path": ".rabbit-scope-override-used",
+        "alert": {"text": "SCOPE GUARD BYPASSED (one-time override consumed)", "icon": "unlock", "color": "red"}
+      }},
+      {"api": "check_marker_consume_alert", "args": {
+        "path": ".rabbit-skills-updated",
+        "alert": {"text": "Skills updated: {marker-content}", "icon": "sparkle", "color": "green"}
+      }}
+    ],
+    "SessionStart": [
+      {"api": "welcome_with_policy", "args": {"policy_source": ".claude/features/policy"}}
+    ],
+    "UserPromptSubmit": [
+      {"api": "check_counter_threshold_refresh", "args": {
+        "counter": ".rabbit-prompt-counter",
+        "env_var": "RABBIT_REFRESH_EVERY",
+        "source": ".claude/features/policy"
+      }}
+    ]
+  },
+  "configuration": [
+    {
+      "id": "human-approval",
+      "subcommand": "human-approval",
+      "storage": {"type": "marker-file", "path": ".rabbit-human-approval-bypass"},
+      "values": {
+        "true":  {"api": "delete_marker", "args": {"path": ".rabbit-human-approval-bypass"}},
+        "false": {"api": "write_marker",  "args": {"path": ".rabbit-human-approval-bypass", "content": "session"}}
+      },
+      "default": "true",
+      "alert-on": "false",
+      "alert-message": {"text": "HUMAN APPROVAL BYPASS ACTIVE - Step 4 skipped", "icon": "key", "color": "red"}
+    },
+    {
+      "id": "bypass-permissions",
+      "subcommand": "bypass-permissions",
+      "storage": {"type": "json-key", "file": ".claude/settings.local.json", "key": "permissions.defaultMode"},
+      "values": {
+        "true":  {"api": "set_json_key",    "args": {"file": ".claude/settings.local.json", "key": "permissions.defaultMode", "value": "bypassPermissions"}},
+        "false": {"api": "delete_json_key", "args": {"file": ".claude/settings.local.json", "key": "permissions.defaultMode"}}
+      },
+      "default": "false",
+      "alert-on": "true",
+      "alert-message": {"text": "BYPASS-PERMISSIONS MODE ACTIVE - scope-guard is sole write-auth gate", "icon": "siren", "color": "red"}
+    },
+    {
+      "id": "prompt-threshold",
+      "subcommand": "prompt-threshold",
+      "storage": {"type": "json-key", "file": ".claude/settings.local.json", "key": "env.RABBIT_REFRESH_EVERY"},
+      "default": "20"
+    },
+    {
+      "id": "allowed-tools",
+      "subcommand": "allowed-tools",
+      "storage": {"type": "json-array", "file": ".claude/settings.local.json", "key": "permissions.allow"},
+      "actions": {
+        "add":    {"api": "append_json_array",       "args": {"file": ".claude/settings.local.json", "key": "permissions.allow", "value": "{tool}"}},
+        "remove": {"api": "remove_json_array_value", "args": {"file": ".claude/settings.local.json", "key": "permissions.allow", "value": "{tool}"}}
+      },
+      "validation": {"reject_prefix": "Bash("}
+    },
+    {
+      "id": "bash-allow",
+      "subcommand": "bash-allow",
+      "storage": {"type": "json-array-templated", "file": ".claude/settings.local.json", "key": "permissions.allow", "template": "Bash({value}:*)"},
+      "actions": {
+        "add":    {"api": "append_json_array",       "args": {"file": ".claude/settings.local.json", "key": "permissions.allow", "value": "Bash({command}:*)"}},
+        "remove": {"api": "remove_json_array_value", "args": {"file": ".claude/settings.local.json", "key": "permissions.allow", "value": "Bash({command}:*)"}}
+      },
+      "validation": {"reject_chars": "():\\s"}
+    },
+    {
+      "id": "permissions",
+      "subcommand": "permissions",
+      "actions": {
+        "lock":   {"api": "run_feature_script", "args": {"script": "scripts/repo-permissions.py", "args": ["lock"]}},
+        "unlock": {"api": "run_feature_script", "args": {"script": "scripts/repo-permissions.py", "args": ["unlock"]}}
+      }
+    }
+  ]
 }
