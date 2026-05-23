@@ -286,22 +286,30 @@ def check_manifest_drift(alert: dict, *, repo_root: str) -> dict:
         manifest = data.get("manifest")
         if not isinstance(manifest, list) or not manifest:
             continue
+        # Walk EVERY entry; do NOT break early. A manifest may chain
+        # publishers — e.g. publish_settings followed by N publish_hook
+        # calls that read-modify-write the same settings.json. Breaking
+        # after the first non-no-op leaves the file half-built until the
+        # next full publish loop runs, observable as missing hooks after
+        # any Stop-event surface-drift rebuild (CONTRACT-BACKLOG-37).
         for entry in manifest:
             api_name = entry.get("api")
             args = entry.get("args", {}) or {}
             fn = getattr(publish, api_name, None)
             if fn is None:
-                drifted.append(name)
-                break
+                if name not in drifted:
+                    drifted.append(name)
+                continue
             try:
                 result = fn(**args, feature_dir=fdir, repo_root=repo_root)
             except Exception:  # noqa: BLE001
-                drifted.append(name)
-                break
+                if name not in drifted:
+                    drifted.append(name)
+                continue
             messages = getattr(result, "messages", []) or []
             if not any("no-op" in m for m in messages):
-                drifted.append(name)
-                break
+                if name not in drifted:
+                    drifted.append(name)
 
     if not drifted:
         return ok_result()
