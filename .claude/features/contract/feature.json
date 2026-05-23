@@ -1,6 +1,6 @@
 {
   "name": "contract",
-  "version": "1.23.0",
+  "version": "1.26.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
