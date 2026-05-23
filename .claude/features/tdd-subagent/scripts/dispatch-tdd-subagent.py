@@ -23,7 +23,7 @@
 # --fix-commits <impl-sha>`, and lists all closed items in HANDOFF.closed_items.
 #
 # Output: assembled prompt to stdout. Caller: Agent(model: opus, prompt: stdout).
-# Version: 2.1.0
+# Version: 3.0.0
 # Owner: rabbit-workflow team (tdd-subagent)
 # Deprecation criterion: when TDD cycle is natively supported by rabbit CLI.
 
@@ -33,11 +33,10 @@ import subprocess
 import sys
 from pathlib import Path as _Path
 
-# Pull in the named bypass-note wrapper from the contract feature
-# (Inv 17 — the wrapper is the sole authorized emission path for the
-# preamble bypass note; inline ANSI/brand strings here are a constitution
-# violation). Mirrors the dynamic sys.path insertion pattern that
-# tdd-state-machine's tdd-step.py uses.
+# Pull in the named bypass-note wrapper from the contract feature.
+# The wrapper is the sole authorized emission path for the preamble
+# bypass note (Inv 23, Inv 24); inline ANSI/brand strings here are
+# forbidden.
 _CONTRACT_SCRIPTS = _Path(__file__).resolve().parents[2] / "contract" / "scripts"
 if str(_CONTRACT_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_CONTRACT_SCRIPTS))
@@ -217,11 +216,11 @@ def main(argv):
     linked_item_value = args.linked_item or "null"
     item_type_value = args.item_type or "null"
 
-    # BACKLOG-4 / BUG-57: emit a distinct yellow [rabbit] note in the prompt
-    # preamble when the human-approval bypass marker exists at the repo root.
-    # The note appears on EVERY dispatch while the marker is present; it does
-    # not consume the marker. Per Inv 17 the wrapper is the sole authorized
-    # emission path — no inline ANSI/brand strings in this file.
+    # Emit the bypass-marker preamble note when the human-approval
+    # bypass marker exists at the repo root (Inv 23). The note appears
+    # on every dispatch while the marker is present; it does not
+    # consume the marker. The wrapper is the sole emission path
+    # (Inv 24) — no inline ANSI/brand strings in this file.
     bypass_marker_path = os.path.join(repo_root, ".rabbit-human-approval-bypass")
     if os.path.isfile(bypass_marker_path):
         bypass_preamble_note = "\n" + dispatch_bypass_note() + "\n"
@@ -232,10 +231,11 @@ def main(argv):
         repo_root, ".claude", "features", "rabbit-file", "scripts", "item-status.py"
     )
 
-    # Build close-call block for STEP 9 UNLOCK (Inv 8: all close calls go
-    # through rabbit-file's unified `item-status.py set ...`). One loop, one
-    # template — primary and secondary differ only by comment, reason, and
-    # the HANDOFF label string. Baseline prompt (no items) is unchanged.
+    # Build close-call block for STEP 9 UNLOCK (Inv 19/20: all close
+    # calls route through rabbit-file's `item-status.py set ...`). One
+    # loop, one template — primary and secondary differ only by comment,
+    # reason, and the HANDOFF label string. Baseline prompt (no items)
+    # is unchanged.
     items = []
     if args.linked_item and args.item_type:
         parts = [p for p in args.linked_item.replace("\\", "/").split("/") if p]
@@ -276,9 +276,9 @@ def main(argv):
             "\n  closed_items:\n"
             + "\n".join(f"    - {it['handoff_label']}" for it in items)
         )
-        # JSON HANDOFF closed_items reflects the same closures (Inv 19 — JSON
-        # block is the machine-first source of truth; if items are closed they
-        # MUST appear here, not just in the human-readable YAML block above).
+        # JSON HANDOFF closed_items reflects the same closures (Inv 21,
+        # Inv 22 — the JSON block is the machine-first source of truth;
+        # closed items appear here, not only in the YAML block above).
         handoff_closed_items_json = (
             "[\n    "
             + ",\n    ".join(f'"{it["handoff_label"]}"' for it in items)
@@ -400,10 +400,10 @@ STEP 1 — SPEC-READ
 ════════════════════════════════════════════════════════════════════════
 
 Run:  git diff HEAD~1 -- {feature_dir}/docs/spec/
-(HEAD~1, not HEAD: rabbit-feature-touch Step 3 commits the spec change BEFORE
-dispatching this subagent (Inv 16), so HEAD already includes the spec edit and
-the working tree is clean. `git diff HEAD` would always be empty; HEAD~1 is
-the pre-spec state, which makes the actual spec delta visible.)
+(HEAD~1, not HEAD: the caller commits the spec change BEFORE dispatching
+this subagent, so HEAD already includes the spec edit and the working tree
+is clean. `git diff HEAD` would always be empty; HEAD~1 is the pre-spec
+state, which makes the actual spec delta visible.)
 Read the diff carefully. If an impl-suggestion was provided, read it now.
 Summarise what has changed and what the implementation must achieve before proceeding.
 
@@ -468,8 +468,8 @@ Max iterations: {args.max_iterations}
 
 IMPORTANT: Before issuing any Edit/Write tool call against an existing file,
 Read it in this session first. The Claude Code Edit tool rejects Edits on
-un-Read files (Inv 35 in rabbit-feature codifies this for spec files; the
-same constraint applies to any file you edit).
+un-Read files (tdd-subagent Inv 18). This constraint applies to any file
+you edit.
 
 Loop (repeat until green or max iterations reached):
   1. Write/update implementation files for {feature_name}
