@@ -26,11 +26,12 @@ def ok(msg):
     print(f"PASS: {msg}")
 
 
-# t1: PRODUCERS registry contains read-file
-if "read-file" not in producers.PRODUCERS:
-    fail("t1: registry missing 'read-file'")
+# t1: PRODUCERS registry contains read-file and expand-at-imports
+missing = [n for n in ("read-file", "expand-at-imports") if n not in producers.PRODUCERS]
+if missing:
+    fail(f"t1: registry missing {missing!r}")
 else:
-    ok("t1: PRODUCERS registry contains 'read-file'")
+    ok("t1: PRODUCERS registry contains read-file and expand-at-imports")
 
 # t2: call_producer raises KeyError on unknown name
 try:

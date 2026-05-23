@@ -78,5 +78,6 @@ run_test("test-publish-settings.py")
 run_test("test-publish-generated.py")
 run_test("test-producers-dispatch.py")
 run_test("test-producers-read-file.py")
+run_test("test-producers-expand-at-imports.py")
 
 print("ALL TESTS PASSED")

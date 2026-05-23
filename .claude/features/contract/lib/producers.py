@@ -42,10 +42,39 @@ def read_file(path: str, *, feature_dir: str, repo_root: str) -> str:
         return f.read()
 
 
+def expand_at_imports(file: str, *, feature_dir: str, repo_root: str) -> str:
+    """Read `file` and expand every line of the form `@<path>` (one path
+    per line, no whitespace inside the path) by substituting the contents
+    of <path>. Non-import lines pass through unchanged. Expansion is one
+    level deep — imported content is NOT recursively re-scanned for
+    further @-imports (matches Claude Code's @-import semantics). If an
+    imported file lacks a trailing newline, one is appended so the
+    composed output keeps clean line structure.
+    """
+    with open(_resolve(file, feature_dir, repo_root)) as f:
+        content = f.read()
+    out = []
+    for line in content.splitlines(keepends=True):
+        stripped = line.strip()
+        if (
+            stripped.startswith("@")
+            and len(stripped) > 1
+            and not any(c.isspace() for c in stripped)
+        ):
+            imported = open(_resolve(stripped[1:], feature_dir, repo_root)).read()
+            if not imported.endswith("\n"):
+                imported += "\n"
+            out.append(imported)
+        else:
+            out.append(line)
+    return "".join(out)
+
+
 # Registry: MANIFEST kebab-case producer names → Python functions.
 # Populated by Tasks 2-4 (read-file, expand-at-imports, generate-claude-md).
 PRODUCERS = {
     "read-file": read_file,
+    "expand-at-imports": expand_at_imports,
 }
 
 
