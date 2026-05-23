@@ -33,10 +33,11 @@ This protocol defines the sequenced work to reach merge-confidence: finish the d
 | C | wsNN | Plan C — rabbit-cage dispatcher rewrite | superpowers TDD, session scope override | Shrinks rabbit-cage spec from ~20K to ~5K tokens |
 | D | wsNN | Plan D — rabbit-config feature scaffolding | superpowers TDD, session scope override | New feature; hosts `/rabbit-config` skill + runtime alerts |
 | 1 | wsNN | Wave 1 — rabbit-feature audit (spec/code/tests) | superpowers TDD, session scope override | Includes folding rabbit-feature-scope/ into rabbit-feature as a surfaced skill |
-| 2 | wsNN | Wave 2 — tdd-subagent audit | superpowers TDD, session scope override | Hardens the rabbit TDD machinery before relying on it |
-| 3 | wsNN | Wave 3 — rabbit-feature consolidation re-audit | rabbit's tdd-subagent + rabbit-feature-touch | First validation of the now-golden tdd-subagent against rabbit-feature |
+| 2 | wsNN | Wave 2 — rabbit-config audit (inserted) | superpowers TDD, session scope override | Inserted on 2026-05-23 after Plan D shipped with multiple piecemeal bugs (BUG-1 twice, BUG-2, false-alarm BUG-100). Consolidates rabbit-config to "golden" before tdd-subagent audit, since rabbit-feature-touch (the tdd-subagent's caller) consumes rabbit-config's human-approval-bypass configurable. Wave numbering for subsequent waves shifted up by one from the original protocol. |
+| 3 | wsNN | Wave 3 — tdd-subagent audit | superpowers TDD, session scope override | Hardens the rabbit TDD machinery before relying on it. Was originally Wave 2. |
+| 4 | wsNN | Wave 4 — rabbit-feature consolidation re-audit | rabbit's tdd-subagent + rabbit-feature-touch | First validation of the now-golden tdd-subagent against rabbit-feature. Was originally Wave 3. |
 | E.* | wsNN per feature | Plan E — per-feature meta-contract migration (one workspace per feature) | rabbit's tdd-subagent + rabbit-feature-touch | Each feature declares its MANIFEST/RUNTIME/CONFIGURATION in feature.json |
-| 4+ | wsNN per feature | Housekeeping audit for each remaining feature | rabbit's tdd-subagent + rabbit-feature-touch | Standard discipline restored |
+| 5+ | wsNN per feature | Housekeeping audit for each remaining feature | rabbit's tdd-subagent + rabbit-feature-touch | Standard discipline restored. Was originally 4+. |
 | F | wsNN | Plan F — cleanup: drop build-contract.json, drop rabbit-print-messages.json, drop named wrappers | rabbit's tdd-subagent + rabbit-feature-touch | Breaking cleanup; only safe after every feature is migrated |
 
 Plan E is intentionally separate from the housekeeping audit waves (per Q&A decision): one workspace per feature for the meta-contract migration, distinct from the audit that made the feature "golden." This preserves clean separation of concerns and gives each PR-stage commit a single purpose.
