@@ -605,6 +605,50 @@ _PUBLISH_API_ENUM = frozenset({
 })
 
 
+_RUNTIME_EVENT_ENUM = frozenset({"Stop", "SessionStart", "UserPromptSubmit", "PreToolUse"})
+
+_RUNTIME_API_ENUM = frozenset({
+    "check_drift_regenerate",
+    "check_manifest_drift",
+    "check_marker_alert",
+    "check_marker_consume_alert",
+    "check_counter_threshold_refresh",
+    "welcome_with_policy",
+    "iterate_configurables_alerts",
+    "iterate_configurables_banner",
+})
+
+
+def _validate_runtime(runtime):
+    """Validate a runtime declaration. Returns list of error message strings."""
+    errors = []
+    if not isinstance(runtime, dict):
+        errors.append(f"runtime must be an object, got {type(runtime).__name__}")
+        return errors
+    for event, calls in runtime.items():
+        if event not in _RUNTIME_EVENT_ENUM:
+            errors.append(f"runtime: unknown event {event!r} (valid: {sorted(_RUNTIME_EVENT_ENUM)})")
+            continue
+        if not isinstance(calls, list):
+            errors.append(f"runtime[{event!r}] must be an array, got {type(calls).__name__}")
+            continue
+        for i, item in enumerate(calls):
+            if not isinstance(item, dict):
+                errors.append(f"runtime[{event!r}][{i}] must be an object")
+                continue
+            if "api" not in item or "args" not in item:
+                errors.append(f"runtime[{event!r}][{i}] missing required 'api' or 'args'")
+                continue
+            if item["api"] not in _RUNTIME_API_ENUM:
+                errors.append(f"runtime[{event!r}][{i}]: unknown runtime api {item['api']!r}")
+            if not isinstance(item["args"], dict):
+                errors.append(f"runtime[{event!r}][{i}].args must be an object")
+            extra_keys = set(item.keys()) - {"api", "args"}
+            if extra_keys:
+                errors.append(f"runtime[{event!r}][{i}]: unexpected keys {sorted(extra_keys)}")
+    return errors
+
+
 def _validate_manifest(manifest):
     """Validate a manifest declaration. Returns list of error message strings."""
     errors = []
@@ -651,7 +695,9 @@ def validate_meta_contract(feature_dir):
     errors = []
     if "manifest" in data:
         errors.extend(_validate_manifest(data["manifest"]))
-    # runtime and configuration arms added in Tasks 6 and 7.
+    if "runtime" in data:
+        errors.extend(_validate_runtime(data["runtime"]))
+    # configuration arm added in Task 7.
 
     if errors:
         return CheckResult(passed=False, messages=errors)
