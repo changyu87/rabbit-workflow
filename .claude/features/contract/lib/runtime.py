@@ -348,9 +348,28 @@ def _resolve_json_key_value(repo_root: str, storage: dict, default: str) -> str:
     return str(cursor)
 
 
+def _reverse_map_json_value(raw: str, configurable: dict) -> str:
+    """Translate a raw json-key stored value to its user-facing label by
+    reverse-lookup through the configurable's values map.
+    Checks whether `raw` is already a user-facing key; otherwise finds the
+    values entry whose set_json_key args.value matches raw.
+    Returns raw unchanged if no translation is found.
+    """
+    values = configurable.get("values") or {}
+    if raw in values:
+        return raw
+    for user_key, mutation in values.items():
+        if mutation.get("api") == "set_json_key":
+            if str(mutation.get("args", {}).get("value", "")) == raw:
+                return user_key
+    return raw
+
+
 def _resolve_current_value(repo_root: str, configurable: dict):
     """Return the current string value of a configurable for alert-on
     comparison, or None if storage type is action-style (json-array*).
+    For json-key storage the raw stored value is translated to its user-facing
+    label via reverse lookup through the configurable's values map.
     """
     storage = configurable.get("storage") or {}
     stype = storage.get("type")
@@ -358,7 +377,8 @@ def _resolve_current_value(repo_root: str, configurable: dict):
     if stype == "marker-file":
         return _resolve_marker_value(repo_root, storage)
     if stype == "json-key":
-        return _resolve_json_key_value(repo_root, storage, default)
+        raw = _resolve_json_key_value(repo_root, storage, default)
+        return _reverse_map_json_value(raw, configurable)
     # json-array / json-array-templated are action-style; no scalar value
     return None
 

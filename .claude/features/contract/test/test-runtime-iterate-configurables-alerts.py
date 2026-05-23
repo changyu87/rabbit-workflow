@@ -62,6 +62,23 @@ BP_CONF = {
                        "icon": "siren", "color": "red"},
 }
 
+# Real bypass-permissions configurable with full args (mirrors rabbit-cage feature.json)
+BP_CONF_REAL = {
+    "id": "bypass-permissions",
+    "subcommand": "bypass-permissions",
+    "storage": {"type": "json-key",
+                 "file": ".claude/settings.local.json",
+                 "key": "permissions.defaultMode"},
+    "values": {
+        "true":  {"api": "set_json_key",    "args": {"file": ".claude/settings.local.json", "key": "permissions.defaultMode", "value": "bypassPermissions"}},
+        "false": {"api": "delete_json_key", "args": {"file": ".claude/settings.local.json", "key": "permissions.defaultMode"}},
+    },
+    "default": "false",
+    "alert-on": "true",
+    "alert-message": {"text": "BYPASS-PERMISSIONS MODE ACTIVE",
+                       "icon": "siren", "color": "red"},
+}
+
 # t1: no features -> empty list
 with tempfile.TemporaryDirectory() as td:
     os.makedirs(os.path.join(td, ".claude", "features"))
@@ -123,7 +140,7 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t5: unexpected {r!r}")
 
-# t6: json-key non-matching string -> no alert (strict literal match)
+# t6: json-key non-matching string, no value in args -> no translation -> no alert
 with tempfile.TemporaryDirectory() as td:
     make_feature(td, "rabbit-cage", [BP_CONF])
     sf = os.path.join(td, ".claude", "settings.local.json")
@@ -131,10 +148,10 @@ with tempfile.TemporaryDirectory() as td:
     with open(sf, "w") as f:
         json.dump({"permissions": {"defaultMode": "bypassPermissions"}}, f)
     r = iterate_configurables_alerts(repo_root=td)
-    # alert-on is "true"; current resolved value is "bypassPermissions" (literal
-    # string at that key). Strict equality: no alert.
+    # BP_CONF has empty args for set_json_key, so no reverse-lookup translation
+    # is possible; stored "bypassPermissions" stays untranslated and != "true".
     if r == []:
-        ok("t6: non-matching json-key string: no alert (literal match)")
+        ok("t6: json-key with no args.value: no translation, no alert")
     else:
         fail(f"t6: expected [], got {r!r}")
 
@@ -187,6 +204,22 @@ with tempfile.TemporaryDirectory() as td:
         ok("t9: features iterated alphabetically (A before Z)")
     else:
         fail(f"t9: order unexpected: {texts}")
+
+# t10: json-key bypass-permissions with full args -> stored "bypassPermissions"
+#      reverse-maps to user-facing "true" -> matches alert-on "true" -> alert fires
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [BP_CONF_REAL])
+    sf = os.path.join(td, ".claude", "settings.local.json")
+    os.makedirs(os.path.dirname(sf), exist_ok=True)
+    with open(sf, "w") as f:
+        json.dump({"permissions": {"defaultMode": "bypassPermissions"}}, f)
+    r = iterate_configurables_alerts(repo_root=td)
+    if (len(r) == 1 and r[0]["type"] == "print"
+            and r[0]["text"] == "BYPASS-PERMISSIONS MODE ACTIVE"
+            and r[0]["color"] == "red"):
+        ok("t10: json-key with args.value: stored 'bypassPermissions' translates to 'true' -> alert")
+    else:
+        fail(f"t10: expected one BYPASS-PERMISSIONS alert, got {r!r}")
 
 if FAIL:
     print("test-runtime-iterate-configurables-alerts: FAIL", file=sys.stderr)
