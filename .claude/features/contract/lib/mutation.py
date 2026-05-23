@@ -58,3 +58,76 @@ def delete_marker(path: str, *, repo_root: str) -> CheckResult:
         return CheckResult(True, [f"OK: {path} absent (no-op)"])
     os.remove(dst)
     return CheckResult(True, [f"OK: {path} deleted"])
+
+
+def _load_json_or_empty(path: str) -> tuple:
+    """Read JSON file. Returns (data, error_msg).
+
+    Missing file -> ({}, None). Malformed JSON -> (None, "...").
+    """
+    if not os.path.isfile(path):
+        return {}, None
+    try:
+        with open(path) as f:
+            return json.load(f), None
+    except json.JSONDecodeError as e:
+        return None, f"ERROR: malformed JSON in {path}: {e}"
+
+
+def _write_json(path: str, data) -> None:
+    """Write data to path as indented JSON. Creates parent dirs."""
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def _set_nested(d: dict, key_path: str, value) -> None:
+    """Set value at dotted key_path inside d, creating intermediate dicts.
+
+    If an intermediate node exists but is not a dict, it is overwritten with
+    a fresh dict. Mutates d in place.
+    """
+    parts = key_path.split(".")
+    for p in parts[:-1]:
+        if not isinstance(d.get(p), dict):
+            d[p] = {}
+        d = d[p]
+    d[parts[-1]] = value
+
+
+def _get_nested(d, key_path: str):
+    """Return value at dotted key_path; raises KeyError if any segment is
+    missing or any intermediate value is not a dict.
+    """
+    parts = key_path.split(".")
+    for p in parts:
+        if not isinstance(d, dict) or p not in d:
+            raise KeyError(key_path)
+        d = d[p]
+    return d
+
+
+def set_json_key(file: str, key: str, value, *, repo_root: str) -> CheckResult:
+    """Set value at dotted JSON key path in file (repo-root-relative).
+
+    Creates the file (and intermediate dicts) if absent. Preserves all sibling
+    keys at every level. Idempotent: if the value already equals the new value,
+    returns passed=True with a 'no-op' message and does not rewrite the file.
+
+    On malformed JSON, returns passed=False without modifying the file.
+    """
+    path = os.path.join(repo_root, file)
+    data, err = _load_json_or_empty(path)
+    if err is not None:
+        return CheckResult(False, [err])
+    try:
+        existing = _get_nested(data, key)
+        if existing == value:
+            return CheckResult(True, [f"OK: {file}::{key} unchanged (no-op)"])
+    except KeyError:
+        pass
+    _set_nested(data, key, value)
+    _write_json(path, data)
+    return CheckResult(True, [f"OK: {file}::{key} set"])
