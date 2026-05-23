@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""test-interpreter-action-dispatch.py — Inv 10.
+"""test-interpreter-action-dispatch.py — Inv 10 (and Inv 14 sanity).
 
 Actions-style dispatch: the interpreter finds the CONFIGURATION entry,
 resolves actions[argv[2]], dispatches the mutation API, and exits 0.
 
-  t10a: allowed-tools add appends value to JSON array
-  t10b: allowed-tools remove removes value from JSON array
-  t10c: unknown action exits non-zero
-  t10d: bypass-permissions true -> set_json_key writes bypassPermissions
-  t10e: bypass-permissions false -> delete_json_key removes the key
+  t10a: Inv 10 — allowed-tools add appends value to JSON array
+  t10b: Inv 10 — allowed-tools remove removes value from JSON array
+  t10c: Inv 14 — unknown action exits non-zero (also covered by validation suite)
+  t10d: Inv 10 — bypass-permissions true -> set_json_key writes bypassPermissions
+  t10e: Inv 10 — bypass-permissions false -> delete_json_key removes the key
 """
 
 import json

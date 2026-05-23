@@ -11,11 +11,15 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SUITES = [
     "test-feature-json-shape.py",
     "test-skill-structure.py",
+    "test-skill-description.py",
     "test-interpreter-unknown-subcommand.py",
     "test-interpreter-value-dispatch.py",
     "test-interpreter-action-dispatch.py",
     "test-interpreter-template-substitution.py",
     "test-interpreter-validation.py",
+    "test-runtime-alerts-shape.py",
+    "test-runtime-banner-shape.py",
+    "test-verification-hygiene.py",
     "test-workspace-declares-rabbit-config.py",
 ]
 

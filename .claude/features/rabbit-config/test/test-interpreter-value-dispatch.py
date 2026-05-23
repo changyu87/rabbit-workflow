@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""test-interpreter-value-dispatch.py — Inv 9.
+"""test-interpreter-value-dispatch.py — Inv 9 (and Inv 14 sanity).
 
 Values-style dispatch: the interpreter finds the CONFIGURATION entry whose
 subcommand matches argv[1], resolves values[argv[2]], dispatches the declared
 mutation API, and exits 0 on success.
 
-  t9a: human-approval false -> write_marker creates the bypass marker
-  t9b: human-approval true -> delete_marker removes the bypass marker
-  t9c: unknown value exits non-zero
+  t9a: Inv 9 — human-approval false -> write_marker creates the bypass marker
+  t9b: Inv 9 — human-approval true -> delete_marker removes the bypass marker
+  t9c: Inv 14 — unknown value exits non-zero (also covered by validation suite)
 """
 
 import json

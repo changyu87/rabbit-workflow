@@ -4,10 +4,10 @@
 Template substitution: {tool} and {command} placeholders in API args are
 replaced with the caller-provided extra argument before dispatch.
 
-  t11a: {tool} placeholder is replaced with the extra arg value
-  t11b: {command} placeholder is replaced (bash-allow pattern)
-  t11c: actions without template work with two args (no extra arg needed)
-  t11d: action with template and missing extra arg exits non-zero
+  t11a: Inv 11 — {tool} placeholder is replaced with the extra arg value
+  t11b: Inv 11 — {command} placeholder is replaced (bash-allow pattern)
+  t11c: Inv 11 — actions without template work with two args (no extra arg needed)
+  t11d: Inv 11 — action with template and missing extra arg exits non-zero
 """
 
 import json

@@ -18,7 +18,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -411,14 +411,18 @@ def iterate_configurables_alerts(*, repo_root: str):
 
 def iterate_configurables_banner(*, repo_root: str):
     """Like iterate_configurables_alerts but for SessionStart. Each active
-    override emits a multi-line print_result whose text is
+    override emits TWO print_results: an alert line and a revoke line.
 
-        <alert.text>
-          revoke with: /rabbit-config <subcommand> <default>
+    Splitting them into separate print_results guarantees each is rendered
+    as its own brand-prefixed line by the dispatcher, so the SessionStart
+    TUI cannot elide the revoke as a continuation line.
+
+    Alert line:  print_result(alert.text, alert.icon, alert.color)
+    Revoke line: print_result("revoke with: /rabbit-config <sub> <default>",
+                              "revoke", alert.color)
 
     If the configurable has no `default`, the revoke target falls back to
-    the literal string '<unknown>'. Icon and color come from
-    alert-message. Returns a list (possibly empty).
+    the literal string '<unknown>'. Returns a flat list (possibly empty).
     """
     out = []
     for name, fdir, data in _enumerate_features(repo_root):
@@ -435,7 +439,12 @@ def iterate_configurables_banner(*, repo_root: str):
                 continue
             subcommand = cfg.get("subcommand", cfg.get("id", "?"))
             revoke_value = cfg.get("default", "<unknown>")
-            text = (f"{alert_msg['text']}\n"
-                    f"  revoke with: /rabbit-config {subcommand} {revoke_value}")
-            out.append(print_result(text, alert_msg["icon"], alert_msg["color"]))
+            out.append(print_result(alert_msg["text"],
+                                    alert_msg["icon"],
+                                    alert_msg["color"]))
+            out.append(print_result(
+                f"revoke with: /rabbit-config {subcommand} {revoke_value}",
+                "revoke",
+                alert_msg["color"],
+            ))
     return out

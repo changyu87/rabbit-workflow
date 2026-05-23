@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""test-skill-structure.py — Inv 6–7.
+"""test-skill-structure.py — Inv 5 and 7.
 
-  t6: SKILL.md exists at skills/rabbit-config/SKILL.md with non-empty content
-  t7: rabbit-config.py interpreter exists at skills/rabbit-config/scripts/rabbit-config.py
-      and begins with the Python3 shebang line
+  t5: Inv 5 — SKILL.md exists at skills/rabbit-config/SKILL.md with non-empty
+      content that mentions 'rabbit-config'.
+  t7: Inv 7 — rabbit-config.py interpreter exists at
+      skills/rabbit-config/scripts/rabbit-config.py and begins with the
+      Python3 shebang line.
+
+  Inv 6 (description shape) is covered by test-skill-description.py.
 """
 
 import os
@@ -26,18 +30,18 @@ def ok(n, msg):
     print(f"ok t{n}: {msg}")
 
 
-# t6: SKILL.md
+# t5: SKILL.md
 if not os.path.isfile(SKILL_MD):
-    fail(6, f"SKILL.md not found: {SKILL_MD}")
+    fail(5, f"SKILL.md not found: {SKILL_MD}")
 else:
     with open(SKILL_MD) as f:
         content = f.read()
     if len(content.strip()) < 20:
-        fail(6, "SKILL.md is empty or nearly empty")
+        fail(5, "SKILL.md is empty or nearly empty")
     elif "rabbit-config" not in content:
-        fail(6, "SKILL.md does not mention 'rabbit-config'")
+        fail(5, "SKILL.md does not mention 'rabbit-config'")
     else:
-        ok(6, "SKILL.md exists and mentions rabbit-config")
+        ok(5, "SKILL.md exists and mentions rabbit-config")
 
 # t7: interpreter
 if not os.path.isfile(INTERPRETER):

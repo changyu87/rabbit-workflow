@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""test-interpreter-validation.py — Inv 12–15.
+"""test-interpreter-validation.py — Inv 12–14.
 
-Input validation per the validation field on each CONFIGURATION entry.
+Input validation per the validation field on each CONFIGURATION entry,
+plus the unknown-value / unknown-action rejection promise (Inv 14).
 
-  t12a: reject_prefix: arg starting with the prefix is rejected (exit non-zero)
-  t12b: reject_prefix: arg not starting with the prefix is accepted
-  t13a: reject_chars: arg containing forbidden char is rejected (exit non-zero)
-  t13b: reject_chars: arg without forbidden chars is accepted
-  t14:  values-style subcommand with unknown value: exits non-zero
-  t15:  actions-style subcommand with unknown action: exits non-zero
+  t12a: Inv 12 — reject_prefix: arg starting with the prefix is rejected
+  t12b: Inv 12 — reject_prefix: arg not starting with the prefix is accepted
+  t13a: Inv 13 — reject_chars: arg containing forbidden char is rejected
+  t13b: Inv 13 — reject_chars: arg without forbidden chars is accepted
+  t14:  Inv 14 — values-style subcommand with unknown value: exits non-zero
+  t15:  Inv 14 — actions-style subcommand with unknown action: exits non-zero
 """
 
 import json

@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """test-runtime-iterate-configurables-banner.py — exercises
-iterate_configurables_banner: like iterate_configurables_alerts but the
-print_result.text is multi-line and includes a canonical revoke command.
+iterate_configurables_banner: per active configurable, emits TWO
+print_results — the alert-message line and a `revoke with: ...` line.
+Both lines are returned as separate print_results so the SessionStart
+dispatcher renders each with its own brand prefix and neither is elided
+as a continuation line.
 """
 
 import json
@@ -54,32 +57,35 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t1: expected [], got {r!r}")
 
-# t2: one active override -> one print with multi-line text + revoke hint
+# t2: one active override -> two prints (alert line + revoke line)
 with tempfile.TemporaryDirectory() as td:
     make_feature(td, "rabbit-cage", [HA])
     with open(os.path.join(td, ".rabbit-human-approval-bypass"), "w") as f:
         f.write("session")
     r = iterate_configurables_banner(repo_root=td)
-    if len(r) != 1 or r[0]["type"] != "print":
-        fail(f"t2: expected one print, got {r!r}")
+    if len(r) != 2:
+        fail(f"t2: expected two prints (alert + revoke), got {r!r}")
+    elif r[0]["type"] != "print" or r[1]["type"] != "print":
+        fail(f"t2: both entries must be type=print, got {r!r}")
+    elif r[0]["text"] != "HUMAN APPROVAL BYPASS ACTIVE":
+        fail(f"t2: alert line text wrong: {r[0]['text']!r}")
+    elif r[1]["text"] != "revoke with: /rabbit-config human-approval true":
+        fail(f"t2: revoke line text wrong: {r[1]['text']!r}")
     else:
-        expected_revoke = "revoke with: /rabbit-config human-approval true"
-        if (r[0]["text"].startswith("HUMAN APPROVAL BYPASS ACTIVE")
-                and expected_revoke in r[0]["text"]):
-            ok("t2: active override emits print with header line + revoke hint")
-        else:
-            fail(f"t2: text content unexpected: {r[0]['text']!r}")
+        ok("t2: active override emits two prints — alert + revoke")
 
-# t3: icon and color come from alert-message
+# t3: icon/color: alert uses alert-message's, revoke shares the color
 with tempfile.TemporaryDirectory() as td:
     make_feature(td, "rabbit-cage", [HA])
     with open(os.path.join(td, ".rabbit-human-approval-bypass"), "w") as f:
         f.write("session")
     r = iterate_configurables_banner(repo_root=td)
-    if r[0]["icon"] == "key" and r[0]["color"] == "red":
-        ok("t3: icon/color taken from alert-message")
+    if r[0]["icon"] != "key" or r[0]["color"] != "red":
+        fail(f"t3: alert icon/color wrong: {r[0]!r}")
+    elif r[1]["color"] != "red":
+        fail(f"t3: revoke color must match alert color, got {r[1]!r}")
     else:
-        fail(f"t3: icon/color wrong: {r[0]!r}")
+        ok("t3: alert icon/color from alert-message; revoke color matches alert color")
 
 # t4: configurable without default -> revoke target is <unknown>
 with tempfile.TemporaryDirectory() as td:
@@ -89,11 +95,10 @@ with tempfile.TemporaryDirectory() as td:
     with open(os.path.join(td, ".rabbit-human-approval-bypass"), "w") as f:
         f.write("session")
     r = iterate_configurables_banner(repo_root=td)
-    # marker present resolves to "false" regardless of default, matches alert-on
-    if r and "<unknown>" in r[0]["text"]:
-        ok("t4: missing default falls back to <unknown> in revoke hint")
+    if len(r) != 2 or "<unknown>" not in r[1]["text"]:
+        fail(f"t4: missing default should produce '<unknown>' in revoke line: {r!r}")
     else:
-        fail(f"t4: unexpected: {r!r}")
+        ok("t4: missing default falls back to <unknown> in revoke line")
 
 if FAIL:
     print("test-runtime-iterate-configurables-banner: FAIL", file=sys.stderr)

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-config
-version: 1.0.0
+version: 1.1.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when the rabbit CLI exposes native configuration mutation that subsumes this feature
@@ -82,7 +82,29 @@ rabbit-cage). These APIs walk every feature's CONFIGURATION array and emit
 `print_result` entries for any configurable whose current value matches its
 `alert-on` field.
 
+The two APIs differ in how many `print_result` entries they emit per active
+configurable: `iterate_configurables_alerts` (Stop) emits one line per
+active configurable; `iterate_configurables_banner` (SessionStart) emits two
+lines per active configurable (alert text + revoke command) so that each
+line is rendered with the brand prefix by the dispatcher and neither is
+elided by the SessionStart TUI as a continuation line.
+
+`_resolve_current_value` (in `contract.lib.runtime`) returns the
+user-facing string value of a configurable so that `alert-on` comparison
+operates on user-facing labels rather than raw stored values:
+
+- `marker-file` storage: returns `'false'` if the marker file exists,
+  `'true'` if it is absent.
+- `json-key` storage: reads the raw value and translates it via
+  reverse-lookup through the configurable's `values` map (matching the
+  value whose `set_json_key` API would write that raw value); falls back
+  to the raw string if no translation is found.
+- `json-array` / `json-array-templated` storage: returns `None` (no scalar
+  current value; alerts do not apply).
+
 ## Invariants
+
+### Feature shape
 
 1. The MANIFEST contains exactly one entry:
    `{"api": "publish_skill", "args": {"source": "skills/rabbit-config/SKILL.md"}}`.
@@ -92,31 +114,68 @@ rabbit-cage). These APIs walk every feature's CONFIGURATION array and emit
    `{"api": "iterate_configurables_banner", "args": {}}`.
 4. The CONFIGURATION array is empty — rabbit-config has no configurables of
    its own; it operates on other features' declarations.
-5. The skill manifest (`skills/rabbit-config/SKILL.md`) exists with non-empty
-   content naming the subcommands discoverable from current CONFIGURATION
-   declarations.
-6. The interpreter (`skills/rabbit-config/scripts/rabbit-config.py`) begins
+
+### Skill surface
+
+5. The skill manifest `skills/rabbit-config/SKILL.md` exists with non-empty
+   content that names the `/rabbit-config` subcommand convention.
+6. The SKILL.md frontmatter `description` field:
+   (a) is present and at least 100 characters;
+   (b) names every subcommand discoverable from the union of all active
+   features' CONFIGURATION arrays;
+   (c) contains the literal string `/rabbit-config`;
+   (d) contains the disambiguation tokens `NOT` and `Claude Code permission`
+   so that the description distinguishes rabbit configurables from
+   platform-level concepts.
+7. The interpreter `skills/rabbit-config/scripts/rabbit-config.py` begins
    with `#!/usr/bin/env python3` and uses Python 3 stdlib only.
-7. On unknown subcommand, the interpreter exits non-zero and writes the
-   unknown name and the list of known subcommands to stderr.
-8. On valid values-style subcommand with valid value, the interpreter
+
+### Interpreter dispatch
+
+8. On unknown subcommand (or no-args), the interpreter exits non-zero and
+   writes the unknown name (when present) and the list of known subcommands
+   to stderr.
+9. On a values-style subcommand with a valid value, the interpreter
    dispatches the declared `contract.lib.mutation` API and exits 0.
-9. On valid actions-style subcommand with valid action, the interpreter
-   dispatches the declared `contract.lib.mutation` API and exits 0.
-10. Template substitution: `{tool}` and `{command}` in API args strings are
+10. On an actions-style subcommand with a valid action, the interpreter
+    dispatches the declared `contract.lib.mutation` API and exits 0.
+11. Template substitution: `{tool}` and `{command}` in API args strings are
     replaced with `argv[3]` before dispatch. When templates are present in
     the API args and `argv[3]` is absent, the interpreter exits non-zero.
-11. If `validation.reject_prefix` is declared, any input starting with that
+12. If `validation.reject_prefix` is declared, any input starting with that
     prefix is rejected with exit non-zero before dispatch.
-12. If `validation.reject_chars` is declared, any input containing a
+13. If `validation.reject_chars` is declared, any input containing a
     character matching that pattern is rejected with exit non-zero before
     dispatch.
-13. On values-style subcommand with unrecognized value, the interpreter exits
-    non-zero and writes the valid values to stderr.
-14. On actions-style subcommand with unrecognized action, the interpreter
+14. On a values-style subcommand with unrecognized value, the interpreter
+    exits non-zero and writes the valid values to stderr; on an
+    actions-style subcommand with unrecognized action, the interpreter
     exits non-zero and writes the valid actions to stderr.
-15. `rabbit-config` is declared as a required feature in
-    `.claude/workspace-structure.json`.
+
+### Runtime emission
+
+15. End-to-end via the deployed `stop-dispatcher.py`:
+    `iterate_configurables_alerts` causes the dispatcher to emit exactly
+    one brand-prefixed line per active configurable. This holds for both
+    `marker-file` and `json-key` storage types (the `json-key` case relies
+    on reverse-map translation of stored value to user-facing label).
+16. End-to-end via the deployed `session-start-dispatcher.py`:
+    `iterate_configurables_banner` causes the dispatcher to emit exactly
+    two brand-prefixed lines per active configurable — the alert text line
+    and a `revoke with: /rabbit-config <subcommand> <default>` line. Both
+    lines begin with the rabbit brand prefix; no line is rendered as a
+    multi-line continuation.
+
+### Verification hygiene
+
+17. Every test case in `test/` performs all filesystem mutations inside a
+    `tempfile.TemporaryDirectory()` scope. No test writes to, deletes from,
+    or otherwise mutates files in the live workspace under `.claude/`.
+
+### Workspace declaration
+
+18. `rabbit-config` is declared as a required feature in
+    `.claude/workspace-structure.json` under `features.children`.
 
 ## Tech Stack
 
@@ -129,3 +188,8 @@ No Bash runtime dependency.
 - Querying current configurable values (use the runtime API `iterate_configurables_alerts`
   or `iterate_configurables_banner`).
 - Adding new mutation APIs to `contract.lib.mutation` (owned by the contract feature).
+- The implementations of `iterate_configurables_alerts`,
+  `iterate_configurables_banner`, `_resolve_current_value`, and
+  `_reverse_map_json_value` live in `contract.lib.runtime` (owned by the
+  contract feature); rabbit-config's spec pins their externally observable
+  emission shape only.

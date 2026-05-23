@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """test-interpreter-unknown-subcommand.py — Inv 8.
 
-  t8a: interpreter exits non-zero on unknown subcommand
-  t8b: error output names the unknown subcommand
-  t8c: no-args invocation exits non-zero (usage error)
+  t8a: Inv 8 — interpreter exits non-zero on unknown subcommand
+  t8b: Inv 8 — error output names the unknown subcommand
+  t8c: Inv 8 — no-args invocation exits non-zero (usage error)
 """
 
 import json

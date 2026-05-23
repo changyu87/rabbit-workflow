@@ -9,7 +9,7 @@ Usage: rabbit-config.py <subcommand> [<value-or-action> [<template-value>]]
   Values-style:  rabbit-config <subcommand> <value>
   Actions-style: rabbit-config <subcommand> <action> [<template-value>]
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-config)
 Deprecation criterion: when the rabbit CLI exposes native configuration mutation.
 """
@@ -175,13 +175,6 @@ def main():
                 sys.stderr.write(f"{err}\n")
                 sys.exit(1)
             api_args = _apply_template(api_args, template_value)
-        elif len(argv) >= 3:
-            template_value = argv[2]
-            if validation:
-                err = _validate(validation, template_value, subcommand)
-                if err:
-                    sys.stderr.write(f"{err}\n")
-                    sys.exit(1)
 
     else:
         sys.stderr.write(

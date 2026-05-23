@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""test-feature-json-shape.py — Inv 1–5.
+"""test-feature-json-shape.py — Inv 1–4 (plus required-metadata preflight).
 
 Validates rabbit-config feature.json:
   t1: required metadata fields (name, version, owner, status, deprecation_criterion)
   t2: name is 'rabbit-config', status is 'active'
-  t3: manifest contains exactly one entry: publish_skill for skills/rabbit-config/SKILL.md
-  t4: runtime.Stop contains exactly one entry: iterate_configurables_alerts with empty args
-  t5: runtime.SessionStart contains exactly one entry: iterate_configurables_banner with empty args
-  t6: configuration is an empty array
+  t3: Inv 1 — manifest contains exactly one publish_skill entry for skills/rabbit-config/SKILL.md
+  t4: Inv 2 — runtime.Stop contains exactly one iterate_configurables_alerts entry with empty args
+  t5: Inv 3 — runtime.SessionStart contains exactly one iterate_configurables_banner entry with empty args
+  t6: Inv 4 — configuration is an empty array
 """
 
 import json

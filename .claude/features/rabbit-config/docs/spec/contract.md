@@ -1,6 +1,6 @@
 ---
 feature: rabbit-config
-version: 1.0.0
+version: 1.1.0
 template_version: 2.0.0
 ---
 
@@ -28,7 +28,8 @@ template_version: 2.0.0
   },
   "reads": {
     "files": [
-      ".claude/features/*/feature.json"
+      ".claude/features/*/feature.json",
+      ".claude/workspace-structure.json"
     ],
     "external": []
   },
@@ -40,7 +41,7 @@ template_version: 2.0.0
       },
       {
         "path": ".claude/features/contract/lib/runtime.py",
-        "purpose": "iterate_configurables_alerts and iterate_configurables_banner invoked by event dispatchers at Stop and SessionStart"
+        "purpose": "iterate_configurables_alerts and iterate_configurables_banner invoked by event dispatchers at Stop and SessionStart; rabbit-config pins the externally observable emission shape of these APIs"
       }
     ],
     "scripts": []
@@ -49,7 +50,8 @@ template_version: 2.0.0
     "modifies another feature's CONFIGURATION declarations",
     "adds new APIs to contract.lib.mutation",
     "writes any file except via declared contract.lib.mutation API calls",
-    "owns a configurable of its own (CONFIGURATION is always empty)"
+    "owns a configurable of its own (CONFIGURATION is always empty)",
+    "mutates the live workspace from a test case"
   ]
 }
 ```

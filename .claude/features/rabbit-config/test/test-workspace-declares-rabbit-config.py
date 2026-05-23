@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""test-workspace-declares-rabbit-config.py — Inv 17.
+"""test-workspace-declares-rabbit-config.py — Inv 18.
 
-  t17: workspace-structure.json declares rabbit-config as a required feature
-       under features.children
+  t18: Inv 18 — workspace-structure.json declares rabbit-config as a
+       required feature under features.children.
 """
 
 import json
@@ -33,7 +33,7 @@ def ok(n, msg):
 
 
 if not os.path.isfile(DECL):
-    fail(17, f"workspace-structure.json not found at {DECL}")
+    fail(18, f"workspace-structure.json not found at {DECL}")
     sys.exit(1)
 
 with open(DECL) as f:
@@ -41,19 +41,19 @@ with open(DECL) as f:
 
 features_node = next((n for n in decl.get("nodes", []) if n.get("name") == "features"), None)
 if features_node is None:
-    fail(17, "no 'features' node in workspace-structure.json")
+    fail(18, "no 'features' node in workspace-structure.json")
     sys.exit(1)
 
 children = {c["name"]: c for c in features_node.get("children", [])}
 
 if "rabbit-config" not in children:
-    fail(17, "rabbit-config not declared in workspace-structure.json features.children")
+    fail(18, "rabbit-config not declared in workspace-structure.json features.children")
 else:
     node = children["rabbit-config"]
     if not node.get("required"):
-        fail(17, f"rabbit-config.required must be true, got {node.get('required')!r}")
+        fail(18, f"rabbit-config.required must be true, got {node.get('required')!r}")
     else:
-        ok(17, "rabbit-config declared as required in workspace-structure.json")
+        ok(18, "rabbit-config declared as required in workspace-structure.json")
 
 if FAIL:
     print("test-workspace-declares-rabbit-config: FAIL", file=sys.stderr)
