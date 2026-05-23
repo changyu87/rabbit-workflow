@@ -9,10 +9,22 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "Stop": {"$ref": "#/definitions/call_list"},
-    "SessionStart": {"$ref": "#/definitions/call_list"},
-    "UserPromptSubmit": {"$ref": "#/definitions/call_list"},
-    "PreToolUse": {"$ref": "#/definitions/call_list"}
+    "Stop": {
+      "$ref": "#/definitions/call_list",
+      "description": "Runs after every Claude Code response. Used for drift checks, active-override alerts, and policy re-injection on detected drift."
+    },
+    "SessionStart": {
+      "$ref": "#/definitions/call_list",
+      "description": "Runs once per session at startup. Used for welcome banners, policy injection, and runtime-flag display."
+    },
+    "UserPromptSubmit": {
+      "$ref": "#/definitions/call_list",
+      "description": "Runs each time the user submits a prompt. Used for counter-driven policy refresh."
+    },
+    "PreToolUse": {
+      "$ref": "#/definitions/call_list",
+      "description": "Runs before every tool invocation. rabbit-cage owns this slot exclusively (scope-guard); no other feature should declare PreToolUse APIs."
+    }
   },
   "definitions": {
     "call_list": {
