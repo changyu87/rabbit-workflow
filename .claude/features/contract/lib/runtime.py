@@ -159,3 +159,28 @@ def check_counter_threshold_refresh(counter: str, env_var: str, source: str,
     with open(counter_full, "w") as f:
         f.write("0")
     return inject_result(content)
+
+
+WELCOME_BANNER = {"text": "Rabbit workflow ready", "icon": "rabbit", "color": "green"}
+
+
+def welcome_with_policy(policy_source: str, *, repo_root: str):
+    """Return [welcome banner print_result, policy inject_result].
+
+    policy_source is repo-root-relative; may be a single file or a
+    directory whose *.md files are concatenated alphabetically (same
+    semantics as check_counter_threshold_refresh source).
+
+    On unreadable source returns a single error_result (NOT a list).
+    """
+    full = os.path.join(repo_root, policy_source)
+    try:
+        content = _read_source(full)
+    except (FileNotFoundError, OSError) as e:
+        return error_result(f"welcome policy source unreadable: {e}")
+    return [
+        print_result(WELCOME_BANNER["text"],
+                     WELCOME_BANNER["icon"],
+                     WELCOME_BANNER["color"]),
+        inject_result(content),
+    ]
