@@ -30,8 +30,16 @@ def ok(msg):
     print(f"PASS: {msg}")
 
 
+if not os.path.isfile(SCHEMA_PATH):
+    fail(f"schema file missing: {SCHEMA_PATH}")
+    sys.exit(1)
+
 with open(SCHEMA_PATH) as f:
-    schema = json.load(f)
+    try:
+        schema = json.load(f)
+    except json.JSONDecodeError as e:
+        fail(f"not valid JSON: {e}")
+        sys.exit(1)
 
 props = schema.get("properties", {})
 for key, expected_ref in EXPECTED_REFS.items():
