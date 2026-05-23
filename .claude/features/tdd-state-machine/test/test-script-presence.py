@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# test-no-originals-in-tdd-subagent.py — Inv 6 (post-BACKLOG-7) guard.
+# test-script-presence.py — Inv 6, 7 coverage.
 #
-# tdd-state-machine OWNS exactly one script: tdd-step.py.
-# That script MUST:
-#   - exist in .claude/features/tdd-state-machine/scripts/
-#   - NOT exist in .claude/features/tdd-subagent/scripts/
-# Also checks the executable-bit invariant (Inv 3).
+# Inv 6: tdd-state-machine OWNS exactly one script: tdd-step.py.
+#        Present in .claude/features/tdd-state-machine/scripts/.
+#        Absent from .claude/features/tdd-subagent/scripts/.
+# Inv 7: tdd-step.py has the user-executable bit set (any mode satisfying
+#        mode & 0o100).
 import os
 import subprocess
 import sys
@@ -36,28 +36,29 @@ def ko(msg):
     FAIL += 1
 
 
+# Inv 6: presence here, absence in tdd-subagent.
 for name in OWNED_SCRIPTS:
     here = os.path.join(HERE, name)
     subagent = os.path.join(SUBAGENT, name)
     if os.path.exists(here):
-        ok(f"{name}: present in tdd-state-machine/scripts/")
+        ok(f"Inv 6: {name} present in tdd-state-machine/scripts/")
     else:
-        ko(f"{name}: missing in tdd-state-machine/scripts/")
+        ko(f"Inv 6: {name} missing in tdd-state-machine/scripts/")
     if os.path.exists(subagent):
-        ko(f"{name}: must NOT be present in tdd-subagent/scripts/ (originals deleted)")
+        ko(f"Inv 6: {name} must NOT be present in tdd-subagent/scripts/")
     else:
-        ok(f"{name}: absent from tdd-subagent/scripts/ as required")
+        ok(f"Inv 6: {name} absent from tdd-subagent/scripts/ as required")
 
-# Executable-bit invariant (Inv 3 — relaxed: executable bit set, any user-exec mode ok).
+# Inv 7: executable bit set.
 for name in OWNED_SCRIPTS:
     p = os.path.join(HERE, name)
     if not os.path.exists(p):
         continue
     mode = os.stat(p).st_mode & 0o777
     if mode & 0o100:
-        ok(f"{name}: executable bit set ({oct(mode)})")
+        ok(f"Inv 7: {name} executable bit set ({oct(mode)})")
     else:
-        ko(f"{name}: executable bit not set ({oct(mode)})")
+        ko(f"Inv 7: {name} executable bit not set ({oct(mode)})")
 
 print()
 print(f"summary: {PASS} passed, {FAIL} failed")
