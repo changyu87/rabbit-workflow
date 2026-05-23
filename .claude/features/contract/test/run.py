@@ -70,5 +70,6 @@ run_test("test-feature-json-schema-admits-meta-contract.py")
 run_test("test-validate-meta-contract-manifest.py")
 run_test("test-validate-meta-contract-runtime.py")
 run_test("test-validate-meta-contract-configuration.py")
+run_test("test-validate-meta-contract-cli.py")
 
 print("ALL TESTS PASSED")

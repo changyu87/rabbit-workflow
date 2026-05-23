@@ -37,6 +37,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "scripts": [
       ".claude/features/contract/scripts/policy-block.py",
       ".claude/features/contract/scripts/validate-feature.py",
+      ".claude/features/contract/scripts/validate-meta-contract.py",
       ".claude/features/contract/scripts/find-feature.py",
       ".claude/features/contract/scripts/rabbit_print.py",
       ".claude/features/contract/scripts/enforcement/check-imports-resolve.py",
