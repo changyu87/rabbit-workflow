@@ -1,9 +1,9 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-feature",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Dispatcher-side feature-touch orchestration surface. Owns the rabbit-feature-touch skill and four general-purpose helper skills (rabbit-feature-scope, rabbit-feature-spec, rabbit-feature-new, rabbit-feature-audit) plus their backing scripts (resolve-scope.py, format-feature-context.py, new-feature.py). Executor-side TDD machinery (dispatch-tdd-subagent.py, tdd-step.py) lives in tdd-subagent and tdd-state-machine and is consumed via the cross-feature contract.",
   "surface": {
     "hooks": [],
@@ -23,5 +23,6 @@
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
-  "updated": "2026-05-23"
+  "updated": "2026-05-23",
+  "spec_no_change_reason": "Spec change (Inv 16 addition) was committed by the dispatcher in 27d3bf16 BEFORE this subagent began; no further spec edits required in this cycle."
 }
