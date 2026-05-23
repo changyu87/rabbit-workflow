@@ -14,6 +14,7 @@ SUITES = [
     "test-feature-json-validity.py",
     "test-dispatcher-lib.py",
     "test-dispatchers.py",
+    "test-deployed-hooks-execute.py",
     "test-install-publish-loop.py",
     "test-scope-guard-centralized.py",
     "test-scope-guard-allowlist.py",
