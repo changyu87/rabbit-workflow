@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """
-E2E tests for unique-per-process worktree path and push retry behaviour.
+Concurrency invariants for branch_ops: per-process worktree paths, the
+fresh-checkout/detached-HEAD invariant, push retry on non-fast-forward,
+and the commit_sha-backfill retry parity.
 
 Spec invariants under test:
   - branch_ops.py MUST use git worktree at a UNIQUE per-process path under
-    .claude/tmp/ for all writes. The path format is
-    .claude/tmp/bug-backlog-files-<pid> where <pid> is the current process ID.
-  - branch_ops push operations MUST be wrapped in a retry loop with up to 3
-    attempts. On non-fast-forward push failure the retry MUST re-fetch
-    origin/bug-backlog-files, reset the worktree branch, re-apply local
-    changes (re-allocate a fresh ID if needed), and retry the commit+push.
+    .claude/tmp/ for all writes. Path format
+    .claude/tmp/bug-backlog-files-<pid>.
+  - branch_ops._worktree() MUST set the worktree HEAD to the freshly-fetched
+    origin/bug-backlog-files tip and use a detached HEAD pointing at it
+    (push uses refspec HEAD:bug-backlog-files).
+  - branch_ops push operations (counter, item, commit_sha backfill) MUST be
+    wrapped in a retry loop bounded to exactly 16 attempts; on
+    non-fast-forward push the retry MUST re-fetch, reset, re-apply, retry.
+  - commit_item's second push (commit_sha backfill) MUST use the same retry
+    mechanism as the primary push.
 """
 
 import json
@@ -421,6 +427,163 @@ def _inject_competing_commit(isolated_repo, feature):
         _git(sibling, "push", "origin", "HEAD:bug-backlog-files")
     finally:
         shutil.rmtree(sibling, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# Worktree fresh-checkout invariant: _worktree() must reset to the
+# freshly-fetched origin tip so reads see the latest committed items and
+# writes never push from a stale base. Implementation uses detached HEAD
+# on origin/bug-backlog-files for concurrent-safe operation.
+# ---------------------------------------------------------------------------
+
+
+def _simulate_concurrent_remote_commit(isolated_repo):
+    """Simulate another actor pushing a new commit to origin/bug-backlog-files
+    while we hold a stale local view. Returns the new origin tip SHA."""
+    remote_url = _git(isolated_repo, "remote", "get-url", "origin")
+    other = isolated_repo.parent / "other-clone"
+    if other.exists():
+        shutil.rmtree(other)
+    subprocess.run(
+        ["git", "clone", "--branch", "bug-backlog-files",
+         remote_url, str(other)],
+        check=True, capture_output=True
+    )
+    _git(other, "config", "user.email", "other@test.invalid")
+    _git(other, "config", "user.name", "Other")
+    (other / "concurrent-commit-marker.txt").write_text("from other actor")
+    _git(other, "add", "concurrent-commit-marker.txt")
+    _git(other, "commit", "-m", "concurrent: simulated remote commit")
+    _git(other, "push", "origin", "HEAD:bug-backlog-files")
+    new_tip = _git(other, "rev-parse", "HEAD")
+    shutil.rmtree(other, ignore_errors=True)
+    return new_tip
+
+
+class TestWorktreeFreshCheckout:
+    def test_worktree_head_matches_origin_tip_after_concurrent_remote_advance(
+            self, isolated_repo):
+        """After a concurrent remote push advances origin/bug-backlog-files,
+        the next _worktree() invocation must yield a worktree whose detached
+        HEAD equals the freshly-fetched remote tip (no stale base)."""
+        branch_ops.allocate_id("rabbit-cage", "bug")
+        new_origin_tip = _simulate_concurrent_remote_commit(isolated_repo)
+        with branch_ops._worktree(str(isolated_repo)) as wt:
+            wt_head = _git(wt, "rev-parse", "HEAD")
+            assert wt_head == new_origin_tip, (
+                f"worktree HEAD={wt_head} does not match "
+                f"origin/bug-backlog-files tip={new_origin_tip}"
+            )
+
+    def test_concurrent_remote_commit_visible_to_reads(self, isolated_repo):
+        """End-to-end: when origin has items committed by another actor after
+        our last operation, fetch_item / read_branch must see them. A stale
+        local branch previously caused reads to silently miss new items."""
+        local_id = branch_ops.allocate_id("rabbit-cage", "bug")
+        item = {
+            "name": local_id, "type": "bug", "title": "local",
+            "status": "open", "priority": "low", "description": "x",
+            "related_feature": "rabbit-cage",
+            "filed": "2026-01-01T00:00:00Z", "filed_by": "tester",
+            "closed": None, "history": [],
+        }
+        branch_ops.commit_item("rabbit-cage", "bug", local_id, item)
+
+        remote_url = _git(isolated_repo, "remote", "get-url", "origin")
+        other = isolated_repo.parent / "other-clone-reads"
+        if other.exists():
+            shutil.rmtree(other)
+        subprocess.run(
+            ["git", "clone", "--branch", "bug-backlog-files",
+             remote_url, str(other)],
+            check=True, capture_output=True
+        )
+        _git(other, "config", "user.email", "other@test.invalid")
+        _git(other, "config", "user.name", "Other")
+        other_dir = (other / "rabbit" / "features" / "rabbit-cage"
+                     / "bugs" / "RABBIT-CAGE-BUG-999")
+        other_dir.mkdir(parents=True, exist_ok=True)
+        other_item = {
+            "name": "RABBIT-CAGE-BUG-999", "type": "bug",
+            "title": "from other actor", "status": "open",
+            "priority": "high", "description": "remote",
+            "related_feature": "rabbit-cage",
+            "filed": "2026-01-02T00:00:00Z", "filed_by": "other",
+            "closed": None, "history": [],
+        }
+        (other_dir / "item.json").write_text(json.dumps(other_item, indent=2))
+        _git(other, "add", str(other_dir / "item.json"))
+        _git(other, "commit", "-m", "item: RABBIT-CAGE-BUG-999 (from other)")
+        _git(other, "push", "origin", "HEAD:bug-backlog-files")
+        shutil.rmtree(other, ignore_errors=True)
+
+        fetched = branch_ops.fetch_item(
+            "rabbit-cage", "bug", "RABBIT-CAGE-BUG-999")
+        assert fetched is not None, (
+            "fetch_item could not see concurrent remote commit; "
+            "_worktree did not reset to fresh origin tip"
+        )
+        assert fetched["title"] == "from other actor"
+
+    def test_writes_do_not_fail_with_non_fast_forward(self, isolated_repo):
+        """End-to-end: after a concurrent remote commit, the next write must
+        succeed (not non-fast-forward), because _worktree() rebased on the
+        fresh origin tip."""
+        branch_ops.allocate_id("rabbit-cage", "bug")
+        _simulate_concurrent_remote_commit(isolated_repo)
+        id2 = branch_ops.allocate_id("rabbit-cage", "bug")
+        assert id2
+
+
+# ---------------------------------------------------------------------------
+# Explicit 2-way allocate_id race: complements the 3-way concurrent filing
+# test above.
+# ---------------------------------------------------------------------------
+
+
+class TestAllocateIdRace:
+    def test_subprocess_allocate_id_distinct(self, isolated_repo):
+        """Two file-item.py subprocesses launched simultaneously against the
+        same feature MUST produce distinct IDs."""
+        branch_ops.allocate_id("race-feat", "bug")
+
+        file_item = SCRIPTS_DIR / "file-item.py"
+        env = os.environ.copy()
+        procs = []
+        for i in range(2):
+            p = subprocess.Popen(
+                [sys.executable, str(file_item),
+                 "--type", "bug",
+                 "--feature", "race-feat",
+                 "--title", f"race {i}",
+                 "--priority", "low",
+                 "--description", f"race test {i}",
+                 "--filed-by", "tester"],
+                cwd=str(isolated_repo),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+            )
+            procs.append(p)
+
+        results = []
+        for p in procs:
+            out, err = p.communicate(timeout=120)
+            assert p.returncode == 0, (
+                f"file-item.py failed: stdout={out!r} stderr={err!r}"
+            )
+            results.append(out.decode())
+
+        ids = []
+        for out in results:
+            for line in out.splitlines():
+                if line.startswith("Filed:"):
+                    ids.append(line.split()[1])
+                    break
+        assert len(ids) == 2
+        assert len(set(ids)) == 2, (
+            f"concurrent file-item.py produced duplicate IDs: {ids}"
+        )
 
 
 if __name__ == "__main__":

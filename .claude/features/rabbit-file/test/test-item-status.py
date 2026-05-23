@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for item-status.py"""
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -380,3 +381,64 @@ def test_set_close_to_close_is_noop(filed_item, monkeypatch):
         f"closed timestamp changed on no-op: before={closed_ts_before!r} "
         f"after={item_after['closed']!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Smoke tests for update length validation (detailed boundaries live in
+# test-sanitize-and-length.py).
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateLengthValidation:
+    def test_title_over_200_chars_rejected(self, filed_item):
+        clone, id_str = filed_item
+        long_title = "x" * 201
+        r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                    "--id", id_str, "--field", "title", "--value", long_title,
+                    "--reason", "test")
+        assert r.returncode == 1, r.stderr
+        assert "200" in r.stderr
+        assert "title" in r.stderr
+
+    def test_description_over_10240_chars_rejected(self, filed_item):
+        clone, id_str = filed_item
+        long_desc = "y" * 10241
+        r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                    "--id", id_str, "--field", "description", "--value", long_desc,
+                    "--reason", "test")
+        assert r.returncode == 1, r.stderr
+        assert "10240" in r.stderr
+        assert "description" in r.stderr
+
+    def test_title_at_200_chars_accepted(self, filed_item):
+        clone, id_str = filed_item
+        ok_title = "z" * 200
+        r = run_cmd(clone, "update", "--feature", "test-feat", "--type", "bug",
+                    "--id", id_str, "--field", "title", "--value", ok_title,
+                    "--reason", "boundary")
+        assert r.returncode == 0, r.stderr
+
+
+# ---------------------------------------------------------------------------
+# show subcommand: prints the full item.json as pretty JSON.
+# ---------------------------------------------------------------------------
+
+
+class TestShowSubcommand:
+    def test_show_prints_full_item_json(self, filed_item):
+        clone, id_str = filed_item
+        r = run_cmd(clone, "show", "--feature", "test-feat", "--type", "bug",
+                    "--id", id_str)
+        assert r.returncode == 0, r.stderr
+        parsed = json.loads(r.stdout)
+        assert parsed["name"] == id_str
+        assert parsed["type"] == "bug"
+        assert parsed["priority"] == "high"
+        assert "history" in parsed
+        assert "commit_sha" in parsed
+
+    def test_show_missing_item_exits_nonzero(self, isolated_repo):
+        r = run_cmd(isolated_repo, "show", "--feature", "absent",
+                    "--type", "bug", "--id", "ABSENT-BUG-99")
+        assert r.returncode == 1, r.stdout
+        assert "not found" in r.stderr.lower()

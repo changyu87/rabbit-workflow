@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for file-item.py"""
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 import pytest
 
 SCRIPTS = Path(__file__).parent.parent / "scripts"
+SCRIPTS_DIR = SCRIPTS
 
 
 @pytest.fixture
@@ -113,3 +115,58 @@ def test_valid_backlog_filing(isolated_repo):
     item = bm.fetch_item("test-feat", "backlog", "TEST-FEAT-BACKLOG-1")
     assert item is not None
     assert item["type"] == "backlog"
+
+
+# ---------------------------------------------------------------------------
+# ID-slot rollback when commit_item raises after allocate_id succeeded.
+# file-item.py MUST call branch_ops.release_id to reclaim the slot.
+# ---------------------------------------------------------------------------
+
+
+class TestIdRollbackOnCommitFailure:
+    def test_file_item_rolls_back_id_on_commit_failure(self, isolated_repo):
+        """When commit_item raises after allocate_id succeeded, file-item.py
+        invokes release_id so the ID slot is reclaimed for the next caller."""
+        sitepath = isolated_repo / "_pytest_inject"
+        sitepath.mkdir()
+        (sitepath / "sitecustomize.py").write_text(
+            "import sys\n"
+            "from pathlib import Path\n"
+            f"sys.path.insert(0, {str(SCRIPTS_DIR)!r})\n"
+            "import branch_ops as _bo\n"
+            "_orig = _bo.commit_item\n"
+            "def _boom(*a, **kw):\n"
+            "    raise RuntimeError('simulated commit_item failure')\n"
+            "_bo.commit_item = _boom\n"
+        )
+
+        env = os.environ.copy()
+        env["PYTHONPATH"] = (
+            str(sitepath) + os.pathsep + env.get("PYTHONPATH", "")
+        )
+
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "file-item.py"),
+             "--type", "bug", "--feature", "rollback-e2e",
+             "--title", "T", "--priority", "high",
+             "--description", "D", "--filed-by", "tester"],
+            capture_output=True, text=True, cwd=str(isolated_repo), env=env,
+        )
+        assert r.returncode != 0, (
+            f"file-item.py should fail when commit_item raises; "
+            f"stdout={r.stdout!r} stderr={r.stderr!r}"
+        )
+
+        # A SECOND filing (without the injected failure) MUST reuse ID 1
+        # because the rollback released the slot.
+        r2 = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "file-item.py"),
+             "--type", "bug", "--feature", "rollback-e2e",
+             "--title", "T2", "--priority", "high",
+             "--description", "D2", "--filed-by", "tester"],
+            capture_output=True, text=True, cwd=str(isolated_repo),
+        )
+        assert r2.returncode == 0, r2.stderr
+        assert "ROLLBACK-E2E-BUG-1" in r2.stdout, (
+            f"after rollback, next filing should reuse ID 1; got: {r2.stdout!r}"
+        )
