@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "runtime.schema.json",
+  "schema_version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "deprecation_criterion": "when Claude Code exposes a native per-event hook plugin mechanism that subsumes this schema",
+  "title": "Feature RUNTIME",
+  "description": "Per-event lists of runtime API calls. The dispatcher hook for each Claude Code event invokes the calls in declaration order and aggregates typed returns.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "Stop": {"$ref": "#/definitions/call_list"},
+    "SessionStart": {"$ref": "#/definitions/call_list"},
+    "UserPromptSubmit": {"$ref": "#/definitions/call_list"},
+    "PreToolUse": {"$ref": "#/definitions/call_list"}
+  },
+  "definitions": {
+    "call_list": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["api", "args"],
+        "additionalProperties": false,
+        "properties": {
+          "api": {
+            "type": "string",
+            "enum": [
+              "check_drift_regenerate",
+              "check_manifest_drift",
+              "check_marker_alert",
+              "check_marker_consume_alert",
+              "check_counter_threshold_refresh",
+              "welcome_with_policy",
+              "iterate_configurables_alerts",
+              "iterate_configurables_banner"
+            ]
+          },
+          "args": {"type": "object"}
+        }
+      }
+    }
+  }
+}

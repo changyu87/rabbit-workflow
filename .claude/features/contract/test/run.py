@@ -64,5 +64,6 @@ run_test("test-rabbit-feature-skills-deployment.py")
 run_test("test-check-invariant-monotonic-order.py")
 run_test("test-changelog-exists.py")
 run_test("test-manifest-schema-shape.py")
+run_test("test-runtime-schema-shape.py")
 
 print("ALL TESTS PASSED")
