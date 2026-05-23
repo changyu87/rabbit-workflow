@@ -587,3 +587,70 @@ def validate_feature(feature_dir: str) -> CheckResult:
         errors.append(f"FAIL: {len(errors)} error(s) in {feature_dir}")
         return CheckResult(False, errors)
     return CheckResult(True, [f"PASS: {feature_dir}"])
+
+
+# ---------------------------------------------------------------------------
+# Meta-contract validation (Plan A — manifest section only; runtime and
+# configuration arms added in Tasks 6 and 7).
+# ---------------------------------------------------------------------------
+
+_PUBLISH_API_ENUM = frozenset({
+    "publish_skill",
+    "publish_command",
+    "publish_agent",
+    "publish_hook",
+    "publish_settings",
+    "publish_file",
+    "publish_generated",
+})
+
+
+def _validate_manifest(manifest):
+    """Validate a manifest declaration. Returns list of error message strings."""
+    errors = []
+    if not isinstance(manifest, list):
+        errors.append(f"manifest must be an array, got {type(manifest).__name__}")
+        return errors
+    for i, item in enumerate(manifest):
+        if not isinstance(item, dict):
+            errors.append(f"manifest[{i}] must be an object, got {type(item).__name__}")
+            continue
+        if "api" not in item:
+            errors.append(f"manifest[{i}] missing required 'api' field")
+            continue
+        if "args" not in item:
+            errors.append(f"manifest[{i}] missing required 'args' field")
+            continue
+        if item["api"] not in _PUBLISH_API_ENUM:
+            errors.append(f"manifest[{i}]: unknown publish api {item['api']!r} (valid: {sorted(_PUBLISH_API_ENUM)})")
+        if not isinstance(item["args"], dict):
+            errors.append(f"manifest[{i}].args must be an object, got {type(item['args']).__name__}")
+        extra_keys = set(item.keys()) - {"api", "args"}
+        if extra_keys:
+            errors.append(f"manifest[{i}]: unexpected keys {sorted(extra_keys)} (only api and args allowed)")
+    return errors
+
+
+def validate_meta_contract(feature_dir):
+    """Validate a feature's meta-contract sections (manifest/runtime/configuration).
+
+    Each section is optional. Returns a CheckResult; passed=True iff every
+    declared section validates against its schema rules.
+    """
+    feature_json_path = os.path.join(feature_dir, "feature.json")
+    if not os.path.isfile(feature_json_path):
+        return CheckResult(passed=False, messages=[f"feature.json missing at {feature_json_path}"])
+    try:
+        with open(feature_json_path) as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        return CheckResult(passed=False, messages=[f"feature.json invalid JSON: {e}"])
+
+    errors = []
+    if "manifest" in data:
+        errors.extend(_validate_manifest(data["manifest"]))
+    # runtime and configuration arms added in Tasks 6 and 7.
+
+    if errors:
+        return CheckResult(passed=False, messages=errors)
+    return CheckResult(passed=True, messages=["meta-contract sections valid (or absent)"])
