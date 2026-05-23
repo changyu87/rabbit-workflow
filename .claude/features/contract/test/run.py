@@ -80,5 +80,6 @@ run_test("test-mutation-write-marker.py")
 run_test("test-mutation-delete-marker.py")
 run_test("test-mutation-set-json-key.py")
 run_test("test-mutation-delete-json-key.py")
+run_test("test-mutation-append-json-array.py")
 
 print("ALL TESTS PASSED")

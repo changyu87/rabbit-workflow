@@ -167,3 +167,35 @@ def delete_json_key(file: str, key: str, *, repo_root: str) -> CheckResult:
         return CheckResult(True, [f"OK: {file}::{key} absent (no-op)"])
     _write_json(path, data)
     return CheckResult(True, [f"OK: {file}::{key} deleted"])
+
+
+def append_json_array(file: str, key: str, value, *, repo_root: str) -> CheckResult:
+    """Append value to a JSON array at dotted key path in file.
+
+    Creates the file, intermediate dicts, and the array if absent. Idempotent:
+    if value is already present in the array, returns passed=True with a
+    'no-op' message and does not re-append.
+
+    If an existing value at the key is not an array, returns passed=False
+    without modifying the file (data preservation).
+    """
+    path = os.path.join(repo_root, file)
+    data, err = _load_json_or_empty(path)
+    if err is not None:
+        return CheckResult(False, [err])
+    try:
+        existing = _get_nested(data, key)
+    except KeyError:
+        existing = None
+    if existing is None:
+        _set_nested(data, key, [value])
+    elif not isinstance(existing, list):
+        return CheckResult(False, [
+            f"ERROR: {file}::{key} exists but is not an array (type={type(existing).__name__}); refusing to overwrite"
+        ])
+    elif value in existing:
+        return CheckResult(True, [f"OK: {file}::{key} already contains value (no-op)"])
+    else:
+        existing.append(value)
+    _write_json(path, data)
+    return CheckResult(True, [f"OK: {file}::{key} appended"])
