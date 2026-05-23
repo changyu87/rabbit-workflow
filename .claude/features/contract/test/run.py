@@ -77,5 +77,6 @@ run_test("test-publish-hook.py")
 run_test("test-publish-settings.py")
 run_test("test-publish-generated.py")
 run_test("test-runtime-result-helpers.py")
+run_test("test-runtime-check-marker-alert.py")
 
 print("ALL TESTS PASSED")

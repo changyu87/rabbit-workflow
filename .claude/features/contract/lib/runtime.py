@@ -24,6 +24,8 @@ Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
 """
 
+import os
+
 
 def print_result(text: str, icon: str, color: str) -> dict:
     """Tagged dict for an alert line that the dispatcher renders via
@@ -46,3 +48,22 @@ def error_result(message: str) -> dict:
     """Tagged dict for an internal failure — dispatcher logs to stderr and
     does NOT surface to Claude."""
     return {"type": "error", "message": message}
+
+
+def check_marker_alert(path: str, content, alert: dict, *, repo_root: str) -> dict:
+    """If the marker at `path` (repo-root-relative) exists, return a print
+    result built from `alert` ({text, icon, color}). If `content` is not
+    None, the marker file must also contain exactly that string; otherwise
+    treat as absent.
+    """
+    full = os.path.join(repo_root, path)
+    if not os.path.isfile(full):
+        return ok_result()
+    if content is not None:
+        try:
+            with open(full) as f:
+                if f.read() != content:
+                    return ok_result()
+        except OSError:
+            return ok_result()
+    return print_result(alert["text"], alert["icon"], alert["color"])
