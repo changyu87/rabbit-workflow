@@ -33,10 +33,19 @@ def _resolve(path: str, feature_dir: str, repo_root: str) -> str:
     return os.path.join(feature_dir, path)
 
 
+def read_file(path: str, *, feature_dir: str, repo_root: str) -> str:
+    """Return the contents of `path` (resolved per the module-level
+    convention) as a string. Raises FileNotFoundError if the file is
+    missing — caller (typically publish_generated) propagates the error.
+    """
+    with open(_resolve(path, feature_dir, repo_root)) as f:
+        return f.read()
+
+
 # Registry: MANIFEST kebab-case producer names → Python functions.
 # Populated by Tasks 2-4 (read-file, expand-at-imports, generate-claude-md).
 PRODUCERS = {
-    # populated by later tasks
+    "read-file": read_file,
 }
 
 

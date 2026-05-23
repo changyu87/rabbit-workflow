@@ -26,11 +26,11 @@ def ok(msg):
     print(f"PASS: {msg}")
 
 
-# t1: PRODUCERS registry is a dict (entries populated by later tasks)
-if not isinstance(producers.PRODUCERS, dict):
-    fail("t1: PRODUCERS is not a dict")
+# t1: PRODUCERS registry contains read-file
+if "read-file" not in producers.PRODUCERS:
+    fail("t1: registry missing 'read-file'")
 else:
-    ok("t1: PRODUCERS is a dict")
+    ok("t1: PRODUCERS registry contains 'read-file'")
 
 # t2: call_producer raises KeyError on unknown name
 try:

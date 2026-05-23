@@ -77,5 +77,6 @@ run_test("test-publish-hook.py")
 run_test("test-publish-settings.py")
 run_test("test-publish-generated.py")
 run_test("test-producers-dispatch.py")
+run_test("test-producers-read-file.py")
 
 print("ALL TESTS PASSED")
