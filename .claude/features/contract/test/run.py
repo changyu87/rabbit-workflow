@@ -76,5 +76,6 @@ run_test("test-publish-skill-command-agent.py")
 run_test("test-publish-hook.py")
 run_test("test-publish-settings.py")
 run_test("test-publish-generated.py")
+run_test("test-producers-dispatch.py")
 
 print("ALL TESTS PASSED")
