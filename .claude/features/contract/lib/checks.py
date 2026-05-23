@@ -636,8 +636,11 @@ def _validate_runtime(runtime):
             if not isinstance(item, dict):
                 errors.append(f"runtime[{event!r}][{i}] must be an object")
                 continue
-            if "api" not in item or "args" not in item:
-                errors.append(f"runtime[{event!r}][{i}] missing required 'api' or 'args'")
+            if "api" not in item:
+                errors.append(f"runtime[{event!r}][{i}] missing required 'api' field")
+                continue
+            if "args" not in item:
+                errors.append(f"runtime[{event!r}][{i}] missing required 'args' field")
                 continue
             if item["api"] not in _RUNTIME_API_ENUM:
                 errors.append(f"runtime[{event!r}][{i}]: unknown runtime api {item['api']!r}")
