@@ -103,6 +103,16 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t7: non-object feature.json acceptance bug: passed={r.passed}, messages={r.messages}")
 
+with tempfile.TemporaryDirectory() as td:
+    # t8: manifest item with extra keys beyond {api, args} -> fail (pins additionalProperties: false)
+    write_feature(td, {"name": "x", "version": "1.0.0", "owner": "x", "tdd_state": "spec", "summary": "x", "surface": {}, "deprecation_criterion": "x",
+                       "manifest": [{"api": "publish_skill", "args": {"source": "x"}, "stray": True}]})
+    r = validate_meta_contract(td)
+    if not r.passed and any("unexpected keys" in m and "stray" in m for m in r.messages):
+        ok("t8: manifest item with extra keys is rejected (additionalProperties: false)")
+    else:
+        fail(f"t8: extra-keys acceptance bug: passed={r.passed}, messages={r.messages}")
+
 if FAIL:
     print("test-validate-meta-contract-manifest: FAIL", file=sys.stderr)
     sys.exit(1)

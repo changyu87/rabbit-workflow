@@ -84,6 +84,30 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t6: unknown runtime api acceptance bug: passed={r.passed}, messages={r.messages}")
 
+with tempfile.TemporaryDirectory() as td:
+    # t7: runtime item missing 'api' alone -> message must say 'api' specifically (post-fix 62995191)
+    r = validate_meta_contract(write(td, {"Stop": [{"args": {}}]}))
+    if not r.passed and any("missing required 'api' field" in m for m in r.messages):
+        ok("t7: runtime item missing 'api' is rejected with field-specific message")
+    else:
+        fail(f"t7: missing-api acceptance bug: passed={r.passed}, messages={r.messages}")
+
+with tempfile.TemporaryDirectory() as td:
+    # t8: runtime item missing 'args' alone -> message must say 'args' specifically (post-fix 62995191)
+    r = validate_meta_contract(write(td, {"Stop": [{"api": "check_marker_alert"}]}))
+    if not r.passed and any("missing required 'args' field" in m for m in r.messages):
+        ok("t8: runtime item missing 'args' is rejected with field-specific message")
+    else:
+        fail(f"t8: missing-args acceptance bug: passed={r.passed}, messages={r.messages}")
+
+with tempfile.TemporaryDirectory() as td:
+    # t9: runtime item with extra keys beyond {api, args} -> fail
+    r = validate_meta_contract(write(td, {"Stop": [{"api": "check_marker_alert", "args": {}, "stray": 1}]}))
+    if not r.passed and any("unexpected keys" in m and "stray" in m for m in r.messages):
+        ok("t9: runtime item with extra keys is rejected")
+    else:
+        fail(f"t9: extra-keys acceptance bug: passed={r.passed}, messages={r.messages}")
+
 if FAIL:
     print("test-validate-meta-contract-runtime: FAIL", file=sys.stderr)
     sys.exit(1)
