@@ -131,3 +131,39 @@ def set_json_key(file: str, key: str, value, *, repo_root: str) -> CheckResult:
     _set_nested(data, key, value)
     _write_json(path, data)
     return CheckResult(True, [f"OK: {file}::{key} set"])
+
+
+def _delete_nested(d: dict, key_path: str) -> bool:
+    """Delete leaf at dotted key_path inside d. Returns True if deleted,
+    False if any segment was missing (no-op).
+    """
+    parts = key_path.split(".")
+    for p in parts[:-1]:
+        if not isinstance(d, dict) or p not in d or not isinstance(d[p], dict):
+            return False
+        d = d[p]
+    if isinstance(d, dict) and parts[-1] in d:
+        del d[parts[-1]]
+        return True
+    return False
+
+
+def delete_json_key(file: str, key: str, *, repo_root: str) -> CheckResult:
+    """Delete key at dotted JSON path in file (repo-root-relative).
+
+    Idempotent: missing file, missing key, or missing intermediate dict
+    is a no-op. The empty parent object is preserved (sibling keys at
+    every level are untouched).
+
+    On malformed JSON, returns passed=False without modifying the file.
+    """
+    path = os.path.join(repo_root, file)
+    if not os.path.isfile(path):
+        return CheckResult(True, [f"OK: {file} absent (no-op)"])
+    data, err = _load_json_or_empty(path)
+    if err is not None:
+        return CheckResult(False, [err])
+    if not _delete_nested(data, key):
+        return CheckResult(True, [f"OK: {file}::{key} absent (no-op)"])
+    _write_json(path, data)
+    return CheckResult(True, [f"OK: {file}::{key} deleted"])
