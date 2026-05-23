@@ -142,48 +142,56 @@ Scripts (under `scripts/`):
     (per-feature) markers at the repo root. Scope markers are
     exclusively the TDD subagent's responsibility.
 
+16. **Step 3 spec-commit obligation.** The SKILL.md Step 3 documents
+    the obligation to commit spec changes BEFORE Step 5: after
+    `rabbit-feature-spec` returns, the dispatcher stages modifications
+    under `.claude/features/<feature-name>/` and commits with message
+    pattern `spec(<feature-name>): update spec for <one-line request
+    summary>`. The commit is skipped only when the staged diff against
+    `docs/spec/spec.md` is empty.
+
 ### rabbit-feature-scope SKILL.md and scripts
 
-16. **resolve-scope.py emits prompt only.** `scripts/resolve-scope.py`
+17. **resolve-scope.py emits prompt only.** `scripts/resolve-scope.py`
     writes a prompt to stdout and never invokes Agent itself.
 
-17. **Default Agent model.** The Agent dispatched by callers of
+18. **Default Agent model.** The Agent dispatched by callers of
     `rabbit-feature-scope` uses the default model (no Opus override
     in the prompt or the SKILL.md instructions).
 
-18. **Feature enumeration via `find-feature.py list-json`.**
+19. **Feature enumeration via `find-feature.py list-json`.**
     `scripts/resolve-scope.py` uses
     `python3 .claude/features/contract/scripts/find-feature.py <repo-root> list-json`
     to enumerate features and never reads `registry.json`.
 
-19. **Agent response schema.** The Agent invoked by
+20. **Agent response schema.** The Agent invoked by
     `rabbit-feature-scope` returns
     `{"features": ["name", ...], "rationale": "one sentence"}`. An
     empty `features` list is a valid response.
 
-20. **resolve-scope.py is executable and pure-shell.**
+21. **resolve-scope.py is executable and pure-shell.**
     `scripts/resolve-scope.py` has the executable bit set and contains
     no inline `python3 -c` calls or python3 heredocs; all Python logic
     lives in `format-feature-context.py`.
 
-21. **format-feature-context.py stdin/stdout contract.**
+22. **format-feature-context.py stdin/stdout contract.**
     `scripts/format-feature-context.py` reads JSON from stdin and
     writes the formatted feature-context block to stdout. It is invoked
     as `python3 format-feature-context.py`.
 
-22. **format-feature-context.py tolerates missing optional keys.** The
+23. **format-feature-context.py tolerates missing optional keys.** The
     script tolerates a `feature.json` missing optional keys (`summary`,
     `tdd_state`, `version`, `deprecation_criterion`) without crashing.
     A missing `feature` key is the only fatal condition.
 
-23. **rabbit-feature-scope SKILL.md fence separation.** The Usage
+24. **rabbit-feature-scope SKILL.md fence separation.** The Usage
     section presents the shell command and the Agent tool invocation
     in separate fenced code blocks with distinct fence labels (e.g.,
     ```bash``` for the shell command, ```text``` for the tool call).
     The Agent block is preceded by a sentence stating it is a Claude
     tool call and MUST NOT be shell-executed.
 
-24. **Scope Agent prompt is feature-agnostic.** The prompt assembled by
+25. **Scope Agent prompt is feature-agnostic.** The prompt assembled by
     `resolve-scope.py` does not hardcode specific feature names (such
     as `contract` or `rabbit-cage`) in its RULES section. Feature-
     specific guidance derives from the live feature list emitted by
@@ -191,35 +199,35 @@ Scripts (under `scripts/`):
 
 ### rabbit-feature-spec SKILL.md
 
-25. **Frontmatter declares `model: opus`.** The `rabbit-feature-spec`
+26. **Frontmatter declares `model: opus`.** The `rabbit-feature-spec`
     SKILL.md YAML frontmatter declares `model: opus`.
 
-26. **Request classification gates superpowers.** The SKILL.md instructs
+27. **Request classification gates superpowers.** The SKILL.md instructs
     the skill to judge whether a request is open-ended or specific
     BEFORE deciding which superpowers to invoke. Open-ended requests
     invoke `superpowers:brainstorming` followed by
     `superpowers:writing-plans`; specific requests invoke
     `superpowers:writing-plans` only.
 
-27. **impl-suggestion file output.** The SKILL.md instructs the skill
+28. **impl-suggestion file output.** The SKILL.md instructs the skill
     to write `.rabbit/impl-suggestion-<feature-name>.json` conforming
     to `schema_version: 1.0.0`. The documented `generated_at` field
     format is ISO 8601 UTC in the shape `YYYY-MM-DDTHH:MM:SSZ`
     (no fractional seconds, no timezone offset).
 
-28. **Spec update precedes impl-suggestion.** The SKILL.md instructs the
+29. **Spec update precedes impl-suggestion.** The SKILL.md instructs the
     skill to update
     `.claude/features/<feature-name>/docs/spec/spec.md` BEFORE writing
     the impl-suggestion file.
 
-29. **Read-comprehend-write on spec edits.** The SKILL.md MUST express
+30. **Read-comprehend-write on spec edits.** The SKILL.md MUST express
     as a hard MUST in Step 1 (Read Current State) that the skill Read
     the target feature's `docs/spec/spec.md` via the Read tool
     in-session, and MUST repeat the obligation as a pre-condition note
     in Step 4 (Update the Spec). Reading is mandatory comprehension
     before any Edit or Write on that file.
 
-30. **Process-agnostic SKILL.md.** The SKILL.md MUST NOT identify a
+31. **Process-agnostic SKILL.md.** The SKILL.md MUST NOT identify a
     specific caller (e.g., "you are Step 3 in rabbit-feature-touch") as
     the primary or sole invocation context, and MUST NOT reference a
     specific downstream consumer (e.g., "the TDD subagent reads this
@@ -229,13 +237,13 @@ Scripts (under `scripts/`):
 
 ### rabbit-feature-new SKILL.md and new-feature.py
 
-31. **rabbit-feature-new SKILL.md invocation.** The SKILL.md instructs
+32. **rabbit-feature-new SKILL.md invocation.** The SKILL.md instructs
     the skill to invoke
     `python3 .claude/features/rabbit-feature/scripts/new-feature.py`
     to scaffold the directory and to validate the result via
     `python3 .claude/features/contract/scripts/validate-feature.py`.
 
-32. **new-feature.py scaffolds a conforming feature dir.**
+33. **new-feature.py scaffolds a conforming feature dir.**
     `scripts/new-feature.py` is executable and scaffolds a feature
     directory containing `feature.json` (with `template_version`),
     `docs/spec/spec.md`, `docs/spec/contract.md`, and `test/run.py`
@@ -244,32 +252,32 @@ Scripts (under `scripts/`):
 
 ### rabbit-feature-audit SKILL.md
 
-33. **rabbit-feature-audit invocation surface.** The SKILL.md accepts
+34. **rabbit-feature-audit invocation surface.** The SKILL.md accepts
     `Skill("rabbit-feature-audit", args: "all")` to sweep every
     immediate subdirectory of `.claude/features/`, and
     `Skill("rabbit-feature-audit", args: "<feature-name>")` to audit a
     single feature.
 
-34. **rabbit-feature-audit uses validate-feature.py.** For each
+35. **rabbit-feature-audit uses validate-feature.py.** For each
     target, the SKILL.md instructs the skill to invoke
     `python3 .claude/features/contract/scripts/validate-feature.py
     <feature-dir>` and to emit per-feature pass/fail output.
 
 ### Feature-level metadata
 
-35. **Three-way version alignment.** `feature.json.version`,
+36. **Three-way version alignment.** `feature.json.version`,
     `docs/spec/spec.md` frontmatter `version`, and `docs/spec/contract.md`
     frontmatter `version` MUST match exactly.
 
-36. **SKILL.md frontmatter completeness.** Every SKILL.md declared in
+37. **SKILL.md frontmatter completeness.** Every SKILL.md declared in
     `feature.json.surface.skills` declares non-empty `version`,
     `owner`, and `deprecation_criterion` fields in its YAML frontmatter.
 
-37. **feature.json summary mentions every skill.**
+38. **feature.json summary mentions every skill.**
     `feature.json.summary` mentions by name every skill declared in
     `feature.json.surface.skills`.
 
-38. **Surface and contract consistency.** Every skill listed in
+39. **Surface and contract consistency.** Every skill listed in
     `feature.json.surface.skills` has a corresponding entry under
     `contract.md.provides.skills`. Every cross-feature file or script
     that this feature's code reads or invokes has a corresponding entry
@@ -292,14 +300,14 @@ listed below, each tagged with the invariant(s) it covers.
 
 - `test-build-source.py` — Inv 1
 - `test-cross-feature-interface.py` — Inv 2, 3
-- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
-- `test-scope-skill.py` — Inv 23
-- `test-scope-scripts.py` — Inv 16, 17, 18, 19, 20, 21, 22, 24
-- `test-spec-skill.py` — Inv 25, 26, 27, 28, 29, 30
-- `test-new-skill.py` — Inv 31
-- `test-new-feature-scaffolder.py` — Inv 32
-- `test-audit-skill.py` — Inv 33, 34
-- `test-version-sync.py` — Inv 35
-- `test-skill-md-frontmatter.py` — Inv 36
-- `test-feature-json-summary.py` — Inv 37
-- `test-contract-md.py` — Inv 38
+- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+- `test-scope-skill.py` — Inv 24
+- `test-scope-scripts.py` — Inv 17, 18, 19, 20, 21, 22, 23, 25
+- `test-spec-skill.py` — Inv 26, 27, 28, 29, 30, 31
+- `test-new-skill.py` — Inv 32
+- `test-new-feature-scaffolder.py` — Inv 33
+- `test-audit-skill.py` — Inv 34, 35
+- `test-version-sync.py` — Inv 36
+- `test-skill-md-frontmatter.py` — Inv 37
+- `test-feature-json-summary.py` — Inv 38
+- `test-contract-md.py` — Inv 39
