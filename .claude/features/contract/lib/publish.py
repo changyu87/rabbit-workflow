@@ -13,6 +13,7 @@ Deprecation criterion: when the rabbit CLI exposes native artifact publishing.
 """
 
 import hashlib
+import json
 import os
 import shutil
 from pathlib import Path
@@ -72,3 +73,47 @@ def publish_agent(source: str, *, feature_dir: str, repo_root: str) -> CheckResu
     """
     dest = f".claude/agents/{Path(source).name}"
     return publish_file(source, dest, feature_dir=feature_dir, repo_root=repo_root)
+
+
+def publish_hook(event: str, source: str, matcher: str = "*", *,
+                 feature_dir: str, repo_root: str) -> CheckResult:
+    """Deploy a hook script to .claude/hooks/ and register it in .claude/settings.json.
+
+    event   — Claude Code event: Stop | SessionStart | UserPromptSubmit | PreToolUse.
+    source  — feature-dir-relative path, e.g. "hooks/stop-dispatcher.py".
+    matcher — hook matcher pattern (default "*").
+
+    Idempotent: re-running with unchanged hook file and already-registered command
+    is a no-op. Existing settings.json fields are preserved (read-modify-write).
+    """
+    hook_name = Path(source).name
+    hook_dest = f".claude/hooks/{hook_name}"
+    result = publish_file(source, hook_dest, feature_dir=feature_dir, repo_root=repo_root)
+    if not result.passed:
+        return result
+
+    settings_path = os.path.join(repo_root, ".claude", "settings.json")
+    if os.path.isfile(settings_path):
+        try:
+            with open(settings_path) as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            data = {}
+    else:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+
+    command = f".claude/hooks/{hook_name}"
+    hooks_section = data.setdefault("hooks", {})
+    event_entries = hooks_section.setdefault(event, [])
+    for entry in event_entries:
+        if any(h.get("command") == command for h in entry.get("hooks", [])):
+            return CheckResult(True, [f"OK: {hook_dest} already registered under {event} (no-op)"])
+
+    event_entries.append({"matcher": matcher,
+                           "hooks": [{"type": "command", "command": command}]})
+    os.makedirs(os.path.dirname(settings_path), exist_ok=True)
+    with open(settings_path, "w") as f:
+        json.dump(data, f, indent=2)
+    return CheckResult(True, [f"OK: {hook_dest} deployed and registered under {event}"])
