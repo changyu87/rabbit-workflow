@@ -52,6 +52,21 @@ if schema.get("$schema") != "http://json-schema.org/draft-07/schema#":
 else:
     ok("$schema declares draft-07")
 
+if not isinstance(schema.get("schema_version"), str) or not schema["schema_version"]:
+    fail("schema_version is missing or empty (spec-rules.md requires it)")
+else:
+    ok("schema_version is present")
+
+if not isinstance(schema.get("owner"), str) or not schema["owner"]:
+    fail("owner is missing or empty (spec-rules.md requires it)")
+else:
+    ok("owner is present")
+
+if not isinstance(schema.get("deprecation_criterion"), str) or not schema["deprecation_criterion"]:
+    fail("deprecation_criterion is missing or empty (spec-rules.md requires it)")
+else:
+    ok("deprecation_criterion is present")
+
 if schema.get("type") != "array":
     fail(f"top-level type must be 'array', got {schema.get('type')!r}")
 else:
