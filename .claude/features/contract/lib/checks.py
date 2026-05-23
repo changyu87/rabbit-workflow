@@ -742,6 +742,20 @@ def _validate_configuration(configuration):
             else:
                 for k, call in entry["values"].items():
                     errors.extend(_validate_api_call(call, f"{ctx}.values[{k!r}]"))
+                # Cross-field check: if a default is declared for a values-style
+                # entry, it must name one of the declared value keys. Otherwise
+                # the default is unreachable.
+                if "default" in entry and entry["default"] not in entry["values"]:
+                    errors.append(
+                        f"{ctx}: default {entry['default']!r} is not a key in values; "
+                        f"got values keys {sorted(entry['values'].keys())}"
+                    )
+                # Same check for alert-on: if declared, it must name a values key.
+                if "alert-on" in entry and entry["alert-on"] not in entry["values"]:
+                    errors.append(
+                        f"{ctx}: alert-on {entry['alert-on']!r} is not a key in values; "
+                        f"got values keys {sorted(entry['values'].keys())}"
+                    )
         if has_actions:
             if not isinstance(entry["actions"], dict):
                 errors.append(f"{ctx}.actions must be an object")

@@ -156,6 +156,27 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t11: alert-message.color double-report bug: passed={r.passed}, missing={missing_msgs}, enum={enum_msgs}")
 
+with tempfile.TemporaryDirectory() as td:
+    # t12: default that is not a key in values -> fail (unreachable default)
+    bad = dict(VALID_VALUES_ENTRY)
+    bad["default"] = "maybe"
+    r = validate_meta_contract(write(td, [bad]))
+    if not r.passed and any("default 'maybe' is not a key in values" in m for m in r.messages):
+        ok("t12: default that is not a values key is rejected")
+    else:
+        fail(f"t12: unreachable-default acceptance bug: passed={r.passed}, messages={r.messages}")
+
+with tempfile.TemporaryDirectory() as td:
+    # t13: alert-on that is not a key in values -> fail
+    bad = dict(VALID_VALUES_ENTRY)
+    bad["alert-on"] = "maybe"
+    bad["alert-message"] = {"text": "x", "icon": "x", "color": "red"}
+    r = validate_meta_contract(write(td, [bad]))
+    if not r.passed and any("alert-on 'maybe' is not a key in values" in m for m in r.messages):
+        ok("t13: alert-on that is not a values key is rejected")
+    else:
+        fail(f"t13: unreachable-alert-on acceptance bug: passed={r.passed}, messages={r.messages}")
+
 if FAIL:
     print("test-validate-meta-contract-configuration: FAIL", file=sys.stderr)
     sys.exit(1)
