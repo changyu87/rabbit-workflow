@@ -24,6 +24,7 @@ Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
 """
 
+import json
 import os
 
 
@@ -228,3 +229,70 @@ def check_drift_regenerate(target: str, producer: str, alert: dict,
         print_result(alert["text"], alert["icon"], alert["color"]),
         inject_result(content),
     ]
+
+
+def _enumerate_features(repo_root: str):
+    """Yield (feature_name, feature_dir, feature_json_dict) for every
+    feature directory under .claude/features/. Skips malformed
+    feature.json files silently. Order: alphabetical by feature name.
+    Shared helper for check_manifest_drift and iterate_configurables_*.
+    """
+    features_root = os.path.join(repo_root, ".claude", "features")
+    if not os.path.isdir(features_root):
+        return
+    for name in sorted(os.listdir(features_root)):
+        fdir = os.path.join(features_root, name)
+        fj = os.path.join(fdir, "feature.json")
+        if not os.path.isfile(fj):
+            continue
+        try:
+            with open(fj) as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        yield name, fdir, data
+
+
+def check_manifest_drift(alert: dict, *, repo_root: str) -> dict:
+    """Re-run every feature's MANIFEST via the publish APIs. Return a
+    print_result naming features whose publish calls produced a non-no-op
+    write (substring "no-op" absent from CheckResult.messages). On all-noop
+    return ok_result. {names} in alert.text is substituted by the
+    comma-joined feature names in alphabetical order.
+
+    Lazy-imports lib.publish so this module can be loaded standalone.
+    """
+    try:
+        from lib import publish  # noqa: PLC0415
+    except ImportError as e:
+        return error_result(f"lib.publish unavailable: {e}")
+
+    drifted = []
+    for name, fdir, data in _enumerate_features(repo_root):
+        manifest = data.get("manifest")
+        if not isinstance(manifest, list) or not manifest:
+            continue
+        for entry in manifest:
+            api_name = entry.get("api")
+            args = entry.get("args", {}) or {}
+            fn = getattr(publish, api_name, None)
+            if fn is None:
+                drifted.append(name)
+                break
+            try:
+                result = fn(**args, feature_dir=fdir, repo_root=repo_root)
+            except Exception:  # noqa: BLE001
+                drifted.append(name)
+                break
+            messages = getattr(result, "messages", []) or []
+            if not any("no-op" in m for m in messages):
+                drifted.append(name)
+                break
+
+    if not drifted:
+        return ok_result()
+    names = ", ".join(sorted(set(drifted)))
+    return print_result(alert["text"].replace("{names}", names),
+                        alert["icon"], alert["color"])
