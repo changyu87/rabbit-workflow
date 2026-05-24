@@ -40,6 +40,10 @@ if not run_suite("test-metadata.py"):
     total_fail += 1
 if not run_suite("test-spec-presence.py"):
     total_fail += 1
+if not run_suite("test-manifest-shape.py"):
+    total_fail += 1
+if not run_suite("test-manifest-deploys-correctly.py"):
+    total_fail += 1
 
 if total_fail == 0:
     print("ALL SUITES PASSED")
