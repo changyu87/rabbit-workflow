@@ -26,9 +26,7 @@ def run_test(script):
 
 
 run_test("test-rule-files-content.py")
-run_test("test-imports-resolve.py")
 run_test("test-policy-invariants.py")
-run_test("test-no-stale-imports.py")
 run_test("test-policy-bug-fixes.py")
 run_test("test-historical-fixes-retirement.py")
 

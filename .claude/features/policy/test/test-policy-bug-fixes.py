@@ -2,7 +2,7 @@
 """test-policy-bug-fixes.py — documentary regression guard for closed
 historical policy tickets.
 
-Role: a single kitchen-sink suite that re-asserts the structural fixes of 10
+Role: a single kitchen-sink suite that re-asserts the structural fixes of 9
 closed tickets so they cannot silently regress. It is NOT the canonical home
 for these checks — `test-policy-invariants.py` is. This file exists only until
 each assertion is folded into the invariants suite.
@@ -16,10 +16,11 @@ The previous open-ended criterion ('when each bug/backlog has its own
 targeted test or is closed') is REMOVED — it never fired because the tickets
 are already closed.
 
-Traces: POLICY-BUG-2, POLICY-BUG-7, POLICY-BUG-9, POLICY-BUG-18,
-        POLICY-BUG-19, POLICY-BACKLOG-1, POLICY-BACKLOG-2, POLICY-BACKLOG-5,
+Traces: POLICY-BUG-2, POLICY-BUG-7, POLICY-BUG-18, POLICY-BUG-19,
+        POLICY-BACKLOG-1, POLICY-BACKLOG-2, POLICY-BACKLOG-5,
         POLICY-BACKLOG-6, POLICY-BACKLOG-9. Retirement scaffolding added under
-        POLICY-BACKLOG-14.
+        POLICY-BACKLOG-14. POLICY-BUG-9 dropped under POLICY-BACKLOG-15:
+        the file it guarded (test-no-stale-imports.py) moved to rabbit-cage.
 
 Version: 2.0.0
 Owner: rabbit-workflow team (policy)
@@ -38,7 +39,6 @@ import sys
 TICKETS_COVERED = [
     "POLICY-BUG-2",
     "POLICY-BUG-7",
-    "POLICY-BUG-9",
     "POLICY-BUG-18",
     "POLICY-BUG-19",
     "POLICY-BACKLOG-1",
@@ -106,21 +106,6 @@ if spec_v and contract_v and feature_v and spec_v == contract_v == feature_v:
     ok(f"POLICY-BUG-19: feature.json, spec.md, contract.md all aligned at {feature_v}")
 else:
     ko(f"POLICY-BUG-19: three-way mismatch — feature.json={feature_v}, spec.md={spec_v}, contract.md={contract_v}")
-
-
-# POLICY-BUG-9: t2 comment correctly describes the @-import regex format
-# (File renamed under BACKLOG-14 to test-no-stale-imports.py.)
-p1_path = os.path.join(FEATURE_DIR, "test", "test-no-stale-imports.py")
-with open(p1_path) as f:
-    p1 = f.read()
-# The actual regex used in test-imports-resolve.py is r'^(@[^\s]+)' — no '@./...' form.
-t2_block_start = p1.find("# t2:")
-t2_block_end = p1.find("\nIMPORTS_TEST", t2_block_start)
-t2_block = p1[t2_block_start:t2_block_end] if t2_block_start != -1 else ""
-if "'@./" in t2_block or "regex '^@\\./" in t2_block:
-    ko("POLICY-BUG-9: t2 comment still references the wrong regex form")
-else:
-    ok("POLICY-BUG-9: t2 comment no longer claims the regex is '^@\\./...'")
 
 
 # POLICY-BUG-18: test-policy-invariants-v1-2-0.py not invoked by run.py (or file deleted)
