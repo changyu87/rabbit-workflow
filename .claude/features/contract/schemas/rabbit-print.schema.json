@@ -1,68 +1,21 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "schema_version": "2.0.0",
+  "schema_version": "3.0.0",
   "owner": "rabbit-workflow team",
   "deprecation_criterion": "when the [rabbit] print convention is replaced by a structured logging facility",
-  "title": "rabbit-print-messages",
-  "description": "JSON Schema validating the rabbit-print-messages.json registry: brand, bar, color palette, and the message dictionary consumed by rabbit_print.py.",
+  "title": "rabbit-print-invocation",
+  "description": "Wire-format schema for the arguments passed to rabbit_print(text, icon, color, format). Use this schema to validate any artifact (runtime alert dicts, banner_result payloads, configurable alert-message dicts) that supplies arguments for the [rabbit] direct-call renderer. There is no message-id registry — every producer supplies text/icon/color inline.",
   "type": "object",
   "required": [
-    "schema_version",
-    "owner",
-    "deprecation_criterion",
-    "brand",
-    "bar",
-    "colors",
-    "messages"
+    "text",
+    "icon",
+    "color"
   ],
+  "additionalProperties": false,
   "properties": {
-    "schema_version": {"type": "string", "minLength": 1},
-    "owner":          {"type": "string", "minLength": 1},
-    "deprecation_criterion": {"type": "string", "minLength": 1},
-    "brand": {"type": "string", "minLength": 1},
-    "bar":   {"type": "string", "minLength": 1},
-    "colors": {
-      "type": "object",
-      "required": ["green", "red"],
-      "properties": {
-        "green": {
-          "type": "object",
-          "required": ["ansi", "reset"],
-          "properties": {
-            "ansi":  {"type": "string", "minLength": 1},
-            "reset": {"type": "string", "minLength": 1}
-          }
-        },
-        "red": {
-          "type": "object",
-          "required": ["ansi", "reset"],
-          "properties": {
-            "ansi":  {"type": "string", "minLength": 1},
-            "reset": {"type": "string", "minLength": 1}
-          }
-        }
-      },
-      "additionalProperties": {
-        "type": "object",
-        "required": ["ansi", "reset"],
-        "properties": {
-          "ansi":  {"type": "string", "minLength": 1},
-          "reset": {"type": "string", "minLength": 1}
-        }
-      }
-    },
-    "messages": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "object",
-        "required": ["icon", "color", "format", "text"],
-        "properties": {
-          "icon":   {"type": "string", "minLength": 1},
-          "color":  {"type": "string", "minLength": 1},
-          "format": {"type": "string", "enum": ["banner", "compact"]},
-          "text":   {"type": "string", "minLength": 1}
-        }
-      }
-    }
+    "text":   {"type": "string", "minLength": 1},
+    "icon":   {"type": "string", "minLength": 1},
+    "color":  {"type": "string", "enum": ["green", "red", "yellow"]},
+    "format": {"type": "string", "enum": ["banner", "compact"]}
   }
 }

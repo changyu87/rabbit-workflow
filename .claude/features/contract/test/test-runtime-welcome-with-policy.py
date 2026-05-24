@@ -31,9 +31,12 @@ def ok(msg):
 
 # --- banner_result factory ---
 
-b = banner_result("welcome")
-if b.get("type") == "banner" and b.get("message_id") == "welcome":
-    ok("t-banner-1: banner_result has type 'banner' and message_id")
+b = banner_result("Welcome", "✅", "green")
+if (b.get("type") == "banner"
+        and b.get("text") == "Welcome"
+        and b.get("icon") == "✅"
+        and b.get("color") == "green"):
+    ok("t-banner-1: banner_result carries inline text/icon/color")
 else:
     fail(f"t-banner-1: unexpected banner_result: {b!r}")
 
@@ -81,14 +84,17 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t2: unexpected inject content: {r[1]!r}")
 
-# t3: welcome banner has message_id 'welcome' and type 'banner'
+# t3: welcome banner carries the welcome text/icon/color inline
 with tempfile.TemporaryDirectory() as td:
     with open(os.path.join(td, "p.md"), "w") as f:
         f.write("x")
     r = welcome_with_policy("p.md", repo_root=td)
     p = r[0]
-    if p["type"] == "banner" and p["message_id"] == "welcome":
-        ok("t3: welcome banner has type 'banner' and message_id 'welcome'")
+    if (p["type"] == "banner"
+            and "Welcome" in p.get("text", "")
+            and p.get("icon") == "✅"
+            and p.get("color") == "green"):
+        ok("t3: welcome banner carries inline welcome text + ✅ + green")
     else:
         fail(f"t3: unexpected banner result: {p!r}")
 

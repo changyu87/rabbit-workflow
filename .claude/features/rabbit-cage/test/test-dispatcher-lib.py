@@ -164,16 +164,19 @@ def test_render_emission_empty_returns_none():
 
 
 def test_render_emission_banner_type_produces_banner_line():
-    """banner-type results render via rabbit_print (banner format), not subline."""
+    """banner-type results render via rabbit_print (banner format), not subline.
+    Banner payload now carries inline text/icon/color (Plan F.3 direct-call API)."""
     lib = _load_lib()
     payloads = [
-        {"type": "banner", "message_id": "welcome"},
+        {"type": "banner", "text": "Welcome — governing policies loaded",
+         "icon": "✅", "color": "green"},
     ]
     out = lib.render_emission(payloads)
     assert out is not None, "expected non-None emission for banner result"
     sm = out.get("systemMessage", "")
-    # The 'welcome' banner contains the bar character '━━━' from the banner format
+    # The banner format wraps text with the ━━━ bar decoration
     assert "━━━" in sm, f"expected banner bar in systemMessage, got: {sm!r}"
+    assert "Welcome" in sm, f"expected text in systemMessage, got: {sm!r}"
     # The brand prefix must be present
     assert "[🐇 rabbit 🐇]" in sm, f"brand prefix missing from systemMessage: {sm!r}"
     print("PASS test_render_emission_banner_type_produces_banner_line")
@@ -199,7 +202,7 @@ def test_render_emission_banner_and_sublines_order():
     """banner + sublines appear in order in the systemMessage."""
     lib = _load_lib()
     payloads = [
-        {"type": "banner", "message_id": "welcome"},
+        {"type": "banner", "text": "Welcome", "icon": "✅", "color": "green"},
         {"type": "subline", "text": "LINE-A", "color": "green"},
         {"type": "subline", "text": "LINE-B", "color": "green"},
         {"type": "inject", "content": "POLICY"},

@@ -18,10 +18,14 @@ stubs here.
    source→deployed parity is asserted byte-for-byte by each feature's
    test-manifest-deploys-correctly.py.)
   BACKLOG-7 template marker convention documented and one template marked consistently
-  BACKLOG-8 surviving named-wrapper producer set (tdd-step.py + dispatch-tdd-subagent.py) import rabbit_print and reference a named wrapper (Inv 29 — CONTRACT-WAVE-9 rewrite)
+  (BACKLOG-8 entry RETIRED in Plan F.3 — named-wrapper producer set was
+   retired alongside the rabbit-print registry. The wrappers no longer
+   exist; the assertion has no live target.)
   BACKLOG-9 spec Surface and contract.md provides entries match actual files
   BACKLOG-10 validate-feature.py invokes feature.json.schema.json validation
-  BACKLOG-15 spec Inv 4 (rabbit-print schema authority) asserted by test
+  (BACKLOG-15 entry RETIRED in Plan F.3 — spec Inv 4 (three-artifact
+   rabbit-print authority) was retired alongside the registry; the
+   architecture is now a single direct-call renderer with no registry.)
   (BACKLOG-16 entry RETIRED in CONTRACT-WAVE-9 — Inv 6 was retired and its "limitation documented" assertion has no live target.)
 
 Version: 1.1.0
@@ -147,40 +151,13 @@ else:
     ko("BACKLOG-7: spec.md does not document the template marker convention")
 
 
-# BACKLOG-8 (CONTRACT-WAVE-9 rewrite): Inv 29 names exactly two scripts as the
-# canonical named-wrapper producer set: tdd-step.py and dispatch-tdd-subagent.py.
-# (The Plan-C rabbit-cage dispatcher hooks are explicitly NOT direct producers;
-# they aggregate runtime-API typed returns.) Each surviving producer MUST
-# import rabbit_print and reference at least one named wrapper.
-_NAMED_WRAPPERS = (
-    "welcome", "policy_drift", "surface_drift", "scope_guard_off",
-    "scope_guard_bypassed", "human_approval_bypass", "bypass_permissions_active",
-    "dispatch_bypass_note", "skills_updated", "policy_refreshed",
-    "tdd_transition", "tdd_forced",
-)
-_PRODUCER_SET = [
-    os.path.join(REPO_ROOT,
-                 ".claude/features/tdd-state-machine/scripts/tdd-step.py"),
-    os.path.join(REPO_ROOT,
-                 ".claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py"),
-]
-for producer_path in _PRODUCER_SET:
-    rel = os.path.relpath(producer_path, REPO_ROOT)
-    if not os.path.isfile(producer_path):
-        ko(f"BACKLOG-8: producer missing on disk: {rel}")
-        continue
-    with open(producer_path) as f:
-        src = f.read()
-    # Inv 29 mandates the import comes through rabbit_print (the importable
-    # module form — underscore, not hyphen).
-    if "rabbit_print" not in src:
-        ko(f"BACKLOG-8: {rel} does not import rabbit_print")
-        continue
-    referenced = [w for w in _NAMED_WRAPPERS if w in src]
-    if not referenced:
-        ko(f"BACKLOG-8: {rel} imports rabbit_print but references no named wrapper")
-    else:
-        ok(f"BACKLOG-8: {rel} imports rabbit_print and uses named wrapper(s): {referenced[0]}")
+# BACKLOG-8 (Plan F.3): RETIRED. The named-wrapper producer set was removed
+# alongside the rabbit-print registry; rabbit_print is now a direct-call API.
+# Producers still import rabbit_print, but the "uses a named wrapper" guarantee
+# no longer applies because the wrappers no longer exist. The surviving
+# requirement (producers go through rabbit_print rather than emitting inline
+# ANSI/brand strings) is covered by test-bypass-marker-note.py (tdd-subagent
+# Inv 24) and test-branding.py (tdd-state-machine Inv 9).
 
 
 # BACKLOG-9: contract.md provides.scripts includes all live scripts in scripts/ tree
@@ -221,17 +198,10 @@ else:
     ko("BACKLOG-10: lib/checks.py does not reference feature.json.schema.json")
 
 
-# BACKLOG-15 (post-BACKLOG-20): spec Inv 4 — a test asserts the [rabbit] print
-# architecture. After BACKLOG-20 the three-part architecture (registry data
-# file + JSON Schema + renderer module) is asserted by
-# test-rabbit-print-messages-schema.py (registry shape) and
-# test-rabbit-print-renderer.py (renderer API).
-trp_msgs = os.path.join(FEATURE_DIR, "test/test-rabbit-print-messages-schema.py")
-trp_rend = os.path.join(FEATURE_DIR, "test/test-rabbit-print-renderer.py")
-if os.path.isfile(trp_msgs) and os.path.isfile(trp_rend):
-    ok("BACKLOG-15: rabbit-print Inv 4 architecture asserted by registry-schema and renderer tests")
-else:
-    ko("BACKLOG-15: missing test-rabbit-print-messages-schema.py or test-rabbit-print-renderer.py")
+# BACKLOG-15 (Plan F.3): RETIRED. Spec Inv 4 (three-artifact rabbit-print
+# authority) was retired alongside the registry file. The print system is now
+# a single direct-call renderer; test-rabbit-print-renderer.py covers the
+# remaining surface.
 
 
 if FAIL:

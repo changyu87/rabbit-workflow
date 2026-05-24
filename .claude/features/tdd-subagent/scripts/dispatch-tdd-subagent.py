@@ -33,9 +33,9 @@ import subprocess
 import sys
 from pathlib import Path as _Path
 
-# Pull in the [rabbit] renderer from the contract feature. The renderer
-# is the sole authorized emission path for the preamble bypass note
-# (Inv 23, Inv 24); inline ANSI/brand strings here are forbidden.
+# Pull in the rabbit_print renderer from the contract feature. The
+# renderer is the sole authorized emission path for the preamble bypass
+# note (Inv 23, Inv 24); inline ANSI/brand strings here are forbidden.
 _CONTRACT_SCRIPTS = _Path(__file__).resolve().parents[2] / "contract" / "scripts"
 if str(_CONTRACT_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_CONTRACT_SCRIPTS))

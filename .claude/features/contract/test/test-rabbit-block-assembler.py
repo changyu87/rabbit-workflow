@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """test-rabbit-block-assembler.py — e2e tests for rabbit_block.
 
-Verifies Inv 28(c): rabbit_block(*lines) -> '\\n' + '\\n'.join(lines).
-This is the SINGLE authoritative place the leading newline lives — every
-return value (including the empty case) starts with '\\n'.
+Verifies rabbit_block(*lines) -> '\\n' + '\\n'.join(lines). This is the
+SINGLE authoritative place the leading newline lives — every return value
+(including the empty case) starts with '\\n'.
 """
 
 import os
@@ -72,7 +72,7 @@ else:
 
 # Many lines, with realistic rabbit-formatted lines
 lines = [
-    mod.welcome(),
+    mod.rabbit_print("Welcome — governing policies loaded", "✅", "green", format="banner"),
     mod.rabbit_subline("policy loaded"),
     mod.rabbit_subline("ready"),
 ]

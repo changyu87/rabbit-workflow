@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Inv 23, 24 — bypass-marker preamble note: marker-gated, emitted via
-dispatch_bypass_note() wrapper, no inline ANSI/brand strings in the
+rabbit_print(text, icon, color), no inline ANSI/brand strings in the
 dispatch script."""
 import os
 import sys
@@ -29,9 +29,16 @@ def ko(msg):
 
 
 sys.path.insert(0, CONTRACT_SCRIPTS)
-from rabbit_print import dispatch_bypass_note  # noqa: E402
+from rabbit_print import rabbit_print  # noqa: E402
 
-expected_note = dispatch_bypass_note()
+# Canonical preamble text — must match dispatch-tdd-subagent.py _BYPASS_NOTE_TEXT.
+_EXPECTED_TEXT = (
+    "NOTE: human-approval bypass marker is active "
+    "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be "
+    "skipped for this dispatch. Revoke via "
+    "`/rabbit-config human-approval true`."
+)
+expected_note = rabbit_print(_EXPECTED_TEXT, "📢", "yellow")
 
 MARKER = os.path.join(REPO_ROOT, ".rabbit-human-approval-bypass")
 marker_existed = os.path.isfile(MARKER)
@@ -84,7 +91,7 @@ if "\\x1b" not in src and "\\033" not in src:
 else:
     ko("inv24: dispatch script contains inline ANSI escape literals")
 # Brand string forms.
-if "[🐇 rabbit 🐇]" not in src and "[rabbit]" not in src.replace("dispatch-bypass-note", ""):
+if "[🐇 rabbit 🐇]" not in src and "[rabbit]" not in src:
     ok("inv24: dispatch script contains no inline brand strings")
 else:
     ko("inv24: dispatch script contains an inline brand string")
