@@ -283,6 +283,18 @@ Scripts (under `scripts/`):
     that this feature's code reads or invokes has a corresponding entry
     under `contract.md.reads.files` or `contract.md.invokes.scripts`.
 
+### Manifest-driven deployment (Plan E.* migration)
+
+40. **Manifest declares deployment.** `rabbit-feature.feature.json`
+    declares a `manifest` array of N publish API calls, one per skill
+    in `skills/`. The manifest is the meta-contract source of truth for
+    what `rabbit-feature` deploys; the sibling `publish.json` is
+    retained as a Plan F cleanup artifact during the migration window.
+    Each manifest entry is `{"api": "publish_skill", "args":
+    {"source": "skills/<name>/SKILL.md"}}`, and the union of manifest
+    entries deploys the same set of `.claude/skills/<name>/SKILL.md`
+    artifacts (byte-identical) as the legacy `publish.json` targets.
+
 ## What this feature does NOT define
 
 - The TDD subagent's 9-step cycle, the `tdd-step.py` state machine, or
@@ -311,3 +323,5 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-skill-md-frontmatter.py` — Inv 37
 - `test-feature-json-summary.py` — Inv 38
 - `test-contract-md.py` — Inv 39
+- `test-manifest-shape.py` — Inv 40
+- `test-manifest-deploys-correctly.py` — Inv 40
