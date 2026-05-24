@@ -254,6 +254,93 @@ def test_inv16_step_3_spec_commit_obligation() -> None:
         )
 
 
+# Inv 41: dispatcher-continuity directive present in source AND deployed,
+# byte-identical, prominent enough to appear before Step 7's body ends.
+_CONTINUITY_REQUIRED_PHRASES = [
+    "MUST NOT end",
+    "Step 7",
+    "phase boundary",
+    "not a turn boundary",
+]
+
+
+def _continuity_block_span(text: str) -> tuple[int, int]:
+    """Locate a contiguous span (<= 2000 chars) containing every required phrase.
+
+    Returns (start, end) indices. Raises AssertionError if no such span exists.
+    """
+    # Find the earliest occurrence of "MUST NOT end" as the anchor.
+    anchor = text.find("MUST NOT end")
+    assert anchor != -1, (
+        "SKILL.md must contain the literal phrase 'MUST NOT end' "
+        "(part of the dispatcher-continuity directive)"
+    )
+    # Expand a window around the anchor and require all phrases inside.
+    window_start = max(0, anchor - 500)
+    window_end = min(len(text), anchor + 1500)
+    window = text[window_start:window_end]
+    for phrase in _CONTINUITY_REQUIRED_PHRASES:
+        assert phrase in window, (
+            f"dispatcher-continuity directive must contain the phrase "
+            f"{phrase!r} within ~2000 chars of 'MUST NOT end'"
+        )
+    return window_start, window_end
+
+
+def test_inv41_source_has_continuity_directive() -> None:
+    text = _text()
+    _continuity_block_span(text)
+
+
+def test_inv41_deployed_has_continuity_directive() -> None:
+    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
+    text = DEPLOYED_SKILL.read_text(encoding="utf-8")
+    _continuity_block_span(text)
+
+
+def test_inv41_source_and_deployed_byte_identical() -> None:
+    """Inv 41 requires byte-identical presence of the directive in both files.
+
+    Easiest enforcement: the two SKILL.md files are byte-identical overall
+    (which is already the publish contract for this skill).
+    """
+    assert SOURCE_SKILL.exists(), f"missing source SKILL.md: {SOURCE_SKILL}"
+    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
+    src = SOURCE_SKILL.read_bytes()
+    dep = DEPLOYED_SKILL.read_bytes()
+    assert src == dep, (
+        "source and deployed rabbit-feature-touch SKILL.md must be "
+        "byte-identical (Inv 41 requires the continuity directive to "
+        "appear byte-identically in both)"
+    )
+
+
+def test_inv41_directive_visible_before_step_7_end() -> None:
+    """Directive must be prominent enough that a fresh reader sees it
+    before reaching the END of Step 7's body. Allowed placements per the
+    spec: near the Overview, or as the closing paragraph after Step 7's
+    body. Both satisfy "before reaching Step 7" in the sense of "visible
+    before/within Step 7 closes"."""
+    text = _text()
+    anchor = text.find("MUST NOT end")
+    assert anchor != -1, "missing 'MUST NOT end' anchor"
+    # Find where Step 7's body ends: the next top-level "## " heading after
+    # the Step 7 heading, or EOF.
+    m = re.search(r"^###\s+Step\s+7\s+[-—]", text, re.MULTILINE)
+    assert m, "SKILL.md missing Step 7 heading"
+    step7_start = m.start()
+    # Locate next "## " (top-level) heading after step7_start
+    next_top = re.search(r"^##\s", text[step7_start + 1:], re.MULTILINE)
+    if next_top:
+        step7_end = step7_start + 1 + next_top.start()
+    else:
+        step7_end = len(text)
+    assert anchor < step7_end, (
+        f"dispatcher-continuity directive (at offset {anchor}) must appear "
+        f"before the end of Step 7's body (at offset {step7_end})"
+    )
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     fail = 0
