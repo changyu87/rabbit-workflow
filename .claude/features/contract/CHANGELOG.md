@@ -10,11 +10,25 @@ This file holds the tombstones for invariants that were previously declared in `
 
 Each entry below carries the original invariant number (as it appeared in spec.md at the time of retirement), a one-line summary of what the invariant asserted and why it was retired, and the backlog ID that drove the retirement.
 
-## Renumber events
+## Renumber and gap-preservation events
 
-- **CONTRACT-BACKLOG-31 (this cycle):** Spec.md surviving invariants renumbered monotonically to 1..39, closing all gaps left by previously-retired invariants. The tombstone numbers below (2, 6, 8, 14, 27, 29, 31) are HISTORICAL — they record the spec.md numbers as they existed at retirement time and are NOT updated by the renumber. Post-renumber, those historical numbers may numerically collide with new active invariants in spec.md; the collision is benign because tombstone entries are scoped to "historical numbers in this CHANGELOG" by file/section. The companion `test/test-spec-tombstone-gaps-match-changelog.py` was deleted in the same cycle: its premise was the gap-correspondence between spec.md numbering gaps and CHANGELOG tombstones, which no longer holds once all gaps are closed.
+- **CONTRACT-WAVE-9 (this wave):** Spec.md surviving invariants are NOT renumbered. Wave 9 retires four invariants (Inv 6, 7, 30, 35) and preserves the resulting numbering gaps at those positions rather than re-flowing the surviving invariants. The decision departs from the CONTRACT-BACKLOG-31 precedent because the gap count is small and every invariant number is referenced by ~25+ cross-references across `lib/checks.py`, `scripts/enforcement/*.py`, `test/*.py` docstrings, and other features' specs; preserving stable numbers avoids a cascade rewrite that would touch every Inv-citing site. `check_invariant_monotonic_order` accepts gaps (the check is strictly-increasing, not contiguous), so this introduces no enforcement violation.
+
+- **CONTRACT-BACKLOG-31 (earlier cycle):** Spec.md surviving invariants renumbered monotonically to 1..39, closing all gaps left by previously-retired invariants. The tombstone numbers below (2, 6, 8, 14, 27, 29, 31) are HISTORICAL — they record the spec.md numbers as they existed at retirement time and are NOT updated by the renumber. Post-renumber, those historical numbers may numerically collide with new active invariants in spec.md; the collision is benign because tombstone entries are scoped to "historical numbers in this CHANGELOG" by file/section. The companion `test/test-spec-tombstone-gaps-match-changelog.py` was deleted in the same cycle: its premise was the gap-correspondence between spec.md numbering gaps and CHANGELOG tombstones, which no longer holds once all gaps are closed.
 
 ## Retired invariants
+
+### Inv 6 — build-contract.json validation (CONTRACT-WAVE-9)
+Originally asserted that `build-contract.json` validates against `build-contract.schema.json`. Both files were deleted during the federate-build-manifests migration; the equivalent assertion now lives in each feature's `publish.json` validation against `publish-manifest.schema.json`. The "Invariant enforcement limitations" section that depended on this invariant was retired alongside.
+
+### Inv 7 — build-contract.json copy-file source check (CONTRACT-WAVE-9)
+Originally asserted that every `copy-file` target in `build-contract.json` has a `source` field whose path exists on disk. Retired with Inv 6 — the catalog is gone; per-feature `publish.json` schemas + deployment tests cover the equivalent.
+
+### Inv 30 — build-contract.json rabbit-feature-touch source pointer (CONTRACT-WAVE-9)
+Originally asserted that the `build-contract.json` entry for `skills/rabbit-feature-touch/SKILL.md` sourced from `rabbit-feature`. The drift-detection responsibility moved to rabbit-feature alongside the federation; the live invariant is rabbit-feature spec Inv 1 backed by `test/test-build-source.py` in the rabbit-feature feature.
+
+### Inv 35 — build-contract.json deployment mappings (CONTRACT-WAVE-9)
+Originally asserted (a) the `rabbit-feature-spec` SKILL.md deployment entry and (b) the `tdd-step.py` source pointer in `build-contract.json`. The cited tests `test-rabbit-feature-spec-deployment.py` and `test-build-contract-tdd-state-machine-sources.py` no longer exist (the live deployment test is `test-rabbit-feature-skills-deployment.py` owned by rabbit-feature).
 
 ### Inv 2 — dispatch-feature-edit.py deleted (CONTRACT-BACKLOG-27)
 Originally asserted that dispatch-feature-edit.py consumed the RABBIT-POLICY-BLOCK-v1 policy-block sentinel. The script was deleted as dead production code (no runtime caller); the sentinel is now consumed only by policy-block.py and the tdd-subagent dispatch path, asserted by test-policy-block.py.

@@ -18,7 +18,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -200,8 +200,18 @@ def welcome_with_policy(policy_source: str, sublines=None, *, repo_root: str):
 
 
 def check_drift_regenerate(target: str, producer: str, alert: dict,
+                            args=None,
                             *, feature_dir: str, repo_root: str):
     """Run the named content producer and compare to target on disk.
+
+    args - optional dict of producer-specific kwargs forwarded to
+    lib.producers.call_producer. Defaults to None (treated as {}). Per
+    spec Inv 47, this parameter exists because producers like
+    generate-claude-md require named kwargs (policy_source,
+    header_source) declared in the RUNTIME entry's args block; a
+    hardcoded-empty-args call path leaves the producer unable to
+    execute. The dispatcher passes args through from the feature's
+    RUNTIME declaration.
 
     On match: return ok_result(). On drift (or missing target): write
     producer output to target and return [print_result, inject_result].
@@ -215,7 +225,7 @@ def check_drift_regenerate(target: str, producer: str, alert: dict,
     except ImportError as e:
         return error_result(f"lib.producers unavailable: {e}")
     try:
-        content = producers.call_producer(producer, {},
+        content = producers.call_producer(producer, args or {},
                                           feature_dir=feature_dir,
                                           repo_root=repo_root)
     except Exception as e:  # noqa: BLE001 - dispatcher catches any producer fault
