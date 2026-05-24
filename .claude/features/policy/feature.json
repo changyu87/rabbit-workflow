@@ -10,5 +10,6 @@
     "skills": []
   },
   "deprecation_criterion": "when Claude Code exposes a native subagent-policy injection point",
-  "updated": "2026-05-23"
+  "updated": "2026-05-24",
+  "spec_no_change_reason": "POLICY-BACKLOG-15 cross-feature touch: removes two implementation-only @-import tests whose ownership transfers to rabbit-cage; no policy spec invariant references these files by name."
 }
