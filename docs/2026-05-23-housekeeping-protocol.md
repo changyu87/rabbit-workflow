@@ -98,12 +98,42 @@ Per-wave protocol:
 
 The B/B items live on the `bug-backlog-files` branch (managed by rabbit-file), not on the integration branch.
 
+**B/B operations do NOT require a per-feature scope marker.** rabbit-file writes to the `bug-backlog-files` branch via its own worktree (`.claude/tmp/bug-backlog-files-<pid>/`), never to feature directories on the integration branch. The scope-guard hook is therefore not triggered by `file-item.py` / `item-status.py` / `list-items.py` invocations from within a wave, regardless of which feature's scope marker (if any) is active. Confirmed by Wave 9.
+
 ## Scope-Guard Mechanism
 
 Different wave types use different scope-guard handling:
 
 - **Plan C, Plan D, Wave 1, Wave 2** (no `rabbit-feature-touch`): write `.rabbit-scope-override` with content `session` at wave start. Revoke at wave end via `python3 .claude/features/rabbit-cage/scripts/scope-guard-on.py`. The session override broadly permits writes for the duration; tight scope discipline is enforced by wave goals + the audit criteria, not by scope-guard.
 - **Wave 3, Plan E.*, Wave 4+, Plan F** (use `rabbit-feature-touch`): no scope override needed. `rabbit-feature-touch` sets per-feature `.rabbit-scope-active-<feature>` markers per its protocol, which the scope-guard honors automatically. The wave operates only within `rabbit-feature-touch`'s standard discipline.
+
+## Merge-Back Ritual (Wave 5+ Integration)
+
+Waves that use `rabbit-feature-touch` produce their commits on a feature branch (e.g. `feat/<feature>-wave<N>-audit`) per the touch protocol's Step 2. Integrating those commits into the housekeeping branch (`feature/meta-contract-api-libraries`) requires a fast-forward merge from the backstop workspace, which is blocked by the `Bash(git merge *)` deny rule in `.claude/settings.json`.
+
+The deny rule does double duty: it protects `main` from accidental direct merges AND it forces this manual merge-back ritual so the backstop is always the one stitching wave outputs into the integration branch. The two intents are not separable from the rule itself; the ritual below is the protocol-level alignment.
+
+The backstop ritual (mirrors what Wave 5 and Wave 8 followed):
+
+1. Ask the human for an override mode (one-time or session) — explicit confirmation per scope-guard's discipline.
+2. Edit `.claude/settings.json` to drop `Bash(git merge *)` from `permissions.deny`.
+3. `git fetch origin feat/<feature>-wave<N>-audit:wave<N>-local` (or fetch from the wave's local repo if not yet on origin).
+4. `git merge --ff-only wave<N>-local`.
+5. `git push origin feature/meta-contract-api-libraries`.
+6. Restore the deny rule (sync-check auto-restores on next Stop via the publish loop, but a deliberate `git checkout -- .claude/settings.json` after push is equally fine and immediate).
+7. Revoke session-mode override via `scope-guard-on.py` if it was a session override.
+8. Delete the feature branch locally and on origin once integrated.
+
+## Invariant Renumber vs Gaps
+
+When a wave retires invariants, the surviving invariants either get renumbered (closing the gaps) or stay where they are (leaving gaps in the active set). Both have costs:
+
+- **Renumber** cascades through cross-feature references (tests, other specs, comments) — typical blast radius ~25 cross-references per retired invariant.
+- **Preserve gaps** grows the "intentional gaps" inventory in `CHANGELOG.md` and makes the active set harder to scan.
+
+**Rule**: preserve gaps when **≤5** retirements in a single wave; renumber when **>5** OR when gap density makes the active set hard to navigate (waves with many retired invariants in close numeric proximity are candidates for renumber even under 5). The contract feature's `check_invariant_monotonic_order` enforcement requires strictly-increasing numbers within each `## Invariants` / `### Invariants` section, NOT contiguous — gaps are permitted by the checker.
+
+When preserving gaps, the wave MUST tombstone each retired invariant in `CHANGELOG.md` with its historical number, a one-line "what it asserted + why retired" summary, and the backlog ID that drove the retirement.
 
 ## Workspace Preparation (backstop's responsibility)
 
