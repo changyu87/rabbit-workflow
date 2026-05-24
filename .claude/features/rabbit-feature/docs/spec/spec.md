@@ -60,9 +60,9 @@ Scripts (under `scripts/`):
 1. **Build source.** The deployed `.claude/skills/rabbit-feature-touch/SKILL.md`
    is sourced from
    `.claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md`.
-   This feature's `publish.json` declares a `targets` entry named
-   `skills/rabbit-feature-touch/SKILL.md` whose `source` field matches
-   that path exactly (relative to the feature directory).
+   This feature's `feature.json` `manifest` declares a `publish_skill`
+   entry whose `args.source` is `skills/rabbit-feature-touch/SKILL.md`
+   (relative to the feature directory).
 
 2. **Declared cross-feature script dependencies.** This feature invokes
    `.claude/features/tdd-state-machine/scripts/tdd-step.py` and
@@ -287,13 +287,12 @@ Scripts (under `scripts/`):
 
 40. **Manifest declares deployment.** `rabbit-feature.feature.json`
     declares a `manifest` array of N publish API calls, one per skill
-    in `skills/`. The manifest is the meta-contract source of truth for
-    what `rabbit-feature` deploys; the sibling `publish.json` is
-    retained as a Plan F cleanup artifact during the migration window.
-    Each manifest entry is `{"api": "publish_skill", "args":
+    in `skills/`. The manifest is the meta-contract source of truth
+    for what `rabbit-feature` deploys. Each manifest entry is
+    `{"api": "publish_skill", "args":
     {"source": "skills/<name>/SKILL.md"}}`, and the union of manifest
-    entries deploys the same set of `.claude/skills/<name>/SKILL.md`
-    artifacts (byte-identical) as the legacy `publish.json` targets.
+    entries deploys the set of `.claude/skills/<name>/SKILL.md`
+    artifacts byte-identically.
 
 ### Dispatcher continuity (RABBIT-FEATURE-BACKLOG-10)
 

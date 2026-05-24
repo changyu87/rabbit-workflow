@@ -90,7 +90,6 @@ check_file("test/test-files-exist.py")
 check_file("test/test-policy-block.py")
 check_file("test/test-templates-have-version.py")
 check_file("test/test-schemas-valid-json.py")
-check_file("test/test-publish-manifests.py")
 check_file("test/test-publish-manifest-schema.py")
 check_file("test/test-python-only-stack.py")
 

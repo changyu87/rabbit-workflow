@@ -37,7 +37,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "skills": [
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-touch/",
-        "purpose": "Orchestration skill triggered on feature write/edit/delete/add. Authoritative source for the deployed .claude/skills/rabbit-feature-touch/SKILL.md via the feature.json manifest publish_skill API call; publish.json retained as Plan F cleanup artifact during the Plan E.* migration window."
+        "purpose": "Orchestration skill triggered on feature write/edit/delete/add. Authoritative source for the deployed .claude/skills/rabbit-feature-touch/SKILL.md via the feature.json manifest publish_skill API call."
       },
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-scope/",

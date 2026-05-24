@@ -141,11 +141,8 @@ for any of these checks.
   user-configurable toggles.
 
 The manifest is the meta-contract source of truth for what
-tdd-state-machine deploys; the sibling `publish.json` is retained as
-a Plan F cleanup artifact during the Plan E migration window and
-declares the same single deployment target via the legacy
-`source`+`destination` schema (the manifest uses `dest` to match the
-canonical `publish_file` shape).
+tdd-state-machine deploys. The manifest entry uses `dest` to match
+the canonical `publish_file` shape.
 
 ## What this feature does NOT define
 

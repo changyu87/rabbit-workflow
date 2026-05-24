@@ -251,11 +251,8 @@ spec (`rabbit-feature`).
       user-configurable toggles.
 
     The manifest is the meta-contract source of truth for what
-    tdd-subagent deploys; the sibling `publish.json` is retained as a
-    Plan F cleanup artifact during the Plan E migration window and
-    declares the same two deployment targets via the legacy
-    `source`+`destination` schema (the manifest uses `dest` to match the
-    canonical `publish_file` shape).
+    tdd-subagent deploys. The `publish_file` entry uses `dest` to match
+    the canonical `publish_file` shape.
 
 ## Out of Scope
 

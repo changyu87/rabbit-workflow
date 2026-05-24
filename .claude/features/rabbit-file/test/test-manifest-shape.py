@@ -12,8 +12,8 @@ in the manifest.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
-Deprecation criterion: when publish.json is removed (Plan F) and the
-    manifest becomes the sole source of truth for rabbit-file deployment.
+Deprecation criterion: when feature lifecycle management is natively
+    handled by Claude Code's workflow mechanism.
 """
 from __future__ import annotations
 

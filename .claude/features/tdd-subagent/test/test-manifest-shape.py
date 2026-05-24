@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan E.tdd-subagent: manifest declares deployment.
+"""tdd-subagent: manifest declares deployment.
 
 `tdd-subagent.feature.json` declares meta-contract sections:
   - `manifest`: list of length 2 with entries (in order):
@@ -13,14 +13,12 @@
   - `runtime`: `{}` (no event hook handlers; consistent with surface.hooks=[]).
   - `configuration`: `[]` (no configurable toggles).
 
-The manifest is the meta-contract source of truth. During the Plan E
-migration window, publish.json is retained as a Plan F cleanup artifact
-and MUST declare matching destinations for both deployment targets.
+The manifest is the meta-contract source of truth.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
-Deprecation criterion: when publish.json is removed (Plan F) and the
-    manifest becomes the sole source of truth for tdd-subagent deployment.
+Deprecation criterion: when feature lifecycle management is natively
+    handled by Claude Code's workflow mechanism.
 """
 from __future__ import annotations
 
@@ -30,10 +28,8 @@ from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
 FEATURE_JSON = FEATURE_DIR / "feature.json"
-PUBLISH_JSON = FEATURE_DIR / "publish.json"
 
 EXPECTED_AGENT_SOURCE = "agents/tdd-subagent.md"
-EXPECTED_AGENT_DEST = ".claude/agents/tdd-subagent.md"
 EXPECTED_SCRIPT_SOURCE = "scripts/dispatch-tdd-subagent.py"
 EXPECTED_SCRIPT_DEST = ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py"
 
@@ -106,21 +102,6 @@ def test_manifest_shape() -> None:
     assert args1.get("dest") == EXPECTED_SCRIPT_DEST, (
         f"manifest[1].args.dest expected {EXPECTED_SCRIPT_DEST!r}, "
         f"got {args1.get('dest')!r}"
-    )
-
-    # Migration-window parity: legacy publish.json declares the same two
-    # destinations via the source+destination legacy schema.
-    pub = json.loads(PUBLISH_JSON.read_text())
-    targets = pub.get("targets") or []
-    assert len(targets) == 2, (
-        f"publish.json must have exactly 2 targets during migration, "
-        f"got {len(targets)}"
-    )
-    legacy_dests = {t.get("destination") for t in targets}
-    expected_dests = {EXPECTED_AGENT_DEST, EXPECTED_SCRIPT_DEST}
-    assert legacy_dests == expected_dests, (
-        f"publish.json destinations {legacy_dests!r} must match manifest "
-        f"deployment targets {expected_dests!r} during Plan E coexistence"
     )
 
 

@@ -284,10 +284,7 @@ origin/bug-backlog-files root:
   `item-status.py`, `list-items.py`) are invoked in-place from
   `.claude/features/rabbit-file/scripts/` by their callers and are NOT
   deployed; they MUST NOT appear in the manifest. The manifest is the
-  meta-contract source of truth for what rabbit-file deploys; the
-  sibling `publish.json` is retained as a Plan F cleanup artifact
-  during the Plan E migration window and declares the same single
-  SKILL.md deployment target.
+  meta-contract source of truth for what rabbit-file deploys.
 
 ## Operational characteristics
 

@@ -8,8 +8,8 @@ skills/rabbit-file/SKILL.md source lands at
 
 Version: 1.0.0
 Owner: rabbit-workflow team
-Deprecation criterion: when publish.json is removed (Plan F) and only
-    the manifest path remains.
+Deprecation criterion: when feature lifecycle management is natively
+    handled by Claude Code's workflow mechanism.
 """
 from __future__ import annotations
 

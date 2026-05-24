@@ -13,7 +13,10 @@ stubs here.
   BACKLOG-3 test-templates-have-version.py tightened to reject _template_version
   BACKLOG-4 every feature.json in the repo validates against feature.json.schema.json
   BACKLOG-5 spec Inv 10 (rbt- banned) asserted by behavioural test (check-naming.py rejects rbt-)
-  BACKLOG-6 build-contract copy-file destinations match sources (basename consistency)
+  (BACKLOG-6 entry RETIRED in Plan F.1 — per-feature publish.json files were
+   deleted; copy-file basename consistency no longer applies. Equivalent
+   source→deployed parity is asserted byte-for-byte by each feature's
+   test-manifest-deploys-correctly.py.)
   BACKLOG-7 template marker convention documented and one template marked consistently
   BACKLOG-8 surviving named-wrapper producer set (tdd-step.py + dispatch-tdd-subagent.py) import rabbit_print and reference a named wrapper (Inv 29 — CONTRACT-WAVE-9 rewrite)
   BACKLOG-9 spec Surface and contract.md provides entries match actual files
@@ -127,27 +130,11 @@ else:
     ko("BACKLOG-5: check-naming.py not found")
 
 
-# BACKLOG-6: publish.json copy-file destinations match sources by basename
-features_dir = os.path.join(REPO_ROOT, ".claude/features")
-mismatches = []
-for feature_dir_name in os.listdir(features_dir):
-    pub = os.path.join(features_dir, feature_dir_name, "publish.json")
-    if not os.path.isfile(pub):
-        continue
-    try:
-        data = json.load(open(pub))
-    except Exception:
-        continue
-    for target in data.get("targets", []):
-        if target.get("type") == "copy-file":
-            src = target.get("source", "")
-            dst = target.get("destination", "")
-            if os.path.basename(src) != os.path.basename(dst):
-                mismatches.append((f"{feature_dir_name}/{src}", dst))
-if not mismatches:
-    ok("BACKLOG-6: every publish.json copy-file target's source basename matches destination basename")
-else:
-    ko(f"BACKLOG-6: copy-file basename mismatches: {mismatches}")
+# BACKLOG-6 (Plan F.1): RETIRED. Per-feature publish.json files were deleted
+# in Plan F.1; the federated feature.json manifest is the single source of
+# truth. Copy-file basename consistency no longer applies — source→deployed
+# parity is asserted byte-for-byte by each feature's
+# test-manifest-deploys-correctly.py.
 
 
 # BACKLOG-7: template marker convention documented in spec.md

@@ -16,13 +16,32 @@ Each entry below carries the original invariant number (as it appeared in spec.m
 
 - **CONTRACT-BACKLOG-31 (earlier cycle):** Spec.md surviving invariants renumbered monotonically to 1..39, closing all gaps left by previously-retired invariants. The tombstone numbers below (2, 6, 8, 14, 27, 29, 31) are HISTORICAL — they record the spec.md numbers as they existed at retirement time and are NOT updated by the renumber. Post-renumber, those historical numbers may numerically collide with new active invariants in spec.md; the collision is benign because tombstone entries are scoped to "historical numbers in this CHANGELOG" by file/section. The companion `test/test-spec-tombstone-gaps-match-changelog.py` was deleted in the same cycle: its premise was the gap-correspondence between spec.md numbering gaps and CHANGELOG tombstones, which no longer holds once all gaps are closed.
 
+## Retired artifacts
+
+### `publish.json` — per-feature deployment manifest (Plan F.1)
+Originally a sibling manifest file under each active feature
+(`.claude/features/<feature>/publish.json`) declaring `copy-file` targets
+for deployment, validated against
+`.claude/features/contract/schemas/publish-manifest.schema.json`. Federated
+into each feature's `feature.json` `manifest` array during Plan E.* (one
+workspace per feature, replacing the legacy `source`+`destination` schema
+with `publish_skill` / `publish_file` / `publish_agent` API calls). Plan
+F.1 deleted the four remaining files
+(`rabbit-feature`, `rabbit-file`, `tdd-state-machine`, `tdd-subagent`)
+now that the meta-contract MANIFEST is the single source of truth.
+Equivalent assertions:
+- per-feature `test-manifest-shape.py` (manifest entry shape)
+- per-feature `test-manifest-deploys-correctly.py` (source→deployed byte parity)
+- `contract/test/test-retired-artifacts.py` Section D (no `publish.json`
+  file remains)
+
 ## Retired invariants
 
 ### Inv 6 — build-contract.json validation (CONTRACT-WAVE-9)
-Originally asserted that `build-contract.json` validates against `build-contract.schema.json`. Both files were deleted during the federate-build-manifests migration; the equivalent assertion now lives in each feature's `publish.json` validation against `publish-manifest.schema.json`. The "Invariant enforcement limitations" section that depended on this invariant was retired alongside.
+Originally asserted that `build-contract.json` validates against `build-contract.schema.json`. Both files were deleted during the federate-build-manifests migration; the equivalent assertion now lives in each feature's `feature.json` `manifest` validation against the meta-contract manifest schema. The "Invariant enforcement limitations" section that depended on this invariant was retired alongside.
 
 ### Inv 7 — build-contract.json copy-file source check (CONTRACT-WAVE-9)
-Originally asserted that every `copy-file` target in `build-contract.json` has a `source` field whose path exists on disk. Retired with Inv 6 — the catalog is gone; per-feature `publish.json` schemas + deployment tests cover the equivalent.
+Originally asserted that every `copy-file` target in `build-contract.json` has a `source` field whose path exists on disk. Retired with Inv 6 — the catalog is gone; per-feature `feature.json` `manifest` schemas + deployment tests cover the equivalent.
 
 ### Inv 30 — build-contract.json rabbit-feature-touch source pointer (CONTRACT-WAVE-9)
 Originally asserted that the `build-contract.json` entry for `skills/rabbit-feature-touch/SKILL.md` sourced from `rabbit-feature`. The drift-detection responsibility moved to rabbit-feature alongside the federation; the live invariant is rabbit-feature spec Inv 1 backed by `test/test-build-source.py` in the rabbit-feature feature.

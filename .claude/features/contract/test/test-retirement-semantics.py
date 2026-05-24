@@ -16,7 +16,9 @@ Covers:
       (no tombstone), so its node is also absent from workspace-structure.json.
   t5: .claude/workspace-structure.json declares `tdd-state-machine` as
       a feature node (post-consolidation home of tdd-step/context/drift-check).
-  t6: tdd-state-machine/publish.json tdd-step.py source points to tdd-state-machine scripts/
+  (t6 RETIRED in Plan F.1 — tdd-state-machine/publish.json deleted; the
+   equivalent source pointer is asserted by tdd-state-machine's own
+   test/test-manifest-shape.py against feature.json manifest.)
 
 Version: 1.0.0
 Owner: rabbit-workflow team (contract)
@@ -157,24 +159,9 @@ else:
     ko(5, "skipped: no features node")
 
 
-# t6: tdd-state-machine/publish.json tdd-step.py source points to tdd-state-machine scripts/
-TDD_SM_PUBLISH = os.path.join(REPO_ROOT, ".claude/features/tdd-state-machine/publish.json")
-if os.path.isfile(TDD_SM_PUBLISH):
-    with open(TDD_SM_PUBLISH) as f:
-        pub = json.load(f)
-    tdd_step_entry = next(
-        (t for t in pub.get("targets", [])
-         if t.get("name") == "agents/tdd-subagent/scripts/tdd-step.py"),
-        None,
-    )
-    if tdd_step_entry is None:
-        ko(6, "tdd-state-machine/publish.json missing tdd-step.py target")
-    elif tdd_step_entry.get("source") != "scripts/tdd-step.py":
-        ko(6, f"tdd-step.py source = {tdd_step_entry.get('source')!r}, expected 'scripts/tdd-step.py'")
-    else:
-        ok(6, "tdd-state-machine/publish.json tdd-step.py source is 'scripts/tdd-step.py'")
-else:
-    ko(6, f"tdd-state-machine/publish.json not found at {TDD_SM_PUBLISH}")
+# t6 RETIRED in Plan F.1 — tdd-state-machine/publish.json deleted; the
+# equivalent source pointer assertion lives in tdd-state-machine's own
+# test/test-manifest-shape.py against the feature.json manifest.
 
 
 print()

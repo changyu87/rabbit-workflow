@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan E.tdd-state-machine: manifest declares deployment.
+"""tdd-state-machine: manifest declares deployment.
 
 `tdd-state-machine.feature.json` declares meta-contract sections:
   - `manifest`: list of length 1 with the single publish_file entry
@@ -8,17 +8,10 @@
   - `runtime`: `{}` (no event hook handlers; consistent with surface.hooks=[]).
   - `configuration`: `[]` (no configurable toggles).
 
-The manifest entry must use `dest` (matching the canonical publish_file
-shape used by rabbit-cage), even though the legacy publish.json uses
-`destination`. During the Plan E migration window, publish.json is
-retained as a Plan F cleanup artifact; the manifest dest MUST match the
-legacy publish.json destination for the sole deployment target.
-
 Version: 1.0.0
 Owner: rabbit-workflow team
-Deprecation criterion: when publish.json is removed (Plan F) and the
-    manifest becomes the sole source of truth for tdd-state-machine
-    deployment.
+Deprecation criterion: when feature lifecycle management is natively
+    handled by Claude Code's workflow mechanism.
 """
 from __future__ import annotations
 
@@ -28,7 +21,6 @@ from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
 FEATURE_JSON = FEATURE_DIR / "feature.json"
-PUBLISH_JSON = FEATURE_DIR / "publish.json"
 
 EXPECTED_SOURCE = "scripts/tdd-step.py"
 EXPECTED_DEST = ".claude/agents/tdd-subagent/scripts/tdd-step.py"
@@ -81,19 +73,6 @@ def test_manifest_shape() -> None:
     dst = args.get("dest")
     assert dst == EXPECTED_DEST, (
         f"manifest[0].args.dest expected {EXPECTED_DEST!r}, got {dst!r}"
-    )
-
-    # Manifest uses `dest`, legacy publish.json uses `destination`; both must
-    # point to the same path during the Plan E coexistence window.
-    pub = json.loads(PUBLISH_JSON.read_text())
-    targets = pub.get("targets") or []
-    assert len(targets) == 1, (
-        f"publish.json must have exactly 1 target during migration, got {len(targets)}"
-    )
-    legacy_dest = targets[0].get("destination")
-    assert legacy_dest == dst, (
-        f"manifest dest {dst!r} must match legacy publish.json destination "
-        f"{legacy_dest!r} (single-target deployment parity)"
     )
 
 
