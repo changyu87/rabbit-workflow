@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.10.0
+version: 1.11.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -295,6 +295,26 @@ Scripts (under `scripts/`):
     entries deploys the same set of `.claude/skills/<name>/SKILL.md`
     artifacts (byte-identical) as the legacy `publish.json` targets.
 
+### Dispatcher continuity (RABBIT-FEATURE-BACKLOG-10)
+
+41. **Dispatcher continuity directive.** The `rabbit-feature-touch`
+    SKILL.md MUST contain an explicit dispatcher-continuity directive
+    stating that once Step 1 begins, the dispatcher MUST NOT end its
+    turn until Step 7 (PR / Hand Off) completes or an explicit failure
+    is reported to the user. The directive MUST explicitly state that
+    a subagent returning a HANDOFF is a phase boundary inside the
+    dispatcher's own ongoing turn, NOT a turn boundary, and that the
+    dispatcher continues to the next step immediately. The directive
+    MUST appear in both the source SKILL.md
+    (`.claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md`)
+    and the deployed copy (`.claude/skills/rabbit-feature-touch/SKILL.md`),
+    byte-identical, so that the published surface enforces the same
+    continuity contract. Placement is at the discretion of the author
+    but must be prominent enough that a fresh dispatcher reading the
+    SKILL.md sees the directive before reaching Step 7 (suggested
+    placement: near the Overview, or as the closing paragraph after
+    Step 7's body).
+
 ## What this feature does NOT define
 
 - The TDD subagent's 9-step cycle, the `tdd-step.py` state machine, or
@@ -312,7 +332,7 @@ listed below, each tagged with the invariant(s) it covers.
 
 - `test-build-source.py` — Inv 1
 - `test-cross-feature-interface.py` — Inv 2, 3
-- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 41
 - `test-scope-skill.py` — Inv 24
 - `test-scope-scripts.py` — Inv 17, 18, 19, 20, 21, 22, 23, 25
 - `test-spec-skill.py` — Inv 26, 27, 28, 29, 30, 31
