@@ -228,6 +228,35 @@ spec (`rabbit-feature`).
     this feature use the same flat field shape (`name`, `version`,
     `owner`, `tdd_state`, `summary`, `surface`, `deprecation_criterion`).
 
+29. **Meta-contract sections (Plan E.* migration).** `feature.json` MUST
+    declare the meta-contract sections `manifest`, `runtime`, and
+    `configuration`. The shapes are exactly:
+
+    - `manifest` is a list of length 2 whose entries are, in order:
+      1. `{"api": "publish_agent", "args": {"source":
+         "agents/tdd-subagent.md"}}` — deploys the agent definition.
+         `publish_agent` is a convenience wrapper that auto-derives the
+         dest as `.claude/agents/<basename of source>`, yielding
+         `.claude/agents/tdd-subagent.md`.
+      2. `{"api": "publish_file", "args": {"source":
+         "scripts/dispatch-tdd-subagent.py", "dest":
+         ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py"}}`
+         — deploys the dispatch script into the agent's adjacent scripts
+         directory. `publish_file` requires explicit `dest` because the
+         deployment path is NOT the `.claude/agents/<basename>` location
+         that `publish_agent` would derive.
+    - `runtime` is `{}` — tdd-subagent owns no Claude Code event hook
+      handlers (consistent with `surface.hooks: []`).
+    - `configuration` is `[]` — tdd-subagent exposes no
+      user-configurable toggles.
+
+    The manifest is the meta-contract source of truth for what
+    tdd-subagent deploys; the sibling `publish.json` is retained as a
+    Plan F cleanup artifact during the Plan E migration window and
+    declares the same two deployment targets via the legacy
+    `source`+`destination` schema (the manifest uses `dest` to match the
+    canonical `publish_file` shape).
+
 ## Out of Scope
 
 - The TDD state machine itself (`tdd-step.py`, `tdd-context.py`,
