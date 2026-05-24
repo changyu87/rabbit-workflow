@@ -2,7 +2,7 @@
   "name": "rabbit-cage",
   "version": "5.3.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
   "surface": {
     "hooks": [],
@@ -104,7 +104,7 @@
           "producer": "generate-claude-md",
           "alert": {
             "text": "CLAUDE.md regenerated from policy drift",
-            "icon": "⚠️",
+            "icon": "\u26a0\ufe0f",
             "color": "red"
           }
         }
@@ -114,7 +114,7 @@
         "args": {
           "alert": {
             "text": "Surface drift detected - rebuilt: {names}",
-            "icon": "🔄",
+            "icon": "\ud83d\udd04",
             "color": "red"
           }
         }
@@ -126,7 +126,7 @@
           "content": "session",
           "alert": {
             "text": "SCOPE GUARD OFF (session override active)",
-            "icon": "🔓",
+            "icon": "\ud83d\udd13",
             "color": "red"
           }
         }
@@ -137,7 +137,7 @@
           "path": ".rabbit-scope-override-used",
           "alert": {
             "text": "SCOPE GUARD BYPASSED (one-time override consumed)",
-            "icon": "🔓",
+            "icon": "\ud83d\udd13",
             "color": "red"
           }
         }
@@ -148,7 +148,7 @@
           "path": ".rabbit-skills-updated",
           "alert": {
             "text": "Skills updated: {marker-content}",
-            "icon": "✨",
+            "icon": "\u2728",
             "color": "green"
           }
         }
@@ -211,7 +211,7 @@
       "alert-on": "false",
       "alert-message": {
         "text": "HUMAN APPROVAL BYPASS ACTIVE - Step 4 skipped",
-        "icon": "🔑",
+        "icon": "\ud83d\udd11",
         "color": "red"
       }
     },
@@ -244,7 +244,7 @@
       "alert-on": "true",
       "alert-message": {
         "text": "BYPASS-PERMISSIONS MODE ACTIVE - scope-guard is sole write-auth gate",
-        "icon": "🚨",
+        "icon": "\ud83d\udea8",
         "color": "red"
       }
     },
