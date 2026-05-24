@@ -102,6 +102,10 @@
         "args": {
           "target": "CLAUDE.md",
           "producer": "generate-claude-md",
+          "args": {
+            "policy_source": ".claude/features/policy",
+            "header_source": "policy-header.json"
+          },
           "alert": {
             "text": "CLAUDE.md regenerated from policy drift",
             "icon": "\u26a0\ufe0f",
