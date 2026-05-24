@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 3.2.0
+version: 3.3.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -66,7 +66,8 @@ spec (`rabbit-feature`).
    `0` success, `2` invocation error (missing required flag, missing
    `--spec` file, malformed `--linked-items` triple, missing
    `--item-type` paired with `--linked-item` or vice versa,
-   `--max-iterations < 1`, unknown `--scope` feature).
+   `--max-iterations < 1`, unknown `--scope` feature, malformed
+   `--linked-item` path layout — see Inv 30).
 
 4. **Flag set.** `dispatch-tdd-subagent.py` accepts exactly these flags:
    `--scope` (required), `--spec` (required),
@@ -172,6 +173,25 @@ spec (`rabbit-feature`).
     block lists every closed item (primary + secondaries) under
     `closed_items`. When no items are closed, `closed_items` is an empty
     list in the JSON HANDOFF and omitted from the YAML block.
+
+### `--linked-item` path-layout validation
+
+30. **`--linked-item` path layout.** When `--linked-item <path>` is
+    provided, `dispatch-tdd-subagent.py` validates that the path
+    conforms to the rabbit-file storage layout
+    `.../rabbit/features/<feature>/<bugs|backlogs>/<id>/` BEFORE any
+    stdout is emitted. The path is resolved (via `Path.resolve()`),
+    and the resolved path's segments are checked: the segment at
+    position `-4` MUST equal `features`, and the segment at position
+    `-2` MUST equal `bugs` or `backlogs` (matching the rabbit-file
+    storage layout, where `<type>` ∈ {`bug`, `backlog`} and the
+    containing directory is the pluralised form). A non-conforming
+    path causes exit `2` with a stderr diagnostic naming both the
+    expected layout and the observed path tail. The validated feature
+    name (the segment at position `-3`) is used wherever the assembled
+    prompt's close-call block derives `<feature>` from the
+    `--linked-item` path (Inv 19), replacing any prior unvalidated
+    slicing.
 
 ### HANDOFF schema
 
