@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.11.0
+version: 1.12.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -294,6 +294,39 @@ Scripts (under `scripts/`):
     entries deploys the set of `.claude/skills/<name>/SKILL.md`
     artifacts byte-identically.
 
+### B/B item materialization (RABBIT-FEATURE-BUG-7)
+
+42. **B/B item materialization documented.** The `rabbit-feature-touch`
+    SKILL.md B/B mode documentation MUST explicitly describe how a
+    caller materializes a bug/backlog item into a local working-tree
+    mirror before passing the path to
+    `dispatch-tdd-subagent.py --linked-item`. The documentation MUST
+    cover all four of the following points:
+    (a) **Why materialization is needed** — the dedicated B/B branch
+    `origin/bug-backlog-files` is never checked out in the
+    dispatcher's working tree, so the canonical item.json is not
+    reachable as a working-tree path.
+    (b) **The local mirror path layout** —
+    `.rabbit/rabbit/features/<feature>/<type>s/<id>/item.json`, which
+    mirrors the rabbit-file storage layout
+    (`rabbit/features/<feature>/<type>s/<id>/`) under a `.rabbit/`
+    prefix (`.rabbit/` is gitignored by contract).
+    (c) **The git command to fetch item.json** from
+    `origin/bug-backlog-files` into the local mirror path — using
+    `git show origin/bug-backlog-files:rabbit/features/<feature>/<type>s/<id>/item.json`
+    redirected to the local mirror path (after `mkdir -p` of the
+    parent directory).
+    (d) **What gets passed to `--linked-item`** — the local mirror
+    directory path (the directory containing the freshly materialized
+    `item.json`), NOT the canonical
+    `rabbit/features/<feature>/<type>s/<id>/` path on the dedicated
+    branch.
+    The materialization documentation MUST appear in the B/B mode
+    section of
+    `.claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md`
+    and MUST also be present byte-identical in the deployed copy
+    `.claude/skills/rabbit-feature-touch/SKILL.md`.
+
 ### Dispatcher continuity (RABBIT-FEATURE-BACKLOG-10)
 
 41. **Dispatcher continuity directive.** The `rabbit-feature-touch`
@@ -331,7 +364,7 @@ listed below, each tagged with the invariant(s) it covers.
 
 - `test-build-source.py` — Inv 1
 - `test-cross-feature-interface.py` — Inv 2, 3
-- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 41
+- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 41, 42
 - `test-scope-skill.py` — Inv 24
 - `test-scope-scripts.py` — Inv 17, 18, 19, 20, 21, 22, 23, 25
 - `test-spec-skill.py` — Inv 26, 27, 28, 29, 30, 31
