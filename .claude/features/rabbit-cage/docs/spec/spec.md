@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.2.0
+version: 5.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -173,13 +173,36 @@ string BEFORE splitting on `;|&` segment delimiters.
     are Python (`.py`).
 11. The rabbit-cage feature version MUST be identical across `feature.json
     version`, `docs/spec/spec.md` frontmatter `version`, and
-    `docs/spec/contract.md` frontmatter `version`.
+    `docs/spec/contract.md` frontmatter `version`. Script-level `Version:`
+    docstring markers under `hooks/` and `scripts/` are NOT bound by this
+    invariant: they track the script artifact's own SemVer and evolve
+    independently of feature.json. The three-way feature-version pin
+    governs the public surface (spec + contract + manifest); per-script
+    versions govern internal sub-component evolution.
 12. Every helper module that an event-dispatcher hook imports at runtime
     (currently `_dispatcher_lib.py`) MUST be deployed alongside the
     dispatchers under `.claude/hooks/` via a rabbit-cage `MANIFEST` entry.
     The dispatchers resolve helpers from their own directory; a helper
     that exists only at the source path will fail to import at the
     deployed location.
+13. Every `icon` value passed to `contract.lib.runtime` APIs (alert dicts
+    in RUNTIME entries) and every `alert-message.icon` value in
+    CONFIGURATION entries MUST be a literal renderable Unicode glyph
+    (e.g. `🔑`, `🚨`, `🔓`, `🔄`, `✨`, `⚠️`), NOT a lookup name
+    (`"key"`, `"siren"`, `"unlock"`, …). `rabbit_subline(text, color, icon)`
+    interpolates `icon` literally; it performs no name-to-glyph
+    resolution. Named-message wrappers in `contract.scripts.rabbit_print`
+    (`welcome()`, `policy_drift()`, …) are unaffected — their glyphs
+    come from the registry at `contract/schemas/rabbit-print-messages.json`
+    and are not passed through this surface.
+14. rabbit-cage owns the cross-cutting CLAUDE.md `@`-import resolution
+    tests. The two assertions — (a) every `@`-import in any `CLAUDE.md`
+    resolves to an existing file, and (b) no `CLAUDE.md` carries a
+    stale `@`-import to a retired source — live under
+    `.claude/features/rabbit-cage/test/` because rabbit-cage owns the
+    `generate-claude-md` content producer that emits `CLAUDE.md`. The
+    policy feature owns the rule files those imports point at, but not
+    the import-resolution invariant itself.
 
 ## Tech Stack
 
