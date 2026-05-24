@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Inv 4-16: rabbit-feature-touch SKILL.md content.
+"""Inv 4-16, 41, 42: rabbit-feature-touch SKILL.md content.
 
 Locks the rabbit-feature-touch SKILL.md (and the deployed copy) against
 drift on the seven-step sequence, scope-resolution invocation, spec
 authoring invocation, Step 3 spec-commit obligation, Step 4 human-approval
 semantics (dispatcher-side gate, bypass marker mechanism, branch
-documentation, brand prefix), B/B mode item.json reads, and Red Flags
-content.
+documentation, brand prefix), B/B mode item.json reads, B/B item
+materialization documentation, and Red Flags content.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -312,6 +312,57 @@ def test_inv41_source_and_deployed_byte_identical() -> None:
         "source and deployed rabbit-feature-touch SKILL.md must be "
         "byte-identical (Inv 41 requires the continuity directive to "
         "appear byte-identically in both)"
+    )
+
+
+# Inv 42: B/B item materialization documented in SKILL.md (source + deployed,
+# byte-identical). The B/B mode block of Step 1 must cover all four points:
+# (a) why materialization is needed (origin/bug-backlog-files not in working tree),
+# (b) local mirror path layout under .rabbit/rabbit/features/<feature>/<type>s/<id>/,
+# (c) the git show origin/bug-backlog-files:... fetch command,
+# (d) what gets passed to --linked-item (the local mirror dir).
+_MATERIALIZATION_REQUIRED_PHRASES = [
+    "bug-backlog-files",
+    ".rabbit/rabbit/features/",
+    "git show origin/bug-backlog-files",
+    "--linked-item",
+]
+
+
+def _step1_text(text: str) -> str:
+    return _step_body(text, 1)
+
+
+def test_inv42_source_documents_materialization() -> None:
+    body = _step1_text(_text())
+    for phrase in _MATERIALIZATION_REQUIRED_PHRASES:
+        assert phrase in body, (
+            f"Step 1 (source SKILL.md) must document B/B item materialization; "
+            f"missing phrase {phrase!r}"
+        )
+
+
+def test_inv42_deployed_documents_materialization() -> None:
+    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
+    body = _step1_text(DEPLOYED_SKILL.read_text(encoding="utf-8"))
+    for phrase in _MATERIALIZATION_REQUIRED_PHRASES:
+        assert phrase in body, (
+            f"Step 1 (deployed SKILL.md) must document B/B item materialization; "
+            f"missing phrase {phrase!r}"
+        )
+
+
+def test_inv42_source_and_deployed_materialization_byte_identical() -> None:
+    """Inv 42 requires byte-identical presence of the materialization docs
+    in both source and deployed SKILL.md."""
+    assert SOURCE_SKILL.exists(), f"missing source SKILL.md: {SOURCE_SKILL}"
+    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
+    src = SOURCE_SKILL.read_bytes()
+    dep = DEPLOYED_SKILL.read_bytes()
+    assert src == dep, (
+        "source and deployed rabbit-feature-touch SKILL.md must be "
+        "byte-identical (Inv 42 requires the materialization documentation "
+        "to appear byte-identically in both)"
     )
 
 
