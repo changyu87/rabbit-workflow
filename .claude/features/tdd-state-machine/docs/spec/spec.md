@@ -124,6 +124,29 @@ The check functions used by Inv 10 and Inv 12 are imported from the
 `.claude/features/contract/scripts/enforcement/check-*.py` CLI shims
 for any of these checks.
 
+### Inv 14 — Meta-contract sections (Plan E.* migration)
+
+`feature.json` MUST declare the meta-contract sections `manifest`,
+`runtime`, and `configuration`. The shapes are exactly:
+
+- `manifest` is a list of length 1 whose single entry is
+  `{"api": "publish_file", "args": {"source": "scripts/tdd-step.py",
+  "dest": ".claude/agents/tdd-subagent/scripts/tdd-step.py"}}`,
+  declaring the sole deployment target — the state-machine script
+  deployed into the `tdd-subagent` agent directory (the cross-feature
+  deployment required by Inv 6);
+- `runtime` is `{}` — tdd-state-machine owns no Claude Code event
+  hook handlers (consistent with `surface.hooks: []`);
+- `configuration` is `[]` — tdd-state-machine exposes no
+  user-configurable toggles.
+
+The manifest is the meta-contract source of truth for what
+tdd-state-machine deploys; the sibling `publish.json` is retained as
+a Plan F cleanup artifact during the Plan E migration window and
+declares the same single deployment target via the legacy
+`source`+`destination` schema (the manifest uses `dest` to match the
+canonical `publish_file` shape).
+
 ## What this feature does NOT define
 
 - **Subagent dispatch** (`dispatch-tdd-subagent.py`, `tdd-subagent`
