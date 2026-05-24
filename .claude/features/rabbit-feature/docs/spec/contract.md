@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.9.0
+version: 1.10.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -37,7 +37,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "skills": [
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-touch/",
-        "purpose": "Orchestration skill triggered on feature write/edit/delete/add. Authoritative source for the deployed .claude/skills/rabbit-feature-touch/SKILL.md via the build-contract.json copy-file entry."
+        "purpose": "Orchestration skill triggered on feature write/edit/delete/add. Authoritative source for the deployed .claude/skills/rabbit-feature-touch/SKILL.md via the feature.json manifest publish_skill API call; publish.json retained as Plan F cleanup artifact during the Plan E.* migration window."
       },
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-scope/",
