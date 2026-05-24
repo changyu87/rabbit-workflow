@@ -15,6 +15,15 @@ dispatch TDD subagents, verify HANDOFFs. It does NOT read feature code.
 - **Normal mode** — invoked directly for a feature work request
 - **B/B mode** — invoked by the bug or backlog skill, which passes a bug/item dir
 
+## Dispatcher Continuity
+
+Once you begin Step 1, you (the dispatcher) **MUST NOT end** your turn until
+you have completed **Step 7** (PR / Hand Off) or you have an explicit failure
+to report to the user. The seven-step sequence is a single dispatcher
+transaction. A subagent returning a HANDOFF is a **phase boundary** inside
+your own ongoing turn — it is **not a turn boundary**. Continue to the next
+step immediately.
+
 ## Unified Seven-Step Sequence
 
 All modes follow these seven steps. Mode determines branch name and step 7 behaviour.
