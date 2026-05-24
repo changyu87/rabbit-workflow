@@ -27,7 +27,7 @@ from pathlib import Path as _Path
 _CONTRACT_SCRIPTS = _Path(__file__).resolve().parents[2] / "contract" / "scripts"
 if str(_CONTRACT_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_CONTRACT_SCRIPTS))
-from rabbit_print import rabbit_block, rabbit_subline, tdd_transition, tdd_forced  # noqa: E402
+from rabbit_print import rabbit_block, rabbit_print, rabbit_subline  # noqa: E402
 
 
 
@@ -386,14 +386,17 @@ def cmd_transition(args):
     if new in valid_forward:
         write_state(d, new, spec_no_change_reason=spec_no_change_reason)
         _post_transition_hooks(cur, new, d)
-        _rbt_ok(rabbit_block(tdd_transition(cur, new)))
+        _rbt_ok(rabbit_block(rabbit_print(
+            f"{cur.upper()} -> {new.upper()}", "🔧", "green")))
         return 0
 
     if force:
         write_state(d, new, spec_no_change_reason=spec_no_change_reason)
         _post_transition_hooks(cur, new, d)
-        _rbt_alert(rabbit_block(tdd_forced(cur, new)))
-        _rbt_ok(rabbit_block(tdd_transition(cur, new)))
+        _rbt_alert(rabbit_block(rabbit_print(
+            f"FORCED: {cur.upper()} -> {new.upper()}", "🔧", "red")))
+        _rbt_ok(rabbit_block(rabbit_print(
+            f"{cur.upper()} -> {new.upper()}", "🔧", "green")))
         return 0
 
     forward_msg = " or ".join(valid_forward) if valid_forward else "(terminal)"

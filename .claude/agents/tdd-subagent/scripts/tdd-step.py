@@ -12,6 +12,7 @@
 #   1 transition denied or invalid input
 #   2 invocation error
 
+import importlib
 import json
 import os
 import subprocess
@@ -21,12 +22,12 @@ from datetime import date
 from pathlib import Path as _Path
 
 # Pull in the centralized [rabbit] print renderer from the contract feature
-# (TDD-SUBAGENT-BACKLOG-11; spec Inv 9). tdd-step.py lives at
+# (spec Inv 9). tdd-step.py lives at
 # .claude/features/tdd-state-machine/scripts/, so parents[2] = .claude/features/.
 _CONTRACT_SCRIPTS = _Path(__file__).resolve().parents[2] / "contract" / "scripts"
 if str(_CONTRACT_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_CONTRACT_SCRIPTS))
-from rabbit_print import rabbit_block, rabbit_subline, tdd_transition, tdd_forced  # noqa: E402
+from rabbit_print import rabbit_block, rabbit_print, rabbit_subline  # noqa: E402
 
 
 
@@ -161,7 +162,7 @@ def _load_checks_module(repo_root):
     """Load contract.lib.checks from REPO_ROOT/.claude/features/.
 
     Returns the module on success or None when the library is unavailable.
-    Spec Inv 11: tdd-step.py imports the check functions from
+    Spec Inv 13: tdd-step.py imports the check functions from
     contract.lib.checks (NOT subprocess to enforcement CLI scripts).
     """
     if not repo_root:
@@ -174,11 +175,6 @@ def _load_checks_module(repo_root):
     if inserted:
         sys.path.insert(0, features_dir)
     try:
-        # Force a fresh import bound to features_dir even if a prior call
-        # cached a module from a different location (e.g., test isolation).
-        for name in ("contract.lib.checks", "contract.lib", "contract"):
-            sys.modules.pop(name, None)
-        import importlib
         return importlib.import_module("contract.lib.checks")
     except Exception:
         return None
@@ -248,6 +244,21 @@ def _run_spec_update_checks(d, repo_root):
         f"WARNING: numbered-list check failed for {spec_dir}: {detail}",
         color="red",
     )))
+
+
+def _post_transition_hooks(cur, new, d):
+    """Run state-specific post-write hooks.
+
+    Inv 10 + 11: on entry into test-green, run enforcement checks and
+    project consolidate.
+    Inv 12: on the spec-update -> test-red edge, run the numbered-list
+    check.
+    All hooks are best-effort and never block the transition.
+    """
+    if new == "test-green":
+        _post_test_green_hooks(d)
+    if cur == "spec-update" and new == "test-red":
+        _run_spec_update_checks(d, REPO_ROOT)
 
 
 def _post_test_green_hooks(d):
@@ -372,23 +383,20 @@ def cmd_transition(args):
         sys.stderr.write(f"ERROR: '{cur}' is terminal; cannot transition (even with --force)\n")
         return 1
 
-    def _post_write_hooks():
-        if new == "test-green":
-            _post_test_green_hooks(d)
-        if cur == "spec-update" and new == "test-red":
-            _run_spec_update_checks(d, REPO_ROOT)
-
     if new in valid_forward:
         write_state(d, new, spec_no_change_reason=spec_no_change_reason)
-        _post_write_hooks()
-        _rbt_ok(rabbit_block(tdd_transition(cur, new)))
+        _post_transition_hooks(cur, new, d)
+        _rbt_ok(rabbit_block(rabbit_print(
+            f"{cur.upper()} -> {new.upper()}", "🔧", "green")))
         return 0
 
     if force:
         write_state(d, new, spec_no_change_reason=spec_no_change_reason)
-        _post_write_hooks()
-        _rbt_alert(rabbit_block(tdd_forced(cur, new)))
-        _rbt_ok(rabbit_block(tdd_transition(cur, new)))
+        _post_transition_hooks(cur, new, d)
+        _rbt_alert(rabbit_block(rabbit_print(
+            f"FORCED: {cur.upper()} -> {new.upper()}", "🔧", "red")))
+        _rbt_ok(rabbit_block(rabbit_print(
+            f"{cur.upper()} -> {new.upper()}", "🔧", "green")))
         return 0
 
     forward_msg = " or ".join(valid_forward) if valid_forward else "(terminal)"

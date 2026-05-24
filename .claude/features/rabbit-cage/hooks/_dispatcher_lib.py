@@ -117,7 +117,8 @@ def dispatch_event(event, repo_root):
 def render_emission(payloads):
     """Partition payloads and assemble the final Claude Code JSON dict.
 
-    banner -> rendered via rabbit_print(message_id) (banner format with ━━━).
+    banner -> rendered via rabbit_print(text, icon, color, format='banner')
+              (decorated with ━━━ bars).
     print  -> rendered via rabbit_subline(text, color, icon) (compact format).
     subline-> rendered via rabbit_subline(text, color) without icon.
     inject -> concatenated into additionalContext.
@@ -131,7 +132,7 @@ def render_emission(payloads):
     for p in payloads:
         t = p.get("type")
         if t == "banner":
-            lines.append(rabbit_print(p["message_id"]))
+            lines.append(rabbit_print(p["text"], p["icon"], p["color"], format="banner"))
         elif t == "print":
             lines.append(rabbit_subline(p["text"], color=p["color"], icon=p["icon"]))
         elif t == "subline":

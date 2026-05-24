@@ -33,14 +33,21 @@ import subprocess
 import sys
 from pathlib import Path as _Path
 
-# Pull in the named bypass-note wrapper from the contract feature.
-# The wrapper is the sole authorized emission path for the preamble
-# bypass note (Inv 23, Inv 24); inline ANSI/brand strings here are
-# forbidden.
+# Pull in the [rabbit] renderer from the contract feature. The renderer
+# is the sole authorized emission path for the preamble bypass note
+# (Inv 23, Inv 24); inline ANSI/brand strings here are forbidden.
 _CONTRACT_SCRIPTS = _Path(__file__).resolve().parents[2] / "contract" / "scripts"
 if str(_CONTRACT_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_CONTRACT_SCRIPTS))
-from rabbit_print import dispatch_bypass_note  # noqa: E402
+from rabbit_print import rabbit_print  # noqa: E402
+
+# Canonical preamble text. Grep-stable: tests assert this exact body.
+_BYPASS_NOTE_TEXT = (
+    "NOTE: human-approval bypass marker is active "
+    "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be "
+    "skipped for this dispatch. Revoke via "
+    "`/rabbit-config human-approval true`."
+)
 
 
 def _repo_root(script_dir):
@@ -219,11 +226,12 @@ def main(argv):
     # Emit the bypass-marker preamble note when the human-approval
     # bypass marker exists at the repo root (Inv 23). The note appears
     # on every dispatch while the marker is present; it does not
-    # consume the marker. The wrapper is the sole emission path
+    # consume the marker. rabbit_print is the sole emission path
     # (Inv 24) — no inline ANSI/brand strings in this file.
     bypass_marker_path = os.path.join(repo_root, ".rabbit-human-approval-bypass")
     if os.path.isfile(bypass_marker_path):
-        bypass_preamble_note = "\n" + dispatch_bypass_note() + "\n"
+        bypass_preamble_note = "\n" + rabbit_print(
+            _BYPASS_NOTE_TEXT, "📢", "yellow") + "\n"
     else:
         bypass_preamble_note = ""
 

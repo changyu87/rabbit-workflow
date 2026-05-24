@@ -51,10 +51,11 @@ def error_result(message: str) -> dict:
     return {"type": "error", "message": message}
 
 
-def banner_result(message_id: str) -> dict:
-    """Tagged dict for a banner line; dispatcher renders via rabbit_print(message_id)
-    using the banner format (decorated with ━━━ bars)."""
-    return {"type": "banner", "message_id": message_id}
+def banner_result(text: str, icon: str, color: str) -> dict:
+    """Tagged dict for a banner line; dispatcher renders via
+    rabbit_print(text, icon, color, format='banner') (decorated with ━━━ bars).
+    Text/icon/color are caller-supplied — no registry indirection."""
+    return {"type": "banner", "text": text, "icon": icon, "color": color}
 
 
 def subline_result(text: str, color: str = "green") -> dict:
@@ -192,7 +193,9 @@ def welcome_with_policy(policy_source: str, sublines=None, *, repo_root: str):
         content = _read_source(full)
     except (FileNotFoundError, OSError) as e:
         return error_result(f"welcome policy source unreadable: {e}")
-    results = [banner_result("welcome")]
+    results = [banner_result(
+        "Welcome — governing policies loaded", "✅", "green",
+    )]
     for sl in (sublines or []):
         results.append(subline_result(sl["text"], sl.get("color", "green")))
     results.append(inject_result(content))
