@@ -83,6 +83,17 @@ directory.
    filenames. `test/run.py` is the harness, not a test, and is
    excluded from this restriction.
 
+### Meta-contract sections (Plan E.* migration)
+
+10. **Meta-contract sections declared empty.** `policy/feature.json`
+    declares the meta-contract sections `manifest`, `runtime`, and
+    `configuration` explicitly, with the exact shapes `manifest: []`,
+    `runtime: {}`, and `configuration: []`. All three are empty because
+    policy is a content-only feature with no deployment surface: its
+    three rule files are consumed in-place at
+    `.claude/features/policy/` by rabbit-cage's `generate-claude-md`
+    producer, never deployed to `.claude/`.
+
 ## Out of Scope
 
 - Generating policy output on demand — consumers read the rule files
