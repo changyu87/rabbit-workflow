@@ -1,6 +1,6 @@
 ---
 feature: rabbit-file
-version: 0.4.0
+version: 0.5.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when a unified tracking system replaces file-based bug and backlog management
