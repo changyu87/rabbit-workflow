@@ -268,6 +268,157 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         fail("t11b", f"expected passed=False, got {res!r}")
 
+# t5c (CONTRACT-BACKLOG-28): check_sentinel directory-walk branch — given a
+# directory containing a mix of .py files with and without the sentinel, the
+# check must report exactly the missing files.
+with tempfile.TemporaryDirectory() as tmp:
+    with open(os.path.join(tmp, "with_sentinel.py"), "w") as f:
+        f.write("# RABBIT-POLICY-BLOCK-v1\nprint('hi')\n")
+    with open(os.path.join(tmp, "without_sentinel.py"), "w") as f:
+        f.write("print('nope')\n")
+    nested = os.path.join(tmp, "nested")
+    os.makedirs(nested)
+    with open(os.path.join(nested, "also_without.py"), "w") as f:
+        f.write("print('no')\n")
+    res = checks.check_sentinel(tmp)
+    if (isinstance(res, checks.CheckResult) and not res.passed
+            and any("without_sentinel.py" in m for m in res.messages)
+            and any("also_without.py" in m for m in res.messages)
+            and not any("with_sentinel.py" in m for m in res.messages)):
+        ok("t5c", "check_sentinel directory-walk reports only files missing sentinel")
+    else:
+        fail("t5c", f"unexpected result: {res!r}")
+
+# t6c (CONTRACT-BACKLOG-28): check_naming positive-path on a clean .claude tree
+# (not the vacuous no-.claude case). Tree has compliant commands/agents/skills
+# subdirectories and a docs/ subtree (docs/ is exempt from prefix scan).
+with tempfile.TemporaryDirectory() as tmp:
+    claude_dir = os.path.join(tmp, ".claude")
+    cmds = os.path.join(claude_dir, "commands")
+    agents = os.path.join(claude_dir, "agents")
+    skills_dir = os.path.join(claude_dir, "skills", "rabbit-x")
+    docs = os.path.join(claude_dir, "docs")
+    for d in (cmds, agents, skills_dir, docs):
+        os.makedirs(d)
+    open(os.path.join(cmds, "rabbit-foo.md"), "w").close()
+    open(os.path.join(agents, "rabbit-bar.md"), "w").close()
+    open(os.path.join(skills_dir, "SKILL.md"), "w").close()
+    # docs/ is exempt — banned prefixes there must not trigger
+    open(os.path.join(docs, "rbt-historical-note.md"), "w").close()
+    res = checks.check_naming(tmp)
+    if isinstance(res, checks.CheckResult) and res.passed:
+        ok("t6c", "check_naming positive-path passes on clean .claude tree (docs/ exempt)")
+    else:
+        fail("t6c", f"expected passed=True, got {res!r}")
+
+# t7b (CONTRACT-BACKLOG-28): check_imports_resolve missing-import case —
+# docs/ contains a markdown file with a @-import that does not resolve.
+with tempfile.TemporaryDirectory() as tmp:
+    fdir = os.path.join(tmp, "feature")
+    docs_dir = os.path.join(fdir, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "spec.md"), "w") as f:
+        f.write("# Spec\n\n@./does/not/exist.md\n")
+    # The check resolves against the git repo root, not feature_dir, so we
+    # must ensure the unresolved path stays unresolved — pick a path with no
+    # chance of accidentally resolving in the real repo.
+    res = checks.check_imports_resolve(fdir)
+    if (isinstance(res, checks.CheckResult) and not res.passed
+            and any("does/not/exist.md" in m for m in res.messages)):
+        ok("t7b", "check_imports_resolve fails on unresolved @-import")
+    else:
+        fail("t7b", f"expected passed=False with MISSING message, got {res!r}")
+
+# t8c (CONTRACT-BACKLOG-28): check_symlinks_resolve deep-nested symlink —
+# a dangling symlink 4 levels under .claude/ MUST be detected.
+with tempfile.TemporaryDirectory() as tmp:
+    deep = os.path.join(tmp, ".claude", "a", "b", "c", "d")
+    os.makedirs(deep)
+    link = os.path.join(deep, "deep_link")
+    os.symlink(os.path.join(tmp, "does_not_exist"), link)
+    res = checks.check_symlinks_resolve(tmp)
+    if (isinstance(res, checks.CheckResult) and not res.passed
+            and any("deep_link" in m for m in res.messages)):
+        ok("t8c", "check_symlinks_resolve detects dangling symlink at depth 4")
+    else:
+        fail("t8c", f"expected passed=False naming deep_link, got {res!r}")
+
+# t11c (CONTRACT-BACKLOG-28): validate_feature library-level retired
+# short-circuit. A temp feature_dir with feature.json carrying status=retired
+# MUST pass with a RETIRED: notice, even though the structural files are
+# absent.
+import json as _json
+with tempfile.TemporaryDirectory() as tmp:
+    feat_dir = os.path.join(tmp, "retired_feature")
+    os.makedirs(feat_dir)
+    with open(os.path.join(feat_dir, "feature.json"), "w") as f:
+        _json.dump({"name": "retired_feature", "status": "retired"}, f)
+    res = checks.validate_feature(feat_dir)
+    if (isinstance(res, checks.CheckResult) and res.passed
+            and any("RETIRED" in m for m in res.messages)):
+        ok("t11c", "validate_feature short-circuits with RETIRED: notice for status=retired")
+    else:
+        fail("t11c", f"expected passed=True with RETIRED notice, got {res!r}")
+
+# t13 (CONTRACT-BACKLOG-28 / Inv 37(d) purity): library functions MUST NOT
+# call sys.exit, MUST NOT print to stdout/stderr, MUST NOT raise on contract-
+# violation conditions. Patch print and sys.exit; call every library function
+# with deliberately broken inputs; assert no patched call fires and no
+# exception escapes.
+from unittest import mock as _mock
+
+_print_calls = []
+_exit_calls = []
+
+def _capture_print(*a, **kw):
+    _print_calls.append((a, kw))
+
+
+def _capture_exit(*a, **kw):
+    _exit_calls.append((a, kw))
+    raise AssertionError("sys.exit must not be called from a library function")
+
+
+_LIB_FUNCS = [
+    ("check_tests_non_interactive", ("/no/such/path",), {}),
+    ("check_sentinel", ("/no/such/path",), {}),
+    ("check_naming", ("/no/such/path",), {}),
+    ("check_imports_resolve", ("/no/such/path",), {}),
+    ("check_symlinks_resolve", ("/no/such/path",), {}),
+    ("check_template_producer_consistency", ("/no/such/template.json",), {}),
+    ("check_numbered_lists", ([],), {}),
+    ("validate_feature", ("",), {}),
+]
+
+# Patch the print built-in inside the library module's namespace and sys.exit
+# globally — any call to either by a library function will be captured.
+with _mock.patch.object(checks, "print", _capture_print, create=True), \
+        _mock.patch("sys.exit", _capture_exit):
+    for fn_name, args, kwargs in _LIB_FUNCS:
+        fn = getattr(checks, fn_name)
+        try:
+            res = fn(*args, **kwargs)
+        except SystemExit:
+            fail("t13", f"{fn_name} raised SystemExit on broken input")
+            continue
+        except AssertionError:
+            # Raised by our _capture_exit if sys.exit was called inside fn.
+            fail("t13", f"{fn_name} called sys.exit on broken input")
+            continue
+        except Exception as e:  # noqa: BLE001
+            fail("t13", f"{fn_name} raised {type(e).__name__}: {e}")
+            continue
+        if not isinstance(res, checks.CheckResult):
+            fail("t13", f"{fn_name} returned non-CheckResult: {res!r}")
+
+if not _print_calls and not _exit_calls:
+    ok("t13", "all 8 library functions are pure (no print, no sys.exit, no raise) on broken inputs")
+elif _print_calls:
+    fail("t13", f"library function printed: {_print_calls}")
+elif _exit_calls:
+    fail("t13", f"library function called sys.exit: {_exit_calls}")
+
+
 # t12: CLI shims still work as drop-in replacements (sanity smoke-test).
 # The check is that each shim exits 0/1 correctly on a smoke fixture, just as
 # the library function does. This validates the shim plumbing.

@@ -15,11 +15,11 @@ stubs here.
   BACKLOG-5 spec Inv 10 (rbt- banned) asserted by behavioural test (check-naming.py rejects rbt-)
   BACKLOG-6 build-contract copy-file destinations match sources (basename consistency)
   BACKLOG-7 template marker convention documented and one template marked consistently
-  BACKLOG-8 rabbit-print.schema.json declared producers all exist on disk
+  BACKLOG-8 surviving named-wrapper producer set (tdd-step.py + dispatch-tdd-subagent.py) import rabbit_print and reference a named wrapper (Inv 29 — CONTRACT-WAVE-9 rewrite)
   BACKLOG-9 spec Surface and contract.md provides entries match actual files
   BACKLOG-10 validate-feature.py invokes feature.json.schema.json validation
   BACKLOG-15 spec Inv 4 (rabbit-print schema authority) asserted by test
-  BACKLOG-16 spec Inv 6 (build-contract validation) limitation documented
+  (BACKLOG-16 entry RETIRED in CONTRACT-WAVE-9 — Inv 6 was retired and its "limitation documented" assertion has no live target.)
 
 Version: 1.1.0
 Owner: rabbit-workflow team (contract)
@@ -160,21 +160,40 @@ else:
     ko("BACKLOG-7: spec.md does not document the template marker convention")
 
 
-# BACKLOG-8: SKIPPED pending CONTRACT-BUG-42.
-#
-# After Plan C (rabbit-cage dispatcher rewrite), the three rabbit-cage hooks
-# that this section pinned (sync-check.py, session-init.py, refresh.py) were
-# correctly deleted. Their behavior is now expressed as runtime API calls
-# returning typed results (print_result / inject_result) consumed by the new
-# dispatcher hooks — the "named-wrapper producer set" convention that spec
-# Inv 29 hardcodes is itself obsolete.
-#
-# The proper resolution is to rewrite contract spec Inv 29 around the
-# runtime-API producer model and update this section accordingly. That work
-# belongs to the contract feature's housekeeping audit wave (per
-# docs/superpowers/specs/2026-05-23-housekeeping-protocol.md). This skip is
-# a tombstone until then; CONTRACT-BUG-42 tracks the resolution.
-ok("BACKLOG-8: SKIPPED pending CONTRACT-BUG-42 (Inv 29 producer model rewrite)")
+# BACKLOG-8 (CONTRACT-WAVE-9 rewrite): Inv 29 names exactly two scripts as the
+# canonical named-wrapper producer set: tdd-step.py and dispatch-tdd-subagent.py.
+# (The Plan-C rabbit-cage dispatcher hooks are explicitly NOT direct producers;
+# they aggregate runtime-API typed returns.) Each surviving producer MUST
+# import rabbit_print and reference at least one named wrapper.
+_NAMED_WRAPPERS = (
+    "welcome", "policy_drift", "surface_drift", "scope_guard_off",
+    "scope_guard_bypassed", "human_approval_bypass", "bypass_permissions_active",
+    "dispatch_bypass_note", "skills_updated", "policy_refreshed",
+    "tdd_transition", "tdd_forced",
+)
+_PRODUCER_SET = [
+    os.path.join(REPO_ROOT,
+                 ".claude/features/tdd-state-machine/scripts/tdd-step.py"),
+    os.path.join(REPO_ROOT,
+                 ".claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py"),
+]
+for producer_path in _PRODUCER_SET:
+    rel = os.path.relpath(producer_path, REPO_ROOT)
+    if not os.path.isfile(producer_path):
+        ko(f"BACKLOG-8: producer missing on disk: {rel}")
+        continue
+    with open(producer_path) as f:
+        src = f.read()
+    # Inv 29 mandates the import comes through rabbit_print (the importable
+    # module form — underscore, not hyphen).
+    if "rabbit_print" not in src:
+        ko(f"BACKLOG-8: {rel} does not import rabbit_print")
+        continue
+    referenced = [w for w in _NAMED_WRAPPERS if w in src]
+    if not referenced:
+        ko(f"BACKLOG-8: {rel} imports rabbit_print but references no named wrapper")
+    else:
+        ok(f"BACKLOG-8: {rel} imports rabbit_print and uses named wrapper(s): {referenced[0]}")
 
 
 # BACKLOG-9: contract.md provides.scripts includes all live scripts in scripts/ tree
@@ -228,13 +247,11 @@ else:
     ko("BACKLOG-15: missing test-rabbit-print-messages-schema.py or test-rabbit-print-renderer.py")
 
 
-# BACKLOG-16: spec Inv 6 documents that build-contract validation is test-only.
-spec_text_inv9 = spec_text
-# Search for note about test-only enforcement near Inv 6 text.
-if "test-only" in spec_text_inv9 or "not enforced at edit-time" in spec_text_inv9 or "no edit-time enforcement" in spec_text_inv9.lower():
-    ok("BACKLOG-16: spec.md documents Inv 6 enforcement limitation")
-else:
-    ko("BACKLOG-16: spec.md does not document Inv 6 test-only enforcement limitation")
+# BACKLOG-16 (CONTRACT-WAVE-9): RETIRED. Inv 6 (build-contract.json validation
+# being test-only) was retired alongside the "Invariant enforcement limitations"
+# section in this wave; the original assertion's target no longer exists in
+# spec.md. The tombstone for Inv 6 lives in CHANGELOG.md. The original
+# BACKLOG-16 entry is intentionally not re-asserted here.
 
 
 if FAIL:
