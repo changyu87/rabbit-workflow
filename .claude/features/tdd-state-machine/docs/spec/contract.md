@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.4.0
+version: 1.5.0
 template_version: 2.0.0
 owner: rabbit team
 deprecation_criterion: when TDD state machine is replaced by a fundamentally different orchestration approach
