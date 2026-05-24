@@ -78,9 +78,10 @@ When neither holds, the transition is denied with exit 1.
 `tdd-step.py` MUST render every transition message through the
 centralised `rabbit_print` module loaded from
 `.claude/features/contract/scripts/rabbit_print.py`. Accepted
-transitions emit `tdd_transition(cur, new)` on stdout (ANSI green,
-`[🐇 rabbit 🐇]` brand). Forced transitions additionally emit
-`tdd_forced(cur, new)` on stderr (ANSI red).
+transitions emit `rabbit_print("{CUR} -> {NEW}", "🔧", "green")` on
+stdout (ANSI green, `[🐇 rabbit 🐇]` brand). Forced transitions
+additionally emit `rabbit_print("FORCED: {CUR} -> {NEW}", "🔧", "red")`
+on stderr (ANSI red). State names are uppercased at the call site.
 
 ### Inv 10 — `test-green` enforcement-check hook
 

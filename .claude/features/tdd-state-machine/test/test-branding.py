@@ -2,8 +2,10 @@
 # test-branding.py — Inv 9 coverage.
 #
 # Inv 9: tdd-step.py renders every transition message through rabbit_print.
-#   Accepted transitions: tdd_transition(cur, new) on stdout (ANSI green, brand).
-#   Forced transitions: tdd_forced(cur, new) on stderr (ANSI red).
+#   Accepted transitions: rabbit_print("{CUR} -> {NEW}", "🔧", "green") on
+#     stdout (ANSI green, [🐇 rabbit 🐇] brand).
+#   Forced transitions: rabbit_print("FORCED: {CUR} -> {NEW}", "🔧", "red")
+#     on stderr (ANSI red).
 import os
 import shutil
 import subprocess

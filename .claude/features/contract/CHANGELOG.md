@@ -12,11 +12,29 @@ Each entry below carries the original invariant number (as it appeared in spec.m
 
 ## Renumber and gap-preservation events
 
-- **CONTRACT-WAVE-9 (this wave):** Spec.md surviving invariants are NOT renumbered. Wave 9 retires four invariants (Inv 6, 7, 30, 35) and preserves the resulting numbering gaps at those positions rather than re-flowing the surviving invariants. The decision departs from the CONTRACT-BACKLOG-31 precedent because the gap count is small and every invariant number is referenced by ~25+ cross-references across `lib/checks.py`, `scripts/enforcement/*.py`, `test/*.py` docstrings, and other features' specs; preserving stable numbers avoids a cascade rewrite that would touch every Inv-citing site. `check_invariant_monotonic_order` accepts gaps (the check is strictly-increasing, not contiguous), so this introduces no enforcement violation.
+- **Plan F.3 (rabbit-print refactor):** Spec.md surviving invariants are NOT renumbered. Plan F.3 retires four invariants tied to the rabbit-print registry/wrapper architecture (Inv 4, 27, 28, 29) and preserves the resulting numbering gaps at those positions rather than re-flowing the surviving invariants. Total gap count (4 + the eight pre-existing) remains well within the renumber-vs-gaps threshold; the cross-reference cost of a cascade rewrite still outweighs the gap cost.
+
+- **CONTRACT-WAVE-9 (earlier cycle):** Spec.md surviving invariants are NOT renumbered. Wave 9 retires four invariants (Inv 6, 7, 30, 35) and preserves the resulting numbering gaps at those positions rather than re-flowing the surviving invariants. The decision departs from the CONTRACT-BACKLOG-31 precedent because the gap count is small and every invariant number is referenced by ~25+ cross-references across `lib/checks.py`, `scripts/enforcement/*.py`, `test/*.py` docstrings, and other features' specs; preserving stable numbers avoids a cascade rewrite that would touch every Inv-citing site. `check_invariant_monotonic_order` accepts gaps (the check is strictly-increasing, not contiguous), so this introduces no enforcement violation.
 
 - **CONTRACT-BACKLOG-31 (earlier cycle):** Spec.md surviving invariants renumbered monotonically to 1..39, closing all gaps left by previously-retired invariants. The tombstone numbers below (2, 6, 8, 14, 27, 29, 31) are HISTORICAL — they record the spec.md numbers as they existed at retirement time and are NOT updated by the renumber. Post-renumber, those historical numbers may numerically collide with new active invariants in spec.md; the collision is benign because tombstone entries are scoped to "historical numbers in this CHANGELOG" by file/section. The companion `test/test-spec-tombstone-gaps-match-changelog.py` was deleted in the same cycle: its premise was the gap-correspondence between spec.md numbering gaps and CHANGELOG tombstones, which no longer holds once all gaps are closed.
 
 ## Retired artifacts
+
+### `rabbit-print-messages.json` — message-id registry (Plan F.3)
+Originally the JSON registry data file at
+`.claude/features/contract/schemas/rabbit-print-messages.json` holding the
+brand, bar, color palette, and every `[rabbit]` message body keyed by
+message-id. `rabbit_print.py` loaded this file at first use and rendered
+each producer-supplied message-id by registry lookup; twelve named
+wrappers (`welcome`, `policy_drift`, `surface_drift`, `scope_guard_off`,
+`scope_guard_bypassed`, `human_approval_bypass`,
+`bypass_permissions_active`, `dispatch_bypass_note`, `skills_updated`,
+`policy_refreshed`, `tdd_transition`, `tdd_forced`) wrapped the lookup.
+Plan F.3 deleted the registry and the wrappers in favour of a direct-call
+API: producers now supply `text/icon/color/format` inline at the call
+site. Equivalent assertions: spec Inv 48 (direct-call API),
+`test-rabbit-print-renderer.py` (asserts retired wrappers are absent and
+exercises the inline-args surface).
 
 ### `publish.json` — per-feature deployment manifest (Plan F.1)
 Originally a sibling manifest file under each active feature
@@ -36,6 +54,43 @@ Equivalent assertions:
   file remains)
 
 ## Retired invariants
+
+### Inv 4 — three-artifact rabbit-print authority (Plan F.3)
+Originally asserted that the `[rabbit]` print system was split into three
+artifacts: `rabbit-print-messages.json` (registry data file with `icon`,
+`color`, `text` per message), `rabbit-print.schema.json` (JSON Schema for
+the registry), and `rabbit_print.py` (renderer module). Plan F.3
+collapsed the architecture: the registry was deleted, the schema was
+repurposed as a wire-format spec for the `rabbit_print()` argument
+shape, and the renderer became a direct-call API
+(`rabbit_print(text, icon, color, format)`). Replacement: new Inv 48.
+
+### Inv 27 — rabbit-print-messages.json registry shape (Plan F.3)
+Originally asserted the on-disk shape of the message-id registry
+(`brand`, `bar`, `colors`, and the closed message-id set: `welcome`,
+`policy-drift`, `surface-drift`, `scope-guard-off`, `scope-guard-bypassed`,
+`human-approval-bypass`, `bypass-permissions-active`,
+`dispatch-bypass-note`, `skills-updated`, `policy-refreshed`,
+`tdd-transition`, `tdd-forced`). Retired with the registry file; producers
+now carry their text/icon/color/format inline at the call site.
+
+### Inv 28 — rabbit_print.py module shape with named wrappers (Plan F.3)
+Originally asserted that `rabbit_print.py` exposed
+`rabbit_print(message_id, **kwargs)`, `rabbit_subline`, `rabbit_block`,
+plus twelve named wrappers (one per registry message-id). Plan F.3 dropped
+the wrappers and changed `rabbit_print` to `(text, icon, color, format)`;
+the surviving module surface is asserted by new Inv 48 (which also asserts
+the wrappers are absent).
+
+### Inv 29 — named-wrapper producer set (Plan F.3)
+Originally asserted that `tdd-step.py` and `dispatch-tdd-subagent.py`
+were the canonical named-wrapper producer set, that direct calls to
+`rabbit_print("message-id", ...)` at producer call sites were forbidden,
+and that the wrappers were the public API for producers. Retired with
+the wrappers themselves; the surviving "producers MUST route through
+`rabbit_print.py` rather than emit inline ANSI/brand strings" guarantee
+is part of new Inv 48 and is asserted by `tdd-state-machine/test/test-branding.py`
+and `tdd-subagent/test/test-bypass-marker-note.py`.
 
 ### Inv 6 — build-contract.json validation (CONTRACT-WAVE-9)
 Originally asserted that `build-contract.json` validates against `build-contract.schema.json`. Both files were deleted during the federate-build-manifests migration; the equivalent assertion now lives in each feature's `feature.json` `manifest` validation against the meta-contract manifest schema. The "Invariant enforcement limitations" section that depended on this invariant was retired alongside.

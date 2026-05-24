@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 3.1.0
+version: 3.2.0
 template_version: 2.1.0
 owner: rabbit-workflow team
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -66,7 +66,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "Owns deployment of any script into .claude/agents/ — that is the contract feature's responsibility.",
     "Writes outside the dispatched subagent's declared scope directory.",
     "Calls an agent directly; dispatch-tdd-subagent.py emits a prompt only.",
-    "Emits the bypass-marker preamble note via inline ANSI/brand strings (the dispatch_bypass_note() wrapper is the sole authorized emission path)."
+    "Emits the bypass-marker preamble note via inline ANSI/brand strings (rabbit_print from contract.scripts.rabbit_print is the sole authorized emission path)."
   ]
 }
 ```

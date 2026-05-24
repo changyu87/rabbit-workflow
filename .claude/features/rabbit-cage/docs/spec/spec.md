@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.3.0
+version: 5.4.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -53,9 +53,11 @@ Each event dispatcher (`stop-dispatcher.py`, `session-start-dispatcher.py`,
    `contract.lib.runtime.<api>(**args, repo_root=<root>)`, forwarding
    `feature_dir=<fdir>` only when the runtime API's signature declares it.
 3. Partitions the typed results: `banner` results are rendered via
-   `rabbit_print.rabbit_print(message_id)` (banner format with ━━━ bars);
-   `print` results are rendered via `rabbit_print.rabbit_subline(text, color,
-   icon)` (compact format); `subline` results are rendered via
+   `rabbit_print.rabbit_print(text, icon, color, format="banner")`
+   (decorated with ━━━ bars; the dispatcher reads `text`, `icon`, and
+   `color` directly from the payload); `print` results are rendered via
+   `rabbit_print.rabbit_subline(text, color, icon)` (compact format);
+   `subline` results are rendered via
    `rabbit_print.rabbit_subline(text, color)` without icon; all rendered
    lines are joined into `systemMessage` via `rabbit_print.rabbit_block`;
    `inject` results are concatenated into `additionalContext`; `ok` results
@@ -190,11 +192,10 @@ string BEFORE splitting on `;|&` segment delimiters.
     CONFIGURATION entries MUST be a literal renderable Unicode glyph
     (e.g. `🔑`, `🚨`, `🔓`, `🔄`, `✨`, `⚠️`), NOT a lookup name
     (`"key"`, `"siren"`, `"unlock"`, …). `rabbit_subline(text, color, icon)`
-    interpolates `icon` literally; it performs no name-to-glyph
-    resolution. Named-message wrappers in `contract.scripts.rabbit_print`
-    (`welcome()`, `policy_drift()`, …) are unaffected — their glyphs
-    come from the registry at `contract/schemas/rabbit-print-messages.json`
-    and are not passed through this surface.
+    and `rabbit_print(text, icon, color, format)` interpolate `icon`
+    literally; neither performs name-to-glyph resolution. (Per contract
+    Inv 48 / Plan F.3 there is no message-id registry; every producer
+    supplies `text`, `icon`, and `color` inline at the call site.)
 14. rabbit-cage owns the cross-cutting CLAUDE.md `@`-import resolution
     tests. The two assertions — (a) every `@`-import in any `CLAUDE.md`
     resolves to an existing file, and (b) no `CLAUDE.md` carries a

@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 3.1.0
+version: 3.2.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -189,14 +189,15 @@ spec (`rabbit-feature`).
 23. **Bypass-marker note emission.** When `.rabbit-human-approval-bypass`
     exists at the repo root, the assembled prompt's preamble (before
     STEP 1) contains the exact string returned by
-    `dispatch_bypass_note()` from
-    `.claude/features/contract/scripts/rabbit_print.py`. When the marker
-    is absent, no such note appears.
+    `rabbit_print(_BYPASS_NOTE_TEXT, "📢", "yellow")` (the canonical
+    preamble body lives in `dispatch-tdd-subagent.py` as the module-level
+    `_BYPASS_NOTE_TEXT` constant). When the marker is absent, no such
+    note appears.
 
 24. **Bypass-marker note channel.** `dispatch-tdd-subagent.py` emits the
-    bypass preamble note solely by calling `dispatch_bypass_note()`. The
-    script contains no inline ANSI escape codes and no inline brand
-    strings.
+    bypass preamble note solely by calling `rabbit_print` from
+    `.claude/features/contract/scripts/rabbit_print.py`. The script
+    contains no inline ANSI escape codes and no inline brand strings.
 
 ### `--human-approval-gate` branch
 
