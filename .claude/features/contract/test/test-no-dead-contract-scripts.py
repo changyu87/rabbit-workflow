@@ -9,9 +9,9 @@ A "production caller" is a reference to the script's basename anywhere in
 `.claude/`, excluding:
   - `.claude/archive/`
   - any `__pycache__/`
-  - the contract feature's own `scripts/`, `tests/`, `test/`, `docs/spec/`,
-    and `build-contract.json` (self-references, including spec/contract.md
-    that merely declare the surface).
+  - the contract feature's own `scripts/`, `tests/`, `test/`, and
+    `docs/spec/` (self-references, including spec/contract.md that
+    merely declare the surface).
 
 Also verifies that the five scripts deleted by CONTRACT-BACKLOG-24 are
 absent:

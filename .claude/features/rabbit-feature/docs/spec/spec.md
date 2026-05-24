@@ -320,8 +320,8 @@ Scripts (under `scripts/`):
   the `dispatch-tdd-subagent.py` prompt assembler — owned by
   `tdd-subagent` and `tdd-state-machine`.
 - The build pipeline that copies skills into `.claude/skills/` — owned
-  by `contract` via `build-contract.json`. This feature consumes the
-  pipeline; it does not define it.
+  by `contract`. This feature consumes the pipeline; it does not define
+  it.
 - `workspace-structure.json` content — owned by `contract`.
 
 ## Tests

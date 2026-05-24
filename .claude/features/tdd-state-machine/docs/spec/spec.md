@@ -148,8 +148,6 @@ the canonical `publish_file` shape.
 
 - **Subagent dispatch** (`dispatch-tdd-subagent.py`, `tdd-subagent`
   agent markdown) — owned by `tdd-subagent`.
-- **Deployment of the script** to `.claude/agents/tdd-subagent/scripts/`
-  — owned by `build-contract.json`.
 - **TDD orchestration / state policy at the workflow level**
   (`/rabbit-feature-touch`, human-approval gates) — owned by
   `rabbit-feature`.

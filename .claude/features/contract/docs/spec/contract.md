@@ -28,11 +28,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/schemas/bug.json.schema.json",
       ".claude/features/contract/schemas/project-map.json.schema.json",
       ".claude/features/contract/schemas/rabbit-print.schema.json",
-      ".claude/features/contract/schemas/rabbit-print-messages.json",
-      ".claude/features/contract/schemas/build-contract.schema.json"
-    ],
-    "data": [
-      ".claude/features/contract/build-contract.json"
+      ".claude/features/contract/schemas/rabbit-print-messages.json"
     ],
     "scripts": [
       ".claude/features/contract/scripts/policy-block.py",

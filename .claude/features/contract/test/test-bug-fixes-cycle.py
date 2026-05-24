@@ -234,13 +234,6 @@ else:
     ko("BACKLOG-15: missing test-rabbit-print-messages-schema.py or test-rabbit-print-renderer.py")
 
 
-# BACKLOG-16 (CONTRACT-WAVE-9): RETIRED. Inv 6 (build-contract.json validation
-# being test-only) was retired alongside the "Invariant enforcement limitations"
-# section in this wave; the original assertion's target no longer exists in
-# spec.md. The tombstone for Inv 6 lives in CHANGELOG.md. The original
-# BACKLOG-16 entry is intentionally not re-asserted here.
-
-
 if FAIL:
     print(f"\ntest-bug-fixes-cycle: FAIL", file=sys.stderr)
     sys.exit(1)

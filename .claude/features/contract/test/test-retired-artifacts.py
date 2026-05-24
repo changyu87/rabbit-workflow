@@ -14,6 +14,9 @@ Section C — BUG-41 cleanup audit (CheckResult dataclass, get_repo_root public,
 Section D — Plan F.1 publish.json retirement (no feature still carries a
             sibling publish.json; feature.json manifest is the single source
             of truth for deployment).
+Section E — Plan F.2 build-contract.json retirement (the central catalog
+            data file, its schema, and the federate-build-manifests script
+            are all absent; per-feature manifest sections are authoritative).
 
 Non-interactive. Exits non-zero on any failure.
 
@@ -71,8 +74,7 @@ for n, rel in (("a1", "test-relink-no-skills.py"), ("a2", "test-relink.py")):
         ok(n, f"{rel} has been deleted")
 
 # a3: no remaining test file references the deleted scripts/relink.sh
-# (test-build-contract.py is allowed because it asserts the ABSENCE of relink.sh
-# per Inv 8; this file is also allowed because its docstring names it.)
+# (this file is allowed because its docstring names it.)
 SELF = os.path.basename(__file__)
 ALLOWED = {SELF}
 offenders = []
@@ -232,6 +234,23 @@ for feature_dir_name in os.listdir(features_root):
         d1_fail = True
 if not d1_fail:
     ok("d1", "no feature carries a sibling publish.json (Plan F.1)")
+
+
+# ---------------------------------------------------------------------------
+# Section E — Plan F.2: build-contract.json catalog is retired
+# ---------------------------------------------------------------------------
+print("Section E — Plan F.2 build-contract.json retirement")
+RETIRED_BUILD_CONTRACT = [
+    ("e1", "build-contract.json"),
+    ("e2", "schemas/build-contract.schema.json"),
+    ("e3", "scripts/federate-build-manifests.py"),
+]
+for n, rel in RETIRED_BUILD_CONTRACT:
+    p = os.path.join(FEATURE_DIR, rel)
+    if os.path.exists(p):
+        ko(n, f"{rel} still present at {p}")
+    else:
+        ok(n, f"{rel} is absent")
 
 
 print()
