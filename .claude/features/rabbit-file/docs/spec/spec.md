@@ -269,6 +269,26 @@ origin/bug-backlog-files root:
   surface a normal git error on first push attempt — no extra defensive
   scaffolding sits in the hot path to detect that case.
 
+- feature.json MUST declare the meta-contract sections `manifest`,
+  `runtime`, and `configuration` (Plan E.* migration). The shapes are
+  exactly:
+    - `manifest` is a list of length 1 whose single entry is
+      `{"api": "publish_skill", "args": {"source": "skills/rabbit-file/SKILL.md"}}`,
+      declaring the sole deployment target (the operator-facing
+      `rabbit-file` SKILL.md);
+    - `runtime` is `{}` — rabbit-file owns no Claude Code event hook
+      handlers;
+    - `configuration` is `[]` — rabbit-file exposes no configurable
+      toggles.
+  The four scripts under `scripts/` (`branch_ops.py`, `file-item.py`,
+  `item-status.py`, `list-items.py`) are invoked in-place from
+  `.claude/features/rabbit-file/scripts/` by their callers and are NOT
+  deployed; they MUST NOT appear in the manifest. The manifest is the
+  meta-contract source of truth for what rabbit-file deploys; the
+  sibling `publish.json` is retained as a Plan F cleanup artifact
+  during the Plan E migration window and declares the same single
+  SKILL.md deployment target.
+
 ## Operational characteristics
 
 The retry and backoff invariants above bound the worst-case timing of a
