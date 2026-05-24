@@ -9,13 +9,16 @@ Covers:
       structural files (spec.md, contract.md, test/run.py) are absent.
   t3: validate-feature.py still fails (exit 1) on a feature whose
       feature.json carries status=active and is missing required files.
-  t4: .claude/workspace-structure.json marks the retired features
-      `rabbit-spec` and `rabbit-feature-scope` as required: false so
-      workspace-map.py --audit does not emit error-severity findings
-      for tombstone directories.
+  t4: .claude/workspace-structure.json marks the retired feature
+      `rabbit-spec` as required: false so workspace-map.py --audit does
+      not emit error-severity findings for the tombstone directory.
+      The `rabbit-feature-scope` directory was fully retired and removed
+      (no tombstone), so its node is also absent from workspace-structure.json.
   t5: .claude/workspace-structure.json declares `tdd-state-machine` as
       a feature node (post-consolidation home of tdd-step/context/drift-check).
-  t6: tdd-state-machine/publish.json tdd-step.py source points to tdd-state-machine scripts/
+  (t6 RETIRED in Plan F.1 — tdd-state-machine/publish.json deleted; the
+   equivalent source pointer is asserted by tdd-state-machine's own
+   test/test-manifest-shape.py against feature.json manifest.)
 
 Version: 1.0.0
 Owner: rabbit-workflow team (contract)
@@ -121,7 +124,8 @@ with tempfile.TemporaryDirectory() as td:
         ko(3, "validate-feature.py incorrectly passed an active feature missing spec/contract/test")
 
 
-# t4: workspace-structure.json marks retired features as required: false
+# t4: workspace-structure.json marks the rabbit-spec tombstone as required:false,
+# and the fully-retired rabbit-feature-scope directory is absent entirely.
 with open(WS_STRUCTURE) as f:
     ws = json.load(f)
 features_node = next((n for n in ws["nodes"] if n["name"] == "features"), None)
@@ -131,14 +135,17 @@ else:
     feat_children = {c["name"]: c for c in features_node.get("children", [])}
     rs = feat_children.get("rabbit-spec")
     rfs = feat_children.get("rabbit-feature-scope")
-    if rs is None or rfs is None:
-        ko(4, f"workspace-structure.json missing retired feature nodes: rabbit-spec={rs!r}, rabbit-feature-scope={rfs!r}")
-    elif rs.get("required") is True or rfs.get("required") is True:
-        ko(4, f"workspace-structure.json marks retired features as required: "
-              f"rabbit-spec.required={rs.get('required')!r}, "
-              f"rabbit-feature-scope.required={rfs.get('required')!r}")
+    if rs is None:
+        ko(4, "workspace-structure.json missing rabbit-spec tombstone node")
+    elif rs.get("required") is True:
+        ko(4, f"workspace-structure.json marks rabbit-spec tombstone as required: "
+              f"rabbit-spec.required={rs.get('required')!r}")
+    elif rfs is not None:
+        ko(4, "workspace-structure.json must NOT declare rabbit-feature-scope "
+              "(directory was fully retired and removed; no tombstone)")
     else:
-        ok(4, "workspace-structure.json marks rabbit-spec and rabbit-feature-scope as required: false")
+        ok(4, "workspace-structure.json marks rabbit-spec tombstone as required:false "
+              "and omits the fully-retired rabbit-feature-scope")
 
 
 # t5: workspace-structure.json declares tdd-state-machine as a feature node
@@ -152,24 +159,9 @@ else:
     ko(5, "skipped: no features node")
 
 
-# t6: tdd-state-machine/publish.json tdd-step.py source points to tdd-state-machine scripts/
-TDD_SM_PUBLISH = os.path.join(REPO_ROOT, ".claude/features/tdd-state-machine/publish.json")
-if os.path.isfile(TDD_SM_PUBLISH):
-    with open(TDD_SM_PUBLISH) as f:
-        pub = json.load(f)
-    tdd_step_entry = next(
-        (t for t in pub.get("targets", [])
-         if t.get("name") == "agents/tdd-subagent/scripts/tdd-step.py"),
-        None,
-    )
-    if tdd_step_entry is None:
-        ko(6, "tdd-state-machine/publish.json missing tdd-step.py target")
-    elif tdd_step_entry.get("source") != "scripts/tdd-step.py":
-        ko(6, f"tdd-step.py source = {tdd_step_entry.get('source')!r}, expected 'scripts/tdd-step.py'")
-    else:
-        ok(6, "tdd-state-machine/publish.json tdd-step.py source is 'scripts/tdd-step.py'")
-else:
-    ko(6, f"tdd-state-machine/publish.json not found at {TDD_SM_PUBLISH}")
+# t6 RETIRED in Plan F.1 — tdd-state-machine/publish.json deleted; the
+# equivalent source pointer assertion lives in tdd-state-machine's own
+# test/test-manifest-shape.py against the feature.json manifest.
 
 
 print()

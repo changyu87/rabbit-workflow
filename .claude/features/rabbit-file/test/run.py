@@ -24,9 +24,7 @@ print()
 total_fail = 0
 if not run_pytest_suite("test-branch-ops.py"):
     total_fail += 1
-if not run_pytest_suite("test-worktree-fresh-checkout.py"):
-    total_fail += 1
-if not run_pytest_suite("test-concurrent-worktree.py"):
+if not run_pytest_suite("test-concurrency.py"):
     total_fail += 1
 if not run_pytest_suite("test-file-item.py"):
     total_fail += 1
@@ -34,25 +32,17 @@ if not run_pytest_suite("test-item-status.py"):
     total_fail += 1
 if not run_pytest_suite("test-list-items.py"):
     total_fail += 1
-if not run_pytest_suite("test-bug-fixes.py"):
-    total_fail += 1
-if not run_pytest_suite("test-RABBIT-FILE-BACKLOG-7-per-field-limits.py"):
-    total_fail += 1
-if not run_pytest_suite("test-RABBIT-FILE-BACKLOG-7-control-char-strip.py"):
-    total_fail += 1
-if not run_pytest_suite("test-bug-11-cleanup-and-coverage.py"):
-    total_fail += 1
-if not run_pytest_suite("test-branch-misconfigured-local-origin-surfaces-error.py"):
+if not run_pytest_suite("test-sanitize-and-length.py"):
     total_fail += 1
 if not run_suite("test-skill.py"):
     total_fail += 1
 if not run_suite("test-metadata.py"):
     total_fail += 1
-if not run_suite("test-spec-md-frontmatter.py"):
+if not run_suite("test-spec-presence.py"):
     total_fail += 1
-if not run_suite("test-RABBIT-FILE-BACKLOG-14-operational-characteristics.py"):
+if not run_suite("test-manifest-shape.py"):
     total_fail += 1
-if not run_suite("test-RABBIT-FILE-BACKLOG-14-legacy-skill-cleanup.py"):
+if not run_suite("test-manifest-deploys-correctly.py"):
     total_fail += 1
 
 if total_fail == 0:

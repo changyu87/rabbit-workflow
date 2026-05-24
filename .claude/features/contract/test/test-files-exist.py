@@ -50,8 +50,8 @@ check_file("schemas/feature.json.schema.json")
 check_file("schemas/bug.json.schema.json")
 check_file("schemas/project-map.json.schema.json")
 check_file("schemas/rabbit-print.schema.json")
-check_file("schemas/rabbit-print-messages.json")
 check_file("scripts/rabbit_print.py")
+check_file("lib/publish.py")
 
 # Scripts — also check executable
 check_exec("scripts/policy-block.py")
@@ -89,7 +89,6 @@ check_file("test/test-files-exist.py")
 check_file("test/test-policy-block.py")
 check_file("test/test-templates-have-version.py")
 check_file("test/test-schemas-valid-json.py")
-check_file("test/test-publish-manifests.py")
 check_file("test/test-publish-manifest-schema.py")
 check_file("test/test-python-only-stack.py")
 

@@ -5,18 +5,24 @@ Usage:
   install.py [TARGET] [--all]
 
   TARGET   directory to install into (default: $PWD)
-  --all    also copy archive material (archive/, test/) — useful for fans
-           / contributors who want a closer look at how rabbit is built.
+  --all    also copy archive material (archive/, test/) for inspection.
            Without --all, dev-only docs under .claude/docs/specs/ and
-           .claude/docs/plans/ are stripped from the installed tree;
-           default install is .claude/ + CLAUDE.md only.
+           .claude/docs/plans/ are stripped; default install is .claude/
+           + CLAUDE.md only.
 
-The runtime work model is identical regardless of --all. The flag only
-affects which files come along for inspection; rabbit's behavior in the
-installed workspace is unchanged.
+After copying, install.py enumerates every <target>/.claude/features/*/
+feature.json and invokes each declared MANIFEST API via
+contract.lib.publish. Failures are reported to stderr; the install
+exits non-zero if any publish call failed.
+
+Version: 5.0.0
+Owner: rabbit-workflow team (rabbit-cage)
+Deprecation criterion: when Claude Code exposes native workspace
+    bootstrap that subsumes this script.
 """
 
 import glob
+import json
 import os
 import shutil
 import subprocess
@@ -27,6 +33,66 @@ import urllib.request
 
 def usage():
     print(__doc__, file=sys.stderr)
+
+
+def run_publish_loop(target_root: str) -> int:
+    """Enumerate every <target_root>/.claude/features/*/feature.json and
+    invoke each MANIFEST API via contract.lib.publish. Continues past
+    failures; returns the count of failed calls (0 == success).
+
+    Skips features with status == 'retired' and features with no manifest.
+    Writes one stderr line per failure naming the feature + API.
+    """
+    contract_dir = os.path.join(target_root, ".claude/features/contract")
+    if contract_dir not in sys.path:
+        sys.path.insert(0, contract_dir)
+    try:
+        from lib import publish  # noqa: PLC0415
+    except ImportError as e:
+        sys.stderr.write(f"install: cannot import contract.lib.publish: {e}\n")
+        return 1
+
+    features_root = os.path.join(target_root, ".claude/features")
+    if not os.path.isdir(features_root):
+        return 0
+
+    failures = 0
+    for name in sorted(os.listdir(features_root)):
+        fdir = os.path.join(features_root, name)
+        fj = os.path.join(fdir, "feature.json")
+        if not os.path.isfile(fj):
+            continue
+        try:
+            with open(fj) as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            sys.stderr.write(f"install: {name}: malformed feature.json: {e}\n")
+            failures += 1
+            continue
+        if not isinstance(data, dict) or data.get("status") == "retired":
+            continue
+        manifest = data.get("manifest") or []
+        for entry in manifest:
+            api_name = entry.get("api", "")
+            args = entry.get("args") or {}
+            fn = getattr(publish, api_name, None)
+            if fn is None:
+                sys.stderr.write(
+                    f"install: {name}: unknown publish API {api_name!r}\n")
+                failures += 1
+                continue
+            try:
+                result = fn(**args, feature_dir=fdir, repo_root=target_root)
+            except Exception as e:  # noqa: BLE001
+                sys.stderr.write(
+                    f"install: {name}::{api_name} raised: {e}\n")
+                failures += 1
+                continue
+            if not getattr(result, "passed", False):
+                for msg in getattr(result, "messages", []) or []:
+                    sys.stderr.write(f"install: {name}::{api_name}: {msg}\n")
+                failures += 1
+    return failures
 
 
 def main():
@@ -57,7 +123,7 @@ def main():
     if os.path.isdir(os.path.join(target, ".claude")):
         print(f"Error: {target}/.claude already exists.", file=sys.stderr)
         print(
-            "If developing rabbit-workflow, no install needed — open this directory in Claude Code.",
+            "If developing rabbit-workflow, no install needed - open this directory in Claude Code.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -82,21 +148,18 @@ def main():
             sys.exit(1)
         src = tmp_dir
 
-    # BUG-61: track files we created so we can roll back on failure.
     target_claude = os.path.join(target, ".claude")
     try:
         shutil.copytree(os.path.join(src, ".claude"), target_claude)
         try:
-            subprocess.check_call(
-                ["python3", os.path.join(target, ".claude/features/rabbit-cage/scripts/build.py"), target]
-            )
+            failures = run_publish_loop(target)
+            if failures:
+                raise RuntimeError(
+                    f"{failures} manifest publish call(s) failed; see stderr")
         except Exception:
-            # Build failed after copytree succeeded — roll back the partial
-            # .claude/ tree so the operator can retry on a clean target.
             shutil.rmtree(target_claude, ignore_errors=True)
             raise
 
-        # Always strip runtime-only and OS-level artifacts.
         settings_local = os.path.join(target, ".claude", "settings.local.json")
         if os.path.isfile(settings_local):
             os.remove(settings_local)
@@ -110,7 +173,6 @@ def main():
                     shutil.copytree(src_sub, os.path.join(target, subdir))
             print(f"rabbit-workflow installed to {target} (with --all: archive/ + test/ included; .claude/docs/ kept)")
         else:
-            # Default install: strip dev-only docs the user doesn't need.
             for pattern in ("specs/*.md", "plans/*.md"):
                 for f in glob.glob(os.path.join(target, ".claude", "docs", pattern)):
                     os.remove(f)

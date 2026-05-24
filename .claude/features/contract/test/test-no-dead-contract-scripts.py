@@ -9,9 +9,9 @@ A "production caller" is a reference to the script's basename anywhere in
 `.claude/`, excluding:
   - `.claude/archive/`
   - any `__pycache__/`
-  - the contract feature's own `scripts/`, `tests/`, `test/`, `docs/spec/`,
-    and `build-contract.json` (self-references, including spec/contract.md
-    that merely declare the surface).
+  - the contract feature's own `scripts/`, `tests/`, `test/`, and
+    `docs/spec/` (self-references, including spec/contract.md that
+    merely declare the surface).
 
 Also verifies that the five scripts deleted by CONTRACT-BACKLOG-24 are
 absent:
@@ -132,6 +132,17 @@ def has_production_caller(basename):
     return qualifying
 
 
+# KNOWN_ISSUES — scripts pending a production caller. Follow the Inv 38
+# pattern: add only when a multi-plan cycle is in flight, remove once the
+# caller lands. Each entry must name the plan / backlog that will close it.
+KNOWN_ISSUES = {
+    # Added by Plan A of CONTRACT-BACKLOG-36 (meta-contract foundation).
+    # The CLI shim is user-invocable today but has no programmatic caller
+    # until Plan C wires it into rabbit-cage's install dispatcher OR Plan E
+    # adds it to rabbit-feature-audit. Remove this entry once either lands.
+    "validate-meta-contract.py",
+}
+
 remaining = []
 for fname in sorted(os.listdir(CONTRACT_SCRIPTS_DIR)):
     full = os.path.join(CONTRACT_SCRIPTS_DIR, fname)
@@ -142,6 +153,9 @@ for fname in sorted(os.listdir(CONTRACT_SCRIPTS_DIR)):
     remaining.append(fname)
 
 for fname in remaining:
+    if fname in KNOWN_ISSUES:
+        ok(f"t5: {fname} skipped (KNOWN_ISSUES; pending production caller)")
+        continue
     callers = has_production_caller(fname)
     if callers:
         ok(f"t5: {fname} has production caller(s): {callers[:2]}{'...' if len(callers) > 2 else ''}")

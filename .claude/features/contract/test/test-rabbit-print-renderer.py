@@ -1,24 +1,20 @@
 #!/usr/bin/env python3
-"""test-rabbit-print-renderer.py — end-to-end tests for rabbit_print.py.
+"""test-rabbit-print-renderer.py — e2e tests for rabbit_print.py.
 
-Imports the rabbit_print module from
-.claude/features/contract/scripts/rabbit_print.py and exercises both public
-functions (rabbit_print, rabbit_subline) against every required message-id
-declared in Inv 27. Asserts exact rendered strings, KeyError semantics, and
-the no-side-effects requirement of Inv 28.
+Asserts the direct-call API: rabbit_print(text, icon, color, format),
+rabbit_subline(text, color, icon), and rabbit_block(*lines). No registry,
+no message-id lookup, no named wrappers.
 """
 
+import contextlib
+import importlib.util
+import io
 import os
 import sys
-import io
-import json
-import importlib.util
-import contextlib
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
 MODULE_PATH = os.path.join(FEATURE_DIR, "scripts", "rabbit_print.py")
-MESSAGES_FILE = os.path.join(FEATURE_DIR, "schemas", "rabbit-print-messages.json")
 
 FAIL = 0
 
@@ -51,171 +47,135 @@ except Exception as e:
     print("test-rabbit-print-renderer: FAIL", file=sys.stderr)
     sys.exit(1)
 
-# t3: __all__ is exactly the 15 names declared in Inv 28 (r1_branch removed
-# alongside rabbit-cage Inv 41; bypass_permissions_active added alongside
-# rabbit-cage Inv 61 banner upgrade; dispatch_bypass_note added in BACKLOG-29
-# alongside the tdd-subagent BUG-57 fix).
-expected_all = {
-    "rabbit_print", "rabbit_subline", "rabbit_block",
+# t3: __all__ is exactly the three direct-call API names
+EXPECTED_ALL = {"rabbit_print", "rabbit_subline", "rabbit_block"}
+actual_all = set(getattr(mod, "__all__", []))
+if actual_all == EXPECTED_ALL:
+    ok(f"t3: __all__ is exactly {sorted(EXPECTED_ALL)}")
+else:
+    fail(f"t3: __all__ mismatch: expected {EXPECTED_ALL}, got {actual_all}")
+
+# t4: named wrappers MUST NOT exist (Plan F.3 retirement)
+RETIRED_WRAPPERS = (
     "welcome", "policy_drift", "surface_drift",
     "scope_guard_off", "scope_guard_bypassed", "human_approval_bypass",
     "bypass_permissions_active", "dispatch_bypass_note",
     "skills_updated", "policy_refreshed", "tdd_transition", "tdd_forced",
-}
-actual_all = set(getattr(mod, "__all__", []))
-if actual_all == expected_all:
-    ok(f"t3: __all__ is exactly the {len(expected_all)} declared names")
-else:
-    fail(f"t3: __all__ mismatch: expected {expected_all}, got {actual_all}")
-
-# t4: functions exist and are callable
-if callable(getattr(mod, "rabbit_print", None)):
-    ok("t4: rabbit_print is callable")
-else:
-    fail("t4: rabbit_print is not callable")
-    print("test-rabbit-print-renderer: FAIL", file=sys.stderr)
-    sys.exit(1)
-
-if callable(getattr(mod, "rabbit_subline", None)):
-    ok("t4b: rabbit_subline is callable")
-else:
-    fail("t4b: rabbit_subline is not callable")
-    print("test-rabbit-print-renderer: FAIL", file=sys.stderr)
-    sys.exit(1)
-
-# Load the registry directly for golden assertions
-with open(MESSAGES_FILE) as f:
-    REG = json.load(f)
-
-BRAND = REG["brand"]
-BAR = REG["bar"]
-GREEN_A = REG["colors"]["green"]["ansi"]
-GREEN_R = REG["colors"]["green"]["reset"]
-RED_A = REG["colors"]["red"]["ansi"]
-RED_R = REG["colors"]["red"]["reset"]
-
-
-def expected_main(mid, **kwargs):
-    m = REG["messages"][mid]
-    c = REG["colors"][m["color"]]
-    body = m["text"].format(**kwargs)
-    if m.get("format", "compact") == "banner":
-        return f"{c['ansi']}{BRAND} {m['icon']} {BAR} {body} {BAR} {m['icon']}{c['reset']}"
-    return f"{c['ansi']}{BRAND} {m['icon']} {body}{c['reset']}"
-
-
-# t5: rabbit_print produces the exact expected string for a parameterized id.
-# (r1-branch was the previous fixture here; it is removed per Inv 27/28(d), so
-# surface-drift — which also takes a placeholder kwarg — is used instead.)
-captured_out = io.StringIO()
-captured_err = io.StringIO()
-with contextlib.redirect_stdout(captured_out), contextlib.redirect_stderr(captured_err):
-    got = mod.rabbit_print("surface-drift", files="hooks/sync-check.py")
-exp = expected_main("surface-drift", files="hooks/sync-check.py")
-if got == exp:
-    ok("t5: rabbit_print('surface-drift', files=...) returns exact expected string")
-else:
-    fail(f"t5: rabbit_print('surface-drift') mismatch\n  exp: {exp!r}\n  got: {got!r}")
-
-# Capture also: must be empty
-if captured_out.getvalue() == "" and captured_err.getvalue() == "":
-    ok("t5b: rabbit_print produces no stdout/stderr side effects")
-else:
-    fail(f"t5b: rabbit_print produced side effects: stdout={captured_out.getvalue()!r}, stderr={captured_err.getvalue()!r}")
-
-# t6: exercise every required message-id with appropriate kwargs
-KWARGS = {
-    "welcome": {},
-    "policy-drift": {},
-    "surface-drift": {"files": "hooks/sync-check.py"},
-    "scope-guard-off": {},
-    "scope-guard-bypassed": {},
-    "human-approval-bypass": {},
-    "bypass-permissions-active": {},
-    "dispatch-bypass-note": {},
-    "skills-updated": {"names": "rabbit-config, rabbit-feature-touch"},
-    "policy-refreshed": {},
-    "tdd-transition": {"from_state": "spec-read", "to_state": "test-write"},
-    "tdd-forced": {"from_state": "test-red", "to_state": "test-green"},
-}
-for mid, kw in KWARGS.items():
-    cap_o, cap_e = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(cap_o), contextlib.redirect_stderr(cap_e):
-        got = mod.rabbit_print(mid, **kw)
-    exp = expected_main(mid, **kw)
-    if got == exp:
-        ok(f"t6: rabbit_print({mid!r}) matches expected")
+)
+for name in RETIRED_WRAPPERS:
+    if getattr(mod, name, None) is None:
+        ok(f"t4: retired wrapper '{name}' absent")
     else:
-        fail(f"t6: rabbit_print({mid!r}) mismatch\n  exp: {exp!r}\n  got: {got!r}")
-    if cap_o.getvalue() or cap_e.getvalue():
-        fail(f"t6b: rabbit_print({mid!r}) emitted side effects")
+        fail(f"t4: retired wrapper '{name}' still present")
 
-# t7: KeyError on unknown message-id
+# t5: the three public callables exist
+for name in ("rabbit_print", "rabbit_subline", "rabbit_block"):
+    if callable(getattr(mod, name, None)):
+        ok(f"t5: {name} is callable")
+    else:
+        fail(f"t5: {name} is not callable")
+        print("test-rabbit-print-renderer: FAIL", file=sys.stderr)
+        sys.exit(1)
+
+BRAND = "[\U0001f407 rabbit \U0001f407]"
+BAR = "━━━"
+GREEN_A, GREEN_R = "\x1b[32m", "\x1b[0m"
+RED_A, RED_R = "\x1b[31m", "\x1b[0m"
+YELLOW_A, YELLOW_R = "\x1b[33m", "\x1b[0m"
+
+
+def _capture(fn, *args, **kwargs):
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        v = fn(*args, **kwargs)
+    return v, out.getvalue(), err.getvalue()
+
+
+# t6: compact format (default)
+got, so, se = _capture(mod.rabbit_print, "hello", "✅", "green")
+exp = f"{GREEN_A}{BRAND} ✅ hello{GREEN_R}"
+if got == exp:
+    ok("t6: compact (default) rabbit_print produces brand icon text")
+else:
+    fail(f"t6: compact mismatch\n  exp: {exp!r}\n  got: {got!r}")
+if so == "" and se == "":
+    ok("t6b: rabbit_print produces no stdout/stderr side effects")
+else:
+    fail(f"t6b: rabbit_print produced side effects: stdout={so!r}, stderr={se!r}")
+
+# t7: explicit format="compact"
+got, _, _ = _capture(mod.rabbit_print, "x", "i", "red", format="compact")
+exp = f"{RED_A}{BRAND} i x{RED_R}"
+if got == exp:
+    ok("t7: explicit format='compact' renders compact form")
+else:
+    fail(f"t7: format='compact' mismatch\n  exp: {exp!r}\n  got: {got!r}")
+
+# t8: format="banner" adds the ━━━ decoration
+got, _, _ = _capture(mod.rabbit_print, "boot", "✅", "green", format="banner")
+exp = f"{GREEN_A}{BRAND} ✅ {BAR} boot {BAR} ✅{GREEN_R}"
+if got == exp:
+    ok("t8: format='banner' renders brand icon bar text bar icon")
+else:
+    fail(f"t8: format='banner' mismatch\n  exp: {exp!r}\n  got: {got!r}")
+
+# t9: yellow color exists (was added for dispatch-bypass-note in BACKLOG-29;
+# wire-format schema still enumerates green/red/yellow).
+got, _, _ = _capture(mod.rabbit_print, "note", "📢", "yellow")
+exp = f"{YELLOW_A}{BRAND} 📢 note{YELLOW_R}"
+if got == exp:
+    ok("t9: color='yellow' renders with [33m ANSI")
+else:
+    fail(f"t9: yellow mismatch\n  exp: {exp!r}\n  got: {got!r}")
+
+# t10: unknown color raises KeyError
 try:
-    mod.rabbit_print("does-not-exist")
-    fail("t7: unknown message-id did not raise KeyError")
+    mod.rabbit_print("x", "i", "purple")
+    fail("t10: unknown color did not raise KeyError")
 except KeyError:
-    ok("t7: unknown message-id raises KeyError")
+    ok("t10: unknown color raises KeyError")
 except Exception as e:
-    fail(f"t7: unknown message-id raised {type(e).__name__} not KeyError")
+    fail(f"t10: unknown color raised {type(e).__name__} not KeyError")
 
-# t8: KeyError on missing required placeholder
-try:
-    mod.rabbit_print("surface-drift")  # missing 'files' kwarg
-    fail("t8: missing placeholder did not raise KeyError")
-except KeyError:
-    ok("t8: missing placeholder raises KeyError")
-except Exception as e:
-    fail(f"t8: missing placeholder raised {type(e).__name__} not KeyError")
-
-# t9: rabbit_subline default (green)
-cap_o, cap_e = io.StringIO(), io.StringIO()
-with contextlib.redirect_stdout(cap_o), contextlib.redirect_stderr(cap_e):
-    got = mod.rabbit_subline("test text")
+# t11: rabbit_subline default (green, no icon)
+got, _, _ = _capture(mod.rabbit_subline, "test text")
 exp = f"{GREEN_A}{BRAND} test text{GREEN_R}"
 if got == exp:
-    ok("t9: rabbit_subline default returns exact green-wrapped string")
+    ok("t11: rabbit_subline default returns green brand text")
 else:
-    fail(f"t9: rabbit_subline default mismatch\n  exp: {exp!r}\n  got: {got!r}")
-if cap_o.getvalue() or cap_e.getvalue():
-    fail("t9b: rabbit_subline default emitted side effects")
+    fail(f"t11: rabbit_subline default mismatch\n  exp: {exp!r}\n  got: {got!r}")
 
-# t10: rabbit_subline with color='red'
-cap_o, cap_e = io.StringIO(), io.StringIO()
-with contextlib.redirect_stdout(cap_o), contextlib.redirect_stderr(cap_e):
-    got = mod.rabbit_subline("alert", color="red")
+# t12: rabbit_subline with color='red'
+got, _, _ = _capture(mod.rabbit_subline, "alert", color="red")
 exp = f"{RED_A}{BRAND} alert{RED_R}"
 if got == exp:
-    ok("t10: rabbit_subline color='red' returns exact red-wrapped string")
+    ok("t12: rabbit_subline color='red'")
 else:
-    fail(f"t10: rabbit_subline red mismatch\n  exp: {exp!r}\n  got: {got!r}")
-if cap_o.getvalue() or cap_e.getvalue():
-    fail("t10b: rabbit_subline red emitted side effects")
+    fail(f"t12: rabbit_subline red mismatch\n  exp: {exp!r}\n  got: {got!r}")
 
-# t11: rabbit_subline with icon — icon appears between brand and text
-# (Inv 4(c) and Inv 28(b): icon parameter on rabbit_subline, CONTRACT-BACKLOG-33).
-cap_o, cap_e = io.StringIO(), io.StringIO()
-with contextlib.redirect_stdout(cap_o), contextlib.redirect_stderr(cap_e):
-    got = mod.rabbit_subline("revoke now", color="red", icon="🔑")
+# t13: rabbit_subline with icon — icon appears between brand and text
+got, _, _ = _capture(mod.rabbit_subline, "revoke now", color="red", icon="🔑")
 exp = f"{RED_A}{BRAND} 🔑 revoke now{RED_R}"
 if got == exp:
-    ok("t11: rabbit_subline with icon='🔑' returns exact icon-bearing string")
+    ok("t13: rabbit_subline with icon='🔑' inserts icon between brand and text")
 else:
-    fail(f"t11: rabbit_subline icon mismatch\n  exp: {exp!r}\n  got: {got!r}")
-if cap_o.getvalue() or cap_e.getvalue():
-    fail("t11b: rabbit_subline with icon emitted side effects")
+    fail(f"t13: rabbit_subline icon mismatch\n  exp: {exp!r}\n  got: {got!r}")
 
-# t12: rabbit_subline icon=None (explicit) matches default behavior — backwards-compat.
-cap_o, cap_e = io.StringIO(), io.StringIO()
-with contextlib.redirect_stdout(cap_o), contextlib.redirect_stderr(cap_e):
-    got = mod.rabbit_subline("plain text", color="green", icon=None)
+# t14: rabbit_subline icon=None matches default behavior
+got, _, _ = _capture(mod.rabbit_subline, "plain text", color="green", icon=None)
 exp = f"{GREEN_A}{BRAND} plain text{GREEN_R}"
 if got == exp:
-    ok("t12: rabbit_subline icon=None is backwards-compatible with prior signature")
+    ok("t14: rabbit_subline icon=None is identical to no-icon default")
 else:
-    fail(f"t12: rabbit_subline icon=None mismatch\n  exp: {exp!r}\n  got: {got!r}")
-if cap_o.getvalue() or cap_e.getvalue():
-    fail("t12b: rabbit_subline icon=None emitted side effects")
+    fail(f"t14: rabbit_subline icon=None mismatch\n  exp: {exp!r}\n  got: {got!r}")
+
+# t15: rabbit_block prepends a single newline and joins with \n
+got = mod.rabbit_block("a", "b", "c")
+exp = "\na\nb\nc"
+if got == exp:
+    ok("t15: rabbit_block joins lines with leading newline")
+else:
+    fail(f"t15: rabbit_block mismatch\n  exp: {exp!r}\n  got: {got!r}")
 
 if FAIL != 0:
     print("test-rabbit-print-renderer: FAIL", file=sys.stderr)

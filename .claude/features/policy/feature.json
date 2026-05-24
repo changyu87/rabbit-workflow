@@ -1,6 +1,6 @@
 {
   "name": "policy",
-  "version": "1.5.0",
+  "version": "1.7.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Canonical rule files fed to subagents; three policy docs (philosophy, spec-rules, coding-rules).",
@@ -10,6 +10,9 @@
     "skills": []
   },
   "deprecation_criterion": "when Claude Code exposes a native subagent-policy injection point",
-  "updated": "2026-05-20",
-  "spec_no_change_reason": "spec change already committed pre-dispatch at 66105401 (rabbit-feature-touch Inv 16: spec commit precedes subagent dispatch)"
+  "updated": "2026-05-24",
+  "manifest": [],
+  "runtime": {},
+  "configuration": [],
+  "spec_no_change_reason": "spec change (1.6.0 -> 1.7.0; Inv 10 addition declaring meta-contract sections for Plan E.policy migration) committed by dispatcher before subagent invocation; subagent adds the manifest/runtime/configuration empty sections + e2e test + atomic three-way version bump."
 }

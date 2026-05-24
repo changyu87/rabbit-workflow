@@ -7,12 +7,12 @@
 #
 # Input:  JSON array of {name, path, summary, tdd_state} objects on stdin.
 #         Only 'name' is required per entry; optional keys are tolerated
-#         (Inv 11 / BUG-28). Missing required 'name' or malformed JSON
-#         exits non-zero.
+#         with default fallbacks. Missing required 'name' or malformed
+#         JSON exits non-zero.
 # Output: formatted text block, one feature per entry, to stdout.
 #
-# Version: 1.1.0
-# Owner: rabbit-workflow team (rabbit-feature-scope)
+# Version: 1.1.1
+# Owner: rabbit-workflow team (rabbit-feature)
 # Deprecation criterion: when feature-scope resolution is automated by the dispatch infrastructure.
 
 import json

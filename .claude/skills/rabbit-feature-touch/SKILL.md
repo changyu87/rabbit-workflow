@@ -15,6 +15,15 @@ dispatch TDD subagents, verify HANDOFFs. It does NOT read feature code.
 - **Normal mode** — invoked directly for a feature work request
 - **B/B mode** — invoked by the bug or backlog skill, which passes a bug/item dir
 
+## Dispatcher Continuity
+
+Once you begin Step 1, you (the dispatcher) **MUST NOT end** your turn until
+you have completed **Step 7** (PR / Hand Off) or you have an explicit failure
+to report to the user. The seven-step sequence is a single dispatcher
+transaction. A subagent returning a HANDOFF is a **phase boundary** inside
+your own ongoing turn — it is **not a turn boundary**. Continue to the next
+step immediately.
+
 ## Unified Seven-Step Sequence
 
 All modes follow these seven steps. Mode determines branch name and step 7 behaviour.
@@ -34,6 +43,38 @@ FEATURE=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('r
 ```
 The rabbit-file schema stores both bug and backlog items as `item.json`
 (unified storage).
+
+#### B/B item materialization
+
+The canonical bug/backlog items live on the dedicated `bug-backlog-files`
+branch, which is **never checked out** in the dispatcher's working tree.
+The canonical `item.json` is therefore not reachable as a plain
+working-tree path. Before passing a path to
+`dispatch-tdd-subagent.py --linked-item`, the caller MUST materialize the
+item into a local working-tree mirror.
+
+- **Local mirror path layout** — mirror the rabbit-file storage layout
+  (`rabbit/features/<feature>/<type>s/<id>/`) under a `.rabbit/` prefix:
+  `.rabbit/rabbit/features/<feature>/<type>s/<id>/item.json`. The
+  `.rabbit/` prefix is gitignored by contract, so the mirror never
+  pollutes commits.
+- **Fetch `item.json` from `origin/bug-backlog-files`** into the local
+  mirror path with `git show`:
+
+```bash
+mkdir -p .rabbit/rabbit/features/<feature>/<type>s/<id>
+git show origin/bug-backlog-files:rabbit/features/<feature>/<type>s/<id>/item.json \
+  > .rabbit/rabbit/features/<feature>/<type>s/<id>/item.json
+```
+
+- **Pass to `--linked-item`** — the local mirror **directory** path
+  (the directory containing the freshly materialized `item.json`), NOT
+  the canonical `rabbit/features/<feature>/<type>s/<id>/` path on the
+  dedicated branch:
+
+```
+--linked-item .rabbit/rabbit/features/<feature>/<type>s/<id>
+```
 
 ### Step 2 — Create Branch
 

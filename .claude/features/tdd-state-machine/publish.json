@@ -1,9 +1,0 @@
-{
-  "schema_version": "1.0.0",
-  "feature": "tdd-state-machine",
-  "owner": "rabbit-workflow team",
-  "deprecation_criterion": "when Claude Code natively supports TDD state machine lifecycle management",
-  "targets": [
-    {"name": "agents/tdd-subagent/scripts/tdd-step.py", "type": "copy-file", "source": "scripts/tdd-step.py", "destination": ".claude/agents/tdd-subagent/scripts/tdd-step.py", "check_on_stop": true}
-  ]
-}

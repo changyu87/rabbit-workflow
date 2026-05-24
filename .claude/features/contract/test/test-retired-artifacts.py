@@ -11,6 +11,12 @@ Section A — dead relink tests are gone (BUG-35).
 Section B — BACKLOG-27 retirement assertions (scripts/skill/lib/build entries).
 Section C — BUG-41 cleanup audit (CheckResult dataclass, get_repo_root public,
             _PRODUCER_FIELDS derived from schema, no stale headers).
+Section D — Plan F.1 publish.json retirement (no feature still carries a
+            sibling publish.json; feature.json manifest is the single source
+            of truth for deployment).
+Section E — Plan F.2 build-contract.json retirement (the central catalog
+            data file, its schema, and the federate-build-manifests script
+            are all absent; per-feature manifest sections are authoritative).
 
 Non-interactive. Exits non-zero on any failure.
 
@@ -68,8 +74,7 @@ for n, rel in (("a1", "test-relink-no-skills.py"), ("a2", "test-relink.py")):
         ok(n, f"{rel} has been deleted")
 
 # a3: no remaining test file references the deleted scripts/relink.sh
-# (test-build-contract.py is allowed because it asserts the ABSENCE of relink.sh
-# per Inv 8; this file is also allowed because its docstring names it.)
+# (this file is allowed because its docstring names it.)
 SELF = os.path.basename(__file__)
 ALLOWED = {SELF}
 offenders = []
@@ -121,27 +126,28 @@ if os.path.exists(deployed_skill):
 else:
     ok("b6", ".claude/skills/rabbit-workspace-map/ deployed dir is absent")
 
-# b7: no feature publish.json declares rabbit-workspace-map skill
+# b7: no feature.json manifest declares rabbit-workspace-map skill
 b7_fail = False
 for feature_dir_name in os.listdir(os.path.join(REPO_ROOT, ".claude/features")):
-    pub_path = os.path.join(REPO_ROOT, ".claude/features", feature_dir_name, "publish.json")
-    if not os.path.isfile(pub_path):
+    fjson_path = os.path.join(REPO_ROOT, ".claude/features", feature_dir_name, "feature.json")
+    if not os.path.isfile(fjson_path):
         continue
     try:
-        data = json.load(open(pub_path))
+        data = json.load(open(fjson_path))
     except Exception:
         continue
-    ws_entries = [
-        t for t in data.get("targets", [])
-        if "rabbit-workspace-map" in t.get("name", "")
-        or "rabbit-workspace-map" in t.get("source", "")
-        or "rabbit-workspace-map" in t.get("destination", "")
-    ]
+    ws_entries = []
+    for entry in data.get("manifest", []):
+        args = entry.get("args", {}) or {}
+        src = args.get("source", "") or ""
+        dst = args.get("dest", "") or ""
+        if "rabbit-workspace-map" in src or "rabbit-workspace-map" in dst:
+            ws_entries.append(entry)
     if ws_entries:
-        ko("b7", f"{feature_dir_name}/publish.json declares rabbit-workspace-map: {[e.get('name') for e in ws_entries]}")
+        ko("b7", f"{feature_dir_name}/feature.json manifest declares rabbit-workspace-map: {ws_entries}")
         b7_fail = True
 if not b7_fail:
-    ok("b7", "no feature publish.json declares rabbit-workspace-map entry")
+    ok("b7", "no feature.json manifest declares rabbit-workspace-map entry")
 
 # b8: lib/checks.py does not export retired check functions
 checks = load_checks()
@@ -210,6 +216,41 @@ else:
             ko("c3c", "checks.py still contains a hardcoded producer-field set literal")
         else:
             ok("c3c", "checks.py does not contain a hardcoded producer-field set literal")
+
+
+# ---------------------------------------------------------------------------
+# Section D — Plan F.1: per-feature publish.json files are retired
+# ---------------------------------------------------------------------------
+print("Section D — Plan F.1 publish.json retirement")
+d1_fail = False
+features_root = os.path.join(REPO_ROOT, ".claude/features")
+for feature_dir_name in os.listdir(features_root):
+    feature_dir = os.path.join(features_root, feature_dir_name)
+    if not os.path.isdir(feature_dir):
+        continue
+    pub_path = os.path.join(feature_dir, "publish.json")
+    if os.path.isfile(pub_path):
+        ko("d1", f"publish.json still present at {pub_path}")
+        d1_fail = True
+if not d1_fail:
+    ok("d1", "no feature carries a sibling publish.json (Plan F.1)")
+
+
+# ---------------------------------------------------------------------------
+# Section E — Plan F.2: build-contract.json catalog is retired
+# ---------------------------------------------------------------------------
+print("Section E — Plan F.2 build-contract.json retirement")
+RETIRED_BUILD_CONTRACT = [
+    ("e1", "build-contract.json"),
+    ("e2", "schemas/build-contract.schema.json"),
+    ("e3", "scripts/federate-build-manifests.py"),
+]
+for n, rel in RETIRED_BUILD_CONTRACT:
+    p = os.path.join(FEATURE_DIR, rel)
+    if os.path.exists(p):
+        ko(n, f"{rel} still present at {p}")
+    else:
+        ok(n, f"{rel} is absent")
 
 
 print()

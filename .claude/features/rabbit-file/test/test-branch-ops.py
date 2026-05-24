@@ -4,6 +4,7 @@ Tests for branch_ops.py — isolated temp-git-repo harness.
 All git operations run against a local bare repo (no real remote needed).
 """
 
+import json
 import os
 import shutil
 import subprocess
@@ -358,6 +359,433 @@ class TestWorktreeCleanup:
             branch_ops.allocate_id("cleanup-fail", "bug")
 
         assert not wt_path.exists(), "worktree was not cleaned up after exception"
+
+
+# ---------------------------------------------------------------------------
+# Tests: canonical ID format (UPPER(feature)-UPPER(type)-N)
+# ---------------------------------------------------------------------------
+
+class TestCanonicalIdFormat:
+    def test_hyphenated_feature_name_preserves_hyphens(self):
+        feature, type_, n = "rabbit-cage", "bug", 17
+        assert f"{feature.upper()}-{type_.upper()}-{n}" == "RABBIT-CAGE-BUG-17"
+
+    def test_multi_hyphen_feature_name(self):
+        feature, type_, n = "my-feature-x", "backlog", 3
+        assert f"{feature.upper()}-{type_.upper()}-{n}" == "MY-FEATURE-X-BACKLOG-3"
+
+    def test_unhyphenated_feature_name(self):
+        feature, type_, n = "single", "bug", 1
+        assert f"{feature.upper()}-{type_.upper()}-{n}" == "SINGLE-BUG-1"
+
+    def test_id_format_documented_in_spec(self):
+        spec = (Path(__file__).parent.parent / "docs" / "spec" / "spec.md").read_text()
+        assert "UPPER(feature)-UPPER(type)-N" in spec, (
+            "spec must document canonical ID format"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tests: module-level constants
+# ---------------------------------------------------------------------------
+
+class TestModuleConstants:
+    def test_branch_constant_exposed(self):
+        assert hasattr(branch_ops, "BRANCH")
+        assert branch_ops.BRANCH == "bug-backlog-files"
+
+    def test_identity_constants_exposed(self):
+        assert hasattr(branch_ops, "IDENTITY_NAME")
+        assert hasattr(branch_ops, "IDENTITY_EMAIL")
+        assert branch_ops.IDENTITY_NAME == "rabbit-file"
+        assert branch_ops.IDENTITY_EMAIL == "rabbit-file@localhost"
+
+    def test_legacy_underscore_branch_alias_removed(self):
+        """The private `_BRANCH` alias must be gone; only the public
+        `BRANCH` constant remains."""
+        assert hasattr(branch_ops, "BRANCH")
+        assert not hasattr(branch_ops, "_BRANCH"), (
+            "_BRANCH legacy alias must be deleted"
+        )
+
+    def test_module_exports_release_id_and_branch_exists(self):
+        """The exposed API includes release_id and branch_exists in addition
+        to the four core entry points named in spec.md."""
+        assert callable(getattr(branch_ops, "release_id", None))
+        assert callable(getattr(branch_ops, "branch_exists", None))
+
+
+# ---------------------------------------------------------------------------
+# Tests: read_branch logs malformed item.json to stderr (no silent skip)
+# ---------------------------------------------------------------------------
+
+class TestMalformedJsonLogging:
+    def test_read_branch_logs_malformed_item_to_stderr(self, isolated_repo,
+                                                       capsys):
+        id_str = branch_ops.allocate_id("malformed-feat", "bug")
+        item = {
+            "name": id_str, "type": "bug", "title": "Valid",
+            "status": "open", "priority": "low", "description": "x",
+            "related_feature": "malformed-feat",
+            "filed": "2026-01-01T00:00:00Z", "filed_by": "tester",
+            "closed": None, "history": [],
+        }
+        branch_ops.commit_item("malformed-feat", "bug", id_str, item)
+
+        remote_url = _git(isolated_repo, "remote", "get-url", "origin")
+        sibling = isolated_repo.parent / "sibling-malformed"
+        if sibling.exists():
+            shutil.rmtree(sibling)
+        subprocess.run(
+            ["git", "clone", "--branch", "bug-backlog-files",
+             remote_url, str(sibling)],
+            check=True, capture_output=True,
+        )
+        try:
+            _git(sibling, "config", "user.email", "sib@test.invalid")
+            _git(sibling, "config", "user.name", "Sib")
+            bad_dir = (sibling / "rabbit" / "features" / "malformed-feat"
+                       / "bugs" / "MALFORMED-FEAT-BUG-999")
+            bad_dir.mkdir(parents=True, exist_ok=True)
+            (bad_dir / "item.json").write_text("{not valid json")
+            _git(sibling, "add", str((bad_dir / "item.json").relative_to(sibling)))
+            _git(sibling, "commit", "-m", "inject: malformed item.json")
+            _git(sibling, "push", "origin", "HEAD:bug-backlog-files")
+        finally:
+            shutil.rmtree(sibling, ignore_errors=True)
+
+        items = branch_ops.read_branch()
+        captured = capsys.readouterr()
+
+        assert any(i["name"] == id_str for i in items), (
+            f"valid item should still appear in results: {items}"
+        )
+        assert not any(i.get("name") == "MALFORMED-FEAT-BUG-999" for i in items)
+        assert "MALFORMED-FEAT-BUG-999" in captured.err, (
+            f"stderr must name the malformed file path; got: {captured.err!r}"
+        )
+        assert ("malformed" in captured.err.lower()
+                or "json" in captured.err.lower()
+                or "decode" in captured.err.lower()
+                or "parse" in captured.err.lower()), (
+            f"stderr must include a parse diagnostic; got: {captured.err!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tests: commit_item must not mutate the caller-supplied item dict
+# ---------------------------------------------------------------------------
+
+class TestCallerDictNotMutated:
+    def test_commit_item_does_not_mutate_caller_dict(self, isolated_repo):
+        id_str = branch_ops.allocate_id("nomutate-feat", "bug")
+        item = {
+            "name": id_str, "type": "bug", "title": "T",
+            "status": "open", "priority": "low", "description": "D",
+            "related_feature": "nomutate-feat",
+            "filed": "2026-01-01T00:00:00Z", "filed_by": "t",
+            "closed": None, "history": [],
+        }
+        snapshot = dict(item)
+        branch_ops.commit_item("nomutate-feat", "bug", id_str, item)
+        assert item == snapshot, (
+            f"caller dict was mutated. before={snapshot}, after={item}"
+        )
+        assert "commit_sha" not in item
+
+
+# ---------------------------------------------------------------------------
+# Tests: read_branch skips corrupted JSON but returns the valid items
+# ---------------------------------------------------------------------------
+
+class TestCorruptedJsonSkipReturnsValidItems:
+    def test_read_branch_skips_corrupted_returns_valid(self, isolated_repo,
+                                                       capsys):
+        ids = []
+        for i in range(2):
+            id_str = branch_ops.allocate_id("corrupt-feat", "bug")
+            item = {
+                "name": id_str, "type": "bug", "title": f"v{i}",
+                "status": "open", "priority": "low", "description": "x",
+                "related_feature": "corrupt-feat",
+                "filed": "2026-01-01T00:00:00Z", "filed_by": "t",
+                "closed": None, "history": [],
+            }
+            branch_ops.commit_item("corrupt-feat", "bug", id_str, item)
+            ids.append(id_str)
+
+        remote_url = _git(isolated_repo, "remote", "get-url", "origin")
+        sibling = isolated_repo.parent / "sibling-corrupt"
+        if sibling.exists():
+            shutil.rmtree(sibling)
+        subprocess.run(
+            ["git", "clone", "--branch", "bug-backlog-files",
+             remote_url, str(sibling)],
+            check=True, capture_output=True,
+        )
+        try:
+            _git(sibling, "config", "user.email", "sib@test.invalid")
+            _git(sibling, "config", "user.name", "Sib")
+            bad_dir = (sibling / "rabbit" / "features" / "corrupt-feat"
+                       / "bugs" / "CORRUPT-FEAT-BUG-998")
+            bad_dir.mkdir(parents=True, exist_ok=True)
+            (bad_dir / "item.json").write_text("nope")
+            _git(sibling, "add", str((bad_dir / "item.json").relative_to(sibling)))
+            _git(sibling, "commit", "-m", "inject corrupt")
+            _git(sibling, "push", "origin", "HEAD:bug-backlog-files")
+        finally:
+            shutil.rmtree(sibling, ignore_errors=True)
+
+        items = branch_ops.read_branch(feature="corrupt-feat")
+        valid_names = {i["name"] for i in items}
+        for valid_id in ids:
+            assert valid_id in valid_names
+        assert "CORRUPT-FEAT-BUG-998" not in valid_names
+
+
+# ---------------------------------------------------------------------------
+# Tests: orphan-init tmp directory cleaned up on init failure
+# ---------------------------------------------------------------------------
+
+class TestInitFailureCleanup:
+    def test_orphan_init_tmp_cleaned_on_failure(self, isolated_repo,
+                                                monkeypatch):
+        """If _init_orphan_branch raises midway, the tmp/branch-init-tmp
+        directory MUST still be cleaned up (try/finally)."""
+        original_git = branch_ops._git
+
+        def maybe_failing_git(repo, *args):
+            if "push" in args and "branch-init-tmp" in str(repo):
+                raise RuntimeError("simulated init push failure")
+            return original_git(repo, *args)
+
+        monkeypatch.setattr(branch_ops, "_git", maybe_failing_git)
+
+        with pytest.raises(RuntimeError, match="simulated init push failure"):
+            branch_ops._init_orphan_branch(str(isolated_repo))
+
+        tmp = Path(isolated_repo) / ".claude" / "tmp" / "branch-init-tmp"
+        assert not tmp.exists(), (
+            f"branch-init-tmp was not cleaned up after init failure: {tmp}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tests: release_id branch behaviour
+# ---------------------------------------------------------------------------
+
+class TestReleaseIdBranches:
+    def test_release_id_rejects_malformed_id_string(self, isolated_repo):
+        """An id_str without a numeric trailing segment returns False
+        without touching the worktree."""
+        assert branch_ops.release_id("rf", "bug", "no-trailing-number") is False
+
+    def test_release_id_decrements_counter_when_safe(self, isolated_repo):
+        """After allocate_id reserves ID N+1, release_id rolls back when no
+        other process has allocated above it."""
+        id_str = branch_ops.allocate_id("rollback-feat", "bug")
+        branch_ops.release_id("rollback-feat", "bug", id_str)
+        next_id = branch_ops.allocate_id("rollback-feat", "bug")
+        assert next_id == "ROLLBACK-FEAT-BUG-1", (
+            f"after release_id, next allocate should reuse ID 1, got {next_id}"
+        )
+
+    def test_release_id_noop_when_slot_consumed_above(self, isolated_repo):
+        """If another allocation happened after our reservation, release_id
+        is a no-op (best-effort): the counter is NOT moved."""
+        id1 = branch_ops.allocate_id("noop-feat", "bug")
+        id2 = branch_ops.allocate_id("noop-feat", "bug")
+        branch_ops.release_id("noop-feat", "bug", id1)
+        id3 = branch_ops.allocate_id("noop-feat", "bug")
+        assert id3 == "NOOP-FEAT-BUG-3", (
+            f"release_id must not move counter when slot was consumed above, got {id3}"
+        )
+
+    def test_release_id_returns_false_when_slot_overtaken(self, isolated_repo):
+        """release_id returns False when counter has advanced past N+1."""
+        first = branch_ops.allocate_id("rf", "bug")
+        second = branch_ops.allocate_id("rf", "bug")
+        assert first.endswith("-1")
+        assert second.endswith("-2")
+        released = branch_ops.release_id("rf", "bug", first)
+        assert released is False
+
+    def test_release_id_returns_false_on_nonretryable_push_error(
+            self, isolated_repo, monkeypatch):
+        """If the rollback push fails with a non-retryable error, release_id
+        is best-effort and returns False."""
+        id_str = branch_ops.allocate_id("rf-nonretry", "bug")
+
+        original_run = subprocess.run
+        wt_marker = "bug-backlog-files-"
+
+        def wrapped_run(cmd, *args, **kwargs):
+            is_push_from_wt = (
+                isinstance(cmd, list) and len(cmd) >= 4
+                and cmd[0].endswith("git")
+                and "push" in cmd
+                and any(wt_marker in str(c) for c in cmd)
+            )
+            if is_push_from_wt:
+                class Fake:
+                    returncode = 1
+                    stderr = "fatal: remote: permission denied\n"
+                    stdout = ""
+                return Fake()
+            return original_run(cmd, *args, **kwargs)
+
+        monkeypatch.setattr(branch_ops.subprocess, "run", wrapped_run)
+        assert branch_ops.release_id("rf-nonretry", "bug", id_str) is False
+
+    def test_release_id_returns_false_after_retry_exhaustion(
+            self, isolated_repo, monkeypatch):
+        """If every push during rollback is non-fast-forward across the
+        configured budget, release_id gives up and returns False."""
+        id_str = branch_ops.allocate_id("rf-exhaust", "bug")
+
+        original_run = subprocess.run
+        wt_marker = "bug-backlog-files-"
+        push_attempts = {"count": 0}
+
+        def wrapped_run(cmd, *args, **kwargs):
+            is_push_from_wt = (
+                isinstance(cmd, list) and len(cmd) >= 4
+                and cmd[0].endswith("git")
+                and "push" in cmd
+                and any(wt_marker in str(c) for c in cmd)
+            )
+            if is_push_from_wt:
+                push_attempts["count"] += 1
+
+                class Fake:
+                    returncode = 1
+                    stderr = (
+                        "To origin\n ! [rejected] HEAD -> bug-backlog-files "
+                        "(non-fast-forward)\n"
+                    )
+                    stdout = ""
+                return Fake()
+            return original_run(cmd, *args, **kwargs)
+
+        monkeypatch.setattr(branch_ops.subprocess, "run", wrapped_run)
+        result = branch_ops.release_id("rf-exhaust", "bug", id_str)
+        assert result is False
+        assert push_attempts["count"] == branch_ops._MAX_PUSH_ATTEMPTS, (
+            f"expected exactly {branch_ops._MAX_PUSH_ATTEMPTS} push attempts, "
+            f"got {push_attempts['count']}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tests: _run_git_with_lock_retry branch behaviour
+# ---------------------------------------------------------------------------
+
+class TestRunGitWithLockRetry:
+    def test_succeeds_on_retry_after_transient_lock(self, monkeypatch):
+        original_run = subprocess.run
+        call = {"n": 0}
+
+        def fake_run(cmd, *args, **kwargs):
+            call["n"] += 1
+            if call["n"] == 1:
+                class Fake:
+                    returncode = 128
+                    stderr = "fatal: Unable to create '.git/index.lock': File exists.\n"
+                    stdout = ""
+                return Fake()
+
+            class Ok:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+            return Ok()
+
+        monkeypatch.setattr(branch_ops.subprocess, "run", fake_run)
+        monkeypatch.setattr(branch_ops.time, "sleep", lambda *_: None)
+
+        result = branch_ops._run_git_with_lock_retry(
+            ["git", "status"], max_attempts=3
+        )
+        assert result.returncode == 0
+        assert call["n"] == 2
+
+    def test_raises_immediately_on_non_lock_error(self, monkeypatch):
+        sleep_calls = {"n": 0}
+
+        def fake_run(cmd, *args, **kwargs):
+            class Fake:
+                returncode = 1
+                stderr = "fatal: not a git repository\n"
+                stdout = ""
+            return Fake()
+
+        def fake_sleep(*_):
+            sleep_calls["n"] += 1
+
+        monkeypatch.setattr(branch_ops.subprocess, "run", fake_run)
+        monkeypatch.setattr(branch_ops.time, "sleep", fake_sleep)
+
+        with pytest.raises(RuntimeError) as exc_info:
+            branch_ops._run_git_with_lock_retry(
+                ["git", "bogus-command"], max_attempts=3
+            )
+        assert "not a git repository" in str(exc_info.value)
+        assert sleep_calls["n"] == 0
+
+    def test_raises_after_exhausting_attempts(self, monkeypatch):
+        calls = {"n": 0}
+
+        def fake_run(cmd, *args, **kwargs):
+            calls["n"] += 1
+
+            class Fake:
+                returncode = 128
+                stderr = "fatal: Unable to create '.git/index.lock': File exists.\n"
+                stdout = ""
+            return Fake()
+
+        monkeypatch.setattr(branch_ops.subprocess, "run", fake_run)
+        monkeypatch.setattr(branch_ops.time, "sleep", lambda *_: None)
+
+        with pytest.raises(RuntimeError) as exc_info:
+            branch_ops._run_git_with_lock_retry(
+                ["git", "fetch", "origin"], max_attempts=4
+            )
+        assert calls["n"] == 4
+        assert ("index.lock" in str(exc_info.value).lower()
+                or "lock" in str(exc_info.value).lower())
+
+
+# ---------------------------------------------------------------------------
+# Tests: standalone-topology posture (no defensive local-origin guard)
+# ---------------------------------------------------------------------------
+
+class TestStandaloneTopology:
+    def test_allocate_id_surfaces_runtime_error_on_misconfigured_local_origin(
+            self, tmp_path, monkeypatch):
+        """An operator who misconfigures `origin` to a non-existent local path
+        will surface a normal git error on first push attempt. There is no
+        defensive local-origin guard; allocate_id MUST raise RuntimeError
+        with a non-empty diagnostic."""
+        local = tmp_path / "bad-origin-local"
+        subprocess.run(["git", "init", str(local)], check=True,
+                       capture_output=True)
+        _git(local, "config", "user.email", "test@test.invalid")
+        _git(local, "config", "user.name", "Test")
+        (local / "README").write_text("init")
+        _git(local, "add", ".")
+        _git(local, "commit", "-m", "init")
+        bad_origin = tmp_path / "does-not-exist"
+        _git(local, "remote", "add", "origin", str(bad_origin))
+
+        monkeypatch.setattr(branch_ops, "_get_repo_root", lambda: str(local))
+
+        with pytest.raises(RuntimeError) as exc_info:
+            branch_ops.allocate_id("rabbit-cage", "bug")
+        msg = str(exc_info.value)
+        assert msg.strip(), (
+            f"RuntimeError must carry a non-empty diagnostic, got {msg!r}"
+        )
 
 
 # ---------------------------------------------------------------------------

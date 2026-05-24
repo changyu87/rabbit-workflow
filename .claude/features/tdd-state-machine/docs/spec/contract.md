@@ -1,6 +1,6 @@
 ---
 feature: tdd-state-machine
-version: 1.3.0
+version: 1.5.0
 template_version: 2.0.0
 owner: rabbit team
 deprecation_criterion: when TDD state machine is replaced by a fundamentally different orchestration approach
@@ -52,8 +52,7 @@ deprecation_criterion: when TDD state machine is replaced by a fundamentally dif
   "never": [
     "Modify any file outside the feature-dir passed on the command line.",
     "Allow backward transitions without --force.",
-    "Allow any transition out of the deprecated terminal state.",
-    "Own deployment of the scripts into .claude/agents/ (that is build-contract.json's job)."
+    "Allow any transition out of the deprecated terminal state."
   ]
 }
 ```

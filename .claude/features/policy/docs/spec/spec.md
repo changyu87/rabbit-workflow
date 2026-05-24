@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.5.0
+version: 1.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native subagent-policy injection point
@@ -11,7 +11,8 @@ status: active
 
 ## Purpose
 
-Owns the three canonical rule files fed to every subagent dispatch.
+Owns the three canonical rule files loaded by every subagent dispatch and
+by the repo-root `CLAUDE.md` via `@`-imports.
 
 ## Surface
 
@@ -21,74 +22,82 @@ Owns the three canonical rule files fed to every subagent dispatch.
 
 ## Tech Stack
 
-- All runtime scripts and test harnesses are Python 3. No `.sh` files are present.
+Python 3 stdlib only. No `.sh` files appear anywhere within the feature
+directory.
 
 ## Invariants
 
-1. All three rule files (`philosophy.md`, `spec-rules.md`, `coding-rules.md`) exist and are non-empty.
-2. `workflow-rules.md` does not exist.
-3. No `.sh` files exist anywhere within the feature directory.
-4. `coding-rules.md` Section 3 ("Surgical Changes") MUST clarify that
-   "uncommitted" includes BOTH staged and unstaged work from the
-   current agent session: if YOUR changes (staged or unstaged) made an
-   import / variable / function unused in the current session, remove
-   it; once a change is committed (even within the same session) it
-   counts as pre-existing — mention it, don't delete it. (BACKLOG-12)
-5. `test/test-coding-rules-numbering.py` (formerly
-   `test-backlog003.py`, renamed in BACKLOG-14 for filename-convention
-   compliance per Inv 9) MUST carry a header comment naming its
-   end-of-life criterion: the file documents the BACKLOG-003 era rule
-   numbering migration and may be retired once `test-policy-invariants`
-   covers the same numbering checks. (BACKLOG-11, rename BACKLOG-14)
+1. **Rule files present.** Each of `philosophy.md`, `spec-rules.md`, and
+   `coding-rules.md` exists at the feature root and is non-empty.
 
-6. **Read-before-Edit principle (BACKLOG-13).** `coding-rules.md` MUST
-   include a general principle requiring every actor that edits an
-   existing file to first Read it in the same session. The principle
-   is invariant text — not the wording of any specific tool — and
-   propagates the lesson of rabbit-feature Inv 35 from one skill to
-   every subagent via the policy preamble injected by
-   `dispatch-tdd-subagent.py`. The canonical phrasing MUST express:
-   (a) read before editing existing files, (b) read the surrounding
-   module before writing alongside existing code, (c) edits made
-   without reading are speculative. A regression test
-   (`test-rule-files-content.py` or successor) MUST assert the
-   principle's canonical phrase is present in `coding-rules.md`.
+2. **Retired file absent.** `workflow-rules.md` does NOT exist anywhere
+   within the feature directory.
 
-7. **Test file convention (BACKLOG-13).** `test-policy-invariants.py`
-   (non-versioned) is the canonical name for the spec-conformance
-   test suite. The legacy versioned forms
-   (`test-policy-invariants-v1-X-Y.py`) MUST NOT be reintroduced —
-   they triggered a rename cycle on every spec version bump
-   (BACKLOG-13 retired the pattern). `test-files-exist.py` MUST NOT
-   exist (its coverage is subsumed by `test-policy-invariants.py`).
+3. **No shell scripts.** No file ending in `.sh` exists anywhere within
+   the feature directory.
 
-8. **Historical-fixes regression guard (BACKLOG-14, F5).**
+4. **Surgical-Changes semantics.** `coding-rules.md` Section 3
+   ("Surgical Changes") MUST state that "uncommitted" includes BOTH
+   staged and unstaged work from the current agent session, and that
+   once a change is committed (even within the same session) it counts
+   as pre-existing and MUST be mentioned rather than deleted.
+
+5. **Test deprecation criteria.** Every Python file under `test/`
+   (excluding the harness `run.py`) MUST declare a
+   `Deprecation criterion:` line in its module docstring per the
+   metadata-location contract in `spec-rules.md` ("Where the metadata
+   lives", Scripts row).
+
+6. **Read-before-Edit principle.** `coding-rules.md` MUST contain a
+   principle expressing all three of: (a) read an existing file before
+   editing it, (b) read the surrounding module before writing alongside
+   existing code, (c) edits made without reading are speculative. The
+   principle propagates the lesson of rabbit-feature's spec-edit
+   Read-before-Edit obligation — named, not numbered, so the citation
+   remains stable across rabbit-feature renumbers.
+
+7. **Canonical invariants test name.**
+   `test/test-policy-invariants.py` is the canonical name for the
+   spec-conformance suite. Files matching
+   `test/test-policy-invariants-v*.py` MUST NOT exist.
+   `test/test-files-exist.py` MUST NOT exist; its coverage is subsumed
+   by `test/test-policy-invariants.py`.
+
+8. **Historical-fixes regression guard.**
    `test/test-policy-bug-fixes.py` is a documentary regression guard
-   for closed historical tickets (POLICY-BUG-1/2/7/9/18/19,
-   POLICY-BACKLOG-1/2/5/6/9). Its docstring MUST state a concrete,
-   observable retirement criterion: the file MUST be retired once
-   `test-policy-invariants.py` contains equivalent assertions for
-   every ticket the kitchen-sink file covers. A retirement-watch test
-   (`test-historical-fixes-retirement.py` or equivalent) MUST fire
-   (FAIL) when subsumption is observable via `# Subsumes: POLICY-...`
-   marker comments in `test-policy-invariants.py` — that failure
-   signals it is safe (and required) to delete
-   `test-policy-bug-fixes.py` and the watch test together. The
-   previous open-ended criterion ("when each bug/backlog has its own
-   targeted test or is closed") is REMOVED — it never fires because
-   the tickets are already closed.
+   for closed historical tickets. It MUST declare a module-level
+   `TICKETS_COVERED` list whose elements are ticket-id string literals
+   (one per element). Its module docstring MUST name the retirement
+   pointer: the file is retired once `test/test-policy-invariants.py`
+   carries a `# Subsumes: <ticket-id>` marker comment for every ticket
+   in `TICKETS_COVERED`. A companion watch test
+   `test/test-historical-fixes-retirement.py` MUST exist; it MUST FAIL
+   once every ticket in `TICKETS_COVERED` is subsumed, and that failure
+   is the signal to delete both files together.
 
-9. **Test filename convention (BACKLOG-14, F6).** All test files
-   under `test/` MUST use behavior-first names (e.g.,
-   `test-coding-rules-numbering.py`, `test-no-stale-imports.py`).
-   Ticket IDs (POLICY-BUG-N, POLICY-BACKLOG-N) MUST appear only in
-   docstring headers as `Traces: POLICY-...` lines, never embedded in
-   filenames. The ID-first forms `test-POLICY-N-*.py`,
-   `test-backlogNNN.py`, and `test-backlog-N-M.py` MUST NOT be
-   reintroduced; they triggered rename churn on every wave of ticket
-   cleanup. Exception: `run.py` is the test harness, not a test.
+9. **Behavior-first test filenames.** Every file matching `test/*.py`
+   MUST use a behavior-first name. Files matching any of
+   `test/test-POLICY-\d+-*.py`, `test/test-backlog\d+.py`, or
+   `test/test-backlog-\d+-\d+.py` MUST NOT exist. Ticket IDs appear
+   only inside docstring headers as `Traces:` lines, never embedded in
+   filenames. `test/run.py` is the harness, not a test, and is
+   excluded from this restriction.
+
+### Meta-contract sections (Plan E.* migration)
+
+10. **Meta-contract sections declared empty.** `policy/feature.json`
+    declares the meta-contract sections `manifest`, `runtime`, and
+    `configuration` explicitly, with the exact shapes `manifest: []`,
+    `runtime: {}`, and `configuration: []`. All three are empty because
+    policy is a content-only feature with no deployment surface: its
+    three rule files are consumed in-place at
+    `.claude/features/policy/` by rabbit-cage's `generate-claude-md`
+    producer, never deployed to `.claude/`.
 
 ## Out of Scope
 
-- Generating policy output on demand — consumers read files directly.
+- Generating policy output on demand — consumers read the rule files
+  directly.
 - Modifying files in any other feature.
+- Pinning detailed content (section counts, exact phrasings) of the
+  three rule files beyond the structural invariants above.

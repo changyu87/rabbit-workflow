@@ -13,13 +13,20 @@ stubs here.
   BACKLOG-3 test-templates-have-version.py tightened to reject _template_version
   BACKLOG-4 every feature.json in the repo validates against feature.json.schema.json
   BACKLOG-5 spec Inv 10 (rbt- banned) asserted by behavioural test (check-naming.py rejects rbt-)
-  BACKLOG-6 build-contract copy-file destinations match sources (basename consistency)
+  (BACKLOG-6 entry RETIRED in Plan F.1 — per-feature publish.json files were
+   deleted; copy-file basename consistency no longer applies. Equivalent
+   source→deployed parity is asserted byte-for-byte by each feature's
+   test-manifest-deploys-correctly.py.)
   BACKLOG-7 template marker convention documented and one template marked consistently
-  BACKLOG-8 rabbit-print.schema.json declared producers all exist on disk
+  (BACKLOG-8 entry RETIRED in Plan F.3 — named-wrapper producer set was
+   retired alongside the rabbit-print registry. The wrappers no longer
+   exist; the assertion has no live target.)
   BACKLOG-9 spec Surface and contract.md provides entries match actual files
   BACKLOG-10 validate-feature.py invokes feature.json.schema.json validation
-  BACKLOG-15 spec Inv 4 (rabbit-print schema authority) asserted by test
-  BACKLOG-16 spec Inv 6 (build-contract validation) limitation documented
+  (BACKLOG-15 entry RETIRED in Plan F.3 — spec Inv 4 (three-artifact
+   rabbit-print authority) was retired alongside the registry; the
+   architecture is now a single direct-call renderer with no registry.)
+  (BACKLOG-16 entry RETIRED in CONTRACT-WAVE-9 — Inv 6 was retired and its "limitation documented" assertion has no live target.)
 
 Version: 1.1.0
 Owner: rabbit-workflow team (contract)
@@ -127,27 +134,11 @@ else:
     ko("BACKLOG-5: check-naming.py not found")
 
 
-# BACKLOG-6: publish.json copy-file destinations match sources by basename
-features_dir = os.path.join(REPO_ROOT, ".claude/features")
-mismatches = []
-for feature_dir_name in os.listdir(features_dir):
-    pub = os.path.join(features_dir, feature_dir_name, "publish.json")
-    if not os.path.isfile(pub):
-        continue
-    try:
-        data = json.load(open(pub))
-    except Exception:
-        continue
-    for target in data.get("targets", []):
-        if target.get("type") == "copy-file":
-            src = target.get("source", "")
-            dst = target.get("destination", "")
-            if os.path.basename(src) != os.path.basename(dst):
-                mismatches.append((f"{feature_dir_name}/{src}", dst))
-if not mismatches:
-    ok("BACKLOG-6: every publish.json copy-file target's source basename matches destination basename")
-else:
-    ko(f"BACKLOG-6: copy-file basename mismatches: {mismatches}")
+# BACKLOG-6 (Plan F.1): RETIRED. Per-feature publish.json files were deleted
+# in Plan F.1; the federated feature.json manifest is the single source of
+# truth. Copy-file basename consistency no longer applies — source→deployed
+# parity is asserted byte-for-byte by each feature's
+# test-manifest-deploys-correctly.py.
 
 
 # BACKLOG-7: template marker convention documented in spec.md
@@ -160,21 +151,13 @@ else:
     ko("BACKLOG-7: spec.md does not document the template marker convention")
 
 
-# BACKLOG-8 (post-BACKLOG-20): rabbit-print producers all exist on disk.
-# After BACKLOG-20 the `producers` array moved out of rabbit-print.schema.json
-# (now a pure JSON Schema document) and the four producer paths are declared
-# in spec Inv 29. We assert against that hardcoded list here.
-RABBIT_PRINT_PRODUCERS = [
-    ".claude/features/rabbit-cage/hooks/sync-check.py",
-    ".claude/features/rabbit-cage/hooks/session-init.py",
-    ".claude/features/rabbit-cage/hooks/refresh.py",
-    ".claude/features/tdd-state-machine/scripts/tdd-step.py",
-]
-missing_producers = [p for p in RABBIT_PRINT_PRODUCERS if not os.path.isfile(os.path.join(REPO_ROOT, p))]
-if not missing_producers:
-    ok("BACKLOG-8: all declared rabbit-print producers exist on disk")
-else:
-    ko(f"BACKLOG-8: declared producers missing on disk: {missing_producers}")
+# BACKLOG-8 (Plan F.3): RETIRED. The named-wrapper producer set was removed
+# alongside the rabbit-print registry; rabbit_print is now a direct-call API.
+# Producers still import rabbit_print, but the "uses a named wrapper" guarantee
+# no longer applies because the wrappers no longer exist. The surviving
+# requirement (producers go through rabbit_print rather than emitting inline
+# ANSI/brand strings) is covered by test-bypass-marker-note.py (tdd-subagent
+# Inv 24) and test-branding.py (tdd-state-machine Inv 9).
 
 
 # BACKLOG-9: contract.md provides.scripts includes all live scripts in scripts/ tree
@@ -215,26 +198,10 @@ else:
     ko("BACKLOG-10: lib/checks.py does not reference feature.json.schema.json")
 
 
-# BACKLOG-15 (post-BACKLOG-20): spec Inv 4 — a test asserts the [rabbit] print
-# architecture. After BACKLOG-20 the three-part architecture (registry data
-# file + JSON Schema + renderer module) is asserted by
-# test-rabbit-print-messages-schema.py (registry shape) and
-# test-rabbit-print-renderer.py (renderer API).
-trp_msgs = os.path.join(FEATURE_DIR, "test/test-rabbit-print-messages-schema.py")
-trp_rend = os.path.join(FEATURE_DIR, "test/test-rabbit-print-renderer.py")
-if os.path.isfile(trp_msgs) and os.path.isfile(trp_rend):
-    ok("BACKLOG-15: rabbit-print Inv 4 architecture asserted by registry-schema and renderer tests")
-else:
-    ko("BACKLOG-15: missing test-rabbit-print-messages-schema.py or test-rabbit-print-renderer.py")
-
-
-# BACKLOG-16: spec Inv 6 documents that build-contract validation is test-only.
-spec_text_inv9 = spec_text
-# Search for note about test-only enforcement near Inv 6 text.
-if "test-only" in spec_text_inv9 or "not enforced at edit-time" in spec_text_inv9 or "no edit-time enforcement" in spec_text_inv9.lower():
-    ok("BACKLOG-16: spec.md documents Inv 6 enforcement limitation")
-else:
-    ko("BACKLOG-16: spec.md does not document Inv 6 test-only enforcement limitation")
+# BACKLOG-15 (Plan F.3): RETIRED. Spec Inv 4 (three-artifact rabbit-print
+# authority) was retired alongside the registry file. The print system is now
+# a single direct-call renderer; test-rabbit-print-renderer.py covers the
+# remaining surface.
 
 
 if FAIL:

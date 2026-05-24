@@ -2,7 +2,7 @@
 """test-policy-bug-fixes.py — documentary regression guard for closed
 historical policy tickets.
 
-Role: a single kitchen-sink suite that re-asserts the structural fixes of 11
+Role: a single kitchen-sink suite that re-asserts the structural fixes of 9
 closed tickets so they cannot silently regress. It is NOT the canonical home
 for these checks — `test-policy-invariants.py` is. This file exists only until
 each assertion is folded into the invariants suite.
@@ -16,10 +16,11 @@ The previous open-ended criterion ('when each bug/backlog has its own
 targeted test or is closed') is REMOVED — it never fired because the tickets
 are already closed.
 
-Traces: POLICY-BUG-1, POLICY-BUG-2, POLICY-BUG-7, POLICY-BUG-9, POLICY-BUG-18,
-        POLICY-BUG-19, POLICY-BACKLOG-1, POLICY-BACKLOG-2, POLICY-BACKLOG-5,
+Traces: POLICY-BUG-2, POLICY-BUG-7, POLICY-BUG-18, POLICY-BUG-19,
+        POLICY-BACKLOG-1, POLICY-BACKLOG-2, POLICY-BACKLOG-5,
         POLICY-BACKLOG-6, POLICY-BACKLOG-9. Retirement scaffolding added under
-        POLICY-BACKLOG-14.
+        POLICY-BACKLOG-14. POLICY-BUG-9 dropped under POLICY-BACKLOG-15:
+        the file it guarded (test-no-stale-imports.py) moved to rabbit-cage.
 
 Version: 2.0.0
 Owner: rabbit-workflow team (policy)
@@ -36,10 +37,8 @@ import sys
 # Module-level constant consumed by test-historical-fixes-retirement.py.
 # Keep names exactly as filed (one per ticket; no aliases).
 TICKETS_COVERED = [
-    "POLICY-BUG-1",
     "POLICY-BUG-2",
     "POLICY-BUG-7",
-    "POLICY-BUG-9",
     "POLICY-BUG-18",
     "POLICY-BUG-19",
     "POLICY-BACKLOG-1",
@@ -62,27 +61,6 @@ def ko(msg):
     global FAIL
     print(f"  FAIL {msg}")
     FAIL = 1
-
-
-# POLICY-BUG-1: numbering test's rule count assertion matches actual count.
-# Originally said 'rules stop at 5' but only 4 rules existed. This cycle added a
-# fifth rule (Output Hygiene), so the assertion is now correct in its claim that
-# no sixth rule exists. (File renamed under BACKLOG-14 to test-coding-rules-numbering.py.)
-b003_path = os.path.join(FEATURE_DIR, "test", "test-coding-rules-numbering.py")
-with open(b003_path) as f:
-    b003 = f.read()
-# Count actual top-level '## N.' rules in coding-rules.md.
-coding_path = os.path.join(FEATURE_DIR, "coding-rules.md")
-with open(coding_path) as f:
-    coding_text = f.read()
-rule_headings = re.findall(r'^## (\d+)\.', coding_text, re.MULTILINE)
-rule_count = len(rule_headings)
-# The test must assert the next-after-last heading is absent.
-expected_phrase = f"rules stop at {rule_count}"
-if expected_phrase in b003:
-    ok(f"POLICY-BUG-1: test-backlog003.py asserts '{expected_phrase}' matching {rule_count} actual rules")
-else:
-    ko(f"POLICY-BUG-1: test-backlog003.py rule-count phrase does not match actual ({rule_count} rules)")
 
 
 # POLICY-BUG-2: test-rule-files-content.py comment says 'three' rule files
@@ -128,21 +106,6 @@ if spec_v and contract_v and feature_v and spec_v == contract_v == feature_v:
     ok(f"POLICY-BUG-19: feature.json, spec.md, contract.md all aligned at {feature_v}")
 else:
     ko(f"POLICY-BUG-19: three-way mismatch — feature.json={feature_v}, spec.md={spec_v}, contract.md={contract_v}")
-
-
-# POLICY-BUG-9: t2 comment correctly describes the @-import regex format
-# (File renamed under BACKLOG-14 to test-no-stale-imports.py.)
-p1_path = os.path.join(FEATURE_DIR, "test", "test-no-stale-imports.py")
-with open(p1_path) as f:
-    p1 = f.read()
-# The actual regex used in test-imports-resolve.py is r'^(@[^\s]+)' — no '@./...' form.
-t2_block_start = p1.find("# t2:")
-t2_block_end = p1.find("\nIMPORTS_TEST", t2_block_start)
-t2_block = p1[t2_block_start:t2_block_end] if t2_block_start != -1 else ""
-if "'@./" in t2_block or "regex '^@\\./" in t2_block:
-    ko("POLICY-BUG-9: t2 comment still references the wrong regex form")
-else:
-    ok("POLICY-BUG-9: t2 comment no longer claims the regex is '^@\\./...'")
 
 
 # POLICY-BUG-18: test-policy-invariants-v1-2-0.py not invoked by run.py (or file deleted)

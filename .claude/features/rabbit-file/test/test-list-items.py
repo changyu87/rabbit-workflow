@@ -128,3 +128,86 @@ def test_no_items_found_with_filter(populated_repo):
     r = run_list(clone, "--feature", "nonexistent-feature")
     assert r.returncode == 0
     assert "No items found." in r.stdout
+
+
+# ---------------------------------------------------------------------------
+# Branch-missing vs no-items-matched: distinct operator-facing conditions.
+# ---------------------------------------------------------------------------
+
+
+class TestListItemsBranchMissing:
+    def test_branch_missing_with_filter_shows_branch_guidance(self, isolated_repo):
+        """When the branch does not exist and a filter is passed, the message
+        MUST direct the operator (NOT 'No items found.')."""
+        r = run_list(isolated_repo, "--feature", "any-feat")
+        assert r.returncode == 0
+        assert "No items found." not in r.stdout, (
+            f"branch-missing must NOT print 'No items found.'; got: {r.stdout!r}"
+        )
+        assert ("no items filed yet" in r.stdout.lower()
+                or "branch" in r.stdout.lower()), (
+            f"branch-missing must give branch guidance; got: {r.stdout!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Deterministic output order: list-items.py MUST sort by name.
+# ---------------------------------------------------------------------------
+
+
+class TestListItemsDeterministicSort:
+    def test_output_sorted_by_name(self, isolated_repo, monkeypatch):
+        """list-items.py output MUST be sorted by name lexicographically."""
+        monkeypatch.syspath_prepend(str(SCRIPTS))
+        import branch_ops
+        monkeypatch.setattr(branch_ops, "_get_repo_root", lambda: str(isolated_repo))
+
+        ids = []
+        for _ in range(3):
+            id_str = branch_ops.allocate_id("sort-feat", "bug")
+            item = {
+                "name": id_str, "type": "bug", "title": f"Item {id_str}",
+                "status": "open", "priority": "low", "description": "x",
+                "related_feature": "sort-feat",
+                "filed": "2026-01-01T00:00:00Z", "filed_by": "t",
+                "closed": None, "history": [],
+            }
+            branch_ops.commit_item("sort-feat", "bug", id_str, item)
+            ids.append(id_str)
+
+        r = run_list(isolated_repo, "--feature", "sort-feat")
+        assert r.returncode == 0, r.stderr
+        lines = [l for l in r.stdout.strip().splitlines() if "SORT-FEAT" in l]
+        names = [l.split()[0] for l in lines]
+        assert names == sorted(names), (
+            f"list-items.py output must be sorted by name; got: {names}"
+        )
+        assert set(names) == set(ids), (
+            f"expected exactly the filed IDs {ids}, got {names}"
+        )
+
+    def test_output_sort_is_stable_across_runs(self, isolated_repo, monkeypatch):
+        """Back-to-back invocations against the same branch state MUST print
+        byte-identical output."""
+        monkeypatch.syspath_prepend(str(SCRIPTS))
+        import branch_ops
+        monkeypatch.setattr(branch_ops, "_get_repo_root", lambda: str(isolated_repo))
+
+        for _ in range(3):
+            id_str = branch_ops.allocate_id("stable-feat", "bug")
+            item = {
+                "name": id_str, "type": "bug", "title": f"S {id_str}",
+                "status": "open", "priority": "low", "description": "x",
+                "related_feature": "stable-feat",
+                "filed": "2026-01-01T00:00:00Z", "filed_by": "t",
+                "closed": None, "history": [],
+            }
+            branch_ops.commit_item("stable-feat", "bug", id_str, item)
+
+        r1 = run_list(isolated_repo, "--feature", "stable-feat")
+        r2 = run_list(isolated_repo, "--feature", "stable-feat")
+        assert r1.returncode == 0 and r2.returncode == 0
+        assert r1.stdout == r2.stdout, (
+            f"list-items.py output is non-deterministic:\n"
+            f"run1: {r1.stdout!r}\nrun2: {r2.stdout!r}"
+        )

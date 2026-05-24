@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.5.0
+version: 1.7.0
 template_version: 2.0.0
 ---
 

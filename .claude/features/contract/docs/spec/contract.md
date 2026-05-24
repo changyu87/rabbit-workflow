@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.7.0
+version: 1.8.0
 template_version: 2.0.0
 ---
 
@@ -27,16 +27,12 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/schemas/feature.json.schema.json",
       ".claude/features/contract/schemas/bug.json.schema.json",
       ".claude/features/contract/schemas/project-map.json.schema.json",
-      ".claude/features/contract/schemas/rabbit-print.schema.json",
-      ".claude/features/contract/schemas/rabbit-print-messages.json",
-      ".claude/features/contract/schemas/build-contract.schema.json"
-    ],
-    "data": [
-      ".claude/features/contract/build-contract.json"
+      ".claude/features/contract/schemas/rabbit-print.schema.json"
     ],
     "scripts": [
       ".claude/features/contract/scripts/policy-block.py",
       ".claude/features/contract/scripts/validate-feature.py",
+      ".claude/features/contract/scripts/validate-meta-contract.py",
       ".claude/features/contract/scripts/find-feature.py",
       ".claude/features/contract/scripts/rabbit_print.py",
       ".claude/features/contract/scripts/enforcement/check-imports-resolve.py",
@@ -50,7 +46,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ],
     "lib": [
       ".claude/features/contract/lib/__init__.py",
-      ".claude/features/contract/lib/checks.py"
+      ".claude/features/contract/lib/checks.py",
+      ".claude/features/contract/lib/publish.py"
     ],
     "skills": []
   },

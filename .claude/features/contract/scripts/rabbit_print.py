@@ -1,167 +1,54 @@
-"""rabbit_print.py — shared renderer for the [rabbit] print convention.
+"""rabbit_print.py — direct-call renderer for the [rabbit] print convention.
 
-Loads the message registry from
-.claude/features/contract/schemas/rabbit-print-messages.json on first use
-and caches it for the lifetime of the process. Producers (rabbit-cage hooks,
-tdd-state-machine scripts and tdd-subagent dispatch-tdd-subagent.py) import
-this module and call the named wrapper API to compose ANSI-colored output
-strings. The module itself does not write to stdout or stderr — it returns
-strings only.
+Callers supply text, icon, color, and format inline at every call site. No
+registry, no message-id lookup, no named wrappers. The module is the SOLE
+place that owns ANSI/brand/bar composition for [rabbit] lines and the SOLE
+place that owns the leading newline (via rabbit_block). It returns strings
+only — never writes to stdout/stderr.
 
 Public API:
-    Low-level:
-        rabbit_print(message_id, **kwargs) -> str
-        rabbit_subline(text, color="green", icon=None) -> str
-    Block assembler (sole owner of the leading newline):
-        rabbit_block(*lines) -> str
-    Named wrappers (one per message-id; producers MUST use these):
-        welcome() -> str
-        policy_drift() -> str
-        surface_drift(files) -> str
-        scope_guard_off() -> str
-        scope_guard_bypassed() -> str
-        human_approval_bypass() -> str
-        bypass_permissions_active() -> str
-        dispatch_bypass_note() -> str
-        skills_updated(names) -> str
-        policy_refreshed() -> str
-        tdd_transition(from_state, to_state) -> str   (state names upcased)
-        tdd_forced(from_state, to_state) -> str       (state names upcased)
+    rabbit_print(text, icon, color, format="compact") -> str
+        format="banner"  -> brand icon ━━━ text ━━━ icon
+        format="compact" -> brand icon text
+    rabbit_subline(text, color="green", icon=None) -> str
+        With icon: brand icon text. Without: brand text.
+    rabbit_block(*lines) -> str
+        '\\n' + '\\n'.join(lines). The SINGLE authoritative location for
+        the leading newline that lifts [rabbit] output onto its own row.
 
-Version: 1.3.0
+Allowed colors: green, red, yellow. Unknown colors raise KeyError.
+
+Version: 2.0.0
 Owner: rabbit-workflow team
 Deprecation criterion: when the [rabbit] print convention is replaced by a
     structured logging facility
 """
 
-import json
-from pathlib import Path
+BRAND = "[\U0001f407 rabbit \U0001f407]"
+BAR = "━━━"
 
-__all__ = [
-    "rabbit_print", "rabbit_subline", "rabbit_block",
-    "welcome", "policy_drift", "surface_drift",
-    "scope_guard_off", "scope_guard_bypassed", "human_approval_bypass",
-    "bypass_permissions_active", "dispatch_bypass_note",
-    "skills_updated", "policy_refreshed", "tdd_transition", "tdd_forced",
-]
+_COLORS = {
+    "green":  ("[32m", "[0m"),
+    "red":    ("[31m", "[0m"),
+    "yellow": ("[33m", "[0m"),
+}
 
-_CACHE = {}
-_REGISTRY_PATH = Path(__file__).resolve().parents[1] / "schemas" / "rabbit-print-messages.json"
+__all__ = ["rabbit_print", "rabbit_subline", "rabbit_block"]
 
 
-def _load():
-    if "reg" not in _CACHE:
-        with open(_REGISTRY_PATH) as f:
-            _CACHE["reg"] = json.load(f)
-    return _CACHE["reg"]
-
-
-def rabbit_print(message_id, **kwargs):
-    """Compose a fully-formed [rabbit] line for message_id.
-
-    Format is controlled by the per-message "format" field in the registry:
-      - "banner": f"{ansi}{brand} {icon} {bar} {text} {bar} {icon}{reset}"
-      - "compact": f"{ansi}{brand} {icon} {text}{reset}"
-
-    text has {name} placeholders substituted from kwargs.
-
-    Raises KeyError if message_id is not in the registry, or if a required
-    {name} placeholder is missing from kwargs.
-    """
-    reg = _load()
-    m = reg["messages"][message_id]
-    c = reg["colors"][m["color"]]
-    body = m["text"].format(**kwargs)
-    brand = reg["brand"]
-    icon = m["icon"]
-    if m.get("format", "compact") == "banner":
-        bar = reg["bar"]
-        return f"{c['ansi']}{brand} {icon} {bar} {body} {bar} {icon}{c['reset']}"
-    return f"{c['ansi']}{brand} {icon} {body}{c['reset']}"
+def rabbit_print(text, icon, color, format="compact"):
+    ansi, reset = _COLORS[color]
+    if format == "banner":
+        return f"{ansi}{BRAND} {icon} {BAR} {text} {BAR} {icon}{reset}"
+    return f"{ansi}{BRAND} {icon} {text}{reset}"
 
 
 def rabbit_subline(text, color="green", icon=None):
-    """Compose a sub-line (brand prefix + free text) in the given color.
-
-    When icon is None (default), returns:
-        f"{ansi}{brand} {text}{reset}"
-    Existing callers that omit icon are backwards-compatible.
-
-    When icon is a non-empty string, returns:
-        f"{ansi}{brand} {icon} {text}{reset}"
-    The icon precedes the text so SessionStart active-flag warnings
-    (rabbit-cage session-init.py) can carry a leading visual alert glyph
-    mirroring the icon-bearing compact form used by the named wrappers.
-    """
-    reg = _load()
-    c = reg["colors"][color]
+    ansi, reset = _COLORS[color]
     if icon:
-        return f"{c['ansi']}{reg['brand']} {icon} {text}{c['reset']}"
-    return f"{c['ansi']}{reg['brand']} {text}{c['reset']}"
+        return f"{ansi}{BRAND} {icon} {text}{reset}"
+    return f"{ansi}{BRAND} {text}{reset}"
 
 
 def rabbit_block(*lines):
-    """Assemble lines into a single string with a leading newline.
-
-    Returns '\\n' + '\\n'.join(lines). The leading newline is the contract
-    that Claude Code renders the [rabbit] output on its own row (not inline
-    with Stop says: / SessionStart says: chrome). This is the SINGLE
-    authoritative place the leading newline lives.
-    """
     return "\n" + "\n".join(lines)
-
-
-def welcome():
-    return rabbit_print("welcome")
-
-
-def policy_drift():
-    return rabbit_print("policy-drift")
-
-
-def surface_drift(files):
-    return rabbit_print("surface-drift", files=files)
-
-
-def scope_guard_off():
-    return rabbit_print("scope-guard-off")
-
-
-def scope_guard_bypassed():
-    return rabbit_print("scope-guard-bypassed")
-
-
-def human_approval_bypass():
-    return rabbit_print("human-approval-bypass")
-
-
-def bypass_permissions_active():
-    return rabbit_print("bypass-permissions-active")
-
-
-def dispatch_bypass_note():
-    return rabbit_print("dispatch-bypass-note")
-
-
-def skills_updated(names):
-    return rabbit_print("skills-updated", names=names)
-
-
-def policy_refreshed():
-    return rabbit_print("policy-refreshed")
-
-
-def tdd_transition(from_state, to_state):
-    return rabbit_print(
-        "tdd-transition",
-        from_state=from_state.upper(),
-        to_state=to_state.upper(),
-    )
-
-
-def tdd_forced(from_state, to_state):
-    return rabbit_print(
-        "tdd-forced",
-        from_state=from_state.upper(),
-        to_state=to_state.upper(),
-    )

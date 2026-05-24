@@ -2,7 +2,7 @@
 """test-rabbit-feature-skills-deployment.py — CONTRACT-BUG-41 (bundled deploy).
 
 End-to-end assertions for the bundled deployment of all five
-rabbit-feature skills via rabbit-feature/publish.json:
+rabbit-feature skills via rabbit-feature/feature.json `manifest`:
 
   - rabbit-feature-touch
   - rabbit-feature-scope
@@ -11,7 +11,8 @@ rabbit-feature skills via rabbit-feature/publish.json:
   - rabbit-feature-audit (BUG-41)
 
 Each skill MUST have:
-  - an entry in rabbit-feature/publish.json with the correct source/destination
+  - a publish_skill entry in rabbit-feature/feature.json manifest with
+    the correct source
   - a SKILL.md source file on disk under .claude/features/rabbit-feature/skills/
   - a deployed copy at .claude/skills/<name>/SKILL.md
 
@@ -27,7 +28,7 @@ FEATURE_DIR = os.path.normpath(
 )
 REPO_ROOT = os.path.normpath(os.path.join(FEATURE_DIR, "..", "..", ".."))
 RABBIT_FEATURE_DIR = os.path.join(REPO_ROOT, ".claude", "features", "rabbit-feature")
-PUBLISH_PATH = os.path.join(RABBIT_FEATURE_DIR, "publish.json")
+FEATURE_JSON_PATH = os.path.join(RABBIT_FEATURE_DIR, "feature.json")
 
 EXPECTED_SKILLS = [
     "rabbit-feature-touch",
@@ -55,38 +56,36 @@ def ko(n, msg):
 
 print("test-rabbit-feature-skills-deployment.py")
 
-with open(PUBLISH_PATH) as f:
+with open(FEATURE_JSON_PATH) as f:
     data = json.load(f)
 
-by_name = {t.get("name"): t for t in data.get("targets", [])}
+manifest = data.get("manifest", [])
+by_source = {
+    entry.get("args", {}).get("source"): entry
+    for entry in manifest
+    if entry.get("api") == "publish_skill"
+}
 
 for i, skill in enumerate(EXPECTED_SKILLS, start=1):
-    name = f"skills/{skill}/SKILL.md"
     expected_source = f"skills/{skill}/SKILL.md"
     expected_dest = f".claude/skills/{skill}/SKILL.md"
 
-    entry = by_name.get(name)
+    entry = by_source.get(expected_source)
     if entry is None:
-        ko(i, f"no entry named {name} in rabbit-feature/publish.json")
-        continue
-    if entry.get("source") != expected_source:
-        ko(i, f"{name}: source {entry.get('source')!r} != {expected_source!r}")
-        continue
-    if entry.get("destination") != expected_dest:
-        ko(i, f"{name}: destination {entry.get('destination')!r} != {expected_dest!r}")
+        ko(i, f"no publish_skill manifest entry with source {expected_source} in rabbit-feature/feature.json")
         continue
 
     source_abs = os.path.join(RABBIT_FEATURE_DIR, expected_source)
     if not os.path.isfile(source_abs):
-        ko(i, f"{name}: source file missing: {source_abs}")
+        ko(i, f"{skill}: source file missing: {source_abs}")
         continue
 
     dest_abs = os.path.join(REPO_ROOT, expected_dest)
     if not os.path.isfile(dest_abs):
-        ko(i, f"{name}: deployed SKILL.md missing at {dest_abs}")
+        ko(i, f"{skill}: deployed SKILL.md missing at {dest_abs}")
         continue
 
-    ok(i, f"{skill}: source + destination wired and deployed")
+    ok(i, f"{skill}: manifest entry + source + deployed copy wired")
 
 print()
 print(f"Results: {passed} passed, {failed} failed")

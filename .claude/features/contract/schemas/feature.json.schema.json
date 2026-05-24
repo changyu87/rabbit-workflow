@@ -1,6 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "feature.json.schema.json",
+  "schema_version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "deprecation_criterion": "when Claude Code exposes a native feature-manifest schema that supersedes feature.json",
   "title": "Feature JSON Schema",
   "description": "Validates feature.json files for rabbit-workflow features.",
   "type": "object",
@@ -76,6 +79,18 @@
       "type": "string",
       "minLength": 1,
       "description": "The condition under which this feature will be superseded."
+    },
+    "manifest": {
+      "$ref": "manifest.schema.json",
+      "description": "Optional MANIFEST — declarative list of publish API calls executed at install time."
+    },
+    "runtime": {
+      "$ref": "runtime.schema.json",
+      "description": "Optional RUNTIME — per-event lists of runtime API calls invoked by the dispatcher."
+    },
+    "configuration": {
+      "$ref": "configuration.schema.json",
+      "description": "Optional CONFIGURATION — declarations of user-mutable configurables."
     }
   }
 }

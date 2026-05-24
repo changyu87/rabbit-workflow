@@ -13,8 +13,8 @@
 #   1  runtime error (find-feature.py or format-feature-context.py failed)
 #   2  invocation error (bad arguments, missing required env when not in git)
 #
-# Version: 1.1.0
-# Owner: rabbit-workflow team (rabbit-feature-scope)
+# Version: 1.1.1
+# Owner: rabbit-workflow team (rabbit-feature)
 # Deprecation criterion: when feature-scope resolution is automated by the dispatch infrastructure.
 
 import argparse
