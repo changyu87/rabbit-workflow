@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.12.0
+version: 1.12.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -283,7 +283,7 @@ Scripts (under `scripts/`):
     that this feature's code reads or invokes has a corresponding entry
     under `contract.md.reads.files` or `contract.md.invokes.scripts`.
 
-### Manifest-driven deployment (Plan E.* migration)
+### Manifest-driven deployment
 
 40. **Manifest declares deployment.** `rabbit-feature.feature.json`
     declares a `manifest` array of N publish API calls, one per skill
@@ -294,7 +294,7 @@ Scripts (under `scripts/`):
     entries deploys the set of `.claude/skills/<name>/SKILL.md`
     artifacts byte-identically.
 
-### B/B item materialization (RABBIT-FEATURE-BUG-7)
+### B/B item materialization
 
 42. **B/B item materialization documented.** The `rabbit-feature-touch`
     SKILL.md B/B mode documentation MUST explicitly describe how a
@@ -327,7 +327,7 @@ Scripts (under `scripts/`):
     and MUST also be present byte-identical in the deployed copy
     `.claude/skills/rabbit-feature-touch/SKILL.md`.
 
-### Dispatcher continuity (RABBIT-FEATURE-BACKLOG-10)
+### Dispatcher continuity
 
 41. **Dispatcher continuity directive.** The `rabbit-feature-touch`
     SKILL.md MUST contain an explicit dispatcher-continuity directive

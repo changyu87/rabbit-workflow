@@ -1,6 +1,6 @@
 ---
 feature: rabbit-file
-version: 0.5.0
+version: 0.5.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when a unified tracking system replaces file-based bug and backlog management
@@ -270,8 +270,7 @@ origin/bug-backlog-files root:
   scaffolding sits in the hot path to detect that case.
 
 - feature.json MUST declare the meta-contract sections `manifest`,
-  `runtime`, and `configuration` (Plan E.* migration). The shapes are
-  exactly:
+  `runtime`, and `configuration`. The shapes are exactly:
     - `manifest` is a list of length 1 whose single entry is
       `{"api": "publish_skill", "args": {"source": "skills/rabbit-file/SKILL.md"}}`,
       declaring the sole deployment target (the operator-facing

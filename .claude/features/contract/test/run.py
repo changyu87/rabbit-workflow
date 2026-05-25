@@ -96,5 +96,6 @@ run_test("test-runtime-check-manifest-drift.py")
 run_test("test-runtime-check-manifest-drift-walks-all-entries.py")
 run_test("test-runtime-iterate-configurables-alerts.py")
 run_test("test-runtime-iterate-configurables-banner.py")
+run_test("test-spec-bodies-no-historical-tags.py")
 
 print("ALL TESTS PASSED")

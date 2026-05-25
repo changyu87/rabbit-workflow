@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.4.0
+version: 5.4.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -194,7 +194,7 @@ string BEFORE splitting on `;|&` segment delimiters.
     (`"key"`, `"siren"`, `"unlock"`, …). `rabbit_subline(text, color, icon)`
     and `rabbit_print(text, icon, color, format)` interpolate `icon`
     literally; neither performs name-to-glyph resolution. (Per contract
-    Inv 48 / Plan F.3 there is no message-id registry; every producer
+    Inv 48 there is no message-id registry; every producer
     supplies `text`, `icon`, and `color` inline at the call site.)
 14. rabbit-cage owns the cross-cutting CLAUDE.md `@`-import resolution
     tests. The two assertions — (a) every `@`-import in any `CLAUDE.md`

@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 4.0.0
+version: 4.0.1
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -253,7 +253,7 @@ spec (`rabbit-feature`).
     this feature use the same flat field shape (`name`, `version`,
     `owner`, `tdd_state`, `summary`, `surface`, `deprecation_criterion`).
 
-29. **Meta-contract sections (Plan E.* migration).** `feature.json` MUST
+29. **Meta-contract sections.** `feature.json` MUST
     declare the meta-contract sections `manifest`, `runtime`, and
     `configuration`. The shapes are exactly:
 
