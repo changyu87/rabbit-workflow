@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.4.1
+version: 5.5.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -164,6 +164,10 @@ string BEFORE splitting on `;|&` segment delimiters.
    `Stop`, `SessionStart`, `UserPromptSubmit`), and `configuration` arrays
    as described in this spec. Every API name listed in any of those
    declarations is exported by the corresponding `contract.lib.*` module.
+   The live `feature.json` validates against the meta-contract schemas
+   under `contract/schemas/` (verified by invoking
+   `contract/scripts/validate-meta-contract.py` against the feature
+   directory).
 9. Every runtime marker written under the repo root MUST be listed in
    `.gitignore`. The mandated set: `.rabbit-prompt-counter`,
    `.rabbit-sync-counter`, `.rabbit-scope-active`, `.rabbit-scope-active-*`,

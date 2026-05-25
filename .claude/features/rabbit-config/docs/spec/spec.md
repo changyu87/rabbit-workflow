@@ -1,6 +1,6 @@
 ---
 feature: rabbit-config
-version: 1.1.0
+version: 1.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when the rabbit CLI exposes native configuration mutation that subsumes this feature
@@ -139,9 +139,10 @@ operates on user-facing labels rather than raw stored values:
    dispatches the declared `contract.lib.mutation` API and exits 0.
 10. On an actions-style subcommand with a valid action, the interpreter
     dispatches the declared `contract.lib.mutation` API and exits 0.
-11. Template substitution: `{tool}` and `{command}` in API args strings are
-    replaced with `argv[3]` before dispatch. When templates are present in
-    the API args and `argv[3]` is absent, the interpreter exits non-zero.
+11. Template substitution: `{tool}`, `{command}`, and `{value}` in API
+    args strings are replaced with `argv[3]` before dispatch. When
+    templates are present in the API args and `argv[3]` is absent, the
+    interpreter exits non-zero.
 12. If `validation.reject_prefix` is declared, any input starting with that
     prefix is rejected with exit non-zero before dispatch.
 13. If `validation.reject_chars` is declared, any input containing a

@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.4.1",
+  "version": "5.5.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
@@ -12,7 +12,7 @@
   },
   "deprecation_criterion": "when Claude Code exposes native event dispatchers and artifact publishing that subsume this role",
   "status": "active",
-  "updated": "2026-05-24",
+  "updated": "2026-05-25",
   "manifest": [
     {
       "api": "publish_settings",
@@ -259,6 +259,16 @@
         "type": "json-key",
         "file": ".claude/settings.local.json",
         "key": "env.RABBIT_REFRESH_EVERY"
+      },
+      "actions": {
+        "set": {
+          "api": "set_json_key",
+          "args": {
+            "file": ".claude/settings.local.json",
+            "key": "env.RABBIT_REFRESH_EVERY",
+            "value": "{value}"
+          }
+        }
       },
       "default": "20"
     },
