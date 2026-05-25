@@ -1,6 +1,6 @@
 ---
 feature: rabbit-file
-version: 0.5.2
+version: 0.5.3
 template_version: 2.0.0
 owner: rabbit-workflow team
 deprecation_criterion: when a unified tracking system replaces file-based bug and backlog management
@@ -23,7 +23,7 @@ deprecation_criterion: when a unified tracking system replaces file-based bug an
       },
       {
         "path": ".claude/features/rabbit-file/scripts/file-item.py",
-        "description": "Files a new bug or backlog item. Args: --type bug|backlog --feature F --title T --priority low|medium|high|critical --description D. Allocates an ID then commits item.json. Enforces per-field length limits and ASCII-control-char sanitisation (BACKLOG-7). Rolls back the counter slot via release_id on commit_item failure."
+        "description": "Files a new bug or backlog item. Args: --type bug|backlog --feature F --title T --priority low|medium|high|critical --description D. Allocates an ID then commits item.json. Enforces per-field length limits and ASCII-control-char sanitisation. Rolls back the counter slot via release_id on commit_item failure."
       },
       {
         "path": ".claude/features/rabbit-file/scripts/item-status.py",
