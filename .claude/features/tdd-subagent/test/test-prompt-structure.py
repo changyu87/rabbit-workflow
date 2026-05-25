@@ -56,16 +56,21 @@ if len(valid_positions) == len(steps) and valid_positions == sorted(valid_positi
 elif len(valid_positions) == len(steps):
     ko("inv8: step banners present but out of order")
 
-# Inv 8 (negative): the retired SPEC-READ and HUMAN-APPROVAL banners must
-# not appear in the assembled prompt.
-if "STEP 1 — SPEC-READ" not in prompt and "SPEC-READ" not in prompt:
-    ok("inv8: retired SPEC-READ banner absent from prompt")
+# Inv 8 (negative): the retired SPEC-READ and HUMAN-APPROVAL step banners
+# must not appear in the assembled prompt. Check the banner form
+# `STEP N — <name>` only — the strings may still appear inside the embedded
+# spec body (which legitimately describes the retired branches) and in the
+# bypass-marker preamble note (which references the dispatcher's Step 4
+# HUMAN-APPROVAL gate, not a subagent step).
+import re as _re
+if not _re.search(r"STEP \d+ — SPEC-READ", prompt):
+    ok("inv8: retired SPEC-READ step banner absent from prompt")
 else:
-    ko("inv8: retired SPEC-READ banner still present in prompt")
-if "HUMAN-APPROVAL" not in prompt:
-    ok("inv8: retired HUMAN-APPROVAL banner absent from prompt")
+    ko("inv8: retired SPEC-READ step banner still present in prompt")
+if not _re.search(r"STEP \d+ — HUMAN-APPROVAL", prompt):
+    ok("inv8: retired HUMAN-APPROVAL step banner absent from prompt")
 else:
-    ko("inv8: retired HUMAN-APPROVAL banner still present in prompt")
+    ko("inv8: retired HUMAN-APPROVAL step banner still present in prompt")
 
 # Inv 8 (count): exactly seven STEP N banners, numbered 1..7 — no STEP 8/9.
 if "STEP 8 —" not in prompt and "STEP 9 —" not in prompt:

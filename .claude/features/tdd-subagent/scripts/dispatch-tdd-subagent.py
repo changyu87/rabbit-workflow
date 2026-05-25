@@ -9,7 +9,6 @@
 #     [--linked-item <dir>] \
 #     [--item-type bug|backlog] \
 #     [--linked-items <feature>:<type>:<id>[,<feature>:<type>:<id>...]] \
-#     [--human-approval-gate true|false] \
 #     [--code-review-full-loop] \
 #     [--max-iterations N]
 #
@@ -23,7 +22,7 @@
 # --fix-commits <impl-sha>`, and lists all closed items in HANDOFF.closed_items.
 #
 # Output: assembled prompt to stdout. Caller: Agent(model: opus, prompt: stdout).
-# Version: 3.0.0
+# Version: 4.0.0
 # Owner: rabbit-workflow team (tdd-subagent)
 # Deprecation criterion: when TDD cycle is natively supported by rabbit CLI.
 
@@ -42,10 +41,14 @@ if str(_CONTRACT_SCRIPTS) not in sys.path:
 from rabbit_print import rabbit_print  # noqa: E402
 
 # Canonical preamble text. Grep-stable: tests assert this exact body.
+# The note refers to the DISPATCHER's Step 4 HUMAN-APPROVAL gate (owned by
+# rabbit-feature-touch), not any step inside the assembled subagent prompt.
+# The subagent itself no longer contains a HUMAN-APPROVAL step
+# (TDD-SUBAGENT-BACKLOG-19 retired Inv 25, 26).
 _BYPASS_NOTE_TEXT = (
     "NOTE: human-approval bypass marker is active "
-    "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be "
-    "skipped for this dispatch. Revoke via "
+    "(.rabbit-human-approval-bypass). The dispatcher's Step 4 "
+    "HUMAN-APPROVAL gate was skipped for this dispatch. Revoke via "
     "`/rabbit-config human-approval true`."
 )
 
@@ -133,8 +136,8 @@ def main(argv):
     parser = argparse.ArgumentParser(
         prog="dispatch-tdd-subagent.py",
         description=("Assemble a per-feature TDD subagent prompt that runs the "
-                     "9-step TDD cycle (spec-update -> test-red -> impl -> "
-                     "test-green) for ONE feature. Prompt is written to stdout."),
+                     "7-step TDD cycle (test-red -> impl -> test-green) for "
+                     "ONE feature. Prompt is written to stdout."),
     )
     parser.add_argument("--scope", required=True)
     parser.add_argument("--spec", required=True)
@@ -145,13 +148,6 @@ def main(argv):
                         help="Comma-separated <feature>:<type>:<id> triples for secondary "
                              "items closed by the same impl commit (type in {bug, backlog}). "
                              "Malformed triples cause non-zero exit before prompt emit.")
-    parser.add_argument(
-        "--human-approval-gate",
-        choices=["true", "false"],
-        default="true",
-        help="'true' (default) requires explicit user approval in the subagent's "
-             "HUMAN-APPROVAL step; 'false' skips that step.",
-    )
     parser.add_argument("--code-review-full-loop", action="store_true")
     parser.add_argument("--max-iterations", type=int, default=3)
 
@@ -166,8 +162,7 @@ def main(argv):
             "ERROR: usage: dispatch-tdd-subagent.py --scope <feature> --spec <path> "
             "[--impl-suggestion <path>] [--linked-item <dir>] [--item-type bug|backlog] "
             "[--linked-items <feature>:<type>:<id>[,...]] "
-            "[--human-approval-gate true|false] [--code-review-full-loop] "
-            "[--max-iterations N]\n"
+            "[--code-review-full-loop] [--max-iterations N]\n"
         )
         return 2
 
@@ -330,41 +325,15 @@ def main(argv):
         handoff_closed_items_block = ""
         handoff_closed_items_json = "[]"
 
-    # All step banners use the uniform ═════ banner format. Both gated and
-    # bypassed forms use the same heading style for visual consistency.
-    if args.human_approval_gate == "false":
-        human_approval_section = (
-            "\n"
-            "════════════════════════════════════════════════════════════════════════\n"
-            "STEP 2 — HUMAN-APPROVAL\n"
-            "════════════════════════════════════════════════════════════════════════\n"
-            "\n"
-            "Skipped (--human-approval-gate false).\n"
-        )
-    else:
-        human_approval_section = (
-            "\n"
-            "════════════════════════════════════════════════════════════════════════\n"
-            "STEP 2 — HUMAN-APPROVAL\n"
-            "════════════════════════════════════════════════════════════════════════\n"
-            "\n"
-            "Invoke `Skill(\"superpowers:writing-plans\")` to produce an implementation summary with:\n"
-            "- Key implementation points (bullet list)\n"
-            "- Affected files (explicit paths)\n"
-            "\n"
-            "Present this summary to the user and wait for explicit approval before Step 3 (LOCK).\n"
-            "If the user requests changes, update and re-present. Do NOT proceed without approval.\n"
-        )
-
     if args.code_review_full_loop:
         code_review_loop_note = (
             "--code-review-full-loop is active: after any code changes from CODE-REVIEW, "
-            "loop back to Step 4 (TEST-WRITE) and repeat until CODE-REVIEW produces no further changes."
+            "loop back to Step 2 (TEST-WRITE) and repeat until CODE-REVIEW produces no further changes."
         )
     else:
         code_review_loop_note = (
-            "Default mode: use judgment — loop back to Step 4 (TEST-WRITE) only if "
-            "CODE-REVIEW changed functional code or tests. HUMAN-APPROVAL (Step 2) does NOT re-run on loop-back."
+            "Default mode: use judgment — loop back to Step 2 (TEST-WRITE) only if "
+            "CODE-REVIEW changed functional code or tests."
         )
 
     prompt = f"""{policy_block}
@@ -373,7 +342,7 @@ def main(argv):
 TDD SUBAGENT — SCOPE: {feature_name}
 ════════════════════════════════════════════════════════════════════════
 
-You are a TDD subagent. Execute the 9 named steps below IN ORDER for feature: {feature_name}
+You are a TDD subagent. Execute the 7 named steps below IN ORDER for feature: {feature_name}
 Do NOT skip steps. Do NOT dispatch nested subagents. All work is done inline.
 
 ════════════════════════════════════════════════════════════════════════
@@ -434,23 +403,10 @@ Using Write or Edit directly on a SKILL.md is a CONSTITUTION VIOLATION:
 it bypasses skill-creator's eval loop and description optimization,
 and produces SKILL.md files that drift from the skill-authoring contract.
 
-This rule applies at STEP 6 (IMPLEMENT). It has no exceptions.
+This rule applies at STEP 4 (IMPLEMENT). It has no exceptions.
 
 ════════════════════════════════════════════════════════════════════════
-STEP 1 — SPEC-READ
-════════════════════════════════════════════════════════════════════════
-
-Run:  git diff HEAD~1 -- {feature_dir}/docs/spec/
-(HEAD~1, not HEAD: the caller commits the spec change BEFORE dispatching
-this subagent, so HEAD already includes the spec edit and the working tree
-is clean. `git diff HEAD` would always be empty; HEAD~1 is the pre-spec
-state, which makes the actual spec delta visible.)
-Read the diff carefully. If an impl-suggestion was provided, read it now.
-Summarise what has changed and what the implementation must achieve before proceeding.
-
-{human_approval_section}
-════════════════════════════════════════════════════════════════════════
-STEP 3 — LOCK
+STEP 1 — LOCK
 ════════════════════════════════════════════════════════════════════════
 
 Set the scope marker as your FIRST write action — and ONLY that:
@@ -460,12 +416,12 @@ Do NOT register a `trap '... rm -f ...' EXIT` here. Each Claude Code Bash
 tool invocation runs in a separate (per-call) shell process. The trap would
 fire the moment that shell exits — i.e., immediately after `touch` returns —
 deleting the scope marker before any subsequent step (TEST-WRITE, IMPLEMENT,
-etc.) can rely on it. Cleanup is explicit and happens in STEP 9 UNLOCK
+etc.) can rely on it. Cleanup is explicit and happens in STEP 7 UNLOCK
 (`rm -f {repo_root}/.rabbit-scope-active-{feature_name}`), AFTER the chore
 commit and BEFORE the HANDOFF block.
 
 ════════════════════════════════════════════════════════════════════════
-STEP 4 — TEST-WRITE
+STEP 2 — TEST-WRITE
 ════════════════════════════════════════════════════════════════════════
 
 1. Read all existing tests in {feature_dir}/test/
@@ -475,13 +431,13 @@ STEP 4 — TEST-WRITE
    git add {feature_dir}/test/
    git commit -m "test({feature_name}): add e2e tests for spec behaviours"
 
-Note on ordering: the commit above happens BEFORE STEP 5 (TEST-RED) runs.
-That is intentional — STEP 5 verifies the suite is failing as expected after
+Note on ordering: the commit above happens BEFORE STEP 3 (TEST-RED) runs.
+That is intentional — STEP 3 verifies the suite is failing as expected after
 the commit. The tests are committed in their failing state so the diff is
 captured atomically alongside the implementation that will turn them green.
 
 ════════════════════════════════════════════════════════════════════════
-STEP 5 — TEST-RED
+STEP 3 — TEST-RED
 ════════════════════════════════════════════════════════════════════════
 
 Run: python3 {feature_dir}/test/run.py
@@ -502,7 +458,7 @@ Advance state:
   python3 {tdd_step_py} transition {feature_dir} test-red
 
 ════════════════════════════════════════════════════════════════════════
-STEP 6 — IMPLEMENT
+STEP 4 — IMPLEMENT
 ════════════════════════════════════════════════════════════════════════
 
 Max iterations: {args.max_iterations}
@@ -532,15 +488,15 @@ Loop (repeat until green or max iterations reached):
 
 The implementation commit MUST happen INSIDE the loop, BEFORE the
 `tdd-step.py transition ... impl` call below. Otherwise the impl SHA
-captured in STEP 8 (via `git rev-parse HEAD`) would point at the prior
-test commit from STEP 4, not at the actual implementation.
+captured in STEP 6 (via `git rev-parse HEAD`) would point at the prior
+test commit from STEP 2, not at the actual implementation.
 
 On success — advance state (only AFTER the impl commit above):
   python3 {tdd_step_py} transition {feature_dir} impl
   python3 {tdd_step_py} transition {feature_dir} test-green
 
 ════════════════════════════════════════════════════════════════════════
-STEP 7 — CODE-REVIEW
+STEP 5 — CODE-REVIEW
 ════════════════════════════════════════════════════════════════════════
 
 Invoke: Skill("superpowers:requesting-code-review")
@@ -551,21 +507,21 @@ form does not exist — using it silently no-ops the review step.)
 {code_review_loop_note}
 
 ════════════════════════════════════════════════════════════════════════
-STEP 8 — TEST-GREEN
+STEP 6 — TEST-GREEN
 ════════════════════════════════════════════════════════════════════════
 
 Run final test suite to confirm pass:
   python3 {feature_dir}/test/run.py
 
-FIRST — capture the implementation commit SHA BEFORE STEP 9's chore commit:
+FIRST — capture the implementation commit SHA BEFORE STEP 7's chore commit:
   IMPL_SHA=$(git rev-parse HEAD)
 
-This ordering is non-negotiable. STEP 9's `chore({feature_name}): advance
+This ordering is non-negotiable. STEP 7's `chore({feature_name}): advance
 tdd_state to test-green` commit will advance HEAD past the implementation
 commit; capturing `git rev-parse HEAD` after that point would record the
 chore SHA in `impl_commit`, not the actual implementation SHA. The
 tdd-report MUST be fully written with the captured `$IMPL_SHA` value
-substituted into `impl_commit` BEFORE STEP 9 UNLOCK begins.
+substituted into `impl_commit` BEFORE STEP 7 UNLOCK begins.
 
 Write tdd-report (gitignored — NEVER commit):
   mkdir -p {repo_root}/.rabbit/
@@ -594,7 +550,7 @@ string or the JSON literal `null`, and so on.
   }}
 
 ════════════════════════════════════════════════════════════════════════
-STEP 9 — UNLOCK
+STEP 7 — UNLOCK
 ════════════════════════════════════════════════════════════════════════
 
 Before emitting HANDOFF, commit the tdd_state transition so the dispatcher
@@ -604,7 +560,7 @@ does not have to commit feature.json manually:
   git commit -m "chore({feature_name}): advance tdd_state to test-green"
 {close_calls_block}
 Remove the scope marker explicitly (no `trap` was registered at LOCK — see
-the explanation in STEP 3 about per-call shell process semantics):
+the explanation in STEP 1 about per-call shell process semantics):
   rm -f {repo_root}/.rabbit-scope-active-{feature_name}
 
 ════════════════════════════════════════════════════════════════════════

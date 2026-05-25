@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 4.0.1
+version: 5.0.0
 template_version: 2.1.0
 owner: rabbit-workflow team
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -19,8 +19,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "scripts": [
       {
         "path": ".claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py",
-        "stdin": "none. Required flags: --scope <feature-name>, --spec <spec-path>. Optional: --impl-suggestion <path>, --linked-item <item-dir> + --item-type bug|backlog (primary), --linked-items <feature>:<type>:<id>[,...] (secondaries), --human-approval-gate true|false (default true), --code-review-full-loop, --max-iterations N (default 3, min 1).",
-        "stdout": "assembled per-feature TDD-cycle prompt with the 9 labelled steps (SPEC-READ, HUMAN-APPROVAL, LOCK, TEST-WRITE, TEST-RED, IMPLEMENT, CODE-REVIEW, TEST-GREEN, UNLOCK). The script never invokes any agent; callers dispatch the agent with this prompt.",
+        "stdin": "none. Required flags: --scope <feature-name>, --spec <spec-path>. Optional: --impl-suggestion <path>, --linked-item <item-dir> + --item-type bug|backlog (primary), --linked-items <feature>:<type>:<id>[,...] (secondaries), --code-review-full-loop, --max-iterations N (default 3, min 1).",
+        "stdout": "assembled per-feature TDD-cycle prompt with the 7 labelled steps (LOCK, TEST-WRITE, TEST-RED, IMPLEMENT, CODE-REVIEW, TEST-GREEN, UNLOCK). The script never invokes any agent; callers dispatch the agent with this prompt.",
         "exit": "0=success, 2=invocation error (missing/invalid flag, missing --spec file, malformed --linked-items triple, unknown --scope feature)"
       },
       {
@@ -31,7 +31,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "agents": [
       {
         "path": ".claude/features/tdd-subagent/agents/tdd-subagent.md",
-        "description": "Named subagent dispatched by callers using the prompt assembled by dispatch-tdd-subagent.py. Runs the 9-step TDD cycle for ONE feature."
+        "description": "Named subagent dispatched by callers using the prompt assembled by dispatch-tdd-subagent.py. Runs the 7-step TDD cycle for ONE feature."
       }
     ],
     "files": [],
