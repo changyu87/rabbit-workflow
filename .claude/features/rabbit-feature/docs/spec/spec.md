@@ -21,9 +21,9 @@ Owns the dispatcher-side feature-touch orchestration surface: the
 `rabbit-feature-audit`) and their backing scripts.
 
 The executor-side TDD machinery (`dispatch-tdd-subagent.py`,
-`tdd-step.py`, the 9-step TDD cycle) lives in `tdd-subagent` and
-`tdd-state-machine`. This feature consumes both via the cross-feature
-contract declared in `contract.md`.
+`tdd-step.py`, the 9-step TDD cycle) lives in `tdd-subagent`. This
+feature consumes it via the cross-feature contract declared in
+`contract.md`.
 
 ## Scripting Tech Stack
 
@@ -65,7 +65,7 @@ Scripts (under `scripts/`):
    (relative to the feature directory).
 
 2. **Declared cross-feature script dependencies.** This feature invokes
-   `.claude/features/tdd-state-machine/scripts/tdd-step.py` and
+   `.claude/features/tdd-subagent/scripts/tdd-step.py` and
    `.claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py`. Both
    are declared in `contract.md` under `invokes.scripts` with their
    CLI signatures pinned.
@@ -351,7 +351,7 @@ Scripts (under `scripts/`):
 
 - The TDD subagent's 9-step cycle, the `tdd-step.py` state machine, or
   the `dispatch-tdd-subagent.py` prompt assembler — owned by
-  `tdd-subagent` and `tdd-state-machine`.
+  `tdd-subagent`.
 - The build pipeline that copies skills into `.claude/skills/` — owned
   by `contract`. This feature consumes the pipeline; it does not define
   it.

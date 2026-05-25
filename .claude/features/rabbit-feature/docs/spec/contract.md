@@ -64,7 +64,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "invokes": {
     "scripts": [
       {
-        "path": ".claude/features/tdd-state-machine/scripts/tdd-step.py",
+        "path": ".claude/features/tdd-subagent/scripts/tdd-step.py",
         "signature": "tdd-step.py {show|next|transitions|transition} <feature-dir> [<new-state>] [--force] [--spec-no-change-reason <reason>]",
         "exit": "0=success, 1=denied/invalid, 2=bad invocation",
         "lock": "test/test-cross-feature-interface.py asserts --help exits 0 with 'usage:' text (Inv 3)"
@@ -95,7 +95,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   },
   "never": [
     "modifies tdd-subagent spec, contract, feature.json, or scripts",
-    "modifies tdd-state-machine spec, contract, feature.json, or scripts",
     "modifies workspace-structure.json"
   ]
 }

@@ -58,10 +58,8 @@ ANNOTATIONS = {
     "contract/":              "dispatch scripts, enforcement, templates",
     "policy":                 "philosophy, spec-rules, coding-rules",
     "policy/":                "philosophy, spec-rules, coding-rules",
-    "tdd-state-machine":      "tdd-step.py forward-only state machine",
-    "tdd-state-machine/":     "tdd-step.py forward-only state machine",
-    "tdd-subagent":           "TDD subagent dispatch protocol (dispatch-tdd-subagent.py)",
-    "tdd-subagent/":          "TDD subagent dispatch protocol (dispatch-tdd-subagent.py)",
+    "tdd-subagent":           "TDD subagent dispatch protocol (dispatch-tdd-subagent.py) + tdd-step.py forward-only state machine",
+    "tdd-subagent/":          "TDD subagent dispatch protocol (dispatch-tdd-subagent.py) + tdd-step.py forward-only state machine",
     "feature.json":           "feature manifest: owner, tdd_state, surface, deprecation_criterion",
     "docs/spec":              "spec and contract for this feature",
     "docs/spec/":             "spec and contract for this feature",
@@ -81,7 +79,7 @@ STRUCTURAL_DIRS = {
     "commands", "hooks", "skills", "agents", "scripts",
     "test", "enforcement", ".claude",
     "rabbit-cage", "contract", "policy",
-    "tdd-state-machine", "tdd-subagent",
+    "tdd-subagent",
     "rabbit-file", "rabbit-feature",
 }
 
