@@ -18,7 +18,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -469,3 +469,44 @@ def iterate_configurables_banner(*, repo_root: str):
                 alert_msg["color"],
             ))
     return out
+
+
+def emit_configurable_alert(feature_name: str, configurable_id: str,
+                            *, repo_root: str) -> dict:
+    """On-demand sibling of iterate_configurables_alerts: resolve a single
+    configurable by feature_name + configurable_id, evaluate its current
+    value against alert-on, return print_result on match, ok_result on
+    miss, or error_result when feature/configurable/alert-message cannot
+    be resolved.
+    """
+    fj = os.path.join(repo_root, ".claude", "features", feature_name,
+                       "feature.json")
+    if not os.path.isfile(fj):
+        return error_result(f"feature {feature_name!r} not found: {fj}")
+    try:
+        with open(fj) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        return error_result(f"feature.json unreadable for {feature_name!r}: {e}")
+    if not isinstance(data, dict):
+        return error_result(f"feature.json for {feature_name!r} is not a dict")
+    configuration = data.get("configuration")
+    if not isinstance(configuration, list):
+        return error_result(
+            f"configurable {configurable_id!r} not found in {feature_name!r}")
+    cfg = None
+    for entry in configuration:
+        if isinstance(entry, dict) and entry.get("id") == configurable_id:
+            cfg = entry
+            break
+    if cfg is None:
+        return error_result(
+            f"configurable {configurable_id!r} not found in {feature_name!r}")
+    alert_msg = cfg.get("alert-message")
+    if not isinstance(alert_msg, dict):
+        return error_result(
+            f"configurable {configurable_id!r} in {feature_name!r} has no alert-message")
+    current = _resolve_current_value(repo_root, cfg)
+    if current is None or current != cfg.get("alert-on"):
+        return ok_result()
+    return print_result(alert_msg["text"], alert_msg["icon"], alert_msg["color"])
