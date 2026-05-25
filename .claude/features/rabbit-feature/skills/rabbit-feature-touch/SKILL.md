@@ -136,8 +136,23 @@ own — the marker is the system of record, managed via
 ACTIVE, the default).
 
 - **If `.rabbit-human-approval-bypass` exists:**
-  - Emit a visible warning to the user:
-    `[🐇 rabbit 🐇] Step 4 SKIPPED: .rabbit-human-approval-bypass marker active. Run /rabbit-config human-approval true to turn the bypass off and require approval again.`
+  - Source the alert text from the centrally-declared `human-approval`
+    configurable in `rabbit-cage/feature.json` by invoking
+    `contract.lib.runtime.emit_configurable_alert('rabbit-cage',
+    'human-approval', repo_root=<repo-root>)`, e.g.:
+    ```bash
+    python3 -c "import sys; sys.path.insert(0, '.claude/features/contract'); from lib.runtime import emit_configurable_alert; r = emit_configurable_alert('rabbit-cage', 'human-approval', repo_root='.'); print(r)"
+    ```
+    Surface the returned `print_result` (its `text`, `icon`, and `color`
+    fields come from the configurable's `alert-message`, so this prose
+    stays in sync with the Stop-hook emission). Do NOT duplicate the
+    alert text in this SKILL.md — the configurable's `alert-message` is
+    the sole source of truth, and the brand prefix is owned by
+    `rabbit_print` (contract Inv 48).
+  - Operational guidance for the user: the bypass marker is
+    `.rabbit-human-approval-bypass` at the repo root, and it is revoked
+    by running `/rabbit-config human-approval true` (which removes the
+    marker and re-activates this gate).
   - Proceed to Step 5 immediately. Do NOT surface the impl-suggestion summary.
 - **If the marker file does NOT exist (default):**
   - For each feature, read `.rabbit/impl-suggestion-<feature-name>.json` and
