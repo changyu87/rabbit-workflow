@@ -22,33 +22,33 @@ def ko(msg):
     print(f"  FAIL {msg}")
 
 
-# Inv 1: owned surface entries present.
+# Inv 1: owned surface entries present (three entries post-v4.0.0 absorption).
 dispatch = os.path.join(FEATURE_DIR, "scripts", "dispatch-tdd-subagent.py")
+tdd_step = os.path.join(FEATURE_DIR, "scripts", "tdd-step.py")
 agent = os.path.join(FEATURE_DIR, "agents", "tdd-subagent.md")
 if os.path.isfile(dispatch):
     ok("inv1: scripts/dispatch-tdd-subagent.py exists")
 else:
     ko("inv1: scripts/dispatch-tdd-subagent.py missing")
+if os.path.isfile(tdd_step):
+    ok("inv1: scripts/tdd-step.py exists (absorbed from tdd-state-machine)")
+else:
+    ko("inv1: scripts/tdd-step.py missing")
 if os.path.isfile(agent):
     ok("inv1: agents/tdd-subagent.md exists")
 else:
     ko("inv1: agents/tdd-subagent.md missing")
 
-# Inv 1: no state-machine scripts in tdd-subagent/scripts/.
-banned = {"tdd-step.py", "tdd-context.py", "tdd-drift-check.py"}
+# Inv 1: only tdd-step.py belongs to the absorbed state-machine surface;
+# the other historical state-machine scripts (tdd-context.py, tdd-drift-check.py)
+# were retired and MUST NOT reappear under tdd-subagent/scripts/.
+banned = {"tdd-context.py", "tdd-drift-check.py"}
 scripts_dir = os.path.join(FEATURE_DIR, "scripts")
 present = set(os.listdir(scripts_dir)) & banned
 if present:
-    ko(f"inv1: state-machine scripts present in scripts/: {sorted(present)}")
+    ko(f"inv1: retired state-machine scripts present in scripts/: {sorted(present)}")
 else:
-    ok("inv1: no state-machine scripts in scripts/")
-
-# Inv 1: state-machine scripts live in tdd-state-machine.
-sm_step = os.path.join(REPO_ROOT, ".claude", "features", "tdd-state-machine", "scripts", "tdd-step.py")
-if os.path.isfile(sm_step):
-    ok("inv1: tdd-step.py present under tdd-state-machine/scripts/")
-else:
-    ko(f"inv1: tdd-step.py missing at {sm_step}")
+    ok("inv1: no retired state-machine scripts in scripts/")
 
 # Inv 2 + Inv 28: feature.json surface arrays empty, fields conform to flat schema.
 feature_json = os.path.join(FEATURE_DIR, "feature.json")
