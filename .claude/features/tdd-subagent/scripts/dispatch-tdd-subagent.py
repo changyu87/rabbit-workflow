@@ -264,7 +264,7 @@ def main(argv):
         repo_root, ".claude", "features", "rabbit-file", "scripts", "item-status.py"
     )
 
-    # Build close-call block for STEP 9 UNLOCK (Inv 19/20: all close
+    # Build close-call block for STEP 7 UNLOCK (Inv 19/20: all close
     # calls route through rabbit-file's `item-status.py set ...`). One
     # loop, one template — primary and secondary differ only by comment,
     # reason, and the HANDOFF label string. Baseline prompt (no items)
