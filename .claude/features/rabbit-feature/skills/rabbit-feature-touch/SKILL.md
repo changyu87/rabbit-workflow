@@ -138,8 +138,6 @@ ACTIVE, the default).
 - **If `.rabbit-human-approval-bypass` exists:**
   - Emit a visible warning to the user:
     `[🐇 rabbit 🐇] Step 4 SKIPPED: .rabbit-human-approval-bypass marker active. Run /rabbit-config human-approval true to turn the bypass off and require approval again.`
-  - Pass `--human-approval-gate false` to the Step 5 `dispatch-tdd-subagent.py`
-    invocation.
   - Proceed to Step 5 immediately. Do NOT surface the impl-suggestion summary.
 - **If the marker file does NOT exist (default):**
   - For each feature, read `.rabbit/impl-suggestion-<feature-name>.json` and
@@ -153,8 +151,7 @@ ACTIVE, the default).
   - Wait for explicit in-conversation user approval ("looks good", "go ahead",
     or equivalent). If the user requests changes, invoke rabbit-feature-spec again for
     the affected features, then return to this step.
-  - Pass `--human-approval-gate true` (or omit the flag, since `true` is the
-    default) to the Step 5 `dispatch-tdd-subagent.py` invocation.
+  - Proceed to Step 5.
 
 ### Step 5 — Dispatch TDD Subagents
 
@@ -167,8 +164,7 @@ PROMPT=$(python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py 
   --scope <feature-name> \
   --spec .claude/features/<feature-name>/docs/spec/spec.md \
   --impl-suggestion .rabbit/impl-suggestion-<feature-name>.json \
-  [--linked-item <bug-or-item-dir> --item-type <bug|backlog>] \
-  [--human-approval-gate false])
+  [--linked-item <bug-or-item-dir> --item-type <bug|backlog>])
 ```
 
 Agent tool call (dispatch the assembled prompt — main session only):
@@ -177,7 +173,7 @@ Agent tool call (dispatch the assembled prompt — main session only):
 Agent(model: opus, prompt: $PROMPT)
 ```
 
-Each subagent runs its named steps (SPEC-READ → UNLOCK), writes
+Each subagent runs its named steps (LOCK → UNLOCK), writes
 `.rabbit/tdd-report-<feature-name>.json`, and emits HANDOFF.
 
 ### Step 6 — Collect and Verify HANDOFFs

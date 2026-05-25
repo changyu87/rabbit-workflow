@@ -1,9 +1,9 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-feature",
-  "version": "1.12.2",
+  "version": "1.13.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Dispatcher-side feature-touch orchestration surface. Owns the rabbit-feature-touch skill and four general-purpose helper skills (rabbit-feature-scope, rabbit-feature-spec, rabbit-feature-new, rabbit-feature-audit) plus their backing scripts (resolve-scope.py, format-feature-context.py, new-feature.py). Executor-side TDD machinery (dispatch-tdd-subagent.py, tdd-step.py) lives in tdd-subagent and is consumed via the cross-feature contract.",
   "surface": {
     "hooks": [],
@@ -58,5 +58,5 @@
   ],
   "runtime": {},
   "configuration": [],
-  "spec_no_change_reason": "Spec change for Inv 42 (B/B item materialization, RABBIT-FEATURE-BUG-7) committed at c2f943df, before TDD subagent dispatch"
+  "spec_no_change_reason": "Spec changes for Inv 10/11 retirement (TDD-SUBAGENT-BACKLOG-19 cascade) committed at d2dc5157, before TDD subagent dispatch"
 }
