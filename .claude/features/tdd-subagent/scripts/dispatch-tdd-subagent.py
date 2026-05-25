@@ -240,7 +240,7 @@ def main(argv):
         return 2
 
     feature_dir = os.path.join(repo_root, feature_path)
-    tdd_step_py = os.path.join(repo_root, ".claude", "features", "tdd-state-machine", "scripts", "tdd-step.py")
+    tdd_step_py = os.path.join(repo_root, ".claude", "features", "tdd-subagent", "scripts", "tdd-step.py")
 
     spec_content = _read_file(args.spec)
     impl_suggestion_block = ""

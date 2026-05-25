@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 3.2.0
+version: 4.0.0
 template_version: 2.1.0
 owner: rabbit-workflow team
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -22,6 +22,10 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
         "stdin": "none. Required flags: --scope <feature-name>, --spec <spec-path>. Optional: --impl-suggestion <path>, --linked-item <item-dir> + --item-type bug|backlog (primary), --linked-items <feature>:<type>:<id>[,...] (secondaries), --human-approval-gate true|false (default true), --code-review-full-loop, --max-iterations N (default 3, min 1).",
         "stdout": "assembled per-feature TDD-cycle prompt with the 9 labelled steps (SPEC-READ, HUMAN-APPROVAL, LOCK, TEST-WRITE, TEST-RED, IMPLEMENT, CODE-REVIEW, TEST-GREEN, UNLOCK). The script never invokes any agent; callers dispatch the agent with this prompt.",
         "exit": "0=success, 2=invocation error (missing/invalid flag, missing --spec file, malformed --linked-items triple, unknown --scope feature)"
+      },
+      {
+        "path": ".claude/features/tdd-subagent/scripts/tdd-step.py",
+        "description": "Forward-only TDD state machine: show | next | transitions | transition. Honours _FORWARD_ALT branch test-green -> spec-update. stdout uses the centralized [🐇 rabbit 🐇] brand with ANSI green for accepted transitions; stderr uses ANSI red for forced/denied transitions."
       }
     ],
     "agents": [
@@ -37,7 +41,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   },
   "reads": {
     "files": [
-      ".claude/features/tdd-state-machine/scripts/tdd-step.py",
       ".claude/features/contract/scripts/rabbit_print.py",
       "<feature-dir>/feature.json",
       "<feature-dir>/docs/spec/spec.md",
@@ -61,8 +64,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ]
   },
   "never": [
-    "Modifies tdd-step.py — owned by tdd-state-machine.",
-    "Vendors or copies state-machine scripts into this feature's scripts/ directory.",
     "Owns deployment of any script into .claude/agents/ — that is the contract feature's responsibility.",
     "Writes outside the dispatched subagent's declared scope directory.",
     "Calls an agent directly; dispatch-tdd-subagent.py emits a prompt only.",

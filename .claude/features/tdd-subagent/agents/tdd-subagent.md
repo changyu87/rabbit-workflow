@@ -23,8 +23,8 @@ Your task input contains:
 
 The deployed agent scripts directory is `.claude/agents/tdd-subagent/scripts/`.
 The dispatched prompt assembled by `dispatch-tdd-subagent.py` always passes the
-absolute path to `tdd-step.py` and the other helpers (sourced from the
-`tdd-state-machine` feature); use exactly the path the prompt provides — do not
+absolute path to `tdd-step.py` and the other helpers (sourced from this
+feature); use exactly the path the prompt provides — do not
 resolve a fork yourself.
 
 Follow the steps exactly as given in your task. The steps are:
