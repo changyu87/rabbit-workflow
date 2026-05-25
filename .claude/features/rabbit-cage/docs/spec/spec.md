@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.5.0
+version: 5.6.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -208,6 +208,18 @@ string BEFORE splitting on `;|&` segment delimiters.
     `generate-claude-md` content producer that emits `CLAUDE.md`. The
     policy feature owns the rule files those imports point at, but not
     the import-resolution invariant itself.
+15. Every hook command string registered in `.claude/settings.json` (the
+    `hooks[<event>][].hooks[].command` field) MUST be CWD-independent.
+    Specifically, the command begins with `$(git rev-parse --show-toplevel)/`
+    so that `/bin/sh` resolves the absolute path to `.claude/hooks/<name>.py`
+    at hook-fire time regardless of the session's current working directory.
+    A bare relative path such as `.claude/hooks/scope-guard.py` is forbidden
+    because Claude Code's Bash tool persists CWD between calls; after any
+    `cd` into a subdirectory the relative path resolves outside the repo
+    and the hook silently fails (non-blocking `No such file or directory`).
+    Emission of the command string is the responsibility of
+    `contract.lib.publish.publish_hook`; rabbit-cage owns the user-visible
+    requirement that the deployed registration fire correctly from any CWD.
 
 ## Tech Stack
 
