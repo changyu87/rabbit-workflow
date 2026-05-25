@@ -1,6 +1,6 @@
 ---
 feature: rabbit-file
-version: 0.5.1
+version: 0.5.2
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when a unified tracking system replaces file-based bug and backlog management
@@ -129,6 +129,18 @@ origin/bug-backlog-files root:
   decorrelates concurrent pushers. After 16 attempts the operation
   raises RuntimeError with a clear diagnostic that names the attempt
   count and the last underlying error.
+
+- branch_ops local-lock retry: every `git fetch` and `git worktree add`
+  invocation issued by `branch_ops._worktree()` MUST be wrapped in a
+  bounded retry loop that re-attempts on transient ref-transaction
+  collisions on the shared `.git/refs` and `.git/index` files. The
+  retryable stderr patterns are: `unable to create ... .lock`,
+  `cannot lock`, `index.lock`, `could not lock`, and
+  `incorrect old value provided` (the last covers concurrent-fetch races
+  on remote-tracking refs). On exhaustion the helper raises RuntimeError
+  with the failing command and last stderr. This invariant is distinct
+  from the push-retry invariant above: this handles LOCAL git lock and
+  ref-transaction contention, not REMOTE push rejection.
 
 - branch_ops.allocate_id MUST be called before commit_item (counter reserves the ID slot).
 
