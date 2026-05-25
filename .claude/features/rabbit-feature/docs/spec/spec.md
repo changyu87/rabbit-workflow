@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.13.0
+version: 1.14.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -112,11 +112,22 @@ Scripts (under `scripts/`):
 
 11. *(Retired — see CHANGELOG.md.)*
 
-12. **Step 4 brand prefix.** The SKILL.md Step 4 bypass-active warning
-    uses the canonical brand prefix `[🐇 rabbit 🐇]` and names both
-    the marker path (`.rabbit-human-approval-bypass`) and the revoke
-    command (`/rabbit-config human-approval true`) in the warning
-    text.
+12. **Step 4 alert routing via `emit_configurable_alert`.** The SKILL.md
+    Step 4 bypass-active path MUST instruct the dispatcher to source the
+    alert by invoking
+    `contract.lib.runtime.emit_configurable_alert('rabbit-cage',
+    'human-approval', repo_root=<repo-root>)`. The returned
+    `print_result` carries the centrally-declared `alert-message` from
+    `rabbit-cage/feature.json`'s `human-approval` configurable (text,
+    icon, color); the brand prefix `[🐇 rabbit 🐇]` is owned by
+    `rabbit_print` (Inv 48 of `contract`), so the SKILL.md MUST NOT
+    inline a hardcoded brand prefix or duplicate the alert-message text
+    in prose. The SKILL.md Step 4 prose MUST still name the marker path
+    (`.rabbit-human-approval-bypass`) and the revoke command
+    (`/rabbit-config human-approval true`) as operational guidance for
+    the user — both are operational (skill-specific) instructions
+    distinct from the alert-message text. The sole source of truth for
+    the alert text is the configurable's `alert-message` field.
 
 13. **B/B mode reads `item.json`.** The SKILL.md B/B mode reads the
     linked item JSON from `<item-dir>/item.json` (never `bug.json`) and
