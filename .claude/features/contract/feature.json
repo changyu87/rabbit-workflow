@@ -1,8 +1,8 @@
 {
   "name": "contract",
-  "version": "1.32.0",
+  "version": "1.33.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "surface": {
     "hooks": [],
@@ -12,5 +12,5 @@
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-25",
   "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
-  "spec_no_change_reason": "spec.md was rewritten in commit 98ce8f2b earlier on this branch (Wave 9 spec rewrite); subagent picks up implementation, tests, and CHANGELOG only"
+  "spec_no_change_reason": "spec Inv 50 added in pre-dispatch commit 4812f1b9; subagent picks up implementation + tests"
 }
