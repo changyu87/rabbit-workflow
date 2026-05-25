@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Inv 4-16, 41, 42: rabbit-feature-touch SKILL.md content.
+"""Inv 4-9, 12-16, 41, 42: rabbit-feature-touch SKILL.md content.
 
 Locks the rabbit-feature-touch SKILL.md (and the deployed copy) against
 drift on the seven-step sequence, scope-resolution invocation, spec
 authoring invocation, Step 3 spec-commit obligation, Step 4 human-approval
 semantics (dispatcher-side gate, bypass marker mechanism, branch
 documentation, brand prefix), B/B mode item.json reads, B/B item
-materialization documentation, and Red Flags content.
+materialization documentation, and Red Flags content. Inv 10 and Inv 11
+retired in the TDD-SUBAGENT-BACKLOG-19 cascade (the --human-approval-gate
+CLI flag was removed in tdd-subagent v5.0.0); a regression guard asserts
+the flag string is absent from both source and deployed SKILL.md.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -145,24 +148,25 @@ def test_inv9_bypass_check_is_first_action() -> None:
             )
 
 
-# Inv 10: bypass-active branch passes --human-approval-gate false
-def test_inv10_bypass_active_passes_gate_false() -> None:
-    body = _step_body(_text(), 4)
-    assert "--human-approval-gate false" in body, (
-        "Step 4 must document passing '--human-approval-gate false' "
-        "when the bypass marker is present"
-    )
-    assert "dispatch-tdd-subagent.py" in body, (
-        "Step 4 must reference 'dispatch-tdd-subagent.py' as the Step 5 invocation"
+# Inv 10 + Inv 11 retired (TDD-SUBAGENT-BACKLOG-19 cascade) — the
+# --human-approval-gate CLI flag was removed in tdd-subagent v5.0.0, so
+# the assertions that the SKILL.md documents passing that flag no longer
+# apply. Regression guard: the flag string MUST NOT appear anywhere in
+# either the source or deployed SKILL.md.
+def test_no_human_approval_gate_flag_in_source_skill() -> None:
+    text = _text()
+    assert "--human-approval-gate" not in text, (
+        "source SKILL.md must NOT reference the retired '--human-approval-gate' "
+        "flag (TDD-SUBAGENT-BACKLOG-19 cascade)"
     )
 
 
-# Inv 11: bypass-absent branch documents --human-approval-gate true (or default)
-def test_inv11_bypass_absent_documents_gate_true() -> None:
-    body = _step_body(_text(), 4)
-    assert "--human-approval-gate true" in body, (
-        "Step 4 must document passing '--human-approval-gate true' on the "
-        "default (marker-absent) path"
+def test_no_human_approval_gate_flag_in_deployed_skill() -> None:
+    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
+    text = DEPLOYED_SKILL.read_text(encoding="utf-8")
+    assert "--human-approval-gate" not in text, (
+        "deployed SKILL.md must NOT reference the retired '--human-approval-gate' "
+        "flag (TDD-SUBAGENT-BACKLOG-19 cascade)"
     )
 
 
