@@ -74,12 +74,20 @@ if res.returncode == 2:
 else:
     ko(f"inv4: expected 2 for max-iterations 0, got {res.returncode}")
 
-# Inv 5: --human-approval-gate invalid value rejected.
-res = run_dispatch("--human-approval-gate", "enabled")
+# Inv 4: --human-approval-gate flag retired (TDD-SUBAGENT-BACKLOG-19); argparse
+# must reject it as an unrecognized argument. Cover both the prior 'true' and
+# 'false' values to guarantee no residual codepath honours the flag.
+res = run_dispatch("--human-approval-gate", "true")
 if res.returncode == 2:
-    ok("inv5: --human-approval-gate 'enabled' rejected (choices=true/false)")
+    ok("inv4: --human-approval-gate true rejected (flag retired)")
 else:
-    ko(f"inv5: expected 2 for invalid gate value, got {res.returncode}")
+    ko(f"inv4: expected 2 for retired --human-approval-gate true, got {res.returncode}")
+
+res = run_dispatch("--human-approval-gate", "false")
+if res.returncode == 2:
+    ok("inv4: --human-approval-gate false rejected (flag retired)")
+else:
+    ko(f"inv4: expected 2 for retired --human-approval-gate false, got {res.returncode}")
 
 # Inv 6: --linked-items malformed entry (wrong colon count) → exit 2.
 res = run_dispatch("--linked-items", "rabbit-cage:bug")

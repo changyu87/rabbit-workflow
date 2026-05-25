@@ -28,9 +28,9 @@ prompt = res.stdout
 
 # Inv 14: IMPLEMENT step has the commit-inside-loop pattern with the
 # correct conventional-commit verbs.
-impl_match = re.search(r"STEP 6 — IMPLEMENT\n═+\n(.*?)\n═+\nSTEP 7", prompt, re.DOTALL)
+impl_match = re.search(r"STEP 4 — IMPLEMENT\n═+\n(.*?)\n═+\nSTEP 5", prompt, re.DOTALL)
 if not impl_match:
-    ko("inv14: STEP 6 IMPLEMENT section not isolated")
+    ko("inv14: STEP 4 IMPLEMENT section not isolated")
 else:
     impl = impl_match.group(1)
     if re.search(r"git add \S+/?$", impl, re.MULTILINE) or "git add " in impl:
@@ -54,9 +54,9 @@ else:
         ko(f"inv14: commit ordering wrong (commit={commit_pos}, transition={transition_pos})")
 
 # Inv 15: TEST-GREEN captures IMPL_SHA BEFORE writing tdd-report.
-tg_match = re.search(r"STEP 8 — TEST-GREEN\n═+\n(.*?)\n═+\nSTEP 9", prompt, re.DOTALL)
+tg_match = re.search(r"STEP 6 — TEST-GREEN\n═+\n(.*?)\n═+\nSTEP 7", prompt, re.DOTALL)
 if not tg_match:
-    ko("inv15: STEP 8 TEST-GREEN section not isolated")
+    ko("inv15: STEP 6 TEST-GREEN section not isolated")
 else:
     tg = tg_match.group(1)
     sha_pos = tg.find("IMPL_SHA=$(git rev-parse HEAD)")
@@ -71,9 +71,9 @@ else:
         ko("inv15: tdd-report JSON does not bind impl_commit to $IMPL_SHA")
 
 # Inv 16: UNLOCK chore commit has the documented pattern.
-unlock_match = re.search(r"STEP 9 — UNLOCK\n═+\n(.*?)\n═+\n", prompt, re.DOTALL)
+unlock_match = re.search(r"STEP 7 — UNLOCK\n═+\n(.*?)\n═+\n", prompt, re.DOTALL)
 if not unlock_match:
-    ko("inv16: STEP 9 UNLOCK section not isolated")
+    ko("inv16: STEP 7 UNLOCK section not isolated")
 else:
     body = unlock_match.group(1)
     if 'chore(tdd-subagent): advance tdd_state to test-green' in body:

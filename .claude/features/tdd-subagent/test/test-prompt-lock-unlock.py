@@ -27,9 +27,9 @@ if res.returncode != 0:
 prompt = res.stdout
 
 # Inv 12: LOCK section uses 'touch' but not 'trap'.
-lock_match = re.search(r"STEP 3 — LOCK\n═+\n(.*?)\n═+\nSTEP 4", prompt, re.DOTALL)
+lock_match = re.search(r"STEP 1 — LOCK\n═+\n(.*?)\n═+\nSTEP 2", prompt, re.DOTALL)
 if not lock_match:
-    ko("inv12: STEP 3 LOCK section not isolated")
+    ko("inv12: STEP 1 LOCK section not isolated")
 else:
     lock_body = lock_match.group(1)
     if "touch " in lock_body and ".rabbit-scope-active-tdd-subagent" in lock_body:
@@ -47,9 +47,9 @@ else:
         ko("inv12: LOCK contains an executable `trap '...'` invocation")
 
 # Inv 12: UNLOCK section does explicit rm of the per-feature marker.
-unlock_match = re.search(r"STEP 9 — UNLOCK\n═+\n(.*?)\n═+\n", prompt, re.DOTALL)
+unlock_match = re.search(r"STEP 7 — UNLOCK\n═+\n(.*?)\n═+\n", prompt, re.DOTALL)
 if not unlock_match:
-    ko("inv12: STEP 9 UNLOCK section not isolated")
+    ko("inv12: STEP 7 UNLOCK section not isolated")
 else:
     unlock_body = unlock_match.group(1)
     if re.search(r"rm -f \S+\.rabbit-scope-active-tdd-subagent", unlock_body):
