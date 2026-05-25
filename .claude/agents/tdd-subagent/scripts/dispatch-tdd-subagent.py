@@ -50,6 +50,29 @@ _BYPASS_NOTE_TEXT = (
 )
 
 
+def _validate_linked_item(path_str):
+    """Inv 30: validate --linked-item path layout.
+
+    Resolves `path_str` and requires the canonical rabbit-file storage
+    layout `.../rabbit/features/<feature>/<bugs|backlogs>/<id>/`. On
+    failure, writes a diagnostic naming both the expected layout and the
+    observed path tail to stderr and exits 2 (BEFORE any stdout). On
+    success, returns the validated feature name (the segment at -3) so
+    callers can wire it through the close-call block (Inv 19).
+    """
+    resolved = _Path(path_str).resolve()
+    parts = resolved.parts
+    if len(parts) < 4 or parts[-4] != "features" or parts[-2] not in ("bugs", "backlogs"):
+        tail = "/".join(parts[-4:]) if len(parts) >= 4 else "/".join(parts)
+        sys.stderr.write(
+            "ERROR: --linked-item path layout invalid: "
+            "expected `.../rabbit/features/<feature>/<bugs|backlogs>/<id>/`; "
+            f"observed tail: {tail}\n"
+        )
+        sys.exit(2)
+    return parts[-3]
+
+
 def _repo_root(script_dir):
     env = os.environ.get("RABBIT_ROOT")
     if env:
@@ -154,6 +177,13 @@ def main(argv):
     if args.item_type and not args.linked_item:
         sys.stderr.write("ERROR: --item-type requires --linked-item\n")
         return 2
+    # Inv 30: validate --linked-item path layout BEFORE any stdout. The
+    # helper exits(2) with a stderr diagnostic on failure; on success it
+    # returns the validated feature name (segments[-3]) for use in the
+    # close-call block below (Inv 19).
+    validated_feature_from_link = None
+    if args.linked_item:
+        validated_feature_from_link = _validate_linked_item(args.linked_item)
     if args.max_iterations < 1:
         sys.stderr.write("ERROR: --max-iterations must be >= 1\n")
         return 2
@@ -246,9 +276,12 @@ def main(argv):
     # is unchanged.
     items = []
     if args.linked_item and args.item_type:
-        parts = [p for p in args.linked_item.replace("\\", "/").split("/") if p]
-        feat = parts[-3] if len(parts) >= 3 else "unknown"
-        iid = parts[-1] if parts else "unknown"
+        # Inv 30: feature/id come from the validated resolved path so the
+        # downstream item-status.py call cannot drift from the actual
+        # storage layout. validated_feature_from_link is set above.
+        resolved_parts = _Path(args.linked_item).resolve().parts
+        feat = validated_feature_from_link
+        iid = resolved_parts[-1]
         items.append({
             "feat": feat, "typ": args.item_type, "iid": iid,
             "comment": "Primary linked item (closed by impl commit):",
