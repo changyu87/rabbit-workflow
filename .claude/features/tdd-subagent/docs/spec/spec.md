@@ -84,7 +84,7 @@ upstream commit obligation lives in the caller's spec
    `--code-review-full-loop` (boolean flag),
    `--max-iterations N` (default `3`, minimum `1`).
 
-5. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19.)*
+5. *(Retired — see CHANGELOG.md.)*
 
 6. **`--linked-items` validation.** Each comma-separated entry MUST have
    exactly two colons separating non-empty `<feature>`, `<type>`, `<id>`
@@ -129,7 +129,7 @@ upstream commit obligation lives in the caller's spec
     explicitly via `rm -f <repo_root>/.rabbit-scope-active-<feature>`
     after the chore commit and before HANDOFF.
 
-13. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19.)*
+13. *(Retired — see CHANGELOG.md.)*
 
 14. **IMPLEMENT commit ordering.** Within the IMPLEMENT step, the
     assembled prompt instructs the subagent to commit
@@ -225,9 +225,9 @@ upstream commit obligation lives in the caller's spec
 
 ### `--human-approval-gate` branch (retired)
 
-25. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19.)*
+25. *(Retired — see CHANGELOG.md.)*
 
-26. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19.)*
+26. *(Retired — see CHANGELOG.md.)*
 
 ### Agent definition
 

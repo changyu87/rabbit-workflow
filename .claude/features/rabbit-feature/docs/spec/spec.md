@@ -108,9 +108,9 @@ Scripts (under `scripts/`):
    `.rabbit-human-approval-bypass` check as the FIRST action of the
    step, before any impl-suggestion surfacing or in-conversation wait.
 
-10. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19 cascade.)*
+10. *(Retired — see CHANGELOG.md.)*
 
-11. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19 cascade.)*
+11. *(Retired — see CHANGELOG.md.)*
 
 12. **Step 4 brand prefix.** The SKILL.md Step 4 bypass-active warning
     uses the canonical brand prefix `[🐇 rabbit 🐇]` and names both
