@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.12.2
+version: 1.13.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -21,7 +21,7 @@ Owns the dispatcher-side feature-touch orchestration surface: the
 `rabbit-feature-audit`) and their backing scripts.
 
 The executor-side TDD machinery (`dispatch-tdd-subagent.py`,
-`tdd-step.py`, the 9-step TDD cycle) lives in `tdd-subagent`. This
+`tdd-step.py`, the 7-step TDD cycle) lives in `tdd-subagent`. This
 feature consumes it via the cross-feature contract declared in
 `contract.md`.
 
@@ -108,15 +108,9 @@ Scripts (under `scripts/`):
    `.rabbit-human-approval-bypass` check as the FIRST action of the
    step, before any impl-suggestion surfacing or in-conversation wait.
 
-10. **Step 4 bypass-active branch documents `--human-approval-gate
-    false`.** When the marker is present, the SKILL.md Step 4 documents
-    passing `--human-approval-gate false` to the Step 5
-    `dispatch-tdd-subagent.py` invocation.
+10. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19 cascade.)*
 
-11. **Step 4 bypass-absent branch documents `--human-approval-gate
-    true`.** When the marker is absent, the SKILL.md Step 4 documents
-    passing `--human-approval-gate true` (or notes that `true` is the
-    default).
+11. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19 cascade.)*
 
 12. **Step 4 brand prefix.** The SKILL.md Step 4 bypass-active warning
     uses the canonical brand prefix `[🐇 rabbit 🐇]` and names both
@@ -349,7 +343,7 @@ Scripts (under `scripts/`):
 
 ## What this feature does NOT define
 
-- The TDD subagent's 9-step cycle, the `tdd-step.py` state machine, or
+- The TDD subagent's 7-step cycle, the `tdd-step.py` state machine, or
   the `dispatch-tdd-subagent.py` prompt assembler — owned by
   `tdd-subagent`.
 - The build pipeline that copies skills into `.claude/skills/` — owned
@@ -364,7 +358,7 @@ listed below, each tagged with the invariant(s) it covers.
 
 - `test-build-source.py` — Inv 1
 - `test-cross-feature-interface.py` — Inv 2, 3
-- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 41, 42
+- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 41, 42
 - `test-scope-skill.py` — Inv 24
 - `test-scope-scripts.py` — Inv 17, 18, 19, 20, 21, 22, 23, 25
 - `test-spec-skill.py` — Inv 26, 27, 28, 29, 30, 31
