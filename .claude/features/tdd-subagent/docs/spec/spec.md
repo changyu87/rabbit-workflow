@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 4.0.1
+version: 5.0.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -14,9 +14,10 @@ status: active
 Provides `dispatch-tdd-subagent.py` (a prompt assembler), `tdd-step.py`
 (the forward-only TDD state machine), and the `tdd-subagent` agent
 definition. The assembled prompt drives a single feature through the
-9-step TDD cycle (SPEC-READ → HUMAN-APPROVAL → LOCK → TEST-WRITE →
-TEST-RED → IMPLEMENT → CODE-REVIEW → TEST-GREEN → UNLOCK), invoking
-`tdd-step.py` at each state transition.
+7-step TDD cycle (LOCK → TEST-WRITE → TEST-RED → IMPLEMENT →
+CODE-REVIEW → TEST-GREEN → UNLOCK), invoking `tdd-step.py` at each
+state transition. Spec context-loading and the human-approval gate are
+the dispatcher's responsibility, not the subagent's.
 
 The `rabbit-feature-touch` orchestration skill that consumes this
 feature's dispatch prompt is owned by `rabbit-feature`. The retired
@@ -42,11 +43,12 @@ runner is `test/run.py`.
 
 ## Pre-Conditions
 
-`dispatch-tdd-subagent.py`'s STEP 1 SPEC-READ diffs the spec against
-`HEAD~1` (Inv 13). Callers MUST commit the spec file referenced by
-`--spec` BEFORE invocation; otherwise the diff returns the wrong delta.
-Codification of the upstream commit obligation lives in the caller's
-spec (`rabbit-feature`).
+Callers MUST commit the spec file referenced by `--spec` BEFORE
+invocation; the dispatcher's spec-authoring step must produce a clean
+committed baseline so the embedded `{spec_content}` interpolation in
+the assembled prompt reflects the post-edit state. Codification of the
+upstream commit obligation lives in the caller's spec
+(`rabbit-feature`).
 
 ## Invariants
 
@@ -79,13 +81,10 @@ spec (`rabbit-feature`).
    `--linked-item` + `--item-type bug|backlog` (optional primary item),
    `--linked-items <feature>:<type>:<id>[,...]` (optional secondary items;
    `<type>` ∈ {`bug`, `backlog`}),
-   `--human-approval-gate true|false` (default `true`),
    `--code-review-full-loop` (boolean flag),
    `--max-iterations N` (default `3`, minimum `1`).
 
-5. **Boolean flag vocabulary.** Boolean values for `--human-approval-gate`
-   are exactly `true` or `false`. No other vocabulary
-   (`enabled`/`disabled`, `yes`/`no`, etc.) is accepted.
+5. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19.)*
 
 6. **`--linked-items` validation.** Each comma-separated entry MUST have
    exactly two colons separating non-empty `<feature>`, `<type>`, `<id>`
@@ -99,10 +98,12 @@ spec (`rabbit-feature`).
    scope marker, written at LOCK and removed at UNLOCK. Distinct
    per-feature markers permit simultaneous dispatch across features.
 
-8. **9-step section banners.** The assembled prompt contains a labelled
-   section per step using the names `SPEC-READ`, `HUMAN-APPROVAL`,
-   `LOCK`, `TEST-WRITE`, `TEST-RED`, `IMPLEMENT`, `CODE-REVIEW`,
-   `TEST-GREEN`, `UNLOCK`, in that order.
+8. **7-step section banners.** The assembled prompt contains a labelled
+   section per step using the names `LOCK`, `TEST-WRITE`, `TEST-RED`,
+   `IMPLEMENT`, `CODE-REVIEW`, `TEST-GREEN`, `UNLOCK`, in that order,
+   numbered STEP 1 through STEP 7. Spec context-loading and human
+   approval are owned by the dispatcher (`rabbit-feature-touch`) and
+   absent from the assembled prompt.
 
 9. **E2E test rule.** The assembled prompt declares that every spec
    behaviour MUST have a corresponding end-to-end test, and that the
@@ -128,8 +129,7 @@ spec (`rabbit-feature`).
     explicitly via `rm -f <repo_root>/.rabbit-scope-active-<feature>`
     after the chore commit and before HANDOFF.
 
-13. **SPEC-READ diff target.** The assembled prompt's SPEC-READ step
-    runs `git diff HEAD~1 -- <feature_dir>/docs/spec/`.
+13. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19.)*
 
 14. **IMPLEMENT commit ordering.** Within the IMPLEMENT step, the
     assembled prompt instructs the subagent to commit
@@ -223,19 +223,11 @@ spec (`rabbit-feature`).
     `.claude/features/contract/scripts/rabbit_print.py`. The script
     contains no inline ANSI escape codes and no inline brand strings.
 
-### `--human-approval-gate` branch
+### `--human-approval-gate` branch (retired)
 
-25. **`--human-approval-gate true` branch.** With
-    `--human-approval-gate true` (default), the assembled prompt
-    contains a STEP 2 HUMAN-APPROVAL section instructing the subagent
-    to invoke `Skill("superpowers:writing-plans")`, present the
-    implementation summary to the user, and wait for explicit approval
-    before STEP 3 LOCK.
+25. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19.)*
 
-26. **`--human-approval-gate false` branch.** With
-    `--human-approval-gate false`, the assembled prompt's STEP 2
-    HUMAN-APPROVAL section is a one-line stub stating the step is
-    skipped.
+26. *(Retired — see CHANGELOG.md, TDD-SUBAGENT-BACKLOG-19.)*
 
 ### Agent definition
 
