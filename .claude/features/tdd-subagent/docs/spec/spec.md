@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 3.3.0
+version: 4.0.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -11,16 +11,17 @@ status: active
 
 ## Purpose
 
-Provides `dispatch-tdd-subagent.py` (a prompt assembler) and the
-`tdd-subagent` agent definition. The assembled prompt drives a single
-feature through the 9-step TDD cycle
-(SPEC-READ → HUMAN-APPROVAL → LOCK → TEST-WRITE → TEST-RED → IMPLEMENT →
-CODE-REVIEW → TEST-GREEN → UNLOCK).
+Provides `dispatch-tdd-subagent.py` (a prompt assembler), `tdd-step.py`
+(the forward-only TDD state machine), and the `tdd-subagent` agent
+definition. The assembled prompt drives a single feature through the
+9-step TDD cycle (SPEC-READ → HUMAN-APPROVAL → LOCK → TEST-WRITE →
+TEST-RED → IMPLEMENT → CODE-REVIEW → TEST-GREEN → UNLOCK), invoking
+`tdd-step.py` at each state transition.
 
-The TDD state machine (`tdd-step.py`, `tdd-context.py`,
-`tdd-drift-check.py`) is owned by `tdd-state-machine`. The
-`rabbit-feature-touch` orchestration skill that consumes this feature's
-dispatch prompt is owned by `rabbit-feature`.
+The `rabbit-feature-touch` orchestration skill that consumes this
+feature's dispatch prompt is owned by `rabbit-feature`. The retired
+`tdd-state-machine` feature was absorbed into this one at v4.0.0; its
+14 invariants now appear below renumbered as Inv 31–44.
 
 ## Scripting Tech Stack
 
@@ -32,6 +33,10 @@ runner is `test/run.py`.
 
 - `scripts/dispatch-tdd-subagent.py` — assembles a per-feature TDD-cycle
   prompt to stdout; the script itself does not invoke any agent.
+- `scripts/tdd-step.py` — the forward-only TDD state machine
+  (`show | next | transitions | transition`); invoked by the assembled
+  prompt at each state transition (and directly by any other caller that
+  needs to advance a feature's `tdd_state`).
 - `agents/tdd-subagent.md` — the agent definition dispatched by callers
   using the assembled prompt.
 
@@ -47,13 +52,12 @@ spec (`rabbit-feature`).
 
 ### Surface scope
 
-1. **Owned surface.** This feature owns exactly two surface entries:
-   `scripts/dispatch-tdd-subagent.py` and `agents/tdd-subagent.md`.
-   No state-machine script (`tdd-step.py`, `tdd-context.py`,
-   `tdd-drift-check.py`) appears under
-   `.claude/features/tdd-subagent/scripts/`. References to a state-machine
-   script from within this feature resolve to its path under
-   `.claude/features/tdd-state-machine/scripts/`.
+1. **Owned surface.** This feature owns exactly three surface entries:
+   `scripts/dispatch-tdd-subagent.py`, `scripts/tdd-step.py`, and
+   `agents/tdd-subagent.md`. The state-machine script `tdd-step.py`
+   lives at `.claude/features/tdd-subagent/scripts/tdd-step.py`
+   (absorbed from the retired `tdd-state-machine` feature at v4.0.0).
+   The `.claude/features/tdd-state-machine/` directory MUST NOT exist.
 
 2. **`feature.json` surface fields.** `surface.hooks`, `surface.commands`,
    and `surface.skills` in `feature.json` are each `[]`. This feature
@@ -253,7 +257,7 @@ spec (`rabbit-feature`).
     declare the meta-contract sections `manifest`, `runtime`, and
     `configuration`. The shapes are exactly:
 
-    - `manifest` is a list of length 2 whose entries are, in order:
+    - `manifest` is a list of length 3 whose entries are, in order:
       1. `{"api": "publish_agent", "args": {"source":
          "agents/tdd-subagent.md"}}` — deploys the agent definition.
          `publish_agent` is a convenience wrapper that auto-derives the
@@ -266,19 +270,129 @@ spec (`rabbit-feature`).
          directory. `publish_file` requires explicit `dest` because the
          deployment path is NOT the `.claude/agents/<basename>` location
          that `publish_agent` would derive.
+      3. `{"api": "publish_file", "args": {"source":
+         "scripts/tdd-step.py", "dest":
+         ".claude/agents/tdd-subagent/scripts/tdd-step.py"}}` — deploys
+         the state-machine script into the agent's adjacent scripts
+         directory so the dispatched subagent can invoke `tdd-step.py`
+         from a colocated path. (Pre-v4.0.0 this entry lived on
+         `tdd-state-machine`'s manifest as a cross-feature publish_file;
+         post-absorption the source path is intra-feature.)
     - `runtime` is `{}` — tdd-subagent owns no Claude Code event hook
       handlers (consistent with `surface.hooks: []`).
     - `configuration` is `[]` — tdd-subagent exposes no
       user-configurable toggles.
 
     The manifest is the meta-contract source of truth for what
-    tdd-subagent deploys. The `publish_file` entry uses `dest` to match
+    tdd-subagent deploys. The `publish_file` entries use `dest` to match
     the canonical `publish_file` shape.
+
+### State machine — schema/behaviour
+
+The 14 invariants in this section were absorbed from the retired
+`tdd-state-machine` feature at v4.0.0. They constrain
+`scripts/tdd-step.py`.
+
+31. **Valid state set.** The valid `tdd_state` values are exactly:
+    `spec`, `spec-update`, `test-red`, `impl`, `test-green`,
+    `deprecated`. `transition` rejects any other target value with exit
+    `1`.
+
+32. **Primary forward order.** The primary forward order is:
+    `spec -> spec-update -> test-red -> impl -> test-green ->
+    deprecated`. Without `--force`, a transition is accepted only when
+    the new state is the primary forward target of the current state
+    (or the alternate target defined in Inv 33).
+
+33. **Alternate forward edge.** From `test-green`, the alternate forward
+    target `spec-update` is accepted without `--force`. This is the only
+    alternate forward edge in the state machine and lets a feature start
+    a fresh cycle without going through `deprecated`.
+
+34. **Backward transitions require `--force`.** Any transition that is
+    not a forward edge (per Inv 32 or Inv 33) is rejected with exit `1`
+    unless `--force` is supplied. With `--force`, a transition between
+    any two non-terminal states is accepted.
+
+35. **`deprecated` is terminal.** From `deprecated`, every transition is
+    rejected with exit `1`, including when `--force` is supplied.
+
+36. **`tdd-step.py` location.** `scripts/tdd-step.py` MUST be present at
+    `.claude/features/tdd-subagent/scripts/tdd-step.py`. The retired
+    `.claude/features/tdd-state-machine/` directory MUST NOT exist.
+
+37. **Executable bit.** `scripts/tdd-step.py` is stored with the
+    user-executable bit set (any mode satisfying `mode & 0o100`; in
+    practice `0o755` or `0o775` depending on the contributor's umask).
+
+38. **`spec-update -> test-red` precondition.** The transition
+    `spec-update -> test-red` is accepted only when at least one of the
+    following holds:
+
+    - `git diff HEAD` under `<feature-dir>/docs/spec/` is non-empty, OR
+    - `--spec-no-change-reason <reason>` is supplied with a non-empty
+      reason; the reason is persisted on `feature.json` as
+      `spec_no_change_reason`.
+
+    When neither holds, the transition is denied with exit `1`.
+
+39. **Branding render via `rabbit_print`.** `tdd-step.py` MUST render
+    every transition message through the centralised `rabbit_print`
+    module loaded from `.claude/features/contract/scripts/rabbit_print.py`.
+    Accepted transitions emit
+    `rabbit_print("{CUR} -> {NEW}", "🔧", "green")` on stdout (ANSI
+    green, `[🐇 rabbit 🐇]` brand). Forced transitions additionally
+    emit `rabbit_print("FORCED: {CUR} -> {NEW}", "🔧", "red")` on
+    stderr (ANSI red). State names are uppercased at the call site.
+
+40. **`test-green` enforcement-check hook.** After a successful
+    transition into `test-green`, `tdd-step.py` calls each of the
+    following functions from `contract.lib.checks` in-process:
+
+    - `check_tests_non_interactive`
+    - `check_sentinel`
+    - `check_naming`
+    - `check_imports_resolve`
+    - `check_symlinks_resolve`
+    - `check_template_producer_consistency`
+
+    A non-passed `CheckResult` from any of these emits a non-empty
+    warning via `rabbit_print` on stderr. The hook is best-effort and
+    never blocks the transition.
+
+41. **`test-green` project-consolidate hook.** After a successful
+    transition into `test-green`, when `project-map.json` exists in the
+    enclosing project directory (the parent of `<feature-dir>`'s
+    parent), `tdd-step.py` invokes `rabbit-project.py consolidate
+    <project-name>`. The hook is best-effort: any failure (missing
+    script, broken project layout) is swallowed and never blocks the
+    transition.
+
+42. **`spec-update -> test-red` numbered-list check.** After a
+    successful transition `spec-update -> test-red`, `tdd-step.py`
+    calls `contract.lib.checks.check_numbered_lists` against
+    `<feature-dir>/docs/spec/`. A non-passed `CheckResult` emits a
+    warning via `rabbit_print` on stderr but does NOT block the
+    transition. The Inv 38 gate remains the only blocking precondition
+    for this transition.
+
+43. **In-process library imports (no subprocess to CLI shims).** The
+    check functions used by Inv 40 and Inv 42 are imported from the
+    `contract.lib.checks` library module at
+    `.claude/features/contract/lib/checks.py` and invoked in-process.
+    `tdd-step.py` MUST NOT fan out via `subprocess` to the
+    `.claude/features/contract/scripts/enforcement/check-*.py` CLI
+    shims for any of these checks.
+
+44. **`tdd-step.py` manifest entry.** `feature.json`'s `manifest` (per
+    Inv 29) contains the third entry that publishes `tdd-step.py` to
+    the agent's adjacent scripts directory. The intra-feature source
+    path (`scripts/tdd-step.py`) and the agent-adjacent dest
+    (`.claude/agents/tdd-subagent/scripts/tdd-step.py`) together
+    declare the deployment of this script.
 
 ## Out of Scope
 
-- The TDD state machine itself (`tdd-step.py`, `tdd-context.py`,
-  `tdd-drift-check.py`) — owned by `tdd-state-machine`.
 - Deployment of the assembled scripts into `.claude/agents/` — owned by
   the `contract` feature.
 - The `rabbit-feature-touch` orchestration skill and its SKILL.md
