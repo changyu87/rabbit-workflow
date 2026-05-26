@@ -52,6 +52,22 @@ upstream commit obligation lives in the caller's spec
 
 ## Invariants
 
+**Note on the prompt-contract migration.** As of the CONTRACT-BACKLOG-1
+Phase B cycle, `dispatch-tdd-subagent.py` no longer assembles its
+output via an inline Python f-string. Instead it builds a slot dict and
+delegates assembly to `.claude/features/contract/scripts/build-prompt.py`,
+which substitutes against the template at
+`.claude/features/contract/templates/prompts/tdd-subagent.txt` (landed
+by contract Inv 57) and prepends the policy block from the entry's
+`inject` list. Every invariant below whose constraint applies to the
+content of the dispatched prompt (Inv 7–22, plus the assembled output
+referenced by Inv 23/24) MUST be read as constraining the template
+file's content rather than any inline f-string in the dispatch script.
+Invariants 23 and 24 retain their script-level constraint on how the
+`bypass_preamble_note` slot value is COMPUTED (via `rabbit_print`),
+but where that value APPEARS in the dispatched output is governed by
+the template's `{{bypass_preamble_note}}` placeholder.
+
 ### Surface scope
 
 1. **Owned surface.** This feature owns exactly three surface entries:
@@ -382,6 +398,42 @@ The 14 invariants in this section were absorbed from the retired
     path (`scripts/tdd-step.py`) and the agent-adjacent dest
     (`.claude/agents/tdd-subagent/scripts/tdd-step.py`) together
     declare the deployment of this script.
+
+45. **`feature.json` `prompts` section + dispatcher uses `build-prompt.py`.**
+    `feature.json` MUST declare a `prompts` array containing EXACTLY ONE
+    entry with these field values:
+    - `id: "tdd-subagent"`
+    - `kind: "subagent"`
+    - `inject: [".claude/features/policy/philosophy.md", ".claude/features/policy/spec-rules.md", ".claude/features/policy/coding-rules.md"]`
+    - `slots: ["feature_name", "spec_content", "impl_suggestion_block", "bypass_preamble_note", "feature_dir", "tdd_step_py", "repo_root", "max_iterations", "code_review_loop_note", "linked_item_value", "item_type_value", "close_calls_block", "handoff_closed_items_block", "handoff_closed_items_json"]`
+
+    The matching template at
+    `.claude/features/contract/templates/prompts/tdd-subagent.txt`
+    (landed by contract Inv 57) supplies the body. `scripts/dispatch-tdd-subagent.py`
+    MUST NOT assemble the prompt inline via Python f-string — it MUST
+    instead build a dict mapping each declared slot name to its
+    computed value, invoke
+    `python3 .claude/features/contract/scripts/build-prompt.py
+    --callable-id tdd-subagent --slot <name>=<value>` (one `--slot`
+    per slot) via subprocess, read the resulting prompt file from the
+    path printed to stdout by the assembler, and write that file's
+    contents to its own stdout. The dispatcher's existing CLI shape
+    (`--scope`, `--spec`, `--impl-suggestion`, `--linked-item`,
+    `--item-type`, `--linked-items`, `--code-review-full-loop`,
+    `--max-iterations`) and existing argument validation (every check
+    up through the parsing of `secondary_items` and the close-call
+    block construction) MUST remain unchanged. The previous
+    `_policy_block` helper function and its call site (which
+    subprocessed to `policy-block.py`) MUST be removed — the policy
+    block is now prepended by `build-prompt.py` from the entry's
+    `inject` list per contract Inv 54. Enforced by
+    `test/test-dispatch-uses-build-prompt.py`; the existing 23
+    prompt-content tests (test-prompt-structure.py,
+    test-prompt-lock-unlock.py, test-prompt-scope-boundary.py,
+    test-prompt-implement-rules.py, test-prompt-commit-order.py,
+    test-prompt-code-review.py, test-bypass-marker-note.py, etc.) act
+    as the regression net confirming the dispatched output is
+    byte-equivalent to the prior f-string assembly.
 
 ## Out of Scope
 
