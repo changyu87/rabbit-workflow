@@ -2,7 +2,7 @@
   "name": "contract",
   "version": "1.34.1",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "surface": {
     "hooks": [],
@@ -12,7 +12,7 @@
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-26",
   "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
-  "spec_no_change_reason": "Spec Inv 41, 47, and 56 were committed in the preceding spec-update step (commit 27d2f0ec via the prior cycle and 182d63f2); this sub-cycle implements the declared schema enum extension, lib/runtime APIs, and contract feature.json manifest+runtime entries.",
+  "spec_no_change_reason": "Inv 57 already declared in prior cycle; this sub-cycle implements the templates/prompts/ bundle",
   "manifest": [
     {
       "api": "publish_hook",
