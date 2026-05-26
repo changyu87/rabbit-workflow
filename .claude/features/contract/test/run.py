@@ -26,6 +26,9 @@ def run_test(script):
 
 run_test("test-files-exist.py")
 run_test("test-policy-block.py")
+run_test("test-policy-block-lib.py")
+run_test("test-build-prompt.py")
+run_test("test-prompt-injector-hook.py")
 run_test("test-templates-have-version.py")
 run_test("test-schemas-valid-json.py")
 run_test("test-publish-manifest-schema.py")
