@@ -12,5 +12,5 @@
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-25",
   "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
-  "spec_no_change_reason": "spec changes for Inv 47 (emit_configurable_alert) were committed in upstream commit 15e08745 prior to this TDD subagent dispatch"
+  "spec_no_change_reason": "spec changes already committed in 03f64634 by rabbit-feature-spec; this dispatch only adds the regression test"
 }
