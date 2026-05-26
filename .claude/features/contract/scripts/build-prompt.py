@@ -146,11 +146,6 @@ def main():
         print(f"ERROR: missing required slots for {args.callable_id!r}: "
               f"{missing_slots}", file=sys.stderr)
         sys.exit(1)
-    extra_slots = [s for s in slots if s not in declared_slots]
-    if extra_slots:
-        print(f"ERROR: --slot value(s) supplied for unknown slot(s) "
-              f"on entry {args.callable_id!r}: {extra_slots}", file=sys.stderr)
-        sys.exit(1)
 
     # Resolve inject paths.
     inject_paths = []
