@@ -27,7 +27,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/schemas/feature.json.schema.json",
       ".claude/features/contract/schemas/bug.json.schema.json",
       ".claude/features/contract/schemas/project-map.json.schema.json",
-      ".claude/features/contract/schemas/rabbit-print.schema.json"
+      ".claude/features/contract/schemas/rabbit-print.schema.json",
+      ".claude/features/contract/schemas/prompts.schema.json"
     ],
     "scripts": [
       ".claude/features/contract/scripts/policy-block.py",
@@ -42,7 +43,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/scripts/enforcement/check-template-schema-producer-consistency.py",
       ".claude/features/contract/scripts/enforcement/check-tests-non-interactive.py",
       ".claude/features/contract/scripts/enforcement/check-numbered-lists.py",
-      ".claude/features/contract/scripts/enforcement/check-invariant-monotonic-order.py"
+      ".claude/features/contract/scripts/enforcement/check-invariant-monotonic-order.py",
+      ".claude/features/contract/scripts/enforcement/check-prompts-section.py"
     ],
     "lib": [
       ".claude/features/contract/lib/__init__.py",

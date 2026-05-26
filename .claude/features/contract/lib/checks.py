@@ -807,7 +807,195 @@ def validate_meta_contract(feature_dir):
         errors.extend(_validate_runtime(data["runtime"]))
     if "configuration" in data:
         errors.extend(_validate_configuration(data["configuration"]))
+    if "prompts" in data:
+        errors.extend(_validate_prompts(data["prompts"]))
 
     if errors:
         return CheckResult(passed=False, messages=errors)
     return CheckResult(passed=True, messages=["meta-contract sections valid (or absent)"])
+
+
+# ---------- prompts (Inv 51, 53) ---------------------------------------------
+
+_PROMPT_KIND_ENUM = frozenset({"skill", "subagent"})
+_PROMPT_ID_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+_PROMPT_SLOT_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+_PROMPT_REQUIRED = {"id", "kind", "inject", "slots"}
+_PROMPT_PLACEHOLDER_RE = re.compile(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}")
+_UNIVERSAL_POLICY_PATH = ".claude/features/policy/philosophy.md"
+
+
+def _validate_prompts(prompts):
+    """Schema-shape validation for the prompts section. Returns list of errors."""
+    errors = []
+    if not isinstance(prompts, list):
+        errors.append(f"prompts must be an array, got {type(prompts).__name__}")
+        return errors
+    for i, entry in enumerate(prompts):
+        ctx = f"prompts[{i}]"
+        if not isinstance(entry, dict):
+            errors.append(f"{ctx} must be an object")
+            continue
+        missing = _PROMPT_REQUIRED - set(entry.keys())
+        if missing:
+            errors.append(f"{ctx} missing required field(s): {sorted(missing)}")
+            continue
+        extra = set(entry.keys()) - _PROMPT_REQUIRED
+        if extra:
+            errors.append(f"{ctx} has unexpected key(s): {sorted(extra)}")
+        if not isinstance(entry["id"], str) or not _PROMPT_ID_RE.match(entry["id"]):
+            errors.append(f"{ctx}.id must match '^[a-z][a-z0-9-]*$', got {entry['id']!r}")
+        if entry["kind"] not in _PROMPT_KIND_ENUM:
+            errors.append(f"{ctx}.kind must be one of {sorted(_PROMPT_KIND_ENUM)}, got {entry['kind']!r}")
+        if not isinstance(entry["inject"], list):
+            errors.append(f"{ctx}.inject must be an array")
+        elif len(entry["inject"]) < 1:
+            errors.append(f"{ctx}.inject must have at least 1 item (minItems: 1)")
+        else:
+            for j, p in enumerate(entry["inject"]):
+                if not isinstance(p, str):
+                    errors.append(f"{ctx}.inject[{j}] must be a string")
+        if not isinstance(entry["slots"], list):
+            errors.append(f"{ctx}.slots must be an array")
+        else:
+            for j, s in enumerate(entry["slots"]):
+                if not isinstance(s, str) or not _PROMPT_SLOT_RE.match(s):
+                    errors.append(
+                        f"{ctx}.slots[{j}] must match '^[a-z][a-z0-9_]*$', got {s!r}"
+                    )
+    return errors
+
+
+def validate_prompts_section(feature_dir: str) -> CheckResult:
+    """Per-feature prompts-section schema validation.
+
+    Inv 53: per-feature wrapper used by validate_meta_contract. Validates
+    schema shape only; does NOT run cross-feature uniqueness, template
+    existence, or inject-path existence checks (those live in
+    check_prompts_section).
+    """
+    feature_json_path = os.path.join(feature_dir, "feature.json")
+    if not os.path.isfile(feature_json_path):
+        return CheckResult(False, [f"feature.json missing at {feature_json_path}"])
+    try:
+        with open(feature_json_path) as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        return CheckResult(False, [f"feature.json invalid JSON: {e}"])
+    if not isinstance(data, dict):
+        return CheckResult(False, [f"feature.json must be a JSON object"])
+    if "prompts" not in data:
+        return CheckResult(True, ["OK: no prompts section (vacuous)"])
+    errors = _validate_prompts(data["prompts"])
+    if errors:
+        return CheckResult(False, errors)
+    return CheckResult(True, ["OK: prompts section valid"])
+
+
+def check_prompts_section(features_root: str) -> CheckResult:
+    """Cross-feature prompts-section lint.
+
+    Inv 53: walks every <features_root>/*/feature.json, validates each
+    present prompts section against prompts.schema.json, asserts
+    globally-unique ids, asserts every inject path exists on disk,
+    asserts every entry's inject list includes the universal policy
+    file (.claude/features/policy/philosophy.md), asserts the
+    convention-resolved template at
+    .claude/features/contract/templates/prompts/<id>.txt exists,
+    and asserts bidirectional slot/placeholder correspondence.
+    """
+    if not os.path.isdir(features_root):
+        return CheckResult(False, [f"ERROR: not a directory: {features_root}"])
+
+    # The features_root is .../.claude/features ; the repo root is two parents up.
+    repo_root = os.path.normpath(os.path.join(features_root, "..", ".."))
+    templates_dir = os.path.join(
+        features_root, "contract", "templates", "prompts"
+    )
+
+    messages: List[str] = []
+    seen_ids = {}  # id -> first feature seen on
+
+    for entry_name in sorted(os.listdir(features_root)):
+        feat_dir = os.path.join(features_root, entry_name)
+        feature_json_path = os.path.join(feat_dir, "feature.json")
+        if not os.path.isfile(feature_json_path):
+            continue
+        try:
+            with open(feature_json_path) as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            messages.append(f"ERROR: {feature_json_path}: invalid JSON: {e}")
+            continue
+        if not isinstance(data, dict) or "prompts" not in data:
+            continue
+        prompts = data["prompts"]
+        # Schema-shape errors first
+        shape_errors = _validate_prompts(prompts)
+        for e in shape_errors:
+            messages.append(f"{entry_name}: {e}")
+        if not isinstance(prompts, list):
+            continue
+        for i, entry in enumerate(prompts):
+            if not isinstance(entry, dict):
+                continue
+            ctx = f"{entry_name}:prompts[{i}]"
+            pid = entry.get("id")
+            if isinstance(pid, str):
+                if pid in seen_ids:
+                    messages.append(
+                        f"{ctx}: duplicate id {pid!r} (already declared by {seen_ids[pid]}); "
+                        f"prompt ids must be globally unique"
+                    )
+                else:
+                    seen_ids[pid] = entry_name
+            # inject path existence + universal policy
+            inject = entry.get("inject", [])
+            if isinstance(inject, list):
+                if _UNIVERSAL_POLICY_PATH not in inject:
+                    messages.append(
+                        f"{ctx}: inject must include the universal policy file "
+                        f"{_UNIVERSAL_POLICY_PATH!r}"
+                    )
+                for path in inject:
+                    if not isinstance(path, str):
+                        continue
+                    full = os.path.join(repo_root, path)
+                    if not os.path.exists(full):
+                        messages.append(
+                            f"{ctx}: inject path does not exist on disk: {path}"
+                        )
+            # convention-resolved template existence
+            if isinstance(pid, str):
+                tpl_path = os.path.join(templates_dir, f"{pid}.txt")
+                if not os.path.isfile(tpl_path):
+                    messages.append(
+                        f"{ctx}: missing convention-resolved template at "
+                        f"templates/prompts/{pid}.txt for id {pid!r}"
+                    )
+                else:
+                    # slot/placeholder bidirectional correspondence
+                    slots = entry.get("slots", [])
+                    if isinstance(slots, list):
+                        try:
+                            with open(tpl_path, encoding="utf-8") as tf:
+                                body = tf.read()
+                        except (OSError, UnicodeDecodeError) as e:
+                            messages.append(f"{ctx}: cannot read template: {e}")
+                            continue
+                        placeholders = set(_PROMPT_PLACEHOLDER_RE.findall(body))
+                        slot_set = set(s for s in slots if isinstance(s, str))
+                        orphan_ph = placeholders - slot_set
+                        orphan_slots = slot_set - placeholders
+                        for ph in sorted(orphan_ph):
+                            messages.append(
+                                f"{ctx}: template placeholder {{{{{ph}}}}} not declared in slots"
+                            )
+                        for s in sorted(orphan_slots):
+                            messages.append(
+                                f"{ctx}: slot {s!r} not used as placeholder in template"
+                            )
+
+    if messages:
+        return CheckResult(False, messages)
+    return CheckResult(True, ["OK: prompts sections valid (or absent) across all features"])

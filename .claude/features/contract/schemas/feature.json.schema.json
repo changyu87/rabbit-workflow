@@ -91,6 +91,10 @@
     "configuration": {
       "$ref": "configuration.schema.json",
       "description": "Optional CONFIGURATION — declarations of user-mutable configurables."
+    },
+    "prompts": {
+      "$ref": "prompts.schema.json",
+      "description": "Optional PROMPTS — declarations of prompt-contract entries owned by the feature."
     }
   }
 }
