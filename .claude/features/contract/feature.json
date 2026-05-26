@@ -10,7 +10,7 @@
     "skills": []
   },
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
-  "updated": "2026-05-25",
+  "updated": "2026-05-26",
   "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
-  "spec_no_change_reason": "spec changes already committed in 03f64634 by rabbit-feature-spec; this dispatch only adds the regression test"
+  "spec_no_change_reason": "Spec invariants 51, 52, 53 and Inv 37(b) extension already committed in prior commit by spec authoring step; this sub-cycle implements the declared schemas/library/CLI shim."
 }
