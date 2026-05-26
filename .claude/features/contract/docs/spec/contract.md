@@ -32,6 +32,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ],
     "scripts": [
       ".claude/features/contract/scripts/policy-block.py",
+      ".claude/features/contract/scripts/build-prompt.py",
       ".claude/features/contract/scripts/validate-feature.py",
       ".claude/features/contract/scripts/validate-meta-contract.py",
       ".claude/features/contract/scripts/find-feature.py",
@@ -49,7 +50,11 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "lib": [
       ".claude/features/contract/lib/__init__.py",
       ".claude/features/contract/lib/checks.py",
-      ".claude/features/contract/lib/publish.py"
+      ".claude/features/contract/lib/publish.py",
+      ".claude/features/contract/lib/policy_block.py"
+    ],
+    "hooks": [
+      ".claude/features/contract/hooks/prompt-injector.py"
     ],
     "skills": []
   },

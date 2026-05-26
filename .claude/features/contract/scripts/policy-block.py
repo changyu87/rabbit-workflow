@@ -21,7 +21,7 @@ Exit:
   1 a --include path is missing
   2 invocation error
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when policy injection is handled natively by the dispatch infrastructure.
 """
@@ -29,6 +29,13 @@ Deprecation criterion: when policy injection is handled natively by the dispatch
 import os
 import subprocess
 import sys
+
+# Make the contract feature's lib/ importable so we can reuse the canonical
+# framing from contract.lib.policy_block instead of inlining it here.
+sys.path.insert(0, os.path.normpath(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..")))
+
+from lib.policy_block import render_policy_block  # noqa: E402
 
 
 def get_repo_root():
@@ -70,13 +77,6 @@ def print_usage():
     print(__doc__, file=sys.stderr)
 
 
-def emit_section(label, path):
-    sep = "─" * 18
-    print(f"{sep} {label} {sep}")
-    with open(path) as f:
-        print(f.read())
-
-
 def main():
     includes = parse_args(sys.argv[1:])
 
@@ -102,38 +102,8 @@ def main():
             print(f"ERROR: missing canonical policy file: {f}", file=sys.stderr)
             sys.exit(1)
 
-    # Emit sentinel line.
-    print("RABBIT-POLICY-BLOCK-v1")
-
-    # Emit block header.
-    header = """\
-═══════════════════════════════════════════════════════════════════════════════
-MANDATORY POLICY — READ THIS BEFORE ANY ACTION
-═══════════════════════════════════════════════════════════════════════════════
-
-You are operating within the rabbit workflow. The following policy files are
-NOT optional reading. They govern every choice you make in this invocation.
-Failure to comply is a constitution violation.
-
-If you have not yet internalized these principles, STOP and read them now
-before doing anything else. Re-read them whenever you are uncertain about
-how to proceed. They are the source of truth for every decision in this
-session.
-"""
-    print(header)
-
-    emit_section("philosophy.md", phil)
-    emit_section("spec-rules.md", spec_rules)
-    emit_section("coding-rules.md", coding_rules)
-
-    for p in includes:
-        emit_section(os.path.basename(p), p)
-
-    footer = """\
-═══════════════════════════════════════════════════════════════════════════════
-END POLICY — internalize the above, then proceed. Every action must reflect it.
-═══════════════════════════════════════════════════════════════════════════════"""
-    print(footer)
+    paths = [phil, spec_rules, coding_rules, *includes]
+    print(render_policy_block(paths))
     sys.exit(0)
 
 

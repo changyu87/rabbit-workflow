@@ -2,7 +2,7 @@
   "name": "contract",
   "version": "1.33.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "surface": {
     "hooks": [],
@@ -12,5 +12,5 @@
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-26",
   "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
-  "spec_no_change_reason": "Spec invariants 51, 52, 53 and Inv 37(b) extension already committed in prior commit by spec authoring step; this sub-cycle implements the declared schemas/library/CLI shim."
+  "spec_no_change_reason": "Spec invariants 54 and 55 already committed in fd12923f by the spec-update step prior to this TDD cycle; this sub-cycle implements the declared library, CLI assembler, and hook source."
 }
