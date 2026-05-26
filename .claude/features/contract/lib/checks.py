@@ -642,6 +642,8 @@ _RUNTIME_API_ENUM = frozenset({
     "welcome_with_policy",
     "iterate_configurables_alerts",
     "iterate_configurables_banner",
+    "check_prompt_injection_failures",
+    "cleanup_old_prompts",
 })
 
 

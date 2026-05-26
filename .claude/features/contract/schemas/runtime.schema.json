@@ -44,7 +44,9 @@
               "check_counter_threshold_refresh",
               "welcome_with_policy",
               "iterate_configurables_alerts",
-              "iterate_configurables_banner"
+              "iterate_configurables_banner",
+              "check_prompt_injection_failures",
+              "cleanup_old_prompts"
             ]
           },
           "args": {"type": "object"}
