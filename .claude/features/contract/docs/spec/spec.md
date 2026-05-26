@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.34.0
+version: 1.34.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -179,8 +179,8 @@ Boolean CLI flag values and subcommand values use the literal strings
   not a boolean value)
 
 Examples:
-- PREFER: `--human-approval-gate true`, `/rabbit-config human-approval true`
-- AVOID:  `--human-approval-gate enabled`, `/rabbit-config human-approval enabled`
+- PREFER: `/rabbit-config human-approval true`
+- AVOID:  `/rabbit-config human-approval enabled`
 
 **Rule 2 — Names must be positive-streamlined.**
 
@@ -191,17 +191,17 @@ any negating prefix, rewrite it to describe what IS active when the
 flag/variable is true.
 
 Examples:
-- PREFER: `--human-approval-gate`, `--enable-review`, `bypass-marker-present`
-- AVOID:  `--no-human-approval`, `--disable-review`, `--skip-review`
+- PREFER: `--code-review-full-loop`, `--enable-review`, `bypass-marker-present`
+- AVOID:  `--no-code-review`, `--disable-review`, `--skip-review`
 
 The rule is mechanical: read the name without context. If the name
 describes an absence or negation, rename it. Boolean state is encoded
 in the value (`true`/`false`), never in the name.
 
 **Rationale.** Negated names compose poorly with boolean values
-(`--no-human-approval false` means "do require approval" — three
+(`--no-code-review false` means "do require code review" — two
 negations to parse). Positive names compose cleanly
-(`--human-approval-gate false` means "no gate"). Consistent
+(`/rabbit-config human-approval false` means "no gate"). Consistent
 `true`/`false` values mean no per-flag value vocabulary to memorize.
 
 ## Out of Scope
