@@ -1,0 +1,31 @@
+{
+  "feature": "rabbit-cage",
+  "cycle_summary": "Wire contract.lib.runtime.write_mode_marker into rabbit-cage's SessionStart dispatcher (Inv 16). Bumped feature.json / spec.md / contract.md to 5.7.0 (Inv 11 three-way pin). Added e2e test that exercises the dispatcher subprocess against a plugin-mode signature and asserts .rabbit/.runtime/mode is written with content 'plugin'.",
+  "tdd_state": "test-green",
+  "test_result": "pass",
+  "spec_compliance": "pass",
+  "steps": {
+    "lock": "created .rabbit-scope-active-rabbit-cage",
+    "spec_update": "Inv 16 added to spec.md; version bumped 5.6.0 -> 5.7.0 in spec.md/contract.md/feature.json; stale spec_no_change_reason removed",
+    "test_write": "added test/test-write-mode-marker-wired.py (2 cases: structural assertion + e2e dispatcher subprocess) and registered in test/run.py SUITES list",
+    "test_red": "test failed as expected: AssertionError write_mode_marker not declared in SessionStart; got ['welcome_with_policy']",
+    "impl": "added {api: write_mode_marker, args: {}} after welcome_with_policy in feature.json runtime.SessionStart",
+    "code_review": "self-review against philosophy/policy: surgical change, three-way version pin satisfied, e2e covers spec behaviour, no cross-feature edits",
+    "test_green": "test/run.py: ALL SUITES PASSED; cross-impact verified by running contract and rabbit-meta suites (both pass)"
+  },
+  "commits": [
+    "924ba80b spec+test(rabbit-cage): wire write_mode_marker into SessionStart (Inv 16)",
+    "0073a6b3 impl(rabbit-cage): add write_mode_marker entry to SessionStart runtime"
+  ],
+  "files_touched": [
+    ".claude/features/rabbit-cage/feature.json",
+    ".claude/features/rabbit-cage/docs/spec/spec.md",
+    ".claude/features/rabbit-cage/docs/spec/contract.md",
+    ".claude/features/rabbit-cage/test/run.py",
+    ".claude/features/rabbit-cage/test/test-write-mode-marker-wired.py"
+  ],
+  "e2e_coverage": {
+    "spec_behaviour": "At session start, dispatcher invokes write_mode_marker which detects plugin/standalone mode and writes .rabbit/.runtime/mode",
+    "e2e_test": ".claude/features/rabbit-cage/test/test-write-mode-marker-wired.py::test_session_start_writes_plugin_mode_marker"
+  }
+}
