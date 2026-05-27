@@ -1,6 +1,6 @@
 {
   "name": "contract",
-  "version": "1.37.0",
+  "version": "1.38.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
@@ -12,7 +12,7 @@
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-27",
   "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
-  "spec_no_change_reason": "Inv 59 PROJECT-MAP schema added in prior commit f8c248e5 on this branch; this cycle implements the schema + e2e test",
+  "spec_no_change_reason": "spec already updated in commit cec9d317 to introduce Inv 47 write_mode_marker; this cycle implements the API",
   "manifest": [
     {
       "api": "publish_hook",

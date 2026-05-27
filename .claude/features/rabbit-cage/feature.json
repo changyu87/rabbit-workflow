@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.6.0",
+  "version": "5.7.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
@@ -12,7 +12,7 @@
   },
   "deprecation_criterion": "when Claude Code exposes native event dispatchers and artifact publishing that subsume this role",
   "status": "active",
-  "updated": "2026-05-25",
+  "updated": "2026-05-27",
   "manifest": [
     {
       "api": "publish_settings",
@@ -175,6 +175,10 @@
             }
           ]
         }
+      },
+      {
+        "api": "write_mode_marker",
+        "args": {}
       }
     ],
     "UserPromptSubmit": [
@@ -358,5 +362,5 @@
       }
     }
   ],
-  "spec_no_change_reason": "Spec change (Inv 15 for BUG-104) committed at 6b7d7519 by dispatcher before TDD subagent invocation"
+  "spec_no_change_reason": "Spec change (Inv 16) committed at 924ba80b in this cycle along with tests"
 }

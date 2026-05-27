@@ -24,6 +24,7 @@ Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
 """
 
+import importlib.util
 import json
 import os
 import re
@@ -604,3 +605,51 @@ def check_prompt_injection_failures(log_path: str, *, repo_root: str) -> dict:
     except OSError:
         pass
     return print_result(text, "📢", "red")
+
+
+def write_mode_marker(*, repo_root: str) -> dict:
+    """SessionStart helper that bridges rabbit-meta mode detection into the
+    rabbit-cage dispatcher protocol. Lazy-imports
+    rabbit-meta.lib.mode_detection.detect_mode from
+    <repo_root>/.claude/features/rabbit-meta/lib/mode_detection.py, calls
+    detect_mode(os.getcwd()), ensures <repo_root>/.rabbit/.runtime/ exists,
+    writes the resulting "plugin" or "standalone" string to
+    <repo_root>/.rabbit/.runtime/mode.
+
+    Idempotent: re-running with unchanged content is a no-op (content-equality
+    check before write — preserves mtime when the mode hasn't changed).
+
+    Returns ok_result on success, error_result("rabbit-meta unavailable") when
+    rabbit-meta cannot be imported (degenerate self-build scenario), or
+    error_result(message) on filesystem failure.
+    """
+    mode_path = os.path.join(repo_root, ".claude", "features",
+                              "rabbit-meta", "lib", "mode_detection.py")
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "rabbit_meta_mode_detection", mode_path)
+        if spec is None or spec.loader is None:
+            return error_result("rabbit-meta unavailable")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        detect_mode = module.detect_mode
+    except (FileNotFoundError, ImportError, AttributeError):
+        return error_result("rabbit-meta unavailable")
+
+    try:
+        mode = detect_mode(os.getcwd())
+        target_dir = os.path.join(repo_root, ".rabbit", ".runtime")
+        os.makedirs(target_dir, exist_ok=True)
+        target = os.path.join(target_dir, "mode")
+        if os.path.isfile(target):
+            try:
+                with open(target) as f:
+                    if f.read() == mode:
+                        return ok_result()
+            except OSError:
+                pass
+        with open(target, "w") as f:
+            f.write(mode)
+        return ok_result()
+    except OSError as e:
+        return error_result(str(e))
