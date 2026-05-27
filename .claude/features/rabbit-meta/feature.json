@@ -1,0 +1,15 @@
+{
+  "template_version": "2.0.0",
+  "name": "rabbit-meta",
+  "version": "0.1.0",
+  "owner": "cyxu",
+  "tdd_state": "spec",
+  "summary": "rabbit-meta feature",
+  "surface": {
+    "hooks": [],
+    "commands": [],
+    "agents": [],
+    "skills": []
+  },
+  "deprecation_criterion": "TBD — set after first review"
+}
