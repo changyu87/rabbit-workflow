@@ -52,6 +52,12 @@ ALLOWLIST = {
     ("rabbit-file/skills/rabbit-file/SKILL.md", 172, "RABBIT-CAGE-BUG-17"),
     ("rabbit-file/skills/rabbit-file/SKILL.md", 217, "RABBIT-CAGE-BUG-16"),
     ("rabbit-file/skills/rabbit-file/SKILL.md", 221, "RABBIT-CAGE-BACKLOG-3"),
+    # tdd-subagent spec.md migration note — names the prompt-contract
+    # migration backlog (CONTRACT-BACKLOG-1) so future readers can find
+    # the design doc and PR stack. The reference is documentary, not a
+    # live project-management tag, and the migration is a permanent
+    # architectural fact.
+    ("tdd-subagent/docs/spec/spec.md", 55, "CONTRACT-BACKLOG-1"),
 }
 
 
