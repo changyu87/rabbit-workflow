@@ -47,6 +47,27 @@ def test_surface_lists_skill() -> None:
     )
 
 
+def test_skill_documents_plugin_mode() -> None:
+    """Inv 49: SKILL.md documents both invocation forms, the plugin trigger,
+    and the two-step user flow (skill + seeder dispatch)."""
+    text = SKILL_MD.read_text()
+    # Both invocation forms named in the skill body.
+    assert "<feature-name>" in text, "SKILL.md must reference the standalone form arg"
+    assert "<path-glob>" in text, "SKILL.md must document the plugin form <path-glob> arg"
+    # Plugin-mode trigger named explicitly.
+    assert ".rabbit/.runtime/mode" in text, (
+        "SKILL.md must name the .rabbit/.runtime/mode trigger for plugin mode"
+    )
+    # Seeder-dispatch handoff named.
+    assert "dispatch-spec-seeder.py" in text, (
+        "SKILL.md must document the seeder-dispatch handoff command"
+    )
+    # The project-map registration target named.
+    assert "project-map.json" in text, (
+        "SKILL.md must name project-map.json as the plugin-mode registration target"
+    )
+
+
 def test_contract_provides_skill() -> None:
     text = CONTRACT_MD.read_text()
     m = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL)
