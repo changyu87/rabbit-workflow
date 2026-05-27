@@ -435,6 +435,54 @@ The 14 invariants in this section were absorbed from the retired
     as the regression net confirming the dispatched output is
     byte-equivalent to the prior f-string assembly.
 
+46. **TEST-GREEN must emit `test_result: fail` on nonzero run.py exit.**
+    The dispatched-subagent template at
+    `.claude/features/contract/templates/prompts/tdd-subagent.txt`
+    governs what the dispatched subagent says. It MUST satisfy three
+    properties at STEP 6 (TEST-GREEN) and HANDOFF:
+
+    (a) **Nonzero-exit conditional in STEP 6.** STEP 6 MUST contain
+    explicit instructions that if `python3 <feature_dir>/test/run.py`
+    exits nonzero, the subagent STOPS immediately and emits a
+    fail-HANDOFF (both YAML and JSON forms) carrying `tdd_state: impl`,
+    `test_result: fail`, `spec_compliance: fail`, `tdd_report_path:
+    null`, and a `notes` field naming the exit-code failure. The
+    subagent MUST NOT proceed to STEP 7 (UNLOCK) when run.py exits
+    nonzero — i.e., no `chore(<feature>): advance tdd_state to
+    test-green` commit, no scope-marker removal in the normal-path
+    flow, and no test-green HANDOFF emission. Pre-existing failures,
+    out-of-scope failures, and "I think this one is unrelated"
+    triage are NOT acceptable subagent-side judgments — the subagent
+    reports the exit code faithfully and uses the `notes` field if
+    additional context is warranted.
+
+    (b) **No hard-coded `pass` literal for `test_result`.** The
+    template MUST NOT contain the literal text `"test_result": "pass"`
+    or `test_result: pass` anywhere in its tdd-report block, YAML
+    HANDOFF block, or JSON HANDOFF block. The value MUST appear as a
+    `<pass|fail>` placeholder (with whatever quoting the format
+    requires) so the subagent is forced to substitute the actual
+    outcome rather than copying the literal `pass` from the template.
+
+    (c) **Template version bump.** The template's
+    `template_version` marker is bumped from `1.0.0` to `1.1.0` to
+    signal this behavioral change (subagents following v1.0.0 cannot
+    emit `test_result: fail` from the normal completion path).
+
+    Enforced by `test/test-prompt-test-green-handles-failure.py`
+    which reads the template at
+    `.claude/features/contract/templates/prompts/tdd-subagent.txt`
+    and asserts (i) STEP 6 section contains a nonzero-exit conditional
+    naming `test_result: fail`, (ii) no literal `"test_result": "pass"`
+    or `test_result: pass` appears anywhere in the template, (iii)
+    `<pass|fail>` placeholder appears in the tdd-report block, YAML
+    HANDOFF block, and JSON HANDOFF block. The template file itself
+    lives under the contract feature's `templates/prompts/` directory
+    (per contract Inv 57); editing it is a cross-feature operation
+    relative to tdd-subagent's scope, so this invariant's
+    implementation MAY require a coordinated edit on the contract
+    feature or a scope-override on the template file.
+
 ## Out of Scope
 
 - Deployment of the assembled scripts into `.claude/agents/` — owned by
