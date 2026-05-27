@@ -184,13 +184,6 @@ def validate(doc, sch):
                         break
                 if not matched and additional is False:
                     errs.append(f"unexpected property: {key}")
-                # If no pattern matched and there are patternProperties defined
-                # but no additionalProperties=false, key is implicitly permitted —
-                # but for our use, patternProperties without a match + closed
-                # shape must reject. The pattern_props loop already handled match.
-                if pattern_props and not matched and additional is False:
-                    # Already added above; avoid double-append guard.
-                    pass
     elif t == "string":
         if not isinstance(doc, str):
             errs.append(f"expected string, got {type(doc).__name__}")
