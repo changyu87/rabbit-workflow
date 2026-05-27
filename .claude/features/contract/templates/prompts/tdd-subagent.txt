@@ -1,4 +1,4 @@
-# template_version: 1.0.0
+# template_version: 1.1.0
 {{bypass_preamble_note}}
 ════════════════════════════════════════════════════════════════════════
 TDD SUBAGENT — SCOPE: {{feature_name}}
@@ -175,6 +175,37 @@ STEP 6 — TEST-GREEN
 Run final test suite to confirm pass:
   python3 {{feature_dir}}/test/run.py
 
+If run.py exits nonzero (any test fails), STOP immediately. Do NOT proceed
+to STEP 7. Do NOT run any further git operations. Pre-existing failures and
+"unrelated" failures are NOT subagent-side judgments — the exit code is
+authoritative. Use the `notes` field if additional context is warranted,
+but the `test_result` value MUST reflect the actual exit code. Emit this
+fail-HANDOFF instead of the normal STEP-7 path and stop:
+
+  HANDOFF:
+    feature: {{feature_name}}
+    tdd_state: impl
+    test_result: fail
+    spec_compliance: fail
+    tdd_report_path: null
+    notes: TEST-GREEN run.py exited nonzero — cycle did not reach test-green
+
+  HANDOFF_JSON:
+  ```json
+  {
+    "handoff_schema_version": "1.0.0",
+    "feature": "{{feature_name}}",
+    "tdd_state": "impl",
+    "test_result": "fail",
+    "spec_compliance": "fail",
+    "tdd_report_path": null,
+    "closed_items": [],
+    "notes": "TEST-GREEN run.py exited nonzero — cycle did not reach test-green"
+  }
+  ```
+
+If run.py exits 0, continue with the normal STEP 6 / STEP 7 path:
+
 FIRST — capture the implementation commit SHA BEFORE STEP 7's chore commit:
   IMPL_SHA=$(git rev-parse HEAD)
 
@@ -206,7 +237,7 @@ string or the JSON literal `null`, and so on.
     "impl_summary": "<one paragraph describing what was implemented>",
     "spec_compliance": "<pass|fail>",
     "spec_compliance_notes": "<unaddressed invariants or null>",
-    "test_result": "pass",
+    "test_result": "<pass|fail>",
     "tdd_state": "test-green",
     "impl_commit": "$IMPL_SHA"
   }
@@ -232,7 +263,7 @@ HANDOFF (emit on completion)
 HANDOFF:
   feature: {{feature_name}}
   tdd_state: test-green
-  test_result: pass
+  test_result: <pass|fail>
   spec_compliance: <pass|fail>
   tdd_report_path: {{repo_root}}/.rabbit/tdd-report-{{feature_name}}.json
   notes: <brief summary>{{handoff_closed_items_block}}
@@ -248,7 +279,7 @@ HANDOFF_JSON:
   "handoff_schema_version": "1.0.0",
   "feature": "{{feature_name}}",
   "tdd_state": "test-green",
-  "test_result": "pass",
+  "test_result": "<pass|fail>",
   "spec_compliance": "<pass|fail>",
   "tdd_report_path": "{{repo_root}}/.rabbit/tdd-report-{{feature_name}}.json",
   "closed_items": {{handoff_closed_items_json}},

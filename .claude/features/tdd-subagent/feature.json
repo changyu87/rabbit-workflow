@@ -63,5 +63,5 @@
   ],
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
   "updated": "2026-05-26",
-  "spec_no_change_reason": "spec changes committed in 9c474db6 (Phase B prompt-contract migration); test commit is HEAD"
+  "spec_no_change_reason": "TDD-SUBAGENT-BACKLOG-20: spec already contains Inv 46; this cycle only adds the regression test."
 }
