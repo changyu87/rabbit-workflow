@@ -185,7 +185,14 @@ def main():
     body = substitute_slots(body, slots)
 
     # Scan for orphan {{...}} placeholders left over after substitution.
-    orphans = sorted(set(_PLACEHOLDER_RE.findall(body)))
+    # A placeholder is "orphan" only when its name is NOT in the entry's
+    # declared slots list — declared names are considered substituted by
+    # construction even when a slot value happens to contain literal
+    # double-brace text matching the placeholder syntax (slot values are
+    # user data and MAY legitimately contain such patterns).
+    declared_slot_names = set(declared_slots)
+    all_found = set(_PLACEHOLDER_RE.findall(body))
+    orphans = sorted(all_found - declared_slot_names)
     if orphans:
         print(f"ERROR: orphan placeholder(s) in template after substitution: "
               f"{orphans}", file=sys.stderr)
