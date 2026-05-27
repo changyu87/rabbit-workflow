@@ -24,6 +24,15 @@
             "command": "$(git rev-parse --show-toplevel)/.claude/hooks/scope-guard.py"
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$(git rev-parse --show-toplevel)/.claude/hooks/prompt-injector.py"
+          }
+        ]
       }
     ],
     "Stop": [
