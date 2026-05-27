@@ -108,6 +108,7 @@ run_test("test-runtime-iterate-configurables-banner.py")
 run_test("test-runtime-emit-configurable-alert.py")
 run_test("test-runtime-cleanup-old-prompts.py")
 run_test("test-runtime-check-prompt-injection-failures.py")
+run_test("test-runtime-write-mode-marker.py")
 run_test("test-contract-manifest-runtime.py")
 run_test("test-spec-bodies-no-historical-tags.py")
 

@@ -8,13 +8,26 @@ error_result on ImportError or OSError. Idempotent (content-equality).
 """
 
 import os
+import shutil
 import sys
 import tempfile
 
 FEATURE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+REPO_ROOT = os.path.normpath(os.path.join(FEATURE_DIR, "..", "..", ".."))
+RABBIT_META_LIB = os.path.join(REPO_ROOT, ".claude", "features", "rabbit-meta", "lib")
 sys.path.insert(0, FEATURE_DIR)
 
 from lib.runtime import write_mode_marker  # noqa: E402
+
+
+def install_rabbit_meta(repo_root):
+    """Copy real rabbit-meta/lib into repo_root so the lazy import resolves."""
+    dest = os.path.join(repo_root, ".claude", "features", "rabbit-meta", "lib")
+    os.makedirs(dest, exist_ok=True)
+    for name in os.listdir(RABBIT_META_LIB):
+        src = os.path.join(RABBIT_META_LIB, name)
+        if os.path.isfile(src):
+            shutil.copy2(src, os.path.join(dest, name))
 
 FAIL = 0
 
@@ -41,6 +54,7 @@ def _chdir_and_call(target_cwd, **kwargs):
 
 # t1: plugin mode — cwd is .rabbit/ inside a host project tree -> "plugin"
 with tempfile.TemporaryDirectory() as td:
+    install_rabbit_meta(td)
     rabbit_dir = os.path.join(td, ".rabbit")
     os.makedirs(rabbit_dir)
     # sibling to .rabbit/ so detect_mode sees a host-project sibling
@@ -62,6 +76,7 @@ with tempfile.TemporaryDirectory() as td:
 
 # t2: standalone mode — cwd is a plain dir, no .rabbit basename
 with tempfile.TemporaryDirectory() as td:
+    install_rabbit_meta(td)
     # td itself is not named .rabbit, so detect_mode -> standalone
     r = _chdir_and_call(td, repo_root=td)
     mode_path = os.path.join(td, ".rabbit", ".runtime", "mode")
@@ -80,6 +95,7 @@ with tempfile.TemporaryDirectory() as td:
 
 # t3: idempotent — second call with unchanged mode is no-op (mtime preserved)
 with tempfile.TemporaryDirectory() as td:
+    install_rabbit_meta(td)
     r1 = _chdir_and_call(td, repo_root=td)
     mode_path = os.path.join(td, ".rabbit", ".runtime", "mode")
     if r1 != {"type": "ok"} or not os.path.isfile(mode_path):
@@ -123,6 +139,7 @@ with tempfile.TemporaryDirectory() as td:
 
 # t5: directory creation — fresh tmpdir with no .rabbit/.runtime/ -> dir is created
 with tempfile.TemporaryDirectory() as td:
+    install_rabbit_meta(td)
     runtime_dir = os.path.join(td, ".rabbit", ".runtime")
     if os.path.isdir(runtime_dir):
         fail("t5: setup invariant violated — runtime_dir exists pre-call")
