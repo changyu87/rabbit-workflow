@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.14.0
+version: 1.15.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -255,6 +255,88 @@ Scripts (under `scripts/`):
     (no `test/run.sh`). The scaffolded directory passes
     `validate-feature.py` immediately.
 
+44. **new-feature.py plugin-mode invocation.** When the file
+    `<cwd>/.rabbit/.runtime/mode` exists and contains the literal string
+    `plugin` (written at SessionStart by `rabbit-meta`'s
+    `write_mode_marker`), `new-feature.py` honors the plugin-mode CLI
+    form `new-feature.py <name> <path-glob> [<path-glob>...]`. The
+    user-project root is the directory containing `.rabbit/` (i.e.,
+    `cwd`). When the marker is absent or does not contain `plugin`, the
+    script's behaviour is unchanged from the standalone form
+    `new-feature.py <root> <name> [...]`. The detection happens before
+    any argument parsing so a `<name>+<glob>` pair is never
+    misinterpreted as a `<root>+<name>` pair.
+
+45. **Plugin-mode path-glob validation.** In plugin mode,
+    `new-feature.py` enforces three pre-registration validations against
+    every supplied path-glob:
+    (a) **Boundary** — the literal anchor of each glob (the path
+        prefix up to the first segment containing a glob metacharacter)
+        MUST resolve under the user-project root. Globs whose anchor
+        escapes the root (e.g., `../../etc/**`) are rejected with an
+        error naming the boundary; the post-resolution match list is
+        also screened for symlink escapes.
+    (b) **Non-empty match** — the union of matches across all globs
+        MUST contain at least one filesystem path. A feature whose
+        globs match zero files is rejected as a typo guard.
+    (c) **No overlap with declared features** — for every match
+        produced by the new globs, no existing entry in
+        `<repo>/.rabbit/rabbit-project/project-map.json` may already
+        declare a glob that matches the same path. On conflict the
+        error names both the conflicting path (repo-relative) and the
+        incumbent feature.
+    Any of (a), (b), or (c) failing aborts the scaffold with exit code 1
+    and leaves both the filesystem and `project-map.json` untouched.
+
+46. **Plugin-mode scaffold location and shape.** In plugin mode, the
+    scaffold target is `<repo>/.rabbit/rabbit-project/features/<name>/`.
+    The scaffold contains exactly three files:
+    (a) `feature.json` declaring `name`, `version` (`0.1.0`),
+        `owner` (defaulted from `$USER`), `paths` (the declared globs
+        verbatim), `created` (ISO 8601 UTC `YYYY-MM-DDTHH:MM:SSZ`),
+        and `deprecation_criterion: null`.
+    (b) `docs/spec/spec.md` — a placeholder seeded for the spec-seeder
+        subagent to fill in.
+    (c) `docs/spec/contract.md` — empty contract placeholder mirroring
+        the rabbit-self shape (frontmatter + `provides`/`reads`/
+        `invokes`/`never` JSON block).
+    Plugin-mode scaffolds MUST NOT use the standalone-only
+    `template_version` field or the rabbit-self `test/run.py`
+    placeholder, because per-project features do not participate in the
+    rabbit-self build/audit surface.
+
+47. **Plugin-mode project-map registration.** On successful scaffold,
+    `new-feature.py` registers the new feature in
+    `<repo>/.rabbit/rabbit-project/project-map.json` (created if
+    absent) under
+    `features.<name> = {"paths": [<glob>, ...],
+    "feature_dir": "rabbit-project/features/<name>"}`. The whole
+    written document MUST conform to
+    `.claude/features/contract/schemas/project-map.json.schema.json`
+    (top-level `schema_version: "1.0.0"` and `features` map only).
+    Validation runs against the would-be-written object BEFORE the
+    write; on schema failure the write is skipped and exit is 1.
+
+48. **Plugin-mode spec-seeder dispatch handoff.** After a successful
+    scaffold, `new-feature.py` prints to stdout the literal
+    `dispatch-spec-seeder.py` command line (the
+    `.claude/features/spec-seeder/scripts/dispatch-spec-seeder.py`
+    invocation, with `--feature-name <name>` and a comma-joined
+    `--paths` argument). The script itself MUST NOT invoke the
+    subagent; subagent dispatch is the caller's responsibility (the
+    skill / dispatcher layer reads the printed command and dispatches
+    the seeder). This keeps `new-feature.py` free of Agent/Skill tool
+    coupling.
+
+49. **rabbit-feature-new SKILL.md documents plugin-mode invocation.**
+    The SKILL.md describes both invocation forms — the standalone
+    `<feature-name>` form and the plugin `<feature-name>
+    <path-glob>+` form — and names the plugin-mode trigger
+    (`<repo>/.rabbit/.runtime/mode` containing `plugin`). The SKILL.md
+    also documents the two-step user flow in plugin mode: (1) invoke
+    the skill, (2) dispatch the spec-seeder subagent using the
+    command printed by `new-feature.py`'s stdout `NEXT:` line.
+
 ### rabbit-feature-audit SKILL.md
 
 34. **rabbit-feature-audit invocation surface.** The SKILL.md accepts
@@ -420,3 +502,5 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-manifest-shape.py` — Inv 40
 - `test-manifest-deploys-correctly.py` — Inv 40
 - `test-prompts-declared.py` — Inv 43
+- `test-feature-new-plugin-mode.py` — Inv 44, 45, 46, 47, 48
+- `test-new-skill.py` — Inv 32, 49
