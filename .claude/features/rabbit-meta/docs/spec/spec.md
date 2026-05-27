@@ -1,6 +1,6 @@
 ---
 feature: rabbit-meta
-version: 0.1.0
+version: 0.2.0
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when rabbit's per-project plugin model is superseded by a native Claude Code workflow contract mechanism
@@ -34,7 +34,16 @@ features.
 
 ## Invariants
 
-1. `lib/mode_detection.py` MUST export `detect_mode(cwd: str) -> "plugin" | "standalone"`. Plugin signature: `os.path.basename(cwd) == ".rabbit"` AND the parent directory contains at least one entry whose name is not `".rabbit"`. Standalone otherwise (including missing cwd, sub-dirs of `.rabbit`, and `.rabbit` at filesystem root with no project peers). Pure stdlib (`os.path`, `os.listdir`); no side effects, no env reads. Module-level docstring with Version/Owner/Deprecation criterion. Coverage by `test/test-mode-detection.py` across five enumerated cases (plugin install with peers; standalone clone; degenerate solo `.rabbit/`; sub-dir of `.rabbit`; missing cwd).
+1. `lib/mode_detection.py` MUST export `detect_mode(cwd: str) -> str` returning the literal string `"plugin"` or `"standalone"`.
+    (a) **Plugin signature.** Returns `"plugin"` iff ALL of: `os.path.basename(cwd) == ".rabbit"` AND the parent directory `os.path.dirname(cwd)` exists AND that parent contains at least one entry whose name is not `".rabbit"`. Otherwise returns `"standalone"`.
+    (b) **Behavioral cases enforced by `test/test-mode-detection.py`** (each is its own test):
+        - t1: cwd ends in `.rabbit` and the parent has sibling content (e.g. `/tmp/proj/.rabbit` with `/tmp/proj` containing `src/` and `.rabbit/`) → returns `"plugin"`.
+        - t2: cwd is a non-`.rabbit` directory with no `.rabbit` ancestor (e.g. a rabbit-self clone) → returns `"standalone"`.
+        - t3: cwd ends in `.rabbit` but its parent contains only `.rabbit` (degenerate solo install at filesystem root) → returns `"standalone"`.
+        - t4: cwd is a sub-directory of `.rabbit` whose basename is not `.rabbit` (e.g. `/proj/.rabbit/sub`) → returns `"standalone"`.
+        - t5: cwd is a path that does not exist on disk → returns `"standalone"` (safe default; the function MUST NOT raise).
+    (c) Module-level docstring with `Version`, `Owner`, and `Deprecation criterion` lines per spec-rules.md.
+    (d) Pure stdlib (`os.path`, `os.listdir`); no side effects, no env reads, no logging, no module-level prints. Imports limited to `os` (or `os.path` + `os.listdir` via direct attribute access).
 
 2. `templates/CLAUDE.md.template` MUST exist as the verbatim plugin-mode CLAUDE.md content. The template carries the killer-story prose (three lines summarizing Tier-1 drift protection + Tier-2 spec-as-memory value), the user-project boundary note (`"You are operating on the user project at the parent directory. Edit files at ../, not inside .rabbit/."`), and `@`-imports of the three policy files: `@.claude/features/policy/philosophy.md`, `@.claude/features/policy/spec-rules.md`, `@.claude/features/policy/coding-rules.md`. `lib/generate_claude_md.py` exports `generate_claude_md(template_path: str, output_path: str) -> CheckResult`: copies the template verbatim to output, idempotent (re-run with unchanged content is a no-op via SHA-256 or byte-equality comparison). Returns `ok_result()` on success, `error_result(message)` on filesystem error. Coverage by `test/test-generate-claude-md.py` (template exists; generator content match; idempotent re-run; `@`-imports resolve to existing policy files on disk).
 
