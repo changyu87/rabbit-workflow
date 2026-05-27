@@ -3,7 +3,7 @@
   "name": "rabbit-meta",
   "version": "0.2.0",
   "owner": "cyxu",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "rabbit-meta feature",
   "surface": {
     "hooks": [],
