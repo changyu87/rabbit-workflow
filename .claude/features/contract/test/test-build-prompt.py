@@ -14,6 +14,14 @@ t-success: well-formed call writes a file containing the sentinel,
 t-missing-slot: --callable-id provided but a declared slot is unset →
                 exit 1 with diagnostic on stderr.
 t-unknown-id:  --callable-id names no entry → exit 2 with diagnostic.
+t-value-with-placeholder-text: slot value contains literal {{declared_name}}
+                substring → exit 0 (declared name MUST NOT be flagged as
+                orphan; slot values are user data).
+t-true-orphan: template body contains a {{name}} not in declared slots →
+                exit 1 with stderr naming the undeclared name.
+t-mixed-declared-and-undeclared: body has one declared and one undeclared
+                placeholder; slot value also contains literal {{declared}} →
+                exit 1 with stderr naming ONLY the undeclared one.
 
 Version: 1.0.0
 Owner: rabbit-workflow team (contract)
@@ -168,6 +176,85 @@ with tempfile.TemporaryDirectory() as td:
         fail(f"t-unknown-id: stderr must mention the missing id; got {r.stderr!r}")
     else:
         ok("t-unknown-id: exit 2 with diagnostic on stderr")
+
+# ---------- t-value-with-placeholder-text ----------
+with tempfile.TemporaryDirectory() as td:
+    entry = {
+        "id": "demo-prompt",
+        "kind": "skill",
+        "inject": [".claude/features/policy/philosophy.md"],
+        "slots": ["args"],
+    }
+    make_tree(td, entry, template_body="TASK: {{args}}\n")
+    r = run_cli(
+        td,
+        "--callable-id", "demo-prompt",
+        "--slot", "args=See docs about {{args}} substitution",
+    )
+    if r.returncode != 0:
+        fail(f"t-value-with-placeholder-text: expected exit 0, got {r.returncode}; "
+             f"stdout={r.stdout!r} stderr={r.stderr!r}")
+    else:
+        out_path = r.stdout.strip()
+        if not out_path or not os.path.isfile(out_path):
+            fail(f"t-value-with-placeholder-text: stdout must name an existing file, "
+                 f"got {out_path!r}; stderr={r.stderr}")
+        else:
+            with open(out_path) as f:
+                content = f.read()
+            if "TASK: See docs about {{args}} substitution" not in content:
+                fail("t-value-with-placeholder-text: assembled prompt missing "
+                     "verbatim substituted value")
+            else:
+                ok("t-value-with-placeholder-text: declared slot name in value not flagged as orphan")
+
+# ---------- t-true-orphan ----------
+with tempfile.TemporaryDirectory() as td:
+    entry = {
+        "id": "demo-prompt",
+        "kind": "skill",
+        "inject": [".claude/features/policy/philosophy.md"],
+        "slots": ["args"],
+    }
+    make_tree(td, entry, template_body="TASK: {{args}} and {{unknown_slot}}\n")
+    r = run_cli(
+        td,
+        "--callable-id", "demo-prompt",
+        "--slot", "args=Foo",
+    )
+    if r.returncode != 1:
+        fail(f"t-true-orphan: expected exit 1, got {r.returncode}; "
+             f"stdout={r.stdout!r} stderr={r.stderr!r}")
+    elif "unknown_slot" not in r.stderr:
+        fail(f"t-true-orphan: stderr must name 'unknown_slot'; got {r.stderr!r}")
+    else:
+        ok("t-true-orphan: exit 1 with stderr naming the undeclared placeholder")
+
+# ---------- t-mixed-declared-and-undeclared ----------
+with tempfile.TemporaryDirectory() as td:
+    entry = {
+        "id": "demo-prompt",
+        "kind": "skill",
+        "inject": [".claude/features/policy/philosophy.md"],
+        "slots": ["args"],
+    }
+    make_tree(td, entry, template_body="TASK: {{args}} {{also_unknown}}\n")
+    r = run_cli(
+        td,
+        "--callable-id", "demo-prompt",
+        "--slot", "args=value containing {{args}} literal",
+    )
+    if r.returncode != 1:
+        fail(f"t-mixed-declared-and-undeclared: expected exit 1, got {r.returncode}; "
+             f"stdout={r.stdout!r} stderr={r.stderr!r}")
+    elif "also_unknown" not in r.stderr:
+        fail(f"t-mixed-declared-and-undeclared: stderr must name 'also_unknown'; "
+             f"got {r.stderr!r}")
+    elif "'args'" in r.stderr or '"args"' in r.stderr:
+        fail(f"t-mixed-declared-and-undeclared: stderr must NOT name declared "
+             f"'args' as orphan; got {r.stderr!r}")
+    else:
+        ok("t-mixed-declared-and-undeclared: exit 1 naming only the undeclared placeholder")
 
 if FAIL:
     print("test-build-prompt: FAIL", file=sys.stderr)
