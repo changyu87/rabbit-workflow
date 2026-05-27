@@ -18,7 +18,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.4.0
+Version: 1.5.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -166,7 +166,7 @@ def check_counter_threshold_refresh(counter: str, env_var: str, source: str,
             f.write(str(new_val))
         return ok_result()
 
-    # at or above threshold: reset and inject
+    # at or above threshold: reset and emit [print banner, inject]
     source_full = os.path.join(repo_root, source)
     try:
         content = _read_source(source_full)
@@ -174,7 +174,10 @@ def check_counter_threshold_refresh(counter: str, env_var: str, source: str,
         return error_result(f"counter refresh source unreadable: {e}")
     with open(counter_full, "w") as f:
         f.write("0")
-    return inject_result(content)
+    return [
+        print_result(f"policy refreshed (every {threshold} prompts)", "🔄", "green"),
+        inject_result(content),
+    ]
 
 
 def welcome_with_policy(policy_source: str, sublines=None, *, repo_root: str):
