@@ -419,3 +419,4 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-contract-md.py` — Inv 39
 - `test-manifest-shape.py` — Inv 40
 - `test-manifest-deploys-correctly.py` — Inv 40
+- `test-prompts-declared.py` — Inv 43
