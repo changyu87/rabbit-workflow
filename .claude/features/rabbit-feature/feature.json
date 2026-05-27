@@ -3,7 +3,7 @@
   "name": "rabbit-feature",
   "version": "1.14.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Dispatcher-side feature-touch orchestration surface. Owns the rabbit-feature-touch skill and four general-purpose helper skills (rabbit-feature-scope, rabbit-feature-spec, rabbit-feature-new, rabbit-feature-audit) plus their backing scripts (resolve-scope.py, format-feature-context.py, new-feature.py). Executor-side TDD machinery (dispatch-tdd-subagent.py, tdd-step.py) lives in tdd-subagent and is consumed via the cross-feature contract.",
   "surface": {
     "hooks": [],
@@ -23,7 +23,7 @@
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
-  "updated": "2026-05-25",
+  "updated": "2026-05-26",
   "manifest": [
     {
       "api": "publish_skill",
@@ -58,5 +58,50 @@
   ],
   "runtime": {},
   "configuration": [],
-  "spec_no_change_reason": "Spec Inv 12 already committed at d5143bae (Step 4 alert routing refactor for CONTRACT-BACKLOG-39)"
+  "prompts": [
+    {
+      "id": "rabbit-feature-touch",
+      "kind": "skill",
+      "inject": [
+        ".claude/features/policy/philosophy.md",
+        ".claude/features/policy/spec-rules.md",
+        ".claude/features/policy/coding-rules.md"
+      ],
+      "slots": ["args"]
+    },
+    {
+      "id": "rabbit-feature-spec",
+      "kind": "skill",
+      "inject": [
+        ".claude/features/policy/philosophy.md",
+        ".claude/features/policy/spec-rules.md"
+      ],
+      "slots": ["args"]
+    },
+    {
+      "id": "rabbit-feature-new",
+      "kind": "skill",
+      "inject": [
+        ".claude/features/policy/philosophy.md",
+        ".claude/features/policy/coding-rules.md"
+      ],
+      "slots": ["args"]
+    },
+    {
+      "id": "rabbit-feature-audit",
+      "kind": "skill",
+      "inject": [
+        ".claude/features/policy/philosophy.md",
+        ".claude/features/policy/coding-rules.md"
+      ],
+      "slots": ["args"]
+    },
+    {
+      "id": "rabbit-feature-scope",
+      "kind": "skill",
+      "inject": [".claude/features/policy/philosophy.md"],
+      "slots": ["args"]
+    }
+  ],
+  "spec_no_change_reason": "Inv 43 already committed at 04b20eeb (Phase C spec edit) and test-mapping at 95c06d5e; no further spec edits needed for impl"
 }
