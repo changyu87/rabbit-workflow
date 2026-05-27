@@ -3,7 +3,8 @@
 
 End-to-end test verifying the templates/prompts/ bundle:
   - directory exists with exactly 8 plain-text template files
-  - each file's first line is the canonical marker '# template_version: 1.0.0'
+  - each file's first line matches the canonical '# template_version: X.Y.Z' semver marker
+    (per-file versions are independent — files may evolve at different cadences)
   - the 7 skill passthrough templates are exactly 2 lines (marker + '{{args}}')
   - tdd-subagent.txt carries exactly the 14 declared placeholders (set equality)
   - tdd-subagent.txt does NOT contain '{{policy_block}}' (assembler prepends)
@@ -54,7 +55,9 @@ DECLARED_TDD_PLACEHOLDERS = {
     "handoff_closed_items_json",
 }
 
-MARKER = "# template_version: 1.0.0"
+MARKER_RE = re.compile(r"^# template_version: \d+\.\d+\.\d+$")
+# Skill passthroughs are stable two-line files; their marker has not been bumped.
+PASSTHROUGH_MARKER = "# template_version: 1.0.0"
 
 PASS = 0
 FAIL = 0
@@ -93,12 +96,12 @@ for fname in EXPECTED_FILES:
         continue
     with open(fpath) as f:
         first_line = f.readline().rstrip("\n")
-    if first_line == MARKER:
-        ok(f"t-marker-on-line-1[{fname}]", "marker matches")
+    if MARKER_RE.match(first_line):
+        ok(f"t-marker-on-line-1[{fname}]", f"semver marker matches: {first_line!r}")
     else:
         fail_t(
             f"t-marker-on-line-1[{fname}]",
-            f"expected {MARKER!r}, got {first_line!r}",
+            f"expected '# template_version: X.Y.Z' semver, got {first_line!r}",
         )
 
 # t-skill-passthroughs: exactly 2 lines, line 2 == '{{args}}'
@@ -113,12 +116,12 @@ for fname in SKILL_PASSTHROUGH_FILES:
     # Allow trailing empty entry for trailing newline.
     if lines and lines[-1] == "":
         lines = lines[:-1]
-    if len(lines) == 2 and lines[0] == MARKER and lines[1] == "{{args}}":
+    if len(lines) == 2 and lines[0] == PASSTHROUGH_MARKER and lines[1] == "{{args}}":
         ok(f"t-skill-passthroughs[{fname}]", "exactly 2 lines, marker + '{{args}}'")
     else:
         fail_t(
             f"t-skill-passthroughs[{fname}]",
-            f"expected 2 lines ({MARKER!r}, '{{{{args}}}}'), got {lines!r}",
+            f"expected 2 lines ({PASSTHROUGH_MARKER!r}, '{{{{args}}}}'), got {lines!r}",
         )
 
 # t-tdd-subagent-placeholders: set equality
