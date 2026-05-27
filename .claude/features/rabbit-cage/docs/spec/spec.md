@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.6.0
+version: 5.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -220,6 +220,16 @@ string BEFORE splitting on `;|&` segment delimiters.
     Emission of the command string is the responsibility of
     `contract.lib.publish.publish_hook`; rabbit-cage owns the user-visible
     requirement that the deployed registration fire correctly from any CWD.
+16. rabbit-cage's `feature.json runtime.SessionStart` declares two entries
+    in order: (1) `welcome_with_policy` (existing) and (2) `write_mode_marker`
+    (args `{}`). The SessionStart dispatcher invokes both in declaration
+    order via `contract.lib.runtime`. The `write_mode_marker` API (owned by
+    `contract.lib.runtime` and built on top of `rabbit-meta.lib.mode_detection.detect_mode`)
+    detects whether rabbit is running in `"plugin"` or `"standalone"` mode
+    and writes the result to `<repo_root>/.rabbit/.runtime/mode` for
+    downstream consumers. rabbit-cage owns ONLY the wiring (the
+    `runtime.SessionStart` declaration that fires the API); detection logic
+    is owned by rabbit-meta and the API implementation is owned by contract.
 
 ## Tech Stack
 
