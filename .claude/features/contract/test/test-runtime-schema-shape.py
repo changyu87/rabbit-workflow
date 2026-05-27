@@ -25,6 +25,7 @@ EXPECTED_RUNTIME_APIS = {
     "iterate_configurables_banner",
     "check_prompt_injection_failures",
     "cleanup_old_prompts",
+    "write_mode_marker",
 }
 
 FAIL = 0
