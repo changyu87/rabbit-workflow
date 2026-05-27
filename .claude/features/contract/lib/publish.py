@@ -144,15 +144,76 @@ def publish_hook(event: str, source: str, matcher: str = "*", *,
 
 
 def publish_settings(source: str, *, feature_dir: str, repo_root: str) -> CheckResult:
-    """Deploy the feature's settings.json to .claude/settings.json (idempotent).
+    """Merge the feature's settings.json into .claude/settings.json (idempotent).
 
     source — feature-dir-relative path to the settings JSON source file.
-    Rabbit-cage-exclusive by design: only one feature should declare
-    publish_settings in its MANIFEST. The library does not enforce exclusivity;
-    the dispatcher enforces it.
+
+    Per spec Inv 44: the destination ``hooks`` section is the shared registration
+    surface for every feature's ``publish_hook`` calls, so a raw file copy
+    clobbers cross-feature hook registrations. The merge rule is:
+      - non-hooks fields: source-wins (overlay every source key onto existing);
+      - hooks section: start from existing event entries and, for each event in
+        source, append source hook entries whose ``command`` strings are not
+        already present in the destination event's flattened command set.
+    Idempotent: when the merged result equals the on-disk content, the call is
+    a no-op (no write, message contains "no-op").
     """
-    return publish_file(source, ".claude/settings.json",
-                        feature_dir=feature_dir, repo_root=repo_root)
+    src_path = os.path.join(feature_dir, source)
+    if not os.path.isfile(src_path):
+        return CheckResult(False, [f"ERROR: source not found: {src_path}"])
+
+    with open(src_path) as f:
+        src_data = json.load(f)
+
+    dst_path = os.path.join(repo_root, ".claude", "settings.json")
+    existing = {}
+    if os.path.isfile(dst_path):
+        try:
+            with open(dst_path) as f:
+                loaded = json.load(f)
+            if isinstance(loaded, dict):
+                existing = loaded
+        except (json.JSONDecodeError, OSError):
+            existing = {}
+
+    merged = dict(existing)
+    for key, value in src_data.items():
+        if key == "hooks":
+            continue
+        merged[key] = value
+
+    existing_hooks = existing.get("hooks", {}) if isinstance(existing.get("hooks"), dict) else {}
+    src_hooks = src_data.get("hooks", {}) if isinstance(src_data.get("hooks"), dict) else {}
+    merged_hooks = {event: list(entries) for event, entries in existing_hooks.items()}
+    for event, src_entries in src_hooks.items():
+        if event not in merged_hooks:
+            merged_hooks[event] = list(src_entries)
+            continue
+        existing_commands = {
+            h.get("command")
+            for entry in merged_hooks[event]
+            for h in entry.get("hooks", [])
+        }
+        for src_entry in src_entries:
+            for h in src_entry.get("hooks", []):
+                cmd = h.get("command")
+                if cmd not in existing_commands:
+                    merged_hooks[event].append(src_entry)
+                    existing_commands.add(cmd)
+                    break
+
+    if merged_hooks:
+        merged["hooks"] = merged_hooks
+    elif "hooks" in merged:
+        del merged["hooks"]
+
+    if os.path.isfile(dst_path) and merged == existing:
+        return CheckResult(True, ["OK: .claude/settings.json unchanged (no-op)"])
+
+    os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+    with open(dst_path, "w") as f:
+        json.dump(merged, f, indent=2)
+    return CheckResult(True, ["OK: .claude/settings.json published (merged)"])
 
 
 def publish_generated(target: str, producer: str, args: dict, *,
