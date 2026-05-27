@@ -26,6 +26,7 @@ EXPECTED_FILES = [
     "rabbit-feature-scope.txt",
     "rabbit-file.txt",
     "rabbit-config.txt",
+    "spec-seeder.txt",
 ]
 
 SKILL_PASSTHROUGH_FILES = [
