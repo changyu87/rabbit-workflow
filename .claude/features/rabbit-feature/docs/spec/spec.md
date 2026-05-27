@@ -352,6 +352,43 @@ Scripts (under `scripts/`):
     placement: near the Overview, or as the closing paragraph after
     Step 7's body).
 
+### Prompt-contract declaration
+
+43. **`prompts` section declares all five skills.**
+    `.claude/features/rabbit-feature/feature.json` MUST declare a
+    `prompts` array containing EXACTLY FIVE entries, one per skill
+    surfaced by this feature, with these field values:
+    (a) `{"id": "rabbit-feature-touch", "kind": "skill", "inject":
+        [".claude/features/policy/philosophy.md",
+         ".claude/features/policy/spec-rules.md",
+         ".claude/features/policy/coding-rules.md"],
+        "slots": ["args"]}` — orchestrates code changes and spec edits;
+        needs the full policy bundle.
+    (b) `{"id": "rabbit-feature-spec", "kind": "skill", "inject":
+        [".claude/features/policy/philosophy.md",
+         ".claude/features/policy/spec-rules.md"],
+        "slots": ["args"]}` — authors specs; needs spec-rules but not
+        coding-rules.
+    (c) `{"id": "rabbit-feature-new", "kind": "skill", "inject":
+        [".claude/features/policy/philosophy.md",
+         ".claude/features/policy/coding-rules.md"],
+        "slots": ["args"]}` — scaffolds code; needs coding-rules.
+    (d) `{"id": "rabbit-feature-audit", "kind": "skill", "inject":
+        [".claude/features/policy/philosophy.md",
+         ".claude/features/policy/coding-rules.md"],
+        "slots": ["args"]}` — validates code; needs coding-rules for
+        context.
+    (e) `{"id": "rabbit-feature-scope", "kind": "skill", "inject":
+        [".claude/features/policy/philosophy.md"], "slots": ["args"]}`
+        — JSON classifier; philosophy only.
+    Each entry's matching template at
+    `.claude/features/contract/templates/prompts/<id>.txt` (the
+    passthrough body created by contract Inv 57 in Phase A.4) declares
+    the single ``args`` placeholder matching the entry's
+    `slots: ["args"]`. Enforced by `test/test-prompts-declared.py`,
+    which loads `feature.json` and asserts the five entries exist with
+    the ids and inject lists named above.
+
 ## What this feature does NOT define
 
 - The TDD subagent's 7-step cycle, the `tdd-step.py` state machine, or

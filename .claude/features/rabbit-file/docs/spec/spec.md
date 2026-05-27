@@ -297,6 +297,20 @@ origin/bug-backlog-files root:
   deployed; they MUST NOT appear in the manifest. The manifest is the
   meta-contract source of truth for what rabbit-file deploys.
 
+- `feature.json` MUST declare a `prompts` array containing EXACTLY
+  ONE entry: `{"id": "rabbit-file", "kind": "skill", "inject":
+  [".claude/features/policy/philosophy.md",
+  ".claude/features/policy/coding-rules.md"], "slots": ["args"]}`.
+  The skill files bugs and edits item.json — it is code-authoring —
+  so it needs philosophy + coding-rules (not spec-rules; rabbit-file
+  does not author specs). The matching template at
+  `.claude/features/contract/templates/prompts/rabbit-file.txt`
+  (passthrough ``args`` created by contract Inv 57 in Phase A.4)
+  supplies the body via `slots: ["args"]` matching the template's
+  ``args`` placeholder. Enforced by `test/test-prompts-declared.py`
+  which loads `feature.json` and asserts the single entry exists with
+  the exact id, kind, inject, and slots values.
+
 ## Operational characteristics
 
 The retry and backoff invariants above bound the worst-case timing of a

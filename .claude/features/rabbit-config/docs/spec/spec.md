@@ -178,6 +178,24 @@ operates on user-facing labels rather than raw stored values:
 18. `rabbit-config` is declared as a required feature in
     `.claude/workspace-structure.json` under `features.children`.
 
+### Prompt-contract declaration
+
+19. **`prompts` section declares the rabbit-config skill.**
+    `feature.json` MUST declare a `prompts` array containing EXACTLY
+    ONE entry: `{"id": "rabbit-config", "kind": "skill", "inject":
+    [".claude/features/policy/philosophy.md",
+    ".claude/features/policy/coding-rules.md"], "slots": ["args"]}`.
+    The skill mutates `.claude/settings.local.json` and marker files —
+    it is code-authoring — so it needs philosophy + coding-rules (not
+    spec-rules). The matching template at
+    `.claude/features/contract/templates/prompts/rabbit-config.txt`
+    (passthrough ``args`` created by contract Inv 57 in Phase A.4)
+    supplies the body via `slots: ["args"]` matching the template's
+    ``args`` placeholder. Enforced by
+    `test/test-prompts-declared.py` which loads `feature.json` and
+    asserts the single entry exists with the exact id, kind, inject,
+    and slots values.
+
 ## Tech Stack
 
 Python 3 stdlib only. Imports `contract.lib.mutation` at runtime.
