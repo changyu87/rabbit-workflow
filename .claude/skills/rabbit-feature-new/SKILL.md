@@ -70,8 +70,7 @@ request; they just need confirmation and a path to navigate to.
 
 ## Notes
 
-- The scaffolder lives at `.claude/features/rabbit-feature/scripts/new-feature.py`
-  (moved from rabbit-cage in RABBIT-CAGE-BACKLOG-26).
+- The scaffolder lives at `.claude/features/rabbit-feature/scripts/new-feature.py`.
 - The post-scaffold check uses `contract.lib.checks.validate_feature` (via
   the `validate-feature.py` CLI shim) so this skill stays in sync with
   whatever conformance rules `contract` owns — no rules are duplicated here.

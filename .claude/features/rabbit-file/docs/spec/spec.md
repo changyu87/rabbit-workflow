@@ -1,6 +1,6 @@
 ---
 feature: rabbit-file
-version: 0.5.0
+version: 0.5.3
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when a unified tracking system replaces file-based bug and backlog management
@@ -129,6 +129,18 @@ origin/bug-backlog-files root:
   decorrelates concurrent pushers. After 16 attempts the operation
   raises RuntimeError with a clear diagnostic that names the attempt
   count and the last underlying error.
+
+- branch_ops local-lock retry: every `git fetch` and `git worktree add`
+  invocation issued by `branch_ops._worktree()` MUST be wrapped in a
+  bounded retry loop that re-attempts on transient ref-transaction
+  collisions on the shared `.git/refs` and `.git/index` files. The
+  retryable stderr patterns are: `unable to create ... .lock`,
+  `cannot lock`, `index.lock`, `could not lock`, and
+  `incorrect old value provided` (the last covers concurrent-fetch races
+  on remote-tracking refs). On exhaustion the helper raises RuntimeError
+  with the failing command and last stderr. This invariant is distinct
+  from the push-retry invariant above: this handles LOCAL git lock and
+  ref-transaction contention, not REMOTE push rejection.
 
 - branch_ops.allocate_id MUST be called before commit_item (counter reserves the ID slot).
 
@@ -270,8 +282,7 @@ origin/bug-backlog-files root:
   scaffolding sits in the hot path to detect that case.
 
 - feature.json MUST declare the meta-contract sections `manifest`,
-  `runtime`, and `configuration` (Plan E.* migration). The shapes are
-  exactly:
+  `runtime`, and `configuration`. The shapes are exactly:
     - `manifest` is a list of length 1 whose single entry is
       `{"api": "publish_skill", "args": {"source": "skills/rabbit-file/SKILL.md"}}`,
       declaring the sole deployment target (the operator-facing
@@ -285,6 +296,20 @@ origin/bug-backlog-files root:
   `.claude/features/rabbit-file/scripts/` by their callers and are NOT
   deployed; they MUST NOT appear in the manifest. The manifest is the
   meta-contract source of truth for what rabbit-file deploys.
+
+- `feature.json` MUST declare a `prompts` array containing EXACTLY
+  ONE entry: `{"id": "rabbit-file", "kind": "skill", "inject":
+  [".claude/features/policy/philosophy.md",
+  ".claude/features/policy/coding-rules.md"], "slots": ["args"]}`.
+  The skill files bugs and edits item.json — it is code-authoring —
+  so it needs philosophy + coding-rules (not spec-rules; rabbit-file
+  does not author specs). The matching template at
+  `.claude/features/contract/templates/prompts/rabbit-file.txt`
+  (passthrough ``args`` created by contract Inv 57 in Phase A.4)
+  supplies the body via `slots: ["args"]` matching the template's
+  ``args`` placeholder. Enforced by `test/test-prompts-declared.py`
+  which loads `feature.json` and asserts the single entry exists with
+  the exact id, kind, inject, and slots values.
 
 ## Operational characteristics
 

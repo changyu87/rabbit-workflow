@@ -21,7 +21,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/scope-guard.py"
+            "command": "$(git rev-parse --show-toplevel)/.claude/hooks/scope-guard.py"
           }
         ]
       }
@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/stop-dispatcher.py"
+            "command": "$(git rev-parse --show-toplevel)/.claude/hooks/stop-dispatcher.py"
           }
         ]
       }
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/session-start-dispatcher.py"
+            "command": "$(git rev-parse --show-toplevel)/.claude/hooks/session-start-dispatcher.py"
           }
         ]
       }
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/user-prompt-submit-dispatcher.py"
+            "command": "$(git rev-parse --show-toplevel)/.claude/hooks/user-prompt-submit-dispatcher.py"
           }
         ]
       }

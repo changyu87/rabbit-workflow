@@ -541,6 +541,57 @@ class TestWorktreeFreshCheckout:
 # ---------------------------------------------------------------------------
 
 
+class TestFetchRefRace:
+    """`git fetch` against the shared .git/refs directory of a single clone
+    can race when two file-item.py processes both fetch simultaneously: the
+    second fetch is rejected with stderr `incorrect old value provided`
+    (BUG-36). This is a transient ref-transaction collision distinct from
+    push-side non-fast-forward and from local `.git/index.lock` contention.
+    `_run_git_with_lock_retry` MUST recognise and retry on this stderr
+    pattern; otherwise the second process aborts with a hard error."""
+
+    def test_run_git_with_lock_retry_retries_incorrect_old_value(self,
+                                                                 monkeypatch):
+        """Inject `incorrect old value provided` stderr on the first attempt;
+        succeed on the second. The helper MUST retry and return success."""
+        call = {"n": 0}
+        original_run = subprocess.run
+
+        class _FakeResult:
+            def __init__(self, returncode, stderr=""):
+                self.returncode = returncode
+                self.stderr = stderr
+                self.stdout = ""
+
+        def fake_run(cmd, *args, **kwargs):
+            # Only intercept the specific fetch command we issue here; pass
+            # other git invocations through to the real subprocess.
+            if isinstance(cmd, list) and "fetch" in cmd:
+                call["n"] += 1
+                if call["n"] == 1:
+                    return _FakeResult(
+                        128,
+                        stderr=(
+                            "error: fetching ref "
+                            "refs/remotes/origin/bug-backlog-files failed: "
+                            "incorrect old value provided\n"
+                        ),
+                    )
+                return _FakeResult(0)
+            return original_run(cmd, *args, **kwargs)
+
+        monkeypatch.setattr(branch_ops.subprocess, "run", fake_run)
+        # Should not raise. _run_git_with_lock_retry returns the successful
+        # result on attempt 2.
+        result = branch_ops._run_git_with_lock_retry(
+            ["git", "fetch", "origin", branch_ops.BRANCH])
+        assert result is not None
+        assert call["n"] == 2, (
+            f"expected exactly 2 fetch attempts (1 failure + 1 retry), "
+            f"got {call['n']}"
+        )
+
+
 class TestAllocateIdRace:
     def test_subprocess_allocate_id_distinct(self, isolated_repo):
         """Two file-item.py subprocesses launched simultaneously against the

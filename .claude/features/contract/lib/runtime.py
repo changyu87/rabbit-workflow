@@ -18,7 +18,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.2.0
+Version: 1.4.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -26,6 +26,8 @@ Deprecation criterion: when the rabbit CLI exposes native per-event
 
 import json
 import os
+import re
+import time
 
 
 def print_result(text: str, icon: str, color: str) -> dict:
@@ -469,3 +471,133 @@ def iterate_configurables_banner(*, repo_root: str):
                 alert_msg["color"],
             ))
     return out
+
+
+def emit_configurable_alert(feature_name: str, configurable_id: str,
+                            *, repo_root: str) -> dict:
+    """On-demand sibling of iterate_configurables_alerts: resolve a single
+    configurable by feature_name + configurable_id, evaluate its current
+    value against alert-on, return print_result on match, ok_result on
+    miss, or error_result when feature/configurable/alert-message cannot
+    be resolved.
+    """
+    fj = os.path.join(repo_root, ".claude", "features", feature_name,
+                       "feature.json")
+    if not os.path.isfile(fj):
+        return error_result(f"feature {feature_name!r} not found: {fj}")
+    try:
+        with open(fj) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        return error_result(f"feature.json unreadable for {feature_name!r}: {e}")
+    if not isinstance(data, dict):
+        return error_result(f"feature.json for {feature_name!r} is not a dict")
+    configuration = data.get("configuration")
+    if not isinstance(configuration, list):
+        return error_result(
+            f"configurable {configurable_id!r} not found in {feature_name!r}")
+    cfg = None
+    for entry in configuration:
+        if isinstance(entry, dict) and entry.get("id") == configurable_id:
+            cfg = entry
+            break
+    if cfg is None:
+        return error_result(
+            f"configurable {configurable_id!r} not found in {feature_name!r}")
+    alert_msg = cfg.get("alert-message")
+    if not isinstance(alert_msg, dict):
+        return error_result(
+            f"configurable {configurable_id!r} in {feature_name!r} has no alert-message")
+    current = _resolve_current_value(repo_root, cfg)
+    if current is None or current != cfg.get("alert-on"):
+        return ok_result()
+    return print_result(alert_msg["text"], alert_msg["icon"], alert_msg["color"])
+
+
+# Filename pattern produced by build-prompt.py:
+#   <id>-<pid>-<YYYYMMDD>-<HHMMSS>-<ms>.txt
+_PROMPT_FILENAME_TS_RE = re.compile(
+    r"^.+-\d+-(\d{8})-(\d{6})-\d+\.txt$"
+)
+
+
+def cleanup_old_prompts(max_age_days: int, *, repo_root: str) -> dict:
+    """Walk <repo_root>/.rabbit/prompts/ and delete .txt files older than
+    max_age_days based on the embedded YYYYMMDD-HHMMSS-ms timestamp in the
+    filename (deterministic — no stat() call). Files whose names don't
+    match the build-prompt.py pattern are skipped (not deleted).
+    Non-.txt files (e.g. .injection-failures.log) are ignored. Returns
+    ok_result on success or when the directory doesn't exist. Idempotent:
+    re-running after cleanup is a no-op that still returns ok_result.
+    """
+    prompts_dir = os.path.join(repo_root, ".rabbit", "prompts")
+    if not os.path.isdir(prompts_dir):
+        return ok_result()
+    cutoff = time.time() - max_age_days * 86400
+    for name in os.listdir(prompts_dir):
+        if not name.endswith(".txt"):
+            continue
+        m = _PROMPT_FILENAME_TS_RE.match(name)
+        if not m:
+            continue
+        ts_str = f"{m.group(1)}-{m.group(2)}"
+        try:
+            t = time.mktime(time.strptime(ts_str, "%Y%m%d-%H%M%S"))
+        except ValueError:
+            continue
+        if t < cutoff:
+            try:
+                os.remove(os.path.join(prompts_dir, name))
+            except OSError:
+                pass
+    return ok_result()
+
+
+def check_prompt_injection_failures(log_path: str, *, repo_root: str) -> dict:
+    """Read the PreToolUse prompt-injector failure log at log_path
+    (repo-root-relative). Each line is a JSON object
+    {ts, skill, callable_id, error}. When the log has entries, return a
+    red print_result summarizing the distinct failing skill names and
+    EMPTY the log file (consume pattern matching check_marker_consume_alert).
+    When empty or missing, return ok_result.
+    """
+    full = os.path.join(repo_root, log_path)
+    if not os.path.isfile(full):
+        return ok_result()
+    try:
+        with open(full) as f:
+            raw = f.read()
+    except OSError as e:
+        return error_result(f"prompt-injection log unreadable: {e}")
+    if not raw.strip():
+        return ok_result()
+
+    seen = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        skill = entry.get("skill") if isinstance(entry, dict) else None
+        if skill and skill not in seen:
+            seen.append(skill)
+
+    if not seen:
+        # Log had non-empty content but no recoverable skill names;
+        # still empty the log so we don't loop.
+        try:
+            open(full, "w").close()
+        except OSError:
+            pass
+        return ok_result()
+
+    names = ", ".join(seen)
+    text = f"prompt-injection failures: {names}"
+    try:
+        open(full, "w").close()
+    except OSError:
+        pass
+    return print_result(text, "📢", "red")

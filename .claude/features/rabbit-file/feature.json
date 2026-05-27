@@ -1,6 +1,6 @@
 {
   "name": "rabbit-file",
-  "version": "0.5.0",
+  "version": "0.5.3",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Unified bug and backlog filing, tracking, and lifecycle. Stores items on origin/bug-backlog-files branch via Python scripts. Replaces (and retires) the legacy rabbit-bug and rabbit-backlog skills (no longer exist; rabbit-file is the sole entry point for bug/backlog operations).",
@@ -19,7 +19,7 @@
     ]
   },
   "deprecation_criterion": "when a unified tracking system replaces file-based bug and backlog management",
-  "updated": "2026-05-24",
+  "updated": "2026-05-26",
   "manifest": [
     {
       "api": "publish_skill",
@@ -30,5 +30,18 @@
   ],
   "runtime": {},
   "configuration": [],
-  "spec_no_change_reason": "Plan E.rabbit-file spec change (Inv adding manifest/runtime/configuration meta-contract sections) committed by dispatcher before subagent invocation; subagent adds manifest/runtime/configuration sections + 2 e2e tests + atomic three-way version bump 0.4.0 -> 0.5.0."
+  "prompts": [
+    {
+      "id": "rabbit-file",
+      "kind": "skill",
+      "inject": [
+        ".claude/features/policy/philosophy.md",
+        ".claude/features/policy/coding-rules.md"
+      ],
+      "slots": [
+        "args"
+      ]
+    }
+  ],
+  "spec_no_change_reason": "Phase C spec change (rabbit-file prompts invariant) committed by dispatcher in 04b20eebb prior to subagent invocation"
 }

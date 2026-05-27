@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""tdd-subagent: manifest declares deployment.
+"""tdd-subagent: manifest declares deployment (v4.0.0 absorbed tdd-step.py).
 
 `tdd-subagent.feature.json` declares meta-contract sections:
-  - `manifest`: list of length 2 with entries (in order):
+  - `manifest`: list of length 3 with entries (in order):
       1. {"api": "publish_agent",
           "args": {"source": "agents/tdd-subagent.md"}}
          — auto-derives dest .claude/agents/tdd-subagent.md.
@@ -10,6 +10,10 @@
           "args": {"source": "scripts/dispatch-tdd-subagent.py",
                    "dest": ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py"}}
          — explicit dest because target is not the publish_agent default.
+      3. {"api": "publish_file",
+          "args": {"source": "scripts/tdd-step.py",
+                   "dest": ".claude/agents/tdd-subagent/scripts/tdd-step.py"}}
+         — explicit dest; absorbed from tdd-state-machine at v4.0.0.
   - `runtime`: `{}` (no event hook handlers; consistent with surface.hooks=[]).
   - `configuration`: `[]` (no configurable toggles).
 
@@ -30,8 +34,10 @@ FEATURE_DIR = Path(__file__).resolve().parents[1]
 FEATURE_JSON = FEATURE_DIR / "feature.json"
 
 EXPECTED_AGENT_SOURCE = "agents/tdd-subagent.md"
-EXPECTED_SCRIPT_SOURCE = "scripts/dispatch-tdd-subagent.py"
-EXPECTED_SCRIPT_DEST = ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py"
+EXPECTED_DISPATCH_SOURCE = "scripts/dispatch-tdd-subagent.py"
+EXPECTED_DISPATCH_DEST = ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py"
+EXPECTED_STEP_SOURCE = "scripts/tdd-step.py"
+EXPECTED_STEP_DEST = ".claude/agents/tdd-subagent/scripts/tdd-step.py"
 
 
 def test_manifest_shape() -> None:
@@ -61,8 +67,8 @@ def test_manifest_shape() -> None:
         f"configuration must be empty list per spec, got {data['configuration']!r}"
     )
 
-    assert len(manifest) == 2, (
-        f"manifest must have exactly 2 entries per spec, got {len(manifest)}"
+    assert len(manifest) == 3, (
+        f"manifest must have exactly 3 entries per spec, got {len(manifest)}"
     )
 
     # Entry 0: publish_agent for agents/tdd-subagent.md
@@ -95,13 +101,33 @@ def test_manifest_shape() -> None:
     )
     args1 = entry1.get("args")
     assert isinstance(args1, dict), "manifest[1].args must be a dict"
-    assert args1.get("source") == EXPECTED_SCRIPT_SOURCE, (
-        f"manifest[1].args.source expected {EXPECTED_SCRIPT_SOURCE!r}, "
+    assert args1.get("source") == EXPECTED_DISPATCH_SOURCE, (
+        f"manifest[1].args.source expected {EXPECTED_DISPATCH_SOURCE!r}, "
         f"got {args1.get('source')!r}"
     )
-    assert args1.get("dest") == EXPECTED_SCRIPT_DEST, (
-        f"manifest[1].args.dest expected {EXPECTED_SCRIPT_DEST!r}, "
+    assert args1.get("dest") == EXPECTED_DISPATCH_DEST, (
+        f"manifest[1].args.dest expected {EXPECTED_DISPATCH_DEST!r}, "
         f"got {args1.get('dest')!r}"
+    )
+
+    # Entry 2: publish_file for scripts/tdd-step.py (explicit dest;
+    # absorbed from retired tdd-state-machine at v4.0.0).
+    entry2 = manifest[2]
+    assert isinstance(entry2, dict), (
+        f"manifest[2] not a dict, got {type(entry2).__name__}"
+    )
+    assert entry2.get("api") == "publish_file", (
+        f"manifest[2].api expected 'publish_file', got {entry2.get('api')!r}"
+    )
+    args2 = entry2.get("args")
+    assert isinstance(args2, dict), "manifest[2].args must be a dict"
+    assert args2.get("source") == EXPECTED_STEP_SOURCE, (
+        f"manifest[2].args.source expected {EXPECTED_STEP_SOURCE!r}, "
+        f"got {args2.get('source')!r}"
+    )
+    assert args2.get("dest") == EXPECTED_STEP_DEST, (
+        f"manifest[2].args.dest expected {EXPECTED_STEP_DEST!r}, "
+        f"got {args2.get('dest')!r}"
     )
 
 

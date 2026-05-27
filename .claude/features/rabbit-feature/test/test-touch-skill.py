@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Inv 4-16, 41, 42: rabbit-feature-touch SKILL.md content.
+"""Inv 4-9, 12-16, 41, 42: rabbit-feature-touch SKILL.md content.
 
 Locks the rabbit-feature-touch SKILL.md (and the deployed copy) against
 drift on the seven-step sequence, scope-resolution invocation, spec
 authoring invocation, Step 3 spec-commit obligation, Step 4 human-approval
-semantics (dispatcher-side gate, bypass marker mechanism, branch
-documentation, brand prefix), B/B mode item.json reads, B/B item
-materialization documentation, and Red Flags content.
+semantics (dispatcher-side gate, bypass marker mechanism, alert routing
+via emit_configurable_alert), B/B mode item.json reads, B/B item
+materialization documentation, and Red Flags content. Inv 10 and Inv 11
+retired in the TDD-SUBAGENT-BACKLOG-19 cascade (the --human-approval-gate
+CLI flag was removed in tdd-subagent v5.0.0); a regression guard asserts
+the flag string is absent from both source and deployed SKILL.md.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -38,10 +41,9 @@ EXPECTED_STEPS = [
 STEP_HEADING_RE = re.compile(
     r"^###\s+Step\s+(\d+)\s+[-—]\s+(.+?)\s*$", re.MULTILINE
 )
-CANONICAL_BRAND = "[\U0001f407 rabbit \U0001f407]"
-BARE_BRAND = "[rabbit]"
 MARKER_PATH = ".rabbit-human-approval-bypass"
 REVOKE_CMD = "/rabbit-config human-approval true"
+ALERT_TEXT = "HUMAN APPROVAL BYPASS ACTIVE"
 
 
 def _text() -> str:
@@ -145,56 +147,59 @@ def test_inv9_bypass_check_is_first_action() -> None:
             )
 
 
-# Inv 10: bypass-active branch passes --human-approval-gate false
-def test_inv10_bypass_active_passes_gate_false() -> None:
-    body = _step_body(_text(), 4)
-    assert "--human-approval-gate false" in body, (
-        "Step 4 must document passing '--human-approval-gate false' "
-        "when the bypass marker is present"
-    )
-    assert "dispatch-tdd-subagent.py" in body, (
-        "Step 4 must reference 'dispatch-tdd-subagent.py' as the Step 5 invocation"
-    )
-
-
-# Inv 11: bypass-absent branch documents --human-approval-gate true (or default)
-def test_inv11_bypass_absent_documents_gate_true() -> None:
-    body = _step_body(_text(), 4)
-    assert "--human-approval-gate true" in body, (
-        "Step 4 must document passing '--human-approval-gate true' on the "
-        "default (marker-absent) path"
+# Inv 10 + Inv 11 retired (TDD-SUBAGENT-BACKLOG-19 cascade) — the
+# --human-approval-gate CLI flag was removed in tdd-subagent v5.0.0, so
+# the assertions that the SKILL.md documents passing that flag no longer
+# apply. Regression guard: the flag string MUST NOT appear anywhere in
+# either the source or deployed SKILL.md.
+def test_no_human_approval_gate_flag_in_source_skill() -> None:
+    text = _text()
+    assert "--human-approval-gate" not in text, (
+        "source SKILL.md must NOT reference the retired '--human-approval-gate' "
+        "flag (TDD-SUBAGENT-BACKLOG-19 cascade)"
     )
 
 
-# Inv 12: canonical brand prefix in Step 4 bypass warning
-def _warning_line(text: str) -> str:
-    for line in text.splitlines():
-        if "Step 4 SKIPPED" in line:
-            return line
-    raise AssertionError("SKILL.md does not contain a 'Step 4 SKIPPED' warning line")
-
-
-def test_inv12_source_warning_uses_canonical_brand() -> None:
-    line = _warning_line(_text())
-    assert CANONICAL_BRAND in line, (
-        f"Step 4 warning line must contain canonical brand {CANONICAL_BRAND!r}; "
-        f"got: {line!r}"
-    )
-    assert BARE_BRAND not in line, (
-        f"Step 4 warning line must NOT contain bare brand {BARE_BRAND!r}; got: {line!r}"
-    )
-
-
-def test_inv12_deployed_warning_uses_canonical_brand() -> None:
+def test_no_human_approval_gate_flag_in_deployed_skill() -> None:
     assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
-    line = _warning_line(DEPLOYED_SKILL.read_text(encoding="utf-8"))
-    assert CANONICAL_BRAND in line, (
-        f"Deployed Step 4 warning must contain canonical brand {CANONICAL_BRAND!r}; "
-        f"got: {line!r}"
+    text = DEPLOYED_SKILL.read_text(encoding="utf-8")
+    assert "--human-approval-gate" not in text, (
+        "deployed SKILL.md must NOT reference the retired '--human-approval-gate' "
+        "flag (TDD-SUBAGENT-BACKLOG-19 cascade)"
     )
-    assert BARE_BRAND not in line, (
-        f"Deployed Step 4 warning must NOT contain bare brand {BARE_BRAND!r}; got: {line!r}"
+
+
+# Inv 12: Step 4 bypass-active path routes the alert through
+# contract.lib.runtime.emit_configurable_alert(rabbit-cage, human-approval).
+# The SKILL.md must reference the helper and the configurable coordinates;
+# it must NOT inline the alert-message text (single source of truth is the
+# rabbit-cage human-approval configurable's alert-message field).
+def _assert_inv12(text: str, label: str) -> None:
+    body = _step_body(text, 4)
+    assert "emit_configurable_alert" in body, (
+        f"Step 4 ({label}) must invoke emit_configurable_alert"
     )
+    assert "rabbit-cage" in body, (
+        f"Step 4 ({label}) must reference the 'rabbit-cage' feature when "
+        "invoking emit_configurable_alert"
+    )
+    assert "human-approval" in body, (
+        f"Step 4 ({label}) must reference the 'human-approval' configurable "
+        "when invoking emit_configurable_alert"
+    )
+    assert ALERT_TEXT not in body, (
+        f"Step 4 ({label}) must NOT inline the alert-message text {ALERT_TEXT!r}; "
+        "the centrally-declared alert text lives in rabbit-cage/feature.json"
+    )
+
+
+def test_inv12_source_step4_uses_emit_configurable_alert() -> None:
+    _assert_inv12(_text(), "source SKILL.md")
+
+
+def test_inv12_deployed_step4_uses_emit_configurable_alert() -> None:
+    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
+    _assert_inv12(DEPLOYED_SKILL.read_text(encoding="utf-8"), "deployed SKILL.md")
 
 
 # Inv 13: B/B mode reads item.json via python3 (never bug.json / jq)

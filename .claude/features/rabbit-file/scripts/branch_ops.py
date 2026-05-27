@@ -9,7 +9,7 @@ Each process gets its own isolated worktree path so concurrent invocations
 from different agents do not collide on the same filesystem path
 (RABBIT-FILE-BUG-18).
 
-Version: 0.3.0
+Version: 0.3.1
 Owner: rabbit-workflow team
 Deprecation criterion: when a unified tracking system replaces file-based bug and backlog management
 """
@@ -282,6 +282,11 @@ def _run_git_with_lock_retry(cmd, max_attempts: int = 5):
     `.git/index.lock` contention that arises when concurrent worktrees
     operate on the same underlying repo. Distinct from the push-retry loop
     above: this handles LOCAL git lock contention, not REMOTE push rejection.
+
+    Also handles the concurrent-fetch ref-transaction collision (BUG-36):
+    when two processes race on `git fetch` against the same shared .git/refs
+    directory, git aborts the second fetch with stderr containing
+    `incorrect old value provided`. Treated as transient and retried.
     """
     last_err = None
     for attempt in range(1, max_attempts + 1):
@@ -295,6 +300,7 @@ def _run_git_with_lock_retry(cmd, max_attempts: int = 5):
             or "cannot lock" in lower
             or "index.lock" in lower
             or "could not lock" in lower
+            or "incorrect old value provided" in lower
         )
         if not is_lock_race or attempt == max_attempts:
             raise RuntimeError(

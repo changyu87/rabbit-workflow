@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.12.0
+version: 1.14.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -64,14 +64,14 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "invokes": {
     "scripts": [
       {
-        "path": ".claude/features/tdd-state-machine/scripts/tdd-step.py",
+        "path": ".claude/features/tdd-subagent/scripts/tdd-step.py",
         "signature": "tdd-step.py {show|next|transitions|transition} <feature-dir> [<new-state>] [--force] [--spec-no-change-reason <reason>]",
         "exit": "0=success, 1=denied/invalid, 2=bad invocation",
         "lock": "test/test-cross-feature-interface.py asserts --help exits 0 with 'usage:' text (Inv 3)"
       },
       {
         "path": ".claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py",
-        "signature": "dispatch-tdd-subagent.py --scope <feature-name> --spec <spec-path> [--impl-suggestion <path>] [--linked-item <item-dir> --item-type bug|backlog] [--linked-items <feature>:<type>:<id>[,...]] [--human-approval-gate true|false] [--code-review-full-loop] [--max-iterations N]",
+        "signature": "dispatch-tdd-subagent.py --scope <feature-name> --spec <spec-path> [--impl-suggestion <path>] [--linked-item <item-dir> --item-type bug|backlog] [--linked-items <feature>:<type>:<id>[,...]] [--code-review-full-loop] [--max-iterations N]",
         "exit": "0=success, 1=feature not found, 2=bad invocation",
         "lock": "test/test-cross-feature-interface.py asserts --help exits 0 with 'usage:' text (Inv 3)"
       },
@@ -95,7 +95,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   },
   "never": [
     "modifies tdd-subagent spec, contract, feature.json, or scripts",
-    "modifies tdd-state-machine spec, contract, feature.json, or scripts",
     "modifies workspace-structure.json"
   ]
 }

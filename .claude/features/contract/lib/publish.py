@@ -104,12 +104,36 @@ def publish_hook(event: str, source: str, matcher: str = "*", *,
     if not isinstance(data, dict):
         data = {}
 
-    command = f".claude/hooks/{hook_name}"
+    # Inv 50: command MUST be CWD-independent. /bin/sh substitutes the absolute
+    # repo root at hook-fire time via $(git rev-parse --show-toplevel).
+    command = f"$(git rev-parse --show-toplevel)/.claude/hooks/{hook_name}"
+    legacy_command = f".claude/hooks/{hook_name}"
     hooks_section = data.setdefault("hooks", {})
     event_entries = hooks_section.setdefault(event, [])
+
+    # Migration pass: upgrade any legacy bare-relative entry in place to the
+    # new form, preserving the surrounding matcher and any sibling hooks.
+    migrated = False
     for entry in event_entries:
-        if any(h.get("command") == command for h in entry.get("hooks", [])):
-            return CheckResult(True, [f"OK: {hook_dest} already registered under {event} (no-op)"])
+        for h in entry.get("hooks", []):
+            if h.get("command") == legacy_command:
+                h["command"] = command
+                migrated = True
+
+    # Idempotency: if (after migration) the new-form command is already
+    # present, no append is needed.
+    already_present = any(
+        h.get("command") == command
+        for entry in event_entries
+        for h in entry.get("hooks", [])
+    )
+    if already_present:
+        if migrated:
+            os.makedirs(os.path.dirname(settings_path), exist_ok=True)
+            with open(settings_path, "w") as f:
+                json.dump(data, f, indent=2)
+            return CheckResult(True, [f"OK: {hook_dest} migrated to repo-root-anchored path under {event}"])
+        return CheckResult(True, [f"OK: {hook_dest} already registered under {event} (no-op)"])
 
     event_entries.append({"matcher": matcher,
                            "hooks": [{"type": "command", "command": command}]})

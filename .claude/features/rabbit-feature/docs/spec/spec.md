@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.12.0
+version: 1.14.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -21,9 +21,9 @@ Owns the dispatcher-side feature-touch orchestration surface: the
 `rabbit-feature-audit`) and their backing scripts.
 
 The executor-side TDD machinery (`dispatch-tdd-subagent.py`,
-`tdd-step.py`, the 9-step TDD cycle) lives in `tdd-subagent` and
-`tdd-state-machine`. This feature consumes both via the cross-feature
-contract declared in `contract.md`.
+`tdd-step.py`, the 7-step TDD cycle) lives in `tdd-subagent`. This
+feature consumes it via the cross-feature contract declared in
+`contract.md`.
 
 ## Scripting Tech Stack
 
@@ -65,7 +65,7 @@ Scripts (under `scripts/`):
    (relative to the feature directory).
 
 2. **Declared cross-feature script dependencies.** This feature invokes
-   `.claude/features/tdd-state-machine/scripts/tdd-step.py` and
+   `.claude/features/tdd-subagent/scripts/tdd-step.py` and
    `.claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py`. Both
    are declared in `contract.md` under `invokes.scripts` with their
    CLI signatures pinned.
@@ -108,21 +108,26 @@ Scripts (under `scripts/`):
    `.rabbit-human-approval-bypass` check as the FIRST action of the
    step, before any impl-suggestion surfacing or in-conversation wait.
 
-10. **Step 4 bypass-active branch documents `--human-approval-gate
-    false`.** When the marker is present, the SKILL.md Step 4 documents
-    passing `--human-approval-gate false` to the Step 5
-    `dispatch-tdd-subagent.py` invocation.
+10. *(Retired — see CHANGELOG.md.)*
 
-11. **Step 4 bypass-absent branch documents `--human-approval-gate
-    true`.** When the marker is absent, the SKILL.md Step 4 documents
-    passing `--human-approval-gate true` (or notes that `true` is the
-    default).
+11. *(Retired — see CHANGELOG.md.)*
 
-12. **Step 4 brand prefix.** The SKILL.md Step 4 bypass-active warning
-    uses the canonical brand prefix `[🐇 rabbit 🐇]` and names both
-    the marker path (`.rabbit-human-approval-bypass`) and the revoke
-    command (`/rabbit-config human-approval true`) in the warning
-    text.
+12. **Step 4 alert routing via `emit_configurable_alert`.** The SKILL.md
+    Step 4 bypass-active path MUST instruct the dispatcher to source the
+    alert by invoking
+    `contract.lib.runtime.emit_configurable_alert('rabbit-cage',
+    'human-approval', repo_root=<repo-root>)`. The returned
+    `print_result` carries the centrally-declared `alert-message` from
+    `rabbit-cage/feature.json`'s `human-approval` configurable (text,
+    icon, color); the brand prefix `[🐇 rabbit 🐇]` is owned by
+    `rabbit_print` (Inv 48 of `contract`), so the SKILL.md MUST NOT
+    inline a hardcoded brand prefix or duplicate the alert-message text
+    in prose. The SKILL.md Step 4 prose MUST still name the marker path
+    (`.rabbit-human-approval-bypass`) and the revoke command
+    (`/rabbit-config human-approval true`) as operational guidance for
+    the user — both are operational (skill-specific) instructions
+    distinct from the alert-message text. The sole source of truth for
+    the alert text is the configurable's `alert-message` field.
 
 13. **B/B mode reads `item.json`.** The SKILL.md B/B mode reads the
     linked item JSON from `<item-dir>/item.json` (never `bug.json`) and
@@ -283,7 +288,7 @@ Scripts (under `scripts/`):
     that this feature's code reads or invokes has a corresponding entry
     under `contract.md.reads.files` or `contract.md.invokes.scripts`.
 
-### Manifest-driven deployment (Plan E.* migration)
+### Manifest-driven deployment
 
 40. **Manifest declares deployment.** `rabbit-feature.feature.json`
     declares a `manifest` array of N publish API calls, one per skill
@@ -294,7 +299,7 @@ Scripts (under `scripts/`):
     entries deploys the set of `.claude/skills/<name>/SKILL.md`
     artifacts byte-identically.
 
-### B/B item materialization (RABBIT-FEATURE-BUG-7)
+### B/B item materialization
 
 42. **B/B item materialization documented.** The `rabbit-feature-touch`
     SKILL.md B/B mode documentation MUST explicitly describe how a
@@ -327,7 +332,7 @@ Scripts (under `scripts/`):
     and MUST also be present byte-identical in the deployed copy
     `.claude/skills/rabbit-feature-touch/SKILL.md`.
 
-### Dispatcher continuity (RABBIT-FEATURE-BACKLOG-10)
+### Dispatcher continuity
 
 41. **Dispatcher continuity directive.** The `rabbit-feature-touch`
     SKILL.md MUST contain an explicit dispatcher-continuity directive
@@ -347,11 +352,48 @@ Scripts (under `scripts/`):
     placement: near the Overview, or as the closing paragraph after
     Step 7's body).
 
+### Prompt-contract declaration
+
+43. **`prompts` section declares all five skills.**
+    `.claude/features/rabbit-feature/feature.json` MUST declare a
+    `prompts` array containing EXACTLY FIVE entries, one per skill
+    surfaced by this feature, with these field values:
+    (a) `{"id": "rabbit-feature-touch", "kind": "skill", "inject":
+        [".claude/features/policy/philosophy.md",
+         ".claude/features/policy/spec-rules.md",
+         ".claude/features/policy/coding-rules.md"],
+        "slots": ["args"]}` — orchestrates code changes and spec edits;
+        needs the full policy bundle.
+    (b) `{"id": "rabbit-feature-spec", "kind": "skill", "inject":
+        [".claude/features/policy/philosophy.md",
+         ".claude/features/policy/spec-rules.md"],
+        "slots": ["args"]}` — authors specs; needs spec-rules but not
+        coding-rules.
+    (c) `{"id": "rabbit-feature-new", "kind": "skill", "inject":
+        [".claude/features/policy/philosophy.md",
+         ".claude/features/policy/coding-rules.md"],
+        "slots": ["args"]}` — scaffolds code; needs coding-rules.
+    (d) `{"id": "rabbit-feature-audit", "kind": "skill", "inject":
+        [".claude/features/policy/philosophy.md",
+         ".claude/features/policy/coding-rules.md"],
+        "slots": ["args"]}` — validates code; needs coding-rules for
+        context.
+    (e) `{"id": "rabbit-feature-scope", "kind": "skill", "inject":
+        [".claude/features/policy/philosophy.md"], "slots": ["args"]}`
+        — JSON classifier; philosophy only.
+    Each entry's matching template at
+    `.claude/features/contract/templates/prompts/<id>.txt` (the
+    passthrough body created by contract Inv 57 in Phase A.4) declares
+    the single ``args`` placeholder matching the entry's
+    `slots: ["args"]`. Enforced by `test/test-prompts-declared.py`,
+    which loads `feature.json` and asserts the five entries exist with
+    the ids and inject lists named above.
+
 ## What this feature does NOT define
 
-- The TDD subagent's 9-step cycle, the `tdd-step.py` state machine, or
+- The TDD subagent's 7-step cycle, the `tdd-step.py` state machine, or
   the `dispatch-tdd-subagent.py` prompt assembler — owned by
-  `tdd-subagent` and `tdd-state-machine`.
+  `tdd-subagent`.
 - The build pipeline that copies skills into `.claude/skills/` — owned
   by `contract`. This feature consumes the pipeline; it does not define
   it.
@@ -364,7 +406,7 @@ listed below, each tagged with the invariant(s) it covers.
 
 - `test-build-source.py` — Inv 1
 - `test-cross-feature-interface.py` — Inv 2, 3
-- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 41, 42
+- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 41, 42
 - `test-scope-skill.py` — Inv 24
 - `test-scope-scripts.py` — Inv 17, 18, 19, 20, 21, 22, 23, 25
 - `test-spec-skill.py` — Inv 26, 27, 28, 29, 30, 31
@@ -377,3 +419,4 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-contract-md.py` — Inv 39
 - `test-manifest-shape.py` — Inv 40
 - `test-manifest-deploys-correctly.py` — Inv 40
+- `test-prompts-declared.py` — Inv 43

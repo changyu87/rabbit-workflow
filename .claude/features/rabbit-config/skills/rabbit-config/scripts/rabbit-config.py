@@ -9,7 +9,7 @@ Usage: rabbit-config.py <subcommand> [<value-or-action> [<template-value>]]
   Values-style:  rabbit-config <subcommand> <value>
   Actions-style: rabbit-config <subcommand> <action> [<template-value>]
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-config)
 Deprecation criterion: when the rabbit CLI exposes native configuration mutation.
 """
@@ -69,13 +69,15 @@ def _has_templates(obj):
 
 
 def _apply_template(obj, value):
-    """Replace {tool} and {command} placeholders with value; returns new obj."""
+    """Replace {tool}, {command}, and {value} placeholders with value; returns new obj."""
     if isinstance(obj, dict):
         return {k: _apply_template(v, value) for k, v in obj.items()}
     if isinstance(obj, list):
         return [_apply_template(item, value) for item in obj]
     if isinstance(obj, str):
-        return obj.replace("{tool}", value).replace("{command}", value)
+        return (obj.replace("{tool}", value)
+                   .replace("{command}", value)
+                   .replace("{value}", value))
     return obj
 
 

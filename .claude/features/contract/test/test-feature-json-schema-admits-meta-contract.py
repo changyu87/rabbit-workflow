@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """test-feature-json-schema-admits-meta-contract.py — verifies that
 feature.json.schema.json declares optional properties for manifest, runtime,
-and configuration referencing the three new schemas.
+configuration, and prompts referencing the four meta-contract schemas
+(Inv 43, Inv 52).
 """
 
 import os
@@ -15,6 +16,7 @@ EXPECTED_REFS = {
     "manifest": "manifest.schema.json",
     "runtime": "runtime.schema.json",
     "configuration": "configuration.schema.json",
+    "prompts": "prompts.schema.json",
 }
 
 FAIL = 0

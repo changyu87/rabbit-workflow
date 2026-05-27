@@ -116,8 +116,8 @@ When the user asks to work or close a bug or backlog item:
    - Its impl-suggestion output MUST include a **test gap analysis**
      section that names the existing tests covering the affected
      behaviour and lists any missing tests the implementer should add
-     before turning RED → GREEN (BACKLOG-2). A bug fix without an
-     accompanying regression test is incomplete.
+     before turning RED → GREEN. A bug fix without an accompanying
+     regression test is incomplete.
 
 3. **User-decision gate** — after the eval subagent returns, brief the user:
    - Summarize verdict and reasoning

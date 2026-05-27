@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.7.0
+version: 1.7.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native subagent-policy injection point
@@ -83,7 +83,7 @@ directory.
    filenames. `test/run.py` is the harness, not a test, and is
    excluded from this restriction.
 
-### Meta-contract sections (Plan E.* migration)
+### Meta-contract sections
 
 10. **Meta-contract sections declared empty.** `policy/feature.json`
     declares the meta-contract sections `manifest`, `runtime`, and

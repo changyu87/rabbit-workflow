@@ -9,7 +9,6 @@
 #     [--linked-item <dir>] \
 #     [--item-type bug|backlog] \
 #     [--linked-items <feature>:<type>:<id>[,<feature>:<type>:<id>...]] \
-#     [--human-approval-gate true|false] \
 #     [--code-review-full-loop] \
 #     [--max-iterations N]
 #
@@ -23,7 +22,7 @@
 # --fix-commits <impl-sha>`, and lists all closed items in HANDOFF.closed_items.
 #
 # Output: assembled prompt to stdout. Caller: Agent(model: opus, prompt: stdout).
-# Version: 3.0.0
+# Version: 4.0.0
 # Owner: rabbit-workflow team (tdd-subagent)
 # Deprecation criterion: when TDD cycle is natively supported by rabbit CLI.
 
@@ -42,12 +41,39 @@ if str(_CONTRACT_SCRIPTS) not in sys.path:
 from rabbit_print import rabbit_print  # noqa: E402
 
 # Canonical preamble text. Grep-stable: tests assert this exact body.
+# The note refers to the DISPATCHER's Step 4 HUMAN-APPROVAL gate (owned by
+# rabbit-feature-touch), not any step inside the assembled subagent prompt.
+# The subagent itself no longer contains a HUMAN-APPROVAL step
+# (TDD-SUBAGENT-BACKLOG-19 retired Inv 25, 26).
 _BYPASS_NOTE_TEXT = (
     "NOTE: human-approval bypass marker is active "
-    "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be "
-    "skipped for this dispatch. Revoke via "
+    "(.rabbit-human-approval-bypass). The dispatcher's Step 4 "
+    "HUMAN-APPROVAL gate was skipped for this dispatch. Revoke via "
     "`/rabbit-config human-approval true`."
 )
+
+
+def _validate_linked_item(path_str):
+    """Inv 30: validate --linked-item path layout.
+
+    Resolves `path_str` and requires the canonical rabbit-file storage
+    layout `.../rabbit/features/<feature>/<bugs|backlogs>/<id>/`. On
+    failure, writes a diagnostic naming both the expected layout and the
+    observed path tail to stderr and exits 2 (BEFORE any stdout). On
+    success, returns the validated feature name (the segment at -3) so
+    callers can wire it through the close-call block (Inv 19).
+    """
+    resolved = _Path(path_str).resolve()
+    parts = resolved.parts
+    if len(parts) < 4 or parts[-4] != "features" or parts[-2] not in ("bugs", "backlogs"):
+        tail = "/".join(parts[-4:]) if len(parts) >= 4 else "/".join(parts)
+        sys.stderr.write(
+            "ERROR: --linked-item path layout invalid: "
+            "expected `.../rabbit/features/<feature>/<bugs|backlogs>/<id>/`; "
+            f"observed tail: {tail}\n"
+        )
+        sys.exit(2)
+    return parts[-3]
 
 
 def _repo_root(script_dir):
@@ -76,19 +102,6 @@ def _read_file(path, default="(not found)"):
     return default
 
 
-def _policy_block(repo_root):
-    py = os.path.join(repo_root, ".claude", "features", "contract", "scripts", "policy-block.py")
-    if not os.path.isfile(py):
-        return ""
-    try:
-        res = subprocess.run([sys.executable, py], capture_output=True, text=True, check=False)
-        if res.returncode == 0:
-            return res.stdout.rstrip("\n")
-    except Exception:
-        pass
-    return ""
-
-
 def _find_feature(repo_root, feature_name):
     find_py = os.path.join(repo_root, ".claude", "features", "contract", "scripts", "find-feature.py")
     try:
@@ -110,8 +123,8 @@ def main(argv):
     parser = argparse.ArgumentParser(
         prog="dispatch-tdd-subagent.py",
         description=("Assemble a per-feature TDD subagent prompt that runs the "
-                     "9-step TDD cycle (spec-update -> test-red -> impl -> "
-                     "test-green) for ONE feature. Prompt is written to stdout."),
+                     "7-step TDD cycle (test-red -> impl -> test-green) for "
+                     "ONE feature. Prompt is written to stdout."),
     )
     parser.add_argument("--scope", required=True)
     parser.add_argument("--spec", required=True)
@@ -122,13 +135,6 @@ def main(argv):
                         help="Comma-separated <feature>:<type>:<id> triples for secondary "
                              "items closed by the same impl commit (type in {bug, backlog}). "
                              "Malformed triples cause non-zero exit before prompt emit.")
-    parser.add_argument(
-        "--human-approval-gate",
-        choices=["true", "false"],
-        default="true",
-        help="'true' (default) requires explicit user approval in the subagent's "
-             "HUMAN-APPROVAL step; 'false' skips that step.",
-    )
     parser.add_argument("--code-review-full-loop", action="store_true")
     parser.add_argument("--max-iterations", type=int, default=3)
 
@@ -143,8 +149,7 @@ def main(argv):
             "ERROR: usage: dispatch-tdd-subagent.py --scope <feature> --spec <path> "
             "[--impl-suggestion <path>] [--linked-item <dir>] [--item-type bug|backlog] "
             "[--linked-items <feature>:<type>:<id>[,...]] "
-            "[--human-approval-gate true|false] [--code-review-full-loop] "
-            "[--max-iterations N]\n"
+            "[--code-review-full-loop] [--max-iterations N]\n"
         )
         return 2
 
@@ -154,6 +159,13 @@ def main(argv):
     if args.item_type and not args.linked_item:
         sys.stderr.write("ERROR: --item-type requires --linked-item\n")
         return 2
+    # Inv 30: validate --linked-item path layout BEFORE any stdout. The
+    # helper exits(2) with a stderr diagnostic on failure; on success it
+    # returns the validated feature name (segments[-3]) for use in the
+    # close-call block below (Inv 19).
+    validated_feature_from_link = None
+    if args.linked_item:
+        validated_feature_from_link = _validate_linked_item(args.linked_item)
     if args.max_iterations < 1:
         sys.stderr.write("ERROR: --max-iterations must be >= 1\n")
         return 2
@@ -210,7 +222,7 @@ def main(argv):
         return 2
 
     feature_dir = os.path.join(repo_root, feature_path)
-    tdd_step_py = os.path.join(repo_root, ".claude", "features", "tdd-state-machine", "scripts", "tdd-step.py")
+    tdd_step_py = os.path.join(repo_root, ".claude", "features", "tdd-subagent", "scripts", "tdd-step.py")
 
     spec_content = _read_file(args.spec)
     impl_suggestion_block = ""
@@ -219,7 +231,6 @@ def main(argv):
         if raw != "(not found)":
             impl_suggestion_block = f"\n## Implementation Suggestion\n\n```json\n{raw}\n```\n"
 
-    policy_block = _policy_block(repo_root)
     linked_item_value = args.linked_item or "null"
     item_type_value = args.item_type or "null"
 
@@ -239,16 +250,19 @@ def main(argv):
         repo_root, ".claude", "features", "rabbit-file", "scripts", "item-status.py"
     )
 
-    # Build close-call block for STEP 9 UNLOCK (Inv 19/20: all close
+    # Build close-call block for STEP 7 UNLOCK (Inv 19/20: all close
     # calls route through rabbit-file's `item-status.py set ...`). One
     # loop, one template — primary and secondary differ only by comment,
     # reason, and the HANDOFF label string. Baseline prompt (no items)
     # is unchanged.
     items = []
     if args.linked_item and args.item_type:
-        parts = [p for p in args.linked_item.replace("\\", "/").split("/") if p]
-        feat = parts[-3] if len(parts) >= 3 else "unknown"
-        iid = parts[-1] if parts else "unknown"
+        # Inv 30: feature/id come from the validated resolved path so the
+        # downstream item-status.py call cannot drift from the actual
+        # storage layout. validated_feature_from_link is set above.
+        resolved_parts = _Path(args.linked_item).resolve().parts
+        feat = validated_feature_from_link
+        iid = resolved_parts[-1]
         items.append({
             "feat": feat, "typ": args.item_type, "iid": iid,
             "comment": "Primary linked item (closed by impl commit):",
@@ -297,316 +311,53 @@ def main(argv):
         handoff_closed_items_block = ""
         handoff_closed_items_json = "[]"
 
-    # All step banners use the uniform ═════ banner format. Both gated and
-    # bypassed forms use the same heading style for visual consistency.
-    if args.human_approval_gate == "false":
-        human_approval_section = (
-            "\n"
-            "════════════════════════════════════════════════════════════════════════\n"
-            "STEP 2 — HUMAN-APPROVAL\n"
-            "════════════════════════════════════════════════════════════════════════\n"
-            "\n"
-            "Skipped (--human-approval-gate false).\n"
-        )
-    else:
-        human_approval_section = (
-            "\n"
-            "════════════════════════════════════════════════════════════════════════\n"
-            "STEP 2 — HUMAN-APPROVAL\n"
-            "════════════════════════════════════════════════════════════════════════\n"
-            "\n"
-            "Invoke `Skill(\"superpowers:writing-plans\")` to produce an implementation summary with:\n"
-            "- Key implementation points (bullet list)\n"
-            "- Affected files (explicit paths)\n"
-            "\n"
-            "Present this summary to the user and wait for explicit approval before Step 3 (LOCK).\n"
-            "If the user requests changes, update and re-present. Do NOT proceed without approval.\n"
-        )
-
     if args.code_review_full_loop:
         code_review_loop_note = (
             "--code-review-full-loop is active: after any code changes from CODE-REVIEW, "
-            "loop back to Step 4 (TEST-WRITE) and repeat until CODE-REVIEW produces no further changes."
+            "loop back to Step 2 (TEST-WRITE) and repeat until CODE-REVIEW produces no further changes."
         )
     else:
         code_review_loop_note = (
-            "Default mode: use judgment — loop back to Step 4 (TEST-WRITE) only if "
-            "CODE-REVIEW changed functional code or tests. HUMAN-APPROVAL (Step 2) does NOT re-run on loop-back."
+            "Default mode: use judgment — loop back to Step 2 (TEST-WRITE) only if "
+            "CODE-REVIEW changed functional code or tests."
         )
 
-    prompt = f"""{policy_block}
-{bypass_preamble_note}
-════════════════════════════════════════════════════════════════════════
-TDD SUBAGENT — SCOPE: {feature_name}
-════════════════════════════════════════════════════════════════════════
-
-You are a TDD subagent. Execute the 9 named steps below IN ORDER for feature: {feature_name}
-Do NOT skip steps. Do NOT dispatch nested subagents. All work is done inline.
-
-════════════════════════════════════════════════════════════════════════
-SPEC
-════════════════════════════════════════════════════════════════════════
-
-{spec_content}
-{impl_suggestion_block}
-════════════════════════════════════════════════════════════════════════
-E2E TEST RULE (non-negotiable)
-════════════════════════════════════════════════════════════════════════
-
-Every behaviour described in the spec MUST have a corresponding end-to-end test.
-Unit tests alone are insufficient. If a spec behaviour has no e2e test, add one in TEST-WRITE.
-This rule applies to ALL TDD cycles without exception.
-
-════════════════════════════════════════════════════════════════════════
-SCOPE BOUNDARY — RED FLAG (non-negotiable)
-════════════════════════════════════════════════════════════════════════
-
-Your declared scope is feature: {feature_name}. The only scope marker
-you may create is .rabbit-scope-active-{feature_name} (at LOCK).
-
-You MUST NOT create any .rabbit-scope-active-<X> marker where X != {feature_name},
-even temporarily. Creating an out-of-scope scope marker is a CONSTITUTION
-VIOLATION. Never do this.
-
-If implementation work requires writing to a file inside another feature's
-directory (anywhere under .claude/features/<X>/ where X != {feature_name}):
-
-1. STOP. Do not write the file. Do not create another marker.
-2. Emit HANDOFF with:
-     HANDOFF:
-       feature: {feature_name}
-       tdd_state: blocked
-       test_result: not_run
-       cross_feature_dependency: <X>
-       unwritten_paths:
-         - <full path 1>
-         - <full path 2>
-       notes: <one sentence describing the cross-feature dependency>
-3. Do not call tdd-step.py for any further transitions.
-4. Do not run the test suite.
-
-The dispatcher will read the HANDOFF, surface the cross-feature dependency to
-the user, and split the work into a separate cycle for <X> if the user approves.
-
-════════════════════════════════════════════════════════════════════════
-SKILL.md ROUTING — RED FLAG (non-negotiable)
-════════════════════════════════════════════════════════════════════════
-
-If any file your implementation must edit has the basename `SKILL.md`
-(e.g., .claude/features/<X>/skills/<Y>/SKILL.md or
-.claude/skills/<Y>/SKILL.md), you MUST invoke
-Skill("skill-creator:skill-creator") and let it drive the edit.
-
-Using Write or Edit directly on a SKILL.md is a CONSTITUTION VIOLATION:
-it bypasses skill-creator's eval loop and description optimization,
-and produces SKILL.md files that drift from the skill-authoring contract.
-
-This rule applies at STEP 6 (IMPLEMENT). It has no exceptions.
-
-════════════════════════════════════════════════════════════════════════
-STEP 1 — SPEC-READ
-════════════════════════════════════════════════════════════════════════
-
-Run:  git diff HEAD~1 -- {feature_dir}/docs/spec/
-(HEAD~1, not HEAD: the caller commits the spec change BEFORE dispatching
-this subagent, so HEAD already includes the spec edit and the working tree
-is clean. `git diff HEAD` would always be empty; HEAD~1 is the pre-spec
-state, which makes the actual spec delta visible.)
-Read the diff carefully. If an impl-suggestion was provided, read it now.
-Summarise what has changed and what the implementation must achieve before proceeding.
-
-{human_approval_section}
-════════════════════════════════════════════════════════════════════════
-STEP 3 — LOCK
-════════════════════════════════════════════════════════════════════════
-
-Set the scope marker as your FIRST write action — and ONLY that:
-  touch {repo_root}/.rabbit-scope-active-{feature_name}
-
-Do NOT register a `trap '... rm -f ...' EXIT` here. Each Claude Code Bash
-tool invocation runs in a separate (per-call) shell process. The trap would
-fire the moment that shell exits — i.e., immediately after `touch` returns —
-deleting the scope marker before any subsequent step (TEST-WRITE, IMPLEMENT,
-etc.) can rely on it. Cleanup is explicit and happens in STEP 9 UNLOCK
-(`rm -f {repo_root}/.rabbit-scope-active-{feature_name}`), AFTER the chore
-commit and BEFORE the HANDOFF block.
-
-════════════════════════════════════════════════════════════════════════
-STEP 4 — TEST-WRITE
-════════════════════════════════════════════════════════════════════════
-
-1. Read all existing tests in {feature_dir}/test/
-2. Compare each spec behaviour against existing tests.
-3. For each behaviour with no e2e test: add one now. (E2E TEST RULE applies.)
-4. Commit new/updated tests:
-   git add {feature_dir}/test/
-   git commit -m "test({feature_name}): add e2e tests for spec behaviours"
-
-Note on ordering: the commit above happens BEFORE STEP 5 (TEST-RED) runs.
-That is intentional — STEP 5 verifies the suite is failing as expected after
-the commit. The tests are committed in their failing state so the diff is
-captured atomically alongside the implementation that will turn them green.
-
-════════════════════════════════════════════════════════════════════════
-STEP 5 — TEST-RED
-════════════════════════════════════════════════════════════════════════
-
-Run: python3 {feature_dir}/test/run.py
-Verify tests FAIL. If they already pass (no implementation gap), document why and proceed.
-
-Bring tdd_state into this cycle from the prior cycle's `test-green` endpoint.
-The tdd-step.py state machine is forward-only; from `test-green` the only
-valid path into a new cycle starts with `spec-update`. Run this BEFORE the
-`test-red` transition below. If the starting state is already `spec-update`
-or further along, the transition is a no-op-friendly check via `show` first:
-
-  CURRENT_STATE=$(python3 {tdd_step_py} show {feature_dir})
-  if [ "$CURRENT_STATE" = "test-green" ]; then
-    python3 {tdd_step_py} transition {feature_dir} spec-update
-  fi
-
-Advance state:
-  python3 {tdd_step_py} transition {feature_dir} test-red
-
-════════════════════════════════════════════════════════════════════════
-STEP 6 — IMPLEMENT
-════════════════════════════════════════════════════════════════════════
-
-Max iterations: {args.max_iterations}
-
-IMPORTANT: Before issuing any Edit/Write tool call against an existing file,
-Read it in this session first. The Claude Code Edit tool rejects Edits on
-un-Read files (tdd-subagent Inv 18). This constraint applies to any file
-you edit.
-
-Loop (repeat until green or max iterations reached):
-  1. Write/update implementation files for {feature_name}
-  2. Run: python3 {feature_dir}/test/run.py
-  3. If tests pass:
-       a. git add {feature_dir}/
-       b. git commit -m "fix({feature_name}): <one-line summary>"
-          (use `feat(...)` instead of `fix(...)` when introducing a new
-          feature rather than fixing a bug)
-       c. break loop
-  4. If iteration == {args.max_iterations}: emit this HANDOFF and stop:
-       HANDOFF:
-         feature: {feature_name}
-         tdd_state: impl
-         test_result: fail
-         failure_reason: max_iterations_reached
-         tdd_report_path: null
-         notes: Reached {args.max_iterations} iterations without test-green
-
-The implementation commit MUST happen INSIDE the loop, BEFORE the
-`tdd-step.py transition ... impl` call below. Otherwise the impl SHA
-captured in STEP 8 (via `git rev-parse HEAD`) would point at the prior
-test commit from STEP 4, not at the actual implementation.
-
-On success — advance state (only AFTER the impl commit above):
-  python3 {tdd_step_py} transition {feature_dir} impl
-  python3 {tdd_step_py} transition {feature_dir} test-green
-
-════════════════════════════════════════════════════════════════════════
-STEP 7 — CODE-REVIEW
-════════════════════════════════════════════════════════════════════════
-
-Invoke: Skill("superpowers:requesting-code-review")
-The review covers ALL changed files: tests and functional code.
-(The skill name is exact and case-sensitive. The bare `superpowers:code-reviewer`
-form does not exist — using it silently no-ops the review step.)
-
-{code_review_loop_note}
-
-════════════════════════════════════════════════════════════════════════
-STEP 8 — TEST-GREEN
-════════════════════════════════════════════════════════════════════════
-
-Run final test suite to confirm pass:
-  python3 {feature_dir}/test/run.py
-
-FIRST — capture the implementation commit SHA BEFORE STEP 9's chore commit:
-  IMPL_SHA=$(git rev-parse HEAD)
-
-This ordering is non-negotiable. STEP 9's `chore({feature_name}): advance
-tdd_state to test-green` commit will advance HEAD past the implementation
-commit; capturing `git rev-parse HEAD` after that point would record the
-chore SHA in `impl_commit`, not the actual implementation SHA. The
-tdd-report MUST be fully written with the captured `$IMPL_SHA` value
-substituted into `impl_commit` BEFORE STEP 9 UNLOCK begins.
-
-Write tdd-report (gitignored — NEVER commit):
-  mkdir -p {repo_root}/.rabbit/
-  Path: {repo_root}/.rabbit/tdd-report-{feature_name}.json
-
-IMPORTANT: the JSON below is a TEMPLATE. You MUST substitute actual values
-for every `<...>` placeholder and for `$IMPL_SHA`. Do NOT copy the template
-literally — replace the placeholders with the real values you have just
-captured. Specifically: replace `$IMPL_SHA` with the captured commit SHA,
-`<yes|no>` with `yes` or `no`, `<reason or null>` with the actual reason
-string or the JSON literal `null`, and so on.
-
-  {{
-    "schema_version": "1.0.0",
-    "feature": "{feature_name}",
-    "linked_item": "{linked_item_value}",
-    "item_type": "{item_type_value}",
-    "spec_changes": "<yes|no>",
-    "spec_no_change_reason": "<reason or null>",
-    "impl_summary": "<one paragraph describing what was implemented>",
-    "spec_compliance": "<pass|fail>",
-    "spec_compliance_notes": "<unaddressed invariants or null>",
-    "test_result": "pass",
-    "tdd_state": "test-green",
-    "impl_commit": "$IMPL_SHA"
-  }}
-
-════════════════════════════════════════════════════════════════════════
-STEP 9 — UNLOCK
-════════════════════════════════════════════════════════════════════════
-
-Before emitting HANDOFF, commit the tdd_state transition so the dispatcher
-does not have to commit feature.json manually:
-
-  git add {feature_dir}/feature.json
-  git commit -m "chore({feature_name}): advance tdd_state to test-green"
-{close_calls_block}
-Remove the scope marker explicitly (no `trap` was registered at LOCK — see
-the explanation in STEP 3 about per-call shell process semantics):
-  rm -f {repo_root}/.rabbit-scope-active-{feature_name}
-
-════════════════════════════════════════════════════════════════════════
-HANDOFF (emit on completion)
-════════════════════════════════════════════════════════════════════════
-
-HANDOFF:
-  feature: {feature_name}
-  tdd_state: test-green
-  test_result: pass
-  spec_compliance: <pass|fail>
-  tdd_report_path: {repo_root}/.rabbit/tdd-report-{feature_name}.json
-  notes: <brief summary>{handoff_closed_items_block}
-
-Also emit the structured JSON HANDOFF below. The JSON block is the
-machine-first source of truth (philosophy.md §1); the YAML-like form above
-is the human-readable view alongside the machine-first JSON. Substitute
-every `<...>` placeholder with the actual value before emitting.
-
-HANDOFF_JSON:
-```json
-{{
-  "handoff_schema_version": "1.0.0",
-  "feature": "{feature_name}",
-  "tdd_state": "test-green",
-  "test_result": "pass",
-  "spec_compliance": "<pass|fail>",
-  "tdd_report_path": "{repo_root}/.rabbit/tdd-report-{feature_name}.json",
-  "closed_items": {handoff_closed_items_json},
-  "notes": "<brief summary>"
-}}
-```
-"""
-
-    sys.stdout.write(prompt)
+    slots = {
+        "feature_name": feature_name,
+        "spec_content": spec_content,
+        "impl_suggestion_block": impl_suggestion_block,
+        "bypass_preamble_note": bypass_preamble_note,
+        "feature_dir": feature_dir,
+        "tdd_step_py": tdd_step_py,
+        "repo_root": repo_root,
+        "max_iterations": str(args.max_iterations),
+        "code_review_loop_note": code_review_loop_note,
+        "linked_item_value": linked_item_value,
+        "item_type_value": item_type_value,
+        "close_calls_block": close_calls_block,
+        "handoff_closed_items_block": handoff_closed_items_block,
+        "handoff_closed_items_json": handoff_closed_items_json,
+    }
+    build_prompt_py = os.path.join(
+        repo_root, ".claude", "features", "contract", "scripts", "build-prompt.py",
+    )
+    slot_args = []
+    for k, v in slots.items():
+        slot_args.extend(["--slot", f"{k}={v}"])
+    res = subprocess.run(
+        [sys.executable, build_prompt_py, "--callable-id", "tdd-subagent", *slot_args],
+        capture_output=True, text=True, check=False,
+    )
+    if res.returncode != 0:
+        sys.stderr.write(res.stderr)
+        return res.returncode
+    prompt_file = res.stdout.strip()
+    try:
+        with open(prompt_file) as f:
+            sys.stdout.write(f.read())
+    except OSError as e:
+        sys.stderr.write(f"ERROR: cannot read assembled prompt at {prompt_file}: {e}\n")
+        return 1
     sys.stderr.write(f"dispatch-tdd-subagent: prompt ready for feature '{feature_name}'\n")
     return 0
 

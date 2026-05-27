@@ -60,7 +60,7 @@ with tempfile.TemporaryDirectory() as td:
         data = json.loads(open(settings_path).read())
         stop_entries = data.get("hooks", {}).get("Stop", [])
         commands = [h["command"] for entry in stop_entries for h in entry.get("hooks", [])]
-        if ".claude/hooks/stop-check.py" in commands:
+        if "$(git rev-parse --show-toplevel)/.claude/hooks/stop-check.py" in commands:
             ok("t2: hook command registered in settings.json under Stop")
         else:
             fail(f"t2: hook command not found in Stop hooks; found: {commands}")
@@ -74,7 +74,7 @@ with tempfile.TemporaryDirectory() as td:
     data = json.loads(open(settings_path).read())
     stop_entries = data.get("hooks", {}).get("Stop", [])
     commands = [h["command"] for entry in stop_entries for h in entry.get("hooks", [])]
-    count = commands.count(".claude/hooks/stop-check.py")
+    count = commands.count("$(git rev-parse --show-toplevel)/.claude/hooks/stop-check.py")
     if count == 1:
         ok("t3: idempotent: duplicate call does not add duplicate settings entry")
     else:
@@ -121,7 +121,7 @@ with tempfile.TemporaryDirectory() as td:
     commands = [h["command"] for entry in stop_entries for h in entry.get("hooks", [])]
     if ".claude/hooks/other.py" not in commands:
         fail(f"t5: pre-existing hook entry was removed: {commands}")
-    elif ".claude/hooks/stop-check.py" not in commands:
+    elif "$(git rev-parse --show-toplevel)/.claude/hooks/stop-check.py" not in commands:
         fail(f"t5: new hook entry not added: {commands}")
     else:
         ok("t5: pre-existing hooks preserved; new hook added alongside")
@@ -134,10 +134,57 @@ with tempfile.TemporaryDirectory() as td:
     data = json.loads(open(settings_path).read())
     ss_entries = data.get("hooks", {}).get("SessionStart", [])
     commands = [h["command"] for entry in ss_entries for h in entry.get("hooks", [])]
-    if ".claude/hooks/stop-check.py" in commands:
+    if "$(git rev-parse --show-toplevel)/.claude/hooks/stop-check.py" in commands:
         ok("t6: hook registered under SessionStart event")
     else:
         fail(f"t6: hook not registered under SessionStart: {commands}")
+
+# t7: registered command literally starts with $(git rev-parse --show-toplevel)/
+# Regression guard against accidental reversion to a bare relative path (Inv 50).
+with tempfile.TemporaryDirectory() as td:
+    feat, root = make_env(td)
+    publish_hook("Stop", "hooks/stop-check.py", feature_dir=feat, repo_root=root)
+    settings_path = os.path.join(root, ".claude", "settings.json")
+    data = json.loads(open(settings_path).read())
+    stop_entries = data.get("hooks", {}).get("Stop", [])
+    commands = [h["command"] for entry in stop_entries for h in entry.get("hooks", [])]
+    matching = [c for c in commands if c.endswith("/stop-check.py")]
+    if not matching:
+        fail(f"t7: no stop-check.py command found in Stop entries: {commands}")
+    elif not all(c.startswith("$(git rev-parse --show-toplevel)/") for c in matching):
+        fail(f"t7: command does not start with $(git rev-parse --show-toplevel)/: {matching}")
+    else:
+        ok("t7: registered command starts with $(git rev-parse --show-toplevel)/")
+
+# t8: migration — pre-seeded legacy bare-relative entry is upgraded in place,
+# not duplicated. Exactly one entry remains under Stop for stop-check.py and
+# its command is the new form.
+with tempfile.TemporaryDirectory() as td:
+    feat, root = make_env(td)
+    settings_path = os.path.join(root, ".claude", "settings.json")
+    existing = {
+        "hooks": {
+            "Stop": [{"matcher": "*", "hooks": [{"type": "command",
+                                                  "command": ".claude/hooks/stop-check.py"}]}]
+        }
+    }
+    with open(settings_path, "w") as f:
+        json.dump(existing, f)
+    publish_hook("Stop", "hooks/stop-check.py", feature_dir=feat, repo_root=root)
+    data = json.loads(open(settings_path).read())
+    stop_entries = data.get("hooks", {}).get("Stop", [])
+    commands = [h["command"] for entry in stop_entries for h in entry.get("hooks", [])]
+    new_form = "$(git rev-parse --show-toplevel)/.claude/hooks/stop-check.py"
+    legacy_form = ".claude/hooks/stop-check.py"
+    stop_check_entries = [c for c in commands if c.endswith("/stop-check.py") or c == legacy_form]
+    if len(stop_check_entries) != 1:
+        fail(f"t8: expected exactly 1 stop-check.py entry after migration, got {len(stop_check_entries)}: {stop_check_entries}")
+    elif stop_check_entries[0] != new_form:
+        fail(f"t8: migrated entry is not new form; got: {stop_check_entries[0]!r}")
+    elif legacy_form in commands:
+        fail(f"t8: legacy bare-relative entry still present after migration: {commands}")
+    else:
+        ok("t8: legacy entry migrated in place to new form (no duplicate)")
 
 if FAIL:
     print("test-publish-hook: FAIL", file=sys.stderr)

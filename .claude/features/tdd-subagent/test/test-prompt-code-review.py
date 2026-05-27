@@ -26,9 +26,9 @@ if res.returncode != 0:
     raise SystemExit(1)
 prompt = res.stdout
 
-cr_match = re.search(r"STEP 7 — CODE-REVIEW\n═+\n(.*?)\n═+\nSTEP 8", prompt, re.DOTALL)
+cr_match = re.search(r"STEP 5 — CODE-REVIEW\n═+\n(.*?)\n═+\nSTEP 6", prompt, re.DOTALL)
 if not cr_match:
-    ko("inv17: STEP 7 CODE-REVIEW section not isolated")
+    ko("inv17: STEP 5 CODE-REVIEW section not isolated")
 else:
     cr = cr_match.group(1)
     if 'Skill("superpowers:requesting-code-review")' in cr:

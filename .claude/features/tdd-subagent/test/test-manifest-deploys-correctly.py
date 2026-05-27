@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
-"""Plan E.tdd-subagent (e2e): manifest deploys both targets byte-identically.
+"""Plan E.tdd-subagent (e2e): manifest deploys all three targets byte-identically.
 
 Drives install.run_publish_loop against a temp target containing the real
-contract feature plus a copy of tdd-subagent; asserts that both manifest
+contract feature plus a copy of tdd-subagent; asserts that all three manifest
 entries land at their declared destinations with matching SHA-256:
   - agents/tdd-subagent.md -> .claude/agents/tdd-subagent.md (publish_agent)
   - scripts/dispatch-tdd-subagent.py
         -> .claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py
         (publish_file with explicit dest)
+  - scripts/tdd-step.py
+        -> .claude/agents/tdd-subagent/scripts/tdd-step.py
+        (publish_file with explicit dest; absorbed from tdd-state-machine at v4.0.0)
 
 Runs in a tempdir so the scope-guard does not refuse cross-feature writes
 under the real workspace.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature lifecycle management is natively
     handled by Claude Code's workflow mechanism.
@@ -33,8 +36,10 @@ CONTRACT_DIR = REPO / ".claude/features/contract"
 
 AGENT_SOURCE_REL = "agents/tdd-subagent.md"
 AGENT_DEPLOY_REL = ".claude/agents/tdd-subagent.md"
-SCRIPT_SOURCE_REL = "scripts/dispatch-tdd-subagent.py"
-SCRIPT_DEPLOY_REL = ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py"
+DISPATCH_SOURCE_REL = "scripts/dispatch-tdd-subagent.py"
+DISPATCH_DEPLOY_REL = ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py"
+STEP_SOURCE_REL = "scripts/tdd-step.py"
+STEP_DEPLOY_REL = ".claude/agents/tdd-subagent/scripts/tdd-step.py"
 
 
 def _load_install():
@@ -50,7 +55,7 @@ def _sha256(p: Path) -> str:
     return h.hexdigest()
 
 
-def test_manifest_deploys_both_targets() -> None:
+def test_manifest_deploys_all_targets() -> None:
     install = _load_install()
 
     with tempfile.TemporaryDirectory() as td:
@@ -66,7 +71,8 @@ def test_manifest_deploys_both_targets() -> None:
 
         for source_rel, deploy_rel in (
             (AGENT_SOURCE_REL, AGENT_DEPLOY_REL),
-            (SCRIPT_SOURCE_REL, SCRIPT_DEPLOY_REL),
+            (DISPATCH_SOURCE_REL, DISPATCH_DEPLOY_REL),
+            (STEP_SOURCE_REL, STEP_DEPLOY_REL),
         ):
             src = FEATURE_DIR / source_rel
             dst = target / deploy_rel
@@ -78,9 +84,9 @@ def test_manifest_deploys_both_targets() -> None:
 
 if __name__ == "__main__":
     try:
-        test_manifest_deploys_both_targets()
-        print("PASS test_manifest_deploys_both_targets")
+        test_manifest_deploys_all_targets()
+        print("PASS test_manifest_deploys_all_targets")
         sys.exit(0)
     except AssertionError as e:
-        print(f"FAIL test_manifest_deploys_both_targets: {e}", file=sys.stderr)
+        print(f"FAIL test_manifest_deploys_all_targets: {e}", file=sys.stderr)
         sys.exit(1)

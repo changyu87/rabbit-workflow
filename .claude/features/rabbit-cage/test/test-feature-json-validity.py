@@ -2,18 +2,23 @@
 """test-feature-json-validity.py — Inv 8.
 
 Asserts rabbit-cage's feature.json declares manifest/runtime/configuration
-in the expected shape, and every API name listed in those sections is
-exported by the corresponding contract.lib.* module.
+in the expected shape, every API name listed in those sections is
+exported by the corresponding contract.lib.* module, and the live
+feature.json validates against the meta-contract schemas via
+contract/scripts/validate-meta-contract.py.
 """
 
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
 CAGE_FJ = REPO / ".claude/features/rabbit-cage/feature.json"
+CAGE_DIR = REPO / ".claude/features/rabbit-cage"
 CONTRACT = REPO / ".claude/features/contract"
+VALIDATE_META = CONTRACT / "scripts/validate-meta-contract.py"
 
 
 def _load_module(name, path):
@@ -62,6 +67,15 @@ def main() -> int:
                 assert getattr(mut_mod, api, None) is not None, (
                     f"configuration {cfg.get('id')!r} declares unknown "
                     f"mutation API: {api!r}")
+
+    # Live feature.json validates against the meta-contract schemas.
+    result = subprocess.run(
+        [sys.executable, str(VALIDATE_META), str(CAGE_DIR)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, (
+        f"validate-meta-contract failed for {CAGE_DIR}:\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}")
 
     print(f"PASS feature.json validity (manifest:{len(manifest)} "
           f"runtime:{sum(len(v) for v in runtime.values())} "

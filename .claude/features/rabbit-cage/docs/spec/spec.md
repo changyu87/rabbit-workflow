@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.4.0
+version: 5.6.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -164,6 +164,10 @@ string BEFORE splitting on `;|&` segment delimiters.
    `Stop`, `SessionStart`, `UserPromptSubmit`), and `configuration` arrays
    as described in this spec. Every API name listed in any of those
    declarations is exported by the corresponding `contract.lib.*` module.
+   The live `feature.json` validates against the meta-contract schemas
+   under `contract/schemas/` (verified by invoking
+   `contract/scripts/validate-meta-contract.py` against the feature
+   directory).
 9. Every runtime marker written under the repo root MUST be listed in
    `.gitignore`. The mandated set: `.rabbit-prompt-counter`,
    `.rabbit-sync-counter`, `.rabbit-scope-active`, `.rabbit-scope-active-*`,
@@ -194,7 +198,7 @@ string BEFORE splitting on `;|&` segment delimiters.
     (`"key"`, `"siren"`, `"unlock"`, …). `rabbit_subline(text, color, icon)`
     and `rabbit_print(text, icon, color, format)` interpolate `icon`
     literally; neither performs name-to-glyph resolution. (Per contract
-    Inv 48 / Plan F.3 there is no message-id registry; every producer
+    Inv 48 there is no message-id registry; every producer
     supplies `text`, `icon`, and `color` inline at the call site.)
 14. rabbit-cage owns the cross-cutting CLAUDE.md `@`-import resolution
     tests. The two assertions — (a) every `@`-import in any `CLAUDE.md`
@@ -204,6 +208,18 @@ string BEFORE splitting on `;|&` segment delimiters.
     `generate-claude-md` content producer that emits `CLAUDE.md`. The
     policy feature owns the rule files those imports point at, but not
     the import-resolution invariant itself.
+15. Every hook command string registered in `.claude/settings.json` (the
+    `hooks[<event>][].hooks[].command` field) MUST be CWD-independent.
+    Specifically, the command begins with `$(git rev-parse --show-toplevel)/`
+    so that `/bin/sh` resolves the absolute path to `.claude/hooks/<name>.py`
+    at hook-fire time regardless of the session's current working directory.
+    A bare relative path such as `.claude/hooks/scope-guard.py` is forbidden
+    because Claude Code's Bash tool persists CWD between calls; after any
+    `cd` into a subdirectory the relative path resolves outside the repo
+    and the hook silently fails (non-blocking `No such file or directory`).
+    Emission of the command string is the responsibility of
+    `contract.lib.publish.publish_hook`; rabbit-cage owns the user-visible
+    requirement that the deployed registration fire correctly from any CWD.
 
 ## Tech Stack
 

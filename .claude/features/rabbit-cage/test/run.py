@@ -26,6 +26,7 @@ SUITES = [
     "test-scope-per-feature-marker.py",
     "test-RABBIT-CAGE-17-quoted-strings.py",
     "test-repo-permissions.py",
+    "test-RABBIT-CAGE-BUG-104-hook-path-format.py",
 ]
 
 

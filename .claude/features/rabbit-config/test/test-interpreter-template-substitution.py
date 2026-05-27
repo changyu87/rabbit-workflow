@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """test-interpreter-template-substitution.py — Inv 11.
 
-Template substitution: {tool} and {command} placeholders in API args are
-replaced with the caller-provided extra argument before dispatch.
+Template substitution: {tool}, {command}, and {value} placeholders in API
+args are replaced with the caller-provided extra argument before dispatch.
 
   t11a: Inv 11 — {tool} placeholder is replaced with the extra arg value
   t11b: Inv 11 — {command} placeholder is replaced (bash-allow pattern)
   t11c: Inv 11 — actions without template work with two args (no extra arg needed)
   t11d: Inv 11 — action with template and missing extra arg exits non-zero
+  t11e: Inv 11 — {value} placeholder is replaced (set_json_key pattern)
 """
 
 import json
@@ -55,6 +56,15 @@ SIMPLE_ACTION_CONF = {
     "actions": {
         "on":  {"api": "write_marker", "args": {"path": ".simple-on", "content": "on"}},
         "off": {"api": "delete_marker", "args": {"path": ".simple-on"}}
+    }
+}
+
+PT_CONF = {
+    "id": "prompt-threshold",
+    "subcommand": "prompt-threshold",
+    "storage": {"type": "json-key", "file": ".claude/settings.local.json", "key": "env.RABBIT_REFRESH_EVERY"},
+    "actions": {
+        "set": {"api": "set_json_key", "args": {"file": ".claude/settings.local.json", "key": "env.RABBIT_REFRESH_EVERY", "value": "{value}"}}
     }
 }
 
@@ -152,6 +162,22 @@ with tempfile.TemporaryDirectory() as td:
         fail("11d", "expected non-zero exit when template arg is required but missing")
     else:
         ok("11d", f"missing template arg exits non-zero (rc={r.returncode})")
+
+# t11e: {value} placeholder replaced (prompt-threshold set_json_key pattern)
+with tempfile.TemporaryDirectory() as td:
+    make_repo(td, [PT_CONF])
+    r = run_interpreter(td, ["prompt-threshold", "set", "25"])
+    settings_path = os.path.join(td, ".claude/settings.local.json")
+    if r.returncode != 0:
+        fail("11e", f"exit {r.returncode}. stderr={r.stderr!r}")
+    else:
+        env_val = read_json_array(settings_path, "env.RABBIT_REFRESH_EVERY")
+        if env_val == "{value}":
+            fail("11e", "literal '{value}' written (template not substituted)")
+        elif env_val != "25":
+            fail("11e", f"expected '25', got {env_val!r}")
+        else:
+            ok("11e", "{value} placeholder substituted, env.RABBIT_REFRESH_EVERY='25'")
 
 if FAIL:
     print("test-interpreter-template-substitution: FAIL", file=sys.stderr)

@@ -1,6 +1,6 @@
 {
   "name": "contract",
-  "version": "1.30.0",
+  "version": "1.34.1",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
@@ -10,7 +10,32 @@
     "skills": []
   },
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
-  "updated": "2026-05-24",
+  "updated": "2026-05-26",
   "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
-  "spec_no_change_reason": "spec.md was rewritten in commit 98ce8f2b earlier on this branch (Wave 9 spec rewrite); subagent picks up implementation, tests, and CHANGELOG only"
+  "spec_no_change_reason": "spec change for Inv 58 already committed in earlier phase D step (commit dfc18001); this cycle is the test+impl follow-up",
+  "manifest": [
+    {
+      "api": "publish_hook",
+      "args": {
+        "event": "PreToolUse",
+        "source": "hooks/prompt-injector.py"
+      }
+    }
+  ],
+  "runtime": {
+    "Stop": [
+      {
+        "api": "check_prompt_injection_failures",
+        "args": {
+          "log_path": ".rabbit/prompts/.injection-failures.log"
+        }
+      },
+      {
+        "api": "cleanup_old_prompts",
+        "args": {
+          "max_age_days": 7
+        }
+      }
+    ]
+  }
 }

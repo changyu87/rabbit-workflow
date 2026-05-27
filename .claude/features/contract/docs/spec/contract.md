@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.8.0
+version: 1.33.0
 template_version: 2.0.0
 ---
 
@@ -17,7 +17,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/templates/bug-template.json",
       ".claude/features/contract/templates/triage-template.md",
       ".claude/features/contract/templates/feature-json-template.json",
-      ".claude/features/contract/templates/subagent-launch-template.txt",
       ".claude/features/contract/templates/project-map-template.json",
       ".claude/features/contract/templates/registry-template.json",
       ".claude/features/contract/templates/skill-template.md",
@@ -27,10 +26,12 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/schemas/feature.json.schema.json",
       ".claude/features/contract/schemas/bug.json.schema.json",
       ".claude/features/contract/schemas/project-map.json.schema.json",
-      ".claude/features/contract/schemas/rabbit-print.schema.json"
+      ".claude/features/contract/schemas/rabbit-print.schema.json",
+      ".claude/features/contract/schemas/prompts.schema.json"
     ],
     "scripts": [
       ".claude/features/contract/scripts/policy-block.py",
+      ".claude/features/contract/scripts/build-prompt.py",
       ".claude/features/contract/scripts/validate-feature.py",
       ".claude/features/contract/scripts/validate-meta-contract.py",
       ".claude/features/contract/scripts/find-feature.py",
@@ -42,12 +43,17 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/scripts/enforcement/check-template-schema-producer-consistency.py",
       ".claude/features/contract/scripts/enforcement/check-tests-non-interactive.py",
       ".claude/features/contract/scripts/enforcement/check-numbered-lists.py",
-      ".claude/features/contract/scripts/enforcement/check-invariant-monotonic-order.py"
+      ".claude/features/contract/scripts/enforcement/check-invariant-monotonic-order.py",
+      ".claude/features/contract/scripts/enforcement/check-prompts-section.py"
     ],
     "lib": [
       ".claude/features/contract/lib/__init__.py",
       ".claude/features/contract/lib/checks.py",
-      ".claude/features/contract/lib/publish.py"
+      ".claude/features/contract/lib/publish.py",
+      ".claude/features/contract/lib/policy_block.py"
+    ],
+    "hooks": [
+      ".claude/features/contract/hooks/prompt-injector.py"
     ],
     "skills": []
   },

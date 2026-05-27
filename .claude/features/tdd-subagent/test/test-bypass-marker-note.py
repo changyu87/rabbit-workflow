@@ -32,10 +32,13 @@ sys.path.insert(0, CONTRACT_SCRIPTS)
 from rabbit_print import rabbit_print  # noqa: E402
 
 # Canonical preamble text — must match dispatch-tdd-subagent.py _BYPASS_NOTE_TEXT.
+# The note now explicitly references the DISPATCHER's Step 4 (not any
+# subagent step) because the subagent's prompt no longer contains a
+# HUMAN-APPROVAL step at all (TDD-SUBAGENT-BACKLOG-19).
 _EXPECTED_TEXT = (
     "NOTE: human-approval bypass marker is active "
-    "(.rabbit-human-approval-bypass). Step 4 HUMAN-APPROVAL will be "
-    "skipped for this dispatch. Revoke via "
+    "(.rabbit-human-approval-bypass). The dispatcher's Step 4 "
+    "HUMAN-APPROVAL gate was skipped for this dispatch. Revoke via "
     "`/rabbit-config human-approval true`."
 )
 expected_note = rabbit_print(_EXPECTED_TEXT, "📢", "yellow")
@@ -59,7 +62,8 @@ try:
     else:
         ko("inv23: bypass note appears even when marker is absent")
 
-    # Inv 23: marker present → note appears in preamble.
+    # Inv 23: marker present → note appears in preamble (before STEP 1 — LOCK,
+    # which is the new STEP 1 after the 7-step renumber).
     with open(MARKER, "w") as f:
         f.write("")
     res_present = run_dispatch()
@@ -67,9 +71,9 @@ try:
         ko(f"dispatch failed (marker present) rc={res_present.returncode}: {res_present.stderr}")
     elif expected_note in res_present.stdout:
         idx_note = res_present.stdout.find(expected_note)
-        idx_step1 = res_present.stdout.find("STEP 1 — SPEC-READ")
+        idx_step1 = res_present.stdout.find("STEP 1 — LOCK")
         if 0 <= idx_note < idx_step1:
-            ok("inv23: marker present — bypass note in preamble (before STEP 1)")
+            ok("inv23: marker present — bypass note in preamble (before STEP 1 — LOCK)")
         else:
             ko("inv23: bypass note present but not in preamble")
     else:

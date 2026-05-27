@@ -85,6 +85,15 @@ for line in prefer_lines:
         "disabled" not in line,
     )
 
+# CONTRACT-BACKLOG-41 regression: the retired `--human-approval-gate` CLI
+# flag (removed from tdd-subagent in v5.0.0) must NOT appear anywhere in the
+# CLI Naming Convention section. The flag has no live CLI surface, so
+# citing it as a canonical example creates documentation drift.
+check(
+    "CLI Naming Convention section does not cite retired '--human-approval-gate'",
+    "--human-approval-gate" not in SECTION,
+)
+
 if FAIL != 0:
     print("test-cli-naming-convention: FAIL", file=sys.stderr)
     sys.exit(1)
