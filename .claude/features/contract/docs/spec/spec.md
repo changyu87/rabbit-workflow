@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.36.0
+version: 1.37.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -187,6 +187,8 @@ Numbering preserves gaps at 4, 6, 7, 27, 28, 29, 30, 35 for retired invariants �
     Surface list and the "Plain-text templates" template-marker-convention
     bullet have both been updated to remove all references to the dead
     template. Enforced by `test/test-no-subagent-launch-template.py`.
+
+59. **PROJECT-MAP schema.** `.claude/features/contract/schemas/project-map.json.schema.json` MUST exist, be valid JSON, declare `$schema` as draft-07, carry top-level `schema_version`/`owner`/`deprecation_criterion` (per spec-rules.md), and describe `type: "object"` with `required: ["schema_version", "features"]` and `additionalProperties: false`. The `schema_version` property is `{type: "string", pattern: "^\\d+\\.\\d+\\.\\d+$"}` (semver). The `features` property is `{type: "object", additionalProperties: false, patternProperties: {"^[a-z][a-z0-9-]*$": {type: "object", required: ["paths", "feature_dir"], additionalProperties: false, properties: {paths: {type: "array", minItems: 1, items: {type: "string"}}, feature_dir: {type: "string"}}}}}` — keys are kebab-case feature names, values declare the user-code path globs the feature governs plus the feature's bookkeeping directory inside `.rabbit/rabbit-project/`. The schema describes the shape of `.rabbit/rabbit-project/project-map.json` in user-project plugin installs (read by the plugin-mode scope-guard and by `rabbit-feature-new` when registering or validating a new feature mapping). The shape is enforced by `test/test-project-map-schema-shape.py` — hand-rolled stdlib validation matching the pattern in `test-manifest-schema-shape.py` / `test-runtime-schema-shape.py` (no `jsonschema` dependency). Coverage: schema file exists; schema is valid JSON; draft-07 declared; ownership-metadata triple present; outer `type`/`required`/`additionalProperties` shape; `schema_version` pattern; `features` patternProperties key + value-shape requirements; a sample valid project-map.json validates; a sample invalid project-map.json (missing required field, bad key pattern, extra property) fails validation.
 
 ## Template marker convention
 
