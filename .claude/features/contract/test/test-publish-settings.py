@@ -107,6 +107,148 @@ with tempfile.TemporaryDirectory() as td:
         else:
             fail(f"t4: destination not updated: {data}")
 
+
+def _hook_entry(command, matcher="*"):
+    return {"matcher": matcher,
+            "hooks": [{"type": "command", "command": command}]}
+
+
+CONTRACT_CMD = "$(git rev-parse --show-toplevel)/.claude/hooks/prompt-injector.py"
+RABBIT_CAGE_CMD = "$(git rev-parse --show-toplevel)/.claude/hooks/stop-dispatcher.py"
+
+
+# t5: cross-feature preservation — pre-existing hook from another feature
+# MUST be preserved when a source with a different hook is published.
+with tempfile.TemporaryDirectory() as td:
+    feat = os.path.join(td, "feature")
+    root = os.path.join(td, "repo")
+    os.makedirs(feat)
+    os.makedirs(os.path.join(root, ".claude"))
+    # Dest pre-populated with contract's prompt-injector Stop hook.
+    dest = os.path.join(root, ".claude", "settings.json")
+    with open(dest, "w") as f:
+        json.dump({"hooks": {"Stop": [_hook_entry(CONTRACT_CMD)]}}, f)
+    # Source carries a different Stop hook (rabbit-cage's stop-dispatcher).
+    src = {"hooks": {"Stop": [_hook_entry(RABBIT_CAGE_CMD)]}}
+    with open(os.path.join(feat, "settings.json"), "w") as f:
+        json.dump(src, f)
+    r = publish_settings("settings.json", feature_dir=feat, repo_root=root)
+    if not r.passed:
+        fail(f"t5: cross-feature preserve failed: {r.messages}")
+    else:
+        data = json.load(open(dest))
+        cmds = [h.get("command") for e in data.get("hooks", {}).get("Stop", [])
+                for h in e.get("hooks", [])]
+        if CONTRACT_CMD in cmds and RABBIT_CAGE_CMD in cmds:
+            ok("t5: cross-feature: both hooks present after merge")
+        else:
+            fail(f"t5: cross-feature commands missing — got {cmds}")
+
+# t6: idempotent on repeated merges — same source twice produces no duplicates.
+with tempfile.TemporaryDirectory() as td:
+    feat = os.path.join(td, "feature")
+    root = os.path.join(td, "repo")
+    os.makedirs(feat)
+    os.makedirs(os.path.join(root, ".claude"))
+    dest = os.path.join(root, ".claude", "settings.json")
+    with open(dest, "w") as f:
+        json.dump({"hooks": {"Stop": [_hook_entry(CONTRACT_CMD)]}}, f)
+    src = {"hooks": {"Stop": [_hook_entry(RABBIT_CAGE_CMD)]}}
+    with open(os.path.join(feat, "settings.json"), "w") as f:
+        json.dump(src, f)
+    r1 = publish_settings("settings.json", feature_dir=feat, repo_root=root)
+    r2 = publish_settings("settings.json", feature_dir=feat, repo_root=root)
+    if not (r1.passed and r2.passed):
+        fail(f"t6: idempotent calls failed: {r1.messages} {r2.messages}")
+    else:
+        data = json.load(open(dest))
+        entries = data.get("hooks", {}).get("Stop", [])
+        if len(entries) != 2:
+            fail(f"t6: expected 2 Stop entries after re-merge, got {len(entries)}: {entries}")
+        elif not any("no-op" in m.lower() for m in r2.messages):
+            fail(f"t6: second call should be no-op, got: {r2.messages}")
+        else:
+            ok("t6: idempotent: re-merge yields 2 entries and no-op message")
+
+# t7: non-hooks overwrite — source-wins for env/permissions, both hooks preserved.
+with tempfile.TemporaryDirectory() as td:
+    feat = os.path.join(td, "feature")
+    root = os.path.join(td, "repo")
+    os.makedirs(feat)
+    os.makedirs(os.path.join(root, ".claude"))
+    dest = os.path.join(root, ".claude", "settings.json")
+    with open(dest, "w") as f:
+        json.dump({"env": {"X": "old"},
+                   "permissions": {"allow": ["Bash(old)"]},
+                   "hooks": {"Stop": [_hook_entry(CONTRACT_CMD)]}}, f)
+    src = {"env": {"X": "new"},
+           "permissions": {"allow": ["Bash(new)"]},
+           "hooks": {"Stop": [_hook_entry(RABBIT_CAGE_CMD)]}}
+    with open(os.path.join(feat, "settings.json"), "w") as f:
+        json.dump(src, f)
+    r = publish_settings("settings.json", feature_dir=feat, repo_root=root)
+    if not r.passed:
+        fail(f"t7: non-hooks overwrite failed: {r.messages}")
+    else:
+        data = json.load(open(dest))
+        cmds = [h.get("command") for e in data.get("hooks", {}).get("Stop", [])
+                for h in e.get("hooks", [])]
+        if (data.get("env", {}).get("X") == "new"
+                and data.get("permissions", {}).get("allow") == ["Bash(new)"]
+                and CONTRACT_CMD in cmds and RABBIT_CAGE_CMD in cmds):
+            ok("t7: non-hooks source-wins; both hooks preserved")
+        else:
+            fail(f"t7: merge result wrong — env={data.get('env')} "
+                 f"permissions={data.get('permissions')} cmds={cmds}")
+
+# t8: empty existing hooks — dest has no 'hooks' key; source hooks merge in.
+with tempfile.TemporaryDirectory() as td:
+    feat = os.path.join(td, "feature")
+    root = os.path.join(td, "repo")
+    os.makedirs(feat)
+    os.makedirs(os.path.join(root, ".claude"))
+    dest = os.path.join(root, ".claude", "settings.json")
+    with open(dest, "w") as f:
+        json.dump({"env": {"K": "v"}}, f)
+    src = {"hooks": {"Stop": [_hook_entry(RABBIT_CAGE_CMD)]}}
+    with open(os.path.join(feat, "settings.json"), "w") as f:
+        json.dump(src, f)
+    r = publish_settings("settings.json", feature_dir=feat, repo_root=root)
+    if not r.passed:
+        fail(f"t8: empty-existing-hooks failed: {r.messages}")
+    else:
+        data = json.load(open(dest))
+        cmds = [h.get("command") for e in data.get("hooks", {}).get("Stop", [])
+                for h in e.get("hooks", [])]
+        if data.get("env", {}).get("K") == "v" and cmds == [RABBIT_CAGE_CMD]:
+            ok("t8: empty existing hooks accepts source hooks; env preserved")
+        else:
+            fail(f"t8: merge wrong — env={data.get('env')} cmds={cmds}")
+
+# t9: empty source hooks — source has no 'hooks'; dest hooks survive untouched.
+with tempfile.TemporaryDirectory() as td:
+    feat = os.path.join(td, "feature")
+    root = os.path.join(td, "repo")
+    os.makedirs(feat)
+    os.makedirs(os.path.join(root, ".claude"))
+    dest = os.path.join(root, ".claude", "settings.json")
+    with open(dest, "w") as f:
+        json.dump({"hooks": {"Stop": [_hook_entry(CONTRACT_CMD)]}}, f)
+    src = {"env": {"K": "v"}}
+    with open(os.path.join(feat, "settings.json"), "w") as f:
+        json.dump(src, f)
+    r = publish_settings("settings.json", feature_dir=feat, repo_root=root)
+    if not r.passed:
+        fail(f"t9: empty-source-hooks failed: {r.messages}")
+    else:
+        data = json.load(open(dest))
+        cmds = [h.get("command") for e in data.get("hooks", {}).get("Stop", [])
+                for h in e.get("hooks", [])]
+        if data.get("env", {}).get("K") == "v" and cmds == [CONTRACT_CMD]:
+            ok("t9: empty source hooks leaves dest hooks intact; env applied")
+        else:
+            fail(f"t9: merge wrong — env={data.get('env')} cmds={cmds}")
+
 if FAIL:
     print("test-publish-settings: FAIL", file=sys.stderr)
     sys.exit(1)
