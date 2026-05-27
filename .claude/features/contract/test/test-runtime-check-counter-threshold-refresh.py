@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory() as td:
         fail(f"t2: result={r!r}, counter={read_counter(td)!r}")
     del os.environ["RABBIT_TEST_THRESH"]
 
-# t3: counter reaches threshold -> reset to 0, returns inject_result with source content
+# t3: counter reaches threshold -> reset to 0, returns [print_result, inject_result]
 with tempfile.TemporaryDirectory() as td:
     os.environ["RABBIT_TEST_THRESH"] = "5"
     with open(os.path.join(td, ".rabbit-prompt-counter"), "w") as f:
@@ -78,13 +78,17 @@ with tempfile.TemporaryDirectory() as td:
     r = check_counter_threshold_refresh(
         ".rabbit-prompt-counter", "RABBIT_TEST_THRESH", "policy.md", repo_root=td
     )
-    if r == {"type": "inject", "content": "POLICY-TEXT\n"} and read_counter(td) == 0:
-        ok("t3: at threshold (4+1=5): reset to 0 and inject_result returned")
+    expected = [
+        {"type": "print", "text": "policy refreshed (every 5 prompts)", "icon": "🔄", "color": "green"},
+        {"type": "inject", "content": "POLICY-TEXT\n"},
+    ]
+    if r == expected and read_counter(td) == 0:
+        ok("t3: at threshold (4+1=5): reset to 0 and [print, inject] list returned")
     else:
         fail(f"t3: result={r!r}, counter={read_counter(td)!r}")
     del os.environ["RABBIT_TEST_THRESH"]
 
-# t4: source is a directory -> concat every *.md in alphabetical order
+# t4: source is a directory -> concat every *.md in alphabetical order; list shape preserved
 with tempfile.TemporaryDirectory() as td:
     os.environ["RABBIT_TEST_THRESH"] = "1"
     pol = os.path.join(td, "policy")
@@ -99,8 +103,12 @@ with tempfile.TemporaryDirectory() as td:
     r = check_counter_threshold_refresh(
         ".rabbit-prompt-counter", "RABBIT_TEST_THRESH", "policy", repo_root=td
     )
-    if r == {"type": "inject", "content": "AAA\nBBB\n"}:
-        ok("t4: directory source: *.md files concatenated alphabetically")
+    expected = [
+        {"type": "print", "text": "policy refreshed (every 1 prompts)", "icon": "🔄", "color": "green"},
+        {"type": "inject", "content": "AAA\nBBB\n"},
+    ]
+    if r == expected:
+        ok("t4: directory source: [print, inject] returned with concat content")
     else:
         fail(f"t4: unexpected: {r!r}")
     del os.environ["RABBIT_TEST_THRESH"]
@@ -147,6 +155,64 @@ with tempfile.TemporaryDirectory() as td:
         ok("t7: missing source returns error_result")
     else:
         fail(f"t7: expected error, got {r!r}")
+    del os.environ["RABBIT_TEST_THRESH"]
+
+# t8: at-threshold returns list of exactly 2 entries, print THEN inject, with
+# payload field shapes correct (text contains "policy refreshed (every", icon
+# "🔄", color "green"; inject content is the policy block).
+with tempfile.TemporaryDirectory() as td:
+    os.environ["RABBIT_TEST_THRESH"] = "3"
+    with open(os.path.join(td, ".rabbit-prompt-counter"), "w") as f:
+        f.write("2")
+    with open(os.path.join(td, "policy.md"), "w") as f:
+        f.write("BLOCK\n")
+    r = check_counter_threshold_refresh(
+        ".rabbit-prompt-counter", "RABBIT_TEST_THRESH", "policy.md", repo_root=td
+    )
+    if not isinstance(r, list):
+        fail(f"t8: expected list, got {type(r).__name__}: {r!r}")
+    elif len(r) != 2:
+        fail(f"t8: expected list of length 2, got length {len(r)}: {r!r}")
+    elif r[0].get("type") != "print":
+        fail(f"t8: expected r[0].type=='print', got {r[0]!r}")
+    elif r[1].get("type") != "inject":
+        fail(f"t8: expected r[1].type=='inject', got {r[1]!r}")
+    elif "policy refreshed (every" not in r[0].get("text", ""):
+        fail(f"t8: print text missing 'policy refreshed (every': {r[0]!r}")
+    elif r[0].get("icon") != "🔄":
+        fail(f"t8: expected icon '🔄', got {r[0].get('icon')!r}")
+    elif r[0].get("color") != "green":
+        fail(f"t8: expected color 'green', got {r[0].get('color')!r}")
+    elif r[1].get("content") != "BLOCK\n":
+        fail(f"t8: inject content mismatch: {r[1]!r}")
+    else:
+        ok("t8: at-threshold list shape: [print, inject] with correct payload fields")
+    del os.environ["RABBIT_TEST_THRESH"]
+
+# t9: list shape preserved when policy_source is a directory (multi-file source)
+with tempfile.TemporaryDirectory() as td:
+    os.environ["RABBIT_TEST_THRESH"] = "2"
+    with open(os.path.join(td, ".rabbit-prompt-counter"), "w") as f:
+        f.write("1")
+    pol = os.path.join(td, "policy")
+    os.makedirs(pol)
+    with open(os.path.join(pol, "a.md"), "w") as f:
+        f.write("A\n")
+    with open(os.path.join(pol, "b.md"), "w") as f:
+        f.write("B\n")
+    r = check_counter_threshold_refresh(
+        ".rabbit-prompt-counter", "RABBIT_TEST_THRESH", "policy", repo_root=td
+    )
+    if not isinstance(r, list) or len(r) != 2:
+        fail(f"t9: expected list of length 2 for directory source; got {r!r}")
+    elif r[0].get("type") != "print" or r[1].get("type") != "inject":
+        fail(f"t9: expected [print, inject] ordering; got {r!r}")
+    elif r[1].get("content") != "A\nB\n":
+        fail(f"t9: directory concat mismatch in inject content: {r!r}")
+    elif "policy refreshed (every 2 prompts)" not in r[0].get("text", ""):
+        fail(f"t9: expected threshold N=2 in print text; got {r[0]!r}")
+    else:
+        ok("t9: directory source preserves [print, inject] list shape")
     del os.environ["RABBIT_TEST_THRESH"]
 
 if FAIL:
