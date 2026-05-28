@@ -111,5 +111,8 @@ run_test("test-runtime-check-prompt-injection-failures.py")
 run_test("test-runtime-write-mode-marker.py")
 run_test("test-contract-manifest-runtime.py")
 run_test("test-spec-bodies-no-historical-tags.py")
+run_test("test-runtime-api-enum-sourced-from-schema.py")
+run_test("test-templates-validate-against-schemas.py")
+run_test("test-deployed-skills-match-source.py")
 
 print("ALL TESTS PASSED")
