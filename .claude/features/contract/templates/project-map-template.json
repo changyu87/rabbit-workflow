@@ -1,7 +1,5 @@
 {
   "template_version": "1.0.0",
   "schema_version": "1.0.0",
-  "name": "{{project_name}}",
-  "path": "{{absolute_source_root}}",
-  "source_map": {}
+  "features": {}
 }

@@ -10,6 +10,11 @@
   "required": ["schema_version", "features"],
   "additionalProperties": false,
   "properties": {
+    "template_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Optional template metadata (present in project-map-template.json)."
+    },
     "schema_version": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+\\.\\d+$"

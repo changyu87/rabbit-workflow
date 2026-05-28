@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List
 
 
@@ -633,19 +634,43 @@ def _validate_manifest(manifest):
 
 _RUNTIME_EVENT_ENUM = frozenset({"Stop", "SessionStart", "UserPromptSubmit", "PreToolUse"})
 
-_RUNTIME_API_ENUM = frozenset({
-    "check_drift_regenerate",
-    "check_manifest_drift",
-    "check_marker_alert",
-    "check_marker_consume_alert",
-    "check_counter_threshold_refresh",
-    "welcome_with_policy",
-    "iterate_configurables_alerts",
-    "iterate_configurables_banner",
-    "check_prompt_injection_failures",
-    "cleanup_old_prompts",
-    "write_mode_marker",
-})
+def _load_runtime_api_enum():
+    """Source the closed runtime API enum from runtime.schema.json (Inv 41).
+
+    The schema at ../schemas/runtime.schema.json is the SOLE source of
+    truth; this function extracts the enum from
+    definitions.call_list.items.properties.api.enum. Raises ImportError
+    on missing/malformed schema so the dependency is surfaced loudly
+    rather than silenced by a stale fallback (machine-first).
+    """
+    schema_path = Path(__file__).resolve().parent.parent / "schemas" / "runtime.schema.json"
+    try:
+        schema = json.loads(schema_path.read_text())
+    except FileNotFoundError as exc:
+        raise ImportError(
+            f"runtime.schema.json not found at {schema_path}; "
+            "checks.py requires it as the source of truth for _RUNTIME_API_ENUM (Inv 41)"
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise ImportError(
+            f"runtime.schema.json at {schema_path} is malformed JSON: {exc}; "
+            "checks.py cannot derive _RUNTIME_API_ENUM (Inv 41)"
+        ) from exc
+    try:
+        enum = schema["definitions"]["call_list"]["items"]["properties"]["api"]["enum"]
+    except (KeyError, TypeError) as exc:
+        raise ImportError(
+            f"runtime.schema.json at {schema_path} is missing "
+            "definitions.call_list.items.properties.api.enum (Inv 41)"
+        ) from exc
+    if not isinstance(enum, list) or not all(isinstance(x, str) for x in enum):
+        raise ImportError(
+            f"runtime.schema.json enum at {schema_path} is not a list of strings (Inv 41)"
+        )
+    return frozenset(enum)
+
+
+_RUNTIME_API_ENUM = _load_runtime_api_enum()
 
 
 def _validate_runtime(runtime):
