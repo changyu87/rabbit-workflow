@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
-"""scope-guard.py v2.0.0 — PreToolUse hook enforcing repo-wide default-deny.
+"""scope-guard.py v2.1.0 — PreToolUse hook enforcing repo-wide default-deny.
 
-Any write inside the repo root is denied unless:
+Standalone mode (legacy): any write inside the repo root is denied unless:
   (a) the target basename is on the filename allowlist, or
   (b) a .rabbit-scope-active marker exists in some ancestor of the target, or
   (c) a .rabbit-scope-active-<feature> per-feature marker exists at repo root
       and the target is inside that feature's directory, or
   (d) a .rabbit-scope-override file at repo root grants a session/one-time bypass.
+
+Plugin mode (Inv 17): when <repo_root>/.rabbit/.runtime/mode contains the
+literal string "plugin", scope-guard takes a different branch — see
+plugin_decide(). Detection happens per-invocation by reading the mode file.
+
+Pre-evaluation (Inv 18): before any decision logic in either mode, the
+one-shot bypass-once marker .rabbit/.runtime/scope-bypass-once is consumed
+(deleted) if present, and the current write is ALLOWED unconditionally.
+Consume-before-evaluate so a failed edit cannot leave a persistent bypass.
 
 Writes outside the repo root are unrestricted.
 The .rabbit-scope-active marker file itself is always exempt.
@@ -89,6 +98,110 @@ def find_feature_path(repo_root: Path, feature: str) -> Optional[str]:
         return None
 
 
+def consume_bypass_once() -> bool:
+    """Inv 18: consume-before-evaluate semantics for the one-shot bypass.
+
+    If <repo_root>/.rabbit/.runtime/scope-bypass-once exists, delete it
+    FIRST (so failed edits cannot leave a persistent bypass) and return
+    True. Returns False when no marker is present.
+    """
+    if REPO_ROOT is None:
+        return False
+    marker = REPO_ROOT / ".rabbit" / ".runtime" / "scope-bypass-once"
+    if not marker.is_file():
+        return False
+    try:
+        marker.unlink()
+    except OSError:
+        pass
+    return True
+
+
+def plugin_decide(abs_path: str) -> Tuple[bool, str]:
+    """Inv 17: plugin-mode decision tree. Called from decide() when
+    .rabbit/.runtime/mode == "plugin"."""
+    # Carve-outs first: .rabbit/CLAUDE.md and .rabbit/.gitignore are
+    # editable user-facing surface even in plugin mode.
+    rabbit_root = str(REPO_ROOT) + "/.rabbit"
+    if abs_path == rabbit_root + "/CLAUDE.md":
+        return True, "ALLOW (plugin carve-out: .rabbit/CLAUDE.md)"
+    if abs_path == rabbit_root + "/.gitignore":
+        return True, "ALLOW (plugin carve-out: .rabbit/.gitignore)"
+
+    # (a) .rabbit/.claude/** and .rabbit/rabbit-project/** are rabbit's
+    # own machinery — DENY always.
+    for protected in (rabbit_root + "/.claude", rabbit_root + "/rabbit-project"):
+        if abs_path == protected or abs_path.startswith(protected + "/"):
+            return False, (
+                f"DENY write to '{abs_path}' denied: plugin-mode protects "
+                f"rabbit's own machinery under '{protected}/'. Edit "
+                "user-project files instead."
+            )
+
+    # Load project-map.json. Lazy import so scope-guard does not pay the
+    # import cost when no map exists / standalone mode is active.
+    try:
+        # Module path: .../rabbit-cage/lib/project_map_reader.py
+        lib_dir = Path(__file__).resolve().parent.parent / "lib"
+        if str(lib_dir) not in sys.path:
+            sys.path.insert(0, str(lib_dir))
+        import project_map_reader  # type: ignore
+    except Exception:
+        project_map_reader = None  # type: ignore
+
+    map_dict = None
+    if project_map_reader is not None:
+        try:
+            map_dict = project_map_reader.load_map(str(REPO_ROOT))
+        except Exception:
+            map_dict = None
+
+    if map_dict is None:
+        # (d) No declared features → default-safe ALLOW for any user file.
+        return True, "ALLOW (plugin mode: no project-map.json — default safe)"
+
+    matched_feature = None
+    try:
+        matched_feature = project_map_reader.match_path(
+            abs_path, map_dict, str(REPO_ROOT)
+        )
+    except Exception:
+        matched_feature = None
+
+    if matched_feature is None:
+        # (d) No matching declared feature → ALLOW.
+        return True, "ALLOW (plugin mode: path matches no declared feature)"
+
+    # (b)/(c): does a per-feature scope-active marker exist?
+    marker = REPO_ROOT / ".rabbit" / ".runtime" / f"scope-active-{matched_feature}"
+    if marker.is_file():
+        return True, f"ALLOW (plugin mode: scope-active-{matched_feature})"
+
+    # (c) Declared path, no marker → structured three-option DENY.
+    return False, (
+        f"DENY write to '{abs_path}' denied: plugin-mode target matches "
+        f"declared feature '{matched_feature}' but no scope-active marker "
+        f"'.rabbit/.runtime/scope-active-{matched_feature}' is present.\n"
+        "\n"
+        "Choose one of the three options below. Both override options "
+        "require explicit in-conversation user confirmation and MUST NOT "
+        "be written speculatively.\n"
+        "\n"
+        "  (1) SESSION OVERRIDE — bypasses scope-guard for the entire "
+        "session. Requires explicit in-conversation user confirmation "
+        "before writing '.rabbit-scope-override' with content 'session'.\n"
+        "\n"
+        "  (2) ONE-TIME OVERRIDE — bypasses scope-guard for a single "
+        "write only. Requires explicit in-conversation user confirmation "
+        "before `touch .rabbit/.runtime/scope-bypass-once` (consumed "
+        "atomically by the next scope-guard invocation).\n"
+        "\n"
+        f"  (3) USE rabbit-feature-touch (recommended) — invokes the TDD "
+        f"cycle for feature '{matched_feature}', which writes the "
+        f"scope-active marker for you and advances tdd_state."
+    )
+
+
 def decide(target: str) -> Tuple[bool, str]:
     """Decide on one target. Returns (allow, reason_message).
     On deny, reason_message is the full DENY message; on allow, it's the ALLOW reason."""
@@ -112,6 +225,24 @@ def decide(target: str) -> Tuple[bool, str]:
     # 3. Allowlisted filenames -> always allow
     if base in ("settings.local.json", ".gitignore", ".rabbit-scope-override"):
         return True, "ALLOW (allowlisted filename)"
+
+    # 3a. Inv 18: .rabbit/.runtime/scope-bypass-once is allowlisted so the
+    # user (or a Bash `touch`) can create the marker even in plugin mode
+    # where .rabbit/.runtime/** is otherwise denied.
+    if abs_path == str(REPO_ROOT) + "/.rabbit/.runtime/scope-bypass-once":
+        return True, "ALLOW (scope-bypass-once marker path is allowlisted)"
+
+    # Plugin-mode branch (Inv 17). Read .rabbit/.runtime/mode and dispatch
+    # to plugin_decide() when present and equal to "plugin". Otherwise fall
+    # through to the standalone decision tree.
+    mode_file = REPO_ROOT / ".rabbit" / ".runtime" / "mode"
+    if mode_file.is_file():
+        try:
+            mode = mode_file.read_text().strip()
+        except Exception:
+            mode = ""
+        if mode == "plugin":
+            return plugin_decide(abs_path)
 
     # 3b. Path-prefix allowlist — always allow (dispatcher metadata + bug/backlog storage).
     # .rabbit/ is required so rabbit-feature-touch can write
@@ -397,6 +528,11 @@ def main() -> int:
         cmd = tool_input.get("command", "")
         if cmd:
             targets.extend(extract_bash_targets(cmd))
+
+    # Inv 18: consume bypass-once BEFORE any decision so failed edits
+    # cannot leave a persistent bypass. When consumed, ALLOW unconditionally.
+    if consume_bypass_once():
+        return 0
 
     for t in targets:
         if not t:
