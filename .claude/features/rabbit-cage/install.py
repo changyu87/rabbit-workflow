@@ -1,47 +1,190 @@
 #!/usr/bin/env python3
-"""install.py — copy rabbit-workflow into a target workspace.
+"""install.py — install rabbit as a plugin at <project>/.rabbit/ + dev-test helper.
 
-Usage:
-  install.py [TARGET] [--all]
+This module has two distinct roles:
 
-  TARGET   directory to install into (default: $PWD)
-  --all    also copy archive material (archive/, test/) for inspection.
-           Without --all, dev-only docs under .claude/docs/specs/ and
-           .claude/docs/plans/ are stripped; default install is .claude/
-           + CLAUDE.md only.
+  1. User-facing MVP installer (main()):
+     Invoked by install.sh after the upstream tarball is extracted. Lays
+     down the minimum file closure needed for the user-promised surfaces:
 
-After copying, install.py enumerates every <target>/.claude/features/*/
-feature.json and invokes each declared MANIFEST API via
-contract.lib.publish. Failures are reported to stderr; the install
-exits non-zero if any publish call failed.
+       1. Drift-protected Claude on session start (policy block via CLAUDE.md)
+       2. rabbit-feature-new <name> <path-glob> (declare a feature mapping)
+       3. Scope-guard blocking edits to declared-feature paths
+       4. .rabbit/.runtime/scope-bypass-once one-shot override marker
 
-Version: 5.0.0
-Owner: rabbit-workflow team (rabbit-cage)
-Deprecation criterion: when Claude Code exposes native workspace
-    bootstrap that subsumes this script.
+     Each (source, dest) tuple at module top is explicit so the installer
+     doesn't depend on the publish flow having been run against the source
+     tarball.
+
+     Excludes development surfaces: test/, docs/, scripts/enforcement/,
+     deferred features (rabbit-config, rabbit-file, tdd-subagent), retired
+     tombstones (tdd-state-machine, rabbit-spec).
+
+     Usage:
+         install.py --src <extracted-tarball-dir> --target <project>/.rabbit
+
+  2. Dev-test helper (run_publish_loop()):
+     Importable function used by rabbit-cage test suites
+     (test-deployed-hooks-execute.py, test-install-publish-loop.py) to
+     exercise the publish flow against a freshly copied .claude tree.
+     This helper is NOT invoked from main() — main() lays down an explicit
+     file closure rather than running the publish flow at install time.
+
+Version: 6.0.0
+Owner: rabbit-workflow team
+Deprecation criterion: when rabbit's per-project plugin model is superseded
 """
 
-import glob
+from __future__ import annotations
+
+import argparse
 import json
 import os
 import shutil
-import subprocess
 import sys
-import tempfile
-import urllib.request
+from pathlib import Path
+
+# ───────────────────────────────────────────────────────────────────────────
+# MVP file closure as (src_rel, dst_rel) tuples — explicit source→destination
+# ───────────────────────────────────────────────────────────────────────────
+
+# Top-level files (same path on both sides)
+SAME_PATH_FILES = [
+    "CLAUDE.md",
+    ".claude/settings.json",
+]
+
+# Hooks: source → deployed
+HOOKS = [
+    (".claude/features/rabbit-cage/hooks/scope-guard.py", ".claude/hooks/scope-guard.py"),
+    (".claude/features/rabbit-cage/hooks/session-start-dispatcher.py", ".claude/hooks/session-start-dispatcher.py"),
+    (".claude/features/rabbit-cage/hooks/stop-dispatcher.py", ".claude/hooks/stop-dispatcher.py"),
+    (".claude/features/rabbit-cage/hooks/user-prompt-submit-dispatcher.py", ".claude/hooks/user-prompt-submit-dispatcher.py"),
+    (".claude/features/rabbit-cage/hooks/_dispatcher_lib.py", ".claude/hooks/_dispatcher_lib.py"),
+    (".claude/features/contract/hooks/prompt-injector.py", ".claude/hooks/prompt-injector.py"),
+]
+
+# Skills: source SKILL.md → deployed SKILL.md
+SKILLS = [
+    (".claude/features/rabbit-feature/skills/rabbit-feature-new/SKILL.md", ".claude/skills/rabbit-feature-new/SKILL.md"),
+]
+
+# Agents: source → deployed
+AGENTS = [
+    (".claude/features/spec-seeder/agents/spec-seeder.md", ".claude/agents/spec-seeder.md"),
+]
+
+# Commands: source → deployed
+COMMANDS: list[tuple[str, str]] = []
+
+# Per-feature sub-path includes (whole subset; same path on both sides)
+FEATURE_INCLUDES: dict[str, list[str]] = {
+    "contract": [
+        "feature.json",
+        "lib/__init__.py",
+        "lib/runtime.py",
+        "lib/checks.py",
+        "lib/policy_block.py",
+        "lib/mutation.py",
+        "lib/producers.py",
+        "lib/publish.py",
+        "scripts/build-prompt.py",
+        "scripts/rabbit_print.py",
+        "scripts/validate-feature.py",
+        "scripts/validate-meta-contract.py",
+        "scripts/find-feature.py",
+        "scripts/policy-block.py",
+        "schemas/feature.json.schema.json",
+        "schemas/runtime.schema.json",
+        "schemas/prompts.schema.json",
+        "schemas/project-map.json.schema.json",
+        "schemas/manifest.schema.json",
+        "schemas/rabbit-print.schema.json",
+        "templates/spec-template.md",
+        "templates/contract-template.md",
+        "templates/feature-json-template.json",
+        "templates/project-map-template.json",
+        "templates/prompts/rabbit-feature-new.txt",
+        "templates/prompts/spec-seeder.txt",
+    ],
+    "policy": [
+        "feature.json",
+        "philosophy.md",
+        "spec-rules.md",
+        "coding-rules.md",
+    ],
+    "rabbit-cage": [
+        "feature.json",
+        "lib/__init__.py",
+        "lib/project_map_reader.py",
+    ],
+    "rabbit-meta": [
+        "feature.json",
+        "lib/__init__.py",
+        "lib/mode_detection.py",
+        "lib/generate_claude_md.py",
+        "lib/generate_readme.py",
+        "templates/CLAUDE.md.template",
+        "templates/README.md.template",
+    ],
+    "rabbit-feature": [
+        "feature.json",
+        "scripts/new-feature.py",
+    ],
+    "spec-seeder": [
+        "feature.json",
+        "scripts/dispatch-spec-seeder.py",
+    ],
+}
 
 
-def usage():
-    print(__doc__, file=sys.stderr)
+def copy_one(src_root: Path, dst_root: Path, src_rel: str, dst_rel: str) -> bool:
+    src = src_root / src_rel
+    dst = dst_root / dst_rel
+    if not src.is_file():
+        print(f"error: missing required source file: {src_rel}", file=sys.stderr)
+        return False
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
+    # Preserve executable bit for shell + python scripts copied to user-runnable locations
+    if dst.suffix in (".py", ".sh") or "scripts/" in dst_rel or "hooks/" in dst_rel:
+        os.chmod(dst, os.stat(dst).st_mode | 0o111)
+    return True
+
+
+def write_rabbit_gitignore(dst_root: Path) -> None:
+    content = (
+        "# rabbit-owned ephemerals — never commit these\n"
+        ".runtime/\n"
+        "prompts/\n"
+        "tdd-report-*.json\n"
+        "impl-suggestion-*.json\n"
+        ".scope-active-*\n"
+        ".scope-bypass-once\n"
+        "__pycache__/\n"
+        "*.pyc\n"
+    )
+    (dst_root / ".gitignore").write_text(content)
+
+
+def write_version_pin(dst_root: Path) -> None:
+    label = os.environ.get("RABBIT_INSTALLED_REF", "unknown")
+    (dst_root / ".version").write_text(label + "\n")
 
 
 def run_publish_loop(target_root: str) -> int:
-    """Enumerate every <target_root>/.claude/features/*/feature.json and
-    invoke each MANIFEST API via contract.lib.publish. Continues past
+    """Dev-test helper: enumerate every <target_root>/.claude/features/*/feature.json
+    and invoke each MANIFEST API via contract.lib.publish. Continues past
     failures; returns the count of failed calls (0 == success).
 
     Skips features with status == 'retired' and features with no manifest.
     Writes one stderr line per failure naming the feature + API.
+
+    NOT invoked from main() — main() lays down an explicit file closure
+    rather than executing the publish flow at install time. This function
+    is retained as an importable helper for rabbit-cage test suites that
+    exercise the publish flow against a freshly copied .claude tree
+    (test-deployed-hooks-execute.py, test-install-publish-loop.py).
     """
     contract_dir = os.path.join(target_root, ".claude/features/contract")
     if contract_dir not in sys.path:
@@ -95,92 +238,57 @@ def run_publish_loop(target_root: str) -> int:
     return failures
 
 
-def main():
-    target = ""
-    install_all = False
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Install rabbit into a target directory")
+    parser.add_argument("--src", required=True, type=Path, help="extracted upstream source dir")
+    parser.add_argument("--target", required=True, type=Path, help="target install dir (typically <project>/.rabbit)")
+    args = parser.parse_args()
 
-    i = 1
-    while i < len(sys.argv):
-        arg = sys.argv[i]
-        if arg == "--all":
-            install_all = True
-        elif arg in ("-h", "--help"):
-            usage()
-            sys.exit(0)
-        elif arg.startswith("-"):
-            print(f"Error: unknown option '{arg}'", file=sys.stderr)
-            sys.exit(2)
-        else:
-            if target:
-                print("Error: multiple TARGET values given", file=sys.stderr)
-                sys.exit(2)
-            target = arg
-        i += 1
+    src_root: Path = args.src.resolve()
+    dst_root: Path = args.target.resolve()
 
-    if not target:
-        target = os.getcwd()
+    if not src_root.is_dir():
+        print(f"error: --src is not a directory: {src_root}", file=sys.stderr)
+        return 1
+    if dst_root.exists() and any(dst_root.iterdir()):
+        print(f"error: --target exists and is not empty: {dst_root}", file=sys.stderr)
+        return 1
 
-    if os.path.isdir(os.path.join(target, ".claude")):
-        print(f"Error: {target}/.claude already exists.", file=sys.stderr)
-        print(
-            "If developing rabbit-workflow, no install needed - open this directory in Claude Code.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    dst_root.mkdir(parents=True, exist_ok=True)
+    ok = True
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    tmp_dir = None
+    for rel in SAME_PATH_FILES:
+        ok &= copy_one(src_root, dst_root, rel, rel)
 
-    if os.path.isdir(os.path.join(script_dir, ".claude")):
-        src = script_dir
-    else:
-        tmp_dir = tempfile.mkdtemp()
-        url = "https://github.com/changyu87/rabbit-workflow/archive/refs/heads/main.tar.gz"
-        tar_path = os.path.join(tmp_dir, "rabbit.tar.gz")
-        try:
-            urllib.request.urlretrieve(url, tar_path)
-            subprocess.check_call(
-                ["tar", "-xz", "-C", tmp_dir, "--strip-components=1", "-f", tar_path]
-            )
-        except Exception as e:
-            print(f"Error downloading rabbit-workflow: {e}", file=sys.stderr)
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-            sys.exit(1)
-        src = tmp_dir
+    for src_rel, dst_rel in HOOKS:
+        ok &= copy_one(src_root, dst_root, src_rel, dst_rel)
 
-    target_claude = os.path.join(target, ".claude")
-    try:
-        shutil.copytree(os.path.join(src, ".claude"), target_claude)
-        try:
-            failures = run_publish_loop(target)
-            if failures:
-                raise RuntimeError(
-                    f"{failures} manifest publish call(s) failed; see stderr")
-        except Exception:
-            shutil.rmtree(target_claude, ignore_errors=True)
-            raise
+    for src_rel, dst_rel in SKILLS:
+        ok &= copy_one(src_root, dst_root, src_rel, dst_rel)
 
-        settings_local = os.path.join(target, ".claude", "settings.local.json")
-        if os.path.isfile(settings_local):
-            os.remove(settings_local)
-        for nfs in glob.glob(os.path.join(target, ".claude", ".nfs*")):
-            os.remove(nfs)
+    for src_rel, dst_rel in AGENTS:
+        ok &= copy_one(src_root, dst_root, src_rel, dst_rel)
 
-        if install_all:
-            for subdir in ("archive", "test"):
-                src_sub = os.path.join(src, subdir)
-                if os.path.isdir(src_sub):
-                    shutil.copytree(src_sub, os.path.join(target, subdir))
-            print(f"rabbit-workflow installed to {target} (with --all: archive/ + test/ included; .claude/docs/ kept)")
-        else:
-            for pattern in ("specs/*.md", "plans/*.md"):
-                for f in glob.glob(os.path.join(target, ".claude", "docs", pattern)):
-                    os.remove(f)
-            print(f"rabbit-workflow installed to {target} (minimal: .claude/ + CLAUDE.md only)")
-    finally:
-        if tmp_dir:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+    for src_rel, dst_rel in COMMANDS:
+        ok &= copy_one(src_root, dst_root, src_rel, dst_rel)
+
+    for feature, paths in FEATURE_INCLUDES.items():
+        base = f".claude/features/{feature}"
+        for rel in paths:
+            full = f"{base}/{rel}"
+            ok &= copy_one(src_root, dst_root, full, full)
+
+    if not ok:
+        print("install: aborting due to missing source files", file=sys.stderr)
+        return 1
+
+    write_rabbit_gitignore(dst_root)
+    write_version_pin(dst_root)
+
+    total_files = sum(1 for p in dst_root.rglob("*") if p.is_file())
+    print(f"Installed {total_files} files to {dst_root}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
