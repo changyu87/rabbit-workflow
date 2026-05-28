@@ -27,6 +27,8 @@ SUITES = [
     "test-RABBIT-CAGE-17-quoted-strings.py",
     "test-repo-permissions.py",
     "test-RABBIT-CAGE-BUG-104-hook-path-format.py",
+    "test-write-mode-marker-wired.py",
+    "test-scope-guard-plugin-mode.py",
 ]
 
 

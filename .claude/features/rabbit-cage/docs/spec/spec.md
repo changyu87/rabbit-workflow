@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.6.0
+version: 5.8.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -220,6 +220,56 @@ string BEFORE splitting on `;|&` segment delimiters.
     Emission of the command string is the responsibility of
     `contract.lib.publish.publish_hook`; rabbit-cage owns the user-visible
     requirement that the deployed registration fire correctly from any CWD.
+16. rabbit-cage's `feature.json runtime.SessionStart` declares two entries
+    in order: (1) `welcome_with_policy` (existing) and (2) `write_mode_marker`
+    (args `{}`). The SessionStart dispatcher invokes both in declaration
+    order via `contract.lib.runtime`. The `write_mode_marker` API (owned by
+    `contract.lib.runtime` and built on top of `rabbit-meta.lib.mode_detection.detect_mode`)
+    detects whether rabbit is running in `"plugin"` or `"standalone"` mode
+    and writes the result to `<repo_root>/.rabbit/.runtime/mode` for
+    downstream consumers. rabbit-cage owns ONLY the wiring (the
+    `runtime.SessionStart` declaration that fires the API); detection logic
+    is owned by rabbit-meta and the API implementation is owned by contract.
+17. **Plugin-mode scope-guard decision tree.** When `scope-guard.py` runs
+    and `<repo_root>/.rabbit/.runtime/mode` exists with content `"plugin"`,
+    it takes the plugin-mode branch instead of the standalone decision
+    tree. The plugin-mode branch decides each target as follows:
+    (a) Target inside `.rabbit/.claude/**` or `.rabbit/rabbit-project/**`
+    (with carve-outs for `.rabbit/CLAUDE.md` and `.rabbit/.gitignore`) →
+    DENY always. These paths are rabbit's own machinery inside the plugin
+    install and are never edited by the user-facing agent.
+    (b) Target matches a feature-path glob declared in
+    `<repo_root>/.rabbit/rabbit-project/project-map.json` AND a per-feature
+    scope marker `<repo_root>/.rabbit/.runtime/scope-active-<name>` exists
+    for that feature → ALLOW.
+    (c) Target matches a declared feature path AND no marker exists for
+    that feature → DENY with a structured three-option message: SESSION
+    OVERRIDE, ONE-TIME OVERRIDE (via the `scope-bypass-once` marker, Inv
+    18), and USE rabbit-feature-touch (recommended). The DENY message
+    names the matched feature and the absolute target path.
+    (d) Target matches no declared feature path → ALLOW (default safe: a
+    user file outside any declared feature is unrestricted).
+    When `.rabbit/.runtime/mode` is absent or its content is not exactly
+    `"plugin"`, the standalone decision tree (Inv 5) governs unchanged.
+    The library `.claude/features/rabbit-cage/lib/project_map_reader.py`
+    owns map I/O and path matching, exporting two functions:
+    `load_map(repo_root: str) -> dict | None` (reads
+    `<repo_root>/.rabbit/rabbit-project/project-map.json`; returns `None`
+    on missing file or invalid JSON), and
+    `match_path(target_path: str, map_dict: dict, repo_root: str) -> str | None`
+    (returns the feature name whose `paths` glob matches the absolute
+    target via stdlib `fnmatch.fnmatch`, treating the map's globs as
+    relative to repo_root; returns `None` if no glob matches).
+18. **One-shot bypass-once marker.** Before evaluating any decision in
+    either mode, `scope-guard.py` checks for
+    `<repo_root>/.rabbit/.runtime/scope-bypass-once`. If present, the
+    marker is deleted FIRST (consume-before-evaluate, so a write that
+    fails for any other reason still consumes the bypass and cannot leave
+    a persistent override) and the current Edit/Write/Bash is ALLOWED
+    regardless of any other rule. The marker path
+    `.rabbit/.runtime/scope-bypass-once` itself is on the static
+    allowlist so the user (or a Bash `touch` invocation) can create it
+    even in plugin mode where `.rabbit/**` writes are otherwise denied.
 
 ## Tech Stack
 

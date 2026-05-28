@@ -16,7 +16,9 @@
         { "name": "rabbit-spec",      "required": false, "description": "RETIRED — surface absorbed into rabbit-feature as rabbit-feature-spec; tombstone retained per Inv 43", "children": [] },
         { "name": "rabbit-file",      "required": true,  "description": "unified bug and backlog filing/tracking on the bug-backlog-files branch", "children": [] },
         { "name": "rabbit-feature",   "required": true,  "description": "owns rabbit-feature-touch orchestration skill; invokes tdd-subagent scripts", "children": [] },
-        { "name": "rabbit-config",    "required": true,  "description": "configuration manager; hosts /rabbit-config skill; emits Stop/SessionStart alerts for active overrides", "children": [] }
+        { "name": "rabbit-config",    "required": true,  "description": "configuration manager; hosts /rabbit-config skill; emits Stop/SessionStart alerts for active overrides", "children": [] },
+        { "name": "rabbit-meta",      "required": true,  "description": "plugin-mode machinery for the per-project user-interfacer install — owns mode detection, CLAUDE.md/README.md generators, bootstrap helper", "children": [] },
+        { "name": "spec-seeder",      "required": true,  "description": "read-only subagent that drafts initial spec.md sections for newly-declared user-project features (invoked by rabbit-feature-new in plugin mode)", "children": [] }
       ]
     },
     { "name": "skills",    "required": true,  "description": "skill library (published from feature manifests)", "children": [] },

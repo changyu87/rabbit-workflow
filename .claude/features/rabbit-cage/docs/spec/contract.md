@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.6.0
+version: 5.8.0
 template_version: 2.0.0
 ---
 
@@ -30,7 +30,8 @@ template_version: 2.0.0
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-set-path.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py set-path"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-map.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py map"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-consolidate.py", "stdin": "none", "stdout": "warnings to stderr", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py consolidate"},
-      {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.py", "stdin": "none", "stdout": "annotated workspace tree", "exit": "0=ok 1=error"}
+      {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.py", "stdin": "none", "stdout": "annotated workspace tree", "exit": "0=ok 1=error"},
+      {"path": ".claude/features/rabbit-cage/lib/project_map_reader.py", "stdin": "none", "stdout": "none", "exit": "n/a (importable module)", "note": "plugin-mode project-map I/O + path matching; imported by scope-guard.py"}
     ],
     "schemas": [],
     "templates": [],
@@ -45,7 +46,11 @@ template_version: 2.0.0
       ".rabbit-scope-override",
       ".rabbit-scope-override-used",
       ".rabbit-human-approval-bypass",
-      ".rabbit-skills-updated"
+      ".rabbit-skills-updated",
+      ".rabbit/.runtime/mode",
+      ".rabbit/.runtime/scope-active-*",
+      ".rabbit/.runtime/scope-bypass-once",
+      ".rabbit/rabbit-project/project-map.json"
     ],
     "external": ["env-var:RABBIT_ROOT", "env-var:RABBIT_REFRESH_EVERY"]
   },
@@ -63,7 +68,8 @@ template_version: 2.0.0
   "manages": {
     "runtime_markers": [
       {"path": ".rabbit-scope-override", "writer": "human or Claude (after explicit in-conversation user approval)", "reader": "scope-guard.py, stop-dispatcher.py (via check_marker_alert)", "lifecycle": "human or Claude creates; scope-guard.py deletes on one-time consumption; persists for session mode", "gitignored": true},
-      {"path": ".rabbit-scope-override-used", "writer": "scope-guard.py", "reader": "stop-dispatcher.py (via check_marker_consume_alert)", "lifecycle": "created by scope-guard.py on one-time consumption; consumed (deleted) by check_marker_consume_alert", "gitignored": true}
+      {"path": ".rabbit-scope-override-used", "writer": "scope-guard.py", "reader": "stop-dispatcher.py (via check_marker_consume_alert)", "lifecycle": "created by scope-guard.py on one-time consumption; consumed (deleted) by check_marker_consume_alert", "gitignored": true},
+      {"path": ".rabbit/.runtime/scope-bypass-once", "writer": "human or Claude (after explicit in-conversation user approval)", "reader": "scope-guard.py", "lifecycle": "human or Claude creates via touch; scope-guard.py consumes (deletes) before evaluating any decision so failed edits cannot leave a persistent bypass", "gitignored": true}
     ]
   },
   "never": [
