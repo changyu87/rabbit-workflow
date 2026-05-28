@@ -19,6 +19,7 @@ SUITES = [
     "test-dispatchers.py",
     "test-deployed-hooks-execute.py",
     "test-install-publish-loop.py",
+    "test-install-py-exports.py",
     "test-scope-guard-centralized.py",
     "test-scope-guard-allowlist.py",
     "test-scope-guard-deny-message.py",
