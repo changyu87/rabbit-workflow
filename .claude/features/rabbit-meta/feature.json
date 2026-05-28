@@ -1,7 +1,7 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-meta",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "owner": "cyxu",
   "tdd_state": "test-green",
   "summary": "rabbit-meta feature",
@@ -12,6 +12,5 @@
     "skills": []
   },
   "deprecation_criterion": "TBD \u2014 set after first review",
-  "updated": "2026-05-27",
-  "spec_no_change_reason": "Inv 1 already refined in prior commit 9e95a4f2 on this branch; this cycle implements the spec"
+  "updated": "2026-05-28"
 }

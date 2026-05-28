@@ -1,6 +1,6 @@
 ---
 feature: rabbit-meta
-version: 0.2.0
+version: 0.3.0
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when rabbit's per-project plugin model is superseded by a native Claude Code workflow contract mechanism
@@ -45,9 +45,15 @@ features.
     (c) Module-level docstring with `Version`, `Owner`, and `Deprecation criterion` lines per spec-rules.md.
     (d) Pure stdlib (`os.path`, `os.listdir`); no side effects, no env reads, no logging, no module-level prints. Imports limited to `os` (or `os.path` + `os.listdir` via direct attribute access).
 
-2. `templates/CLAUDE.md.template` MUST exist as the verbatim plugin-mode CLAUDE.md content. The template carries the killer-story prose (three lines summarizing Tier-1 drift protection + Tier-2 spec-as-memory value), the user-project boundary note (`"You are operating on the user project at the parent directory. Edit files at ../, not inside .rabbit/."`), and `@`-imports of the three policy files: `@.claude/features/policy/philosophy.md`, `@.claude/features/policy/spec-rules.md`, `@.claude/features/policy/coding-rules.md`. `lib/generate_claude_md.py` exports `generate_claude_md(template_path: str, output_path: str) -> CheckResult`: copies the template verbatim to output, idempotent (re-run with unchanged content is a no-op via SHA-256 or byte-equality comparison). Returns `ok_result()` on success, `error_result(message)` on filesystem error. Coverage by `test/test-generate-claude-md.py` (template exists; generator content match; idempotent re-run; `@`-imports resolve to existing policy files on disk).
+2. `templates/CLAUDE.md.template` MUST exist as the verbatim plugin-mode CLAUDE.md content. The template carries the killer-story prose (mentioning `rabbit-feature-new`), the user-project boundary note (`"You are operating on the user project at the parent directory. Edit files at ../, not inside .rabbit/."`), and `@`-imports of the three policy files: `@.claude/features/policy/philosophy.md`, `@.claude/features/policy/spec-rules.md`, `@.claude/features/policy/coding-rules.md`. `lib/generate_claude_md.py` exports `generate_claude_md(template_path: str, output_path: str) -> str`:
+    (a) Reads the template file verbatim and writes it to `output_path`.
+    (b) Idempotent via byte-equality: if `output_path` already exists with content identical to the template, no write occurs and the function returns the literal string `"no-op"`.
+    (c) Otherwise writes the content and returns the literal string `"wrote"`.
+    (d) Raises `FileNotFoundError` if `template_path` does not exist.
+    (e) Module-level docstring with `Version`, `Owner`, and `Deprecation criterion` lines. Pure stdlib.
+    Coverage by `test/test-generate-claude-md.py` (t1: template exists; t2: contains `rabbit-feature-new`; t3: contains all three `@`-imports; t4: each `@`-imported policy file resolves on disk; t5: verbatim write; t6: idempotent re-run returns `"no-op"`; t7: `FileNotFoundError` on missing template).
 
-3. `templates/README.md.template` MUST exist with the killer-story prose, a 3-line "what to do next" section, and a link to upstream docs. `lib/generate_readme.py` exports `generate_readme(template_path: str, output_path: str) -> CheckResult`: verbatim copy, idempotent (matches Inv 2 semantics). Returns `ok_result()` on success, `error_result(message)` on filesystem error. Coverage by `test/test-generate-readme.py` mirroring the CLAUDE.md generator tests.
+3. `templates/README.md.template` MUST exist with the killer-story prose (mentioning `rabbit-feature-new`), a "What to do next" section with three numbered items, and a link to `upstream rabbit-workflow`. `lib/generate_readme.py` exports `generate_readme(template_path: str, output_path: str) -> str` with the same five-clause contract as Inv 2 (verbatim copy; idempotent byte-equality returning `"no-op"`; otherwise `"wrote"`; `FileNotFoundError` on missing template; module-level docstring; pure stdlib). Coverage by `test/test-generate-readme.py` (t1: template exists; t2: contains `rabbit-feature-new`; t3: `What to do next` section with items 1./2./3.; t4: contains `upstream rabbit-workflow`; t5-t7: same generator semantics as Inv 2).
 
 4. `scripts/bootstrap.sh` MAY exist as an optional one-line install helper. The canonical install ritual is documented in `docs/install.md` at the repo root; this script is a convenience shim and absence is a valid state. If shipped: the script is executable, idempotent (refuses with exit 1 if `.rabbit/` already exists in cwd), respects the `RABBIT_UPSTREAM` env var (default points at the canonical rabbit upstream), and exits 1 on any error. Coverage (conditional on existence) by `test/test-bootstrap.py` exercising the happy path and the abort-on-existing-dir path.
 
@@ -69,4 +75,4 @@ Python 3 stdlib only. No external dependencies (matches the Python-only invarian
 
 `test/run.py` runs the end-to-end suite. Test coverage grows with each implementation milestone; the per-test file mapping is enumerated alongside each invariant above.
 
-Currently `test/run.py` is bare (no `test-*.py` files yet) — feature is in the spec-authoring phase. The mode-detection, generator, and bootstrap tests land alongside their respective implementations.
+`test/run.py` invokes `test-mode-detection.py` (Inv 1), `test-generate-claude-md.py` (Inv 2), and `test-generate-readme.py` (Inv 3). The bootstrap tests land alongside Inv 4 if/when `scripts/bootstrap.sh` is shipped.

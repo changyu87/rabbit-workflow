@@ -25,5 +25,7 @@ def run_test(script):
 
 
 run_test("test-mode-detection.py")
+run_test("test-generate-claude-md.py")
+run_test("test-generate-readme.py")
 
 print("ALL TESTS PASSED")
