@@ -3,7 +3,7 @@
   "name": "rabbit-meta",
   "version": "0.3.0",
   "owner": "cyxu",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "rabbit-meta feature",
   "surface": {
     "hooks": [],
@@ -12,5 +12,5 @@
     "skills": []
   },
   "deprecation_criterion": "TBD \u2014 set after first review",
-  "updated": "2026-05-27"
+  "updated": "2026-05-28"
 }
