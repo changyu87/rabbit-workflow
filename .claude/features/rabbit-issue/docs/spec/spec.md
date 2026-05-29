@@ -1,3 +1,10 @@
+---
+feature: rabbit-issue
+version: 1.0.0
+owner: cyxu
+deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
+---
+
 # rabbit-issue
 
 > **Note:** LLM-prose view (machine-targeted, like everything in rabbit).

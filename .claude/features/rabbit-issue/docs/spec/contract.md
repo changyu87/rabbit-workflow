@@ -1,7 +1,8 @@
 ---
 feature: rabbit-issue
-version: 0.1.0
-template_version: 2.0.0
+version: 1.0.0
+owner: cyxu
+deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
 
 # rabbit-issue — Contract
@@ -9,24 +10,38 @@ template_version: 2.0.0
 ```json
 {
   "provides": {
-    "files": [],
-    "commands": [],
-    "scripts": [],
-    "schemas": [],
-    "templates": [],
-    "skills": []
+    "skill": "rabbit-issue",
+    "scripts": [
+      "scripts/file-item.py",
+      "scripts/item-status.py",
+      "scripts/list-items.py",
+      "scripts/_gh.py",
+      "scripts/migrate.py"
+    ],
+    "issue_labels": [
+      "bug",
+      "enhancement",
+      "rabbit-managed",
+      "feature:<name>",
+      "priority:<low|medium|high|critical>"
+    ]
   },
   "reads": {
-    "files": [],
-    "external": []
+    "feature.json": "via rabbit-feature-scope (for --feature validation)",
+    "github_issues": "via gh CLI, repo slug from `git remote get-url origin`"
   },
   "invokes": {
-    "scripts": [],
-    "agents": []
+    "rabbit-feature-scope": "skill — resolve feature for ambiguous filings",
+    "gh": "CLI tool — issue create/view/close/reopen/list, label create"
   },
   "manages": {
     "runtime_markers": []
   },
-  "never": []
+  "never": [
+    "writes to origin/bug-backlog-files (deleted by migration)",
+    "maintains counter.json (GH allocates issue numbers)",
+    "maintains item.json history array (GH Timeline is source of truth)",
+    "closes/reopens issues lacking the `rabbit-managed` label"
+  ]
 }
 ```
