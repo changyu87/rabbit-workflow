@@ -1,23 +1,34 @@
 #!/usr/bin/env python3
-"""install.py — install rabbit as a plugin at <project>/.rabbit/.
+"""install.py — install rabbit as a plugin at <project>/.rabbit/ + dev-test helper.
 
-Invoked by install.sh after the upstream tarball is extracted. Lays down
-the minimum file closure needed for the user-promised surfaces:
+This module has two distinct roles:
 
-  1. Drift-protected Claude on session start (policy block via CLAUDE.md)
-  2. rabbit-feature-new <name> <path-glob> (declare a feature mapping)
-  3. Scope-guard blocking edits to declared-feature paths
-  4. .rabbit/.runtime/scope-bypass-once one-shot override marker
+  1. User-facing MVP installer (main()):
+     Invoked by install.sh after the upstream tarball is extracted. Lays
+     down the minimum file closure needed for the user-promised surfaces:
 
-Each (source, dest) tuple below is explicit so the installer doesn't
-depend on the publish flow having been run against the source tarball.
+       1. Drift-protected Claude on session start (policy block via CLAUDE.md)
+       2. rabbit-feature-new <name> <path-glob> (declare a feature mapping)
+       3. Scope-guard blocking edits to declared-feature paths
+       4. .rabbit/.runtime/scope-bypass-once one-shot override marker
 
-Excludes development surfaces: test/, docs/, scripts/enforcement/,
-deferred features (rabbit-config, rabbit-file, tdd-subagent), retired
-tombstones (tdd-state-machine, rabbit-spec).
+     Each (source, dest) tuple at module top is explicit so the installer
+     doesn't depend on the publish flow having been run against the source
+     tarball.
 
-Usage:
-    install.py --src <extracted-tarball-dir> --target <project>/.rabbit
+     Excludes development surfaces: test/, docs/, scripts/enforcement/,
+     deferred features (rabbit-config, rabbit-file, tdd-subagent), retired
+     tombstones (tdd-state-machine, rabbit-spec).
+
+     Usage:
+         install.py --src <extracted-tarball-dir> --target <project>/.rabbit
+
+  2. Dev-test helper (run_publish_loop()):
+     Importable function used by rabbit-cage test suites
+     (test-deployed-hooks-execute.py, test-install-publish-loop.py) to
+     exercise the publish flow against a freshly copied .claude tree.
+     This helper is NOT invoked from main() — main() lays down an explicit
+     file closure rather than running the publish flow at install time.
 
 Version: 6.0.0
 Owner: rabbit-workflow team
@@ -27,6 +38,7 @@ Deprecation criterion: when rabbit's per-project plugin model is superseded
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import sys
@@ -158,6 +170,72 @@ def write_rabbit_gitignore(dst_root: Path) -> None:
 def write_version_pin(dst_root: Path) -> None:
     label = os.environ.get("RABBIT_INSTALLED_REF", "unknown")
     (dst_root / ".version").write_text(label + "\n")
+
+
+def run_publish_loop(target_root: str) -> int:
+    """Dev-test helper: enumerate every <target_root>/.claude/features/*/feature.json
+    and invoke each MANIFEST API via contract.lib.publish. Continues past
+    failures; returns the count of failed calls (0 == success).
+
+    Skips features with status == 'retired' and features with no manifest.
+    Writes one stderr line per failure naming the feature + API.
+
+    NOT invoked from main() — main() lays down an explicit file closure
+    rather than executing the publish flow at install time. This function
+    is retained as an importable helper for rabbit-cage test suites that
+    exercise the publish flow against a freshly copied .claude tree
+    (test-deployed-hooks-execute.py, test-install-publish-loop.py).
+    """
+    contract_dir = os.path.join(target_root, ".claude/features/contract")
+    if contract_dir not in sys.path:
+        sys.path.insert(0, contract_dir)
+    try:
+        from lib import publish  # noqa: PLC0415
+    except ImportError as e:
+        sys.stderr.write(f"install: cannot import contract.lib.publish: {e}\n")
+        return 1
+
+    features_root = os.path.join(target_root, ".claude/features")
+    if not os.path.isdir(features_root):
+        return 0
+
+    failures = 0
+    for name in sorted(os.listdir(features_root)):
+        fdir = os.path.join(features_root, name)
+        fj = os.path.join(fdir, "feature.json")
+        if not os.path.isfile(fj):
+            continue
+        try:
+            with open(fj) as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            sys.stderr.write(f"install: {name}: malformed feature.json: {e}\n")
+            failures += 1
+            continue
+        if not isinstance(data, dict) or data.get("status") == "retired":
+            continue
+        manifest = data.get("manifest") or []
+        for entry in manifest:
+            api_name = entry.get("api", "")
+            args = entry.get("args") or {}
+            fn = getattr(publish, api_name, None)
+            if fn is None:
+                sys.stderr.write(
+                    f"install: {name}: unknown publish API {api_name!r}\n")
+                failures += 1
+                continue
+            try:
+                result = fn(**args, feature_dir=fdir, repo_root=target_root)
+            except Exception as e:  # noqa: BLE001
+                sys.stderr.write(
+                    f"install: {name}::{api_name} raised: {e}\n")
+                failures += 1
+                continue
+            if not getattr(result, "passed", False):
+                for msg in getattr(result, "messages", []) or []:
+                    sys.stderr.write(f"install: {name}::{api_name}: {msg}\n")
+                failures += 1
+    return failures
 
 
 def main() -> int:
