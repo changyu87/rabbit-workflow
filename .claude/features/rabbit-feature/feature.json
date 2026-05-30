@@ -115,5 +115,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Phase 7b cleanup edits do not require new invariants: Inv 25 already requires feature-agnostic prompt (we are tightening the historical-name catalog) and Inv 31 already requires process-agnostic SKILL.md (we are dropping a process-attribution parenthetical)."
+  "spec_no_change_reason": "Spec.md updated in main session (commit 8ad432c) before TDD dispatch; tombstones for Inv 13 and Inv 42 plus test-tag-list update are already committed."
 }
