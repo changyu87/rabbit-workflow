@@ -12,7 +12,7 @@
   },
   "deprecation_criterion": "when Claude Code exposes native event dispatchers and artifact publishing that subsume this role",
   "status": "active",
-  "updated": "2026-05-28",
+  "updated": "2026-05-30",
   "manifest": [
     {
       "api": "publish_settings",
@@ -362,5 +362,5 @@
       }
     }
   ],
-  "spec_no_change_reason": "Source install.py is being merged to MVP v6.0.0 \u2014 implementation/structure change, spec already describes both contracts (publish flow + MVP closure)"
+  "spec_no_change_reason": "Spec prose updates (drop rabbit-file from deferred-features parenthetical and from run_publish_loop consumer list) were committed in a prior main-session edit (commit 2db41a3); this cycle only performs the corresponding doc-only implementation-file edits."
 }
