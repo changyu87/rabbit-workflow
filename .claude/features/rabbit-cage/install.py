@@ -30,7 +30,7 @@ This module has two distinct roles:
      This helper is NOT invoked from main() — main() lays down an explicit
      file closure rather than running the publish flow at install time.
 
-Version: 6.0.0
+Version: 6.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit's per-project plugin model is superseded
 """
@@ -150,6 +150,53 @@ def copy_one(src_root: Path, dst_root: Path, src_rel: str, dst_rel: str) -> bool
     if dst.suffix in (".py", ".sh") or "scripts/" in dst_rel or "hooks/" in dst_rel:
         os.chmod(dst, os.stat(dst).st_mode | 0o111)
     return True
+
+
+def rewrite_settings_for_plugin(dst_root: Path) -> None:
+    """Inv 19: in-place rewrite of <dst_root>/.claude/settings.json.
+
+    (a) Sets env.RABBIT_ROOT to str(dst_root.resolve()); creates the env
+        block if absent; overwrites any existing RABBIT_ROOT key.
+    (b) Replaces every literal '$(git rev-parse --show-toplevel)' occurrence
+        with '$RABBIT_ROOT' inside any hooks[<event>][].hooks[].command
+        string. No other fields touched.
+
+    Idempotent: re-running on an already-rewritten settings.json is a no-op.
+    """
+    settings_path = dst_root / ".claude/settings.json"
+    if not settings_path.is_file():
+        return
+    with open(settings_path) as f:
+        data = json.load(f)
+
+    env_block = data.get("env")
+    if not isinstance(env_block, dict):
+        env_block = {}
+        data["env"] = env_block
+    env_block["RABBIT_ROOT"] = str(dst_root.resolve())
+
+    hooks = data.get("hooks")
+    if isinstance(hooks, dict):
+        for _event, entries in hooks.items():
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                inner = entry.get("hooks")
+                if not isinstance(inner, list):
+                    continue
+                for h in inner:
+                    if not isinstance(h, dict):
+                        continue
+                    cmd = h.get("command")
+                    if isinstance(cmd, str):
+                        h["command"] = cmd.replace(
+                            "$(git rev-parse --show-toplevel)", "$RABBIT_ROOT"
+                        )
+
+    with open(settings_path, "w") as f:
+        json.dump(data, f, indent=2)
 
 
 def write_rabbit_gitignore(dst_root: Path) -> None:
@@ -282,6 +329,7 @@ def main() -> int:
         print("install: aborting due to missing source files", file=sys.stderr)
         return 1
 
+    rewrite_settings_for_plugin(dst_root)
     write_rabbit_gitignore(dst_root)
     write_version_pin(dst_root)
 
