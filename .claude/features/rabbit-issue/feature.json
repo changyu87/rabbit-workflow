@@ -3,7 +3,7 @@
   "name": "rabbit-issue",
   "version": "0.1.0",
   "owner": "cyxu",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "GitHub Issues wrapper for filing, listing, and lifecycle-managing bugs and enhancements via the `gh` CLI. Replaces rabbit-file's branch-backed bug-and-backlog (B/B) storage with native GH Issues; the rabbit-managed label gates rabbit's automation from touching human-filed issues.",
   "surface": {
     "hooks": [],
@@ -44,5 +44,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Phase 5 narrowed touch: implement migrate.py per existing spec surface declaration; no spec.md/contract.md changes needed (migrate.py was already in surface.scripts and spec already calls it out as one-shot)."
+  "spec_no_change_reason": "Phase 7e \u2014 documentation cleanup only: removing stale migrate.py row from SKILL.md Scripts Reference table; no spec.md or contract.md changes."
 }
