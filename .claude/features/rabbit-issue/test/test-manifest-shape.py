@@ -8,9 +8,9 @@ Pins the Phase 1 metadata invariants for rabbit-issue:
   - name == "rabbit-issue"
   - deprecation_criterion is non-empty and non-placeholder (no "TBD")
   - surface.skills contains "rabbit-issue"
-  - surface.scripts lists all five runtime scripts:
+  - surface.scripts lists all four runtime scripts:
       scripts/file-item.py, scripts/item-status.py,
-      scripts/list-items.py, scripts/_gh.py, scripts/migrate.py
+      scripts/list-items.py, scripts/_gh.py
   - manifest declares the publish_skill API for skills/rabbit-issue/SKILL.md
 
 Version: 1.0.0
@@ -30,7 +30,6 @@ EXPECTED_SCRIPTS = (
     "scripts/item-status.py",
     "scripts/list-items.py",
     "scripts/_gh.py",
-    "scripts/migrate.py",
 )
 
 REQUIRED_TOP = (
