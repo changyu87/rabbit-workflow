@@ -3,7 +3,7 @@
   "name": "rabbit-issue",
   "version": "0.1.0",
   "owner": "cyxu",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "GitHub Issues wrapper for filing, listing, and lifecycle-managing bugs and enhancements via the `gh` CLI. Replaces rabbit-file's branch-backed bug-and-backlog (B/B) storage with native GH Issues; the rabbit-managed label gates rabbit's automation from touching human-filed issues.",
   "surface": {
     "hooks": [],
@@ -45,5 +45,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Phase 4 narrowed touch: wording-only clarification within SKILL.md Work Protocol Step 5 (normal mode for rabbit-feature-touch; close-fallback owned by rabbit-issue). No spec.md or contract.md changes; existing test-skill-presence.py already covers the SKILL.md surface."
+  "spec_no_change_reason": "Phase 5 narrowed touch: implement migrate.py per existing spec surface declaration; no spec.md/contract.md changes needed (migrate.py was already in surface.scripts and spec already calls it out as one-shot)."
 }
