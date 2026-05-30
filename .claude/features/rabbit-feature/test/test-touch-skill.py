@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Inv 4-9, 12-16, 41, 42: rabbit-feature-touch SKILL.md content.
+"""Inv 4-9, 12, 14-16, 41: rabbit-feature-touch SKILL.md content.
 
 Locks the rabbit-feature-touch SKILL.md (and the deployed copy) against
 drift on the seven-step sequence, scope-resolution invocation, spec
 authoring invocation, Step 3 spec-commit obligation, Step 4 human-approval
 semantics (dispatcher-side gate, bypass marker mechanism, alert routing
-via emit_configurable_alert), B/B mode item.json reads, B/B item
-materialization documentation, and Red Flags content. Inv 10 and Inv 11
+via emit_configurable_alert), and Red Flags content. Inv 10 and Inv 11
 retired in the TDD-SUBAGENT-BACKLOG-19 cascade (the --human-approval-gate
-CLI flag was removed in tdd-subagent v5.0.0); a regression guard asserts
-the flag string is absent from both source and deployed SKILL.md.
+CLI flag was removed in tdd-subagent v5.0.0); Inv 13 and Inv 42 retired in
+the Phase 7c cleanup (B/B mode removed from the SKILL.md after rabbit-file
+retirement in Phase 7b). A regression guard asserts the
+--human-approval-gate flag string is absent from both source and deployed
+SKILL.md.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -202,15 +204,9 @@ def test_inv12_deployed_step4_uses_emit_configurable_alert() -> None:
     _assert_inv12(DEPLOYED_SKILL.read_text(encoding="utf-8"), "deployed SKILL.md")
 
 
-# Inv 13: B/B mode reads item.json via python3 (never bug.json / jq)
-def test_inv13_bb_mode_uses_item_json_via_python3() -> None:
-    body = _step_body(_text(), 1)
-    assert "item.json" in body, "Step 1 B/B mode must reference 'item.json'"
-    assert "bug.json" not in body, "Step 1 B/B mode must NOT reference legacy 'bug.json'"
-    assert "python3" in body, "Step 1 B/B mode must use 'python3' for extraction"
-    assert not re.search(r"\bjq\s+[-'\"\.]", body), (
-        "Step 1 B/B mode must NOT use 'jq' (not a declared dependency)"
-    )
+# Inv 13 retired in Phase 7c cleanup — B/B mode (and the item.json read
+# path the assertion locked) was removed from the SKILL.md after rabbit-file
+# retirement in Phase 7b.
 
 
 # Inv 14: Red Flags — no main-session Write/Edit on features
@@ -320,55 +316,9 @@ def test_inv41_source_and_deployed_byte_identical() -> None:
     )
 
 
-# Inv 42: B/B item materialization documented in SKILL.md (source + deployed,
-# byte-identical). The B/B mode block of Step 1 must cover all four points:
-# (a) why materialization is needed (origin/bug-backlog-files not in working tree),
-# (b) local mirror path layout under .rabbit/rabbit/features/<feature>/<type>s/<id>/,
-# (c) the git show origin/bug-backlog-files:... fetch command,
-# (d) what gets passed to --linked-item (the local mirror dir).
-_MATERIALIZATION_REQUIRED_PHRASES = [
-    "bug-backlog-files",
-    ".rabbit/rabbit/features/",
-    "git show origin/bug-backlog-files",
-    "--linked-item",
-]
-
-
-def _step1_text(text: str) -> str:
-    return _step_body(text, 1)
-
-
-def test_inv42_source_documents_materialization() -> None:
-    body = _step1_text(_text())
-    for phrase in _MATERIALIZATION_REQUIRED_PHRASES:
-        assert phrase in body, (
-            f"Step 1 (source SKILL.md) must document B/B item materialization; "
-            f"missing phrase {phrase!r}"
-        )
-
-
-def test_inv42_deployed_documents_materialization() -> None:
-    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
-    body = _step1_text(DEPLOYED_SKILL.read_text(encoding="utf-8"))
-    for phrase in _MATERIALIZATION_REQUIRED_PHRASES:
-        assert phrase in body, (
-            f"Step 1 (deployed SKILL.md) must document B/B item materialization; "
-            f"missing phrase {phrase!r}"
-        )
-
-
-def test_inv42_source_and_deployed_materialization_byte_identical() -> None:
-    """Inv 42 requires byte-identical presence of the materialization docs
-    in both source and deployed SKILL.md."""
-    assert SOURCE_SKILL.exists(), f"missing source SKILL.md: {SOURCE_SKILL}"
-    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
-    src = SOURCE_SKILL.read_bytes()
-    dep = DEPLOYED_SKILL.read_bytes()
-    assert src == dep, (
-        "source and deployed rabbit-feature-touch SKILL.md must be "
-        "byte-identical (Inv 42 requires the materialization documentation "
-        "to appear byte-identically in both)"
-    )
+# Inv 42 retired in Phase 7c cleanup — the "B/B item materialization"
+# subsection of Step 1 was removed along with the rest of B/B mode after
+# rabbit-file retirement in Phase 7b.
 
 
 def test_inv41_directive_visible_before_step_7_end() -> None:
