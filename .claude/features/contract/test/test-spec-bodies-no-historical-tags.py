@@ -39,19 +39,6 @@ PATTERN = re.compile(r"Plan [A-F]|BUG-[0-9]|BACKLOG-[0-9]|Wave [0-9]")
 # Update only after manual review confirms the line is not a project
 # tag but a genuine value (e.g. algorithm-output sample).
 ALLOWLIST = {
-    # rabbit-file spec.md algorithm output examples — these are sample
-    # values the ID-generation algorithm produces, demonstrating its
-    # output shape. The strings do not refer to real bug/backlog items.
-    ("rabbit-file/docs/spec/spec.md", 33, "RABBIT-CAGE-BUG-17"),
-    ("rabbit-file/docs/spec/spec.md", 34, "MY-FEATURE-X-BACKLOG-3"),
-    ("rabbit-file/docs/spec/spec.md", 35, "SINGLE-BUG-1"),
-    # rabbit-file SKILL.md algorithm-output examples — same pattern as
-    # the spec.md false positives. Sample IDs in worked examples and
-    # JSON schema illustrations; not references to real items.
-    ("rabbit-file/skills/rabbit-file/SKILL.md", 60, "RABBIT-CAGE-BUG-17"),
-    ("rabbit-file/skills/rabbit-file/SKILL.md", 172, "RABBIT-CAGE-BUG-17"),
-    ("rabbit-file/skills/rabbit-file/SKILL.md", 217, "RABBIT-CAGE-BUG-16"),
-    ("rabbit-file/skills/rabbit-file/SKILL.md", 221, "RABBIT-CAGE-BACKLOG-3"),
     # tdd-subagent spec.md migration note — names the prompt-contract
     # migration backlog (CONTRACT-BACKLOG-1) so future readers can find
     # the design doc and PR stack. The reference is documentary, not a
