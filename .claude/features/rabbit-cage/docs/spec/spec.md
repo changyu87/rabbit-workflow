@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.9.0
+version: 5.10.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -77,7 +77,7 @@ dispatcher continues to the next entry.
 
 `main()` copies from explicit `(source, dest)` tuples declared at module top — `SAME_PATH_FILES`, `HOOKS`, `SKILLS`, `AGENTS`, `COMMANDS`, `FEATURE_INCLUDES`. It does NOT invoke the publish loop. The MVP closure excludes development surfaces: `test/`, `docs/`, `scripts/enforcement/`, deferred features (rabbit-config, tdd-subagent), retired tombstones (tdd-state-machine, rabbit-spec), and unshipped-skill prompt templates. The installer refuses if `--target` exists and is non-empty, and exits non-zero on any missing required source file.
 
-After copying the file closure, `main()` writes two generated files: `<target>/.gitignore` (rabbit-owned ephemerals — `.runtime/`, `prompts/`, `tdd-report-*.json`, `impl-suggestion-*.json`, scope markers, `__pycache__/`, `*.pyc`) and `<target>/.version` (install pin label from `RABBIT_INSTALLED_REF` env var, defaulting to `"unknown"`).
+After copying the file closure, `main()` rewrites `<target>/.claude/settings.json` per Inv 19 (sets `env.RABBIT_ROOT` to the absolute target path; replaces every `$(git rev-parse --show-toplevel)` inside any `hooks[<event>][].hooks[].command` string with `$RABBIT_ROOT`), then writes two generated files: `<target>/.gitignore` (rabbit-owned ephemerals — `.runtime/`, `prompts/`, `tdd-report-*.json`, `impl-suggestion-*.json`, scope markers, `__pycache__/`, `*.pyc`) and `<target>/.version` (install pin label from `RABBIT_INSTALLED_REF` env var, defaulting to `"unknown"`).
 
 `run_publish_loop(target_root: str) -> int` is retained as an importable dev-test helper — NOT invoked from `main()`. It enumerates every `<target_root>/.claude/features/*/feature.json` in alphabetical order, skips retired features and features without a `manifest`, and for each manifest entry `{api, args}` invokes `contract.lib.publish.<api>(**args, feature_dir=<fdir>, repo_root=target_root)`. Continues past per-call failures and returns the failure count. Used by `test-deployed-hooks-execute.py`, `test-install-publish-loop.py`, and the cross-feature `test-manifest-deploys-correctly.py` tests in rabbit-feature and tdd-subagent — all import it as `from install_under_test import run_publish_loop`.
 
@@ -141,7 +141,7 @@ string BEFORE splitting on `;|&` segment delimiters.
    logged to stderr; the dispatcher does not abort the event.
 3. `scope-guard.py` is the sole PreToolUse hook and the only rabbit-cage
    hook that is NOT a generic dispatcher.
-4. `install.py` exports two callables. (a) `main()` is the user-facing MVP installer: parses `--src` + `--target`, copies the MVP file closure (top-level files + deployed hooks/skills/agents + per-feature stripped sub-paths) from explicit `(source, dest)` tuples declared at module top, writes generated `.gitignore` + `.version`, and exits non-zero on any missing required source file. (b) `run_publish_loop(target_root: str) -> int` is the importable dev-test helper: enumerates every feature's `manifest` entries in declaration order, invokes each via `contract.lib.publish`, continues past failures, and returns the failure count. `main()` does NOT invoke `run_publish_loop`; the dev-test suites that use it import it directly as `from install_under_test import run_publish_loop`. Both callables are stdlib-only (argparse, json, os, shutil, sys, pathlib).
+4. `install.py` exports two callables. (a) `main()` is the user-facing MVP installer: parses `--src` + `--target`, copies the MVP file closure (top-level files + deployed hooks/skills/agents + per-feature stripped sub-paths) from explicit `(source, dest)` tuples declared at module top, performs the plugin-mode `settings.json` rewrite specified in Inv 19, writes generated `.gitignore` + `.version`, and exits non-zero on any missing required source file. (b) `run_publish_loop(target_root: str) -> int` is the importable dev-test helper: enumerates every feature's `manifest` entries in declaration order, invokes each via `contract.lib.publish`, continues past failures, and returns the failure count. `main()` does NOT invoke `run_publish_loop`; the dev-test suites that use it import it directly as `from install_under_test import run_publish_loop`. Both callables are stdlib-only (argparse, json, os, shutil, sys, pathlib).
 5. `scope-guard.py` evaluates writes per the rules in "scope-guard
    Semantics" above; a scope marker that names an unresolvable feature
    DENIES.
@@ -200,16 +200,22 @@ string BEFORE splitting on `;|&` segment delimiters.
     the import-resolution invariant itself.
 15. Every hook command string registered in `.claude/settings.json` (the
     `hooks[<event>][].hooks[].command` field) MUST be CWD-independent.
-    Specifically, the command begins with `$(git rev-parse --show-toplevel)/`
-    so that `/bin/sh` resolves the absolute path to `.claude/hooks/<name>.py`
-    at hook-fire time regardless of the session's current working directory.
-    A bare relative path such as `.claude/hooks/scope-guard.py` is forbidden
-    because Claude Code's Bash tool persists CWD between calls; after any
-    `cd` into a subdirectory the relative path resolves outside the repo
-    and the hook silently fails (non-blocking `No such file or directory`).
-    Emission of the command string is the responsibility of
-    `contract.lib.publish.publish_hook`; rabbit-cage owns the user-visible
-    requirement that the deployed registration fire correctly from any CWD.
+    The source `settings.json` shipped from this feature begins each
+    command with `$(git rev-parse --show-toplevel)/` so that `/bin/sh`
+    resolves the absolute path to `.claude/hooks/<name>.py` at hook-fire
+    time regardless of the session's current working directory in the
+    standalone workspace (where a `.git` directory exists at the repo
+    root). A bare relative path such as `.claude/hooks/scope-guard.py`
+    is forbidden because Claude Code's Bash tool persists CWD between
+    calls; after any `cd` into a subdirectory the relative path resolves
+    outside the repo and the hook silently fails (non-blocking
+    `No such file or directory`). Emission of the command string is the
+    responsibility of `contract.lib.publish.publish_hook`; rabbit-cage
+    owns the user-visible requirement that the deployed registration
+    fire correctly from any CWD. In plugin installs the `git rev-parse`
+    form is unsuitable (the install target is typically not itself a git
+    repo, and even when its parent is, the resolved root points outside
+    `.rabbit/`); Inv 19 governs the plugin-mode rewrite.
 16. rabbit-cage's `feature.json runtime.SessionStart` declares two entries
     in order: (1) `welcome_with_policy` (existing) and (2) `write_mode_marker`
     (args `{}`). The SessionStart dispatcher invokes both in declaration
@@ -260,6 +266,41 @@ string BEFORE splitting on `;|&` segment delimiters.
     `.rabbit/.runtime/scope-bypass-once` itself is on the static
     allowlist so the user (or a Bash `touch` invocation) can create it
     even in plugin mode where `.rabbit/**` writes are otherwise denied.
+19. **Plugin-install settings.json rewrite.** After copying the source
+    `.claude/settings.json` to `<target>/.claude/settings.json`,
+    `install.py main()` performs two in-place edits on the destination
+    file:
+    (a) Sets `env.RABBIT_ROOT` to the absolute path of `<target>` (the
+    plugin install root, e.g. `/path/to/project/.rabbit`). The `env`
+    block is created if absent; an existing `RABBIT_ROOT` key is
+    overwritten.
+    (b) Replaces every literal occurrence of
+    `$(git rev-parse --show-toplevel)` with `$RABBIT_ROOT` inside any
+    `hooks[<event>][].hooks[].command` string. No other fields are
+    touched. The replacement is a literal substring substitution; the
+    surrounding `/.claude/hooks/<name>.py` suffix is preserved verbatim.
+    Both edits are idempotent: re-running on an already-rewritten
+    `settings.json` is a no-op. The standalone-workspace source file is
+    not mutated — only the deployed copy at `<target>/.claude/settings.json`.
+20. **RABBIT_ROOT environment check at SessionStart.** When
+    `session-start-dispatcher.py` runs in plugin mode (the dispatcher
+    detects this by the presence of `<install_root>/.version`, which
+    `install.py main()` writes on every install), it checks
+    `os.environ.get("RABBIT_ROOT")` against the expected install root
+    (computed as the dispatcher script's `parent.parent.parent`). If the
+    env var is unset OR does not match the expected install root, the
+    dispatcher emits a `banner` payload (rendered by `render_emission`
+    via `rabbit_print.rabbit_print(text, icon, color, format="banner")`)
+    with `icon="🚨"`, `color="red"`, and a multi-line `text` body that
+    names the expected install path and recommends both the tcsh
+    (`setenv RABBIT_ROOT <path>`) and bash/zsh
+    (`export RABBIT_ROOT=<path>`) commands, instructing the user to
+    exit Claude, set the variable, and relaunch. The check is appended
+    as an additional payload to the existing `dispatch_event` result —
+    it does not replace or short-circuit the existing
+    `welcome_with_policy` / `write_mode_marker` dispatch chain. In
+    standalone-workspace mode (no `.version` file), the check is
+    skipped entirely.
 
 ## Tech Stack
 
