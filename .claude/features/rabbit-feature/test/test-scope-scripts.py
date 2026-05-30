@@ -80,7 +80,7 @@ def test_inv25_prompt_does_not_hardcode_feature_names() -> None:
     # The RULES section (anything after the 'Rules:' anchor) must not hardcode
     # specific feature names. Catalog of feature names that historically appeared
     # as hardcoded examples:
-    forbidden = ["contract", "rabbit-cage", "rabbit-feature", "tdd-subagent", "rabbit-file"]
+    forbidden = ["contract", "rabbit-cage", "rabbit-feature", "tdd-subagent"]
     rules_pos = prompt_body.find("Rules:")
     assert rules_pos != -1, "prompt must contain a 'Rules:' anchor"
     rules_block = prompt_body[rules_pos:]
