@@ -39,6 +39,9 @@ SUITES = (
     ("pytest", "test-item-status.py"),
     ("pytest", "test-list-items.py"),
     ("pytest", "test-rabbit-managed-guard.py"),
+    ("pytest", "test-migrate-dry-run.py"),
+    ("pytest", "test-migrate-real.py"),
+    ("pytest", "test-migrate-idempotent.py"),
 )
 
 print("rabbit-issue test runner")
