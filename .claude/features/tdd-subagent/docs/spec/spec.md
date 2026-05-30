@@ -86,26 +86,17 @@ the template's `{{bypass_preamble_note}}` placeholder.
 3. **Output mode.** `dispatch-tdd-subagent.py` writes the assembled
    prompt to stdout and exits without invoking any agent. Exit codes:
    `0` success, `2` invocation error (missing required flag, missing
-   `--spec` file, malformed `--linked-items` triple, missing
-   `--item-type` paired with `--linked-item` or vice versa,
-   `--max-iterations < 1`, unknown `--scope` feature, malformed
-   `--linked-item` path layout — see Inv 30).
+   `--spec` file, `--max-iterations < 1`, unknown `--scope` feature).
 
 4. **Flag set.** `dispatch-tdd-subagent.py` accepts exactly these flags:
    `--scope` (required), `--spec` (required),
    `--impl-suggestion` (optional path),
-   `--linked-item` + `--item-type bug|backlog` (optional primary item),
-   `--linked-items <feature>:<type>:<id>[,...]` (optional secondary items;
-   `<type>` ∈ {`bug`, `backlog`}),
    `--code-review-full-loop` (boolean flag),
    `--max-iterations N` (default `3`, minimum `1`).
 
 5. *(Retired — see CHANGELOG.md.)*
 
-6. **`--linked-items` validation.** Each comma-separated entry MUST have
-   exactly two colons separating non-empty `<feature>`, `<type>`, `<id>`
-   fields, with `<type>` ∈ {`bug`, `backlog`}. Any malformed entry causes
-   exit `2` with a diagnostic on stderr BEFORE any stdout is emitted.
+6. *(Retired — see CHANGELOG.md.)*
 
 ### Dispatch script — prompt content
 
@@ -172,46 +163,16 @@ the template's `{{bypass_preamble_note}}` placeholder.
     preceded by a `Read` in the same session, as the Claude Code Edit
     tool rejects edits on un-Read files.
 
-### Linked-item closure
+19. *(Retired — see CHANGELOG.md.)*
 
-19. **Primary linked-item closure.** When invoked with `--linked-item
-    <dir> --item-type <type>`, the assembled prompt instructs the
-    subagent to close the item after test-green via:
-    `python3 .claude/features/rabbit-file/scripts/item-status.py set
-    --feature <feature> --type <type> --id <id> --status close
-    --reason 'TDD cycle complete' --fix-commits <IMPL_SHA>`.
-    `<feature>` and `<id>` are derived from the `--linked-item` path
-    (penultimate-two segments and final segment respectively).
+20. *(Retired — see CHANGELOG.md.)*
 
-20. **Secondary linked-items closure.** Each `--linked-items` entry
-    triggers an additional `item-status.py set ... --status close
-    --reason 'TDD cycle complete (secondary item resolved by same
-    commit)' --fix-commits <IMPL_SHA>` invocation in the assembled
-    prompt.
+21. **HANDOFF `closed_items` field.** The assembled prompt's HANDOFF
+    JSON block declares `closed_items` as an empty list (the field is
+    retained on the HANDOFF schema for forward compatibility per Inv 22
+    even though the dispatcher no longer emits item-close instructions).
 
-21. **HANDOFF closed-items listing.** The assembled prompt's HANDOFF
-    block lists every closed item (primary + secondaries) under
-    `closed_items`. When no items are closed, `closed_items` is an empty
-    list in the JSON HANDOFF and omitted from the YAML block.
-
-### `--linked-item` path-layout validation
-
-30. **`--linked-item` path layout.** When `--linked-item <path>` is
-    provided, `dispatch-tdd-subagent.py` validates that the path
-    conforms to the rabbit-file storage layout
-    `.../rabbit/features/<feature>/<bugs|backlogs>/<id>/` BEFORE any
-    stdout is emitted. The path is resolved (via `Path.resolve()`),
-    and the resolved path's segments are checked: the segment at
-    position `-4` MUST equal `features`, and the segment at position
-    `-2` MUST equal `bugs` or `backlogs` (matching the rabbit-file
-    storage layout, where `<type>` ∈ {`bug`, `backlog`} and the
-    containing directory is the pluralised form). A non-conforming
-    path causes exit `2` with a stderr diagnostic naming both the
-    expected layout and the observed path tail. The validated feature
-    name (the segment at position `-3`) is used wherever the assembled
-    prompt's close-call block derives `<feature>` from the
-    `--linked-item` path (Inv 19), replacing any prior unvalidated
-    slicing.
+30. *(Retired — see CHANGELOG.md.)*
 
 ### HANDOFF schema
 
@@ -405,7 +366,7 @@ The 14 invariants in this section were absorbed from the retired
     - `id: "tdd-subagent"`
     - `kind: "subagent"`
     - `inject: [".claude/features/policy/philosophy.md", ".claude/features/policy/spec-rules.md", ".claude/features/policy/coding-rules.md"]`
-    - `slots: ["feature_name", "spec_content", "impl_suggestion_block", "bypass_preamble_note", "feature_dir", "tdd_step_py", "repo_root", "max_iterations", "code_review_loop_note", "linked_item_value", "item_type_value", "close_calls_block", "handoff_closed_items_block", "handoff_closed_items_json"]`
+    - `slots: ["feature_name", "spec_content", "impl_suggestion_block", "bypass_preamble_note", "feature_dir", "tdd_step_py", "repo_root", "max_iterations", "code_review_loop_note"]`
 
     The matching template at
     `.claude/features/contract/templates/prompts/tdd-subagent.txt`
@@ -417,12 +378,10 @@ The 14 invariants in this section were absorbed from the retired
     --callable-id tdd-subagent --slot <name>=<value>` (one `--slot`
     per slot) via subprocess, read the resulting prompt file from the
     path printed to stdout by the assembler, and write that file's
-    contents to its own stdout. The dispatcher's existing CLI shape
-    (`--scope`, `--spec`, `--impl-suggestion`, `--linked-item`,
-    `--item-type`, `--linked-items`, `--code-review-full-loop`,
-    `--max-iterations`) and existing argument validation (every check
-    up through the parsing of `secondary_items` and the close-call
-    block construction) MUST remain unchanged. The previous
+    contents to its own stdout. The dispatcher's CLI shape
+    (`--scope`, `--spec`, `--impl-suggestion`, `--code-review-full-loop`,
+    `--max-iterations`) and its argument validation MUST remain
+    consistent with Inv 3 and Inv 4. The previous
     `_policy_block` helper function and its call site (which
     subprocessed to `policy-block.py`) MUST be removed — the policy
     block is now prepended by `build-prompt.py` from the entry's

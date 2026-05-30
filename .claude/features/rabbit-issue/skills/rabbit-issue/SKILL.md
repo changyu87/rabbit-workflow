@@ -246,4 +246,3 @@ commits to issue closure and records the SHA in the timeline event.
 | `item-status.py` | `show <N>` / `close <N>` / `reopen <N>` (rabbit-managed guard enforced on close/reopen) |
 | `list-items.py` | List with `--type`, `--feature`, `--status` filters; deterministic sort |
 | `_gh.py` | Shared helper — repo slug discovery, `gh` invocation wrappers |
-| `migrate.py` | One-shot rabbit-file → rabbit-issue migration; deleted post-cutover |

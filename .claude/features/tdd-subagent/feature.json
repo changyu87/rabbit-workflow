@@ -52,16 +52,11 @@
         "tdd_step_py",
         "repo_root",
         "max_iterations",
-        "code_review_loop_note",
-        "linked_item_value",
-        "item_type_value",
-        "close_calls_block",
-        "handoff_closed_items_block",
-        "handoff_closed_items_json"
+        "code_review_loop_note"
       ]
     }
   ],
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
-  "updated": "2026-05-26",
-  "spec_no_change_reason": "TDD-SUBAGENT-BACKLOG-20: spec already contains Inv 46; this cycle only adds the regression test."
+  "updated": "2026-05-30",
+  "spec_no_change_reason": "spec.md was pre-updated in main session this cycle (commit 5b27651); the spec-update edits live there"
 }

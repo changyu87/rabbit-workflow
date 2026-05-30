@@ -1,4 +1,4 @@
-# template_version: 1.1.0
+# template_version: 1.2.0
 {{bypass_preamble_note}}
 ════════════════════════════════════════════════════════════════════════
 TDD SUBAGENT — SCOPE: {{feature_name}}
@@ -230,8 +230,6 @@ string or the JSON literal `null`, and so on.
   {
     "schema_version": "1.0.0",
     "feature": "{{feature_name}}",
-    "linked_item": "{{linked_item_value}}",
-    "item_type": "{{item_type_value}}",
     "spec_changes": "<yes|no>",
     "spec_no_change_reason": "<reason or null>",
     "impl_summary": "<one paragraph describing what was implemented>",
@@ -251,7 +249,7 @@ does not have to commit feature.json manually:
 
   git add {{feature_dir}}/feature.json
   git commit -m "chore({{feature_name}}): advance tdd_state to test-green"
-{{close_calls_block}}
+
 Remove the scope marker explicitly (no `trap` was registered at LOCK — see
 the explanation in STEP 1 about per-call shell process semantics):
   rm -f {{repo_root}}/.rabbit-scope-active-{{feature_name}}
@@ -266,7 +264,7 @@ HANDOFF:
   test_result: <pass|fail>
   spec_compliance: <pass|fail>
   tdd_report_path: {{repo_root}}/.rabbit/tdd-report-{{feature_name}}.json
-  notes: <brief summary>{{handoff_closed_items_block}}
+  notes: <brief summary>
 
 Also emit the structured JSON HANDOFF below. The JSON block is the
 machine-first source of truth (philosophy.md §1); the YAML-like form above
@@ -282,7 +280,7 @@ HANDOFF_JSON:
   "test_result": "<pass|fail>",
   "spec_compliance": "<pass|fail>",
   "tdd_report_path": "{{repo_root}}/.rabbit/tdd-report-{{feature_name}}.json",
-  "closed_items": {{handoff_closed_items_json}},
+  "closed_items": [],
   "notes": "<brief summary>"
 }
 ```

@@ -12,7 +12,7 @@
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-05-30",
   "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
-  "spec_no_change_reason": "spec.md was updated in commit aa80a6e (main-session pre-update) per Inv 57 (8 templates); implementation aligns tests and removes orphan template + workspace node",
+  "spec_no_change_reason": "spec.md Inv 57 was pre-updated in main session this cycle (commit 33556a4) before this touch was dispatched; spec-update edits live in that prior commit",
   "manifest": [
     {
       "api": "publish_hook",

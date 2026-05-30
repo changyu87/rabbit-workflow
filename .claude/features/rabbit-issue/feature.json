@@ -44,5 +44,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Phase 5 narrowed touch: implement migrate.py per existing spec surface declaration; no spec.md/contract.md changes needed (migrate.py was already in surface.scripts and spec already calls it out as one-shot)."
+  "spec_no_change_reason": "Phase 7e \u2014 documentation cleanup only: removing stale migrate.py row from SKILL.md Scripts Reference table; no spec.md or contract.md changes."
 }
