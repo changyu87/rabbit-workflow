@@ -23,7 +23,7 @@
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
-  "updated": "2026-05-27",
+  "updated": "2026-05-30",
   "manifest": [
     {
       "api": "publish_skill",
@@ -115,5 +115,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "spec edits applied in IMPLEMENT step alongside scaffolder code; tests authored first; t1-t4 red as expected"
+  "spec_no_change_reason": "Phase 7b cleanup edits do not require new invariants: Inv 25 already requires feature-agnostic prompt (we are tightening the historical-name catalog) and Inv 31 already requires process-agnostic SKILL.md (we are dropping a process-attribution parenthetical)."
 }
