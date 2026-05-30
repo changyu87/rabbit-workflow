@@ -126,8 +126,6 @@ When the user asks to work, close, or reopen an issue:
    - Summarize verdict and reasoning.
    - Recommend close-without-work (if stale/invalid) or proceed (if
      valid).
-   - Ask explicitly: "Should I **close** this issue without working it,
-     or **proceed** to work it?"
    - Do NOT invoke `rabbit-feature-touch` until the user confirms.
 
 4. **If the user chooses close without work**:
