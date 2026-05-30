@@ -5,7 +5,7 @@ End-to-end test verifying the templates/prompts/ bundle:
   - directory exists with exactly 8 plain-text template files
   - each file's first line matches the canonical '# template_version: X.Y.Z' semver marker
     (per-file versions are independent — files may evolve at different cadences)
-  - the 7 skill passthrough templates are exactly 2 lines (marker + '{{args}}')
+  - the 6 skill passthrough templates are exactly 2 lines (marker + '{{args}}')
   - tdd-subagent.txt carries exactly the 14 declared placeholders (set equality)
   - tdd-subagent.txt does NOT contain '{{policy_block}}' (assembler prepends)
 """
@@ -24,7 +24,6 @@ EXPECTED_FILES = [
     "rabbit-feature-new.txt",
     "rabbit-feature-audit.txt",
     "rabbit-feature-scope.txt",
-    "rabbit-file.txt",
     "rabbit-config.txt",
     "spec-seeder.txt",
 ]
@@ -35,7 +34,6 @@ SKILL_PASSTHROUGH_FILES = [
     "rabbit-feature-new.txt",
     "rabbit-feature-audit.txt",
     "rabbit-feature-scope.txt",
-    "rabbit-file.txt",
     "rabbit-config.txt",
 ]
 

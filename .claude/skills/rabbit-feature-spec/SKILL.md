@@ -15,7 +15,7 @@ Your job: understand the request, update the feature spec, and produce an implem
 
 Args format: `<feature-name> <request-or-item-description>`
 
-- **feature-name**: the rabbit feature to update (e.g., `tdd-subagent`, `rabbit-file`)
+- **feature-name**: the rabbit feature to update (e.g., `tdd-subagent`, `rabbit-issue`)
 - **request**: the user's raw request, or a bug/backlog item description in B/B mode
 
 ## Step 1 — Read Current State
@@ -129,7 +129,7 @@ Make `implementation_approach` genuinely useful — it should save any downstrea
 
 - Run tests
 - Write implementation code
-- File bugs or backlog items (that is rabbit-file's job)
+- File bugs or backlog items
 - Invoke skills other than the superpowers invoked in Step 3
   (`superpowers:brainstorming` and `superpowers:writing-plans`). Your
   output is the impl-suggestion file; what happens next is the caller's

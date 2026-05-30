@@ -174,10 +174,10 @@ def test_inv31_what_you_do_not_do_no_named_skills() -> None:
     body = m.group(1)
     # The section must NOT name specific skills to avoid invoking.
     # Generic rules ("do not invoke other skills") are fine.
-    forbidden = ["rabbit-feature-touch", "rabbit-feature-new", "rabbit-feature-audit"]
+    forbidden = ["rabbit-feature-touch", "rabbit-feature-new", "rabbit-feature-audit", "rabbit-file"]
     leaked = [name for name in forbidden if name in body]
     assert not leaked, (
-        f"'What You Do NOT Do' must not name specific skills; leaked: {leaked}"
+        f"'What You Do NOT Do' must not name specific skills or processes; leaked: {leaked}"
     )
 
 
