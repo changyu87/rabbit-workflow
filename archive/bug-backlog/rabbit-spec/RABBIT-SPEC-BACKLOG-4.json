@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-SPEC-BACKLOG-4",
+  "type": "backlog",
+  "title": "affected_files semantics ambiguous: files rabbit-spec touched vs files implementer should touch",
+  "status": "close",
+  "priority": "low",
+  "description": "The impl-suggestion schema's affected_files field is ambiguous. Some impl-suggestions include only source files changed by rabbit-spec (e.g. spec.md). Others include implementer targets (e.g. test/ directories). SKILL.md Step 5 says 'explicit path 1, explicit path 2' without clarifying which category. Clarify in spec.md and SKILL.md whether affected_files means: (a) files rabbit-spec itself wrote, (b) files the TDD subagent should write, or (c) both \u2014 with separate arrays.",
+  "related_feature": "rabbit-spec",
+  "filed": "2026-05-18T04:33:47Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:37:36Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:33:47Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:37:36Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 closure; verified by test/test-bug-fixes-wave4.py",
+      "fix_commits": "63e787d"
+    }
+  ],
+  "commit_sha": "c00dd87a69559eb479a1976d2df0bb4781f8f74e"
+}

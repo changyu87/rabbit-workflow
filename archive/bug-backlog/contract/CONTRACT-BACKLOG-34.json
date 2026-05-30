@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-34",
+  "type": "backlog",
+  "title": "Wave 7 historical-burden sweep: trim spec tombstones + phantom-defender tests",
+  "status": "close",
+  "priority": "medium",
+  "description": "Wave 7 deletion-biased sweep. Drop phantom-defending tests and trim 'legacy/previously/removed' historical clauses from active spec invariants.\n\nTEST DELETIONS:\n- test/test-check-naming-bans-rbt.py: drop t2 and t3 (assert 'rwf-' absent \u2014 phantom, no producer ever named anything rwf-)\n- test/test-bug-template-version-field.py (entire file \u2014 _template_version absent from bug-template.json; no producer; covered by test-templates-have-version.py positive)\n\nSPEC.md TRIMS (use Python via Bash for edits \u2014 file has literal ESC chars in rabbit-print Inv area):\n- L98 Inv 15: drop second+third sentences about legacy rwf- literal\n- L101 Inv 18: drop trailing 'no longer apply' sentence\n- L104 Inv 21: drop 'legacy _template_version underscore-prefix prohibited'\n- L110 Inv 27: rework r1-branch removal note to active 'message-ids MUST NOT include r1-branch'; drop PR #151/BACKLOG-29 historical breadcrumb\n- L130 Inv 29: drop legacy tdd-step.py path/BUG-57/BACKLOG-29 narration parenthetical; drop 'or the legacy [rabbit]' clause (brand still live)\n- L133 Inv 32: drop 'legacy per-feature docs/bugs no longer applies' clause\n- L136-138 Inv 35 header: drop 'Post-consolidation' from heading\n- L138 Inv 35b: drop 'legacy tdd-subagent paths retired post-consolidation' (covered by positive)\n- L143 Inv 36c: drop '(legacy workspace-map.py --audit retired)' parenthetical\n- L144 Inv 37: drop 'formerly extracted-deferred check-no-main-edits/check-opus-for-planning retired' clause\n- L153 Inv 39: drop closing rationale paragraphs about retired gap-correspondence test\n\nDOCSTRING TRIMS (KEEP-FIX):\n- test/test-workspace-declares-all-features.py:11,66,70: replace 'Cycle B' phrasing with 'required features'\n- test/test-rabbit-print-messages-schema.py:9-10 + test/test-rabbit-print-named-wrappers.py:8: replace 'previously-required r1-branch' with 'forbidden r1-branch'\n\nPRESERVED: r1-branch absence tests (cross-feature load-bearing), rabbit-spec absence tests (build-contract regression), CHANGELOG.md tombstones, deprecation_criterion fields.\n\nOUT-OF-SCOPE: CONTRACT-BACKLOG-1, 17, 21, 28, 33.",
+  "related_feature": "contract",
+  "filed": "2026-05-21T04:50:30Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-21T05:08:02Z",
+  "history": [
+    {
+      "ts": "2026-05-21T04:50:30Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-21T05:08:02Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "e34c043ed5040825a50b7db08cf318a131f0ab6b"
+    }
+  ],
+  "commit_sha": "2fd6f20d7f323c073cd77b243cbcad982cbac4f0"
+}

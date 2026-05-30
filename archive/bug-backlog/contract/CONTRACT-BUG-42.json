@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-42",
+  "type": "bug",
+  "title": "test-bug-fixes-cycle BACKLOG-8 pins deleted rabbit-cage hook paths",
+  "status": "close",
+  "priority": "medium",
+  "description": "test-bug-fixes-cycle.py lines 167-172 hardcode RABBIT_PRINT_PRODUCERS = [.claude/features/rabbit-cage/hooks/sync-check.py, session-init.py, refresh.py, .claude/features/tdd-state-machine/scripts/tdd-step.py]. Plan C (meta-contract dispatcher rewrite) replaced those three rabbit-cage hooks with stop-dispatcher.py / session-start-dispatcher.py / user-prompt-submit-dispatcher.py. The test now fails: 'BACKLOG-8: declared producers missing on disk'. Fix: either (a) update the list to reference the new dispatcher hooks; or (b) drop the rabbit-cage entries entirely, since the new dispatchers consume rabbit_subline + rabbit_block via runtime API print_result returns, not the named-wrapper convention this test was guarding. Filed as alongside finding from Plan C wave (see docs/superpowers/specs/2026-05-23-housekeeping-protocol.md).",
+  "related_feature": "contract",
+  "filed": "2026-05-23T11:50:15Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-24T06:03:09Z",
+  "history": [
+    {
+      "ts": "2026-05-23T11:50:15Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-24T06:03:09Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Fixed in CONTRACT-WAVE-9: test-bug-fixes-cycle.py BACKLOG-8 stub replaced with active assertion against the surviving named-wrapper producer set (tdd-step.py + dispatch-tdd-subagent.py per new Inv 29 wording). Plan-C-deleted rabbit-cage hooks no longer referenced.",
+      "fix_commits": "27d2f0ec778785ef11fcce8baa011c449b0bebed"
+    }
+  ],
+  "commit_sha": "dac168b2b09db32f3ab3775570a2744b953ad78b"
+}

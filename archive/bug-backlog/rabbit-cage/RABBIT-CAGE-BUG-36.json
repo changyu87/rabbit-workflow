@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-36",
+  "type": "bug",
+  "title": "test/run.py omits three tests; test-hook-rename.py is stale (checks for .sh files post-Python migration)",
+  "status": "close",
+  "priority": "medium",
+  "description": "test/run.py SUITES list omits: test-RABBIT-CAGE-BACKLOG13-claude-md-gitignore-drift.py, test-RABBIT-CAGE-BACKLOG2-python-only.py, test-hook-rename.py. The first two are valid test files that should run as part of the suite. The third (test-hook-rename.py) asserts the existence of refresh.sh, session-init.sh, sync-check.sh (lines 45-49) which contradicts the post-migration Python-only world; running it would always fail. Resolution: register BACKLOG13 and BACKLOG2 tests in run.py; either delete test-hook-rename.py (rename migration is historical) or update it to test for .py filenames.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:10:19Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:40:01Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:10:19Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:40:01Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "c5b0e2920f96c7859fae6fa80731d22dd1369f49"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-20",
+  "type": "bug",
+  "title": "contract.md still describes deleted --bug/--backlog dispatch flags",
+  "status": "close",
+  "priority": "medium",
+  "description": "docs/spec/contract.md line 35 describes dispatch-tdd-subagent.py stdin as 'feature-name as $1, request-description as $2; optional flags: --bug <bug-dir>, --backlog <item-dir>'. This is the OLD interface \u2014 both --bug and --backlog were removed (replaced with --linked-item/--item-type per spec Inv 12) and the positional feature-name/request-description args don't exist either (--scope/--spec are required). contract.md is stale and misleads consumers reading the boundary contract.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:37:59Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:36:31Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:37:59Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:36:31Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "54aed9a5e64aac52a874e0357d1274c469ecea45"
+}

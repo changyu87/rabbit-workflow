@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FILE-BACKLOG-15",
+  "type": "backlog",
+  "title": "Wave 7 historical-burden sweep: delete legacy fixed-path phantom-defenders",
+  "status": "close",
+  "priority": "medium",
+  "description": "Wave 7 deletion-biased sweep. Drop phantom-defending negatives against a fixed worktree path that the code is structurally incapable of generating (path is interpolated with PID).\n\nTEST DELETIONS (negative assertions for legacy fixed '.claude/tmp/bug-backlog-files' path + '_BRANCH' alias):\n- test/test-skill.py: drop the block (lines ~74-89) asserting legacy fixed path absent from SKILL.md\n- test/test-concurrent-worktree.py: drop the block (lines ~95-101) asserting legacy fixed path absent\n- test/test-bug-11-cleanup-and-coverage.py: drop the block (lines ~121-127) asserting absence\n\nSPEC.md TRIMS:\n- L106-108: drop invariant 'legacy fixed path ... MUST NOT be used'\n- L170-177: drop invariant 'SKILL.md MUST NOT illustrate the legacy fixed-path worktree'\n\ncontract.md:\n- L67 (never list): drop 'Reuse the legacy fixed worktree path' entry\n\nCOMMENT TRIMS:\n- test/test-branch-ops.py:67-69: drop 'The legacy fixed path is no longer used' breadcrumb\n- test/test-concurrent-worktree.py:9: drop 'The legacy fixed path MUST NOT be used' header comment\n\nPRESERVED: BACKLOG-14 legacy-skill-cleanup test (guards real LLM-prose regression \u2014 agents tried Skill('rabbit-backlog') in fresh sessions).  negative (live LLM-regen footgun). /rabbit-file slash-command negative (live LLM-prose regen risk).",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-21T04:51:01Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-21T05:46:36Z",
+  "history": [
+    {
+      "ts": "2026-05-21T04:51:01Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-21T05:46:36Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "05c7f2fc8462c78c5b697cf48ff8d69fb6c28bc2"
+    }
+  ],
+  "commit_sha": "51ba106aab069f8e7b31955cf8b2a061dc7009e4"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-41",
+  "type": "backlog",
+  "title": "Vocabulary-convention examples cite retired --human-approval-gate flag in spec.md",
+  "status": "close",
+  "priority": "low",
+  "description": "contract/docs/spec/spec.md uses the retired --human-approval-gate true|false flag as the canonical example in its 'Boolean flag vocabulary' section (lines ~180-202). Since the flag was removed from dispatch-tdd-subagent.py in tdd-subagent v5.0.0 (TDD-SUBAGENT-BACKLOG-19), the example is stale. Replace with a still-existing flag of the same shape \u2014 candidates: --code-review-full-loop (binary present/absent), --max-iterations N (value-bearing). Pick one that demonstrates the true/false convention. The vocabulary RULE itself (PREFER true/false, AVOID enabled/disabled) is still valid; only the example needs updating. Cosmetic, low priority.",
+  "related_feature": "contract",
+  "filed": "2026-05-25T14:27:59Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-26T01:54:54Z",
+  "history": [
+    {
+      "ts": "2026-05-25T14:27:59Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-26T01:54:54Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "24fe38e56e36f9fc35ef9b3a0e663e83a51542c4"
+    }
+  ],
+  "commit_sha": "a883c46be190e2102570ba2326269f917f7b49ec"
+}

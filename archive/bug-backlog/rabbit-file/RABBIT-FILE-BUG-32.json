@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FILE-BUG-32",
+  "type": "bug",
+  "title": "Chained-workspace topology causes _ensure_branch to silently create orphan branch, overwriting upstream state",
+  "status": "close",
+  "priority": "medium",
+  "description": "When the immediate origin is a local repo that does not have bug-backlog-files in refs/heads/ (only as a remote-tracking ref pointing further upstream), branch_ops.py misbehaves in two ways:\\n\\n1. Read-side: _branch_exists_on_remote calls 'git ls-remote --heads origin bug-backlog-files'. ls-remote --heads only lists the immediate origin's refs/heads/. In chained topologies (e.g. ws31 -> ws29 -> GitHub) where the intermediate has the branch only as refs/remotes/origin/bug-backlog-files, this returns False even though the branch genuinely exists further up the chain. Operators see misleading 'No items filed yet (branch does not exist)' from list-items.py.\\n\\n2. Write-side risk: when _branch_exists_on_remote returns False, _ensure_branch calls _init_orphan_branch, which creates a fresh orphan branch and pushes it to the immediate origin. In a chained-workspace setup this would:\\n   - Create a new bug-backlog-files locally on the intermediate (e.g. ws29) that has no relation to the upstream truth on GitHub\\n   - Eventually drift / overwrite the legitimate items when someone resolves the divergence\\n\\nReproduce:\\n  1. Set up ws31 with origin = ws29 (local disk).\\n  2. Ensure ws29 has bug-backlog-files only as a remote-tracking ref, NOT as a local branch (refs/heads/).\\n  3. From ws31, run any read operation: python3 .claude/features/rabbit-file/scripts/list-items.py --type all\\n  4. Observe: 'No items filed yet (origin/bug-backlog-files does not exist)' even though it does exist via the chain.\\n  5. Run any write operation (e.g. file-item.py) \u2014 _init_orphan_branch is invoked silently.\\n\\nProposed fix (one option): in _ensure_branch, refuse to create an orphan branch when origin appears to be a local repo (file:// or /absolute/path/), and surface a clear error directing the operator to first materialize bug-backlog-files locally in the intermediate. A more ambitious fix would traverse the chain via 'git ls-remote' on the intermediate's own origin if accessible.\\n\\nRelated: RABBIT-FILE-BUG-31 (closed as stale; the originally-described 'missing fetch' was inaccurate).",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-19T10:15:31Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T10:39:26Z",
+  "history": [
+    {
+      "ts": "2026-05-19T10:15:31Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T10:39:26Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "0b8c75bdb8748057749836c6275d42a2ef3fc40b"
+    }
+  ],
+  "commit_sha": "8a94cac9d40142000d91fdcfea4ffdcc2a5b122a"
+}

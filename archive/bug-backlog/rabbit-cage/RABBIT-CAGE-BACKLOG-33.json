@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-33",
+  "type": "backlog",
+  "title": "expand version-alignment invariant (11) to cover script module docstrings",
+  "status": "close",
+  "priority": "low",
+  "description": "Noticed by the Plan C fix-up wave (ws49) while working RABBIT-CAGE-BUG-98. Invariant 11 currently asserts version alignment across three frontmatter files (feature.json, spec.md, contract.md), but rabbit-cage's scripts (e.g. install.py) carry a Version: docstring marker that drifts independently. install.py says 'Version: 5.0.0' even after BUG-98 bumped the spec/feature/contract triple to 5.1.0. Either: (a) extend invariant 11 + test-version-alignment.py to scan every rabbit-cage hook/script for a Version: docstring marker and assert it matches the frontmatter version; (b) remove the Version: docstring markers from scripts entirely, since they duplicate metadata that should live in one place. (b) is cleaner. Pick up in a future rabbit-cage housekeeping audit pass; not blocking.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-23T12:22:13Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-24T05:29:02Z",
+  "history": [
+    {
+      "ts": "2026-05-23T12:22:13Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-24T05:29:02Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Wave 8 audit closes BACKLOG-33 via the spec-level exclusion path. Spec Inv 11 was extended with a justified exclusion clause: script-level Version: docstring markers under hooks/ and scripts/ track their own SemVer and are NOT bound by the three-way feature-version pin. Path (b) from the item description (delete the markers) was over-broad \u2014 per-script versions are useful. The exclusion clause makes the existing markers spec-compliant without code change.",
+      "fix_commits": "73b038bcc2a8b3fba8683e4adfebd4a223a24537"
+    }
+  ],
+  "commit_sha": "095bbed00c3ad861162b23c78ff2a7006c45ad1e"
+}

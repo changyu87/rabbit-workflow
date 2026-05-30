@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-8",
+  "type": "backlog",
+  "title": "rabbit-print.schema.json producers list is hand-maintained and drifts",
+  "status": "close",
+  "priority": "low",
+  "description": "schemas/rabbit-print.schema.json producers list hand-lists hook and script files. No test asserts producers actually use the format declared. Either auto-generate from grep or add a test.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T03:57:54Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:33:56Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:57:54Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:33:56Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "fixed in TDD cycle (test-bug-fixes-cycle.py)",
+      "fix_commits": "eae35f270bb84a6a14bb814bc57b9f08613f49a0"
+    }
+  ],
+  "commit_sha": "ef7ed2c3510bf579c319d247353002d8ff1988fe"
+}

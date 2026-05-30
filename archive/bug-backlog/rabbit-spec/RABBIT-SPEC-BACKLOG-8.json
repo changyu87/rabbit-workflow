@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-SPEC-BACKLOG-8",
+  "type": "backlog",
+  "title": "spec.md 'Out of Scope' line names 'the TDD subagent's job' \u2014 marginal process coupling",
+  "status": "close",
+  "priority": "low",
+  "description": "spec.md 'Out of Scope' section line 70 says 'that is the TDD subagent's job'. While this is framed as a scope boundary statement (which is acceptable), it names a specific downstream owner. Conservative improvement: replace with 'out of this skill's scope' to remove the coupling, similar to how contract.md's process-agnostic principle works. Low priority since it's accurate today; flag for review if the TDD subagent is ever renamed or replaced.",
+  "related_feature": "rabbit-spec",
+  "filed": "2026-05-18T04:34:54Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:38:20Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:34:54Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:38:20Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 closure; verified by test/test-bug-fixes-wave4.py",
+      "fix_commits": "63e787d"
+    }
+  ],
+  "commit_sha": "d71a57530443d01480ec3f2d0cf11c7af53d9272"
+}

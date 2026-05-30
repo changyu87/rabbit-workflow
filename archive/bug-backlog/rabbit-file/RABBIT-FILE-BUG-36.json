@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FILE-BUG-36",
+  "type": "bug",
+  "title": "Parallel file-item.py invocations race on origin/bug-backlog-files; second push fails with 'incorrect old value provided'",
+  "status": "close",
+  "priority": "medium",
+  "description": "rabbit-file's branch_ops.py uses per-process worktree paths (.claude/tmp/bug-backlog-files-<pid>/) to isolate concurrent operations on the same filesystem path. This protects against worktree collision but does NOT protect against git ref races on the shared remote branch origin/bug-backlog-files.\n\nREPRODUCTION (HEAD 46bc7ba8, observed 2026-05-25):\nTwo file-item.py invocations launched in parallel from a single Bash command (filing RABBIT-CAGE-BUG-105 and CONTRACT-BACKLOG-40 in one '&'-separated invocation). Both processes:\n1. Set up their own per-pid worktree successfully (no path collision).\n2. Both fetched origin/bug-backlog-files at the same revision.\n3. Process A allocated its ID, committed, pushed \u2192 origin advanced.\n4. Process B's allocate phase tried to fetch the updated ref but git rejected:\n   error: fetching ref refs/remotes/origin/bug-backlog-files failed: incorrect old value provided\n5. Process B failed with non-zero exit; process A succeeded.\n\nROOT CAUSE: branch_ops.allocate_id() and branch_ops.commit_item() each do a fetch+commit+push cycle. When two processes race, the second's fetch happens AFTER the first's push has updated the remote, but Git's atomic ref update sees the stale expected-old-value from the time of the fetch start and refuses. There's no retry loop, no lock, no serialization.\n\nIMPACT:\n- Any caller invoking file-item.py in parallel (e.g., a backstop filing multiple B/Bs at once) hits ~50% failure rate.\n- Workaround: file serially. Acceptable for human-driven use; problematic for any automation that batches B/B filings.\n\nPOSSIBLE FIXES:\n(a) Retry loop in branch_ops with exponential backoff \u2014 fetch + retry the operation on push rejection. Standard pattern for git-ref contention. Simple, robust, no new infrastructure.\n(b) Per-feature lock file on the local filesystem (.claude/tmp/bug-backlog-files-feature-<feature>.lock) acquired before fetch \u2014 serializes ID allocation within a feature. Doesn't help cross-feature, but the ID allocation is per-feature so cross-feature parallel filings would benefit from no lock contention.\n(c) Both (a) and (b): per-feature lock for local contention + retry loop for distributed contention (e.g., multiple machines or sessions sharing the same origin).\n\n(a) alone is the smallest fix that solves the observed problem.\n\nDETECTED BY: ws42 backstop session 2026-05-25 while filing RABBIT-CAGE-BUG-105 and CONTRACT-BACKLOG-40 in parallel as alongside findings from CONTRACT-BACKLOG-38 wave.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-25T13:22:52Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-25T13:54:29Z",
+  "history": [
+    {
+      "ts": "2026-05-25T13:22:52Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-25T13:54:29Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete (session-override + superpowers TDD, cross-feature bundle wave)",
+      "fix_commits": "c6e01c2190ac626b0c22f37d361830b648e7f38a"
+    }
+  ],
+  "commit_sha": "6e2d2c2c187f2b4704529b97bce1c4d4f037bdc7"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-94",
+  "type": "bug",
+  "title": "Post-wave cleanup: stale skill path in test-hook-enforcement t7; stale .sh refs in contract.md; stale registry.json read; feature.json summary references retired skills",
+  "status": "close",
+  "priority": "high",
+  "description": "Audit findings \u2014 real test failure + stale references to non-existent artifacts:\\n\\n1. test-hook-enforcement.py:194 reads tdd-subagent/skills/rabbit-feature-touch/SKILL.md but the skill lives at rabbit-feature/skills/rabbit-feature-touch/SKILL.md (moved in Cycle B). read() returns empty, regex never matches, t7 always fails. Retarget path to rabbit-feature.\\n\\n2. contract.md:47-48 invokes.scripts lists .claude/features/contract/scripts/relink.sh and dispatch-feature-edit.sh \u2014 NEITHER file exists. Entire invokes.scripts array is stale. Either remove or replace with the actual scripts (find-feature.py, policy-block.py, etc.) if rabbit-cage really invokes them.\\n\\n3. scope-guard.py:187 DENY message refers to non-existent dispatch-feature-edit.py. Operators reading this hunt for a script that doesn't exist. Remove or rewrite to point at rabbit-feature-touch.\\n\\n4. contract.md:42 reads.files lists .claude/features/registry.json \u2014 file does not exist (no per-feature registry; discovery is via find-feature.py walking feature.json files). Remove the stale read.\\n\\n5. feature.json:6 summary says 'Bug-filing and backlog management are now owned by rabbit-bug and rabbit-backlog respectively.' Both retired \u2014 consolidated into rabbit-file. Update summary.\\n\\n6. Inv 40 enumeration omits repo-permissions.py (script exists in scripts/ and is invoked by /rabbit-config permissions). Add it.\\n\\n7. Inv 40 narrative has 'new-feature.py temporarily remains' tail but no test pins this \u2014 file a follow-up backlog for the move + update Inv 40 to point at it.\\n\\nOUT OF SCOPE: the missing Bash(git merge *) deny entry that test-team-wide-permissions.py flags is the dispatcher's temporary override (will be restored at end of run). Do NOT touch settings.json in this cycle.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-20T04:22:51Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T04:52:31Z",
+  "history": [
+    {
+      "ts": "2026-05-20T04:22:51Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T04:52:31Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "e8d1780788bcf6e21b9fa6a7adc5e9eecc27dab8"
+    }
+  ],
+  "commit_sha": "ffe84e40d5a258e2ce5c3c5c2e45f03960f68b64"
+}

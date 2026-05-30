@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-48",
+  "type": "bug",
+  "title": "templates/project-map-template.json shape doesn't validate against schemas/project-map.json.schema.json",
+  "status": "close",
+  "priority": "medium",
+  "description": "## Repro\n\ncontract/templates/project-map-template.json has shape `{schema_version, source_map: {}}` (or similar \u2014 pre-existing).\ncontract/schemas/project-map.json.schema.json (added in PR #202 / Task 1.2 / Inv 59) requires `{schema_version, features: {}}` with additionalProperties:false.\n\nThe template does NOT validate against the schema. Inv 22 requires that templates validate against their schemas (specifically: feature-json-template.json must validate against feature.json.schema.json), and the same principle should apply here.\n\n## How it manifested\n\nCaught by the Task 3.2 TDD subagent while implementing rabbit-feature-new plugin-mode scaffolding. The subagent noted (commit ede156dd, in its handoff notes): 'The contract templates/project-map-template.json is shaped differently from schemas/project-map.json.schema.json (template has source_map: {}, schema requires features: {}). I implemented to the schema since the task says \"Schema-validate against the contract project-map.json.schema.json before writing.\" The template appears to be stale relative to the schema \u2014 out-of-scope to reconcile here.'\n\n## Suggested fix\n\nRewrite project-map-template.json to match the schema:\n\n```json\n{\n  \"template_version\": \"1.0.0\",\n  \"schema_version\": \"1.0.0\",\n  \"features\": {}\n}\n```\n\n(Plus whatever top-level template_version field marker the template-marker convention requires.)\n\n## Suggested test gap\n\nAdd an Inv stating that project-map-template.json MUST validate against project-map.json.schema.json. Add a test under contract/test/ that loads both and runs hand-rolled validation (matching the test-project-map-schema-shape.py pattern).\n\n## Related\n\nThis is a sibling to Inv 22 ('feature-json-template.json MUST validate against feature.json.schema.json'). Worth promoting to a general invariant: every <X>-template.json MUST validate against its corresponding <X>.schema.json.",
+  "related_feature": "contract",
+  "filed": "2026-05-28T08:51:18Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-28T09:00:54Z",
+  "history": [
+    {
+      "ts": "2026-05-28T08:51:18Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-28T09:00:54Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Fixed via project-map-template.json rewrite + template-schema validity regression test + new invariant",
+      "fix_commits": "7de4be790c6e6f6fc13258c808602ea53bcd80d4"
+    }
+  ],
+  "commit_sha": "16822a71e08e8f720169f927b3605d918a25d701"
+}

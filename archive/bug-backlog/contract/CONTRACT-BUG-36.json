@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-36",
+  "type": "bug",
+  "title": "workspace-structure.json schema 'schemaVersion' (camelCase) but documents it validates use 'schema_version' (snake_case)",
+  "status": "close",
+  "priority": "low",
+  "description": "schemas/workspace-structure.json is itself a JSON Schema. Its own metadata uses camelCase 'schemaVersion' on line 3, but the schema requires documents to use snake_case 'schema_version' (line 12). The schema's metadata convention does not match the convention it enforces. Pick one and use consistently.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T04:16:01Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:36:10Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:16:01Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:36:10Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3 batch 2: schema permissiveness, template fields, enforcement script corrections per Inv 22-33.",
+      "fix_commits": "51fc7f3"
+    }
+  ],
+  "commit_sha": "12346707cb8b9482a9d9caa455e1901b067f6e57"
+}

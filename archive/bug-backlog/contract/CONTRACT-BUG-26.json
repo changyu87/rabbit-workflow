@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-26",
+  "type": "bug",
+  "title": "run.py does not invoke test-find-feature.py or test-relink.py; tests/test_python_scripts.py orphan",
+  "status": "close",
+  "priority": "medium",
+  "description": "test/run.py does not invoke test-find-feature.py or test-relink.py. test-relink.py tests a deleted scripts/relink.sh and is dead code. tests/test_python_scripts.py lives in a parallel directory and is never run.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T03:25:21Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:21:02Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:25:21Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:21:02Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3 batch 1: validate-feature.py run.py path; check-naming.py rbt- prefix; module docstrings; runner invokes all tests; dead tests deleted.",
+      "fix_commits": "443923a"
+    }
+  ],
+  "commit_sha": "7dcb88e3246dcae23d4ace00f18cbea15f3246ae"
+}

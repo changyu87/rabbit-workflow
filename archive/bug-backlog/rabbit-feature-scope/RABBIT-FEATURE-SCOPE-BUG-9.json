@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FEATURE-SCOPE-BUG-9",
+  "type": "bug",
+  "title": "No test verifies invariant 2 (Agent uses default model, no Opus override)",
+  "status": "close",
+  "priority": "medium",
+  "description": "Spec invariant 2 mandates the dispatched Agent uses the default model with no Opus override. SKILL.md documents it but no test asserts that the prompt or skill avoids requesting Opus, opus-4, claude-opus, or model overrides. Add a test that greps for forbidden model override patterns.",
+  "related_feature": "rabbit-feature-scope",
+  "filed": "2026-05-18T03:00:42Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T06:57:02Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:00:42Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T06:57:02Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed in Wave 3 PR. BUG-21 hardcoded names removed; BUG-28 defensive .get() for optional keys; BUG-7/9/12/14/17 covered by new test-invariant-coverage.py.",
+      "fix_commits": "b13dc4b"
+    }
+  ],
+  "commit_sha": "0b32b005f0a7d2b87a65b48270adebb497fb0d07"
+}

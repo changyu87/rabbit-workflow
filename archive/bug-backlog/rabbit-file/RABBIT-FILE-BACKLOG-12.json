@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FILE-BACKLOG-12",
+  "type": "backlog",
+  "title": "Remove chained-workspace cruft from rabbit-file (post BUG-33 won't-fix)",
+  "status": "close",
+  "priority": "medium",
+  "description": "Follow-up to RABBIT-FILE-BUG-33 closed as won't-fix. Project owner directive: each workspace MUST be standalone and self-contained; chained-workspace topologies (wsN->wsN-1->...->GitHub) are no longer supported. Remove all chained-workspace code paths, spec/contract prose, and tests that exist solely to support that topology.\n\nDecision: remove outright (do NOT keep as defensive safety net per Designed Deprecation principle \u2014 borrowed time, and a misconfigured origin will surface loud on first push anyway).\n\nScope:\n- branch_ops.py: delete _is_local_origin helper (lines ~159-183); delete local-origin RuntimeError branch in _ensure_branch (lines ~199-212)\n- docs/spec/spec.md: remove chained-workspace prose (~lines 243-256) and any related invariants\n- docs/spec/contract.md: remove line 22 'refuses orphan creation when origin is local' and line 71 'never' clause about local-origin orphans\n- test/test-bug-32-chained-workspace-guard.py: delete entire file\n- test/conftest.py: remove chained_repos fixture and BUG-32 workaround comments\n- test/test-file-item.py, test-list-items.py, test-item-status.py, test-branch-ops.py: remove BUG-32 pre-seed workarounds\n\nRegression test: confirm fresh standalone repo against real (or mocked-as-remote) origin auto-bootstraps the orphan branch on first use.\n\nLifecycle: closes once code/spec/tests no longer reference chained-workspace topology and standard branch_ops tests still pass.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-20T05:47:02Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T06:25:26Z",
+  "history": [
+    {
+      "ts": "2026-05-20T05:47:02Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T06:25:26Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "44212ad3f5b2ae0fa77508f70788c8c3b752f0c7"
+    }
+  ],
+  "commit_sha": "b14dc7977976f1c15531c4d0121117d2368ff3cc"
+}

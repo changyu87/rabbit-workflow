@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-34",
+  "type": "bug",
+  "title": "check-imports-resolve.py regex 'claude_path_pattern' matches paths under .claude/features only",
+  "status": "close",
+  "priority": "low",
+  "description": "scripts/enforcement/check-imports-resolve.py line 58 regex r'.claude/features/[a-z][a-z0-9-]+(?:/[^\\s)\\]\\']?)?' matches paths starting with .claude/features. It does NOT check references to .claude/hooks/, .claude/skills/, .claude/commands/, or .claude/agents/. Bug fixes that move scripts there could leave dangling docs references undetected. Widen the regex to cover the full .claude/ subtree.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T04:13:31Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:36:02Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:13:31Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:36:02Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3 batch 2: schema permissiveness, template fields, enforcement script corrections per Inv 22-33.",
+      "fix_commits": "51fc7f3"
+    }
+  ],
+  "commit_sha": "2fe93a9ca53f66a78fbd9d541ef7ba3c33b357d4"
+}

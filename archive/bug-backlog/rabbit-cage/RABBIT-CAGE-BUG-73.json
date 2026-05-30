@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-CAGE-BUG-73",
+  "type": "bug",
+  "title": "policy-header.json header text references /rabbit-feature-touch as 'one-time or session override' (terminology drift)",
+  "status": "close",
+  "priority": "low",
+  "description": "policy-header.json line 2: 'skip it only for trivial edits via the one-time or session override.' This is reasonable but the override usage was deliberately restricted to human-approved bypasses (spec.md scope-override section); presenting overrides as a general 'skip TDD' switch contradicts the 'reserved for exceptional human-approved bypasses, not routine workflow writes' language at spec.md L286. The CLAUDE.md header is the most-imported policy banner \u2014 its phrasing influences every session. Soften the wording to reflect that overrides require human approval and are not a general TDD-skip mechanism.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:24:22Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:44:18Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:24:22Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:44:18Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup: bug invalid \u2014 see triage notes in tdd-report-rabbit-cage.json"
+    }
+  ],
+  "commit_sha": "40067572f5154932fa94a94aa87a19a3e39eeb1a"
+}

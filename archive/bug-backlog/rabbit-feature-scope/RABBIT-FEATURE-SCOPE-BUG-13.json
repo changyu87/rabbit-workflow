@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-FEATURE-SCOPE-BUG-13",
+  "type": "bug",
+  "title": "No test verifies invariant 4 (Agent response JSON schema)",
+  "status": "close",
+  "priority": "medium",
+  "description": "Spec invariant 4 specifies the Agent response schema {features: [...], rationale: 'one sentence'}. No test or validator exists. Add a schema-validation helper that the caller can use to verify the Agent's response, and a test that runs it against representative example responses (valid + malformed).",
+  "related_feature": "rabbit-feature-scope",
+  "filed": "2026-05-18T03:01:43Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:58:54Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:01:43Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:58:54Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 triage: duplicate of RABBIT-FEATURE-SCOPE-BUG-14 (no test for Inv 4), fixed by PR #118"
+    }
+  ],
+  "commit_sha": "9acac66e5b76d79bfdf7fa5a6c2b496b30d28cc2"
+}

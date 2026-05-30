@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-26",
+  "type": "backlog",
+  "title": "Move new-feature.py from rabbit-cage to rabbit-feature",
+  "status": "close",
+  "priority": "medium",
+  "description": "Inv 40 currently exempts new-feature.py from full removal because rabbit-feature-new still depends on .claude/features/rabbit-cage/scripts/new-feature.py. Plan: relocate the script under .claude/features/rabbit-feature/scripts/ alongside the other rabbit-feature-* tooling, update rabbit-feature-new's invocation path, then drop new-feature.py from the rabbit-cage Inv 40 enumeration. This backlog pins the cleanup so it does not linger.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-20T04:47:22Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-21T08:03:53Z",
+  "history": [
+    {
+      "ts": "2026-05-20T04:47:22Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-21T08:03:53Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Cycle complete: new-feature.py relocated to rabbit-feature/scripts/, all references updated, all test suites pass.",
+      "fix_commits": "dec347375bcbed43dfcfdb939be9ec43d6180486"
+    }
+  ],
+  "commit_sha": "249417dbee9a6c30456d3194d8736d4f8d757f8f"
+}

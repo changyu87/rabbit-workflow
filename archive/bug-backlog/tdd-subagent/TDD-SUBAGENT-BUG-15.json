@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-15",
+  "type": "bug",
+  "title": "dispatch-tdd-subagent.py prompt references nonexistent bug-status.py and backlog-item-status.py",
+  "status": "close",
+  "priority": "high",
+  "description": "dispatch-tdd-subagent.py lines 200-213 builds close-call paths to bug-status.py or backlog-item-status.py in rabbit-file/scripts/. Neither exists \u2014 only item-status.py is present. Subagent Step 9 close will fail; primary linked item stays open. Fix: route through item-status.py like the secondary path does (lines 220-227). Tests only assert path text appears, not that script exists.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:34:06Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T06:25:00Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:34:06Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T06:25:00Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed as part of Wave 1 bundle in PR (BUG-15/18/22/28/29 all addressed by dispatch-tdd-subagent.py prompt edits).",
+      "fix_commits": "11514a2"
+    }
+  ],
+  "commit_sha": "254a0b69e0fd57909d8f933bcea050453e690c0d"
+}

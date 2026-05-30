@@ -1,0 +1,27 @@
+{
+  "name": "TDD-SUBAGENT-BUG-10",
+  "type": "bug",
+  "title": "tdd-step.py auto_close_backlog references deleted backlog-item-status.py",
+  "status": "close",
+  "priority": "high",
+  "description": "tdd-step.py auto_close_backlog (lines 113-164) targets backlog-item-status.py which no longer exists (unified into item-status.py). os.path.isfile at line 130 always returns False so the function is dead code. Spec invariant 4 still claims auto-close works.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:11:07Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:58:46Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:11:07Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:58:46Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 triage: duplicate of TDD-SUBAGENT-BUG-12 (auto_close_backlog references deleted script)"
+    }
+  ],
+  "commit_sha": "af99a6e4086e43cb838e355e4286590b615ff866"
+}

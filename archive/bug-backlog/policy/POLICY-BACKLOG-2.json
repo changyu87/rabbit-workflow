@@ -1,0 +1,28 @@
+{
+  "name": "POLICY-BACKLOG-2",
+  "type": "backlog",
+  "title": "Specify WHERE owner/version/deprecation_criterion metadata lives",
+  "status": "close",
+  "priority": "medium",
+  "description": "spec-rules.md section 3 'Lifecycle and Ownership' requires every artifact to record Owner, Version, and Deprecation criterion at creation time. But it does not specify WHERE these go: feature.json? frontmatter? source comments? README? The repo currently uses a mix: feature.json (machine-first), spec.md frontmatter (also machine-readable), and inline comments in scripts (e.g., test-POLICY-1-no-stale-imports.py has 'Owner:' and 'Deprecation criterion:' in header comments). Policy should declare the canonical location or mandate consistency. Location: .claude/features/policy/spec-rules.md section 3, lines 45-55.",
+  "related_feature": "policy",
+  "filed": "2026-05-18T03:05:28Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:36:11Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:05:28Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:36:11Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "fixed in TDD cycle (test-policy-bug-fixes.py)",
+      "fix_commits": "eae35f270bb84a6a14bb814bc57b9f08613f49a0"
+    }
+  ],
+  "commit_sha": "dae1adebacd50db0be11c1e60d790f3b0446aab8"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-66",
+  "type": "bug",
+  "title": "rabbit-config.py 'allowed-tools' has surprise side effect: setdefault creates empty 'permissions':{'allow':[]} even on remove-of-absent",
+  "status": "close",
+  "priority": "low",
+  "description": "skills/rabbit-config/scripts/rabbit-config.py: perm_allow() uses setdefault which mutates cfg. Even for 'allowed-tools remove DoesNotExist' on a settings.local.json that lacks any permissions key, perm_allow(cfg) silently materializes 'permissions':{'allow':[]} into cfg, but then the remove path takes the else branch (entry not present) and prints 'Not present: DoesNotExist' WITHOUT calling write_json \u2014 so the in-memory mutation is discarded. OK currently, but the spec common rule (line 154-156) says 'after removal, if permissions.allow becomes empty, the key remains as an empty array (it is not deleted); if permissions itself becomes the only key and is {\"allow\": []}, it is left in place.' Spec is ambiguous about the no-op-remove-of-absent case. Codify whether settings.local.json should grow {} -> {permissions:{allow:[]}} after a no-op remove.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:22:11Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:42:30Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:22:11Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:42:30Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "c31c9dd1f66777f9d1d355d55da9a06a23f21048"
+}

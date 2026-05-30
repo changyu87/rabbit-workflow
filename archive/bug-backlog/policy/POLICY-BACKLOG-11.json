@@ -1,0 +1,28 @@
+{
+  "name": "POLICY-BACKLOG-11",
+  "type": "backlog",
+  "title": "test-backlog003.py references BACKLOG-003 without traceability or end-of-life criterion",
+  "status": "close",
+  "priority": "low",
+  "description": "test-backlog003.py refers to 'BACKLOG-003' in its filename and comment. The current bug/backlog scheme uses POLICY-BACKLOG-N \u2014 there is no BACKLOG-003 anywhere in rabbit/features/policy/backlogs/. This is a stale historical reference. Per philosophy.md Designed Deprecation, the test should either: (a) be renamed to reference the current canonical ID system, (b) add a comment naming what its assertions guard and when they can be retired, or (c) be merged into test-rule-files-content.py. Location: .claude/features/policy/test/test-backlog003.py lines 1-4.",
+  "related_feature": "policy",
+  "filed": "2026-05-18T03:07:32Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T09:04:59Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:07:32Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T09:04:59Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete: POLICY-BACKLOG-11 closed",
+      "fix_commits": "fc89b28fe3895f71ca0f93efa899c5b348f02c1c"
+    }
+  ],
+  "commit_sha": "2d2dfa686941df0a3f85c374be43c8488a405f2b"
+}

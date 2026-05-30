@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BACKLOG-11",
+  "type": "backlog",
+  "title": "Restyle tdd-step.py [rabbit] output to [\ud83d\udc07 rabbit \ud83d\udc07] \ud83d\udd27 \u2501\u2501\u2501 ... \u2501\u2501\u2501 \ud83d\udd27 format with CAPS state names",
+  "status": "close",
+  "priority": "low",
+  "description": "tdd-step.py prints [rabbit] lines directly to stdout/stderr using _rbt_ok/_rbt_alert helpers. Restyle to match the new [\ud83d\udc07 rabbit \ud83d\udc07] ICON \u2501\u2501\u2501 MSG \u2501\u2501\u2501 ICON format. Changes: (1) _rbt_ok format: '[\ud83d\udc07 rabbit \ud83d\udc07] \ud83d\udd27 \u2501\u2501\u2501 MSG \u2501\u2501\u2501 \ud83d\udd27' green. (2) _rbt_alert format: '[\ud83d\udc07 rabbit \ud83d\udc07] \ud83d\udd27 \u2501\u2501\u2501 MSG \u2501\u2501\u2501 \ud83d\udd27' red. (3) All state names in transition output uppercased (e.g. SPEC-READ -> TEST-RED). Companion to RABBIT-CAGE-BACKLOG-19.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-19T06:21:50Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T06:48:36Z",
+  "history": [
+    {
+      "ts": "2026-05-19T06:21:50Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T06:48:36Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "3bb1ec30001c110b5fa84627f6c3a0500b065166"
+    }
+  ],
+  "commit_sha": "bbbb5bcc97803065804683a7a87349e12e99cd61"
+}

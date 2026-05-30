@@ -1,0 +1,39 @@
+{
+  "name": "RABBIT-FILE-BUG-33",
+  "type": "bug",
+  "title": "branch_ops does not auto-propagate bug-backlog-files through chained workspaces",
+  "status": "close",
+  "priority": "high",
+  "description": "In a chained-workspace topology (wsN\u2192wsN-1\u2192...\u2192GitHub), _ensure_branch calls 'git ls-remote --heads origin bug-backlog-files' which only sees the immediate origin's local branches (refs/heads/*). If the branch exists as a remote tracking ref in the intermediate (refs/remotes/origin/bug-backlog-files) but not as a local branch, ls-remote returns nothing and the BUG-32 guard raises a hard error requiring manual operator intervention.\n\nRoot cause: git's smart protocol, when talking to a local-path remote, serves only that repo's own local refs, not its remote tracking refs. So the branch can exist in wsN-2 and be tracked in wsN-1 as remotes/origin/bug-backlog-files, yet wsN is completely blind to it via both ls-remote and fetch.\n\nBUG-32 fixed the symptom (silent orphan creation) but not the cause. The remediation in the error message (git -C {origin} fetch && git -C {origin} checkout {BRANCH}) is manual operator work that should not be required.\n\nExpected behavior: _ensure_branch should detect when the branch exists as a tracking ref in the intermediate (git -C {origin_url} show-ref refs/remotes/origin/bug-backlog-files) and auto-create the local branch there (git -C {origin_url} branch bug-backlog-files origin/bug-backlog-files) before retrying, so that new workspaces in the chain work without any manual setup.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-19T10:49:49Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T05:46:33Z",
+  "history": [
+    {
+      "ts": "2026-05-19T10:49:49Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T10:53:34Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Temporarily closed before CONTRACT-BACKLOG-19 housekeeping wave to prevent accidental closure by wave b/b filings; will be reopened after the wave completes"
+    },
+    {
+      "ts": "2026-05-19T13:22:33Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "Reopening after CONTRACT-BACKLOG-19 wave complete"
+    },
+    {
+      "ts": "2026-05-20T05:46:33Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Premise invalidated: chained workspaces are no longer supported per project owner directive (each workspace MUST be standalone and self-contained). The proposed fix (adding auto-propagation logic to branch_ops) would solve a problem the project has declared out-of-scope. Filing follow-up backlog to remove chained-workspace code/spec/test cruft from rabbit-file."
+    }
+  ],
+  "commit_sha": "08fcf0c1f9566a0d77542a2a1a081e5f2f5f180d"
+}

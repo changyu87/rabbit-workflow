@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-SPEC-BUG-9",
+  "type": "bug",
+  "title": "SKILL.md and spec.md never mention reading docs/spec/contract.md as part of Step 1",
+  "status": "close",
+  "priority": "low",
+  "description": "SKILL.md Step 1 and spec.md only mention reading the feature spec and existing implementation files. However, contract.md often contains the interface contract between the feature and its consumers. When authoring a spec update, failing to read contract.md can lead to spec changes that violate the declared contract. Fix: add docs/spec/contract.md as a recommended Step 1 read target alongside spec.md.",
+  "related_feature": "rabbit-spec",
+  "filed": "2026-05-18T04:32:31Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:36:29Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:32:31Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:36:29Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 fix; verified by test/test-bug-fixes-wave4.py",
+      "fix_commits": "63e787d"
+    }
+  ],
+  "commit_sha": "60c3876a8cbcfe2d044cf42bedfb26b6e13e0e4d"
+}

@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-FEATURE-SCOPE-BUG-24",
+  "type": "bug",
+  "title": "resolve-scope.py contract says exit 2 on invocation error but uses exit 1 for missing find-feature.py",
+  "status": "close",
+  "priority": "low",
+  "description": "contract.md states 'exit 0: success; exit 2: invocation error'. But resolve-scope.py line 40 uses sys.exit(1) when find-feature.py is not found (environment error). Either align the implementation to spec (use exit 2 for any invocation error) or update contract to document the distinct exit codes (1=env error, 2=arg error).",
+  "related_feature": "rabbit-feature-scope",
+  "filed": "2026-05-18T03:18:22Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:02:08Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:18:22Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:02:08Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 triage: duplicate of RABBIT-FEATURE-SCOPE-BUG-22 (exit code contract)"
+    }
+  ],
+  "commit_sha": "5beb1d24141ec5c214fd79a02d81efe74d8b4cd9"
+}

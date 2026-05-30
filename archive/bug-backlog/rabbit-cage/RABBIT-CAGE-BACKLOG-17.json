@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-17",
+  "type": "backlog",
+  "title": "Hooks do not signal failure to harness; subprocess failures are swallowed by sync-check / session-init bare except",
+  "status": "close",
+  "priority": "low",
+  "description": "All four hooks (scope-guard.py, sync-check.py, session-init.py, refresh.py) follow the pattern 'except Exception: ...' silently swallowing subprocess errors, JSON decode errors, file read failures. The Claude Code hook contract is to exit 0 (no message) or non-zero (deny). But silently exiting 0 when an internal failure occurs (git invocation fails, generate script fails, registry missing) means the user gets no signal that policy enforcement has effectively become a no-op. Add structured stderr logging for unexpected exceptions while keeping the 'happy path quiet' contract.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:27:05Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T09:10:06Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:27:05Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T09:10:06Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "WAVE5 cleanup: implemented in 505c834",
+      "fix_commits": "505c834"
+    }
+  ],
+  "commit_sha": "20446e19619af2d91fee36c71675b55d35dbbff2"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-54",
+  "type": "bug",
+  "title": "Post-consolidation cleanup: HANDOFF_JSON closed_items always empty (Inv 19 violation); version drift; relocate 10 cross-scope rabbit-feature tests; stale invariant numbers in tests",
+  "status": "close",
+  "priority": "high",
+  "description": "Post-consolidation audit findings for tdd-subagent:\\n\\n1. REAL BUG: HANDOFF_JSON closed_items field is hard-coded [] in dispatch-tdd-subagent.py:593 even when --linked-item/--linked-items produce close-calls. YAML HANDOFF correctly lists them. Per Inv 19 the JSON HANDOFF is the machine-first source of truth \u2014 this divergence is a bug.\\n2. Three-way version drift: feature.json=2.1.0, spec.md=2.0.0, contract.md=2.0.0, dispatch-tdd-subagent.py=2.0.0. Pick one and sync.\\n3. Move 10 cross-scope tests from tdd-subagent/test/ to rabbit-feature/test/ (they all read rabbit-feature SKILL.md): test-confirm-token-bypass-section.py, test-skill-invocation-and-rabbit-report-path.py, test-rabbit-feature-touch-item-json.py, test-bypass-marker-skill-doc.py, test-commit-gaps-fix.py, test-rabbit-feature-touch-skill-v3.py, test-rabbit-feature-touch-skill-ownership.py, test-rabbit-feature-touch-seven-step.py, test-skill-md-routing-and-main-session-red-flags.py, test-spec-read-uses-head-tilde-1.py (partial).\\n4. Update stale invariant numbers in tests: pre-slim numbers 16/17/18/19/20/21/22/23/27/29/31 don't match current 20-invariant spec.\\n5. Update spec text references from 'rabbit-spec' to 'rabbit-feature-spec' (lines 112,115,120).\\n6. Delete stale __pycache__/test_helpers.cpython-37.pyc (test_helpers.py extracted to tdd-state-machine).\\n7. Clean up spec_no_change_reason field in feature.json (contradicted by actual v2.0.0 spec changes).",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-19T15:23:38Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T15:52:18Z",
+  "history": [
+    {
+      "ts": "2026-05-19T15:23:38Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T15:52:18Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "a964196103dad08fc90ea1cb5ee31eef92038b09"
+    }
+  ],
+  "commit_sha": "0bc56813dacdb35afeb5817c53a03282a626ddb1"
+}

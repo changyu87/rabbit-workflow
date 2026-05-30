@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-88",
+  "type": "bug",
+  "title": "Dispatcher edited contract.md directly, bypassed by scope-guard \u2014 CLAUDE.md lacks explicit dispatcher cans/cannots",
+  "status": "close",
+  "priority": "medium",
+  "description": "During RABBIT-CAGE-BACKLOG-12 work, the main session dispatcher (Claude orchestrating rabbit-feature-touch Step 3) attempted to edit .claude/features/rabbit-cage/docs/spec/contract.md directly using the Edit tool. This was not instructed by rabbit-spec; the dispatcher made an independent judgment call to also update contract.md as part of the spec authoring step. The scope-guard correctly denied the write (no active scope marker, file not on allowlist). Root cause: CLAUDE.md does not spell out explicit cans and cannots for the dispatcher role. The rabbit-feature-touch SKILL.md has a Red Flags section that says 'Main session uses Write or Edit on any file under .claude/features/ -> STOP' but this guidance lives in the skill, not in CLAUDE.md, and it was not strong enough to prevent the attempt. Suggested fix: use the claude-md-management skill (claude-md-management:revise-claude-md) to add an explicit cans/cannots section to CLAUDE.md covering the dispatcher role \u2014 specifically: CANNOT directly edit any file under .claude/features/ (all feature edits go through rabbit-feature-touch -> TDD subagent); CAN write to .rabbit/ (impl-suggestion, tdd-report); CAN write to .claude/settings.local.json and .gitignore via allowlisted paths.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-19T03:31:47Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T04:32:42Z",
+  "history": [
+    {
+      "ts": "2026-05-19T03:31:47Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T04:32:42Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "1a0b284bc5280abe5919485f7cf6fd27f1811a8f"
+    }
+  ],
+  "commit_sha": "235bb864f480019e6414f8d03a6bcaf494c95ae8"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-18",
+  "type": "bug",
+  "title": "check-tests-non-interactive.py only inspects .sh test files; Python-only stack means it never runs",
+  "status": "close",
+  "priority": "medium",
+  "description": "scripts/enforcement/check-tests-non-interactive.py lines 50, 56 only walk and inspect .sh files. Spec invariant 11 mandates Python sole stack and the actual test files are all .py. This enforcement script vacuously passes for every feature and never enforces non-interactive behavior. Should be updated to also inspect .py files for input() calls and interactive constructs.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T03:05:04Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T06:51:07Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:05:04Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T06:51:07Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed: check-tests-non-interactive.py now scans .py files with Python interactive patterns (input/getpass/click.prompt/click.confirm). 10 new e2e test cases.",
+      "fix_commits": "8faa56409518f037eba3719f63ca45ee581ed54f"
+    }
+  ],
+  "commit_sha": "ffc6c62ac1506cf6fccf7d1302083b57293d2003"
+}

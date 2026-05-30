@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-25",
+  "type": "backlog",
+  "title": "Inv 40 enumeration completeness test; duplicate invariant numbering cleanup; new-feature.py move follow-up",
+  "status": "close",
+  "priority": "medium",
+  "description": "1. No test pins Inv 40 enumeration completeness \u2014 a new script added to scripts/ would not fail any test. Add test that walks scripts/*.py and asserts each is enumerated in Inv 40 (this is exactly why repo-permissions.py drifted out).\\n\\n2. Duplicate invariant numbering in spec.md: numbers 11, 25, 26, 27, 28, 29 each used twice in different sections. Pre-existing; cleanup as a focused pass to flatten into a single monotonic series.\\n\\n3. Follow-up backlog for the new-feature.py move from rabbit-cage to rabbit-feature (deferred from RABBIT-CAGE-BACKLOG-24). Once moved, update rabbit-feature-new SKILL.md to point at new location, remove from rabbit-cage scripts/, and prune from contract/provides.\\n\\n4. feature.json updated_note field duplicates info that should live in CLAUDE.md or contract artifact \u2014 consider dropping.\\n\\n5. contract.md provides.scripts not validated for path existence \u2014 add test asserting listed scripts actually exist (this is why the contract drifted to list relink.sh and dispatch-feature-edit.sh undetected).",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-20T04:24:25Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-21T08:11:10Z",
+  "history": [
+    {
+      "ts": "2026-05-20T04:24:25Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-21T08:11:10Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Cycle complete (parts 1, 4, 5): Inv 92/93/94 added; Inv 18 enumeration test, updated_note dropped, contract.md provides.scripts existence test all wired and passing. Parts 2 (duplicate invariant numbering) resolved by ws36 renumber. Part 3 (new-feature.py move) resolved by RABBIT-CAGE-BACKLOG-26 in PR #181.",
+      "fix_commits": "0be642f968dc263576febdf5e5b97f8aea893253"
+    }
+  ],
+  "commit_sha": "df914b0d8264dd123ee07d4564e113c535e65b14"
+}

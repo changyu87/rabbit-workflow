@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-30",
+  "type": "bug",
+  "title": "test-tdd-step.py terminal-state test t8 is misleading",
+  "status": "close",
+  "priority": "low",
+  "description": "test-tdd-step.py t8 asserts that 'deprecated -> spec' is denied even with --force. The ok message reads 'deprecated is terminal (no exit even with --force)'. But the test only checks rc != 0, not WHICH error was emitted. The spec invariant should be that deprecated can transition only via --force (since spec.md says forward-only WITHOUT --force; --force overrides). tdd-step.py line 340-342 hard-codes that deprecated is a terminal exception that --force cannot override. This is a stronger constraint than the spec states. Either: tighten spec.md to explicitly state deprecated is non-exitable even with --force, or relax tdd-step.py to allow --force out of deprecated. Currently behaviour and spec disagree by omission.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:45:55Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:37:52Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:45:55Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:37:52Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "ce3865a533d4df41fe27b83748257e5b7cdc76ce"
+}

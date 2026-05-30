@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FILE-BUG-35",
+  "type": "bug",
+  "title": "rabbit-file spec.md missing required YAML frontmatter (self-referential policy violation)",
+  "status": "close",
+  "priority": "high",
+  "description": "Per spec-rules.md section 3, every feature's docs/spec/spec.md MUST carry YAML frontmatter with feature, version, owner, deprecation_criterion.\n\n.claude/features/rabbit-file/docs/spec/spec.md has NO frontmatter at all. The file opens directly with '# rabbit-file' on line 1.\n\nBy the policy's own definition ('An artifact missing any of these fields in its declared location is considered unowned'), the spec is unowned. Self-referential violation: this feature stores and lifecycles bugs/backlogs for the whole project but cannot document its own ownership.\n\nCompanion contract.md DOES carry full frontmatter \u2014 copy the same fields (feature: rabbit-file, version: 0.3.0, owner: rabbit-workflow team, deprecation_criterion: ...) into spec.md.\n\nAdd a regression test asserting all 4 required frontmatter fields exist in spec.md.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-20T07:31:33Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T08:31:08Z",
+  "history": [
+    {
+      "ts": "2026-05-20T07:31:33Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T08:31:08Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "91b32a89731be05b257bf4706aa4dd43ec04e882"
+    }
+  ],
+  "commit_sha": "3a0d3e8a728df5973c506a28df929c7bf5d3a55a"
+}

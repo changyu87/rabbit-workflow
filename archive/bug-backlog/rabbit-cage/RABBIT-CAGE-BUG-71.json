@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-71",
+  "type": "bug",
+  "title": "new-feature.py scaffolded contract.md does not match contract.md template_version 2.0.0 structure",
+  "status": "close",
+  "priority": "medium",
+  "description": "scripts/new-feature.py lines 121-137 scaffold a free-form contract.md with sections Reads/Writes/Invokes/Inputs/Outputs/Cross-scope-handoff/Versioning. The actual rabbit-cage/docs/spec/contract.md uses a structured machine-first JSON block under a single fenced code block (the 'template_version: 2.0.0' format with provides/reads/invokes/manages/never keys). Newly scaffolded features start with a contract format that diverges from the spec's structured form, then must be hand-converted before passing validate-feature.py. The scaffolder should produce a stub matching the current template_version='2.0.0' JSON structure.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:23:41Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:42:48Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:23:41Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:42:48Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "a25d18959b7a9f3ed78a3dc0a6071f0dd73926d8"
+}
