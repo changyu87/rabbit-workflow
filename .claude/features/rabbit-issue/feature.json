@@ -3,7 +3,7 @@
   "name": "rabbit-issue",
   "version": "0.1.0",
   "owner": "cyxu",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "GitHub Issues wrapper for filing, listing, and lifecycle-managing bugs and enhancements via the `gh` CLI. Replaces rabbit-file's branch-backed bug-and-backlog (B/B) storage with native GH Issues; the rabbit-managed label gates rabbit's automation from touching human-filed issues.",
   "surface": {
     "hooks": [],
@@ -21,7 +21,7 @@
     ]
   },
   "deprecation_criterion": "when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill",
-  "updated": "2026-05-29",
+  "updated": "2026-05-30",
   "manifest": [
     {
       "api": "publish_skill",
@@ -45,5 +45,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Phase 3 materializes the rabbit-issue skill (SKILL.md) that the spec already declared in surface.skills; no spec changes needed."
+  "spec_no_change_reason": "Phase 4 narrowed touch: wording-only clarification within SKILL.md Work Protocol Step 5 (normal mode for rabbit-feature-touch; close-fallback owned by rabbit-issue). No spec.md or contract.md changes; existing test-skill-presence.py already covers the SKILL.md surface."
 }

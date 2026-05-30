@@ -140,21 +140,28 @@ When the user asks to work, close, or reopen an issue:
    issues. The safety guard below still applies.
 
 5. **If the user confirms to proceed**:
-   - Invoke `rabbit-feature-touch` in **issue mode**, passing the issue
-     number and feature.
+   - Invoke `rabbit-feature-touch` in **normal mode**, passing the issue
+     title + body as the request text (no special CLI flag, no "issue
+     mode" — `rabbit-feature-touch` does NOT need to know about GH
+     Issues at all; tracking and closure are rabbit-issue's concern).
    - The TDD cycle's implementation commit should include `Fixes #N` in
      the commit message so GitHub auto-closes the issue with
-     `state_reason = completed` and auto-links the SHA in the Timeline.
-   - **Fallback** — if the merge commit lands without `Fixes #N` (e.g.,
-     squash-merge stripped the trailer, or the PR was merged via the
-     web UI without it), explicitly close the issue:
-     ```bash
-     python3 .claude/features/rabbit-issue/scripts/item-status.py close <N> \
-       --reason completed \
-       --comment "Closed by <commit-sha>"
-     ```
-     Verify GH did not already close it first (the `gh issue view`
-     state will show `closed` if the auto-close fired).
+     `state_reason = completed` and auto-links the SHA in the Timeline
+     once the PR merges to the default branch.
+   - **After touch returns successfully — rabbit-issue verifies closure:**
+     - **Auto-close path** — if the impl commit included `Fixes #N` AND
+       the PR merged to the default branch, GH already closed the
+       issue (`gh issue view <N>` shows `closed`). Nothing more to do.
+     - **Fallback path** — otherwise (e.g., squash-merge stripped the
+       trailer, the PR merged via the web UI without it, or the work
+       landed via direct commit), rabbit-issue explicitly closes:
+       ```bash
+       python3 .claude/features/rabbit-issue/scripts/item-status.py close <N> \
+         --reason completed \
+         --comment "TDD cycle complete in <commit-sha>"
+       ```
+       Always verify state with `gh issue view <N>` before the
+       fallback close so an already-closed issue is not re-closed.
 
 ---
 
