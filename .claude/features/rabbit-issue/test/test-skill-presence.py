@@ -11,6 +11,11 @@ spec's "Surface" section):
      rabbit-file feature (so triggering routes here, not to rabbit-file).
   4. The SKILL.md body MUST document the `rabbit-managed` safety guard
      (Work Protocol invariant from the spec).
+  5. The SKILL.md body MUST NOT contain the hardcoded user-decision-gate
+     question prose ("Ask explicitly:" / "close** this issue without
+     working it"). The dispatcher surfaces a recommendation in natural
+     language; the gate semantics live in the "Do NOT invoke
+     `rabbit-feature-touch` until the user confirms" bullet alone.
 
 These are static checks; runtime behaviour is exercised by the
 file-item / item-status / list-items pytest suites.
@@ -61,6 +66,17 @@ def check(path: Path) -> list[str]:
         fails.append(
             f"{path} body MUST document the `rabbit-managed` safety guard"
         )
+    # Body MUST NOT carry the hardcoded user-decision-gate question prose.
+    forbidden_phrases = (
+        "Ask explicitly:",
+        "close** this issue without working it",
+    )
+    for phrase in forbidden_phrases:
+        if phrase in body:
+            fails.append(
+                f"{path} body MUST NOT contain hardcoded gate-question "
+                f"prose: {phrase!r}"
+            )
     return fails
 
 
