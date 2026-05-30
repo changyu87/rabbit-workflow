@@ -14,7 +14,6 @@
         { "name": "tdd-subagent",     "required": true,  "description": "TDD subagent dispatch (dispatch-tdd-subagent.py) + forward-only TDD state machine (tdd-step.py) — absorbed tdd-state-machine at v4.0.0", "children": [] },
         { "name": "tdd-state-machine", "required": false, "description": "RETIRED — absorbed into tdd-subagent at v4.0.0 (TDD-SUBAGENT-BACKLOG-18); tombstone retained", "children": [] },
         { "name": "rabbit-spec",      "required": false, "description": "RETIRED — surface absorbed into rabbit-feature as rabbit-feature-spec; tombstone retained per Inv 43", "children": [] },
-        { "name": "rabbit-file",      "required": false, "description": "RETIRED — superseded by rabbit-issue (GitHub Issues wrapper); tombstone retained per Inv 36(c) until directory removal", "children": [] },
         { "name": "rabbit-feature",   "required": true,  "description": "owns rabbit-feature-touch orchestration skill; invokes tdd-subagent scripts", "children": [] },
         { "name": "rabbit-issue",     "required": true,  "description": "GitHub Issues wrapper for filing, listing, and lifecycle-managing bugs and enhancements via the gh CLI (successor to rabbit-file)", "children": [] },
         { "name": "rabbit-config",    "required": true,  "description": "configuration manager; hosts /rabbit-config skill; emits Stop/SessionStart alerts for active overrides", "children": [] },
