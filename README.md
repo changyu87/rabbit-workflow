@@ -72,10 +72,11 @@ python3 .claude/features/rabbit-feature/scripts/new-feature.py \
 # rabbit-feature)
 Skill("rabbit-feature-audit", args: "projA/features")
 
-# File a bug (rabbit-file owns bug/backlog item lifecycle)
-python3 .claude/features/rabbit-file/scripts/file-item.py \
+# File a bug (rabbit-issue owns bug/enhancement item lifecycle)
+python3 .claude/features/rabbit-issue/scripts/file-item.py \
     --feature auth-redirect --type bug \
-    --title "login redirects loop on safari" --priority high
+    --title "login redirects loop on safari" --priority high \
+    --description "Safari redirects between /login and /home repeatedly"
 
 # Transition TDD state — same script for any feature dir
 python3 .claude/features/tdd-subagent/scripts/tdd-step.py \

@@ -17,7 +17,7 @@ This module has two distinct roles:
      tarball.
 
      Excludes development surfaces: test/, docs/, scripts/enforcement/,
-     deferred features (rabbit-config, rabbit-file, tdd-subagent), retired
+     deferred features (rabbit-config, tdd-subagent), retired
      tombstones (tdd-state-machine, rabbit-spec).
 
      Usage:
