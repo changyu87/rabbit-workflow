@@ -3,7 +3,7 @@
   "name": "rabbit-issue",
   "version": "0.1.0",
   "owner": "cyxu",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "GitHub Issues wrapper for filing, listing, and lifecycle-managing bugs and enhancements via the `gh` CLI. Replaces rabbit-file's branch-backed bug-and-backlog (B/B) storage with native GH Issues; the rabbit-managed label gates rabbit's automation from touching human-filed issues.",
   "surface": {
     "hooks": [],
@@ -45,5 +45,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "spec frontmatter + contract.md JSON committed atomically with the Phase 1 static-check tests in the prior test-write commit"
+  "spec_no_change_reason": "Phase 1 already specced full runtime behaviour (label schema, safety invariant, lifecycle, repo discovery); Phase 2 is pure implementation of what spec already mandates"
 }
