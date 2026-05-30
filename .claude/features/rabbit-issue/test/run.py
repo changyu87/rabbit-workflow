@@ -31,6 +31,7 @@ def run_pytest_suite(script: str) -> bool:
 # (kind, script) pairs. Order matters only for human-readable output.
 SUITES = (
     ("py", "test-spec-presence.py"),
+    ("py", "test-skill-presence.py"),
     ("py", "test-prompts-declared.py"),
     ("py", "test-manifest-shape.py"),
     ("pytest", "test-ensure-labels.py"),
