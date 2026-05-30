@@ -75,8 +75,8 @@ def _red_flags(text: str) -> str:
 
 # Inv 4: seven-step sequence
 def test_inv4_overview_heading_says_seven_step() -> None:
-    assert re.search(r"##\s+Unified\s+Seven-Step\s+Sequence", _text()), (
-        "SKILL.md must declare the unified sequence as 'Seven-Step' in the section heading"
+    assert re.search(r"##\s+Seven-Step\s+Sequence", _text()), (
+        "SKILL.md must declare the sequence as 'Seven-Step' in the section heading"
     )
 
 
@@ -92,15 +92,11 @@ def test_inv4_seven_step_headings_in_order() -> None:
         )
 
 
-# Inv 5: Step 1 normal mode uses Skill("rabbit-feature-scope")
+# Inv 5: Step 1 uses Skill("rabbit-feature-scope")
 def test_inv5_step_1_uses_scope_skill() -> None:
     body = _step_body(_text(), 1)
-    normal_m = re.search(
-        r"\*\*Normal mode:\*\*(.*?)(?=\*\*B/B mode:\*\*|\Z)", body, re.DOTALL
-    )
-    assert normal_m, "Step 1 must contain a '**Normal mode:**' block"
-    assert 'Skill("rabbit-feature-scope"' in normal_m.group(1), (
-        'Step 1 normal mode must invoke Skill("rabbit-feature-scope", ...); '
+    assert 'Skill("rabbit-feature-scope"' in body, (
+        'Step 1 must invoke Skill("rabbit-feature-scope", ...); '
         "shell-out to resolve-scope.py is not permitted"
     )
 
