@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-FEATURE-SCOPE-BUG-15",
+  "type": "bug",
+  "title": "No test verifies invariant 6 (empty features list is valid)",
+  "status": "close",
+  "priority": "low",
+  "description": "Spec invariant 6 and contract both say an empty features list [] is a valid response. No test exercises this. Add a test that mocks an Agent response with [] and verifies callers don't reject it.",
+  "related_feature": "rabbit-feature-scope",
+  "filed": "2026-05-18T03:02:41Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:59:11Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:02:41Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:59:11Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 triage: duplicate of RABBIT-FEATURE-SCOPE-BUG-17 (no test for Inv 6), fixed by PR #118"
+    }
+  ],
+  "commit_sha": "9293f45a1127a286fc00a3e2cac8b4c78242a99d"
+}

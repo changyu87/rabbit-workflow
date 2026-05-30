@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-4",
+  "type": "bug",
+  "title": "feature.json.schema.json requires bugs_root but contract/feature.json lacks it; additionalProperties:false rejects 'updated' field",
+  "status": "close",
+  "priority": "high",
+  "description": "schemas/feature.json.schema.json declares 'bugs_root' as a required field with additionalProperties:false. However, the contract feature's own feature.json (and others) DO NOT include bugs_root, and DO include an 'updated' field. The schema would reject every existing feature.json. validate-feature.py does not enforce bugs_root and test-validate-no-bugs-root.py explicitly tests that feature.json WITHOUT bugs_root is valid. Fix: drop 'bugs_root' from required and add 'updated' to allowed properties.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T02:57:32Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:34:34Z",
+  "history": [
+    {
+      "ts": "2026-05-18T02:57:32Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:34:34Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3 batch 2: schema permissiveness, template fields, enforcement script corrections per Inv 22-33.",
+      "fix_commits": "51fc7f3"
+    }
+  ],
+  "commit_sha": "c3d07b299c3229859b5b78b9d394c58bdba1844b"
+}

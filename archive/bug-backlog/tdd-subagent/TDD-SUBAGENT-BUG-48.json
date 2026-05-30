@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-48",
+  "type": "bug",
+  "title": "tdd-step.py _post_test_green_hooks invokes rabbit-project.py consolidate without project guard",
+  "status": "close",
+  "priority": "low",
+  "description": "tdd-step.py _post_test_green_hooks (lines 225-250) attempts to find project-map.json by going up two parent levels (features_dir, project_dir). For rabbit-level features (.claude/features/<x>/), project_dir would be repo-root. project-map.json isn't expected at repo-root for rabbit-level features so the if-isfile guard fires. But for project-level features (e.g., a user project under repo/<proj>/features/<f>/), this works. The cross-project assumption is fragile \u2014 explicitly document supported feature directory layouts in spec, and tighten the heuristic.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T04:07:55Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:40:05Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:07:55Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:40:05Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "cdfe1750fac788ce5e51b8cce2a14135871d5902"
+}

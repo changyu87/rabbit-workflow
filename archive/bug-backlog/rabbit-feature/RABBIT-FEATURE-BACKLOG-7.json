@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FEATURE-BACKLOG-7",
+  "type": "backlog",
+  "title": "Wave 7 historical-burden sweep: drop phantom rabbit-spec/scope negatives + tombstone prose",
+  "status": "close",
+  "priority": "medium",
+  "description": "Wave 7 deletion-biased sweep. Drop phantom-defending tests against retired sibling features and trim 'legacy/formerly/post-consolidation' prose from active spec.\n\nTEST DELETIONS:\n- test/test-rabbit-feature-touch-uses-feature-spec.py: drop the legacy-rabbit-spec absence test (test_does_not_invoke_legacy_rabbit_spec, lines ~40-48); positive test_invokes_rabbit_feature_spec stays\n- test/test-skill-md-resolve-scope-path.py: delete entire file (defends an absent path under a tombstoned directory)\n- test/test-backlog-1-inv-5-8-coverage.py: drop test_inv5_step1_normal_mode_does_not_shell_out_resolve_scope (lines ~92-112); positive Skill invocation test stays\n\nSPEC.md TRIMS:\n- L269-275 Inv 24 RETIRED: shrink multi-paragraph tombstone to one-line 'RETIRED in v1.4.0 \u2014 see CHANGELOG'\n- L316-326 Inv 32 RETIRED: same shrink\n- L434-440: delete closing historical-cleanup narrative paragraph\n- L25: drop 'the legacy rabbit-feature-scope feature directory has been retired to a residual marker' breadcrumb\n- L200: drop 'bug.json is a legacy path that no longer exists' clause (keep positive item.json)\n- L281: drop '(formerly rabbit-spec)' parenthetical\n- L319: drop 'The legacy rabbit-spec directory has been retired' clause\n- L400: drop 'post-consolidation cleanup and subsequent housekeeping cycles' clause\n\nfeature.json:\n- L7 summary: trim 'Post-consolidation: the legacy rabbit-feature-scope and rabbit-spec feature directories are retired...' clause and '(renamed from rabbit-spec)' parenthetical\n\nDOCSTRING TRIM:\n- test/test-backlog-1-inv-5-8-coverage.py:4: drop 'previously had no direct test' historical context\n\nPRESERVED: test-skill-md-bb-mode-item-json.py bug.json forbid test (real LLM-prose regen risk \u2014 bug.json paths still appear in archive/external prose).\n\nOUT-OF-SCOPE: RABBIT-FEATURE-BACKLOG-4.",
+  "related_feature": "rabbit-feature",
+  "filed": "2026-05-21T04:51:11Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-21T05:52:05Z",
+  "history": [
+    {
+      "ts": "2026-05-21T04:51:11Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-21T05:52:05Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "43c9e172fbc17eaee31ad5f79cd50c05a924a460"
+    }
+  ],
+  "commit_sha": "86e6385212dc5a3747d83c6f4f69cbb9a6929536"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "TDD-STATE-MACHINE-BACKLOG-2",
+  "type": "backlog",
+  "title": "SKILL.md edits via feature-touch must use skill-creator; prohibit direct feature file edits and manual scope markers",
+  "status": "close",
+  "priority": "high",
+  "description": "When rabbit-feature-touch is invoked for a feature whose scope includes a SKILL.md edit, the workflow must route through /skill-creator:skill-creator \u2014 not edit the source SKILL.md directly.\n\nThree rules:\n1. SKILL.md edits go through skill-creator: invoke Skill(skill-creator:skill-creator) and let it drive skill authoring. Direct edits bypass its eval loop and description optimization.\n2. No direct feature file edits: the main session orchestrator must never use Write or Edit tools on files inside .claude/features/. That is the TDD subagent's job. Main session role is orchestration only.\n3. No manual scope marker writes: the main session must never create .rabbit-scope-active or .rabbit-scope-active-<feature> markers. Scope markers are the TDD subagent's responsibility at LOCK step.\n\nObserved violation: 2026-05-17 session (PR #93) \u2014 main session manually created scope markers, directly edited SKILL.md source files with Edit tool, bypassing rabbit-feature-touch, rabbit-spec, and TDD subagent entirely.\n\nImplementation: detect SKILL.md paths in the impl-suggestion affected_files list at Step 4 (Human Approval) and branch to skill-creator before dispatching the TDD subagent. Add manual scope marker creation to the Red Flags section of rabbit-feature-touch.",
+  "related_feature": "tdd-state-machine",
+  "filed": "2026-05-17T10:35:39Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T02:46:29Z",
+  "history": [
+    {
+      "ts": "2026-05-17T10:35:39Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T02:46:29Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete. (1) Assembled TDD subagent prompt now routes SKILL.md edits through Skill(skill-creator:skill-creator) in IMPLEMENT step. (2) rabbit-feature-touch Red Flags now prohibits main-session Write/Edit on .claude/features/. (3) Red Flags prohibits main-session .rabbit-scope-active* marker creation. Scoped to tdd-subagent (related_feature tdd-state-machine was stale). 24 tests pass.",
+      "fix_commits": "ca6c982d920fa59b62f32a9eff3b862518aa2ee8"
+    }
+  ],
+  "commit_sha": "93824413ccc9805c84bcb54c393caa23f239d61f"
+}

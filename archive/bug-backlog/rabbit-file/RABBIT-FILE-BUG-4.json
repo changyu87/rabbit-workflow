@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-FILE-BUG-4",
+  "type": "bug",
+  "title": "_worktree checks out stale local branch instead of origin/bug-backlog-files, causing list-items to miss recently filed items",
+  "status": "close",
+  "priority": "high",
+  "description": "branch_ops._worktree() fetches origin/bug-backlog-files but then runs 'git checkout bug-backlog-files' inside the worktree, which checks out the local tracking branch \u2014 not the freshly-fetched remote ref. If the local branch is behind origin (e.g. because items were filed from another session or machine), the worktree is on a stale commit and any items filed since the last local update are invisible to list-items.py, item-status.py get, and fetch_item().\n\nObserved: RABBIT-CAGE-BUG-7 filed at commit e0a3e8a (origin/bug-backlog-files tip bf6a5b0) was not returned by list-items.py --type bug --feature rabbit-cage. Manual 'git show origin/bug-backlog-files:rabbit/features/rabbit-cage/bugs/RABBIT-CAGE-BUG-7/item.json' confirmed the file exists. Debug showed worktree HEAD was 68ae7b2 (local bug-backlog-files) while origin was bf6a5b0 \u2014 8 commits behind.\n\nRoot cause: after 'git fetch origin bug-backlog-files', _worktree does 'git checkout bug-backlog-files' (local ref) rather than the remote ref. The fetch updates FETCH_HEAD and origin/bug-backlog-files but leaves the local tracking branch where it was.\n\nFix: replace 'git checkout bug-backlog-files' / 'git checkout -b bug-backlog-files origin/bug-backlog-files' with a detached-HEAD checkout of origin/bug-backlog-files directly: 'git checkout origin/bug-backlog-files'. This guarantees the worktree always reflects the fetched remote tip regardless of local branch state. Write operations already push to origin and re-setup the worktree fresh each time, so detached HEAD is safe for reads and writes alike.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-17T12:56:09Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-17T13:47:07Z",
+  "history": [
+    {
+      "ts": "2026-05-17T12:56:09Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-17T13:47:07Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed by PR #97: replaced stale checkout with git checkout -B in branch_ops._worktree(). Fixes both BUG-4 (stale reads) and BUG-5 (non-fast-forward writes)."
+    }
+  ],
+  "commit_sha": "61007eb65bbdf2a12d89e842bfd15a2e9734251d"
+}

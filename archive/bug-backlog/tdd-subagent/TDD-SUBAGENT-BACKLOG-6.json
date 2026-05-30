@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BACKLOG-6",
+  "type": "backlog",
+  "title": "feature.json schema is undeclared; tests use legacy nested shape",
+  "status": "close",
+  "priority": "medium",
+  "description": "tdd-subagent/feature.json uses a flat schema: name, version, owner (string), tdd_state, summary, surface, deprecation_criterion (flat), updated. Test fixtures in test-tdd-step.py, test-context.py, test-drift-check.py use a different, nested shape with owner as object, contract, status, deprecation as object. The actual schema is undeclared anywhere (no JSON schema, no contract-level statement). Either: declare the canonical feature.json schema in contract feature (or here), and update fixtures and consumer scripts (tdd-context.py) to match. The drift between fixtures and real files masked the deprecation_criterion read bug.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:58:07Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T09:03:38Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:58:07Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T09:03:38Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete: TDD-SUBAGENT-BACKLOG-6 closed",
+      "fix_commits": "519f4ee0c6960dfb8a6acc224bc96ad7cd67cb83"
+    }
+  ],
+  "commit_sha": "a37eeb059d1f3cb4eaf77993c0ddf6d45df95309"
+}

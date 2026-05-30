@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FEATURE-SCOPE-BUG-14",
+  "type": "bug",
+  "title": "No test verifies invariant 4 (Agent response JSON schema)",
+  "status": "close",
+  "priority": "medium",
+  "description": "Spec invariant 4 specifies the Agent response schema {features: [...], rationale: 'one sentence'}. No test or validator exists. Add a schema-validation helper that the caller can use to verify the Agent's response, and a test that runs it against representative example responses (valid + malformed).",
+  "related_feature": "rabbit-feature-scope",
+  "filed": "2026-05-18T03:02:28Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T06:57:25Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:02:28Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T06:57:25Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed in Wave 3 PR. BUG-21 hardcoded names removed; BUG-28 defensive .get() for optional keys; BUG-7/9/12/14/17 covered by new test-invariant-coverage.py.",
+      "fix_commits": "b13dc4b"
+    }
+  ],
+  "commit_sha": "f611690e6d17decddf268c1b7ca98c04fa145763"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-40",
+  "type": "bug",
+  "title": "test-tdd-step.py terminal-state test t8 misnamed and message says wrong assertion",
+  "status": "close",
+  "priority": "low",
+  "description": "test-tdd-step.py t8 (line 171-178) fixture state is 'deprecated', transitions to 'spec' with --force. ok message reads 'deprecated is terminal (no exit even with --force)' \u2014 but the variable is named t8 and the message says no EXIT which is misleading; the assertion is that no TRANSITION is allowed. Reword to 'deprecated has no allowed forward or backward transitions (even with --force)'. Also clarify that it tests the special-case in tdd-step.py line 340-342.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:54:00Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:39:02Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:54:00Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:39:02Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "5b0e214d4cdafd0dba2e6701338dc9e3817c2b95"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-81",
+  "type": "bug",
+  "title": "build-targets.py: marker-write only on SKILL.md targets \u2014 misses skill scripts/resources updates",
+  "status": "close",
+  "priority": "medium",
+  "description": "scripts/build-targets.py lines 53-57: appends to .rabbit-skills-updated ONLY when the copy-file target's destination matches '^\\.claude/skills/([^/]+)/SKILL\\.md$'. If a skill ships scripts (e.g., skills/rabbit-config/scripts/rabbit-config.py is a copy-file target whose destination is .claude/skills/rabbit-config/scripts/rabbit-config.py), build will copy the updated script file but NOT write the marker. Claude Code won't be alerted that the skill changed. Spec Inv 24a says 'whose destination matches ^\\.claude/skills/([^/]+)/SKILL\\.md$' \u2014 narrowly only SKILL.md \u2014 which matches code, but reality is skills can include other files that update independently of SKILL.md. Either broaden the marker trigger to any '.claude/skills/<name>/...' destination, or document that out-of-band skill-script updates are not signalled.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:27:21Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:43:25Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:27:21Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:43:25Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "d17dd566bc6f7c90e81d65fb1a27cae1103a071b"
+}

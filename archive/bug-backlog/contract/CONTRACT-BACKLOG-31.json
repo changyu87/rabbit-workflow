@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-31",
+  "type": "backlog",
+  "title": "Contract spec.md monotonic invariant renumber + cross-reference audit (split from BACKLOG-30 F8)",
+  "status": "close",
+  "priority": "medium",
+  "description": "Why deferred: cross-reference blast radius needs focused audit + dedicated PR cycle. CONTRACT-BACKLOG-30 (PR landing alongside this filing) delivered F6 test consolidation, F7 moot stripping, the folded check_invariant_monotonic_order enforcement test (with KNOWN_ISSUES=['contract','rabbit-cage','rabbit-feature']), and tombstone migration to contract/CHANGELOG.md. The final piece is the renumber itself.\n\nScope:\n- Renumber the surviving ~37 invariants in .claude/features/contract/docs/spec/spec.md monotonically (no decimal sub-numbers; no letter suffixes; document order matches numeric order).\n- Update every cross-reference: grep the .claude/ tree for 'Inv N', 'per Inv N', 'Inv N/N', '(matches Inv N)', etc. Sites known to cite contract invariants by number include policy/spec.md, policy/test/, rabbit-cage/spec.md cross-references, and contract's own tests.\n- Remove 'contract' from _MONOTONIC_KNOWN_ISSUES in .claude/features/contract/lib/checks.py once spec is monotonic.\n- Pre-requisite: grep audit FIRST \u2014 generate a manifest of every cross-reference site (paths + line numbers + exact citation text) BEFORE touching spec.md. The manifest IS the work plan; without it, drift is silent.\n- Cross-feature considerations: cage and rabbit-feature also still on _MONOTONIC_KNOWN_ISSUES until PRs #161 and #162 merge \u2014 those are independent prunes, not part of this work.\n\nAcceptance:\n- contract spec.md invariants in strictly monotonic document order (run check_invariant_monotonic_order against it and assert pass).\n- _MONOTONIC_KNOWN_ISSUES list empty (or just the pending non-contract entries pending their PR merges).\n- All cross-reference sites updated; no broken 'Inv N' citation in the .claude/ tree.\n- contract/CHANGELOG.md carries a renumber note at the top describing the event (the old historical numbers in CHANGELOG entries are NOT renumbered per Inv 46).",
+  "related_feature": "contract",
+  "filed": "2026-05-21T01:21:45Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-21T02:20:53Z",
+  "history": [
+    {
+      "ts": "2026-05-21T01:21:45Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-21T02:20:53Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Closed by PR #165: monotonic renumber 1..39 + cross-reference audit; _MONOTONIC_KNOWN_ISSUES now = ['rabbit-cage']",
+      "fix_commits": "d68cded9"
+    }
+  ],
+  "commit_sha": "4b4a9b0a6843016163ea390e0be7d64037b33754"
+}

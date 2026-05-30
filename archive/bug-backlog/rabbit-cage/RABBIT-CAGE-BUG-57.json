@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-57",
+  "type": "bug",
+  "title": "scope-guard.py path-prefix comparisons use string startswith on REPO_ROOT path \u2014 symlink/realpath edge case",
+  "status": "close",
+  "priority": "medium",
+  "description": "hooks/scope-guard.py lines 107, 123-125, 149, 162, 163: all path comparisons use str.startswith(str(REPO_ROOT) + '/'). REPO_ROOT is derived from 'git rev-parse --show-toplevel' which returns the symlink-resolved real path. But abs_path is built from os.getcwd() or the raw tool_input (line 60-61) which preserves any symlink components. If REPO_ROOT is, say, /home/user/proj but the user invokes Claude in /tmp/proj (a symlink to /home/user/proj), every check returns 'outside repo' (line 108) and writes are silently allowed everywhere. The os.path.realpath call at line 100 only handles the case where the TARGET is a symlink, not where cwd is symlinked. Resolve abspath via os.path.realpath(abspath(target)) defensively, or compare against both realpath and lexical-path of REPO_ROOT.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:17:09Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:41:56Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:17:09Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:41:56Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "f6317f53db92db93c8dd5300edda38da6213fb4a"
+}

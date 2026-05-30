@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-48",
+  "type": "bug",
+  "title": "Most rabbit-cage scripts lack --help / usage handling",
+  "status": "close",
+  "priority": "low",
+  "description": "Many hook and script files exit 0 silently when called with --help (no usage shown): hooks/scope-guard.py (treats --help as a tool payload, reads empty stdin and exits 0), hooks/sync-check.py, hooks/session-init.py, hooks/refresh.py, scripts/scope-guard-on.py (the latter ignores all argv entirely), scripts/rabbit-project-set-path.py, scripts/rabbit-project-map.py, scripts/rabbit-project-consolidate.py, scripts/generate-claude-md-header.py, scripts/build.py, scripts/build-targets.py. Spec says these implement stdin/stdout/exit-code contracts but no --help means humans cannot discover the contract without reading source. Add minimal '--help' handler to each public script.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:14:41Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:41:14Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:14:41Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:41:14Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "385bdc0d3edfde81ad37579aeb29a2b35d07c6ed"
+}

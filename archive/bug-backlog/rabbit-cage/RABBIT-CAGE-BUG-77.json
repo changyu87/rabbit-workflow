@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-77",
+  "type": "bug",
+  "title": "rabbit-config.py opens 'permissions':{} via setdefault then write_json \u2014 write_json runs even for no-op listing/list path?",
+  "status": "close",
+  "priority": "medium",
+  "description": "Actually verifying: cmd_allowed_tools and cmd_bash_allow list paths (action=='') do NOT call perm_allow (they iterate cfg.get(...).get(...,[])). Only the add/remove paths call perm_allow. add path always writes when entry is new. remove path writes only if entry was found. The 'Not present' / 'Already present' branches do NOT write \u2014 confirmed. False alarm; not actually a bug. RECLASSIFY: instead \u2014 actual concern is that 'allowed-tools' list output does not preserve the input's setting order or use the spec's 'in array order' wording explicitly. settings.local.json deserialization preserves insertion order in Python 3.7+ which is fine. Minor: SKILL.md description claims subcommands act on settings.local.json but the CLI Surface table in body just says 'in settings.local.json' without explaining the source/destination split documented in spec.md (Inv 50). New users invoking from SKILL.md without reading spec may try to add team-wide entries via allowed-tools (wrong file).",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:26:08Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:43:07Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:26:08Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:43:07Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "b2a87fbe74eba3617c8571fbfb45a5a0b9d6b02e"
+}

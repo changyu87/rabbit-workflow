@@ -1,0 +1,64 @@
+{
+  "name": "CONTRACT-BACKLOG-17",
+  "type": "backlog",
+  "title": "Rabbit user-project plugin architecture (per-project .rabbit/, fully committed, vendored)",
+  "status": "close",
+  "priority": "high",
+  "description": "## Source\n\nDesign doc: docs/superpowers/specs/2026-05-18-rabbit-user-project-plugin-architecture-design.md\n\nThis backlog item tracks implementation of the per-project plugin architecture for rabbit. The full design (motivation, choices, flows, deferrals, scope, brainstorming history) lives in the design doc above. This summary captures the load-bearing decisions and scope so the item is self-contained for triage.\n\n## Goal\n\nExtend rabbit to manage user projects \u2014 not just self-evolve. A user should be able to install rabbit into any project (greenfield or brownfield), use rabbit's TDD/contract machinery on that project's code, and ship work via the user's existing git workflow.\n\n## Load-bearing architectural choices\n\n1. **Per-project plugin model.** Rabbit installs at <user-project>/.rabbit/. 1-1 rule: one rabbit process targets one project. No central rabbit installation; no registry; no /rabbit-project switch command. Parallel work = multiple terminals in different .rabbit/ dirs.\n\n2. **.rabbit/ fully committed, pure vendoring.** No embedded .git inside .rabbit/. Internal .gitignore excludes ephemerals (locks, scope markers, scratch). Specs/registry/items travel with code via the user's normal git push. git clone of the user repo gives a complete rabbit-enabled checkout \u2014 no bootstrap on clone.\n\n3. **Co-located bookkeeping.** rabbit-project/ (specs, registry, items) lives inside .rabbit/ alongside the runtime in .rabbit/.claude/. Both committed.\n\n4. **Meta-contract owns the structure.** New top-level contract declares: project signature (.rabbit/ in ancestry), required files and fixed locations (no per-project configurability), per-path commit policy, per-version migration scripts, owner/version. Single source of truth.\n\n5. **Two operating modes.** Plugin mode (.rabbit/ in cwd ancestry \u2192 operate on parent as user project). Standalone mode (no .rabbit/ \u2192 operate on cwd as rabbit-self being edited). Same machinery; disambiguated by filesystem detection at session start.\n\n6. **Update flow: fetch-diff-check-apply-revert.** Rabbit checks upstream on session start, banner if newer. User approves \u2192 fetch to temp, diff vs current .rabbit/ excluding rabbit-project/ and ephemerals, apply in place, run per-version migration scripts. Pass: explicit commit (chore(rabbit): update to X) for bisectability. Fail: revert; nothing changed.\n\n7. **Concurrency.** Multi-rabbit same project: file locks on contracts (allowed with warning). Multi-user same project: git's job; merge conflicts on contracts at push time.\n\n8. **Ship-it.** Rabbit commits + pushes user repo on user request, only when feature is at TDD step TEST-GREEN. Branch model / PRs / releases are the user's call.\n\n## Scope of work\n\nTouches features: contract (meta-contract is the keystone), rabbit-cage (new user-facing commands/skills for bootstrap, update, switch-mode-detection).\n\nLikely also touches (during implementation):\n- tdd-subagent: test command lookup must read project-map.json instead of assuming rabbit-self defaults\n- rabbit-feature-touch: scope guard logic must work for both plugin and standalone modes\n- rabbit-spec: spec authoring path resolution under both modes\n- rabbit-file: item paths must work in both modes\n- policy: may need updates if the philosophy/spec-rules/coding-rules implications are non-trivial\n\n## Out of scope (v1)\n\n- Imposing branch model on user projects\n- Push/pull user code beyond bootstrap/ship-it/update\n- Cross-project dependency management\n- Multi-version rabbit runtime in one process (per-project pinning makes this unnecessary)\n- Submodule-based vendoring (rejected; pure file vendoring chosen)\n- Activity log / project-history recap\n- Brownfield auto-discovery of feature boundaries\n- Multi-user coordination beyond what git provides\n- Central registry / \"list my projects\" meta-utility\n\n## Open implementation questions (for the plan phase)\n\n1. Exact path layout inside .rabbit/.claude/ vs today's structure\n2. test-command field name in project-map.json and override precedence\n3. Bootstrap script: shell one-liner vs rabbit-shipped bootstrap.sh\n4. Session-start version-check mechanism\n5. Migration script discovery (directory scan vs manifest)\n6. Update skill name (/rabbit-config update vs new /rabbit-update)\n\n## Status\n\nDesign approved 2026-05-18 (brainstorming session). Awaiting writing-plans skill to produce the implementation plan. Implementation deferred \u2014 this backlog item is for tracking, not immediate work.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T06:42:18Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-28T08:21:51Z",
+  "history": [
+    {
+      "ts": "2026-05-18T06:42:18Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:46:59Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Deferred: too large/complex for housekeeping waves. Requires dedicated design cycle. Filed for future roadmap consideration."
+    },
+    {
+      "ts": "2026-05-18T08:51:24Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "design completed and merged (PR #116, commit 839d5f7); reopening for implementation tracking (closed in error by long-running housekeeping session)"
+    },
+    {
+      "ts": "2026-05-18T09:12:27Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Deferred: per-project plugin architecture is a major roadmap item, not a cleanup task. Requires dedicated spec and design cycle."
+    },
+    {
+      "ts": "2026-05-18T14:24:42Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "design completed and merged (PR #116, commit 839d5f7); housekeeping closure was a context-drift error"
+    },
+    {
+      "ts": "2026-05-19T10:53:06Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Temporarily closed before CONTRACT-BACKLOG-19 housekeeping wave to prevent accidental closure by wave b/b filings; will be reopened after the wave completes"
+    },
+    {
+      "ts": "2026-05-19T13:22:02Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "Reopening after CONTRACT-BACKLOG-19 wave complete"
+    },
+    {
+      "ts": "2026-05-28T08:21:51Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "User-interfacer cycle complete \u2014 all 12 plan tasks delivered across 9 squash-merged PRs. The new design.md (4e2883aa) + plan.md (9e46471d) describe the lean-wedge architecture; PRs #201-#209 implement it. Drift-protected Claude is live in plugin mode via .rabbit/CLAUDE.md; opt-in feature mapping via rabbit-feature-new <name> <path-glob>; scope-guard blocks declared-feature edits without active marker; one-shot bypass via .rabbit/.runtime/scope-bypass-once. Install ritual documented in docs/install.md. TDD-on-user-code and B/B-on-user-code remain deferred per design v0.2.0.",
+      "fix_commits": "670e73f5,8992231b,565af802,eeb4ca15,2f5d7809,44e17910,e76cfb01,6baef8a9,915c7d36"
+    }
+  ],
+  "commit_sha": "99a4cc2db272dfafec944e86274457dbf247aefd"
+}

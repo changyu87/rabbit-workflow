@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-SPEC-BACKLOG-9",
+  "type": "backlog",
+  "title": "Invariant test gap closures: generated_at format, Inv 2 open-vs-specific judgment, Inv 10 meta-test, real impl-suggestion validation",
+  "status": "close",
+  "priority": "medium",
+  "description": "rabbit-spec spec.md declares invariants documented as testable but several are unverified or vacuously satisfied:\\n\\n1. Inv 3 sub-clause about generated_at shape 'YYYY-MM-DDTHH:MM:SSZ' (RFC 3339 with Z suffix) is mandated in spec.md:84-85 ('Test must assert this shape') but the only test merely checks the substring 'ISO 8601' appears in spec.md \u2014 it does NOT assert the format is documented in SKILL.md, nor parse any actual impl-suggestion output.\\n\\n2. Inv 2 has no direct test \u2014 requires the skill to judge open-ended vs specific before deciding which superpowers to invoke. Implicit-only coverage via brainstorming/writing-plans substring tests would pass even if the conditional mapping broke.\\n\\n3. Inv 10 ('every numbered invariant MUST have at least one test') has no meta-test that parses the spec invariant list and checks coverage.\\n\\n4. No test parses an actual impl-suggestion JSON output \u2014 every current test asserts on SKILL.md text only.\\n\\nFix: add a real generated_at format regex check on a sample/generated impl-suggestion file; add an Inv 2 test asserting SKILL.md documents the open\u2192brainstorming+writing-plans / specific\u2192writing-plans mapping; add an Inv 10 meta-test that walks the invariant list.",
+  "related_feature": "rabbit-spec",
+  "filed": "2026-05-19T11:28:55Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T12:48:02Z",
+  "history": [
+    {
+      "ts": "2026-05-19T11:28:55Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T12:48:02Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "d2bcd85e8bb4ad614918c6fcc3572f4b834d76f0"
+    }
+  ],
+  "commit_sha": "93ad083227f4a250e42aa107e8b94bb6beb1a145"
+}

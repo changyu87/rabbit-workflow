@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-15",
+  "type": "backlog",
+  "title": "extract_bash_targets supports only a few write verbs; coverage gaps for python -c, dd, tar, ln, install",
+  "status": "close",
+  "priority": "low",
+  "description": "hooks/scope-guard.py extract_bash_targets() detects redirects (> >>), tee, sed -i, cp/mv, rm, touch, mkdir. It does NOT detect: dd of=PATH, tar -xf to a directory, ln -s creating files inside repo, install -m, awk -i inplace, python -c \"open('PATH','w')\", any redirect through a heredoc to a file, or any of the many writing operations available via python/perl/ruby one-liners. A determined agent (or accidental misuse) can write inside the repo via any of these without scope-guard catching it. Spec invariant scope is 'conservative' (line 262: 'conservative') so this is documented behavior, but expanding the verb set or adding a 'PATH=' fast-path may strengthen the guarantee.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:17:27Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:47:45Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:17:27Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:47:45Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Deferred: too large/complex for housekeeping waves. Requires dedicated design cycle. Filed for future roadmap consideration."
+    }
+  ],
+  "commit_sha": "895912f3f296ce8ad774fe36f2b17a5e3bbcae36"
+}

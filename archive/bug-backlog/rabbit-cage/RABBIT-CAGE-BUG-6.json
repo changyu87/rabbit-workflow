@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-6",
+  "type": "bug",
+  "title": "sync-check.py rebuilds settings.json without preserving permissions block, silently destroying manual permission grants",
+  "status": "close",
+  "priority": "high",
+  "description": "When the Stop hook (sync-check.py) detects surface drift, it rebuilds .claude/settings.json from its canonical source but drops the permissions block entirely. Any permissions added to settings.json (e.g. via Write) are silently overwritten at end of turn. Reproduced: wrote a permissions.allow array with 25 Bash rules; Stop hook fired, reported 'Surface drift detected \u2014 workspace rebuilt from sources', and the permissions block was gone. Root cause: sync-check.py rebuild does not merge existing permissions into the regenerated file.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-15T09:38:48Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-17T05:54:10Z",
+  "history": [
+    {
+      "ts": "2026-05-15T09:38:48Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-17T05:54:10Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "e7ac1c14b11025a4568b0afde7bcfba047a43f4d"
+    }
+  ],
+  "commit_sha": "580362f285aff72de785c6547029820ec8d1e0e2"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-54",
+  "type": "bug",
+  "title": "Several helper Python scripts crash on missing argv (no usage/range check)",
+  "status": "close",
+  "priority": "medium",
+  "description": "scripts/rabbit-project-set-path.py and rabbit-project-map.py and rabbit-project-consolidate.py access sys.argv[1], [2], [3] directly with no validation. Invoking any of them with too few args raises IndexError with a traceback rather than printing a usage line and exiting 2. generate-claude-md-header.py is the same (sys.argv[1] without check). build-targets.py is also positional-only (sys.argv[1], [2], [3]). Although these scripts are 'helpers' invoked by other scripts, defensive usage handling helps debugging and matches the contract's stated exit codes (0=ok 1=error).",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:16:17Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:41:48Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:16:17Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:41:48Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "98db23bc6fc3c2e67414e539ae58eb0c1d06a597"
+}

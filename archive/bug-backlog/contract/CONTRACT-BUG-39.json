@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-39",
+  "type": "bug",
+  "title": "dispatch-feature-edit.py TDD_GAP prompt instructs subagents to name tests with .sh extension (violates Python-only stack Inv 11)",
+  "status": "close",
+  "priority": "high",
+  "description": "dispatch-feature-edit.py:87 contains the prompt template line 'Name the test after the bug id (e.g. test-{bug_id}-<description>.sh).' This contradicts Inv 11/17 (Python-only stack) and would lead any subagent following the prompt to scaffold .sh test files that immediately violate the contract. Fix: change the example extension from .sh to .py.",
+  "related_feature": "contract",
+  "filed": "2026-05-19T11:27:56Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T11:43:53Z",
+  "history": [
+    {
+      "ts": "2026-05-19T11:27:56Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T11:43:53Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "156a6ac3bd6e948783574ebfaca446159bc4cad1"
+    }
+  ],
+  "commit_sha": "b78de9bac5f40f81bee2ce682e045d6c6f9dd1ee"
+}

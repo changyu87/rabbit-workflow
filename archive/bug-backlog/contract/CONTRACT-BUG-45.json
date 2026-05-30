@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-45",
+  "type": "bug",
+  "title": "publish_settings overwrites settings.json clobbering cross-feature hook registrations",
+  "status": "close",
+  "priority": "high",
+  "description": "publish_settings (lib/publish.py) does a full file copy from the feature's source settings.json to .claude/settings.json. When check_manifest_drift runs all feature manifests alphabetically, contract's publish_hook adds prompt-injector.py to PreToolUse in settings.json, then rabbit-cage's publish_settings overwrites settings.json from its source (which has no prompt-injector entry), dropping the registration. Rabbit-cage then re-adds its own hooks via publish_hook calls, but contract's hook is lost.\n\nNet effect: every Stop event fires the 'Surface drift detected - rebuilt: contract, rabbit-cage' alert indefinitely because the drift check loop re-adds prompt-injector (contract pass), then clobbers it (rabbit-cage publish_settings), then can never reach a stable state.\n\nRoot cause: publish_settings must MERGE the hooks section rather than overwrite it entirely. The hooks section of .claude/settings.json is the shared registration surface for all features; a simple file-copy from one feature's source destroys other features' hook registrations.\n\nFix: modify publish_settings in lib/publish.py to:\n1. Read the existing .claude/settings.json\n2. Load the source settings.json from the feature\n3. Merge: copy all non-hooks fields from source, then for the hooks section append any hook entries from source that are not already present (matching on event + command), preserving existing entries from other features\n4. Write back the merged result\n\nIdempotency holds as long as the merge check uses the same command-equality logic as publish_hook (exact command string match).\n\nObserved during CONTRACT-BACKLOG-1 implementation: the prompt-injector PreToolUse hook (contract Inv 55, landed in Phase A.2/A.3) never reaches stable deployment because publish_settings clobbers it on every Stop cycle.",
+  "related_feature": "contract",
+  "filed": "2026-05-27T01:52:08Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-27T02:23:17Z",
+  "history": [
+    {
+      "ts": "2026-05-27T01:52:08Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-27T02:23:17Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "6564a2d5"
+    }
+  ],
+  "commit_sha": "6d4cd0ed1f4d4373964f0f6eacc13c2acbb8fa30"
+}

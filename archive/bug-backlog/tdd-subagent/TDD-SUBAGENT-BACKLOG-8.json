@@ -1,0 +1,27 @@
+{
+  "name": "TDD-SUBAGENT-BACKLOG-8",
+  "type": "backlog",
+  "title": "agents/tdd-subagent.md describes 9-step list but is decoupled from dispatch-tdd-subagent.py prompt template",
+  "status": "close",
+  "priority": "low",
+  "description": "agents/tdd-subagent.md describes the 9 steps as a list in prose but the actual step instructions are assembled at dispatch time by dispatch-tdd-subagent.py. If the agent definition's step list drifts from the prompt's banner names, the agent file becomes misleading documentation. Either inline the canonical step names into a single source (e.g., a constant in dispatch-tdd-subagent.py imported elsewhere), or generate the agent definition from the prompt template. Currently both files have a chance to drift independently.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:59:38Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:06:55Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:59:38Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:06:55Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "superseded by CONTRACT-BACKLOG-1 (collapses into versioned schema-based subagent prompt contract; per cluster analysis 2026-05-18, this concern becomes trivial or free once the prompt is a structured contract with inspect/edit surface)"
+    }
+  ],
+  "commit_sha": "48bd91d3309e648b7ba7fcae7f63d49cce41b80c"
+}

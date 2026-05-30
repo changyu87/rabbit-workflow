@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-29",
+  "type": "backlog",
+  "title": "Housekeeping wave 1: sync Inv 34/35 for PR #151 + add dispatch-bypass wrapper + dead-code cleanup + tombstone consolidation",
+  "status": "close",
+  "priority": "medium",
+  "description": "Bundled housekeeping items for contract feature.\n\nPRIMARY (depends-on for tdd-subagent BUG-57):\n(M2) Inv 34 + Inv 35 in spec.md don't reflect PR #151's bypass-permissions-active addition. Add 'bypass-permissions-active (red, icon ALERT)' to Inv 34 required-id list; add 'bypass_permissions_active() -> str' to Inv 35 wrapper enumeration. __all__ in rabbit_print.py already has it; spec lags.\n\n(NEW for BUG-57 dependency) Add a NEW message-id 'dispatch-bypass-note' to rabbit-print-messages.json registry with icon (any appropriate non-conflicting) + color yellow (new color \u2014 see additional note below) + text body matching the current dispatch-tdd-subagent.py bypass preamble note. Add a bypass_note() (or named-wrapper) function to rabbit_print.py. This wrapper will be consumed by dispatch-tdd-subagent.py to replace its inline ANSI/brand string per BUG-57 resolution.\n\nColor note: current rabbit-print-messages.json has only green and red colors registered. The bypass preamble note uses yellow (\\x1b[33m). Add yellow to the colors palette: { 'ansi': '\\\\u001b[33m', 'reset': '\\\\u001b[0m' }. Update Inv 34/related schemas accordingly. The colors schema enum at rabbit-print.schema.json line 61 will need to add 'yellow' (or relax the enum \u2014 see LOW F4 below).\n\nLOW BACKLOG items (file together):\n(F2) rabbit_print.py docstring still cites 'tdd-subagent scripts' as importer. Per Inv 36 the canonical producer is tdd-state-machine/tdd-step.py. Update docstring.\n(F3) lib/checks.py line 50-52 dead _get_repo_root backwards-compat alias. Delete.\n(F4) rabbit-print.schema.json colors enum {green,red} hardcoded while colors map allows additionalProperties. Inconsistent. Pick one: relax enum (preferred \u2014 supports new colors like yellow for BUG-57) OR tighten colors map. We'll relax + add yellow.\n(F5) feature.json.schema.json optional bugs_root field is dead since item storage moved to rabbit-file. Delete.\n(F6) test-dead-relink-tests-deleted.py + test-backlog-27-retirements.py + test-bug-41-cleanup.py \u2014 360 LOC of one-shot 'file stays deleted' asserts. Consolidate into one slim 'retired-artifacts-stay-retired.py' or delete (the assertions can only regress via deliberate revival; coverage exists elsewhere).\n(F7) test-bug-fixes-cycle.py is 248 LOC, ~5/16 entries are 'moot, deleted' stubs. Either retire (assertions covered by per-concern tests) or strip moot entries.\n(F8) spec.md has ~9 'removed in CONTRACT-BACKLOG-X' tombstone invariants (~20% of 44 total). Renumber and move tombstone log to CHANGELOG.\n\nAcceptance: PR #151 reflected in spec; new bypass-note wrapper available for tdd-subagent BUG-57 fix; dead aliases/schema fields/duplicate tests removed; tombstone invariants consolidated.\n\nNOTE: this backlog must land BEFORE the tdd-subagent BUG-57/BUG-58 cycle since H3 fix depends on the new wrapper.",
+  "related_feature": "contract",
+  "filed": "2026-05-20T07:32:27Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T07:47:48Z",
+  "history": [
+    {
+      "ts": "2026-05-20T07:32:27Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T07:47:48Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "b5350385ce23779beca4e303ec0eb3f50b2cc33a"
+    }
+  ],
+  "commit_sha": "b23a9d41642d8ca7873e104a3e40acb630e4dff9"
+}

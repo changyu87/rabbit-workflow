@@ -16,12 +16,11 @@
       "scripts/file-item.py",
       "scripts/item-status.py",
       "scripts/list-items.py",
-      "scripts/_gh.py",
-      "scripts/migrate.py"
+      "scripts/_gh.py"
     ]
   },
   "deprecation_criterion": "when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill",
-  "updated": "2026-05-29",
+  "updated": "2026-05-30",
   "manifest": [
     {
       "api": "publish_skill",
@@ -45,5 +44,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "spec frontmatter + contract.md JSON committed atomically with the Phase 1 static-check tests in the prior test-write commit"
+  "spec_no_change_reason": "Phase 5 narrowed touch: implement migrate.py per existing spec surface declaration; no spec.md/contract.md changes needed (migrate.py was already in surface.scripts and spec already calls it out as one-shot)."
 }

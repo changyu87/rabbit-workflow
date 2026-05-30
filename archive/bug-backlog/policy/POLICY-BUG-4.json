@@ -1,0 +1,27 @@
+{
+  "name": "POLICY-BUG-4",
+  "type": "bug",
+  "title": "test-rule-files-content.py comment claims 'four rule files' but only three exist",
+  "status": "close",
+  "priority": "low",
+  "description": "test-rule-files-content.py line 2 comment reads 'Spot-checks content of the four rule files.' but the feature only has three rule files: philosophy.md, spec-rules.md, coding-rules.md (per spec.md Surface and contract.md provides.files). The 'four' is a stale reference (likely from when workflow-rules.md existed). Should be changed to 'three rule files'. Location: .claude/features/policy/test/test-rule-files-content.py line 2.",
+  "related_feature": "policy",
+  "filed": "2026-05-18T02:55:07Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T02:56:04Z",
+  "history": [
+    {
+      "ts": "2026-05-18T02:55:07Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T02:56:04Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "duplicate of POLICY-BUG-2 (worktree race during initial filing)"
+    }
+  ],
+  "commit_sha": "e118d150c90511e9f15b46a1925b1b87638ef400"
+}

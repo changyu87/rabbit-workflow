@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FILE-BACKLOG-11",
+  "type": "backlog",
+  "title": "Dead code cleanup + test gap closures: _BRANCH alias, unreachable raise, NotImplementedError stub, release_id branches",
+  "status": "close",
+  "priority": "medium",
+  "description": "Multiple cleanups in rabbit-file:\\n\\nDead code:\\n1. branch_ops.py:36 _BRANCH legacy private alias \u2014 comment says 'Legacy private alias retained for internal call sites' but every call site is inside this module and could trivially use BRANCH directly.\\n2. branch_ops.py:363 unreachable terminal raise in _run_git_with_lock_retry \u2014 bounded for loop is provably exhaustive.\\n3. test-concurrent-worktree.py:189-198 TestPushRetry._competing_commit_then_call abandoned NotImplementedError stub.\\n4. branch_ops.py:285,312 inline _type_folder and _format_id (f-string wrappers used 2-3 times; indirection adds nothing).\\n\\nTest gap closures (uncovered defensive branches in release_id and _run_git_with_lock_retry):\\n5. release_id malformed-ID input path (lines 520-523).\\n6. release_id non-retryable push error during rollback (lines 555-557).\\n7. release_id retry exhaustion (lines 558-559).\\n8. _run_git_with_lock_retry lock-race, non-retryable, and exhaustion branches (lines 338-363).\\n9. Direct unit test for sanitize_text (line 51) \u2014 currently only end-to-end coverage.\\n10. Direct unit test for validate_field_length (line 57).\\n\\nDocumentation alignment:\\n11. branch_ops.py exports list in spec.md:16-17 ('Exposes: allocate_id, commit_item, fetch_item, read_branch') omits release_id and branch_exists.\\n12. Drop test-scripts-exist.py (vacuously checks 4 files exist; every other test that imports branch_ops would fail if any script were missing).",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-19T11:29:09Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T13:17:37Z",
+  "history": [
+    {
+      "ts": "2026-05-19T11:29:09Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T13:17:37Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "56a937491b601c1f3277f47dcafcbec409b6c5d6"
+    }
+  ],
+  "commit_sha": "2a7bc8df536663f65fbe5c58efab7ee3166d03b9"
+}

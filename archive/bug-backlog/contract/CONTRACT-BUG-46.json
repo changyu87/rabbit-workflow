@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-46",
+  "type": "bug",
+  "title": "test-templates-prompts-bundle.py asserts template_version 1.0.0 for tdd-subagent.txt but template was bumped to 1.1.0 in 0fc995cb",
+  "status": "close",
+  "priority": "medium",
+  "description": "## Repro\n\n`python3 .claude/features/contract/test/run.py` exits nonzero. The failing test is `test-templates-prompts-bundle.py`:\n\n- The test (line 57) defines `MARKER = \"# template_version: 1.0.0\"` and applies that single hardcoded marker to ALL eight bundled templates under `.claude/features/contract/templates/prompts/`.\n- `templates/prompts/tdd-subagent.txt` was bumped from `1.0.0` to `1.1.0` in commit 0fc995cb (`fix(tdd-subagent): template emits test_result placeholder + nonzero-exit fail-HANDOFF`) \u2014 a legitimate minor-version bump for new template behavior.\n- That commit updated the template but did NOT update the contract test's hardcoded marker, nor Inv 57's wording (which also says `# template_version: 1.0.0` as if all eight files share one version).\n\n## Impact\n\nAny TDD cycle on contract gets blocked at TEST-GREEN by this pre-existing drift, even when the cycle's own work is correct. Discovered during RABBIT-CAGE-BUG-106 cycle; that cycle's impl is correct but cannot complete until this drift is reconciled.\n\n## Suggested fix (one-line test update + optional spec wording tweak)\n\nOption A (simplest): change `test-templates-prompts-bundle.py` so MARKER assertion is per-file (e.g., a dict mapping filename to expected version) OR a regex like `^# template_version: \\d+\\.\\d+\\.\\d+$` that accepts any semver.\n\nOption B (preserves single MARKER constant): keep `MARKER = \"# template_version: 1.0.0\"` for the seven skill passthroughs but special-case tdd-subagent.txt to `1.1.0`.\n\nOption A is more future-proof \u2014 any future template bump won't recreate this drift. Inv 57 text should also be updated to drop the literal `1.0.0` and say \"a canonical plain-text `# template_version: X.Y.Z` marker (semver)\".\n\n## Why this is a contract bug and not a tdd-subagent bug\n\nThe version bump on tdd-subagent.txt was correct. The test in contract is the broken artifact \u2014 it conflates 'all eight files MUST share the same version' with 'all eight files MUST carry the canonical marker shape'. The Inv 57 text shares the same conflation.\n\n## Suggested test gap\n\nA meta-test on the test-templates-prompts-bundle.py assertion: if any future template bump produces a per-file version, the test still passes (regression test for this exact class of drift).",
+  "related_feature": "contract",
+  "filed": "2026-05-27T07:55:17Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-27T08:02:27Z",
+  "history": [
+    {
+      "ts": "2026-05-27T07:55:17Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-27T08:02:27Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Inline fix landed in commit 6cf4f724 (per-file semver-shape MARKER_RE in test-templates-prompts-bundle.py; passthroughs pinned at 1.0.0; Inv 57 wording loosened). Filed and closed in the same session to unblock RABBIT-CAGE-BUG-106 cycle.",
+      "fix_commits": "6cf4f72428aac02cbf0e9aa1a14c08ad97b18d77"
+    }
+  ],
+  "commit_sha": "125dd3bc17e1b9644e4506e969b608b87216f971"
+}

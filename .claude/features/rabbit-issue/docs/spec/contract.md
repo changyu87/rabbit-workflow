@@ -15,8 +15,7 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
       "scripts/file-item.py",
       "scripts/item-status.py",
       "scripts/list-items.py",
-      "scripts/_gh.py",
-      "scripts/migrate.py"
+      "scripts/_gh.py"
     ],
     "issue_labels": [
       "bug",

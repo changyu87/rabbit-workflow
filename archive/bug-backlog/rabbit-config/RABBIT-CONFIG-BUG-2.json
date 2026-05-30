@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CONFIG-BUG-2",
+  "type": "bug",
+  "title": "iterate_configurables_alerts blind to json-key storage when alert-on uses user-facing label",
+  "status": "close",
+  "priority": "high",
+  "description": "iterate_configurables_alerts (contract.lib.runtime) compares the result of _resolve_json_key_value against the configurable's alert-on field. For marker-file storage, _resolve_marker_value returns the user-facing value directly ('true' if marker absent, 'false' if present) so alert-on='false' matches the stored state cleanly. For json-key storage, _resolve_json_key_value returns the literal stored value (e.g. 'bypassPermissions' for permissions.defaultMode), but rabbit-cage's CONFIGURATION declares alert-on='true' (the user-facing label that maps to setting the key). The two never match \u2192 no alert fires. Verified by direct invocation in ws52 with permissions.defaultMode='bypassPermissions' set in settings.local.json: iterate_configurables_alerts returns []. Plan D's verification only tested the marker-file case (human-approval), missed json-key. Fix candidates: (a) reverse-lookup via the configurable's values mapping (find the user-facing label whose mutation API would produce the current stored state), (b) extend storage spec with explicit value_map that translates stored\u2192user-facing, (c) change rabbit-cage's CONFIGURATION declarations so alert-on holds the literal stored value (alert-on='bypassPermissions' for json-key configurables). (c) is simplest but couples the configurable spec to Claude Code's specific config string. (a) preserves the user-facing abstraction but adds reverse-lookup complexity. (b) is most explicit. Pick during fix wave. Note also: iterate_configurables_banner likely has the same blind spot \u2014 verify when fixing. Cross-feature bug: needs contract.lib.runtime AND/OR rabbit-cage CONFIGURATION declaration update. Filed during Wave 1 prep; do NOT fix in Wave 1 scope.",
+  "related_feature": "rabbit-config",
+  "filed": "2026-05-23T12:57:14Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-23T13:07:54Z",
+  "history": [
+    {
+      "ts": "2026-05-23T12:57:14Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-23T13:07:54Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "fix wave complete",
+      "fix_commits": "5c1d1a59"
+    }
+  ],
+  "commit_sha": "f357520f783d0c247d8b09a4eb0a43aa66e729f3"
+}

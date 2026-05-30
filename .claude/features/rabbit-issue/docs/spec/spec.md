@@ -26,8 +26,7 @@ Three runtime scripts under `.claude/features/rabbit-issue/scripts/`:
 - `item-status.py` — show, close, or reopen an issue
 - `list-items.py` — list issues with type / feature / status filters
 
-Plus a shared helper module `_gh.py` and a one-shot `migrate.py`
-(deleted after the rabbit-file → rabbit-issue cutover).
+Plus a shared helper module `_gh.py`.
 
 A single `rabbit-issue` skill (under `skills/rabbit-issue/SKILL.md`)
 defines the Work Protocol that orchestrates the three runtime scripts.

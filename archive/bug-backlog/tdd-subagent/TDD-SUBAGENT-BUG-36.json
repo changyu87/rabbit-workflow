@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-36",
+  "type": "bug",
+  "title": "SKILL.md uses jq in B/B mode but jq is not declared as a dependency",
+  "status": "close",
+  "priority": "low",
+  "description": "rabbit-feature-touch SKILL.md Step 1 (B/B mode) shows: FEATURE=$(jq -r .related_feature \"<bug-or-item-dir>/bug.json\"). jq is shelled out but never declared as a required tool anywhere in this feature's spec, contract.md reads, or build-contract.json. Environments without jq will fail silently or with an obscure 'command not found'. Either: (a) declare jq as a required external tool in contract.md reads.external, or (b) replace with python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(\"related_feature\",\"\"))'.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:50:35Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:38:36Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:50:35Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:38:36Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "6ff87390f7e5589bca45653fe75ba31af7e2f801"
+}

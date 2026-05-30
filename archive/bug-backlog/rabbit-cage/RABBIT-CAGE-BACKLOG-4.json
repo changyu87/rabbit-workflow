@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-4",
+  "type": "backlog",
+  "title": "/rabbit-config subcommand list unification",
+  "status": "close",
+  "priority": "low",
+  "description": "The /rabbit-config command file and the rabbit-config skill description declare the available subcommands independently. After adding allowed-tools and bash-allow (BACKLOG-1), these two lists can drift. Unify them so there is a single source of truth for the subcommand list \u2014 either generate the skill description from the command file, or validate them against each other in CI/test.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-15T03:43:25Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-17T16:20:36Z",
+  "history": [
+    {
+      "ts": "2026-05-15T03:43:25Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-17T16:20:36Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Superseded by RABBIT-CAGE-BACKLOG-11 which covers subcommand list unification as part of the full /rabbit-config SKILL.md implementation."
+    }
+  ],
+  "commit_sha": "5c1ee38126eb21efdf4b6e12d745a181364dbca1"
+}

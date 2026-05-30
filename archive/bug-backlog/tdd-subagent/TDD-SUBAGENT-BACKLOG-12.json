@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BACKLOG-12",
+  "type": "backlog",
+  "title": "Re-home rabbit-feature-touch SKILL.md content invariants from tdd-subagent to rabbit-feature",
+  "status": "close",
+  "priority": "medium",
+  "description": "After Cycle B of the rabbit-feature re-home (PR #142), four invariants in tdd-subagent spec (current numbering Inv 15, 17, 18, 26) still constrain SKILL.md content for the rabbit-feature-touch skill, which is now owned by rabbit-feature. This is a bounded-scope drift per philosophy.md \u00a72: tdd-subagent should not constrain content of a file it does not own. The user explicitly scoped the Cycle B re-partition to Inv 6/13/14/15 only, deferring these four.\n\nAction: move Inv 15 (Step 4 marker doc in SKILL.md), Inv 17 (Red Flags main-session-write rule), Inv 18 (Red Flags scope-marker rule), Inv 26 (B/B mode item.json read rule) from tdd-subagent spec to rabbit-feature spec; renumber survivors gap-free in both features; update any tests that reference these invariants by their tdd-subagent number to point at the new rabbit-feature numbers.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-19T09:25:18Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T10:05:21Z",
+  "history": [
+    {
+      "ts": "2026-05-19T09:25:18Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T10:05:21Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "910f98c212c78663495a79a5961a0af13896f9af"
+    }
+  ],
+  "commit_sha": "e92cbe0dd768170533ed63777541bc49f2b64106"
+}

@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-FILE-BUG-8",
+  "type": "bug",
+  "title": "allocate_id can burn ID slot when commit_item fails or is never called",
+  "status": "close",
+  "priority": "high",
+  "description": "branch_ops.allocate_id() reserves a counter value and pushes counter.json BEFORE commit_item() writes the item.json. If commit_item is never called (process killed, exception in file-item.py between phases, network failure), the ID is permanently allocated but no item.json exists. Result: gaps in the ID sequence with no reclamation. Spec acknowledges 'allocate_id reads N, writes N+1, commits' but does not say what happens on partial failure. Suggested fix: either (a) merge allocate+commit into one atomic worktree session, or (b) add idempotent recovery that detects a reserved-but-uncommitted ID on next allocate_id and reuses it.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-18T02:55:03Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:01:04Z",
+  "history": [
+    {
+      "ts": "2026-05-18T02:55:03Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:01:04Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 triage: duplicate of RABBIT-FILE-BUG-10 (allocate_id can burn ID slot)"
+    }
+  ],
+  "commit_sha": "00458dda2dfbe3aad53adb67a17337b1c8c971be"
+}

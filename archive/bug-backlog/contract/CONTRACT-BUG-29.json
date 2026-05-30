@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-29",
+  "type": "bug",
+  "title": "find-feature.py leaks file handles via json.load(open(fj)) and may scan unrelated 'features' dirs",
+  "status": "close",
+  "priority": "low",
+  "description": "scripts/find-feature.py lines 22, 41, 51, 67 use json.load(open(fj)) without closing the file (resource leak under repeated invocation). Lines 25-35 walk any top-level directory containing a 'features' subdirectory \u2014 this could include unrelated user dirs. The scan also processes rabbit-internal .claude/features twice if a user project is named .claude. Wrap open() in with-statements.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T03:34:33Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:35:28Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:34:33Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:35:28Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3 batch 2: schema permissiveness, template fields, enforcement script corrections per Inv 22-33.",
+      "fix_commits": "51fc7f3"
+    }
+  ],
+  "commit_sha": "38e82d21be500f1c6cad08da5b6572f39fabd28d"
+}

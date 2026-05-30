@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-23",
+  "type": "bug",
+  "title": "tdd-step.py --spec-no-change-reason value is discarded instead of being recorded",
+  "status": "close",
+  "priority": "medium",
+  "description": "tdd-step.py cmd_transition captures --spec-no-change-reason into a local variable (line 309), uses it only to skip the spec-diff gate (line 324), then discards it. No audit record is written to feature.json, no log, no commit. The spec invariant on the gate exists to require a reason but the reason itself is not preserved \u2014 defeating the spec's audit intent. The flag is also entirely undocumented in docs/spec/spec.md (only mentioned implicitly via the gate behaviour). Fix: persist the reason to feature.json (e.g., last_spec_no_change_reason field) at transition time, or attach it to commit msg, and document the flag explicitly in spec.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:40:20Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:36:54Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:40:20Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:36:54Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "88d49ed8aeeaebcfd28533a2f3b7056ccfd6e846"
+}

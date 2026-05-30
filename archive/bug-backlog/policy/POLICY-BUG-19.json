@@ -1,0 +1,28 @@
+{
+  "name": "POLICY-BUG-19",
+  "type": "bug",
+  "title": "Three-way version mismatch: feature.json 1.3.0 vs spec.md/contract.md 1.4.0; test file name lies about spec version",
+  "status": "close",
+  "priority": "high",
+  "description": "feature.json declares 'version': '1.3.0' while both spec.md and contract.md declare version: 1.4.0. POLICY-BUG-7 (test-policy-bug-fixes.py:73) only checks spec<->contract alignment, missing the third leg (feature.json). The invariants test on disk is named test-policy-invariants-v1-3-0.py but tests spec.md at 1.4.0 - either spec was bumped without test rename (drift) or test should be renamed. Fix: pick the correct version, sync all three locations, rename or replace the test to match, and extend POLICY-BUG-7's check to cover feature.json.",
+  "related_feature": "policy",
+  "filed": "2026-05-19T11:26:06Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T11:47:29Z",
+  "history": [
+    {
+      "ts": "2026-05-19T11:26:06Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T11:47:29Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "1a073b9e67171f4a3954ee182b98e87682cf99dd"
+    }
+  ],
+  "commit_sha": "0d3f51f45776f5c76e4445ee34c53af3bb1d8d33"
+}

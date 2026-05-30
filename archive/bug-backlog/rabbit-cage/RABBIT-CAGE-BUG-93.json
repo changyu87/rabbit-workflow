@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-93",
+  "type": "bug",
+  "title": "Post-consolidation cleanup: remove references to retired features (workspace-tree.py, spec.md, tests) and rabbit-spec\u2192rabbit-feature-spec rename",
+  "status": "close",
+  "priority": "high",
+  "description": "Post-consolidation audit findings for rabbit-cage:\\n\\n1. workspace-tree.py:74-77,85 hard-codes both rabbit-feature-scope and rabbit-spec in ANNOTATIONS/STRUCTURAL_DIRS \u2014 produces misleading workspace tree output. Either remove or mark as retired.\\n2. spec.md:404,423,466 still references 'rabbit-spec' skill name in narrative. Update to 'rabbit-feature-spec' (skill renamed as part of absorption).\\n3. test-RABBIT-CAGE-BACKLOG-18-sync-check-aggregation.py:83 \u2014 enumerates retired features. Update or remove.\\n4. test-RABBIT-CAGE-BACKLOG-22-cleanup.py:7,74 \u2014 same.\\n5. README.md:80 \u2014 example invocation references .claude/features/tdd-subagent/scripts/tdd-step.py (script moved to tdd-state-machine).\\n6. Add tdd-state-machine to ANNOTATIONS/STRUCTURAL_DIRS.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-19T15:23:44Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T16:04:19Z",
+  "history": [
+    {
+      "ts": "2026-05-19T15:23:44Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T16:04:19Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "19c4764f0d3675cb174164196257313b9bc7f0ae"
+    }
+  ],
+  "commit_sha": "fa86aeb077d69cdc9bf10f86e1caa0845ae6b66b"
+}

@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-FILE-BUG-6",
+  "type": "bug",
+  "title": "Work Protocol auto-closes only the linked-item bug; secondary bugs fixed by the same commit remain open",
+  "status": "close",
+  "priority": "medium",
+  "description": "When a TDD cycle's fix commit resolves multiple bugs (e.g., a single PR addresses BUG-A and BUG-B together because they share a root cause or one is discovered while fixing the other), only the primary linked bug \u2014 the one passed as --linked-item to dispatch-tdd-subagent.py \u2014 gets auto-closed by rabbit-file Work Protocol Step 5. Other bugs fixed by the same commit remain open and must be closed manually by the human or by a follow-up rabbit-file work session.\n\nObserved: PR #102 closed both RABBIT-CAGE-BUG-8 (primary, linked-item) and RABBIT-CAGE-BUG-9 (fixed in the same commit because moving _strip_quotes was part of the BUG-8 fix scope). BUG-8 was auto-closed by item-status.py on TDD completion; BUG-9 had to be closed manually in a subsequent step. From the human's perspective this is friction \u2014 the system already knows both bugs are fixed (the commit message references both, the impl-suggestion lists both, the human approved both being addressed together) but cannot auto-close the secondary bug.\n\nFix candidates:\n1. dispatch-tdd-subagent.py accepts a --linked-items flag (plural) taking a comma-separated list of item dirs and item types; the TDD subagent closes all of them with the same impl_commit on success. The current --linked-item / --item-type pair becomes the single-item shorthand.\n2. rabbit-file Work Protocol Step 5 post-merge step scans the merged commit message for additional bug IDs matching the pattern <FEATURE>-BUG-<N> and prompts the human to also close them with the same impl_commit.\n3. impl-suggestion JSON gains an optional resolves array of item dirs; dispatch-tdd-subagent.py reads it and closes all of them on test-green, generalising the linked-item mechanism into a multi-item resolution.\n\nApproach 3 is closest to the spirit of the current design (impl-suggestion is already the source of truth for what the cycle addresses) and avoids hardcoding the assumption that linked-item is singular.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-17T15:46:54Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-17T15:51:02Z",
+  "history": [
+    {
+      "ts": "2026-05-17T15:46:54Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-17T15:51:02Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Misrouted \u2014 fix lives in tdd-subagent (dispatch-tdd-subagent.py). Re-filed as TDD-SUBAGENT-BUG-1."
+    }
+  ],
+  "commit_sha": "e905b4d6776a4195c1deb776a74932e446cddfdf"
+}

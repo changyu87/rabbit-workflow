@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-29",
+  "type": "bug",
+  "title": "IMPL_SHA capture timing in close-call block is racy with feature.json commit",
+  "status": "close",
+  "priority": "high",
+  "description": "dispatch-tdd-subagent.py close-call block (lines 231-236) emits 'IMPL_SHA=$(git rev-parse HEAD)' AFTER the test-green transition is committed AND after the feature.json chore commit. So IMPL_SHA is actually the chore commit SHA, not the implementation commit SHA. The HANDOFF and item close calls record the wrong commit. Either move close-calls BEFORE the chore commit (so HEAD is still impl), or capture IMPL_SHA right after the actual implementation commit in Step 6 and pass it forward to Step 9. Currently the close-records will reference an unrelated chore commit.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:45:07Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T06:25:38Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:45:07Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T06:25:38Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed as part of Wave 1 bundle in PR (BUG-15/18/22/28/29 all addressed by dispatch-tdd-subagent.py prompt edits).",
+      "fix_commits": "11514a2"
+    }
+  ],
+  "commit_sha": "054b25b6d22af8ffe9dedd777310665af8cdcff4"
+}

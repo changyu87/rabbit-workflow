@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-CONFIG-BUG-4",
+  "type": "bug",
+  "title": "iterate_configurables_banner multi-line emission elided by SessionStart TUI",
+  "status": "close",
+  "priority": "high",
+  "description": "iterate_configurables_banner (contract.lib.runtime) emitted each active configurable as a single multi-line print_result whose text was 'ALERT\\n  revoke with: /rabbit-config X Y'. The dispatcher wrapped the whole multi-line string in one rabbit_subline call, producing a brand-prefixed first line and an indented continuation line for the revoke. Claude Code's SessionStart TUI elides continuation lines (and in observed cases dropped the alert itself), so the revoke command never reached the user on session restart even with both override flags active. iterate_configurables_alerts (Stop) was not affected because its alerts were already single-line. Wave 2 fix: split each active configurable into TWO print_results \u2014 an alert line (alert-message text/icon/color) and a revoke line ('revoke with: /rabbit-config <subcommand> <default>' with icon='revoke', matching color) \u2014 so each line is rendered with its own brand prefix and neither can be elided as a continuation. Regression test: rabbit-config/test/test-runtime-banner-shape.py subprocess-invokes the deployed session-start-dispatcher with marker-file and json-key overrides active, parses systemMessage JSON, asserts every non-blank line begins with the brand prefix. Also closes the BUG-2-era end-to-end gap by adding test-runtime-alerts-shape.py for the Stop side.",
+  "related_feature": "rabbit-config",
+  "filed": "2026-05-23T14:31:59Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-23T14:32:27Z",
+  "history": [
+    {
+      "ts": "2026-05-23T14:31:59Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-23T14:32:27Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "duplicate of RABBIT-CONFIG-BUG-3 (filed concurrently by Wave 2 dispatcher; merging into BUG-3)"
+    }
+  ],
+  "commit_sha": "1151e0f12eee90291175638a110cb157867d515a"
+}

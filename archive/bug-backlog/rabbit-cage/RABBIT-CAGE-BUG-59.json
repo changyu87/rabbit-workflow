@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-59",
+  "type": "bug",
+  "title": "session-init.py and refresh.py paths-with-./ handling can resolve to wrong file",
+  "status": "close",
+  "priority": "low",
+  "description": "hooks/session-init.py lines 56-59 and refresh.py lines 97-101: 'full = root / path.lstrip(\"./\")'. str.lstrip('./') treats '.' and '/' as a CHARACTER SET, stripping any leading run of those characters. A path like '....foo.md' becomes 'foo.md' (the leading dot was stripped \u2014 fine), but '/etc/passwd' becomes 'etc/passwd' (the absolute path turned into a relative one and resolved under repo_root). The earlier 'if path.startswith(\"/\")' branch handles absolute paths, so the bug doesn't manifest today, but the lstrip pattern is incorrect \u2014 should use path.removeprefix('./') (Python 3.9+) or careful conditional stripping. Defense-in-depth concern.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:17:55Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:42:13Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:17:55Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:42:13Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "af2e1731765a34dc3aec0b2da8faf6164d93aa86"
+}

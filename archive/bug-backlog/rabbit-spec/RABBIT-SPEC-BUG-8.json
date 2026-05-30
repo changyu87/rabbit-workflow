@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-SPEC-BUG-8",
+  "type": "bug",
+  "title": "SKILL.md Step 1 narrows Invariant 4 (read any feature file) by example without clarifying scope",
+  "status": "close",
+  "priority": "low",
+  "description": "SKILL.md Step 1 instructs reading only scripts/ and skills/ subdirectories as implementation examples. Invariant 4 says rabbit-spec MAY read ANY file in the target feature directory. SKILL.md's wording implies a restricted scope without saying 'examples include'. A future caller might interpret this as a hard constraint. Fix: add 'for example,' or 'including but not limited to' to align wording with the invariant.",
+  "related_feature": "rabbit-spec",
+  "filed": "2026-05-18T04:32:13Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:36:20Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:32:13Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:36:20Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 fix; verified by test/test-bug-fixes-wave4.py",
+      "fix_commits": "63e787d"
+    }
+  ],
+  "commit_sha": "19ab32d142f1417c1004133ebd5948d2a40b7235"
+}

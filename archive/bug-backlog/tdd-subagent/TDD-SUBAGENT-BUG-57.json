@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-57",
+  "type": "bug",
+  "title": "Inv 17 mandates dispatch-tdd-subagent.py emit brand prefix + ANSI directly, but contract Inv 36 forbids that producer",
+  "status": "close",
+  "priority": "high",
+  "description": "Constitution conflict introduced by BUG-55 fix.\n\nContract feature Inv 36 (.claude/features/contract/docs/spec/spec.md) names exactly four authorized [rabbit]-emitting producer scripts (sync-check.py, session-init.py, refresh.py, tdd-state-machine/tdd-step.py) and forbids direct inline ANSI escapes, brand-prefix strings, and bar strings outside rabbit_block.\n\nBut tdd-subagent Inv 17 mandates dispatch-tdd-subagent.py (NOT on that authorized list) emit '\\x1b[33m[(rabbit-emoji) rabbit (rabbit-emoji)] NOTE: ...' directly in the assembled prompt preamble. The script at lines 218-223 does exactly that.\n\nTwo resolution paths:\n(a) Route dispatch-tdd-subagent.py through rabbit_print.py: add a 'dispatch-bypass-note' message-id to the registry, add a bypass_note() named wrapper, and update dispatch-tdd-subagent.py to call the wrapper instead of inline ANSI/brand strings.\n(b) Amend contract Inv 36 to add dispatch-tdd-subagent.py as a 5th authorized producer.\n\nPath (a) is preferred \u2014 it keeps contract Inv 36 small (only 4 authorized producers) and routes all brand-emitting code through one renderer. Path (a) requires coordinated changes in contract (registry + wrapper + spec Inv 34/35 update) and tdd-subagent (use wrapper, update Inv 17 wording). Will be worked together with the contract cycle landing first.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-20T07:30:52Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T08:42:22Z",
+  "history": [
+    {
+      "ts": "2026-05-20T07:30:52Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T08:42:22Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "804b3d59ee9462521ef2273c943af55b3d9e4ff7"
+    }
+  ],
+  "commit_sha": "30c80ca43ebac0486f59ec00556cf0105179418f"
+}

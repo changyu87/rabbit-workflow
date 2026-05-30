@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FEATURE-SCOPE-BACKLOG-4",
+  "type": "backlog",
+  "title": "resolve-scope.py has no --help or -h flag",
+  "status": "close",
+  "priority": "low",
+  "description": "resolve-scope.py currently emits one-line usage on wrong-args error. Add a --help / -h flag (or argparse) that prints the usage doc, expected output, and exit code conventions. Improves discoverability without affecting machine callers.",
+  "related_feature": "rabbit-feature-scope",
+  "filed": "2026-05-18T03:19:57Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:35:33Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:19:57Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:35:33Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 closure; verified by test/test-bug-fixes-wave4.py",
+      "fix_commits": "63e787d"
+    }
+  ],
+  "commit_sha": "1e7030d393fb7fd2de8eac50c12f17992bb113c9"
+}

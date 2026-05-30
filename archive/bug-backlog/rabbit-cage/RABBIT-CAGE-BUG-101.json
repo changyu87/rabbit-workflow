@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-101",
+  "type": "bug",
+  "title": "rabbit_print emits icon names as literal text instead of emoji glyphs",
+  "status": "close",
+  "priority": "low",
+  "description": "rabbit_print's print_result emits f'{brand} {icon} {text}' with no lookup. Several call sites pass icon NAMES (descriptive labels) instead of emoji GLYPHS, so the names render verbatim in the systemMessage. User observation in ws57 SessionStart after enabling overrides:\\n\\n  [\ud83d\udc07 rabbit \ud83d\udc07] key HUMAN APPROVAL BYPASS ACTIVE - Step 4 skipped\\n  [\ud83d\udc07 rabbit \ud83d\udc07] revoke revoke with: /rabbit-config human-approval true\\n  [\ud83d\udc07 rabbit \ud83d\udc07] siren BYPASS-PERMISSIONS MODE ACTIVE - scope-guard is sole write-auth gate\\n  [\ud83d\udc07 rabbit \ud83d\udc07] revoke revoke with: /rabbit-config bypass-permissions false\\n\\n'key', 'siren', 'revoke' should be \ud83d\udd11, \ud83d\udea8, \u21a9\ufe0f. The 'revoke revoke' double-up is from Wave 2's BUG-3 banner-split where the icon was set to the literal string 'revoke' AND the text starts with 'revoke with:'.\\n\\nAffected declarations (likely list, audit will discover all):\\n- rabbit-cage/feature.json CONFIGURATION alert-message.icon for human-approval ('key'), bypass-permissions ('siren'), possibly others\\n- rabbit-cage/feature.json RUNTIME alert args for check_drift_regenerate ('warn'), check_manifest_drift ('rebuild'), check_marker_alert/check_marker_consume_alert for scope-guard ('unlock'), skills-updated ('sparkle')\\n- rabbit-config or contract.lib.runtime: wherever Wave 2's BUG-3 fix split iterate_configurables_banner output into per-line print_results \u2014 the 'revoke' line uses 'revoke' as icon\\n\\nFix candidates:\\n(a) Replace name strings with literal emoji glyphs throughout. Simplest; matches rabbit_print's actual behavior (concat, no lookup). Configurable rendering matches.\\n(b) Extend rabbit_print to do icon-name lookup against a registry; keep names in declarations for readability. Bigger change.\\n\\nRecommendation: (a). Names-in-config look readable to humans but the output proves they're misleading. Emoji glyphs are unambiguous.\\n\\nFor the 'revoke revoke' specifically: the banner-split line should either use a different icon (e.g. \u21a9\ufe0f) or drop the icon entirely (just '[brand] revoke with: ...'). Wave 5+ rabbit-cage audit decides.\\n\\nCosmetic; not blocking. Wave 4 (rabbit-feature re-audit) proceeds unaffected \u2014 rabbit-feature does not emit print_results with these icons.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-23T15:04:56Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-24T05:29:10Z",
+  "history": [
+    {
+      "ts": "2026-05-23T15:04:56Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-24T05:29:10Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Wave 8 audit closes BUG-101. Replaced all 7 historical icon lookup names ('warn','rebuild','unlock' x2,'sparkle','key','siren') in feature.json CONFIGURATION + RUNTIME blocks with literal Unicode glyphs. Added test-icon-glyphs.py enforcing new spec Inv 13: every RUNTIME alert.icon and CONFIGURATION alert-message.icon MUST be a literal renderable Unicode glyph. rabbit_subline interpolates icon literally; no name-to-glyph resolution exists in this surface.",
+      "fix_commits": "73b038bcc2a8b3fba8683e4adfebd4a223a24537"
+    }
+  ],
+  "commit_sha": "1058c78324681acb7fe75a259d05154ea2d34a75"
+}

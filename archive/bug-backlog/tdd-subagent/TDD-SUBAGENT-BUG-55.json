@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-55",
+  "type": "bug",
+  "title": "Dispatch preamble + Inv 17 + test use plain [rabbit] prefix instead of [rabbit emoji] brand string",
+  "status": "close",
+  "priority": "low",
+  "description": "Sibling to closed RABBIT-FEATURE-BUG-1 (split by feature scope).\n\nThree drift sites in tdd-subagent use the plain '[rabbit]' prefix instead of the canonical emoji-framed brand '[(rabbit-emoji) rabbit (rabbit-emoji)]' per contract Inv 35/36 and tdd-subagent Inv 5:\n\n1. .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py line 219: yellow-coloured preamble note literal '[rabbit] NOTE:' should be the emoji-framed form\n2. .claude/features/tdd-subagent/docs/spec/spec.md Inv 17 (lines 206-217, NOTE: original BUG-1 misnamed this as Inv 24): wording 'yellow-coloured [rabbit] note' should describe the emoji-framed form so spec sanctions the brand\n3. .claude/features/tdd-subagent/test/test-backlog-4-6-7-9-10.py line 93: substring assertion currently hard-asserts '[rabbit]' \u2014 must update to assert the emoji-framed form (and ideally a negative assertion for the bare form)\n\nFix is cosmetic; no behavior change. Companion bug RABBIT-FEATURE-BUG-5 covers the rabbit-feature side (SKILL.md + spec Inv 9 wording + regression test). They land as two separate PRs.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-20T05:47:48Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T06:11:55Z",
+  "history": [
+    {
+      "ts": "2026-05-20T05:47:48Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T06:11:55Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "910963533aa004fc807cb696dbd1099a6bf5533c"
+    }
+  ],
+  "commit_sha": "296410a2eefab2ec845a97d55ac9123fd1bcfa86"
+}

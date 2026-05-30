@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-92",
+  "type": "bug",
+  "title": "Stale spec invariants reference removed/superseded artifacts (Inv 7 rabbit-policy markers, Inv 14 generate-skills-dir.py)",
+  "status": "close",
+  "priority": "high",
+  "description": "Two stale invariants:\\n1. Inv 7 (spec.md:37) says CLAUDE.md 'contains inline rabbit-policy-start/rabbit-policy-end section'. generate-claude-md.py now emits only header + @-imports; test-claude-md.py:56-59 explicitly asserts the marker is absent. The corresponding regex/_policy_section helper in sync-check.py:90-96,120 always returns empty (dead code).\\n2. Inv 14 (spec.md:48) documents generate-skills-dir.py --check behavior (sha256 comparison) but Inv 27 (spec.md:506-511) declares that script does NOT exist (deleted, superseded by build.py). Internal contradiction inside the same spec.\\nFix: delete Inv 7 + the corresponding dead code in sync-check.py; either delete Inv 14 entirely or rewrite it to defer to build.py --check.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-19T11:27:18Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T12:03:23Z",
+  "history": [
+    {
+      "ts": "2026-05-19T11:27:18Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T12:03:23Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "213b397570179fe992bbab8403f34c7ad5452f08"
+    }
+  ],
+  "commit_sha": "646b0e0f8eab791788c04bd286fa818279fc86a9"
+}

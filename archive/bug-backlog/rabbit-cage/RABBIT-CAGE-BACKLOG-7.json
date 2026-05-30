@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-7",
+  "type": "backlog",
+  "title": "Break [rabbit] hook output into multiple lines for readability",
+  "status": "close",
+  "priority": "low",
+  "description": "All [rabbit] hook messages (e.g. UserPromptSubmit policy refresh) are emitted as a single dense line. Example current output:\n\n  \ud83d\udd04 \u2501\u2501\u2501 [rabbit] Policy refreshed \u2014 .claude/features/policy/philosophy.md .claude/features/policy/spec-rules.md .claude/features/policy/coding-rules.md \u2501\u2501\u2501 \ud83d\udd04\n\nThis is hard to scan. Preferred format breaks each injected file onto its own line:\n\n  \ud83d\udd04 \u2501\u2501\u2501 [rabbit] Policy refreshed\n    \u00b7 philosophy.md\n    \u00b7 spec-rules.md\n    \u00b7 coding-rules.md\n  \u2501\u2501\u2501 \ud83d\udd04\n\nApply consistently across all [rabbit] hook output \u2014 policy refresh, scope guard denials, override confirmations, and any other structured multi-item messages.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-15T11:23:51Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T09:09:14Z",
+  "history": [
+    {
+      "ts": "2026-05-15T11:23:51Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T09:09:14Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "WAVE5 cleanup: implemented in 505c834",
+      "fix_commits": "505c834"
+    }
+  ],
+  "commit_sha": "39177cd75fe9b3a9bddd42296c5fbcb03a1cb322"
+}

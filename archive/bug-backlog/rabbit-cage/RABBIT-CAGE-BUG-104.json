@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-104",
+  "type": "bug",
+  "title": "Hook command paths in settings.json are relative; fragile under CWD changes from Bash cd",
+  "status": "close",
+  "priority": "medium",
+  "description": "All four event-dispatcher hooks plus scope-guard.py are registered in .claude/settings.json with RELATIVE paths:\n\n  'command': '.claude/hooks/scope-guard.py'\n  'command': '.claude/hooks/stop-dispatcher.py'\n  'command': '.claude/hooks/session-start-dispatcher.py'\n  'command': '.claude/hooks/user-prompt-submit-dispatcher.py'\n\nThese paths resolve against the session's current working directory at hook-fire time. Claude Code's Bash tool persists CWD between commands. Any cd into a subdirectory makes the relative path resolve outside the repo and the hook errors with '/bin/sh: .claude/hooks/<name>.py: No such file or directory'.\n\nClaude Code marks the error 'non-blocking' so the user's Bash call proceeds, but the noise pollutes session output and any user action (drift detection, scope-guard checks, welcome banner, prompt counter) that the hook was supposed to perform silently does not happen for that Bash call.\n\nREPRODUCTION (HEAD 1d10c86b, ws04 wave session):\n  Bash 1: cd .claude/features/contract && python3 test/run.py  \u2192 CWD now .claude/features/contract\n  Bash 2: cd .claude/features/rabbit-cage && python3 test/run.py\n    \u2192 'cd' fails: no such file or directory (relative cd from contract dir)\n    \u2192 PreToolUse hook fires with relative '.claude/hooks/scope-guard.py' resolved against contract dir \u2192 file not found \u2192 'Failed with non-blocking status code'\n  Bash 3 (with absolute path workaround): cd /abs/path/ws04 && python3 .claude/features/rabbit-cage/test/run.py\n    \u2192 Still triggers the hook from prior CWD (.claude/features/contract) before the cd takes effect \u2192 same hook error\n\nIMPACT:\n- Cosmetic noise on every Bash call after a session's first cd\n- Silent loss of drift/scope-guard/banner work for those calls (non-blocking means the work is skipped, not retried)\n- Subagents that operate in subdirectories (common pattern) trigger this on every Bash tool call\n\nPROPOSED FIX:\nUse a repo-root-anchored path. Two options:\n\n1. Absolute path resolved at install time \u2014 install.py writes the absolute repo path into settings.json's hook commands. Downside: settings.json becomes machine-specific and cannot be committed (currently it IS committed). Would need to gitignore settings.json or split into committed+local.\n\n2. Claude Code environment variable \u2014 if Claude Code exposes a CLAUDE_PROJECT_DIR or similar env var pointing to the repo root, use it in the command: 'command': '/.claude/hooks/scope-guard.py'. Requires verifying Claude Code supports env var interpolation in hook commands.\n\n3. Wrapper script \u2014 write a small bash wrapper that resolves '.claude/hooks/...' relative to git rev-parse --show-toplevel, install that as the hook command. Adds an indirection but keeps settings.json portable.\n\nOWNER: rabbit-cage owns the four hook publish_hook manifest entries that write to settings.json. The fix involves publish_hook (in contract.lib.publish) understanding how to emit a repo-root-anchored path AND the source dispatchers being callable from any CWD.\n\nDETECTED BY: ws04 session during CONTRACT-BACKLOG-38 wave (cross-feature scrub work), 2026-05-25.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-25T13:18:18Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-25T14:54:42Z",
+  "history": [
+    {
+      "ts": "2026-05-25T13:18:18Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-25T14:54:42Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "d1ee0cf62421675e023b687e61be15c1b5b022e2"
+    }
+  ],
+  "commit_sha": "864808db92209f8601de218e22e74e938d6f6ce0"
+}
