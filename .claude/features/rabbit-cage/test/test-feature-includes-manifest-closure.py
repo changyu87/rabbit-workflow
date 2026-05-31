@@ -12,6 +12,8 @@ FEATURE_INCLUDES list.
 Failures name the (feature, missing-source) pair so the fix is mechanical:
 extend FEATURE_INCLUDES for that feature.
 """
+from __future__ import annotations
+
 import importlib.util
 import json
 import os
