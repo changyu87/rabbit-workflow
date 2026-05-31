@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.11.0
+version: 5.12.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -279,9 +279,18 @@ string BEFORE splitting on `;|&` segment delimiters.
     `hooks[<event>][].hooks[].command` string. No other fields are
     touched. The replacement is a literal substring substitution; the
     surrounding `/.claude/hooks/<name>.py` suffix is preserved verbatim.
-    Both edits are idempotent: re-running on an already-rewritten
-    `settings.json` is a no-op. The standalone-workspace source file is
-    not mutated — only the deployed copy at `<target>/.claude/settings.json`.
+    (c) Applies the same two edits to the feature-local source copy at
+    `<target>/.claude/features/rabbit-cage/settings.json` (if that file
+    exists in the install). This is required so that `check_manifest_drift`
+    (which regenerates the deployed copy by running `publish_settings` from
+    the feature-local source) produces a result identical to the deployed
+    copy — making the rewrite idempotent across sessions. Without (c),
+    `check_manifest_drift` reads the unmodified source (original git-based
+    hook commands, no `RABBIT_ROOT`), detects drift versus the rewritten
+    deployed copy, overwrites the deployed copy with the source content, and
+    silently reverts the RABBIT_ROOT injection on every Stop event.
+    All three edits are idempotent: re-running on already-rewritten files
+    is a no-op.
 20. **RABBIT_ROOT environment check at SessionStart.** When
     `session-start-dispatcher.py` runs in plugin mode (the dispatcher
     detects this by the presence of `<install_root>/.version`, which
