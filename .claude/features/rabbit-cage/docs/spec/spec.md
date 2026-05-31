@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.10.0
+version: 5.11.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -301,6 +301,27 @@ string BEFORE splitting on `;|&` segment delimiters.
     `welcome_with_policy` / `write_mode_marker` dispatch chain. In
     standalone-workspace mode (no `.version` file), the check is
     skipped entirely.
+21. **MANIFEST-source closure in FEATURE_INCLUDES.** For every feature
+    that `install.py` ships in plugin mode, the per-feature entry in
+    `install.py`'s `FEATURE_INCLUDES` MUST contain every source path
+    referenced by that feature's `feature.json manifest` entries (the
+    `source` arg of `publish_hook` / `publish_file` / `publish_command` /
+    `publish_settings`, and any path-valued `args` consumed by
+    `publish_generated` producers, e.g. `header_source`). This ensures
+    the Stop hook's `check_manifest_drift` runtime API can rebuild every
+    deployed artifact from feature-local sources in the plugin install;
+    without the closure, `check_manifest_drift` cannot find sources,
+    treats the deployed artifact as drifted from an empty rebuild, and
+    surfaces a false "Surface drift detected" alert every session. The
+    closure is enforced by an e2e test under
+    `.claude/features/rabbit-cage/test/` that, for every feature listed
+    in `FEATURE_INCLUDES`, parses the feature's `feature.json` and
+    asserts every manifest `source` (and every path-valued
+    `publish_generated` arg whose value resolves to a path under the
+    feature directory) is present in that feature's `FEATURE_INCLUDES`
+    list. Adding a new feature to `FEATURE_INCLUDES`, or adding a new
+    manifest entry to an already-shipped feature, requires extending
+    `FEATURE_INCLUDES` before the test passes.
 
 ## Tech Stack
 
