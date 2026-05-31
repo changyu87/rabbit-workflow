@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.33.0
+version: 1.41.0
 template_version: 2.0.0
 ---
 
