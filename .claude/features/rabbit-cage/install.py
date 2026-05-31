@@ -30,7 +30,7 @@ This module has two distinct roles:
      This helper is NOT invoked from main() — main() lays down an explicit
      file closure rather than running the publish flow at install time.
 
-Version: 6.3.0
+Version: 6.4.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit's per-project plugin model is superseded
 """
@@ -51,6 +51,7 @@ from pathlib import Path
 # Top-level files (same path on both sides)
 SAME_PATH_FILES = [
     "CLAUDE.md",
+    "README.md",
     ".claude/settings.json",
 ]
 
@@ -67,6 +68,10 @@ HOOKS = [
 # Skills: source SKILL.md → deployed SKILL.md
 SKILLS = [
     (".claude/features/rabbit-feature/skills/rabbit-feature-new/SKILL.md", ".claude/skills/rabbit-feature-new/SKILL.md"),
+    (".claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md", ".claude/skills/rabbit-feature-touch/SKILL.md"),
+    (".claude/features/rabbit-feature/skills/rabbit-feature-scope/SKILL.md", ".claude/skills/rabbit-feature-scope/SKILL.md"),
+    (".claude/features/rabbit-feature/skills/rabbit-feature-spec/SKILL.md", ".claude/skills/rabbit-feature-spec/SKILL.md"),
+    (".claude/features/rabbit-feature/skills/rabbit-feature-audit/SKILL.md", ".claude/skills/rabbit-feature-audit/SKILL.md"),
 ]
 
 # Agents: source → deployed
@@ -75,7 +80,10 @@ AGENTS = [
 ]
 
 # Commands: source → deployed
-COMMANDS: list[tuple[str, str]] = []
+COMMANDS: list[tuple[str, str]] = [
+    (".claude/features/rabbit-cage/commands/rabbit-refresh.md", ".claude/commands/rabbit-refresh.md"),
+    (".claude/features/rabbit-cage/commands/rabbit-project.md", ".claude/commands/rabbit-project.md"),
+]
 
 # Per-feature sub-path includes (whole subset; same path on both sides)
 FEATURE_INCLUDES: dict[str, list[str]] = {
