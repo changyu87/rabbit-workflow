@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.12.0
+version: 5.13.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -75,7 +75,7 @@ dispatcher continues to the next entry.
 
 `install.py` is the user-facing MVP installer, driven by `install.sh` (the one-liner shell wrapper). Usage: `install.py --src <extracted-tarball-dir> --target <project>/.rabbit`. It lays down the minimum file closure needed for the user-promised surfaces — drift-protected Claude on session start, `rabbit-feature-new <name> <path-glob>` for opt-in feature mapping, scope-guard plugin-mode blocking, and the `.rabbit/.runtime/scope-bypass-once` override marker.
 
-`main()` copies from explicit `(source, dest)` tuples declared at module top — `SAME_PATH_FILES`, `HOOKS`, `SKILLS`, `AGENTS`, `COMMANDS`, `FEATURE_INCLUDES`. It does NOT invoke the publish loop. The MVP closure excludes development surfaces: `test/`, `docs/`, `scripts/enforcement/`, deferred features (rabbit-config, tdd-subagent), retired tombstones (tdd-state-machine, rabbit-spec), and unshipped-skill prompt templates. The installer refuses if `--target` exists and is non-empty, and exits non-zero on any missing required source file.
+`main()` copies from explicit `(source, dest)` tuples declared at module top — `SAME_PATH_FILES`, `HOOKS`, `SKILLS`, `AGENTS`, `COMMANDS`, `FEATURE_INCLUDES`. It does NOT invoke the publish loop. The MVP closure excludes development surfaces: `test/`, `docs/`, `scripts/enforcement/`, deferred features (rabbit-config, tdd-subagent), retired tombstones (tdd-state-machine, rabbit-spec), and unshipped-skill prompt templates. The installer refuses if `--target` exists and is non-empty, and exits non-zero on any missing required source file. The `COMMANDS` list MUST include every command that rabbit-cage's manifest deploys (`rabbit-refresh.md`, `rabbit-project.md`); the `SKILLS` list MUST include every skill that rabbit-feature's manifest deploys (all five `rabbit-feature-*` skills: `touch`, `scope`, `spec`, `new`, `audit`); and `SAME_PATH_FILES` MUST include `README.md`. The complete initial deployment is required so that `check_manifest_drift` finds all expected artifacts already present on the very first Stop event — if any are missing, `check_manifest_drift` deploys them and reports spurious drift. Completeness is verified by the e2e test `test-feature-includes-manifest-closure.py` (per Inv 21).
 
 After copying the file closure, `main()` rewrites `<target>/.claude/settings.json` per Inv 19 (sets `env.RABBIT_ROOT` to the absolute target path; replaces every `$(git rev-parse --show-toplevel)` inside any `hooks[<event>][].hooks[].command` string with `$RABBIT_ROOT`), then writes two generated files: `<target>/.gitignore` (rabbit-owned ephemerals — `.runtime/`, `prompts/`, `tdd-report-*.json`, `impl-suggestion-*.json`, scope markers, `__pycache__/`, `*.pyc`) and `<target>/.version` (install pin label from `RABBIT_INSTALLED_REF` env var, defaulting to `"unknown"`).
 
