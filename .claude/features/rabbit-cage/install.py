@@ -18,7 +18,7 @@ This module has two distinct roles:
 
      Excludes development surfaces: test/, docs/, scripts/enforcement/,
      deferred features (rabbit-config, tdd-subagent), retired
-     tombstones (tdd-state-machine, rabbit-spec).
+     tombstones (tdd-state-machine).
 
      Usage:
          install.py --src <extracted-tarball-dir> --target <project>/.rabbit

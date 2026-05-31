@@ -1,8 +1,8 @@
 {
   "name": "rabbit-cage",
-  "version": "5.13.0",
+  "version": "5.14.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
   "surface": {
     "hooks": [],
@@ -362,5 +362,5 @@
       }
     }
   ],
-  "spec_no_change_reason": "spec.md Inv 19(c) already committed in main session at 8116d99; test extended in this cycle"
+  "spec_no_change_reason": "docstring-only edit: remove rabbit-spec from retired-tombstones list in install.py module docstring; no invariant or behavior change (rabbit-spec was never in FEATURE_INCLUDES)"
 }
