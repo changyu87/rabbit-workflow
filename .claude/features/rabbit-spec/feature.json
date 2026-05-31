@@ -2,7 +2,7 @@
   "name": "rabbit-spec",
   "version": "1.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "summary": "Owner of the rabbit workflow's spec-lifecycle skills. Currently empty; rabbit-spec-create lands in Stage 2 and rabbit-spec-update in Stage 3.",
   "status": "active",
   "deprecation_criterion": "when Claude Code exposes native spec-lifecycle skills that supersede this feature",
@@ -11,5 +11,6 @@
     "hooks": [],
     "commands": [],
     "agents": []
-  }
+  },
+  "updated": "2026-05-31"
 }
