@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.41.0
+version: 1.42.0
 template_version: 2.0.0
 ---
 
@@ -28,6 +28,9 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/schemas/project-map.json.schema.json",
       ".claude/features/contract/schemas/rabbit-print.schema.json",
       ".claude/features/contract/schemas/prompts.schema.json"
+    ],
+    "declarations": [
+      ".claude/features/contract/workspace-structure.json"
     ],
     "scripts": [
       ".claude/features/contract/scripts/policy-block.py",
