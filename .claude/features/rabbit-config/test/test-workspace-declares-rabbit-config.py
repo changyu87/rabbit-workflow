@@ -17,7 +17,7 @@ result = subprocess.run(
     capture_output=True, text=True
 )
 REPO_ROOT = result.stdout.strip() if result.returncode == 0 else ""
-DECL = os.path.join(REPO_ROOT, ".claude/workspace-structure.json")
+DECL = os.path.join(REPO_ROOT, ".claude/features/contract/workspace-structure.json")
 
 FAIL = 0
 
