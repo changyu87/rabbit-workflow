@@ -52,6 +52,7 @@ from pathlib import Path
 SAME_PATH_FILES = [
     "CLAUDE.md",
     "README.md",
+    "install.py",
     ".claude/settings.json",
 ]
 
