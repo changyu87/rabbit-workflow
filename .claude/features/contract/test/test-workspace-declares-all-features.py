@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """test-workspace-declares-all-features.py — Inv 31.
 
-`.claude/workspace-structure.json` MUST declare nodes for every feature that
-exists on disk under `.claude/features/`. The runtime check via
-`workspace-map.py --audit` was retired in CONTRACT-BACKLOG-27; this test
-now validates the declaration shape directly.
+`.claude/features/contract/workspace-structure.json` MUST declare nodes for
+every feature that exists on disk under `.claude/features/`. The runtime
+check via `workspace-map.py --audit` was retired in CONTRACT-BACKLOG-27;
+this test now validates the declaration shape directly.
 
   t1: Every directory under .claude/features/ has a corresponding entry in
-      the features node of .claude/workspace-structure.json.
+      the features node of .claude/features/contract/workspace-structure.json.
   t3: Specifically — required features rabbit-spec and rabbit-feature
       are declared in workspace-structure.json.
 """
@@ -25,7 +25,7 @@ result = subprocess.run(
 )
 REPO_ROOT = result.stdout.strip() if result.returncode == 0 else ""
 
-DECL = os.path.join(REPO_ROOT, ".claude/workspace-structure.json")
+DECL = os.path.join(REPO_ROOT, ".claude/features/contract/workspace-structure.json")
 FEATURES_DIR = os.path.join(REPO_ROOT, ".claude/features")
 
 FAIL = 0
