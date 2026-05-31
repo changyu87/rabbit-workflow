@@ -30,7 +30,7 @@ This module has two distinct roles:
      This helper is NOT invoked from main() — main() lays down an explicit
      file closure rather than running the publish flow at install time.
 
-Version: 6.2.0
+Version: 6.3.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit's per-project plugin model is superseded
 """
@@ -169,28 +169,25 @@ def copy_one(src_root: Path, dst_root: Path, src_rel: str, dst_rel: str) -> bool
     return True
 
 
-def rewrite_settings_for_plugin(dst_root: Path) -> None:
-    """Inv 19: in-place rewrite of <dst_root>/.claude/settings.json.
+def _rewrite_one(path: Path, rabbit_root: str) -> None:
+    """Apply the two Inv 19 edits in place to a single settings.json file.
 
-    (a) Sets env.RABBIT_ROOT to str(dst_root.resolve()); creates the env
-        block if absent; overwrites any existing RABBIT_ROOT key.
+    (a) Sets env.RABBIT_ROOT to `rabbit_root`; creates the env block if
+        absent; overwrites any existing RABBIT_ROOT key.
     (b) Replaces every literal '$(git rev-parse --show-toplevel)' occurrence
         with '$RABBIT_ROOT' inside any hooks[<event>][].hooks[].command
         string. No other fields touched.
 
-    Idempotent: re-running on an already-rewritten settings.json is a no-op.
+    Idempotent: re-running on an already-rewritten file is a no-op.
     """
-    settings_path = dst_root / ".claude/settings.json"
-    if not settings_path.is_file():
-        return
-    with open(settings_path) as f:
+    with open(path) as f:
         data = json.load(f)
 
     env_block = data.get("env")
     if not isinstance(env_block, dict):
         env_block = {}
         data["env"] = env_block
-    env_block["RABBIT_ROOT"] = str(dst_root.resolve())
+    env_block["RABBIT_ROOT"] = rabbit_root
 
     hooks = data.get("hooks")
     if isinstance(hooks, dict):
@@ -212,8 +209,30 @@ def rewrite_settings_for_plugin(dst_root: Path) -> None:
                             "$(git rev-parse --show-toplevel)", "$RABBIT_ROOT"
                         )
 
-    with open(settings_path, "w") as f:
+    with open(path, "w") as f:
         json.dump(data, f, indent=2)
+
+
+def rewrite_settings_for_plugin(dst_root: Path) -> None:
+    """Inv 19: rewrite both the deployed settings.json and the feature-local
+    source copy so that `check_manifest_drift` (which republishes from the
+    source) produces a result identical to the deployed copy.
+
+    Applies `_rewrite_one` to:
+      - <dst_root>/.claude/settings.json (deployed copy)
+      - <dst_root>/.claude/features/rabbit-cage/settings.json (source copy,
+        guarded with `is_file()` — only present when the rabbit-cage feature
+        directory was shipped in the install closure).
+
+    Idempotent: re-running on already-rewritten files is a no-op.
+    """
+    rabbit_root = str(dst_root.resolve())
+    deployed_settings = dst_root / ".claude/settings.json"
+    if deployed_settings.is_file():
+        _rewrite_one(deployed_settings, rabbit_root)
+    source_settings = dst_root / ".claude/features/rabbit-cage/settings.json"
+    if source_settings.is_file():
+        _rewrite_one(source_settings, rabbit_root)
 
 
 def write_rabbit_gitignore(dst_root: Path) -> None:

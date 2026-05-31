@@ -5,7 +5,9 @@ the deployed <target>/.claude/settings.json per Inv 19.
 (a) Sets env.RABBIT_ROOT to the absolute path of <target>.
 (b) Replaces every literal $(git rev-parse --show-toplevel) substring
     inside any hooks[<event>][].hooks[].command with $RABBIT_ROOT.
-(c) Both edits are idempotent: re-running yields no further changes.
+(c) Applies the same two edits to the feature-local source copy at
+    <target>/.claude/features/rabbit-cage/settings.json (Inv 19c).
+(d) All edits are idempotent: re-running yields no further changes.
 
 Strategy: build a minimal src tree containing only the files required by
 install.py (top-level CLAUDE.md + .claude/settings.json, the six HOOKS
@@ -115,6 +117,38 @@ def test_install_rewrites_env_and_commands():
         for cmd in all_cmds:
             assert "/.claude/hooks/" in cmd, (
                 f"hook command lost its /.claude/hooks/ suffix: {cmd!r}"
+            )
+
+        # (c) Inv 19(c): feature-local source copy must also be rewritten,
+        # and its content must be identical to the deployed copy so that
+        # check_manifest_drift (which republishes from the source) is a no-op.
+        source_settings = dst / ".claude/features/rabbit-cage/settings.json"
+        assert source_settings.is_file(), (
+            "feature-local source settings.json missing from install"
+        )
+        src_data = json.loads(source_settings.read_text())
+        assert src_data.get("env", {}).get("RABBIT_ROOT") == str(dst.resolve()), (
+            f"source copy env.RABBIT_ROOT not set correctly: "
+            f"{src_data.get('env', {}).get('RABBIT_ROOT')!r} vs {dst.resolve()!s}"
+        )
+        for cmd in _walk_command_strings(src_data):
+            assert "$(git rev-parse --show-toplevel)" not in cmd, (
+                f"source copy still contains git rev-parse form: {cmd!r}"
+            )
+        # Semantic guarantee: republishing settings from the rewritten source
+        # against the rewritten deployed copy must be a no-op. Without (c),
+        # publish_settings would source-win env.RABBIT_ROOT back to the
+        # unrewritten source value, reverting the install on every Stop event.
+        deployed_data = json.loads(settings_path.read_text())
+        # The keys shared between source and deployed must match exactly,
+        # so a source-wins merge does not mutate the deployed copy.
+        for key, src_value in src_data.items():
+            if key == "hooks":
+                continue
+            assert deployed_data.get(key) == src_value, (
+                f"source[{key!r}]={src_value!r} differs from deployed"
+                f"[{key!r}]={deployed_data.get(key)!r}; "
+                f"publish_settings source-wins merge would mutate deployed"
             )
     print("PASS test_install_rewrites_env_and_commands")
 
