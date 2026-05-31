@@ -30,7 +30,7 @@ This module has two distinct roles:
      This helper is NOT invoked from main() — main() lays down an explicit
      file closure rather than running the publish flow at install time.
 
-Version: 6.1.0
+Version: 6.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit's per-project plugin model is superseded
 """
@@ -81,6 +81,7 @@ COMMANDS: list[tuple[str, str]] = []
 FEATURE_INCLUDES: dict[str, list[str]] = {
     "contract": [
         "feature.json",
+        "hooks/prompt-injector.py",
         "lib/__init__.py",
         "lib/runtime.py",
         "lib/checks.py",
@@ -115,6 +116,17 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
     ],
     "rabbit-cage": [
         "feature.json",
+        "settings.json",
+        "README.md",
+        "install.py",
+        "policy-header.json",
+        "hooks/scope-guard.py",
+        "hooks/stop-dispatcher.py",
+        "hooks/session-start-dispatcher.py",
+        "hooks/user-prompt-submit-dispatcher.py",
+        "hooks/_dispatcher_lib.py",
+        "commands/rabbit-refresh.md",
+        "commands/rabbit-project.md",
         "lib/__init__.py",
         "lib/project_map_reader.py",
     ],
@@ -130,6 +142,11 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
     "rabbit-feature": [
         "feature.json",
         "scripts/new-feature.py",
+        "skills/rabbit-feature-audit/SKILL.md",
+        "skills/rabbit-feature-new/SKILL.md",
+        "skills/rabbit-feature-scope/SKILL.md",
+        "skills/rabbit-feature-spec/SKILL.md",
+        "skills/rabbit-feature-touch/SKILL.md",
     ],
     "spec-seeder": [
         "feature.json",

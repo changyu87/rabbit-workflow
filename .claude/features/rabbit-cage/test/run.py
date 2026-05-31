@@ -32,6 +32,7 @@ SUITES = [
     "test-scope-guard-plugin-mode.py",
     "test-install-rewrites-settings.py",
     "test-session-start-alerts-if-rabbit-root-unset.py",
+    "test-feature-includes-manifest-closure.py",
 ]
 
 
