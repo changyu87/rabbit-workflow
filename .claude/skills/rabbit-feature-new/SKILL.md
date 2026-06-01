@@ -86,10 +86,10 @@ before write). On glob-validation failure (boundary, empty-match, or
 overlap) it exits non-zero — surface that error to the caller and stop.
 
 After a successful plugin-mode scaffold, the script prints a `NEXT:`
-block to stdout containing the exact `dispatch-spec-seeder.py` command
-the caller must run to seed `docs/spec/spec.md`. Capture that command and
-follow it (see Step 3 below); the scaffolder itself never invokes the
-seeder subagent.
+block to stdout naming the `rabbit-spec-create` skill (and equivalently
+the `dispatch-spec-create.py` command) the caller should invoke to seed
+`docs/spec/spec.md`. Capture that block and follow it (see Step 3 below);
+the scaffolder itself never invokes the spec-creator subagent.
 
 ### Step 2 — Validate the scaffold
 
@@ -111,26 +111,31 @@ can decide whether to delete the partial scaffold or fix it in place.
 audit surface. Glob-validation and project-map schema-validation already
 ran inside the scaffolder.
 
-### Step 3 — Dispatch the spec-seeder subagent (plugin mode only)
+### Step 3 — Invoke rabbit-spec-create (plugin mode only)
 
 In plugin mode, the scaffolder's stdout ends with a `NEXT:` block of the
 form:
 
 ```text
-NEXT: dispatch the spec-seeder subagent to seed docs/spec/spec.md:
-  python3 .claude/features/spec-seeder/scripts/dispatch-spec-seeder.py \
+NEXT: invoke the rabbit-spec-create skill (or run the dispatcher
+directly) to seed docs/spec/spec.md:
+  Skill("rabbit-spec-create", args: "<feature-name> <glob1> <glob2> ...")
+or equivalently:
+  python3 .claude/features/rabbit-spec/scripts/dispatch-spec-create.py \
     --feature-name <feature-name> \
     --paths '<glob1>,<glob2>,...'
-Pass the resulting prompt path to the spec-seeder subagent.
+then dispatch the spec-creator subagent with the assembled prompt.
 ```
 
-Run that command verbatim. It prints the absolute path of an assembled
-prompt file under `.rabbit/prompts/`. Hand that prompt path to the
-spec-seeder subagent (via the dispatcher's Agent tool) so the seeder
-fills in `docs/spec/spec.md`. The user flow is therefore two steps:
-(1) invoke this skill; (2) dispatch the seeder using the printed command.
+Invoke the `rabbit-spec-create` skill (preferred) which handles the
+dispatch end-to-end. The user flow is therefore two steps:
+(1) invoke this skill to scaffold; (2) invoke `rabbit-spec-create` to
+draft the initial spec body.
 
-In standalone mode this step does not apply — skip to Step 4.
+In standalone mode this step does not apply — skip to Step 4. (Standalone
+features can still invoke `rabbit-spec-create` if a seeded draft is
+desired, but the scaffolder does not print the `NEXT:` block in that
+mode.)
 
 ### Step 4 — Report the result
 

@@ -1,33 +1,65 @@
 ---
 feature: rabbit-spec
-version: 1.0.0
-owner: rabbit-workflow team
+version: 1.1.0
 template_version: 2.0.0
-deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 ---
 
 # rabbit-spec — Contract
 
-rabbit-spec is the owner of the rabbit workflow's spec-lifecycle skills. In
-this revival stage the feature carries no surface artifacts; the contract
-therefore declares empty `provides`, `reads`, and `invokes` blocks. The
-`never` array pins the boundary so future absorptions (rabbit-spec-create in
-Stage 2, rabbit-spec-update in Stage 3) cannot land surface without first
-updating `spec.md`.
+Boundary contract for cross-feature consumers. Read the JSON block; ignore prose.
 
 ```json
 {
-  "schema_version": "1.0.0",
-  "feature": "rabbit-spec",
-  "version": "1.0.0",
-  "owner": "rabbit-workflow team",
-  "deprecation_criterion": "when Claude Code exposes native spec-lifecycle skills that supersede this feature",
-  "provides": {},
-  "reads": {},
-  "invokes": {},
+  "provides": {
+    "skills": [
+      ".claude/features/rabbit-spec/skills/rabbit-spec-create/SKILL.md"
+    ],
+    "agents": [
+      ".claude/features/rabbit-spec/agents/spec-creator.md"
+    ],
+    "scripts": [
+      {
+        "path": ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py",
+        "stdin": "none",
+        "stdout": "absolute path to the assembled prompt file",
+        "exit": "0=ok 1=invocation-error 2=assembler-failure",
+        "note": "prompt assembler for the spec-creator subagent; invokes contract/scripts/build-prompt.py"
+      }
+    ],
+    "files": [],
+    "templates": [],
+    "schemas": []
+  },
+  "reads": {
+    "files": [
+      ".rabbit/.runtime/mode",
+      ".rabbit/rabbit-project/project-map.json"
+    ],
+    "external": []
+  },
+  "invokes": {
+    "scripts": [
+      {
+        "path": ".claude/features/contract/scripts/build-prompt.py",
+        "purpose": "assemble the spec-creator subagent prompt from the registered template + slot values"
+      }
+    ],
+    "agents": [
+      {
+        "subagent_type": "spec-creator",
+        "purpose": "read-only spec drafting from feature name + optional code globs"
+      }
+    ]
+  },
   "never": [
-    "introduces any surface artifact without first updating spec.md",
-    "modifies another feature's files"
+    "introduces a surface artifact without first updating spec.md",
+    "modifies another feature's files",
+    "writes any file outside .claude/features/rabbit-spec/ except the target feature's docs/spec/spec.md (the skill's deliverable)",
+    "grants the spec-creator agent any tool beyond Read, Grep, Glob"
   ]
 }
 ```
+
+## Tech Stack
+
+Python 3 stdlib only.

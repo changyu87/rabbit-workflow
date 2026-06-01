@@ -73,11 +73,12 @@ SKILLS = [
     (".claude/features/rabbit-feature/skills/rabbit-feature-scope/SKILL.md", ".claude/skills/rabbit-feature-scope/SKILL.md"),
     (".claude/features/rabbit-feature/skills/rabbit-feature-spec/SKILL.md", ".claude/skills/rabbit-feature-spec/SKILL.md"),
     (".claude/features/rabbit-feature/skills/rabbit-feature-audit/SKILL.md", ".claude/skills/rabbit-feature-audit/SKILL.md"),
+    (".claude/features/rabbit-spec/skills/rabbit-spec-create/SKILL.md", ".claude/skills/rabbit-spec-create/SKILL.md"),
 ]
 
 # Agents: source → deployed
 AGENTS = [
-    (".claude/features/spec-seeder/agents/spec-seeder.md", ".claude/agents/spec-seeder.md"),
+    (".claude/features/rabbit-spec/agents/spec-creator.md", ".claude/agents/spec-creator.md"),
 ]
 
 # Commands: source → deployed
@@ -115,7 +116,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "templates/feature-json-template.json",
         "templates/project-map-template.json",
         "templates/prompts/rabbit-feature-new.txt",
-        "templates/prompts/spec-seeder.txt",
+        "templates/prompts/spec-create.txt",
     ],
     "policy": [
         "feature.json",
@@ -157,9 +158,11 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "skills/rabbit-feature-spec/SKILL.md",
         "skills/rabbit-feature-touch/SKILL.md",
     ],
-    "spec-seeder": [
+    "rabbit-spec": [
         "feature.json",
-        "scripts/dispatch-spec-seeder.py",
+        "agents/spec-creator.md",
+        "scripts/dispatch-spec-create.py",
+        "skills/rabbit-spec-create/SKILL.md",
     ],
 }
 

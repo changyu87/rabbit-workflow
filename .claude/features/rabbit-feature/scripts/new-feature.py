@@ -175,8 +175,9 @@ def _scaffold_plugin_feature(target: Path, name: str, owner: str, globs: list[st
 
     spec_md = (
         f"# {name}\n\n"
-        "> Per-project feature spec (plugin mode). Seeded by the spec-seeder\n"
-        "> subagent — replace this placeholder with real content.\n\n"
+        "> Per-project feature spec (plugin mode). Seeded by the spec-creator\n"
+        "> subagent via the rabbit-spec-create skill — replace this placeholder\n"
+        "> with real content.\n\n"
         "## Purpose\n\n"
         "TODO: one-sentence purpose.\n\n"
         "## Path globs\n\n"
@@ -288,17 +289,20 @@ def _run_plugin_mode(repo_root: Path, name: str, globs: list[str]) -> int:
 
     print(f"scaffolded plugin feature: {target}")
     print(f"registered in: {pmap_path}")
-    # Plugin-mode handoff: the caller dispatches the spec-seeder subagent
-    # using this exact command (the script lives in spec-seeder). We do not
-    # invoke the subagent ourselves — the dispatch happens at the
+    # Plugin-mode handoff: the caller invokes the rabbit-spec-create skill
+    # (under rabbit-spec) which dispatches the spec-creator subagent. We do
+    # not invoke the skill ourselves — the dispatch happens at the
     # dispatcher (skill caller) layer.
-    seeder = (".claude/features/spec-seeder/scripts/dispatch-spec-seeder.py")
+    dispatcher = ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py"
     print(
-        "\nNEXT: dispatch the spec-seeder subagent to seed docs/spec/spec.md:\n"
-        f"  python3 {seeder} \\\n"
+        "\nNEXT: invoke the rabbit-spec-create skill (or run the dispatcher\n"
+        "directly) to seed docs/spec/spec.md:\n"
+        f"  Skill(\"rabbit-spec-create\", args: \"{name} {' '.join(globs)}\")\n"
+        "or equivalently:\n"
+        f"  python3 {dispatcher} \\\n"
         f"    --feature-name {name} \\\n"
         f"    --paths '{','.join(globs)}'\n"
-        "Pass the resulting prompt path to the spec-seeder subagent."
+        "then dispatch the spec-creator subagent with the assembled prompt."
     )
     return 0
 

@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""dispatch-spec-seeder.py — assemble the spec-seeder subagent prompt.
+"""dispatch-spec-create.py — assemble the spec-creator subagent prompt.
 
-Used by rabbit-feature-new in plugin mode when a user declares a new feature
-mapping. Resolves the declared path globs, caps the resolved file list at 50
-entries, and invokes contract/scripts/build-prompt.py to assemble the prompt.
+Used by the rabbit-spec-create skill (and by rabbit-decompose's downstream
+pipeline) when a new feature's initial spec body needs to be drafted.
+Resolves the declared path globs, caps the resolved file list at 50 entries,
+and invokes contract/scripts/build-prompt.py to assemble the prompt.
+
+Both modes are supported:
+  - Plugin mode: --paths populated with code globs the agent reads from.
+  - Standalone mode: --paths empty (or omitted) — agent produces a skeleton.
 
 Usage:
-    dispatch-spec-seeder.py --feature-name <name> --paths <glob1>,<glob2>,...
+    dispatch-spec-create.py --feature-name <name> [--paths <glob1>,<glob2>,...] [--description <text>]
 
 Prints the absolute path of the assembled prompt file to stdout on success.
 
@@ -16,8 +21,8 @@ Exit codes:
     2 = build-prompt.py subprocess failure
 
 Version: 1.0.0
-Owner: cyxu
-Deprecation criterion: when rabbit's per-project plugin model is superseded
+Owner: rabbit-workflow team
+Deprecation criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 """
 
 import argparse
@@ -30,15 +35,12 @@ MAX_FILES = 50
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Dispatch the spec-seeder subagent prompt")
+    parser = argparse.ArgumentParser(description="Dispatch the spec-creator subagent prompt")
     parser.add_argument("--feature-name", required=True, help="Feature name (kebab-case)")
-    parser.add_argument("--paths", required=True, help="Comma-separated path globs")
+    parser.add_argument("--paths", default="", help="Comma-separated path globs (empty in standalone mode)")
     args = parser.parse_args()
 
     globs = [g.strip() for g in args.paths.split(",") if g.strip()]
-    if not globs:
-        print("error: --paths must contain at least one non-empty glob", file=sys.stderr)
-        return 1
 
     resolved = []
     for g in globs:
@@ -54,7 +56,7 @@ def main():
 
     cmd = [
         "python3", build_prompt,
-        "--callable-id", "spec-seeder",
+        "--callable-id", "spec-create",
         "--slot", f"feature_name={args.feature_name}",
         "--slot", f"paths_globs={','.join(globs)}",
         "--slot", f"paths_resolved={chr(10).join(resolved)}",

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.15.0
+version: 1.16.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -88,8 +88,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
         "lock": "test-audit-skill.py asserts rabbit-feature-audit invokes this script; test-new-skill.py asserts rabbit-feature-new invokes this script (Inv 31, 33)"
       },
       {
-        "path": ".claude/features/spec-seeder/scripts/dispatch-spec-seeder.py",
-        "signature": "dispatch-spec-seeder.py --feature-name <name> --paths <glob1>,<glob2>,...",
+        "path": ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py",
+        "signature": "dispatch-spec-create.py --feature-name <name> [--paths <glob1>,<glob2>,...]",
         "exit": "0=success, 1=invocation error, 2=build-prompt.py subprocess failure",
         "lock": "test-feature-new-plugin-mode.py asserts plugin-mode new-feature.py prints this exact dispatch command to stdout (Inv 48); the command string is also referenced by name in new-feature.py source so test-contract-md.py picks it up as a cross-feature reference."
       }

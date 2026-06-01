@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.0.0
+version: 1.1.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -11,60 +11,80 @@ status: active
 
 ## Purpose
 
-rabbit-spec is the owner of the rabbit workflow's spec-lifecycle skills — the
-skills that read, draft, and revise a feature's `docs/spec/spec.md`. The
-feature is **currently empty**: it carries no surface artifacts. Its concrete
-skills land in subsequent waves:
+rabbit-spec owns the rabbit workflow's spec-lifecycle skills — the skills that
+draft and revise a feature's `docs/spec/spec.md`. After Stage 2 it hosts
+`rabbit-spec-create`, the initial-spec-drafting skill that absorbs the
+behavior of the former `spec-seeder` feature; Stage 3 will add
+`rabbit-spec-update`, the spec-revision skill that absorbs and subagent-ifies
+the former `rabbit-feature-spec`.
 
-- `rabbit-spec-create` (Stage 2) — drafts the initial spec body from feature
-  name + optional code globs + optional description. Absorbs the existing
-  spec-seeder agent and dispatch script.
-- `rabbit-spec-update` (Stage 3) — revises an existing spec body based on a
-  request. Absorbs the existing `rabbit-feature-spec` skill and promotes it
-  to a subagent-driven dispatch for parallelism and context isolation.
-
-This empty-revival stage exists to flip the directory from a tombstone to an
-active feature so the surface absorbs from spec-seeder and rabbit-feature
-have a home to land in. The cross-feature ripples — the rabbit-spec node in
-`workspace-structure.json`, the rabbit-spec assertion in
-`test-retirement-semantics.py`, and the rabbit-spec entries in rabbit-cage's
-install.py / spec.md retired-tombstone lists — are part of this same
-revival cycle.
+The reading-and-drafting work is performed by a read-only subagent
+(`spec-creator`) that is tool-restricted to Read/Grep/Glob. The skill itself
+is a thin orchestration wrapper that assembles the prompt, dispatches the
+agent, and writes the returned body to disk.
 
 ## Surface
 
-No surface artifacts yet. Stage 2 adds `rabbit-spec-create` (skill + agent +
-dispatch script); Stage 3 adds `rabbit-spec-update` (skill + agent + dispatch
-script). Until then, the feature is structurally complete (feature.json,
-spec.md, contract.md, test/run.py) but functionally inert.
+- `skills/rabbit-spec-create/SKILL.md` — the user-invocable skill
+- `agents/spec-creator.md` — the read-only drafting subagent
+  (frontmatter declares `tools: Read, Grep, Glob` — the restriction is
+  load-bearing)
+- `scripts/dispatch-spec-create.py` — Python prompt assembler invoked by
+  the skill; resolves globs, caps at 50 files, calls
+  `contract/scripts/build-prompt.py`
+- `docs/spec/spec.md`, `docs/spec/contract.md`, `feature.json`,
+  `test/run.py` — feature scaffolding
+
+## Mode awareness
+
+The skill works in both rabbit modes:
+
+- **Standalone**: drafts the spec from feature name alone (skeleton output;
+  globs are empty)
+- **Plugin**: drafts the spec by reading the matched code files
+
+Mode detection is the skill's responsibility (it reads
+`.rabbit/.runtime/mode`); the agent and dispatch script accept globs of any
+length including zero.
 
 ## Invariants
 
-1. `feature.json` MUST declare `status: "active"` (not `"retired"`),
-   `version: "1.0.0"`, `owner: "rabbit-workflow team"`,
-   `tdd_state: "test-green"`, a non-empty `summary`, a non-empty
-   `deprecation_criterion`, and an empty `surface` block
-   (`{"skills": [], "hooks": [], "commands": [], "agents": []}`). The
-   `successor` and `deprecation` fields from the retirement record MUST
-   be absent. The `manifest`, `runtime`, and `configuration` blocks MUST
-   either be absent or be empty containers.
+1. `feature.json` MUST declare `status: "active"`, `version: "1.1.0"` or
+   later, `owner: "rabbit-workflow team"`, `tdd_state: "test-green"`,
+   non-empty `summary`, non-empty `deprecation_criterion`, and a `surface`
+   block that lists the skill at `skills/rabbit-spec-create/SKILL.md`, the
+   agent at `agents/spec-creator.md`, and the dispatch script at
+   `scripts/dispatch-spec-create.py`. The `manifest` MUST contain a
+   `publish_skill` entry sourcing the skill and a `publish_agent` entry
+   sourcing the agent. The `prompts` array MUST contain exactly one entry
+   with `id: "spec-create"`, `kind: "subagent"`, `inject` listing
+   philosophy + coding-rules, and `slots: ["feature_name", "paths_globs", "paths_resolved"]`.
 
-2. `docs/spec/spec.md` MUST exist with frontmatter declaring `status: active`
-   and `version: 1.0.0`. The body MUST describe the future-population intent
-   (rabbit-spec-create and rabbit-spec-update arriving in later stages) and
-   MUST NOT contain RETIRED markers, successor pointers, or retirement
-   lifecycle prose.
+2. `agents/spec-creator.md` MUST exist with YAML frontmatter declaring
+   `name: spec-creator`, `tools: Read, Grep, Glob` (exact comma-separated
+   list — no `Write`/`Edit`/`Bash`), `model: sonnet`, and `version: 1.0.0`.
+   The body describes the read-only drafting task. The tool restriction is
+   load-bearing — it makes side-effects impossible regardless of what the
+   agent attempts.
 
-3. `docs/spec/contract.md` MUST exist with proper YAML frontmatter
-   (`feature: rabbit-spec`, `version: 1.0.0`, `template_version: 2.0.0`)
-   and a JSON block declaring empty `provides`/`reads`/`invokes` and a
-   `never` array that includes `"introduces any surface artifact without first updating spec.md"`.
+3. `scripts/dispatch-spec-create.py` MUST be executable, carry a
+   module-level docstring (Version/Owner/Deprecation criterion), and:
+    (a) Accept `--feature-name <name>` (required) and `--paths <globs>`
+        (optional; comma-separated, may be empty for standalone mode).
+    (b) Resolve each glob via `glob.glob(<g>, recursive=True)`, dedupe,
+        sort lexicographically, take first 50.
+    (c) Invoke `python3 .claude/features/contract/scripts/build-prompt.py
+        --callable-id spec-create --slot feature_name=<name> --slot
+        paths_globs=<globs> --slot paths_resolved=<newline-joined>` as a
+        subprocess; print the resulting prompt-file path to stdout on
+        success; exit nonzero on subprocess failure.
+    (d) Stdlib only (argparse, glob, os, subprocess, sys).
 
-4. `test/run.py` MUST exist as a Python 3 stdlib runner that scans `test/`
-   for `test-*.py` files and exits 0 — on an empty test set (no matching
-   files), the runner MUST still exit 0 (not error). The previous
-   `test/test-retired.py` MUST be removed because rabbit-spec is no longer
-   retired.
+4. `skills/rabbit-spec-create/SKILL.md` MUST exist with YAML frontmatter
+   declaring `name: rabbit-spec-create`, a description naming both standalone
+   and plugin modes, `version: 1.0.0`, `owner: rabbit-workflow team`, and
+   a `deprecation_criterion`. The body documents the 4-step orchestration
+   protocol (assemble prompt → dispatch agent → write to spec.md → report).
 
 ## Tech Stack
 
@@ -72,16 +92,21 @@ Python 3 stdlib only.
 
 ## Tests
 
-`test/run.py` invokes every `test-*.py` file under `test/`. Currently the
-directory contains only the runner itself — no per-invariant tests yet — and
-the runner exits 0 on the empty case. Per-invariant coverage arrives with
-the surface artifacts in Stage 2 / Stage 3.
+`test/run.py` invokes every `test-*.py` file under `test/`. Per-invariant
+coverage arrives with the surface artifacts in this stage:
+- `test-agent-restriction.py` — asserts the agent's `tools` field is exactly
+  `Read, Grep, Glob` with no others
+- `test-dispatch-script.py` — invokes the dispatch script in both modes
+  (with paths and without) and asserts it produces a prompt-file path
+- `test-prompts-section-shape.py` — loads feature.json and asserts the
+  `prompts` entry shape matches Inv 1
 
 ## Out of Scope
 
-- The actual rabbit-spec-create and rabbit-spec-update skills — landing in
-  Stage 2 and Stage 3 respectively, not in this revival cycle.
-- Cross-feature artifact updates outside rabbit-spec's own directory — the
-  `workspace-structure.json` node flip, the contract retirement-semantics
-  test assertion, and the rabbit-cage retired-tombstone-list edits are
-  owned by those features' TDD subagents in the same revival PR.
+- `rabbit-spec-update` (Stage 3) — revising existing specs, subagent-ified
+  from rabbit-feature-spec. Arrives in the next stage.
+- The user-code globs themselves and their semantics — owned by
+  `rabbit-feature` (or its successor `rabbit-feature-scaffold` in Stage 4).
+- The prompt template body at
+  `.claude/features/contract/templates/prompts/spec-create.txt` — owned by
+  `contract` per Inv 57.

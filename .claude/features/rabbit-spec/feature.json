@@ -1,16 +1,44 @@
 {
   "name": "rabbit-spec",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "summary": "Owner of the rabbit workflow's spec-lifecycle skills. Currently empty; rabbit-spec-create lands in Stage 2 and rabbit-spec-update in Stage 3.",
   "status": "active",
-  "deprecation_criterion": "when Claude Code exposes native spec-lifecycle skills that supersede this feature",
+  "summary": "Owner of the rabbit workflow's spec-lifecycle skills. Hosts the rabbit-spec-create skill (absorbs the former spec-seeder feature) and the spec-creator subagent that drafts initial spec.md bodies from feature name + optional code globs. Will host rabbit-spec-update (Stage 3) for revising existing specs.",
   "surface": {
-    "skills": [],
+    "skills": ["skills/rabbit-spec-create/SKILL.md"],
+    "agents": ["agents/spec-creator.md"],
     "hooks": [],
     "commands": [],
-    "agents": []
+    "scripts": ["scripts/dispatch-spec-create.py"]
   },
-  "updated": "2026-05-31"
+  "deprecation_criterion": "when Claude Code exposes native spec-lifecycle skills that supersede this feature",
+  "updated": "2026-05-31",
+  "manifest": [
+    {
+      "api": "publish_skill",
+      "args": {
+        "source": "skills/rabbit-spec-create/SKILL.md"
+      }
+    },
+    {
+      "api": "publish_agent",
+      "args": {
+        "source": "agents/spec-creator.md"
+      }
+    }
+  ],
+  "runtime": {},
+  "configuration": [],
+  "prompts": [
+    {
+      "id": "spec-create",
+      "kind": "subagent",
+      "inject": [
+        ".claude/features/policy/philosophy.md",
+        ".claude/features/policy/coding-rules.md"
+      ],
+      "slots": ["feature_name", "paths_globs", "paths_resolved"]
+    }
+  ]
 }

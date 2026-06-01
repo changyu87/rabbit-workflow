@@ -58,9 +58,9 @@ def test_skill_documents_plugin_mode() -> None:
     assert ".rabbit/.runtime/mode" in text, (
         "SKILL.md must name the .rabbit/.runtime/mode trigger for plugin mode"
     )
-    # Seeder-dispatch handoff named.
-    assert "dispatch-spec-seeder.py" in text, (
-        "SKILL.md must document the seeder-dispatch handoff command"
+    # Spec-create dispatch handoff named.
+    assert "dispatch-spec-create.py" in text or "rabbit-spec-create" in text, (
+        "SKILL.md must document the rabbit-spec-create dispatch handoff"
     )
     # The project-map registration target named.
     assert "project-map.json" in text, (

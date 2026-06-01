@@ -101,8 +101,8 @@ def test_t1_plugin_happy_path() -> None:
         # caller can hand off to the seeder subagent. The output should name
         # both the seeder script and the new feature name.
         out = res.stdout
-        assert "dispatch-spec-seeder.py" in out, (
-            f"plugin-mode output must reference dispatch-spec-seeder.py; got {out!r}"
+        assert "dispatch-spec-create.py" in out, (
+            f"plugin-mode output must reference dispatch-spec-create.py; got {out!r}"
         )
         assert "my-feature" in out, (
             f"plugin-mode output must name the new feature; got {out!r}"
