@@ -61,6 +61,13 @@ if [ -z "$SRC" ] || [ ! -d "$SRC" ]; then
   exit 1
 fi
 
+# Export the version pin label install.py will write into <target>/.version.
+# Default to $RABBIT_REF (the fetched ref) so one-liner installs record the
+# branch/tag/SHA they actually pulled. An externally-set RABBIT_INSTALLED_REF
+# (e.g. from test stubs or explicit override) wins. (rabbit-cage spec Inv 22e,
+# Fixes #258)
+export RABBIT_INSTALLED_REF="${RABBIT_INSTALLED_REF:-$RABBIT_REF}"
+
 # Run the Python installer (forward $UPDATE_MODE if set; empty expands to nothing)
 python3 "$SRC/install.py" --src "$SRC" --target "$(pwd)/.rabbit" ${UPDATE_MODE:+$UPDATE_MODE}
 
