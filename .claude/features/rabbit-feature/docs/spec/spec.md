@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.18.0
+version: 1.19.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -252,17 +252,7 @@ Scripts (under `scripts/`):
     (no `test/run.sh`). The scaffolded directory passes
     `validate-feature.py` immediately.
 
-44. **scaffold-feature.py plugin-mode invocation.** When the file
-    `<cwd>/.rabbit/.runtime/mode` exists and contains the literal string
-    `plugin` (written at SessionStart by `rabbit-meta`'s
-    `write_mode_marker`), `scaffold-feature.py` honors the plugin-mode CLI
-    form `scaffold-feature.py <name> <path-glob> [<path-glob>...]`. The
-    user-project root is the directory containing `.rabbit/` (i.e.,
-    `cwd`). When the marker is absent or does not contain `plugin`, the
-    script's behaviour is unchanged from the standalone form
-    `scaffold-feature.py <root> <name> [...]`. The detection happens before
-    any argument parsing so a `<name>+<glob>` pair is never
-    misinterpreted as a `<root>+<name>` pair.
+44. **scaffold-feature.py plugin-mode invocation.** Plugin-mode detection MUST walk UP from cwd to find the nearest ancestor directory `D` such that EITHER `D/.runtime/mode` exists with content `plugin` (cwd is inside `.rabbit/` itself) OR `D/.rabbit/.runtime/mode` exists with content `plugin` (cwd is inside the user-project root or any subdirectory thereof). On first match, plugin mode is active and the resolved `rabbit_root` is either `D` itself (first case) or `D/.rabbit` (second case); the user-project root is `rabbit_root.parent`. The walk terminates at the filesystem root; if no ancestor `.runtime/mode` or `.rabbit/.runtime/mode` is found, the script falls through cleanly to the standalone form `scaffold-feature.py <root> <name> [...]`. When plugin mode is detected, `scaffold-feature.py` honors the plugin-mode CLI form `scaffold-feature.py <name> <path-glob> [<path-glob>...]`. The walk-up replaces the original single-check semantics (which only looked at `<cwd>/.rabbit/.runtime/mode`) — that semantics failed silently when cwd was `.rabbit/` itself (the typical rabbit session cwd in plugin mode), because the script then looked for `.rabbit/.rabbit/.runtime/mode` which never exists. The detection happens before any argument parsing so a `<name>+<glob>` pair is never misinterpreted as a `<root>+<name>` pair. Enforced by 5 tests under `.claude/features/rabbit-feature/test/`: cwd=project root, cwd=.rabbit/ itself (regression for #267), cwd=arbitrary nested subdir of project, cwd outside any rabbit install (standalone fallback), and cwd=/ (filesystem root terminates cleanly).
 
 45. **Plugin-mode path-glob validation.** In plugin mode,
     `scaffold-feature.py` enforces three pre-registration validations against
