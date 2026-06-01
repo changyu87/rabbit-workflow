@@ -87,6 +87,7 @@ SKILLS = [
 # Agents: source → deployed
 AGENTS = [
     (".claude/features/rabbit-spec/agents/spec-creator.md", ".claude/agents/spec-creator.md"),
+    (".claude/features/tdd-subagent/agents/tdd-subagent.md", ".claude/agents/tdd-subagent.md"),
 ]
 
 # Commands: source → deployed
@@ -132,6 +133,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "templates/prompts/rabbit-issue.txt",
         "templates/prompts/rabbit-spec-update.txt",
         "templates/prompts/spec-create.txt",
+        "templates/prompts/tdd-subagent.txt",
     ],
     "policy": [
         "feature.json",
@@ -195,6 +197,12 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
     "rabbit-decompose": [
         "feature.json",
         "skills/rabbit-decompose/SKILL.md",
+    ],
+    "tdd-subagent": [
+        "feature.json",
+        "agents/tdd-subagent.md",
+        "scripts/dispatch-tdd-subagent.py",
+        "scripts/tdd-step.py",
     ],
 }
 
