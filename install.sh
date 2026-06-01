@@ -4,20 +4,31 @@
 # install.sh is for FIRST-TIME installs only. To update an existing install,
 # run `python3 .rabbit/install.py --update` directly (Inv 22a, Fixes #273).
 #
-# One-liner usage:
+# One-liner usage (installs the latest stable release):
 #   curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
 #
 # Or download + run:
 #   curl -fsSLO https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh && bash install.sh
 #
+# Channel selection (spec Inv 24):
+#   The default RABBIT_REF tracks the latest stable release branch. Cutting
+#   a new release (e.g. release/1.1) bumps this default in the same PR.
+#
+#   Pin a specific version:
+#     RABBIT_REF=release/1.0 curl -sSL .../install.sh | bash
+#     RABBIT_REF=v1.0.0      curl -sSL .../install.sh | bash
+#
+#   Bleeding edge (developers — opt-in only):
+#     RABBIT_REF=dev curl -sSL .../install.sh | bash
+#
 # Env vars:
 #   RABBIT_REPO  — default changyu87/rabbit-workflow
-#   RABBIT_REF   — default dev (branch, tag, or SHA)
+#   RABBIT_REF   — default release/1.0 (branch, tag, or SHA)
 
 set -euo pipefail
 
 RABBIT_REPO="${RABBIT_REPO:-changyu87/rabbit-workflow}"
-RABBIT_REF="${RABBIT_REF:-dev}"
+RABBIT_REF="${RABBIT_REF:-release/1.0}"
 
 # Pre-flight
 for cmd in python3 curl tar; do
