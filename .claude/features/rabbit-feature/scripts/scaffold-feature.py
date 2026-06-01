@@ -53,22 +53,46 @@ def usage(stream=sys.stderr) -> None:
     )
 
 
-def _detect_plugin_mode(cwd: Path) -> Path | None:
-    """Return the user-project root if plugin mode is active, else None.
+def _detect_plugin_mode(cwd: Path) -> tuple[bool, Path | None]:
+    """Walk UP from cwd to find the nearest plugin-mode `.rabbit/` ancestor.
 
-    Plugin mode is active when `<cwd>/.rabbit/.runtime/mode` contains the
-    literal string "plugin". The user-project root is the parent of
-    `.rabbit/` — i.e., `cwd` itself when invoked from the project root.
+    Returns `(True, rabbit_root)` on first match, where `rabbit_root` is the
+    `.rabbit/` directory itself (so `rabbit_root.parent` is the user-project
+    root). Returns `(False, None)` if the walk reaches the filesystem root
+    with no match.
+
+    Two ancestor shapes count as a match, checked at each candidate `D`
+    (starting at `cwd` and walking to `/`):
+
+      (a) `D/.runtime/mode` contains `plugin` — cwd is inside `.rabbit/`
+          itself; resolved `rabbit_root` is `D`.
+      (b) `D/.rabbit/.runtime/mode` contains `plugin` — cwd is at or
+          below the user-project root; resolved `rabbit_root` is `D/.rabbit`.
+
+    Inv 44 (amended) — replaces the original single-check semantics that only
+    inspected `<cwd>/.rabbit/.runtime/mode`. That semantics failed silently
+    when cwd was `.rabbit/` itself (the typical rabbit session cwd in plugin
+    mode), because it then looked for `.rabbit/.rabbit/.runtime/mode`.
     """
-    marker = cwd / ".rabbit" / ".runtime" / "mode"
-    if not marker.is_file():
-        return None
-    try:
-        if marker.read_text().strip() == "plugin":
-            return cwd
-    except OSError:
-        return None
-    return None
+    start = Path(cwd).resolve()
+    for candidate in (start, *start.parents):
+        # Case (a): cwd is inside `.rabbit/` itself.
+        marker_a = candidate / ".runtime" / "mode"
+        if marker_a.is_file():
+            try:
+                if marker_a.read_text().strip() == "plugin":
+                    return (True, candidate)
+            except OSError:
+                pass
+        # Case (b): cwd is the user-project root (or below it).
+        marker_b = candidate / ".rabbit" / ".runtime" / "mode"
+        if marker_b.is_file():
+            try:
+                if marker_b.read_text().strip() == "plugin":
+                    return (True, candidate / ".rabbit")
+            except OSError:
+                pass
+    return (False, None)
 
 
 def _valid_name(name: str) -> bool:
@@ -367,17 +391,21 @@ def main() -> int:
         usage(sys.stdout if args and args[0] in ("-h", "--help") else sys.stderr)
         return 0 if args and args[0] in ("-h", "--help") else 2
 
-    # Plugin-mode dispatch comes first: the cwd's `.rabbit/.runtime/mode`
-    # decides which CLI form to honor. Standalone is the fallback.
+    # Plugin-mode dispatch comes first: walk UP from cwd looking for the
+    # nearest `.rabbit/` ancestor with `.runtime/mode == "plugin"`. The
+    # detection happens BEFORE argparse so a `<name> <path-glob>` pair is
+    # never misinterpreted as `<root> <name>`. Standalone is the fallback.
     cwd = Path(os.getcwd())
-    plugin_root = _detect_plugin_mode(cwd)
-    if plugin_root is not None:
+    is_plugin, rabbit_root = _detect_plugin_mode(cwd)
+    if is_plugin:
+        # The user-project root is the parent of `.rabbit/`.
+        project_root = rabbit_root.parent
         # Batch form: --batch <features.json>
         if args[0] == "--batch":
             if len(args) != 2:
                 sys.stderr.write("ERROR: --batch requires exactly one argument (path to JSON file)\n")
                 return 2
-            return _run_plugin_mode_batch(plugin_root, Path(args[1]))
+            return _run_plugin_mode_batch(project_root, Path(args[1]))
 
         # Plugin form: <name> <path-glob> [<path-glob>...]
         if len(args) < 2:
@@ -389,7 +417,7 @@ def main() -> int:
         if any(g.startswith("-") for g in globs):
             usage(sys.stderr)
             return 2
-        return _run_plugin_mode(plugin_root, name, globs)
+        return _run_plugin_mode(project_root, name, globs)
 
     if len(args) < 2:
         usage(sys.stderr)

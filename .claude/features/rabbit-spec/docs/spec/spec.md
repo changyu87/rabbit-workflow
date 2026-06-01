@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.2.0
+version: 1.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -73,12 +73,23 @@ length including zero.
         (optional; comma-separated, may be empty for standalone mode).
     (b) Resolve each glob via `glob.glob(<g>, recursive=True)`, dedupe,
         sort lexicographically, take first 50.
-    (c) Invoke `python3 .claude/features/contract/scripts/build-prompt.py
+    (c) Invoke `python3 <repo_root>/.claude/features/contract/scripts/build-prompt.py
         --callable-id spec-create --slot feature_name=<name> --slot
         paths_globs=<globs> --slot paths_resolved=<newline-joined>` as a
         subprocess; print the resulting prompt-file path to stdout on
         success; exit nonzero on subprocess failure.
-    (d) Stdlib only (argparse, glob, os, subprocess, sys).
+    (d) Stdlib only (argparse, glob, os, subprocess, sys, pathlib).
+    (e) `<repo_root>` MUST be resolved via `Path(__file__).resolve().parents[4]` —
+        NOT via `subprocess git rev-parse --show-toplevel` and NOT via `os.getcwd()`.
+        The script lives at `<repo_root>/.claude/features/rabbit-spec/scripts/dispatch-spec-create.py`,
+        so parents[0]=scripts, [1]=rabbit-spec, [2]=features, [3]=.claude, [4]=repo_root —
+        which resolves correctly whether `<repo_root>` is the dev workspace OR a plugin
+        `.rabbit/` install root. The `git rev-parse` and `os.getcwd()` mechanisms are
+        forbidden because in plugin mode (where rabbit lives under `.rabbit/.claude/`)
+        they resolve to the user-project root, NOT the rabbit root — causing the
+        build-prompt.py path to point to a non-existent location. Enforced by 3 tests
+        under `.claude/features/rabbit-spec/test/`: plugin-layout resolution,
+        standalone-layout resolution from external cwd, and nested-git-repo immunity.
 
 4. `skills/rabbit-spec-create/SKILL.md` MUST exist with YAML frontmatter
    declaring `name: rabbit-spec-create`, a description naming both standalone

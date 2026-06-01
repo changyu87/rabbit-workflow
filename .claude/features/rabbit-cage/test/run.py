@@ -46,6 +46,10 @@ SUITES = [
     "test-install-update-rejects-non-rabbit-target.py",
     "test-install-update-network-failure.py",
     "test-install-update-explicit-src-skips-fetch.py",
+    "test-scope-guard-plugin-feature-spec-allowed.py",
+    "test-scope-guard-plugin-feature-spec-denied-no-marker.py",
+    "test-scope-guard-plugin-claude-still-denied.py",
+    "test-scope-guard-plugin-rabbit-project-non-features-denied.py",
 ]
 
 

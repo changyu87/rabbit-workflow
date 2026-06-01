@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.19.0
+version: 5.20.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -230,10 +230,21 @@ string BEFORE splitting on `;|&` segment delimiters.
     and `<repo_root>/.rabbit/.runtime/mode` exists with content `"plugin"`,
     it takes the plugin-mode branch instead of the standalone decision
     tree. The plugin-mode branch decides each target as follows:
-    (a) Target inside `.rabbit/.claude/**` or `.rabbit/rabbit-project/**`
-    (with carve-outs for `.rabbit/CLAUDE.md` and `.rabbit/.gitignore`) →
-    DENY always. These paths are rabbit's own machinery inside the plugin
-    install and are never edited by the user-facing agent.
+    (a) Target inside `.rabbit/.claude/**` (with carve-outs for `.rabbit/CLAUDE.md`
+    and `.rabbit/.gitignore`) → DENY always. These paths are rabbit's own
+    machinery inside the plugin install and are never edited by the user-facing
+    agent. Target inside `.rabbit/rabbit-project/**` is DENY always EXCEPT when
+    the path matches `.rabbit/rabbit-project/features/<name>/**` (where `<name>`
+    is the first path segment after `rabbit-project/features/`): such paths
+    contain user-owned plugin feature artifacts (specs, contracts, feature.json
+    scaffolded by `rabbit-feature-scaffold`) and MUST fall through to clauses
+    (b)/(c) below — the SAME per-feature scope-marker gate that governs
+    user-project source files. Presence of `<repo_root>/.rabbit/.runtime/scope-active-<name>`
+    ALLOWS the write; absence DENYs with the structured three-option message
+    naming the parsed feature `<name>` and the absolute target path. Writes
+    to `.rabbit/rabbit-project/` paths NOT matching `features/<name>/**`
+    (e.g. `.rabbit/rabbit-project/project-map.json` itself, or future
+    rabbit-project metadata files) remain always-DENY.
     (b) Target matches a feature-path glob declared in
     `<repo_root>/.rabbit/rabbit-project/project-map.json` AND a per-feature
     scope marker `<repo_root>/.rabbit/.runtime/scope-active-<name>` exists

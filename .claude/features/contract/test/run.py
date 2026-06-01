@@ -115,5 +115,6 @@ run_test("test-spec-bodies-no-historical-tags.py")
 run_test("test-runtime-api-enum-sourced-from-schema.py")
 run_test("test-templates-validate-against-schemas.py")
 run_test("test-deployed-skills-match-source.py")
+run_test("test-publish-file-deployed-copies-match-source.py")
 
 print("ALL TESTS PASSED")
