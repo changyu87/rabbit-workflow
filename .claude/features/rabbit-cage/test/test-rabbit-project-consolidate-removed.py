@@ -59,28 +59,19 @@ if "consolidate" not in src:
 else:
     ko(2, "rabbit-project.py source still contains 'consolidate' reference(s)")
 
-# t3: invoking `rabbit-project.py consolidate <name>` returns nonzero
-#     (unknown subcommand) with a usage hint on stderr
+# t3: invoking `rabbit-project.py consolidate <name>` is rejected as an
+#     unknown subcommand (rc=2) with a usage block on stderr that does NOT
+#     advertise consolidate as a supported verb.
 res = subprocess.run(
     [sys.executable, str(RABBIT_PROJECT_PY), "consolidate", "demo"],
     capture_output=True, text=True,
 )
-if res.returncode != 0 and "consolidate" not in res.stderr.lower().split("unknown subcommand")[0]:
-    # The error message names the unknown subcommand ('consolidate') in the
-    # `unknown subcommand 'consolidate'` line, but the printed usage that
-    # follows MUST NOT mention consolidate as a supported verb.
-    pass
-if res.returncode != 0:
-    # Usage block printed to stderr after the unknown-subcommand line MUST
-    # NOT advertise consolidate.
-    usage_lines = [l for l in res.stderr.splitlines() if l.strip().startswith("rabbit-project.py")]
-    usage_blob = "\n".join(usage_lines)
-    if "consolidate" not in usage_blob:
-        ok(3, "rabbit-project.py rejects 'consolidate' (rc nonzero) and usage hint omits it")
-    else:
-        ko(3, f"rabbit-project.py usage still advertises consolidate: {usage_blob!r}")
+usage_lines = [l for l in res.stderr.splitlines() if l.strip().startswith("rabbit-project.py")]
+usage_blob = "\n".join(usage_lines)
+if res.returncode == 2 and "unknown subcommand" in res.stderr.lower() and "consolidate" not in usage_blob:
+    ok(3, "rabbit-project.py rejects 'consolidate' as unknown subcommand (rc=2); usage omits it")
 else:
-    ko(3, f"rabbit-project.py consolidate returned 0 (expected nonzero): stdout={res.stdout!r}")
+    ko(3, f"unexpected: rc={res.returncode} stderr={res.stderr!r}")
 
 # t4: surviving subcommands are still recognized by usage (init/set-path/map).
 #     Invoke each with no args; expect rc 2 (bad invocation) and usage on stderr.
