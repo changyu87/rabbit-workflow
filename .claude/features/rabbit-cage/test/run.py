@@ -51,6 +51,7 @@ SUITES = [
     "test-scope-guard-plugin-feature-spec-denied-no-marker.py",
     "test-scope-guard-plugin-claude-still-denied.py",
     "test-scope-guard-plugin-rabbit-project-non-features-denied.py",
+    "test-session-start-release-update-wired.py",
 ]
 
 
