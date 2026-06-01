@@ -116,7 +116,12 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "templates/contract-template.md",
         "templates/feature-json-template.json",
         "templates/project-map-template.json",
+        "templates/prompts/rabbit-decompose.txt",
+        "templates/prompts/rabbit-feature-audit.txt",
         "templates/prompts/rabbit-feature-scaffold.txt",
+        "templates/prompts/rabbit-feature-scope.txt",
+        "templates/prompts/rabbit-feature-touch.txt",
+        "templates/prompts/rabbit-spec-update.txt",
         "templates/prompts/spec-create.txt",
     ],
     "policy": [
