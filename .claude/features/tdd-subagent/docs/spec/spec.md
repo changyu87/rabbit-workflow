@@ -258,7 +258,7 @@ the template's `{{bypass_preamble_note}}` placeholder.
 
 ### State machine — schema/behaviour
 
-The 14 invariants in this section were absorbed from the retired
+The 13 invariants in this section were absorbed from the retired
 `tdd-state-machine` feature at v4.0.0. They constrain
 `scripts/tdd-step.py`.
 
@@ -329,15 +329,7 @@ The 14 invariants in this section were absorbed from the retired
     warning via `rabbit_print` on stderr. The hook is best-effort and
     never blocks the transition.
 
-41. **`test-green` project-consolidate hook.** After a successful
-    transition into `test-green`, when `project-map.json` exists in the
-    enclosing project directory (the parent of `<feature-dir>`'s
-    parent), `tdd-step.py` invokes `rabbit-project.py consolidate
-    <project-name>`. The hook is best-effort: any failure (missing
-    script, broken project layout) is swallowed and never blocks the
-    transition.
-
-42. **`spec-update -> test-red` numbered-list check.** After a
+41. **`spec-update -> test-red` numbered-list check.** After a
     successful transition `spec-update -> test-red`, `tdd-step.py`
     calls `contract.lib.checks.check_numbered_lists` against
     `<feature-dir>/docs/spec/`. A non-passed `CheckResult` emits a
@@ -345,22 +337,22 @@ The 14 invariants in this section were absorbed from the retired
     transition. The Inv 38 gate remains the only blocking precondition
     for this transition.
 
-43. **In-process library imports (no subprocess to CLI shims).** The
-    check functions used by Inv 40 and Inv 42 are imported from the
+42. **In-process library imports (no subprocess to CLI shims).** The
+    check functions used by Inv 40 and Inv 41 are imported from the
     `contract.lib.checks` library module at
     `.claude/features/contract/lib/checks.py` and invoked in-process.
     `tdd-step.py` MUST NOT fan out via `subprocess` to the
     `.claude/features/contract/scripts/enforcement/check-*.py` CLI
     shims for any of these checks.
 
-44. **`tdd-step.py` manifest entry.** `feature.json`'s `manifest` (per
+43. **`tdd-step.py` manifest entry.** `feature.json`'s `manifest` (per
     Inv 29) contains the third entry that publishes `tdd-step.py` to
     the agent's adjacent scripts directory. The intra-feature source
     path (`scripts/tdd-step.py`) and the agent-adjacent dest
     (`.claude/agents/tdd-subagent/scripts/tdd-step.py`) together
     declare the deployment of this script.
 
-45. **`feature.json` `prompts` section + dispatcher uses `build-prompt.py`.**
+44. **`feature.json` `prompts` section + dispatcher uses `build-prompt.py`.**
     `feature.json` MUST declare a `prompts` array containing EXACTLY ONE
     entry with these field values:
     - `id: "tdd-subagent"`
@@ -394,7 +386,7 @@ The 14 invariants in this section were absorbed from the retired
     as the regression net confirming the dispatched output is
     byte-equivalent to the prior f-string assembly.
 
-46. **TEST-GREEN must emit `test_result: fail` on nonzero run.py exit.**
+45. **TEST-GREEN must emit `test_result: fail` on nonzero run.py exit.**
     The dispatched-subagent template at
     `.claude/features/contract/templates/prompts/tdd-subagent.txt`
     governs what the dispatched subagent says. It MUST satisfy three

@@ -5,7 +5,6 @@ Usage:
   rabbit-project.py init <name>
   rabbit-project.py set-path <name> <absolute-path>
   rabbit-project.py map <name> <source-path> <feature-name>
-  rabbit-project.py consolidate <name>
 
 Exit: 0 success, 1 error, 2 bad invocation
 """
@@ -22,7 +21,6 @@ def usage() -> None:
         "  rabbit-project.py init <name>\n"
         "  rabbit-project.py set-path <name> <absolute-path>\n"
         "  rabbit-project.py map <name> <source-path> <feature-name>\n"
-        "  rabbit-project.py consolidate <name>\n"
     )
 
 
@@ -111,24 +109,6 @@ def main() -> int:
         if rc != 0:
             return rc
         print(f"mapped {source_path} -> {feature_name} in project-{name}")
-        return 0
-
-    if cmd == "consolidate":
-        if not rest:
-            usage(); return 2
-        name = rest[0]
-        project_map = rroot / f"project-{name}/project-map.json"
-        if not project_map.is_file():
-            sys.stderr.write(f"ERROR: project-map.json not found: {project_map}\n")
-            return 1
-        registry = rroot / f"project-{name}/features/registry.json"
-        rc = subprocess.call(
-            [sys.executable, str(script_dir / "rabbit-project-consolidate.py"),
-             str(project_map), str(registry), name]
-        )
-        if rc != 0:
-            return rc
-        print(f"consolidated project-{name}/project-map.json")
         return 0
 
     if cmd in ("", "-h", "--help", "help"):

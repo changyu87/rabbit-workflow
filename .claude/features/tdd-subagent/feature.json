@@ -57,6 +57,6 @@
     }
   ],
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
-  "updated": "2026-05-30",
-  "spec_no_change_reason": "spec.md was pre-updated in main session this cycle (commit 5b27651); the spec-update edits live there"
+  "updated": "2026-06-01",
+  "spec_no_change_reason": "spec already updated by dispatcher"
 }
