@@ -1,12 +1,15 @@
 {
   "name": "rabbit-spec",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "status": "active",
-  "summary": "Owner of the rabbit workflow's spec-lifecycle skills. Hosts the rabbit-spec-create skill (absorbs the former spec-seeder feature) and the spec-creator subagent that drafts initial spec.md bodies from feature name + optional code globs. Will host rabbit-spec-update (Stage 3) for revising existing specs.",
+  "summary": "Owner of the rabbit workflow's spec-lifecycle skills. Hosts rabbit-spec-create (drafts initial spec bodies via the read-only spec-creator subagent) and rabbit-spec-update (revises existing specs; absorbed from rabbit-feature/rabbit-feature-spec).",
   "surface": {
-    "skills": ["skills/rabbit-spec-create/SKILL.md"],
+    "skills": [
+      "skills/rabbit-spec-create/SKILL.md",
+      "skills/rabbit-spec-update/SKILL.md"
+    ],
     "agents": ["agents/spec-creator.md"],
     "hooks": [],
     "commands": [],
@@ -19,6 +22,12 @@
       "api": "publish_skill",
       "args": {
         "source": "skills/rabbit-spec-create/SKILL.md"
+      }
+    },
+    {
+      "api": "publish_skill",
+      "args": {
+        "source": "skills/rabbit-spec-update/SKILL.md"
       }
     },
     {
@@ -39,6 +48,15 @@
         ".claude/features/policy/coding-rules.md"
       ],
       "slots": ["feature_name", "paths_globs", "paths_resolved"]
+    },
+    {
+      "id": "rabbit-spec-update",
+      "kind": "skill",
+      "inject": [
+        ".claude/features/policy/philosophy.md",
+        ".claude/features/policy/spec-rules.md"
+      ],
+      "slots": ["args"]
     }
   ]
 }

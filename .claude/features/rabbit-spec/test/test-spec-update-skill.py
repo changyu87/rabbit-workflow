@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 26-31: rabbit-feature-spec SKILL.md content.
+"""Inv 26-31: rabbit-spec-update SKILL.md content.
 
 Covers frontmatter model, request classification, impl-suggestion output
 (including generated_at format), spec-update ordering, read-before-edit
@@ -16,7 +16,7 @@ import re
 import sys
 from pathlib import Path
 
-SKILL_MD = Path(__file__).resolve().parents[1] / "skills/rabbit-feature-spec/SKILL.md"
+SKILL_MD = Path(__file__).resolve().parents[1] / "skills/rabbit-spec-update/SKILL.md"
 
 GENERATED_AT_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
 

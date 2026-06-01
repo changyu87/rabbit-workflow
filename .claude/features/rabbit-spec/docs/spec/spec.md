@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.1.0
+version: 1.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature

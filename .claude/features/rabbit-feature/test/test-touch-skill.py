@@ -101,11 +101,11 @@ def test_inv5_step_1_uses_scope_skill() -> None:
     )
 
 
-# Inv 6: Step 3 invokes Skill("rabbit-feature-spec")
+# Inv 6: Step 3 invokes Skill("rabbit-spec-update")
 def test_inv6_step_3_uses_spec_skill() -> None:
     body = _step_body(_text(), 3)
-    assert 'Skill("rabbit-feature-spec"' in body, (
-        'Step 3 must invoke Skill("rabbit-feature-spec", ...)'
+    assert 'Skill("rabbit-spec-update"' in body, (
+        'Step 3 must invoke Skill("rabbit-spec-update", ...)'
     )
 
 

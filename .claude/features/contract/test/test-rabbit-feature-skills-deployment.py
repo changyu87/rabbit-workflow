@@ -33,7 +33,6 @@ FEATURE_JSON_PATH = os.path.join(RABBIT_FEATURE_DIR, "feature.json")
 EXPECTED_SKILLS = [
     "rabbit-feature-touch",
     "rabbit-feature-scope",
-    "rabbit-feature-spec",
     "rabbit-feature-new",
     "rabbit-feature-audit",
 ]

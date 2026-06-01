@@ -49,17 +49,17 @@ git checkout -b <branch-name>
 
 ### Step 3 — Spec Authoring
 
-Invoke rabbit-feature-spec inline:
+Invoke rabbit-spec-update inline:
 ```
-Skill("rabbit-feature-spec", args: "<feature-name> <request>")
+Skill("rabbit-spec-update", args: "<feature-name> <request>")
 ```
 
-rabbit-feature-spec reads the current spec, judges open vs. specific, invokes superpowers,
+rabbit-spec-update reads the current spec, judges open vs. specific, invokes superpowers,
 updates the feature spec, and writes `.rabbit/impl-suggestion-<feature-name>.json`.
 
-**Commit spec changes BEFORE Step 5.** After rabbit-feature-spec returns, stage and
+**Commit spec changes BEFORE Step 5.** After rabbit-spec-update returns, stage and
 commit any modifications under `.claude/features/<feature-name>/` (the spec
-and any other files rabbit-feature-spec touched). If no changes were made (empty
+and any other files rabbit-spec-update touched). If no changes were made (empty
 diff), skip the commit.
 
 ```bash
@@ -117,7 +117,7 @@ ACTIVE, the default).
   - For multiple features, present all summaries together and collect one
     approval decision before dispatching any subagent.
   - Wait for explicit in-conversation user approval ("looks good", "go ahead",
-    or equivalent). If the user requests changes, invoke rabbit-feature-spec again for
+    or equivalent). If the user requests changes, invoke rabbit-spec-update again for
     the affected features, then return to this step.
   - Proceed to Step 5.
 
@@ -171,9 +171,9 @@ Summarize the TDD report to the user.
 - Main session uses Write or Edit on any file under `.claude/features/` → STOP.
   All feature-code edits are the TDD subagent's job, performed under an active
   scope marker. Main session role is orchestration only: resolve scope, create
-  branch, invoke rabbit-feature-spec, surface impl-suggestion, dispatch subagent, verify
+  branch, invoke rabbit-spec-update, surface impl-suggestion, dispatch subagent, verify
   HANDOFF. The only main-session writes permitted are: the confirm-token
-  override flow (see Override Path), and rabbit-feature-spec's writes to
+  override flow (see Override Path), and rabbit-spec-update's writes to
   `docs/spec/spec.md` under the scope-guard path-pattern allowlist invoked
   during Step 3.
 - Main session creates `.rabbit-scope-active` (global) or
