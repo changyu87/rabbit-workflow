@@ -3,6 +3,10 @@
 writes to .rabbit/rabbit-project/features/<name>/** with the structured
 three-option DENY message when no scope-active-<name> marker is present.
 
+The target here is feature.json (NOT spec.md) — spec.md has its own
+unconditional carve-out per Inv 17 clause (a2) (#276); the per-feature
+marker gate is what this test pins.
+
 Fixes #269.
 """
 import contextlib
@@ -24,7 +28,7 @@ FEATURE_NAME = "rabbit-cage-plugin-feature-denied-test"
 SCOPE_ACTIVE = os.path.join(RUNTIME_DIR, f"scope-active-{FEATURE_NAME}")
 TARGET = os.path.join(
     REPO_ROOT, ".rabbit", "rabbit-project", "features",
-    FEATURE_NAME, "docs", "spec", "spec.md",
+    FEATURE_NAME, "feature.json",
 )
 
 
