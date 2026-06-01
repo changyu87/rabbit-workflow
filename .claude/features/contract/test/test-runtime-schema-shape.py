@@ -26,6 +26,7 @@ EXPECTED_RUNTIME_APIS = {
     "check_prompt_injection_failures",
     "cleanup_old_prompts",
     "write_mode_marker",
+    "check_release_update",
 }
 
 FAIL = 0
