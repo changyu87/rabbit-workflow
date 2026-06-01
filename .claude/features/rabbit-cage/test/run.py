@@ -56,6 +56,8 @@ SUITES = [
     "test-plugin-scope-guard-denies-non-spec-write-without-marker.py",
     "test-plugin-scope-guard-mid-tdd-still-requires-marker.py",
     "test-standalone-spec-md-carveout-unchanged.py",
+    "test-rabbit-config-shipped-in-mvp.py",
+    "test-install-sh-default-ref-not-dev.py",
 ]
 
 
