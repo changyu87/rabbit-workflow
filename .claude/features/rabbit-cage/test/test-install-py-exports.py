@@ -71,7 +71,7 @@ def test_exports_file_closure_constants():
 
 def test_feature_includes_has_expected_features():
     mod = _load_install()
-    expected = {"contract", "policy", "rabbit-cage", "rabbit-meta", "rabbit-feature", "rabbit-spec", "rabbit-decompose"}
+    expected = {"contract", "policy", "rabbit-cage", "rabbit-meta", "rabbit-feature", "rabbit-issue", "rabbit-spec", "rabbit-decompose"}
     actual = set(mod.FEATURE_INCLUDES.keys())
     assert actual == expected, (
         f"FEATURE_INCLUDES key drift: expected {sorted(expected)}, got {sorted(actual)}"

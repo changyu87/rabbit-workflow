@@ -39,6 +39,7 @@ SUITES = [
     "test-install-update-mode.py",
     "test-install-update-idempotent.py",
     "test-install-sh-update-flag.py",
+    "test-rabbit-issue-shipped-in-mvp.py",
 ]
 
 
