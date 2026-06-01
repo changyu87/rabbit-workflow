@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.21.0
+version: 5.22.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -216,16 +216,25 @@ string BEFORE splitting on `;|&` segment delimiters.
     form is unsuitable (the install target is typically not itself a git
     repo, and even when its parent is, the resolved root points outside
     `.rabbit/`); Inv 19 governs the plugin-mode rewrite.
-16. rabbit-cage's `feature.json runtime.SessionStart` declares two entries
-    in order: (1) `welcome_with_policy` (existing) and (2) `write_mode_marker`
-    (args `{}`). The SessionStart dispatcher invokes both in declaration
-    order via `contract.lib.runtime`. The `write_mode_marker` API (owned by
+16. rabbit-cage's `feature.json runtime.SessionStart` declares three entries
+    in order: (1) `welcome_with_policy` (existing), (2) `write_mode_marker`
+    (args `{}`), and (3) `check_release_update` (args `{}`). The SessionStart
+    dispatcher invokes all three in declaration order via
+    `contract.lib.runtime`. The `write_mode_marker` API (owned by
     `contract.lib.runtime` and built on top of `rabbit-meta.lib.mode_detection.detect_mode`)
     detects whether rabbit is running in `"plugin"` or `"standalone"` mode
     and writes the result to `<repo_root>/.rabbit/.runtime/mode` for
-    downstream consumers. rabbit-cage owns ONLY the wiring (the
-    `runtime.SessionStart` declaration that fires the API); detection logic
-    is owned by rabbit-meta and the API implementation is owned by contract.
+    downstream consumers. The `check_release_update` API (owned by
+    `contract.lib.runtime` per contract Inv 47 / Inv 63) checks the upstream
+    release channel against the local `.version` file (8h-throttled, network
+    failure silent), and emits an update-available `print_result` when a
+    newer ref is published on the same channel — letting plugin users
+    discover new releases at SessionStart without polling out-of-band.
+    rabbit-cage owns ONLY the wiring (the `runtime.SessionStart` declaration
+    that fires the APIs); detection logic for `write_mode_marker` is owned
+    by rabbit-meta, the helper script + fetch logic for `check_release_update`
+    is owned by contract, and the API implementations are both owned by
+    contract.
 17. **Plugin-mode scope-guard decision tree.** When `scope-guard.py` runs
     and `<repo_root>/.rabbit/.runtime/mode` exists with content `"plugin"`,
     it takes the plugin-mode branch instead of the standalone decision
