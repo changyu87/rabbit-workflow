@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.15.0",
+  "version": "5.16.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
@@ -362,5 +362,5 @@
       }
     }
   ],
-  "spec_no_change_reason": "Removing consolidate subcommand and helper script; no spec invariant describes them (they were implementation artifacts)"
+  "spec_no_change_reason": "Inv 22 spec changes already committed in 1061989 before this TDD cycle started"
 }

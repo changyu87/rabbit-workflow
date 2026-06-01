@@ -34,6 +34,10 @@ SUITES = [
     "test-session-start-alerts-if-rabbit-root-unset.py",
     "test-feature-includes-manifest-closure.py",
     "test-rabbit-project-consolidate-removed.py",
+    "test-install-refuses-without-update.py",
+    "test-install-update-mode.py",
+    "test-install-update-idempotent.py",
+    "test-install-sh-update-flag.py",
 ]
 
 

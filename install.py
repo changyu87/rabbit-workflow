@@ -338,10 +338,36 @@ def run_publish_loop(target_root: str) -> int:
     return failures
 
 
+def _publish_settings_merge(src_root: Path, dst_root: Path) -> bool:
+    """Inv 22d: route the --update settings.json write through
+    contract.lib.publish.publish_settings so non-rabbit hook entries,
+    user-added permissions, and user-set env vars survive the refresh.
+
+    The merge reads its source from the feature-local copy under
+    <target>/.claude/features/rabbit-cage/settings.json — the closure copy
+    that the per-feature refresh loop has already overwritten with the
+    fresh upstream bytes. Returns True on success; False on any failure.
+    """
+    contract_dir = str(dst_root / ".claude/features/contract")
+    if contract_dir not in sys.path:
+        sys.path.insert(0, contract_dir)
+    from lib import publish  # noqa: PLC0415
+
+    feature_dir = str(dst_root / ".claude/features/rabbit-cage")
+    result = publish.publish_settings(
+        source="settings.json",
+        feature_dir=feature_dir,
+        repo_root=str(dst_root),
+    )
+    return bool(result.passed)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Install rabbit into a target directory")
     parser.add_argument("--src", required=True, type=Path, help="extracted upstream source dir")
     parser.add_argument("--target", required=True, type=Path, help="target install dir (typically <project>/.rabbit)")
+    parser.add_argument("--update", action="store_true",
+                        help="refresh an existing install in place (Inv 22)")
     args = parser.parse_args()
 
     src_root: Path = args.src.resolve()
@@ -350,14 +376,31 @@ def main() -> int:
     if not src_root.is_dir():
         print(f"error: --src is not a directory: {src_root}", file=sys.stderr)
         return 1
-    if dst_root.exists() and any(dst_root.iterdir()):
+    if not args.update and dst_root.exists() and any(dst_root.iterdir()):
         print(f"error: --target exists and is not empty: {dst_root}", file=sys.stderr)
         return 1
+
+    # Inv 22e: print version transition before any refresh so the operator
+    # sees the pin movement even if a later copy fails partway through.
+    if args.update:
+        version_file = dst_root / ".version"
+        if version_file.is_file():
+            old_ref = version_file.read_text().strip()
+            new_ref = os.environ.get("RABBIT_INSTALLED_REF", "unknown")
+            print(f"updating {old_ref} -> {new_ref}")
 
     dst_root.mkdir(parents=True, exist_ok=True)
     ok = True
 
-    for rel in SAME_PATH_FILES:
+    # Inv 22d: on --update, settings.json is written via publish_settings
+    # below (merge-aware). On fresh install, it ships via raw copy in the
+    # SAME_PATH_FILES loop. Skip the raw copy under --update to avoid
+    # clobbering user-added permissions / env vars before the merge runs.
+    same_path_to_copy = SAME_PATH_FILES
+    if args.update:
+        same_path_to_copy = [r for r in SAME_PATH_FILES if r != ".claude/settings.json"]
+
+    for rel in same_path_to_copy:
         ok &= copy_one(src_root, dst_root, rel, rel)
 
     for src_rel, dst_rel in HOOKS:
@@ -381,6 +424,14 @@ def main() -> int:
     if not ok:
         print("install: aborting due to missing source files", file=sys.stderr)
         return 1
+
+    if args.update:
+        # Merge runs AFTER the per-feature refresh has overwritten the
+        # feature-local source copy with the fresh upstream bytes, so the
+        # merge source is the new content.
+        if not _publish_settings_merge(src_root, dst_root):
+            print("install: publish_settings merge failed", file=sys.stderr)
+            return 1
 
     rewrite_settings_for_plugin(dst_root)
     write_rabbit_gitignore(dst_root)
