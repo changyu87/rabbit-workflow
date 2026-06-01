@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.17.0
+version: 1.18.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -17,7 +17,7 @@ status: active
 
 Owns the dispatcher-side feature-touch orchestration surface: the
 `rabbit-feature-touch` skill plus four general-purpose helper skills
-(`rabbit-feature-scope`, `rabbit-feature-spec`, `rabbit-feature-new`,
+(`rabbit-feature-scope`, `rabbit-feature-spec`, `rabbit-feature-scaffold`,
 `rabbit-feature-audit`) and their backing scripts.
 
 The executor-side TDD machinery (`dispatch-tdd-subagent.py`,
@@ -41,7 +41,7 @@ Skills (under `skills/`):
 - `rabbit-feature-spec/SKILL.md` — general-purpose spec-authoring skill
   that updates a feature spec and writes an implementation-suggestion
   file.
-- `rabbit-feature-new/SKILL.md` — feature-scaffolding skill.
+- `rabbit-feature-scaffold/SKILL.md` — feature-scaffolding skill.
 - `rabbit-feature-audit/SKILL.md` — feature-conformance audit skill.
 
 Scripts (under `scripts/`):
@@ -50,8 +50,8 @@ Scripts (under `scripts/`):
   `rabbit-feature-scope`.
 - `format-feature-context.py` — formats `find-feature.py list-json`
   output into the feature-context block consumed by `resolve-scope.py`.
-- `new-feature.py` — scaffolds a conforming feature directory at any
-  path; invoked by `rabbit-feature-new`.
+- `scaffold-feature.py` — scaffolds a conforming feature directory at any
+  path; invoked by `rabbit-feature-scaffold`.
 
 ## Invariants
 
@@ -237,35 +237,35 @@ Scripts (under `scripts/`):
     MUST NOT name specific skills it must not invoke; only generic
     rules ("do not invoke other skills") are acceptable.
 
-### rabbit-feature-new SKILL.md and new-feature.py
+### rabbit-feature-scaffold SKILL.md and scaffold-feature.py
 
-32. **rabbit-feature-new SKILL.md invocation.** The SKILL.md instructs
+32. **rabbit-feature-scaffold SKILL.md invocation.** The SKILL.md instructs
     the skill to invoke
-    `python3 .claude/features/rabbit-feature/scripts/new-feature.py`
+    `python3 .claude/features/rabbit-feature/scripts/scaffold-feature.py`
     to scaffold the directory and to validate the result via
     `python3 .claude/features/contract/scripts/validate-feature.py`.
 
-33. **new-feature.py scaffolds a conforming feature dir.**
-    `scripts/new-feature.py` is executable and scaffolds a feature
+33. **scaffold-feature.py scaffolds a conforming feature dir.**
+    `scripts/scaffold-feature.py` is executable and scaffolds a feature
     directory containing `feature.json` (with `template_version`),
     `docs/spec/spec.md`, `docs/spec/contract.md`, and `test/run.py`
     (no `test/run.sh`). The scaffolded directory passes
     `validate-feature.py` immediately.
 
-44. **new-feature.py plugin-mode invocation.** When the file
+44. **scaffold-feature.py plugin-mode invocation.** When the file
     `<cwd>/.rabbit/.runtime/mode` exists and contains the literal string
     `plugin` (written at SessionStart by `rabbit-meta`'s
-    `write_mode_marker`), `new-feature.py` honors the plugin-mode CLI
-    form `new-feature.py <name> <path-glob> [<path-glob>...]`. The
+    `write_mode_marker`), `scaffold-feature.py` honors the plugin-mode CLI
+    form `scaffold-feature.py <name> <path-glob> [<path-glob>...]`. The
     user-project root is the directory containing `.rabbit/` (i.e.,
     `cwd`). When the marker is absent or does not contain `plugin`, the
     script's behaviour is unchanged from the standalone form
-    `new-feature.py <root> <name> [...]`. The detection happens before
+    `scaffold-feature.py <root> <name> [...]`. The detection happens before
     any argument parsing so a `<name>+<glob>` pair is never
     misinterpreted as a `<root>+<name>` pair.
 
 45. **Plugin-mode path-glob validation.** In plugin mode,
-    `new-feature.py` enforces three pre-registration validations against
+    `scaffold-feature.py` enforces three pre-registration validations against
     every supplied path-glob:
     (a) **Boundary** — the literal anchor of each glob (the path
         prefix up to the first segment containing a glob metacharacter)
@@ -303,7 +303,7 @@ Scripts (under `scripts/`):
     rabbit-self build/audit surface.
 
 47. **Plugin-mode project-map registration.** On successful scaffold,
-    `new-feature.py` registers the new feature in
+    `scaffold-feature.py` registers the new feature in
     `<repo>/.rabbit/rabbit-project/project-map.json` (created if
     absent) under
     `features.<name> = {"paths": [<glob>, ...],
@@ -315,24 +315,24 @@ Scripts (under `scripts/`):
     write; on schema failure the write is skipped and exit is 1.
 
 48. **Plugin-mode spec-seeder dispatch handoff.** After a successful
-    scaffold, `new-feature.py` prints to stdout the literal
+    scaffold, `scaffold-feature.py` prints to stdout the literal
     `dispatch-spec-seeder.py` command line (the
     `.claude/features/spec-seeder/scripts/dispatch-spec-seeder.py`
     invocation, with `--feature-name <name>` and a comma-joined
     `--paths` argument). The script itself MUST NOT invoke the
     subagent; subagent dispatch is the caller's responsibility (the
     skill / dispatcher layer reads the printed command and dispatches
-    the seeder). This keeps `new-feature.py` free of Agent/Skill tool
+    the seeder). This keeps `scaffold-feature.py` free of Agent/Skill tool
     coupling.
 
-49. **rabbit-feature-new SKILL.md documents plugin-mode invocation.**
+49. **rabbit-feature-scaffold SKILL.md documents plugin-mode invocation.**
     The SKILL.md describes both invocation forms — the standalone
     `<feature-name>` form and the plugin `<feature-name>
     <path-glob>+` form — and names the plugin-mode trigger
     (`<repo>/.rabbit/.runtime/mode` containing `plugin`). The SKILL.md
     also documents the two-step user flow in plugin mode: (1) invoke
     the skill, (2) dispatch the spec-seeder subagent using the
-    command printed by `new-feature.py`'s stdout `NEXT:` line.
+    command printed by `scaffold-feature.py`'s stdout `NEXT:` line.
 
 ### rabbit-feature-audit SKILL.md
 
@@ -417,7 +417,7 @@ Scripts (under `scripts/`):
          ".claude/features/policy/spec-rules.md"],
         "slots": ["args"]}` — authors specs; needs spec-rules but not
         coding-rules.
-    (c) `{"id": "rabbit-feature-new", "kind": "skill", "inject":
+    (c) `{"id": "rabbit-feature-scaffold", "kind": "skill", "inject":
         [".claude/features/policy/philosophy.md",
          ".claude/features/policy/coding-rules.md"],
         "slots": ["args"]}` — scaffolds code; needs coding-rules.

@@ -1,12 +1,12 @@
 ---
-name: rabbit-feature-new
-description: Scaffold a new rabbit feature directory with the standard skeleton (feature.json, docs/spec/spec.md, docs/spec/contract.md, test/run.py) in standalone mode, or scaffold a per-project plugin feature under .rabbit/rabbit-project/features/<name>/ with path-glob mapping in plugin mode. Use when the user asks to create, scaffold, or initialize a new rabbit feature — phrases like "create a new feature", "scaffold a feature called X", "/rabbit-feature-new", "set up a new rabbit feature", "bootstrap a feature dir". Invoke as Skill("rabbit-feature-new", args: "<feature-name>") in standalone mode or Skill("rabbit-feature-new", args: "<feature-name> <path-glob> [<path-glob>...]") in plugin mode.
+name: rabbit-feature-scaffold
+description: Scaffold a new rabbit feature directory with the standard skeleton (feature.json, docs/spec/spec.md, docs/spec/contract.md, test/run.py) in standalone mode, or scaffold a per-project plugin feature under .rabbit/rabbit-project/features/<name>/ with path-glob mapping in plugin mode. Use when the user asks to create, scaffold, or initialize a new rabbit feature — phrases like "create a new feature", "scaffold a feature called X", "/rabbit-feature-scaffold", "set up a new rabbit feature", "bootstrap a feature dir". Invoke as Skill("rabbit-feature-scaffold", args: "<feature-name>") in standalone mode or Skill("rabbit-feature-scaffold", args: "<feature-name> <path-glob> [<path-glob>...]") in plugin mode.
 version: 1.2.0
 owner: rabbit-workflow team
 deprecation_criterion: When this skill's scaffolding step is absorbed into a native `rabbit-feature` CLI subcommand or into the rabbit CLI itself.
 ---
 
-# rabbit-feature-new — Feature Scaffolding Skill
+# rabbit-feature-scaffold — Feature Scaffolding Skill
 
 Your job: create a new rabbit feature directory that conforms to the contract feature's structure rules, then verify it.
 
@@ -58,7 +58,7 @@ steps in order; do not skip the validation step in standalone mode.
 it at the rabbit features root and passing the requested feature name:
 
 ```bash
-python3 .claude/features/rabbit-feature/scripts/new-feature.py \
+python3 .claude/features/rabbit-feature/scripts/scaffold-feature.py \
   .claude/features <feature-name>
 ```
 
@@ -72,7 +72,7 @@ form (the script detects plugin mode from `.rabbit/.runtime/mode` itself,
 so no flag is needed):
 
 ```bash
-python3 .claude/features/rabbit-feature/scripts/new-feature.py \
+python3 .claude/features/rabbit-feature/scripts/scaffold-feature.py \
   <feature-name> <path-glob> [<path-glob>...]
 ```
 
@@ -158,7 +158,7 @@ they just need confirmation and a path to navigate to.
 
 ## Notes
 
-- The scaffolder lives at `.claude/features/rabbit-feature/scripts/new-feature.py`.
+- The scaffolder lives at `.claude/features/rabbit-feature/scripts/scaffold-feature.py`.
 - The post-scaffold check uses `contract.lib.checks.validate_feature` (via
   the `validate-feature.py` CLI shim) so this skill stays in sync with
   whatever conformance rules `contract` owns — no rules are duplicated here.

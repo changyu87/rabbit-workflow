@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.17.0
+version: 1.18.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -28,8 +28,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
         "purpose": "Reads find-feature.py list-json output from stdin and writes the formatted feature-context block to stdout. Consumed by resolve-scope.py."
       },
       {
-        "path": ".claude/features/rabbit-feature/scripts/new-feature.py",
-        "purpose": "Feature-scaffolding script invoked by rabbit-feature-new. Creates a conforming feature directory (feature.json, docs/spec/{spec,contract}.md, test/run.py) at any path."
+        "path": ".claude/features/rabbit-feature/scripts/scaffold-feature.py",
+        "purpose": "Feature-scaffolding script invoked by rabbit-feature-scaffold. Creates a conforming feature directory (feature.json, docs/spec/{spec,contract}.md, test/run.py) at any path."
       }
     ],
     "schemas": [],
@@ -48,8 +48,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
         "purpose": "General-purpose spec-authoring skill: reads a feature's current spec, judges open vs specific request, invokes superpowers, updates the spec, and writes an impl-suggestion file for whoever invoked it."
       },
       {
-        "path": ".claude/features/rabbit-feature/skills/rabbit-feature-new/",
-        "purpose": "Feature-scaffolding skill. Shells out to new-feature.py to create a conforming feature dir, then validates via contract's validate-feature.py."
+        "path": ".claude/features/rabbit-feature/skills/rabbit-feature-scaffold/",
+        "purpose": "Feature-scaffolding skill. Shells out to scaffold-feature.py to create a conforming feature dir, then validates via contract's validate-feature.py."
       },
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-audit/",
@@ -85,13 +85,13 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
         "path": ".claude/features/contract/scripts/validate-feature.py",
         "signature": "validate-feature.py <feature-dir>",
         "exit": "0=pass, 1=validation failure, 2=bad invocation",
-        "lock": "test-audit-skill.py asserts rabbit-feature-audit invokes this script; test-new-skill.py asserts rabbit-feature-new invokes this script (Inv 31, 33)"
+        "lock": "test-audit-skill.py asserts rabbit-feature-audit invokes this script; test-new-skill.py asserts rabbit-feature-scaffold invokes this script (Inv 31, 33)"
       },
       {
         "path": ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py",
         "signature": "dispatch-spec-create.py --feature-name <name> [--paths <glob1>,<glob2>,...]",
         "exit": "0=success, 1=invocation error, 2=build-prompt.py subprocess failure",
-        "lock": "test-feature-new-plugin-mode.py asserts plugin-mode new-feature.py prints this exact dispatch command to stdout (Inv 48); the command string is also referenced by name in new-feature.py source so test-contract-md.py picks it up as a cross-feature reference."
+        "lock": "test-feature-new-plugin-mode.py asserts plugin-mode scaffold-feature.py prints this exact dispatch command to stdout (Inv 48); the command string is also referenced by name in scaffold-feature.py source so test-contract-md.py picks it up as a cross-feature reference."
       }
     ],
     "agents": []

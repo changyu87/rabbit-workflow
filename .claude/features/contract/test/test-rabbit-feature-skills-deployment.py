@@ -7,7 +7,7 @@ rabbit-feature skills via rabbit-feature/feature.json `manifest`:
   - rabbit-feature-touch
   - rabbit-feature-scope
   - rabbit-feature-spec
-  - rabbit-feature-new   (BUG-41)
+  - rabbit-feature-scaffold   (BUG-41)
   - rabbit-feature-audit (BUG-41)
 
 Each skill MUST have:
@@ -33,7 +33,7 @@ FEATURE_JSON_PATH = os.path.join(RABBIT_FEATURE_DIR, "feature.json")
 EXPECTED_SKILLS = [
     "rabbit-feature-touch",
     "rabbit-feature-scope",
-    "rabbit-feature-new",
+    "rabbit-feature-scaffold",
     "rabbit-feature-audit",
 ]
 

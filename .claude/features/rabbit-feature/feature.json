@@ -1,10 +1,10 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-feature",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "summary": "Dispatcher-side feature-touch orchestration surface. Owns the rabbit-feature-touch skill and three general-purpose helper skills (rabbit-feature-scope, rabbit-feature-new, rabbit-feature-audit) plus their backing scripts (resolve-scope.py, format-feature-context.py, new-feature.py). Spec lifecycle skills (rabbit-spec-create, rabbit-spec-update) are owned by rabbit-spec. Executor-side TDD machinery (dispatch-tdd-subagent.py, tdd-step.py) lives in tdd-subagent and is consumed via the cross-feature contract.",
+  "summary": "Dispatcher-side feature-touch orchestration surface. Owns the rabbit-feature-touch skill and three general-purpose helper skills (rabbit-feature-scope, rabbit-feature-scaffold, rabbit-feature-audit) plus their backing scripts (resolve-scope.py, format-feature-context.py, scaffold-feature.py). Spec lifecycle skills (rabbit-spec-create, rabbit-spec-update) are owned by rabbit-spec. Executor-side TDD machinery (dispatch-tdd-subagent.py, tdd-step.py) lives in tdd-subagent and is consumed via the cross-feature contract.",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -12,13 +12,13 @@
     "skills": [
       "skills/rabbit-feature-touch/SKILL.md",
       "skills/rabbit-feature-scope/SKILL.md",
-      "skills/rabbit-feature-new/SKILL.md",
+      "skills/rabbit-feature-scaffold/SKILL.md",
       "skills/rabbit-feature-audit/SKILL.md"
     ],
     "scripts": [
       "scripts/resolve-scope.py",
       "scripts/format-feature-context.py",
-      "scripts/new-feature.py"
+      "scripts/scaffold-feature.py"
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
@@ -39,7 +39,7 @@
     {
       "api": "publish_skill",
       "args": {
-        "source": "skills/rabbit-feature-new/SKILL.md"
+        "source": "skills/rabbit-feature-scaffold/SKILL.md"
       }
     },
     {
@@ -65,7 +65,7 @@
       ]
     },
     {
-      "id": "rabbit-feature-new",
+      "id": "rabbit-feature-scaffold",
       "kind": "skill",
       "inject": [
         ".claude/features/policy/philosophy.md",

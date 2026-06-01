@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""new-feature.py — scaffold a feature directory with the rabbit
+"""scaffold-feature.py — scaffold a feature directory with the rabbit
 feature-skeleton schema.
 
 Two modes:
 
 * Standalone (default) — scaffolds a conforming rabbit-self feature
   directory at the requested root:
-      new-feature.py <root> <name> [--owner <name>] [--description <desc>]
+      scaffold-feature.py <root> <name> [--owner <name>] [--description <desc>]
 
 * Plugin — triggered when `<cwd>/.rabbit/.runtime/mode` contains "plugin"
   (the marker is written at SessionStart by rabbit-meta's mode detector).
@@ -14,7 +14,7 @@ Two modes:
   `<repo>/.rabbit/rabbit-project/features/<name>/` and registers it in
   `<repo>/.rabbit/rabbit-project/project-map.json`, mapping a list of
   user-code path globs to the feature:
-      new-feature.py <name> <path-glob> [<path-glob>...]
+      scaffold-feature.py <name> <path-glob> [<path-glob>...]
 
 Exit:
   0 success
@@ -44,8 +44,8 @@ from pathlib import Path
 
 def usage(stream=sys.stderr) -> None:
     stream.write(
-        "usage: new-feature.py <root> <name> [--owner <name>] [--description <desc>]\n"
-        "       new-feature.py <name> <path-glob> [<path-glob>...]   "
+        "usage: scaffold-feature.py <root> <name> [--owner <name>] [--description <desc>]\n"
+        "       scaffold-feature.py <name> <path-glob> [<path-glob>...]   "
         "(plugin mode; requires <cwd>/.rabbit/.runtime/mode == 'plugin')\n"
         "  <root>      parent directory under which <name>/ will be created\n"
         "  <name>      lowercase kebab-case, [a-z][a-z0-9-]*, max 50 chars\n"
@@ -307,6 +307,60 @@ def _run_plugin_mode(repo_root: Path, name: str, globs: list[str]) -> int:
     return 0
 
 
+def _run_plugin_mode_batch(repo_root: Path, batch_file: Path) -> int:
+    """Validate every entry, then scaffold all. Stops on first failure.
+
+    Pragmatic batch: pre-validates names + glob resolution + project-map
+    overlap before doing any scaffolding work. If validation passes, runs
+    _run_plugin_mode for each entry sequentially. A late failure (e.g.
+    filesystem error during a scaffold) leaves earlier entries committed —
+    full transactional rollback is not provided here.
+    """
+    try:
+        entries = json.loads(batch_file.read_text())
+    except Exception as e:
+        sys.stderr.write(f"ERROR: cannot read/parse batch file {batch_file}: {e}\n")
+        return 2
+
+    if not isinstance(entries, list):
+        sys.stderr.write("ERROR: batch file must contain a JSON array\n")
+        return 2
+
+    parsed: list[tuple[str, list[str]]] = []
+    for i, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            sys.stderr.write(f"ERROR: batch[{i}] must be an object {{name, globs}}\n")
+            return 2
+        name = entry.get("name")
+        globs = entry.get("globs")
+        if not isinstance(name, str) or not _valid_name(name):
+            sys.stderr.write(f"ERROR: batch[{i}].name invalid: {name!r}\n")
+            return 1
+        if not isinstance(globs, list) or not globs or not all(isinstance(g, str) for g in globs):
+            sys.stderr.write(f"ERROR: batch[{i}].globs must be a non-empty list of strings\n")
+            return 1
+        parsed.append((name, globs))
+
+    seen_names: set[str] = set()
+    for name, _ in parsed:
+        if name in seen_names:
+            sys.stderr.write(f"ERROR: duplicate feature name {name!r} in batch\n")
+            return 1
+        seen_names.add(name)
+
+    for i, (name, globs) in enumerate(parsed):
+        rc = _run_plugin_mode(repo_root, name, globs)
+        if rc != 0:
+            sys.stderr.write(
+                f"ERROR: batch entry [{i}] {name!r} failed (rc={rc}); "
+                f"entries [0..{i-1}] are already committed\n"
+            )
+            return rc
+
+    print(f"\nBATCH OK: scaffolded {len(parsed)} feature(s)")
+    return 0
+
+
 def main() -> int:
     args = sys.argv[1:]
     if not args or args[0] in ("-h", "--help"):
@@ -318,6 +372,13 @@ def main() -> int:
     cwd = Path(os.getcwd())
     plugin_root = _detect_plugin_mode(cwd)
     if plugin_root is not None:
+        # Batch form: --batch <features.json>
+        if args[0] == "--batch":
+            if len(args) != 2:
+                sys.stderr.write("ERROR: --batch requires exactly one argument (path to JSON file)\n")
+                return 2
+            return _run_plugin_mode_batch(plugin_root, Path(args[1]))
+
         # Plugin form: <name> <path-glob> [<path-glob>...]
         if len(args) < 2:
             usage(sys.stderr)

@@ -29,7 +29,7 @@ EXPECTED = {
         ],
         "slots": ["args"],
     },
-    "rabbit-feature-new": {
+    "rabbit-feature-scaffold": {
         "kind": "skill",
         "inject": [
             ".claude/features/policy/philosophy.md",

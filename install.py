@@ -8,7 +8,7 @@ This module has two distinct roles:
      down the minimum file closure needed for the user-promised surfaces:
 
        1. Drift-protected Claude on session start (policy block via CLAUDE.md)
-       2. rabbit-feature-new <name> <path-glob> (declare a feature mapping)
+       2. rabbit-feature-scaffold <name> <path-glob> (declare a feature mapping)
        3. Scope-guard blocking edits to declared-feature paths
        4. .rabbit/.runtime/scope-bypass-once one-shot override marker
 
@@ -68,7 +68,7 @@ HOOKS = [
 
 # Skills: source SKILL.md → deployed SKILL.md
 SKILLS = [
-    (".claude/features/rabbit-feature/skills/rabbit-feature-new/SKILL.md", ".claude/skills/rabbit-feature-new/SKILL.md"),
+    (".claude/features/rabbit-feature/skills/rabbit-feature-scaffold/SKILL.md", ".claude/skills/rabbit-feature-scaffold/SKILL.md"),
     (".claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md", ".claude/skills/rabbit-feature-touch/SKILL.md"),
     (".claude/features/rabbit-feature/skills/rabbit-feature-scope/SKILL.md", ".claude/skills/rabbit-feature-scope/SKILL.md"),
     (".claude/features/rabbit-feature/skills/rabbit-feature-audit/SKILL.md", ".claude/skills/rabbit-feature-audit/SKILL.md"),
@@ -115,7 +115,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "templates/contract-template.md",
         "templates/feature-json-template.json",
         "templates/project-map-template.json",
-        "templates/prompts/rabbit-feature-new.txt",
+        "templates/prompts/rabbit-feature-scaffold.txt",
         "templates/prompts/spec-create.txt",
     ],
     "policy": [
@@ -151,9 +151,9 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
     ],
     "rabbit-feature": [
         "feature.json",
-        "scripts/new-feature.py",
+        "scripts/scaffold-feature.py",
         "skills/rabbit-feature-audit/SKILL.md",
-        "skills/rabbit-feature-new/SKILL.md",
+        "skills/rabbit-feature-scaffold/SKILL.md",
         "skills/rabbit-feature-scope/SKILL.md",
         "skills/rabbit-feature-touch/SKILL.md",
     ],
