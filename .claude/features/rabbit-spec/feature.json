@@ -1,6 +1,6 @@
 {
   "name": "rabbit-spec",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "status": "active",
@@ -10,13 +10,17 @@
       "skills/rabbit-spec-create/SKILL.md",
       "skills/rabbit-spec-update/SKILL.md"
     ],
-    "agents": ["agents/spec-creator.md"],
+    "agents": [
+      "agents/spec-creator.md"
+    ],
     "hooks": [],
     "commands": [],
-    "scripts": ["scripts/dispatch-spec-create.py"]
+    "scripts": [
+      "scripts/dispatch-spec-create.py"
+    ]
   },
   "deprecation_criterion": "when Claude Code exposes native spec-lifecycle skills that supersede this feature",
-  "updated": "2026-05-31",
+  "updated": "2026-06-01",
   "manifest": [
     {
       "api": "publish_skill",
@@ -47,7 +51,11 @@
         ".claude/features/policy/philosophy.md",
         ".claude/features/policy/coding-rules.md"
       ],
-      "slots": ["feature_name", "paths_globs", "paths_resolved"]
+      "slots": [
+        "feature_name",
+        "paths_globs",
+        "paths_resolved"
+      ]
     },
     {
       "id": "rabbit-spec-update",
@@ -56,7 +64,10 @@
         ".claude/features/policy/philosophy.md",
         ".claude/features/policy/spec-rules.md"
       ],
-      "slots": ["args"]
+      "slots": [
+        "args"
+      ]
     }
-  ]
+  ],
+  "spec_no_change_reason": "Spec amended in pre-cycle commit 59da38f (multi-feature spec batch); this TDD cycle implements the spec change."
 }
