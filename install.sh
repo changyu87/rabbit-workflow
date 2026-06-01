@@ -2,19 +2,19 @@
 # install.sh — install rabbit into the current project as .rabbit/
 #
 # One-liner usage:
-#   curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
 #
 # Or download + run:
-#   curl -fsSLO https://raw.githubusercontent.com/changyu87/rabbit-workflow/main/install.sh && bash install.sh
+#   curl -fsSLO https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh && bash install.sh
 #
 # Env vars:
 #   RABBIT_REPO  — default changyu87/rabbit-workflow
-#   RABBIT_REF   — default main (branch, tag, or SHA)
+#   RABBIT_REF   — default dev (branch, tag, or SHA)
 
 set -euo pipefail
 
 RABBIT_REPO="${RABBIT_REPO:-changyu87/rabbit-workflow}"
-RABBIT_REF="${RABBIT_REF:-main}"
+RABBIT_REF="${RABBIT_REF:-dev}"
 
 # Pre-flight
 for cmd in python3 curl tar; do

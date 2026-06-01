@@ -41,7 +41,7 @@ The one-liner fetches the latest release and runs `install.py --src ... --target
 
 ```bash
 cd /path/to/your/project
-curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
 ```
 
 The pipe to `bash` is explicit — this works from any shell including csh and tcsh.
@@ -49,7 +49,7 @@ The pipe to `bash` is explicit — this works from any shell including csh and t
 If you prefer to download first:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/changyu87/rabbit-workflow/main/install.sh
+curl -fsSLO https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh
 bash install.sh      # must be bash — install.sh is not csh/tcsh compatible
 ```
 
@@ -101,7 +101,7 @@ The marker is consumed on the next write — single-use only.
 
 ```bash
 rm -rf .rabbit/
-curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
 git add .rabbit/
 git commit -m "chore(rabbit): update to latest"
 ```
@@ -109,7 +109,7 @@ git commit -m "chore(rabbit): update to latest"
 ### Pin to a specific version
 
 ```bash
-RABBIT_REF=v1.0.0 curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/main/install.sh | bash
+RABBIT_REF=v1.0.0 curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
 ```
 
 `RABBIT_REF` accepts any branch, tag, or commit SHA. `RABBIT_REPO` overrides the default repo.
