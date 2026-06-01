@@ -49,7 +49,7 @@ ALLOWLIST = {
     # rabbit-file backlog item that originally framed the user-install
     # plugin-mode backend (deferred). Documentary reference explaining
     # what is intentionally NOT shipped in v1; not a live tag.
-    ("rabbit-issue/docs/spec/spec.md", 89, "RABBIT-FILE-BACKLOG-16"),
+    ("rabbit-issue/docs/spec/spec.md", 103, "RABBIT-FILE-BACKLOG-16"),
 }
 
 
