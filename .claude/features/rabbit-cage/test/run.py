@@ -52,6 +52,10 @@ SUITES = [
     "test-scope-guard-plugin-claude-still-denied.py",
     "test-scope-guard-plugin-rabbit-project-non-features-denied.py",
     "test-session-start-release-update-wired.py",
+    "test-plugin-scope-guard-allows-fresh-feature-spec-md.py",
+    "test-plugin-scope-guard-denies-non-spec-write-without-marker.py",
+    "test-plugin-scope-guard-mid-tdd-still-requires-marker.py",
+    "test-standalone-spec-md-carveout-unchanged.py",
 ]
 
 

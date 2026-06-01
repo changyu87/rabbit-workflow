@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scope-guard.py v2.2.0 — PreToolUse hook enforcing repo-wide default-deny.
+"""scope-guard.py v2.3.0 — PreToolUse hook enforcing repo-wide default-deny.
 
 Standalone mode (legacy): any write inside the repo root is denied unless:
   (a) the target basename is on the filename allowlist, or
@@ -53,6 +53,7 @@ REPO_ROOT = Path(os.path.realpath(str(_raw_root))) if _raw_root else None
 
 
 _SPEC_MD_PATTERN = None
+_PLUGIN_SPEC_MD_PATTERN = None
 
 
 def _spec_md_pattern():
@@ -69,6 +70,22 @@ def _spec_md_pattern():
             r"^" + re.escape(str(REPO_ROOT)) + r"/\.claude/features/[^/]+/docs/spec/spec\.md$"
         )
     return _SPEC_MD_PATTERN
+
+
+def _plugin_spec_md_pattern():
+    """Cached regex matching <REPO_ROOT>/.rabbit/rabbit-project/features/<feature>/docs/spec/spec.md.
+
+    <feature> is a single path segment (matched as `[^/]+`). Inv 17 clause (a2):
+    plugin-mode writes to a freshly scaffolded feature's spec.md are permitted
+    regardless of scope-marker state so rabbit-spec-create can write initial
+    spec bodies. Mirrors standalone Inv 64.
+    """
+    global _PLUGIN_SPEC_MD_PATTERN
+    if _PLUGIN_SPEC_MD_PATTERN is None and REPO_ROOT is not None:
+        _PLUGIN_SPEC_MD_PATTERN = re.compile(
+            r"^" + re.escape(str(REPO_ROOT)) + r"/\.rabbit/rabbit-project/features/[^/]+/docs/spec/spec\.md$"
+        )
+    return _PLUGIN_SPEC_MD_PATTERN
 
 
 def abspath(p: str) -> str:
@@ -136,6 +153,14 @@ def plugin_decide(abs_path: str) -> Tuple[bool, str]:
             f"rabbit's own machinery under '{claude_protected}/'. Edit "
             "user-project files instead."
         )
+
+    # (a2) Plugin spec.md path-pattern carve-out (#276). Evaluated BEFORE
+    # the per-feature marker gate so an initial spec write to a freshly
+    # scaffolded feature succeeds with no marker. Narrow basename pin —
+    # other writes inside the feature dir still flow through (b)/(c).
+    plugin_spec_pat = _plugin_spec_md_pattern()
+    if plugin_spec_pat and plugin_spec_pat.match(abs_path):
+        return True, "ALLOW (plugin path-pattern allowlist: feature spec.md)"
 
     # (a-carve-out) .rabbit/rabbit-project/features/<name>/** falls through
     # to the per-feature scope-marker gate (issue #269): these paths hold

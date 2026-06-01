@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.22.0
+version: 5.23.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -254,6 +254,7 @@ string BEFORE splitting on `;|&` segment delimiters.
     to `.rabbit/rabbit-project/` paths NOT matching `features/<name>/**`
     (e.g. `.rabbit/rabbit-project/project-map.json` itself, or future
     rabbit-project metadata files) remain always-DENY.
+    (a2) **Plugin spec.md path-pattern carve-out.** When the target path matches `<rabbit_root>/rabbit-project/features/<name>/docs/spec/spec.md` (basename pinned to `spec.md`, parent directory `docs/spec/`, feature dir under `rabbit-project/features/`, `<name>` is `[^/]+`): ALLOW unconditionally, regardless of scope-marker state. This mirrors standalone mode's Inv 64 path-pattern carve-out and enables `rabbit-spec-create` to write initial spec bodies to freshly scaffolded plugin features without requiring a scope marker — the batch decomposition pipeline (`rabbit-decompose` Step 4) depends on this. The carve-out is NARROW: only the literal basename `spec.md` under `docs/spec/`. Other writes inside the same feature dir (`feature.json`, `contract.md`, `scripts/`, `tests/`, etc.) still flow through the per-feature scope-marker gate in clauses (b)/(c) — preserving the per-feature TDD scope discipline for everything except the initial-spec-draft case. This clause is evaluated BEFORE clauses (b)/(c) so the spec.md ALLOW takes precedence over the marker-required default. Enforced by `test/test-plugin-scope-guard-allows-fresh-feature-spec-md.py`, `test/test-plugin-scope-guard-denies-non-spec-write-without-marker.py`, `test/test-plugin-scope-guard-mid-tdd-still-requires-marker.py`, and `test/test-standalone-spec-md-carveout-unchanged.py` (the last pins existing Inv 64 standalone behavior unchanged).
     (b) Target matches a feature-path glob declared in
     `<repo_root>/.rabbit/rabbit-project/project-map.json` AND a per-feature
     scope marker `<repo_root>/.rabbit/.runtime/scope-active-<name>` exists

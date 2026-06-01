@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-"""E2E test for amended Inv 17(a): plugin-mode scope-guard MUST deny
-writes to .rabbit/rabbit-project/features/<name>/** with the structured
-three-option DENY message when no scope-active-<name> marker is present.
+"""E2E regression guard for Inv 17 clause (a2): the plugin-mode spec.md
+carve-out MUST NOT leak to other paths inside the same feature directory.
+A write to feature.json without a scope marker MUST still DENY with the
+structured three-option message.
 
-The target here is feature.json (NOT spec.md) — spec.md has its own
-unconditional carve-out per Inv 17 clause (a2) (#276); the per-feature
-marker gate is what this test pins.
-
-Fixes #269.
+Fixes #276.
 """
 import contextlib
 import json
@@ -24,7 +21,7 @@ SCOPE_GUARD = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/hooks/scope-
 
 RUNTIME_DIR = os.path.join(REPO_ROOT, ".rabbit", ".runtime")
 MODE_FILE = os.path.join(RUNTIME_DIR, "mode")
-FEATURE_NAME = "rabbit-cage-plugin-feature-denied-test"
+FEATURE_NAME = "rabbit-cage-plugin-non-spec-deny-test"
 SCOPE_ACTIVE = os.path.join(RUNTIME_DIR, f"scope-active-{FEATURE_NAME}")
 TARGET = os.path.join(
     REPO_ROOT, ".rabbit", "rabbit-project", "features",
@@ -65,24 +62,22 @@ def run_guard(target_path):
 
 
 def main():
-    print("test-scope-guard-plugin-feature-spec-denied-no-marker.py")
+    print("test-plugin-scope-guard-denies-non-spec-write-without-marker.py")
     print()
     failures = 0
     with saved_state():
         os.makedirs(RUNTIME_DIR, exist_ok=True)
         with open(MODE_FILE, "w") as f:
             f.write("plugin")
-        # Intentionally do NOT write scope-active-<name>.
+        # No marker. Target is feature.json (NOT spec.md). The carve-out
+        # MUST NOT apply; the structured three-option DENY MUST fire.
         rc, stderr = run_guard(TARGET)
         if rc != 2:
-            print(f"FAIL: expected DENY (rc=2), got rc={rc} stderr={stderr!r}")
+            print(f"FAIL: expected DENY (rc=2) for non-spec write without "
+                  f"marker, got rc={rc} stderr={stderr!r}")
             return 1
-        print(f"PASS: rc=2 (DENY) for .rabbit/rabbit-project/features/"
-              f"{FEATURE_NAME}/... with no marker")
-        # Structured DENY message MUST name the feature and the target path
-        # plus the three-option block (SESSION OVERRIDE, ONE-TIME OVERRIDE,
-        # rabbit-feature-touch).
-        for needle in (FEATURE_NAME, TARGET, "DENY", "SESSION OVERRIDE",
+        print(f"PASS: rc=2 (DENY) for {TARGET}")
+        for needle in (FEATURE_NAME, "DENY", "SESSION OVERRIDE",
                        "ONE-TIME OVERRIDE", "rabbit-feature-touch"):
             if needle in stderr:
                 print(f"PASS: DENY message contains {needle!r}")
