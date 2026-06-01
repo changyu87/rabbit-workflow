@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FEATURE-SCOPE-BUG-20",
+  "type": "bug",
+  "title": "SKILL.md Notes section uses wrong find-feature.py interface (--list-json / --list)",
+  "status": "close",
+  "priority": "medium",
+  "description": "SKILL.md lines 39 and 46 reference 'find-feature.py --list-json' and 'find-feature.py --list' with double-dash prefix. The actual interface (per .claude/features/contract/scripts/find-feature.py) is positional: 'find-feature.py <repo-root> list' or 'find-feature.py <repo-root> list-json'. Doc must match implementation.",
+  "related_feature": "rabbit-feature-scope",
+  "filed": "2026-05-18T03:05:44Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:34:27Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:05:44Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:34:27Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 fix; verified by test/test-bug-fixes-wave4.py and test-resolve-scope.py",
+      "fix_commits": "63e787d"
+    }
+  ],
+  "commit_sha": "bd45382a938029c7ecba88c6357644a111ee5d05"
+}

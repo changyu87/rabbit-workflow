@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FEATURE-SCOPE-BUG-21",
+  "type": "bug",
+  "title": "resolve-scope.py prompt hardcodes feature names contract and rabbit-cage",
+  "status": "close",
+  "priority": "high",
+  "description": "resolve-scope.py lines 78-79 hard-code rules referencing specific features 'contract' and 'rabbit-cage'. This violates the spec's stated purpose: 'General-purpose shared skill - no assumptions about callers' and 'Makes no assumptions about callers or use cases'. If those features are renamed or removed, the prompt becomes incorrect. The rules should be data-driven (extracted from feature summaries or removed entirely so the Agent decides based solely on feature descriptions).",
+  "related_feature": "rabbit-feature-scope",
+  "filed": "2026-05-18T03:08:00Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T06:57:47Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:08:00Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T06:57:47Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed in Wave 3 PR. BUG-21 hardcoded names removed; BUG-28 defensive .get() for optional keys; BUG-7/9/12/14/17 covered by new test-invariant-coverage.py.",
+      "fix_commits": "b13dc4b"
+    }
+  ],
+  "commit_sha": "cab7063d90433fde40bee23a0189ff43bab7eba0"
+}

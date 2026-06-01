@@ -1,0 +1,53 @@
+{
+  "name": "TDD-SUBAGENT-BACKLOG-18",
+  "type": "backlog",
+  "title": "Evaluate consolidating tdd-state-machine into tdd-subagent",
+  "status": "close",
+  "priority": "medium",
+  "description": "Currently tdd-state-machine is a separate feature whose only deployment surface is a single script (scripts/tdd-step.py) that gets copied into tdd-subagent's agent directory at .claude/agents/tdd-subagent/scripts/tdd-step.py. This cross-feature deployment is the only reason the meta-contract's publish_file API has to support a destination outside the source feature's own directory tree. If tdd-state-machine were absorbed into tdd-subagent, tdd-step.py would live naturally inside tdd-subagent's scripts/ and no cross-feature publish_file would be needed. Trade-offs to evaluate: (a) one fewer feature to maintain (manifest/spec/contract/tests collapse into tdd-subagent's set); (b) one fewer Plan E.* migration; (c) cross-feature deployment shape (a complication in the meta-contract Inv set) may become unused and removable; (d) potential downside: reduced reusability if tdd-step.py is ever needed outside the rabbit TDD context (unlikely given its name and purpose). Recommend evaluating after Plan E + Plan F land, when the meta-contract architecture is stable and the consolidation cost is fully visible.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-24T07:19:38Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-25T12:04:32Z",
+  "history": [
+    {
+      "ts": "2026-05-24T07:19:38Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-25T02:27:42Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Evaluated: KEEP SEPARATE. (1) tdd-step.py is a multi-consumer service \u2014 rabbit-feature/contract.md invokes.scripts and rabbit-cage/workspace-tree.py + README.md both reference it independently of tdd-subagent; backlog premise that the cross-feature publish_file dest is unique to this case is incomplete. (2) Bounded Scope: tdd-state-machine spec defines 14 invariants on state-transition rules; tdd-subagent defines prompt-assembly orchestration \u2014 categorically different concerns. (3) tdd-subagent contract.md never-clauses explicitly forbid modifying or vendoring tdd-step.py \u2014 consolidation would erase deliberate scope walls. (4) Distinct deprecation criteria (state-machine replacement vs subagent-dispatch replacement) \u2014 merging tangles lifecycles. (5) Even post-consolidation the publish dest .claude/agents/tdd-subagent/scripts/tdd-step.py still lies outside source feature scripts/ tree, so publish_file external-dest capability is not eliminated. (6) Maintenance cost (1 script, 10 focused tests) is low vs architectural clarity gained. No code change."
+    },
+    {
+      "ts": "2026-05-25T11:37:24Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "Reopening: closed-verdict KEEP SEPARATE was based on flawed multi-consumer claim. Re-verification (greps for runtime invokers across all features) shows tdd-step.py has exactly ONE runtime caller \u2014 dispatch-tdd-subagent.py inside tdd-subagent. Other references are documentation strings (rabbit-cage/README.md:81 markdown example, workspace-tree.py:61-62 dict labels) and contract declarations (rabbit-feature/contract.md invokes.scripts entry \u2014 declares the prompt-embedded path, not a script-level call). Revised verdict: CONSOLIDATE."
+    },
+    {
+      "ts": "2026-05-25T11:50:31Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "7b5cc53445ce029837c89a2773a4e909b146450f"
+    },
+    {
+      "ts": "2026-05-25T12:04:14Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "Reopening to record additional fix SHA: cleanup commit 1d10c86b retired tdd-state-machine/ directory and repointed cross-feature consumers (rabbit-feature contract+spec+test, rabbit-cage workspace-tree+README, workspace-structure.json, agent redeploy). The TDD subagent closed with only the absorber SHA; reopening to append the cleanup SHA."
+    },
+    {
+      "ts": "2026-05-25T12:04:32Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Consolidation complete. Absorber commit 7b5cc534 handled the absorbing feature surface (tdd-step.py + 10 tests + 14 invariants now intra-feature in tdd-subagent v4.0.0; manifest grew to 3 entries). Cleanup commit 1d10c86b retired tdd-state-machine/ directory; repointed rabbit-feature spec+contract+test path references; updated rabbit-cage workspace-tree+README; tombstoned tdd-state-machine in workspace-structure.json; redeployed tdd-subagent manifest. Full feature-suite sweep across 8 features green; validate-meta-contract.py exits 0 on both modified features. Branch task/TDD-SUBAGENT-BACKLOG-18-consolidate-tdd-state-machine pushed to origin.",
+      "fix_commits": "7b5cc53445ce029837c89a2773a4e909b146450f,1d10c86b"
+    }
+  ],
+  "commit_sha": "a7b0d54eb959706486b250d5085787c4392cbba2"
+}

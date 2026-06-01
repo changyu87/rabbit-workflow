@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-28",
+  "type": "bug",
+  "title": "dispatch-feature-edit.py project-feature contract scan reads .claude/features as project root",
+  "status": "close",
+  "priority": "medium",
+  "description": "scripts/dispatch-feature-edit.py lines 156-165 detect 'project feature' by splitting feature_path on os.sep, taking parts[0] as project_root, and checking parts[1] == 'features'. But the standard rabbit feature path is '.claude/features/<name>'. split('/') yields ['.claude', 'features', '<name>']. parts[0]='.claude' and parts[1]='features' would TRIGGER the project-feature branch and look for '.claude/contract/' which does not exist. Branch is unreachable in normal use but may trigger if a project happens to be named '.claude'. Should explicitly check that parts[0] is not '.claude'.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T03:33:20Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:35:17Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:33:20Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:35:17Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3 batch 2: schema permissiveness, template fields, enforcement script corrections per Inv 22-33.",
+      "fix_commits": "51fc7f3"
+    }
+  ],
+  "commit_sha": "8f91eeb658c673d39ad57528765b2d1c14e07ca7"
+}

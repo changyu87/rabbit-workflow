@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BACKLOG-7",
+  "type": "backlog",
+  "title": "Add structured HANDOFF schema with versioning",
+  "status": "close",
+  "priority": "medium",
+  "description": "The HANDOFF emitted by the subagent at completion is currently a YAML-like ad-hoc block in the prompt template. The dispatcher must parse it. No declared schema, no version, no validation. Per spec philosophy 'Machine First', every handoff should use a fixed-format schema. Define a HANDOFF schema (JSON), have the subagent emit valid JSON to .rabbit/handoff-<feature>.json, and have the dispatcher validate it before proceeding to Step 6. The current free-form text invites silent parsing drift.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:58:52Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T09:03:49Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:58:52Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T09:03:49Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete: TDD-SUBAGENT-BACKLOG-7 closed",
+      "fix_commits": "519f4ee0c6960dfb8a6acc224bc96ad7cd67cb83"
+    }
+  ],
+  "commit_sha": "4820685c7b7d23e28ebb1118703231543e171c03"
+}

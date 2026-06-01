@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-2",
+  "type": "bug",
+  "title": "No documented mechanism to turn scope guard back on; AI confused override file with scope marker",
+  "status": "close",
+  "priority": "low",
+  "description": "When a user says 'put scope guard back on', the correct action is to remove .rabbit-scope-override. No skill, script, or documentation describes this operation. In a prior session the AI agent looked for .rabbit-scope-active (the feature scope marker) instead of .rabbit-scope-override (the session bypass marker), confirmed 'no override present' while looking at the wrong file, and took no action. The Stop hook correctly fired the SCOPE GUARD OFF alert because the override file was still present. The two files have entirely different meanings: .rabbit-scope-active gates writes to a feature directory during TDD work; .rabbit-scope-override is a human-issued bypass of the guard. Fix candidates: add a helper script (scope-guard-on.sh) that removes .rabbit-scope-override, or document the operation in the scope-guard spec so AI agents know what file to check and remove.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-15T02:23:27Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-15T02:55:05Z",
+  "history": [
+    {
+      "ts": "2026-05-15T02:23:27Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-15T02:55:05Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "3a81be92be1a38fe4ae0238f9d48097117fb3fc8"
+    }
+  ],
+  "commit_sha": "d81efd1b80b67caa76bbae65d4306df2763658a1"
+}

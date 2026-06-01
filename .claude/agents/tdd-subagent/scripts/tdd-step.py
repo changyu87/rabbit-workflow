@@ -72,12 +72,13 @@ def usage():
 
 
 _FORWARD = {
-    "spec":        "spec-update",
-    "spec-update": "test-red",
-    "test-red":    "impl",
-    "impl":        "test-green",
-    "test-green":  "deprecated",
-    "deprecated":  "",
+    "spec":           "spec-update",
+    "spec-update":    "test-red",
+    "test-red":       "impl",
+    "impl":           "sync-deployed",
+    "sync-deployed":  "test-green",
+    "test-green":     "deprecated",
+    "deprecated":     "",
 }
 
 # Alternate forward transitions. Each state's primary next is in _FORWARD;
@@ -88,7 +89,10 @@ _FORWARD_ALT = {
     "test-green": ["spec-update"],
 }
 
-_VALID_STATES = {"spec", "spec-update", "test-red", "impl", "test-green", "deprecated"}
+_VALID_STATES = {
+    "spec", "spec-update", "test-red", "impl",
+    "sync-deployed", "test-green", "deprecated",
+}
 
 
 def forward_next(state):
@@ -249,8 +253,7 @@ def _run_spec_update_checks(d, repo_root):
 def _post_transition_hooks(cur, new, d):
     """Run state-specific post-write hooks.
 
-    Inv 10 + 11: on entry into test-green, run enforcement checks and
-    project consolidate.
+    Inv 10: on entry into test-green, run enforcement checks.
     Inv 12: on the spec-update -> test-red edge, run the numbered-list
     check.
     All hooks are best-effort and never block the transition.
@@ -263,29 +266,6 @@ def _post_transition_hooks(cur, new, d):
 
 def _post_test_green_hooks(d):
     _run_enforcement_checks(d, REPO_ROOT)
-    # Project consolidate is a best-effort hook gated by project-map.json. The
-    # outer try/except guards against any unexpected failure (missing script,
-    # broken project layout, etc.) so a test-green transition is never blocked
-    # by a project-side issue.
-    try:
-        features_dir = os.path.dirname(os.path.abspath(d))
-        project_dir = os.path.dirname(features_dir)
-        project_map = os.path.join(project_dir, "project-map.json")
-        if os.path.isfile(project_map):
-            project_name = os.path.basename(project_dir)
-            onboard_py = os.path.join(
-                REPO_ROOT, ".claude", "features", "rabbit-cage", "scripts", "rabbit-project.py",
-            )
-            if os.path.isfile(onboard_py):
-                try:
-                    subprocess.run(
-                        [sys.executable, onboard_py, "consolidate", project_name],
-                        capture_output=True, check=False,
-                    )
-                except Exception:
-                    pass
-    except Exception:
-        pass
 
 
 def cmd_show(args):

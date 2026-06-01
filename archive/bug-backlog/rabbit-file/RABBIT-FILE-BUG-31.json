@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-FILE-BUG-31",
+  "type": "bug",
+  "title": "branch_ops.py does not fetch origin/bug-backlog-files before worktree add",
+  "status": "close",
+  "priority": "medium",
+  "description": "branch_ops.py calls 'git worktree add .claude/tmp/bug-backlog-files origin/bug-backlog-files' without first running 'git fetch origin bug-backlog-files'. This assumes the remote-tracking ref already exists locally. In any fresh workspace \u2014 including chained workspaces where origin is another local repo rather than GitHub \u2014 the ref is absent and the worktree add fails with 'fatal: invalid reference'. Fix: add a 'git fetch origin bug-backlog-files' call inside branch_ops before setting up the worktree. This handles both direct-GitHub and chained-workspace topologies, as long as the intermediate has the branch locally. Reproduce: clone or fresh-worktree a repo whose origin points to a local workspace that has bug-backlog-files only as a remote-tracking ref, then invoke any branch_ops read operation.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-19T09:50:07Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T10:15:25Z",
+  "history": [
+    {
+      "ts": "2026-05-19T09:50:07Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T10:15:25Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Stale on closer reading: branch_ops.py:190-191 already calls 'git fetch origin bug-backlog-files' before 'git worktree add'. The observed failure was actually chained-workspace topology (ws31 -> ws29 -> GitHub, where ws29 only had bug-backlog-files as a remote-tracking ref). That underlying issue is filed as a separate bug."
+    }
+  ],
+  "commit_sha": "e82f82ef4e42a7fc6af651f0ebaf4447edaf70b9"
+}

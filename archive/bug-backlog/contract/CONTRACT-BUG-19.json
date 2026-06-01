@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-19",
+  "type": "bug",
+  "title": "check-template-schema-producer-consistency.py references nonexistent file-bug.sh producer",
+  "status": "close",
+  "priority": "medium",
+  "description": "scripts/enforcement/check-template-schema-producer-consistency.py module docstring describes PRODUCER_FIELDS as fields written by file-bug.sh. file-bug.sh has been replaced by rabbit-file's file-item.py. The PRODUCER_FIELDS set in the script (lines 25-28) is stale relative to the current rabbit-file producer. Either delete this enforcement or update to reference the current producer.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T03:07:20Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:34:42Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:07:20Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:34:42Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3 batch 2: schema permissiveness, template fields, enforcement script corrections per Inv 22-33.",
+      "fix_commits": "51fc7f3"
+    }
+  ],
+  "commit_sha": "b84cd61c13e5995756bcd3a930cb370d99052b87"
+}

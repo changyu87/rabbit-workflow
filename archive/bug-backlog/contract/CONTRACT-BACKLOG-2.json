@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-2",
+  "type": "backlog",
+  "title": "Unify CLI naming: rename --no-human-approval to --human-approval-gate, true/false for booleans, positive-streamlined names",
+  "status": "close",
+  "priority": "high",
+  "description": "Three coordinated changes to unify CLI naming style across the rabbit workflow:\n\n1. RENAME --no-human-approval \u2192 --human-approval-gate (tdd-subagent)\n   Current: dispatch-tdd-subagent.py accepts --no-human-approval (a negated boolean flag with no value)\n   New: --human-approval-gate true|false\n     - true  = gate is active (default); subagent waits for in-conversation approval at HUMAN-APPROVAL step\n     - false = gate is bypassed; HUMAN-APPROVAL step is skipped\n   Callers: rabbit-feature-touch SKILL.md (Step 4 bypass path), any dispatch site that passes --no-human-approval\n\n2. UNIFY /rabbit-config human-approval subcommand values (rabbit-cage)\n   Current: /rabbit-config human-approval bypass|gated (semantic verbs)\n   New: /rabbit-config human-approval false|true\n     - false = bypass (gate disabled, marker written)\n     - true  = gate active (marker removed)\n     - no-arg = print current state as \"true\" or \"false\"\n   The .rabbit-human-approval-bypass marker semantics do not change; only the CLI surface does.\n\n3. ADD naming convention to contract feature (contract)\n   Add a rule to the contract's naming-convention policy or hard-rules doc:\n   a. Boolean CLI flags and subcommand values use true/false exclusively. Not enabled/disabled, not on/off, not lock/unlock for boolean states, not negated flag forms like --no-X.\n   b. Variable and flag names must be \"positive streamlined\": name what you are enabling, not what you are disabling.\n      PREFER: --human-approval-gate, --enable-review, bypass-human-approval\n      AVOID:  --no-human-approval, --disable-review, --skip-review\n      Rule: if a flag or variable describes an absence or negation in its name, rename it to describe what IS present when the flag is active.\n\nCross-feature impact: tdd-subagent (dispatch script + SKILL.md + tests), rabbit-cage (rabbit-config script + spec + tests), contract (naming-convention doc or hard-rules).",
+  "related_feature": "contract",
+  "filed": "2026-05-18T02:09:42Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T02:27:02Z",
+  "history": [
+    {
+      "ts": "2026-05-18T02:09:42Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T02:27:02Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete. CLI Naming Convention added to contract spec (Inv 15/16). --no-human-approval renamed to --human-approval-gate true|false in dispatch-tdd-subagent.py and SKILL.md. /rabbit-config human-approval bypass|gated renamed to true|false. All legacy values hard-rejected. 3 parallel TDD cycles, all green.",
+      "fix_commits": "66bb246,742476b,d27b87d"
+    }
+  ],
+  "commit_sha": "555863afc946c982cd97e24b712ef3b77b7782e1"
+}

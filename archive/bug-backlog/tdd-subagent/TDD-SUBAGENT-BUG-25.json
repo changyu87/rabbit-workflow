@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-25",
+  "type": "bug",
+  "title": "dispatch-tdd-subagent.py does not validate --spec file exists",
+  "status": "close",
+  "priority": "medium",
+  "description": "dispatch-tdd-subagent.py calls _read_file(args.spec) which returns '(not found)' if the file is missing. The script then embeds the literal '(not found)' as the spec content into the assembled prompt (line 287). The subagent has no idea the spec wasn't actually read; it proceeds as if the spec is one line of literal '(not found)'. dispatch-tdd-subagent.py also doesn't validate --impl-suggestion. Add a hard check that --spec exists and is readable; exit non-zero if not. The exit-2 contract case should cover missing-spec to fail fast in CI.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:41:53Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:37:17Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:41:53Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:37:17Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "0cd31de21dac608c37a8f54b2f84f84d550ef37c"
+}

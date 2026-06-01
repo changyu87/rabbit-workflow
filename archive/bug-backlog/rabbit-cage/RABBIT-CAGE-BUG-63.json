@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-CAGE-BUG-63",
+  "type": "bug",
+  "title": "Mojibake propagated to README.md line 75 and other comment locations",
+  "status": "close",
+  "priority": "low",
+  "description": "Beyond workspace-tree.py (RABBIT-CAGE-BUG-32), the same double-encoded mojibake may exist elsewhere. README.md line 75 'login redirects loop on safari' is fine, but inspection of files for common double-UTF8 fingerprints ('\u00c3\u00a2' or '\u00e2' followed by box-drawing bytes) should sweep workspace-tree.py annotations, any rendered tree output baked into docs, and any feature scaffolds. Add a CI check / lint rule that rejects \\xc3\\xa2\\xc2 byte sequences in source files.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:20:59Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:44:02Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:20:59Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:44:02Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup: bug invalid \u2014 see triage notes in tdd-report-rabbit-cage.json"
+    }
+  ],
+  "commit_sha": "ace32406543976c50d17c440e97c08ad3800654a"
+}

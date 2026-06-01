@@ -1,0 +1,70 @@
+{
+  "name": "CONTRACT-BACKLOG-1",
+  "type": "backlog",
+  "title": "Prompt control: human interface to inspect and edit subagent context prompt before dispatch",
+  "status": "close",
+  "priority": "medium",
+  "description": "Every subagent call injects a constructed context prompt (policy docs, spec, tdd state, etc.). Currently this is opaque to the user \u2014 they cannot see what was assembled or correct it before dispatch.\n\nRequired capabilities:\n1. INSPECT: Before dispatching a subagent, surface the full assembled prompt to the user in a readable form.\n2. EDIT: Allow the user to modify the prompt (add, remove, or override sections) before it is sent.\n3. BYPASS: The inspect/edit gate must be bypassable (one-time or session-long) for fully autonomous flows.\n\nImplementation note (user suggestion): Model this as a contract \u2014 define a versioned schema for what constitutes a subagent prompt payload, so each injected section is a named, typed field. The human interface operates on the schema, not on raw text. This makes inspection and editing structured and auditable rather than free-form string manipulation.\n\nAffected surfaces: contract (schema), tdd-state-machine (context block assembly), rabbit-cage (user-facing hook or skill for the inspect/edit UI).",
+  "related_feature": "contract",
+  "filed": "2026-05-15T06:01:02Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-27T00:44:07Z",
+  "history": [
+    {
+      "ts": "2026-05-15T06:01:02Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:46:50Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Deferred: too large/complex for housekeeping waves. Requires dedicated design cycle. Filed for future roadmap consideration."
+    },
+    {
+      "ts": "2026-05-18T08:51:16Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "design completed in PR #127; reopening for implementation tracking (closed in error by long-running housekeeping session)"
+    },
+    {
+      "ts": "2026-05-18T09:12:14Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Deferred: requires dedicated design cycle. Large feature \u2014 human-editable subagent prompt interface needs architecture work beyond housekeeping scope."
+    },
+    {
+      "ts": "2026-05-18T14:24:08Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "design completed in PR #127; housekeeping closure was a context-drift error (originally filed 2026-05-15 well before housekeeping)"
+    },
+    {
+      "ts": "2026-05-19T02:23:58Z",
+      "actor": "rabbit-file",
+      "action": "noted",
+      "note": "Size constraint observed during RABBIT-CAGE-BACKLOG-12 TDD cycle: dispatch-tdd-subagent.py assembled a ~90KB prompt (RABBIT-POLICY-BLOCK ~15KB inlining 3 policy files verbatim; rabbit-cage spec.md 70+ invariants ~50KB; TDD step instructions ~20KB; impl-suggestion ~5KB). Agent tool inline prompt has effective size limit making the assembled prompt unusable as a direct Agent call. Orchestrator had to construct an abbreviated ~5KB equivalent manually. Root cause: dispatch-tdd-subagent.py inlines full file content rather than referencing paths for lazy reading. Solution directions align with structured schema proposal here: (a) pass file paths not content for policy/spec, let subagent read at execution time; (b) define max prompt size invariant; (c) human inspect/edit interface (core of this backlog) becomes critical once prompt is referential not self-contained. Observed 2026-05-19 during BACKLOG-12 work."
+    },
+    {
+      "ts": "2026-05-19T10:53:00Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Temporarily closed before CONTRACT-BACKLOG-19 housekeeping wave to prevent accidental closure by wave b/b filings; will be reopened after the wave completes"
+    },
+    {
+      "ts": "2026-05-19T13:21:55Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "Reopening after CONTRACT-BACKLOG-19 wave complete"
+    },
+    {
+      "ts": "2026-05-27T00:44:07Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Implemented via 7-PR stack (#188-#194): A.1 schema+lint, A.2 assembler+hook source, A.3 runtime APIs+contract manifest, A.4 templates bundle, B tdd-subagent migration, C per-feature sweep (rabbit-feature/rabbit-file/rabbit-config), D dead-template cleanup. The prompt-contract machinery is now end-to-end: every registered skill/subagent has its invariable policy injections + variable slots declared in its owning feature.json; the contract-owned PreToolUse hook fires on Skill calls and the dispatch-tdd-subagent.py routes through build-prompt.py; stop-event runtime APIs sweep prompt files and surface injection failures.",
+      "fix_commits": "0fae9973,a115db61,9d54527e,912a2013,f6258737,5ebcbc2f,fff2704b,e996bb2d,9c666d0f"
+    }
+  ],
+  "commit_sha": "b7c5c691bf2e7978eba17385844b440caa2519db"
+}

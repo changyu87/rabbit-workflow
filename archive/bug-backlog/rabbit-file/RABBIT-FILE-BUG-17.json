@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-FILE-BUG-17",
+  "type": "bug",
+  "title": "Concurrent invocations race on worktree path causing FileNotFoundError crashes",
+  "status": "close",
+  "priority": "critical",
+  "description": "branch_ops._worktree uses a single fixed path .claude/tmp/bug-backlog-files. When two file-item.py / item-status.py invocations run concurrently (parallel agents, parallel CI jobs), one shutil.rmtree(wt) races with the other git operations / write_text, producing FileNotFoundError mid-execution. Observed live during housekeeping: multiple cascading failures (no such file or directory: item.json) and non-fast-forward push rejections. Allocated IDs were burned with no item.json written. Fix: use a per-process worktree path (include PID or UUID) so concurrent invocations do not clobber each other. The always cleans up invariant is correct for sequential use but unsafe for any parallelism.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-18T03:06:30Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:01:47Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:06:30Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:01:47Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 triage: duplicate of RABBIT-FILE-BUG-18 (concurrent worktree race), fixed by PR #112"
+    }
+  ],
+  "commit_sha": "7979668b5369221d0eecf64a4ed089f2135118ed"
+}

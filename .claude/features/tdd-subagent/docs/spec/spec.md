@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.0.0
+version: 5.1.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -14,10 +14,11 @@ status: active
 Provides `dispatch-tdd-subagent.py` (a prompt assembler), `tdd-step.py`
 (the forward-only TDD state machine), and the `tdd-subagent` agent
 definition. The assembled prompt drives a single feature through the
-7-step TDD cycle (LOCK → TEST-WRITE → TEST-RED → IMPLEMENT →
-CODE-REVIEW → TEST-GREEN → UNLOCK), invoking `tdd-step.py` at each
-state transition. Spec context-loading and the human-approval gate are
-the dispatcher's responsibility, not the subagent's.
+8-step TDD cycle (LOCK → TEST-WRITE → TEST-RED → IMPLEMENT →
+SYNC-DEPLOYED → CODE-REVIEW → TEST-GREEN → UNLOCK), invoking
+`tdd-step.py` at each state transition. Spec context-loading and the
+human-approval gate are the dispatcher's responsibility, not the
+subagent's.
 
 The `rabbit-feature-touch` orchestration skill that consumes this
 feature's dispatch prompt is owned by `rabbit-feature`. The retired
@@ -86,26 +87,17 @@ the template's `{{bypass_preamble_note}}` placeholder.
 3. **Output mode.** `dispatch-tdd-subagent.py` writes the assembled
    prompt to stdout and exits without invoking any agent. Exit codes:
    `0` success, `2` invocation error (missing required flag, missing
-   `--spec` file, malformed `--linked-items` triple, missing
-   `--item-type` paired with `--linked-item` or vice versa,
-   `--max-iterations < 1`, unknown `--scope` feature, malformed
-   `--linked-item` path layout — see Inv 30).
+   `--spec` file, `--max-iterations < 1`, unknown `--scope` feature).
 
 4. **Flag set.** `dispatch-tdd-subagent.py` accepts exactly these flags:
    `--scope` (required), `--spec` (required),
    `--impl-suggestion` (optional path),
-   `--linked-item` + `--item-type bug|backlog` (optional primary item),
-   `--linked-items <feature>:<type>:<id>[,...]` (optional secondary items;
-   `<type>` ∈ {`bug`, `backlog`}),
    `--code-review-full-loop` (boolean flag),
    `--max-iterations N` (default `3`, minimum `1`).
 
 5. *(Retired — see CHANGELOG.md.)*
 
-6. **`--linked-items` validation.** Each comma-separated entry MUST have
-   exactly two colons separating non-empty `<feature>`, `<type>`, `<id>`
-   fields, with `<type>` ∈ {`bug`, `backlog`}. Any malformed entry causes
-   exit `2` with a diagnostic on stderr BEFORE any stdout is emitted.
+6. *(Retired — see CHANGELOG.md.)*
 
 ### Dispatch script — prompt content
 
@@ -114,12 +106,12 @@ the template's `{{bypass_preamble_note}}` placeholder.
    scope marker, written at LOCK and removed at UNLOCK. Distinct
    per-feature markers permit simultaneous dispatch across features.
 
-8. **7-step section banners.** The assembled prompt contains a labelled
+8. **8-step section banners.** The assembled prompt contains a labelled
    section per step using the names `LOCK`, `TEST-WRITE`, `TEST-RED`,
-   `IMPLEMENT`, `CODE-REVIEW`, `TEST-GREEN`, `UNLOCK`, in that order,
-   numbered STEP 1 through STEP 7. Spec context-loading and human
-   approval are owned by the dispatcher (`rabbit-feature-touch`) and
-   absent from the assembled prompt.
+   `IMPLEMENT`, `SYNC-DEPLOYED`, `CODE-REVIEW`, `TEST-GREEN`, `UNLOCK`,
+   in that order, numbered STEP 1 through STEP 8. Spec context-loading
+   and human approval are owned by the dispatcher (`rabbit-feature-touch`)
+   and absent from the assembled prompt.
 
 9. **E2E test rule.** The assembled prompt declares that every spec
    behaviour MUST have a corresponding end-to-end test, and that the
@@ -147,11 +139,13 @@ the template's `{{bypass_preamble_note}}` placeholder.
 
 13. *(Retired — see CHANGELOG.md.)*
 
-14. **IMPLEMENT commit ordering.** Within the IMPLEMENT step, the
-    assembled prompt instructs the subagent to commit
-    (`git add <feature_dir>/ && git commit -m
-    "fix|feat(<feature>): <summary>"`) inside the iteration loop and
-    BEFORE the `tdd-step.py transition <feature_dir> impl` call.
+14. **IMPLEMENT/SYNC-DEPLOYED commit ordering.** Within the IMPLEMENT step,
+    the assembled prompt instructs the subagent to write code (Edit/Write)
+    and stage the feature-local changes (`git add <feature_dir>/`) but to
+    DEFER the commit until the end of SYNC-DEPLOYED (per Inv 46). The
+    `tdd-step.py transition <feature_dir> impl` call happens at the end
+    of IMPLEMENT (post-stage, pre-commit) so the impl state advance
+    records "code written" without the commit yet.
 
 15. **TEST-GREEN impl-SHA capture.** The assembled prompt's TEST-GREEN
     step captures `IMPL_SHA=$(git rev-parse HEAD)` and writes
@@ -172,46 +166,16 @@ the template's `{{bypass_preamble_note}}` placeholder.
     preceded by a `Read` in the same session, as the Claude Code Edit
     tool rejects edits on un-Read files.
 
-### Linked-item closure
+19. *(Retired — see CHANGELOG.md.)*
 
-19. **Primary linked-item closure.** When invoked with `--linked-item
-    <dir> --item-type <type>`, the assembled prompt instructs the
-    subagent to close the item after test-green via:
-    `python3 .claude/features/rabbit-file/scripts/item-status.py set
-    --feature <feature> --type <type> --id <id> --status close
-    --reason 'TDD cycle complete' --fix-commits <IMPL_SHA>`.
-    `<feature>` and `<id>` are derived from the `--linked-item` path
-    (penultimate-two segments and final segment respectively).
+20. *(Retired — see CHANGELOG.md.)*
 
-20. **Secondary linked-items closure.** Each `--linked-items` entry
-    triggers an additional `item-status.py set ... --status close
-    --reason 'TDD cycle complete (secondary item resolved by same
-    commit)' --fix-commits <IMPL_SHA>` invocation in the assembled
-    prompt.
+21. **HANDOFF `closed_items` field.** The assembled prompt's HANDOFF
+    JSON block declares `closed_items` as an empty list (the field is
+    retained on the HANDOFF schema for forward compatibility per Inv 22
+    even though the dispatcher no longer emits item-close instructions).
 
-21. **HANDOFF closed-items listing.** The assembled prompt's HANDOFF
-    block lists every closed item (primary + secondaries) under
-    `closed_items`. When no items are closed, `closed_items` is an empty
-    list in the JSON HANDOFF and omitted from the YAML block.
-
-### `--linked-item` path-layout validation
-
-30. **`--linked-item` path layout.** When `--linked-item <path>` is
-    provided, `dispatch-tdd-subagent.py` validates that the path
-    conforms to the rabbit-file storage layout
-    `.../rabbit/features/<feature>/<bugs|backlogs>/<id>/` BEFORE any
-    stdout is emitted. The path is resolved (via `Path.resolve()`),
-    and the resolved path's segments are checked: the segment at
-    position `-4` MUST equal `features`, and the segment at position
-    `-2` MUST equal `bugs` or `backlogs` (matching the rabbit-file
-    storage layout, where `<type>` ∈ {`bug`, `backlog`} and the
-    containing directory is the pluralised form). A non-conforming
-    path causes exit `2` with a stderr diagnostic naming both the
-    expected layout and the observed path tail. The validated feature
-    name (the segment at position `-3`) is used wherever the assembled
-    prompt's close-call block derives `<feature>` from the
-    `--linked-item` path (Inv 19), replacing any prior unvalidated
-    slicing.
+30. *(Retired — see CHANGELOG.md.)*
 
 ### HANDOFF schema
 
@@ -297,20 +261,22 @@ the template's `{{bypass_preamble_note}}` placeholder.
 
 ### State machine — schema/behaviour
 
-The 14 invariants in this section were absorbed from the retired
+The 13 invariants in this section were absorbed from the retired
 `tdd-state-machine` feature at v4.0.0. They constrain
 `scripts/tdd-step.py`.
 
 31. **Valid state set.** The valid `tdd_state` values are exactly:
-    `spec`, `spec-update`, `test-red`, `impl`, `test-green`,
-    `deprecated`. `transition` rejects any other target value with exit
-    `1`.
+    `spec`, `spec-update`, `test-red`, `impl`, `sync-deployed`,
+    `test-green`, `deprecated`. `transition` rejects any other target
+    value with exit `1`. The `sync-deployed` state was added in v5.1.0
+    per Inv 46 to land the 8-step cycle's new step at the state-machine
+    level.
 
 32. **Primary forward order.** The primary forward order is:
-    `spec -> spec-update -> test-red -> impl -> test-green ->
-    deprecated`. Without `--force`, a transition is accepted only when
-    the new state is the primary forward target of the current state
-    (or the alternate target defined in Inv 33).
+    `spec -> spec-update -> test-red -> impl -> sync-deployed ->
+    test-green -> deprecated`. Without `--force`, a transition is
+    accepted only when the new state is the primary forward target of
+    the current state (or the alternate target defined in Inv 33).
 
 33. **Alternate forward edge.** From `test-green`, the alternate forward
     target `spec-update` is accepted without `--force`. This is the only
@@ -368,15 +334,7 @@ The 14 invariants in this section were absorbed from the retired
     warning via `rabbit_print` on stderr. The hook is best-effort and
     never blocks the transition.
 
-41. **`test-green` project-consolidate hook.** After a successful
-    transition into `test-green`, when `project-map.json` exists in the
-    enclosing project directory (the parent of `<feature-dir>`'s
-    parent), `tdd-step.py` invokes `rabbit-project.py consolidate
-    <project-name>`. The hook is best-effort: any failure (missing
-    script, broken project layout) is swallowed and never blocks the
-    transition.
-
-42. **`spec-update -> test-red` numbered-list check.** After a
+41. **`spec-update -> test-red` numbered-list check.** After a
     successful transition `spec-update -> test-red`, `tdd-step.py`
     calls `contract.lib.checks.check_numbered_lists` against
     `<feature-dir>/docs/spec/`. A non-passed `CheckResult` emits a
@@ -384,28 +342,28 @@ The 14 invariants in this section were absorbed from the retired
     transition. The Inv 38 gate remains the only blocking precondition
     for this transition.
 
-43. **In-process library imports (no subprocess to CLI shims).** The
-    check functions used by Inv 40 and Inv 42 are imported from the
+42. **In-process library imports (no subprocess to CLI shims).** The
+    check functions used by Inv 40 and Inv 41 are imported from the
     `contract.lib.checks` library module at
     `.claude/features/contract/lib/checks.py` and invoked in-process.
     `tdd-step.py` MUST NOT fan out via `subprocess` to the
     `.claude/features/contract/scripts/enforcement/check-*.py` CLI
     shims for any of these checks.
 
-44. **`tdd-step.py` manifest entry.** `feature.json`'s `manifest` (per
+43. **`tdd-step.py` manifest entry.** `feature.json`'s `manifest` (per
     Inv 29) contains the third entry that publishes `tdd-step.py` to
     the agent's adjacent scripts directory. The intra-feature source
     path (`scripts/tdd-step.py`) and the agent-adjacent dest
     (`.claude/agents/tdd-subagent/scripts/tdd-step.py`) together
     declare the deployment of this script.
 
-45. **`feature.json` `prompts` section + dispatcher uses `build-prompt.py`.**
+44. **`feature.json` `prompts` section + dispatcher uses `build-prompt.py`.**
     `feature.json` MUST declare a `prompts` array containing EXACTLY ONE
     entry with these field values:
     - `id: "tdd-subagent"`
     - `kind: "subagent"`
     - `inject: [".claude/features/policy/philosophy.md", ".claude/features/policy/spec-rules.md", ".claude/features/policy/coding-rules.md"]`
-    - `slots: ["feature_name", "spec_content", "impl_suggestion_block", "bypass_preamble_note", "feature_dir", "tdd_step_py", "repo_root", "max_iterations", "code_review_loop_note", "linked_item_value", "item_type_value", "close_calls_block", "handoff_closed_items_block", "handoff_closed_items_json"]`
+    - `slots: ["feature_name", "spec_content", "impl_suggestion_block", "bypass_preamble_note", "feature_dir", "tdd_step_py", "repo_root", "max_iterations", "code_review_loop_note"]`
 
     The matching template at
     `.claude/features/contract/templates/prompts/tdd-subagent.txt`
@@ -417,12 +375,10 @@ The 14 invariants in this section were absorbed from the retired
     --callable-id tdd-subagent --slot <name>=<value>` (one `--slot`
     per slot) via subprocess, read the resulting prompt file from the
     path printed to stdout by the assembler, and write that file's
-    contents to its own stdout. The dispatcher's existing CLI shape
-    (`--scope`, `--spec`, `--impl-suggestion`, `--linked-item`,
-    `--item-type`, `--linked-items`, `--code-review-full-loop`,
-    `--max-iterations`) and existing argument validation (every check
-    up through the parsing of `secondary_items` and the close-call
-    block construction) MUST remain unchanged. The previous
+    contents to its own stdout. The dispatcher's CLI shape
+    (`--scope`, `--spec`, `--impl-suggestion`, `--code-review-full-loop`,
+    `--max-iterations`) and its argument validation MUST remain
+    consistent with Inv 3 and Inv 4. The previous
     `_policy_block` helper function and its call site (which
     subprocessed to `policy-block.py`) MUST be removed — the policy
     block is now prepended by `build-prompt.py` from the entry's
@@ -435,7 +391,7 @@ The 14 invariants in this section were absorbed from the retired
     as the regression net confirming the dispatched output is
     byte-equivalent to the prior f-string assembly.
 
-46. **TEST-GREEN must emit `test_result: fail` on nonzero run.py exit.**
+45. **TEST-GREEN must emit `test_result: fail` on nonzero run.py exit.**
     The dispatched-subagent template at
     `.claude/features/contract/templates/prompts/tdd-subagent.txt`
     governs what the dispatched subagent says. It MUST satisfy three
@@ -482,6 +438,8 @@ The 14 invariants in this section were absorbed from the retired
     relative to tdd-subagent's scope, so this invariant's
     implementation MAY require a coordinated edit on the contract
     feature or a scope-override on the template file.
+
+46. **STEP 5 SYNC-DEPLOYED — publish-sync the deployed copies before commit.** STEP 5 of the 8-step cycle (per Inv 8) MUST appear between IMPLEMENT (STEP 4) and CODE-REVIEW (STEP 6) and MUST instruct the subagent to: (a) enumerate every `publish_file`, `publish_hook`, `publish_skill`, and `publish_settings` entry in the feature-under-scope's `feature.json manifest`; (b) for each entry, invoke the corresponding `contract.lib.publish.<api>` function in-process (lazy-import from `.claude/features/contract/lib/publish.py`) — or, equivalently, invoke `run_publish_loop(target_root=<repo_root>)` scoped to this single feature via subprocess — so every deployed destination is byte-equal to its feature-local source-of-truth; (c) `git add` every deployed path that publishing modified, in addition to the already-staged feature-local source changes from STEP 4; (d) at the END of STEP 5, perform the SINGLE atomic commit `git commit -m "fix|feat(<feature>): <summary>"` covering BOTH the feature-local source changes (staged in STEP 4 per Inv 14) AND the deployed-copy sync (staged in step (c) above); (e) immediately after the commit, invoke `tdd-step.py transition <feature_dir> sync-deployed` to advance the state machine into `sync-deployed` (per Inv 31/32). If ANY publish call in step (b) returns a non-passed `CheckResult`, the subagent MUST stop, emit a fail-HANDOFF with `tdd_state: impl`, `test_result: not_run`, `spec_compliance: fail`, `tdd_report_path: null`, `notes: "SYNC-DEPLOYED failed: <api>(<source>) returned <message>"`, and MUST NOT proceed to CODE-REVIEW or commit. This makes the feature-local/deployed-copy drift class — the source of 4 fix-up commits between PRs #257 and #270 — impossible by construction: every deployed artifact is byte-equal to its source AT impl-commit time, not later when `check_manifest_drift` re-syncs at the next Stop hook. Enforced by `test/test-prompt-sync-deployed-step.py` which reads the template at `.claude/features/contract/templates/prompts/tdd-subagent.txt` and asserts: (i) STEP 5 section header is `SYNC-DEPLOYED`, (ii) step body names `publish_file`, `publish_hook`, `publish_skill`, and `publish_settings` explicitly, (iii) step body instructs `git add` of deployed paths AND the single atomic commit at end-of-step, (iv) step body instructs `tdd-step.py transition <feature_dir> sync-deployed` AFTER the commit, (v) step body specifies the fail-HANDOFF shape on publish failure with `tdd_state: impl`. The template file edit is a cross-feature operation relative to tdd-subagent's scope (template lives under contract per Inv 57) and MAY require a coordinated edit on the contract feature or a scope-override on the template file. The new `sync-deployed` state in the `tdd-step.py` state machine (Inv 31/32) lands the step at the state-machine level alongside the prompt-level step.
 
 ## Out of Scope
 

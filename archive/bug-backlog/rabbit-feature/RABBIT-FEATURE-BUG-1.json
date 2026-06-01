@@ -1,0 +1,39 @@
+{
+  "name": "RABBIT-FEATURE-BUG-1",
+  "type": "bug",
+  "title": "Step 4 bypass warning uses plain [rabbit] prefix instead of [\ud83d\udc07 rabbit \ud83d\udc07] brand string",
+  "status": "close",
+  "priority": "low",
+  "description": "The rabbit-feature-touch SKILL.md instructs the dispatcher (main session LLM) to emit a Step 4 bypass warning prefixed with plain text '[rabbit]':\\n\\n  [rabbit] Step 4 SKIPPED: .rabbit-human-approval-bypass marker active. Run /rabbit-config human-approval true to restore the gate and require approval again.\\n\\nThe canonical rabbit brand prefix per tdd-subagent Inv 5 (and contract Inv 35/36 about rabbit_print) is the emoji-framed form '[\ud83d\udc07 rabbit \ud83d\udc07]'. tdd-step.py source is forbidden from using the plain '[rabbit]' literal outside of imports/comments precisely to enforce this. LLM-emitted operational messages should follow the same brand convention so users see one consistent prefix across script output and dispatcher output.\\n\\nSame drift exists in tdd-subagent Inv 24 (describing the dispatch-tdd-subagent.py prompt preamble note) and in the actual dispatch script's yellow-coloured preamble note. Both use '[rabbit]' plain prefix.\\n\\nFix: update the SKILL.md warning text to use '[\ud83d\udc07 rabbit \ud83d\udc07]' brand string (cosmetic edit; no behaviour change). Update the dispatch script preamble note the same way. Also amend tdd-subagent Inv 24 wording so the spec doesn't sanction the wrong prefix.\\n\\nReproduce: invoke rabbit-feature-touch with .rabbit-human-approval-bypass marker present; observe the dispatcher's Step 4 message uses '[rabbit]' instead of '[\ud83d\udc07 rabbit \ud83d\udc07]'.",
+  "related_feature": "rabbit-feature",
+  "filed": "2026-05-19T10:06:17Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T05:46:47Z",
+  "history": [
+    {
+      "ts": "2026-05-19T10:06:17Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T10:53:29Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Temporarily closed before CONTRACT-BACKLOG-19 housekeeping wave to prevent accidental closure by wave b/b filings; will be reopened after the wave completes"
+    },
+    {
+      "ts": "2026-05-19T13:22:27Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "Reopening after CONTRACT-BACKLOG-19 wave complete"
+    },
+    {
+      "ts": "2026-05-20T05:46:47Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Scope under-captured: fix spans two features (rabbit-feature and tdd-subagent), each with distinct files. Closing and refiling as two sibling bugs (one per feature) to align with rabbit-feature-touch single-feature-per-touch contract. See sibling RABBIT-FEATURE-BUG-N and TDD-SUBAGENT-BUG-N."
+    }
+  ],
+  "commit_sha": "b74610b898105aac7d07bf64425650ad51ff4b85"
+}

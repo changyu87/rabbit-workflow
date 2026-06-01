@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-SPEC-BUG-4",
+  "type": "bug",
+  "title": "contract.md names rabbit-feature-touch as sole consumer, violating process-agnostic principle",
+  "status": "close",
+  "priority": "high",
+  "description": "docs/spec/contract.md lines 27 and 32 explicitly name rabbit-feature-touch as the sole consumer ('Does NOT Invoke' and 'Consumed By' fields). spec.md Invariant 7 mandates the skill is process-agnostic (no assumption about callers), and test-skill-decoupled.py tests SKILL.md for this. contract.md is not tested for the same constraint. Fix: reword contract.md to use generic language ('any orchestrator') rather than naming a specific caller.",
+  "related_feature": "rabbit-spec",
+  "filed": "2026-05-18T04:31:11Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:36:08Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:31:11Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:36:08Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 fix; verified by test/test-bug-fixes-wave4.py",
+      "fix_commits": "63e787d"
+    }
+  ],
+  "commit_sha": "1c28e5c89192d83ee132fcd92030c11d51f0e633"
+}

@@ -1,0 +1,41 @@
+{
+  "name": "RABBIT-FILE-BACKLOG-7",
+  "type": "backlog",
+  "title": "item-status.py update has no length/charset validation on title and description",
+  "status": "close",
+  "priority": "low",
+  "description": "cmd_update enforces priority value set, but title and description accept arbitrary strings - no max length, no control-character stripping, no newline normalization. A user can pass a 10MB description or a title containing terminal escape codes, corrupting list-items.py output. Add reasonable bounds (e.g. title <= 200 chars, description <= 10KB) and strip control characters except whitespace.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-18T03:31:15Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-19T07:10:54Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:31:15Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:37:22Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete - Wave 4 cleanup",
+      "fix_commits": "90176bbfe340b70fde89102e7599f47cc41f5565"
+    },
+    {
+      "ts": "2026-05-19T06:25:31Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "Reopening: as-shipped implementation deviates significantly from filed spec. Audit 2026-05-19. (1) Description cap is 500 chars; original spec said 10KB \u2014 20x tighter than intended; observed in another session blocking legitimate update with 637 and 2148 char descriptions. (2) Title and description share the same cap; spec said title<=200, description<=10KB \u2014 should be per-field. (3) Cap applies to item-status.py update only; file-item.py has NO length check \u2014 creates asymmetry where you can file a 5KB description but cannot update to anything >500 chars. (4) Control-character stripping requirement not verified post-ship. Fix: MAX_TITLE_LEN=200, MAX_DESCRIPTION_LEN=10240, apply both in file-item.py and item-status.py update, verify control-char handling. Cross-reference: BACKLOG-12 hit the same ship-vs-intent gap pattern in this 2026-05-18 housekeeping wave."
+    },
+    {
+      "ts": "2026-05-19T07:10:54Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "0adcd073c1f6aec24f9ad728e801f628d3b9681e"
+    }
+  ],
+  "commit_sha": "fc08ac1b07c331e1b1bc765edb986731789fa986"
+}

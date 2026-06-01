@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-14",
+  "type": "backlog",
+  "title": "check-opus-for-planning-agents.py PATTERN matches innocuous words like 'span' or 'planet'",
+  "status": "close",
+  "priority": "low",
+  "description": "scripts/enforcement/check-opus-for-planning-agents.py line 19 uses substring regex 'brainstorm|spec|plan|design|architect' which will match 'plan' inside 'planet', 'planning', 'replant', etc. Tighten to word-boundary regex e.g. r'\\b(brainstorm|spec|plan|design|architect)' to avoid false positives.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T04:09:47Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:34:42Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:09:47Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:34:42Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "fixed in TDD cycle (test-bug-fixes-cycle.py)",
+      "fix_commits": "eae35f270bb84a6a14bb814bc57b9f08613f49a0"
+    }
+  ],
+  "commit_sha": "f29788bf244d2911eaac85d55e0eb135572baa60"
+}

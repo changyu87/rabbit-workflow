@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FEATURE-SCOPE-BUG-27",
+  "type": "bug",
+  "title": "test-resolve-scope.py test #4 is brittle \u2014 depends on first feature in find-feature.py list",
+  "status": "close",
+  "priority": "low",
+  "description": "test-resolve-scope.py lines 50-58 take first_feature = the first line of find-feature.py list output and assert it appears in the prompt. find-feature.py iteration order is alphabetic, but if formatting truncates or splits feature names oddly, the substring search could match unrelated content. More robust: check that AT LEAST ONE feature from the list appears in the prompt, not specifically the first one.",
+  "related_feature": "rabbit-feature-scope",
+  "filed": "2026-05-18T03:19:08Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:34:46Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:19:08Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:34:46Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 fix; verified by test/test-bug-fixes-wave4.py and test-resolve-scope.py",
+      "fix_commits": "63e787d"
+    }
+  ],
+  "commit_sha": "056fb46cf138f7803cf9e3e6ea202fe97a5244ee"
+}

@@ -1,0 +1,27 @@
+{
+  "name": "TDD-SUBAGENT-BUG-1",
+  "type": "bug",
+  "title": "tdd-subagent not published to .claude/agents/ \u2014 missing build script entry and Stop-hook drift detection",
+  "status": "close",
+  "priority": "medium",
+  "description": "tdd-subagent is a standalone feature but is not registered as a Claude-supported subagent type under .claude/agents/. Issues: (1) dispatch-tdd-subagent.py assembles a prompt but there is no .claude/agents/tdd-subagent/ agent definition that rabbit-feature-touch or any skill can call by name. (2) The build script (build-contract.json) does not publish the agent definition on build. (3) The Stop hook (sync-check.py / drift detection) does not check for content drift between the feature source and the deployed .claude/agents/ copy. Fix: add agent definition to feature, add publish step to build-contract.json, add drift check on Stop consistent with how skills are drift-detected.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-17T03:38:13Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-17T03:52:26Z",
+  "history": [
+    {
+      "ts": "2026-05-17T03:38:13Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-17T03:52:26Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Created .claude/agents/tdd-subagent.md agent definition, added copy-file entry to build-contract.json with check_on_stop: true for drift detection, added structural tests."
+    }
+  ],
+  "commit_sha": "554906c20eb329db5121efaa63d47e50a8c40056"
+}

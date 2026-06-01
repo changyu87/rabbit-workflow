@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FILE-BACKLOG-4",
+  "type": "backlog",
+  "title": "Missing test coverage for several spec invariants and edge cases",
+  "status": "close",
+  "priority": "medium",
+  "description": "Gaps identified during housekeeping review: (1) no test for spec invariant 'Direct edits to item.json on bug-backlog-files are prohibited' (no enforcement mechanism exists, only documentation); (2) no test that commit_item does not mutate caller's dict; (3) no test for read_branch handling corrupted/non-JSON item.json (silent skip branch); (4) no test for _worktree cleanup when git worktree add itself fails; (5) no test for _init_orphan_branch failure paths; (6) no test for --filed-by default fallback to 'unknown' when git config user.name is empty; (7) no test for feature names with uppercase, digits, dots, or non-ASCII characters.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-18T03:29:32Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:36:47Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:29:32Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:36:47Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete - Wave 4 cleanup",
+      "fix_commits": "90176bbfe340b70fde89102e7599f47cc41f5565"
+    }
+  ],
+  "commit_sha": "df3e4b6fea3900d0df6fbf39ea698e4c70bdcf38"
+}

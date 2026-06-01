@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-3",
+  "type": "bug",
+  "title": "rabbit-feature-touch Step 4 does not read .rabbit-human-approval-bypass; dispatcher ignores the marker",
+  "status": "close",
+  "priority": "high",
+  "description": "rabbit-feature-touch Step 4 (Human Approval) does not yet read the .rabbit-human-approval-bypass marker written by /rabbit-config human-approval bypass. The marker exists and sync-check.py alerts on it, but the dispatcher still waits for in-conversation approval regardless of whether the marker is present.\n\nExpected: at Step 4, the dispatcher checks for .rabbit-human-approval-bypass at the repo root. If present, it passes --no-human-approval to dispatch-tdd-subagent.py (same as the current explicit bypass path) and emits a visible warning: \"[rabbit] Step 4 skipped: human-approval bypass marker active. Run /rabbit-config human-approval gated to restore the gate.\"\n\nImplementation: in the rabbit-feature-touch SKILL.md Step 4 section, replace the current bypass check (which only looks at an in-conversation flag) with a file-based check:\n\n  1. Check if .rabbit-human-approval-bypass exists at repo root.\n  2. If yes: log the warning, pass --no-human-approval to dispatch-tdd-subagent.py.\n  3. If no: wait for in-conversation user approval as today.\n\nThis makes the bypass state fully durable and auditable \u2014 the marker file is the source of truth, not the conversation.\n\nThe marker itself is managed by /rabbit-config human-approval bypass|gated (PR #106). The dispatcher hookup is the missing consumer side.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-17T16:45:42Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T02:05:09Z",
+  "history": [
+    {
+      "ts": "2026-05-17T16:45:42Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T02:05:09Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete. rabbit-feature-touch SKILL.md Step 4 now checks .rabbit-human-approval-bypass marker as FIRST action; emits named warning with revoke command; old in-conversation bypass language removed.",
+      "fix_commits": "36b8be1ae708197f717e316c6d29afd1c0737c53"
+    }
+  ],
+  "commit_sha": "f469917d18fc4f97d611fe6e798202f6f26f675f"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-40",
+  "type": "backlog",
+  "title": "Extend historical-tag scrub to non-spec.md doc surfaces (SKILL.md, contract.md)",
+  "status": "close",
+  "priority": "medium",
+  "description": "BACKLOG-38 scrubbed historical-burden tags (Plan/BUG/BACKLOG refs) from feature spec.md files and added a regression test (contract/test/test-spec-bodies-no-historical-tags.py) that enforces the rule. The test's scope is spec.md ONLY. Three genuine violations exist in non-spec.md doc surfaces and were left untouched per BACKLOG-38's anti-scope.\n\nVIOLATIONS (HEAD 46bc7ba8):\n- rabbit-feature/skills/rabbit-feature-new/SKILL.md:74 \u2014 '(moved from rabbit-cage in RABBIT-CAGE-BACKLOG-26).'\n- rabbit-file/skills/rabbit-file/SKILL.md:119 \u2014 '... before turning RED \u2192 GREEN (BACKLOG-2). A bug fix without ...'\n- rabbit-file/docs/spec/contract.md:26 \u2014 '... Enforces per-field length limits and ASCII-control-char sanitisation (BACKLOG-7). ...'\n\nFALSE POSITIVES (do NOT scrub):\n- rabbit-file/skills/rabbit-file/SKILL.md:60 \u2014 'Returns assigned ID (e.g. RABBIT-CAGE-BUG-17)' \u2014 example of the algorithm's output, same pattern as the spec.md false positives\n- rabbit-file/skills/rabbit-file/SKILL.md:172 \u2014 '\"name\": \"RABBIT-CAGE-BUG-17\"' in a JSON schema example\n- rabbit-file/skills/rabbit-file/SKILL.md:217 \u2014 'RABBIT-CAGE-BUG-16/' in a directory layout illustration\n- rabbit-file/skills/rabbit-file/SKILL.md:221 \u2014 'RABBIT-CAGE-BACKLOG-3/' same\n\nSCOPE OF FIX:\n1. Scrub the 3 genuine violations\n2. Extend test-spec-bodies-no-historical-tags.py to cover SKILL.md and contract.md surfaces (or split into a second test file). Allowlist needs to grow to cover the 4 SKILL.md algorithm-output examples.\n3. Per-feature version bumps for the affected features (rabbit-feature, rabbit-file)\n\nDISCIPLINE: cross-feature, session-override + superpowers TDD (same pattern as BACKLOG-38). Direct push to dev.\n\nDETECTED BY: ws04 CONTRACT-BACKLOG-38 wave as alongside finding, 2026-05-25.",
+  "related_feature": "contract",
+  "filed": "2026-05-25T13:21:40Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-25T13:54:42Z",
+  "history": [
+    {
+      "ts": "2026-05-25T13:21:40Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-25T13:54:42Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete (session-override + superpowers TDD, cross-feature bundle wave)",
+      "fix_commits": "1dec0c71f6dedbd36d7789c8d2b581b673afa8fb"
+    }
+  ],
+  "commit_sha": "ce85c16383e22bb0fa2bafa7500a80a2e640bcd4"
+}

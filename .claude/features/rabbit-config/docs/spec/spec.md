@@ -176,7 +176,7 @@ operates on user-facing labels rather than raw stored values:
 ### Workspace declaration
 
 18. `rabbit-config` is declared as a required feature in
-    `.claude/workspace-structure.json` under `features.children`.
+    `.claude/features/contract/workspace-structure.json` under `features.children`.
 
 ### Prompt-contract declaration
 

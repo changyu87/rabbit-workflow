@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scope-guard.py v2.1.0 — PreToolUse hook enforcing repo-wide default-deny.
+"""scope-guard.py v2.3.0 — PreToolUse hook enforcing repo-wide default-deny.
 
 Standalone mode (legacy): any write inside the repo root is denied unless:
   (a) the target basename is on the filename allowlist, or
@@ -53,6 +53,7 @@ REPO_ROOT = Path(os.path.realpath(str(_raw_root))) if _raw_root else None
 
 
 _SPEC_MD_PATTERN = None
+_PLUGIN_SPEC_MD_PATTERN = None
 
 
 def _spec_md_pattern():
@@ -69,6 +70,22 @@ def _spec_md_pattern():
             r"^" + re.escape(str(REPO_ROOT)) + r"/\.claude/features/[^/]+/docs/spec/spec\.md$"
         )
     return _SPEC_MD_PATTERN
+
+
+def _plugin_spec_md_pattern():
+    """Cached regex matching <REPO_ROOT>/.rabbit/rabbit-project/features/<feature>/docs/spec/spec.md.
+
+    <feature> is a single path segment (matched as `[^/]+`). Inv 17 clause (a2):
+    plugin-mode writes to a freshly scaffolded feature's spec.md are permitted
+    regardless of scope-marker state so rabbit-spec-create can write initial
+    spec bodies. Mirrors standalone Inv 64.
+    """
+    global _PLUGIN_SPEC_MD_PATTERN
+    if _PLUGIN_SPEC_MD_PATTERN is None and REPO_ROOT is not None:
+        _PLUGIN_SPEC_MD_PATTERN = re.compile(
+            r"^" + re.escape(str(REPO_ROOT)) + r"/\.rabbit/rabbit-project/features/[^/]+/docs/spec/spec\.md$"
+        )
+    return _PLUGIN_SPEC_MD_PATTERN
 
 
 def abspath(p: str) -> str:
@@ -128,15 +145,79 @@ def plugin_decide(abs_path: str) -> Tuple[bool, str]:
     if abs_path == rabbit_root + "/.gitignore":
         return True, "ALLOW (plugin carve-out: .rabbit/.gitignore)"
 
-    # (a) .rabbit/.claude/** and .rabbit/rabbit-project/** are rabbit's
-    # own machinery — DENY always.
-    for protected in (rabbit_root + "/.claude", rabbit_root + "/rabbit-project"):
-        if abs_path == protected or abs_path.startswith(protected + "/"):
-            return False, (
-                f"DENY write to '{abs_path}' denied: plugin-mode protects "
-                f"rabbit's own machinery under '{protected}/'. Edit "
-                "user-project files instead."
-            )
+    # (a) .rabbit/.claude/** is rabbit's own machinery — DENY always.
+    claude_protected = rabbit_root + "/.claude"
+    if abs_path == claude_protected or abs_path.startswith(claude_protected + "/"):
+        return False, (
+            f"DENY write to '{abs_path}' denied: plugin-mode protects "
+            f"rabbit's own machinery under '{claude_protected}/'. Edit "
+            "user-project files instead."
+        )
+
+    # (a2) Plugin spec.md path-pattern carve-out (#276). Evaluated BEFORE
+    # the per-feature marker gate so an initial spec write to a freshly
+    # scaffolded feature succeeds with no marker. Narrow basename pin —
+    # other writes inside the feature dir still flow through (b)/(c).
+    plugin_spec_pat = _plugin_spec_md_pattern()
+    if plugin_spec_pat and plugin_spec_pat.match(abs_path):
+        return True, "ALLOW (plugin path-pattern allowlist: feature spec.md)"
+
+    # (a-carve-out) .rabbit/rabbit-project/features/<name>/** falls through
+    # to the per-feature scope-marker gate (issue #269): these paths hold
+    # user-owned plugin feature artifacts (specs, contracts, feature.json
+    # scaffolded by rabbit-feature-scaffold) that the dispatcher MUST be
+    # able to write to during a normal TDD cycle. Non-features paths under
+    # .rabbit/rabbit-project/ (e.g. project-map.json itself) remain
+    # always-DENY.
+    rp_prefix = rabbit_root + "/rabbit-project"
+    if abs_path == rp_prefix or abs_path.startswith(rp_prefix + "/"):
+        rp_features_prefix = rp_prefix + "/features/"
+        if abs_path.startswith(rp_features_prefix):
+            rest = abs_path[len(rp_features_prefix):]
+            feature_name = rest.split("/", 1)[0]
+            if feature_name:
+                marker = (
+                    REPO_ROOT / ".rabbit" / ".runtime"
+                    / f"scope-active-{feature_name}"
+                )
+                if marker.is_file():
+                    return True, (
+                        f"ALLOW (plugin mode: scope-active-{feature_name} "
+                        "for rabbit-project feature)"
+                    )
+                return False, (
+                    f"DENY write to '{abs_path}' denied: plugin-mode target "
+                    f"matches rabbit-project feature '{feature_name}' but no "
+                    f"scope-active marker '.rabbit/.runtime/"
+                    f"scope-active-{feature_name}' is present.\n"
+                    "\n"
+                    "Choose one of the three options below. Both override "
+                    "options require explicit in-conversation user "
+                    "confirmation and MUST NOT be written speculatively.\n"
+                    "\n"
+                    "  (1) SESSION OVERRIDE — bypasses scope-guard for the "
+                    "entire session. Requires explicit in-conversation user "
+                    "confirmation before writing '.rabbit-scope-override' "
+                    "with content 'session'.\n"
+                    "\n"
+                    "  (2) ONE-TIME OVERRIDE — bypasses scope-guard for a "
+                    "single write only. Requires explicit in-conversation "
+                    "user confirmation before `touch "
+                    ".rabbit/.runtime/scope-bypass-once` (consumed atomically "
+                    "by the next scope-guard invocation).\n"
+                    "\n"
+                    f"  (3) USE rabbit-feature-touch (recommended) — invokes "
+                    f"the TDD cycle for feature '{feature_name}', which "
+                    f"writes the scope-active marker for you and advances "
+                    f"tdd_state."
+                )
+        # rabbit-project path NOT matching features/<name>/ — always-DENY.
+        return False, (
+            f"DENY write to '{abs_path}' denied: plugin-mode protects "
+            f"rabbit's own machinery under '{rp_prefix}/' (only "
+            f"'rabbit-project/features/<name>/**' paths are carved out for "
+            "per-feature scope-marker gating)."
+        )
 
     # Load project-map.json. Lazy import so scope-guard does not pay the
     # import cost when no map exists / standalone mode is active.

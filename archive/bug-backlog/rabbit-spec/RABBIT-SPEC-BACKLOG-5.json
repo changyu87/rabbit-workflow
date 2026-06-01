@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-SPEC-BACKLOG-5",
+  "type": "backlog",
+  "title": "No test asserts SKILL.md documents the args format in its body (drift risk)",
+  "status": "close",
+  "priority": "low",
+  "description": "The args format '<feature-name> <request>' is documented in the SKILL.md frontmatter description but not in the body. A test should assert the body also documents the args format to prevent drift. If only the frontmatter carries it, the body (which is what callers read for usage) can silently omit it.",
+  "related_feature": "rabbit-spec",
+  "filed": "2026-05-18T04:34:05Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:37:48Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:34:05Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:37:48Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 closure; verified by test/test-bug-fixes-wave4.py",
+      "fix_commits": "63e787d"
+    }
+  ],
+  "commit_sha": "93f258dfb44486a6380f005b8ea2c05844cbf9fb"
+}

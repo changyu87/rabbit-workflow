@@ -1,0 +1,28 @@
+{
+  "name": "TDD-STATE-MACHINE-BACKLOG-7",
+  "type": "backlog",
+  "title": "Housekeeping wave 1: remove dead scripts tdd-drift-check.py + tdd-context.py + re-anchor stale Inv numbers + tidy auto_close_backlog stub",
+  "status": "close",
+  "priority": "high",
+  "description": "Bundled housekeeping items for tdd-state-machine, surfaced by wave-1 review.\n\nHIGH (originally H1, H2):\n(H1) DELETE tdd-drift-check.py. grep shows zero runtime callers. Referenced only in feature.json/contract.md prose and build-contract.json deploy target. Decision: per Bounded Scope + Designed Deprecation, delete the script + remove its deploy target + retire associated spec invariants. The 'drift sweep' purpose stated in spec Inv 5 was never wired up; deletion is cleaner than speculative re-wiring.\n\n(H2) DELETE tdd-context.py. Same pattern \u2014 zero runtime callers. Spec Inv 4 says 'consumed by subagent prompts' but dispatch-tdd-subagent.py does not import or reference it. Delete + remove deploy target + retire spec invariants.\n\nMEDIUM (M14):\nRe-anchor stale Inv numbers in tdd-context.py (line 28+57 reference 'Inv 23' and 'BUG-53'; line 106 references 'Inv 28') and test/test-context.py (line 139 cites 'Inv 25 post-BACKLOG-12 renumber') and test_helpers.py (refs 'Inv 25'). Current spec only has Inv 1-12. Since H1/H2 will delete tdd-context.py + test-context.py, this issue self-resolves for those files. test_helpers.py \u2014 re-anchor or delete the stale comment.\n\nLOW:\n(F4) auto_close_backlog at tdd-step.py:160-171 is a documented no-op stub still in the _post_test_green_hooks chain (lines 292-295). Inv 7 codifies it as 'retained as a no-op stub' \u2014 pure ceremony, dispatcher closes linked items. Delete the function + its call + remove from Inv 7 bullet.\n(F5) Test gap: no e2e test exercises 'transition <feat> spec-update' from test-green state. Inv 1/4/10 sanction this _FORWARD_ALT transition. Add small test.\n\nAcceptance:\n- tdd-drift-check.py + tdd-context.py + test-context.py + test-drift-check.py (if exists) deleted from disk\n- build-contract.json deploy targets for those scripts removed\n- contract.md provides.scripts list updated to drop them\n- spec invariants referencing the deleted scripts retired\n- feature.json summary updated to remove the script names if listed\n- auto_close_backlog stub deleted, Inv 7 bullet updated\n- _FORWARD_ALT test added\n- test_helpers.py stale Inv reference fixed\n- All existing tests still pass\n\nNOTE: this cycle is independent \u2014 no inter-feature dependencies.",
+  "related_feature": "tdd-state-machine",
+  "filed": "2026-05-20T07:32:52Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T07:55:33Z",
+  "history": [
+    {
+      "ts": "2026-05-20T07:32:52Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T07:55:33Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "58f213ba488e1339c34605507eb1b81626d63882"
+    }
+  ],
+  "commit_sha": "af641bf46749ab5e65321a0886ffb09fc626aa79"
+}

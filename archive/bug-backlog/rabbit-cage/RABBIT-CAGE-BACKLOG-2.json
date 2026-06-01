@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-2",
+  "type": "backlog",
+  "title": "Migrate all .sh scripts to pure Python; establish Python as the sole scripting tech stack",
+  "status": "close",
+  "priority": "low",
+  "description": "All shell scripts (.sh files) in rabbit-cage (hooks/, scripts/) and across all features shall be rewritten as standalone Python scripts. Bash is to be removed as a runtime dependency. Rationale: Python offers consistent cross-platform behavior, better string handling (avoiding the quoting and newline edge cases that produced BUG-3), testability without subprocess, and a single language across the entire codebase. Scope: hooks/sync-check.sh, hooks/scope-guard.sh, hooks/session-init.sh, hooks/refresh.sh, scripts/build.sh, scripts/generate-claude-md.sh, scripts/scope-guard-on.sh, and all equivalent scripts in other features. Each converted script should be an executable Python file (#!/usr/bin/env python3) with the same contract (stdin/stdout/exit codes) as the shell original. The build-contract.json copy-file targets and settings.json hook commands reference these by path and must be updated accordingly. Invariant 39 (all Python logic in standalone .py helpers) becomes the whole-script rule, not just the embedded-logic rule.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-15T03:08:30Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-15T04:56:52Z",
+  "history": [
+    {
+      "ts": "2026-05-15T03:08:30Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-15T04:56:52Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "bb7d48f0bbb35cc61c0994de27b31a9cd34c19dd"
+    }
+  ],
+  "commit_sha": "7ebaa28e932fac80b5594d79c9059ca30951803a"
+}

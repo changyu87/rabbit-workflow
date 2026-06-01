@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-87",
+  "type": "bug",
+  "title": "scope-guard denies mkdir .rabbit because allowlist requires trailing slash",
+  "status": "close",
+  "priority": "low",
+  "description": "When the orchestrator runs 'mkdir -p .rabbit' via the Bash tool, scope-guard denies it with path '/.rabbit' because the allowlist check is 'abs_path.startswith(REPO_ROOT + \"/.rabbit/\")' (trailing slash required). The directory entry itself (.rabbit without slash) does not match. The Write tool works correctly because it creates parent directories as part of file creation, and the file path .rabbit/foo.json does start with /.rabbit/. Fix: change the allowlist check to allow EITHER the exact directory path OR paths inside it: abs_path == REPO_ROOT + '/.rabbit' or abs_path.startswith(REPO_ROOT + '/.rabbit/'). Guard against accidentally matching .rabbit-scope-active etc. by requiring the non-slash form to be an exact match, not a prefix.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-19T03:19:17Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T04:06:28Z",
+  "history": [
+    {
+      "ts": "2026-05-19T03:19:17Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T04:06:28Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "9d59a573a16016eccba6e0b1e85608999455c08c"
+    }
+  ],
+  "commit_sha": "ef70ce450f6a972a6655b04d09891a190e849c19"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CONFIG-BUG-3",
+  "type": "bug",
+  "title": "SessionStart banner alerts drop on TUI when revoke-command is a continuation line",
+  "status": "close",
+  "priority": "high",
+  "description": "iterate_configurables_banner (contract.lib.runtime ~line 412) emits each active-override alert as a multi-line ANSI-colored block \u2014 alert line + indented continuation line for the revoke command:\\n\\n  [\ud83d\udc07 rabbit \ud83d\udc07] key HUMAN APPROVAL BYPASS ACTIVE - Step 4 skipped\\n    revoke with: /rabbit-config human-approval true\\n\\nThe deployed session-start-dispatcher correctly aggregates these into the systemMessage JSON; verified by directly invoking the dispatcher with overrides active \u2014 the bypass lines ARE in the output. However, Claude Code's TUI rendering of SessionStart systemMessage appears to elide lines that don't begin with the brand prefix '[\ud83d\udc07 rabbit \ud83d\udc07]'. The continuation '  revoke with:' lines lack the prefix, and the multi-line ANSI block confuses the renderer; the user sees only the welcome+sub-lines on restart and never the bypass alerts. Reproducible: in any clone with .rabbit-human-approval-bypass set AND .claude/settings.local.json permissions.defaultMode='bypassPermissions', restart Claude Code \u2014 the active-override alerts do not display in the welcome.\\n\\niterate_configurables_alerts (Stop) does NOT have this problem because each alert is a single-line emit, no continuation \u2014 the TUI shows them fine.\\n\\nFix candidates: (a) split each banner alert into TWO print_results: one for the alert text, one prefixed '[\ud83d\udc07 rabbit \ud83d\udc07] revoke with: ...' \u2014 each becomes its own brand-prefixed line in systemMessage; (b) collapse the revoke command into the alert line itself, e.g. '[\ud83d\udc07 rabbit \ud83d\udc07] key HUMAN APPROVAL BYPASS ACTIVE \u2014 revoke: /rabbit-config human-approval true' (one line per alert, no continuation). (a) preserves the visual two-line shape some users may prefer; (b) is more compact. Either fix requires extending iterate_configurables_banner's return shape and possibly the print_result/subline_result helpers. Add a regression test that subprocess-invokes the deployed session-start-dispatcher with both overrides active and asserts each alert appears on its own brand-prefixed line.\\n\\nDiscovered when user restarted Claude Code in ws55 after using /rabbit-config to enable both overrides \u2014 Stop hook showed the alerts immediately, but the SessionStart welcome that followed on restart was missing them despite the dispatcher producing them in its output. Wave 2 (rabbit-config audit) is the natural owning wave.",
+  "related_feature": "rabbit-config",
+  "filed": "2026-05-23T14:20:15Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-23T14:33:34Z",
+  "history": [
+    {
+      "ts": "2026-05-23T14:20:15Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-23T14:33:34Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Wave 2 audit complete: iterate_configurables_banner split into two print_results per active configurable; regression test test-runtime-banner-shape.py subprocess-invokes deployed session-start-dispatcher and asserts brand-prefix on every line",
+      "fix_commits": "81cf85be16be66011e947e12443bbdc0b57bf95e"
+    }
+  ],
+  "commit_sha": "34e804ad68a23fdbb109146b649a34fd7e79e3ee"
+}

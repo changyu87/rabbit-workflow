@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FEATURE-BUG-6",
+  "type": "bug",
+  "title": "rabbit-feature-spec skill protocol omits Read-before-Edit invariant on spec.md, causing repeated 'File must be read first' tool errors",
+  "status": "close",
+  "priority": "medium",
+  "description": "Sibling to closed TDD-SUBAGENT-BUG-56 (refiled under correct feature scope: rabbit-feature owns the rabbit-feature-spec skill where the misfire happens).\n\nReproduce: in any rabbit-feature-touch cycle, when the main-session orchestrator reaches Step 3 (Spec Authoring) and invokes rabbit-feature-spec, the skill's Step 4 protocol says simply 'Edit \\'. The Edit tool requires the file be Read first in the same session. The skill's Step 1 ('Read Current State') says the skill MAY read the spec, but does not MANDATE it. In practice the LLM acting on the skill often Edits without Reading, hits the harness guard '\\', has to Read, then re-Edit. This fired 4+ times across the BUG-5, BUG-55, and BACKLOG-12 spec phases in session 2026-05-20 alone.\n\nRoot cause: rabbit-feature-spec/SKILL.md protocol omits an explicit invariant binding spec-editing actors to a Read-comprehend-Edit sequence. Project owner directive: 'whatever agent/skill doing spec update should be read-comprehend-write \u2014 especially the feature-spec skill'.\n\nFix:\n- rabbit-feature-spec/SKILL.md: rewrite Step 1 to MANDATE Read of spec.md (not 'MAY read'). Add explicit Step 1 invariant: 'You MUST Read the target spec.md before issuing any Edit/Write tool call against it in the same session. Reading is mandatory comprehension, not optional context-gathering.'\n- rabbit-feature spec.md: add new invariant enforcing the Read-before-Edit contract for the rabbit-feature-spec skill (so the spec itself sanctions the protocol).\n- Regression test: e2e test that parses rabbit-feature-spec/SKILL.md and asserts the Step 1 mandate language is present (substring assertion on the canonical phrase). Optional: integration test that simulates the skill invocation and asserts the Read tool fires before any Edit.\n\nCompanion note: TDD subagent prompts (assembled by dispatch-tdd-subagent.py) already have SPEC-READ as Step 1 of the 9-step cycle, so subagents are NOT affected by this bug. The misfire is exclusively in main-session orchestration during the spec-authoring phase.",
+  "related_feature": "rabbit-feature",
+  "filed": "2026-05-20T06:32:26Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T06:40:53Z",
+  "history": [
+    {
+      "ts": "2026-05-20T06:32:26Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T06:40:53Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "6d264b24bd410b4c2aab66eb28e112ff663f15b7"
+    }
+  ],
+  "commit_sha": "3a808f55b51335f1af870c9d5c0458ad5134b569"
+}

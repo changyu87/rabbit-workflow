@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.8.0
+version: 5.25.0
 template_version: 2.0.0
 ---
 
@@ -23,13 +23,12 @@ template_version: 2.0.0
     ],
     "commands": [],
     "scripts": [
-      {"path": ".claude/features/rabbit-cage/install.py", "stdin": "none", "stdout": "install log", "exit": "0=ok 1=error 2=usage", "note": "bootstrap installer; copies tree and invokes run_publish_loop"},
+      {"path": ".claude/features/rabbit-cage/install.py", "stdin": "none", "stdout": "install log", "exit": "0=ok 1=error 2=usage", "note": "bootstrap installer; copies tree and invokes run_publish_loop; supports --update for in-place refresh (spec Inv 22)"},
       {"path": ".claude/features/rabbit-cage/scripts/scope-guard-on.py", "stdin": "none", "stdout": "confirmation message", "exit": "0=ok", "note": "deletes .rabbit-scope-override; canonical 'scope guard back on'"},
       {"path": ".claude/features/rabbit-cage/scripts/repo-permissions.py", "stdin": "none", "stdout": "operation result", "exit": "0=ok 1=error", "note": "invoked via contract.lib.mutation.run_feature_script for /rabbit-config permissions lock|unlock"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project.py", "stdin": "none", "stdout": "operation result", "exit": "0=ok 1=error 2=usage"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-set-path.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py set-path"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-map.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py map"},
-      {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-consolidate.py", "stdin": "none", "stdout": "warnings to stderr", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py consolidate"},
       {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.py", "stdin": "none", "stdout": "annotated workspace tree", "exit": "0=ok 1=error"},
       {"path": ".claude/features/rabbit-cage/lib/project_map_reader.py", "stdin": "none", "stdout": "none", "exit": "n/a (importable module)", "note": "plugin-mode project-map I/O + path matching; imported by scope-guard.py"}
     ],

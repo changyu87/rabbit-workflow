@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-22",
+  "type": "bug",
+  "title": "Assembled prompt invokes nonexistent Skill('superpowers:code-reviewer') at CODE-REVIEW",
+  "status": "close",
+  "priority": "high",
+  "description": "dispatch-tdd-subagent.py line 407 emits 'Invoke: Skill(\"superpowers:code-reviewer\")' in the prompt's Step 7 CODE-REVIEW. No such skill exists in the available-skills list; the actual skill is 'superpowers:requesting-code-review' (or 'code-review:code-review'). When the subagent tries to invoke superpowers:code-reviewer it will get an unknown-skill error and code review will silently be skipped. Fix: update to the correct skill name.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:39:34Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T06:25:19Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:39:34Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T06:25:19Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed as part of Wave 1 bundle in PR (BUG-15/18/22/28/29 all addressed by dispatch-tdd-subagent.py prompt edits).",
+      "fix_commits": "11514a2"
+    }
+  ],
+  "commit_sha": "641f91bdd35ba18bb677743b9aa7fd863fab3c1b"
+}

@@ -1,10 +1,10 @@
-# template_version: 1.1.0
+# template_version: 1.3.0
 {{bypass_preamble_note}}
 ════════════════════════════════════════════════════════════════════════
 TDD SUBAGENT — SCOPE: {{feature_name}}
 ════════════════════════════════════════════════════════════════════════
 
-You are a TDD subagent. Execute the 7 named steps below IN ORDER for feature: {{feature_name}}
+You are a TDD subagent. Execute the 8 named steps below IN ORDER for feature: {{feature_name}}
 Do NOT skip steps. Do NOT dispatch nested subagents. All work is done inline.
 
 ════════════════════════════════════════════════════════════════════════
@@ -78,7 +78,7 @@ Do NOT register a `trap '... rm -f ...' EXIT` here. Each Claude Code Bash
 tool invocation runs in a separate (per-call) shell process. The trap would
 fire the moment that shell exits — i.e., immediately after `touch` returns —
 deleting the scope marker before any subsequent step (TEST-WRITE, IMPLEMENT,
-etc.) can rely on it. Cleanup is explicit and happens in STEP 7 UNLOCK
+etc.) can rely on it. Cleanup is explicit and happens in STEP 8 UNLOCK
 (`rm -f {{repo_root}}/.rabbit-scope-active-{{feature_name}}`), AFTER the chore
 commit and BEFORE the HANDOFF block.
 
@@ -135,10 +135,11 @@ Loop (repeat until green or max iterations reached):
   2. Run: python3 {{feature_dir}}/test/run.py
   3. If tests pass:
        a. git add {{feature_dir}}/
-       b. git commit -m "fix({{feature_name}}): <one-line summary>"
-          (use `feat(...)` instead of `fix(...)` when introducing a new
-          feature rather than fixing a bug)
-       c. break loop
+       b. break loop — the commit covering BOTH feature-local source AND
+          deployed-copy sync lands at the END of STEP 5 SYNC-DEPLOYED, not
+          here. STEP 5 runs publish APIs that may modify deployed paths
+          outside {{feature_dir}}/; folding both into a single atomic
+          commit keeps source and deployed bytes in lock-step.
   4. If iteration == {{max_iterations}}: emit this HANDOFF and stop:
        HANDOFF:
          feature: {{feature_name}}
@@ -148,17 +149,85 @@ Loop (repeat until green or max iterations reached):
          tdd_report_path: null
          notes: Reached {{max_iterations}} iterations without test-green
 
-The implementation commit MUST happen INSIDE the loop, BEFORE the
-`tdd-step.py transition ... impl` call below. Otherwise the impl SHA
-captured in STEP 6 (via `git rev-parse HEAD`) would point at the prior
-test commit from STEP 2, not at the actual implementation.
-
-On success — advance state (only AFTER the impl commit above):
+On success — advance state (AFTER staging feature-local changes via
+`git add` above, but BEFORE the commit, which lands at end of STEP 5):
   python3 {{tdd_step_py}} transition {{feature_dir}} impl
-  python3 {{tdd_step_py}} transition {{feature_dir}} test-green
 
 ════════════════════════════════════════════════════════════════════════
-STEP 5 — CODE-REVIEW
+STEP 5 — SYNC-DEPLOYED
+════════════════════════════════════════════════════════════════════════
+
+This step bridges feature-local source edits to their deployed copies under
+`.claude/hooks/`, `.claude/skills/`, `.claude/commands/`, `.claude/agents/`,
+and `.claude/settings.json`. Feature-local edits to a source file (e.g.
+`hooks/foo.py`) do NOT automatically update the deployed copy; without this
+step the committed deployed bytes drift from the source bytes and the next
+TDD cycle in any feature observes a manifest-drift FAIL.
+
+1. Read `{{feature_dir}}/feature.json` and enumerate every entry in the
+   `manifest` array whose `api` is one of:
+     - `publish_file`
+     - `publish_hook`
+     - `publish_skill`
+     - `publish_settings`
+   (`publish_generated` runs via `check_drift_regenerate` at runtime and is
+   NOT re-published here; `publish_command` and `publish_agent` ARE in scope
+   when they appear in the manifest.)
+
+2. For each in-scope manifest entry, invoke the matching API from
+   `contract.lib.publish` in-process (lazy-import the module from
+   `{{repo_root}}/.claude/features/contract/lib/publish.py`), passing the
+   entry's `args` dict plus the keyword-only context params
+   `feature_dir={{feature_dir}}` and `repo_root={{repo_root}}`. Each call
+   returns a `CheckResult`; collect `passed`/`messages` for every entry.
+
+3. `git add` every deployed path the publish APIs modified. The feature-local
+   source changes are already staged from STEP 4; this step stages the
+   deployed copies on top of that.
+
+4. At the END of STEP 5, perform the SINGLE atomic commit covering BOTH the
+   STEP 4 source edits AND the STEP 5 deployed-copy sync:
+     git commit -m "fix({{feature_name}}): <one-line summary>"
+   (use `feat(...)` instead of `fix(...)` when introducing a new feature
+   rather than fixing a bug)
+
+5. Immediately after the commit, advance state:
+     python3 {{tdd_step_py}} transition {{feature_dir}} sync-deployed
+
+On any publish-API failure (a `CheckResult` with `passed=False`), STOP
+immediately. Do NOT commit. Do NOT proceed to CODE-REVIEW. Emit this
+fail-HANDOFF and stop:
+
+  HANDOFF:
+    feature: {{feature_name}}
+    tdd_state: impl
+    test_result: not_run
+    spec_compliance: fail
+    tdd_report_path: null
+    notes: STEP 5 SYNC-DEPLOYED failed at publish_<api> for <entry>: <messages>
+
+  HANDOFF_JSON:
+  ```json
+  {
+    "handoff_schema_version": "1.0.0",
+    "feature": "{{feature_name}}",
+    "tdd_state": "impl",
+    "test_result": "not_run",
+    "spec_compliance": "fail",
+    "tdd_report_path": null,
+    "closed_items": [],
+    "notes": "STEP 5 SYNC-DEPLOYED failed at publish_<api> for <entry>: <messages>"
+  }
+  ```
+
+If the feature's `manifest` array is empty or absent, STEP 5 is a no-op for
+the publish loop — but you MUST still perform the commit (step 4 above) to
+land the STEP 4 source edits, and MUST still advance state to `sync-deployed`
+(step 5 above). The state machine is monotonic; skipping the transition
+would wedge the next cycle.
+
+════════════════════════════════════════════════════════════════════════
+STEP 6 — CODE-REVIEW
 ════════════════════════════════════════════════════════════════════════
 
 Invoke: Skill("superpowers:requesting-code-review")
@@ -169,22 +238,22 @@ form does not exist — using it silently no-ops the review step.)
 {{code_review_loop_note}}
 
 ════════════════════════════════════════════════════════════════════════
-STEP 6 — TEST-GREEN
+STEP 7 — TEST-GREEN
 ════════════════════════════════════════════════════════════════════════
 
 Run final test suite to confirm pass:
   python3 {{feature_dir}}/test/run.py
 
 If run.py exits nonzero (any test fails), STOP immediately. Do NOT proceed
-to STEP 7. Do NOT run any further git operations. Pre-existing failures and
+to STEP 8. Do NOT run any further git operations. Pre-existing failures and
 "unrelated" failures are NOT subagent-side judgments — the exit code is
 authoritative. Use the `notes` field if additional context is warranted,
 but the `test_result` value MUST reflect the actual exit code. Emit this
-fail-HANDOFF instead of the normal STEP-7 path and stop:
+fail-HANDOFF instead of the normal STEP-8 path and stop:
 
   HANDOFF:
     feature: {{feature_name}}
-    tdd_state: impl
+    tdd_state: sync-deployed
     test_result: fail
     spec_compliance: fail
     tdd_report_path: null
@@ -195,7 +264,7 @@ fail-HANDOFF instead of the normal STEP-7 path and stop:
   {
     "handoff_schema_version": "1.0.0",
     "feature": "{{feature_name}}",
-    "tdd_state": "impl",
+    "tdd_state": "sync-deployed",
     "test_result": "fail",
     "spec_compliance": "fail",
     "tdd_report_path": null,
@@ -204,17 +273,20 @@ fail-HANDOFF instead of the normal STEP-7 path and stop:
   }
   ```
 
-If run.py exits 0, continue with the normal STEP 6 / STEP 7 path:
+If run.py exits 0, continue with the normal STEP 7 / STEP 8 path:
 
-FIRST — capture the implementation commit SHA BEFORE STEP 7's chore commit:
+FIRST — capture the implementation commit SHA BEFORE STEP 8's chore commit:
   IMPL_SHA=$(git rev-parse HEAD)
 
-This ordering is non-negotiable. STEP 7's `chore({{feature_name}}): advance
+This ordering is non-negotiable. STEP 8's `chore({{feature_name}}): advance
 tdd_state to test-green` commit will advance HEAD past the implementation
 commit; capturing `git rev-parse HEAD` after that point would record the
 chore SHA in `impl_commit`, not the actual implementation SHA. The
 tdd-report MUST be fully written with the captured `$IMPL_SHA` value
-substituted into `impl_commit` BEFORE STEP 7 UNLOCK begins.
+substituted into `impl_commit` BEFORE STEP 8 UNLOCK begins.
+
+Advance state (only AFTER capturing $IMPL_SHA above):
+  python3 {{tdd_step_py}} transition {{feature_dir}} test-green
 
 Write tdd-report (gitignored — NEVER commit):
   mkdir -p {{repo_root}}/.rabbit/
@@ -230,8 +302,6 @@ string or the JSON literal `null`, and so on.
   {
     "schema_version": "1.0.0",
     "feature": "{{feature_name}}",
-    "linked_item": "{{linked_item_value}}",
-    "item_type": "{{item_type_value}}",
     "spec_changes": "<yes|no>",
     "spec_no_change_reason": "<reason or null>",
     "impl_summary": "<one paragraph describing what was implemented>",
@@ -243,7 +313,7 @@ string or the JSON literal `null`, and so on.
   }
 
 ════════════════════════════════════════════════════════════════════════
-STEP 7 — UNLOCK
+STEP 8 — UNLOCK
 ════════════════════════════════════════════════════════════════════════
 
 Before emitting HANDOFF, commit the tdd_state transition so the dispatcher
@@ -251,7 +321,7 @@ does not have to commit feature.json manually:
 
   git add {{feature_dir}}/feature.json
   git commit -m "chore({{feature_name}}): advance tdd_state to test-green"
-{{close_calls_block}}
+
 Remove the scope marker explicitly (no `trap` was registered at LOCK — see
 the explanation in STEP 1 about per-call shell process semantics):
   rm -f {{repo_root}}/.rabbit-scope-active-{{feature_name}}
@@ -266,7 +336,7 @@ HANDOFF:
   test_result: <pass|fail>
   spec_compliance: <pass|fail>
   tdd_report_path: {{repo_root}}/.rabbit/tdd-report-{{feature_name}}.json
-  notes: <brief summary>{{handoff_closed_items_block}}
+  notes: <brief summary>
 
 Also emit the structured JSON HANDOFF below. The JSON block is the
 machine-first source of truth (philosophy.md §1); the YAML-like form above
@@ -282,7 +352,7 @@ HANDOFF_JSON:
   "test_result": "<pass|fail>",
   "spec_compliance": "<pass|fail>",
   "tdd_report_path": "{{repo_root}}/.rabbit/tdd-report-{{feature_name}}.json",
-  "closed_items": {{handoff_closed_items_json}},
+  "closed_items": [],
   "notes": "<brief summary>"
 }
 ```

@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BACKLOG-13",
+  "type": "backlog",
+  "title": "Remove dead auto_close_backlog legacy-local-backlog path and vacuous test; relocate cross-scope SKILL.md tests to rabbit-feature",
+  "status": "close",
+  "priority": "high",
+  "description": "Two related cleanups:\\n\\n1. auto_close_backlog in tdd-step.py:175-237 scans .claude/backlogs/<feature>/<ID>/item.json which does not exist post-rabbit-file unification (backlog items moved to bug-backlog-files branch). The only test (test-RABBIT-CAGE-BACKLOG11-auto-close-backlog.py) deliberately omits item-status.py from the mirror so the function returns early \u2014 proving nothing about actual close behavior. Delete the legacy local-backlog scan path (lines 175-237) along with the now-orphan _head_sha helper and the vacuous test file (114-243 lines of test pretending to test the real behaviour). Keep only the rabbit-file unified storage path (via item-status.py).\\n\\n2. Multiple tests in tdd-subagent/test/ read and assert on rabbit-feature-owned SKILL.md content (Cycle B moved that surface). Per philosophy.md \u00a72 (bounded scope) and tdd-subagent's contract.md reads.files (which does NOT list rabbit-feature artifacts), these are contract-violating cross-scope reads. Move the following tests to rabbit-feature/test/: test-rabbit-feature-touch-skill-v3.py, test-rabbit-feature-touch-seven-step.py, test-skill-invocation-and-rabbit-report-path.py, test-confirm-token-bypass-section.py, test-bypass-marker-skill-doc.py, test-rabbit-feature-touch-item-json.py, test-commit-gaps-fix.py, test-wave5-cleanup.py, test-skill-md-routing-and-main-session-red-flags.py.\\n\\n3. Also drop the duplicate Cycle-B re-home assertion files: test-rabbit-feature-touch-skill-ownership.py and test-cycle-b-skill-rehomed.py (one should subsume the other).\\n\\n4. Also drop pt2/pt3 of test-post-transition.py (testing absence of an already-absent reference).",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-19T11:28:22Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T12:35:59Z",
+  "history": [
+    {
+      "ts": "2026-05-19T11:28:22Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T12:35:59Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "aa2f904ac059bd6a88194e29c5098826974dfd8e"
+    }
+  ],
+  "commit_sha": "4df289159c3775f96cd3b2f739c631415bd5c8ea"
+}

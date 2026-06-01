@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-21",
+  "type": "bug",
+  "title": "check-sentinel.py walks .sh files but spec invariant 11 says no .sh files exist",
+  "status": "close",
+  "priority": "low",
+  "description": "scripts/enforcement/check-sentinel.py line 49 walks both .sh and .py files. Per spec invariant 11, no .sh files exist. The .sh branch is dead code.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T03:10:42Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:34:52Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:10:42Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:34:52Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3 batch 2: schema permissiveness, template fields, enforcement script corrections per Inv 22-33.",
+      "fix_commits": "51fc7f3"
+    }
+  ],
+  "commit_sha": "441a11b8764505fb9de6fe8e5654600b64ae60f2"
+}

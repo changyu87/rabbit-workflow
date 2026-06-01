@@ -1,0 +1,27 @@
+{
+  "name": "TDD-SUBAGENT-BACKLOG-16",
+  "type": "backlog",
+  "title": "Dead-code sweep: prune/delete tombstone test files",
+  "status": "close",
+  "priority": "medium",
+  "description": "Six items per the ws37 dead-code sweep rubric:\n1. DELETE test-backlog-9-no-dual-path.py \u2014 asserts 'agent-local' phrase absent from tdd-subagent.md; text was removed and zero forward pressure.\n2. DELETE test-rabbit-feature-touch-skill-ownership.py \u2014 t1 (tdd-subagent/skills absent) and t3 (surface.skills=[]) are tombstone; t2's positive assertion covered by rabbit-feature test suite.\n3. DELETE test-surface-skills-retired.py \u2014 asserts surface.skills=[] which is structurally guaranteed by feature.json schema; no live behavioral guard.\n4. PRUNE test-dispatch-tdd-new-interface.py \u2014 remove t1 (--bug rejected) and t2 (--backlog rejected) tombstone checks; keep t3-t8 live assertions.\n5. PRUNE test-five-prompt-fixes.py \u2014 remove 'not bug-status.py' and 'not backlog-item-status.py' tombstone absence checks in BUG-15 section; keep remaining 4 BUG live assertions.\n6. PRUNE test-slim-after-extraction.py \u2014 remove tdd-context.py and tdd-drift-check.py absence assertions (tombstone for BACKLOG-7 deleted scripts); keep tdd-step.py live assertions.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-21T03:33:00Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-21T03:38:07Z",
+  "history": [
+    {
+      "ts": "2026-05-21T03:33:00Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-21T03:38:07Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Closed: deleted 3 tombstone test files, pruned 3 mixed-content test files. PR #170."
+    }
+  ],
+  "commit_sha": "da85b2ed601d686352bb0548fe1cbdabd2589031"
+}

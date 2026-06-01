@@ -68,8 +68,6 @@ ANNOTATIONS = {
     "backlog-contract.md":    "backlog item contract",
     "bugs":                   "centralized bug tracker (.claude/bugs, subdirs by feature name)",
     "backlogs":               "centralized backlog tracker (.claude/backlogs, subdirs by feature name)",
-    "rabbit-file":            "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
-    "rabbit-file/":           "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
     "rabbit-feature":         "feature lifecycle orchestration (new, touch, scope resolution, spec authoring)",
     "rabbit-feature/":        "feature lifecycle orchestration (new, touch, scope resolution, spec authoring)",
 }
@@ -80,7 +78,7 @@ STRUCTURAL_DIRS = {
     "test", "enforcement", ".claude",
     "rabbit-cage", "contract", "policy",
     "tdd-subagent",
-    "rabbit-file", "rabbit-feature",
+    "rabbit-feature",
 }
 
 KEY_FILES = {

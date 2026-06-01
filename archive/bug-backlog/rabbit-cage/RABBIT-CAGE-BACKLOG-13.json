@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-13",
+  "type": "backlog",
+  "title": "Test boilerplate duplicated: make_clean_repo / build_tmproot_clean copied across 6+ test files",
+  "status": "close",
+  "priority": "medium",
+  "description": "The same temp-repo-builder function appears, with minor variations, in: test-BACKLOG-11-rabbit-config-skill.py (make_clean_repo), test-RABBIT-CAGE-22-stale-marker.py (make_build_repo), test-RABBIT-CAGE-BUG4.py (make_build_repo), test-RABBIT-CAGE-BACKLOG10-override.py (build_tmproot_clean), test-RABBIT-CAGE-21-plugin-change-alert.py (make_clean_repo), test-RABBIT-CAGE-BACKLOG14-conditional-priority.py (make_clean_repo), test-RABBIT-CAGE-BUG123.py (build_tmproot_clean), test-RABBIT-CAGE-BACKLOG7-visual-messages.py (build_tmproot). Each creates the same skeleton: temp dir + git init + .claude/features/policy/*.md + policy-header.json + copy of generate-claude-md.py + registry.json + CLAUDE.md. Extract a shared test helper module (e.g., test/_helpers.py) so changes to the skeleton happen in one place. Currently any spec change (e.g. new required policy file) requires updating 8 test files.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:13:56Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T09:09:38Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:13:56Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T09:09:38Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "WAVE5 cleanup: implemented in 505c834",
+      "fix_commits": "505c834"
+    }
+  ],
+  "commit_sha": "b566b15a82c0c7a87386ae0489e863de4bc7cfb7"
+}

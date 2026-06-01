@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-36",
+  "type": "backlog",
+  "title": "Architectural review: feature-size budget + split criteria (when should a big feature become multiple features?)",
+  "status": "close",
+  "priority": "medium",
+  "description": "Architectural concern raised during prompt-size analysis: should feature spec size have a budget? At what threshold should we split a feature?\n\nConcrete trigger: rabbit-cage spec.md is ~80KB after wave-7 cleanup. It has 7 'Invariants' sections covering wildly different concerns (Claude Code surface deployment, hooks runtime, scope-guard, rabbit-config skill, scripts, runtime-flag display, output schemas, etc.). Each section could plausibly be its own feature.\n\nTwo related questions:\n\n1. SIZE BUDGET \u2014 should features have a maximum spec size (in lines, bytes, or invariant count)? Three plausible approaches:\n   (a) HARD limit \u2014 feature MUST split when over threshold. Forces architectural review but can produce awkward splits.\n   (b) SOFT signal \u2014 WARNING threshold (e.g., 50KB or 30+ invariants) prompts 'consider whether this feature should be split'. HARD threshold (e.g., 100KB or 60+ invariants) requires a 'no-split rationale' justification invariant.\n   (c) NO limit \u2014 size is what it is; split decisions are purely semantic.\n\n2. SPLIT CRITERIA \u2014 what signals indicate a feature should be split? Observed in rabbit-cage:\n   - Multiple 'Invariants' sections in one spec (rabbit-cage has 7)\n   - Invariant count above some threshold (rabbit-cage post-renumber: ~90+ invariants)\n   - Invariants cluster by topic (surface, hooks, scope-guard, skill, etc. are distinct concerns)\n   - Different consumers dispatch different subsets (e.g., session-init.py only cares about hooks invariants; not skill invariants)\n   - Cycles touch different sections without touching others\n   - A 'sub-skill' or sub-tool inside a feature feels like its own thing (e.g., /rabbit-config skill inside rabbit-cage)\n\nCounterargument: splits aren't free.\n- More cross-feature contracts to maintain\n- More cross-feature ripples (we saw plenty: ws35 rabbit-bug/rabbit-backlog cleanup, ws36 KNOWN_ISSUES management, ws39 wave-7 spec drift)\n- More files per feature (spec.md, contract.md, run.py, etc.)\n- Higher discovery cost ('where does X live?')\n\nSpecific concrete proposal to evaluate:\nConsider splitting rabbit-cage into:\n- rabbit-cage (Claude Code surface deployment \u2014 build.py, copy-file management, .claude/skills/, .claude/hooks/ population)\n- rabbit-hooks (runtime hook scripts \u2014 scope-guard, sync-check, session-init, refresh, _runtime_flags)\n- rabbit-config (the /rabbit-config skill + its scripts)\n- rabbit-project (rabbit-project*, workspace-tree)\n\nEach would be ~15-25KB spec. Total cross-feature contract surface increases significantly.\n\nAcceptance:\n- Decide soft-limit thresholds (or that none should exist)\n- Decide signal-based split criteria\n- Apply to rabbit-cage specifically: confirm split or confirm stay-monolithic with documented rationale\n- If split: file follow-up backlogs for each split. This backlog is the decision, not the execution.\n- Update contract spec to add 'feature size discipline' invariants if size-budget approach is chosen\n- Companion to CONTRACT-BACKLOG-35 (prompt-scoping optimization): both reduce per-cycle cost; splits AND scoped prompts are complementary not redundant.\n\nThis is design work, deserves brainstorming session up front.",
+  "related_feature": "contract",
+  "filed": "2026-05-21T13:56:47Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-24T06:03:34Z",
+  "history": [
+    {
+      "ts": "2026-05-21T13:56:47Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-24T06:03:34Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Closed in CONTRACT-WAVE-9: empirical answer arrived at via 9 housekeeping waves \u2014 NO hard feature-size budget; trigger audit waves when bug density signals spec drift. The meta-contract architecture (Plans A-F) that BACKLOG-36 originally drove is now in place; this audit wave is the final per-feature audit before Plan E.* per-feature meta-contract migrations. References: docs/2026-05-23-housekeeping-protocol.md (wave sequence + audit criteria) and docs/superpowers/specs/2026-05-23-meta-contract-architecture-design.md (architecture design).",
+      "fix_commits": "27d2f0ec778785ef11fcce8baa011c449b0bebed"
+    }
+  ],
+  "commit_sha": "ad0f32e049921267d3a050ad8ffa61a391546f75"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-31",
+  "type": "bug",
+  "title": "commands/rabbit-project.md references nonexistent .sh script in stale path",
+  "status": "close",
+  "priority": "high",
+  "description": "commands/rabbit-project.md line 16 says 'Delegates to .claude/features/onboard/scripts/rabbit-project.sh'. That path is wrong on two counts: (1) the script is actually at .claude/features/rabbit-cage/scripts/rabbit-project.py (the rabbit-cage feature, not onboard), and (2) it is a .py file, not .sh. The 'onboard' feature does not exist in the repository. Anyone invoking /rabbit-project and following the doc would fail. Update the Implementation line to reflect the actual location and Python file.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:09:01Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:42:49Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:09:01Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:42:49Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3: BUG-29 new-feature.py scaffolds .py runner + template_version; BUG-31 rabbit-project.md uses real .py paths; BUG-52 human-approval messages name marker+effect.",
+      "fix_commits": "e96b24a"
+    }
+  ],
+  "commit_sha": "30e2d7dddf55ac5e9c50e1f7b40974b6efce3d95"
+}

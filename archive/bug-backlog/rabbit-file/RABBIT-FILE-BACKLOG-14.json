@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FILE-BACKLOG-14",
+  "type": "backlog",
+  "title": "Wave-2 deferred: spec note on worst-case push-attempt budget under contention",
+  "status": "close",
+  "priority": "low",
+  "description": "Deferred from wave-1 housekeeping (info-only; trivial size, kept out of BACKLOG-13 cycle).\n\nWorst-case per filing: 16 (counter push retries) + 16 (item push retries) + 16 (sha-backfill push retries) = 48 push attempts under sustained contention, each preceded by fetch+reset, bounded by jittered backoff (max ~2.1s per retry per spec). On a true outage this can stall ~30s per script invocation.\n\nThis is NOT a code change \u2014 current retry budget (16 per push) is appropriate and the jittered backoff prevents thundering herd. It's an observability/documentation note so operators and future maintainers understand the worst-case timing before optimizing.\n\nResolution: add a one-paragraph note to spec.md (under the retry invariant or in a new 'Operational characteristics' section) documenting:\n- Per-filing worst-case: 48 push attempts (3 pushes \u00d7 16 retries each)\n- Per-retry budget: jittered backoff max ~2.1s\n- Worst-case wall time: ~30s per script invocation under sustained outage\n- This is acceptable per current usage patterns; revisit if contention measurements show real impact.\n\nAcceptance: spec.md carries the operational-characteristics note; no code changes; no test changes required.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-20T13:19:01Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T13:48:41Z",
+  "history": [
+    {
+      "ts": "2026-05-20T13:19:01Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T13:48:41Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "a6cdcbeded2c1587912c2b5ca395816cebc22e49"
+    }
+  ],
+  "commit_sha": "212f9a87b2faf16e516f801fce04b84a3364f09b"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-24",
+  "type": "bug",
+  "title": "tdd-step.py sync_deployed_skills is undocumented in spec",
+  "status": "close",
+  "priority": "medium",
+  "description": "tdd-step.py defines and invokes sync_deployed_skills (lines 167-192, called from _post_test_green_hooks line 248). On every test-green transition it copies SKILL.md from feature dirs to .claude/skills/<name>/SKILL.md. This duplicates the responsibility declared by build-contract.json (per spec Inv 9, skills are managed via build-contract.json copy-file entries). Either this is dead/redundant code that should be removed (build-contract handles it), or it is a real side effect that must be added to spec invariants and contract.md's 'writes'. Currently no spec invariant mentions it and it is invisible to the contract.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:41:08Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:37:07Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:41:08Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:37:07Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "45eaa9e8c9014143d404811eecff66b8aa169882"
+}

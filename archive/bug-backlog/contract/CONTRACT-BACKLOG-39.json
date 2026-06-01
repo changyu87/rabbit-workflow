@@ -1,0 +1,41 @@
+{
+  "name": "CONTRACT-BACKLOG-39",
+  "type": "backlog",
+  "title": "Add on-demand emit_configurable_alert API; refactor skills to use it instead of hardcoded rabbit-print prose",
+  "status": "close",
+  "priority": "medium",
+  "description": "ARCHITECTURAL GAP: alert text declared per-configurable in feature.json (e.g., rabbit-cage configuration[human-approval].alert-message = 'HUMAN APPROVAL BYPASS ACTIVE - Step 4 skipped' with icon \ud83d\udd11, color red) is fired automatically only at Stop hook events via iterate_configurables_alerts. There is no on-demand emit API for other code paths (dispatcher mid-skill, helper scripts) to use the same centrally-declared text. Without this API, callers either duplicate the text inline (drift risk) or skip emitting any alert.\n\nCONCRETE DUPLICATION OBSERVED (HEAD 1d10c86b):\n- rabbit-cage/feature.json configuration[human-approval].alert-message: 'HUMAN APPROVAL BYPASS ACTIVE - Step 4 skipped' (icon: \ud83d\udd11, color: red). Fires at Stop hook when bypass marker is present.\n- rabbit-feature/skills/rabbit-feature-touch/SKILL.md:140: hardcoded '[\ud83d\udc07 rabbit \ud83d\udc07] Step 4 SKIPPED: .rabbit-human-approval-bypass marker active. Run /rabbit-config human-approval true to turn the bypass off and require approval again.' Dispatcher emits this manually mid-touch at Step 4 when it detects the bypass marker.\n\nTwo problems: (a) text drift \u2014 different wording, no single source of truth; (b) the '[\ud83d\udc07 rabbit \ud83d\udc07]' envelope prefix is hardcoded in skill prose instead of being rendered by rabbit_print's banner/print format, which violates the rabbit-print direct-call API contract (Inv 48).\n\nPROPOSED FIX:\n\nPart A \u2014 API addition (contract feature):\n- Add contract.lib.runtime.emit_configurable_alert(feature_name: str, configurable_id: str, *, repo_root: str) -> dict\n- Looks up the configurable in <repo_root>/.claude/features/<feature>/feature.json\n- Returns a print_result (or banner_result, per the alert-message's intended format) with the alert-message.text/icon/color\n- Caller passes the returned dict to rabbit_print or just prints it to stderr\n- Coverage: test/test-runtime-emit-configurable-alert.py with positive (resolves to correct text) + negative (unknown feature/configurable) cases\n\nPart B \u2014 refactor callers:\n- rabbit-feature-touch SKILL.md Step 4: replace hardcoded prose with instruction to invoke emit_configurable_alert('rabbit-cage', 'human-approval') and pipe to rabbit_print\n- Optionally: extend the alert-message schema in rabbit-cage's configurable to include a longer-form 'instruction' field that the dispatcher can surface (currently only text/icon/color); decide whether the actionable 'Run /rabbit-config human-approval true' guidance should live with the alert-message or stay in skill prose\n\nPart C \u2014 audit:\n- Grep all skills (.claude/features/*/skills/**/SKILL.md) and scripts for hardcoded '[\ud83d\udc07 rabbit \ud83d\udc07]' prefixes or alert text that duplicates a feature.json configurable's alert-message\n- Refactor every match to use the new API\n- File follow-up B/B if any cases require schema extensions\n\nOWNER: contract (the meta-contract architecture container; the API addition lives in contract.lib.runtime).\n\nWHY NOT BACKLOG-38: that one scrubs Plan/BUG tags from spec bodies \u2014 purely textual. This one adds a runtime API and refactors callers \u2014 structural. Different scope, different discipline, different wave.",
+  "related_feature": "contract",
+  "filed": "2026-05-25T13:12:56Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-25T15:26:22Z",
+  "history": [
+    {
+      "ts": "2026-05-25T13:12:56Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-25T15:18:46Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "1d19fa1457fb47e6866b1169e6feaa7ff2568ed6"
+    },
+    {
+      "ts": "2026-05-25T15:19:58Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "Part A (contract API) complete; reopening to track Part B (rabbit-feature SKILL.md refactor) and Part C (audit) per backlog item scope"
+    },
+    {
+      "ts": "2026-05-25T15:26:22Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete (Part B: SKILL.md refactor)",
+      "fix_commits": "44bf23c49d861aa2fd82d2308b416cd65d79716a"
+    }
+  ],
+  "commit_sha": "18f33207712277e31ff2a697ea7bb89e4900b361"
+}

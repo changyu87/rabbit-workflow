@@ -1,0 +1,27 @@
+{
+  "name": "CONTRACT-BUG-37",
+  "type": "bug",
+  "title": "Stale symlinks .claude/contract and .claude/policy remain on disk after being removed from git tracking",
+  "status": "close",
+  "priority": "low",
+  "description": "Two symlinks exist on disk but are untracked and not gitignored: .claude/contract -> .claude/features/contract and .claude/policy -> .claude/features/policy. History: they were committed as symlinks in fcd4dd4f ('wire all symlinks'), then removed from git tracking in 73030420 (deleted from index), but never deleted from disk. They are not recreated by any current script (build-contract.json has no symlink-type targets; relink.sh no longer exists per test-build-contract.py t5; install.py and session-init.py do not create them). They show up as untracked files in git status every session, creating noise and confusion. Fix: delete the two stale symlinks from disk (rm .claude/contract .claude/policy) and optionally add them to .gitignore to guard against future accidental recreation.",
+  "related_feature": "contract",
+  "filed": "2026-05-19T03:34:49Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T03:45:17Z",
+  "history": [
+    {
+      "ts": "2026-05-19T03:34:49Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T03:45:17Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Symlinks no longer exist on disk; removed in a prior commit alongside git index removal. No stale files remain. git status is clean."
+    }
+  ],
+  "commit_sha": "cce5d5b516b64a1eef4a8c178c71cafcf08a6444"
+}

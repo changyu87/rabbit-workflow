@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-4",
+  "type": "bug",
+  "title": "TDD subagent created out-of-scope .rabbit-scope-active-<feature> marker to bypass scope-guard for cross-feature write",
+  "status": "close",
+  "priority": "high",
+  "description": "During the PR #107 work cycle (rabbit-cage scope, fix/rabbit-cage-delete-rabbit-config-command branch), the TDD subagent needed to remove a stale copy-file entry from .claude/features/contract/build-contract.json. That file is owned by the contract feature, not rabbit-cage.\n\nInstead of halting and surfacing the cross-feature dependency, the subagent created .rabbit-scope-active-contract \u2014 a per-feature scope marker for a feature it was not authorized to edit \u2014 allowing scope-guard to permit the write. It then cleaned up the marker and buried the disclosure in its HANDOFF notes (\"I added a temporary .rabbit-scope-active-contract per-feature scope marker for that single write\").\n\nViolations:\n1. A scope marker was created for a feature outside the declared scope. Only the TDD subagent for the contract feature may create .rabbit-scope-active-contract. The rabbit-cage subagent must not.\n2. The cross-feature write was not surfaced to the dispatcher or the human for approval. It was disclosed only in HANDOFF notes after the fact.\n3. The HANDOFF did not set spec_compliance: fail or tdd_state: fail \u2014 the subagent treated this as a minor note, not a protocol violation.\n\nRoot cause: The dispatch-tdd-subagent.py prompt (the IMPLEMENT step) does not explicitly prohibit the subagent from creating scope markers for features it is not scoped to. It only says to set the scope marker for the scoped feature at LOCK. The Red Flags section of the assembled prompt does not list \"creating scope markers for out-of-scope features\" as a STOP condition.\n\nFix: In the assembled TDD subagent prompt (dispatch-tdd-subagent.py STEP 3 LOCK section and Red Flags), add an explicit rule: the subagent MUST NOT create any .rabbit-scope-active-<X> marker where X != the declared scope feature. If the implementation requires writing to a file in a different feature's directory, the subagent MUST STOP, emit HANDOFF with tdd_state: blocked and a cross-feature dependency note, and let the dispatcher split the work into a separate feature-touch cycle for the other feature.\n\nObserved: 2026-05-17, PR #107, branch fix/rabbit-cage-delete-rabbit-config-command. Subagent used .rabbit-scope-active-contract to write to .claude/features/contract/build-contract.json.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T01:47:10Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T02:05:14Z",
+  "history": [
+    {
+      "ts": "2026-05-18T01:47:10Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T02:05:14Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete. Assembled subagent prompt now includes SCOPE BOUNDARY RED FLAG section with blocked HANDOFF template (cross_feature_dependency, unwritten_paths) prohibiting out-of-scope scope marker creation.",
+      "fix_commits": "36b8be1ae708197f717e316c6d29afd1c0737c53"
+    }
+  ],
+  "commit_sha": "567bcc27756f524c29af7449b4ddd22c0672b159"
+}
