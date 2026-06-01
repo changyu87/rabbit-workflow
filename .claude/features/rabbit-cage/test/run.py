@@ -41,6 +41,11 @@ SUITES = [
     "test-install-sh-update-flag.py",
     "test-rabbit-issue-shipped-in-mvp.py",
     "test-install-sh-version-passthrough.py",
+    "test-install-update-self-fetches-without-src.py",
+    "test-install-update-infers-target-from-script-location.py",
+    "test-install-update-rejects-non-rabbit-target.py",
+    "test-install-update-network-failure.py",
+    "test-install-update-explicit-src-skips-fetch.py",
 ]
 
 
