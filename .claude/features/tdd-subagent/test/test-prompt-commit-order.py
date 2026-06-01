@@ -39,13 +39,18 @@ else:
         ok("inv14: IMPLEMENT loop has `git add`")
     else:
         ko("inv14: IMPLEMENT loop missing `git add`")
-    # Inv 14 (amended): IMPLEMENT must NOT contain the atomic commit — that
-    # was moved into SYNC-DEPLOYED. Stating the deferral explicitly is the
-    # spec's intent ("DEFER the commit until the end of SYNC-DEPLOYED").
-    if re.search(r"defer", impl, re.IGNORECASE):
-        ok("inv14: IMPLEMENT documents the deferred-commit handoff to SYNC-DEPLOYED")
+    # Inv 14 (amended): IMPLEMENT must NOT contain `git commit` — the
+    # atomic commit was moved to SYNC-DEPLOYED. IMPLEMENT must also
+    # explicitly point at STEP 5 as the commit's new home (the prose
+    # contains either "STEP 5" with "commit" nearby, or the word "defer").
+    if "git commit" not in impl:
+        ok("inv14: IMPLEMENT contains no `git commit` invocation (deferred to SYNC-DEPLOYED)")
     else:
-        ko("inv14: IMPLEMENT missing explicit deferred-commit note")
+        ko("inv14: IMPLEMENT still contains `git commit` — should be deferred to SYNC-DEPLOYED")
+    if re.search(r"STEP 5", impl) and re.search(r"commit", impl, re.IGNORECASE):
+        ok("inv14: IMPLEMENT documents the commit lands at STEP 5 SYNC-DEPLOYED")
+    else:
+        ko("inv14: IMPLEMENT missing pointer to STEP 5 as commit landing site")
     # tdd-step.py transition into impl must appear in IMPLEMENT (the state
     # advance for `code written` happens here per Inv 14 amended).
     if re.search(r"tdd-step\.py.*?transition\s+\S+\s+impl", impl, re.DOTALL):

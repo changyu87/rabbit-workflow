@@ -74,7 +74,7 @@ for api in ("publish_file", "publish_hook", "publish_skill", "publish_settings")
         ko(f"inv46.ii: STEP 5 body does not name {api}")
 
 # (iii) git add + atomic commit at end-of-step.
-if "git add " in step5_region:
+if "git add" in step5_region:
     ok("inv46.iii: STEP 5 body instructs `git add` of deployed paths")
 else:
     ko("inv46.iii: STEP 5 body missing `git add` instruction")
@@ -97,7 +97,7 @@ trans_pos = step5_region.find("sync-deployed")
 # The string "sync-deployed" can appear in prose; require it appears with the
 # tdd-step.py transition invocation specifically.
 trans_inv_match = re.search(
-    r"tdd-step\.py.*?transition\s+\S+\s+sync-deployed",
+    r"(?:tdd-step\.py|\{\{tdd_step_py\}\}).*?transition\s+\S+\s+sync-deployed",
     step5_region,
     re.DOTALL,
 )
