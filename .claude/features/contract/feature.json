@@ -1,8 +1,8 @@
 {
   "name": "contract",
-  "version": "1.46.0",
+  "version": "1.46.1",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "surface": {
     "hooks": [],
@@ -37,5 +37,5 @@
       }
     ]
   },
-  "spec_no_change_reason": "Inv 62 already added to spec.md in commit 59da38f; this cycle adds the regression test and bumps feature.json version"
+  "spec_no_change_reason": "spec.md already bumped to 1.46.1 in commit 525735f as part of multi-feature spec amendment; this cycle implements the template body change governed by Inv 57"
 }
