@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.0.0
+version: 1.1.0
 owner: cyxu
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue REPLACES the retired rabbit-file feature; do NOT invoke rabbit-file or its scripts — they are gone. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours the `rabbit-managed` label as a safety guard so human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -10,9 +10,11 @@ description: Use whenever Claude detects intent to file, list, show, close, reop
 
 Three modes — **File**, **List**, and **Work** — operate against GitHub
 Issues via the `gh` CLI. Two issue types are supported: **bug** and
-**enhancement** (GH's defaults). The repository is discovered at runtime
-from `git remote get-url origin`; `gh auth status` must be green or the
-scripts fail loudly with an actionable error.
+**enhancement** (GH's defaults). The target repo defaults to the upstream
+rabbit-workflow repo (const `changyu87/rabbit-workflow` in `_gh.py`);
+set `RABBIT_ISSUE_REPO=<owner>/<repo>` to override for forks or testing.
+`gh auth status` must be green or the scripts fail loudly with an
+actionable error.
 
 rabbit-issue REPLACES the retired `rabbit-file` feature. The legacy
 branch-backed bug-and-backlog (B/B) storage on `origin/bug-backlog-files`
@@ -177,10 +179,12 @@ and between rabbit and the GH API.
 - **`gh auth` required** — every script checks `gh auth status` and
   fails with an actionable error if authentication is not green. Do
   not fall back to unauthenticated calls.
-- **GH remote only** — the repo slug is derived from
-  `git remote get-url origin`. If `origin` is not a GitHub URL the
-  scripts fail loudly. Do not patch the slug; redirect the user to fix
-  the remote.
+- **Upstream rabbit-workflow target** — the target repo defaults to the
+  const `changyu87/rabbit-workflow`. Override via the `RABBIT_ISSUE_REPO`
+  environment variable (e.g. `RABBIT_ISSUE_REPO=myfork/rabbit-workflow`
+  for fork contributors). The skill never consults the cwd's git remote —
+  bugs about rabbit always go to rabbit's repo, regardless of where the
+  user invokes from.
 
 ---
 

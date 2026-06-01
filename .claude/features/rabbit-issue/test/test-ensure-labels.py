@@ -1,11 +1,10 @@
 """Tests for scripts/_gh.py shared helpers.
 
-Covers repo_slug parsing (https + ssh forms, non-GitHub rejection),
-ensure_labels idempotency, and require_managed safety guard.
+Covers ensure_labels idempotency and require_managed safety guard.
+Repo-slug resolution is covered by test-gh-helper-resolves-rabbit-repo.py.
 """
 import importlib
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -20,30 +19,6 @@ def _fresh_gh():
     sys.modules.pop("_gh", None)
     import _gh  # noqa: F401
     return importlib.import_module("_gh")
-
-
-def test_repo_slug_from_https_remote(fake_repo, gh_shim):
-    gh = _fresh_gh()
-    assert gh.repo_slug() == "test/repo"
-
-
-def test_repo_slug_from_ssh_remote(fake_repo, gh_shim):
-    subprocess.run(
-        ["git", "remote", "set-url", "origin", "git@github.com:org/repo.git"],
-        check=True,
-    )
-    gh = _fresh_gh()
-    assert gh.repo_slug() == "org/repo"
-
-
-def test_repo_slug_rejects_non_github(fake_repo, gh_shim):
-    subprocess.run(
-        ["git", "remote", "set-url", "origin", "https://gitlab.com/foo/bar.git"],
-        check=True,
-    )
-    gh = _fresh_gh()
-    with pytest.raises(SystemExit):
-        gh.repo_slug()
 
 
 def test_ensure_labels_calls_gh_label_create(gh_shim, fake_repo):
