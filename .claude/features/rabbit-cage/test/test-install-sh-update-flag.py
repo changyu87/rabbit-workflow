@@ -9,6 +9,8 @@ curl/tar via a PATH-shadowed stub. The stubbed install.py just dumps its
 argv to a sidecar file so the test can grep for `--update`.
 """
 
+from __future__ import annotations
+
 import os
 import shutil
 import subprocess

@@ -8,23 +8,37 @@
 #   curl -fsSLO https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh && bash install.sh
 #
 # Env vars:
-#   RABBIT_REPO  — default changyu87/rabbit-workflow
-#   RABBIT_REF   — default dev (branch, tag, or SHA)
+#   RABBIT_REPO    — default changyu87/rabbit-workflow
+#   RABBIT_REF     — default dev (branch, tag, or SHA)
+#   RABBIT_UPDATE  — set to "true" to refresh an existing install in place
+#                    (equivalent to passing --update; see spec Inv 22)
 
 set -euo pipefail
 
 RABBIT_REPO="${RABBIT_REPO:-changyu87/rabbit-workflow}"
 RABBIT_REF="${RABBIT_REF:-dev}"
 
+# Parse --update from $@ and honour RABBIT_UPDATE=true env-var equivalent.
+# Forward `--update` to install.py verbatim; both forms set the same flag.
+UPDATE_MODE=""
+if [ "${RABBIT_UPDATE:-}" = "true" ]; then
+  UPDATE_MODE="--update"
+fi
+for arg in "$@"; do
+  if [ "$arg" = "--update" ]; then
+    UPDATE_MODE="--update"
+  fi
+done
+
 # Pre-flight
 for cmd in python3 curl tar; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "error: $cmd is required but not found in PATH" >&2; exit 1; }
 done
 
-# Refuse if .rabbit/ already exists
-if [ -d .rabbit ]; then
+# Refuse if .rabbit/ already exists, UNLESS --update mode (Inv 22a).
+if [ -d .rabbit ] && [ -z "$UPDATE_MODE" ]; then
   echo "error: .rabbit/ already exists in $(pwd)" >&2
-  echo "       to update an existing install, see the manual update procedure" >&2
+  echo "       to refresh in place, re-run with --update (or RABBIT_UPDATE=true)" >&2
   exit 1
 fi
 
@@ -47,8 +61,8 @@ if [ -z "$SRC" ] || [ ! -d "$SRC" ]; then
   exit 1
 fi
 
-# Run the Python installer
-python3 "$SRC/install.py" --src "$SRC" --target "$(pwd)/.rabbit"
+# Run the Python installer (forward $UPDATE_MODE if set; empty expands to nothing)
+python3 "$SRC/install.py" --src "$SRC" --target "$(pwd)/.rabbit" ${UPDATE_MODE:+$UPDATE_MODE}
 
 echo ""
 echo "Installed. Next steps:"

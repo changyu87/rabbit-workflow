@@ -6,6 +6,8 @@ Pins the default-deny behaviour so a future refactor that weakens the
 refusal cannot silently overwrite a committed .rabbit/ tree.
 """
 
+from __future__ import annotations
+
 import importlib.util
 import shutil
 import sys

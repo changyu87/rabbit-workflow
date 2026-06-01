@@ -8,6 +8,8 @@ shutil.copy2 of identical bytes) and the publish_settings merge are
 idempotent by construction.
 """
 
+from __future__ import annotations
+
 import hashlib
 import importlib.util
 import io

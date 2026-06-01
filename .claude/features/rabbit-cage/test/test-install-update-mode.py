@@ -13,6 +13,8 @@ Asserts the four observable behaviours of update mode:
       at refresh time and the dispatcher prints `updating <old> -> <new>`.
 """
 
+from __future__ import annotations
+
 import importlib.util
 import io
 import json
@@ -112,7 +114,11 @@ def test_update_preserves_runtime_tree():
     print("PASS test_update_preserves_runtime_tree")
 
 
-def test_update_preserves_custom_settings_permission():
+def test_update_preserves_settings_local_and_third_party_hook():
+    """Inv 22c/d: --update preserves settings.local.json (outside the closure)
+    and non-rabbit hook entries in the deployed settings.json (publish_settings
+    merge semantics, contract Inv 44).
+    """
     install = _load_install()
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
@@ -124,10 +130,24 @@ def test_update_preserves_custom_settings_permission():
         rc, _ = _run_install(install, ["install.py", "--src", str(src), "--target", str(dst)])
         assert rc == 0
 
-        # Add a user-added permission entry to deployed settings.json.
+        # (1) settings.local.json: a fully user-owned file outside the closure.
+        # --update must leave it byte-identical.
+        settings_local = dst / ".claude/settings.local.json"
+        settings_local.write_text(json.dumps({
+            "permissions": {"defaultMode": "bypassPermissions",
+                            "allow": ["Bash(my-tool:*)"]},
+        }, indent=2))
+        local_before = settings_local.read_text()
+        local_mtime = settings_local.stat().st_mtime
+
+        # (2) Inject a third-party hook into the deployed settings.json that
+        # rabbit did NOT publish. publish_settings must preserve it.
         settings_path = dst / ".claude/settings.json"
         data = json.loads(settings_path.read_text())
-        data.setdefault("permissions", {}).setdefault("allow", []).append("Bash(my-tool:*)")
+        data.setdefault("hooks", {}).setdefault("Stop", []).append({
+            "matcher": "*",
+            "hooks": [{"type": "command", "command": "/usr/local/bin/my-third-party-hook"}],
+        })
         settings_path.write_text(json.dumps(data, indent=2))
 
         rc2, _ = _run_install(
@@ -135,17 +155,31 @@ def test_update_preserves_custom_settings_permission():
         )
         assert rc2 == 0
 
+        # (1) settings.local.json untouched.
+        assert settings_local.read_text() == local_before, (
+            ".claude/settings.local.json content mutated by --update"
+        )
+        assert settings_local.stat().st_mtime == local_mtime, (
+            ".claude/settings.local.json was rewritten (mtime changed) by --update"
+        )
+
+        # (2) third-party hook still present.
         after = json.loads(settings_path.read_text())
-        allow = (after.get("permissions") or {}).get("allow") or []
-        assert "Bash(my-tool:*)" in allow, (
-            "custom user permission was clobbered by --update "
-            f"(allow={allow!r})"
+        all_cmds = [
+            h.get("command")
+            for entries in (after.get("hooks") or {}).values()
+            for entry in entries
+            for h in entry.get("hooks", [])
+        ]
+        assert "/usr/local/bin/my-third-party-hook" in all_cmds, (
+            "third-party Stop hook was clobbered by --update; "
+            f"deployed commands={all_cmds!r}"
         )
         # Inv 19 plugin-mode rewrites still in effect after merge.
         assert after.get("env", {}).get("RABBIT_ROOT") == str(dst.resolve()), (
             "env.RABBIT_ROOT not rewritten after publish_settings merge"
         )
-    print("PASS test_update_preserves_custom_settings_permission")
+    print("PASS test_update_preserves_settings_local_and_third_party_hook")
 
 
 def test_update_refreshes_closure_file_when_source_changes():
@@ -219,7 +253,7 @@ def test_update_prints_version_transition_and_updates_pin():
 
 def main() -> int:
     test_update_preserves_runtime_tree()
-    test_update_preserves_custom_settings_permission()
+    test_update_preserves_settings_local_and_third_party_hook()
     test_update_refreshes_closure_file_when_source_changes()
     test_update_prints_version_transition_and_updates_pin()
     return 0
