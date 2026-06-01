@@ -22,6 +22,8 @@ This module has two distinct roles:
 
      Usage:
          install.py --src <extracted-tarball-dir> --target <project>/.rabbit
+         install.py --update    (self-fetch upstream; infer target from script
+                                 location — see Inv 22g)
 
   2. Dev-test helper (run_publish_loop()):
      Importable function used by rabbit-cage test suites
@@ -42,6 +44,9 @@ import json
 import os
 import shutil
 import sys
+import tarfile
+import tempfile
+import urllib.request
 from pathlib import Path
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -287,6 +292,26 @@ def write_version_pin(dst_root: Path) -> None:
     (dst_root / ".version").write_text(label + "\n")
 
 
+def fetch_upstream(repo: str, ref: str, dest: Path) -> Path:
+    """Inv 22g: download the upstream tarball into `dest` and return the
+    extracted `rabbit-workflow-*` dir.
+
+    Uses stdlib urllib.request + tarfile only (Inv 4 Tech Stack). Raises on
+    any failure (URLError / OSError / tarfile.ReadError / StopIteration);
+    callers translate the exception into a clean exit 1.
+    """
+    url = f"https://github.com/{repo}/archive/{ref}.tar.gz"
+    tarball = dest / "rabbit.tar.gz"
+    with urllib.request.urlopen(url) as resp, open(tarball, "wb") as f:
+        shutil.copyfileobj(resp, f)
+    with tarfile.open(tarball) as tar:
+        tar.extractall(dest)
+    return next(
+        p for p in dest.iterdir()
+        if p.is_dir() and p.name.startswith("rabbit-workflow-")
+    )
+
+
 def run_publish_loop(target_root: str) -> int:
     """Dev-test helper: enumerate every <target_root>/.claude/features/*/feature.json
     and invoke each MANIFEST API via contract.lib.publish. Continues past
@@ -379,12 +404,65 @@ def _publish_settings_merge(src_root: Path, dst_root: Path) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Install rabbit into a target directory")
-    parser.add_argument("--src", required=True, type=Path, help="extracted upstream source dir")
-    parser.add_argument("--target", required=True, type=Path, help="target install dir (typically <project>/.rabbit)")
+    parser.add_argument("--src", required=False, default=None, type=Path,
+                        help="extracted upstream source dir (optional under --update; self-fetched if omitted)")
+    parser.add_argument("--target", required=False, default=None, type=Path,
+                        help="target install dir (optional under --update; inferred from script location if omitted)")
     parser.add_argument("--update", action="store_true",
                         help="refresh an existing install in place (Inv 22)")
     args = parser.parse_args()
 
+    # Inv 22g: --src and --target are optional under --update; outside --update
+    # both remain required (matches the original argparse contract).
+    if not args.update:
+        missing = []
+        if args.src is None:
+            missing.append("--src")
+        if args.target is None:
+            missing.append("--target")
+        if missing:
+            parser.error("the following arguments are required: " + ", ".join(missing))
+
+    # Inv 22g: tempdir keeps the extracted upstream tarball alive for the
+    # entire main() body when self-fetching. Always opened so the cleanup
+    # path is uniform; only populated when fetching.
+    fetch_tmp = tempfile.TemporaryDirectory()
+    try:
+        # Inv 22g (a): self-fetch when --update is set and --src is omitted.
+        if args.update and args.src is None:
+            repo = os.environ.get("RABBIT_REPO", "changyu87/rabbit-workflow")
+            ref = os.environ.get("RABBIT_REF", "dev")
+            url = f"https://github.com/{repo}/archive/{ref}.tar.gz"
+            try:
+                fetched = fetch_upstream(repo, ref, Path(fetch_tmp.name))
+            except Exception as e:  # noqa: BLE001 — surface root cause uniformly
+                print(f"error: fetch failed: {url}: {e}", file=sys.stderr)
+                return 1
+            args.src = fetched
+            # Inv 22e wiring: ensure .version reflects the fetched ref.
+            if "RABBIT_INSTALLED_REF" not in os.environ:
+                os.environ["RABBIT_INSTALLED_REF"] = ref
+
+        # Inv 22g (b): infer --target from script location when --update is
+        # set and --target is omitted. Sanity-check: must look like a rabbit
+        # install root (.claude/ + .version present).
+        if args.update and args.target is None:
+            inferred = Path(__file__).resolve().parent
+            if not (inferred / ".claude").exists() or not (inferred / ".version").exists():
+                print(
+                    f"error: --target inferred as {inferred} is not a rabbit "
+                    f"install root (missing .claude/ or .version); pass --target explicitly",
+                    file=sys.stderr,
+                )
+                return 1
+            args.target = inferred
+
+        return _main_with_args(args)
+    finally:
+        fetch_tmp.cleanup()
+
+
+def _main_with_args(args: argparse.Namespace) -> int:
     src_root: Path = args.src.resolve()
     dst_root: Path = args.target.resolve()
 
