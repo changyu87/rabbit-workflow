@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.0.0
+version: 5.1.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -14,10 +14,11 @@ status: active
 Provides `dispatch-tdd-subagent.py` (a prompt assembler), `tdd-step.py`
 (the forward-only TDD state machine), and the `tdd-subagent` agent
 definition. The assembled prompt drives a single feature through the
-7-step TDD cycle (LOCK → TEST-WRITE → TEST-RED → IMPLEMENT →
-CODE-REVIEW → TEST-GREEN → UNLOCK), invoking `tdd-step.py` at each
-state transition. Spec context-loading and the human-approval gate are
-the dispatcher's responsibility, not the subagent's.
+8-step TDD cycle (LOCK → TEST-WRITE → TEST-RED → IMPLEMENT →
+SYNC-DEPLOYED → CODE-REVIEW → TEST-GREEN → UNLOCK), invoking
+`tdd-step.py` at each state transition. Spec context-loading and the
+human-approval gate are the dispatcher's responsibility, not the
+subagent's.
 
 The `rabbit-feature-touch` orchestration skill that consumes this
 feature's dispatch prompt is owned by `rabbit-feature`. The retired
@@ -105,12 +106,12 @@ the template's `{{bypass_preamble_note}}` placeholder.
    scope marker, written at LOCK and removed at UNLOCK. Distinct
    per-feature markers permit simultaneous dispatch across features.
 
-8. **7-step section banners.** The assembled prompt contains a labelled
+8. **8-step section banners.** The assembled prompt contains a labelled
    section per step using the names `LOCK`, `TEST-WRITE`, `TEST-RED`,
-   `IMPLEMENT`, `CODE-REVIEW`, `TEST-GREEN`, `UNLOCK`, in that order,
-   numbered STEP 1 through STEP 7. Spec context-loading and human
-   approval are owned by the dispatcher (`rabbit-feature-touch`) and
-   absent from the assembled prompt.
+   `IMPLEMENT`, `SYNC-DEPLOYED`, `CODE-REVIEW`, `TEST-GREEN`, `UNLOCK`,
+   in that order, numbered STEP 1 through STEP 8. Spec context-loading
+   and human approval are owned by the dispatcher (`rabbit-feature-touch`)
+   and absent from the assembled prompt.
 
 9. **E2E test rule.** The assembled prompt declares that every spec
    behaviour MUST have a corresponding end-to-end test, and that the
@@ -138,11 +139,13 @@ the template's `{{bypass_preamble_note}}` placeholder.
 
 13. *(Retired — see CHANGELOG.md.)*
 
-14. **IMPLEMENT commit ordering.** Within the IMPLEMENT step, the
-    assembled prompt instructs the subagent to commit
-    (`git add <feature_dir>/ && git commit -m
-    "fix|feat(<feature>): <summary>"`) inside the iteration loop and
-    BEFORE the `tdd-step.py transition <feature_dir> impl` call.
+14. **IMPLEMENT/SYNC-DEPLOYED commit ordering.** Within the IMPLEMENT step,
+    the assembled prompt instructs the subagent to write code (Edit/Write)
+    and stage the feature-local changes (`git add <feature_dir>/`) but to
+    DEFER the commit until the end of SYNC-DEPLOYED (per Inv 46). The
+    `tdd-step.py transition <feature_dir> impl` call happens at the end
+    of IMPLEMENT (post-stage, pre-commit) so the impl state advance
+    records "code written" without the commit yet.
 
 15. **TEST-GREEN impl-SHA capture.** The assembled prompt's TEST-GREEN
     step captures `IMPL_SHA=$(git rev-parse HEAD)` and writes
@@ -263,15 +266,17 @@ The 13 invariants in this section were absorbed from the retired
 `scripts/tdd-step.py`.
 
 31. **Valid state set.** The valid `tdd_state` values are exactly:
-    `spec`, `spec-update`, `test-red`, `impl`, `test-green`,
-    `deprecated`. `transition` rejects any other target value with exit
-    `1`.
+    `spec`, `spec-update`, `test-red`, `impl`, `sync-deployed`,
+    `test-green`, `deprecated`. `transition` rejects any other target
+    value with exit `1`. The `sync-deployed` state was added in v5.1.0
+    per Inv 46 to land the 8-step cycle's new step at the state-machine
+    level.
 
 32. **Primary forward order.** The primary forward order is:
-    `spec -> spec-update -> test-red -> impl -> test-green ->
-    deprecated`. Without `--force`, a transition is accepted only when
-    the new state is the primary forward target of the current state
-    (or the alternate target defined in Inv 33).
+    `spec -> spec-update -> test-red -> impl -> sync-deployed ->
+    test-green -> deprecated`. Without `--force`, a transition is
+    accepted only when the new state is the primary forward target of
+    the current state (or the alternate target defined in Inv 33).
 
 33. **Alternate forward edge.** From `test-green`, the alternate forward
     target `spec-update` is accepted without `--force`. This is the only
@@ -433,6 +438,8 @@ The 13 invariants in this section were absorbed from the retired
     relative to tdd-subagent's scope, so this invariant's
     implementation MAY require a coordinated edit on the contract
     feature or a scope-override on the template file.
+
+46. **STEP 5 SYNC-DEPLOYED — publish-sync the deployed copies before commit.** STEP 5 of the 8-step cycle (per Inv 8) MUST appear between IMPLEMENT (STEP 4) and CODE-REVIEW (STEP 6) and MUST instruct the subagent to: (a) enumerate every `publish_file`, `publish_hook`, `publish_skill`, and `publish_settings` entry in the feature-under-scope's `feature.json manifest`; (b) for each entry, invoke the corresponding `contract.lib.publish.<api>` function in-process (lazy-import from `.claude/features/contract/lib/publish.py`) — or, equivalently, invoke `run_publish_loop(target_root=<repo_root>)` scoped to this single feature via subprocess — so every deployed destination is byte-equal to its feature-local source-of-truth; (c) `git add` every deployed path that publishing modified, in addition to the already-staged feature-local source changes from STEP 4; (d) at the END of STEP 5, perform the SINGLE atomic commit `git commit -m "fix|feat(<feature>): <summary>"` covering BOTH the feature-local source changes (staged in STEP 4 per Inv 14) AND the deployed-copy sync (staged in step (c) above); (e) immediately after the commit, invoke `tdd-step.py transition <feature_dir> sync-deployed` to advance the state machine into `sync-deployed` (per Inv 31/32). If ANY publish call in step (b) returns a non-passed `CheckResult`, the subagent MUST stop, emit a fail-HANDOFF with `tdd_state: impl`, `test_result: not_run`, `spec_compliance: fail`, `tdd_report_path: null`, `notes: "SYNC-DEPLOYED failed: <api>(<source>) returned <message>"`, and MUST NOT proceed to CODE-REVIEW or commit. This makes the feature-local/deployed-copy drift class — the source of 4 fix-up commits between PRs #257 and #270 — impossible by construction: every deployed artifact is byte-equal to its source AT impl-commit time, not later when `check_manifest_drift` re-syncs at the next Stop hook. Enforced by `test/test-prompt-sync-deployed-step.py` which reads the template at `.claude/features/contract/templates/prompts/tdd-subagent.txt` and asserts: (i) STEP 5 section header is `SYNC-DEPLOYED`, (ii) step body names `publish_file`, `publish_hook`, `publish_skill`, and `publish_settings` explicitly, (iii) step body instructs `git add` of deployed paths AND the single atomic commit at end-of-step, (iv) step body instructs `tdd-step.py transition <feature_dir> sync-deployed` AFTER the commit, (v) step body specifies the fail-HANDOFF shape on publish failure with `tdd_state: impl`. The template file edit is a cross-feature operation relative to tdd-subagent's scope (template lives under contract per Inv 57) and MAY require a coordinated edit on the contract feature or a scope-override on the template file. The new `sync-deployed` state in the `tdd-step.py` state machine (Inv 31/32) lands the step at the state-machine level alongside the prompt-level step.
 
 ## Out of Scope
 
