@@ -100,15 +100,15 @@ The marker is consumed on the next write — single-use only.
 ### Update
 
 In-place refresh (preserves `.rabbit/.runtime/` and any custom entries in
-`.rabbit/.claude/settings.json`):
+`.rabbit/.claude/settings.json`). Updates go through `install.py` directly —
+`install.sh` is for first-time installs only:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash -s -- --update
+cd <project-root>
+python3 .rabbit/install.py --update
 git add .rabbit/
 git commit -m "chore(rabbit): update to latest"
 ```
-
-`RABBIT_UPDATE=true` is accepted as an env-var equivalent of `--update`.
 
 ### Pin to a specific version
 

@@ -44,7 +44,7 @@ ALLOWLIST = {
     # the design doc and PR stack. The reference is documentary, not a
     # live project-management tag, and the migration is a permanent
     # architectural fact.
-    ("tdd-subagent/docs/spec/spec.md", 55, "CONTRACT-BACKLOG-1"),
+    ("tdd-subagent/docs/spec/spec.md", 56, "CONTRACT-BACKLOG-1"),
     # rabbit-issue spec.md Out of Scope note — names the historical
     # rabbit-file backlog item that originally framed the user-install
     # plugin-mode backend (deferred). Documentary reference explaining

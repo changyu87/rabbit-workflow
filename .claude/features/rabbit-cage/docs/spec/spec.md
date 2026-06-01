@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.20.0
+version: 5.21.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -343,8 +343,8 @@ string BEFORE splitting on `;|&` segment delimiters.
     manifest entry to an already-shipped feature, requires extending
     `FEATURE_INCLUDES` before the test passes.
 
-22. **Install-time `--update` mode for in-place refresh.** `install.py main()` accepts an optional `--update` flag. `install.sh` accepts the same flag at the shell layer (and honours `RABBIT_UPDATE=true` as an env-var equivalent) and forwards it verbatim to `install.py`. Update-mode semantics:
-    (a) **Default-deny without the flag.** When `--update` is absent, the existing refusals stay as-is: `install.sh` refuses if `.rabbit/` exists at the invocation cwd, and `install.py` refuses if `--target` exists and is non-empty. Accidental re-run never silently overwrites a committed install.
+22. **Install-time `--update` mode for in-place refresh.** `install.py main()` accepts an optional `--update` flag — the SOLE update mechanism. `install.sh` does NOT support `--update` (the flag was retired per #273); install.sh is for first-time installs only. Update-mode semantics:
+    (a) **install.sh refuses unconditionally on existing target; install.py default-deny without the flag.** `install.sh` ALWAYS refuses when `.rabbit/` exists at the invocation cwd (no `--update` flag, no `RABBIT_UPDATE` env-var equivalent). The refusal error message MUST point the user at the survivor command: `python3 .rabbit/install.py --update`. `install.py` without `--update` refuses if `--target` exists and is non-empty (unchanged). Accidental re-run never silently overwrites a committed install.
     (b) **Refresh in place when set.** When `--update` is passed, the empty-target check is skipped. `install.py` refreshes every file inside the MVP install closure (the union of `SAME_PATH_FILES`, `HOOKS`, `SKILLS`, `AGENTS`, `COMMANDS`, and `FEATURE_INCLUDES`) by overwriting per-file at its declared destination — no `rm -rf` of the target tree, no whole-tree relayout.
     (c) **Preserve everything outside the closure.** Anything NOT in the install closure survives untouched. Concretely: `<target>/.rabbit/.runtime/` (counters, scope markers, bypass-once, mode marker, and any other transient bookkeeping), `<target>/.claude/settings.local.json`, and any user-touched non-rabbit files anywhere under `<target>`.
     (d) **`settings.json` via `publish_settings`.** On `--update`, the `<target>/.claude/settings.json` write routes through `contract.lib.publish.publish_settings` (contract Inv 44) instead of a raw file copy. This reuses the existing merge-aware semantics — non-rabbit `hooks[<event>][]` entries, user-added permissions, and user-set env vars survive — without duplicating the merge logic. The Inv 19 plugin-mode rewrites (RABBIT_ROOT injection, `$(git rev-parse --show-toplevel)` -> `$RABBIT_ROOT`) still apply after the merge.
