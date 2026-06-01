@@ -72,12 +72,13 @@ def usage():
 
 
 _FORWARD = {
-    "spec":        "spec-update",
-    "spec-update": "test-red",
-    "test-red":    "impl",
-    "impl":        "test-green",
-    "test-green":  "deprecated",
-    "deprecated":  "",
+    "spec":           "spec-update",
+    "spec-update":    "test-red",
+    "test-red":       "impl",
+    "impl":           "sync-deployed",
+    "sync-deployed":  "test-green",
+    "test-green":     "deprecated",
+    "deprecated":     "",
 }
 
 # Alternate forward transitions. Each state's primary next is in _FORWARD;
@@ -88,7 +89,10 @@ _FORWARD_ALT = {
     "test-green": ["spec-update"],
 }
 
-_VALID_STATES = {"spec", "spec-update", "test-red", "impl", "test-green", "deprecated"}
+_VALID_STATES = {
+    "spec", "spec-update", "test-red", "impl",
+    "sync-deployed", "test-green", "deprecated",
+}
 
 
 def forward_next(state):
