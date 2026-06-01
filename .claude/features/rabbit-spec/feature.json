@@ -2,7 +2,7 @@
   "name": "rabbit-spec",
   "version": "1.3.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-red",
+  "tdd_state": "test-green",
   "status": "active",
   "summary": "Owner of the rabbit workflow's spec-lifecycle skills. Hosts rabbit-spec-create (drafts initial spec bodies via the read-only spec-creator subagent) and rabbit-spec-update (revises existing specs; absorbed from rabbit-feature/rabbit-feature-spec).",
   "surface": {
