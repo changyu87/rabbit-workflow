@@ -20,7 +20,7 @@ Exit codes:
     1 = invocation error (missing args, glob resolution failure)
     2 = build-prompt.py subprocess failure
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 """
@@ -30,6 +30,7 @@ import glob
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 MAX_FILES = 50
 
@@ -47,10 +48,11 @@ def main():
         resolved.extend(glob.glob(g, recursive=True))
     resolved = sorted(set(resolved))[:MAX_FILES]
 
-    repo_root = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        capture_output=True, text=True, check=False,
-    ).stdout.strip() or os.getcwd()
+    # Resolve repo_root via __file__ — mode-agnostic. See spec Inv 3(e):
+    # parents[0]=scripts, [1]=rabbit-spec, [2]=features, [3]=.claude, [4]=repo_root.
+    # `git rev-parse` and `os.getcwd()` are forbidden here because in plugin
+    # mode they resolve to the user-project root, not the rabbit root.
+    repo_root = str(Path(__file__).resolve().parents[4])
 
     build_prompt = os.path.join(repo_root, ".claude/features/contract/scripts/build-prompt.py")
 
