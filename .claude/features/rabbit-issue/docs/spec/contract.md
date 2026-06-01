@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.0.0
+version: 1.1.0
 owner: cyxu
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -27,7 +27,8 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
   },
   "reads": {
     "feature.json": "via rabbit-feature-scope (for --feature validation)",
-    "github_issues": "via gh CLI, repo slug from `git remote get-url origin`"
+    "github_issues": "via gh CLI; target repo slug resolves to RABBIT_ISSUE_REPO env var when set, else const `changyu87/rabbit-workflow` declared in _gh.py — never derived from cwd's git remote",
+    "external": ["env-var:RABBIT_ISSUE_REPO"]
   },
   "invokes": {
     "rabbit-feature-scope": "skill — resolve feature for ambiguous filings",

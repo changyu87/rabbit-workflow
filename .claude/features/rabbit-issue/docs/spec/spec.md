@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.0.0
+version: 1.1.0
 owner: cyxu
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -70,12 +70,26 @@ and records the SHA in the timeline event.
 
 ### Repository discovery
 
-The target repo slug is derived at runtime from
-`git remote get-url origin`. All scripts fail loudly with an
-actionable error if:
+`rabbit-issue` ALWAYS targets the upstream rabbit-workflow repo,
+regardless of the cwd's git remote. Bugs about rabbit go to rabbit's
+repo, period — never to the user's project repo.
 
-- `gh auth status` is not green, or
-- the `origin` remote is not a GitHub URL.
+`_gh.py` resolves the target repo slug as:
+
+1. The `RABBIT_ISSUE_REPO` environment variable when set (override for
+   forks, testing, etc. — e.g. `RABBIT_ISSUE_REPO=myfork/rabbit-workflow`).
+2. Otherwise the const `RABBIT_REPO_DEFAULT = "changyu87/rabbit-workflow"`
+   declared at module top in `_gh.py`.
+
+`_gh.py` does NOT call `git remote get-url origin` at any point. The
+old cwd-derived discovery (and its "fails loudly if origin is not a
+GitHub URL" branch) is intentionally removed — in plugin installs the
+cwd was the user's project, which silently directed bugs to the wrong
+target (or loudly aborted on non-GH origins like Perforce / local
+paths), defeating the bug-capture path that rabbit-issue exists to
+provide.
+
+Scripts still fail loudly when `gh auth status` is not green.
 
 ## What this feature does NOT define
 
