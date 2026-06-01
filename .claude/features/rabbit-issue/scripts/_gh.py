@@ -4,36 +4,36 @@ Provides repo discovery, label bootstrap, issue fetch, and the
 `rabbit-managed` safety guard. All `gh` invocations go through subprocess
 so the test suite can swap `gh` for a PATH-resident shim.
 
-Version: 1.0.0
+Repo slug resolves to $RABBIT_ISSUE_REPO env var when set, else the
+module-level const RABBIT_REPO_DEFAULT. No git remote consultation —
+bugs about rabbit always go to rabbit's repo, regardless of the cwd.
+
+Version: 1.1.0
 Owner: cyxu
 Deprecation criterion: when rabbit-issue is retired
 """
 import json
-import re
+import os
 import subprocess
 import sys
 from typing import List
 
 
-_GITHUB_REMOTE_RE = re.compile(
-    r"^(?:https://github\.com/|git@github\.com:)([^/]+)/(.+?)(?:\.git)?$"
-)
+RABBIT_REPO_DEFAULT = "changyu87/rabbit-workflow"
 
 
 def repo_slug() -> str:
-    """Return 'owner/repo' parsed from `git remote get-url origin`.
+    """Return the target 'owner/repo' for all rabbit-issue gh calls.
 
-    Exits with an actionable error if the remote is not a GitHub URL.
+    Resolution order (Fixes #264):
+      1. RABBIT_ISSUE_REPO env var when set (fork / testing override).
+      2. RABBIT_REPO_DEFAULT const declared above.
+
+    Never consults `git remote get-url origin` — in plugin installs the
+    cwd is the user's project, which silently directed bugs to the wrong
+    target.
     """
-    url = subprocess.check_output(
-        ["git", "remote", "get-url", "origin"], text=True
-    ).strip()
-    m = _GITHUB_REMOTE_RE.match(url)
-    if not m:
-        sys.exit(
-            "rabbit-issue: `origin` is not a GitHub URL: {}".format(url)
-        )
-    return "{}/{}".format(m.group(1), m.group(2))
+    return os.environ.get("RABBIT_ISSUE_REPO") or RABBIT_REPO_DEFAULT
 
 
 def ensure_labels(labels: List[str]) -> None:

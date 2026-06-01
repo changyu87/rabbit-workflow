@@ -1,9 +1,9 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-issue",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "owner": "cyxu",
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "GitHub Issues wrapper for filing, listing, and lifecycle-managing bugs and enhancements via the `gh` CLI. Replaces rabbit-file's branch-backed bug-and-backlog (B/B) storage with native GH Issues; the rabbit-managed label gates rabbit's automation from touching human-filed issues.",
   "surface": {
     "hooks": [],
@@ -20,7 +20,7 @@
     ]
   },
   "deprecation_criterion": "when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill",
-  "updated": "2026-05-30",
+  "updated": "2026-06-01",
   "manifest": [
     {
       "api": "publish_skill",
@@ -44,5 +44,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "SKILL.md prose cleanup only; spec does not pin the user-decision-gate wording"
+  "spec_no_change_reason": "spec amended in prior commit 8f7de4f (Refs #264); this cycle implements code+tests against already-amended spec"
 }
