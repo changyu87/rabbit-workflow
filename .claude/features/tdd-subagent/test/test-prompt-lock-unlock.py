@@ -47,9 +47,9 @@ else:
         ko("inv12: LOCK contains an executable `trap '...'` invocation")
 
 # Inv 12: UNLOCK section does explicit rm of the per-feature marker.
-unlock_match = re.search(r"STEP 7 — UNLOCK\n═+\n(.*?)\n═+\n", prompt, re.DOTALL)
+unlock_match = re.search(r"STEP 8 — UNLOCK\n═+\n(.*?)\n═+\n", prompt, re.DOTALL)
 if not unlock_match:
-    ko("inv12: STEP 7 UNLOCK section not isolated")
+    ko("inv12: STEP 8 UNLOCK section not isolated")
 else:
     unlock_body = unlock_match.group(1)
     if re.search(r"rm -f \S+\.rabbit-scope-active-tdd-subagent", unlock_body):

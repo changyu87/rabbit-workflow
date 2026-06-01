@@ -76,7 +76,7 @@ def t_enforcement_warning():
     )
     _build_synthetic_contract(repo, check_module_body=body)
     feat = os.path.join(repo, '.claude', 'features', 'enf_warn_feat')
-    _make_feature_dir(feat, 'enf_warn_feat', 'impl')
+    _make_feature_dir(feat, 'enf_warn_feat', 'sync-deployed')
     env = {**os.environ, 'RABBIT_ROOT': repo}
     rc, _out, err = _run(['python3', TDD_STEP, 'transition', feat, 'test-green'], env=env)
     if rc == 0 and b'R3 check failed' in err:
@@ -107,7 +107,7 @@ def t_sentinel_warning():
     )
     _build_synthetic_contract(repo, check_module_body=body)
     feat = os.path.join(repo, '.claude', 'features', 'sentinel_feat')
-    _make_feature_dir(feat, 'sentinel_feat', 'impl')
+    _make_feature_dir(feat, 'sentinel_feat', 'sync-deployed')
     env = {**os.environ, 'RABBIT_ROOT': repo}
     rc, _out, err = _run(['python3', TDD_STEP, 'transition', feat, 'test-green'], env=env)
     if rc == 0 and b'sentinel' in err:
@@ -136,7 +136,7 @@ def t_hook_non_blocking():
     )
     _build_synthetic_contract(repo, check_module_body=body)
     feat = os.path.join(repo, '.claude', 'features', 'nonblock_feat')
-    _make_feature_dir(feat, 'nonblock_feat', 'impl')
+    _make_feature_dir(feat, 'nonblock_feat', 'sync-deployed')
     env = {**os.environ, 'RABBIT_ROOT': repo}
     rc, _out, _err = _run(['python3', TDD_STEP, 'transition', feat, 'test-green'], env=env)
     with open(os.path.join(feat, 'feature.json')) as f:
