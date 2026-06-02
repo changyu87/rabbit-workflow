@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.19.0
+version: 1.20.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -144,13 +144,32 @@ Scripts (under `scripts/`):
     (per-feature) markers at the repo root. Scope markers are
     exclusively the TDD subagent's responsibility.
 
-16. **Step 3 spec-commit obligation.** The SKILL.md Step 3 documents
-    the obligation to commit spec changes BEFORE Step 5: after
-    `rabbit-feature-spec` returns, the dispatcher stages modifications
-    under `.claude/features/<feature-name>/` and commits with message
-    pattern `spec(<feature-name>): update spec for <one-line request
-    summary>`. The commit is skipped only when the staged diff against
-    `docs/spec/spec.md` is empty.
+16. **Step 3 spec-commit obligation (mode-aware).** The SKILL.md Step 3
+    documents the obligation to commit spec changes BEFORE Step 5: after
+    `rabbit-spec-update` returns, the dispatcher resolves a `feature_dir`
+    by detecting the rabbit mode from `<repo_root>/.rabbit/.runtime/mode`
+    (the same dual-mode pattern documented by `rabbit-feature-scaffold`'s
+    `## Modes` section):
+    - **Standalone mode** (marker absent or content equals `standalone`):
+      `feature_dir = .claude/features/<feature-name>/`. The git add form is
+      `git add <feature_dir>`.
+    - **Plugin mode** (marker content equals `plugin`):
+      `feature_dir = .rabbit/rabbit-project/features/<feature-name>/`. The
+      git add form is `git add -f <feature_dir>` — the `-f` is REQUIRED
+      because the host user-project's `.gitignore` typically ignores
+      `.rabbit/`, and without `-f` the add silently produces an empty
+      staged diff, the commit-skip branch trivially passes, and no commit
+      lands. The `git add -f` ensures the spec change is actually staged
+      so the conditional diff-check + commit produces a real commit
+      against the host repo.
+    The commit message pattern remains
+    `spec(<feature-name>): update spec for <one-line request summary>`.
+    The commit is skipped only when the staged diff against
+    `<feature_dir>/docs/spec/spec.md` is empty.
+    Enforced by `test/test-touch-skill.py` which asserts the SKILL.md
+    Step 3 body contains both branches (standalone path + plugin path
+    with `-f`) and explicitly references `.rabbit/.runtime/mode` as the
+    mode-detection source.
 
 ### rabbit-feature-scope SKILL.md and scripts
 
