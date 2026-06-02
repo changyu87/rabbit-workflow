@@ -1,9 +1,9 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "owner": "cyxu",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and reschedules via ScheduleWakeup until the user issues an explicit stop.",
   "surface": {
     "hooks": [],
@@ -52,5 +52,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "spec Inv 22 already landed in pre-dispatch commit 2ce8426; this cycle implements scripts/banner-status.py + test"
+  "spec_no_change_reason": "test-only patch \u2014 Inv 14 already covers end-to-end; mechanics catch up to post-#383 banner-status.py delegation"
 }

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.7.5
+version: 0.7.6
 template_version: 2.0.0
 ---
 
@@ -14,7 +14,7 @@ template_version: 2.0.0
     "scripts": [],
     "schemas": [],
     "templates": [],
-    "skills": [{"name": "rabbit-auto-evolve", "version": "0.7.5"}]
+    "skills": [{"name": "rabbit-auto-evolve", "version": "0.7.6"}]
   },
   "reads": {
     "files": [],

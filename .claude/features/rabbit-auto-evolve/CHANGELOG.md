@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.6 — 2026-06-02
+
+- Fix #384: `test/test-banner-suppression.py` synthetic tempdir now copies `scripts/banner-status.py` into `<td>/.claude/features/rabbit-auto-evolve/scripts/`. After PR #383 refactored `contract.lib.runtime.emit_auto_evolve_banner` to delegate line-1 and line-2 content to `banner-status.py` via subprocess, the test's synthetic `.claude/features/` tree lacked the script so the subprocess invocation returned non-zero (`No such file or directory`) and `emit_auto_evolve_banner` fell through to its best-effort `[]` failure path — scenarios S2/S3/S4 saw an empty banner. The fix copies the real `banner-status.py` (sourced via `__file__`-relative repo-root resolution) into the tempdir during `build_repo` so subprocess delegation resolves. No source-code change; spec Inv 14 unchanged.
+
 ## 0.7.5 — 2026-06-02
 
 - Fix #380 (step 1 of 2): new `scripts/banner-status.py` owns the active-banner line-2 text variants. Emits `{active, line1, line2}` JSON on stdout; always exits 0; reads markers only (no `git`, no `gh`, no filesystem writes). Four line-2 variants with `aborted > restart-needed > running > default` precedence; the new `running` variant (`loop in progress`) is NOT yet surfaced at SessionStart — the current `contract.lib.runtime` `emit_auto_evolve_banner` implementation still inlines the three pre-existing variants. A follow-up cycle against the `contract` feature will refactor `emit_auto_evolve_banner` to invoke `banner-status.py` instead, at which point Inv 14 will defer line-2 ownership to Inv 22. Added spec Inv 22 + ownership-migration note on Inv 14; new `test/test-banner-status.py` covers all 4 variants + 3 precedence pairs + always-exit-0 contract.
