@@ -7,7 +7,7 @@ params (feature_dir, repo_root) and return CheckResult.
 All publish operations are idempotent: if the destination already matches the source
 (by SHA-256 for files, by content equality for generated), the call is a no-op.
 
-Version: 1.1.0
+Version: 1.0.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native artifact publishing.
 """
@@ -104,17 +104,9 @@ def publish_hook(event: str, source: str, matcher: str = "*", *,
     if not isinstance(data, dict):
         data = {}
 
-    # Inv 50: command MUST be CWD-independent. Two forms are emitted based on
-    # the caller's runtime env. Plugin form is used when RABBIT_ROOT is set
-    # (deployed `.rabbit/` install where install.py writes env.RABBIT_ROOT into
-    # settings.json). Standalone form is used otherwise (dev workspace with
-    # .git present). /bin/sh substitutes the env var or runs the git command at
-    # hook-fire time.
-    rabbit_root_env = os.environ.get("RABBIT_ROOT")
-    if rabbit_root_env:
-        command = f"$RABBIT_ROOT/.claude/hooks/{hook_name}"
-    else:
-        command = f"$(git rev-parse --show-toplevel)/.claude/hooks/{hook_name}"
+    # Inv 50: command MUST be CWD-independent. /bin/sh substitutes the absolute
+    # repo root at hook-fire time via $(git rev-parse --show-toplevel).
+    command = f"$(git rev-parse --show-toplevel)/.claude/hooks/{hook_name}"
     legacy_command = f".claude/hooks/{hook_name}"
     hooks_section = data.setdefault("hooks", {})
     event_entries = hooks_section.setdefault(event, [])

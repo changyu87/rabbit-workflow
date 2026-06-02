@@ -28,8 +28,6 @@ import importlib.util
 import json
 import os
 import re
-import subprocess
-import sys
 import time
 
 
@@ -655,82 +653,3 @@ def write_mode_marker(*, repo_root: str) -> dict:
         return ok_result()
     except OSError as e:
         return error_result(str(e))
-
-
-def _load_rabbit_block(repo_root: str):
-    """Lazy-load rabbit_block from contract/scripts/rabbit_print.py.
-
-    The script directory is not on sys.path by default; we resolve it
-    relative to repo_root and import via importlib.
-    """
-    path = os.path.join(repo_root, ".claude", "features", "contract",
-                         "scripts", "rabbit_print.py")
-    spec = importlib.util.spec_from_file_location("rabbit_print_runtime", path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"cannot load rabbit_print from {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.rabbit_block
-
-
-def check_release_update(*, repo_root: str) -> dict:
-    """Thin runtime wrapper around scripts/check-release-update.py.
-
-    Subprocesses the helper (which owns the throttle, urllib fetch, and
-    version compare per Inv 63), parses its JSON stdout, and translates
-    the result into a typed runtime return:
-
-      - {"newer": true, ...}  -> print_result(text, "📦", "yellow") where
-        text is a rabbit_block of three lines: update headline, the
-        install.py --update command (or fresh-install fallback when
-        self_update_available is false), and the `claude --resume` hint.
-      - {"newer": false}      -> ok_result()
-      - any other outcome (non-zero exit, empty stdout, malformed JSON,
-        subprocess exception) -> ok_result() silently. NEVER blocks or
-        surfaces errors to Claude.
-
-    Per spec Inv 47, this function contains NO HTTP, version-compare, or
-    throttle logic — that all lives in the helper script.
-    """
-    script = os.path.join(repo_root, ".claude", "features", "contract",
-                           "scripts", "check-release-update.py")
-    try:
-        env = os.environ.copy()
-        env["RABBIT_ROOT"] = repo_root
-        result = subprocess.run(
-            [sys.executable, script],
-            capture_output=True, text=True, timeout=15, env=env,
-        )
-    except Exception:  # noqa: BLE001 - NEVER block the user
-        return ok_result()
-
-    if result.returncode != 0:
-        return ok_result()
-    raw = (result.stdout or "").strip()
-    if not raw:
-        return ok_result()
-    try:
-        payload = json.loads(raw)
-    except (json.JSONDecodeError, ValueError):
-        return ok_result()
-    if not isinstance(payload, dict) or not payload.get("newer"):
-        return ok_result()
-
-    channel = payload.get("channel", "?")
-    current = payload.get("current", "?")
-    new = payload.get("new", "?")
-    self_update = bool(payload.get("self_update_available"))
-
-    try:
-        rabbit_block = _load_rabbit_block(repo_root)
-    except (ImportError, OSError):
-        return ok_result()
-
-    headline = f"update available: {new} (current: {current}) on channel {channel}"
-    if self_update:
-        update_line = "to update: cd <project-root> && python3 .rabbit/install.py --update"
-    else:
-        update_line = "to update: see README for first-install command"
-    resume_line = "then resume: claude --resume"
-    text = rabbit_block(headline, update_line, resume_line)
-    return print_result(text, "📦", "yellow")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Task 3.2 — scaffold-feature.py plugin-mode behavior.
+"""Task 3.2 — new-feature.py plugin-mode behavior.
 
-Exercises the plugin-mode branch of `scaffold-feature.py`:
+Exercises the plugin-mode branch of `new-feature.py`:
 
   - t1: happy path — `<name> <path-glob>` produces
         `<repo>/.rabbit/rabbit-project/features/<name>/` plus a
@@ -33,7 +33,7 @@ import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-NEW_FEATURE = REPO_ROOT / ".claude/features/rabbit-feature/scripts/scaffold-feature.py"
+NEW_FEATURE = REPO_ROOT / ".claude/features/rabbit-feature/scripts/new-feature.py"
 
 
 def _set_plugin_mode(host_root: Path) -> None:
@@ -101,8 +101,8 @@ def test_t1_plugin_happy_path() -> None:
         # caller can hand off to the seeder subagent. The output should name
         # both the seeder script and the new feature name.
         out = res.stdout
-        assert "dispatch-spec-create.py" in out, (
-            f"plugin-mode output must reference dispatch-spec-create.py; got {out!r}"
+        assert "dispatch-spec-seeder.py" in out, (
+            f"plugin-mode output must reference dispatch-spec-seeder.py; got {out!r}"
         )
         assert "my-feature" in out, (
             f"plugin-mode output must name the new feature; got {out!r}"

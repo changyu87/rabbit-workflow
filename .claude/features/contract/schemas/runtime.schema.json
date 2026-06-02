@@ -47,8 +47,7 @@
               "iterate_configurables_banner",
               "check_prompt_injection_failures",
               "cleanup_old_prompts",
-              "write_mode_marker",
-              "check_release_update"
+              "write_mode_marker"
             ]
           },
           "args": {"type": "object"}

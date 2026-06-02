@@ -230,37 +230,6 @@ with tempfile.TemporaryDirectory() as td:
     else:
         ok("t-true-orphan: exit 1 with stderr naming the undeclared placeholder")
 
-# ---------- t-value-with-undeclared-placeholder-text ----------
-with tempfile.TemporaryDirectory() as td:
-    entry = {
-        "id": "demo-prompt",
-        "kind": "skill",
-        "inject": [".claude/features/policy/philosophy.md"],
-        "slots": ["args"],
-    }
-    make_tree(td, entry, template_body="TASK: {{args}}\n")
-    r = run_cli(
-        td,
-        "--callable-id", "demo-prompt",
-        "--slot", "args=See docs about {{placeholder}} syntax",
-    )
-    if r.returncode != 0:
-        fail(f"t-value-with-undeclared-placeholder-text: expected exit 0, got {r.returncode}; "
-             f"stdout={r.stdout!r} stderr={r.stderr!r}")
-    else:
-        out_path = r.stdout.strip()
-        if not out_path or not os.path.isfile(out_path):
-            fail(f"t-value-with-undeclared-placeholder-text: stdout must name an existing file, "
-                 f"got {out_path!r}; stderr={r.stderr}")
-        else:
-            with open(out_path) as f:
-                content = f.read()
-            if "TASK: See docs about {{placeholder}} syntax" not in content:
-                fail("t-value-with-undeclared-placeholder-text: assembled prompt missing "
-                     "verbatim substituted value")
-            else:
-                ok("t-value-with-undeclared-placeholder-text: undeclared name in slot value not flagged as orphan")
-
 # ---------- t-mixed-declared-and-undeclared ----------
 with tempfile.TemporaryDirectory() as td:
     entry = {

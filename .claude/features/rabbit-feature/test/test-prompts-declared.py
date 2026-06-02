@@ -29,7 +29,15 @@ EXPECTED = {
         ],
         "slots": ["args"],
     },
-    "rabbit-feature-scaffold": {
+    "rabbit-feature-spec": {
+        "kind": "skill",
+        "inject": [
+            ".claude/features/policy/philosophy.md",
+            ".claude/features/policy/spec-rules.md",
+        ],
+        "slots": ["args"],
+    },
+    "rabbit-feature-new": {
         "kind": "skill",
         "inject": [
             ".claude/features/policy/philosophy.md",
@@ -60,8 +68,8 @@ def main() -> int:
     if not isinstance(prompts, list):
         print("FAIL: prompts is not a list")
         return 1
-    if len(prompts) != 4:
-        failures.append(f"expected exactly 4 entries, got {len(prompts)}")
+    if len(prompts) != 5:
+        failures.append(f"expected exactly 5 entries, got {len(prompts)}")
     by_id = {e["id"]: e for e in prompts if isinstance(e, dict) and "id" in e}
     for eid, want in EXPECTED.items():
         got = by_id.get(eid)

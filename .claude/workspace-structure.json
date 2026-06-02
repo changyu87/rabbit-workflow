@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "root": "rabbit",
+  "nodes": [
+    {
+      "name": "features",
+      "required": true,
+      "description": "all feature source directories",
+      "children": [
+        { "name": "contract",         "required": true,  "description": "cross-feature schemas, dispatch scripts, enforcement", "children": [] },
+        { "name": "policy",           "required": true,  "description": "canonical rule docs (philosophy, spec-rules, coding-rules)", "children": [] },
+        { "name": "rabbit-cage",      "required": true,  "description": "Claude Code surface owner", "children": [] },
+        { "name": "tdd-subagent",     "required": true,  "description": "TDD subagent dispatch (dispatch-tdd-subagent.py) + forward-only TDD state machine (tdd-step.py) — absorbed tdd-state-machine at v4.0.0", "children": [] },
+        { "name": "tdd-state-machine", "required": false, "description": "RETIRED — absorbed into tdd-subagent at v4.0.0 (TDD-SUBAGENT-BACKLOG-18); tombstone retained", "children": [] },
+        { "name": "rabbit-spec",      "required": false, "description": "RETIRED — surface absorbed into rabbit-feature as rabbit-feature-spec; tombstone retained per Inv 43", "children": [] },
+        { "name": "rabbit-file",      "required": true,  "description": "unified bug and backlog filing/tracking on the bug-backlog-files branch", "children": [] },
+        { "name": "rabbit-feature",   "required": true,  "description": "owns rabbit-feature-touch orchestration skill; invokes tdd-subagent scripts", "children": [] },
+        { "name": "rabbit-config",    "required": true,  "description": "configuration manager; hosts /rabbit-config skill; emits Stop/SessionStart alerts for active overrides", "children": [] },
+        { "name": "rabbit-meta",      "required": true,  "description": "plugin-mode machinery for the per-project user-interfacer install — owns mode detection, CLAUDE.md/README.md generators, bootstrap helper", "children": [] },
+        { "name": "spec-seeder",      "required": true,  "description": "read-only subagent that drafts initial spec.md sections for newly-declared user-project features (invoked by rabbit-feature-new in plugin mode)", "children": [] }
+      ]
+    },
+    { "name": "skills",    "required": true,  "description": "skill library (published from feature manifests)", "children": [] },
+    { "name": "hooks",     "required": true,  "description": "hook scripts (published from rabbit-cage manifest)", "children": [] },
+    { "name": "commands",  "required": true,  "description": "slash commands (published from feature manifests)", "children": [] },
+    { "name": "bugs",      "required": false, "description": "centralized bug tracker (created on first bug filing)", "children": [] },
+    { "name": "backlogs",  "required": false, "description": "centralized backlog tracker (created on first backlog filing)", "children": [] }
+  ]
+}

@@ -9,6 +9,7 @@ Scaffold and maintain project directories managed by rabbit.
 /rabbit-project init <name>
 /rabbit-project set-path <name> <absolute-path>
 /rabbit-project map <name> <source-path> <feature-name>
+/rabbit-project consolidate <name>
 
 ## Implementation
 
@@ -18,3 +19,4 @@ per-subcommand Python scripts:
 
 - `set-path`    → `.claude/features/rabbit-cage/scripts/rabbit-project-set-path.py`
 - `map`         → `.claude/features/rabbit-cage/scripts/rabbit-project-map.py`
+- `consolidate` → `.claude/features/rabbit-cage/scripts/rabbit-project-consolidate.py`
