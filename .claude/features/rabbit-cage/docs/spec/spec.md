@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.33.0
+version: 5.34.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -447,6 +447,8 @@ string BEFORE splitting on `;|&` segment delimiters.
     The cross-feature read is declared in this feature's `contract.md` `invokes.functions` block (target: `contract.lib.checks.validate_agent_prompt_sentinel`); the cross-feature export is declared in contract's `contract.md` `provides.functions` block (per contract Inv 66 (c)).
 
     Enforced by NEW test `test/test-scope-guard-agent-sentinel.py`: (i) Agent call with prompt containing sentinel → hook exits 0, stdout `{}`, call proceeds; (ii) Agent call with prompt missing sentinel + no bypass marker → hook emits the deny-shape JSON with the canonical violation message, exits non-zero; (iii) Agent call with bypass marker `.rabbit/agent-sentinel-bypass` present → hook exits 0 even when sentinel is absent; (iv) non-Agent tool call (e.g. Bash, Edit) → hook does NOT invoke the sentinel validator (regression: the existing file-write enforcement is unchanged); (v) Agent call with malformed tool_input (no `prompt` key) → hook emits the deny-shape (defensive). Wired into `test/run.py`.
+
+32. **Universal Stop-event timestamp runtime entry (delegate to contract Inv 67).** rabbit-cage's `feature.json` `runtime.Stop` array MUST include an entry `{"api": "emit_stop_timestamp", "args": {}}` that invokes the universal turn-end-marker function exported by contract per Inv 67. Stop-dispatcher.py enumerates this entry like any other and renders the returned `print_result` (a compact `[rabbit] ⏱ HH:MM:SS` line) at the end of every session's Stop event. The entry belongs in rabbit-cage's runtime (not contract's) because it is universal — every rabbit-workflow session should see the timestamp, irrespective of any specific feature being active. Cross-feature invocation declared in this feature's `contract.md` `invokes.functions` block (target: `contract.lib.runtime.emit_stop_timestamp`). Enforced by `test/test-stop-timestamp-entry-present.py`: load this feature's `feature.json`, assert `runtime.Stop` contains an entry with `api == "emit_stop_timestamp"`; assert that entry's `args` is an empty dict (no parameters needed). Wired into `test/run.py`.
 
 ## Tech Stack
 
