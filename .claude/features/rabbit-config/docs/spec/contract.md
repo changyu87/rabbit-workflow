@@ -1,6 +1,6 @@
 ---
 feature: rabbit-config
-version: 1.2.0
+version: 1.3.0
 template_version: 2.0.0
 ---
 
