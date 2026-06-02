@@ -1,7 +1,7 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "owner": "cyxu",
   "tdd_state": "test-green",
   "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and reschedules via ScheduleWakeup until the user issues an explicit stop.",
@@ -52,5 +52,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "spec.md Inv 10/11 already updated by dispatcher pre-dispatch (version 0.5.0)"
+  "spec_no_change_reason": "spec Inv 16 + 0.5.1 bump landed in pre-dispatch commit 416b0e7"
 }

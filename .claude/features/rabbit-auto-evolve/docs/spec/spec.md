@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.5.0
+version: 0.5.1
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -850,6 +850,27 @@ Phase E merges complete.
     landing change that touches any of the four versioned artifacts
     MUST bump them in lockstep — test-feature-shape will fail
     otherwise.
+
+16. **Script references in SKILL.md MUST be feature-relative.**
+    Every script path inside `skills/rabbit-auto-evolve/SKILL.md`
+    (in subcommand sections, in the 12-phase tick table, in any
+    Bash example) MUST use the literal prefix
+    `.claude/features/rabbit-auto-evolve/scripts/`. Bare
+    `scripts/<name>.py` is forbidden because Claude resolves SKILL
+    paths relative to the SKILL.md's own location
+    (`.claude/skills/rabbit-auto-evolve/`), which has no `scripts/`
+    subdirectory — `publish_skill` copies only `SKILL.md`, not the
+    scripts dir.
+
+    This invariant was introduced by issue #362: in v0.5.0 the
+    `on`/`off` sections used bare `scripts/set-evolve-mode.py`,
+    causing file-not-found errors on first user invocation. v0.5.1
+    fixes every reference to use the full feature-relative path.
+
+    Enforced by `test/test-on-off-surface.py` (asserts the on/off
+    sections contain the full feature-relative prefix) and
+    `test/test-tick-skill.py` (asserts every script reference in
+    the 12-phase table uses the full prefix).
 
 ## Known gaps
 

@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.5.0
+version: 0.5.1
 owner: cyxu
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 model: opus
@@ -15,16 +15,18 @@ issues, triages each, dispatches TDD subagents, merges approved PRs into
 the user issues an explicit stop.
 
 The mode is entered via `/rabbit-auto-evolve on` (compound mutator
-`scripts/set-evolve-mode.py on`); exited via `/rabbit-auto-evolve off`.
-Both transitions require a Claude restart so the new
-`permissions.defaultMode` in `.claude/settings.local.json` takes effect.
+`.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py on`);
+exited via `/rabbit-auto-evolve off`. Both transitions require a Claude
+restart so the new `permissions.defaultMode` in
+`.claude/settings.local.json` takes effect.
 
 ## Subcommands
 
 ### `on`
 
-Activate auto-evolve mode. Invokes `scripts/set-evolve-mode.py on`, which
-performs three deterministic mutations in order:
+Activate auto-evolve mode. Invokes
+`.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py on`,
+which performs three deterministic mutations in order:
 
 1. Write `.rabbit-human-approval-bypass` (flips `human-approval` off).
 2. Set `permissions.defaultMode: "bypassPermissions"` in
@@ -84,23 +86,25 @@ from disk-persisted state in `.rabbit/auto-evolve-state.json`.
 |---|-------------------|----------------------------------------------|
 | 0 | `stop-check`      | (none — file existence check on `.rabbit-auto-evolve-stop-requested`) |
 | 1 | `restart-check`   | (none — file existence check on `.rabbit-auto-evolve-restart-needed`) |
-| 2 | `fetch`           | `scripts/fetch-queue.py`                     |
-| 3 | `triage`          | `scripts/triage-issue.py` (per issue)        |
-| 4 | `plan`            | `scripts/plan-batch.py`                      |
+| 2 | `fetch`           | `.claude/features/rabbit-auto-evolve/scripts/fetch-queue.py` |
+| 3 | `triage`          | `.claude/features/rabbit-auto-evolve/scripts/triage-issue.py` (per issue) |
+| 4 | `plan`            | `.claude/features/rabbit-auto-evolve/scripts/plan-batch.py` |
 | 5 | `dispatch`        | (rabbit-feature-touch — TDD subagent dispatch) |
-| 6 | `merge`           | `scripts/merge-prs.py` → `scripts/safety-check.py --phase merge` |
-| 7 | `release`         | `scripts/release-bump.py` → `scripts/safety-check.py --phase release --next-tag vX.Y.Z` |
-| 8 | `cleanup`         | `scripts/cleanup-branches.py` → `scripts/safety-check.py --phase cleanup` |
-| 9 | `catch-up`        | `scripts/classify-merge-restart.py` (per merged PR) |
-|10 | `persist`         | `scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
+| 6 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` |
+| 7 | `release`         | `.claude/features/rabbit-auto-evolve/scripts/release-bump.py` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase release --next-tag vX.Y.Z` |
+| 8 | `cleanup`         | `.claude/features/rabbit-auto-evolve/scripts/cleanup-branches.py` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase cleanup` |
+| 9 | `catch-up`        | `.claude/features/rabbit-auto-evolve/scripts/classify-merge-restart.py` (per merged PR) |
+|10 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
 |11 | `schedule`        | `ScheduleWakeup` (unless stop-check matched) |
 
-`set-evolve-mode.py` is NOT invoked by `tick` — it runs only when the user
-flips the mode via `/rabbit-auto-evolve on|off`.
+`.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py` is NOT
+invoked by `tick` — it runs only when the user flips the mode via
+`/rabbit-auto-evolve on|off`.
 
 ### `off`
 
-Deactivate auto-evolve mode. Invokes `scripts/set-evolve-mode.py off`,
+Deactivate auto-evolve mode. Invokes
+`.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py off`,
 which reverses the three `on` mutations in inverse order:
 
 1. Delete `.rabbit-auto-evolve-active`.
