@@ -49,13 +49,27 @@ def _write_feature_json(path, name, summary):
 
 
 def _setup_tmpdir(mode_content):
-    """Create tmp repo with one .claude/features/ feature and one plugin-side feature.
+    """Create tmp repo fixtures for both standalone and plugin (host-root) scans.
+
+    Layout written:
+      <tmp>/.claude/features/rabbit-cage/feature.json
+         — standalone scan target.
+      <tmp>/.rabbit/.claude/features/rabbit-cage/feature.json
+         — plugin scan rabbit-internal target (under rabbit_root).
+      <tmp>/.rabbit/rabbit-project/features/my-feature/feature.json
+         — plugin scan project target (under rabbit_root).
+      <tmp>/.rabbit/.runtime/mode (with mode_content) — controls detection.
 
     mode_content is None (no marker file), 'plugin', or 'standalone'.
     """
     tmp = tempfile.mkdtemp()
     _write_feature_json(
         os.path.join(tmp, ".claude/features/rabbit-cage/feature.json"),
+        "rabbit-cage",
+        "cage",
+    )
+    _write_feature_json(
+        os.path.join(tmp, ".rabbit/.claude/features/rabbit-cage/feature.json"),
         "rabbit-cage",
         "cage",
     )

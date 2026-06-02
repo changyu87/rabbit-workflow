@@ -1,8 +1,8 @@
 {
   "name": "contract",
-  "version": "1.48.0",
+  "version": "1.49.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "surface": {
     "hooks": [],
@@ -37,5 +37,5 @@
       }
     ]
   },
-  "spec_no_change_reason": "spec amendment already landed in commit cb7ffce (Inv 23 amended for #282)"
+  "spec_no_change_reason": "spec amendment to Inv 23 already landed in previous commit (1.48.0 -> 1.49.0)"
 }
