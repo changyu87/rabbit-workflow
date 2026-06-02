@@ -245,13 +245,84 @@ Phase E merges complete.
    - Network-dependent listing against real GitHub is covered by the
      Phase F end-to-end smoke test, not by this unit test.
 
+3. **`triage-issue.py` seven-rule decision table.** The CLI
+   `python3 .claude/features/rabbit-auto-evolve/scripts/triage-issue.py <issue#>`
+   classifies a single issue and emits a JSON object on stdout:
+
+   ```json
+   {
+     "issue": 123,
+     "decision": "work" | "close-not-planned" | "defer",
+     "reason_code": "<short-tag>",
+     "rationale": "<one sentence>",
+     "feature": "<feature-name or null>",
+     "contract_touch": true,
+     "blocked_by": [124]
+   }
+   ```
+
+   The script reads only:
+   - Issue metadata (title, body, labels, state, comments) via
+     `gh issue view <N> --repo <repo> --json
+     number,title,body,labels,state,comments`.
+   - The named feature's `docs/spec/spec.md` head matter (YAML
+     frontmatter and the first markdown section only) — for rule 6.
+   - The named feature's `feature.json` (for rule 4 — `status` field).
+   - The list of closed issues in the last 30 days (for rule 3) via
+     `gh issue list --state closed --search "closed:>=<date>"`.
+
+   It MUST NOT read the codebase at large; it MUST NOT read any spec
+   file outside the named feature's head matter.
+
+   Repo discovery uses `rabbit_issue._gh.repo_slug` (same pattern as
+   `fetch-queue.py`). No filesystem mutations.
+
+   Decision rules (evaluated top-down, first match wins):
+
+   | Rule | Condition | decision | reason_code |
+   |---|---|---|---|
+   | 1 | Issue lacks `feature:<name>` OR `priority:<level>` label | `defer` | `malformed-labels` |
+   | 2 | Feature named by label does not exist at `.claude/features/<name>/` | `close-not-planned` | `unknown-feature` |
+   | 3 | Issue title is a case-folded substring match of a closed-in-last-30-days issue's title | `close-not-planned` | `duplicate` |
+   | 4 | Feature's `feature.json.status == "retired"` | `close-not-planned` | `feature-retired` |
+   | 5 | Issue body declares `blocked-by: #N` AND any cited `#N` is still open | `defer` (set `blocked_by`) | `blocked` |
+   | 6 | Feature's spec head matter already documents the requested behavior verbatim (case-folded substring match of the issue title's content-word tail) | `close-not-planned` | `already-spec'd` |
+   | 7 | Otherwise | `work` | `actionable` |
+
+   `contract_touch` is `true` iff the issue carries a
+   `feature:contract` label OR the body literally declares any path
+   under `.claude/features/contract/`.
+
+   **Ambiguity default:** Any case the seven rules cannot resolve
+   (e.g. malformed `blocked-by` syntax, unparsable spec head matter,
+   `gh` returning a payload missing expected fields) defaults to
+   `decision=defer`, `reason_code=needs-judgment`. The triage MUST
+   NEVER fall through silently to `work`; the loop under-dispatches
+   rather than over-dispatches.
+
+   Exit code: 0 on successful classification (any decision); non-zero
+   on `gh` failure or other unexpected error (stderr passthrough).
+
+   Enforced by `test/test-triage-rules.py`:
+   - One unit test per row of the decision table (7 rules), each
+     using a fixture JSON payload under
+     `test/fixtures/triage/` that captures the `gh issue view --json`
+     output for the scenario.
+   - A `gh` shim on `$PATH` under `tempfile.TemporaryDirectory()`
+     serves fixture responses for both `gh issue view` and
+     `gh issue list` (rule 3 lookup); no live network.
+   - An additional `needs-judgment` test exercising an ambiguity case
+     (e.g. body declares `blocked-by:` without an integer reference).
+   - Smoke test: invoke with `--help`; assert exit 0 and recognizable
+     usage text.
+
 ## Known gaps
 
-- Phase C scripts still to land: `triage-issue.py`, `plan-batch.py`,
-  `safety-check.py`, `merge-prs.py`, `release-bump.py`,
-  `cleanup-branches.py`, `classify-merge-restart.py`, `update-state.py`.
-  (`set-evolve-mode.py` landed in PR #335; `fetch-queue.py` lands in
-  this cycle.) Each remaining script lands via its own
+- Phase C scripts still to land: `plan-batch.py`, `safety-check.py`,
+  `merge-prs.py`, `release-bump.py`, `cleanup-branches.py`,
+  `classify-merge-restart.py`, `update-state.py`. (`set-evolve-mode.py`
+  landed in PR #335; `fetch-queue.py` in PR #339; `triage-issue.py`
+  lands in this cycle.) Each remaining script lands via its own
   feature-touch cycle.
 - `feature.json` carries placeholder values: `summary: "rabbit-auto-evolve
   feature"` and `deprecation_criterion: "TBD — set after first review"`.
