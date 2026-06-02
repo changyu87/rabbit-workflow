@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.6.0
+version: 0.7.0
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -317,10 +317,14 @@ Phase E merges complete.
      usage text.
 
 4. **`plan-batch.py` conflict-graph + barrier dispatch planner.** The CLI
-   `cat work-set.json | python3 .claude/features/rabbit-auto-evolve/scripts/plan-batch.py [--max-parallel N]`
-   reads a JSON array of triage objects on stdin (caller passes only
-   `decision == "work"` items) and emits a deterministic dispatch plan
-   to stdout:
+   `cat triage.json | python3 .claude/features/rabbit-auto-evolve/scripts/plan-batch.py [--max-parallel N]`
+   reads a JSON array of triage objects on stdin and emits a
+   deterministic dispatch plan to stdout. Items whose `decision` is
+   anything other than `"work"` are silently dropped (`close-not-planned`,
+   `defer`, etc.) — the caller MAY pass a pre-filtered work-only
+   array OR the full unfiltered triage output of `triage-batch.py`
+   (per Inv 18 the standard pipe is
+   `fetch-queue | triage-batch | plan-batch`).
 
    ```json
    {
@@ -933,6 +937,53 @@ Phase E merges complete.
     the SKILL.md `start` / `stop` sections contain the script
     invocations and DO NOT contain bare `touch .rabbit-auto-evolve-*`
     or `echo .* > .rabbit-auto-evolve-*` patterns).
+
+18. **`triage-batch.py` bridges fetch-queue → plan-batch.** The CLI
+    `python3 .claude/features/rabbit-auto-evolve/scripts/triage-batch.py`
+    reads a JSON array on stdin (the raw `gh issue list` shape from
+    `fetch-queue.py`: `[{number, title, labels, body, createdAt}, …]`)
+    and emits a JSON array of triage objects on stdout (the shape
+    defined by Inv 3). It invokes `triage-issue.py <number>` in
+    a subprocess for each input item; the per-issue triage objects
+    are concatenated into a single array in input order.
+
+    Failure semantics: if any per-issue `triage-issue.py` invocation
+    exits non-zero, the failed issue gets a synthesized triage object
+    `{issue: N, decision: "defer", reason_code: "triage-failed",
+    rationale: "<stderr snippet>", feature: null, contract_touch: false,
+    blocked_by: []}` and the batch CONTINUES processing remaining
+    issues. The script never aborts mid-batch on a single-issue
+    failure — graceful degradation matters for tick liveness.
+
+    Exit code: 0 on success (including with per-issue failures
+    handled as defer entries); non-zero on malformed stdin JSON.
+
+    `triage-batch.py` uses the same `RABBIT_AUTO_EVOLVE_SCRIPT_DIR`
+    env override pattern as the marker scripts to locate
+    `triage-issue.py` (test seam).
+
+    The canonical tick pipe in SKILL.md phases 2–4:
+
+    ```
+    python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py \
+      | python3 .claude/features/rabbit-auto-evolve/scripts/triage-batch.py \
+      | python3 .claude/features/rabbit-auto-evolve/scripts/plan-batch.py --max-parallel 4
+    ```
+
+    `plan-batch.py` silently drops items with `decision != "work"`
+    (per Inv 4 update) so the unfiltered triage array passes through
+    cleanly.
+
+    Enforced by `test/test-triage-batch.py`:
+    - Happy path: 3-item fetch-queue fixture on stdin + a
+      `triage-issue.py` shim on PATH (or via
+      RABBIT_AUTO_EVOLVE_SCRIPT_DIR) that emits 3 valid triage
+      objects → output is a 3-item array in input order.
+    - Per-issue failure: shim that exits non-zero for one issue →
+      that issue's slot is filled with `defer/triage-failed`; the
+      other two succeed; overall exit 0.
+    - Malformed stdin JSON → non-zero exit, stderr names the
+      parse error.
 
 ## Known gaps
 

@@ -67,6 +67,12 @@ def _positive_int(value):
 
 def plan(items, max_parallel):
     """Run the 4-step algorithm and return the plan dict."""
+    # Drop items whose decision != "work" (per Inv 4 + Inv 18: plan-batch
+    # accepts unfiltered triage arrays from triage-batch.py; only "work"
+    # items are dispatched). Items without a `decision` field are passed
+    # through (backwards-compat with pre-Inv-18 callers that pre-filter).
+    items = [i for i in items if i.get("decision", "work") == "work"]
+
     # Step 1: barrier_first — all contract_touch items.
     barrier_items = sorted(
         [i for i in items if i.get("contract_touch")],
