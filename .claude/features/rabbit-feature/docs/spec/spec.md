@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.20.0
+version: 1.21.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -21,7 +21,7 @@ Owns the dispatcher-side feature-touch orchestration surface: the
 `rabbit-feature-audit`) and their backing scripts.
 
 The executor-side TDD machinery (`dispatch-tdd-subagent.py`,
-`tdd-step.py`, the 7-step TDD cycle) lives in `tdd-subagent`. This
+`tdd-step.py`, the 8-step TDD cycle) lives in `tdd-subagent`. This
 feature consumes it via the cross-feature contract declared in
 `contract.md`.
 
@@ -448,7 +448,7 @@ Scripts (under `scripts/`):
 
 ## What this feature does NOT define
 
-- The TDD subagent's 7-step cycle, the `tdd-step.py` state machine, or
+- The TDD subagent's 8-step cycle, the `tdd-step.py` state machine, or
   the `dispatch-tdd-subagent.py` prompt assembler — owned by
   `tdd-subagent`.
 - The build pipeline that copies skills into `.claude/skills/` — owned

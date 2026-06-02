@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.1.0
+version: 5.3.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -131,11 +131,10 @@ the template's `{{bypass_preamble_note}}` placeholder.
     basename is `SKILL.md`. Direct Write/Edit on a `SKILL.md` is
     forbidden.
 
-12. **LOCK / UNLOCK marker discipline.** The assembled prompt's LOCK
-    step writes only `touch <repo_root>/.rabbit-scope-active-<feature>`
-    and registers no shell trap. The UNLOCK step removes the marker
-    explicitly via `rm -f <repo_root>/.rabbit-scope-active-<feature>`
-    after the chore commit and before HANDOFF.
+12. **LOCK / UNLOCK marker discipline (mode-aware).** The assembled prompt's LOCK step writes ONE scope marker and registers no shell trap; the UNLOCK step removes the same marker after the chore commit and before HANDOFF. The marker path is mode-aware, matching rabbit-cage's scope-guard expectation per Inv 17(b):
+    - **Standalone mode** (mode marker absent or `standalone`): marker at `<repo_root>/.rabbit-scope-active-<feature>` (repo-root, dashed-name form).
+    - **Plugin mode** (`<repo_root>/.rabbit/.runtime/mode == 'plugin'`): marker at `<repo_root>/.rabbit/.runtime/scope-active-<feature>` (`.runtime/` subdir of the rabbit install, `scope-active-` prefix without leading dot).
+    The mode-detection MUST happen at prompt-assembly time (in `dispatch-tdd-subagent.py`, NOT at subagent execution time) so that the assembled LOCK and UNLOCK lines contain the literal correct path for the current installation. Before this invariant was made mode-aware, the assembled prompt always emitted the standalone path, which produced an inert scope marker in plugin mode (scope-guard couldn't find it at the expected `<rabbit_root>/.runtime/scope-active-<name>` location) and made plugin-mode TDD cycles silently bypass scope discipline. Enforced by `test/test-prompt-lock-unlock-marker-path.py` which asserts: (a) in standalone mode (no `.rabbit/.runtime/mode` set), assembled prompt's LOCK line ends with `.rabbit-scope-active-<feature>` and UNLOCK matches; (b) in plugin mode (`.rabbit/.runtime/mode='plugin'`), assembled prompt's LOCK line ends with `.rabbit/.runtime/scope-active-<feature>` (note the slash-separated `.runtime/scope-active-` form, not the dashed standalone form) and UNLOCK matches. Both subprocess scenarios run dispatch-tdd-subagent.py against tmpdir fixtures.
 
 13. *(Retired — see CHANGELOG.md.)*
 
