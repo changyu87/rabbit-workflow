@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.51.0
+version: 1.51.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -241,13 +241,40 @@ Numbering preserves gaps at 4, 6, 7, 27, 28, 29, 30, 35 for retired invariants �
 
 65. **`emit_auto_evolve_banner` and `emit_auto_evolve_stop_line` APIs.** Two new module-level functions in `lib/runtime.py`, introduced together. Both have the signature `(*, repo_root: str) -> list[dict]` and return a list of `print_result` entries (NOT `subline_result` — `print_result` carries `icon`, which Inv 47's `subline_result` factory does not). Both functions short-circuit to `[]` when `<repo_root>/.rabbit-auto-evolve-active` is ABSENT (the marker gates the entire auto-evolve composite surface).
 
-    **`emit_auto_evolve_banner(*, repo_root)`** — when active:
-    - **Line 1 (always emitted):** `text="AUTONOMOUS-EVOLVE MODE ACTIVE — loop will dispatch TDD subagents and merge to dev without prompts"`, `icon="✨"`, `color="red"`.
-    - **Line 2 (variant by marker priority, mutually exclusive in this order):**
-      - `.rabbit-auto-evolve-aborted` present → `text="loop aborted on safety violation — see .rabbit/auto-evolve-state.json and clear marker to resume"`, `icon="⛔"`, `color="yellow"`.
-      - `.rabbit-auto-evolve-restart-needed` present → `text="resume after restart: paste /rabbit-auto-evolve start"`, `icon="▶"`, `color="yellow"`.
-      - Neither secondary marker present → `text="to start the loop, paste: /rabbit-auto-evolve start"`, `icon="▶"`, `color="yellow"`.
-    - Marker priority is strict: `aborted` wins over `restart-needed` if both present (avoids misleading the user about restart being the next step when the loop is actually aborted).
+    **`emit_auto_evolve_banner(*, repo_root)`** — when
+    `<repo_root>/.rabbit-auto-evolve-active` is present, the
+    function MUST delegate the line-1 and line-2 content to
+    rabbit-auto-evolve's `scripts/banner-status.py`. Contract owns
+    the dispatch mechanism; rabbit-auto-evolve owns the content.
+
+    Delegation steps:
+
+    1. `script_path = os.path.join(repo_root, ".claude/features/rabbit-auto-evolve/scripts/banner-status.py")`.
+    2. If `script_path` does not exist (e.g. rabbit-auto-evolve
+       feature is absent in a degenerate workspace) → return `[]`.
+       Do NOT crash; this preserves the active-marker gate behavior
+       even when the script is missing.
+    3. `subprocess.run([sys.executable, script_path], env={**os.environ, "RABBIT_AUTO_EVOLVE_REPO_ROOT": repo_root}, capture_output=True, text=True, check=False)`.
+       Use `check=False` and inspect returncode — a non-zero exit
+       from banner-status.py is treated as "no banner" (return
+       `[]`) rather than crashing the SessionStart dispatcher.
+    4. Parse stdout as JSON. On parse error → return `[]`.
+    5. If parsed `active: false` → return `[]` (the script's
+       inactive shape, even though contract has already verified
+       the marker exists — the script is the source of truth).
+    6. Otherwise return `[print_result(text, icon, color), print_result(text, icon, color)]`
+       built from the `line1` and `line2` objects in the JSON.
+
+    The previous behavior (3 inlined line-2 variants in this
+    function) is REMOVED in v1.51.1. The script ownership migration
+    is tracked by rabbit-auto-evolve's Inv 22 (banner-status.py).
+    All future line-2 variants — including the running variant
+    introduced by rabbit-auto-evolve v0.7.5 — are picked up
+    automatically without any change to contract.
+
+    The cross-feature script invocation is declared in this
+    feature's `contract.md` `invokes.scripts` block (rabbit-auto-evolve
+    scope, script-execution access).
 
     **`emit_auto_evolve_stop_line(*, repo_root)`** — when active, returns AT MOST ONE `print_result` entry, mutually-exclusive in this priority order:
     - `.rabbit-auto-evolve-aborted` → `text="auto-evolve loop aborted — see .rabbit/auto-evolve-state.json"`, `icon="⛔"`, `color="red"`.
@@ -258,12 +285,24 @@ Numbering preserves gaps at 4, 6, 7, 27, 28, 29, 30, 35 for retired invariants �
 
     The marker names follow Inv 12's positive-streamlined rule (each describes a present state — `active`, `running`, `aborted`, `stop-requested`, `restart-needed` — no negating prefixes).
 
-    The markers themselves are written and removed by rabbit-auto-evolve's own scripts (out of scope for this feature); contract.lib.runtime only READS them. The cross-feature read is declared in this feature's `contract.md` `reads.files` block (rabbit-auto-evolve scope, marker-only access).
+    The markers themselves are written and removed by rabbit-auto-evolve's own scripts (out of scope for this feature). `emit_auto_evolve_stop_line` continues to READ the markers directly (declared in `contract.md` `reads.files`). `emit_auto_evolve_banner` no longer reads them directly — it INVOKES `banner-status.py` which reads them on contract's behalf (declared in `contract.md` `invokes.scripts`). Both declarations live in this feature's `contract.md`.
 
     The two new APIs are added to the closed enum at `schemas/runtime.schema.json` so feature.json runtime entries can declare them. The existing `test/test-runtime-api-enum-sourced-from-schema.py` passes automatically once the schema is bumped (no test edit required); `test/test-runtime-schema-shape.py` is updated to verify the schema includes the two new names.
 
     Enforced by NEW tests:
-    - `test/test-runtime-emit-auto-evolve-banner.py` — line count (2 when active, 0 when inactive); text/color/icon for each line; all three line-2 marker-state variants (default, restart-needed, aborted); aborted-over-restart-needed precedence (both markers present → aborted variant wins).
+    - `test/test-runtime-emit-auto-evolve-banner.py` — line count
+      (2 when active AND banner-status.py returns active:true; 0
+      when marker absent OR script missing OR script exits non-zero
+      OR script returns active:false OR stdout is unparseable);
+      text/color/icon for each line propagated verbatim from the
+      script's JSON. The test mocks banner-status.py by writing a
+      throwaway script to a tempdir layout matching
+      `.claude/features/rabbit-auto-evolve/scripts/banner-status.py`
+      and pointing emit_auto_evolve_banner at that tempdir via the
+      `repo_root` arg. Per-variant content (default vs running vs
+      restart-needed vs aborted) is now exercised by
+      rabbit-auto-evolve's own test-banner-status.py (Inv 22); the
+      contract test only verifies the dispatch + mapping mechanism.
     - `test/test-runtime-emit-auto-evolve-stop-line.py` — each of four mutually-exclusive states (aborted, restart-needed, stop-requested, running) returns exactly one entry with the right text/icon/color; active-marker absent → `[]` regardless of other markers; no state markers present → `[]`; priority order verified by populating multiple state markers and asserting only the highest-priority one wins.
 
 ## Template marker convention
