@@ -67,11 +67,33 @@ def main():
     required_invocations = [
         "python3 .claude/features/rabbit-auto-evolve/scripts/start-loop.py",
         "python3 .claude/features/rabbit-auto-evolve/scripts/stop-loop.py",
+        # Inv 20: every tick exit path invokes end-tick.py.
+        "python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py",
     ]
     for inv in required_invocations:
         if inv not in text:
-            print(f"FAIL: Inv 17: SKILL.md missing script invocation: {inv}",
+            print(f"FAIL: Inv 17/20: SKILL.md missing script invocation: {inv}",
                   file=sys.stderr)
+            sys.exit(1)
+
+    # Inv 20: SKILL.md tick documentation must call out end-tick.py on
+    # every exit path — not only the normal completion path. The prose
+    # must mention each of the four named exit paths so a reader can see
+    # the lifecycle invariant at a glance.
+    inv20_required_phrases = [
+        "normal completion",
+        "phase 0 halt",
+        "safety abort",
+        "error abort",
+    ]
+    lowered = text.lower()
+    for phrase in inv20_required_phrases:
+        if phrase not in lowered:
+            print(
+                f"FAIL: Inv 20: SKILL.md tick documentation missing exit-path "
+                f"phrase: {phrase!r} (end-tick.py must run on EVERY exit path)",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
     forbidden_patterns = [
