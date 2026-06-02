@@ -11,9 +11,14 @@ argument MAY be EITHER the host-project root OR the rabbit install root
 (`RABBIT_ROOT` — the `.rabbit/` install dir); the script resolves the
 canonical `rabbit_root` from whichever was supplied.
 
-  Plugin mode detection (either path):
-    (i)  <repo>/.rabbit/.runtime/mode == "plugin"  → rabbit_root=<repo>/.rabbit
-    (ii) <repo>/.runtime/mode == "plugin"          → rabbit_root=<repo>
+  Plugin mode detection — FIXED precedence + validation per Inv 23(a):
+    (i)  <repo>/.runtime/mode == "plugin"           → candidate rabbit_root=<repo>
+    (ii) <repo>/.rabbit/.runtime/mode == "plugin"   → candidate rabbit_root=<repo>/.rabbit
+    A candidate is accepted only when <rabbit_root>/.claude/ exists as a
+    directory; otherwise fall through. This closes #311 — a rogue
+    <rabbit_root>/.rabbit/.runtime/mode file (created when a skill wrote
+    a relative .rabbit/* path with CWD=<rabbit_root>) no longer wins
+    over the canonical outer marker.
 
   Standalone scan (no marker matched):
     - <repo>/.claude/features/<name>/feature.json (alphabetical)
@@ -26,7 +31,7 @@ Directories elsewhere in the repo whose basename happens to be `features`
 (project-side, vendor dirs, etc.) are NOT scanned — the no-masquerading
 guarantee is preserved by enumerating only the canonical paths above.
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when feature discovery is handled natively by the dispatch infrastructure.
 """
@@ -44,24 +49,36 @@ def _load_json(path):
 
 
 def _detect_plugin_rabbit_root(repo):
-    """Return rabbit_root (absolute path) if plugin mode is detected, else None.
+    """Return rabbit_root if plugin mode is detected AND validated, else None.
 
-    Plugin mode is detected via EITHER:
-      - <repo>/.rabbit/.runtime/mode == 'plugin'  (repo is the host root)
-          → rabbit_root = <repo>/.rabbit
-      - <repo>/.runtime/mode == 'plugin'  (repo IS the rabbit_root)
-          → rabbit_root = <repo>
+    Inv 23(a): fixed precedence (RABBIT_ROOT-as-repo first), each candidate
+    validated by requiring <rabbit_root>/.claude/ to exist as a directory
+    before accepting.
+
+    #311 regression: a rogue inner <repo>/.rabbit/.runtime/mode file (e.g.
+    created when a skill wrote a relative .rabbit/* path with CWD already
+    set to <rabbit_root>) no longer wins, because either:
+      (i)  the outer <repo>/.runtime/mode is checked first (precedence), or
+      (ii) the inner candidate <repo>/.rabbit lacks .claude/ (validation).
     """
-    for candidate, rabbit_root in (
-        (os.path.join(repo, '.rabbit', '.runtime', 'mode'), os.path.join(repo, '.rabbit')),
+    candidates = (
+        # First: <repo>/.runtime/mode — repo IS rabbit_root (canonical
+        # RABBIT_ROOT-as-repo case per Inv 47; most common caller pattern).
         (os.path.join(repo, '.runtime', 'mode'), repo),
-    ):
+        # Then: <repo>/.rabbit/.runtime/mode — repo is the host root.
+        (os.path.join(repo, '.rabbit', '.runtime', 'mode'), os.path.join(repo, '.rabbit')),
+    )
+    for mode_file, candidate_root in candidates:
         try:
-            with open(candidate) as f:
-                if f.read().strip() == 'plugin':
-                    return rabbit_root
+            with open(mode_file) as f:
+                if f.read().strip() != 'plugin':
+                    continue
         except (OSError, IOError):
             continue
+        # Validate: candidate must have .claude/ to be a real rabbit_root.
+        if os.path.isdir(os.path.join(candidate_root, '.claude')):
+            return candidate_root
+        # else: fall through to next candidate (closes #311).
     return None
 
 
