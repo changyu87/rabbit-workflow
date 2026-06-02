@@ -12,7 +12,7 @@ best-effort rolls back any prior steps; reports the failed step on stderr.
 Exit 0 on full success, non-zero on any step failure (after rollback attempt).
 Idempotent in the steady state (delegated to contract.lib.mutation primitives).
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -53,6 +53,19 @@ def _import_mutation():
         sys.path.insert(0, contract_dir)
     from lib import mutation  # noqa: PLC0415
     return mutation
+
+
+def _import_rabbit_print():
+    """Lazy-import rabbit_print from the contract feature's scripts dir.
+    Mirrors the sys.path-insert pattern used by rabbit-config.py for the
+    same module — contract scripts dir is not on sys.path by default."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    scripts_dir = os.path.normpath(
+        os.path.join(here, "..", "..", "contract", "scripts"))
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    from rabbit_print import rabbit_print  # noqa: PLC0415
+    return rabbit_print
 
 
 class StepError(RuntimeError):
@@ -238,7 +251,23 @@ def main():
 
     # _on returns 3-tuple on success, 4-tuple on failure; normalize.
     if result[0]:
-        print(f"set-evolve-mode: {action} OK")
+        # Inv 1 v0.7.4 (#377): emit branded rabbit_print confirmation lines
+        # to stdout so the message matches the visual weight of the rest of
+        # the rabbit surface (SessionStart banner, configurable alerts).
+        # The SKILL.md `on`/`off` subcommand bodies surface this stdout
+        # verbatim — the message text lives here so it stays centralized.
+        rabbit_print = _import_rabbit_print()
+        if action == "on":
+            print(rabbit_print(
+                "AUTONOMOUS-EVOLVE MODE CONFIGURED — restart Claude Code to activate",
+                "\U0001f680", "red"))
+            print(rabbit_print(
+                "After restart, run: /rabbit-auto-evolve start",
+                "\U0001f449", "yellow"))
+        else:
+            print(rabbit_print(
+                "Autonomous-evolve mode deactivated — full teardown complete",
+                "✅", "green"))
         sys.exit(0)
     _ok, failed_label, err, completed = result
     sys.stderr.write(f"set-evolve-mode: {action} failed at {failed_label}: {err}\n")

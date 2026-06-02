@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.7.3
+version: 0.7.4
 owner: cyxu
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Run `/rabbit-auto-evolve on` first, then restart Claude (so `permissions.defaultMode: bypassPermissions` from `settings.local.json` is picked up), then `/rabbit-auto-evolve start`.
@@ -32,10 +32,12 @@ which performs three deterministic mutations in order:
    `.claude/settings.local.json` (flips `bypass-permissions` on).
 3. Write `.rabbit-auto-evolve-active` (signals mode is on).
 
-On success, prints a user-facing line instructing the user to **restart
-Claude** (so `permissions.defaultMode: bypassPermissions` from
-`settings.local.json` is picked up) and then run `/rabbit-auto-evolve
-start`.
+On success, the script emits two branded `rabbit_print` confirmation
+lines to stdout (red `AUTONOMOUS-EVOLVE MODE CONFIGURED — restart Claude
+Code to activate`; yellow `After restart, run: /rabbit-auto-evolve
+start`). Surface the script's stdout verbatim to the user — do NOT
+paraphrase. The message text lives in the script so it stays centralized
+(per spec Inv 1 v0.7.4).
 
 ### `start`
 
@@ -182,6 +184,11 @@ order:
 3. Delete the `permissions.defaultMode` key from
    `.claude/settings.local.json`.
 4. Delete `.rabbit-human-approval-bypass`.
+
+On success, the script emits one branded `rabbit_print` confirmation
+line to stdout (green `Autonomous-evolve mode deactivated — full
+teardown complete`). Surface the script's stdout verbatim to the user
+— do NOT paraphrase (per spec Inv 1 v0.7.4).
 
 A Claude restart is required so the cleared `permissions.defaultMode`
 takes effect.
