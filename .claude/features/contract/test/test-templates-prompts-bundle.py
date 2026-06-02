@@ -35,6 +35,7 @@ DECLARED_TDD_PLACEHOLDERS = {
     "repo_root",
     "max_iterations",
     "code_review_loop_note",
+    "scope_marker_path",  # added #304 for mode-aware LOCK/UNLOCK path
 }
 
 MARKER_RE = re.compile(r"^# template_version: \d+\.\d+\.\d+$")

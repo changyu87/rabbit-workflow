@@ -194,6 +194,7 @@ REQUIRED_PLACEHOLDERS = {
     "repo_root",
     "max_iterations",
     "code_review_loop_note",
+    "scope_marker_path",  # added #304 for mode-aware LOCK/UNLOCK path
 }
 found_placeholders = set(re.findall(r"\{\{([a-z][a-z0-9_]*)\}\}", content))
 missing_p = REQUIRED_PLACEHOLDERS - found_placeholders
