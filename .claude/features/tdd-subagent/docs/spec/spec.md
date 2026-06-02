@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.6.0
+version: 5.7.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -577,6 +577,53 @@ lives in Inv 22 above.
     set of `feature.json.tdd_state` values; HANDOFF-emitted
     state-like values are a separate vocabulary used only on the wire
     between subagent and dispatcher.
+
+55. **HANDOFF additive fields: `discovered_issues` and
+    `aborted_reason`.** The HANDOFF JSON block (declared in Inv 22)
+    carries two ADDITIVE fields under `handoff_schema_version: "1.1.0"`
+    (the version-integer reservation landed in #327 / Inv 22; the
+    fields themselves land in v5.7.0 per this invariant):
+
+    - **`discovered_issues: [{title, body, labels}]`** — list of
+      issues the subagent discovered during its cycle that warrant
+      filing. Default `[]` (empty list, matching Inv 21's
+      `closed_items` precedent). Each element MUST have
+      `title: string`, `body: string`, `labels: [string]`. Populated
+      by callers (e.g., the rabbit-auto-evolve dispatcher) that
+      consume this field to file follow-up issues via rabbit-issue;
+      the subagent itself never files issues.
+
+    - **`aborted_reason: string | null`** — always-present-nullable
+      (matching the `tdd_report_path: null` precedent: the key is
+      always emitted, the value is `null` when not applicable).
+      `null` in non-abort HANDOFFs. In abort HANDOFFs (emitted after
+      the subagent invokes `tdd-step.py abort --reason <code>` per
+      Inv 50), the value carries the same `<code>` passed to
+      `--reason` (a free-form short tag such as `blocked-by-#329`).
+
+    Both fields are ADDITIVE — the template MUST emit the default
+    values (`[]` and `null`) in EVERY HANDOFF, including normal
+    test-green completion HANDOFFs that do not populate either.
+    Backward compatibility: consumers reading
+    `handoff_schema_version: "1.1.0"` HANDOFFs see both fields
+    always present, with defaults indicating "nothing to report."
+
+    Enforced by extending `test/test-handoff-schema.py` with:
+    (a) presence-and-default assertions — both fields are emitted in
+        every template HANDOFF_JSON block with the literal defaults
+        `[]` and `null`;
+    (b) a populated-case parse test — a synthetic HANDOFF JSON
+        carrying `discovered_issues: [{title:..., body:...,
+        labels:[...]}]` and `aborted_reason: "some-code"` parses as
+        valid JSON and conforms to this invariant's typing.
+
+    The template at
+    `.claude/features/contract/templates/prompts/tdd-subagent.txt`
+    must add the two fields to all three HANDOFF_JSON blocks
+    (STEP 5 fail-HANDOFF, STEP 7 fail-HANDOFF, completion HANDOFF)
+    and bump `template_version` from `1.5.0` to `1.6.0`. The
+    template lives in the `contract` feature; the TDD subagent uses
+    a one-time scope-override per Inv 45/46 precedent.
 
 ## Out of Scope
 
