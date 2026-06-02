@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.51.0
+version: 1.51.1
 template_version: 2.0.0
 ---
 
@@ -78,7 +78,9 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ]
   },
   "invokes": {
-    "scripts": [],
+    "scripts": [
+      ".claude/features/rabbit-auto-evolve/scripts/banner-status.py"
+    ],
     "agents": []
   },
   "never": [

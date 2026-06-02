@@ -18,7 +18,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.5.0
+Version: 1.6.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -762,44 +762,52 @@ def emit_auto_evolve_banner(*, repo_root: str) -> list:
     """Inv 65 — composite SessionStart banner for rabbit-auto-evolve.
 
     Returns [] when .rabbit-auto-evolve-active is absent (the marker gates the
-    entire auto-evolve composite surface). When active, returns exactly two
-    print_result entries:
+    entire auto-evolve composite surface). When active, delegates the line-1
+    and line-2 content to rabbit-auto-evolve/scripts/banner-status.py via
+    subprocess. Contract owns the dispatch mechanism (gate, script-path
+    resolution, subprocess invocation, JSON parse, mapping to print_result);
+    rabbit-auto-evolve owns the per-variant content (text/icon/color).
 
-      - Line 1 (always): the AUTONOMOUS-EVOLVE MODE ACTIVE headline.
-      - Line 2 (variant by marker priority, mutually exclusive in this order):
-        aborted > restart-needed > default-start-hint.
-
-    The strict priority avoids misleading the user about restart being the next
-    step when the loop is actually aborted.
+    Returns [] on any failure mode (script missing, non-zero exit, parse
+    error, active:false in JSON, missing line1/line2 keys) — the banner is
+    best-effort and MUST NEVER crash the SessionStart dispatcher.
     """
     if not _auto_evolve_active(repo_root):
         return []
-    out = [print_result(
-        text=("AUTONOMOUS-EVOLVE MODE ACTIVE — loop will dispatch TDD "
-              "subagents and merge to dev without prompts"),
-        icon="✨",
-        color="red",
-    )]
-    if os.path.isfile(os.path.join(repo_root, ".rabbit-auto-evolve-aborted")):
-        out.append(print_result(
-            text=("loop aborted on safety violation — see "
-                  ".rabbit/auto-evolve-state.json and clear marker to resume"),
-            icon="⛔",
-            color="yellow",
-        ))
-    elif os.path.isfile(os.path.join(repo_root, ".rabbit-auto-evolve-restart-needed")):
-        out.append(print_result(
-            text="resume after restart: paste /rabbit-auto-evolve start",
-            icon="▶",
-            color="yellow",
-        ))
-    else:
-        out.append(print_result(
-            text="to start the loop, paste: /rabbit-auto-evolve start",
-            icon="▶",
-            color="yellow",
-        ))
-    return out
+    script_path = os.path.join(
+        repo_root,
+        ".claude/features/rabbit-auto-evolve/scripts/banner-status.py",
+    )
+    if not os.path.exists(script_path):
+        return []
+    try:
+        result = subprocess.run(
+            [sys.executable, script_path],
+            env={**os.environ, "RABBIT_AUTO_EVOLVE_REPO_ROOT": repo_root},
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if result.returncode != 0:
+        return []
+    try:
+        parsed = json.loads(result.stdout)
+    except (ValueError, TypeError):
+        return []
+    if parsed.get("active") is not True:
+        return []
+    try:
+        line1 = parsed["line1"]
+        line2 = parsed["line2"]
+        return [
+            print_result(line1["text"], line1["icon"], line1["color"]),
+            print_result(line2["text"], line2["icon"], line2["color"]),
+        ]
+    except (KeyError, TypeError):
+        return []
 
 
 # Inv 65 stop-line priority order: aborted > restart-needed > stop-requested >
