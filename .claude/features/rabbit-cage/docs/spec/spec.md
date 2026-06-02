@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.32.0
+version: 5.33.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -439,6 +439,14 @@ string BEFORE splitting on `;|&` segment delimiters.
     - (iv) For every release branch `release/X.Y` that exists in `git branch -r`, an entry `## [release/X.Y]` exists in CHANGELOG.md (or skip if remote unreachable from the test runner).
 
     Initial seed: at adoption (this PR), CHANGELOG.md is created with `## [Unreleased]` plus entries for `release/1.0` through `release/1.10` reconstructed from the git log + merged PR list. Each entry names the closed bugs (#281 through #318 inclusive) and the high-level features (rabbit-config skill, install.py --update, plugin-mode dispatch chain end-to-end).
+
+31. **`scope-guard.py` MUST validate the policy-block sentinel on every Agent tool call (delegate to contract Inv 66).** scope-guard.py is the canonical PreToolUse hook for the rabbit workflow; it already intercepts file-write tool calls for scope-marker enforcement. This invariant extends its responsibility to intercept the `Agent` tool: when `tool_name == "Agent"`, the hook MUST extract `tool_input` and delegate to `contract.lib.checks.validate_agent_prompt_sentinel(tool_input, repo_root=<repo>)` (per contract Inv 66 (b)). If the returned `CheckResult.passed` is `False`, the hook MUST block the call by emitting the violation message from `result.messages[0]` to stderr and exiting with the JSON-blocking shape Claude Code expects for PreToolUse (`{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "<message>"}}`, matching the existing deny-shape used by scope-guard for file-write violations). When `result.passed` is `True`, the hook emits `{}` and exits 0 — the call proceeds normally. Validation MUST NOT block on tool names other than `Agent` (scope-guard's pre-existing file-write enforcement is unchanged).
+
+    Re-implementing the sentinel check inline at scope-guard.py is a contract violation (per contract Inv 66 (b) — the helper is the SOLE source of truth). scope-guard imports the validator via the established lazy-import pattern (matching how it imports `contract.lib.runtime` today).
+
+    The cross-feature read is declared in this feature's `contract.md` `invokes.functions` block (target: `contract.lib.checks.validate_agent_prompt_sentinel`); the cross-feature export is declared in contract's `contract.md` `provides.functions` block (per contract Inv 66 (c)).
+
+    Enforced by NEW test `test/test-scope-guard-agent-sentinel.py`: (i) Agent call with prompt containing sentinel → hook exits 0, stdout `{}`, call proceeds; (ii) Agent call with prompt missing sentinel + no bypass marker → hook emits the deny-shape JSON with the canonical violation message, exits non-zero; (iii) Agent call with bypass marker `.rabbit/agent-sentinel-bypass` present → hook exits 0 even when sentinel is absent; (iv) non-Agent tool call (e.g. Bash, Edit) → hook does NOT invoke the sentinel validator (regression: the existing file-write enforcement is unchanged); (v) Agent call with malformed tool_input (no `prompt` key) → hook emits the deny-shape (defensive). Wired into `test/run.py`.
 
 ## Tech Stack
 
