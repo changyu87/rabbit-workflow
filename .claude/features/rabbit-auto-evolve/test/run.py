@@ -39,5 +39,6 @@ run_test("test-start-stop-skill.py")
 run_test("test-prompts-declared.py")
 run_test("test-discovered-issues.py")
 run_test("test-skill-no-askuserquestion-rule.py")
+run_test("test-banner-suppression.py")
 
 print("ALL TESTS PASSED")
