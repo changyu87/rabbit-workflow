@@ -63,6 +63,10 @@ SUITES = [
     "test-plugin-stop-alert-fires-when-session-override-active.py",
     "test-plugin-sessionstart-alert-on-active-session-override.py",
     "test-standalone-override-path-unchanged.py",
+    "test-install-py-default-ref-not-dev.py",
+    "test-install-py-default-ref-matches-install-sh.py",
+    "test-install-py-version-flag-overrides-default.py",
+    "test-install-py-channel-dev-opt-in.py",
 ]
 
 
