@@ -70,6 +70,7 @@ SUITES = [
     "test-install-update-self-reexec.py",
     "test-install-update-no-reexec-with-explicit-src.py",
     "test-install-update-reexec-loop-guard.py",
+    "test-changelog-shape.py",
 ]
 
 
