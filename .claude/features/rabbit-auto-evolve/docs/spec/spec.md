@@ -500,14 +500,82 @@ Phase E merges complete.
    + a combined `gh`/`safety-check.py` shim on `$PATH` to dispatch on
    subcommand+args; no live network.
 
+7. **`release-bump.py` priority-to-semver bumper.** The CLI
+   `python3 .claude/features/rabbit-auto-evolve/scripts/release-bump.py <pr#> [--features-threshold N]`
+   reads the merged PR's labels, body, and changed-file list, applies
+   the design-doc §9 bump table, runs `safety-check.py` under
+   `--phase release --next-tag vX.Y.Z` BEFORE any git operation (per
+   resolved Open Question 2), then creates and pushes the annotated
+   tag and a GitHub release targeting `dev`.
+
+   `--features-threshold N` (default 3) configures the
+   distinct-features-touched threshold for the major-bump rule.
+
+   Bump table (evaluated top-down; major triggers always override
+   minor/patch):
+
+   | Trigger | Bump | `trigger` field |
+   |---|---|---|
+   | Issue body contains `bump:major` directive | major (`X+1.0.0`) | `body-directive` |
+   | PR diff touches ≥ N distinct top-level feature directories under `.claude/features/` | major | `feature-count-threshold` |
+   | PR diff touches any file under `.claude/features/contract/schemas/` | major | `contract-schema-touch` |
+   | `priority:high` or `priority:critical` label | minor (`X.Y+1.0`) | `priority-high-critical` |
+   | `priority:low` or `priority:medium` label | patch (`X.Y.Z+1`) | `priority-low-medium` |
+
+   "Distinct top-level feature directories" = unique values of the
+   second path segment (after `.claude/features/`) across the PR's
+   changed-file list.
+
+   Execution order:
+   1. `gh pr view <#> --json number,title,labels,body,files` → fetch
+      metadata + changed-file list.
+   2. Apply bump table → compute `next_tag = vX.Y.Z`.
+   3. `safety-check.py <pr#> --phase release --next-tag <next_tag>`.
+      Non-zero → emit `{status: "skipped", reason: "safety-check-failed"}`
+      and stop (no git mutation, exit 0).
+   4. `git describe --tags --abbrev=0` → `prior_tag`.
+   5. `git tag -a <next_tag> -m "<auto-evolve> #<pr> <title>"`.
+   6. `git push origin <next_tag>`.
+   7. `gh release create <next_tag> --notes-from-tag --target dev`.
+
+   Output JSON (single object on stdout):
+
+   ```json
+   {
+     "pr": 348,
+     "prior_tag": "v0.5.2",
+     "next_tag": "v0.5.3",
+     "bump": "patch",
+     "trigger": "priority-low-medium",
+     "status": "released" | "skipped" | "failed",
+     "reason": "<short>"
+   }
+   ```
+
+   Exit 0 always except argparse / unexpected error.
+
+   Enforced by `test/test-release-bump.py`:
+   - One test per bump-table row (5 cases): each fixture exercises
+     exactly one trigger; assert `bump` and `trigger` fields match.
+   - Safety-check fail: shim safety-check exits non-zero → result
+     `{status: "skipped", reason: "safety-check-failed"}`; verify NO
+     `git tag` invocation occurred (via shim call log).
+   - `--features-threshold 5` override: 4 distinct features touched
+     (no other major trigger) → bumps minor, not major.
+   - `--help` smoke: exit 0 with recognizable usage text.
+
+   Tests use the same `tempfile.TemporaryDirectory()` + `git init` +
+   combined `gh`/`git`/`safety-check.py` shim pattern as
+   `test-merge-prs.py` and `test-cleanup-branches.py`.
+
 ## Known gaps
 
-- Phase C scripts still to land: `release-bump.py`,
-  `classify-merge-restart.py`, `update-state.py`.
-  (`set-evolve-mode.py` landed in PR #335; `fetch-queue.py` in PR #339;
-  `triage-issue.py` in PR #341; `plan-batch.py` in PR #343;
-  `safety-check.py` in PR #345; `merge-prs.py` + `cleanup-branches.py`
-  land in this cycle.) Each remaining script lands via its own
+- Phase C scripts still to land: `classify-merge-restart.py`,
+  `update-state.py`. (`set-evolve-mode.py` landed in PR #335;
+  `fetch-queue.py` in PR #339; `triage-issue.py` in PR #341;
+  `plan-batch.py` in PR #343; `safety-check.py` in PR #345;
+  `merge-prs.py` + `cleanup-branches.py` in PR #347; `release-bump.py`
+  lands in this cycle.) Each remaining script lands via its own
   feature-touch cycle.
 - `feature.json` carries placeholder values: `summary: "rabbit-auto-evolve
   feature"` and `deprecation_criterion: "TBD — set after first review"`.
