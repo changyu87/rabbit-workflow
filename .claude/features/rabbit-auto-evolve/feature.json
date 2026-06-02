@@ -3,7 +3,7 @@
   "name": "rabbit-auto-evolve",
   "version": "0.2.0",
   "owner": "cyxu",
-  "tdd_state": "impl",
+  "tdd_state": "test-green",
   "summary": "rabbit-auto-evolve feature",
   "surface": {
     "hooks": [],
