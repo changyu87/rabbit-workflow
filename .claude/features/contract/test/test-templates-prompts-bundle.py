@@ -36,6 +36,7 @@ DECLARED_TDD_PLACEHOLDERS = {
     "max_iterations",
     "code_review_loop_note",
     "scope_marker_path",  # added #304 for mode-aware LOCK/UNLOCK path
+    "tdd_report_path",  # added #313 to avoid doubled .rabbit/.rabbit/ paths
 }
 
 MARKER_RE = re.compile(r"^# template_version: \d+\.\d+\.\d+$")

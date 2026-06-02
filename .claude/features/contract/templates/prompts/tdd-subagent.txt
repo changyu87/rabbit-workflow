@@ -1,4 +1,4 @@
-# template_version: 1.4.0
+# template_version: 1.5.0
 {{bypass_preamble_note}}
 ════════════════════════════════════════════════════════════════════════
 TDD SUBAGENT — SCOPE: {{feature_name}}
@@ -289,8 +289,8 @@ Advance state (only AFTER capturing $IMPL_SHA above):
   python3 {{tdd_step_py}} transition {{feature_dir}} test-green
 
 Write tdd-report (gitignored — NEVER commit):
-  mkdir -p {{repo_root}}/.rabbit/
-  Path: {{repo_root}}/.rabbit/tdd-report-{{feature_name}}.json
+  mkdir -p $(dirname {{tdd_report_path}})
+  Path: {{tdd_report_path}}
 
 IMPORTANT: the JSON below is a TEMPLATE. You MUST substitute actual values
 for every `<...>` placeholder and for `$IMPL_SHA`. Do NOT copy the template
@@ -335,7 +335,7 @@ HANDOFF:
   tdd_state: test-green
   test_result: <pass|fail>
   spec_compliance: <pass|fail>
-  tdd_report_path: {{repo_root}}/.rabbit/tdd-report-{{feature_name}}.json
+  tdd_report_path: {{tdd_report_path}}
   notes: <brief summary>
 
 Also emit the structured JSON HANDOFF below. The JSON block is the
@@ -351,7 +351,7 @@ HANDOFF_JSON:
   "tdd_state": "test-green",
   "test_result": "<pass|fail>",
   "spec_compliance": "<pass|fail>",
-  "tdd_report_path": "{{repo_root}}/.rabbit/tdd-report-{{feature_name}}.json",
+  "tdd_report_path": "{{tdd_report_path}}",
   "closed_items": [],
   "notes": "<brief summary>"
 }

@@ -195,6 +195,7 @@ REQUIRED_PLACEHOLDERS = {
     "max_iterations",
     "code_review_loop_note",
     "scope_marker_path",  # added #304 for mode-aware LOCK/UNLOCK path
+    "tdd_report_path",  # added #313 to avoid doubled .rabbit/.rabbit/ paths
 }
 found_placeholders = set(re.findall(r"\{\{([a-z][a-z0-9_]*)\}\}", content))
 missing_p = REQUIRED_PLACEHOLDERS - found_placeholders
@@ -202,7 +203,7 @@ extra_p = found_placeholders - REQUIRED_PLACEHOLDERS
 if not missing_p and not extra_p:
     ok(
         "t-placeholders-preserved",
-        f"all 9 declared placeholders present, no extras",
+        f"all {len(REQUIRED_PLACEHOLDERS)} declared placeholders present, no extras",
     )
 else:
     fail_t(
