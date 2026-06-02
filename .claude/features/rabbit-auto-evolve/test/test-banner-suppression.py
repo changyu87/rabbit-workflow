@@ -28,6 +28,7 @@ as contract/test/test-runtime-emit-auto-evolve-banner.py). No shell-outs.
 
 import json
 import os
+import shutil
 import sys
 import tempfile
 
@@ -35,6 +36,18 @@ REPO_ROOT = os.path.normpath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", ".."))
 CONTRACT_DIR = os.path.join(REPO_ROOT, ".claude", "features", "contract")
 sys.path.insert(0, CONTRACT_DIR)
+
+# Source banner-status.py — emit_auto_evolve_banner now delegates line-1
+# and line-2 content to this script via subprocess (PR #383). The synthetic
+# tempdir tree must contain this script under
+# .claude/features/rabbit-auto-evolve/scripts/banner-status.py so the
+# subprocess call resolves; otherwise the banner returns [] for every
+# scenario.
+BANNER_STATUS_SRC = os.path.join(
+    REPO_ROOT,
+    ".claude", "features", "rabbit-auto-evolve",
+    "scripts", "banner-status.py",
+)
 
 from lib.runtime import (  # noqa: E402
     emit_auto_evolve_banner,
@@ -141,6 +154,12 @@ def build_repo(td):
         json.dump(RABBIT_CAGE_FJ, f)
     with open(os.path.join(ae_dir, "feature.json"), "w") as f:
         json.dump(RABBIT_AUTO_EVOLVE_FJ, f)
+    # Copy banner-status.py into the synthetic tempdir so the subprocess
+    # invocation inside emit_auto_evolve_banner resolves (PR #383 delegation).
+    scripts_dir = os.path.join(ae_dir, "scripts")
+    os.makedirs(scripts_dir, exist_ok=True)
+    shutil.copy2(BANNER_STATUS_SRC,
+                 os.path.join(scripts_dir, "banner-status.py"))
 
 
 def set_adjuncts(td):
