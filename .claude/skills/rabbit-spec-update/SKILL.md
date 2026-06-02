@@ -1,8 +1,8 @@
 ---
 name: rabbit-spec-update
-description: Use when an existing feature spec needs to be revised or updated, in any context. Invoke as Skill("rabbit-spec-update", args: "<feature-name> <request>") from any skill, process, or directly. Reads the current spec, judges the request type, invokes superpowers as needed, updates the spec surgically, and produces an implementation suggestion file for whoever invoked it. Also use when a user asks to update, review, or revise a spec for any rabbit feature — even if they don't say "spec" explicitly (e.g., "think about what we need to build", "plan this feature", "what should change in the design", "update the design for this bug fix"). For drafting a BRAND NEW spec from scratch (no existing content), use rabbit-spec-create instead.
+description: Use when an existing feature spec needs to be revised or updated, in any context (standalone or plugin mode). Invoke as Skill("rabbit-spec-update", args: "<feature-name> <request>") from any skill, process, or directly. Auto-detects rabbit mode from .rabbit/.runtime/mode and resolves the target feature directory to .claude/features/<feature-name>/ in standalone mode or .rabbit/rabbit-project/features/<feature-name>/ in plugin mode. Reads the current spec, judges the request type, invokes superpowers as needed, updates the spec surgically, and produces an implementation suggestion file for whoever invoked it. Also use when a user asks to update, review, or revise a spec for any rabbit feature — even if they don't say "spec" explicitly (e.g., "think about what we need to build", "plan this feature", "what should change in the design", "update the design for this bug fix"). For drafting a BRAND NEW spec from scratch (no existing content), use rabbit-spec-create instead.
 model: opus
-version: 2.0.0
+version: 2.1.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 ---
@@ -10,6 +10,27 @@ deprecation_criterion: when Claude Code exposes native spec-lifecycle skills tha
 # rabbit-spec-update — Spec Revision Skill
 
 Your job: understand the request, update the feature spec, and produce an implementation suggestion file. You are a general-purpose spec skill — any process can invoke you. You don't assume who called you or what comes next.
+
+## Modes
+
+This skill has two operating modes. The mode is auto-detected from
+`<repo_root>/.rabbit/.runtime/mode` (written at SessionStart by
+rabbit-meta's `write_mode_marker`):
+
+- **Standalone mode** (default; marker absent or contains `standalone`).
+  The target spec lives at
+  `.claude/features/<feature-name>/docs/spec/spec.md`.
+- **Plugin mode** (marker contains `plugin`). The target spec lives at
+  `.rabbit/rabbit-project/features/<feature-name>/docs/spec/spec.md`.
+
+Define `feature_root` as the resolved prefix for the rest of this skill
+body — i.e. `.claude/features/<feature-name>/` in standalone mode and
+`.rabbit/rabbit-project/features/<feature-name>/` in plugin mode. Every
+Read/Edit/Write reference to the target feature's spec.md, contract.md,
+feature.json, or implementation files below uses `<feature_root>` as the
+prefix. The impl-suggestion path at
+`<repo_root>/.rabbit/impl-suggestion-<feature-name>.json` (Step 5) is
+mode-agnostic and is NOT prefixed by `<feature_root>`.
 
 ## Inputs
 
@@ -21,32 +42,33 @@ Args format: `<feature-name> <request-or-item-description>`
 ## Step 1 — Read Current State
 
 Before forming any opinion, you MUST Read the target feature's
-`.claude/features/<feature-name>/docs/spec/spec.md` via the Read tool
-in this session. Reading is mandatory comprehension, not optional
-context-gathering — it lets you understand current invariants,
-numbering, and section structure before mutating, and it satisfies
-Claude Code's per-session file-state guard that rejects Edit tool
-calls on files not previously Read in-session. Skipping this Read
-causes silent `File must be read first` tool errors at Step 4.
+`<feature_root>/docs/spec/spec.md` via the Read tool in this session
+(see the **Modes** section above for how `<feature_root>` is resolved).
+Reading is mandatory comprehension, not optional context-gathering — it
+lets you understand current invariants, numbering, and section structure
+before mutating, and it satisfies Claude Code's per-session file-state
+guard that rejects Edit tool calls on files not previously Read
+in-session. Skipping this Read causes silent `File must be read first`
+tool errors at Step 4.
 
-You MAY also read any other file inside the target feature's
-directory `.claude/features/<feature-name>/`. Examples of what you
-should typically read include:
+You MAY also read any other file inside the resolved `<feature_root>/`
+directory. Examples of what you should typically read include:
 
-1. The feature's contract (if present): `.claude/features/<feature-name>/docs/spec/contract.md`
-2. The feature manifest: `.claude/features/<feature-name>/feature.json`
-3. Any existing implementation files under
-   `.claude/features/<feature-name>/scripts/`, `.../skills/`, `.../hooks/`,
-   `.../commands/`, or `.../agents/` — read freely; you are not writing to
-   these.
+1. The feature's contract (if present): `<feature_root>/docs/spec/contract.md`
+2. The feature manifest: `<feature_root>/feature.json`
+3. Any existing implementation files under `<feature_root>/scripts/`,
+   `<feature_root>/skills/`, `<feature_root>/hooks/`,
+   `<feature_root>/commands/`, or `<feature_root>/agents/` — read
+   freely; you are not writing to these.
 
 The list above is illustrative, not exhaustive. Read anything in the
 feature directory that helps you understand what already exists, so you
 don't re-spec implemented behavior.
 
-If `.claude/features/<feature-name>/` does not exist, abort immediately
-with an error message naming the missing feature directory. Do NOT silently
-create or scaffold a new feature — that is rabbit-project's job.
+If the resolved `<feature_root>/` does not exist, abort immediately
+with an error message naming the missing feature directory (include the
+mode you detected and the resolved path). Do NOT silently create or
+scaffold a new feature — that is rabbit-project's job.
 
 ## Step 2 — Judge Request Type
 
@@ -81,14 +103,15 @@ Both superpowers run under your current model context (opus). Do not dispatch a 
 ## Step 4 — Update the Spec
 
 **PRE-CONDITION:** You must have already Read the target
-`.claude/features/<feature-name>/docs/spec/spec.md` in Step 1 of this
-same session. The Claude Code Edit tool will reject any Edit on a
-file not previously Read in-session — this is not optional, it is a
-harness-enforced contract. If for any reason you arrive at Step 4
-without having Read the spec.md in this session, Read it now before
-proceeding to the Edit/Write call below.
+`<feature_root>/docs/spec/spec.md` (see **Modes** above for how
+`<feature_root>` is resolved) in Step 1 of this same session. The
+Claude Code Edit tool will reject any Edit on a file not previously
+Read in-session — this is not optional, it is a harness-enforced
+contract. If for any reason you arrive at Step 4 without having Read
+the spec.md in this session, Read it now before proceeding to the
+Edit/Write call below.
 
-Edit `.claude/features/<feature-name>/docs/spec/spec.md` to reflect what the request requires. Be surgical:
+Edit `<feature_root>/docs/spec/spec.md` to reflect what the request requires. Be surgical:
 - For specific requests: add/modify only the affected invariants or surface entries
 - For open-ended requests: apply the full design outcome from the superpowers above
 

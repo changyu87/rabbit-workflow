@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.3.0
+version: 1.4.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -25,7 +25,8 @@ agent, and writes the returned body to disk.
 
 ## Surface
 
-- `skills/rabbit-spec-create/SKILL.md` — the user-invocable skill
+- `skills/rabbit-spec-create/SKILL.md` — the user-invocable spec-drafting skill
+- `skills/rabbit-spec-update/SKILL.md` — the user/dispatcher-invocable spec-revision skill (absorbs the former rabbit-feature-spec). Dual-mode: detects rabbit mode at invocation time and resolves the feature spec path accordingly.
 - `agents/spec-creator.md` — the read-only drafting subagent
   (frontmatter declares `tools: Read, Grep, Glob` — the restriction is
   load-bearing)
@@ -97,6 +98,37 @@ length including zero.
    a `deprecation_criterion`. The body documents the 4-step orchestration
    protocol (assemble prompt → dispatch agent → write to spec.md → report).
 
+5. **`skills/rabbit-spec-update/SKILL.md` dual-mode feature_root resolution.**
+   `skills/rabbit-spec-update/SKILL.md` MUST exist with YAML frontmatter
+   declaring `name: rabbit-spec-update`, a description that names both
+   standalone and plugin modes, `model: opus`, `version: 2.1.0` or later,
+   `owner: rabbit-workflow team`, and a `deprecation_criterion`.
+   The skill body MUST detect the rabbit mode from
+   `<repo_root>/.rabbit/.runtime/mode` (written at SessionStart by
+   rabbit-meta's `write_mode_marker`) BEFORE issuing any Read/Edit/Write
+   against the target feature's spec.md, and resolve the feature_root prefix
+   to:
+   - `.claude/features/<feature-name>/` — standalone mode (mode marker
+     absent or content equals `standalone`).
+   - `.rabbit/rabbit-project/features/<feature-name>/` — plugin mode (mode
+     marker content equals exactly `plugin`).
+   Every subsequent path reference in the skill body (Step 1 Read of the
+   target spec.md, Step 1 optional reads of contract.md / feature.json /
+   implementation files, Step 4 Edit/Write of spec.md, and the
+   "abort if directory does not exist" guard) MUST use the resolved
+   feature_root prefix — NOT the literal `.claude/features/` hardcode.
+   The impl-suggestion path `.rabbit/impl-suggestion-<feature-name>.json`
+   is mode-agnostic (always lives under `<repo_root>/.rabbit/`) and is
+   exempt from the prefix rewrite. Mirroring pattern: `rabbit-feature-scaffold`
+   SKILL.md's `## Modes` section is the reference implementation.
+   Enforced by `test/test-rabbit-spec-update-dual-mode-paths.py` which
+   greps the SKILL.md body for: (a) at least one literal mention of
+   `.rabbit/.runtime/mode`, (b) at least one literal mention of
+   `.rabbit/rabbit-project/features/`, (c) every literal occurrence of
+   `.claude/features/<feature-name>/` appears in a context that names
+   the standalone-mode branch (no unconditional uses). Wired into
+   `test/run.py`.
+
 ## Tech Stack
 
 Python 3 stdlib only.
@@ -114,8 +146,6 @@ coverage arrives with the surface artifacts in this stage:
 
 ## Out of Scope
 
-- `rabbit-spec-update` (Stage 3) — revising existing specs, subagent-ified
-  from rabbit-feature-spec. Arrives in the next stage.
 - The user-code globs themselves and their semantics — owned by
   `rabbit-feature` (or its successor `rabbit-feature-scaffold` in Stage 4).
 - The prompt template body at
