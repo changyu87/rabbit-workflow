@@ -27,6 +27,8 @@ EXPECTED_RUNTIME_APIS = {
     "cleanup_old_prompts",
     "write_mode_marker",
     "check_release_update",
+    "emit_auto_evolve_banner",
+    "emit_auto_evolve_stop_line",
 }
 
 FAIL = 0

@@ -221,6 +221,75 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t10: expected one BYPASS-PERMISSIONS alert, got {r!r}")
 
+# Inv 64 — per-id suppression hook driven by .rabbit-auto-evolve-active marker.
+# Suppression is scoped to ids {human-approval, bypass-permissions} only; other
+# configurables continue to emit even when the marker is present.
+
+# t11: marker absent + both muted configurables in alert-on state -> unchanged
+#      behavior (regression-safe): both still emit.
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [HA_CONF, BP_CONF_REAL])
+    with open(os.path.join(td, ".rabbit-human-approval-bypass"), "w") as f:
+        f.write("session")
+    sf = os.path.join(td, ".claude", "settings.local.json")
+    os.makedirs(os.path.dirname(sf), exist_ok=True)
+    with open(sf, "w") as f:
+        json.dump({"permissions": {"defaultMode": "bypassPermissions"}}, f)
+    r = iterate_configurables_alerts(repo_root=td)
+    texts = sorted(x["text"] for x in r)
+    if texts == ["BYPASS-PERMISSIONS MODE ACTIVE", "HUMAN APPROVAL BYPASS ACTIVE"]:
+        ok("t11: marker absent -> both muted ids still emit (regression unchanged)")
+    else:
+        fail(f"t11: expected both alerts when marker absent, got {texts}")
+
+# t12: marker present + both muted configurables active -> both suppressed.
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [HA_CONF, BP_CONF_REAL])
+    with open(os.path.join(td, ".rabbit-human-approval-bypass"), "w") as f:
+        f.write("session")
+    sf = os.path.join(td, ".claude", "settings.local.json")
+    os.makedirs(os.path.dirname(sf), exist_ok=True)
+    with open(sf, "w") as f:
+        json.dump({"permissions": {"defaultMode": "bypassPermissions"}}, f)
+    with open(os.path.join(td, ".rabbit-auto-evolve-active"), "w") as f:
+        f.write("")
+    r = iterate_configurables_alerts(repo_root=td)
+    if r == []:
+        ok("t12: marker present + both muted ids active -> suppressed (0 entries)")
+    else:
+        fail(f"t12: expected zero alerts (both ids suppressed), got {r!r}")
+
+# t13: marker present + third unrelated configurable (id=other-thing) alerting
+#      -> still emits for that third id (per-id scoping, not blanket).
+with tempfile.TemporaryDirectory() as td:
+    other = {
+        "id": "other-thing",
+        "subcommand": "other-thing",
+        "storage": {"type": "marker-file", "path": ".other-marker"},
+        "values": {"true": {"api": "delete_marker", "args": {}},
+                    "false": {"api": "write_marker", "args": {}}},
+        "default": "true",
+        "alert-on": "false",
+        "alert-message": {"text": "OTHER THING ACTIVE",
+                           "icon": "info", "color": "yellow"},
+    }
+    make_feature(td, "rabbit-cage", [HA_CONF, BP_CONF_REAL, other])
+    with open(os.path.join(td, ".rabbit-human-approval-bypass"), "w") as f:
+        f.write("session")
+    sf = os.path.join(td, ".claude", "settings.local.json")
+    os.makedirs(os.path.dirname(sf), exist_ok=True)
+    with open(sf, "w") as f:
+        json.dump({"permissions": {"defaultMode": "bypassPermissions"}}, f)
+    with open(os.path.join(td, ".other-marker"), "w") as f:
+        f.write("")
+    with open(os.path.join(td, ".rabbit-auto-evolve-active"), "w") as f:
+        f.write("")
+    r = iterate_configurables_alerts(repo_root=td)
+    if (len(r) == 1 and r[0]["text"] == "OTHER THING ACTIVE"):
+        ok("t13: marker present -> per-id scope keeps OTHER THING ACTIVE alert")
+    else:
+        fail(f"t13: expected only OTHER THING ACTIVE alert, got {r!r}")
+
 if FAIL:
     print("test-runtime-iterate-configurables-alerts: FAIL", file=sys.stderr)
     sys.exit(1)
