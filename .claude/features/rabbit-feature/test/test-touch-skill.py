@@ -251,6 +251,42 @@ def test_inv16_step_3_spec_commit_obligation() -> None:
         )
 
 
+# Inv 16 (amended): Step 3 spec-commit is mode-aware (standalone vs plugin).
+# The body MUST reference .rabbit/.runtime/mode for mode detection, MUST
+# include the plugin-branch 'git add -f' form, MUST still include the
+# standalone 'git add' (no -f) form, and MUST name both feature_dir
+# prefixes ('.claude/features/' and '.rabbit/rabbit-project/features/').
+def test_inv16_step_3_mode_aware_git_add() -> None:
+    for skill_path in (SOURCE_SKILL, DEPLOYED_SKILL):
+        assert skill_path.exists(), f"missing SKILL.md: {skill_path}"
+        text = skill_path.read_text(encoding="utf-8")
+        body = _step_body(text, 3)
+        assert ".rabbit/.runtime/mode" in body, (
+            f"Step 3 in {skill_path} must reference '.rabbit/.runtime/mode' "
+            "as the mode-detection source for the spec-commit (Inv 16 amended)"
+        )
+        assert "git add -f" in body, (
+            f"Step 3 in {skill_path} must include the plugin-mode 'git add -f' "
+            "form (host .gitignore typically ignores .rabbit/) (Inv 16 amended)"
+        )
+        # Standalone branch must still use a plain 'git add' (no -f). Look for
+        # at least one occurrence of 'git add' that is not immediately followed
+        # by ' -f' or '-f'.
+        plain_git_add = re.search(r"git add(?!\s*-f)\b", body)
+        assert plain_git_add is not None, (
+            f"Step 3 in {skill_path} must still include the standalone "
+            "'git add' (no -f) form for standalone mode (Inv 16 amended)"
+        )
+        assert ".claude/features/" in body, (
+            f"Step 3 in {skill_path} must name the standalone feature_dir "
+            "prefix '.claude/features/' (Inv 16 amended)"
+        )
+        assert ".rabbit/rabbit-project/features/" in body, (
+            f"Step 3 in {skill_path} must name the plugin-mode feature_dir "
+            "prefix '.rabbit/rabbit-project/features/' (Inv 16 amended)"
+        )
+
+
 # Inv 41: dispatcher-continuity directive present in source AND deployed,
 # byte-identical, prominent enough to appear before Step 7's body ends.
 _CONTINUITY_REQUIRED_PHRASES = [
