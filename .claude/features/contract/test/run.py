@@ -122,5 +122,6 @@ run_test("test-runtime-api-enum-sourced-from-schema.py")
 run_test("test-templates-validate-against-schemas.py")
 run_test("test-deployed-skills-match-source.py")
 run_test("test-publish-file-deployed-copies-match-source.py")
+run_test("test-validate-agent-prompt-sentinel.py")
 
 print("ALL TESTS PASSED")
