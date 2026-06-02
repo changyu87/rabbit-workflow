@@ -1,9 +1,9 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "owner": "cyxu",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and reschedules via ScheduleWakeup until the user issues an explicit stop.",
   "surface": {
     "hooks": [],
@@ -52,5 +52,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "spec Inv 4 + Inv 18 + 0.7.0 bump landed in pre-dispatch commit"
+  "spec_no_change_reason": "spec Inv 1 v0.7.1 + Inv 18 already landed in pre-dispatch commit; this cycle implements them and the version-lockstep bump"
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1 — 2026-06-02
+
+- Fix #371: `scripts/set-evolve-mode.py off` now performs a full teardown — it deletes the four loop-runtime markers (`.rabbit-auto-evolve-running`, `.rabbit-auto-evolve-stop-requested`, `.rabbit-auto-evolve-restart-needed`, `.rabbit-auto-evolve-aborted`) first (idempotent), then reverses the three activation mutations in inverse order. In v0.7.0 `off` only deleted `.rabbit-auto-evolve-active`, leaving the loop-runtime markers behind for the user to clean up manually (which scope-guard then denied because literal `rm`/`touch` of non-allowlisted markers is blocked). SKILL.md tick prose updated to reference `triage-batch.py` in the canonical `fetch-queue | triage-batch | plan-batch` pipe (Inv 18 follow-up from #369). Spec Inv 1 rewritten to detail the 4-step teardown and bumped to v0.7.1; `test-set-evolve-mode.py` extended with full-teardown and partial-state scenarios; `test-tick-skill.py` now asserts SKILL.md references `triage-batch.py`.
+
 ## 0.7.0 — 2026-06-02
 
 - Fix #369: add `scripts/triage-batch.py` bridge so the standard tick pipe `fetch-queue | triage-batch | plan-batch` works end-to-end. `triage-batch.py` reads the raw `gh issue list` shape on stdin, invokes `triage-issue.py` per item, and emits the concatenated triage-object array on stdout. Per-issue failures are converted to `defer/triage-failed` entries so a single bad issue cannot abort the batch. `plan-batch.py` now silently drops items where `decision != "work"` (items without the `decision` key continue to pass through for backwards compatibility). Added spec Inv 18 and `test-triage-batch.py`; extended `test-plan-batch.py` to cover the unfiltered triage array case.
