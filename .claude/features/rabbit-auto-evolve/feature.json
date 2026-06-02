@@ -1,10 +1,10 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "owner": "cyxu",
-  "tdd_state": "test-green",
-  "summary": "Self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and reschedules via ScheduleWakeup until the user issues an explicit stop.",
+  "tdd_state": "impl",
+  "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and reschedules via ScheduleWakeup until the user issues an explicit stop.",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -85,5 +85,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "spec Inv 14 already added by dispatcher before this subagent dispatch"
+  "spec_no_change_reason": "spec.md Inv 15 already committed by dispatcher pre-dispatch"
 }
