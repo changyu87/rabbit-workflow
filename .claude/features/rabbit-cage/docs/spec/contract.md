@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.32.0
+version: 5.33.0
 template_version: 2.0.0
 ---
 
@@ -49,7 +49,8 @@ template_version: 2.0.0
       ".rabbit/.runtime/mode",
       ".rabbit/.runtime/scope-active-*",
       ".rabbit/.runtime/scope-bypass-once",
-      ".rabbit/rabbit-project/project-map.json"
+      ".rabbit/rabbit-project/project-map.json",
+      ".rabbit/agent-sentinel-bypass"
     ],
     "external": ["env-var:RABBIT_ROOT", "env-var:RABBIT_REFRESH_EVERY"]
   },
@@ -62,6 +63,9 @@ template_version: 2.0.0
     ],
     "scripts": [
       {"path": ".claude/features/contract/scripts/find-feature.py", "purpose": "scope-guard.py feature-name -> path resolution"}
+    ],
+    "functions": [
+      {"path": ".claude/features/contract/lib/checks.py", "function": "validate_agent_prompt_sentinel", "purpose": "scope-guard.py Agent-tool sentinel validation (Inv 31 / contract Inv 66)"}
     ]
   },
   "manages": {

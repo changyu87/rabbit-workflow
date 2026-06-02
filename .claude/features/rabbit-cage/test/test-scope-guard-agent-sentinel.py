@@ -135,12 +135,14 @@ try:
         },
     }
     rc, stdout, stderr = run_scope_guard(payload_missing)
-    if rc != 0:
-        ok("(ii) Agent without sentinel: non-zero exit (DENY)")
+    # Claude Code's PreToolUse deny convention: exit 0 + deny-shape JSON
+    # on stdout IS the block signal (NOT exit non-zero + stderr).
+    if rc == 0:
+        ok("(ii) Agent without sentinel: exit 0 (deny-shape on stdout is the block signal)")
     else:
         fail_t(
-            "(ii) Agent without sentinel: expected non-zero exit, got 0; "
-            f"stdout={stdout!r} stderr={stderr!r}"
+            "(ii) Agent without sentinel: expected exit 0 with deny-shape JSON, "
+            f"got rc={rc}; stdout={stdout!r} stderr={stderr!r}"
         )
 
     # The deny-shape JSON MUST appear on stdout (Claude Code PreToolUse
@@ -180,12 +182,13 @@ try:
         "tool_input": {"subagent_type": "general-purpose"},
     }
     rc, stdout, stderr = run_scope_guard(payload_malformed)
-    if rc != 0:
-        ok("(v) Agent with no 'prompt' key: non-zero exit (defensive DENY)")
+    # exit 0 + deny-shape JSON is the canonical block signal.
+    if rc == 0:
+        ok("(v) Agent with no 'prompt' key: exit 0 (deny-shape JSON below)")
     else:
         fail_t(
-            "(v) Agent with no 'prompt' key: expected non-zero exit, got 0; "
-            f"stdout={stdout!r} stderr={stderr!r}"
+            "(v) Agent with no 'prompt' key: expected exit 0 with deny-shape JSON, "
+            f"got rc={rc}; stdout={stdout!r} stderr={stderr!r}"
         )
 
     parsed_v = None
