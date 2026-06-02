@@ -798,13 +798,46 @@ Phase E merges complete.
     Enforced by `test/test-skill-no-askuserquestion-rule.py`, which
     asserts the literal rule string appears in SKILL.md.
 
+14. **End-to-end banner suppression contract.** When
+    `.rabbit-auto-evolve-active` is present at the repo root, the
+    SessionStart and Stop dispatchers emit the auto-evolve composite
+    banner (`emit_auto_evolve_banner` / `emit_auto_evolve_stop_line`)
+    INSTEAD of the per-configurable alerts for `human-approval` and
+    `bypass-permissions`. When the marker is absent, the standard
+    per-configurable alert lines emit normally and the auto-evolve
+    banner is a no-op.
+
+    Composite banner shape:
+    - Line 1 (red, always present when marker exists):
+      `AUTONOMOUS-EVOLVE MODE ACTIVE — composite (human-approval +
+      bypass-permissions + auto-evolve marker)`.
+    - Line 2 (yellow), content varies by adjunct markers:
+      - Neither `.rabbit-auto-evolve-restart-needed` nor
+        `.rabbit-auto-evolve-aborted` present: literal start command
+        to paste (`paste: /rabbit-auto-evolve start`).
+      - `.rabbit-auto-evolve-restart-needed` present: a line
+        matching the literal substring `resume after restart: paste
+        /rabbit-auto-evolve start`.
+      - `.rabbit-auto-evolve-aborted` present (highest precedence):
+        a line matching the literal substring `loop aborted on safety
+        violation` (full text may also surface the abort reason from
+        the marker file).
+
+    Enforced by `test/test-banner-suppression.py` exercising four
+    scenarios (marker-absent, marker-present, marker+restart-needed,
+    marker+aborted) against a synthetic `.claude/features/` tree
+    under `tempfile.TemporaryDirectory()`. The test exercises the
+    real `contract.lib.runtime` APIs (which landed in PR #332 /
+    contract Inv 65) by importing them as a module — no shell
+    invocations of the dispatchers.
+
 ## Known gaps
 
 - All Phase C scripts have landed (#335, #339, #341, #343, #345, #347,
   #349, #351, #353). Phase D Task 12 (SKILL.md + feature.json wiring
-  + workspace-structure.json + passthrough template) lands in this
-  cycle. Phase D Task 13 (banner suppression test) and Phase E
-  (feature-shape compliance + final suite) follow.
+  + workspace-structure.json + passthrough template) landed in PR #355.
+  Phase D Task 13 (banner suppression test) lands in this cycle.
+  Phase E (feature-shape compliance + final suite) follows.
 - No `CHANGELOG.md` exists yet (added in Phase E Task 14).
 - All three prerequisite changes have **landed on `dev`** as of the
   commits noted in the prompt context (#327/#330, #328/#331, #329/#332);
