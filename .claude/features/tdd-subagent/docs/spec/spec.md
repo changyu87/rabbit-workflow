@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.5.0
+version: 5.6.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -184,9 +184,16 @@ the template's `{{bypass_preamble_note}}` placeholder.
     `HANDOFF:` block (the human-readable view) followed immediately by
     a fenced JSON block prefixed `HANDOFF_JSON:` (the machine-first
     source of truth). The JSON block includes
-    `handoff_schema_version: "1.0.0"` and the fields `feature`,
+    `handoff_schema_version: "1.1.0"` and the fields `feature`,
     `tdd_state`, `test_result`, `spec_compliance`, `tdd_report_path`,
-    `closed_items`, `notes`.
+    `closed_items`, `notes`. The version bump from `1.0.0` to `1.1.0`
+    landed in v5.6.0 as the additive-change marker for the `abort`
+    subcommand (Inv 50–53) and reserves the version for the new HANDOFF
+    fields (`aborted_reason`, `discovered_issues`) that companion issue
+    #328 will add. The bump is additive (existing producers continue to
+    emit valid 1.1.0 HANDOFFs without populating the new fields); the
+    fields themselves are NOT added in this version — only the version
+    integer is reserved.
 
 ### Bypass-marker preamble note
 
@@ -490,6 +497,86 @@ The 13 invariants in this section were absorbed from the retired
     - Scenario B (flag with valid subset): assert prompt contains the named invariants AND does NOT contain non-named invariants AND contains the NOTE line naming the count + list.
     - Scenario C (flag with unknown number): assert exit code 1 + stderr substring 'unknown invariant number'.
     - Scenario D (size assertion): assert scoped prompt is materially smaller than full-spec form (≥30% reduction for any feature with ≥10 invariants).
+
+### State machine — abort subcommand
+
+The five invariants below (Inv 50–54) land the abort mechanism per
+issue #327. They extend the state-machine surface (`tdd-step.py`) and
+clarify the de facto convention that HANDOFF-only state values are not
+members of `_VALID_STATES` (Inv 31). The companion issue #328 adds
+HANDOFF JSON fields (`aborted_reason`, `discovered_issues`) that abort
+callers will populate; the version-integer reservation for that work
+lives in Inv 22 above.
+
+50. **`abort` subcommand.** `tdd-step.py` MUST expose a fifth
+    subcommand `abort <feature_dir> --reason <code>` (in addition to
+    `show`, `next`, `transitions`, `transition` per the Surface
+    section). The positional `<feature_dir>` matches the existing
+    `transition` shape (Inv 14, Inv 46). `--reason <code>` is required —
+    abort without a recorded reason is rejected with exit code `2`
+    (invocation error). Reason codes are free-form short tags;
+    convention is `<short-tag>` such as `blocked-by-#329`,
+    `discovered-blocker`, `external-dep-missing`. The `abort` verb is
+    semantically distinct from `--force` backward transitions (Inv 34):
+    `abort` is for loop- or subagent-driven blocker handling; `--force`
+    remains for human-driven rollback. Distinct semantics → distinct
+    verbs → distinct audit trail.
+
+51. **`abort` acceptance / rejection by state.** `abort` is accepted
+    when `feature.json.tdd_state` is one of `test-red`, `impl`, or
+    `sync-deployed`. `abort` is rejected with exit code `1` and a
+    stderr diagnostic when `tdd_state` is `spec`, `spec-update`, or
+    `deprecated`. The `deprecated` rejection holds unconditionally
+    (no `--force` override; Inv 35 still applies — `deprecated` is
+    terminal in every direction including abort). Rationale: abort is
+    a mid-cycle recovery mechanism for the executor states; pre-executor
+    states (`spec`/`spec-update`) and the terminal state (`deprecated`)
+    have no scope locks or in-flight implementation state to roll back.
+    Enforced by `test/test-abort-transition.py`.
+
+52. **`abort` scope-marker release (mode-aware).** On accepted abort,
+    `tdd-step.py` removes the scope-active marker for the named
+    feature, honoring the same dual-mode path resolution as Inv 12:
+    standalone mode (mode marker absent or content equals `standalone`)
+    removes `<repo_root>/.rabbit-scope-active-<feature>`; plugin mode
+    (`<repo_root>/.rabbit/.runtime/mode == 'plugin'`) removes
+    `<repo_root>/.rabbit/.runtime/scope-active-<feature>`. Removal is
+    best-effort idempotent — if neither marker exists, no error.
+    Marker removal happens BEFORE the state rollback in Inv 53 so that
+    an abort which crashes between the marker removal and the state
+    rollback still leaves the scope unlocked (the subagent or a
+    re-dispatched cycle can re-LOCK without manual cleanup). Enforced
+    by `test/test-abort-releases-scope-lock.py` with tmpdir fixtures
+    for both modes, matching `test-prompt-lock-unlock-marker-path.py`'s
+    pattern.
+
+53. **`abort` state rollback via `_pre_touch_state`.** On accepted
+    abort, `tdd-step.py` rolls back `feature.json.tdd_state` to the
+    value of an optional `feature.json._pre_touch_state` field if
+    present; otherwise to `test-red` as a safe default. The
+    `_pre_touch_state` field is OPTIONAL — it is set by upstream
+    callers (e.g., `rabbit-feature-touch` may write it at
+    branch-creation time) to capture the pre-touch state so abort can
+    restore it accurately. When `_pre_touch_state` is absent, the
+    `test-red` default ensures the feature returns to a re-runnable
+    state (the entry point of the executor portion of the cycle).
+    After rollback, `_pre_touch_state` is removed from `feature.json`
+    — the value is consumed by the abort — so a subsequent
+    `transition` call does not see a stale rollback target. Enforced
+    by `test/test-abort-rollback-state.py`.
+
+54. **`tdd_state: blocked` is HANDOFF-only.** The `blocked` value
+    emitted under the `tdd_state` key of the blocked-HANDOFF schema
+    (Inv 10) is HANDOFF-only — it MUST NEVER appear as a persisted
+    value in `feature.json.tdd_state`. This invariant documents the
+    de facto behavior so the convention is explicit: HANDOFF JSON may
+    carry state-like values that are not members of `_VALID_STATES`
+    (Inv 31), and any future HANDOFF-only state values (such as
+    `aborted`, anticipated per #328 for dispatcher emission) follow
+    the same rule. `_VALID_STATES` (Inv 31) remains the authoritative
+    set of `feature.json.tdd_state` values; HANDOFF-emitted
+    state-like values are a separate vocabulary used only on the wire
+    between subagent and dispatcher.
 
 ## Out of Scope
 

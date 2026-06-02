@@ -1,6 +1,6 @@
 {
   "name": "tdd-subagent",
-  "version": "5.5.0",
+  "version": "5.6.0",
   "owner": "rabbit-workflow team",
   "status": "active",
   "tdd_state": "test-green",
@@ -59,6 +59,6 @@
     }
   ],
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
-  "updated": "2026-06-01",
-  "spec_no_change_reason": "spec already committed by dispatcher in upstream commit adding Inv 49 (5.4.0->5.5.0)"
+  "updated": "2026-06-02",
+  "spec_no_change_reason": "spec for #327 was committed by dispatcher in commit a796cc6 prior to subagent invocation"
 }
