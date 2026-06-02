@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.7.2
+version: 0.7.3
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -722,12 +722,16 @@ Phase E merges complete.
       `permissions.defaultMode: bypassPermissions` from
       `settings.local.json` is picked up) and then run
       `/rabbit-auto-evolve start`.
-    - `start` — verifies the three preconditions
+    - `start` — invokes `scripts/check-preconditions.py` which
+      reports on the three preconditions
       (`.rabbit-auto-evolve-active` present, `human-approval` off,
-      `bypass-permissions` on). On all-pass, invokes
+      `bypass-permissions` on) as structured JSON
+      (per Inv 21). On `all_pass: true`, invokes
       `scripts/start-loop.py` (which writes
       `.rabbit-auto-evolve-running`), runs one tick, calls
-      `ScheduleWakeup` to chain the next.
+      `ScheduleWakeup` to chain the next. On `all_pass: false`,
+      surfaces the failing `checks[].detail` strings to the user
+      as guidance and does NOT start.
     - `stop` — invokes `scripts/stop-loop.py` (which writes
       `.rabbit-auto-evolve-stop-requested`); the next tick observes
       and does NOT call `ScheduleWakeup`.
@@ -1080,6 +1084,52 @@ Phase E merges complete.
     exit 0) and `test/test-start-stop-skill.py` (asserts
     SKILL.md tick documentation contains
     `.claude/features/rabbit-auto-evolve/scripts/end-tick.py`).
+
+21. **`check-preconditions.py` owns start preconditions.** The
+    CLI `python3 .claude/features/rabbit-auto-evolve/scripts/check-preconditions.py`
+    inspects the three `start` preconditions and emits a
+    structured JSON report on stdout:
+
+    ```json
+    {
+      "all_pass": false,
+      "checks": [
+        {"id": "active-marker",       "ok": false, "detail": ".rabbit-auto-evolve-active missing — run /rabbit-auto-evolve on"},
+        {"id": "approval-bypass",     "ok": false, "detail": ".rabbit-human-approval-bypass missing — run /rabbit-auto-evolve on"},
+        {"id": "bypass-permissions",  "ok": false, "detail": "permissions.defaultMode != bypassPermissions in .claude/settings.local.json — restart Claude after /rabbit-auto-evolve on"}
+      ]
+    }
+    ```
+
+    Exit code is ALWAYS 0 — the verdict is carried in `all_pass`,
+    not in the exit code. The script reads files only (`os.path.exists`
+    + json parse of `.claude/settings.local.json`) and never invokes
+    `ls`, `test -f`, or any other command that would exit non-zero
+    on the expected "not yet activated" path. The SKILL.md `start`
+    section MUST invoke this script and MUST NOT use bare `ls
+    .rabbit-auto-evolve-*` patterns — those produce ugly stderr
+    noise (`ls: cannot access ...: No such file or directory`)
+    when files are legitimately absent.
+
+    This invariant was introduced by issue #375 in v0.7.3.
+
+    The three check IDs are stable identifiers (`active-marker`,
+    `approval-bypass`, `bypass-permissions`). Callers may rely on
+    their presence and order in the `checks` array.
+
+    Enforced by `test/test-check-preconditions.py`:
+    - All three missing → `all_pass: false`, all three checks
+      report `ok: false` with the documented `detail` strings.
+    - All three present → `all_pass: true`, all three checks
+      report `ok: true`.
+    - Partial (active marker exists, bypass not set) →
+      `all_pass: false`, only the failing checks report `ok: false`.
+    - Exit code is 0 in all cases.
+
+    `test/test-start-stop-skill.py` extends to assert SKILL.md
+    `start` section contains the `check-preconditions.py`
+    invocation AND does NOT contain bare `ls .rabbit-auto-evolve-*`
+    patterns.
 
 ## Known gaps
 
