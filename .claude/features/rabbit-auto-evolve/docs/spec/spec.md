@@ -316,14 +316,73 @@ Phase E merges complete.
    - Smoke test: invoke with `--help`; assert exit 0 and recognizable
      usage text.
 
+4. **`plan-batch.py` conflict-graph + barrier dispatch planner.** The CLI
+   `cat work-set.json | python3 .claude/features/rabbit-auto-evolve/scripts/plan-batch.py [--max-parallel N]`
+   reads a JSON array of triage objects on stdin (caller passes only
+   `decision == "work"` items) and emits a deterministic dispatch plan
+   to stdout:
+
+   ```json
+   {
+     "barrier_first": [123, 124],
+     "groups": [[125, 126], [127]]
+   }
+   ```
+
+   Each input item carries at least: `issue` (int), `feature` (string),
+   `contract_touch` (bool), and `priority` (one of `critical` / `high`
+   / `medium` / `low`; missing or unrecognized → sorts last).
+
+   The script is a pure JSON processor — no `gh`, no `git`, no
+   filesystem reads or writes other than stdin/stdout.
+
+   `--max-parallel N` (positional flag, default 4) is the canonical
+   surface for the cap (resolved Open Question 1). The flag MUST be
+   integer-valued and ≥ 1; non-integer or `< 1` exits non-zero with
+   argparse error.
+
+   Algorithm (4 steps from design doc §6):
+
+   1. **Pull out `contract_touch == true` items** into `barrier_first`,
+      sorted by priority desc (critical > high > medium > low;
+      no-priority last) then `issue` ascending.
+   2. **Build a conflict graph on the remainder.** Nodes are issues;
+      an edge exists between A and B iff `A.feature == B.feature`.
+   3. **Greedy graph coloring.** Sort the remainder by priority desc
+      then `issue` ascending; walk in that order and assign each issue
+      the lowest-numbered color (group index) that has no neighbor
+      already in it. `groups` is the color partition, in color order.
+   4. **Apply `--max-parallel` cap.** Any group whose size exceeds the
+      cap is split into sub-groups of size ≤ cap. Sub-groups appear as
+      separate consecutive entries in the output `groups` list
+      (parallel-safe within each sub-group; the loop processes
+      sub-groups sequentially).
+
+   Exit code: 0 on success; non-zero on malformed stdin JSON or
+   invalid `--max-parallel` value.
+
+   Enforced by `test/test-plan-batch.py`:
+   - Contract-only set (3 items, all `contract_touch: true`,
+     non-monotonic priorities) → all in `barrier_first`, sorted
+     correctly; `groups == []`.
+   - Same-feature set (3 items, same `feature`, no contract) → exactly
+     3 groups, each containing one item (graph coloring forces no
+     sharing).
+   - Mixed-feature set (3 items, all distinct features, no contract)
+     → exactly 1 group containing all 3.
+   - Over-cap set (8 distinct-feature non-contract items with
+     `--max-parallel 3`) → split into sub-groups of size ≤ 3 (e.g.
+     `[3, 3, 2]`).
+   - `--help` smoke: exit 0 with recognizable usage text.
+
 ## Known gaps
 
-- Phase C scripts still to land: `plan-batch.py`, `safety-check.py`,
-  `merge-prs.py`, `release-bump.py`, `cleanup-branches.py`,
-  `classify-merge-restart.py`, `update-state.py`. (`set-evolve-mode.py`
-  landed in PR #335; `fetch-queue.py` in PR #339; `triage-issue.py`
-  lands in this cycle.) Each remaining script lands via its own
-  feature-touch cycle.
+- Phase C scripts still to land: `safety-check.py`, `merge-prs.py`,
+  `release-bump.py`, `cleanup-branches.py`, `classify-merge-restart.py`,
+  `update-state.py`. (`set-evolve-mode.py` landed in PR #335;
+  `fetch-queue.py` in PR #339; `triage-issue.py` in PR #341;
+  `plan-batch.py` lands in this cycle.) Each remaining script lands
+  via its own feature-touch cycle.
 - `feature.json` carries placeholder values: `summary: "rabbit-auto-evolve
   feature"` and `deprecation_criterion: "TBD — set after first review"`.
   Both must be filled before the feature passes the shape-compliance test
