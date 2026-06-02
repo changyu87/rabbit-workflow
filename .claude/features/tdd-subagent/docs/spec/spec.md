@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.3.0
+version: 5.4.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -452,6 +452,21 @@ The 13 invariants in this section were absorbed from the retired
     - Scenario A (standalone): unset `RABBIT_ROOT`, set cwd to a tmpdir containing `.git/` and `.claude/features/contract/scripts/find-feature.py`, invoke `dispatch-tdd-subagent.py --scope <known-feature> ...`, assert the call succeeds and finds the feature.
     - Scenario B (plugin, RABBIT_ROOT set): set `RABBIT_ROOT=<tmp>/.rabbit`, populate `<tmp>/.rabbit/.claude/features/contract/scripts/find-feature.py` + `<tmp>/.rabbit/.runtime/mode='plugin'` + `<tmp>/.rabbit/rabbit-project/features/run-ingest/feature.json`, invoke the dispatcher with `--scope run-ingest`, assert it succeeds and locates the project feature.
     - Scenario C (regression for #301): plugin layout, RABBIT_ROOT set, assert the dispatcher does NOT fall back to git rev-parse (a stale `<host>/.claude/...` path) — verify by setting `<tmp>` to a directory that has `.git/` at host level but NO `.claude/` at host level; correct behavior must use `RABBIT_ROOT` and not error on the missing host-level `.claude/`.
+
+48. **No doubled `.rabbit/.rabbit/` in assembled prompt paths.** The assembled prompt MUST NOT contain the literal substring `.rabbit/.rabbit/` anywhere — neither in STEP 1 LOCK (scope marker), STEP 7 mkdir, STEP 7 `Path:` for the tdd-report, STEP 8 UNLOCK, nor the HANDOFF block's `tdd_report_path` field. The doubling occurs when the template hardcodes `{{repo_root}}/.rabbit/<rest>` BUT the dispatcher's `repo_root` resolves to `RABBIT_ROOT` (= `<host>/.rabbit/`) per Inv 47 — the result is `<host>/.rabbit/.rabbit/<rest>`, a non-existent path.
+
+    The fix is path-construction discipline in `dispatch-tdd-subagent.py`:
+    - The dispatcher MUST compute the canonical `tdd_report_path` at prompt-assembly time, choosing per mode:
+      - **Plugin** (RABBIT_ROOT set, or `.rabbit/.runtime/mode == 'plugin'` detected): `<rabbit_root>/tdd-report-<feature>.json` where `<rabbit_root>` is the resolved `RABBIT_ROOT`.
+      - **Standalone**: `<repo_root>/.rabbit/tdd-report-<feature>.json` where `<repo_root>` is the git toplevel.
+    - The dispatcher plumbs the resolved `tdd_report_path` value into a single template slot (e.g. `{{tdd_report_path}}`) — every reference in STEP 7 and HANDOFF uses the SAME computed value.
+    - Similarly, the mkdir target `mkdir -p <dir>` uses `os.path.dirname(tdd_report_path)`, so the directory is also per-mode-correct.
+    - The scope marker path is already handled by the `{{scope_marker_path}}` slot per Inv 12 amended — verify no remaining hardcoded `{{repo_root}}/.rabbit-scope-active-...` lines exist in STEP 1 LOCK or STEP 8 UNLOCK template body, EXCEPT the descriptive prose block (Inv 7 'Scope marker convention' which documents the standalone naming convention as illustration — that's commentary, not an executable instruction).
+
+    Enforced by `test/test-prompt-no-doubled-rabbit-paths.py`:
+    - Scenario A: standalone tmpdir (no RABBIT_ROOT env, no `.rabbit/.runtime/mode`). Invoke dispatch.py via subprocess; assert the full assembled stdout does NOT contain the substring `.rabbit/.rabbit/`.
+    - Scenario B: plugin tmpdir (`.rabbit/.runtime/mode='plugin'` + `RABBIT_ROOT=<tmp>/.rabbit`). Invoke dispatch.py; assert the assembled stdout does NOT contain `.rabbit/.rabbit/` AND the STEP 7 `Path:` line ends with `<tmp>/.rabbit/tdd-report-<feature>.json` (single `.rabbit/`, not doubled).
+    - Both scenarios pin the absence of the doubled substring as a single, easy-to-grep regression assertion.
 
 ## Out of Scope
 
