@@ -45,5 +45,6 @@ run_test("test-banner-suppression.py")
 run_test("test-feature-shape.py")
 run_test("test-loop-markers.py")
 run_test("test-check-preconditions.py")
+run_test("test-banner-status.py")
 
 print("ALL TESTS PASSED")
