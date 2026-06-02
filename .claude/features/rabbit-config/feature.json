@@ -11,7 +11,7 @@
   },
   "deprecation_criterion": "when the rabbit CLI exposes native configuration mutation that subsumes this feature",
   "status": "active",
-  "updated": "2026-05-31",
+  "updated": "2026-06-01",
   "manifest": [
     {
       "api": "publish_skill",
@@ -48,5 +48,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "spec.md Inv 18 path already updated in prior commit 2a9f330; this cycle only updates contract.md reads.files path, test DECL constant, and feature.json version"
+  "spec_no_change_reason": "Inv 20 added in prior commit 5530e73; this cycle implements the interpreter behaviour + test."
 }

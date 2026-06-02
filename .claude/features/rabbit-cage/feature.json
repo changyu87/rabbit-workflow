@@ -270,7 +270,8 @@
         "text": "BYPASS-PERMISSIONS MODE ACTIVE - scope-guard is sole write-auth gate",
         "icon": "\ud83d\udea8",
         "color": "red"
-      }
+      },
+      "restart_required": true
     },
     {
       "id": "prompt-threshold",

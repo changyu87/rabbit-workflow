@@ -1,6 +1,6 @@
 ---
 feature: rabbit-config
-version: 1.2.0
+version: 1.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when the rabbit CLI exposes native configuration mutation that subsumes this feature
@@ -195,6 +195,8 @@ operates on user-facing labels rather than raw stored values:
     `test/test-prompts-declared.py` which loads `feature.json` and
     asserts the single entry exists with the exact id, kind, inject,
     and slots values.
+
+20. **Restart-required configurables surface a one-shot restart-prompt after mutation.** A configurable whose effect is read ONLY at Claude Code process start (notably `permissions.defaultMode`, which Claude Code samples once at session boot) MUST be flagged in its feature.json `configuration[]` entry with `restart_required: true`. After the interpreter calls `contract.lib.mutation.<api>(**args)` for such a configurable AND the call succeeds, the interpreter MUST emit one additional line to stdout BEYOND the normal `CheckResult.message` lines: a `rabbit_subline`-style alert formatted as `[🐇 rabbit 🐇] restart Claude (exit + relaunch) for the new <subcommand> value to take effect.` (substitute `<subcommand>` with the actual `subcommand` field of the configurable, e.g. `bypass-permissions`). Color: yellow (so it's visually distinct from the existing red active-mode Stop-hook alert per rabbit-cage Inv 13 icon convention). The alert is one-shot — it fires only on the mutation that wrote the new value, and only when the mutation actually changed state (no-op writes do not fire it). Rationale — without this alert, users running `/rabbit-config bypass-permissions true|on` see the mutation succeed and reasonably assume bypass-permissions mode is now active, but Claude Code does not re-read `settings.local.json` mid-session — the new permission mode remains inactive until the user exits and relaunches. The existing rabbit-cage Stop-hook alert for active bypass-permissions only fires when the mode is ALREADY active (i.e., post-restart), so it does not bridge the transitional gap. Implementation: rabbit-cage owns the `restart_required: true` field in the `bypass-permissions` configurable's feature.json entry (rabbit-cage scope); rabbit-config's interpreter reads the field after the mutation API call and emits the alert if set (rabbit-config scope — this invariant). The two scopes are tightly coupled but each owns its own half. Enforced by: (a) `test/test-restart-required-emits-prompt.py` (rabbit-config) — invokes the interpreter against a mock rabbit-cage configuration declaring `restart_required: true`; asserts the stdout contains the literal `restart Claude` substring after the mutation succeeds; (b) the existing rabbit-cage test suite continues to pass since the new field is additive (default `False`).
 
 ## Tech Stack
 

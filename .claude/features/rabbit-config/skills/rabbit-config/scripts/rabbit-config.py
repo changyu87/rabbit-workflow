@@ -9,7 +9,7 @@ Usage: rabbit-config.py <subcommand> [<value-or-action> [<template-value>]]
   Values-style:  rabbit-config <subcommand> <value>
   Actions-style: rabbit-config <subcommand> <action> [<template-value>]
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-config)
 Deprecation criterion: when the rabbit CLI exposes native configuration mutation.
 """
@@ -198,6 +198,29 @@ def main():
 
     if not getattr(result, "passed", False):
         sys.exit(1)
+
+    # Inv 20: configurables whose effect is read only at Claude Code process
+    # start (e.g. permissions.defaultMode) declare restart_required: true in
+    # their feature.json configuration[] entry. After a successful mutation
+    # that actually changed state (mutation.py signals no-op writes via a
+    # literal 'no-op' substring in CheckResult.messages), emit one yellow
+    # rabbit_subline-style alert telling the user to relaunch Claude —
+    # without it, the mutation silently succeeds but the new mode does not
+    # take effect until the next session boot.
+    if cfg.get("restart_required"):
+        messages = getattr(result, "messages", None) or []
+        changed_state = not any("no-op" in m for m in messages)
+        if changed_state:
+            scripts_dir = os.path.join(repo_root, ".claude", "features",
+                                       "contract", "scripts")
+            if scripts_dir not in sys.path:
+                sys.path.insert(0, scripts_dir)
+            from rabbit_print import rabbit_subline  # noqa: PLC0415
+            print(rabbit_subline(
+                f"restart Claude (exit + relaunch) for the new {subcommand} "
+                "value to take effect",
+                color="yellow",
+            ))
 
 
 if __name__ == "__main__":
