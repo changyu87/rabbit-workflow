@@ -12,6 +12,9 @@ name.
         'restart Claude' AND the subcommand name
   t20b: restart_required absent (default False) + successful mutation ->
         stdout does NOT contain 'restart Claude' (no spurious prompt)
+  t20c: restart_required=true + no-op mutation (already-applied state) ->
+        stdout does NOT contain 'restart Claude' (one-shot, only on
+        actual state change)
 """
 
 import json
@@ -114,6 +117,24 @@ with tempfile.TemporaryDirectory() as td:
         fail("20b", f"unexpected 'restart Claude' substring in stdout (configurable has no restart_required flag), stdout={r.stdout!r}")
     else:
         ok("20b", "restart_required absent: stdout does NOT contain 'restart Claude'")
+
+# t20c: restart_required=true + no-op (state already set) -> no 'restart Claude'
+with tempfile.TemporaryDirectory() as td:
+    make_repo(td, [BP_RESTART_CONF])
+    # Pre-seed settings.local.json with the target value so the mutation is a no-op.
+    settings_dir = os.path.join(td, ".claude")
+    os.makedirs(settings_dir, exist_ok=True)
+    with open(os.path.join(settings_dir, "settings.local.json"), "w") as f:
+        json.dump({"permissions": {"defaultMode": "bypassPermissions"}}, f)
+    r = run_interpreter(td, ["bypass-permissions", "true"])
+    if r.returncode != 0:
+        fail("20c", f"expected exit 0 on no-op, got {r.returncode}. stderr={r.stderr!r}")
+    elif "no-op" not in r.stdout:
+        fail("20c", f"expected mutation.py 'no-op' message in stdout, got stdout={r.stdout!r}")
+    elif "restart Claude" in r.stdout:
+        fail("20c", f"unexpected 'restart Claude' on no-op mutation, stdout={r.stdout!r}")
+    else:
+        ok("20c", "restart_required=true + no-op: stdout does NOT contain 'restart Claude'")
 
 if FAIL:
     print("test-restart-required-emits-prompt: FAIL", file=sys.stderr)
