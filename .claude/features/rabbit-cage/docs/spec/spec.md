@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.30.0
+version: 5.31.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -418,6 +418,27 @@ string BEFORE splitting on `;|&` segment delimiters.
     - `test-install-py-version-flag-overrides-default.py` — invokes `install.py --update --version release/1.0` against a mocked fetcher and asserts the resolved ref is `release/1.0` (not the hardcoded default).
     - `test-install-py-channel-dev-opt-in.py` — invokes `install.py --update --channel dev` against a mocked fetcher and asserts the resolved ref is `dev` (explicit opt-in path).
     Wired into `test/run.py`.
+
+30. **CHANGELOG.md at repo root, maintained alongside each release-cut PR.** A `CHANGELOG.md` file MUST exist at the repo root (top-level, not under `.claude/`) in keep-a-changelog format (`## [Unreleased]`, `## [release/X.Y] - YYYY-MM-DD` per release, sub-sections `### Added`, `### Changed`, `### Fixed`, `### Removed` as applicable). The file is the canonical user-facing view of release-to-release changes — plugin users running `install.py --update` see the file on GitHub (or read the local copy after update) and can decide whether to upgrade.
+
+    Maintenance protocol:
+    - Each PR that closes a bug or ships a feature MUST add a bullet to the `## [Unreleased]` section under the appropriate sub-section, naming the issue number (e.g. `- Fixes #318 — bypass-permissions config now emits restart prompt`).
+    - Each release-cut PR (the `chore(rabbit-cage): bump install.sh+install.py -> release/X.Y` PR per Inv 28) MUST in the SAME PR convert the `## [Unreleased]` section to `## [release/X.Y] - <ISO-date>` and re-open an empty `## [Unreleased]` block at the top. This way every release branch carries the changelog state at its cut moment, and dev's CHANGELOG.md always shows the cumulative unreleased work.
+    - The CHANGELOG.md is NOT part of the plugin install closure (`SAME_PATH_FILES`) — plugin users view it on GitHub or in the repo source. Adding it to SAME_PATH_FILES would force every plugin install to carry an unbounded-growth file; the GitHub UI is the better surface for browsing release history.
+
+    Format requirements:
+    - Top section: `# Changelog` header + one-line intro pointing at keep-a-changelog.com.
+    - `## [Unreleased]` section at the top (after the intro) — always present even if empty.
+    - Per-release sections in REVERSE-CHRONOLOGICAL order (newest at top, oldest at bottom), with the header `## [release/X.Y] - YYYY-MM-DD`.
+    - Sub-sections per release: `### Added` (new features), `### Fixed` (bug fixes with `Fixes #N` references), `### Changed` (modified existing behavior), `### Removed` (deletions). Omit empty sub-sections.
+
+    Enforced by `test/test-changelog-shape.py`:
+    - (i) `CHANGELOG.md` exists at repo root.
+    - (ii) Top-most non-intro `## [` header is `## [Unreleased]`.
+    - (iii) Every `## [release/...]` header has the `## [release/X.Y] - YYYY-MM-DD` shape (regex match).
+    - (iv) For every release branch `release/X.Y` that exists in `git branch -r`, an entry `## [release/X.Y]` exists in CHANGELOG.md (or skip if remote unreachable from the test runner).
+
+    Initial seed: at adoption (this PR), CHANGELOG.md is created with `## [Unreleased]` plus entries for `release/1.0` through `release/1.10` reconstructed from the git log + merged PR list. Each entry names the closed bugs (#281 through #318 inclusive) and the high-level features (rabbit-config skill, install.py --update, plugin-mode dispatch chain end-to-end).
 
 ## Tech Stack
 

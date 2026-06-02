@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.30.0",
+  "version": "5.31.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
@@ -379,5 +379,5 @@
       }
     }
   ],
-  "spec_no_change_reason": "Spec 5.29.0->5.30.0 with new Inv 22h (install.py --update self re-exec into freshly-copied install.py before FEATURE_INCLUDES loop; bug #297) committed prior to this TDD cycle; this cycle implements the re-exec branch in install.py and writes the three enforcing e2e tests."
+  "spec_no_change_reason": "Spec 5.30.0->5.31.0 with new Inv 30 (CHANGELOG.md at repo root, keep-a-changelog format, per-release-cut maintenance protocol) committed prior to this TDD cycle for bug #292; this cycle creates the initial CHANGELOG.md seed (release/1.0 through release/1.10), wires the new test-changelog-shape.py, and bumps install.sh + install.py defaults to release/1.10 in lock-step."
 }
