@@ -1,8 +1,8 @@
 {
   "name": "contract",
-  "version": "1.51.0",
+  "version": "1.51.1",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "surface": {
     "hooks": [],
@@ -37,5 +37,5 @@
       }
     ]
   },
-  "spec_no_change_reason": "spec amendment (Inv 64+65 and version 1.51.0) already committed in 9c87986 by dispatcher prior to this TDD cycle"
+  "spec_no_change_reason": "spec amendment (Inv 65 banner-status delegation) already committed by dispatcher prior to this TDD cycle"
 }

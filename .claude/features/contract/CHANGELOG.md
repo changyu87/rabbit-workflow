@@ -10,6 +10,10 @@ This file holds the tombstones for invariants that were previously declared in `
 
 Each entry below carries the original invariant number (as it appeared in spec.md at the time of retirement), a one-line summary of what the invariant asserted and why it was retired, and the backlog ID that drove the retirement.
 
+## Version notes
+
+- **v1.51.1 (Inv 65 banner-status delegation, #382):** `emit_auto_evolve_banner` refactored to delegate line-1/line-2 content to `rabbit-auto-evolve/scripts/banner-status.py` via subprocess. Contract owns the dispatch mechanism (gate marker check, subprocess invocation, JSON parse, mapping to `print_result`); rabbit-auto-evolve owns the per-variant content. Three pre-existing inlined line-2 variants removed from `lib/runtime.py`. `contract.md` `invokes.scripts` extended to declare the cross-feature script invocation. `emit_auto_evolve_stop_line` unchanged.
+
 ## Renumber and gap-preservation events
 
 - **Plan F.3 (rabbit-print refactor):** Spec.md surviving invariants are NOT renumbered. Plan F.3 retires four invariants tied to the rabbit-print registry/wrapper architecture (Inv 4, 27, 28, 29) and preserves the resulting numbering gaps at those positions rather than re-flowing the surviving invariants. Total gap count (4 + the eight pre-existing) remains well within the renumber-vs-gaps threshold; the cross-reference cost of a cascade rewrite still outweighs the gap cost.
