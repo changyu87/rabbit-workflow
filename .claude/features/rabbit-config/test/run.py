@@ -21,7 +21,6 @@ SUITES = [
     "test-runtime-banner-shape.py",
     "test-verification-hygiene.py",
     "test-workspace-declares-rabbit-config.py",
-    "test-prompts-declared.py",
     "test-restart-required-emits-prompt.py",
 ]
 

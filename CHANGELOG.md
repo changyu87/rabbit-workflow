@@ -3,6 +3,8 @@
 All notable changes to the rabbit workflow are documented here. Format adapted from [keep-a-changelog.com](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
+### Removed
+- Closes #391 — Skill-path PreToolUse prompt injection retired. `contract` bumped to v2.0.0; `hooks/prompt-injector.py` source + deployed copy removed; the `publish_hook` manifest entry and the two `runtime.Stop` entries (`check_prompt_injection_failures`, `cleanup_old_prompts`) removed from contract's `feature.json`; the `.claude/settings.json` PreToolUse entry registering `prompt-injector.py` removed (`scope-guard.py` unaffected). Nine `prompts[]` entries with `kind: "skill"` removed across rabbit-feature, rabbit-spec, rabbit-config, rabbit-issue, rabbit-auto-evolve, rabbit-decompose; nine corresponding skill-passthrough templates deleted from `.claude/features/contract/templates/prompts/`. The mechanical RABBIT-POLICY-BLOCK-v1 sentinel-validation contract owned by `scope-guard.py` (Inv 66, PR #390/#394) supersedes the Skill-path injection mechanism. Inv 55 and Inv 56 tombstoned in `.claude/features/contract/CHANGELOG.md`; Inv 57 shrunk from ten templates to two (`tdd-subagent.txt`, `spec-create.txt`).
 
 ## [release/1.12.0] - 2026-06-02
 ### Added

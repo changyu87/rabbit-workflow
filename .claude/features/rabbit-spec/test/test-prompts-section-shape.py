@@ -5,7 +5,12 @@ Loads feature.json and asserts the prompts entry shape: id='spec-create',
 kind='subagent', inject containing philosophy + coding-rules, slots equal
 to the three expected slot names.
 
-Version: 1.0.0
+Post issue #391 (Skill-path injection retirement): the kind='skill'
+entry for 'rabbit-spec-update' is no longer expected; the test now
+asserts ONLY the surviving 'spec-create' subagent entry and verifies
+no kind:skill entries remain.
+
+Version: 1.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Claude Code exposes native spec-lifecycle skills
 """
@@ -41,22 +46,11 @@ else:
     if sc.get("slots") != expected_slots:
         errors.append(f"spec-create.slots must be {expected_slots}, got {sc.get('slots')}")
 
-# rabbit-spec-update — the spec-revision skill
-su = by_id.get("rabbit-spec-update")
-if su is None:
-    errors.append("prompts MUST include an entry with id='rabbit-spec-update'")
-else:
-    if su.get("kind") != "skill":
-        errors.append(f"rabbit-spec-update.kind must be 'skill', got {su.get('kind')!r}")
-    inject = set(su.get("inject", []))
-    expected_su_inject = {
-        ".claude/features/policy/philosophy.md",
-        ".claude/features/policy/spec-rules.md",
-    }
-    if not expected_su_inject.issubset(inject):
-        errors.append(f"rabbit-spec-update.inject must include philosophy + spec-rules, got {inject}")
-    if su.get("slots") != ["args"]:
-        errors.append(f"rabbit-spec-update.slots must be ['args'], got {su.get('slots')}")
+# post-#391 retirement: no kind:skill entries remain in this feature
+skill_entries = [p for p in prompts if isinstance(p, dict) and p.get("kind") == "skill"]
+if skill_entries:
+    ids = sorted(p.get("id") for p in skill_entries)
+    errors.append(f"kind:skill prompts entries are retired (issue #391); found ids: {ids}")
 
 if errors:
     for e in errors:

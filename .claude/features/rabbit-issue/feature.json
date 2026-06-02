@@ -31,18 +31,6 @@
   ],
   "runtime": {},
   "configuration": [],
-  "prompts": [
-    {
-      "id": "rabbit-issue",
-      "kind": "skill",
-      "inject": [
-        ".claude/features/policy/philosophy.md",
-        ".claude/features/policy/coding-rules.md"
-      ],
-      "slots": [
-        "args"
-      ]
-    }
-  ],
+  "prompts": [],
   "spec_no_change_reason": "spec amended in prior commit 8f7de4f (Refs #264); this cycle implements code+tests against already-amended spec"
 }

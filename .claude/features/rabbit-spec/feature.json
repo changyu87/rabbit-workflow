@@ -56,17 +56,6 @@
         "paths_globs",
         "paths_resolved"
       ]
-    },
-    {
-      "id": "rabbit-spec-update",
-      "kind": "skill",
-      "inject": [
-        ".claude/features/policy/philosophy.md",
-        ".claude/features/policy/spec-rules.md"
-      ],
-      "slots": [
-        "args"
-      ]
     }
   ],
   "spec_no_change_reason": "Spec amended in pre-cycle commit (multi-feature spec batch, bumped 1.3.0 -> 1.4.0 with new Inv 5 dual-mode feature_root rule); this TDD cycle implements the spec change."
