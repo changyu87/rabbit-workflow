@@ -12,7 +12,7 @@
   },
   "deprecation_criterion": "when Claude Code exposes native event dispatchers and artifact publishing that subsume this role",
   "status": "active",
-  "updated": "2026-06-01",
+  "updated": "2026-06-02",
   "manifest": [
     {
       "api": "publish_settings",
@@ -267,7 +267,7 @@
       "default": "false",
       "alert-on": "true",
       "alert-message": {
-        "text": "BYPASS-PERMISSIONS MODE ACTIVE - scope-guard is sole write-auth gate",
+        "text": "BYPASS-PERMISSIONS MODE ACTIVE \u2014 revoke: /rabbit-config bypass-permissions false",
         "icon": "\ud83d\udea8",
         "color": "red"
       },
@@ -379,5 +379,5 @@
       }
     }
   ],
-  "spec_no_change_reason": "Spec 5.31.0->5.32.0 (Inv 28 + Inv 29(d) amended for 3-field semver release/X.Y.Z + bump-tier guidance) committed in 391e27a prior to this TDD cycle for #307; this cycle amends the two install default-ref regex tests to accept both 3-field and legacy 2-field release branches, bumps install.sh + install.py defaults to release/1.11.0 (first 3-field release) in lock-step, and updates CHANGELOG.md per Inv 30."
+  "spec_no_change_reason": "Spec does not constrain per-configurable text content; alert-text contract lives in contract Inv 47 (sibling spec edit)."
 }
