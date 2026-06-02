@@ -1,17 +1,89 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "owner": "cyxu",
-  "tdd_state": "test-green",
-  "summary": "rabbit-auto-evolve feature",
+  "tdd_state": "impl",
+  "summary": "Self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and reschedules via ScheduleWakeup until the user issues an explicit stop.",
   "surface": {
     "hooks": [],
     "commands": [],
     "agents": [],
-    "skills": []
+    "skills": [
+      "rabbit-auto-evolve"
+    ]
   },
-  "deprecation_criterion": "TBD \u2014 set after first review",
+  "deprecation_criterion": "when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill",
   "updated": "2026-06-02",
-  "spec_no_change_reason": "spec Inv 9 already added by dispatcher before this subagent dispatch"
+  "manifest": [
+    {
+      "api": "publish_skill",
+      "args": {
+        "source": "skills/rabbit-auto-evolve/SKILL.md"
+      }
+    }
+  ],
+  "runtime": {
+    "SessionStart": [
+      {
+        "api": "emit_auto_evolve_banner",
+        "args": {}
+      }
+    ],
+    "Stop": [
+      {
+        "api": "emit_auto_evolve_stop_line",
+        "args": {}
+      }
+    ]
+  },
+  "configuration": [
+    {
+      "id": "auto-evolve",
+      "subcommand": "auto-evolve",
+      "values": {
+        "on": {
+          "api": "run_feature_script",
+          "args": {
+            "script": "scripts/set-evolve-mode.py",
+            "argv": [
+              "on"
+            ]
+          }
+        },
+        "off": {
+          "api": "run_feature_script",
+          "args": {
+            "script": "scripts/set-evolve-mode.py",
+            "argv": [
+              "off"
+            ]
+          }
+        }
+      },
+      "default": "off",
+      "alert-on": "on",
+      "alert-message": {
+        "text": "AUTONOMOUS-EVOLVE MODE ACTIVE \u2014 composite (human-approval + bypass-permissions + auto-evolve marker)",
+        "icon": "\ud83e\udd16",
+        "color": "red"
+      },
+      "restart_required": true
+    }
+  ],
+  "prompts": [
+    {
+      "id": "rabbit-auto-evolve",
+      "kind": "skill",
+      "inject": [
+        "philosophy",
+        "spec-rules",
+        "coding-rules"
+      ],
+      "slots": [
+        "args"
+      ]
+    }
+  ],
+  "spec_no_change_reason": "spec Inv 10-13 already added by dispatcher before this subagent dispatch"
 }
