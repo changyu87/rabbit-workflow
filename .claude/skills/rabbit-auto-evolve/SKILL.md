@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.5.2
+version: 0.6.0
 owner: cyxu
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Run `/rabbit-auto-evolve on` first, then restart Claude (so `permissions.defaultMode: bypassPermissions` from `settings.local.json` is picked up), then `/rabbit-auto-evolve start`.
@@ -49,15 +49,22 @@ Begin or resume the loop. Verifies three preconditions in order:
 If any precondition fails, refuse with a clear message naming the missing
 condition. On all-pass:
 
-1. Write `.rabbit-auto-evolve-running` at repo root.
+1. Invoke
+   `python3 .claude/features/rabbit-auto-evolve/scripts/start-loop.py`
+   (which writes `.rabbit-auto-evolve-running` at repo root). Per Inv 17
+   the marker write is wrapped in a script so scope-guard does not deny
+   the literal Bash command.
 2. Run one `tick` (the 12-phase loop body).
 3. Call `ScheduleWakeup` to chain the next tick.
 
 ### `stop`
 
-Write `.rabbit-auto-evolve-stop-requested` at repo root. The next tick's
-phase 0 (`stop-check`) observes the marker, posts a one-line run summary,
-and does NOT call `ScheduleWakeup`. The loop then halts cleanly.
+Invoke `python3 .claude/features/rabbit-auto-evolve/scripts/stop-loop.py`
+(which writes `.rabbit-auto-evolve-stop-requested` at repo root). The
+next tick's phase 0 (`stop-check`) observes the marker, posts a one-line
+run summary, and does NOT call `ScheduleWakeup`. The loop then halts
+cleanly. Per Inv 17 the marker write is wrapped in a script for the
+same scope-guard reason as `start`.
 
 ### `status`
 

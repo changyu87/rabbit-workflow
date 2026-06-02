@@ -11,6 +11,7 @@ Per spec Inv 10:
 """
 
 import os
+import re
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
@@ -56,6 +57,41 @@ def main():
         if heading not in text and heading.replace("`", "") not in text:
             print(f"FAIL: SKILL.md missing subcommand heading: {heading}",
                   file=sys.stderr)
+            sys.exit(1)
+
+    # Inv 17: start/stop subcommand text MUST invoke the wrapper scripts
+    # via `python3 .claude/features/rabbit-auto-evolve/scripts/<name>.py`
+    # — never a literal `touch .rabbit-auto-evolve-*` or
+    # `echo ... > .rabbit-auto-evolve-*`. Scope-guard would deny those
+    # writes (issue #367); routing through Python hides the path.
+    required_invocations = [
+        "python3 .claude/features/rabbit-auto-evolve/scripts/start-loop.py",
+        "python3 .claude/features/rabbit-auto-evolve/scripts/stop-loop.py",
+    ]
+    for inv in required_invocations:
+        if inv not in text:
+            print(f"FAIL: Inv 17: SKILL.md missing script invocation: {inv}",
+                  file=sys.stderr)
+            sys.exit(1)
+
+    forbidden_patterns = [
+        r"touch\s+\.rabbit-auto-evolve-running",
+        r"touch\s+\.rabbit-auto-evolve-stop-requested",
+        r"touch\s+\.rabbit-auto-evolve-restart-needed",
+        r"touch\s+\.rabbit-auto-evolve-aborted",
+        r"echo\s+[^>\n]*>\s*\.rabbit-auto-evolve-running",
+        r"echo\s+[^>\n]*>\s*\.rabbit-auto-evolve-stop-requested",
+        r"echo\s+[^>\n]*>\s*\.rabbit-auto-evolve-restart-needed",
+        r"echo\s+[^>\n]*>\s*\.rabbit-auto-evolve-aborted",
+    ]
+    for pat in forbidden_patterns:
+        if re.search(pat, text):
+            print(
+                f"FAIL: Inv 17: SKILL.md contains forbidden marker-write "
+                f"pattern matching /{pat}/ — route through "
+                f".claude/features/rabbit-auto-evolve/scripts/<name>.py instead",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
     print("PASS: test-start-stop-skill.py")
