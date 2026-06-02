@@ -58,19 +58,41 @@ rabbit-spec-update reads the current spec, judges open vs. specific, invokes sup
 updates the feature spec, and writes `.rabbit/impl-suggestion-<feature-name>.json`.
 
 **Commit spec changes BEFORE Step 5.** After rabbit-spec-update returns, stage and
-commit any modifications under `.claude/features/<feature-name>/` (the spec
-and any other files rabbit-spec-update touched). If no changes were made (empty
-diff), skip the commit.
+commit any modifications the skill made under the feature directory. The
+feature directory location depends on the rabbit mode, detected from
+`<repo_root>/.rabbit/.runtime/mode` (the same dual-mode pattern documented by
+`rabbit-feature-scaffold`'s `## Modes` section):
+
+- **Standalone mode** (marker absent or content equals `standalone`):
+  `feature_dir = .claude/features/<feature-name>/`. Stage with plain
+  `git add <feature_dir>`.
+- **Plugin mode** (marker content equals `plugin`):
+  `feature_dir = .rabbit/rabbit-project/features/<feature-name>/`. Stage with
+  `git add -f <feature_dir>` — the `-f` is REQUIRED because the host
+  user-project's `.gitignore` typically ignores `.rabbit/`, and without `-f`
+  the add silently produces an empty staged diff, the commit-skip branch
+  trivially passes, and no commit lands.
+
+If no spec changes were made (empty staged diff), skip the commit.
 
 ```bash
-git add .claude/features/<feature-name>/
-if ! git diff --cached --quiet -- .claude/features/<feature-name>/docs/spec/spec.md; then
+# Mode-aware git add — plugin mode requires -f because host .gitignore
+# typically excludes .rabbit/
+if [ -f .rabbit/.runtime/mode ] && [ "$(cat .rabbit/.runtime/mode)" = "plugin" ]; then
+  feature_dir=.rabbit/rabbit-project/features/<feature-name>
+  git add -f "$feature_dir"
+else
+  feature_dir=.claude/features/<feature-name>
+  git add "$feature_dir"
+fi
+if ! git diff --cached --quiet -- "$feature_dir/docs/spec/spec.md"; then
   git commit -m "spec(<feature-name>): update spec for <one-line request summary>"
 fi
 ```
 
 This prevents spec edits from falling through uncommitted and ensures the
-TDD subagent reads a clean committed baseline.
+TDD subagent reads a clean committed baseline in both standalone and plugin
+modes.
 
 ### Step 4 — Human Approval
 
