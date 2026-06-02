@@ -32,5 +32,6 @@ run_test("test-safety-check.py")
 run_test("test-merge-prs.py")
 run_test("test-cleanup-branches.py")
 run_test("test-release-bump.py")
+run_test("test-classify-merge-restart.py")
 
 print("ALL TESTS PASSED")
