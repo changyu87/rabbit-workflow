@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.6.0
+version: 5.7.0
 template_version: 2.1.0
 owner: rabbit-workflow team
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -37,7 +37,22 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "files": [],
     "schemas": [],
     "templates": [],
-    "skills": []
+    "skills": [],
+    "handoff": {
+      "schema_version": "1.1.0",
+      "shape": {
+        "handoff_schema_version": "string",
+        "feature": "string",
+        "tdd_state": "one of: test-red|impl|sync-deployed|test-green|blocked",
+        "test_result": "one of: pass|fail|not_run",
+        "spec_compliance": "one of: pass|fail|not_run",
+        "tdd_report_path": "string|null",
+        "closed_items": "list of int (issue numbers); default []",
+        "notes": "string",
+        "discovered_issues": "list of {title:string, body:string, labels:[string]}; default []",
+        "aborted_reason": "string|null"
+      }
+    }
   },
   "reads": {
     "files": [

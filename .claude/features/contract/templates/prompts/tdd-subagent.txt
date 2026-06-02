@@ -1,4 +1,4 @@
-# template_version: 1.5.0
+# template_version: 1.6.0
 {{bypass_preamble_note}}
 ════════════════════════════════════════════════════════════════════════
 TDD SUBAGENT — SCOPE: {{feature_name}}
@@ -216,7 +216,9 @@ fail-HANDOFF and stop:
     "spec_compliance": "fail",
     "tdd_report_path": null,
     "closed_items": [],
-    "notes": "STEP 5 SYNC-DEPLOYED failed at publish_<api> for <entry>: <messages>"
+    "notes": "STEP 5 SYNC-DEPLOYED failed at publish_<api> for <entry>: <messages>",
+    "discovered_issues": [],
+    "aborted_reason": null
   }
   ```
 
@@ -269,7 +271,9 @@ fail-HANDOFF instead of the normal STEP-8 path and stop:
     "spec_compliance": "fail",
     "tdd_report_path": null,
     "closed_items": [],
-    "notes": "TEST-GREEN run.py exited nonzero — cycle did not reach test-green"
+    "notes": "TEST-GREEN run.py exited nonzero — cycle did not reach test-green",
+    "discovered_issues": [],
+    "aborted_reason": null
   }
   ```
 
@@ -353,6 +357,8 @@ HANDOFF_JSON:
   "spec_compliance": "<pass|fail>",
   "tdd_report_path": "{{tdd_report_path}}",
   "closed_items": [],
-  "notes": "<brief summary>"
+  "notes": "<brief summary>",
+  "discovered_issues": [],
+  "aborted_reason": null
 }
 ```
