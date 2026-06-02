@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.7.1
+version: 0.7.2
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -917,7 +917,7 @@ Phase E merges complete.
     | Marker | Written by | Script |
     |---|---|---|
     | `.rabbit-auto-evolve-active` | `on` subcommand | `scripts/set-evolve-mode.py on` |
-    | `.rabbit-auto-evolve-running` | `start` subcommand | `scripts/start-loop.py` |
+    | `.rabbit-auto-evolve-running` | `start` subcommand | `scripts/start-loop.py` (write) / `scripts/end-tick.py` (delete) |
     | `.rabbit-auto-evolve-stop-requested` | `stop` subcommand | `scripts/stop-loop.py` |
     | `.rabbit-auto-evolve-restart-needed` | tick (when classify-merge-restart returns `restart`) | `scripts/mark-restart-needed.py "<reason>"` |
     | `.rabbit-auto-evolve-aborted` | tick (on safety violation) | `scripts/mark-aborted.py "<reason>"` |
@@ -1002,6 +1002,84 @@ Phase E merges complete.
       other two succeed; overall exit 0.
     - Malformed stdin JSON → non-zero exit, stderr names the
       parse error.
+
+19. **`start-loop.py` self-healing.** Before writing the
+    `.rabbit-auto-evolve-running` marker, `start-loop.py` performs
+    two self-healing steps:
+
+    1. **Cancel any pending stop.** If
+       `.rabbit-auto-evolve-stop-requested` exists at the repo
+       root, delete it. Rationale: invoking `start` is an explicit
+       "I want this to run" signal — it cancels any pending stop
+       (typical scenario: previous session was killed mid-tick,
+       leaving the stop marker behind from a `stop` invocation that
+       was never observed by a subsequent tick).
+    2. **Bootstrap state file.** If
+       `.rabbit/auto-evolve-state.json` does NOT exist OR is empty
+       OR fails JSON parse, create it with default content:
+
+       ```json
+       {
+         "schema_version": "1.0.0",
+         "updated_at": "<now ISO 8601 UTC>",
+         "queue": [],
+         "in_flight": [],
+         "last_merged_sha": null,
+         "last_tagged_version": null,
+         "consecutive_failures": 0,
+         "stop_requested": false,
+         "restart_needed": null
+       }
+       ```
+
+       If the file exists and parses successfully, leave it alone.
+       Use the atomic write convention from Inv 9
+       (`update-state.py`): write to `.tmp` then `os.rename` to
+       avoid partial-write races.
+
+    This invariant was introduced by issue #373 in v0.7.2: in v0.7.1
+    `start-loop.py` only wrote the running marker; the tick then
+    aborted at phase 0 because of a stale stop marker, and the
+    state-read crashed with a parse error on the missing file.
+
+    Enforced by `test/test-loop-markers.py`:
+    - Pre-seed `.rabbit-auto-evolve-stop-requested`, invoke
+      `start-loop.py`, assert: running marker exists AND
+      stop-requested marker is gone.
+    - Pre-create an empty `.rabbit/auto-evolve-state.json`, invoke
+      `start-loop.py`, assert: state file is now valid JSON with
+      default content.
+    - Pre-create a valid (non-default) state file, invoke
+      `start-loop.py`, assert: state file is UNCHANGED (no
+      clobbering of real state).
+
+20. **Every tick ends with `end-tick.py`.** The tick MUST invoke
+    `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`
+    as its last action on EVERY exit path:
+
+    - Normal completion (12-phase walk done, `ScheduleWakeup` called).
+    - Phase 0 halt (stop-check observed `.rabbit-auto-evolve-stop-requested`).
+    - Safety-violation abort (writes `.rabbit-auto-evolve-aborted` then ends).
+    - Error abort (unexpected exception in any phase).
+
+    `end-tick.py` deletes `.rabbit-auto-evolve-running` (mirror of
+    `start-loop.py`'s write). Idempotent: missing marker is a
+    no-op. Without this, the running marker leaks across sessions
+    and the user has to `rm -f` it manually — which scope-guard
+    correctly denies.
+
+    SKILL.md's tick documentation MUST show the `end-tick.py`
+    invocation in EVERY documented exit path, not only the
+    happy-path final phase.
+
+    This invariant was introduced by issue #373 in v0.7.2.
+
+    Enforced by `test/test-loop-markers.py` (round-trip:
+    pre-create the running marker, invoke `end-tick.py`, assert
+    it's gone; idempotency: invoke again with marker absent,
+    exit 0) and `test/test-start-stop-skill.py` (asserts
+    SKILL.md tick documentation contains
+    `.claude/features/rabbit-auto-evolve/scripts/end-tick.py`).
 
 ## Known gaps
 
