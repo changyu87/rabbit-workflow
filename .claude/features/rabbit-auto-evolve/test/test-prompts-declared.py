@@ -7,16 +7,25 @@ Also verifies:
   .claude/features/contract/templates/prompts/rabbit-auto-evolve.txt.
 - The workspace-structure.json features.children entry for
   rabbit-auto-evolve exists.
+- Inv 12 (fix #364): prompts[0].inject entries are full repo-relative
+  paths to existing files; bare names (no '/') are FORBIDDEN because
+  the prompt dispatcher does not resolve them.
+- Inv 10 (fix #364): SKILL.md frontmatter MUST NOT pin a `model:` key —
+  the default session model handles dispatch.
 """
 
 import json
 import os
+import re
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))))))
 FEATURE_JSON = os.path.join(
     REPO_ROOT, ".claude/features/rabbit-auto-evolve/feature.json")
+SKILL_MD = os.path.join(
+    REPO_ROOT,
+    ".claude/features/rabbit-auto-evolve/skills/rabbit-auto-evolve/SKILL.md")
 PROMPT_TMPL = os.path.join(
     REPO_ROOT,
     ".claude/features/contract/templates/prompts/rabbit-auto-evolve.txt",
@@ -55,9 +64,27 @@ def main():
     p = matching[0]
     if p.get("kind") != "skill":
         fail(f"prompts[rabbit-auto-evolve].kind != 'skill' (got {p.get('kind')})")
-    if p.get("inject") != ["philosophy", "spec-rules", "coding-rules"]:
-        fail(f"prompts[rabbit-auto-evolve].inject != "
-             f"['philosophy', 'spec-rules', 'coding-rules'] (got {p.get('inject')})")
+    # Inv 12 (fix #364): inject entries are full repo-relative paths to
+    # existing files; bare names (no '/') are FORBIDDEN.
+    inject = p.get("inject")
+    if not isinstance(inject, list) or not inject:
+        fail(f"prompts[rabbit-auto-evolve].inject must be non-empty list "
+             f"(got {inject!r})")
+    for entry in inject:
+        if not isinstance(entry, str):
+            fail(f"prompts[rabbit-auto-evolve].inject entry not a string: "
+                 f"{entry!r}")
+        if "/" not in entry:
+            fail(f"prompts[rabbit-auto-evolve].inject entry is a bare name "
+                 f"(no '/'): {entry!r}; Inv 12 forbids bare names — use full "
+                 f"repo-relative paths like '.claude/features/policy/<name>.md'")
+        if not entry.startswith(".claude/features/policy/"):
+            fail(f"prompts[rabbit-auto-evolve].inject entry must start with "
+                 f"'.claude/features/policy/' (got {entry!r})")
+        abs_path = os.path.join(REPO_ROOT, entry)
+        if not os.path.isfile(abs_path):
+            fail(f"prompts[rabbit-auto-evolve].inject entry does not exist "
+                 f"on disk: {entry!r} (resolved to {abs_path})")
     if p.get("slots") != ["args"]:
         fail(f"prompts[rabbit-auto-evolve].slots != ['args'] (got {p.get('slots')})")
 
@@ -97,6 +124,20 @@ def main():
     names = [c.get("name") for c in feats_node.get("children", [])]
     if "rabbit-auto-evolve" not in names:
         fail(f"workspace-structure.json features.children missing rabbit-auto-evolve; got {names}")
+
+    # Inv 10 (fix #364): SKILL.md frontmatter MUST NOT pin a `model:` key.
+    with open(SKILL_MD) as f:
+        skill_text = f.read()
+    m = re.search(r"(?ms)\A---\s*\n(.*?)\n---\s*\n", skill_text)
+    if not m:
+        fail(f"SKILL.md missing YAML frontmatter: {SKILL_MD}")
+    fm_text = m.group(1)
+    for line in fm_text.splitlines():
+        key_match = re.match(r"^\s*([A-Za-z_][A-Za-z0-9_-]*)\s*:", line)
+        if key_match and key_match.group(1) == "model":
+            fail(f"SKILL.md frontmatter MUST NOT pin a 'model:' key "
+                 f"(Inv 10 — default session model handles dispatch); "
+                 f"found line: {line!r}")
 
     print("PASS: test-prompts-declared.py")
 
