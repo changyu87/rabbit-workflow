@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.7.6
+version: 0.7.7
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -753,12 +753,21 @@ Phase E merges complete.
       reports on the three preconditions
       (`.rabbit-auto-evolve-active` present, `human-approval` off,
       `bypass-permissions` on) as structured JSON
-      (per Inv 21). On `all_pass: true`, invokes
-      `scripts/start-loop.py` (which writes
-      `.rabbit-auto-evolve-running`), runs one tick, calls
-      `ScheduleWakeup` to chain the next. On `all_pass: false`,
-      surfaces the failing `checks[].detail` strings to the user
-      as guidance and does NOT start.
+      (per Inv 21). The skill MUST route on the report shape — it
+      MUST NOT dump the raw failing-checklist to the user. Routing
+      table:
+
+      | Precondition shape | Action |
+      |---|---|
+      | `all_pass: true` | Invoke `scripts/start-loop.py` (writes `.rabbit-auto-evolve-running`), run one tick, call `ScheduleWakeup` to chain the next. |
+      | `all_pass: false` AND `active-marker` check is `ok: false` (fresh state — user hasn't activated yet) | Automatically invoke `/rabbit-auto-evolve on` (Inv 1 runs the 3 mutations and emits the branded restart confirmation). End the turn after the branded prompt — the user restarts Claude, then runs `start` again. Do NOT show the failing checklist; do NOT ask for permission. The natural-language intent ("enter auto-evolve mode") is sufficient consent. |
+      | `all_pass: false` AND `active-marker` check is `ok: true` but `bypass-permissions` check is `ok: false` (markers exist but user forgot to restart Claude after a previous `on`) | Surface a SHORT branded reminder line (`🔁 Markers set — restart Claude Code, then /rabbit-auto-evolve start again`). Do NOT re-run `on` (markers are already correct); do NOT show the full checklist. |
+      | Any other `all_pass: false` shape | Surface the failing `checks[].detail` strings (this branch handles genuinely unexpected states, e.g. partial corruption). |
+
+      The auto-on routing on fresh state was introduced by issue
+      #386 in v0.7.7: in v0.7.6 the skill fragmented a single user
+      intent ("enter auto-evolve mode") into a two-step manual flow
+      by surfacing the precondition checklist verbatim.
     - `stop` — invokes `scripts/stop-loop.py` (which writes
       `.rabbit-auto-evolve-stop-requested`); the next tick observes
       and does NOT call `ScheduleWakeup`.
