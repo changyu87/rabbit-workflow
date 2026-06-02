@@ -90,6 +90,12 @@ def check_tests_non_interactive(feature_dir: str) -> CheckResult:
 
 # ---------- check_sentinel ---------------------------------------------------
 
+# The literal sentinel string is owned by contract.lib.policy_block per Inv 54;
+# this module is permitted to reference it for two purposes only:
+#   (1) check_sentinel — greps dispatcher scripts for the sentinel (Inv 20);
+#   (2) validate_agent_prompt_sentinel — validates Agent tool inputs (Inv 66 b).
+# Per Inv 66's sentinel-source-uniqueness rule, defining the literal anywhere
+# else in the codebase is a contract violation.
 _SENTINEL = "RABBIT-POLICY-BLOCK-v1"
 
 
@@ -1027,3 +1033,40 @@ def check_prompts_section(features_root: str) -> CheckResult:
     if messages:
         return CheckResult(False, messages)
     return CheckResult(True, ["OK: prompts sections valid (or absent) across all features"])
+
+
+# ---------- validate_agent_prompt_sentinel (Inv 66 b) ------------------------
+
+_AGENT_SENTINEL_BYPASS_REL = os.path.join(".rabbit", "agent-sentinel-bypass")
+_AGENT_SENTINEL_VIOLATION_MSG = (
+    "Agent dispatch missing RABBIT-POLICY-BLOCK-v1 sentinel — "
+    "prompt must be assembled via contract's build-prompt.py / dispatcher "
+    "script (see contract Inv 54, Inv 66)."
+)
+
+
+def validate_agent_prompt_sentinel(tool_input: dict, *, repo_root: str) -> CheckResult:
+    """Inv 66 (b): validate an Agent tool call's prompt carries the sentinel.
+
+    Returns CheckResult(passed=True, []) when either:
+      (i)  the bypass marker <repo_root>/.rabbit/agent-sentinel-bypass exists, OR
+      (ii) tool_input["prompt"] is a str containing the literal sentinel
+           "RABBIT-POLICY-BLOCK-v1".
+
+    Otherwise returns CheckResult(passed=False, [canonical violation message]).
+
+    The bypass-marker check runs first so an operator can globally opt out
+    of sentinel validation without touching every Agent caller (e.g. during
+    a migration window). The marker is an opt-in escape hatch — its absence
+    is the normal state. A non-str or missing prompt always fails when the
+    marker is absent.
+    """
+    # (i) bypass marker → unconditional pass
+    bypass_path = os.path.join(repo_root, _AGENT_SENTINEL_BYPASS_REL)
+    if os.path.exists(bypass_path):
+        return CheckResult(True, [])
+    # (ii) defensive type check + sentinel substring
+    prompt = tool_input.get("prompt")
+    if isinstance(prompt, str) and _SENTINEL in prompt:
+        return CheckResult(True, [])
+    return CheckResult(False, [_AGENT_SENTINEL_VIOLATION_MSG])

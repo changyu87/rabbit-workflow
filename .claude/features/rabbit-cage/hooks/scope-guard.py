@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scope-guard.py v2.3.0 — PreToolUse hook enforcing repo-wide default-deny.
+"""scope-guard.py v2.4.0 — PreToolUse hook enforcing repo-wide default-deny.
 
 Standalone mode (legacy): any write inside the repo root is denied unless:
   (a) the target basename is on the filename allowlist, or
@@ -617,6 +617,23 @@ def extract_bash_targets(cmd: str) -> List[str]:
     return targets
 
 
+def _emit_deny(reason: str) -> None:
+    """Emit the PreToolUse deny-shape JSON to stdout (Inv 31 / contract Inv 66 a).
+
+    Claude Code's PreToolUse contract treats a JSON payload with
+    permissionDecision == "deny" as a block; exit code is 0. The reason
+    string is surfaced verbatim in the tool-call error.
+    """
+    payload = {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": reason,
+        }
+    }
+    sys.stdout.write(json.dumps(payload))
+
+
 def main() -> int:
     # BUG-48: surface a minimal --help so operators can introspect the hook.
     if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
@@ -636,6 +653,39 @@ def main() -> int:
 
     tool = payload.get("tool_name", "")
     tool_input = payload.get("tool_input", {}) or {}
+
+    # Inv 31: when the intercepted tool is Agent, delegate to
+    # contract.lib.checks.validate_agent_prompt_sentinel (contract Inv 66 b)
+    # and emit the PreToolUse deny-shape JSON on failure. Pass-through for
+    # all other tool names (file-write enforcement below is unchanged).
+    if tool == "Agent":
+        try:
+            contract_lib = (
+                Path(__file__).resolve().parent.parent.parent / "contract" / "lib"
+            )
+            if str(contract_lib) not in sys.path:
+                sys.path.insert(0, str(contract_lib))
+            import checks as _contract_checks  # type: ignore
+        except Exception as exc:
+            # The validator is the SOLE source of truth (contract Inv 66 b);
+            # do not inline-reimplement on import failure. Emit a deny-shape
+            # so the operator sees the failure rather than a silent allow.
+            _emit_deny(
+                f"scope-guard: cannot import contract.lib.checks "
+                f"for Agent sentinel validation: {exc}"
+            )
+            return 0
+        repo_root_str = str(REPO_ROOT) if REPO_ROOT else ""
+        result = _contract_checks.validate_agent_prompt_sentinel(
+            tool_input, repo_root=repo_root_str
+        )
+        if not result.passed:
+            msg = result.messages[0] if result.messages else "Agent sentinel validation failed"
+            _emit_deny(msg)
+            return 0
+        # Sentinel present (or bypass active) — allow and fall through to
+        # any other targets (Agent has no file-write target, so the loop
+        # below is a no-op for this tool).
 
     targets: List[str] = []
     if tool in ("Write", "Edit"):
