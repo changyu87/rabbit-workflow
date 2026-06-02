@@ -23,12 +23,12 @@
 #
 # Env vars:
 #   RABBIT_REPO  — default changyu87/rabbit-workflow
-#   RABBIT_REF   — default release/1.6 (branch, tag, or SHA)
+#   RABBIT_REF   — default release/1.7 (branch, tag, or SHA)
 
 set -euo pipefail
 
 RABBIT_REPO="${RABBIT_REPO:-changyu87/rabbit-workflow}"
-RABBIT_REF="${RABBIT_REF:-release/1.6}"
+RABBIT_REF="${RABBIT_REF:-release/1.7}"
 
 # Pre-flight
 for cmd in python3 curl tar; do
