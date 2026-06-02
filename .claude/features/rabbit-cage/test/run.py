@@ -67,6 +67,9 @@ SUITES = [
     "test-install-py-default-ref-matches-install-sh.py",
     "test-install-py-version-flag-overrides-default.py",
     "test-install-py-channel-dev-opt-in.py",
+    "test-install-update-self-reexec.py",
+    "test-install-update-no-reexec-with-explicit-src.py",
+    "test-install-update-reexec-loop-guard.py",
 ]
 
 
