@@ -1,9 +1,9 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "owner": "cyxu",
-  "tdd_state": "spec",
+  "tdd_state": "test-green",
   "summary": "rabbit-auto-evolve feature",
   "surface": {
     "hooks": [],
@@ -11,5 +11,7 @@
     "agents": [],
     "skills": []
   },
-  "deprecation_criterion": "TBD — set after first review"
+  "deprecation_criterion": "TBD \u2014 set after first review",
+  "updated": "2026-06-02",
+  "spec_no_change_reason": "spec.md already updated by dispatcher in commit 949b2da (Inv 1 added before this subagent dispatch)"
 }

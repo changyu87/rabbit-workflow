@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.1.0
+version: 0.2.0
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -159,6 +159,58 @@ Phase E merges complete.
 - Exiting the mode via `/rabbit-config auto-evolve off` reverses the
   three mutations in inverse order and requires another restart. (design
   doc §2)
+
+## Invariants
+
+1. **`set-evolve-mode.py {on|off}` compound mutator.** The CLI
+   `python3 .claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py
+   {on|off}` performs the three mutations that compose the auto-evolve
+   activation/deactivation.
+
+   On `on`, three deterministic mutations execute in order:
+   1. Write `<repo_root>/.rabbit-human-approval-bypass` (content
+      `"session"`) via `contract.lib.mutation.write_marker` — flips
+      `human-approval` configurable to `false`.
+   2. Set `permissions.defaultMode: "bypassPermissions"` in
+      `<repo_root>/.claude/settings.local.json` via
+      `contract.lib.mutation.set_json_key` — flips `bypass-permissions`
+      configurable to `true`.
+   3. Write `<repo_root>/.rabbit-auto-evolve-active` via
+      `contract.lib.mutation.write_marker` — signals auto-evolve mode
+      is active (consumed by `contract.lib.runtime` Inv 64 suppression
+      hook and by the runtime banner APIs in Inv 65).
+
+   On `off`, the three reverse in inverse order: delete
+   `.rabbit-auto-evolve-active`; delete the `permissions.defaultMode`
+   key via `contract.lib.mutation.delete_json_key`; delete
+   `.rabbit-human-approval-bypass` via
+   `contract.lib.mutation.delete_marker`.
+
+   Failure handling: abort on first error and roll back any prior steps
+   best-effort (delete a just-written marker; restore the prior
+   `permissions.defaultMode` value if step 2 had succeeded). Report the
+   failed step and the rollback outcome on stderr. Exit code: 0 on full
+   success; non-zero on any step failure (after rollback attempt).
+
+   Idempotency: both `on` and `off` are clean no-ops when invoked in the
+   already-target steady state (the mutation APIs in
+   `contract.lib.mutation` are already idempotent for marker writes and
+   JSON key sets/deletes; the script's role is only ordering and
+   rollback coordination).
+
+   Enforced by `test/test-set-evolve-mode.py` using
+   `tempfile.TemporaryDirectory()` fixtures (per rabbit-config Inv 17
+   isolation pattern):
+   - `on` from clean state — all three side effects appear (both
+     markers exist; settings.local.json has
+     `permissions.defaultMode == "bypassPermissions"`).
+   - `off` from on state — all three side effects revert cleanly.
+   - Failure simulation at step 2 — monkey-patch
+     `contract.lib.mutation.set_json_key` (or import-time inject) to
+     raise; assert step 1's marker is removed during rollback; assert
+     exit non-zero; assert stderr names the failed step.
+   - Idempotency — `on`-from-`on` and `off`-from-`off` are clean no-ops
+     (no errors, exit 0, state unchanged).
 
 ## Known gaps
 

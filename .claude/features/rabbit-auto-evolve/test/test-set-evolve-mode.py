@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""test-set-evolve-mode.py — e2e tests for scripts/set-evolve-mode.py
+(Inv 1: compound mutator with rollback semantics and idempotency).
+
+Exercises the four spec-mandated scenarios:
+  A) `on` from clean state — all three side effects appear.
+  B) `off` from on state — all three side effects revert.
+  C) Failure at step 2 — rollback removes step 1's marker; non-zero exit;
+     stderr names the failed step.
+  D) Idempotency — `on`-from-`on` and `off`-from-`off` are clean no-ops.
+
+Uses tempfile.TemporaryDirectory() fixtures per rabbit-config Inv 17
+isolation pattern; invokes the script as a subprocess with cwd=tmp so the
+script's `repo_root = os.getcwd()` resolution targets the fixture.
+"""
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import textwrap
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SCRIPT = os.path.normpath(os.path.join(HERE, "..", "scripts", "set-evolve-mode.py"))
+REPO_ROOT = os.path.normpath(os.path.join(HERE, "..", "..", "..", ".."))
+CONTRACT_DIR = os.path.join(REPO_ROOT, ".claude", "features", "contract")
+
+MARKER_BYPASS = ".rabbit-human-approval-bypass"
+MARKER_ACTIVE = ".rabbit-auto-evolve-active"
+SETTINGS = os.path.join(".claude", "settings.local.json")
+
+FAIL = 0
+
+
+def fail(msg):
+    global FAIL
+    print(f"FAIL: {msg}", file=sys.stderr)
+    FAIL = 1
+
+
+def ok(msg):
+    print(f"PASS: {msg}")
+
+
+def run_script(cwd, *args, env_extra=None):
+    """Run the script from cwd. Returns CompletedProcess."""
+    env = os.environ.copy()
+    if env_extra:
+        env.update(env_extra)
+    return subprocess.run(
+        [sys.executable, SCRIPT, *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+def write_settings(root, mapping):
+    """Write .claude/settings.local.json with given mapping."""
+    path = os.path.join(root, SETTINGS)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(mapping, f, indent=2)
+
+
+def read_settings(root):
+    path = os.path.join(root, SETTINGS)
+    if not os.path.isfile(path):
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+
+# ---------------------------------------------------------------------------
+# Scenario A — `on` from clean state
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as root:
+    proc = run_script(root, "on")
+    if proc.returncode != 0:
+        fail(f"A: expected exit 0 from `on`, got {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("A: `on` exited 0")
+    if not os.path.isfile(os.path.join(root, MARKER_BYPASS)):
+        fail(f"A: expected {MARKER_BYPASS} to exist after `on`")
+    else:
+        with open(os.path.join(root, MARKER_BYPASS)) as f:
+            content = f.read()
+        if content != "session":
+            fail(f"A: expected {MARKER_BYPASS} content='session', got {content!r}")
+        else:
+            ok(f"A: {MARKER_BYPASS} written with content 'session'")
+    if not os.path.isfile(os.path.join(root, MARKER_ACTIVE)):
+        fail(f"A: expected {MARKER_ACTIVE} to exist after `on`")
+    else:
+        ok(f"A: {MARKER_ACTIVE} written")
+    data = read_settings(root)
+    if data is None:
+        fail(f"A: expected {SETTINGS} to exist after `on`")
+    elif data.get("permissions", {}).get("defaultMode") != "bypassPermissions":
+        fail(f"A: expected permissions.defaultMode='bypassPermissions', got {data!r}")
+    else:
+        ok("A: permissions.defaultMode = 'bypassPermissions'")
+
+
+# ---------------------------------------------------------------------------
+# Scenario B — `off` from on state
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as root:
+    # Bring to on state first
+    proc_on = run_script(root, "on")
+    if proc_on.returncode != 0:
+        fail(f"B: pre-setup `on` failed: {proc_on.stderr!r}")
+    proc = run_script(root, "off")
+    if proc.returncode != 0:
+        fail(f"B: expected exit 0 from `off`, got {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("B: `off` exited 0")
+    if os.path.exists(os.path.join(root, MARKER_BYPASS)):
+        fail(f"B: expected {MARKER_BYPASS} to be removed after `off`")
+    else:
+        ok(f"B: {MARKER_BYPASS} removed")
+    if os.path.exists(os.path.join(root, MARKER_ACTIVE)):
+        fail(f"B: expected {MARKER_ACTIVE} to be removed after `off`")
+    else:
+        ok(f"B: {MARKER_ACTIVE} removed")
+    data = read_settings(root)
+    # settings file may still exist (with permissions block emptied) — what
+    # matters is that defaultMode key is gone.
+    if data is not None and data.get("permissions", {}).get("defaultMode") is not None:
+        fail(f"B: expected permissions.defaultMode key gone, got {data!r}")
+    else:
+        ok("B: permissions.defaultMode deleted")
+
+
+# ---------------------------------------------------------------------------
+# Scenario C — Failure simulation at step 2 (set_json_key raises)
+# ---------------------------------------------------------------------------
+# We inject a sitecustomize.py into a tmp dir on PYTHONPATH that monkey-patches
+# contract.lib.mutation.set_json_key to raise. The script imports the module
+# fresh in its own process, so this is the cleanest way to force a step-2
+# failure without modifying the script under test.
+with tempfile.TemporaryDirectory() as root:
+    with tempfile.TemporaryDirectory() as pythonpath_dir:
+        sitecustomize = os.path.join(pythonpath_dir, "sitecustomize.py")
+        with open(sitecustomize, "w") as f:
+            f.write(textwrap.dedent(f"""
+                import sys, os
+                _contract_dir = {CONTRACT_DIR!r}
+                if _contract_dir not in sys.path:
+                    sys.path.insert(0, _contract_dir)
+                from lib import mutation as _m
+                def _raise(*a, **kw):
+                    raise RuntimeError("INJECTED step-2 failure")
+                _m.set_json_key = _raise
+            """).lstrip())
+        env_extra = {"PYTHONPATH": pythonpath_dir}
+        proc = run_script(root, "on", env_extra=env_extra)
+        if proc.returncode == 0:
+            fail(f"C: expected non-zero exit on step-2 failure, got 0; stderr={proc.stderr!r}")
+        else:
+            ok(f"C: non-zero exit ({proc.returncode}) on step-2 failure")
+        # Step 1's marker must have been rolled back.
+        if os.path.exists(os.path.join(root, MARKER_BYPASS)):
+            fail(f"C: expected {MARKER_BYPASS} to be rolled back, but it still exists")
+        else:
+            ok(f"C: {MARKER_BYPASS} rolled back after step-2 failure")
+        # Step 3's marker must NOT exist (never reached).
+        if os.path.exists(os.path.join(root, MARKER_ACTIVE)):
+            fail(f"C: {MARKER_ACTIVE} should not exist after step-2 failure")
+        else:
+            ok(f"C: {MARKER_ACTIVE} not present (step never ran)")
+        # stderr must name the failed step.
+        if "step 2" not in proc.stderr.lower() and "set_json_key" not in proc.stderr.lower():
+            fail(f"C: stderr should name the failed step (step 2 / set_json_key); got: {proc.stderr!r}")
+        else:
+            ok("C: stderr names the failed step")
+
+
+# ---------------------------------------------------------------------------
+# Scenario D — Idempotency
+# ---------------------------------------------------------------------------
+# on-from-on
+with tempfile.TemporaryDirectory() as root:
+    p1 = run_script(root, "on")
+    if p1.returncode != 0:
+        fail(f"D: pre-setup `on` failed: {p1.stderr!r}")
+    p2 = run_script(root, "on")
+    if p2.returncode != 0:
+        fail(f"D: `on`-from-`on` should be clean no-op, got exit {p2.returncode}; stderr={p2.stderr!r}")
+    else:
+        ok("D: `on`-from-`on` clean no-op (exit 0)")
+    # State unchanged
+    if not os.path.isfile(os.path.join(root, MARKER_BYPASS)):
+        fail("D: state changed after on-from-on (bypass marker missing)")
+    data = read_settings(root)
+    if data is None or data.get("permissions", {}).get("defaultMode") != "bypassPermissions":
+        fail("D: state changed after on-from-on (defaultMode wrong)")
+    if not os.path.isfile(os.path.join(root, MARKER_ACTIVE)):
+        fail("D: state changed after on-from-on (active marker missing)")
+
+# off-from-off
+with tempfile.TemporaryDirectory() as root:
+    # Clean state — invoke off immediately
+    p = run_script(root, "off")
+    if p.returncode != 0:
+        fail(f"D: `off`-from-`off` (clean) should be clean no-op, got exit {p.returncode}; stderr={p.stderr!r}")
+    else:
+        ok("D: `off`-from-`off` clean no-op (exit 0)")
+    if os.path.exists(os.path.join(root, MARKER_BYPASS)):
+        fail("D: bypass marker should not appear from off-from-off")
+    if os.path.exists(os.path.join(root, MARKER_ACTIVE)):
+        fail("D: active marker should not appear from off-from-off")
+
+
+sys.exit(FAIL)
