@@ -287,4 +287,66 @@ with tempfile.TemporaryDirectory() as root:
             fail(f"F: {m} should not exist after partial-state `off`")
 
 
+# ---------------------------------------------------------------------------
+# Scenario G — Branded confirmation on `on` success (Inv 1 v0.7.4 / issue #377).
+# `on` success must emit two branded rabbit_print lines to stdout: line 1 red
+# with `AUTONOMOUS-EVOLVE MODE CONFIGURED` + `restart Claude`; line 2 yellow
+# with `/rabbit-auto-evolve start`. Both lines must carry the `[🐇 rabbit 🐇]`
+# brand prefix so the message matches the SessionStart banner's visual weight
+# (the prior flat `set-evolve-mode: on OK` line was easy to miss).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as root:
+    proc = run_script(root, "on")
+    if proc.returncode != 0:
+        fail(f"G: pre-setup `on` failed: {proc.stderr!r}")
+    out = proc.stdout
+    if "[\U0001f407 rabbit \U0001f407]" not in out:
+        fail(f"G: stdout missing brand prefix '[\U0001f407 rabbit \U0001f407]'; got: {out!r}")
+    else:
+        ok("G: `on` stdout carries [\U0001f407 rabbit \U0001f407] brand prefix")
+    # Both lines must carry the brand — assert at least two occurrences.
+    _brand = "[\U0001f407 rabbit \U0001f407]"
+    _brand_count = out.count(_brand)
+    if _brand_count < 2:
+        fail(f"G: expected >= 2 brand prefixes (one per line), got {_brand_count}; stdout: {out!r}")
+    else:
+        ok("G: `on` stdout carries brand prefix on both lines")
+    if "AUTONOMOUS-EVOLVE MODE CONFIGURED" not in out:
+        fail(f"G: stdout missing 'AUTONOMOUS-EVOLVE MODE CONFIGURED'; got: {out!r}")
+    else:
+        ok("G: `on` stdout contains 'AUTONOMOUS-EVOLVE MODE CONFIGURED'")
+    if "restart Claude" not in out:
+        fail(f"G: stdout missing 'restart Claude'; got: {out!r}")
+    else:
+        ok("G: `on` stdout contains 'restart Claude' instruction")
+    if "/rabbit-auto-evolve start" not in out:
+        fail(f"G: stdout missing '/rabbit-auto-evolve start'; got: {out!r}")
+    else:
+        ok("G: `on` stdout contains '/rabbit-auto-evolve start' command")
+
+
+# ---------------------------------------------------------------------------
+# Scenario H — Branded confirmation on `off` success (Inv 1 v0.7.4 / issue #377).
+# `off` success must emit one branded rabbit_print line to stdout: green with
+# `deactivated` and the `[🐇 rabbit 🐇]` brand prefix.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as root:
+    # Bring to on state first so off has real work to do
+    proc_on = run_script(root, "on")
+    if proc_on.returncode != 0:
+        fail(f"H: pre-setup `on` failed: {proc_on.stderr!r}")
+    proc = run_script(root, "off")
+    if proc.returncode != 0:
+        fail(f"H: `off` failed: {proc.stderr!r}")
+    out = proc.stdout
+    if "[\U0001f407 rabbit \U0001f407]" not in out:
+        fail(f"H: stdout missing brand prefix '[\U0001f407 rabbit \U0001f407]'; got: {out!r}")
+    else:
+        ok("H: `off` stdout carries [\U0001f407 rabbit \U0001f407] brand prefix")
+    if "deactivated" not in out:
+        fail(f"H: stdout missing 'deactivated'; got: {out!r}")
+    else:
+        ok("H: `off` stdout contains 'deactivated'")
+
+
 sys.exit(FAIL)

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.7.3
+version: 0.7.4
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -216,6 +216,28 @@ Phase E merges complete.
    JSON key sets/deletes; the script's role is only ordering and
    rollback coordination).
 
+   **Branded confirmation on success** (per contract Inv 48 — brand
+   prefix is owned by `rabbit_print`). On `on` full success, the script
+   emits two lines to stdout via
+   `contract.lib.runtime.rabbit_print`:
+
+   - Line 1 — red — `🚀 AUTONOMOUS-EVOLVE MODE CONFIGURED — restart Claude Code to activate`
+   - Line 2 — yellow — `👉 After restart, run: /rabbit-auto-evolve start`
+
+   On `off` full success, the script emits a single line to stdout
+   via `rabbit_print`:
+
+   - green — `✅ Autonomous-evolve mode deactivated — full teardown complete`
+
+   SKILL.md's `on` / `off` subcommand bodies surface the script's
+   stdout verbatim to the user (no skill-generated paraphrase) — the
+   message text lives in the script so it stays centralized.
+
+   This branded confirmation was introduced by issue #377 in v0.7.4:
+   in v0.7.3 the script printed a flat `set-evolve-mode: on OK` line
+   and the skill paraphrased it, producing a muted message that
+   didn't match the visual weight of the rest of the rabbit surface.
+
    Enforced by `test/test-set-evolve-mode.py` using
    `tempfile.TemporaryDirectory()` fixtures (per rabbit-config Inv 17
    isolation pattern):
@@ -229,6 +251,11 @@ Phase E merges complete.
      exit non-zero; assert stderr names the failed step.
    - Idempotency — `on`-from-`on` and `off`-from-`off` are clean no-ops
      (no errors, exit 0, state unchanged).
+   - Branded confirmation on `on` success — stdout contains the
+     literal substrings `[🐇 rabbit 🐇]`, `AUTONOMOUS-EVOLVE MODE
+     CONFIGURED`, `restart Claude`, AND `/rabbit-auto-evolve start`.
+   - Branded confirmation on `off` success — stdout contains the
+     literal substrings `[🐇 rabbit 🐇]` AND `deactivated`.
 
 2. **`fetch-queue.py` deterministic queue emission.** The CLI
    `python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py`
