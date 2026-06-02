@@ -72,7 +72,13 @@ else:
 # (a) presence-and-default assertions on EVERY HANDOFF_JSON block in the
 #     template. The dispatcher's assembled prompt embeds three such blocks:
 #     STEP 5 fail-HANDOFF, STEP 7 fail-HANDOFF, completion HANDOFF.
-all_blocks = re.findall(r"HANDOFF_JSON:\n```json\n(\{.*?\})\n```", prompt, re.DOTALL)
+#     The fail-HANDOFF blocks live inside indented step bodies; use a
+#     leading-whitespace-tolerant pattern and a brace-balanced extractor.
+all_blocks = re.findall(
+    r"HANDOFF_JSON:\n[ \t]*```json\n(.*?)\n[ \t]*```",
+    prompt,
+    re.DOTALL,
+)
 if len(all_blocks) != 3:
     ko(f"inv55: expected 3 HANDOFF_JSON blocks in template, found {len(all_blocks)}")
 else:
