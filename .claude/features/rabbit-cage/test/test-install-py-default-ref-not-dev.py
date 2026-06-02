@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """rabbit-cage regression — install.py HARDCODED_STABLE_DEFAULT MUST be a stable channel.
 
-Bug #286 / spec Inv 29: install.py's hardcoded default upstream ref MUST match
-a stable release branch (`release/[0-9]+\\.[0-9]+`) or a semver tag
-(`v[0-9]+\\.[0-9]+\\.[0-9]+`). The literal value `dev` is FORBIDDEN as the default.
+Bug #286 / spec Inv 29 (amended #307): install.py's hardcoded default upstream
+ref MUST match a stable release branch — either 3-field
+`release/[0-9]+\\.[0-9]+\\.[0-9]+` (preferred, post-#307) or legacy 2-field
+`release/[0-9]+\\.[0-9]+` (retained for backwards compat with release/1.0-1.10)
+— or a semver tag (`v[0-9]+\\.[0-9]+\\.[0-9]+`). The literal value `dev` is
+FORBIDDEN as the default.
 
 Mirror of test-install-sh-default-ref-not-dev.py but pinned at install.py — the
 Python installer must NOT silently land plugin users on bleeding-edge dev.
@@ -23,7 +26,7 @@ REPO_ROOT = subprocess.run(
 INSTALL_PY = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/install.py")
 
 ALLOWED_PATTERNS = [
-    r"^release/[0-9]+\.[0-9]+$",
+    r"^release/[0-9]+\.[0-9]+(\.[0-9]+)?$",
     r"^v[0-9]+\.[0-9]+\.[0-9]+$",
 ]
 
@@ -80,7 +83,7 @@ else:
 if any(re.match(p, default_value) for p in ALLOWED_PATTERNS):
     ok(4, f"HARDCODED_STABLE_DEFAULT {default_value!r} matches an allowed stable channel pattern")
 else:
-    fail_t(4, f"HARDCODED_STABLE_DEFAULT {default_value!r} does not match release/X.Y or vX.Y.Z")
+    fail_t(4, f"HARDCODED_STABLE_DEFAULT {default_value!r} does not match release/X.Y[.Z] or vX.Y.Z")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")

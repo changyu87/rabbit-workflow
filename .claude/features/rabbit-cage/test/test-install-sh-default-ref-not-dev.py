@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """rabbit-cage regression — install.sh default RABBIT_REF MUST be a stable channel.
 
-Bug #279 / spec Inv 24: the default value of RABBIT_REF declared in install.sh
-MUST match a stable release branch (`release/[0-9]+\\.[0-9]+`) or a semver tag
-(`v[0-9]+\\.[0-9]+\\.[0-9]+`). The literal value `dev` is FORBIDDEN as the default.
+Bug #279 / spec Inv 24 (amended #307): the default value of RABBIT_REF declared
+in install.sh MUST match a stable release branch — either 3-field
+`release/[0-9]+\\.[0-9]+\\.[0-9]+` (preferred, post-#307) or legacy 2-field
+`release/[0-9]+\\.[0-9]+` (retained for backwards compat with release/1.0-1.10)
+— or a semver tag (`v[0-9]+\\.[0-9]+\\.[0-9]+`). The literal value `dev` is
+FORBIDDEN as the default.
 
 Plugin users running the documented one-liner without an explicit RABBIT_REF
 override MUST land on a stable, semver-tagged channel — never the bleeding-edge
@@ -28,7 +31,7 @@ REPO_ROOT = subprocess.run(
 INSTALL_SH = os.path.join(REPO_ROOT, "install.sh")
 
 ALLOWED_PATTERNS = [
-    r"^release/[0-9]+\.[0-9]+$",
+    r"^release/[0-9]+\.[0-9]+(\.[0-9]+)?$",
     r"^v[0-9]+\.[0-9]+\.[0-9]+$",
 ]
 
@@ -85,7 +88,7 @@ else:
 if any(re.match(p, default_value) for p in ALLOWED_PATTERNS):
     ok(4, f"RABBIT_REF default {default_value!r} matches an allowed stable channel pattern")
 else:
-    fail_t(4, f"RABBIT_REF default {default_value!r} does not match release/X.Y or vX.Y.Z")
+    fail_t(4, f"RABBIT_REF default {default_value!r} does not match release/X.Y[.Z] or vX.Y.Z")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")
