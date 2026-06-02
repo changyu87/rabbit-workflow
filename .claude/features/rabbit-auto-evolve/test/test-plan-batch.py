@@ -233,4 +233,66 @@ else:
         fail(f"combined: bad JSON ({e}); stdout={proc.stdout!r}")
 
 
+# ---------------------------------------------------------------------------
+# Scenario 7 — Unfiltered triage array (Inv 4 update + Inv 18 pipe)
+#   Mixed [work, close-not-planned, defer] items: plan-batch silently drops
+#   anything whose decision != "work" so the standard pipe
+#   `fetch-queue | triage-batch | plan-batch` passes the unfiltered triage
+#   output through cleanly.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 801, "feature": "Fa", "contract_touch": False, "priority": "high",
+     "decision": "work"},
+    {"issue": 802, "feature": "Fb", "contract_touch": False, "priority": "high",
+     "decision": "close-not-planned"},
+    {"issue": 803, "feature": "Fc", "contract_touch": False, "priority": "medium",
+     "decision": "defer"},
+    {"issue": 804, "feature": "Fd", "contract_touch": True, "priority": "high",
+     "decision": "work"},
+    {"issue": 805, "feature": "Fe", "contract_touch": True, "priority": "high",
+     "decision": "defer"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"unfiltered-triage: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        # Only 801 (work) and 804 (work, contract) should survive.
+        if out.get("barrier_first") != [804]:
+            fail(f"unfiltered-triage: barrier_first={out.get('barrier_first')!r}, "
+                 f"want [804] (805 deferred + dropped)")
+        groups = out.get("groups", [])
+        if len(groups) != 1 or sorted(groups[0]) != [801]:
+            fail(f"unfiltered-triage: expected groups=[[801]], got {groups!r}")
+        else:
+            ok("unfiltered-triage: non-work items silently dropped; only 801+804 survive")
+    except json.JSONDecodeError as e:
+        fail(f"unfiltered-triage: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 8 — Items WITHOUT decision field should still be processed.
+#   Backwards-compat: callers that pre-filter to work-only and omit the
+#   decision field continue to work.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 901, "feature": "Fa", "contract_touch": False, "priority": "high"},
+    {"issue": 902, "feature": "Fb", "contract_touch": False, "priority": "medium"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"no-decision-field: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        groups = out.get("groups", [])
+        if len(groups) != 1 or sorted(groups[0]) != [901, 902]:
+            fail(f"no-decision-field: expected single group [901,902], got {groups!r}")
+        else:
+            ok("no-decision-field: items without decision field still processed")
+    except json.JSONDecodeError as e:
+        fail(f"no-decision-field: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
 sys.exit(FAIL)
