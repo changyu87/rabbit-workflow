@@ -168,6 +168,8 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
     ],
     "rabbit-feature": [
         "feature.json",
+        "scripts/format-feature-context.py",
+        "scripts/resolve-scope.py",
         "scripts/scaffold-feature.py",
         "skills/rabbit-feature-audit/SKILL.md",
         "skills/rabbit-feature-scaffold/SKILL.md",
