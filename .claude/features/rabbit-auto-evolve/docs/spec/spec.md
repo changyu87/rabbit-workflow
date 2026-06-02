@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.7.0
+version: 0.7.1
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -180,11 +180,29 @@ Phase E merges complete.
       is active (consumed by `contract.lib.runtime` Inv 64 suppression
       hook and by the runtime banner APIs in Inv 65).
 
-   On `off`, the three reverse in inverse order: delete
-   `.rabbit-auto-evolve-active`; delete the `permissions.defaultMode`
-   key via `contract.lib.mutation.delete_json_key`; delete
-   `.rabbit-human-approval-bypass` via
-   `contract.lib.mutation.delete_marker`.
+   On `off`, the script performs a FULL teardown — innermost
+   runtime markers first, then the three activation mutations in
+   inverse order:
+
+   1. Delete any of the four loop-runtime markers if present
+      (`.rabbit-auto-evolve-running`,
+      `.rabbit-auto-evolve-stop-requested`,
+      `.rabbit-auto-evolve-restart-needed`,
+      `.rabbit-auto-evolve-aborted`) via
+      `contract.lib.mutation.delete_marker`. Idempotent
+      (delete-if-exists; missing markers are no-ops). Doing this
+      first means a subsequent `on` lands in a clean state.
+   2. Delete `.rabbit-auto-evolve-active`.
+   3. Delete the `permissions.defaultMode` key via
+      `contract.lib.mutation.delete_json_key`.
+   4. Delete `.rabbit-human-approval-bypass` via
+      `contract.lib.mutation.delete_marker`.
+
+   This extension was introduced by issue #371 in v0.7.1: in v0.7.0
+   `off` only deleted `.rabbit-auto-evolve-active`, leaving the four
+   loop-runtime markers behind for the user to clean up manually
+   (which scope-guard then denied because literal `rm`/`touch` of
+   non-allowlisted markers is blocked).
 
    Failure handling: abort on first error and roll back any prior steps
    best-effort (delete a just-written marker; restore the prior
