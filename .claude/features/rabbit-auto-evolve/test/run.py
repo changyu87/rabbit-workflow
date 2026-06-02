@@ -27,5 +27,6 @@ def run_test(script):
 run_test("test-set-evolve-mode.py")
 run_test("test-fetch-queue.py")
 run_test("test-triage-rules.py")
+run_test("test-plan-batch.py")
 
 print("ALL TESTS PASSED")
