@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.7 — 2026-06-02
+
+- Fix #386: SKILL.md `start` subcommand now routes on the `check-preconditions.py` report shape rather than dumping the failing checklist on every `all_pass: false` case. On fresh state (`active-marker` check `ok: false`) the skill automatically invokes `/rabbit-auto-evolve on` and surfaces the script's branded restart prompt before ending the turn — the user no longer has to manually run `on` first. When markers exist but `bypass-permissions` has not loaded (forgot-to-restart case), the skill emits a short branded reminder line instead of re-running `on`. The verbatim failing-checklist surface is now reserved for the genuinely unexpected fallback branch (partial corruption, manual tampering). Inv 10 in `docs/spec/spec.md` rewritten with the explicit routing table; SKILL.md `start` section rewritten in matching prose; `test/test-start-stop-skill.py` extended to assert the routing keywords are present and the pre-#386 blanket "surface each failing" instruction is absent. Versions bumped 0.7.6 → 0.7.7 across feature.json, spec.md, contract.md (provides.skills version), SKILL.md frontmatter.
+
 ## 0.7.6 — 2026-06-02
 
 - Fix #384: `test/test-banner-suppression.py` synthetic tempdir now copies `scripts/banner-status.py` into `<td>/.claude/features/rabbit-auto-evolve/scripts/`. After PR #383 refactored `contract.lib.runtime.emit_auto_evolve_banner` to delegate line-1 and line-2 content to `banner-status.py` via subprocess, the test's synthetic `.claude/features/` tree lacked the script so the subprocess invocation returned non-zero (`No such file or directory`) and `emit_auto_evolve_banner` fell through to its best-effort `[]` failure path — scenarios S2/S3/S4 saw an empty banner. The fix copies the real `banner-status.py` (sourced via `__file__`-relative repo-root resolution) into the tempdir during `build_repo` so subprocess delegation resolves. No source-code change; spec Inv 14 unchanged.
