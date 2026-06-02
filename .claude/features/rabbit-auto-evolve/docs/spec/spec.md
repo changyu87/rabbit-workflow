@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.8.0
+version: 0.8.1
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1261,6 +1261,22 @@ Phase E merges complete.
     and asserts none of the five marker basenames appear in the
     output. The test fails loudly if `.gitignore` is missing the
     glob or matches only a subset of the markers.
+
+24. **Claude Code runtime files MUST be gitignored.** The repo-root
+    `.gitignore` MUST carry entries for `.claude/scheduled_tasks.lock`
+    and `.claude/scheduled_tasks.json` — two files created by Claude
+    Code's scheduling harness whenever `CronCreate` or `ScheduleWakeup`
+    are active. Without these entries both files appear as `??`
+    untracked in `git status`, causing `safety-check.py` Invariant 5
+    ("working tree clean") to refuse every PR merge attempt as long as
+    a Claude Code session is running. The entries belong with the existing
+    `.claude/settings.local.json`, `.claude/tdd-report.json`,
+    `.claude/worktrees/`, and `.claude/tmp/` exclusions (same lifecycle:
+    per-session Claude Code runtime state, never committed). Enforced by
+    `test/test-claude-runtime-files-gitignored.py`, which creates both
+    files in a tempdir initialized as a git repo, copies the repo-root
+    `.gitignore` into the tempdir, runs `git status --porcelain`, and
+    asserts neither filename appears in the output.
 
 ## Known gaps
 
