@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.7.7
+version: 0.8.0
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1239,6 +1239,28 @@ Phase E merges complete.
     - Precedence: active + running + aborted → aborted wins.
     - Precedence: active + restart-needed + aborted → aborted wins.
     - Exit 0 in all cases.
+
+23. **All runtime markers MUST be gitignored.** The repo-root
+    `.gitignore` MUST carry the glob `.rabbit-auto-evolve-*` so that
+    every one of the five runtime markers
+    (`.rabbit-auto-evolve-active`, `.rabbit-auto-evolve-running`,
+    `.rabbit-auto-evolve-stop-requested`,
+    `.rabbit-auto-evolve-restart-needed`,
+    `.rabbit-auto-evolve-aborted`) is excluded from `git status`.
+    Without this gitignore entry, `safety-check.py` Invariant 5
+    ("working tree clean") fails during the `merge` phase whenever
+    the loop is running — the active and running markers show as
+    `??` untracked files and every PR merge is refused, deadlocking
+    the loop indefinitely. The gitignore entry belongs alongside the
+    existing `.rabbit-human-approval-bypass` and `.rabbit-scope-*`
+    patterns (same lifecycle: per-session operational state, never
+    committed). Enforced by
+    `test/test-markers-gitignored.py` which writes the five markers
+    in a tempdir initialized as a git repo, copies the repo-root
+    `.gitignore` into the tempdir, runs `git status --porcelain`,
+    and asserts none of the five marker basenames appear in the
+    output. The test fails loudly if `.gitignore` is missing the
+    glob or matches only a subset of the markers.
 
 ## Known gaps
 
