@@ -54,7 +54,7 @@ from pathlib import Path
 # MUST match install.sh's RABBIT_REF="${RABBIT_REF:-…}" default — single source
 # of truth, bumped together each release cut. The literal value "dev" is
 # FORBIDDEN here (enforced by test-install-py-default-ref-not-dev.py).
-HARDCODED_STABLE_DEFAULT = "release/1.3"
+HARDCODED_STABLE_DEFAULT = "release/1.4"
 
 # ───────────────────────────────────────────────────────────────────────────
 # MVP file closure as (src_rel, dst_rel) tuples — explicit source→destination
