@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.2.0
+version: 0.4.0
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -831,13 +831,29 @@ Phase E merges complete.
     contract Inv 65) by importing them as a module — no shell
     invocations of the dispatchers.
 
+15. **Feature-shape compliance.** All four version fields agree:
+    `feature.json.version` == spec.md frontmatter `version` ==
+    contract.md frontmatter `version` == SKILL.md frontmatter
+    `version`. The current target is `0.4.0` (set during Phase E
+    Task 14; bumped on every subsequent compliance landing).
+
+    `feature.json` and SKILL.md MUST carry non-empty `owner` and
+    `deprecation_criterion`. `feature.json.summary` MUST mention
+    `rabbit-auto-evolve` (the skill name). Every entry in
+    `feature.json.surface.skills` MUST have a matching entry in
+    `contract.md` `provides.skills` (name + version).
+
+    Enforced by `test/test-feature-shape.py`. Going forward, every
+    landing change that touches any of the four versioned artifacts
+    MUST bump them in lockstep — test-feature-shape will fail
+    otherwise.
+
 ## Known gaps
 
-- All Phase C scripts have landed (#335, #339, #341, #343, #345, #347,
-  #349, #351, #353). Phase D Task 12 (SKILL.md + feature.json wiring
-  + workspace-structure.json + passthrough template) landed in PR #355.
-  Phase D Task 13 (banner suppression test) lands in this cycle.
-  Phase E (feature-shape compliance + final suite) follows.
+- Phases C and D complete. Phase E Task 14 (feature-shape
+  compliance + CHANGELOG + version alignment) lands in this cycle.
+  Phase E Task 15 (final audit + install.py deploy verification)
+  and Phase F (manual smoke test) follow.
 - No `CHANGELOG.md` exists yet (added in Phase E Task 14).
 - All three prerequisite changes have **landed on `dev`** as of the
   commits noted in the prompt context (#327/#330, #328/#331, #329/#332);

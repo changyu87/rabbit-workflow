@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.3.0
+version: 0.4.0
 owner: cyxu
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 model: opus
