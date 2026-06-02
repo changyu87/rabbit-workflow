@@ -63,9 +63,9 @@ else:
         ok("inv22: HANDOFF_JSON has all required fields")
     else:
         ko(f"inv22: HANDOFF_JSON missing fields: {missing}")
-    if '"handoff_schema_version": "1.0.0"' in raw:
-        ok("inv22: HANDOFF_JSON declares handoff_schema_version 1.0.0")
+    if '"handoff_schema_version": "1.1.0"' in raw:
+        ok("inv22: HANDOFF_JSON declares handoff_schema_version 1.1.0")
     else:
-        ko("inv22: HANDOFF_JSON missing handoff_schema_version 1.0.0")
+        ko("inv22: HANDOFF_JSON missing handoff_schema_version 1.1.0")
 
 report(passed, failed)
