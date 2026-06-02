@@ -1,6 +1,6 @@
 {
   "name": "contract",
-  "version": "1.49.0",
+  "version": "1.50.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
@@ -37,5 +37,5 @@
       }
     ]
   },
-  "spec_no_change_reason": "spec amendment to Inv 23 already landed in previous commit (1.48.0 -> 1.49.0)"
+  "spec_no_change_reason": "spec amendment to Inv 23(a) precedence+validation already landed in previous commit (1.49.0 -> 1.50.0)"
 }

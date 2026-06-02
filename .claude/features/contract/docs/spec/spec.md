@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.49.0
+version: 1.50.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -112,10 +112,12 @@ Numbering preserves gaps at 4, 6, 7, 27, 28, 29, 30, 35 for retired invariants �
 22. `feature-json-template.json` MUST validate against `feature.json.schema.json` (i.e., the template MUST be a legal `feature.json`). Templates carrying top-level fields the schema rejects (e.g., when `additionalProperties: false`) are broken by construction.
 23. `find-feature.py` MUST close all opened file handles (use `with open()` context managers) and MUST scan only canonical feature-root locations — the "no masquerading" guarantee is preserved by enumerating only documented paths, never any directory whose basename happens to be `features`. Plugin-mode detection accepts the `--repo` argument as EITHER the host-project root OR the rabbit install root (`RABBIT_ROOT` — the `.rabbit/` install dir), and resolves the canonical `rabbit_root` from whichever was supplied:
 
-    (a) **Detect mode + resolve rabbit_root.** Plugin mode is detected by either:
-        - `<repo>/.rabbit/.runtime/mode` exists and its content equals `"plugin"` — `repo` is the host-project root; `rabbit_root = <repo>/.rabbit`.
-        - `<repo>/.runtime/mode` exists and its content equals `"plugin"` — `repo` IS the rabbit install root; `rabbit_root = <repo>`.
-        Otherwise standalone mode; `rabbit_root` is unused.
+    (a) **Detect mode + resolve rabbit_root.** Plugin mode is detected by checking two candidate `mode` markers in a FIXED precedence order, and validating the resolved `rabbit_root` BEFORE returning it. The order and validation matter — see #311 below for the rogue-`.rabbit/.rabbit/` failure mode that motivated this.
+        - **First** check `<repo>/.runtime/mode` (the canonical RABBIT_ROOT-as-`repo` case per Inv 47; the most common caller pattern). If it exists with content `"plugin"`, candidate `rabbit_root = <repo>`.
+        - **Then** check `<repo>/.rabbit/.runtime/mode` (the host-as-`repo` case). If it exists with content `"plugin"`, candidate `rabbit_root = <repo>/.rabbit`.
+        - **Validate before accept.** A candidate `rabbit_root` is accepted ONLY if `<rabbit_root>/.claude/` exists as a directory — this rejects rogue `.rabbit/` subdirectories accidentally created inside the install (e.g. when a skill writes to a relative `.rabbit/...` path while CWD is already `<rabbit_root>`, creating `<rabbit_root>/.rabbit/.runtime/...` that looks like a valid plugin marker but points at an empty bogus root). If validation fails, fall through to the next candidate.
+        - Otherwise standalone mode; `rabbit_root` is unused.
+        The precedence (`.runtime/mode` first, `.rabbit/.runtime/mode` second) + validation closes the greedy first-match bug #311. Reversing to check `.rabbit/.runtime/mode` first would silently prefer a bogus inner `.rabbit/` over the real outer one. With the new order, the only way to mis-detect is for BOTH the outer and rogue inner roots to have valid `.claude/` directories — which is exponentially less likely than the rogue-empty-`.rabbit/` case observed in practice.
 
     (b) **Standalone-mode scan** (no plugin marker matched). Scan ONLY `<repo>/.claude/features/<name>/feature.json` (alphabetical). Behavior is byte-identical to the pre-amendment standalone form and remains pinned by the standalone-mode tests.
 
@@ -126,7 +128,7 @@ Numbering preserves gaps at 4, 6, 7, 27, 28, 29, 30, 35 for retired invariants �
 
     Dual-call convention: callers (e.g. `resolve-scope.py`, `dispatch-tdd-subagent.py`) MAY pass either the host-root or the rabbit-root as `--repo` and receive the same result set in plugin mode. This removes the ambiguity that caused #300/#301/#302 — where the caller had to pre-compute the "right" repo arg per mode, but the locator script (which lives inside `.rabbit/.claude/features/contract/scripts/`) and the feature-scan target (which lives under `.rabbit/rabbit-project/features/`) required different roots. With dual-detection, either choice works.
 
-    Enforced by `test/test-find-feature-plugin-mode.py` (extended) covering: (i) standalone unchanged; (ii) plugin via host-root (existing); (iii) NEW — plugin via rabbit-root (mode marker at `<repo>/.runtime/mode`); (iv) NEW — both rabbit-internal MVP features AND user-project features returned in plugin mode regardless of which root was passed.
+    Enforced by `test/test-find-feature-plugin-mode.py` (extended) covering: (i) standalone unchanged; (ii) plugin via host-root (existing); (iii) plugin via rabbit-root (mode marker at `<repo>/.runtime/mode`); (iv) both rabbit-internal MVP features AND user-project features returned in plugin mode regardless of which root was passed; (v) **#311 regression** — when called with `repo=<rabbit_root>` AND a rogue `<rabbit_root>/.rabbit/.runtime/mode=plugin` exists, the function MUST prefer the outer `<repo>/.runtime/mode` (since it's checked first) AND the validation step (`<rabbit_root>/.claude/` directory must exist) MUST reject the bogus inner candidate — assert the returned `rabbit_root` is `<rabbit_root>`, NOT `<rabbit_root>/.rabbit`.
 24. `check-symlinks-resolve.py` MUST follow symlinks at any depth (use `find -L` or equivalent with no maxdepth limit), or document why a finite depth is sufficient. Hard-coding `maxdepth=3` silently misses symlinks nested deeper, producing false-OK results.
 25. `check-imports-resolve.py` import-target regex MUST cover all paths where imports can appear: `.claude/features/`, `.claude/hooks/`, `.claude/skills/`, `.claude/commands/`, `.claude/agents/`. The current `.claude/features/`-only pattern misses imports from deployed surface files, producing false-OK on real drift.
 26. `workspace-structure.json` schema field naming MUST be internally consistent: either all snake_case or all camelCase, not mixed. The current mixed-case form (camelCase metadata keys with snake_case enforcement targets) confuses readers and triggers spurious schema-vs-data mismatches.
