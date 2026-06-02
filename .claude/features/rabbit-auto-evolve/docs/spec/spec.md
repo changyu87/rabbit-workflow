@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.5.1
+version: 0.5.2
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -686,8 +686,11 @@ Phase E merges complete.
    - `--help` smoke: exit 0 with recognizable usage text.
 
 10. **`rabbit-auto-evolve` SKILL documents 6 subcommands and the
-    12-phase tick.** `skills/rabbit-auto-evolve/SKILL.md` declares
-    `model: opus` in frontmatter and documents six subcommands. The
+    12-phase tick.** `skills/rabbit-auto-evolve/SKILL.md` documents
+    six subcommands. The SKILL MUST NOT pin a `model:` field in
+    frontmatter — the user's default session model handles the
+    dispatch; the heavy work (TDD subagent runs, triage decisions)
+    is delegated to subagents which select their own model. The
     activation surface (`on`/`off`) lives on this SKILL — NOT on
     `/rabbit-config` (see Inv 11).
 
@@ -757,10 +760,21 @@ Phase E merges complete.
     {
       "id": "rabbit-auto-evolve",
       "kind": "skill",
-      "inject": ["philosophy", "spec-rules", "coding-rules"],
+      "inject": [
+        ".claude/features/policy/philosophy.md",
+        ".claude/features/policy/spec-rules.md",
+        ".claude/features/policy/coding-rules.md"
+      ],
       "slots": ["args"]
     }
     ```
+
+    Every `inject` entry MUST be a repo-relative path to an existing
+    file (verified by the prompt dispatcher at SessionStart). Bare
+    names (e.g. `"philosophy"`) are FORBIDDEN — the dispatcher does
+    not resolve them and the Stop hook surfaces a
+    `prompt-injection failures: <feature>` line. This was bug #364
+    in v0.5.1; fixed in v0.5.2.
 
     A matching passthrough template lives at
     `.claude/features/contract/templates/prompts/rabbit-auto-evolve.txt`.
