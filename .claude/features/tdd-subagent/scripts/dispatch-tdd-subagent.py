@@ -88,7 +88,7 @@ def main(argv):
     parser = argparse.ArgumentParser(
         prog="dispatch-tdd-subagent.py",
         description=("Assemble a per-feature TDD subagent prompt that runs the "
-                     "7-step TDD cycle (test-red -> impl -> test-green) for "
+                     "8-step TDD cycle (test-red -> impl -> test-green) for "
                      "ONE feature. Prompt is written to stdout."),
     )
     parser.add_argument("--scope", required=True)
