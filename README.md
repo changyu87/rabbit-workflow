@@ -6,129 +6,32 @@ Policy is auto-injected every 20 prompts (configurable). Slash commands and skil
 
 ---
 
-## Modes
+## For developers (contributing to rabbit-workflow)
 
-Rabbit runs in two modes, detected automatically from the directory `claude` is launched from:
-
-| Mode | Launch from | Who uses it |
-|------|-------------|-------------|
-| **Standalone** | repo root (`rabbit-workflow/`) | Developing rabbit itself |
-| **Plugin** | `<your-project>/.rabbit/` | Applying rabbit to your project |
+**git**
+```bash
+git clone https://github.com/USER/rabbit-workflow
+git clone https://github.com/USER/rabbit-workflow my-name  # custom workspace name
+```
 
 ---
 
-## Standalone mode (developing rabbit)
+## For users (installing into your own workspace)
 
-Clone the repo and launch `claude` from the root:
+Your target workspace must not have an existing `.claude/` directory.
 
+**git**
 ```bash
-git clone https://github.com/changyu87/rabbit-workflow
-cd rabbit-workflow
-claude
+git clone https://github.com/USER/rabbit-workflow
+./rabbit-workflow/install.py /path/to/your/workspace   # explicit target
+./rabbit-workflow/install.py                           # or install to $PWD
 ```
 
-Feature work lives in `.claude/features/`. The scope-guard enforces feature boundaries and the TDD subagent drives each feature through the full spec → test-red → impl → test-green cycle.
-
----
-
-## Plugin mode (installing into your project)
-
-Rabbit installs as a vendored `.rabbit/` directory committed to your project. No submodules; no external dependencies at runtime.
-
-### Install
-
-The one-liner fetches the latest stable release and runs `install.py --src ... --target .rabbit`:
-
+**curl** (installs to current directory)
 ```bash
-cd /path/to/your/project
-curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
+cd /path/to/your/workspace
+bash <(curl -fsSL https://raw.githubusercontent.com/USER/rabbit-workflow/main/install.py)
 ```
-
-The pipe to `bash` is explicit — this works from any shell including csh and tcsh.
-
-The `install.sh` bootstrap is fetched from `dev` (small, stable shell wrapper);
-the install itself lands on the current stable release channel (`release/1.0`).
-
-If you prefer to download first:
-
-```bash
-curl -fsSLO https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh
-bash install.sh      # must be bash — install.sh is not csh/tcsh compatible
-```
-
-Requires: `python3`, `curl`, `tar`.
-
-### Commit the install
-
-```bash
-git add .rabbit/
-git commit -m "install rabbit"
-```
-
-Collaborators get a complete rabbit install via `git clone` — no per-developer install step.
-
-### Start a session
-
-**bash / zsh:**
-```bash
-cd .rabbit/ && claude
-```
-
-**csh / tcsh:**
-```tcsh
-cd .rabbit/ && claude
-```
-
-The `&&` operator works in both. Once inside the Claude session, all hooks are Python — no further shell dependency.
-
-### Declare a feature (map a code slice)
-
-```bash
-python3 .rabbit/.claude/features/rabbit-feature/scripts/scaffold-feature.py \
-    my-feature ../src/auth/**
-```
-
-This scaffolds `.rabbit/rabbit-project/features/my-feature/` and registers the glob in `.rabbit/rabbit-project/project-map.json`. From then on, scope-guard blocks unsanctioned edits to `../src/auth/**`.
-
-### Scope bypass (one-shot)
-
-To make a single change without ceremony:
-
-```bash
-touch .rabbit/.runtime/scope-bypass-once
-```
-
-The marker is consumed on the next write — single-use only.
-
-### Update
-
-In-place refresh (preserves `.rabbit/.runtime/` and any custom entries in
-`.rabbit/.claude/settings.json`). Updates go through `install.py` directly —
-`install.sh` is for first-time installs only:
-
-```bash
-cd <project-root>
-python3 .rabbit/install.py --update
-git add .rabbit/
-git commit -m "chore(rabbit): update to latest"
-```
-
-### Pin to a specific version
-
-```bash
-RABBIT_REF=release/1.0 curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
-RABBIT_REF=v1.0.0      curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
-```
-
-`RABBIT_REF` accepts any branch, tag, or commit SHA. `RABBIT_REPO` overrides the default repo.
-
-### Bleeding edge (developers — opt-in only)
-
-```bash
-RABBIT_REF=dev curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
-```
-
-The default install targets the latest stable release channel; `dev` is opt-in only.
 
 ---
 
@@ -136,18 +39,60 @@ The default install targets the latest stable release channel; `dev` is opt-in o
 
 | Command | Description |
 |---|---|
-| `/rabbit-refresh` | Re-inject policy into context |
-| `/rabbit-config prompt-threshold N` | Set auto-refresh interval to N prompts |
-| `/rabbit-config prompt-threshold` | Restore default (20 prompts) |
-| `/rabbit-config allowed-tools add\|remove <tool>` | Manage Claude Code tool permissions |
-| `/rabbit-config bash-allow add\|remove <cmd>` | Manage Bash command permissions |
-| `/rabbit-config permissions lock\|unlock` | Lock/unlock write bit on protected dirs |
-| `/rabbit-config human-approval true\|false` | Control Step 4 approval gate (true = gate active, false = bypass) |
+| `/rabbit-refresh` | Manually re-inject policy |
+| `/rabbit-config prompt-threshold N` | Set auto-refresh interval to N prompts (takes effect next session) |
+| `/rabbit-config prompt-threshold` | Restore default auto-refresh interval |
+| `/rabbit-config allowed-tools [add\|remove <tool>]` | Manage Claude Code tool permissions |
+| `/rabbit-config bash-allow [add\|remove <cmd>]` | Manage Bash command permissions |
+| `/rabbit-config permissions [lock\|unlock]` | Lock/unlock archive/ and test/ owner write bit |
+| `/rabbit-config human-approval [true\|false]` | Manage Step 4 HUMAN-APPROVAL gate (true=gate ACTIVE/default, false=bypass ACTIVE/marker written) |
+| `/rabbit-project init <name>` | Scaffold a new project directory |
 
----
+## Configuration
+
+Default refresh interval: 20 prompts. Change with `/rabbit-config prompt-threshold N`.
+
+## Applying rabbit anywhere
+
+There is **one** work model. Every feature schema, every script, every
+subagent works the same regardless of where the feature directory lives:
+`.claude/features/<x>/` (rabbit improving itself), `projA/features/<y>/`
+(any project applying the rabbit discipline), or any other path.
+
+The TDD subagent is dispatched with a SCOPE per invocation; the
+scope-guard hook enforces that scope. There is no rabbit-dev-mode vs
+user-mode dichotomy in the runtime.
+
+```bash
+# Scaffold a new feature anywhere (Python — no .sh scripts in rabbit)
+python3 .claude/features/rabbit-feature/scripts/new-feature.py \
+    projA/features auth-redirect --owner alice
+
+# Audit every feature in a tree (moved to rabbit-feature-audit skill in
+# rabbit-feature)
+Skill("rabbit-feature-audit", args: "projA/features")
+
+# File a bug (rabbit-file owns bug/backlog item lifecycle)
+python3 .claude/features/rabbit-file/scripts/file-item.py \
+    --feature auth-redirect --type bug \
+    --title "login redirects loop on safari" --priority high
+
+# Transition TDD state — same script for any feature dir
+python3 .claude/features/tdd-subagent/scripts/tdd-step.py \
+    transition projA/features/auth-redirect test-red
+
+# Dispatch the TDD subagent onto a scope (sketched — typically the main session
+# orchestrates this; the main session writes/removes the marker around the
+# Agent call)
+touch .rabbit-scope-active-auth-redirect
+# (Agent dispatch with subagent_type: tdd-subagent, prompt with SCOPE: ...)
+rm .rabbit-scope-active-auth-redirect
+```
+
+See `.claude/features/rabbit-cage/docs/spec/spec.md` for the rabbit-cage spec
+and `.claude/features/tdd-subagent/docs/spec/spec.md` for the TDD subagent
+protocol.
 
 ## Uninstall
 
-**Plugin mode:** `rm -rf .rabbit/` and remove `.rabbit` from `.gitignore` if present.
-
-**Standalone mode:** delete the cloned repo.
+Remove `.claude/` and `CLAUDE.md` from the installed workspace.

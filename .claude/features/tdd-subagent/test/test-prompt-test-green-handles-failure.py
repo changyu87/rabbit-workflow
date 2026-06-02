@@ -66,13 +66,13 @@ if '"test_result": "<pass|fail>"' in template:
 else:
     ko("t-pass-or-fail-placeholder-json: JSON '\"test_result\": \"<pass|fail>\"' placeholder missing")
 
-# t-step7-nonzero-conditional: STEP 7 TEST-GREEN section (8-step layout)
-# MUST contain a nonzero-exit branch that emits a fail-HANDOFF (mentioning
-# both 'test_result' and 'fail' in the same region).
-step6_match = re.search(r"STEP 7 — TEST-GREEN", template)
-step7_match = re.search(r"STEP 8 — UNLOCK", template)
+# t-step6-nonzero-conditional: STEP 6 section MUST contain a nonzero-exit
+# branch that emits a fail-HANDOFF (mentioning both 'test_result' and 'fail'
+# in the same region).
+step6_match = re.search(r"STEP 6 — TEST-GREEN", template)
+step7_match = re.search(r"STEP 7 — UNLOCK", template)
 if not step6_match or not step7_match:
-    ko("t-step7-nonzero-conditional: cannot locate STEP 7 TEST-GREEN / STEP 8 UNLOCK banners")
+    ko("t-step6-nonzero-conditional: cannot locate STEP 6 / STEP 7 banners")
 else:
     step6_region = template[step6_match.start():step7_match.start()]
     region_lower = step6_region.lower()
@@ -85,10 +85,10 @@ else:
         r"\bfail\b", step6_region
     )
     if has_nonzero_branch and has_fail_handoff:
-        ok("t-step7-nonzero-conditional: STEP 6 has nonzero-exit branch emitting fail-HANDOFF")
+        ok("t-step6-nonzero-conditional: STEP 6 has nonzero-exit branch emitting fail-HANDOFF")
     else:
         ko(
-            "t-step7-nonzero-conditional: STEP 6 missing nonzero-exit branch "
+            "t-step6-nonzero-conditional: STEP 6 missing nonzero-exit branch "
             f"(nonzero_branch={has_nonzero_branch}, fail_handoff={bool(has_fail_handoff)})"
         )
 

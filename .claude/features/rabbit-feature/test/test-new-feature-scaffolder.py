@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 33: scaffold-feature.py scaffolds a conforming feature dir.
+"""Inv 33: new-feature.py scaffolds a conforming feature dir.
 
 The scaffolder is executable and produces a directory containing feature.json
 (with template_version), docs/spec/spec.md, docs/spec/contract.md, and
@@ -20,13 +20,13 @@ import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-NEW_FEATURE = REPO_ROOT / ".claude/features/rabbit-feature/scripts/scaffold-feature.py"
+NEW_FEATURE = REPO_ROOT / ".claude/features/rabbit-feature/scripts/new-feature.py"
 VALIDATE = REPO_ROOT / ".claude/features/contract/scripts/validate-feature.py"
 
 
 def test_executable() -> None:
     assert NEW_FEATURE.is_file(), f"missing scaffolder: {NEW_FEATURE}"
-    assert os.access(NEW_FEATURE, os.X_OK), "scaffold-feature.py must be executable"
+    assert os.access(NEW_FEATURE, os.X_OK), "new-feature.py must be executable"
 
 
 def test_scaffolds_conforming_dir() -> None:

@@ -124,7 +124,7 @@ def t_no_enforcement_dir_needed():
         ko(f"precondition: enforcement dir unexpectedly present at {enforcement_dir}")
         return
     feat = os.path.join(repo, '.claude', 'features', 'noenf_feat')
-    _make_feature_dir(feat, 'noenf_feat', 'sync-deployed')
+    _make_feature_dir(feat, 'noenf_feat', 'impl')
     env = {**os.environ, 'RABBIT_ROOT': repo}
     rc, _out, err = _run(['python3', TDD_STEP, 'transition', feat, 'test-green'], env=env)
     if rc == 0 and b'R3 check failed' in err:

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Inv 3, 4 — CLI flag set and exit codes."""
+"""Inv 3, 4, 5, 6 — CLI flag set, exit codes, boolean vocabulary,
+--linked-items validation."""
 from _helpers import run_dispatch, run_dispatch_raw, report
 
 passed = failed = 0
@@ -52,6 +53,20 @@ if res.returncode == 2:
 else:
     ko(f"inv3: expected 2 for missing spec file, got {res.returncode}")
 
+# Inv 3: --linked-item without --item-type → exit 2.
+res = run_dispatch("--linked-item", "/tmp/dummy")
+if res.returncode == 2:
+    ok("inv3: --linked-item without --item-type exits 2")
+else:
+    ko(f"inv3: expected 2 for unpaired --linked-item, got {res.returncode}")
+
+# Inv 3: --item-type without --linked-item → exit 2.
+res = run_dispatch("--item-type", "bug")
+if res.returncode == 2:
+    ok("inv3: --item-type without --linked-item exits 2")
+else:
+    ko(f"inv3: expected 2 for unpaired --item-type, got {res.returncode}")
+
 # Inv 3 + Inv 4: --max-iterations 0 → exit 2.
 res = run_dispatch("--max-iterations", "0")
 if res.returncode == 2:
@@ -74,26 +89,32 @@ if res.returncode == 2:
 else:
     ko(f"inv4: expected 2 for retired --human-approval-gate false, got {res.returncode}")
 
-# Inv 4: --linked-item flag retired (TDD-SUBAGENT-BACKLOG-* Phase 7c); argparse
-# must reject it as an unrecognized argument.
-res = run_dispatch("--linked-item", "/tmp/dummy")
-if res.returncode == 2:
-    ok("inv4: --linked-item rejected (flag retired)")
+# Inv 6: --linked-items malformed entry (wrong colon count) → exit 2.
+res = run_dispatch("--linked-items", "rabbit-cage:bug")
+if res.returncode == 2 and "two colons" in res.stderr:
+    ok("inv6: malformed --linked-items (wrong colon count) exits 2 with diagnostic")
 else:
-    ko(f"inv4: expected 2 for retired --linked-item, got {res.returncode}")
+    ko(f"inv6: expected 2 + diagnostic, got rc={res.returncode}, stderr={res.stderr!r}")
 
-# Inv 4: --item-type flag retired; argparse must reject it.
-res = run_dispatch("--item-type", "bug")
-if res.returncode == 2:
-    ok("inv4: --item-type rejected (flag retired)")
+# Inv 6: --linked-items invalid type → exit 2.
+res = run_dispatch("--linked-items", "rabbit-cage:hotfix:RABBIT-CAGE-BUG-1")
+if res.returncode == 2 and "invalid type" in res.stderr:
+    ok("inv6: invalid type in --linked-items exits 2 with diagnostic")
 else:
-    ko(f"inv4: expected 2 for retired --item-type, got {res.returncode}")
+    ko(f"inv6: expected 2 + diagnostic, got rc={res.returncode}, stderr={res.stderr!r}")
 
-# Inv 4: --linked-items flag retired; argparse must reject it.
-res = run_dispatch("--linked-items", "rabbit-cage:bug:RABBIT-CAGE-BUG-1")
-if res.returncode == 2:
-    ok("inv4: --linked-items rejected (flag retired)")
+# Inv 6: --linked-items empty field → exit 2.
+res = run_dispatch("--linked-items", ":bug:BUG-1")
+if res.returncode == 2 and "empty field" in res.stderr:
+    ok("inv6: empty field in --linked-items exits 2 with diagnostic")
 else:
-    ko(f"inv4: expected 2 for retired --linked-items, got {res.returncode}")
+    ko(f"inv6: expected 2 + diagnostic, got rc={res.returncode}, stderr={res.stderr!r}")
+
+# Inv 6: malformed --linked-items must not emit prompt to stdout.
+res = run_dispatch("--linked-items", "broken")
+if res.returncode == 2 and res.stdout == "":
+    ok("inv6: malformed --linked-items emits no stdout before exit")
+else:
+    ko(f"inv6: expected empty stdout for malformed entry, got stdout_len={len(res.stdout)}")
 
 report(passed, failed)

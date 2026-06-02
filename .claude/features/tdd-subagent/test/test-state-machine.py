@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-# test-state-machine.py — Inv 31-35 end-to-end coverage (8-step cycle).
+# test-state-machine.py — Inv 1-5 end-to-end coverage.
 #
-# Inv 31: Valid state set = {spec, spec-update, test-red, impl,
-#         sync-deployed, test-green, deprecated}.
-# Inv 32: Primary forward order
-#         spec -> spec-update -> test-red -> impl -> sync-deployed ->
-#         test-green -> deprecated.
-# Inv 33: Alternate forward edge test-green -> spec-update (no --force).
-# Inv 34: Non-forward transitions require --force.
-# Inv 35: deprecated is terminal; --force does not override.
+# Inv 1: Valid state set = {spec, spec-update, test-red, impl, test-green, deprecated}.
+# Inv 2: Primary forward order spec -> spec-update -> test-red -> impl -> test-green -> deprecated.
+# Inv 3: Alternate forward edge test-green -> spec-update (no --force).
+# Inv 4: Non-forward transitions require --force.
+# Inv 5: deprecated is terminal; --force does not override.
 import json
 import os
 import re
@@ -124,7 +121,7 @@ def t_skip_denied():
         ko(f"skip: rc={rc} newstate={newstate} stderr={read_err()}")
 
 
-# Inv 32: full forward path works end-to-end (includes sync-deployed).
+# Inv 2: full forward path works end-to-end.
 def t_full_path():
     d = os.path.join(TMPROOT, 't_full')
     fix(d, 't_full', 'spec')
@@ -133,74 +130,16 @@ def t_full_path():
         good = False
     if good and run('transition', d, 'test-red', '--spec-no-change-reason', 'full-path fixture') != 0:
         good = False
-    for nxt in ['impl', 'sync-deployed', 'test-green', 'deprecated']:
+    for nxt in ['impl', 'test-green', 'deprecated']:
         if good and run('transition', d, nxt) != 0:
             good = False
             break
     with open(os.path.join(d, 'feature.json')) as f:
         final = json.load(f)['tdd_state']
     if good and final == 'deprecated':
-        ok('Inv 32: full forward path spec -> deprecated (through sync-deployed)')
+        ok('Inv 2: full forward path spec -> deprecated')
     else:
         ko(f"full: good={good} final={final}")
-
-
-# Inv 31: sync-deployed is a valid state.
-def t_sync_deployed_valid():
-    d = os.path.join(TMPROOT, 't_sd_valid')
-    fix(d, 't_sd_valid', 'impl')
-    rc = run('transition', d, 'sync-deployed')
-    with open(os.path.join(d, 'feature.json')) as f:
-        newstate = json.load(f)['tdd_state']
-    if rc == 0 and newstate == 'sync-deployed':
-        ok('Inv 31: sync-deployed accepted as valid state')
-    else:
-        ko(f"sd valid: rc={rc} newstate={newstate} stderr={read_err()}")
-
-
-# Inv 32: impl -> sync-deployed is the primary forward edge.
-def t_impl_to_sync_deployed():
-    d = os.path.join(TMPROOT, 't_impl_sd')
-    fix(d, 't_impl_sd', 'impl')
-    rc = run('next', d)
-    out = read_out()
-    if rc == 0 and out == 'sync-deployed':
-        ok('Inv 32: next from impl is sync-deployed')
-    else:
-        ko(f"next impl: rc={rc} out='{out}'")
-
-
-# Inv 32: sync-deployed -> test-green is the primary forward edge.
-def t_sync_deployed_to_test_green():
-    d = os.path.join(TMPROOT, 't_sd_tg')
-    fix(d, 't_sd_tg', 'sync-deployed')
-    rc = run('next', d)
-    out = read_out()
-    if rc == 0 and out == 'test-green':
-        ok('Inv 32: next from sync-deployed is test-green')
-    else:
-        ko(f"next sd: rc={rc} out='{out}'")
-    rc2 = run('transition', d, 'test-green')
-    with open(os.path.join(d, 'feature.json')) as f:
-        newstate = json.load(f)['tdd_state']
-    if rc2 == 0 and newstate == 'test-green':
-        ok('Inv 32: sync-deployed -> test-green succeeds')
-    else:
-        ko(f"sd->tg: rc={rc2} newstate={newstate} stderr={read_err()}")
-
-
-# Inv 32: impl -> test-green is NO LONGER a primary forward edge (must go
-# through sync-deployed). Denied without --force.
-def t_impl_to_test_green_denied():
-    d = os.path.join(TMPROOT, 't_impl_tg_denied')
-    fix(d, 't_impl_tg_denied', 'impl')
-    rc = run('transition', d, 'test-green')
-    with open(os.path.join(d, 'feature.json')) as f:
-        newstate = json.load(f)['tdd_state']
-    if rc != 0 and newstate == 'impl':
-        ok('Inv 32: impl -> test-green denied without --force (must route through sync-deployed)')
-    else:
-        ko(f"impl->tg: rc={rc} newstate={newstate} (should reject)")
 
 
 # Inv 2: transitions sub-command lists forward targets.
@@ -316,10 +255,6 @@ t_alt_forward(); t_alt_listed()
 t_backward_denied(); t_backward_forced(); t_force_into_spec_update()
 t_terminal()
 t_updated_field()
-t_sync_deployed_valid()
-t_impl_to_sync_deployed()
-t_sync_deployed_to_test_green()
-t_impl_to_test_green_denied()
 print()
 print(f"summary: {PASS} passed, {FAIL} failed")
 shutil.rmtree(TMPROOT, ignore_errors=True)

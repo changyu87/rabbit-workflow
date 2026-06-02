@@ -1,6 +1,6 @@
 ---
 feature: rabbit-config
-version: 1.2.0
+version: 1.1.0
 template_version: 2.0.0
 ---
 
@@ -29,7 +29,7 @@ template_version: 2.0.0
   "reads": {
     "files": [
       ".claude/features/*/feature.json",
-      ".claude/features/contract/workspace-structure.json"
+      ".claude/workspace-structure.json"
     ],
     "external": []
   },
