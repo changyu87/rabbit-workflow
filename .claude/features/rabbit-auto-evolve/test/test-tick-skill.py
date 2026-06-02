@@ -47,11 +47,16 @@ def main():
             print(f"FAIL: SKILL.md missing phase name: {name}", file=sys.stderr)
             sys.exit(1)
 
-    # The 10 Phase C scripts that must be named.
+    # The Phase C scripts that must be named. As of v0.7.1 / Inv 18 the
+    # canonical tick pipe references `triage-batch.py` as the bridge
+    # between `fetch-queue.py` and `plan-batch.py`; SKILL.md tick prose
+    # must reference it via its full feature-relative path (asserted via
+    # the bare-prefix loop below).
     scripts = [
         "set-evolve-mode.py",
         "fetch-queue.py",
         "triage-issue.py",
+        "triage-batch.py",
         "plan-batch.py",
         "safety-check.py",
         "merge-prs.py",
