@@ -685,28 +685,126 @@ Phase E merges complete.
      back; assert content equals new (no partial write, no merge).
    - `--help` smoke: exit 0 with recognizable usage text.
 
+10. **`rabbit-auto-evolve` SKILL documents 4 subcommands and 12-phase
+    tick.** `skills/rabbit-auto-evolve/SKILL.md` declares
+    `model: opus` in frontmatter and documents four subcommands:
+
+    - `start` — verifies the three preconditions
+      (`.rabbit-auto-evolve-active` present, `human-approval` off,
+      `bypass-permissions` on). On all-pass, writes
+      `.rabbit-auto-evolve-running`, runs one tick, calls
+      `ScheduleWakeup` to chain the next.
+    - `stop` — writes `.rabbit-auto-evolve-stop-requested`; the next
+      tick observes and does NOT call `ScheduleWakeup`.
+    - `status` — read-only: queue length, in-flight set, last-merged
+      PR, last-tagged version, consecutive-failure count, restart
+      marker (if any).
+    - `tick` — internal subcommand; walks the 12 phases (0–11) from
+      design doc §4 in order, naming every script invoked
+      (`set-evolve-mode.py`, `fetch-queue.py`, `triage-issue.py`,
+      `plan-batch.py`, `safety-check.py`, `merge-prs.py`,
+      `release-bump.py`, `cleanup-branches.py`,
+      `classify-merge-restart.py`, `update-state.py`) and the
+      disk-state path (`.rabbit/auto-evolve-state.json`).
+
+    The SKILL.md also describes the in-loop discovery handling per
+    design §6: when a TDD subagent's HANDOFF carries
+    `discovered_issues`, file each via `rabbit-issue`; when
+    `aborted_reason` is set, label `blocked-by:#N` on the original
+    issue and leave it open.
+
+    Enforced by `test/test-tick-skill.py`,
+    `test/test-start-stop-skill.py`, and
+    `test/test-discovered-issues.py`.
+
+11. **`feature.json` configuration entry uses `set-evolve-mode.py`
+    compound mutator with `restart_required: true`.** The
+    `configuration` array carries one entry:
+
+    ```json
+    {
+      "id": "auto-evolve",
+      "subcommand": "auto-evolve",
+      "values": {
+        "on":  {"api": "run_feature_script", "args": {"script": "scripts/set-evolve-mode.py", "argv": ["on"]}},
+        "off": {"api": "run_feature_script", "args": {"script": "scripts/set-evolve-mode.py", "argv": ["off"]}}
+      },
+      "default": "off",
+      "alert-on": "on",
+      "alert-message": {
+        "text": "AUTONOMOUS-EVOLVE MODE ACTIVE — composite (human-approval + bypass-permissions + auto-evolve marker)",
+        "icon": "🤖",
+        "color": "red"
+      },
+      "restart_required": true
+    }
+    ```
+
+    Both `on` and `off` dispatch through `set-evolve-mode.py` (Inv 1)
+    which handles ordering and rollback. `restart_required: true`
+    forces Claude restart between `on` and the first `/start` so
+    Claude Code picks up the new `settings.local.json`
+    `permissions.defaultMode`.
+
+12. **`feature.json` declares the `prompts` and `runtime` entries
+    binding rabbit-auto-evolve to the rabbit dispatcher.** The
+    manifest's `prompts` array contains exactly one entry:
+
+    ```json
+    {
+      "id": "rabbit-auto-evolve",
+      "kind": "skill",
+      "inject": ["philosophy", "spec-rules", "coding-rules"],
+      "slots": ["args"]
+    }
+    ```
+
+    A matching passthrough template lives at
+    `.claude/features/contract/templates/prompts/rabbit-auto-evolve.txt`.
+
+    The `runtime` object carries:
+
+    - `SessionStart`: `[{"api": "emit_auto_evolve_banner", "args": {}}]`
+    - `Stop`: `[{"api": "emit_auto_evolve_stop_line", "args": {}}]`
+
+    Both APIs are implemented by `contract.lib.runtime` per
+    contract Inv 65; the suppression of the per-configurable
+    `human-approval` and `bypass-permissions` alerts when
+    `.rabbit-auto-evolve-active` is present is contract Inv 64.
+
+    The `surface.skills` array contains `["rabbit-auto-evolve"]`;
+    the `manifest` contains exactly one `publish_skill` entry
+    pointing at `skills/rabbit-auto-evolve/SKILL.md`.
+
+    Enforced by `test/test-prompts-declared.py`.
+
+13. **In-loop AskUserQuestion ban (Red Flag — per issue #337).**
+    While `.rabbit-auto-evolve-running` is present, the dispatcher
+    MUST NOT emit `AskUserQuestion` calls. The user has affirmatively
+    delegated authority by entering auto-evolve mode; routine
+    "should I continue?" prompts are forbidden.
+
+    On a genuine hard blocker (a test failure with no obvious fix,
+    a safety violation, a spec ambiguity not covered by resolved Qs),
+    the dispatcher writes `.rabbit-auto-evolve-aborted` with the
+    abort reason and ends the turn without calling `ScheduleWakeup`.
+    The next SessionStart banner surfaces the abort.
+
+    This rule is recorded in the `Red Flags — STOP` section of
+    `skills/rabbit-auto-evolve/SKILL.md` as the literal string:
+
+    > **While `.rabbit-auto-evolve-running` is present, the dispatcher MUST NOT emit `AskUserQuestion` calls.**
+
+    Enforced by `test/test-skill-no-askuserquestion-rule.py`, which
+    asserts the literal rule string appears in SKILL.md.
+
 ## Known gaps
 
-- All Phase C scripts land with this cycle. (`set-evolve-mode.py` in
-  PR #335; `fetch-queue.py` in PR #339; `triage-issue.py` in PR #341;
-  `plan-batch.py` in PR #343; `safety-check.py` in PR #345;
-  `merge-prs.py` + `cleanup-branches.py` in PR #347; `release-bump.py`
-  in PR #349; `classify-merge-restart.py` in PR #351; `update-state.py`
-  + schema in this cycle.) Phase D (SKILL.md + feature.json wiring +
-  banner integration) and Phase E (feature-shape compliance + final
-  suite) follow.
-- `feature.json` carries placeholder values: `summary: "rabbit-auto-evolve
-  feature"` and `deprecation_criterion: "TBD — set after first review"`.
-  Both must be filled before the feature passes the shape-compliance test
-  (`test-feature-shape.py`). The spec frontmatter above already carries
-  the final `deprecation_criterion`; `feature.json` will be aligned in
-  Phase D Task 12.
-- `feature.json` declares empty `surface.skills`, no `configuration`
-  block, no `runtime` block, and no `prompts` block. These are populated
-  in Phase D Task 12.
-- `test/run.py` is a scaffold placeholder; no `test-*.py` files exist
-  yet.
-- No `SKILL.md` exists under `skills/rabbit-auto-evolve/` yet.
+- All Phase C scripts have landed (#335, #339, #341, #343, #345, #347,
+  #349, #351, #353). Phase D Task 12 (SKILL.md + feature.json wiring
+  + workspace-structure.json + passthrough template) lands in this
+  cycle. Phase D Task 13 (banner suppression test) and Phase E
+  (feature-shape compliance + final suite) follow.
 - No `CHANGELOG.md` exists yet (added in Phase E Task 14).
 - All three prerequisite changes have **landed on `dev`** as of the
   commits noted in the prompt context (#327/#330, #328/#331, #329/#332);
@@ -747,12 +845,15 @@ owner decisions during component implementation.
    so scope-protection and drift checks apply, or are the markers
    intentionally unscoped (since they are runtime state, not source)?
 
-5. **`workspace-structure.json` cross-scope write.** Task 12 modifies
-   `.claude/features/contract/workspace-structure.json` from within this
-   feature's touch cycle. The plan calls it "allowlisted." Should this
-   be explicitly recorded under `docs/spec/contract.md` `invokes`, and
-   does the `contract` feature's spec need a corresponding `provides`
-   entry before Task 12 runs?
+5. **(RESOLVED — Inv 12 + contract.md `invokes`.)** The cross-scope
+   writes to `.claude/features/contract/workspace-structure.json`
+   (add `rabbit-auto-evolve` to `features.children`) and
+   `.claude/features/contract/templates/prompts/rabbit-auto-evolve.txt`
+   (the passthrough template matching the `prompts` declaration) are
+   explicitly declared in this feature's `docs/spec/contract.md`
+   `invokes.files` block. The writes are performed via one-time
+   `.rabbit-scope-override` markers during the Phase D Task 12
+   feature touch.
 
 6. **`tdd_state` progression across multi-component build-out.**
    `feature.json` currently shows `tdd_state: "spec"`. The plan calls
