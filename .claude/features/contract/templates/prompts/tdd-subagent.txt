@@ -1,4 +1,4 @@
-# template_version: 1.3.0
+# template_version: 1.4.0
 {{bypass_preamble_note}}
 ════════════════════════════════════════════════════════════════════════
 TDD SUBAGENT — SCOPE: {{feature_name}}
@@ -72,14 +72,14 @@ STEP 1 — LOCK
 ════════════════════════════════════════════════════════════════════════
 
 Set the scope marker as your FIRST write action — and ONLY that:
-  touch {{repo_root}}/.rabbit-scope-active-{{feature_name}}
+  touch {{scope_marker_path}}
 
 Do NOT register a `trap '... rm -f ...' EXIT` here. Each Claude Code Bash
 tool invocation runs in a separate (per-call) shell process. The trap would
 fire the moment that shell exits — i.e., immediately after `touch` returns —
 deleting the scope marker before any subsequent step (TEST-WRITE, IMPLEMENT,
 etc.) can rely on it. Cleanup is explicit and happens in STEP 8 UNLOCK
-(`rm -f {{repo_root}}/.rabbit-scope-active-{{feature_name}}`), AFTER the chore
+(`rm -f {{scope_marker_path}}`), AFTER the chore
 commit and BEFORE the HANDOFF block.
 
 ════════════════════════════════════════════════════════════════════════
@@ -324,7 +324,7 @@ does not have to commit feature.json manually:
 
 Remove the scope marker explicitly (no `trap` was registered at LOCK — see
 the explanation in STEP 1 about per-call shell process semantics):
-  rm -f {{repo_root}}/.rabbit-scope-active-{{feature_name}}
+  rm -f {{scope_marker_path}}
 
 ════════════════════════════════════════════════════════════════════════
 HANDOFF (emit on completion)

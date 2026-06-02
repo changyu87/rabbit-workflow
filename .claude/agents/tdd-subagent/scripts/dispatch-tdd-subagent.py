@@ -10,7 +10,7 @@
 #     [--max-iterations N]
 #
 # Output: assembled prompt to stdout. Caller: Agent(model: opus, prompt: stdout).
-# Version: 4.0.0
+# Version: 4.1.0
 # Owner: rabbit-workflow team (tdd-subagent)
 # Deprecation criterion: when TDD cycle is natively supported by rabbit CLI.
 
@@ -39,6 +39,44 @@ _BYPASS_NOTE_TEXT = (
     "HUMAN-APPROVAL gate was skipped for this dispatch. Revoke via "
     "`/rabbit-config human-approval true`."
 )
+
+
+def _scope_marker_path(repo_root, feature_name):
+    """Per-mode scope-marker absolute path (Inv 12 mode-aware amendment).
+
+    Standalone (mode marker absent or != 'plugin'):
+      <repo_root>/.rabbit-scope-active-<feature>
+    Plugin (mode marker == 'plugin'):
+      <rabbit_root>/.runtime/scope-active-<feature>
+
+    The dispatcher's `repo_root` differs by mode (per Inv 47):
+      - standalone: `repo_root` is the git toplevel; mode marker would be
+        at `<repo_root>/.rabbit/.runtime/mode`.
+      - plugin: `repo_root` is `RABBIT_ROOT` (which IS `<host>/.rabbit/`);
+        mode marker is at `<repo_root>/.runtime/mode`.
+    Both locations are checked so plugin-mode dispatches (where
+    `repo_root` is already the rabbit-root) and standalone-mode dispatches
+    (where `repo_root` is the git toplevel) both reach the right answer.
+    Mirrors rabbit-cage Inv 17(b) so scope-guard finds the marker at the
+    path it expects for the current install mode.
+    """
+    candidates = (
+        # Plugin mode where repo_root is RABBIT_ROOT (per Inv 47).
+        (os.path.join(repo_root, ".runtime", "mode"),
+         os.path.join(repo_root, ".runtime", f"scope-active-{feature_name}")),
+        # Plugin mode where repo_root is the host project root.
+        (os.path.join(repo_root, ".rabbit", ".runtime", "mode"),
+         os.path.join(repo_root, ".rabbit", ".runtime",
+                      f"scope-active-{feature_name}")),
+    )
+    for mode_file, plugin_path in candidates:
+        try:
+            with open(mode_file) as f:
+                if f.read().strip() == "plugin":
+                    return plugin_path
+        except (OSError, IOError):
+            continue
+    return os.path.join(repo_root, f".rabbit-scope-active-{feature_name}")
 
 
 def _repo_root(script_dir):
@@ -88,7 +126,7 @@ def main(argv):
     parser = argparse.ArgumentParser(
         prog="dispatch-tdd-subagent.py",
         description=("Assemble a per-feature TDD subagent prompt that runs the "
-                     "7-step TDD cycle (test-red -> impl -> test-green) for "
+                     "8-step TDD cycle (test-red -> impl -> test-green) for "
                      "ONE feature. Prompt is written to stdout."),
     )
     parser.add_argument("--scope", required=True)
@@ -174,6 +212,7 @@ def main(argv):
         "repo_root": repo_root,
         "max_iterations": str(args.max_iterations),
         "code_review_loop_note": code_review_loop_note,
+        "scope_marker_path": _scope_marker_path(repo_root, feature_name),
     }
     build_prompt_py = os.path.join(
         repo_root, ".claude", "features", "contract", "scripts", "build-prompt.py",
