@@ -618,14 +618,83 @@ Phase E merges complete.
    Tests use `tempfile.TemporaryDirectory()` + a `gh` shim on
    `$PATH` that serves fixture file-list JSON; no live network.
 
+9. **`update-state.py` + state schema persistence.** The CLI
+   `cat new-state.json | python3 .claude/features/rabbit-auto-evolve/scripts/update-state.py`
+   reads a JSON state object on stdin, validates it against
+   `scripts/schemas/auto-evolve-state.schema.json`, and writes the
+   validated state to `<repo_root>/.rabbit/auto-evolve-state.json`
+   atomically via temp+rename.
+
+   ### Schema
+
+   Schema lives at
+   `scripts/schemas/auto-evolve-state.schema.json` and declares the
+   following fields (all required unless noted):
+
+   | Field | Type | Notes |
+   |---|---|---|
+   | `schema_version` | string | Literal `"1.0.0"` |
+   | `updated_at` | string | ISO 8601 UTC timestamp, `YYYY-MM-DDTHH:MM:SSZ` |
+   | `queue` | array of objects | each `{issue: int, decision: string, feature: string}` |
+   | `in_flight` | array of int | currently-dispatched issue numbers |
+   | `last_merged_sha` | string \| null | last PR merge commit SHA |
+   | `last_tagged_version` | string \| null | last release tag (e.g. `"v0.5.3"`) |
+   | `consecutive_failures` | int | ≥ 0 |
+   | `stop_requested` | bool | stop marker observed |
+   | `restart_needed` | string \| null | reason string when set, else null (resolved Open Question 3 — NOT a pure boolean) |
+
+   The schema file itself carries top-level `schema_version`, `owner`,
+   and `deprecation_criterion` keys per spec-rules §3.
+
+   ### `update-state.py`
+
+   1. Read full stdin via `sys.stdin.read()`; parse as JSON.
+   2. Validate against the schema (use `jsonschema` if importable; else
+      inline minimal validator covering the table above).
+   3. If invalid → write violation detail to stderr; exit non-zero;
+      do NOT touch the state file.
+   4. If valid → write to
+      `<repo_root>/.rabbit/auto-evolve-state.json.tmp`, then
+      `os.rename()` to `<repo_root>/.rabbit/auto-evolve-state.json`
+      (atomic on POSIX). `<repo_root>` defaults to current working
+      directory; can be overridden by `RABBIT_AUTO_EVOLVE_STATE_DIR`
+      environment variable for tests.
+
+   Exit code: 0 on successful write; non-zero on schema-validation
+   failure or write error.
+
+   ### `restart_needed` typing rule (resolved Open Question 3)
+
+   `restart_needed` is `string | null`. The string carries the
+   restart reason (e.g. `"settings.json change"`, `"new skill: foo"`).
+   Pure boolean is REJECTED by the schema — booleans get type-error
+   responses. `null` indicates no restart is needed.
+
+   Enforced by `test/test-state-persistence.py`:
+   - Round-trip: pipe a fully-populated valid state object →
+     update-state.py → read back the written file → assert
+     field-by-field equality.
+   - Missing-required-field: for each required field, omit it and
+     assert non-zero exit + stderr names the field; assert the file
+     was NOT created.
+   - `restart_needed` typing: accept `null`, accept
+     `"some reason"`; reject `true` (boolean), reject `42` (int) —
+     each rejection non-zero with type-mismatch detail in stderr.
+   - Atomicity: pre-create a stale
+     `.rabbit/auto-evolve-state.json`; update with new content; read
+     back; assert content equals new (no partial write, no merge).
+   - `--help` smoke: exit 0 with recognizable usage text.
+
 ## Known gaps
 
-- Phase C scripts still to land: `update-state.py`.
-  (`set-evolve-mode.py` landed in PR #335; `fetch-queue.py` in PR #339;
-  `triage-issue.py` in PR #341; `plan-batch.py` in PR #343;
-  `safety-check.py` in PR #345; `merge-prs.py` + `cleanup-branches.py`
-  in PR #347; `release-bump.py` in PR #349; `classify-merge-restart.py`
-  lands in this cycle.) `update-state.py` is the final Phase C script.
+- All Phase C scripts land with this cycle. (`set-evolve-mode.py` in
+  PR #335; `fetch-queue.py` in PR #339; `triage-issue.py` in PR #341;
+  `plan-batch.py` in PR #343; `safety-check.py` in PR #345;
+  `merge-prs.py` + `cleanup-branches.py` in PR #347; `release-bump.py`
+  in PR #349; `classify-merge-restart.py` in PR #351; `update-state.py`
+  + schema in this cycle.) Phase D (SKILL.md + feature.json wiring +
+  banner integration) and Phase E (feature-shape compliance + final
+  suite) follow.
 - `feature.json` carries placeholder values: `summary: "rabbit-auto-evolve
   feature"` and `deprecation_criterion: "TBD — set after first review"`.
   Both must be filled before the feature passes the shape-compliance test
@@ -639,8 +708,6 @@ Phase E merges complete.
   yet.
 - No `SKILL.md` exists under `skills/rabbit-auto-evolve/` yet.
 - No `CHANGELOG.md` exists yet (added in Phase E Task 14).
-- No `scripts/schemas/auto-evolve-state.schema.json` exists yet (added in
-  Task 11).
 - All three prerequisite changes have **landed on `dev`** as of the
   commits noted in the prompt context (#327/#330, #328/#331, #329/#332);
   they are not gaps. The plan's Phase A verification step can be treated
@@ -668,11 +735,10 @@ owner decisions during component implementation.
    argument? Tasks 7 and 9 of the plan are ambiguous; pick one before
    Task 7's TDD cycle starts.
 
-3. **`restart_needed` field type in state schema.** Task 11 of the plan
-   defines `restart_needed: bool|null` in one place and "reason string
-   when set, else null" in another. Pick: pure boolean (clean), or
-   nullable string (carries the reason for surfacing). Latter is more
-   useful — recommend `string | null` and update plan accordingly.
+3. **(RESOLVED — Inv 9.)** `restart_needed` field type is `string | null`
+   (the string carries the reason). Encoded in
+   `scripts/schemas/auto-evolve-state.schema.json` and enforced by
+   `update-state.py`.
 
 4. **Glob registration / scope-protection.** Standalone feature; no
    globs registered. Once scripts and markers are in place, should the
