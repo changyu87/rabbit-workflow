@@ -49,6 +49,13 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
+# Inv 29: hardcoded stable-release default for --update self-fetch when neither
+# --version/--ref CLI flag, --channel dev, nor RABBIT_REF env var is supplied.
+# MUST match install.sh's RABBIT_REF="${RABBIT_REF:-…}" default — single source
+# of truth, bumped together each release cut. The literal value "dev" is
+# FORBIDDEN here (enforced by test-install-py-default-ref-not-dev.py).
+HARDCODED_STABLE_DEFAULT = "release/1.3"
+
 # ───────────────────────────────────────────────────────────────────────────
 # MVP file closure as (src_rel, dst_rel) tuples — explicit source→destination
 # ───────────────────────────────────────────────────────────────────────────
@@ -427,6 +434,15 @@ def main() -> int:
                         help="target install dir (optional under --update; inferred from script location if omitted)")
     parser.add_argument("--update", action="store_true",
                         help="refresh an existing install in place (Inv 22)")
+    # Inv 29: shell-agnostic ref-selection flags for --update self-fetch.
+    # Precedence (highest wins): --version/--ref > --channel dev > RABBIT_REF env
+    # > HARDCODED_STABLE_DEFAULT. Never silent 'dev'.
+    parser.add_argument("--version", default=None,
+                        help="upstream ref to install (branch, tag, or SHA); shell-agnostic alternative to RABBIT_REF env var")
+    parser.add_argument("--ref", default=None,
+                        help="alias for --version")
+    parser.add_argument("--channel", default=None, choices=["stable", "dev"],
+                        help="opt-in shorthand: 'dev' for bleeding-edge, 'stable' for hardcoded release default")
     args = parser.parse_args()
 
     # Inv 22g: --src and --target are optional under --update; outside --update
@@ -448,7 +464,17 @@ def main() -> int:
         # Inv 22g (a): self-fetch when --update is set and --src is omitted.
         if args.update and args.src is None:
             repo = os.environ.get("RABBIT_REPO", "changyu87/rabbit-workflow")
-            ref = os.environ.get("RABBIT_REF", "dev")
+            # Inv 29 precedence ladder. NEVER silent 'dev'.
+            if args.version is not None:
+                ref = args.version
+            elif args.ref is not None:
+                ref = args.ref
+            elif args.channel == "dev":
+                ref = "dev"
+            elif "RABBIT_REF" in os.environ:
+                ref = os.environ["RABBIT_REF"]
+            else:
+                ref = HARDCODED_STABLE_DEFAULT
             url = f"https://github.com/{repo}/archive/{ref}.tar.gz"
             try:
                 fetched = fetch_upstream(repo, ref, Path(fetch_tmp.name))
