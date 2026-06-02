@@ -266,6 +266,61 @@ finally:
     shutil.rmtree(tmp, ignore_errors=True)
 
 
+# Scenario (v) (NEW, #311 regression): caller passes repo=rabbit_root and a
+# rogue inner <rabbit_root>/.rabbit/.runtime/mode='plugin' exists with NO
+# accompanying .claude/ directory (the failure mode observed when a skill
+# wrote relative .rabbit/* paths from CWD=<rabbit_root>, accidentally
+# creating <rabbit_root>/.rabbit/.runtime/mode). The function MUST prefer
+# the outer <repo>/.runtime/mode (precedence) AND reject the bogus inner
+# candidate via the validation step (<rabbit_root>/.claude/ must exist),
+# returning the REAL outer rabbit_root — proven by rabbit-cage appearing
+# in the list-json output. Pre-fix: greedy first-match returned the bogus
+# inner <rabbit_root>/.rabbit and the list came back empty.
+tmp = tempfile.mkdtemp()
+try:
+    rabbit_root = os.path.join(tmp, ".rabbit")
+    # Real rabbit_root has .claude/features/rabbit-cage.
+    _write_feature_json(
+        os.path.join(rabbit_root, ".claude/features/rabbit-cage/feature.json"),
+        "rabbit-cage",
+        "cage",
+    )
+    # Outer mode marker (the correct one).
+    outer_runtime = os.path.join(rabbit_root, ".runtime")
+    os.makedirs(outer_runtime, exist_ok=True)
+    with open(os.path.join(outer_runtime, "mode"), "w") as f:
+        f.write("plugin")
+    # Rogue inner .rabbit/.runtime/mode — bogus, no .claude/ sibling.
+    rogue_runtime = os.path.join(rabbit_root, ".rabbit", ".runtime")
+    os.makedirs(rogue_runtime, exist_ok=True)
+    with open(os.path.join(rogue_runtime, "mode"), "w") as f:
+        f.write("plugin")
+
+    proc = subprocess.run(
+        ["python3", SCRIPT, rabbit_root, "list-json"],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        print(f"FAIL t6 (Scenario v #311): list-json exited {proc.returncode}; stderr={proc.stderr}", file=sys.stderr)
+        FAIL = 1
+    else:
+        try:
+            results = json.loads(proc.stdout)
+        except json.JSONDecodeError as e:
+            print(f"FAIL t6 (Scenario v #311): invalid JSON; stdout={proc.stdout!r}", file=sys.stderr)
+            FAIL = 1
+            results = None
+        if results is not None:
+            names = [r["name"] for r in results]
+            if "rabbit-cage" not in names:
+                print(f"FAIL t6 (Scenario v #311): rabbit-cage missing — rogue inner .rabbit/.runtime/mode won over outer (got {names})", file=sys.stderr)
+                FAIL = 1
+            else:
+                print("PASS t6 (Scenario v #311): outer .runtime/mode wins + bogus inner .rabbit/ rejected by .claude/ validation")
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
 if FAIL:
     print("test-find-feature-plugin-mode: FAIL", file=sys.stderr)
     sys.exit(1)
