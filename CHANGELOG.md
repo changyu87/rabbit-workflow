@@ -4,6 +4,12 @@ All notable changes to the rabbit workflow are documented here. Format adapted f
 
 ## [Unreleased]
 
+## [release/1.12.0] - 2026-06-02
+### Added
+- Closes #221 — `dispatch-tdd-subagent.py` accepts new `--affected-invariants N[,N,...]` flag for scoped spec embedding (~38% prompt-size reduction on rabbit-cage)
+### Changed
+- install.sh + install.py defaults: release/1.11.0 -> release/1.12.0 (minor bump for the new flag)
+
 ## [release/1.11.0] - 2026-06-02
 ### Added
 - Closes #307 — 3-field semantic versioning adopted for release branches; legacy 2-field branches retained for backwards compat; bump-tier guidance documented in Inv 28
