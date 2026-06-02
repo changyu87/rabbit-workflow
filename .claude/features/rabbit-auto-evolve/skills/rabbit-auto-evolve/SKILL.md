@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.7.0
+version: 0.7.1
 owner: cyxu
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Run `/rabbit-auto-evolve on` first, then restart Claude (so `permissions.defaultMode: bypassPermissions` from `settings.local.json` is picked up), then `/rabbit-auto-evolve start`.
@@ -93,7 +93,7 @@ from disk-persisted state in `.rabbit/auto-evolve-state.json`.
 | 0 | `stop-check`      | (none — file existence check on `.rabbit-auto-evolve-stop-requested`) |
 | 1 | `restart-check`   | (none — file existence check on `.rabbit-auto-evolve-restart-needed`) |
 | 2 | `fetch`           | `.claude/features/rabbit-auto-evolve/scripts/fetch-queue.py` |
-| 3 | `triage`          | `.claude/features/rabbit-auto-evolve/scripts/triage-issue.py` (per issue) |
+| 3 | `triage`          | `.claude/features/rabbit-auto-evolve/scripts/triage-batch.py` (wraps `.claude/features/rabbit-auto-evolve/scripts/triage-issue.py` per issue) |
 | 4 | `plan`            | `.claude/features/rabbit-auto-evolve/scripts/plan-batch.py` |
 | 5 | `dispatch`        | (rabbit-feature-touch — TDD subagent dispatch) |
 | 6 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` |
@@ -103,6 +103,14 @@ from disk-persisted state in `.rabbit/auto-evolve-state.json`.
 |10 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
 |11 | `schedule`        | `ScheduleWakeup` (unless stop-check matched) |
 
+Phases 2–4 form the canonical fetch → triage → plan pipe (per Inv 18):
+
+```
+python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py \
+  | python3 .claude/features/rabbit-auto-evolve/scripts/triage-batch.py \
+  | python3 .claude/features/rabbit-auto-evolve/scripts/plan-batch.py --max-parallel 4
+```
+
 `.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py` is NOT
 invoked by `tick` — it runs only when the user flips the mode via
 `/rabbit-auto-evolve on|off`.
@@ -111,12 +119,17 @@ invoked by `tick` — it runs only when the user flips the mode via
 
 Deactivate auto-evolve mode. Invokes
 `.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py off`,
-which reverses the three `on` mutations in inverse order:
+which performs a FULL teardown — the four loop-runtime markers first
+(innermost first, idempotent), then the three `on` mutations in inverse
+order:
 
-1. Delete `.rabbit-auto-evolve-active`.
-2. Delete the `permissions.defaultMode` key from
+1. Delete any of the four loop-runtime markers if present
+   (`.rabbit-auto-evolve-running`, `.rabbit-auto-evolve-stop-requested`,
+   `.rabbit-auto-evolve-restart-needed`, `.rabbit-auto-evolve-aborted`).
+2. Delete `.rabbit-auto-evolve-active`.
+3. Delete the `permissions.defaultMode` key from
    `.claude/settings.local.json`.
-3. Delete `.rabbit-human-approval-bypass`.
+4. Delete `.rabbit-human-approval-bypass`.
 
 A Claude restart is required so the cleared `permissions.defaultMode`
 takes effect.

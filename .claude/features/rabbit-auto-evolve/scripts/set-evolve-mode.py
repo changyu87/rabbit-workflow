@@ -12,7 +12,7 @@ best-effort rolls back any prior steps; reports the failed step on stderr.
 Exit 0 on full success, non-zero on any step failure (after rollback attempt).
 Idempotent in the steady state (delegated to contract.lib.mutation primitives).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -28,6 +28,17 @@ SETTINGS_KEY = "permissions.defaultMode"
 SETTINGS_VALUE = "bypassPermissions"
 MARKER_ACTIVE = ".rabbit-auto-evolve-active"
 MARKER_ACTIVE_CONTENT = ""
+# Inv 1 v0.7.1 (issue #371): on `off`, also delete the four loop-runtime
+# markers (innermost first) before reversing the three activation mutations,
+# so a subsequent `on` lands in a clean state. Deletion is idempotent
+# (delete-if-exists; missing markers are no-ops; no rollback bookkeeping
+# needed for this step because delete_marker on a missing path passes).
+LOOP_RUNTIME_MARKERS = (
+    ".rabbit-auto-evolve-running",
+    ".rabbit-auto-evolve-stop-requested",
+    ".rabbit-auto-evolve-restart-needed",
+    ".rabbit-auto-evolve-aborted",
+)
 
 
 def _import_mutation():
@@ -132,6 +143,18 @@ def _off(mutation, repo_root):
 
     completed = []
     try:
+        # Step 0 (off, v0.7.1 / Inv 1 / #371): delete the four loop-runtime
+        # markers (innermost first). Each call is idempotent; missing markers
+        # are no-ops. No rollback bookkeeping for these — re-creating a
+        # loop-runtime marker as part of an `off` rollback would be wrong
+        # because their presence indicates loop state we are intentionally
+        # tearing down.
+        for marker in LOOP_RUNTIME_MARKERS:
+            _do(
+                f"step 0 off (delete_marker {marker})",
+                mutation.delete_marker, marker, repo_root=repo_root,
+            )
+
         # Step 1 (off): delete .rabbit-auto-evolve-active
         _do(
             "step 1 off (delete_marker .rabbit-auto-evolve-active)",

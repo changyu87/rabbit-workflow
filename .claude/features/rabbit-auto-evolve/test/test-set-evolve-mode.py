@@ -28,6 +28,14 @@ CONTRACT_DIR = os.path.join(REPO_ROOT, ".claude", "features", "contract")
 
 MARKER_BYPASS = ".rabbit-human-approval-bypass"
 MARKER_ACTIVE = ".rabbit-auto-evolve-active"
+# Inv 1 v0.7.1 (#371): the four loop-runtime markers that `off` must also
+# delete (innermost first) before reversing the activation mutations.
+LOOP_RUNTIME_MARKERS = [
+    ".rabbit-auto-evolve-running",
+    ".rabbit-auto-evolve-stop-requested",
+    ".rabbit-auto-evolve-restart-needed",
+    ".rabbit-auto-evolve-aborted",
+]
 SETTINGS = os.path.join(".claude", "settings.local.json")
 
 FAIL = 0
@@ -212,6 +220,71 @@ with tempfile.TemporaryDirectory() as root:
         fail("D: bypass marker should not appear from off-from-off")
     if os.path.exists(os.path.join(root, MARKER_ACTIVE)):
         fail("D: active marker should not appear from off-from-off")
+
+
+# ---------------------------------------------------------------------------
+# Scenario E — `off` full teardown including 4 loop-runtime markers
+# (Inv 1 v0.7.1 / issue #371). Pre-seed all 5 markers + settings, then run
+# `off`; assert all 5 marker files gone, settings.local.json has
+# permissions.defaultMode removed, exit 0.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as root:
+    # Seed activation state
+    with open(os.path.join(root, MARKER_BYPASS), "w") as f:
+        f.write("session")
+    with open(os.path.join(root, MARKER_ACTIVE), "w") as f:
+        f.write("")
+    write_settings(root, {"permissions": {"defaultMode": "bypassPermissions"}})
+    # Seed all 4 loop-runtime markers
+    for m in LOOP_RUNTIME_MARKERS:
+        with open(os.path.join(root, m), "w") as f:
+            f.write("session")
+
+    proc = run_script(root, "off")
+    if proc.returncode != 0:
+        fail(f"E: expected exit 0 from full-teardown `off`, got {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("E: full-teardown `off` exited 0")
+    # All five marker files must be gone.
+    all_markers = [MARKER_BYPASS, MARKER_ACTIVE, *LOOP_RUNTIME_MARKERS]
+    for m in all_markers:
+        if os.path.exists(os.path.join(root, m)):
+            fail(f"E: expected {m} to be removed after full-teardown `off`")
+        else:
+            ok(f"E: {m} removed")
+    data = read_settings(root)
+    if data is not None and data.get("permissions", {}).get("defaultMode") is not None:
+        fail(f"E: expected permissions.defaultMode key gone, got {data!r}")
+    else:
+        ok("E: permissions.defaultMode deleted")
+
+
+# ---------------------------------------------------------------------------
+# Scenario F — partial-state `off`: only `.rabbit-auto-evolve-running` present
+# (no active marker, no bypass marker, no settings entry). `off` must succeed,
+# delete the running marker, no error. Inv 1 v0.7.1: runtime-marker deletion
+# is idempotent (missing markers are no-ops).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as root:
+    running = os.path.join(root, ".rabbit-auto-evolve-running")
+    with open(running, "w") as f:
+        f.write("session")
+
+    proc = run_script(root, "off")
+    if proc.returncode != 0:
+        fail(f"F: expected exit 0 from partial-state `off`, got {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("F: partial-state `off` exited 0")
+    if os.path.exists(running):
+        fail("F: expected .rabbit-auto-evolve-running to be removed after partial-state `off`")
+    else:
+        ok("F: .rabbit-auto-evolve-running removed")
+    # The other 3 loop-runtime markers were never present — must still be absent.
+    for m in [".rabbit-auto-evolve-stop-requested",
+              ".rabbit-auto-evolve-restart-needed",
+              ".rabbit-auto-evolve-aborted"]:
+        if os.path.exists(os.path.join(root, m)):
+            fail(f"F: {m} should not exist after partial-state `off`")
 
 
 sys.exit(FAIL)
