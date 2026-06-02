@@ -46,6 +46,25 @@ def _write(path, content):
         f.write(content)
 
 
+def _strip_spec_block(prompt):
+    """Strip the SPEC block from the prompt. The SPEC block embeds the
+    feature's spec.md verbatim, which legitimately contains the
+    `.rabbit/.rabbit/` substring as documentation of the bug being fixed
+    (Inv 48 prose). We're checking that the dispatcher's EXECUTABLE
+    instructions (steps 1-8, HANDOFF) don't contain the doubled path —
+    so strip the SPEC content before grepping.
+    """
+    # SPEC block runs from the `SPEC` banner line through the next
+    # `═` banner introducing the next section (E2E TEST RULE).
+    return re.sub(
+        r"═+\nSPEC\n═+\n.*?(?=═+\nE2E TEST RULE)",
+        "[[SPEC BLOCK STRIPPED]]\n",
+        prompt,
+        count=1,
+        flags=re.DOTALL,
+    )
+
+
 def _populate_rabbit_root(root):
     """Copy contract/tdd-subagent/policy features into `root`."""
     src_features = os.path.join(REPO_ROOT, ".claude", "features")
@@ -99,7 +118,7 @@ else:
     if res.returncode != 0:
         ko(f"scenario A: dispatch failed rc={res.returncode}: {res.stderr!r}")
     else:
-        prompt = res.stdout
+        prompt = _strip_spec_block(res.stdout)
         if ".rabbit/.rabbit/" not in prompt:
             ok("scenario A: assembled prompt contains NO '.rabbit/.rabbit/' "
                "doubled substring")
@@ -131,7 +150,7 @@ with tempfile.TemporaryDirectory() as tmp:
     if res.returncode != 0:
         ko(f"scenario B: dispatch failed rc={res.returncode}: {res.stderr!r}")
     else:
-        prompt = res.stdout
+        prompt = _strip_spec_block(res.stdout)
         if ".rabbit/.rabbit/" not in prompt:
             ok("scenario B: assembled prompt contains NO '.rabbit/.rabbit/' "
                "doubled substring")
