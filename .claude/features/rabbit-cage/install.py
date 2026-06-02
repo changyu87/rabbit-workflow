@@ -54,7 +54,7 @@ from pathlib import Path
 # MUST match install.sh's RABBIT_REF="${RABBIT_REF:-…}" default — single source
 # of truth, bumped together each release cut. The literal value "dev" is
 # FORBIDDEN here (enforced by test-install-py-default-ref-not-dev.py).
-HARDCODED_STABLE_DEFAULT = "release/1.10"
+HARDCODED_STABLE_DEFAULT = "release/1.11.0"
 
 # Inv 22h: env-var infinite-loop guard for the --update self-exec branch. The
 # OLD process sets this to "1" before os.execv; the NEW process (started by
