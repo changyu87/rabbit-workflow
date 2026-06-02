@@ -2,7 +2,7 @@
   "name": "rabbit-config",
   "version": "1.3.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "impl",
+  "tdd_state": "test-green",
   "summary": "Configuration manager. Hosts the /rabbit-config skill (mutation surface) that dispatches subcommand invocations to contract.lib.mutation. At Stop and SessionStart, iterates every feature's CONFIGURATION declarations and emits alerts for active overrides.",
   "surface": {
     "skills": [
