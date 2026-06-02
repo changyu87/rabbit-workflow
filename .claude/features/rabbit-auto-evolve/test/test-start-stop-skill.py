@@ -123,6 +123,80 @@ def main():
             )
             sys.exit(1)
 
+    # Inv 10 (v0.7.7 — issue #386): the `start` subcommand MUST route on
+    # the check-preconditions report shape. Specifically:
+    #
+    # - On fresh state (`active-marker` check `ok: false`) the skill MUST
+    #   automatically invoke `/rabbit-auto-evolve on` rather than dumping
+    #   the failing-checklist to the user. The SKILL.md `start` prose MUST
+    #   describe this routing in actionable terms.
+    # - When markers exist but `bypass-permissions` is still `ok: false`
+    #   (user forgot to restart after `on`), the skill MUST surface a
+    #   short branded reminder rather than re-running `on`.
+    # - Only genuinely-unexpected `all_pass: false` shapes fall through to
+    #   the failing-checks surface.
+    #
+    # Extract the `start` section first so the assertions target the
+    # right scope (other sections may legitimately mention checks/all_pass).
+    start_m = re.search(
+        r"(?ms)^###\s+`?start`?\s*$(.+?)(?=^###\s|^##\s|\Z)", text)
+    if not start_m:
+        print("FAIL: Inv 10: SKILL.md missing `### start` subcommand section",
+              file=sys.stderr)
+        sys.exit(1)
+    start_body = start_m.group(1)
+    start_lower = start_body.lower()
+
+    # The routing table must be present in actionable terms — look for the
+    # routing keywords plus the three distinct branches.
+    inv10_required_phrases = [
+        # Fresh-state branch: must auto-invoke `on`, not show checklist.
+        ("automatically invoke",
+         "Inv 10: `start` section must describe auto-invocation of `on` on "
+         "fresh state — search-phrase 'automatically invoke' not found"),
+        ("/rabbit-auto-evolve on",
+         "Inv 10: `start` section must name the auto-invoked command "
+         "(`/rabbit-auto-evolve on`)"),
+        # Active-marker check identifier must appear (so the routing is
+        # tied to the report shape, not vibes).
+        ("active-marker",
+         "Inv 10: `start` section must reference the `active-marker` check "
+         "id from check-preconditions.py to anchor the routing"),
+        # Bypass-permissions reminder branch.
+        ("bypass-permissions",
+         "Inv 10: `start` section must reference the `bypass-permissions` "
+         "check id to anchor the restart-reminder branch"),
+        # The short branded reminder branch must mention restart.
+        ("restart claude",
+         "Inv 10: `start` section must instruct the user to restart Claude "
+         "when markers exist but bypass-permissions has not loaded"),
+    ]
+    for needle, msg in inv10_required_phrases:
+        if needle not in start_lower:
+            print(f"FAIL: {msg}", file=sys.stderr)
+            sys.exit(1)
+
+    # The old checklist-dump prose must be gone. v0.7.6 said: "On
+    # `all_pass: false`, surface each failing `checks[*].detail` string to
+    # the user as actionable guidance and STOP" — that as the SOLE
+    # all_pass=false branch is what #386 fixes. The phrase MAY survive in
+    # the "any other shape" fallback branch, but it MUST NOT be the only
+    # behavior described for all_pass=false.
+    forbidden_start_substrings = [
+        # The blanket "surface every failing check and STOP" instruction.
+        "surface each failing",
+    ]
+    for needle in forbidden_start_substrings:
+        if needle in start_body:
+            print(
+                f"FAIL: Inv 10: `start` section still contains the pre-#386 "
+                f"blanket failing-checklist instruction (substring "
+                f"{needle!r}). Replace with the routing table that "
+                f"auto-invokes `on` on fresh state.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
     print("PASS: test-start-stop-skill.py")
 
 

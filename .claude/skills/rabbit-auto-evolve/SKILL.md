@@ -1,9 +1,9 @@
 ---
 name: rabbit-auto-evolve
-version: 0.7.6
+version: 0.7.7
 owner: cyxu
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
-description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Run `/rabbit-auto-evolve on` first, then restart Claude (so `permissions.defaultMode: bypassPermissions` from `settings.local.json` is picked up), then `/rabbit-auto-evolve start`.
+description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
 ---
 
 # rabbit-auto-evolve
@@ -43,7 +43,7 @@ paraphrase. The message text lives in the script so it stays centralized
 
 Begin or resume the loop. Per Inv 21, precondition reporting is owned by
 `check-preconditions.py` — invoke it (it always exits 0) and route on the
-JSON `all_pass` field. Bare `ls .rabbit-auto-evolve-*` patterns are
+JSON report shape. Bare `ls .rabbit-auto-evolve-*` patterns are
 FORBIDDEN here: they emit ugly `ls: cannot access ...: No such file or
 directory` stderr noise on fresh clones where the markers legitimately do
 not yet exist.
@@ -62,9 +62,27 @@ The script reports on the three preconditions as structured JSON:
    `.claude/settings.local.json` has
    `permissions.defaultMode == "bypassPermissions"`).
 
-On `all_pass: false`, surface each failing `checks[*].detail` string to
-the user as actionable guidance and STOP — do not start the loop. On
-`all_pass: true`:
+#### Routing table (per Inv 10, v0.7.7 — issue #386)
+
+Route on the report's `all_pass` field AND the per-check `ok` values.
+NEVER dump the raw failing checklist as the sole user response — the
+user already expressed intent ("enter auto-evolve mode") by invoking
+`start`. The routing branches below are exhaustive:
+
+| Report shape | Action |
+|---|---|
+| `all_pass: true` | Proceed to start the loop (see "Start the loop" below). |
+| `all_pass: false` AND `active-marker` check `ok: false` (fresh state — user never ran `on`) | **Automatically invoke `/rabbit-auto-evolve on`** to run the three activation mutations (Inv 1). The script emits its branded restart prompt; surface that stdout verbatim and end the turn. The user restarts Claude, then runs `start` again. Do NOT show the failing-checklist; do NOT ask for permission — the natural-language intent is sufficient consent. |
+| `all_pass: false` AND `active-marker` check `ok: true` AND `bypass-permissions` check `ok: false` (markers exist but user forgot to restart Claude after a previous `on`) | Surface ONE short branded reminder line: `🔁 Markers set — restart Claude Code, then /rabbit-auto-evolve start again`. Do NOT re-run `on` (the markers are already correct). Do NOT show the full checklist. |
+| Any other `all_pass: false` shape (genuinely unexpected — partial corruption, manual tampering) | Surface the failing `checks[*].detail` strings as actionable guidance and STOP. This is the fallback branch only — the two routing branches above cover the common fresh-state and forgot-to-restart cases. |
+
+The auto-on routing on fresh state was introduced by issue #386 in
+v0.7.7: in v0.7.6 the skill fragmented a single user intent ("enter
+auto-evolve mode") into a two-step manual flow by surfacing the
+precondition checklist verbatim and waiting for the user to type
+`/rabbit-auto-evolve on` themselves.
+
+#### Start the loop (only on `all_pass: true`)
 
 1. Invoke
    `python3 .claude/features/rabbit-auto-evolve/scripts/start-loop.py`
