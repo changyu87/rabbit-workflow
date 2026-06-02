@@ -4,6 +4,12 @@ All notable changes to the rabbit workflow are documented here. Format adapted f
 
 ## [Unreleased]
 
+## [release/1.11.0] - 2026-06-02
+### Added
+- Closes #307 — 3-field semantic versioning adopted for release branches; legacy 2-field branches retained for backwards compat; bump-tier guidance documented in Inv 28
+### Changed
+- install.sh + install.py defaults: release/1.10 -> release/1.11.0 (first 3-field release)
+
 ## [release/1.10] - 2026-06-02
 ### Fixed
 - Fixes #318 — bypass-permissions config now emits one-shot 'restart Claude' prompt after mutation
