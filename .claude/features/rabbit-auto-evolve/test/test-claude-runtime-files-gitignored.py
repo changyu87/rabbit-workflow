@@ -92,8 +92,13 @@ with tempfile.TemporaryDirectory() as td_str:
             fp.parent.mkdir(parents=True, exist_ok=True)
             fp.write_text("")
 
+        # --untracked-files=all forces git to list each untracked file
+        # individually rather than collapsing to its parent directory;
+        # without this `.claude/` would show up as a single `?? .claude/`
+        # line that substring-matches neither filename, producing a
+        # false pass when the gitignore entries are missing.
         status = subprocess.run(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "--untracked-files=all"],
             cwd=td,
             capture_output=True,
             text=True,
