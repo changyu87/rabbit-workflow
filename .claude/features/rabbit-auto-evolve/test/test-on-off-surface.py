@@ -55,6 +55,33 @@ def main():
     if " off" not in off_body and "`off`" not in off_body:
         fail("`off` section must mention the `off` argv")
 
+    # Inv 16 — script references MUST use feature-relative prefix.
+    # The on/off sections both reference set-evolve-mode.py; that reference
+    # MUST carry the full `.claude/features/rabbit-auto-evolve/scripts/`
+    # prefix so Claude's path resolution from the deployed SKILL.md
+    # (`.claude/skills/rabbit-auto-evolve/SKILL.md`) finds the script.
+    feature_prefix = ".claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py"
+    if feature_prefix not in on_body:
+        fail(
+            "Inv 16: `on` section must reference set-evolve-mode.py with the "
+            "full `.claude/features/rabbit-auto-evolve/scripts/` prefix"
+        )
+    if feature_prefix not in off_body:
+        fail(
+            "Inv 16: `off` section must reference set-evolve-mode.py with the "
+            "full `.claude/features/rabbit-auto-evolve/scripts/` prefix"
+        )
+    # Inv 16 — bare `scripts/set-evolve-mode.py` (not preceded by the
+    # feature-relative prefix) is forbidden anywhere in SKILL.md.
+    bare_pattern = re.compile(
+        r"(?<!\.claude/features/rabbit-auto-evolve/)scripts/set-evolve-mode\.py"
+    )
+    if bare_pattern.search(text):
+        fail(
+            "Inv 16: bare `scripts/set-evolve-mode.py` appears in SKILL.md; "
+            "every script reference must use the full feature-relative prefix"
+        )
+
     print("PASS: test-on-off-surface.py")
 
 

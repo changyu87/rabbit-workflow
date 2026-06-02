@@ -65,6 +65,34 @@ def main():
             print(f"FAIL: SKILL.md missing script name: {script}", file=sys.stderr)
             sys.exit(1)
 
+    # Inv 16 — every script reference must use the full feature-relative
+    # prefix `.claude/features/rabbit-auto-evolve/scripts/`. Bare
+    # `scripts/<name>.py` is forbidden because Claude resolves SKILL paths
+    # relative to the deployed SKILL.md location
+    # (`.claude/skills/rabbit-auto-evolve/`), which has no `scripts/` dir.
+    import re as _re
+    feature_prefix = ".claude/features/rabbit-auto-evolve/scripts/"
+    for script in scripts:
+        full_ref = feature_prefix + script
+        if full_ref not in text:
+            print(
+                f"FAIL: Inv 16: SKILL.md missing feature-relative reference "
+                f"to script: {full_ref}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        bare_re = _re.compile(
+            r"(?<!\.claude/features/rabbit-auto-evolve/)scripts/"
+            + _re.escape(script)
+        )
+        if bare_re.search(text):
+            print(
+                f"FAIL: Inv 16: bare `scripts/{script}` found in SKILL.md; "
+                f"every reference must use the full feature-relative prefix",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
     if ".rabbit/auto-evolve-state.json" not in text:
         print("FAIL: SKILL.md missing disk-state path .rabbit/auto-evolve-state.json",
               file=sys.stderr)
