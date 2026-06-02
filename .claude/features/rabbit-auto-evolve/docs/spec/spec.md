@@ -375,13 +375,59 @@ Phase E merges complete.
      `[3, 3, 2]`).
    - `--help` smoke: exit 0 with recognizable usage text.
 
+5. **`safety-check.py` five bottom-line invariants.** The CLI
+   `python3 .claude/features/rabbit-auto-evolve/scripts/safety-check.py <pr#> --phase {merge|release|cleanup} [--next-tag vX.Y.Z]`
+   enforces the bottom-line safety invariants from design doc §9
+   before any merge / release / cleanup action runs.
+
+   **Per resolved Open Question 2: the next tag is passed via the
+   `--next-tag vX.Y.Z` flag, NOT via env var.** The flag is REQUIRED
+   iff `--phase release` and FORBIDDEN for `--phase merge|cleanup`.
+
+   Five invariants (numbered for stable cross-reference):
+
+   | # | Invariant | Enforced in phases |
+   |---|---|---|
+   | 1 | Current git branch is `dev` (never `main`) | all |
+   | 2 | PR base branch (via `gh pr view <#> --json baseRefName`) is `dev` | merge, release |
+   | 3 | PR head branch (via `gh pr view <#> --json headRefName`) matches `^feat/.+` AND is not `dev`, `main`, or `release/...` | cleanup |
+   | 4 | The tag passed via `--next-tag vX.Y.Z` does not already exist (`git rev-parse <tag>^{}` exits non-zero) | release |
+   | 5 | Working tree is clean (`git status --porcelain` empty) | all |
+
+   Phase-specific gating:
+   - `merge` enforces invariants 1, 2, 5.
+   - `release` enforces invariants 1, 2, 4, 5.
+   - `cleanup` enforces invariants 1, 3, 5.
+
+   Exit code: 0 on pass; non-zero on any violation. On violation, the
+   stderr line names the violated invariant (`Invariant N (<short>)
+   failed: <detail>`); the script never auto-fixes.
+
+   The script reads `gh` and `git` state only — no filesystem mutations.
+
+   Enforced by `test/test-safety-check.py` under
+   `tempfile.TemporaryDirectory()` fixtures:
+   - One negative test per invariant: violate each in isolation
+     (wrong branch / wrong PR base / non-feat head / pre-existing
+     tag / dirty tree) under the appropriate phase → non-zero exit;
+     stderr names the violated invariant.
+   - One positive test per phase: all required invariants satisfied
+     → exit 0.
+   - `--next-tag` required-when-release: omitting it under
+     `--phase release` → argparse error, non-zero.
+   - `--next-tag` forbidden-elsewhere: passing it under
+     `--phase merge` (or `cleanup`) → non-zero error.
+   - `--help` smoke: exit 0 with recognizable usage text.
+   - Test fixtures use a real `git init` in a tempdir plus a `gh`
+     shim on `$PATH` to serve PR base/head responses; no live network.
+
 ## Known gaps
 
-- Phase C scripts still to land: `safety-check.py`, `merge-prs.py`,
-  `release-bump.py`, `cleanup-branches.py`, `classify-merge-restart.py`,
-  `update-state.py`. (`set-evolve-mode.py` landed in PR #335;
-  `fetch-queue.py` in PR #339; `triage-issue.py` in PR #341;
-  `plan-batch.py` lands in this cycle.) Each remaining script lands
+- Phase C scripts still to land: `merge-prs.py`, `release-bump.py`,
+  `cleanup-branches.py`, `classify-merge-restart.py`, `update-state.py`.
+  (`set-evolve-mode.py` landed in PR #335; `fetch-queue.py` in PR #339;
+  `triage-issue.py` in PR #341; `plan-batch.py` in PR #343;
+  `safety-check.py` lands in this cycle.) Each remaining script lands
   via its own feature-touch cycle.
 - `feature.json` carries placeholder values: `summary: "rabbit-auto-evolve
   feature"` and `deprecation_criterion: "TBD — set after first review"`.
