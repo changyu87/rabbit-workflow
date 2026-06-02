@@ -70,25 +70,18 @@ def main():
     if not any(e.get("api") == "emit_auto_evolve_stop_line" for e in stop):
         fail(f"runtime.Stop missing emit_auto_evolve_stop_line; got {stop}")
 
-    # configuration entry (Inv 11) — set-evolve-mode.py + restart_required
+    # configuration (Inv 11) — MUST be empty or absent. Activation surface
+    # lives on the rabbit-auto-evolve SKILL (on/off subcommands), NOT on
+    # /rabbit-config.
     cfg = manifest.get("configuration", [])
-    ae = [c for c in cfg if c.get("id") == "auto-evolve"]
-    if not ae:
-        fail("configuration missing id=auto-evolve entry")
-    entry = ae[0]
-    if entry.get("restart_required") is not True:
-        fail("configuration[auto-evolve].restart_required must be true")
-    vals = entry.get("values", {})
-    for v in ("on", "off"):
-        if v not in vals:
-            fail(f"configuration[auto-evolve].values missing '{v}'")
-        if vals[v].get("api") != "run_feature_script":
-            fail(f"configuration[auto-evolve].values.{v}.api must be run_feature_script")
-        if vals[v].get("args", {}).get("script") != "scripts/set-evolve-mode.py":
-            fail(f"configuration[auto-evolve].values.{v} script must be "
-                 f"scripts/set-evolve-mode.py")
-        if vals[v].get("args", {}).get("argv") != [v]:
-            fail(f"configuration[auto-evolve].values.{v}.argv must be ['{v}']")
+    if cfg:
+        ae = [c for c in cfg if c.get("id") == "auto-evolve"]
+        if ae:
+            fail("configuration must NOT contain id=auto-evolve entry "
+                 "(Inv 11: activation surface moved to /rabbit-auto-evolve on|off)")
+        # Any other entries are also unexpected — feature has no configurables.
+        ids = [c.get("id") for c in cfg]
+        fail(f"configuration array must be empty (got entries: {ids})")
 
     # passthrough template exists
     if not os.path.isfile(PROMPT_TMPL):
