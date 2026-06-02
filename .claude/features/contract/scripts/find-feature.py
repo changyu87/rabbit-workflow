@@ -6,11 +6,16 @@ Usage:
   python3 find-feature.py <repo-root> list-json
   python3 find-feature.py <repo-root> lookup <feature-name>
 
-Scope: scans ONLY `.claude/features/` for feature directories. Directories
-elsewhere in the repo whose basename happens to be `features` (project-side,
-vendor dirs, etc.) are NOT scanned per Inv 23.
+Scope: scans TWO canonical feature-root locations per Inv 23:
+  (a) `<repo>/.claude/features/<name>/feature.json` — always.
+  (b) `<repo>/.rabbit/rabbit-project/features/<name>/feature.json` — ONLY
+      when `<repo>/.rabbit/.runtime/mode` exists and its content equals
+      `"plugin"`. This surfaces user-project features in plugin installs.
+Directories elsewhere in the repo whose basename happens to be `features`
+(project-side, vendor dirs, etc.) are NOT scanned — the no-masquerading
+guarantee is preserved by enumerating only the two canonical paths above.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when feature discovery is handled natively by the dispatch infrastructure.
 """
@@ -27,15 +32,30 @@ def _load_json(path):
         return json.load(f)
 
 
-def iter_feature_jsons(repo):
-    """Yield all feature.json paths under `.claude/features/` only.
+def _is_plugin_mode(repo):
+    """Detect plugin mode via the standard `.rabbit/.runtime/mode` marker."""
+    mode_file = os.path.join(repo, '.rabbit', '.runtime', 'mode')
+    try:
+        with open(mode_file) as f:
+            return f.read().strip() == 'plugin'
+    except (OSError, IOError):
+        return False
 
-    Project-side `<root>/features/` trees are explicitly out of scope per
-    Inv 23 — scanning them would let any directory named `features`
-    masquerade as a feature root.
+
+def iter_feature_jsons(repo):
+    """Yield feature.json paths from the two canonical scan locations (Inv 23).
+
+    Always yields `.claude/features/<name>/feature.json` first (alphabetical).
+    In plugin mode (per `.rabbit/.runtime/mode == "plugin"`), additionally
+    yields `.rabbit/rabbit-project/features/<name>/feature.json` next
+    (alphabetical). No deduplication — callers needing uniqueness enforce
+    it themselves.
     """
     for fj in sorted(glob.glob(os.path.join(repo, '.claude', 'features', '*', 'feature.json'))):
         yield fj
+    if _is_plugin_mode(repo):
+        for fj in sorted(glob.glob(os.path.join(repo, '.rabbit', 'rabbit-project', 'features', '*', 'feature.json'))):
+            yield fj
 
 
 def cmd_list(repo):
