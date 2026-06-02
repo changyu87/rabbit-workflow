@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.7.1
+version: 0.7.2
 owner: cyxu
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Run `/rabbit-auto-evolve on` first, then restart Claude (so `permissions.defaultMode: bypassPermissions` from `settings.local.json` is picked up), then `/rabbit-auto-evolve start`.
@@ -53,7 +53,12 @@ condition. On all-pass:
    `python3 .claude/features/rabbit-auto-evolve/scripts/start-loop.py`
    (which writes `.rabbit-auto-evolve-running` at repo root). Per Inv 17
    the marker write is wrapped in a script so scope-guard does not deny
-   the literal Bash command.
+   the literal Bash command. Per Inv 19, `start-loop.py` additionally
+   self-heals before writing the running marker: it deletes any stale
+   `.rabbit-auto-evolve-stop-requested` (an explicit `start` cancels a
+   pending stop) and bootstraps `.rabbit/auto-evolve-state.json` with
+   defaults if it is missing, empty, or malformed (a valid existing
+   state file is left untouched).
 2. Run one `tick` (the 12-phase loop body).
 3. Call `ScheduleWakeup` to chain the next tick.
 
@@ -102,6 +107,38 @@ from disk-persisted state in `.rabbit/auto-evolve-state.json`.
 | 9 | `catch-up`        | `.claude/features/rabbit-auto-evolve/scripts/classify-merge-restart.py` (per merged PR) |
 |10 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
 |11 | `schedule`        | `ScheduleWakeup` (unless stop-check matched) |
+
+### Tick exit invariant (Inv 20)
+
+Per spec Inv 20, EVERY tick exit path MUST end by invoking
+`python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py` as its
+last action. `end-tick.py` deletes the `.rabbit-auto-evolve-running`
+marker (mirror of `start-loop.py`'s write); without it the marker leaks
+across sessions and the user has to remove it manually (which scope-guard
+correctly denies, since `.rabbit-auto-evolve-*` markers are not on its
+allowlist).
+
+The four named exit paths are:
+
+- **normal completion** — phase 11 (`schedule`) finishes, then
+  `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`
+  runs, then `ScheduleWakeup` chains the next tick.
+- **phase 0 halt** — `.rabbit-auto-evolve-stop-requested` observed at
+  the top of the tick. Post the run summary, then run
+  `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`,
+  then end the turn (no `ScheduleWakeup`).
+- **safety abort** — any safety violation during phases 6–8 writes
+  `.rabbit-auto-evolve-aborted` via
+  `python3 .claude/features/rabbit-auto-evolve/scripts/mark-aborted.py "<reason>"`.
+  Immediately after, run
+  `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`
+  and end the turn (no `ScheduleWakeup`).
+- **error abort** — an unexpected exception in any phase. Run
+  `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`
+  in the error-handler tail before ending the turn.
+
+`end-tick.py` is idempotent: re-invoking when the marker is already
+absent is a clean no-op (exit 0).
 
 Phases 2–4 form the canonical fetch → triage → plan pipe (per Inv 18):
 
