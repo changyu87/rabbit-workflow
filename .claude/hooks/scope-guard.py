@@ -115,6 +115,28 @@ def find_feature_path(repo_root: Path, feature: str) -> Optional[str]:
         return None
 
 
+def _override_marker_path() -> Optional[Path]:
+    """Inv 27: per-mode canonical location for the session-override marker.
+
+    Plugin mode (presence of <REPO_ROOT>/.rabbit/.runtime/mode == "plugin"):
+        <REPO_ROOT>/.rabbit/.rabbit-scope-override
+    Standalone mode:
+        <REPO_ROOT>/.rabbit-scope-override
+
+    Returns None if REPO_ROOT could not be resolved.
+    """
+    if REPO_ROOT is None:
+        return None
+    mode_file = REPO_ROOT / ".rabbit" / ".runtime" / "mode"
+    if mode_file.is_file():
+        try:
+            if mode_file.read_text().strip() == "plugin":
+                return REPO_ROOT / ".rabbit" / ".rabbit-scope-override"
+        except Exception:
+            pass
+    return REPO_ROOT / ".rabbit-scope-override"
+
+
 def consume_bypass_once() -> bool:
     """Inv 18: consume-before-evaluate semantics for the one-shot bypass.
 
@@ -138,12 +160,16 @@ def plugin_decide(abs_path: str) -> Tuple[bool, str]:
     """Inv 17: plugin-mode decision tree. Called from decide() when
     .rabbit/.runtime/mode == "plugin"."""
     # Carve-outs first: .rabbit/CLAUDE.md and .rabbit/.gitignore are
-    # editable user-facing surface even in plugin mode.
+    # editable user-facing surface even in plugin mode. Inv 27 adds
+    # .rabbit/.rabbit-scope-override so the user (or agent) can WRITE
+    # the session-override marker at its per-mode canonical location.
     rabbit_root = str(REPO_ROOT) + "/.rabbit"
     if abs_path == rabbit_root + "/CLAUDE.md":
         return True, "ALLOW (plugin carve-out: .rabbit/CLAUDE.md)"
     if abs_path == rabbit_root + "/.gitignore":
         return True, "ALLOW (plugin carve-out: .rabbit/.gitignore)"
+    if abs_path == rabbit_root + "/.rabbit-scope-override":
+        return True, "ALLOW (plugin carve-out: .rabbit/.rabbit-scope-override)"
 
     # (a) .rabbit/.claude/** is rabbit's own machinery — DENY always.
     claude_protected = rabbit_root + "/.claude"
@@ -197,8 +223,9 @@ def plugin_decide(abs_path: str) -> Tuple[bool, str]:
                     "\n"
                     "  (1) SESSION OVERRIDE — bypasses scope-guard for the "
                     "entire session. Requires explicit in-conversation user "
-                    "confirmation before writing '.rabbit-scope-override' "
-                    "with content 'session'.\n"
+                    "confirmation before writing "
+                    "'.rabbit/.rabbit-scope-override' with content 'session' "
+                    "(Inv 27: plugin-mode canonical location).\n"
                     "\n"
                     "  (2) ONE-TIME OVERRIDE — bypasses scope-guard for a "
                     "single write only. Requires explicit in-conversation "
@@ -270,7 +297,8 @@ def plugin_decide(abs_path: str) -> Tuple[bool, str]:
         "\n"
         "  (1) SESSION OVERRIDE — bypasses scope-guard for the entire "
         "session. Requires explicit in-conversation user confirmation "
-        "before writing '.rabbit-scope-override' with content 'session'.\n"
+        "before writing '.rabbit/.rabbit-scope-override' with content "
+        "'session' (Inv 27: plugin-mode canonical location).\n"
         "\n"
         "  (2) ONE-TIME OVERRIDE — bypasses scope-guard for a single "
         "write only. Requires explicit in-conversation user confirmation "
@@ -451,9 +479,18 @@ def decide(target: str) -> Tuple[bool, str]:
 
 
 def _consume_override() -> Optional[str]:
-    """If override file present, consume per its mode and return ALLOW message."""
-    override_file = REPO_ROOT / ".rabbit-scope-override"
-    used_file = REPO_ROOT / ".rabbit-scope-override-used"
+    """If override file present, consume per its mode and return ALLOW message.
+
+    Inv 27: marker path is per-mode (plugin → <rabbit_root>/.rabbit/.rabbit-scope-override,
+    standalone → <repo_root>/.rabbit-scope-override) via _override_marker_path().
+    The 'used' sibling marker lives next to the override marker in both modes
+    so check_marker_consume_alert (Stop hook) finds it under the same repo_root
+    that resolves the override.
+    """
+    override_file = _override_marker_path()
+    if override_file is None:
+        return None
+    used_file = override_file.parent / ".rabbit-scope-override-used"
     if not override_file.is_file():
         return None
     try:

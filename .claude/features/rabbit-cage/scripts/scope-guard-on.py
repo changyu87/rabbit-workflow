@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 """scope-guard-on.py — Revoke the scope-guard override, re-arming default-deny.
 
-Removes .rabbit-scope-override (if present) so scope-guard.py returns to its
-default-deny posture. Canonical answer to "scope guard back on" /
-"revoke the session override".
+Removes the session-override marker (if present) so scope-guard.py returns
+to its default-deny posture. Inv 27 (path-equality): the marker location is
+per-mode:
+  - Plugin mode (<repo_root>/.rabbit/.runtime/mode == "plugin"):
+        <repo_root>/.rabbit/.rabbit-scope-override
+  - Standalone mode (any other state):
+        <repo_root>/.rabbit-scope-override
+
+Canonical answer to "scope guard back on" / "revoke the session override".
 
 Usage:
   .claude/features/rabbit-cage/scripts/scope-guard-on.py
 
 Behaviour:
-  - If .rabbit-scope-override exists: deletes it and prints a confirmation.
-  - If .rabbit-scope-override is absent: no-op, exits 0.
+  - If the per-mode marker exists: deletes it and prints a confirmation.
+  - If the per-mode marker is absent: no-op, exits 0.
 """
 
 import os
@@ -42,11 +48,26 @@ def repo_root() -> Path:
         sys.exit(2)
 
 
+def _override_marker_path(root: Path) -> Path:
+    """Inv 27: per-mode canonical location for the session-override marker.
+    Mirrors scope-guard.py::_override_marker_path so the two consumers
+    resolve the same path under the same mode.
+    """
+    mode_file = root / ".rabbit" / ".runtime" / "mode"
+    if mode_file.is_file():
+        try:
+            if mode_file.read_text().strip() == "plugin":
+                return root / ".rabbit" / ".rabbit-scope-override"
+        except Exception:
+            pass
+    return root / ".rabbit-scope-override"
+
+
 def main() -> int:
-    override_file = repo_root() / ".rabbit-scope-override"
+    override_file = _override_marker_path(repo_root())
     if override_file.is_file():
         override_file.unlink()
-        print("[rabbit] Scope guard re-armed — .rabbit-scope-override removed.")
+        print(f"[rabbit] Scope guard re-armed — {override_file} removed.")
     else:
         print("[rabbit] Scope guard is already on — no active override to revoke.")
     return 0

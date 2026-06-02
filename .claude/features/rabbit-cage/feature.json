@@ -1,8 +1,8 @@
 {
   "name": "rabbit-cage",
-  "version": "5.26.0",
+  "version": "5.27.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
   "surface": {
     "hooks": [],
@@ -183,6 +183,18 @@
       {
         "api": "check_release_update",
         "args": {}
+      },
+      {
+        "api": "check_marker_alert",
+        "args": {
+          "path": ".rabbit-scope-override",
+          "content": "session",
+          "alert": {
+            "text": "SCOPE GUARD OFF (session override active)",
+            "icon": "\ud83d\udd13",
+            "color": "red"
+          }
+        }
       }
     ],
     "UserPromptSubmit": [
@@ -366,5 +378,5 @@
       }
     }
   ],
-  "spec_no_change_reason": "Spec Inv 25 (skill-script closure) + version bump 5.25.0->5.26.0 committed earlier this cycle (commit cb7ffce) for bug #282; this TDD cycle adds the enforcing e2e test and ships scripts/resolve-scope.py + scripts/format-feature-context.py in FEATURE_INCLUDES['rabbit-feature']"
+  "spec_no_change_reason": "Spec Inv 16 amendment + new Inv 27 (plugin-mode session-override path-equality across the five consumers) + version bump 5.26.0->5.27.0 committed earlier this cycle (commit d751b18) for bug #281; this TDD cycle wires the SessionStart check_marker_alert entry, adds a _override_marker_path helper to scope-guard.py + scope-guard-on.py, extends the plugin-mode allowlist with .rabbit/.rabbit-scope-override, and updates the three-option DENY messages to name the plugin-mode canonical path."
 }
