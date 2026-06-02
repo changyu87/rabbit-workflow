@@ -421,14 +421,94 @@ Phase E merges complete.
    - Test fixtures use a real `git init` in a tempdir plus a `gh`
      shim on `$PATH` to serve PR base/head responses; no live network.
 
+6. **`merge-prs.py` + `cleanup-branches.py` delegation and refusal.**
+   Both scripts delegate destructive actions to `safety-check.py` and
+   emit a per-target JSON result array on stdout. Both always exit 0
+   except on argparse / unexpected error — partial-outcome reporting
+   is the caller's responsibility.
+
+   ### `scripts/merge-prs.py`
+
+   `python3 .claude/features/rabbit-auto-evolve/scripts/merge-prs.py <pr-list>`
+
+   where `<pr-list>` is a comma-separated list of PR numbers. For each
+   PR:
+   1. Verify the PR base via
+      `gh pr view <#> --json baseRefName -q .baseRefName`.
+      If base ≠ `dev` → record
+      `{pr: N, status: "skipped", reason: "base-not-dev"}` and continue.
+   2. Invoke `safety-check.py <pr#> --phase merge`. If non-zero exit →
+      record `{pr: N, status: "skipped", reason: "safety-check-failed"}`.
+   3. Otherwise call `gh pr merge <#> --squash --auto`. On success →
+      `{pr: N, status: "merged"}`; on failure →
+      `{pr: N, status: "failed", reason: "gh-merge-failed: <stderr>"}`.
+
+   Emits the result array on stdout. Exit 0 always except argparse /
+   unexpected error.
+
+   ### `scripts/cleanup-branches.py`
+
+   `python3 .claude/features/rabbit-auto-evolve/scripts/cleanup-branches.py <pr-list>`
+
+   For each merged PR:
+   1. Derive head branch via
+      `gh pr view <#> --json headRefName -q .headRefName`.
+   2. If head does NOT match `^feat/.+` (or is `dev`, `main`, or
+      starts with `release/`) → emit a stderr warning and record
+      `{pr: N, branch: <head>, status: "skipped", reason: "non-feat-branch"}`.
+   3. Otherwise invoke `safety-check.py <pr#> --phase cleanup`. If
+      non-zero → record
+      `{pr: N, branch: <head>, status: "skipped", reason: "safety-check-failed"}`.
+   4. Otherwise call `git branch -D <branch>` (best-effort; non-zero
+      exit acceptable — local branch may legitimately not exist) and
+      `git push origin --delete <branch>`. On success → `status: "deleted"`;
+      on `git push --delete` failure → `status: "failed"`.
+
+   Emits result array on stdout. Exit 0 always except argparse /
+   unexpected error.
+
+   ### Refusal invariant
+
+   `merge-prs.py` will NEVER call `gh pr merge` on a PR whose base is
+   not `dev`. `cleanup-branches.py` will NEVER call any deletion
+   command for a branch not matching `^feat/.+`. These refusals are
+   defense-in-depth above `safety-check.py` — even if `safety-check.py`
+   were skipped or compromised, the local refusal check still gates
+   destructive actions.
+
+   ### Tests
+
+   `test/test-merge-prs.py`:
+   - Smoke: `--help` exits 0 with recognizable usage text.
+   - Skip-on-non-dev-base: gh shim returns `baseRefName=main` →
+     `status: "skipped"`, `reason: "base-not-dev"`; `gh pr merge` is
+     NEVER called (verifiable via shim call log).
+   - Skip-on-safety-fail: gh shim returns `dev` for base, safety-check
+     shim exits non-zero → `status: "skipped"`,
+     `reason: "safety-check-failed"`; `gh pr merge` NEVER called.
+   - Happy path: shims pass → `status: "merged"`; exit 0.
+
+   `test/test-cleanup-branches.py`:
+   - Smoke: `--help` exits 0 with recognizable usage text.
+   - Skip-on-non-feat-branch: gh shim returns `headRefName=main` →
+     `status: "skipped"`, `reason: "non-feat-branch"`; stderr warning
+     emitted; deletion commands NEVER called.
+   - Happy path: shims return `feat/xyz`, safety-check passes →
+     `status: "deleted"`; exit 0.
+
+   Both test suites use `tempfile.TemporaryDirectory()` + `git init`
+   + a combined `gh`/`safety-check.py` shim on `$PATH` to dispatch on
+   subcommand+args; no live network.
+
 ## Known gaps
 
-- Phase C scripts still to land: `merge-prs.py`, `release-bump.py`,
-  `cleanup-branches.py`, `classify-merge-restart.py`, `update-state.py`.
+- Phase C scripts still to land: `release-bump.py`,
+  `classify-merge-restart.py`, `update-state.py`.
   (`set-evolve-mode.py` landed in PR #335; `fetch-queue.py` in PR #339;
   `triage-issue.py` in PR #341; `plan-batch.py` in PR #343;
-  `safety-check.py` lands in this cycle.) Each remaining script lands
-  via its own feature-touch cycle.
+  `safety-check.py` in PR #345; `merge-prs.py` + `cleanup-branches.py`
+  land in this cycle.) Each remaining script lands via its own
+  feature-touch cycle.
 - `feature.json` carries placeholder values: `summary: "rabbit-auto-evolve
   feature"` and `deprecation_criterion: "TBD — set after first review"`.
   Both must be filled before the feature passes the shape-compliance test
