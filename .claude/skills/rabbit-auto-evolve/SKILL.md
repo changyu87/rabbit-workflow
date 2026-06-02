@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.7.2
+version: 0.7.3
 owner: cyxu
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Run `/rabbit-auto-evolve on` first, then restart Claude (so `permissions.defaultMode: bypassPermissions` from `settings.local.json` is picked up), then `/rabbit-auto-evolve start`.
@@ -39,15 +39,30 @@ start`.
 
 ### `start`
 
-Begin or resume the loop. Verifies three preconditions in order:
+Begin or resume the loop. Per Inv 21, precondition reporting is owned by
+`check-preconditions.py` — invoke it (it always exits 0) and route on the
+JSON `all_pass` field. Bare `ls .rabbit-auto-evolve-*` patterns are
+FORBIDDEN here: they emit ugly `ls: cannot access ...: No such file or
+directory` stderr noise on fresh clones where the markers legitimately do
+not yet exist.
 
-1. `.rabbit-auto-evolve-active` marker exists at repo root.
-2. `human-approval` is off (i.e. `.rabbit-human-approval-bypass` present).
-3. `bypass-permissions` is on (i.e. `.claude/settings.local.json` has
+```
+python3 .claude/features/rabbit-auto-evolve/scripts/check-preconditions.py
+```
+
+The script reports on the three preconditions as structured JSON:
+
+1. `active-marker` — `.rabbit-auto-evolve-active` marker exists at repo
+   root.
+2. `approval-bypass` — `human-approval` is off (i.e.
+   `.rabbit-human-approval-bypass` present).
+3. `bypass-permissions` — `bypass-permissions` is on (i.e.
+   `.claude/settings.local.json` has
    `permissions.defaultMode == "bypassPermissions"`).
 
-If any precondition fails, refuse with a clear message naming the missing
-condition. On all-pass:
+On `all_pass: false`, surface each failing `checks[*].detail` string to
+the user as actionable guidance and STOP — do not start the loop. On
+`all_pass: true`:
 
 1. Invoke
    `python3 .claude/features/rabbit-auto-evolve/scripts/start-loop.py`

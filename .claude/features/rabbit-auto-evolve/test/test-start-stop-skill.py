@@ -69,6 +69,9 @@ def main():
         "python3 .claude/features/rabbit-auto-evolve/scripts/stop-loop.py",
         # Inv 20: every tick exit path invokes end-tick.py.
         "python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py",
+        # Inv 21: SKILL.md start section MUST invoke check-preconditions.py
+        # rather than bare `ls .rabbit-auto-evolve-*` patterns.
+        "python3 .claude/features/rabbit-auto-evolve/scripts/check-preconditions.py",
     ]
     for inv in required_invocations:
         if inv not in text:
@@ -105,6 +108,10 @@ def main():
         r"echo\s+[^>\n]*>\s*\.rabbit-auto-evolve-stop-requested",
         r"echo\s+[^>\n]*>\s*\.rabbit-auto-evolve-restart-needed",
         r"echo\s+[^>\n]*>\s*\.rabbit-auto-evolve-aborted",
+        # Inv 21: bare `ls` precondition checks emit ugly stderr noise on
+        # fresh clones; SKILL.md must route through check-preconditions.py.
+        r"ls\s+[^\n]*\.rabbit-auto-evolve-active",
+        r"ls\s+[^\n]*\.rabbit-human-approval-bypass",
     ]
     for pat in forbidden_patterns:
         if re.search(pat, text):
