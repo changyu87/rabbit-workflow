@@ -568,15 +568,64 @@ Phase E merges complete.
    combined `gh`/`git`/`safety-check.py` shim pattern as
    `test-merge-prs.py` and `test-cleanup-branches.py`.
 
+8. **`classify-merge-restart.py` three-rung refresh ladder.** The CLI
+   `python3 .claude/features/rabbit-auto-evolve/scripts/classify-merge-restart.py <pr#>`
+   reads the merged PR's file list via `gh pr view <#> --json files`
+   and emits one of three literal rung names on stdout (followed by a
+   single newline; no JSON):
+
+   - `restart`
+   - `refresh`
+   - `no-op`
+
+   The output line is consumed by the loop tick's
+   `case`/`if`-style comparison; the trailing newline is required.
+
+   Rungs are evaluated in this order; first match wins
+   (`restart` > `refresh` > `no-op`):
+
+   | Rung | Trigger (any file in the PR's diff matches) |
+   |---|---|
+   | `restart` | (a) any path containing `settings.json`, OR (b) a brand-new file under `.claude/skills/*/SKILL.md` (additions > 0 AND deletions == 0 — i.e. pure-add), OR (c) any path matching `.claude/hooks/*.py` |
+   | `refresh` | any path matching `.claude/features/policy/*.md` OR `CLAUDE.md` (at any depth) |
+   | `no-op` | none of the above |
+
+   For the "brand-new SKILL.md" sub-rule, the deterministic check is
+   that the `gh pr view --json files` entry for that path reports
+   `additions > 0` and `deletions == 0` (a pure addition). The
+   implementer MAY substitute `gh pr diff <#> --name-only` plus a
+   git ls-files comparison if cleaner — tests assert behavior, not
+   the specific gh command used.
+
+   Exit code: 0 on success; non-zero on `gh` failure or other
+   unexpected error (stderr passthrough).
+
+   The script reads only the `gh` CLI output stream — no git
+   shellouts, no filesystem mutations.
+
+   Enforced by `test/test-classify-merge-restart.py`:
+   - `restart` from a `settings.json` touch.
+   - `restart` from a brand-new `.claude/skills/foo/SKILL.md` add.
+   - `restart` from a `.claude/hooks/bar.py` modification.
+   - `refresh` from `.claude/features/policy/coding-rules.md`.
+   - `refresh` from `CLAUDE.md` touch.
+   - `no-op` from an arbitrary
+     `.claude/features/<other-feature>/scripts/x.py` touch.
+   - Precedence: `settings.json` + a policy file change → `restart`
+     (not `refresh`).
+   - `--help` smoke: exit 0 with recognizable usage text.
+
+   Tests use `tempfile.TemporaryDirectory()` + a `gh` shim on
+   `$PATH` that serves fixture file-list JSON; no live network.
+
 ## Known gaps
 
-- Phase C scripts still to land: `classify-merge-restart.py`,
-  `update-state.py`. (`set-evolve-mode.py` landed in PR #335;
-  `fetch-queue.py` in PR #339; `triage-issue.py` in PR #341;
-  `plan-batch.py` in PR #343; `safety-check.py` in PR #345;
-  `merge-prs.py` + `cleanup-branches.py` in PR #347; `release-bump.py`
-  lands in this cycle.) Each remaining script lands via its own
-  feature-touch cycle.
+- Phase C scripts still to land: `update-state.py`.
+  (`set-evolve-mode.py` landed in PR #335; `fetch-queue.py` in PR #339;
+  `triage-issue.py` in PR #341; `plan-batch.py` in PR #343;
+  `safety-check.py` in PR #345; `merge-prs.py` + `cleanup-branches.py`
+  in PR #347; `release-bump.py` in PR #349; `classify-merge-restart.py`
+  lands in this cycle.) `update-state.py` is the final Phase C script.
 - `feature.json` carries placeholder values: `summary: "rabbit-auto-evolve
   feature"` and `deprecation_criterion: "TBD — set after first review"`.
   Both must be filled before the feature passes the shape-compliance test
