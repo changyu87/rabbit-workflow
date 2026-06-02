@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.51.1
+version: 1.52.0
 template_version: 2.0.0
 ---
 
@@ -59,7 +59,10 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "hooks": [
       ".claude/features/contract/hooks/prompt-injector.py"
     ],
-    "skills": []
+    "skills": [],
+    "functions": [
+      "contract.lib.checks.validate_agent_prompt_sentinel"
+    ]
   },
   "reads": {
     "files": [
