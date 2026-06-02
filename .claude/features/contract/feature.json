@@ -1,8 +1,8 @@
 {
   "name": "contract",
-  "version": "1.50.0",
+  "version": "1.51.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "surface": {
     "hooks": [],
@@ -10,7 +10,7 @@
     "skills": []
   },
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
-  "updated": "2026-06-01",
+  "updated": "2026-06-02",
   "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
   "manifest": [
     {
@@ -37,5 +37,5 @@
       }
     ]
   },
-  "spec_no_change_reason": "spec amendment to Inv 23(a) precedence+validation already landed in previous commit (1.49.0 -> 1.50.0)"
+  "spec_no_change_reason": "spec amendment (Inv 64+65 and version 1.51.0) already committed in 9c87986 by dispatcher prior to this TDD cycle"
 }

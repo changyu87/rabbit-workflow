@@ -33,6 +33,22 @@ import sys
 import time
 
 
+# Inv 64 — per-id suppression for the rabbit-auto-evolve composite banner.
+# When .rabbit-auto-evolve-active is present, the two configurables whose ids
+# appear in this set are skipped by iterate_configurables_alerts/_banner.
+# Any other configurable continues to emit normally (per-id-scoped, not
+# blanket). Single source of truth: both iterate functions and the test
+# suite import from here.
+_AUTO_EVOLVE_SUPPRESSED_IDS = frozenset({"human-approval", "bypass-permissions"})
+
+
+def _auto_evolve_active(repo_root: str) -> bool:
+    """True iff the .rabbit-auto-evolve-active marker is present at repo root.
+    Sole reader of the marker; matches the _resolve_marker_value pattern.
+    """
+    return os.path.isfile(os.path.join(repo_root, ".rabbit-auto-evolve-active"))
+
+
 def print_result(text: str, icon: str, color: str) -> dict:
     """Tagged dict for an alert line that the dispatcher renders via
     rabbit_subline and joins into the Stop hook systemMessage."""
@@ -419,11 +435,14 @@ def iterate_configurables_alerts(*, repo_root: str):
     Returns a list (possibly empty).
     """
     out = []
+    suppressed = _auto_evolve_active(repo_root)
     for name, fdir, data in _enumerate_features(repo_root):
         configuration = data.get("configuration")
         if not isinstance(configuration, list):
             continue
         for cfg in configuration:
+            if suppressed and cfg.get("id") in _AUTO_EVOLVE_SUPPRESSED_IDS:
+                continue  # Inv 64: per-id suppressed under auto-evolve marker
             alert_on = cfg.get("alert-on")
             alert_msg = cfg.get("alert-message")
             if alert_on is None or not isinstance(alert_msg, dict):
@@ -454,11 +473,14 @@ def iterate_configurables_banner(*, repo_root: str):
     the literal string '<unknown>'. Returns a flat list (possibly empty).
     """
     out = []
+    suppressed = _auto_evolve_active(repo_root)
     for name, fdir, data in _enumerate_features(repo_root):
         configuration = data.get("configuration")
         if not isinstance(configuration, list):
             continue
         for cfg in configuration:
+            if suppressed and cfg.get("id") in _AUTO_EVOLVE_SUPPRESSED_IDS:
+                continue  # Inv 64: per-id suppressed under auto-evolve marker
             alert_on = cfg.get("alert-on")
             alert_msg = cfg.get("alert-message")
             if alert_on is None or not isinstance(alert_msg, dict):
@@ -734,3 +756,81 @@ def check_release_update(*, repo_root: str) -> dict:
     resume_line = "then resume: claude --resume"
     text = rabbit_block(headline, update_line, resume_line)
     return print_result(text, "📦", "yellow")
+
+
+def emit_auto_evolve_banner(*, repo_root: str) -> list:
+    """Inv 65 — composite SessionStart banner for rabbit-auto-evolve.
+
+    Returns [] when .rabbit-auto-evolve-active is absent (the marker gates the
+    entire auto-evolve composite surface). When active, returns exactly two
+    print_result entries:
+
+      - Line 1 (always): the AUTONOMOUS-EVOLVE MODE ACTIVE headline.
+      - Line 2 (variant by marker priority, mutually exclusive in this order):
+        aborted > restart-needed > default-start-hint.
+
+    The strict priority avoids misleading the user about restart being the next
+    step when the loop is actually aborted.
+    """
+    if not _auto_evolve_active(repo_root):
+        return []
+    out = [print_result(
+        text=("AUTONOMOUS-EVOLVE MODE ACTIVE — loop will dispatch TDD "
+              "subagents and merge to dev without prompts"),
+        icon="✨",
+        color="red",
+    )]
+    if os.path.isfile(os.path.join(repo_root, ".rabbit-auto-evolve-aborted")):
+        out.append(print_result(
+            text=("loop aborted on safety violation — see "
+                  ".rabbit/auto-evolve-state.json and clear marker to resume"),
+            icon="⛔",
+            color="yellow",
+        ))
+    elif os.path.isfile(os.path.join(repo_root, ".rabbit-auto-evolve-restart-needed")):
+        out.append(print_result(
+            text="resume after restart: paste /rabbit-auto-evolve start",
+            icon="▶",
+            color="yellow",
+        ))
+    else:
+        out.append(print_result(
+            text="to start the loop, paste: /rabbit-auto-evolve start",
+            icon="▶",
+            color="yellow",
+        ))
+    return out
+
+
+# Inv 65 stop-line priority order: aborted > restart-needed > stop-requested >
+# running. The first matching state marker wins; later entries are dead-letter.
+_AUTO_EVOLVE_STOP_LINE_MARKERS = (
+    (".rabbit-auto-evolve-aborted",
+     "auto-evolve loop aborted — see .rabbit/auto-evolve-state.json",
+     "⛔", "red"),
+    (".rabbit-auto-evolve-restart-needed",
+     "auto-evolve loop awaiting restart",
+     "⏸", "yellow"),
+    (".rabbit-auto-evolve-stop-requested",
+     "auto-evolve loop stop requested — will exit on next tick",
+     "⏸", "yellow"),
+    (".rabbit-auto-evolve-running",
+     "auto-evolve loop running",
+     "🔁", "green"),
+)
+
+
+def emit_auto_evolve_stop_line(*, repo_root: str) -> list:
+    """Inv 65 — composite Stop-hook line for rabbit-auto-evolve.
+
+    Returns [] when .rabbit-auto-evolve-active is absent (the marker gates the
+    entire auto-evolve composite surface) or when no state marker is present.
+    Otherwise returns exactly one print_result entry chosen by the strict
+    priority order aborted > restart-needed > stop-requested > running.
+    """
+    if not _auto_evolve_active(repo_root):
+        return []
+    for path, text, icon, color in _AUTO_EVOLVE_STOP_LINE_MARKERS:
+        if os.path.isfile(os.path.join(repo_root, path)):
+            return [print_result(text=text, icon=icon, color=color)]
+    return []

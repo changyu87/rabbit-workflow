@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 1.50.0
+version: 1.51.0
 template_version: 2.0.0
 ---
 
@@ -65,7 +65,12 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "files": [
       ".claude/features/contract/feature.json",
       ".claude/features/contract/templates/*",
-      ".claude/features/contract/schemas/*"
+      ".claude/features/contract/schemas/*",
+      ".rabbit-auto-evolve-active",
+      ".rabbit-auto-evolve-aborted",
+      ".rabbit-auto-evolve-restart-needed",
+      ".rabbit-auto-evolve-stop-requested",
+      ".rabbit-auto-evolve-running"
     ],
     "external": [
       "env-var:RABBIT_ROOT",
