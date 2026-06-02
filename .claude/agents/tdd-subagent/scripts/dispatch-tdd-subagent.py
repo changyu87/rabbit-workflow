@@ -16,6 +16,7 @@
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path as _Path
@@ -139,6 +140,79 @@ def _read_file(path, default="(not found)"):
     return default
 
 
+def _parse_invariants_section(spec_text):
+    """Locate the ## Invariants section in a spec.md and parse its
+    invariant bodies (Inv 49(c)).
+
+    Returns a tuple `(preamble, header_line, invariants, footer)`:
+      - preamble: text up to and including the line BEFORE the
+        `## Invariants` heading.
+      - header_line: the literal `## Invariants` line (preserved as-is).
+      - invariants: dict mapping `int` invariant number -> body text
+        (number line through line before next invariant number, or
+        through end of section if last). Includes retired tombstones.
+      - footer: text from the NEXT `## ` heading (or EOF) onward.
+
+    Returns `None` if the spec has no `## Invariants` section.
+    """
+    m = re.search(r"^## Invariants\s*$", spec_text, re.MULTILINE)
+    if not m:
+        return None
+    header_start = m.start()
+    header_line_end = spec_text.find("\n", m.end())
+    if header_line_end == -1:
+        header_line_end = len(spec_text)
+    header_line = spec_text[header_start:header_line_end + 1]
+    # Find next ## heading (section end). Search after header_line_end.
+    nxt = re.search(r"^## ", spec_text[header_line_end + 1:], re.MULTILINE)
+    if nxt:
+        section_end = header_line_end + 1 + nxt.start()
+    else:
+        section_end = len(spec_text)
+    preamble = spec_text[:header_start]
+    body = spec_text[header_line_end + 1:section_end]
+    footer = spec_text[section_end:]
+    # Find invariant boundaries: lines starting with `N. ` at line-start.
+    boundaries = []
+    for bm in re.finditer(r"^([0-9]+)\.\s", body, re.MULTILINE):
+        boundaries.append((int(bm.group(1)), bm.start()))
+    invariants = {}
+    for i, (num, start) in enumerate(boundaries):
+        end = boundaries[i + 1][1] if i + 1 < len(boundaries) else len(body)
+        invariants[num] = body[start:end]
+    return preamble, header_line, invariants, footer
+
+
+def _scoped_spec(spec_text, requested, feature_name):
+    """Build a scoped spec_content with only the requested invariants
+    (Inv 49). Returns (scoped_text, error_message). On unknown
+    invariant numbers, returns (None, error_message)."""
+    parsed = _parse_invariants_section(spec_text)
+    if parsed is None:
+        return None, (f"--affected-invariants: spec for '{feature_name}' "
+                      "has no ## Invariants section")
+    preamble, header_line, invariants, footer = parsed
+    unknown = [n for n in requested if n not in invariants]
+    if unknown:
+        available = sorted(invariants.keys())
+        return None, (
+            f"error: --affected-invariants includes unknown invariant "
+            f"number(s) for {feature_name}: {unknown}; available: "
+            f"{available}"
+        )
+    ordered = sorted(set(requested))
+    blocks = [invariants[n].rstrip() for n in ordered]
+    note = (
+        f"> NOTE: scoped view of {len(ordered)} selected invariants "
+        f"({ordered}) from {feature_name} spec.md; for related-but-"
+        f"unembedded invariants run "
+        f"`grep '^<num>\\.' .claude/features/{feature_name}/docs/spec/spec.md` "
+        "against the spec."
+    )
+    scoped_body = "\n\n".join(blocks) + "\n\n" + note + "\n"
+    return preamble + header_line + "\n" + scoped_body + "\n" + footer, None
+
+
 def _find_feature(repo_root, feature_name):
     find_py = os.path.join(repo_root, ".claude", "features", "contract", "scripts", "find-feature.py")
     try:
@@ -166,6 +240,12 @@ def main(argv):
     parser.add_argument("--scope", required=True)
     parser.add_argument("--spec", required=True)
     parser.add_argument("--impl-suggestion", default=None)
+    parser.add_argument(
+        "--affected-invariants", default=None,
+        help=("comma-separated invariant numbers (e.g. 4,16,22); when "
+              "provided, embed only those invariants from the spec's "
+              "## Invariants section instead of the full spec (Inv 49)"),
+    )
     parser.add_argument("--code-review-full-loop", action="store_true")
     parser.add_argument("--max-iterations", type=int, default=3)
 
@@ -179,6 +259,7 @@ def main(argv):
         sys.stderr.write(
             "ERROR: usage: dispatch-tdd-subagent.py --scope <feature> --spec <path> "
             "[--impl-suggestion <path>] "
+            "[--affected-invariants N[,N,...]] "
             "[--code-review-full-loop] [--max-iterations N]\n"
         )
         return 2
@@ -207,6 +288,26 @@ def main(argv):
     tdd_step_py = os.path.join(repo_root, ".claude", "features", "tdd-subagent", "scripts", "tdd-step.py")
 
     spec_content = _read_file(args.spec)
+    # Inv 49: when --affected-invariants is provided, replace the
+    # ## Invariants section body with only the requested invariants
+    # plus a NOTE line. Default (flag omitted) preserves the full
+    # spec embed unchanged.
+    if args.affected_invariants is not None:
+        try:
+            requested = sorted({int(n) for n in
+                                args.affected_invariants.split(",")
+                                if n.strip()})
+        except ValueError:
+            sys.stderr.write(
+                "error: --affected-invariants must be a comma-separated "
+                f"list of integers; got: {args.affected_invariants!r}\n"
+            )
+            return 1
+        scoped, err = _scoped_spec(spec_content, requested, feature_name)
+        if err:
+            sys.stderr.write(err + "\n")
+            return 1
+        spec_content = scoped
     impl_suggestion_block = ""
     if args.impl_suggestion:
         raw = _read_file(args.impl_suggestion)

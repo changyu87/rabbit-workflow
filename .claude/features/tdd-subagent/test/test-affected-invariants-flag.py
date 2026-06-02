@@ -63,11 +63,21 @@ def _spec_invariant_numbers(spec_path):
                                               re.MULTILINE)})
 
 
-def _strip_outer_blocks(prompt):
-    """Strip the impl-suggestion block (if any) so our invariant grep
-    only sees the embedded spec. The SPEC block itself is what we want
-    to inspect, so we leave it intact."""
-    return prompt
+def _invariants_section_of_prompt(prompt):
+    """Extract the ## Invariants section body from the embedded spec in
+    the assembled prompt. The prompt contains the spec verbatim in the
+    SPEC block, including the `## Invariants` heading. We slice from
+    the heading to the next `## ` heading (or end of SPEC block).
+
+    Returns empty string if no ## Invariants section found.
+    """
+    m = re.search(r"^## Invariants\s*$", prompt, re.MULTILINE)
+    if not m:
+        return ""
+    body_start = prompt.find("\n", m.end()) + 1
+    nxt = re.search(r"^## ", prompt[body_start:], re.MULTILINE)
+    body_end = body_start + nxt.start() if nxt else len(prompt)
+    return prompt[body_start:body_end]
 
 
 env_base = os.environ.copy()
@@ -93,11 +103,13 @@ if res_full.returncode != 0:
     full_prompt = ""
 else:
     full_prompt = res_full.stdout
-    # Check every numbered invariant appears in the embedded spec block.
-    # The dispatcher embeds the spec verbatim, so each `N. ` line from
-    # the source must appear at start-of-line somewhere in the prompt.
+    # Check every numbered invariant appears in the embedded ## Invariants
+    # section of the spec block. Scope the grep to that section (other
+    # spec sections also contain numbered lists like "1. ..." that would
+    # collide otherwise).
+    full_inv_body = _invariants_section_of_prompt(full_prompt)
     missing = [n for n in ALL_INVS
-               if not re.search(rf"^{n}\.\s", full_prompt, re.MULTILINE)]
+               if not re.search(rf"^{n}\.\s", full_inv_body, re.MULTILINE)]
     if not missing:
         ok(f"scenario A: full-spec form embeds all {len(ALL_INVS)} "
            "invariants from source")
@@ -131,16 +143,17 @@ else:
         scoped_prompt = ""
     else:
         scoped_prompt = res_scoped.stdout
-        # All named invariants present.
+        scoped_inv_body = _invariants_section_of_prompt(scoped_prompt)
+        # All named invariants present in the Invariants section.
         for n in desired:
-            if re.search(rf"^{n}\.\s", scoped_prompt, re.MULTILINE):
+            if re.search(rf"^{n}\.\s", scoped_inv_body, re.MULTILINE):
                 ok(f"scenario B: scoped prompt contains invariant {n}")
             else:
                 ko(f"scenario B: scoped prompt missing requested invariant {n}")
-        # Non-named invariants absent.
+        # Non-named invariants absent from the Invariants section.
         not_named = [n for n in ALL_INVS if n not in desired]
         leaked = [n for n in not_named
-                  if re.search(rf"^{n}\.\s", scoped_prompt, re.MULTILINE)]
+                  if re.search(rf"^{n}\.\s", scoped_inv_body, re.MULTILINE)]
         if not leaked:
             ok(f"scenario B: scoped prompt embeds no unrequested "
                f"invariants ({len(not_named)} checked)")
