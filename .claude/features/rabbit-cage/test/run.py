@@ -59,6 +59,10 @@ SUITES = [
     "test-standalone-spec-md-carveout-unchanged.py",
     "test-rabbit-config-shipped-in-mvp.py",
     "test-install-sh-default-ref-not-dev.py",
+    "test-plugin-scope-override-path-consistent.py",
+    "test-plugin-stop-alert-fires-when-session-override-active.py",
+    "test-plugin-sessionstart-alert-on-active-session-override.py",
+    "test-standalone-override-path-unchanged.py",
 ]
 
 
