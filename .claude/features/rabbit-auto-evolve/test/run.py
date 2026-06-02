@@ -29,5 +29,7 @@ run_test("test-fetch-queue.py")
 run_test("test-triage-rules.py")
 run_test("test-plan-batch.py")
 run_test("test-safety-check.py")
+run_test("test-merge-prs.py")
+run_test("test-cleanup-branches.py")
 
 print("ALL TESTS PASSED")
