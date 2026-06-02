@@ -1,8 +1,8 @@
 {
   "name": "rabbit-cage",
-  "version": "5.29.0",
+  "version": "5.30.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
   "surface": {
     "hooks": [],
@@ -378,5 +378,5 @@
       }
     }
   ],
-  "spec_no_change_reason": "Spec 5.27.0->5.28.0 with Inv 22g amendment + new Inv 29 (install.py --update ref-resolution precedence ladder; CLI flag > --channel > RABBIT_REF env > HARDCODED_STABLE_DEFAULT; never silent 'dev') committed prior to this TDD cycle in 44896e6 for bugs #286 + #287; this cycle implements the ladder in install.py (adds HARDCODED_STABLE_DEFAULT='release/1.3' module constant matching install.sh, adds --version/--ref/--channel argparse flags, replaces the silent 'dev' default in --update self-fetch) and writes the four enforcing e2e tests."
+  "spec_no_change_reason": "Spec 5.29.0->5.30.0 with new Inv 22h (install.py --update self re-exec into freshly-copied install.py before FEATURE_INCLUDES loop; bug #297) committed prior to this TDD cycle; this cycle implements the re-exec branch in install.py and writes the three enforcing e2e tests."
 }

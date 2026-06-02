@@ -44,7 +44,13 @@ def _build_src_tree(src_root: Path) -> None:
     spec.loader.exec_module(mod)
 
     def _copy_rel(rel: str) -> None:
-        s = REPO / rel
+        # Source-of-truth for install.py is the feature copy, not the deployed
+        # root copy (the root copy is a sync artifact that may lag the feature
+        # source between IMPLEMENT and SYNC-DEPLOYED).
+        if rel == "install.py":
+            s = INSTALL_PY
+        else:
+            s = REPO / rel
         d = src_root / rel
         d.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(s, d)

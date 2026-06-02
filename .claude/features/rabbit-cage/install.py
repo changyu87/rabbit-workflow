@@ -56,6 +56,12 @@ from pathlib import Path
 # FORBIDDEN here (enforced by test-install-py-default-ref-not-dev.py).
 HARDCODED_STABLE_DEFAULT = "release/1.5"
 
+# Inv 22h: env-var infinite-loop guard for the --update self-exec branch. The
+# OLD process sets this to "1" before os.execv; the NEW process (started by
+# os.execv) inherits the env, sees the marker, and skips the re-exec branch.
+# One re-exec per --update invocation is enough.
+_REEXEC_GUARD = "RABBIT_INSTALL_REEXEC_DONE"
+
 # ───────────────────────────────────────────────────────────────────────────
 # MVP file closure as (src_rel, dst_rel) tuples — explicit source→destination
 # ───────────────────────────────────────────────────────────────────────────
@@ -444,6 +450,11 @@ def main() -> int:
     parser.add_argument("--channel", default=None, choices=["stable", "dev"],
                         help="opt-in shorthand: 'dev' for bleeding-edge, 'stable' for hardcoded release default")
     args = parser.parse_args()
+    # Inv 22h skip-condition (i): capture whether --src was explicitly supplied
+    # BEFORE the self-fetch branch overwrites args.src. Explicit --src is the
+    # dev-test path and the install.sh first-install path; both pin the
+    # in-memory code to the source-of-truth content, so no re-exec is needed.
+    args.src_was_explicit = args.src is not None
 
     # Inv 22g: --src and --target are optional under --update; outside --update
     # both remain required (matches the original argparse contract).
@@ -528,6 +539,17 @@ def _main_with_args(args: argparse.Namespace) -> int:
     dst_root.mkdir(parents=True, exist_ok=True)
     ok = True
 
+    # Inv 22h: capture the running install.py bytes BEFORE the SAME_PATH_FILES
+    # loop overwrites <dst>/install.py. After the copy, dst/install.py and the
+    # running __file__ resolve to the same path on disk; comparing the file to
+    # itself is always equal (vacuous skip). Capture pre-copy to detect skew.
+    _running_install_bytes: bytes | None = None
+    if args.update and not args.src_was_explicit:
+        try:
+            _running_install_bytes = Path(__file__).resolve().read_bytes()
+        except OSError:
+            _running_install_bytes = None
+
     # Inv 22d: on --update, settings.json is written via publish_settings
     # below (merge-aware). On fresh install, it ships via raw copy in the
     # SAME_PATH_FILES loop. Skip the raw copy under --update to avoid
@@ -538,6 +560,33 @@ def _main_with_args(args: argparse.Namespace) -> int:
 
     for rel in same_path_to_copy:
         ok &= copy_one(src_root, dst_root, rel, rel)
+
+    # Inv 22h: re-exec into the freshly-copied <target>/install.py AFTER the
+    # SAME_PATH_FILES copy (which wrote the NEW install.py to disk) AND BEFORE
+    # the HOOKS / SKILLS / AGENTS / COMMANDS / FEATURE_INCLUDES loops run.
+    # Without the re-exec, the in-memory interpreter is still executing the
+    # OLD install.py with the OLD FEATURE_INCLUDES / SAME_PATH_FILES constants
+    # and every new closure entry added upstream is silently skipped (#297).
+    # Skip conditions: not --update, explicit --src, loop-guard already set,
+    # byte-identical new install.py.
+    if (
+        ok
+        and args.update
+        and not args.src_was_explicit
+        and os.environ.get(_REEXEC_GUARD) != "1"
+    ):
+        new_install_py = dst_root / "install.py"
+        if new_install_py.is_file() and (
+            _running_install_bytes is None
+            or new_install_py.read_bytes() != _running_install_bytes
+        ):
+            sys.stderr.write(
+                f"re-execing into {new_install_py} with updated closure\n"
+            )
+            sys.stderr.flush()
+            os.environ[_REEXEC_GUARD] = "1"
+            os.execv(sys.executable, [sys.executable, str(new_install_py), *sys.argv[1:]])
+            # os.execv does not return
 
     for src_rel, dst_rel in HOOKS:
         ok &= copy_one(src_root, dst_root, src_rel, dst_rel)
