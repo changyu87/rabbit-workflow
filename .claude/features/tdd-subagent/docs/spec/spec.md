@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.4.0
+version: 5.5.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -92,6 +92,7 @@ the template's `{{bypass_preamble_note}}` placeholder.
 4. **Flag set.** `dispatch-tdd-subagent.py` accepts exactly these flags:
    `--scope` (required), `--spec` (required),
    `--impl-suggestion` (optional path),
+   `--affected-invariants N[,N,...]` (optional; comma-separated list of invariant numbers; when provided, the assembled prompt embeds ONLY the named invariants instead of the full ## Invariants section — see Inv 49 for semantics),
    `--code-review-full-loop` (boolean flag),
    `--max-iterations N` (default `3`, minimum `1`).
 
@@ -467,6 +468,28 @@ The 13 invariants in this section were absorbed from the retired
     - Scenario A: standalone tmpdir (no RABBIT_ROOT env, no `.rabbit/.runtime/mode`). Invoke dispatch.py via subprocess; assert the full assembled stdout does NOT contain the substring `.rabbit/.rabbit/`.
     - Scenario B: plugin tmpdir (`.rabbit/.runtime/mode='plugin'` + `RABBIT_ROOT=<tmp>/.rabbit`). Invoke dispatch.py; assert the assembled stdout does NOT contain `.rabbit/.rabbit/` AND the STEP 7 `Path:` line ends with `<tmp>/.rabbit/tdd-report-<feature>.json` (single `.rabbit/`, not doubled).
     - Both scenarios pin the absence of the doubled substring as a single, easy-to-grep regression assertion.
+
+49. **`--affected-invariants` scoped spec embedding.** The assembled prompt's spec embedding behavior is gated by the optional `--affected-invariants N[,N,...]` flag (see Inv 4 flag set):
+
+    (a) **Default (flag omitted)** — backwards-compatible: embed the entire feature spec.md inline in the SPEC section. Same behavior as pre-Inv-49, no migration required for any caller.
+
+    (b) **Scoped (flag provided)** — embed ONLY the named invariants from the ## Invariants section, sandwiched between the spec preamble (everything BEFORE the ## Invariants heading: frontmatter, Purpose, Surface, Dispatcher Behavior, scope-guard Semantics, Installer Behavior, etc.) and the spec footer (everything AFTER the last invariant: ## Tech Stack, ## Out of Scope, etc.). The ## Invariants heading itself is preserved; in place of all invariants, the dispatcher splices in: (i) the requested invariants in numeric ascending order, separated by blank lines; (ii) a single concluding note line:
+
+        `> NOTE: scoped view of N selected invariants ({list}) from <feature> spec.md; for related-but-unembedded invariants run \`grep '^<num>\\.' .claude/features/<feature>/docs/spec/spec.md\` against the spec.`
+
+    (c) **Invariant lookup** — invariants are identified by the regex `^([0-9]+)\.\s` at the start of a line within the ## Invariants section. An invariant body extends from its number line to the line BEFORE the next invariant number (or to the end of the ## Invariants section if it's the last). Retired invariants (matching `*(Retired — see CHANGELOG.md.)*`) are recognized AND retrievable — passing a retired invariant number yields the one-line retirement notice (so the subagent sees that the number is allocated-but-retired rather than missing).
+
+    (d) **Unknown number — fatal.** If any requested number does NOT match an existing invariant in the spec (including retired tombstones), the dispatcher exits with code 1 and a stderr line `error: --affected-invariants includes unknown invariant number(s) for <feature>: [N, M]; available: [1..29]`. No silent skip.
+
+    (e) **Size win.** Typical scoped prompts are 20-30KB vs ~100KB for the full-spec form on rabbit-cage. The win scales with feature spec size — smaller features (rabbit-config, rabbit-issue) see proportionally less benefit. No worse than the unscoped form when omitted.
+
+    (f) **Caller convention.** The impl-suggestion file (`<repo_root>/.rabbit/impl-suggestion-<feature>.json`) MAY include an optional top-level `affected_invariants: [N, M, ...]` field; the dispatcher caller (rabbit-feature-touch Step 5) MAY plumb that field into `--affected-invariants` when present. This is OPTIONAL and per-caller — the spec only mandates the dispatcher's behavior when the flag IS supplied; whether to supply it is the caller's choice.
+
+    Enforced by `test/test-affected-invariants-flag.py`:
+    - Scenario A (flag omitted, baseline): full-spec embedded (assert prompt contains every numbered invariant from the source spec.md).
+    - Scenario B (flag with valid subset): assert prompt contains the named invariants AND does NOT contain non-named invariants AND contains the NOTE line naming the count + list.
+    - Scenario C (flag with unknown number): assert exit code 1 + stderr substring 'unknown invariant number'.
+    - Scenario D (size assertion): assert scoped prompt is materially smaller than full-spec form (≥30% reduction for any feature with ≥10 invariants).
 
 ## Out of Scope
 
