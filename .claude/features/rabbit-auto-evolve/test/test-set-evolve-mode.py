@@ -305,9 +305,10 @@ with tempfile.TemporaryDirectory() as root:
     else:
         ok("G: `on` stdout carries [\U0001f407 rabbit \U0001f407] brand prefix")
     # Both lines must carry the brand — assert at least two occurrences.
-    if out.count("[\U0001f407 rabbit \U0001f407]") < 2:
-        fail(f"G: expected >= 2 brand prefixes (one per line), got "
-             f"{out.count('[\U0001f407 rabbit \U0001f407]')}; stdout: {out!r}")
+    _brand = "[\U0001f407 rabbit \U0001f407]"
+    _brand_count = out.count(_brand)
+    if _brand_count < 2:
+        fail(f"G: expected >= 2 brand prefixes (one per line), got {_brand_count}; stdout: {out!r}")
     else:
         ok("G: `on` stdout carries brand prefix on both lines")
     if "AUTONOMOUS-EVOLVE MODE CONFIGURED" not in out:
