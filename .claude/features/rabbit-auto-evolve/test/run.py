@@ -42,5 +42,6 @@ run_test("test-discovered-issues.py")
 run_test("test-skill-no-askuserquestion-rule.py")
 run_test("test-banner-suppression.py")
 run_test("test-feature-shape.py")
+run_test("test-loop-markers.py")
 
 print("ALL TESTS PASSED")
