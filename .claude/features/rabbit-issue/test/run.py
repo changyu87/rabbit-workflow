@@ -32,7 +32,6 @@ def run_pytest_suite(script: str) -> bool:
 SUITES = (
     ("py", "test-spec-presence.py"),
     ("py", "test-skill-presence.py"),
-    ("py", "test-prompts-declared.py"),
     ("py", "test-manifest-shape.py"),
     ("pytest", "test-ensure-labels.py"),
     ("pytest", "test-gh-helper-resolves-rabbit-repo.py"),

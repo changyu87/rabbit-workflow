@@ -24,15 +24,5 @@
   ],
   "runtime": {},
   "configuration": [],
-  "prompts": [
-    {
-      "id": "rabbit-decompose",
-      "kind": "skill",
-      "inject": [
-        ".claude/features/policy/philosophy.md",
-        ".claude/features/policy/spec-rules.md"
-      ],
-      "slots": ["args"]
-    }
-  ]
+  "prompts": []
 }

@@ -35,18 +35,6 @@
     ]
   },
   "configuration": [],
-  "prompts": [
-    {
-      "id": "rabbit-config",
-      "kind": "skill",
-      "inject": [
-        ".claude/features/policy/philosophy.md",
-        ".claude/features/policy/coding-rules.md"
-      ],
-      "slots": [
-        "args"
-      ]
-    }
-  ],
+  "prompts": [],
   "spec_no_change_reason": "Inv 20 added in prior commit 5530e73; this cycle implements the interpreter behaviour + test."
 }

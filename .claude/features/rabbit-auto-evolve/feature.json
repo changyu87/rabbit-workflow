@@ -38,19 +38,6 @@
     ]
   },
   "configuration": [],
-  "prompts": [
-    {
-      "id": "rabbit-auto-evolve",
-      "kind": "skill",
-      "inject": [
-        ".claude/features/policy/philosophy.md",
-        ".claude/features/policy/spec-rules.md",
-        ".claude/features/policy/coding-rules.md"
-      ],
-      "slots": [
-        "args"
-      ]
-    }
-  ],
+  "prompts": [],
   "spec_no_change_reason": "spec change for Inv 24 already landed in commit 84921e5 (spec.md frontmatter at v0.8.1)"
 }

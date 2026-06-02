@@ -1,8 +1,8 @@
 {
   "name": "contract",
-  "version": "1.51.1",
+  "version": "2.0.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "surface": {
     "hooks": [],
@@ -12,30 +12,8 @@
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-06-02",
   "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
-  "manifest": [
-    {
-      "api": "publish_hook",
-      "args": {
-        "event": "PreToolUse",
-        "source": "hooks/prompt-injector.py"
-      }
-    }
-  ],
-  "runtime": {
-    "Stop": [
-      {
-        "api": "check_prompt_injection_failures",
-        "args": {
-          "log_path": ".rabbit/prompts/.injection-failures.log"
-        }
-      },
-      {
-        "api": "cleanup_old_prompts",
-        "args": {
-          "max_age_days": 7
-        }
-      }
-    ]
-  },
-  "spec_no_change_reason": "spec changes committed in PR #390 / commit 9f98ff0 (Inv 66)"
+  "manifest": [],
+  "runtime": {},
+  "configuration": [],
+  "spec_no_change_reason": "spec v2.0.0 retiring Inv 55/56 and shrinking Inv 57 committed at dc41847 (issue #391); this cycle implements that retirement"
 }
