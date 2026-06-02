@@ -71,6 +71,7 @@ SUITES = [
     "test-install-update-no-reexec-with-explicit-src.py",
     "test-install-update-reexec-loop-guard.py",
     "test-changelog-shape.py",
+    "test-bypass-permissions-alert-text-inlines-revoke.py",
 ]
 
 
