@@ -285,7 +285,7 @@ with tempfile.TemporaryDirectory() as repo_root:
     make_feature(
         repo_root,
         "specd-feature",
-        spec_body="The script supports the unique-marker-phrase as documented.\n",
+        spec_body="The script supports unique-marker-phrase support as documented.\n",
     )
     issue_payload = json.dumps({
         "number": 106,
