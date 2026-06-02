@@ -212,13 +212,47 @@ Phase E merges complete.
    - Idempotency — `on`-from-`on` and `off`-from-`off` are clean no-ops
      (no errors, exit 0, state unchanged).
 
+2. **`fetch-queue.py` deterministic queue emission.** The CLI
+   `python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py`
+   emits a deterministic JSON array on stdout, sorted by priority
+   (`critical` > `high` > `medium` > `low`; issues missing a priority
+   label sort to the END) then `createdAt` ascending (oldest first
+   within the same priority bucket). Only issues carrying the
+   `rabbit-managed` label appear (this is what gates rabbit's
+   automation from human-filed issues).
+
+   The script invokes `gh issue list --repo <repo> --state open
+   --label rabbit-managed --json number,title,labels,body,createdAt
+   --limit 500`, where `<repo>` is resolved via
+   `rabbit_issue._gh.resolve_repo` (importable from
+   `.claude/features/rabbit-issue/scripts/`) — no `git remote get-url`
+   shellouts. The script never reads or writes anything other than
+   the `gh` CLI output stream — no git, no filesystem mutations.
+
+   Exit code: 0 on success; non-zero on gh-auth failure or any
+   unexpected `gh` error (stderr passthrough).
+
+   Enforced by `test/test-fetch-queue.py`:
+   - Smoke test: invoke with `--help`; assert exit 0 and recognizable
+     usage text.
+   - Sort-order test: under `tempfile.TemporaryDirectory()` create a
+     `gh` shim on `$PATH` that emits a fixture JSON list of issues
+     mixing all four priorities plus a no-priority issue, with
+     non-monotonic `createdAt` values inside each priority bucket.
+     Invoke the script and assert: priority order
+     (critical → high → medium → low → no-priority) and ascending
+     `createdAt` inside each bucket.
+   - Network-dependent listing against real GitHub is covered by the
+     Phase F end-to-end smoke test, not by this unit test.
+
 ## Known gaps
 
-- No scripts exist on disk yet — `scripts/` is empty. All ten Phase C
-  scripts (`set-evolve-mode.py`, `fetch-queue.py`, `triage-issue.py`,
-  `plan-batch.py`, `safety-check.py`, `merge-prs.py`, `release-bump.py`,
-  `cleanup-branches.py`, `classify-merge-restart.py`, `update-state.py`)
-  remain to be authored via individual feature-touch cycles.
+- Phase C scripts still to land: `triage-issue.py`, `plan-batch.py`,
+  `safety-check.py`, `merge-prs.py`, `release-bump.py`,
+  `cleanup-branches.py`, `classify-merge-restart.py`, `update-state.py`.
+  (`set-evolve-mode.py` landed in PR #335; `fetch-queue.py` lands in
+  this cycle.) Each remaining script lands via its own
+  feature-touch cycle.
 - `feature.json` carries placeholder values: `summary: "rabbit-auto-evolve
   feature"` and `deprecation_criterion: "TBD — set after first review"`.
   Both must be filled before the feature passes the shape-compliance test

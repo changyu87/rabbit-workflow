@@ -25,5 +25,6 @@ def run_test(script):
 
 
 run_test("test-set-evolve-mode.py")
+run_test("test-fetch-queue.py")
 
 print("ALL TESTS PASSED")

@@ -13,5 +13,5 @@
   },
   "deprecation_criterion": "TBD \u2014 set after first review",
   "updated": "2026-06-02",
-  "spec_no_change_reason": "spec.md already updated by dispatcher in commit 949b2da (Inv 1 added before this subagent dispatch)"
+  "spec_no_change_reason": "spec already updated by dispatcher (Inv 2 added before this subagent dispatch)"
 }
