@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.4.0
+version: 0.5.0
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -685,10 +685,18 @@ Phase E merges complete.
      back; assert content equals new (no partial write, no merge).
    - `--help` smoke: exit 0 with recognizable usage text.
 
-10. **`rabbit-auto-evolve` SKILL documents 4 subcommands and 12-phase
-    tick.** `skills/rabbit-auto-evolve/SKILL.md` declares
-    `model: opus` in frontmatter and documents four subcommands:
+10. **`rabbit-auto-evolve` SKILL documents 6 subcommands and the
+    12-phase tick.** `skills/rabbit-auto-evolve/SKILL.md` declares
+    `model: opus` in frontmatter and documents six subcommands. The
+    activation surface (`on`/`off`) lives on this SKILL — NOT on
+    `/rabbit-config` (see Inv 11).
 
+    - `on` — invokes `scripts/set-evolve-mode.py on` (which performs
+      the three mutations per Inv 1). On success, prints a
+      user-facing line instructing the user to restart Claude (so
+      `permissions.defaultMode: bypassPermissions` from
+      `settings.local.json` is picked up) and then run
+      `/rabbit-auto-evolve start`.
     - `start` — verifies the three preconditions
       (`.rabbit-auto-evolve-active` present, `human-approval` off,
       `bypass-permissions` on). On all-pass, writes
@@ -706,6 +714,10 @@ Phase E merges complete.
       `release-bump.py`, `cleanup-branches.py`,
       `classify-merge-restart.py`, `update-state.py`) and the
       disk-state path (`.rabbit/auto-evolve-state.json`).
+    - `off` — invokes `scripts/set-evolve-mode.py off` to reverse
+      the three mutations cleanly (delete
+      `.rabbit-auto-evolve-active`, delete `permissions.defaultMode`,
+      delete `.rabbit-human-approval-bypass`).
 
     The SKILL.md also describes the in-loop discovery handling per
     design §6: when a TDD subagent's HANDOFF carries
@@ -714,37 +726,28 @@ Phase E merges complete.
     issue and leave it open.
 
     Enforced by `test/test-tick-skill.py`,
-    `test/test-start-stop-skill.py`, and
+    `test/test-start-stop-skill.py`,
+    `test/test-on-off-surface.py`, and
     `test/test-discovered-issues.py`.
 
-11. **`feature.json` configuration entry uses `set-evolve-mode.py`
-    compound mutator with `restart_required: true`.** The
-    `configuration` array carries one entry:
+11. **No `auto-evolve` configurable in `feature.json` — activation
+    surface is `/rabbit-auto-evolve on|off`.** `feature.json` does
+    NOT declare an `auto-evolve` entry under `configuration`. Were
+    such an entry present, `/rabbit-config auto-evolve on|off` would
+    dispatch it — but the auto-evolve mode is a self-driving loop,
+    not a configurable, and surfacing it through `/rabbit-config`
+    muddles the model.
 
-    ```json
-    {
-      "id": "auto-evolve",
-      "subcommand": "auto-evolve",
-      "values": {
-        "on":  {"api": "run_feature_script", "args": {"script": "scripts/set-evolve-mode.py", "argv": ["on"]}},
-        "off": {"api": "run_feature_script", "args": {"script": "scripts/set-evolve-mode.py", "argv": ["off"]}}
-      },
-      "default": "off",
-      "alert-on": "on",
-      "alert-message": {
-        "text": "AUTONOMOUS-EVOLVE MODE ACTIVE — composite (human-approval + bypass-permissions + auto-evolve marker)",
-        "icon": "🤖",
-        "color": "red"
-      },
-      "restart_required": true
-    }
-    ```
+    The activation surface lives on the rabbit-auto-evolve SKILL
+    itself: `on` and `off` subcommands (Inv 10) which invoke
+    `scripts/set-evolve-mode.py {on|off}` (Inv 1). The
+    `restart_required` contract still holds — the `on` subcommand
+    surfaces the restart instruction inline in its printed output
+    (rather than via a configurable's `restart_required: true`
+    field, which would require the rabbit-config dispatch path).
 
-    Both `on` and `off` dispatch through `set-evolve-mode.py` (Inv 1)
-    which handles ordering and rollback. `restart_required: true`
-    forces Claude restart between `on` and the first `/start` so
-    Claude Code picks up the new `settings.local.json`
-    `permissions.defaultMode`.
+    The `configuration` array in `feature.json` MUST be empty (or
+    absent) — enforced by `test/test-prompts-declared.py`.
 
 12. **`feature.json` declares the `prompts` and `runtime` entries
     binding rabbit-auto-evolve to the rabbit dispatcher.** The
@@ -850,11 +853,12 @@ Phase E merges complete.
 
 ## Known gaps
 
-- Phases C and D complete. Phase E Task 14 (feature-shape
-  compliance + CHANGELOG + version alignment) lands in this cycle.
-  Phase E Task 15 (final audit + install.py deploy verification)
-  and Phase F (manual smoke test) follow.
-- No `CHANGELOG.md` exists yet (added in Phase E Task 14).
+- All implementation phases complete (Phases A–E). The activation
+  surface lives on `/rabbit-auto-evolve on|off` (Inv 11); the
+  rabbit-config dispatch entry was removed in 0.5.0. Phase F manual
+  smoke test (initiate `on`, restart Claude, observe banner, `start`,
+  observe tick, `stop`, `off`) remains pending — it requires user-
+  driven Claude restart and observation, not a TDD cycle.
 - All three prerequisite changes have **landed on `dev`** as of the
   commits noted in the prompt context (#327/#330, #328/#331, #329/#332);
   they are not gaps. The plan's Phase A verification step can be treated

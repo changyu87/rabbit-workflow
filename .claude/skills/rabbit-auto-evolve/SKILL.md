@@ -1,10 +1,10 @@
 ---
 name: rabbit-auto-evolve
-version: 0.4.0
+version: 0.5.0
 owner: cyxu
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 model: opus
-description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Requires `/rabbit-config auto-evolve on` first (sets `human-approval=false`, `bypass-permissions=true`, writes `.rabbit-auto-evolve-active`) and a Claude restart so `permissions.defaultMode: bypassPermissions` is picked up.
+description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Run `/rabbit-auto-evolve on` first, then restart Claude (so `permissions.defaultMode: bypassPermissions` from `settings.local.json` is picked up), then `/rabbit-auto-evolve start`.
 ---
 
 # rabbit-auto-evolve
@@ -14,12 +14,27 @@ issues, triages each, dispatches TDD subagents, merges approved PRs into
 `dev`, tags releases, and re-schedules itself via `ScheduleWakeup` until
 the user issues an explicit stop.
 
-The mode is entered via `/rabbit-config auto-evolve on` (compound mutator
-`scripts/set-evolve-mode.py on`); exited via `/rabbit-config auto-evolve
-off`. Both transitions require a Claude restart so the new
+The mode is entered via `/rabbit-auto-evolve on` (compound mutator
+`scripts/set-evolve-mode.py on`); exited via `/rabbit-auto-evolve off`.
+Both transitions require a Claude restart so the new
 `permissions.defaultMode` in `.claude/settings.local.json` takes effect.
 
 ## Subcommands
+
+### `on`
+
+Activate auto-evolve mode. Invokes `scripts/set-evolve-mode.py on`, which
+performs three deterministic mutations in order:
+
+1. Write `.rabbit-human-approval-bypass` (flips `human-approval` off).
+2. Set `permissions.defaultMode: "bypassPermissions"` in
+   `.claude/settings.local.json` (flips `bypass-permissions` on).
+3. Write `.rabbit-auto-evolve-active` (signals mode is on).
+
+On success, prints a user-facing line instructing the user to **restart
+Claude** (so `permissions.defaultMode: bypassPermissions` from
+`settings.local.json` is picked up) and then run `/rabbit-auto-evolve
+start`.
 
 ### `start`
 
@@ -81,7 +96,20 @@ from disk-persisted state in `.rabbit/auto-evolve-state.json`.
 |11 | `schedule`        | `ScheduleWakeup` (unless stop-check matched) |
 
 `set-evolve-mode.py` is NOT invoked by `tick` — it runs only when the user
-flips the mode via `/rabbit-config auto-evolve on|off`.
+flips the mode via `/rabbit-auto-evolve on|off`.
+
+### `off`
+
+Deactivate auto-evolve mode. Invokes `scripts/set-evolve-mode.py off`,
+which reverses the three `on` mutations in inverse order:
+
+1. Delete `.rabbit-auto-evolve-active`.
+2. Delete the `permissions.defaultMode` key from
+   `.claude/settings.local.json`.
+3. Delete `.rabbit-human-approval-bypass`.
+
+A Claude restart is required so the cleared `permissions.defaultMode`
+takes effect.
 
 Disk-persisted state lives at `.rabbit/auto-evolve-state.json`, schema
 `scripts/schemas/auto-evolve-state.schema.json` (v1.0.0).

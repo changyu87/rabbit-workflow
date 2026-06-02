@@ -1,7 +1,7 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "owner": "cyxu",
   "tdd_state": "test-green",
   "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and reschedules via ScheduleWakeup until the user issues an explicit stop.",
@@ -37,40 +37,7 @@
       }
     ]
   },
-  "configuration": [
-    {
-      "id": "auto-evolve",
-      "subcommand": "auto-evolve",
-      "values": {
-        "on": {
-          "api": "run_feature_script",
-          "args": {
-            "script": "scripts/set-evolve-mode.py",
-            "argv": [
-              "on"
-            ]
-          }
-        },
-        "off": {
-          "api": "run_feature_script",
-          "args": {
-            "script": "scripts/set-evolve-mode.py",
-            "argv": [
-              "off"
-            ]
-          }
-        }
-      },
-      "default": "off",
-      "alert-on": "on",
-      "alert-message": {
-        "text": "AUTONOMOUS-EVOLVE MODE ACTIVE \u2014 composite (human-approval + bypass-permissions + auto-evolve marker)",
-        "icon": "\ud83e\udd16",
-        "color": "red"
-      },
-      "restart_required": true
-    }
-  ],
+  "configuration": [],
   "prompts": [
     {
       "id": "rabbit-auto-evolve",
@@ -85,5 +52,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "spec.md Inv 15 already committed by dispatcher pre-dispatch"
+  "spec_no_change_reason": "spec.md Inv 10/11 already updated by dispatcher pre-dispatch (version 0.5.0)"
 }

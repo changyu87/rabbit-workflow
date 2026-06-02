@@ -50,6 +50,14 @@ def main():
               file=sys.stderr)
         sys.exit(1)
 
+    # Inv 10: SKILL.md documents `on` and `off` subcommands (the activation
+    # surface, replacing /rabbit-config auto-evolve per Inv 11).
+    for heading in ("### `on`", "### `off`"):
+        if heading not in text and heading.replace("`", "") not in text:
+            print(f"FAIL: SKILL.md missing subcommand heading: {heading}",
+                  file=sys.stderr)
+            sys.exit(1)
+
     print("PASS: test-start-stop-skill.py")
 
 
