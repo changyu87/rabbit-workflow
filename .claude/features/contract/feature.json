@@ -1,8 +1,8 @@
 {
   "name": "contract",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "surface": {
     "hooks": [],
@@ -15,5 +15,5 @@
   "manifest": [],
   "runtime": {},
   "configuration": [],
-  "spec_no_change_reason": "spec v2.0.0 retiring Inv 55/56 and shrinking Inv 57 committed at dc41847 (issue #391); this cycle implements that retirement"
+  "spec_no_change_reason": "spec v2.1.0 with Inv 67 committed at 6374094 (issue #403); this cycle implements that invariant"
 }

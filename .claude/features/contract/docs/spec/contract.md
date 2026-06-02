@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.0.0
+version: 2.1.0
 template_version: 2.0.0
 ---
 
@@ -59,7 +59,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "hooks": [],
     "skills": [],
     "functions": [
-      "contract.lib.checks.validate_agent_prompt_sentinel"
+      "contract.lib.checks.validate_agent_prompt_sentinel",
+      "contract.lib.runtime.emit_stop_timestamp"
     ]
   },
   "reads": {
