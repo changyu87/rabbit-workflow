@@ -17,6 +17,13 @@ Per rabbit-auto-evolve spec.md Inv 7, this script:
                                                → major / contract-schema-touch
        - priority:high or priority:critical    → minor / priority-high-critical
        - priority:low or priority:medium       → patch / priority-low-medium
+     Priority source (Inv 48): an explicit priority:<level> label ON the
+     PR wins. When the PR has none, resolve the closing issue from the PR
+     body (`Fixes|Closes|Resolves #N`, case-insensitive) and read THAT
+     issue's priority:<level> label via `gh issue view <N> --json labels`
+     — the dispatch flow opens PRs without copying the source issue's
+     priority label. Major triggers above are evaluated first and are
+     unaffected.
      If no priority label and no major trigger → patch / priority-low-medium
      (safe default; the loop progresses rather than wedging).
   3. Reads the prior tag via `git describe --tags --abbrev=0` and computes
@@ -50,7 +57,7 @@ The sibling `safety-check.py` is resolved via RABBIT_AUTO_EVOLVE_SCRIPT_DIR
 when set; otherwise via this script's own dirname (mirrors merge-prs.py and
 cleanup-branches.py).
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -59,12 +66,21 @@ autonomous-agent mode that supersedes this skill.
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 
 
 CONTRACT_SCHEMAS_PREFIX = ".claude/features/contract/schemas/"
 FEATURE_PREFIX = ".claude/features/"
+
+# Closing-issue reference in a PR body: "Fixes|Closes|Resolves #N"
+# (case-insensitive). First match wins (Inv 48, issue #529).
+_CLOSING_RE = re.compile(r"\b(?:fix(?:e[sd])?|close[sd]?|resolve[sd]?)\b"
+                         r"\s+#(\d+)", re.IGNORECASE)
+
+_PRIORITY_LABELS = ("priority:critical", "priority:high",
+                    "priority:low", "priority:medium")
 
 
 def _script_dir():
@@ -104,6 +120,37 @@ def _distinct_features(paths):
     return feats
 
 
+def _has_priority(labels):
+    """True when `labels` carries any priority:<level> label."""
+    return any(p in labels for p in _PRIORITY_LABELS)
+
+
+def _closing_issue(body):
+    """First Fixes|Closes|Resolves #N issue number in `body`, or None."""
+    m = _CLOSING_RE.search(body or "")
+    return int(m.group(1)) if m else None
+
+
+def _issue_labels(issue):
+    """Label-name set for issue #<issue> via gh, or empty set on failure.
+
+    A missing / unresolvable issue (gh exits non-zero) is NOT an error here:
+    it just means there is no fallback priority, so the bump table keeps its
+    default (Inv 48, issue #529).
+    """
+    proc = subprocess.run(
+        ["gh", "issue", "view", str(issue), "--json", "labels"],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        return set()
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return set()
+    return _label_names(payload)
+
+
 def classify(payload, features_threshold):
     """Apply the bump table; return (bump, trigger)."""
     body = payload.get("body") or ""
@@ -120,6 +167,15 @@ def classify(payload, features_threshold):
 
     if any(p.startswith(CONTRACT_SCHEMAS_PREFIX) for p in paths):
         return ("major", "contract-schema-touch")
+
+    # Priority source (Inv 48, issue #529): an explicit priority label ON the
+    # PR wins. Only when the PR has none do we fall back to the closing
+    # issue's priority (the dispatch flow opens PRs without the source issue's
+    # priority label). Major triggers above are evaluated first and unaffected.
+    if not _has_priority(labels):
+        issue = _closing_issue(body)
+        if issue is not None:
+            labels = labels | _issue_labels(issue)
 
     if "priority:high" in labels or "priority:critical" in labels:
         return ("minor", "priority-high-critical")

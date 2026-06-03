@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.37.0
+version: 0.38.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -890,9 +890,34 @@ Phase E merges complete.
    second path segment (after `.claude/features/`) across the PR's
    changed-file list.
 
+   **Priority source — PR label, with closing-issue fallback (Inv 48,
+   issue #529).** The `priority:<level>` consulted by the bump table is
+   resolved in this precedence:
+
+   1. If the PR itself carries a `priority:<level>` label, that label
+      wins (unchanged). The closing issue is NOT consulted.
+   2. Otherwise, resolve the closing issue from the PR body — the first
+      `Fixes|Closes|Resolves #<N>` reference (case-insensitive) — and
+      read THAT issue's `priority:<level>` label via
+      `gh issue view <N> --json labels`. Use it as if it were on the PR.
+   3. If neither the PR nor a resolvable closing issue carries a
+      priority label (no reference, unresolvable issue, or issue without
+      a priority label), keep the existing default → `patch` /
+      `priority-low-medium`.
+
+   This fallback is necessary because the dispatch flow opens PRs WITHOUT
+   copying the source issue's priority label, so without it every
+   auto-evolve release would patch-bump and minor/major signals would
+   never reach the version stream. Resolution is deterministic
+   (script-tier, no LLM inference) and changes nothing about the
+   major-trigger rows, which are evaluated first and unaffected.
+
    Execution order:
    1. `gh pr view <#> --json number,title,labels,body,files` → fetch
-      metadata + changed-file list.
+      metadata + changed-file list. When the PR carries no
+      `priority:<level>` label and no major trigger fires, resolve the
+      closing issue from the body and `gh issue view <N> --json labels`
+      to obtain the fallback priority (Inv 48).
    2. Apply bump table → determine the bump kind.
    3. `git describe --tags --abbrev=0` → `prior_tag`. When the repository
       has zero tags (the first-release case) `git describe` exits
@@ -937,6 +962,14 @@ Phase E merges complete.
      `git tag` invocation occurred (via shim call log).
    - `--features-threshold 5` override: 4 distinct features touched
      (no other major trigger) → bumps minor, not major.
+   - Closing-issue priority fallback (Inv 48, issue #529): a PR with NO
+     priority label whose body says `Closes #N` where issue N is
+     `priority:high` → minor / `priority-high-critical`; the
+     reference match is case-insensitive and accepts
+     `Fixes|Closes|Resolves`. An explicit PR priority label takes
+     precedence over the closing issue (PR `priority:low` + issue
+     `priority:high` → patch, and `gh issue view` is NOT called).
+     Both unlabeled, or no resolvable closing issue → patch (default).
    - First release (zero prior tags, issue #400): the `git` shim makes
      `git describe --tags --abbrev=0` exit non-zero (tag-free repo). The
      script must NOT crash; it emits `prior_tag: null`, `next_tag:
@@ -3026,6 +3059,34 @@ Phase E merges complete.
     re-sync aborts non-zero before the post-merge drain) and by
     `test/test-spec-post-merge-resync-invariant.py` (asserts this invariant
     text is present in the spec).
+
+48. **`release-bump.py` reads the closing issue's priority when the PR has
+    none (issue #529).** The dispatch flow opens PRs WITHOUT copying the
+    source issue's `priority:<level>` label, so `release-bump.py` (Inv 7)
+    saw no priority on the PR and always patch-bumped — minor/major signals
+    never reached the version stream. `release-bump.py` therefore resolves
+    the priority used by the bump table in strict precedence:
+
+    1. An explicit `priority:<level>` label ON the PR wins (unchanged); the
+       closing issue is never consulted in this case.
+    2. When the PR carries no priority label, resolve the closing issue from
+       the PR body — the first `Fixes|Closes|Resolves #<N>` reference
+       (case-insensitive) — and read that issue's `priority:<level>` label
+       via `gh issue view <N> --json labels`. The issue's priority drives
+       the bump as if it were on the PR.
+    3. When neither the PR nor a resolvable closing issue has a priority
+       label (no reference, unresolvable / missing issue, or an issue with
+       no priority label), keep the existing default → `patch` /
+       `priority-low-medium`.
+
+    The lookup is bounded to a single `gh issue view <N> --json labels` and
+    is skipped entirely when the PR already carries a priority label or a
+    major trigger fires (the major rows are evaluated first and are
+    unaffected). Resolution is deterministic (script-tier, no LLM
+    inference). Enforced by `test/test-release-bump.py` (PR no-label +
+    `Closes #N`(high) → minor; case-insensitive `resolves #N`; PR label
+    beats closing issue with no `gh issue view` call; both unlabeled →
+    patch; no closing reference → patch).
 
 ## Known gaps
 

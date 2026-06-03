@@ -10,10 +10,16 @@ Covers the spec'd surface of `scripts/release-bump.py`:
     AND `git tag` is NEVER invoked (verifiable via shim call log)
   - --features-threshold 5 override: 4 distinct features touched bumps
     minor, not major
+  - closing-issue priority fallback (issue #529): when the PR carries NO
+    priority:<level> label, the closing issue named in the PR body
+    (Fixes|Closes|Resolves #N, case-insensitive) is consulted and its
+    priority label drives the bump. An explicit priority label ON the PR
+    still wins (precedence). No closing issue / no issue priority → patch.
 
 Fixtures use a tempdir on PATH carrying:
   - a `gh` shim that responds to `gh pr view --json` with a per-test
-    JSON payload, and to `gh release create` by recording the call
+    JSON payload, to `gh issue view <N> --json labels` with a per-issue
+    labels payload, and to `gh release create` by recording the call
   - a `git` shim that records `git describe`, `git tag`, `git push` calls
     (and serves `git describe --tags --abbrev=0` with a configurable
     prior tag); other git subcommands delegate to the real git binary
@@ -47,14 +53,19 @@ def ok(msg):
     print(f"PASS: {msg}")
 
 
-def _write_gh_shim(shim_dir, call_log, pr_view_payload):
+def _write_gh_shim(shim_dir, call_log, pr_view_payload, issue_labels=None):
     """gh shim:
        - `gh pr view <#> --json ...` echoes the JSON payload provided
+       - `gh issue view <N> --json labels` echoes `{"labels": [...]}` for
+         issue N when N is in `issue_labels` (maps issue number -> list of
+         label-name strings); unknown issue numbers exit non-zero like a
+         missing issue (issue #529 closing-issue priority fallback)
        - `gh release create ...` records the call and exits 0
        - All calls recorded to call_log (prefixed with 'gh ')
     """
     shim = os.path.join(shim_dir, "gh")
     payload_str = json.dumps(pr_view_payload)
+    issue_labels = issue_labels or {}
     with open(shim, "w") as f:
         f.write("#!/bin/sh\n")
         f.write(f'CALL_LOG="{call_log}"\n')
@@ -65,6 +76,20 @@ def _write_gh_shim(shim_dir, call_log, pr_view_payload):
         # gh pr view --json fields ... — emit the payload.
         f.write(f"  cat <<'PAYLOAD_EOF'\n{payload_str}\nPAYLOAD_EOF\n")
         f.write('  exit 0\n')
+        f.write('fi\n')
+        f.write('if [ "$SUB" = "issue" ] && [ "$ACTION" = "view" ]; then\n')
+        # gh issue view <N> --json labels — $1 is the issue number.
+        f.write('  ISSUE="$1"\n')
+        f.write('  case "$ISSUE" in\n')
+        for num, labels in issue_labels.items():
+            ip = json.dumps({"labels": [{"name": n} for n in labels]})
+            f.write(f"    {num})\n")
+            f.write(f"      cat <<'ISSUE_EOF'\n{ip}\nISSUE_EOF\n")
+            f.write('      exit 0 ;;\n')
+        f.write('    *)\n')
+        f.write('      echo "no issue found" >&2\n')
+        f.write('      exit 1 ;;\n')
+        f.write('  esac\n')
         f.write('fi\n')
         f.write('if [ "$SUB" = "release" ] && [ "$ACTION" = "create" ]; then\n')
         f.write('  exit 0\n')
@@ -130,7 +155,8 @@ def _write_safety_shim(shim_dir, exit_code=0, stderr_msg=""):
 def _make_env(tmpdir, pr_view_payload,
               prior_tag="v0.5.2",
               tag_exit=0, push_exit=0,
-              safety_exit=0, describe_exit=0):
+              safety_exit=0, describe_exit=0,
+              issue_labels=None):
     bin_dir = os.path.join(tmpdir, "bin")
     os.makedirs(bin_dir)
     script_dir = os.path.join(tmpdir, "scripts")
@@ -138,7 +164,8 @@ def _make_env(tmpdir, pr_view_payload,
     call_log = os.path.join(tmpdir, "calls.log")
     open(call_log, "w").close()
 
-    _write_gh_shim(bin_dir, call_log, pr_view_payload)
+    _write_gh_shim(bin_dir, call_log, pr_view_payload,
+                   issue_labels=issue_labels)
     _write_git_shim(bin_dir, call_log, prior_tag=prior_tag,
                     tag_exit=tag_exit, push_exit=push_exit,
                     describe_exit=describe_exit)
@@ -506,6 +533,181 @@ for label, would_be in (
                  f"calls={calls!r}")
         else:
             ok(f"first-release[{label}]: git tag invoked for first release")
+
+
+# ---------------------------------------------------------------------------
+# Closing-issue priority fallback (issue #529): PR carries NO priority label
+# but its body says "Closes #777" where issue 777 is priority:high →
+# minor / priority-high-critical (the NEW behaviour). The bump must come
+# from the closing issue, not the patch default.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    payload = _make_payload(
+        labels=[],  # PR has NO priority label
+        body="Implements the thing.\n\nCloses #777\n",
+        files=[".claude/features/foo/scripts/a.py"],
+    )
+    cwd, env, call_log = _make_env(
+        td, payload, prior_tag="v0.5.2",
+        issue_labels={777: ["priority:high"]},
+    )
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"close-issue-high: exit {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    try:
+        result = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"close-issue-high: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        result = None
+    if result is not None:
+        if result.get("bump") != "minor":
+            fail(f"close-issue-high: bump {result.get('bump')!r} != 'minor' "
+                 f"(should fall back to closing issue #777 priority:high)")
+        elif result.get("trigger") != "priority-high-critical":
+            fail(f"close-issue-high: trigger {result.get('trigger')!r} "
+                 f"!= 'priority-high-critical'")
+        elif result.get("next_tag") != "v0.6.0":
+            fail(f"close-issue-high: next_tag {result.get('next_tag')!r} "
+                 f"!= 'v0.6.0'")
+        else:
+            ok("close-issue-high: PR no-label + Closes #777(high) → minor")
+
+
+# ---------------------------------------------------------------------------
+# Closing-issue ref is case-insensitive and supports Fixes/Resolves:
+# body "resolves #88" where issue 88 is priority:critical → minor.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    payload = _make_payload(
+        labels=[],
+        body="Fix.\n\nresolves #88\n",
+        files=[".claude/features/foo/scripts/a.py"],
+    )
+    cwd, env, call_log = _make_env(
+        td, payload, prior_tag="v0.5.2",
+        issue_labels={88: ["priority:critical"]},
+    )
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"close-issue-ci: exit {proc.returncode}; stderr={proc.stderr!r}")
+    try:
+        result = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"close-issue-ci: stdout not JSON: {e}")
+        result = None
+    if result is not None:
+        if result.get("bump") != "minor":
+            fail(f"close-issue-ci: bump {result.get('bump')!r} != 'minor' "
+                 f"(case-insensitive 'resolves #88' should resolve)")
+        elif result.get("trigger") != "priority-high-critical":
+            fail(f"close-issue-ci: trigger {result.get('trigger')!r} "
+                 f"!= 'priority-high-critical'")
+        else:
+            ok("close-issue-ci: 'resolves #88'(critical) → minor (case-insens)")
+
+
+# ---------------------------------------------------------------------------
+# PR priority label PRECEDES the closing issue's: PR is priority:low while
+# the closing issue #777 is priority:high. The PR label wins → patch.
+# (Unchanged precedence: an explicit PR label is authoritative.)
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    payload = _make_payload(
+        labels=["priority:low"],  # explicit PR label present
+        body="Closes #777\n",
+        files=[".claude/features/foo/scripts/a.py"],
+    )
+    cwd, env, call_log = _make_env(
+        td, payload, prior_tag="v0.5.2",
+        issue_labels={777: ["priority:high"]},
+    )
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"pr-wins: exit {proc.returncode}; stderr={proc.stderr!r}")
+    try:
+        result = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"pr-wins: stdout not JSON: {e}")
+        result = None
+    if result is not None:
+        if result.get("bump") != "patch":
+            fail(f"pr-wins: bump {result.get('bump')!r} != 'patch' "
+                 f"(explicit PR priority:low must win over issue priority:high)")
+        elif result.get("trigger") != "priority-low-medium":
+            fail(f"pr-wins: trigger {result.get('trigger')!r} "
+                 f"!= 'priority-low-medium'")
+        else:
+            ok("pr-wins: PR priority:low beats closing-issue priority:high")
+    # Precedence also means the issue lookup is short-circuited: no
+    # `gh issue view` call should have been made.
+    calls = _calls(call_log)
+    if any(c.startswith("gh issue view") for c in calls):
+        fail(f"pr-wins: gh issue view was called despite explicit PR label; "
+             f"calls={calls!r}")
+    else:
+        ok("pr-wins: closing-issue lookup short-circuited (no gh issue view)")
+
+
+# ---------------------------------------------------------------------------
+# Neither PR nor closing issue has a priority label → patch (default,
+# unchanged). PR has no label; body "Closes #5"; issue 5 has no priority.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    payload = _make_payload(
+        labels=[],
+        body="Closes #5\n",
+        files=[".claude/features/foo/scripts/a.py"],
+    )
+    cwd, env, call_log = _make_env(
+        td, payload, prior_tag="v0.5.2",
+        issue_labels={5: ["type:bug"]},  # no priority:* label
+    )
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"both-unlabeled: exit {proc.returncode}; stderr={proc.stderr!r}")
+    try:
+        result = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"both-unlabeled: stdout not JSON: {e}")
+        result = None
+    if result is not None:
+        if result.get("bump") != "patch":
+            fail(f"both-unlabeled: bump {result.get('bump')!r} != 'patch'")
+        elif result.get("trigger") != "priority-low-medium":
+            fail(f"both-unlabeled: trigger {result.get('trigger')!r} "
+                 f"!= 'priority-low-medium'")
+        else:
+            ok("both-unlabeled: PR + closing issue both unlabeled → patch")
+
+
+# ---------------------------------------------------------------------------
+# No closing-issue reference at all + no PR priority label → patch (default).
+# The script must NOT crash when the body names no issue.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    payload = _make_payload(
+        labels=[],
+        body="A change with no issue reference.",
+        files=[".claude/features/foo/scripts/a.py"],
+    )
+    cwd, env, call_log = _make_env(td, payload, prior_tag="v0.5.2")
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"no-ref: exit {proc.returncode}; stderr={proc.stderr!r}")
+    try:
+        result = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"no-ref: stdout not JSON: {e}")
+        result = None
+    if result is not None:
+        if result.get("bump") != "patch":
+            fail(f"no-ref: bump {result.get('bump')!r} != 'patch'")
+        elif result.get("trigger") != "priority-low-medium":
+            fail(f"no-ref: trigger {result.get('trigger')!r} "
+                 f"!= 'priority-low-medium'")
+        else:
+            ok("no-ref: no closing issue, no PR label → patch")
 
 
 sys.exit(FAIL)
