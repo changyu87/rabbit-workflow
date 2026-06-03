@@ -25,14 +25,14 @@ Asserts:
     - names the flat docs/spec.md target (not the legacy docs/spec/spec.md
       as its sole target)
 
-Also asserts rabbit-spec ITSELF stays on specs/ during Phase 2a (no files
-move yet; the repo is all on specs/ so the fallback hits and tests stay
-green):
-  - rabbit-spec/specs/spec.md and specs/contract.md exist
+Also asserts rabbit-spec ITSELF has migrated onto the flat docs/ layout
+during Phase 2b (its own doc artifacts moved specs/ -> docs/):
+  - rabbit-spec/docs/spec.md and docs/contract.md exist
+  - no legacy rabbit-spec/specs/ directory remains
 
 Run non-interactively. Exits non-zero on failure.
 
-Version: 2.0.0
+Version: 2.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when every rabbit feature has migrated onto the flat
 docs/ layout and the specs/ + docs/spec/ fallbacks are dropped (issue #399).
@@ -128,13 +128,17 @@ def test_creator_agent_targets_flat_docs() -> None:
     )
 
 
-def test_rabbit_spec_self_on_specs() -> None:
-    assert (FEATURE_DIR / "specs" / "spec.md").exists(), (
-        "rabbit-spec must carry specs/spec.md during Phase 2a (no files "
-        "move yet)"
+def test_rabbit_spec_self_on_docs() -> None:
+    assert (FEATURE_DIR / "docs" / "spec.md").exists(), (
+        "rabbit-spec must carry docs/spec.md after the Phase 2b flat-docs "
+        "move"
     )
-    assert (FEATURE_DIR / "specs" / "contract.md").exists(), (
-        "rabbit-spec must carry specs/contract.md during Phase 2a"
+    assert (FEATURE_DIR / "docs" / "contract.md").exists(), (
+        "rabbit-spec must carry docs/contract.md after the Phase 2b move"
+    )
+    assert not (FEATURE_DIR / "specs").is_dir(), (
+        "rabbit-spec must not retain a legacy specs/ directory after the "
+        "Phase 2b flat-docs move"
     )
 
 

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.7.0
+version: 1.8.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -35,7 +35,7 @@ agent, and writes the returned body to disk.
 - `scripts/dispatch-spec-create.py` — Python prompt assembler invoked by
   the skill; resolves globs, caps at 50 files, calls
   `contract/scripts/build-prompt.py`
-- `specs/spec.md`, `specs/contract.md`, `feature.json`,
+- `docs/spec.md`, `docs/contract.md`, `feature.json`,
   `test/run.py` — feature scaffolding
 
 ## Mode awareness
@@ -169,10 +169,12 @@ length including zero.
    The deprecation criterion for this dual-read behavior: when every rabbit
    feature has migrated onto the flat `docs/` layout and the `specs/` +
    `docs/spec/` fallbacks can be dropped (tracked by issue #399). rabbit-spec's
-   own spec.md/contract.md stay under `specs/` during Phase 2a (no files move
-   yet). Enforced by `test/test-spec-path-layout-dual-read.py`
-   (source-inspection of both SKILL.md bodies and the agent body). Wired into
-   `test/run.py`.
+   own spec.md/contract.md/CHANGELOG.md live under the flat `docs/` layout
+   (`docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`); no `specs/`
+   directory remains. Enforced by `test/test-spec-path-layout-dual-read.py`
+   (source-inspection of both SKILL.md bodies and the agent body; also asserts
+   rabbit-spec's own flat-`docs/` layout) and the on-disk
+   `test/test-docs-layout.py`. Both wired into `test/run.py`.
 
 ## Tech Stack
 
@@ -189,8 +191,13 @@ coverage arrives with the surface artifacts in this stage:
 - `test-prompts-section-shape.py` — loads feature.json and asserts the
   `prompts` entry shape matches Inv 1
 - `test-spec-path-layout-dual-read.py` — source-inspects both SKILL.md
-  bodies and asserts the `specs/`-preferred, `docs/spec/`-fallback layout
-  resolution required by Inv 6
+  bodies and asserts the flat-`docs/`-preferred, `specs/` + `docs/spec/`
+  fallback layout resolution required by Inv 6; also asserts rabbit-spec's
+  own doc artifacts live under the flat `docs/` layout
+- `test-docs-layout.py` — on-disk E2E assertion of rabbit-spec's flat
+  `docs/` layout (`docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`
+  present; no `specs/` or root `CHANGELOG.md`; resolver + `validate_feature`
+  resolve cleanly)
 
 ## Out of Scope
 
