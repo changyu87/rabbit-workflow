@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scope-guard.py v2.4.0 — PreToolUse hook enforcing repo-wide default-deny.
+"""scope-guard.py v2.5.0 — PreToolUse hook enforcing repo-wide default-deny.
 
 Standalone mode (legacy): any write inside the repo root is denied unless:
   (a) the target basename is on the filename allowlist, or
@@ -56,46 +56,62 @@ _SPEC_MD_PATTERN = None
 _PLUGIN_SPEC_MD_PATTERN = None
 
 
-# issue #399 Phase 2: dual-read the spec.md layout across the
-# docs/spec/ -> specs/ migration. Both `specs/spec.md` (new) and
-# `docs/spec/spec.md` (legacy) match the carve-out during the coexistence
-# window so a mid-migration feature still matches regardless of layout.
-# Mirrors contract.lib.checks.resolve_spec_path (Phase 1, #451). Phase 3
-# drops the legacy `docs/spec/` alternative once every feature has migrated.
+# The per-feature documentation home dual-reads three layouts during the
+# coexistence window so a mid-migration feature matches the spec-artifact
+# carve-out regardless of which layout it currently uses. Mirrors
+# contract.lib.checks.resolve_spec_path. Two recognized shapes:
+#   - `<dir>/spec.md` where `<dir>` is `specs` (current) or `docs/spec`
+#     (older nested) — only the basename `spec.md` is carved out here.
+#   - the FLAT `docs/` home: `docs/spec.md`, `docs/contract.md`, and
+#     `docs/CHANGELOG.md` are siblings directly under `docs/`. All three
+#     spec-artifact basenames are carved out here so the per-feature move of
+#     spec + contract + changelog into the flat layout is permitted without
+#     a scope marker.
+# A later phase drops the legacy `docs/spec/` alternative once every feature
+# has migrated to the flat `docs/` home.
 _SPEC_DIR_ALT = r"(?:specs|docs/spec)"
+_FLAT_DOCS_ARTIFACT_ALT = r"docs/(?:spec|contract|CHANGELOG)\.md"
+_SPEC_ARTIFACT_TAIL = (
+    r"(?:" + _SPEC_DIR_ALT + r"/spec\.md|" + _FLAT_DOCS_ARTIFACT_ALT + r")"
+)
 
 
 def _spec_md_pattern():
-    """Cached regex matching <REPO_ROOT>/.claude/features/<feature>/<specs|docs/spec>/spec.md.
+    """Cached regex matching a feature's spec-artifact carve-out paths under
+    <REPO_ROOT>/.claude/features/<feature>/.
 
-    <feature> is a single path segment (matched as `[^/]+`). Inv 5 (Inv 64,
-    extended): writes to the feature spec.md are permitted regardless of
-    scope-marker state so rabbit-feature-touch Step 3 spec-authoring can
-    update specs without an override. Dual-read per issue #399 Phase 2.
+    <feature> is a single path segment (matched as `[^/]+`). Inv 5: writes to
+    the feature's spec artifacts are permitted regardless of scope-marker
+    state so rabbit-feature-touch Step 3 spec-authoring can update them
+    without an override. The carve-out dual-reads the `specs/spec.md` /
+    `docs/spec/spec.md` forms AND the flat `docs/{spec,contract,CHANGELOG}.md`
+    layout during the coexistence window.
     """
     global _SPEC_MD_PATTERN
     if _SPEC_MD_PATTERN is None and REPO_ROOT is not None:
         _SPEC_MD_PATTERN = re.compile(
             r"^" + re.escape(str(REPO_ROOT))
-            + r"/\.claude/features/[^/]+/" + _SPEC_DIR_ALT + r"/spec\.md$"
+            + r"/\.claude/features/[^/]+/" + _SPEC_ARTIFACT_TAIL + r"$"
         )
     return _SPEC_MD_PATTERN
 
 
 def _plugin_spec_md_pattern():
-    """Cached regex matching <REPO_ROOT>/.rabbit/rabbit-project/features/<feature>/<specs|docs/spec>/spec.md.
+    """Cached regex matching a plugin feature's spec-artifact carve-out paths
+    under <REPO_ROOT>/.rabbit/rabbit-project/features/<feature>/.
 
-    <feature> is a single path segment (matched as `[^/]+`). Inv 17 clause (a2):
-    plugin-mode writes to a freshly scaffolded feature's spec.md are permitted
-    regardless of scope-marker state so rabbit-spec-create can write initial
-    spec bodies. Mirrors standalone Inv 5. Dual-read per issue #399 Phase 2.
+    <feature> is a single path segment (matched as `[^/]+`). Inv 17 clause
+    (a2): plugin-mode writes to a freshly scaffolded feature's spec artifacts
+    are permitted regardless of scope-marker state so rabbit-spec-create can
+    write initial spec bodies. Mirrors standalone Inv 5, including the flat
+    `docs/{spec,contract,CHANGELOG}.md` layout dual-read.
     """
     global _PLUGIN_SPEC_MD_PATTERN
     if _PLUGIN_SPEC_MD_PATTERN is None and REPO_ROOT is not None:
         _PLUGIN_SPEC_MD_PATTERN = re.compile(
             r"^" + re.escape(str(REPO_ROOT))
             + r"/\.rabbit/rabbit-project/features/[^/]+/"
-            + _SPEC_DIR_ALT + r"/spec\.md$"
+            + _SPEC_ARTIFACT_TAIL + r"$"
         )
     return _PLUGIN_SPEC_MD_PATTERN
 
@@ -192,13 +208,13 @@ def plugin_decide(abs_path: str) -> Tuple[bool, str]:
             "user-project files instead."
         )
 
-    # (a2) Plugin spec.md path-pattern carve-out (#276). Evaluated BEFORE
+    # (a2) Plugin spec-artifact path-pattern carve-out. Evaluated BEFORE
     # the per-feature marker gate so an initial spec write to a freshly
     # scaffolded feature succeeds with no marker. Narrow basename pin —
     # other writes inside the feature dir still flow through (b)/(c).
     plugin_spec_pat = _plugin_spec_md_pattern()
     if plugin_spec_pat and plugin_spec_pat.match(abs_path):
-        return True, "ALLOW (plugin path-pattern allowlist: feature spec.md)"
+        return True, "ALLOW (plugin path-pattern allowlist: feature spec artifact)"
 
     # (a-carve-out) .rabbit/rabbit-project/features/<name>/** falls through
     # to the per-feature scope-marker gate (issue #269): these paths hold
@@ -380,15 +396,16 @@ def decide(target: str) -> Tuple[bool, str]:
         if abs_path == _full or abs_path.startswith(_full + "/"):
             return True, "ALLOW (path-prefix allowlist: bug/backlog/dispatcher metadata)"
 
-    # 3c. Path-pattern allowlist — feature spec.md (Inv 64 extended, BUG-8).
+    # 3c. Path-pattern allowlist — feature spec artifacts (Inv 5).
     # Permits rabbit-feature-touch Step 3 spec-authoring (which runs in the
-    # main session before any per-feature scope marker is set) to write
-    # `.claude/features/<feature>/specs/spec.md` (or the legacy
-    # `docs/spec/spec.md` during the #399 coexistence window) without an
-    # override. Pattern is narrowly scoped to that exact basename.
+    # main session before any per-feature scope marker is set) to write the
+    # feature's spec artifacts without an override:
+    # `.claude/features/<feature>/specs/spec.md` (or legacy
+    # `docs/spec/spec.md`), and the flat `docs/{spec,contract,CHANGELOG}.md`
+    # layout. Pattern is narrowly scoped to those exact basenames.
     pattern = _spec_md_pattern()
     if pattern and pattern.match(abs_path):
-        return True, "ALLOW (path-pattern allowlist: feature spec.md)"
+        return True, "ALLOW (path-pattern allowlist: feature spec artifact)"
 
     # 4a. Per-feature scope markers
     for per_marker in glob.glob(str(REPO_ROOT) + "/.rabbit-scope-active-*"):
