@@ -6,16 +6,16 @@ Spec-side invariants enforced (per spec-rules.md §3):
   1. spec.md MUST exist with a YAML frontmatter block carrying
      feature / version / owner / deprecation_criterion.
   2. contract.md MUST exist with the same frontmatter shape.
-  3. The canonical layout is `specs/` (issue #399 Phase 2). The legacy
-     `docs/spec/` directory MUST be gone for rabbit-issue.
+  3. The canonical layout is the flat `docs/` directory (issue #399
+     Phase 2b). The legacy `specs/` directory MUST be gone for rabbit-issue.
 
-Spec paths resolve dual-read (specs/ preferred, docs/spec/ fallback) so
+Spec paths resolve dual-read (flat docs/ preferred, specs/ fallback) so
 the presence checks survive the migration window; invariant #3 separately
 pins that rabbit-issue has completed the cutover.
 
 These are static checks; they do not exercise runtime behaviour.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -30,15 +30,15 @@ REQUIRED_FM_KEYS = ("feature:", "version:", "owner:", "deprecation_criterion:")
 
 
 def resolve_spec_path(feature_dir: Path, name: str) -> Path:
-    """Prefer <feature_dir>/specs/<name>; fall back to docs/spec/<name>.
+    """Prefer <feature_dir>/docs/<name>; fall back to specs/<name>.
 
     Mirrors the contract feature's dual-read resolver so the presence
-    checks survive the docs/spec/ -> specs/ migration window.
+    checks survive the specs/ -> flat docs/ migration window.
     """
-    preferred = feature_dir / "specs" / name
+    preferred = feature_dir / "docs" / name
     if preferred.is_file():
         return preferred
-    return feature_dir / "docs" / "spec" / name
+    return feature_dir / "specs" / name
 
 
 SPEC_MD = resolve_spec_path(FEATURE_DIR, "spec.md")
@@ -67,14 +67,14 @@ def check(path: Path) -> list[str]:
 
 
 def check_specs_cutover() -> list[str]:
-    """Invariant #3: specs/ is canonical and docs/spec/ is gone."""
+    """Invariant #3: flat docs/ is canonical and specs/ is gone."""
     fails = []
-    specs_spec = FEATURE_DIR / "specs" / "spec.md"
-    if not specs_spec.is_file():
-        fails.append(f"{specs_spec} does not exist (specs/ is the canonical layout)")
-    legacy = FEATURE_DIR / "docs" / "spec"
+    docs_spec = FEATURE_DIR / "docs" / "spec.md"
+    if not docs_spec.is_file():
+        fails.append(f"{docs_spec} does not exist (flat docs/ is the canonical layout)")
+    legacy = FEATURE_DIR / "specs"
     if legacy.exists():
-        fails.append(f"{legacy} still present; docs/spec/ must be removed after migration")
+        fails.append(f"{legacy} still present; specs/ must be removed after migration")
     return fails
 
 
