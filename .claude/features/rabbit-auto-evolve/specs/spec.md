@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.15.0
+version: 0.16.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1771,6 +1771,54 @@ Phase E merges complete.
     `research_items`, absent from `barrier_first`/`groups`; a co-batched work
     item unaffected), and `test/test-spec-research-shape-invariant.py`
     (asserts this invariant text is present in the spec).
+
+28. **Parallel TDD dispatches MUST use isolated git worktrees (issue
+    #430).** Phase 5 (`dispatch`) dispatches each selected work item via the
+    Agent tool (per Inv 26 the shape is `parallel-per-feature`,
+    `multi-subagent-barrier`, or `decomposition`). **Every Agent call for a
+    TDD-subagent dispatch MUST include `isolation: "worktree"`.** This is a
+    DISPATCHER policy, not a subagent policy — the subagent itself is
+    isolation-agnostic; the dispatcher is responsible for requesting an
+    isolated worktree on the Agent call.
+
+    **Why.** Without isolation, every parallel TDD subagent shares the
+    dispatcher's single shared git working directory. The observed failure
+    mode (3 of 4 parallel dispatches in one tick): one subagent's branch
+    checkout reverts another's edits; commits land on the wrong branch; and
+    each subagent's `.rabbit-scope-active-<feature>` marker clobbers the
+    others'. A shared git working directory cannot host concurrent
+    branch/HEAD state, so concurrency without per-dispatch isolation
+    corrupts the batch. `isolation: "worktree"` gives each dispatch its own
+    working tree, branch, HEAD, and scope marker, so parallel dispatches
+    (`parallel-per-feature`) and the serial-on-one-branch shape
+    (`multi-subagent-barrier`) never collide.
+
+    **Worktree base ref.** Worktrees are created branched from `dev` HEAD —
+    NOT from `main`, and NOT as a fresh/detached tree — per the
+    `worktree.baseRef: "head"` setting in `.claude/settings.local.json`
+    (the session's checked-out branch is `dev`, so `head` resolves to the
+    `dev` tip). This keeps each dispatch's base in sync with the latest
+    merged work on `dev`.
+
+    **Known limitation (stale base).** The `worktree.baseRef: "head"`
+    setting in `.claude/settings.local.json` requires a session restart
+    to take effect; until the running session has been restarted after the
+    setting was added, newly created worktrees may branch from a stale base
+    and a subagent may need to re-branch from `origin/dev` manually at the
+    start of its cycle. This is a documented operational limitation of the
+    Claude Code worktree harness, not a defect in this feature; it resolves
+    on the next session restart and cannot be fixed from within this
+    feature's scope.
+
+    This invariant FORMALIZES an already-manual practice: the maintainer
+    has been passing `isolation: "worktree"` on every TDD dispatch by hand;
+    issue #430 elevates it to a binding invariant so it can never be
+    silently dropped.
+
+    Enforced by `test/test-spec-dispatch-worktree-isolation-invariant.py`,
+    which asserts this invariant text is present in the spec AND that both
+    the source and deployed `SKILL.md` document the
+    `isolation: "worktree"` dispatch requirement.
 
 ## Known gaps
 
