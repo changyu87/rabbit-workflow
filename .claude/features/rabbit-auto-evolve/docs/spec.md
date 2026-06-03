@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.38.0
+version: 0.38.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2384,6 +2384,9 @@ Phase E merges complete.
     immediate-refire one-shot alive at a time: before creating a new refire it
     `CronList`s and `CronDelete`s any prior immediate-refire one-shot, and it
     never creates a refire whose cadence duplicates the recurring heartbeat.
+    The deterministic refire-vs-heartbeat identification and the explicit
+    delete/preserve/create instruction set the dispatcher follows are owned by
+    Inv 49.
 
     Enforced by `test/test-spec-cron-invariant.py` (spec text) and
     `test/test-schedule-decision.py` (e2e: a `fetch-queue.py` shim that emits a
@@ -3087,6 +3090,46 @@ Phase E merges complete.
     `Closes #N`(high) → minor; case-insensitive `resolves #N`; PR label
     beats closing issue with no `gh issue view` call; both unlabeled →
     patch; no closing reference → patch).
+
+49. **At-most-one immediate-refire one-shot — refire dedup with a labelled
+    signature (issue #559).** Every tick's phase 11 schedules an
+    immediate-refire one-shot (Inv 33), but nothing cancelled a prior pending
+    refire, so overlapping/retried ticks PILED UP refires that fired together
+    (an observed double-fire at a non-heartbeat minute). The
+    refire-scheduling decision MUST enforce AT MOST ONE immediate-refire
+    one-shot at a time: before a new refire is created, any prior pending
+    refire is cancelled (a `CronDelete`), then EXACTLY ONE new refire is
+    created. The dedup MUST target refire one-shots ONLY and MUST NEVER remove
+    the recurring heartbeat (Inv 32/34).
+
+    **Refires are distinguishable from the heartbeat by a label signature.**
+    The refire one-shot's prompt carries a recognizable refire marker
+    (`/rabbit-auto-evolve tick #refire`); the recurring heartbeat's prompt is
+    the bare `/rabbit-auto-evolve tick` (no marker) and is `recurring`/
+    `durable`. `schedule-decision.py` exposes a PURE, unit-testable predicate
+    `is_refire_oneshot(entry)` that returns True iff a `CronList` entry's
+    prompt carries the refire marker AND the entry is non-recurring and
+    non-durable — so the heartbeat (marker-absent, recurring, durable) is
+    NEVER selected for removal.
+
+    **The decision JSON carries the explicit dispatcher instruction set.** The
+    actual `CronList`/`CronDelete`/`CronCreate` calls are DISPATCHER (Claude)
+    actions — a script cannot call them. So on the `immediate-refire` decision
+    `schedule-decision.py` emits a `dispatcher_actions` block naming, from the
+    injected `CronList` snapshot (env `RABBIT_AUTO_EVOLVE_CRON_LIST`, a JSON
+    array; absent → treated as empty): the prior refire one-shots to
+    `CronDelete` (`delete_refire_ids`), the heartbeat id(s) to PRESERVE
+    (`preserve_heartbeat_ids`, never deleted), and the single refire to
+    `CronCreate` (`create_refire`, prompt carrying the marker, `recurring` and
+    `durable` both `false`, cron the pinned `M H * * *` form of Inv 33). The
+    dispatcher deletes every id in `delete_refire_ids`, leaves
+    `preserve_heartbeat_ids` untouched, then creates the one `create_refire`.
+    Enforced by `test/test-schedule-decision.py` (e2e: a `CronList` snapshot
+    holding a prior refire + the heartbeat → the prior refire id is in
+    `delete_refire_ids`, the heartbeat id is in `preserve_heartbeat_ids` and
+    NOT in `delete_refire_ids`, exactly one `create_refire` is emitted whose
+    prompt carries the refire marker) and unit tests over
+    `is_refire_oneshot` (marker + non-recurring → True; the heartbeat → False).
 
 ## Known gaps
 
