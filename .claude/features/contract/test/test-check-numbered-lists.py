@@ -134,9 +134,16 @@ REPO_ROOT = os.path.normpath(os.path.join(FEATURE_DIR, "..", "..", ".."))
 import glob
 
 targets = []
+# Dual-read (issue #399): scan both the legacy docs/spec/ layout and the
+# new specs/ layout so migrated and unmigrated features stay covered.
 targets.extend(
     glob.glob(
         os.path.join(REPO_ROOT, ".claude/features/*/docs/spec/*.md")
+    )
+)
+targets.extend(
+    glob.glob(
+        os.path.join(REPO_ROOT, ".claude/features/*/specs/*.md")
     )
 )
 targets.extend(
@@ -154,7 +161,7 @@ targets.extend(
 targets.extend(glob.glob(os.path.join(REPO_ROOT, ".claude/features/policy/*.md")))
 targets.extend(
     glob.glob(
-        os.path.join(REPO_ROOT, ".claude/features/contract/docs/**/*.md"),
+        os.path.join(REPO_ROOT, ".claude/features/contract/specs/**/*.md"),
         recursive=True,
     )
 )

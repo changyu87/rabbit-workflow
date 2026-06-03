@@ -1,6 +1,6 @@
 {
   "name": "contract",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
@@ -14,6 +14,5 @@
   "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
   "manifest": [],
   "runtime": {},
-  "configuration": [],
-  "spec_no_change_reason": "issue #399 Phase 1 (coexistence window, #450 Pattern 1) makes contract's spec/contract path resolution dual-read (specs/ preferred, docs/spec/ fallback) within the existing spec/contract-file invariants (Inv 14, Inv 38); no new or amended invariant — purely an implementation-internal path-resolution change"
+  "configuration": []
 }

@@ -27,10 +27,10 @@ def check_exec(rel_path):
         FAIL = 1
 
 
-# feature.json and docs
+# feature.json and specs
 check_file("feature.json")
-check_file("docs/spec/spec.md")
-check_file("docs/spec/contract.md")
+check_file("specs/spec.md")
+check_file("specs/contract.md")
 
 # Templates
 check_file("templates/spec-template.md")
