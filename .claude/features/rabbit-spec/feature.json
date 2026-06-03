@@ -1,6 +1,6 @@
 {
   "name": "rabbit-spec",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "status": "active",
@@ -20,7 +20,7 @@
     ]
   },
   "deprecation_criterion": "when Claude Code exposes native spec-lifecycle skills that supersede this feature",
-  "updated": "2026-06-01",
+  "updated": "2026-06-03",
   "manifest": [
     {
       "api": "publish_skill",
@@ -58,5 +58,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended in pre-cycle commit (multi-feature spec batch, bumped 1.3.0 -> 1.4.0 with new Inv 5 dual-mode feature_root rule); this TDD cycle implements the spec change."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.4.0 -> 1.5.0): added Inv 6 spec-path layout dual-read for the docs/spec/ -> specs/ migration (issue #399 Phase 2); this TDD cycle implements the spec change."
 }
