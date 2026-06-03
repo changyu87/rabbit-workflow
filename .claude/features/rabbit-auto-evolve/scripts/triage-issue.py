@@ -19,7 +19,11 @@ unblock dispatch; non-defer decisions carry `planning_note: null`.
 
 Read surface (strictly bounded):
   - Issue metadata via `gh issue view <N> --json
-    number,title,body,labels,state,comments`.
+    number,title,body,labels,state,stateReason,comments`. The full comment
+    thread and the state reason are read so rule 7 can reconcile a
+    correction comment / conflicting retitle that supersedes the original
+    body (issue #463): the most recent coherent intent is authoritative; a
+    genuinely ambiguous conflict defers for maintainer clarification.
   - The named feature's spec head matter (frontmatter + first section) —
     for rule 6 only. The path is resolved dual-read (issue #399): the new
     specs/spec.md layout is preferred, with the legacy docs/spec/spec.md
@@ -36,7 +40,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -209,16 +213,177 @@ _BLOCKED_BY_GOOD = re.compile(r"blocked-by:\s*#(\d+)", re.IGNORECASE)
 _BLOCKED_BY_ANY = re.compile(r"blocked-by:", re.IGNORECASE)
 
 
+# Supersession phrases (case-insensitive) that mark a comment as an
+# authoritative correction of the original body (issue #463).
+_SUPERSEDE_PHRASES = (
+    "supersedes",
+    "correction",
+    "corrected proposal",
+    "ignore the original",
+    "revised scope",
+    "original body was wrong",
+)
+
+# Match a target/path token: a `docs/...` or `specs/...` path, or any
+# `.claude/features/<...>/` reference. Used to detect a title-vs-body
+# target conflict (issue #463).
+_TARGET_TOKEN = re.compile(
+    r"(?:\.claude/features/[\w./{},-]+|specs/[\w./{},-]*|docs/[\w./{},-]*)"
+)
+
+
+def _comment_bodies(comments):
+    """Return the list of comment body strings in chronological order
+    (oldest first), skipping any malformed (non-dict / empty) entries."""
+    bodies = []
+    for c in comments or []:
+        if isinstance(c, dict):
+            b = c.get("body")
+            if isinstance(b, str) and b.strip():
+                bodies.append(b)
+    return bodies
+
+
+def _superseding_comment(comments):
+    """Return the body of the MOST RECENT comment containing supersession
+    language (issue #463), or None when no comment carries a correction."""
+    found = None
+    for body in _comment_bodies(comments):
+        low = body.casefold()
+        if any(p in low for p in _SUPERSEDE_PHRASES):
+            found = body  # keep walking — most recent (last) wins
+    return found
+
+
+def _target_tokens(text):
+    """Distinct target/path tokens in `text` (casefolded), order-preserved.
+
+    Tokens are kept verbatim (the trailing `/` of a directory target like
+    `specs/` is preserved) so the reconciliation planning_note names the
+    target the way the maintainer wrote it."""
+    seen = []
+    for m in _TARGET_TOKEN.findall(text or ""):
+        tok = m.casefold()
+        if tok and tok not in seen:
+            seen.append(tok)
+    return seen
+
+
+def _root_segment(token):
+    """Top-level path segment of a target token (text before the first '/')."""
+    return token.split("/", 1)[0]
+
+
+def _title_body_target_conflict(title, body):
+    """Return (title_target, body_target) when the title declares a target
+    token absent from the body AND the body declares a distinct target token
+    — i.e. title and body describe DIFFERENT targets (issue #463). Returns
+    None when there is no such conflict.
+
+    When the body declares multiple distinct targets, the body target whose
+    ROOT path segment differs from the title's is preferred (the most
+    distinctive divergence) — e.g. for a title under `docs/...` and a body
+    naming both `docs/spec/` and `specs/`, the reported conflict is
+    `specs/` (root `specs` ≠ `docs`), the genuinely divergent target.
+    """
+    title_targets = _target_tokens(title)
+    body_targets = _target_tokens(body)
+    if not title_targets or not body_targets:
+        return None
+    body_text = (body or "").casefold()
+    title_text = (title or "").casefold()
+    for tt in title_targets:
+        if tt in body_text:
+            continue
+        candidates = [bt for bt in body_targets
+                      if bt not in title_text and bt != tt]
+        if not candidates:
+            continue
+        # Prefer a body target whose root segment differs from the title's.
+        tt_root = _root_segment(tt)
+        divergent = [bt for bt in candidates
+                     if _root_segment(bt) != tt_root]
+        chosen = divergent[0] if divergent else candidates[0]
+        return (tt, chosen)
+    return None
+
+
+def _reconcile(base, title, body, state_reason, comments):
+    """Comment-thread reconciliation (issue #463), applied to an otherwise
+    actionable (rule-7 `work`) issue. Reads the full comment thread plus the
+    state reason and the title/body targets and refines the verdict between
+    `work` (corrected intent is coherent) and `defer` (genuinely ambiguous
+    conflict). Returns the reconciled decision dict.
+    """
+    correction = _superseding_comment(comments)
+    conflict = _title_body_target_conflict(title, body)
+    reopened = (state_reason or "").casefold() == "reopened"
+    has_comments = bool(_comment_bodies(comments))
+
+    # No detection signal → strict pre-#463 pass-through (no-regression).
+    if not correction and not conflict and not (reopened and has_comments):
+        return dict(base,
+                    decision="work",
+                    reason_code="actionable",
+                    rationale="No earlier rule matched; issue is actionable.")
+
+    # An authoritative correction comment supersedes the original body: the
+    # most recent coherent intent wins → dispatch the corrected work.
+    if correction:
+        return dict(base,
+                    decision="work",
+                    reason_code="actionable",
+                    rationale="A correction comment supersedes the original "
+                              "body; dispatching the most recent corrected "
+                              "intent.")
+
+    # A reopened issue whose retitle conflicts with the body on the target,
+    # with no coherent superseding comment to resolve it, is genuinely
+    # ambiguous → defer for maintainer clarification.
+    if conflict and reopened:
+        title_t, body_t = conflict
+        return dict(base,
+                    decision="defer",
+                    reason_code="needs-judgment",
+                    rationale="Reopened issue's title and body conflict on the "
+                              "target; correct intent is ambiguous.",
+                    planning_note=f"Body and correction comment conflict on "
+                                  f"target [{title_t} vs {body_t}]; need "
+                                  f"maintainer clarification before dispatch.")
+
+    # A title/body target conflict on a non-reopened issue: the title is the
+    # most recent authored signal → the title wins, dispatch with a note.
+    if conflict:
+        title_t, body_t = conflict
+        return dict(base,
+                    decision="work",
+                    reason_code="actionable",
+                    rationale=f"Title and body conflict on target "
+                              f"[{title_t} vs {body_t}]; the title is the most "
+                              f"recent intent and wins.")
+
+    # Reopened with comments but no parseable correction/conflict — fall
+    # through to actionable (the comments may be discussion, not correction).
+    return dict(base,
+                decision="work",
+                reason_code="actionable",
+                rationale="No earlier rule matched; issue is actionable.")
+
+
 def classify(issue_num, repo_root):
     """Run the seven-rule decision table. Returns a dict ready for json.dump."""
     # ---- Fetch issue metadata ----
     issue = _gh_issue_view(
-        issue_num, "number,title,body,labels,state,comments"
+        issue_num, "number,title,body,labels,state,stateReason,comments"
     )
 
     title = issue.get("title", "") or ""
     body = issue.get("body", "") or ""
     labels = issue.get("labels", []) or []
+    # Full comment thread + state reason — read so rule 7 can reconcile a
+    # correction comment / retitle that supersedes the original body (#463).
+    comments = issue.get("comments", []) or []
+    state_reason = issue.get("stateReason", "") or ""
 
     feature_label = _label_value(labels, "feature")
     priority_label = _label_value(labels, "priority")
@@ -335,11 +500,14 @@ def classify(issue_num, repo_root):
                     reason_code="already-spec'd",
                     rationale="Spec head matter already documents this behavior (title-tail substring match).")
 
-    # ---- Rule 7: actionable / work ----
-    return dict(base,
-                decision="work",
-                reason_code="actionable",
-                rationale="No earlier rule matched; issue is actionable.")
+    # ---- Rule 7: actionable / work (with #463 comment-thread reconciliation) ----
+    # The issue is structurally actionable; before returning `work`,
+    # reconcile the full comment thread + state reason + title/body targets
+    # so a correction comment or conflicting retitle that supersedes the
+    # original body is honored (issue #463). Reconciliation only ever
+    # refines between `work` and `defer` — it never overrides an earlier
+    # close/blocked/malformed verdict.
+    return _reconcile(base, title, body, state_reason, comments)
 
 
 def main():
