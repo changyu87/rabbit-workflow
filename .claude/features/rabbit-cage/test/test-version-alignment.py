@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """test-version-alignment.py — Inv 11.
 
-Asserts feature.json `version`, docs/spec/spec.md frontmatter `version`,
-and docs/spec/contract.md frontmatter `version` are byte-equal.
+Asserts feature.json `version`, specs/spec.md frontmatter `version`,
+and specs/contract.md frontmatter `version` are byte-equal.
 """
 
 import json
@@ -27,8 +27,8 @@ def _frontmatter_version(path: Path) -> str:
 
 def main() -> int:
     fj_version = json.loads((CAGE / "feature.json").read_text())["version"]
-    spec_version = _frontmatter_version(CAGE / "docs/spec/spec.md")
-    contract_version = _frontmatter_version(CAGE / "docs/spec/contract.md")
+    spec_version = _frontmatter_version(CAGE / "specs/spec.md")
+    contract_version = _frontmatter_version(CAGE / "specs/contract.md")
     assert fj_version == spec_version == contract_version, (
         f"version drift: feature.json={fj_version!r}, "
         f"spec={spec_version!r}, contract={contract_version!r}")

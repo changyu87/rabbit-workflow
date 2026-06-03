@@ -56,34 +56,46 @@ _SPEC_MD_PATTERN = None
 _PLUGIN_SPEC_MD_PATTERN = None
 
 
-def _spec_md_pattern():
-    """Cached regex matching <REPO_ROOT>/.claude/features/<feature>/docs/spec/spec.md.
+# issue #399 Phase 2: dual-read the spec.md layout across the
+# docs/spec/ -> specs/ migration. Both `specs/spec.md` (new) and
+# `docs/spec/spec.md` (legacy) match the carve-out during the coexistence
+# window so a mid-migration feature still matches regardless of layout.
+# Mirrors contract.lib.checks.resolve_spec_path (Phase 1, #451). Phase 3
+# drops the legacy `docs/spec/` alternative once every feature has migrated.
+_SPEC_DIR_ALT = r"(?:specs|docs/spec)"
 
-    <feature> is a single path segment (matched as `[^/]+`). Inv 64 (extended):
-    writes to the feature spec.md are permitted regardless of scope-marker state
-    so rabbit-feature-touch Step 3 spec-authoring can update specs without an
-    override.
+
+def _spec_md_pattern():
+    """Cached regex matching <REPO_ROOT>/.claude/features/<feature>/<specs|docs/spec>/spec.md.
+
+    <feature> is a single path segment (matched as `[^/]+`). Inv 5 (Inv 64,
+    extended): writes to the feature spec.md are permitted regardless of
+    scope-marker state so rabbit-feature-touch Step 3 spec-authoring can
+    update specs without an override. Dual-read per issue #399 Phase 2.
     """
     global _SPEC_MD_PATTERN
     if _SPEC_MD_PATTERN is None and REPO_ROOT is not None:
         _SPEC_MD_PATTERN = re.compile(
-            r"^" + re.escape(str(REPO_ROOT)) + r"/\.claude/features/[^/]+/docs/spec/spec\.md$"
+            r"^" + re.escape(str(REPO_ROOT))
+            + r"/\.claude/features/[^/]+/" + _SPEC_DIR_ALT + r"/spec\.md$"
         )
     return _SPEC_MD_PATTERN
 
 
 def _plugin_spec_md_pattern():
-    """Cached regex matching <REPO_ROOT>/.rabbit/rabbit-project/features/<feature>/docs/spec/spec.md.
+    """Cached regex matching <REPO_ROOT>/.rabbit/rabbit-project/features/<feature>/<specs|docs/spec>/spec.md.
 
     <feature> is a single path segment (matched as `[^/]+`). Inv 17 clause (a2):
     plugin-mode writes to a freshly scaffolded feature's spec.md are permitted
     regardless of scope-marker state so rabbit-spec-create can write initial
-    spec bodies. Mirrors standalone Inv 64.
+    spec bodies. Mirrors standalone Inv 5. Dual-read per issue #399 Phase 2.
     """
     global _PLUGIN_SPEC_MD_PATTERN
     if _PLUGIN_SPEC_MD_PATTERN is None and REPO_ROOT is not None:
         _PLUGIN_SPEC_MD_PATTERN = re.compile(
-            r"^" + re.escape(str(REPO_ROOT)) + r"/\.rabbit/rabbit-project/features/[^/]+/docs/spec/spec\.md$"
+            r"^" + re.escape(str(REPO_ROOT))
+            + r"/\.rabbit/rabbit-project/features/[^/]+/"
+            + _SPEC_DIR_ALT + r"/spec\.md$"
         )
     return _PLUGIN_SPEC_MD_PATTERN
 
@@ -371,8 +383,9 @@ def decide(target: str) -> Tuple[bool, str]:
     # 3c. Path-pattern allowlist — feature spec.md (Inv 64 extended, BUG-8).
     # Permits rabbit-feature-touch Step 3 spec-authoring (which runs in the
     # main session before any per-feature scope marker is set) to write
-    # `.claude/features/<feature>/docs/spec/spec.md` without an override.
-    # Pattern is narrowly scoped to that exact basename.
+    # `.claude/features/<feature>/specs/spec.md` (or the legacy
+    # `docs/spec/spec.md` during the #399 coexistence window) without an
+    # override. Pattern is narrowly scoped to that exact basename.
     pattern = _spec_md_pattern()
     if pattern and pattern.match(abs_path):
         return True, "ALLOW (path-pattern allowlist: feature spec.md)"
