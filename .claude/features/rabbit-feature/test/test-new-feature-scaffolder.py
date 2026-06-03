@@ -2,9 +2,10 @@
 """Inv 33: scaffold-feature.py scaffolds a conforming feature dir.
 
 The scaffolder is executable and produces a directory containing feature.json
-(with template_version), specs/spec.md, specs/contract.md, and
-test/run.py (no test/run.sh). New features are created at the specs/ layout
-(issue #399); the scaffolded directory passes validate-feature.py immediately.
+(with template_version), docs/spec.md, docs/contract.md, and
+test/run.py (no test/run.sh). New features are created at the flat docs/ layout
+(issue #399 migration target); the scaffolded directory passes
+validate-feature.py immediately (which dual-reads docs/ then specs/).
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -43,11 +44,17 @@ def test_scaffolds_conforming_dir() -> None:
         )
         feature_dir = Path(tmp) / "demo-feature"
         assert (feature_dir / "feature.json").is_file(), "scaffold missing feature.json"
-        assert (feature_dir / "specs/spec.md").is_file(), "scaffold missing specs/spec.md"
-        assert (feature_dir / "specs/contract.md").is_file(), (
-            "scaffold missing specs/contract.md"
+        # issue #399: new features are created at the flat docs/ layout.
+        assert (feature_dir / "docs/spec.md").is_file(), "scaffold missing docs/spec.md"
+        assert (feature_dir / "docs/contract.md").is_file(), (
+            "scaffold missing docs/contract.md"
         )
-        # issue #399: new features are created at specs/, NOT the legacy docs/spec/.
+        # docs/bugs/ is preserved alongside the flat docs/ surfaces.
+        assert (feature_dir / "docs/bugs").is_dir(), "scaffold missing docs/bugs/"
+        # Must NOT create the specs/ layout or the legacy docs/spec/ layout.
+        assert not (feature_dir / "specs").exists(), (
+            "scaffold must NOT create the specs/ layout (issue #399 target is flat docs/)"
+        )
         assert not (feature_dir / "docs/spec").exists(), (
             "scaffold must NOT create the legacy docs/spec/ layout (issue #399)"
         )

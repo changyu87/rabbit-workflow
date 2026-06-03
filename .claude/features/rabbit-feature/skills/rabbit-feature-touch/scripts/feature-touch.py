@@ -9,11 +9,17 @@ placeholders the model would assemble at invocation time.
 Two subcommands:
 
   resolve-spec-path <feature-name>
-      Print the resolved spec path for a feature. Prefers the
-      `specs/spec.md` layout (issue #399) and falls back to the legacy
-      `docs/spec/spec.md` for not-yet-migrated features. Mode-aware:
-      detects standalone vs plugin mode from <repo_root>/.rabbit/.runtime/mode
-      and picks the matching feature_dir prefix.
+      Print the resolved spec path for a feature. Prefers the flat
+      `docs/spec.md` layout (issue #399 migration target) and falls back to
+      `specs/spec.md`, then the legacy `docs/spec/spec.md`, for
+      not-yet-migrated features. Mode-aware: detects standalone vs plugin mode
+      from <repo_root>/.rabbit/.runtime/mode and picks the matching
+      feature_dir prefix.
+
+  resolve-contract-path <feature-name>
+      Like resolve-spec-path, for the contract: prefers flat
+      `docs/contract.md`, then `specs/contract.md`, then the legacy
+      `docs/spec/contract.md`.
 
   commit-spec <feature-name> <summary>
       Stage and commit the feature's spec change (if any) BEFORE the TDD
@@ -31,7 +37,7 @@ All paths are resolved relative to the repo root, which the script derives
 by walking up from the cwd to the nearest ancestor containing a `.git`
 entry (file or directory, so git worktrees are handled).
 
-Version: 0.1.0
+Version: 0.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -71,29 +77,56 @@ def _feature_dir(repo_root: Path, feature: str, mode: str) -> Path:
     return repo_root / ".claude/features" / feature
 
 
+def _resolve_doc(feature_dir: Path, name: str) -> Path:
+    """Resolve a doc surface (spec.md / contract.md) across the #399 layouts.
+
+    Preference order (issue #399 dual-read coexistence window):
+      1. flat    docs/<name>        (migration target — PREFERRED)
+      2. specs/  specs/<name>       (current repo-wide layout — fallback)
+      3. legacy  docs/spec/<name>   (not-yet-migrated docs/spec/ layout)
+    Returns the first that exists; defaults to the flat docs/ target when none
+    exists yet (so new resolutions point at the ratified location).
+    """
+    flat = feature_dir / "docs" / name
+    specs = feature_dir / "specs" / name
+    legacy = feature_dir / "docs/spec" / name
+    for cand in (flat, specs, legacy):
+        if cand.is_file():
+            return cand
+    return flat
+
+
 def _spec_path(feature_dir: Path) -> Path:
-    """Prefer specs/spec.md (issue #399); fall back to legacy docs/spec/spec.md."""
-    preferred = feature_dir / "specs/spec.md"
-    legacy = feature_dir / "docs/spec/spec.md"
-    if preferred.is_file():
-        return preferred
-    if legacy.is_file():
-        return legacy
-    # Not-yet-created: default to the preferred layout.
-    return preferred
+    """Prefer flat docs/spec.md (issue #399); fall back to specs/, then legacy."""
+    return _resolve_doc(feature_dir, "spec.md")
+
+
+def _contract_path(feature_dir: Path) -> Path:
+    """Prefer flat docs/contract.md (issue #399); fall back to specs/, then legacy."""
+    return _resolve_doc(feature_dir, "contract.md")
+
+
+def _emit_relative(repo_root: Path, path: Path) -> None:
+    # Emit repo-root-relative when possible, else absolute.
+    try:
+        print(str(path.relative_to(repo_root)))
+    except ValueError:
+        print(str(path))
 
 
 def cmd_resolve_spec_path(feature: str) -> int:
     repo_root = _repo_root(Path.cwd())
     mode = _mode(repo_root)
     feature_dir = _feature_dir(repo_root, feature, mode)
-    spec = _spec_path(feature_dir)
-    # Emit repo-root-relative when possible, else absolute.
-    try:
-        rel = spec.relative_to(repo_root)
-        print(str(rel))
-    except ValueError:
-        print(str(spec))
+    _emit_relative(repo_root, _spec_path(feature_dir))
+    return 0
+
+
+def cmd_resolve_contract_path(feature: str) -> int:
+    repo_root = _repo_root(Path.cwd())
+    mode = _mode(repo_root)
+    feature_dir = _feature_dir(repo_root, feature, mode)
+    _emit_relative(repo_root, _contract_path(feature_dir))
     return 0
 
 
@@ -135,8 +168,10 @@ def cmd_commit_spec(feature: str, summary: str) -> int:
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         sys.stderr.write(
-            "usage: feature-touch.py {resolve-spec-path|commit-spec} ...\n"
+            "usage: feature-touch.py "
+            "{resolve-spec-path|resolve-contract-path|commit-spec} ...\n"
             "  resolve-spec-path <feature-name>\n"
+            "  resolve-contract-path <feature-name>\n"
             "  commit-spec <feature-name> <summary>\n"
         )
         return 2
@@ -148,6 +183,13 @@ def main(argv: list[str]) -> int:
             )
             return 2
         return cmd_resolve_spec_path(argv[2])
+    if sub == "resolve-contract-path":
+        if len(argv) != 3:
+            sys.stderr.write(
+                "usage: feature-touch.py resolve-contract-path <feature-name>\n"
+            )
+            return 2
+        return cmd_resolve_contract_path(argv[2])
     if sub == "commit-spec":
         if len(argv) != 4:
             sys.stderr.write(
