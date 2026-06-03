@@ -230,6 +230,34 @@ def _rollback(completed):
     return failures
 
 
+def _run_cron_script(name):
+    """Best-effort invoke a sibling cron-lifecycle script (install-cron.py /
+    uninstall-cron.py) per Inv 32 (issue #414). The system cron is the sole
+    tick scheduler; `on` installs the headless-tick entry, `off` removes it.
+    A cron install/uninstall failure is surfaced on stderr but does NOT by
+    itself fail the mode flip (best-effort, like the loop-runtime marker
+    deletion). Returns True on success, False on a non-zero exit."""
+    import subprocess  # noqa: PLC0415
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
+    try:
+        proc = subprocess.run(
+            [sys.executable, script],
+            capture_output=True, text=True,
+        )
+    except OSError as e:
+        sys.stderr.write(f"set-evolve-mode: cannot run {name}: {e}\n")
+        return False
+    if proc.stderr:
+        sys.stderr.write(proc.stderr)
+    if proc.returncode != 0:
+        sys.stderr.write(
+            f"set-evolve-mode: {name} exited {proc.returncode} "
+            f"(cron step is best-effort; mode flip not failed)\n"
+        )
+        return False
+    return True
+
+
 def main():
     if len(sys.argv) != 2 or sys.argv[1] not in ("on", "off"):
         sys.stderr.write("Usage: set-evolve-mode.py {on|off}\n")
@@ -246,7 +274,14 @@ def main():
 
     if action == "on":
         result = _on(mutation, repo_root)
+        # Inv 32 (#414): after writing the three activation markers, install
+        # the system-cron headless-tick entry (the sole tick scheduler).
+        if result[0]:
+            _run_cron_script("install-cron.py")
     else:
+        # Inv 32 (#414): remove the system-cron entry BEFORE tearing down the
+        # activation markers, so a torn-down mode never leaves a live cron.
+        _run_cron_script("uninstall-cron.py")
         result = _off(mutation, repo_root)
 
     # _on returns 3-tuple on success, 4-tuple on failure; normalize.

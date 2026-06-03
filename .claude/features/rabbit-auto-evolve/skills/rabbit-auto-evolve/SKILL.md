@@ -1,17 +1,20 @@
 ---
 name: rabbit-auto-evolve
-version: 0.19.0
+version: 0.20.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
-description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
+description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
 ---
 
 # rabbit-auto-evolve
 
 A self-driving rabbit loop. Continuously fetches open `rabbit-managed`
 issues, triages each, dispatches TDD subagents, merges approved PRs into
-`dev`, tags releases, and re-schedules itself via `ScheduleWakeup` until
-the user issues an explicit stop.
+`dev`, tags releases, and is fired on a fixed cadence by a **system cron**
+(the sole tick scheduler, installed at `on`) until the user issues an
+explicit stop. Per Inv 32 (issue #414) the loop NEVER self-chains its own
+wakeups — no in-session scheduling harness is used; scheduling lives
+entirely in the external system cron.
 
 The mode is entered via `/rabbit-auto-evolve on` (compound mutator
 `.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py on`);
@@ -31,6 +34,11 @@ which performs three deterministic mutations in order:
 2. Set `permissions.defaultMode: "bypassPermissions"` in
    `.claude/settings.local.json` (flips `bypass-permissions` on).
 3. Write `.rabbit-auto-evolve-active` (signals mode is on).
+
+After the three markers, `set-evolve-mode.py on` invokes
+`.claude/features/rabbit-auto-evolve/scripts/install-cron.py`, which
+idempotently installs the system-cron entry that fires the headless tick
+(Inv 32 / issue #414) — the cron is the sole tick scheduler.
 
 On success, the script emits two branded `rabbit_print` confirmation
 lines to stdout (red `AUTONOMOUS-EVOLVE MODE CONFIGURED — restart Claude
@@ -95,16 +103,21 @@ precondition checklist verbatim and waiting for the user to type
    defaults if it is missing, empty, or malformed (a valid existing
    state file is left untouched).
 2. Run one `tick` (the 12-phase loop body).
-3. Call `ScheduleWakeup` to chain the next tick.
+3. End the turn. The next tick is fired by the **system cron** installed at
+   `on` (Inv 32 / issue #414) — there is NO in-session self-chaining. The
+   cron runs `tick-headless.py` (the Claude-free phases) on its cadence; a
+   live Claude session contributes the dispatch phase whenever it runs
+   `start`/`tick`.
 
 ### `stop`
 
 Invoke `python3 .claude/features/rabbit-auto-evolve/scripts/stop-loop.py`
 (which writes `.rabbit-auto-evolve-stop-requested` at repo root). The
 next tick's phase 0 (`stop-check`) observes the marker, posts a one-line
-run summary, and does NOT call `ScheduleWakeup`. The loop then halts
-cleanly. Per Inv 17 the marker write is wrapped in a script for the
-same scope-guard reason as `start`.
+run summary, and halts cleanly (the headless tick short-circuits to a clean
+no-op). To stop the cron from firing entirely, run `/rabbit-auto-evolve
+off`, which uninstalls the cron entry. Per Inv 17 the marker write is
+wrapped in a script for the same scope-guard reason as `start`.
 
 ### `status`
 
@@ -143,9 +156,12 @@ except on a genuine invocation error):
 
 ### `tick` (internal)
 
-Invoked only by `ScheduleWakeup`. Walks 12 phases in order. Any phase MAY
-abort the tick early without affecting the next tick's ability to pick up
-from disk-persisted state in `.rabbit/auto-evolve-state.json`.
+Walked by a live Claude session (via `start` or a cron-surfaced resume).
+Walks 12 phases in order, INCLUDING phase 5 (`dispatch`). The cron-fired
+headless tick (`tick-headless.py`) walks the SAME phases EXCEPT phase 5 —
+see "Headless tick (cron)" below. Any phase MAY abort the tick early without
+affecting the next tick's ability to pick up from disk-persisted state in
+`.rabbit/auto-evolve-state.json`.
 
 | # | Phase             | Script(s) invoked                            |
 |---|-------------------|----------------------------------------------|
@@ -159,7 +175,7 @@ from disk-persisted state in `.rabbit/auto-evolve-state.json`.
 | 6 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
 | 7-9 | `post-merge`    | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — deterministically runs release (7) → cleanup (8) → catch-up (9) for every PR in `pending_post_merge`, then clears it (Inv 30) — see "Post-merge phases (Inv 30)" below |
 |10 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
-|11 | `schedule`        | `.claude/features/rabbit-auto-evolve/scripts/schedule-check.py` → `ScheduleWakeup` (unless stop-check matched) — see "Schedule phase (Inv 29)" below |
+|11 | `schedule`        | NO-OP — scheduling is owned by the system cron (Inv 32 / issue #414). See "Scheduling is cron-owned (Inv 32)" below |
 
 ### Post-merge phases (Inv 30 — issue #499)
 
@@ -201,74 +217,53 @@ A non-zero `run-post-merge.py` exit is an error-abort (Inv 20): run
 `end-tick.py` and surface the failure rather than continue with owed work
 silently dropped.
 
-### Schedule phase (Inv 29 — issue #409)
+### Scheduling is cron-owned (Inv 32 — issue #414)
 
-Per spec Inv 29, phase 11 (`schedule`) MUST call `ScheduleWakeup` with
-fully-pinned, valid parameters. An under-specified call silently stops the
-loop (the issue #409 incident: tick 6 ended and five subsequent hourly
-ticks never fired across a 5h+ window — no error, no log line, no halt —
-because the phase documented only the bare string "ScheduleWakeup" and the
-dispatcher had no deterministic delay/prompt to use).
+Per spec Inv 32, phase 11 (`schedule`) is a **no-op**. Tick scheduling is
+owned entirely by a **system cron** — the prior in-session self-chaining
+wakeup (the removed Inv 29 / Inv 31 mechanism) was deleted. No in-session
+scheduling harness (neither a wakeup call nor a cron-create call) is used
+anywhere in rabbit-auto-evolve.
 
-The call's three parameters:
-
-- `delaySeconds` — an integer in the inclusive band `60 <= delaySeconds <=
-  3600`. The harness ignores a 0/negative delay and an over-long delay is
-  indistinguishable from a hang. The exact value is chosen by the
-  queue-emptiness rule below (Inv 31): `60` (refire immediately) when work
-  remains, `3600` (hourly idle check) when the queue is empty.
-- `prompt` — the literal string `/rabbit-auto-evolve tick`. This is the
-  sentinel that RE-ENTERS the tick; a prompt that does not contain it
-  breaks the self-chaining loop.
-- `reason` — a non-empty human-readable string. Use `queue non-empty,
-  refiring immediately` when work remains, or `queue empty, waiting for
-  new issues` when the queue is empty (see Inv 31).
-
-#### Queue-emptiness delay selection (Inv 31 — issue #412)
-
-A fixed hourly delay caps the loop at one batch per hour even when there
-is work waiting. Per spec Inv 31, phase 11 chooses `delaySeconds` from the
-state file `<state_dir>/auto-evolve-state.json` (state dir resolves via
-`RABBIT_AUTO_EVOLVE_STATE_DIR`, else `<cwd>/.rabbit`):
-
-- If `len(state.queue) > 0 OR len(state.in_flight) > 0` — work remains —
-  use `delaySeconds=60` (the harness minimum: refire immediately) and
-  `reason="queue non-empty, refiring immediately"`.
-- If BOTH `state.queue` AND `state.in_flight` are empty — no work — use
-  `delaySeconds=3600` (the hourly idle check) and `reason="queue empty,
-  waiting for new issues"`.
-
-A missing, empty, or malformed state file is treated as queue-empty (the
-long `3600` idle delay). Both `60` and `3600` are inside the Inv 29 band,
-so `schedule-check.py` accepts either; the `prompt` is unchanged.
-
-BEFORE emitting the `ScheduleWakeup` call, run the validator with the
-selected `delaySeconds`/`reason` pair. For the queue-non-empty case:
+The cron entry is installed by `set-evolve-mode.py on` (which invokes
+`install-cron.py`) and removed by `set-evolve-mode.py off` (which invokes
+`uninstall-cron.py`). The entry has the form:
 
 ```
-python3 .claude/features/rabbit-auto-evolve/scripts/schedule-check.py \
-  --delay-seconds 60 \
-  --prompt "/rabbit-auto-evolve tick" \
-  --reason "queue non-empty, refiring immediately"
+*/30 * * * * cd <repo_root> && python3 \
+  .claude/features/rabbit-auto-evolve/scripts/tick-headless.py \
+  >> .rabbit/tick-headless.log 2>&1
 ```
 
-For the queue-empty case:
+When a session tick finishes phase 10 (`persist`), it simply ends the turn —
+there is no scheduling call to emit. The cron fires the next tick on its
+cadence. This converts the prior silent-stop failure mode (a dropped
+in-session wakeup once halted the loop for 5h+ with no error, no log line,
+and no halt) into an external, observable scheduler that no in-session bug
+can stop.
 
-```
-python3 .claude/features/rabbit-auto-evolve/scripts/schedule-check.py \
-  --delay-seconds 3600 \
-  --prompt "/rabbit-auto-evolve tick" \
-  --reason "queue empty, waiting for new issues"
-```
+### Headless tick (cron)
 
-`schedule-check.py` does NOT call `ScheduleWakeup` (that is a Claude Code
-harness feature, not a Python function); it validates the three parameters
-and exits non-zero with a `{"ok": false, "errors": [...]}` payload on any
-violation. Only if it exits 0 (`{"ok": true, ...}`) emit the actual
-`ScheduleWakeup` call with the SAME `delaySeconds`, `prompt`, and `reason`.
-A non-zero `schedule-check.py` exit is an error-abort (see Inv 20): run
-`python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py` and
-surface the failure rather than emitting a silently-dropped wakeup.
+The cron-fired headless tick is owned by
+`python3 .claude/features/rabbit-auto-evolve/scripts/tick-headless.py`. It
+runs WITHOUT a Claude session, so it walks every deterministic phase EXCEPT
+phase 5 (`dispatch`), which requires Claude:
+
+- phase 0 (`stop-check`) + phase 1 (`restart-check`) — if
+  `.rabbit-auto-evolve-stop-requested` or `.rabbit-auto-evolve-aborted`
+  exists, the tick short-circuits to a clean no-op.
+- phases 2–4 (`fetch | triage | plan`) — the canonical pipe.
+- phase 5 (`dispatch`) — SKIPPED (no Claude session).
+- phase 6 (`merge`) — `merge-prs.py --record-pending` for the PRs listed in
+  the state's `merge_ready` field; skipped when there are none.
+- phases 7–9 (`post-merge`) — `run-post-merge.py` drains
+  `pending_post_merge`.
+- phase 10 (`persist`) — `update-state.py`.
+- phase 11 (`schedule`) — NO-OP (the cron fires the next tick).
+
+`tick-headless.py` emits a single JSON result object on stdout summarizing
+which phases ran (with `dispatch` always marked `"skipped"`). Dispatch
+(phase 5) only happens during a live Claude session tick (`start` / `tick`).
 
 ### Tick exit invariant (Inv 20)
 
@@ -282,19 +277,20 @@ allowlist).
 
 The four named exit paths are:
 
-- **normal completion** — phase 11 (`schedule`) finishes, then
+- **normal completion** — phase 11 (`schedule`) is a no-op, then
   `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`
-  runs, then `ScheduleWakeup` chains the next tick.
+  runs, then the turn ends. The system cron fires the next tick (Inv 32).
 - **phase 0 halt** — `.rabbit-auto-evolve-stop-requested` observed at
   the top of the tick. Post the run summary, then run
   `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`,
-  then end the turn (no `ScheduleWakeup`).
+  then end the turn (the cron is removed by `off`).
 - **safety abort** — any safety violation during phases 6–8 writes
   `.rabbit-auto-evolve-aborted` via
   `python3 .claude/features/rabbit-auto-evolve/scripts/mark-aborted.py "<reason>"`.
   Immediately after, run
   `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`
-  and end the turn (no `ScheduleWakeup`).
+  and end the turn (the headless tick then short-circuits to a no-op
+  while the abort marker is present).
 - **error abort** — an unexpected exception in any phase. Run
   `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`
   in the error-handler tail before ending the turn.
@@ -384,10 +380,14 @@ a feature defect; it resolves on the next session restart.
 
 Deactivate auto-evolve mode. Invokes
 `.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py off`,
-which performs a FULL teardown — the four loop-runtime markers first
-(innermost first, idempotent), then the three `on` mutations in inverse
+which performs a FULL teardown — it first removes the system-cron entry
+(via `uninstall-cron.py`, Inv 32 / issue #414) so a torn-down mode never
+leaves a live cron, then deletes the four loop-runtime markers (innermost
+first, idempotent), then reverses the three `on` mutations in inverse
 order:
 
+0. Remove the system-cron headless-tick entry (idempotent; safe when
+   absent).
 1. Delete any of the four loop-runtime markers if present
    (`.rabbit-auto-evolve-running`, `.rabbit-auto-evolve-stop-requested`,
    `.rabbit-auto-evolve-restart-needed`, `.rabbit-auto-evolve-aborted`).
@@ -439,9 +439,10 @@ The user has affirmatively delegated authority by entering auto-evolve
 mode; routine "should I continue?" prompts are forbidden. On a genuine
 hard blocker (test failure with no obvious fix, safety violation, spec
 ambiguity not covered by resolved Open Questions), the dispatcher writes
-`.rabbit-auto-evolve-aborted` with the abort reason and ends the turn
-without calling `ScheduleWakeup`. The next SessionStart banner surfaces
-the abort to the user.
+`.rabbit-auto-evolve-aborted` with the abort reason and ends the turn.
+The abort marker makes the cron-fired headless tick short-circuit to a
+clean no-op, so the loop stays halted. The next SessionStart banner
+surfaces the abort to the user.
 
 Other red flags:
 

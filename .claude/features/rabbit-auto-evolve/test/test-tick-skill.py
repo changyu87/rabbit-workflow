@@ -4,8 +4,11 @@ naming every script and the disk-state path.
 
 Per spec Inv 10: the SKILL.md `tick` subcommand documentation must
 enumerate all 12 phases (0..11) and name every Phase C script plus the
-disk-state path `.rabbit/auto-evolve-state.json` and mention
-`ScheduleWakeup`.
+disk-state path `.rabbit/auto-evolve-state.json`.
+
+Per spec Inv 32 (issue #414): phase 11 (`schedule`) is now a no-op owned
+by the system cron — SKILL.md must NOT mention `ScheduleWakeup` and MUST
+document the cron-owned scheduling.
 """
 
 import os
@@ -103,8 +106,15 @@ def main():
               file=sys.stderr)
         sys.exit(1)
 
-    if "ScheduleWakeup" not in text:
-        print("FAIL: SKILL.md missing ScheduleWakeup", file=sys.stderr)
+    # Inv 32 (issue #414): scheduling is owned by the system cron — the
+    # self-chained ScheduleWakeup call was removed entirely.
+    if "ScheduleWakeup" in text:
+        print("FAIL: SKILL.md still references ScheduleWakeup (Inv 32: removed)",
+              file=sys.stderr)
+        sys.exit(1)
+    if "cron" not in text.lower():
+        print("FAIL: SKILL.md missing cron-owned scheduling (Inv 32)",
+              file=sys.stderr)
         sys.exit(1)
 
     print("PASS: test-tick-skill.py")
