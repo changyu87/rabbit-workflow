@@ -25,7 +25,7 @@ import re
 import subprocess
 import sys
 
-from _helpers import DISPATCH_PY, REPO_ROOT, report
+from _helpers import DISPATCH_PY, REPO_ROOT, _resolve_spec_md, report
 
 passed = failed = 0
 
@@ -46,13 +46,11 @@ FIXTURE_FEATURE = "rabbit-cage"
 
 
 def _resolve_fixture_spec():
-    """Resolve the rabbit-cage fixture spec.md dual-read (issue #399 Phase 2):
-    specs/ preferred, legacy docs/spec/ fallback."""
+    """Resolve the rabbit-cage fixture spec.md dual-read (issue #399): flat
+    docs/spec.md preferred, legacy specs/spec.md fallback. Delegates to the
+    shared resolver so the fixture survives future layout changes."""
     base = os.path.join(REPO_ROOT, ".claude", "features", FIXTURE_FEATURE)
-    preferred = os.path.join(base, "specs", "spec.md")
-    if os.path.isfile(preferred):
-        return preferred
-    return os.path.join(base, "docs", "spec", "spec.md")
+    return _resolve_spec_md(base)
 
 
 FIXTURE_SPEC = _resolve_fixture_spec()
