@@ -67,8 +67,8 @@ the deprecation criterion at creation time, or inherit its failure.
 
 - **Features** — top-level `name`, `version`, `owner`, `deprecation_criterion`
   fields in the feature's `feature.json`.
-- **Specs / contracts** — YAML frontmatter at the top of `docs/spec/spec.md`
-  and `docs/spec/contract.md` (`feature:`, `version:`, `owner:`,
+- **Specs / contracts** — YAML frontmatter at the top of `specs/spec.md`
+  and `specs/contract.md` (`feature:`, `version:`, `owner:`,
   `deprecation_criterion:`).
 - **Skills and commands** — YAML frontmatter at the top of the `SKILL.md`
   or command `.md` file (`version:`, `owner:`, `deprecation_criterion:`).
