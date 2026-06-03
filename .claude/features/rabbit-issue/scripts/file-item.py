@@ -4,7 +4,7 @@
 Prints JSON {number, url, type} to stdout on success.
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
 import argparse

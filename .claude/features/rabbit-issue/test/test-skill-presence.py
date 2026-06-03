@@ -21,7 +21,7 @@ These are static checks; runtime behaviour is exercised by the
 file-item / item-status / list-items pytest suites.
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
 from __future__ import annotations

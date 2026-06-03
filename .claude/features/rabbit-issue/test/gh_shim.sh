@@ -4,7 +4,7 @@
 # Returns canned responses from $GH_SHIM_RESPONSE_<SUBCOMMAND>_<VERB> or default.
 #
 # Version: 1.0.0
-# Owner: cyxu
+# Owner: rabbit-workflow team
 # Deprecation criterion: when rabbit-issue is retired
 
 set -e

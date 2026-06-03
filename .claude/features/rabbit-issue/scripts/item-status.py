@@ -20,7 +20,7 @@ The two close reasons are gated so a closure asserts something real
     justification, not a reflexive deferral.
 
 Version: 1.1.0
-Owner: cyxu
+Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
 import argparse

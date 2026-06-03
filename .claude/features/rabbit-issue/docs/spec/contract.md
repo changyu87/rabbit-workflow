@@ -1,7 +1,7 @@
 ---
 feature: rabbit-issue
-version: 1.1.0
-owner: cyxu
+version: 1.1.1
+owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
 
