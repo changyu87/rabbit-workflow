@@ -6,10 +6,11 @@ items whose decision == "work") and emits a deterministic dispatch plan
 on stdout:
 
   {
-    "selection_order": [602, 601],
-    "dispatch_shapes": {"602": "multi-subagent-barrier", "601": "parallel-per-feature"},
+    "selection_order": [602, 601, 700],
+    "dispatch_shapes": {"602": "multi-subagent-barrier", "601": "parallel-per-feature", "700": "research"},
     "barrier_first": [123, 124],
-    "groups": [[125, 126], [127]]
+    "groups": [[125, 126], [127]],
+    "research_items": [700]
   }
 
 Two decoupled decisions (Inv 26 / issue #435):
@@ -66,13 +67,20 @@ priority-primary, barrier-secondary per issue #479):
   5. Apply --max-parallel cap (default 4): any color partition larger
      than the cap is split into consecutive sub-groups of size <= cap.
 
+A 4th dispatch shape, `research` (Inv 27 / issue #478), handles
+research/investigation items (decision == "research" from triage). They
+produce FINDINGS, not code: they appear in `selection_order` (same
+composite sort), carry `dispatch_shapes[issue] == "research"`, and are
+listed under the always-present `research_items` key — but NEVER enter
+`barrier_first` or the conflict-graph `groups` (findings edit no code).
+
 The script is a pure JSON processor — no gh, no git, no filesystem
 mutations.
 
 Exit code: 0 on success; non-zero on malformed stdin JSON or invalid
 --max-parallel / --decompose-threshold value.
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -116,13 +124,17 @@ def _positive_int(value):
     return n
 
 
-# The three valid dispatch shapes (Inv 26). The struck shape 2
+# The three code-producing dispatch shapes (Inv 26). The struck shape 2
 # ("sequential-with-override") is intentionally NOT in this set: bounded
 # scope is a hard constraint, not waivable by autonomy (maintainer policy on
 # issue #435), so plan-batch.py never emits a session-override shape.
 SHAPE_PARALLEL = "parallel-per-feature"
 SHAPE_BARRIER = "multi-subagent-barrier"
 SHAPE_DECOMPOSITION = "decomposition"
+# The 4th dispatch shape (Inv 27, issue #478): research/investigation items
+# produce FINDINGS, not code. They are routed to a read-only research
+# subagent, never into the conflict-graph parallel-dispatch grouping.
+SHAPE_RESEARCH = "research"
 
 
 def _feature_count(item):
@@ -153,26 +165,44 @@ def _dispatch_shape(item, decompose_threshold):
 def plan(items, max_parallel, decompose_threshold):
     """Run Stage 1 + Stage 2 + the priority-primary grouping; return the
     plan dict."""
-    # Drop items whose decision != "work" (per Inv 4 + Inv 18: plan-batch
-    # accepts unfiltered triage arrays from triage-batch.py; only "work"
-    # items are dispatched). Items without a `decision` field are passed
-    # through (backwards-compat with pre-Inv-18 callers that pre-filter).
-    items = [i for i in items if i.get("decision", "work") == "work"]
+    # Drop items whose decision is neither "work" nor "research" (per Inv 4 +
+    # Inv 18: plan-batch accepts unfiltered triage arrays from
+    # triage-batch.py; only dispatchable items are kept). Items without a
+    # `decision` field are treated as "work" (backwards-compat with
+    # pre-Inv-18 callers that pre-filter).
+    items = [i for i in items
+             if i.get("decision", "work") in ("work", "research")]
 
     # Stage 1 — work selection (dispatch-shape BLIND): composite key
-    # (priority desc, contract_touch desc, issue asc), over work items only
-    # (Inv 26 (a) + issue #479). This ordering NEVER consults feature count
-    # or dispatch shape; contract_touch is a barrier/conflict property, not
-    # a shape. The SAME sorted order drives barrier_first below, so the two
-    # always agree.
+    # (priority desc, contract_touch desc, issue asc), over dispatchable
+    # items (Inv 26 (a) + issue #479). This ordering NEVER consults feature
+    # count or dispatch shape; contract_touch is a barrier/conflict property,
+    # not a shape. The SAME sorted order drives barrier_first below, so the
+    # two always agree. Research items participate in selection_order by the
+    # same composite key (Inv 27 / issue #478).
     selection = sorted(items, key=_sort_key)
     selection_order = [i["issue"] for i in selection]
 
-    # Stage 2 — per-item dispatch shape (item-shaped, Inv 26 (b)).
-    dispatch_shapes = {
-        str(i["issue"]): _dispatch_shape(i, decompose_threshold)
-        for i in selection
-    }
+    # Stage 2 — per-item dispatch shape (item-shaped, Inv 26 (b) + Inv 27).
+    # A research item gets the SHAPE_RESEARCH shape regardless of feature
+    # count (findings, not code).
+    dispatch_shapes = {}
+    for i in selection:
+        if i.get("decision") == "research":
+            dispatch_shapes[str(i["issue"])] = SHAPE_RESEARCH
+        else:
+            dispatch_shapes[str(i["issue"])] = _dispatch_shape(
+                i, decompose_threshold)
+
+    # Research items (Inv 27 / issue #478) are routed to the read-only
+    # research shape: they appear in selection_order and research_items but
+    # NEVER in barrier_first or the conflict-graph groups (findings edit no
+    # code, so the same-feature conflict edges and the contract-touch barrier
+    # do not apply). Partition them out before the grouping.
+    research_items = sorted(
+        i["issue"] for i in selection if i.get("decision") == "research"
+    )
+    selection = [i for i in selection if i.get("decision") != "research"]
 
     # Step 1/2: priority-primary, barrier-secondary partition (issue #479).
     # barrier_first is the LEADING run of contract_touch items in the
@@ -216,6 +246,7 @@ def plan(items, max_parallel, decompose_threshold):
         "dispatch_shapes": dispatch_shapes,
         "barrier_first": barrier_first,
         "groups": groups,
+        "research_items": research_items,
     }
 
 

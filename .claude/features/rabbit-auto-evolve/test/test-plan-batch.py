@@ -439,4 +439,79 @@ else:
         fail(f"order-agree: bad JSON ({e}); stdout={proc.stdout!r}")
 
 
+# ---------------------------------------------------------------------------
+# Scenario 13 — Research dispatch shape (issue #478)
+#   A batch with a research item plus a work item: the research issue appears
+#   in selection_order with dispatch_shapes[N]=="research" and N in
+#   research_items, and is ABSENT from barrier_first and groups. The work item
+#   is unaffected.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 1301, "feature": "Fwork", "features": ["Fwork"],
+     "contract_touch": False, "priority": "high", "decision": "work"},
+    {"issue": 1302, "feature": "Fresearch", "features": ["Fresearch"],
+     "contract_touch": False, "priority": "high", "decision": "research"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"research-shape: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        shapes = out.get("dispatch_shapes", {})
+        research_items = out.get("research_items")
+        groups = out.get("groups", [])
+        flat_groups = [i for g in groups for i in g]
+        if shapes.get("1302") != "research":
+            fail(f"research-shape: dispatch_shapes[1302]={shapes.get('1302')!r}, "
+                 f"want 'research'")
+        elif research_items != [1302]:
+            fail(f"research-shape: research_items={research_items!r}, want [1302]")
+        elif 1302 in out.get("barrier_first", []):
+            fail("research-shape: research item must not be in barrier_first")
+        elif 1302 in flat_groups:
+            fail("research-shape: research item must not be in groups")
+        elif 1302 not in out.get("selection_order", []):
+            fail("research-shape: research item must appear in selection_order")
+        # Work item unaffected.
+        elif shapes.get("1301") != "parallel-per-feature":
+            fail(f"research-shape: work item 1301 shape changed: "
+                 f"{shapes.get('1301')!r}")
+        elif 1301 not in flat_groups:
+            fail("research-shape: work item 1301 must still appear in groups")
+        else:
+            ok("research-shape: research item routed to 'research' + "
+               "research_items, excluded from barrier_first/groups; work "
+               "item unaffected")
+    except json.JSONDecodeError as e:
+        fail(f"research-shape: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 14 — research_items key always present (issue #478)
+#   A batch with NO research items still emits a research_items key (empty
+#   list), so callers can rely on its presence.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 1401, "feature": "Fa", "features": ["Fa"],
+     "contract_touch": False, "priority": "high", "decision": "work"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"research-empty: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        if "research_items" not in out:
+            fail("research-empty: research_items key must always be present")
+        elif out.get("research_items") != []:
+            fail(f"research-empty: research_items should be empty, got "
+                 f"{out.get('research_items')!r}")
+        else:
+            ok("research-empty: research_items key present and empty when no "
+               "research items")
+    except json.JSONDecodeError as e:
+        fail(f"research-empty: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
 sys.exit(FAIL)
