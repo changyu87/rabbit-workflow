@@ -69,6 +69,28 @@ if missing:
 else:
     ok("spec.md carries the amended cron-scheduling invariant (Inv 32)")
 
+# --- (1b) Inv 33 pinned-minute one-shot amendment (#531) ----------------
+# The croncreate one-shot must be a PINNED next-minute "M H * * *" expression
+# (never the fragile "*/1 * * * *"), with recurring:false AND durable:false
+# passed faithfully and at most one refire alive (CronList -> CronDelete ->
+# CronCreate). The spec text MUST document this.
+PINNED_REQUIRED = [
+    "531",
+    "recurring: false",
+    "durable: false",
+    "pinned",
+]
+pin_missing = [s for s in PINNED_REQUIRED if s.lower() not in spec_low]
+if pin_missing:
+    fail(f"spec.md missing Inv 33 pinned-minute phrase(s): {pin_missing!r}")
+else:
+    ok("spec.md documents the Inv 33 pinned-minute one-shot amendment (#531)")
+# The spec must explicitly reject the every-minute form.
+if "*/1 * * * *" in spec and "never" in spec_low:
+    ok("spec.md rejects the fragile every-minute '*/1 * * * *' form")
+else:
+    fail("spec.md does not reject the every-minute '*/1 * * * *' form")
+
 # --- (2) ScheduleWakeup and /loop are FORBIDDEN -------------------------
 # The amended Inv 32 names ScheduleWakeup/loop only to FORBID them, so the
 # tokens DO appear in the spec as forbidden-list items. We therefore require
