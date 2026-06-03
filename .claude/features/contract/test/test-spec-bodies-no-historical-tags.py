@@ -64,8 +64,9 @@ STRICT_PATTERN = re.compile(
 )
 
 # Features whose housekeeping cleanup has landed (doc surfaces already
-# history-free) opt into the strict tier. Starts EMPTY => non-breaking.
-CLEANED_FEATURES = set()
+# history-free) opt into the strict tier. Features are added one at a time
+# as each feature's cleanup lands; contract is cleaned first.
+CLEANED_FEATURES = {"contract"}
 
 _cleaned_override = os.environ.get("RABBIT_HISTORICAL_TAGS_CLEANED")
 if _cleaned_override is not None:
