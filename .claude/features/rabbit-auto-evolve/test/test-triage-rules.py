@@ -738,4 +738,154 @@ with tempfile.TemporaryDirectory() as repo_root:
     )
 
 
+# ---------------------------------------------------------------------------
+# Stage-2 cross-feature detection by BARE feature name (issue #443).
+#
+# An issue whose body names multiple features by bare name (no full
+# `.claude/features/<name>/` path) — e.g. in prose or a markdown table —
+# must still populate `features` with every named feature so plan-batch
+# chooses a cross-feature dispatch shape. Before #443 such issues were seen
+# as single-feature and got `parallel-per-feature` instead of
+# `multi-subagent-barrier` / `decomposition`.
+# ---------------------------------------------------------------------------
+
+# Case A: three features named by bare name in prose (no full paths). The
+# fake repo contains all three feature dirs so `ls .claude/features/`
+# discovers them. `features` must include exactly those 3.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    make_feature(repo_root, "rabbit-issue")
+    make_feature(repo_root, "rabbit-meta")
+    issue_payload = json.dumps({
+        "number": 443,
+        "title": "Cross-feature refactor",
+        "body": "#416 touches rabbit-auto-evolve, rabbit-issue, rabbit-meta "
+                "in one pass.",
+        "labels": [
+            {"name": "feature:rabbit-auto-evolve"},
+            {"name": "priority:high"},
+        ],
+        "state": "OPEN",
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"443": issue_payload}, list_payload)
+    proc = run_script(repo_root, 443, shim_dir)
+    expect_decision(
+        "bare-name-prose", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None if r.get("features") == [
+                "rabbit-auto-evolve", "rabbit-issue", "rabbit-meta"]
+            else "features should be the 3 bare-named features (sorted); "
+                 f"got {r.get('features')!r}"
+        ),
+    )
+
+
+# Case B (regression fixture from acceptance): a markdown table naming three
+# features by bare name, no full paths → len(features) == 3.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    make_feature(repo_root, "rabbit-issue")
+    make_feature(repo_root, "rabbit-meta")
+    table_body = (
+        "Affected features:\n\n"
+        "| feature | reason |\n"
+        "| --- | --- |\n"
+        "| rabbit-auto-evolve | triage logic |\n"
+        "| rabbit-issue | label flow |\n"
+        "| rabbit-meta | registry |\n"
+    )
+    issue_payload = json.dumps({
+        "number": 4430,
+        "title": "Table-driven cross-feature change",
+        "body": table_body,
+        "labels": [
+            {"name": "feature:rabbit-auto-evolve"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"4430": issue_payload}, list_payload)
+    proc = run_script(repo_root, 4430, shim_dir)
+    expect_decision(
+        "bare-name-table", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None if len(r.get("features") or []) == 3
+            else "features should have len 3 from the markdown table; "
+                 f"got {r.get('features')!r}"
+        ),
+    )
+
+
+# Case C: bare feature name in the TITLE (not body) is also detected.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    make_feature(repo_root, "rabbit-config")
+    issue_payload = json.dumps({
+        "number": 4431,
+        "title": "Wire rabbit-config into the evolve loop",
+        "body": "Self-explanatory.",
+        "labels": [
+            {"name": "feature:rabbit-auto-evolve"},
+            {"name": "priority:low"},
+        ],
+        "state": "OPEN",
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"4431": issue_payload}, list_payload)
+    proc = run_script(repo_root, 4431, shim_dir)
+    expect_decision(
+        "bare-name-title", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None if r.get("features") == [
+                "rabbit-auto-evolve", "rabbit-config"]
+            else "title-named feature must be detected; "
+                 f"got {r.get('features')!r}"
+        ),
+    )
+
+
+# Case D: a feature name appearing only as a SUBSTRING of a longer token must
+# NOT match (word-boundary discipline). The repo has a feature `rabbit-meta`;
+# a body that only mentions `rabbit-metadata-store` (an unrelated longer word,
+# not a real feature dir) must not pull `rabbit-meta` into the set.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    make_feature(repo_root, "rabbit-meta")
+    issue_payload = json.dumps({
+        "number": 4432,
+        "title": "Single-feature tweak",
+        "body": "This only mentions rabbit-metadata-store, nothing else.",
+        "labels": [
+            {"name": "feature:rabbit-auto-evolve"},
+            {"name": "priority:low"},
+        ],
+        "state": "OPEN",
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"4432": issue_payload}, list_payload)
+    proc = run_script(repo_root, 4432, shim_dir)
+    expect_decision(
+        "bare-name-no-substring", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None if r.get("features") == ["rabbit-auto-evolve"]
+            else "substring of a longer token must NOT match a feature name; "
+                 f"got {r.get('features')!r}"
+        ),
+    )
+
+
 sys.exit(FAIL)

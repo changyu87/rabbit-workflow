@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.16.0
+version: 0.17.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -329,12 +329,23 @@ Phase E merges complete.
    to the contract-touch-only tiebreak. Triage therefore MUST emit
    `priority` on every record.
 
-   The `features` field (Inv 26 / issue #435) is the sorted, distinct set of
-   feature directories the item touches: the union of the `feature:<name>`
-   label and every `.claude/features/<name>/` path literally referenced in
-   the issue body. It is the basis `plan-batch.py` uses to choose a per-item
-   dispatch shape (Stage 2). A malformed-labels issue with no body paths
-   carries `features: []`.
+   The `features` field (Inv 26 / issue #435, #443) is the sorted, distinct
+   set of feature directories the item touches: the union of THREE detection
+   methods —
+   (a) the `feature:<name>` label;
+   (b) every `.claude/features/<name>/` path literally referenced in the
+   issue body; and
+   (c) every canonical feature name (discovered by listing
+   `.claude/features/` at triage time) that appears as a whole word
+   (word-boundary `\b<name>\b` match) in the issue body OR title. Method (c)
+   (issue #443) catches issues that name features in prose or a markdown
+   table without the full path — e.g. a body that says "touches
+   rabbit-auto-evolve, rabbit-issue, rabbit-meta" yields a 3-feature set even
+   though no `.claude/features/<name>/` path is written. Without (c) such an
+   issue was mis-seen as single-feature and got the wrong dispatch shape.
+   It is the basis `plan-batch.py` uses to choose a per-item dispatch shape
+   (Stage 2). A malformed-labels issue with no body paths and no bare
+   feature-name mention carries `features: []`.
 
    The decision set is EXACTLY `{work, defer, close-not-planned, research}`
    (issue #423 Part A; `research` added by issue #478). `close-completed`
