@@ -5,12 +5,26 @@ Greps every feature's spec.md, contract.md (resolved at specs/<name> —
 issue #399 migration complete, fallback dropped #465), and any
 skills/*/SKILL.md under each feature for historical-burden patterns that
 violate housekeeping protocol criterion #1 (current-design only) and
-criterion #2 (no documentation burden):
+criterion #2 (no documentation burden).
 
+Two-tier enforcement with per-feature opt-in (Inv 49):
+
+  Baseline tier (enforced on ALL features, unconditionally):
     Plan [A-F]      — cleanup wave / plan identifiers
     BUG-N           — bug item references
     BACKLOG-N       — backlog item references
     Wave N          — wave identifiers
+
+  Strict tier (enforced ONLY on features in CLEANED_FEATURES):
+    #N              — bare issue/PR references
+    per issue/bug/pr — prose pointers (case-insensitive)
+    superseded/retired/obsoleted — tombstone language (case-insensitive)
+
+CLEANED_FEATURES starts EMPTY, so introducing the strict tier is
+non-breaking: it enforces on nothing until a feature opts in (added to
+the set once its housekeeping cleanup has landed). CHANGELOG.md is never
+scanned — only spec.md, contract.md, and skills/*/SKILL.md are — so
+feature history relocated to CHANGELOG.md is exempt by construction.
 
 Such tags belong in commit messages and CHANGELOG.md tombstones, NOT
 in feature documentation surfaces. Doc surfaces describe the CURRENT
@@ -18,7 +32,14 @@ design; the project ticket that produced any given line is irrelevant
 once the line ships.
 
 A hardcoded ALLOWLIST permits legitimate occurrences (algorithm-output
-examples whose textual content happens to match the pattern).
+examples whose textual content happens to match the pattern); it applies
+to BOTH tiers.
+
+Self-testability: RABBIT_HISTORICAL_TAGS_FEATURES_ROOT overrides the
+features root, and RABBIT_HISTORICAL_TAGS_CLEANED (comma-separated
+feature names) overrides CLEANED_FEATURES, so a companion test can point
+the checker at fixture feature trees. Absent the overrides the checker
+behaves exactly as the production check.
 
 Non-interactive. Exits non-zero on any unallowlisted match.
 """
@@ -31,9 +52,26 @@ import sys
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.normpath(os.path.join(TEST_DIR, ".."))
 REPO_ROOT = os.path.normpath(os.path.join(FEATURE_DIR, "..", "..", ".."))
-FEATURES_ROOT = os.path.join(REPO_ROOT, ".claude", "features")
+FEATURES_ROOT = os.environ.get(
+    "RABBIT_HISTORICAL_TAGS_FEATURES_ROOT",
+    os.path.join(REPO_ROOT, ".claude", "features"),
+)
 
-PATTERN = re.compile(r"Plan [A-F]|BUG-[0-9]|BACKLOG-[0-9]|Wave [0-9]")
+BASELINE_PATTERN = re.compile(r"Plan [A-F]|BUG-[0-9]|BACKLOG-[0-9]|Wave [0-9]")
+STRICT_PATTERN = re.compile(
+    r"#[0-9]+|per (issue|bug|pr)\b|superseded|retired|obsoleted",
+    re.IGNORECASE,
+)
+
+# Features whose housekeeping cleanup has landed (doc surfaces already
+# history-free) opt into the strict tier. Starts EMPTY => non-breaking.
+CLEANED_FEATURES = set()
+
+_cleaned_override = os.environ.get("RABBIT_HISTORICAL_TAGS_CLEANED")
+if _cleaned_override is not None:
+    CLEANED_FEATURES = {
+        name.strip() for name in _cleaned_override.split(",") if name.strip()
+    }
 
 # (relative-from-features-root, line_number, substring-on-line) tuples.
 # Each entry records a legitimate occurrence and WHY it is permitted.
@@ -90,9 +128,14 @@ violations = []
 surfaces = feature_doc_surfaces()
 for feature, doc_path in surfaces:
     rel_path = os.path.relpath(doc_path, FEATURES_ROOT)
+    # Baseline tier applies to every feature; the strict tier additionally
+    # applies only to features that have opted in via CLEANED_FEATURES.
+    patterns = [BASELINE_PATTERN]
+    if feature in CLEANED_FEATURES:
+        patterns.append(STRICT_PATTERN)
     with open(doc_path) as f:
         for line_no, line in enumerate(f, start=1):
-            if PATTERN.search(line):
+            if any(p.search(line) for p in patterns):
                 if is_allowlisted(rel_path, line_no, line.rstrip("\n")):
                     continue
                 violations.append((rel_path, line_no, line.rstrip("\n")))
