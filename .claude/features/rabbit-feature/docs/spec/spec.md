@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.21.0
+version: 1.21.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -355,6 +355,21 @@ Scripts (under `scripts/`):
     target, the SKILL.md instructs the skill to invoke
     `python3 .claude/features/contract/scripts/validate-feature.py
     <feature-dir>` and to emit per-feature pass/fail output.
+
+50. **rabbit-feature-audit enforces team ownership.** The
+    `rabbit-feature-audit` SKILL.md instructs the skill to invoke
+    `python3 .claude/features/rabbit-feature/scripts/audit-owner.py
+    <feature-dir>` for each target and to fold its result into the
+    per-feature finding — a target PASSES only when BOTH
+    `validate-feature.py` and `audit-owner.py` pass. `audit-owner.py`
+    requires `feature.json` `owner` to equal exactly `rabbit-workflow team`;
+    any other (individual) owner FAILS with a message naming the offending
+    feature and its current owner (exit 1). Retired features
+    (`status: retired`) short-circuit to pass, mirroring `validate_feature`'s
+    Inv 36b retired short-circuit. The script exits 0 on pass, 1 on owner
+    mismatch, and 2 on bad invocation. This is defense-in-depth (issue #416
+    Part C) catching future drift back to individual owners on repo-level
+    features distributed as part of rabbit-workflow.
 
 ### Feature-level metadata
 

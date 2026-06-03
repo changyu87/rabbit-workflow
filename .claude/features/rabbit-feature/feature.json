@@ -1,10 +1,10 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-feature",
-  "version": "1.21.0",
+  "version": "1.21.1",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
-  "summary": "Dispatcher-side feature-touch orchestration surface. Owns the rabbit-feature-touch skill and three general-purpose helper skills (rabbit-feature-scope, rabbit-feature-scaffold, rabbit-feature-audit) plus their backing scripts (resolve-scope.py, format-feature-context.py, scaffold-feature.py). Spec lifecycle skills (rabbit-spec-create, rabbit-spec-update) are owned by rabbit-spec. Executor-side TDD machinery (dispatch-tdd-subagent.py, tdd-step.py) lives in tdd-subagent and is consumed via the cross-feature contract.",
+  "summary": "Dispatcher-side feature-touch orchestration surface. Owns the rabbit-feature-touch skill and three general-purpose helper skills (rabbit-feature-scope, rabbit-feature-scaffold, rabbit-feature-audit) plus their backing scripts (resolve-scope.py, format-feature-context.py, scaffold-feature.py, audit-owner.py). Spec lifecycle skills (rabbit-spec-create, rabbit-spec-update) are owned by rabbit-spec. Executor-side TDD machinery (dispatch-tdd-subagent.py, tdd-step.py) lives in tdd-subagent and is consumed via the cross-feature contract.",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -18,7 +18,8 @@
     "scripts": [
       "scripts/resolve-scope.py",
       "scripts/format-feature-context.py",
-      "scripts/scaffold-feature.py"
+      "scripts/scaffold-feature.py",
+      "scripts/audit-owner.py"
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
