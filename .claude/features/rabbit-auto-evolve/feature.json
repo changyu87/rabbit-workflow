@@ -39,5 +39,5 @@
   },
   "configuration": [],
   "prompts": [],
-  "spec_no_change_reason": "Inv 38 spec amendment already landed in the spec(...) commit 88d1496 on this branch; this cycle implements + tests it"
+  "spec_no_change_reason": "test-isolation conformance fix; Inv 18 already mandates hermetic tests"
 }
