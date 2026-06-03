@@ -4,9 +4,9 @@ subcommands with their preconditions and marker writes.
 
 Per spec Inv 10:
 - `start` verifies three preconditions, writes .rabbit-auto-evolve-running,
-  runs one tick, calls ScheduleWakeup.
+  runs one tick; the next tick is fired by the system cron (Inv 32).
 - `stop` writes .rabbit-auto-evolve-stop-requested; next tick observes it
-  and does NOT call ScheduleWakeup.
+  and halts.
 - `status` is read-only.
 """
 

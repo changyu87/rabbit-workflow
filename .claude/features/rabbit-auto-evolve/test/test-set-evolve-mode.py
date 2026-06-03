@@ -51,9 +51,39 @@ def ok(msg):
     print(f"PASS: {msg}")
 
 
+def make_fake_crontab(root):
+    """Install a fake `crontab` shim under <root> backed by
+    <root>/.fake-crontab.txt so set-evolve-mode's cron install/uninstall
+    (Inv 32 / issue #414) never touches the real user crontab. Returns the
+    (shim_path, data_path) pair."""
+    data = os.path.join(root, ".fake-crontab.txt")
+    shim = os.path.join(root, ".fake-crontab")
+    with open(shim, "w") as f:
+        f.write(
+            "#!" + sys.executable + "\n"
+            "import sys, os\n"
+            f"DATA = {data!r}\n"
+            "a = sys.argv[1:]\n"
+            "if a == ['-l']:\n"
+            "    if not os.path.isfile(DATA):\n"
+            "        sys.exit(1)\n"
+            "    sys.stdout.write(open(DATA).read()); sys.exit(0)\n"
+            "if a == ['-']:\n"
+            "    open(DATA, 'w').write(sys.stdin.read()); sys.exit(0)\n"
+            "sys.exit(2)\n"
+        )
+    os.chmod(shim, 0o755)
+    return shim, data
+
+
 def run_script(cwd, *args, env_extra=None):
-    """Run the script from cwd. Returns CompletedProcess."""
+    """Run the script from cwd. Returns CompletedProcess. A fake crontab is
+    injected (Inv 32) so the real user crontab is never mutated, unless the
+    caller already supplied RABBIT_CRONTAB_CMD via env_extra."""
     env = os.environ.copy()
+    if not (env_extra and "RABBIT_CRONTAB_CMD" in env_extra):
+        shim, _ = make_fake_crontab(cwd)
+        env["RABBIT_CRONTAB_CMD"] = shim
     if env_extra:
         env.update(env_extra)
     return subprocess.run(
@@ -347,6 +377,47 @@ with tempfile.TemporaryDirectory() as root:
         fail(f"H: stdout missing 'deactivated'; got: {out!r}")
     else:
         ok("H: `off` stdout contains 'deactivated'")
+
+
+# ---------------------------------------------------------------------------
+# Scenario I — cron lifecycle (Inv 32 / issue #414). `on` installs exactly one
+# tick-headless crontab entry (via install-cron.py); `off` removes it (via
+# uninstall-cron.py). Both run against an injected fake crontab so the real
+# user crontab is never touched.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as root:
+    shim, data = make_fake_crontab(root)
+    env_extra = {"RABBIT_CRONTAB_CMD": shim}
+
+    proc_on = run_script(root, "on", env_extra=env_extra)
+    if proc_on.returncode != 0:
+        fail(f"I: `on` failed: {proc_on.stderr!r}")
+    else:
+        ok("I: `on` exited 0 (with cron install)")
+    cron_body = ""
+    if os.path.isfile(data):
+        with open(data) as f:
+            cron_body = f.read()
+    if cron_body.count("tick-headless.py") != 1:
+        fail(f"I: expected exactly one tick-headless crontab entry after `on`, "
+             f"got {cron_body.count('tick-headless.py')}; cron={cron_body!r}")
+    else:
+        ok("I: `on` installed exactly one tick-headless crontab entry")
+
+    proc_off = run_script(root, "off", env_extra=env_extra)
+    if proc_off.returncode != 0:
+        fail(f"I: `off` failed: {proc_off.stderr!r}")
+    else:
+        ok("I: `off` exited 0 (with cron uninstall)")
+    cron_body2 = ""
+    if os.path.isfile(data):
+        with open(data) as f:
+            cron_body2 = f.read()
+    if "tick-headless.py" in cron_body2:
+        fail(f"I: expected tick-headless crontab entry removed after `off`; "
+             f"cron={cron_body2!r}")
+    else:
+        ok("I: `off` removed the tick-headless crontab entry")
 
 
 sys.exit(FAIL)

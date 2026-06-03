@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.19.0
+version: 0.20.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -24,8 +24,10 @@ status: active
 A self-driving rabbit loop that continuously fetches open `rabbit-managed`
 GitHub issues, triages each one, dispatches TDD subagents to implement
 actionable work, merges approved PRs into `dev`, tags versioned releases,
-and reschedules itself via `ScheduleWakeup` until the user issues an
-explicit stop — all without requiring human approval at each step.
+and is fired on a fixed cadence by a system cron (the sole tick scheduler;
+see Inv 32) until the user issues an explicit stop — all without requiring
+human approval at each step. (Pre-Inv 32 the loop self-chained via
+`ScheduleWakeup`; that mechanism was removed in issue #414.)
 
 ## Paths governed
 
@@ -80,6 +82,9 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/update-state.py` | CLI | Reads JSON from stdin; validates against `schemas/auto-evolve-state.schema.json`; atomically writes `.rabbit/auto-evolve-state.json` via temp+rename |
 | `scripts/status-report.py` | CLI | Read-only `status` backing script: reads `.rabbit/auto-evolve-state.json` (defaults on missing/empty/malformed) and the five runtime markers; emits a fixed-format status JSON on stdout |
 | `scripts/run-post-merge.py` | CLI | Deterministic non-skippable runner for tick phases 7–9 (release → cleanup → catch-up): reads `pending_post_merge` from state, invokes `release-bump.py` / `cleanup-branches.py` / `classify-merge-restart.py` in order, then clears the field; clean no-op when empty (issue #499, Inv 30) |
+| `scripts/install-cron.py` | CLI | Idempotently installs the `*/30` system-cron entry that fires `tick-headless.py` (the sole tick scheduler); invoked by `set-evolve-mode.py on` (issue #414, Inv 32) |
+| `scripts/uninstall-cron.py` | CLI | Idempotently removes the system-cron entry; safe no-op when absent; invoked by `set-evolve-mode.py off` (issue #414, Inv 32) |
+| `scripts/tick-headless.py` | CLI | The Claude-free headless tick fired by the system cron: walks phases 0–1, 2–4, 6, 7–9, 10; skips phase 5 (dispatch needs Claude); phase 11 is a no-op (issue #414, Inv 32) |
 
 **State file (runtime artifact):**
 
@@ -1854,8 +1859,16 @@ Phase E merges complete.
     the source and deployed `SKILL.md` document the
     `isolation: "worktree"` dispatch requirement.
 
-29. **Phase 11 (`schedule`) MUST call `ScheduleWakeup` with valid
-    parameters (issue #409).** The auto-evolve loop silently stopped
+29. **[SUPERSEDED by Inv 32 — issue #414.]** This invariant required phase 11
+    (`schedule`) to call `ScheduleWakeup` with valid parameters. The entire
+    `ScheduleWakeup` mechanism was REMOVED in issue #414; tick scheduling is
+    now owned by the system cron (Inv 32). The original text is retained
+    below for historical context only — `schedule-check.py` and the
+    `test/test-schedule-check.py` / `test/test-spec-schedule-invariant.py`
+    tests were deleted.
+
+    Phase 11 (`schedule`) MUST call `ScheduleWakeup` with valid
+    parameters (issue #409). The auto-evolve loop silently stopped
     scheduling: tick 6 ended and five subsequent hourly ticks
     (`ScheduleWakeup` at :17 past each hour) never fired across a 5h+
     window, with NO error, NO log line, and NO halt — the session was
@@ -2091,8 +2104,14 @@ Phase E merges complete.
     text is present in the spec AND that both the source and deployed SKILL.md
     invoke `run-post-merge.py` after the merge phase AND at tick start.
 
-31. **Phase 11 (`schedule`) refires immediately when the queue is
-    non-empty (issue #412).** Before this invariant the `schedule` phase
+31. **[SUPERSEDED by Inv 32 — issue #414.]** This invariant tuned the
+    `ScheduleWakeup` delay by queue emptiness. The `ScheduleWakeup`
+    mechanism was REMOVED in issue #414; the system cron fires on a fixed
+    cadence (Inv 32) regardless of queue emptiness. Original text retained
+    for context only.
+
+    Phase 11 (`schedule`) refires immediately when the queue is
+    non-empty (issue #412). Before this invariant the `schedule` phase
     always used the canonical hourly delay (`delaySeconds=3600`, Inv 29).
     That fixed delay means a tick that just dispatched work — or that
     found items still waiting in `state.queue` / `state.in_flight` — sits
@@ -2198,6 +2217,70 @@ Phase E merges complete.
       `action: null`.
     - Exit code is 0 in all cases.
     - `--help` smoke: exit 0 with recognizable usage text.
+
+32. **Tick scheduling is owned by the system cron; `ScheduleWakeup` and
+    `CronCreate` are NEVER used in rabbit-auto-evolve (issue #414).** The
+    prior architecture self-chained ticks from inside a live Claude session
+    via `ScheduleWakeup` (Inv 29 / Inv 31). That coupled the loop's cadence
+    to an open session and made the next tick a Claude-harness side effect
+    that could silently drop (the issue #409 incident). Issue #414 replaces
+    self-chaining with an EXTERNAL trigger: a single system `cron` entry is
+    the SOLE tick scheduler. `ScheduleWakeup` and `CronCreate` are removed
+    entirely; neither appears anywhere in this feature's scripts or SKILL.md.
+
+    **The split between headless and session ticks.**
+
+    - **Headless tick (cron-fired, no Claude session).** The cron entry runs
+      `python3 .claude/features/rabbit-auto-evolve/scripts/tick-headless.py`.
+      It walks the deterministic, Claude-free phases:
+      phase 0 (`stop-check`), phase 1 (`restart-check`),
+      phases 2–4 (`fetch | triage | plan`),
+      phase 6 (`merge` of the PRs listed in the state's transient
+      `merge_ready` hint field, skipped when empty),
+      phases 7–9 (`run-post-merge.py` when `pending_post_merge` non-empty),
+      phase 10 (`persist`). `merge_ready` is a transient per-tick hint, NOT
+      part of the canonical Inv 9 state schema, so the headless tick drops it
+      before handing the state object to `update-state.py` (whose validator
+      rejects unknown keys). It does NOT run phase 5 (`dispatch`) — that
+      requires a Claude session — and it does NOT schedule anything (phase 11
+      is a no-op; the cron fires the next tick). A pending stop
+      (`.rabbit-auto-evolve-stop-requested`) or abort
+      (`.rabbit-auto-evolve-aborted`) marker short-circuits the headless tick
+      to a clean no-op.
+    - **Session tick (Claude active).** The full 12-phase tick walked by
+      SKILL.md still runs, INCLUDING phase 5 (`dispatch`). Phase 11
+      (`schedule`) no longer calls `ScheduleWakeup` — it is documented as a
+      no-op because the cron owns scheduling.
+
+    **Cron lifecycle (owned by `set-evolve-mode.py`).**
+
+    - `scripts/install-cron.py` installs ONE crontab entry of the form
+      `*/30 * * * * cd <repo_root> && python3
+      .claude/features/rabbit-auto-evolve/scripts/tick-headless.py >>
+      .rabbit/tick-headless.log 2>&1` using the `crontab -l` (read) +
+      append + `crontab -` (write) pattern. It is IDEMPOTENT: if an entry
+      mentioning `tick-headless.py` already exists, it is a clean no-op
+      (running twice yields exactly one entry). Exit 0 on success.
+    - `scripts/uninstall-cron.py` removes the entry via the
+      `crontab -l | grep -v tick-headless | crontab -` pattern. It is
+      IDEMPOTENT and safe when the entry is absent (and when no crontab
+      exists at all). Exit 0 on success including the absent case.
+    - `set-evolve-mode.py on` invokes `install-cron.py` after writing the
+      three activation markers; `set-evolve-mode.py off` invokes
+      `uninstall-cron.py` before tearing down the markers. A cron
+      install/uninstall failure is surfaced but does not by itself fail the
+      mode flip (best-effort, like the loop-runtime marker deletion).
+
+    Enforced by `test/test-cron-trigger.py` (e2e): `install-cron.py` installs
+    exactly one entry and is idempotent across two runs; `uninstall-cron.py`
+    removes it and is a safe no-op when absent. By
+    `test/test-tick-headless.py` (e2e): the headless tick runs phases 0–1,
+    2–4 (plan only — no dispatch), 6, 7–9, and 10 without a Claude session,
+    and short-circuits on a stop/abort marker. And by
+    `test/test-spec-cron-invariant.py` (e2e): this invariant text is present
+    in the spec AND neither the source nor the deployed `SKILL.md` contains
+    any `ScheduleWakeup` or `CronCreate` reference, and both document the
+    cron-owned scheduling and the headless tick.
 
 ## Known gaps
 
