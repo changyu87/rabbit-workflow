@@ -25,10 +25,16 @@ presence and order.
 The detail strings include the actionable next step (`/rabbit-auto-evolve
 on`, restart Claude, etc.) so SKILL.md can surface them verbatim.
 
+The `approval-bypass` check is dual-read (issue #336 Phase 1 coexistence
+window): it passes when EITHER the legacy `.rabbit-human-approval-bypass`
+OR the new `.rabbit-tdd-autonomous` marker is present (OR logic). The detail
+names whichever marker(s) are present; when neither is present it mentions
+both. This lets Phase 2 rename the live marker without breaking the loop.
+
 `<repo_root>` defaults to `os.getcwd()`; overridable via the
 `RABBIT_AUTO_EVOLVE_REPO_ROOT` env var for tests.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -42,7 +48,12 @@ import os
 import sys
 
 ACTIVE_MARKER = ".rabbit-auto-evolve-active"
-APPROVAL_BYPASS_MARKER = ".rabbit-human-approval-bypass"
+# Issue #336 Phase 1 coexistence window: the bypass state may live under
+# either the legacy name or the new `.rabbit-tdd-autonomous` name. The reader
+# accepts EITHER (OR logic) so Phase 2 can rename the live marker without
+# breaking the running loop. Both fall back to the same "bypass active" verdict.
+APPROVAL_BYPASS_MARKER_LEGACY = ".rabbit-human-approval-bypass"
+APPROVAL_BYPASS_MARKER_NEW = ".rabbit-tdd-autonomous"
 SETTINGS_PATH = os.path.join(".claude", "settings.local.json")
 
 
@@ -66,17 +77,25 @@ def _check_active(repo_root: str) -> dict:
 
 
 def _check_approval_bypass(repo_root: str) -> dict:
-    path = os.path.join(repo_root, APPROVAL_BYPASS_MARKER)
-    if os.path.exists(path):
+    # Dual-read (issue #336 Phase 1): bypass is active if EITHER marker exists.
+    present = [
+        name
+        for name in (APPROVAL_BYPASS_MARKER_LEGACY, APPROVAL_BYPASS_MARKER_NEW)
+        if os.path.exists(os.path.join(repo_root, name))
+    ]
+    if present:
         return {
             "id": "approval-bypass",
             "ok": True,
-            "detail": f"{APPROVAL_BYPASS_MARKER} present (human-approval off)",
+            "detail": f"{' and '.join(present)} present (tdd-autonomous on)",
         }
     return {
         "id": "approval-bypass",
         "ok": False,
-        "detail": f"{APPROVAL_BYPASS_MARKER} missing — run /rabbit-auto-evolve on",
+        "detail": (
+            f"neither {APPROVAL_BYPASS_MARKER_LEGACY} nor "
+            f"{APPROVAL_BYPASS_MARKER_NEW} present — run /rabbit-auto-evolve on"
+        ),
     }
 
 
