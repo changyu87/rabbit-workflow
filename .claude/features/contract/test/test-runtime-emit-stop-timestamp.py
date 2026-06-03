@@ -98,6 +98,15 @@ with tempfile.TemporaryDirectory() as td:
     else:
         ok(f"vii: two successive calls both valid HH:MM:SS ({t1!r}, {t2!r})")
 
+# (viii) the single entry carries order == "footer" (footer-ordering marker
+# per issue #413 / Inv 67).
+if entry is None:
+    fail("viii: no entry to inspect")
+elif entry.get("order") != "footer":
+    fail(f"viii: order must be 'footer', got {entry.get('order')!r}")
+else:
+    ok("viii: entry order is 'footer'")
+
 if FAIL:
     print("test-runtime-emit-stop-timestamp: FAIL", file=sys.stderr)
     sys.exit(1)
