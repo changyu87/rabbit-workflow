@@ -23,7 +23,8 @@ path false-skips on a marker it itself wrote. start-loop.py (the explicit user
 longer writes the running marker.
 
   post-dispatch  phase 6 (merge ready PRs from the state's `merge_ready`
-                 hint), phases 7-9 (`run-post-merge.py` drain), phase 10
+                 hint), a post-merge re-sync to origin/dev when PRs merged
+                 (Inv 47), phases 7-9 (`run-post-merge.py` drain), phase 10
                  (persist: re-read the on-disk state — already mutated by the
                  phase scripts — drop the transient `merge_ready` key, and
                  pipe through `update-state.py`). Emits a result summary.
@@ -47,7 +48,7 @@ A single JSON result object is emitted on stdout. Exit code is 0 on a
 completed segment (including every short-circuit no-op); non-zero on an
 unexpected phase-script failure.
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -257,6 +258,25 @@ def run_post_dispatch():
         if merge.returncode != 0:
             result["status"] = "failed"
             result["reason"] = "merge-failed"
+            return result, 1
+
+        # Post-merge re-sync to origin/dev (Inv 47 / #516). merge-prs.py did a
+        # REMOTE squash-merge via `gh pr merge`, which advances origin/dev but
+        # NOT the loop's LOCAL dev checkout. Fast-forward local dev to
+        # origin/dev NOW, before the phases 7-9 release drain, so
+        # release-bump.py computes its tag against fresh (not stale) state and
+        # succeeds on the FIRST in-loop attempt (no reliance on the #512
+        # next-tick retry). Reuses sync-tree.py (git pull --ff-only origin dev,
+        # NEVER git merge — Inv 38), inheriting its dirty-tree / non-ff
+        # refusal: a tree that cannot be fast-forwarded aborts the tick here
+        # rather than running release-bump on stale state. Gated on actual
+        # merges — with zero merges origin/dev did not advance, so the re-sync
+        # is skipped (harmless no-op, no spurious sync error).
+        resync = _run("sync-tree.py", [])
+        result["phases"]["resync"] = resync.returncode
+        if resync.returncode != 0:
+            result["status"] = "failed"
+            result["reason"] = "post-merge-resync-failed"
             return result, 1
     else:
         result["phases"]["merge"] = "skipped-no-ready-prs"
