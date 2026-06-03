@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.17.0
+version: 0.18.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -151,16 +151,55 @@ from disk-persisted state in `.rabbit/auto-evolve-state.json`.
 |---|-------------------|----------------------------------------------|
 | 0 | `stop-check`      | (none — file existence check on `.rabbit-auto-evolve-stop-requested`) |
 | 1 | `restart-check`   | (none — file existence check on `.rabbit-auto-evolve-restart-needed`) |
+| 1.5 | `post-merge-drain` | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — drains any `pending_post_merge` owed by a previous truncated tick BEFORE fetch (Inv 30) |
 | 2 | `fetch`           | `.claude/features/rabbit-auto-evolve/scripts/fetch-queue.py` |
 | 3 | `triage`          | `.claude/features/rabbit-auto-evolve/scripts/triage-batch.py` (wraps `.claude/features/rabbit-auto-evolve/scripts/triage-issue.py` per issue) |
 | 4 | `plan`            | `.claude/features/rabbit-auto-evolve/scripts/plan-batch.py` |
 | 5 | `dispatch`        | (rabbit-feature-touch — TDD subagent dispatch) |
-| 6 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` |
-| 7 | `release`         | `.claude/features/rabbit-auto-evolve/scripts/release-bump.py` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase release --next-tag vX.Y.Z` |
-| 8 | `cleanup`         | `.claude/features/rabbit-auto-evolve/scripts/cleanup-branches.py` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase cleanup` |
-| 9 | `catch-up`        | `.claude/features/rabbit-auto-evolve/scripts/classify-merge-restart.py` (per merged PR) |
+| 6 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
+| 7-9 | `post-merge`    | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — deterministically runs release (7) → cleanup (8) → catch-up (9) for every PR in `pending_post_merge`, then clears it (Inv 30) — see "Post-merge phases (Inv 30)" below |
 |10 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
 |11 | `schedule`        | `.claude/features/rabbit-auto-evolve/scripts/schedule-check.py` → `ScheduleWakeup` (unless stop-check matched) — see "Schedule phase (Inv 29)" below |
+
+### Post-merge phases (Inv 30 — issue #499)
+
+Phases 7 (`release`), 8 (`cleanup`), and 9 (`catch-up`) used to be prose
+walked by the LLM orchestrator. After phase 6 (`merge`) landed a large batch
+of PRs, the orchestrator ended the tick for scale/context reasons and phases
+7–9 were SILENTLY dropped (same class as #405 / #409 / #439). They are now
+owned by a single deterministic, non-skippable script:
+
+```
+python3 .claude/features/rabbit-auto-evolve/scripts/run-post-merge.py
+```
+
+`run-post-merge.py` reads `pending_post_merge` (the merged PR numbers recorded
+by `merge-prs.py --record-pending` in phase 6) from
+`.rabbit/auto-evolve-state.json` and runs, IN ORDER:
+`.claude/features/rabbit-auto-evolve/scripts/release-bump.py <pr#>`
+(phase 7, once per PR) →
+`.claude/features/rabbit-auto-evolve/scripts/cleanup-branches.py <pr-list>`
+(phase 8, once) →
+`.claude/features/rabbit-auto-evolve/scripts/classify-merge-restart.py <pr#>`
+(phase 9, once per PR). On completion it clears `pending_post_merge`. An
+empty/absent list is a clean no-op. A phase failure exits non-zero and leaves
+`pending_post_merge` intact so the next tick's tick-start drain retries the
+owed work.
+
+Invoke `run-post-merge.py` in TWO places:
+
+1. **After phase 6 (`merge`)** when any PR merged — the merge phase wrote the
+   merged PR numbers via `merge-prs.py --record-pending`, so this drains them
+   through phases 7–9 in the same tick.
+2. **At tick START (phase 1.5, between `restart-check` and `fetch`)** — to
+   DRAIN any owed post-merge work from a previous truncated tick BEFORE
+   fetching new work. This is what makes the dropped-phase failure mode
+   self-healing: even if a tick ends right after phase 6, the next tick
+   finishes phases 7–9 before doing anything else.
+
+A non-zero `run-post-merge.py` exit is an error-abort (Inv 20): run
+`end-tick.py` and surface the failure rather than continue with owed work
+silently dropped.
 
 ### Schedule phase (Inv 29 — issue #409)
 
