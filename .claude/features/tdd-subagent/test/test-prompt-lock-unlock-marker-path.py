@@ -26,7 +26,7 @@ import subprocess
 import sys
 import tempfile
 
-from _helpers import DISPATCH_PY, REPO_ROOT, report
+from _helpers import DISPATCH_PY, REPO_ROOT, SPEC_PATH, report
 
 passed = failed = 0
 
@@ -107,8 +107,7 @@ if live_mode_value == "plugin":
     ko(f"scenario A precondition: live repo {live_mode} is 'plugin'; "
        "cannot test standalone path here")
 else:
-    spec_path = os.path.join(REPO_ROOT, ".claude", "features",
-                             "tdd-subagent", "docs", "spec", "spec.md")
+    spec_path = SPEC_PATH
     res = subprocess.run(
         [sys.executable, DISPATCH_PY, "--scope", "tdd-subagent",
          "--spec", spec_path],

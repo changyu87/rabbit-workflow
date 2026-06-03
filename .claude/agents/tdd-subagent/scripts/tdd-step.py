@@ -62,6 +62,26 @@ def _repo_root():
 REPO_ROOT = _repo_root()
 
 
+def _resolve_spec_dir(feature_dir):
+    """Resolve a feature's spec directory, dual-read (issue #399 Phase 2).
+
+    Prefers the new layout <feature-dir>/specs/; falls back to the legacy
+    <feature-dir>/docs/spec/ during the #399 coexistence window so that
+    features not yet migrated still drive the spec-update gate (Inv 8) and
+    the numbered-list check (Inv 12). Phase 3 drops the fallback once every
+    feature has migrated. When neither exists the legacy docs/spec/
+    candidate is returned so downstream existence checks report the
+    canonical legacy path.
+
+    Logic mirrors contract.lib.checks.resolve_spec_path; duplicated here so
+    tdd-step.py has no cross-script import dependency for path resolution.
+    """
+    preferred = os.path.join(feature_dir, "specs")
+    if os.path.isdir(preferred):
+        return preferred
+    return os.path.join(feature_dir, "docs", "spec")
+
+
 def usage():
     sys.stderr.write(
         "usage:\n"
@@ -227,7 +247,10 @@ def _run_enforcement_checks(d, repo_root):
 
 
 def _run_spec_update_checks(d, repo_root):
-    """Inv 12: run check_numbered_lists against <feature-dir>/docs/spec/.
+    """Inv 12: run check_numbered_lists against the feature's spec dir.
+
+    The spec dir is resolved dual-read (specs/ preferred, docs/spec/
+    fallback) per issue #399 Phase 2.
 
     Non-blocking: a failed CheckResult emits a warning via rabbit_print but
     does not fail the spec-update -> test-red transition.
@@ -235,7 +258,7 @@ def _run_spec_update_checks(d, repo_root):
     checks = _load_checks_module(repo_root)
     if checks is None:
         return
-    spec_dir = os.path.join(d, "docs", "spec")
+    spec_dir = _resolve_spec_dir(d)
     if not os.path.isdir(spec_dir):
         return
     try:
@@ -500,9 +523,17 @@ def cmd_transition(args):
     if cur == "spec-update" and new == "test-red":
         if not spec_no_change_reason:
             spec_diff = ""
+            # Dual-read (issue #399 Phase 2): diff the new specs/ layout when
+            # present, else the legacy docs/spec/ layout. Both candidates are
+            # passed so a feature mid-migration (changes still staged under the
+            # old path) is not falsely denied.
+            spec_pathspecs = [
+                os.path.join(d, "specs") + os.sep,
+                os.path.join(d, "docs", "spec") + os.sep,
+            ]
             try:
                 res = subprocess.run(
-                    ["git", "-C", REPO_ROOT, "diff", "HEAD", "--", os.path.join(d, "docs", "spec") + os.sep],
+                    ["git", "-C", REPO_ROOT, "diff", "HEAD", "--", *spec_pathspecs],
                     capture_output=True, text=True, check=False,
                 )
                 spec_diff = res.stdout if res.returncode == 0 else ""
