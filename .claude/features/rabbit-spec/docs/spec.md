@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.8.0
+version: 1.9.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -33,7 +33,8 @@ agent, and writes the returned body to disk.
   (frontmatter declares `tools: Read, Grep, Glob` — the restriction is
   load-bearing)
 - `scripts/dispatch-spec-create.py` — Python prompt assembler invoked by
-  the skill; resolves globs, caps at 50 files, calls
+  the skill; resolves globs, caps at 50 files (reporting any dropped
+  count loudly on stderr — never a silent truncation), calls
   `contract/scripts/build-prompt.py`
 - `docs/spec.md`, `docs/contract.md`, `feature.json`,
   `test/run.py` — feature scaffolding
@@ -78,7 +79,20 @@ length including zero.
     (a) Accept `--feature-name <name>` (required) and `--paths <globs>`
         (optional; comma-separated, may be empty for standalone mode).
     (b) Resolve each glob via `glob.glob(<g>, recursive=True)`, dedupe,
-        sort lexicographically, take first 50.
+        sort lexicographically, take first 50. When the deduped resolved
+        count EXCEEDS the 50-file cap, the truncation MUST NOT be silent:
+        the script MUST emit a structured note to STDERR (stdout stays a
+        single prompt-file path so the skill can parse it) reporting BOTH
+        the number inspected and the number dropped — the note text MUST
+        contain the substring `dropped` and the integer dropped count
+        (e.g. `NOTE: resolved <N> files; capped at 50, <M> dropped`).
+        When the deduped resolved count is at or below the cap, NO such
+        note is emitted (silent success). The dropped count is consumed by
+        `rabbit-spec-create` Step 4 so the user is told "and M dropped"
+        rather than silently receiving an incomplete `## Public surface` /
+        `## Current behaviour` draft. Enforced by
+        `test/test-dispatch-truncation-not-silent.py` (>cap reports the
+        dropped count on stderr; <=cap emits no note).
     (c) Invoke `python3 <repo_root>/.claude/features/contract/scripts/build-prompt.py
         --callable-id spec-create --slot feature_name=<name> --slot
         paths_globs=<globs> --slot paths_resolved=<newline-joined>` as a
@@ -188,6 +202,10 @@ coverage arrives with the surface artifacts in this stage:
   `Read, Grep, Glob` with no others
 - `test-dispatch-script.py` — invokes the dispatch script in both modes
   (with paths and without) and asserts it produces a prompt-file path
+- `test-dispatch-truncation-not-silent.py` — Inv 3(b): builds a fixture
+  with >50 resolvable files, asserts the dispatcher emits a stderr note
+  naming the dropped count (truncation is NOT silent) while stdout stays a
+  single prompt-file path; with <=50 files asserts NO note is emitted
 - `test-prompts-section-shape.py` — loads feature.json and asserts the
   `prompts` entry shape matches Inv 1
 - `test-spec-path-layout-dual-read.py` — source-inspects both SKILL.md

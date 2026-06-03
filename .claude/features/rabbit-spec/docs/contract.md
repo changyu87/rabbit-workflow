@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.8.0
+version: 1.9.0
 template_version: 2.0.0
 ---
 
@@ -21,7 +21,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       {
         "path": ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py",
         "stdin": "none",
-        "stdout": "absolute path to the assembled prompt file",
+        "stdout": "absolute path to the assembled prompt file (single line)",
+        "stderr": "structured NOTE naming the dropped-file count when the resolved file count exceeds the 50-file cap (never a silent truncation); empty when count <= cap",
         "exit": "0=ok 1=invocation-error 2=assembler-failure",
         "note": "prompt assembler for the rabbit-spec-creator subagent; invokes contract/scripts/build-prompt.py"
       }

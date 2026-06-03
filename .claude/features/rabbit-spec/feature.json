@@ -1,6 +1,6 @@
 {
   "name": "rabbit-spec",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "status": "active",
@@ -58,5 +58,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.7.0 -> 1.8.0): issue #399 Phase 2b \u2014 rabbit-spec's own doc artifacts moved from specs/ to the flat docs/ layout (docs/spec.md, docs/contract.md, docs/CHANGELOG.md); the now-empty specs/ dir and root CHANGELOG.md were removed. Inv 6 self-reference and the Surface/Tests sections updated to the flat docs/ layout. Skill/agent dual-read behavior unchanged (coexistence window still open)."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.8.0 -> 1.9.0): issue #472 \u2014 Inv 3(b) now requires dispatch-spec-create.py to report the dropped-file count loudly on stderr when the resolved file count exceeds the 50-file cap (no silent alphabetical truncation); contract provides.scripts gains a stderr field; new test/test-dispatch-truncation-not-silent.py enforces it."
 }
