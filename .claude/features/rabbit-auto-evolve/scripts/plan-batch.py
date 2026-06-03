@@ -15,11 +15,16 @@ on stdout:
 Two decoupled decisions (Inv 26 / issue #435):
 
   STAGE 1 — work selection (`selection_order`). Dispatch-shape BLIND:
-  ordered purely by priority desc (critical > high > medium > low;
-  no-priority last) then issue ascending. It MUST NOT consult dispatch
-  shape, feature count, or "knows how" — a high-priority cross-feature
-  item is selected before a low-priority single-feature item. Work-only
-  (items whose decision != "work" are dropped).
+  ordered by the composite key (priority desc, contract_touch desc,
+  issue asc) per issue #479 — priority is PRIMARY, the contract-touch
+  barrier is the SECONDARY tiebreak (contract items lead WITHIN a
+  priority tier, never across tiers), issue asc is the final stable
+  tiebreak. This is the SAME key that drives barrier_first, so the two
+  always agree on ordering. It MUST NOT consult dispatch shape, feature
+  count, or "knows how" (contract_touch is a barrier/conflict property,
+  not a dispatch shape) — a high-priority cross-feature item is selected
+  before a low-priority single-feature item. Work-only (items whose
+  decision != "work" are dropped).
 
   STAGE 2 — dispatch shape (`dispatch_shapes`, issue-number-string -> shape).
   Per work item, choose the FIRST fitting shape from exactly three:
@@ -40,16 +45,25 @@ Two decoupled decisions (Inv 26 / issue #435):
   scope is a hard constraint, not waivable by autonomy (maintainer policy on
   issue #435). No shape writes any marker; this script is a pure processor.
 
-Algorithm for barrier_first / groups (per spec.md Inv 4 / design doc §6):
-  1. Pull `contract_touch == true` items into barrier_first, sorted by
-     priority desc (critical > high > medium > low; no-priority last)
-     then issue ascending.
-  2. Build a conflict graph on the remainder; an edge exists between A
+Algorithm for barrier_first / groups (per spec.md Inv 4 / design doc §6;
+priority-primary, barrier-secondary per issue #479):
+  1. Sort ALL work items by the composite key
+     (priority_rank, contract_touch_rank, issue): priority is PRIMARY
+     (critical > high > medium > low; no-priority last), the
+     contract-touch barrier is the SECONDARY tiebreak (contract items
+     lead WITHIN a priority tier), issue ascending is the final stable
+     tiebreak. A critical non-contract item therefore beats a
+     low-priority contract item.
+  2. barrier_first is the leading run of contract_touch items in that
+     sorted order (the contract items before the first non-contract
+     item). If the top item is non-contract, barrier_first is empty. The
+     remainder (from the first non-contract item onward) feeds grouping.
+  3. Build a conflict graph on the remainder; an edge exists between A
      and B iff A.feature == B.feature.
-  3. Greedy graph-color the remainder, walking in priority-desc /
-     issue-asc order; each item takes the lowest color number with no
-     same-feature neighbor.
-  4. Apply --max-parallel cap (default 4): any color partition larger
+  4. Greedy graph-color the remainder, walking in composite-key order;
+     each item takes the lowest color number with no same-feature
+     neighbor.
+  5. Apply --max-parallel cap (default 4): any color partition larger
      than the cap is split into consecutive sub-groups of size <= cap.
 
 The script is a pure JSON processor — no gh, no git, no filesystem
@@ -58,7 +72,7 @@ mutations.
 Exit code: 0 on success; non-zero on malformed stdin JSON or invalid
 --max-parallel / --decompose-threshold value.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -74,10 +88,17 @@ _NO_PRIORITY_RANK = 4
 
 
 def _sort_key(item):
-    """(priority_rank, issue_number) — desc priority via low rank first;
-    issue asc as tie-breaker."""
+    """Composite dispatch-ordering key (issue #479):
+    (priority_rank, contract_touch_rank, issue_number).
+
+    Priority is PRIMARY (low rank = higher priority: critical=0 .. low=3,
+    no-priority=4). The contract-touch barrier is the SECONDARY tiebreak
+    (True->0, False->1) so contract items lead WITHIN a priority tier but
+    never override priority across tiers. Issue number is the final stable
+    tiebreak (asc)."""
     rank = PRIORITY_RANK.get(item.get("priority", ""), _NO_PRIORITY_RANK)
-    return (rank, item.get("issue", 0))
+    contract_rank = 0 if item.get("contract_touch") else 1
+    return (rank, contract_rank, item.get("issue", 0))
 
 
 def _positive_int(value):
@@ -130,16 +151,20 @@ def _dispatch_shape(item, decompose_threshold):
 
 
 def plan(items, max_parallel, decompose_threshold):
-    """Run Stage 1 + Stage 2 + the 4-step grouping; return the plan dict."""
+    """Run Stage 1 + Stage 2 + the priority-primary grouping; return the
+    plan dict."""
     # Drop items whose decision != "work" (per Inv 4 + Inv 18: plan-batch
     # accepts unfiltered triage arrays from triage-batch.py; only "work"
     # items are dispatched). Items without a `decision` field are passed
     # through (backwards-compat with pre-Inv-18 callers that pre-filter).
     items = [i for i in items if i.get("decision", "work") == "work"]
 
-    # Stage 1 — work selection (dispatch-shape BLIND): priority desc then
-    # issue asc, over work items only (Inv 26 (a)). This ordering NEVER
-    # consults feature count or dispatch shape.
+    # Stage 1 — work selection (dispatch-shape BLIND): composite key
+    # (priority desc, contract_touch desc, issue asc), over work items only
+    # (Inv 26 (a) + issue #479). This ordering NEVER consults feature count
+    # or dispatch shape; contract_touch is a barrier/conflict property, not
+    # a shape. The SAME sorted order drives barrier_first below, so the two
+    # always agree.
     selection = sorted(items, key=_sort_key)
     selection_order = [i["issue"] for i in selection]
 
@@ -149,18 +174,21 @@ def plan(items, max_parallel, decompose_threshold):
         for i in selection
     }
 
-    # Step 1: barrier_first — all contract_touch items.
-    barrier_items = sorted(
-        [i for i in items if i.get("contract_touch")],
-        key=_sort_key,
+    # Step 1/2: priority-primary, barrier-secondary partition (issue #479).
+    # barrier_first is the LEADING run of contract_touch items in the
+    # composite-key order; the remainder is everything from the first
+    # non-contract item onward (still in composite-key order). A critical
+    # non-contract item at the front leaves barrier_first empty.
+    first_non_contract = next(
+        (idx for idx, it in enumerate(selection)
+         if not it.get("contract_touch")),
+        len(selection),
     )
+    barrier_items = selection[:first_non_contract]
     barrier_first = [i["issue"] for i in barrier_items]
 
-    # Step 2/3: greedy graph color the remainder (edge iff same feature).
-    remainder = sorted(
-        [i for i in items if not i.get("contract_touch")],
-        key=_sort_key,
-    )
+    # Step 3/4: greedy graph color the remainder (edge iff same feature).
+    remainder = selection[first_non_contract:]
     color_features = []  # list[set[feature]] — index == color index
     color_items = []     # list[list[int]]   — index == color index
 
@@ -177,7 +205,7 @@ def plan(items, max_parallel, decompose_threshold):
             color_features.append({feat})
             color_items.append([item["issue"]])
 
-    # Step 4: cap split — sub-groups of size <= max_parallel.
+    # Step 5: cap split — sub-groups of size <= max_parallel.
     groups = []
     for ci in color_items:
         for i in range(0, len(ci), max_parallel):
