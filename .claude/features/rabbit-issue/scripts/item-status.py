@@ -19,7 +19,7 @@ The two close reasons are gated so a closure asserts something real
     that is free of banned boilerplate phrases — a deliberate, specific
     justification, not a reflexive deferral.
 
-Version: 1.1.0
+Version: 1.1.1
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -113,6 +113,17 @@ def cmd_close(args: argparse.Namespace) -> None:
             )
         _validate_reason_text(args.reason_text)
 
+    # Persist the validated not-planned justification as the close comment
+    # (issue #476). The text was being validated then dropped, leaving the
+    # closed issue with no audit trail. When --comment is also supplied the
+    # reason-text leads, separated from the comment by a blank line.
+    comment = args.comment
+    if args.reason == "not-planned":
+        comment = (
+            "{}\n\n{}".format(args.reason_text, args.comment)
+            if args.comment else args.reason_text
+        )
+
     # argparse accepts the hyphen form (Python/shell-friendly), but
     # `gh issue close --reason` only accepts "completed" or "not planned"
     # (with a space). Translate at the gh boundary (issue #419). Only
@@ -120,8 +131,8 @@ def cmd_close(args: argparse.Namespace) -> None:
     reason = args.reason.replace("-", " ")
     cmd = ["gh", "issue", "close", str(args.number),
            "-R", repo_slug(), "--reason", reason]
-    if args.comment:
-        cmd += ["--comment", args.comment]
+    if comment:
+        cmd += ["--comment", comment]
     subprocess.run(cmd, check=True)
 
 
