@@ -4,17 +4,24 @@
 End-to-end test verifying no owner-bearing location in rabbit-meta names an
 individual; every owner field/docstring reads "rabbit-workflow team":
   - t1: feature.json "owner" == "rabbit-workflow team"
-  - t2: specs/spec.md frontmatter owner: rabbit-workflow team
+  - t2: spec.md frontmatter owner: rabbit-workflow team (resolved via the
+        contract resolver, flat docs/ layout preferred)
   - t3: every lib/*.py module docstring "Owner:" line reads the team
   - t4: no "cyxu" owner string remains anywhere in the feature tree
 """
 
+import importlib.util
 import os
 import re
 import sys
 import json
 
 FEATURE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+FEATURES_ROOT = os.path.dirname(FEATURE_DIR)
+CHECKS_PATH = os.path.join(FEATURES_ROOT, "contract", "lib", "checks.py")
+_spec = importlib.util.spec_from_file_location("checks", CHECKS_PATH)
+_checks = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_checks)
 
 TEAM = "rabbit-workflow team"
 
@@ -42,8 +49,8 @@ if fj.get("owner") == TEAM:
 else:
     fail_t("t1", f"feature.json owner is {fj.get('owner')!r}, expected {TEAM!r}")
 
-# t2: spec.md frontmatter owner
-with open(os.path.join(FEATURE_DIR, "specs", "spec.md")) as f:
+# t2: spec.md frontmatter owner (resolved, flat docs/ layout preferred)
+with open(_checks.resolve_spec_path(FEATURE_DIR, "spec.md")) as f:
     spec = f.read()
 m = re.search(r"^owner:\s*(.+)$", spec, re.MULTILINE)
 if m and m.group(1).strip() == TEAM:
