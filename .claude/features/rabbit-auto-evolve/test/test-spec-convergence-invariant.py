@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """test-spec-convergence-invariant.py — rabbit-auto-evolve Part E (issue #423).
 
-Asserts the new triage-convergence invariant text is present in
-docs/spec/spec.md. The invariant states that the triage classifier MUST
+Asserts the new triage-convergence invariant text is present in the
+feature spec (specs/spec.md, dual-read with docs/spec/ fallback per issue
+#399). The invariant states that the triage classifier MUST
 converge every valid issue to completion: it MAY defer dispatch (up to 3
 consecutive deferrals per issue, after which dispatch is mandatory), MAY
 close an issue as not-planned with a strong reason, MUST NOT close a valid
@@ -15,7 +16,10 @@ import sys
 from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
-SPEC_MD = FEATURE_DIR / "docs" / "spec" / "spec.md"
+# Dual-read (issue #399): prefer specs/spec.md, fall back to docs/spec/spec.md.
+SPEC_MD = (FEATURE_DIR / "specs" / "spec.md")
+if not SPEC_MD.is_file():
+    SPEC_MD = FEATURE_DIR / "docs" / "spec" / "spec.md"
 
 FAIL = 0
 

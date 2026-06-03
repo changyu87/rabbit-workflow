@@ -50,5 +50,6 @@ run_test("test-claude-runtime-files-gitignored.py")
 run_test("test-spec-convergence-invariant.py")
 run_test("test-dispatch-shape.py")
 run_test("test-spec-dispatch-shape-invariant.py")
+run_test("test-specs-layout-migrated.py")
 
 print("ALL TESTS PASSED")

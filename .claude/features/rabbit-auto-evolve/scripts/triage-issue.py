@@ -20,8 +20,10 @@ unblock dispatch; non-defer decisions carry `planning_note: null`.
 Read surface (strictly bounded):
   - Issue metadata via `gh issue view <N> --json
     number,title,body,labels,state,comments`.
-  - The named feature's docs/spec/spec.md head matter (frontmatter +
-    first section) — for rule 6 only.
+  - The named feature's spec head matter (frontmatter + first section) —
+    for rule 6 only. The path is resolved dual-read (issue #399): the new
+    specs/spec.md layout is preferred, with the legacy docs/spec/spec.md
+    accepted as a fallback during the coexistence window.
   - The named feature's feature.json — for rule 4 (status field).
   - The last-30-days closed-issue list via `gh issue list --state closed
     --search "closed:>=<iso-date>"` — for rule 3.
@@ -34,7 +36,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -114,10 +116,31 @@ def _gh_issue_list_closed_last_30():
     return json.loads(proc.stdout)
 
 
+def resolve_spec_path(feature_root, name):
+    """Resolve a feature spec/contract doc path, dual-read (issue #399).
+
+    Prefers the new layout <feature_root>/specs/<name>; falls back to the
+    legacy <feature_root>/docs/spec/<name>. During the docs/spec/ -> specs/
+    coexistence window both layouts resolve; the fallback is dropped once
+    every feature has migrated. `name` is a leaf filename such as "spec.md".
+    When neither layout exists the legacy docs/spec/ candidate is returned so
+    downstream existence checks report the canonical legacy path.
+
+    Accepts either a str or a pathlib.Path for `feature_root`; always returns
+    a pathlib.Path.
+    """
+    root = Path(feature_root)
+    preferred = root / "specs" / name
+    if preferred.is_file():
+        return preferred
+    return root / "docs" / "spec" / name
+
+
 def _read_spec_head_matter(feature_dir):
-    """Read the first ~4KB of feature_dir/docs/spec/spec.md (frontmatter +
-    first section) for rule-6 matching. Returns "" if absent."""
-    spec_path = feature_dir / "docs" / "spec" / "spec.md"
+    """Read the first ~4KB of the feature's spec.md (frontmatter + first
+    section) for rule-6 matching. The path is resolved dual-read (specs/
+    preferred, docs/spec/ fallback). Returns "" if absent."""
+    spec_path = resolve_spec_path(feature_dir, "spec.md")
     if not spec_path.is_file():
         return ""
     try:
