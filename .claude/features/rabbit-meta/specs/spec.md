@@ -1,6 +1,6 @@
 ---
 feature: rabbit-meta
-version: 0.3.1
+version: 0.4.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when rabbit's per-project plugin model is superseded by a native Claude Code workflow contract mechanism
@@ -75,4 +75,6 @@ Python 3 stdlib only. No external dependencies (matches the Python-only invarian
 
 `test/run.py` runs the end-to-end suite. Test coverage grows with each implementation milestone; the per-test file mapping is enumerated alongside each invariant above.
 
-`test/run.py` invokes `test-mode-detection.py` (Inv 1), `test-generate-claude-md.py` (Inv 2), and `test-generate-readme.py` (Inv 3). The bootstrap tests land alongside Inv 4 if/when `scripts/bootstrap.sh` is shipped.
+`test/run.py` invokes `test-mode-detection.py` (Inv 1), `test-generate-claude-md.py` (Inv 2), `test-generate-readme.py` (Inv 3), `test-owner-team.py` (owner sweep), and `test-specs-layout.py` (specs/ layout). The bootstrap tests land alongside Inv 4 if/when `scripts/bootstrap.sh` is shipped.
+
+This feature's spec artifacts live under `specs/` (issue #399 Phase 2 migration from the legacy `docs/spec/` layout; `docs/bugs/` is retained). `test-specs-layout.py` is the end-to-end guard for this layout.
