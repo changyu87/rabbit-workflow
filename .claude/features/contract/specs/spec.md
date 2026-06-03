@@ -175,6 +175,45 @@ Numbering preserves gaps at 4, 6, 7, 27, 28, 29, 30, 35, 55, 56 for retired inva
 
 49. **Feature doc surfaces free of historical-burden tags.** Every feature's `spec.md`, `contract.md`, and `skills/*/SKILL.md` MUST describe the current design only. Project, plan, wave, and bug/backlog item identifiers (matching the regex `Plan [A-F]|BUG-[0-9]|BACKLOG-[0-9]|Wave [0-9]`) MUST NOT appear in any of these surfaces — that historical context lives in commit messages, `contract/CHANGELOG.md` tombstones, and the original bug/backlog items themselves. The cross-feature check is enforced by `test/test-spec-bodies-no-historical-tags.py`, which walks every feature's `spec.md` and `contract.md` (resolved at `specs/<name>`; issue #399 migration complete, dual-read fallback dropped per issue #465) and every `.claude/features/*/skills/*/SKILL.md`, greps the regex, and fails on any match. A hardcoded `ALLOWLIST` inside the test permits legitimate occurrences whose textual content matches the pattern (e.g. algorithm-output sample strings); each allowlist entry records `(relative_path, line_number, substring)` plus the reason it is permitted, and is updated only after manual review.
 
+   **Two-tier enforcement with per-feature opt-in (housekeeping wave).** The
+   check enforces TWO pattern tiers:
+
+   - **Baseline tier** — the `Plan [A-F]|BUG-[0-9]|BACKLOG-[0-9]|Wave [0-9]`
+     regex above — is enforced across ALL features' doc surfaces
+     unconditionally (the established behaviour).
+   - **Strict tier** — additionally rejects bare issue/PR references
+     (`#[0-9]+`), `per issue` / `per bug` / `per PR` prose
+     (case-insensitive), and tombstone language (`superseded`, `retired`,
+     `obsoleted`, case-insensitive) — is enforced ONLY on a feature listed
+     in the test's `CLEANED_FEATURES` set. A feature is added to
+     `CLEANED_FEATURES` ONLY when its housekeeping cleanup has landed
+     (its doc surfaces are already history-free). `CLEANED_FEATURES`
+     starts EMPTY, so introducing the strict tier is NON-BREAKING: it
+     enforces on nothing until features opt in. As each feature is cleaned
+     (contract first, then the remaining features) it is added to the set,
+     reaching full repo-wide strict coverage when every feature has been
+     cleaned. `CHANGELOG.md` is never scanned (only `spec.md`,
+     `contract.md`, and `skills/*/SKILL.md` are), so feature history
+     relocated to `CHANGELOG.md` is exempt by construction. The `ALLOWLIST`
+     mechanism applies to BOTH tiers for legitimate textual matches.
+
+   This two-tier opt-in resolves the rollout ordering problem: the existing
+   doc corpus is full of bare issue references and tombstone markers, so a
+   repo-wide strict ban would fail on every un-cleaned feature at once. The
+   per-feature `CLEANED_FEATURES` gate lets the strict rule land first
+   (enforcing nothing) and then bind to each feature exactly as that
+   feature's cleanup makes it compliant.
+
+   The test MUST be self-testable without depending on the live repo's
+   cleanliness: it accepts a `RABBIT_HISTORICAL_TAGS_FEATURES_ROOT` env
+   override for the features root and a `RABBIT_HISTORICAL_TAGS_CLEANED`
+   env override (comma-separated feature names) for `CLEANED_FEATURES`, so
+   a companion test can point it at fixture feature trees (one cleaned with
+   a strict violation flagged; one not-cleaned with the same content
+   ignored; a baseline-tier violation flagged regardless of opt-in).
+   Absent the overrides it behaves exactly as the production check (real
+   features root; the hardcoded `CLEANED_FEATURES`).
+
 50. **`publish_hook` emits CWD-independent commands.** The hook command string `publish_hook` writes to `.claude/settings.json` (the `hooks[<event>][].hooks[].command` field) MUST be CWD-independent, of one of two forms selected by the runtime environment of the `publish_hook` caller:
     - **Plugin form** — `$RABBIT_ROOT/.claude/hooks/<hook_name>`, used when `os.environ.get("RABBIT_ROOT")` returns a non-empty value. This is the form used inside a `.rabbit/` plugin install where `install.py` writes `env.RABBIT_ROOT` into the deployed `.claude/settings.json` and `/bin/sh` substitutes that env var at hook-fire time. The plugin form is selected so `check_manifest_drift` (which calls `publish_hook` via `contract.lib.runtime`) regenerates the SAME command string already in deployed `settings.json`, keeping the drift detection idempotent.
     - **Standalone form** — `$(git rev-parse --show-toplevel)/.claude/hooks/<hook_name>`, used otherwise (the dev workspace where `.git` is present and `RABBIT_ROOT` is unset). `/bin/sh` substitutes the absolute repo root at hook-fire time.
