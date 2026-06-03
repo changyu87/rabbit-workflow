@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.25.0
+version: 1.26.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -10,7 +10,7 @@ status: active
 # rabbit-feature — Spec
 
 > Machine-targeted LLM-prose view. The structured source of truth is
-> [`feature.json`](../../feature.json) and
+> [`feature.json`](../feature.json) and
 > [`contract.md`](./contract.md).
 
 ## Purpose
@@ -489,7 +489,7 @@ their source path and not deployed):
 ### Feature-level metadata
 
 36. **Three-way version alignment.** `feature.json.version`,
-    `specs/spec.md` frontmatter `version`, and `specs/contract.md`
+    `docs/spec.md` frontmatter `version`, and `docs/contract.md`
     frontmatter `version` MUST match exactly.
 
 37. **SKILL.md frontmatter completeness.** Every SKILL.md declared in
