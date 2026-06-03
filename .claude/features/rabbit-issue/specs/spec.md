@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.2.2
+version: 1.2.3
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -75,6 +75,13 @@ applied.
     `out of scope`, `out-of-scope`, `declined autonomous dispatch`,
     `not now`, `later`, `don't want`, `do not want`. A specific reason
     that is long enough and clean is accepted.
+  - **The validated `--reason-text` is PERSISTED, not just gated.** A
+    `not-planned` close posts the reason-text as the close comment so the
+    closed issue carries its justification (the audit trail #423 Part D
+    intends). When `--comment` is also supplied, the close comment is the
+    reason-text followed by the comment (reason-text first, separated by a
+    blank line); when only `--reason-text` is given it is the close comment
+    on its own. The comment travels with the same `gh issue close` call.
   - The `rabbit-managed` guard runs first (the safety boundary), then
     the reason gating, then the gh call — so a rejected close never
     issues `gh issue close` and never touches a human-filed issue.

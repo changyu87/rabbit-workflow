@@ -115,6 +115,49 @@ def test_close_not_planned_accepts_specific_reason(gh_shim, fake_repo):
     assert "not-planned" not in log
 
 
+def test_close_not_planned_persists_reason_text_as_comment(gh_shim, fake_repo):
+    """The validated --reason-text is posted as the close comment (#476).
+
+    The bug: --reason-text was validated then discarded, so the closed
+    issue carried no justification. The reason-text MUST reach gh as the
+    close comment.
+    """
+    r = _run("close", "42", "--reason", "not-planned",
+             "--reason-text", GOOD_REASON)
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue close" in log
+    # The justification text must be present in the gh invocation.
+    assert "Superseded by the new sandbox executor" in log
+
+
+def test_close_not_planned_combines_reason_text_and_comment(gh_shim, fake_repo):
+    """With both --comment and --reason-text the close comment shows both,
+    reason-text first (#476)."""
+    r = _run("close", "42", "--reason", "not-planned",
+             "--reason-text", GOOD_REASON, "--comment", "closing as stale")
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue close" in log
+    # Both pieces present, and the reason-text precedes the comment.
+    ri = log.find("Superseded by the new sandbox executor")
+    ci = log.find("closing as stale")
+    assert ri != -1 and ci != -1
+    assert ri < ci
+
+
+def test_close_completed_does_not_inject_reason_text(gh_shim, fake_repo):
+    """A `completed` close never carries reason-text persistence logic; its
+    comment is exactly --comment (regression guard for #476)."""
+    sha = _commit_in(fake_repo)
+    r = _run("close", "42", "--reason", "completed", "--commit-sha", sha,
+             "--comment", "fixed")
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue close" in log
+    assert "fixed" in log
+
+
 def test_close_rejects_unknown_reason(gh_shim, fake_repo):
     r = _run("close", "42", "--reason", "wontfix")
     assert r.returncode != 0
