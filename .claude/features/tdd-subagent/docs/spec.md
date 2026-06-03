@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.14.0
+version: 5.15.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -833,6 +833,37 @@ lives in Inv 22 above.
     worktree (never the main tree); cwd == main repo still returns the main
     toplevel (headless path); and `RABBIT_ROOT` set still wins verbatim
     (plugin path).
+
+61. **Oversized prompt slots bypass the argv 128 KB cap (issue #528).**
+    `dispatch-tdd-subagent.py` MUST assemble the prompt without ever passing
+    a single `--slot name=value` argv string longer than Linux's
+    `MAX_ARG_STRLEN` (128 KB per argument, independent of `ARG_MAX`) to
+    `build-prompt.py`. Large slot values — `spec_content` and
+    `impl_suggestion_block` in particular, which routinely exceed 128 KB for
+    big features (e.g. the ~148 KB rabbit-auto-evolve spec) — MUST be routed
+    through a channel that is NOT subject to the per-argument limit, so the
+    subprocess `exec()` can never raise
+    `OSError: [Errno 7] Argument list too long`.
+
+    The dispatcher passes any slot whose `name=value` argv form exceeds a
+    budget below `MAX_ARG_STRLEN` as a tiny, collision-proof sentinel token
+    (built from `os.urandom`, wrapped in `0x1e` record-separator control
+    chars that never appear in spec/template prose and are legal in an argv
+    string) and substitutes the real value back into the assembled prompt —
+    via a single `str.replace` per oversized slot — AFTER `build-prompt.py`
+    returns its file. `build-prompt.py` and the prompt template are owned by
+    the `contract` feature (Out of Scope here), so the dispatcher MUST NOT
+    change `build-prompt.py`'s CLI; the sentinel round-trip is entirely
+    internal to the dispatcher. Slots small enough to stay under the budget
+    are passed as-is, so for any in-range input the argv shape AND the
+    assembled prompt are byte-identical to passing the value directly (the
+    fix is behavior-preserving for normal-size specs). This preserves Inv 44's
+    "one `--slot` per declared slot" subprocess shape.
+
+    Enforced by `test/test-large-slot-no-argv-limit.py` (e2e): dispatching
+    with a `spec_content` payload larger than 128 KB returns exit 0, emits no
+    `Argument list too long` on stderr, and the assembled prompt contains the
+    oversized body verbatim (no truncation).
 
 ## Out of Scope
 
