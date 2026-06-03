@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.37.0
+version: 5.38.0
 template_version: 2.0.0
 ---
 
@@ -62,7 +62,8 @@ template_version: 2.0.0
       {"path": ".claude/features/contract/scripts/rabbit_print.py", "purpose": "dispatcher output rendering (rabbit_subline, rabbit_block)"}
     ],
     "scripts": [
-      {"path": ".claude/features/contract/scripts/find-feature.py", "purpose": "scope-guard.py feature-name -> path resolution"}
+      {"path": ".claude/features/contract/scripts/find-feature.py", "purpose": "scope-guard.py feature-name -> path resolution"},
+      {"path": ".claude/features/rabbit-auto-evolve/scripts/check-auto-resume.py", "purpose": "session-start-dispatcher.py mechanical restart-resume detection; surfaces resume banner + action when resume:true (Inv 35 / rabbit-auto-evolve Inv 31, issue #503)"}
     ],
     "functions": [
       {"path": ".claude/features/contract/lib/checks.py", "function": "validate_agent_prompt_sentinel", "purpose": "scope-guard.py Agent-tool sentinel validation (Inv 31 / contract Inv 66)"},

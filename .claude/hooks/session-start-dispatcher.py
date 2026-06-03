@@ -14,7 +14,14 @@ Issue #326: prepends a version line (`[rabbit] 🐇 rabbit v<version>`) at the
 start of the SessionStart output — read from <install_root>/.version in
 plugin mode, falling back to rabbit-cage/feature.json `version` standalone.
 
-Version: 1.2.0
+Issue #503: after the welcome block, INVOKES rabbit-auto-evolve's
+`scripts/check-auto-resume.py` (a contract INVOKE, not a cross-feature edit)
+and, when it reports `{"resume": true, "action": ...}`, appends a branded
+resume banner to the systemMessage and injects the `action` into
+additionalContext so Claude Code mechanically self-resumes the loop after a
+restart. Absent / erroring script degrades gracefully (no resume surfaced).
+
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-cage)
 Deprecation criterion: when Claude Code exposes native SessionStart
     dispatchers that subsume this hook.
@@ -114,6 +121,65 @@ def _version_line(root: str):
             "icon": "🐇", "color": "green"}
 
 
+_AUTO_RESUME_SCRIPT = (
+    ".claude/features/rabbit-auto-evolve/scripts/check-auto-resume.py"
+)
+
+
+def _auto_resume_payloads(root: str):
+    """Issue #503: INVOKE rabbit-auto-evolve's check-auto-resume.py and, when
+    it reports `resume: true`, return SessionStart payloads that surface the
+    mechanical loop resume.
+
+    Returns a list of two payloads when a resume is due:
+      - a `print` banner line for the human (systemMessage), and
+      - an `inject` payload carrying the `action` command so Claude Code
+        auto-executes it (additionalContext).
+
+    Returns `[]` when no resume is due OR on any failure path (script absent,
+    non-zero exit, unparseable / malformed JSON) — graceful degradation that
+    leaves the existing SessionStart behaviour unchanged.
+    """
+    script = Path(root) / _AUTO_RESUME_SCRIPT
+    if not script.is_file():
+        return []
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if proc.returncode != 0:
+        return []
+    try:
+        data = json.loads(proc.stdout)
+    except (json.JSONDecodeError, ValueError):
+        return []
+    if not isinstance(data, dict) or not data.get("resume"):
+        return []
+    action = data.get("action")
+    if not isinstance(action, str) or not action:
+        return []
+    banner = {
+        "type": "print",
+        "text": f"Auto-resuming rabbit-auto-evolve loop — running {action}",
+        "icon": "🔄",
+        "color": "green",
+    }
+    inject = {
+        "type": "inject",
+        "content": (
+            "rabbit-auto-evolve auto-resume: a restart-needed tick was "
+            f"detected. Run {action} now to resume the autonomous loop.\n"
+        ),
+    }
+    return [banner, inject]
+
+
 def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
         sys.stdout.write(
@@ -130,6 +196,7 @@ def main() -> int:
     root = str(repo_root())
     payloads = dispatch_event("SessionStart", root)
     payloads.insert(0, _version_line(root))
+    payloads.extend(_auto_resume_payloads(root))
     alert = _check_rabbit_root_env()
     if alert is not None:
         payloads.append(alert)
