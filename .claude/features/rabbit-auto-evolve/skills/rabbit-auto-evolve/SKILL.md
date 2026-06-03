@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.10.0
+version: 0.11.0
 owner: cyxu
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -187,6 +187,37 @@ python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py \
 invoked by `tick` — it runs only when the user flips the mode via
 `/rabbit-auto-evolve on|off`.
 
+### Dispatch shape selection (Stage 1 / Stage 2 — Inv 26)
+
+Phase 4 (`plan`) emits TWO decoupled outputs the dispatcher consumes in
+phase 5:
+
+- `selection_order` — **Stage 1, dispatch-shape blind.** The order to work
+  items in, by priority desc then issue asc. It NEVER consults dispatch
+  shape, feature count, or "knows how": a high-priority cross-feature item
+  is selected before a low-priority single-feature item.
+- `dispatch_shapes` — **Stage 2, item-shaped.** A map of issue-number-string
+  → one of exactly THREE shapes. Per item, pick the FIRST that fits:
+
+  | Rank | Shape | When | Mechanics |
+  |---|---|---|---|
+  | 1 (perf preference) | `parallel-per-feature` | item edits exactly one feature dir | one full single-feature TDD touch (its own `.rabbit-scope-active-<feature>` marker); multiple such items dispatch in parallel |
+  | 2 | `multi-subagent-barrier` | item edits >1 feature dir, below the decompose threshold | per-feature subagents land SERIALLY on ONE shared branch; subagent k+1 fetches subagent k's pushed commit before starting; each piece is a full single-feature touch with its own scope marker; one PR closes the item |
+  | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs (default 10) | file N per-feature sub-issues via `python3 .claude/features/rabbit-issue/scripts/file-item.py …` (a contract INVOKE, not a cross-feature edit), each labelled `rabbit-managed` + the right `feature:<name>` label; keep the parent OPEN and queue the sub-issues, which re-enter Stage 1/Stage 2 on the next tick |
+
+  `parallel-per-feature` is the **performance preference, not a correctness
+  requirement** — items that don't fit it still get done via shape 2 or 3,
+  just slower. The dispatcher MUST NOT skip, defer indefinitely, or escalate
+  an item merely because it doesn't fit shape 1.
+
+  The struck shape ("sequential single-subagent with a persistent
+  `.rabbit-scope-override session`") is NEVER used. Autonomous-evolve ALWAYS
+  uses a full per-feature touch gated by `.rabbit-scope-active-<feature>`; it
+  NEVER writes a persistent `.rabbit-scope-override session` for feature
+  edits. Bounded scope is a hard constraint, not waivable by autonomy
+  (maintainer policy on issue #435). A one-time override is permitted ONLY
+  for plan / temporary-document writing — never for feature code edits.
+
 ### `off`
 
 Deactivate auto-evolve mode. Invokes
@@ -256,6 +287,10 @@ Other red flags:
 - Never delete a branch not matching `^feat/.+`.
 - Never create a tag that already exists.
 - Never merge when the working tree is dirty.
+- Never write a persistent `.rabbit-scope-override session` for feature
+  edits. Cross-feature work is handled by `decomposition` or
+  `multi-subagent-barrier` (Inv 26) — every write stays inside one feature's
+  `.rabbit-scope-active-<feature>` scope.
 
 `safety-check.py` enforces these; `merge-prs.py` and
 `cleanup-branches.py` also refuse defense-in-depth.

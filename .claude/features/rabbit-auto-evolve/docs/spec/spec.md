@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.10.0
+version: 0.11.0
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -301,11 +301,19 @@ Phase E merges complete.
      "reason_code": "<short-tag>",
      "rationale": "<one sentence>",
      "feature": "<feature-name or null>",
+     "features": ["<feature-name>", "..."],
      "contract_touch": true,
      "blocked_by": [124],
      "planning_note": "<non-empty string for defer, else null>"
    }
    ```
+
+   The `features` field (Inv 26 / issue #435) is the sorted, distinct set of
+   feature directories the item touches: the union of the `feature:<name>`
+   label and every `.claude/features/<name>/` path literally referenced in
+   the issue body. It is the basis `plan-batch.py` uses to choose a per-item
+   dispatch shape (Stage 2). A malformed-labels issue with no body paths
+   carries `features: []`.
 
    The decision set is EXACTLY `{work, defer, close-not-planned}` (issue
    #423 Part A). `close-completed` is NEVER emittable from triage — a
@@ -382,14 +390,25 @@ Phase E merges complete.
 
    ```json
    {
+     "selection_order": [124, 125, 123],
+     "dispatch_shapes": {"124": "parallel-per-feature", "125": "multi-subagent-barrier", "123": "decomposition"},
      "barrier_first": [123, 124],
      "groups": [[125, 126], [127]]
    }
    ```
 
+   `selection_order` (Stage 1, Inv 26) and `dispatch_shapes` (Stage 2,
+   Inv 26) are the two decoupled decisions; the `barrier_first` / `groups`
+   partition (steps 1–4 below) is the parallel-dispatch grouping for the
+   shape-1 items. The `--decompose-threshold N` flag (default 10, integer
+   ≥ 1) sets the distinct-feature count at/above which an item's shape is
+   `decomposition`.
+
    Each input item carries at least: `issue` (int), `feature` (string),
    `contract_touch` (bool), and `priority` (one of `critical` / `high`
-   / `medium` / `low`; missing or unrecognized → sorts last).
+   / `medium` / `low`; missing or unrecognized → sorts last). It MAY carry
+   `features` (the distinct feature-dir set from triage); when absent the
+   item is treated as touching one feature (the `feature` label).
 
    The script is a pure JSON processor — no `gh`, no `git`, no
    filesystem reads or writes other than stdin/stdout.
@@ -1405,6 +1424,69 @@ Phase E merges complete.
     (asserts `close-completed` is never emitted and every defer carries a
     planning_note), and `test/test-triage-batch.py` (asserts the 4th
     consecutive defer is forced to `work`).
+
+26. **Work-selection / dispatch-shape decoupling (issue #435).** The loop
+    makes two SEPARATE decisions, in order, and never lets the second
+    contaminate the first.
+
+    **(a) Stage 1 work selection is dispatch-shape blind.** The next item(s)
+    to work are selected purely by priority label (`critical` > `high` >
+    `medium` > `low`; no-priority last), logical readiness (barriers cleared,
+    dependencies merged, no open blocking sub-issue), and issue age / queue
+    position. Stage 1 MUST NOT consider dispatch shape, feature count, or
+    whether the loop "knows how" to do the item. `plan-batch.py` emits the
+    Stage-1 result as `selection_order` (priority desc then issue asc, over
+    work-only items). A high-priority cross-feature item is therefore
+    selected BEFORE a low-priority single-feature item, even though the
+    latter is the loop's performance preference.
+
+    **(b) Stage 2 picks among exactly THREE shapes in preference order.** For
+    each selected work item, `plan-batch.py` emits `dispatch_shapes`
+    (issue-number-string → shape), choosing the FIRST fitting shape. The
+    item's distinct feature-dir count is `len(item["features"])` (from
+    triage), or 1 when `features` is absent.
+
+    | Rank | Shape key | When it fits | Mechanics |
+    |---|---|---|---|
+    | 1 (perf preference) | `parallel-per-feature` | item edits exactly one feature dir | one full single-feature TDD touch, its own `.rabbit-scope-active-<feature>` marker; multiple such items dispatch in parallel |
+    | 2 | `multi-subagent-barrier` | item edits >1 feature dir, below `--decompose-threshold` (default 10) | per-feature subagents land SERIALLY on ONE shared branch; the serialization contract is: subagent k+1 fetches subagent k's pushed commit before starting; each piece is a full single-feature touch with its own scope marker; one PR closes the item |
+    | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs | file N per-feature sub-issues via the contract INVOKE `rabbit-issue/scripts/file-item.py` (NOT a cross-feature edit — do not edit rabbit-issue files), each labelled `rabbit-managed` + the right `feature:<name>` label; the parent stays OPEN and the sub-issues are queued, re-entering Stage 1/Stage 2 on the next tick |
+
+    Every shape uses a full per-feature touch gated by
+    `.rabbit-scope-active-<feature>`. The dispatcher MUST NOT skip, defer
+    indefinitely, escalate to human, or file a meta-issue as a substitute for
+    a valid item merely because it does not fit shape 1 — shapes 2 and 3
+    handle cross-feature and very-large items.
+
+    **(c) parallel-per-feature is a performance preference, not a correctness
+    requirement.** It is the fastest-throughput shape, but items that do not
+    fit it still get done via shapes 2 and 3, just slower.
+
+    **(d) The session-override shape is forbidden — and why.** The original
+    issue #435 proposed a Stage-2 shape 2 — "sequential single-subagent with
+    scope override" — claiming "in autonomous mode the human-gating rule does
+    not apply." That shape is STRUCK and MUST NOT be implemented. Per the
+    maintainer's binding policy (issue #435 comment, 2026-06-03):
+    autonomous-evolve ALWAYS uses a full per-feature touch gated by
+    `.rabbit-scope-active-<feature>`; it NEVER writes a persistent
+    `.rabbit-scope-override session` for feature edits. A one-time override is
+    permitted ONLY for plan / temporary-document writing, never for feature
+    code edits. **Bounded scope is a hard constraint, not waivable by
+    autonomy** (CLAUDE.md philosophy §2 / spec-rules §2): autonomy changes
+    *who* the actor is, not *what scope* an actor may write. `plan-batch.py`
+    therefore never emits `sequential-with-override` — the valid shape set is
+    exactly {`parallel-per-feature`, `multi-subagent-barrier`,
+    `decomposition`}.
+
+    Enforced by `test/test-dispatch-shape.py` (single-feature →
+    parallel-per-feature; cross-feature independent edits →
+    multi-subagent-barrier; very-large 10+-feature item → decomposition;
+    Stage-1 selection picks the high-priority cross-feature item before the
+    low-priority single-feature item; no shape is ever the struck
+    session-override shape and the planner writes no marker), the `features`
+    extraction in `test/test-dispatch-shape.py`, and
+    `test/test-spec-dispatch-shape-invariant.py` (asserts this invariant text
+    is present and that the struck shape is not listed as valid).
 
 ## Known gaps
 
