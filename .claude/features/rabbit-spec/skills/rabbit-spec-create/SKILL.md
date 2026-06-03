@@ -1,7 +1,7 @@
 ---
 name: rabbit-spec-create
 description: Draft the initial body of a newly-declared rabbit feature's spec.md (canonical flat docs/spec.md, fallbacks specs/spec.md and legacy docs/spec/spec.md) by dispatching the read-only rabbit-spec-creator subagent. Use when a fresh feature has been scaffolded and needs its first spec draft — phrases like "draft a spec for X", "seed the spec for X", "create initial spec for X", "/rabbit-spec-create". Works in both modes: standalone (no globs — produces a skeleton from feature name alone) and plugin (with globs — drafts from real user code). Single-feature per invocation. Invoke as Skill("rabbit-spec-create", args: "<feature-name>") for a skeleton, or Skill("rabbit-spec-create", args: "<feature-name> <glob1> <glob2> ...") to read from code.
-version: 1.3.0
+version: 1.4.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 ---
@@ -64,6 +64,8 @@ In standalone mode (no globs), pass `--paths ""` (an empty string is accepted an
 
 The script prints the absolute path of the assembled prompt file to stdout on success. Exit codes: 0 success, 1 invocation error, 2 prompt-assembler failure. Surface non-zero exits to the caller and stop.
 
+When the resolved file count exceeds the 50-file cap, the script writes a structured `NOTE: resolved <N> files; capped at 50, <M> dropped` line to **stderr** (stdout stays a single prompt-file path). Capture that stderr line: it carries the inspected count `<N>` and the dropped count `<M>` that Step 4 reports to the user. The truncation is never silent.
+
 ### Step 2 — Dispatch the rabbit-spec-creator subagent
 
 Read the assembled prompt file, then invoke the agent. This is a Claude tool call, not a shell command:
@@ -91,7 +93,7 @@ If none of `<dest_root>/docs/spec.md`, `<dest_root>/specs/spec.md`, or `<dest_ro
 
 ### Step 4 — Report
 
-Tell the caller the path of the written file and a one-line summary of what the agent observed (e.g. "12 files inspected, 6 entry points named"). The user reviews the draft and edits it before adopting it as the feature's working spec.
+Tell the caller the path of the written file and a one-line summary of what the agent observed (e.g. "12 files inspected, 6 entry points named"). If the Step 1 dispatcher emitted a drop NOTE on stderr, append the inspected and dropped counts to your report (e.g. "57 files matched, 50 inspected and 7 dropped — the draft may be incomplete; narrow the globs or split the feature") so the user knows the `## Public surface` / `## Current behaviour` sections were drafted from a capped subset. The user reviews the draft and edits it before adopting it as the feature's working spec.
 
 ## When to use vs not
 

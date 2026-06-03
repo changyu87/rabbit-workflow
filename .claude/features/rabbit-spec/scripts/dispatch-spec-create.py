@@ -6,6 +6,12 @@ pipeline) when a new feature's initial spec body needs to be drafted.
 Resolves the declared path globs, caps the resolved file list at 50 entries,
 and invokes contract/scripts/build-prompt.py to assemble the prompt.
 
+When the resolved file count exceeds the cap, the truncation is NOT silent
+(#472): a structured NOTE naming the inspected and dropped counts is written
+to stderr so the caller (rabbit-spec-create Step 4) can surface "and M
+dropped" instead of silently emitting an incomplete draft. stdout stays a
+single prompt-file path the skill parses.
+
 Both modes are supported:
   - Plugin mode: --paths populated with code globs the agent reads from.
   - Standalone mode: --paths empty (or omitted) — agent produces a skeleton.
@@ -20,7 +26,7 @@ Exit codes:
     1 = invocation error (missing args, glob resolution failure)
     2 = build-prompt.py subprocess failure
 
-Version: 1.1.1
+Version: 1.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 """
@@ -46,7 +52,18 @@ def main():
     resolved = []
     for g in globs:
         resolved.extend(glob.glob(g, recursive=True))
-    resolved = sorted(set(resolved))[:MAX_FILES]
+    resolved = sorted(set(resolved))
+    total = len(resolved)
+    if total > MAX_FILES:
+        # The cap is kept (it bounds the prompt's slot budget), but the loss
+        # is reported loudly — never a silent alphabetical truncation (#472).
+        dropped = total - MAX_FILES
+        resolved = resolved[:MAX_FILES]
+        print(
+            f"NOTE: resolved {total} files; capped at {MAX_FILES}, "
+            f"{dropped} dropped",
+            file=sys.stderr,
+        )
 
     # Resolve repo_root via __file__ — mode-agnostic. See spec Inv 3(e):
     # parents[0]=scripts, [1]=rabbit-spec, [2]=features, [3]=.claude, [4]=repo_root.
