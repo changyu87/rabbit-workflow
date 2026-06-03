@@ -10,7 +10,7 @@
 #     [--max-iterations N]
 #
 # Output: assembled prompt to stdout. Caller: Agent(model: opus, prompt: stdout).
-# Version: 4.4.0
+# Version: 4.5.0
 # Owner: rabbit-workflow team (tdd-subagent)
 # Deprecation criterion: when TDD cycle is natively supported by rabbit CLI.
 
@@ -405,9 +405,36 @@ def main(argv):
     build_prompt_py = os.path.join(
         repo_root, ".claude", "features", "contract", "scripts", "build-prompt.py",
     )
+    # Issue #528 (Inv 61): a single `--slot name=value` argv string longer
+    # than Linux's MAX_ARG_STRLEN (128 KB, independent of ARG_MAX) makes the
+    # exec() in subprocess.run raise `OSError: [Errno 7] Argument list too
+    # long`. The large slots (spec_content, impl_suggestion_block) routinely
+    # exceed this for big features (e.g. the ~148 KB rabbit-auto-evolve spec).
+    # build-prompt.py is owned by the contract feature (Out of Scope here), so
+    # rather than change its CLI we pass any oversized slot as a tiny, unique
+    # sentinel token via argv, then substitute the real value back into the
+    # assembled prompt AFTER build-prompt.py returns. The sentinel is built
+    # from os.urandom so it cannot collide with template text or other slot
+    # values (it is wrapped in 0x1e record-separator control chars, which
+    # never appear in spec/template prose and — unlike NUL — are legal in an
+    # argv string); the substitution is a single str.replace per oversized slot,
+    # making the assembled output byte-identical to passing the value directly.
+    # Slots small enough to stay under the cap are passed as-is, so in-range
+    # inputs hit the exact same argv path (and output) as before.
+    #
+    # Threshold: budget the per-arg limit against the "--slot name=" prefix and
+    # leave generous headroom below MAX_ARG_STRLEN.
+    _MAX_ARG_STRLEN = 128 * 1024
+    _ARG_BUDGET = _MAX_ARG_STRLEN - 4096
+    sentinel_values = {}
     slot_args = []
     for k, v in slots.items():
-        slot_args.extend(["--slot", f"{k}={v}"])
+        arg = f"{k}={v}"
+        if len(arg.encode("utf-8", "surrogatepass")) > _ARG_BUDGET:
+            token = f"\x1eRABBIT_SLOT_{os.urandom(16).hex()}\x1e"
+            sentinel_values[token] = v
+            arg = f"{k}={token}"
+        slot_args.extend(["--slot", arg])
     res = subprocess.run(
         [sys.executable, build_prompt_py, "--callable-id", "tdd-subagent", *slot_args],
         capture_output=True, text=True, check=False,
@@ -418,10 +445,13 @@ def main(argv):
     prompt_file = res.stdout.strip()
     try:
         with open(prompt_file) as f:
-            sys.stdout.write(f.read())
+            assembled = f.read()
     except OSError as e:
         sys.stderr.write(f"ERROR: cannot read assembled prompt at {prompt_file}: {e}\n")
         return 1
+    for token, value in sentinel_values.items():
+        assembled = assembled.replace(token, value)
+    sys.stdout.write(assembled)
     sys.stderr.write(f"dispatch-tdd-subagent: prompt ready for feature '{feature_name}'\n")
     return 0
 
