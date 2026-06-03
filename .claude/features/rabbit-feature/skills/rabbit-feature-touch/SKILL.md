@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.0.2
+version: 3.1.0
 owner: rabbit-feature
 deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
@@ -85,7 +85,14 @@ else
   feature_dir=.claude/features/<feature-name>
   git add "$feature_dir"
 fi
-if ! git diff --cached --quiet -- "$feature_dir/docs/spec/spec.md"; then
+# Resolve the spec path: specs/spec.md is preferred (issue #399); fall back
+# to the legacy docs/spec/spec.md for not-yet-migrated features.
+if [ -f "$feature_dir/specs/spec.md" ]; then
+  spec_path="$feature_dir/specs/spec.md"
+else
+  spec_path="$feature_dir/docs/spec/spec.md"
+fi
+if ! git diff --cached --quiet -- "$spec_path"; then
   git commit -m "spec(<feature-name>): update spec for <one-line request summary>"
 fi
 ```
@@ -150,9 +157,17 @@ One subagent per feature. Dispatch all in parallel if multiple features.
 Shell (assemble the prompt — deterministic):
 
 ```bash
+# Resolve the spec path: specs/spec.md is preferred (issue #399); fall back
+# to the legacy docs/spec/spec.md for not-yet-migrated features.
+feature_root=.claude/features/<feature-name>
+if [ -f "$feature_root/specs/spec.md" ]; then
+  spec_arg="$feature_root/specs/spec.md"
+else
+  spec_arg="$feature_root/docs/spec/spec.md"
+fi
 PROMPT=$(python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py \
   --scope <feature-name> \
-  --spec .claude/features/<feature-name>/docs/spec/spec.md \
+  --spec "$spec_arg" \
   --impl-suggestion .rabbit/impl-suggestion-<feature-name>.json)
 ```
 
@@ -195,9 +210,10 @@ Summarize the TDD report to the user.
   scope marker. Main session role is orchestration only: resolve scope, create
   branch, invoke rabbit-spec-update, surface impl-suggestion, dispatch subagent, verify
   HANDOFF. The only main-session writes permitted are: the confirm-token
-  override flow (see Override Path), and rabbit-spec-update's writes to
-  `docs/spec/spec.md` under the scope-guard path-pattern allowlist invoked
-  during Step 3.
+  override flow (see Override Path), and rabbit-spec-update's writes to the
+  resolved feature `spec.md` (`specs/spec.md` preferred, `docs/spec/spec.md`
+  fallback per issue #399) under the scope-guard path-pattern allowlist
+  invoked during Step 3.
 - Main session creates `.rabbit-scope-active` (global) or
   `.rabbit-scope-active-<feature>` (per-feature) scope markers at the repo
   root → STOP. Scope markers are exclusively the TDD subagent's responsibility,

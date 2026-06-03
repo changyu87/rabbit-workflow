@@ -2,9 +2,9 @@
 """Inv 33: scaffold-feature.py scaffolds a conforming feature dir.
 
 The scaffolder is executable and produces a directory containing feature.json
-(with template_version), docs/spec/spec.md, docs/spec/contract.md, and
-test/run.py (no test/run.sh). The scaffolded directory passes
-validate-feature.py immediately.
+(with template_version), specs/spec.md, specs/contract.md, and
+test/run.py (no test/run.sh). New features are created at the specs/ layout
+(issue #399); the scaffolded directory passes validate-feature.py immediately.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -43,9 +43,13 @@ def test_scaffolds_conforming_dir() -> None:
         )
         feature_dir = Path(tmp) / "demo-feature"
         assert (feature_dir / "feature.json").is_file(), "scaffold missing feature.json"
-        assert (feature_dir / "docs/spec/spec.md").is_file(), "scaffold missing docs/spec/spec.md"
-        assert (feature_dir / "docs/spec/contract.md").is_file(), (
-            "scaffold missing docs/spec/contract.md"
+        assert (feature_dir / "specs/spec.md").is_file(), "scaffold missing specs/spec.md"
+        assert (feature_dir / "specs/contract.md").is_file(), (
+            "scaffold missing specs/contract.md"
+        )
+        # issue #399: new features are created at specs/, NOT the legacy docs/spec/.
+        assert not (feature_dir / "docs/spec").exists(), (
+            "scaffold must NOT create the legacy docs/spec/ layout (issue #399)"
         )
         assert (feature_dir / "test/run.py").is_file(), "scaffold missing test/run.py"
         assert not (feature_dir / "test/run.sh").exists(), (

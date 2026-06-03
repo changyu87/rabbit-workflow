@@ -71,8 +71,12 @@ def test_t1_plugin_happy_path() -> None:
         feat_dir = host / ".rabbit/rabbit-project/features/my-feature"
         assert feat_dir.is_dir(), f"missing scaffold dir: {feat_dir}"
         assert (feat_dir / "feature.json").is_file(), "missing feature.json"
-        assert (feat_dir / "docs/spec/spec.md").is_file(), "missing spec.md"
-        assert (feat_dir / "docs/spec/contract.md").is_file(), "missing contract.md"
+        assert (feat_dir / "specs/spec.md").is_file(), "missing specs/spec.md"
+        assert (feat_dir / "specs/contract.md").is_file(), "missing specs/contract.md"
+        # issue #399: plugin-mode scaffolds also use the specs/ layout.
+        assert not (feat_dir / "docs/spec").exists(), (
+            "plugin-mode scaffold must NOT create the legacy docs/spec/ layout (issue #399)"
+        )
 
         fj = json.loads((feat_dir / "feature.json").read_text())
         assert fj.get("name") == "my-feature"
@@ -197,8 +201,11 @@ def test_t5_standalone_unchanged() -> None:
         )
         feat_dir = Path(tmp) / "demo-standalone"
         assert (feat_dir / "feature.json").is_file()
-        assert (feat_dir / "docs/spec/spec.md").is_file()
-        assert (feat_dir / "docs/spec/contract.md").is_file()
+        assert (feat_dir / "specs/spec.md").is_file()
+        assert (feat_dir / "specs/contract.md").is_file()
+        assert not (feat_dir / "docs/spec").exists(), (
+            "standalone scaffold must NOT create the legacy docs/spec/ layout (issue #399)"
+        )
         assert (feat_dir / "test/run.py").is_file()
         # Standalone scaffold MUST NOT use the plugin schema (no top-level paths key).
         data = json.loads((feat_dir / "feature.json").read_text())

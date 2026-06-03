@@ -6,9 +6,13 @@ deprecation_criterion: when the rabbit-feature spec's invariant numbering is fol
 
 # rabbit-feature — Retired Invariants Log
 
-This file holds the tombstones for invariants that were previously declared in `docs/spec/spec.md` and have since been retired. Spec.md no longer carries the prose for these invariants — only a one-line `*(Retired — see CHANGELOG.md, …)*` marker at the original number.
+This file holds the tombstones for invariants that were previously declared in `specs/spec.md` and have since been retired. Spec.md no longer carries the prose for these invariants — only a one-line `*(Retired — see CHANGELOG.md, …)*` marker at the original number.
 
 Each entry below carries the original invariant number (as it appeared in spec.md at the time of retirement), a one-line summary of what the invariant asserted and why it was retired, and the cascade or backlog ID that drove the retirement.
+
+## Layout / structural changes
+
+- **1.21.1 → 1.22.0 — spec dir migration `docs/spec/` → `specs/` (issue #399 Phase 2):** The feature's own spec directory was moved with `git mv .claude/features/rabbit-feature/docs/spec .claude/features/rabbit-feature/specs`; `docs/bugs/` is retained (only `docs/spec` moved). The rabbit-feature-owned cross-feature tooling was updated in lockstep: `scaffold-feature.py` now creates new features (standalone and plugin mode) at the `specs/` layout (Inv 33, Inv 46); `rabbit-feature-touch` resolves a feature's spec at `specs/spec.md` preferring it, falling back to the legacy `docs/spec/spec.md` for not-yet-migrated features in both its Step 3 spec-commit diff check and its Step 5 `--spec` dispatch argument (Inv 16a); rabbit-feature's own spec/contract self-references were updated. Audit conformance accepts both layouts via the contract feature's `validate_feature` dual-read (Phase 1, merged upstream). Deprecation criterion for the dual-read fallback: when every rabbit feature has migrated off `docs/spec/`.
 
 ## Renumber and gap-preservation events
 

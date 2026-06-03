@@ -19,7 +19,7 @@ from pathlib import Path
 FEATURE_DIR = Path(__file__).resolve().parents[1]
 SKILL_MD = FEATURE_DIR / "skills/rabbit-feature-audit/SKILL.md"
 FEATURE_JSON = FEATURE_DIR / "feature.json"
-CONTRACT_MD = FEATURE_DIR / "docs/spec/contract.md"
+CONTRACT_MD = FEATURE_DIR / "specs/contract.md"
 
 VALIDATOR_PATH = ".claude/features/contract/scripts/validate-feature.py"
 

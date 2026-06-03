@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-scaffold
-description: Scaffold a new rabbit feature directory with the standard skeleton (feature.json, docs/spec/spec.md, docs/spec/contract.md, test/run.py) in standalone mode, or scaffold a per-project plugin feature under .rabbit/rabbit-project/features/<name>/ with path-glob mapping in plugin mode. Use when the user asks to create, scaffold, or initialize a new rabbit feature — phrases like "create a new feature", "scaffold a feature called X", "/rabbit-feature-scaffold", "set up a new rabbit feature", "bootstrap a feature dir". Invoke as Skill("rabbit-feature-scaffold", args: "<feature-name>") in standalone mode or Skill("rabbit-feature-scaffold", args: "<feature-name> <path-glob> [<path-glob>...]") in plugin mode.
-version: 1.2.0
+description: Scaffold a new rabbit feature directory with the standard skeleton (feature.json, specs/spec.md, specs/contract.md, test/run.py) in standalone mode, or scaffold a per-project plugin feature under .rabbit/rabbit-project/features/<name>/ with path-glob mapping in plugin mode. Use when the user asks to create, scaffold, or initialize a new rabbit feature — phrases like "create a new feature", "scaffold a feature called X", "/rabbit-feature-scaffold", "set up a new rabbit feature", "bootstrap a feature dir". Invoke as Skill("rabbit-feature-scaffold", args: "<feature-name>") in standalone mode or Skill("rabbit-feature-scaffold", args: "<feature-name> <path-glob> [<path-glob>...]") in plugin mode.
+version: 1.3.0
 owner: rabbit-workflow team
 deprecation_criterion: When this skill's scaffolding step is absorbed into a native `rabbit-feature` CLI subcommand or into the rabbit CLI itself.
 ---
@@ -63,7 +63,7 @@ python3 .claude/features/rabbit-feature/scripts/scaffold-feature.py \
 ```
 
 The script creates `.claude/features/<feature-name>/` with the standard
-skeleton: `feature.json`, `docs/spec/spec.md`, `docs/spec/contract.md`,
+skeleton: `feature.json`, `specs/spec.md`, `specs/contract.md`,
 `test/run.py`. It exits non-zero on invalid names or if the target already
 exists — surface that error to the caller and stop.
 
@@ -78,7 +78,7 @@ python3 .claude/features/rabbit-feature/scripts/scaffold-feature.py \
 
 On success the scaffolder creates
 `<repo>/.rabbit/rabbit-project/features/<feature-name>/` with
-`feature.json`, `docs/spec/spec.md`, and `docs/spec/contract.md`; it also
+`feature.json`, `specs/spec.md`, and `specs/contract.md`; it also
 registers the new feature in
 `<repo>/.rabbit/rabbit-project/project-map.json` (schema-validated
 against `.claude/features/contract/schemas/project-map.json.schema.json`
@@ -88,7 +88,7 @@ overlap) it exits non-zero — surface that error to the caller and stop.
 After a successful plugin-mode scaffold, the script prints a `NEXT:`
 block to stdout naming the `rabbit-spec-create` skill (and equivalently
 the `dispatch-spec-create.py` command) the caller should invoke to seed
-`docs/spec/spec.md`. Capture that block and follow it (see Step 3 below);
+`specs/spec.md`. Capture that block and follow it (see Step 3 below);
 the scaffolder itself never invokes the spec-creator subagent.
 
 ### Step 2 — Validate the scaffold
@@ -118,7 +118,7 @@ form:
 
 ```text
 NEXT: invoke the rabbit-spec-create skill (or run the dispatcher
-directly) to seed docs/spec/spec.md:
+directly) to seed specs/spec.md:
   Skill("rabbit-spec-create", args: "<feature-name> <glob1> <glob2> ...")
 or equivalently:
   python3 .claude/features/rabbit-spec/scripts/dispatch-spec-create.py \

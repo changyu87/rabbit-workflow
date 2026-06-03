@@ -287,6 +287,34 @@ def test_inv16_step_3_mode_aware_git_add() -> None:
         )
 
 
+# issue #399 Phase 2: SKILL.md resolves the spec at specs/ preferring it,
+# with a docs/spec/ fallback for not-yet-migrated features. The legacy bare
+# 'docs/spec/spec.md' path MUST NOT appear without the specs/ form alongside.
+def test_inv399_skill_prefers_specs_layout() -> None:
+    for skill_path in (SOURCE_SKILL, DEPLOYED_SKILL):
+        assert skill_path.exists(), f"missing SKILL.md: {skill_path}"
+        text = skill_path.read_text(encoding="utf-8")
+        assert "specs/spec.md" in text, (
+            f"{skill_path} must reference the specs/spec.md layout (issue #399)"
+        )
+        # The Step 3 spec-commit and Step 5 dispatch must resolve specs/ first.
+        step3 = _step_body(text, 3)
+        step5 = _step_body(text, 5)
+        assert "specs/spec.md" in step3, (
+            f"Step 3 in {skill_path} must resolve the spec at specs/spec.md "
+            "(issue #399)"
+        )
+        assert "specs/spec.md" in step5, (
+            f"Step 5 in {skill_path} must point --spec at specs/spec.md "
+            "(issue #399)"
+        )
+        # The fallback to the legacy layout must be documented.
+        assert "docs/spec/spec.md" in text, (
+            f"{skill_path} must document the legacy docs/spec/spec.md fallback "
+            "for not-yet-migrated features (issue #399 dual-read)"
+        )
+
+
 # Inv 41: dispatcher-continuity directive present in source AND deployed,
 # byte-identical, prominent enough to appear before Step 7's body ends.
 _CONTINUITY_REQUIRED_PHRASES = [
