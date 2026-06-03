@@ -10,9 +10,12 @@ Inv 20 (plugin-mode RABBIT_ROOT check): when running in plugin mode
 (detected by presence of <install_root>/.version), appends a banner
 payload to the dispatch result if RABBIT_ROOT is unset or mismatched.
 
-Issue #326: prepends a version line (`[rabbit] 🐇 rabbit v<version>`) at the
-start of the SessionStart output — read from <install_root>/.version in
-plugin mode, falling back to rabbit-cage/feature.json `version` standalone.
+Issue #326 / #449: prepends a 3-row rabbit box around the centered version
+at the start of the SessionStart output (top border of 32 🐇, version row
+`🐇 rabbit v<version> 🐇` centered in the box, bottom border), and renders
+the welcome line PLAIN (brand prefix only — no ✅ icon, no ━━━ bars). The
+version is read from <install_root>/.version in plugin mode, falling back to
+rabbit-cage/feature.json `version` standalone.
 
 Issue #503: after the welcome block, INVOKES rabbit-auto-evolve's
 `scripts/check-auto-resume.py` (a contract INVOKE, not a cross-feature edit)
@@ -21,7 +24,7 @@ resume banner to the systemMessage and injects the `action` into
 additionalContext so Claude Code mechanically self-resumes the loop after a
 restart. Absent / erroring script degrades gracefully (no resume surfaced).
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team (rabbit-cage)
 Deprecation criterion: when Claude Code exposes native SessionStart
     dispatchers that subsume this hook.
@@ -108,17 +111,51 @@ def _read_installed_version(root: str) -> str:
     return _VERSION_UNKNOWN
 
 
-def _version_line(root: str):
-    """Return the SessionStart version-line payload (issue #326).
+_BOX_WIDTH = 32
+_BOX_RABBIT = "\U0001f407"
 
-    A compact `print` payload rendered as `[rabbit] 🐇 rabbit v<version>`.
-    Prepended ahead of every other SessionStart payload so it leads the
-    welcome block.
+
+def _version_box(root: str):
+    """Return the SessionStart version-box payloads (issues #326, #449).
+
+    Three `subline` payloads forming a rabbit box around the centered
+    version. Each row carries the brand prefix `[🐇 rabbit 🐇]` via the
+    dispatcher's subline renderer:
+      Row 1: top border of 32 🐇
+      Row 2: 🐇 + `rabbit v<version>` centered in the 32-wide box + 🐇
+      Row 3: bottom border of 32 🐇
+    Prepended ahead of every other SessionStart payload so the box leads
+    the welcome block.
     """
     version = _read_installed_version(root)
     label = version if version.startswith("v") else f"v{version}"
-    return {"type": "print", "text": f"rabbit {label}",
-            "icon": "🐇", "color": "green"}
+    border = _BOX_RABBIT * _BOX_WIDTH
+    centered = f"rabbit {label}".center(_BOX_WIDTH - 2)
+    middle = f"{_BOX_RABBIT}{centered}{_BOX_RABBIT}"
+    return [
+        {"type": "subline", "text": border, "color": "green"},
+        {"type": "subline", "text": middle, "color": "green"},
+        {"type": "subline", "text": border, "color": "green"},
+    ]
+
+
+def _strip_welcome_decoration(payloads):
+    """Issue #449: render the welcome line PLAIN (brand prefix only).
+
+    The welcome line is produced by contract's `welcome_with_policy` as a
+    `banner` payload (icon ✅, ━━━ bars). Convert that single payload to a
+    plain `subline` so render_emission drops the icon and bars while
+    leaving every other payload untouched. Mutates the list in place.
+    """
+    for p in payloads:
+        if (p.get("type") == "banner"
+                and p.get("text") == "Welcome — governing policies loaded"):
+            p.clear()
+            p["type"] = "subline"
+            p["text"] = "Welcome — governing policies loaded"
+            p["color"] = "green"
+            break
+    return payloads
 
 
 _AUTO_RESUME_SCRIPT = (
@@ -195,7 +232,9 @@ def main() -> int:
         pass
     root = str(repo_root())
     payloads = dispatch_event("SessionStart", root)
-    payloads.insert(0, _version_line(root))
+    _strip_welcome_decoration(payloads)
+    for i, row in enumerate(_version_box(root)):
+        payloads.insert(i, row)
     payloads.extend(_auto_resume_payloads(root))
     alert = _check_rabbit_root_env()
     if alert is not None:
