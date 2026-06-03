@@ -20,7 +20,7 @@ Test method: copy the repo-root `.gitignore` into a fresh tempdir, run
 and assert none of the five marker basenames appear in the output.
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when rabbit-auto-evolve is retired or when the
 runtime markers are relocated under an already-gitignored prefix
 (e.g. `.rabbit/`).

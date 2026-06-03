@@ -46,7 +46,7 @@ The triage-issue.py path resolves via the env override
 directory of this file.
 
 Version: 1.1.0
-Owner: cyxu
+Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
 """

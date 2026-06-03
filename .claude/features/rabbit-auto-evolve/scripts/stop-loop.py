@@ -19,7 +19,7 @@ same content is a clean no-op.
 Exit 0 on success; non-zero on write error.
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
 """

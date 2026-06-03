@@ -41,7 +41,7 @@ invoke `banner-status.py` instead. Until that follow-up lands, the `running`
 variant exists in this script but is NOT surfaced at SessionStart.
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
 """
