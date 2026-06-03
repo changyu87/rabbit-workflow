@@ -254,7 +254,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
         # Plugin-mode report relativizes to tdd-report-<feature>.json.
         m = re.search(
-            r"^\s*Path:\s*(\S+tdd-report-run-ingest\.json)\s*$",
+            r"^\s*Path:\s*(\S+)\s*$",
             prompt, re.MULTILINE)
         if m is None:
             ko("scenario B: no STEP 7 'Path:' line for tdd-report found")

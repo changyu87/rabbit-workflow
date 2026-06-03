@@ -366,18 +366,29 @@ def main(argv):
             "CODE-REVIEW changed functional code or tests."
         )
 
+    # Inv 58 (issue #527): the four filesystem-path slots are emitted
+    # repo-RELATIVE (os.path.relpath(<abs>, repo_root)) and repo_root is
+    # emitted as '.'. The subagent resolves every baked path from its CURRENT
+    # WORKING DIRECTORY, so a worktree-isolated dispatch (rabbit-auto-evolve
+    # Inv 28) operates on its own tree instead of the main repo. The absolute
+    # computations above are retained because the mode-aware helpers
+    # (_scope_marker_path / _tdd_report_path) and the find-feature lookup need
+    # real absolute paths to os.path.exists markers at assembly time; only the
+    # emitted SLOT STRINGS are relativized.
     slots = {
         "feature_name": feature_name,
         "spec_content": spec_content,
         "impl_suggestion_block": impl_suggestion_block,
         "bypass_preamble_note": bypass_preamble_note,
-        "feature_dir": feature_dir,
-        "tdd_step_py": tdd_step_py,
-        "repo_root": repo_root,
+        "feature_dir": os.path.relpath(feature_dir, repo_root),
+        "tdd_step_py": os.path.relpath(tdd_step_py, repo_root),
+        "repo_root": ".",
         "max_iterations": str(args.max_iterations),
         "code_review_loop_note": code_review_loop_note,
-        "scope_marker_path": _scope_marker_path(repo_root, feature_name),
-        "tdd_report_path": _tdd_report_path(repo_root, feature_name),
+        "scope_marker_path": os.path.relpath(
+            _scope_marker_path(repo_root, feature_name), repo_root),
+        "tdd_report_path": os.path.relpath(
+            _tdd_report_path(repo_root, feature_name), repo_root),
     }
     build_prompt_py = os.path.join(
         repo_root, ".claude", "features", "contract", "scripts", "build-prompt.py",

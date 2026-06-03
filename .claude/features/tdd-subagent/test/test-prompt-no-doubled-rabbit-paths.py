@@ -167,7 +167,7 @@ with tempfile.TemporaryDirectory() as tmp:
         # no absolute prefix).
         expected_path = "tdd-report-run-ingest.json"
         # The Path: line appears in STEP 7 TEST-GREEN body.
-        m = re.search(r"^\s*Path:\s*(\S+tdd-report-run-ingest\.json)\s*$",
+        m = re.search(r"^\s*Path:\s*(\S+)\s*$",
                       prompt, re.MULTILINE)
         if m is None:
             ko("scenario B: no STEP 7 'Path:' line for tdd-report found")
