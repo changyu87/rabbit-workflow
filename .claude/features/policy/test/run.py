@@ -30,6 +30,7 @@ run_test("test-policy-invariants.py")
 run_test("test-policy-bug-fixes.py")
 run_test("test-historical-fixes-retirement.py")
 run_test("test-meta-contract-sections.py")
+run_test("test-spec-layout-migration.py")
 
 print()
 print("All tests passed.")
