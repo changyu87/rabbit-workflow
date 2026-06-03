@@ -240,4 +240,199 @@ with tempfile.TemporaryDirectory() as tmp:
             fail(f"empty: bad JSON ({e}); stdout={proc.stdout!r}")
 
 
+# ===========================================================================
+# Issue #423 Part B — anti-infinite-defer consecutive-defer counter.
+#
+# triage-batch.py persists a per-issue consecutive-defer counter in
+# .rabbit/auto-evolve-state.json (key `defer_counts`). After 3 consecutive
+# defers on the same issue, the 4th tick MUST force `work` (reject `defer`).
+# A non-defer decision resets the issue's counter to 0. The state dir is
+# located via RABBIT_AUTO_EVOLVE_STATE_DIR (test seam, matching update-state).
+# ===========================================================================
+
+# A shim that always defers whatever issue it is asked about, with a
+# planning_note describing what would unblock dispatch.
+DEFER_SHIM = """#!/usr/bin/env python3
+import json
+import sys
+
+arg = sys.argv[1]
+json.dump({
+    "issue": int(arg),
+    "decision": "defer",
+    "reason_code": "needs-judgment",
+    "rationale": "cannot scope yet",
+    "planning_note": "analyze scope before dispatch",
+    "feature": "alpha",
+    "contract_touch": False,
+    "blocked_by": [],
+}, sys.stdout)
+sys.stdout.write("\\n")
+"""
+
+
+def _seed_state(state_dir, defer_counts=None):
+    """Write a minimal valid auto-evolve-state.json into state_dir."""
+    os.makedirs(state_dir, exist_ok=True)
+    state = {
+        "schema_version": "1.1.0",
+        "updated_at": "2026-06-02T00:00:00Z",
+        "queue": [],
+        "in_flight": [],
+        "last_merged_sha": None,
+        "last_tagged_version": None,
+        "consecutive_failures": 0,
+        "stop_requested": False,
+        "restart_needed": None,
+    }
+    if defer_counts is not None:
+        state["defer_counts"] = defer_counts
+    with open(os.path.join(state_dir, "auto-evolve-state.json"), "w") as f:
+        json.dump(state, f)
+    return state
+
+
+def _read_state(state_dir):
+    with open(os.path.join(state_dir, "auto-evolve-state.json")) as f:
+        return json.load(f)
+
+
+def run_batch_state(items, script_dir, state_dir):
+    env = os.environ.copy()
+    env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = script_dir
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    return subprocess.run(
+        [sys.executable, SCRIPT],
+        input=json.dumps(items),
+        capture_output=True, text=True,
+        env=env,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scenario 5 — 3 consecutive defers, then the 4th tick forces work.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    script_dir = os.path.join(tmp, "scripts")
+    os.makedirs(script_dir)
+    _write_shim(script_dir, DEFER_SHIM)
+    state_dir = os.path.join(tmp, "state")
+    _seed_state(state_dir)
+    raw = [{"number": 500, "title": "x", "labels": [], "body": "",
+            "createdAt": "2026-06-01T00:00:00Z"}]
+
+    decisions = []
+    for tick in range(4):
+        proc = run_batch_state(raw, script_dir, state_dir)
+        if proc.returncode != 0:
+            fail(f"defer-counter tick {tick}: exit {proc.returncode}; "
+                 f"stderr={proc.stderr!r}")
+            break
+        try:
+            out = json.loads(proc.stdout)
+        except json.JSONDecodeError as e:
+            fail(f"defer-counter tick {tick}: bad JSON ({e}); "
+                 f"stdout={proc.stdout!r}")
+            break
+        decisions.append(out[0].get("decision"))
+
+    if decisions == ["defer", "defer", "defer", "work"]:
+        ok("defer-counter: 3 defers then 4th forced to work")
+    else:
+        fail(f"defer-counter: decision sequence {decisions!r} != "
+             f"['defer','defer','defer','work']")
+
+    # The forced-work entry must carry the defer-limit reason code so the
+    # planner/loop can distinguish it from an organic work decision.
+    if decisions == ["defer", "defer", "defer", "work"]:
+        if out[0].get("reason_code") != "defer-limit-reached":
+            fail(f"defer-counter: forced-work reason_code "
+                 f"{out[0].get('reason_code')!r} != 'defer-limit-reached'")
+        else:
+            ok("defer-counter: forced-work reason_code is defer-limit-reached")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 6 — the consecutive-defer counter is persisted into the state file
+# under defer_counts, keyed by issue number (string).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    script_dir = os.path.join(tmp, "scripts")
+    os.makedirs(script_dir)
+    _write_shim(script_dir, DEFER_SHIM)
+    state_dir = os.path.join(tmp, "state")
+    _seed_state(state_dir)
+    raw = [{"number": 600, "title": "x", "labels": [], "body": "",
+            "createdAt": "2026-06-01T00:00:00Z"}]
+    proc = run_batch_state(raw, script_dir, state_dir)
+    if proc.returncode != 0:
+        fail(f"defer-persist: exit {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        st = _read_state(state_dir)
+        dc = st.get("defer_counts", {})
+        if dc.get("600") != 1:
+            fail(f"defer-persist: defer_counts['600'] != 1; got {dc!r}")
+        else:
+            ok("defer-persist: defer_counts persisted to state file")
+        # Other state fields must be preserved (read-modify-write, not clobber).
+        if st.get("schema_version") not in ("1.0.0", "1.1.0"):
+            fail(f"defer-persist: schema_version clobbered: "
+                 f"{st.get('schema_version')!r}")
+        elif "queue" not in st or "in_flight" not in st:
+            fail(f"defer-persist: pre-existing state keys lost: {sorted(st)!r}")
+        else:
+            ok("defer-persist: pre-existing state keys preserved")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 7 — a non-defer decision RESETS the issue's consecutive-defer
+# counter to 0 (the counter is CONSECUTIVE defers, not lifetime).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    script_dir = os.path.join(tmp, "scripts")
+    os.makedirs(script_dir)
+    _write_shim(script_dir, HAPPY_SHIM)  # issue 101 → work
+    state_dir = os.path.join(tmp, "state")
+    _seed_state(state_dir, defer_counts={"101": 2})
+    raw = [{"number": 101, "title": "x", "labels": [], "body": "",
+            "createdAt": "2026-06-01T00:00:00Z"}]
+    proc = run_batch_state(raw, script_dir, state_dir)
+    if proc.returncode != 0:
+        fail(f"defer-reset: exit {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        st = _read_state(state_dir)
+        if st.get("defer_counts", {}).get("101", 0) != 0:
+            fail(f"defer-reset: counter not reset on work; "
+                 f"defer_counts={st.get('defer_counts')!r}")
+        else:
+            ok("defer-reset: non-defer decision resets counter to 0")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 8 — no state file present: triage-batch still emits valid output
+# (best-effort persistence; tick liveness must not depend on the state file
+# already existing). The defer decision passes through unchanged.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    script_dir = os.path.join(tmp, "scripts")
+    os.makedirs(script_dir)
+    _write_shim(script_dir, DEFER_SHIM)
+    state_dir = os.path.join(tmp, "no-state")  # does not exist yet
+    raw = [{"number": 700, "title": "x", "labels": [], "body": "",
+            "createdAt": "2026-06-01T00:00:00Z"}]
+    proc = run_batch_state(raw, script_dir, state_dir)
+    if proc.returncode != 0:
+        fail(f"no-state-file: exit {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        try:
+            out = json.loads(proc.stdout)
+            if out[0].get("decision") != "defer":
+                fail(f"no-state-file: decision {out[0].get('decision')!r} "
+                     f"!= 'defer'")
+            else:
+                ok("no-state-file: defer passes through when no state file")
+        except (json.JSONDecodeError, IndexError) as e:
+            fail(f"no-state-file: bad output ({e}); stdout={proc.stdout!r}")
+
+
 sys.exit(FAIL)

@@ -46,7 +46,7 @@ def ok(msg):
 def _valid_state():
     """A fully-populated valid state object matching the Inv 9 schema."""
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "updated_at": "2026-06-02T12:34:56Z",
         "queue": [
             {"issue": 101, "decision": "work", "feature": "rabbit-issue"},
@@ -224,7 +224,7 @@ with tempfile.TemporaryDirectory() as td:
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     stale = {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "updated_at": "2020-01-01T00:00:00Z",
         "queue": [],
         "in_flight": [],
@@ -265,6 +265,47 @@ with tempfile.TemporaryDirectory() as td:
         fail("G: state file written despite malformed stdin")
     else:
         ok("G: malformed stdin JSON rejected")
+
+
+# ---------------------------------------------------------------------------
+# Scenario H — issue #423 Part B: schema_version is bumped to 1.1.0 and the
+# new optional `defer_counts` field (map of issue-number string → int) is
+# accepted and round-trips. Old states WITHOUT defer_counts still validate
+# (additive change).
+# ---------------------------------------------------------------------------
+# H1 — schema_version const is 1.1.0
+with open(SCHEMA) as f:
+    schema_obj = json.load(f)
+if schema_obj.get("schema_version") != "1.1.0":
+    fail(f"H1: schema top-level schema_version "
+         f"{schema_obj.get('schema_version')!r} != '1.1.0'")
+else:
+    ok("H1: schema_version bumped to 1.1.0")
+
+# H2 — defer_counts accepted and round-trips
+with tempfile.TemporaryDirectory() as td:
+    state = _valid_state()
+    state["defer_counts"] = {"500": 2, "600": 1}
+    proc = _run(json.dumps(state), td)
+    if proc.returncode != 0:
+        fail(f"H2: defer_counts should be accepted; stderr={proc.stderr!r}")
+    else:
+        with open(os.path.join(td, "auto-evolve-state.json")) as f:
+            got = json.load(f)
+        if got.get("defer_counts") != {"500": 2, "600": 1}:
+            fail(f"H2: defer_counts not preserved; got {got.get('defer_counts')!r}")
+        else:
+            ok("H2: defer_counts accepted and round-trips")
+
+# H3 — a state WITHOUT defer_counts still validates (additive / optional)
+with tempfile.TemporaryDirectory() as td:
+    state = _valid_state()  # no defer_counts key
+    proc = _run(json.dumps(state), td)
+    if proc.returncode != 0:
+        fail(f"H3: state without defer_counts should still validate; "
+             f"stderr={proc.stderr!r}")
+    else:
+        ok("H3: defer_counts is optional (state without it validates)")
 
 
 sys.exit(FAIL)

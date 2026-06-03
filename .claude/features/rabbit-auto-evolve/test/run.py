@@ -47,5 +47,6 @@ run_test("test-check-preconditions.py")
 run_test("test-banner-status.py")
 run_test("test-markers-gitignored.py")
 run_test("test-claude-runtime-files-gitignored.py")
+run_test("test-spec-convergence-invariant.py")
 
 print("ALL TESTS PASSED")

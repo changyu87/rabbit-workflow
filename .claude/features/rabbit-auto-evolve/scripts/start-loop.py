@@ -31,7 +31,7 @@ clean no-op.
 
 Exit 0 on success; non-zero on write error.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: cyxu
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -59,7 +59,7 @@ def _default_state() -> dict:
         "%Y-%m-%dT%H:%M:%SZ"
     )
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "updated_at": now,
         "queue": [],
         "in_flight": [],

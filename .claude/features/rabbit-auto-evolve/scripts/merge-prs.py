@@ -21,8 +21,11 @@ Per rabbit-auto-evolve spec.md Inv 6, for each PR this script:
   4. After a successful merge, parses the merged PR body for
      `Fixes #N` / `Closes #N` / `Resolves #N` references (case-insensitive)
      and explicitly closes each referenced issue via
-     `item-status.py close <N> --reason completed --comment "...<sha>..."`.
-     GitHub's native auto-close only fires for default-branch (`main`)
+     `item-status.py close <N> --reason completed --commit-sha <merge-sha>
+     --comment "...<sha>..."`. The `--commit-sha` is REQUIRED by
+     item-status.py for a `completed` closure (issue #423 Part C): a
+     completed closure must point at the real merge commit that landed the
+     work. GitHub's native auto-close only fires for default-branch (`main`)
      merges; auto-evolve PRs always target `dev`, so without this step
      referenced issues would stay open indefinitely. Successfully-closed
      issue numbers are recorded under `closed_issues`; issues whose close
@@ -41,7 +44,7 @@ resolved via the RABBIT_ISSUE_SCRIPT_DIR env var when set; otherwise it
 falls back to `.claude/features/rabbit-issue/scripts/` relative to the
 repo root inferred from this script's path.
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: cyxu
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -129,12 +132,19 @@ def _parse_close_refs(body):
 
 def _item_status_close(num, sha):
     """Invoke item-status.py close on `num`. Returns the CompletedProcess.
-    Idempotent against already-closed issues."""
+    Idempotent against already-closed issues.
+
+    Per issue #423 (Part C), `item-status.py close --reason completed` now
+    REQUIRES `--commit-sha <sha>` that resolves to a real commit — a
+    completed closure must point at the merge commit that landed the work.
+    We always pass the merge SHA fetched from `gh pr view`; if it is empty
+    (best-effort fetch failed) item-status.py rejects the close and the
+    failure is recorded under close_failed (never fails the merge)."""
     item_status = os.path.join(_issue_script_dir(), "item-status.py")
     comment = f"TDD cycle complete in {sha}" if sha else "TDD cycle complete"
     return subprocess.run(
         [sys.executable, item_status, "close", str(num),
-         "--reason", "completed", "--comment", comment],
+         "--reason", "completed", "--commit-sha", sha, "--comment", comment],
         capture_output=True, text=True,
     )
 
