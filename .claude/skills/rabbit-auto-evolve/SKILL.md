@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.26.0
+version: 0.27.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -114,7 +114,21 @@ precondition checklist verbatim and waiting for the user to type
 
 #### Start the loop (only on `all_pass: true`)
 
-1. Run the running-guard FIRST (Inv 35 / D3, #526):
+0. **Self-sync the working tree FIRST (Inv 38 / #524)** — BEFORE any phase
+   script runs, so the whole tick executes one consistent (latest-merged)
+   script version (the #450 mid-tick self-modification concern):
+   `python3 .claude/features/rabbit-auto-evolve/scripts/sync-tree.py`.
+   It verifies the tree is clean of uncommitted TRACKED changes (the
+   safety-check.py Inv 5 condition), then runs `git pull --ff-only origin
+   dev` to fast-forward local `dev` to the PRs this loop merged via `gh pr
+   merge`. It uses `git pull --ff-only` — NEVER `git merge`: `settings.json`
+   declares `deny: ["Bash(git merge *)"]`, an absolute permissions deny that
+   beats any `allow` and even `bypassPermissions`, so a local merge of
+   `origin/dev` is denied while `git pull` fast-forwards cleanly. On a dirty
+   or non-fast-forwardable divergent tree it exits non-zero and fails loudly
+   (surfaced + logged via `tick-log.py`); do NOT proceed with the tick on a
+   non-zero sync — never force-merge, never narrow the `git merge` deny.
+1. Run the running-guard (Inv 35 / D3, #526):
    `python3 .claude/features/rabbit-auto-evolve/scripts/running-guard.py`.
    It inspects `.rabbit-auto-evolve-running` and clears a STALE marker — STALE
    only when BOTH no live owner process AND `state.json` idle beyond the
@@ -362,6 +376,12 @@ The cron-fired headless tick is owned by
 runs WITHOUT a Claude session, so it walks every deterministic phase EXCEPT
 phase 5 (`dispatch`), which requires Claude:
 
+- tick-start self-sync (Inv 38 / #524) — BEFORE any phase, it runs
+  `python3 .claude/features/rabbit-auto-evolve/scripts/sync-tree.py` so the
+  cron path also self-syncs to the latest merged scripts (`git pull
+  --ff-only origin dev`, NEVER the permission-denied `git merge`). On a
+  dirty/divergent tree it short-circuits to a clean no-op (logged) rather
+  than run stale scripts.
 - phase 0 (`stop-check`) + phase 1 (`restart-check`) — if
   `.rabbit-auto-evolve-stop-requested` or `.rabbit-auto-evolve-aborted`
   exists, the tick short-circuits to a clean no-op.

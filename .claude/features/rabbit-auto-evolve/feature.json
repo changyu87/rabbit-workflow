@@ -1,9 +1,9 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and is fired on a fixed cadence by the system cron where available (with a durable CronCreate fallback where crontab is blocked; Inv 32) until the user issues an explicit stop.",
   "surface": {
     "hooks": [],
@@ -39,5 +39,5 @@
   },
   "configuration": [],
   "prompts": [],
-  "spec_no_change_reason": "Inv 33 pinned-minute spec amendment already landed in the spec(...) commit on this branch (7120cdd); this cycle implements + tests it"
+  "spec_no_change_reason": "Inv 38 spec amendment already landed in the spec(...) commit 88d1496 on this branch; this cycle implements + tests it"
 }
