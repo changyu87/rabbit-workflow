@@ -99,16 +99,19 @@ def test_deployed_dispatchers_emit_valid_json_or_empty():
 
 
 def test_session_start_welcome_has_4_line_shape():
-    """session-start-dispatcher systemMessage contains banner + 3 policy sub-lines.
+    """session-start-dispatcher systemMessage contains the version box,
+    the plain welcome line, and the 3 policy sub-lines.
 
-    Verifies RABBIT-CAGE-BUG-99 fix: the SessionStart welcome must be exactly
-    4 lines (banner + 3 sub-lines), not just the banner alone.
+    Verifies RABBIT-CAGE-BUG-99 (welcome carries the 3 policy sub-lines, not
+    the banner alone) AND issue #449 (the leading version block is a 3-row
+    rabbit box and the welcome line is rendered plain — no ━━━ bars).
     """
     EXPECTED_SUBLINES = [
         "philosophy.md",
         "spec-rules.md",
         "coding-rules.md",
     ]
+    box_border = "\U0001f407" * 32
     with tempfile.TemporaryDirectory() as td:
         target = Path(td)
         _deploy_to(target)
@@ -124,8 +127,18 @@ def test_session_start_welcome_has_4_line_shape():
                 f"session-start-dispatcher non-JSON stdout: {proc.stdout!r}; {e}"
             )
         sm = out.get("systemMessage", "")
-        # Banner line: must contain the ━━━ bar decoration
-        assert "━━━" in sm, f"banner bar missing from systemMessage: {sm!r}"
+        # Issue #449: leading version box (top + bottom border of 32 🐇)
+        assert box_border in sm, (
+            f"version-box border (32 rabbits) missing from systemMessage: {sm!r}"
+        )
+        # Welcome line is plain — the ━━━ banner decoration is stripped
+        welcome_line = next(
+            (ln for ln in sm.split("\n") if "Welcome" in ln), ""
+        )
+        assert welcome_line, f"welcome line missing from systemMessage: {sm!r}"
+        assert "━" not in welcome_line, (
+            f"welcome line still decorated with bars: {welcome_line!r}"
+        )
         # All 3 policy sub-lines must appear
         for marker in EXPECTED_SUBLINES:
             assert marker in sm, (

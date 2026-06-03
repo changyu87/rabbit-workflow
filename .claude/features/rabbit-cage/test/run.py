@@ -80,6 +80,7 @@ SUITES = [
     "test-scope-guard-agent-sentinel.py",
     "test-stop-timestamp-entry-present.py",
     "test-session-start-version-line.py",
+    "test-runtime-banner-shape.py",
     "test-install-agent-path-rabbit-tdd-subagent.py",
     "test-specs-layout.py",
 ]
