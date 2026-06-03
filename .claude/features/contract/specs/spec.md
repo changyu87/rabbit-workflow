@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.8.0
+version: 2.9.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -365,6 +365,16 @@ Numbering preserves gaps at 4, 6, 7, 27, 28, 29, 30, 35, 55, 56 — each is docu
     The function name `emit_stop_timestamp` MUST be added to the closed runtime API enum in `schemas/runtime.schema.json` (per Inv 41, the schema is the SOLE source of truth for the closed enum). `lib/checks.py`'s `_RUNTIME_API_ENUM` import-time load from the schema will pick up the new entry automatically (no hardcoded duplicate). Inv 47's 15-function enumeration in this spec MUST be amended to 16 functions, naming `emit_stop_timestamp` alongside the existing fifteen.
 
     Enforced by `test/test-runtime-emit-stop-timestamp.py`: (i) function exists and is callable with `repo_root=<any>`; (ii) returns a `list` of length 1; (iii) the single entry's `type == "print"`; (iv) `icon == "⏱"`; (v) `color == "green"`; (vi) `text` matches the regex `^[0-2][0-9]:[0-5][0-9]:[0-5][0-9]$`; (vii) two successive calls produce two valid HH:MM:SS strings (proves time is read each call, not cached); (viii) the single entry carries `order == "footer"` (the footer-ordering marker). The existing `test/test-runtime-schema-shape.py` should automatically pass once the schema is bumped to include `emit_stop_timestamp` in the enum (no test edit required — schema-shape test reads the enum from the schema file itself).
+
+68. **Per-feature documentation layout dual-read (flat `docs/` preferred, `specs/` fallback).** A feature's spec, contract, and CHANGELOG documents are resolved through a single centralized resolver in `lib/checks.py`, and that resolver accepts BOTH the flat `docs/` layout and the `specs/` layout, preferring `docs/` and falling back to the current location:
+
+    (a) **`resolve_spec_path(feature_root, name)`** resolves `<feature_root>/docs/<name>` when that file exists; otherwise it returns `<feature_root>/specs/<name>` (the fallback candidate, returned whether or not it exists, so downstream existence checks report a canonical path). `name` is a leaf filename such as `spec.md` or `contract.md`. Resolution targets the flat `docs/<name>` file only; a sibling `docs/bugs/` (or any other `docs/` subdirectory) is never a resolution target and is left untouched.
+
+    (b) **`resolve_changelog_path(feature_root)`** resolves `<feature_root>/docs/CHANGELOG.md` when that file exists; otherwise it returns `<feature_root>/CHANGELOG.md`.
+
+    (c) **Single resolution site.** Every contract validator that reads a feature's spec, contract, or CHANGELOG body — including `validate_feature` and `check_invariant_monotonic_order` — MUST resolve the path through these helpers, so a feature laid out under EITHER layout validates identically. Re-deriving a spec/contract/CHANGELOG path inline (bypassing the resolver) is a contract violation.
+
+    Enforced by `test/test-docs-layout-dual-read.py`: (i) `resolve_spec_path` resolves `docs/<name>` when only `docs/` is present; (ii) falls back to `specs/<name>` when only `specs/` is present; (iii) prefers `docs/` when both exist; (iv) returns the `specs/` candidate when neither exists; (v) a sibling `docs/bugs/` is preserved and never targeted; (vi)–(viii) `resolve_changelog_path` resolves `docs/CHANGELOG.md`, falls back to the feature-root `CHANGELOG.md`, and prefers `docs/` when both exist; (ix)–(xi) `validate_feature` accepts the flat `docs/` layout, still accepts the `specs/` layout, and accepts `docs/` alongside `docs/bugs/`; (xii)–(xiv) `check_invariant_monotonic_order` reads `spec.md` from `docs/`, still reads it from `specs/`, and prefers `docs/spec.md` over `specs/spec.md`.
 
 ## Template marker convention
 
