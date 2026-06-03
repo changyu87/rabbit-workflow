@@ -21,17 +21,19 @@ two self-healing steps so the next tick has a clean foothold:
      atomically (temp + os.rename, matching update-state.py's convention).
      A valid existing file is left untouched.
 
-Then writes `<repo_root>/.rabbit-auto-evolve-running` with the literal
-content `session` (matching the set-evolve-mode.py marker convention).
-Idempotent: re-running with the marker already at the same content is a
-clean no-op.
+Then writes `<repo_root>/.rabbit-auto-evolve-running`. Per spec Inv 35
+(D3 / issue #521) the marker CONTENT now records the owner PID and an
+ISO-8601 UTC timestamp (`pid=<n> ts=<iso> session`) so `running-guard.py` can
+detect a STALE marker by dead-PID liveness (mtime remains the primary
+staleness signal). Existence-based readers (`status-report.py`,
+`end-tick.py`) are unaffected — they key on the filename, which is unchanged.
 
 `<repo_root>` defaults to `os.getcwd()`; overridable via the
 `RABBIT_AUTO_EVOLVE_REPO_ROOT` env var for tests.
 
 Exit 0 on success; non-zero on write error.
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -47,7 +49,18 @@ MARKER = ".rabbit-auto-evolve-running"
 STOP_MARKER = ".rabbit-auto-evolve-stop-requested"
 STATE_DIR = ".rabbit"
 STATE_FILE = "auto-evolve-state.json"
-CONTENT = "session"
+# The running marker content carries the owner PID + an ISO-8601 UTC
+# timestamp for the Inv 35 stale-marker running-guard, then the legacy
+# `session` token (matching the set-evolve-mode.py marker convention so
+# existing-readers and prior content-shape expectations still see it).
+CONTENT_SUFFIX = "session"
+
+
+def _marker_content() -> str:
+    now = datetime.datetime.now(datetime.timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    return f"pid={os.getpid()} ts={now} {CONTENT_SUFFIX}"
 
 
 def _repo_root() -> str:
@@ -109,7 +122,7 @@ def main() -> None:
         _bootstrap_state(root)
         path = os.path.join(root, MARKER)
         with open(path, "w") as f:
-            f.write(CONTENT)
+            f.write(_marker_content())
     except OSError as e:
         sys.stderr.write(f"start-loop: write failed: {e}\n")
         sys.exit(1)
