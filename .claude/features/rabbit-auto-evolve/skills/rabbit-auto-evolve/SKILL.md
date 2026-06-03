@@ -141,7 +141,46 @@ from disk-persisted state in `.rabbit/auto-evolve-state.json`.
 | 8 | `cleanup`         | `.claude/features/rabbit-auto-evolve/scripts/cleanup-branches.py` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase cleanup` |
 | 9 | `catch-up`        | `.claude/features/rabbit-auto-evolve/scripts/classify-merge-restart.py` (per merged PR) |
 |10 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
-|11 | `schedule`        | `ScheduleWakeup` (unless stop-check matched) |
+|11 | `schedule`        | `.claude/features/rabbit-auto-evolve/scripts/schedule-check.py` → `ScheduleWakeup` (unless stop-check matched) — see "Schedule phase (Inv 29)" below |
+
+### Schedule phase (Inv 29 — issue #409)
+
+Per spec Inv 29, phase 11 (`schedule`) MUST call `ScheduleWakeup` with
+fully-pinned, valid parameters. An under-specified call silently stops the
+loop (the issue #409 incident: tick 6 ended and five subsequent hourly
+ticks never fired across a 5h+ window — no error, no log line, no halt —
+because the phase documented only the bare string "ScheduleWakeup" and the
+dispatcher had no deterministic delay/prompt to use).
+
+The call's three parameters:
+
+- `delaySeconds` — an integer in the inclusive band `60 <= delaySeconds <=
+  3600`. The harness ignores a 0/negative delay and an over-long delay is
+  indistinguishable from a hang. The auto-evolve cadence is hourly, so the
+  canonical value is **`3600`**.
+- `prompt` — the literal string `/rabbit-auto-evolve tick`. This is the
+  sentinel that RE-ENTERS the tick; a prompt that does not contain it
+  breaks the self-chaining loop.
+- `reason` — a non-empty human-readable string (e.g. `chain the next
+  auto-evolve tick`).
+
+BEFORE emitting the `ScheduleWakeup` call, run the validator:
+
+```
+python3 .claude/features/rabbit-auto-evolve/scripts/schedule-check.py \
+  --delay-seconds 3600 \
+  --prompt "/rabbit-auto-evolve tick" \
+  --reason "chain the next auto-evolve tick"
+```
+
+`schedule-check.py` does NOT call `ScheduleWakeup` (that is a Claude Code
+harness feature, not a Python function); it validates the three parameters
+and exits non-zero with a `{"ok": false, "errors": [...]}` payload on any
+violation. Only if it exits 0 (`{"ok": true, ...}`) emit the actual
+`ScheduleWakeup` call with the SAME `delaySeconds`, `prompt`, and `reason`.
+A non-zero `schedule-check.py` exit is an error-abort (see Inv 20): run
+`python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py` and
+surface the failure rather than emitting a silently-dropped wakeup.
 
 ### Tick exit invariant (Inv 20)
 
