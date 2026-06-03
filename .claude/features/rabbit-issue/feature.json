@@ -1,7 +1,7 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-issue",
-  "version": "1.2.3",
+  "version": "1.3.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "GitHub Issues wrapper for filing, listing, and lifecycle-managing bugs and enhancements via the `gh` CLI. Replaces rabbit-file's branch-backed bug-and-backlog (B/B) storage with native GH Issues; the rabbit-managed label gates rabbit's automation from touching human-filed issues.",
@@ -31,5 +31,6 @@
   ],
   "runtime": {},
   "configuration": [],
-  "prompts": []
+  "prompts": [],
+  "spec_no_change_reason": "Phase 2b is a pure file relocation (git mv specs/ -> flat docs/); spec/contract CONTENT is unchanged, only location and lockstep version bump"
 }
