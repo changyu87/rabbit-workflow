@@ -13,7 +13,9 @@ Per rabbit-auto-evolve spec.md Inv 6, for each PR this script:
      safety-check.py — `gh pr merge` is NEVER invoked when base is not dev.
   2. Invokes `safety-check.py <pr#> --phase merge`. If it exits non-zero,
      records {pr, status:"skipped", reason:"safety-check-failed"}.
-  3. Otherwise calls `gh pr merge <#> --squash --auto`. On success records
+  3. Otherwise calls `gh pr merge <#> --squash` (a direct squash merge — NOT
+     `--auto`; see issue #429: `--auto` requires the repo to have auto-merge
+     enabled and fails on repos without it). On success records
      {pr, status:"merged"}; on failure records
      {pr, status:"failed", reason:"gh-merge-failed: <stderr>"}.
   4. After a successful merge, parses the merged PR body for
@@ -39,7 +41,7 @@ resolved via the RABBIT_ISSUE_SCRIPT_DIR env var when set; otherwise it
 falls back to `.claude/features/rabbit-issue/scripts/` relative to the
 repo root inferred from this script's path.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: cyxu
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -93,8 +95,15 @@ def _safety_check(pr):
 
 
 def _gh_merge(pr):
+    # Direct squash merge — NOT `--auto`. The `--auto` flag requires the repo
+    # to have auto-merge enabled (enablePullRequestAutoMerge); on repos without
+    # it, `gh pr merge --auto` fails for any PR that is not immediately
+    # mergeable with "Auto merge is not allowed for this repository" (issue
+    # #429). Mergeability is already gated by the base==dev refusal in
+    # process() plus safety-check.py, so a direct merge is correct and does
+    # not depend on the repo's auto-merge setting.
     return subprocess.run(
-        ["gh", "pr", "merge", str(pr), "--squash", "--auto"],
+        ["gh", "pr", "merge", str(pr), "--squash"],
         capture_output=True, text=True,
     )
 

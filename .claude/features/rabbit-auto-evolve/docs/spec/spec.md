@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.9.1
+version: 0.9.2
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -66,7 +66,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/triage-issue.py` | CLI | Per-issue classifier; reads issue metadata and the named feature's spec front matter; emits a triage JSON object with `decision`, `reason_code`, `rationale`, `feature`, `contract_touch`, `blocked_by` |
 | `scripts/plan-batch.py` | CLI | Reads a work-set JSON from stdin; partitions contract-touch issues into `barrier_first`; greedy graph-colors the rest by feature-conflict into `groups`; applies `max_parallel` cap |
 | `scripts/safety-check.py` | CLI | Validates five bottom-line invariants (branch is `dev`, PR base is `dev`, head branch matches `^feat/.+`, tag does not already exist, no uncommitted modifications to tracked files); exits non-zero on any violation |
-| `scripts/merge-prs.py` | CLI | Calls `safety-check.py --phase merge` then `gh pr merge --squash --auto` for each PR; refuses any PR whose base is not `dev` |
+| `scripts/merge-prs.py` | CLI | Calls `safety-check.py --phase merge` then `gh pr merge --squash` (direct merge, NOT `--auto`) for each PR; refuses any PR whose base is not `dev` |
 | `scripts/release-bump.py` | CLI | Reads merged PR priority label and diff scope; applies patch/minor/major semver bump per design table; creates annotated git tag and `gh release` targeting `dev` |
 | `scripts/cleanup-branches.py` | CLI | Derives head branch from each merged PR; calls `safety-check.py --phase cleanup`; deletes branch locally and on origin; refuses to delete anything not matching `^feat/.+` |
 | `scripts/classify-merge-restart.py` | CLI | Reads merged PR file list; classifies into `no-op`, `refresh`, or `restart` based on which path patterns appear; emits a single string on stdout |
@@ -492,8 +492,15 @@ Phase E merges complete.
       `{pr: N, status: "skipped", reason: "base-not-dev"}` and continue.
    2. Invoke `safety-check.py <pr#> --phase merge`. If non-zero exit →
       record `{pr: N, status: "skipped", reason: "safety-check-failed"}`.
-   3. Otherwise call `gh pr merge <#> --squash --auto`. On success →
-      `{pr: N, status: "merged"}`; on failure →
+   3. Otherwise call `gh pr merge <#> --squash` — a DIRECT squash merge,
+      NOT `--auto`. The `--auto` flag requires the repo to have auto-merge
+      enabled (`enablePullRequestAutoMerge`); on a repo without it,
+      `gh pr merge --auto` fails for any PR that is not immediately
+      mergeable with `Auto merge is not allowed for this repository`
+      (issue #429). Mergeability is already gated by the base==dev refusal
+      (step 1) plus `safety-check.py` (step 2), so a direct merge is
+      correct and never depends on the repo's auto-merge setting. On
+      success → `{pr: N, status: "merged"}`; on failure →
       `{pr: N, status: "failed", reason: "gh-merge-failed: <stderr>"}`.
    4. After a successful merge, parse the merged PR body
       (`gh pr view <#> --json body -q .body`) for closing-keyword
@@ -562,6 +569,9 @@ Phase E merges complete.
      shim exits non-zero → `status: "skipped"`,
      `reason: "safety-check-failed"`; `gh pr merge` NEVER called.
    - Happy path: shims pass → `status: "merged"`; exit 0.
+   - No-`--auto` regression (issue #429): on the happy path, the recorded
+     `gh pr merge` invocation MUST NOT contain `--auto` (it still uses
+     `--squash`). Guards against the auto-merge-not-enabled failure.
    - Close-after-merge (issue #392): PR body references issues via
      `Fixes`/`Closes`/`Resolves` (case-insensitive) → after a successful
      merge, the item-status.py shim is invoked once per distinct issue
