@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.1.0
+version: 0.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -34,7 +34,7 @@ feeds the downstream pipeline (`rabbit-feature-scaffold --batch` then
 ## Surface
 
 - `skills/rabbit-decompose/SKILL.md` — the user-invocable skill
-- `docs/spec/spec.md`, `docs/spec/contract.md`, `feature.json`,
+- `specs/spec.md`, `specs/contract.md`, `feature.json`,
   `test/run.py` — feature scaffolding
 
 No backing agent or dispatch script in this MVP — the dispatcher Claude
@@ -87,7 +87,7 @@ constrains only the structural shape.
    `owner: rabbit-workflow team`, and a `deprecation_criterion`. The
    body documents the 4-step interactive protocol above.
 
-3. `docs/spec/contract.md` MUST exist with proper frontmatter and a
+3. `specs/contract.md` MUST exist with proper frontmatter and a
    JSON block declaring the cross-feature relationships: `invokes`
    names `rabbit-feature-scaffold` (with the `--batch` form) and
    `rabbit-spec-create`; `never` includes "edits the user's source
@@ -101,9 +101,10 @@ for parallel large-codebase analysis.
 
 ## Tests
 
-`test/run.py` invokes every `test-*.py` file under `test/`. Initial
-coverage: `test-prompts-section-shape.py` (Inv 1 prompts entry
-structure).
+`test/run.py` invokes every `test-*.py` file under `test/`. Current
+coverage: `test-specs-layout.py` (E2E — pins the feature to the migrated
+`specs/` layout: `specs/spec.md` + `specs/contract.md` present, no legacy
+`docs/` dir, no stale legacy-spec-path references; issue #399 Phase 2).
 
 ## Out of Scope
 
