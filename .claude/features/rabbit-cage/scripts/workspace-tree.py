@@ -61,6 +61,8 @@ ANNOTATIONS = {
     "tdd-subagent":           "TDD subagent dispatch protocol (dispatch-tdd-subagent.py) + tdd-step.py forward-only state machine",
     "tdd-subagent/":          "TDD subagent dispatch protocol (dispatch-tdd-subagent.py) + tdd-step.py forward-only state machine",
     "feature.json":           "feature manifest: owner, tdd_state, surface, deprecation_criterion",
+    "specs":                  "spec and contract for this feature",
+    "specs/":                 "spec and contract for this feature",
     "docs/spec":              "spec and contract for this feature",
     "docs/spec/":             "spec and contract for this feature",
     "registry.json":          "feature registry (name -> path map)",
@@ -73,7 +75,7 @@ ANNOTATIONS = {
 }
 
 STRUCTURAL_DIRS = {
-    "features", "docs", "bugs", "spec", "backlog", "backlogs",
+    "features", "docs", "bugs", "spec", "specs", "backlog", "backlogs",
     "commands", "hooks", "skills", "agents", "scripts",
     "test", "enforcement", ".claude",
     "rabbit-cage", "contract", "policy",
@@ -98,6 +100,9 @@ def is_key_file(name, relpath):
     if name.endswith(".md") and "/docs/spec" in ("/" + relpath):
         return True
     if name.endswith(".md") and "docs/spec" in relpath:
+        return True
+    # issue #399: specs/ is the new layout for feature spec + contract.
+    if name.endswith(".md") and "/specs/" in ("/" + relpath + "/"):
         return True
     return False
 

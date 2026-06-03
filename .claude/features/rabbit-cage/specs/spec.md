@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.35.0
+version: 5.36.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -104,8 +104,12 @@ A write is ALLOWED when any of the following holds:
   (e.g. `.rabbit/x.json`) match; the exact form uses strict equality so
   sibling paths such as `.rabbit-scope-active` do not match.
 - Target matches the path pattern
+  `.claude/features/<feature>/specs/spec.md` — or, during the issue #399
+  `docs/spec/` -> `specs/` coexistence window, the legacy
   `.claude/features/<feature>/docs/spec/spec.md` (where `<feature>` is a
-  single path segment).
+  single path segment). The carve-out dual-reads both layouts so a
+  mid-migration feature matches regardless of which layout it currently
+  uses, mirroring contract's `resolve_spec_path` (#399 Phase 1).
 - A per-feature scope marker `.rabbit-scope-active-<feature>` exists at the
   repo root and the target is inside that feature's directory.
 - A global scope marker `.rabbit-scope-active` exists at the repo root, its
@@ -172,8 +176,8 @@ string BEFORE splitting on `;|&` segment delimiters.
     file exists in the rabbit-cage feature directory. Tests under `test/`
     are Python (`.py`).
 11. The rabbit-cage feature version MUST be identical across `feature.json
-    version`, `docs/spec/spec.md` frontmatter `version`, and
-    `docs/spec/contract.md` frontmatter `version`. Script-level `Version:`
+    version`, `specs/spec.md` frontmatter `version`, and
+    `specs/contract.md` frontmatter `version`. Script-level `Version:`
     docstring markers under `hooks/` and `scripts/` are NOT bound by this
     invariant: they track the script artifact's own SemVer and evolve
     independently of feature.json. The three-way feature-version pin
@@ -263,7 +267,7 @@ string BEFORE splitting on `;|&` segment delimiters.
     to `.rabbit/rabbit-project/` paths NOT matching `features/<name>/**`
     (e.g. `.rabbit/rabbit-project/project-map.json` itself, or future
     rabbit-project metadata files) remain always-DENY.
-    (a2) **Plugin spec.md path-pattern carve-out.** When the target path matches `<rabbit_root>/rabbit-project/features/<name>/docs/spec/spec.md` (basename pinned to `spec.md`, parent directory `docs/spec/`, feature dir under `rabbit-project/features/`, `<name>` is `[^/]+`): ALLOW unconditionally, regardless of scope-marker state. This mirrors standalone mode's Inv 64 path-pattern carve-out and enables `rabbit-spec-create` to write initial spec bodies to freshly scaffolded plugin features without requiring a scope marker — the batch decomposition pipeline (`rabbit-decompose` Step 4) depends on this. The carve-out is NARROW: only the literal basename `spec.md` under `docs/spec/`. Other writes inside the same feature dir (`feature.json`, `contract.md`, `scripts/`, `tests/`, etc.) still flow through the per-feature scope-marker gate in clauses (b)/(c) — preserving the per-feature TDD scope discipline for everything except the initial-spec-draft case. This clause is evaluated BEFORE clauses (b)/(c) so the spec.md ALLOW takes precedence over the marker-required default. Enforced by `test/test-plugin-scope-guard-allows-fresh-feature-spec-md.py`, `test/test-plugin-scope-guard-denies-non-spec-write-without-marker.py`, `test/test-plugin-scope-guard-mid-tdd-still-requires-marker.py`, and `test/test-standalone-spec-md-carveout-unchanged.py` (the last pins existing Inv 64 standalone behavior unchanged).
+    (a2) **Plugin spec.md path-pattern carve-out.** When the target path matches `<rabbit_root>/rabbit-project/features/<name>/specs/spec.md` — or, during the issue #399 `docs/spec/` -> `specs/` coexistence window, the legacy `<rabbit_root>/rabbit-project/features/<name>/docs/spec/spec.md` (basename pinned to `spec.md`, parent directory either `specs/` or legacy `docs/spec/`, feature dir under `rabbit-project/features/`, `<name>` is `[^/]+`): ALLOW unconditionally, regardless of scope-marker state. The carve-out dual-reads both layouts so a mid-migration plugin feature matches regardless of which layout it currently uses, mirroring standalone mode's Inv 5 path-pattern carve-out and contract's `resolve_spec_path` dual-read (#399 Phase 1). This enables `rabbit-spec-create` to write initial spec bodies to freshly scaffolded plugin features without requiring a scope marker — the batch decomposition pipeline (`rabbit-decompose` Step 4) depends on this. The carve-out is NARROW: only the literal basename `spec.md` under `specs/` or legacy `docs/spec/`. Other writes inside the same feature dir (`feature.json`, `contract.md`, `scripts/`, `tests/`, etc.) still flow through the per-feature scope-marker gate in clauses (b)/(c) — preserving the per-feature TDD scope discipline for everything except the initial-spec-draft case. This clause is evaluated BEFORE clauses (b)/(c) so the spec.md ALLOW takes precedence over the marker-required default. Enforced by `test/test-plugin-scope-guard-allows-fresh-feature-spec-md.py`, `test/test-plugin-scope-guard-denies-non-spec-write-without-marker.py`, `test/test-plugin-scope-guard-mid-tdd-still-requires-marker.py`, `test/test-standalone-spec-md-carveout-unchanged.py` (the last pins existing standalone behavior unchanged), and `test/test-scope-guard-specs-dir-dual-read.py` (pins both layouts ALLOW in both modes and the narrow non-spec.md DENY).
     (b) Target matches a feature-path glob declared in
     `<repo_root>/.rabbit/rabbit-project/project-map.json` AND a per-feature
     scope marker `<repo_root>/.rabbit/.runtime/scope-active-<name>` exists
