@@ -56,5 +56,6 @@ run_test("test-spec-dispatch-worktree-isolation-invariant.py")
 run_test("test-specs-layout-migrated.py")
 run_test("test-schedule-check.py")
 run_test("test-spec-schedule-invariant.py")
+run_test("test-status-report.py")
 
 print("ALL TESTS PASSED")

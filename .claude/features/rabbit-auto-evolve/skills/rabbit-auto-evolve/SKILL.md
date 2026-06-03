@@ -108,17 +108,36 @@ same scope-guard reason as `start`.
 
 ### `status`
 
-read-only. Prints to stdout:
+`status` is read-only (performs no mutations). Per Inv 29 (issue #405), the
+status report is owned by
+`status-report.py` — invoke it and surface its stdout. Do NOT LLM-assemble
+a bash pipeline; bare `ls .rabbit-auto-evolve-*` / `cat
+.rabbit/auto-evolve-state.json` patterns are FORBIDDEN here (they drift
+and emit ugly `ls: cannot access ...: No such file or directory` stderr
+noise on a fresh clone where the state file and markers legitimately do
+not yet exist).
 
-- queue length (from `.rabbit/auto-evolve-state.json` `queue` field)
-- in-flight issue set (from `in_flight`)
-- last-merged PR (from `last_merged_sha`)
-- last-tagged version (from `last_tagged_version`)
-- consecutive-failure count (from `consecutive_failures`)
-- which restart marker (if any) is present
-  (`.rabbit-auto-evolve-active`, `.rabbit-auto-evolve-running`,
-  `.rabbit-auto-evolve-stop-requested`,
+```
+python3 .claude/features/rabbit-auto-evolve/scripts/status-report.py
+```
+
+The script emits a fixed-format JSON object on stdout (always exits 0
+except on a genuine invocation error):
+
+- `queue_length` — queue length (from `.rabbit/auto-evolve-state.json`
+  `queue` field)
+- `in_flight` — in-flight issue set (from `in_flight`)
+- `last_merged_sha` — last-merged PR (from `last_merged_sha`)
+- `last_tagged_version` — last-tagged version (from `last_tagged_version`)
+- `consecutive_failures` — consecutive-failure count (from
+  `consecutive_failures`)
+- `markers_present` — the sorted subset of the five runtime markers
+  present at the repo root (`.rabbit-auto-evolve-active`,
+  `.rabbit-auto-evolve-running`, `.rabbit-auto-evolve-stop-requested`,
   `.rabbit-auto-evolve-restart-needed`, `.rabbit-auto-evolve-aborted`)
+- `state_file` — `present` / `absent` / `malformed`; a missing or
+  malformed state file is the legitimate fresh-clone case and yields the
+  default field values, NOT an error.
 
 `status` performs no mutations.
 
