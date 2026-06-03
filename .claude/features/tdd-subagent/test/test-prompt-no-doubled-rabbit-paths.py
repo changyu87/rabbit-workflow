@@ -159,17 +159,21 @@ with tempfile.TemporaryDirectory() as tmp:
             ko(f"scenario B: '.rabbit/.rabbit/' leaked into assembled prompt; "
                f"context: {ctx!r}")
 
-        # Assert the STEP 7 `Path:` line for tdd-report rooted at rabbit_root.
-        # Expected: <rabbit_root>/tdd-report-run-ingest.json (single .rabbit/).
-        expected_path = os.path.join(rabbit_root, "tdd-report-run-ingest.json")
+        # Assert the STEP 7 `Path:` line for tdd-report. Inv 58: the
+        # tdd_report_path slot is repo-RELATIVE. In plugin mode repo_root IS
+        # the rabbit-root, so the plugin report
+        # `<rabbit_root>/tdd-report-<feature>.json` relativizes to the bare
+        # `tdd-report-<feature>.json` (single segment, no doubled .rabbit/,
+        # no absolute prefix).
+        expected_path = "tdd-report-run-ingest.json"
         # The Path: line appears in STEP 7 TEST-GREEN body.
-        m = re.search(r"^\s*Path:\s*(\S+tdd-report-run-ingest\.json)\s*$",
+        m = re.search(r"^\s*Path:\s*(\S+)\s*$",
                       prompt, re.MULTILINE)
         if m is None:
             ko("scenario B: no STEP 7 'Path:' line for tdd-report found")
         elif m.group(1) == expected_path:
             ok(f"scenario B: STEP 7 Path is {expected_path!r} "
-               "(single .rabbit/, not doubled)")
+               "(relative, no doubled .rabbit/)")
         else:
             ko(f"scenario B: STEP 7 Path mismatch — got {m.group(1)!r}, "
                f"expected {expected_path!r}")
