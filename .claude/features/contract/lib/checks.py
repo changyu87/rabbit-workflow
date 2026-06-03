@@ -49,18 +49,36 @@ def get_repo_root():
 
 
 def resolve_spec_path(feature_root, name):
-    """Resolve a feature spec/contract doc path to <feature_root>/specs/<name>.
+    """Resolve a feature spec/contract doc path, preferring the flat docs/
+    layout and falling back to the specs/ layout.
 
-    Issue #399 migrated every feature from the legacy docs/spec/ layout to
-    specs/; the dual-read coexistence window (#450 Pattern 1) is closed, so
-    only the canonical specs/<name> path is resolved (issue #465). The legacy
-    docs/spec/ layout is no longer honored.
-
-    name is a leaf filename such as "spec.md" or "contract.md". The returned
-    path always names the specs/ candidate, whether or not it exists, so
-    downstream existence checks report the canonical path.
+    name is a leaf filename such as "spec.md" or "contract.md". Resolution
+    prefers <feature_root>/docs/<name>; if that file does not exist it falls
+    back to <feature_root>/specs/<name>. When neither exists the specs/
+    candidate is returned, so downstream existence checks report a canonical
+    path. The docs/ tree may also hold sibling subdirectories (e.g.
+    docs/bugs/); resolution targets the flat docs/<name> file only and never
+    such a subdirectory.
     """
+    docs_candidate = os.path.join(feature_root, "docs", name)
+    if os.path.isfile(docs_candidate):
+        return docs_candidate
     return os.path.join(feature_root, "specs", name)
+
+
+def resolve_changelog_path(feature_root):
+    """Resolve a feature's CHANGELOG.md, preferring the flat docs/ layout
+    and falling back to the feature-root layout.
+
+    Resolution prefers <feature_root>/docs/CHANGELOG.md; if that file does
+    not exist it falls back to <feature_root>/CHANGELOG.md. When neither
+    exists the feature-root candidate is returned, so downstream existence
+    checks report a canonical path.
+    """
+    docs_candidate = os.path.join(feature_root, "docs", "CHANGELOG.md")
+    if os.path.isfile(docs_candidate):
+        return docs_candidate
+    return os.path.join(feature_root, "CHANGELOG.md")
 
 
 # ---------- check_tests_non_interactive --------------------------------------
@@ -412,7 +430,8 @@ def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
 
     feature_dirs - iterable of feature directory paths. Features named in
     _MONOTONIC_KNOWN_ISSUES are skipped (pending renumber). Features without
-    a spec.md (resolved at specs/spec.md) are also silently skipped.
+    a spec.md (resolved via resolve_spec_path — docs/ preferred, specs/
+    fallback) are also silently skipped.
 
     Returns CheckResult; messages include 'SKIP:' lines for skipped features
     and 'VIOLATION:' lines for any non-monotonic step.
@@ -523,9 +542,9 @@ def validate_feature(feature_dir: str) -> CheckResult:
     # Required files / dirs
     if not os.path.isfile(feature_json_path):
         err("missing feature.json")
-    # Spec/contract resolution (issue #399 complete, fallback dropped #465):
-    # the canonical layout is specs/<name>; the legacy docs/spec/ path is no
-    # longer honored. Error messages name the specs/ path.
+    # Spec/contract resolution prefers the flat docs/ layout and falls back
+    # to specs/ (resolve_spec_path). Error messages name the specs/ candidate
+    # returned when neither layout exists.
     spec_md = resolve_spec_path(feature_dir, "spec.md")
     if not os.path.isfile(spec_md):
         err("missing specs/spec.md")
