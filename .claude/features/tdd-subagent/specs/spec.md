@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.9.1
+version: 5.10.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
