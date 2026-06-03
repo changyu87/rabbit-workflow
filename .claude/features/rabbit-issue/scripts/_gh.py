@@ -8,7 +8,7 @@ Repo slug resolves to $RABBIT_ISSUE_REPO env var when set, else the
 module-level const RABBIT_REPO_DEFAULT. No git remote consultation —
 bugs about rabbit always go to rabbit's repo, regardless of the cwd.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -59,6 +59,27 @@ def gh_issue_view(number: int, fields: str = "number,title,state,labels,body") -
         text=True,
     )
     return json.loads(out)
+
+
+def gh_issue_comments(number: int) -> list:
+    """Return the parsed list of comment objects for issue #number.
+
+    Reads via `gh issue view <N> --json comments` (issue #522). The
+    human-readable `gh issue view <N> --comments` view is NOT used: it
+    triggers a deprecated Projects-classic `projectCards` GraphQL field
+    that FAILS and returns an EMPTY body on this repo, so comments read
+    as absent even when present — a silent correctness trap. The
+    `--json comments` path does not touch that field.
+
+    Returns the inner list of comment objects (each carrying at least a
+    `body`), unwrapping gh's `{"comments": [...]}` envelope.
+    """
+    out = subprocess.check_output(
+        ["gh", "issue", "view", str(number), "-R", repo_slug(),
+         "--json", "comments"],
+        text=True,
+    )
+    return json.loads(out).get("comments", [])
 
 
 def require_managed(number: int) -> None:

@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.5.0
+version: 1.6.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue REPLACES the retired rabbit-file feature; do NOT invoke rabbit-file or its scripts — they are gone. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours the `rabbit-managed` label as a safety guard so human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -119,7 +119,14 @@ When the user asks to work, close, or reopen an issue:
 
 1. **Fetch** — `python3 .claude/features/rabbit-issue/scripts/item-status.py show <N>`
    reads the issue from GH. If the issue is not found, inform the user
-   and stop.
+   and stop. When the issue's comment thread is also needed (e.g. to
+   feed the eval subagent the full discussion), read the comment bodies
+   via the JSON API — `gh issue view <N> --json comments` (parse the
+   returned JSON), never the human view `gh issue view <N> --comments`.
+   The `--comments` view hits a deprecated Projects-classic
+   `projectCards` GraphQL field that FAILS and returns EMPTY on this
+   repo, so comments silently read as absent even when present (issue
+   #522); `--json comments` does not touch that field.
 
 2. **Eval subagent** — dispatch a read-only default-model subagent with
    the fetched issue JSON and the affected feature's spec.md (resolved

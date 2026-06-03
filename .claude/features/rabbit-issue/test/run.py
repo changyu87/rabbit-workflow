@@ -41,6 +41,7 @@ SUITES = (
     ("pytest", "test-item-status.py"),
     ("pytest", "test-list-items.py"),
     ("pytest", "test-rabbit-managed-guard.py"),
+    ("pytest", "test-comments-json-guard.py"),
 )
 
 print("rabbit-issue test runner")

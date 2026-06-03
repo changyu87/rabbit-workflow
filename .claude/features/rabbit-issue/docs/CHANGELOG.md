@@ -12,6 +12,25 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.6.0 (read issue comments via `gh --json comments`, #522):** `gh issue
+  view <N> --comments` triggers a deprecated Projects-classic `projectCards`
+  GraphQL field that FAILS and returns an EMPTY body on this repo, so comments
+  silently read as absent even when present — a correctness trap, not a loud
+  error. Added `_gh.gh_issue_comments(number)`, which reads the comment bodies
+  via `gh issue view <N> -R <slug> --json comments` (the JSON API does not hit
+  the deprecated `projectCards` path) and returns the parsed comment list.
+  Updated SKILL.md Work Protocol Step 1 (Fetch) to direct comment reads through
+  `--json comments`, never `--comments`, and documented the sanctioned path in
+  `docs/spec.md` (new "Reading issue comments" section) and `docs/contract.md`
+  (`invokes.gh` note + `never` entry barring the `--comments` path). Added
+  `test/test-comments-json-guard.py`: an e2e guard asserting no rabbit-issue
+  script or SKILL.md uses `gh issue view … --comments`, that the `--json
+  comments` form is present, and that `gh_issue_comments` parses the JSON form
+  against the gh shim. Lockstep minor bump of `feature.json` / `spec.md` /
+  `SKILL.md` (1.5.0 -> 1.6.0) and `contract.md` (1.4.0 -> 1.5.0). SKILL.md
+  version bump means the deployed copy under `.claude/skills/` drifts until the
+  dispatcher republishes (republish_needed).
+
 - **v1.5.0 (drop invented "normal mode" of rabbit-feature-touch, #436):** The
   Work Protocol (SKILL.md Step 5, "If the user confirms to proceed") said to
   invoke `rabbit-feature-touch` in **normal mode** — but that skill defines no
