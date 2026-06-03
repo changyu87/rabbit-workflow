@@ -3,7 +3,7 @@ name: rabbit-spec-creator
 description: Read-only subagent that drafts the initial body of docs/spec.md for a newly-declared rabbit feature. Invoked by rabbit-spec-create (and by rabbit-decompose's downstream pipeline). Inspects matched code files (if any) and emits a six-section spec draft (Purpose, Paths governed, Public surface, Current behaviour, Known gaps, Open questions). Cannot Write/Edit/Bash — tools restricted to Read/Grep/Glob.
 tools: Read, Grep, Glob
 model: sonnet
-version: 1.1.0
+version: 1.2.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 ---
