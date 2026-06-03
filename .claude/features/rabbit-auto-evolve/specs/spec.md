@@ -1849,6 +1849,58 @@ Phase E merges complete.
     the source and deployed `SKILL.md` document the
     `isolation: "worktree"` dispatch requirement.
 
+29. **Phase 11 (`schedule`) MUST call `ScheduleWakeup` with valid
+    parameters (issue #409).** The auto-evolve loop silently stopped
+    scheduling: tick 6 ended and five subsequent hourly ticks
+    (`ScheduleWakeup` at :17 past each hour) never fired across a 5h+
+    window, with NO error, NO log line, and NO halt — the session was
+    alive (it answered `/status` interactively). The root cause was an
+    under-specified `schedule` phase: the phase-11 row documented only the
+    bare string "`ScheduleWakeup` (unless stop-check matched)" and never
+    pinned the three call parameters, so the dispatcher had no
+    deterministic instruction on what delay to use or which prompt
+    re-enters the tick. An under-specified call can silently emit nothing,
+    a 0/out-of-range delay the harness ignores, or a prompt that never
+    re-invokes the tick — every one of which produces exactly the observed
+    silent stall.
+
+    The `schedule` phase MUST call `ScheduleWakeup` with:
+
+    - `delaySeconds` an integer in the inclusive band
+      `60 <= delaySeconds <= 3600`. The harness ignores a 0/negative delay
+      and an over-long delay is indistinguishable from a hang; the
+      auto-evolve cadence is hourly, so the canonical value is `3600`.
+    - `prompt` a non-empty string that RE-INVOKES the tick: it MUST
+      contain the literal substring `/rabbit-auto-evolve tick`. A prompt
+      that does not re-enter the tick breaks the self-chaining loop.
+    - `reason` a non-empty human-readable string describing the wakeup.
+
+    Before emitting the call, the phase MUST run
+    `python3 .claude/features/rabbit-auto-evolve/scripts/schedule-check.py
+    --delay-seconds <N> --prompt "<prompt>" --reason "<reason>"`, which
+    validates the three parameters against the rules above and exits
+    non-zero (with a `{"ok": false, "errors": [...]}` JSON payload) on any
+    violation. A non-zero `schedule-check.py` exit is an error-abort path
+    (Inv 20): run `end-tick.py` and surface the failure rather than
+    emitting a bad — silently-dropped — wakeup. This converts the
+    silent-stop failure mode into a loud, locatable one.
+
+    `schedule-check.py` does NOT call `ScheduleWakeup` itself
+    (`ScheduleWakeup` is a Claude Code harness feature, not a Python
+    function); it validates the LOGIC that determines the call's
+    parameters. Exit 0 + `{"ok": true, ...}` on valid params; exit 1 +
+    `{"ok": false, "errors": [...]}` on any violation; `--help` exits 0.
+
+    Enforced by `test/test-schedule-check.py` (the CLI param-validation
+    unit tests: in-range happy path, the 0/59/3601 out-of-range rejections,
+    the inclusive 60/3600 boundaries, empty/non-re-invoking prompt
+    rejection, empty-reason rejection, and the error-payload shape) and
+    the end-to-end `test/test-spec-schedule-invariant.py` (asserts this
+    invariant text is present in the spec AND that both the source and
+    deployed `SKILL.md` phase-11 documentation pin a concrete in-range
+    `delaySeconds`, the `/rabbit-auto-evolve tick` re-invoke prompt, a
+    `reason`, and the `schedule-check.py` pre-call validation).
+
 ## Known gaps
 
 - All implementation phases complete (Phases A–E). The activation
