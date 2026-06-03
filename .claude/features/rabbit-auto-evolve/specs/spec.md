@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.20.0
+version: 0.21.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2261,6 +2261,26 @@ Phase E merges complete.
       append + `crontab -` (write) pattern. It is IDEMPOTENT: if an entry
       mentioning `tick-headless.py` already exists, it is a clean no-op
       (running twice yields exactly one entry). Exit 0 on success.
+
+      **Restricted-host graceful fallback (issue #507).** On some hosts the
+      `crontab` binary is administratively restricted ("You ... are not
+      allowed to use this program (crontab)"). In that case
+      `install-cron.py` DETECTS the restriction — distinguished from the
+      legitimate "no crontab for user" empty case (exit 1 with empty
+      output) by a permission-denial signal in stderr (e.g. "not allowed")
+      on `crontab -l`, or by a permission failure on the `crontab -` write
+      — and FALLS BACK GRACEFULLY rather than failing opaquely: it exits 0
+      and emits a clear, actionable `rabbit_print` message (rendered via
+      the contract `rabbit_print` module; never hardcoded ANSI/brand
+      strings, per contract Inv 48) that (a) states crontab is restricted
+      on this host, (b) warns the loop will not auto-tick headlessly here,
+      and (c) gives the exact manual remediation — the `*/30` cron entry to
+      hand to a sysadmin AND that the operator can run
+      `/rabbit-auto-evolve start` manually each session. Cron remains the
+      SOLE tick scheduler WHEN AVAILABLE (Inv 32 unchanged); the fallback
+      covers only the restricted-host case so a mode flip is never blocked
+      by an un-installable cron. The `RABBIT_CRONTAB_CMD` and
+      `RABBIT_AUTO_EVOLVE_REPO_ROOT` overrides are preserved.
     - `scripts/uninstall-cron.py` removes the entry via the
       `crontab -l | grep -v tick-headless | crontab -` pattern. It is
       IDEMPOTENT and safe when the entry is absent (and when no crontab
@@ -2273,7 +2293,10 @@ Phase E merges complete.
 
     Enforced by `test/test-cron-trigger.py` (e2e): `install-cron.py` installs
     exactly one entry and is idempotent across two runs; `uninstall-cron.py`
-    removes it and is a safe no-op when absent. By
+    removes it and is a safe no-op when absent; AND when the `crontab` shim
+    simulates a restricted host (permission denial on both `-l` and `-`),
+    `install-cron.py` exits 0 without crashing and prints the actionable
+    restricted-host remediation message (issue #507). By
     `test/test-tick-headless.py` (e2e): the headless tick runs phases 0–1,
     2–4 (plan only — no dispatch), 6, 7–9, and 10 without a Claude session,
     and short-circuits on a stop/abort marker. And by
