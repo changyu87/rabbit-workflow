@@ -1,13 +1,14 @@
 {
   "name": "contract",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-06-03",
   "tdd_last_cycle_impl_commit": "fd54e1559220c1d6734fae8f280aac8ffc1117de",
   "manifest": [],
   "runtime": {},
-  "configuration": []
+  "configuration": [],
+  "spec_no_change_reason": "Inv 49 spec change for the two-tier opt-in strict tier already landed in the spec-authoring commit (7b826ff) at the head of this branch; no further uncommitted spec edit in this transition."
 }
