@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.9.0
+version: 0.9.1
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -65,7 +65,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/fetch-queue.py` | CLI | Lists open `rabbit-managed` issues via `gh`, sorts by priority then `createdAt`, emits JSON array |
 | `scripts/triage-issue.py` | CLI | Per-issue classifier; reads issue metadata and the named feature's spec front matter; emits a triage JSON object with `decision`, `reason_code`, `rationale`, `feature`, `contract_touch`, `blocked_by` |
 | `scripts/plan-batch.py` | CLI | Reads a work-set JSON from stdin; partitions contract-touch issues into `barrier_first`; greedy graph-colors the rest by feature-conflict into `groups`; applies `max_parallel` cap |
-| `scripts/safety-check.py` | CLI | Validates five bottom-line invariants (branch is `dev`, PR base is `dev`, head branch matches `^feat/.+`, tag does not already exist, working tree is clean); exits non-zero on any violation |
+| `scripts/safety-check.py` | CLI | Validates five bottom-line invariants (branch is `dev`, PR base is `dev`, head branch matches `^feat/.+`, tag does not already exist, no uncommitted modifications to tracked files); exits non-zero on any violation |
 | `scripts/merge-prs.py` | CLI | Calls `safety-check.py --phase merge` then `gh pr merge --squash --auto` for each PR; refuses any PR whose base is not `dev` |
 | `scripts/release-bump.py` | CLI | Reads merged PR priority label and diff scope; applies patch/minor/major semver bump per design table; creates annotated git tag and `gh release` targeting `dev` |
 | `scripts/cleanup-branches.py` | CLI | Derives head branch from each merged PR; calls `safety-check.py --phase cleanup`; deletes branch locally and on origin; refuses to delete anything not matching `^feat/.+` |
@@ -441,7 +441,7 @@ Phase E merges complete.
    | 2 | PR base branch (via `gh pr view <#> --json baseRefName`) is `dev` | merge, release |
    | 3 | PR head branch (via `gh pr view <#> --json headRefName`) matches `^feat/.+` AND is not `dev`, `main`, or `release/...` | cleanup |
    | 4 | The tag passed via `--next-tag vX.Y.Z` does not already exist (`git rev-parse <tag>^{}` exits non-zero) | release |
-   | 5 | Working tree is clean (`git status --porcelain` empty) | all |
+   | 5 | No uncommitted modifications to tracked files — both `git diff --quiet` (unstaged) and `git diff --cached --quiet` (staged) exit 0. Untracked files (`??`) are intentionally ignored: they cannot affect a merge, and counting them deadlocked the loop whenever a new runtime artifact appeared (issue #397). | all |
 
    Phase-specific gating:
    - `merge` enforces invariants 1, 2, 5.
@@ -458,8 +458,12 @@ Phase E merges complete.
    `tempfile.TemporaryDirectory()` fixtures:
    - One negative test per invariant: violate each in isolation
      (wrong branch / wrong PR base / non-feat head / pre-existing
-     tag / dirty tree) under the appropriate phase → non-zero exit;
-     stderr names the violated invariant.
+     tag / tracked-file modification) under the appropriate phase →
+     non-zero exit; stderr names the violated invariant.
+   - Inv 5 tracked-vs-untracked discrimination (issue #397): an
+     untracked file in the working tree PASSES Inv 5; a tracked file
+     with an unstaged modification FAILS; a tracked file with a
+     staged modification FAILS; a clean tree PASSES.
    - One positive test per phase: all required invariants satisfied
      → exit 0.
    - `--next-tag` required-when-release: omitting it under
