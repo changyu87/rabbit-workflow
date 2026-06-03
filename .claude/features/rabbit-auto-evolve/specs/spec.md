@@ -65,6 +65,11 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
   (if any) is present.
 - `tick` — internal; only invoked by `ScheduleWakeup`; walks the 12 tick
   phases documented in SKILL.md.
+- `log on|off|level <quiet|normal|debug>|path|tail [N]|clear` — manage the
+  per-tick observability log (issue #404, Inv 37): toggle the enable flag,
+  set verbosity, print the log path, tail the last N lines (default 20), or
+  truncate the log. State persists in rabbit-auto-evolve's own config (NOT
+  rabbit-cage).
 
 **Scripts (Phase C — none on disk yet):**
 
@@ -89,6 +94,8 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/running-guard.py` | CLI | Inspects `.rabbit-auto-evolve-running`, clears a STALE marker (mtime/PID), and emits a proceed/skip verdict so a wedged tick never blocks the loop (issue #521, Inv 35 / D3) |
 | `scripts/tick-log.py` | CLI | Minimal append-only JSON-per-line logger to `.rabbit/tick.log` for heartbeat/guard/schedule decisions; full verbosity config is #404's scope (issue #521, Inv 36 / D4) |
 | `scripts/schedule-decision.py` | CLI | At tick end/heartbeat, counts open work via `fetch-queue.py` and emits `immediate-refire` (fresh-context one-shot) vs `idle`; the dispatcher performs the `CronCreate` one-shot (issue #521, Inv 33 / D1) |
+| `scripts/log-tick.py` | CLI | Full per-tick observability logger: owns all writes to the append-only JSON-lines log at `.rabbit/auto-evolve.log`; structured kwargs → one record/line, with on/off enable, three verbosity levels, a <2KB per-line cap and 5MB rotation (issue #404, Inv 37). Distinct from the minimal `tick-log.py` (different file + purpose) |
+| `scripts/log-path.py` | CLI | Prints the absolute path of the `.rabbit/auto-evolve.log` file so a cross-session daemon can `tail -f $(… log-path.py)` (issue #404, Inv 37) |
 
 **State file (runtime artifact):**
 
@@ -2462,6 +2469,88 @@ Phase E merges complete.
     Enforced by `test/test-tick-log.py` (e2e: an append writes one JSON line
     carrying `ts`, `decision`, and `detail` to `.rabbit/tick.log` under the
     state-dir override).
+
+37. **`log-tick.py` full per-tick observability log (issue #404).** A
+    persistent, append-only, machine-readable (JSON-lines) per-tick log
+    written by every auto-evolve tick, for two consumers: (1) the user, to
+    debug what the loop did / when it last ran / why it stalled; and (2)
+    other Claude sessions, which can `tail`/grep the file to answer "is the
+    loop alive?" / "what phase did it last reach?" without round-tripping to
+    the running session.
+
+    **Relationship to Inv 36.** This is DISTINCT from the minimal Inv 36
+    `tick-log.py`, which logs heartbeat/guard/schedule DECISIONS (`entering`,
+    `skipped`, `idle`, `stale marker cleared`) to `.rabbit/tick.log`. Inv 37's
+    `log-tick.py` is the broader per-tick EXECUTION trace at
+    `.rabbit/auto-evolve.log`. The two logs COEXIST (different files, different
+    purposes); issue #404 does NOT modify `tick-log.py` or Inv 36. (The two
+    script names — `tick-log.py` vs `log-tick.py` — are deliberately the ones
+    named by issues #521 and #404 respectively; an implementer who judges the
+    proximity error-prone MAY rename Inv 37's script per #404's explicit "or
+    equivalent" latitude, provided every SKILL.md / test reference is updated
+    in lockstep.)
+
+    **(a) Writer + record shape.** The CLI
+    `python3 .claude/features/rabbit-auto-evolve/scripts/log-tick.py` owns ALL
+    writes to `<state_dir>/auto-evolve.log` (state dir resolved via
+    `RABBIT_AUTO_EVOLVE_STATE_DIR` when set, else `<cwd>/.rabbit`, matching
+    `update-state.py` / `tick-log.py`). It takes structured kwargs and emits
+    EXACTLY ONE JSON line per call. The per-tick record carries at minimum the
+    keys: `ts` (ISO 8601 UTC), `tick` (int), `session_id` (short Claude
+    session id or pid), `phase_reached`, `phase_result`, `in_flight` (array),
+    `queue_head` (array), `queue_len` (int), `merged_this_tick` (array),
+    `blockers` (array), `next_action`. Each line is capped at 2 KB hard — the
+    writer summarizes/truncates to stay under the cap rather than emit an
+    oversized line.
+
+    **(b) Verbosity (three strictly-additive levels).** `quiet` = tick
+    start/end only (one line per tick); `normal` (DEFAULT) = tick boundaries +
+    phase results + blockers; `debug` = every phase transition with timestamps
+    plus payload sizes/counts. Each level includes everything the lighter level
+    emits. A record below the active level is DROPPED (no file growth).
+
+    **(c) Enable flag + config storage.** An on/off enable flag (DEFAULT on)
+    and the verbosity level are stored in rabbit-auto-evolve's OWN config —
+    NOT in rabbit-cage's `configuration` array. When the enable flag is off,
+    `log-tick.py` writes nothing (zero file growth) — a hard requirement.
+
+    **(d) Rotation.** Rotation runs at TICK START (phase 0), not on every
+    write, to keep the hot path cheap. When `auto-evolve.log` exceeds 5 MB,
+    rotate `.log` → `.log.1` → `.log.2` → `.log.3`, dropping the oldest; AT
+    MOST 3 rotated files are kept (≤ 4 files total).
+
+    **(e) `log-path.py`.** The CLI
+    `python3 .claude/features/rabbit-auto-evolve/scripts/log-path.py` prints
+    the absolute log-file path on stdout, so a daemon session can
+    `tail -f $(python3 …/log-path.py)`.
+
+    **(f) CLI surface.** A new `log` subcommand group on the
+    `/rabbit-auto-evolve` SKILL: `log on` / `log off` (toggle the enable
+    flag), `log level <quiet|normal|debug>` (set verbosity), `log path` (print
+    path via `log-path.py`), `log tail [N]` (print the last N lines, default
+    20), `log clear` (truncate, with confirmation). These mirror the existing
+    `on`/`off`/`status`/`start`/`stop` subcommand conventions and are owned
+    entirely WITHIN rabbit-auto-evolve.
+
+    **(g) Tick-driver integration.** The SKILL.md tick pipeline calls
+    `log-tick.py` at tick start, at tick end, and at every phase boundary as
+    the active verbosity level dictates.
+
+    This invariant was introduced by issue #404.
+
+    Enforced by `test/test-log-tick.py`:
+    - Writes 100 ticks at each verbosity (`quiet`/`normal`/`debug`) and
+      asserts the per-level line counts match expectations.
+    - Writes past the 5 MB cap and asserts rotation fires and the file count
+      stays ≤ 4.
+    - `log off` (enable flag false): no file growth across repeated calls.
+    - Each emitted line is < 2 KB.
+    - `log-path.py` prints the resolved `.rabbit/auto-evolve.log` path.
+    - `--help` smoke for both scripts: exit 0 with recognizable usage text.
+
+    And by `test/test-spec-tick-log-invariant.py` (e2e): asserts this
+    invariant text is present in the spec AND that both the source and deployed
+    `SKILL.md` document the `log on|off|level|path|tail|clear` subcommands.
 
 ## Known gaps
 
