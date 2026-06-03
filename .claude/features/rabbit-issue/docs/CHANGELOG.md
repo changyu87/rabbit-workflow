@@ -12,6 +12,26 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.4.0 (filed-by:<source> provenance label, #496):** `file-item.py` now
+  accepts `--filed-by <source>` and stamps the created issue with a
+  machine-readable provenance label `filed-by:<source>` (e.g. `filed-by:loop`,
+  `filed-by:human`) via the existing `ensure_labels` bootstrap. The flag
+  **defaults to `human`** when omitted — the conservative attribution, so an
+  unattributed filing is never mis-counted as autonomous-loop self-discovery;
+  only callers that know they are the evolve loop pass `--filed-by loop`. The
+  label is additive: the other five labels (`bug`/`enhancement`,
+  `rabbit-managed`, `feature:<name>`, `priority:<level>`) are unchanged. This
+  makes loop-performance metrics — self-discovery rate, discovery→fix ratio —
+  derivable by querying the `filed-by:loop` label. A follow-up wires the loop's
+  own discovered-issue / decomposition filings to pass `--filed-by loop`.
+  Added regression tests in `test/test-file-item.py` (explicit `--filed-by
+  loop`, the omitted-flag `filed-by:human` default, and that the existing five
+  labels are otherwise unchanged). Lockstep minor bump of `feature.json` /
+  `spec.md` / `SKILL.md` (1.3.0 -> 1.4.0) and `contract.md` (1.2.0 -> 1.3.0);
+  `file-item.py` module docstring 1.0.0 -> 1.1.0. SKILL.md version bump means
+  the deployed copy under `.claude/skills/` drifts until the dispatcher
+  republishes (republish_needed).
+
 - **v1.3.0 (flat docs/ layout, #399 Phase 2b):** Relocated the feature's spec
   artifacts from `specs/` to the flat `docs/` layout via `git mv`
   (`specs/spec.md` -> `docs/spec.md`, `specs/contract.md` -> `docs/contract.md`,

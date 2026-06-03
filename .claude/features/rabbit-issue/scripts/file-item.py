@@ -3,7 +3,7 @@
 
 Prints JSON {number, url, type} to stdout on success.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -27,6 +27,11 @@ def main() -> None:
     p.add_argument("--title", required=True)
     p.add_argument("--priority", required=True, choices=VALID_PRIORITIES)
     p.add_argument("--description", required=True)
+    # Provenance (issue #496): who filed this item. Defaults to `human` so
+    # only callers that know they are the autonomous evolve loop tag
+    # `filed-by:loop`; an unattributed filing is never mis-counted as loop
+    # self-discovery.
+    p.add_argument("--filed-by", default="human")
     args = p.parse_args()
 
     require_auth()
@@ -35,6 +40,7 @@ def main() -> None:
         "rabbit-managed",
         "feature:{}".format(args.feature),
         "priority:{}".format(args.priority),
+        "filed-by:{}".format(args.filed_by),
     ]
     ensure_labels(labels)
 
