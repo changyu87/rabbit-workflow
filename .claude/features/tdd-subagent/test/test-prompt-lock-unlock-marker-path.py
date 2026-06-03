@@ -123,9 +123,12 @@ else:
             ko("scenario A: LOCK section not isolated")
         else:
             # The literal touch line must reference the standalone form.
-            if re.search(r"touch \S+/\.rabbit-scope-active-tdd-subagent\b",
+            # Inv 58: the marker path is repo-RELATIVE, so at repo-root it
+            # is the bare `.rabbit-scope-active-tdd-subagent` (no leading
+            # directory or slash).
+            if re.search(r"touch\s+\.rabbit-scope-active-tdd-subagent\b",
                          lock_body):
-                ok("scenario A: LOCK uses standalone path "
+                ok("scenario A: LOCK uses standalone relative path "
                    "(.rabbit-scope-active-tdd-subagent)")
             else:
                 ko("scenario A: LOCK missing standalone-path touch")
@@ -138,9 +141,9 @@ else:
         if unlock_body is None:
             ko("scenario A: UNLOCK section not isolated")
         else:
-            if re.search(r"rm -f \S+/\.rabbit-scope-active-tdd-subagent\b",
+            if re.search(r"rm -f\s+\.rabbit-scope-active-tdd-subagent\b",
                          unlock_body):
-                ok("scenario A: UNLOCK uses standalone path "
+                ok("scenario A: UNLOCK uses standalone relative path "
                    "(.rabbit-scope-active-tdd-subagent)")
             else:
                 ko("scenario A: UNLOCK missing standalone-path rm")
@@ -181,11 +184,16 @@ with tempfile.TemporaryDirectory() as tmp:
         if lock_body is None:
             ko("scenario B: LOCK section not isolated")
         else:
-            # The literal touch line must reference the plugin form.
-            if re.search(r"touch \S+/\.rabbit/\.runtime/scope-active-run-ingest\b",
+            # The literal touch line must reference the plugin form. Inv 58:
+            # the marker is repo-RELATIVE; in plugin mode repo_root IS the
+            # rabbit-root, so the plugin marker
+            # `<rabbit_root>/.runtime/scope-active-<feature>` relativizes to
+            # `.runtime/scope-active-<feature>` (no leading `.rabbit/` and no
+            # absolute prefix).
+            if re.search(r"touch\s+\.runtime/scope-active-run-ingest\b",
                          lock_body):
-                ok("scenario B: LOCK uses plugin path "
-                   "(.rabbit/.runtime/scope-active-run-ingest)")
+                ok("scenario B: LOCK uses plugin relative path "
+                   "(.runtime/scope-active-run-ingest)")
             else:
                 ko("scenario B: LOCK missing plugin-path touch")
             # Plugin-mode prompt must NOT contain the dashed standalone form.
@@ -198,9 +206,10 @@ with tempfile.TemporaryDirectory() as tmp:
         if unlock_body is None:
             ko("scenario B: UNLOCK section not isolated")
         else:
-            if re.search(r"rm -f \S+/\.rabbit/\.runtime/scope-active-run-ingest\b",
+            if re.search(r"rm -f\s+\.runtime/scope-active-run-ingest\b",
                          unlock_body):
-                ok("scenario B: UNLOCK uses plugin path")
+                ok("scenario B: UNLOCK uses plugin relative path "
+                   "(.runtime/scope-active-run-ingest)")
             else:
                 ko("scenario B: UNLOCK missing plugin-path rm")
             if not re.search(r"\.rabbit-scope-active-run-ingest\b", unlock_body):
