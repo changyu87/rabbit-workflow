@@ -6,6 +6,29 @@ deprecation_criterion: when the rabbit-issue feature is retired or its change hi
 
 # rabbit-issue — Changelog
 
+## 1.2.2 — specs/ migration (issue #399 Phase 2)
+
+Migrated the feature's spec surface from `docs/spec/` to the new canonical
+`specs/` layout via `git mv` (`spec.md` and `contract.md`). The sibling
+`docs/bugs/` directory is retained. Fixed the now-relative
+`feature.json` backlink in `spec.md` (`../../feature.json` → `../feature.json`).
+
+Made rabbit-issue's own spec-aware tooling resolve dual-read (specs/
+preferred, docs/spec/ fallback): `test/test-spec-presence.py` now resolves
+both spec.md and contract.md via the dual-read resolver and pins a cutover
+invariant that `specs/spec.md` exists and `docs/spec/` is gone. The
+`rabbit-issue` SKILL Work Protocol prose and the
+`test-gh-helper-resolves-rabbit-repo.py` docstring reference were updated to
+the specs/ layout.
+
+Cleared the historical-burden tag (formerly `RABBIT-FILE-BACKLOG-16`) from
+the spec body's "What this feature does NOT define" section, rephrasing to
+neutral prose so the contract feature's
+`test-spec-bodies-no-historical-tags.py` no longer trips on rabbit-issue.
+
+Lockstep patch bump of `feature.json` / `spec.md` / `SKILL.md`
+(1.2.1 → 1.2.2) and `contract.md` (1.1.1 → 1.1.2).
+
 ## 1.2.1 — Owner sweep (issue #416)
 
 Changed the feature owner from the individual `cyxu` to the team identity

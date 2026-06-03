@@ -1,6 +1,6 @@
 """Tests for _gh.repo_slug — Fixes #264 resolution order.
 
-Pins the spec invariant (docs/spec/spec.md §Repository discovery):
+Pins the spec invariant (specs/spec.md §Repository discovery):
 
   rabbit-issue ALWAYS targets the upstream rabbit-workflow repo. The
   repo slug resolves to:

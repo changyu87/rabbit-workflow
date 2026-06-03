@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.2.1
+version: 1.2.2
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -8,7 +8,7 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
 # rabbit-issue
 
 > **Note:** LLM-prose view (machine-targeted, like everything in rabbit).
-> Structured source of truth is [`feature.json`](../../feature.json).
+> Structured source of truth is [`feature.json`](../feature.json).
 
 ## Purpose
 
@@ -118,10 +118,9 @@ Scripts still fail loudly when `gh auth status` is not green.
   scope; if needed, file a separate backlog.
 - **Cross-tracker abstractions** (Linear, Jira, etc.) — only `gh` is
   supported in v1.
-- **User-install plugin-mode backend** — the original
-  `RABBIT-FILE-BACKLOG-16` framing was for user installs; deferred
-  until rabbit-self validates the design. The install MVP does not
-  ship `rabbit-issue` yet.
+- **User-install plugin-mode backend** — the original framing for this
+  was scoped to user installs and is deferred until rabbit-self validates
+  the design. The install MVP does not ship `rabbit-issue` yet.
 - **The TDD cycle** — `rabbit-feature-touch` (in `rabbit-feature`)
   drives TDD; `rabbit-issue` is consumed by it in "issue mode" but
   does not own that cycle.
