@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.27.0
+version: 0.27.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1870,65 +1870,6 @@ Phase E merges complete.
     the source and deployed `SKILL.md` document the
     `isolation: "worktree"` dispatch requirement.
 
-29. **[SUPERSEDED by Inv 32 — issue #414.]** This invariant required phase 11
-    (`schedule`) to call `ScheduleWakeup` with valid parameters. The entire
-    `ScheduleWakeup` mechanism was REMOVED in issue #414; tick scheduling is
-    now owned by the system cron (Inv 32). The original text is retained
-    below for historical context only — `schedule-check.py` and the
-    `test/test-schedule-check.py` / `test/test-spec-schedule-invariant.py`
-    tests were deleted.
-
-    Phase 11 (`schedule`) MUST call `ScheduleWakeup` with valid
-    parameters (issue #409). The auto-evolve loop silently stopped
-    scheduling: tick 6 ended and five subsequent hourly ticks
-    (`ScheduleWakeup` at :17 past each hour) never fired across a 5h+
-    window, with NO error, NO log line, and NO halt — the session was
-    alive (it answered `/status` interactively). The root cause was an
-    under-specified `schedule` phase: the phase-11 row documented only the
-    bare string "`ScheduleWakeup` (unless stop-check matched)" and never
-    pinned the three call parameters, so the dispatcher had no
-    deterministic instruction on what delay to use or which prompt
-    re-enters the tick. An under-specified call can silently emit nothing,
-    a 0/out-of-range delay the harness ignores, or a prompt that never
-    re-invokes the tick — every one of which produces exactly the observed
-    silent stall.
-
-    The `schedule` phase MUST call `ScheduleWakeup` with:
-
-    - `delaySeconds` an integer in the inclusive band
-      `60 <= delaySeconds <= 3600`. The harness ignores a 0/negative delay
-      and an over-long delay is indistinguishable from a hang; the
-      auto-evolve cadence is hourly, so the canonical value is `3600`.
-    - `prompt` a non-empty string that RE-INVOKES the tick: it MUST
-      contain the literal substring `/rabbit-auto-evolve tick`. A prompt
-      that does not re-enter the tick breaks the self-chaining loop.
-    - `reason` a non-empty human-readable string describing the wakeup.
-
-    Before emitting the call, the phase MUST run
-    `python3 .claude/features/rabbit-auto-evolve/scripts/schedule-check.py
-    --delay-seconds <N> --prompt "<prompt>" --reason "<reason>"`, which
-    validates the three parameters against the rules above and exits
-    non-zero (with a `{"ok": false, "errors": [...]}` JSON payload) on any
-    violation. A non-zero `schedule-check.py` exit is an error-abort path
-    (Inv 20): run `end-tick.py` and surface the failure rather than
-    emitting a bad — silently-dropped — wakeup. This converts the
-    silent-stop failure mode into a loud, locatable one.
-
-    `schedule-check.py` does NOT call `ScheduleWakeup` itself
-    (`ScheduleWakeup` is a Claude Code harness feature, not a Python
-    function); it validates the LOGIC that determines the call's
-    parameters. Exit 0 + `{"ok": true, ...}` on valid params; exit 1 +
-    `{"ok": false, "errors": [...]}` on any violation; `--help` exits 0.
-
-    Enforced by `test/test-schedule-check.py` (the CLI param-validation
-    unit tests: in-range happy path, the 0/59/3601 out-of-range rejections,
-    the inclusive 60/3600 boundaries, empty/non-re-invoking prompt
-    rejection, empty-reason rejection, and the error-payload shape) and
-    the end-to-end `test/test-spec-schedule-invariant.py` (asserts this
-    invariant text is present in the spec AND that both the source and
-    deployed `SKILL.md` phase-11 documentation pin a concrete in-range
-    `delaySeconds`, the `/rabbit-auto-evolve tick` re-invoke prompt, a
-    `reason`, and the `schedule-check.py` pre-call validation).
 29. **`status-report.py` owns the `status` subcommand output (issue
     #405).** The CLI
     `python3 .claude/features/rabbit-auto-evolve/scripts/status-report.py`
@@ -2132,55 +2073,6 @@ Phase E merges complete.
     text is present in the spec AND that both the source and deployed SKILL.md
     invoke `run-post-merge.py` after the merge phase AND at tick start.
 
-31. **[SUPERSEDED by Inv 32 — issue #414.]** This invariant tuned the
-    `ScheduleWakeup` delay by queue emptiness. The `ScheduleWakeup`
-    mechanism was REMOVED in issue #414; the system cron fires on a fixed
-    cadence (Inv 32) regardless of queue emptiness. Original text retained
-    for context only.
-
-    Phase 11 (`schedule`) refires immediately when the queue is
-    non-empty (issue #412). Before this invariant the `schedule` phase
-    always used the canonical hourly delay (`delaySeconds=3600`, Inv 29).
-    That fixed delay means a tick that just dispatched work — or that
-    found items still waiting in `state.queue` / `state.in_flight` — sits
-    idle for the full hour before the loop looks again, even though there
-    is actionable work it could pick up right now. The loop's throughput
-    is then capped at roughly one batch per hour regardless of how much
-    work is queued.
-
-    The `schedule` phase MUST therefore choose `delaySeconds` based on
-    queue emptiness, read from `<state_dir>/auto-evolve-state.json`:
-
-    - When `len(state.queue) > 0 OR len(state.in_flight) > 0` (work
-      remains), use `delaySeconds=60` — the harness minimum (Inv 29
-      floor), i.e. refire immediately — with
-      `reason="queue non-empty, refiring immediately"`.
-    - When BOTH `state.queue` AND `state.in_flight` are empty (no work
-      remains), use `delaySeconds=3600` — the hourly idle check (Inv 29
-      canonical value) — with `reason="queue empty, waiting for new
-      issues"`.
-
-    Both `60` and `3600` are inside the Inv 29 inclusive band
-    `60 <= delaySeconds <= 3600`, so `schedule-check.py` accepts either;
-    this invariant REPLACES the single fixed `3600` delay with the
-    two-delay rule. The `prompt` is unchanged (`/rabbit-auto-evolve
-    tick`), and the pre-call `schedule-check.py` validation (Inv 29)
-    still runs with whichever delay/reason pair was selected.
-
-    A missing, empty, or malformed state file is treated as queue-empty
-    (the long hourly delay) — the conservative idle case.
-
-    This invariant was introduced by issue #412.
-
-    Enforced by `test/test-schedule-check.py` (extended): asserts both
-    `delaySeconds=60` and `delaySeconds=3600` are accepted by the
-    validator (both inside the Inv 29 band), so neither delay is silently
-    dropped. And by the end-to-end
-    `test/test-spec-schedule-invariant.py` (extended): asserts this
-    invariant text is present in the spec AND that both the source and
-    deployed `SKILL.md` phase-11 documentation pin BOTH the `60`
-    (queue-non-empty refire) and `3600` (queue-empty idle) cases together
-    with the queue-emptiness branch that selects between them.
 31. **`check-auto-resume.py` owns mechanical restart-resume detection
     (issue #424).** Today's restart recovery is convention-enforced: after a
     `restart-needed` tick the human must read the SessionStart banner (Inv 22
