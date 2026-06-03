@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.27.1
+version: 0.28.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2571,6 +2571,53 @@ Phase E merges complete.
     asserts this invariant text is present in the spec AND that both the source
     and deployed `SKILL.md` document the tick-start `sync-tree.py` step using
     `git pull --ff-only` (and contain no `git merge` sync instruction).
+
+39. **Self-modifying migrations execute via three safe-execution patterns;
+    restart-required is signaled via the restart-needed marker, never a human
+    stop.** A *self-modifying migration* is a work item that changes something
+    the loop itself depends on at runtime: a marker the tick driver reads, an
+    agent type the loop dispatches, a path its scripts resolve, or a schema /
+    config key it loads. The loop NEVER stops to ask a human (no a/b/c
+    question) for a self-modifying migration; it executes one of three
+    deterministic safe-execution patterns chosen by the **consumption-based
+    decision rule** — HOW the loop consumes the migrated state:
+
+    | Consumption | Pattern | Restart? |
+    |---|---|---|
+    | re-read from disk each tick | coexistence-window (additive-then-remove; honor BOTH old and new during the transition, then drop old) | No |
+    | self-contained (risk is later steps in the same tick tripping on half-migrated state) | last-tick-action (do all other work first; migrate as the final action; the tick boundary is the firewall) | No |
+    | held in session memory (loaded at session start) | restart-safe (land the change to take effect NEXT session; set `.rabbit-auto-evolve-restart-needed`; end the tick cleanly) | Yes |
+
+    The consumption type of loop-critical runtime state is declared in the
+    data-driven registry
+    `scripts/schemas/self-modifying-migration-registry.json`, which maps known
+    markers, resolved paths, agent types, and config keys to a consumption
+    type, and declares the fallback heuristic for unlisted state: marker files
+    & resolved paths → disk-each-tick (coexistence-window); agent types &
+    session config → memory-at-start (restart-safe). The Stage-2 classifier in
+    `scripts/plan-batch.py` consumes this registry: per work item it detects a
+    self-modifying migration, tags the chosen pattern in
+    `self_modifying_migrations` (issue-number-string → pattern), and lists
+    restart-safe items under `restart_needed`. `plan-batch.py` is a pure JSON
+    processor — it writes no marker; the tick driver sets
+    `.rabbit-auto-evolve-restart-needed` for the `restart_needed` items (via
+    `mark-restart-needed.py`, Inv 17) and ends the tick cleanly.
+
+    The one yield point for a restart-required migration is the
+    `.rabbit-auto-evolve-restart-needed` marker (consumed by the SessionStart
+    banner, Inv 14, and the `classify-merge-restart.py` 3-rung ladder, Inv 8),
+    never a free-form human stop.
+
+    Enforced by `test/test-self-modifying-migration.py` (e2e: a disk-read
+    marker rename → coexistence-window with no restart; a resolved-path move →
+    last-tick-action / coexistence-window with no restart; an in-memory
+    agent-type rename → restart-safe with the item listed in `restart_needed`;
+    in all cases the planner emits no human a/b/c question and writes no
+    marker), by `test/test-self-modifying-migration-registry.py` (the registry
+    declares lifecycle metadata, the consumption→pattern mapping, entries
+    covering both fallback classes, and the fallback heuristic), and by
+    `test/test-spec-self-modifying-migration-invariant.py` (this invariant text
+    is present in the spec).
 
 ## Known gaps
 

@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.28.0 — 2026-06-03
+
+- Feat #450 (self-modifying migrations): replaced the residual human a/b/c
+  escalation for "self-modifying migrations" (work that changes loop-critical
+  runtime state the loop itself depends on — a marker the tick driver reads, an
+  agent type the loop dispatches, a resolved path, or a schema/config key it
+  loads) with three deterministic safe-execution patterns chosen by HOW the
+  loop consumes the state. Added spec invariant **Inv 39** (the next monotonic
+  number in this feature's `## Invariants` section) naming the
+  self-modifying-migration category, the three patterns
+  (coexistence-window / last-tick-action / restart-safe), the consumption-based
+  decision rule, and the "restart-required is signaled via the
+  `.rabbit-auto-evolve-restart-needed` marker, never a human stop" rule. Added
+  a data-driven registry `scripts/schemas/self-modifying-migration-registry.json`
+  mapping known markers, resolved paths, agent types, and config keys to a
+  consumption type (with a documented fallback heuristic: markers & paths →
+  disk-each-tick/coexistence; agent types & session config →
+  memory-at-start/restart-safe). Extended the Stage-2 classifier in
+  `scripts/plan-batch.py` (1.3.0 → 1.4.0) to detect a self-modifying migration
+  per work item, tag the chosen pattern in the new `self_modifying_migrations`
+  output key, and list restart-safe items under the new `restart_needed` key —
+  `plan-batch.py` stays a pure JSON processor (writes no marker; the tick
+  driver sets the restart marker for `restart_needed` items via
+  `mark-restart-needed.py`, Inv 17). New tests:
+  `test/test-self-modifying-migration.py` (e2e),
+  `test/test-self-modifying-migration-registry.py`, and
+  `test/test-spec-self-modifying-migration-invariant.py`. Versions bumped
+  0.27.1 → 0.28.0 in lockstep across feature.json, specs/spec.md,
+  specs/contract.md, skills/rabbit-auto-evolve/SKILL.md. No contract
+  `provides`/`reads`/`invokes`/`never` schema change — the registry and the new
+  plan-batch output keys are internal to rabbit-auto-evolve.
+  NOTE: the originating issue's instruction to number the invariant "Inv 66"
+  reflects the *contract* feature's invariant namespace; this feature's
+  `## Invariants` section is locally numbered and 38 was the prior highest, so
+  39 is the correct next monotonic number (no gap, no renumber). See the
+  dispatcher's discovered-issues handoff.
+
 ## 0.27.1 — 2026-06-03
 
 - Fix #542 (TOMBSTONE — Decision B): `specs/spec.md` carried DUPLICATE invariant numbers — two `29.` and two `31.` — because the two `[SUPERSEDED by Inv 32 — issue #414.]` tombstones (the old ScheduleWakeup `schedule-check` invariant and the old ScheduleWakeup queue-emptiness delay-tuning invariant) kept their original `29.`/`31.` numbers ahead of the live invariants that re-used those numbers. That made the `## Invariants` sequence non-monotonic (…,28,**29,29**,30,**31,31**,32,…) and turned contract's cross-feature `test/test-check-invariant-monotonic-order.py` RED on `dev` with `29 → 29 not monotonic` and `31 → 31 not monotonic` violations. **Fix (Decision B — delete the superseded blocks rather than renumber):** both `[SUPERSEDED by Inv 32 — issue #414.]` invariant blocks were DELETED in full from `specs/spec.md` — (a) the old `29.` ScheduleWakeup schedule-check block (which had retained the historical `schedule-check.py` / `delaySeconds` / `/rabbit-auto-evolve tick` re-invoke text now superseded by the cron model), and (b) the old `31.` ScheduleWakeup queue-emptiness delay-tuning block. After deletion the live `29. status-report.py` (#405) and `31. check-auto-resume.py` (#424) invariants remain as the SOLE holders of 29 and 31, so the sequence is strictly increasing again (…,28,29,30,31,32,…) with NO numbering gap — the numbers are retained by the surviving invariants. No live invariant was renumbered; the real 29/30/31/32 blocks are untouched. `ScheduleWakeup`/`/loop` remain documented (only) as FORBIDDEN inside the live Inv 32, so `test/test-spec-cron-invariant.py` stays green. The full rabbit-auto-evolve suite stays green and contract's `test/test-check-invariant-monotonic-order.py` no longer reports the 29→29 / 31→31 violations. Versions bumped 0.27.0 → 0.27.1 in lockstep across feature.json, specs/spec.md, specs/contract.md, skills/rabbit-auto-evolve/SKILL.md (frontmatter only — no skill surface change; the change is a spec-text correction). No contract `provides`/`reads`/`invokes`/`never` schema change — the fix is internal spec hygiene.

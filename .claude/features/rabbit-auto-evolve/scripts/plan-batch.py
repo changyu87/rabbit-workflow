@@ -10,7 +10,9 @@ on stdout:
     "dispatch_shapes": {"602": "multi-subagent-barrier", "601": "parallel-per-feature", "700": "research"},
     "barrier_first": [123, 124],
     "groups": [[125, 126], [127]],
-    "research_items": [700]
+    "research_items": [700],
+    "self_modifying_migrations": {"125": "coexistence-window"},
+    "restart_needed": [127]
   }
 
 Two decoupled decisions (Inv 26 / issue #435):
@@ -74,13 +76,28 @@ composite sort), carry `dispatch_shapes[issue] == "research"`, and are
 listed under the always-present `research_items` key — but NEVER enter
 `barrier_first` or the conflict-graph `groups` (findings edit no code).
 
+SELF-MODIFYING MIGRATIONS (the self-modifying-migration invariant). A work
+item that changes loop-critical runtime state (a marker the tick driver reads,
+a resolved path, an agent type the loop dispatches, a session config key) is
+tagged in `self_modifying_migrations` (issue-number-string -> safe-execution
+pattern) with the pattern chosen by HOW the loop consumes the thing:
+  - re-read from disk each tick -> coexistence-window (no restart)
+  - self-contained              -> last-tick-action   (no restart)
+  - held in session memory      -> restart-safe        (restart NEXT session)
+The token->consumption mapping is the data-driven
+`schemas/self-modifying-migration-registry.json`. Items whose pattern is
+restart-safe are listed under `restart_needed`; the tick driver (not this
+processor) sets the .rabbit-auto-evolve-restart-needed marker for them and
+ends the tick cleanly. The loop NEVER stops to ask a human for a
+self-modifying migration.
+
 The script is a pure JSON processor — no gh, no git, no filesystem
 mutations.
 
 Exit code: 0 on success; non-zero on malformed stdin JSON or invalid
 --max-parallel / --decompose-threshold value.
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -88,11 +105,69 @@ autonomous-agent mode that supersedes this skill.
 
 import argparse
 import json
+import os
 import sys
 
 
 PRIORITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 _NO_PRIORITY_RANK = 4
+
+# Self-modifying-migration safe-execution patterns (the self-modifying-migration
+# invariant). A self-modifying migration is a work item that changes something
+# the loop itself depends on at runtime; the safe-execution pattern is chosen by
+# HOW the loop consumes the thing. The one yield point is the restart-needed
+# marker (PATTERN_RESTART_SAFE), never a human stop.
+PATTERN_COEXISTENCE = "coexistence-window"   # re-read from disk each tick
+PATTERN_LAST_TICK = "last-tick-action"       # self-contained; firewall on tick boundary
+PATTERN_RESTART_SAFE = "restart-safe"        # held in session memory -> restart next session
+
+# The registry data file mapping loop-critical runtime state to consumption
+# type (and thence to pattern). Loaded once at module import.
+_REGISTRY_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "schemas", "self-modifying-migration-registry.json",
+)
+
+
+def _load_registry():
+    """Load the loop-critical runtime-state registry. Returns
+    (entries, consumption_to_pattern). Tokens are matched case-insensitively
+    against an item's title+body text."""
+    with open(_REGISTRY_PATH, encoding="utf-8") as f:
+        data = json.load(f)
+    return data.get("entries", []), data.get("consumption_to_pattern", {})
+
+
+_SMM_ENTRIES, _SMM_CONSUMPTION_TO_PATTERN = _load_registry()
+
+
+def _self_modifying_pattern(item):
+    """Classify a work item as a self-modifying migration and return the safe-
+    execution pattern, or None if the item touches no loop-critical runtime
+    state.
+
+    Detection scans the item's title+body for registry tokens. Pattern
+    precedence (the consumption-based decision rule):
+      1. any matched state held in session memory (memory-at-start) ->
+         restart-safe (the change takes effect NEXT session; the loop sets the
+         .rabbit-auto-evolve-restart-needed marker and ends the tick cleanly).
+      2. else, an item that flags `self_contained` -> last-tick-action (do all
+         other work first; migrate as the final action; the tick boundary is
+         the firewall).
+      3. else (state re-read from disk each tick) -> coexistence-window
+         (additive-then-remove; honor BOTH old+new during the transition).
+    """
+    text = ((item.get("title") or "") + " " + (item.get("body") or "")).lower()
+    matched = [e for e in _SMM_ENTRIES
+               if e.get("token", "").lower() in text]
+    if not matched:
+        return None
+    consumptions = {e.get("consumption") for e in matched}
+    if "memory-at-start" in consumptions:
+        return PATTERN_RESTART_SAFE
+    if item.get("self_contained"):
+        return PATTERN_LAST_TICK
+    return PATTERN_COEXISTENCE
 
 
 def _sort_key(item):
@@ -187,12 +262,26 @@ def plan(items, max_parallel, decompose_threshold):
     # A research item gets the SHAPE_RESEARCH shape regardless of feature
     # count (findings, not code).
     dispatch_shapes = {}
+    # Self-modifying-migration classification (the self-modifying-migration
+    # invariant). Per code-producing work item, detect whether it migrates
+    # loop-critical runtime state and tag the safe-execution pattern. Items
+    # whose pattern is restart-safe are listed under `restart_needed` — the
+    # tick driver, NOT this pure processor, sets the
+    # .rabbit-auto-evolve-restart-needed marker for them and ends the tick
+    # cleanly (the loop NEVER stops to ask a human).
+    self_modifying_migrations = {}
+    restart_needed = []
     for i in selection:
         if i.get("decision") == "research":
             dispatch_shapes[str(i["issue"])] = SHAPE_RESEARCH
-        else:
-            dispatch_shapes[str(i["issue"])] = _dispatch_shape(
-                i, decompose_threshold)
+            continue
+        dispatch_shapes[str(i["issue"])] = _dispatch_shape(
+            i, decompose_threshold)
+        pattern = _self_modifying_pattern(i)
+        if pattern is not None:
+            self_modifying_migrations[str(i["issue"])] = pattern
+            if pattern == PATTERN_RESTART_SAFE:
+                restart_needed.append(i["issue"])
 
     # Research items (Inv 27 / issue #478) are routed to the read-only
     # research shape: they appear in selection_order and research_items but
@@ -247,6 +336,8 @@ def plan(items, max_parallel, decompose_threshold):
         "barrier_first": barrier_first,
         "groups": groups,
         "research_items": research_items,
+        "self_modifying_migrations": self_modifying_migrations,
+        "restart_needed": sorted(restart_needed),
     }
 
 
