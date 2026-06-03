@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.1.1
+version: 1.2.0
 owner: cyxu
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue REPLACES the retired rabbit-file feature; do NOT invoke rabbit-file or its scripts — they are gone. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours the `rabbit-managed` label as a safety guard so human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -134,12 +134,21 @@ When the user asks to work, close, or reopen an issue:
    ```bash
    python3 .claude/features/rabbit-issue/scripts/item-status.py close <N> \
      --reason not-planned \
+     --reason-text "<a specific, concrete justification, >= 50 chars>" \
      --comment "<why>"
    ```
    `not-planned` is the correct reason for closing stale or invalid
    issues; the script translates it to gh's `not planned` at the CLI
    boundary, yielding `state_reason = not_planned`. The safety guard
    below still applies.
+
+   `--reason-text` is **required** for `--reason not-planned` (issue
+   #423): it must be at least 50 characters and must not contain
+   reflexive-deferral boilerplate — the script rejects (case-insensitive)
+   any of `too risky`, `out of scope` / `out-of-scope`, `declined
+   autonomous dispatch`, `not now`, `later`, `don't want` / `do not
+   want`. Write a concrete reason that names *why* the issue is stale or
+   invalid (e.g. what superseded it), not a generic deferral.
 
 5. **If the user confirms to proceed**:
    - Invoke `rabbit-feature-touch` in **normal mode**, passing the issue
@@ -160,8 +169,13 @@ When the user asks to work, close, or reopen an issue:
        ```bash
        python3 .claude/features/rabbit-issue/scripts/item-status.py close <N> \
          --reason completed \
+         --commit-sha <sha> \
          --comment "TDD cycle complete in <commit-sha>"
        ```
+       `--commit-sha` is **required** for `--reason completed` (issue
+       #423) and must resolve to a real commit in the local git repo —
+       "completed" can only be asserted when work actually landed. Pass
+       the SHA of the commit that carried the fix.
        Always verify state with `gh issue view <N>` before the
        fallback close so an already-closed issue is not re-closed.
 
@@ -208,8 +222,10 @@ GH issue state is binary; `state_reason` distinguishes the close path.
 - `state_reason` ∈ {`completed`, `not_planned`, `null`}
   - `completed` — closed after a TDD fix (default close reason for work
     that landed). Set automatically by `Fixes #N` auto-close, or
-    manually via `--reason completed` fallback.
-  - `not_planned` — closed without work (stale or invalid).
+    manually via the `--reason completed --commit-sha <sha>` fallback
+    (the SHA must be a real local commit — issue #423).
+  - `not_planned` — closed without work (stale or invalid); requires a
+    specific `--reason-text` (>= 50 chars, no boilerplate — issue #423).
   - `null` — pre-rabbit closures or external closes; not produced by
     this skill.
 - Reopen restores `state = open` with `state_reason = reopened`.
@@ -247,6 +263,6 @@ commits to issue closure and records the SHA in the timeline event.
 | Script | Purpose |
 |---|---|
 | `file-item.py` | File a new bug or enhancement (auto-creates labels) |
-| `item-status.py` | `show <N>` / `close <N>` / `reopen <N>` (rabbit-managed guard enforced on close/reopen) |
+| `item-status.py` | `show <N>` / `close <N>` / `reopen <N>` (rabbit-managed guard enforced on close/reopen; `close --reason completed` requires `--commit-sha`, `close --reason not-planned` requires `--reason-text`) |
 | `list-items.py` | List with `--type`, `--feature`, `--status` filters; deterministic sort |
 | `_gh.py` | Shared helper — repo slug discovery, `gh` invocation wrappers |

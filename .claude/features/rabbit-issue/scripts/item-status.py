@@ -3,13 +3,23 @@
 
 Subcommands:
   show   <N>                              — print issue JSON
-  close  <N> --reason {completed,not-planned} [--comment <c>]
+  close  <N> --reason completed   --commit-sha <sha> [--comment <c>]
+  close  <N> --reason not-planned --reason-text <text> [--comment <c>]
   reopen <N> [--comment <c>]
 
 `close` and `reopen` enforce the `rabbit-managed` safety guard before
 issuing the gh command.
 
-Version: 1.0.1
+The two close reasons are gated so a closure asserts something real
+(issue #423):
+  - `completed` requires `--commit-sha <sha>` that resolves to a real
+    commit in the local git repo — "completed" can only be claimed when
+    work actually landed.
+  - `not-planned` requires `--reason-text <text>` of at least 50 chars
+    that is free of banned boilerplate phrases — a deliberate, specific
+    justification, not a reflexive deferral.
+
+Version: 1.1.0
 Owner: cyxu
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -30,14 +40,79 @@ from _gh import (  # noqa: E402
 VALID_REASONS = ("completed", "not-planned")
 SHOW_FIELDS = "number,title,state,stateReason,labels,body,createdAt,closedAt"
 
+# Minimum length for a not-planned justification (issue #423 Part D).
+REASON_MIN_LEN = 50
+
+# Boilerplate that signals a reflexive deferral rather than a real
+# justification. Matched case-insensitively as substrings of --reason-text.
+BANNED_PHRASES = (
+    "too risky",
+    "out of scope",
+    "out-of-scope",
+    "declined autonomous dispatch",
+    "not now",
+    "later",
+    "don't want",
+    "do not want",
+)
+
 
 def cmd_show(args: argparse.Namespace) -> None:
     issue = gh_issue_view(args.number, SHOW_FIELDS)
     print(json.dumps(issue, indent=2))
 
 
+def _validate_commit_sha(sha: str) -> None:
+    """Exit non-zero unless `sha` resolves to a commit in the local repo."""
+    r = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", "{}^{{commit}}".format(sha)],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        sys.exit(
+            "rabbit-issue: --commit-sha {!r} does not resolve to a commit in "
+            "the local git repo; `completed` requires a real landed commit"
+            .format(sha)
+        )
+
+
+def _validate_reason_text(text: str) -> None:
+    """Exit non-zero unless `text` is a specific, non-boilerplate reason."""
+    if len(text) < REASON_MIN_LEN:
+        sys.exit(
+            "rabbit-issue: --reason-text must be at least {} characters "
+            "(got {}); state a specific reason for not-planned closure"
+            .format(REASON_MIN_LEN, len(text))
+        )
+    lowered = text.lower()
+    for phrase in BANNED_PHRASES:
+        if phrase in lowered:
+            sys.exit(
+                "rabbit-issue: --reason-text contains banned boilerplate "
+                "{!r}; give a specific, concrete justification".format(phrase)
+            )
+
+
 def cmd_close(args: argparse.Namespace) -> None:
+    # Safety boundary first: refuse to act on human-filed issues.
     require_managed(args.number)
+
+    # Then gate the close reason before the gh call (issue #423).
+    if args.reason == "completed":
+        if not args.commit_sha:
+            sys.exit(
+                "rabbit-issue: `--reason completed` requires --commit-sha "
+                "<sha>; a completed closure must point at a real commit"
+            )
+        _validate_commit_sha(args.commit_sha)
+    else:  # not-planned
+        if not args.reason_text:
+            sys.exit(
+                "rabbit-issue: `--reason not-planned` requires --reason-text "
+                "<text> (>= {} chars, no boilerplate)".format(REASON_MIN_LEN)
+            )
+        _validate_reason_text(args.reason_text)
+
     # argparse accepts the hyphen form (Python/shell-friendly), but
     # `gh issue close --reason` only accepts "completed" or "not planned"
     # (with a space). Translate at the gh boundary (issue #419). Only
@@ -69,6 +144,14 @@ def main() -> None:
     c.add_argument("number", type=int)
     c.add_argument("--reason", required=True, choices=VALID_REASONS)
     c.add_argument("--comment", default="")
+    # Gating args (issue #423); required-ness is enforced per-reason in
+    # cmd_close so the error message can name the reason it applies to.
+    c.add_argument("--commit-sha", default="",
+                   help="required with --reason completed; must be a real "
+                        "commit in the local git repo")
+    c.add_argument("--reason-text", default="",
+                   help="required with --reason not-planned; >= {} chars, "
+                        "no boilerplate".format(REASON_MIN_LEN))
 
     r = sub.add_parser("reopen")
     r.add_argument("number", type=int)
