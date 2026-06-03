@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.12.1
+version: 0.12.2
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -132,10 +132,14 @@ Phase E merges complete.
 - Triage classifies each issue using a seven-rule decision table
   (top-down, first match wins); any ambiguous case defaults to
   `defer/needs-judgment` rather than silently to `work`. (design doc §5)
-- Contract-touch issues (`feature:contract` label or body paths under
-  `.claude/features/contract/`) are always isolated into a `barrier_first`
-  queue processed one at a time before any parallel group runs. (design
-  doc §6)
+- Priority is the PRIMARY dispatch-ordering key; the contract-touch
+  barrier is a SECONDARY tiebreak (issue #479). Contract-touch issues
+  (`feature:contract` label or body paths under
+  `.claude/features/contract/`) lead the `barrier_first` queue only when
+  they sort ahead of every non-contract item on priority — a critical
+  non-contract item is dispatched before a low-priority contract item.
+  Within a priority tier, contract-touch items precede non-contract items
+  and run one at a time before that tier's parallel group. (design doc §6)
 - Parallelism is bounded by `max_parallel` (default 4); same-feature
   issues are never dispatched in parallel (conflict edge = shared
   `feature:<name>` label). (design doc §6)
@@ -428,22 +432,43 @@ Phase E merges complete.
    integer-valued and ≥ 1; non-integer or `< 1` exits non-zero with
    argparse error.
 
-   Algorithm (4 steps from design doc §6):
+   Algorithm (priority-primary, barrier-secondary; issue #479):
 
-   1. **Pull out `contract_touch == true` items** into `barrier_first`,
-      sorted by priority desc (critical > high > medium > low;
-      no-priority last) then `issue` ascending.
-   2. **Build a conflict graph on the remainder.** Nodes are issues;
-      an edge exists between A and B iff `A.feature == B.feature`.
-   3. **Greedy graph coloring.** Sort the remainder by priority desc
-      then `issue` ascending; walk in that order and assign each issue
-      the lowest-numbered color (group index) that has no neighbor
-      already in it. `groups` is the color partition, in color order.
-   4. **Apply `--max-parallel` cap.** Any group whose size exceeds the
+   **Priority is the PRIMARY ordering key; the contract-touch barrier is
+   the SECONDARY tiebreak, never a global override of priority.** A
+   critical non-contract item is dispatched BEFORE a low-priority
+   contract-touch item; the barrier only sequences contract-touch items
+   ahead of non-contract items _within the same priority tier_.
+
+   1. **Sort ALL work items by the composite key**
+      `(priority_rank, contract_touch_rank, issue)`:
+      - `priority_rank`: critical=0, high=1, medium=2, low=3,
+        missing/unrecognized=4 (lower rank = higher priority).
+      - `contract_touch_rank`: `True`->0, `False`->1 (contract-touch
+        items lead within the same priority tier).
+      - `issue` ascending (stable final tiebreak).
+   2. **`barrier_first` is the leading run of contract-touch items** in
+      that sorted order — i.e. the contract-touch items that appear
+      before the first non-contract item. If the highest-priority item is
+      a non-contract item, `barrier_first` is EMPTY. The remainder
+      (everything from the first non-contract item onward, in the same
+      sorted order) feeds the conflict-graph grouping.
+   3. **Build a conflict graph on the remainder.** Nodes are issues; an
+      edge exists between A and B iff `A.feature == B.feature`.
+   4. **Greedy graph coloring.** Walk the remainder in the composite-key
+      order and assign each issue the lowest-numbered color (group index)
+      that has no neighbor already in it. `groups` is the color
+      partition, in color order.
+   5. **Apply `--max-parallel` cap.** Any group whose size exceeds the
       cap is split into sub-groups of size ≤ cap. Sub-groups appear as
       separate consecutive entries in the output `groups` list
       (parallel-safe within each sub-group; the loop processes
       sub-groups sequentially).
+
+   `selection_order` (Stage 1) and `barrier_first` (Stage 2) agree on
+   ordering: both are derived from priority-desc ranking, so a
+   contract-touch item never leads `barrier_first` unless it also leads
+   `selection_order`.
 
    Exit code: 0 on success; non-zero on malformed stdin JSON or
    invalid `--max-parallel` value.
@@ -460,6 +485,14 @@ Phase E merges complete.
    - Over-cap set (8 distinct-feature non-contract items with
      `--max-parallel 3`) → split into sub-groups of size ≤ 3 (e.g.
      `[3, 3, 2]`).
+   - Priority-over-barrier (issue #479): a `critical` non-contract item
+     plus a `low` contract-touch item → the critical item leads
+     `selection_order`; `barrier_first` is EMPTY (the low contract item
+     does NOT jump ahead of the critical item).
+   - Same-tier barrier tiebreak: a contract-touch item and a
+     non-contract item both at `high` priority → the contract item
+     precedes the non-contract item; `barrier_first` holds the contract
+     item.
    - `--help` smoke: exit 0 with recognizable usage text.
 
 5. **`safety-check.py` five bottom-line invariants.** The CLI
@@ -1465,8 +1498,16 @@ Phase E merges complete.
     dependencies merged, no open blocking sub-issue), and issue age / queue
     position. Stage 1 MUST NOT consider dispatch shape, feature count, or
     whether the loop "knows how" to do the item. `plan-batch.py` emits the
-    Stage-1 result as `selection_order` (priority desc then issue asc, over
-    work-only items). A high-priority cross-feature item is therefore
+    Stage-1 result as `selection_order`, ordered by the composite key
+    `(priority desc, contract_touch desc, issue asc)` over work-only items
+    (issue #479): priority is PRIMARY, the contract-touch barrier is the
+    SECONDARY tiebreak (contract items lead WITHIN a priority tier, never
+    across tiers), and issue number is the final stable tiebreak. Because
+    `barrier_first` (Inv 4) is derived from the same composite key,
+    `selection_order` and `barrier_first` always agree on ordering. The
+    `contract_touch` flag is a barrier/conflict property, NOT a dispatch
+    shape, so consulting it does not violate shape-blindness. A
+    high-priority cross-feature item is therefore
     selected BEFORE a low-priority single-feature item, even though the
     latter is the loop's performance preference.
 

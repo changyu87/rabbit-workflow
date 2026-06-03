@@ -295,4 +295,148 @@ else:
         fail(f"no-decision-field: bad JSON ({e}); stdout={proc.stdout!r}")
 
 
+# ---------------------------------------------------------------------------
+# Scenario 9 — Priority over barrier (issue #479)
+#   A critical NON-contract item plus a low-priority contract-touch item.
+#   Priority is the PRIMARY key: the critical item must lead selection_order
+#   and barrier_first must be EMPTY (the low contract item does NOT jump
+#   ahead of the critical item).
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 1001, "feature": "Fcrit", "contract_touch": False, "priority": "critical"},
+    {"issue": 1002, "feature": "contract", "contract_touch": True, "priority": "low"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"priority-over-barrier: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        if out.get("selection_order") != [1001, 1002]:
+            fail(f"priority-over-barrier: selection_order="
+                 f"{out.get('selection_order')!r}, want [1001, 1002]")
+        elif out.get("barrier_first") != []:
+            fail(f"priority-over-barrier: barrier_first should be empty "
+                 f"(critical non-contract leads), got {out.get('barrier_first')!r}")
+        else:
+            # The low contract item still appears in groups (remainder).
+            groups = out.get("groups", [])
+            flat = [i for g in groups for i in g]
+            if sorted(flat) != [1001, 1002]:
+                fail(f"priority-over-barrier: groups should hold both items, "
+                     f"got {groups!r}")
+            elif flat[0] != 1001:
+                fail(f"priority-over-barrier: critical item must be first in "
+                     f"group order, got {flat!r}")
+            else:
+                ok("priority-over-barrier: critical non-contract leads, "
+                   "barrier_first empty")
+    except json.JSONDecodeError as e:
+        fail(f"priority-over-barrier: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 10 — Same-tier barrier tiebreak (issue #479)
+#   A contract-touch item and a non-contract item, BOTH high priority.
+#   Within the tier the contract item precedes the non-contract item, so it
+#   lands in barrier_first.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 1101, "feature": "Fx", "contract_touch": False, "priority": "high"},
+    {"issue": 1102, "feature": "contract", "contract_touch": True, "priority": "high"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"same-tier-barrier: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        if out.get("barrier_first") != [1102]:
+            fail(f"same-tier-barrier: barrier_first={out.get('barrier_first')!r}, "
+                 f"want [1102] (contract leads within tier)")
+        elif out.get("selection_order") != [1102, 1101]:
+            fail(f"same-tier-barrier: selection_order="
+                 f"{out.get('selection_order')!r}, want [1102, 1101]")
+        else:
+            groups = out.get("groups", [])
+            if len(groups) != 1 or groups[0] != [1101]:
+                fail(f"same-tier-barrier: expected groups=[[1101]], got {groups!r}")
+            else:
+                ok("same-tier-barrier: contract item leads within tier "
+                   "(barrier-as-tiebreak preserved)")
+    except json.JSONDecodeError as e:
+        fail(f"same-tier-barrier: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 11 — The #463-vs-#469 scenario (issue #479)
+#   Critical rabbit-auto-evolve (non-contract) beats a low-priority contract
+#   item. Mirrors the real-world dispatch where a critical feature fix was
+#   wrongly blocked behind a low contract touch.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 469, "feature": "contract", "contract_touch": True, "priority": "low"},
+    {"issue": 463, "feature": "rabbit-auto-evolve", "contract_touch": False,
+     "priority": "critical"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"463-vs-469: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        if out.get("selection_order") != [463, 469]:
+            fail(f"463-vs-469: selection_order={out.get('selection_order')!r}, "
+                 f"want [463, 469] (critical beats low contract)")
+        elif out.get("barrier_first") != []:
+            fail(f"463-vs-469: barrier_first should be empty, got "
+                 f"{out.get('barrier_first')!r}")
+        else:
+            groups = out.get("groups", [])
+            flat = [i for g in groups for i in g]
+            if flat[:1] != [463]:
+                fail(f"463-vs-469: critical #463 must dispatch first, got {flat!r}")
+            else:
+                ok("463-vs-469: critical rabbit-auto-evolve beats low contract")
+    except json.JSONDecodeError as e:
+        fail(f"463-vs-469: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 12 — selection_order and barrier_first agree on ordering (#479)
+#   Mixed set across tiers; barrier_first must be a leading subsequence of
+#   selection_order (no contract item leads barrier_first unless it also
+#   leads selection_order).
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 1201, "feature": "Fa", "contract_touch": False, "priority": "critical"},
+    {"issue": 1202, "feature": "contract", "contract_touch": True, "priority": "critical"},
+    {"issue": 1203, "feature": "contract", "contract_touch": True, "priority": "low"},
+    {"issue": 1204, "feature": "Fb", "contract_touch": False, "priority": "high"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"order-agree: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        bar = out.get("barrier_first", [])
+        # Composite key: (priority, contract_touch, issue).
+        #   1202 (critical, contract) < 1201 (critical, non) < 1204 (high) < 1203 (low)
+        want_sel = [1202, 1201, 1204, 1203]
+        if sel != want_sel:
+            fail(f"order-agree: selection_order={sel!r}, want {want_sel!r}")
+        # barrier_first = leading run of contract items = just [1202]
+        elif bar != [1202]:
+            fail(f"order-agree: barrier_first={bar!r}, want [1202]")
+        elif sel[:len(bar)] != bar:
+            fail(f"order-agree: barrier_first {bar!r} is not a leading "
+                 f"subsequence of selection_order {sel!r}")
+        else:
+            ok("order-agree: barrier_first leads selection_order consistently")
+    except json.JSONDecodeError as e:
+        fail(f"order-agree: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
 sys.exit(FAIL)

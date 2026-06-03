@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.12.1
+version: 0.12.2
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -193,9 +193,14 @@ Phase 4 (`plan`) emits TWO decoupled outputs the dispatcher consumes in
 phase 5:
 
 - `selection_order` — **Stage 1, dispatch-shape blind.** The order to work
-  items in, by priority desc then issue asc. It NEVER consults dispatch
-  shape, feature count, or "knows how": a high-priority cross-feature item
-  is selected before a low-priority single-feature item.
+  items in, by the composite key `(priority desc, contract_touch desc,
+  issue asc)` (issue #479): priority is PRIMARY, the contract-touch barrier
+  is the SECONDARY tiebreak (contract items lead WITHIN a priority tier,
+  never across tiers), issue asc is the final tiebreak. The same key drives
+  `barrier_first`, so the two agree. It NEVER consults dispatch shape,
+  feature count, or "knows how": a high-priority cross-feature item is
+  selected before a low-priority single-feature item, and a critical
+  non-contract item beats a low-priority contract item.
 - `dispatch_shapes` — **Stage 2, item-shaped.** A map of issue-number-string
   → one of exactly THREE shapes. Per item, pick the FIRST that fits:
 
