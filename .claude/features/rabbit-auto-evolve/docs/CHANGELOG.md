@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.32.0 — 2026-06-03
+
+- Relocate the feature's documentation surfaces to the flat `docs/` layout
+  shared workflow-wide (#399 Phase 2b): `specs/spec.md` → `docs/spec.md`,
+  `specs/contract.md` → `docs/contract.md`, and the root `CHANGELOG.md` →
+  `docs/CHANGELOG.md`. The existing `docs/bugs/` directory is preserved as a
+  sibling of the relocated doc files; the now-empty `specs/` directory is
+  removed. The contract resolver's coexistence window (flat `docs/` preferred,
+  `specs/` fallback) keeps cross-feature spec resolution green during and after
+  the move. Spec and contract bodies are unchanged; only the four-way version
+  (`feature.json`, `docs/spec.md`, `docs/contract.md`, source `SKILL.md`)
+  advances in lockstep.
+
 ## 0.31.0 — 2026-06-03
 
 - Fix #565 (the in-session `start` false-skipped the whole tick on the loop's

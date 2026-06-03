@@ -18,8 +18,11 @@ import sys
 from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
-# Dual-read (issue #399): prefer specs/spec.md, fall back to docs/spec/spec.md.
-SPEC_MD = (FEATURE_DIR / "specs" / "spec.md")
+# Dual-read (issue #399): prefer the flat docs/spec.md layout, fall back to
+# specs/spec.md, then legacy docs/spec/spec.md.
+SPEC_MD = (FEATURE_DIR / "docs" / "spec.md")
+if not SPEC_MD.is_file():
+    SPEC_MD = FEATURE_DIR / "specs" / "spec.md"
 if not SPEC_MD.is_file():
     SPEC_MD = FEATURE_DIR / "docs" / "spec" / "spec.md"
 

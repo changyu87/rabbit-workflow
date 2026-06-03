@@ -105,7 +105,11 @@ else:
     fail_t("exists", f"script not found: {SCRIPT}")
 
 # --- t0b: spec Inv 31 documents the three auto-resume conditions ---
-SPEC_MD = FEATURE_DIR / "specs" / "spec.md"
+# Dual-read (issue #399): prefer the flat docs/spec.md layout, fall back to
+# specs/spec.md, then legacy docs/spec/spec.md.
+SPEC_MD = FEATURE_DIR / "docs" / "spec.md"
+if not SPEC_MD.is_file():
+    SPEC_MD = FEATURE_DIR / "specs" / "spec.md"
 if not SPEC_MD.is_file():
     SPEC_MD = FEATURE_DIR / "docs" / "spec" / "spec.md"
 spec_low = SPEC_MD.read_text().lower()
