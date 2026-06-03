@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.4.0
+version: 1.5.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue REPLACES the retired rabbit-file feature; do NOT invoke rabbit-file or its scripts — they are gone. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours the `rabbit-managed` label as a safety guard so human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -165,7 +165,8 @@ When the user asks to work, close, or reopen an issue:
    invalid (e.g. what superseded it), not a generic deferral.
 
 5. **If the user confirms to proceed**:
-   - Invoke `rabbit-feature-touch` in **normal mode**, passing the issue
+   - Invoke `rabbit-feature-touch` via its **default full seven-step TDD
+     cycle** (NOT the lightweight Override Path), passing the issue
      title + body as the request text (no special CLI flag, no "issue
      mode" — `rabbit-feature-touch` does NOT need to know about GH
      Issues at all; tracking and closure are rabbit-issue's concern).

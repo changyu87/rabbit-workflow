@@ -12,6 +12,24 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.5.0 (drop invented "normal mode" of rabbit-feature-touch, #436):** The
+  Work Protocol (SKILL.md Step 5, "If the user confirms to proceed") said to
+  invoke `rabbit-feature-touch` in **normal mode** — but that skill defines no
+  such mode; its only behavioural fork is the default full seven-step TDD cycle
+  vs. the lightweight Override Path, so "normal mode" was a prompt-tier
+  ambiguity with no source artifact. Replaced it with the accurate vocabulary:
+  invoke `rabbit-feature-touch` via its default full seven-step TDD cycle (NOT
+  the Override Path), passing the issue title + body as the request text. Also
+  corrected the matching spec invariant in `docs/spec.md` ("What this feature
+  does NOT define" → "The TDD cycle"), which had described the same
+  relationship with the parallel invented term "issue mode" and the wrong
+  invocation direction. Added invariant #6 to `test/test-skill-presence.py`:
+  the SKILL.md body MUST NOT contain "normal mode" and MUST name the
+  default/full seven-step TDD cycle. Lockstep minor bump of `feature.json` /
+  `spec.md` / `SKILL.md` (1.4.0 -> 1.5.0) and `contract.md` (1.3.0 -> 1.4.0).
+  SKILL.md version bump means the deployed copy under `.claude/skills/` drifts
+  until the dispatcher republishes (republish_needed).
+
 - **v1.4.0 (filed-by:<source> provenance label, #496):** `file-item.py` now
   accepts `--filed-by <source>` and stamps the created issue with a
   machine-readable provenance label `filed-by:<source>` (e.g. `filed-by:loop`,

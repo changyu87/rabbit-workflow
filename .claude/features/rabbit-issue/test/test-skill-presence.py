@@ -16,6 +16,12 @@ spec's "Surface" section):
      working it"). The dispatcher surfaces a recommendation in natural
      language; the gate semantics live in the "Do NOT invoke
      `rabbit-feature-touch` until the user confirms" bullet alone.
+  6. The SKILL.md body MUST NOT reference an invented "normal mode" of
+     rabbit-feature-touch (issue #436): that skill defines no such mode.
+     Its only behavioural fork is the default full seven-step TDD cycle
+     vs. the lightweight Override Path. The Work Protocol "proceed" step
+     MUST instead name the accurate invocation — rabbit-feature-touch's
+     default/full seven-step TDD cycle (NOT the Override Path).
 
 These are static checks; runtime behaviour is exercised by the
 file-item / item-status / list-items pytest suites.
@@ -77,6 +83,23 @@ def check(path: Path) -> list[str]:
                 f"{path} body MUST NOT contain hardcoded gate-question "
                 f"prose: {phrase!r}"
             )
+    # Body MUST NOT reference an invented "normal mode" of
+    # rabbit-feature-touch (issue #436) — that skill defines no such mode.
+    if "normal mode" in body.lower():
+        fails.append(
+            f"{path} body references an invented \"normal mode\" of "
+            f"rabbit-feature-touch (issue #436); name the default full "
+            f"seven-step TDD cycle instead"
+        )
+    # The proceed step MUST name the accurate invocation: the default/full
+    # seven-step TDD cycle. Require the vocabulary rabbit-feature-touch
+    # actually uses for its standard path.
+    if "seven-step" not in body:
+        fails.append(
+            f"{path} body MUST name rabbit-feature-touch's default/full "
+            f"seven-step TDD cycle in the Work Protocol proceed step "
+            f"(issue #436)"
+        )
     return fails
 
 

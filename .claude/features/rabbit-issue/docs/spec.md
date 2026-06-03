@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.4.0
+version: 1.5.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -147,8 +147,11 @@ Scripts still fail loudly when `gh auth status` is not green.
   was scoped to user installs and is deferred until rabbit-self validates
   the design. The install MVP does not ship `rabbit-issue` yet.
 - **The TDD cycle** — `rabbit-feature-touch` (in `rabbit-feature`)
-  drives TDD; `rabbit-issue` is consumed by it in "issue mode" but
-  does not own that cycle.
+  drives TDD; the Work Protocol invokes it via its default full
+  seven-step TDD cycle (NOT the lightweight Override Path), passing the
+  issue title + body as the request text. `rabbit-issue` does not own
+  that cycle and does not invent a "normal mode" / "issue mode" of it —
+  `rabbit-feature-touch` defines no such mode.
 
 ## Tests
 
