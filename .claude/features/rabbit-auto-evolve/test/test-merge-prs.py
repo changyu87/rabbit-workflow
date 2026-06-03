@@ -559,4 +559,114 @@ with tempfile.TemporaryDirectory() as td:
         ok("close-skip: item-status.py NOT invoked when merge was skipped")
 
 
+# ===========================================================================
+# Issue #499 — `--record-pending` appends merged PR numbers to
+# pending_post_merge in the state file (read by run-post-merge.py). Without
+# the flag, no state write occurs.
+# ===========================================================================
+
+def _state_path(state_dir):
+    return os.path.join(state_dir, "auto-evolve-state.json")
+
+
+def _seed_state(state_dir, pending=None):
+    state = {
+        "schema_version": "1.2.0",
+        "updated_at": "2026-06-03T00:00:00Z",
+        "queue": [],
+        "in_flight": [],
+        "last_merged_sha": None,
+        "last_tagged_version": None,
+        "consecutive_failures": 0,
+        "stop_requested": False,
+        "restart_needed": None,
+    }
+    if pending is not None:
+        state["pending_post_merge"] = pending
+    with open(_state_path(state_dir), "w") as f:
+        json.dump(state, f)
+
+
+# --- (A) --record-pending appends merged PRs to pending_post_merge ---------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="dev",
+                                                    safety_exit=0, merge_exit=0)
+    state_dir = os.path.join(td, "state")
+    os.makedirs(state_dir)
+    _seed_state(state_dir, pending=[])
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    proc = _run(cwd, env, "1,2,3", "--record-pending")
+    if proc.returncode != 0:
+        fail(f"record-pending: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    else:
+        ok("record-pending: exit 0")
+    # stdout result array is unchanged (per-PR rows still emitted).
+    try:
+        results = json.loads(proc.stdout)
+        if [r.get("status") for r in results] == ["merged", "merged", "merged"]:
+            ok("record-pending: per-PR result array unchanged (3 merged)")
+        else:
+            fail(f"record-pending: unexpected result array {results!r}")
+    except json.JSONDecodeError as e:
+        fail(f"record-pending: stdout not JSON: {e}; stdout={proc.stdout!r}")
+    with open(_state_path(state_dir)) as f:
+        state = json.load(f)
+    if sorted(state.get("pending_post_merge", [])) != [1, 2, 3]:
+        fail(f"record-pending: pending_post_merge "
+             f"{state.get('pending_post_merge')!r} != [1, 2, 3]")
+    else:
+        ok("record-pending: merged PRs appended to pending_post_merge")
+
+
+# --- (B) --record-pending de-duplicates against existing pending -----------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="dev",
+                                                    safety_exit=0, merge_exit=0)
+    state_dir = os.path.join(td, "state")
+    os.makedirs(state_dir)
+    _seed_state(state_dir, pending=[2])
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    _run(cwd, env, "2,3", "--record-pending")
+    with open(_state_path(state_dir)) as f:
+        state = json.load(f)
+    if sorted(state.get("pending_post_merge", [])) != [2, 3]:
+        fail(f"record-pending-dedup: pending_post_merge "
+             f"{state.get('pending_post_merge')!r} != [2, 3] (dedup failed)")
+    else:
+        ok("record-pending-dedup: existing PR not duplicated")
+
+
+# --- (C) skipped/failed PRs are NOT recorded -------------------------------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main")
+    state_dir = os.path.join(td, "state")
+    os.makedirs(state_dir)
+    _seed_state(state_dir, pending=[])
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    _run(cwd, env, "42", "--record-pending")
+    with open(_state_path(state_dir)) as f:
+        state = json.load(f)
+    if state.get("pending_post_merge", []) != []:
+        fail(f"record-pending-skip: a skipped PR was recorded; "
+             f"pending_post_merge={state.get('pending_post_merge')!r}")
+    else:
+        ok("record-pending-skip: skipped PR NOT recorded")
+
+
+# --- (D) WITHOUT --record-pending, no state write occurs -------------------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="dev",
+                                                    safety_exit=0, merge_exit=0)
+    state_dir = os.path.join(td, "state")
+    os.makedirs(state_dir)
+    # intentionally do NOT seed a state file
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    _run(cwd, env, "1,2", )
+    if os.path.exists(_state_path(state_dir)):
+        fail("no-record: state file written without --record-pending")
+    else:
+        ok("no-record: no state write without --record-pending")
+
+
 sys.exit(FAIL)

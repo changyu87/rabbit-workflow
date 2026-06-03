@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.17.0
+version: 0.18.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -79,6 +79,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/classify-merge-restart.py` | CLI | Reads merged PR file list; classifies into `no-op`, `refresh`, or `restart` based on which path patterns appear; emits a single string on stdout |
 | `scripts/update-state.py` | CLI | Reads JSON from stdin; validates against `schemas/auto-evolve-state.schema.json`; atomically writes `.rabbit/auto-evolve-state.json` via temp+rename |
 | `scripts/status-report.py` | CLI | Read-only `status` backing script: reads `.rabbit/auto-evolve-state.json` (defaults on missing/empty/malformed) and the five runtime markers; emits a fixed-format status JSON on stdout |
+| `scripts/run-post-merge.py` | CLI | Deterministic non-skippable runner for tick phases 7–9 (release → cleanup → catch-up): reads `pending_post_merge` from state, invokes `release-bump.py` / `cleanup-branches.py` / `classify-merge-restart.py` in order, then clears the field; clean no-op when empty (issue #499, Inv 30) |
 
 **State file (runtime artifact):**
 
@@ -983,7 +984,7 @@ Phase E merges complete.
 
    | Field | Type | Notes |
    |---|---|---|
-   | `schema_version` | string | Literal `"1.1.0"` |
+   | `schema_version` | string | Literal `"1.2.0"` |
    | `updated_at` | string | ISO 8601 UTC timestamp, `YYYY-MM-DDTHH:MM:SSZ` |
    | `queue` | array of objects | each `{issue: int, decision: string, feature: string}` |
    | `in_flight` | array of int | currently-dispatched issue numbers |
@@ -993,12 +994,15 @@ Phase E merges complete.
    | `stop_requested` | bool | stop marker observed |
    | `restart_needed` | string \| null | reason string when set, else null (resolved Open Question 3 — NOT a pure boolean) |
    | `defer_counts` | object (optional) | per-issue consecutive-defer counter (issue #423 Part B), keyed by issue-number string → non-negative int. Additive in schema 1.1.0; absent in pre-1.1.0 states |
+   | `pending_post_merge` | array of int (optional) | merged PR numbers owed post-merge processing (phases 7–9, issue #499). Additive in schema 1.2.0; absent in pre-1.2.0 states. See Inv 30 |
 
    The schema file itself carries top-level `schema_version`, `owner`,
    and `deprecation_criterion` keys per spec-rules §3. Schema 1.1.0 added
    the optional `defer_counts` field (issue #423 Part B) — a backward-
    compatible additive change: states written without `defer_counts` still
-   validate.
+   validate. Schema 1.2.0 adds the optional `pending_post_merge` field
+   (issue #499) — likewise backward-compatible additive: states written
+   without it still validate.
 
    ### `update-state.py`
 
@@ -1985,6 +1989,107 @@ Phase E merges complete.
       `SKILL.md` invokes
       `python3 .claude/features/rabbit-auto-evolve/scripts/status-report.py`
       and contains no bare `ls .rabbit-auto-evolve-*` pattern.
+
+30. **`run-post-merge.py` deterministically runs phases 7–9 (issue #499).**
+    Phases 7 (`release`), 8 (`cleanup`), and 9 (`catch-up`) were prose in
+    SKILL.md walked by the LLM orchestrator. After phase 6 (`merge`) lands a
+    large batch of PRs, the orchestrator ended the tick for scale/context
+    reasons and phases 7–9 were SILENTLY dropped — the same class of failure
+    as the LLM-walked-prose skips in #405 / #409 / #439. Per spec-rules §1
+    (`script > CLI > spec > prompt`) the phase-7-through-9 sequencing is moved
+    out of prose and into a deterministic, non-skippable script.
+
+    ### `pending_post_merge` state field (schema 1.2.0)
+
+    The state schema gains a new field:
+
+    | Field | Type | Notes |
+    |---|---|---|
+    | `pending_post_merge` | array of int (optional) | merged PR numbers owed post-merge processing (phases 7–9). Additive in schema 1.2.0; absent in pre-1.2.0 states |
+
+    `schema_version` is bumped to `"1.2.0"`. The change is backward-compatible
+    additive: a state written WITHOUT `pending_post_merge` still validates.
+    `start-loop.py`'s bootstrap default and `update-state.py`'s validator both
+    recognize the field. `merge-prs.py` gains a `--record-pending` flag: after
+    processing the PR list, when the flag is present it appends every
+    successfully-merged PR number (the `status == "merged"` rows) to the
+    `pending_post_merge` array in `<state_dir>/auto-evolve-state.json`
+    (read-modify-write, de-duplicated, atomic via temp+rename; the state dir
+    resolves via `RABBIT_AUTO_EVOLVE_STATE_DIR` with the
+    `<cwd>/.rabbit` fallback, matching `update-state.py`). Without
+    `--record-pending`, `merge-prs.py` behaves exactly as before (no state
+    write). The per-PR result array on stdout is unchanged in both modes.
+
+    ### `scripts/run-post-merge.py`
+
+    `python3 .claude/features/rabbit-auto-evolve/scripts/run-post-merge.py`
+
+    1. Reads `pending_post_merge` from
+       `<state_dir>/auto-evolve-state.json` (state dir resolved as above).
+    2. If the array is empty, missing, or the state file is absent/malformed,
+       it is a CLEAN NO-OP: emit `{"status": "noop", "pending": []}` on
+       stdout and exit 0 (no phase script is invoked).
+    3. Otherwise, in order:
+       - **Phase 7 (release):** invoke
+         `release-bump.py <pr#>` once per PR in `pending_post_merge`.
+       - **Phase 8 (cleanup):** invoke
+         `cleanup-branches.py <comma-joined pr-list>` once for the whole set.
+       - **Phase 9 (catch-up):** invoke
+         `classify-merge-restart.py <pr#>` once per PR in
+         `pending_post_merge`.
+    4. On completion (all phase scripts exited 0), clear
+       `pending_post_merge` from state by reading the current state,
+       setting `pending_post_merge` to `[]`, and writing it back atomically.
+    5. Emit a result JSON object on stdout recording the pending set and each
+       phase's outcome.
+
+    Sibling phase scripts (`release-bump.py`, `cleanup-branches.py`,
+    `classify-merge-restart.py`) are resolved via the
+    `RABBIT_AUTO_EVOLVE_SCRIPT_DIR` env var when set, else this script's own
+    dirname (matching `merge-prs.py` / `release-bump.py` /
+    `cleanup-branches.py`).
+
+    Exit code: 0 on success (including the no-op path). Non-zero on any phase
+    script failure (a phase script exiting non-zero) — the caller
+    (`end-tick.py` / the SKILL schedule phase) sees a loud, locatable
+    failure instead of a silently-dropped phase. On a phase failure
+    `pending_post_merge` is NOT cleared, so the next tick's tick-start drain
+    retries the owed work.
+
+    ### SKILL invocation
+
+    The SKILL replaces the prose descriptions of phases 7–9 with a single
+    `python3 .claude/features/rabbit-auto-evolve/scripts/run-post-merge.py`
+    invocation, called in TWO places:
+    - After phase 6 (`merge`) when any PR merged (the merge phase records the
+      merged PR numbers via `merge-prs.py --record-pending`).
+    - At the START of the tick, between phase 1 (`restart-check`) and phase 2
+      (`fetch`), to DRAIN any owed post-merge work from a previous truncated
+      tick BEFORE fetching new work.
+
+    This invariant was introduced by issue #499 in v0.18.0.
+
+    Enforced by `test/test-run-post-merge.py`:
+    - Non-empty `pending_post_merge` (e.g. `[10, 20]`): the
+      `release-bump.py`, `cleanup-branches.py`, and `classify-merge-restart.py`
+      shims are each invoked (release + catch-up once per PR; cleanup once
+      with the comma-joined list), IN ORDER (release before cleanup before
+      catch-up, asserted via a shared ordered call log); `pending_post_merge`
+      is cleared to `[]` in the written state; exit 0.
+    - Empty `pending_post_merge` (and missing state file): clean no-op —
+      no phase shim is invoked; exit 0; `status: "noop"`.
+    - A phase shim exiting non-zero: `run-post-merge.py` exits non-zero and
+      does NOT clear `pending_post_merge` (owed work survives for the next
+      tick's drain).
+    - `--help` smoke: exit 0 with recognizable usage text.
+
+    And by `test/test-merge-prs.py` (extended): with `--record-pending`, the
+    merged PR numbers are appended (de-duplicated) to `pending_post_merge` in
+    the state file; without it, no state write occurs.
+
+    And by `test/test-spec-post-merge-invariant.py` (e2e): asserts the Inv 30
+    text is present in the spec AND that both the source and deployed SKILL.md
+    invoke `run-post-merge.py` after the merge phase AND at tick start.
 
 ## Known gaps
 

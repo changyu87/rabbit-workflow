@@ -44,7 +44,16 @@ resolved via the RABBIT_ISSUE_SCRIPT_DIR env var when set; otherwise it
 falls back to `.claude/features/rabbit-issue/scripts/` relative to the
 repo root inferred from this script's path.
 
-Version: 1.3.0
+With `--record-pending` (issue #499), after processing the PR list this
+script appends every successfully-merged PR number to the
+`pending_post_merge` array in `<state_dir>/auto-evolve-state.json` (read-
+modify-write, de-duplicated, atomic via temp+rename). The state dir resolves
+via the RABBIT_AUTO_EVOLVE_STATE_DIR env var when set, else `<cwd>/.rabbit`
+(matching update-state.py). `run-post-merge.py` later drains this list to run
+tick phases 7-9. Without `--record-pending` no state write occurs and the
+behavior is unchanged.
+
+Version: 1.4.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -78,6 +87,56 @@ def _issue_script_dir():
     here = os.path.dirname(os.path.abspath(__file__))
     features = os.path.normpath(os.path.join(here, "..", ".."))
     return os.path.join(features, "rabbit-issue", "scripts")
+
+
+def _state_dir():
+    override = os.environ.get("RABBIT_AUTO_EVOLVE_STATE_DIR")
+    if override:
+        return override
+    return os.path.join(os.getcwd(), ".rabbit")
+
+
+def _record_pending(merged_prs):
+    """Append `merged_prs` to pending_post_merge in the state file (issue
+    #499). Read-modify-write, de-duplicated, order-preserving, atomic via
+    temp+rename. Best-effort: a missing/malformed state file or write error
+    emits a stderr warning and never fails the merge run (the per-PR result
+    array on stdout is the authoritative outcome)."""
+    if not merged_prs:
+        return
+    state_dir = _state_dir()
+    state_path = os.path.join(state_dir, "auto-evolve-state.json")
+    try:
+        with open(state_path) as f:
+            state = json.load(f)
+    except (OSError, ValueError) as e:
+        sys.stderr.write(
+            f"merge-prs: --record-pending: cannot read state file "
+            f"{state_path}: {e}\n"
+        )
+        return
+    existing = state.get("pending_post_merge") or []
+    seen = set(existing)
+    combined = list(existing)
+    for pr in merged_prs:
+        if pr not in seen:
+            seen.add(pr)
+            combined.append(pr)
+    state["pending_post_merge"] = combined
+    tmp_path = state_path + ".tmp"
+    try:
+        with open(tmp_path, "w") as f:
+            json.dump(state, f, indent=2)
+            f.write("\n")
+        os.replace(tmp_path, state_path)
+    except OSError as e:
+        sys.stderr.write(
+            f"merge-prs: --record-pending: write failed: {e}\n"
+        )
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
 
 def _pr_base(pr):
@@ -203,6 +262,12 @@ def main():
     )
     parser.add_argument("pr_list",
                         help="comma-separated list of PR numbers, e.g. '12,34'")
+    parser.add_argument(
+        "--record-pending", action="store_true",
+        help="append successfully-merged PR numbers to pending_post_merge in "
+             ".rabbit/auto-evolve-state.json (issue #499) so run-post-merge.py "
+             "drains them through tick phases 7-9",
+    )
     args = parser.parse_args()
 
     try:
@@ -211,6 +276,11 @@ def main():
         parser.error(f"invalid pr_list: {e}")
 
     results = [process(pr) for pr in prs]
+
+    if args.record_pending:
+        merged = [r["pr"] for r in results if r.get("status") == "merged"]
+        _record_pending(merged)
+
     json.dump(results, sys.stdout, indent=2)
     sys.stdout.write("\n")
 
