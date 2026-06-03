@@ -9,7 +9,7 @@ Usage: rabbit-config.py <subcommand> [<value-or-action> [<template-value>]]
   Values-style:  rabbit-config <subcommand> <value>
   Actions-style: rabbit-config <subcommand> <action> [<template-value>]
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team (rabbit-config)
 Deprecation criterion: when the rabbit CLI exposes native configuration mutation.
 """
@@ -203,10 +203,10 @@ def main():
     # start (e.g. permissions.defaultMode) declare restart_required: true in
     # their feature.json configuration[] entry. After a successful mutation
     # that actually changed state (mutation.py signals no-op writes via a
-    # literal 'no-op' substring in CheckResult.messages), emit one yellow
-    # rabbit_subline-style alert telling the user to relaunch Claude —
-    # without it, the mutation silently succeeds but the new mode does not
-    # take effect until the next session boot.
+    # literal 'no-op' substring in CheckResult.messages), emit one red
+    # rabbit_subline-style alert (with a 🔄 icon) telling the user to relaunch
+    # Claude — without it, the mutation silently succeeds but the new mode
+    # does not take effect until the next session boot.
     if cfg.get("restart_required"):
         messages = getattr(result, "messages", None) or []
         changed_state = not any("no-op" in m for m in messages)
@@ -219,7 +219,8 @@ def main():
             print(rabbit_subline(
                 f"restart Claude (exit + relaunch) for the new {subcommand} "
                 "value to take effect",
-                color="yellow",
+                color="red",
+                icon="\U0001f504",
             ))
 
 

@@ -15,6 +15,9 @@ name.
   t20c: restart_required=true + no-op mutation (already-applied state) ->
         stdout does NOT contain 'restart Claude' (one-shot, only on
         actual state change)
+  t20d: restart_required=true + successful mutation -> the restart notice
+        is rendered in red (ANSI 31) and includes the restart icon, for
+        visual consistency with the rabbit banner style (issue #325).
 """
 
 import json
@@ -26,6 +29,11 @@ import tempfile
 
 FEATURE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 INTERPRETER = os.path.join(FEATURE_DIR, "skills/rabbit-config/scripts/rabbit-config.py")
+
+# Issue #325: the restart notice must render in red (ANSI 31) and carry the
+# restart icon for visual consistency with the rabbit banner style.
+RED_ANSI = "\x1b[31m"
+RESTART_ICON = "\U0001f504"  # 🔄
 
 result = subprocess.run(
     ["git", "-C", FEATURE_DIR, "rev-parse", "--show-toplevel"],
@@ -106,6 +114,18 @@ with tempfile.TemporaryDirectory() as td:
         fail("20a", f"expected 'bypass-permissions' subcommand in stdout, got stdout={r.stdout!r}")
     else:
         ok("20a", "restart_required=true: stdout contains 'restart Claude' and subcommand")
+
+    # t20d: same successful mutation -> notice is red and carries the icon.
+    if r.returncode != 0:
+        fail("20d", f"expected exit 0, got {r.returncode}. stderr={r.stderr!r}")
+    elif RED_ANSI not in r.stdout:
+        fail("20d", f"expected red ANSI ({RED_ANSI!r}) in restart notice, got stdout={r.stdout!r}")
+    elif "\x1b[33m" in r.stdout:
+        fail("20d", f"restart notice must not be yellow (ANSI 33), got stdout={r.stdout!r}")
+    elif RESTART_ICON not in r.stdout:
+        fail("20d", f"expected restart icon ({RESTART_ICON!r}) in restart notice, got stdout={r.stdout!r}")
+    else:
+        ok("20d", "restart_required=true: notice is red (ANSI 31) and includes the restart icon")
 
 # t20b: restart_required absent (default False) -> no spurious 'restart Claude'
 with tempfile.TemporaryDirectory() as td:
