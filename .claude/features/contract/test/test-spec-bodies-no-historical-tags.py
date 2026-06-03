@@ -48,9 +48,15 @@ Self-testability: RABBIT_HISTORICAL_TAGS_FEATURES_ROOT overrides the
 features root, and RABBIT_HISTORICAL_TAGS_CLEANED (comma-separated
 feature names), when set, REPLACES the feature.json-derived opt-in set
 (empty string => empty set), so a companion test can point the checker
-at fixture feature trees. Absent the overrides the checker behaves
-exactly as the production check (real features root; opt-in read from
-each feature's feature.json housekeeping_clean flag).
+at fixture feature trees. RABBIT_HISTORICAL_TAGS_ALLOWLIST, when set,
+ADDS fixture allowlist entries to the production ALLOWLIST (it never
+replaces it): the value is a newline-or-semicolon-separated list of
+`feature:logical_doc:line:substring` records, so a hermetic test can
+assert allowlist suppression (applies to BOTH tiers per Inv 70) without
+editing the live production allowlist. Absent the overrides the checker
+behaves exactly as the production check (real features root; opt-in read
+from each feature's feature.json housekeeping_clean flag; production
+ALLOWLIST unchanged).
 
 Non-interactive. Exits non-zero on any unallowlisted match.
 """
@@ -153,6 +159,44 @@ ALLOWLIST = {
     ("contract", "spec.md", 186, "superseded"),
     ("contract", "spec.md", 187, "obsoleted"),
 }
+
+
+def _parse_allowlist_override(raw):
+    """Parse the RABBIT_HISTORICAL_TAGS_ALLOWLIST override value (Inv 70).
+
+    The value is a newline-or-semicolon-separated list of
+    `feature:logical_doc:line:substring` records. Each record is split on
+    the FIRST three colons only, so a substring containing `:` is preserved
+    verbatim. Malformed records (fewer than four fields, or a non-integer
+    line) are skipped silently — the override exists only for fixture tests,
+    which supply well-formed records.
+
+    Returns a set of (feature, logical_doc, line_int, substring) tuples to
+    ADD to the production ALLOWLIST.
+    """
+    extra = set()
+    for record in re.split(r"[;\n]", raw):
+        record = record.strip()
+        if not record:
+            continue
+        parts = record.split(":", 3)
+        if len(parts) != 4:
+            continue
+        feature, logical_doc, line_s, substr = parts
+        try:
+            line_no = int(line_s)
+        except ValueError:
+            continue
+        extra.add((feature, logical_doc, line_no, substr))
+    return extra
+
+
+_allowlist_override = os.environ.get("RABBIT_HISTORICAL_TAGS_ALLOWLIST")
+if _allowlist_override is not None:
+    # Override ADDS fixture entries to the production ALLOWLIST (never
+    # replaces it) so a hermetic test can assert allowlist suppression
+    # without editing the live production allowlist.
+    ALLOWLIST = ALLOWLIST | _parse_allowlist_override(_allowlist_override)
 
 
 def _resolve_doc(fdir, name):
