@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.25.0
+version: 0.26.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2413,11 +2413,37 @@ Phase E merges complete.
     the DISPATCHER reads this JSON at phase 11 and performs the actual
     one-shot `CronCreate(...)` (the irreducible Claude action); on the
     `crontab` path the emitted hint documents the transient/`at`-style
-    one-shot for the dispatcher/SKILL. Enforced by
-    `test/test-spec-cron-invariant.py` (spec text) and
-    `test/test-schedule-decision.py` (e2e: a `fetch-queue.py` shim that emits
-    a non-empty array yields `immediate-refire`; an empty array yields
-    `idle`).
+    one-shot for the dispatcher/SKILL.
+
+    **Pinned-minute one-shot — benign failure mode (issue #531).** The
+    `croncreate` params MUST carry `recurring: false` AND `durable: false`, and
+    the cron expression MUST be a PINNED specific near-future minute (computed
+    as the current minute + 1, emitted as a fixed `M H * * *` form), NEVER the
+    fragile every-minute `*/1 * * * *`. Rationale: the catastrophic failure
+    mode is the dispatcher dropping `recurring: false` (a CronCreate default is
+    recurring). With `*/1 * * * *` that drop produces an every-MINUTE storm
+    (back-to-back ticks, concurrent-tick state corruption); with a pinned
+    `M H * * *` the same drop fires at most ONCE PER DAY at minute M — a benign
+    blast radius. The pinned minute also AVOIDS the `:00` and `:30` marks per
+    CronCreate guidance (when minute+1 lands on 0 or 30, nudge to an adjacent
+    minute). `schedule-decision.py` computes and emits this pinned expression in
+    the `croncreate.cron` field (it MAY use the wall clock — it is an ordinary
+    Python script, not a workflow-sandboxed one).
+
+    **Faithful flag passing + idempotency (issue #531).** The DISPATCHER MUST
+    pass `recurring` and `durable` to `CronCreate` EXACTLY as emitted (both
+    `false`) — never rely on tool defaults, never hand-translate-and-drop a
+    field (the #513 anti-pattern). The DISPATCHER MUST also keep AT MOST ONE
+    immediate-refire one-shot alive at a time: before creating a new refire it
+    `CronList`s and `CronDelete`s any prior immediate-refire one-shot, and it
+    never creates a refire whose cadence duplicates the recurring heartbeat.
+
+    Enforced by `test/test-spec-cron-invariant.py` (spec text) and
+    `test/test-schedule-decision.py` (e2e: a `fetch-queue.py` shim that emits a
+    non-empty array yields `immediate-refire` with `croncreate.recurring ==
+    false`, `croncreate.durable == false`, and a `croncreate.cron` that is a
+    pinned `M H * * *` expression — NOT `*/1 * * * *` — whose minute field is
+    neither `0` nor `30`; an empty array yields `idle`).
 
 34. **Scheduler detection: crontab where available, CronCreate where blocked
     (D2 — issue #521).** `scripts/detect-scheduler.py` probes whether the

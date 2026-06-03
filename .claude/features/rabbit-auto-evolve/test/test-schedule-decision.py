@@ -17,22 +17,40 @@ crontab shim so scheduler detection is deterministic.
 Scenarios:
   A) non-empty queue + usable crontab    -> immediate-refire, scheduler crontab
   B) non-empty queue + restricted crontab-> immediate-refire, scheduler
-     croncreate, with a croncreate one-shot param block
+     croncreate, with a croncreate one-shot param block whose cron is a PINNED
+     "M H * * *" expression (NOT "*/1 * * * *"), minute not in {0,30}, and
+     recurring/durable both False (Inv 33 pinned-minute amendment, #531)
   C) empty queue                          -> idle
   D) the decision is logged to .rabbit/tick.log
   E) --help smoke
+  F) _pinned_oneshot_cron(now=...) unit tests, including the :00/:30 nudge
+     cases (Inv 33 pinned-minute amendment, #531)
 """
 
+import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
 import textwrap
+from datetime import datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.normpath(os.path.join(HERE, "..", "scripts"))
 DECIDE = os.path.join(SCRIPTS, "schedule-decision.py")
+
+# A pinned one-shot cron is "M H * * *" — a specific minute and hour, never the
+# fragile every-minute "*/1 * * * *". Minute must never land on :00 or :30.
+PINNED_RE = re.compile(r"^\d+ \d+ \* \* \*$")
+
+
+def _load_decide_module():
+    spec = importlib.util.spec_from_file_location("schedule_decision", DECIDE)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 FAIL = 0
 
@@ -128,6 +146,23 @@ with tempfile.TemporaryDirectory() as d:
         ok("B: croncreate one-shot block carries cron/prompt/durable=false")
     else:
         fail(f"B: croncreate block malformed: {cc!r}")
+    # Pinned-minute amendment (#531): cron must be a pinned "M H * * *" form,
+    # NOT "*/1 * * * *", with minute field neither 0 nor 30.
+    cron = (cc or {}).get("cron", "")
+    if cc and cc.get("recurring") is False and cc.get("durable") is False:
+        ok("B: croncreate.recurring is False and croncreate.durable is False")
+    else:
+        fail(f"B: recurring/durable not both False: {cc!r}")
+    if cron == "*/1 * * * *":
+        fail("B: croncreate.cron is the fragile every-minute '*/1 * * * *'")
+    elif PINNED_RE.match(cron):
+        minute = int(cron.split()[0])
+        if minute not in (0, 30):
+            ok(f"B: croncreate.cron is a pinned 'M H * * *' with safe minute {minute}")
+        else:
+            fail(f"B: pinned cron minute is on a :00/:30 mark: {cron!r}")
+    else:
+        fail(f"B: croncreate.cron is not a pinned 'M H * * *' expression: {cron!r}")
 
 # C — empty queue
 with tempfile.TemporaryDirectory() as d:
@@ -155,5 +190,42 @@ if proc.returncode == 0 and "refire" in (proc.stdout + proc.stderr).lower():
     ok("E: --help exits 0 with recognizable usage")
 else:
     fail(f"E: --help exit {proc.returncode}; out={proc.stdout!r}")
+
+# F — _pinned_oneshot_cron(now=...) with injected wall clock (deterministic)
+mod = _load_decide_module()
+if not hasattr(mod, "_pinned_oneshot_cron"):
+    fail("F: schedule-decision.py has no _pinned_oneshot_cron helper")
+else:
+    pin = mod._pinned_oneshot_cron
+
+    # Ordinary minute: 10:15 -> next minute 16 at hour 10.
+    if pin(now=datetime(2026, 6, 3, 10, 15)) == "16 10 * * *":
+        ok("F: 10:15 -> '16 10 * * *' (plain next minute)")
+    else:
+        fail(f"F: 10:15 -> {pin(now=datetime(2026, 6, 3, 10, 15))!r}, expected '16 10 * * *'")
+
+    # Nudge off :00 — minute 59 -> next minute 0 -> nudged to 1 (same hour 11).
+    res = pin(now=datetime(2026, 6, 3, 10, 59))
+    parts = res.split()
+    if PINNED_RE.match(res) and int(parts[0]) not in (0, 30):
+        ok(f"F: 10:59 -> {res!r} avoids :00 (next-minute rollover nudged)")
+    else:
+        fail(f"F: 10:59 -> {res!r} landed on a :00/:30 mark")
+
+    # Nudge off :30 — minute 29 -> next minute 30 -> nudged to 31.
+    res = pin(now=datetime(2026, 6, 3, 14, 29))
+    parts = res.split()
+    if PINNED_RE.match(res) and int(parts[0]) not in (0, 30):
+        ok(f"F: 14:29 -> {res!r} avoids :30")
+    else:
+        fail(f"F: 14:29 -> {res!r} landed on a :00/:30 mark")
+
+    # The default (now=None) must still be a valid pinned, safe expression.
+    res = pin()
+    if PINNED_RE.match(res) and res != "*/1 * * * *" \
+            and int(res.split()[0]) not in (0, 30):
+        ok(f"F: default now -> pinned safe cron {res!r}")
+    else:
+        fail(f"F: default now -> unsafe/non-pinned cron {res!r}")
 
 sys.exit(FAIL)
