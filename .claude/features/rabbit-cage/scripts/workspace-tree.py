@@ -94,6 +94,19 @@ def is_structural_dir(name):
     return name in STRUCTURAL_DIRS
 
 
+FLAT_DOCS_ARTIFACTS = {"spec.md", "contract.md", "CHANGELOG.md"}
+
+
+def is_flat_docs_artifact(name, relpath):
+    """True when relpath is a feature's flat docs/ spec artifact —
+    docs/{spec,contract,CHANGELOG}.md as a direct child of docs/ (NOT the
+    older nested docs/spec/spec.md, which the docs/spec branch already
+    covers)."""
+    if name not in FLAT_DOCS_ARTIFACTS:
+        return False
+    return relpath.replace("\\", "/").endswith("/docs/" + name)
+
+
 def is_key_file(name, relpath):
     if name in KEY_FILES:
         return True
@@ -101,8 +114,11 @@ def is_key_file(name, relpath):
         return True
     if name.endswith(".md") and "docs/spec" in relpath:
         return True
-    # issue #399: specs/ is the new layout for feature spec + contract.
+    # specs/ layout for feature spec + contract.
     if name.endswith(".md") and "/specs/" in ("/" + relpath + "/"):
+        return True
+    # Flat docs/ layout: spec/contract/changelog as siblings under docs/.
+    if is_flat_docs_artifact(name, relpath):
         return True
     return False
 
@@ -131,7 +147,17 @@ def retired_tag_for(item_path, is_dir):
     return ""
 
 
+FLAT_DOCS_ANNOTATIONS = {
+    "spec.md":      "feature spec (flat docs/ layout)",
+    "contract.md":  "feature contract (flat docs/ layout)",
+    "CHANGELOG.md": "feature changelog (flat docs/ layout)",
+}
+
+
 def annotation_for(name, relpath):
+    # Flat docs/ layout: spec/contract/changelog as siblings under docs/.
+    if is_flat_docs_artifact(name, relpath):
+        return FLAT_DOCS_ANNOTATIONS[name]
     for key, ann in ANNOTATIONS.items():
         if relpath == key or relpath == key.rstrip("/") or relpath == key.rstrip("/") + "/":
             return ann
