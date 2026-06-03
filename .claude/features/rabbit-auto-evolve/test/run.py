@@ -69,5 +69,8 @@ run_test("test-log-tick.py")
 run_test("test-spec-tick-log-invariant.py")
 run_test("test-sync-tree.py")
 run_test("test-spec-worktree-sync-invariant.py")
+run_test("test-self-modifying-migration-registry.py")
+run_test("test-self-modifying-migration.py")
+run_test("test-spec-self-modifying-migration-invariant.py")
 
 print("ALL TESTS PASSED")
