@@ -734,6 +734,40 @@ lives in Inv 22 above.
     deployed `.claude/agents/rabbit-tdd-subagent.md` and asserts the `tools:`
     list contains `Skill` (and still contains the original six tools).
 
+58. **Assembled-prompt paths are repo-RELATIVE, not main-repo-absolute
+    (issue #527).** The four filesystem-path slots `dispatch-tdd-subagent.py`
+    interpolates into the assembled prompt — `feature_dir`, `tdd_step_py`,
+    `scope_marker_path`, `tdd_report_path` — MUST be emitted as paths RELATIVE
+    to the repository root (i.e. `os.path.relpath(<abs>, repo_root)`), and the
+    `repo_root` slot itself MUST be emitted as `.` (the current directory).
+    The subagent resolves every baked path from its CURRENT WORKING DIRECTORY.
+
+    **Why.** Previously these slots were absolute paths rooted at the MAIN
+    repo (`os.path.join(repo_root, …)`). A subagent dispatched with
+    `isolation: "worktree"` (rabbit-auto-evolve Inv 28) runs in a DIFFERENT
+    cwd (`.claude/worktrees/<name>`), so absolute main-repo paths made it edit
+    the main tree from inside a worktree — defeating isolation. The two
+    requirements were mutually incompatible, forcing every dispatch into the
+    shared main tree (no parallelism). Repo-relative paths resolve correctly
+    from EITHER cwd — the repo root (non-isolated dispatch) OR the worktree
+    root (isolated dispatch, whose tree mirrors the repo) — so worktree
+    isolation and the shared-tree path both work from one prompt.
+
+    The relativization is mode-agnostic: `os.path.relpath` collapses the
+    absolute path the mode-aware helpers (`_scope_marker_path`,
+    `_tdd_report_path`) compute back to its repo-root-relative form, so
+    standalone and plugin layouts both relativize correctly. Mode DETECTION at
+    assembly time still uses absolute paths internally (it must `os.path.exists`
+    real markers); only the emitted SLOT STRINGS are relative.
+
+    Enforced by `test/test-prompt-relative-paths.py` (e2e through
+    `dispatch-tdd-subagent.py` against a tmpdir fixture): the assembled prompt
+    contains NO occurrence of the absolute `repo_root` prefix, the `feature_dir`
+    / `tdd_step_py` / `scope_marker_path` / `tdd_report_path` references appear
+    in their repo-relative form (e.g. `.claude/features/<feature>`,
+    `.rabbit-scope-active-<feature>`), and the LOCK/UNLOCK scope-marker lines
+    use the relative marker path.
+
 ## Out of Scope
 
 - Deployment of the assembled scripts into `.claude/agents/` — owned by
