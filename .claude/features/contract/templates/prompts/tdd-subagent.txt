@@ -1,4 +1,4 @@
-# template_version: 1.6.0
+# template_version: 1.7.0
 {{bypass_preamble_note}}
 ════════════════════════════════════════════════════════════════════════
 TDD SUBAGENT — SCOPE: {{feature_name}}
@@ -163,6 +163,47 @@ and `.claude/settings.json`. Feature-local edits to a source file (e.g.
 `hooks/foo.py`) do NOT automatically update the deployed copy; without this
 step the committed deployed bytes drift from the source bytes and the next
 TDD cycle in any feature observes a manifest-drift FAIL.
+
+DOWNSTREAM TEST-SUITE DISCOVERY (delete/rename guard — tdd-subagent Inv 56):
+
+Your scope is bounded to feature {{feature_name}} and the files you directly
+edit. It does NOT automatically cover OTHER features whose test fixtures or
+install closures INDIRECTLY reference a file this cycle removed. PR #401
+deleted files under one feature, ran that feature's suite green, and silently
+broke 15 downstream rabbit-cage tests because rabbit-cage's suite was never
+run. Prevent that here:
+
+  0a. Enumerate every file this cycle DELETED or RENAMED under
+      .claude/features/ :
+        git diff --diff-filter=DR --name-only HEAD -- .claude/features/
+      (also check renames in the staged/working tree if applicable). If this
+      list is EMPTY, skip to step 1 below — there is no downstream sweep to run.
+
+  0b. For each deleted/renamed path P, grep every feature test directory for
+      references to P (try both the full relative path and its basename):
+        grep -rl "<basename or path of P>" .claude/features/*/test/
+      Collect the set of downstream features whose test/ directory matched.
+      (A match means that feature's test fixtures reference the removed
+      artifact; its suite has an INDIRECT dependency on your delete/rename.)
+
+  0c. For each discovered downstream feature D (excluding {{feature_name}}
+      itself), run its suite:
+        python3 .claude/features/<D>/test/run.py
+      Run ALL discovered downstream suites, not a triaged subset. "I think
+      this one is unrelated" is NOT an acceptable judgment — the grep match
+      is authoritative.
+
+  0d. If ANY downstream test/run.py exits nonzero, STOP. Do NOT proceed to the
+      publish loop, the commit, or CODE-REVIEW. Emit the SAME fail-HANDOFF
+      shape defined at the END of this step for a publish failure (both the
+      YAML `HANDOFF:` form and the fenced `HANDOFF_JSON:` form), carrying
+      tdd_state: impl, test_result: fail, spec_compliance: fail,
+      tdd_report_path: null, and a notes field of the form:
+        notes: downstream suite <D>/test/run.py exited nonzero after delete/rename of <P>
+      Then stop — do not emit any further HANDOFF.
+
+      Only when every discovered downstream suite passes (or there were no
+      deletes/renames) do you continue with the publish-sync loop below.
 
 1. Read `{{feature_dir}}/feature.json` and enumerate every entry in the
    `manifest` array whose `api` is one of:
