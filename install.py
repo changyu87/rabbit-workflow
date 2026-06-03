@@ -98,7 +98,7 @@ SKILLS = [
 
 # Agents: source → deployed
 AGENTS = [
-    (".claude/features/rabbit-spec/agents/spec-creator.md", ".claude/agents/spec-creator.md"),
+    (".claude/features/rabbit-spec/agents/rabbit-spec-creator.md", ".claude/agents/rabbit-spec-creator.md"),
     (".claude/features/tdd-subagent/agents/rabbit-tdd-subagent.md", ".claude/agents/rabbit-tdd-subagent.md"),
 ]
 
@@ -194,7 +194,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
     ],
     "rabbit-spec": [
         "feature.json",
-        "agents/spec-creator.md",
+        "agents/rabbit-spec-creator.md",
         "scripts/dispatch-spec-create.py",
         "skills/rabbit-spec-create/SKILL.md",
         "skills/rabbit-spec-update/SKILL.md",
