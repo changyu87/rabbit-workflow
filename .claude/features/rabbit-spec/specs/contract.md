@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.5.0
+version: 1.6.0
 template_version: 2.0.0
 ---
 
@@ -15,7 +15,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/rabbit-spec/skills/rabbit-spec-create/SKILL.md"
     ],
     "agents": [
-      ".claude/features/rabbit-spec/agents/spec-creator.md"
+      ".claude/features/rabbit-spec/agents/rabbit-spec-creator.md"
     ],
     "scripts": [
       {
@@ -23,7 +23,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
         "stdin": "none",
         "stdout": "absolute path to the assembled prompt file",
         "exit": "0=ok 1=invocation-error 2=assembler-failure",
-        "note": "prompt assembler for the spec-creator subagent; invokes contract/scripts/build-prompt.py"
+        "note": "prompt assembler for the rabbit-spec-creator subagent; invokes contract/scripts/build-prompt.py"
       }
     ],
     "files": [],
@@ -41,12 +41,12 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "scripts": [
       {
         "path": ".claude/features/contract/scripts/build-prompt.py",
-        "purpose": "assemble the spec-creator subagent prompt from the registered template + slot values"
+        "purpose": "assemble the rabbit-spec-creator subagent prompt from the registered template + slot values"
       }
     ],
     "agents": [
       {
-        "subagent_type": "spec-creator",
+        "subagent_type": "rabbit-spec-creator",
         "purpose": "read-only spec drafting from feature name + optional code globs"
       }
     ]
@@ -55,7 +55,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "introduces a surface artifact without first updating spec.md",
     "modifies another feature's files",
     "writes any file outside .claude/features/rabbit-spec/ except the target feature's spec.md (resolved layout: specs/spec.md preferred, docs/spec/spec.md legacy fallback — the skill's deliverable)",
-    "grants the spec-creator agent any tool beyond Read, Grep, Glob"
+    "grants the rabbit-spec-creator agent any tool beyond Read, Grep, Glob"
   ]
 }
 ```

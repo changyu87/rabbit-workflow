@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""dispatch-spec-create.py — assemble the spec-creator subagent prompt.
+"""dispatch-spec-create.py — assemble the rabbit-spec-creator subagent prompt.
 
 Used by the rabbit-spec-create skill (and by rabbit-decompose's downstream
 pipeline) when a new feature's initial spec body needs to be drafted.
@@ -20,7 +20,7 @@ Exit codes:
     1 = invocation error (missing args, glob resolution failure)
     2 = build-prompt.py subprocess failure
 
-Version: 1.1.0
+Version: 1.1.1
 Owner: rabbit-workflow team
 Deprecation criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 """
@@ -36,7 +36,7 @@ MAX_FILES = 50
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Dispatch the spec-creator subagent prompt")
+    parser = argparse.ArgumentParser(description="Dispatch the rabbit-spec-creator subagent prompt")
     parser.add_argument("--feature-name", required=True, help="Feature name (kebab-case)")
     parser.add_argument("--paths", default="", help="Comma-separated path globs (empty in standalone mode)")
     args = parser.parse_args()

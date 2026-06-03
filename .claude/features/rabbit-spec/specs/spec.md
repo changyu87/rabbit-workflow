@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.5.0
+version: 1.6.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -20,7 +20,7 @@ behavior of the former `spec-seeder` feature; Stage 3 will add
 the former `rabbit-feature-spec`.
 
 The reading-and-drafting work is performed by a read-only subagent
-(`spec-creator`) that is tool-restricted to Read/Grep/Glob. The skill itself
+(`rabbit-spec-creator`) that is tool-restricted to Read/Grep/Glob. The skill itself
 is a thin orchestration wrapper that assembles the prompt, dispatches the
 agent, and writes the returned body to disk.
 
@@ -28,7 +28,7 @@ agent, and writes the returned body to disk.
 
 - `skills/rabbit-spec-create/SKILL.md` — the user-invocable spec-drafting skill
 - `skills/rabbit-spec-update/SKILL.md` — the user/dispatcher-invocable spec-revision skill (absorbs the former rabbit-feature-spec). Dual-mode: detects rabbit mode at invocation time and resolves the feature spec path accordingly.
-- `agents/spec-creator.md` — the read-only drafting subagent
+- `agents/rabbit-spec-creator.md` — the read-only drafting subagent
   (frontmatter declares `tools: Read, Grep, Glob` — the restriction is
   load-bearing)
 - `scripts/dispatch-spec-create.py` — Python prompt assembler invoked by
@@ -55,19 +55,21 @@ length including zero.
    later, `owner: "rabbit-workflow team"`, `tdd_state: "test-green"`,
    non-empty `summary`, non-empty `deprecation_criterion`, and a `surface`
    block that lists the skill at `skills/rabbit-spec-create/SKILL.md`, the
-   agent at `agents/spec-creator.md`, and the dispatch script at
+   agent at `agents/rabbit-spec-creator.md`, and the dispatch script at
    `scripts/dispatch-spec-create.py`. The `manifest` MUST contain a
    `publish_skill` entry sourcing the skill and a `publish_agent` entry
    sourcing the agent. The `prompts` array MUST contain exactly one entry
    with `id: "spec-create"`, `kind: "subagent"`, `inject` listing
    philosophy + coding-rules, and `slots: ["feature_name", "paths_globs", "paths_resolved"]`.
 
-2. `agents/spec-creator.md` MUST exist with YAML frontmatter declaring
-   `name: spec-creator`, `tools: Read, Grep, Glob` (exact comma-separated
+2. `agents/rabbit-spec-creator.md` MUST exist with YAML frontmatter declaring
+   `name: rabbit-spec-creator`, `tools: Read, Grep, Glob` (exact comma-separated
    list — no `Write`/`Edit`/`Bash`), `model: sonnet`, and `version: 1.0.0`.
    The body describes the read-only drafting task. The tool restriction is
    load-bearing — it makes side-effects impossible regardless of what the
-   agent attempts.
+   agent attempts. The agent's base name MUST start with `rabbit-` so that the
+   deployed `.claude/agents/rabbit-spec-creator.md` satisfies
+   `contract.lib.checks.check_naming` (Inv 10/15).
 
 3. `scripts/dispatch-spec-create.py` MUST be executable, carry a
    module-level docstring (Version/Owner/Deprecation criterion), and:
