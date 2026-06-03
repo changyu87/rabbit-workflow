@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
-"""issue #399 Phase 2: rabbit-feature's own spec dir migrated to specs/.
+"""issue #399 Phase 2b: rabbit-feature's own doc artifacts live at flat docs/.
 
 End-to-end check of the rabbit-feature feature directory layout after the
-docs/spec/ -> specs/ migration:
+specs/ -> flat docs/ migration:
 
-  * specs/spec.md and specs/contract.md exist and are non-empty.
-  * The legacy docs/spec/ directory is gone.
-  * docs/bugs/ is retained (only docs/spec was moved, not all of docs/).
-  * The feature still passes validate-feature.py (which dual-reads
-    specs/ then docs/spec/).
+  * docs/spec.md, docs/contract.md and docs/CHANGELOG.md exist and are
+    non-empty.
+  * docs/bugs/ is retained (the doc artifacts moved as siblings of bugs/,
+    not nested under it).
+  * The legacy specs/ directory is gone.
+  * The legacy root-level CHANGELOG.md is gone (moved into docs/).
+  * The feature still passes validate-feature.py (which dual-reads flat
+    docs/ then specs/ then docs/spec/).
 
-Version: 1.0.0
+Version: 2.0.0
 Owner: rabbit-workflow team
-Deprecation criterion: when every rabbit feature has migrated off the legacy
-docs/spec/ layout and the dual-read fallback is removed (issue #399 cleanup).
+Deprecation criterion: when every rabbit feature has migrated to the flat
+docs/ layout and the dual-read fallback is removed (issue #399 cleanup).
 """
 from __future__ import annotations
 
@@ -26,27 +29,39 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 VALIDATE = REPO_ROOT / ".claude/features/contract/scripts/validate-feature.py"
 
 
-def test_specs_dir_exists() -> None:
-    spec_md = FEATURE_DIR / "specs/spec.md"
-    contract_md = FEATURE_DIR / "specs/contract.md"
+def test_flat_docs_exist() -> None:
+    spec_md = FEATURE_DIR / "docs/spec.md"
+    contract_md = FEATURE_DIR / "docs/contract.md"
+    changelog_md = FEATURE_DIR / "docs/CHANGELOG.md"
     assert spec_md.is_file(), f"missing {spec_md}"
     assert contract_md.is_file(), f"missing {contract_md}"
-    assert spec_md.read_text().strip(), "specs/spec.md is empty"
-    assert contract_md.read_text().strip(), "specs/contract.md is empty"
-
-
-def test_legacy_docs_spec_gone() -> None:
-    legacy = FEATURE_DIR / "docs/spec"
-    assert not legacy.exists(), (
-        f"legacy docs/spec/ must be gone after migration (issue #399); found {legacy}"
-    )
+    assert changelog_md.is_file(), f"missing {changelog_md}"
+    assert spec_md.read_text().strip(), "docs/spec.md is empty"
+    assert contract_md.read_text().strip(), "docs/contract.md is empty"
+    assert changelog_md.read_text().strip(), "docs/CHANGELOG.md is empty"
 
 
 def test_docs_bugs_retained() -> None:
     bugs = FEATURE_DIR / "docs/bugs"
     assert bugs.is_dir(), (
-        f"docs/bugs/ must be retained — only docs/spec was moved, not all of docs/; "
-        f"missing {bugs}"
+        f"docs/bugs/ must be retained — doc artifacts moved as siblings, not "
+        f"nested under bugs/; missing {bugs}"
+    )
+
+
+def test_legacy_specs_gone() -> None:
+    legacy = FEATURE_DIR / "specs"
+    assert not legacy.exists(), (
+        f"legacy specs/ must be gone after the flat-docs migration (issue "
+        f"#399 Phase 2b); found {legacy}"
+    )
+
+
+def test_legacy_root_changelog_gone() -> None:
+    legacy = FEATURE_DIR / "CHANGELOG.md"
+    assert not legacy.exists(), (
+        f"root-level CHANGELOG.md must be gone after the flat-docs migration "
+        f"(moved into docs/); found {legacy}"
     )
 
 
