@@ -625,6 +625,63 @@ lives in Inv 22 above.
     template lives in the `contract` feature; the TDD subagent uses
     a one-time scope-override per Inv 45/46 precedent.
 
+### Downstream test-suite discovery
+
+56. **STEP 5 SYNC-DEPLOYED — downstream test-suite discovery on
+    delete/rename.** When the cycle DELETES or RENAMES any file under
+    `.claude/features/<feature>/`, the dispatched subagent's scope —
+    bounded to the primary feature and features it directly edits — does
+    NOT cover other features whose test fixtures or install closures
+    INDIRECTLY reference the removed path. PR #401 (issue #391) was the
+    motivating failure: retiring the Skill-path injection deleted files
+    under the contract feature, ran the contract suite and the six
+    `feature.json prompts`-edited features green, but silently broke 15
+    rabbit-cage tests whose `install.py` and test fixtures referenced the
+    removed paths — rabbit-cage's `test/run.py` never ran.
+
+    The dispatched-subagent template at
+    `.claude/features/contract/templates/prompts/tdd-subagent.txt` MUST,
+    in its STEP 5 SYNC-DEPLOYED section (which runs AFTER IMPLEMENT and
+    BEFORE CODE-REVIEW, per Inv 8/46 — the 8-step banner count is fixed,
+    so this requirement folds into STEP 5 rather than adding a STEP 9),
+    instruct the subagent to:
+
+    (a) **Detect deletes/renames.** Enumerate every file the cycle
+        DELETED or RENAMED under `.claude/features/<feature>/` (e.g. via
+        `git diff --diff-filter=DR --name-only` against the cycle's
+        base, or the equivalent rename detection).
+
+    (b) **Discover downstream consumers.** For each deleted/renamed path,
+        `grep` every `.claude/features/*/test/` directory for references
+        to that path (basename and/or relative path). Each matching
+        feature is a downstream consumer whose suite has an indirect
+        dependency on the removed artifact.
+
+    (c) **Run downstream suites.** For each discovered downstream
+        feature, run `python3 .claude/features/<downstream>/test/run.py`
+        IN ADDITION to the primary feature's own suite.
+
+    (d) **Block on failure.** If any downstream `test/run.py` exits
+        nonzero, the subagent MUST NOT proceed to CODE-REVIEW; it emits
+        a fail-HANDOFF (`tdd_state: impl`, `test_result: fail`,
+        `spec_compliance: fail`, `tdd_report_path: null`) whose `notes`
+        names the failing downstream feature and exit code. A passing
+        downstream sweep (or no deletes/renames at all) proceeds
+        normally.
+
+    The template file lives under the contract feature (contract
+    Inv 57); editing it is a cross-feature operation relative to
+    tdd-subagent's scope, so this invariant's implementation uses a
+    one-time scope-override on the template, matching the Inv 45/46/55
+    precedent. Enforced by
+    `test/test-prompt-downstream-test-discovery.py`, which asserts the
+    STEP 5 region of BOTH the contract-owned template AND the assembled
+    prompt (e2e through `dispatch-tdd-subagent.py`) names the
+    delete/rename trigger, instructs a grep of feature `test/`
+    directories, instructs running downstream `test/run.py`, and
+    references downstream suites — plus that this invariant is present in
+    spec.md.
+
 ## Out of Scope
 
 - Deployment of the assembled scripts into `.claude/agents/` — owned by
