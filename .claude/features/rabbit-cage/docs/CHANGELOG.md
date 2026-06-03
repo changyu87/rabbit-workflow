@@ -12,6 +12,22 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.43.0 (install.py maps renamed rabbit-spec-creator agent, #477):**
+  `install.py` deployed the rabbit-spec drafting agent from the OLD path
+  `spec-creator.md`, but issues #471/#473 renamed the source to
+  `rabbit-spec-creator.md`. Both references are corrected to the new
+  filename: the `AGENTS` deploy tuple now maps
+  `.claude/features/rabbit-spec/agents/rabbit-spec-creator.md` ->
+  `.claude/agents/rabbit-spec-creator.md`, and the
+  `FEATURE_INCLUDES["rabbit-spec"]` entry is now
+  `agents/rabbit-spec-creator.md`. On a fresh install or `--update` the
+  installer no longer redeploys the non-existent old file or skips the new
+  one. The feature-dir key (`rabbit-spec`) and the dispatch script entry
+  (`scripts/dispatch-spec-create.py`) are unchanged. Pinned by the new e2e
+  test `test/test-install-agent-path-rabbit-spec-creator.py`. install.py is
+  a deployed artifact (publish_file) — republish needed. Same pattern as
+  the #470 tdd-subagent fix.
+
 - **v5.42.0 (3-row rabbit-box SessionStart banner, #449):** Redesigned the
   SessionStart welcome banner emitted by `hooks/session-start-dispatcher.py`.
   The single compact `[rabbit] 🐇 rabbit v<version>` line is replaced by a
