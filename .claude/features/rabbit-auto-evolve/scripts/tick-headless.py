@@ -121,6 +121,19 @@ def run():
     repo_root = _repo_root()
     result = {"status": "completed", "phases": {}, "dispatch": "skipped"}
 
+    # --- tick-start working-tree self-sync (Inv 38 / #524) ----------------
+    # Self-sync BEFORE any phase script runs so the whole tick executes one
+    # consistent (latest-merged) script version. A dirty/divergent tree fails
+    # loudly here; we short-circuit cleanly rather than run stale scripts.
+    sync = _run("sync-tree.py", [])
+    result["phases"]["sync"] = sync.returncode
+    if sync.returncode != 0:
+        result["status"] = "noop"
+        result["reason"] = "sync-failed"
+        json.dump(result, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+        return 0
+
     # --- phase 0 / 1: stop / abort short-circuit --------------------------
     if os.path.exists(os.path.join(repo_root, STOP_MARKER)):
         result["status"] = "noop"

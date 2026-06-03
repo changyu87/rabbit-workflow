@@ -55,6 +55,8 @@ def ok(msg):
 # The stub phase scripts. Each appends its identifying token to $TRACE_FILE
 # and emits minimal valid stdout for the consumer in the pipe.
 STUBS = {
+    # sync -> tick-start working-tree self-sync (Inv 38); emits a synced status
+    "sync-tree.py": "print('{\"status\": \"synced\"}')",
     # fetch -> emits a JSON array of issues (consumed by triage)
     "fetch-queue.py": "print('[]')",
     # triage -> passthrough emits a JSON array (consumed by plan)
@@ -140,6 +142,13 @@ with tempfile.TemporaryDirectory() as d:
     else:
         ok("A: headless tick exited 0")
     t = read_trace(trace)
+    # Inv 38: the working-tree self-sync runs FIRST, before any phase script.
+    if "sync-tree.py" not in t:
+        fail(f"A: tick-start sync-tree.py did not run; trace={t!r}")
+    elif t[0] != "sync-tree.py":
+        fail(f"A: sync-tree.py did not run FIRST; trace={t!r}")
+    else:
+        ok("A: tick-start sync-tree.py ran first (Inv 38)")
     for phase in ("fetch-queue.py", "triage-batch.py", "plan-batch.py"):
         if phase not in t:
             fail(f"A: phase 2-4 script {phase} did not run; trace={t!r}")
@@ -196,7 +205,10 @@ with tempfile.TemporaryDirectory() as d:
     else:
         ok("B: stop-marker tick exited 0 (clean)")
     t = read_trace(trace)
-    if t:
+    # The Inv 38 tick-start sync runs before the stop-check; only PHASE
+    # scripts must be absent on a stop short-circuit.
+    phases = [x for x in t if x != "sync-tree.py"]
+    if phases:
         fail(f"B: phases ran despite stop marker; trace={t!r}")
     else:
         ok("B: no phase scripts ran (stop short-circuit)")
@@ -222,7 +234,8 @@ with tempfile.TemporaryDirectory() as d:
     else:
         ok("C: abort-marker tick exited 0 (clean)")
     t = read_trace(trace)
-    if t:
+    phases = [x for x in t if x != "sync-tree.py"]
+    if phases:
         fail(f"C: phases ran despite abort marker; trace={t!r}")
     else:
         ok("C: no phase scripts ran (abort short-circuit)")
@@ -318,6 +331,55 @@ with tempfile.TemporaryDirectory() as d:
         fail(f"E: persisted state still carries transient merge_ready: {persisted!r}")
     else:
         ok("E: transient merge_ready dropped from persisted state")
+
+
+# ---------------------------------------------------------------------------
+# Scenario F — a failing tick-start sync short-circuits to a clean no-op
+# (Inv 38 / #524): the tick must NOT run stale phase scripts on a dirty or
+# divergent tree. The sync-tree stub here exits non-zero.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root = os.path.join(d, "repo")
+    state_dir = os.path.join(repo_root, ".rabbit")
+    script_dir = os.path.join(d, "stubs")
+    trace = os.path.join(d, "trace.txt")
+    os.makedirs(repo_root)
+    os.makedirs(script_dir)
+    make_stub_scripts(script_dir, trace)
+    # Overwrite the sync stub with a failing one (exits non-zero).
+    with open(os.path.join(script_dir, "sync-tree.py"), "w") as f:
+        f.write(textwrap.dedent(f"""\
+            #!{sys.executable}
+            import sys
+            with open({trace!r}, "a") as _t:
+                _t.write("sync-tree.py" + "\\n")
+            print('{{"status": "dirty"}}')
+            sys.exit(1)
+            """))
+    write_state(state_dir, {
+        "schema_version": "1.2.0",
+        "queue": [],
+        "in_flight": [],
+        "merge_ready": [111],
+        "pending_post_merge": [],
+    })
+
+    proc = run_tick(repo_root, script_dir, state_dir, trace)
+    if proc.returncode != 0:
+        fail(f"F: sync-fail tick exit {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("F: sync-fail tick exited 0 (clean short-circuit no-op)")
+    t = read_trace(trace)
+    if "sync-tree.py" not in t:
+        fail(f"F: sync-tree.py did not run; trace={t!r}")
+    else:
+        ok("F: sync-tree.py ran")
+    ran_phases = [x for x in t if x != "sync-tree.py"]
+    if ran_phases:
+        fail(f"F: phase scripts ran after a failed sync (stale risk); "
+             f"trace={t!r}")
+    else:
+        ok("F: no phase scripts ran after a failed sync (Inv 38)")
 
 
 # ---------------------------------------------------------------------------
