@@ -49,15 +49,22 @@ def _write_shim(dir_path, body):
 
 
 def run_batch(items, script_dir):
-    """Invoke triage-batch.py with `items` piped as JSON on stdin."""
+    """Invoke triage-batch.py with `items` piped as JSON on stdin.
+
+    Hermetic: RABBIT_AUTO_EVOLVE_STATE_DIR is pointed at a fresh per-call
+    temp directory so triage-batch.py never falls back to <cwd>/.rabbit and
+    never mutates the live repo state file (Inv 18 isolation requirement).
+    """
     env = os.environ.copy()
     env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = script_dir
-    return subprocess.run(
-        [sys.executable, SCRIPT],
-        input=json.dumps(items),
-        capture_output=True, text=True,
-        env=env,
-    )
+    with tempfile.TemporaryDirectory() as state_dir:
+        env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+        return subprocess.run(
+            [sys.executable, SCRIPT],
+            input=json.dumps(items),
+            capture_output=True, text=True,
+            env=env,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +211,7 @@ with tempfile.TemporaryDirectory() as tmp:
     _write_shim(tmp, HAPPY_SHIM)
     env = os.environ.copy()
     env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = tmp
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = tmp
     proc = subprocess.run(
         [sys.executable, SCRIPT],
         input="not valid json{{{",
