@@ -13,6 +13,23 @@ own version.
 
 ## Version notes
 
+- **v0.38.1 — 2026-06-03** — Refire one-shots no longer accumulate (Inv 49,
+  #559). Every tick's phase 11 scheduled an immediate-refire one-shot (Inv 33)
+  but nothing cancelled a prior pending refire, so overlapping/retried ticks
+  piled up refires that fired together (an observed double-fire at a
+  non-heartbeat minute). The refire one-shot's prompt now carries a
+  recognizable refire marker (`/rabbit-auto-evolve tick #refire`) while the
+  recurring heartbeat keeps the bare `/rabbit-auto-evolve tick`, so refires
+  are distinguishable from the heartbeat. `schedule-decision.py` exposes a
+  pure, unit-testable `is_refire_oneshot(entry)` predicate (marker present AND
+  non-recurring AND non-durable) and, on the `immediate-refire` decision,
+  emits a `dispatcher_actions` block computed from the injected `CronList`
+  snapshot (env `RABBIT_AUTO_EVOLVE_CRON_LIST`): the prior refire ids to
+  `CronDelete` (`delete_refire_ids`), the heartbeat ids to PRESERVE
+  (`preserve_heartbeat_ids`, never deleted), and the single refire to
+  `CronCreate` (`create_refire`). The dedup targets refire one-shots ONLY and
+  never removes the recurring heartbeat. SKILL.md "Scheduling" gains the
+  emitted `dispatcher_actions` contract shape.
 - **v0.38.0 — 2026-06-03** — `release-bump.py` reads the closing issue's
   priority when the PR carries none (Inv 48, #529). The dispatch flow opens
   PRs WITHOUT copying the source issue's `priority:<level>` label, so the

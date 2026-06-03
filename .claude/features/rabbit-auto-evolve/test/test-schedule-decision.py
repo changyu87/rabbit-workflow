@@ -25,6 +25,17 @@ Scenarios:
   E) --help smoke
   F) _pinned_oneshot_cron(now=...) unit tests, including the :00/:30 nudge
      cases (Inv 33 pinned-minute amendment, #531)
+  G) the emitted refire one-shot carries the #refire marker so it is
+     distinguishable from the recurring heartbeat (Inv 49, #559)
+  H) dedup decision from an injected CronList snapshot (env
+     RABBIT_AUTO_EVOLVE_CRON_LIST): a prior refire + the heartbeat ->
+     delete_refire_ids holds the prior refire, preserve_heartbeat_ids holds
+     the heartbeat (and it is NEVER in delete_refire_ids), exactly one
+     create_refire (Inv 49, #559); absent snapshot -> empty delete list
+  I) is_refire_oneshot(entry) pure-predicate unit tests: a marked
+     non-recurring one-shot is a refire; the recurring/durable heartbeat is
+     NOT; a marker on a recurring entry is NOT; an unmarked one-shot is NOT
+     (Inv 49, #559)
 """
 
 import importlib.util
@@ -94,13 +105,15 @@ def make_crontab_shim(dirpath, restricted):
     return shim
 
 
-def run(d, queue_json, restricted=False):
+def run(d, queue_json, restricted=False, cron_list=None):
     fetch = make_fetch_shim(d, queue_json)
     cron = make_crontab_shim(d, restricted)
     env = os.environ.copy()
     env["RABBIT_AUTO_EVOLVE_FETCH_QUEUE_CMD"] = fetch
     env["RABBIT_CRONTAB_CMD"] = cron
     env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = os.path.join(d, ".rabbit")
+    if cron_list is not None:
+        env["RABBIT_AUTO_EVOLVE_CRON_LIST"] = cron_list
     return subprocess.run(
         [sys.executable, DECIDE], capture_output=True, text=True, env=env,
     )
@@ -127,9 +140,13 @@ with tempfile.TemporaryDirectory() as d:
         fail(f"A: out={proc.stdout!r} err={proc.stderr!r}")
     # The MACHINE wake-up fires the INTERNAL `tick` (which respects but never
     # deletes the stop marker), NOT the USER-intent `start` (which clears the
-    # stop and resurrects a halted loop). See Inv 41.
-    if j and j.get("prompt") == "/rabbit-auto-evolve tick":
-        ok("A: refire prompt is /rabbit-auto-evolve tick")
+    # stop and resurrects a halted loop). See Inv 41. Per Inv 49 (#559) the
+    # refire prompt ALSO carries the #refire marker so it is distinguishable
+    # from the recurring heartbeat (whose prompt is the bare tick command).
+    prompt = (j or {}).get("prompt", "")
+    if prompt.startswith("/rabbit-auto-evolve tick") and "start" not in prompt \
+            and "#refire" in prompt:
+        ok("A: refire prompt is the internal tick carrying the #refire marker")
     else:
         fail(f"A: wrong/absent prompt: {j!r}")
 
@@ -143,7 +160,11 @@ with tempfile.TemporaryDirectory() as d:
     else:
         fail(f"B: out={proc.stdout!r} err={proc.stderr!r}")
     cc = (j or {}).get("croncreate")
-    if isinstance(cc, dict) and cc.get("prompt") == "/rabbit-auto-evolve tick" \
+    # Inv 49 (#559): the croncreate prompt fires the internal tick and carries
+    # the #refire marker (distinguishing it from the recurring heartbeat).
+    if isinstance(cc, dict) \
+            and (cc.get("prompt") or "").startswith("/rabbit-auto-evolve tick") \
+            and "#refire" in (cc.get("prompt") or "") \
             and cc.get("durable") is False and cc.get("recurring") is False \
             and cc.get("cron"):
         ok("B: croncreate one-shot block carries cron/prompt/durable=false")
@@ -230,5 +251,125 @@ else:
         ok(f"F: default now -> pinned safe cron {res!r}")
     else:
         fail(f"F: default now -> unsafe/non-pinned cron {res!r}")
+
+# --- Inv 49: at-most-one refire dedup with a labelled signature (#559) -------
+
+REFIRE_MARKER = "#refire"
+
+
+# G — the emitted refire one-shot carries the refire marker so it is
+# distinguishable from the recurring heartbeat (which fires the bare prompt).
+with tempfile.TemporaryDirectory() as d:
+    proc = run(d, NONEMPTY, restricted=True)
+    j = parsed(proc) or {}
+    cc = j.get("croncreate") or {}
+    create = (j.get("dispatcher_actions") or {}).get("create_refire") or {}
+    # The refire prompt MUST carry the marker; the heartbeat prompt
+    # (install-cron HEARTBEAT_PROMPT) is the bare "/rabbit-auto-evolve tick".
+    if REFIRE_MARKER in (cc.get("prompt") or "") \
+            and REFIRE_MARKER in (create.get("prompt") or ""):
+        ok("G: refire one-shot prompt carries the #refire marker (croncreate "
+           "+ create_refire)")
+    else:
+        fail(f"G: refire prompt missing #refire marker: croncreate={cc!r} "
+             f"create_refire={create!r}")
+    if create.get("recurring") is False and create.get("durable") is False:
+        ok("G: create_refire is non-recurring and non-durable")
+    else:
+        fail(f"G: create_refire not both False: {create!r}")
+
+
+# H — dedup decision from an injected CronList snapshot holding a PRIOR refire
+# one-shot + the recurring heartbeat. The prior refire must be selected for
+# deletion; the heartbeat must be PRESERVED and never selected for deletion;
+# exactly one refire is created.
+HEARTBEAT_ENTRY = {
+    "id": "cron-heartbeat-1",
+    "prompt": "/rabbit-auto-evolve tick",
+    "cron": "13,43 * * * *",
+    "recurring": True,
+    "durable": True,
+}
+PRIOR_REFIRE_ENTRY = {
+    "id": "cron-refire-7",
+    "prompt": "/rabbit-auto-evolve tick #refire",
+    "cron": "16 10 * * *",
+    "recurring": False,
+    "durable": False,
+}
+SNAPSHOT = json.dumps([HEARTBEAT_ENTRY, PRIOR_REFIRE_ENTRY])
+
+with tempfile.TemporaryDirectory() as d:
+    proc = run(d, NONEMPTY, restricted=True, cron_list=SNAPSHOT)
+    j = parsed(proc) or {}
+    da = j.get("dispatcher_actions") or {}
+    delete_ids = da.get("delete_refire_ids")
+    preserve_ids = da.get("preserve_heartbeat_ids")
+    create = da.get("create_refire")
+    if isinstance(delete_ids, list) and "cron-refire-7" in delete_ids:
+        ok("H: prior refire id is in delete_refire_ids")
+    else:
+        fail(f"H: prior refire id NOT scheduled for deletion: {da!r}")
+    # The heartbeat must NEVER be selected for deletion.
+    if isinstance(delete_ids, list) and "cron-heartbeat-1" not in delete_ids:
+        ok("H: heartbeat id is NOT in delete_refire_ids")
+    else:
+        fail(f"H: heartbeat id wrongly scheduled for deletion: {da!r}")
+    if isinstance(preserve_ids, list) and "cron-heartbeat-1" in preserve_ids:
+        ok("H: heartbeat id is in preserve_heartbeat_ids")
+    else:
+        fail(f"H: heartbeat id not preserved: {da!r}")
+    # Exactly one refire is created, and it carries the marker.
+    if isinstance(create, dict) and REFIRE_MARKER in (create.get("prompt") or ""):
+        ok("H: exactly one create_refire emitted with the #refire marker")
+    else:
+        fail(f"H: create_refire malformed/absent: {da!r}")
+
+
+# H2 — absent CronList snapshot is treated as empty: no deletions, still one
+# create_refire.
+with tempfile.TemporaryDirectory() as d:
+    proc = run(d, NONEMPTY, restricted=True)  # no cron_list
+    j = parsed(proc) or {}
+    da = j.get("dispatcher_actions") or {}
+    if da.get("delete_refire_ids") == [] and isinstance(da.get("create_refire"), dict):
+        ok("H2: absent CronList -> empty delete list + one create_refire")
+    else:
+        fail(f"H2: absent CronList not handled as empty: {da!r}")
+
+
+# I — is_refire_oneshot(entry) pure predicate unit tests.
+mod = _load_decide_module()
+if not hasattr(mod, "is_refire_oneshot"):
+    fail("I: schedule-decision.py has no is_refire_oneshot predicate")
+else:
+    is_refire = mod.is_refire_oneshot
+    # A marked, non-recurring, non-durable one-shot IS a refire.
+    if is_refire(PRIOR_REFIRE_ENTRY) is True:
+        ok("I: marked non-recurring non-durable entry -> refire (True)")
+    else:
+        fail("I: marked refire one-shot not recognised as a refire")
+    # The recurring/durable heartbeat (no marker) is NEVER a refire.
+    if is_refire(HEARTBEAT_ENTRY) is False:
+        ok("I: recurring/durable heartbeat -> NOT a refire (False)")
+    else:
+        fail("I: heartbeat wrongly classified as a refire (would be deleted!)")
+    # A recurring entry that happens to carry the marker is still NOT a refire
+    # one-shot (a refire is a ONE-SHOT; recurring excludes it from the dedup
+    # target so we never tear down a recurring schedule).
+    marked_recurring = dict(HEARTBEAT_ENTRY)
+    marked_recurring["prompt"] = "/rabbit-auto-evolve tick #refire"
+    marked_recurring["recurring"] = True
+    if is_refire(marked_recurring) is False:
+        ok("I: marker on a RECURRING entry -> NOT a refire one-shot (False)")
+    else:
+        fail("I: a recurring marked entry wrongly classified as a refire")
+    # A bare one-shot with no marker is NOT a refire (can't prove it's ours).
+    bare_oneshot = dict(PRIOR_REFIRE_ENTRY)
+    bare_oneshot["prompt"] = "/rabbit-auto-evolve tick"
+    if is_refire(bare_oneshot) is False:
+        ok("I: unmarked one-shot -> NOT a refire (False)")
+    else:
+        fail("I: an unmarked one-shot wrongly classified as a refire")
 
 sys.exit(FAIL)

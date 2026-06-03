@@ -276,7 +276,10 @@ with tempfile.TemporaryDirectory() as d:
         j = json.loads(proc.stdout)
     except json.JSONDecodeError:
         j = None
-    if j and j.get("prompt") == "/rabbit-auto-evolve tick":
+    # Inv 41: the refire fires the internal `tick`, NEVER `start`. Inv 49
+    # (#559): the refire prompt ALSO carries the #refire marker.
+    prompt = (j or {}).get("prompt", "")
+    if prompt.startswith("/rabbit-auto-evolve tick") and "start" not in prompt:
         ok("E: immediate-refire prompt is /rabbit-auto-evolve tick (not start)")
     else:
         fail(f"E: refire prompt is not 'tick': {j!r}")
@@ -288,7 +291,8 @@ with tempfile.TemporaryDirectory() as d:
     except json.JSONDecodeError:
         j = None
     cc = (j or {}).get("croncreate")
-    if isinstance(cc, dict) and cc.get("prompt") == "/rabbit-auto-evolve tick":
+    cc_prompt = (cc or {}).get("prompt", "") if isinstance(cc, dict) else ""
+    if cc_prompt.startswith("/rabbit-auto-evolve tick") and "start" not in cc_prompt:
         ok("E: croncreate one-shot prompt is /rabbit-auto-evolve tick (not start)")
     else:
         fail(f"E: croncreate prompt is not 'tick': {cc!r}")
