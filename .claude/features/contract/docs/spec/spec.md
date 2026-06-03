@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.0.0
+version: 2.1.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -309,6 +309,12 @@ Numbering preserves gaps at 4, 6, 7, 27, 28, 29, 30, 35, 55, 56 for retired inva
     (c) **Cross-feature contract.** rabbit-cage's `scope-guard.py` PreToolUse hook is the canonical interceptor for `Agent` tool calls and is the implementation site for this validation. rabbit-cage's spec carries a paired invariant declaring scope-guard delegates to `contract.lib.checks.validate_agent_prompt_sentinel`. The cross-feature read is declared in rabbit-cage's `contract.md` `invokes.functions` block (target: `contract.lib.checks.validate_agent_prompt_sentinel`); the cross-feature export is declared in contract's `contract.md` `provides.functions` block.
 
     Enforced by NEW tests: `test/test-validate-agent-prompt-sentinel.py` covering: (i) prompt containing sentinel → `passed=True`; (ii) prompt missing sentinel + no bypass marker → `passed=False` with the canonical message; (iii) prompt missing sentinel + bypass marker present → `passed=True`; (iv) empty/missing `prompt` key → `passed=False` (defensive — empty string lacks the sentinel); (v) non-string `prompt` (defensive type check) → `passed=False`. The sentinel-source-uniqueness rule (sentinel string defined only in `lib/policy_block.py`) is enforced by extending `test/test-check-sentinel.py` (or a new `test/test-sentinel-source-uniqueness.py` if the existing test scope does not fit) to grep the codebase for `RABBIT-POLICY-BLOCK-v1` and assert occurrences are limited to `lib/policy_block.py`, `lib/checks.py` (the validator), and test files exercising the sentinel.
+
+67. **Universal Stop-event timestamp API `emit_stop_timestamp`.** `.claude/features/contract/lib/runtime.py` MUST export a new module-level function `emit_stop_timestamp(*, repo_root: str) -> list[dict]` that returns a list containing EXACTLY ONE `print_result` entry built via the existing factory: `[print_result(text, "⏱", "green")]` where `text` is the current UTC time formatted as `HH:MM:SS` (e.g. `"14:32:07"`). The function takes no inputs beyond the standard `repo_root` keyword (unused — accepted for dispatcher-signature consistency) and reads no markers, no files, no env vars; it is a pure render of `datetime.utcnow().strftime("%H:%M:%S")` into the standard `print_result` shape. It NEVER short-circuits to `[]` — every invocation emits the timestamp line. This gives every Stop event in every rabbit-workflow session a turn-end marker visible regardless of auto-evolve mode.
+
+    The function name `emit_stop_timestamp` MUST be added to the closed runtime API enum in `schemas/runtime.schema.json` (per Inv 41, the schema is the SOLE source of truth for the closed enum). `lib/checks.py`'s `_RUNTIME_API_ENUM` import-time load from the schema will pick up the new entry automatically (no hardcoded duplicate). Inv 47's 15-function enumeration in this spec MUST be amended to 16 functions, naming `emit_stop_timestamp` alongside the existing fifteen.
+
+    Enforced by `test/test-runtime-emit-stop-timestamp.py`: (i) function exists and is callable with `repo_root=<any>`; (ii) returns a `list` of length 1; (iii) the single entry's `type == "print"`; (iv) `icon == "⏱"`; (v) `color == "green"`; (vi) `text` matches the regex `^[0-2][0-9]:[0-5][0-9]:[0-5][0-9]$`; (vii) two successive calls produce two valid HH:MM:SS strings (proves time is read each call, not cached). The existing `test/test-runtime-schema-shape.py` should automatically pass once the schema is bumped to include `emit_stop_timestamp` in the enum (no test edit required — schema-shape test reads the enum from the schema file itself).
 
 ## Template marker convention
 

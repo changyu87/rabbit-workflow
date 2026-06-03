@@ -18,12 +18,13 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.7.0
+Version: 1.8.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
 """
 
+import datetime
 import importlib.util
 import json
 import os
@@ -831,3 +832,17 @@ def emit_auto_evolve_stop_line(*, repo_root: str) -> list:
         if os.path.isfile(os.path.join(repo_root, path)):
             return [print_result(text=text, icon=icon, color=color)]
     return []
+
+
+def emit_stop_timestamp(*, repo_root: str) -> list:
+    """Inv 67 — universal Stop-event turn-end timestamp.
+
+    Returns exactly one print_result entry whose text is the current UTC
+    time formatted as HH:MM:SS, icon ⏱, color green. Reads no markers, no
+    files, no env vars; repo_root is accepted for dispatcher-signature
+    consistency but unused. NEVER short-circuits to [] — every invocation
+    emits the timestamp line so every Stop event in every session has a
+    turn-end marker visible regardless of auto-evolve mode.
+    """
+    text = datetime.datetime.utcnow().strftime("%H:%M:%S")
+    return [print_result(text, "⏱", "green")]

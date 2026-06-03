@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.33.0
+version: 5.34.0
 template_version: 2.0.0
 ---
 
@@ -65,7 +65,8 @@ template_version: 2.0.0
       {"path": ".claude/features/contract/scripts/find-feature.py", "purpose": "scope-guard.py feature-name -> path resolution"}
     ],
     "functions": [
-      {"path": ".claude/features/contract/lib/checks.py", "function": "validate_agent_prompt_sentinel", "purpose": "scope-guard.py Agent-tool sentinel validation (Inv 31 / contract Inv 66)"}
+      {"path": ".claude/features/contract/lib/checks.py", "function": "validate_agent_prompt_sentinel", "purpose": "scope-guard.py Agent-tool sentinel validation (Inv 31 / contract Inv 66)"},
+      {"path": ".claude/features/contract/lib/runtime.py", "function": "emit_stop_timestamp", "purpose": "universal Stop-event turn-end timestamp marker (Inv 32 / contract Inv 67)"}
     ]
   },
   "manages": {

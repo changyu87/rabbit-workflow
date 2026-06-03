@@ -29,6 +29,7 @@ EXPECTED_RUNTIME_APIS = {
     "check_release_update",
     "emit_auto_evolve_banner",
     "emit_auto_evolve_stop_line",
+    "emit_stop_timestamp",
 }
 
 FAIL = 0
