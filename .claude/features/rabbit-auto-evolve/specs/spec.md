@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.21.0
+version: 0.22.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2045,6 +2045,18 @@ Phase E merges complete.
     3. Otherwise, in order:
        - **Phase 7 (release):** invoke
          `release-bump.py <pr#>` once per PR in `pending_post_merge`.
+         Release success is keyed on `release-bump.py`'s stdout JSON
+         `status` field — NOT merely on its exit code. `release-bump.py`
+         exits 0 even when its `status` is `"skipped"` (e.g.
+         safety-check-failed: no git mutation) or `"failed"`, so a
+         non-zero exit alone cannot distinguish an owed-but-dropped
+         release from a real one (observed live on PR #510, issue #512).
+         A release whose `status` is anything other than `"released"`
+         (including unparseable stdout) is treated as a NON-success: the
+         run does NOT proceed to cleanup/catch-up, the result `status` is
+         set to `"failed"` with the offending release JSON included, and
+         the run exits non-zero leaving `pending_post_merge` INTACT so the
+         next tick's tick-start drain retries the owed work.
        - **Phase 8 (cleanup):** invoke
          `cleanup-branches.py <comma-joined pr-list>` once for the whole set.
        - **Phase 9 (catch-up):** invoke
@@ -2063,7 +2075,8 @@ Phase E merges complete.
     `cleanup-branches.py`).
 
     Exit code: 0 on success (including the no-op path). Non-zero on any phase
-    script failure (a phase script exiting non-zero) — the caller
+    failure — either a phase script exiting non-zero, OR a release-bump
+    `status` other than `"released"` (see Phase 7) — so the caller
     (`end-tick.py` / the SKILL schedule phase) sees a loud, locatable
     failure instead of a silently-dropped phase. On a phase failure
     `pending_post_merge` is NOT cleared, so the next tick's tick-start drain
@@ -2094,6 +2107,10 @@ Phase E merges complete.
     - A phase shim exiting non-zero: `run-post-merge.py` exits non-zero and
       does NOT clear `pending_post_merge` (owed work survives for the next
       tick's drain).
+    - A `release-bump.py` shim emitting `{"status": "skipped", ...}` with
+      exit 0: `run-post-merge.py` exits non-zero, does NOT invoke
+      cleanup/catch-up, and does NOT clear `pending_post_merge` (issue
+      #512 — a skipped release is an owed release, not a success).
     - `--help` smoke: exit 0 with recognizable usage text.
 
     And by `test/test-merge-prs.py` (extended): with `--record-pending`, the

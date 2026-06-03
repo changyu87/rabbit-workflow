@@ -12,6 +12,10 @@ Covers the spec'd surface of `scripts/run-post-merge.py`:
     phase shim invoked; exit 0; status: noop
   - a phase shim exiting non-zero: run-post-merge.py exits non-zero AND does
     NOT clear pending_post_merge (owed work survives for next tick's drain)
+  - a release-bump.py shim emitting {"status":"skipped"} with exit 0:
+    run-post-merge.py exits non-zero, does NOT invoke cleanup/catch-up, and
+    does NOT clear pending_post_merge (issue #512 — a skipped release is an
+    owed release, not a success)
 
 Fixtures: a script_dir holding shims for the three phase scripts (resolved by
 run-post-merge.py via RABBIT_AUTO_EVOLVE_SCRIPT_DIR), each appending its
@@ -43,15 +47,18 @@ def ok(msg):
     print(f"PASS: {msg}")
 
 
-def _write_phase_shim(script_dir, name, call_log, exit_code=0):
+def _write_phase_shim(script_dir, name, call_log, exit_code=0, stdout=None):
     """Write a phase-script shim that appends 'name <argv...>' to call_log
-    (one line per call) then exits exit_code."""
+    (one line per call), optionally prints `stdout` verbatim, then exits
+    exit_code."""
     shim = os.path.join(script_dir, name)
     with open(shim, "w") as f:
         f.write("#!/usr/bin/env python3\n")
         f.write("import sys\n")
         f.write(f"with open({call_log!r}, 'a') as _f:\n")
         f.write(f"    _f.write({name!r} + ' ' + ' '.join(sys.argv[1:]) + '\\n')\n")
+        if stdout is not None:
+            f.write(f"sys.stdout.write({stdout!r})\n")
         f.write(f"sys.exit({exit_code})\n")
     os.chmod(shim, stat.S_IRWXU)
 
@@ -73,7 +80,8 @@ def _seed_state(state_dir, pending):
         json.dump(state, f)
 
 
-def _make_env(tmpdir, release_exit=0, cleanup_exit=0, catchup_exit=0):
+def _make_env(tmpdir, release_exit=0, cleanup_exit=0, catchup_exit=0,
+              release_status="released"):
     script_dir = os.path.join(tmpdir, "scripts")
     os.makedirs(script_dir)
     state_dir = os.path.join(tmpdir, "state")
@@ -81,7 +89,10 @@ def _make_env(tmpdir, release_exit=0, cleanup_exit=0, catchup_exit=0):
     call_log = os.path.join(tmpdir, "phase-calls.log")
     open(call_log, "w").close()
 
-    _write_phase_shim(script_dir, "release-bump.py", call_log, release_exit)
+    release_stdout = (json.dumps({"status": release_status}) + "\n"
+                      if release_status is not None else None)
+    _write_phase_shim(script_dir, "release-bump.py", call_log, release_exit,
+                      stdout=release_stdout)
     _write_phase_shim(script_dir, "cleanup-branches.py", call_log, cleanup_exit)
     _write_phase_shim(script_dir, "classify-merge-restart.py", call_log,
                       catchup_exit)
@@ -274,6 +285,49 @@ with tempfile.TemporaryDirectory() as td:
              f"got {state.get('pending_post_merge')!r}")
     else:
         ok("phase-fail: pending_post_merge NOT cleared (owed work survives)")
+
+
+# ---------------------------------------------------------------------------
+# release-bump.py emits {"status":"skipped"} with exit 0 (issue #512): a
+# skipped release is an owed release, not a success. run-post-merge.py must
+# exit non-zero, NOT invoke cleanup/catch-up, and NOT clear
+# pending_post_merge.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    script_dir, state_dir, call_log, env = _make_env(
+        td, release_exit=0, release_status="skipped")
+    _seed_state(state_dir, [10, 20])
+    proc = _run(env)
+    if proc.returncode == 0:
+        fail("release-skipped: expected non-zero exit when release-bump "
+             "status is 'skipped' (exit 0); got 0")
+    else:
+        ok("release-skipped: non-zero exit on skipped release")
+
+    names = [c.split()[0] for c in _calls(call_log)]
+    if "cleanup-branches.py" in names or "classify-merge-restart.py" in names:
+        fail(f"release-skipped: cleanup/catch-up invoked after a skipped "
+             f"release; calls={names!r}")
+    else:
+        ok("release-skipped: cleanup/catch-up NOT invoked")
+
+    state = _read_state(state_dir)
+    if state.get("pending_post_merge") != [10, 20]:
+        fail(f"release-skipped: pending_post_merge should survive a skipped "
+             f"release; got {state.get('pending_post_merge')!r}")
+    else:
+        ok("release-skipped: pending_post_merge NOT cleared (owed work "
+           "survives)")
+
+    try:
+        out = json.loads(proc.stdout)
+        if out.get("status") != "failed":
+            fail(f"release-skipped: result status {out.get('status')!r} != "
+                 f"'failed'")
+        else:
+            ok("release-skipped: result status 'failed'")
+    except json.JSONDecodeError as e:
+        fail(f"release-skipped: stdout not JSON: {e}; stdout={proc.stdout!r}")
 
 
 sys.exit(FAIL)
