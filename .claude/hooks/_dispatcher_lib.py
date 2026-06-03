@@ -125,23 +125,30 @@ def render_emission(payloads):
     ok     -> dropped.
     error  -> written to stderr (one line per error); not surfaced.
 
+    Rendered banner/print/subline lines are ordered by a stable footer
+    partition (Inv 33): payloads carrying order=='footer' are held back and
+    appended AFTER all non-footer lines, each group preserving dispatch
+    order. inject ordering is unaffected by the partition.
+
     Returns None when no renderable lines and no inject are present.
     """
-    lines = []
+    rendered = []  # (is_footer, str)
     injects = []
     for p in payloads:
         t = p.get("type")
+        is_footer = p.get("order") == "footer"
         if t == "banner":
-            lines.append(rabbit_print(p["text"], p["icon"], p["color"], format="banner"))
+            rendered.append((is_footer, rabbit_print(p["text"], p["icon"], p["color"], format="banner")))
         elif t == "print":
-            lines.append(rabbit_subline(p["text"], color=p["color"], icon=p["icon"]))
+            rendered.append((is_footer, rabbit_subline(p["text"], color=p["color"], icon=p["icon"])))
         elif t == "subline":
-            lines.append(rabbit_subline(p["text"], color=p.get("color", "green")))
+            rendered.append((is_footer, rabbit_subline(p["text"], color=p.get("color", "green"))))
         elif t == "inject":
             injects.append(p)
         elif t == "error":
             sys.stderr.write(f"dispatcher: {p.get('message', '')}\n")
         # 'ok' and unknown: drop
+    lines = [s for f, s in rendered if not f] + [s for f, s in rendered if f]
     if not lines and not injects:
         return None
     out = {}

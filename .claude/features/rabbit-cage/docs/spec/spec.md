@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.34.0
+version: 5.35.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -58,11 +58,15 @@ Each event dispatcher (`stop-dispatcher.py`, `session-start-dispatcher.py`,
    `color` directly from the payload); `print` results are rendered via
    `rabbit_print.rabbit_subline(text, color, icon)` (compact format);
    `subline` results are rendered via
-   `rabbit_print.rabbit_subline(text, color)` without icon; all rendered
-   lines are joined into `systemMessage` via `rabbit_print.rabbit_block`;
-   `inject` results are concatenated into `additionalContext`; `ok` results
-   are dropped; `error` results are written to stderr (one line each) and
-   never surfaced.
+   `rabbit_print.rabbit_subline(text, color)` without icon. Rendered
+   `banner`/`print`/`subline` lines are ordered by a stable footer
+   partition (Inv 33): lines whose payload carries `order == "footer"`
+   are held back and appended AFTER all non-footer lines, each group
+   preserving dispatch order. All rendered lines are then joined into
+   `systemMessage` via `rabbit_print.rabbit_block`; `inject` results are
+   concatenated into `additionalContext` (inject ordering is unaffected
+   by the footer partition); `ok` results are dropped; `error` results
+   are written to stderr (one line each) and never surfaced.
 4. Emits at most one JSON object to stdout per invocation. When no `print`
    and no `inject` result is collected, the dispatcher writes nothing
    (exit 0).
@@ -449,6 +453,8 @@ string BEFORE splitting on `;|&` segment delimiters.
     Enforced by NEW test `test/test-scope-guard-agent-sentinel.py`: (i) Agent call with prompt containing sentinel → hook exits 0, stdout `{}`, call proceeds; (ii) Agent call with prompt missing sentinel + no bypass marker → hook emits the deny-shape JSON with the canonical violation message, exits non-zero; (iii) Agent call with bypass marker `.rabbit/agent-sentinel-bypass` present → hook exits 0 even when sentinel is absent; (iv) non-Agent tool call (e.g. Bash, Edit) → hook does NOT invoke the sentinel validator (regression: the existing file-write enforcement is unchanged); (v) Agent call with malformed tool_input (no `prompt` key) → hook emits the deny-shape (defensive). Wired into `test/run.py`.
 
 32. **Universal Stop-event timestamp runtime entry (delegate to contract Inv 67).** rabbit-cage's `feature.json` `runtime.Stop` array MUST include an entry `{"api": "emit_stop_timestamp", "args": {}}` that invokes the universal turn-end-marker function exported by contract per Inv 67. Stop-dispatcher.py enumerates this entry like any other and renders the returned `print_result` (a compact `[rabbit] ⏱ HH:MM:SS` line) at the end of every session's Stop event. The entry belongs in rabbit-cage's runtime (not contract's) because it is universal — every rabbit-workflow session should see the timestamp, irrespective of any specific feature being active. Cross-feature invocation declared in this feature's `contract.md` `invokes.functions` block (target: `contract.lib.runtime.emit_stop_timestamp`). Enforced by `test/test-stop-timestamp-entry-present.py`: load this feature's `feature.json`, assert `runtime.Stop` contains an entry with `api == "emit_stop_timestamp"`; assert that entry's `args` is an empty dict (no parameters needed). Wired into `test/run.py`.
+
+33. **Footer-ordering partition in `render_emission` (issue #413).** `hooks/_dispatcher_lib.py`'s `render_emission(payloads)` MUST render rendered lines (`banner`/`print`/`subline` payloads) in a stable two-group order: first every payload WITHOUT `order == "footer"` in dispatch order, then every payload WITH `order == "footer"` in dispatch order. The two groups are concatenated (non-footer first, footer last) before being joined via `rabbit_print.rabbit_block`. The `order` field is the OPTIONAL payload-level rendering hint defined by contract Inv 67 (only value `"footer"`; absence = normal order); `render_emission` reads it via `p.get("order")` and treats any value other than `"footer"` as normal. This guarantees the universal Stop timestamp (`emit_stop_timestamp`, which tags its payload `order == "footer"` per contract Inv 67) closes the Stop block, even though the dispatch order is `(alphabetical feature) × (declaration order)` and features sorting alphabetically AFTER `rabbit-cage` — notably `rabbit-config`'s `iterate_configurables_alerts` (HUMAN APPROVAL BYPASS, BYPASS-PERMISSIONS) — emit actionable status lines that would otherwise render below the passive timestamp. `inject` results are NOT subject to the footer partition (their `additionalContext` concatenation order is unchanged); `ok`/`error` handling is unchanged. The partition MUST be stable: within each group, relative dispatch order is preserved (Python list iteration with two passes, or a stable sort keyed on `order == "footer"`). Enforced by extending `test/test-dispatcher-lib.py`: (i) a payload list mixing a normal `print` and a `print` carrying `order == "footer"` renders the footer line LAST in `systemMessage`; (ii) two footer payloads preserve their relative dispatch order among themselves, after all non-footer lines; (iii) a payload list with no footer-tagged entries renders in unchanged dispatch order (regression); (iv) `inject` payloads are unaffected by the presence of a footer-tagged print. Wired into `test/run.py`.
 
 ## Tech Stack
 

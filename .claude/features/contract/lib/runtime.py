@@ -843,6 +843,18 @@ def emit_stop_timestamp(*, repo_root: str) -> list:
     consistency but unused. NEVER short-circuits to [] — every invocation
     emits the timestamp line so every Stop event in every session has a
     turn-end marker visible regardless of auto-evolve mode.
+
+    The single entry is tagged with the footer-ordering marker
+    ``"order": "footer"`` (issue #413). ``order`` is an optional
+    payload-level rendering hint whose only defined value is ``"footer"``;
+    absence (the default for every other producer) means normal order. A
+    payload carrying ``"order": "footer"`` instructs the rabbit-cage
+    dispatcher's ``render_emission`` to render that line AFTER all
+    non-footer lines, so the passive turn-end marker deterministically
+    closes the Stop block instead of being pushed above actionable status
+    lines emitted by alphabetically-later features. The
+    print_result/banner_result/subline_result factories are unchanged —
+    they never set ``order``; only this function adds it (by dict-merge).
     """
     text = datetime.datetime.utcnow().strftime("%H:%M:%S")
-    return [print_result(text, "⏱", "green")]
+    return [{**print_result(text, "⏱", "green"), "order": "footer"}]
