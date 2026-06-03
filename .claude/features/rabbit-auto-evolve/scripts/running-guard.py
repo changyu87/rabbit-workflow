@@ -19,21 +19,47 @@ This script inspects `<repo_root>/.rabbit-auto-evolve-running` and emits JSON:
                             "stale_cleared": true}
   - present + FRESH     -> {"action": "skip", "reason": "tick-running"}
 
-A marker is STALE when EITHER:
-  - its mtime is older than the MAX_TICK_DURATION window (default 1800 s;
-    overridable via RABBIT_AUTO_EVOLVE_MAX_TICK_SECS for tests), OR
-  - it records an owner `pid=<n>` AND that PID is not alive.
+STALENESS (Inv 35, corrected for issue #526). The old "stale when marker mtime
+> MAX_TICK_DURATION OR the recorded PID is dead" rule was UNSOUND: the marker's
+mtime is frozen at creation, so a long-but-active tick tripped the age window;
+and start-loop.py stamped its own transient `os.getpid()`, which dies seconds
+after the marker is written, so the dead-PID arm flagged EVERY tick stale.
+Either false-stale verdict clears an ACTIVE tick's marker and lets a concurrent
+tick start on top of it — corrupting the shared state the guard protects.
 
-mtime is the PRIMARY staleness signal so the guard works even when the marker
-carries no PID. start-loop.py writes `pid=<n> ts=<iso>` into the marker
-content to enable the PID-liveness check; existence-based readers
-(status-report.py, end-tick.py) are unaffected (they key on the filename).
+The corrected rule keys on ACTUAL activity and a DURABLE owner, combined
+CONSERVATIVELY (prefer a false-NEGATIVE over a false-POSITIVE):
+
+  - Activity signal (PRIMARY): the tick is ACTIVE when
+    `<state_dir>/auto-evolve-state.json` exists AND its mtime advanced within
+    IDLE_WINDOW (default 600 s; overridable via RABBIT_AUTO_EVOLVE_IDLE_SECS).
+    state.json mtime advances on every update-state.py write, so it tracks
+    liveness even for a multi-hour active tick. Total elapsed since marker
+    creation is NO LONGER a staleness signal on its own.
+  - Durable owner liveness (SECONDARY): when the marker records an owner
+    `pid=<n>` AND that process is alive, the tick is ACTIVE regardless of the
+    activity window. When no PID is recorded, the guard relies on the activity
+    signal alone (it MUST still function PID-free).
+  - Conservative AND-combine: STALE iff (no live owner) AND (state.json idle
+    beyond IDLE_WINDOW, or absent). If EITHER the owner is alive OR activity is
+    recent, the marker is FRESH and preserved.
+
+start-loop.py writes a DURABLE owner `pid=<n>` (the long-lived session PID, not
+its own transient subprocess PID) and an ISO-8601 timestamp into the marker
+content; existence-based readers (status-report.py, end-tick.py) are unaffected
+(they key on the filename, which is unchanged).
 
   repo_root via RABBIT_AUTO_EVOLVE_REPO_ROOT, else os.getcwd().
+  state_dir via RABBIT_AUTO_EVOLVE_STATE_DIR, else <cwd>/.rabbit
+  (matching update-state.py).
+
+MAX_TICK_DURATION / RABBIT_AUTO_EVOLVE_MAX_TICK_SECS is kept readable for
+back-compat but it MUST NOT alone force stale — only the IDLE_WINDOW activity
+test governs the time arm.
 
 Exit code is always 0 (the verdict is carried in `action`).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -47,7 +73,10 @@ import sys
 import time
 
 MARKER = ".rabbit-auto-evolve-running"
-DEFAULT_MAX_TICK_SECS = 1800  # 30 min
+STATE_FILE = "auto-evolve-state.json"
+DEFAULT_MAX_TICK_SECS = 1800  # 30 min — retained for back-compat (not a
+                              # standalone staleness signal post-#526).
+DEFAULT_IDLE_SECS = 600  # 10 min — the activity window (Inv 35 / #526).
 _PID_RE = re.compile(r"pid=(\d+)")
 
 
@@ -55,14 +84,20 @@ def _repo_root():
     return os.environ.get("RABBIT_AUTO_EVOLVE_REPO_ROOT") or os.getcwd()
 
 
-def _max_tick_secs():
-    raw = os.environ.get("RABBIT_AUTO_EVOLVE_MAX_TICK_SECS")
+def _state_path():
+    override = os.environ.get("RABBIT_AUTO_EVOLVE_STATE_DIR")
+    state_dir = override if override else os.path.join(os.getcwd(), ".rabbit")
+    return os.path.join(state_dir, STATE_FILE)
+
+
+def _idle_secs():
+    raw = os.environ.get("RABBIT_AUTO_EVOLVE_IDLE_SECS")
     if raw is None:
-        return DEFAULT_MAX_TICK_SECS
+        return DEFAULT_IDLE_SECS
     try:
         return max(0, int(raw))
     except ValueError:
-        return DEFAULT_MAX_TICK_SECS
+        return DEFAULT_IDLE_SECS
 
 
 def _pid_alive(pid):
@@ -80,22 +115,40 @@ def _pid_alive(pid):
     return True
 
 
-def _is_stale(path):
-    """Return (stale, reason). mtime is the primary signal; a dead recorded
-    PID is a secondary signal."""
-    age = time.time() - os.path.getmtime(path)
-    if age > _max_tick_secs():
-        return True, f"mtime age {int(age)}s exceeds max-tick window"
+def _owner_alive(path):
+    """True iff the marker records a `pid=<n>` AND that process is alive.
+    A PID-free marker yields False (no live owner — fall back to activity)."""
     try:
         content = open(path).read()
     except OSError:
-        content = ""
+        return False
     m = _PID_RE.search(content)
-    if m:
-        pid = int(m.group(1))
-        if not _pid_alive(pid):
-            return True, f"owner pid {pid} not alive"
-    return False, "fresh"
+    if not m:
+        return False
+    return _pid_alive(int(m.group(1)))
+
+
+def _active_recent():
+    """True iff state.json exists AND its mtime advanced within IDLE_WINDOW.
+    Tracks the LIVE tick's activity (every update-state.py write touches it),
+    so a long-but-active tick is never judged idle."""
+    state_path = _state_path()
+    try:
+        age = time.time() - os.path.getmtime(state_path)
+    except OSError:
+        return False  # absent state.json -> no activity signal
+    return age <= _idle_secs()
+
+
+def _is_stale(path):
+    """Return (stale, reason). STALE only when BOTH no-live-owner AND
+    state.json idle (conservative AND; prefer false-negative). Either a live
+    owner OR recent activity keeps the marker FRESH (Inv 35 / #526)."""
+    if _owner_alive(path):
+        return False, "owner pid alive"
+    if _active_recent():
+        return False, "state.json activity within idle window"
+    return True, "no live owner and state.json idle"
 
 
 def _log(decision, detail):

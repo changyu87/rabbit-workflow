@@ -1,9 +1,9 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and is fired on a fixed cadence by the system cron where available (with a durable CronCreate fallback where crontab is blocked; Inv 32) until the user issues an explicit stop.",
   "surface": {
     "hooks": [],
@@ -39,5 +39,5 @@
   },
   "configuration": [],
   "prompts": [],
-  "spec_no_change_reason": "Inv 37 spec text already committed in prior spec-authoring commit da0d0c7 on this branch; this cycle implements scripts/tests/skill and the lockstep version bump"
+  "spec_no_change_reason": "Inv 35 spec rewrite for #526 already committed in d7c4a6c prior to this TDD cycle"
 }

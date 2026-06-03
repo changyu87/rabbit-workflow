@@ -22,18 +22,24 @@ two self-healing steps so the next tick has a clean foothold:
      A valid existing file is left untouched.
 
 Then writes `<repo_root>/.rabbit-auto-evolve-running`. Per spec Inv 35
-(D3 / issue #521) the marker CONTENT now records the owner PID and an
+(D3 / issues #521 + #526) the marker CONTENT records a DURABLE owner PID and an
 ISO-8601 UTC timestamp (`pid=<n> ts=<iso> session`) so `running-guard.py` can
-detect a STALE marker by dead-PID liveness (mtime remains the primary
-staleness signal). Existence-based readers (`status-report.py`,
-`end-tick.py`) are unaffected — they key on the filename, which is unchanged.
+check owner liveness. The recorded PID is the long-lived session / tick-owner
+PID sourced from the Claude session environment (`CLAUDE_SESSION_PID`, else the
+first non-shell ancestor walked up the PPID chain) — NEVER this script's own
+transient `os.getpid()`, which dies seconds after the marker is written and
+would make the guard flag every tick stale. When no durable owner can be
+determined, the PID is OMITTED (the content is `ts=<iso> session`) and the
+guard relies on its activity signal alone (it functions PID-free).
+Existence-based readers (`status-report.py`, `end-tick.py`) are unaffected —
+they key on the filename, which is unchanged.
 
 `<repo_root>` defaults to `os.getcwd()`; overridable via the
 `RABBIT_AUTO_EVOLVE_REPO_ROOT` env var for tests.
 
 Exit 0 on success; non-zero on write error.
 
-Version: 1.4.0
+Version: 1.5.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -49,18 +55,82 @@ MARKER = ".rabbit-auto-evolve-running"
 STOP_MARKER = ".rabbit-auto-evolve-stop-requested"
 STATE_DIR = ".rabbit"
 STATE_FILE = "auto-evolve-state.json"
-# The running marker content carries the owner PID + an ISO-8601 UTC
-# timestamp for the Inv 35 stale-marker running-guard, then the legacy
-# `session` token (matching the set-evolve-mode.py marker convention so
-# existing-readers and prior content-shape expectations still see it).
+# The running marker content carries the DURABLE owner PID (when one can be
+# determined) + an ISO-8601 UTC timestamp for the Inv 35 stale-marker
+# running-guard, then the legacy `session` token (matching the
+# set-evolve-mode.py marker convention so existing readers and prior
+# content-shape expectations still see it).
 CONTENT_SUFFIX = "session"
+# Shells whose PID is too short-lived / non-owning to record as the durable
+# tick owner; the PPID walk skips past these to a real ancestor.
+_SHELL_NAMES = {"sh", "bash", "dash", "zsh", "tcsh", "csh", "fish", "ksh"}
+
+
+def _proc_name(pid: int) -> str:
+    """Best-effort process name for `pid` via /proc/<pid>/comm. Empty string
+    when unreadable (the walk then treats it as a non-shell owner)."""
+    try:
+        with open(f"/proc/{pid}/comm") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def _proc_ppid(pid):
+    """Parent PID of `pid` via /proc/<pid>/stat (field 4), or None."""
+    try:
+        with open(f"/proc/{pid}/stat") as f:
+            data = f.read()
+    except OSError:
+        return None
+    # The comm field (2nd) is parenthesized and may contain spaces; split on
+    # the last ')' so positional fields after it are stable.
+    rest = data.rpartition(")")[2].split()
+    if len(rest) < 2:
+        return None
+    try:
+        return int(rest[1])  # field 4 (ppid) is index 1 after state field.
+    except ValueError:
+        return None
+
+
+def _durable_owner_pid():
+    """Return the long-lived session / tick-owner PID, or None if none can be
+    determined. Priority: CLAUDE_SESSION_PID env, else the first non-shell
+    ancestor walked up the PPID chain from this process's parent. Never this
+    process's own transient os.getpid()."""
+    env_pid = os.environ.get("CLAUDE_SESSION_PID")
+    if env_pid:
+        try:
+            pid = int(env_pid)
+            if pid > 0:
+                return pid
+        except ValueError:
+            pass
+    pid = os.getppid()
+    seen = set()
+    while pid and pid > 1 and pid not in seen:
+        seen.add(pid)
+        name = _proc_name(pid)
+        if name and name not in _SHELL_NAMES:
+            return pid
+        parent = _proc_ppid(pid)
+        if parent is None:
+            # Cannot walk further but this ancestor outlives the helper;
+            # record it rather than dropping to PID-free.
+            return pid
+        pid = parent
+    return None
 
 
 def _marker_content() -> str:
     now = datetime.datetime.now(datetime.timezone.utc).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
     )
-    return f"pid={os.getpid()} ts={now} {CONTENT_SUFFIX}"
+    owner = _durable_owner_pid()
+    if owner is not None:
+        return f"pid={owner} ts={now} {CONTENT_SUFFIX}"
+    return f"ts={now} {CONTENT_SUFFIX}"
 
 
 def _repo_root() -> str:
