@@ -78,5 +78,7 @@ run_test("test-spec-scripted-phase-walk-invariant.py")
 run_test("test-stop-holds.py")
 run_test("test-guard-before-marker.py")
 run_test("test-spec-guard-before-marker-invariant.py")
+run_test("test-clean-dispatch-leaks.py")
+run_test("test-spec-clean-dispatch-leaks-invariant.py")
 
 print("ALL TESTS PASSED")

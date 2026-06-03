@@ -63,6 +63,8 @@ STUBS = {
     "triage-batch.py": "import sys; sys.stdin.read(); print('[]')",
     # plan -> passthrough emits a JSON object
     "plan-batch.py": "import sys; sys.stdin.read(); print('{}')",
+    # clean-dispatch-leaks -> pre-merge leak cleanup (Inv 43); no-op stub
+    "clean-dispatch-leaks.py": "print('{\"status\": \"clean\"}')",
     # merge -> emits a JSON list of per-PR outcomes
     "merge-prs.py": "print('[]')",
     # run-post-merge -> emits the noop/result object

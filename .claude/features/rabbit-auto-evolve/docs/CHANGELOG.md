@@ -13,6 +13,21 @@ own version.
 
 ## Version notes
 
+- **v0.33.0 — 2026-06-03** — Add a deterministic, defense-in-depth pre-merge
+  cleanup of KNOWN worktree-dispatch leak-class noise (Inv 43, reopened #583).
+  Worktree-isolated Phase 5 dispatches sometimes leak a stray
+  `.rabbit-scope-active-<feature>` marker or a bookkeeping-only
+  `<feature>/feature.json` edit into the dispatcher's MAIN tree (a harness
+  cwd limitation the #589 cwd-based `_repo_root` fix reduced but did not
+  eliminate), tripping safety-check Inv 5 so `merge-prs.py` skipped the whole
+  batch. New `scripts/clean-dispatch-leaks.py` removes untracked stray
+  `.rabbit-scope-active-*` markers and restores ONLY a `feature.json` whose
+  diff touches solely loop-bookkeeping keys, and `run-tick-phases.py`
+  `run_post_dispatch` invokes it as the FIRST action of Phase 6, before merge.
+  Any UNEXPECTED tracked change makes the cleanup refuse non-zero (the tick
+  aborts, Inv 20) — a genuine uncommitted change is never destroyed. Cleanup
+  is logged via `tick-log.py` (Inv 36). Four-way version bump in lockstep.
+
 - **v0.32.0 — 2026-06-03** — Relocate the feature's documentation surfaces to
   the flat `docs/` layout shared workflow-wide (#399 Phase 2b):
   `specs/spec.md` → `docs/spec.md`, `specs/contract.md` → `docs/contract.md`,

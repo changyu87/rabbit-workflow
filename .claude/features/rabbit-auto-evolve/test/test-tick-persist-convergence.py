@@ -57,6 +57,7 @@ STUBS = {
     "fetch-queue.py": "print('[]')",
     "triage-batch.py": "import sys; sys.stdin.read(); print('[]')",
     "plan-batch.py": "import sys; sys.stdin.read(); print('{}')",
+    "clean-dispatch-leaks.py": "print('{\"status\": \"clean\"}')",
     "merge-prs.py": "print('[]')",
     # mutate on-disk state to model a real post-merge drain.
     "run-post-merge.py": textwrap.dedent("""\

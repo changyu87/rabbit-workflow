@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.32.0
+version: 0.33.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2782,6 +2782,50 @@ Phase E merges complete.
     state file but does NOT write the running marker), and by
     `test/test-spec-guard-before-marker-invariant.py` (this invariant text is
     present in the spec and the SKILL.md documents the corrected ordering).
+
+43. **Deterministic pre-merge cleanup of known worktree-dispatch leaks; never
+    discard unexpected dirt.** Worktree-isolated Phase 5 dispatches sometimes
+    leave working-tree noise in the dispatcher's MAIN tree because a subagent's
+    process cwd is occasionally the main/shared checkout (not its worktree)
+    when it runs its LOCK / tdd-step bookkeeping (a harness limitation the
+    cwd-based `_repo_root` fix in #589 reduced but did not eliminate). The two
+    known leak classes are an untracked stray `.rabbit-scope-active-<feature>`
+    marker at the repo root and a TRACKED `<feature>/feature.json` whose diff
+    vs HEAD touches ONLY loop-bookkeeping keys. Left in place, this trips
+    safety-check Inv 5 ("no uncommitted tracked-file modifications"), which
+    makes `merge-prs.py` skip every PR in the batch (#583).
+
+    `scripts/clean-dispatch-leaks.py` performs a deterministic,
+    defense-in-depth cleanup of ONLY this known leak class, and
+    `run-tick-phases.py run_post_dispatch` invokes it as the FIRST action of
+    Phase 6, BEFORE `merge-prs.py`. The cleanup operates on the repo's main
+    working tree and:
+
+    1. **Removes untracked stray markers.** Deletes any untracked
+       `.rabbit-scope-active-*` file at the repo root.
+    2. **Restores only bookkeeping-only `feature.json` leaks.** For a TRACKED
+       modification, restores the file to HEAD ONLY when it is a
+       `<feature>/feature.json` whose diff vs HEAD touches ONLY the
+       loop-bookkeeping keys (`tdd_last_cycle_impl_commit`, `tdd_state`,
+       `updated`, `spec_no_change_reason`, `_pre_touch_state`). A
+       doc/spec/contract/CHANGELOG file is never in scope.
+    3. **Fails loudly on unexpected dirt.** ANY tracked modification that does
+       NOT match the known-leak signature is NEVER silently discarded: the
+       cleanup reports it on stderr and exits non-zero, so the tick aborts
+       (Inv 20) and a genuine uncommitted change is never destroyed. This is
+       the critical safety property — clean ONLY known leak-class noise, never
+       arbitrary changes.
+
+    The cleanup logs what it removed/restored via `tick-log.py` (Inv 36) so it
+    is observable. On a clean tree the cleanup is a no-op (exit 0, nothing
+    logged as cleaned).
+
+    Enforced by `test/test-clean-dispatch-leaks.py` (e2e in a temp git repo:
+    a bookkeeping-only `feature.json` leak + a stray marker are cleaned to a
+    clean tree; an unexpected `spec.md` edit makes the cleanup refuse non-zero
+    and preserves the edit; a clean tree is a no-op) and by
+    `test/test-run-tick-phases.py` (post-dispatch invokes the cleanup before
+    the merge step).
 
 ## Known gaps
 
