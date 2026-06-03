@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.28.0
+version: 0.29.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2618,6 +2618,58 @@ Phase E merges complete.
     covering both fallback classes, and the fallback heuristic), and by
     `test/test-spec-self-modifying-migration-invariant.py` (this invariant text
     is present in the spec).
+
+40. **One shared scripted phase-walk; the in-session tick adds only Phase 5.**
+    The deterministic tick phases live in ONE shared scripted implementation,
+    `python3 .claude/features/rabbit-auto-evolve/scripts/run-tick-phases.py`,
+    which BOTH the headless tick (`tick-headless.py`) and the in-session tick
+    (SKILL.md `start`/`tick`) invoke. The walk runs in two segments around the
+    single Claude-only phase:
+
+    - `run-tick-phases.py pre-dispatch` — tick-start self-sync (Inv 38), phase
+      0/1 stop/abort short-circuit, running-guard (Inv 35), phases 2-4
+      (`fetch | triage | plan`, Inv 18). Emits a result whose `action` is
+      `proceed` (continue to dispatch) or `skip` (a clean no-op short-circuit
+      fired).
+    - `run-tick-phases.py post-dispatch` — phase 6 (merge the PRs in the
+      state's transient `merge_ready` hint), phases 7-9 (`run-post-merge.py`
+      drain), phase 10 (persist).
+
+    The headless tick chains `pre-dispatch -> (skip dispatch) -> post-dispatch`;
+    the in-session tick chains `pre-dispatch -> Phase 5 (dispatch) ->
+    post-dispatch`. The in-session path differs from the headless path ONLY by
+    inserting Phase 5 (dispatch), which needs Claude. There is exactly ONE
+    deterministic phase-walk implementation; the dispatcher only adds dispatch.
+
+    **Phase 10 persist is deterministic and never hand-assembled.** Phase 10
+    re-reads the on-disk state (the phase scripts — `merge-prs.py`,
+    `run-post-merge.py` — already mutated it on disk), drops the transient
+    `merge_ready` key (not part of the Inv 9 schema), and pipes the resulting
+    object through `update-state.py`. The dispatcher NEVER reads
+    `update-state.py` source or the state schema to hand-assemble the new-state
+    JSON by LLM inference. Every in-session phase handoff is script-to-script
+    (stdin/stdout pipes or on-disk state mutation), exactly as the headless
+    tick chains them — no in-session phase handoff requires the dispatcher to
+    hand-assemble a data structure.
+
+    Because the loop's phase scripts re-read state from disk each tick, this is
+    a re-read-from-disk self-modifying migration (Inv 39): it needs no
+    coexistence window and no restart, and takes effect on the next tick after
+    merge + sync.
+
+    Enforced by `test/test-run-tick-phases.py` (e2e: each segment walks exactly
+    its phases against stub phase scripts; `pre-dispatch` short-circuits on the
+    stop marker and the running-guard skip verdict; `post-dispatch` merges
+    ready PRs, drains post-merge, and persists through the REAL update-state.py
+    dropping `merge_ready`; dispatch NEVER runs inside the walk), by
+    `test/test-tick-persist-convergence.py` (the in-session path —
+    `pre-dispatch` then `post-dispatch` with a no-state-mutation Phase 5 between
+    — persists BYTE-IDENTICAL state to the headless tick for the same on-disk
+    phase-script mutations), by `test/test-tick-headless.py` (the headless tick
+    delegates to the shared walk), and by
+    `test/test-spec-scripted-phase-walk-invariant.py` (this invariant text is
+    present in the spec and the SKILL.md describes the in-session tick via the
+    shared walk).
 
 ## Known gaps
 

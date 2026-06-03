@@ -72,5 +72,8 @@ run_test("test-spec-worktree-sync-invariant.py")
 run_test("test-self-modifying-migration-registry.py")
 run_test("test-self-modifying-migration.py")
 run_test("test-spec-self-modifying-migration-invariant.py")
+run_test("test-run-tick-phases.py")
+run_test("test-tick-persist-convergence.py")
+run_test("test-spec-scripted-phase-walk-invariant.py")
 
 print("ALL TESTS PASSED")

@@ -106,13 +106,24 @@ check_skill(SOURCE_SKILL, "source")
 check_skill(DEPLOYED_SKILL, "deployed")
 
 
-# --- (3) tick-headless.py invokes sync-tree.py ------------------------
+# --- (3) the headless path self-syncs via sync-tree.py ----------------
+# Since Inv 40 (#513) the deterministic phase-walk (including the tick-start
+# sync-tree.py call) lives in the shared run-tick-phases.py, which both
+# tick-headless.py and the in-session tick invoke. The headless path therefore
+# self-syncs either by referencing sync-tree.py directly OR by delegating to
+# run-tick-phases.py, whose pre-dispatch segment runs sync-tree.py first.
+RUN_TICK_PHASES = FEATURE_DIR / "scripts" / "run-tick-phases.py"
 if TICK_HEADLESS.is_file():
     th = TICK_HEADLESS.read_text()
     if "sync-tree.py" in th:
-        ok("tick-headless.py invokes sync-tree.py (headless path self-syncs)")
+        ok("tick-headless.py invokes sync-tree.py directly (headless path self-syncs)")
+    elif "run-tick-phases" in th and RUN_TICK_PHASES.is_file() \
+            and "sync-tree.py" in RUN_TICK_PHASES.read_text():
+        ok("tick-headless.py self-syncs via the shared run-tick-phases.py walk "
+           "(which runs sync-tree.py first)")
     else:
-        fail("tick-headless.py does not invoke sync-tree.py")
+        fail("the headless path does not self-sync via sync-tree.py "
+             "(neither directly nor through run-tick-phases.py)")
 else:
     fail("tick-headless.py not found")
 
