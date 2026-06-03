@@ -32,7 +32,7 @@ This module has two distinct roles:
      This helper is NOT invoked from main() — main() lays down an explicit
      file closure rather than running the publish flow at install time.
 
-Version: 6.4.0
+Version: 6.5.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit's per-project plugin model is superseded
 """
@@ -99,7 +99,7 @@ SKILLS = [
 # Agents: source → deployed
 AGENTS = [
     (".claude/features/rabbit-spec/agents/spec-creator.md", ".claude/agents/spec-creator.md"),
-    (".claude/features/tdd-subagent/agents/tdd-subagent.md", ".claude/agents/tdd-subagent.md"),
+    (".claude/features/tdd-subagent/agents/rabbit-tdd-subagent.md", ".claude/agents/rabbit-tdd-subagent.md"),
 ]
 
 # Commands: source → deployed
@@ -205,7 +205,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
     ],
     "tdd-subagent": [
         "feature.json",
-        "agents/tdd-subagent.md",
+        "agents/rabbit-tdd-subagent.md",
         "scripts/dispatch-tdd-subagent.py",
         "scripts/tdd-step.py",
     ],
