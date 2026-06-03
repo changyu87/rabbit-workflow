@@ -6,14 +6,17 @@ plugin users could not manage configurables (human-approval bypass, bypass-
 permissions, prompt-threshold, allowed-tools, ...) without manual
 settings.local.json edits.
 
-Per spec.md Installer Behavior and Inv 23, install.py's SKILLS list MUST
-include rabbit-config alongside the rabbit-feature-*, rabbit-spec-*, and
-rabbit-issue skills, FEATURE_INCLUDES MUST carry every runtime source path
-referenced by rabbit-config's manifest (Inv 21), and FEATURE_INCLUDES['contract']
-MUST include the corresponding prompt template (Inv 23).
+Per spec.md Installer Behavior, install.py's SKILLS list MUST include
+rabbit-config alongside the rabbit-feature-*, rabbit-spec-*, and
+rabbit-issue skills, and FEATURE_INCLUDES MUST carry every runtime source
+path referenced by rabbit-config's manifest (Inv 21).
 
-This regression pins all three contracts so a future drop of any one
-fails the suite at the install.py module level.
+(PR #401 retired Skill-path prompt injection: rabbit-config's feature.json
+declares an empty `prompts` array, so Inv 23's prompt-template closure
+no longer applies to this skill.)
+
+This regression pins the SKILLS + FEATURE_INCLUDES contracts so a future
+drop of either fails the suite at the install.py module level.
 """
 from __future__ import annotations
 
@@ -39,8 +42,6 @@ REQUIRED_SKILL_TUPLE = (
     ".claude/features/rabbit-config/skills/rabbit-config/SKILL.md",
     ".claude/skills/rabbit-config/SKILL.md",
 )
-
-REQUIRED_PROMPT_TEMPLATE = "templates/prompts/rabbit-config.txt"
 
 pass_n = 0
 fail_n = 0
@@ -87,16 +88,9 @@ else:
     else:
         ok(2, f"FEATURE_INCLUDES['rabbit-config'] contains all {len(REQUIRED_RUNTIME_FILES)} required runtime files")
 
-# t3 — FEATURE_INCLUDES['contract'] contains the rabbit-config prompt template.
-contract_includes = set(includes.get("contract", []))
-if REQUIRED_PROMPT_TEMPLATE in contract_includes:
-    ok(3, f"FEATURE_INCLUDES['contract'] contains {REQUIRED_PROMPT_TEMPLATE!r}")
-else:
-    fail_t(3, f"FEATURE_INCLUDES['contract'] missing {REQUIRED_PROMPT_TEMPLATE!r}")
-
-# t4+ — Every required runtime file exists on disk at the source path.
+# t3+ — Every required runtime file exists on disk at the source path.
 feature_root = os.path.join(REPO_ROOT, ".claude/features/rabbit-config")
-t = 4
+t = 3
 for rel in REQUIRED_RUNTIME_FILES:
     full = os.path.join(feature_root, rel)
     if os.path.isfile(full):
@@ -104,13 +98,6 @@ for rel in REQUIRED_RUNTIME_FILES:
     else:
         fail_t(t, f"source file missing on disk: {full}")
     t += 1
-
-# t_next — The prompt template exists on disk at the contract source path.
-prompt_path = os.path.join(REPO_ROOT, ".claude/features/contract", REQUIRED_PROMPT_TEMPLATE)
-if os.path.isfile(prompt_path):
-    ok(t, f"prompt template present: {prompt_path}")
-else:
-    fail_t(t, f"prompt template missing on disk: {prompt_path}")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")

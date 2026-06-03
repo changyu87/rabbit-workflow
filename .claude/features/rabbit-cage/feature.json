@@ -383,5 +383,5 @@
       }
     }
   ],
-  "spec_no_change_reason": "spec.md updated upstream in PR #403 (commit 6374094) adding Inv 32; this cycle wires feature.json + test only"
+  "spec_no_change_reason": "PR #401 retired prompt-injector.py and 8 skill-passthrough templates; install.py constants stale; no spec change needed"
 }
