@@ -10,7 +10,7 @@ A "production caller" is a reference to the script's basename anywhere in
   - `.claude/archive/`
   - any `__pycache__/`
   - the contract feature's own `scripts/`, `tests/`, `test/`, and
-    `docs/spec/` (self-references, including spec/contract.md that
+    `specs/` (self-references, including spec/contract.md that
     merely declare the surface).
 
 Also verifies that the five scripts deleted by CONTRACT-BACKLOG-24 are
@@ -126,7 +126,7 @@ def has_production_caller(basename):
             continue
         if norm.startswith(os.path.join(FEATURE_DIR, "tests") + os.sep):
             continue
-        if norm.startswith(os.path.join(FEATURE_DIR, "docs", "spec") + os.sep):
+        if norm.startswith(os.path.join(FEATURE_DIR, "specs") + os.sep):
             continue
         qualifying.append(norm)
     return qualifying

@@ -6,7 +6,7 @@ End-to-end test for the cross-feature invariant-monotonic-order check:
   t1  contract.lib.checks exports check_invariant_monotonic_order callable.
   t2  Function returns CheckResult.
   t3  Running it on the live set of feature dirs under .claude/features/
-      (every entry that has docs/spec/spec.md) returns passed=True,
+      (every entry with spec.md under specs/ or docs/spec/) returns passed=True,
       thanks to the KNOWN_ISSUES allowlist for features pending renumber.
   t4  CLI shim scripts/enforcement/check-invariant-monotonic-order.py
       exists, is executable, and exits 0 on the same live input.
@@ -60,12 +60,15 @@ def load_checks():
 
 
 def live_feature_dirs():
+    # Dual-read (issue #399): a feature counts as live if it has spec.md under
+    # either the new specs/ layout or the legacy docs/spec/ layout.
     dirs = []
     for entry in sorted(os.listdir(FEATURES_ROOT)):
         full = os.path.join(FEATURES_ROOT, entry)
         if not os.path.isdir(full):
             continue
-        if os.path.isfile(os.path.join(full, "docs", "spec", "spec.md")):
+        if (os.path.isfile(os.path.join(full, "specs", "spec.md"))
+                or os.path.isfile(os.path.join(full, "docs", "spec", "spec.md"))):
             dirs.append(full)
     return dirs
 

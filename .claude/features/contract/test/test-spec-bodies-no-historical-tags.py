@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """test-spec-bodies-no-historical-tags.py — CONTRACT-BACKLOG-38 / -40.
 
-Greps every feature's docs/spec/spec.md, docs/spec/contract.md, and any
+Greps every feature's spec.md, contract.md (dual-read: specs/ preferred,
+docs/spec/ fallback per issue #399), and any
 skills/*/SKILL.md under each feature for historical-burden patterns that
 violate housekeeping protocol criterion #1 (current-design only) and
 criterion #2 (no documentation burden):
@@ -53,18 +54,31 @@ ALLOWLIST = {
 }
 
 
+def _resolve_doc(fdir, name):
+    """Dual-read (issue #399): prefer specs/<name>, fall back to
+    docs/spec/<name>. Returns the existing path or None."""
+    preferred = os.path.join(fdir, "specs", name)
+    if os.path.isfile(preferred):
+        return preferred
+    legacy = os.path.join(fdir, "docs", "spec", name)
+    if os.path.isfile(legacy):
+        return legacy
+    return None
+
+
 def feature_doc_surfaces():
     """Yield (feature_name, abs_path) for every monitored doc surface:
-    docs/spec/spec.md, docs/spec/contract.md, and skills/*/SKILL.md.
+    spec.md, contract.md (each dual-read: specs/ preferred, docs/spec/
+    fallback), and skills/*/SKILL.md.
     """
     paths = []
     for entry in sorted(os.listdir(FEATURES_ROOT)):
         fdir = os.path.join(FEATURES_ROOT, entry)
-        spec = os.path.join(fdir, "docs", "spec", "spec.md")
-        if os.path.isfile(spec):
+        spec = _resolve_doc(fdir, "spec.md")
+        if spec:
             paths.append((entry, spec))
-        contract = os.path.join(fdir, "docs", "spec", "contract.md")
-        if os.path.isfile(contract):
+        contract = _resolve_doc(fdir, "contract.md")
+        if contract:
             paths.append((entry, contract))
         # Every SKILL.md under skills/*/SKILL.md (any depth-1 skill dir).
         for skill_md in sorted(glob.glob(

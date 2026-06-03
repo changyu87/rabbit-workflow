@@ -9,7 +9,7 @@ import re
 import sys
 
 FEATURE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-SPEC_PATH = os.path.join(FEATURE_DIR, "docs/spec/spec.md")
+SPEC_PATH = os.path.join(FEATURE_DIR, "specs/spec.md")
 FAIL = 0
 
 with open(SPEC_PATH, "r") as f:
