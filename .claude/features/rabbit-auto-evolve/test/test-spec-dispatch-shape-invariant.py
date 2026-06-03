@@ -2,8 +2,9 @@
 """test-spec-dispatch-shape-invariant.py — rabbit-auto-evolve Inv 26
 (issue #435).
 
-Asserts the new dispatch-shape invariant text is present in
-docs/spec/spec.md. The invariant states:
+Asserts the new dispatch-shape invariant text is present in the feature
+spec (specs/spec.md, dual-read with docs/spec/ fallback per issue #399).
+The invariant states:
   (a) Stage 1 work selection is dispatch-shape blind;
   (b) Stage 2 picks among exactly THREE shapes in preference order;
   (c) parallel-per-feature is a performance preference, not a correctness
@@ -18,7 +19,10 @@ import sys
 from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
-SPEC_MD = FEATURE_DIR / "docs" / "spec" / "spec.md"
+# Dual-read (issue #399): prefer specs/spec.md, fall back to docs/spec/spec.md.
+SPEC_MD = (FEATURE_DIR / "specs" / "spec.md")
+if not SPEC_MD.is_file():
+    SPEC_MD = FEATURE_DIR / "docs" / "spec" / "spec.md"
 
 FAIL = 0
 

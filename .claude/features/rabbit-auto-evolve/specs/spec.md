@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.11.1
+version: 0.12.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -30,6 +30,13 @@ explicit stop — all without requiring human approval at each step.
 ## Paths governed
 
 - (none — standalone feature)
+
+This feature's own spec and contract live under `specs/` (`specs/spec.md`,
+`specs/contract.md`) per the issue #399 migration of `docs/spec/` → `specs/`.
+The sibling `docs/bugs/` directory is retained. Any tooling this feature owns
+that resolves a feature's spec/contract path (e.g. `scripts/triage-issue.py`)
+MUST prefer the `specs/` layout and accept the legacy `docs/spec/` layout as a
+fallback during the coexistence window.
 
 ## Public surface
 
@@ -327,8 +334,11 @@ Phase E merges complete.
    - Issue metadata (title, body, labels, state, comments) via
      `gh issue view <N> --repo <repo> --json
      number,title,body,labels,state,comments`.
-   - The named feature's `docs/spec/spec.md` head matter (YAML
-     frontmatter and the first markdown section only) — for rule 6.
+   - The named feature's spec head matter (YAML frontmatter and the
+     first markdown section only) — for rule 6. The path is resolved
+     dual-read (issue #399): the new `specs/spec.md` layout is preferred,
+     with the legacy `docs/spec/spec.md` accepted as a fallback during the
+     coexistence window.
    - The named feature's `feature.json` (for rule 4 — `status` field).
    - The list of closed issues in the last 30 days (for rule 3) via
      `gh issue list --state closed --search "closed:>=<date>"`.
@@ -1540,7 +1550,7 @@ owner decisions during component implementation.
    (add `rabbit-auto-evolve` to `features.children`) and
    `.claude/features/contract/templates/prompts/rabbit-auto-evolve.txt`
    (the passthrough template matching the `prompts` declaration) are
-   explicitly declared in this feature's `docs/spec/contract.md`
+   explicitly declared in this feature's `specs/contract.md`
    `invokes.files` block. The writes are performed via one-time
    `.rabbit-scope-override` markers during the Phase D Task 12
    feature touch.

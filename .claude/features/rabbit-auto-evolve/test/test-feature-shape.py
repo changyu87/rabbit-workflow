@@ -5,8 +5,8 @@ Asserts feature-shape compliance for the rabbit-auto-evolve feature:
 
   1. Four-way version equality across:
        - feature.json `version`
-       - docs/spec/spec.md frontmatter `version`
-       - docs/spec/contract.md frontmatter `version`
+       - specs/spec.md frontmatter `version` (dual-read: docs/spec/ fallback)
+       - specs/contract.md frontmatter `version` (dual-read fallback)
        - skills/rabbit-auto-evolve/SKILL.md frontmatter `version`
   2. feature.json carries non-empty `owner` and `deprecation_criterion`.
   3. SKILL.md frontmatter carries non-empty `version`, `owner`,
@@ -29,8 +29,18 @@ from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
 FEATURE_JSON = FEATURE_DIR / "feature.json"
-SPEC_MD = FEATURE_DIR / "docs" / "spec" / "spec.md"
-CONTRACT_MD = FEATURE_DIR / "docs" / "spec" / "contract.md"
+
+
+def _resolve_spec(name: str) -> Path:
+    """Dual-read (issue #399): prefer specs/<name>, fall back to docs/spec/."""
+    preferred = FEATURE_DIR / "specs" / name
+    if preferred.is_file():
+        return preferred
+    return FEATURE_DIR / "docs" / "spec" / name
+
+
+SPEC_MD = _resolve_spec("spec.md")
+CONTRACT_MD = _resolve_spec("contract.md")
 SKILL_MD = FEATURE_DIR / "skills" / "rabbit-auto-evolve" / "SKILL.md"
 
 
