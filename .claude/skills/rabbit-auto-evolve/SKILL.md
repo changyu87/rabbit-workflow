@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.32.0
+version: 0.33.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -286,7 +286,15 @@ mutation). The deterministic walk runs in two segments around Phase 5:
    ```
    python3 .claude/features/rabbit-auto-evolve/scripts/run-tick-phases.py post-dispatch
    ```
-   It runs phase 6 (merge the PRs in the state's transient `merge_ready` hint),
+   Phase 6 FIRST runs `clean-dispatch-leaks.py` (Inv 43) to deterministically
+   clean KNOWN worktree-dispatch leak-class noise from the main tree BEFORE the
+   merge — an untracked stray `.rabbit-scope-active-*` marker or a
+   bookkeeping-only `feature.json` edit that a worktree-isolated Phase 5
+   dispatch leaked (which would otherwise trip safety-check Inv 5 and skip the
+   batch, #583). The cleanup FAILS LOUDLY (the tick aborts) on any unexpected
+   tracked change, so a genuine uncommitted change is never destroyed. It then
+   runs the rest of phase 6 (merge the PRs in the state's transient
+   `merge_ready` hint),
    phases 7-9 (`run-post-merge.py` drain), and phase 10 (persist). Phase 10
    re-reads the on-disk state (already mutated by the phase scripts), drops the
    transient `merge_ready` key, and pipes the object through `update-state.py`.
@@ -310,7 +318,7 @@ session walks them via the two `run-tick-phases.py` segments plus Phase 5.
 | 3 | `triage`          | `.claude/features/rabbit-auto-evolve/scripts/triage-batch.py` (wraps `.claude/features/rabbit-auto-evolve/scripts/triage-issue.py` per issue) |
 | 4 | `plan`            | `.claude/features/rabbit-auto-evolve/scripts/plan-batch.py` |
 | 5 | `dispatch`        | (rabbit-feature-touch — TDD subagent dispatch) |
-| 6 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
+| 6 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/clean-dispatch-leaks.py` (Inv 43 — deterministic pre-merge cleanup of known worktree-dispatch leaks; refuses non-zero on unexpected dirt) → `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
 | 7-9 | `post-merge`    | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — deterministically runs release (7) → cleanup (8) → catch-up (9) for every PR in `pending_post_merge`, then clears it (Inv 30) — see "Post-merge phases (Inv 30)" below |
 |10 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
 |11 | `schedule`        | `.claude/features/rabbit-auto-evolve/scripts/schedule-decision.py` — decide immediate-refire vs idle (Inv 33); on `immediate-refire` the DISPATCHER schedules the one-shot. See "Scheduling (Inv 32–33)" below |

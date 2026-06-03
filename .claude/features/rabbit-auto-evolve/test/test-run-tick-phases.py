@@ -55,6 +55,7 @@ STUBS = {
     "fetch-queue.py": "print('[]')",
     "triage-batch.py": "import sys; sys.stdin.read(); print('[]')",
     "plan-batch.py": "import sys; sys.stdin.read(); print('{}')",
+    "clean-dispatch-leaks.py": "print('{\"status\": \"clean\"}')",
     "merge-prs.py": "print('[]')",
     "run-post-merge.py": "print('{\"status\": \"noop\", \"pending\": []}')",
     # update-state replaced with the REAL script by tests that need persist.
@@ -238,6 +239,15 @@ with tempfile.TemporaryDirectory() as d:
     else:
         ok("D: post-dispatch exited 0")
     t = read_trace(trace)
+    # Inv 43: the leak-cleanup runs as the FIRST action of phase 6, BEFORE merge.
+    if "clean-dispatch-leaks.py" not in t:
+        fail(f"D: clean-dispatch-leaks.py did not run in post-dispatch; trace={t!r}")
+    elif "merge-prs.py" not in t:
+        fail(f"D: phase 6 merge-prs.py did not run with ready PRs; trace={t!r}")
+    elif t.index("clean-dispatch-leaks.py") > t.index("merge-prs.py"):
+        fail(f"D: cleanup ran AFTER merge; must run BEFORE (Inv 43); trace={t!r}")
+    else:
+        ok("D: cleanup ran BEFORE merge-prs.py (Inv 43)")
     if "merge-prs.py" not in t:
         fail(f"D: phase 6 merge-prs.py did not run with ready PRs; trace={t!r}")
     else:
@@ -273,6 +283,11 @@ with tempfile.TemporaryDirectory() as d:
     else:
         ok("E: no-ready post-dispatch exited 0")
     t = read_trace(trace)
+    # Inv 43: the cleanup runs regardless of whether there are PRs to merge.
+    if "clean-dispatch-leaks.py" not in t:
+        fail(f"E: clean-dispatch-leaks.py did not run (no-ready path); trace={t!r}")
+    else:
+        ok("E: cleanup ran even with no ready PRs (Inv 43)")
     if "merge-prs.py" in t:
         fail(f"E: merge-prs.py ran with empty merge_ready; trace={t!r}")
     else:
@@ -285,6 +300,28 @@ with tempfile.TemporaryDirectory() as d:
         fail(f"E: phase 10 persist did not re-persist a valid state: {repersisted!r}")
     else:
         ok("E: phase 10 persist re-persisted a valid state")
+
+
+# ---------------------------------------------------------------------------
+# G — when the cleanup REFUSES (non-zero, unexpected dirt), post-dispatch
+# aborts BEFORE merge so a real uncommitted change is never destroyed (Inv 43).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir, trace = fresh(d, overrides={
+        "clean-dispatch-leaks.py":
+            "import sys; sys.stderr.write('unexpected dirt\\n'); sys.exit(1)",
+    })
+    write_state(state_dir, dict(VALID_STATE, merge_ready=[111]))
+    proc = run_segment("post-dispatch", repo_root, script_dir, state_dir, trace)
+    if proc.returncode == 0:
+        fail("G: post-dispatch must abort non-zero when cleanup refuses")
+    else:
+        ok("G: post-dispatch aborted non-zero on cleanup refusal")
+    t = read_trace(trace)
+    if "merge-prs.py" in t:
+        fail(f"G: merge ran despite cleanup refusal (Inv 43 violated); trace={t!r}")
+    else:
+        ok("G: merge-prs.py did NOT run after cleanup refusal")
 
 
 # ---------------------------------------------------------------------------

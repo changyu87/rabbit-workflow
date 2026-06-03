@@ -47,7 +47,7 @@ A single JSON result object is emitted on stdout. Exit code is 0 on a
 completed segment (including every short-circuit no-op); non-zero on an
 unexpected phase-script failure.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -232,6 +232,21 @@ def run_post_dispatch():
 
     Returns `(result_dict, exit_code)`. The caller owns emitting the result."""
     result = {"segment": "post-dispatch", "status": "completed", "phases": {}}
+
+    # phase 6 (FIRST action, BEFORE merge): deterministic pre-merge cleanup of
+    # KNOWN worktree-dispatch leak-class noise from the main tree (Inv 43 /
+    # #583). Worktree-isolated Phase 5 dispatches sometimes leak a stray
+    # `.rabbit-scope-active-*` marker or a bookkeeping-only `feature.json`
+    # edit into the dispatcher's main tree, which trips safety-check Inv 5 and
+    # makes merge-prs.py skip the whole batch. The cleanup restores ONLY that
+    # known leak class and FAILS LOUDLY on any unexpected tracked change, so a
+    # genuine uncommitted change is never destroyed — the tick aborts instead.
+    clean = _run("clean-dispatch-leaks.py", [])
+    result["phases"]["clean_leaks"] = clean.returncode
+    if clean.returncode != 0:
+        result["status"] = "failed"
+        result["reason"] = "clean-leaks-refused"
+        return result, 1
 
     # phase 6: merge ready PRs (from the transient merge_ready hint).
     ready = _merge_ready()
