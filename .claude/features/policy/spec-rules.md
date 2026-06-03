@@ -48,6 +48,8 @@ At creation time, every artifact records:
 
 - **Owner** — a named individual or team accountable for it. An unowned
   artifact is not a reliable artifact.
+  **For repo-level features distributed as part of rabbit-workflow, the owner MUST be `rabbit-workflow team`, not an individual.**
+  Individual ownership is reserved for personal scripts, experimental tooling, and out-of-distribution artifacts.
 - **Version** — for contracts, schemas, and encodings. Version bumps follow
   semantic conventions appropriate to the artifact.
 - **Deprecation criterion** — the condition under which this artifact will be
