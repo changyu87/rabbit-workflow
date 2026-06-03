@@ -13,6 +13,15 @@ own version.
 
 ## Version notes
 
+- **v0.35.0 — 2026-06-03** — Broaden the SKILL.md `description:` trigger
+  enumeration to recognize common natural phrasings (Inv 45, #415): the
+  unhyphenated "auto evolve" spelling, the "enter auto[-]evolve mode" framing,
+  an enable/turn-on autonomous phrasing ("turn on / enable autonomous evolve"),
+  and "resume the loop", in addition to the pre-existing canonical triggers.
+  Description-coverage only — skill behavior is unchanged; the description stays
+  a single coherent paragraph per the SKILL.md authoring standard. Enforced by
+  `test/test-skill-description-triggers.py`. skill-creator validation deferred
+  (description-accuracy only, behavior unchanged) per the dispatch note.
 - **v0.34.0 — 2026-06-03** — Extend the Inv 43 pre-merge cleanup to detect and
   restore a leaked main-HEAD branch switch (Inv 44, #596). Same root cause as
   #583 (a subagent's process cwd is sometimes the MAIN checkout under worktree

@@ -81,5 +81,6 @@ run_test("test-spec-guard-before-marker-invariant.py")
 run_test("test-clean-dispatch-leaks.py")
 run_test("test-spec-clean-dispatch-leaks-invariant.py")
 run_test("test-spec-branch-switch-guard-invariant.py")
+run_test("test-skill-description-triggers.py")
 
 print("ALL TESTS PASSED")
