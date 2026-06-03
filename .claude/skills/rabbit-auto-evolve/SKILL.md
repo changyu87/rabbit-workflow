@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.29.0
+version: 0.30.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -47,20 +47,25 @@ usable it idempotently installs the system-cron entry that fires the
 headless tick (Inv 32 / issue #414) — the cron is the tick scheduler. WHERE
 crontab is administratively blocked it does NOT fail: it exits 0 and emits a
 JSON signal `{"scheduler":"croncreate","action":"dispatcher-must-create-heartbeat",
-"cron":"13,43 * * * *","prompt":"/rabbit-auto-evolve start","durable":true}`
+"cron":"13,43 * * * *","prompt":"/rabbit-auto-evolve tick","durable":true}`
 plus a branded line saying the durable `CronCreate` heartbeat will be set up
-on the next `/rabbit-auto-evolve start`.
+on the next `/rabbit-auto-evolve start`. The heartbeat fires the INTERNAL
+`tick` (which respects but never deletes the stop marker), NEVER the
+USER-intent `start` — a MACHINE wake-up must not inherit `start`'s
+stop-cancelling semantics (Inv 41).
 
 **CronCreate heartbeat creation (DISPATCHER action, croncreate path only).**
 A script CANNOT call `CronCreate` — it is a Claude tool. So when
 `install-cron.py` (or `detect-scheduler.py`) signals `scheduler:"croncreate"`,
 the DISPATCHER creates the durable heartbeat on the first `start`,
 IDEMPOTENTLY: call `CronList` first and create only if no matching heartbeat
-exists, then `CronCreate(cron="13,43 * * * *", prompt="/rabbit-auto-evolve start",
-durable=true)`. The `13,43` minutes avoid the `:00`/`:30` marks per
-CronCreate guidance. `CronCreate` is the SANCTIONED fallback trigger here —
-a durable idle-REPL prompt scheduler, NOT an in-session wakeup harness (the
-forbidden set is named in spec Inv 32).
+exists, then `CronCreate(cron="13,43 * * * *", prompt="/rabbit-auto-evolve tick",
+durable=true)`. The heartbeat fires the INTERNAL `tick`, NEVER the USER-intent
+`start`: a cron-fired wake-up that fired `start` would inherit Inv 19's
+stop-cancel and silently resurrect a user-halted loop (Inv 41). The `13,43`
+minutes avoid the `:00`/`:30` marks per CronCreate guidance. `CronCreate` is
+the SANCTIONED fallback trigger here — a durable idle-REPL prompt scheduler,
+NOT an in-session wakeup harness (the forbidden set is named in spec Inv 32).
 
 On success, the script emits two branded `rabbit_print` confirmation
 lines to stdout (red `AUTONOMOUS-EVOLVE MODE CONFIGURED — restart Claude
@@ -158,9 +163,12 @@ precondition checklist verbatim and waiting for the user to type
 4. End the turn. The HOUSEKEEPING tick is fired by the **system cron**
    installed at `on` (where crontab is available) running `tick-headless.py`;
    the DEVELOPMENT tick (phase 5 dispatch) is re-triggered by the scheduler
-   firing `/rabbit-auto-evolve start` in a FRESH context (Inv 32 amendment /
-   #509). There is NO in-session wakeup-harness self-chaining (the forbidden
-   mechanisms are named in spec Inv 32).
+   firing `/rabbit-auto-evolve tick` in a FRESH context (Inv 32 amendment /
+   #509). Every MACHINE wake-up fires the internal `tick`, NEVER the
+   USER-intent `start` (Inv 41): `tick` respects but never deletes the stop
+   marker, so a heartbeat can never cancel a human's explicit stop. There is
+   NO in-session wakeup-harness self-chaining (the forbidden mechanisms are
+   named in spec Inv 32).
 
 ### `stop`
 
@@ -251,6 +259,16 @@ it rotates `.log` → `.log.1` → `.log.2` → `.log.3`, keeping AT MOST 3 rota
 files (≤ 4 total).
 
 ### `tick` (internal)
+
+The internal phase-walk fired by every MACHINE wake-up — the recurring
+heartbeat and the immediate-refire one-shot both fire `/rabbit-auto-evolve
+tick`, NEVER `/rabbit-auto-evolve start` (Inv 41). `tick` walks the scripted
+phase-walk (pre-dispatch → dispatch → post-dispatch) and at phase 0 it READS
+`.rabbit-auto-evolve-stop-requested` and halts cleanly when present — it NEVER
+deletes the stop marker. The marker is cleared EXCLUSIVELY by an explicit user
+`start` (`start-loop.py`, Inv 19); this is what makes a user stop HOLD across
+heartbeats until the user explicitly resumes. `tick` therefore does NOT run
+`start-loop.py`'s stop-cancel.
 
 Walked by a live Claude session (via `start` or a cron-surfaced resume). The
 in-session tick runs the SAME single shared scripted phase-walk the headless
@@ -354,8 +372,10 @@ scheduler mechanism from `detect-scheduler.py`, logs the decision via
 `tick-log.py`, and emits JSON:
 
 - `{"decision":"immediate-refire","scheduler":"crontab"|"croncreate",
-  "prompt":"/rabbit-auto-evolve start","when":"~1min","croncreate":{...}}`
-  when the queue is non-empty (Inv 33 / D1). The DISPATCHER then schedules
+  "prompt":"/rabbit-auto-evolve tick","when":"~1min","croncreate":{...}}`
+  when the queue is non-empty (Inv 33 / D1). The one-shot fires the internal
+  `tick`, NEVER `start` (Inv 41) — a halting tick must never cancel a pending
+  stop. The DISPATCHER then schedules
   the near-immediate (~1 min) ONE-SHOT in a FRESH context and ENDS the turn
   (do NOT continue inline):
   - **croncreate path:** invoke the actual one-shot `CronCreate(...)` per the
