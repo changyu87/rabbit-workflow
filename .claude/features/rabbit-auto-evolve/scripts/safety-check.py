@@ -13,7 +13,7 @@ action runs. Each numbered invariant is gated to specific phases:
   Invariant 3 — PR head matches ^feat/.+ and is not
                 `dev`, `main`, or `release/...`         (cleanup)
   Invariant 4 — the --next-tag tag does not exist       (release)
-  Invariant 5 — working tree clean                      (merge, release, cleanup)
+  Invariant 5 — no uncommitted tracked-file modifications  (merge, release, cleanup)
 
 `--next-tag vX.Y.Z` is REQUIRED iff `--phase release`, FORBIDDEN otherwise
 (resolved Open Question 2).
@@ -25,7 +25,7 @@ The script never auto-fixes.
 
 The script reads `gh` and `git` state only — no filesystem mutations.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: cyxu
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -52,7 +52,7 @@ INV_SHORT = {
     2: "PR base is dev",
     3: "PR head matches ^feat/.+",
     4: "next-tag does not exist",
-    5: "working tree clean",
+    5: "no uncommitted tracked-file modifications",
 }
 
 
@@ -128,14 +128,21 @@ def check_inv_4(args):
 
 
 def check_inv_5(args):
-    """Working tree clean — `git status --porcelain` empty."""
-    rc, out, err = _git("status", "--porcelain")
-    if rc != 0:
-        return f"git status failed: {err.strip()}"
-    if out.strip() != "":
-        # Trim potentially-long detail; keep first line for context.
-        first = out.strip().splitlines()[0]
-        return f"working tree dirty (e.g. {first!r})"
+    """No uncommitted modifications to tracked files (staged or unstaged).
+
+    Untracked files (`??`) cannot affect a merge, so they are intentionally
+    ignored (issue #397): `git status --porcelain` reported them and
+    deadlocked the auto-evolve loop every time a new runtime artifact
+    appeared. Two `git diff --quiet` calls catch M/A/D/R on tracked files:
+    `git diff --quiet` exits non-zero on any unstaged tracked change;
+    `git diff --cached --quiet` exits non-zero on any staged change.
+    """
+    unstaged = _git("diff", "--quiet")[0]
+    staged = _git("diff", "--cached", "--quiet")[0]
+    if unstaged != 0:
+        return "tracked file has unstaged modifications"
+    if staged != 0:
+        return "tracked file has staged modifications"
     return None
 
 

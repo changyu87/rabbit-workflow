@@ -269,20 +269,85 @@ with tempfile.TemporaryDirectory() as td:
 
 
 # ---------------------------------------------------------------------------
-# Inv 5 negative — working tree dirty.
-#   Run under --phase merge with an untracked file present.
+# Inv 5 — tracked-file dirtiness only (issue #397).
+#   Inv 5 must reject only on uncommitted modifications to TRACKED files
+#   (staged or unstaged). Untracked files (`??`) cannot affect a merge and
+#   MUST NOT trip Inv 5 — otherwise the auto-evolve loop deadlocks every
+#   time a new runtime artifact appears.
 # ---------------------------------------------------------------------------
+
+# (a) Untracked file in working tree → Inv 5 PASSES (merge phase exits 0).
 with tempfile.TemporaryDirectory() as td:
     repo, env = _make_clean_repo(td)
-    with open(os.path.join(repo, "dirty-file"), "w") as f:
-        f.write("dirty\n")
+    with open(os.path.join(repo, "untracked-file"), "w") as f:
+        f.write("untracked\n")
+    proc = _run(repo, env, "42", "--phase", "merge")
+    if proc.returncode != 0:
+        fail(f"inv5-untracked: untracked file should NOT fail merge phase; "
+             f"got exit {proc.returncode}; stderr={proc.stderr!r}")
+    elif "Invariant 5" in proc.stderr:
+        fail(f"inv5-untracked: stderr must not name 'Invariant 5'; "
+             f"got {proc.stderr!r}")
+    else:
+        ok("inv5-untracked: untracked file passes merge phase")
+
+# (b) Tracked file with an unstaged modification → Inv 5 FAILS.
+with tempfile.TemporaryDirectory() as td:
+    repo, env = _make_clean_repo(td)
+    tracked = os.path.join(repo, "tracked.txt")
+    with open(tracked, "w") as f:
+        f.write("original\n")
+    subprocess.run(["git", "-C", repo, "add", "tracked.txt"],
+                   check=True, capture_output=True, env=env)
+    subprocess.run(["git", "-C", repo, "commit", "-m", "add tracked"],
+                   check=True, capture_output=True, env=env)
+    with open(tracked, "w") as f:
+        f.write("modified\n")  # unstaged modification
     proc = _run(repo, env, "42", "--phase", "merge")
     if proc.returncode == 0:
-        fail("inv5: dirty tree should fail merge phase")
+        fail("inv5-unstaged: tracked file with unstaged mod should fail "
+             "merge phase")
     elif "Invariant 5" not in proc.stderr:
-        fail(f"inv5: stderr should name 'Invariant 5'; got {proc.stderr!r}")
+        fail(f"inv5-unstaged: stderr should name 'Invariant 5'; "
+             f"got {proc.stderr!r}")
     else:
-        ok("inv5: dirty tree fails with 'Invariant 5' in stderr")
+        ok("inv5-unstaged: tracked unstaged modification fails with "
+           "'Invariant 5' in stderr")
+
+# (c) Tracked file with a staged modification → Inv 5 FAILS.
+with tempfile.TemporaryDirectory() as td:
+    repo, env = _make_clean_repo(td)
+    tracked = os.path.join(repo, "tracked.txt")
+    with open(tracked, "w") as f:
+        f.write("original\n")
+    subprocess.run(["git", "-C", repo, "add", "tracked.txt"],
+                   check=True, capture_output=True, env=env)
+    subprocess.run(["git", "-C", repo, "commit", "-m", "add tracked"],
+                   check=True, capture_output=True, env=env)
+    with open(tracked, "w") as f:
+        f.write("modified\n")
+    subprocess.run(["git", "-C", repo, "add", "tracked.txt"],
+                   check=True, capture_output=True, env=env)  # staged
+    proc = _run(repo, env, "42", "--phase", "merge")
+    if proc.returncode == 0:
+        fail("inv5-staged: tracked file with staged mod should fail "
+             "merge phase")
+    elif "Invariant 5" not in proc.stderr:
+        fail(f"inv5-staged: stderr should name 'Invariant 5'; "
+             f"got {proc.stderr!r}")
+    else:
+        ok("inv5-staged: tracked staged modification fails with "
+           "'Invariant 5' in stderr")
+
+# (d) Clean tree (no tracked mods, no untracked files) → Inv 5 PASSES.
+with tempfile.TemporaryDirectory() as td:
+    repo, env = _make_clean_repo(td)
+    proc = _run(repo, env, "42", "--phase", "merge")
+    if proc.returncode != 0:
+        fail(f"inv5-clean: clean tree should pass merge phase; "
+             f"got exit {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("inv5-clean: clean tree passes merge phase")
 
 
 # ---------------------------------------------------------------------------
