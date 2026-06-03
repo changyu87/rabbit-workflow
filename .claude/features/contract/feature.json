@@ -1,6 +1,6 @@
 {
   "name": "contract",
-  "version": "2.9.0",
+  "version": "2.10.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "tdd_state": "test-green",

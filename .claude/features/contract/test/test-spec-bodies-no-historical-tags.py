@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """test-spec-bodies-no-historical-tags.py — CONTRACT-BACKLOG-38 / -40.
 
-Greps every feature's spec.md, contract.md (resolved at specs/<name> —
-issue #399 migration complete, fallback dropped #465), and any
-skills/*/SKILL.md under each feature for historical-burden patterns that
-violate housekeeping protocol criterion #1 (current-design only) and
-criterion #2 (no documentation burden).
+Greps every feature's spec.md, contract.md (resolved through the canonical
+dual-read resolver in lib/checks.py — flat docs/<name> preferred, specs/<name>
+fallback), and any skills/*/SKILL.md under each feature for historical-burden
+patterns that violate housekeeping protocol criterion #1 (current-design only)
+and criterion #2 (no documentation burden).
+
+Routing resolution through lib/checks.py keeps a feature UNDER enforcement on
+EITHER layout: a feature whose spec.md/contract.md has been moved to the flat
+docs/ layout is still scanned, closing the false-green class where a migrated
+feature silently dropped out of the scan.
 
 Two-tier enforcement with per-feature opt-in (Inv 49):
 
@@ -51,6 +56,7 @@ Non-interactive. Exits non-zero on any unallowlisted match.
 """
 
 import glob
+import importlib.util
 import json
 import os
 import re
@@ -59,6 +65,22 @@ import sys
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.normpath(os.path.join(TEST_DIR, ".."))
 REPO_ROOT = os.path.normpath(os.path.join(FEATURE_DIR, "..", "..", ".."))
+
+
+def _load_resolve_spec_path():
+    """Load the canonical resolve_spec_path from lib/checks.py so spec-body
+    scanning uses the SAME dual-read resolution as the contract validators
+    (flat docs/<name> preferred, specs/<name> fallback). Avoids each scanner
+    re-implementing a divergent _resolve_doc."""
+    checks_path = os.path.join(FEATURE_DIR, "lib", "checks.py")
+    spec = importlib.util.spec_from_file_location(
+        "contract_lib_checks_histtags", checks_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.resolve_spec_path
+
+
+resolve_spec_path = _load_resolve_spec_path()
 FEATURES_ROOT = os.environ.get(
     "RABBIT_HISTORICAL_TAGS_FEATURES_ROOT",
     os.path.join(REPO_ROOT, ".claude", "features"),
@@ -99,46 +121,66 @@ if _cleaned_override is not None:
 else:
     CLEANED_FEATURES = derive_cleaned_features()
 
-# (relative-from-features-root, line_number, substring-on-line) tuples.
+# (feature, logical_doc, line_number, substring-on-line) tuples.
 # Each entry records a legitimate occurrence and WHY it is permitted.
 # Update only after manual review confirms the line is not a project
 # tag but a genuine value (e.g. algorithm-output sample).
+#
+# The key is the LOGICAL doc name (the path relative to the feature dir
+# with the leading docs/ or specs/ layout prefix stripped: "spec.md",
+# "contract.md", or "skills/<name>/SKILL.md"), NOT a layout-pinned
+# "specs/..." / "docs/..." string. An entry therefore stays live after a
+# feature migrates between the specs/ and docs/ layouts — no dead keys.
 ALLOWLIST = {
     # tdd-subagent spec.md migration note — names the prompt-contract
     # migration backlog (CONTRACT-BACKLOG-1) so future readers can find
     # the design doc and PR stack. The reference is documentary, not a
     # live project-management tag, and the migration is a permanent
     # architectural fact.
-    ("tdd-subagent/specs/spec.md", 60, "CONTRACT-BACKLOG-1"),
+    ("tdd-subagent", "spec.md", 60, "CONTRACT-BACKLOG-1"),
     # contract Inv 36 — the literal `status` enum value "retired" and its
     # documented retirement semantics. "retired" here is a live design
     # term (the feature-status API value), not a historical-burden tag.
-    ("contract/specs/spec.md", 139, "retired"),
-    ("contract/specs/spec.md", 140, "retired"),
-    ("contract/specs/spec.md", 141, "retired"),
-    ("contract/specs/spec.md", 142, "retired"),
+    ("contract", "spec.md", 139, "retired"),
+    ("contract", "spec.md", 140, "retired"),
+    ("contract", "spec.md", 141, "retired"),
+    ("contract", "spec.md", 142, "retired"),
     # contract Inv 49 — the strict-tier pattern DEFINITIONS. These lines
     # quote the regex (`#[0-9]+`) and the tombstone-word vocabulary
     # (`superseded`, `retired`, `obsoleted`) that the check itself rejects;
     # they are algorithm-spec samples, not historical references.
-    ("contract/specs/spec.md", 185, "#[0-9]+"),
-    ("contract/specs/spec.md", 186, "superseded"),
-    ("contract/specs/spec.md", 187, "obsoleted"),
+    ("contract", "spec.md", 185, "#[0-9]+"),
+    ("contract", "spec.md", 186, "superseded"),
+    ("contract", "spec.md", 187, "obsoleted"),
 }
 
 
 def _resolve_doc(fdir, name):
-    """Resolve specs/<name> (issue #399 migration complete, fallback dropped
-    #465). Returns the existing path or None."""
-    path = os.path.join(fdir, "specs", name)
+    """Resolve a feature's spec.md/contract.md via the canonical dual-read
+    resolver (flat docs/<name> preferred, specs/<name> fallback). Returns
+    the existing path or None."""
+    path = resolve_spec_path(fdir, name)
     if os.path.isfile(path):
         return path
     return None
 
 
+def _logical_doc(feature, doc_path):
+    """Return the layout-independent doc key for an absolute surface path:
+    the path relative to the feature dir with the leading docs/ or specs/
+    layout prefix stripped. e.g. .../tdd-subagent/docs/spec.md -> "spec.md";
+    .../foo/skills/bar/SKILL.md -> "skills/bar/SKILL.md"."""
+    fdir = os.path.join(FEATURES_ROOT, feature)
+    rel = os.path.relpath(doc_path, fdir)
+    for prefix in ("docs" + os.sep, "specs" + os.sep):
+        if rel.startswith(prefix):
+            return rel[len(prefix):]
+    return rel
+
+
 def feature_doc_surfaces():
     """Yield (feature_name, abs_path) for every monitored doc surface:
-    spec.md, contract.md (each resolved at specs/<name>), and
+    spec.md, contract.md (each resolved via the dual-read resolver), and
     skills/*/SKILL.md.
     """
     paths = []
@@ -157,9 +199,10 @@ def feature_doc_surfaces():
     return paths
 
 
-def is_allowlisted(rel_path, line_no, line_text):
-    for a_path, a_line, a_substr in ALLOWLIST:
-        if a_path == rel_path and a_line == line_no and a_substr in line_text:
+def is_allowlisted(feature, logical_doc, line_no, line_text):
+    for a_feature, a_doc, a_line, a_substr in ALLOWLIST:
+        if (a_feature == feature and a_doc == logical_doc
+                and a_line == line_no and a_substr in line_text):
             return True
     return False
 
@@ -168,6 +211,7 @@ violations = []
 surfaces = feature_doc_surfaces()
 for feature, doc_path in surfaces:
     rel_path = os.path.relpath(doc_path, FEATURES_ROOT)
+    logical_doc = _logical_doc(feature, doc_path)
     # Baseline tier applies to every feature; the strict tier additionally
     # applies only to features that have opted in via CLEANED_FEATURES.
     patterns = [BASELINE_PATTERN]
@@ -176,7 +220,8 @@ for feature, doc_path in surfaces:
     with open(doc_path) as f:
         for line_no, line in enumerate(f, start=1):
             if any(p.search(line) for p in patterns):
-                if is_allowlisted(rel_path, line_no, line.rstrip("\n")):
+                if is_allowlisted(feature, logical_doc, line_no,
+                                  line.rstrip("\n")):
                     continue
                 violations.append((rel_path, line_no, line.rstrip("\n")))
 

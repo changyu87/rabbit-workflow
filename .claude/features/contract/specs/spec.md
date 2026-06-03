@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.9.0
+version: 2.10.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -375,6 +375,12 @@ Numbering preserves gaps at 4, 6, 7, 27, 28, 29, 30, 35, 55, 56 — each is docu
     (c) **Single resolution site.** Every contract validator that reads a feature's spec, contract, or CHANGELOG body — including `validate_feature` and `check_invariant_monotonic_order` — MUST resolve the path through these helpers, so a feature laid out under EITHER layout validates identically. Re-deriving a spec/contract/CHANGELOG path inline (bypassing the resolver) is a contract violation.
 
     Enforced by `test/test-docs-layout-dual-read.py`: (i) `resolve_spec_path` resolves `docs/<name>` when only `docs/` is present; (ii) falls back to `specs/<name>` when only `specs/` is present; (iii) prefers `docs/` when both exist; (iv) returns the `specs/` candidate when neither exists; (v) a sibling `docs/bugs/` is preserved and never targeted; (vi)–(viii) `resolve_changelog_path` resolves `docs/CHANGELOG.md`, falls back to the feature-root `CHANGELOG.md`, and prefers `docs/` when both exist; (ix)–(xi) `validate_feature` accepts the flat `docs/` layout, still accepts the `specs/` layout, and accepts `docs/` alongside `docs/bugs/`; (xii)–(xiv) `check_invariant_monotonic_order` reads `spec.md` from `docs/`, still reads it from `specs/`, and prefers `docs/spec.md` over `specs/spec.md`.
+
+69. **Spec-body scanners share the dual-read resolver and a layout-independent allowlist.** Every contract scanner that greps a feature's spec/contract body for documentation-hygiene violations MUST resolve each surface through the SAME canonical resolver as the validators (`resolve_spec_path` from `lib/checks.py`, per Inv 68 — flat `docs/<name>` preferred, `specs/<name>` fallback), NOT a scanner-local resolver pinned to one layout. A feature on EITHER layout is therefore scanned identically; a feature whose `spec.md`/`contract.md` has moved to the flat `docs/` layout stays under enforcement rather than silently dropping out of the scan (which would produce a false green). Concretely, `test/test-spec-bodies-no-historical-tags.py` resolves each feature's `spec.md` and `contract.md` via `resolve_spec_path` and continues to scan every `skills/*/SKILL.md`.
+
+    (a) **Layout-independent allowlist key.** The historical-tags scanner's `ALLOWLIST` is keyed by `(feature, logical_doc, line, substring)` where `logical_doc` is the surface path relative to the feature directory with the leading `docs/` or `specs/` layout prefix stripped (`spec.md`, `contract.md`, or `skills/<name>/SKILL.md`). An allowlist entry therefore stays live after a feature migrates between layouts — there are no layout-pinned (`specs/...`) keys that go dead on migration, and no previously-allowlisted line reappears unallowlisted.
+
+    Enforced by `test/test-spec-bodies-docs-layout.py`: a flat-`docs/` feature with a baseline historical tag in `docs/spec.md` is DETECTED; the same content on `specs/` is also detected (fallback); a strict-tier violation in an opted-in flat-`docs/` feature is DETECTED; a flat-`docs/` `contract.md` surface is scanned; a sibling `docs/bugs/` subdirectory is never a resolution target. The existing `test/test-spec-bodies-strict-tier.py` continues to enforce the two-tier opt-in semantics unchanged.
 
 ## Template marker convention
 
