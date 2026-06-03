@@ -2134,6 +2134,70 @@ Phase E merges complete.
     deployed `SKILL.md` phase-11 documentation pin BOTH the `60`
     (queue-non-empty refire) and `3600` (queue-empty idle) cases together
     with the queue-emptiness branch that selects between them.
+31. **`check-auto-resume.py` owns mechanical restart-resume detection
+    (issue #424).** Today's restart recovery is convention-enforced: after a
+    `restart-needed` tick the human must read the SessionStart banner (Inv 22
+    line-2 `resume after restart` variant) and manually paste
+    `/rabbit-auto-evolve start`. A missed read silently stalls the loop. Per
+    spec-rules §1 (`script > CLI > spec > prompt`) the resume decision is
+    moved out of human convention and into a deterministic script so the
+    SessionStart hook can mechanically self-resume.
+
+    The CLI
+    `python3 .claude/features/rabbit-auto-evolve/scripts/check-auto-resume.py`
+    inspects rabbit-auto-evolve's runtime markers at the repo root and emits
+    a JSON object on stdout describing whether the loop should auto-resume:
+
+    ```json
+    {"resume": true,  "action": "/rabbit-auto-evolve start"}
+    {"resume": false, "action": null}
+    ```
+
+    **Auto-resume conditions (ALL three must hold for `resume: true`):**
+
+    1. `.rabbit-auto-evolve-active` is present (mode is on), AND
+    2. `.rabbit-auto-evolve-restart-needed` is present (a restart was
+       needed), AND
+    3. `.rabbit-auto-evolve-running` is NOT present (no tick is already
+       running).
+
+    When all three hold the script emits `{"resume": true, "action":
+    "/rabbit-auto-evolve start"}`; otherwise it emits `{"resume": false,
+    "action": null}`. The `.rabbit-auto-evolve-aborted` marker is NOT
+    consulted here — abort handling is the banner's responsibility (Inv 22);
+    this script answers only the narrow "should we mechanically re-launch the
+    loop after a restart" question.
+
+    Exit code is ALWAYS 0 — the verdict is carried in `resume`, not in the
+    exit code. The script reads files only (`os.path.exists`) and never
+    invokes `ls`, `test -f`, or any command that would exit non-zero on the
+    expected "not active" path. `<repo_root>` defaults to `os.getcwd()`;
+    overridable via the `RABBIT_AUTO_EVOLVE_REPO_ROOT` env var for tests.
+
+    **rabbit-cage integration (cross-scope INVOKE, NOT a feature edit).** The
+    SessionStart hook is owned by rabbit-cage. The CORRECT cross-scope
+    mechanism is for rabbit-cage's SessionStart hook to INVOKE this
+    rabbit-auto-evolve script and, when `resume` is true, surface the `action`
+    so the loop auto-resumes — exactly the contract-INVOKE pattern already
+    used elsewhere (this feature's `invokes` block). The actual hook wiring is
+    a SEPARATE rabbit-cage touch filed as a discovered issue; it is out of
+    this feature's scope. This invariant fixes only the rabbit-auto-evolve
+    side: the deterministic resume-detection script plus the documented
+    conditions the hook consumes.
+
+    This invariant was introduced by issue #424 in v0.19.0.
+
+    Enforced by `test/test-check-auto-resume.py`:
+    - All three conditions met (active + restart-needed, no running) →
+      `resume: true`, `action: "/rabbit-auto-evolve start"`.
+    - Active + restart-needed but `.rabbit-auto-evolve-running` present →
+      `resume: false`, `action: null`.
+    - Active present but `.rabbit-auto-evolve-restart-needed` absent →
+      `resume: false`, `action: null`.
+    - `.rabbit-auto-evolve-active` absent (mode off) → `resume: false`,
+      `action: null`.
+    - Exit code is 0 in all cases.
+    - `--help` smoke: exit 0 with recognizable usage text.
 
 ## Known gaps
 
