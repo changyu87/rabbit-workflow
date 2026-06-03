@@ -74,9 +74,12 @@ def _write_gh_shim(shim_dir, call_log, pr_view_payload):
 
 
 def _write_git_shim(shim_dir, call_log, prior_tag="v0.5.2",
-                    tag_exit=0, push_exit=0):
+                    tag_exit=0, push_exit=0, describe_exit=0):
     """git shim:
-       - `git describe --tags --abbrev=0` echoes `prior_tag`
+       - `git describe --tags --abbrev=0` echoes `prior_tag` and exits
+         `describe_exit` (set non-zero to simulate a tag-free repo, where
+         real git writes "fatal: No names found ..." to stderr and exits
+         128 — issue #400 first-release case)
        - `git tag -a <tag> -m <msg>` records and exits tag_exit
        - `git push origin <tag>` records and exits push_exit
        - Other git subcommands delegate to the real git binary
@@ -90,9 +93,14 @@ def _write_git_shim(shim_dir, call_log, prior_tag="v0.5.2",
         f.write(f'PRIOR_TAG="{prior_tag}"\n')
         f.write(f'TAG_EXIT={tag_exit}\n')
         f.write(f'PUSH_EXIT={push_exit}\n')
+        f.write(f'DESCRIBE_EXIT={describe_exit}\n')
         f.write('printf "git %s\\n" "$*" >> "$CALL_LOG"\n')
         # git describe --tags --abbrev=0 (any arg order, but match the literal)
         f.write('if [ "$1" = "describe" ]; then\n')
+        f.write('  if [ "$DESCRIBE_EXIT" -ne 0 ]; then\n')
+        f.write('    echo "fatal: No names found, cannot describe anything." >&2\n')
+        f.write('    exit "$DESCRIBE_EXIT"\n')
+        f.write('  fi\n')
         f.write('  printf "%s\\n" "$PRIOR_TAG"\n')
         f.write('  exit 0\n')
         f.write('fi\n')
@@ -122,7 +130,7 @@ def _write_safety_shim(shim_dir, exit_code=0, stderr_msg=""):
 def _make_env(tmpdir, pr_view_payload,
               prior_tag="v0.5.2",
               tag_exit=0, push_exit=0,
-              safety_exit=0):
+              safety_exit=0, describe_exit=0):
     bin_dir = os.path.join(tmpdir, "bin")
     os.makedirs(bin_dir)
     script_dir = os.path.join(tmpdir, "scripts")
@@ -132,7 +140,8 @@ def _make_env(tmpdir, pr_view_payload,
 
     _write_gh_shim(bin_dir, call_log, pr_view_payload)
     _write_git_shim(bin_dir, call_log, prior_tag=prior_tag,
-                    tag_exit=tag_exit, push_exit=push_exit)
+                    tag_exit=tag_exit, push_exit=push_exit,
+                    describe_exit=describe_exit)
     _write_safety_shim(script_dir, exit_code=safety_exit)
 
     env = os.environ.copy()
@@ -448,6 +457,55 @@ with tempfile.TemporaryDirectory() as td:
         fail(f"happy: git tag was NOT invoked; calls={calls!r}")
     else:
         ok("happy: git tag was invoked")
+
+
+# ---------------------------------------------------------------------------
+# First release (issue #400): zero prior tags. `git describe` exits non-zero.
+# The script must NOT crash; first tag is v1.0.0 regardless of bump kind, and
+# git tag IS invoked. Covers priority:high (would-be minor),
+# priority:critical (would-be major), and priority:low (would-be patch).
+# ---------------------------------------------------------------------------
+for label, would_be in (
+    ("priority:high", "minor"),
+    ("priority:critical", "major"),
+    ("priority:low", "patch"),
+):
+    with tempfile.TemporaryDirectory() as td:
+        payload = _make_payload(
+            labels=[label],
+            body="",
+            files=[".claude/features/foo/scripts/a.py"],
+        )
+        cwd, env, call_log = _make_env(td, payload, describe_exit=128)
+        proc = _run(cwd, env, "42")
+        if proc.returncode != 0:
+            fail(f"first-release[{label}]: exit {proc.returncode}; "
+                 f"stderr={proc.stderr!r}")
+        try:
+            result = json.loads(proc.stdout)
+        except json.JSONDecodeError as e:
+            fail(f"first-release[{label}]: stdout not JSON: {e}; "
+                 f"stdout={proc.stdout!r}")
+            result = None
+        if result is not None:
+            if result.get("status") != "released":
+                fail(f"first-release[{label}]: status "
+                     f"{result.get('status')!r} != 'released'")
+            elif result.get("prior_tag") is not None:
+                fail(f"first-release[{label}]: prior_tag "
+                     f"{result.get('prior_tag')!r} != None")
+            elif result.get("next_tag") != "v1.0.0":
+                fail(f"first-release[{label}]: next_tag "
+                     f"{result.get('next_tag')!r} != 'v1.0.0' "
+                     f"(would-be {would_be})")
+            else:
+                ok(f"first-release[{label}]: zero tags → v1.0.0 / released")
+        calls = _calls(call_log)
+        if not any(c.startswith("git tag") for c in calls):
+            fail(f"first-release[{label}]: git tag NOT invoked; "
+                 f"calls={calls!r}")
+        else:
+            ok(f"first-release[{label}]: git tag invoked for first release")
 
 
 sys.exit(FAIL)

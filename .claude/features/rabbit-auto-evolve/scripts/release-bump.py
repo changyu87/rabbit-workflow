@@ -19,7 +19,12 @@ Per rabbit-auto-evolve spec.md Inv 7, this script:
        - priority:low or priority:medium       → patch / priority-low-medium
      If no priority label and no major trigger → patch / priority-low-medium
      (safe default; the loop progresses rather than wedging).
-  3. Computes next_tag from `git describe --tags --abbrev=0` (prior tag).
+  3. Reads the prior tag via `git describe --tags --abbrev=0` and computes
+     next_tag. When the repo has zero tags (first-release case, issue
+     #400) `git describe` exits non-zero — this is NOT an error: prior_tag
+     is null and next_tag is the fixed first-release tag v1.0.0 (the bump
+     table only governs how an EXISTING version is incremented). Otherwise
+     next_tag is the prior tag bumped per the table.
   4. Calls `safety-check.py <pr#> --phase release --next-tag <next_tag>`
      BEFORE any git operation (resolved Open Question 2: --next-tag flag,
      not env var). Non-zero exit → emit {status:skipped,
@@ -28,7 +33,7 @@ Per rabbit-auto-evolve spec.md Inv 7, this script:
      `git push origin <next_tag>`,
      `gh release create <next_tag> --notes-from-tag --target dev`.
 
-Emits a single JSON object on stdout:
+Emits a single JSON object on stdout (prior_tag is null on first release):
   {
     "pr": 348,
     "prior_tag": "v0.5.2",
@@ -45,7 +50,7 @@ The sibling `safety-check.py` is resolved via RABBIT_AUTO_EVOLVE_SCRIPT_DIR
 when set; otherwise via this script's own dirname (mirrors merge-prs.py and
 cleanup-branches.py).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -123,13 +128,24 @@ def classify(payload, features_threshold):
     return ("patch", "priority-low-medium")
 
 
+FIRST_RELEASE_TAG = "v1.0.0"
+
+
 def _prior_tag():
+    """Return the most recent tag, or None when the repo has zero tags.
+
+    `git describe --tags --abbrev=0` exits non-zero ("fatal: No names
+    found, cannot describe anything.") in a tag-free repo. That is the
+    first-release case (issue #400), NOT an error: returning None lets
+    `run()` cut the very first release at FIRST_RELEASE_TAG instead of
+    crashing and silently skipping Phase 7.
+    """
     proc = subprocess.run(
         ["git", "describe", "--tags", "--abbrev=0"],
         capture_output=True, text=True,
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"git describe failed: {proc.stderr.strip()}")
+        return None
     return proc.stdout.strip()
 
 
@@ -186,7 +202,13 @@ def run(pr, features_threshold):
     payload = _fetch_pr(pr)
     bump, trigger = classify(payload, features_threshold)
     prior_tag = _prior_tag()
-    next_tag = _compute_next_tag(prior_tag, bump)
+    if prior_tag is None:
+        # First release (zero prior tags): the bump table only governs how
+        # an EXISTING version is incremented, so it does not apply here.
+        # Start the version line at the fixed first-release tag (issue #400).
+        next_tag = FIRST_RELEASE_TAG
+    else:
+        next_tag = _compute_next_tag(prior_tag, bump)
 
     result = {
         "pr": pr,
