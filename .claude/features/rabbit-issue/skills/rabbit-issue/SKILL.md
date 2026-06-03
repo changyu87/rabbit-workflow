@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.1.0
+version: 1.1.1
 owner: cyxu
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue REPLACES the retired rabbit-file feature; do NOT invoke rabbit-file or its scripts — they are gone. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours the `rabbit-managed` label as a safety guard so human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -133,11 +133,13 @@ When the user asks to work, close, or reopen an issue:
 4. **If the user chooses close without work**:
    ```bash
    python3 .claude/features/rabbit-issue/scripts/item-status.py close <N> \
-     --reason not_planned \
+     --reason not-planned \
      --comment "<why>"
    ```
-   `not_planned` is the correct reason for closing stale or invalid
-   issues. The safety guard below still applies.
+   `not-planned` is the correct reason for closing stale or invalid
+   issues; the script translates it to gh's `not planned` at the CLI
+   boundary, yielding `state_reason = not_planned`. The safety guard
+   below still applies.
 
 5. **If the user confirms to proceed**:
    - Invoke `rabbit-feature-touch` in **normal mode**, passing the issue
