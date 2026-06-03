@@ -79,6 +79,20 @@ def test_feature_includes_has_expected_features():
     print("PASS test_feature_includes_has_expected_features")
 
 
+def test_rabbit_feature_includes_audit_owner_script():
+    """rabbit-feature-audit/SKILL.md invokes audit-owner.py, so it MUST ship
+    in FEATURE_INCLUDES['rabbit-feature'] (issue #570). Without this entry a
+    plugin install omits the script and the audit skill breaks at runtime."""
+    mod = _load_install()
+    rf = mod.FEATURE_INCLUDES["rabbit-feature"]
+    assert "scripts/audit-owner.py" in rf, (
+        "FEATURE_INCLUDES['rabbit-feature'] must include "
+        "'scripts/audit-owner.py' (referenced by rabbit-feature-audit "
+        f"SKILL.md); got {rf}"
+    )
+    print("PASS test_rabbit_feature_includes_audit_owner_script")
+
+
 def test_hooks_has_five_entries():
     """HOOKS must lay down 4 rabbit-cage dispatchers + _dispatcher_lib.
 
@@ -109,6 +123,7 @@ def main() -> int:
     test_exports_run_publish_loop_callable()
     test_exports_file_closure_constants()
     test_feature_includes_has_expected_features()
+    test_rabbit_feature_includes_audit_owner_script()
     test_hooks_has_five_entries()
     return 0
 
