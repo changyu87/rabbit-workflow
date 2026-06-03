@@ -34,7 +34,13 @@ def test_close_with_completed_reason(gh_shim, fake_repo):
 def test_close_with_not_planned_reason(gh_shim, fake_repo):
     r = _run("close", "42", "--reason", "not-planned")
     assert r.returncode == 0, r.stderr
-    assert "not-planned" in gh_shim.read_text()
+    log = gh_shim.read_text()
+    # gh issue close --reason only accepts "not planned" (space), not the
+    # hyphenated "not-planned" we accept at argparse. The script must
+    # translate at the gh boundary (issue #419).
+    assert "issue close" in log
+    assert "not planned" in log
+    assert "not-planned" not in log
 
 
 def test_close_rejects_unknown_reason(gh_shim, fake_repo):

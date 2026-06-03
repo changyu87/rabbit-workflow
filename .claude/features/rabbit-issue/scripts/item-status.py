@@ -9,7 +9,7 @@ Subcommands:
 `close` and `reopen` enforce the `rabbit-managed` safety guard before
 issuing the gh command.
 
-Version: 1.0.0
+Version: 1.0.1
 Owner: cyxu
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -38,8 +38,13 @@ def cmd_show(args: argparse.Namespace) -> None:
 
 def cmd_close(args: argparse.Namespace) -> None:
     require_managed(args.number)
+    # argparse accepts the hyphen form (Python/shell-friendly), but
+    # `gh issue close --reason` only accepts "completed" or "not planned"
+    # (with a space). Translate at the gh boundary (issue #419). Only
+    # "not-planned" needs translation; "completed" is unchanged.
+    reason = args.reason.replace("-", " ")
     cmd = ["gh", "issue", "close", str(args.number),
-           "-R", repo_slug(), "--reason", args.reason]
+           "-R", repo_slug(), "--reason", reason]
     if args.comment:
         cmd += ["--comment", args.comment]
     subprocess.run(cmd, check=True)

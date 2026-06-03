@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.1.0
+version: 1.1.1
 owner: cyxu
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -59,6 +59,10 @@ applied.
 - `state_reason` ∈ {`completed`, `not_planned`, `null`}
   - `completed` — closed after TDD fix (default close reason)
   - `not_planned` — closed without work (stale or invalid issue)
+- `item-status.py close --reason` accepts the hyphenated, shell-friendly
+  forms `completed` and `not-planned`; the script translates `not-planned`
+  to gh's space-separated `not planned` at the CLI boundary, which GitHub
+  records as `state_reason = not_planned`.
 - Reopen restores `state = open`, `state_reason = reopened`
 
 ### SHA / event history
