@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.2.0
+version: 0.3.0
 template_version: 2.0.0
 ---
 
@@ -35,7 +35,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "name": "rabbit-spec-create",
-        "purpose": "seed the initial specs/spec.md body for each accepted feature"
+        "purpose": "seed the initial docs/spec.md body for each accepted feature"
       }
     ],
     "scripts": [

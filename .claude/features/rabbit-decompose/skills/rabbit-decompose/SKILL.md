@@ -1,7 +1,7 @@
 ---
 name: rabbit-decompose
 description: Propose a feature decomposition for an existing codebase or a high-level spec, interactively iterate with the user until accepted, then orchestrate scaffolding + initial spec drafting per accepted feature. Use when the user wants to start a new rabbit-managed project from a spec/prompt, or when the user wants to retroactively organize an existing codebase into rabbit features. Phrases like "decompose this into features", "propose a feature breakdown", "let's organize this codebase with rabbit", "/rabbit-decompose", "what features should this project have". Do NOT use to revise individual feature specs (that's rabbit-spec-update) or to scaffold a single feature whose name + globs you already know (that's rabbit-feature-scaffold).
-version: 1.0.0
+version: 0.3.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
 ---
