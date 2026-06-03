@@ -477,4 +477,122 @@ with tempfile.TemporaryDirectory() as repo_root:
             fail(f"contract_touch: bad JSON {e}")
 
 
+# ---------------------------------------------------------------------------
+# Comment-thread reconciliation (issue #463): a correction comment that
+# uses supersession language supersedes the original body. Triage must read
+# the full thread and reflect the corrected intent — decision=work with the
+# rationale noting that a correction was applied.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "corr-feature")
+    issue_payload = json.dumps({
+        "number": 463,
+        "title": "Migrate layout",
+        "body": "Rename docs/spec/ to specs/.",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:corr-feature"},
+            {"name": "priority:high"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [
+            {"author": {"login": "maint"}, "createdAt": "2026-06-01T00:00:00Z",
+             "body": "Correction: the specs/ framing was lazy. The corrected "
+                     "proposal is docs/{spec,contract,CHANGELOG}.md. This "
+                     "supersedes the original body."},
+        ],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"463": issue_payload}, list_payload)
+    proc = run_script(repo_root, 463, shim_dir)
+    expect_decision(
+        "recon-correction", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None
+            if "correction" in (r.get("rationale") or "").lower()
+            else "rationale must note that a correction was applied"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Comment-thread reconciliation (issue #463): a REOPENED issue whose retitle
+# conflicts with the body on the target, with no single coherent latest
+# intent → defer/needs-judgment with a planning_note naming both targets.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "reopen-feature")
+    issue_payload = json.dumps({
+        "number": 464,
+        # Title points at docs/; body points at specs/ — conflicting targets.
+        "title": "Migrate layout -> docs/{spec,contract,CHANGELOG}.md",
+        "body": "Rename docs/spec/ to specs/ across the repo.",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:reopen-feature"},
+            {"name": "priority:high"},
+        ],
+        "state": "OPEN",
+        "stateReason": "reopened",
+        "comments": [
+            {"author": {"login": "maint"}, "createdAt": "2026-06-01T00:00:00Z",
+             "body": "Reopening — I'm not sure which target is right anymore."},
+        ],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"464": issue_payload}, list_payload)
+    proc = run_script(repo_root, 464, shim_dir)
+    expect_decision(
+        "recon-reopen-conflict", proc, "defer", "needs-judgment",
+        extra_assert=lambda r: (
+            None
+            if isinstance(r.get("planning_note"), str)
+            and "docs/" in r["planning_note"]
+            and "specs/" in r["planning_note"]
+            else "planning_note must name both conflicting targets"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Comment-thread reconciliation (issue #463): NO-REGRESSION guard. An
+# actionable issue with no comments and no title/body conflict must reconcile
+# to the exact pre-#463 behavior — decision=work, reason_code=actionable,
+# and NO correction noted in the rationale.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "noregress-feature")
+    issue_payload = json.dumps({
+        "number": 465,
+        "title": "Add brand-new-behavior to noregress-feature",
+        "body": "Implement this fresh behavior.",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:noregress-feature"},
+            {"name": "priority:high"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"465": issue_payload}, list_payload)
+    proc = run_script(repo_root, 465, shim_dir)
+    expect_decision(
+        "recon-no-regression", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None
+            if "correction" not in (r.get("rationale") or "").lower()
+            else "no-comment/no-conflict issue must not note a correction"
+        ),
+    )
+
+
 sys.exit(FAIL)

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.12.2
+version: 0.13.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -335,9 +335,13 @@ Phase E merges complete.
    would unblock dispatch; non-defer decisions carry `planning_note: null`.
 
    The script reads only:
-   - Issue metadata (title, body, labels, state, comments) via
-     `gh issue view <N> --repo <repo> --json
-     number,title,body,labels,state,comments`.
+   - Issue metadata (title, body, labels, state, state reason, and the
+     full comment thread) via `gh issue view <N> --repo <repo> --json
+     number,title,body,labels,state,stateReason,comments`. The `comments`
+     array (`[{body, createdAt, author}, …]`, chronological order, oldest
+     first) and `stateReason` (e.g. `"reopened"`) are read so triage can
+     reconcile a correction comment that supersedes the original body
+     (see "Comment-thread reconciliation" below).
    - The named feature's spec head matter (YAML frontmatter and the
      first markdown section only) — for rule 6. The path is resolved
      dual-read (issue #399): the new `specs/spec.md` layout is preferred,
@@ -376,6 +380,63 @@ Phase E merges complete.
    NEVER fall through silently to `work`; the loop under-dispatches
    rather than over-dispatches.
 
+   ### Comment-thread reconciliation (issue #463)
+
+   Triage MUST read the FULL comment thread, not just the issue body. An
+   issue's body is frozen at filing time; a maintainer who later realizes
+   the original framing was wrong corrects it in a comment (and often
+   reopens or retitles the issue). Reading only the body makes the loop
+   implement the stale original design — the canonical incident is #399,
+   where the body said "rename `docs/spec/` → `specs/`" but a later
+   correction comment and a retitle said the correct target was `docs/`
+   with a CHANGELOG; the loop read only the body and shipped 13 PRs of
+   wrong work.
+
+   Reconciliation runs AFTER rule 7 would otherwise return `work` — it
+   never overrides a `close-not-planned` / `blocked` / `malformed-labels`
+   verdict (those are determined by structural facts, not by intent
+   wording). It refines an actionable issue's verdict between `work` and
+   `defer`:
+
+   1. **Detection signals** (any one triggers reconciliation analysis):
+      - The issue carries at least one comment AND
+        `stateReason == "reopened"` (case-insensitive) — a STRONG signal;
+        always reconcile.
+      - Any comment body contains supersession language
+        (case-insensitive substring match against: `supersedes`,
+        `correction`, `corrected proposal`, `ignore the original`,
+        `revised scope`, `original body was wrong`) — treat that comment
+        as an authoritative correction.
+      - The title and body describe DIFFERENT targets — detected as a
+        conflict when the title contains a path/target token (e.g. a
+        `docs/...` or `specs/...` path, or text after a `→`/`->` arrow)
+        that does NOT appear in the body, while the body declares its own
+        distinct path/target token. This is a title-vs-body conflict.
+
+   2. **Resolution:**
+      - When a correction comment (supersession language) is present and
+        its corrected intent is coherent, treat the MOST RECENT coherent
+        intent as authoritative: emit `decision=work`,
+        `reason_code=actionable`, and the `rationale` MUST note that a
+        correction was applied (literal substring `correction` in the
+        rationale) and name the superseding source.
+      - When the title and body conflict on the target and the latest
+        signal (title or correction comment) yields a single coherent
+        target, the latest/title wins: emit `decision=work` with the
+        `rationale` noting the conflict and which side won.
+      - When body and comments (or title and body) conflict and the
+        correct target is genuinely AMBIGUOUS (no single coherent latest
+        intent), emit `decision=defer`, `reason_code=needs-judgment`,
+        with `planning_note` of the form `"Body and correction comment
+        conflict on target [X vs Y]; need maintainer clarification before
+        dispatch."` (the bracketed `[X vs Y]` names the two conflicting
+        targets).
+
+   3. **No-signal pass-through:** an actionable issue with no comments and
+      no title/body conflict reconciles to exactly the pre-#463 behavior —
+      `decision=work`, `reason_code=actionable`, no correction noted. This
+      is a strict no-regression requirement.
+
    Exit code: 0 on successful classification (any decision); non-zero
    on `gh` failure or other unexpected error (stderr passthrough).
 
@@ -389,6 +450,19 @@ Phase E merges complete.
      `gh issue list` (rule 3 lookup); no live network.
    - An additional `needs-judgment` test exercising an ambiguity case
      (e.g. body declares `blocked-by:` without an integer reference).
+   - Comment-thread reconciliation (issue #463), each via a `gh` shim
+     whose `gh issue view` payload carries a populated `comments` array
+     and `stateReason`:
+     - Correction comment present (supersession language) → `decision=work`,
+       `reason_code=actionable`, and the `rationale` notes a correction
+       was applied (substring `correction`).
+     - Reopened issue (`stateReason == "reopened"`) whose retitle conflicts
+       with the body on the target, ambiguous → `decision=defer`,
+       `reason_code=needs-judgment`, `planning_note` names both conflicting
+       targets.
+     - No comments and no title/body conflict → unchanged pre-#463
+       behavior (`decision=work`, `reason_code=actionable`, no correction
+       noted) — the no-regression guard.
    - Smoke test: invoke with `--help`; assert exit 0 and recognizable
      usage text.
 
