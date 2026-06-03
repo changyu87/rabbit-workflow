@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
-# test-specs-migration.py — issue #399 Phase 2 (tdd-subagent) coverage.
+# test-specs-migration.py — issue #399 Phase 2b (tdd-subagent) coverage.
 #
-# End-to-end coverage for the docs/spec/ -> specs/ migration of the
+# End-to-end coverage for the specs/ -> flat docs/ migration of the
 # tdd-subagent feature and the dual-read behaviour of its owned tooling
 # (dispatch-tdd-subagent.py, tdd-step.py).
 #
 # Behaviours under test:
-#   1. tdd-subagent's own spec/contract live at specs/ and no docs/ dir
-#      remains.
+#   1. tdd-subagent's own spec/contract/CHANGELOG live at the flat docs/
+#      layout: docs/spec.md, docs/contract.md, docs/CHANGELOG.md exist;
+#      no specs/ dir remains and no feature-root CHANGELOG.md remains.
 #   2. The Inv 38 spec-update -> test-red git-diff gate accepts a change
-#      under the NEW specs/ layout (preferred) AND under the LEGACY
-#      docs/spec/ layout (fallback, dual-read for not-yet-migrated
-#      features).
+#      under the flat docs/ layout (preferred) AND under the LEGACY
+#      specs/ layout (fallback, dual-read for not-yet-migrated features).
 #   3. The Inv 41 numbered-list check resolves both layouts (no crash,
 #      transition still succeeds — the check is best-effort).
-#   4. dispatch-tdd-subagent.py works with a --spec under specs/ and the
-#      scoped-view grep NOTE points at specs/ (no docs/spec/ literal).
+#   4. dispatch-tdd-subagent.py works with a --spec under the flat docs/
+#      layout and the scoped-view grep NOTE points at docs/spec.md.
 #
 # Owner: rabbit-workflow team (tdd-subagent)
-# Deprecation criterion: when issue #399 Phase 3 drops the docs/spec/
+# Deprecation criterion: when issue #399 Phase 3 drops the specs/
 #     fallback (the legacy-layout assertions retire then).
 import json
 import os
@@ -59,24 +59,36 @@ def _run(cmd, env=None):
 
 
 # ---------------------------------------------------------------------------
-# 1. tdd-subagent's own layout: specs/ present, docs/ absent.
+# 1. tdd-subagent's own layout: flat docs/ present, specs/ absent, and the
+#    feature-root CHANGELOG.md moved under docs/.
 # ---------------------------------------------------------------------------
 def t_own_layout():
-    specs_spec = os.path.join(FEATURE_DIR, "specs", "spec.md")
-    specs_contract = os.path.join(FEATURE_DIR, "specs", "contract.md")
-    docs_dir = os.path.join(FEATURE_DIR, "docs")
-    if os.path.isfile(specs_spec):
-        ok("migration: specs/spec.md exists")
+    docs_spec = os.path.join(FEATURE_DIR, "docs", "spec.md")
+    docs_contract = os.path.join(FEATURE_DIR, "docs", "contract.md")
+    docs_changelog = os.path.join(FEATURE_DIR, "docs", "CHANGELOG.md")
+    specs_dir = os.path.join(FEATURE_DIR, "specs")
+    root_changelog = os.path.join(FEATURE_DIR, "CHANGELOG.md")
+    if os.path.isfile(docs_spec):
+        ok("migration: docs/spec.md exists")
     else:
-        ko(f"migration: specs/spec.md missing at {specs_spec}")
-    if os.path.isfile(specs_contract):
-        ok("migration: specs/contract.md exists")
+        ko(f"migration: docs/spec.md missing at {docs_spec}")
+    if os.path.isfile(docs_contract):
+        ok("migration: docs/contract.md exists")
     else:
-        ko(f"migration: specs/contract.md missing at {specs_contract}")
-    if not os.path.exists(docs_dir):
-        ok("migration: no docs/ directory remains")
+        ko(f"migration: docs/contract.md missing at {docs_contract}")
+    if os.path.isfile(docs_changelog):
+        ok("migration: docs/CHANGELOG.md exists")
     else:
-        ko(f"migration: docs/ still present at {docs_dir}")
+        ko(f"migration: docs/CHANGELOG.md missing at {docs_changelog}")
+    if not os.path.exists(specs_dir):
+        ok("migration: no specs/ directory remains")
+    else:
+        ko(f"migration: specs/ still present at {specs_dir}")
+    if not os.path.exists(root_changelog):
+        ok("migration: no feature-root CHANGELOG.md remains")
+    else:
+        ko(f"migration: feature-root CHANGELOG.md still present at "
+           f"{root_changelog}")
 
 
 # ---------------------------------------------------------------------------
@@ -121,21 +133,21 @@ def _gate_allows(layout_label, spec_subpath):
            f"stderr={err!r}")
 
 
-def t_gate_specs_layout():
-    _gate_allows("specs", "specs")
+def t_gate_docs_layout():
+    _gate_allows("docs", "docs")
 
 
 def t_gate_legacy_layout():
-    _gate_allows("docs_spec", "docs/spec")
+    _gate_allows("specs", "specs")
 
 
 # ---------------------------------------------------------------------------
 # 3. Numbered-list check (Inv 41) resolves both layouts without crashing.
 #    The transition must still succeed (check is best-effort, non-blocking).
 # ---------------------------------------------------------------------------
-def t_numbered_list_specs():
-    d = os.path.join(TMPROOT, "nl_specs")
-    feat, spec_dir = _git_feature(d, "nl_specs", "specs")
+def t_numbered_list_docs():
+    d = os.path.join(TMPROOT, "nl_docs")
+    feat, spec_dir = _git_feature(d, "nl_docs", "docs")
     with open(os.path.join(spec_dir, "spec.md"), "a") as f:
         f.write("1. first\n2. second\n")
     rc, _, err = _run(
@@ -145,19 +157,21 @@ def t_numbered_list_specs():
     with open(os.path.join(feat, "feature.json")) as f:
         state = json.load(f)["tdd_state"]
     if rc == 0 and state == "test-red":
-        ok("Inv 41 dual-read: numbered-list hook runs against specs/ layout")
+        ok("Inv 41 dual-read: numbered-list hook runs against docs/ layout")
     else:
-        ko(f"Inv 41 specs: rc={rc} state={state} stderr={err!r}")
+        ko(f"Inv 41 docs: rc={rc} state={state} stderr={err!r}")
 
 
 # ---------------------------------------------------------------------------
-# 4. dispatch-tdd-subagent.py accepts a --spec under specs/ and emits a
-#    grep NOTE that points at specs/ (no docs/spec/ literal).
+# 4. dispatch-tdd-subagent.py accepts a --spec under the flat docs/ layout
+#    and emits a grep NOTE that points at docs/spec.md (no specs/ or legacy
+#    docs/spec/ literal).
 # ---------------------------------------------------------------------------
-def t_dispatch_scoped_note_uses_specs():
-    # Use the real repo: tdd-subagent now lives under specs/. Dispatch with
-    # --affected-invariants to force the scoped-view NOTE to render.
-    spec_path = os.path.join(FEATURE_DIR, "specs", "spec.md")
+def t_dispatch_scoped_note_uses_docs():
+    # Use the real repo: tdd-subagent now lives under the flat docs/ layout.
+    # Dispatch with --affected-invariants to force the scoped-view NOTE to
+    # render.
+    spec_path = os.path.join(FEATURE_DIR, "docs", "spec.md")
     rc, out, err = _run(
         ["python3", DISPATCH, "--scope", "tdd-subagent",
          "--spec", spec_path, "--affected-invariants", "1"],
@@ -167,8 +181,8 @@ def t_dispatch_scoped_note_uses_specs():
     if rc != 0:
         ko(f"dispatch scoped: rc={rc} stderr={err.decode()!r}")
         return
-    if "/specs/spec.md`" in text and "/docs/spec/spec.md`" not in text:
-        ok("dispatch: scoped-view grep NOTE points at specs/ (not docs/spec/)")
+    if "/docs/spec.md`" in text and "/docs/spec/spec.md`" not in text:
+        ok("dispatch: scoped-view grep NOTE points at docs/spec.md")
     else:
         # Surface a snippet for debugging.
         idx = text.find("NOTE: scoped view")
@@ -176,25 +190,25 @@ def t_dispatch_scoped_note_uses_specs():
         ko(f"dispatch: scoped NOTE layout wrong: {snippet!r}")
 
 
-def t_dispatch_accepts_specs_spec():
-    spec_path = os.path.join(FEATURE_DIR, "specs", "spec.md")
+def t_dispatch_accepts_docs_spec():
+    spec_path = os.path.join(FEATURE_DIR, "docs", "spec.md")
     rc, out, _ = _run(
         ["python3", DISPATCH, "--scope", "tdd-subagent", "--spec", spec_path],
         env={**os.environ},
     )
     if rc == 0 and b"LOCK" in out and b"UNLOCK" in out:
-        ok("dispatch: assembles prompt from a --spec under specs/")
+        ok("dispatch: assembles prompt from a --spec under docs/")
     else:
-        ko(f"dispatch accepts specs: rc={rc}")
+        ko(f"dispatch accepts docs: rc={rc}")
 
 
 print(f"running specs-migration tests against {FEATURE_DIR}")
 t_own_layout()
-t_gate_specs_layout()
+t_gate_docs_layout()
 t_gate_legacy_layout()
-t_numbered_list_specs()
-t_dispatch_scoped_note_uses_specs()
-t_dispatch_accepts_specs_spec()
+t_numbered_list_docs()
+t_dispatch_scoped_note_uses_docs()
+t_dispatch_accepts_docs_spec()
 print()
 print(f"summary: {PASS} passed, {FAIL} failed")
 shutil.rmtree(TMPROOT, ignore_errors=True)
