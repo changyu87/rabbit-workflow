@@ -19,6 +19,10 @@ Scenarios:
   D) uninstall-cron.py is a safe no-op when the entry is absent (and when no
      crontab file exists at all).
   E) install preserves pre-existing unrelated crontab lines.
+  F) install-cron.py on a host where crontab is administratively restricted
+     (the shim writes "not allowed" to stderr and exits non-zero on BOTH
+     `-l` and `-`) exits 0 without crashing and prints the actionable
+     restricted-host remediation message (issue #507).
 """
 
 import os
@@ -75,6 +79,25 @@ def make_fake_crontab(dirpath):
             """))
     os.chmod(shim, 0o755)
     return shim, crondata
+
+
+def make_restricted_crontab(dirpath):
+    """Create a fake `crontab` executable in dirpath that simulates an
+    administratively restricted host: every invocation prints the real-host
+    "not allowed to use this program (crontab)" denial to stderr and exits
+    non-zero, for BOTH `-l` and `-`. Returns the path to the shim."""
+    shim = os.path.join(dirpath, "crontab")
+    with open(shim, "w") as f:
+        f.write(textwrap.dedent(f"""\
+            #!{sys.executable}
+            import sys
+            sys.stderr.write(
+                "You (testuser) are not allowed to use this program "
+                "(crontab)\\n")
+            sys.exit(1)
+            """))
+    os.chmod(shim, 0o755)
+    return shim
 
 
 def run(script, repo_root, shim, *args):
@@ -218,6 +241,37 @@ with tempfile.TemporaryDirectory() as d:
         fail(f"E: uninstall removed the unrelated backup.sh line; got {body2!r}")
     else:
         ok("E: uninstall preserved the unrelated backup.sh line")
+
+
+# ---------------------------------------------------------------------------
+# Scenario F — restricted-host graceful fallback (issue #507)
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    shim = make_restricted_crontab(d)
+    repo_root = os.path.join(d, "repo")
+    os.makedirs(repo_root)
+    proc = run(INSTALL, repo_root, shim)
+    if proc.returncode != 0:
+        fail(f"F: install on restricted host exit {proc.returncode} "
+             f"(expected 0); stderr={proc.stderr!r}")
+    else:
+        ok("F: install-cron.py exits 0 on a restricted-crontab host")
+    out = proc.stdout + proc.stderr
+    low = out.lower()
+    if "restrict" not in low and "not allowed" not in low:
+        fail(f"F: expected a restricted-host notice in output; got {out!r}")
+    else:
+        ok("F: output states crontab is restricted on this host")
+    if "*/30" not in out:
+        fail(f"F: expected the manual cron remediation (*/30 entry) in "
+             f"output; got {out!r}")
+    else:
+        ok("F: output gives the */30 sysadmin remediation entry")
+    if "start" not in low:
+        fail(f"F: expected the manual `start` remediation hint in output; "
+             f"got {out!r}")
+    else:
+        ok("F: output mentions the manual `/rabbit-auto-evolve start` path")
 
 
 # ---------------------------------------------------------------------------
