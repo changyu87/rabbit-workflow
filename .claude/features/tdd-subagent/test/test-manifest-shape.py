@@ -4,8 +4,8 @@
 `tdd-subagent.feature.json` declares meta-contract sections:
   - `manifest`: list of length 3 with entries (in order):
       1. {"api": "publish_agent",
-          "args": {"source": "agents/tdd-subagent.md"}}
-         — auto-derives dest .claude/agents/tdd-subagent.md.
+          "args": {"source": "agents/rabbit-tdd-subagent.md"}}
+         — auto-derives dest .claude/agents/rabbit-tdd-subagent.md.
       2. {"api": "publish_file",
           "args": {"source": "scripts/dispatch-tdd-subagent.py",
                    "dest": ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py"}}
@@ -33,7 +33,7 @@ from pathlib import Path
 FEATURE_DIR = Path(__file__).resolve().parents[1]
 FEATURE_JSON = FEATURE_DIR / "feature.json"
 
-EXPECTED_AGENT_SOURCE = "agents/tdd-subagent.md"
+EXPECTED_AGENT_SOURCE = "agents/rabbit-tdd-subagent.md"
 EXPECTED_DISPATCH_SOURCE = "scripts/dispatch-tdd-subagent.py"
 EXPECTED_DISPATCH_DEST = ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py"
 EXPECTED_STEP_SOURCE = "scripts/tdd-step.py"
@@ -71,7 +71,7 @@ def test_manifest_shape() -> None:
         f"manifest must have exactly 3 entries per spec, got {len(manifest)}"
     )
 
-    # Entry 0: publish_agent for agents/tdd-subagent.md
+    # Entry 0: publish_agent for agents/rabbit-tdd-subagent.md
     entry0 = manifest[0]
     assert isinstance(entry0, dict), (
         f"manifest[0] not a dict, got {type(entry0).__name__}"
