@@ -7,8 +7,12 @@ contract_touch, priority, blocked_by, planning_note. The `priority` field
 (issue #484) echoes the issue's priority:<level> label value (None when
 absent); plan-batch.py consumes it as its PRIMARY ordering key (Inv 4 /
 issue #479). The `features` field (Inv 26 /
-issue #435) is the distinct set of feature directories the item touches —
-the basis plan-batch.py uses to choose a per-item dispatch shape.
+issue #435, #443) is the distinct set of feature directories the item
+touches — the union of the feature:<name> label, every
+`.claude/features/<name>/` body path, and every canonical feature name
+(discovered by listing .claude/features/) matched word-for-word in the
+body/title (bare-name detection, issue #443). It is the basis plan-batch.py
+uses to choose a per-item dispatch shape.
 Implements the seven-rule decision table
 (top-down, first match wins); any ambiguity defaults to decision=defer,
 reason_code=needs-judgment (never silently to work).
@@ -47,7 +51,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.6.0
+Version: 1.7.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -194,14 +198,69 @@ def _contract_touch(labels, body):
 # captured group is the feature-directory name (the second path segment).
 _FEATURE_PATH = re.compile(r"\.claude/features/([A-Za-z0-9._-]+)/")
 
+# Subdirectories under .claude/features/ that are NOT dispatchable feature
+# scopes (policy text, the contract feature is its own scope, the README).
+# `contract` IS a real feature dir, so it is kept; only non-feature entries
+# are excluded from the canonical bare-name vocabulary.
+_NON_FEATURE_DIRS = frozenset({"policy", "README.md"})
 
-def _feature_set(feature_label, body):
+
+def _discover_feature_names(repo_root):
+    """Canonical feature-name set, discovered by listing .claude/features/.
+
+    Stage-2 bare-name detection (issue #443) scans the issue body/title for
+    these names, so the vocabulary is read dynamically at triage time rather
+    than hardcoded — a new feature dir is picked up with no code change.
+    Returns the set of immediate subdirectory names under
+    <repo_root>/.claude/features/ that carry a feature.json (i.e. real
+    feature scopes), excluding non-feature entries like `policy`. Returns an
+    empty set when the directory is unreadable.
+    """
+    features_dir = Path(repo_root) / ".claude" / "features"
+    names = set()
+    try:
+        for entry in features_dir.iterdir():
+            if not entry.is_dir():
+                continue
+            if entry.name in _NON_FEATURE_DIRS:
+                continue
+            if (entry / "feature.json").is_file():
+                names.add(entry.name)
+    except OSError:
+        return set()
+    return names
+
+
+def _bare_name_matches(text, feature_names):
+    """Feature names appearing as a whole word in `text` (issue #443).
+
+    Uses a word-boundary match (`\\b<name>\\b`) so a name is only detected
+    when it stands alone — `rabbit-meta` matches "touches rabbit-meta," but
+    NOT the longer token "rabbit-metadata-store". Returns the matching subset
+    of `feature_names`.
+    """
+    if not text or not feature_names:
+        return set()
+    matched = set()
+    for name in feature_names:
+        if re.search(r"\b" + re.escape(name) + r"\b", text):
+            matched.add(name)
+    return matched
+
+
+def _feature_set(feature_label, body, title="", feature_names=None):
     """Distinct feature directories an issue touches (Stage-2 basis, Inv 26).
 
-    The set is the union of the feature:<name> label and every
-    `.claude/features/<name>/` path literally referenced in the body. Returned
-    sorted for deterministic output. Used by plan-batch.py to choose a
-    dispatch shape per item:
+    The set is the union of THREE detection methods (issue #435, #443):
+      (a) the feature:<name> label;
+      (b) every `.claude/features/<name>/` path literally referenced in the
+          body; and
+      (c) every canonical feature name (from `feature_names`, discovered by
+          listing .claude/features/) that appears as a whole word in the body
+          OR title — catching features named by bare name in prose or a
+          markdown table with no full path (issue #443).
+    Returned sorted for deterministic output. Used by plan-batch.py to choose
+    a dispatch shape per item:
       1 feature       -> parallel-per-feature
       >1, < threshold -> multi-subagent-barrier
       >= threshold    -> decomposition
@@ -211,6 +270,9 @@ def _feature_set(feature_label, body):
         feats.add(feature_label)
     for m in _FEATURE_PATH.findall(body or ""):
         feats.add(m)
+    if feature_names:
+        feats |= _bare_name_matches(f"{title or ''}\n{body or ''}",
+                                    feature_names)
     return sorted(feats)
 
 
@@ -480,15 +542,20 @@ def classify(issue_num, repo_root):
     feature_label = _label_value(labels, "feature")
     priority_label = _label_value(labels, "priority")
     ctouch = _contract_touch(labels, body)
+    # Canonical feature vocabulary (discovered from .claude/features/) — the
+    # basis for Stage-2 bare-name cross-feature detection (issue #443).
+    feature_names = _discover_feature_names(repo_root)
 
     base = {
         "issue": issue_num,
         "feature": feature_label,
-        # `features` is the distinct set of feature dirs the item touches
-        # (union of the feature label + body path references) — the Stage-2
-        # dispatch-shape basis (Inv 26 / issue #435). Always present; for a
-        # malformed-labels issue (no feature label, no body paths) it is [].
-        "features": _feature_set(feature_label, body),
+        # `features` is the distinct set of feature dirs the item touches —
+        # the union of (a) the feature label, (b) `.claude/features/<name>/`
+        # body path references, and (c) bare feature names matched word-for-
+        # word in the body/title (issue #443). The Stage-2 dispatch-shape
+        # basis (Inv 26 / issue #435). Always present; for a malformed-labels
+        # issue with no body paths and no bare-name mention it is [].
+        "features": _feature_set(feature_label, body, title, feature_names),
         "contract_touch": ctouch,
         # `priority` (issue #484) echoes the issue's priority:<level> label
         # value (None when absent). plan-batch.py consumes it as its PRIMARY
