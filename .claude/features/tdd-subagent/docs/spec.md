@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.16.0
+version: 5.17.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -864,6 +864,39 @@ lives in Inv 22 above.
     with a `spec_content` payload larger than 128 KB returns exit 0, emits no
     `Argument list too long` on stderr, and the assembled prompt contains the
     oversized body verbatim (no truncation).
+
+62. **`rabbit_print` import resolves from the repo root, not a fixed
+    `parents[N]` offset (issue #561).** `tdd-step.py` loads the contract
+    feature's `rabbit_print` module (per Inv 39) at import time. The module
+    always lives at `<repo_root>/.claude/features/contract/scripts/rabbit_print.py`,
+    but `tdd-step.py` is published to TWO locations at DIFFERENT depths: the
+    SOURCE copy at `.claude/features/tdd-subagent/scripts/tdd-step.py` (whose
+    `parents[2]` is `.claude/features/`) and the DEPLOYED copy at
+    `.claude/agents/tdd-subagent/scripts/tdd-step.py` (whose `parents[2]` is
+    `.claude/`). A fixed `_Path(__file__).parents[N]` offset only resolves the
+    contract-scripts directory correctly from ONE of those copies; from the
+    DEPLOYED copy it computed `.claude/contract/scripts`, which does not exist,
+    so the import raised `ModuleNotFoundError: No module named 'rabbit_print'`
+    on EVERY invocation — including `--help` — making the scripted TDD-step
+    driver unusable from the deployed location.
+
+    The import-time resolver MUST anchor on the repository root rather than a
+    fixed parent offset, building the contract-scripts path as
+    `<repo_root>/.claude/features/contract/scripts`. Resolution precedence,
+    highest first: (a) `RABBIT_ROOT` (plugin mode, Inv 47) when set; (b) the
+    cwd-based `git rev-parse --show-toplevel` (consistent with the Inv 60
+    `_repo_root` resolution); (c) a robust upward walk from the script's own
+    location for the first ancestor containing
+    `.claude/features/contract/scripts/rabbit_print.py`. Each candidate root is
+    accepted only when `rabbit_print.py` actually exists under it. The import
+    therefore succeeds from both the source and the deployed copy depth.
+
+    Enforced by `test/test-rabbit-print-import-from-deployed.py` (e2e): a real
+    git repo staging BOTH the source layout
+    (`.claude/features/tdd-subagent/scripts/`) AND the deployed layout
+    (`.claude/agents/tdd-subagent/scripts/`) plus the contract
+    `rabbit_print.py`; running `tdd-step.py --help` from each copy loads the
+    module (no `ModuleNotFoundError`) and exits 0.
 
 ## Out of Scope
 

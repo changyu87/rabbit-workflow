@@ -23,9 +23,46 @@ from datetime import date
 from pathlib import Path as _Path
 
 # Pull in the centralized [rabbit] print renderer from the contract feature
-# (spec Inv 9). tdd-step.py lives at
-# .claude/features/tdd-state-machine/scripts/, so parents[2] = .claude/features/.
-_CONTRACT_SCRIPTS = _Path(__file__).resolve().parents[2] / "contract" / "scripts"
+# (spec Inv 9). The module always lives at
+# <repo_root>/.claude/features/contract/scripts/rabbit_print.py, but tdd-step.py
+# itself is published to TWO locations at different depths: the SOURCE copy at
+# .claude/features/tdd-subagent/scripts/ and the DEPLOYED copy at
+# .claude/agents/tdd-subagent/scripts/ (#561). A fixed `parents[N]` offset only
+# resolves correctly from one of them, so we anchor on the repo root instead.
+def _contract_scripts_dir():
+    # Prefer the cwd-based git toplevel (consistent with the #583 repo-root
+    # resolution). RABBIT_ROOT (plugin mode) wins verbatim when set.
+    candidates = []
+    env = os.environ.get("RABBIT_ROOT")
+    if env:
+        candidates.append(_Path(env))
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=False,
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            candidates.append(_Path(out.stdout.strip()))
+    except Exception:
+        pass
+    for root in candidates:
+        cand = root / ".claude" / "features" / "contract" / "scripts"
+        if (cand / "rabbit_print.py").is_file():
+            return cand
+    # Robust fallback: walk upward from the script's own location until a
+    # .claude/features/contract/scripts/rabbit_print.py is found. Works from any
+    # copy depth without relying on cwd or git.
+    here = _Path(__file__).resolve()
+    for parent in here.parents:
+        cand = parent / ".claude" / "features" / "contract" / "scripts"
+        if (cand / "rabbit_print.py").is_file():
+            return cand
+    # Last resort: the historical source-location offset. Keeps behaviour
+    # defined even when nothing above matched.
+    return here.parents[2] / "contract" / "scripts"
+
+
+_CONTRACT_SCRIPTS = _contract_scripts_dir()
 if str(_CONTRACT_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_CONTRACT_SCRIPTS))
 from rabbit_print import rabbit_block, rabbit_print, rabbit_subline  # noqa: E402
