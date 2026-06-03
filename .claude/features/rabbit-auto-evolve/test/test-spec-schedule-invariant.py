@@ -84,6 +84,30 @@ else:
     fail("spec.md does not document the 60<=delaySeconds<=3600 band")
 
 
+# --- (1b) Spec carries Inv 31 (issue #412 immediate refire) ------------
+# The queue-emptiness branch selecting between the 60s refire and the
+# 3600s idle delay MUST be documented.
+INV31_REQUIRED = [
+    "412",
+    "queue non-empty, refiring immediately",
+    "queue empty, waiting for new issues",
+]
+inv31_missing = [s for s in INV31_REQUIRED if s.lower() not in spec_low]
+if inv31_missing:
+    fail(f"spec.md missing Inv 31 (issue #412) phrase(s): {inv31_missing!r}")
+else:
+    ok("spec.md carries the immediate-refire invariant (Inv 31)")
+
+# The two-delay rule MUST tie delaySeconds=60 to a non-empty queue and
+# delaySeconds=3600 to an empty queue.
+if "60" in spec_low and "3600" in spec_low and "in_flight" in spec_low and (
+    "len(state.queue)" in spec_low or "queue" in spec_low
+):
+    ok("spec.md documents the queue-emptiness branch (60 vs 3600)")
+else:
+    fail("spec.md does not document the queue-emptiness 60-vs-3600 branch")
+
+
 # --- (2)+(3) Both SKILL.md copies document the call --------------------
 def check_skill(path, label):
     if not path.is_file():
@@ -135,6 +159,30 @@ def check_skill(path, label):
         ok(f"{label}: documents a reason parameter")
     else:
         fail(f"{label}: does not document a reason parameter")
+
+    # --- Inv 31 (issue #412): BOTH delay cases must be pinned. ---------
+    # The queue-non-empty refire (60) AND the queue-empty idle (3600)
+    # must BOTH appear so the two-delay rule is documented, not just 3600.
+    if "60" in flat_low and "3600" in flat_low:
+        ok(f"{label}: pins both delay cases (60 refire + 3600 idle)")
+    else:
+        fail(f"{label}: missing one of the two delay cases (60 / 3600)")
+
+    # The queue-emptiness branch that selects between the two delays.
+    if "queue non-empty, refiring immediately" in flat_low:
+        ok(f"{label}: documents the queue-non-empty refire reason")
+    else:
+        fail(f"{label}: missing 'queue non-empty, refiring immediately' reason")
+    if "queue empty, waiting for new issues" in flat_low:
+        ok(f"{label}: documents the queue-empty idle reason")
+    else:
+        fail(f"{label}: missing 'queue empty, waiting for new issues' reason")
+
+    # The branch must read queue/in_flight emptiness from state.
+    if "in_flight" in flat_low and "queue" in flat_low:
+        ok(f"{label}: documents the queue/in_flight emptiness check")
+    else:
+        fail(f"{label}: does not document the queue/in_flight emptiness check")
 
 
 check_skill(SOURCE_SKILL, "source")

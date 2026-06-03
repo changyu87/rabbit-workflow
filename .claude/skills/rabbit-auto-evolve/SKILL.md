@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.18.0
+version: 0.19.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -214,21 +214,51 @@ The call's three parameters:
 
 - `delaySeconds` — an integer in the inclusive band `60 <= delaySeconds <=
   3600`. The harness ignores a 0/negative delay and an over-long delay is
-  indistinguishable from a hang. The auto-evolve cadence is hourly, so the
-  canonical value is **`3600`**.
+  indistinguishable from a hang. The exact value is chosen by the
+  queue-emptiness rule below (Inv 31): `60` (refire immediately) when work
+  remains, `3600` (hourly idle check) when the queue is empty.
 - `prompt` — the literal string `/rabbit-auto-evolve tick`. This is the
   sentinel that RE-ENTERS the tick; a prompt that does not contain it
   breaks the self-chaining loop.
-- `reason` — a non-empty human-readable string (e.g. `chain the next
-  auto-evolve tick`).
+- `reason` — a non-empty human-readable string. Use `queue non-empty,
+  refiring immediately` when work remains, or `queue empty, waiting for
+  new issues` when the queue is empty (see Inv 31).
 
-BEFORE emitting the `ScheduleWakeup` call, run the validator:
+#### Queue-emptiness delay selection (Inv 31 — issue #412)
+
+A fixed hourly delay caps the loop at one batch per hour even when there
+is work waiting. Per spec Inv 31, phase 11 chooses `delaySeconds` from the
+state file `<state_dir>/auto-evolve-state.json` (state dir resolves via
+`RABBIT_AUTO_EVOLVE_STATE_DIR`, else `<cwd>/.rabbit`):
+
+- If `len(state.queue) > 0 OR len(state.in_flight) > 0` — work remains —
+  use `delaySeconds=60` (the harness minimum: refire immediately) and
+  `reason="queue non-empty, refiring immediately"`.
+- If BOTH `state.queue` AND `state.in_flight` are empty — no work — use
+  `delaySeconds=3600` (the hourly idle check) and `reason="queue empty,
+  waiting for new issues"`.
+
+A missing, empty, or malformed state file is treated as queue-empty (the
+long `3600` idle delay). Both `60` and `3600` are inside the Inv 29 band,
+so `schedule-check.py` accepts either; the `prompt` is unchanged.
+
+BEFORE emitting the `ScheduleWakeup` call, run the validator with the
+selected `delaySeconds`/`reason` pair. For the queue-non-empty case:
+
+```
+python3 .claude/features/rabbit-auto-evolve/scripts/schedule-check.py \
+  --delay-seconds 60 \
+  --prompt "/rabbit-auto-evolve tick" \
+  --reason "queue non-empty, refiring immediately"
+```
+
+For the queue-empty case:
 
 ```
 python3 .claude/features/rabbit-auto-evolve/scripts/schedule-check.py \
   --delay-seconds 3600 \
   --prompt "/rabbit-auto-evolve tick" \
-  --reason "chain the next auto-evolve tick"
+  --reason "queue empty, waiting for new issues"
 ```
 
 `schedule-check.py` does NOT call `ScheduleWakeup` (that is a Claude Code
