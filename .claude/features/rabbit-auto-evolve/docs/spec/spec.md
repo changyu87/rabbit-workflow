@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.8.1
+version: 0.9.0
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -491,6 +491,28 @@ Phase E merges complete.
    3. Otherwise call `gh pr merge <#> --squash --auto`. On success →
       `{pr: N, status: "merged"}`; on failure →
       `{pr: N, status: "failed", reason: "gh-merge-failed: <stderr>"}`.
+   4. After a successful merge, parse the merged PR body
+      (`gh pr view <#> --json body -q .body`) for closing-keyword
+      references — `Fixes #N` / `Closes #N` / `Resolves #N` and their
+      common variants (`Fixed`, `Closed`, `Resolved`, `Close`, `Fix`,
+      `Resolve`), case-insensitive. For each distinct referenced issue,
+      fetch the merge SHA (`gh pr view <#> --json mergeCommit
+      -q .mergeCommit.oid`) and invoke
+      `item-status.py close <N> --reason completed
+      --comment "TDD cycle complete in <sha>"`. This is required because
+      GitHub's native `Fixes/Closes/Resolves` auto-close fires ONLY when
+      a PR merges to the repo's default branch (`main`); auto-evolve PRs
+      always target `dev`, so without this explicit step referenced
+      issues would stay open indefinitely. `item-status.py close` is
+      idempotent against already-closed issues, so it is called
+      unconditionally. Successfully-closed issue numbers are added to the
+      result row under `closed_issues` (sorted); issues whose close
+      command exited non-zero are recorded under `close_failed` and a
+      warning is written to stderr. A close failure NEVER fails the
+      merge — the result still reports `status: "merged"`
+      (backward-compatible). `item-status.py` is resolved via the
+      `RABBIT_ISSUE_SCRIPT_DIR` env var when set, else relative to the
+      repo's `.claude/features/rabbit-issue/scripts/`.
 
    Emits the result array on stdout. Exit 0 always except argparse /
    unexpected error.
@@ -536,6 +558,14 @@ Phase E merges complete.
      shim exits non-zero → `status: "skipped"`,
      `reason: "safety-check-failed"`; `gh pr merge` NEVER called.
    - Happy path: shims pass → `status: "merged"`; exit 0.
+   - Close-after-merge (issue #392): PR body references issues via
+     `Fixes`/`Closes`/`Resolves` (case-insensitive) → after a successful
+     merge, the item-status.py shim is invoked once per distinct issue
+     with `close <N> --reason completed --comment "...<sha>..."`; the
+     result row carries `closed_issues`. No refs → item-status.py NOT
+     invoked, `closed_issues == []`. item-status.py failure → merge still
+     `status: "merged"`, failed issue under `close_failed`, stderr
+     warning emitted. Skipped/non-merged PRs NEVER invoke item-status.py.
 
    `test/test-cleanup-branches.py`:
    - Smoke: `--help` exits 0 with recognizable usage text.
