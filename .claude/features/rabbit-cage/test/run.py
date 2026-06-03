@@ -76,6 +76,7 @@ SUITES = [
     "test-scope-guard-agent-sentinel.py",
     "test-stop-timestamp-entry-present.py",
     "test-session-start-version-line.py",
+    "test-install-agent-path-rabbit-tdd-subagent.py",
 ]
 
 

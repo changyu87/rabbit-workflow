@@ -4,6 +4,7 @@ All notable changes to the rabbit workflow are documented here. Format adapted f
 
 ## [Unreleased]
 ### Changed
+- Closes #418 (rabbit-cage) — `install.py` now deploys the renamed tdd-subagent agent file. The AGENTS deploy mapping and the `FEATURE_INCLUDES["tdd-subagent"]` agent entry reference `rabbit-tdd-subagent.md` (was `tdd-subagent.md`); deployed destination is `.claude/agents/rabbit-tdd-subagent.md`. The feature-directory key `tdd-subagent` and `scripts/dispatch-tdd-subagent.py` entry are unchanged. `rabbit-cage` bumped 5.36.0 -> 5.37.0. New e2e `test/test-install-agent-path-rabbit-tdd-subagent.py` pins both references to the new filename and rejects the old. Final #418 piece (rabbit-cage half).
 - Phase 2 of #399 (rabbit-cage) — migrated `rabbit-cage`'s `docs/spec/` -> `specs/` (spec.md + contract.md moved via `git mv`; empty `docs/` removed). `scope-guard.py`'s spec.md path-pattern carve-out (standalone Inv 5 + plugin Inv 17(a2)) now dual-reads BOTH `specs/spec.md` (new) and `docs/spec/spec.md` (legacy) for every feature, mirroring contract's `resolve_spec_path` (#451), so mid-migration features still match during the coexistence window. `workspace-tree.py` recognizes `specs/` (annotation + key-file detection + structural dir). `rabbit-cage` bumped 5.35.0 -> 5.36.0. New e2e `test/test-scope-guard-specs-dir-dual-read.py` pins both layouts ALLOW in both modes and the narrow non-`spec.md` DENY. Do not close #399 (Phase 3 drops the legacy fallback after all features migrate).
 
 ### Removed
