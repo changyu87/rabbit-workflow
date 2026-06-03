@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 4-9, 12, 14-16, 41: rabbit-feature-touch SKILL.md content.
+"""Inv 4-9, 12, 14-16, 41, 52: rabbit-feature-touch SKILL.md content.
 
 Locks the rabbit-feature-touch SKILL.md (and the deployed copy) against
 drift on the seven-step sequence, scope-resolution invocation, spec
@@ -11,9 +11,11 @@ CLI flag was removed in tdd-subagent v5.0.0); Inv 13 and Inv 42 retired in
 the Phase 7c cleanup (B/B mode removed from the SKILL.md after rabbit-file
 retirement in Phase 7b). A regression guard asserts the
 --human-approval-gate flag string is absent from both source and deployed
-SKILL.md.
+SKILL.md. Inv 52 (issue #418) locks the Step 5 dispatch agent type to
+'rabbit-tdd-subagent' (and guards against the old bare 'tdd-subagent' agent
+type).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -164,6 +166,65 @@ def test_no_human_approval_gate_flag_in_deployed_skill() -> None:
     assert "--human-approval-gate" not in text, (
         "deployed SKILL.md must NOT reference the retired '--human-approval-gate' "
         "flag (TDD-SUBAGENT-BACKLOG-19 cascade)"
+    )
+
+
+# Inv 52: Step 5 dispatches the TDD subagent by the agent type
+# 'rabbit-tdd-subagent' (issue #418). The Step 5 Agent(...) call MUST name
+# subagent_type: rabbit-tdd-subagent in both source and deployed SKILL.md.
+# The bare agent type 'tdd-subagent' MUST NOT appear (the feature-dir /
+# script-path 'tdd-subagent/scripts/dispatch-tdd-subagent.py' reference is
+# unaffected — only the AGENT type was renamed).
+def _assert_inv52(text: str, label: str) -> None:
+    body = _step_body(text, 5)
+    assert "rabbit-tdd-subagent" in body, (
+        f"Step 5 ({label}) must dispatch subagent_type 'rabbit-tdd-subagent' "
+        "(issue #418)"
+    )
+    # The Agent call must carry the subagent_type field set to the new name.
+    assert re.search(r"subagent_type\s*:\s*rabbit-tdd-subagent", body), (
+        f"Step 5 ({label}) Agent(...) call must pass "
+        "'subagent_type: rabbit-tdd-subagent' (issue #418)"
+    )
+
+
+def test_inv52_source_step5_dispatches_rabbit_tdd_subagent() -> None:
+    _assert_inv52(_text(), "source SKILL.md")
+
+
+def test_inv52_deployed_step5_dispatches_rabbit_tdd_subagent() -> None:
+    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
+    _assert_inv52(DEPLOYED_SKILL.read_text(encoding="utf-8"), "deployed SKILL.md")
+
+
+def _assert_no_bare_agent_type(text: str, label: str) -> None:
+    """The old AGENT type 'tdd-subagent' must not appear as an agent-type
+    token. The only legitimate 'tdd-subagent' substrings are the feature-dir
+    path '.claude/features/tdd-subagent/' and the script name
+    'dispatch-tdd-subagent.py' (both keep their names — only the AGENT type
+    was renamed). Mask those out, then assert no bare 'tdd-subagent' token
+    remains.
+    """
+    stripped = text.replace(".claude/features/tdd-subagent/", "")
+    stripped = stripped.replace("dispatch-tdd-subagent.py", "")
+    # 'rabbit-tdd-subagent' contains 'tdd-subagent' as a suffix; mask it out
+    # before scanning for the bare old name.
+    stripped = stripped.replace("rabbit-tdd-subagent", "")
+    assert "tdd-subagent" not in stripped, (
+        f"{label} must not reference the old AGENT type 'tdd-subagent' "
+        "outside the feature-dir/script-path; rename to 'rabbit-tdd-subagent' "
+        "(issue #418)"
+    )
+
+
+def test_inv52_source_no_bare_old_agent_type() -> None:
+    _assert_no_bare_agent_type(_text(), "source SKILL.md")
+
+
+def test_inv52_deployed_no_bare_old_agent_type() -> None:
+    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
+    _assert_no_bare_agent_type(
+        DEPLOYED_SKILL.read_text(encoding="utf-8"), "deployed SKILL.md"
     )
 
 

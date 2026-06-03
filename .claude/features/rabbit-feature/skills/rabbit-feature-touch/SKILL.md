@@ -174,7 +174,7 @@ PROMPT=$(python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py 
 Agent tool call (dispatch the assembled prompt — main session only):
 
 ```
-Agent(model: opus, prompt: $PROMPT)
+Agent(subagent_type: rabbit-tdd-subagent, model: opus, prompt: $PROMPT)
 ```
 
 Each subagent runs its named steps (LOCK → UNLOCK), writes
