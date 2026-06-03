@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.35.0
+version: 0.36.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -150,14 +150,20 @@ Phase E merges complete.
 - Triage classifies each issue using a seven-rule decision table
   (top-down, first match wins); any ambiguous case defaults to
   `defer/needs-judgment` rather than silently to `work`. (design doc §5)
-- Priority is the PRIMARY dispatch-ordering key; the contract-touch
-  barrier is a SECONDARY tiebreak (issue #479). Contract-touch issues
-  (`feature:contract` label or body paths under
+- The loop computes its OWN priority score (issue #441, Inv 46): a
+  deterministic weighted blend of observable signals (blocking-fanout,
+  filer `priority:` label, scope size, bug-vs-enhancement, age). That
+  `computed_score` is the PRIMARY dispatch-ordering key; the filer label is
+  one input among several, no longer the sole determinant. The contract-touch
+  barrier remains the SECONDARY tiebreak (issue #479, refined by #441).
+  Contract-touch issues (`feature:contract` label or body paths under
   `.claude/features/contract/`) lead the `barrier_first` queue only when
-  they sort ahead of every non-contract item on priority — a critical
-  non-contract item is dispatched before a low-priority contract item.
-  Within a priority tier, contract-touch items precede non-contract items
-  and run one at a time before that tier's parallel group. (design doc §6)
+  they sort ahead of every non-contract item on the computed score — a
+  higher-scoring non-contract item is dispatched before a lower-scoring
+  contract item. Within a score tier, contract-touch items precede
+  non-contract items and run one at a time before that tier's parallel
+  group. The computed score is emitted under `computed_scores` for
+  transparency. (design doc §6)
 - Parallelism is bounded by `max_parallel` (default 4); same-feature
   issues are never dispatched in parallel (conflict edge = shared
   `feature:<name>` label). (design doc §6)
@@ -571,11 +577,16 @@ Phase E merges complete.
    {
      "selection_order": [124, 125, 123, 130],
      "dispatch_shapes": {"124": "parallel-per-feature", "125": "multi-subagent-barrier", "123": "decomposition", "130": "research"},
+     "computed_scores": {"124": 0.55, "125": 0.42, "123": 0.30, "130": 0.30},
      "barrier_first": [123, 124],
      "groups": [[125, 126], [127]],
      "research_items": [130]
    }
    ```
+
+   `computed_scores` (issue #441 / Inv 46) is the loop-computed priority
+   score per selected item (issue-number string → float in `[0, 1]`), the
+   PRIMARY ordering key; see Inv 46 for the signal blend.
 
    `selection_order` (Stage 1, Inv 26) and `dispatch_shapes` (Stage 2,
    Inv 26) are the two decoupled decisions; the `barrier_first` / `groups`
@@ -598,24 +609,28 @@ Phase E merges complete.
    integer-valued and ≥ 1; non-integer or `< 1` exits non-zero with
    argparse error.
 
-   Algorithm (priority-primary, barrier-secondary; issue #479):
+   Algorithm (computed-score-primary, barrier-secondary; issue #441
+   refining #479):
 
-   **Priority is the PRIMARY ordering key; the contract-touch barrier is
-   the SECONDARY tiebreak, never a global override of priority.** A
-   critical non-contract item is dispatched BEFORE a low-priority
-   contract-touch item; the barrier only sequences contract-touch items
-   ahead of non-contract items _within the same priority tier_.
+   **The loop's `computed_score` is the PRIMARY ordering key; the
+   contract-touch barrier is the SECONDARY tiebreak, never a global override
+   of the score.** A higher-scoring non-contract item is dispatched BEFORE a
+   lower-scoring contract-touch item; the barrier only sequences
+   contract-touch items ahead of non-contract items _within the same score
+   tier_. See Inv 46 for the `computed_score` signal blend (the filer
+   `priority:` label is one weighted input among several, no longer the sole
+   key).
 
    1. **Sort ALL work items by the composite key**
-      `(priority_rank, contract_touch_rank, issue)`:
-      - `priority_rank`: critical=0, high=1, medium=2, low=3,
-        missing/unrecognized=4 (lower rank = higher priority).
+      `(computed_score desc, contract_touch_rank, issue)`:
+      - `computed_score`: the loop-computed priority score in `[0, 1]`
+        (Inv 46), descending (higher score dispatches first).
       - `contract_touch_rank`: `True`->0, `False`->1 (contract-touch
-        items lead within the same priority tier).
+        items lead within the same score tier).
       - `issue` ascending (stable final tiebreak).
    2. **`barrier_first` is the leading run of contract-touch items** in
       that sorted order — i.e. the contract-touch items that appear
-      before the first non-contract item. If the highest-priority item is
+      before the first non-contract item. If the highest-scoring item is
       a non-contract item, `barrier_first` is EMPTY. The remainder
       (everything from the first non-contract item onward, in the same
       sorted order) feeds the conflict-graph grouping.
@@ -2898,6 +2913,78 @@ Phase E merges complete.
     "enter auto", the unhyphenated "auto evolve", an enable/turn-on autonomous
     phrasing, and a resume phrasing — alongside the pre-existing canonical
     triggers).
+
+46. **The loop computes its own priority score; the filer label is one
+    input among several (issue #441).** Stage-1 dispatch ordering is no
+    longer keyed on the filer-set `priority:` label alone. `plan-batch.py`
+    computes the loop's OWN priority signal — a deterministic, weighted
+    blend of OBSERVABLE evidence — and that `computed_score` is the PRIMARY
+    `selection_order` / `barrier_first` ordering key. The filer label is
+    retained as ONE input among several (weight reduced), so a mislabeled or
+    stale-priority issue is ordered sensibly and no filer can single-handedly
+    jump an item ahead by labelling it `priority:high`.
+
+    **(a) Observable signals (deterministic subset).** Each is computed in a
+    script (script-tier, NEVER LLM inference) from data already flowing
+    through the triage objects on `plan-batch.py` stdin — no `gh`, `git`, or
+    filesystem reads. The score is a weighted sum normalized to `[0, 1]`:
+
+    | Signal | How computed | Weight |
+    |---|---|---|
+    | Blocking-fanout | count of OTHER batch items whose `blocked_by` references this issue (saturates at 5) | 0.30 |
+    | Filer-set label | the `priority` field: critical=1.0, high=0.75, medium=0.5, low=0.25, none=0.0 | 0.15 |
+    | Scope size | `1 / len(features)` — a smaller item is a boost (quick wins compound) | 0.10 |
+    | Bug vs. enhancement | `1.0` when `issue_type == "bug"`, else `0.0` | 0.05 |
+    | Age | days since `created_at`, saturating at 30 | 0.05 |
+
+    Blocking-fanout is the heaviest weight because it is the HARDEST signal
+    for a filer to game (it requires OTHER issues to reference yours).
+    Missing inputs contribute zero rather than crashing (an absent
+    `created_at` / `issue_type` / `blocked_by` is tolerated). The two
+    remaining signals proposed in #441 — recurrence-count and
+    test-coverage-delta — are NOT deterministically computable in this pure
+    JSON processor (they require fuzzy symptom matching and running each
+    feature's test suite respectively) and are deferred to a follow-up;
+    they are out of scope for this invariant.
+
+    **(b) Ordering key (refines issue #479).** #479 made the filer
+    `priority:` label the PRIMARY composite-sort key with the contract-touch
+    barrier as the SECONDARY tiebreak. This invariant REFINES that: the
+    composite key is now `(computed_score desc, contract_touch desc, issue
+    asc)`. The computed score is the PRIMARY key; the contract-touch barrier
+    is PRESERVED as the SECONDARY tiebreak (it is a barrier/conflict property
+    required for Inv 4 / Inv 26 grouping correctness, NOT a priority signal),
+    and issue number remains the final stable tiebreak. The filer label is
+    folded INTO the score as one weighted input, so it still influences
+    ordering but no longer determines it alone. When all observable signals
+    are equal the ordering falls back deterministically to the contract
+    barrier then issue number (the filer label, being part of the score, has
+    already been consulted) — the planner stays fully deterministic. The
+    contract-touch barrier semantics of Inv 4 (`barrier_first` is the leading
+    run of contract items in the sorted order) are unchanged; only the
+    PRIMARY key changes from filer-label-rank to computed_score.
+
+    **(c) Transparency.** `plan-batch.py` emits a `computed_scores` map
+    (issue-number string → float in `[0, 1]`) covering every selected item,
+    alongside the filer `priority` that triage already passes through, so the
+    loop's judgment is OBSERVABLE — the filer label and the loop's computed
+    score are visible side-by-side downstream (status surface, tick log).
+    Without the emitted score the reordering would look arbitrary.
+
+    **(d) Out of scope.** This invariant does NOT auto-relabel the issue on
+    GitHub (the filer's label is the filer's input; the loop's score is its
+    own thing), does NOT notify the filer, and does NOT read the issue body
+    to subjectively decide importance — it sticks to objective, observable
+    signals (issue #441 "Out-of-scope").
+
+    Enforced by `test/test-plan-batch.py` (two items with identical filer
+    labels but different blocking-fanout → the higher-fanout item ranks
+    first; a bug at `priority:medium` with high fanout outranks an
+    enhancement at `priority:high`; all-signals-equal → deterministic
+    fallback to filer label then issue #; `computed_scores` map present and
+    normalized; the contract barrier is preserved within an equal score
+    tier) and `test/test-spec-priority-score-invariant.py` (asserts this
+    invariant text is present and reconciles with issue #479).
 
 ## Known gaps
 

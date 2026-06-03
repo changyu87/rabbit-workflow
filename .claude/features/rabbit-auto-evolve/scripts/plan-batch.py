@@ -8,6 +8,7 @@ on stdout:
   {
     "selection_order": [602, 601, 700],
     "dispatch_shapes": {"602": "multi-subagent-barrier", "601": "parallel-per-feature", "700": "research"},
+    "computed_scores": {"602": 0.63, "601": 0.41, "700": 0.30},
     "barrier_first": [123, 124],
     "groups": [[125, 126], [127]],
     "research_items": [700],
@@ -18,16 +19,22 @@ on stdout:
 Two decoupled decisions (Inv 26 / issue #435):
 
   STAGE 1 — work selection (`selection_order`). Dispatch-shape BLIND:
-  ordered by the composite key (priority desc, contract_touch desc,
-  issue asc) per issue #479 — priority is PRIMARY, the contract-touch
-  barrier is the SECONDARY tiebreak (contract items lead WITHIN a
-  priority tier, never across tiers), issue asc is the final stable
-  tiebreak. This is the SAME key that drives barrier_first, so the two
+  ordered by the composite key (computed_score desc, contract_touch desc,
+  issue asc) per issue #441 (refining #479) — the loop's OWN computed
+  priority score is PRIMARY, the contract-touch barrier is the SECONDARY
+  tiebreak (contract items lead WITHIN a score tier, never across tiers),
+  issue asc is the final stable tiebreak. The score is a deterministic
+  weighted blend of observable signals (filer `priority:` label,
+  blocking-fanout, scope size, bug-vs-enhancement, age) computed in this
+  script — the filer label is ONE input among several, no longer the sole
+  determinant, so a mislabeled or stale-priority issue is ordered sensibly
+  (issue #441). This is the SAME key that drives barrier_first, so the two
   always agree on ordering. It MUST NOT consult dispatch shape, feature
-  count, or "knows how" (contract_touch is a barrier/conflict property,
-  not a dispatch shape) — a high-priority cross-feature item is selected
-  before a low-priority single-feature item. Work-only (items whose
-  decision != "work" are dropped).
+  count for *shape* purposes, or "knows how" (contract_touch is a
+  barrier/conflict property, not a dispatch shape). The computed score per
+  item is emitted under `computed_scores` (issue-number string -> float in
+  [0, 1]) for transparency. Work-only (items whose decision != "work" are
+  dropped).
 
   STAGE 2 — dispatch shape (`dispatch_shapes`, issue-number-string -> shape).
   Per work item, choose the FIRST fitting shape from exactly three:
@@ -48,15 +55,16 @@ Two decoupled decisions (Inv 26 / issue #435):
   scope is a hard constraint, not waivable by autonomy (maintainer policy on
   issue #435). No shape writes any marker; this script is a pure processor.
 
-Algorithm for barrier_first / groups (per spec.md Inv 4 / design doc §6;
-priority-primary, barrier-secondary per issue #479):
+Algorithm for barrier_first / groups (per spec.md Inv 4 / Inv 46 / design
+doc §6; computed-score-primary, barrier-secondary per issue #441 refining
+#479):
   1. Sort ALL work items by the composite key
-     (priority_rank, contract_touch_rank, issue): priority is PRIMARY
-     (critical > high > medium > low; no-priority last), the
+     (computed_score desc, contract_touch_rank, issue): the loop-computed
+     priority score is PRIMARY (higher score dispatches first), the
      contract-touch barrier is the SECONDARY tiebreak (contract items
-     lead WITHIN a priority tier), issue ascending is the final stable
-     tiebreak. A critical non-contract item therefore beats a
-     low-priority contract item.
+     lead WITHIN a score tier), issue ascending is the final stable
+     tiebreak. A higher-scoring non-contract item therefore beats a
+     lower-scoring contract item.
   2. barrier_first is the leading run of contract_touch items in that
      sorted order (the contract items before the first non-contract
      item). If the top item is non-contract, barrier_first is empty. The
@@ -97,13 +105,14 @@ mutations.
 Exit code: 0 on success; non-zero on malformed stdin JSON or invalid
 --max-parallel / --decompose-threshold value.
 
-Version: 1.4.0
+Version: 1.5.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
 """
 
 import argparse
+import datetime
 import json
 import os
 import sys
@@ -170,18 +179,153 @@ def _self_modifying_pattern(item):
     return PATTERN_COEXISTENCE
 
 
-def _sort_key(item):
-    """Composite dispatch-ordering key (issue #479):
-    (priority_rank, contract_touch_rank, issue_number).
+# ---------------------------------------------------------------------------
+# Loop-computed priority score (issue #441)
+# ---------------------------------------------------------------------------
+# The loop computes its OWN priority signal from observable, hard-to-game
+# evidence rather than blindly trusting the filer-set `priority:` label. The
+# filer label remains ONE input among several (weight reduced); it is no
+# longer the sole determinant. Every signal is computed DETERMINISTICALLY in
+# this script (script-tier, never LLM inference) from data already flowing
+# through the triage objects on stdin — no gh/git/filesystem reads.
+#
+# Reconciliation with issue #479: #479 made the filer `priority:` label the
+# PRIMARY composite-sort key with the contract-touch barrier as the SECONDARY
+# tiebreak. #441 REFINES that: the loop's `computed_score` is now the PRIMARY
+# key; the contract-touch barrier is PRESERVED as the SECONDARY tiebreak (it
+# is a barrier/conflict property required for Inv 26 grouping correctness, not
+# a priority signal), and issue number remains the final stable tiebreak. The
+# filer label is folded INTO the score as one weighted input, so it still
+# influences ordering but can no longer single-handedly jump an item ahead.
+#
+# Signals deterministically observable in the triage batch (issue #441's
+# proposed signal table, restricted to the deterministic subset):
+#   - Filer-set label  (the `priority` field)            weight 0.15
+#   - Blocking-fanout  (other batch items blocked-by N)  weight 0.30
+#   - Scope size       (smaller `features` set = boost)  weight 0.10
+#   - Bug vs. enhancement (`issue_type` == "bug")        small boost 0.05
+#   - Age              (older `created_at` = mild boost)  weight 0.05
+# The remaining proposed signals (recurrence-count, test-coverage-delta) are
+# NOT deterministically computable in this pure JSON processor (they require
+# fuzzy symptom matching / running each feature's test suite) and are left to
+# a follow-up; see the spec invariant's deferred-signals note.
+_W_FILER = 0.15
+_W_FANOUT = 0.30
+_W_SCOPE = 0.10
+_W_BUG = 0.05
+_W_AGE = 0.05
 
-    Priority is PRIMARY (low rank = higher priority: critical=0 .. low=3,
-    no-priority=4). The contract-touch barrier is the SECONDARY tiebreak
-    (True->0, False->1) so contract items lead WITHIN a priority tier but
-    never override priority across tiers. Issue number is the final stable
-    tiebreak (asc)."""
-    rank = PRIORITY_RANK.get(item.get("priority", ""), _NO_PRIORITY_RANK)
+# Filer-label signal value: critical=1.0 .. low=0.25, no/unknown label=0.0
+# (a missing label contributes nothing rather than masquerading as low).
+_FILER_VALUE = {"critical": 1.0, "high": 0.75, "medium": 0.5, "low": 0.25}
+
+# Fanout normalization cap: a blocking-fanout of this many or more other items
+# saturates the fanout signal at 1.0. Keeps the score bounded in [0, 1].
+_FANOUT_CAP = 5
+
+# Age normalization cap (days): an item this old or older saturates the age
+# signal at 1.0.
+_AGE_CAP_DAYS = 30.0
+
+
+def _feature_count_for_score(item):
+    """Distinct feature-dir count for the scope-size signal. Mirrors
+    _feature_count (prefers `features`, falls back to 1)."""
+    feats = item.get("features")
+    if isinstance(feats, list) and feats:
+        return len(feats)
+    return 1
+
+
+def _fanout_counts(items):
+    """Blocking-fanout per issue: the number of OTHER items in the batch that
+    declare a `blocked-by` dependency on it (issue #441). A foundational item
+    that unblocks others should rise. This is hard for a filer to self-elevate
+    because it requires OTHER issues to actually reference yours.
+
+    Returns a dict issue_number -> fanout count."""
+    counts = {}
+    for it in items:
+        for dep in it.get("blocked_by", []) or []:
+            try:
+                dep_n = int(dep)
+            except (TypeError, ValueError):
+                continue
+            counts[dep_n] = counts.get(dep_n, 0) + 1
+    return counts
+
+
+def _age_days(item):
+    """Days since the item's `created_at` ISO-8601 UTC timestamp, or 0.0 when
+    absent/unparseable (age then contributes nothing — no crash)."""
+    created = item.get("created_at")
+    if not created:
+        return 0.0
+    try:
+        # Accept the trailing-Z UTC shape gh emits.
+        ts = created.replace("Z", "+00:00")
+        dt = datetime.datetime.fromisoformat(ts)
+    except (ValueError, AttributeError):
+        return 0.0
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    delta = (now - dt).total_seconds() / 86400.0
+    return max(0.0, delta)
+
+
+def _computed_score(item, fanout_counts):
+    """The loop's own priority score in [0, 1] (issue #441) — a weighted sum
+    of deterministic, observable signals. Higher = dispatch sooner. Computed
+    in this script (script-tier), never by LLM inference."""
+    filer = _FILER_VALUE.get(item.get("priority", ""), 0.0)
+
+    fanout = fanout_counts.get(item.get("issue"), 0)
+    fanout_norm = min(fanout, _FANOUT_CAP) / float(_FANOUT_CAP)
+
+    # Scope size: smaller is a boost. 1 feature -> 1.0; saturates downward.
+    n_feat = max(1, _feature_count_for_score(item))
+    scope_norm = 1.0 / float(n_feat)
+
+    bug_norm = 1.0 if item.get("issue_type") == "bug" else 0.0
+
+    age_norm = min(_age_days(item), _AGE_CAP_DAYS) / _AGE_CAP_DAYS
+
+    score = (
+        _W_FILER * filer
+        + _W_FANOUT * fanout_norm
+        + _W_SCOPE * scope_norm
+        + _W_BUG * bug_norm
+        + _W_AGE * age_norm
+    )
+    # Clamp into [0, 1] (the weights sum to 0.65; clamping is defensive).
+    return max(0.0, min(1.0, score))
+
+
+# Score-tier quantization for the sort key. Quantizing the score to a fixed
+# grid makes "all signals equal" produce an EXACT tie that falls back
+# deterministically to the contract-touch barrier then issue number (issue
+# #441 acceptance: equal signals → filer label (already in the score) → issue
+# #), and keeps the contract barrier meaningful within a score tier.
+_SCORE_QUANTUM = 1e-9
+
+
+def _sort_key(item, fanout_counts):
+    """Composite dispatch-ordering key (issue #441, refining #479):
+    (-computed_score, contract_touch_rank, issue_number).
+
+    The loop-computed score is PRIMARY (descending — higher score dispatches
+    first). The contract-touch barrier is the SECONDARY tiebreak (True->0,
+    False->1) so contract items lead WITHIN a score tier but never override a
+    higher-scoring item across tiers (preserving Inv 26 grouping correctness).
+    Issue number is the final stable tiebreak (asc). The filer `priority:`
+    label is folded into the score as one weighted input, not consulted
+    separately."""
+    score = _computed_score(item, fanout_counts)
     contract_rank = 0 if item.get("contract_touch") else 1
-    return (rank, contract_rank, item.get("issue", 0))
+    # Negate the score for ascending sort (higher score first). Round to the
+    # quantum so floating-point noise never reorders an intended tie.
+    return (-round(score / _SCORE_QUANTUM), contract_rank, item.get("issue", 0))
 
 
 def _positive_int(value):
@@ -248,14 +392,25 @@ def plan(items, max_parallel, decompose_threshold):
     items = [i for i in items
              if i.get("decision", "work") in ("work", "research")]
 
+    # Loop-computed priority score (issue #441). Blocking-fanout is a
+    # cross-item signal, so it is computed once over the whole dispatchable
+    # batch before sorting. The per-item score then folds in the filer label,
+    # scope size, bug-vs-enhancement, and age signals.
+    fanout_counts = _fanout_counts(items)
+    computed_scores = {
+        str(i["issue"]): round(_computed_score(i, fanout_counts), 6)
+        for i in items
+    }
+
     # Stage 1 — work selection (dispatch-shape BLIND): composite key
-    # (priority desc, contract_touch desc, issue asc), over dispatchable
-    # items (Inv 26 (a) + issue #479). This ordering NEVER consults feature
-    # count or dispatch shape; contract_touch is a barrier/conflict property,
-    # not a shape. The SAME sorted order drives barrier_first below, so the
-    # two always agree. Research items participate in selection_order by the
-    # same composite key (Inv 27 / issue #478).
-    selection = sorted(items, key=_sort_key)
+    # (computed_score desc, contract_touch desc, issue asc), over dispatchable
+    # items (Inv 26 (a) + issue #441 refining #479). The loop's own computed
+    # score is PRIMARY; the contract-touch barrier is the SECONDARY tiebreak
+    # (a barrier/conflict property, not a shape), and issue number is the final
+    # tiebreak. The SAME sorted order drives barrier_first below, so the two
+    # always agree. Research items participate in selection_order by the same
+    # composite key (Inv 27 / issue #478).
+    selection = sorted(items, key=lambda it: _sort_key(it, fanout_counts))
     selection_order = [i["issue"] for i in selection]
 
     # Stage 2 — per-item dispatch shape (item-shaped, Inv 26 (b) + Inv 27).
@@ -333,6 +488,12 @@ def plan(items, max_parallel, decompose_threshold):
     return {
         "selection_order": selection_order,
         "dispatch_shapes": dispatch_shapes,
+        # Loop-computed priority score per selected item (issue #441) — the
+        # transparency surface. Keyed by issue-number string -> score in
+        # [0, 1]. Emitted alongside the filer `priority` so the loop's
+        # judgment is observable (filer label vs computed score side-by-side
+        # downstream in status / tick-log).
+        "computed_scores": computed_scores,
         "barrier_first": barrier_first,
         "groups": groups,
         "research_items": research_items,

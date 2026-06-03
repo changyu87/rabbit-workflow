@@ -13,6 +13,24 @@ own version.
 
 ## Version notes
 
+- **v0.36.0 — 2026-06-03** — The loop computes its OWN priority score rather
+  than blindly trusting the filer-set `priority:` label (Inv 46, #441).
+  `plan-batch.py` now blends deterministic, observable signals — blocking-fanout
+  (count of OTHER batch items blocked-by this issue, weight 0.30),
+  filer `priority:` label (0.15), scope size (smaller = boost, 0.10),
+  bug-vs-enhancement (0.05), and age (0.05) — into a `computed_score` in [0, 1]
+  that is the PRIMARY Stage-1 ordering key, refining the issue #479 composite
+  key (the contract-touch barrier is preserved as the SECONDARY tiebreak, issue
+  asc as the final tiebreak). The filer label is one input among several, no
+  longer the sole determinant, so a mislabeled or stale-priority issue is
+  ordered sensibly. The score is computed in a script (script-tier, no LLM
+  inference, no gh/git/fs reads) and emitted under a `computed_scores` map for
+  transparency. The recurrence-count and test-coverage-delta signals proposed in
+  #441 are NOT deterministically computable in the pure JSON processor and are
+  deferred (recorded as discovered issues). Enforced by `test/test-plan-batch.py`
+  (fanout ordering, bug-outranks-enhancement, equal-signals determinism,
+  transparency, score-tier barrier preservation) and
+  `test/test-spec-priority-score-invariant.py`.
 - **v0.35.0 — 2026-06-03** — Broaden the SKILL.md `description:` trigger
   enumeration to recognize common natural phrasings (Inv 45, #415): the
   unhyphenated "auto evolve" spelling, the "enter auto[-]evolve mode" framing,
