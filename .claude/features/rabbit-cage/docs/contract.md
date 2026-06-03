@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.43.0
+version: 5.44.0
 template_version: 2.0.0
 ---
 
@@ -17,6 +17,7 @@ template_version: 2.0.0
       ".claude/settings.json",
       ".claude/commands/rabbit-refresh.md",
       ".claude/commands/rabbit-project.md",
+      ".claude/commands/rabbit-update.md",
       "CLAUDE.md",
       "README.md",
       "install.py"
@@ -30,6 +31,7 @@ template_version: 2.0.0
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-set-path.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py set-path"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-map.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py map"},
       {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.py", "stdin": "none", "stdout": "annotated workspace tree", "exit": "0=ok 1=error"},
+      {"path": ".claude/features/rabbit-cage/scripts/rabbit-update.py", "stdin": "none", "stdout": "check: current-vs-latest JSON; install: install.py log", "exit": "0=ok 1=error 2=usage", "note": "backs /rabbit-update; check reuses contract check-release-update.py probe (non-throttled), install invokes install.py --update (spec Inv 37)"},
       {"path": ".claude/features/rabbit-cage/lib/project_map_reader.py", "stdin": "none", "stdout": "none", "exit": "n/a (importable module)", "note": "plugin-mode project-map I/O + path matching; imported by scope-guard.py"}
     ],
     "schemas": [],
@@ -63,7 +65,8 @@ template_version: 2.0.0
     ],
     "scripts": [
       {"path": ".claude/features/contract/scripts/find-feature.py", "purpose": "scope-guard.py feature-name -> path resolution"},
-      {"path": ".claude/features/rabbit-auto-evolve/scripts/check-auto-resume.py", "purpose": "session-start-dispatcher.py mechanical restart-resume detection; surfaces resume banner + action when resume:true (Inv 35 / rabbit-auto-evolve Inv 31, issue #503)"}
+      {"path": ".claude/features/rabbit-auto-evolve/scripts/check-auto-resume.py", "purpose": "session-start-dispatcher.py mechanical restart-resume detection; surfaces resume banner + action when resume:true (Inv 35 / rabbit-auto-evolve Inv 31, issue #503)"},
+      {"path": ".claude/features/contract/scripts/check-release-update.py", "purpose": "scripts/rabbit-update.py check reuses read_version / fetch_upstream_version / resolve_repo_root / probe_self_update for the non-throttled current-vs-latest probe (Inv 37 / contract Inv 63)"}
     ],
     "functions": [
       {"path": ".claude/features/contract/lib/checks.py", "function": "validate_agent_prompt_sentinel", "purpose": "scope-guard.py Agent-tool sentinel validation (Inv 31 / contract Inv 66)"},

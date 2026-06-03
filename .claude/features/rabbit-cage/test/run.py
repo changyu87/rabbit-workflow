@@ -84,6 +84,7 @@ SUITES = [
     "test-install-agent-path-rabbit-tdd-subagent.py",
     "test-install-agent-path-rabbit-spec-creator.py",
     "test-specs-layout.py",
+    "test-rabbit-update-command.py",
 ]
 
 
