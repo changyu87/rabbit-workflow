@@ -54,5 +54,6 @@ run_test("test-spec-dispatch-shape-invariant.py")
 run_test("test-spec-research-shape-invariant.py")
 run_test("test-spec-dispatch-worktree-isolation-invariant.py")
 run_test("test-specs-layout-migrated.py")
+run_test("test-status-report.py")
 
 print("ALL TESTS PASSED")
