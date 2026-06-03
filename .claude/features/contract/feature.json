@@ -1,7 +1,8 @@
 {
   "name": "contract",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "owner": "rabbit-workflow team",
+  "housekeeping_clean": true,
   "tdd_state": "test-green",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",

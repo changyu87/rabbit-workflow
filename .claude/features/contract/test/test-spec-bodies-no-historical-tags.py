@@ -15,16 +15,20 @@ Two-tier enforcement with per-feature opt-in (Inv 49):
     BACKLOG-N       — backlog item references
     Wave N          — wave identifiers
 
-  Strict tier (enforced ONLY on features in CLEANED_FEATURES):
+  Strict tier (enforced ONLY on features that have OPTED IN):
     #N              — bare issue/PR references
     per issue/bug/pr — prose pointers (case-insensitive)
     superseded/retired/obsoleted — tombstone language (case-insensitive)
 
-CLEANED_FEATURES starts EMPTY, so introducing the strict tier is
-non-breaking: it enforces on nothing until a feature opts in (added to
-the set once its housekeeping cleanup has landed). CHANGELOG.md is never
-scanned — only spec.md, contract.md, and skills/*/SKILL.md are — so
-feature history relocated to CHANGELOG.md is exempt by construction.
+Opt-in is data-driven and per-feature: a feature opts in by declaring
+`"housekeeping_clean": true` at the top level of its OWN feature.json.
+The checker derives the opt-in set by reading each feature's feature.json
+under FEATURES_ROOT (missing/malformed feature.json => not opted in).
+No feature declares the flag until its cleanup lands, so introducing the
+strict tier is non-breaking: it enforces on nothing until a feature opts
+in. CHANGELOG.md is never scanned — only spec.md, contract.md, and
+skills/*/SKILL.md are — so feature history relocated to CHANGELOG.md is
+exempt by construction.
 
 Such tags belong in commit messages and CHANGELOG.md tombstones, NOT
 in feature documentation surfaces. Doc surfaces describe the CURRENT
@@ -37,14 +41,17 @@ to BOTH tiers.
 
 Self-testability: RABBIT_HISTORICAL_TAGS_FEATURES_ROOT overrides the
 features root, and RABBIT_HISTORICAL_TAGS_CLEANED (comma-separated
-feature names) overrides CLEANED_FEATURES, so a companion test can point
-the checker at fixture feature trees. Absent the overrides the checker
-behaves exactly as the production check.
+feature names), when set, REPLACES the feature.json-derived opt-in set
+(empty string => empty set), so a companion test can point the checker
+at fixture feature trees. Absent the overrides the checker behaves
+exactly as the production check (real features root; opt-in read from
+each feature's feature.json housekeeping_clean flag).
 
 Non-interactive. Exits non-zero on any unallowlisted match.
 """
 
 import glob
+import json
 import os
 import re
 import sys
@@ -63,16 +70,34 @@ STRICT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# Features whose housekeeping cleanup has landed (doc surfaces already
-# history-free) opt into the strict tier. Features are added one at a time
-# as each feature's cleanup lands; contract is cleaned first.
-CLEANED_FEATURES = {"contract"}
+# The strict-tier opt-in set is data-driven: a feature opts in by setting
+# top-level "housekeeping_clean": true in its OWN feature.json. The set is
+# derived by reading every feature's feature.json under FEATURES_ROOT.
+def derive_cleaned_features():
+    """Return the set of feature names whose feature.json declares
+    top-level "housekeeping_clean": true. Missing or malformed feature.json
+    => not opted in."""
+    cleaned = set()
+    for entry in sorted(os.listdir(FEATURES_ROOT)):
+        fjson = os.path.join(FEATURES_ROOT, entry, "feature.json")
+        try:
+            with open(fjson) as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict) and data.get("housekeeping_clean") is True:
+            cleaned.add(entry)
+    return cleaned
+
 
 _cleaned_override = os.environ.get("RABBIT_HISTORICAL_TAGS_CLEANED")
 if _cleaned_override is not None:
+    # Override REPLACES the feature.json-derived set (fixture hermeticity).
     CLEANED_FEATURES = {
         name.strip() for name in _cleaned_override.split(",") if name.strip()
     }
+else:
+    CLEANED_FEATURES = derive_cleaned_features()
 
 # (relative-from-features-root, line_number, substring-on-line) tuples.
 # Each entry records a legitimate occurrence and WHY it is permitted.

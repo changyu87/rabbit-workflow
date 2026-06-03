@@ -10,18 +10,27 @@ the live repo's cleanliness.
 
 Behaviours covered (each from Inv 49):
 
-  t1: a feature listed in CLEANED_FEATURES with a strict-tier violation
-      (bare issue ref / tombstone language) FAILS and is named in stderr.
-  t2: a NOT-cleaned feature with the SAME strict content is NOT flagged.
-  t3: empty CLEANED_FEATURES => no strict flags for any feature.
+  t1: a feature in the opt-in set (via env override) with a strict-tier
+      violation (bare issue ref / tombstone language) FAILS and is named
+      in stderr.
+  t2: a NOT-opted-in feature with the SAME strict content is NOT flagged.
+  t3: empty opt-in set => no strict flags for any feature.
   t4: a baseline-tier violation (e.g. BUG-N) IS flagged regardless of
-      opt-in (cleaned or not).
+      opt-in.
   t5: CHANGELOG.md is never scanned (strict content there is exempt by
       construction).
+  t6: data-driven opt-in — a feature whose OWN feature.json has
+      "housekeeping_clean": true is strict-enforced WITHOUT the env
+      override; the same strict content in a feature WITHOUT the flag is
+      ignored.
+  t7: the RABBIT_HISTORICAL_TAGS_CLEANED env override REPLACES the
+      feature.json-derived set: a feature with the flag is NOT enforced
+      when the override names a different (or empty) set.
 
 Non-interactive. Exits non-zero on failure.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -55,9 +64,11 @@ def fail(name, msg):
     FAIL += 1
 
 
-def make_feature(root, name, spec_body, changelog_body=None):
+def make_feature(root, name, spec_body, changelog_body=None,
+                 housekeeping_clean=None):
     """Create <root>/<name>/specs/spec.md with spec_body, plus an optional
-    CHANGELOG.md at the feature root."""
+    CHANGELOG.md at the feature root. When housekeeping_clean is not None,
+    write a feature.json with that top-level flag value."""
     specs = os.path.join(root, name, "specs")
     os.makedirs(specs, exist_ok=True)
     with open(os.path.join(specs, "spec.md"), "w") as f:
@@ -65,12 +76,22 @@ def make_feature(root, name, spec_body, changelog_body=None):
     if changelog_body is not None:
         with open(os.path.join(root, name, "CHANGELOG.md"), "w") as f:
             f.write(changelog_body)
+    if housekeeping_clean is not None:
+        with open(os.path.join(root, name, "feature.json"), "w") as f:
+            json.dump({"name": name, "housekeeping_clean": housekeeping_clean},
+                      f)
 
 
-def run(features_root, cleaned):
+def run(features_root, cleaned=None):
+    """Run the checker against features_root. When cleaned is None the
+    RABBIT_HISTORICAL_TAGS_CLEANED override is NOT set (the checker derives
+    the opt-in set from each feature's feature.json). When cleaned is a
+    string it is passed as the override (REPLACES the derived set)."""
     env = dict(os.environ)
     env["RABBIT_HISTORICAL_TAGS_FEATURES_ROOT"] = features_root
-    env["RABBIT_HISTORICAL_TAGS_CLEANED"] = cleaned
+    env.pop("RABBIT_HISTORICAL_TAGS_CLEANED", None)
+    if cleaned is not None:
+        env["RABBIT_HISTORICAL_TAGS_CLEANED"] = cleaned
     return subprocess.run(
         ["python3", CHECKER],
         capture_output=True,
@@ -141,6 +162,35 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("t5", "CHANGELOG.md never scanned (exempt by construction)")
     else:
         fail("t5", f"expected exit 0; exit={r.returncode}; "
+                   f"stdout={r.stdout}; stderr={r.stderr}")
+
+# t6: data-driven opt-in via feature.json housekeeping_clean (NO env
+# override). A feature with the flag true is strict-enforced; a sibling
+# feature with the same strict content but no flag is ignored. Distinct
+# name prefixes (cleanf / dirtyf) so neither is a substring of the other.
+with tempfile.TemporaryDirectory() as tmp:
+    strict_body = "# heading\n\n" + _HASH_REF + "\n" + _TOMBSTONE + "\n"
+    make_feature(tmp, "cleanf", strict_body, housekeeping_clean=True)
+    make_feature(tmp, "dirtyf", strict_body, housekeeping_clean=False)
+    r = run(tmp)  # no env override -> derive from feature.json
+    out = r.stdout + r.stderr
+    if r.returncode != 0 and "cleanf/" in out and "dirtyf/" not in out:
+        ok("t6", "feature.json housekeeping_clean drives opt-in")
+    else:
+        fail("t6", f"expected nonzero naming cleanf only; exit={r.returncode}; "
+                   f"stdout={r.stdout}; stderr={r.stderr}")
+
+# t7: the env override REPLACES the feature.json-derived set. A feature
+# with the flag true is NOT enforced when the override is set to a set
+# that excludes it (here: empty string => empty set).
+with tempfile.TemporaryDirectory() as tmp:
+    strict_body = "# theta\n\n" + _HASH_REF + "\n" + _TOMBSTONE + "\n"
+    make_feature(tmp, "theta", strict_body, housekeeping_clean=True)
+    r = run(tmp, "")  # override replaces derived set with empty set
+    if r.returncode == 0:
+        ok("t7", "env override replaces feature.json-derived set")
+    else:
+        fail("t7", f"expected exit 0; exit={r.returncode}; "
                    f"stdout={r.stdout}; stderr={r.stderr}")
 
 print()
