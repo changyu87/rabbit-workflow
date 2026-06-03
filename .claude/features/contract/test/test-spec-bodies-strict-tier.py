@@ -82,16 +82,21 @@ def make_feature(root, name, spec_body, changelog_body=None,
                       f)
 
 
-def run(features_root, cleaned=None):
+def run(features_root, cleaned=None, allowlist=None):
     """Run the checker against features_root. When cleaned is None the
     RABBIT_HISTORICAL_TAGS_CLEANED override is NOT set (the checker derives
     the opt-in set from each feature's feature.json). When cleaned is a
-    string it is passed as the override (REPLACES the derived set)."""
+    string it is passed as the override (REPLACES the derived set).
+    When allowlist is a string it is passed as RABBIT_HISTORICAL_TAGS_ALLOWLIST
+    (ADDS fixture allowlist entries to the production ALLOWLIST)."""
     env = dict(os.environ)
     env["RABBIT_HISTORICAL_TAGS_FEATURES_ROOT"] = features_root
     env.pop("RABBIT_HISTORICAL_TAGS_CLEANED", None)
+    env.pop("RABBIT_HISTORICAL_TAGS_ALLOWLIST", None)
     if cleaned is not None:
         env["RABBIT_HISTORICAL_TAGS_CLEANED"] = cleaned
+    if allowlist is not None:
+        env["RABBIT_HISTORICAL_TAGS_ALLOWLIST"] = allowlist
     return subprocess.run(
         ["python3", CHECKER],
         capture_output=True,
@@ -192,6 +197,35 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         fail("t7", f"expected exit 0; exit={r.returncode}; "
                    f"stdout={r.stdout}; stderr={r.stderr}")
+
+# t8: the ALLOWLIST suppresses a strict-tier match on an opted-in feature
+# (Inv 70 — the allowlist applies to BOTH tiers). The fixture spec puts the
+# strict-tier match (_HASH_REF) on a KNOWN line (line 3: line 1 is the
+# heading, line 2 is blank, line 3 is the hash ref). A matching
+# RABBIT_HISTORICAL_TAGS_ALLOWLIST entry for that exact
+# (feature, logical_doc, line, substring) MUST suppress it (exit 0). The
+# paired sub-assertion runs the SAME fixture WITHOUT the entry and confirms
+# it is otherwise a violation (exit non-zero) — proving the allowlist, not
+# some unrelated condition, is what suppresses it.
+with tempfile.TemporaryDirectory() as tmp:
+    # Only the hash ref is strict content, isolated on line 3.
+    spec_body = "# iota\n\n" + _HASH_REF + "\n"
+    make_feature(tmp, "iota", spec_body, housekeeping_clean=True)
+    # logical_doc is "spec.md" (make_feature writes specs/spec.md; the
+    # scanner strips the layout prefix). The substring "#123" is the strict
+    # match on line 3.
+    allow_entry = "iota:spec.md:3:#123"
+    r_no_allow = run(tmp)  # opted in via feature.json, no allowlist
+    r_allow = run(tmp, allowlist=allow_entry)
+    if r_no_allow.returncode != 0 and r_allow.returncode == 0:
+        ok("t8", "allowlist suppresses strict-tier match (both tiers)")
+    else:
+        fail("t8",
+             "expected violation without allowlist AND suppression with it; "
+             f"no_allow_exit={r_no_allow.returncode} "
+             f"(stderr={r_no_allow.stderr}); "
+             f"allow_exit={r_allow.returncode} "
+             f"(stdout={r_allow.stdout}; stderr={r_allow.stderr})")
 
 print()
 print(f"Results: {PASS} passed, {FAIL} failed")
