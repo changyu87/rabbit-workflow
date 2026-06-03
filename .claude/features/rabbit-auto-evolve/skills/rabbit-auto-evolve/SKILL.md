@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.24.0
+version: 0.25.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -114,18 +114,22 @@ precondition checklist verbatim and waiting for the user to type
 
 #### Start the loop (only on `all_pass: true`)
 
-1. Run the running-guard FIRST (Inv 35 / D3):
+1. Run the running-guard FIRST (Inv 35 / D3, #526):
    `python3 .claude/features/rabbit-auto-evolve/scripts/running-guard.py`.
-   It inspects `.rabbit-auto-evolve-running` and clears a STALE marker (mtime
-   older than the max-tick window, or a dead owner PID), logging
-   `stale marker cleared` via `tick-log.py`. On `{"action":"skip",
-   "reason":"tick-running"}` (a FRESH marker — a tick is genuinely running)
-   do NOT start a second tick: log `skipped: tick already running` and end
-   the turn. On `{"action":"proceed",...}` continue.
+   It inspects `.rabbit-auto-evolve-running` and clears a STALE marker — STALE
+   only when BOTH no live owner process AND `state.json` idle beyond the
+   IDLE_WINDOW (default 600 s; either a live owner PID OR recent `state.json`
+   activity keeps it FRESH), logging `stale marker cleared` via `tick-log.py`.
+   On `{"action":"skip", "reason":"tick-running"}` (a FRESH marker — a tick is
+   genuinely running) do NOT start a second tick: log
+   `skipped: tick already running` and end the turn. On
+   `{"action":"proceed",...}` continue.
 2. Invoke
    `python3 .claude/features/rabbit-auto-evolve/scripts/start-loop.py`
-   (which writes `.rabbit-auto-evolve-running` at repo root, now carrying the
-   owner PID + ISO-8601 timestamp in its content for the running-guard). Per
+   (which writes `.rabbit-auto-evolve-running` at repo root, carrying a DURABLE
+   owner PID — the long-lived session PID, not the helper's transient PID,
+   omitted when undeterminable — plus an ISO-8601 timestamp for the
+   running-guard). Per
    Inv 17 the marker write is wrapped in a script so scope-guard does not
    deny the literal Bash command. Per Inv 19, `start-loop.py` additionally
    self-heals before writing the running marker: it deletes any stale

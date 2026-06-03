@@ -16,6 +16,12 @@ Phases walked (the Claude-free subset of the 12-phase session tick):
                              `.rabbit-auto-evolve-stop-requested` exists.
   - phase 1  restart-check — also short-circuit on
                              `.rabbit-auto-evolve-aborted` (a halted loop).
+  - running-guard          — the heartbeat "is a tick running?" check invokes
+                             `running-guard.py` (Inv 35 / #526), NOT a bare
+                             marker-presence test: a STALE marker is cleared so
+                             a crashed tick never wedges the loop, while a FRESH
+                             (active) tick yields a clean no-op so this headless
+                             tick never runs concurrently on top of it.
   - phases 2-4 fetch|triage|plan — the canonical
                              `fetch-queue.py | triage-batch.py | plan-batch.py`
                              pipe (Inv 18).
@@ -42,7 +48,7 @@ A single JSON result object is emitted on stdout summarizing which phases ran.
 completed tick (including every short-circuit no-op); non-zero on an
 unexpected phase-script failure that should surface in the cron log.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -128,6 +134,24 @@ def run():
         json.dump(result, sys.stdout, indent=2)
         sys.stdout.write("\n")
         return 0
+
+    # --- running-guard: heartbeat "is a tick running?" (Inv 35 / #526) -----
+    # Invoke the staleness-aware guard, NOT a bare marker-presence test: a
+    # crashed tick's STALE marker is cleared (we then proceed); a FRESH/active
+    # tick yields a clean no-op so we never run on top of it.
+    guard = _run("running-guard.py", [])
+    try:
+        verdict = json.loads(guard.stdout)
+    except (ValueError, AttributeError):
+        verdict = {}
+    if verdict.get("action") == "skip":
+        result["status"] = "noop"
+        result["reason"] = "tick-running"
+        json.dump(result, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+        return 0
+    if verdict.get("stale_cleared"):
+        result["running_guard"] = "stale-cleared"
 
     # --- phases 2-4: fetch | triage | plan --------------------------------
     fetch = _run("fetch-queue.py", [])
