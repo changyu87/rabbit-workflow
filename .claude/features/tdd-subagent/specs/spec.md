@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.11.0
+version: 5.12.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -767,6 +767,39 @@ lives in Inv 22 above.
     in their repo-relative form (e.g. `.claude/features/<feature>`,
     `.rabbit-scope-active-<feature>`), and the LOCK/UNLOCK scope-marker lines
     use the relative marker path.
+
+59. **Spec/contract path resolution prefers the flat `docs/` layout.**
+    Both owned scripts resolve a feature's `spec.md` and `contract.md`
+    by preferring the flat `<feature-dir>/docs/<name>` file and falling
+    back to `<feature-dir>/specs/<name>` when the `docs/` file is absent;
+    when neither exists the `specs/` candidate is the canonical reported
+    path. The `docs/` tree may hold sibling subdirectories (e.g.
+    `docs/bugs/`); resolution targets the flat `docs/<name>` file only and
+    never such a subdirectory.
+
+    - `tdd-step.py` exposes a `resolve_spec_path(feature_dir, name)` helper
+      implementing this precedence. The `spec-update -> test-red`
+      precondition (Inv 38) diffs the flat `docs/spec.md` and
+      `docs/contract.md` candidates in addition to the `specs/` and legacy
+      `docs/spec/` candidates, so a spec change under any supported layout
+      satisfies the gate. The numbered-list check (Inv 41) runs against the
+      resolved `spec.md` and `contract.md` files (flat `docs/` preferred,
+      `specs/` then legacy `docs/spec/` as fallbacks), never the whole
+      `docs/` tree.
+    - `dispatch-tdd-subagent.py` emits a scoped-view grep hint that points
+      at the actual `--spec` path the caller resolved; when that path is
+      outside the repository root it falls back to the feature's flat
+      `docs/spec.md` when that file exists under the repository root, else
+      the `specs/spec.md` layout.
+
+    Enforced by `test/test-docs-resolver.py` (e2e): `resolve_spec_path`
+    returns the `docs/` file when present, the `specs/` file when only that
+    exists, and `docs/` wins when both exist (for both `spec.md` and
+    `contract.md`); the `spec-update -> test-red` gate accepts a spec edit
+    under the flat `docs/` layout; the numbered-list hook runs against the
+    flat `docs/` layout without crashing; and `dispatch-tdd-subagent.py`
+    assembles a prompt from a `--spec` under `docs/` whose scoped grep hint
+    names the `docs/spec.md` path.
 
 ## Out of Scope
 

@@ -10,7 +10,7 @@
 #     [--max-iterations N]
 #
 # Output: assembled prompt to stdout. Caller: Agent(model: opus, prompt: stdout).
-# Version: 4.3.0
+# Version: 4.4.0
 # Owner: rabbit-workflow team (tdd-subagent)
 # Deprecation criterion: when TDD cycle is natively supported by rabbit CLI.
 
@@ -186,13 +186,14 @@ def _parse_invariants_section(spec_text):
 
 
 def _spec_grep_hint(repo_root, spec_path, feature_name):
-    """Repo-relative path used in the scoped-view grep NOTE (issue #399
-    Phase 2, dual-read).
+    """Repo-relative path used in the scoped-view grep NOTE (dual-read).
 
     Prefers the actual --spec path the caller resolved (this already
-    points at specs/ for migrated features and docs/spec/ for legacy
-    ones). Falls back to the canonical new specs/ layout when --spec is
-    not under repo_root (e.g. a tempdir in tests).
+    points at the flat docs/ layout for migrated features and at specs/
+    or the legacy docs/spec/ layout otherwise). When --spec is not under
+    repo_root (e.g. a tempdir in tests) the hint falls back to the
+    feature's canonical doc: the flat docs/spec.md layout if that file
+    exists under repo_root, else the specs/spec.md layout.
     """
     if spec_path and repo_root:
         try:
@@ -202,6 +203,9 @@ def _spec_grep_hint(repo_root, spec_path, feature_name):
                 return rel
         except Exception:
             pass
+    docs_rel = f".claude/features/{feature_name}/docs/spec.md"
+    if repo_root and os.path.isfile(os.path.join(repo_root, docs_rel)):
+        return docs_rel
     return f".claude/features/{feature_name}/specs/spec.md"
 
 

@@ -62,24 +62,24 @@ def _repo_root():
 REPO_ROOT = _repo_root()
 
 
-def _resolve_spec_dir(feature_dir):
-    """Resolve a feature's spec directory, dual-read (issue #399 Phase 2).
+def resolve_spec_path(feature_dir, name):
+    """Resolve a feature spec/contract doc FILE, preferring the flat docs/
+    layout and falling back to the specs/ layout.
 
-    Prefers the new layout <feature-dir>/specs/; falls back to the legacy
-    <feature-dir>/docs/spec/ during the #399 coexistence window so that
-    features not yet migrated still drive the spec-update gate (Inv 8) and
-    the numbered-list check (Inv 12). Phase 3 drops the fallback once every
-    feature has migrated. When neither exists the legacy docs/spec/
-    candidate is returned so downstream existence checks report the
-    canonical legacy path.
+    `name` is a leaf filename such as "spec.md" or "contract.md".
+    Resolution prefers <feature_dir>/docs/<name>; if that file does not
+    exist it falls back to <feature_dir>/specs/<name>. When neither exists
+    the specs/ candidate is returned, so downstream existence checks report
+    a canonical path. The docs/ tree may also hold sibling subdirectories
+    (e.g. docs/bugs/); resolution targets the flat docs/<name> file only.
 
     Logic mirrors contract.lib.checks.resolve_spec_path; duplicated here so
     tdd-step.py has no cross-script import dependency for path resolution.
     """
-    preferred = os.path.join(feature_dir, "specs")
-    if os.path.isdir(preferred):
-        return preferred
-    return os.path.join(feature_dir, "docs", "spec")
+    docs_candidate = os.path.join(feature_dir, "docs", name)
+    if os.path.isfile(docs_candidate):
+        return docs_candidate
+    return os.path.join(feature_dir, "specs", name)
 
 
 def usage():
@@ -247,10 +247,13 @@ def _run_enforcement_checks(d, repo_root):
 
 
 def _run_spec_update_checks(d, repo_root):
-    """Inv 12: run check_numbered_lists against the feature's spec dir.
+    """Inv 12: run check_numbered_lists against the feature's spec/contract.
 
-    The spec dir is resolved dual-read (specs/ preferred, docs/spec/
-    fallback) per issue #399 Phase 2.
+    The spec.md and contract.md files are resolved dual-read (flat docs/
+    preferred, specs/ fallback) via resolve_spec_path, with the legacy
+    docs/spec/ files retained as a final fallback. Targeting the resolved
+    files keeps the flat docs/ layout from sweeping sibling subtrees (e.g.
+    docs/bugs/) into the check.
 
     Non-blocking: a failed CheckResult emits a warning via rabbit_print but
     does not fail the spec-update -> test-red transition.
@@ -258,11 +261,17 @@ def _run_spec_update_checks(d, repo_root):
     checks = _load_checks_module(repo_root)
     if checks is None:
         return
-    spec_dir = _resolve_spec_dir(d)
-    if not os.path.isdir(spec_dir):
+    candidates = [
+        resolve_spec_path(d, "spec.md"),
+        resolve_spec_path(d, "contract.md"),
+        os.path.join(d, "docs", "spec", "spec.md"),
+        os.path.join(d, "docs", "spec", "contract.md"),
+    ]
+    targets = [t for t in candidates if os.path.isfile(t)]
+    if not targets:
         return
     try:
-        res = checks.check_numbered_lists([spec_dir])
+        res = checks.check_numbered_lists(targets)
     except Exception:
         return
     if res is None or getattr(res, "passed", True):
@@ -270,7 +279,7 @@ def _run_spec_update_checks(d, repo_root):
     messages = getattr(res, "messages", []) or []
     detail = "; ".join(messages[:3]) if messages else "(no detail)"
     _rbt_alert(rabbit_block(rabbit_subline(
-        f"WARNING: numbered-list check failed for {spec_dir}: {detail}",
+        f"WARNING: numbered-list check failed: {detail}",
         color="red",
     )))
 
@@ -523,11 +532,14 @@ def cmd_transition(args):
     if cur == "spec-update" and new == "test-red":
         if not spec_no_change_reason:
             spec_diff = ""
-            # Dual-read (issue #399 Phase 2): diff the new specs/ layout when
-            # present, else the legacy docs/spec/ layout. Both candidates are
-            # passed so a feature mid-migration (changes still staged under the
-            # old path) is not falsely denied.
+            # Dual-read: diff the flat docs/ spec & contract files (preferred
+            # target layout) AND the specs/ layout AND the legacy docs/spec/
+            # layout. All candidates are passed so a feature on any layout —
+            # or mid-migration with changes staged under either path — is not
+            # falsely denied.
             spec_pathspecs = [
+                os.path.join(d, "docs", "spec.md"),
+                os.path.join(d, "docs", "contract.md"),
                 os.path.join(d, "specs") + os.sep,
                 os.path.join(d, "docs", "spec") + os.sep,
             ]
