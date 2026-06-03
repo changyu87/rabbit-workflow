@@ -3,7 +3,7 @@
 canonical spec-directory layout.
 
 Issue #399 Phase 2 relocates the policy feature's spec from the legacy
-`docs/spec/` layout to the canonical `specs/` layout. This E2E test asserts
+`docs/`-nested layout to the canonical `specs/` layout. This E2E test asserts
 the post-migration on-disk shape of the feature, independent of any single
 helper script:
 
@@ -12,7 +12,7 @@ helper script:
   - specs/contract.md exists, is non-empty, and carries `feature: policy`
     frontmatter.
   - No `docs/` directory remains anywhere in the feature (the legacy
-    docs/spec/ container is fully removed once its only child migrated).
+    nested spec container is fully removed once its only child migrated).
   - specs/spec.md, specs/contract.md, and feature.json all declare the same
     version (three-way frontmatter/JSON alignment survives the move).
 

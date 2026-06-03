@@ -1,6 +1,6 @@
 {
   "name": "policy",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Canonical rule files fed to subagents; three policy docs (philosophy, spec-rules, coding-rules).",
@@ -14,5 +14,5 @@
   "manifest": [],
   "runtime": {},
   "configuration": [],
-  "spec_no_change_reason": "1.7.2 -> 1.8.0 relocates the feature's spec from docs/spec/ to specs/ (issue #399 Phase 2). The spec/contract invariant text is unchanged; the minor bump records the canonical spec-directory layout migration and the lockstep frontmatter version bump across feature.json, specs/spec.md, and specs/contract.md."
+  "spec_no_change_reason": "1.8.0 -> 1.9.0 updates the canonical-convention path text in the policy rule files from the legacy spec-directory layout to the specs/ layout (issue #399 Phase 3, final). spec-rules.md ('Where the metadata lives', Specs/contracts row) and philosophy.md (Bounded Scope, contract-schema reference) now name the canonical specs/spec.md and specs/contract.md paths that all 11 features adopted on disk in Phase 2. The spec/contract invariants are unchanged; the minor bump records the convention-source text update with lockstep frontmatter version bumps across feature.json, specs/spec.md, and specs/contract.md."
 }

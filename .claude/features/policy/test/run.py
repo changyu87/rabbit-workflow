@@ -31,6 +31,7 @@ run_test("test-policy-bug-fixes.py")
 run_test("test-historical-fixes-retirement.py")
 run_test("test-meta-contract-sections.py")
 run_test("test-spec-layout-migration.py")
+run_test("test-canonical-convention-text.py")
 
 print()
 print("All tests passed.")
