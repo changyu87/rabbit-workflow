@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.36.0
+version: 0.37.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2658,7 +2658,8 @@ Phase E merges complete.
       `proceed` (continue to dispatch) or `skip` (a clean no-op short-circuit
       fired).
     - `run-tick-phases.py post-dispatch` — phase 6 (merge the PRs in the
-      state's transient `merge_ready` hint), phases 7-9 (`run-post-merge.py`
+      state's transient `merge_ready` hint), a post-merge re-sync to
+      `origin/dev` when PRs merged (Inv 47), phases 7-9 (`run-post-merge.py`
       drain), phase 10 (persist).
 
     The headless tick chains `pre-dispatch -> (skip dispatch) -> post-dispatch`;
@@ -2985,6 +2986,46 @@ Phase E merges complete.
     normalized; the contract barrier is preserved within an equal score
     tier) and `test/test-spec-priority-score-invariant.py` (asserts this
     invariant text is present and reconciles with issue #479).
+
+47. **Post-merge re-sync to origin/dev before the release drain (issue
+    #516).** Phase 6 (`merge-prs.py`) does a REMOTE squash-merge via `gh pr
+    merge`, which advances `origin/dev` but NOT the loop's LOCAL `dev`
+    checkout. Phases 7-9 (`run-post-merge.py` → `release-bump.py`) then run
+    immediately on the STALE local `dev` (lagging `origin/dev`), so
+    `release-bump.py`'s safety-check / next-tag computation sees stale state
+    and SKIPS the release on the FIRST in-loop attempt — a manual re-run with
+    identical-but-synced state then succeeds. #512 mitigated the SYMPTOM (the
+    next tick retries a `skipped` release-bump), but the ROOT CAUSE is the
+    stale local tree.
+
+    `run-tick-phases.py run_post_dispatch` therefore re-syncs the local tree to
+    `origin/dev` AFTER the Phase-6 merge step reports merged PRs and BEFORE the
+    phases 7-9 post-merge / release drain, so `release-bump.py` runs on fresh
+    state and the FIRST in-loop release attempt succeeds (no reliance on the
+    #512 next-tick retry). The re-sync REUSES the existing `sync-tree.py`
+    (`git pull --ff-only origin dev` — NEVER `git merge`, which is
+    permission-denied per Inv 38), so it inherits Inv 38's dirty-tree refusal
+    (a dirty tree fails loudly and is never synced over) and its non-ff
+    divergence refusal. The ordering is strict:
+
+    1. **Gated on actual merges.** The re-sync runs ONLY when the Phase-6
+       merge step ran with ready PRs (the `merge_ready` hint was non-empty).
+       With zero merges, `origin/dev` did not advance, so the re-sync is
+       skipped entirely — a harmless no-op, no spurious sync error.
+    2. **Ordered between merge and drain.** When PRs merged, `sync-tree.py`
+       runs AFTER `merge-prs.py` and BEFORE `run-post-merge.py`, so the merged
+       commits are local before release-bump computes its tag.
+    3. **Fails loudly.** If the re-sync cannot fast-forward (dirty or divergent
+       local tree), `run_post_dispatch` aborts non-zero BEFORE the post-merge
+       drain — `release-bump.py` never runs on a tree that could not be brought
+       current. This preserves the Inv 5 / Inv 38 safety property.
+
+    Enforced by `test/test-run-tick-phases.py` (e2e: with merged PRs the
+    re-sync runs between `merge-prs.py` and `run-post-merge.py`; with zero
+    merges no re-sync runs and post-dispatch is a clean no-op; a failing
+    re-sync aborts non-zero before the post-merge drain) and by
+    `test/test-spec-post-merge-resync-invariant.py` (asserts this invariant
+    text is present in the spec).
 
 ## Known gaps
 

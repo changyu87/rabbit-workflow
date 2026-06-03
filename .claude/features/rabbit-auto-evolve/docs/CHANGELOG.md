@@ -13,6 +13,19 @@ own version.
 
 ## Version notes
 
+- **v0.37.0 — 2026-06-03** — Post-merge re-sync to `origin/dev` before the
+  release drain (Inv 47, #516). `run-tick-phases.py run_post_dispatch` now
+  fast-forwards the local `dev` checkout to `origin/dev` (reusing
+  `sync-tree.py` — `git pull --ff-only`, never `git merge`) AFTER the Phase-6
+  remote squash-merge reports merged PRs and BEFORE the phases 7-9
+  `run-post-merge.py` / `release-bump.py` drain. Previously the release phase
+  ran on the STALE local `dev` (lagging `origin/dev` after the remote merge),
+  so `release-bump.py`'s safety-check / next-tag computation saw stale state
+  and SKIPPED the release on the FIRST in-loop attempt — relying on the #512
+  next-tick retry. Now the first attempt runs on fresh state and succeeds.
+  Gated on actual merges (zero merges → no re-sync, a harmless no-op); a tree
+  that cannot be fast-forwarded aborts the tick before the drain, inheriting
+  Inv 38's dirty-tree / non-ff refusal.
 - **v0.36.0 — 2026-06-03** — The loop computes its OWN priority score rather
   than blindly trusting the filer-set `priority:` label (Inv 46, #441).
   `plan-batch.py` now blends deterministic, observable signals — blocking-fanout

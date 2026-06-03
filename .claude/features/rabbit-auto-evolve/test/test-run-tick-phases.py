@@ -325,6 +325,90 @@ with tempfile.TemporaryDirectory() as d:
 
 
 # ---------------------------------------------------------------------------
+# H — post-dispatch re-syncs local dev (sync-tree.py) AFTER the merge step and
+# BEFORE the post-merge/release drain, so release-bump runs on fresh state
+# (Inv 47 / issue #516). Phase 6 merge is a REMOTE squash-merge (origin/dev
+# advances); local dev must be fast-forwarded before phases 7-9 or release-bump
+# computes its tag against stale local state and SKIPS the first attempt.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir, trace = fresh(d)
+    install_real_update_state(script_dir)
+    write_state(state_dir, dict(VALID_STATE, merge_ready=[111, 222]))
+    proc = run_segment("post-dispatch", repo_root, script_dir, state_dir, trace)
+    if proc.returncode != 0:
+        fail(f"H: post-dispatch exit {proc.returncode}; "
+             f"stdout={proc.stdout!r} stderr={proc.stderr!r}")
+    else:
+        ok("H: post-dispatch (with merges) exited 0")
+    t = read_trace(trace)
+    if "merge-prs.py" not in t:
+        fail(f"H: merge-prs.py did not run with ready PRs; trace={t!r}")
+    elif "sync-tree.py" not in t:
+        fail(f"H: sync-tree.py did NOT re-sync after merge (Inv 47); trace={t!r}")
+    elif "run-post-merge.py" not in t:
+        fail(f"H: run-post-merge.py did not run; trace={t!r}")
+    elif not (t.index("merge-prs.py")
+              < t.index("sync-tree.py")
+              < t.index("run-post-merge.py")):
+        fail(f"H: re-sync not ordered between merge and post-merge (Inv 47); "
+             f"trace={t!r}")
+    else:
+        ok("H: sync-tree.py re-ran between merge-prs.py and run-post-merge.py "
+           "(Inv 47)")
+
+
+# ---------------------------------------------------------------------------
+# I — with ZERO merges, post-dispatch does NOT re-sync (no spurious sync;
+# harmless no-op) — the re-sync is gated on PRs actually merged (Inv 47).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir, trace = fresh(d)
+    install_real_update_state(script_dir)
+    write_state(state_dir, dict(VALID_STATE, merge_ready=[]))
+    proc = run_segment("post-dispatch", repo_root, script_dir, state_dir, trace)
+    if proc.returncode != 0:
+        fail(f"I: no-merge post-dispatch exit {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    else:
+        ok("I: no-merge post-dispatch exited 0")
+    t = read_trace(trace)
+    if "merge-prs.py" in t:
+        fail(f"I: merge-prs.py ran with empty merge_ready; trace={t!r}")
+    elif "sync-tree.py" in t:
+        fail(f"I: sync-tree.py re-synced despite zero merges (Inv 47 no-op "
+             f"violated); trace={t!r}")
+    else:
+        ok("I: no post-merge re-sync when zero PRs merged (Inv 47 no-op)")
+
+
+# ---------------------------------------------------------------------------
+# J — when the post-merge re-sync FAILS (e.g. dirty/divergent local dev),
+# post-dispatch aborts non-zero BEFORE the post-merge drain, so release-bump
+# never runs on a tree that could not be fast-forwarded (Inv 47).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir, trace = fresh(d, overrides={
+        "sync-tree.py":
+            "import sys; sys.stderr.write('diverged\\n'); "
+            "print('{\"status\": \"diverged\"}'); sys.exit(1)",
+    })
+    install_real_update_state(script_dir)
+    write_state(state_dir, dict(VALID_STATE, merge_ready=[111]))
+    proc = run_segment("post-dispatch", repo_root, script_dir, state_dir, trace)
+    if proc.returncode == 0:
+        fail("J: post-dispatch must abort non-zero when post-merge re-sync fails")
+    else:
+        ok("J: post-dispatch aborted non-zero on re-sync failure (Inv 47)")
+    t = read_trace(trace)
+    if "run-post-merge.py" in t:
+        fail(f"J: run-post-merge.py ran despite failed re-sync (Inv 47); "
+             f"trace={t!r}")
+    else:
+        ok("J: run-post-merge.py did NOT run after re-sync failure (Inv 47)")
+
+
+# ---------------------------------------------------------------------------
 # F — --help smoke for both segments.
 # ---------------------------------------------------------------------------
 proc = subprocess.run([sys.executable, WALK, "--help"], capture_output=True, text=True)
