@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.2.1
+version: 1.2.2
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue REPLACES the retired rabbit-file feature; do NOT invoke rabbit-file or its scripts — they are gone. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours the `rabbit-managed` label as a safety guard so human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -110,7 +110,9 @@ When the user asks to work, close, or reopen an issue:
    and stop.
 
 2. **Eval subagent** — dispatch a read-only default-model subagent with
-   the fetched issue JSON and the affected feature's `docs/spec/spec.md`.
+   the fetched issue JSON and the affected feature's spec.md (resolved
+   dual-read: `specs/spec.md` preferred, legacy `docs/spec/spec.md`
+   fallback).
    It returns:
    - **Verdict**: `valid` (still relevant and reproducible) or
      `stale/invalid` with reason.
