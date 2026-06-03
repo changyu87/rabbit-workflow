@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """clean-dispatch-leaks.py — deterministic, defense-in-depth pre-merge cleanup
 of KNOWN worktree-dispatch leak-class noise from the dispatcher's MAIN working
-tree (Inv 43 / issue #583).
+tree (Inv 43 / issue #583; Inv 44 / issue #596).
 
 Worktree-isolated Phase 5 dispatches sometimes leave working-tree noise in the
 dispatcher's main tree because a subagent's process cwd is occasionally the
@@ -11,10 +11,26 @@ reduced but did not eliminate. Left in place, this noise trips safety-check
 Inv 5 ("no uncommitted tracked-file modifications"), which makes merge-prs.py
 SKIP every PR in the batch.
 
-`run-tick-phases.py run_post_dispatch` invokes this script as the FIRST action
-of Phase 6, BEFORE merge-prs.py. The cleanup handles ONLY two known leak
-classes and FAILS LOUDLY on anything else:
+A more severe variant of the SAME root cause (#596): a subagent's
+`git checkout -B <branch> origin/dev` runs in the MAIN checkout and switches
+the dispatcher's MAIN HEAD onto a feature branch. safety-check Inv 1 ("branch
+is dev") then fails and merge-prs.py skips the whole batch with a CLEAN tree
+(so this is NOT the #583 file-leak path).
 
+`run-tick-phases.py run_post_dispatch` invokes this script as the FIRST action
+of Phase 6, BEFORE merge-prs.py. The cleanup runs the branch-restore FIRST (so
+the subsequent file cleanup and the merge see the right branch), then handles
+ONLY the known file-leak classes and FAILS LOUDLY on anything else:
+
+  0. **Leaked HEAD switch (#596).** If the main repo's HEAD is NOT `dev`:
+     - When the working tree is CLEAN and the branch has NO un-pushed unique
+       commits (every local commit is on its `origin/<branch>` remote), restore
+       with `git checkout dev` — the feature work lives safely on its pushed
+       branch.
+     - When the tree is DIRTY or the branch has un-pushed unique commits,
+       REFUSE loudly (non-zero) and do NOT switch/discard — let the tick abort
+       (Inv 20) so a human/next-tick investigates. Mirrors the unexpected-dirt
+       refusal below.
   1. Untracked stray `.rabbit-scope-active-*` markers at the repo root are
      removed.
   2. A TRACKED `<feature>/feature.json` whose diff vs HEAD touches ONLY the
@@ -26,7 +42,8 @@ classes and FAILS LOUDLY on anything else:
      critical safety property — clean ONLY known leak-class noise.
 
 What was cleaned is logged via tick-log.py (Inv 36) so the cleanup is
-observable. On a clean tree the script is a no-op (exit 0, nothing logged).
+observable. On a clean tree on `dev` the script is a no-op (exit 0, nothing
+logged).
 
 Resolution:
   - repo root via `RABBIT_AUTO_EVOLVE_REPO_ROOT`, else `git rev-parse
@@ -35,11 +52,11 @@ Resolution:
     `<repo_root>/.rabbit` (matching tick-log.py's resolution when run with
     cwd == repo root).
 
-Exit code: 0 on a successful cleanup or no-op; non-zero on unexpected dirt
-(reported on stderr) or a git failure. The script never discards an
-unexpected change.
+Exit code: 0 on a successful cleanup or no-op; non-zero on unexpected dirt, a
+leaked HEAD switch that cannot be safely restored (reported on stderr), or a
+git failure. The script never discards an unexpected change or un-pushed work.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -83,6 +100,37 @@ def _repo_root():
 def _git(repo, *args):
     return subprocess.run(["git", "-C", repo, *args],
                           capture_output=True, text=True)
+
+
+def _current_branch(repo):
+    """The current branch name, or '' on a detached HEAD / failure."""
+    out = _git(repo, "rev-parse", "--abbrev-ref", "HEAD")
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+
+def _tree_dirty(repo):
+    """True iff a tracked file has staged or unstaged modifications (the same
+    Inv 5 view safety-check enforces). Untracked files do not count."""
+    unstaged = _git(repo, "diff", "--quiet").returncode
+    staged = _git(repo, "diff", "--cached", "--quiet").returncode
+    return unstaged != 0 or staged != 0
+
+
+def _has_unpushed_unique_commits(repo, branch):
+    """True iff `branch` has local commits NOT present on its `origin/<branch>`
+    remote (work that a `git checkout dev` would orphan). A branch with no
+    matching remote-tracking ref is treated as un-pushed (conservative)."""
+    remote_ref = f"origin/{branch}"
+    if _git(repo, "rev-parse", "--verify", "--quiet", remote_ref).returncode != 0:
+        # No remote counterpart — assume there is unique local work to protect.
+        return True
+    out = _git(repo, "rev-list", "--count", f"{remote_ref}..{branch}")
+    if out.returncode != 0:
+        return True
+    try:
+        return int(out.stdout.strip()) > 0
+    except ValueError:
+        return True
 
 
 def _log(decision, detail=""):
@@ -157,6 +205,26 @@ def clean(repo):
     restore_paths = []
     remove_markers = []
 
+    # Step 0 (#596): detect + restore a leaked main-HEAD branch switch FIRST,
+    # so the file cleanup below and the subsequent merge see the right branch.
+    branch = _current_branch(repo)
+    if branch and branch != "dev":
+        if _tree_dirty(repo) or _has_unpushed_unique_commits(repo, branch):
+            # Un-pushed work or uncommitted dirt on the leaked branch — REFUSE
+            # loudly; never discard it by switching away.
+            refused.append((
+                branch,
+                "leaked HEAD switch with dirty tree or un-pushed unique "
+                "commits; refusing to switch (Inv 44)",
+            ))
+            return 1, cleaned, refused
+        co = _git(repo, "checkout", "dev")
+        if co.returncode != 0:
+            refused.append((branch,
+                            f"could not restore HEAD to dev: {co.stderr.strip()}"))
+            return 1, cleaned, refused
+        cleaned.append(f"restored leaked HEAD switch from {branch} to dev")
+
     for xy, path in _porcelain(repo):
         x, y = xy[0], xy[1]
         untracked = (xy == "??")
@@ -196,10 +264,12 @@ def clean(repo):
 def main():
     parser = argparse.ArgumentParser(
         description="Deterministically clean KNOWN worktree-dispatch leak-class "
-                    "noise (stray .rabbit-scope-active-* markers and "
-                    "bookkeeping-only feature.json edits) from the main tree "
-                    "before merge (Inv 43 / #583). Fails loudly on any "
-                    "unexpected tracked change; never discards it."
+                    "noise from the main tree before merge: restore a leaked "
+                    "main-HEAD branch switch to dev (Inv 44 / #596) FIRST, then "
+                    "remove stray .rabbit-scope-active-* markers and revert "
+                    "bookkeeping-only feature.json edits (Inv 43 / #583). Fails "
+                    "loudly on any unexpected tracked change, a dirty/un-pushed "
+                    "leaked branch, etc.; never discards it."
     )
     parser.parse_args()
 

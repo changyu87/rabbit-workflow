@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.33.0
+version: 0.34.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2826,6 +2826,48 @@ Phase E merges complete.
     and preserves the edit; a clean tree is a no-op) and by
     `test/test-run-tick-phases.py` (post-dispatch invokes the cleanup before
     the merge step).
+
+44. **Pre-merge cleanup restores a leaked main-HEAD branch switch; never
+    discards un-pushed work.** Same root cause as Inv 43 / #583 (a subagent's
+    process cwd is sometimes the MAIN/shared checkout under worktree isolation),
+    but a more severe symptom (#596): a subagent's `git checkout -B <branch>
+    origin/dev` runs in the MAIN checkout and switches the dispatcher's MAIN
+    HEAD onto a feature branch. safety-check Inv 1 ("branch is dev") then fails
+    and `merge-prs.py` SKIPS every PR in the batch with `safety-check-failed` —
+    and the tree is CLEAN, so this is NOT the #583 file-leak path the prior
+    cleanup classes cover.
+
+    `scripts/clean-dispatch-leaks.py` (the Inv 43 cleanup that runs as the FIRST
+    action of Phase 6, BEFORE `merge-prs.py`) detects and restores this leak as
+    its FIRST step — before the file cleanup, so the file cleanup and the merge
+    see the right branch:
+
+    1. **Detect.** At Phase-6 start, read the main repo's HEAD branch. When it
+       is NOT `dev`, the branch was leaked.
+    2. **Restore when safe.** If HEAD != `dev` AND the working tree is CLEAN (no
+       uncommitted tracked changes) AND the branch has NO un-pushed unique
+       commits (every local commit is present on its `origin/<branch>` remote),
+       restore with `git checkout dev`. This is safe — the feature work lives on
+       its own pushed branch. The restoration is logged via `tick-log.py`
+       (Inv 36).
+    3. **Refuse loudly otherwise.** If HEAD != `dev` AND the tree is DIRTY OR the
+       branch has un-pushed unique commits (or a branch with no remote
+       counterpart, treated conservatively as un-pushed), the cleanup exits
+       non-zero and does NOT switch or discard anything, so the tick aborts
+       (Inv 20) and a human / the next tick investigates. This mirrors the
+       Inv 43 unexpected-dirt refusal — never destroy un-pushed work.
+
+    With HEAD already on `dev`, the branch-restore is a no-op. The existing
+    Inv 43 leak-class cleanup (untracked `.rabbit-scope-active-*` markers;
+    bookkeeping-only `feature.json` reverts) is unchanged and still runs after
+    the branch restore.
+
+    Enforced by `test/test-clean-dispatch-leaks.py` (e2e in a temp git repo
+    wired to a bare origin: a clean, pushed leaked branch is restored to `dev`
+    and logged; a dirty or un-pushed leaked branch makes the cleanup refuse
+    non-zero without switching or discarding; HEAD already on `dev` is a no-op;
+    a leaked branch + a stray marker restores the branch then removes the
+    marker) and by `test/test-spec-branch-switch-guard-invariant.py`.
 
 ## Known gaps
 
