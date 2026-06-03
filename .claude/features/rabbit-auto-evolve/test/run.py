@@ -76,5 +76,7 @@ run_test("test-run-tick-phases.py")
 run_test("test-tick-persist-convergence.py")
 run_test("test-spec-scripted-phase-walk-invariant.py")
 run_test("test-stop-holds.py")
+run_test("test-guard-before-marker.py")
+run_test("test-spec-guard-before-marker-invariant.py")
 
 print("ALL TESTS PASSED")

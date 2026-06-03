@@ -1,45 +1,46 @@
 #!/usr/bin/env python3
-"""start-loop.py — self-heal then write the .rabbit-auto-evolve-running marker.
+"""start-loop.py — the explicit user `start` self-heal entry.
 
 Usage:
   start-loop.py
 
-Per rabbit-auto-evolve spec.md Inv 17, all rabbit-auto-evolve runtime-marker
-writes go through scripts so scope-guard (which inspects literal Bash command
-strings) does not block them. This script wraps the `start` subcommand's
-marker write inside a Python process.
-
-Per spec.md Inv 19 (added in v0.7.2 for issue #373), `start` is an explicit
-"I want this to run" signal — before writing the running marker it performs
-two self-healing steps so the next tick has a clean foothold:
+Per spec.md Inv 19, `start` is an explicit "I want this to run" signal. This
+script performs the two self-healing steps tied to that USER intent so the next
+tick has a clean foothold:
 
   1. Cancel any pending stop. Delete `<repo_root>/.rabbit-auto-evolve-stop-requested`
      if present (idempotent). A stale stop marker from a previously-killed
-     session would otherwise halt the loop at phase 0.
+     session would otherwise halt the loop at phase 0. This stop-cancel is the
+     SOLE path that clears the stop marker (Inv 41): a MACHINE-fired `tick`
+     invokes the shared phase-walk directly and NEVER runs this script, so a
+     heartbeat can never resurrect a user-halted loop.
   2. Bootstrap state. If `<repo_root>/.rabbit/auto-evolve-state.json` does
      not exist, is empty, or fails JSON parse, write default content
      atomically (temp + os.rename, matching update-state.py's convention).
      A valid existing file is left untouched.
 
-Then writes `<repo_root>/.rabbit-auto-evolve-running`. Per spec Inv 35
-(D3 / issues #521 + #526) the marker CONTENT records a DURABLE owner PID and an
-ISO-8601 UTC timestamp (`pid=<n> ts=<iso> session`) so `running-guard.py` can
-check owner liveness. The recorded PID is the long-lived session / tick-owner
-PID sourced from the Claude session environment (`CLAUDE_SESSION_PID`, else the
-first non-shell ancestor walked up the PPID chain) — NEVER this script's own
-transient `os.getpid()`, which dies seconds after the marker is written and
-would make the guard flag every tick stale. When no durable owner can be
-determined, the PID is OMITTED (the content is `ts=<iso> session`) and the
-guard relies on its activity signal alone (it functions PID-free).
-Existence-based readers (`status-report.py`, `end-tick.py`) are unaffected —
-they key on the filename, which is unchanged.
+It does NOT write the `.rabbit-auto-evolve-running` marker. Per spec Inv 42
+that write is owned by the shared phase-walk (`run-tick-phases.py`), which runs
+the running-guard FIRST and writes the marker only after the guard returns
+`proceed` — so neither the in-session nor the headless path false-skips on a
+marker it itself wrote. The marker CONTENT shape (the DURABLE owner PID + an
+ISO-8601 UTC timestamp `pid=<n> ts=<iso> session` for the Inv 35 running-guard)
+is still defined here, in `_marker_content`, and imported by the phase-walk so
+the content stays defined in ONE place. The recorded PID is the long-lived
+session / tick-owner PID sourced from the Claude session environment
+(`CLAUDE_SESSION_PID`, else the first non-shell ancestor walked up the PPID
+chain) — NEVER a transient subprocess `os.getpid()`, which dies seconds after
+the marker is written and would make the guard flag every tick stale. When no
+durable owner can be determined, the PID is OMITTED (the content is
+`ts=<iso> session`) and the guard relies on its activity signal alone (it
+functions PID-free).
 
 `<repo_root>` defaults to `os.getcwd()`; overridable via the
 `RABBIT_AUTO_EVOLVE_REPO_ROOT` env var for tests.
 
-Exit 0 on success; non-zero on write error.
+Exit 0 on success; non-zero on self-heal error.
 
-Version: 1.5.0
+Version: 1.6.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -51,7 +52,6 @@ import json
 import os
 import sys
 
-MARKER = ".rabbit-auto-evolve-running"
 STOP_MARKER = ".rabbit-auto-evolve-stop-requested"
 STATE_DIR = ".rabbit"
 STATE_FILE = "auto-evolve-state.json"
@@ -184,17 +184,16 @@ def _bootstrap_state(repo_root: str) -> None:
 
 def main() -> None:
     argparse.ArgumentParser(
-        description="Self-heal then write the .rabbit-auto-evolve-running marker."
+        description="Explicit user `start` self-heal: cancel a pending stop "
+                    "and bootstrap the state file (the running marker is "
+                    "written by the shared phase-walk, Inv 42)."
     ).parse_args()
     root = _repo_root()
     try:
         _cancel_pending_stop(root)
         _bootstrap_state(root)
-        path = os.path.join(root, MARKER)
-        with open(path, "w") as f:
-            f.write(_marker_content())
     except OSError as e:
-        sys.stderr.write(f"start-loop: write failed: {e}\n")
+        sys.stderr.write(f"start-loop: self-heal failed: {e}\n")
         sys.exit(1)
 
 

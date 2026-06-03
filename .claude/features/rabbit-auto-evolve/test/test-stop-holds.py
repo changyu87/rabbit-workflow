@@ -161,10 +161,13 @@ with tempfile.TemporaryDirectory() as d:
         ok("B: explicit user start CLEARED the stop marker (Inv 19)")
     else:
         fail("B: user start did not clear the stop marker (Inv 19 broken)")
-    if os.path.exists(os.path.join(repo_root, ".rabbit-auto-evolve-running")):
-        ok("B: user start wrote the running marker (loop resumes)")
+    # Per Inv 42 the running-marker write moved into the shared phase-walk;
+    # start-loop.py (the explicit-start entry) no longer writes it. The Inv 19
+    # contract this scenario guards is the stop-cancel above, not the marker.
+    if not os.path.exists(os.path.join(repo_root, ".rabbit-auto-evolve-running")):
+        ok("B: start-loop did not write the running marker (Inv 42: walk owns it)")
     else:
-        fail("B: user start did not write the running marker")
+        fail("B: start-loop wrote the running marker (Inv 42: walk owns it)")
 
 
 # ---------------------------------------------------------------------------

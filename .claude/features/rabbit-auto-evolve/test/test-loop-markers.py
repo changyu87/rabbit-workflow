@@ -5,7 +5,7 @@ Per spec Inv 17, rabbit-auto-evolve owns five runtime markers whose writes
 are wrapped in dedicated scripts (so scope-guard does not see the literal
 .rabbit-auto-evolve-* path in the Bash command string):
 
-  - scripts/start-loop.py            -> writes .rabbit-auto-evolve-running         (content "session")
+  - scripts/run-tick-phases.py       -> writes .rabbit-auto-evolve-running         (Inv 42 — after its guard)
   - scripts/end-tick.py              -> deletes .rabbit-auto-evolve-running        (Inv 20)
   - scripts/stop-loop.py             -> writes .rabbit-auto-evolve-stop-requested  (content "session")
   - scripts/mark-restart-needed.py R -> writes .rabbit-auto-evolve-restart-needed  (content R)
@@ -15,11 +15,15 @@ Each script honors RABBIT_AUTO_EVOLVE_REPO_ROOT (or cwd default) for repo
 discovery. Idempotency: re-invoking with the same args is a no-op; differing
 content overwrites.
 
-Per spec Inv 19 (start-loop self-heal), `start-loop.py` ALSO:
+Per spec Inv 19 (start-loop self-heal), `start-loop.py` is the EXPLICIT USER
+`start` entry. It performs the two self-healing steps tied to user intent:
   1. Deletes any stale `.rabbit-auto-evolve-stop-requested` marker.
   2. Bootstraps `.rabbit/auto-evolve-state.json` with default content
      if the file is missing, empty, or fails JSON parse — atomically
      via temp+rename. A valid existing state file is left untouched.
+It does NOT write the running marker — that write moved into the shared
+phase-walk (Inv 42), which runs the guard FIRST and writes the marker only on
+`proceed`, so the loop never false-skips on its own fresh marker.
 
 Per spec Inv 20 (end-tick), `end-tick.py` deletes the running marker on
 every tick exit path. Idempotent: missing marker is a no-op (exit 0).
@@ -39,10 +43,9 @@ SCRIPTS_DIR = FEATURE_DIR / "scripts"
 
 # (script, marker, expected_content, match_mode). match_mode "eq" requires
 # exact equality; "contains" requires the marker content to CONTAIN the token.
-# start-loop.py now writes `pid=<n> ts=<iso> session` for the Inv 35 running-
-# guard (issue #521), so its content CONTAINS "session" rather than equaling it.
+# start-loop.py no longer writes the running marker (Inv 42 moved that write
+# into the shared phase-walk); stop-loop.py still writes the stop marker here.
 NO_ARG_SCRIPTS = [
-    ("start-loop.py", ".rabbit-auto-evolve-running", "session", "contains"),
     ("stop-loop.py", ".rabbit-auto-evolve-stop-requested", "session", "eq"),
 ]
 REASON_SCRIPTS = [
@@ -93,6 +96,14 @@ for name, *_ in NO_ARG_SCRIPTS:
         ok(f"exists/{name}", str(p))
     else:
         fail_t(f"exists/{name}", f"script not found: {p}")
+# start-loop.py is the explicit-start self-heal entry (Inv 19); it no longer
+# writes the running marker (Inv 42) so it is not in NO_ARG_SCRIPTS, but it
+# must still exist on disk.
+_sl = SCRIPTS_DIR / "start-loop.py"
+if _sl.is_file():
+    ok("exists/start-loop.py", str(_sl))
+else:
+    fail_t("exists/start-loop.py", f"script not found: {_sl}")
 for name, _ in REASON_SCRIPTS:
     p = SCRIPTS_DIR / name
     if p.is_file():
@@ -227,7 +238,8 @@ for name, _ in REASON_SCRIPTS:
             continue
         ok(f"missing-arg/{name}", f"exit {r.returncode}")
 
-# --- t7: Inv 19 — start-loop.py cancels a pending stop marker ---
+# --- t7: Inv 19 — start-loop.py cancels a pending stop marker (and per Inv 42
+#         does NOT itself write the running marker) ---
 start_loop = SCRIPTS_DIR / "start-loop.py"
 with tempfile.TemporaryDirectory() as td:
     td_path = Path(td)
@@ -237,14 +249,15 @@ with tempfile.TemporaryDirectory() as td:
     if r.returncode != 0:
         fail_t("start-self-heal/cancel-stop",
                f"exit {r.returncode}; stderr={r.stderr!r}")
-    elif not (td_path / ".rabbit-auto-evolve-running").is_file():
-        fail_t("start-self-heal/cancel-stop", "running marker not written")
     elif stop_marker.exists():
         fail_t("start-self-heal/cancel-stop",
                "stop-requested marker still present after start-loop")
+    elif (td_path / ".rabbit-auto-evolve-running").is_file():
+        fail_t("start-self-heal/cancel-stop",
+               "start-loop wrote the running marker (Inv 42: walk owns it)")
     else:
         ok("start-self-heal/cancel-stop",
-           "start-loop deletes stale stop marker AND writes running")
+           "start-loop deletes stale stop marker; does not write running (Inv 42)")
 
 # --- t8: Inv 19 — start-loop.py bootstraps missing state file ---
 with tempfile.TemporaryDirectory() as td:

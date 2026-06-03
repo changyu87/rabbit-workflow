@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.30.0
+version: 0.31.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -119,48 +119,31 @@ precondition checklist verbatim and waiting for the user to type
 
 #### Start the loop (only on `all_pass: true`)
 
-0. **Self-sync the working tree FIRST (Inv 38 / #524)** — BEFORE any phase
-   script runs, so the whole tick executes one consistent (latest-merged)
-   script version (the #450 mid-tick self-modification concern):
-   `python3 .claude/features/rabbit-auto-evolve/scripts/sync-tree.py`.
-   It verifies the tree is clean of uncommitted TRACKED changes (the
-   safety-check.py Inv 5 condition), then runs `git pull --ff-only origin
-   dev` to fast-forward local `dev` to the PRs this loop merged via `gh pr
-   merge`. It uses `git pull --ff-only` — NEVER `git merge`: `settings.json`
-   declares `deny: ["Bash(git merge *)"]`, an absolute permissions deny that
-   beats any `allow` and even `bypassPermissions`, so a local merge of
-   `origin/dev` is denied while `git pull` fast-forwards cleanly. On a dirty
-   or non-fast-forwardable divergent tree it exits non-zero and fails loudly
-   (surfaced + logged via `tick-log.py`); do NOT proceed with the tick on a
-   non-zero sync — never force-merge, never narrow the `git merge` deny.
-1. Run the running-guard (Inv 35 / D3, #526):
-   `python3 .claude/features/rabbit-auto-evolve/scripts/running-guard.py`.
-   It inspects `.rabbit-auto-evolve-running` and clears a STALE marker — STALE
-   only when BOTH no live owner process AND `state.json` idle beyond the
-   IDLE_WINDOW (default 600 s; either a live owner PID OR recent `state.json`
-   activity keeps it FRESH), logging `stale marker cleared` via `tick-log.py`.
-   On `{"action":"skip", "reason":"tick-running"}` (a FRESH marker — a tick is
-   genuinely running) do NOT start a second tick: log
-   `skipped: tick already running` and end the turn. On
-   `{"action":"proceed",...}` continue.
-2. Invoke
-   `python3 .claude/features/rabbit-auto-evolve/scripts/start-loop.py`
-   (which writes `.rabbit-auto-evolve-running` at repo root, carrying a DURABLE
-   owner PID — the long-lived session PID, not the helper's transient PID,
-   omitted when undeterminable — plus an ISO-8601 timestamp for the
-   running-guard). Per
-   Inv 17 the marker write is wrapped in a script so scope-guard does not
-   deny the literal Bash command. Per Inv 19, `start-loop.py` additionally
-   self-heals before writing the running marker: it deletes any stale
-   `.rabbit-auto-evolve-stop-requested` (an explicit `start` cancels a
-   pending stop) and bootstraps `.rabbit/auto-evolve-state.json` with
-   defaults if it is missing, empty, or malformed (a valid existing
-   state file is left untouched).
-3. Run one `tick` by walking the shared scripted phase-walk — the dispatcher
-   supplies ONLY Phase 5 (see "`tick` (internal)" below). Phase 11 runs
-   `schedule-decision.py` (Inv 33) and the dispatcher schedules the
-   immediate-refire when work remains — see "Scheduling" below.
-4. End the turn. The HOUSEKEEPING tick is fired by the **system cron**
+0. **Self-heal for the explicit user `start` ONLY (Inv 19).** Invoke
+   `python3 .claude/features/rabbit-auto-evolve/scripts/start-loop.py`. As the
+   EXPLICIT USER `start` entry it performs the two intent-tied self-heal steps
+   BEFORE the walk runs: it deletes any stale
+   `.rabbit-auto-evolve-stop-requested` (an explicit `start` cancels a pending
+   stop — the SOLE stop-cancel path, Inv 41) and bootstraps
+   `.rabbit/auto-evolve-state.json` with defaults if it is missing, empty, or
+   malformed (a valid existing state file is left untouched). It does NOT write
+   the `.rabbit-auto-evolve-running` marker — that write is owned by the shared
+   phase-walk (Inv 42). A MACHINE-fired `tick` NEVER runs this step (see
+   "`tick` (internal)" below).
+1. Run one `tick` by walking the shared scripted phase-walk — the dispatcher
+   supplies ONLY Phase 5 (see "`tick` (internal)" below). The walk's
+   pre-dispatch segment self-syncs the tree (Inv 38), runs the running-guard
+   (Inv 35), and — ONLY when the guard returns `proceed` — writes the
+   `.rabbit-auto-evolve-running` marker itself (Inv 42), carrying a DURABLE
+   owner PID (the long-lived session PID, omitted when undeterminable) plus an
+   ISO-8601 timestamp. Because the marker is written AFTER the guard, the walk
+   never false-skips on a marker it itself wrote. On a pre-dispatch
+   `{"action":"skip",...}` (sync-fail, stop, abort, or a FRESH marker from a
+   DIFFERENT live tick — `reason: tick-running`) do NOT start a second tick:
+   run `end-tick.py` and end the turn. On `{"action":"proceed",...}` continue
+   to Phase 5. Phase 11 runs `schedule-decision.py` (Inv 33) and the dispatcher
+   schedules the immediate-refire when work remains — see "Scheduling" below.
+2. End the turn. The HOUSEKEEPING tick is fired by the **system cron**
    installed at `on` (where crontab is available) running `tick-headless.py`;
    the DEVELOPMENT tick (phase 5 dispatch) is re-triggered by the scheduler
    firing `/rabbit-auto-evolve tick` in a FRESH context (Inv 32 amendment /
@@ -262,13 +245,17 @@ files (≤ 4 total).
 
 The internal phase-walk fired by every MACHINE wake-up — the recurring
 heartbeat and the immediate-refire one-shot both fire `/rabbit-auto-evolve
-tick`, NEVER `/rabbit-auto-evolve start` (Inv 41). `tick` walks the scripted
-phase-walk (pre-dispatch → dispatch → post-dispatch) and at phase 0 it READS
+tick`, NEVER `/rabbit-auto-evolve start` (Inv 41). `tick` invokes the shared
+scripted phase-walk DIRECTLY (pre-dispatch → dispatch → post-dispatch) with NO
+cancel-stop and NO bootstrap: those self-heal steps are owned by the explicit
+user `start` entry (`start-loop.py`, Inv 19) ONLY. At phase 0 the walk READS
 `.rabbit-auto-evolve-stop-requested` and halts cleanly when present — it NEVER
 deletes the stop marker. The marker is cleared EXCLUSIVELY by an explicit user
-`start` (`start-loop.py`, Inv 19); this is what makes a user stop HOLD across
-heartbeats until the user explicitly resumes. `tick` therefore does NOT run
-`start-loop.py`'s stop-cancel.
+`start`; this is what makes a user stop HOLD across heartbeats until the user
+explicitly resumes. The running marker, by contrast, is written by the shared
+walk itself (after its own running-guard returns `proceed`, Inv 42) on BOTH the
+in-session and headless paths — so neither path false-skips on a marker it
+itself wrote.
 
 Walked by a live Claude session (via `start` or a cron-surfaced resume). The
 in-session tick runs the SAME single shared scripted phase-walk the headless
@@ -283,10 +270,15 @@ mutation). The deterministic walk runs in two segments around Phase 5:
    python3 .claude/features/rabbit-auto-evolve/scripts/run-tick-phases.py pre-dispatch
    ```
    It runs the tick-start self-sync (Inv 38), the phase 0/1 stop/abort
-   short-circuit, the running-guard (Inv 35), and phases 2-4
-   (`fetch | triage | plan`). On `{"action":"skip",...}` a clean short-circuit
-   fired (sync-fail, stop, abort, or tick-running) — run `end-tick.py` and end
-   the turn. On `{"action":"proceed",...}` continue to Phase 5.
+   short-circuit, the running-guard (Inv 35), then — ONLY when the guard returns
+   `proceed` — writes the `.rabbit-auto-evolve-running` marker itself (Inv 42),
+   and finally phases 2-4 (`fetch | triage | plan`). Sequencing the guard before
+   the marker write, in this ONE place for both the in-session and headless
+   paths, is what stops a path from false-skipping on a marker it itself wrote.
+   On `{"action":"skip",...}` a clean short-circuit fired (sync-fail, stop,
+   abort, or a FRESH marker from a different live tick — `tick-running`) — run
+   `end-tick.py` and end the turn. On `{"action":"proceed",...}` continue to
+   Phase 5.
 2. **Phase 5 (`dispatch`)** — the dispatcher's ONLY hand-driven phase. Dispatch
    the TDD subagents per the Stage-1/Stage-2 plan (Inv 26), each with
    `isolation: "worktree"` (Inv 28).
@@ -462,7 +454,7 @@ which phases ran (with `dispatch` always marked `"skipped"`). Dispatch
 Per spec Inv 20, EVERY tick exit path MUST end by invoking
 `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py` as its
 last action. `end-tick.py` deletes the `.rabbit-auto-evolve-running`
-marker (mirror of `start-loop.py`'s write); without it the marker leaks
+marker (mirror of the shared phase-walk's write, Inv 42); without it the marker leaks
 across sessions and the user has to remove it manually (which scope-guard
 correctly denies, since `.rabbit-auto-evolve-*` markers are not on its
 allowlist).
