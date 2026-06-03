@@ -5,11 +5,6 @@
   "owner": "{{owner}}",
   "tdd_state": "spec",
   "summary": "{{summary}}",
-  "surface": {
-    "hooks": [],
-    "commands": [],
-    "agents": [],
-    "skills": []
-  },
-  "deprecation_criterion": "{{deprecation_criterion}}"
+  "deprecation_criterion": "{{deprecation_criterion}}",
+  "manifest": []
 }
