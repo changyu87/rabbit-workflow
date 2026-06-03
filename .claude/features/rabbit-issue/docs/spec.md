@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.5.0
+version: 1.6.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -134,6 +134,27 @@ paths), defeating the bug-capture path that rabbit-issue exists to
 provide.
 
 Scripts still fail loudly when `gh auth status` is not green.
+
+### Reading issue comments (issue #522)
+
+When rabbit-issue needs to read an issue's comment bodies, it MUST go
+through the JSON API — `gh issue view <N> --json comments` — and parse
+the returned JSON, NOT the human-readable `gh issue view <N> --comments`
+view.
+
+`gh issue view <N> --comments` triggers a deprecated Projects-classic
+`projectCards` GraphQL field on repos that touch that path. On this repo
+that request FAILS and returns an EMPTY body, so comments appear absent
+even when they are present — a silent correctness trap (comments are
+read as "none" rather than erroring). The `--json comments` path does
+NOT hit the deprecated `projectCards` field and returns the comment
+bodies reliably.
+
+`_gh.py` exposes `gh_issue_comments(number)`, which calls
+`gh issue view <N> -R <slug> --json comments` and returns the parsed
+list of comment objects (each carrying at least `body`). No rabbit-issue
+script or skill guidance uses `gh issue view … --comments`; the
+`--json comments` form is the only sanctioned comment-read path.
 
 ## What this feature does NOT define
 

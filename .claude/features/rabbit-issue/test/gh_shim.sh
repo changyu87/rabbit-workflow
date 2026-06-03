@@ -3,7 +3,7 @@
 # Mock `gh` CLI for tests. Records args to $GH_SHIM_LOG.
 # Returns canned responses from $GH_SHIM_RESPONSE_<SUBCOMMAND>_<VERB> or default.
 #
-# Version: 1.0.0
+# Version: 1.1.0
 # Owner: rabbit-workflow team
 # Deprecation criterion: when rabbit-issue is retired
 
@@ -18,7 +18,16 @@ case "$1 $2" in
     ;;
   "issue view")
     NUM="$3"
-    if [ -n "$GH_SHIM_ISSUE_BODY" ]; then
+    # Comment reads go through the JSON API (`--json comments`), never the
+    # deprecated `--comments` human view (issue #522). Detect the request
+    # and return gh's `{"comments": [...]}` envelope.
+    if [[ "$*" == *"--json comments"* ]]; then
+      if [ -n "$GH_SHIM_COMMENTS_BODY" ]; then
+        cat "$GH_SHIM_COMMENTS_BODY"
+      else
+        echo "{\"comments\":[{\"body\":\"first comment\"},{\"body\":\"second comment\"}]}"
+      fi
+    elif [ -n "$GH_SHIM_ISSUE_BODY" ]; then
       cat "$GH_SHIM_ISSUE_BODY"
     else
       echo "{\"number\":$NUM,\"title\":\"test\",\"state\":\"open\",\"labels\":[{\"name\":\"rabbit-managed\"},{\"name\":\"bug\"},{\"name\":\"feature:test\"},{\"name\":\"priority:high\"}],\"body\":\"...\"}"
