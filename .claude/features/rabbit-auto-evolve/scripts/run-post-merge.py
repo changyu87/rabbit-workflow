@@ -21,16 +21,19 @@ It:
        - Phase 7 (release):  `release-bump.py <pr#>` once per PR.
        - Phase 8 (cleanup):  `cleanup-branches.py <comma-joined pr-list>` once.
        - Phase 9 (catch-up): `classify-merge-restart.py <pr#>` once per PR.
-  4. On completion (all phase scripts exited 0), clears `pending_post_merge`
-     to [] in the state file (atomic via temp+rename).
+  4. On completion (all phase scripts exited 0 AND every release-bump.py
+     reported status "released"), clears `pending_post_merge` to [] in the
+     state file (atomic via temp+rename).
   5. Emits a result JSON object on stdout recording the pending set and each
      phase's outcome.
 
 Exit code: 0 on success (including the no-op path). Non-zero on any phase
-script failure — the caller (end-tick.py / the SKILL schedule phase) sees a
-loud, locatable failure instead of a silently-dropped phase. On a phase
-failure `pending_post_merge` is NOT cleared, so the next tick's tick-start
-drain retries the owed work.
+failure — a phase script exiting non-zero OR a release-bump.py whose stdout
+JSON status is not "released" (skipped/failed/unparseable; release-bump.py
+exits 0 even when it skips, issue #512) — the caller (end-tick.py / the SKILL
+schedule phase) sees a loud, locatable failure instead of a silently-dropped
+phase. On a phase failure `pending_post_merge` is NOT cleared, so the next
+tick's tick-start drain retries the owed work.
 
 The sibling phase scripts (release-bump.py, cleanup-branches.py,
 classify-merge-restart.py) are resolved via the RABBIT_AUTO_EVOLVE_SCRIPT_DIR
@@ -39,7 +42,7 @@ release-bump.py / cleanup-branches.py). The state dir resolves via
 RABBIT_AUTO_EVOLVE_STATE_DIR when set, else `<cwd>/.rabbit` (matching
 update-state.py).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -135,12 +138,23 @@ def run():
     pr_list = ",".join(str(n) for n in pending)
     result = {"status": "completed", "pending": pending, "phases": {}}
 
-    # Phase 7 — release (once per PR).
+    # Phase 7 — release (once per PR). release-bump.py exits 0 even when it
+    # SKIPS or FAILS the release (status in its stdout JSON), so success is
+    # keyed on that status, not the exit code (issue #512). A skipped/failed/
+    # unparseable release leaves pending_post_merge intact for the next
+    # tick's drain to retry.
     release = []
     for pr in pending:
         proc = _run_phase("release-bump.py", [str(pr)])
-        release.append({"pr": pr, "returncode": proc.returncode})
-        if proc.returncode != 0:
+        try:
+            release_status = json.loads(proc.stdout or "").get("status")
+        except (ValueError, AttributeError):
+            release_status = None
+        entry = {"pr": pr, "returncode": proc.returncode,
+                 "release_status": release_status}
+        release.append(entry)
+        if proc.returncode != 0 or release_status != "released":
+            entry["release_json"] = (proc.stdout or "").strip()
             result["status"] = "failed"
             result["phases"]["release"] = release
             json.dump(result, sys.stdout, indent=2)
