@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.9.0
+version: 5.9.1
 template_version: 2.1.0
 owner: rabbit-workflow team
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -61,7 +61,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/scripts/rabbit_print.py",
       "<feature-dir>/feature.json",
       "<feature-dir>/specs/spec.md (dual-read: legacy <feature-dir>/docs/spec/spec.md honoured as fallback during the issue #399 coexistence window)",
-      "<repo_root>/.rabbit-human-approval-bypass (presence check)"
+      "<repo_root>/.rabbit-human-approval-bypass (presence check; dual-read with .rabbit-tdd-autonomous per issue #336 Phase 1)",
+      "<repo_root>/.rabbit-tdd-autonomous (presence check; either this OR .rabbit-human-approval-bypass activates the bypass note)"
     ],
     "external": [
       "env-var:RABBIT_ROOT"
