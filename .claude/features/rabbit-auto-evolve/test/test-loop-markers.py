@@ -37,9 +37,13 @@ from pathlib import Path
 FEATURE_DIR = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = FEATURE_DIR / "scripts"
 
+# (script, marker, expected_content, match_mode). match_mode "eq" requires
+# exact equality; "contains" requires the marker content to CONTAIN the token.
+# start-loop.py now writes `pid=<n> ts=<iso> session` for the Inv 35 running-
+# guard (issue #521), so its content CONTAINS "session" rather than equaling it.
 NO_ARG_SCRIPTS = [
-    ("start-loop.py", ".rabbit-auto-evolve-running", "session"),
-    ("stop-loop.py", ".rabbit-auto-evolve-stop-requested", "session"),
+    ("start-loop.py", ".rabbit-auto-evolve-running", "session", "contains"),
+    ("stop-loop.py", ".rabbit-auto-evolve-stop-requested", "session", "eq"),
 ]
 REASON_SCRIPTS = [
     ("mark-restart-needed.py", ".rabbit-auto-evolve-restart-needed"),
@@ -77,7 +81,13 @@ def _run(script: Path, args: list[str], repo_root: Path) -> subprocess.Completed
 print("test-loop-markers.py")
 
 # --- t1: scripts exist on disk ---
-for name, _, _ in NO_ARG_SCRIPTS:
+def _content_ok(actual: str, expected: str, mode: str) -> bool:
+    if mode == "contains":
+        return expected in actual
+    return actual == expected
+
+
+for name, *_ in NO_ARG_SCRIPTS:
     p = SCRIPTS_DIR / name
     if p.is_file():
         ok(f"exists/{name}", str(p))
@@ -91,7 +101,7 @@ for name, _ in REASON_SCRIPTS:
         fail_t(f"exists/{name}", f"script not found: {p}")
 
 # --- t2: no-arg scripts (start-loop, stop-loop) write the right marker ---
-for name, marker, expected_content in NO_ARG_SCRIPTS:
+for name, marker, expected_content, mode in NO_ARG_SCRIPTS:
     script = SCRIPTS_DIR / name
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td)
@@ -104,13 +114,13 @@ for name, marker, expected_content in NO_ARG_SCRIPTS:
             fail_t(f"write/{name}", f"marker not created: {marker}")
             continue
         actual = m.read_text()
-        if actual != expected_content:
+        if not _content_ok(actual, expected_content, mode):
             fail_t(
                 f"write/{name}",
-                f"marker content mismatch: expected {expected_content!r}, got {actual!r}",
+                f"marker content mismatch ({mode}): expected {expected_content!r}, got {actual!r}",
             )
             continue
-        ok(f"write/{name}", f"{marker} content={expected_content!r}")
+        ok(f"write/{name}", f"{marker} content {mode} {expected_content!r}")
 
 # --- t3: reason scripts write the marker with reason as content ---
 for name, marker in REASON_SCRIPTS:
@@ -136,7 +146,7 @@ for name, marker in REASON_SCRIPTS:
         ok(f"write/{name}", f"{marker} content={reason!r}")
 
 # --- t4: idempotency — re-run with same args is no-op (no error, marker unchanged) ---
-for name, marker, expected_content in NO_ARG_SCRIPTS:
+for name, marker, expected_content, mode in NO_ARG_SCRIPTS:
     script = SCRIPTS_DIR / name
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td)
@@ -150,10 +160,10 @@ for name, marker, expected_content in NO_ARG_SCRIPTS:
             )
             continue
         actual = (td_path / marker).read_text()
-        if actual != expected_content:
+        if not _content_ok(actual, expected_content, mode):
             fail_t(
                 f"idempotent/{name}",
-                f"after re-run content mismatch: expected {expected_content!r}, got {actual!r}",
+                f"after re-run content mismatch ({mode}): expected {expected_content!r}, got {actual!r}",
             )
             continue
         ok(f"idempotent/{name}", f"re-run no-op")

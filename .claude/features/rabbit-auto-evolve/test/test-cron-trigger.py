@@ -20,9 +20,11 @@ Scenarios:
      crontab file exists at all).
   E) install preserves pre-existing unrelated crontab lines.
   F) install-cron.py on a host where crontab is administratively restricted
-     (the shim writes "not allowed" to stderr and exits non-zero on BOTH
-     `-l` and `-`) exits 0 without crashing and prints the actionable
-     restricted-host remediation message (issue #507).
+     (the shim writes "not allowed" to stderr and exits non-zero) exits 0
+     without crashing and emits the CronCreate-fallback signal: a JSON object
+     with scheduler=="croncreate" naming the durable heartbeat the dispatcher
+     must create, plus a branded line about the CronCreate heartbeat being set
+     up on the next `/rabbit-auto-evolve start` (issues #507, #521).
 """
 
 import os
@@ -244,8 +246,10 @@ with tempfile.TemporaryDirectory() as d:
 
 
 # ---------------------------------------------------------------------------
-# Scenario F — restricted-host graceful fallback (issue #507)
+# Scenario F — restricted-host CronCreate fallback (issues #507, #521)
 # ---------------------------------------------------------------------------
+import json as _json  # noqa: E402
+
 with tempfile.TemporaryDirectory() as d:
     shim = make_restricted_crontab(d)
     repo_root = os.path.join(d, "repo")
@@ -258,20 +262,38 @@ with tempfile.TemporaryDirectory() as d:
         ok("F: install-cron.py exits 0 on a restricted-crontab host")
     out = proc.stdout + proc.stderr
     low = out.lower()
-    if "restrict" not in low and "not allowed" not in low:
-        fail(f"F: expected a restricted-host notice in output; got {out!r}")
+    # The script emits the croncreate-fallback JSON signal somewhere on stdout.
+    signal = None
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if line.startswith("{") and "croncreate" in line:
+            try:
+                signal = _json.loads(line)
+            except _json.JSONDecodeError:
+                signal = None
+            break
+    if signal and signal.get("scheduler") == "croncreate":
+        ok("F: emits a scheduler==croncreate fallback JSON signal")
     else:
-        ok("F: output states crontab is restricted on this host")
-    if "*/30" not in out:
-        fail(f"F: expected the manual cron remediation (*/30 entry) in "
-             f"output; got {out!r}")
+        fail(f"F: expected a croncreate JSON signal on stdout; got {proc.stdout!r}")
+    if signal and signal.get("prompt") == "/rabbit-auto-evolve start" \
+            and signal.get("durable") is True and signal.get("cron"):
+        ok("F: signal names the durable heartbeat (cron+prompt+durable)")
     else:
-        ok("F: output gives the */30 sysadmin remediation entry")
-    if "start" not in low:
-        fail(f"F: expected the manual `start` remediation hint in output; "
-             f"got {out!r}")
+        fail(f"F: croncreate signal malformed: {signal!r}")
+    # The heartbeat cron expr must avoid the :00 and :30 marks (CronCreate
+    # guidance) — the minute field must not be 0 or 30 alone.
+    if signal and signal.get("cron") and "0,30" not in signal["cron"] \
+            and not signal["cron"].startswith("0 ") \
+            and not signal["cron"].startswith("30 "):
+        ok("F: heartbeat cron avoids the :00 and :30 marks")
     else:
-        ok("F: output mentions the manual `/rabbit-auto-evolve start` path")
+        fail(f"F: heartbeat cron should avoid :00/:30; got {signal!r}")
+    # A branded human notice mentions CronCreate + the manual start path.
+    if "croncreate" in low and "start" in low:
+        ok("F: branded notice mentions the CronCreate heartbeat + start path")
+    else:
+        fail(f"F: expected a CronCreate/start notice in output; got {out!r}")
 
 
 # ---------------------------------------------------------------------------
