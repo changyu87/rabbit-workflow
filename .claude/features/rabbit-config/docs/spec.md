@@ -1,6 +1,6 @@
 ---
 feature: rabbit-config
-version: 1.5.0
+version: 1.6.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when the rabbit CLI exposes native configuration mutation that subsumes this feature
@@ -200,19 +200,20 @@ operates on user-facing labels rather than raw stored values:
 
 ### Spec layout
 
-21. **Spec artifacts live under `specs/`, not `docs/spec/`.** rabbit-config's
-    spec and contract MUST reside at `specs/spec.md` and `specs/contract.md`
-    under the feature root; the legacy `docs/spec/` layout (and the enclosing
-    `docs/` directory) MUST NOT exist for this feature. This is Phase 2 of
-    issue #399's `docs/spec/` -> `specs/` migration: the contract feature's
-    dual-read path resolver (`resolve_spec_path`, added in Phase 1, #451)
-    already prefers `specs/` and falls back to `docs/spec/`, so the validator
-    stays green either way during the coexistence window. The spec.md
+21. **Spec artifacts live under flat `docs/`, not `specs/`.** rabbit-config's
+    spec, contract, and changelog MUST reside at `docs/spec.md`,
+    `docs/contract.md`, and `docs/CHANGELOG.md` under the feature root; the
+    legacy `specs/` directory MUST NOT exist for this feature. The contract
+    feature's dual-read path resolver (`resolve_spec_path`) prefers the flat
+    `docs/<name>` location and falls back to `specs/<name>`, so the validator
+    resolves the artifacts at the flat `docs/` location. The spec.md
     frontmatter `version` MUST equal the `version` field in `feature.json`
     (lockstep). Enforced by `test/test-spec-layout.py`, which asserts
-    `specs/spec.md` and `specs/contract.md` exist and are non-empty, that no
-    `docs/` directory remains under the feature, and that the spec.md
-    frontmatter version matches feature.json.
+    `docs/spec.md`, `docs/contract.md`, and `docs/CHANGELOG.md` exist and are
+    non-empty, that no `specs/` directory remains under the feature, that the
+    spec.md frontmatter version matches feature.json, and that
+    `resolve_spec_path` resolves both spec.md and contract.md to the flat
+    `docs/` location.
 
 ## Tech Stack
 
