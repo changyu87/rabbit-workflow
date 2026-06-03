@@ -1,23 +1,31 @@
 #!/usr/bin/env python3
 """check-release-update.py — deterministic release-channel update probe.
 
-Reads <repo_root>/.version to resolve the upstream channel, throttles
+Reads <repo_root>/.version for the locally-installed ref, throttles
 the upstream fetch via <repo_root>/.rabbit/.runtime/last-update-check
 (default window 8h, override via RABBIT_UPDATE_CHECK_INTERVAL_SECONDS),
-fetches https://raw.githubusercontent.com/<RABBIT_REPO>/<channel>/.version
-via stdlib urllib, and writes a single JSON line to stdout describing
-the comparison outcome.
+fetches the latest published release's tag_name from the GitHub Releases
+API https://api.github.com/repos/<RABBIT_REPO>/releases/latest via stdlib
+urllib, and writes a single JSON line to stdout describing the comparison
+outcome.
+
+Release model: tags + GitHub Releases (#499; releases cut as vX.Y.Z tags
+targeting dev via `gh release create --target dev`). The check tracks the
+latest published release regardless of target branch. The old branch-ref
+.version fetch (raw.githubusercontent.com/<repo>/<channel>/.version) was
+retired in #508 because it silently never detected tag-based releases.
 
 Behavior (per contract spec Inv 63):
 
   - missing/unreadable .version: silent exit 0, no stdout.
   - throttled (now - last_check < interval): silent exit 0, no stdout.
-  - fetch failure (URLError, OSError, HTTP non-200, malformed body, any
-    other exception): silent exit 0, no stdout. Throttle timestamp IS
-    updated to avoid pounding the upstream on transient errors.
-  - fetched == local: stdout '{"newer": false}', exit 0.
-  - fetched != local: stdout '{"newer": true, "channel": <channel>,
-    "current": <local>, "new": <upstream>, "self_update_available": <bool>}',
+  - fetch failure (URLError, OSError, HTTP non-200, non-JSON body,
+    missing/non-string tag_name, any other exception): silent exit 0, no
+    stdout. Throttle timestamp IS updated to avoid pounding the upstream on
+    transient errors.
+  - tag_name == local: stdout '{"newer": false}', exit 0.
+  - tag_name != local: stdout '{"newer": true, "channel": <local>,
+    "current": <local>, "new": <tag_name>, "self_update_available": <bool>}',
     exit 0.
 
 self_update_available is true when <rabbit_root>/install.py exists AND
@@ -38,7 +46,7 @@ Usage:
 Exit codes:
     0 — always (silent on errors; JSON to stdout on success).
 
-Version: 1.0.0
+Version: 2.0.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when Claude Code exposes a native release-channel
     update notification mechanism that supersedes this helper.
@@ -103,18 +111,30 @@ def resolve_interval():
 
 
 def fetch_upstream_version(repo, channel):
-    url = f"https://raw.githubusercontent.com/{repo}/{channel}/.version"
+    # Release model is tags + GitHub Releases (#499/#508): track the latest
+    # published release's tag_name rather than fetching .version off a branch
+    # ref (which silently never detected tag-based releases). The `channel`
+    # argument is the local installed ref, retained only for the comparison
+    # payload; it no longer selects the fetch URL.
+    url = f"https://api.github.com/repos/{repo}/releases/latest"
+    req = urllib.request.Request(
+        url, headers={"Accept": "application/vnd.github+json"}
+    )
     try:
-        with urllib.request.urlopen(url, timeout=FETCH_TIMEOUT_SECONDS) as resp:
+        with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT_SECONDS) as resp:
             status = getattr(resp, "status", None) or resp.getcode()
             if status != 200:
                 return None
             body = resp.read()
             if isinstance(body, bytes):
                 body = body.decode("utf-8", errors="replace")
-            return body.strip()
+            data = json.loads(body)
+            tag = data.get("tag_name")
+            if not isinstance(tag, str):
+                return None
+            return tag.strip()
     except (urllib.error.URLError, urllib.error.HTTPError, OSError,
-            UnicodeDecodeError, Exception):  # noqa: BLE001
+            UnicodeDecodeError, json.JSONDecodeError, Exception):  # noqa: BLE001
         return None
 
 

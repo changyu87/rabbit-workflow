@@ -7,8 +7,9 @@ missing .version silent, self-update probe both arms.
 
 The helper performs the deterministic half of the release-channel
 notification machinery: read local .version, throttle, urllib.request
-fetch from raw.githubusercontent.com, JSON output {newer, channel,
-current, new, self_update_available}, silent on any error.
+fetch the latest release tag_name from the GitHub Releases API
+(api.github.com/repos/<repo>/releases/latest), JSON output {newer, channel,
+current, new, self_update_available}, silent on any error (#508).
 """
 
 import json
@@ -53,15 +54,31 @@ def run_helper(repo_root, env_extra=None, timeout=20):
     )
 
 
+def release_body(tag):
+    """Return a bytes GitHub Releases-API /releases/latest JSON body whose
+    tag_name is `tag` (plus a couple of sibling fields the real API ships so
+    the parser must select tag_name specifically)."""
+    return json.dumps({
+        "tag_name": tag,
+        "name": tag,
+        "draft": False,
+        "prerelease": False,
+    }).encode("utf-8")
+
+
 def make_urlopen_shim(payload=None, raise_exc=None):
     """Return Python source for a sitecustomize.py shim that monkey-patches
     urllib.request.urlopen at interpreter-start time. Returns either
     the supplied payload (bytes-ish) or raises the supplied exception.
+
+    The helper now passes a urllib.request.Request (to set the Accept
+    header), so the shim's _fake MUST accept the request object as its
+    first positional arg regardless of type.
     """
     if raise_exc is not None:
         body = f"""
 import urllib.request, urllib.error
-def _fake(url, timeout=None):
+def _fake(req, timeout=None):
     raise urllib.error.URLError({raise_exc!r})
 urllib.request.urlopen = _fake
 """
@@ -74,7 +91,7 @@ class _Resp(io.BytesIO):
     def __exit__(self, *a): self.close()
     def getcode(self): return 200
     status = 200
-def _fake(url, timeout=None):
+def _fake(req, timeout=None):
     return _Resp({payload!r})
 urllib.request.urlopen = _fake
 """
@@ -153,10 +170,10 @@ with tempfile.TemporaryDirectory() as td:
     else:
         ok("t3b: throttle timestamp updated after fetch attempt")
 
-# t4: no-change — fetched == local -> {"newer": false}
+# t4: no-change — latest-release tag_name == local -> {"newer": false}
 with tempfile.TemporaryDirectory() as td:
-    write_file(os.path.join(td, ".version"), "dev")
-    shim = make_urlopen_shim(payload=b"dev")
+    write_file(os.path.join(td, ".version"), "v1.0.7")
+    shim = make_urlopen_shim(payload=release_body("v1.0.7"))
     r = run_with_shim(td, shim)
     if r.returncode != 0:
         fail(f"t4: expected exit 0, got {r.returncode}; stderr={r.stderr!r}")
@@ -168,16 +185,16 @@ with tempfile.TemporaryDirectory() as td:
             payload = None
         if payload is not None:
             if payload.get("newer") is False:
-                ok("t4: no-change -> {newer: false}")
+                ok("t4: tag_name == local -> {newer: false}")
             else:
                 fail(f"t4: expected newer=false, got {payload!r}")
 
-# t5: newer detected -> JSON with newer=true + channel/current/new/self_update_available
+# t5: newer detected — latest-release tag_name > local -> JSON with newer=true
 with tempfile.TemporaryDirectory() as td:
-    write_file(os.path.join(td, ".version"), "dev")
+    write_file(os.path.join(td, ".version"), "v1.0.6")
     # install.py present and contains fetch_upstream -> self_update_available=true
     write_file(os.path.join(td, "install.py"), "# stub\ndef fetch_upstream():\n    pass\n")
-    shim = make_urlopen_shim(payload=b"v9.9.9")
+    shim = make_urlopen_shim(payload=release_body("v1.0.7"))
     r = run_with_shim(td, shim)
     if r.returncode != 0:
         fail(f"t5: expected exit 0, got {r.returncode}; stderr={r.stderr!r}")
@@ -189,19 +206,19 @@ with tempfile.TemporaryDirectory() as td:
             payload = None
         if payload is not None:
             if (payload.get("newer") is True
-                and payload.get("channel") == "dev"
-                and payload.get("current") == "dev"
-                and payload.get("new") == "v9.9.9"
+                and payload.get("channel") == "v1.0.6"
+                and payload.get("current") == "v1.0.6"
+                and payload.get("new") == "v1.0.7"
                 and payload.get("self_update_available") is True):
-                ok("t5: newer detected -> JSON with all fields + self_update_available=true")
+                ok("t5: newer tag_name -> JSON with all fields + self_update_available=true")
             else:
                 fail(f"t5: payload mismatch: {payload!r}")
 
 # t6: self-update probe FALSE arm — install.py absent OR no fetch_upstream
 with tempfile.TemporaryDirectory() as td:
-    write_file(os.path.join(td, ".version"), "dev")
+    write_file(os.path.join(td, ".version"), "v1.0.6")
     # NO install.py
-    shim = make_urlopen_shim(payload=b"v9.9.9")
+    shim = make_urlopen_shim(payload=release_body("v1.0.7"))
     r = run_with_shim(td, shim)
     payload = None
     if r.returncode == 0:
@@ -215,9 +232,9 @@ with tempfile.TemporaryDirectory() as td:
         fail(f"t6a: expected self_update_available=false, got {payload!r}")
 
 with tempfile.TemporaryDirectory() as td:
-    write_file(os.path.join(td, ".version"), "dev")
+    write_file(os.path.join(td, ".version"), "v1.0.6")
     write_file(os.path.join(td, "install.py"), "# stub without the magic word\n")
-    shim = make_urlopen_shim(payload=b"v9.9.9")
+    shim = make_urlopen_shim(payload=release_body("v1.0.7"))
     r = run_with_shim(td, shim)
     payload = None
     if r.returncode == 0:
@@ -229,6 +246,30 @@ with tempfile.TemporaryDirectory() as td:
         ok("t6b: install.py present but no fetch_upstream -> self_update_available=false")
     else:
         fail(f"t6b: expected self_update_available=false, got {payload!r}")
+
+# t7: malformed Releases-API body (no tag_name) -> silent exit 0, empty stdout
+with tempfile.TemporaryDirectory() as td:
+    write_file(os.path.join(td, ".version"), "v1.0.6")
+    shim = make_urlopen_shim(payload=b'{"message": "Not Found"}')
+    r = run_with_shim(td, shim)
+    if r.returncode != 0:
+        fail(f"t7: expected exit 0 on missing tag_name, got {r.returncode}; stderr={r.stderr!r}")
+    elif r.stdout.strip() != "":
+        fail(f"t7: expected empty stdout on missing tag_name, got {r.stdout!r}")
+    else:
+        ok("t7: malformed body (no tag_name) -> silent exit 0")
+
+# t8: non-JSON Releases-API body -> silent exit 0, empty stdout
+with tempfile.TemporaryDirectory() as td:
+    write_file(os.path.join(td, ".version"), "v1.0.6")
+    shim = make_urlopen_shim(payload=b"not-json-at-all")
+    r = run_with_shim(td, shim)
+    if r.returncode != 0:
+        fail(f"t8: expected exit 0 on non-JSON body, got {r.returncode}; stderr={r.stderr!r}")
+    elif r.stdout.strip() != "":
+        fail(f"t8: expected empty stdout on non-JSON body, got {r.stdout!r}")
+    else:
+        ok("t8: non-JSON body -> silent exit 0")
 
 
 if FAIL:
