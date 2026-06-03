@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.3.0
+version: 1.4.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue REPLACES the retired rabbit-file feature; do NOT invoke rabbit-file or its scripts — they are gone. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours the `rabbit-managed` label as a safety guard so human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -38,7 +38,7 @@ The shared helper `_gh.py` resolves the repo slug and wraps `gh` calls.
 
 ## Label Schema
 
-Every issue filed via `rabbit-issue` carries **five** labels. The labels
+Every issue filed via `rabbit-issue` carries **six** labels. The labels
 are auto-created on demand (idempotent `gh label create … || true`) at
 first `file-item.py` call — there is no separate bootstrap step.
 
@@ -49,9 +49,18 @@ first `file-item.py` call — there is no separate bootstrap step.
 | `rabbit-managed` | Distinguishes rabbit-filed issues from human-filed | required |
 | `feature:<name>` | Feature scope | required, one per issue |
 | `priority:<low\|medium\|high\|critical>` | Priority | required, one per issue |
+| `filed-by:<source>` | Provenance — who filed it (e.g. `loop`, `human`) | required, one per issue |
 
 The `rabbit-managed` label is load-bearing for the safety invariant
 below. Do not strip it from issues filed via this skill.
+
+The `filed-by:<source>` provenance label (issue #496) records *who*
+filed the issue, so loop-performance metrics (self-discovery rate,
+discovery→fix ratio) can be derived by querying `filed-by:loop`. It is
+set from `file-item.py --filed-by <source>`, which **defaults to
+`human`** when omitted; only callers that know they are the autonomous
+evolve loop pass `--filed-by loop`. The label is additive — it never
+changes the other five.
 
 ---
 
@@ -70,10 +79,13 @@ When the user confirms they want to file a bug or enhancement:
      --feature <feature-name> \
      --title "..." \
      --priority <low|medium|high|critical> \
-     --description "..."
+     --description "..." \
+     [--filed-by <source>]
    ```
-   The script auto-creates any missing labels, then calls
-   `gh issue create` with all five labels attached.
+   `--filed-by <source>` stamps the provenance label `filed-by:<source>`
+   (e.g. `filed-by:loop`); it **defaults to `human`** when omitted. The
+   script auto-creates any missing labels, then calls `gh issue create`
+   with all six labels attached.
 4. **Report** the assigned issue number and URL back to the user. GH
    allocates the number; rabbit does not maintain a local counter.
 
@@ -264,7 +276,7 @@ commits to issue closure and records the SHA in the timeline event.
 
 | Script | Purpose |
 |---|---|
-| `file-item.py` | File a new bug or enhancement (auto-creates labels) |
+| `file-item.py` | File a new bug or enhancement (auto-creates labels); `--filed-by <source>` stamps the `filed-by:<source>` provenance label (default `human`) |
 | `item-status.py` | `show <N>` / `close <N>` / `reopen <N>` (rabbit-managed guard enforced on close/reopen; `close --reason completed` requires `--commit-sha`, `close --reason not-planned` requires `--reason-text`) |
 | `list-items.py` | List with `--type`, `--feature`, `--status` filters; deterministic sort |
 | `_gh.py` | Shared helper — repo slug discovery, `gh` invocation wrappers |

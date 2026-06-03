@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.3.0
+version: 1.4.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -33,7 +33,7 @@ defines the Work Protocol that orchestrates the three runtime scripts.
 
 ### Label schema
 
-Every issue filed via `rabbit-issue` carries five labels:
+Every issue filed via `rabbit-issue` carries six labels:
 
 | Label | Purpose | Cardinality |
 |---|---|---|
@@ -42,9 +42,27 @@ Every issue filed via `rabbit-issue` carries five labels:
 | `rabbit-managed` | Distinguishes rabbit-filed issues from human-filed | required |
 | `feature:<name>` | Feature scope | required, one per item |
 | `priority:<low\|medium\|high\|critical>` | Priority | required, one per item |
+| `filed-by:<source>` | Provenance — who filed it (e.g. `loop`, `human`) | required, one per item |
 
 Labels are auto-created on demand at first `file-item.py` call via
 idempotent `gh label create … || true`. No separate bootstrap script.
+
+### Provenance label (issue #496)
+
+`file-item.py` accepts `--filed-by <source>` and stamps the created issue
+with a machine-readable provenance label `filed-by:<source>` (e.g.
+`filed-by:loop`, `filed-by:human`). The label is additive — it does not
+change any of the other five labels.
+
+`--filed-by` defaults to **`human`** when omitted. The default is
+deliberately the conservative attribution: only an explicit caller that
+knows it is the autonomous evolve loop passes `--filed-by loop`, so an
+unattributed filing is never mis-counted as loop self-discovery. The
+autonomous evolve loop's own discovered-issue and decomposition filings
+pass `--filed-by loop` explicitly; every other (human-driven) filing
+inherits the `human` default. This makes loop-performance metrics —
+self-discovery rate and the discovery→fix ratio — answerable by querying
+the `filed-by:loop` label.
 
 ### Safety invariant
 

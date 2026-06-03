@@ -88,6 +88,72 @@ def test_ensure_labels_called_before_create(gh_shim, fake_repo):
     assert label_idx < issue_idx
 
 
+def _created_labels(log_text):
+    """Extract the comma-joined label set passed to `gh issue create`.
+
+    The shim logs each gh invocation as a space-joined arg line; the labels
+    follow the `--label` token as a single comma-joined argument.
+    """
+    for line in log_text.strip().split("\n"):
+        if not line.startswith("issue create"):
+            continue
+        toks = line.split()
+        idx = toks.index("--label")
+        return set(toks[idx + 1].split(","))
+    raise AssertionError("no `issue create` line with --label in gh log")
+
+
+def test_filed_by_loop_adds_filed_by_loop_label(gh_shim, fake_repo):
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "high",
+        "--description", "d",
+        "--filed-by", "loop",
+    )
+    assert r.returncode == 0, r.stderr
+    labels = _created_labels(gh_shim.read_text())
+    assert "filed-by:loop" in labels
+    assert "filed-by:human" not in labels
+
+
+def test_filed_by_defaults_to_human_when_omitted(gh_shim, fake_repo):
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "high",
+        "--description", "d",
+    )
+    assert r.returncode == 0, r.stderr
+    labels = _created_labels(gh_shim.read_text())
+    assert "filed-by:human" in labels
+    assert "filed-by:loop" not in labels
+
+
+def test_filed_by_is_additive_other_labels_unchanged(gh_shim, fake_repo):
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "high",
+        "--description", "d",
+        "--filed-by", "loop",
+    )
+    assert r.returncode == 0, r.stderr
+    labels = _created_labels(gh_shim.read_text())
+    # The five pre-existing labels are present and unchanged; filed-by is
+    # purely additive (sixth label).
+    assert labels == {
+        "bug",
+        "rabbit-managed",
+        "feature:rabbit-cage",
+        "priority:high",
+        "filed-by:loop",
+    }
+
+
 def test_requires_auth(gh_shim, fake_repo, monkeypatch):
     env = os.environ.copy()
     env["GH_SHIM_AUTH_EXIT"] = "1"
