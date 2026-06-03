@@ -673,4 +673,69 @@ with tempfile.TemporaryDirectory() as repo_root:
     expect_decision("research-no-overtrigger", proc, "work", "actionable")
 
 
+# ---------------------------------------------------------------------------
+# Priority field (issue #484): the triage record MUST carry a `priority` key
+# echoing the issue's `priority:<level>` label value. plan-batch.py consumes
+# `priority` as its PRIMARY ordering key; without it the priority-primary
+# ordering (#479) silently collapses to the contract-touch-only tiebreak.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "prio-feature")
+    issue_payload = json.dumps({
+        "number": 484,
+        "title": "Add a brand-new prio behavior",
+        "body": "Implement this fresh behavior.",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:prio-feature"},
+            {"name": "priority:high"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"484": issue_payload}, list_payload)
+    proc = run_script(repo_root, 484, shim_dir)
+    expect_decision(
+        "priority-high", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None if r.get("priority") == "high"
+            else f"priority should be 'high', got {r.get('priority')!r}"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Priority field — null case (issue #484): a malformed-labels issue with no
+# `priority:` label must still carry a `priority` KEY set to null (the field
+# is always present so plan-batch can rely on it; absent priority sorts last).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    issue_payload = json.dumps({
+        "number": 485,
+        "title": "Do thing with no priority label",
+        "body": "Some description.",
+        "labels": [{"name": "rabbit-managed"}],  # no priority: label
+        "state": "OPEN",
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"485": issue_payload}, list_payload)
+    proc = run_script(repo_root, 485, shim_dir)
+    expect_decision(
+        "priority-null", proc, "defer", "malformed-labels",
+        extra_assert=lambda r: (
+            None if ("priority" in r and r.get("priority") is None)
+            else "priority key must be present and null when no "
+                 f"priority: label; got {r.get('priority')!r} "
+                 f"(present={'priority' in r})"
+        ),
+    )
+
+
 sys.exit(FAIL)

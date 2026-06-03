@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.14.0
+version: 0.15.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -314,10 +314,20 @@ Phase E merges complete.
      "feature": "<feature-name or null>",
      "features": ["<feature-name>", "..."],
      "contract_touch": true,
+     "priority": "critical" | "high" | "medium" | "low" | null,
      "blocked_by": [124],
      "planning_note": "<non-empty string for defer/research, else null>"
    }
    ```
+
+   The `priority` field (issue #484) is the value of the issue's
+   `priority:<level>` label (`"priority:high"` → `"high"`), or `null` when
+   no `priority:` label is present. It is the PRIMARY ordering key
+   `plan-batch.py` consumes for Stage-1 selection (Inv 4 / issue #479): a
+   triage object that omits `priority` makes every item sort at the
+   no-priority rank, silently collapsing the priority-primary ordering back
+   to the contract-touch-only tiebreak. Triage therefore MUST emit
+   `priority` on every record.
 
    The `features` field (Inv 26 / issue #435) is the sorted, distinct set of
    feature directories the item touches: the union of the `feature:<name>`

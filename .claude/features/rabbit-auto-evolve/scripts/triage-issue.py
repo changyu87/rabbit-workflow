@@ -3,7 +3,10 @@
 
 Per rabbit-auto-evolve spec.md Inv 3, emits a JSON object on stdout with
 fields: issue, decision, reason_code, rationale, feature, features,
-contract_touch, blocked_by, planning_note. The `features` field (Inv 26 /
+contract_touch, priority, blocked_by, planning_note. The `priority` field
+(issue #484) echoes the issue's priority:<level> label value (None when
+absent); plan-batch.py consumes it as its PRIMARY ordering key (Inv 4 /
+issue #479). The `features` field (Inv 26 /
 issue #435) is the distinct set of feature directories the item touches —
 the basis plan-batch.py uses to choose a per-item dispatch shape.
 Implements the seven-rule decision table
@@ -44,7 +47,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.5.0
+Version: 1.6.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -487,6 +490,11 @@ def classify(issue_num, repo_root):
         # malformed-labels issue (no feature label, no body paths) it is [].
         "features": _feature_set(feature_label, body),
         "contract_touch": ctouch,
+        # `priority` (issue #484) echoes the issue's priority:<level> label
+        # value (None when absent). plan-batch.py consumes it as its PRIMARY
+        # ordering key (Inv 4 / issue #479); omitting it silently collapses
+        # the priority-primary ordering to the contract-touch-only tiebreak.
+        "priority": priority_label,
         "blocked_by": [],
         # planning_note is null for non-defer decisions; each defer return
         # overrides it with a non-empty note (issue #423 Part A).
