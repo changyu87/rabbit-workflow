@@ -1,6 +1,6 @@
 ---
 feature: rabbit-config
-version: 1.4.0
+version: 1.5.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when the rabbit CLI exposes native configuration mutation that subsumes this feature
@@ -197,6 +197,22 @@ operates on user-facing labels rather than raw stored values:
     and slots values.
 
 20. **Restart-required configurables surface a one-shot restart-prompt after mutation.** A configurable whose effect is read ONLY at Claude Code process start (notably `permissions.defaultMode`, which Claude Code samples once at session boot) MUST be flagged in its feature.json `configuration[]` entry with `restart_required: true`. After the interpreter calls `contract.lib.mutation.<api>(**args)` for such a configurable AND the call succeeds, the interpreter MUST emit one additional line to stdout BEYOND the normal `CheckResult.message` lines: a `rabbit_subline`-style alert formatted as `[🐇 rabbit 🐇] 🔄 restart Claude (exit + relaunch) for the new <subcommand> value to take effect.` (substitute `<subcommand>` with the actual `subcommand` field of the configurable, e.g. `bypass-permissions`). Color: red, with a 🔄 restart icon (for visual consistency with the rest of the rabbit banner style; the icon distinguishes it from other red alerts). The alert is one-shot — it fires only on the mutation that wrote the new value, and only when the mutation actually changed state (no-op writes do not fire it). Rationale — without this alert, users running `/rabbit-config bypass-permissions true|on` see the mutation succeed and reasonably assume bypass-permissions mode is now active, but Claude Code does not re-read `settings.local.json` mid-session — the new permission mode remains inactive until the user exits and relaunches. The existing rabbit-cage Stop-hook alert for active bypass-permissions only fires when the mode is ALREADY active (i.e., post-restart), so it does not bridge the transitional gap. Implementation: rabbit-cage owns the `restart_required: true` field in the `bypass-permissions` configurable's feature.json entry (rabbit-cage scope); rabbit-config's interpreter reads the field after the mutation API call and emits the alert if set (rabbit-config scope — this invariant). The two scopes are tightly coupled but each owns its own half. Enforced by: (a) `test/test-restart-required-emits-prompt.py` (rabbit-config) — invokes the interpreter against a mock rabbit-cage configuration declaring `restart_required: true`; asserts the stdout contains the literal `restart Claude` substring after the mutation succeeds; (b) the existing rabbit-cage test suite continues to pass since the new field is additive (default `False`).
+
+### Spec layout
+
+21. **Spec artifacts live under `specs/`, not `docs/spec/`.** rabbit-config's
+    spec and contract MUST reside at `specs/spec.md` and `specs/contract.md`
+    under the feature root; the legacy `docs/spec/` layout (and the enclosing
+    `docs/` directory) MUST NOT exist for this feature. This is Phase 2 of
+    issue #399's `docs/spec/` -> `specs/` migration: the contract feature's
+    dual-read path resolver (`resolve_spec_path`, added in Phase 1, #451)
+    already prefers `specs/` and falls back to `docs/spec/`, so the validator
+    stays green either way during the coexistence window. The spec.md
+    frontmatter `version` MUST equal the `version` field in `feature.json`
+    (lockstep). Enforced by `test/test-spec-layout.py`, which asserts
+    `specs/spec.md` and `specs/contract.md` exist and are non-empty, that no
+    `docs/` directory remains under the feature, and that the spec.md
+    frontmatter version matches feature.json.
 
 ## Tech Stack
 
