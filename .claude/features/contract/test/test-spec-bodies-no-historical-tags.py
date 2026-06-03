@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """test-spec-bodies-no-historical-tags.py — CONTRACT-BACKLOG-38 / -40.
 
-Greps every feature's spec.md, contract.md (dual-read: specs/ preferred,
-docs/spec/ fallback per issue #399), and any
+Greps every feature's spec.md, contract.md (resolved at specs/<name> —
+issue #399 migration complete, fallback dropped #465), and any
 skills/*/SKILL.md under each feature for historical-burden patterns that
 violate housekeeping protocol criterion #1 (current-design only) and
 criterion #2 (no documentation burden):
@@ -45,31 +45,23 @@ ALLOWLIST = {
     # the design doc and PR stack. The reference is documentary, not a
     # live project-management tag, and the migration is a permanent
     # architectural fact.
-    ("tdd-subagent/docs/spec/spec.md", 56, "CONTRACT-BACKLOG-1"),
-    # rabbit-issue spec.md Out of Scope note — names the historical
-    # rabbit-file backlog item that originally framed the user-install
-    # plugin-mode backend (deferred). Documentary reference explaining
-    # what is intentionally NOT shipped in v1; not a live tag.
-    ("rabbit-issue/docs/spec/spec.md", 103, "RABBIT-FILE-BACKLOG-16"),
+    ("tdd-subagent/specs/spec.md", 60, "CONTRACT-BACKLOG-1"),
 }
 
 
 def _resolve_doc(fdir, name):
-    """Dual-read (issue #399): prefer specs/<name>, fall back to
-    docs/spec/<name>. Returns the existing path or None."""
-    preferred = os.path.join(fdir, "specs", name)
-    if os.path.isfile(preferred):
-        return preferred
-    legacy = os.path.join(fdir, "docs", "spec", name)
-    if os.path.isfile(legacy):
-        return legacy
+    """Resolve specs/<name> (issue #399 migration complete, fallback dropped
+    #465). Returns the existing path or None."""
+    path = os.path.join(fdir, "specs", name)
+    if os.path.isfile(path):
+        return path
     return None
 
 
 def feature_doc_surfaces():
     """Yield (feature_name, abs_path) for every monitored doc surface:
-    spec.md, contract.md (each dual-read: specs/ preferred, docs/spec/
-    fallback), and skills/*/SKILL.md.
+    spec.md, contract.md (each resolved at specs/<name>), and
+    skills/*/SKILL.md.
     """
     paths = []
     for entry in sorted(os.listdir(FEATURES_ROOT)):

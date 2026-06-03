@@ -6,7 +6,7 @@
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-06-03",
-  "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
+  "tdd_last_cycle_impl_commit": "fd54e1559220c1d6734fae8f280aac8ffc1117de",
   "manifest": [],
   "runtime": {},
   "configuration": []

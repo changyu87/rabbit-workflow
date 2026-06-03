@@ -9,20 +9,21 @@ canonical `specs/` layout and that the legacy `docs/spec/` (and the now-empty
   t2  .claude/features/contract/specs/contract.md exists and is non-empty.
   t3  .claude/features/contract/docs/ no longer exists.
   t4  contract's spec.md is resolved by contract.lib.checks.resolve_spec_path
-      to the specs/ candidate (proving the dual-read resolver prefers the
-      migrated layout for contract itself).
+      to the specs/ candidate (proving the resolver returns the canonical
+      specs/ layout for contract itself).
 
-The dual-read resolver still accepts the legacy `docs/spec/` layout for OTHER
-features mid-migration (covered by test-spec-path-dual-read.py); this test only
-asserts contract's own canonical has moved.
+Issue #399's migration is complete and the dual-read fallback has been dropped
+(#465): resolve_spec_path now resolves only specs/<name> (covered by
+test-spec-path-dual-read.py); this test asserts contract's own canonical has
+moved.
 
 Non-interactive. Exits non-zero on any failure.
 
 Version: 1.0.0
 Owner: rabbit-workflow team (contract)
-Deprecation criterion: when issue #399 Phase 3 drops the dual-read fallback and
-every feature has migrated to specs/ (this test folds into the generic layout
-checks at that point).
+Deprecation criterion: when the per-feature specs/ layout is superseded by a
+schema-tracked spec store (this test folds into the generic layout checks at
+that point).
 """
 
 import importlib.util

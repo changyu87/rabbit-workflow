@@ -38,7 +38,7 @@ def fail_t(n, msg):
 
 def make_min_feature(root, name, with_run_py=False, with_run_sh=False):
     fdir = os.path.join(root, name)
-    os.makedirs(os.path.join(fdir, "docs", "spec"), exist_ok=True)
+    os.makedirs(os.path.join(fdir, "specs"), exist_ok=True)
     os.makedirs(os.path.join(fdir, "docs", "bugs"), exist_ok=True)
     os.makedirs(os.path.join(fdir, "test"), exist_ok=True)
 
@@ -53,9 +53,9 @@ def make_min_feature(root, name, with_run_py=False, with_run_sh=False):
             "deprecation_criterion": "when test ends",
         }, f)
 
-    with open(os.path.join(fdir, "docs", "spec", "spec.md"), "w") as f:
+    with open(os.path.join(fdir, "specs", "spec.md"), "w") as f:
         f.write("spec\n")
-    with open(os.path.join(fdir, "docs", "spec", "contract.md"), "w") as f:
+    with open(os.path.join(fdir, "specs", "contract.md"), "w") as f:
         f.write("contract\n")
 
     if with_run_py:
