@@ -21,11 +21,15 @@ A script CANNOT call `CronCreate` — so on the croncreate path this script only
 emits the one-shot params; the DISPATCHER reads the JSON at phase 11 and
 performs the actual `CronCreate(...)` (the irreducible Claude action).
 
+The refire wake-up fires the INTERNAL `tick` (the scripted phase-walk that
+respects but never deletes the stop marker), NOT the USER-intent `start` whose
+Inv 19 stop-cancel would resurrect a user-halted loop on a MACHINE wake-up.
+
 Emitted JSON:
   - {"decision": "immediate-refire", "scheduler": "crontab"|"croncreate",
-     "prompt": "/rabbit-auto-evolve start", "when": "~1min",
+     "prompt": "/rabbit-auto-evolve tick", "when": "~1min",
      "croncreate": {"cron": <near-now expr>,
-                    "prompt": "/rabbit-auto-evolve start",
+                    "prompt": "/rabbit-auto-evolve tick",
                     "durable": false, "recurring": false},
      "crontab_hint": <transient/at-style hint for the dispatcher>}
   - {"decision": "idle", "detail": "rely on heartbeat"}
@@ -39,7 +43,7 @@ Resolution:
 Exit code is always 0 (the verdict is carried in `decision`); non-zero only
 if fetch-queue.py itself errors.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -53,7 +57,12 @@ import subprocess
 import sys
 from datetime import datetime, timedelta
 
-PROMPT = "/rabbit-auto-evolve start"
+# The refire wake-up fires the INTERNAL `tick` (the scripted phase-walk that
+# RESPECTS the stop marker at phase 0 and NEVER deletes it), NOT the USER-intent
+# `start` (whose Inv 19 stop-cancel would silently resurrect a user-halted
+# loop). A MACHINE wake-up must never inherit a user-intent's stop-cancelling
+# semantics.
+PROMPT = "/rabbit-auto-evolve tick"
 
 
 def _pinned_oneshot_cron(now=None):
@@ -152,7 +161,7 @@ def decide():
             "crontab_hint": (
                 "schedule a transient one-shot ~1min out (an `at`-style or "
                 "self-removing crontab entry) that runs "
-                "`/rabbit-auto-evolve start` in a fresh context"
+                "`/rabbit-auto-evolve tick` in a fresh context"
             ),
         }
         _log("immediate-refire", f"open work={count}, scheduler={scheduler}")

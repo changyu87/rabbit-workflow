@@ -276,7 +276,10 @@ with tempfile.TemporaryDirectory() as d:
         ok("F: emits a scheduler==croncreate fallback JSON signal")
     else:
         fail(f"F: expected a croncreate JSON signal on stdout; got {proc.stdout!r}")
-    if signal and signal.get("prompt") == "/rabbit-auto-evolve start" \
+    # The recurring heartbeat fires the INTERNAL `tick` (respects but never
+    # deletes the stop marker), NOT the USER-intent `start` (which clears the
+    # stop and resurrects a halted loop). See Inv 41.
+    if signal and signal.get("prompt") == "/rabbit-auto-evolve tick" \
             and signal.get("durable") is True and signal.get("cron"):
         ok("F: signal names the durable heartbeat (cron+prompt+durable)")
     else:
