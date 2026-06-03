@@ -32,11 +32,16 @@ FEATURE_JSON = FEATURE_DIR / "feature.json"
 
 
 def _resolve_spec(name: str) -> Path:
-    """Dual-read (issue #399): prefer specs/<name>, fall back to docs/spec/."""
-    preferred = FEATURE_DIR / "specs" / name
-    if preferred.is_file():
-        return preferred
-    return FEATURE_DIR / "docs" / "spec" / name
+    """Dual-read (issue #399): prefer the flat docs/<name> layout, fall back
+    to specs/<name>, then legacy docs/spec/<name>."""
+    for candidate in (
+        FEATURE_DIR / "docs" / name,
+        FEATURE_DIR / "specs" / name,
+        FEATURE_DIR / "docs" / "spec" / name,
+    ):
+        if candidate.is_file():
+            return candidate
+    return FEATURE_DIR / "docs" / name
 
 
 SPEC_MD = _resolve_spec("spec.md")

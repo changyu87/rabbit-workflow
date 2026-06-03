@@ -27,10 +27,23 @@ import sys
 from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
-SPEC_MD = FEATURE_DIR / "specs" / "spec.md"
-if not SPEC_MD.is_file():
-    SPEC_MD = FEATURE_DIR / "docs" / "spec" / "spec.md"
-CONTRACT_MD = FEATURE_DIR / "specs" / "contract.md"
+
+
+def _resolve_doc(name):
+    """Dual-read (issue #399): prefer the flat docs/<name> layout, fall back
+    to specs/<name>, then legacy docs/spec/<name>."""
+    for candidate in (
+        FEATURE_DIR / "docs" / name,
+        FEATURE_DIR / "specs" / name,
+        FEATURE_DIR / "docs" / "spec" / name,
+    ):
+        if candidate.is_file():
+            return candidate
+    return FEATURE_DIR / "docs" / name
+
+
+SPEC_MD = _resolve_doc("spec.md")
+CONTRACT_MD = _resolve_doc("contract.md")
 FEATURE_JSON = FEATURE_DIR / "feature.json"
 
 SOURCE_SKILL = FEATURE_DIR / "skills" / "rabbit-auto-evolve" / "SKILL.md"

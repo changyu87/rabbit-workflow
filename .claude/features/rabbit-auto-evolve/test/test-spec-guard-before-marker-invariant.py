@@ -23,7 +23,11 @@ import sys
 from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
-SPEC_MD = FEATURE_DIR / "specs" / "spec.md"
+# Resolve the feature spec dual-read (issue #399): prefer the flat
+# docs/spec.md layout, fall back to specs/spec.md, then legacy docs/spec/.
+SPEC_MD = FEATURE_DIR / "docs" / "spec.md"
+if not SPEC_MD.is_file():
+    SPEC_MD = FEATURE_DIR / "specs" / "spec.md"
 if not SPEC_MD.is_file():
     SPEC_MD = FEATURE_DIR / "docs" / "spec" / "spec.md"
 SKILL_MD = FEATURE_DIR / "skills" / "rabbit-auto-evolve" / "SKILL.md"
