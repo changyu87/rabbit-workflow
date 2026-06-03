@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.9.0
+version: 1.10.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native subagent-policy injection point
@@ -93,6 +93,23 @@ directory.
     three rule files are consumed in-place at
     `.claude/features/policy/` by rabbit-cage's `generate-claude-md`
     producer, never deployed to `.claude/`.
+
+### SKILL.md authoring standard
+
+11. **SKILL.md Authoring Standard present.** `spec-rules.md` MUST carry a
+    "SKILL.md Authoring Standard" section with three terse, citable rules,
+    each deriving from an existing policy principle: (a) **Script-Backed
+    Orchestration** — orchestration steps with computed values or
+    mode-aware branching belong in a companion `scripts/` script, not in
+    SKILL.md prompt-tier bash blocks with runtime placeholders (derives
+    from §1 Tool-Choice Tier); (b) **Verbatim Policy Embedding** — a
+    SKILL.md surfacing policy MUST quote the canonical policy file
+    verbatim (via `@path` injection or a reader script), never paraphrase
+    (derives from §2 Schemas and Contracts); (c) **skill-creator
+    Validation** — SKILL.md changes MUST pass through the `skill-creator`
+    tool before deployment (derives from §1 determinism). The
+    `test/test-rule-files-content.py` content guard asserts the section
+    heading and the three rule names.
 
 ## Out of Scope
 

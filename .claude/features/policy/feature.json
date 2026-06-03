@@ -1,6 +1,6 @@
 {
   "name": "policy",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Canonical rule files fed to subagents; three policy docs (philosophy, spec-rules, coding-rules).",
@@ -14,5 +14,5 @@
   "manifest": [],
   "runtime": {},
   "configuration": [],
-  "spec_no_change_reason": "1.8.0 -> 1.9.0 updates the canonical-convention path text in the policy rule files from the legacy spec-directory layout to the specs/ layout (issue #399 Phase 3, final). spec-rules.md ('Where the metadata lives', Specs/contracts row) and philosophy.md (Bounded Scope, contract-schema reference) now name the canonical specs/spec.md and specs/contract.md paths that all 11 features adopted on disk in Phase 2. The spec/contract invariants are unchanged; the minor bump records the convention-source text update with lockstep frontmatter version bumps across feature.json, specs/spec.md, and specs/contract.md."
+  "spec_no_change_reason": "1.9.0 -> 1.10.0 adds a new spec-rules.md section, 'SKILL.md Authoring Standard' (issue #439), establishing three terse, citable rules for authoring and changing SKILL.md files: Script-Backed Orchestration (orchestration steps with computed values or mode-aware branching belong in scripts/, not in SKILL.md prompt-tier bash placeholders; derives from \u00a71 Tool-Choice Tier), Verbatim Policy Embedding (a SKILL.md surfacing policy must quote the canonical policy file verbatim via @path injection or a reader script, never paraphrase; derives from \u00a72 Schemas and Contracts), and skill-creator Validation (SKILL.md changes pass through the skill-creator tool before deployment; derives from \u00a71 determinism). spec.md gains Invariant 11 and the test/test-rule-files-content.py content guard asserts the section heading plus the three rule names. Additive minor bump with lockstep frontmatter version bumps across feature.json, specs/spec.md, and specs/contract.md."
 }
