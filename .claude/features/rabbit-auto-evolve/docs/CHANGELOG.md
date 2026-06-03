@@ -13,6 +13,20 @@ own version.
 
 ## Version notes
 
+- **v0.38.0 — 2026-06-03** — `release-bump.py` reads the closing issue's
+  priority when the PR carries none (Inv 48, #529). The dispatch flow opens
+  PRs WITHOUT copying the source issue's `priority:<level>` label, so the
+  Inv 7 bump table saw no priority on the PR and always patch-bumped —
+  minor/major signals never reached the version stream. `release-bump.py` now
+  resolves the priority in strict precedence: an explicit priority label ON
+  the PR still wins (unchanged); when the PR has none, it resolves the closing
+  issue from the PR body (`Fixes|Closes|Resolves #N`, case-insensitive) and
+  reads that issue's `priority:<level>` label via
+  `gh issue view <N> --json labels`; if neither the PR nor a resolvable
+  closing issue has a priority label, it keeps the existing `patch` default.
+  The lookup is a single bounded `gh issue view` call, skipped entirely when
+  the PR already has a priority label or a major trigger fires. Deterministic
+  (script-tier, no LLM inference); no dispatcher prose change needed.
 - **v0.37.0 — 2026-06-03** — Post-merge re-sync to `origin/dev` before the
   release drain (Inv 47, #516). `run-tick-phases.py run_post_dispatch` now
   fast-forwards the local `dev` checkout to `origin/dev` (reusing
