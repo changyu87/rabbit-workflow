@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.34.0
+version: 0.35.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2868,6 +2868,36 @@ Phase E merges complete.
     non-zero without switching or discarding; HEAD already on `dev` is a no-op;
     a leaked branch + a stray marker restores the branch then removes the
     marker) and by `test/test-spec-branch-switch-guard-invariant.py`.
+
+45. **SKILL.md `description:` trigger enumeration covers common natural
+    phrasings, including the unhyphenated "auto evolve" and "enter … mode"
+    forms.** Issue #415: the `description:` frontmatter is the sole signal a
+    fresh session uses to decide whether to invoke this skill directly versus
+    doing the "let me look around" dance. The enumeration MUST therefore
+    recognize the natural phrasings a user actually types, not only the
+    canonical hyphenated commands. In addition to the existing canonical
+    triggers ("start auto-evolve", "stop the loop", "auto-evolve status",
+    "let rabbit run", "begin autonomous evolve", or any
+    `/rabbit-auto-evolve <subcommand>` form), the `description:` MUST also
+    enumerate at least:
+
+    1. "enter auto evolve mode" / "enter auto-evolve mode" — the
+       "enter … mode" framing, with the trailing word `mode`.
+    2. The unhyphenated "auto evolve" spelling (a user who omits the hyphen
+       must still trigger).
+    3. An enable/turn-on phrasing for autonomous evolve (e.g. "turn on
+       autonomous evolve" / "enable autonomous evolve").
+    4. A resume phrasing (e.g. "resume the loop").
+
+    The change is description-coverage ONLY — skill BEHAVIOR is unchanged. The
+    `description:` MUST remain a single coherent sentence/paragraph per the
+    SKILL.md authoring standard (spec-rules §4); it is not split into a list.
+
+    Enforced by `test/test-skill-description-triggers.py` (asserts the SOURCE
+    SKILL.md `description:` line contains the broadened phrasings — matching
+    "enter auto", the unhyphenated "auto evolve", an enable/turn-on autonomous
+    phrasing, and a resume phrasing — alongside the pre-existing canonical
+    triggers).
 
 ## Known gaps
 
