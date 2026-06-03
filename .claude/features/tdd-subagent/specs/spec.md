@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.7.0
+version: 5.8.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -310,7 +310,10 @@ The 13 invariants in this section were absorbed from the retired
     `spec-update -> test-red` is accepted only when at least one of the
     following holds:
 
-    - `git diff HEAD` under `<feature-dir>/docs/spec/` is non-empty, OR
+    - `git diff HEAD` under the feature's spec dir is non-empty. The spec
+      dir is resolved dual-read (issue #399 Phase 2): `<feature-dir>/specs/`
+      is preferred, with the legacy `<feature-dir>/docs/spec/` honoured as a
+      fallback during the coexistence window. OR
     - `--spec-no-change-reason <reason>` is supplied with a non-empty
       reason; the reason is persisted on `feature.json` as
       `spec_no_change_reason`.
@@ -343,8 +346,10 @@ The 13 invariants in this section were absorbed from the retired
 
 41. **`spec-update -> test-red` numbered-list check.** After a
     successful transition `spec-update -> test-red`, `tdd-step.py`
-    calls `contract.lib.checks.check_numbered_lists` against
-    `<feature-dir>/docs/spec/`. A non-passed `CheckResult` emits a
+    calls `contract.lib.checks.check_numbered_lists` against the feature's
+    spec dir, resolved dual-read (`<feature-dir>/specs/` preferred, legacy
+    `<feature-dir>/docs/spec/` fallback per issue #399 Phase 2). A
+    non-passed `CheckResult` emits a
     warning via `rabbit_print` on stderr but does NOT block the
     transition. The Inv 38 gate remains the only blocking precondition
     for this transition.
@@ -482,7 +487,9 @@ The 13 invariants in this section were absorbed from the retired
 
     (b) **Scoped (flag provided)** — embed ONLY the named invariants from the ## Invariants section, sandwiched between the spec preamble (everything BEFORE the ## Invariants heading: frontmatter, Purpose, Surface, Dispatcher Behavior, scope-guard Semantics, Installer Behavior, etc.) and the spec footer (everything AFTER the last invariant: ## Tech Stack, ## Out of Scope, etc.). The ## Invariants heading itself is preserved; in place of all invariants, the dispatcher splices in: (i) the requested invariants in numeric ascending order, separated by blank lines; (ii) a single concluding note line:
 
-        `> NOTE: scoped view of N selected invariants ({list}) from <feature> spec.md; for related-but-unembedded invariants run \`grep '^<num>\\.' .claude/features/<feature>/docs/spec/spec.md\` against the spec.`
+        `> NOTE: scoped view of N selected invariants ({list}) from <feature> spec.md; for related-but-unembedded invariants run \`grep '^<num>\\.' <spec-path>\` against the spec.`
+
+        where `<spec-path>` is the repo-relative path of the `--spec` file the caller supplied (this resolves dual-read per issue #399 Phase 2: `.claude/features/<feature>/specs/spec.md` for migrated features, the legacy `.claude/features/<feature>/docs/spec/spec.md` otherwise). When `--spec` is not under the repo root, the hint falls back to the canonical `.claude/features/<feature>/specs/spec.md`.
 
     (c) **Invariant lookup** — invariants are identified by the regex `^([0-9]+)\.\s` at the start of a line within the ## Invariants section. An invariant body extends from its number line to the line BEFORE the next invariant number (or to the end of the ## Invariants section if it's the last). Retired invariants (matching `*(Retired — see CHANGELOG.md.)*`) are recognized AND retrievable — passing a retired invariant number yields the one-line retirement notice (so the subagent sees that the number is allocated-but-retired rather than missing).
 

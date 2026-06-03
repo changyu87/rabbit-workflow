@@ -34,18 +34,13 @@ import os
 import re
 import sys
 
-from _helpers import REPO_ROOT, run_dispatch, report
+from _helpers import REPO_ROOT, SPEC_PATH, run_dispatch, report
 
 TEMPLATE_PATH = os.path.join(
     REPO_ROOT,
     ".claude", "features", "contract", "templates", "prompts",
     "tdd-subagent.txt",
 )
-SPEC_PATH = os.path.join(
-    REPO_ROOT,
-    ".claude", "features", "tdd-subagent", "docs", "spec", "spec.md",
-)
-
 passed = failed = 0
 
 

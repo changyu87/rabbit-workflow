@@ -10,7 +10,7 @@
 #     [--max-iterations N]
 #
 # Output: assembled prompt to stdout. Caller: Agent(model: opus, prompt: stdout).
-# Version: 4.1.0
+# Version: 4.2.0
 # Owner: rabbit-workflow team (tdd-subagent)
 # Deprecation criterion: when TDD cycle is natively supported by rabbit CLI.
 
@@ -183,7 +183,27 @@ def _parse_invariants_section(spec_text):
     return preamble, header_line, invariants, footer
 
 
-def _scoped_spec(spec_text, requested, feature_name):
+def _spec_grep_hint(repo_root, spec_path, feature_name):
+    """Repo-relative path used in the scoped-view grep NOTE (issue #399
+    Phase 2, dual-read).
+
+    Prefers the actual --spec path the caller resolved (this already
+    points at specs/ for migrated features and docs/spec/ for legacy
+    ones). Falls back to the canonical new specs/ layout when --spec is
+    not under repo_root (e.g. a tempdir in tests).
+    """
+    if spec_path and repo_root:
+        try:
+            rel = os.path.relpath(os.path.abspath(spec_path),
+                                  os.path.abspath(repo_root))
+            if not rel.startswith(".."):
+                return rel
+        except Exception:
+            pass
+    return f".claude/features/{feature_name}/specs/spec.md"
+
+
+def _scoped_spec(spec_text, requested, feature_name, grep_hint):
     """Build a scoped spec_content with only the requested invariants
     (Inv 49). Returns (scoped_text, error_message). On unknown
     invariant numbers, returns (None, error_message)."""
@@ -206,7 +226,7 @@ def _scoped_spec(spec_text, requested, feature_name):
         f"> NOTE: scoped view of {len(ordered)} selected invariants "
         f"({ordered}) from {feature_name} spec.md; for related-but-"
         f"unembedded invariants run "
-        f"`grep '^<num>\\.' .claude/features/{feature_name}/docs/spec/spec.md` "
+        f"`grep '^<num>\\.' {grep_hint}` "
         "against the spec."
     )
     scoped_body = "\n\n".join(blocks) + "\n\n" + note + "\n"
@@ -303,7 +323,9 @@ def main(argv):
                 f"list of integers; got: {args.affected_invariants!r}\n"
             )
             return 1
-        scoped, err = _scoped_spec(spec_content, requested, feature_name)
+        grep_hint = _spec_grep_hint(repo_root, args.spec, feature_name)
+        scoped, err = _scoped_spec(spec_content, requested, feature_name,
+                                   grep_hint)
         if err:
             sys.stderr.write(err + "\n")
             return 1
