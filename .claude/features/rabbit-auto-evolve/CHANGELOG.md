@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.30.0 — 2026-06-03
+
+- Fix #558 (a user stop did not hold — the cron heartbeat resurrected a halted
+  loop). A `stop` writes `.rabbit-auto-evolve-stop-requested` and the current
+  tick halts at phase 0, but the recurring heartbeat and the immediate-refire
+  one-shot fired `/rabbit-auto-evolve start`, and `start-loop.py`'s first action
+  (Inv 19) deletes the stop marker and starts a fresh tick — so a MACHINE
+  (cron) wake-up inherited the USER-intent `start`'s stop-cancel semantics and
+  the loop silently resumed. Every machine wake-up now fires the INTERNAL
+  `/rabbit-auto-evolve tick` instead, which respects but never deletes the stop
+  marker. The marker is cleared EXCLUSIVELY by an explicit user `start`. A
+  user stop now HOLDS across heartbeats until the user explicitly resumes
+  (new Inv 41). Concretely: `schedule-decision.py` (1.0.0 → 1.1.0) emits
+  `prompt`/`croncreate.prompt` of `/rabbit-auto-evolve tick`, and
+  `install-cron.py` (1.1.0 → 1.2.0) emits `prompt: "/rabbit-auto-evolve tick"`
+  in its restricted-host `CronCreate`-fallback heartbeat signal (the crontab
+  path already fired the headless `tick-headless.py`, unchanged). SKILL.md
+  documents the `tick`-not-`start` machine-wake-up routing and the stop-hold
+  guarantee. Guarded by the new `test/test-stop-holds.py` (e2e) plus updated
+  assertions in `test/test-schedule-decision.py` and `test/test-cron-trigger.py`.
+  NOTE: the already-running durable heartbeat `CronCreate` job must be recreated
+  by the dispatcher to fire `tick` (runtime migration, out of this cycle's
+  scope).
+
 ## 0.29.0 — 2026-06-03
 
 - Fix #513 (converge the in-session tick on the scripted phase-walk): the

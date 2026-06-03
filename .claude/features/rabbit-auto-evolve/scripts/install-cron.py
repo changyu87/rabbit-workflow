@@ -40,7 +40,7 @@ durable heartbeat will be set up on the next `/rabbit-auto-evolve start`. The
 heartbeat cron expression avoids the :00/:30 minute marks per CronCreate
 guidance. Cron remains the tick scheduler where available.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -60,7 +60,13 @@ SCHEDULE = "*/30 * * * *"
 # (issue #521). ~30-min recurring; the 13,43 minutes AVOID the :00 and :30
 # marks per CronCreate guidance.
 HEARTBEAT_EXPR = "13,43 * * * *"
-HEARTBEAT_PROMPT = "/rabbit-auto-evolve start"
+# The recurring heartbeat fires the INTERNAL `tick` (the scripted phase-walk
+# that RESPECTS the stop marker at phase 0 and NEVER deletes it), NOT the
+# USER-intent `start` whose Inv 19 stop-cancel would silently resurrect a
+# user-halted loop on a MACHINE wake-up. (The crontab path already fires the
+# headless `tick-headless.py`; this prompt is the croncreate-fallback's
+# equivalent.)
+HEARTBEAT_PROMPT = "/rabbit-auto-evolve tick"
 
 # A restricted-crontab denial (issue #507) is recognised by this phrase in
 # the binary's stderr — the standard message is "You (<user>) are not

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.29.0
+version: 0.30.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2670,6 +2670,53 @@ Phase E merges complete.
     `test/test-spec-scripted-phase-walk-invariant.py` (this invariant text is
     present in the spec and the SKILL.md describes the in-session tick via the
     shared walk).
+
+41. **A user stop HOLDS across heartbeats; only an explicit user `start`
+    clears it.** A `stop` halts the loop and keeps it halted across every
+    subsequent MACHINE wake-up until the user EXPLICITLY resumes. The separation
+    of authority is strict:
+
+    - **`stop`** writes `.rabbit-auto-evolve-stop-requested`; the next tick's
+      phase 0 (`stop-check`) READS the marker, halts cleanly, and does NOT
+      delete it.
+    - **explicit user `start`** (`start-loop.py`, Inv 19) is the SOLE path that
+      clears the stop marker and resumes the loop.
+    - **`off`** performs the full teardown (cron removed) per Inv 1.
+
+    **Every MACHINE wake-up fires the INTERNAL `tick`, NEVER the USER-intent
+    `start`.** The recurring heartbeat (the crontab `tick-headless.py` entry, or
+    the durable `CronCreate` heartbeat on restricted hosts) AND the
+    immediate-refire one-shot (Inv 33) both fire `/rabbit-auto-evolve tick`.
+    `tick` is the scripted phase-walk (`run-tick-phases.py`, Inv 40):
+    pre-dispatch → dispatch → post-dispatch. Its phase-0 stop-check RESPECTS the
+    stop marker and NEVER runs `start-loop.py`'s stop-cancel. A cron-fired
+    wake-up therefore can NEVER cancel a human's explicit stop.
+
+    The control-safety defect this closes: when a MACHINE (cron / heartbeat /
+    immediate-refire) wake-up fired the USER-intent `start`, it inherited
+    `start`'s Inv 19 stop-cancel semantics — `start-loop.py`'s first action
+    deletes the stop marker and starts a fresh tick — so a user-halted loop
+    silently resurrected on the next heartbeat. Routing every machine wake-up
+    through `tick` (which respects but never deletes the marker) makes a stop
+    hold until the user explicitly resumes.
+
+    - `schedule-decision.py` emits `prompt: "/rabbit-auto-evolve tick"` for the
+      immediate-refire decision AND `croncreate.prompt: "/rabbit-auto-evolve
+      tick"` for the croncreate one-shot.
+    - `install-cron.py`'s crontab entry already fires `tick-headless.py` (the
+      headless `tick`); its restricted-host `CronCreate`-fallback signal emits
+      `prompt: "/rabbit-auto-evolve tick"`.
+    - The phase-0 stop-check (in `run-tick-phases.py` / `tick-headless.py`) only
+      READS the stop marker and halts; it never deletes it.
+
+    Enforced by `test/test-stop-holds.py` (e2e: a stop marker present + a
+    cron-fired headless tick halts at phase 0 with the marker NOT deleted and no
+    phase work done; an explicit user `start` clears the marker and resumes;
+    across N simulated heartbeats with a pending stop, zero ticks perform work
+    and the marker persists; `schedule-decision.py` and `install-cron.py` emit
+    `/rabbit-auto-evolve tick`), and by `test/test-schedule-decision.py` and
+    `test/test-cron-trigger.py` (the emitted refire / heartbeat prompts are
+    `/rabbit-auto-evolve tick`).
 
 ## Known gaps
 

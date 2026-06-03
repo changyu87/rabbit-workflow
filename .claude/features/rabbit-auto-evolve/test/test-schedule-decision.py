@@ -125,8 +125,11 @@ with tempfile.TemporaryDirectory() as d:
         ok("A: non-empty + crontab -> immediate-refire, scheduler crontab")
     else:
         fail(f"A: out={proc.stdout!r} err={proc.stderr!r}")
-    if j and j.get("prompt") == "/rabbit-auto-evolve start":
-        ok("A: refire prompt is /rabbit-auto-evolve start")
+    # The MACHINE wake-up fires the INTERNAL `tick` (which respects but never
+    # deletes the stop marker), NOT the USER-intent `start` (which clears the
+    # stop and resurrects a halted loop). See Inv 41.
+    if j and j.get("prompt") == "/rabbit-auto-evolve tick":
+        ok("A: refire prompt is /rabbit-auto-evolve tick")
     else:
         fail(f"A: wrong/absent prompt: {j!r}")
 
@@ -140,7 +143,7 @@ with tempfile.TemporaryDirectory() as d:
     else:
         fail(f"B: out={proc.stdout!r} err={proc.stderr!r}")
     cc = (j or {}).get("croncreate")
-    if isinstance(cc, dict) and cc.get("prompt") == "/rabbit-auto-evolve start" \
+    if isinstance(cc, dict) and cc.get("prompt") == "/rabbit-auto-evolve tick" \
             and cc.get("durable") is False and cc.get("recurring") is False \
             and cc.get("cron"):
         ok("B: croncreate one-shot block carries cron/prompt/durable=false")

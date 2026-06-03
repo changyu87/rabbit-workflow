@@ -75,5 +75,6 @@ run_test("test-spec-self-modifying-migration-invariant.py")
 run_test("test-run-tick-phases.py")
 run_test("test-tick-persist-convergence.py")
 run_test("test-spec-scripted-phase-walk-invariant.py")
+run_test("test-stop-holds.py")
 
 print("ALL TESTS PASSED")
