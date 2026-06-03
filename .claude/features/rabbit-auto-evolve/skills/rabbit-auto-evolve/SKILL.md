@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.23.0
+version: 0.24.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -188,6 +188,49 @@ except on a genuine invocation error):
 
 `status` performs no mutations.
 
+### `log` (per-tick observability log — Inv 37, issue #404)
+
+Manage the FULL per-tick observability log at `.rabbit/auto-evolve.log` — a
+persistent, append-only, machine-readable (JSON-lines) execution trace written
+by every tick. It exists so the user can debug what the loop did / when it last
+ran / why it stalled, and so OTHER Claude sessions can `tail`/grep the file to
+answer "is the loop alive?" / "what phase did it last reach?" without
+round-tripping to the running session.
+
+This log is DISTINCT from the minimal Inv 36 `.rabbit/tick.log`
+(`tick-log.py`), which records only heartbeat/guard/schedule DECISIONS. The two
+logs COEXIST (different files, different purposes); the `log` subcommand never
+touches `tick.log`.
+
+Every `log` subcommand routes through a script — the enable flag, verbosity
+level, rotation, and path resolution are owned by `log-tick.py` /
+`log-path.py`, never assembled inline (Inv 17). The enable flag (DEFAULT on)
+and the verbosity level live in rabbit-auto-evolve's OWN config
+(`.rabbit/auto-evolve-log-config.json`), NOT in rabbit-cage's `configuration`
+array.
+
+| Subcommand | Action |
+|---|---|
+| `log on` | Enable logging. Runs `python3 .claude/features/rabbit-auto-evolve/scripts/log-tick.py config on`. |
+| `log off` | Disable logging — `log-tick.py` then writes NOTHING (zero file growth, a hard requirement). Runs `python3 .claude/features/rabbit-auto-evolve/scripts/log-tick.py config off`. |
+| `log level <quiet\|normal\|debug>` | Set verbosity (strictly-additive levels; DEFAULT `normal`). Runs `python3 .claude/features/rabbit-auto-evolve/scripts/log-tick.py config level <level>`. |
+| `log path` | Print the absolute log-file path (for `tail -f $(… log-path.py)`). Runs `python3 .claude/features/rabbit-auto-evolve/scripts/log-path.py`. |
+| `log tail [N]` | Print the last N lines (DEFAULT 20). Resolve the path via `log-path.py`, then `tail -n <N>` it. |
+| `log clear` | Truncate the log AFTER confirming with the user. Resolve the path via `log-path.py`, then truncate it. |
+
+Verbosity levels (each includes everything the lighter level emits):
+
+- `quiet` — tick start/end only.
+- `normal` (DEFAULT) — tick boundaries + phase results + blockers.
+- `debug` — every phase transition with timestamps plus payload sizes/counts.
+
+A record below the active level is DROPPED (no file growth). Each emitted line
+is capped at 2 KB hard (the writer truncates the longest array fields rather
+than emit an oversized line). Rotation runs at TICK START (phase 0, via
+`log-tick.py rotate`), not on every write: when `auto-evolve.log` exceeds 5 MB
+it rotates `.log` → `.log.1` → `.log.2` → `.log.3`, keeping AT MOST 3 rotated
+files (≤ 4 total).
+
 ### `tick` (internal)
 
 Walked by a live Claude session (via `start` or a cron-surfaced resume).
@@ -199,7 +242,7 @@ affecting the next tick's ability to pick up from disk-persisted state in
 
 | # | Phase             | Script(s) invoked                            |
 |---|-------------------|----------------------------------------------|
-| 0 | `stop-check`      | (none — file existence check on `.rabbit-auto-evolve-stop-requested`) |
+| 0 | `stop-check`      | `.claude/features/rabbit-auto-evolve/scripts/log-tick.py rotate` (rotate the observability log if >5MB — Inv 37) then `log-tick.py emit --record-kind tick-start …`; plus the file-existence check on `.rabbit-auto-evolve-stop-requested` |
 | 1 | `restart-check`   | (none — file existence check on `.rabbit-auto-evolve-restart-needed`) |
 | 1.5 | `post-merge-drain` | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — drains any `pending_post_merge` owed by a previous truncated tick BEFORE fetch (Inv 30) |
 | 2 | `fetch`           | `.claude/features/rabbit-auto-evolve/scripts/fetch-queue.py` |
@@ -359,6 +402,15 @@ The four named exit paths are:
 
 `end-tick.py` is idempotent: re-invoking when the marker is already
 absent is a clean no-op (exit 0).
+
+Per Inv 37 (g), every tick records its execution trace to the per-tick
+observability log: at tick START (phase 0, after `log-tick.py rotate`) emit a
+`tick-start` record; at every phase boundary emit a `phase` (or, at `debug`,
+`phase-transition`) record as the active verbosity level dictates; and on EVERY
+exit path emit a `tick-end` record via
+`python3 .claude/features/rabbit-auto-evolve/scripts/log-tick.py emit
+--record-kind tick-end …` before `end-tick.py`. These emits are no-ops when the
+enable flag is off, so the trace adds zero file growth when logging is disabled.
 
 Phases 2–4 form the canonical fetch → triage → plan pipe (per Inv 18):
 
