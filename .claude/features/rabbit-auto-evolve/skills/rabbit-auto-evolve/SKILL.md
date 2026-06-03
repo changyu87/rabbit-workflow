@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.28.0
+version: 0.29.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -151,7 +151,8 @@ precondition checklist verbatim and waiting for the user to type
    pending stop) and bootstraps `.rabbit/auto-evolve-state.json` with
    defaults if it is missing, empty, or malformed (a valid existing
    state file is left untouched).
-3. Run one `tick` (the 12-phase loop body). Phase 11 runs
+3. Run one `tick` by walking the shared scripted phase-walk — the dispatcher
+   supplies ONLY Phase 5 (see "`tick` (internal)" below). Phase 11 runs
    `schedule-decision.py` (Inv 33) and the dispatcher schedules the
    immediate-refire when work remains — see "Scheduling" below.
 4. End the turn. The HOUSEKEEPING tick is fired by the **system cron**
@@ -251,12 +252,44 @@ files (≤ 4 total).
 
 ### `tick` (internal)
 
-Walked by a live Claude session (via `start` or a cron-surfaced resume).
-Walks 12 phases in order, INCLUDING phase 5 (`dispatch`). The cron-fired
-headless tick (`tick-headless.py`) walks the SAME phases EXCEPT phase 5 —
-see "Headless tick (cron)" below. Any phase MAY abort the tick early without
-affecting the next tick's ability to pick up from disk-persisted state in
-`.rabbit/auto-evolve-state.json`.
+Walked by a live Claude session (via `start` or a cron-surfaced resume). The
+in-session tick runs the SAME single shared scripted phase-walk the headless
+tick runs (`run-tick-phases.py`, Inv 40); the dispatcher supplies ONLY Phase 5
+(`dispatch`), the one phase that needs Claude. The dispatcher does NOT
+hand-build any inter-phase data structure (state objects, handoffs) — every
+phase handoff is script-to-script (stdin/stdout pipes or on-disk state
+mutation). The deterministic walk runs in two segments around Phase 5:
+
+1. **Pre-dispatch segment** (phases 0-1, running-guard, 2-4):
+   ```
+   python3 .claude/features/rabbit-auto-evolve/scripts/run-tick-phases.py pre-dispatch
+   ```
+   It runs the tick-start self-sync (Inv 38), the phase 0/1 stop/abort
+   short-circuit, the running-guard (Inv 35), and phases 2-4
+   (`fetch | triage | plan`). On `{"action":"skip",...}` a clean short-circuit
+   fired (sync-fail, stop, abort, or tick-running) — run `end-tick.py` and end
+   the turn. On `{"action":"proceed",...}` continue to Phase 5.
+2. **Phase 5 (`dispatch`)** — the dispatcher's ONLY hand-driven phase. Dispatch
+   the TDD subagents per the Stage-1/Stage-2 plan (Inv 26), each with
+   `isolation: "worktree"` (Inv 28).
+3. **Post-dispatch segment** (phases 6, 7-9, 10):
+   ```
+   python3 .claude/features/rabbit-auto-evolve/scripts/run-tick-phases.py post-dispatch
+   ```
+   It runs phase 6 (merge the PRs in the state's transient `merge_ready` hint),
+   phases 7-9 (`run-post-merge.py` drain), and phase 10 (persist). Phase 10
+   re-reads the on-disk state (already mutated by the phase scripts), drops the
+   transient `merge_ready` key, and pipes the object through `update-state.py`.
+   The dispatcher does NOT read `update-state.py` source or the state schema to
+   assemble state — the persist is deterministic and identical to the headless
+   tick's.
+4. **Phase 11 (`schedule`)** — run `schedule-decision.py` (Inv 33) and schedule
+   the immediate-refire when work remains (see "Scheduling" below).
+
+Any phase MAY abort the tick early without affecting the next tick's ability to
+pick up from disk-persisted state in `.rabbit/auto-evolve-state.json`. The
+phase table below maps each phase to its owning script for reference; the live
+session walks them via the two `run-tick-phases.py` segments plus Phase 5.
 
 | # | Phase             | Script(s) invoked                            |
 |---|-------------------|----------------------------------------------|
@@ -373,8 +406,11 @@ wedges silently.
 
 The cron-fired headless tick is owned by
 `python3 .claude/features/rabbit-auto-evolve/scripts/tick-headless.py`. It
-runs WITHOUT a Claude session, so it walks every deterministic phase EXCEPT
-phase 5 (`dispatch`), which requires Claude:
+runs WITHOUT a Claude session and walks the SAME single shared scripted
+phase-walk (`run-tick-phases.py`, Inv 40) the in-session tick walks — chaining
+`pre-dispatch -> (skip dispatch, no Claude) -> post-dispatch`. It therefore
+walks every deterministic phase EXCEPT phase 5 (`dispatch`), which requires
+Claude:
 
 - tick-start self-sync (Inv 38 / #524) — BEFORE any phase, it runs
   `python3 .claude/features/rabbit-auto-evolve/scripts/sync-tree.py` so the

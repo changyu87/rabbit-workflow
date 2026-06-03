@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.29.0 — 2026-06-03
+
+- Fix #513 (converge the in-session tick on the scripted phase-walk): the
+  in-session tick's Phase 10 persist no longer requires the dispatcher to read
+  `update-state.py` source + the schema and hand-assemble the full new-state
+  JSON by LLM inference. The deterministic tick phases now live in ONE shared
+  scripted implementation, `scripts/run-tick-phases.py`, which BOTH the headless
+  tick (`tick-headless.py`) and the in-session tick invoke. The walk runs in two
+  segments — `pre-dispatch` (tick-start sync, phase 0/1 short-circuit,
+  running-guard, phases 2-4) and `post-dispatch` (phase 6 merge, phases 7-9
+  post-merge, phase 10 persist) — and the in-session path differs from the
+  headless path ONLY by inserting Phase 5 (dispatch, the one phase needing
+  Claude) between them. Phase 10 persist re-reads the on-disk state (already
+  mutated by the phase scripts), drops the transient `merge_ready` key, and
+  pipes the object through `update-state.py`, identically in both paths — every
+  in-session phase handoff is script-to-script, none hand-assembled.
+  `tick-headless.py` (1.1.0 → 2.0.0) was refactored to delegate to the shared
+  walk's `run_pre_dispatch` / `run_post_dispatch` functions, so there is exactly
+  one phase-walk implementation. Added spec invariant **Inv 40** (the next
+  monotonic number in this feature's `## Invariants` section). Per the Inv 39
+  self-modifying-migration playbook this is a re-read-from-disk migration: no
+  coexistence window, no restart — it takes effect on the next tick after merge
+  + sync. New tests: `test/test-run-tick-phases.py` (e2e per-segment walk),
+  `test/test-tick-persist-convergence.py` (the in-session path persists
+  byte-identical state to the headless tick for the same on-disk mutations), and
+  `test/test-spec-scripted-phase-walk-invariant.py`. Updated `SKILL.md` to
+  describe the in-session tick as the scripted phase-walk (dispatcher supplies
+  only Phase 5). Versions bumped 0.28.0 → 0.29.0 in lockstep across
+  feature.json, specs/spec.md, skills/rabbit-auto-evolve/SKILL.md, and this
+  CHANGELOG.
+
 ## 0.28.0 — 2026-06-03
 
 - Feat #450 (self-modifying migrations): replaced the residual human a/b/c
