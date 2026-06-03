@@ -134,11 +134,20 @@ REPO_ROOT = os.path.normpath(os.path.join(FEATURE_DIR, "..", "..", ".."))
 import glob
 
 targets = []
-# specs/ is the canonical layout (issue #399 migration complete, fallback
-# dropped #465).
+# A feature's spec/contract docs live under EITHER the flat docs/ layout
+# (preferred) or the specs/ layout (fallback) per the dual-read resolver in
+# lib/checks.py (Inv 68). Globbing only specs/*.md would silently exclude
+# every feature migrated to the flat docs/ layout from this scan — a false
+# green (Inv 69 class). Glob both; the flat docs/<name> files only, never a
+# docs/bugs/ (or other) subdirectory.
 targets.extend(
     glob.glob(
         os.path.join(REPO_ROOT, ".claude/features/*/specs/*.md")
+    )
+)
+targets.extend(
+    glob.glob(
+        os.path.join(REPO_ROOT, ".claude/features/*/docs/*.md")
     )
 )
 targets.extend(
