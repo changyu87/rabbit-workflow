@@ -201,8 +201,13 @@ def test_t5_standalone_unchanged() -> None:
         )
         feat_dir = Path(tmp) / "demo-standalone"
         assert (feat_dir / "feature.json").is_file()
-        assert (feat_dir / "specs/spec.md").is_file()
-        assert (feat_dir / "specs/contract.md").is_file()
+        # issue #399 Phase 2a: standalone scaffold writes the flat docs/ layout.
+        assert (feat_dir / "docs/spec.md").is_file()
+        assert (feat_dir / "docs/contract.md").is_file()
+        assert not (feat_dir / "specs").exists(), (
+            "standalone scaffold must NOT create the specs/ layout "
+            "(issue #399 target is flat docs/)"
+        )
         assert not (feat_dir / "docs/spec").exists(), (
             "standalone scaffold must NOT create the legacy docs/spec/ layout (issue #399)"
         )

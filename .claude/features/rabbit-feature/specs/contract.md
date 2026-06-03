@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.24.0
+version: 1.25.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -29,7 +29,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/rabbit-feature/scripts/scaffold-feature.py",
-        "purpose": "Feature-scaffolding script invoked by rabbit-feature-scaffold. Creates a conforming feature directory (feature.json, specs/{spec,contract}.md, test/run.py) at any path."
+        "purpose": "Feature-scaffolding script invoked by rabbit-feature-scaffold. Creates a conforming feature directory (feature.json, flat docs/{spec,contract}.md, docs/bugs/, test/run.py) at the issue #399 ratified flat docs/ layout, at any path."
       },
       {
         "path": ".claude/features/rabbit-feature/scripts/audit-owner.py",
@@ -37,7 +37,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py",
-        "purpose": "Companion script for the rabbit-feature-touch skill (issue #440, spec-rules.md §4 Script-Backed Orchestration). Owns the skill's computed / mode-aware orchestration: 'resolve-spec-path <feature-name>' prints the resolved spec path (specs/ preferred, docs/spec/ fallback, mode-aware via .rabbit/.runtime/mode); 'commit-spec <feature-name> <summary>' stages (mode-aware git add / git add -f), skips on empty diff, else commits 'spec(<name>): update spec for <summary>'. No-arg invocation prints usage and exits 2."
+        "purpose": "Companion script for the rabbit-feature-touch skill (issue #440, spec-rules.md §4 Script-Backed Orchestration). Owns the skill's computed / mode-aware orchestration: 'resolve-spec-path <feature-name>' prints the resolved spec path (flat docs/spec.md preferred, then specs/spec.md, then legacy docs/spec/spec.md; mode-aware via .rabbit/.runtime/mode); 'resolve-contract-path <feature-name>' mirrors that order for contract.md (issue #399 Phase 2a); 'commit-spec <feature-name> <summary>' stages (mode-aware git add / git add -f), skips on empty diff, else commits 'spec(<name>): update spec for <summary>'. No-arg invocation prints usage and exits 2."
       }
     ],
     "schemas": [],

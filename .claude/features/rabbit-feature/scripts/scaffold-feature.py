@@ -23,7 +23,7 @@ Exit:
     empty match, schema-validation failure)
   2 invocation error
 
-Version: 2.1.0
+Version: 2.2.0
 Owner: rabbit-workflow team (rabbit-feature)
 Deprecation criterion: when feature scaffolding is exposed as a native
     rabbit CLI subcommand.
@@ -469,7 +469,10 @@ def main() -> int:
         desc = "TODO: one-sentence purpose"
     today = datetime.date.today().isoformat()  # noqa: F841
 
-    for sub in ("test", "scripts", "specs", "docs/bugs"):
+    # issue #399: new features are created at the ratified flat docs/ layout
+    # (docs/spec.md, docs/contract.md), preserving docs/bugs/. Spec/contract
+    # resolution still dual-reads specs/ for not-yet-migrated features.
+    for sub in ("test", "scripts", "docs/bugs"):
         (target / sub).mkdir(parents=True)
 
     feature_json = (
@@ -507,7 +510,7 @@ def main() -> int:
         "Per the TDD state machine: author tests next, transition to `test-red`,\n"
         "then implement, transition to `impl`, etc.\n"
     )
-    (target / "specs/spec.md").write_text(spec_md)
+    (target / "docs/spec.md").write_text(spec_md)
 
     # BUG-71: scaffold the template_version 2.0.0 structure
     # (frontmatter + provides/reads/invokes/manages/never JSON block).
@@ -543,7 +546,7 @@ def main() -> int:
         "}\n"
         "```\n"
     )
-    (target / "specs/contract.md").write_text(contract_md)
+    (target / "docs/contract.md").write_text(contract_md)
 
     (target / "docs/bugs/.gitkeep").touch()
 
