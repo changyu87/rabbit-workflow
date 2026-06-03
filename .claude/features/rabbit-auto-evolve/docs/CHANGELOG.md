@@ -13,6 +13,19 @@ own version.
 
 ## Version notes
 
+- **v0.34.0 — 2026-06-03** — Extend the Inv 43 pre-merge cleanup to detect and
+  restore a leaked main-HEAD branch switch (Inv 44, #596). Same root cause as
+  #583 (a subagent's process cwd is sometimes the MAIN checkout under worktree
+  isolation), but a more severe symptom: a subagent's `git checkout -B <branch>
+  origin/dev` switches the dispatcher's MAIN HEAD onto a feature branch, so
+  safety-check Inv 1 ("branch is dev") fails and `merge-prs.py` skips the whole
+  batch with a CLEAN tree (not the #583 file-leak path). As its FIRST step,
+  `scripts/clean-dispatch-leaks.py` now restores HEAD to `dev` via `git checkout
+  dev` when the tree is clean and the branch has no un-pushed unique commits
+  (the feature work lives on its pushed branch), and logs it; if the tree is
+  dirty or the branch has un-pushed unique commits it REFUSES loudly (non-zero,
+  tick aborts per Inv 20) and never discards the work. The existing #583
+  leak-class cleanup is unchanged and runs after the branch restore.
 - **v0.33.0 — 2026-06-03** — Add a deterministic, defense-in-depth pre-merge
   cleanup of KNOWN worktree-dispatch leak-class noise (Inv 43, reopened #583).
   Worktree-isolated Phase 5 dispatches sometimes leak a stray

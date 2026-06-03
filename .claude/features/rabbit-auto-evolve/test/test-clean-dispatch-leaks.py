@@ -49,8 +49,14 @@ def _tracked_dirty(repo):
     return unstaged != 0 or staged != 0
 
 
+def _head(repo):
+    return _git(repo, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+
+
 def _make_repo(tmp):
-    """A git repo on `dev` with a committed feature.json under a feature dir."""
+    """A git repo on `dev` with a committed feature.json under a feature dir,
+    wired to a bare `origin` remote with `dev` pushed (so branch-restore tests
+    can tell pushed feature commits from un-pushed ones)."""
     repo = os.path.join(tmp, "repo")
     os.makedirs(repo)
     _git(repo, "init", "-b", "dev")
@@ -74,6 +80,11 @@ def _make_repo(tmp):
         f.write("# spec\n\noriginal line\n")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-m", "init")
+    bare = os.path.join(tmp, "origin.git")
+    subprocess.run(["git", "init", "--bare", bare],
+                   capture_output=True, text=True)
+    _git(repo, "remote", "add", "origin", bare)
+    _git(repo, "push", "-u", "origin", "dev")
     return repo, fj, spec
 
 
@@ -209,6 +220,128 @@ with tempfile.TemporaryDirectory() as tmp:
             fail(f"E: tick.log does not record what was cleaned; log={body!r}")
         else:
             ok("E: cleanup logged what it cleaned (Inv 36)")
+
+
+# ---------------------------------------------------------------------------
+# G — leaked HEAD switch (#596): HEAD on a feature branch whose commits are all
+#     on its origin remote, clean tree → cleanup restores HEAD to dev and logs.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    repo, fj, spec = _make_repo(tmp)
+    # A subagent leaked `git checkout -B feat/x origin/dev` into the MAIN tree:
+    # HEAD is on a feature branch, but it points at dev's commit (already pushed
+    # to origin/dev) so there is no un-pushed unique work and the tree is clean.
+    _git(repo, "checkout", "-B", "feat/leaked", "dev")
+    _git(repo, "push", "-u", "origin", "feat/leaked")
+    if _head(repo) != "feat/leaked":
+        fail("G: precondition — HEAD should be on feat/leaked before cleanup")
+    proc = _run(repo)
+    if proc.returncode != 0:
+        fail(f"G: cleanup exit {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("G: cleanup exited 0 on a clean leaked-branch tree")
+    if _head(repo) != "dev":
+        fail(f"G: HEAD not restored to dev (still {_head(repo)!r})")
+    else:
+        ok("G: leaked HEAD switch restored to dev")
+    log_path = os.path.join(repo, ".rabbit", "tick.log")
+    if not os.path.isfile(log_path) or "dev" not in open(log_path).read():
+        fail("G: branch restoration not logged (Inv 36)")
+    else:
+        ok("G: branch restoration logged (Inv 36)")
+
+
+# ---------------------------------------------------------------------------
+# H — leaked HEAD switch with a DIRTY tree → REFUSE (non-zero), do NOT switch
+#     or discard. Mirrors the unexpected-dirt refusal.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    repo, fj, spec = _make_repo(tmp)
+    _git(repo, "checkout", "-B", "feat/leaked", "dev")
+    _git(repo, "push", "-u", "origin", "feat/leaked")
+    with open(spec, "a") as f:
+        f.write("a genuine human edit\n")
+    before = open(spec).read()
+    proc = _run(repo)
+    if proc.returncode == 0:
+        fail("H: cleanup MUST refuse (non-zero) when HEAD!=dev AND tree dirty")
+    else:
+        ok("H: cleanup refused (non-zero) on dirty leaked-branch tree")
+    if _head(repo) != "feat/leaked":
+        fail(f"H: cleanup switched branch despite dirt (now {_head(repo)!r})")
+    else:
+        ok("H: cleanup did NOT switch branch while dirty")
+    if open(spec).read() != before:
+        fail("H: cleanup discarded an uncommitted edit (DATA LOSS)")
+    else:
+        ok("H: uncommitted edit preserved")
+
+
+# ---------------------------------------------------------------------------
+# I — leaked HEAD switch with an UN-PUSHED unique commit → REFUSE (non-zero),
+#     do NOT switch or discard the un-pushed work.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    repo, fj, spec = _make_repo(tmp)
+    _git(repo, "checkout", "-B", "feat/leaked", "dev")
+    # A commit that exists ONLY on the local branch (never pushed to origin).
+    with open(spec, "a") as f:
+        f.write("local-only work\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "un-pushed unique work")
+    unpushed_sha = _git(repo, "rev-parse", "HEAD").stdout.strip()
+    proc = _run(repo)
+    if proc.returncode == 0:
+        fail("I: cleanup MUST refuse when HEAD!=dev AND branch has un-pushed work")
+    else:
+        ok("I: cleanup refused (non-zero) on un-pushed unique commit")
+    if _head(repo) != "feat/leaked":
+        fail(f"I: cleanup switched branch despite un-pushed work "
+             f"(now {_head(repo)!r})")
+    else:
+        ok("I: cleanup did NOT switch branch with un-pushed work")
+    if _git(repo, "cat-file", "-e", unpushed_sha).returncode != 0:
+        fail("I: cleanup discarded an un-pushed commit (DATA LOSS)")
+    else:
+        ok("I: un-pushed commit preserved")
+
+
+# ---------------------------------------------------------------------------
+# J — HEAD already on dev → branch-restore is a no-op (clean tree, exit 0).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    repo, fj, spec = _make_repo(tmp)
+    proc = _run(repo)
+    if proc.returncode != 0:
+        fail(f"J: clean dev tree must be a no-op (exit 0); stderr={proc.stderr!r}")
+    elif _head(repo) != "dev":
+        fail(f"J: HEAD changed off dev on a no-op (now {_head(repo)!r})")
+    else:
+        ok("J: HEAD already on dev → branch-restore is a no-op")
+
+
+# ---------------------------------------------------------------------------
+# K — leaked HEAD switch + a known file-leak class (stray marker) on a clean,
+#     pushed feature branch → branch restored to dev AND the marker removed.
+#     Order matters: restore branch FIRST, then file cleanup.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    repo, fj, spec = _make_repo(tmp)
+    _git(repo, "checkout", "-B", "feat/leaked", "dev")
+    _git(repo, "push", "-u", "origin", "feat/leaked")
+    marker = os.path.join(repo, ".rabbit-scope-active-foo")
+    open(marker, "w").close()
+    proc = _run(repo)
+    if proc.returncode != 0:
+        fail(f"K: cleanup exit {proc.returncode}; stderr={proc.stderr!r}")
+    if _head(repo) != "dev":
+        fail(f"K: HEAD not restored to dev (still {_head(repo)!r})")
+    else:
+        ok("K: branch restored AND")
+    if os.path.exists(marker):
+        fail("K: stray marker not removed after branch restore")
+    else:
+        ok("K: file-leak cleanup still ran after branch restore")
 
 
 # ---------------------------------------------------------------------------
