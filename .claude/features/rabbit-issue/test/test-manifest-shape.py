@@ -14,7 +14,7 @@ Pins the Phase 1 metadata invariants for rabbit-issue:
   - manifest declares the publish_skill API for skills/rabbit-issue/SKILL.md
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team
 Deprecation criterion: when feature lifecycle management is natively
     handled by Claude Code's workflow mechanism.
 """

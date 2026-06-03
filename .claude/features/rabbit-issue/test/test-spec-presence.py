@@ -10,7 +10,7 @@ Spec-side invariants enforced (per spec-rules.md §3):
 These are static checks; they do not exercise runtime behaviour.
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
 from __future__ import annotations

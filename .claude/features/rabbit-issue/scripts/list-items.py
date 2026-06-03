@@ -5,7 +5,7 @@ Output is sorted by issue number ascending so downstream callers can
 diff/grep deterministically.
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
 import argparse

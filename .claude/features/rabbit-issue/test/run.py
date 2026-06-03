@@ -33,6 +33,7 @@ SUITES = (
     ("py", "test-spec-presence.py"),
     ("py", "test-skill-presence.py"),
     ("py", "test-manifest-shape.py"),
+    ("py", "test-owner-sweep.py"),
     ("pytest", "test-ensure-labels.py"),
     ("pytest", "test-gh-helper-resolves-rabbit-repo.py"),
     ("pytest", "test-file-item.py"),

@@ -9,7 +9,7 @@ module-level const RABBIT_REPO_DEFAULT. No git remote consultation —
 bugs about rabbit always go to rabbit's repo, regardless of the cwd.
 
 Version: 1.1.0
-Owner: cyxu
+Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
 import json
