@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.15.0
+version: 0.16.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and reschedules itself via `ScheduleWakeup` until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -223,6 +223,36 @@ phase 5:
   (maintainer policy on issue #435). A one-time override is permitted ONLY
   for plan / temporary-document writing — never for feature code edits.
 
+### Worktree isolation for TDD dispatches (Inv 28 — issue #430)
+
+**Every Agent call for a TDD-subagent dispatch in phase 5 MUST include
+`isolation: "worktree"`.** This is a DISPATCHER policy, not a subagent
+policy — the dispatcher requests the isolated worktree on the Agent call;
+the subagent itself is isolation-agnostic.
+
+Without isolation, parallel TDD subagents share the dispatcher's single
+shared git working directory: one subagent's branch checkout reverts
+another's edits, commits land on the wrong branch, and each subagent's
+`.rabbit-scope-active-<feature>` marker clobbers the others' (observed:
+3 of 4 parallel dispatches in one tick collided). `isolation: "worktree"`
+gives each dispatch its own working tree, branch, HEAD, and scope marker,
+so both the parallel shape (`parallel-per-feature`) and the
+serial-on-one-branch shape (`multi-subagent-barrier`) stay collision-free.
+
+Worktrees are created branched from `dev` HEAD (NOT `main`, NOT a fresh
+tree) per the `worktree.baseRef: "head"` setting in
+`.claude/settings.local.json`. This requirement formalizes an
+already-manual practice — the maintainer has been passing
+`isolation: "worktree"` by hand on every dispatch; issue #430 makes it a
+binding invariant.
+
+**Known limitation (stale base):** `worktree.baseRef: "head"` requires a
+session restart to take effect; until the session has been restarted after
+the setting landed, a newly created worktree may branch from a stale base
+and a subagent may need to re-branch from `origin/dev` manually at the
+start of its cycle. This is a Claude Code worktree-harness limitation, not
+a feature defect; it resolves on the next session restart.
+
 ### `off`
 
 Deactivate auto-evolve mode. Invokes
@@ -296,6 +326,9 @@ Other red flags:
   edits. Cross-feature work is handled by `decomposition` or
   `multi-subagent-barrier` (Inv 26) — every write stays inside one feature's
   `.rabbit-scope-active-<feature>` scope.
+- Never dispatch a TDD subagent without `isolation: "worktree"` on the
+  Agent call (Inv 28) — parallel dispatches sharing one working tree
+  collide on branch, HEAD, commits, and scope markers.
 
 `safety-check.py` enforces these; `merge-prs.py` and
 `cleanup-branches.py` also refuse defense-in-depth.
