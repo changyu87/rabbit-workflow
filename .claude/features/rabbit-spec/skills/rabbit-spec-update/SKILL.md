@@ -2,7 +2,7 @@
 name: rabbit-spec-update
 description: Use when an existing feature spec needs to be revised or updated, in any context (standalone or plugin mode). Invoke as Skill("rabbit-spec-update", args: "<feature-name> <request>") from any skill, process, or directly. Auto-detects rabbit mode from .rabbit/.runtime/mode and resolves the target feature directory to .claude/features/<feature-name>/ in standalone mode or .rabbit/rabbit-project/features/<feature-name>/ in plugin mode. Reads the current spec, judges the request type, invokes superpowers as needed, updates the spec surgically, and produces an implementation suggestion file for whoever invoked it. Also use when a user asks to update, review, or revise a spec for any rabbit feature — even if they don't say "spec" explicitly (e.g., "think about what we need to build", "plan this feature", "what should change in the design", "update the design for this bug fix"). For drafting a BRAND NEW spec from scratch (no existing content), use rabbit-spec-create instead.
 model: opus
-version: 2.2.0
+version: 2.3.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 ---
@@ -31,25 +31,32 @@ prefix. The impl-suggestion path at
 `<repo_root>/.rabbit/impl-suggestion-<feature-name>.json` (Step 5) is
 mode-agnostic and is NOT prefixed by `<feature_root>`.
 
-### Spec-file layout (specs/ preferred, docs/spec/ legacy fallback)
+### Spec-file layout (flat docs/ preferred, specs/ + docs/spec/ fallbacks)
 
 The in-feature spec-file layout is resolved INDEPENDENTLY of the mode
-prefix above. The `docs/spec/ -> specs/` migration (issue #399) runs
+prefix above. The `specs/ -> docs/` flatten migration (issue #399) runs
 feature-by-feature, so during the coexistence window a feature may carry
-EITHER layout. Resolve the spec/contract paths as follows:
+ANY of three layouts. Resolve the spec/contract paths in this PREFERENCE
+order (first existing wins):
 
-- `spec_path` = `<feature_root>/specs/spec.md` when that file exists
-  (the **preferred**, canonical layout); otherwise FALL BACK to
-  `<feature_root>/docs/spec/spec.md` (the **legacy** layout).
-- `contract_path` = `<feature_root>/specs/contract.md` when it exists,
-  else the legacy `<feature_root>/docs/spec/contract.md`.
+- `spec_path`:
+  1. `<feature_root>/docs/spec.md` — the **preferred**, canonical flat
+     layout.
+  2. else `<feature_root>/specs/spec.md` — the FALLBACK current layout.
+  3. else `<feature_root>/docs/spec/spec.md` — the **legacy** nested
+     layout.
+- `contract_path`: same order with `contract.md`:
+  `<feature_root>/docs/contract.md` (preferred), else
+  `<feature_root>/specs/contract.md`, else the legacy
+  `<feature_root>/docs/spec/contract.md`.
 - `feature.json` always lives at `<feature_root>/feature.json` regardless
   of layout.
 
 Whichever layout you resolve, you MUST Read and Edit/Write THAT same file
-— never silently create a new `specs/spec.md` alongside an existing
-`docs/spec/spec.md`. Every `spec.md` / `contract.md` reference in the
-steps below means the layout-resolved `<spec_path>` / `<contract_path>`.
+— never silently create a new `docs/spec.md` alongside an existing
+`specs/spec.md` or `docs/spec/spec.md`. Every `spec.md` / `contract.md`
+reference in the steps below means the layout-resolved `<spec_path>` /
+`<contract_path>`.
 
 ## Inputs
 
@@ -61,8 +68,9 @@ Args format: `<feature-name> <request-or-item-description>`
 ## Step 1 — Read Current State
 
 Before forming any opinion, you MUST Read the target feature's
-layout-resolved `<spec_path>` (the feature's spec.md — `specs/spec.md`
-preferred, `docs/spec/spec.md` as the legacy fallback) via the Read tool
+layout-resolved `<spec_path>` (the feature's spec.md — `docs/spec.md`
+preferred, then `specs/spec.md`, then `docs/spec/spec.md` as the legacy
+fallback) via the Read tool
 in this session (see the **Modes** section above for how `<feature_root>`,
 `<spec_path>`, and `<contract_path>` are resolved).
 Reading is mandatory comprehension, not optional context-gathering — it
@@ -124,9 +132,10 @@ Both superpowers run under your current model context (opus). Do not dispatch a 
 ## Step 4 — Update the Spec
 
 **PRE-CONDITION:** You must have already Read the target layout-resolved
-`<spec_path>` (the feature's spec.md — `specs/spec.md` preferred,
-`docs/spec/spec.md` as the legacy fallback; see **Modes** above for how
-`<feature_root>` and `<spec_path>` are resolved) in Step 1 of this same
+`<spec_path>` (the feature's spec.md — `docs/spec.md` preferred, then
+`specs/spec.md`, then `docs/spec/spec.md` as the legacy fallback; see
+**Modes** above for how `<feature_root>` and `<spec_path>` are resolved)
+in Step 1 of this same
 session. The Claude Code Edit tool will reject any Edit on a file not
 previously Read in-session — this is not optional, it is a harness-enforced
 contract. If for any reason you arrive at Step 4 without having Read
@@ -134,7 +143,9 @@ the spec.md in this session, Read it now before proceeding to the
 Edit/Write call below.
 
 Edit the layout-resolved `<spec_path>` (the same spec.md you resolved and
-Read in Step 1) to reflect what the request requires. Be surgical:
+Read in Step 1 — `docs/spec.md` preferred, then `specs/spec.md`, then the
+legacy `docs/spec/spec.md`) to reflect what the request requires. Be
+surgical:
 - For specific requests: add/modify only the affected invariants or surface entries
 - For open-ended requests: apply the full design outcome from the superpowers above
 
