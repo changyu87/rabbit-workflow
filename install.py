@@ -106,6 +106,7 @@ AGENTS = [
 COMMANDS: list[tuple[str, str]] = [
     (".claude/features/rabbit-cage/commands/rabbit-refresh.md", ".claude/commands/rabbit-refresh.md"),
     (".claude/features/rabbit-cage/commands/rabbit-project.md", ".claude/commands/rabbit-project.md"),
+    (".claude/features/rabbit-cage/commands/rabbit-update.md", ".claude/commands/rabbit-update.md"),
 ]
 
 # Per-feature sub-path includes (whole subset; same path on both sides)
@@ -157,6 +158,8 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "hooks/_dispatcher_lib.py",
         "commands/rabbit-refresh.md",
         "commands/rabbit-project.md",
+        "commands/rabbit-update.md",
+        "scripts/rabbit-update.py",
         "lib/__init__.py",
         "lib/project_map_reader.py",
     ],
