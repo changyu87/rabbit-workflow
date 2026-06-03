@@ -166,17 +166,18 @@ with tempfile.TemporaryDirectory() as tmp:
 
 # t6: data-driven opt-in via feature.json housekeeping_clean (NO env
 # override). A feature with the flag true is strict-enforced; a sibling
-# feature with the same strict content but no flag is ignored.
+# feature with the same strict content but no flag is ignored. Distinct
+# name prefixes (cleanf / dirtyf) so neither is a substring of the other.
 with tempfile.TemporaryDirectory() as tmp:
-    strict_body = "# zeta\n\n" + _HASH_REF + "\n" + _TOMBSTONE + "\n"
-    make_feature(tmp, "zeta", strict_body, housekeeping_clean=True)
-    make_feature(tmp, "eta", strict_body, housekeeping_clean=False)
+    strict_body = "# heading\n\n" + _HASH_REF + "\n" + _TOMBSTONE + "\n"
+    make_feature(tmp, "cleanf", strict_body, housekeeping_clean=True)
+    make_feature(tmp, "dirtyf", strict_body, housekeeping_clean=False)
     r = run(tmp)  # no env override -> derive from feature.json
     out = r.stdout + r.stderr
-    if r.returncode != 0 and "zeta" in out and "eta" not in out:
+    if r.returncode != 0 and "cleanf/" in out and "dirtyf/" not in out:
         ok("t6", "feature.json housekeeping_clean drives opt-in")
     else:
-        fail("t6", f"expected nonzero naming zeta only; exit={r.returncode}; "
+        fail("t6", f"expected nonzero naming cleanf only; exit={r.returncode}; "
                    f"stdout={r.stdout}; stderr={r.stderr}")
 
 # t7: the env override REPLACES the feature.json-derived set. A feature
