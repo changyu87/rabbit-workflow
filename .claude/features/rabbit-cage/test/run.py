@@ -82,6 +82,7 @@ SUITES = [
     "test-session-start-version-line.py",
     "test-runtime-banner-shape.py",
     "test-install-agent-path-rabbit-tdd-subagent.py",
+    "test-install-agent-path-rabbit-spec-creator.py",
     "test-specs-layout.py",
 ]
 
