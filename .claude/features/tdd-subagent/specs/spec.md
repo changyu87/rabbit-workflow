@@ -710,6 +710,30 @@ lives in Inv 22 above.
     references downstream suites — plus that this invariant is present in
     spec.md.
 
+57. **`rabbit-tdd-subagent` agent definition enables the `Skill` tool.** The
+    agent definition at `agents/rabbit-tdd-subagent.md` declares a `tools:`
+    frontmatter list, and that list MUST include `Skill` (alongside `Read`,
+    `Write`, `Edit`, `Bash`, `Glob`, `Grep`). Without it the subagent cannot
+    honor two of its own prompt-mandated steps: Inv 11's SKILL.md-routing rule
+    (`Skill("skill-creator:skill-creator")` before editing any `SKILL.md`) and
+    Inv 17's CODE-REVIEW step (`Skill("superpowers:requesting-code-review")`).
+    A subagent missing the `Skill` tool that must touch a `SKILL.md` is forced
+    into a deadlock: it holds the only `.rabbit-scope-active-<feature>` marker
+    permitting feature-file edits, but cannot invoke skill-creator, while the
+    main dispatcher can invoke skill-creator but must not edit feature files
+    (bounded scope). The observed effect was direct `Write`/`Edit` on
+    `SKILL.md` (the path Inv 11 forbids) plus a silently-skipped CODE-REVIEW.
+
+    The tool addition takes effect for newly-dispatched subagents only after
+    the agent definition is re-published (`publish_agent`) and the Claude
+    session is restarted to reload agent definitions — the standard
+    agent-definition reload boundary, not a defect.
+
+    Enforced by `test/test-agent-skill-tool.py`, which parses the YAML
+    frontmatter of BOTH the source `agents/rabbit-tdd-subagent.md` AND the
+    deployed `.claude/agents/rabbit-tdd-subagent.md` and asserts the `tools:`
+    list contains `Skill` (and still contains the original six tools).
+
 ## Out of Scope
 
 - Deployment of the assembled scripts into `.claude/agents/` — owned by
