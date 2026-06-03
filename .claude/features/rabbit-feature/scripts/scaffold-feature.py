@@ -23,7 +23,7 @@ Exit:
     empty match, schema-validation failure)
   2 invocation error
 
-Version: 2.0.0
+Version: 2.1.0
 Owner: rabbit-workflow team (rabbit-feature)
 Deprecation criterion: when feature scaffolding is exposed as a native
     rabbit CLI subcommand.
@@ -182,9 +182,9 @@ def _resolve_glob_under_root(pattern: str, root: Path) -> tuple[list[Path] | Non
 
 
 def _scaffold_plugin_feature(target: Path, name: str, owner: str, globs: list[str]) -> None:
-    """Write feature.json, docs/spec/spec.md, docs/spec/contract.md for the
-    per-project plugin feature."""
-    for sub in ("docs/spec",):
+    """Write feature.json, specs/spec.md, specs/contract.md for the
+    per-project plugin feature (issue #399: specs/ layout)."""
+    for sub in ("specs",):
         (target / sub).mkdir(parents=True)
     created = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     feature_json = {
@@ -208,7 +208,7 @@ def _scaffold_plugin_feature(target: Path, name: str, owner: str, globs: list[st
         + "".join(f"- `{g}`\n" for g in globs)
         + "\n## Invariants\n\nTODO.\n"
     )
-    (target / "docs/spec/spec.md").write_text(spec_md)
+    (target / "specs/spec.md").write_text(spec_md)
 
     contract_md = (
         "---\n"
@@ -225,7 +225,7 @@ def _scaffold_plugin_feature(target: Path, name: str, owner: str, globs: list[st
         "}\n"
         "```\n"
     )
-    (target / "docs/spec/contract.md").write_text(contract_md)
+    (target / "specs/contract.md").write_text(contract_md)
 
 
 def _run_plugin_mode(repo_root: Path, name: str, globs: list[str]) -> int:
@@ -320,7 +320,7 @@ def _run_plugin_mode(repo_root: Path, name: str, globs: list[str]) -> int:
     dispatcher = ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py"
     print(
         "\nNEXT: invoke the rabbit-spec-create skill (or run the dispatcher\n"
-        "directly) to seed docs/spec/spec.md:\n"
+        "directly) to seed specs/spec.md:\n"
         f"  Skill(\"rabbit-spec-create\", args: \"{name} {' '.join(globs)}\")\n"
         "or equivalently:\n"
         f"  python3 {dispatcher} \\\n"
@@ -469,7 +469,7 @@ def main() -> int:
         desc = "TODO: one-sentence purpose"
     today = datetime.date.today().isoformat()  # noqa: F841
 
-    for sub in ("test", "scripts", "docs/spec", "docs/bugs"):
+    for sub in ("test", "scripts", "specs", "docs/bugs"):
         (target / sub).mkdir(parents=True)
 
     feature_json = (
@@ -494,7 +494,7 @@ def main() -> int:
     spec_md = (
         f"# {name}\n\n"
         "> **Note:** LLM-prose view (machine-targeted, like everything in rabbit).\n"
-        "> Structured source of truth is [`feature.json`](../../feature.json).\n\n"
+        "> Structured source of truth is [`feature.json`](../feature.json).\n\n"
         "## Purpose\n\n"
         f"{desc}\n\n"
         "## Schema / Behavior\n\n"
@@ -507,7 +507,7 @@ def main() -> int:
         "Per the TDD state machine: author tests next, transition to `test-red`,\n"
         "then implement, transition to `impl`, etc.\n"
     )
-    (target / "docs/spec/spec.md").write_text(spec_md)
+    (target / "specs/spec.md").write_text(spec_md)
 
     # BUG-71: scaffold the template_version 2.0.0 structure
     # (frontmatter + provides/reads/invokes/manages/never JSON block).
@@ -543,7 +543,7 @@ def main() -> int:
         "}\n"
         "```\n"
     )
-    (target / "docs/spec/contract.md").write_text(contract_md)
+    (target / "specs/contract.md").write_text(contract_md)
 
     (target / "docs/bugs/.gitkeep").touch()
 

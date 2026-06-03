@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.21.1
+version: 1.22.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -164,12 +164,26 @@ Scripts (under `scripts/`):
       against the host repo.
     The commit message pattern remains
     `spec(<feature-name>): update spec for <one-line request summary>`.
-    The commit is skipped only when the staged diff against
-    `<feature_dir>/docs/spec/spec.md` is empty.
+    The commit is skipped only when the staged diff against the resolved
+    spec path (`<feature_dir>/specs/spec.md` preferred, with a
+    `<feature_dir>/docs/spec/spec.md` fallback for not-yet-migrated
+    features per issue #399) is empty.
     Enforced by `test/test-touch-skill.py` which asserts the SKILL.md
     Step 3 body contains both branches (standalone path + plugin path
     with `-f`) and explicitly references `.rabbit/.runtime/mode` as the
-    mode-detection source.
+    mode-detection source. The Step 3 spec-commit diff check and the
+    Step 5 `--spec` dispatch argument resolve the spec path with
+    `specs/spec.md` preferred and a `docs/spec/spec.md` fallback (Inv 51).
+
+51. **Spec path resolution (specs/ preferred).** The
+    `rabbit-feature-touch` SKILL.md MUST resolve a feature's spec at
+    `specs/spec.md`, preferring that path and falling back to the legacy
+    `docs/spec/spec.md` only for not-yet-migrated features (issue #399
+    dual-read). Step 3's spec-commit diff check and Step 5's `--spec`
+    argument to `dispatch-tdd-subagent.py` MUST both point at the
+    `specs/spec.md` layout, and the SKILL.md MUST document the
+    `docs/spec/spec.md` fallback. Enforced by `test/test-touch-skill.py`
+    (`test_inv399_skill_prefers_specs_layout`).
 
 ### rabbit-feature-scope SKILL.md and scripts
 
@@ -237,13 +251,15 @@ Scripts (under `scripts/`):
     (no fractional seconds, no timezone offset).
 
 29. **Spec update precedes impl-suggestion.** The SKILL.md instructs the
-    skill to update
-    `.claude/features/<feature-name>/docs/spec/spec.md` BEFORE writing
-    the impl-suggestion file.
+    skill to update the target feature's resolved `spec.md`
+    (`.claude/features/<feature-name>/specs/spec.md`, with a
+    `docs/spec/spec.md` fallback for not-yet-migrated features per issue
+    #399) BEFORE writing the impl-suggestion file.
 
 30. **Read-comprehend-write on spec edits.** The SKILL.md MUST express
     as a hard MUST in Step 1 (Read Current State) that the skill Read
-    the target feature's `docs/spec/spec.md` via the Read tool
+    the target feature's resolved `spec.md` (`specs/spec.md` preferred,
+    `docs/spec/spec.md` fallback) via the Read tool
     in-session, and MUST repeat the obligation as a pre-condition note
     in Step 4 (Update the Spec). Reading is mandatory comprehension
     before any Edit or Write on that file.
@@ -267,9 +283,10 @@ Scripts (under `scripts/`):
 33. **scaffold-feature.py scaffolds a conforming feature dir.**
     `scripts/scaffold-feature.py` is executable and scaffolds a feature
     directory containing `feature.json` (with `template_version`),
-    `docs/spec/spec.md`, `docs/spec/contract.md`, and `test/run.py`
-    (no `test/run.sh`). The scaffolded directory passes
-    `validate-feature.py` immediately.
+    `specs/spec.md`, `specs/contract.md`, and `test/run.py`
+    (no `test/run.sh`). New features are created at the `specs/` layout
+    (issue #399); the scaffolded directory passes `validate-feature.py`
+    immediately (which dual-reads `specs/` then `docs/spec/`).
 
 44. **scaffold-feature.py plugin-mode invocation.** Plugin-mode detection MUST walk UP from cwd to find the nearest ancestor directory `D` such that EITHER `D/.runtime/mode` exists with content `plugin` (cwd is inside `.rabbit/` itself) OR `D/.rabbit/.runtime/mode` exists with content `plugin` (cwd is inside the user-project root or any subdirectory thereof). On first match, plugin mode is active and the resolved `rabbit_root` is either `D` itself (first case) or `D/.rabbit` (second case); the user-project root is `rabbit_root.parent`. The walk terminates at the filesystem root; if no ancestor `.runtime/mode` or `.rabbit/.runtime/mode` is found, the script falls through cleanly to the standalone form `scaffold-feature.py <root> <name> [...]`. When plugin mode is detected, `scaffold-feature.py` honors the plugin-mode CLI form `scaffold-feature.py <name> <path-glob> [<path-glob>...]`. The walk-up replaces the original single-check semantics (which only looked at `<cwd>/.rabbit/.runtime/mode`) — that semantics failed silently when cwd was `.rabbit/` itself (the typical rabbit session cwd in plugin mode), because the script then looked for `.rabbit/.rabbit/.runtime/mode` which never exists. The detection happens before any argument parsing so a `<name>+<glob>` pair is never misinterpreted as a `<root>+<name>` pair. Enforced by 5 tests under `.claude/features/rabbit-feature/test/`: cwd=project root, cwd=.rabbit/ itself (regression for #267), cwd=arbitrary nested subdir of project, cwd outside any rabbit install (standalone fallback), and cwd=/ (filesystem root terminates cleanly).
 
@@ -301,9 +318,9 @@ Scripts (under `scripts/`):
         `owner` (defaulted from `$USER`), `paths` (the declared globs
         verbatim), `created` (ISO 8601 UTC `YYYY-MM-DDTHH:MM:SSZ`),
         and `deprecation_criterion: null`.
-    (b) `docs/spec/spec.md` — a placeholder seeded for the spec-seeder
+    (b) `specs/spec.md` — a placeholder seeded for the spec-seeder
         subagent to fill in.
-    (c) `docs/spec/contract.md` — empty contract placeholder mirroring
+    (c) `specs/contract.md` — empty contract placeholder mirroring
         the rabbit-self shape (frontmatter + `provides`/`reads`/
         `invokes`/`never` JSON block).
     Plugin-mode scaffolds MUST NOT use the standalone-only
@@ -374,7 +391,7 @@ Scripts (under `scripts/`):
 ### Feature-level metadata
 
 36. **Three-way version alignment.** `feature.json.version`,
-    `docs/spec/spec.md` frontmatter `version`, and `docs/spec/contract.md`
+    `specs/spec.md` frontmatter `version`, and `specs/contract.md`
     frontmatter `version` MUST match exactly.
 
 37. **SKILL.md frontmatter completeness.** Every SKILL.md declared in

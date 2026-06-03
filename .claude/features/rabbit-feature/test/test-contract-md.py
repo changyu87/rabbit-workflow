@@ -21,7 +21,7 @@ from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
 FEATURE_JSON = FEATURE_DIR / "feature.json"
-CONTRACT_MD = FEATURE_DIR / "docs/spec/contract.md"
+CONTRACT_MD = FEATURE_DIR / "specs/contract.md"
 SCRIPTS_DIR = FEATURE_DIR / "scripts"
 
 
