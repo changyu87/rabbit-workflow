@@ -28,5 +28,6 @@ run_test("test-mode-detection.py")
 run_test("test-generate-claude-md.py")
 run_test("test-generate-readme.py")
 run_test("test-owner-team.py")
+run_test("test-specs-layout.py")
 
 print("ALL TESTS PASSED")

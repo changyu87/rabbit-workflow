@@ -4,7 +4,7 @@
 End-to-end test verifying no owner-bearing location in rabbit-meta names an
 individual; every owner field/docstring reads "rabbit-workflow team":
   - t1: feature.json "owner" == "rabbit-workflow team"
-  - t2: docs/spec/spec.md frontmatter owner: rabbit-workflow team
+  - t2: specs/spec.md frontmatter owner: rabbit-workflow team
   - t3: every lib/*.py module docstring "Owner:" line reads the team
   - t4: no "cyxu" owner string remains anywhere in the feature tree
 """
@@ -43,7 +43,7 @@ else:
     fail_t("t1", f"feature.json owner is {fj.get('owner')!r}, expected {TEAM!r}")
 
 # t2: spec.md frontmatter owner
-with open(os.path.join(FEATURE_DIR, "docs", "spec", "spec.md")) as f:
+with open(os.path.join(FEATURE_DIR, "specs", "spec.md")) as f:
     spec = f.read()
 m = re.search(r"^owner:\s*(.+)$", spec, re.MULTILINE)
 if m and m.group(1).strip() == TEAM:

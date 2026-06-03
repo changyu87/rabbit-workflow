@@ -1,7 +1,7 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-meta",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "rabbit-meta feature",
@@ -12,5 +12,5 @@
     "skills": []
   },
   "deprecation_criterion": "TBD \u2014 set after first review",
-  "updated": "2026-06-02"
+  "updated": "2026-06-03"
 }
