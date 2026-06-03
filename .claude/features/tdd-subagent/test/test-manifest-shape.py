@@ -71,7 +71,7 @@ def test_manifest_shape() -> None:
         f"manifest must have exactly 3 entries per spec, got {len(manifest)}"
     )
 
-    # Entry 0: publish_agent for agents/tdd-subagent.md
+    # Entry 0: publish_agent for agents/rabbit-tdd-subagent.md
     entry0 = manifest[0]
     assert isinstance(entry0, dict), (
         f"manifest[0] not a dict, got {type(entry0).__name__}"
