@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.11.0
+version: 1.12.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native subagent-policy injection point

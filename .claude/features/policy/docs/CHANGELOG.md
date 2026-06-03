@@ -8,6 +8,19 @@ deprecation_criterion: when the policy feature is retired (Claude Code exposes a
 
 ## Version notes
 
+- **v1.12.0 (convention text names flat `docs/` home, #399 Phase 3a):**
+  Updated the policy convention text so the canonical "Where the metadata
+  lives" rule names the flat `docs/` layout that every feature now uses.
+  `spec-rules.md` (the "Specs / contracts" bullet) now names `docs/spec.md`,
+  `docs/contract.md`, and `docs/CHANGELOG.md` as the metadata home;
+  `philosophy.md` §2 (Bounded Scope) now references the contract schema at
+  `docs/contract.md`. The legacy spec-directory paths are no longer named as
+  the canonical location. No rule meaning changed — only the path the
+  convention names. The `test/test-canonical-convention-text.py` E2E guard was
+  flipped to assert the flat `docs/` paths and the absence of the legacy
+  spec-directory home. Lockstep minor bump across `feature.json`,
+  `docs/spec.md`, and `docs/contract.md`.
+
 - **v1.11.0 (flat `docs/` layout migration, #399 Phase 2b):** Relocated the
   policy feature's documentation surfaces from the legacy spec directory to the
   flat `docs/` layout. `specs/spec.md` → `docs/spec.md` and
