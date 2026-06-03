@@ -29,7 +29,7 @@ on`, restart Claude, etc.) so SKILL.md can surface them verbatim.
 `RABBIT_AUTO_EVOLVE_REPO_ROOT` env var for tests.
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
 """

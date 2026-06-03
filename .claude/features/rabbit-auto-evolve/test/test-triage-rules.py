@@ -80,7 +80,7 @@ def make_feature(repo_root, feature_name, status="active", spec_body=""):
         json.dump({
             "name": feature_name,
             "version": "0.1.0",
-            "owner": "cyxu",
+            "owner": "rabbit-workflow team",
             "status": status,
             "deprecation_criterion": "n/a",
         }, f)
@@ -88,7 +88,7 @@ def make_feature(repo_root, feature_name, status="active", spec_body=""):
         f.write("---\n")
         f.write(f"feature: {feature_name}\n")
         f.write("version: 0.1.0\n")
-        f.write("owner: cyxu\n")
+        f.write("owner: rabbit-workflow team\n")
         f.write("---\n\n")
         f.write("# Spec\n\n")
         f.write(spec_body or "Body of the spec.\n")

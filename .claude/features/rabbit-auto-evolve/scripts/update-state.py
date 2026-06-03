@@ -19,7 +19,7 @@ Exit code: 0 on successful write; non-zero on schema-validation failure or
 write error. On validation failure the state file is NOT touched.
 
 Version: 1.1.0
-Owner: cyxu
+Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
 """

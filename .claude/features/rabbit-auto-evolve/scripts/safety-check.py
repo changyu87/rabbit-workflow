@@ -26,7 +26,7 @@ The script never auto-fixes.
 The script reads `gh` and `git` state only — no filesystem mutations.
 
 Version: 1.1.0
-Owner: cyxu
+Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
 """

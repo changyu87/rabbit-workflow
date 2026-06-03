@@ -45,7 +45,7 @@ falls back to `.claude/features/rabbit-issue/scripts/` relative to the
 repo root inferred from this script's path.
 
 Version: 1.3.0
-Owner: cyxu
+Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
 """

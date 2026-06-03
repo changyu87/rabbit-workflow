@@ -309,10 +309,11 @@ def make_feature(repo_root, name):
     os.makedirs(fdir, exist_ok=True)
     with open(os.path.join(repo_root, ".claude", "features", name,
                            "feature.json"), "w") as f:
-        json.dump({"name": name, "version": "0.1.0", "owner": "cyxu",
+        json.dump({"name": name, "version": "0.1.0",
+                   "owner": "rabbit-workflow team",
                    "status": "active", "deprecation_criterion": "n/a"}, f)
     with open(os.path.join(fdir, "spec.md"), "w") as f:
-        f.write("---\nfeature: %s\nversion: 0.1.0\nowner: cyxu\n---\n\n# Spec\n\nBody.\n" % name)
+        f.write("---\nfeature: %s\nversion: 0.1.0\nowner: rabbit-workflow team\n---\n\n# Spec\n\nBody.\n" % name)
 
 
 tmp = tempfile.mkdtemp()

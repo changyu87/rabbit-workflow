@@ -20,7 +20,7 @@ Test method: copy the repo-root `.gitignore` into a fresh tempdir, run
 output.
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code stops creating
 `.claude/scheduled_tasks.{lock,json}` (e.g. moves scheduling state under
 an already-gitignored prefix) or when rabbit-auto-evolve is retired.

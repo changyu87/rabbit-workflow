@@ -14,6 +14,10 @@ Asserts feature-shape compliance for the rabbit-auto-evolve feature:
   4. feature.json.summary contains the substring `rabbit-auto-evolve`.
   5. Every entry in feature.json.surface.skills has a matching entry
      in contract.md provides.skills (matched by `name`).
+  6. No owner field/docstring names an individual: feature.json `owner`,
+     spec.md/SKILL.md frontmatter `owner`, every script & test module
+     docstring `Owner:`, and every scripts/schemas/*.json `owner` all read
+     name the rabbit-workflow team; no owner field names an individual.
 """
 
 from __future__ import annotations
@@ -144,6 +148,61 @@ else:
         5,
         f"surface.skills missing from contract.provides.skills: {missing}",
     )
+
+# t6 — owner sweep: every owner field/docstring names the rabbit-workflow team,
+# never an individual. Metadata fields (feature.json, frontmatter, schema) read
+# the bare team; module docstrings may carry the conventional `(<feature>)`
+# qualifier (e.g. "rabbit-workflow team (rabbit-auto-evolve)").
+EXPECTED_OWNER = "rabbit-workflow team"
+TEAM_RE = re.compile(r"^rabbit-workflow team(?: \([^()]+\))?$")
+owner_problems: list[str] = []
+
+# feature.json owner value (bare team)
+if fj.get("owner") != EXPECTED_OWNER:
+    owner_problems.append(f"feature.json owner={fj.get('owner')!r}")
+
+# spec.md + SKILL.md frontmatter owner values (bare team)
+if spec_fm.get("owner") != EXPECTED_OWNER:
+    owner_problems.append(f"spec.md frontmatter owner={spec_fm.get('owner')!r}")
+if skill_fm.get("owner") != EXPECTED_OWNER:
+    owner_problems.append(f"SKILL.md frontmatter owner={skill_fm.get('owner')!r}")
+
+# scripts/schemas/*.json top-level owner values (bare team)
+SCHEMAS_DIR = FEATURE_DIR / "scripts" / "schemas"
+for sp in sorted(SCHEMAS_DIR.glob("*.json")):
+    sdata = json.loads(sp.read_text())
+    if sdata.get("owner") != EXPECTED_OWNER:
+        owner_problems.append(f"{sp.name} owner={sdata.get('owner')!r}")
+
+# every script + test module docstring `Owner:` line (team, optional qualifier)
+OWNER_LINE = re.compile(r"^Owner:\s*(.+?)\s*$", re.MULTILINE)
+for py in sorted((FEATURE_DIR / "scripts").rglob("*.py")) + \
+        sorted((FEATURE_DIR / "test").rglob("*.py")):
+    for m in OWNER_LINE.finditer(py.read_text()):
+        if not TEAM_RE.match(m.group(1)):
+            owner_problems.append(f"{py.name} docstring Owner: {m.group(1)!r}")
+
+# no stray docstring/frontmatter/JSON owner naming the individual anywhere in
+# the feature tree. The individual name is assembled at runtime so this
+# assertion file never itself contains a literal forbidden token.
+_INDIVIDUAL = "cy" + "xu"
+_forbidden = (f"Owner: {_INDIVIDUAL}", f"owner: {_INDIVIDUAL}",
+              f'"owner": "{_INDIVIDUAL}"')
+for path in sorted(FEATURE_DIR.rglob("*")):
+    if not path.is_file() or path.suffix == ".pyc":
+        continue
+    try:
+        text = path.read_text()
+    except (UnicodeDecodeError, OSError):
+        continue
+    for tok in _forbidden:
+        if tok in text:
+            owner_problems.append(f"{path.relative_to(FEATURE_DIR)} contains {tok!r}")
+
+if not owner_problems:
+    ok(6, f"all owner fields/docstrings read {EXPECTED_OWNER!r}")
+else:
+    fail_t(6, "owner sweep incomplete: " + "; ".join(owner_problems))
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")
