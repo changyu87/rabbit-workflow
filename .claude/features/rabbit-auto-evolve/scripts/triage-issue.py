@@ -5,8 +5,9 @@ Per rabbit-auto-evolve spec.md Inv 3, emits a JSON object on stdout with
 fields: issue, decision, reason_code, rationale, feature, features,
 contract_touch, priority, blocked_by, planning_note. The `priority` field
 (issue #484) echoes the issue's priority:<level> label value (None when
-absent); plan-batch.py consumes it as its PRIMARY ordering key (Inv 4 /
-issue #479). The `features` field (Inv 26 /
+absent); plan-batch.py folds it into the loop's computed priority score as
+ONE weighted input among several (Inv 46 / issue #441, refining the
+priority-primary key of Inv 4 / issue #479). The `features` field (Inv 26 /
 issue #435, #443) is the distinct set of feature directories the item
 touches — the union of the feature:<name> label, every
 `.claude/features/<name>/` body path, and every canonical feature name
@@ -558,9 +559,10 @@ def classify(issue_num, repo_root):
         "features": _feature_set(feature_label, body, title, feature_names),
         "contract_touch": ctouch,
         # `priority` (issue #484) echoes the issue's priority:<level> label
-        # value (None when absent). plan-batch.py consumes it as its PRIMARY
-        # ordering key (Inv 4 / issue #479); omitting it silently collapses
-        # the priority-primary ordering to the contract-touch-only tiebreak.
+        # value (None when absent). plan-batch.py folds it into the loop's
+        # computed priority score as ONE weighted input (Inv 46 / issue #441,
+        # refining the priority-primary key of Inv 4 / issue #479); a None
+        # filer label simply contributes nothing to the score.
         "priority": priority_label,
         "blocked_by": [],
         # planning_note is null for non-defer decisions; each defer return

@@ -514,4 +514,179 @@ else:
         fail(f"research-empty: bad JSON ({e}); stdout={proc.stdout!r}")
 
 
+# ---------------------------------------------------------------------------
+# Scenario 15 — Loop-computed priority score (issue #441)
+#   Two items with IDENTICAL filer priority labels but different
+#   blocking-fanout: the issue that more OTHER open items declare a
+#   `blocked-by` dependency on must rank FIRST. The loop computes its own
+#   priority score from observable signals; the filer label is one input
+#   among several, no longer the sole determinant.
+#
+#   1501 is referenced as a blocker by 1502 and 1503 (fanout=2); 1502 has
+#   fanout=0. Both are filed at `priority:high`. The higher-fanout item
+#   (1501) must lead selection_order.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 1501, "feature": "Fa", "contract_touch": False, "priority": "high",
+     "decision": "work", "blocked_by": []},
+    {"issue": 1502, "feature": "Fb", "contract_touch": False, "priority": "high",
+     "decision": "work", "blocked_by": [1501]},
+    {"issue": 1503, "feature": "Fc", "contract_touch": False, "priority": "high",
+     "decision": "work", "blocked_by": [1501]},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"fanout-ordering: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        if not sel or sel[0] != 1501:
+            fail(f"fanout-ordering: high-fanout #1501 must lead selection_order, "
+                 f"got {sel!r}")
+        else:
+            ok("fanout-ordering: higher blocking-fanout item ranks first within "
+               "the same filer-label tier")
+    except json.JSONDecodeError as e:
+        fail(f"fanout-ordering: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 16 — Bug outranks enhancement across filer labels (issue #441)
+#   A `bug` at filer priority:medium with high blocking-fanout outranks an
+#   `enhancement` at filer priority:high with no fanout. The loop's computed
+#   score dilutes the filer label so a mislabeled-modest foundational bug is
+#   not stuck behind an assertively-labeled enhancement.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 1601, "feature": "Fa", "contract_touch": False, "priority": "high",
+     "decision": "work", "issue_type": "enhancement", "blocked_by": []},
+    {"issue": 1602, "feature": "Fb", "contract_touch": False, "priority": "medium",
+     "decision": "work", "issue_type": "bug", "blocked_by": []},
+    {"issue": 1603, "feature": "Fc", "contract_touch": False, "priority": "low",
+     "decision": "work", "issue_type": "enhancement", "blocked_by": [1602]},
+    {"issue": 1604, "feature": "Fd", "contract_touch": False, "priority": "low",
+     "decision": "work", "issue_type": "enhancement", "blocked_by": [1602]},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"bug-outranks: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        # 1602 is a bug with fanout=2; 1601 is a high-priority enhancement with
+        # fanout=0. The loop's score must rank the high-leverage bug ahead.
+        if 1602 not in sel or 1601 not in sel:
+            fail(f"bug-outranks: both items must appear, got {sel!r}")
+        elif sel.index(1602) >= sel.index(1601):
+            fail(f"bug-outranks: high-fanout bug #1602 must outrank "
+                 f"enhancement #1601, got order {sel!r}")
+        else:
+            ok("bug-outranks: high-leverage bug at filer:medium outranks "
+               "filer:high enhancement (filer label diluted)")
+    except json.JSONDecodeError as e:
+        fail(f"bug-outranks: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 17 — All signals equal → deterministic filer-label then issue#
+#   When every observable signal is identical, ordering falls back to the
+#   filer label, then issue number — fully deterministic (issue #441
+#   acceptance).
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 1703, "feature": "Fa", "contract_touch": False, "priority": "medium",
+     "decision": "work", "issue_type": "enhancement", "blocked_by": []},
+    {"issue": 1701, "feature": "Fb", "contract_touch": False, "priority": "high",
+     "decision": "work", "issue_type": "enhancement", "blocked_by": []},
+    {"issue": 1702, "feature": "Fc", "contract_touch": False, "priority": "high",
+     "decision": "work", "issue_type": "enhancement", "blocked_by": []},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"equal-signals: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        # 1701, 1702 both high (filer label wins over 1703 medium); within the
+        # high tier, issue# asc → 1701 before 1702; medium 1703 last.
+        if sel != [1701, 1702, 1703]:
+            fail(f"equal-signals: expected [1701, 1702, 1703] (filer label then "
+                 f"issue#), got {sel!r}")
+        else:
+            ok("equal-signals: deterministic fallback to filer label then issue#")
+    except json.JSONDecodeError as e:
+        fail(f"equal-signals: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 18 — Computed score is transparent (issue #441)
+#   Every emitted item carries both the filer label and the loop-computed
+#   score so the loop's judgment is observable (the transparency
+#   requirement). plan-batch emits a `computed_scores` map (issue-number
+#   string → float in [0, 1]) alongside the existing keys.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 1801, "feature": "Fa", "contract_touch": False, "priority": "high",
+     "decision": "work", "issue_type": "bug", "blocked_by": []},
+    {"issue": 1802, "feature": "Fb", "contract_touch": False, "priority": "low",
+     "decision": "work", "issue_type": "enhancement", "blocked_by": [1801]},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"transparency: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        scores = out.get("computed_scores")
+        if not isinstance(scores, dict):
+            fail(f"transparency: computed_scores must be a dict, got {scores!r}")
+        elif set(scores.keys()) != {"1801", "1802"}:
+            fail(f"transparency: computed_scores must cover every selected "
+                 f"item, got keys {sorted(scores.keys())!r}")
+        elif not all(isinstance(v, (int, float)) and 0.0 <= v <= 1.0
+                     for v in scores.values()):
+            fail(f"transparency: every score must be a float in [0,1], got "
+                 f"{scores!r}")
+        else:
+            ok("transparency: computed_scores map present, normalized to [0,1], "
+               "covers every selected item")
+    except json.JSONDecodeError as e:
+        fail(f"transparency: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 19 — Contract barrier still holds within a score tier (#441/#479)
+#   #441 makes computed_score the PRIMARY ordering key but preserves the
+#   contract-touch barrier as the SECONDARY tiebreak (Inv 26 grouping
+#   correctness). Two items with identical computed signals, one
+#   contract-touch: the contract item leads and lands in barrier_first.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 1901, "feature": "Fx", "contract_touch": False, "priority": "high",
+     "decision": "work", "issue_type": "enhancement", "blocked_by": []},
+    {"issue": 1902, "feature": "contract", "contract_touch": True, "priority": "high",
+     "decision": "work", "issue_type": "enhancement", "blocked_by": []},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"score-tier-barrier: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        if out.get("barrier_first") != [1902]:
+            fail(f"score-tier-barrier: contract item must lead within an equal "
+                 f"score tier, barrier_first={out.get('barrier_first')!r}")
+        elif out.get("selection_order") != [1902, 1901]:
+            fail(f"score-tier-barrier: selection_order="
+                 f"{out.get('selection_order')!r}, want [1902, 1901]")
+        else:
+            ok("score-tier-barrier: contract barrier preserved as secondary "
+               "tiebreak within an equal score tier")
+    except json.JSONDecodeError as e:
+        fail(f"score-tier-barrier: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
 sys.exit(FAIL)
