@@ -1,14 +1,14 @@
 ---
 name: rabbit-spec-create
-description: Draft the initial body of docs/spec/spec.md for a newly-declared rabbit feature by dispatching the read-only spec-creator subagent. Use when a fresh feature has been scaffolded and needs its first spec draft — phrases like "draft a spec for X", "seed the spec for X", "create initial spec for X", "/rabbit-spec-create". Works in both modes: standalone (no globs — produces a skeleton from feature name alone) and plugin (with globs — drafts from real user code). Single-feature per invocation. Invoke as Skill("rabbit-spec-create", args: "<feature-name>") for a skeleton, or Skill("rabbit-spec-create", args: "<feature-name> <glob1> <glob2> ...") to read from code.
-version: 1.0.0
+description: Draft the initial body of a newly-declared rabbit feature's spec.md (canonical specs/spec.md, legacy docs/spec/spec.md) by dispatching the read-only spec-creator subagent. Use when a fresh feature has been scaffolded and needs its first spec draft — phrases like "draft a spec for X", "seed the spec for X", "create initial spec for X", "/rabbit-spec-create". Works in both modes: standalone (no globs — produces a skeleton from feature name alone) and plugin (with globs — drafts from real user code). Single-feature per invocation. Invoke as Skill("rabbit-spec-create", args: "<feature-name>") for a skeleton, or Skill("rabbit-spec-create", args: "<feature-name> <glob1> <glob2> ...") to read from code.
+version: 1.1.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 ---
 
 # rabbit-spec-create — Initial Spec Drafting Skill
 
-Your job: drive the spec-creator subagent to produce a draft `docs/spec/spec.md` body for a newly-declared feature, then write that body to disk under the correct path for the current rabbit mode.
+Your job: drive the spec-creator subagent to produce a draft spec.md body for a newly-declared feature, then write that body to disk under the correct path for the current rabbit mode and spec-file layout (canonical `specs/spec.md`, legacy `docs/spec/spec.md`).
 
 This is a thin orchestration wrapper. The reading-and-drafting work happens in the subagent (read-only, parallel-safe); your role is to assemble the prompt, dispatch the agent, and persist the result.
 
@@ -23,12 +23,26 @@ Args format: `<feature-name> [<glob1> <glob2> ...]`
 
 Mode is auto-detected from `<repo>/.rabbit/.runtime/mode` (written at SessionStart by `rabbit-meta`'s `write_mode_marker`).
 
-| Mode | Spec path the draft is written to |
+| Mode | Destination feature root |
 |---|---|
-| Standalone (marker absent or `standalone`) | `.claude/features/<feature-name>/docs/spec/spec.md` |
-| Plugin (marker contains `plugin`) | `<repo>/.rabbit/rabbit-project/features/<feature-name>/docs/spec/spec.md` |
+| Standalone (marker absent or `standalone`) | `.claude/features/<feature-name>/` |
+| Plugin (marker contains `plugin`) | `<repo>/.rabbit/rabbit-project/features/<feature-name>/` |
 
-The mode affects only the destination path — the agent's drafting behavior is the same in both modes (it adapts to whether the resolved file list is empty or not).
+The mode affects only the destination feature root — the agent's drafting behavior is the same in both modes (it adapts to whether the resolved file list is empty or not).
+
+### Spec-file layout (specs/ canonical, docs/spec/ legacy fallback)
+
+The in-feature spec-file layout is resolved INDEPENDENTLY of the mode root
+above. The `docs/spec/ -> specs/` migration (issue #399) runs feature-by-
+feature, so resolve the destination `<spec_path>` like this:
+
+- If `<dest_root>/specs/spec.md` already exists, write the draft there
+  (the **canonical** layout).
+- Else if `<dest_root>/docs/spec/spec.md` already exists, write the draft
+  there (the **legacy** fallback — never silently create a sibling
+  `specs/spec.md` next to an existing `docs/spec/spec.md`).
+- Else (brand-new scaffold, neither layout present), write the draft to the
+  canonical `<dest_root>/specs/spec.md`.
 
 ## Protocol
 
@@ -67,9 +81,9 @@ In standalone mode (empty file list) the agent emits a skeleton with `(TBD)` pla
 
 ### Step 3 — Write the draft to spec.md
 
-Resolve the destination path from the detected mode, then write the agent's returned body. Preserve any existing YAML frontmatter at the top of the file (the scaffold step writes the frontmatter; this skill only writes the body that follows it).
+Resolve the destination `<spec_path>` from the detected mode root AND the spec-file layout (see the **Spec-file layout** subsection under **Modes** above: `specs/spec.md` canonical, `docs/spec/spec.md` legacy fallback), then write the agent's returned body. Preserve any existing YAML frontmatter at the top of the file (the scaffold step writes the frontmatter; this skill only writes the body that follows it).
 
-If `docs/spec/spec.md` does not exist at the destination, write a new file beginning with a minimal frontmatter block (`feature`, `version: 1.0.0`, `owner`, `template_version: 2.0.0`, `status: active`) followed by the draft body.
+If neither `<dest_root>/specs/spec.md` nor `<dest_root>/docs/spec/spec.md` exists, write a new file at the canonical `<dest_root>/specs/spec.md`, beginning with a minimal frontmatter block (`feature`, `version: 1.0.0`, `owner`, `template_version: 2.0.0`, `status: active`) followed by the draft body.
 
 ### Step 4 — Report
 
@@ -78,7 +92,7 @@ Tell the caller the path of the written file and a one-line summary of what the 
 ## When to use vs not
 
 **Use** when:
-- A new feature has just been scaffolded and `docs/spec/spec.md` is empty or contains only template placeholders
+- A new feature has just been scaffolded and its spec.md (canonical `specs/spec.md`, or legacy `docs/spec/spec.md`) is empty or contains only template placeholders
 - A `rabbit-decompose` workflow has emitted a list of accepted features and each needs a first-pass spec body in parallel
 - The user explicitly asks to seed or draft an initial spec for a named feature
 

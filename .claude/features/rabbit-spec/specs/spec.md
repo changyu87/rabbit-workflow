@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.4.0
+version: 1.5.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -12,7 +12,8 @@ status: active
 ## Purpose
 
 rabbit-spec owns the rabbit workflow's spec-lifecycle skills — the skills that
-draft and revise a feature's `docs/spec/spec.md`. After Stage 2 it hosts
+draft and revise a feature's `specs/spec.md` (legacy layout: `docs/spec/spec.md`).
+After Stage 2 it hosts
 `rabbit-spec-create`, the initial-spec-drafting skill that absorbs the
 behavior of the former `spec-seeder` feature; Stage 3 will add
 `rabbit-spec-update`, the spec-revision skill that absorbs and subagent-ifies
@@ -33,7 +34,7 @@ agent, and writes the returned body to disk.
 - `scripts/dispatch-spec-create.py` — Python prompt assembler invoked by
   the skill; resolves globs, caps at 50 files, calls
   `contract/scripts/build-prompt.py`
-- `docs/spec/spec.md`, `docs/spec/contract.md`, `feature.json`,
+- `specs/spec.md`, `specs/contract.md`, `feature.json`,
   `test/run.py` — feature scaffolding
 
 ## Mode awareness
@@ -94,8 +95,8 @@ length including zero.
 
 4. `skills/rabbit-spec-create/SKILL.md` MUST exist with YAML frontmatter
    declaring `name: rabbit-spec-create`, a description naming both standalone
-   and plugin modes, `version: 1.0.0`, `owner: rabbit-workflow team`, and
-   a `deprecation_criterion`. The body documents the 4-step orchestration
+   and plugin modes, `version: 1.1.0` or later, `owner: rabbit-workflow team`,
+   and a `deprecation_criterion`. The body documents the 4-step orchestration
    protocol (assemble prompt → dispatch agent → write to spec.md → report).
 
 5. **`skills/rabbit-spec-update/SKILL.md` dual-mode feature_root resolution.**
@@ -129,6 +130,37 @@ length including zero.
    the standalone-mode branch (no unconditional uses). Wired into
    `test/run.py`.
 
+6. **Spec-path layout dual-read (issue #399 coexistence window).** Both
+   spec-lifecycle skills resolve the in-feature spec-file *layout*
+   independently of the mode prefix (Inv 5). The canonical layout is
+   `<feature_root>/specs/spec.md` (and `<feature_root>/specs/contract.md`);
+   the legacy layout is `<feature_root>/docs/spec/spec.md`. During the
+   `docs/spec/ -> specs/` migration coexistence window, features migrate
+   one-by-one, so the skills MUST work against BOTH layouts:
+   - `skills/rabbit-spec-update/SKILL.md` MUST instruct the skill to PREFER
+     `<feature_root>/specs/spec.md` and FALL BACK to
+     `<feature_root>/docs/spec/spec.md` when the preferred path is absent,
+     for every Step 1 Read (spec.md, contract.md, feature.json — feature.json
+     stays at `<feature_root>/feature.json` regardless of layout) and the
+     Step 4 Edit/Write of spec.md. The skill MUST edit whichever layout it
+     resolved (never silently create a new `specs/` file alongside an
+     existing `docs/spec/` one). The skill body MUST mention both the
+     `specs/` and `docs/spec/` spec-file paths and name `specs/` as the
+     preferred layout.
+   - `skills/rabbit-spec-create/SKILL.md` MUST write the drafted body to
+     `<dest_root>/specs/spec.md` when a `specs/spec.md` already exists at the
+     destination, OR to `<dest_root>/docs/spec/spec.md` when only the legacy
+     layout exists; when NEITHER exists (brand-new scaffold) it MUST write
+     the canonical `<dest_root>/specs/spec.md`. The skill body MUST mention
+     both the `specs/` and `docs/spec/` destination paths and name `specs/`
+     as the canonical destination for new specs.
+   The deprecation criterion for this dual-read behavior: when every rabbit
+   feature has migrated off `docs/spec/` and the legacy fallback can be
+   dropped (tracked by issue #399). rabbit-spec's own spec.md/contract.md
+   live under `specs/` after this migration. Enforced by
+   `test/test-spec-path-layout-dual-read.py` (source-inspection of both
+   SKILL.md bodies). Wired into `test/run.py`.
+
 ## Tech Stack
 
 Python 3 stdlib only.
@@ -143,6 +175,9 @@ coverage arrives with the surface artifacts in this stage:
   (with paths and without) and asserts it produces a prompt-file path
 - `test-prompts-section-shape.py` — loads feature.json and asserts the
   `prompts` entry shape matches Inv 1
+- `test-spec-path-layout-dual-read.py` — source-inspects both SKILL.md
+  bodies and asserts the `specs/`-preferred, `docs/spec/`-fallback layout
+  resolution required by Inv 6
 
 ## Out of Scope
 
