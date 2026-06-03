@@ -4,7 +4,7 @@ Inv 1 of the rabbit-meta feature. Pure stdlib; no side effects, no env reads,
 no logging.
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team
 Deprecation criterion: inherits from rabbit-meta feature deprecation
     (when rabbit's per-project plugin model is superseded by a native
     Claude Code workflow contract mechanism).

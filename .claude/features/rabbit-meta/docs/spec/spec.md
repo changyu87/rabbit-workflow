@@ -1,7 +1,7 @@
 ---
 feature: rabbit-meta
-version: 0.3.0
-owner: cyxu
+version: 0.3.1
+owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when rabbit's per-project plugin model is superseded by a native Claude Code workflow contract mechanism
 status: active
