@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.13.0
+version: 0.14.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -308,14 +308,14 @@ Phase E merges complete.
    ```json
    {
      "issue": 123,
-     "decision": "work" | "close-not-planned" | "defer",
+     "decision": "work" | "close-not-planned" | "defer" | "research",
      "reason_code": "<short-tag>",
      "rationale": "<one sentence>",
      "feature": "<feature-name or null>",
      "features": ["<feature-name>", "..."],
      "contract_touch": true,
      "blocked_by": [124],
-     "planning_note": "<non-empty string for defer, else null>"
+     "planning_note": "<non-empty string for defer/research, else null>"
    }
    ```
 
@@ -326,13 +326,53 @@ Phase E merges complete.
    dispatch shape (Stage 2). A malformed-labels issue with no body paths
    carries `features: []`.
 
-   The decision set is EXACTLY `{work, defer, close-not-planned}` (issue
-   #423 Part A). `close-completed` is NEVER emittable from triage — a
+   The decision set is EXACTLY `{work, defer, close-not-planned, research}`
+   (issue #423 Part A; `research` added by issue #478). `close-completed`
+   is NEVER emittable from triage — a
    completed closure can only be claimed once work has actually landed,
    which is the merge phase's job (Inv 6 step 4 via `item-status.py close
-   --reason completed --commit-sha`), never triage's. Every `defer`
-   decision MUST carry a non-empty `planning_note` describing what analysis
-   would unblock dispatch; non-defer decisions carry `planning_note: null`.
+   --reason completed --commit-sha`), never triage's. Every `defer` and
+   every `research` decision MUST carry a non-empty `planning_note`
+   describing what analysis would unblock dispatch (for `defer`) or what
+   should be investigated and reported (for `research`); the `work` and
+   `close-not-planned` decisions carry `planning_note: null`.
+
+   ### Research/investigation classification (issue #478)
+
+   A research/spike/investigation item ("study X", "evaluate Y", "survey
+   Z", "assess the tradeoffs", "recommend an approach", "compare A and B",
+   "explore N") asks for FINDINGS or a RECOMMENDATION, not a behavior
+   change. The loop's only code-producing execution shape is a TDD-cycle
+   PR; before issue #478 such items had no home, so they were wrongly
+   closed `not-planned` — a valid issue silently dropped, in violation of
+   Inv 25 (convergence). Triage now classifies them as
+   `decision=research` so the loop can route them to the research dispatch
+   shape (Inv 27) instead.
+
+   Research classification runs AFTER rule 7 would otherwise return `work`
+   (alongside the #463 reconciliation) — it NEVER overrides a
+   `close-not-planned` / `blocked` / `malformed-labels` verdict (those are
+   structural facts, not intent wording). Detection signals (ALL of the
+   following must hold, so a normal "implement X" item is never
+   misrouted):
+
+   1. **Research verb present.** The title OR body contains a
+      research/investigation verb (case-insensitive whole-word match):
+      `study`, `evaluate`, `investigate`, `survey`, `assess`,
+      `recommend`, `compare`, `explore`.
+   2. **No concrete code-change target.** The body declares no concrete
+      code-change target — no `.claude/features/<name>/` path reference
+      beyond the labelled feature dir, and no imperative implement/fix/add
+      phrasing pointing at a behavior change.
+   3. **Findings/recommendation requested.** The body asks for a
+      recommendation, findings, a report, an analysis, or an evaluation
+      rather than a behavior change.
+
+   When all three hold, triage emits `decision=research`,
+   `reason_code=research`, and a non-empty `planning_note` summarizing what
+   to investigate. A research item is NEVER `close-not-planned` (it is a
+   valid issue) and NEVER `work`/`dispatch` (it produces findings, not
+   code).
 
    The script reads only:
    - Issue metadata (title, body, labels, state, state reason, and the
@@ -367,7 +407,7 @@ Phase E merges complete.
    | 4 | Feature's `feature.json.status == "retired"` | `close-not-planned` | `feature-retired` |
    | 5 | Issue body declares `blocked-by: #N` AND any cited `#N` is still open | `defer` (set `blocked_by`) | `blocked` |
    | 6 | Feature's spec head matter already documents the requested behavior verbatim (case-folded substring match of the issue title's content-word tail) | `close-not-planned` | `already-spec'd` |
-   | 7 | Otherwise | `work` | `actionable` |
+   | 7 | Otherwise actionable; refined by research classification (issue #478) and #463 comment-thread reconciliation | `work` / `research` / `defer` | `actionable` / `research` / `needs-judgment` |
 
    `contract_touch` is `true` iff the issue carries a
    `feature:contract` label OR the body literally declares any path
@@ -463,6 +503,13 @@ Phase E merges complete.
      - No comments and no title/body conflict → unchanged pre-#463
        behavior (`decision=work`, `reason_code=actionable`, no correction
        noted) — the no-regression guard.
+   - Research classification (issue #478):
+     - A "study X" / "evaluate Y" issue body asking for findings, with no
+       concrete code-change target → `decision=research`,
+       `reason_code=research`, non-empty `planning_note`, and NEVER
+       `close-not-planned`.
+     - A normal "implement X" actionable issue (no research verb) →
+       unchanged `decision=work` (the research path must not over-trigger).
    - Smoke test: invoke with `--help`; assert exit 0 and recognizable
      usage text.
 
@@ -470,18 +517,24 @@ Phase E merges complete.
    `cat triage.json | python3 .claude/features/rabbit-auto-evolve/scripts/plan-batch.py [--max-parallel N]`
    reads a JSON array of triage objects on stdin and emits a
    deterministic dispatch plan to stdout. Items whose `decision` is
-   anything other than `"work"` are silently dropped (`close-not-planned`,
-   `defer`, etc.) — the caller MAY pass a pre-filtered work-only
-   array OR the full unfiltered triage output of `triage-batch.py`
-   (per Inv 18 the standard pipe is
-   `fetch-queue | triage-batch | plan-batch`).
+   neither `"work"` nor `"research"` are silently dropped
+   (`close-not-planned`, `defer`, etc.) — the caller MAY pass a
+   pre-filtered work-only array OR the full unfiltered triage output of
+   `triage-batch.py` (per Inv 18 the standard pipe is
+   `fetch-queue | triage-batch | plan-batch`). `research` items (issue
+   #478) are retained: they appear in `selection_order` and carry a
+   `dispatch_shapes` entry of `"research"`, and their issue numbers are
+   listed under the `research_items` key — but they NEVER enter
+   `barrier_first` or `groups` (they produce findings, not code, so the
+   conflict-graph parallel-dispatch grouping does not apply to them).
 
    ```json
    {
-     "selection_order": [124, 125, 123],
-     "dispatch_shapes": {"124": "parallel-per-feature", "125": "multi-subagent-barrier", "123": "decomposition"},
+     "selection_order": [124, 125, 123, 130],
+     "dispatch_shapes": {"124": "parallel-per-feature", "125": "multi-subagent-barrier", "123": "decomposition", "130": "research"},
      "barrier_first": [123, 124],
-     "groups": [[125, 126], [127]]
+     "groups": [[125, 126], [127]],
+     "research_items": [130]
    }
    ```
 
@@ -544,6 +597,16 @@ Phase E merges complete.
    contract-touch item never leads `barrier_first` unless it also leads
    `selection_order`.
 
+   **Research items (issue #478).** A `decision == "research"` item is the
+   4th dispatch shape. It is included in `selection_order` (sorted by the
+   same composite key) and gets a `dispatch_shapes[issue] = "research"`
+   entry, and its issue number is listed under `research_items` (sorted
+   ascending). It is EXCLUDED from `barrier_first` and from the
+   conflict-graph `groups` partition: research produces findings, not code,
+   so the same-feature conflict edges and the contract-touch barrier do not
+   apply. The output always carries a `research_items` key (an empty list
+   when no research items are present).
+
    Exit code: 0 on success; non-zero on malformed stdin JSON or
    invalid `--max-parallel` value.
 
@@ -567,6 +630,11 @@ Phase E merges complete.
      non-contract item both at `high` priority → the contract item
      precedes the non-contract item; `barrier_first` holds the contract
      item.
+   - Research item (issue #478): a batch with a `decision: "research"`
+     item plus a `decision: "work"` item → the research issue appears in
+     `selection_order` with `dispatch_shapes[N] == "research"` and `N` in
+     `research_items`, and is absent from `barrier_first` and `groups`; the
+     work item is unaffected (its shape + grouping unchanged).
    - `--help` smoke: exit 0 with recognizable usage text.
 
 5. **`safety-check.py` five bottom-line invariants.** The CLI
@@ -1632,6 +1700,67 @@ Phase E merges complete.
     extraction in `test/test-dispatch-shape.py`, and
     `test/test-spec-dispatch-shape-invariant.py` (asserts this invariant text
     is present and that the struck shape is not listed as valid).
+
+27. **Research/Investigation shape — the 4th dispatch shape (issue #478).**
+    The loop has a non-TDD execution path for research/spike/investigation
+    items. Such items ("study X", "evaluate Y", "survey Z", "assess the
+    tradeoffs", "recommend an approach", "compare A and B", "explore N")
+    ask for FINDINGS or a RECOMMENDATION, not a behavior change. Because the
+    loop's only code-producing shape is a TDD-cycle PR, before this
+    invariant a research item could not be dispatched and was wrongly closed
+    `not-planned` — a valid issue silently dropped, violating Inv 25
+    (convergence). The research shape gives them a home.
+
+    **(a) Classification (triage).** `triage-issue.py` classifies an item as
+    `decision=research` (`reason_code=research`) when ALL three signals hold:
+    a research/investigation verb (`study`, `evaluate`, `investigate`,
+    `survey`, `assess`, `recommend`, `compare`, `explore`) appears in the
+    title or body; the body declares no concrete code-change target; and the
+    body asks for a recommendation / findings / report / analysis rather than
+    a behavior change (Inv 3 "Research/investigation classification"
+    subsection). A research item is NEVER `close-not-planned` (it is valid)
+    and NEVER `work`/`dispatch` (it produces no code).
+
+    **(b) Routing (plan-batch).** `plan-batch.py` emits the research shape as
+    the 4th dispatch shape alongside `parallel-per-feature`,
+    `multi-subagent-barrier`, and `decomposition`. A `decision == "research"`
+    item appears in `selection_order` (by the same composite priority sort),
+    carries `dispatch_shapes[issue] == "research"`, and its issue number is
+    listed under the `research_items` output key. It is EXCLUDED from
+    `barrier_first` and from the conflict-graph `groups` partition (Inv 4) —
+    findings do not edit code, so the same-feature conflict edges and the
+    contract-touch barrier do not apply.
+
+    **(c) Execution.** Findings are produced by a READ-ONLY research
+    subagent — it reads the codebase and the issue, and writes nothing
+    except the findings document. No TDD cycle, no scope-active marker for
+    code edits.
+
+    **(d) Deliverable + close path.** Findings are committed as a document
+    under `docs/findings/<issue-N>-<slug>.md` in the named feature's scope
+    (e.g. `.claude/features/<feature>/docs/findings/478-research-path.md`).
+    No PR is required — a direct commit of the findings doc to the feature's
+    `docs/findings/` subdirectory is sufficient and provides the commit SHA.
+    The item is then closed `completed` referencing that findings commit SHA
+    (via `item-status.py close --reason completed --commit-sha <sha>`, the
+    existing `completed` gate). A valid research item is NEVER closed
+    `not-planned`.
+
+    A future enhancement (DISCOVERED ISSUE, rabbit-issue scope) would let
+    `item-status.py close --reason completed` accept a
+    `--findings-comment-url <url>` alternative to `--commit-sha` so a
+    comment-only findings deliverable needs no committed doc. Until that
+    lands, the committed-doc path above is the canonical research close path
+    and reuses the existing `--commit-sha` gate. `item-status.py` is owned by
+    `rabbit-issue` and is NOT edited by this feature.
+
+    Enforced by `test/test-triage-rules.py` (a "study X" findings issue →
+    `decision=research`, never `not-planned`; a normal "implement X" issue
+    stays `work` — the over-trigger guard), `test/test-plan-batch.py` (a
+    research item → `dispatch_shapes[N] == "research"`, `N` in
+    `research_items`, absent from `barrier_first`/`groups`; a co-batched work
+    item unaffected), and `test/test-spec-research-shape-invariant.py`
+    (asserts this invariant text is present in the spec).
 
 ## Known gaps
 

@@ -10,12 +10,16 @@ Implements the seven-rule decision table
 (top-down, first match wins); any ambiguity defaults to decision=defer,
 reason_code=needs-judgment (never silently to work).
 
-The decision set is exactly {work, defer, close-not-planned} (issue #423
-Part A). `close-completed` is NEVER emittable from triage — a completed
+The decision set is exactly {work, defer, close-not-planned, research}
+(issue #423 Part A; `research` added by issue #478). `close-completed` is
+NEVER emittable from triage — a completed
 closure can only be claimed once work has actually landed (the merge
-phase's job via item-status.py, not triage's). Every `defer` decision
-carries a non-empty `planning_note` describing what analysis would
-unblock dispatch; non-defer decisions carry `planning_note: null`.
+phase's job via item-status.py, not triage's). Every `defer` and every
+`research` decision carries a non-empty `planning_note` (for defer: what
+analysis would unblock dispatch; for research: what to investigate and
+report); the `work` and `close-not-planned` decisions carry
+`planning_note: null`. A research/investigation item ("study X",
+"evaluate Y") asks for FINDINGS, not code — see `_is_research`.
 
 Read surface (strictly bounded):
   - Issue metadata via `gh issue view <N> --json
@@ -40,7 +44,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.4.0
+Version: 1.5.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -207,6 +211,70 @@ def _feature_set(feature_label, body):
     return sorted(feats)
 
 
+# Research/investigation classification (issue #478) ------------------------
+# A research/spike item asks for FINDINGS or a RECOMMENDATION, not a behavior
+# change. The loop's only code-producing shape is a TDD-cycle PR, so such an
+# item has no dispatch home — before #478 it was wrongly closed not-planned
+# (an Inv 25 convergence violation). Triage classifies it as
+# decision=research so plan-batch can route it to the research shape (Inv 27).
+
+# Research/investigation verbs (whole-word, case-insensitive). All three
+# detection signals must hold (see _is_research) so a normal "implement X"
+# item is never misrouted.
+_RESEARCH_VERB = re.compile(
+    r"\b(study|evaluate|investigate|survey|assess|recommend|compare|explore)"
+    r"(?:s|d|ing|ed|ment|ation|ations)?\b",
+    re.IGNORECASE,
+)
+
+# Findings/recommendation request signals — the body asks for an analysis or
+# a recommendation rather than a behavior change (whole-word/phrase,
+# case-insensitive).
+_FINDINGS_REQUEST = re.compile(
+    r"\b(findings?|recommendation|recommend|report|analysis|"
+    r"evaluation|assessment|tradeoffs?|trade-offs?|options?|approaches?)\b",
+    re.IGNORECASE,
+)
+
+# Imperative behavior-change phrasing that points at a concrete code change —
+# its presence DISQUALIFIES the research classification (the item asks for
+# code, not findings).
+_CODE_CHANGE_PHRASE = re.compile(
+    r"\b(implement|fix|add|refactor|rename|delete|remove|wire|patch|"
+    r"migrate)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_research(title, body, feature_label):
+    """True iff the issue is a research/investigation item (issue #478).
+
+    ALL three signals must hold:
+      1. a research verb appears in the title or body;
+      2. no concrete code-change target — no `.claude/features/<name>/` path
+         reference beyond the labelled feature dir, and no imperative
+         implement/fix/add phrasing pointing at a behavior change;
+      3. the body asks for a recommendation / findings / report / analysis.
+    """
+    text = f"{title or ''}\n{body or ''}"
+    # Signal 1 — research verb present.
+    if not _RESEARCH_VERB.search(text):
+        return False
+    # Signal 2 — no concrete code-change target.
+    #   (a) no extra feature-dir path reference beyond the labelled one.
+    body_feats = {m for m in _FEATURE_PATH.findall(body or "")}
+    extra_feats = body_feats - ({feature_label} if feature_label else set())
+    if extra_feats:
+        return False
+    #   (b) no imperative code-change phrasing.
+    if _CODE_CHANGE_PHRASE.search(text):
+        return False
+    # Signal 3 — findings / recommendation requested.
+    if not _FINDINGS_REQUEST.search(text):
+        return False
+    return True
+
+
 # Match `blocked-by: #N` (case-insensitive). Captures the integer N.
 _BLOCKED_BY_GOOD = re.compile(r"blocked-by:\s*#(\d+)", re.IGNORECASE)
 # Match `blocked-by:` declared at all (used to detect malformed variants).
@@ -320,15 +388,10 @@ def _reconcile(base, title, body, state_reason, comments):
     reopened = (state_reason or "").casefold() == "reopened"
     has_comments = bool(_comment_bodies(comments))
 
-    # No detection signal → strict pre-#463 pass-through (no-regression).
-    if not correction and not conflict and not (reopened and has_comments):
-        return dict(base,
-                    decision="work",
-                    reason_code="actionable",
-                    rationale="No earlier rule matched; issue is actionable.")
-
     # An authoritative correction comment supersedes the original body: the
-    # most recent coherent intent wins → dispatch the corrected work.
+    # most recent coherent intent wins → dispatch the corrected work. This is
+    # checked FIRST so a deliberate maintainer correction overrides a stale
+    # research framing as much as a stale code-change framing (issue #463).
     if correction:
         return dict(base,
                     decision="work",
@@ -336,6 +399,32 @@ def _reconcile(base, title, body, state_reason, comments):
                     rationale="A correction comment supersedes the original "
                               "body; dispatching the most recent corrected "
                               "intent.")
+
+    # Research/investigation classification (issue #478). When the issue asks
+    # for FINDINGS or a RECOMMENDATION rather than a behavior change, route it
+    # to the research dispatch shape (Inv 27) instead of a TDD-cycle PR.
+    # Checked after the correction-comment case (so a deliberate correction
+    # still wins) but before the work pass-through / conflict resolution.
+    if _is_research(title, body, base.get("feature")):
+        return dict(base,
+                    decision="research",
+                    reason_code="research",
+                    rationale="Issue asks for findings/recommendation, not a "
+                              "code change; routing to the research dispatch "
+                              "shape.",
+                    planning_note="Investigate and produce findings: " +
+                                  (title.strip() if title and title.strip()
+                                   else "see the issue body") +
+                                  ". Commit findings under "
+                                  "docs/findings/<issue-N>-<slug>.md and close "
+                                  "the item completed referencing that commit.")
+
+    # No detection signal → strict pre-#463 pass-through (no-regression).
+    if not conflict and not (reopened and has_comments):
+        return dict(base,
+                    decision="work",
+                    reason_code="actionable",
+                    rationale="No earlier rule matched; issue is actionable.")
 
     # A reopened issue whose retitle conflicts with the body on the target,
     # with no coherent superseding comment to resolve it, is genuinely

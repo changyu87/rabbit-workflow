@@ -595,4 +595,82 @@ with tempfile.TemporaryDirectory() as repo_root:
     )
 
 
+# ---------------------------------------------------------------------------
+# Research classification (issue #478): a "study X" issue asking for findings,
+# with no concrete code-change target, must classify as decision=research
+# (reason_code=research) with a non-empty planning_note — and NEVER
+# close-not-planned. The research path is the loop's 4th dispatch shape.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "research-feature")
+    issue_payload = json.dumps({
+        "number": 478,
+        "title": "Study the tradeoffs of caching strategies",
+        "body": ("We should investigate the available caching approaches and "
+                 "recommend which one fits best. Please produce findings and a "
+                 "recommendation — no code change is expected, just an "
+                 "analysis report."),
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:research-feature"},
+            {"name": "priority:high"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"478": issue_payload}, list_payload)
+    proc = run_script(repo_root, 478, shim_dir)
+    expect_decision(
+        "research-study", proc, "research", "research",
+        extra_assert=lambda r: (
+            None
+            if (isinstance(r.get("planning_note"), str)
+                and r["planning_note"].strip())
+            else "research decision must carry a non-empty planning_note"
+        ),
+    )
+    # Defense-in-depth: a research item must NEVER be close-not-planned.
+    try:
+        _res = json.loads(proc.stdout)
+        if _res.get("decision") == "close-not-planned":
+            fail("research-study: research item must NEVER be close-not-planned")
+        else:
+            ok("research-study: research item not closed not-planned")
+    except json.JSONDecodeError:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Research over-trigger guard (issue #478): a normal "implement X" actionable
+# issue with NO research verb must stay decision=work — the research path must
+# not capture ordinary code-change items.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "impl-feature")
+    issue_payload = json.dumps({
+        "number": 479,
+        "title": "Add a retry wrapper to the fetch helper",
+        "body": ("Implement a retry wrapper around the fetch helper so "
+                 "transient failures are retried up to 3 times."),
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:impl-feature"},
+            {"name": "priority:high"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"479": issue_payload}, list_payload)
+    proc = run_script(repo_root, 479, shim_dir)
+    expect_decision("research-no-overtrigger", proc, "work", "actionable")
+
+
 sys.exit(FAIL)
