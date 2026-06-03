@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """test-canonical-convention-text.py — E2E check that the policy rule files
-NAME the canonical specs/ spec-directory layout, never the legacy
-nested-under-docs layout.
+name the documented spec-directory layout, never the legacy nested-spec
+container.
 
-Issue #399 Phase 3 (final) updates the convention *source* — the policy rule
-files that every subagent and the repo-root CLAUDE.md consume — so the
-canonical-convention text matches the on-disk reality established in Phase 2
-(all 11 features migrated to the specs/ layout). This E2E test reads the rule
+The policy rule files that every subagent and the repo-root CLAUDE.md consume
+carry the "Where the metadata lives" convention. This E2E test reads the rule
 files exactly as a consumer would and asserts:
 
   - spec-rules.md ("Where the metadata lives", Specs/contracts row) names
@@ -14,14 +12,13 @@ files exactly as a consumer would and asserts:
   - philosophy.md (Bounded Scope) references the contract schema at
     `specs/contract.md`.
   - NO policy-owned file under the feature directory contains the legacy
-    nested-spec substring (the convention source is fully migrated; the
-    contract dual-read fallback lives in tdd-state-machine, not policy).
+    nested-spec container substring (a `spec` subdirectory under `docs`, the
+    prior #399 source layout). The flat `docs/spec.md` file — the live #399
+    target layout — is a distinct path and is allowed.
 
-Traces: #399 (Phase 3, policy)
-
-Version: 1.0.0
+Version: 2.0.0
 Owner: rabbit-workflow team (policy)
-Deprecation criterion: when the canonical spec-directory layout is enforced
+Deprecation criterion: when the spec-directory layout is enforced
 workflow-wide by a cross-feature harness that lints convention text against
 the on-disk layout, making this per-feature text assertion redundant.
 """
@@ -30,8 +27,10 @@ import sys
 
 FEATURE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 # Built from parts so this source file does not itself contain the contiguous
-# legacy substring (keeps the repo-wide convention grep clean).
-LEGACY_SUBSTR = "docs" + "/" + "spec"
+# legacy substring (keeps the repo-wide convention grep clean). The legacy
+# nested layout was a `spec` subdirectory under `docs`; the flat `docs/spec.md`
+# file is the live target layout and is NOT matched.
+LEGACY_SUBSTR = "docs" + "/" + "spec" + "/"
 
 
 def fail(msg):

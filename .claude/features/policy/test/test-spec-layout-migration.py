@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 """test-spec-layout-migration.py — End-to-end check of the policy feature's
-canonical spec-directory layout.
+canonical flat-docs/ documentation layout.
 
-Issue #399 Phase 2 relocates the policy feature's spec from the legacy
-`docs/`-nested layout to the canonical `specs/` layout. This E2E test asserts
-the post-migration on-disk shape of the feature, independent of any single
-helper script:
+Issue #399 relocates the policy feature's documentation surfaces to the flat
+`docs/` layout (`docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`). This
+E2E test asserts the post-migration on-disk shape of the feature, independent
+of any single helper script:
 
-  - specs/spec.md exists, is non-empty, and carries `feature: policy`
+  - docs/spec.md exists, is non-empty, and carries `feature: policy`
     frontmatter.
-  - specs/contract.md exists, is non-empty, and carries `feature: policy`
+  - docs/contract.md exists, is non-empty, and carries `feature: policy`
     frontmatter.
-  - No `docs/` directory remains anywhere in the feature (the legacy
-    nested spec container is fully removed once its only child migrated).
-  - specs/spec.md, specs/contract.md, and feature.json all declare the same
+  - No `specs/` directory remains in the feature (the legacy spec container
+    is fully removed once its children migrated to docs/).
+  - docs/spec.md, docs/contract.md, and feature.json all declare the same
     version (three-way frontmatter/JSON alignment survives the move).
+  - The contract resolver (resolve_spec_path) resolves both spec.md and
+    contract.md to the flat docs/ location, and validate_feature reports no
+    errors for the relocated feature.
 
-Traces: #399 (Phase 2, policy)
-
-Version: 1.0.0
+Version: 2.0.0
 Owner: rabbit-workflow team (policy)
-Deprecation criterion: when issue #399 Phase 3 lands and the canonical
-spec-directory layout is enforced workflow-wide by a cross-feature harness,
-making this per-feature on-disk assertion redundant.
+Deprecation criterion: when the flat docs/ layout is enforced workflow-wide by
+a cross-feature harness, making this per-feature on-disk assertion redundant.
 """
 import json
 import os
@@ -30,7 +30,16 @@ import re
 import sys
 
 FEATURE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-SPECS_DIR = os.path.join(FEATURE_DIR, "specs")
+DOCS_DIR = os.path.join(FEATURE_DIR, "docs")
+
+# Import the contract resolver/validator the way every cross-feature consumer
+# does, so this E2E test exercises the live resolution path.
+_CONTRACT_LIB = os.path.abspath(
+    os.path.join(FEATURE_DIR, "..", "contract", "lib")
+)
+if _CONTRACT_LIB not in sys.path:
+    sys.path.insert(0, _CONTRACT_LIB)
+from checks import resolve_spec_path, validate_feature  # noqa: E402
 
 
 def fail(msg):
@@ -52,21 +61,21 @@ def header_field(text, field):
     return m.group(1) if m else None
 
 
-# Canonical specs/ layout present and well-formed.
-spec_text = read_nonempty(os.path.join(SPECS_DIR, "spec.md"), "specs/spec.md")
+# Canonical flat docs/ layout present and well-formed.
+spec_text = read_nonempty(os.path.join(DOCS_DIR, "spec.md"), "docs/spec.md")
 contract_text = read_nonempty(
-    os.path.join(SPECS_DIR, "contract.md"), "specs/contract.md"
+    os.path.join(DOCS_DIR, "contract.md"), "docs/contract.md"
 )
 
 if header_field(spec_text, "feature") != "policy":
-    fail("specs/spec.md frontmatter does not declare `feature: policy`")
+    fail("docs/spec.md frontmatter does not declare `feature: policy`")
 if header_field(contract_text, "feature") != "policy":
-    fail("specs/contract.md frontmatter does not declare `feature: policy`")
+    fail("docs/contract.md frontmatter does not declare `feature: policy`")
 
-# Legacy docs/ container fully removed.
-for root, dirs, _files in os.walk(FEATURE_DIR):
-    if "docs" in dirs:
-        fail(f"legacy docs/ directory must not exist: {os.path.join(root, 'docs')}")
+# Legacy specs/ container fully removed.
+if os.path.isdir(os.path.join(FEATURE_DIR, "specs")):
+    fail(f"legacy specs/ directory must not exist: "
+         f"{os.path.join(FEATURE_DIR, 'specs')}")
 
 # Three-way version alignment survives the move.
 spec_v = header_field(spec_text, "version")
@@ -83,5 +92,17 @@ if not (spec_v == contract_v == feature_v):
         f"version mismatch after migration: spec={spec_v}, "
         f"contract={contract_v}, feature.json={feature_v}"
     )
+
+# The contract resolver finds spec/contract at the flat docs/ location.
+for name in ("spec.md", "contract.md"):
+    resolved = resolve_spec_path(FEATURE_DIR, name)
+    expected = os.path.join(DOCS_DIR, name)
+    if os.path.abspath(resolved) != os.path.abspath(expected):
+        fail(f"resolve_spec_path({name}) -> {resolved}, expected {expected}")
+
+# validate_feature reports no errors for the relocated feature.
+result = validate_feature(FEATURE_DIR)
+if not result.passed:
+    fail(f"validate_feature reported errors after migration: {result.messages}")
 
 print("All checks passed.")

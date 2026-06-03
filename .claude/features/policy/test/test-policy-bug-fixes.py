@@ -76,8 +76,8 @@ else:
 
 
 # POLICY-BUG-7: spec.md and contract.md versions match
-spec_path = os.path.join(FEATURE_DIR, "specs", "spec.md")
-contract_path = os.path.join(FEATURE_DIR, "specs", "contract.md")
+spec_path = os.path.join(FEATURE_DIR, "docs", "spec.md")
+contract_path = os.path.join(FEATURE_DIR, "docs", "contract.md")
 with open(spec_path) as f:
     spec_text = f.read()
 with open(contract_path) as f:
