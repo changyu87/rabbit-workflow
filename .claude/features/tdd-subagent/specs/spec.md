@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.9.0
+version: 5.9.1
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -201,13 +201,17 @@ the template's `{{bypass_preamble_note}}` placeholder.
 
 ### Bypass-marker preamble note
 
-23. **Bypass-marker note emission.** When `.rabbit-human-approval-bypass`
-    exists at the repo root, the assembled prompt's preamble (before
-    STEP 1) contains the exact string returned by
-    `rabbit_print(_BYPASS_NOTE_TEXT, "📢", "yellow")` (the canonical
+23. **Bypass-marker note emission (dual-read).** When EITHER
+    `.rabbit-human-approval-bypass` OR `.rabbit-tdd-autonomous` exists at
+    the repo root, the bypass is treated as active and the assembled
+    prompt's preamble (before STEP 1) contains the exact string returned
+    by `rabbit_print(_BYPASS_NOTE_TEXT, "📢", "yellow")` (the canonical
     preamble body lives in `dispatch-tdd-subagent.py` as the module-level
-    `_BYPASS_NOTE_TEXT` constant). When the marker is absent, no such
-    note appears.
+    `_BYPASS_NOTE_TEXT` constant; it names both marker forms). When
+    neither marker is present, no such note appears. The dual-read accepts
+    either marker name for the duration of the issue #336 coexistence
+    window (Phase 1: dispatch reads either; no configurable rename and no
+    polarity flip).
 
 24. **Bypass-marker note channel.** `dispatch-tdd-subagent.py` emits the
     bypass preamble note solely by calling `rabbit_print` from

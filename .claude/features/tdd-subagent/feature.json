@@ -1,6 +1,6 @@
 {
   "name": "tdd-subagent",
-  "version": "5.9.0",
+  "version": "5.9.1",
   "owner": "rabbit-workflow team",
   "status": "active",
   "tdd_state": "test-green",
