@@ -1,6 +1,6 @@
 {
   "name": "policy",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Canonical rule files fed to subagents; three policy docs (philosophy, spec-rules, coding-rules).",
@@ -14,5 +14,5 @@
   "manifest": [],
   "runtime": {},
   "configuration": [],
-  "spec_no_change_reason": "1.9.0 -> 1.10.0 adds a new spec-rules.md section, 'SKILL.md Authoring Standard' (issue #439), establishing three terse, citable rules for authoring and changing SKILL.md files: Script-Backed Orchestration (orchestration steps with computed values or mode-aware branching belong in scripts/, not in SKILL.md prompt-tier bash placeholders; derives from \u00a71 Tool-Choice Tier), Verbatim Policy Embedding (a SKILL.md surfacing policy must quote the canonical policy file verbatim via @path injection or a reader script, never paraphrase; derives from \u00a72 Schemas and Contracts), and skill-creator Validation (SKILL.md changes pass through the skill-creator tool before deployment; derives from \u00a71 determinism). spec.md gains Invariant 11 and the test/test-rule-files-content.py content guard asserts the section heading plus the three rule names. Additive minor bump with lockstep frontmatter version bumps across feature.json, specs/spec.md, and specs/contract.md."
+  "spec_no_change_reason": "1.10.0 -> 1.11.0 relocates the feature's documentation surfaces to the flat docs/ layout (spec.md and contract.md moved via git mv from the spec directory into docs/, the now-empty spec directory removed, and a fresh docs/CHANGELOG.md created with the migration entry). The spec and contract bodies are unchanged; only their on-disk location moved. Lockstep minor bump across feature.json, docs/spec.md, and docs/contract.md frontmatter. The contract resolver (resolve_spec_path / resolve_changelog_path) already prefers the flat docs/ layout."
 }
