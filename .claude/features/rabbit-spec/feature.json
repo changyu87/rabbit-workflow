@@ -1,17 +1,17 @@
 {
   "name": "rabbit-spec",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "status": "active",
-  "summary": "Owner of the rabbit workflow's spec-lifecycle skills. Hosts rabbit-spec-create (drafts initial spec bodies via the read-only spec-creator subagent) and rabbit-spec-update (revises existing specs; absorbed from rabbit-feature/rabbit-feature-spec).",
+  "summary": "Owner of the rabbit workflow's spec-lifecycle skills. Hosts rabbit-spec-create (drafts initial spec bodies via the read-only rabbit-spec-creator subagent) and rabbit-spec-update (revises existing specs; absorbed from rabbit-feature/rabbit-feature-spec).",
   "surface": {
     "skills": [
       "skills/rabbit-spec-create/SKILL.md",
       "skills/rabbit-spec-update/SKILL.md"
     ],
     "agents": [
-      "agents/spec-creator.md"
+      "agents/rabbit-spec-creator.md"
     ],
     "hooks": [],
     "commands": [],
@@ -37,7 +37,7 @@
     {
       "api": "publish_agent",
       "args": {
-        "source": "agents/spec-creator.md"
+        "source": "agents/rabbit-spec-creator.md"
       }
     }
   ],
@@ -58,5 +58,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.4.0 -> 1.5.0): added Inv 6 spec-path layout dual-read for the docs/spec/ -> specs/ migration (issue #399 Phase 2); this TDD cycle implements the spec change."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.5.0 -> 1.6.0): Inv 2 now requires the drafting subagent to be named rabbit-spec-creator and deployed at agents/rabbit-spec-creator.md so it satisfies check_naming (Inv 10/15); this TDD cycle implements the rename (issue #471)."
 }
