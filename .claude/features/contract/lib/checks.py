@@ -603,13 +603,20 @@ def validate_feature(feature_dir: str) -> CheckResult:
     if not data.get("summary", ""):
         err("feature.json: missing summary")
 
-    surface = data.get("surface")
-    if not isinstance(surface, dict):
-        err("feature.json: surface must be an object")
-    else:
-        for key in ("hooks", "commands", "agents", "skills"):
-            if not isinstance(surface.get(key), list):
-                err(f"feature.json: surface.{key} must be an array")
+    # `surface` is DEPRECATED (issue #468): `manifest` is the single source of
+    # truth for a feature's published artifacts. `surface` is no longer
+    # required — its absence is valid. When a feature still carries it (for
+    # backwards compatibility during the migration sweep), it MUST remain a
+    # well-formed object so a malformed legacy mirror is still caught; but a
+    # feature.json that omits it entirely validates cleanly.
+    if "surface" in data:
+        surface = data["surface"]
+        if not isinstance(surface, dict):
+            err("feature.json: surface (deprecated) must be an object when present")
+        else:
+            for key in ("hooks", "commands", "agents", "skills"):
+                if key in surface and not isinstance(surface[key], list):
+                    err(f"feature.json: surface.{key} must be an array")
 
     if not data.get("deprecation_criterion", ""):
         err("feature.json: missing deprecation_criterion")
