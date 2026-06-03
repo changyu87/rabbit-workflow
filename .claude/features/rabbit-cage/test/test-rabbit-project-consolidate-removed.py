@@ -26,7 +26,9 @@ SCRIPTS = CAGE / "scripts"
 RABBIT_PROJECT_PY = SCRIPTS / "rabbit-project.py"
 CONSOLIDATE_PY = SCRIPTS / "rabbit-project-consolidate.py"
 COMMANDS_MD = CAGE / "commands/rabbit-project.md"
-CONTRACT_MD = CAGE / "specs/contract.md"
+# Resolve contract.md dual-read: prefer the flat docs/ layout, fall back to
+# the legacy specs/ layout (issue #399 coexistence window).
+CONTRACT_MD = (CAGE / "docs/contract.md") if (CAGE / "docs/contract.md").is_file() else (CAGE / "specs/contract.md")
 
 pass_n = 0
 fail_n = 0
@@ -92,7 +94,7 @@ if "consolidate" not in cmd_doc:
 else:
     ko(5, "commands/rabbit-project.md still mentions consolidate")
 
-# t6: specs/contract.md does not list rabbit-project-consolidate.py
+# t6: contract.md does not list rabbit-project-consolidate.py
 contract_text = CONTRACT_MD.read_text()
 if "rabbit-project-consolidate" not in contract_text:
     ok(6, "contract.md does not reference rabbit-project-consolidate")

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """test-version-alignment.py — Inv 11.
 
-Asserts feature.json `version`, specs/spec.md frontmatter `version`,
-and specs/contract.md frontmatter `version` are byte-equal.
+Asserts feature.json `version`, spec.md frontmatter `version`, and
+contract.md frontmatter `version` are byte-equal. The spec/contract docs are
+resolved dual-read (flat docs/ layout preferred, specs/ fallback) so the test
+tracks the artifacts wherever they live.
 """
 
 import json
@@ -11,6 +13,14 @@ import sys
 from pathlib import Path
 
 CAGE = Path(__file__).resolve().parents[1]
+
+
+def _resolve_doc(name: str) -> Path:
+    """Resolve a feature doc, preferring the flat docs/ layout."""
+    docs_candidate = CAGE / "docs" / name
+    if docs_candidate.is_file():
+        return docs_candidate
+    return CAGE / "specs" / name
 
 
 def _frontmatter_version(path: Path) -> str:
@@ -27,8 +37,8 @@ def _frontmatter_version(path: Path) -> str:
 
 def main() -> int:
     fj_version = json.loads((CAGE / "feature.json").read_text())["version"]
-    spec_version = _frontmatter_version(CAGE / "specs/spec.md")
-    contract_version = _frontmatter_version(CAGE / "specs/contract.md")
+    spec_version = _frontmatter_version(_resolve_doc("spec.md"))
+    contract_version = _frontmatter_version(_resolve_doc("contract.md"))
     assert fj_version == spec_version == contract_version, (
         f"version drift: feature.json={fj_version!r}, "
         f"spec={spec_version!r}, contract={contract_version!r}")
