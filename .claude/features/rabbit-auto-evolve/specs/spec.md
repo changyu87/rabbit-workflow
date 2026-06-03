@@ -78,6 +78,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/cleanup-branches.py` | CLI | Derives head branch from each merged PR; calls `safety-check.py --phase cleanup`; deletes branch locally and on origin; refuses to delete anything not matching `^feat/.+` |
 | `scripts/classify-merge-restart.py` | CLI | Reads merged PR file list; classifies into `no-op`, `refresh`, or `restart` based on which path patterns appear; emits a single string on stdout |
 | `scripts/update-state.py` | CLI | Reads JSON from stdin; validates against `schemas/auto-evolve-state.schema.json`; atomically writes `.rabbit/auto-evolve-state.json` via temp+rename |
+| `scripts/status-report.py` | CLI | Read-only `status` backing script: reads `.rabbit/auto-evolve-state.json` (defaults on missing/empty/malformed) and the five runtime markers; emits a fixed-format status JSON on stdout |
 
 **State file (runtime artifact):**
 
@@ -1900,6 +1901,90 @@ Phase E merges complete.
     deployed `SKILL.md` phase-11 documentation pin a concrete in-range
     `delaySeconds`, the `/rabbit-auto-evolve tick` re-invoke prompt, a
     `reason`, and the `schedule-check.py` pre-call validation).
+29. **`status-report.py` owns the `status` subcommand output (issue
+    #405).** The CLI
+    `python3 .claude/features/rabbit-auto-evolve/scripts/status-report.py`
+    is the deterministic backing script for the read-only `status`
+    subcommand. Before this invariant the `status` section described its
+    output in prose and the dispatcher LLM-assembled an ad-hoc bash
+    pipeline (an `ls`/`cat`/`jq` improvisation) on each invocation — a
+    non-deterministic, untestable surface that drifts and emits ugly
+    `ls: cannot access ...` stderr noise on a fresh clone where the state
+    file and markers do not yet exist. Per spec-rules §1
+    (`script > CLI > spec > prompt`) this is replaced by a script.
+
+    The script reads ONLY:
+    - `<repo_root>/.rabbit/auto-evolve-state.json` for the five state
+      fields. When the file is MISSING, empty, or fails JSON parse, the
+      script emits defaults (queue length 0, empty in-flight, null
+      last-merged / last-tagged, 0 consecutive-failures) — a missing
+      state file is the legitimate fresh-clone case, NOT an error.
+    - The five runtime markers via `os.path.exists` only
+      (`.rabbit-auto-evolve-active`, `.rabbit-auto-evolve-running`,
+      `.rabbit-auto-evolve-stop-requested`,
+      `.rabbit-auto-evolve-restart-needed`,
+      `.rabbit-auto-evolve-aborted`).
+
+    It performs NO mutations, NO `gh`, and NO `git` shellouts. Repo root
+    resolution uses the `RABBIT_AUTO_EVOLVE_REPO_ROOT` env override with a
+    fallback to `os.getcwd()` (matching `check-preconditions.py` and
+    `banner-status.py`).
+
+    Output is a single fixed-format JSON object on stdout:
+
+    ```json
+    {
+      "queue_length": 0,
+      "in_flight": [],
+      "last_merged_sha": null,
+      "last_tagged_version": null,
+      "consecutive_failures": 0,
+      "markers_present": [],
+      "state_file": "absent"
+    }
+    ```
+
+    - `queue_length` — integer length of the state `queue` array.
+    - `in_flight` — the state `in_flight` array (issue numbers).
+    - `last_merged_sha` / `last_tagged_version` — the state fields verbatim
+      (string or null).
+    - `consecutive_failures` — the state field (integer ≥ 0).
+    - `markers_present` — the sorted subset of the five runtime-marker
+      basenames that exist at the repo root (empty list when none).
+    - `state_file` — one of `"present"` (parsed cleanly), `"absent"`
+      (file missing), or `"malformed"` (file present but empty / unparsable);
+      the last two both yield the default field values.
+
+    Exit code is 0 on success (including every defaults path — missing,
+    empty, or malformed state file). A non-zero exit is reserved for
+    genuine invocation errors (e.g. an unwritable stdout). The verdict
+    lives in the JSON, never in the exit code.
+
+    The SKILL.md `status` subcommand body MUST invoke this script and MUST
+    NOT LLM-assemble a bash pipeline or use bare `ls .rabbit-auto-evolve-*`
+    / `cat .rabbit/auto-evolve-state.json` patterns — those drift and emit
+    stderr noise on a fresh clone.
+
+    This invariant was introduced by issue #405 in v0.17.0.
+
+    Enforced by `test/test-status-report.py`:
+    - Known-state fixture: a seeded `.rabbit/auto-evolve-state.json` with a
+      non-empty queue, in-flight set, last-merged SHA, last-tagged version,
+      and a non-zero failure count → the emitted JSON carries every field
+      with the expected values; exit 0.
+    - Missing state file (clean tempdir) → defaults emitted
+      (`queue_length: 0`, `in_flight: []`, both `last_*` null,
+      `consecutive_failures: 0`, `state_file: "absent"`); exit 0.
+    - Malformed state file (non-JSON content) → defaults emitted,
+      `state_file: "malformed"`, exit 0 (graceful — never crashes the
+      read-only status surface).
+    - Markers: with a subset of the five markers present, `markers_present`
+      is exactly that subset, sorted; with none present it is `[]`.
+    - `--help` smoke: exit 0 with recognizable usage text.
+    - SKILL surface: the `status` section of both the source and deployed
+      `SKILL.md` invokes
+      `python3 .claude/features/rabbit-auto-evolve/scripts/status-report.py`
+      and contains no bare `ls .rabbit-auto-evolve-*` pattern.
 
 ## Known gaps
 
