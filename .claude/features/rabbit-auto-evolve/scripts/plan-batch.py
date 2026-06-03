@@ -1,16 +1,46 @@
 #!/usr/bin/env python3
-"""plan-batch.py — conflict-graph + barrier dispatch planner (Inv 4).
+"""plan-batch.py — conflict-graph + barrier dispatch planner (Inv 4, Inv 26).
 
 Reads a JSON array of triage objects on stdin (the caller passes only
 items whose decision == "work") and emits a deterministic dispatch plan
 on stdout:
 
   {
+    "selection_order": [602, 601],
+    "dispatch_shapes": {"602": "multi-subagent-barrier", "601": "parallel-per-feature"},
     "barrier_first": [123, 124],
     "groups": [[125, 126], [127]]
   }
 
-Algorithm (per spec.md Inv 4 / design doc §6):
+Two decoupled decisions (Inv 26 / issue #435):
+
+  STAGE 1 — work selection (`selection_order`). Dispatch-shape BLIND:
+  ordered purely by priority desc (critical > high > medium > low;
+  no-priority last) then issue ascending. It MUST NOT consult dispatch
+  shape, feature count, or "knows how" — a high-priority cross-feature
+  item is selected before a low-priority single-feature item. Work-only
+  (items whose decision != "work" are dropped).
+
+  STAGE 2 — dispatch shape (`dispatch_shapes`, issue-number-string -> shape).
+  Per work item, choose the FIRST fitting shape from exactly three:
+    - `decomposition`          when the item touches >= --decompose-threshold
+                               distinct feature dirs (default 10) — split into
+                               per-feature sub-issues, each re-enters dispatch.
+    - `multi-subagent-barrier` when the item touches >1 feature dir (below
+                               the threshold) — per-feature subagents land
+                               serially on one shared branch, each a full
+                               single-feature touch with its own scope marker.
+    - `parallel-per-feature`   when the item touches exactly one feature dir —
+                               the performance preference (NOT a correctness
+                               requirement).
+  An item's feature count is `len(item["features"])` (the set emitted by
+  triage-issue.py), falling back to 1 (the single `feature` label) when
+  `features` is absent. The struck shape 2 (sequential single-subagent with
+  a persistent `.rabbit-scope-override session`) is NEVER emitted — bounded
+  scope is a hard constraint, not waivable by autonomy (maintainer policy on
+  issue #435). No shape writes any marker; this script is a pure processor.
+
+Algorithm for barrier_first / groups (per spec.md Inv 4 / design doc §6):
   1. Pull `contract_touch == true` items into barrier_first, sorted by
      priority desc (critical > high > medium > low; no-priority last)
      then issue ascending.
@@ -26,9 +56,9 @@ The script is a pure JSON processor — no gh, no git, no filesystem
 mutations.
 
 Exit code: 0 on success; non-zero on malformed stdin JSON or invalid
---max-parallel value.
+--max-parallel / --decompose-threshold value.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: cyxu
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -56,22 +86,68 @@ def _positive_int(value):
         n = int(value)
     except (TypeError, ValueError):
         raise argparse.ArgumentTypeError(
-            f"--max-parallel must be an integer, got {value!r}"
+            f"value must be an integer, got {value!r}"
         )
     if n < 1:
         raise argparse.ArgumentTypeError(
-            f"--max-parallel must be >= 1, got {n}"
+            f"value must be >= 1, got {n}"
         )
     return n
 
 
-def plan(items, max_parallel):
-    """Run the 4-step algorithm and return the plan dict."""
+# The three valid dispatch shapes (Inv 26). The struck shape 2
+# ("sequential-with-override") is intentionally NOT in this set: bounded
+# scope is a hard constraint, not waivable by autonomy (maintainer policy on
+# issue #435), so plan-batch.py never emits a session-override shape.
+SHAPE_PARALLEL = "parallel-per-feature"
+SHAPE_BARRIER = "multi-subagent-barrier"
+SHAPE_DECOMPOSITION = "decomposition"
+
+
+def _feature_count(item):
+    """Distinct feature dirs an item touches. Prefers the `features` list
+    emitted by triage-issue.py (Inv 26); falls back to 1 for the single
+    `feature` label when `features` is absent (pre-#435 triage objects)."""
+    feats = item.get("features")
+    if isinstance(feats, list) and feats:
+        return len(feats)
+    return 1
+
+
+def _dispatch_shape(item, decompose_threshold):
+    """Stage-2 per-item shape: FIRST fitting shape in preference order.
+
+    >= threshold features -> decomposition
+    > 1 feature           -> multi-subagent-barrier
+    exactly 1 feature     -> parallel-per-feature (performance preference)
+    """
+    n = _feature_count(item)
+    if n >= decompose_threshold:
+        return SHAPE_DECOMPOSITION
+    if n > 1:
+        return SHAPE_BARRIER
+    return SHAPE_PARALLEL
+
+
+def plan(items, max_parallel, decompose_threshold):
+    """Run Stage 1 + Stage 2 + the 4-step grouping; return the plan dict."""
     # Drop items whose decision != "work" (per Inv 4 + Inv 18: plan-batch
     # accepts unfiltered triage arrays from triage-batch.py; only "work"
     # items are dispatched). Items without a `decision` field are passed
     # through (backwards-compat with pre-Inv-18 callers that pre-filter).
     items = [i for i in items if i.get("decision", "work") == "work"]
+
+    # Stage 1 — work selection (dispatch-shape BLIND): priority desc then
+    # issue asc, over work items only (Inv 26 (a)). This ordering NEVER
+    # consults feature count or dispatch shape.
+    selection = sorted(items, key=_sort_key)
+    selection_order = [i["issue"] for i in selection]
+
+    # Stage 2 — per-item dispatch shape (item-shaped, Inv 26 (b)).
+    dispatch_shapes = {
+        str(i["issue"]): _dispatch_shape(i, decompose_threshold)
+        for i in selection
+    }
 
     # Step 1: barrier_first — all contract_touch items.
     barrier_items = sorted(
@@ -107,20 +183,31 @@ def plan(items, max_parallel):
         for i in range(0, len(ci), max_parallel):
             groups.append(ci[i:i + max_parallel])
 
-    return {"barrier_first": barrier_first, "groups": groups}
+    return {
+        "selection_order": selection_order,
+        "dispatch_shapes": dispatch_shapes,
+        "barrier_first": barrier_first,
+        "groups": groups,
+    }
 
 
 def main():
     parser = argparse.ArgumentParser(
         description="Deterministic dispatch planner: reads triage JSON on "
-                    "stdin, emits a barrier_first + groups plan on stdout. "
-                    "Contract-touch issues are isolated; same-feature issues "
-                    "never share a group; group size is capped by "
-                    "--max-parallel."
+                    "stdin, emits selection_order (Stage 1, shape-blind), "
+                    "dispatch_shapes (Stage 2, per-item), and a barrier_first "
+                    "+ groups plan on stdout. Contract-touch issues are "
+                    "isolated; same-feature issues never share a group; group "
+                    "size is capped by --max-parallel."
     )
     parser.add_argument(
         "--max-parallel", type=_positive_int, default=4,
         help="Maximum group size (default: 4). Must be an integer >= 1.",
+    )
+    parser.add_argument(
+        "--decompose-threshold", type=_positive_int, default=10,
+        help="Distinct-feature count at/above which an item's dispatch shape "
+             "is 'decomposition' (default: 10). Must be an integer >= 1.",
     )
     args = parser.parse_args()
 
@@ -137,7 +224,7 @@ def main():
         )
         sys.exit(1)
 
-    result = plan(items, args.max_parallel)
+    result = plan(items, args.max_parallel, args.decompose_threshold)
     json.dump(result, sys.stdout, indent=2)
     sys.stdout.write("\n")
 

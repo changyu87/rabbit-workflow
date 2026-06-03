@@ -2,8 +2,11 @@
 """triage-issue.py — classify a single rabbit-managed issue (Inv 3).
 
 Per rabbit-auto-evolve spec.md Inv 3, emits a JSON object on stdout with
-fields: issue, decision, reason_code, rationale, feature, contract_touch,
-blocked_by, planning_note. Implements the seven-rule decision table
+fields: issue, decision, reason_code, rationale, feature, features,
+contract_touch, blocked_by, planning_note. The `features` field (Inv 26 /
+issue #435) is the distinct set of feature directories the item touches —
+the basis plan-batch.py uses to choose a per-item dispatch shape.
+Implements the seven-rule decision table
 (top-down, first match wins); any ambiguity defaults to decision=defer,
 reason_code=needs-judgment (never silently to work).
 
@@ -31,7 +34,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: cyxu
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -153,6 +156,30 @@ def _contract_touch(labels, body):
     return False
 
 
+# Match `.claude/features/<name>/` path references in an issue body. The
+# captured group is the feature-directory name (the second path segment).
+_FEATURE_PATH = re.compile(r"\.claude/features/([A-Za-z0-9._-]+)/")
+
+
+def _feature_set(feature_label, body):
+    """Distinct feature directories an issue touches (Stage-2 basis, Inv 26).
+
+    The set is the union of the feature:<name> label and every
+    `.claude/features/<name>/` path literally referenced in the body. Returned
+    sorted for deterministic output. Used by plan-batch.py to choose a
+    dispatch shape per item:
+      1 feature       -> parallel-per-feature
+      >1, < threshold -> multi-subagent-barrier
+      >= threshold    -> decomposition
+    """
+    feats = set()
+    if feature_label:
+        feats.add(feature_label)
+    for m in _FEATURE_PATH.findall(body or ""):
+        feats.add(m)
+    return sorted(feats)
+
+
 # Match `blocked-by: #N` (case-insensitive). Captures the integer N.
 _BLOCKED_BY_GOOD = re.compile(r"blocked-by:\s*#(\d+)", re.IGNORECASE)
 # Match `blocked-by:` declared at all (used to detect malformed variants).
@@ -177,6 +204,11 @@ def classify(issue_num, repo_root):
     base = {
         "issue": issue_num,
         "feature": feature_label,
+        # `features` is the distinct set of feature dirs the item touches
+        # (union of the feature label + body path references) — the Stage-2
+        # dispatch-shape basis (Inv 26 / issue #435). Always present; for a
+        # malformed-labels issue (no feature label, no body paths) it is [].
+        "features": _feature_set(feature_label, body),
         "contract_touch": ctouch,
         "blocked_by": [],
         # planning_note is null for non-defer decisions; each defer return
