@@ -128,6 +128,28 @@ for boundary in (60, 3600):
     else:
         fail(f"delay_seconds={boundary} must be accepted (inclusive boundary)")
 
+# --- Inv 31 (issue #412): both two-delay refire cases are valid ---------
+# Phase 11 selects delaySeconds=60 (queue non-empty, refire immediately)
+# or delaySeconds=3600 (queue empty, hourly idle). Both must validate so
+# neither is silently dropped by the harness.
+INV31_CASES = [
+    (60, "queue non-empty, refiring immediately"),
+    (3600, "queue empty, waiting for new issues"),
+]
+for delay, reason in INV31_CASES:
+    r = run(valid_args(delay=delay, reason=reason))
+    if r.returncode == 0:
+        try:
+            obj = json.loads(r.stdout)
+        except json.JSONDecodeError:
+            obj = None
+        if obj and obj.get("ok") is True and obj.get("delay_seconds") == delay:
+            ok(f"Inv 31: delay={delay} reason={reason!r} → exit 0 + ok:true")
+        else:
+            fail(f"Inv 31: delay={delay} unexpected JSON {r.stdout!r}")
+    else:
+        fail(f"Inv 31: delay={delay} reason={reason!r} must be accepted")
+
 # --- Empty prompt --------------------------------------------------------
 r = run(valid_args(prompt=""))
 if r.returncode != 0:

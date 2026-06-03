@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.18.0
+version: 0.19.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2090,6 +2090,50 @@ Phase E merges complete.
     And by `test/test-spec-post-merge-invariant.py` (e2e): asserts the Inv 30
     text is present in the spec AND that both the source and deployed SKILL.md
     invoke `run-post-merge.py` after the merge phase AND at tick start.
+
+31. **Phase 11 (`schedule`) refires immediately when the queue is
+    non-empty (issue #412).** Before this invariant the `schedule` phase
+    always used the canonical hourly delay (`delaySeconds=3600`, Inv 29).
+    That fixed delay means a tick that just dispatched work — or that
+    found items still waiting in `state.queue` / `state.in_flight` — sits
+    idle for the full hour before the loop looks again, even though there
+    is actionable work it could pick up right now. The loop's throughput
+    is then capped at roughly one batch per hour regardless of how much
+    work is queued.
+
+    The `schedule` phase MUST therefore choose `delaySeconds` based on
+    queue emptiness, read from `<state_dir>/auto-evolve-state.json`:
+
+    - When `len(state.queue) > 0 OR len(state.in_flight) > 0` (work
+      remains), use `delaySeconds=60` — the harness minimum (Inv 29
+      floor), i.e. refire immediately — with
+      `reason="queue non-empty, refiring immediately"`.
+    - When BOTH `state.queue` AND `state.in_flight` are empty (no work
+      remains), use `delaySeconds=3600` — the hourly idle check (Inv 29
+      canonical value) — with `reason="queue empty, waiting for new
+      issues"`.
+
+    Both `60` and `3600` are inside the Inv 29 inclusive band
+    `60 <= delaySeconds <= 3600`, so `schedule-check.py` accepts either;
+    this invariant REPLACES the single fixed `3600` delay with the
+    two-delay rule. The `prompt` is unchanged (`/rabbit-auto-evolve
+    tick`), and the pre-call `schedule-check.py` validation (Inv 29)
+    still runs with whichever delay/reason pair was selected.
+
+    A missing, empty, or malformed state file is treated as queue-empty
+    (the long hourly delay) — the conservative idle case.
+
+    This invariant was introduced by issue #412.
+
+    Enforced by `test/test-schedule-check.py` (extended): asserts both
+    `delaySeconds=60` and `delaySeconds=3600` are accepted by the
+    validator (both inside the Inv 29 band), so neither delay is silently
+    dropped. And by the end-to-end
+    `test/test-spec-schedule-invariant.py` (extended): asserts this
+    invariant text is present in the spec AND that both the source and
+    deployed `SKILL.md` phase-11 documentation pin BOTH the `60`
+    (queue-non-empty refire) and `3600` (queue-empty idle) cases together
+    with the queue-emptiness branch that selects between them.
 
 ## Known gaps
 

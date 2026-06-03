@@ -19,8 +19,10 @@ loop.
 
 Validity rules (spec.md Inv 29):
   - 60 <= delay_seconds <= 3600 — the harness ignores a 0/negative delay,
-    and an over-long delay is indistinguishable from a hang. The
-    auto-evolve cadence is hourly, so the canonical value is 3600.
+    and an over-long delay is indistinguishable from a hang. Per spec
+    Inv 31 (issue #412) the schedule phase selects 60 (queue non-empty —
+    refire immediately) or 3600 (queue empty — hourly idle check); BOTH
+    are inside this band, so this validator accepts either.
   - prompt is non-empty AND re-invokes the tick: it MUST contain the
     literal substring `/rabbit-auto-evolve tick`.
   - reason is non-empty (a human-readable why-this-wakeup string).
