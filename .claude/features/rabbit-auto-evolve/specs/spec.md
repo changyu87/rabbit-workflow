@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.12.0
+version: 0.12.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1267,7 +1267,7 @@ Phase E merges complete.
       "all_pass": false,
       "checks": [
         {"id": "active-marker",       "ok": false, "detail": ".rabbit-auto-evolve-active missing — run /rabbit-auto-evolve on"},
-        {"id": "approval-bypass",     "ok": false, "detail": ".rabbit-human-approval-bypass missing — run /rabbit-auto-evolve on"},
+        {"id": "approval-bypass",     "ok": false, "detail": "neither .rabbit-human-approval-bypass nor .rabbit-tdd-autonomous present — run /rabbit-auto-evolve on"},
         {"id": "bypass-permissions",  "ok": false, "detail": "permissions.defaultMode != bypassPermissions in .claude/settings.local.json — restart Claude after /rabbit-auto-evolve on"}
       ]
     }
@@ -1289,12 +1289,32 @@ Phase E merges complete.
     `approval-bypass`, `bypass-permissions`). Callers may rely on
     their presence and order in the `checks` array.
 
+    **Dual-read of the bypass marker (issue #336 Phase 1
+    coexistence window).** The `approval-bypass` check is satisfied
+    when EITHER the legacy `.rabbit-human-approval-bypass` OR the
+    new `.rabbit-tdd-autonomous` marker is present at the repo root
+    (OR logic — if either exists the check passes). Issue #336
+    renames the `human-approval` configurable to `tdd-autonomous`
+    (with a polarity flip); Phase 1 makes this reader accept both
+    names so Phase 2 can rename the live on-disk marker without
+    breaking the running auto-evolve loop. The `detail` string names
+    whichever marker is present (or both, for transparency); when
+    neither is present it mentions both names. Only this reader is
+    dual-read in Phase 1; `set-evolve-mode.py` (the writer) and the
+    subcommand/polarity are unchanged until Phase 2. The fallback to
+    the legacy name will be dropped once Phase 2 renames the live
+    marker and the coexistence window closes.
+
     Enforced by `test/test-check-preconditions.py`:
     - All three missing → `all_pass: false`, all three checks
       report `ok: false` with the documented `detail` strings.
-    - All three present → `all_pass: true`, all three checks
-      report `ok: true`.
-    - Partial (active marker exists, bypass not set) →
+    - All three present (legacy bypass marker) → `all_pass: true`,
+      all three checks report `ok: true`.
+    - `.rabbit-tdd-autonomous` present (active + new bypass marker +
+      bypass-permissions) → `approval-bypass` reports `ok: true`.
+    - Both bypass markers present → `approval-bypass` reports
+      `ok: true`.
+    - Partial (active marker exists, neither bypass marker set) →
       `all_pass: false`, only the failing checks report `ok: false`.
     - Exit code is 0 in all cases.
 

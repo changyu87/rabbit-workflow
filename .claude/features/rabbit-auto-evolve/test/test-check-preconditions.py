@@ -67,6 +67,12 @@ def _seed_approval_bypass(td: Path) -> None:
     (td / ".rabbit-human-approval-bypass").write_text("session")
 
 
+def _seed_tdd_autonomous(td: Path) -> None:
+    # Issue #336 Phase 1: the new bypass marker name. The reader must
+    # accept this in place of the legacy .rabbit-human-approval-bypass.
+    (td / ".rabbit-tdd-autonomous").write_text("session")
+
+
 def _seed_bypass_permissions(td: Path) -> None:
     settings_dir = td / ".claude"
     settings_dir.mkdir(parents=True, exist_ok=True)
@@ -192,12 +198,12 @@ if SCRIPT.is_file():
                 else:
                     ok("all-pass/per-check-ok", "all three checks report ok=true")
 
-# --- t5: partial scenario (active marker present, bypass not set) ---
+# --- t5: partial scenario (active marker present, neither bypass marker set) ---
 if SCRIPT.is_file():
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td)
         _seed_active(td_path)
-        # leave approval-bypass and bypass-permissions absent
+        # leave both bypass markers and bypass-permissions absent
         r = _run(td_path)
         if r.returncode != 0:
             fail_t(
@@ -284,6 +290,124 @@ if SCRIPT.is_file():
                     ok(
                         "malformed-settings/bypass",
                         "malformed settings gracefully reports ok=false",
+                    )
+
+# --- t7: dual-read — new .rabbit-tdd-autonomous marker alone satisfies
+#         approval-bypass (issue #336 Phase 1 future state) ---
+if SCRIPT.is_file():
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        _seed_active(td_path)
+        _seed_tdd_autonomous(td_path)  # new name only, no legacy marker
+        _seed_bypass_permissions(td_path)
+        r = _run(td_path)
+        if r.returncode != 0:
+            fail_t(
+                "tdd-autonomous/exit",
+                f"expected exit 0; got {r.returncode}; stderr={r.stderr!r}",
+            )
+        else:
+            try:
+                report = json.loads(r.stdout)
+            except json.JSONDecodeError as e:
+                fail_t("tdd-autonomous/json", f"stdout not JSON: {e}")
+                report = None
+            if report is not None:
+                checks = {c.get("id"): c for c in report.get("checks", [])}
+                approval = checks.get("approval-bypass", {})
+                if approval.get("ok") is not True:
+                    fail_t(
+                        "tdd-autonomous/approval-ok",
+                        f"approval-bypass should be ok=true when "
+                        f".rabbit-tdd-autonomous present, got {approval!r}",
+                    )
+                else:
+                    ok(
+                        "tdd-autonomous/approval-ok",
+                        ".rabbit-tdd-autonomous alone satisfies approval-bypass",
+                    )
+                if report.get("all_pass") is not True:
+                    fail_t(
+                        "tdd-autonomous/all_pass",
+                        f"expected all_pass=true with new marker, "
+                        f"got {report.get('all_pass')!r}",
+                    )
+                else:
+                    ok(
+                        "tdd-autonomous/all_pass",
+                        "all_pass=true when activated via new bypass marker",
+                    )
+
+# --- t8: dual-read — both bypass markers present satisfies approval-bypass
+#         (issue #336 Phase 1 coexistence window) ---
+if SCRIPT.is_file():
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        _seed_active(td_path)
+        _seed_approval_bypass(td_path)  # legacy name
+        _seed_tdd_autonomous(td_path)  # new name
+        _seed_bypass_permissions(td_path)
+        r = _run(td_path)
+        if r.returncode != 0:
+            fail_t(
+                "both-markers/exit",
+                f"expected exit 0; got {r.returncode}; stderr={r.stderr!r}",
+            )
+        else:
+            try:
+                report = json.loads(r.stdout)
+            except json.JSONDecodeError as e:
+                fail_t("both-markers/json", f"stdout not JSON: {e}")
+                report = None
+            if report is not None:
+                checks = {c.get("id"): c for c in report.get("checks", [])}
+                approval = checks.get("approval-bypass", {})
+                if approval.get("ok") is not True:
+                    fail_t(
+                        "both-markers/approval-ok",
+                        f"approval-bypass should be ok=true when both markers "
+                        f"present, got {approval!r}",
+                    )
+                else:
+                    ok(
+                        "both-markers/approval-ok",
+                        "both bypass markers present → approval-bypass ok=true",
+                    )
+
+# --- t9: legacy .rabbit-human-approval-bypass still satisfies approval-bypass
+#         (issue #336 Phase 1 live state must keep working) ---
+if SCRIPT.is_file():
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        _seed_active(td_path)
+        _seed_approval_bypass(td_path)  # legacy name only
+        _seed_bypass_permissions(td_path)
+        r = _run(td_path)
+        if r.returncode != 0:
+            fail_t(
+                "legacy-marker/exit",
+                f"expected exit 0; got {r.returncode}; stderr={r.stderr!r}",
+            )
+        else:
+            try:
+                report = json.loads(r.stdout)
+            except json.JSONDecodeError as e:
+                fail_t("legacy-marker/json", f"stdout not JSON: {e}")
+                report = None
+            if report is not None:
+                checks = {c.get("id"): c for c in report.get("checks", [])}
+                approval = checks.get("approval-bypass", {})
+                if approval.get("ok") is not True:
+                    fail_t(
+                        "legacy-marker/approval-ok",
+                        f"approval-bypass should be ok=true when legacy "
+                        f".rabbit-human-approval-bypass present, got {approval!r}",
+                    )
+                else:
+                    ok(
+                        "legacy-marker/approval-ok",
+                        "legacy .rabbit-human-approval-bypass still satisfies "
+                        "approval-bypass",
                     )
 
 print()
