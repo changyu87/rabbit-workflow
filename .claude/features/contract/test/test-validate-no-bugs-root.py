@@ -21,14 +21,14 @@ def make_fixture():
     d = tempfile.mkdtemp()
     name = os.path.basename(d)
 
-    os.makedirs(os.path.join(d, "docs/spec"), exist_ok=True)
+    os.makedirs(os.path.join(d, "specs"), exist_ok=True)
     os.makedirs(os.path.join(d, "docs/bugs"), exist_ok=True)
     os.makedirs(os.path.join(d, "test"), exist_ok=True)
 
-    with open(os.path.join(d, "docs/spec/spec.md"), "w") as f:
+    with open(os.path.join(d, "specs/spec.md"), "w") as f:
         f.write("# Minimal spec\nContent for test fixture.\n")
 
-    with open(os.path.join(d, "docs/spec/contract.md"), "w") as f:
+    with open(os.path.join(d, "specs/contract.md"), "w") as f:
         f.write("# Minimal contract\nContent for test fixture.\n")
 
     # test/run.py must exist and be executable (validate-feature.py checks for run.py per Inv 14)
@@ -82,13 +82,13 @@ else:
 # t2: feature.json missing 'owner' — must exit non-zero
 # ---------------------------------------------------------------------------
 FIXTURE2 = tempfile.mkdtemp()
-os.makedirs(os.path.join(FIXTURE2, "docs/spec"), exist_ok=True)
+os.makedirs(os.path.join(FIXTURE2, "specs"), exist_ok=True)
 os.makedirs(os.path.join(FIXTURE2, "docs/bugs"), exist_ok=True)
 os.makedirs(os.path.join(FIXTURE2, "test"), exist_ok=True)
 
-with open(os.path.join(FIXTURE2, "docs/spec/spec.md"), "w") as f:
+with open(os.path.join(FIXTURE2, "specs/spec.md"), "w") as f:
     f.write("# Minimal spec\nContent.\n")
-with open(os.path.join(FIXTURE2, "docs/spec/contract.md"), "w") as f:
+with open(os.path.join(FIXTURE2, "specs/contract.md"), "w") as f:
     f.write("# Minimal contract\nContent.\n")
 
 run_py2 = os.path.join(FIXTURE2, "test/run.py")

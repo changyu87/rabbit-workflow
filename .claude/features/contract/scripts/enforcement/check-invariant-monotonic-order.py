@@ -5,9 +5,9 @@ contract.lib.checks.check_invariant_monotonic_order (spec Inv 38, Inv 37).
 Usage: check-invariant-monotonic-order.py <feature-dir> [<feature-dir> ...]
 Exit:  0 no violations; 1 violations found; 2 invocation error.
 
-Each <feature-dir> is a feature root containing spec.md (resolved dual-read:
-specs/ preferred, docs/spec/ fallback — issue #399 Phase 1). Features in the
-library's KNOWN_ISSUES allowlist are skipped (pending renumber).
+Each <feature-dir> is a feature root containing spec.md (resolved at
+specs/spec.md — issue #399 migration complete, fallback dropped #465).
+Features in the library's KNOWN_ISSUES allowlist are skipped (pending renumber).
 
 Version: 1.0.0
 Owner: rabbit-workflow team (contract)

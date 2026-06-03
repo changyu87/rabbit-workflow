@@ -49,21 +49,18 @@ def get_repo_root():
 
 
 def resolve_spec_path(feature_root, name):
-    """Resolve a feature spec/contract doc path, dual-read (issue #399 Phase 1).
+    """Resolve a feature spec/contract doc path to <feature_root>/specs/<name>.
 
-    Prefers the new layout <feature_root>/specs/<name>; falls back to the
-    legacy <feature_root>/docs/spec/<name>. During the docs/spec/ -> specs/
-    coexistence window (#450 Pattern 1) both layouts validate; Phase 3 drops
-    the fallback once every feature has migrated.
+    Issue #399 migrated every feature from the legacy docs/spec/ layout to
+    specs/; the dual-read coexistence window (#450 Pattern 1) is closed, so
+    only the canonical specs/<name> path is resolved (issue #465). The legacy
+    docs/spec/ layout is no longer honored.
 
-    name is a leaf filename such as "spec.md" or "contract.md". When neither
-    layout exists the legacy docs/spec/ candidate is returned so downstream
-    existence checks report the canonical legacy path.
+    name is a leaf filename such as "spec.md" or "contract.md". The returned
+    path always names the specs/ candidate, whether or not it exists, so
+    downstream existence checks report the canonical path.
     """
-    preferred = os.path.join(feature_root, "specs", name)
-    if os.path.isfile(preferred):
-        return preferred
-    return os.path.join(feature_root, "docs", "spec", name)
+    return os.path.join(feature_root, "specs", name)
 
 
 # ---------- check_tests_non_interactive --------------------------------------
@@ -415,8 +412,7 @@ def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
 
     feature_dirs - iterable of feature directory paths. Features named in
     _MONOTONIC_KNOWN_ISSUES are skipped (pending renumber). Features without
-    a spec.md (resolved dual-read: specs/ preferred, docs/spec/ fallback) are
-    also silently skipped.
+    a spec.md (resolved at specs/spec.md) are also silently skipped.
 
     Returns CheckResult; messages include 'SKIP:' lines for skipped features
     and 'VIOLATION:' lines for any non-monotonic step.
@@ -527,19 +523,19 @@ def validate_feature(feature_dir: str) -> CheckResult:
     # Required files / dirs
     if not os.path.isfile(feature_json_path):
         err("missing feature.json")
-    # Dual-read spec/contract resolution (issue #399 Phase 1, #450 Pattern 1):
-    # prefer specs/<name>, fall back to docs/spec/<name>. Error messages name
-    # the legacy path the resolver reports when neither layout exists.
+    # Spec/contract resolution (issue #399 complete, fallback dropped #465):
+    # the canonical layout is specs/<name>; the legacy docs/spec/ path is no
+    # longer honored. Error messages name the specs/ path.
     spec_md = resolve_spec_path(feature_dir, "spec.md")
     if not os.path.isfile(spec_md):
-        err("missing docs/spec/spec.md")
+        err("missing specs/spec.md")
     elif os.path.getsize(spec_md) == 0:
-        err("docs/spec/spec.md is empty")
+        err("specs/spec.md is empty")
     contract_md = resolve_spec_path(feature_dir, "contract.md")
     if not os.path.isfile(contract_md):
-        err("missing docs/spec/contract.md")
+        err("missing specs/contract.md")
     elif os.path.getsize(contract_md) == 0:
-        err("docs/spec/contract.md is empty")
+        err("specs/contract.md is empty")
     run_py = os.path.join(feature_dir, "test", "run.py")
     if not os.path.isfile(run_py):
         err("missing test/run.py")
