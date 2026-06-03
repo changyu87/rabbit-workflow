@@ -15,12 +15,12 @@ DISPATCH_PY = os.path.join(FEATURE_DIR, "scripts", "dispatch-tdd-subagent.py")
 
 
 def _resolve_spec_md(feature_dir):
-    """Resolve this feature's spec.md dual-read (issue #399 Phase 2):
-    specs/ preferred, legacy docs/spec/ fallback."""
-    preferred = os.path.join(feature_dir, "specs", "spec.md")
+    """Resolve this feature's spec.md dual-read (issue #399): flat docs/
+    preferred, specs/ fallback."""
+    preferred = os.path.join(feature_dir, "docs", "spec.md")
     if os.path.isfile(preferred):
         return preferred
-    return os.path.join(feature_dir, "docs", "spec", "spec.md")
+    return os.path.join(feature_dir, "specs", "spec.md")
 
 
 SPEC_PATH = _resolve_spec_md(FEATURE_DIR)

@@ -114,7 +114,7 @@ else:
     ko(f"inv57: publish_file script dests not under tdd-subagent scripts dir: {script_dests}")
 
 # --- contract provides assertion --------------------------------------------
-contract_text = (FEATURE_DIR / "specs/contract.md").read_text()
+contract_text = (FEATURE_DIR / "docs/contract.md").read_text()
 start = contract_text.index("{")
 contract = json.loads(contract_text[start:contract_text.rindex("}") + 1])
 provided_agents = contract.get("provides", {}).get("agents", [])
