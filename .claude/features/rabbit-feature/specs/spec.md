@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.22.0
+version: 1.23.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -184,6 +184,20 @@ Scripts (under `scripts/`):
     `specs/spec.md` layout, and the SKILL.md MUST document the
     `docs/spec/spec.md` fallback. Enforced by `test/test-touch-skill.py`
     (`test_inv399_skill_prefers_specs_layout`).
+
+52. **Step 5 dispatches the `rabbit-tdd-subagent` agent type (issue #418).**
+    The `rabbit-feature-touch` SKILL.md Step 5 Agent tool call MUST pass
+    `subagent_type: rabbit-tdd-subagent` — the renamed dispatched agent
+    type. This binds only the AGENT type; the prompt-assembler script path
+    (`.claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py`,
+    feature-dir + script name unchanged) is unaffected and MUST remain. The
+    bare agent type `tdd-subagent` MUST NOT appear in the SKILL.md outside
+    that feature-dir/script-path reference. Enforced by
+    `test/test-touch-skill.py`
+    (`test_inv52_source_step5_dispatches_rabbit_tdd_subagent`,
+    `test_inv52_deployed_step5_dispatches_rabbit_tdd_subagent`,
+    `test_inv52_source_no_bare_old_agent_type`,
+    `test_inv52_deployed_no_bare_old_agent_type`).
 
 ### rabbit-feature-scope SKILL.md and scripts
 
