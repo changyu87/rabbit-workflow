@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """test-runtime-emit-auto-evolve-stop-line.py — exercises
-emit_auto_evolve_stop_line per Inv 65. Returns [] when
-.rabbit-auto-evolve-active is absent OR when no state marker is present;
-otherwise returns AT MOST ONE entry following the strict priority order
-aborted > restart-needed > stop-requested > running.
+emit_auto_evolve_stop_line per Inv 65. Returns [] only when
+.rabbit-auto-evolve-active is absent (the marker gates the whole composite
+surface). When active, returns exactly ONE entry: a state marker (strict
+priority aborted > restart-needed > stop-requested > running) wins when
+present; otherwise the steady active/idle line is emitted.
 """
 
 import os
@@ -39,6 +40,7 @@ RESTART = ("auto-evolve loop awaiting restart", "⏸", "yellow")
 STOP_REQ = ("auto-evolve loop stop requested — will exit on next tick",
             "⏸", "yellow")
 RUNNING = ("auto-evolve loop running", "🔁", "green")
+ACTIVE_IDLE = ("auto-evolve loop active — idle between ticks", "🔁", "green")
 
 
 def assert_one(r, expected, label):
@@ -90,14 +92,11 @@ with tempfile.TemporaryDirectory() as td:
     r = emit_auto_evolve_stop_line(repo_root=td)
     assert_one(r, RUNNING, "E")
 
-# F: active only (no state markers) -> []
+# F: active only (no state markers) -> exactly one steady active/idle entry
 with tempfile.TemporaryDirectory() as td:
     touch(td, ".rabbit-auto-evolve-active")
     r = emit_auto_evolve_stop_line(repo_root=td)
-    if r == []:
-        ok("F: active marker only (no state) returns []")
-    else:
-        fail(f"F: expected [], got {r!r}")
+    assert_one(r, ACTIVE_IDLE, "F")
 
 # G (precedence): active + aborted + running -> aborted wins
 with tempfile.TemporaryDirectory() as td:

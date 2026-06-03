@@ -817,21 +817,31 @@ _AUTO_EVOLVE_STOP_LINE_MARKERS = (
      "🔁", "green"),
 )
 
+# Inv 65 steady active/idle line: emitted when .rabbit-auto-evolve-active is
+# present but none of the four short-lived state markers is. This is the
+# dominant steady state (active loop between ticks).
+_AUTO_EVOLVE_STOP_LINE_IDLE = (
+    "auto-evolve loop active — idle between ticks", "🔁", "green",
+)
+
 
 def emit_auto_evolve_stop_line(*, repo_root: str) -> list:
     """Inv 65 — composite Stop-hook line for rabbit-auto-evolve.
 
-    Returns [] when .rabbit-auto-evolve-active is absent (the marker gates the
-    entire auto-evolve composite surface) or when no state marker is present.
-    Otherwise returns exactly one print_result entry chosen by the strict
-    priority order aborted > restart-needed > stop-requested > running.
+    Returns [] only when .rabbit-auto-evolve-active is absent (the marker
+    gates the entire auto-evolve composite surface). When active, returns
+    exactly one print_result entry: a state marker chosen by the strict
+    priority order aborted > restart-needed > stop-requested > running when one
+    is present, otherwise the steady active/idle line (active loop between
+    ticks), symmetric with emit_auto_evolve_banner.
     """
     if not _auto_evolve_active(repo_root):
         return []
     for path, text, icon, color in _AUTO_EVOLVE_STOP_LINE_MARKERS:
         if os.path.isfile(os.path.join(repo_root, path)):
             return [print_result(text=text, icon=icon, color=color)]
-    return []
+    text, icon, color = _AUTO_EVOLVE_STOP_LINE_IDLE
+    return [print_result(text=text, icon=icon, color=color)]
 
 
 def emit_stop_timestamp(*, repo_root: str) -> list:

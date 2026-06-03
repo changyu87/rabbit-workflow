@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.11.0
+version: 2.12.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -324,7 +324,7 @@ Numbering preserves gaps at 4, 6, 7, 27, 28, 29, 30, 35, 55, 56 — each is docu
     - `.rabbit-auto-evolve-restart-needed` → `text="auto-evolve loop awaiting restart"`, `icon="⏸"`, `color="yellow"`.
     - `.rabbit-auto-evolve-stop-requested` → `text="auto-evolve loop stop requested — will exit on next tick"`, `icon="⏸"`, `color="yellow"`.
     - `.rabbit-auto-evolve-running` (and none of the above) → `text="auto-evolve loop running"`, `icon="🔁"`, `color="green"`.
-    - None of the above (active marker present but no state marker) → `[]`.
+    - None of the above (active marker present but no state marker) → the steady active/idle line: `text="auto-evolve loop active — idle between ticks"`, `icon="🔁"`, `color="green"`. The active marker still gates the whole composite surface, so `[]` is returned only when `.rabbit-auto-evolve-active` is ABSENT. An active-but-idle loop (active marker present, all four short-lived state markers absent) is the dominant steady state and MUST surface exactly one line, symmetric with `emit_auto_evolve_banner`.
 
     The marker names follow Inv 12's positive-streamlined rule (each describes a present state — `active`, `running`, `aborted`, `stop-requested`, `restart-needed` — no negating prefixes).
 
@@ -346,7 +346,7 @@ Numbering preserves gaps at 4, 6, 7, 27, 28, 29, 30, 35, 55, 56 — each is docu
       restart-needed vs aborted) is now exercised by
       rabbit-auto-evolve's own test-banner-status.py (Inv 22); the
       contract test only verifies the dispatch + mapping mechanism.
-    - `test/test-runtime-emit-auto-evolve-stop-line.py` — each of four mutually-exclusive states (aborted, restart-needed, stop-requested, running) returns exactly one entry with the right text/icon/color; active-marker absent → `[]` regardless of other markers; no state markers present → `[]`; priority order verified by populating multiple state markers and asserting only the highest-priority one wins.
+    - `test/test-runtime-emit-auto-evolve-stop-line.py` — each of four mutually-exclusive states (aborted, restart-needed, stop-requested, running) returns exactly one entry with the right text/icon/color; active-marker absent → `[]` regardless of other markers; active marker present with no state marker → exactly one steady active/idle entry (`text="auto-evolve loop active — idle between ticks"`, `icon="🔁"`, `color="green"`); priority order verified by populating multiple state markers and asserting only the highest-priority one wins.
 
 66. **Mechanical enforcement of subagent prompt policy injection via the `RABBIT-POLICY-BLOCK-v1` sentinel.** The literal string `RABBIT-POLICY-BLOCK-v1` is the canonical machine-readable proof-of-policy-injection. Contract owns this sentinel exclusively: it is emitted as the first line of the canonical policy framing by `lib/policy_block.py:render_policy_block` (per Inv 54), prepended to every assembled prompt by `scripts/build-prompt.py` (per Inv 54), and reproduced unchanged by every dispatcher script that wraps `build-prompt.py` (e.g. `tdd-subagent/scripts/dispatch-tdd-subagent.py`, `rabbit-spec/scripts/dispatch-spec-create.py`). The sentinel string MUST NOT appear in any other context — it is not a regex placeholder, not a documentation example, not a comment marker. Defining or emitting it from anywhere outside `lib/policy_block.py` is a contract violation.
 
