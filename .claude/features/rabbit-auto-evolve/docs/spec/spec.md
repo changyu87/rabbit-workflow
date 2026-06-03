@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.9.2
+version: 0.10.0
 owner: cyxu
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -302,9 +302,18 @@ Phase E merges complete.
      "rationale": "<one sentence>",
      "feature": "<feature-name or null>",
      "contract_touch": true,
-     "blocked_by": [124]
+     "blocked_by": [124],
+     "planning_note": "<non-empty string for defer, else null>"
    }
    ```
+
+   The decision set is EXACTLY `{work, defer, close-not-planned}` (issue
+   #423 Part A). `close-completed` is NEVER emittable from triage — a
+   completed closure can only be claimed once work has actually landed,
+   which is the merge phase's job (Inv 6 step 4 via `item-status.py close
+   --reason completed --commit-sha`), never triage's. Every `defer`
+   decision MUST carry a non-empty `planning_note` describing what analysis
+   would unblock dispatch; non-defer decisions carry `planning_note: null`.
 
    The script reads only:
    - Issue metadata (title, body, labels, state, comments) via
@@ -509,8 +518,11 @@ Phase E merges complete.
       `Resolve`), case-insensitive. For each distinct referenced issue,
       fetch the merge SHA (`gh pr view <#> --json mergeCommit
       -q .mergeCommit.oid`) and invoke
-      `item-status.py close <N> --reason completed
-      --comment "TDD cycle complete in <sha>"`. This is required because
+      `item-status.py close <N> --reason completed --commit-sha <sha>
+      --comment "TDD cycle complete in <sha>"`. The `--commit-sha` flag is
+      REQUIRED by `item-status.py` for a `completed` closure (issue #423
+      Part C) — a completed closure must point at the real merge commit
+      that landed the work. This is required because
       GitHub's native `Fixes/Closes/Resolves` auto-close fires ONLY when
       a PR merges to the repo's default branch (`main`); auto-evolve PRs
       always target `dev`, so without this explicit step referenced
@@ -572,10 +584,11 @@ Phase E merges complete.
    - No-`--auto` regression (issue #429): on the happy path, the recorded
      `gh pr merge` invocation MUST NOT contain `--auto` (it still uses
      `--squash`). Guards against the auto-merge-not-enabled failure.
-   - Close-after-merge (issue #392): PR body references issues via
+   - Close-after-merge (issue #392 + #423): PR body references issues via
      `Fixes`/`Closes`/`Resolves` (case-insensitive) → after a successful
      merge, the item-status.py shim is invoked once per distinct issue
-     with `close <N> --reason completed --comment "...<sha>..."`; the
+     with `close <N> --reason completed --commit-sha <merge-sha>
+     --comment "...<sha>..."`; the
      result row carries `closed_issues`. No refs → item-status.py NOT
      invoked, `closed_issues == []`. item-status.py failure → merge still
      `status: "merged"`, failed issue under `close_failed`, stderr
@@ -726,7 +739,7 @@ Phase E merges complete.
 
    | Field | Type | Notes |
    |---|---|---|
-   | `schema_version` | string | Literal `"1.0.0"` |
+   | `schema_version` | string | Literal `"1.1.0"` |
    | `updated_at` | string | ISO 8601 UTC timestamp, `YYYY-MM-DDTHH:MM:SSZ` |
    | `queue` | array of objects | each `{issue: int, decision: string, feature: string}` |
    | `in_flight` | array of int | currently-dispatched issue numbers |
@@ -735,9 +748,13 @@ Phase E merges complete.
    | `consecutive_failures` | int | ≥ 0 |
    | `stop_requested` | bool | stop marker observed |
    | `restart_needed` | string \| null | reason string when set, else null (resolved Open Question 3 — NOT a pure boolean) |
+   | `defer_counts` | object (optional) | per-issue consecutive-defer counter (issue #423 Part B), keyed by issue-number string → non-negative int. Additive in schema 1.1.0; absent in pre-1.1.0 states |
 
    The schema file itself carries top-level `schema_version`, `owner`,
-   and `deprecation_criterion` keys per spec-rules §3.
+   and `deprecation_criterion` keys per spec-rules §3. Schema 1.1.0 added
+   the optional `defer_counts` field (issue #423 Part B) — a backward-
+   compatible additive change: states written without `defer_counts` still
+   validate.
 
    ### `update-state.py`
 
@@ -1074,6 +1091,30 @@ Phase E merges complete.
     env override pattern as the marker scripts to locate
     `triage-issue.py` (test seam).
 
+    **Anti-infinite-defer counter (issue #423 Part B).**
+    `triage-batch.py` owns a per-issue consecutive-defer counter
+    persisted in `.rabbit/auto-evolve-state.json` under the
+    `defer_counts` map (keyed by issue-number string; state dir
+    resolved via `RABBIT_AUTO_EVOLVE_STATE_DIR`, matching
+    `update-state.py`). For each triaged issue:
+
+    - a `defer` decision INCREMENTS the issue's counter; if the
+      counter was already ≥ 3 (this would be the 4th consecutive
+      defer), the decision is FORCED to `work` with `reason_code:
+      defer-limit-reached`, the accumulated planning-note history is
+      surfaced in `planning_note`, and the counter resets to 0 —
+      dispatch is mandatory after 3 consecutive deferrals.
+    - any non-`defer` decision RESETS the issue's counter to 0 (the
+      counter tracks CONSECUTIVE defers, not lifetime).
+
+    The updated `defer_counts` map is written back via an atomic
+    temp+rename (read-modify-write, preserving every other state
+    key). Persistence is best-effort: if no state file exists or it
+    fails to parse, counts default to empty and decisions pass
+    through unchanged — tick liveness must never depend on the state
+    file already existing. This enforces the convergence guarantee in
+    Inv 25.
+
     The canonical tick pipe in SKILL.md phases 2–4:
 
     ```
@@ -1096,6 +1137,18 @@ Phase E merges complete.
       other two succeed; overall exit 0.
     - Malformed stdin JSON → non-zero exit, stderr names the
       parse error.
+    - Defer counter (issue #423 Part B): a shim that always defers
+      the same issue, run 4 ticks against a seeded state file →
+      decision sequence is `defer, defer, defer, work` and the
+      forced-work entry carries `reason_code: defer-limit-reached`.
+    - Defer-counter persistence: after one defer tick the state
+      file's `defer_counts['<issue>']` is 1 and all pre-existing
+      state keys are preserved.
+    - Defer-counter reset: a state seeded with a non-zero count for
+      an issue that then triages to a non-defer decision resets that
+      issue's counter to 0.
+    - No state file: defer decisions still pass through unchanged
+      (best-effort persistence; tick liveness preserved).
 
 19. **`start-loop.py` self-healing.** Before writing the
     `.rabbit-auto-evolve-running` marker, `start-loop.py` performs
@@ -1321,6 +1374,37 @@ Phase E merges complete.
     files in a tempdir initialized as a git repo, copies the repo-root
     `.gitignore` into the tempdir, runs `git status --porcelain`, and
     asserts neither filename appears in the output.
+
+25. **Triage convergence guarantee (issue #423 Part E).** The triage
+    classifier MUST converge every valid issue to completion. It MAY
+    defer dispatch within the loop (up to 3 consecutive deferrals per
+    issue, after which dispatch is mandatory). It MAY close an issue as
+    not-planned with a strong reason. It MUST NOT close a valid issue as
+    completed as a substitute for dispatch. It MUST NOT escalate work to
+    human review as a non-dispatch action.
+
+    This invariant is enforced operationally by three mechanisms already
+    specified above:
+
+    - **No `close-completed` from triage (Inv 3).** The triage decision
+      set is exactly `{work, defer, close-not-planned}`; `close-completed`
+      is unreachable from triage. A completed closure is only ever
+      asserted by the merge phase (Inv 6 step 4) once work has actually
+      landed, with `item-status.py close --reason completed --commit-sha`
+      pointing at the real merge commit.
+    - **Bounded deferral (Inv 18).** The per-issue consecutive-defer
+      counter in `defer_counts` forces `work` on the 4th consecutive
+      defer, so an issue can never be deferred indefinitely.
+    - **No human-review escape hatch (Inv 13).** While the loop is
+      running the dispatcher MUST NOT emit `AskUserQuestion`; the only
+      non-dispatch terminal action is `.rabbit-auto-evolve-aborted` on a
+      genuine hard blocker — not a routine "kick it to a human" deferral.
+
+    Enforced by `test/test-spec-convergence-invariant.py` (asserts the
+    invariant text is present in this spec), `test/test-triage-rules.py`
+    (asserts `close-completed` is never emitted and every defer carries a
+    planning_note), and `test/test-triage-batch.py` (asserts the 4th
+    consecutive defer is forced to `work`).
 
 ## Known gaps
 

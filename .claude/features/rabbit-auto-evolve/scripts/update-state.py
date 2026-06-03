@@ -18,7 +18,7 @@ are rejected with a type-mismatch detail in stderr.
 Exit code: 0 on successful write; non-zero on schema-validation failure or
 write error. On validation failure the state file is NOT touched.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: cyxu
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -73,16 +73,18 @@ def validate(instance):
     if errors:
         return errors
 
-    # additionalProperties: false
-    extra = set(instance.keys()) - set(required)
+    # additionalProperties: false, except the optional `defer_counts` map
+    # (issue #423 Part B, schema 1.1.0).
+    optional = {"defer_counts"}
+    extra = set(instance.keys()) - set(required) - optional
     if extra:
         errors.append(
             "additional properties not allowed: " + ", ".join(sorted(extra))
         )
 
-    if instance["schema_version"] != "1.0.0":
+    if instance["schema_version"] != "1.1.0":
         errors.append(
-            f"schema_version: expected '1.0.0', got {instance['schema_version']!r}"
+            f"schema_version: expected '1.1.0', got {instance['schema_version']!r}"
         )
 
     updated_at = instance["updated_at"]
@@ -143,6 +145,26 @@ def validate(instance):
         errors.append(
             f"restart_needed: expected string|null, got {type(rn).__name__}"
         )
+
+    # defer_counts (optional): object of issue-number-string → non-negative
+    # int (issue #423 Part B).
+    if "defer_counts" in instance:
+        dc = instance["defer_counts"]
+        if not isinstance(dc, dict):
+            errors.append(
+                f"defer_counts: expected object, got {type(dc).__name__}"
+            )
+        else:
+            for k, v in dc.items():
+                if not _is_int(v):
+                    errors.append(
+                        f"defer_counts[{k!r}]: expected integer, got "
+                        f"{type(v).__name__}"
+                    )
+                elif v < 0:
+                    errors.append(
+                        f"defer_counts[{k!r}]: expected >= 0, got {v}"
+                    )
 
     return errors
 

@@ -459,6 +459,15 @@ with tempfile.TemporaryDirectory() as td:
             fail(f"close-after-merge: call missing --comment: {c!r}")
         elif "deadbee" not in c:
             fail(f"close-after-merge: --comment missing SHA 'deadbee': {c!r}")
+        # Issue #423 Part C: item-status.py close --reason completed now
+        # REQUIRES --commit-sha <merge-sha>. merge-prs.py MUST pass it.
+        if "--commit-sha" not in parts:
+            fail(f"close-after-merge: call missing --commit-sha (issue "
+                 f"#423): {c!r}")
+        elif parts[parts.index("--commit-sha") + 1] != "deadbee":
+            fail(f"close-after-merge: --commit-sha "
+                 f"{parts[parts.index('--commit-sha') + 1]!r} != 'deadbee': "
+                 f"{c!r}")
     if closed_nums == {"11", "22", "33"}:
         ok("close-after-merge: closed issues 11/22/33 with reason+SHA comment")
     else:

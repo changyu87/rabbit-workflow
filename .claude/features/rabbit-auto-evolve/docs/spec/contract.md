@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.9.2
+version: 0.10.0
 template_version: 2.0.0
 ---
 
@@ -25,7 +25,7 @@ template_version: 2.0.0
       {
         "path": ".claude/features/rabbit-issue/scripts/item-status.py",
         "subcommand": "close",
-        "rationale": "merge-prs.py explicitly closes issues referenced (Fixes/Closes/Resolves #N) by a PR merged to dev, since GitHub auto-close only fires for default-branch (main) merges (issue #392)"
+        "rationale": "merge-prs.py explicitly closes issues referenced (Fixes/Closes/Resolves #N) by a PR merged to dev, since GitHub auto-close only fires for default-branch (main) merges (issue #392); the close passes --reason completed --commit-sha <merge-sha>, since item-status.py requires --commit-sha for a completed closure (issue #423)"
       }
     ],
     "agents": [],

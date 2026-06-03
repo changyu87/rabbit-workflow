@@ -3,9 +3,16 @@
 
 Per rabbit-auto-evolve spec.md Inv 3, emits a JSON object on stdout with
 fields: issue, decision, reason_code, rationale, feature, contract_touch,
-blocked_by. Implements the seven-rule decision table (top-down, first
-match wins); any ambiguity defaults to decision=defer, reason_code=
-needs-judgment (never silently to work).
+blocked_by, planning_note. Implements the seven-rule decision table
+(top-down, first match wins); any ambiguity defaults to decision=defer,
+reason_code=needs-judgment (never silently to work).
+
+The decision set is exactly {work, defer, close-not-planned} (issue #423
+Part A). `close-completed` is NEVER emittable from triage — a completed
+closure can only be claimed once work has actually landed (the merge
+phase's job via item-status.py, not triage's). Every `defer` decision
+carries a non-empty `planning_note` describing what analysis would
+unblock dispatch; non-defer decisions carry `planning_note: null`.
 
 Read surface (strictly bounded):
   - Issue metadata via `gh issue view <N> --json
@@ -24,7 +31,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: cyxu
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -172,6 +179,9 @@ def classify(issue_num, repo_root):
         "feature": feature_label,
         "contract_touch": ctouch,
         "blocked_by": [],
+        # planning_note is null for non-defer decisions; each defer return
+        # overrides it with a non-empty note (issue #423 Part A).
+        "planning_note": None,
     }
 
     # ---- Rule 1: malformed-labels ----
@@ -179,7 +189,10 @@ def classify(issue_num, repo_root):
         return dict(base,
                     decision="defer",
                     reason_code="malformed-labels",
-                    rationale="Issue is missing required feature: or priority: label.")
+                    rationale="Issue is missing required feature: or priority: label.",
+                    planning_note="Add the missing feature:<name> and/or "
+                                  "priority:<level> label so the issue can be "
+                                  "routed and scoped.")
 
     # ---- Rule 2: unknown-feature ----
     feature_dir = Path(repo_root) / ".claude" / "features" / feature_label
@@ -198,7 +211,9 @@ def classify(issue_num, repo_root):
         return dict(base,
                     decision="defer",
                     reason_code="needs-judgment",
-                    rationale="Could not query closed-issue list for duplicate check.")
+                    rationale="Could not query closed-issue list for duplicate check.",
+                    planning_note="Re-run triage once `gh issue list` is "
+                                  "reachable to complete the duplicate check.")
 
     title_cf = title.casefold()
     for ci in closed:
@@ -225,7 +240,11 @@ def classify(issue_num, repo_root):
             return dict(base,
                         decision="defer",
                         reason_code="needs-judgment",
-                        rationale="Body declares 'blocked-by:' but no integer issue reference found.")
+                        rationale="Body declares 'blocked-by:' but no integer issue reference found.",
+                        planning_note="Clarify the blocked-by dependency: edit "
+                                      "the body to cite a concrete `blocked-by: "
+                                      "#N`, or remove the declaration if there "
+                                      "is no real blocker.")
         blocked_open = []
         for n in matches:
             n_int = int(n)
@@ -235,7 +254,10 @@ def classify(issue_num, repo_root):
                 return dict(base,
                             decision="defer",
                             reason_code="needs-judgment",
-                            rationale=f"Could not query state of cited dependency #{n_int}.")
+                            rationale=f"Could not query state of cited dependency #{n_int}.",
+                            planning_note=f"Verify the state of cited "
+                                          f"dependency #{n_int}; re-run triage "
+                                          f"once it is reachable.")
             dep_state = (dep.get("state") or "").upper()
             if dep_state == "OPEN":
                 blocked_open.append(n_int)
@@ -244,7 +266,10 @@ def classify(issue_num, repo_root):
                         decision="defer",
                         reason_code="blocked",
                         rationale=f"Blocked by still-open issue(s): {blocked_open}.",
-                        blocked_by=blocked_open)
+                        blocked_by=blocked_open,
+                        planning_note=f"Wait for blocking issue(s) "
+                                      f"{blocked_open} to close, then re-triage; "
+                                      f"dispatch is unblocked once they land.")
 
     # ---- Rule 6: already-spec'd ----
     head_matter = _read_spec_head_matter(feature_dir).casefold()

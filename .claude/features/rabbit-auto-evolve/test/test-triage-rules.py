@@ -360,6 +360,88 @@ with tempfile.TemporaryDirectory() as repo_root:
 
 
 # ---------------------------------------------------------------------------
+# Part A (issue #423): every defer decision carries a non-empty planning_note
+# describing what analysis would unblock dispatch. Exercised here via the
+# needs-judgment ambiguity path (a valid issue that cannot be confidently
+# scoped now — e.g. malformed blocked-by syntax).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "note-feature")
+    issue_payload = json.dumps({
+        "number": 120,
+        "title": "Some valid but unscoped behavior",
+        "body": "Has blocked-by: somewhere but no number\n",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:note-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"120": issue_payload}, list_payload)
+    proc = run_script(repo_root, 120, shim_dir)
+    expect_decision(
+        "defer-planning-note", proc, "defer", "needs-judgment",
+        extra_assert=lambda r: (
+            None
+            if isinstance(r.get("planning_note"), str) and r["planning_note"].strip()
+            else "defer decision must carry a non-empty string planning_note"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Part A (issue #423): the classifier MUST NOT ever emit `close-completed`.
+# Every decision across the rule table is in the allowed set
+# {work, defer, close-not-planned}. Assert a work scenario yields an allowed
+# decision (never close-completed) and that work decisions carry a null
+# planning_note (planning_note is meaningful only for defer).
+# ---------------------------------------------------------------------------
+_ALLOWED_DECISIONS = {"work", "defer", "close-not-planned"}
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "sweep-feature")
+    issue_payload = json.dumps({
+        "number": 121,
+        "title": "Add a brand-new sweep behavior",
+        "body": "Implement this fresh behavior.",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:sweep-feature"},
+            {"name": "priority:high"},
+        ],
+        "state": "OPEN",
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"121": issue_payload}, list_payload)
+    proc = run_script(repo_root, 121, shim_dir)
+    if proc.returncode != 0:
+        fail(f"no-close-completed: exit {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        try:
+            result = json.loads(proc.stdout)
+            decision = result.get("decision")
+            if decision == "close-completed":
+                fail("no-close-completed: classifier emitted close-completed")
+            elif decision not in _ALLOWED_DECISIONS:
+                fail(f"no-close-completed: decision {decision!r} not in "
+                     f"{_ALLOWED_DECISIONS}")
+            elif decision == "work" and result.get("planning_note") is not None:
+                fail(f"no-close-completed: work decision should have null "
+                     f"planning_note, got {result.get('planning_note')!r}")
+            else:
+                ok("no-close-completed: work decision, allowed set, null note")
+        except json.JSONDecodeError as e:
+            fail(f"no-close-completed: bad JSON {e}")
+
+
+# ---------------------------------------------------------------------------
 # contract_touch: feature:contract label → true
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as repo_root:

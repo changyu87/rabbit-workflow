@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "owner": "cyxu",
   "deprecation_criterion": "when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill",
   "title": "rabbit-auto-evolve loop state",
@@ -20,7 +20,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "updated_at": {
       "type": "string",
@@ -58,6 +58,14 @@
     },
     "restart_needed": {
       "type": ["string", "null"]
+    },
+    "defer_counts": {
+      "type": "object",
+      "description": "Per-issue consecutive-defer counter (issue #423 Part B), keyed by issue-number string. Optional/additive (schema 1.1.0).",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
     }
   }
 }
