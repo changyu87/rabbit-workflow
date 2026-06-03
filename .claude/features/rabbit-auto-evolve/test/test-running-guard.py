@@ -27,24 +27,27 @@ Scenarios:
                                                removed, "stale" logged
   E) PID-free marker, state.json idle/absent-> proceed, stale_cleared, removed
                                                (guard functions without a pid)
-  F) helper-PID regression: the pid that
-     start-loop.py records is NOT its own
-     transient os.getpid()
+  F) helper-PID regression: the pid recorded in the marker the shared
+     phase-walk writes (Inv 42) is NOT the walk's own transient os.getpid()
+     (the marker-content shape lives in start-loop.py's _marker_content,
+     imported by the walk)
   G) --help smoke
 """
 
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import tempfile
+import textwrap
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.normpath(os.path.join(HERE, "..", "scripts"))
 GUARD = os.path.join(SCRIPTS, "running-guard.py")
-START_LOOP = os.path.join(SCRIPTS, "start-loop.py")
+WALK = os.path.join(SCRIPTS, "run-tick-phases.py")
 MARKER = ".rabbit-auto-evolve-running"
 STATE_REL = os.path.join(".rabbit", "auto-evolve-state.json")
 
@@ -208,37 +211,66 @@ with tempfile.TemporaryDirectory() as d:
         fail(f"E2: expected proceed/stale_cleared; out={proc.stdout!r} "
              f"err={proc.stderr!r}")
 
-# F — helper-PID regression: the pid start-loop.py records must NOT be its own
-#     transient os.getpid(). Run start-loop.py, capture the child's reported
-#     pid, then read the recorded pid from the marker content.
+# F — helper-PID regression: the pid recorded in the marker the shared
+#     phase-walk writes (Inv 42) must NOT be the walk's own transient
+#     os.getpid(). Run run-tick-phases.py pre-dispatch (the real writer), have
+#     it report its own pid via the result JSON's process, then read the
+#     recorded pid from the marker content.
+_F_STUBS = {
+    "sync-tree.py": "print('{\"status\": \"synced\"}')",
+    "fetch-queue.py": "print('[]')",
+    "triage-batch.py": "import sys; sys.stdin.read(); print('[]')",
+    "plan-batch.py": "import sys; sys.stdin.read(); print('{}')",
+}
 with tempfile.TemporaryDirectory() as d:
+    repo_root = os.path.join(d, "repo")
+    state_dir = os.path.join(repo_root, ".rabbit")
+    stub_dir = os.path.join(d, "stubs")
+    os.makedirs(repo_root)
+    os.makedirs(state_dir)
+    os.makedirs(stub_dir)
+    for name, body in _F_STUBS.items():
+        p = os.path.join(stub_dir, name)
+        with open(p, "w") as f:
+            f.write(f"#!{sys.executable}\n{body}\n")
+        os.chmod(p, os.stat(p).st_mode | stat.S_IEXEC)
+    # Real running-guard + a tick-log stub (running-guard imports it by file).
+    import shutil as _sh
+    _sh.copy(GUARD, os.path.join(stub_dir, "running-guard.py"))
+    with open(os.path.join(stub_dir, "tick-log.py"), "w") as f:
+        f.write("def append(decision, detail):\n    pass\n")
+    with open(os.path.join(state_dir, "auto-evolve-state.json"), "w") as f:
+        json.dump({"queue": [], "in_flight": []}, f)
     env = os.environ.copy()
-    env["RABBIT_AUTO_EVOLVE_REPO_ROOT"] = d
-    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = os.path.join(d, ".rabbit")
-    # Have the child print its own os.getpid() to stderr so we can compare.
+    env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = stub_dir
+    env["RABBIT_AUTO_EVOLVE_REPO_ROOT"] = repo_root
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    # Wrap the walk so we can capture the walk process's own transient pid.
     child_code = (
         "import os,sys,runpy\n"
         "sys.stderr.write('CHILD_PID=%d\\n' % os.getpid())\n"
-        "sys.argv=['start-loop.py']\n"
+        "sys.argv=['run-tick-phases.py','pre-dispatch']\n"
         "runpy.run_path({!r}, run_name='__main__')\n"
-    ).format(START_LOOP)
-    sl = subprocess.run(
+    ).format(WALK)
+    wl = subprocess.run(
         [sys.executable, "-c", child_code],
         capture_output=True, text=True, env=env,
     )
-    m = re.search(r"CHILD_PID=(\d+)", sl.stderr)
+    m = re.search(r"CHILD_PID=(\d+)", wl.stderr)
     child_pid = int(m.group(1)) if m else None
-    mpath = os.path.join(d, MARKER)
+    mpath = os.path.join(repo_root, MARKER)
     content = open(mpath).read() if os.path.exists(mpath) else ""
     rec = re.search(r"pid=(\d+)", content)
     recorded_pid = int(rec.group(1)) if rec else None
-    if child_pid is None:
-        fail(f"F: could not capture start-loop.py child pid; err={sl.stderr!r}")
+    if not os.path.exists(mpath):
+        fail(f"F: the walk did not write the running marker; err={wl.stderr!r}")
+    elif child_pid is None:
+        fail(f"F: could not capture the walk's transient pid; err={wl.stderr!r}")
     elif recorded_pid is not None and recorded_pid == child_pid:
-        fail(f"F: recorded pid {recorded_pid} IS start-loop.py's transient "
-             f"pid (the helper-PID bug); content={content!r}")
+        fail(f"F: recorded pid {recorded_pid} IS the walk's transient pid "
+             f"(the helper-PID bug); content={content!r}")
     else:
-        ok(f"F: recorded owner pid ({recorded_pid}) != start-loop transient "
+        ok(f"F: recorded owner pid ({recorded_pid}) != walk transient "
            f"pid ({child_pid}) — durable owner or pid-free")
 
 # G — --help smoke

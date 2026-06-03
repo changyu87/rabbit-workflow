@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.31.0 — 2026-06-03
+
+- Fix #565 (the in-session `start` false-skipped the whole tick on the loop's
+  OWN fresh start-loop marker). After #513 the in-session `start` sequence was
+  running-guard (passes) → `start-loop.py` (writes
+  `.rabbit-auto-evolve-running`) → "run one tick" =
+  `run-tick-phases.py pre-dispatch`. But pre-dispatch internally re-ran
+  `running-guard.py` (Inv 35), which then saw the loop's OWN fresh live-PID
+  marker and returned `{action: "skip", reason: "tick-running"}` — so the walk
+  false-skipped the entire tick on the marker the loop itself had just written.
+  The headless path was unaffected (no separate start-loop step before
+  pre-dispatch). The guard and the marker write were sequenced in the wrong
+  order across the "Start the loop" steps and the pre-dispatch segment.
+- The running-marker write now lives in the shared phase-walk
+  (`run-tick-phases.py`, 1.0.0 → 1.1.0): pre-dispatch runs the running-guard
+  FIRST and, ONLY after it returns `proceed`, writes
+  `.rabbit-auto-evolve-running` (the durable owner-PID + ISO-8601 timestamp
+  content for the Inv 35 guard). Because the marker is written AFTER the guard,
+  neither the in-session nor the headless path false-skips on a marker it itself
+  wrote. Concurrency protection is preserved: a FRESH marker from a DIFFERENT
+  live tick that already exists BEFORE the walk starts still makes pre-dispatch
+  skip.
+- `start-loop.py` (1.5.0 → 1.6.0) is now strictly the EXPLICIT USER `start`
+  self-heal entry: it keeps ONLY its cancel-stop (Inv 19/41) and
+  state-bootstrap, and no longer writes the running marker. The redundant
+  pre-walk running-guard + marker-write steps were removed from the SKILL.md
+  "Start the loop" sequence (the shared walk owns guard→mark). The
+  marker-content shape stays defined in ONE place (`start-loop.py`'s
+  `_marker_content`) and is imported by the phase-walk.
+- Start-vs-tick authority preserved (new Inv 42, no regression to #558 / Inv
+  41): the explicit user `start` runs `start-loop.py` (cancel-stop + bootstrap)
+  BEFORE invoking the walk; a MACHINE-fired `tick` invokes the walk DIRECTLY
+  with NO cancel-stop, so a heartbeat can never resurrect a halted loop. The
+  shared walk writes ONLY the running marker (after the guard), never the
+  stop-cancel. `end-tick.py` still removes the running marker on every exit path
+  (Inv 20, unchanged mirror).
+- This is a re-read-from-disk self-modifying migration (Inv 39): no coexistence
+  window, no restart marker — it takes effect on the next tick after merge +
+  sync. spec.md adds Inv 42, updates Inv 19/20 ownership notes; SKILL.md updates
+  the "Start the loop" and "tick (internal)" sections. Four-way version bump
+  0.30.0 → 0.31.0.
+
 ## 0.30.0 — 2026-06-03
 
 - Fix #558 (a user stop did not hold — the cron heartbeat resurrected a halted

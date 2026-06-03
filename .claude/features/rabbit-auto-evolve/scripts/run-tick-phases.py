@@ -9,10 +9,18 @@ inserted BETWEEN them by the in-session path without either path
 hand-assembling any inter-phase data structure:
 
   pre-dispatch   tick-start self-sync (Inv 38), phase 0/1 stop/abort
-                 short-circuit, running-guard (Inv 35), phases 2-4
+                 short-circuit, running-guard (Inv 35), running-marker WRITE
+                 (Inv 42 — only after the guard returns proceed), phases 2-4
                  (fetch | triage | plan, Inv 18). Emits a result with
                  `action: "proceed"` (continue to dispatch) or
                  `action: "skip"` (a clean no-op short-circuit fired).
+
+The running marker is written by THIS shared walk (after its own guard),
+not before it by the caller (Inv 42). Sequencing the guard BEFORE the marker
+write — in ONE place for both the in-session and headless paths — means neither
+path false-skips on a marker it itself wrote. start-loop.py (the explicit user
+`start` entry) keeps ONLY its cancel-stop + bootstrap self-heal (Inv 19) and no
+longer writes the running marker.
 
   post-dispatch  phase 6 (merge ready PRs from the state's `merge_ready`
                  hint), phases 7-9 (`run-post-merge.py` drain), phase 10
@@ -39,13 +47,14 @@ A single JSON result object is emitted on stdout. Exit code is 0 on a
 completed segment (including every short-circuit no-op); non-zero on an
 unexpected phase-script failure.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
 """
 
 import argparse
+import importlib.util
 import json
 import os
 import subprocess
@@ -53,6 +62,7 @@ import sys
 
 STOP_MARKER = ".rabbit-auto-evolve-stop-requested"
 ABORT_MARKER = ".rabbit-auto-evolve-aborted"
+RUNNING_MARKER = ".rabbit-auto-evolve-running"
 
 
 def _script_dir():
@@ -111,9 +121,32 @@ def _emit(result):
     sys.stdout.write("\n")
 
 
+def _write_running_marker():
+    """Write the .rabbit-auto-evolve-running marker at the repo root, carrying
+    the DURABLE owner PID + ISO-8601 timestamp the running-guard reads (Inv 35).
+
+    The marker write is owned by the shared phase-walk and runs ONLY after the
+    running-guard returns `proceed` (Inv 42), so neither the in-session nor the
+    headless path ever false-skips on a marker it itself wrote. The durable
+    owner-PID + timestamp content shape lives in start-loop.py (imported by file
+    spec, since the filename is hyphenated) so the marker content stays defined
+    in ONE place. start-loop.py is always a sibling of this script, so it is
+    resolved next to THIS file (not via the configurable phase-script dir, which
+    a test harness may point at stub phase scripts)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    spec = importlib.util.spec_from_file_location(
+        "start_loop", os.path.join(here, "start-loop.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    path = os.path.join(_repo_root(), RUNNING_MARKER)
+    with open(path, "w") as f:
+        f.write(mod._marker_content())
+
+
 def run_pre_dispatch():
     """Phases: tick-start sync (Inv 38) -> phase 0/1 stop/abort short-circuit
-    -> running-guard (Inv 35) -> phases 2-4 fetch|triage|plan (Inv 18).
+    -> running-guard (Inv 35) -> running-marker write (Inv 42, only on proceed)
+    -> phases 2-4 fetch|triage|plan (Inv 18).
 
     Returns `(result_dict, exit_code)`. The result's `action` is "proceed"
     (continue to dispatch) or "skip" (a clean no-op short-circuit fired). On a
@@ -158,6 +191,13 @@ def run_pre_dispatch():
         return result, 0
     if verdict.get("stale_cleared"):
         result["running_guard"] = "stale-cleared"
+
+    # The guard returned `proceed` (no live marker, or a stale one it cleared).
+    # ONLY now does the walk write the running marker (Inv 42), so the guard
+    # above never trips on a marker the walk itself wrote. Both the in-session
+    # and headless paths get the marker written this single way.
+    _write_running_marker()
+    result["running_marker"] = "written"
 
     # phases 2-4: fetch | triage | plan (Inv 18).
     fetch = _run("fetch-queue.py", [])

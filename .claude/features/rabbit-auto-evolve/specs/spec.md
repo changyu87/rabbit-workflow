@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.30.0
+version: 0.31.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1414,9 +1414,12 @@ Phase E merges complete.
     - No state file: defer decisions still pass through unchanged
       (best-effort persistence; tick liveness preserved).
 
-19. **`start-loop.py` self-healing.** Before writing the
-    `.rabbit-auto-evolve-running` marker, `start-loop.py` performs
-    two self-healing steps:
+19. **`start-loop.py` self-healing (the explicit user `start` entry).**
+    `start-loop.py` is the entry the EXPLICIT USER `start` runs; it performs
+    two self-healing steps tied to that user intent. It does NOT write the
+    `.rabbit-auto-evolve-running` marker — that write is owned by the shared
+    phase-walk (Inv 42), which runs the running-guard first and writes the
+    marker only on `proceed`. The two self-heal steps are:
 
     1. **Cancel any pending stop.** If
        `.rabbit-auto-evolve-stop-requested` exists at the repo
@@ -1424,7 +1427,10 @@ Phase E merges complete.
        "I want this to run" signal — it cancels any pending stop
        (typical scenario: previous session was killed mid-tick,
        leaving the stop marker behind from a `stop` invocation that
-       was never observed by a subsequent tick).
+       was never observed by a subsequent tick). This stop-cancel is the
+       SOLE path that clears the stop marker (Inv 41): a MACHINE-fired
+       `tick` invokes the shared phase-walk directly and never runs
+       `start-loop.py`, so a heartbeat can never resurrect a halted loop.
     2. **Bootstrap state file.** If
        `.rabbit/auto-evolve-state.json` does NOT exist OR is empty
        OR fails JSON parse, create it with default content:
@@ -1455,8 +1461,9 @@ Phase E merges complete.
 
     Enforced by `test/test-loop-markers.py`:
     - Pre-seed `.rabbit-auto-evolve-stop-requested`, invoke
-      `start-loop.py`, assert: running marker exists AND
-      stop-requested marker is gone.
+      `start-loop.py`, assert: stop-requested marker is gone AND the
+      running marker was NOT written (the shared phase-walk owns that
+      write per Inv 42).
     - Pre-create an empty `.rabbit/auto-evolve-state.json`, invoke
       `start-loop.py`, assert: state file is now valid JSON with
       default content.
@@ -1473,10 +1480,10 @@ Phase E merges complete.
     - Safety-violation abort (writes `.rabbit-auto-evolve-aborted` then ends).
     - Error abort (unexpected exception in any phase).
 
-    `end-tick.py` deletes `.rabbit-auto-evolve-running` (mirror of
-    `start-loop.py`'s write). Idempotent: missing marker is a
-    no-op. Without this, the running marker leaks across sessions
-    and the user has to `rm -f` it manually — which scope-guard
+    `end-tick.py` deletes `.rabbit-auto-evolve-running` (mirror of the
+    shared phase-walk's running-marker write, Inv 42). Idempotent: missing
+    marker is a no-op. Without this, the running marker leaks across
+    sessions and the user has to `rm -f` it manually — which scope-guard
     correctly denies.
 
     SKILL.md's tick documentation MUST show the `end-tick.py`
@@ -2384,11 +2391,13 @@ Phase E merges complete.
       works (every `update-state.py` write), so it tracks liveness even for a
       multi-hour active tick. Total elapsed time since marker creation is NO
       LONGER a staleness signal on its own.
-    - **Durable owner liveness (SECONDARY).** `start-loop.py` records a DURABLE
+    - **Durable owner liveness (SECONDARY).** The marker records a DURABLE
       owner identifier — the long-lived session / tick-owner PID, sourced from
       the Claude session environment (e.g. `CLAUDE_SESSION_PID` / `PPID` chain)
-      when available — into the marker content, NOT `start-loop.py`'s transient
-      `os.getpid()`. When a durable owner PID is recorded AND that process is
+      when available — in its content (built by `start-loop.py`'s
+      `_marker_content`, imported by the shared phase-walk that writes the
+      marker per Inv 42), NOT the writer's transient `os.getpid()`. When a
+      durable owner PID is recorded AND that process is
       alive, the tick is ACTIVE regardless of the activity window. When no
       durable owner can be determined, the marker omits the PID and the guard
       relies on the activity signal alone (it MUST still function PID-free).
@@ -2418,9 +2427,11 @@ Phase E merges complete.
       absent) → stale, marker cleared, `stale marker cleared` logged.
     - PID-free marker with idle `state.json` → stale and cleared (guard
       functions without a PID).
-    - helper-PID regression — the PID `start-loop.py` records is the durable
-      owner, NOT the transient subprocess PID (assert the recorded PID is not
-      `start-loop.py`'s own short-lived PID).
+    - helper-PID regression — the PID recorded in the marker the shared
+      phase-walk writes (Inv 42) is the durable owner, NOT the transient
+      subprocess PID (assert the recorded PID is not the walk's own short-lived
+      PID). The marker-content shape lives in `start-loop.py`'s
+      `_marker_content`, imported by the phase-walk.
 
 36. **Every heartbeat/guard/schedule decision is logged (D4 — issue #521).**
     `scripts/tick-log.py` is an append-only, structured (JSON-per-line)
@@ -2717,6 +2728,60 @@ Phase E merges complete.
     `/rabbit-auto-evolve tick`), and by `test/test-schedule-decision.py` and
     `test/test-cron-trigger.py` (the emitted refire / heartbeat prompts are
     `/rabbit-auto-evolve tick`).
+
+42. **The shared phase-walk runs its running-guard BEFORE it writes the
+    running marker; the marker write is owned by ONE place for both paths.**
+    The `.rabbit-auto-evolve-running` marker write lives in the shared
+    scripted phase-walk (`run-tick-phases.py pre-dispatch`), AFTER its own
+    running-guard (Inv 35) returns `proceed` — never before the guard, and
+    never written by the caller. Sequencing the guard BEFORE the marker write,
+    in ONE place for BOTH the in-session and headless paths, is what prevents
+    a path from false-skipping on a marker it itself wrote.
+
+    The ordering is strict:
+
+    1. **One guard, then mark.** `run-tick-phases.py pre-dispatch` runs the
+       running-guard FIRST. ABSENT marker (or a stale one the guard cleared) →
+       `proceed`; a FRESH marker from a DIFFERENT live tick that already exists
+       BEFORE the walk starts → `skip` (concurrency protection preserved, Inv
+       35). ONLY after `proceed` does the walk write the
+       `.rabbit-auto-evolve-running` marker (the durable owner-PID + ISO-8601
+       timestamp content for the Inv 35 guard). Because the marker is written
+       AFTER the guard, the guard within the same call never trips on it.
+    2. **`start-loop.py` does NOT write the running marker.** The explicit user
+       `start` entry (`start-loop.py`, Inv 19) runs ONLY its cancel-stop +
+       bootstrap self-heal and then the dispatcher invokes the shared walk; the
+       walk owns the guard→mark sequence. The pre-walk guard + marker-write
+       steps that the in-session `start` sequence used to run before invoking
+       the walk are removed.
+    3. **Start-vs-tick authority is preserved (Inv 41 / Inv 19).** The
+       cancel-stop and state-bootstrap self-heal stay tied to the EXPLICIT USER
+       `start` ONLY: the explicit `start` runs `start-loop.py` (cancel-stop +
+       bootstrap) BEFORE invoking the walk; a MACHINE-fired `tick` invokes the
+       walk DIRECTLY with NO cancel-stop. The shared walk writes ONLY the
+       running marker (after the guard), never the stop-cancel — so a MACHINE
+       `tick` can never inherit `start`'s stop-cancel and resurrect a halted
+       loop.
+    4. **`end-tick.py` still removes the running marker** on every exit path
+       (Inv 20), the unchanged mirror of the walk's write.
+
+    The marker CONTENT shape (durable owner PID + ISO-8601 timestamp) is
+    defined in ONE place (`start-loop.py`'s `_marker_content`) and imported by
+    the phase-walk, so both the content shape and the write live in single
+    owners.
+
+    Because the loop's scripts re-read from disk each tick, this is a
+    re-read-from-disk self-modifying migration (Inv 39): no coexistence window,
+    no restart marker — it takes effect on the next tick after merge + sync.
+
+    Enforced by `test/test-guard-before-marker.py` (e2e: clean state → the walk
+    runs the guard, writes the marker, returns `proceed` and is NOT a self-skip;
+    the walk does NOT false-skip on the marker it itself wrote within the same
+    call; a pre-existing FRESH marker from a different live tick still makes
+    pre-dispatch skip; `start-loop.py` cancels a pending stop and bootstraps the
+    state file but does NOT write the running marker), and by
+    `test/test-spec-guard-before-marker-invariant.py` (this invariant text is
+    present in the spec and the SKILL.md documents the corrected ordering).
 
 ## Known gaps
 

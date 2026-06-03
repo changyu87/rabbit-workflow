@@ -44,10 +44,12 @@ CONSERVATIVELY (prefer a false-NEGATIVE over a false-POSITIVE):
     beyond IDLE_WINDOW, or absent). If EITHER the owner is alive OR activity is
     recent, the marker is FRESH and preserved.
 
-start-loop.py writes a DURABLE owner `pid=<n>` (the long-lived session PID, not
-its own transient subprocess PID) and an ISO-8601 timestamp into the marker
-content; existence-based readers (status-report.py, end-tick.py) are unaffected
-(they key on the filename, which is unchanged).
+The marker records a DURABLE owner `pid=<n>` (the long-lived session PID, not
+the writer's transient subprocess PID) and an ISO-8601 timestamp in its content
+— built by start-loop.py's `_marker_content` and written by the shared
+phase-walk after this guard returns proceed (Inv 42). Existence-based readers
+(status-report.py, end-tick.py) are unaffected (they key on the filename, which
+is unchanged).
 
   repo_root via RABBIT_AUTO_EVOLVE_REPO_ROOT, else os.getcwd().
   state_dir via RABBIT_AUTO_EVOLVE_STATE_DIR, else <cwd>/.rabbit
@@ -59,7 +61,7 @@ test governs the time arm.
 
 Exit code is always 0 (the verdict is carried in `action`).
 
-Version: 1.1.0
+Version: 1.1.1
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
