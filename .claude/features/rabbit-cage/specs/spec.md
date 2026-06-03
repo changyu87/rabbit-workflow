@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.38.0
+version: 5.39.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -420,11 +420,13 @@ string BEFORE splitting on `;|&` segment delimiters.
 
     Rationale — REJECTED alternative: dynamic "latest release" lookup via the GitHub API. Same rejection as Inv 28 — adds a network dependency to the bootstrap, a new failure mode (rate-limit / API outage), and a tooling dependency (`gh` or auth) that `install.py` otherwise avoids. The hardcoded default is simpler, deterministic, and easy to inspect.
 
-    Enforced by four tests under `.claude/features/rabbit-cage/test/`:
+    The `--update` fetch path is ref-shape-agnostic: `fetch_upstream` builds the GitHub archive URL `https://github.com/<repo>/archive/<ref>.tar.gz`, which is the identical endpoint for a branch, a `vX.Y.Z` tag, or a SHA. The tags + GitHub Releases release model (#499/#508) therefore needs NO change to the `--update` fetch mechanism — `install.py --update --version vX.Y.Z` already downloads the tag tarball. The contract-side update-check (contract Inv 63) is what tracks the latest published release tag; the survivor command `install.py --update` then acquires whatever ref the user (or the hardcoded default) names.
+    Enforced by five tests under `.claude/features/rabbit-cage/test/`:
     - `test-install-py-default-ref-not-dev.py` — parses `install.py` source, extracts the hardcoded default, asserts it matches an allowed stable-channel pattern AND is not exactly `dev`.
     - `test-install-py-default-ref-matches-install-sh.py` — parses both `install.py` and `install.sh`, extracts each default, asserts byte-equality so the two single sources stay in lock-step.
     - `test-install-py-version-flag-overrides-default.py` — invokes `install.py --update --version release/1.0` against a mocked fetcher and asserts the resolved ref is `release/1.0` (not the hardcoded default).
     - `test-install-py-channel-dev-opt-in.py` — invokes `install.py --update --channel dev` against a mocked fetcher and asserts the resolved ref is `dev` (explicit opt-in path).
+    - `test-install-py-update-tag-ref.py` — invokes `install.py --update --version vX.Y.Z` and asserts the tag ref flows verbatim to `fetch_upstream`, and that `fetch_upstream` builds the tag archive URL and extracts the tag tarball (the tags-model survivor-command path).
     Wired into `test/run.py`.
 
 30. **CHANGELOG.md at repo root, maintained alongside each release-cut PR.** A `CHANGELOG.md` file MUST exist at the repo root (top-level, not under `.claude/`) in keep-a-changelog format (`## [Unreleased]`, `## [release/X.Y] - YYYY-MM-DD` per release, sub-sections `### Added`, `### Changed`, `### Fixed`, `### Removed` as applicable). The file is the canonical user-facing view of release-to-release changes — plugin users running `install.py --update` see the file on GitHub (or read the local copy after update) and can decide whether to upgrade.
