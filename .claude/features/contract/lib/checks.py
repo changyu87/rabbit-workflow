@@ -48,6 +48,24 @@ def get_repo_root():
         return None
 
 
+def resolve_spec_path(feature_root, name):
+    """Resolve a feature spec/contract doc path, dual-read (issue #399 Phase 1).
+
+    Prefers the new layout <feature_root>/specs/<name>; falls back to the
+    legacy <feature_root>/docs/spec/<name>. During the docs/spec/ -> specs/
+    coexistence window (#450 Pattern 1) both layouts validate; Phase 3 drops
+    the fallback once every feature has migrated.
+
+    name is a leaf filename such as "spec.md" or "contract.md". When neither
+    layout exists the legacy docs/spec/ candidate is returned so downstream
+    existence checks report the canonical legacy path.
+    """
+    preferred = os.path.join(feature_root, "specs", name)
+    if os.path.isfile(preferred):
+        return preferred
+    return os.path.join(feature_root, "docs", "spec", name)
+
+
 # ---------- check_tests_non_interactive --------------------------------------
 
 _INTERACTIVE_PATTERNS = [
@@ -397,7 +415,8 @@ def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
 
     feature_dirs - iterable of feature directory paths. Features named in
     _MONOTONIC_KNOWN_ISSUES are skipped (pending renumber). Features without
-    docs/spec/spec.md are also silently skipped.
+    a spec.md (resolved dual-read: specs/ preferred, docs/spec/ fallback) are
+    also silently skipped.
 
     Returns CheckResult; messages include 'SKIP:' lines for skipped features
     and 'VIOLATION:' lines for any non-monotonic step.
@@ -412,7 +431,7 @@ def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
                 f"SKIP: {feat_name} (in KNOWN_ISSUES — pending renumber)"
             )
             continue
-        spec_path = os.path.join(feat_dir, "docs", "spec", "spec.md")
+        spec_path = resolve_spec_path(feat_dir, "spec.md")
         if not os.path.isfile(spec_path):
             continue
         try:
@@ -508,13 +527,18 @@ def validate_feature(feature_dir: str) -> CheckResult:
     # Required files / dirs
     if not os.path.isfile(feature_json_path):
         err("missing feature.json")
-    if not os.path.isfile(os.path.join(feature_dir, "docs", "spec", "spec.md")):
+    # Dual-read spec/contract resolution (issue #399 Phase 1, #450 Pattern 1):
+    # prefer specs/<name>, fall back to docs/spec/<name>. Error messages name
+    # the legacy path the resolver reports when neither layout exists.
+    spec_md = resolve_spec_path(feature_dir, "spec.md")
+    if not os.path.isfile(spec_md):
         err("missing docs/spec/spec.md")
-    elif os.path.getsize(os.path.join(feature_dir, "docs", "spec", "spec.md")) == 0:
+    elif os.path.getsize(spec_md) == 0:
         err("docs/spec/spec.md is empty")
-    if not os.path.isfile(os.path.join(feature_dir, "docs", "spec", "contract.md")):
+    contract_md = resolve_spec_path(feature_dir, "contract.md")
+    if not os.path.isfile(contract_md):
         err("missing docs/spec/contract.md")
-    elif os.path.getsize(os.path.join(feature_dir, "docs", "spec", "contract.md")) == 0:
+    elif os.path.getsize(contract_md) == 0:
         err("docs/spec/contract.md is empty")
     run_py = os.path.join(feature_dir, "test", "run.py")
     if not os.path.isfile(run_py):
