@@ -1,6 +1,6 @@
 {
   "name": "rabbit-spec",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "status": "active",
@@ -58,5 +58,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.5.0 -> 1.6.0): Inv 2 now requires the drafting subagent to be named rabbit-spec-creator and deployed at agents/rabbit-spec-creator.md so it satisfies check_naming (Inv 10/15); this TDD cycle implements the rename (issue #471)."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.6.0 -> 1.7.0): Inv 6 rewritten for issue #399 Phase 2a — the spec-lifecycle resolvers now PREFER the flat docs/spec.md (and docs/contract.md) layout, FALL BACK to specs/, then to legacy docs/spec/; the drafting agent targets flat docs/spec.md. No files move yet (rabbit-spec itself stays on specs/)."
 }

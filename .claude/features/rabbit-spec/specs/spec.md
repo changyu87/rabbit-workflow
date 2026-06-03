@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.6.0
+version: 1.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -12,7 +12,8 @@ status: active
 ## Purpose
 
 rabbit-spec owns the rabbit workflow's spec-lifecycle skills — the skills that
-draft and revise a feature's `specs/spec.md` (legacy layout: `docs/spec/spec.md`).
+draft and revise a feature's spec.md (canonical flat layout: `docs/spec.md`;
+fallbacks: `specs/spec.md` and legacy `docs/spec/spec.md`).
 After Stage 2 it hosts
 `rabbit-spec-create`, the initial-spec-drafting skill that absorbs the
 behavior of the former `spec-seeder` feature; Stage 3 will add
@@ -64,8 +65,9 @@ length including zero.
 
 2. `agents/rabbit-spec-creator.md` MUST exist with YAML frontmatter declaring
    `name: rabbit-spec-creator`, `tools: Read, Grep, Glob` (exact comma-separated
-   list — no `Write`/`Edit`/`Bash`), `model: sonnet`, and `version: 1.0.0`.
-   The body describes the read-only drafting task. The tool restriction is
+   list — no `Write`/`Edit`/`Bash`), `model: sonnet`, and `version: 1.1.0` or
+   later. The body describes the read-only drafting task and names the flat
+   `docs/spec.md` as the draft target. The tool restriction is
    load-bearing — it makes side-effects impossible regardless of what the
    agent attempts. The agent's base name MUST start with `rabbit-` so that the
    deployed `.claude/agents/rabbit-spec-creator.md` satisfies
@@ -132,36 +134,45 @@ length including zero.
    the standalone-mode branch (no unconditional uses). Wired into
    `test/run.py`.
 
-6. **Spec-path layout dual-read (issue #399 coexistence window).** Both
-   spec-lifecycle skills resolve the in-feature spec-file *layout*
-   independently of the mode prefix (Inv 5). The canonical layout is
-   `<feature_root>/specs/spec.md` (and `<feature_root>/specs/contract.md`);
-   the legacy layout is `<feature_root>/docs/spec/spec.md`. During the
-   `docs/spec/ -> specs/` migration coexistence window, features migrate
-   one-by-one, so the skills MUST work against BOTH layouts:
+6. **Spec-path layout dual-read (issue #399 Phase 2a coexistence window).**
+   Both spec-lifecycle skills and the drafting agent resolve the in-feature
+   spec-file *layout* independently of the mode prefix (Inv 5). The canonical
+   layout is the FLAT `<feature_root>/docs/spec.md` (and
+   `<feature_root>/docs/contract.md`); the fallbacks are the current
+   `<feature_root>/specs/spec.md` and the legacy nested
+   `<feature_root>/docs/spec/spec.md`. During the `specs/ -> docs/` flatten
+   migration coexistence window, features migrate one-by-one, so the skills
+   MUST work against ALL THREE layouts in this preference order (first
+   existing wins): flat `docs/` → `specs/` → legacy `docs/spec/`.
    - `skills/rabbit-spec-update/SKILL.md` MUST instruct the skill to PREFER
-     `<feature_root>/specs/spec.md` and FALL BACK to
-     `<feature_root>/docs/spec/spec.md` when the preferred path is absent,
-     for every Step 1 Read (spec.md, contract.md, feature.json — feature.json
-     stays at `<feature_root>/feature.json` regardless of layout) and the
-     Step 4 Edit/Write of spec.md. The skill MUST edit whichever layout it
-     resolved (never silently create a new `specs/` file alongside an
-     existing `docs/spec/` one). The skill body MUST mention both the
-     `specs/` and `docs/spec/` spec-file paths and name `specs/` as the
-     preferred layout.
+     `<feature_root>/docs/spec.md`, FALL BACK to `<feature_root>/specs/spec.md`,
+     then FALL BACK to the legacy `<feature_root>/docs/spec/spec.md` when the
+     preferred paths are absent, for every Step 1 Read (spec.md, contract.md,
+     feature.json — feature.json stays at `<feature_root>/feature.json`
+     regardless of layout) and the Step 4 Edit/Write of spec.md. The skill
+     MUST edit whichever layout it resolved (never silently create a new
+     flat `docs/` file alongside an existing `specs/` or `docs/spec/` one).
+     The skill body MUST mention the flat `docs/spec.md`, the `specs/spec.md`,
+     and the legacy `docs/spec/spec.md` spec-file paths and name the flat
+     `docs/` as the preferred layout.
    - `skills/rabbit-spec-create/SKILL.md` MUST write the drafted body to
-     `<dest_root>/specs/spec.md` when a `specs/spec.md` already exists at the
-     destination, OR to `<dest_root>/docs/spec/spec.md` when only the legacy
-     layout exists; when NEITHER exists (brand-new scaffold) it MUST write
-     the canonical `<dest_root>/specs/spec.md`. The skill body MUST mention
-     both the `specs/` and `docs/spec/` destination paths and name `specs/`
-     as the canonical destination for new specs.
+     `<dest_root>/docs/spec.md` when it already exists, ELSE to
+     `<dest_root>/specs/spec.md` when only that layout exists, ELSE to
+     `<dest_root>/docs/spec/spec.md` when only the legacy layout exists; when
+     NONE exists (brand-new scaffold) it MUST write the canonical flat
+     `<dest_root>/docs/spec.md`. The skill body MUST mention the flat
+     `docs/spec.md`, the `specs/spec.md`, and the legacy `docs/spec/spec.md`
+     destination paths and name the flat `docs/` as the canonical destination
+     for new specs.
+   - `agents/rabbit-spec-creator.md` MUST name the flat `docs/spec.md` as its
+     draft target (not the legacy `docs/spec/spec.md`).
    The deprecation criterion for this dual-read behavior: when every rabbit
-   feature has migrated off `docs/spec/` and the legacy fallback can be
-   dropped (tracked by issue #399). rabbit-spec's own spec.md/contract.md
-   live under `specs/` after this migration. Enforced by
-   `test/test-spec-path-layout-dual-read.py` (source-inspection of both
-   SKILL.md bodies). Wired into `test/run.py`.
+   feature has migrated onto the flat `docs/` layout and the `specs/` +
+   `docs/spec/` fallbacks can be dropped (tracked by issue #399). rabbit-spec's
+   own spec.md/contract.md stay under `specs/` during Phase 2a (no files move
+   yet). Enforced by `test/test-spec-path-layout-dual-read.py`
+   (source-inspection of both SKILL.md bodies and the agent body). Wired into
+   `test/run.py`.
 
 ## Tech Stack
 
