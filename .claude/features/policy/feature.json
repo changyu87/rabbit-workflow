@@ -1,6 +1,6 @@
 {
   "name": "policy",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "summary": "Canonical rule files fed to subagents; three policy docs (philosophy, spec-rules, coding-rules).",
@@ -14,5 +14,5 @@
   "manifest": [],
   "runtime": {},
   "configuration": [],
-  "spec_no_change_reason": "1.10.0 -> 1.11.0 relocates the feature's documentation surfaces to the flat docs/ layout (spec.md and contract.md moved via git mv from the spec directory into docs/, the now-empty spec directory removed, and a fresh docs/CHANGELOG.md created with the migration entry). The spec and contract bodies are unchanged; only their on-disk location moved. Lockstep minor bump across feature.json, docs/spec.md, and docs/contract.md frontmatter. The contract resolver (resolve_spec_path / resolve_changelog_path) already prefers the flat docs/ layout."
+  "spec_no_change_reason": "1.11.0 -> 1.12.0 updates the policy CONVENTION TEXT (spec-rules.md 'Where the metadata lives' Specs/contracts row, philosophy.md Bounded Scope) to name the flat docs/ home (docs/spec.md, docs/contract.md, docs/CHANGELOG.md) instead of the legacy spec-directory paths, completing #399 Phase 3a. The spec.md and contract.md BODIES are unchanged; only the convention text in the rule files (feature content, not the spec doc) and the lockstep version bump moved. Lockstep minor bump across feature.json, docs/spec.md, and docs/contract.md frontmatter."
 }
