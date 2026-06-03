@@ -1,14 +1,14 @@
 ---
 name: rabbit-spec-create
-description: Draft the initial body of a newly-declared rabbit feature's spec.md (canonical specs/spec.md, legacy docs/spec/spec.md) by dispatching the read-only spec-creator subagent. Use when a fresh feature has been scaffolded and needs its first spec draft — phrases like "draft a spec for X", "seed the spec for X", "create initial spec for X", "/rabbit-spec-create". Works in both modes: standalone (no globs — produces a skeleton from feature name alone) and plugin (with globs — drafts from real user code). Single-feature per invocation. Invoke as Skill("rabbit-spec-create", args: "<feature-name>") for a skeleton, or Skill("rabbit-spec-create", args: "<feature-name> <glob1> <glob2> ...") to read from code.
-version: 1.1.0
+description: Draft the initial body of a newly-declared rabbit feature's spec.md (canonical specs/spec.md, legacy docs/spec/spec.md) by dispatching the read-only rabbit-spec-creator subagent. Use when a fresh feature has been scaffolded and needs its first spec draft — phrases like "draft a spec for X", "seed the spec for X", "create initial spec for X", "/rabbit-spec-create". Works in both modes: standalone (no globs — produces a skeleton from feature name alone) and plugin (with globs — drafts from real user code). Single-feature per invocation. Invoke as Skill("rabbit-spec-create", args: "<feature-name>") for a skeleton, or Skill("rabbit-spec-create", args: "<feature-name> <glob1> <glob2> ...") to read from code.
+version: 1.1.1
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 ---
 
 # rabbit-spec-create — Initial Spec Drafting Skill
 
-Your job: drive the spec-creator subagent to produce a draft spec.md body for a newly-declared feature, then write that body to disk under the correct path for the current rabbit mode and spec-file layout (canonical `specs/spec.md`, legacy `docs/spec/spec.md`).
+Your job: drive the rabbit-spec-creator subagent to produce a draft spec.md body for a newly-declared feature, then write that body to disk under the correct path for the current rabbit mode and spec-file layout (canonical `specs/spec.md`, legacy `docs/spec/spec.md`).
 
 This is a thin orchestration wrapper. The reading-and-drafting work happens in the subagent (read-only, parallel-safe); your role is to assemble the prompt, dispatch the agent, and persist the result.
 
@@ -17,7 +17,7 @@ This is a thin orchestration wrapper. The reading-and-drafting work happens in t
 Args format: `<feature-name> [<glob1> <glob2> ...]`
 
 - **feature-name**: lowercase kebab-case identifier of the target feature (e.g. `my-tool`). The feature directory MUST already exist (scaffolded by `rabbit-feature-new` or its successor). This skill does NOT create the directory.
-- **globs** (optional): shell-style path globs the spec-creator will read from. Standalone mode (no globs) produces a skeleton from the feature name alone; plugin mode (one or more globs) drafts from the matched code.
+- **globs** (optional): shell-style path globs the rabbit-spec-creator will read from. Standalone mode (no globs) produces a skeleton from the feature name alone; plugin mode (one or more globs) drafts from the matched code.
 
 ## Modes
 
@@ -60,12 +60,12 @@ In standalone mode (no globs), pass `--paths ""` (an empty string is accepted an
 
 The script prints the absolute path of the assembled prompt file to stdout on success. Exit codes: 0 success, 1 invocation error, 2 prompt-assembler failure. Surface non-zero exits to the caller and stop.
 
-### Step 2 — Dispatch the spec-creator subagent
+### Step 2 — Dispatch the rabbit-spec-creator subagent
 
 Read the assembled prompt file, then invoke the agent. This is a Claude tool call, not a shell command:
 
 ```text
-Agent(subagent_type: "spec-creator", prompt: <file contents>)
+Agent(subagent_type: "rabbit-spec-creator", prompt: <file contents>)
 ```
 
 The subagent is tool-restricted to Read/Grep/Glob — it cannot write, edit, or shell out. It returns a six-section spec body as its final message:
@@ -103,6 +103,6 @@ Tell the caller the path of the written file and a one-line summary of what the 
 
 ## Why the agent is read-only
 
-The spec-creator agent's tool surface is restricted to Read, Grep, and Glob in its frontmatter — it cannot write, edit, or shell out. This is load-bearing: the agent draws conclusions from observed code, and a write-capable agent could (in principle) modify the code it's drafting against. The read-only constraint makes that impossible regardless of what the agent attempts, so the draft you receive is an honest summary of what's actually on disk.
+The rabbit-spec-creator agent's tool surface is restricted to Read, Grep, and Glob in its frontmatter — it cannot write, edit, or shell out. This is load-bearing: the agent draws conclusions from observed code, and a write-capable agent could (in principle) modify the code it's drafting against. The read-only constraint makes that impossible regardless of what the agent attempts, so the draft you receive is an honest summary of what's actually on disk.
 
 The skill itself (this file) does the writing, after the user has had a chance to review the agent's output in the conversation.
