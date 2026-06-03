@@ -38,7 +38,7 @@ else:
     ok("t1", "No .sh files in scripts/ or scripts/enforcement/")
 
 # t2: spec.md contains no .sh file path references
-spec_path = os.path.join(FEATURE_DIR, "specs/spec.md")
+spec_path = os.path.join(FEATURE_DIR, "docs/spec.md")
 if os.path.isfile(spec_path):
     spec_content = open(spec_path).read()
     # Look for lines listing .sh script files (e.g., "scripts/foo.sh")
@@ -52,7 +52,7 @@ else:
     fail("t2", f"spec.md missing at {spec_path}")
 
 # t3: contract.md scripts list contains no .sh files
-contract_path = os.path.join(FEATURE_DIR, "specs/contract.md")
+contract_path = os.path.join(FEATURE_DIR, "docs/contract.md")
 if os.path.isfile(contract_path):
     contract_content = open(contract_path).read()
     sh_contract_lines = [line for line in contract_content.splitlines()

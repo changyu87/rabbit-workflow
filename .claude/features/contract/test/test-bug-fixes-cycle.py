@@ -142,7 +142,7 @@ else:
 
 
 # BACKLOG-7: template marker convention documented in spec.md
-spec_path = os.path.join(FEATURE_DIR, "specs/spec.md")
+spec_path = os.path.join(FEATURE_DIR, "docs/spec.md")
 with open(spec_path) as f:
     spec_text = f.read()
 if "template marker" in spec_text.lower() or "template_version marker" in spec_text.lower():
@@ -161,7 +161,7 @@ else:
 
 
 # BACKLOG-9: contract.md provides.scripts includes all live scripts in scripts/ tree
-contract_md_path = os.path.join(FEATURE_DIR, "specs/contract.md")
+contract_md_path = os.path.join(FEATURE_DIR, "docs/contract.md")
 with open(contract_md_path) as f:
     contract_md = f.read()
 

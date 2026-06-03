@@ -126,7 +126,7 @@ def has_production_caller(basename):
             continue
         if norm.startswith(os.path.join(FEATURE_DIR, "tests") + os.sep):
             continue
-        if norm.startswith(os.path.join(FEATURE_DIR, "specs") + os.sep):
+        if norm.startswith(os.path.join(FEATURE_DIR, "docs") + os.sep):
             continue
         qualifying.append(norm)
     return qualifying
