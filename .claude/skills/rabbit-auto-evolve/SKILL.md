@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.25.0
+version: 0.26.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -311,11 +311,22 @@ scheduler mechanism from `detect-scheduler.py`, logs the decision via
   when the queue is non-empty (Inv 33 / D1). The DISPATCHER then schedules
   the near-immediate (~1 min) ONE-SHOT in a FRESH context and ENDS the turn
   (do NOT continue inline):
-  - **croncreate path:** invoke the actual one-shot
-    `CronCreate(cron=<near-now expr>, prompt="/rabbit-auto-evolve start",
-    durable=false)` per the emitted `croncreate` params. A script cannot call
-    `CronCreate`; this tool action is the irreducible Claude step (exactly
-    like phase 5 dispatch).
+  - **croncreate path:** invoke the actual one-shot `CronCreate(...)` per the
+    emitted `croncreate` params. A script cannot call `CronCreate`; this tool
+    action is the irreducible Claude step (exactly like phase 5 dispatch).
+    The emitted `croncreate.cron` is a PINNED next-minute `M H * * *`
+    expression (never `*/1 * * * *`), so a dropped `recurring` fails
+    benignly (at most once/day at minute M, not an every-minute storm — Inv 33
+    pinned-minute amendment, #531). Two non-negotiable dispatcher rules:
+    - **Faithful flag passing (#531).** Pass `recurring` and `durable` to
+      `CronCreate` EXACTLY as emitted (both `false`) — never rely on
+      `CronCreate` defaults (its default is recurring), never
+      hand-translate-and-drop a field (the #513 anti-pattern). Forward
+      `croncreate.cron` verbatim too.
+    - **At-most-one refire (#531).** Before creating a new refire one-shot,
+      `CronList` and `CronDelete` any prior immediate-refire one-shot, so at
+      most ONE is alive at a time; never create a refire whose cadence
+      duplicates the recurring heartbeat.
   - **crontab path:** schedule the transient/`at`-style one-shot the emitted
     hint documents.
 - `{"decision":"idle","detail":"rely on heartbeat"}` when the queue is empty.

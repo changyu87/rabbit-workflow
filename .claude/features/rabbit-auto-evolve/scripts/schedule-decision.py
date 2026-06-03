@@ -51,14 +51,35 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime, timedelta
 
 PROMPT = "/rabbit-auto-evolve start"
-# A near-now one-shot expression on the croncreate path. The minute (e.g. the
-# next-but-one wildcard "*/1" one-shot) avoids the :00/:30 marks per
-# CronCreate guidance; the dispatcher cancels it after it fires (recurring
-# false). We emit a "* * * * *" minute-cadence one-shot the dispatcher fires
-# once (~1 min) and removes.
-ONESHOT_CRON = "*/1 * * * *"
+
+
+def _pinned_oneshot_cron(now=None):
+    """Return a PINNED next-minute cron expression "M H * * *" for the
+    croncreate one-shot path (Inv 33 pinned-minute amendment, issue #531).
+
+    The minute is the current minute + 1 and the hour is that minute's hour.
+    A PINNED "M H * * *" form (never the fragile every-minute "*/1 * * * *")
+    means the catastrophic failure mode — the dispatcher dropping
+    `recurring: false` (a CronCreate default is recurring) — fires at most ONCE
+    PER DAY at minute M instead of an every-minute storm.
+
+    The minute also AVOIDS the :00 and :30 marks per CronCreate guidance: when
+    minute + 1 lands on 0 or 30 it is nudged forward by one minute (carrying
+    into the next hour for the 59 -> 0 rollover).
+
+    `now` is injectable for deterministic tests; it defaults to the local wall
+    clock (schedule-decision.py is an ordinary Python script, not a
+    workflow-sandboxed one, so reading the wall clock is allowed).
+    """
+    if now is None:
+        now = datetime.now()
+    target = now + timedelta(minutes=1)
+    if target.minute in (0, 30):
+        target = target + timedelta(minutes=1)
+    return f"{target.minute} {target.hour} * * *"
 
 
 def _script_dir():
@@ -123,7 +144,7 @@ def decide():
             "prompt": PROMPT,
             "when": "~1min",
             "croncreate": {
-                "cron": ONESHOT_CRON,
+                "cron": _pinned_oneshot_cron(),
                 "prompt": PROMPT,
                 "durable": False,
                 "recurring": False,
