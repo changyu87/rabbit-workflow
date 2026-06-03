@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.1.0
+version: 3.2.0
 owner: rabbit-feature
 deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
@@ -57,45 +57,25 @@ Skill("rabbit-spec-update", args: "<feature-name> <request>")
 rabbit-spec-update reads the current spec, judges open vs. specific, invokes superpowers,
 updates the feature spec, and writes `.rabbit/impl-suggestion-<feature-name>.json`.
 
-**Commit spec changes BEFORE Step 5.** After rabbit-spec-update returns, stage and
-commit any modifications the skill made under the feature directory. The
-feature directory location depends on the rabbit mode, detected from
-`<repo_root>/.rabbit/.runtime/mode` (the same dual-mode pattern documented by
-`rabbit-feature-scaffold`'s `## Modes` section):
-
-- **Standalone mode** (marker absent or content equals `standalone`):
-  `feature_dir = .claude/features/<feature-name>/`. Stage with plain
-  `git add <feature_dir>`.
-- **Plugin mode** (marker content equals `plugin`):
-  `feature_dir = .rabbit/rabbit-project/features/<feature-name>/`. Stage with
-  `git add -f <feature_dir>` — the `-f` is REQUIRED because the host
-  user-project's `.gitignore` typically ignores `.rabbit/`, and without `-f`
-  the add silently produces an empty staged diff, the commit-skip branch
-  trivially passes, and no commit lands.
-
-If no spec changes were made (empty staged diff), skip the commit.
+**Commit spec changes BEFORE Step 5.** After rabbit-spec-update returns, the
+spec edit it made under the feature directory must be staged and committed so
+the TDD subagent reads a clean committed baseline. This is a computed,
+mode-aware step (standalone vs plugin feature-dir prefix, `git add` vs
+`git add -f`, specs/ vs docs/spec/ spec-path resolution, empty-diff skip), so
+per the SKILL.md Authoring Standard (`spec-rules.md` §4 Script-Backed
+Orchestration) the logic lives in the companion script and the SKILL.md
+invokes it — it is NOT assembled inline here:
 
 ```bash
-# Mode-aware git add — plugin mode requires -f because host .gitignore
-# typically excludes .rabbit/
-if [ -f .rabbit/.runtime/mode ] && [ "$(cat .rabbit/.runtime/mode)" = "plugin" ]; then
-  feature_dir=.rabbit/rabbit-project/features/<feature-name>
-  git add -f "$feature_dir"
-else
-  feature_dir=.claude/features/<feature-name>
-  git add "$feature_dir"
-fi
-# Resolve the spec path: specs/spec.md is preferred (issue #399); fall back
-# to the legacy docs/spec/spec.md for not-yet-migrated features.
-if [ -f "$feature_dir/specs/spec.md" ]; then
-  spec_path="$feature_dir/specs/spec.md"
-else
-  spec_path="$feature_dir/docs/spec/spec.md"
-fi
-if ! git diff --cached --quiet -- "$spec_path"; then
-  git commit -m "spec(<feature-name>): update spec for <one-line request summary>"
-fi
+.claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py \
+  commit-spec <feature-name> "<one-line request summary>"
 ```
+
+The companion `commit-spec` subcommand detects the rabbit mode from
+`<repo_root>/.rabbit/.runtime/mode`, resolves the feature directory and spec
+path accordingly, stages with the mode-appropriate `git add` form, skips the
+commit when the staged spec diff is empty, and otherwise commits with the
+message `spec(<feature-name>): update spec for <one-line request summary>`.
 
 This prevents spec edits from falling through uncommitted and ensures the
 TDD subagent reads a clean committed baseline in both standalone and plugin
@@ -154,17 +134,15 @@ ACTIVE, the default).
 
 One subagent per feature. Dispatch all in parallel if multiple features.
 
-Shell (assemble the prompt — deterministic):
+Shell (assemble the prompt — deterministic). The spec-path resolution
+(specs/ preferred, docs/spec/ fallback, mode-aware feature-dir prefix) is a
+computed step, so per the SKILL.md Authoring Standard (`spec-rules.md` §4
+Script-Backed Orchestration) it is delegated to the companion
+`resolve-spec-path` subcommand rather than assembled inline:
 
 ```bash
-# Resolve the spec path: specs/spec.md is preferred (issue #399); fall back
-# to the legacy docs/spec/spec.md for not-yet-migrated features.
-feature_root=.claude/features/<feature-name>
-if [ -f "$feature_root/specs/spec.md" ]; then
-  spec_arg="$feature_root/specs/spec.md"
-else
-  spec_arg="$feature_root/docs/spec/spec.md"
-fi
+spec_arg=$(.claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py \
+  resolve-spec-path <feature-name>)
 PROMPT=$(python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py \
   --scope <feature-name> \
   --spec "$spec_arg" \
@@ -200,6 +178,14 @@ Summarize the TDD report to the user.
 
 
 ## Red Flags — STOP
+
+The main-session boundary below is the operational projection of the
+bounded-scope policy; the canonical, authoritative statement of that rule is
+`.claude/features/policy/philosophy.md` §2 (Bounded Scope) and
+`.claude/features/policy/spec-rules.md` §2 (Schemas and Contracts). Per the
+SKILL.md Authoring Standard (`spec-rules.md` §4 Verbatim Policy Embedding),
+the canonical text is cited here rather than re-paraphrased — read those
+sections for the binding wording.
 
 - Reading feature code directly in the main session → STOP. Subagent's job.
 - Skipping scope resolution → STOP.

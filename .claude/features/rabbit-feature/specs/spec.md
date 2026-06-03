@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.23.0
+version: 1.24.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -52,6 +52,15 @@ Scripts (under `scripts/`):
   output into the feature-context block consumed by `resolve-scope.py`.
 - `scaffold-feature.py` — scaffolds a conforming feature directory at any
   path; invoked by `rabbit-feature-scaffold`.
+
+Skill-local companion scripts (under `skills/<skill>/scripts/`, invoked from
+their source path and not deployed):
+
+- `skills/rabbit-feature-touch/scripts/feature-touch.py` — owns the
+  `rabbit-feature-touch` skill's computed / mode-aware orchestration logic
+  (the `resolve-spec-path` and `commit-spec` subcommands), so the SKILL.md
+  body stays script-tier per the SKILL.md Authoring Standard
+  (`spec-rules.md` §4).
 
 ## Invariants
 
@@ -144,46 +153,47 @@ Scripts (under `scripts/`):
     (per-feature) markers at the repo root. Scope markers are
     exclusively the TDD subagent's responsibility.
 
-16. **Step 3 spec-commit obligation (mode-aware).** The SKILL.md Step 3
-    documents the obligation to commit spec changes BEFORE Step 5: after
-    `rabbit-spec-update` returns, the dispatcher resolves a `feature_dir`
-    by detecting the rabbit mode from `<repo_root>/.rabbit/.runtime/mode`
-    (the same dual-mode pattern documented by `rabbit-feature-scaffold`'s
-    `## Modes` section):
-    - **Standalone mode** (marker absent or content equals `standalone`):
-      `feature_dir = .claude/features/<feature-name>/`. The git add form is
-      `git add <feature_dir>`.
-    - **Plugin mode** (marker content equals `plugin`):
-      `feature_dir = .rabbit/rabbit-project/features/<feature-name>/`. The
-      git add form is `git add -f <feature_dir>` — the `-f` is REQUIRED
-      because the host user-project's `.gitignore` typically ignores
-      `.rabbit/`, and without `-f` the add silently produces an empty
-      staged diff, the commit-skip branch trivially passes, and no commit
-      lands. The `git add -f` ensures the spec change is actually staged
-      so the conditional diff-check + commit produces a real commit
-      against the host repo.
-    The commit message pattern remains
-    `spec(<feature-name>): update spec for <one-line request summary>`.
-    The commit is skipped only when the staged diff against the resolved
-    spec path (`<feature_dir>/specs/spec.md` preferred, with a
-    `<feature_dir>/docs/spec/spec.md` fallback for not-yet-migrated
-    features per issue #399) is empty.
-    Enforced by `test/test-touch-skill.py` which asserts the SKILL.md
-    Step 3 body contains both branches (standalone path + plugin path
-    with `-f`) and explicitly references `.rabbit/.runtime/mode` as the
-    mode-detection source. The Step 3 spec-commit diff check and the
-    Step 5 `--spec` dispatch argument resolve the spec path with
-    `specs/spec.md` preferred and a `docs/spec/spec.md` fallback (Inv 51).
+16. **Step 3 spec-commit obligation (mode-aware, script-backed).** The
+    SKILL.md Step 3 documents the obligation to commit spec changes BEFORE
+    Step 5 in PROSE and delegates the mode-aware execution to the companion
+    `feature-touch.py commit-spec` subcommand (Inv 54), per the SKILL.md
+    Authoring Standard's Script-Backed Orchestration rule
+    (`spec-rules.md` §4): the mode-aware branching is a computed step, so it
+    MUST NOT be assembled inline as a bash control-flow block (issue #440).
+    The prose obligation MUST remain (the literal phrase "Commit spec
+    changes BEFORE Step 5", the commit message pattern
+    `spec(<feature-name>): update spec for ...`, and the empty-diff-skip
+    behaviour), and Step 3's body MUST invoke
+    `feature-touch.py commit-spec <feature-name> "<summary>"`.
+    The mode-aware mechanics themselves — detecting the rabbit mode from
+    `<repo_root>/.rabbit/.runtime/mode`, resolving the standalone
+    (`.claude/features/<name>/`, `git add`) vs plugin
+    (`.rabbit/rabbit-project/features/<name>/`, `git add -f`) feature-dir
+    and staging form, resolving the spec path (`specs/spec.md` preferred,
+    `docs/spec/spec.md` fallback), skipping the commit on an empty staged
+    diff, and otherwise committing with the message above — are OWNED BY
+    the companion script and locked by
+    `test/test-touch-skill-authoring-standard.py` (Inv 54), not by inline
+    SKILL.md bash. Enforced by `test/test-touch-skill.py`
+    (`test_inv16_step_3_spec_commit_obligation` for the prose obligation,
+    `test_inv16_step_3_delegates_to_companion_script` for the script
+    invocation).
 
-51. **Spec path resolution (specs/ preferred).** The
-    `rabbit-feature-touch` SKILL.md MUST resolve a feature's spec at
-    `specs/spec.md`, preferring that path and falling back to the legacy
-    `docs/spec/spec.md` only for not-yet-migrated features (issue #399
-    dual-read). Step 3's spec-commit diff check and Step 5's `--spec`
-    argument to `dispatch-tdd-subagent.py` MUST both point at the
-    `specs/spec.md` layout, and the SKILL.md MUST document the
-    `docs/spec/spec.md` fallback. Enforced by `test/test-touch-skill.py`
-    (`test_inv399_skill_prefers_specs_layout`).
+51. **Spec path resolution (specs/ preferred, script-backed).** A feature's
+    spec MUST be resolved at `specs/spec.md`, preferring that path and
+    falling back to the legacy `docs/spec/spec.md` only for not-yet-migrated
+    features (issue #399 dual-read). Per the SKILL.md Authoring Standard
+    (`spec-rules.md` §4 Script-Backed Orchestration), this computed
+    resolution is owned by the companion `feature-touch.py resolve-spec-path`
+    subcommand (Inv 54), not assembled inline. Step 5's `--spec` argument to
+    `dispatch-tdd-subagent.py` MUST be sourced from
+    `feature-touch.py resolve-spec-path <feature-name>`, and Step 3's
+    spec-commit obligation resolves the same path via the `commit-spec`
+    subcommand. Enforced by `test/test-touch-skill.py`
+    (`test_inv399_step5_delegates_spec_path_to_companion`) for the Step 5
+    delegation and by `test/test-touch-skill-authoring-standard.py`
+    (`test_inv54_resolve_spec_path_prefers_specs_layout`) for the dual-read
+    behaviour.
 
 52. **Step 5 dispatches the `rabbit-tdd-subagent` agent type (issue #418).**
     The `rabbit-feature-touch` SKILL.md Step 5 Agent tool call MUST pass
@@ -198,6 +208,61 @@ Scripts (under `scripts/`):
     `test_inv52_deployed_step5_dispatches_rabbit_tdd_subagent`,
     `test_inv52_source_no_bare_old_agent_type`,
     `test_inv52_deployed_no_bare_old_agent_type`).
+
+53. **§4 Script-Backed Orchestration — no model-assembled control-flow bash
+    (issue #440).** The `rabbit-feature-touch` SKILL.md body (source AND
+    deployed) MUST NOT contain a fenced `bash` block that combines a runtime
+    placeholder (e.g. `<feature-name>`, `<branch-name>`) with shell control
+    flow (`if`/`then`/`else`/`for`/`while`/`case`) — such a block is a
+    model-assembled orchestration step and violates the SKILL.md Authoring
+    Standard (`spec-rules.md` §4 Script-Backed Orchestration). The two
+    previously-inline computed steps — the Step 3 mode-aware spec-commit and
+    the Step 5 spec-path resolution — MUST instead invoke the companion
+    `feature-touch.py` script (`commit-spec` and `resolve-spec-path`
+    subcommands respectively). Exceptions permitted inline: single read-only
+    informational commands (no control flow) and script-invocation commands
+    where the placeholder is a script ARGUMENT rather than assembled control
+    flow (e.g. `git checkout -b <branch-name>`, the Step 4
+    `emit_configurable_alert` informational call). Enforced by
+    `test/test-touch-skill-authoring-standard.py`
+    (`test_inv53_source_no_offending_bash_blocks`,
+    `test_inv53_deployed_no_offending_bash_blocks`,
+    `test_inv53_step3_invokes_companion_commit_spec`,
+    `test_inv53_step5_invokes_companion_resolve_spec_path`).
+
+54. **Companion `feature-touch.py` script (issue #440).** The
+    `rabbit-feature-touch` skill ships a companion script at
+    `skills/rabbit-feature-touch/scripts/feature-touch.py` that owns the
+    skill's computed / mode-aware orchestration logic. It is executable,
+    Python-3-stdlib-only, and exposes two subcommands:
+    (a) `resolve-spec-path <feature-name>` — prints the repo-root-relative
+        resolved spec path (`specs/spec.md` preferred, `docs/spec/spec.md`
+        fallback), mode-aware via `<repo_root>/.rabbit/.runtime/mode`.
+    (b) `commit-spec <feature-name> <summary>` — stages the feature dir with
+        the mode-appropriate `git add` form (plugin mode uses `git add -f`),
+        skips the commit on an empty staged spec diff, and otherwise commits
+        with `spec(<feature-name>): update spec for <summary>`.
+    A no-arg invocation prints usage naming both subcommands and exits 2.
+    The script is declared in `contract.md.provides.scripts` (it is a
+    skill-local companion invoked from its source path, not a deployed
+    artifact, so it is not in the `manifest`; `feature.json.surface` is
+    deprecated per issue #468). Enforced by
+    `test/test-touch-skill-authoring-standard.py`
+    (`test_inv54_companion_exists_and_executable`,
+    `test_inv54_companion_usage_lists_subcommands`,
+    `test_inv54_companion_owns_mode_branching`,
+    `test_inv54_resolve_spec_path_prefers_specs_layout`,
+    `test_inv54_commit_spec_commits_change_and_skips_noop`).
+
+55. **§4 Verbatim Policy Embedding — Red Flags cite canonical policy
+    (issue #440).** The `rabbit-feature-touch` SKILL.md Red Flags section,
+    where it surfaces the main-session bounded-scope boundary, MUST cite the
+    canonical policy source (`.claude/features/policy/philosophy.md` §2 and/or
+    `.claude/features/policy/spec-rules.md` §2) rather than relying solely on
+    a paraphrase, per the SKILL.md Authoring Standard
+    (`spec-rules.md` §4 Verbatim Policy Embedding). Enforced by
+    `test/test-touch-skill-authoring-standard.py`
+    (`test_inv55_red_flags_cite_canonical_policy`).
 
 ### rabbit-feature-scope SKILL.md and scripts
 
@@ -509,7 +574,8 @@ listed below, each tagged with the invariant(s) it covers.
 
 - `test-build-source.py` — Inv 1
 - `test-cross-feature-interface.py` — Inv 2, 3
-- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 12, 14, 15, 16, 41
+- `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 12, 14, 15, 16, 41, 51, 52
+- `test-touch-skill-authoring-standard.py` — Inv 53, 54, 55 (issue #440 §4)
 - `test-scope-skill.py` — Inv 24
 - `test-scope-scripts.py` — Inv 17, 18, 19, 20, 21, 22, 23, 25
 - `test-spec-skill.py` — Inv 26, 27, 28, 29, 30, 31

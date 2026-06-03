@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.23.0
+version: 1.24.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -34,6 +34,10 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       {
         "path": ".claude/features/rabbit-feature/scripts/audit-owner.py",
         "purpose": "Team-owner enforcement script invoked by rabbit-feature-audit. Validates that a feature's feature.json owner equals 'rabbit-workflow team'; exits 0 on pass (or retired), 1 on individual-owner mismatch (message names feature + current owner), 2 on bad invocation (issue #416 Part C)."
+      },
+      {
+        "path": ".claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py",
+        "purpose": "Companion script for the rabbit-feature-touch skill (issue #440, spec-rules.md §4 Script-Backed Orchestration). Owns the skill's computed / mode-aware orchestration: 'resolve-spec-path <feature-name>' prints the resolved spec path (specs/ preferred, docs/spec/ fallback, mode-aware via .rabbit/.runtime/mode); 'commit-spec <feature-name> <summary>' stages (mode-aware git add / git add -f), skips on empty diff, else commits 'spec(<name>): update spec for <summary>'. No-arg invocation prints usage and exits 2."
       }
     ],
     "schemas": [],
