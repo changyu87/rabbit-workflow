@@ -10,7 +10,11 @@ Inv 20 (plugin-mode RABBIT_ROOT check): when running in plugin mode
 (detected by presence of <install_root>/.version), appends a banner
 payload to the dispatch result if RABBIT_ROOT is unset or mismatched.
 
-Version: 1.1.0
+Issue #326: prepends a version line (`[rabbit] 🐇 rabbit v<version>`) at the
+start of the SessionStart output — read from <install_root>/.version in
+plugin mode, falling back to rabbit-cage/feature.json `version` standalone.
+
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-cage)
 Deprecation criterion: when Claude Code exposes native SessionStart
     dispatchers that subsume this hook.
@@ -21,6 +25,8 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+
+_VERSION_UNKNOWN = "unknown"
 
 _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
@@ -65,6 +71,49 @@ def _check_rabbit_root_env():
     return {"type": "banner", "text": text, "icon": "🚨", "color": "red"}
 
 
+def _read_installed_version(root: str) -> str:
+    """Resolve the installed rabbit version for the welcome line (issue #326).
+
+    Plugin mode: read <install_root>/.version (install_root is the deployed
+    dispatcher's parent.parent.parent — same anchor Inv 20 uses). Standalone
+    mode (no .version file): fall back to the `version` field in
+    <root>/.claude/features/rabbit-cage/feature.json (root is the resolved
+    repo root). Returns "unknown" only if both sources fail.
+    """
+    install_root = Path(__file__).resolve().parent.parent.parent
+    version_file = install_root / ".version"
+    if version_file.is_file():
+        try:
+            raw = version_file.read_text().strip()
+            if raw:
+                return raw
+        except OSError:
+            pass
+    feature_json = (Path(root) / ".claude" / "features" / "rabbit-cage"
+                    / "feature.json")
+    try:
+        data = json.loads(feature_json.read_text())
+        version = data.get("version")
+        if version:
+            return str(version)
+    except (OSError, json.JSONDecodeError, AttributeError):
+        pass
+    return _VERSION_UNKNOWN
+
+
+def _version_line(root: str):
+    """Return the SessionStart version-line payload (issue #326).
+
+    A compact `print` payload rendered as `[rabbit] 🐇 rabbit v<version>`.
+    Prepended ahead of every other SessionStart payload so it leads the
+    welcome block.
+    """
+    version = _read_installed_version(root)
+    label = version if version.startswith("v") else f"v{version}"
+    return {"type": "print", "text": f"rabbit {label}",
+            "icon": "🐇", "color": "green"}
+
+
 def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
         sys.stdout.write(
@@ -80,6 +129,7 @@ def main() -> int:
         pass
     root = str(repo_root())
     payloads = dispatch_event("SessionStart", root)
+    payloads.insert(0, _version_line(root))
     alert = _check_rabbit_root_env()
     if alert is not None:
         payloads.append(alert)

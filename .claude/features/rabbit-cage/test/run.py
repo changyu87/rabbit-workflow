@@ -74,6 +74,7 @@ SUITES = [
     "test-bypass-permissions-alert-text-inlines-revoke.py",
     "test-scope-guard-agent-sentinel.py",
     "test-stop-timestamp-entry-present.py",
+    "test-session-start-version-line.py",
 ]
 
 
