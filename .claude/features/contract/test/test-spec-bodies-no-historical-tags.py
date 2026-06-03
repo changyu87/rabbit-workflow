@@ -85,6 +85,20 @@ ALLOWLIST = {
     # live project-management tag, and the migration is a permanent
     # architectural fact.
     ("tdd-subagent/specs/spec.md", 60, "CONTRACT-BACKLOG-1"),
+    # contract Inv 36 — the literal `status` enum value "retired" and its
+    # documented retirement semantics. "retired" here is a live design
+    # term (the feature-status API value), not a historical-burden tag.
+    ("contract/specs/spec.md", 139, "retired"),
+    ("contract/specs/spec.md", 140, "retired"),
+    ("contract/specs/spec.md", 141, "retired"),
+    ("contract/specs/spec.md", 142, "retired"),
+    # contract Inv 49 — the strict-tier pattern DEFINITIONS. These lines
+    # quote the regex (`#[0-9]+`) and the tombstone-word vocabulary
+    # (`superseded`, `retired`, `obsoleted`) that the check itself rejects;
+    # they are algorithm-spec samples, not historical references.
+    ("contract/specs/spec.md", 185, "#[0-9]+"),
+    ("contract/specs/spec.md", 186, "superseded"),
+    ("contract/specs/spec.md", 187, "obsoleted"),
 }
 
 
