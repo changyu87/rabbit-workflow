@@ -849,14 +849,25 @@ Phase E merges complete.
    Execution order:
    1. `gh pr view <#> --json number,title,labels,body,files` → fetch
       metadata + changed-file list.
-   2. Apply bump table → compute `next_tag = vX.Y.Z`.
-   3. `safety-check.py <pr#> --phase release --next-tag <next_tag>`.
+   2. Apply bump table → determine the bump kind.
+   3. `git describe --tags --abbrev=0` → `prior_tag`. When the repository
+      has zero tags (the first-release case) `git describe` exits
+      non-zero; this is NOT an error. In that case `prior_tag` is `null`
+      and `next_tag` is the fixed first-release version `v1.0.0`
+      regardless of the bump kind (the bump table only governs how an
+      EXISTING version is incremented). When a `prior_tag` exists,
+      compute `next_tag = vX.Y.Z` by applying the bump kind to it.
+   4. `safety-check.py <pr#> --phase release --next-tag <next_tag>`.
       Non-zero → emit `{status: "skipped", reason: "safety-check-failed"}`
       and stop (no git mutation, exit 0).
-   4. `git describe --tags --abbrev=0` → `prior_tag`.
    5. `git tag -a <next_tag> -m "<auto-evolve> #<pr> <title>"`.
    6. `git push origin <next_tag>`.
    7. `gh release create <next_tag> --notes-from-tag --target dev`.
+
+   First release (zero prior tags): `prior_tag` is `null`, `next_tag` is
+   `v1.0.0`. This is what lets the auto-evolve loop cut its very first
+   release after a successful Phase 6 merge instead of crashing on a
+   tag-free `git describe` (issue #400).
 
    Output JSON (single object on stdout):
 
@@ -882,6 +893,13 @@ Phase E merges complete.
      `git tag` invocation occurred (via shim call log).
    - `--features-threshold 5` override: 4 distinct features touched
      (no other major trigger) → bumps minor, not major.
+   - First release (zero prior tags, issue #400): the `git` shim makes
+     `git describe --tags --abbrev=0` exit non-zero (tag-free repo). The
+     script must NOT crash; it emits `prior_tag: null`, `next_tag:
+     "v1.0.0"`, `status: "released"`, and invokes `git tag` for
+     `v1.0.0`. Covered for `priority:high` (would-be minor),
+     `priority:critical` (would-be major), and `priority:low` (would-be
+     patch) — in every case the first tag is `v1.0.0`.
    - `--help` smoke: exit 0 with recognizable usage text.
 
    Tests use the same `tempfile.TemporaryDirectory()` + `git init` +
