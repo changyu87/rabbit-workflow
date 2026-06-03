@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.1.1
+version: 1.2.0
 owner: cyxu
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -63,6 +63,21 @@ applied.
   forms `completed` and `not-planned`; the script translates `not-planned`
   to gh's space-separated `not planned` at the CLI boundary, which GitHub
   records as `state_reason = not_planned`.
+- **Close-reason gating (issue #423).** A close must assert something
+  real:
+  - `--reason completed` REQUIRES `--commit-sha <sha>`. The script
+    validates that the SHA resolves to a real commit in the local git
+    repo (`git rev-parse --verify <sha>^{commit}`). A missing or
+    unresolvable SHA aborts the close before any gh call.
+  - `--reason not-planned` REQUIRES `--reason-text <text>` of at least
+    50 characters, free of reflexive-deferral boilerplate. The script
+    rejects (case-insensitive substring match) any of: `too risky`,
+    `out of scope`, `out-of-scope`, `declined autonomous dispatch`,
+    `not now`, `later`, `don't want`, `do not want`. A specific reason
+    that is long enough and clean is accepted.
+  - The `rabbit-managed` guard runs first (the safety boundary), then
+    the reason gating, then the gh call — so a rejected close never
+    issues `gh issue close` and never touches a human-filed issue.
 - Reopen restores `state = open`, `state_reason = reopened`
 
 ### SHA / event history
