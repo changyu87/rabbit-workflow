@@ -52,6 +52,18 @@ check_phrase("spec-rules.md", "Tool-Choice Tier")
 check_phrase("spec-rules.md", "Schemas and Contracts")
 check_phrase("spec-rules.md", "Lifecycle and Ownership")
 
+# Issue #416 (Part A): §3 Owner bullet mandates `rabbit-workflow team` for
+# repo-level features distributed as part of rabbit-workflow; individual
+# ownership is reserved for personal/experimental/out-of-distribution artifacts.
+check_phrase(
+    "spec-rules.md",
+    "For repo-level features distributed as part of rabbit-workflow, the owner MUST be `rabbit-workflow team`, not an individual.",
+)
+check_phrase(
+    "spec-rules.md",
+    "Individual ownership is reserved for personal scripts, experimental tooling, and out-of-distribution artifacts.",
+)
+
 # coding-rules.md
 check_phrase("coding-rules.md", "Think Before Coding")
 check_phrase("coding-rules.md", "Simplicity First")
