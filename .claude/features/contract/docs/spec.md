@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.10.0
+version: 2.11.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities

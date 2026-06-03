@@ -165,7 +165,7 @@ targets.extend(
 targets.extend(glob.glob(os.path.join(REPO_ROOT, ".claude/features/policy/*.md")))
 targets.extend(
     glob.glob(
-        os.path.join(REPO_ROOT, ".claude/features/contract/specs/**/*.md"),
+        os.path.join(REPO_ROOT, ".claude/features/contract/docs/**/*.md"),
         recursive=True,
     )
 )
