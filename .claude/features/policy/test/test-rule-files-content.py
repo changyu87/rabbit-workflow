@@ -52,6 +52,16 @@ check_phrase("spec-rules.md", "Tool-Choice Tier")
 check_phrase("spec-rules.md", "Schemas and Contracts")
 check_phrase("spec-rules.md", "Lifecycle and Ownership")
 
+# Issue #439: spec-rules.md establishes the SKILL.md Authoring Standard with
+# three citable rules deriving from the existing policy principles.
+check_phrase("spec-rules.md", "SKILL.md Authoring Standard")
+# Rule 1 — orchestration logic is script-backed, not prompt-tier placeholders.
+check_phrase("spec-rules.md", "Script-Backed Orchestration")
+# Rule 2 — policy is embedded verbatim from the canonical source, not paraphrased.
+check_phrase("spec-rules.md", "Verbatim Policy Embedding")
+# Rule 3 — SKILL.md changes are validated through skill-creator before deployment.
+check_phrase("spec-rules.md", "skill-creator Validation")
+
 # Issue #416 (Part A): §3 Owner bullet mandates `rabbit-workflow team` for
 # repo-level features distributed as part of rabbit-workflow; individual
 # ownership is reserved for personal/experimental/out-of-distribution artifacts.

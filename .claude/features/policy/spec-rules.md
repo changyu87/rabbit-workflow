@@ -83,3 +83,33 @@ An artifact missing any of these fields in its declared location is
 considered unowned. Promote it to compliance before extending it.
 
 ---
+
+## 4. SKILL.md Authoring Standard
+
+Rules for authoring and changing `SKILL.md` files. Each derives from a
+principle above; cite the source, do not restate it.
+
+- **Script-Backed Orchestration** (derives from §1 Tool-Choice Tier). An
+  orchestration step that involves a computed value or mode-aware
+  branching MUST live in a companion script under `scripts/`; the SKILL.md
+  invokes the script and the script owns the logic. SKILL.md bodies MUST
+  NOT carry bash blocks with runtime placeholders (e.g. `<feature-name>`,
+  `<branch-name>`) that the model assembles at invocation time — that is
+  prompt-tier, not script-tier. Exception: read-only informational
+  commands (e.g. `git log --oneline -5`) are acceptable inline.
+
+- **Verbatim Policy Embedding** (derives from §2 Schemas and Contracts).
+  When a SKILL.md surfaces policy (e.g. the no-session-override rule, the
+  bounded-scope rule), it MUST embed the relevant text verbatim from the
+  canonical source (`spec-rules.md`, `philosophy.md`, `coding-rules.md`)
+  via `@path/to/policy.md` injection or a script that reads and embeds the
+  section. It MUST NOT paraphrase policy rules — paraphrases drift; cite
+  them.
+
+- **skill-creator Validation** (derives from §1 determinism). A SKILL.md
+  change MUST pass through the `skill-creator` tool
+  (`skill-creator:skill-creator` / `document-skills:skill-creator`) before
+  deployment. The skill-creator workflow validates description accuracy
+  (triggering), body correctness, and deployment correctness.
+
+---
