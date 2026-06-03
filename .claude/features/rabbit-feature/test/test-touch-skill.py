@@ -292,7 +292,13 @@ def test_inv15_red_flags_prohibit_scope_marker_creation() -> None:
     )
 
 
-# Inv 16: Step 3 spec-commit obligation documented in SKILL.md
+# Inv 16 (reframed for issue #440 / §4 Script-Backed Orchestration): Step 3
+# documents the spec-commit obligation in PROSE and delegates the mode-aware
+# git-add + empty-diff-skip + commit logic to the companion feature-touch.py
+# script. The prose obligation MUST remain; the bash-block that previously
+# carried the mode-aware branching inline is now a §4 violation and moves into
+# the script (the script-side details are locked by
+# test-touch-skill-authoring-standard.py Inv 54).
 def test_inv16_step_3_spec_commit_obligation() -> None:
     for skill_path in (SOURCE_SKILL, DEPLOYED_SKILL):
         assert skill_path.exists(), f"missing SKILL.md: {skill_path}"
@@ -306,73 +312,58 @@ def test_inv16_step_3_spec_commit_obligation() -> None:
             f"Step 3 in {skill_path} must document the commit message pattern "
             "'spec(<feature-name>): update spec for ...'"
         )
-        assert "git diff --cached --quiet" in body, (
-            f"Step 3 in {skill_path} must phrase the empty-diff skip condition "
-            "as a 'git diff --cached --quiet' test"
+        # The empty-diff skip is now owned by the companion script; the prose
+        # must still name the skip behaviour but no longer carries the inline
+        # 'git diff --cached --quiet' bash form (that moved into the script).
+        assert "empty" in body.lower() and "skip" in body.lower(), (
+            f"Step 3 in {skill_path} must still document the empty-diff skip "
+            "behaviour in prose"
         )
 
 
-# Inv 16 (amended): Step 3 spec-commit is mode-aware (standalone vs plugin).
-# The body MUST reference .rabbit/.runtime/mode for mode detection, MUST
-# include the plugin-branch 'git add -f' form, MUST still include the
-# standalone 'git add' (no -f) form, and MUST name both feature_dir
-# prefixes ('.claude/features/' and '.rabbit/rabbit-project/features/').
-def test_inv16_step_3_mode_aware_git_add() -> None:
+# Inv 16 (reframed): the mode-aware spec-commit is delegated to the companion
+# feature-touch.py script. Step 3's body MUST invoke that script's commit-spec
+# subcommand rather than carrying an inline mode-branching bash block. The
+# mode-detection source (.rabbit/.runtime/mode), the plugin 'git add -f' form,
+# the standalone 'git add' form, and both feature_dir prefixes are now OWNED
+# by the script and locked by test-touch-skill-authoring-standard.py.
+def test_inv16_step_3_delegates_to_companion_script() -> None:
     for skill_path in (SOURCE_SKILL, DEPLOYED_SKILL):
         assert skill_path.exists(), f"missing SKILL.md: {skill_path}"
         text = skill_path.read_text(encoding="utf-8")
         body = _step_body(text, 3)
-        assert ".rabbit/.runtime/mode" in body, (
-            f"Step 3 in {skill_path} must reference '.rabbit/.runtime/mode' "
-            "as the mode-detection source for the spec-commit (Inv 16 amended)"
+        assert "feature-touch.py" in body, (
+            f"Step 3 in {skill_path} must invoke the companion "
+            "feature-touch.py script for the mode-aware spec-commit "
+            "(§4 Script-Backed Orchestration)"
         )
-        assert "git add -f" in body, (
-            f"Step 3 in {skill_path} must include the plugin-mode 'git add -f' "
-            "form (host .gitignore typically ignores .rabbit/) (Inv 16 amended)"
-        )
-        # Standalone branch must still use a plain 'git add' (no -f). Look for
-        # at least one occurrence of 'git add' that is not immediately followed
-        # by ' -f' or '-f'.
-        plain_git_add = re.search(r"git add(?!\s*-f)\b", body)
-        assert plain_git_add is not None, (
-            f"Step 3 in {skill_path} must still include the standalone "
-            "'git add' (no -f) form for standalone mode (Inv 16 amended)"
-        )
-        assert ".claude/features/" in body, (
-            f"Step 3 in {skill_path} must name the standalone feature_dir "
-            "prefix '.claude/features/' (Inv 16 amended)"
-        )
-        assert ".rabbit/rabbit-project/features/" in body, (
-            f"Step 3 in {skill_path} must name the plugin-mode feature_dir "
-            "prefix '.rabbit/rabbit-project/features/' (Inv 16 amended)"
+        assert "commit-spec" in body, (
+            f"Step 3 in {skill_path} must invoke the 'commit-spec' subcommand "
+            "(§4 Script-Backed Orchestration)"
         )
 
 
-# issue #399 Phase 2: SKILL.md resolves the spec at specs/ preferring it,
-# with a docs/spec/ fallback for not-yet-migrated features. The legacy bare
-# 'docs/spec/spec.md' path MUST NOT appear without the specs/ form alongside.
-def test_inv399_skill_prefers_specs_layout() -> None:
+# issue #399 Phase 2 (reframed for issue #440 / §4): the specs/ preferred +
+# docs/spec/ fallback spec-path resolution is now owned by the companion
+# feature-touch.py script (resolve-spec-path / commit-spec subcommands). The
+# SKILL.md no longer carries the inline specs/-vs-docs/spec/ branching bash
+# block (a §4 violation); Step 5 instead resolves the spec path via the
+# companion script. The dual-read details (specs/ preferred, docs/spec/
+# fallback) are locked by test-touch-skill-authoring-standard.py against the
+# script source. Here we assert Step 5 delegates spec-path resolution to the
+# script rather than assembling the path inline.
+def test_inv399_step5_delegates_spec_path_to_companion() -> None:
     for skill_path in (SOURCE_SKILL, DEPLOYED_SKILL):
         assert skill_path.exists(), f"missing SKILL.md: {skill_path}"
         text = skill_path.read_text(encoding="utf-8")
-        assert "specs/spec.md" in text, (
-            f"{skill_path} must reference the specs/spec.md layout (issue #399)"
-        )
-        # The Step 3 spec-commit and Step 5 dispatch must resolve specs/ first.
-        step3 = _step_body(text, 3)
         step5 = _step_body(text, 5)
-        assert "specs/spec.md" in step3, (
-            f"Step 3 in {skill_path} must resolve the spec at specs/spec.md "
-            "(issue #399)"
+        assert "feature-touch.py" in step5, (
+            f"Step 5 in {skill_path} must resolve the spec path via the "
+            "companion feature-touch.py script (§4 Script-Backed Orchestration)"
         )
-        assert "specs/spec.md" in step5, (
-            f"Step 5 in {skill_path} must point --spec at specs/spec.md "
-            "(issue #399)"
-        )
-        # The fallback to the legacy layout must be documented.
-        assert "docs/spec/spec.md" in text, (
-            f"{skill_path} must document the legacy docs/spec/spec.md fallback "
-            "for not-yet-migrated features (issue #399 dual-read)"
+        assert "resolve-spec-path" in step5, (
+            f"Step 5 in {skill_path} must invoke the 'resolve-spec-path' "
+            "subcommand (§4 Script-Backed Orchestration)"
         )
 
 
