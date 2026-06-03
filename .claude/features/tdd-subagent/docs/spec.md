@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.13.0
+version: 5.14.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -478,7 +478,7 @@ The 13 invariants in this section were absorbed from the retired
 
     (a) `os.environ.get("RABBIT_ROOT")` — when set (plugin mode, set by `install.py main()` per rabbit-cage Inv 19), use verbatim. In plugin mode the value is `<host>/.rabbit/`, which (i) contains `.claude/features/contract/scripts/find-feature.py` at the expected relative location, and (ii) is recognized by `find-feature.py`'s plugin-mode dual-detection (contract Inv 23 amended form) via `<repo>/.runtime/mode == "plugin"` so the find returns both rabbit-internal MVP features AND `rabbit-project/features/` user-project features.
 
-    (b) `git rev-parse --show-toplevel` (run with `cwd=<script_dir>`) — fallback when `RABBIT_ROOT` is unset (standalone-workspace mode). The git toplevel is the rabbit-self repo root in standalone, which contains `.claude/features/contract/scripts/find-feature.py` directly.
+    (b) `git rev-parse --show-toplevel` (run in the process CURRENT WORKING DIRECTORY, per Inv 60) — fallback when `RABBIT_ROOT` is unset (standalone-workspace mode). The git toplevel is the rabbit-self repo root in standalone (or the operating worktree under worktree-isolated dispatch), which contains `.claude/features/contract/scripts/find-feature.py` directly.
 
     Mirroring constraint: this matches the resolution pattern already in `rabbit-feature/scripts/resolve-scope.py` (lines ~60–70), so any caller of `find-feature.py` in the rabbit ecosystem uses the same precedence ladder. Divergence between the two sites was the root cause of #301/#302 — `resolve-scope.py` used `RABBIT_ROOT` correctly but `dispatch-tdd-subagent.py` jumped straight to `git rev-parse`, producing `<host_root>` and then a non-existent `find-feature.py` path in plugin installs.
 
@@ -800,6 +800,39 @@ lives in Inv 22 above.
     flat `docs/` layout without crashing; and `dispatch-tdd-subagent.py`
     assembles a prompt from a `--spec` under `docs/` whose scoped grep hint
     names the `docs/spec.md` path.
+
+60. **Repo-root resolution targets the operating worktree (cwd), not the
+    script's own location.** Both owned scripts' `_repo_root` resolver MUST
+    derive the repository root from the CURRENT WORKING DIRECTORY of the
+    running process — `git rev-parse --show-toplevel` run in the process cwd
+    — and MUST NOT derive it from the script's own directory
+    (`git -C <script_dir> …`). The `RABBIT_ROOT` environment variable
+    (plugin mode, Inv 47) still takes precedence verbatim when set; cwd-based
+    git resolution is the fallback when `RABBIT_ROOT` is unset.
+
+    **Why.** Under worktree-isolated phase-5 dispatch
+    (rabbit-auto-evolve Inv 28) the subagent invokes the MAIN deployed copy
+    of `tdd-step.py` (`.claude/agents/tdd-subagent/scripts/tdd-step.py` in
+    the dispatcher's main checkout) while OPERATING in its worktree.
+    Script-dir resolution made `_repo_root` (and thus the
+    `.rabbit-scope-active-<feature>` scope-marker path computed by
+    `_scope_marker_path_for_abort` and the `feature.json` bookkeeping anchored
+    on the dispatcher's relativized `feature_dir`) point at the MAIN tree, so
+    the marker and bookkeeping writes leaked into the dispatcher's main tree
+    — tripping `safety-check.py` Inv 5 and blocking the merge phase (#583).
+    The process cwd is the worktree under isolation and the main repo on the
+    headless/main path, so cwd-based resolution is correct for BOTH. This is
+    the resolver-side complement to Inv 58 (which makes the dispatcher emit
+    repo-RELATIVE slot strings the subagent resolves from its cwd).
+
+    Enforced by `test/test-repo-root-cwd-resolution.py` (e2e): a real git
+    repo plus a linked git worktree (two distinct toplevels); running
+    `tdd-step.py`'s `_repo_root` and `_scope_marker_path_for_abort` in a
+    subprocess whose cwd is the WORKTREE while the script copy lives in the
+    main tree returns the WORKTREE toplevel and a scope-marker path under the
+    worktree (never the main tree); cwd == main repo still returns the main
+    toplevel (headless path); and `RABBIT_ROOT` set still wins verbatim
+    (plugin path).
 
 ## Out of Scope
 

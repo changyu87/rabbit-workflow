@@ -117,12 +117,20 @@ def _scope_marker_path(repo_root, feature_name):
 
 
 def _repo_root(script_dir):
+    # Resolve the repo root from the CURRENT WORKING DIRECTORY, not from the
+    # script's own location (#583). The dispatcher anchors the prompt's
+    # repo-relative paths (feature_dir, scope-marker, tdd-report) on this
+    # root; when the dispatcher is invoked from within a worktree the cwd is
+    # the worktree, so cwd-based resolution keeps those paths inside the
+    # operating tree instead of leaking to the script's checkout. RABBIT_ROOT
+    # (plugin mode) still wins verbatim. `script_dir` is retained for call
+    # compatibility but no longer drives resolution.
     env = os.environ.get("RABBIT_ROOT")
     if env:
         return env
     try:
         out = subprocess.run(
-            ["git", "-C", script_dir, "rev-parse", "--show-toplevel"],
+            ["git", "rev-parse", "--show-toplevel"],
             capture_output=True, text=True, check=False,
         )
         if out.returncode == 0:

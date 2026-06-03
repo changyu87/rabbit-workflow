@@ -43,13 +43,20 @@ def _rbt_alert(msg):
 
 
 def _repo_root():
+    # Resolve the repo root from the CURRENT WORKING DIRECTORY, not from the
+    # script's own location (#583). Under worktree-isolated dispatch the
+    # subagent runs the MAIN deployed copy of this script while operating in
+    # its worktree; resolving via the script dir would yield the MAIN
+    # toplevel and leak the scope marker / feature.json bookkeeping into the
+    # dispatcher's main tree. The cwd is the worktree under isolation and the
+    # main repo on the headless/main path, so cwd-based resolution is correct
+    # for both. RABBIT_ROOT (plugin mode) still wins verbatim.
     env = os.environ.get("RABBIT_ROOT")
     if env:
         return env
-    script_dir = os.path.dirname(os.path.abspath(__file__))
     try:
         out = subprocess.run(
-            ["git", "-C", script_dir, "rev-parse", "--show-toplevel"],
+            ["git", "rev-parse", "--show-toplevel"],
             capture_output=True, text=True, check=False,
         )
         if out.returncode == 0:
