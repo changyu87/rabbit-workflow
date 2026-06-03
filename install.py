@@ -81,7 +81,6 @@ HOOKS = [
     (".claude/features/rabbit-cage/hooks/stop-dispatcher.py", ".claude/hooks/stop-dispatcher.py"),
     (".claude/features/rabbit-cage/hooks/user-prompt-submit-dispatcher.py", ".claude/hooks/user-prompt-submit-dispatcher.py"),
     (".claude/features/rabbit-cage/hooks/_dispatcher_lib.py", ".claude/hooks/_dispatcher_lib.py"),
-    (".claude/features/contract/hooks/prompt-injector.py", ".claude/hooks/prompt-injector.py"),
 ]
 
 # Skills: source SKILL.md → deployed SKILL.md
@@ -113,7 +112,6 @@ COMMANDS: list[tuple[str, str]] = [
 FEATURE_INCLUDES: dict[str, list[str]] = {
     "contract": [
         "feature.json",
-        "hooks/prompt-injector.py",
         "lib/__init__.py",
         "lib/runtime.py",
         "lib/checks.py",
@@ -137,14 +135,6 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "templates/contract-template.md",
         "templates/feature-json-template.json",
         "templates/project-map-template.json",
-        "templates/prompts/rabbit-config.txt",
-        "templates/prompts/rabbit-decompose.txt",
-        "templates/prompts/rabbit-feature-audit.txt",
-        "templates/prompts/rabbit-feature-scaffold.txt",
-        "templates/prompts/rabbit-feature-scope.txt",
-        "templates/prompts/rabbit-feature-touch.txt",
-        "templates/prompts/rabbit-issue.txt",
-        "templates/prompts/rabbit-spec-update.txt",
         "templates/prompts/spec-create.txt",
         "templates/prompts/tdd-subagent.txt",
     ],
