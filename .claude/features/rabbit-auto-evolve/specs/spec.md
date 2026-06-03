@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.22.0
+version: 0.23.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -85,6 +85,10 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/install-cron.py` | CLI | Idempotently installs the `*/30` system-cron entry that fires `tick-headless.py` (the sole tick scheduler); invoked by `set-evolve-mode.py on` (issue #414, Inv 32) |
 | `scripts/uninstall-cron.py` | CLI | Idempotently removes the system-cron entry; safe no-op when absent; invoked by `set-evolve-mode.py off` (issue #414, Inv 32) |
 | `scripts/tick-headless.py` | CLI | The Claude-free headless tick fired by the system cron: walks phases 0–1, 2–4, 6, 7–9, 10; skips phase 5 (dispatch needs Claude); phase 11 is a no-op (issue #414, Inv 32) |
+| `scripts/detect-scheduler.py` | CLI | Probes `crontab -l` (via `RABBIT_CRONTAB_CMD`) and emits `{"scheduler":"crontab"|"croncreate","reason":...}`: crontab where usable, CronCreate fallback where restricted (issue #521, Inv 34 / D2) |
+| `scripts/running-guard.py` | CLI | Inspects `.rabbit-auto-evolve-running`, clears a STALE marker (mtime/PID), and emits a proceed/skip verdict so a wedged tick never blocks the loop (issue #521, Inv 35 / D3) |
+| `scripts/tick-log.py` | CLI | Minimal append-only JSON-per-line logger to `.rabbit/tick.log` for heartbeat/guard/schedule decisions; full verbosity config is #404's scope (issue #521, Inv 36 / D4) |
+| `scripts/schedule-decision.py` | CLI | At tick end/heartbeat, counts open work via `fetch-queue.py` and emits `immediate-refire` (fresh-context one-shot) vs `idle`; the dispatcher performs the `CronCreate` one-shot (issue #521, Inv 33 / D1) |
 
 **State file (runtime artifact):**
 
@@ -2235,15 +2239,65 @@ Phase E merges complete.
     - Exit code is 0 in all cases.
     - `--help` smoke: exit 0 with recognizable usage text.
 
-32. **Tick scheduling is owned by the system cron; `ScheduleWakeup` and
-    `CronCreate` are NEVER used in rabbit-auto-evolve (issue #414).** The
-    prior architecture self-chained ticks from inside a live Claude session
-    via `ScheduleWakeup` (Inv 29 / Inv 31). That coupled the loop's cadence
-    to an open session and made the next tick a Claude-harness side effect
-    that could silently drop (the issue #409 incident). Issue #414 replaces
-    self-chaining with an EXTERNAL trigger: a single system `cron` entry is
-    the SOLE tick scheduler. `ScheduleWakeup` and `CronCreate` are removed
-    entirely; neither appears anywhere in this feature's scripts or SKILL.md.
+32. **Tick scheduling is owned by the system cron WHERE AVAILABLE, with a
+    durable `CronCreate` fallback where crontab is blocked; `ScheduleWakeup`
+    and `/loop` are NEVER used in rabbit-auto-evolve (issues #414, #509,
+    #521).** The prior architecture self-chained ticks from inside a live
+    Claude session via `ScheduleWakeup` (Inv 29 / Inv 31). That coupled the
+    loop's cadence to an open session and made the next tick a Claude-harness
+    side effect that could silently drop (the issue #409 incident). Issue
+    #414 replaced self-chaining with an EXTERNAL trigger: a single system
+    `cron` entry is the SOLE tick scheduler. Issues #509 and #521 REFINE this
+    invariant in place, additively — without weakening its observability goal.
+
+    **AMENDMENT — two-tier tick model (issue #509).** The tick splits into
+    two tiers with DIFFERENT re-trigger ownership:
+
+    - The **HOUSEKEEPING tick** (the deterministic, Claude-free phases:
+      0–1, 2–4, 6, 7–9, 10) NEVER self-chains — the external scheduler
+      (cron/daemon) owns its cadence. `tick-headless.py` is its
+      implementation; Inv 32's "no self-chaining" rule is UNCHANGED for this
+      tier.
+    - The **DEVELOPMENT tick** (phase 5, `dispatch`) requires a live Claude
+      session and CANNOT run headless. It is re-triggered by the scheduler
+      firing `/rabbit-auto-evolve start` in a FRESH Claude context (a
+      one-shot), which realizes #509's "development tier may self-resume
+      in-session." Each fired tick is a full in-session tick (it INCLUDES
+      phase 5). This is NOT inline continuation (the turn ENDS; a new context
+      picks up the next tick); see Inv 33 (D1).
+
+    **AMENDMENT — scheduler mechanism + sanctioned fallback (issue #521).**
+    The scheduler is the system `crontab` WHERE AVAILABLE (the #414 default,
+    unchanged). On hosts where the `crontab` binary is administratively
+    blocked, a **durable `CronCreate` heartbeat is the SANCTIONED fallback**
+    trigger. The forbidden / permitted set is:
+
+    - `ScheduleWakeup` remains FORBIDDEN: it requires `/loop` and couples
+      cadence to an open session in the failure-prone way #414 fixed.
+    - `/loop` remains FORBIDDEN anywhere in this feature.
+    - `CronCreate` (the Claude-Code idle-REPL prompt scheduler — `durable`-
+      capable, persisting to `.claude/scheduled_tasks.json`; it is NOT
+      `/loop` and NOT `ScheduleWakeup`) is PERMITTED solely as the fallback
+      trigger on crontab-restricted hosts, AND as the one-shot immediate-
+      refire mechanism (Inv 33 / D1) on those same hosts.
+
+    **CronCreate is a Claude TOOL, not a Python call.** A script CANNOT
+    invoke `CronCreate`. So the scripts own the DETERMINISTIC parts —
+    scheduler detection (Inv 34 / D2), the stale-marker running-guard
+    (Inv 35 / D3), decision logging (Inv 36 / D4), and the schedule DECISION
+    (what to schedule and with which mechanism/params) — while the
+    DISPATCHER (the live Claude session, via SKILL.md instructions) performs
+    the irreducible tool action of calling `CronCreate(...)` with the params
+    a decision script emits, exactly as phase 5 dispatch is the
+    irreducible-Claude action.
+
+    **Observability is preserved, not by banning in-session scheduling.**
+    Inv 32's original goal — that no in-session bug can silently halt the
+    loop — is now upheld by Inv 35 (the running-guard clears STALE running
+    markers so the loop never wedges) and Inv 36 (every heartbeat/guard/
+    schedule decision is logged), NOT by forbidding the sanctioned
+    `CronCreate` fallback. Cross-reference issues #414 (the cron switch),
+    #509 (the two-tier model), and #521 (the CronCreate fallback).
 
     **The split between headless and session ticks.**
 
@@ -2279,24 +2333,30 @@ Phase E merges complete.
       mentioning `tick-headless.py` already exists, it is a clean no-op
       (running twice yields exactly one entry). Exit 0 on success.
 
-      **Restricted-host graceful fallback (issue #507).** On some hosts the
-      `crontab` binary is administratively restricted ("You ... are not
-      allowed to use this program (crontab)"). In that case
-      `install-cron.py` DETECTS the restriction — distinguished from the
-      legitimate "no crontab for user" empty case (exit 1 with empty
-      output) by a permission-denial signal in stderr (e.g. "not allowed")
-      on `crontab -l`, or by a permission failure on the `crontab -` write
-      — and FALLS BACK GRACEFULLY rather than failing opaquely: it exits 0
-      and emits a clear, actionable `rabbit_print` message (rendered via
-      the contract `rabbit_print` module; never hardcoded ANSI/brand
-      strings, per contract Inv 48) that (a) states crontab is restricted
-      on this host, (b) warns the loop will not auto-tick headlessly here,
-      and (c) gives the exact manual remediation — the `*/30` cron entry to
-      hand to a sysadmin AND that the operator can run
-      `/rabbit-auto-evolve start` manually each session. Cron remains the
-      SOLE tick scheduler WHEN AVAILABLE (Inv 32 unchanged); the fallback
-      covers only the restricted-host case so a mode flip is never blocked
-      by an un-installable cron. The `RABBIT_CRONTAB_CMD` and
+      **Restricted-host CronCreate fallback (issues #507, #521).** On some
+      hosts the `crontab` binary is administratively restricted ("You ...
+      are not allowed to use this program (crontab)"). In that case
+      `install-cron.py` DETECTS the restriction with the SAME permission-
+      denial signal `detect-scheduler.py` uses (Inv 34 / D2) — distinguished
+      from the legitimate "no crontab for user" empty case (exit 1 with
+      empty output) by a permission-denial signal in stderr (e.g. "not
+      allowed") on `crontab -l` — and FALLS
+      BACK GRACEFULLY rather than failing opaquely: it exits 0 and emits
+      (a) a machine-readable JSON signal
+      `{"scheduler":"croncreate","action":"dispatcher-must-create-heartbeat",
+      "cron":"13,43 * * * *","prompt":"/rabbit-auto-evolve start",
+      "durable":true}` naming the durable `CronCreate` heartbeat the
+      DISPATCHER must create (a script cannot call `CronCreate`), and (b) a
+      branded `rabbit_print` line (rendered via the contract `rabbit_print`
+      module; never hardcoded ANSI/brand strings, per contract Inv 48)
+      telling the user the durable `CronCreate` heartbeat will be set up on
+      the next `/rabbit-auto-evolve start`. The heartbeat cron expression
+      AVOIDS the `:00` and `:30` minute marks per CronCreate guidance (e.g.
+      `13,43 * * * *`, ~30-min cadence). The crontab path is unchanged when
+      available — cron remains the SOLE tick scheduler WHERE AVAILABLE; the
+      `CronCreate` heartbeat is the SANCTIONED fallback only on
+      crontab-restricted hosts so a mode flip is never blocked by an
+      un-installable cron. The `RABBIT_CRONTAB_CMD` and
       `RABBIT_AUTO_EVOLVE_REPO_ROOT` overrides are preserved.
     - `scripts/uninstall-cron.py` removes the entry via the
       `crontab -l | grep -v tick-headless | crontab -` pattern. It is
@@ -2311,16 +2371,97 @@ Phase E merges complete.
     Enforced by `test/test-cron-trigger.py` (e2e): `install-cron.py` installs
     exactly one entry and is idempotent across two runs; `uninstall-cron.py`
     removes it and is a safe no-op when absent; AND when the `crontab` shim
-    simulates a restricted host (permission denial on both `-l` and `-`),
-    `install-cron.py` exits 0 without crashing and prints the actionable
-    restricted-host remediation message (issue #507). By
+    simulates a restricted host (permission denial on `-l`), `install-cron.py`
+    exits 0 without crashing and emits the `CronCreate`-fallback JSON signal
+    plus the branded heartbeat notice (issues #507, #521). By
     `test/test-tick-headless.py` (e2e): the headless tick runs phases 0–1,
     2–4 (plan only — no dispatch), 6, 7–9, and 10 without a Claude session,
     and short-circuits on a stop/abort marker. And by
     `test/test-spec-cron-invariant.py` (e2e): this invariant text is present
-    in the spec AND neither the source nor the deployed `SKILL.md` contains
-    any `ScheduleWakeup` or `CronCreate` reference, and both document the
-    cron-owned scheduling and the headless tick.
+    in the spec AND `ScheduleWakeup` / `/loop` are absent from the spec and
+    from BOTH `SKILL.md` copies; `CronCreate` is PRESENT in the SOURCE
+    spec.md and SOURCE feature-dir `SKILL.md` as the documented fallback (the
+    deployed copy lags until redeployed under #511 and is NOT asserted for
+    `CronCreate` presence), and both copies document the system cron and the
+    headless tick.
+
+33. **Immediate fresh-context refire when work remains (D1 — issues #521,
+    #509).** At the END of a tick (and equivalently when a heartbeat enters a
+    tick), the loop decides whether to schedule the next tick based on open
+    work: **queue non-empty → schedule the next tick to fire NEAR-IMMEDIATELY
+    (~1 minute) in a FRESH Claude context as a one-shot, then END the turn**
+    (do NOT continue inline). **Queue empty → schedule nothing; rely on the
+    recurring heartbeat.** The refire is a near-immediate FRESH-context
+    one-shot, NOT inline continuation: each fired tick is a full in-session
+    tick (it includes phase 5 dispatch), and the turn ends between ticks so a
+    new context starts clean. The decision is computed by
+    `scripts/schedule-decision.py`, which determines open-work presence
+    AUTHORITATIVELY by invoking the EXISTING `fetch-queue.py` and counting
+    items (it does NOT re-derive the queue), reads the scheduler mechanism
+    from `detect-scheduler.py` (Inv 34), and emits JSON: queue non-empty →
+    `{"decision":"immediate-refire","scheduler":"crontab"|"croncreate",
+    "prompt":"/rabbit-auto-evolve start","when":"~1min","croncreate":{...}}`;
+    queue empty → `{"decision":"idle","detail":"rely on heartbeat"}`. The
+    decision is logged via `tick-log.py` (Inv 36). On the `croncreate` path
+    the DISPATCHER reads this JSON at phase 11 and performs the actual
+    one-shot `CronCreate(...)` (the irreducible Claude action); on the
+    `crontab` path the emitted hint documents the transient/`at`-style
+    one-shot for the dispatcher/SKILL. Enforced by
+    `test/test-spec-cron-invariant.py` (spec text) and
+    `test/test-schedule-decision.py` (e2e: a `fetch-queue.py` shim that emits
+    a non-empty array yields `immediate-refire`; an empty array yields
+    `idle`).
+
+34. **Scheduler detection: crontab where available, CronCreate where blocked
+    (D2 — issue #521).** `scripts/detect-scheduler.py` probes whether the
+    system `crontab` binary is usable by running `crontab -l` via the
+    `RABBIT_CRONTAB_CMD` env override (so tests can inject a shim, the same
+    pattern as `install-cron.py`). It distinguishes USABLE (the probe
+    succeeds, OR the legitimate "no crontab for user" empty case — a
+    non-permission non-zero exit) from RESTRICTED (a permission / "not
+    allowed" failure). It emits JSON `{"scheduler":"crontab"|"croncreate",
+    "reason":"..."}` on stdout and exits 0. `install-cron.py` and
+    `schedule-decision.py` consult it to choose the mechanism: `crontab` →
+    the existing system-cron behavior; `croncreate` → the durable
+    `CronCreate` fallback (Inv 32 amendment). Enforced by
+    `test/test-detect-scheduler.py` (e2e: a usable shim → `crontab`; the
+    empty "no crontab" shim → `crontab`; a restricted shim → `croncreate`).
+
+35. **Stale-marker running-guard (D3 — issue #521).** Before a session enters
+    a tick (and at every heartbeat), `scripts/running-guard.py` inspects
+    `.rabbit-auto-evolve-running` so a dead or wedged tick never silently
+    blocks the loop forever. ABSENT → `{"action":"proceed","running":false}`.
+    PRESENT and STALE → clear the marker, log `stale marker cleared` via
+    `tick-log.py`, return `{"action":"proceed","running":true,
+    "stale_cleared":true}`. PRESENT and FRESH → `{"action":"skip",
+    "reason":"tick-running"}`. A marker is STALE when its mtime is older than
+    a MAX_TICK_DURATION window (default 30 min; overridable for tests via
+    `RABBIT_AUTO_EVOLVE_MAX_TICK_SECS`) OR — when the marker records an owner
+    PID — that PID is not alive. mtime is the PRIMARY staleness signal so the
+    guard works even when no PID is present. To support PID-liveness,
+    `start-loop.py` writes the owner PID and an ISO-8601 timestamp INTO the
+    running marker's content; existence-based readers (`status-report.py`,
+    `end-tick.py`) are unaffected because they key on the filename, which is
+    unchanged. This realizes Inv 32's preserved observability goal: a wedged
+    loop is cleared and logged rather than stalling silently. Enforced by
+    `test/test-running-guard.py` (e2e: absent → proceed; a fresh marker →
+    skip; an mtime-aged marker (env-shrunk window) → proceed + stale_cleared
+    + marker removed).
+
+36. **Every heartbeat/guard/schedule decision is logged (D4 — issue #521).**
+    `scripts/tick-log.py` is an append-only, structured (JSON-per-line)
+    logger to `.rabbit/tick.log` (state dir resolved via
+    `RABBIT_AUTO_EVOLVE_STATE_DIR` when set, else `<cwd>/.rabbit`, matching
+    `update-state.py`). It exposes one append entry point that writes
+    `{ts, decision, detail}`; it is used by `running-guard.py` (D3) and the
+    heartbeat/schedule flow (`schedule-decision.py`, D1). The heartbeat/guard
+    decisions that MUST be logged are: `entering` (a tick is entered),
+    `skipped: tick already running`, `idle: no work`, and `stale marker
+    cleared`. This is the MINIMAL logger — full configurable on/off +
+    verbosity is the scope of issue #404 and is NOT implemented here.
+    Enforced by `test/test-tick-log.py` (e2e: an append writes one JSON line
+    carrying `ts`, `decision`, and `detail` to `.rabbit/tick.log` under the
+    state-dir override).
 
 ## Known gaps
 

@@ -28,23 +28,26 @@ root is resolved via `RABBIT_AUTO_EVOLVE_REPO_ROOT` when set, else
 Exit code: 0 on success (including the idempotent no-op). Non-zero only on a
 genuine crontab read/write failure.
 
-Restricted-host fallback (issue #507, spec Inv 32): on hosts where the
-`crontab` binary is administratively restricted (e.g. "You ... are not
-allowed to use this program (crontab)"), this script DETECTS the denial —
-distinguished from the legitimate empty "no crontab for user" case — and
-falls back gracefully: it exits 0 and prints an actionable
-`rabbit_print`-rendered message (crontab restricted here, the loop will not
-auto-tick headlessly, plus the exact */30 entry to hand to a sysadmin and
-the manual `/rabbit-auto-evolve start` path) rather than failing opaquely.
-Cron remains the sole tick scheduler when available.
+Restricted-host CronCreate fallback (issues #507, #521, spec Inv 32/34): on
+hosts where the `crontab` binary is administratively restricted (e.g. "You
+... are not allowed to use this program (crontab)"), this script DETECTS the
+denial via detect-scheduler.py (distinguished from the legitimate empty "no
+crontab for user" case) and falls back gracefully rather than failing
+opaquely. It exits 0 and emits (a) a machine-readable JSON signal naming the
+durable `CronCreate` heartbeat the DISPATCHER must create (a script cannot
+call `CronCreate`) and (b) a branded `rabbit_print` line telling the user the
+durable heartbeat will be set up on the next `/rabbit-auto-evolve start`. The
+heartbeat cron expression avoids the :00/:30 minute marks per CronCreate
+guidance. Cron remains the tick scheduler where available.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
 """
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -53,6 +56,11 @@ ENTRY_TOKEN = "tick-headless.py"
 TICK_SCRIPT = ".claude/features/rabbit-auto-evolve/scripts/tick-headless.py"
 LOG_PATH = ".rabbit/tick-headless.log"
 SCHEDULE = "*/30 * * * *"
+# Durable CronCreate heartbeat expression for the restricted-host fallback
+# (issue #521). ~30-min recurring; the 13,43 minutes AVOID the :00 and :30
+# marks per CronCreate guidance.
+HEARTBEAT_EXPR = "13,43 * * * *"
+HEARTBEAT_PROMPT = "/rabbit-auto-evolve start"
 
 # A restricted-crontab denial (issue #507) is recognised by this phrase in
 # the binary's stderr — the standard message is "You (<user>) are not
@@ -138,24 +146,30 @@ def _write_crontab(text):
 
 
 def _report_restricted(repo_root):
-    """Emit the actionable restricted-host fallback message via rabbit_print
-    and return 0 (graceful, non-fatal). See issue #507 / spec Inv 32."""
+    """Emit the CronCreate-fallback signal and a branded notice, then return
+    0 (graceful, non-fatal). See issues #507, #521 / spec Inv 32, 34.
+
+    A script CANNOT call `CronCreate` (it is a Claude tool), so this emits:
+      (a) a machine-readable JSON signal on stdout naming the durable
+          heartbeat the DISPATCHER must create on the next `start`, and
+      (b) a branded rabbit_print line for the human."""
+    signal = {
+        "scheduler": "croncreate",
+        "action": "dispatcher-must-create-heartbeat",
+        "cron": HEARTBEAT_EXPR,
+        "prompt": HEARTBEAT_PROMPT,
+        "durable": True,
+    }
+    print(json.dumps(signal))
+
     rabbit_print = _import_rabbit_print()
-    entry = _entry_line(repo_root)
     lines = [
         rabbit_print(
-            "crontab is restricted on this host — cannot install the "
-            "auto-evolve tick.", "⚠", "yellow"),
+            "crontab is restricted on this host — falling back to a durable "
+            "CronCreate heartbeat.", "⚠", "yellow"),
         rabbit_print(
-            "The loop will NOT auto-tick headlessly here; it still runs "
-            "via a live Claude session.", "⚠", "yellow"),
-        rabbit_print(
-            "To enable headless ticking, ask a sysadmin to add this "
-            "crontab entry:", "→", "yellow"),
-        rabbit_print(f"  {entry}", "→", "yellow"),
-        rabbit_print(
-            "Otherwise run `/rabbit-auto-evolve start` manually each "
-            "session.", "→", "yellow"),
+            "The durable CronCreate heartbeat will be set up on your next "
+            "`/rabbit-auto-evolve start`.", "→", "yellow"),
     ]
     print("\n".join(lines))
     return 0

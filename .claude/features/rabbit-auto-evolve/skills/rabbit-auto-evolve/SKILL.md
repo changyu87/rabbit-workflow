@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.22.0
+version: 0.23.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -11,10 +11,15 @@ description: Self-driving rabbit loop that continuously fetches open `rabbit-man
 A self-driving rabbit loop. Continuously fetches open `rabbit-managed`
 issues, triages each, dispatches TDD subagents, merges approved PRs into
 `dev`, tags releases, and is fired on a fixed cadence by a **system cron**
-(the sole tick scheduler, installed at `on`) until the user issues an
-explicit stop. Per Inv 32 (issue #414) the loop NEVER self-chains its own
-wakeups — no in-session scheduling harness is used; scheduling lives
-entirely in the external system cron.
+(the tick scheduler where available, installed at `on`) until the user
+issues an explicit stop. Per Inv 32 (issues #414, #509, #521) the loop
+NEVER self-chains via the deprecated in-session wakeup mechanisms (see spec
+Inv 32 for the forbidden set). Scheduling lives in the external system cron
+WHERE AVAILABLE; on hosts where crontab is blocked, a durable `CronCreate`
+heartbeat is the SANCTIONED fallback trigger (a Claude idle-REPL prompt
+scheduler — durable, not an in-session wakeup harness). When work remains at
+the end of a tick the loop refires near-immediately in a FRESH context
+(Inv 33); when the queue is empty it relies on the heartbeat.
 
 The mode is entered via `/rabbit-auto-evolve on` (compound mutator
 `.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py on`);
@@ -36,9 +41,26 @@ which performs three deterministic mutations in order:
 3. Write `.rabbit-auto-evolve-active` (signals mode is on).
 
 After the three markers, `set-evolve-mode.py on` invokes
-`.claude/features/rabbit-auto-evolve/scripts/install-cron.py`, which
-idempotently installs the system-cron entry that fires the headless tick
-(Inv 32 / issue #414) — the cron is the sole tick scheduler.
+`.claude/features/rabbit-auto-evolve/scripts/install-cron.py`, which uses
+`detect-scheduler.py` (Inv 34) to choose the mechanism. WHERE crontab is
+usable it idempotently installs the system-cron entry that fires the
+headless tick (Inv 32 / issue #414) — the cron is the tick scheduler. WHERE
+crontab is administratively blocked it does NOT fail: it exits 0 and emits a
+JSON signal `{"scheduler":"croncreate","action":"dispatcher-must-create-heartbeat",
+"cron":"13,43 * * * *","prompt":"/rabbit-auto-evolve start","durable":true}`
+plus a branded line saying the durable `CronCreate` heartbeat will be set up
+on the next `/rabbit-auto-evolve start`.
+
+**CronCreate heartbeat creation (DISPATCHER action, croncreate path only).**
+A script CANNOT call `CronCreate` — it is a Claude tool. So when
+`install-cron.py` (or `detect-scheduler.py`) signals `scheduler:"croncreate"`,
+the DISPATCHER creates the durable heartbeat on the first `start`,
+IDEMPOTENTLY: call `CronList` first and create only if no matching heartbeat
+exists, then `CronCreate(cron="13,43 * * * *", prompt="/rabbit-auto-evolve start",
+durable=true)`. The `13,43` minutes avoid the `:00`/`:30` marks per
+CronCreate guidance. `CronCreate` is the SANCTIONED fallback trigger here —
+a durable idle-REPL prompt scheduler, NOT an in-session wakeup harness (the
+forbidden set is named in spec Inv 32).
 
 On success, the script emits two branded `rabbit_print` confirmation
 lines to stdout (red `AUTONOMOUS-EVOLVE MODE CONFIGURED — restart Claude
@@ -92,22 +114,34 @@ precondition checklist verbatim and waiting for the user to type
 
 #### Start the loop (only on `all_pass: true`)
 
-1. Invoke
+1. Run the running-guard FIRST (Inv 35 / D3):
+   `python3 .claude/features/rabbit-auto-evolve/scripts/running-guard.py`.
+   It inspects `.rabbit-auto-evolve-running` and clears a STALE marker (mtime
+   older than the max-tick window, or a dead owner PID), logging
+   `stale marker cleared` via `tick-log.py`. On `{"action":"skip",
+   "reason":"tick-running"}` (a FRESH marker — a tick is genuinely running)
+   do NOT start a second tick: log `skipped: tick already running` and end
+   the turn. On `{"action":"proceed",...}` continue.
+2. Invoke
    `python3 .claude/features/rabbit-auto-evolve/scripts/start-loop.py`
-   (which writes `.rabbit-auto-evolve-running` at repo root). Per Inv 17
-   the marker write is wrapped in a script so scope-guard does not deny
-   the literal Bash command. Per Inv 19, `start-loop.py` additionally
+   (which writes `.rabbit-auto-evolve-running` at repo root, now carrying the
+   owner PID + ISO-8601 timestamp in its content for the running-guard). Per
+   Inv 17 the marker write is wrapped in a script so scope-guard does not
+   deny the literal Bash command. Per Inv 19, `start-loop.py` additionally
    self-heals before writing the running marker: it deletes any stale
    `.rabbit-auto-evolve-stop-requested` (an explicit `start` cancels a
    pending stop) and bootstraps `.rabbit/auto-evolve-state.json` with
    defaults if it is missing, empty, or malformed (a valid existing
    state file is left untouched).
-2. Run one `tick` (the 12-phase loop body).
-3. End the turn. The next tick is fired by the **system cron** installed at
-   `on` (Inv 32 / issue #414) — there is NO in-session self-chaining. The
-   cron runs `tick-headless.py` (the Claude-free phases) on its cadence; a
-   live Claude session contributes the dispatch phase whenever it runs
-   `start`/`tick`.
+3. Run one `tick` (the 12-phase loop body). Phase 11 runs
+   `schedule-decision.py` (Inv 33) and the dispatcher schedules the
+   immediate-refire when work remains — see "Scheduling" below.
+4. End the turn. The HOUSEKEEPING tick is fired by the **system cron**
+   installed at `on` (where crontab is available) running `tick-headless.py`;
+   the DEVELOPMENT tick (phase 5 dispatch) is re-triggered by the scheduler
+   firing `/rabbit-auto-evolve start` in a FRESH context (Inv 32 amendment /
+   #509). There is NO in-session wakeup-harness self-chaining (the forbidden
+   mechanisms are named in spec Inv 32).
 
 ### `stop`
 
@@ -175,7 +209,7 @@ affecting the next tick's ability to pick up from disk-persisted state in
 | 6 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
 | 7-9 | `post-merge`    | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — deterministically runs release (7) → cleanup (8) → catch-up (9) for every PR in `pending_post_merge`, then clears it (Inv 30) — see "Post-merge phases (Inv 30)" below |
 |10 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
-|11 | `schedule`        | NO-OP — scheduling is owned by the system cron (Inv 32 / issue #414). See "Scheduling is cron-owned (Inv 32)" below |
+|11 | `schedule`        | `.claude/features/rabbit-auto-evolve/scripts/schedule-decision.py` — decide immediate-refire vs idle (Inv 33); on `immediate-refire` the DISPATCHER schedules the one-shot. See "Scheduling (Inv 32–33)" below |
 
 ### Post-merge phases (Inv 30 — issue #499)
 
@@ -217,17 +251,39 @@ A non-zero `run-post-merge.py` exit is an error-abort (Inv 20): run
 `end-tick.py` and surface the failure rather than continue with owed work
 silently dropped.
 
-### Scheduling is cron-owned (Inv 32 — issue #414)
+### Scheduling (Inv 32–33 — issues #414, #509, #521)
 
-Per spec Inv 32, phase 11 (`schedule`) is a **no-op**. Tick scheduling is
-owned entirely by a **system cron** — the prior in-session self-chaining
-wakeup (the removed Inv 29 / Inv 31 mechanism) was deleted. No in-session
-scheduling harness (neither a wakeup call nor a cron-create call) is used
-anywhere in rabbit-auto-evolve.
+Phase 11 (`schedule`) is NO LONGER a pure no-op. It runs
+`python3 .claude/features/rabbit-auto-evolve/scripts/schedule-decision.py`,
+which counts open work (authoritatively, via `fetch-queue.py`), reads the
+scheduler mechanism from `detect-scheduler.py`, logs the decision via
+`tick-log.py`, and emits JSON:
 
-The cron entry is installed by `set-evolve-mode.py on` (which invokes
-`install-cron.py`) and removed by `set-evolve-mode.py off` (which invokes
-`uninstall-cron.py`). The entry has the form:
+- `{"decision":"immediate-refire","scheduler":"crontab"|"croncreate",
+  "prompt":"/rabbit-auto-evolve start","when":"~1min","croncreate":{...}}`
+  when the queue is non-empty (Inv 33 / D1). The DISPATCHER then schedules
+  the near-immediate (~1 min) ONE-SHOT in a FRESH context and ENDS the turn
+  (do NOT continue inline):
+  - **croncreate path:** invoke the actual one-shot
+    `CronCreate(cron=<near-now expr>, prompt="/rabbit-auto-evolve start",
+    durable=false)` per the emitted `croncreate` params. A script cannot call
+    `CronCreate`; this tool action is the irreducible Claude step (exactly
+    like phase 5 dispatch).
+  - **crontab path:** schedule the transient/`at`-style one-shot the emitted
+    hint documents.
+- `{"decision":"idle","detail":"rely on heartbeat"}` when the queue is empty.
+  Schedule nothing; the recurring heartbeat (the `*/…` system-cron entry, or
+  the durable `CronCreate` heartbeat on restricted hosts) fires the next
+  check.
+
+`CronCreate` is PERMITTED solely as the fallback trigger — a durable
+idle-REPL prompt scheduler, NOT an in-session wakeup harness (the forbidden
+set, including the deprecated wakeup call, is named in spec Inv 32). The
+recurring heartbeat is
+installed by `set-evolve-mode.py on` (`install-cron.py` — crontab where
+available, else the dispatcher's durable `CronCreate` heartbeat) and removed
+by `set-evolve-mode.py off` (`uninstall-cron.py`). The crontab heartbeat
+entry has the form:
 
 ```
 */30 * * * * cd <repo_root> && python3 \
@@ -235,12 +291,11 @@ The cron entry is installed by `set-evolve-mode.py on` (which invokes
   >> .rabbit/tick-headless.log 2>&1
 ```
 
-When a session tick finishes phase 10 (`persist`), it simply ends the turn —
-there is no scheduling call to emit. The cron fires the next tick on its
-cadence. This converts the prior silent-stop failure mode (a dropped
-in-session wakeup once halted the loop for 5h+ with no error, no log line,
-and no halt) into an external, observable scheduler that no in-session bug
-can stop.
+This converts the prior silent-stop failure mode (a dropped in-session
+wakeup once halted the loop for 5h+ with no error) into an external,
+observable scheduler whose decisions are all logged (Inv 36) and whose stale
+running markers are cleared by the running-guard (Inv 35) so the loop never
+wedges silently.
 
 ### Headless tick (cron)
 
@@ -259,7 +314,10 @@ phase 5 (`dispatch`), which requires Claude:
 - phases 7–9 (`post-merge`) — `run-post-merge.py` drains
   `pending_post_merge`.
 - phase 10 (`persist`) — `update-state.py`.
-- phase 11 (`schedule`) — NO-OP (the cron fires the next tick).
+- phase 11 (`schedule`) — NO-OP in the headless tick: the recurring heartbeat
+  owns the HOUSEKEEPING cadence (Inv 32 amendment). The development-tier
+  immediate-refire (Inv 33) needs a live session and is handled in the
+  SESSION tick's phase 11 via `schedule-decision.py`, not here.
 
 `tick-headless.py` emits a single JSON result object on stdout summarizing
 which phases ran (with `dispatch` always marked `"skipped"`). Dispatch
@@ -277,9 +335,13 @@ allowlist).
 
 The four named exit paths are:
 
-- **normal completion** — phase 11 (`schedule`) is a no-op, then
-  `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`
-  runs, then the turn ends. The system cron fires the next tick (Inv 32).
+- **normal completion** — phase 11 (`schedule`) runs
+  `schedule-decision.py` (Inv 33): if work remains, the DISPATCHER schedules
+  the near-immediate fresh-context refire (croncreate one-shot, or the
+  crontab transient hint) per the emitted params; if the queue is empty it
+  relies on the heartbeat. Then
+  `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py` runs, then
+  the turn ends.
 - **phase 0 halt** — `.rabbit-auto-evolve-stop-requested` observed at
   the top of the tick. Post the run summary, then run
   `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`,
