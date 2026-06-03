@@ -12,6 +12,24 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.44.0 (/rabbit-update command — check + install, #493):** Added the
+  user-invocable `/rabbit-update` slash command, deployed via `publish_command`
+  from `commands/rabbit-update.md` (mirroring rabbit-refresh / rabbit-project).
+  Per `script > CLI > spec > prompt`, the command is a thin router to the new
+  deterministic companion script `scripts/rabbit-update.py` with two
+  subcommands: `check` (non-mutating, non-throttled current-vs-latest probe
+  that REUSES contract's `check-release-update.py` fetch/compare helpers and
+  emits structured `{current, latest, newer, self_update_available}` JSON) and
+  `install` (invokes the existing `install.py --update` self-update path). No
+  release-check logic is duplicated; no AI skill is introduced. Registered in
+  `feature.json manifest`, added to `install.py`'s `COMMANDS` +
+  `FEATURE_INCLUDES["rabbit-cage"]` (the command + the backing script) per
+  Inv 21 / Inv 25. Spec Inv 37 added; no invariants retired or renumbered. The
+  new command is a deployed artifact (`publish_command`) — its deployed copy
+  under `.claude/commands/rabbit-update.md` drifts until republished. Covered
+  by the new e2e `test/test-rabbit-update-command.py`, wired into
+  `test/run.py`.
+
 - **v5.43.0 (install.py maps renamed rabbit-spec-creator agent, #477):**
   `install.py` deployed the rabbit-spec drafting agent from the OLD path
   `spec-creator.md`, but issues #471/#473 renamed the source to
