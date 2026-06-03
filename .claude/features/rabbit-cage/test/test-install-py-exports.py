@@ -79,11 +79,15 @@ def test_feature_includes_has_expected_features():
     print("PASS test_feature_includes_has_expected_features")
 
 
-def test_hooks_has_six_entries():
-    """HOOKS must lay down 4 rabbit-cage dispatchers + _dispatcher_lib + contract prompt-injector."""
+def test_hooks_has_five_entries():
+    """HOOKS must lay down 4 rabbit-cage dispatchers + _dispatcher_lib.
+
+    prompt-injector.py was retired by PR #401 (Skill-path prompt injection
+    was removed) and is no longer part of the rabbit-cage hook closure.
+    """
     mod = _load_install()
-    assert len(mod.HOOKS) == 6, (
-        f"expected 6 HOOKS entries (scope-guard + 3 dispatchers + _dispatcher_lib + prompt-injector); "
+    assert len(mod.HOOKS) == 5, (
+        f"expected 5 HOOKS entries (scope-guard + 3 dispatchers + _dispatcher_lib); "
         f"got {len(mod.HOOKS)}: {mod.HOOKS}"
     )
     dst_names = {dst for _src, dst in mod.HOOKS}
@@ -93,11 +97,10 @@ def test_hooks_has_six_entries():
         ".claude/hooks/stop-dispatcher.py",
         ".claude/hooks/user-prompt-submit-dispatcher.py",
         ".claude/hooks/_dispatcher_lib.py",
-        ".claude/hooks/prompt-injector.py",
     }
     missing = required - dst_names
     assert not missing, f"HOOKS missing required deploy destinations: {sorted(missing)}"
-    print("PASS test_hooks_has_six_entries")
+    print("PASS test_hooks_has_five_entries")
 
 
 def main() -> int:
@@ -106,7 +109,7 @@ def main() -> int:
     test_exports_run_publish_loop_callable()
     test_exports_file_closure_constants()
     test_feature_includes_has_expected_features()
-    test_hooks_has_six_entries()
+    test_hooks_has_five_entries()
     return 0
 
 
