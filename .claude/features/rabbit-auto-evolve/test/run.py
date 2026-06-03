@@ -65,5 +65,7 @@ run_test("test-detect-scheduler.py")
 run_test("test-running-guard.py")
 run_test("test-tick-log.py")
 run_test("test-schedule-decision.py")
+run_test("test-log-tick.py")
+run_test("test-spec-tick-log-invariant.py")
 
 print("ALL TESTS PASSED")
