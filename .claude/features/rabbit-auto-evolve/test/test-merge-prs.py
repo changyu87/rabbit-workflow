@@ -50,7 +50,7 @@ def _write_gh_shim(shim_dir, call_log, base_ref="dev", head_ref="feat/x",
     """Write a `gh` shim that:
        - dispatches on `pr view --json <field> -q .<field>` and echoes the
          right value (baseRefName, headRefName, body, mergeCommit.oid)
-       - dispatches on `pr merge ... --squash --auto` and exits `merge_exit`
+       - dispatches on `pr merge ... --squash` and exits `merge_exit`
        - appends every invocation to `call_log` (one JSON line per call)
     """
     # The PR body may contain newlines; write it to a sidecar file the shim
@@ -333,6 +333,36 @@ with tempfile.TemporaryDirectory() as td:
                 fail(f"multi: statuses {statuses!r}")
             else:
                 ok("multi: all three PRs reported merged in order")
+
+
+# ---------------------------------------------------------------------------
+# Regression (issue #429): `gh pr merge` MUST NOT pass `--auto`. The --auto
+# flag requires the repo to have auto-merge enabled (enablePullRequestAuto
+# Merge); on repos without it, `gh pr merge --auto` fails for any PR that is
+# not immediately mergeable with `Auto merge is not allowed for this
+# repository`. The fix is a direct squash merge. This test asserts the merge
+# invocation recorded in the gh call log does NOT contain `--auto` (or, if
+# it ever did, the script would have to demonstrate a direct-merge fallback —
+# this test enforces the simpler invariant: no --auto on the merge call).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="dev",
+                                                    safety_exit=0, merge_exit=0)
+    proc = _run(cwd, env, "42")
+    calls = _gh_calls(call_log)
+    merge_calls = [c for c in calls if "pr merge" in c]
+    if not merge_calls:
+        fail(f"no-auto: gh pr merge was NOT called; calls={calls!r}")
+    elif any("--auto" in c for c in merge_calls):
+        fail(f"no-auto: gh pr merge invoked with --auto (issue #429): "
+             f"{merge_calls!r}")
+    else:
+        ok("no-auto: gh pr merge invoked without --auto (issue #429)")
+    # The merge must still be a squash merge.
+    if merge_calls and not any("--squash" in c for c in merge_calls):
+        fail(f"no-auto: gh pr merge missing --squash; {merge_calls!r}")
+    elif merge_calls:
+        ok("no-auto: gh pr merge still uses --squash")
 
 
 # ---------------------------------------------------------------------------
