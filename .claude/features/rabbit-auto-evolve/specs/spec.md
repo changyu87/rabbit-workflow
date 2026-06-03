@@ -2434,26 +2434,75 @@ Phase E merges complete.
     `test/test-detect-scheduler.py` (e2e: a usable shim → `crontab`; the
     empty "no crontab" shim → `crontab`; a restricted shim → `croncreate`).
 
-35. **Stale-marker running-guard (D3 — issue #521).** Before a session enters
-    a tick (and at every heartbeat), `scripts/running-guard.py` inspects
-    `.rabbit-auto-evolve-running` so a dead or wedged tick never silently
-    blocks the loop forever. ABSENT → `{"action":"proceed","running":false}`.
-    PRESENT and STALE → clear the marker, log `stale marker cleared` via
-    `tick-log.py`, return `{"action":"proceed","running":true,
-    "stale_cleared":true}`. PRESENT and FRESH → `{"action":"skip",
-    "reason":"tick-running"}`. A marker is STALE when its mtime is older than
-    a MAX_TICK_DURATION window (default 30 min; overridable for tests via
-    `RABBIT_AUTO_EVOLVE_MAX_TICK_SECS`) OR — when the marker records an owner
-    PID — that PID is not alive. mtime is the PRIMARY staleness signal so the
-    guard works even when no PID is present. To support PID-liveness,
-    `start-loop.py` writes the owner PID and an ISO-8601 timestamp INTO the
-    running marker's content; existence-based readers (`status-report.py`,
-    `end-tick.py`) are unaffected because they key on the filename, which is
-    unchanged. This realizes Inv 32's preserved observability goal: a wedged
-    loop is cleared and logged rather than stalling silently. Enforced by
-    `test/test-running-guard.py` (e2e: absent → proceed; a fresh marker →
-    skip; an mtime-aged marker (env-shrunk window) → proceed + stale_cleared
-    + marker removed).
+35. **Stale-marker running-guard (D3 — issues #521, #526).** Before a session
+    enters a tick (and at every heartbeat), `scripts/running-guard.py` inspects
+    `.rabbit-auto-evolve-running` so a CRASHED tick never wedges the loop, while
+    a genuinely ACTIVE tick is never cleared out from under itself. ABSENT →
+    `{"action":"proceed","running":false}`. PRESENT and STALE → clear the
+    marker, log `stale marker cleared` via `tick-log.py`, return
+    `{"action":"proceed","running":true,"stale_cleared":true}`. PRESENT and
+    FRESH (active) → `{"action":"skip","reason":"tick-running"}`.
+
+    **Staleness MUST track the LIVE tick, not the marker's creation moment
+    (issue #526).** The v0.24.0-and-earlier rule — "stale when marker mtime >
+    MAX_TICK_DURATION OR the recorded PID is dead" — was UNSOUND on two counts,
+    both observed live: (1) `start-loop.py` stamped `os.getpid()`, the
+    short-lived helper subprocess's PID, which dies seconds after the marker is
+    written, so the "PID dead → stale" arm flagged EVERY tick stale almost
+    immediately; and (2) the marker's mtime is frozen at creation, so a
+    long-but-active tick (legitimately running > MAX_TICK_DURATION while
+    dispatching subagents and updating `state.json`) tripped the age window and
+    was falsely judged stale. A false-stale verdict clears an active tick's
+    marker and lets a CONCURRENT tick start on top of it — corrupting the shared
+    `state.json` / branches / PRs the guard exists to protect.
+
+    The corrected staleness rule keys on ACTUAL activity and a DURABLE owner,
+    and combines them CONSERVATIVELY:
+
+    - **Activity signal (PRIMARY).** The tick is ACTIVE when
+      `.rabbit/auto-evolve-state.json`'s mtime advanced within an IDLE_WINDOW
+      (default 600 s / 10 min; overridable via
+      `RABBIT_AUTO_EVOLVE_IDLE_SECS`). `state.json` mtime advances as the tick
+      works (every `update-state.py` write), so it tracks liveness even for a
+      multi-hour active tick. Total elapsed time since marker creation is NO
+      LONGER a staleness signal on its own.
+    - **Durable owner liveness (SECONDARY).** `start-loop.py` records a DURABLE
+      owner identifier — the long-lived session / tick-owner PID, sourced from
+      the Claude session environment (e.g. `CLAUDE_SESSION_PID` / `PPID` chain)
+      when available — into the marker content, NOT `start-loop.py`'s transient
+      `os.getpid()`. When a durable owner PID is recorded AND that process is
+      alive, the tick is ACTIVE regardless of the activity window. When no
+      durable owner can be determined, the marker omits the PID and the guard
+      relies on the activity signal alone (it MUST still function PID-free).
+    - **Conservative AND-combine.** A marker is STALE only when BOTH hold: no
+      live owner process (PID absent or dead) AND `state.json` is idle (mtime
+      older than IDLE_WINDOW, or `state.json` absent). If EITHER the owner is
+      alive OR activity is recent, the marker is FRESH and preserved. The guard
+      prefers a false-NEGATIVE (wait one more heartbeat for a possibly-crashed
+      tick) over a false-POSITIVE (clear an active tick → concurrent run).
+
+    Existence-based readers (`status-report.py`, `end-tick.py`) are unaffected —
+    they key on the filename, which is unchanged. The heartbeat path (the
+    headless tick / scheduled refire's "is a tick running?" check) MUST invoke
+    this staleness-aware guard, NOT a bare marker-presence test — otherwise a
+    truly-crashed tick wedges the loop forever (the opposite failure). This
+    realizes Inv 32's preserved observability goal: a wedged loop is cleared and
+    logged, an active loop is never disrupted.
+
+    Enforced by `test/test-running-guard.py` (e2e):
+    - absent marker → proceed, `running:false`.
+    - active tick — owner PID alive (a live sentinel process), any marker age →
+      skip (NOT stale), marker preserved.
+    - active tick — `state.json` mtime within IDLE_WINDOW, no live PID, marker
+      age > MAX_TICK_DURATION → NOT stale (the #526 long-active false-positive),
+      marker preserved.
+    - crashed tick — owner PID dead AND `state.json` idle beyond IDLE_WINDOW (or
+      absent) → stale, marker cleared, `stale marker cleared` logged.
+    - PID-free marker with idle `state.json` → stale and cleared (guard
+      functions without a PID).
+    - helper-PID regression — the PID `start-loop.py` records is the durable
+      owner, NOT the transient subprocess PID (assert the recorded PID is not
+      `start-loop.py`'s own short-lived PID).
 
 36. **Every heartbeat/guard/schedule decision is logged (D4 — issue #521).**
     `scripts/tick-log.py` is an append-only, structured (JSON-per-line)
