@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.8.0
+version: 5.9.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -39,8 +39,12 @@ runner is `test/run.py`.
   (`show | next | transitions | transition`); invoked by the assembled
   prompt at each state transition (and directly by any other caller that
   needs to advance a feature's `tdd_state`).
-- `agents/tdd-subagent.md` — the agent definition dispatched by callers
-  using the assembled prompt.
+- `agents/rabbit-tdd-subagent.md` — the agent definition dispatched by
+  callers using the assembled prompt. The agent manifest item is named
+  `rabbit-tdd-subagent` (the agent `name:` frontmatter and the deployed
+  `.claude/agents/rabbit-tdd-subagent.md` basename); the feature
+  directory and the `dispatch-tdd-subagent.py` / `tdd-step.py` scripts
+  keep their `tdd-subagent` names.
 
 ## Pre-Conditions
 
@@ -73,7 +77,7 @@ the template's `{{bypass_preamble_note}}` placeholder.
 
 1. **Owned surface.** This feature owns exactly three surface entries:
    `scripts/dispatch-tdd-subagent.py`, `scripts/tdd-step.py`, and
-   `agents/tdd-subagent.md`. The state-machine script `tdd-step.py`
+   `agents/rabbit-tdd-subagent.md`. The state-machine script `tdd-step.py`
    lives at `.claude/features/tdd-subagent/scripts/tdd-step.py`
    (absorbed from the retired `tdd-state-machine` feature at v4.0.0).
    The `.claude/features/tdd-state-machine/` directory MUST NOT exist.
@@ -218,10 +222,23 @@ the template's `{{bypass_preamble_note}}` placeholder.
 
 ### Agent definition
 
-27. **Single state-machine path in agent doc.** `agents/tdd-subagent.md`
+27. **Single state-machine path in agent doc.** `agents/rabbit-tdd-subagent.md`
     instructs the subagent to use the absolute `tdd-step.py` path
     supplied by the dispatched prompt. It does not describe a dual-path
     layout (agent-local OR feature-local).
+
+57. **Agent manifest item name (issue #418).** The agent manifest item
+    is named `rabbit-tdd-subagent`. The agent definition source lives at
+    `agents/rabbit-tdd-subagent.md` and its YAML frontmatter declares
+    `name: rabbit-tdd-subagent`. The `publish_agent` manifest entry
+    deploys it to `.claude/agents/rabbit-tdd-subagent.md`. The legacy
+    `agents/tdd-subagent.md` source and the legacy deployed
+    `.claude/agents/tdd-subagent.md` MUST NOT exist. This rename is
+    scoped to the AGENT manifest item only: the feature directory
+    (`.claude/features/tdd-subagent/`), the `dispatch-tdd-subagent.py`
+    and `tdd-step.py` script basenames, and the agent-adjacent deployed
+    scripts directory (`.claude/agents/tdd-subagent/scripts/`) all keep
+    their `tdd-subagent` names.
 
 ### `feature.json` schema
 
@@ -238,10 +255,10 @@ the template's `{{bypass_preamble_note}}` placeholder.
 
     - `manifest` is a list of length 3 whose entries are, in order:
       1. `{"api": "publish_agent", "args": {"source":
-         "agents/tdd-subagent.md"}}` — deploys the agent definition.
-         `publish_agent` is a convenience wrapper that auto-derives the
-         dest as `.claude/agents/<basename of source>`, yielding
-         `.claude/agents/tdd-subagent.md`.
+         "agents/rabbit-tdd-subagent.md"}}` — deploys the agent
+         definition. `publish_agent` is a convenience wrapper that
+         auto-derives the dest as `.claude/agents/<basename of source>`,
+         yielding `.claude/agents/rabbit-tdd-subagent.md`.
       2. `{"api": "publish_file", "args": {"source":
          "scripts/dispatch-tdd-subagent.py", "dest":
          ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py"}}`

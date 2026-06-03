@@ -24,7 +24,7 @@ def _resolve_spec_md(feature_dir):
 
 
 SPEC_PATH = _resolve_spec_md(FEATURE_DIR)
-AGENT_PATH = os.path.join(FEATURE_DIR, "agents", "tdd-subagent.md")
+AGENT_PATH = os.path.join(FEATURE_DIR, "agents", "rabbit-tdd-subagent.md")
 CONTRACT_SCRIPTS = os.path.join(REPO_ROOT, ".claude", "features", "contract", "scripts")
 
 

@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.8.0
+version: 5.9.0
 template_version: 2.1.0
 owner: rabbit-workflow team
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -30,8 +30,10 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ],
     "agents": [
       {
-        "path": ".claude/features/tdd-subagent/agents/tdd-subagent.md",
-        "description": "Named subagent dispatched by callers using the prompt assembled by dispatch-tdd-subagent.py. Runs the 8-step TDD cycle for ONE feature."
+        "path": ".claude/features/tdd-subagent/agents/rabbit-tdd-subagent.md",
+        "deployed_path": ".claude/agents/rabbit-tdd-subagent.md",
+        "name": "rabbit-tdd-subagent",
+        "description": "Named subagent (manifest item `rabbit-tdd-subagent`) dispatched by callers using the prompt assembled by dispatch-tdd-subagent.py. Runs the 8-step TDD cycle for ONE feature."
       }
     ],
     "files": [],

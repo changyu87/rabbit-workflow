@@ -43,10 +43,19 @@ def ko(msg):
 
 
 FIXTURE_FEATURE = "rabbit-cage"
-FIXTURE_SPEC = os.path.join(
-    REPO_ROOT, ".claude", "features", FIXTURE_FEATURE,
-    "docs", "spec", "spec.md",
-)
+
+
+def _resolve_fixture_spec():
+    """Resolve the rabbit-cage fixture spec.md dual-read (issue #399 Phase 2):
+    specs/ preferred, legacy docs/spec/ fallback."""
+    base = os.path.join(REPO_ROOT, ".claude", "features", FIXTURE_FEATURE)
+    preferred = os.path.join(base, "specs", "spec.md")
+    if os.path.isfile(preferred):
+        return preferred
+    return os.path.join(base, "docs", "spec", "spec.md")
+
+
+FIXTURE_SPEC = _resolve_fixture_spec()
 
 
 def _spec_invariant_numbers(spec_path):

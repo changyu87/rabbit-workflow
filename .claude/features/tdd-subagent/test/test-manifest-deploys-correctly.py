@@ -4,7 +4,7 @@
 Drives install.run_publish_loop against a temp target containing the real
 contract feature plus a copy of tdd-subagent; asserts that all three manifest
 entries land at their declared destinations with matching SHA-256:
-  - agents/tdd-subagent.md -> .claude/agents/tdd-subagent.md (publish_agent)
+  - agents/rabbit-tdd-subagent.md -> .claude/agents/rabbit-tdd-subagent.md (publish_agent)
   - scripts/dispatch-tdd-subagent.py
         -> .claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py
         (publish_file with explicit dest)
@@ -34,8 +34,8 @@ INSTALL_PY = REPO / "install.py"
 FEATURE_DIR = REPO / ".claude/features/tdd-subagent"
 CONTRACT_DIR = REPO / ".claude/features/contract"
 
-AGENT_SOURCE_REL = "agents/tdd-subagent.md"
-AGENT_DEPLOY_REL = ".claude/agents/tdd-subagent.md"
+AGENT_SOURCE_REL = "agents/rabbit-tdd-subagent.md"
+AGENT_DEPLOY_REL = ".claude/agents/rabbit-tdd-subagent.md"
 DISPATCH_SOURCE_REL = "scripts/dispatch-tdd-subagent.py"
 DISPATCH_DEPLOY_REL = ".claude/agents/tdd-subagent/scripts/dispatch-tdd-subagent.py"
 STEP_SOURCE_REL = "scripts/tdd-step.py"

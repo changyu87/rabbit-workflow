@@ -1,5 +1,5 @@
 ---
-name: tdd-subagent
+name: rabbit-tdd-subagent
 description: TDD implementation agent for rabbit features. Use when rabbit-feature-touch needs to run the full 8-step TDD cycle (LOCK → TEST-WRITE → TEST-RED → IMPLEMENT → SYNC-DEPLOYED → CODE-REVIEW → TEST-GREEN → UNLOCK) for a feature. Invoked with feature-specific context assembled by dispatch-tdd-subagent.py. Also triggers when any skill or agent needs to run a complete TDD cycle for a single rabbit feature.
 model: opus
 tools: Read, Write, Edit, Bash, Glob, Grep
