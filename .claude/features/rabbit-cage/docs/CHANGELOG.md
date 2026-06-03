@@ -12,6 +12,13 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.45.0 (FEATURE_INCLUDES closure — ship rabbit-feature/audit-owner.py, #570):**
+  Added `scripts/audit-owner.py` to `FEATURE_INCLUDES["rabbit-feature"]` in
+  install.py. The script is referenced by `rabbit-feature-audit/SKILL.md` but
+  was absent from the packaging closure, so a plugin install omitted it and
+  `test-feature-includes-scripts-closure.py` (t10) failed. The targeted
+  assertion in `test-install-py-exports.py` now pins the entry. install.py is a
+  deployed artifact (publish_file), so this republishes on next install.
 - **v5.44.0 (/rabbit-update command — check + install, #493):** Added the
   user-invocable `/rabbit-update` slash command, deployed via `publish_command`
   from `commands/rabbit-update.md` (mirroring rabbit-refresh / rabbit-project).
