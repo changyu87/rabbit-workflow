@@ -24,7 +24,14 @@ resume banner to the systemMessage and injects the `action` into
 additionalContext so Claude Code mechanically self-resumes the loop after a
 restart. Absent / erroring script degrades gracefully (no resume surfaced).
 
-Version: 1.4.0
+Issue #545 (Inv 39): also INVOKES rabbit-auto-evolve's
+`scripts/advise-restart.py status` and, while the ADVISORY-restart marker is
+present, surfaces ONE advisory line in the banner (icon 🔄, distinct from the
+hard #503 resume banner so it reads as OPTIONAL) AND THEN clears the marker
+(`advise-restart.py clear`) since the advised restart has now occurred. Absent
+/ erroring script degrades gracefully (no advisory line, no clear).
+
+Version: 1.5.0
 Owner: rabbit-workflow team (rabbit-cage)
 Deprecation criterion: when Claude Code exposes native SessionStart
     dispatchers that subsume this hook.
@@ -41,7 +48,12 @@ _VERSION_UNKNOWN = "unknown"
 _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
-from _dispatcher_lib import dispatch_event, render_emission  # noqa: E402
+from _dispatcher_lib import (  # noqa: E402
+    advisory_restart_payloads,
+    clear_advisory_restart,
+    dispatch_event,
+    render_emission,
+)
 
 
 def repo_root() -> Path:
@@ -236,6 +248,12 @@ def main() -> int:
     for i, row in enumerate(_version_box(root)):
         payloads.insert(i, row)
     payloads.extend(_auto_resume_payloads(root))
+    advisory = advisory_restart_payloads(root)
+    if advisory:
+        # Surface the advisory line, then consume the marker — the advised
+        # restart has now occurred (Inv 39).
+        payloads.extend(advisory)
+        clear_advisory_restart(root)
     alert = _check_rabbit_root_env()
     if alert is not None:
         payloads.append(alert)

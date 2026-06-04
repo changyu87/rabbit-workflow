@@ -12,6 +12,25 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.48.0 (advisory-restart surfacing in Stop + SessionStart, #545 part B):**
+  Added Inv 39 — the Stop and SessionStart dispatchers surface
+  rabbit-auto-evolve's ADVISORY-restart signal (a restart that WOULD unlock a
+  capability but NEVER pauses or auto-resumes the loop) by INVOKING
+  rabbit-auto-evolve's `scripts/advise-restart.py` (a cross-scope INVOKE
+  declared in `contract.md` `invokes.scripts`, like the existing #503
+  check-auto-resume invoke). Stop emits one concise advisory line per tick-end
+  (`🔄 restart ADVISED (not required): <reason> — loop continues meanwhile`)
+  while the advisory marker is present and does NOT clear it; SessionStart
+  surfaces the same line in its banner AND clears the marker (invokes
+  `advise-restart.py clear`) since the advised restart has occurred. The
+  advisory icon/wording is deliberately distinct from the hard #503
+  auto-resume banner (`Auto-resuming rabbit-auto-evolve loop`) so it reads as
+  OPTIONAL. Graceful degradation mirrors #503: an absent/non-zero/timed-out/
+  unparseable `advise-restart.py` surfaces no line, never crashes, never
+  clears, and the dispatchers continue normally. Gated by the new e2e test
+  `test-advisory-restart-surfaced.py`. Both `hooks/stop-dispatcher.py` and
+  `hooks/session-start-dispatcher.py` are deployed (`publish_hook`); their
+  `.claude/hooks/` copies drift until republished.
 - **v5.47.0 (command frontmatter compliance, #492):** Added Inv 38 — every
   command deployed via `publish_command` MUST carry full frontmatter
   (`name`, `description`, `version`, `owner`, `deprecation_criterion`,

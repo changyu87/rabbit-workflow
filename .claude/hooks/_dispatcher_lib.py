@@ -20,6 +20,7 @@ Deprecation criterion: when Claude Code exposes native per-event
 import inspect
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -112,6 +113,91 @@ def dispatch_event(event, repo_root):
             else:
                 payloads.append(result)
     return payloads
+
+
+_ADVISE_RESTART_SCRIPT = (
+    ".claude/features/rabbit-auto-evolve/scripts/advise-restart.py"
+)
+
+
+def _advise_restart_status(repo_root):
+    """INVOKE rabbit-auto-evolve's advise-restart.py `status` (issue #545, Inv 39).
+
+    Returns the parsed `{"advised": <bool>, "reason": <str>?}` verdict dict, or
+    None on any failure path (script absent, non-zero exit, timeout,
+    unparseable / malformed JSON) — graceful degradation that surfaces no
+    advisory line and never crashes the dispatcher.
+    """
+    script = Path(repo_root) / _ADVISE_RESTART_SCRIPT
+    if not script.is_file():
+        return None
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "status"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    try:
+        data = json.loads(proc.stdout)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
+def advisory_restart_payloads(repo_root):
+    """Issue #545 / Inv 39: INVOKE advise-restart.py status and, when the marker
+    is present, return the single ADVISORY-restart print payload.
+
+    The advisory line is deliberately distinct from the hard #503 auto-resume
+    banner — it reads as OPTIONAL and never implies a pause:
+
+        🔄 restart ADVISED (not required): <reason> — loop continues meanwhile
+
+    Returns `[]` when no advisory is due OR on any failure path (graceful
+    degradation). The Stop and SessionStart dispatchers share this helper so
+    they emit identical wording.
+    """
+    data = _advise_restart_status(repo_root)
+    if not data or not data.get("advised"):
+        return []
+    reason = data.get("reason")
+    reason = reason.strip() if isinstance(reason, str) else ""
+    text = (
+        f"restart ADVISED (not required): {reason} "
+        "— loop continues meanwhile"
+    )
+    return [{"type": "print", "text": text, "icon": "\U0001f504",
+             "color": "green"}]
+
+
+def clear_advisory_restart(repo_root):
+    """Issue #545 / Inv 39: INVOKE advise-restart.py `clear` to consume the
+    advisory after SessionStart has surfaced it (the advised restart occurred).
+
+    Best-effort and graceful: an absent / erroring / timed-out script is a
+    silent no-op so SessionStart never crashes on a missing advisory detector.
+    """
+    script = Path(repo_root) / _ADVISE_RESTART_SCRIPT
+    if not script.is_file():
+        return
+    try:
+        subprocess.run(
+            [sys.executable, str(script), "clear"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return
 
 
 def render_emission(payloads):

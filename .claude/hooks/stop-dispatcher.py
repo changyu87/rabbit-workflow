@@ -4,6 +4,14 @@
 Enumerates every active feature's `feature.json runtime.Stop` declarations,
 invokes each declared API via `contract.lib.runtime`, partitions returns
 into print/inject/ok/error, and emits at most one JSON object to stdout.
+
+Issue #545 (Inv 39): after the per-feature Stop payloads, INVOKES
+rabbit-auto-evolve's `scripts/advise-restart.py status` (a contract INVOKE, not
+a cross-feature edit) and, while the advisory marker is present, appends ONE
+concise ADVISORY-restart line per tick-end (icon 🔄, distinct from the hard
+#503 resume banner so it reads as OPTIONAL). The Stop dispatcher does NOT clear
+the advisory marker — it persists across tick-ends until a SessionStart
+consumes it. Absent / erroring advise-restart.py degrades gracefully (no line).
 """
 
 import json
@@ -15,7 +23,11 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
-from _dispatcher_lib import dispatch_event, render_emission  # noqa: E402
+from _dispatcher_lib import (  # noqa: E402
+    advisory_restart_payloads,
+    dispatch_event,
+    render_emission,
+)
 
 
 def repo_root() -> Path:
@@ -48,6 +60,7 @@ def main() -> int:
         pass
     root = str(repo_root())
     payloads = dispatch_event("Stop", root)
+    payloads.extend(advisory_restart_payloads(root))
     emission = render_emission(payloads)
     if emission is not None:
         sys.stdout.write(json.dumps(emission) + "\n")

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.47.0
+version: 5.48.0
 template_version: 2.0.0
 ---
 
@@ -66,6 +66,7 @@ template_version: 2.0.0
     "scripts": [
       {"path": ".claude/features/contract/scripts/find-feature.py", "purpose": "scope-guard.py feature-name -> path resolution"},
       {"path": ".claude/features/rabbit-auto-evolve/scripts/check-auto-resume.py", "purpose": "session-start-dispatcher.py mechanical restart-resume detection; surfaces resume banner + action when resume:true (Inv 35 / rabbit-auto-evolve Inv 31, issue #503)"},
+      {"path": ".claude/features/rabbit-auto-evolve/scripts/advise-restart.py", "purpose": "stop-dispatcher.py + session-start-dispatcher.py ADVISORY-restart surfacing: `status` reports {advised, reason?} consumed by both (Stop + SessionStart surface the line), `clear` invoked by SessionStart to consume the advisory after surfacing (Inv 39 / rabbit-auto-evolve Inv 52, issue #545)"},
       {"path": ".claude/features/contract/scripts/check-release-update.py", "purpose": "scripts/rabbit-update.py check reuses read_version / fetch_upstream_version / resolve_repo_root / probe_self_update for the non-throttled current-vs-latest probe (Inv 37 / contract Inv 63)"}
     ],
     "functions": [
