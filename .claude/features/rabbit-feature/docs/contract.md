@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.29.0
+version: 1.30.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -52,10 +52,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
         "purpose": "General-purpose shared skill: resolves a natural-language request to the list of rabbit features whose files it will modify; emits a prompt for a default-model Agent dispatch."
       },
       {
-        "path": ".claude/features/rabbit-feature/skills/rabbit-feature-spec/",
-        "purpose": "General-purpose spec-authoring skill: reads a feature's current spec, judges open vs specific request, invokes superpowers, updates the spec, and writes an impl-suggestion file for whoever invoked it."
-      },
-      {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-scaffold/",
         "purpose": "Feature-scaffolding skill. Shells out to scaffold-feature.py to create a conforming feature dir, then validates via contract's validate-feature.py."
       },
@@ -87,13 +83,13 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
         "path": ".claude/features/contract/scripts/find-feature.py",
         "signature": "find-feature.py <repo-root> list-json",
         "exit": "0=success, non-zero on invocation error",
-        "lock": "test-scope-script-resolve-scope.py asserts resolve-scope.py invokes this script (Inv 18)"
+        "lock": "test-scope-scripts.py asserts resolve-scope.py invokes this script (Inv 19)"
       },
       {
         "path": ".claude/features/contract/scripts/validate-feature.py",
         "signature": "validate-feature.py <feature-dir>",
         "exit": "0=pass, 1=validation failure, 2=bad invocation",
-        "lock": "test-audit-skill.py asserts rabbit-feature-audit invokes this script; test-new-skill.py asserts rabbit-feature-scaffold invokes this script (Inv 31, 33)"
+        "lock": "test-audit-skill.py asserts rabbit-feature-audit invokes this script; test-new-skill.py asserts rabbit-feature-scaffold invokes this script (Inv 35, 33)"
       },
       {
         "path": ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py",
