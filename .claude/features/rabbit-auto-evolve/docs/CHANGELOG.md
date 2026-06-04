@@ -13,6 +13,21 @@ own version.
 
 ## Version notes
 
+- **v0.55.1 — 2026-06-03** — Removed the invariant count-floor ratchet from
+  `test/test-spec-invariant-numbering-contiguous.py` (#750). The test had a
+  `COUNT_FLOOR = 59` constant and an assertion (c) failing whenever the invariant
+  count dropped below the #725 baseline — a one-way ratchet that forbade
+  consolidating or retiring any invariant and turned the gate red on legitimate
+  housekeeping (e.g. the upcoming #751 deep-slim). The constant, its assertion
+  block, and the associated comment/docstring clause are deleted; assertions
+  (a) contiguous 1..N and (b) no dangling in-range `Inv n` references are kept
+  unchanged. The (a)/(b) logic was lifted into helper functions so a #750
+  regression guard can exercise it against a small contiguous surface whose
+  count is far below the old floor, proving no count constraint survives.
+  Test-only change; no spec/contract/SKILL body prose changed (frontmatter
+  version bumped lockstep, dispatcher republishes the deployed SKILL copy for
+  the version field).
+
 - **v0.55.0 — 2026-06-03** — Fixed the Inv 33 immediate-refire one-shot being
   intermittently dropped (~14% of the time) by a minute-boundary skid (#748).
   `schedule-decision.py` pinned the one-shot's cron minute as `current minute +
