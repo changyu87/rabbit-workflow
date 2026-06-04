@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.26.0
+version: 1.27.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -117,9 +117,9 @@ their source path and not deployed):
    `.rabbit-human-approval-bypass` check as the FIRST action of the
    step, before any impl-suggestion surfacing or in-conversation wait.
 
-10. *(Retired — see CHANGELOG.md.)*
+10. *(Withdrawn — folded into CHANGELOG.md.)*
 
-11. *(Retired — see CHANGELOG.md.)*
+11. *(Withdrawn — folded into CHANGELOG.md.)*
 
 12. **Step 4 alert routing via `emit_configurable_alert`.** The SKILL.md
     Step 4 bypass-active path MUST instruct the dispatcher to source the
@@ -138,7 +138,7 @@ their source path and not deployed):
     distinct from the alert-message text. The sole source of truth for
     the alert text is the configurable's `alert-message` field.
 
-13. *(Retired — see CHANGELOG.md.)*
+13. *(Withdrawn — folded into CHANGELOG.md.)*
 
 14. **Red Flag — no main-session Write/Edit on features.** The SKILL.md
     Red Flags section forbids the main session from using Write or Edit
@@ -159,7 +159,7 @@ their source path and not deployed):
     `feature-touch.py commit-spec` subcommand (Inv 54), per the SKILL.md
     Authoring Standard's Script-Backed Orchestration rule
     (`spec-rules.md` §4): the mode-aware branching is a computed step, so it
-    MUST NOT be assembled inline as a bash control-flow block (issue #440).
+    MUST NOT be assembled inline as a bash control-flow block.
     The prose obligation MUST remain (the literal phrase "Commit spec
     changes BEFORE Step 5", the commit message pattern
     `spec(<feature-name>): update spec for ...`, and the empty-diff-skip
@@ -180,8 +180,8 @@ their source path and not deployed):
     invocation).
 
 51. **Spec path resolution (flat docs/ preferred, script-backed).** A
-    feature's spec MUST be resolved preferring the flat `docs/spec.md` layout
-    (issue #399 migration target), falling back to `specs/spec.md` and then
+    feature's spec MUST be resolved preferring the flat `docs/spec.md` layout,
+    falling back to `specs/spec.md` and then
     the legacy `docs/spec/spec.md` for not-yet-migrated features (dual-read
     coexistence window). Per the SKILL.md Authoring Standard
     (`spec-rules.md` §4 Script-Backed Orchestration), this computed
@@ -196,7 +196,7 @@ their source path and not deployed):
     (`test_inv54_resolve_spec_path_prefers_specs_layout`) plus
     `test/test-touch-docs-resolver.py` (Inv 56) for the dual-read behaviour.
 
-52. **Step 5 dispatches the `rabbit-tdd-subagent` agent type (issue #418).**
+52. **Step 5 dispatches the `rabbit-tdd-subagent` agent type.**
     The `rabbit-feature-touch` SKILL.md Step 5 Agent tool call MUST pass
     `subagent_type: rabbit-tdd-subagent` — the renamed dispatched agent
     type. This binds only the AGENT type; the prompt-assembler script path
@@ -210,8 +210,8 @@ their source path and not deployed):
     `test_inv52_source_no_bare_old_agent_type`,
     `test_inv52_deployed_no_bare_old_agent_type`).
 
-53. **§4 Script-Backed Orchestration — no model-assembled control-flow bash
-    (issue #440).** The `rabbit-feature-touch` SKILL.md body (source AND
+53. **§4 Script-Backed Orchestration — no model-assembled control-flow bash.**
+    The `rabbit-feature-touch` SKILL.md body (source AND
     deployed) MUST NOT contain a fenced `bash` block that combines a runtime
     placeholder (e.g. `<feature-name>`, `<branch-name>`) with shell control
     flow (`if`/`then`/`else`/`for`/`while`/`case`) — such a block is a
@@ -231,7 +231,7 @@ their source path and not deployed):
     `test_inv53_step3_invokes_companion_commit_spec`,
     `test_inv53_step5_invokes_companion_resolve_spec_path`).
 
-54. **Companion `feature-touch.py` script (issue #440).** The
+54. **Companion `feature-touch.py` script.** The
     `rabbit-feature-touch` skill ships a companion script at
     `skills/rabbit-feature-touch/scripts/feature-touch.py` that owns the
     skill's computed / mode-aware orchestration logic. It is executable,
@@ -250,8 +250,8 @@ their source path and not deployed):
     A no-arg invocation prints usage naming the subcommands and exits 2.
     The script is declared in `contract.md.provides.scripts` (it is a
     skill-local companion invoked from its source path, not a deployed
-    artifact, so it is not in the `manifest`; `feature.json.surface` is
-    deprecated per issue #468). Enforced by
+    artifact, so it is not in the `manifest`; the `feature.json.surface`
+    field is deprecated). Enforced by
     `test/test-touch-skill-authoring-standard.py`
     (`test_inv54_companion_exists_and_executable`,
     `test_inv54_companion_usage_lists_subcommands`,
@@ -259,8 +259,8 @@ their source path and not deployed):
     `test_inv54_resolve_spec_path_prefers_specs_layout`,
     `test_inv54_commit_spec_commits_change_and_skips_noop`).
 
-55. **§4 Verbatim Policy Embedding — Red Flags cite canonical policy
-    (issue #440).** The `rabbit-feature-touch` SKILL.md Red Flags section,
+55. **§4 Verbatim Policy Embedding — Red Flags cite canonical policy.**
+    The `rabbit-feature-touch` SKILL.md Red Flags section,
     where it surfaces the main-session bounded-scope boundary, MUST cite the
     canonical policy source (`.claude/features/policy/philosophy.md` §2 and/or
     `.claude/features/policy/spec-rules.md` §2) rather than relying solely on
@@ -269,10 +269,10 @@ their source path and not deployed):
     `test/test-touch-skill-authoring-standard.py`
     (`test_inv55_red_flags_cite_canonical_policy`).
 
-56. **Flat `docs/` resolver preference (issue #399 Phase 2a).** The companion
+56. **Flat `docs/` resolver preference.** The companion
     `feature-touch.py` spec/contract resolvers (`resolve-spec-path`,
     `resolve-contract-path`) MUST PREFER the flat `docs/` layout
-    (`docs/spec.md`, `docs/contract.md` — the #399 migration target), falling
+    (`docs/spec.md`, `docs/contract.md` — the ratified migration target), falling
     back to `specs/` and then the legacy `docs/spec/` layouts. When both a
     flat `docs/` file and a `specs/` file exist, the flat `docs/` file wins.
     When none exists yet, resolution defaults to the flat `docs/` target so
@@ -350,8 +350,8 @@ their source path and not deployed):
 29. **Spec update precedes impl-suggestion.** The SKILL.md instructs the
     skill to update the target feature's resolved `spec.md`
     (`.claude/features/<feature-name>/specs/spec.md`, with a
-    `docs/spec/spec.md` fallback for not-yet-migrated features per issue
-    #399) BEFORE writing the impl-suggestion file.
+    `docs/spec/spec.md` fallback for not-yet-migrated features)
+    BEFORE writing the impl-suggestion file.
 
 30. **Read-comprehend-write on spec edits.** The SKILL.md MUST express
     as a hard MUST in Step 1 (Read Current State) that the skill Read
@@ -381,12 +381,12 @@ their source path and not deployed):
     `scripts/scaffold-feature.py` is executable and scaffolds a feature
     directory containing `feature.json` (with `template_version`),
     `docs/spec.md`, `docs/contract.md`, `docs/bugs/`, and `test/run.py`
-    (no `test/run.sh`). New features are created at the flat `docs/` layout
-    (issue #399 migration target), NOT the `specs/` or legacy `docs/spec/`
+    (no `test/run.sh`). New features are created at the flat `docs/` layout,
+    NOT the `specs/` or legacy `docs/spec/`
     layouts; the scaffolded directory passes `validate-feature.py`
     immediately (which dual-reads flat `docs/` then `specs/`).
 
-44. **scaffold-feature.py plugin-mode invocation.** Plugin-mode detection MUST walk UP from cwd to find the nearest ancestor directory `D` such that EITHER `D/.runtime/mode` exists with content `plugin` (cwd is inside `.rabbit/` itself) OR `D/.rabbit/.runtime/mode` exists with content `plugin` (cwd is inside the user-project root or any subdirectory thereof). On first match, plugin mode is active and the resolved `rabbit_root` is either `D` itself (first case) or `D/.rabbit` (second case); the user-project root is `rabbit_root.parent`. The walk terminates at the filesystem root; if no ancestor `.runtime/mode` or `.rabbit/.runtime/mode` is found, the script falls through cleanly to the standalone form `scaffold-feature.py <root> <name> [...]`. When plugin mode is detected, `scaffold-feature.py` honors the plugin-mode CLI form `scaffold-feature.py <name> <path-glob> [<path-glob>...]`. The walk-up replaces the original single-check semantics (which only looked at `<cwd>/.rabbit/.runtime/mode`) — that semantics failed silently when cwd was `.rabbit/` itself (the typical rabbit session cwd in plugin mode), because the script then looked for `.rabbit/.rabbit/.runtime/mode` which never exists. The detection happens before any argument parsing so a `<name>+<glob>` pair is never misinterpreted as a `<root>+<name>` pair. Enforced by 5 tests under `.claude/features/rabbit-feature/test/`: cwd=project root, cwd=.rabbit/ itself (regression for #267), cwd=arbitrary nested subdir of project, cwd outside any rabbit install (standalone fallback), and cwd=/ (filesystem root terminates cleanly).
+44. **scaffold-feature.py plugin-mode invocation.** Plugin-mode detection MUST walk UP from cwd to find the nearest ancestor directory `D` such that EITHER `D/.runtime/mode` exists with content `plugin` (cwd is inside `.rabbit/` itself) OR `D/.rabbit/.runtime/mode` exists with content `plugin` (cwd is inside the user-project root or any subdirectory thereof). On first match, plugin mode is active and the resolved `rabbit_root` is either `D` itself (first case) or `D/.rabbit` (second case); the user-project root is `rabbit_root.parent`. The walk terminates at the filesystem root; if no ancestor `.runtime/mode` or `.rabbit/.runtime/mode` is found, the script falls through cleanly to the standalone form `scaffold-feature.py <root> <name> [...]`. When plugin mode is detected, `scaffold-feature.py` honors the plugin-mode CLI form `scaffold-feature.py <name> <path-glob> [<path-glob>...]`. The walk-up replaces the original single-check semantics (which only looked at `<cwd>/.rabbit/.runtime/mode`) — that semantics failed silently when cwd was `.rabbit/` itself (the typical rabbit session cwd in plugin mode), because the script then looked for `.rabbit/.rabbit/.runtime/mode` which never exists. The detection happens before any argument parsing so a `<name>+<glob>` pair is never misinterpreted as a `<root>+<name>` pair. Enforced by 5 tests under `.claude/features/rabbit-feature/test/`: cwd=project root, cwd=.rabbit/ itself, cwd=arbitrary nested subdir of project, cwd outside any rabbit install (standalone fallback), and cwd=/ (filesystem root terminates cleanly).
 
 45. **Plugin-mode path-glob validation.** In plugin mode,
     `scaffold-feature.py` enforces three pre-registration validations against
@@ -479,11 +479,11 @@ their source path and not deployed):
     `validate-feature.py` and `audit-owner.py` pass. `audit-owner.py`
     requires `feature.json` `owner` to equal exactly `rabbit-workflow team`;
     any other (individual) owner FAILS with a message naming the offending
-    feature and its current owner (exit 1). Retired features
-    (`status: retired`) short-circuit to pass, mirroring `validate_feature`'s
-    Inv 36b retired short-circuit. The script exits 0 on pass, 1 on owner
-    mismatch, and 2 on bad invocation. This is defense-in-depth (issue #416
-    Part C) catching future drift back to individual owners on repo-level
+    feature and its current owner (exit 1). A feature exempted by contract
+    Inv 36b's status short-circuit skips the owner check and passes, mirroring
+    `validate_feature`'s behaviour. The script exits 0 on pass, 1 on owner
+    mismatch, and 2 on bad invocation. This is defense-in-depth catching
+    future drift back to individual owners on repo-level
     features distributed as part of rabbit-workflow.
 
 ### Feature-level metadata
@@ -517,7 +517,7 @@ their source path and not deployed):
     entries deploys the set of `.claude/skills/<name>/SKILL.md`
     artifacts byte-identically.
 
-42. *(Retired — see CHANGELOG.md.)*
+42. *(Withdrawn — folded into CHANGELOG.md.)*
 
 ### Dispatcher continuity
 
@@ -594,8 +594,8 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-build-source.py` — Inv 1
 - `test-cross-feature-interface.py` — Inv 2, 3
 - `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 12, 14, 15, 16, 41, 51, 52
-- `test-touch-skill-authoring-standard.py` — Inv 53, 54, 55 (issue #440 §4)
-- `test-touch-docs-resolver.py` — Inv 56 (issue #399 Phase 2a)
+- `test-touch-skill-authoring-standard.py` — Inv 53, 54, 55
+- `test-touch-docs-resolver.py` — Inv 56
 - `test-scope-skill.py` — Inv 24
 - `test-scope-scripts.py` — Inv 17, 18, 19, 20, 21, 22, 23, 25
 - `test-spec-skill.py` — Inv 26, 27, 28, 29, 30, 31
