@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-templates-prompts-bundle.py — Inv 57
+"""test-templates-prompts-bundle.py — Inv 47
 
 End-to-end test verifying the templates/prompts/ bundle:
   - directory exists
@@ -10,7 +10,7 @@ End-to-end test verifying the templates/prompts/ bundle:
   - each file's first line matches the canonical '# template_version: X.Y.Z' semver marker
     (per-file versions are independent — files may evolve at different cadences)
   - the skill passthrough templates (kind=='skill' entries) are exactly 2 lines
-    (marker + '{{args}}'), marker pinned at 1.0.0 per Inv 57 (b)
+    (marker + '{{args}}'), marker pinned at 1.0.0 per Inv 47 (b)
   - tdd-subagent.txt carries exactly the 9 declared placeholders (set equality)
   - tdd-subagent.txt does NOT contain '{{policy_block}}' (assembler prepends)
 """
@@ -41,7 +41,7 @@ DECLARED_TDD_PLACEHOLDERS = {
 
 MARKER_RE = re.compile(r"^# template_version: \d+\.\d+\.\d+$")
 # Skill passthroughs are stable two-line files; their marker is pinned at 1.0.0
-# per Inv 57 (b) until their structural shape itself changes.
+# per Inv 47 (b) until their structural shape itself changes.
 PASSTHROUGH_MARKER = "# template_version: 1.0.0"
 
 PASS = 0
@@ -166,7 +166,7 @@ if os.path.isfile(tdd_path):
     else:
         fail_t(
             "t-no-policy-block-placeholder",
-            "'{{policy_block}}' MUST NOT appear in tdd-subagent.txt (Inv 57)",
+            "'{{policy_block}}' MUST NOT appear in tdd-subagent.txt (Inv 47)",
         )
 
 print()

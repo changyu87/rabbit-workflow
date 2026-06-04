@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """check-invariant-monotonic-order.py — thin CLI shim around
-contract.lib.checks.check_invariant_monotonic_order (spec Inv 38, Inv 37).
+contract.lib.checks.check_invariant_monotonic_order (spec Inv 30, Inv 29).
 
 Usage: check-invariant-monotonic-order.py <feature-dir> [<feature-dir> ...]
 Exit:  0 no violations; 1 violations found; 2 invocation error.

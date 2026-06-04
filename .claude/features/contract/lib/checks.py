@@ -4,7 +4,7 @@ Holds the logic that used to live in each scripts/enforcement/check-*.py
 and scripts/validate-feature.py. Each function returns a CheckResult; no
 function calls sys.exit, prints, or raises on contract-violation conditions.
 
-Per spec Inv 37.
+Per spec Inv 29.
 
 Version: 1.1.0
 Owner: rabbit-workflow team (contract)
@@ -98,7 +98,7 @@ def _strip_comments(code: str) -> str:
 
 
 def check_tests_non_interactive(feature_dir: str) -> CheckResult:
-    """Inv 13: <feature-dir>/test/*.py must not use interactive constructs."""
+    """Inv 10: <feature-dir>/test/*.py must not use interactive constructs."""
     test_dir = os.path.join(feature_dir, "test")
     if not os.path.isdir(test_dir):
         return CheckResult(True, [f"OK: no test/ in {feature_dir} (vacuous)"])
@@ -123,17 +123,17 @@ def check_tests_non_interactive(feature_dir: str) -> CheckResult:
 
 # ---------- check_sentinel ---------------------------------------------------
 
-# The literal sentinel string is owned by contract.lib.policy_block per Inv 54;
+# The literal sentinel string is owned by contract.lib.policy_block per Inv 46;
 # this module is permitted to reference it for two purposes only:
-#   (1) check_sentinel — greps dispatcher scripts for the sentinel (Inv 20);
-#   (2) validate_agent_prompt_sentinel — validates Agent tool inputs (Inv 66 b).
-# Per Inv 66's sentinel-source-uniqueness rule, defining the literal anywhere
+#   (1) check_sentinel — greps dispatcher scripts for the sentinel (Inv 17);
+#   (2) validate_agent_prompt_sentinel — validates Agent tool inputs (Inv 56 b).
+# Per Inv 56's sentinel-source-uniqueness rule, defining the literal anywhere
 # else in the codebase is a contract violation.
 _SENTINEL = "RABBIT-POLICY-BLOCK-v1"
 
 
 def check_sentinel(path: str) -> CheckResult:
-    """Inv 20: dispatch scripts must contain the policy-block sentinel."""
+    """Inv 17: dispatch scripts must contain the policy-block sentinel."""
     if not os.path.exists(path):
         return CheckResult(False, [f"ERROR: not a file or directory: {path}"])
     missing: List[str] = []
@@ -161,7 +161,7 @@ _BANNED_PREFIXES = ["rbt-"]
 
 
 def check_naming(root: str) -> CheckResult:
-    """Inv 10 + Inv 15: artifact names start with 'rabbit-'; 'rbt-' is banned."""
+    """Inv 7 + Inv 12: artifact names start with 'rabbit-'; 'rbt-' is banned."""
     if not os.path.isdir(root):
         return CheckResult(False, [f"ERROR: not a directory: {root}"])
     claude_dir = os.path.join(root, ".claude")
@@ -229,7 +229,7 @@ _CLAUDE_PATH_RE = re.compile(
 
 
 def check_imports_resolve(feature_dir: str) -> CheckResult:
-    """Inv 25: every @<path> import and .claude/<surface>/<name> path in docs/*.md resolves."""
+    """Inv 22: every @<path> import and .claude/<surface>/<name> path in docs/*.md resolves."""
     docs_dir = os.path.join(feature_dir, "docs")
     if not os.path.isdir(docs_dir):
         return CheckResult(True, [f"OK: no docs/ in {feature_dir} (vacuous)"])
@@ -268,7 +268,7 @@ def check_imports_resolve(feature_dir: str) -> CheckResult:
 # ---------- check_symlinks_resolve -------------------------------------------
 
 def check_symlinks_resolve(root: str) -> CheckResult:
-    """Inv 24: no dangling symlinks under <root>/.claude/."""
+    """Inv 21: no dangling symlinks under <root>/.claude/."""
     claude_dir = os.path.join(root, ".claude")
     if not os.path.isdir(claude_dir):
         return CheckResult(True, [f"OK: no .claude/ at {root} (vacuous)"])
@@ -289,7 +289,7 @@ def check_symlinks_resolve(root: str) -> CheckResult:
 
 # ---------- check_template_producer_consistency ------------------------------
 
-# Inv 19: producer-field set MUST be derived from a live source, not hardcoded.
+# Inv 16: producer-field set MUST be derived from a live source, not hardcoded.
 # Live source: bug.json.schema.json properties (the contract schema producers
 # write against). Loaded lazily at module-load time from disk; if the schema
 # is unreadable the set falls back to an empty set and the check fails loudly
@@ -314,7 +314,7 @@ _TEMPLATE_METADATA = {"template_version"}
 
 
 def check_template_producer_consistency(template_path: str) -> CheckResult:
-    """Inv 19: template top-level keys are a subset of the live producer field set."""
+    """Inv 16: template top-level keys are a subset of the live producer field set."""
     try:
         with open(template_path) as f:
             data = json.load(f)
@@ -347,14 +347,14 @@ _NUMBERED_PATTERNS = [
     (re.compile(r"^\s*[-*+]?\s*\d+[a-z][.):]\s"), "list-letter"),
 ]
 
-# Prose patterns (Inv 33): a numbering keyword (phase|step|item|part|section,
+# Prose patterns (Inv 26): a numbering keyword (phase|step|item|part|section,
 # singular or plural) IMMEDIATELY followed by a fractional (N.M) or
 # letter-suffixed (Na / N.a) index anywhere in running text or a table cell.
 # Matched with rx.search() on a line whose inline code spans have been
 # stripped. The keyword anchor + the requirement that the index directly
 # follow the keyword keep legitimate decimal literals out of scope: semver /
 # version strings (1.12.0, v1.5.0), schema_version/template_version values
-# (2.16.0), invariant references (Inv 33), dotted filenames (foo.1.5.bar),
+# (2.16.0), invariant references (Inv 26), dotted filenames (foo.1.5.bar),
 # currency ($5.50) carry no preceding numbering keyword, and a number that
 # does not immediately follow the keyword ("phase completed in 1.5 seconds")
 # is excluded by the \s+ adjacency requirement. Documentation examples written
@@ -425,7 +425,7 @@ def _numbered_collect(target: str):
 
 
 def check_numbered_lists(targets: List[str]) -> CheckResult:
-    """Inv 33: reject decimal/letter-suffix numbering in Markdown ordered
+    """Inv 26: reject decimal/letter-suffix numbering in Markdown ordered
     lists & headings, AND prose-embedded fractional/letter numbering anchored
     to a numbering keyword (phase|step|item|part|section)."""
     messages: List[str] = []
@@ -460,9 +460,42 @@ _ANY_HEADING_RE = re.compile(r"^(#{1,6})\s+")
 _NUMBERED_ITEM_RE = re.compile(r"^(\d+)\.\s")
 
 
+def _contiguous_opt_in(feat_dir: str) -> bool:
+    """Return True iff the feature has opted into the strict CONTIGUOUS tier.
+
+    Opt-in is data-driven and per-feature (mirrors the Inv 41
+    `housekeeping_clean` strict-tier opt-in): a feature opts in by declaring
+    `"contiguous_invariants": true` at the top level of its OWN feature.json.
+    Absent/false ⇒ baseline (strictly-increasing, gaps-tolerated) tier only.
+
+    A test-only env override `RABBIT_CONTIGUOUS_INVARIANTS` (comma-separated
+    feature names) REPLACES the feature.json-derived opt-in set so a hermetic
+    fixture test can drive the strict tier without writing feature.json; it
+    is never set in production runs. Mirrors the Inv 41
+    `RABBIT_HISTORICAL_TAGS_CLEANED` override.
+    """
+    override = os.environ.get("RABBIT_CONTIGUOUS_INVARIANTS")
+    feat_name = os.path.basename(os.path.realpath(feat_dir))
+    if override is not None:
+        names = {n.strip() for n in override.split(",") if n.strip()}
+        return feat_name in names
+    fj_path = os.path.join(feat_dir, "feature.json")
+    if not os.path.isfile(fj_path):
+        return False
+    try:
+        with open(fj_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return False
+    return bool(isinstance(data, dict) and data.get("contiguous_invariants") is True)
+
+
 def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
-    """Inv 38: each '## Invariants' / '### Invariants' section's top-level
-    numbered items MUST appear in strictly increasing order.
+    """Inv 30: each '## Invariants' / '### Invariants' section's top-level
+    numbered items MUST appear in strictly increasing order (baseline tier,
+    all features); features that opt in via `feature.json
+    "contiguous_invariants": true` are ADDITIONALLY required to number
+    contiguously 1..N with no holes (strict tier).
 
     feature_dirs - iterable of feature directory paths. Features named in
     _MONOTONIC_KNOWN_ISSUES are skipped (pending renumber). Features without
@@ -470,7 +503,7 @@ def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
     fallback) are also silently skipped.
 
     Returns CheckResult; messages include 'SKIP:' lines for skipped features
-    and 'VIOLATION:' lines for any non-monotonic step.
+    and 'VIOLATION:' lines for any non-monotonic step or (opted-in) hole.
     """
     messages: List[str] = []
     violations: List[str] = []
@@ -492,6 +525,7 @@ def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
             violations.append(f"VIOLATION: {feat_name}: cannot read spec.md: {e}")
             continue
 
+        contiguous = _contiguous_opt_in(feat_dir)
         in_section = False
         section_header = None
         prev_num = 0
@@ -525,6 +559,14 @@ def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
                         f"VIOLATION: {feat_name}:{section_header}: "
                         f"{prev_num} → {n} not monotonic"
                     )
+                elif contiguous and n != prev_num + 1:
+                    missing = ", ".join(str(g) for g in range(prev_num + 1, n))
+                    violations.append(
+                        f"VIOLATION: {feat_name}:{section_header}: "
+                        f"{prev_num} → {n} not contiguous (missing {missing}); "
+                        f"feature opted into contiguous_invariants — "
+                        f"run scripts/reflow-invariants.py"
+                    )
                 prev_num = n
 
     if violations:
@@ -548,7 +590,7 @@ def validate_feature(feature_dir: str) -> CheckResult:
     Returns CheckResult(passed=True, [...]) on success.
     Returns CheckResult(passed=False, [...]) on validation errors.
     Retired features (status=retired) short-circuit to passed=True with a
-    RETIRED: notice (spec Inv 36b).
+    RETIRED: notice (spec Inv 28b).
     """
     if not feature_dir:
         return CheckResult(False, ["ERROR: feature_dir is empty"])
@@ -560,7 +602,7 @@ def validate_feature(feature_dir: str) -> CheckResult:
 
     feature_json_path = os.path.join(feature_dir, "feature.json")
 
-    # Inv 36b: retired feature short-circuit
+    # Inv 28b: retired feature short-circuit
     if os.path.isfile(feature_json_path):
         try:
             with open(feature_json_path) as f:
@@ -723,7 +765,7 @@ def _validate_manifest(manifest):
 _RUNTIME_EVENT_ENUM = frozenset({"Stop", "SessionStart", "UserPromptSubmit", "PreToolUse"})
 
 def _load_runtime_api_enum():
-    """Source the closed runtime API enum from runtime.schema.json (Inv 41).
+    """Source the closed runtime API enum from runtime.schema.json (Inv 33).
 
     The schema at ../schemas/runtime.schema.json is the SOLE source of
     truth; this function extracts the enum from
@@ -737,23 +779,23 @@ def _load_runtime_api_enum():
     except FileNotFoundError as exc:
         raise ImportError(
             f"runtime.schema.json not found at {schema_path}; "
-            "checks.py requires it as the source of truth for _RUNTIME_API_ENUM (Inv 41)"
+            "checks.py requires it as the source of truth for _RUNTIME_API_ENUM (Inv 33)"
         ) from exc
     except json.JSONDecodeError as exc:
         raise ImportError(
             f"runtime.schema.json at {schema_path} is malformed JSON: {exc}; "
-            "checks.py cannot derive _RUNTIME_API_ENUM (Inv 41)"
+            "checks.py cannot derive _RUNTIME_API_ENUM (Inv 33)"
         ) from exc
     try:
         enum = schema["definitions"]["call_list"]["items"]["properties"]["api"]["enum"]
     except (KeyError, TypeError) as exc:
         raise ImportError(
             f"runtime.schema.json at {schema_path} is missing "
-            "definitions.call_list.items.properties.api.enum (Inv 41)"
+            "definitions.call_list.items.properties.api.enum (Inv 33)"
         ) from exc
     if not isinstance(enum, list) or not all(isinstance(x, str) for x in enum):
         raise ImportError(
-            f"runtime.schema.json enum at {schema_path} is not a list of strings (Inv 41)"
+            f"runtime.schema.json enum at {schema_path} is not a list of strings (Inv 33)"
         )
     return frozenset(enum)
 
@@ -931,7 +973,7 @@ def validate_meta_contract(feature_dir):
     return CheckResult(passed=True, messages=["meta-contract sections valid (or absent)"])
 
 
-# ---------- prompts (Inv 51, 53) ---------------------------------------------
+# ---------- prompts (Inv 43, 53) ---------------------------------------------
 
 _PROMPT_KIND_ENUM = frozenset({"skill", "subagent"})
 _PROMPT_ID_RE = re.compile(r"^[a-z][a-z0-9-]*$")
@@ -985,7 +1027,7 @@ def _validate_prompts(prompts):
 def validate_prompts_section(feature_dir: str) -> CheckResult:
     """Per-feature prompts-section schema validation.
 
-    Inv 53: per-feature wrapper used by validate_meta_contract. Validates
+    Inv 45: per-feature wrapper used by validate_meta_contract. Validates
     schema shape only; does NOT run cross-feature uniqueness, template
     existence, or inject-path existence checks (those live in
     check_prompts_section).
@@ -1011,7 +1053,7 @@ def validate_prompts_section(feature_dir: str) -> CheckResult:
 def check_prompts_section(features_root: str) -> CheckResult:
     """Cross-feature prompts-section lint.
 
-    Inv 53: walks every <features_root>/*/feature.json, validates each
+    Inv 45: walks every <features_root>/*/feature.json, validates each
     present prompts section against prompts.schema.json, asserts
     globally-unique ids, asserts every inject path exists on disk,
     asserts every entry's inject list includes the universal policy
@@ -1117,18 +1159,18 @@ def check_prompts_section(features_root: str) -> CheckResult:
     return CheckResult(True, ["OK: prompts sections valid (or absent) across all features"])
 
 
-# ---------- validate_agent_prompt_sentinel (Inv 66 b) ------------------------
+# ---------- validate_agent_prompt_sentinel (Inv 56 b) ------------------------
 
 _AGENT_SENTINEL_BYPASS_REL = os.path.join(".rabbit", "agent-sentinel-bypass")
 _AGENT_SENTINEL_VIOLATION_MSG = (
     "Agent dispatch missing RABBIT-POLICY-BLOCK-v1 sentinel — "
     "prompt must be assembled via contract's build-prompt.py / dispatcher "
-    "script (see contract Inv 54, Inv 66)."
+    "script (see contract Inv 46, Inv 56)."
 )
 
 
 def validate_agent_prompt_sentinel(tool_input: dict, *, repo_root: str) -> CheckResult:
-    """Inv 66 (b): validate an Agent tool call's prompt carries the sentinel.
+    """Inv 56 (b): validate an Agent tool call's prompt carries the sentinel.
 
     Returns CheckResult(passed=True, []) when either:
       (i)  the bypass marker <repo_root>/.rabbit/agent-sentinel-bypass exists, OR

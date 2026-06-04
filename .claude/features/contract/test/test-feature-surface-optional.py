@@ -123,7 +123,7 @@ with tempfile.TemporaryDirectory() as tmp:
         fail("t4", f"expected passed=True, got {res!r}")
 
 # t5: a feature with neither surface nor manifest still validates (surface no
-# longer mandatory; manifest is optional per Inv 43).
+# longer mandatory; manifest is optional per Inv 35).
 with tempfile.TemporaryDirectory() as tmp:
     fdir = os.path.join(tmp, "feat_neither")
     make_feature(fdir, with_surface=False, with_manifest=False)

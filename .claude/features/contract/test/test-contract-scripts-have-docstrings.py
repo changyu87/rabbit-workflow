@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-contract-scripts-have-docstrings.py — BUG-23 / Inv 16
+"""test-contract-scripts-have-docstrings.py — BUG-23 / Inv 13
 
 End-to-end test that every Python script under .claude/features/contract/scripts/
 (and scripts/enforcement/) has a module-level docstring. Specifically verifies

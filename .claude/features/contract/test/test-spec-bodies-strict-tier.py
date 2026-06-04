@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-spec-bodies-strict-tier.py — Inv 49 two-tier opt-in enforcement.
+"""test-spec-bodies-strict-tier.py — Inv 41 two-tier opt-in enforcement.
 
 End-to-end test for the strict-tier / per-feature opt-in behaviour of
 test-spec-bodies-no-historical-tags.py. Drives the checker as a subprocess
@@ -8,7 +8,7 @@ using the RABBIT_HISTORICAL_TAGS_FEATURES_ROOT and
 RABBIT_HISTORICAL_TAGS_CLEANED env overrides so the test never depends on
 the live repo's cleanliness.
 
-Behaviours covered (each from Inv 49):
+Behaviours covered (each from Inv 41):
 
   t1: a feature in the opt-in set (via env override) with a strict-tier
       violation (bare issue ref / tombstone language) FAILS and is named
@@ -199,7 +199,7 @@ with tempfile.TemporaryDirectory() as tmp:
                    f"stdout={r.stdout}; stderr={r.stderr}")
 
 # t8: the ALLOWLIST suppresses a strict-tier match on an opted-in feature
-# (Inv 70 — the allowlist applies to BOTH tiers). The fixture spec puts the
+# (Inv 60 — the allowlist applies to BOTH tiers). The fixture spec puts the
 # strict-tier match (_HASH_REF) on a KNOWN line (line 3: line 1 is the
 # heading, line 2 is blank, line 3 is the hash ref). A matching
 # RABBIT_HISTORICAL_TAGS_ALLOWLIST entry for that exact

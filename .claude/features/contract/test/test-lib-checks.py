@@ -360,7 +360,7 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         fail("t11c", f"expected passed=True with RETIRED notice, got {res!r}")
 
-# t13 (CONTRACT-BACKLOG-28 / Inv 37(d) purity): library functions MUST NOT
+# t13 (CONTRACT-BACKLOG-28 / Inv 29(d) purity): library functions MUST NOT
 # call sys.exit, MUST NOT print to stdout/stderr, MUST NOT raise on contract-
 # violation conditions. Patch print and sys.exit; call every library function
 # with deliberately broken inputs; assert no patched call fires and no

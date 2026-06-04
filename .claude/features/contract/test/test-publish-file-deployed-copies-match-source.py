@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-publish-file-deployed-copies-match-source.py — Inv 62.
+"""test-publish-file-deployed-copies-match-source.py — Inv 52.
 
 For every entry across every feature's `feature.json` `manifest` where
 `api in {"publish_file", "publish_hook"}`, the COMMITTED bytes at the
@@ -9,7 +9,7 @@ source.
   - publish_file: dest = args["dest"] (resolved relative to repo root)
   - publish_hook: dest = ".claude/hooks/" + os.path.basename(args["source"])
 
-EXCLUDED: publish_skill (covered by Inv 61 /
+EXCLUDED: publish_skill (covered by Inv 51 /
 test-deployed-skills-match-source.py), publish_settings (JSON merge, not a
 byte copy), publish_generated (content produced by a producer, with its own
 drift-regen story via check_drift_regenerate).

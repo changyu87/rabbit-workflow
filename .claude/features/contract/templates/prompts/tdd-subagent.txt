@@ -127,7 +127,7 @@ Max iterations: {{max_iterations}}
 
 IMPORTANT: Before issuing any Edit/Write tool call against an existing file,
 Read it in this session first. The Claude Code Edit tool rejects Edits on
-un-Read files (tdd-subagent Inv 18). This constraint applies to any file
+un-Read files (tdd-subagent Inv 15). This constraint applies to any file
 you edit.
 
 Loop (repeat until green or max iterations reached):

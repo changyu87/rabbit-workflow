@@ -6,12 +6,12 @@ Usage:
   python3 find-feature.py <repo-root> list-json
   python3 find-feature.py <repo-root> lookup <feature-name>
 
-Scope: dual-detects plugin mode per Inv 23 (amended). The `<repo>`
+Scope: dual-detects plugin mode per Inv 20 (amended). The `<repo>`
 argument MAY be EITHER the host-project root OR the rabbit install root
 (`RABBIT_ROOT` — the `.rabbit/` install dir); the script resolves the
 canonical `rabbit_root` from whichever was supplied.
 
-  Plugin mode detection — FIXED precedence + validation per Inv 23(a):
+  Plugin mode detection — FIXED precedence + validation per Inv 20(a):
     (i)  <repo>/.runtime/mode == "plugin"           → candidate rabbit_root=<repo>
     (ii) <repo>/.rabbit/.runtime/mode == "plugin"   → candidate rabbit_root=<repo>/.rabbit
     A candidate is accepted only when <rabbit_root>/.claude/ exists as a
@@ -51,7 +51,7 @@ def _load_json(path):
 def _detect_plugin_rabbit_root(repo):
     """Return rabbit_root if plugin mode is detected AND validated, else None.
 
-    Inv 23(a): fixed precedence (RABBIT_ROOT-as-repo first), each candidate
+    Inv 20(a): fixed precedence (RABBIT_ROOT-as-repo first), each candidate
     validated by requiring <rabbit_root>/.claude/ to exist as a directory
     before accepting.
 
@@ -63,7 +63,7 @@ def _detect_plugin_rabbit_root(repo):
     """
     candidates = (
         # First: <repo>/.runtime/mode — repo IS rabbit_root (canonical
-        # RABBIT_ROOT-as-repo case per Inv 47; most common caller pattern).
+        # RABBIT_ROOT-as-repo case per Inv 39; most common caller pattern).
         (os.path.join(repo, '.runtime', 'mode'), repo),
         # Then: <repo>/.rabbit/.runtime/mode — repo is the host root.
         (os.path.join(repo, '.rabbit', '.runtime', 'mode'), os.path.join(repo, '.rabbit')),
@@ -83,7 +83,7 @@ def _detect_plugin_rabbit_root(repo):
 
 
 def iter_feature_jsons(repo):
-    """Yield feature.json paths from the canonical scan locations (Inv 23 amended).
+    """Yield feature.json paths from the canonical scan locations (Inv 20 amended).
 
     Standalone (no plugin marker): yields only
     `<repo>/.claude/features/<name>/feature.json` (alphabetical).

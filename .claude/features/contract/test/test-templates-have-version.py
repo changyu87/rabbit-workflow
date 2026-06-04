@@ -10,7 +10,7 @@ FEATURE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__fi
 TEMPLATES_DIR = os.path.join(FEATURE_DIR, "templates")
 FAIL = 0
 
-# Word-boundary match: rejects '_template_version' (Inv 21 / BACKLOG-3).
+# Word-boundary match: rejects '_template_version' (Inv 18 / BACKLOG-3).
 TEMPLATE_VERSION_RE = re.compile(r"(?<![A-Za-z0-9_])template_version(?![A-Za-z0-9])")
 
 patterns = ["*.md", "*.json", "*.txt"]

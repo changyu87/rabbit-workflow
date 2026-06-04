@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-check-invariant-monotonic-order.py — Inv 38 / CONTRACT-BACKLOG-30.
+"""test-check-invariant-monotonic-order.py — Inv 30 / CONTRACT-BACKLOG-30.
 
 End-to-end test for the cross-feature invariant-monotonic-order check:
 
@@ -63,9 +63,9 @@ def load_checks():
 def live_feature_dirs():
     # A feature counts as live if it has a spec.md under EITHER layout: the
     # flat docs/ layout (preferred) or the specs/ layout (fallback), per the
-    # dual-read resolver in lib/checks.py (Inv 68). Filtering on specs/ only
+    # dual-read resolver in lib/checks.py (Inv 58). Filtering on specs/ only
     # would silently exclude every feature migrated to docs/ from the live
-    # monotonic-order scan — a false green (Inv 69 class).
+    # monotonic-order scan — a false green (Inv 59 class).
     dirs = []
     for entry in sorted(os.listdir(FEATURES_ROOT)):
         full = os.path.join(FEATURES_ROOT, entry)

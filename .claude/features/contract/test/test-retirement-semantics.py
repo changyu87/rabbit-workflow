@@ -11,7 +11,7 @@ Covers:
       feature.json carries status=active and is missing required files.
   (t4 RETIRED — rabbit-spec was revived as an active feature; the
    per-feature required:false assertion no longer applies. The general
-   Inv 36(c) prose still governs how workspace-structure.json treats
+   Inv 28(c) prose still governs how workspace-structure.json treats
    retired tombstones, but no current feature exercises that arm here.)
   t5: .claude/features/contract/workspace-structure.json declares `tdd-state-machine` as
       a feature node (post-consolidation home of tdd-step/context/drift-check).

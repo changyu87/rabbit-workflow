@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-check-release-update-helper.py — exercises Inv 63's
+"""test-check-release-update-helper.py — exercises Inv 53's
 scripts/check-release-update.py helper.
 
 Covers: throttle skip, newer detected, no-change, network failure silent,
@@ -116,7 +116,7 @@ def run_with_shim(repo_root, shim_src, env_extra=None, timeout=20):
         )
 
 
-# t0: helper exists and is executable / has docstring (Inv 16)
+# t0: helper exists and is executable / has docstring (Inv 13)
 if not os.path.isfile(SCRIPT):
     fail(f"t0: helper missing: {SCRIPT}")
     sys.exit(1)

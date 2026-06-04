@@ -2,7 +2,7 @@
 """test-retirement-skill-injection.py — e2e regression for issue #391.
 
 Asserts that the Skill-path prompt injection surface (retired Inv 55 /
-retired Inv 56, shrunk Inv 57) is fully absent:
+retired Inv 56, shrunk Inv 47) is fully absent:
 
   t1: hooks/prompt-injector.py source is absent from contract feature.
   t2: deployed .claude/hooks/prompt-injector.py is absent.

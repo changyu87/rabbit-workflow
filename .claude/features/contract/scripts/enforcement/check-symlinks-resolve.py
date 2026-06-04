@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """check-symlinks-resolve.py — thin CLI shim around
-contract.lib.checks.check_symlinks_resolve (spec Inv 24, Inv 37).
+contract.lib.checks.check_symlinks_resolve (spec Inv 21, Inv 29).
 
 Usage: check-symlinks-resolve.py [repo-root]
 Exit:  0 all symlinks resolve; 1 dangling found; 2 invocation error.

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """test-no-subagent-launch-template.py — assert the dead
-templates/subagent-launch-template.txt is absent on disk (Inv 58).
+templates/subagent-launch-template.txt is absent on disk (Inv 48).
 
 The template was a never-consumed prototype superseded by the per-callable
-templates under templates/prompts/ (Inv 57) and the build-prompt.py
-assembler (Inv 54). Its continued presence would be dead surface; this
+templates under templates/prompts/ (Inv 47) and the build-prompt.py
+assembler (Inv 46). Its continued presence would be dead surface; this
 test enforces deletion.
 
 Exit codes:

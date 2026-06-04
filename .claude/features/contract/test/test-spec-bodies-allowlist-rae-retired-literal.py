@@ -6,8 +6,8 @@ test-spec-bodies-no-historical-tags.py exempts the legitimate literal
 status-enum value "retired" in rabbit-auto-evolve's docs/spec.md.
 
 rabbit-auto-evolve's spec.md documents triage-issue.py's verbatim
-`status == "retired"` check (feature.json status enum, contract Inv 36) on
-the Inv 22 triage decision-table row that reads
+`status == "retired"` check (feature.json status enum, contract Inv 28) on
+the Inv 19 triage decision-table row that reads
 `Feature's `feature.json.status == "retired"`` -> `close-not-planned` /
 `feature-retired`. The strict-tier checker flags the bare word "retired" as
 tombstone language, but here it is the load-bearing literal value the triage

@@ -20,7 +20,7 @@ FAIL = 0
 def _standalone_env():
     """Context manager that removes RABBIT_ROOT so standalone form is selected.
 
-    Per Inv 50, publish_hook selects plugin form when RABBIT_ROOT is set in
+    Per Inv 42, publish_hook selects plugin form when RABBIT_ROOT is set in
     os.environ. The standalone-form assertions below MUST run with RABBIT_ROOT
     unset; otherwise a leaked parent env value flips the form unexpectedly.
     """
@@ -154,7 +154,7 @@ with _standalone_env(), tempfile.TemporaryDirectory() as td:
 
 # t-new-form (t7): registered command literally starts with $(git rev-parse
 # --show-toplevel)/ in standalone mode (RABBIT_ROOT unset). Regression guard
-# against accidental reversion to a bare relative path (Inv 50).
+# against accidental reversion to a bare relative path (Inv 42).
 with _standalone_env(), tempfile.TemporaryDirectory() as td:
     feat, root = make_env(td)
     publish_hook("Stop", "hooks/stop-check.py", feature_dir=feat, repo_root=root)
@@ -200,7 +200,7 @@ with _standalone_env(), tempfile.TemporaryDirectory() as td:
     else:
         ok("t-migration: legacy entry migrated in place to new form (no duplicate)")
 
-# t-plugin-form (Inv 50): when RABBIT_ROOT is set in os.environ, publish_hook
+# t-plugin-form (Inv 42): when RABBIT_ROOT is set in os.environ, publish_hook
 # MUST emit the plugin-form command literal `$RABBIT_ROOT/.claude/hooks/<name>`
 # (NOT an expanded path). /bin/sh substitutes the env var at hook-fire time.
 plugin_env = dict(os.environ)
@@ -218,7 +218,7 @@ with patch.dict(os.environ, plugin_env, clear=True), tempfile.TemporaryDirectory
     else:
         fail(f"t-plugin-form: expected literal {expected!r} in commands; got: {commands}")
 
-# t-plugin-idempotent (Inv 50): in plugin mode, two consecutive publish_hook
+# t-plugin-idempotent (Inv 42): in plugin mode, two consecutive publish_hook
 # calls produce exactly one hook entry and the second call is a no-op.
 with patch.dict(os.environ, plugin_env, clear=True), tempfile.TemporaryDirectory() as td:
     feat, root = make_env(td)

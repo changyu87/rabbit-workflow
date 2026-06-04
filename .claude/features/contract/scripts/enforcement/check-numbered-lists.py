@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """check-numbered-lists.py — thin CLI shim around
-contract.lib.checks.check_numbered_lists (spec Inv 33, Inv 37).
+contract.lib.checks.check_numbered_lists (spec Inv 26, Inv 29).
 
 Usage: check-numbered-lists.py <path> [<path> ...]
 Exit:  0 no violations; 1 violations found; 2 invocation error.

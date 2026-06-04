@@ -7,7 +7,7 @@ status value "retired" in rabbit-config's docs/spec.md.
 
 rabbit-config's spec.md documents rabbit-config.py's
 `data.get("status") == "retired"` check (status enum ["active","retired"],
-contract Inv 36) on the line that reads "...skipping retired features".
+contract Inv 28) on the line that reads "...skipping retired features".
 The strict-tier checker flags the bare word "retired" as tombstone
 language, but here it is the load-bearing literal value the interpreter
 checks verbatim — it cannot be reworded without making the spec

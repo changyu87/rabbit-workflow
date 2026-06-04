@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-runtime-emit-auto-evolve-banner.py — exercises emit_auto_evolve_banner
-per Inv 65 (v1.51.1 dispatch refactor).
+per Inv 55 (v1.51.1 dispatch refactor).
 
 emit_auto_evolve_banner delegates line-1 and line-2 content to
 rabbit-auto-evolve/scripts/banner-status.py via subprocess. Contract owns the
@@ -13,7 +13,7 @@ layout matching .claude/features/rabbit-auto-evolve/scripts/banner-status.py
 and verifies the contract-side dispatch behavior across the failure modes.
 
 Per-variant content (default vs running vs restart-needed vs aborted) is
-exercised by rabbit-auto-evolve's own test-banner-status.py (Inv 22 in
+exercised by rabbit-auto-evolve's own test-banner-status.py (Inv 19 in
 rabbit-auto-evolve). This test only verifies dispatch + mapping.
 """
 

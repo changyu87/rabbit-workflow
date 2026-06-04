@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """test-check-prompts-section.py — exercises contract.lib.checks.check_prompts_section.
 
-Spec Inv 53: cross-feature lint validating each feature's prompts section
+Spec Inv 45: cross-feature lint validating each feature's prompts section
 against prompts.schema.json, plus globally-unique ids, inject-path existence,
 universal-policy inclusion (philosophy.md), template existence at
 .claude/features/contract/templates/prompts/<id>.txt, and bidirectional

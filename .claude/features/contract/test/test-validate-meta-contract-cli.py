@@ -3,7 +3,7 @@
 - exit 0 on valid feature dir
 - exit 1 on invalid feature dir (with messages to stderr)
 - exit 2 on invocation error (missing argv, non-directory path)
-- has module-level docstring (per Inv 16)
+- has module-level docstring (per Inv 13)
 """
 
 import os
@@ -37,12 +37,12 @@ if not os.access(SCRIPT, os.X_OK):
 else:
     ok("script is executable")
 
-# t2: has module docstring (per Inv 16)
+# t2: has module docstring (per Inv 13)
 with open(SCRIPT) as f:
     src = f.read()
 first_lines = "\n".join(src.split("\n")[:5])
 if '"""' not in first_lines:
-    fail("script missing module-level docstring near top of file (per Inv 16)")
+    fail("script missing module-level docstring near top of file (per Inv 13)")
 else:
     ok("script has module-level docstring")
 

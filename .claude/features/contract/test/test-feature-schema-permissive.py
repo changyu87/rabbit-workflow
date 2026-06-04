@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-feature-schema-permissive.py — Inv 18.
+"""test-feature-schema-permissive.py — Inv 15.
 
 feature.json.schema.json MUST NOT require `bugs_root` and MUST permit the
 optional top-level `updated` field. Validate every real feature.json in the

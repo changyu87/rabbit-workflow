@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""test-validate-agent-prompt-sentinel.py — Inv 66 (b)
+"""test-validate-agent-prompt-sentinel.py — Inv 56 (b)
 
 End-to-end tests for contract.lib.checks.validate_agent_prompt_sentinel.
 
-Covers the 5 cases declared in Inv 66 enforcement section:
+Covers the 5 cases declared in Inv 56 enforcement section:
   (i)   prompt containing sentinel → passed=True
   (ii)  prompt missing sentinel + no bypass marker → passed=False (canonical msg)
   (iii) prompt missing sentinel + bypass marker present → passed=True
@@ -61,7 +61,7 @@ if not hasattr(checks, "validate_agent_prompt_sentinel"):
     fail(
         "exists",
         "contract.lib.checks must export validate_agent_prompt_sentinel "
-        "(Inv 66 b)",
+        "(Inv 56 b)",
     )
     sys.exit(1)
 ok("exists", "validate_agent_prompt_sentinel exported")

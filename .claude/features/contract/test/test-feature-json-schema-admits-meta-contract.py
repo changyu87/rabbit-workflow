@@ -2,7 +2,7 @@
 """test-feature-json-schema-admits-meta-contract.py — verifies that
 feature.json.schema.json declares optional properties for manifest, runtime,
 configuration, and prompts referencing the four meta-contract schemas
-(Inv 43, Inv 52).
+(Inv 35, Inv 44).
 """
 
 import os

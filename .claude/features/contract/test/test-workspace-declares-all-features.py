@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-workspace-declares-all-features.py — Inv 31.
+"""test-workspace-declares-all-features.py — Inv 24.
 
 `.claude/features/contract/workspace-structure.json` MUST declare nodes for
 every feature that exists on disk under `.claude/features/`. The runtime

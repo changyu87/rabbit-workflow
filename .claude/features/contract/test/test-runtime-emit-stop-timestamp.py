@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-runtime-emit-stop-timestamp.py — exercises emit_stop_timestamp per
-Inv 67. Always returns a list of length 1 with a print_result entry whose
+Inv 57. Always returns a list of length 1 with a print_result entry whose
 text is the current UTC HH:MM:SS, icon is ⏱, color is green. NEVER short-
 circuits to [].
 """
@@ -99,7 +99,7 @@ with tempfile.TemporaryDirectory() as td:
         ok(f"vii: two successive calls both valid HH:MM:SS ({t1!r}, {t2!r})")
 
 # (viii) the single entry carries order == "footer" (footer-ordering marker
-# per issue #413 / Inv 67).
+# per issue #413 / Inv 57).
 if entry is None:
     fail("viii: no entry to inspect")
 elif entry.get("order") != "footer":

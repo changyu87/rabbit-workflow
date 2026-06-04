@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# test-validate-feature-real-features.py — e2e test for spec Inv 32 (BUG-38).
+# test-validate-feature-real-features.py — e2e test for spec Inv 25 (BUG-38).
 #
 # validate-feature.py MUST exit 0 for a feature directory that is otherwise
 # valid (correct feature.json, spec.md, contract.md, executable test/run.py)
-# but lacks the legacy `docs/bugs/` directory. Per Inv 14, bug storage is
+# but lacks the legacy `docs/bugs/` directory. Per Inv 11, bug storage is
 # centralized to `<repo-root>/.claude/bugs/<feature-name>/`; per-feature
 # `docs/bugs/` no longer applies.
 #

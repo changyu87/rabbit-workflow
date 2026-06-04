@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-check-numbered-lists.py — Inv 33.
+"""test-check-numbered-lists.py — Inv 26.
 
 check-numbered-lists.py MUST exist, be executable, and reject Markdown files
 whose ordered-list items or headings use decimal sub-numbers (1.1, 1.2.3) or
@@ -131,7 +131,7 @@ finally:
 # t8 (e2e): prose-embedded fractional numbering -> exit 1.
 # A numbering keyword (phase/step/item/part/section, singular or plural)
 # immediately followed by an N.M index in running prose is a violation
-# (Inv 33), even when it does not start a list item or heading.
+# (Inv 26), even when it does not start a list item or heading.
 TMPDIR = tempfile.mkdtemp()
 try:
     bad = os.path.join(TMPDIR, "prose-decimal.md")
@@ -196,7 +196,7 @@ try:
             "# Title\n\n"
             "Upgrade to release/1.12.0 or v1.5.0 soon.\n"
             "The schema_version 2.16.0 is current.\n"
-            "See Inv 33 for the rule and foo.1.5.bar for the file.\n"
+            "See Inv 26 for the rule and foo.1.5.bar for the file.\n"
             "The total cost is $5.50 per unit.\n"
             "The phase completed in 1.5 seconds last run.\n"
             "Documentation example: `phase 1.5` and `step 2.b` are flagged.\n"
@@ -225,13 +225,13 @@ import glob
 targets = []
 # A feature's spec/contract docs live under EITHER the flat docs/ layout
 # (preferred) or the specs/ layout (fallback) per the dual-read resolver in
-# lib/checks.py (Inv 68). Globbing only specs/*.md would silently exclude
+# lib/checks.py (Inv 58). Globbing only specs/*.md would silently exclude
 # every feature migrated to the flat docs/ layout from this scan — a false
-# green (Inv 69 class). Glob both layouts, but ONLY the spec/contract doc
-# surfaces named in Inv 33's in-scope set (spec.md, contract.md) — NEVER
+# green (Inv 59 class). Glob both layouts, but ONLY the spec/contract doc
+# surfaces named in Inv 26's in-scope set (spec.md, contract.md) — NEVER
 # CHANGELOG.md. The CHANGELOG is the documented home for historical
-# phase/step labels (Inv 39) and is exempt from doc-hygiene scans by
-# construction (Inv 49: "CHANGELOG.md is never scanned"); sweeping it in
+# phase/step labels (Inv 31) and is exempt from doc-hygiene scans by
+# construction (Inv 41: "CHANGELOG.md is never scanned"); sweeping it in
 # would flag legitimate historical 'Phase 2b'-style tombstone prose.
 for layout in ("specs", "docs"):
     for leaf in ("spec.md", "contract.md"):
@@ -255,8 +255,8 @@ targets.extend(
 targets.extend(glob.glob(os.path.join(REPO_ROOT, ".claude/features/policy/*.md")))
 # contract's own spec/contract surfaces (already covered by the per-feature
 # spec.md/contract.md glob above for the docs/ layout, but kept explicit here
-# to mirror Inv 33's "contract/specs/**/*.md" in-scope clause). CHANGELOG.md
-# is deliberately excluded (Inv 39/Inv 49 — historical phase labels live
+# to mirror Inv 26's "contract/specs/**/*.md" in-scope clause). CHANGELOG.md
+# is deliberately excluded (Inv 31/Inv 41 — historical phase labels live
 # there and are exempt from doc-hygiene scans).
 for leaf in ("spec.md", "contract.md"):
     targets.extend(
