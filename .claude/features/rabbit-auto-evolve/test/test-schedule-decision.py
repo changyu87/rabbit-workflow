@@ -36,6 +36,12 @@ Scenarios:
      non-recurring one-shot is a refire; the recurring/durable heartbeat is
      NOT; a marker on a recurring entry is NOT; an unmarked one-shot is NOT
      (Inv 49, #559)
+  J) arm-time minute-boundary skid robustness (Inv 33, #748): for every
+     near-boundary decision-time clock the pinned minute is at least a
+     2-minute buffer ahead (so the dispatcher's CronList->CronDelete->
+     CronCreate dedup round-trip cannot cross the minute boundary and park the
+     one-shot ~24h out); the emitted cron stays a valid pinned 'M H * * *' and
+     the #refire marker + durable/recurring=false flags are preserved
 """
 
 import importlib.util
@@ -222,27 +228,33 @@ if not hasattr(mod, "_pinned_oneshot_cron"):
 else:
     pin = mod._pinned_oneshot_cron
 
-    # Ordinary minute: 10:15 -> next minute 16 at hour 10.
-    if pin(now=datetime(2026, 6, 3, 10, 15)) == "16 10 * * *":
-        ok("F: 10:15 -> '16 10 * * *' (plain next minute)")
+    # Inv 33 arm-time-skid buffer (#748): the pinned minute is the current
+    # minute + 2 (a 2-minute buffer), NOT +1. The +1 form was dropped ~14% of
+    # the time when the dispatcher's CronList->CronDelete->CronCreate dedup
+    # round-trip crossed the wall-clock minute boundary, parking the one-shot
+    # ~24h out. A 2-minute buffer guarantees the pinned minute is STRICTLY in
+    # the future even after a multi-second arm-time round-trip.
+    # Ordinary minute: 10:15 -> minute 17 at hour 10 (15 + 2).
+    if pin(now=datetime(2026, 6, 3, 10, 15)) == "17 10 * * *":
+        ok("F: 10:15 -> '17 10 * * *' (current minute + 2 buffer, #748)")
     else:
-        fail(f"F: 10:15 -> {pin(now=datetime(2026, 6, 3, 10, 15))!r}, expected '16 10 * * *'")
+        fail(f"F: 10:15 -> {pin(now=datetime(2026, 6, 3, 10, 15))!r}, expected '17 10 * * *'")
 
-    # Nudge off :00 — minute 59 -> next minute 0 -> nudged to 1 (same hour 11).
+    # Nudge off :00 — minute 59 + 2 -> minute 1 next hour (already off :00).
     res = pin(now=datetime(2026, 6, 3, 10, 59))
     parts = res.split()
     if PINNED_RE.match(res) and int(parts[0]) not in (0, 30):
-        ok(f"F: 10:59 -> {res!r} avoids :00 (next-minute rollover nudged)")
+        ok(f"F: 10:59 -> {res!r} avoids :00 (rollover with +2 buffer)")
     else:
         fail(f"F: 10:59 -> {res!r} landed on a :00/:30 mark")
 
-    # Nudge off :30 — minute 29 -> next minute 30 -> nudged to 31.
-    res = pin(now=datetime(2026, 6, 3, 14, 29))
+    # Nudge off :30 — minute 28 + 2 -> minute 30 -> nudged to 31.
+    res = pin(now=datetime(2026, 6, 3, 14, 28))
     parts = res.split()
     if PINNED_RE.match(res) and int(parts[0]) not in (0, 30):
-        ok(f"F: 14:29 -> {res!r} avoids :30")
+        ok(f"F: 14:28 -> {res!r} avoids :30")
     else:
-        fail(f"F: 14:29 -> {res!r} landed on a :00/:30 mark")
+        fail(f"F: 14:28 -> {res!r} landed on a :00/:30 mark")
 
     # The default (now=None) must still be a valid pinned, safe expression.
     res = pin()
@@ -371,5 +383,74 @@ else:
         ok("I: unmarked one-shot -> NOT a refire (False)")
     else:
         fail("I: an unmarked one-shot wrongly classified as a refire")
+
+# --- J: arm-time minute-boundary skid robustness (Inv 33, #748) --------------
+# The bug: the pinned minute was computed at DECISION time as current+1, but the
+# dispatcher's CronList->CronDelete->CronCreate dedup round-trip eats several
+# seconds. When the decision lands in the final seconds of a minute, that
+# round-trip crosses the minute boundary, so a +1 pinned minute became the
+# CURRENT (already-started) minute -> the one-shot is parked ~24h out (dropped
+# ~14% of the time). The fix pins the minute with a >=2-minute buffer so the
+# pinned minute is STRICTLY in the future even after the multi-second round-trip.
+mod = _load_decide_module()
+pin = mod._pinned_oneshot_cron
+MINUTE_BUFFER = 2  # the required buffer in minutes (#748)
+
+# Simulate decision-time clocks near a minute boundary across every minute of
+# the hour (including the dangerous :59.9 final-seconds case): the pinned minute
+# must be at least MINUTE_BUFFER minutes ahead of the decision minute, so the
+# dedup round-trip (a few seconds, never >= 2 min) cannot cross it.
+skid_ok = True
+for minute in range(60):
+    # Decision lands in the final seconds of the minute (the worst case).
+    now = datetime(2026, 6, 3, 10, minute, 59)
+    cron = pin(now=now)
+    if not PINNED_RE.match(cron):
+        fail(f"J: pin near :{minute:02d}:59 is not a pinned 'M H * * *': {cron!r}")
+        skid_ok = False
+        break
+    pinned_min = int(cron.split()[0])
+    pinned_hr = int(cron.split()[1])
+    # Compute the wall-clock gap (minutes) from the decision minute to the
+    # pinned minute, accounting for the hour rollover.
+    decision_abs = now.hour * 60 + now.minute
+    pinned_abs = pinned_hr * 60 + pinned_min
+    if pinned_abs <= decision_abs:  # rolled past the hour (or day) boundary
+        pinned_abs += 24 * 60
+    gap = pinned_abs - decision_abs
+    if gap < MINUTE_BUFFER:
+        fail(f"J: decision at 10:{minute:02d}:59 -> pinned {cron!r} is only "
+             f"{gap} min ahead (< {MINUTE_BUFFER}); arm-time skid can drop it")
+        skid_ok = False
+        break
+    if pinned_min in (0, 30):
+        fail(f"J: decision at 10:{minute:02d}:59 -> pinned minute on :00/:30: {cron!r}")
+        skid_ok = False
+        break
+if skid_ok:
+    ok(f"J: pinned minute is >= {MINUTE_BUFFER} min ahead for every "
+       "near-boundary decision minute (arm-time skid closed, #748)")
+
+# J2 — end-to-end: the emitted croncreate one-shot (restricted/croncreate path)
+# is a valid pinned 'M H * * *' AND preserves the #refire marker + the
+# durable/recurring=false flags, with the buffered minute.
+with tempfile.TemporaryDirectory() as d:
+    proc = run(d, NONEMPTY, restricted=True)
+    j = parsed(proc) or {}
+    cc = j.get("croncreate") or {}
+    cron = cc.get("cron") or ""
+    create = (j.get("dispatcher_actions") or {}).get("create_refire") or {}
+    if PINNED_RE.match(cron) and cron != "*/1 * * * *" \
+            and int(cron.split()[0]) not in (0, 30):
+        ok(f"J2: emitted croncreate.cron is a valid pinned 'M H * * *': {cron!r}")
+    else:
+        fail(f"J2: emitted croncreate.cron not a safe pinned form: {cron!r}")
+    if REFIRE_MARKER in (cc.get("prompt") or "") \
+            and cc.get("recurring") is False and cc.get("durable") is False \
+            and REFIRE_MARKER in (create.get("prompt") or "") \
+            and create.get("recurring") is False and create.get("durable") is False:
+        ok("J2: #refire marker + durable/recurring=false preserved after buffer fix")
+    else:
+        fail(f"J2: marker/flags not preserved: croncreate={cc!r} create={create!r}")
 
 sys.exit(FAIL)

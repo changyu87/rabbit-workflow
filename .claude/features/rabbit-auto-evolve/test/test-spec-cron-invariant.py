@@ -85,6 +85,16 @@ if pin_missing:
     fail(f"spec.md missing Inv 33 pinned-minute phrase(s): {pin_missing!r}")
 else:
     ok("spec.md documents the Inv 33 pinned-minute one-shot amendment (#531)")
+# Arm-time minute-boundary skid buffer (#748): the pinned minute must carry a
+# >=2-minute buffer so the dispatcher's dedup round-trip cannot cross the
+# minute boundary and park the one-shot ~24h out. The spec text MUST document
+# this buffer rationale.
+SKID_REQUIRED = ["minute + 2", "buffer"]
+skid_missing = [s for s in SKID_REQUIRED if s.lower() not in spec_low]
+if skid_missing:
+    fail(f"spec.md missing Inv 33 arm-time-skid buffer phrase(s): {skid_missing!r}")
+else:
+    ok("spec.md documents the Inv 33 arm-time-skid minute buffer (#748)")
 # The spec must explicitly reject the every-minute form.
 if "*/1 * * * *" in spec and "never" in spec_low:
     ok("spec.md rejects the fragile every-minute '*/1 * * * *' form")

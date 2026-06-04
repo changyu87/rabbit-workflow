@@ -58,7 +58,7 @@ Resolution:
 Exit code is always 0 (the verdict is carried in `decision`); non-zero only
 if fetch-queue.py itself errors.
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -88,19 +88,41 @@ REFIRE_MARKER = "#refire"
 PROMPT = f"{TICK_COMMAND} {REFIRE_MARKER}"
 
 
-def _pinned_oneshot_cron(now=None):
-    """Return a PINNED next-minute cron expression "M H * * *" for the
-    croncreate one-shot path (Inv 33 pinned-minute amendment, issue #531).
+# Inv 33 arm-time-skid buffer (#748): the pinned one-shot minute is the current
+# minute + 2, NOT + 1. The dispatcher arms the one-shot via a
+# CronList -> CronDelete -> CronCreate dedup round-trip (Inv 49) that eats
+# several seconds. With a +1 pinned minute, a decision landing in the final
+# seconds of a wall-clock minute let that round-trip CROSS the minute boundary,
+# so the pinned minute became the CURRENT (already-started) minute; because this
+# is a one-shot pinned to "M H * * *" (not "*/1"), its next match was that same
+# minute ~24h later — the refire was effectively dropped (~14% of the time). A
+# 2-minute buffer keeps the pinned minute STRICTLY in the future even after the
+# multi-second round-trip, while staying "~1 min" responsive. Keep it
+# minutes-based (cron has no sub-minute granularity).
+_ONESHOT_MINUTE_BUFFER = 2
 
-    The minute is the current minute + 1 and the hour is that minute's hour.
-    A PINNED "M H * * *" form (never the fragile every-minute "*/1 * * * *")
-    means the catastrophic failure mode — the dispatcher dropping
-    `recurring: false` (a CronCreate default is recurring) — fires at most ONCE
-    PER DAY at minute M instead of an every-minute storm.
+
+def _pinned_oneshot_cron(now=None):
+    """Return a PINNED near-future cron expression "M H * * *" for the
+    croncreate one-shot path (Inv 33 pinned-minute amendment, issue #531;
+    arm-time-skid buffer, issue #748).
+
+    The minute is the current minute + 2 (a 2-minute buffer, see
+    `_ONESHOT_MINUTE_BUFFER`) and the hour is that minute's hour. A PINNED
+    "M H * * *" form (never the fragile every-minute "*/1 * * * *") means the
+    catastrophic failure mode — the dispatcher dropping `recurring: false` (a
+    CronCreate default is recurring) — fires at most ONCE PER DAY at minute M
+    instead of an every-minute storm.
+
+    The 2-minute buffer (#748) guarantees the pinned minute is strictly in the
+    future even after the dispatcher's multi-second CronList -> CronDelete ->
+    CronCreate dedup round-trip (Inv 49) crosses a wall-clock minute boundary; a
+    +1 buffer was dropped ~14% of the time when a decision landed in the final
+    seconds of a minute.
 
     The minute also AVOIDS the :00 and :30 marks per CronCreate guidance: when
-    minute + 1 lands on 0 or 30 it is nudged forward by one minute (carrying
-    into the next hour for the 59 -> 0 rollover).
+    the buffered minute lands on 0 or 30 it is nudged forward by one minute
+    (carrying into the next hour on rollover).
 
     `now` is injectable for deterministic tests; it defaults to the local wall
     clock (schedule-decision.py is an ordinary Python script, not a
@@ -108,7 +130,7 @@ def _pinned_oneshot_cron(now=None):
     """
     if now is None:
         now = datetime.now()
-    target = now + timedelta(minutes=1)
+    target = now + timedelta(minutes=_ONESHOT_MINUTE_BUFFER)
     if target.minute in (0, 30):
         target = target + timedelta(minutes=1)
     return f"{target.minute} {target.hour} * * *"
