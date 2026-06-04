@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.52.0
+version: 0.53.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1635,12 +1635,31 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       running the dispatcher MUST NOT emit `AskUserQuestion`; the only
       non-dispatch terminal action is `.rabbit-auto-evolve-aborted` on a
       genuine hard blocker — not a routine "kick it to a human" deferral.
+    - **No de-queue escape hatch (Inv 59).** Removing `rabbit-managed` from
+      an OPEN issue is the same intent escaping via a different mechanism —
+      it is FORBIDDEN. See the label-independence clause below.
+
+    **Convergence is label-independent.** The convergence
+    guarantee applies to every open VALID issue REGARDLESS of whether it
+    still carries `rabbit-managed`. An open valid issue must converge to a
+    terminal-or-tracked state — worked → closed-completed, close-not-planned
+    with a strong reason, or a bounded defer — and that obligation does NOT
+    lapse when the label is absent. Removing the label while an issue is open
+    is explicitly NOT a convergence outcome: it is the forbidden "de-queue"
+    action (Inv 59), which strands the issue open-but-untracked because
+    `fetch-queue.py` selects only `--state open --label rabbit-managed` and a
+    de-queued issue thereby exits the loop's view before this guarantee can
+    apply. The leak detector (`fetch-queue.py --detect-leaks`, Inv 59)
+    re-surfaces any pre-existing leak so it can re-converge.
 
     Enforced by `test/test-spec-convergence-invariant.py` (asserts the
-    invariant text is present in this spec), `test/test-triage-rules.py`
-    (asserts `close-completed` is never emitted and every defer carries a
-    planning_note), and `test/test-triage-batch.py` (asserts the 4th
-    consecutive defer is forced to `work`).
+    invariant text is present in this spec),
+    `test/test-spec-forbid-dequeue-invariant.py` (asserts the
+    label-independence clause and the Inv 59 de-queue ban are present in spec
+    and SKILL.md), `test/test-triage-rules.py` (asserts `close-completed` is
+    never emitted and every defer carries a planning_note), and
+    `test/test-triage-batch.py` (asserts the 4th consecutive defer is forced
+    to `work`).
 
 26. **Work-selection / dispatch-shape decoupling.** The loop
     makes two SEPARATE decisions, in order, and never lets the second
@@ -3424,6 +3443,50 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     clean no-op) and `test/test-record-decomposition.py` (the linkage record
     round-trips through `decomposition_parents` and validates against schema
     1.3.0), with the wiring asserted by `test/test-run-post-merge.py`.
+
+59. **No de-queue (Red Flag); convergence is label-independent.**
+    While `.rabbit-auto-evolve-running` is present,
+    **the dispatcher MUST NOT remove `rabbit-managed` from an OPEN issue
+    as a parking or hand-back action.** "De-queue" — dropping the label
+    while leaving the issue OPEN — is the same human-handoff escape that the
+    AskUserQuestion ban (Inv 13) forbids, leaking through a different
+    mechanism: because `fetch-queue.py` selects only `--state open --label
+    rabbit-managed`, a de-queued issue silently exits the loop's view and is
+    stranded open-but-untracked, defeating the convergence guarantee
+    (Inv 25). The only permitted non-work outcomes remain push-to-later-stage
+    (a bounded `defer`, tracked) OR `close-not-planned` with a strong reason.
+
+    This rule is recorded in the `Red Flags — STOP` section of
+    `skills/rabbit-auto-evolve/SKILL.md` as the literal string:
+
+    > **While `.rabbit-auto-evolve-running` is present, the dispatcher MUST NOT remove `rabbit-managed` from an OPEN issue as a parking or hand-back action.**
+
+    The convergence guarantee (Inv 25) is therefore LABEL-INDEPENDENT: an
+    open valid issue must converge to a terminal-or-tracked state regardless
+    of whether it still carries `rabbit-managed`.
+
+    **Leak detector (defense in depth).**
+    `python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py
+    --detect-leaks` queries all open issues and emits a deterministic JSON
+    object `{"leaks": [...]}` listing every OPEN issue that once entered the
+    rabbit pipeline (carries a `filed-by:*` provenance label, proving it was
+    `rabbit-managed` at filing time) but has LOST the `rabbit-managed` label
+    without being closed. This is the deterministic, `gh`-available signal for
+    a de-queue leak; a surfaced leak is re-converged rather than lost. The
+    primary fix is forbidding the action so leaks cannot be created; the
+    detector is the backstop for pre-existing leaks. Enforced by
+    `test/test-spec-forbid-dequeue-invariant.py` (the Red-Flag literal and
+    label-independence clause are present in spec + SKILL) and
+    `test/test-fetch-queue.py` scenario C (the detector surfaces a synthetic
+    open-issue-that-lost-the-label case against a mock `gh`).
+
+    NOTE: a sanctioned, tracked "blocked-on-human-precondition" state — the
+    durable home for items that fit neither bounded `defer` nor
+    `close-not-planned` (e.g. an item that needs a human-paused window before
+    the loop can safely self-modify its own live marker) — is explicitly
+    DEFERRED as a maintainer-call follow-up and is NOT
+    introduced here. Forbidding de-queue is correct regardless of that
+    follow-up.
 
 ## Known gaps
 

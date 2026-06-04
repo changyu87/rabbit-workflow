@@ -3,6 +3,7 @@
 
 Usage:
   fetch-queue.py            # emit sorted JSON array on stdout
+  fetch-queue.py --detect-leaks   # emit {"leaks": [...]} for de-queued issues
 
 Per rabbit-auto-evolve spec.md Inv 2, invokes
   gh issue list --repo <repo> --state open --label rabbit-managed
@@ -11,6 +12,15 @@ and emits a deterministic JSON array on stdout, sorted by priority
 (critical > high > medium > low; no-priority issues sort to the END)
 then createdAt ascending within each bucket.
 
+`--detect-leaks` (Inv 59, issue #731) is the de-queue defense-in-depth
+backstop: it queries ALL open issues and flags any that once entered the
+rabbit pipeline (carry a `filed-by:*` provenance label) but have LOST the
+`rabbit-managed` label without being closed — the forbidden "de-queue" leak.
+It emits a deterministic JSON object {"leaks": [...]} so a leaked issue is
+re-surfaced for re-convergence rather than silently stranded open-but-
+untracked. The primary fix is forbidding the de-queue action (Red-Flag
+Inv 59); this detector exists only as a backstop for pre-existing leaks.
+
 Repo slug resolves via rabbit-issue/_gh.repo_slug — no `git remote get-url`
 shellouts. The script never reads or writes anything other than the gh CLI
 output stream (no git, no filesystem mutations).
@@ -18,7 +28,7 @@ output stream (no git, no filesystem mutations).
 Exit code: 0 on success; non-zero on gh-auth failure or any unexpected gh
 error (stderr passthrough).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -68,33 +78,77 @@ def sort_key(issue):
     return (priority_rank(issue), issue.get("createdAt", ""))
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="List open rabbit-managed issues, sorted by priority "
-                    "then createdAt, as JSON on stdout."
-    )
-    parser.parse_args()
+def label_names(issue):
+    return {lbl.get("name", "") for lbl in issue.get("labels", [])}
 
+
+def is_leak(issue):
+    """An issue is a de-queue LEAK (Inv 59) when it is OPEN, once entered the
+    rabbit pipeline (carries any `filed-by:*` provenance label, proving it was
+    rabbit-managed at filing time), yet has LOST the `rabbit-managed` label
+    without being closed. Removing the label while open is the forbidden
+    "de-queue" action — such an issue would otherwise vanish from the queue."""
+    names = label_names(issue)
+    if "rabbit-managed" in names:
+        return False
+    return any(n.startswith("filed-by:") for n in names)
+
+
+def _gh_issue_list(args):
+    """Run `gh issue list` with the given trailing args; return parsed JSON.
+    Exits the process on gh error or invalid JSON (stderr passthrough)."""
     repo = repo_slug()
     try:
         proc = subprocess.run(
-            ["gh", "issue", "list",
-             "--repo", repo,
-             "--state", "open",
-             "--label", "rabbit-managed",
-             "--json", "number,title,labels,body,createdAt",
-             "--limit", "500"],
+            ["gh", "issue", "list", "--repo", repo] + args,
             capture_output=True, text=True, check=True,
         )
     except subprocess.CalledProcessError as e:
         sys.stderr.write(e.stderr or "")
         sys.exit(e.returncode or 1)
-
     try:
-        issues = json.loads(proc.stdout)
+        return json.loads(proc.stdout)
     except json.JSONDecodeError as e:
         sys.stderr.write(f"fetch-queue: gh emitted invalid JSON: {e}\n")
         sys.exit(1)
+
+
+def detect_leaks():
+    """Surface OPEN de-queued issues (Inv 59) as {"leaks": [...]} on stdout."""
+    issues = _gh_issue_list(
+        ["--state", "open",
+         "--json", "number,title,labels,createdAt",
+         "--limit", "500"]
+    )
+    leaks = [i for i in issues if is_leak(i)]
+    leaks.sort(key=lambda i: i.get("number", 0))
+    json.dump({"leaks": leaks}, sys.stdout, indent=2)
+    sys.stdout.write("\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="List open rabbit-managed issues, sorted by priority "
+                    "then createdAt, as JSON on stdout."
+    )
+    parser.add_argument(
+        "--detect-leaks", action="store_true",
+        help="Instead of the queue, emit {\"leaks\": [...]} listing OPEN "
+             "issues that lost the rabbit-managed label without being closed "
+             "(the forbidden de-queue leak, Inv 59).",
+    )
+    args = parser.parse_args()
+
+    if args.detect_leaks:
+        detect_leaks()
+        return
+
+    issues = _gh_issue_list(
+        ["--state", "open",
+         "--label", "rabbit-managed",
+         "--json", "number,title,labels,body,createdAt",
+         "--limit", "500"]
+    )
 
     issues.sort(key=sort_key)
     json.dump(issues, sys.stdout, indent=2)

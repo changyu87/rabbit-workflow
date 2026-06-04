@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.51.0
+version: 0.53.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -713,6 +713,21 @@ ambiguity not covered by resolved Open Questions), the dispatcher writes
 The abort marker makes the cron-fired headless tick short-circuit to a
 clean no-op, so the loop stays halted. The next SessionStart banner
 surfaces the abort to the user.
+
+**While `.rabbit-auto-evolve-running` is present, the dispatcher MUST NOT remove `rabbit-managed` from an OPEN issue as a parking or hand-back action.**
+
+"De-queue" — dropping the label while leaving the issue OPEN — is the
+AskUserQuestion human-handoff escape (above) leaking through a different
+mechanism (Inv 59). Because `fetch-queue.py` selects only
+`--state open --label rabbit-managed`, a de-queued issue silently exits the
+loop's view and is stranded open-but-untracked, defeating the convergence
+guarantee (Inv 25). The convergence guarantee is LABEL-INDEPENDENT: an open
+valid issue must converge regardless of whether it still carries the label.
+The only permitted non-work outcomes are a bounded `defer` (tracked) or
+`close-not-planned` with a strong reason — never label removal. The backstop
+`python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py
+--detect-leaks` re-surfaces any pre-existing leak (open issues with a
+`filed-by:*` provenance label but no `rabbit-managed`) for re-convergence.
 
 Other red flags:
 

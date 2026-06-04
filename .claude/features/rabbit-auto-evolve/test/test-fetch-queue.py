@@ -152,4 +152,64 @@ with tempfile.TemporaryDirectory() as shim_dir:
                 ok("B: critical bucket sorted by createdAt asc")
 
 
+# ---------------------------------------------------------------------------
+# Scenario C — de-queue leak detector (issue #731, Inv 59)
+# ---------------------------------------------------------------------------
+# `fetch-queue.py --detect-leaks` surfaces OPEN issues that once entered the
+# rabbit pipeline (carry a `filed-by:*` label) but have LOST the
+# `rabbit-managed` label without being closed — the "de-queue" leak. The
+# detector queries open issues via `gh` and emits a deterministic JSON object
+# {"leaks": [...]} so a leaked issue is re-surfaced for re-convergence rather
+# than lost. Issues that still carry `rabbit-managed`, or that never carried a
+# `filed-by:*` label (never rabbit-managed), are NOT leaks.
+LEAK_FIXTURE = [
+    # LEAK: open, filed-by:loop provenance, but rabbit-managed was removed.
+    {"number": 336, "title": "de-queued-loop", "labels": [{"name": "enhancement"}, {"name": "filed-by:loop"}, {"name": "priority:high"}], "body": "", "createdAt": "2026-06-01T00:00:00Z"},
+    # LEAK: open, filed-by:human provenance, rabbit-managed removed.
+    {"number": 677, "title": "de-queued-human", "labels": [{"name": "bug"}, {"name": "filed-by:human"}], "body": "", "createdAt": "2026-05-20T00:00:00Z"},
+    # NOT a leak: still carries rabbit-managed.
+    {"number": 500, "title": "still-queued", "labels": [{"name": "rabbit-managed"}, {"name": "filed-by:loop"}, {"name": "priority:low"}], "body": "", "createdAt": "2026-05-25T00:00:00Z"},
+    # NOT a leak: never entered the rabbit pipeline (no filed-by:*, no managed).
+    {"number": 900, "title": "unrelated", "labels": [{"name": "question"}], "body": "", "createdAt": "2026-05-26T00:00:00Z"},
+]
+
+with tempfile.TemporaryDirectory() as shim_dir:
+    shim_path = os.path.join(shim_dir, "gh")
+    fixture_json = json.dumps(LEAK_FIXTURE)
+    with open(shim_path, "w") as f:
+        f.write("#!/bin/sh\n")
+        f.write("cat <<'__GH_FIXTURE_EOF__'\n")
+        f.write(fixture_json + "\n")
+        f.write("__GH_FIXTURE_EOF__\n")
+    os.chmod(shim_path, stat.S_IRWXU)
+
+    env = os.environ.copy()
+    env["PATH"] = shim_dir + os.pathsep + env.get("PATH", "")
+
+    proc = subprocess.run(
+        [sys.executable, SCRIPT, "--detect-leaks"],
+        capture_output=True, text=True, env=env,
+    )
+    if proc.returncode != 0:
+        fail(f"C: --detect-leaks should exit 0 with shim, got {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("C: --detect-leaks exited 0")
+
+    try:
+        result = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"C: --detect-leaks stdout is not valid JSON ({e}); got {proc.stdout!r}")
+        result = None
+
+    if result is not None:
+        if not isinstance(result, dict) or "leaks" not in result:
+            fail(f"C: expected JSON object with 'leaks' key, got {result!r}")
+        else:
+            leaked_numbers = {item.get("number") for item in result["leaks"]}
+            if leaked_numbers != {336, 677}:
+                fail(f"C: expected leaks {{336, 677}}, got {leaked_numbers}")
+            else:
+                ok("C: leak detector surfaces exactly the de-queued open issues")
+
+
 sys.exit(FAIL)

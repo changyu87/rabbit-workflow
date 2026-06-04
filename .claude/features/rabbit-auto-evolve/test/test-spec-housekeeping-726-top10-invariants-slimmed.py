@@ -12,10 +12,13 @@ later edit cannot silently regress the slimming OR silently delete an invariant 
 load-bearing phrase under the cover of slimming.
 
 #639 discipline:
-  (a) STRUCTURE — all 58 invariants remain present and the numbering is contiguous
-      1..58 (no invariant deleted, none renumbered; that is the sibling #724/#725 job).
-  (b) WEIGHT    — the spec.md total line count dropped by a meaningful margin from the
+  (a) STRUCTURE — every invariant remains present and the numbering is contiguous
+      1..N (no invariant deleted, none renumbered; that is the sibling #724/#725 job).
+      The count grows only by APPENDING (issue #731 appended Inv 59); the guard pins
+      the current count so a deletion or a renumber still fails.
+  (b) WEIGHT    — the spec.md total line count stays a meaningful margin below the
       pre-#726 baseline (3594 lines). A trivial token-trim would not clear the ceiling.
+      The ceiling carries headroom for future (additive) invariants below the baseline.
   (c) CONTENT   — a sample of load-bearing literals that the top-10 invariants carry
       (script names, schema fields, decision-table tokens, MUST cross-refs) is STILL
       present, so the line drop cannot have come from cutting a binding rule.
@@ -33,10 +36,12 @@ SPEC = os.path.join(FEATURE_DIR, "docs", "spec.md")
 
 # Pre-#726 baseline total line count of docs/spec.md.
 BASELINE_TOTAL_LINES = 3594
-# The slimming pass must cut at least this many lines from the spec total. This is a
-# floor, not the achieved figure: it guards against a token-trim regression while
-# leaving headroom for future (additive) invariants.
-MIN_LINES_CUT = 140
+# The slimming pass must keep the spec total at least this many lines below the
+# baseline. This is a floor, not the achieved figure: it guards against a token-trim
+# regression while leaving headroom for future (additive) invariants. Issue #731
+# appended Inv 59 (~50 lines), so the ceiling is relaxed from the original 140-line
+# margin to an 80-line margin — still well below the baseline.
+MIN_LINES_CUT = 80
 MAX_TOTAL_LINES = BASELINE_TOTAL_LINES - MIN_LINES_CUT
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
@@ -132,21 +137,24 @@ else:
         body = f.read()
     lines = body.splitlines()
 
-    # (a) STRUCTURE — 58 invariants, contiguous 1..58.
+    # (a) STRUCTURE — 59 invariants, contiguous 1..59 (Inv 59 appended by #731).
+    EXPECTED_COUNT = 59
     nums = invariant_numbers(lines)
     if nums is None:
         fail("structure", "no '## Invariants' section found")
     else:
-        if len(nums) == 58:
-            ok("structure", "exactly 58 invariants present")
-        else:
-            fail("structure", f"expected 58 invariants, found {len(nums)}")
-        expected = list(range(1, 59))
-        if nums == expected:
-            ok("structure", "invariant numbering is contiguous 1..58")
+        if len(nums) == EXPECTED_COUNT:
+            ok("structure", f"exactly {EXPECTED_COUNT} invariants present")
         else:
             fail("structure",
-                 f"invariant numbering not contiguous 1..58: {nums}")
+                 f"expected {EXPECTED_COUNT} invariants, found {len(nums)}")
+        expected = list(range(1, EXPECTED_COUNT + 1))
+        if nums == expected:
+            ok("structure",
+               f"invariant numbering is contiguous 1..{EXPECTED_COUNT}")
+        else:
+            fail("structure",
+                 f"invariant numbering not contiguous 1..{EXPECTED_COUNT}: {nums}")
 
     # (b) WEIGHT — total line count dropped by a meaningful margin.
     total = len(lines)

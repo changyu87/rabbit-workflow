@@ -13,6 +13,27 @@ own version.
 
 ## Version notes
 
+- **v0.53.0 — 2026-06-03** — Forbade "de-queue" — the convergence hole that
+  stranded open valid issues (#731). The loop had been removing `rabbit-managed`
+  from OPEN issues as a parking/hand-back action, dropping them out of
+  `fetch-queue.py`'s `--state open --label rabbit-managed` view so the
+  convergence guarantee (Inv 25) — which only governs issues that still reach
+  triage — could never apply. Four-part fix: (1) new Red-Flag **Inv 59** in
+  `docs/spec.md` and the SKILL.md `Red Flags — STOP` section forbidding label
+  removal from an OPEN issue, alongside the Inv 13 AskUserQuestion ban;
+  (2) made the Inv 25 convergence guarantee explicitly LABEL-INDEPENDENT — an
+  open valid issue must converge regardless of whether it still carries
+  `rabbit-managed`, and removing the label while open is NOT a convergence
+  outcome; (3) added a deterministic leak detector
+  `fetch-queue.py --detect-leaks` (script bumped 1.0.0 → 1.1.0) that surfaces
+  `{"leaks": [...]}` for OPEN issues with a `filed-by:*` provenance label but
+  missing `rabbit-managed`; (4) new e2e test
+  `test/test-spec-forbid-dequeue-invariant.py` plus scenario C in
+  `test/test-fetch-queue.py` (synthetic mock-`gh` de-queue case). The
+  follow-up "blocked-on-human-precondition" tracked state is explicitly
+  DEFERRED by #731 (maintainer call) and NOT built here. Numbering stays
+  contiguous 1..59. SKILL.md body changed (dispatcher republishes).
+
 - **v0.52.0 — 2026-06-04** — Slimmed the ten largest invariants in
   `docs/spec.md` (#726, under #639). The spec was the largest in the repo;
   the 10 biggest invariants totalled 1,264 lines (~37% of the Invariants
