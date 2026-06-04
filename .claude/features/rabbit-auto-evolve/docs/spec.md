@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.48.1
+version: 0.48.2
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -3412,19 +3412,21 @@ Phase E merges complete.
 
     **(a) Triage emits a `cross_scope` signal.** `triage-issue.py` sets
     `cross_scope` (bool) on EVERY triage record. It is `true` when the issue
-    body implicates more than one feature — either the distinct feature set
-    spans 2 or more feature dirs (the `features` list already computed under
-    Inv 26, union of the label, body `.claude/features/<name>/` paths, and bare
-    names), OR the body/title carries an explicit cross-scope phrase
+    body implicates more than one feature — either the EDIT-TARGET feature set
+    spans 2 or more feature dirs (the label PLUS every distinct body
+    `.claude/features/<name>/` PATH reference — i.e. dirs the issue will write
+    under; bare feature-NAME mentions in descriptive prose do NOT count, see
+    (a.2)), OR the body/title carries an explicit cross-scope phrase
     (case-insensitive: `repo-wide`, `every feature`, `across all features`,
     `across every feature`, `all features`, `rename across`). It is `false`
     when at most one feature dir is implicated and no cross-scope phrase
     appears. The record also carries `cross_scope_features` — the sorted
-    distinct feature set (the same value as `features`) — so the dispatcher
-    sees WHICH features a cross-scope item spans. Both fields appear on every
-    decision (work, defer, close-not-planned, research); a phrase-only signal
-    with a sparse `features` set still yields `cross_scope: true` with whatever
-    features were detected.
+    distinct Inv 26 feature set (the same value as `features`, which still
+    includes bare-name mentions for Stage-2 dispatch shaping) — so the
+    dispatcher sees WHICH features a cross-scope item spans. Both fields appear
+    on every decision (work, defer, close-not-planned, research); a phrase-only
+    signal with a sparse `features` set still yields `cross_scope: true` with
+    whatever features were detected.
 
     **(a.1) Parent-reference lines are excluded from the cross-scope phrase
     signal.** A shape-3 DECOMPOSITION sub-issue, scoped to exactly ONE feature,
@@ -3443,6 +3445,23 @@ Phase E merges complete.
     distinct feature paths STILL yields `cross_scope: true`, as does an issue
     that instructs `sweep every feature` / `across all features` in its own
     (non-parent-quote) scope.
+
+    **(a.2) The feature-set signal counts EDIT-PATH references, not bare
+    name mentions.** A single-feature sub-issue's descriptive PROSE often names
+    OTHER features without editing them — e.g. `replace with rabbit-issue
+    vocabulary`, `mirrors what rabbit-spec does`. A bare feature-NAME token in
+    prose names a vocabulary or a peer for comparison, not an EDIT TARGET, and
+    MUST NOT inflate the cross-scope feature count. The feature-set signal (a)
+    therefore counts ONLY EDIT-TARGET feature references: the `feature:` label
+    PLUS every distinct `.claude/features/<name>/` PATH literally referenced in
+    the body (the dirs the issue will actually write under). Bare-name matches
+    (the Inv 26 method-(c) whole-word detection) are EXCLUDED from this signal,
+    though they remain in `features` / `cross_scope_features` for Stage-2
+    dispatch shaping. Consequence: a sub-issue scoped to ONE feature (one
+    `feature:` label, edit-paths under one feature dir) whose prose merely
+    MENTIONS other feature NAMES yields `cross_scope: false`; an issue whose
+    body lists 2 or more distinct feature EDIT-PATHS still yields `cross_scope:
+    true` (a.1's distinct-feature-path signal is the edit-path signal).
 
     **(b) plan-batch routes `cross_scope` items distinctly.** A `cross_scope`
     item MUST NOT be shaped as `parallel-per-feature`, even when its
@@ -3464,8 +3483,10 @@ Phase E merges complete.
     for a body referencing two or more `.claude/features/<name>/` paths and for
     a `repo-wide` phrase, `false` for an ordinary single-feature body, and
     `false` for a single-feature decomposition sub-issue whose only cross-scope
-    phrase appears on a parent-reference line — per (a.1) — so plan-batch shapes
-    that sub-issue `parallel-per-feature`; plan-batch shapes a genuine
+    phrase appears on a parent-reference line — per (a.1) — and `false` for a
+    single-feature sub-issue whose prose merely MENTIONS other feature NAMES
+    with no second EDIT-PATH — per (a.2) — so plan-batch shapes those sub-issues
+    `parallel-per-feature`; plan-batch shapes a genuine
     `cross_scope` item as `multi-subagent-barrier` / `decomposition` and never
     `parallel-per-feature`, listing it under `cross_scope_items`) and
     `test/test-spec-cross-scope-invariant.py` (the spec carries Inv 56,

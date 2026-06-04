@@ -387,8 +387,21 @@ def _dispatch_shape(item, decompose_threshold):
     cross_scope signal forces the barrier/decomposition lane: decomposition at/
     above the threshold, else multi-subagent-barrier. Bounded scope itself is
     unchanged — the fix is routing, not widening subagent scope.
+
+    Cross-scope authority (Inv 56(a.2) / issue #669): the body-derived
+    `cross_scope` signal is the AUTHORITATIVE multi-feature gate when present.
+    triage-issue.py counts only EDIT-PATH references for `cross_scope` (bare
+    feature-NAME mentions in prose are excluded), but the `features` list still
+    carries those bare names for visibility (Inv 26 / #443). So an item with an
+    EXPLICIT `cross_scope: false` is single-scope work — the labelled feature is
+    the only edit target — and is shaped parallel-per-feature even when its
+    `features` count is inflated by bare-name mentions. Only when `cross_scope`
+    is ABSENT (legacy pre-#433 records) does the raw `features` count drive the
+    multi-feature lane.
     """
     n = _feature_count(item)
+    if item.get("cross_scope") is False:
+        return SHAPE_PARALLEL
     if n >= decompose_threshold:
         return SHAPE_DECOMPOSITION
     if n > 1 or item.get("cross_scope"):

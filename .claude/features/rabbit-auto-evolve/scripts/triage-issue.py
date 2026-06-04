@@ -5,16 +5,18 @@ Per rabbit-auto-evolve spec.md Inv 3, emits a JSON object on stdout with
 fields: issue, decision, reason_code, rationale, feature, features,
 cross_scope, cross_scope_features, contract_touch, priority, issue_type,
 created_at, blocked_by, planning_note. The `cross_scope` boolean (Inv 56 /
-issue #433) is True when the issue body implicates more than one feature dir
-(the `features` set spans >= 2 dirs) OR a cross-scope phrase ("repo-wide",
-"across all features", "rename across", ...) appears OUTSIDE a parent-reference
-line; it routes a body-spanning sweep to plan-batch.py's barrier/decomposition
-lane instead of ordinary parallel-per-feature single-feature work. The
-parent-reference exclusion (Inv 56(a.1) / issue #667) drops parent-pointer
-lines ("Sub-issue of parent #N", "part of #N", ...) before the phrase check so
-a single-feature decomposition sub-issue that merely QUOTES its parent's
-"repo-wide" framing is not mis-flagged. `cross_scope_features` echoes the same
-sorted `features` set.
+issue #433) is True when the issue body implicates more than one feature
+EDIT-PATH (the label PLUS body `.claude/features/<name>/` PATH references span
+>= 2 dirs; bare feature-NAME mentions in prose are EXCLUDED per Inv 56(a.2) /
+issue #669) OR a cross-scope phrase ("repo-wide", "across all features",
+"rename across", ...) appears OUTSIDE a parent-reference line; it routes a
+body-spanning sweep to plan-batch.py's barrier/decomposition lane instead of
+ordinary parallel-per-feature single-feature work. The parent-reference
+exclusion (Inv 56(a.1) / issue #667) drops parent-pointer lines ("Sub-issue of
+parent #N", "part of #N", ...) before the phrase check so a single-feature
+decomposition sub-issue that merely QUOTES its parent's "repo-wide" framing is
+not mis-flagged. `cross_scope_features` echoes the broader Inv 26 `features`
+set (which still includes bare-name mentions for Stage-2 dispatch shaping).
 The `issue_type` (bug/enhancement, from the GH label) and `created_at` (the
 issue's ISO-8601 UTC creation timestamp) fields (issue #606 / Inv 51) feed
 the bug-vs-enhancement and age signals of plan-batch.py's _computed_score
@@ -364,27 +366,49 @@ def _strip_parent_ref_lines(body):
     return "\n".join(kept)
 
 
-def _cross_scope(features, title, body):
+def _edit_target_features(feature_label, body):
+    """EDIT-TARGET feature set for the cross-scope signal (Inv 56(a.2)).
+
+    Counts ONLY feature references that denote an EDIT TARGET — the `feature:`
+    label PLUS every distinct `.claude/features/<name>/` PATH literally
+    referenced in the body (dirs the issue will actually write under). Bare
+    feature-NAME mentions in descriptive prose (the Inv 26 method-(c) whole-word
+    detection) are EXCLUDED: a phrase like "use rabbit-issue vocabulary" names a
+    vocabulary, not an edit target, and MUST NOT inflate the cross-scope count
+    (issue #669). This is intentionally NARROWER than `_feature_set`, which keeps
+    bare names for Stage-2 dispatch shaping.
+    """
+    feats = set()
+    if feature_label:
+        feats.add(feature_label)
+    for m in _FEATURE_PATH.findall(body or ""):
+        feats.add(m)
+    return feats
+
+
+def _cross_scope(feature_label, title, body):
     """True iff the issue implicates more than one feature (Inv 56).
 
     Two independent signals (either suffices):
-      (a) the distinct feature set `features` (the Inv 26 union of the label,
-          body `.claude/features/<name>/` paths, and bare names) spans >= 2
-          feature dirs; OR
+      (a) the EDIT-TARGET feature set (the label PLUS every distinct body
+          `.claude/features/<name>/` PATH reference — dirs the issue will write
+          under) spans >= 2 feature dirs (Inv 56(a.2) / issue #669); OR
       (b) an explicit cross-scope phrase (repo-wide, across all features,
           rename across, ...) appears in the title OR in the body OUTSIDE any
           parent-reference line (Inv 56(a.1) / issue #667).
 
-    The phrase signal excludes parent-reference lines so a single-feature
-    decomposition sub-issue that merely QUOTES its parent's "repo-wide" framing
-    on a parent-pointer line is NOT mis-flagged cross_scope. The feature-set
-    signal (a) is unchanged: a body whose OWN scope enumerates >= 2 distinct
-    feature dirs still yields True.
+    Signal (a) counts EDIT-PATH references only — bare feature-NAME mentions in
+    prose are excluded (issue #669) so a single-feature sub-issue whose text
+    merely names another feature (e.g. "mirrors rabbit-spec") is NOT mis-flagged
+    cross_scope. The phrase signal (b) excludes parent-reference lines so a
+    sub-issue that merely QUOTES its parent's "repo-wide" framing on a
+    parent-pointer line is NOT mis-flagged (Inv 56(a.1) / issue #667). A body
+    whose OWN scope enumerates >= 2 distinct feature EDIT-PATHS still yields True.
 
-    Default False when at most one feature dir is implicated and no cross-scope
-    phrase appears outside parent-reference lines.
+    Default False when at most one edit-target feature dir is implicated and no
+    cross-scope phrase appears outside parent-reference lines.
     """
-    if len(features) >= 2:
+    if len(_edit_target_features(feature_label, body)) >= 2:
         return True
     phrase_text = f"{title or ''}\n{_strip_parent_ref_lines(body)}"
     return bool(_CROSS_SCOPE_PHRASE.search(phrase_text))
@@ -672,11 +696,13 @@ def classify(issue_num, repo_root):
     # and the cross-scope signal (Inv 56).
     features = _feature_set(feature_label, body, title, feature_names)
     # `cross_scope` (Inv 56 / issue #433): true when the issue body spans more
-    # than one feature dir OR carries a cross-scope phrase. Drives plan-batch's
-    # body-derived routing so a body-spanning sweep is shaped barrier/
-    # decomposition, never parallel-per-feature, even when its single feature:
-    # LABEL would mislead the planner.
-    cross_scope = _cross_scope(features, title, body)
+    # than one feature EDIT-PATH (label + body `.claude/features/<name>/` paths;
+    # bare-name mentions excluded per Inv 56(a.2) / issue #669) OR carries a
+    # cross-scope phrase. Drives plan-batch's body-derived routing so a
+    # body-spanning sweep is shaped barrier/decomposition, never
+    # parallel-per-feature, even when its single feature: LABEL would mislead
+    # the planner.
+    cross_scope = _cross_scope(feature_label, title, body)
 
     base = {
         "issue": issue_num,
@@ -689,13 +715,15 @@ def classify(issue_num, repo_root):
         # issue with no body paths and no bare-name mention it is [].
         "features": features,
         # `cross_scope` (Inv 56 / issue #433) is True when the issue body
-        # implicates more than one feature (the `features` set spans >= 2 dirs)
-        # OR a cross-scope phrase ("repo-wide", "across all features", ...)
-        # appears OUTSIDE a parent-reference line (Inv 56(a.1) / issue #667).
-        # Always present on EVERY decision; plan-batch.py routes a
-        # cross_scope item to multi-subagent-barrier/decomposition, never
-        # parallel-per-feature. `cross_scope_features` is the same sorted
-        # `features` set so the dispatcher sees WHICH features it spans.
+        # implicates more than one feature EDIT-PATH (the label + body
+        # `.claude/features/<name>/` paths span >= 2 dirs; bare-name mentions
+        # excluded per Inv 56(a.2) / issue #669) OR a cross-scope phrase
+        # ("repo-wide", "across all features", ...) appears OUTSIDE a
+        # parent-reference line (Inv 56(a.1) / issue #667). Always present on
+        # EVERY decision; plan-batch.py routes a cross_scope item to
+        # multi-subagent-barrier/decomposition, never parallel-per-feature.
+        # `cross_scope_features` echoes the broader `features` set (with
+        # bare-name mentions) so the dispatcher sees WHICH features it spans.
         "cross_scope": cross_scope,
         "cross_scope_features": features,
         "contract_touch": ctouch,

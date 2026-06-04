@@ -13,6 +13,28 @@ own version.
 
 ## Version notes
 
+- **v0.48.2 — 2026-06-04** — Cross-scope false-positive fix for bare
+  feature-NAME mentions (Inv 56(a.2), issue #669; follow-up to #667). A
+  single-feature sub-issue (one `feature:` label, edit-paths under ONE feature
+  dir) whose descriptive PROSE merely MENTIONS other feature NAMES (e.g. `use
+  rabbit-issue vocabulary`, `mirrors rabbit-spec`) was mis-flagged `cross_scope:
+  true` because the cross-scope feature-set signal counted bare feature-name
+  tokens; plan-batch then mis-shaped it `multi-subagent-barrier` instead of
+  `parallel-per-feature` (observed live for #420's sub-issues #660–#666, whose
+  descriptions say `use rabbit-issue vocabulary`). `triage-issue.py` now derives
+  the cross-scope feature-set signal from EDIT-TARGET references ONLY — the
+  `feature:` label plus every distinct `.claude/features/<name>/` PATH reference
+  (dirs the issue will write under); bare feature-NAME mentions are excluded
+  (`_edit_target_features`). `plan-batch.py` treats an EXPLICIT `cross_scope:
+  false` as the authoritative single-scope signal, shaping such an item
+  `parallel-per-feature` even when its `features` count is inflated by bare-name
+  mentions (the `features` list still carries those names for Inv 26 / #443
+  visibility). Genuine detection is preserved: a body listing ≥ 2 distinct
+  feature EDIT-PATHS still yields `cross_scope: true` (barrier/decomposition), as
+  does a bare repo-wide sweep outside a parent-reference line. Spec Inv 56 gains
+  sub-section (a.2); `test/test-cross-scope.py` adds a bare-name-mention case
+  (cross_scope false → parallel-per-feature) and a ≥2-edit-path case
+  (cross_scope true). No contract change; `docs/contract.md` version unchanged.
 - **v0.48.1 — 2026-06-04** — Cross-scope false-positive fix for decomposition
   sub-issues (Inv 56(a.1), issue #667). A shape-3 decomposition sub-issue scoped
   to exactly ONE feature typically QUOTES its parent's framing on a

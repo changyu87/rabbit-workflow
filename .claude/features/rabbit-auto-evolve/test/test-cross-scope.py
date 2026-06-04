@@ -311,6 +311,92 @@ with tempfile.TemporaryDirectory() as repo_root:
                "cross_scope true")
 
 
+# (2f) BARE-NAME MENTION (issue #669): a single-feature sub-issue (one
+#      feature: label, edit-paths under ONE feature dir) whose PROSE merely
+#      MENTIONS other feature NAMES ("use rabbit-issue vocabulary", "mirrors
+#      rabbit-spec") must yield cross_scope FALSE. A bare feature-NAME token in
+#      prose names a vocabulary/peer, not an EDIT TARGET, so it MUST NOT inflate
+#      the cross-scope feature count. End-to-end: triage emits cross_scope:false
+#      AND plan-batch shapes the record parallel-per-feature. This reproduces
+#      the live #660-style sub-issue (description says "use rabbit-issue
+#      vocabulary") that was mis-flagged cross_scope:true before #669.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    make_feature(repo_root, "rabbit-issue")
+    make_feature(repo_root, "rabbit-spec")
+    body = (
+        "Scope: only this feature. Replace the legacy term with rabbit-issue "
+        "vocabulary, mirroring what rabbit-spec does. Rename the marker token "
+        "in .claude/features/rabbit-auto-evolve/scripts/triage-issue.py and add "
+        "a test under .claude/features/rabbit-auto-evolve/test/."
+    )
+    issue_payload = json.dumps({
+        "number": 6604,
+        "title": "Adopt rabbit-issue vocabulary in rabbit-auto-evolve",
+        "body": body,
+        "labels": [{"name": "feature:rabbit-auto-evolve"},
+                   {"name": "priority:medium"}, {"name": "rabbit-managed"}],
+        "state": "OPEN", "comments": [],
+    })
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, issue_payload)
+    r = triage_record("triage-bare-name", repo_root, 6604, shim_dir)
+    if r is not None:
+        if r.get("cross_scope") is not False:
+            fail(f"triage-bare-name: a single-feature sub-issue whose prose only "
+                 f"MENTIONS other feature NAMES (no second edit-path) must be "
+                 f"cross_scope FALSE; got {r.get('cross_scope')!r}; record={r!r}")
+        else:
+            ok("triage: bare other-feature-name mention (one edit-path) -> "
+               "cross_scope false")
+            out = plan_json("plan-bare-name", [r])
+            if out is not None:
+                shape = out.get("dispatch_shapes", {}).get(str(r.get("issue")))
+                if shape != "parallel-per-feature":
+                    fail(f"plan-bare-name: a bare-name-mention sub-issue must be "
+                         f"shaped parallel-per-feature; got {shape!r}")
+                elif out.get("cross_scope_items") != []:
+                    fail(f"plan-bare-name: a non-cross_scope sub-issue must NOT "
+                         f"appear in cross_scope_items; got "
+                         f"{out.get('cross_scope_items')!r}")
+                else:
+                    ok("plan: bare-name-mention sub-issue -> parallel-per-feature "
+                       "(not in cross_scope_items)")
+
+
+# (2g) GENUINE 2-EDIT-PATH issue (issue #669 — preserve true detection): a body
+#      that lists >=2 distinct feature EDIT-PATHS (not mere name mentions) still
+#      yields cross_scope TRUE even when each dir is named only via its path and
+#      no cross-scope phrase appears.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    make_feature(repo_root, "rabbit-issue")
+    body = (
+        "Scope: this changes two feature dirs together. Edit "
+        ".claude/features/rabbit-auto-evolve/scripts/triage-issue.py and "
+        ".claude/features/rabbit-issue/scripts/format.py in one pass."
+    )
+    issue_payload = json.dumps({
+        "number": 6605, "title": "Two-feature edit",
+        "body": body,
+        "labels": [{"name": "feature:rabbit-auto-evolve"},
+                   {"name": "priority:high"}, {"name": "rabbit-managed"}],
+        "state": "OPEN", "comments": [],
+    })
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, issue_payload)
+    r = triage_record("triage-two-editpaths", repo_root, 6605, shim_dir)
+    if r is not None:
+        if r.get("cross_scope") is not True:
+            fail(f"triage-two-editpaths: a body listing >=2 distinct feature "
+                 f"EDIT-PATHS MUST keep cross_scope true; got "
+                 f"{r.get('cross_scope')!r}; record={r!r}")
+        else:
+            ok("triage: >=2 distinct feature edit-paths -> cross_scope true")
+
+
 # (3) Ordinary single-feature body, no phrase, no extra paths -> false.
 with tempfile.TemporaryDirectory() as repo_root:
     make_feature(repo_root, "rabbit-auto-evolve")
