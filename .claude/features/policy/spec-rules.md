@@ -115,18 +115,22 @@ principle above; cite the source, do not restate it.
   (triggering), body correctness, and deployment correctness.
 
 - **No Subagent-Dispatching Skill Inside `Agent()`** (derives from §2
-  Schemas and Contracts). A skill whose body dispatches a subagent (any
-  `Agent(subagent_type=...)` call) MUST NOT itself be invoked inside an
-  `Agent()` call. Doing so creates illegal two-level nesting
+  Schemas and Contracts). A skill whose body dispatches a subagent — ANY
+  `Agent(...)` dispatch, whether TYPED (`Agent(subagent_type=...)`) or
+  UNTYPED (a default/general-purpose `Agent(prompt=...)` with no
+  `subagent_type`) — MUST NOT itself be invoked inside an `Agent()` call.
+  Doing so creates illegal two-level nesting
   (`main → Agent level 1 → subagent level 2`), which Claude Code does not
   support. To parallelize work done by such a skill, do NOT wrap the skill
   in parallel `Agent()` calls; instead dispatch the UNDERLYING subagent
   directly at level 1 (`main → N parallel subagents`), reusing the skill's
   mechanics through shared `scripts/` (prompt assembly, result
   persistence). The skill wrapper exists for a single, main-session
-  invocation. Known subagent-dispatching skills are `rabbit-spec-create`
-  (dispatches rabbit-spec-creator) and `rabbit-feature-touch` (dispatches
-  tdd-subagent); any future subagent-dispatching skill inherits this
-  constraint.
+  invocation. The known subagent-dispatching skills are `rabbit-spec-create`
+  (dispatches rabbit-spec-creator), `rabbit-feature-touch` (dispatches
+  tdd-subagent), and `rabbit-feature-scope` (dispatches an untyped
+  default-model Agent); this named set is authoritative, and
+  any future subagent-dispatching skill inherits this constraint and MUST
+  be added to it.
 
 ---
