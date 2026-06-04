@@ -197,6 +197,120 @@ with tempfile.TemporaryDirectory() as repo_root:
         ok("triage: 'across all features' phrase -> cross_scope true")
 
 
+# (2c) DECOMPOSITION SUB-ISSUE (issue #667): a single-feature sub-issue whose
+#      ONLY cross-scope phrase ('repo-wide') appears on a PARENT-REFERENCE line
+#      that QUOTES the parent's framing -> cross_scope FALSE. The body's own
+#      scope touches exactly one feature dir. End-to-end: triage emits
+#      cross_scope:false AND plan-batch shapes the record parallel-per-feature.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    body = (
+        "Sub-issue of parent #420 (retire B/B terminology repo-wide).\n\n"
+        "Scope: only this feature. Rename the marker token in "
+        ".claude/features/rabbit-auto-evolve/scripts/triage-issue.py and add "
+        "a test under .claude/features/rabbit-auto-evolve/test/."
+    )
+    issue_payload = json.dumps({
+        "number": 6601, "title": "Retire B/B terminology in rabbit-auto-evolve",
+        "body": body,
+        "labels": [{"name": "feature:rabbit-auto-evolve"},
+                   {"name": "priority:medium"}, {"name": "rabbit-managed"}],
+        "state": "OPEN", "comments": [],
+    })
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, issue_payload)
+    r = triage_record("triage-subissue", repo_root, 6601, shim_dir)
+    if r is not None:
+        if r.get("cross_scope") is not False:
+            fail(f"triage-subissue: a single-feature decomposition sub-issue "
+                 f"whose only 'repo-wide' phrase is on a parent-reference line "
+                 f"must be cross_scope FALSE; got {r.get('cross_scope')!r}; "
+                 f"record={r!r}")
+        else:
+            ok("triage: decomposition sub-issue (parent-quote 'repo-wide') -> "
+               "cross_scope false")
+            # End-to-end: the same triaged record must shape
+            # parallel-per-feature (a genuine single-feature work item).
+            out = plan_json("plan-subissue", [r])
+            if out is not None:
+                shape = out.get("dispatch_shapes", {}).get(str(r.get("issue")))
+                if shape != "parallel-per-feature":
+                    fail(f"plan-subissue: decomposition sub-issue must be shaped "
+                         f"parallel-per-feature; got {shape!r}")
+                elif out.get("cross_scope_items") != []:
+                    fail(f"plan-subissue: a non-cross_scope sub-issue must NOT "
+                         f"appear in cross_scope_items; got "
+                         f"{out.get('cross_scope_items')!r}")
+                else:
+                    ok("plan: decomposition sub-issue -> parallel-per-feature "
+                       "(not in cross_scope_items)")
+
+
+# (2d) GENUINE repo-wide issue (issue #667 — preserve true detection): a bare
+#      non-parent 'sweep every feature' instruction in the issue's OWN scope
+#      STILL yields cross_scope TRUE even though one feature is labelled.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    body = (
+        "Sweep every feature and rename the legacy token in each one. "
+        "This must be applied across all features in a single pass."
+    )
+    issue_payload = json.dumps({
+        "number": 6602, "title": "Repo-wide token rename",
+        "body": body,
+        "labels": [{"name": "feature:rabbit-auto-evolve"},
+                   {"name": "priority:high"}, {"name": "rabbit-managed"}],
+        "state": "OPEN", "comments": [],
+    })
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, issue_payload)
+    r = triage_record("triage-genuine-bare", repo_root, 6602, shim_dir)
+    if r is not None:
+        if r.get("cross_scope") is not True:
+            fail(f"triage-genuine-bare: a bare (non-parent) 'sweep every "
+                 f"feature' / 'across all features' instruction MUST keep "
+                 f"cross_scope true; got {r.get('cross_scope')!r}; record={r!r}")
+        else:
+            ok("triage: genuine bare 'sweep every feature' -> cross_scope true")
+
+
+# (2e) GENUINE multi-feature issue (issue #667 — preserve true detection): the
+#      issue's OWN body enumerates >=2 distinct feature paths OUTSIDE any
+#      parent-reference line -> cross_scope TRUE, even alongside a parent
+#      reference line. The parent-reference exclusion strips only the parent
+#      line, not the body's own multi-feature enumeration.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    make_feature(repo_root, "rabbit-issue")
+    make_feature(repo_root, "rabbit-meta")
+    body = (
+        "Part of #900 (umbrella cleanup).\n\n"
+        "This sub-issue itself rewrites .claude/features/rabbit-issue/scripts/a.py "
+        "and .claude/features/rabbit-meta/docs/spec.md together in one pass."
+    )
+    issue_payload = json.dumps({
+        "number": 6603, "title": "Cross-feature rewrite",
+        "body": body,
+        "labels": [{"name": "feature:rabbit-auto-evolve"},
+                   {"name": "priority:high"}, {"name": "rabbit-managed"}],
+        "state": "OPEN", "comments": [],
+    })
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, issue_payload)
+    r = triage_record("triage-genuine-multipath", repo_root, 6603, shim_dir)
+    if r is not None:
+        if r.get("cross_scope") is not True:
+            fail(f"triage-genuine-multipath: the body's OWN >=2 distinct "
+                 f"feature paths (outside the parent line) MUST keep "
+                 f"cross_scope true; got {r.get('cross_scope')!r}; record={r!r}")
+        else:
+            ok("triage: genuine multi-feature body (with a parent line) -> "
+               "cross_scope true")
+
+
 # (3) Ordinary single-feature body, no phrase, no extra paths -> false.
 with tempfile.TemporaryDirectory() as repo_root:
     make_feature(repo_root, "rabbit-auto-evolve")

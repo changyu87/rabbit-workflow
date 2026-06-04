@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.48.0
+version: 0.48.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -3426,6 +3426,24 @@ Phase E merges complete.
     with a sparse `features` set still yields `cross_scope: true` with whatever
     features were detected.
 
+    **(a.1) Parent-reference lines are excluded from the cross-scope phrase
+    signal.** A shape-3 DECOMPOSITION sub-issue, scoped to exactly ONE feature,
+    typically QUOTES its parent's framing — e.g. a line reading `Sub-issue of
+    parent (retire B/B terminology repo-wide)`. The quoted
+    `repo-wide` (or any cross-scope phrase) on such a line describes the
+    PARENT's scope, not the sub-issue's own scope, so it MUST NOT contribute to
+    the sub-issue's `cross_scope` signal. A line is a PARENT-REFERENCE line when
+    it matches a parent-pointer phrasing (case-insensitive: `sub-issue of`,
+    `subissue of`, `part of #<n>`, `parent #<n>`, `parent issue #<n>`, `child
+    of #<n>`, `decomposed from #<n>`, `split from #<n>`). The cross-scope
+    PHRASE signal is therefore computed over the body with parent-reference
+    lines REMOVED: a cross-scope phrase sets `cross_scope: true` only when it
+    appears OUTSIDE a parent-reference line. The distinct-feature-set signal is
+    unchanged — an issue whose OWN (non-parent-quote) body enumerates 2 or more
+    distinct feature paths STILL yields `cross_scope: true`, as does an issue
+    that instructs `sweep every feature` / `across all features` in its own
+    (non-parent-quote) scope.
+
     **(b) plan-batch routes `cross_scope` items distinctly.** A `cross_scope`
     item MUST NOT be shaped as `parallel-per-feature`, even when its
     feature-dir count is 1 (its single `feature:` label would otherwise mislead
@@ -3444,11 +3462,14 @@ Phase E merges complete.
 
     Enforced by `test/test-cross-scope.py` (triage sets `cross_scope: true`
     for a body referencing two or more `.claude/features/<name>/` paths and for
-    a `repo-wide` phrase, `false` for an ordinary single-feature body;
-    plan-batch shapes a `cross_scope` item as `multi-subagent-barrier` /
-    `decomposition` and never `parallel-per-feature`, listing it under
-    `cross_scope_items`) and `test/test-spec-cross-scope-invariant.py` (the
-    spec carries Inv 56).
+    a `repo-wide` phrase, `false` for an ordinary single-feature body, and
+    `false` for a single-feature decomposition sub-issue whose only cross-scope
+    phrase appears on a parent-reference line — per (a.1) — so plan-batch shapes
+    that sub-issue `parallel-per-feature`; plan-batch shapes a genuine
+    `cross_scope` item as `multi-subagent-barrier` / `decomposition` and never
+    `parallel-per-feature`, listing it under `cross_scope_items`) and
+    `test/test-spec-cross-scope-invariant.py` (the spec carries Inv 56,
+    including the parent-reference exclusion).
 
 ## Known gaps
 

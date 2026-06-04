@@ -7,10 +7,14 @@ cross_scope, cross_scope_features, contract_touch, priority, issue_type,
 created_at, blocked_by, planning_note. The `cross_scope` boolean (Inv 56 /
 issue #433) is True when the issue body implicates more than one feature dir
 (the `features` set spans >= 2 dirs) OR a cross-scope phrase ("repo-wide",
-"across all features", "rename across", ...) appears; it routes a body-spanning
-sweep to plan-batch.py's barrier/decomposition lane instead of ordinary
-parallel-per-feature single-feature work. `cross_scope_features` echoes the
-same sorted `features` set.
+"across all features", "rename across", ...) appears OUTSIDE a parent-reference
+line; it routes a body-spanning sweep to plan-batch.py's barrier/decomposition
+lane instead of ordinary parallel-per-feature single-feature work. The
+parent-reference exclusion (Inv 56(a.1) / issue #667) drops parent-pointer
+lines ("Sub-issue of parent #N", "part of #N", ...) before the phrase check so
+a single-feature decomposition sub-issue that merely QUOTES its parent's
+"repo-wide" framing is not mis-flagged. `cross_scope_features` echoes the same
+sorted `features` set.
 The `issue_type` (bug/enhancement, from the GH label) and `created_at` (the
 issue's ISO-8601 UTC creation timestamp) fields (issue #606 / Inv 51) feed
 the bug-vs-enhancement and age signals of plan-batch.py's _computed_score
@@ -329,6 +333,36 @@ _CROSS_SCOPE_PHRASE = re.compile(
     re.IGNORECASE,
 )
 
+# Parent-reference lines (Inv 56(a.1) / issue #667). A shape-3 decomposition
+# sub-issue is scoped to ONE feature but typically QUOTES its parent's framing
+# on a parent-pointer line (e.g. "Sub-issue of parent #420 (retire B/B
+# terminology repo-wide)"). A cross-scope phrase quoted on such a line describes
+# the PARENT's scope, not the sub-issue's own scope, so it must NOT contribute
+# to the cross-scope PHRASE signal. We detect a parent-reference line by a
+# parent-pointer phrasing anywhere on the line (whole-phrase, case-insensitive).
+_PARENT_REF_LINE = re.compile(
+    r"sub-?issue of"
+    r"|child of\s+#\d+"
+    r"|parent issue\s+#\d+"
+    r"|parent\s+#\d+"
+    r"|part of\s+#\d+"
+    r"|decomposed from\s+#\d+"
+    r"|split from\s+#\d+",
+    re.IGNORECASE,
+)
+
+
+def _strip_parent_ref_lines(body):
+    """Return `body` with every parent-reference line removed (Inv 56(a.1)).
+
+    A line matching `_PARENT_REF_LINE` quotes the PARENT's framing, not the
+    sub-issue's own scope, so it is dropped before the cross-scope PHRASE signal
+    is evaluated.
+    """
+    lines = (body or "").splitlines()
+    kept = [ln for ln in lines if not _PARENT_REF_LINE.search(ln)]
+    return "\n".join(kept)
+
 
 def _cross_scope(features, title, body):
     """True iff the issue implicates more than one feature (Inv 56).
@@ -337,15 +371,23 @@ def _cross_scope(features, title, body):
       (a) the distinct feature set `features` (the Inv 26 union of the label,
           body `.claude/features/<name>/` paths, and bare names) spans >= 2
           feature dirs; OR
-      (b) the title/body carries an explicit cross-scope phrase (repo-wide,
-          across all features, rename across, ...).
-    Default False when at most one feature dir is implicated and no phrase
-    appears.
+      (b) an explicit cross-scope phrase (repo-wide, across all features,
+          rename across, ...) appears in the title OR in the body OUTSIDE any
+          parent-reference line (Inv 56(a.1) / issue #667).
+
+    The phrase signal excludes parent-reference lines so a single-feature
+    decomposition sub-issue that merely QUOTES its parent's "repo-wide" framing
+    on a parent-pointer line is NOT mis-flagged cross_scope. The feature-set
+    signal (a) is unchanged: a body whose OWN scope enumerates >= 2 distinct
+    feature dirs still yields True.
+
+    Default False when at most one feature dir is implicated and no cross-scope
+    phrase appears outside parent-reference lines.
     """
     if len(features) >= 2:
         return True
-    text = f"{title or ''}\n{body or ''}"
-    return bool(_CROSS_SCOPE_PHRASE.search(text))
+    phrase_text = f"{title or ''}\n{_strip_parent_ref_lines(body)}"
+    return bool(_CROSS_SCOPE_PHRASE.search(phrase_text))
 
 
 # Research/investigation classification (issue #478) ------------------------
@@ -649,7 +691,8 @@ def classify(issue_num, repo_root):
         # `cross_scope` (Inv 56 / issue #433) is True when the issue body
         # implicates more than one feature (the `features` set spans >= 2 dirs)
         # OR a cross-scope phrase ("repo-wide", "across all features", ...)
-        # appears. Always present on EVERY decision; plan-batch.py routes a
+        # appears OUTSIDE a parent-reference line (Inv 56(a.1) / issue #667).
+        # Always present on EVERY decision; plan-batch.py routes a
         # cross_scope item to multi-subagent-barrier/decomposition, never
         # parallel-per-feature. `cross_scope_features` is the same sorted
         # `features` set so the dispatcher sees WHICH features it spans.
