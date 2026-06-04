@@ -1,6 +1,6 @@
 {
   "name": "contract",
-  "version": "2.16.0",
+  "version": "2.17.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "tdd_state": "test-green",
@@ -11,5 +11,5 @@
   "manifest": [],
   "runtime": {},
   "configuration": [],
-  "spec_no_change_reason": "wire new E2E test into run.py; internal test ALLOWLIST extension only (#556b)"
+  "spec_no_change_reason": "spec edits applied in IMPLEMENT step (removal pass)"
 }
