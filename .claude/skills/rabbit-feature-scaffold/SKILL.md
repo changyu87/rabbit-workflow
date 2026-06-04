@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-scaffold
 description: Scaffold a new rabbit feature directory with the standard skeleton (feature.json, docs/spec.md, docs/contract.md, test/run.py) in standalone mode, or scaffold a per-project plugin feature under .rabbit/rabbit-project/features/<name>/ with path-glob mapping in plugin mode. Use when the user asks to create, scaffold, or initialize a new rabbit feature — phrases like "create a new feature", "scaffold a feature called X", "/rabbit-feature-scaffold", "set up a new rabbit feature", "bootstrap a feature dir". Invoke as Skill("rabbit-feature-scaffold", args: "<feature-name>") in standalone mode or Skill("rabbit-feature-scaffold", args: "<feature-name> <path-glob> [<path-glob>...]") in plugin mode.
-version: 1.4.0
+version: 1.5.0
 owner: rabbit-workflow team
 deprecation_criterion: When this skill's scaffolding step is absorbed into a native `rabbit-feature` CLI subcommand or into the rabbit CLI itself.
 ---
@@ -151,7 +151,7 @@ they just need confirmation and a path to navigate to.
   truth for what a fresh feature looks like; if you want to change it, change
   the scaffolder, not the post-scaffold output.
 - Do not invoke other skills. This skill is a small wrapper; it has no need
-  to call out to `rabbit-feature-spec`, `rabbit-feature-touch`, or anything
+  to call out to `rabbit-spec-create`, `rabbit-feature-touch`, or anything
   else. The caller decides what comes next.
 - Do not skip the `validate_feature` check. A scaffold that doesn't pass
   contract validation is a latent bug — fail loudly instead.
