@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.51.0
+version: 0.52.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -214,9 +214,9 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       `contract.lib.mutation.set_json_key` — flips `bypass-permissions`
       configurable to `true`.
    3. Write `<repo_root>/.rabbit-auto-evolve-active` via
-      `contract.lib.mutation.write_marker` — signals auto-evolve mode
-      is active (consumed by `contract.lib.runtime` Inv 64 suppression
-      hook and by the runtime banner APIs in Inv 65).
+      `contract.lib.mutation.write_marker` — signals auto-evolve mode active
+      (consumed by `contract.lib.runtime` Inv 64 suppression and the Inv 65
+      banner APIs).
 
    On `off`, the script performs a FULL teardown — innermost
    runtime markers first, then the three activation mutations in
@@ -228,51 +228,39 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       `.rabbit-auto-evolve-restart-needed`,
       `.rabbit-auto-evolve-aborted`) via
       `contract.lib.mutation.delete_marker`. Idempotent
-      (delete-if-exists; missing markers are no-ops). Doing this
-      first means a subsequent `on` lands in a clean state.
+      (delete-if-exists; missing markers are no-ops). The script deletes
+      these itself — manual `rm` of non-allowlisted markers is scope-guard
+      blocked — so a subsequent `on` lands in a clean state.
    2. Delete `.rabbit-auto-evolve-active`.
    3. Delete the `permissions.defaultMode` key via
       `contract.lib.mutation.delete_json_key`.
    4. Delete `.rabbit-human-approval-bypass` via
       `contract.lib.mutation.delete_marker`.
 
-   `off` performs the FULL teardown: it deletes the four loop-runtime
-   markers itself rather than leaving them for the user to clean up
-   manually (which scope-guard then denies because literal `rm`/`touch`
-   of non-allowlisted markers is blocked).
-
-   Failure handling: abort on first error and roll back any prior steps
+   Failure handling: abort on first error and roll back prior steps
    best-effort (delete a just-written marker; restore the prior
-   `permissions.defaultMode` value if step 2 had succeeded). Report the
-   failed step and the rollback outcome on stderr. Exit code: 0 on full
-   success; non-zero on any step failure (after rollback attempt).
+   `permissions.defaultMode` if step 2 succeeded). Report the failed step
+   and rollback outcome on stderr. Exit code: 0 on full success; non-zero on
+   any step failure (after rollback attempt).
 
-   Idempotency: both `on` and `off` are clean no-ops when invoked in the
-   already-target steady state (the mutation APIs in
-   `contract.lib.mutation` are already idempotent for marker writes and
-   JSON key sets/deletes; the script's role is only ordering and
-   rollback coordination).
+   Idempotency: both `on` and `off` are clean no-ops in the already-target
+   steady state (the `contract.lib.mutation` APIs are themselves idempotent;
+   the script only owns ordering and rollback coordination).
 
-   **Branded confirmation on success** (per contract Inv 48 — brand
-   prefix is owned by `rabbit_print`). On `on` full success, the script
-   emits two lines to stdout via
-   `contract.lib.runtime.rabbit_print`:
+   **Branded confirmation on success** (per contract Inv 48 — brand prefix
+   owned by `rabbit_print`). On `on` full success the script emits two lines
+   via `contract.lib.runtime.rabbit_print`:
 
    - Line 1 — red — `🚀 AUTONOMOUS-EVOLVE MODE CONFIGURED — restart Claude Code to activate`
    - Line 2 — yellow — `👉 After restart, run: /rabbit-auto-evolve start`
 
-   On `off` full success, the script emits a single line to stdout
-   via `rabbit_print`:
+   On `off` full success it emits one line via `rabbit_print`:
 
    - green — `✅ Autonomous-evolve mode deactivated — full teardown complete`
 
-   SKILL.md's `on` / `off` subcommand bodies surface the script's
-   stdout verbatim to the user (no skill-generated paraphrase) — the
-   message text lives in the script so it stays centralized.
-
-   The branded confirmation lives in the script (not a skill-generated
-   paraphrase) so the message carries the same visual weight as the rest
-   of the rabbit surface and stays centralized.
+   SKILL.md's `on` / `off` subcommand bodies surface the script's stdout
+   verbatim (no skill-generated paraphrase); the message text lives in the
+   script so it stays centralized.
 
    Enforced by `test/test-set-evolve-mode.py` using
    `tempfile.TemporaryDirectory()` fixtures (per rabbit-config Inv 17
@@ -350,70 +338,58 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    The `issue_type` and `created_at` fields (see Inv 51) feed the
    bug-vs-enhancement and age signals of the loop's computed priority score
    (Inv 46). `issue_type` is `"bug"` when the issue carries a GitHub `bug`
-   label, `"enhancement"` when it carries an `enhancement` label, else `null`
-   (a `bug` label wins if both are present). `created_at` echoes the issue's
-   ISO-8601 UTC creation timestamp (the `createdAt` field of the same single
-   `gh issue view` call, trailing-`Z` shape preserved), or `null` when gh does
-   not return it. Both are emitted on EVERY triage record so `plan-batch.py`'s
-   `_computed_score` can consume them; without them the bug and age signals
-   silently contribute zero (the dead-letter symptom).
+   label, `"enhancement"` for an `enhancement` label, else `null` (`bug`
+   wins if both are present). `created_at` echoes the issue's ISO-8601 UTC
+   creation timestamp (the `createdAt` field of the same single `gh issue
+   view` call, trailing-`Z` preserved), or `null` when gh omits it. Both are
+   emitted on EVERY triage record so `plan-batch.py`'s `_computed_score` can
+   consume them; without them the bug and age signals silently contribute zero.
 
-   The `priority` field is the value of the issue's
-   `priority:<level>` label (`"priority:high"` → `"high"`), or `null` when
-   no `priority:` label is present. It is the PRIMARY ordering key
-   `plan-batch.py` consumes for Stage-1 selection (Inv 4): a
-   triage object that omits `priority` makes every item sort at the
-   no-priority rank, silently collapsing the priority-primary ordering back
-   to the contract-touch-only tiebreak. Triage therefore MUST emit
-   `priority` on every record.
+   The `priority` field is the value of the issue's `priority:<level>` label
+   (`"priority:high"` → `"high"`), or `null` when no `priority:` label is
+   present. It is the PRIMARY ordering key `plan-batch.py` consumes for
+   Stage-1 selection (Inv 4); an omitted `priority` collapses the
+   priority-primary ordering to the contract-touch-only tiebreak, so triage
+   MUST emit `priority` on every record.
 
-   The `features` field (Inv 26) is the sorted, distinct
-   set of feature directories the item touches: the union of THREE detection
-   methods —
+   The `features` field (Inv 26) is the sorted, distinct set of feature
+   directories the item touches — the basis for the per-item dispatch shape
+   (Stage 2) — computed as the union of THREE detection methods:
    (a) the `feature:<name>` label;
    (b) every `.claude/features/<name>/` path literally referenced in the
    issue body; and
    (c) every canonical feature name (discovered by listing
    `.claude/features/` at triage time) that appears as a whole word
    (word-boundary `\b<name>\b` match) in the issue body OR title. Method (c)
-   catches issues that name features in prose or a markdown
-   table without the full path — e.g. a body that says "touches
-   rabbit-auto-evolve, rabbit-issue, rabbit-meta" yields a 3-feature set even
-   though no `.claude/features/<name>/` path is written. Without (c) such an
-   issue was mis-seen as single-feature and got the wrong dispatch shape.
-   It is the basis `plan-batch.py` uses to choose a per-item dispatch shape
-   (Stage 2). A malformed-labels issue with no body paths and no bare
+   catches features named in prose or a markdown table without the full path;
+   without it such issues were mis-seen as single-feature and got the wrong
+   dispatch shape. A malformed-labels issue with no body paths and no bare
    feature-name mention carries `features: []`.
 
    The decision set is EXACTLY `{work, defer, close-not-planned, research}`.
-   `close-completed`
-   is NEVER emittable from triage — a
-   completed closure can only be claimed once work has actually landed,
-   which is the merge phase's job (Inv 6 step 4 via `item-status.py close
-   --reason completed --commit-sha`), never triage's. Every `defer` and
-   every `research` decision MUST carry a non-empty `planning_note`
-   describing what analysis would unblock dispatch (for `defer`) or what
-   should be investigated and reported (for `research`); the `work` and
-   `close-not-planned` decisions carry `planning_note: null`.
+   `close-completed` is NEVER emittable from triage — a completed closure
+   can only be claimed once work has landed, which is the merge phase's job
+   (Inv 6 step 4 via `item-status.py close --reason completed
+   --commit-sha`). Every `defer` and `research` decision MUST carry a
+   non-empty `planning_note` describing what analysis would unblock dispatch
+   (`defer`) or what to investigate (`research`); `work` and
+   `close-not-planned` carry `planning_note: null`.
 
    ### Research/investigation classification
 
-   A research/spike/investigation item ("study X", "evaluate Y", "survey
-   Z", "assess the tradeoffs", "recommend an approach", "compare A and B",
-   "explore N") asks for FINDINGS or a RECOMMENDATION, not a behavior
-   change. The loop's only code-producing execution shape is a TDD-cycle
-   PR. Without a dedicated home such items would be wrongly closed
-   `not-planned` — a valid issue silently dropped, in violation of
-   Inv 25 (convergence). Triage classifies them as
-   `decision=research` so the loop can route them to the research dispatch
-   shape (Inv 27) instead.
+   A research/spike/investigation item ("study X", "evaluate Y", "recommend
+   an approach", "compare A and B") asks for FINDINGS, not a behavior change.
+   Since the loop's only code-producing shape is a TDD-cycle PR, without a
+   dedicated home such items would be wrongly closed `not-planned` — a valid
+   issue silently dropped, violating Inv 25 (convergence). Triage classifies
+   them `decision=research` so the loop routes them to the research dispatch
+   shape (Inv 27).
 
    Research classification runs AFTER rule 7 would otherwise return `work`
-   (alongside the comment-thread reconciliation) — it NEVER overrides a
-   `close-not-planned` / `blocked` / `malformed-labels` verdict (those are
-   structural facts, not intent wording). Detection signals (ALL of the
-   following must hold, so a normal "implement X" item is never
-   misrouted):
+   (alongside comment-thread reconciliation) — it NEVER overrides a
+   `close-not-planned` / `blocked` / `malformed-labels` verdict (structural
+   facts, not intent wording). Detection signals (ALL must hold, so a normal
+   "implement X" item is never misrouted):
 
    1. **Research verb present.** The title OR body contains a
       research/investigation verb (case-insensitive whole-word match):
@@ -434,13 +410,11 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    code).
 
    The script reads only:
-   - Issue metadata (title, body, labels, state, state reason, and the
-     full comment thread) via `gh issue view <N> --repo <repo> --json
+   - Issue metadata (title, body, labels, state, state reason, full comment
+     thread) via `gh issue view <N> --repo <repo> --json
      number,title,body,labels,state,stateReason,comments`. The `comments`
-     array (`[{body, createdAt, author}, …]`, chronological order, oldest
-     first) and `stateReason` (e.g. `"reopened"`) are read so triage can
-     reconcile a correction comment that supersedes the original body
-     (see "Comment-thread reconciliation" below).
+     array (`[{body, createdAt, author}, …]`, oldest first) and `stateReason`
+     (e.g. `"reopened"`) feed comment-thread reconciliation (below).
    - The named feature's spec head matter (YAML frontmatter and the
      first markdown section only) — for rule 6. The path is resolved
      dual-read: the flat `docs/spec.md` layout is preferred, with the
@@ -482,20 +456,15 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    ### Comment-thread reconciliation
 
    Triage MUST read the FULL comment thread, not just the issue body. An
-   issue's body is frozen at filing time; a maintainer who later realizes
-   the original framing was wrong corrects it in a comment (and often
-   reopens or retitles the issue). Reading only the body makes the loop
-   implement the stale original design. The canonical incident: an issue
-   body said "rename `docs/spec/` → `specs/`" but a later correction
-   comment and a retitle said the correct target was `docs/` with a
-   CHANGELOG; reading only the body would ship a batch of PRs of wrong
-   work.
+   issue's body is frozen at filing time; a maintainer who realizes the
+   framing was wrong corrects it in a comment (often reopening or
+   retitling). Reading only the body makes the loop implement the stale
+   original design.
 
    Reconciliation runs AFTER rule 7 would otherwise return `work` — it
    never overrides a `close-not-planned` / `blocked` / `malformed-labels`
-   verdict (those are determined by structural facts, not by intent
-   wording). It refines an actionable issue's verdict between `work` and
-   `defer`:
+   verdict (structural facts, not intent wording). It refines an actionable
+   issue's verdict between `work` and `defer`:
 
    1. **Detection signals** (any one triggers reconciliation analysis):
       - The issue carries at least one comment AND
@@ -580,12 +549,8 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    (`close-not-planned`, `defer`, etc.) — the caller MAY pass a
    pre-filtered work-only array OR the full unfiltered triage output of
    `triage-batch.py` (per Inv 18 the standard pipe is
-   `fetch-queue | triage-batch | plan-batch`). `research` items are
-   retained: they appear in `selection_order` and carry a
-   `dispatch_shapes` entry of `"research"`, and their issue numbers are
-   listed under the `research_items` key — but they NEVER enter
-   `barrier_first` or `groups` (they produce findings, not code, so the
-   conflict-graph parallel-dispatch grouping does not apply to them).
+   `fetch-queue | triage-batch | plan-batch`). `research` items are retained
+   (see "Research items" below).
 
    ```json
    {
@@ -618,21 +583,17 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    The script is a pure JSON processor — no `gh`, no `git`, no
    filesystem reads or writes other than stdin/stdout.
 
-   `--max-parallel N` (positional flag, default 4) is the canonical
-   surface for the cap. The flag MUST be
-   integer-valued and ≥ 1; non-integer or `< 1` exits non-zero with
-   argparse error.
+   `--max-parallel N` (default 4) is the cap. It MUST be integer-valued and
+   ≥ 1; non-integer or `< 1` exits non-zero with an argparse error.
 
    Algorithm (computed-score-primary, barrier-secondary):
 
    **The loop's `computed_score` is the PRIMARY ordering key; the
    contract-touch barrier is the SECONDARY tiebreak, never a global override
-   of the score.** A higher-scoring non-contract item is dispatched BEFORE a
+   of the score.** A higher-scoring non-contract item dispatches BEFORE a
    lower-scoring contract-touch item; the barrier only sequences
    contract-touch items ahead of non-contract items _within the same score
-   tier_. See Inv 46 for the `computed_score` signal blend (the filer
-   `priority:` label is one weighted input among several, no longer the sole
-   key).
+   tier_. See Inv 46 for the `computed_score` signal blend.
 
    1. **Sort ALL work items by the composite key**
       `(computed_score desc, contract_touch_rank, issue)`:
@@ -641,38 +602,28 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       - `contract_touch_rank`: `True`->0, `False`->1 (contract-touch
         items lead within the same score tier).
       - `issue` ascending (stable final tiebreak).
-   2. **`barrier_first` is the leading run of contract-touch items** in
-      that sorted order — i.e. the contract-touch items that appear
-      before the first non-contract item. If the highest-scoring item is
-      a non-contract item, `barrier_first` is EMPTY. The remainder
-      (everything from the first non-contract item onward, in the same
-      sorted order) feeds the conflict-graph grouping.
+   2. **`barrier_first` is the leading run of contract-touch items** in that
+      sorted order (those before the first non-contract item; EMPTY if the
+      highest-scoring item is non-contract). The remainder (from the first
+      non-contract item onward) feeds the conflict-graph grouping.
    3. **Build a conflict graph on the remainder.** Nodes are issues; an
       edge exists between A and B iff `A.feature == B.feature`.
-   4. **Greedy graph coloring.** Walk the remainder in the composite-key
-      order and assign each issue the lowest-numbered color (group index)
-      that has no neighbor already in it. `groups` is the color
-      partition, in color order.
-   5. **Apply `--max-parallel` cap.** Any group whose size exceeds the
-      cap is split into sub-groups of size ≤ cap. Sub-groups appear as
-      separate consecutive entries in the output `groups` list
-      (parallel-safe within each sub-group; the loop processes
-      sub-groups sequentially).
+   4. **Greedy graph coloring.** Walk the remainder in composite-key order,
+      assigning each issue the lowest-numbered color (group index) with no
+      neighbor in it. `groups` is the color partition, in color order.
+   5. **Apply `--max-parallel` cap.** A group over the cap is split into
+      consecutive sub-groups of size ≤ cap (parallel-safe within each;
+      processed sequentially).
 
    `selection_order` (Stage 1) and `barrier_first` (Stage 2) agree on
-   ordering: both are derived from priority-desc ranking, so a
-   contract-touch item never leads `barrier_first` unless it also leads
-   `selection_order`.
+   ordering: both derive from priority-desc ranking, so a contract-touch
+   item never leads `barrier_first` unless it also leads `selection_order`.
 
-   **Research items.** A `decision == "research"` item is the
-   4th dispatch shape. It is included in `selection_order` (sorted by the
-   same composite key) and gets a `dispatch_shapes[issue] = "research"`
-   entry, and its issue number is listed under `research_items` (sorted
-   ascending). It is EXCLUDED from `barrier_first` and from the
-   conflict-graph `groups` partition: research produces findings, not code,
-   so the same-feature conflict edges and the contract-touch barrier do not
-   apply. The output always carries a `research_items` key (an empty list
-   when no research items are present).
+   **Research items** (the 4th dispatch shape) are sorted into
+   `selection_order` by the same composite key and get
+   `dispatch_shapes[issue] = "research"` plus a `research_items` entry
+   (sorted ascending; the key is always present, empty when none). They are
+   EXCLUDED from `barrier_first` and `groups` (findings, not code).
 
    Exit code: 0 on success; non-zero on malformed stdin JSON or
    invalid `--max-parallel` value.
@@ -773,39 +724,29 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    2. Invoke `safety-check.py <pr#> --phase merge`. If non-zero exit →
       record `{pr: N, status: "skipped", reason: "safety-check-failed"}`.
    3. Otherwise call `gh pr merge <#> --squash` — a DIRECT squash merge,
-      NOT `--auto`. The `--auto` flag requires the repo to have auto-merge
-      enabled (`enablePullRequestAutoMerge`); on a repo without it,
-      `gh pr merge --auto` fails for any PR that is not immediately
-      mergeable with `Auto merge is not allowed for this repository`
-     . Mergeability is already gated by the base==dev refusal
-      (step 1) plus `safety-check.py` (step 2), so a direct merge is
-      correct and never depends on the repo's auto-merge setting. On
-      success → `{pr: N, status: "merged"}`; on failure →
+      NOT `--auto` (the `--auto` flag fails with `Auto merge is not allowed
+      for this repository` on repos without auto-merge enabled, and
+      mergeability is already gated by steps 1–2). On success →
+      `{pr: N, status: "merged"}`; on failure →
       `{pr: N, status: "failed", reason: "gh-merge-failed: <stderr>"}`.
    4. After a successful merge, parse the merged PR body
       (`gh pr view <#> --json body -q .body`) for closing-keyword
       references — `Fixes #N` / `Closes #N` / `Resolves #N` and their
-      common variants (`Fixed`, `Closed`, `Resolved`, `Close`, `Fix`,
-      `Resolve`), case-insensitive. For each distinct referenced issue,
-      fetch the merge SHA (`gh pr view <#> --json mergeCommit
-      -q .mergeCommit.oid`) and invoke
-      `item-status.py close <N> --reason completed --commit-sha <sha>
+      variants (`Fixed`, `Closed`, `Resolved`, `Close`, `Fix`, `Resolve`),
+      case-insensitive. For each distinct referenced issue, fetch the merge
+      SHA (`gh pr view <#> --json mergeCommit -q .mergeCommit.oid`) and
+      invoke `item-status.py close <N> --reason completed --commit-sha <sha>
       --comment "TDD cycle complete in <sha>"`. The `--commit-sha` flag is
-      REQUIRED by `item-status.py` for a `completed` closure — a completed
-      closure must point at the real merge commit
-      that landed the work. This is required because
-      GitHub's native `Fixes/Closes/Resolves` auto-close fires ONLY when
-      a PR merges to the repo's default branch (`main`); auto-evolve PRs
-      always target `dev`, so without this explicit step referenced
-      issues would stay open indefinitely. `item-status.py close` is
-      idempotent against already-closed issues, so it is called
-      unconditionally. Successfully-closed issue numbers are added to the
-      result row under `closed_issues` (sorted); issues whose close
-      command exited non-zero are recorded under `close_failed` and a
-      warning is written to stderr. A close failure NEVER fails the
-      merge — the result still reports `status: "merged"`
-      (backward-compatible). `item-status.py` is resolved via the
-      `RABBIT_ISSUE_SCRIPT_DIR` env var when set, else relative to the
+      REQUIRED for a `completed` closure (it must point at the real merge
+      commit). This explicit step is necessary because GitHub's native
+      `Fixes/Closes/Resolves` auto-close fires ONLY on a merge to the default
+      branch (`main`); auto-evolve PRs target `dev`, so referenced issues
+      would otherwise stay open. `item-status.py close` is idempotent against
+      already-closed issues, so it is called unconditionally. Closed issue
+      numbers go in the result row under `closed_issues` (sorted); close
+      failures go under `close_failed` with a stderr warning and NEVER fail
+      the merge (`status` stays `"merged"`). `item-status.py` is resolved via
+      the `RABBIT_ISSUE_SCRIPT_DIR` env var when set, else relative to the
       repo's `.claude/features/rabbit-issue/scripts/`.
 
    Emits the result array on stdout. Exit 0 always except argparse /
@@ -834,12 +775,11 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 
    ### Refusal invariant
 
-   `merge-prs.py` will NEVER call `gh pr merge` on a PR whose base is
-   not `dev`. `cleanup-branches.py` will NEVER call any deletion
-   command for a branch not matching `^feat/.+`. These refusals are
-   defense-in-depth above `safety-check.py` — even if `safety-check.py`
-   were skipped or compromised, the local refusal check still gates
-   destructive actions.
+   `merge-prs.py` will NEVER call `gh pr merge` on a PR whose base is not
+   `dev`; `cleanup-branches.py` will NEVER call any deletion command for a
+   branch not matching `^feat/.+`. These refusals are defense-in-depth above
+   `safety-check.py` — they gate destructive actions even if `safety-check.py`
+   were skipped.
 
    ### Tests
 
@@ -855,15 +795,13 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    - No-`--auto` regression: on the happy path, the recorded
      `gh pr merge` invocation MUST NOT contain `--auto` (it still uses
      `--squash`). Guards against the auto-merge-not-enabled failure.
-   - Close-after-merge: PR body references issues via
-     `Fixes`/`Closes`/`Resolves` (case-insensitive) → after a successful
-     merge, the item-status.py shim is invoked once per distinct issue
-     with `close <N> --reason completed --commit-sha <merge-sha>
-     --comment "...<sha>..."`; the
-     result row carries `closed_issues`. No refs → item-status.py NOT
-     invoked, `closed_issues == []`. item-status.py failure → merge still
-     `status: "merged"`, failed issue under `close_failed`, stderr
-     warning emitted. Skipped/non-merged PRs NEVER invoke item-status.py.
+   - Close-after-merge: a PR body referencing issues via
+     `Fixes`/`Closes`/`Resolves` (case-insensitive) → the item-status.py
+     shim is invoked once per distinct issue with `close <N> --reason
+     completed --commit-sha <merge-sha> --comment "...<sha>..."` and the row
+     carries `closed_issues`. No refs → not invoked, `closed_issues == []`.
+     A close failure → merge still `status: "merged"`, the issue under
+     `close_failed`, stderr warning. Skipped/non-merged PRs NEVER invoke it.
 
    `test/test-cleanup-branches.py`:
    - Smoke: `--help` exits 0 with recognizable usage text.
@@ -881,12 +819,11 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    `python3 .claude/features/rabbit-auto-evolve/scripts/release-bump.py <pr#> [--features-threshold N]`
    reads the merged PR's labels, body, and changed-file list, applies
    the design-doc §9 bump table, runs `safety-check.py` under
-   `--phase release --next-tag vX.Y.Z` BEFORE any git operation,
-   then creates and pushes the annotated
-   tag and a GitHub release targeting `dev`.
+   `--phase release --next-tag vX.Y.Z` BEFORE any git operation, then creates
+   and pushes the annotated tag and a GitHub release targeting `dev`.
 
-   `--features-threshold N` (default 3) configures the
-   distinct-features-touched threshold for the major-bump rule.
+   `--features-threshold N` (default 3) sets the distinct-features-touched
+   threshold for the major-bump rule.
 
    Bump table (evaluated top-down; major triggers always override
    minor/patch):
@@ -918,11 +855,9 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       `priority-low-medium`.
 
    This fallback is necessary because the dispatch flow opens PRs WITHOUT
-   copying the source issue's priority label, so without it every
-   auto-evolve release would patch-bump and minor/major signals would
-   never reach the version stream. Resolution is deterministic
-   (script-tier, no LLM inference) and changes nothing about the
-   major-trigger rows, which are evaluated first and unaffected.
+   copying the source issue's priority label; without it every auto-evolve
+   release would patch-bump. Resolution is deterministic (script-tier) and
+   does not affect the major-trigger rows, which are evaluated first.
 
    Execution order:
    1. `gh pr view <#> --json number,title,labels,body,files` → fetch
@@ -931,24 +866,18 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       closing issue from the body and `gh issue view <N> --json labels`
       to obtain the fallback priority (Inv 48).
    2. Apply bump table → determine the bump kind.
-   3. `git describe --tags --abbrev=0` → `prior_tag`. When the repository
-      has zero tags (the first-release case) `git describe` exits
-      non-zero; this is NOT an error. In that case `prior_tag` is `null`
-      and `next_tag` is the fixed first-release version `v1.0.0`
-      regardless of the bump kind (the bump table only governs how an
-      EXISTING version is incremented). When a `prior_tag` exists,
-      compute `next_tag = vX.Y.Z` by applying the bump kind to it.
+   3. `git describe --tags --abbrev=0` → `prior_tag`. A tag-free repo (the
+      first-release case) makes `git describe` exit non-zero; this is NOT an
+      error — `prior_tag` is `null` and `next_tag` is the fixed `v1.0.0`
+      regardless of bump kind (the bump table only increments an EXISTING
+      version), so the loop cuts its first release instead of crashing. When
+      a `prior_tag` exists, `next_tag = vX.Y.Z` by applying the bump kind.
    4. `safety-check.py <pr#> --phase release --next-tag <next_tag>`.
       Non-zero → emit `{status: "skipped", reason: "safety-check-failed"}`
       and stop (no git mutation, exit 0).
    5. `git tag -a <next_tag> -m "<auto-evolve> #<pr> <title>"`.
    6. `git push origin <next_tag>`.
    7. `gh release create <next_tag> --notes-from-tag --target dev`.
-
-   First release (zero prior tags): `prior_tag` is `null`, `next_tag` is
-   `v1.0.0`. This is what lets the auto-evolve loop cut its very first
-   release after a successful Phase 7 merge instead of crashing on a
-   tag-free `git describe`.
 
    Output JSON (single object on stdout):
 
@@ -1381,44 +1310,37 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     a subprocess for each input item; the per-issue triage objects
     are concatenated into a single array in input order.
 
-    Failure semantics: if any per-issue `triage-issue.py` invocation
-    exits non-zero, the failed issue gets a synthesized triage object
-    `{issue: N, decision: "defer", reason_code: "triage-failed",
-    rationale: "<stderr snippet>", feature: null, contract_touch: false,
-    blocked_by: []}` and the batch CONTINUES processing remaining
-    issues. The script never aborts mid-batch on a single-issue
-    failure — graceful degradation matters for tick liveness.
+    Failure semantics: a per-issue `triage-issue.py` non-zero exit yields a
+    synthesized object `{issue: N, decision: "defer", reason_code:
+    "triage-failed", rationale: "<stderr snippet>", feature: null,
+    contract_touch: false, blocked_by: []}` and the batch CONTINUES — the
+    script never aborts mid-batch (graceful degradation for tick liveness).
 
     Exit code: 0 on success (including with per-issue failures
     handled as defer entries); non-zero on malformed stdin JSON.
 
-    `triage-batch.py` uses the same `RABBIT_AUTO_EVOLVE_SCRIPT_DIR`
-    env override pattern as the marker scripts to locate
-    `triage-issue.py` (test seam).
+    `triage-batch.py` locates `triage-issue.py` via the same
+    `RABBIT_AUTO_EVOLVE_SCRIPT_DIR` env override as the marker scripts (test
+    seam).
 
-    **Anti-infinite-defer counter (Part B).**
-    `triage-batch.py` owns a per-issue consecutive-defer counter
-    persisted in `.rabbit/auto-evolve-state.json` under the
-    `defer_counts` map (keyed by issue-number string; state dir
-    resolved via `RABBIT_AUTO_EVOLVE_STATE_DIR`, matching
-    `update-state.py`). For each triaged issue:
+    **Anti-infinite-defer counter (Part B).** `triage-batch.py` owns a
+    per-issue consecutive-defer counter persisted in
+    `.rabbit/auto-evolve-state.json` under the `defer_counts` map (keyed by
+    issue-number string; state dir via `RABBIT_AUTO_EVOLVE_STATE_DIR`,
+    matching `update-state.py`). For each triaged issue:
 
-    - a `defer` decision INCREMENTS the issue's counter; if the
-      counter was already ≥ 3 (this would be the 4th consecutive
-      defer), the decision is FORCED to `work` with `reason_code:
-      defer-limit-reached`, the accumulated planning-note history is
-      surfaced in `planning_note`, and the counter resets to 0 —
-      dispatch is mandatory after 3 consecutive deferrals.
-    - any non-`defer` decision RESETS the issue's counter to 0 (the
-      counter tracks CONSECUTIVE defers, not lifetime).
+    - a `defer` decision INCREMENTS the issue's counter; if it was already
+      ≥ 3 (the 4th consecutive defer) the decision is FORCED to `work` with
+      `reason_code: defer-limit-reached`, the accumulated planning-note
+      history is surfaced in `planning_note`, and the counter resets to 0.
+    - any non-`defer` decision RESETS the counter to 0 (it tracks
+      CONSECUTIVE defers, not lifetime).
 
-    The updated `defer_counts` map is written back via an atomic
-    temp+rename (read-modify-write, preserving every other state
-    key). Persistence is best-effort: if no state file exists or it
-    fails to parse, counts default to empty and decisions pass
-    through unchanged — tick liveness must never depend on the state
-    file already existing. This enforces the convergence guarantee in
-    Inv 25.
+    The updated `defer_counts` map is written back via atomic temp+rename
+    (read-modify-write, preserving every other state key). Persistence is
+    best-effort: with no state file or a parse failure, counts default to
+    empty and decisions pass through — tick liveness must never depend on the
+    state file existing. This enforces the convergence guarantee in Inv 25.
 
     The canonical tick pipe in SKILL.md phases 3–5:
 
@@ -1428,9 +1350,8 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       | python3 .claude/features/rabbit-auto-evolve/scripts/plan-batch.py --max-parallel 4
     ```
 
-    `plan-batch.py` silently drops items with `decision != "work"`
-    (per Inv 4 update) so the unfiltered triage array passes through
-    cleanly.
+    `plan-batch.py` silently drops items with `decision != "work"` (per
+    Inv 4) so the unfiltered triage array passes through cleanly.
 
     Enforced by `test/test-triage-batch.py`:
     - Happy path: 3-item fetch-queue fixture on stdin + a
@@ -1903,13 +1824,10 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 29. **`status-report.py` owns the `status` subcommand output.** The CLI
     `python3 .claude/features/rabbit-auto-evolve/scripts/status-report.py`
     is the deterministic backing script for the read-only `status`
-    subcommand. Before this invariant the `status` section described its
-    output in prose and the dispatcher LLM-assembled an ad-hoc bash
-    pipeline (an `ls`/`cat`/`jq` improvisation) on each invocation — a
-    non-deterministic, untestable surface that drifts and emits ugly
-    `ls: cannot access ...` stderr noise on a fresh clone where the state
-    file and markers do not yet exist. Per spec-rules §1
-    (`script > CLI > spec > prompt`) this is replaced by a script.
+    subcommand. It replaces the prior LLM-assembled ad-hoc `ls`/`cat`/`jq`
+    pipeline — a non-deterministic, untestable surface that drifted and
+    emitted `ls: cannot access ...` noise on a fresh clone — per spec-rules
+    §1 (`script > CLI > spec > prompt`).
 
     The script reads ONLY:
     - `<repo_root>/.rabbit/auto-evolve-state.json` for the five state
@@ -1923,10 +1841,9 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       `.rabbit-auto-evolve-restart-needed`,
       `.rabbit-auto-evolve-aborted`).
 
-    It performs NO mutations, NO `gh`, and NO `git` shellouts. Repo root
-    resolution uses the `RABBIT_AUTO_EVOLVE_REPO_ROOT` env override with a
-    fallback to `os.getcwd()` (matching `check-preconditions.py` and
-    `banner-status.py`).
+    It performs NO mutations, NO `gh`, NO `git`. Repo root resolution uses
+    the `RABBIT_AUTO_EVOLVE_REPO_ROOT` env override with an `os.getcwd()`
+    fallback (matching `check-preconditions.py` / `banner-status.py`).
 
     Output is a single fixed-format JSON object on stdout:
 
@@ -1953,10 +1870,9 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       (file missing), or `"malformed"` (file present but empty / unparsable);
       the last two both yield the default field values.
 
-    Exit code is 0 on success (including every defaults path — missing,
-    empty, or malformed state file). A non-zero exit is reserved for
-    genuine invocation errors (e.g. an unwritable stdout). The verdict
-    lives in the JSON, never in the exit code.
+    Exit code is 0 on success (including every defaults path). A non-zero
+    exit is reserved for genuine invocation errors (e.g. unwritable stdout);
+    the verdict lives in the JSON, never in the exit code.
 
     The SKILL.md `status` subcommand body MUST invoke this script and MUST
     NOT LLM-assemble a bash pipeline or use bare `ls .rabbit-auto-evolve-*`
@@ -1983,13 +1899,11 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       and contains no bare `ls .rabbit-auto-evolve-*` pattern.
 
 30. **`run-post-merge.py` deterministically runs phases 8–10.**
-    Phases 8 (`release`), 9 (`cleanup`), and 10 (`catch-up`) were prose in
-    SKILL.md walked by the LLM orchestrator. After phase 7 (`merge`) lands a
-    large batch of PRs, the orchestrator ended the tick for scale/context
-    reasons and phases 8–10 were SILENTLY dropped — the same class of failure
-    as LLM-walked-prose phase skips. Per spec-rules §1
-    (`script > CLI > spec > prompt`) the phase-7-through-9 sequencing is moved
-    out of prose and into a deterministic, non-skippable script.
+    Phases 8 (`release`), 9 (`cleanup`), and 10 (`catch-up`) were LLM-walked
+    prose in SKILL.md, and after a large phase-7 (`merge`) batch the
+    orchestrator ended the tick for context reasons, SILENTLY dropping them.
+    Per spec-rules §1 (`script > CLI > spec > prompt`) the sequencing moves
+    into a deterministic, non-skippable script.
 
     ### `pending_post_merge` state field (schema 1.2.0)
 
@@ -1999,18 +1913,16 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     |---|---|---|
     | `pending_post_merge` | array of int (optional) | merged PR numbers owed post-merge processing (phases 8–10). Additive in schema 1.2.0; absent in pre-1.2.0 states |
 
-    `schema_version` is bumped to `"1.2.0"`. The change is backward-compatible
-    additive: a state written WITHOUT `pending_post_merge` still validates.
-    `start-loop.py`'s bootstrap default and `update-state.py`'s validator both
-    recognize the field. `merge-prs.py` gains a `--record-pending` flag: after
-    processing the PR list, when the flag is present it appends every
-    successfully-merged PR number (the `status == "merged"` rows) to the
-    `pending_post_merge` array in `<state_dir>/auto-evolve-state.json`
-    (read-modify-write, de-duplicated, atomic via temp+rename; the state dir
-    resolves via `RABBIT_AUTO_EVOLVE_STATE_DIR` with the
-    `<cwd>/.rabbit` fallback, matching `update-state.py`). Without
-    `--record-pending`, `merge-prs.py` behaves exactly as before (no state
-    write). The per-PR result array on stdout is unchanged in both modes.
+    `schema_version` is bumped to `"1.2.0"` (backward-compatible additive: a
+    state WITHOUT `pending_post_merge` still validates). `start-loop.py`'s
+    bootstrap default and `update-state.py`'s validator both recognize the
+    field. `merge-prs.py` gains a `--record-pending` flag: when present it
+    appends every successfully-merged PR number (the `status == "merged"`
+    rows) to the `pending_post_merge` array in
+    `<state_dir>/auto-evolve-state.json` (read-modify-write, de-duplicated,
+    atomic via temp+rename; state dir via `RABBIT_AUTO_EVOLVE_STATE_DIR` with
+    the `<cwd>/.rabbit` fallback). Without the flag `merge-prs.py` writes no
+    state; the per-PR stdout result array is unchanged in both modes.
 
     ### `scripts/run-post-merge.py`
 
@@ -2022,20 +1934,15 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
        it is a CLEAN NO-OP: emit `{"status": "noop", "pending": []}` on
        stdout and exit 0 (no phase script is invoked).
     3. Otherwise, in order:
-       - **Phase 8 (release):** invoke
-         `release-bump.py <pr#>` once per pending PR.
-         Release success is keyed on `release-bump.py`'s stdout JSON
-         `status` field — NOT merely on its exit code. `release-bump.py`
-         exits 0 even when its `status` is `"skipped"` (e.g.
-         safety-check-failed: no git mutation) or `"failed"`, so a
-         non-zero exit alone cannot distinguish an owed-but-dropped
-         release from a real one (observed live in production).
-         A release whose `status` is anything other than `"released"`
-         (including unparseable stdout) is treated as a NON-success: the
-         run does NOT proceed to cleanup/catch-up, the result `status` is
-         set to `"failed"` with the offending release JSON included, and
-         the run exits non-zero leaving `pending_post_merge` INTACT so the
-         next tick's tick-start drain retries the owed work.
+       - **Phase 8 (release):** invoke `release-bump.py <pr#>` once per
+         pending PR. Release success is keyed on `release-bump.py`'s stdout
+         JSON `status` field — NOT its exit code (it exits 0 even when
+         `status` is `"skipped"` or `"failed"`, so exit code alone cannot
+         distinguish an owed-but-dropped release). A `status` other than
+         `"released"` (including unparseable stdout) is a NON-success: the
+         run does NOT proceed to cleanup/catch-up, sets the result `status`
+         to `"failed"` with the offending release JSON, and exits non-zero
+         leaving `pending_post_merge` INTACT for the next tick's drain.
        - **Phase 9 (cleanup):** invoke
          `cleanup-branches.py <comma-joined pr-list>` once for the whole set.
        - **Phase 10 (catch-up):** invoke
@@ -2049,16 +1956,14 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     Sibling phase scripts (`release-bump.py`, `cleanup-branches.py`,
     `classify-merge-restart.py`) are resolved via the
     `RABBIT_AUTO_EVOLVE_SCRIPT_DIR` env var when set, else this script's own
-    dirname (matching `merge-prs.py` / `release-bump.py` /
-    `cleanup-branches.py`).
+    dirname.
 
     Exit code: 0 on success (including the no-op path). Non-zero on any phase
-    failure — either a phase script exiting non-zero, OR a release-bump
-    `status` other than `"released"` (see Phase 8) — so the caller
-    (`end-tick.py` / the SKILL schedule phase) sees a loud, locatable
-    failure instead of a silently-dropped phase. On a phase failure
-    `pending_post_merge` is NOT cleared, so the next tick's tick-start drain
-    retries the owed work.
+    failure — a phase script exiting non-zero, OR a release-bump `status`
+    other than `"released"` (see Phase 8) — so the caller (`end-tick.py` /
+    the SKILL schedule phase) sees a loud, locatable failure instead of a
+    silently-dropped phase. A failure leaves `pending_post_merge` uncleared
+    for the next tick's drain.
 
     ### SKILL invocation
 
@@ -2070,7 +1975,6 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     - At the START of the tick, between phase 1 (`restart-check`) and phase 3
       (`fetch`), to DRAIN any owed post-merge work from a previous truncated
       tick BEFORE fetching new work.
-
 
     Enforced by `test/test-run-post-merge.py`:
     - Non-empty `pending_post_merge` (e.g. `[10, 20]`): the
@@ -2163,14 +2067,14 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 
 32. **Tick scheduling is owned by the system cron WHERE AVAILABLE, with a
     durable `CronCreate` fallback where crontab is blocked; `ScheduleWakeup`
-    and `/loop` are NEVER used in rabbit-auto-evolve.** The prior architecture self-chained ticks from inside a live
-    Claude session via `ScheduleWakeup` (Inv 29 / Inv 31). That coupled the
-    loop's cadence to an open session and made the next tick a Claude-harness
-    side effect that could silently drop. The current architecture replaces
-    self-chaining with an EXTERNAL trigger: a single system `cron` entry is
-    the SOLE tick scheduler. The two-tier model and the CronCreate fallback
-    (below) REFINE this invariant in place, additively — without weakening
-    its observability goal.
+    and `/loop` are NEVER used in rabbit-auto-evolve.** The prior
+    architecture self-chained ticks from inside a live Claude session via
+    `ScheduleWakeup` (Inv 29 / Inv 31), coupling cadence to an open session
+    and making the next tick a Claude-harness side effect that could silently
+    drop. The current architecture replaces self-chaining with an EXTERNAL
+    trigger: a single system `cron` entry is the SOLE tick scheduler. The
+    two-tier model and the CronCreate fallback (below) REFINE this invariant
+    additively, without weakening its observability goal.
 
     **AMENDMENT — two-tier tick model.** The tick splits into
     two tiers with DIFFERENT re-trigger ownership:
@@ -2183,16 +2087,15 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     - The **DEVELOPMENT tick** (phase 6, `dispatch`) requires a live Claude
       session and CANNOT run headless. It is re-triggered by the scheduler
       firing `/rabbit-auto-evolve start` in a FRESH Claude context (a
-      one-shot), realizing the "development tier may self-resume
-      in-session" model. Each fired tick is a full in-session tick (it INCLUDES
-      phase 6). This is NOT inline continuation (the turn ENDS; a new context
-      picks up the next tick); see Inv 33 (D1).
+      one-shot). Each fired tick is a full in-session tick (INCLUDING phase
+      6). This is NOT inline continuation (the turn ENDS; a new context picks
+      up the next tick); see Inv 33 (D1).
 
     **AMENDMENT — scheduler mechanism + sanctioned fallback.**
-    The scheduler is the system `crontab` WHERE AVAILABLE (the default,
-    unchanged). On hosts where the `crontab` binary is administratively
-    blocked, a **durable `CronCreate` heartbeat is the SANCTIONED fallback**
-    trigger. The forbidden / permitted set is:
+    The scheduler is the system `crontab` WHERE AVAILABLE (the default). On
+    hosts where the `crontab` binary is administratively blocked, a **durable
+    `CronCreate` heartbeat is the SANCTIONED fallback** trigger. The
+    forbidden / permitted set is:
 
     - `ScheduleWakeup` remains FORBIDDEN: it requires `/loop` and couples
       cadence to an open session in the failure-prone way the cron switch fixed.
@@ -2200,25 +2103,20 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     - `CronCreate` (the Claude-Code idle-REPL prompt scheduler — `durable`-
       capable, persisting to `.claude/scheduled_tasks.json`; it is NOT
       `/loop` and NOT `ScheduleWakeup`) is PERMITTED solely as the fallback
-      trigger on crontab-restricted hosts, AND as the one-shot immediate-
-      refire mechanism (Inv 33 / D1) on those same hosts.
+      trigger on crontab-restricted hosts AND as the one-shot
+      immediate-refire mechanism (Inv 33 / D1) on those hosts.
 
     **CronCreate is a Claude TOOL, not a Python call.** A script CANNOT
     invoke `CronCreate`. So the scripts own the DETERMINISTIC parts —
     scheduler detection (Inv 34 / D2), the stale-marker running-guard
     (Inv 35 / D3), decision logging (Inv 36 / D4), and the schedule DECISION
-    (what to schedule and with which mechanism/params) — while the
-    DISPATCHER (the live Claude session, via SKILL.md instructions) performs
-    the irreducible tool action of calling `CronCreate(...)` with the params
-    a decision script emits, exactly as phase 6 dispatch is the
-    irreducible-Claude action.
-
-    **Observability is preserved, not by banning in-session scheduling.**
-    Inv 32's original goal — that no in-session bug can silently halt the
-    loop — is now upheld by Inv 35 (the running-guard clears STALE running
-    markers so the loop never wedges) and Inv 36 (every heartbeat/guard/
-    schedule decision is logged), NOT by forbidding the sanctioned
-    `CronCreate` fallback.
+    (what to schedule, with which mechanism/params) — while the DISPATCHER
+    (the live Claude session, via SKILL.md instructions) performs the
+    irreducible tool action of calling `CronCreate(...)` with the emitted
+    params, exactly as phase 6 dispatch is the irreducible-Claude action.
+    Inv 32's observability goal is upheld by Inv 35 (stale running-markers
+    are cleared so the loop never wedges) and Inv 36 (every heartbeat/guard/
+    schedule decision is logged), NOT by forbidding the `CronCreate` fallback.
 
     **The split between headless and session ticks.**
 
@@ -2231,11 +2129,10 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       `merge_ready` hint field, skipped when empty),
       phases 8–10 (`run-post-merge.py` when `pending_post_merge` non-empty),
       phase 11 (`persist`). `merge_ready` is a transient per-tick hint, NOT
-      part of the canonical Inv 9 state schema, so the headless tick drops it
-      before handing the state object to `update-state.py` (whose validator
-      rejects unknown keys). It does NOT run phase 6 (`dispatch`) — that
-      requires a Claude session — and it does NOT schedule anything (phase 12
-      is a no-op; the cron fires the next tick). A pending stop
+      part of the canonical Inv 9 schema, so the headless tick drops it before
+      handing the state to `update-state.py` (whose validator rejects unknown
+      keys). It does NOT run phase 6 (`dispatch`) and does NOT schedule
+      (phase 12 is a no-op; the cron fires the next tick). A pending stop
       (`.rabbit-auto-evolve-stop-requested`) or abort
       (`.rabbit-auto-evolve-aborted`) marker short-circuits the headless tick
       to a clean no-op.
@@ -2249,94 +2146,73 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     - `scripts/install-cron.py` installs ONE crontab entry of the form
       `*/30 * * * * cd <repo_root> && python3
       .claude/features/rabbit-auto-evolve/scripts/tick-headless.py >>
-      .rabbit/tick-headless.log 2>&1` using the `crontab -l` (read) +
-      append + `crontab -` (write) pattern. It is IDEMPOTENT: if an entry
-      mentioning `tick-headless.py` already exists, it is a clean no-op
-      (running twice yields exactly one entry). Exit 0 on success.
+      .rabbit/tick-headless.log 2>&1` via the `crontab -l` + append +
+      `crontab -` pattern. It is IDEMPOTENT (an existing `tick-headless.py`
+      entry yields a clean no-op; two runs leave exactly one entry). Exit 0.
 
-      **Restricted-host CronCreate fallback.** On some
-      hosts the `crontab` binary is administratively restricted ("You ...
-      are not allowed to use this program (crontab)"). In that case
-      `install-cron.py` DETECTS the restriction with the SAME permission-
-      denial signal `detect-scheduler.py` uses (Inv 34 / D2) — distinguished
-      from the legitimate "no crontab for user" empty case (exit 1 with
-      empty output) by a permission-denial signal in stderr (e.g. "not
-      allowed") on `crontab -l` — and FALLS
-      BACK GRACEFULLY rather than failing opaquely: it exits 0 and emits
-      (a) a machine-readable JSON signal
+      **Restricted-host CronCreate fallback.** When the `crontab` binary is
+      administratively restricted, `install-cron.py` DETECTS it via the SAME
+      permission-denial signal `detect-scheduler.py` uses (Inv 34 / D2) — a
+      "not allowed" stderr signal on `crontab -l`, distinguished from the
+      legitimate empty "no crontab for user" case — and FALLS BACK
+      GRACEFULLY: it exits 0 and emits (a) a machine-readable JSON signal
       `{"scheduler":"croncreate","action":"dispatcher-must-create-heartbeat",
       "cron":"13,43 * * * *","prompt":"/rabbit-auto-evolve start",
       "durable":true}` naming the durable `CronCreate` heartbeat the
       DISPATCHER must create (a script cannot call `CronCreate`), and (b) a
-      branded `rabbit_print` line (rendered via the contract `rabbit_print`
-      module; never hardcoded ANSI/brand strings, per contract Inv 48)
-      telling the user the durable `CronCreate` heartbeat will be set up on
-      the next `/rabbit-auto-evolve start`. The heartbeat cron expression
-      AVOIDS the `:00` and `:30` minute marks per CronCreate guidance (e.g.
-      `13,43 * * * *`, ~30-min cadence). **Single cadence source.** The tick
-      cadence is codified ONCE in `install-cron.py` as `CADENCE_MINUTES`; the
-      system-cron `SCHEDULE` (`*/N * * * *`) AND the fallback heartbeat both
-      DERIVE from it — the heartbeat is the same cadence shifted off the
-      `:00`/`:30` marks by a fixed offset (a deterministic transform, NOT a
-      second independent literal), so changing the cadence in one place
-      propagates to BOTH paths. `test/test-cron-cadence-source.py` pins the
-      codified source and every spec.md / SKILL.md cron literal to it so a
-      drift fails the gate.
+      branded `rabbit_print` line (per contract Inv 48) telling the user the
+      heartbeat will be set up on the next `/rabbit-auto-evolve start`. The
+      heartbeat cron AVOIDS the `:00`/`:30` minute marks per CronCreate
+      guidance (`13,43 * * * *`, ~30-min cadence). **Single cadence source.**
+      The cadence is codified ONCE in `install-cron.py` as `CADENCE_MINUTES`;
+      the system-cron `SCHEDULE` (`*/N * * * *`) AND the fallback heartbeat
+      both DERIVE from it (the heartbeat is the same cadence shifted off the
+      `:00`/`:30` marks by a fixed offset — a deterministic transform, not a
+      second literal), so a cadence change propagates to BOTH paths.
+      `test/test-cron-cadence-source.py` pins the source and every spec.md /
+      SKILL.md cron literal to it.
 
-      **Operational cadence config.** `CADENCE_MINUTES = 30` is
-      the DEFAULT, not a hard floor: the cadence is OPERATIONAL CONFIG that an
-      operator can tune without editing source. `install-cron.py` resolves the
-      EFFECTIVE cadence via `_configured_cadence()` with this precedence:
-      (1) the `RABBIT_AUTO_EVOLVE_CADENCE` env var; (2) a `cadence_minutes`
-      integer in rabbit-auto-evolve's OWN state-dir config file
+      **Operational cadence config.** `CADENCE_MINUTES = 30` is the DEFAULT,
+      not a floor: cadence is OPERATIONAL CONFIG tunable without editing
+      source. `install-cron.py` resolves the EFFECTIVE cadence via
+      `_configured_cadence()` in precedence: (1) the
+      `RABBIT_AUTO_EVOLVE_CADENCE` env var; (2) a `cadence_minutes` integer in
+      rabbit-auto-evolve's OWN state-dir config
       `<state_dir>/auto-evolve-cadence-config.json` (state dir via
-      `RABBIT_AUTO_EVOLVE_STATE_DIR`, else `<cwd>/.rabbit`, mirroring the
-      `auto-evolve-log-config.json` pattern — this is rabbit-auto-evolve's own
-      config, NOT rabbit-cage's `configuration` array nor rabbit-config); (3)
-      the `CADENCE_MINUTES` default. The resolved value is VALIDATED: it must
-      be an integer in `1..59` (a sub-hour cadence). A non-integer or
-      out-of-range value is REJECTED — `install-cron.py` falls back to the
-      default cadence and emits a branded warning, never installing a nonsense
-      cron line. BOTH scheduler paths read the SAME resolved cadence: the
-      system-cron entry line and the `CronCreate`-fallback heartbeat are each
-      derived from `_configured_cadence()` at install time, so an operator who
-      sets cadence to 15 gets a `*/15`-step system cron AND a four-mark
-      heartbeat at the derived minutes `13,28,43,58` on the fallback path —
-      never a split where one path moves and the other lags. The default (no
-      env, no config file) remains exactly `*/30 * * * *` and `13,43 * * * *`.
-      Enforced by `test/test-cron-cadence-config.py` (e2e). The crontab path
-      is unchanged when
-      available — cron remains the SOLE tick scheduler WHERE AVAILABLE; the
-      `CronCreate` heartbeat is the SANCTIONED fallback only on
-      crontab-restricted hosts so a mode flip is never blocked by an
-      un-installable cron. The `RABBIT_CRONTAB_CMD` and
-      `RABBIT_AUTO_EVOLVE_REPO_ROOT` overrides are preserved.
-    - `scripts/uninstall-cron.py` removes the entry via the
-      `crontab -l | grep -v tick-headless | crontab -` pattern. It is
-      IDEMPOTENT and safe when the entry is absent (and when no crontab
-      exists at all). Exit 0 on success including the absent case.
+      `RABBIT_AUTO_EVOLVE_STATE_DIR`, else `<cwd>/.rabbit`; NOT rabbit-cage's
+      `configuration` array nor rabbit-config); (3) the `CADENCE_MINUTES`
+      default. The resolved value is VALIDATED as an integer in `1..59`; a
+      non-integer or out-of-range value is REJECTED — falls back to the
+      default and emits a branded warning, never installing a nonsense cron.
+      BOTH paths read the SAME resolved cadence (e.g. cadence 15 yields a
+      `*/15` system cron AND a heartbeat at `13,28,43,58`), so they never
+      split. The default remains exactly `*/30 * * * *` and `13,43 * * * *`.
+      Enforced by `test/test-cron-cadence-config.py` (e2e). The
+      `RABBIT_CRONTAB_CMD` and `RABBIT_AUTO_EVOLVE_REPO_ROOT` overrides are
+      preserved.
+    - `scripts/uninstall-cron.py` removes the entry via
+      `crontab -l | grep -v tick-headless | crontab -`. It is IDEMPOTENT and
+      safe when the entry (or any crontab) is absent. Exit 0 including the
+      absent case.
     - `set-evolve-mode.py on` invokes `install-cron.py` after writing the
-      three activation markers; `set-evolve-mode.py off` invokes
-      `uninstall-cron.py` before tearing down the markers. A cron
-      install/uninstall failure is surfaced but does not by itself fail the
-      mode flip (best-effort, like the loop-runtime marker deletion).
+      activation markers; `off` invokes `uninstall-cron.py` before teardown.
+      A cron install/uninstall failure is surfaced but does not by itself
+      fail the mode flip (best-effort).
 
     Enforced by `test/test-cron-trigger.py` (e2e): `install-cron.py` installs
-    exactly one entry and is idempotent across two runs; `uninstall-cron.py`
-    removes it and is a safe no-op when absent; AND when the `crontab` shim
-    simulates a restricted host (permission denial on `-l`), `install-cron.py`
-    exits 0 without crashing and emits the `CronCreate`-fallback JSON signal
-    plus the branded heartbeat notice. By
+    exactly one entry and is idempotent; `uninstall-cron.py` removes it and is
+    a safe no-op when absent; AND on a restricted-host `crontab` shim
+    (permission denial on `-l`), `install-cron.py` exits 0 and emits the
+    `CronCreate`-fallback JSON signal plus the branded heartbeat notice. By
     `test/test-tick-headless.py` (e2e): the headless tick runs phases 0–1,
-    3–5 (plan only — no dispatch), 7, 8–10, and 11 without a Claude session,
-    and short-circuits on a stop/abort marker. And by
+    3–5 (plan only), 7, 8–10, and 11 without a Claude session, and
+    short-circuits on a stop/abort marker. And by
     `test/test-spec-cron-invariant.py` (e2e): this invariant text is present
-    in the spec AND `ScheduleWakeup` / `/loop` are absent from the spec and
-    from BOTH `SKILL.md` copies; `CronCreate` is PRESENT in the SOURCE
-    spec.md and SOURCE feature-dir `SKILL.md` as the documented fallback (the
-    deployed copy lags until redeployed and is NOT asserted for
-    `CronCreate` presence), and both copies document the system cron and the
-    headless tick.
+    AND `ScheduleWakeup` / `/loop` are absent from the spec and from BOTH
+    `SKILL.md` copies; `CronCreate` is PRESENT in the SOURCE spec.md and
+    SOURCE feature-dir `SKILL.md` as the documented fallback (the deployed
+    copy lags and is NOT asserted for `CronCreate`), and both copies document
+    the system cron and the headless tick.
 
 33. **Immediate fresh-context refire when work remains (D1).** At the END of a tick (and equivalently when a heartbeat enters a
     tick), the loop decides whether to schedule the next tick based on open
@@ -3418,95 +3294,76 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 56. **Cross-scope detection routes body-spanning issues away from
     `parallel-per-feature`.** `triage-issue.py` assigns exactly ONE feature to
     each issue from its `feature:` label, and Stage-2 shaping (Inv 26) keys the
-    dispatch shape off the distinct feature-dir count. But an issue whose BODY
-    touches MULTIPLE feature directories — a repo-wide sweep, a cross-feature
-    rename, an explicit multi-feature "Files touched" list — is a cross-scope
-    item: a single bounded per-feature TDD subagent (one
-    `.rabbit-scope-active-<feature>`) cannot write outside its one feature, so
-    dispatching such an item as ordinary `parallel-per-feature` single-feature
-    work aborts at the first cross-feature write. The fix is DETECTION +
-    ROUTING; bounded scope itself is unchanged (Inv 26(d) — bounded scope is a
-    hard constraint, not waivable).
+    shape off the distinct feature-dir count. But an issue whose BODY touches
+    MULTIPLE feature directories (a repo-wide sweep, a cross-feature rename) is
+    a cross-scope item: a single bounded per-feature TDD subagent (one
+    `.rabbit-scope-active-<feature>`) cannot write outside its feature, so
+    dispatching it as ordinary `parallel-per-feature` work aborts at the first
+    cross-feature write. The fix is DETECTION + ROUTING; bounded scope itself
+    is unchanged (Inv 26(d) — a hard constraint, not waivable).
 
     **(a) Triage emits a `cross_scope` signal.** `triage-issue.py` sets
     `cross_scope` (bool) on EVERY triage record. It is `true` when the issue
     body implicates more than one feature — either the EDIT-TARGET feature set
     spans 2 or more feature dirs (the label PLUS every distinct body
-    `.claude/features/<name>/` PATH reference — i.e. dirs the issue will write
-    under; bare feature-NAME mentions in descriptive prose do NOT count, see
-    (a.2)), OR the body/title carries an explicit cross-scope phrase
+    `.claude/features/<name>/` PATH reference; bare-name mentions do NOT count,
+    see (a.2)), OR the body/title carries an explicit cross-scope phrase
     (case-insensitive: `repo-wide`, `every feature`, `across all features`,
-    `across every feature`, `all features`, `rename across`). It is `false`
-    when at most one feature dir is implicated and no cross-scope phrase
-    appears. The record also carries `cross_scope_features` — the sorted
-    distinct Inv 26 feature set (the same value as `features`, which still
-    includes bare-name mentions for Stage-2 dispatch shaping) — so the
-    dispatcher sees WHICH features a cross-scope item spans. Both fields appear
-    on every decision (work, defer, close-not-planned, research); a phrase-only
-    signal with a sparse `features` set still yields `cross_scope: true` with
-    whatever features were detected.
+    `across every feature`, `all features`, `rename across`); else `false`.
+    The record also carries `cross_scope_features` — the sorted distinct Inv 26
+    feature set (same value as `features`) — so the dispatcher sees WHICH
+    features the item spans. Both fields appear on every decision; a phrase-only
+    signal with a sparse `features` set still yields `cross_scope: true`.
 
     **(a.1) Parent-reference lines are excluded from the cross-scope phrase
-    signal.** A shape-3 DECOMPOSITION sub-issue, scoped to exactly ONE feature,
-    typically QUOTES its parent's framing — e.g. a line reading `Sub-issue of
-    parent (retire B/B terminology repo-wide)`. The quoted
-    `repo-wide` (or any cross-scope phrase) on such a line describes the
-    PARENT's scope, not the sub-issue's own scope, so it MUST NOT contribute to
-    the sub-issue's `cross_scope` signal. A line is a PARENT-REFERENCE line when
-    it matches a parent-pointer phrasing (case-insensitive: `sub-issue of`,
-    `subissue of`, `part of #<n>`, `parent #<n>`, `parent issue #<n>`, `child
-    of #<n>`, `decomposed from #<n>`, `split from #<n>`). The cross-scope
-    PHRASE signal is therefore computed over the body with parent-reference
-    lines REMOVED: a cross-scope phrase sets `cross_scope: true` only when it
-    appears OUTSIDE a parent-reference line. The distinct-feature-set signal is
-    unchanged — an issue whose OWN (non-parent-quote) body enumerates 2 or more
-    distinct feature paths STILL yields `cross_scope: true`, as does an issue
-    that instructs `sweep every feature` / `across all features` in its own
-    (non-parent-quote) scope.
+    signal.** A shape-3 DECOMPOSITION sub-issue scoped to ONE feature typically
+    QUOTES its parent's framing (e.g. `Sub-issue of parent (retire B/B
+    terminology repo-wide)`); that quoted phrase describes the PARENT's scope,
+    not the sub-issue's, so it MUST NOT contribute to the sub-issue's
+    `cross_scope` signal. A line is a PARENT-REFERENCE line when it matches a
+    parent-pointer phrasing (case-insensitive: `sub-issue of`, `subissue of`,
+    `part of #<n>`, `parent #<n>`, `parent issue #<n>`, `child of #<n>`,
+    `decomposed from #<n>`, `split from #<n>`). The cross-scope PHRASE signal
+    is computed over the body with parent-reference lines REMOVED. The
+    distinct-feature-set signal is unchanged.
 
     **(a.2) The feature-set signal counts EDIT-PATH references, not bare
-    name mentions.** A single-feature sub-issue's descriptive PROSE often names
-    OTHER features without editing them — e.g. `replace with rabbit-issue
-    vocabulary`, `mirrors what rabbit-spec does`. A bare feature-NAME token in
-    prose names a vocabulary or a peer for comparison, not an EDIT TARGET, and
-    MUST NOT inflate the cross-scope feature count. The feature-set signal (a)
-    therefore counts ONLY EDIT-TARGET feature references: the `feature:` label
-    PLUS every distinct `.claude/features/<name>/` PATH literally referenced in
-    the body (the dirs the issue will actually write under). Bare-name matches
-    (the Inv 26 method-(c) whole-word detection) are EXCLUDED from this signal,
-    though they remain in `features` / `cross_scope_features` for Stage-2
-    dispatch shaping. Consequence: a sub-issue scoped to ONE feature (one
-    `feature:` label, edit-paths under one feature dir) whose prose merely
-    MENTIONS other feature NAMES yields `cross_scope: false`; an issue whose
-    body lists 2 or more distinct feature EDIT-PATHS still yields `cross_scope:
-    true` (a.1's distinct-feature-path signal is the edit-path signal).
+    name mentions.** A single-feature sub-issue's prose often names OTHER
+    features without editing them (`replace with rabbit-issue vocabulary`,
+    `mirrors what rabbit-spec does`); a bare feature-NAME token names a
+    vocabulary or peer, not an EDIT TARGET, and MUST NOT inflate the
+    cross-scope feature count. The feature-set signal (a) therefore counts
+    ONLY EDIT-TARGET references: the `feature:` label PLUS every distinct
+    `.claude/features/<name>/` PATH literally referenced in the body. Bare-name
+    matches (Inv 26 method-(c)) are EXCLUDED here, though they remain in
+    `features` / `cross_scope_features` for Stage-2 shaping. So a one-feature
+    sub-issue whose prose merely MENTIONS other feature NAMES yields
+    `cross_scope: false`; a body listing 2 or more distinct feature EDIT-PATHS
+    still yields `cross_scope: true`.
 
     **(b) plan-batch routes `cross_scope` items distinctly.** A `cross_scope`
-    item MUST NOT be shaped as `parallel-per-feature`, even when its
-    feature-dir count is 1 (its single `feature:` label would otherwise mislead
-    Stage-2). `plan-batch.py` folds the body-derived `cross_scope` signal into
-    Stage-2 shaping as an additional input: a `cross_scope` work item gets
-    `decomposition` when its feature count is at/above `--decompose-threshold`,
-    else `multi-subagent-barrier` — NEVER `parallel-per-feature`. A
-    non-cross-scope item is shaped by feature count exactly as before. Research
-    items are unaffected (they get `research` regardless).
+    item MUST NOT be shaped `parallel-per-feature`, even at feature-dir count
+    1 (its lone `feature:` label would otherwise mislead Stage-2).
+    `plan-batch.py` folds the `cross_scope` signal into Stage-2 as an extra
+    input: a `cross_scope` work item gets `decomposition` when its feature
+    count is at/above `--decompose-threshold`, else `multi-subagent-barrier`
+    — NEVER `parallel-per-feature`. Non-cross-scope and research items are
+    shaped as before.
 
     **(c) Cross-scope items are surfaced distinctly.** `plan-batch.py` lists
     every `cross_scope` work item's issue number under a `cross_scope_items`
     output key (sorted ascending; always present, empty when none) so the
-    dispatcher/human sees which items need the barrier/decomposition path
-    rather than ordinary parallel single-feature dispatch.
+    dispatcher sees which items need the barrier/decomposition path.
 
     Enforced by `test/test-cross-scope.py` (triage sets `cross_scope: true`
-    for a body referencing two or more `.claude/features/<name>/` paths and for
-    a `repo-wide` phrase, `false` for an ordinary single-feature body, and
-    `false` for a single-feature decomposition sub-issue whose only cross-scope
-    phrase appears on a parent-reference line — per (a.1) — and `false` for a
-    single-feature sub-issue whose prose merely MENTIONS other feature NAMES
-    with no second EDIT-PATH — per (a.2) — so plan-batch shapes those sub-issues
-    `parallel-per-feature`; plan-batch shapes a genuine
-    `cross_scope` item as `multi-subagent-barrier` / `decomposition` and never
-    `parallel-per-feature`, listing it under `cross_scope_items`) and
+    for a body referencing 2 or more `.claude/features/<name>/` paths and for a
+    `repo-wide` phrase; `false` for an ordinary single-feature body, for a
+    decomposition sub-issue whose only cross-scope phrase is on a
+    parent-reference line (a.1), and for a sub-issue that merely MENTIONS other
+    feature NAMES with no second EDIT-PATH (a.2) — so plan-batch shapes those
+    `parallel-per-feature`; a genuine `cross_scope` item is shaped
+    `multi-subagent-barrier` / `decomposition`, never `parallel-per-feature`,
+    and listed under `cross_scope_items`) and
     `test/test-spec-cross-scope-invariant.py` (the spec carries Inv 56,
     including the parent-reference exclusion).
 

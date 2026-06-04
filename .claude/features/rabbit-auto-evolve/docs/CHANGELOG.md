@@ -13,6 +13,24 @@ own version.
 
 ## Version notes
 
+- **v0.52.0 — 2026-06-04** — Slimmed the ten largest invariants in
+  `docs/spec.md` (#726, under #639). The spec was the largest in the repo;
+  the 10 biggest invariants totalled 1,264 lines (~37% of the Invariants
+  section). This pass TIGHTENED their prose — removing duplicated
+  explanation, restated rationale, narrative incident retellings, and verbose
+  multi-sentence restatements — while PRESERVING every normative/load-bearing
+  statement, MUST/MUST-NOT rule, script name, schema field, decision-table
+  row, and cross-reference (verified: all 23 spec-invariant tests still
+  GREEN). No invariant was deleted and none renumbered (that is the sibling
+  #724/#725 job); the numbering stays contiguous 1..58. The SKILL.md body was
+  NOT touched (spec-only). spec.md: **3,594 → 3,451 lines (−143)**.
+  Per-invariant before→after (cut): Inv 3 246→227 (−19); Inv 32 177→149
+  (−28); Inv 4 132→114 (−18); Inv 6 123→110 (−13); Inv 7 118→109 (−9);
+  Inv 30 115→103 (−12); Inv 56 95→76 (−19); Inv 1 93→81 (−12); Inv 18 83→75
+  (−8); Inv 29 82→77 (−5); top-10 total 1,264→1,121 (−143). New e2e
+  `test/test-spec-housekeeping-726-top10-invariants-slimmed.py` pins (a) all
+  58 invariants present + contiguous, (b) the spec.md total line-count drop,
+  and (c) a sample of load-bearing literals still present.
 - **v0.51.0 — 2026-06-03** — Configurable tick cadence (#722). The cadence
   was single-sourced (#723) but still hardcoded to `CADENCE_MINUTES = 30` —
   tuning it required a source edit + redeploy. Now the cadence is OPERATIONAL
