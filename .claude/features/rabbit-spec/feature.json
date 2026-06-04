@@ -1,8 +1,9 @@
 {
   "name": "rabbit-spec",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
+  "contiguous_invariants": true,
   "tdd_state": "test-green",
   "status": "active",
   "summary": "Owner of the rabbit workflow's spec-lifecycle skills. Hosts rabbit-spec-create (drafts initial spec bodies via the read-only rabbit-spec-creator subagent) and rabbit-spec-update (revises existing specs; absorbed from rabbit-feature/rabbit-feature-spec).",
@@ -59,5 +60,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.12.0 -> 1.13.0): #688 housekeeping round 2 \u2014 removal pass. Deleted dead stage/relocation narration from docs/spec.md (Purpose, Mode awareness section, verbose Surface bullets, per-test Tests prose) and the redundant Tech Stack prose from docs/contract.md; spec.md 221 -> 175 lines, contract.md 66 -> 62. New regression guard test-no-relocation-narration.py forbids the dead narration's return. Behaviour is unchanged."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.13.0 -> 1.14.0): #742 opt rabbit-spec into the contract strict CONTIGUOUS invariant-numbering tier (#724 follow-up). Added Inv 8 documenting the contiguous_invariants opt-in; set feature.json contiguous_invariants: true. Numbering was already contiguous 1..7 so no reflow was needed. New E2E guard test-contiguous-invariants-optin.py asserts the flag + contiguity via the live contract check."
 }
