@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.41.0
+version: 0.42.0
 template_version: 2.0.0
 ---
 
@@ -11,7 +11,14 @@ template_version: 2.0.0
   "provides": {
     "files": [],
     "commands": [],
-    "scripts": [],
+    "scripts": [
+      {
+        "path": ".claude/features/rabbit-auto-evolve/scripts/advise-restart.py",
+        "subcommands": ["write", "status", "clear"],
+        "version": "1.0.0",
+        "rationale": "advisory-restart marker lifecycle (Inv 52, issue #545). `status` emits {\"advised\": bool, \"reason\"?: str} on stdout (always exit 0) and `clear` removes the marker (idempotent); these are the INVOKE surfaces rabbit-cage's Stop/SessionStart dispatcher calls to surface and clear the advisory restart signal cross-feature (Part B). Distinct from the hard `.rabbit-auto-evolve-restart-needed` marker — advisory, never pauses the loop"
+      }
+    ],
     "schemas": [],
     "templates": [],
     "skills": [{"name": "rabbit-auto-evolve", "version": "0.23.0"}]
@@ -53,7 +60,8 @@ template_version: 2.0.0
       ".rabbit-auto-evolve-running",
       ".rabbit-auto-evolve-stop-requested",
       ".rabbit-auto-evolve-restart-needed",
-      ".rabbit-auto-evolve-aborted"
+      ".rabbit-auto-evolve-aborted",
+      ".rabbit-auto-evolve-restart-advised"
     ]
   },
   "never": []

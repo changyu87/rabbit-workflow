@@ -13,6 +13,29 @@ own version.
 
 ## Version notes
 
+- **v0.42.0 — 2026-06-03** — New advisory-restart marker
+  `.rabbit-auto-evolve-restart-advised` and its lifecycle script
+  `scripts/advise-restart.py` (Inv 52, issue #545, Part A). This is a
+  structured, persistently-surfaced restart signal that mirrors the hard
+  `.rabbit-auto-evolve-restart-needed` marker but is ADVISORY — it never
+  pauses, blocks, holds, or auto-resumes the loop. `advise-restart.py write
+  "<reason>"` writes the marker with a structured reason (latest reason wins,
+  overwrites if present); `advise-restart.py status` emits
+  `{"advised": true, "reason": "..."}` when present and `{"advised": false}`
+  when absent (always exit 0), mirroring `check-auto-resume.py`'s invoke
+  surface so rabbit-cage's Stop/SessionStart dispatcher (Part B, separate
+  feature, same branch) can surface the advisory line cross-feature;
+  `advise-restart.py clear` removes the marker idempotently so SessionStart
+  can clear it after the advised restart occurs. The read/clear invoke
+  surfaces are declared in `docs/contract.md` `provides.scripts` so Part B's
+  cross-scope use is contract-bound. The advisory path NEVER touches the hard
+  `.rabbit-auto-evolve-restart-needed` marker. Marker added to the spec
+  Markers list + table and `contract.md` `manages.runtime_markers`; the
+  repo-root `.gitignore` glob `.rabbit-auto-evolve-*` already covers it.
+  Regression covered by `test/test-advise-restart.py` and
+  `test/test-spec-advise-restart-invariant.py`. `advise-restart.py` → v1.0.0;
+  no SKILL.md change.
+
 - **v0.41.0 — 2026-06-03** — `classify-merge-restart.py` (Inv 8, the 3-rung
   catch-up ladder) now classifies a merged PR touching `.claude/agents/*.md`
   (agent definitions) as `restart` — for BOTH pure-adds AND modifications

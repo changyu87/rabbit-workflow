@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.41.0
+version: 0.42.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -124,6 +124,9 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
   Claude restart.
 - `.rabbit-auto-evolve-aborted` — safety violation detected; loop will not
   resume until marker is cleared.
+- `.rabbit-auto-evolve-restart-advised` — ADVISORY restart signal (Inv 52);
+  a structured reason describing a capability a restart would unlock. Never
+  pauses the loop; distinct from the hard `.rabbit-auto-evolve-restart-needed`.
 
 ## Current behaviour
 
@@ -1359,6 +1362,7 @@ Phase E merges complete.
     | `.rabbit-auto-evolve-stop-requested` | `stop` subcommand | `scripts/stop-loop.py` |
     | `.rabbit-auto-evolve-restart-needed` | tick (when classify-merge-restart returns `restart`) | `scripts/mark-restart-needed.py "<reason>"` |
     | `.rabbit-auto-evolve-aborted` | tick (on safety violation) | `scripts/mark-aborted.py "<reason>"` |
+    | `.rabbit-auto-evolve-restart-advised` | tick (advisory restart, Inv 52) | `scripts/advise-restart.py write "<reason>"` (write) / `scripts/advise-restart.py status` (read) / `scripts/advise-restart.py clear` (delete) |
 
     SKILL.md MUST NOT instruct Claude to literally `touch` or
     `echo > <marker>`. Scope-guard inspects the Bash command string
@@ -3223,6 +3227,56 @@ Phase E merges complete.
     `issue_type: "bug"` and an old `created_at` scores STRICTLY higher than
     the one with `issue_type: "enhancement"` and no `created_at` — proving
     the two signals are live, non-zero contributions).
+
+52. **Advisory-restart marker — a structured, persistently-surfaced restart
+    signal that NEVER pauses the loop (issue #545).** Distinct from the hard
+    `.rabbit-auto-evolve-restart-needed` marker (Inv 8 / Inv 31), which the
+    catch-up ladder writes when a merged change cannot take effect until the
+    session is restarted and which gates auto-resume. This invariant adds a
+    SEPARATE, ADVISORY signal: `.rabbit-auto-evolve-restart-advised`. It
+    records that a restart WOULD unlock a capability (e.g. "activates
+    skill-creator + code-review; enables worktree.baseRef for parallel
+    dispatch"), but it does not block, pause, hold, or auto-resume the loop —
+    the tick proceeds unchanged whether or not the marker is present.
+
+    **(a) Writer — `scripts/advise-restart.py write "<reason>"`.** Writes
+    `.rabbit-auto-evolve-restart-advised` at the repo root with the structured
+    reason string as its content. Overwrites if present (latest reason wins),
+    mirroring the established `mark-restart-needed.py` / `mark-aborted.py`
+    writer pattern (Inv 17 — all runtime-marker writes go through scripts so
+    scope-guard does not see a literal marker path in a Bash command string).
+    A missing reason argument is an error (non-zero exit).
+
+    **(b) Read/status surface — `scripts/advise-restart.py status`.** Emits a
+    JSON object on stdout describing the marker's presence and reason, always
+    exit 0 (the verdict is carried in the payload, never the exit code),
+    exactly like `check-auto-resume.py` (Inv 31). When the marker is present:
+    `{"advised": true, "reason": "<content>"}`. When absent (graceful):
+    `{"advised": false}`. This is the CONTRACT INVOKE surface rabbit-cage's
+    Stop/SessionStart dispatcher calls to surface the advisory line; the
+    cross-feature use is declared in this feature's `contract.md` `provides`.
+
+    **(c) Clear surface — `scripts/advise-restart.py clear`.** Removes the
+    marker. Idempotent: a missing marker is a clean no-op (exit 0). This is
+    the CONTRACT INVOKE surface rabbit-cage's SessionStart calls to clear the
+    advisory after the advised restart has occurred.
+
+    **(d) Strict separation from the hard marker.** The advisory path NEVER
+    writes, reads, deletes, or otherwise affects
+    `.rabbit-auto-evolve-restart-needed`, `.rabbit-auto-evolve-aborted`, or
+    `.rabbit-auto-evolve-running`, and writing/clearing the advisory marker
+    never pauses or short-circuits the tick. The two markers are independent:
+    a repo may carry one, both, or neither.
+
+    `<repo_root>` defaults to `os.getcwd()`; overridable via the
+    `RABBIT_AUTO_EVOLVE_REPO_ROOT` env var for tests. Enforced by
+    `test/test-advise-restart.py` (write creates the marker with the reason;
+    status reports `advised: true` + reason when present and `advised: false`
+    when absent; clear removes it and is idempotent; the advisory path leaves
+    `.rabbit-auto-evolve-restart-needed` untouched) and
+    `test/test-spec-advise-restart-invariant.py` (the spec documents the
+    advisory marker, its three subcommands, the JSON status shape, and the
+    never-pauses / distinct-from-hard-marker contract).
 
 ## Known gaps
 
