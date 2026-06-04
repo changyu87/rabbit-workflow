@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.52.1
+version: 5.53.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -161,8 +161,17 @@ string BEFORE splitting on `;|&` segment delimiters.
 6. `scope-guard.py` `extract_bash_targets()` strips heredoc bodies and
    quoted regions from the full command string before splitting on `;|&`.
 7. `scope-guard-on.py` at `scripts/scope-guard-on.py` deletes
-   `.rabbit-scope-override` (if present) and prints a confirmation. It is
-   a no-op when no override marker is present.
+   `.rabbit-scope-override` (if present) and prints a confirmation; it is a
+   no-op when no override marker is present. It is wrapped by a `scope-guard`
+   configurable in `feature.json configuration` (subcommand `scope-guard`,
+   value `on` → `delete_marker` on `.rabbit-scope-override`) so
+   `/rabbit-config scope-guard on` revokes a session override via the
+   data-driven rabbit-config interpreter. That configurable carries no
+   `alert-on`/`alert-message` (no double-alert): the `.rabbit-scope-override`
+   `check_marker_alert` entries (Inv 16) and the default-deny SESSION OVERRIDE
+   clause both inline the `/rabbit-config scope-guard on` revoke hint. Every
+   user-facing revoke instruction surfaces that command, NOT the raw script
+   path.
 8. `feature.json` declares `manifest`, `runtime` (with the three keys
    `Stop`, `SessionStart`, `UserPromptSubmit`), and `configuration` arrays
    as described in this spec. Every API name listed in any of those

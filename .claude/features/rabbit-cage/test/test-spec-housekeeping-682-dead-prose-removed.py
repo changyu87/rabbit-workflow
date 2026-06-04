@@ -72,7 +72,11 @@ COLLAPSE_MAX = 1
 # Measured line-removal floor: round-1 left spec.md at 518 lines. The #682
 # pass MUST cut real lines, not reword. Assert a hard ceiling well below the
 # starting count so a future reword that re-inflates the body fails the gate.
-SPEC_LINE_CEILING = 500
+# Ceiling raised 500 -> 510 by #709, which expanded Inv 7 to document the new
+# `scope-guard` /rabbit-config configurable and the command-form revoke
+# instruction — a real spec addition, not reword re-inflation; still well
+# below the 518 starting count.
+SPEC_LINE_CEILING = 510
 
 PASS = 0
 FAIL = 0

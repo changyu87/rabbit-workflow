@@ -143,6 +143,7 @@ The default install targets the latest stable release channel; `dev` is opt-in o
 | `/rabbit-config bash-allow add\|remove <cmd>` | Manage Bash command permissions |
 | `/rabbit-config permissions lock\|unlock` | Lock/unlock write bit on protected dirs |
 | `/rabbit-config human-approval true\|false` | Control Step 4 approval gate (true = gate active, false = bypass) |
+| `/rabbit-config scope-guard on` | Revoke an active scope-guard override (re-arm default-deny) |
 
 ---
 
