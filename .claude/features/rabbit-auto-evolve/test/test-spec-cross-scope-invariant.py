@@ -52,6 +52,10 @@ REQUIRED = [
     "cross_scope_items",
     # bounded scope is preserved (the fix is detection + routing).
     "bounded scope itself is unchanged",
+    # (a.1) parent-reference exclusion (issue #667): a quoted parent phrase
+    # on a parent-reference line must not set cross_scope.
+    "parent-reference line",
+    "sub-issue of",
 ]
 
 missing = [s for s in REQUIRED if s not in lowered]

@@ -13,6 +13,24 @@ own version.
 
 ## Version notes
 
+- **v0.48.1 — 2026-06-04** — Cross-scope false-positive fix for decomposition
+  sub-issues (Inv 56(a.1), issue #667). A shape-3 decomposition sub-issue scoped
+  to exactly ONE feature typically QUOTES its parent's framing on a
+  parent-pointer line (e.g. `Sub-issue of parent #420 (retire B/B terminology
+  repo-wide)`); the quoted `repo-wide` phrase previously set `cross_scope: true`,
+  so plan-batch mis-shaped the single-feature sub-issue as
+  `multi-subagent-barrier` instead of `parallel-per-feature` (observed live for
+  #420's sub-issues #660–#666). `triage-issue.py` now strips parent-reference
+  lines (matched by `sub-issue of`, `part of #N`, `parent #N`, `child of #N`,
+  `decomposed from #N`, `split from #N`, ...) before evaluating the cross-scope
+  PHRASE signal, so a quoted parent phrase no longer triggers `cross_scope`.
+  Genuine detection is preserved: a body whose OWN scope enumerates ≥ 2 distinct
+  feature paths, or instructs `sweep every feature` / `across all features`
+  outside a parent line, STILL yields `cross_scope: true`. Spec Inv 56 gains
+  sub-section (a.1) documenting the exclusion; `test/test-cross-scope.py` adds a
+  sub-issue case (cross_scope false + plan-batch parallel-per-feature) and two
+  genuine-detection-preserved cases. No surface change.
+
 - **v0.48.0 — 2026-06-03** — Cross-scope detection + routing (Inv 56, issue
   #433). `triage-issue.py` now emits `cross_scope` (bool) and
   `cross_scope_features` (sorted feature set) on EVERY triage record:
