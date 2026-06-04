@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.5.0
+version: 0.5.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -38,8 +38,7 @@ feeds the downstream pipeline (`rabbit-feature-scaffold --batch` then
   `test/run.py` — feature scaffolding
 
 No backing agent or dispatch script in this MVP — the dispatcher Claude
-runs the interactive protocol inline. A `decomposer` subagent for batch
-analysis of large codebases is a deferred follow-up.
+runs the interactive protocol inline.
 
 ## Interactive Protocol
 
@@ -63,14 +62,9 @@ The skill is interactive by design. The dispatcher MUST:
    - In standalone mode, invokes `rabbit-feature-scaffold` per
      accepted feature individually (batch form is plugin-only).
    - Then for each accepted feature with non-empty `globs`, invokes
-     `rabbit-spec-create` to seed the initial spec body. `rabbit-spec-create`
-     is itself a subagent-dispatching skill — it internally dispatches the
-     `rabbit-spec-creator` subagent via the Agent tool. It MUST therefore be
-     invoked as a sequential `Skill("rabbit-spec-create", ...)` call from the
-     main session, never wrapped inside an `Agent(...)` call: wrapping a
-     subagent-dispatching skill in an Agent dispatch produces an illegal
-     two-level subagent nesting chain that Claude Code does not support. The
-     spec-create calls run sequentially, one per accepted feature.
+     `rabbit-spec-create` (one sequential `Skill(...)` call per feature)
+     to seed the initial spec body, under the nesting constraint of
+     Invariant 4.
 
 The protocol's exact prompt wording is owned by SKILL.md; this spec
 constrains only the structural shape.
@@ -101,19 +95,15 @@ constrains only the structural shape.
 
 4. The spec-create hand-off MUST invoke `rabbit-spec-create` as a
    sequential `Skill(...)` call from the main session and MUST NOT wrap
-   it in an `Agent(...)` dispatch. `rabbit-spec-create` is itself a
-   subagent-dispatching skill (it dispatches the `rabbit-spec-creator`
-   subagent via the Agent tool); wrapping it in an `Agent(...)` call
-   would create a two-level subagent nesting chain
-   (decompose -> Agent level-1 -> rabbit-spec-creator level-2), which
-   Claude Code does not support. Neither `SKILL.md` nor this spec may
-   claim the spec-create calls can be parallelized via the Agent tool.
+   it in an `Agent(...)` dispatch: `rabbit-spec-create` itself dispatches
+   the `rabbit-spec-creator` subagent, so wrapping it in `Agent(...)`
+   creates an unsupported two-level subagent nesting chain. Neither
+   `SKILL.md` nor this spec may claim the spec-create calls can be
+   parallelized via the Agent tool.
 
 ## Tech Stack
 
 No Python script in this MVP — the skill is dispatcher-orchestrated.
-Future enhancement: add a `decomposer` subagent and `dispatch-decompose.py`
-for parallel large-codebase analysis.
 
 ## Tests
 
@@ -138,5 +128,3 @@ coverage:
 - Writing the user's source code or modifying it in any way.
 - Replacing rabbit-feature-scaffold or rabbit-spec-create — those skills
   remain the building blocks rabbit-decompose orchestrates.
-- A decomposer subagent — deferred. The MVP uses dispatcher-level
-  cognition for the analysis step.
