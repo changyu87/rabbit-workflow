@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.59.0
+version: 0.60.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -41,7 +41,9 @@ Activate auto-evolve mode. Invokes
 `.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py on`,
 which performs three deterministic mutations in order:
 
-1. Write `.rabbit-human-approval-bypass` (flips `human-approval` off).
+1. Write `.rabbit-human-approval-bypass` AND the new
+   `.rabbit-tdd-autonomous` (flips `human-approval` off; both names written
+   during the Phase 1 coexistence window, both honored on read).
 2. Set `permissions.defaultMode: "bypassPermissions"` in
    `.claude/settings.local.json` (flips `bypass-permissions` on).
 3. Write `.rabbit-auto-evolve-active` (signals mode is on).
@@ -97,8 +99,9 @@ The script reports on the three preconditions as structured JSON:
 
 1. `active-marker` — `.rabbit-auto-evolve-active` marker exists at repo
    root.
-2. `approval-bypass` — `human-approval` is off (i.e.
-   `.rabbit-human-approval-bypass` present).
+2. `approval-bypass` — `human-approval` is off (i.e. EITHER the legacy
+   `.rabbit-human-approval-bypass` OR the new `.rabbit-tdd-autonomous`
+   present; dual-read during the Phase 1 coexistence window).
 3. `bypass-permissions` — `bypass-permissions` is on (i.e.
    `.claude/settings.local.json` has
    `permissions.defaultMode == "bypassPermissions"`).
@@ -655,7 +658,9 @@ order:
 2. Delete `.rabbit-auto-evolve-active`.
 3. Delete the `permissions.defaultMode` key from
    `.claude/settings.local.json`.
-4. Delete `.rabbit-human-approval-bypass`.
+4. Delete `.rabbit-human-approval-bypass` AND `.rabbit-tdd-autonomous`
+   (both bypass-marker names during the Phase 1 coexistence window;
+   idempotent).
 
 On success, the script emits one branded `rabbit_print` confirmation
 line to stdout (green `Autonomous-evolve mode deactivated — full

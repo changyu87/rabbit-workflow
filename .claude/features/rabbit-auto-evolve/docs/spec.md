@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.59.0
+version: 0.60.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -210,7 +210,12 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    On `on`, three deterministic mutations execute in order:
    1. Write `<repo_root>/.rabbit-human-approval-bypass` (content
       `"session"`) via `contract.lib.mutation.write_marker` — flips
-      `human-approval` configurable to `false`.
+      `human-approval` configurable to `false`. During the Phase 1
+      coexistence window the script ALSO writes the new name
+      `<repo_root>/.rabbit-tdd-autonomous` (same content) so a later
+      read-path rename finds the marker; both names are honored on read
+      (the dual-read described later in this Inv) until removal of the
+      legacy write closes the window.
    2. Set `permissions.defaultMode: "bypassPermissions"` in
       `<repo_root>/.claude/settings.local.json` via
       `contract.lib.mutation.set_json_key` — flips `bypass-permissions`
@@ -236,8 +241,10 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    2. Delete `.rabbit-auto-evolve-active`.
    3. Delete the `permissions.defaultMode` key via
       `contract.lib.mutation.delete_json_key`.
-   4. Delete `.rabbit-human-approval-bypass` via
-      `contract.lib.mutation.delete_marker`.
+   4. Delete `.rabbit-human-approval-bypass` AND the new
+      `.rabbit-tdd-autonomous` (both bypass-marker names during the Phase 1
+      coexistence window) via `contract.lib.mutation.delete_marker`.
+      Idempotent — a missing marker of either name is a no-op.
 
    Failure handling: abort on first error and roll back prior steps
    best-effort (delete a just-written marker; restore the prior

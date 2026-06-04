@@ -13,6 +13,24 @@ own version.
 
 ## Version notes
 
+- **v0.60.0 — 2026-06-04** — marker dual-read coexistence (phase 1 of
+  #733/#336). The approval-bypass marker gains a new name
+  `.rabbit-tdd-autonomous` alongside the legacy `.rabbit-human-approval-bypass`.
+  `check-preconditions.py` already dual-reads either name (shipped in #481);
+  this change makes `set-evolve-mode.py` the matching writer: `on` now writes
+  BOTH names (additive — step 1b after step 1; rolled back together on
+  failure), and `off` deletes BOTH (step 3b after step 3; idempotent).
+  PRESENCE semantics are unchanged (present = bypass/tdd-autonomous active).
+  This lands BEFORE the #336 read-path rename so the running loop — whose disk
+  currently holds only the legacy name — keeps passing preconditions
+  (`all_pass: true`). Removal of the legacy write is a later cleanup (#769).
+  set-evolve-mode.py script Version 1.2.0 → 1.3.0. spec.md Inv 1 on/off steps
+  and the source SKILL.md `on`/`off`/`start` surfaces note both marker names
+  during the coexistence window. The user-facing CONFIGURATION subcommand is
+  NOT renamed (that is #336). No invariant renumbering. Four-way version
+  lockstep 0.59.0 → 0.60.0 (feature.json + spec.md + contract.md + SKILL.md
+  frontmatter). Historical CHANGELOG entries are unchanged.
+
 - **v0.59.0 — 2026-06-04** — remove `rabbit-managed` selection + the #731
   leak-detector (step 3 of #753). Now that selection is actionability-based
   (#758) and provenance is migrated (#759), nothing depends on the
