@@ -126,6 +126,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "scripts/validate-meta-contract.py",
         "scripts/find-feature.py",
         "scripts/policy-block.py",
+        "scripts/check-release-update.py",
         "schemas/feature.json.schema.json",
         "schemas/runtime.schema.json",
         "schemas/prompts.schema.json",
