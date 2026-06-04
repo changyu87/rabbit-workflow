@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.34.0
+version: 1.35.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -20,7 +20,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "commands": [
       {
         "path": ".claude/commands/rabbit-tdd-autonomous.md",
-        "purpose": "Per-feature config command /rabbit-tdd-autonomous true|false. Toggles TDD-autonomous mode — the approval gate over the feature-touch TDD cycle Step 4. true writes the .rabbit-tdd-autonomous bypass marker (gate skipped); false (default) deletes it (gate active). Thin wrapper over contract.lib.config_dispatch via scripts/rabbit-tdd-autonomous-config.py. Deployed from commands/rabbit-tdd-autonomous.md via the feature.json manifest publish_command call. Coexists with the central /rabbit-config tdd-autonomous surface."
+        "purpose": "Per-feature config command /rabbit-tdd-autonomous true|false. Toggles TDD-autonomous mode — the approval gate over the feature-touch TDD cycle Step 4. true writes the .rabbit-tdd-autonomous bypass marker (gate skipped); false (default) deletes it (gate active). Thin wrapper over contract.lib.config_dispatch via scripts/rabbit-tdd-autonomous-config.py. Deployed from commands/rabbit-tdd-autonomous.md via the feature.json manifest publish_command call. Sole supported surface for this configurable."
       }
     ],
     "scripts": [
@@ -119,7 +119,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "runtime_markers": [
       {
         "path": ".rabbit-tdd-autonomous",
-        "writer": "/rabbit-tdd-autonomous (scripts/rabbit-tdd-autonomous-config.py) or /rabbit-config tdd-autonomous, via contract.lib.mutation write_marker/delete_marker",
+        "writer": "/rabbit-tdd-autonomous (scripts/rabbit-tdd-autonomous-config.py), via contract.lib.mutation write_marker/delete_marker",
         "reader": "dispatch-tdd-subagent.py (Step-4 gate, read alongside .rabbit-human-approval-bypass); Stop/SessionStart dispatcher via check_marker_alert (Inv 59)",
         "lifecycle": "written on `tdd-autonomous true` (bypass active); deleted on `tdd-autonomous false` (default, gate active)",
         "gitignored": true
