@@ -12,6 +12,22 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.59.0 (re-home bypass-permissions per-feature alert + drop rabbit-config from install.py (retire-rabbit-config step 1)):**
+  Re-homed the bypass-permissions active-override alert as a PER-FEATURE
+  `runtime[]` entry: rabbit-cage now declares
+  `{"api": "emit_configurable_alert", "args": {"feature_name": "rabbit-cage",
+  "configurable_id": "bypass-permissions"}}` in both `runtime.Stop` and
+  `runtime.SessionStart`. The entry fires the inlined-revoke alert
+  (`/rabbit-cage-config bypass-permissions false`) when
+  `permissions.defaultMode == "bypassPermissions"` is active, re-homing what
+  the central `iterate_configurables_*` alert path provided (step 1 of #769 /
+  retire-rabbit-config; enum admitted by #773, polarity fixed by #775). Removed
+  rabbit-config from `install.py`: the `FEATURE_INCLUDES["rabbit-config"]` entry
+  and the `SAME_PATH_FILES` rabbit-config skill-copy tuple. During coexistence
+  the central alert may briefly co-exist; the per-feature entry is authoritative
+  (#781 removes the central path). The deployed root `install.py` is republished
+  so the Inv 22h self-update byte comparison stays in sync. Closes #780.
+
 - **v5.58.1 (include rabbit-feature rabbit-tdd-autonomous command in install closure (fix #767 manifest gap)):**
   Added `commands/rabbit-tdd-autonomous.md` to `install.py`'s
   `FEATURE_INCLUDES["rabbit-feature"]` so the command declared by

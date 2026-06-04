@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.58.1",
+  "version": "5.59.0",
   "contiguous_invariants": true,
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
@@ -14,7 +14,7 @@
   },
   "deprecation_criterion": "when Claude Code exposes native event dispatchers and artifact publishing that subsume this role",
   "status": "active",
-  "updated": "2026-06-03",
+  "updated": "2026-06-04",
   "manifest": [
     {
       "api": "publish_settings",
@@ -150,6 +150,13 @@
         }
       },
       {
+        "api": "emit_configurable_alert",
+        "args": {
+          "feature_name": "rabbit-cage",
+          "configurable_id": "bypass-permissions"
+        }
+      },
+      {
         "api": "check_marker_consume_alert",
         "args": {
           "path": ".rabbit-scope-override-used",
@@ -212,6 +219,13 @@
             "icon": "\ud83d\udd13",
             "color": "red"
           }
+        }
+      },
+      {
+        "api": "emit_configurable_alert",
+        "args": {
+          "feature_name": "rabbit-cage",
+          "configurable_id": "bypass-permissions"
         }
       }
     ],

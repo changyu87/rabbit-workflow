@@ -203,22 +203,31 @@ for label, entry in [("Stop", stop_alert), ("SessionStart", ss_alert)]:
 
 # ---------------------------------------------------------------- t6
 print()
-print("=== t6: SessionStart entry count is FOUR (Inv 16 amendment) ===")
-if len(ss_entries) == 4:
-    ok("SessionStart declares exactly 4 entries")
+print("=== t6: SessionStart entry count is FIVE (Inv 16 + Inv 40c bypass alert) ===")
+# #780 re-homed the bypass-permissions per-feature alert as a SessionStart
+# emit_configurable_alert entry appended after the scope-guard check_marker_alert.
+if len(ss_entries) == 5:
+    ok("SessionStart declares exactly 5 entries")
 else:
     fail_t(
         f"SessionStart declares {len(ss_entries)} entries; "
-        f"expected 4. APIs: {[e.get('api') for e in ss_entries]}"
+        f"expected 5. APIs: {[e.get('api') for e in ss_entries]}"
     )
 
-# check_marker_alert is the LAST entry per impl-suggestion (appended
-# after check_release_update).
-if ss_entries and ss_entries[-1].get("api") == "check_marker_alert":
-    ok("check_marker_alert is the LAST SessionStart entry (appended after check_release_update)")
+# emit_configurable_alert (bypass-permissions) is the LAST SessionStart entry,
+# appended after the scope-guard check_marker_alert (#780).
+if ss_entries and ss_entries[-1].get("api") == "emit_configurable_alert":
+    ok("emit_configurable_alert (bypass-permissions) is the LAST SessionStart entry")
 else:
     fail_t(
-        "check_marker_alert is not the last SessionStart entry. "
+        "emit_configurable_alert is not the last SessionStart entry. "
+        f"Order: {[e.get('api') for e in ss_entries]}"
+    )
+if any(e.get("api") == "check_marker_alert" for e in ss_entries):
+    ok("check_marker_alert (scope-guard) remains a SessionStart entry")
+else:
+    fail_t(
+        "check_marker_alert missing from SessionStart. "
         f"Order: {[e.get('api') for e in ss_entries]}"
     )
 

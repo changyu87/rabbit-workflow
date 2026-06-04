@@ -78,7 +78,11 @@ COLLAPSE_MAX = 1
 # below the 518 starting count. Raised 510 -> 515 by #767 (phase 3 of #733),
 # which added Inv 40 documenting the per-feature `/rabbit-cage-config` command
 # + the deferred per-feature alert — a real spec addition, not re-inflation.
-SPEC_LINE_CEILING = 515
+# Raised 515 -> 520 by #780 (retire-rabbit-config step 1 of #769), which
+# re-homed the bypass-permissions per-feature alert into Inv 16 + Inv 40c
+# (a fifth SessionStart entry + new emit_configurable_alert wiring) — a real
+# spec addition, not re-inflation.
+SPEC_LINE_CEILING = 520
 
 PASS = 0
 FAIL = 0
