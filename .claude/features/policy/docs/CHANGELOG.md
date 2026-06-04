@@ -8,6 +8,18 @@ deprecation_criterion: when the policy feature is retired (Claude Code exposes a
 
 ## Version notes
 
+- **v1.18.0 (parenthetical-clarity guideline, #638):** Added §7
+  "Parenthetical Clarity" to `coding-rules.md`: prefer declarative sentences
+  over parenthetical asides; for each aside, fold a load-bearing one into the
+  sentence (or promote it to its own sentence) and drop a redundant one. The
+  rule is framed as a clarity GUIDELINE, NOT an absolute ban — load-bearing
+  parentheticals (precise terms, citations like `(Inv 49)`, code tokens)
+  remain acceptable inline, and the guideline does not mandate a sweep of
+  existing prose. This implements the SOFTENED intent of the retitled issue
+  (the original body proposed a hard ban; the retitle scoped it to a clarity
+  guideline). `test-rule-files-content.py` now asserts the §7 heading and its
+  fold/drop/not-a-ban/load-bearing anchor phrases.
+
 - **v1.17.0 (register rabbit-feature-scope as a subagent-dispatching skill, #690):**
   Broadened §4's "No Subagent-Dispatching Skill Inside `Agent()`" rule to cover
   UNTYPED default-model dispatches (`Agent(prompt=...)` with no `subagent_type`),
