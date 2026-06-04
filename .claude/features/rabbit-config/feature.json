@@ -1,6 +1,6 @@
 {
   "name": "rabbit-config",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "housekeeping_clean": true,
@@ -36,6 +36,5 @@
     ]
   },
   "configuration": [],
-  "prompts": [],
-  "spec_no_change_reason": "Dead 'permissions lock/unlock' subcommand removal from SKILL.md only; spec.md has no references to this retired subcommand (its only 'permissions' mentions are the active bypass-permissions / permissions.defaultMode invariant)."
+  "prompts": []
 }

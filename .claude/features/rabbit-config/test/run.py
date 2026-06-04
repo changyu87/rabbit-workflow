@@ -24,6 +24,7 @@ SUITES = [
     "test-workspace-declares-rabbit-config.py",
     "test-restart-required-emits-prompt.py",
     "test-spec-layout.py",
+    "test-housekeeping-683-redundancy-removed.py",
 ]
 
 

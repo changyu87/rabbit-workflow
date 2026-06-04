@@ -1,6 +1,6 @@
 ---
 feature: rabbit-config
-version: 1.7.1
+version: 1.8.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when the rabbit CLI exposes native configuration mutation that subsumes this feature
@@ -214,11 +214,6 @@ operates on user-facing labels rather than raw stored values:
     spec.md frontmatter version matches feature.json, and that
     `resolve_spec_path` resolves both spec.md and contract.md to the flat
     `docs/` location.
-
-## Tech Stack
-
-Python 3 stdlib only. Imports `contract.lib.mutation` at runtime.
-No Bash runtime dependency.
 
 ## Out of Scope
 

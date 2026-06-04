@@ -14,6 +14,45 @@ version, and the `skills/rabbit-config/SKILL.md` frontmatter version
 
 ## Version notes
 
+- **v1.8.0 (housekeeping round 2 — measured doc-surface line removal, #683
+  under #639):** Round-1 (#676) reworded; this pass REMOVES redundant doc
+  content, measured in lines deleted, after a #639 prove-it-dead-or-flag check
+  per claim. Three collapses landed, each to a single authoritative statement:
+  (1) `docs/spec.md` "## Tech Stack" section deleted — it duplicated VERBATIM
+  the same blurb in `docs/contract.md` ("Python 3 stdlib only. Imports
+  contract.lib.mutation at runtime. No Bash runtime dependency."); `grep`
+  across `contract/lib/` and `contract/scripts/` found NO validator that
+  requires a Tech-Stack section in spec.md, so the spec copy is proven-dead
+  redundancy. The authoritative copy stays in `docs/contract.md` (the
+  dependency/stack-declaration surface). The deletion sits BELOW spec.md
+  line 44, so the contract strict-tier ALLOWLIST line-pin
+  `("rabbit-config", "spec.md", 44, "retired")` is preserved. (2)
+  `skills/rabbit-config/SKILL.md` "## Subcommands" bullet list deleted — it
+  re-enumerated the subcommand catalog that lives authoritatively (with full
+  per-configurable semantics) in the SKILL.md frontmatter `description`, the
+  load-bearing trigger surface enforced by `test/test-skill-description.py`
+  (Inv 19) and `test/test-skill-no-dead-permissions.py`. (3) The SKILL.md
+  "### Values-style" / "### Actions-style" usage sub-blocks and the
+  spec-restating "## Active Override Alerts" (duplicates Inv 15/16) and the
+  two spec-restating "## Notes" bullets (alphabetical enumeration duplicates
+  the Interpreter-Behavior section; validation-rules duplicates Inv 12/13)
+  were dropped; the one non-duplicated operational fact — the concrete
+  `python3 .../rabbit-config.py <subcommand> ...` invocation pointer plus the
+  idempotency note — is kept. Measured reduction: spec.md 233 → 228, SKILL.md
+  65 → 28; contract.md unchanged (62, holds the surviving Tech-Stack copy).
+  The stale `feature.json spec_no_change_reason` (left over from #676, which
+  was SKILL-only) is removed because this version DOES edit spec.md. New E2E
+  regression `test/test-housekeeping-683-redundancy-removed.py` (t1–t5) pins
+  the removals AND guards the must-survive content (contract.md Tech Stack,
+  the line-44 "retired" pin, every active configurable in SKILL.md). No
+  invariant added, renumbered, or removed; no boundary-contract surface
+  change; the strict-tier and deployed-skills gates stay GREEN. Frontmatter
+  `version` bumped in four-way lockstep across `feature.json`, `docs/spec.md`,
+  `docs/contract.md`, and `skills/rabbit-config/SKILL.md` (1.7.1 → 1.8.0).
+  Because the source SKILL.md frontmatter version AND body changed, the
+  deployed copy at `.claude/skills/rabbit-config/SKILL.md` needs a dispatcher
+  republish.
+
 - **v1.7.1 (drop dangling `permissions lock/unlock` references):** rabbit-cage
   retired the dead `permissions lock|unlock` configurable and deleted its
   backing script `repo-permissions.py`. rabbit-config's `SKILL.md` still
