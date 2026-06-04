@@ -1,8 +1,9 @@
 {
   "name": "policy",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
+  "contiguous_invariants": true,
   "tdd_state": "test-green",
   "summary": "Canonical rule files fed to subagents; three policy docs (philosophy, spec-rules, coding-rules).",
   "surface": {
@@ -11,7 +12,7 @@
     "skills": []
   },
   "deprecation_criterion": "when Claude Code exposes a native subagent-policy injection point",
-  "updated": "2026-06-03",
+  "updated": "2026-06-04",
   "manifest": [],
   "runtime": {},
   "configuration": []

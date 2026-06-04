@@ -8,6 +8,20 @@ deprecation_criterion: when the policy feature is retired (Claude Code exposes a
 
 ## Version notes
 
+- **v1.19.0 (opt into contract strict contiguous-invariant tier, #739 /
+  #724 follow-up):** policy/feature.json now declares
+  `"contiguous_invariants": true`, opting policy into the contract strict
+  tier added by #724 (`check_invariant_monotonic_order`), which enforces
+  that the `## Invariants` section is numbered contiguously 1..N with no
+  holes. No reflow was needed — policy's numbering was already contiguous
+  (the spec body's invariants are 1..N under contract parsing semantics).
+  A new per-feature guard `test/test-contiguous-invariants-optin.py`
+  asserts both the opt-in flag and contiguity using the same parsing
+  semantics as the contract gate, so local drift is caught before the
+  contract suite reddens. Mirrors the Inv 41 `housekeeping_clean`
+  strict-tier opt-in pattern; single-feature, self-verifying touch with no
+  deployed surface (policy has none).
+
 - **v1.18.0 (parenthetical-clarity guideline, #638):** Added §7
   "Parenthetical Clarity" to `coding-rules.md`: prefer declarative sentences
   over parenthetical asides; for each aside, fold a load-bearing one into the
