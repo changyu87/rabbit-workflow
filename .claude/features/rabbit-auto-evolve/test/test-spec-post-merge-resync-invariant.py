@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-spec-post-merge-resync-invariant.py — rabbit-auto-evolve post-merge
-re-sync invariant (Inv 47 / issue #516).
+re-sync invariant (Inv 45 / issue #516).
 
 Asserts the invariant text is present in the feature spec (docs/spec.md).
 
@@ -54,12 +54,13 @@ missing = [s for s in REQUIRED_SPEC if s not in spec_lower]
 if missing:
     fail(f"spec.md missing post-merge re-sync invariant phrase(s): {missing!r}")
 else:
-    ok("spec.md carries the post-merge re-sync invariant (Inv 47)")
+    ok("spec.md carries the post-merge re-sync invariant")
 
-# The invariant must be numbered 47 (next monotonic number in this feature).
-if re.search(r"(?m)^\s*47\.\s", spec_text):
-    ok("spec.md numbers the new invariant as 47 (next monotonic)")
+# The invariant's title is present as a numbered list item (number not pinned:
+# the #751 deep slim reflowed the numbering).
+if re.search(r"(?m)^\s*\d+\.\s+\*\*Post-merge re-sync", spec_text):
+    ok("spec.md carries the post-merge re-sync invariant as a numbered item")
 else:
-    fail("spec.md does not carry a list item numbered 47")
+    fail("spec.md does not carry a numbered post-merge re-sync invariant")
 
 sys.exit(FAIL)

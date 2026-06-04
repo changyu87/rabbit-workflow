@@ -96,7 +96,7 @@ def _make_env(tmpdir, release_exit=0, cleanup_exit=0, catchup_exit=0,
     _write_phase_shim(script_dir, "cleanup-branches.py", call_log, cleanup_exit)
     _write_phase_shim(script_dir, "classify-merge-restart.py", call_log,
                       catchup_exit)
-    # Inv 58 / #721: the decomposed-parent roll-up step run-post-merge.py
+    # Inv 53 / #721: the decomposed-parent roll-up step run-post-merge.py
     # invokes each tick (after the catch-up phase, AND even on the empty
     # no-op path). Shimmed here so its invocation can be asserted.
     _write_phase_shim(script_dir, "close-decomposed-parents.py", call_log)
@@ -225,7 +225,7 @@ with tempfile.TemporaryDirectory() as td:
     else:
         ok("nonempty: pending_post_merge cleared to []")
 
-    # Inv 58 / #721: the decomposed-parent roll-up runs after catch-up.
+    # Inv 53 / #721: the decomposed-parent roll-up runs after catch-up.
     cdp_idx = [i for i, n in enumerate(names)
                if n == "close-decomposed-parents.py"]
     if not cdp_idx:
@@ -236,7 +236,7 @@ with tempfile.TemporaryDirectory() as td:
              f"finished; names={names!r}")
     else:
         ok("nonempty: close-decomposed-parents.py invoked after catch-up "
-           "(Inv 58)")
+           "(Inv 53)")
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +251,7 @@ with tempfile.TemporaryDirectory() as td:
              f"stderr={proc.stderr!r}")
     else:
         ok("empty: exit 0")
-    # Inv 58 / #721: the decomposed-parent roll-up runs EVERY tick, even
+    # Inv 53 / #721: the decomposed-parent roll-up runs EVERY tick, even
     # when pending_post_merge is empty (children close on their own ticks,
     # not only when a PR merges). So the ONLY phase shim allowed to run on
     # the empty path is close-decomposed-parents.py.
@@ -268,7 +268,7 @@ with tempfile.TemporaryDirectory() as td:
              f"path; calls={empty_calls!r}")
     else:
         ok("empty: close-decomposed-parents.py invoked even with empty "
-           "pending (Inv 58)")
+           "pending (Inv 53)")
     try:
         out = json.loads(proc.stdout)
         if out.get("status") != "noop":

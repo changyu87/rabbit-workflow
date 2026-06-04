@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.55.2
+version: 0.56.0
 template_version: 2.0.0
 ---
 
@@ -16,19 +16,19 @@ template_version: 2.0.0
         "path": ".claude/features/rabbit-auto-evolve/scripts/advise-restart.py",
         "subcommands": ["write", "status", "clear"],
         "version": "1.0.0",
-        "rationale": "advisory-restart marker lifecycle (Inv 52). `status` emits {\"advised\": bool, \"reason\"?: str} on stdout (always exit 0) and `clear` removes the marker (idempotent); these are the INVOKE surfaces rabbit-cage's Stop/SessionStart dispatcher calls to surface and clear the advisory restart signal cross-feature. Distinct from the hard `.rabbit-auto-evolve-restart-needed` marker — advisory, never pauses the loop"
+        "rationale": "advisory-restart marker lifecycle (Inv 48). `status` emits {\"advised\": bool, \"reason\"?: str} on stdout (always exit 0) and `clear` removes the marker (idempotent); these are the INVOKE surfaces rabbit-cage's Stop/SessionStart dispatcher calls to surface and clear the advisory restart signal cross-feature. Distinct from the hard `.rabbit-auto-evolve-restart-needed` marker — advisory, never pauses the loop"
       },
       {
         "path": ".claude/features/rabbit-auto-evolve/scripts/record-decomposition.py",
         "subcommands": [],
         "version": "1.0.0",
-        "rationale": "decomposition parent->children linkage recorder (Inv 58). The dispatcher invokes `record-decomposition.py <parent#> <child#>...` at decompose time to persist the machine-readable link under the state's `decomposition_parents` map. This is the INVOKE surface the SKILL.md decomposition path calls so the parent's children are enumerable deterministically (never from a prose table)"
+        "rationale": "decomposition parent->children linkage recorder (Inv 53). The dispatcher invokes `record-decomposition.py <parent#> <child#>...` at decompose time to persist the machine-readable link under the state's `decomposition_parents` map. This is the INVOKE surface the SKILL.md decomposition path calls so the parent's children are enumerable deterministically (never from a prose table)"
       },
       {
         "path": ".claude/features/rabbit-auto-evolve/scripts/close-decomposed-parents.py",
         "subcommands": [],
         "version": "1.0.0",
-        "rationale": "per-tick roll-up close of decomposed parents (Inv 58). Invoked by run-post-merge.py after the catch-up phase: for each tracked parent whose recorded children are ALL closed it closes the parent (`gh issue close --reason completed`) and drops its `decomposition_parents` key. Idempotent no-op when the map is empty or any child is still open"
+        "rationale": "per-tick roll-up close of decomposed parents (Inv 53). Invoked by run-post-merge.py after the catch-up phase: for each tracked parent whose recorded children are ALL closed it closes the parent (`gh issue close --reason completed`) and drops its `decomposition_parents` key. Idempotent no-op when the map is empty or any child is still open"
       }
     ],
     "schemas": [],
@@ -57,12 +57,12 @@ template_version: 2.0.0
       {
         "path": ".claude/features/contract/lib/runtime.py",
         "function": "cleanup_old_prompts",
-        "rationale": "prune-worktrees.py invokes contract.lib.runtime.cleanup_old_prompts(max_age_days=7, repo_root=...) at tick start (pre-dispatch) to bound .rabbit/prompts/ (Inv 53). This is a cross-scope INVOKE of the contract-owned cleanup API — rabbit-auto-evolve never edits the contract feature"
+        "rationale": "prune-worktrees.py invokes contract.lib.runtime.cleanup_old_prompts(max_age_days=7, repo_root=...) at tick start (pre-dispatch) to bound .rabbit/prompts/ (Inv 49). This is a cross-scope INVOKE of the contract-owned cleanup API — rabbit-auto-evolve never edits the contract feature"
       },
       {
         "path": ".claude/features/contract/lib/publish.py",
         "function": "publish_skill|publish_hook|publish_file|publish_command|publish_*",
-        "rationale": "republish-feature.py reads a feature's feature.json manifest and invokes contract.lib.publish.<api>(**args, feature_dir=..., repo_root=...) for every publish_* entry to refresh the deployed copies a version-bumping subagent cannot write (out-of-scope), so test-deployed-skills-match-source.py is green in the PR (Inv 55). This is a cross-scope INVOKE of the contract-owned publish API — rabbit-auto-evolve never edits the contract feature"
+        "rationale": "republish-feature.py reads a feature's feature.json manifest and invokes contract.lib.publish.<api>(**args, feature_dir=..., repo_root=...) for every publish_* entry to refresh the deployed copies a version-bumping subagent cannot write (out-of-scope), so test-deployed-skills-match-source.py is green in the PR (Inv 50). This is a cross-scope INVOKE of the contract-owned publish API — rabbit-auto-evolve never edits the contract feature"
       }
     ],
     "files": [

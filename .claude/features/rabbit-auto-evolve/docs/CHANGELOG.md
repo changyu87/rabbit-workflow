@@ -13,6 +13,24 @@ own version.
 
 ## Version notes
 
+- **v0.56.0 — 2026-06-04** — Deep slim housekeeping wave (#751, under #639):
+  consolidated six redundant/overlapping invariants into their load-bearing
+  parents and reflowed the numbering to contiguous 1..53. Merges (old → parent):
+  Inv 51 (issue_type/created_at wiring) → Inv 46 (computed score); Inv 54
+  (observability-log attribution) → Inv 37 (log-tick.py); Inv 44 (leaked
+  branch-switch restore) → Inv 43 (clean-dispatch-leaks.py, now three leak
+  classes); Inv 42 (guard-before-marker ordering) → Inv 35 (stale-marker
+  running-guard); Inv 49 (refire dedup) → Inv 33 (immediate-refire); Inv 59 (no
+  de-queue Red Flag) → Inv 25 (convergence). Plus targeted prose tightening of
+  verbose enforcement enumerations. MEASURED reduction: invariant count
+  59 → 53 (−6); docs/spec.md 3534 → 3382 lines (−152). Zero behavior/contract
+  loss — every script name, schema field, marker, decision-table row, and
+  MUST/MUST-NOT rule preserved; the contiguity guarantee and every within-rae
+  `Inv N` cross-reference were rewritten in lockstep via
+  `contract.lib.reflow`. Cross-feature citations of rae invariant numbers
+  19/28/31 are UNCHANGED (they sort below the first merged number). Lockstep
+  version bump across feature.json / spec.md / contract.md / SKILL.md.
+
 - **v0.55.2 — 2026-06-03** — Spec-accuracy fix (#736): the "fresh context"
   claim in Inv 32 (DEVELOPMENT tick) and Inv 33 over-promised — it is true
   ONLY for the system-cron / headless path (each tick is a brand-new

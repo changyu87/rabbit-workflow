@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""prune-worktrees.py — tick-start orphan sweep (Inv 53, issue #628).
+"""prune-worktrees.py — tick-start orphan sweep (Inv 49, issue #628).
 
 Parallel TDD dispatch (worktree isolation, #430) creates one git worktree per
 subagent under `.claude/worktrees/agent-*`. The Agent tool auto-removes a

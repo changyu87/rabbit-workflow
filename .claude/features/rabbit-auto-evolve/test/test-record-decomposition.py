@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-record-decomposition.py — e2e tests for scripts/record-decomposition.py
-(Inv 58 / issue #721).
+(Inv 53 / issue #721).
 
 record-decomposition.py records the machine-readable parent->children linkage
 the decomposed-parent roll-up enumerates. Covered surface:

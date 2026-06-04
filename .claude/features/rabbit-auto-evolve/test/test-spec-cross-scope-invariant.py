@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-spec-cross-scope-invariant.py — rabbit-auto-evolve Inv 56 (issue #433).
+"""test-spec-cross-scope-invariant.py — rabbit-auto-evolve Inv 51 (issue #433).
 
 Asserts the cross-scope detection + routing invariant text is present in the
 feature spec (docs/spec.md, dual-read with specs/ and legacy docs/spec/
@@ -39,8 +39,9 @@ text = SPEC_MD.read_text()
 lowered = re.sub(r"\s+", " ", text.lower())
 
 REQUIRED = [
-    # The invariant is numbered 56.
-    "56. **cross-scope detection",
+    # The cross-scope detection invariant is present (number not pinned: the
+    # #751 deep slim reflowed the numbering).
+    "**cross-scope detection",
     # (a) triage emits the signal.
     "cross_scope",
     "cross_scope_features",
@@ -66,7 +67,7 @@ missing = [s for s in REQUIRED if s not in lowered]
 if missing:
     fail(f"spec.md missing cross-scope-invariant phrase(s): {missing!r}")
 else:
-    ok("spec.md carries the cross-scope invariant (Inv 56)")
+    ok("spec.md carries the cross-scope invariant (Inv 51)")
 
 # The invariant must explicitly forbid the parallel-per-feature shape for a
 # cross_scope item (the core routing rule).

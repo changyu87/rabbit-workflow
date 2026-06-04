@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-close-decomposed-parents.py — e2e tests for
-scripts/close-decomposed-parents.py (Inv 58 / issue #721).
+scripts/close-decomposed-parents.py (Inv 53 / issue #721).
 
 close-decomposed-parents.py reads the state's `decomposition_parents` map and,
 for every tracked parent whose recorded children are ALL closed, closes the

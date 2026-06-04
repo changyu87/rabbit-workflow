@@ -4,26 +4,26 @@
 Per rabbit-auto-evolve spec.md Inv 3, emits a JSON object on stdout with
 fields: issue, decision, reason_code, rationale, feature, features,
 cross_scope, cross_scope_features, contract_touch, priority, issue_type,
-created_at, blocked_by, planning_note. The `cross_scope` boolean (Inv 56 /
+created_at, blocked_by, planning_note. The `cross_scope` boolean (Inv 51 /
 issue #433) is True when the issue body implicates more than one feature
 EDIT-PATH (the label PLUS body `.claude/features/<name>/` PATH references span
->= 2 dirs; bare feature-NAME mentions in prose are EXCLUDED per Inv 56(a.2) /
+>= 2 dirs; bare feature-NAME mentions in prose are EXCLUDED per Inv 51(a.2) /
 issue #669) OR a cross-scope phrase ("repo-wide", "across all features",
 "rename across", ...) appears OUTSIDE a parent-reference line; it routes a
 body-spanning sweep to plan-batch.py's barrier/decomposition lane instead of
 ordinary parallel-per-feature single-feature work. The parent-reference
-exclusion (Inv 56(a.1) / issue #667) drops parent-pointer lines ("Sub-issue of
+exclusion (Inv 51(a.1) / issue #667) drops parent-pointer lines ("Sub-issue of
 parent #N", "part of #N", ...) before the phrase check so a single-feature
 decomposition sub-issue that merely QUOTES its parent's "repo-wide" framing is
 not mis-flagged. `cross_scope_features` echoes the broader Inv 26 `features`
 set (which still includes bare-name mentions for Stage-2 dispatch shaping).
 The `issue_type` (bug/enhancement, from the GH label) and `created_at` (the
-issue's ISO-8601 UTC creation timestamp) fields (issue #606 / Inv 51) feed
+issue's ISO-8601 UTC creation timestamp) fields (issue #606 / Inv 44) feed
 the bug-vs-enhancement and age signals of plan-batch.py's _computed_score
-(Inv 46); without them both signals silently contribute 0. The `priority` field
+(Inv 44); without them both signals silently contribute 0. The `priority` field
 (issue #484) echoes the issue's priority:<level> label value (None when
 absent); plan-batch.py folds it into the loop's computed priority score as
-ONE weighted input among several (Inv 46 / issue #441, refining the
+ONE weighted input among several (Inv 44 / issue #441, refining the
 priority-primary key of Inv 4 / issue #479). The `features` field (Inv 26 /
 issue #435, #443) is the distinct set of feature directories the item
 touches — the union of the feature:<name> label, every
@@ -127,7 +127,7 @@ def _label_value(labels, prefix):
 
 def _issue_type(labels):
     """Derive the bug-vs-enhancement issue type from the GH labels (issue
-    #606 / Inv 51). Returns "bug" when a `bug` label is present, else
+    #606 / Inv 44). Returns "bug" when a `bug` label is present, else
     "enhancement" when an `enhancement` label is present, else None. A `bug`
     label WINS when both are present (the higher-urgency signal).
 
@@ -313,7 +313,7 @@ def _feature_set(feature_label, body, title="", feature_names=None):
     return sorted(feats)
 
 
-# Cross-scope detection (Inv 56 / issue #433) -------------------------------
+# Cross-scope detection (Inv 51 / issue #433) -------------------------------
 # An issue whose BODY spans multiple feature directories is a cross-scope item:
 # a single bounded per-feature TDD subagent (one .rabbit-scope-active-<feature>)
 # cannot write outside its one feature, so plan-batch.py MUST route it to the
@@ -335,7 +335,7 @@ _CROSS_SCOPE_PHRASE = re.compile(
     re.IGNORECASE,
 )
 
-# Parent-reference lines (Inv 56(a.1) / issue #667). A shape-3 decomposition
+# Parent-reference lines (Inv 51(a.1) / issue #667). A shape-3 decomposition
 # sub-issue is scoped to ONE feature but typically QUOTES its parent's framing
 # on a parent-pointer line (e.g. "Sub-issue of parent #420 (retire B/B
 # terminology repo-wide)"). A cross-scope phrase quoted on such a line describes
@@ -355,7 +355,7 @@ _PARENT_REF_LINE = re.compile(
 
 
 def _strip_parent_ref_lines(body):
-    """Return `body` with every parent-reference line removed (Inv 56(a.1)).
+    """Return `body` with every parent-reference line removed (Inv 51(a.1)).
 
     A line matching `_PARENT_REF_LINE` quotes the PARENT's framing, not the
     sub-issue's own scope, so it is dropped before the cross-scope PHRASE signal
@@ -367,7 +367,7 @@ def _strip_parent_ref_lines(body):
 
 
 def _edit_target_features(feature_label, body):
-    """EDIT-TARGET feature set for the cross-scope signal (Inv 56(a.2)).
+    """EDIT-TARGET feature set for the cross-scope signal (Inv 51(a.2)).
 
     Counts ONLY feature references that denote an EDIT TARGET — the `feature:`
     label PLUS every distinct `.claude/features/<name>/` PATH literally
@@ -387,22 +387,22 @@ def _edit_target_features(feature_label, body):
 
 
 def _cross_scope(feature_label, title, body):
-    """True iff the issue implicates more than one feature (Inv 56).
+    """True iff the issue implicates more than one feature (Inv 51).
 
     Two independent signals (either suffices):
       (a) the EDIT-TARGET feature set (the label PLUS every distinct body
           `.claude/features/<name>/` PATH reference — dirs the issue will write
-          under) spans >= 2 feature dirs (Inv 56(a.2) / issue #669); OR
+          under) spans >= 2 feature dirs (Inv 51(a.2) / issue #669); OR
       (b) an explicit cross-scope phrase (repo-wide, across all features,
           rename across, ...) appears in the title OR in the body OUTSIDE any
-          parent-reference line (Inv 56(a.1) / issue #667).
+          parent-reference line (Inv 51(a.1) / issue #667).
 
     Signal (a) counts EDIT-PATH references only — bare feature-NAME mentions in
     prose are excluded (issue #669) so a single-feature sub-issue whose text
     merely names another feature (e.g. "mirrors rabbit-spec") is NOT mis-flagged
     cross_scope. The phrase signal (b) excludes parent-reference lines so a
     sub-issue that merely QUOTES its parent's "repo-wide" framing on a
-    parent-pointer line is NOT mis-flagged (Inv 56(a.1) / issue #667). A body
+    parent-pointer line is NOT mis-flagged (Inv 51(a.1) / issue #667). A body
     whose OWN scope enumerates >= 2 distinct feature EDIT-PATHS still yields True.
 
     Default False when at most one edit-target feature dir is implicated and no
@@ -666,7 +666,7 @@ def classify(issue_num, repo_root):
     """Run the seven-rule decision table. Returns a dict ready for json.dump."""
     # ---- Fetch issue metadata ----
     # `createdAt` is added to the SAME single gh call (issue #606) so the
-    # age signal of plan-batch._computed_score (Inv 46) has data — no extra
+    # age signal of plan-batch._computed_score (Inv 44) has data — no extra
     # gh round-trip.
     issue = _gh_issue_view(
         issue_num,
@@ -683,8 +683,8 @@ def classify(issue_num, repo_root):
 
     feature_label = _label_value(labels, "feature")
     priority_label = _label_value(labels, "priority")
-    # issue_type / created_at (issue #606 / Inv 51) feed plan-batch's
-    # bug-vs-enhancement and age signals (Inv 46). Both are derived from the
+    # issue_type / created_at (issue #606 / Inv 44) feed plan-batch's
+    # bug-vs-enhancement and age signals (Inv 44). Both are derived from the
     # SAME gh fetch above (labels + createdAt) — no extra gh call.
     issue_type = _issue_type(labels)
     created_at = issue.get("createdAt") or None
@@ -693,11 +693,11 @@ def classify(issue_num, repo_root):
     # basis for Stage-2 bare-name cross-feature detection (issue #443).
     feature_names = _discover_feature_names(repo_root)
     # Distinct feature set (Inv 26) computed once — reused for both `features`
-    # and the cross-scope signal (Inv 56).
+    # and the cross-scope signal (Inv 51).
     features = _feature_set(feature_label, body, title, feature_names)
-    # `cross_scope` (Inv 56 / issue #433): true when the issue body spans more
+    # `cross_scope` (Inv 51 / issue #433): true when the issue body spans more
     # than one feature EDIT-PATH (label + body `.claude/features/<name>/` paths;
-    # bare-name mentions excluded per Inv 56(a.2) / issue #669) OR carries a
+    # bare-name mentions excluded per Inv 51(a.2) / issue #669) OR carries a
     # cross-scope phrase. Drives plan-batch's body-derived routing so a
     # body-spanning sweep is shaped barrier/decomposition, never
     # parallel-per-feature, even when its single feature: LABEL would mislead
@@ -714,12 +714,12 @@ def classify(issue_num, repo_root):
         # basis (Inv 26 / issue #435). Always present; for a malformed-labels
         # issue with no body paths and no bare-name mention it is [].
         "features": features,
-        # `cross_scope` (Inv 56 / issue #433) is True when the issue body
+        # `cross_scope` (Inv 51 / issue #433) is True when the issue body
         # implicates more than one feature EDIT-PATH (the label + body
         # `.claude/features/<name>/` paths span >= 2 dirs; bare-name mentions
-        # excluded per Inv 56(a.2) / issue #669) OR a cross-scope phrase
+        # excluded per Inv 51(a.2) / issue #669) OR a cross-scope phrase
         # ("repo-wide", "across all features", ...) appears OUTSIDE a
-        # parent-reference line (Inv 56(a.1) / issue #667). Always present on
+        # parent-reference line (Inv 51(a.1) / issue #667). Always present on
         # EVERY decision; plan-batch.py routes a cross_scope item to
         # multi-subagent-barrier/decomposition, never parallel-per-feature.
         # `cross_scope_features` echoes the broader `features` set (with
@@ -729,18 +729,18 @@ def classify(issue_num, repo_root):
         "contract_touch": ctouch,
         # `priority` (issue #484) echoes the issue's priority:<level> label
         # value (None when absent). plan-batch.py folds it into the loop's
-        # computed priority score as ONE weighted input (Inv 46 / issue #441,
+        # computed priority score as ONE weighted input (Inv 44 / issue #441,
         # refining the priority-primary key of Inv 4 / issue #479); a None
         # filer label simply contributes nothing to the score.
         "priority": priority_label,
-        # `issue_type` (issue #606 / Inv 51) is "bug"/"enhancement"/None,
+        # `issue_type` (issue #606 / Inv 44) is "bug"/"enhancement"/None,
         # derived from the GH bug/enhancement label (bug wins if both). It
         # drives the bug-vs-enhancement signal of plan-batch._computed_score
-        # (Inv 46); a None type contributes nothing to the score.
+        # (Inv 44); a None type contributes nothing to the score.
         "issue_type": issue_type,
-        # `created_at` (issue #606 / Inv 51) echoes the issue's ISO-8601 UTC
+        # `created_at` (issue #606 / Inv 44) echoes the issue's ISO-8601 UTC
         # createdAt (trailing-Z shape), None when gh omits it. It drives the
-        # age signal of plan-batch._computed_score (Inv 46); a None timestamp
+        # age signal of plan-batch._computed_score (Inv 44); a None timestamp
         # contributes nothing (no crash — _age_days tolerates absence).
         "created_at": created_at,
         "blocked_by": [],

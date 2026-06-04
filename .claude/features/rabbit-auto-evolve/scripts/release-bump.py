@@ -17,7 +17,7 @@ Per rabbit-auto-evolve spec.md Inv 7, this script:
                                                → major / contract-schema-touch
        - priority:high or priority:critical    → minor / priority-high-critical
        - priority:low or priority:medium       → patch / priority-low-medium
-     Priority source (Inv 48): an explicit priority:<level> label ON the
+     Priority source (Inv 46): an explicit priority:<level> label ON the
      PR wins. When the PR has none, resolve the closing issue from the PR
      body (`Fixes|Closes|Resolves #N`, case-insensitive) and read THAT
      issue's priority:<level> label via `gh issue view <N> --json labels`
@@ -85,7 +85,7 @@ CONTRACT_SCHEMAS_PREFIX = ".claude/features/contract/schemas/"
 FEATURE_PREFIX = ".claude/features/"
 
 # Closing-issue reference in a PR body: "Fixes|Closes|Resolves #N"
-# (case-insensitive). First match wins (Inv 48, issue #529).
+# (case-insensitive). First match wins (Inv 46, issue #529).
 _CLOSING_RE = re.compile(r"\b(?:fix(?:e[sd])?|close[sd]?|resolve[sd]?)\b"
                          r"\s+#(\d+)", re.IGNORECASE)
 
@@ -188,7 +188,7 @@ def _issue_labels(issue):
 
     A missing / unresolvable issue (gh exits non-zero) is NOT an error here:
     it just means there is no fallback priority, so the bump table keeps its
-    default (Inv 48, issue #529).
+    default (Inv 46, issue #529).
     """
     proc = subprocess.run(
         ["gh", "issue", "view", str(issue), "--json", "labels"],
@@ -220,7 +220,7 @@ def classify(payload, features_threshold):
     if any(p.startswith(CONTRACT_SCHEMAS_PREFIX) for p in paths):
         return ("major", "contract-schema-touch")
 
-    # Priority source (Inv 48, issue #529): an explicit priority label ON the
+    # Priority source (Inv 46, issue #529): an explicit priority label ON the
     # PR wins. Only when the PR has none do we fall back to the closing
     # issue's priority (the dispatch flow opens PRs without the source issue's
     # priority label). Major triggers above are evaluated first and unaffected.

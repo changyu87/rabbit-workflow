@@ -22,7 +22,7 @@ It:
        - Phase 9 (cleanup):  `cleanup-branches.py <comma-joined pr-list>` once.
        - Phase 10 (catch-up): `classify-merge-restart.py <pr#>` once per PR.
   4. Runs the decomposed-parent roll-up (`close-decomposed-parents.py`,
-     Inv 58 / #721) AFTER catch-up on the non-empty path AND on the empty
+     Inv 53 / #721) AFTER catch-up on the non-empty path AND on the empty
      no-op path (a decomposition's children close on their OWN ticks, not
      only when a PR merges). It closes every tracked decomposition parent
      whose children are all closed and drops the parent key; a clean no-op
@@ -135,7 +135,7 @@ def _run_phase(script_name, args):
 
 
 def _run_rollup():
-    """Run the decomposed-parent roll-up (close-decomposed-parents.py, Inv 58 /
+    """Run the decomposed-parent roll-up (close-decomposed-parents.py, Inv 53 /
     #721). Returns its CompletedProcess. This runs EVERY tick — even on the
     empty pending_post_merge no-op path — because a decomposition's children
     close on their OWN ticks, not only when a PR merges. A non-zero roll-up
@@ -148,7 +148,7 @@ def run():
     pending = _read_pending()
     if not pending:
         # The decomposed-parent roll-up runs every tick, including the empty
-        # no-op path (Inv 58 / #721): children close on their own ticks.
+        # no-op path (Inv 53 / #721): children close on their own ticks.
         rollup = _run_rollup()
         result = {"status": "noop", "pending": [],
                   "phases": {"close_decomposed_parents": rollup.returncode}}
@@ -207,7 +207,7 @@ def run():
             return 1
     result["phases"]["catch_up"] = catchup
 
-    # Decomposed-parent roll-up (Inv 58 / #721) — runs AFTER catch-up. Closes
+    # Decomposed-parent roll-up (Inv 53 / #721) — runs AFTER catch-up. Closes
     # every tracked decomposition parent whose recorded children are all closed
     # and drops its decomposition_parents key. A non-zero return is recorded
     # but never withholds clearing pending_post_merge (the owed post-merge work

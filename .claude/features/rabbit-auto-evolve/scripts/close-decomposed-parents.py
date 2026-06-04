@@ -4,7 +4,7 @@
 Usage:
   close-decomposed-parents.py
 
-Per rabbit-auto-evolve spec.md Inv 58 (issue #721), a decomposition parent is
+Per rabbit-auto-evolve spec.md Inv 53 (issue #721), a decomposition parent is
 de-queued and left OPEN while its N per-feature children are worked. When all
 children close, NOTHING closed the parent — it lingered OPEN indefinitely
 (#530, #677 both needed a manual close). This step closes that gap
@@ -104,7 +104,7 @@ def _child_closed(child):
 
 def _close_parent(parent, children):
     comment = (
-        "Decomposed parent auto-closed by rabbit-auto-evolve (Inv 58 / #721): "
+        "Decomposed parent auto-closed by rabbit-auto-evolve (Inv 53 / #721): "
         "all decomposition children {} are closed.".format(
             ", ".join("#" + str(c) for c in children)
         )
@@ -172,7 +172,7 @@ def main():
     argparse.ArgumentParser(
         description="Close every tracked decomposition parent whose recorded "
                     "children are all closed, then drop its decomposition_"
-                    "parents key (Inv 58 / #721). Idempotent; clean no-op "
+                    "parents key (Inv 53 / #721). Idempotent; clean no-op "
                     "when the map is empty/absent."
     ).parse_args()
     return run()

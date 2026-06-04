@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""test-gitignore-seeded-runtime-artifacts.py — spec Inv 57 (issue #398).
+"""test-gitignore-seeded-runtime-artifacts.py — spec Inv 52 (issue #398).
 
-Inv 57 makes proactive `.gitignore` seeding the policy: the repo-root
+Inv 52 makes proactive `.gitignore` seeding the policy: the repo-root
 `.gitignore` MUST be seeded up front with the full known set of runtime
 artifacts the Claude Code platform and the rabbit workflow write into a
 checkout, so a newly-running loop or subagent never trips
@@ -41,9 +41,9 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 GITIGNORE = REPO_ROOT / ".gitignore"
 
 # The known seed set: a representative artifact from each runtime-artifact
-# class Inv 57 requires the repo-root .gitignore to cover. The per-feature
+# class Inv 52 requires the repo-root .gitignore to cover. The per-feature
 # scope marker .rabbit-scope-active-rabbit-cage is the case the bare
-# .rabbit-scope-active token misses — the reason Inv 57 mandates the glob.
+# .rabbit-scope-active token misses — the reason Inv 52 mandates the glob.
 SEED_ARTIFACTS = [
     ".rabbit-scope-active-rabbit-cage",
     ".rabbit-auto-evolve-active",

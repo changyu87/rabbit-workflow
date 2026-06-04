@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-"""test-spec-branch-switch-guard-invariant.py — rabbit-auto-evolve Inv 44
-(issue #596): the pre-merge cleanup detects + restores a leaked main-HEAD
-branch switch.
+"""test-spec-branch-switch-guard-invariant.py — leaked main-HEAD branch-switch
+restore (issue #596).
 
 Same root cause as #583 (a subagent's process cwd is sometimes the MAIN/shared
 checkout under worktree isolation), but a more severe symptom: a subagent's
@@ -9,9 +8,14 @@ checkout under worktree isolation), but a more severe symptom: a subagent's
 feature branch, so safety-check Inv 1 ("branch is dev") fails and merge-prs.py
 skips the whole batch — with a CLEAN tree (so it is NOT the #583 file-leak path).
 
+The #751 deep slim CONSOLIDATED the branch-switch restore into the same
+`clean-dispatch-leaks.py` cleanup invariant as the file-leak class (it is the
+SAME script, the SAME Phase-7-first sequencing), so the content is asserted
+spec-wide rather than pinned to a specific invariant number.
+
 This e2e regression asserts:
 
-  1. The spec carries the Inv 44 text (issue #596 cross-ref, the leaked
+  1. The spec carries the branch-switch-restore text (the leaked
      `git checkout -B`, HEAD != dev detection, the clean-tree restore via
      `git checkout dev`, the fail-loudly refusal on a DIRTY tree or an un-pushed
      unique commit, and the detect/restore-branch-FIRST ordering).
@@ -64,7 +68,7 @@ def norm(text):
     return re.sub(r"\s+", " ", text)
 
 
-# --- (1) Spec carries Inv 44 ------------------------------------------
+# --- (1) Spec carries the branch-switch-restore content ---------------
 spec_low = norm(SPEC_MD.read_text()).lower()
 
 SPEC_REQUIRED = [
@@ -76,15 +80,9 @@ SPEC_REQUIRED = [
 ]
 missing = [s for s in SPEC_REQUIRED if s.lower() not in spec_low]
 if missing:
-    fail(f"spec.md missing Inv 44 phrase(s): {missing!r}")
+    fail(f"spec.md missing branch-switch-restore phrase(s): {missing!r}")
 else:
-    ok("spec.md carries the leaked-branch-switch restore invariant (Inv 44)")
-
-# Numbered Inv 44 entry must exist.
-if re.search(r"(?m)^44\.\s", SPEC_MD.read_text()):
-    ok("spec.md has a numbered Inv 44 entry")
-else:
-    fail("spec.md has no numbered '44.' invariant entry")
+    ok("spec.md carries the leaked-branch-switch restore content")
 
 # Safety property: refuse loudly on dirty/un-pushed, do not discard.
 if ("refus" in spec_low or "loudly" in spec_low) and "dirty" in spec_low:

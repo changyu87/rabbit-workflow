@@ -52,7 +52,7 @@ Two decoupled decisions (Inv 26 / issue #435):
   An item's feature count is `len(item["features"])` (the set emitted by
   triage-issue.py), falling back to 1 (the single `feature` label) when
   `features` is absent. An item triage flagged `cross_scope: true` (its BODY
-  spans multiple feature dirs — Inv 56 / issue #433) is NEVER shaped
+  spans multiple feature dirs — Inv 51 / issue #433) is NEVER shaped
   parallel-per-feature even when its feature count is 1; the body-derived
   cross_scope signal forces multi-subagent-barrier (below the threshold) or
   decomposition (at/above it), and the item is listed under the
@@ -61,7 +61,7 @@ Two decoupled decisions (Inv 26 / issue #435):
   scope is a hard constraint, not waivable by autonomy (maintainer policy on
   issue #435). No shape writes any marker; this script is a pure processor.
 
-Algorithm for barrier_first / groups (per spec.md Inv 4 / Inv 46 / design
+Algorithm for barrier_first / groups (per spec.md Inv 4 / Inv 44 / design
 doc §6; computed-score-primary, barrier-secondary per issue #441 refining
 #479):
   1. Sort ALL work items by the composite key
@@ -379,7 +379,7 @@ def _dispatch_shape(item, decompose_threshold):
     > 1 feature           -> multi-subagent-barrier
     exactly 1 feature     -> parallel-per-feature (performance preference)
 
-    Cross-scope override (Inv 56 / issue #433): an item triage flagged
+    Cross-scope override (Inv 51 / issue #433): an item triage flagged
     `cross_scope: true` (its BODY spans multiple feature dirs — a repo-wide
     sweep / cross-feature rename) is NEVER shaped parallel-per-feature, even
     when its single `feature:` LABEL gives it a feature count of 1. A bounded
@@ -388,7 +388,7 @@ def _dispatch_shape(item, decompose_threshold):
     above the threshold, else multi-subagent-barrier. Bounded scope itself is
     unchanged — the fix is routing, not widening subagent scope.
 
-    Cross-scope authority (Inv 56(a.2) / issue #669): the body-derived
+    Cross-scope authority (Inv 51(a.2) / issue #669): the body-derived
     `cross_scope` signal is the AUTHORITATIVE multi-feature gate when present.
     triage-issue.py counts only EDIT-PATH references for `cross_scope` (bare
     feature-NAME mentions in prose are excluded), but the `features` list still
@@ -454,7 +454,7 @@ def plan(items, max_parallel, decompose_threshold):
     # cleanly (the loop NEVER stops to ask a human).
     self_modifying_migrations = {}
     restart_needed = []
-    # Cross-scope items (Inv 56 / issue #433): code-producing work items triage
+    # Cross-scope items (Inv 51 / issue #433): code-producing work items triage
     # flagged `cross_scope: true` (their BODY spans multiple feature dirs). They
     # are surfaced distinctly so the dispatcher/human sees which items need the
     # barrier/decomposition path rather than ordinary parallel single-feature
@@ -533,7 +533,7 @@ def plan(items, max_parallel, decompose_threshold):
         "barrier_first": barrier_first,
         "groups": groups,
         "research_items": research_items,
-        # Cross-scope work items (Inv 56 / issue #433), sorted ascending —
+        # Cross-scope work items (Inv 51 / issue #433), sorted ascending —
         # always present (empty when none). The dispatcher routes these to the
         # multi-subagent-barrier / decomposition path, never parallel
         # single-feature dispatch.

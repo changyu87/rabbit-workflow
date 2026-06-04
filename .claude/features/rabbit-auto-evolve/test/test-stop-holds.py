@@ -161,13 +161,13 @@ with tempfile.TemporaryDirectory() as d:
         ok("B: explicit user start CLEARED the stop marker (Inv 19)")
     else:
         fail("B: user start did not clear the stop marker (Inv 19 broken)")
-    # Per Inv 42 the running-marker write moved into the shared phase-walk;
+    # Per Inv 35 the running-marker write moved into the shared phase-walk;
     # start-loop.py (the explicit-start entry) no longer writes it. The Inv 19
     # contract this scenario guards is the stop-cancel above, not the marker.
     if not os.path.exists(os.path.join(repo_root, ".rabbit-auto-evolve-running")):
-        ok("B: start-loop did not write the running marker (Inv 42: walk owns it)")
+        ok("B: start-loop did not write the running marker (Inv 35: walk owns it)")
     else:
-        fail("B: start-loop wrote the running marker (Inv 42: walk owns it)")
+        fail("B: start-loop wrote the running marker (Inv 35: walk owns it)")
 
 
 # ---------------------------------------------------------------------------
@@ -276,7 +276,7 @@ with tempfile.TemporaryDirectory() as d:
         j = json.loads(proc.stdout)
     except json.JSONDecodeError:
         j = None
-    # Inv 41: the refire fires the internal `tick`, NEVER `start`. Inv 49
+    # Inv 41: the refire fires the internal `tick`, NEVER `start`. Inv 33
     # (#559): the refire prompt ALSO carries the #refire marker.
     prompt = (j or {}).get("prompt", "")
     if prompt.startswith("/rabbit-auto-evolve tick") and "start" not in prompt:

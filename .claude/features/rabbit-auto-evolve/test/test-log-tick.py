@@ -25,7 +25,7 @@ Scenarios:
   E) `log-path.py` prints the resolved `.rabbit/auto-evolve.log` path.
   F) `--help` smoke for both scripts: exit 0 with recognizable usage text.
   G) Record carries the minimum spec keys.
-  H) Attribution (Inv 54, issue #627): with NO --session-id/--tick passed,
+  H) Attribution (Inv 37, issue #627): with NO --session-id/--tick passed,
      the writer DERIVES a non-stub session_id (non-empty) and a meaningful
      monotonic tick (not hardcoded 0) from the running marker — the source is
      injectable (RABBIT_AUTO_EVOLVE_RUNNING_MARKER) so the unit is deterministic.
@@ -249,7 +249,7 @@ for label, script in (("log-tick.py", LOGTICK), ("log-path.py", LOGPATH)):
     else:
         fail(f"F: {label} --help exit {proc.returncode}; out={proc.stdout!r}")
 
-# --- H: attribution derived from the running marker (Inv 54 / #627) ---
+# --- H: attribution derived from the running marker (Inv 37 / #627) ---
 # The running marker (start-loop.py _marker_content) records
 #   "pid=<n> ts=<iso> session".
 # With NO --session-id/--tick passed, log-tick.py must DERIVE a non-stub

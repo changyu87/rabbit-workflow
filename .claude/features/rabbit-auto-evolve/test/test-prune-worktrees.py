@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-prune-worktrees.py — spec Inv 53 (added v0.43.0 for issue #628).
+"""test-prune-worktrees.py — spec Inv 49 (added v0.43.0 for issue #628).
 
 End-to-end tests for `scripts/prune-worktrees.py`, the tick-start orphan
 sweep that bounds disk usage from parallel TDD dispatch. The sweep:

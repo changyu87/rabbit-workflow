@@ -26,16 +26,16 @@ Scenarios:
   F) _pinned_oneshot_cron(now=...) unit tests, including the :00/:30 nudge
      cases (Inv 33 pinned-minute amendment, #531)
   G) the emitted refire one-shot carries the #refire marker so it is
-     distinguishable from the recurring heartbeat (Inv 49, #559)
+     distinguishable from the recurring heartbeat (Inv 33, #559)
   H) dedup decision from an injected CronList snapshot (env
      RABBIT_AUTO_EVOLVE_CRON_LIST): a prior refire + the heartbeat ->
      delete_refire_ids holds the prior refire, preserve_heartbeat_ids holds
      the heartbeat (and it is NEVER in delete_refire_ids), exactly one
-     create_refire (Inv 49, #559); absent snapshot -> empty delete list
+     create_refire (Inv 33, #559); absent snapshot -> empty delete list
   I) is_refire_oneshot(entry) pure-predicate unit tests: a marked
      non-recurring one-shot is a refire; the recurring/durable heartbeat is
      NOT; a marker on a recurring entry is NOT; an unmarked one-shot is NOT
-     (Inv 49, #559)
+     (Inv 33, #559)
   J) arm-time minute-boundary skid robustness (Inv 33, #748): for every
      near-boundary decision-time clock the pinned minute is at least a
      2-minute buffer ahead (so the dispatcher's CronList->CronDelete->
@@ -146,7 +146,7 @@ with tempfile.TemporaryDirectory() as d:
         fail(f"A: out={proc.stdout!r} err={proc.stderr!r}")
     # The MACHINE wake-up fires the INTERNAL `tick` (which respects but never
     # deletes the stop marker), NOT the USER-intent `start` (which clears the
-    # stop and resurrects a halted loop). See Inv 41. Per Inv 49 (#559) the
+    # stop and resurrects a halted loop). See Inv 41. Per Inv 33 (#559) the
     # refire prompt ALSO carries the #refire marker so it is distinguishable
     # from the recurring heartbeat (whose prompt is the bare tick command).
     prompt = (j or {}).get("prompt", "")
@@ -166,7 +166,7 @@ with tempfile.TemporaryDirectory() as d:
     else:
         fail(f"B: out={proc.stdout!r} err={proc.stderr!r}")
     cc = (j or {}).get("croncreate")
-    # Inv 49 (#559): the croncreate prompt fires the internal tick and carries
+    # Inv 33 (#559): the croncreate prompt fires the internal tick and carries
     # the #refire marker (distinguishing it from the recurring heartbeat).
     if isinstance(cc, dict) \
             and (cc.get("prompt") or "").startswith("/rabbit-auto-evolve tick") \
@@ -264,7 +264,7 @@ else:
     else:
         fail(f"F: default now -> unsafe/non-pinned cron {res!r}")
 
-# --- Inv 49: at-most-one refire dedup with a labelled signature (#559) -------
+# --- Inv 33: at-most-one refire dedup with a labelled signature (#559) -------
 
 REFIRE_MARKER = "#refire"
 

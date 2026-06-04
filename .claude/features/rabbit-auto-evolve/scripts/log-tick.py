@@ -32,7 +32,7 @@ Verbosity levels (Inv 37 b):
 A record below the active level is DROPPED (no file growth). When the enable
 flag is off, NOTHING is written (zero file growth) — a hard requirement.
 
-Attribution (Inv 54, issue #627): `tick` and `session_id` carry REAL,
+Attribution (Inv 37, issue #627): `tick` and `session_id` carry REAL,
 deterministic values, never the old stubs (`0` / `''`). When `--session-id` /
 `--tick` are omitted they are DERIVED from the Inv 35 running marker
 (`<repo_root>/.rabbit-auto-evolve-running`, content `pid=<n> ts=<iso> session`):
@@ -116,7 +116,7 @@ def _marker_path():
 
 
 def _derive_session_id():
-    """Derive a stable, non-empty per-session id (Inv 54). Pure function of the
+    """Derive a stable, non-empty per-session id (Inv 37). Pure function of the
     running-marker content: `pid<n>-<ts>` when a pid is recorded, `ts-<ts>` for
     a PID-free marker, else `pid<getpid>` when the marker is absent/unreadable.
     Never returns the old empty stub."""
@@ -155,7 +155,7 @@ def _write_tick_state(session_id, tick):
 
 
 def _derive_tick(record_kind, session_id):
-    """Monotonic per-session tick counter (Inv 54). `tick-start` increments and
+    """Monotonic per-session tick counter (Inv 37). `tick-start` increments and
     persists (resetting to 1 when the recorded session_id differs — a new
     session); other record-kinds reuse the current counter (>=1)."""
     prev_session, prev_tick = _read_tick_state()
@@ -244,7 +244,7 @@ def cmd_emit(args):
         return 0
     if args.record_kind not in LEVEL_KINDS[cfg["level"]]:
         return 0  # below active level — drop, no file growth
-    # Inv 54: fill omitted attribution from the running marker. Done only after
+    # Inv 37: fill omitted attribution from the running marker. Done only after
     # the level gate so a dropped record never touches the tick counter.
     if args.session_id is None:
         args.session_id = _derive_session_id()
@@ -302,7 +302,7 @@ def build_parser():
     p_emit = sub.add_parser("emit", help="append one per-tick JSON line")
     p_emit.add_argument("--record-kind", required=True, choices=RECORD_KINDS,
                         dest="record_kind")
-    # Default None => DERIVE from the running marker (Inv 54). An explicit
+    # Default None => DERIVE from the running marker (Inv 37). An explicit
     # value (incl. 0 / '') is honored verbatim.
     p_emit.add_argument("--tick", type=int, default=None)
     p_emit.add_argument("--session-id", dest="session_id", default=None)
