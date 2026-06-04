@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.38.1
+version: 0.39.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -3130,6 +3130,42 @@ Phase E merges complete.
     NOT in `delete_refire_ids`, exactly one `create_refire` is emitted whose
     prompt carries the refire marker) and unit tests over
     `is_refire_oneshot` (marker + non-recurring → True; the heartbeat → False).
+
+50. **The merge and release phase scripts persist `last_merged_sha` /
+    `last_tagged_version` to on-disk state; phase 10 captures them via the
+    re-read (issue #564).** These two informational state fields
+    (surfaced by `status-report.py`, NOT control-critical) lagged
+    perpetually because NO phase script ever wrote them: after #513
+    converged phase 10 on the deterministic re-read-and-validate persist
+    (Inv 40), `merge-prs.py` wrote only `pending_post_merge` and
+    `release-bump.py` emitted its result to stdout only. So both fields
+    stayed at whatever a long-ago hand-set value left them at even as PRs
+    merged and releases cut.
+
+    **The fix writes the fields at the source, never by dispatcher
+    hand-set** (the #513 anti-pattern Inv 40 forbids). When
+    `merge-prs.py --record-pending` records a successful merge, it writes
+    the merge commit SHA (the `mergeCommit.oid` it already fetches per
+    Inv 6 close-after-merge) into `last_merged_sha` in the SAME
+    read-modify-write of `<state_dir>/auto-evolve-state.json` that updates
+    `pending_post_merge` (atomic temp+rename; best-effort — a state write
+    error never fails the merge). When `release-bump.py` reaches the
+    `released` status, it writes the cut `next_tag` into
+    `last_tagged_version` via the identical read-modify-write pattern.
+    Phase 10's deterministic re-read (`update-state.py`, Inv 40) then
+    captures both off disk with no dispatcher inference.
+
+    **A non-success leaves the field untouched.** A skipped/failed merge
+    records no `last_merged_sha`; a `skipped` (safety-check) or `failed`
+    (git tag/push/release) release-bump leaves `last_tagged_version` as it
+    was — only a real merge / a real cut release advances its field.
+
+    Enforced by `test/test-merge-prs.py` (e2e: after `--record-pending`
+    processes a merged PR the state's `last_merged_sha` equals the merge
+    commit SHA; a base-not-dev skip leaves a prior value intact) and
+    `test/test-release-bump.py` (e2e: a `released` run sets
+    `last_tagged_version` to `next_tag`; a safety-check skip and a git-tag
+    failure both leave a prior value intact).
 
 ## Known gaps
 

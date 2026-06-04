@@ -53,7 +53,16 @@ via the RABBIT_AUTO_EVOLVE_STATE_DIR env var when set, else `<cwd>/.rabbit`
 tick phases 7-9. Without `--record-pending` no state write occurs and the
 behavior is unchanged.
 
-Version: 1.4.0
+The SAME `--record-pending` write also records `last_merged_sha` (issue
+#564): the merge commit SHA of the LAST successfully-merged PR (the
+`mergeCommit.oid` already fetched per the Inv 6 close-after-merge step) is
+written into the state file in the same read-modify-write. No phase script
+previously persisted this informational field (surfaced by
+status-report.py), so it lagged perpetually; phase 10's deterministic
+re-read (update-state.py, Inv 40) now captures it off disk — it is never
+dispatcher hand-set. A run with no merge leaves `last_merged_sha` untouched.
+
+Version: 1.5.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -96,12 +105,18 @@ def _state_dir():
     return os.path.join(os.getcwd(), ".rabbit")
 
 
-def _record_pending(merged_prs):
+def _record_pending(merged_prs, last_merged_sha=None):
     """Append `merged_prs` to pending_post_merge in the state file (issue
-    #499). Read-modify-write, de-duplicated, order-preserving, atomic via
+    #499) and, when a merge happened, record `last_merged_sha` (issue #564).
+    Read-modify-write, de-duplicated, order-preserving, atomic via
     temp+rename. Best-effort: a missing/malformed state file or write error
     emits a stderr warning and never fails the merge run (the per-PR result
-    array on stdout is the authoritative outcome)."""
+    array on stdout is the authoritative outcome).
+
+    `last_merged_sha` (the merge commit SHA of the last successfully-merged
+    PR) is written ONLY when truthy: a run with no merge leaves the field
+    untouched. Phase 10's deterministic re-read (update-state.py, Inv 40)
+    later captures it off disk — it is never dispatcher hand-set."""
     if not merged_prs:
         return
     state_dir = _state_dir()
@@ -123,6 +138,8 @@ def _record_pending(merged_prs):
             seen.add(pr)
             combined.append(pr)
     state["pending_post_merge"] = combined
+    if last_merged_sha:
+        state["last_merged_sha"] = last_merged_sha
     tmp_path = state_path + ".tmp"
     try:
         with open(tmp_path, "w") as f:
@@ -211,9 +228,13 @@ def _item_status_close(num, sha):
 def _close_referenced_issues(pr, result):
     """After a successful merge, close every issue referenced by a closing
     keyword in the PR body. Mutates `result` in place, adding `closed_issues`
-    and `close_failed`. A close failure never fails the merge."""
+    and `close_failed`. A close failure never fails the merge.
+
+    Also records the fetched merge commit SHA under `result["merge_sha"]`
+    (issue #564) so `_record_pending` can persist it as `last_merged_sha`."""
     body = _pr_field(pr, "body", ".body")
     sha = _pr_field(pr, "mergeCommit", ".mergeCommit.oid")
+    result["merge_sha"] = sha
     refs = _parse_close_refs(body)
     closed, failed = [], []
     for num in refs:
@@ -278,8 +299,18 @@ def main():
     results = [process(pr) for pr in prs]
 
     if args.record_pending:
-        merged = [r["pr"] for r in results if r.get("status") == "merged"]
-        _record_pending(merged)
+        merged_rows = [r for r in results if r.get("status") == "merged"]
+        merged = [r["pr"] for r in merged_rows]
+        # The merge commit SHA of the LAST successfully-merged PR (issue
+        # #564). Empty when no merge happened or the SHA fetch failed → the
+        # state field is then left untouched.
+        last_sha = merged_rows[-1].get("merge_sha") if merged_rows else None
+        _record_pending(merged, last_merged_sha=last_sha)
+
+    # `merge_sha` is an internal handoff field (issue #564), not part of the
+    # documented per-PR result JSON contract — strip it before emitting.
+    for r in results:
+        r.pop("merge_sha", None)
 
     json.dump(results, sys.stdout, indent=2)
     sys.stdout.write("\n")
