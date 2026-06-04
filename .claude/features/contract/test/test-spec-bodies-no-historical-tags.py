@@ -167,6 +167,18 @@ ALLOWLIST = {
     # cannot be reworded without making the spec inaccurate. Mirrors the
     # contract OWN-spec retired-enum precedent above (#634).
     ("rabbit-config", "spec.md", 44, "retired"),
+    # rabbit-auto-evolve Inv 22 / contract Inv 36 — the literal `status`
+    # enum value "retired". rabbit-auto-evolve's spec.md documents
+    # triage-issue.py's verbatim `status == "retired"` check (feature.json
+    # status enum) on the Inv 22 triage decision-table row
+    # (`feature.json.status == "retired"` -> `close-not-planned` /
+    # `feature-retired`); the row names the load-bearing literal value the
+    # triage interpreter checks verbatim plus the `feature-retired` reason
+    # code. It is a live status-enum literal, not a historical-burden
+    # tombstone, and cannot be reworded without making the spec inaccurate.
+    # Mirrors the contract OWN-spec and rabbit-config retired-enum
+    # precedents above (#556 / #634).
+    ("rabbit-auto-evolve", "spec.md", 462, "retired"),
 }
 
 
