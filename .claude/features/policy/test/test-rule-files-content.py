@@ -62,6 +62,20 @@ check_phrase("spec-rules.md", "Verbatim Policy Embedding")
 # Rule 3 — SKILL.md changes are validated through skill-creator before deployment.
 check_phrase("spec-rules.md", "skill-creator Validation")
 
+# Inv 13: the SKILL.md Authoring Standard carries the no-nesting rule — a
+# subagent-dispatching skill MUST NOT be invoked inside an Agent() call (illegal
+# two-level nesting). Parallelize by dispatching the underlying subagent at
+# level 1, not by wrapping the skill in parallel Agent() calls.
+check_phrase("spec-rules.md", "No Subagent-Dispatching Skill Inside `Agent()`")
+check_phrase("spec-rules.md", "MUST NOT itself be invoked inside an")
+check_phrase("spec-rules.md", "illegal two-level nesting")
+check_phrase("spec-rules.md", "main → N parallel subagents")
+check_phrase("spec-rules.md", "rabbit-spec-create")
+check_phrase("spec-rules.md", "rabbit-feature-touch")
+check_phrase("spec-rules.md", "any future subagent-dispatching skill inherits")
+# History-free: the rule text must not carry issue/PR refs.
+check_phrase_absent("spec-rules.md", "#647")
+
 # Issue #416 (Part A): §3 Owner bullet mandates `rabbit-workflow team` for
 # repo-level features distributed as part of rabbit-workflow; individual
 # ownership is reserved for personal/experimental/out-of-distribution artifacts.
