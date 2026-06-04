@@ -12,6 +12,33 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v0.7.2 (housekeeping — verify-or-fix stale spec-seeder ownership claim,
+  #706, under #639):** Resolved the FLAGGED unverifiable exclusion from v0.7.1.
+  Deterministic verification: (1) `find .claude/features/spec-seeder` → EMPTY
+  (no such feature dir); (2) `rabbit-spec/docs/spec.md` now owns the
+  spec-lifecycle / spec-drafting role (`rabbit-spec-create` + the
+  `rabbit-spec-creator` read-only subagent) — the former `spec-seeder` feature
+  was absorbed into rabbit-spec; (3) `rabbit-feature-new` is a stale skill
+  name — the live skill is `rabbit-feature-scaffold` (`find` confirms
+  `.claude/skills/rabbit-feature-scaffold` and
+  `.claude/features/rabbit-feature/skills/rabbit-feature-scaffold`; no live
+  `rabbit-feature-new` outside this worktree's own checkout). The "What this
+  feature does NOT define" line that read "The spec-seeding subagent invoked
+  by `rabbit-feature-new` — owned by the `spec-seeder` feature." was CORRECTED
+  to name the live owner/skill: "The spec-drafting subagent invoked during
+  feature scaffolding (`rabbit-feature-scaffold`) — owned by `rabbit-spec`."
+  This is correction of dead content (per coding-rules §6), not a reword: the
+  exclusion still holds (rabbit-meta does not own spec-drafting) but the named
+  owner and skill were both dead. The separately-noted DEAD
+  `.claude/features/spec-seeder/` reference in `rabbit-feature/docs/spec.md` is
+  OUT OF rabbit-meta's scope and was FLAGGED as a `housekeeping`-tagged,
+  `feature:rabbit-feature` sub-issue for a future in-scope tick (not edited
+  here). New E2E guard `test/test-spec-seeder-ownership-retired.py` scans
+  `docs/spec.md` and fails on any `spec-seeder` reference or stale
+  spec-seeding/`rabbit-feature-new` ownership claim; wired into `test/run.py`.
+  No invariants renumbered; no behaviour changed. `feature.json` and
+  `docs/spec.md` versions bumped to 0.7.2, `docs/contract.md` to 0.2.2.
+
 - **v0.7.1 (housekeeping round 2 — measured line removal, #687, under #639):**
   Removal pass on `docs/spec.md` (80 → 67 lines, −13). Deletions, each verified
   by a deterministic check before removal: (1) the `scripts/` Surface entry and
