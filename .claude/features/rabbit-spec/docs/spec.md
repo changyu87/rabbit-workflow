@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.10.0
+version: 1.11.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -12,8 +12,7 @@ status: active
 ## Purpose
 
 rabbit-spec owns the rabbit workflow's spec-lifecycle skills — the skills that
-draft and revise a feature's spec.md (canonical flat layout: `docs/spec.md`;
-fallbacks: `specs/spec.md` and legacy `docs/spec/spec.md`).
+draft and revise a feature's spec.md (canonical flat layout: `docs/spec.md`).
 After Stage 2 it hosts
 `rabbit-spec-create`, the initial-spec-drafting skill that absorbs the
 behavior of the former `spec-seeder` feature; Stage 3 will add
@@ -148,47 +147,29 @@ length including zero.
    the standalone-mode branch (no unconditional uses). Wired into
    `test/run.py`.
 
-6. **Spec-path layout dual-read.**
+6. **Spec-path layout: canonical flat `docs/` only.**
    Both spec-lifecycle skills and the drafting agent resolve the in-feature
-   spec-file *layout* independently of the mode prefix (Inv 5). The canonical
-   layout is the FLAT `<feature_root>/docs/spec.md` (and
-   `<feature_root>/docs/contract.md`); the fallbacks are the current
-   `<feature_root>/specs/spec.md` and the legacy nested
-   `<feature_root>/docs/spec/spec.md`. Features may carry any of these three
-   layouts, so the skills MUST work against ALL THREE in this preference
-   order (first existing wins): flat `docs/` → `specs/` → legacy
-   `docs/spec/`.
-   - `skills/rabbit-spec-update/SKILL.md` MUST instruct the skill to PREFER
-     `<feature_root>/docs/spec.md`, FALL BACK to `<feature_root>/specs/spec.md`,
-     then FALL BACK to the legacy `<feature_root>/docs/spec/spec.md` when the
-     preferred paths are absent, for every Step 1 Read (spec.md, contract.md,
-     feature.json — feature.json stays at `<feature_root>/feature.json`
-     regardless of layout) and the Step 4 Edit/Write of spec.md. The skill
-     MUST edit whichever layout it resolved (never silently create a new
-     flat `docs/` file alongside an existing `specs/` or `docs/spec/` one).
-     The skill body MUST mention the flat `docs/spec.md`, the `specs/spec.md`,
-     and the legacy `docs/spec/spec.md` spec-file paths and name the flat
-     `docs/` as the preferred layout.
-   - `skills/rabbit-spec-create/SKILL.md` MUST write the drafted body to
-     `<dest_root>/docs/spec.md` when it already exists, ELSE to
-     `<dest_root>/specs/spec.md` when only that layout exists, ELSE to
-     `<dest_root>/docs/spec/spec.md` when only the legacy layout exists; when
-     NONE exists (brand-new scaffold) it MUST write the canonical flat
-     `<dest_root>/docs/spec.md`. The skill body MUST mention the flat
-     `docs/spec.md`, the `specs/spec.md`, and the legacy `docs/spec/spec.md`
-     destination paths and name the flat `docs/` as the canonical destination
-     for new specs.
+   spec-file *layout* independently of the mode prefix (Inv 5). The single
+   canonical layout is the FLAT `<feature_root>/docs/spec.md` (and
+   `<feature_root>/docs/contract.md`). Every rabbit feature carries this flat
+   layout; there is no `specs/` or legacy `docs/spec/` fallback.
+   - `skills/rabbit-spec-update/SKILL.md` MUST resolve the target
+     `<feature_root>/docs/spec.md` (and `<feature_root>/docs/contract.md`) for
+     every Step 1 Read and the Step 4 Edit/Write of spec.md. `feature.json`
+     stays at `<feature_root>/feature.json`. The skill body MUST name
+     `docs/spec.md` as the spec-file path and MUST NOT describe any
+     `specs/spec.md` or `docs/spec/spec.md` fallback.
+   - `skills/rabbit-spec-create/SKILL.md` MUST write the drafted body to the
+     canonical flat `<dest_root>/docs/spec.md`. The skill body MUST name
+     `docs/spec.md` as the destination and MUST NOT describe any
+     `specs/spec.md` or `docs/spec/spec.md` fallback.
    - `agents/rabbit-spec-creator.md` MUST name the flat `docs/spec.md` as its
-     draft target (not the legacy `docs/spec/spec.md`).
-   The deprecation criterion for this dual-read behavior: when every rabbit
-   feature has migrated onto the flat `docs/` layout and the `specs/` +
-   `docs/spec/` fallbacks can be dropped. rabbit-spec's
-   own spec.md/contract.md/CHANGELOG.md live under the flat `docs/` layout
-   (`docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`); no `specs/`
-   directory remains. Enforced by `test/test-spec-path-layout-dual-read.py`
-   (source-inspection of both SKILL.md bodies and the agent body; also asserts
-   rabbit-spec's own flat-`docs/` layout) and the on-disk
-   `test/test-docs-layout.py`. Both wired into `test/run.py`.
+     draft target.
+   Enforced by `test/test-spec-path-layout-canonical.py`
+   (source-inspection of both SKILL.md bodies and the agent body asserting
+   canonical-only resolution; also asserts rabbit-spec's own flat-`docs/`
+   layout) and the on-disk `test/test-docs-layout.py`. Both wired into
+   `test/run.py`.
 
 ## Tech Stack
 
@@ -208,10 +189,10 @@ coverage arrives with the surface artifacts in this stage:
   single prompt-file path; with <=50 files asserts NO note is emitted
 - `test-prompts-section-shape.py` — loads feature.json and asserts the
   `prompts` entry shape matches Inv 1
-- `test-spec-path-layout-dual-read.py` — source-inspects both SKILL.md
-  bodies and asserts the flat-`docs/`-preferred, `specs/` + `docs/spec/`
-  fallback layout resolution required by Inv 6; also asserts rabbit-spec's
-  own doc artifacts live under the flat `docs/` layout
+- `test-spec-path-layout-canonical.py` — source-inspects both SKILL.md
+  bodies and asserts the canonical flat-`docs/`-only layout resolution
+  required by Inv 6 (no `specs/` or `docs/spec/` fallback); also asserts
+  rabbit-spec's own doc artifacts live under the flat `docs/` layout
 - `test-docs-layout.py` — on-disk E2E assertion of rabbit-spec's flat
   `docs/` layout (`docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`
   present; no `specs/` or root `CHANGELOG.md`; resolver + `validate_feature`

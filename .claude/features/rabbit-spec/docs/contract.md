@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.10.0
+version: 1.11.0
 template_version: 2.0.0
 ---
 
@@ -55,7 +55,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "never": [
     "introduces a surface artifact without first updating spec.md",
     "modifies another feature's files",
-    "writes any file outside .claude/features/rabbit-spec/ except the target feature's spec.md (resolved layout: flat docs/spec.md preferred, then specs/spec.md, then legacy docs/spec/spec.md — the skill's deliverable)",
+    "writes any file outside .claude/features/rabbit-spec/ except the target feature's canonical flat docs/spec.md (the skill's deliverable)",
     "grants the rabbit-spec-creator agent any tool beyond Read, Grep, Glob"
   ]
 }
