@@ -12,6 +12,19 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v0.7.0 (retire live B/B vocabulary, #665, part of #420):** Reworded the
+  one live bug-and-backlog ("B/B") prose reference in `docs/spec.md` to the
+  current rabbit-issue vocabulary. The "What this feature does NOT define"
+  bullet that read "Bug/backlog tracking on user-project code … rabbit's
+  internal B/B system is reserved for rabbit-self development" now reads
+  "Issue tracking on user-project code … rabbit-issue (rabbit-managed GitHub
+  Issues) is reserved for rabbit-self development." No behaviour change;
+  vocabulary only. Added `test/test-bb-vocab-retired.py` — an E2E content
+  guard that scans `docs/spec.md` and `docs/contract.md` for live B/B tokens
+  (with an allowlist for load-bearing literals) — wired into `test/run.py`.
+  `feature.json` and `docs/spec.md` frontmatter versions bumped to 0.7.0 in
+  lockstep.
+
 - **v0.6.0 (Housekeeping Phase 2 — history-free doc surfaces, #548):** Opted
   `rabbit-meta` into the contract Inv 49 STRICT tier by setting top-level
   `"housekeeping_clean": true` in `feature.json` (data-driven opt-in via the
