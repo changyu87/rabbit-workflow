@@ -40,7 +40,7 @@ durable heartbeat will be set up on the next `/rabbit-auto-evolve start`. The
 heartbeat cron expression avoids the :00/:30 minute marks per CronCreate
 guidance. Cron remains the tick scheduler where available.
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -55,11 +55,50 @@ import sys
 ENTRY_TOKEN = "tick-headless.py"
 TICK_SCRIPT = ".claude/features/rabbit-auto-evolve/scripts/tick-headless.py"
 LOG_PATH = ".rabbit/tick-headless.log"
-SCHEDULE = "*/30 * * * *"
-# Durable CronCreate heartbeat expression for the restricted-host fallback
-# (issue #521). ~30-min recurring; the 13,43 minutes AVOID the :00 and :30
-# marks per CronCreate guidance.
-HEARTBEAT_EXPR = "13,43 * * * *"
+
+# ---------------------------------------------------------------------------
+# SINGLE SOURCE OF TRUTH for the tick cadence (issue #723).
+#
+# `CADENCE_MINUTES` is the ONE codified cadence value. BOTH scheduler paths
+# DERIVE their cron expression from it via the helpers below — there is no
+# second independent literal. Change CADENCE_MINUTES and BOTH the system-cron
+# `SCHEDULE` and the CronCreate-fallback `HEARTBEAT_EXPR` move together; the
+# spec.md / SKILL.md literals are pinned to this source by
+# test/test-cron-cadence-source.py so prose drift fails the gate.
+# ---------------------------------------------------------------------------
+CADENCE_MINUTES = 30
+# The fallback heartbeat shifts off the :00/:30 marks per CronCreate guidance
+# (issue #521) by adding this fixed offset to each derived minute mark.
+HEARTBEAT_OFFSET = 13
+
+
+def _cadence_minute_marks(cadence_minutes):
+    """The within-hour minute marks for a sub-hour cadence: 0, c, 2c, ...
+    below 60. For cadence 30 this is [0, 30]; for 15 it is [0, 15, 30, 45]."""
+    return list(range(0, 60, cadence_minutes))
+
+
+def _system_cron_expr(cadence_minutes):
+    """Derive the system-cron expression for `cadence_minutes` (the path used
+    by the `crontab` entry). Renders as the canonical `*/<n> * * * *` step
+    form that fires on the :00/:30/... marks."""
+    return f"*/{cadence_minutes} * * * *"
+
+
+def _heartbeat_expr(cadence_minutes):
+    """Derive the CronCreate-fallback heartbeat expression for the SAME
+    `cadence_minutes` as the system-cron path, shifted off the :00/:30 marks
+    by `HEARTBEAT_OFFSET` (CronCreate guidance, issue #521). For the default
+    30-min cadence this yields `13,43 * * * *`."""
+    shifted = sorted(
+        (m + HEARTBEAT_OFFSET) % 60
+        for m in _cadence_minute_marks(cadence_minutes)
+    )
+    return f"{','.join(str(m) for m in shifted)} * * * *"
+
+
+SCHEDULE = _system_cron_expr(CADENCE_MINUTES)
+HEARTBEAT_EXPR = _heartbeat_expr(CADENCE_MINUTES)
 # The recurring heartbeat fires the INTERNAL `tick` (the scripted phase-walk
 # that RESPECTS the stop marker at phase 0 and NEVER deletes it), NOT the
 # USER-intent `start` whose Inv 19 stop-cancel would silently resurrect a

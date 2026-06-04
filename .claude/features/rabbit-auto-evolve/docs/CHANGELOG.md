@@ -13,6 +13,22 @@ own version.
 
 ## Version notes
 
+- **v0.50.0 — 2026-06-03** — Single cadence source of truth (#723). The tick
+  cadence had no single source: `install-cron.py` held TWO independent
+  hardcoded literals — `SCHEDULE = "*/30 * * * *"` (system-cron path) and
+  `HEARTBEAT_EXPR = "13,43 * * * *"` (CronCreate fallback) — that were
+  decoupled, so changing the system-cron cadence left the fallback silently at
+  the old value; the heartbeat literal was additionally duplicated verbatim
+  into `docs/spec.md` and the source `SKILL.md`. Fixed by codifying the cadence
+  ONCE as `CADENCE_MINUTES` in `install-cron.py` (script 1.2.0 -> 1.3.0): both
+  `SCHEDULE` and `HEARTBEAT_EXPR` now DERIVE from it via `_system_cron_expr()`
+  and `_heartbeat_expr()` — the heartbeat is the same cadence shifted off the
+  `:00`/`:30` marks by a fixed `HEARTBEAT_OFFSET` (deterministic transform, not
+  a second literal), so changing the cadence propagates to BOTH paths. New e2e
+  `test/test-cron-cadence-source.py` pins the single source, the derivation,
+  the :00/:30 avoidance, and every spec.md / SKILL.md cron literal to the
+  codified value so any drift fails the gate. The default cadence is unchanged
+  (system cron `*/30 * * * *`, heartbeat `13,43 * * * *`).
 - **v0.49.0 — 2026-06-04** — Decomposed-parent autoclose (#721). The loop
   decomposed cross-feature mandates into N per-feature children but never
   closed the parent once all children closed (#530, #677 both lingered OPEN
