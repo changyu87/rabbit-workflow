@@ -1,8 +1,9 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.45.0",
+  "version": "0.46.0",
   "owner": "rabbit-workflow team",
+  "housekeeping_clean": true,
   "tdd_state": "test-green",
   "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and is fired on a fixed cadence by the system cron where available (with a durable CronCreate fallback where crontab is blocked; Inv 32) until the user issues an explicit stop.",
   "surface": {
@@ -14,7 +15,7 @@
     ]
   },
   "deprecation_criterion": "when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill",
-  "updated": "2026-06-03",
+  "updated": "2026-06-04",
   "manifest": [
     {
       "api": "publish_skill",
@@ -39,5 +40,5 @@
   },
   "configuration": [],
   "prompts": [],
-  "spec_no_change_reason": "housekeeping opt-in via feature.json flag triggers strict test; doc-surface cleanup follows in impl"
+  "spec_no_change_reason": "data-driven strict-tier opt-in via feature.json housekeeping_clean flag; spec.md body unchanged (frontmatter version bump only)"
 }
