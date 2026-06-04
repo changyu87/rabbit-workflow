@@ -4,7 +4,7 @@
 Usage:
   record-decomposition.py <parent#> <child#> [<child#> ...]
 
-Per rabbit-auto-evolve spec.md Inv 58 (issue #721), when the dispatcher shapes
+Per rabbit-auto-evolve spec.md Inv 53 (issue #721), when the dispatcher shapes
 an item as `decomposition` (>= --decompose-threshold features) and files the N
 per-feature child sub-issues, it MUST record the parent->children linkage in
 MACHINE-READABLE form so the loop can deterministically enumerate a parent's
@@ -94,7 +94,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Record a decomposition parent->children linkage under "
                     "the auto-evolve state's decomposition_parents map "
-                    "(Inv 58 / #721). Unions with any existing children for "
+                    "(Inv 53 / #721). Unions with any existing children for "
                     "the parent; additive across parents."
     )
     parser.add_argument("parent", type=int, help="parent issue number")

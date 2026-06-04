@@ -239,15 +239,15 @@ with tempfile.TemporaryDirectory() as d:
     else:
         ok("D: post-dispatch exited 0")
     t = read_trace(trace)
-    # Inv 43: the leak-cleanup runs as the FIRST action of phase 6, BEFORE merge.
+    # Inv 42: the leak-cleanup runs as the FIRST action of phase 6, BEFORE merge.
     if "clean-dispatch-leaks.py" not in t:
         fail(f"D: clean-dispatch-leaks.py did not run in post-dispatch; trace={t!r}")
     elif "merge-prs.py" not in t:
         fail(f"D: phase 6 merge-prs.py did not run with ready PRs; trace={t!r}")
     elif t.index("clean-dispatch-leaks.py") > t.index("merge-prs.py"):
-        fail(f"D: cleanup ran AFTER merge; must run BEFORE (Inv 43); trace={t!r}")
+        fail(f"D: cleanup ran AFTER merge; must run BEFORE (Inv 42); trace={t!r}")
     else:
-        ok("D: cleanup ran BEFORE merge-prs.py (Inv 43)")
+        ok("D: cleanup ran BEFORE merge-prs.py (Inv 42)")
     if "merge-prs.py" not in t:
         fail(f"D: phase 6 merge-prs.py did not run with ready PRs; trace={t!r}")
     else:
@@ -283,11 +283,11 @@ with tempfile.TemporaryDirectory() as d:
     else:
         ok("E: no-ready post-dispatch exited 0")
     t = read_trace(trace)
-    # Inv 43: the cleanup runs regardless of whether there are PRs to merge.
+    # Inv 42: the cleanup runs regardless of whether there are PRs to merge.
     if "clean-dispatch-leaks.py" not in t:
         fail(f"E: clean-dispatch-leaks.py did not run (no-ready path); trace={t!r}")
     else:
-        ok("E: cleanup ran even with no ready PRs (Inv 43)")
+        ok("E: cleanup ran even with no ready PRs (Inv 42)")
     if "merge-prs.py" in t:
         fail(f"E: merge-prs.py ran with empty merge_ready; trace={t!r}")
     else:
@@ -304,7 +304,7 @@ with tempfile.TemporaryDirectory() as d:
 
 # ---------------------------------------------------------------------------
 # G — when the cleanup REFUSES (non-zero, unexpected dirt), post-dispatch
-# aborts BEFORE merge so a real uncommitted change is never destroyed (Inv 43).
+# aborts BEFORE merge so a real uncommitted change is never destroyed (Inv 42).
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
     repo_root, state_dir, script_dir, trace = fresh(d, overrides={
@@ -319,7 +319,7 @@ with tempfile.TemporaryDirectory() as d:
         ok("G: post-dispatch aborted non-zero on cleanup refusal")
     t = read_trace(trace)
     if "merge-prs.py" in t:
-        fail(f"G: merge ran despite cleanup refusal (Inv 43 violated); trace={t!r}")
+        fail(f"G: merge ran despite cleanup refusal (Inv 42 violated); trace={t!r}")
     else:
         ok("G: merge-prs.py did NOT run after cleanup refusal")
 
@@ -327,7 +327,7 @@ with tempfile.TemporaryDirectory() as d:
 # ---------------------------------------------------------------------------
 # H — post-dispatch re-syncs local dev (sync-tree.py) AFTER the merge step and
 # BEFORE the post-merge/release drain, so release-bump runs on fresh state
-# (Inv 47 / issue #516). Phase 6 merge is a REMOTE squash-merge (origin/dev
+# (Inv 45 / issue #516). Phase 6 merge is a REMOTE squash-merge (origin/dev
 # advances); local dev must be fast-forwarded before phases 7-9 or release-bump
 # computes its tag against stale local state and SKIPS the first attempt.
 # ---------------------------------------------------------------------------
@@ -345,22 +345,22 @@ with tempfile.TemporaryDirectory() as d:
     if "merge-prs.py" not in t:
         fail(f"H: merge-prs.py did not run with ready PRs; trace={t!r}")
     elif "sync-tree.py" not in t:
-        fail(f"H: sync-tree.py did NOT re-sync after merge (Inv 47); trace={t!r}")
+        fail(f"H: sync-tree.py did NOT re-sync after merge (Inv 45); trace={t!r}")
     elif "run-post-merge.py" not in t:
         fail(f"H: run-post-merge.py did not run; trace={t!r}")
     elif not (t.index("merge-prs.py")
               < t.index("sync-tree.py")
               < t.index("run-post-merge.py")):
-        fail(f"H: re-sync not ordered between merge and post-merge (Inv 47); "
+        fail(f"H: re-sync not ordered between merge and post-merge (Inv 45); "
              f"trace={t!r}")
     else:
         ok("H: sync-tree.py re-ran between merge-prs.py and run-post-merge.py "
-           "(Inv 47)")
+           "(Inv 45)")
 
 
 # ---------------------------------------------------------------------------
 # I — with ZERO merges, post-dispatch does NOT re-sync (no spurious sync;
-# harmless no-op) — the re-sync is gated on PRs actually merged (Inv 47).
+# harmless no-op) — the re-sync is gated on PRs actually merged (Inv 45).
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
     repo_root, state_dir, script_dir, trace = fresh(d)
@@ -376,16 +376,16 @@ with tempfile.TemporaryDirectory() as d:
     if "merge-prs.py" in t:
         fail(f"I: merge-prs.py ran with empty merge_ready; trace={t!r}")
     elif "sync-tree.py" in t:
-        fail(f"I: sync-tree.py re-synced despite zero merges (Inv 47 no-op "
+        fail(f"I: sync-tree.py re-synced despite zero merges (Inv 45 no-op "
              f"violated); trace={t!r}")
     else:
-        ok("I: no post-merge re-sync when zero PRs merged (Inv 47 no-op)")
+        ok("I: no post-merge re-sync when zero PRs merged (Inv 45 no-op)")
 
 
 # ---------------------------------------------------------------------------
 # J — when the post-merge re-sync FAILS (e.g. dirty/divergent local dev),
 # post-dispatch aborts non-zero BEFORE the post-merge drain, so release-bump
-# never runs on a tree that could not be fast-forwarded (Inv 47).
+# never runs on a tree that could not be fast-forwarded (Inv 45).
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
     repo_root, state_dir, script_dir, trace = fresh(d, overrides={
@@ -399,13 +399,13 @@ with tempfile.TemporaryDirectory() as d:
     if proc.returncode == 0:
         fail("J: post-dispatch must abort non-zero when post-merge re-sync fails")
     else:
-        ok("J: post-dispatch aborted non-zero on re-sync failure (Inv 47)")
+        ok("J: post-dispatch aborted non-zero on re-sync failure (Inv 45)")
     t = read_trace(trace)
     if "run-post-merge.py" in t:
-        fail(f"J: run-post-merge.py ran despite failed re-sync (Inv 47); "
+        fail(f"J: run-post-merge.py ran despite failed re-sync (Inv 45); "
              f"trace={t!r}")
     else:
-        ok("J: run-post-merge.py did NOT run after re-sync failure (Inv 47)")
+        ok("J: run-post-merge.py did NOT run after re-sync failure (Inv 45)")
 
 
 # ---------------------------------------------------------------------------

@@ -889,7 +889,7 @@ with tempfile.TemporaryDirectory() as repo_root:
 
 
 # ---------------------------------------------------------------------------
-# issue_type + created_at fields (issue #606 / Inv 51): the triage record MUST
+# issue_type + created_at fields (issue #606 / Inv 44): the triage record MUST
 # carry `issue_type` (derived from the GH bug/enhancement label) and
 # `created_at` (the issue's creation timestamp) so plan-batch's _computed_score
 # bug and age signals are non-zero. Without these fields both signals silently

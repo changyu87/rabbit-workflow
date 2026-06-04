@@ -25,7 +25,7 @@ The refire wake-up fires the INTERNAL `tick` (the scripted phase-walk that
 respects but never deletes the stop marker), NOT the USER-intent `start` whose
 Inv 19 stop-cancel would resurrect a user-halted loop on a MACHINE wake-up.
 
-Refire dedup (Inv 49, issue #559): every tick scheduled a refire one-shot but
+Refire dedup (Inv 33, issue #559): every tick scheduled a refire one-shot but
 nothing cancelled a prior pending one, so retried/overlapping ticks PILED UP
 refires that fired together (an observed double-fire). The fix gives the refire
 prompt a recognizable MARKER (`/rabbit-auto-evolve tick #refire`) so it is
@@ -78,7 +78,7 @@ from datetime import datetime, timedelta
 # loop). A MACHINE wake-up must never inherit a user-intent's stop-cancelling
 # semantics.
 #
-# Inv 49 (#559): the refire one-shot's prompt carries a recognizable refire
+# Inv 33 (#559): the refire one-shot's prompt carries a recognizable refire
 # MARKER so it is distinguishable from the RECURRING heartbeat (whose prompt is
 # the bare `/rabbit-auto-evolve tick`). Without this signature the dispatcher's
 # CronList dedup cannot tell a prior pending refire from the heartbeat — the
@@ -90,7 +90,7 @@ PROMPT = f"{TICK_COMMAND} {REFIRE_MARKER}"
 
 # Inv 33 arm-time-skid buffer (#748): the pinned one-shot minute is the current
 # minute + 2, NOT + 1. The dispatcher arms the one-shot via a
-# CronList -> CronDelete -> CronCreate dedup round-trip (Inv 49) that eats
+# CronList -> CronDelete -> CronCreate dedup round-trip (Inv 33) that eats
 # several seconds. With a +1 pinned minute, a decision landing in the final
 # seconds of a wall-clock minute let that round-trip CROSS the minute boundary,
 # so the pinned minute became the CURRENT (already-started) minute; because this
@@ -116,7 +116,7 @@ def _pinned_oneshot_cron(now=None):
 
     The 2-minute buffer (#748) guarantees the pinned minute is strictly in the
     future even after the dispatcher's multi-second CronList -> CronDelete ->
-    CronCreate dedup round-trip (Inv 49) crosses a wall-clock minute boundary; a
+    CronCreate dedup round-trip (Inv 33) crosses a wall-clock minute boundary; a
     +1 buffer was dropped ~14% of the time when a decision landed in the final
     seconds of a minute.
 
@@ -137,7 +137,7 @@ def _pinned_oneshot_cron(now=None):
 
 
 def is_refire_oneshot(entry):
-    """Inv 49 (#559): PURE predicate — is `entry` (a `CronList` row) one of OUR
+    """Inv 33 (#559): PURE predicate — is `entry` (a `CronList` row) one of OUR
     immediate-refire one-shots, as opposed to the recurring heartbeat?
 
     True iff ALL hold:
@@ -168,7 +168,7 @@ def is_refire_oneshot(entry):
 
 def _is_heartbeat(entry):
     """A recurring OR durable entry whose prompt is NOT a refire marker is
-    treated as a heartbeat to PRESERVE (Inv 49). This is the complement used
+    treated as a heartbeat to PRESERVE (Inv 33). This is the complement used
     only to populate `preserve_heartbeat_ids` for dispatcher transparency; the
     delete decision is driven solely by `is_refire_oneshot`."""
     if not isinstance(entry, dict):
@@ -181,7 +181,7 @@ def _is_heartbeat(entry):
 def _cron_list_snapshot():
     """Parse the dispatcher-injected `CronList` snapshot from the
     RABBIT_AUTO_EVOLVE_CRON_LIST env var (a JSON array). Absent or malformed →
-    treated as empty (Inv 49). A script cannot call `CronList` itself, so the
+    treated as empty (Inv 33). A script cannot call `CronList` itself, so the
     DISPATCHER passes its `CronList` result through this env var at phase 11."""
     raw = os.environ.get("RABBIT_AUTO_EVOLVE_CRON_LIST")
     if not raw:
@@ -204,7 +204,7 @@ def _entry_id(entry):
 
 
 def _dispatcher_actions(create_refire):
-    """Inv 49 (#559): emit the EXPLICIT delete/preserve/create instruction set
+    """Inv 33 (#559): emit the EXPLICIT delete/preserve/create instruction set
     the DISPATCHER follows. A script cannot call CronList/CronDelete/CronCreate
     — those are Claude actions — so this computes, from the injected snapshot:
 
@@ -286,7 +286,7 @@ def decide():
     count = _open_work_count()
     if count > 0:
         scheduler = _scheduler()
-        # The single refire to CronCreate (Inv 49). PROMPT carries the #refire
+        # The single refire to CronCreate (Inv 33). PROMPT carries the #refire
         # marker so this one-shot is later distinguishable from the heartbeat.
         create_refire = {
             "cron": _pinned_oneshot_cron(),
@@ -300,7 +300,7 @@ def decide():
             "prompt": PROMPT,
             "when": "~1min",
             "croncreate": dict(create_refire),
-            # Inv 49 (#559): the EXPLICIT instruction set the dispatcher
+            # Inv 33 (#559): the EXPLICIT instruction set the dispatcher
             # follows — delete prior refire one-shots, preserve the heartbeat,
             # create exactly one new refire. Computed from the injected
             # CronList snapshot (RABBIT_AUTO_EVOLVE_CRON_LIST).

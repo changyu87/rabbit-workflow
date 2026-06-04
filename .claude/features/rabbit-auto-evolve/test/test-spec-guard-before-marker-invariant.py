@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """test-spec-guard-before-marker-invariant.py — rabbit-auto-evolve
-guard-before-marker invariant (Inv 42).
+guard-before-marker invariant.
 
-Asserts the invariant text is present in the feature spec (specs/spec.md) AND
+The #751 deep slim CONSOLIDATED the guard-before-marker ordering into the
+stale-marker running-guard invariant (they describe one concern — the running
+marker's guard/write sequence), so the content is asserted spec-wide rather than
+pinned to a specific invariant number.
+
+Asserts the invariant text is present in the feature spec (docs/spec.md) AND
 that the source SKILL.md describes the corrected ordering: the explicit user
 `start` runs cancel-stop + bootstrap (start-loop.py) then invokes the shared
 phase-walk, and the shared phase-walk runs the running-guard FIRST and writes
@@ -58,13 +63,14 @@ missing = [s for s in REQUIRED_SPEC if s not in spec_lower]
 if missing:
     fail(f"spec.md missing guard-before-marker phrase(s): {missing!r}")
 else:
-    ok("spec.md carries the guard-before-marker invariant phrases (Inv 42)")
+    ok("spec.md carries the guard-before-marker invariant phrases")
 
-# The invariant must be numbered 42 (next monotonic number in this feature).
-if re.search(r"(?m)^\s*42\.\s", SPEC_MD.read_text()):
-    ok("spec.md numbers the new invariant as 42 (next monotonic)")
+# Guard-before-marker ordering must be explicit: the guard runs BEFORE the
+# marker write.
+if "before" in spec_lower and "running-guard" in spec_lower:
+    ok("spec.md states the guard-BEFORE-marker ordering")
 else:
-    fail("spec.md does not carry a list item numbered 42")
+    fail("spec.md does not state the guard-before-marker ordering")
 
 # SKILL.md describes the corrected ordering on both the start and tick paths.
 skill_lower = re.sub(r"\s+", " ", SKILL_MD.read_text().lower())

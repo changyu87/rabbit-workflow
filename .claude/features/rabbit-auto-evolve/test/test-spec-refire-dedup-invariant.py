@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-spec-refire-dedup-invariant.py — rabbit-auto-evolve Inv 49 (issue #559).
+"""test-spec-refire-dedup-invariant.py — rabbit-auto-evolve Inv 47 (issue #559).
 
 Asserts the at-most-one-immediate-refire dedup invariant text is present in the
 feature spec (docs/spec.md, dual-read with specs/ and legacy docs/spec/
@@ -67,6 +67,6 @@ missing = [s for s in REQUIRED if s not in lowered]
 if missing:
     fail(f"spec.md missing refire-dedup-invariant phrase(s): {missing!r}")
 else:
-    ok("spec.md carries the at-most-one-refire dedup invariant (Inv 49)")
+    ok("spec.md carries the at-most-one-refire dedup invariant (Inv 47)")
 
 sys.exit(FAIL)

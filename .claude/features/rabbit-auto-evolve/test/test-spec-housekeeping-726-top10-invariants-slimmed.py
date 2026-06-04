@@ -12,10 +12,12 @@ later edit cannot silently regress the slimming OR silently delete an invariant 
 load-bearing phrase under the cover of slimming.
 
 #639 discipline:
-  (a) STRUCTURE — every invariant remains present and the numbering is contiguous
-      1..N (no invariant deleted, none renumbered; that is the sibling #724/#725 job).
-      The count grows only by APPENDING (issue #731 appended Inv 59); the guard pins
-      the current count so a deletion or a renumber still fails.
+  (a) STRUCTURE — the numbering is contiguous 1..N (no gaps, no duplicates). The
+      invariant COUNT is NOT pinned here: the count-floor ratchet was removed in
+      #750 and the #751 deep slim CONSOLIDATED redundant invariants, so the count
+      shrank below the former 59. The contiguity guarantee (the sibling
+      #724/#725/#751 job) still holds; the dedicated #751 housekeeping test pins
+      the measured reduction.
   (b) WEIGHT    — the spec.md total line count stays a meaningful margin below the
       pre-#726 baseline (3594 lines). A trivial token-trim would not clear the ceiling.
       The ceiling carries headroom for future (additive) invariants below the baseline.
@@ -80,7 +82,7 @@ REQUIRED_PHRASES = [
     "run-post-merge.py",
     "pending_post_merge",
     "--record-pending",
-    # Inv 56 — cross-scope detection
+    # Inv 51 — cross-scope detection
     "cross_scope",
     "cross_scope_items",
     "parallel-per-feature",
@@ -137,24 +139,21 @@ else:
         body = f.read()
     lines = body.splitlines()
 
-    # (a) STRUCTURE — 59 invariants, contiguous 1..59 (Inv 59 appended by #731).
-    EXPECTED_COUNT = 59
+    # (a) STRUCTURE — contiguous 1..N. The count is NOT pinned: the count-floor
+    # ratchet was removed in #750 and the #751 deep slim consolidated redundant
+    # invariants, so N shrank below the former 59. Contiguity is the durable
+    # guarantee; the measured reduction is pinned by the dedicated #751 test.
     nums = invariant_numbers(lines)
     if nums is None:
         fail("structure", "no '## Invariants' section found")
     else:
-        if len(nums) == EXPECTED_COUNT:
-            ok("structure", f"exactly {EXPECTED_COUNT} invariants present")
-        else:
-            fail("structure",
-                 f"expected {EXPECTED_COUNT} invariants, found {len(nums)}")
-        expected = list(range(1, EXPECTED_COUNT + 1))
+        N = len(nums)
+        expected = list(range(1, N + 1))
         if nums == expected:
-            ok("structure",
-               f"invariant numbering is contiguous 1..{EXPECTED_COUNT}")
+            ok("structure", f"invariant numbering is contiguous 1..{N}")
         else:
             fail("structure",
-                 f"invariant numbering not contiguous 1..{EXPECTED_COUNT}: {nums}")
+                 f"invariant numbering not contiguous 1..{N}: {nums}")
 
     # (b) WEIGHT — total line count dropped by a meaningful margin.
     total = len(lines)

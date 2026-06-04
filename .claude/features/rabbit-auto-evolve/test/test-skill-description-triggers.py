@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-skill-description-triggers.py — SKILL.md `description:` frontmatter
-enumerates the broadened natural-language trigger phrasings (spec Inv 45,
+enumerates the broadened natural-language trigger phrasings (spec Inv 43,
 issue #415).
 
 The `description:` line is the sole signal a fresh session uses to decide
@@ -73,7 +73,7 @@ def main():
     for token in canonical:
         if token.lower() not in desc_lower:
             print(
-                f"FAIL: Inv 45: SKILL.md description dropped the canonical "
+                f"FAIL: Inv 43: SKILL.md description dropped the canonical "
                 f"trigger phrasing: {token!r}",
                 file=sys.stderr,
             )
@@ -97,7 +97,7 @@ def main():
     for label, ok in broadened:
         if not ok:
             print(
-                f"FAIL: Inv 45: SKILL.md description missing broadened "
+                f"FAIL: Inv 43: SKILL.md description missing broadened "
                 f"trigger phrasing: {label}",
                 file=sys.stderr,
             )
@@ -107,7 +107,7 @@ def main():
     #    authoring standard) — not split into a markdown list.
     if re.search(r"(?m)^\s*[-*]\s", description):
         print(
-            "FAIL: Inv 45: SKILL.md description must remain a single coherent "
+            "FAIL: Inv 43: SKILL.md description must remain a single coherent "
             "sentence/paragraph, not a bulleted list",
             file=sys.stderr,
         )

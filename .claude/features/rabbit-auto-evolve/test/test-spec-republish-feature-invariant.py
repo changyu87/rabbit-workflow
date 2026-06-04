@@ -45,11 +45,12 @@ def norm(text):
     return re.sub(r"\s+", " ", text)
 
 
-# --- (1) spec.md carries Inv 55 -----------------------------------------
+# --- (1) spec.md carries the republish invariant ------------------------
+# (number not pinned: the #751 deep slim reflowed the numbering.)
 spec_low = norm(SPEC_MD.read_text()).lower()
 
 SPEC_REQUIRED = [
-    "inv 55",
+    "deployed-surface republish",
     "republish-feature.py",
     "contract.lib.publish",
     "test-deployed-skills-match-source.py",
@@ -59,10 +60,11 @@ SPEC_REQUIRED = [
 ]
 missing = [s for s in SPEC_REQUIRED if s not in spec_low]
 if missing:
-    fail(f"spec.md missing Inv 55 phrase(s): {missing!r}")
+    fail(f"spec.md missing republish-invariant phrase(s): {missing!r}")
 else:
-    ok("spec.md carries Inv 55 with the republish script, the publish invoke, "
-       "the deployed-skills test, idempotency, and pre-PR sequencing")
+    ok("spec.md carries the republish invariant with the republish script, the "
+       "publish invoke, the deployed-skills test, idempotency, and pre-PR "
+       "sequencing")
 
 # The scope-guard-denied deployed-copy problem must be documented.
 if "scope" in spec_low and ("deployed" in spec_low):

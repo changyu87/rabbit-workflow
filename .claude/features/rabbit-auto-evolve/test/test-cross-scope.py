@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-cross-scope.py — e2e tests for cross-scope detection + routing (Inv 56,
+"""test-cross-scope.py — e2e tests for cross-scope detection + routing (Inv 51,
 issue #433).
 
 Two surfaces are exercised end-to-end as subprocesses (no live network, no

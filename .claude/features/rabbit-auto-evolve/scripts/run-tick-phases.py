@@ -10,13 +10,13 @@ hand-assembling any inter-phase data structure:
 
   pre-dispatch   tick-start self-sync (Inv 38), phase 0/1 stop/abort
                  short-circuit, running-guard (Inv 35), running-marker WRITE
-                 (Inv 42 — only after the guard returns proceed), phases 3-5
+                 (Inv 35 — only after the guard returns proceed), phases 3-5
                  (fetch | triage | plan, Inv 18). Emits a result with
                  `action: "proceed"` (continue to dispatch) or
                  `action: "skip"` (a clean no-op short-circuit fired).
 
 The running marker is written by THIS shared walk (after its own guard),
-not before it by the caller (Inv 42). Sequencing the guard BEFORE the marker
+not before it by the caller (Inv 35). Sequencing the guard BEFORE the marker
 write — in ONE place for both the in-session and headless paths — means neither
 path false-skips on a marker it itself wrote. start-loop.py (the explicit user
 `start` entry) keeps ONLY its cancel-stop + bootstrap self-heal (Inv 19) and no
@@ -24,7 +24,7 @@ longer writes the running marker.
 
   post-dispatch  phase 7 (merge ready PRs from the state's `merge_ready`
                  hint), a post-merge re-sync to origin/dev when PRs merged
-                 (Inv 47), phases 8-10 (`run-post-merge.py` drain), phase 11
+                 (Inv 45), phases 8-10 (`run-post-merge.py` drain), phase 11
                  (persist: re-read the on-disk state — already mutated by the
                  phase scripts — drop the transient `merge_ready` key, and
                  pipe through `update-state.py`). Emits a result summary.
@@ -127,7 +127,7 @@ def _write_running_marker():
     the DURABLE owner PID + ISO-8601 timestamp the running-guard reads (Inv 35).
 
     The marker write is owned by the shared phase-walk and runs ONLY after the
-    running-guard returns `proceed` (Inv 42), so neither the in-session nor the
+    running-guard returns `proceed` (Inv 35), so neither the in-session nor the
     headless path ever false-skips on a marker it itself wrote. The durable
     owner-PID + timestamp content shape lives in start-loop.py (imported by file
     spec, since the filename is hyphenated) so the marker content stays defined
@@ -145,7 +145,7 @@ def _write_running_marker():
 
 
 def _run_prune_worktrees():
-    """Invoke the tick-start orphan sweep (prune-worktrees.py, Inv 53 / #628).
+    """Invoke the tick-start orphan sweep (prune-worktrees.py, Inv 49 / #628).
     Resolved next to THIS file (like _write_running_marker), NOT via the
     configurable phase-script dir which a test harness may point at stubs —
     the sweep is a fixed sibling, not a swappable phase. Always returns the
@@ -164,7 +164,7 @@ def _run_prune_worktrees():
 
 def run_pre_dispatch():
     """Phases: tick-start sync (Inv 38) -> phase 0/1 stop/abort short-circuit
-    -> running-guard (Inv 35) -> running-marker write (Inv 42, only on proceed)
+    -> running-guard (Inv 35) -> running-marker write (Inv 35, only on proceed)
     -> phases 3-5 fetch|triage|plan (Inv 18).
 
     Returns `(result_dict, exit_code)`. The result's `action` is "proceed"
@@ -212,13 +212,13 @@ def run_pre_dispatch():
         result["running_guard"] = "stale-cleared"
 
     # The guard returned `proceed` (no live marker, or a stale one it cleared).
-    # ONLY now does the walk write the running marker (Inv 42), so the guard
+    # ONLY now does the walk write the running marker (Inv 35), so the guard
     # above never trips on a marker the walk itself wrote. Both the in-session
     # and headless paths get the marker written this single way.
     _write_running_marker()
     result["running_marker"] = "written"
 
-    # Tick-start orphan sweep (Inv 53 / #628). The running-guard above returned
+    # Tick-start orphan sweep (Inv 49 / #628). The running-guard above returned
     # `proceed`, so no OTHER tick is live, and Phase 6 dispatch has not begun —
     # therefore every existing `.claude/worktrees/agent-*` worktree is an orphan
     # from a prior or interrupted tick and is safe to force-remove. The same
@@ -263,7 +263,7 @@ def run_post_dispatch():
     result = {"segment": "post-dispatch", "status": "completed", "phases": {}}
 
     # phase 7 (FIRST action, BEFORE merge): deterministic pre-merge cleanup of
-    # KNOWN worktree-dispatch leak-class noise from the main tree (Inv 43 /
+    # KNOWN worktree-dispatch leak-class noise from the main tree (Inv 42 /
     # #583). Worktree-isolated Phase 6 dispatches sometimes leak a stray
     # `.rabbit-scope-active-*` marker or a bookkeeping-only `feature.json`
     # edit into the dispatcher's main tree, which trips safety-check Inv 5 and
@@ -288,7 +288,7 @@ def run_post_dispatch():
             result["reason"] = "merge-failed"
             return result, 1
 
-        # Post-merge re-sync to origin/dev (Inv 47 / #516). merge-prs.py did a
+        # Post-merge re-sync to origin/dev (Inv 45 / #516). merge-prs.py did a
         # REMOTE squash-merge via `gh pr merge`, which advances origin/dev but
         # NOT the loop's LOCAL dev checkout. Fast-forward local dev to
         # origin/dev NOW, before the phases 8-10 release drain, so

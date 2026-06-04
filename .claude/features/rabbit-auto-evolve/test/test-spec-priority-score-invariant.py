@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-spec-priority-score-invariant.py — rabbit-auto-evolve Inv 46
+"""test-spec-priority-score-invariant.py — rabbit-auto-evolve Inv 44
 (issue #441).
 
 Asserts the loop-computed-priority-score invariant text is present in the
@@ -72,11 +72,11 @@ missing = [s for s in REQUIRED if s not in lowered]
 if missing:
     fail(f"spec.md missing priority-score-invariant phrase(s): {missing!r}")
 else:
-    ok("spec.md carries the loop-computed-priority-score invariant (Inv 46)")
+    ok("spec.md carries the loop-computed-priority-score invariant (Inv 44)")
 
 
 # ---------------------------------------------------------------------------
-# E2E (issue #606 / Inv 51): the bug-vs-enhancement and age signals of the
+# E2E (issue #606 / Inv 48): the bug-vs-enhancement and age signals of the
 # computed score are LIVE, non-zero contributions — they read `issue_type` and
 # `created_at` that triage-issue.py now emits. Run the full pipe with no
 # hand-authored signal values:
@@ -215,7 +215,7 @@ with tempfile.TemporaryDirectory() as repo_root:
                          f"(triage dropped issue_type/created_at, #606)")
                 else:
                     ok(f"score-e2e: bug+age signals live — 800={s_bug} > "
-                       f"801={s_enh} end-to-end (Inv 51)")
+                       f"801={s_enh} end-to-end (Inv 48)")
 
 
 sys.exit(FAIL)

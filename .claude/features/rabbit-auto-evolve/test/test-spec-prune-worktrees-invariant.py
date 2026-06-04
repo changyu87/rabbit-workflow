@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""test-spec-prune-worktrees-invariant.py — rabbit-auto-evolve Inv 53 (#628).
+"""test-spec-prune-worktrees-invariant.py — rabbit-auto-evolve Inv 49 (#628).
 
 Asserts that docs/spec.md, docs/contract.md, and run-tick-phases.py document
 and wire the tick-start orphan sweep introduced for issue #628:
 
-  1. spec.md carries Inv 53 with the sweep script name, the `agent-*` scope,
+  1. spec.md carries Inv 49 with the sweep script name, the `agent-*` scope,
      the under-`.claude/worktrees/`-only / never-touch-the-main-checkout
      safety constraint, the tick-start pre-dispatch sequencing, and the
      prompt-dir bounding via the contract cleanup invoke.
@@ -49,7 +49,7 @@ def norm(text):
     return re.sub(r"\s+", " ", text)
 
 
-# --- (1) spec.md carries Inv 53 -----------------------------------------
+# --- (1) spec.md carries Inv 49 -----------------------------------------
 spec_low = norm(SPEC_MD.read_text()).lower()
 
 SPEC_REQUIRED = [
@@ -64,9 +64,9 @@ SPEC_REQUIRED = [
 ]
 missing = [s for s in SPEC_REQUIRED if s not in spec_low]
 if missing:
-    fail(f"spec.md missing Inv 53 phrase(s): {missing!r}")
+    fail(f"spec.md missing Inv 49 phrase(s): {missing!r}")
 else:
-    ok("spec.md carries Inv 53 with sweep script, agent-* scope, "
+    ok("spec.md carries Inv 49 with sweep script, agent-* scope, "
        "tick-start sequencing, and prompt-bounding invoke")
 
 # The sweep must be documented as NEVER removing the main checkout.
