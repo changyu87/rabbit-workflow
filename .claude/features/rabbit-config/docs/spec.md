@@ -1,6 +1,6 @@
 ---
 feature: rabbit-config
-version: 1.7.0
+version: 1.7.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when the rabbit CLI exposes native configuration mutation that subsumes this feature
