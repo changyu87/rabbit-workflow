@@ -8,6 +8,21 @@ deprecation_criterion: when the policy feature is retired (Claude Code exposes a
 
 ## Version notes
 
+- **v1.14.0 (prove-it-dead-or-flag cleanup methodology, #639):** Added
+  `coding-rules.md` Section 6 "Cleanup: Prove It Dead or Flag It", encoding the
+  housekeeping definition-of-done methodology as a durable, declarative rule.
+  The rule redefines a cleanup pass's "done" so it removes dead-but-plausible
+  content, not only syntactically-tagged historical burden: every claim is
+  resolved by a deterministic VERIFICATION check (`find` for paths, `grep` for
+  symbols, reachable-path/test for behaviors, direct inspection for
+  cross-feature claims), routed through a three-row action table (proven dead →
+  DELETE; proven live → KEEP; unverifiable → FLAG a `housekeeping`-tagged
+  sub-issue), with annotate-and-continue so one uncertain sentence never stalls
+  a feature's cleanup. New `docs/spec.md` Invariant 12 pins the rule's
+  presence; `test/test-rule-files-content.py` asserts its distinctive phrases.
+  Rule text is declarative and history-free (no issue/PR refs, no tombstone
+  language), keeping the policy feature within the Inv 49 strict tier.
+
 - **v1.13.0 (history-free doc surfaces + opt into Inv 49 strict tier, #547 /
   Housekeeping Phase 2):** Opted the policy feature into the contract Inv 49
   STRICT housekeeping tier by declaring top-level `"housekeeping_clean": true`
