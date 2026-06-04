@@ -12,7 +12,10 @@ single trailing newline; no JSON):
   restart   — any path containing settings.json, OR
               a brand-new file under .claude/skills/*/SKILL.md
               (additions > 0 AND deletions == 0 — pure add), OR
-              any path matching .claude/hooks/*.py
+              any path matching .claude/hooks/*.py, OR
+              any path matching .claude/agents/*.md (agent definitions
+              load at session start — both adds and modifications require
+              a restart; #537)
   refresh   — any path matching .claude/features/policy/*.md OR
               basename CLAUDE.md (at any depth)
   no-op     — none of the above
@@ -23,7 +26,7 @@ Exit code: 0 on success; non-zero on gh failure or unexpected error
 (stderr passthrough). Reads only the gh CLI output stream — no git
 shellouts, no filesystem mutations.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -47,6 +50,10 @@ def is_restart(path, additions, deletions):
             return True
     # (c) any .claude/hooks/*.py.
     if fnmatch.fnmatchcase(path, ".claude/hooks/*.py"):
+        return True
+    # (d) any .claude/agents/*.md — agent definitions load at session start,
+    # so BOTH a pure-add and a modification require a restart (#537).
+    if fnmatch.fnmatchcase(path, ".claude/agents/*.md"):
         return True
     return False
 

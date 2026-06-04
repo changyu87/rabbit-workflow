@@ -13,6 +13,19 @@ own version.
 
 ## Version notes
 
+- **v0.41.0 — 2026-06-03** — `classify-merge-restart.py` (Inv 8, the 3-rung
+  catch-up ladder) now classifies a merged PR touching `.claude/agents/*.md`
+  (agent definitions) as `restart` — for BOTH pure-adds AND modifications
+  (#537). Claude Code loads agent definitions at session start, so any change
+  to an agent def — added or edited — does not take effect until the session
+  is restarted, which is exactly the `restart` rung's purpose. Previously such
+  changes fell through to `no-op`, silently dropping the catch-up. New
+  sub-rule (d) on the `restart` rung; unlike the SKILL.md pure-add rule (b),
+  agent-def modifications also trigger restart since the existing definition is
+  already loaded into the running session. Inv 8 amended; regression covered
+  by `test/test-classify-merge-restart.py` scenarios D2 (add) and D3 (modify).
+  `classify-merge-restart.py` → v1.1.0; no SKILL.md change.
+
 - **v0.40.0 — 2026-06-03** — `triage-issue.py` now emits `issue_type` and
   `created_at` on every triage record so the #441 computed-priority score's
   bug-vs-enhancement and age signals are non-zero (Inv 51, #606). Before

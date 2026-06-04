@@ -7,6 +7,8 @@ Covers the spec'd surface of `scripts/classify-merge-restart.py`:
   - restart from a brand-new .claude/skills/foo/SKILL.md add
     (additions > 0 AND deletions == 0)
   - restart from a .claude/hooks/bar.py modification
+  - restart from a brand-new .claude/agents/foo.md add (#537)
+  - restart from a .claude/agents/foo.md modification (#537)
   - refresh from .claude/features/policy/coding-rules.md
   - refresh from CLAUDE.md touch
   - no-op from an arbitrary feature-local script touch
@@ -141,6 +143,34 @@ elif proc.stdout != "restart\n":
     fail(f"D: expected 'restart\\n', got {proc.stdout!r}")
 else:
     ok("D: .claude/hooks/bar.py touch → restart")
+
+
+# ---------------------------------------------------------------------------
+# Scenario D2 — restart from a brand-new .claude/agents/foo.md add (#537)
+# Agent definitions load at session start, so an added agent def needs a
+# restart to take effect.
+# ---------------------------------------------------------------------------
+proc = _run([_file(".claude/agents/foo.md", additions=30, deletions=0)])
+if proc.returncode != 0:
+    fail(f"D2: expected exit 0, got {proc.returncode}; stderr={proc.stderr!r}")
+elif proc.stdout != "restart\n":
+    fail(f"D2: brand-new .claude/agents/foo.md should be restart, got {proc.stdout!r}")
+else:
+    ok("D2: brand-new .claude/agents/foo.md → restart")
+
+
+# ---------------------------------------------------------------------------
+# Scenario D3 — restart from a .claude/agents/foo.md modification (#537)
+# Unlike SKILL.md, an agent-def MODIFICATION also requires a restart, since
+# the existing definition is already loaded into the running session.
+# ---------------------------------------------------------------------------
+proc = _run([_file(".claude/agents/foo.md", additions=4, deletions=6)])
+if proc.returncode != 0:
+    fail(f"D3: expected exit 0, got {proc.returncode}; stderr={proc.stderr!r}")
+elif proc.stdout != "restart\n":
+    fail(f"D3: modified .claude/agents/foo.md should be restart, got {proc.stdout!r}")
+else:
+    ok("D3: modified .claude/agents/foo.md → restart")
 
 
 # ---------------------------------------------------------------------------
