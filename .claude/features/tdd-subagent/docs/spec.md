@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.19.0
+version: 5.20.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -17,8 +17,8 @@ definition. The assembled prompt drives a single feature through the
 8-step TDD cycle (LOCK → TEST-WRITE → TEST-RED → IMPLEMENT →
 SYNC-DEPLOYED → CODE-REVIEW → TEST-GREEN → UNLOCK), invoking
 `tdd-step.py` at each state transition. Spec context-loading and the
-human-approval gate are the dispatcher's responsibility, not the
-subagent's.
+Step-4 tdd-autonomous approval gate are the dispatcher's responsibility,
+not the subagent's.
 
 The `rabbit-feature-touch` orchestration skill that consumes this
 feature's dispatch prompt is owned by `rabbit-feature`. This feature
@@ -187,17 +187,20 @@ template's `{{bypass_preamble_note}}` placeholder.
 
 ### Bypass-marker preamble note
 
-23. **Bypass-marker note emission (dual-read).** When EITHER
-    `.rabbit-human-approval-bypass` OR `.rabbit-tdd-autonomous` exists at
-    the repo root, the bypass is treated as active and the assembled
-    prompt's preamble (before STEP 1) contains the exact string returned
-    by `rabbit_print(_BYPASS_NOTE_TEXT, "📢", "yellow")` (the canonical
-    preamble body lives in `dispatch-tdd-subagent.py` as the module-level
-    `_BYPASS_NOTE_TEXT` constant; it names both marker forms). When
-    neither marker is present, no such note appears. The dual-read accepts
-    either marker name for the duration of the coexistence window:
-    dispatch reads either; there is no configurable rename and no
-    polarity flip.
+23. **Bypass-marker note emission (dual-read).** When EITHER the canonical
+    `.rabbit-tdd-autonomous` OR the legacy `.rabbit-human-approval-bypass`
+    exists at the repo root, the bypass is treated as active and the
+    assembled prompt's preamble (before STEP 1) contains the exact string
+    returned by `rabbit_print(_BYPASS_NOTE_TEXT, "📢", "yellow")` (the
+    canonical preamble body lives in `dispatch-tdd-subagent.py` as the
+    module-level `_BYPASS_NOTE_TEXT` constant; it names both marker forms
+    and tells the reader to re-enable the gate via
+    `/rabbit-tdd-autonomous false`). When neither marker is present, no such
+    note appears. The dual-read accepts either marker name for the duration
+    of the coexistence window: dispatch reads either. The bypass-note
+    emission is presence-only; it is independent of the `tdd-autonomous`
+    configurable's polarity (`true` activates the bypass, `false` re-enables
+    the gate), which the dispatcher's Step 4 owns.
 
 24. **Bypass-marker note channel.** `dispatch-tdd-subagent.py` emits the
     bypass preamble note solely by calling `rabbit_print` from
