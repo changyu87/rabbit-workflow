@@ -9,7 +9,9 @@ responsible for inlining the revoke hint into the alert-message.text.
 The text MUST:
   - Start with the literal mode-active prefix.
   - Use an em-dash (U+2014) as the prefix/suffix separator.
-  - Inline the literal revoke command `/rabbit-config bypass-permissions false`.
+  - Inline the literal revoke command `/rabbit-cage-config bypass-permissions false`
+    (migrated from `/rabbit-config` in phase 4 of #733; the central surface
+    remains live during coexistence, #769 retires it).
 
 icon (U+1F6A8 siren) and color ("red") MUST remain unchanged.
 
@@ -28,7 +30,7 @@ CAGE_FJ = CAGE / "feature.json"
 
 EXPECTED_TEXT = (
     "BYPASS-PERMISSIONS MODE ACTIVE — "
-    "revoke: /rabbit-config bypass-permissions false"
+    "revoke: /rabbit-cage-config bypass-permissions false"
 )
 EXPECTED_ICON = "\U0001f6a8"
 EXPECTED_COLOR = "red"

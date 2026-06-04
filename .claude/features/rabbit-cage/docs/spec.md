@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.57.0
+version: 5.58.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -165,11 +165,13 @@ string BEFORE splitting on `;|&` segment delimiters.
    no-op when no override marker is present. It is wrapped by a `scope-guard`
    configurable in `feature.json configuration` (subcommand `scope-guard`,
    value `on` → `delete_marker` on `.rabbit-scope-override`) so
-   `/rabbit-config scope-guard on` revokes a session override via the
-   data-driven rabbit-config interpreter. That configurable carries no
+   `/rabbit-cage-config scope-guard on` revokes a session override via the
+   data-driven config interpreter. The central `/rabbit-config scope-guard on`
+   surface still dispatches the same configurable (both surfaces are live and
+   mutate the same configurable). That configurable carries no
    `alert-on`/`alert-message` (no double-alert): the `.rabbit-scope-override`
    `check_marker_alert` entries (Inv 16) and the default-deny SESSION OVERRIDE
-   clause both inline the `/rabbit-config scope-guard on` revoke hint. Every
+   clause both inline the `/rabbit-cage-config scope-guard on` revoke hint. Every
    user-facing revoke instruction surfaces that command, NOT the raw script
    path.
 8. `feature.json` declares `manifest`, `runtime` (with the three keys

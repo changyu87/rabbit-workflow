@@ -12,6 +12,22 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.58.0 (migrate rabbit-cage config refs to /rabbit-cage-config; phase 4 of #733):**
+  Migrated rabbit-cage's user-facing config reference sites from the central
+  `/rabbit-config <sub>` command to its own per-feature `/rabbit-cage-config <sub>`
+  command (#767/#768): the `scope-guard.py` default-deny SESSION OVERRIDE revoke
+  hint, the three `feature.json` runtime alert texts (the two `.rabbit-scope-override`
+  `check_marker_alert` entries and the `bypass-permissions` `alert-message`), the
+  `README.md` command catalog rows for the five owned configurables, and the
+  `docs/spec.md` Inv 7 revoke-hint prose. Coexistence is preserved: the central
+  `/rabbit-config <sub>` surface still mutates the same configurables (retired
+  separately by #769). The `test-scope-guard-revoke-uses-rabbit-config.py`
+  deny-message + banner expectations and the `bypass-permissions` alert-text
+  expectation were updated in lockstep; the coexistence E2E assertions (the
+  rabbit-config interpreter still dispatches the command) are left intact.
+  Deployed byte-copies (`.claude/hooks/scope-guard.py`, root `README.md`)
+  republished from source via the contract publish API.
+
 - **v5.57.0 (relocate tdd-autonomous out of rabbit-cage; phase 3 of #733):**
   Removed the `tdd-autonomous` configurable from rabbit-cage's
   `feature.json configuration[]`. It gates the TDD feature-touch Step-4 cycle
