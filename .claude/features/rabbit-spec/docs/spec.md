@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.12.0
+version: 1.13.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -11,44 +11,18 @@ status: active
 
 ## Purpose
 
-rabbit-spec owns the rabbit workflow's spec-lifecycle skills — the skills that
-draft and revise a feature's spec.md (canonical flat layout: `docs/spec.md`).
-After Stage 2 it hosts
-`rabbit-spec-create`, the initial-spec-drafting skill that absorbs the
-behavior of the former `spec-seeder` feature; Stage 3 will add
-`rabbit-spec-update`, the spec-revision skill that absorbs and subagent-ifies
-the former `rabbit-feature-spec`.
-
-The reading-and-drafting work is performed by a read-only subagent
-(`rabbit-spec-creator`) that is tool-restricted to Read/Grep/Glob. The skill itself
-is a thin orchestration wrapper that assembles the prompt, dispatches the
-agent, and writes the returned body to disk.
+rabbit-spec owns the rabbit workflow's spec-lifecycle skills: `rabbit-spec-create`
+drafts a feature's initial `docs/spec.md`, and `rabbit-spec-update` revises an
+existing one. The drafting work is done by a read-only subagent
+(`rabbit-spec-creator`, tool-restricted to Read/Grep/Glob); each skill is a thin
+orchestration wrapper.
 
 ## Surface
 
-- `skills/rabbit-spec-create/SKILL.md` — the user-invocable spec-drafting skill
-- `skills/rabbit-spec-update/SKILL.md` — the user/dispatcher-invocable spec-revision skill (absorbs the former rabbit-feature-spec). Dual-mode: detects rabbit mode at invocation time and resolves the feature spec path accordingly.
+- `skills/rabbit-spec-create/SKILL.md` — spec-drafting skill
+- `skills/rabbit-spec-update/SKILL.md` — dual-mode spec-revision skill
 - `agents/rabbit-spec-creator.md` — the read-only drafting subagent
-  (frontmatter declares `tools: Read, Grep, Glob` — the restriction is
-  load-bearing)
-- `scripts/dispatch-spec-create.py` — Python prompt assembler invoked by
-  the skill; resolves globs, caps at 50 files (reporting any dropped
-  count loudly on stderr — never a silent truncation), calls
-  `contract/scripts/build-prompt.py`
-- `docs/spec.md`, `docs/contract.md`, `feature.json`,
-  `test/run.py` — feature scaffolding
-
-## Mode awareness
-
-The skill works in both rabbit modes:
-
-- **Standalone**: drafts the spec from feature name alone (skeleton output;
-  globs are empty)
-- **Plugin**: drafts the spec by reading the matched code files
-
-Mode detection is the skill's responsibility (it reads
-`.rabbit/.runtime/mode`); the agent and dispatch script accept globs of any
-length including zero.
+- `scripts/dispatch-spec-create.py` — prompt assembler invoked by the skill
 
 ## Invariants
 
@@ -188,34 +162,14 @@ Python 3 stdlib only.
 
 ## Tests
 
-`test/run.py` invokes every `test-*.py` file under `test/`. Per-invariant
-coverage arrives with the surface artifacts in this stage:
-- `test-agent-restriction.py` — asserts the agent's `tools` field is exactly
-  `Read, Grep, Glob` with no others
-- `test-dispatch-script.py` — invokes the dispatch script in both modes
-  (with paths and without) and asserts it produces a prompt-file path
-- `test-dispatch-truncation-not-silent.py` — Inv 3(b): builds a fixture
-  with >50 resolvable files, asserts the dispatcher emits a stderr note
-  naming the dropped count (truncation is NOT silent) while stdout stays a
-  single prompt-file path; with <=50 files asserts NO note is emitted
-- `test-prompts-section-shape.py` — loads feature.json and asserts the
-  `prompts` entry shape matches Inv 1
-- `test-spec-path-layout-canonical.py` — source-inspects both SKILL.md
-  bodies and asserts the canonical flat-`docs/`-only layout resolution
-  required by Inv 6 (no `specs/` or `docs/spec/` fallback); also asserts
-  rabbit-spec's own doc artifacts live under the flat `docs/` layout
-- `test-docs-layout.py` — on-disk E2E assertion of rabbit-spec's flat
-  `docs/` layout (`docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`
-  present; no `specs/` or root `CHANGELOG.md`; resolver + `validate_feature`
-  resolve cleanly)
-- `test-bb-terminology.py` — Inv 7: scans every live surface and asserts the
-  legacy custom-store abbreviation, phrase family, and standalone
-  deferred-work request-class noun do not appear as live vocabulary
+`test/run.py` invokes every `test-*.py` file under `test/`. Each invariant
+above names its enforcing test in its "Enforced by" clause; each test file's
+module docstring states what it asserts.
 
 ## Out of Scope
 
 - The user-code globs themselves and their semantics — owned by
-  `rabbit-feature` (or its successor `rabbit-feature-scaffold` in Stage 4).
+  `rabbit-feature`.
 - The prompt template body at
   `.claude/features/contract/templates/prompts/spec-create.txt` — owned by
   `contract` per Inv 57.

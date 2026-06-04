@@ -1,7 +1,7 @@
 ---
 name: rabbit-spec-create
 description: Draft the initial body of a newly-declared rabbit feature's canonical flat docs/spec.md by dispatching the read-only rabbit-spec-creator subagent. Use when a fresh feature has been scaffolded and needs its first spec draft — phrases like "draft a spec for X", "seed the spec for X", "create initial spec for X", "/rabbit-spec-create". Works in both modes: standalone (no globs — produces a skeleton from feature name alone) and plugin (with globs — drafts from real user code). Single-feature per invocation. Invoke as Skill("rabbit-spec-create", args: "<feature-name>") for a skeleton, or Skill("rabbit-spec-create", args: "<feature-name> <glob1> <glob2> ...") to read from code.
-version: 1.6.0
+version: 1.6.1
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 ---
@@ -16,7 +16,7 @@ This is a thin orchestration wrapper. The reading-and-drafting work happens in t
 
 Args format: `<feature-name> [<glob1> <glob2> ...]`
 
-- **feature-name**: lowercase kebab-case identifier of the target feature (e.g. `my-tool`). The feature directory MUST already exist (scaffolded by `rabbit-feature-new` or its successor). This skill does NOT create the directory.
+- **feature-name**: lowercase kebab-case identifier of the target feature (e.g. `my-tool`). The feature directory MUST already exist (scaffolded by `rabbit-feature-scaffold`). This skill does NOT create the directory.
 - **globs** (optional): shell-style path globs the rabbit-spec-creator will read from. Standalone mode (no globs) produces a skeleton from the feature name alone; plugin mode (one or more globs) drafts from the matched code.
 
 ## Modes
@@ -91,8 +91,8 @@ Tell the caller the path of the written file and a one-line summary of what the 
 - The user explicitly asks to seed or draft an initial spec for a named feature
 
 **Don't use** when:
-- The feature's spec.md already has substantive content — use `rabbit-spec-update` (Stage 3) for revisions, not this skill
-- The feature directory hasn't been scaffolded yet — call `rabbit-feature-new` (or its successor) first
+- The feature's spec.md already has substantive content — use `rabbit-spec-update` for revisions, not this skill
+- The feature directory hasn't been scaffolded yet — call `rabbit-feature-scaffold` first
 - The intent is to revise an existing spec based on new requirements — that's `rabbit-spec-update`'s job
 
 ## Why the agent is read-only

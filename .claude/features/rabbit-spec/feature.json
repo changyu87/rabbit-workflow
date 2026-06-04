@@ -1,6 +1,6 @@
 {
   "name": "rabbit-spec",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "tdd_state": "test-green",
@@ -59,5 +59,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.11.0 -> 1.12.0): retired the legacy custom-store vocabulary on rabbit-spec's live surfaces in favour of the current rabbit-issue vocabulary (issue / bug or enhancement / rabbit-managed issue). spec.md gains Inv 7 (live surfaces carry current issue vocabulary); rabbit-spec-update SKILL.md reworded three lines (the request input is now 'a rabbit-managed issue description'; the Specific request-class row now reads 'enhancement task'; the What-You-Do-NOT-Do bullet now reads 'File bugs or enhancements'). New content guard test-bb-terminology.py scans every live surface for the retired abbreviation, phrase family, and standalone deferred-work request-class noun. Behaviour is unchanged."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.12.0 -> 1.13.0): #688 housekeeping round 2 \u2014 removal pass. Deleted dead stage/relocation narration from docs/spec.md (Purpose, Mode awareness section, verbose Surface bullets, per-test Tests prose) and the redundant Tech Stack prose from docs/contract.md; spec.md 221 -> 175 lines, contract.md 66 -> 62. New regression guard test-no-relocation-narration.py forbids the dead narration's return. Behaviour is unchanged."
 }

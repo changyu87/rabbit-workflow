@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.12.0
+version: 1.13.0
 template_version: 2.0.0
 ---
 
@@ -60,7 +60,3 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   ]
 }
 ```
-
-## Tech Stack
-
-Python 3 stdlib only.
