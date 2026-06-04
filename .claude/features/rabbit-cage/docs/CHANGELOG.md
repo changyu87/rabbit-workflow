@@ -12,6 +12,17 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.46.0 (FEATURE_INCLUDES closure — ship contract/check-release-update.py, #605):**
+  Added `scripts/check-release-update.py` to `FEATURE_INCLUDES["contract"]` in
+  install.py. The probe is subprocessed at runtime by contract's
+  `check_release_update` SessionStart API and the `/rabbit-update check`
+  command, but was absent from the packaging closure, so a plugin install
+  omitted it and the release check failed. Same class as #570
+  (rabbit-feature/audit-owner.py). Pinned by a targeted assertion in
+  `test-install-py-exports.py` plus a new e2e test
+  `test-install-deploys-check-release-update.py` that runs the real installer
+  and asserts the probe lands in the deployed target. install.py is a deployed
+  artifact (publish_file), so this republishes on next install.
 - **v5.45.0 (FEATURE_INCLUDES closure — ship rabbit-feature/audit-owner.py, #570):**
   Added `scripts/audit-owner.py` to `FEATURE_INCLUDES["rabbit-feature"]` in
   install.py. The script is referenced by `rabbit-feature-audit/SKILL.md` but

@@ -93,6 +93,25 @@ def test_rabbit_feature_includes_audit_owner_script():
     print("PASS test_rabbit_feature_includes_audit_owner_script")
 
 
+def test_contract_includes_check_release_update_script():
+    """contract's check_release_update runtime API and the /rabbit-update
+    check command both subprocess scripts/check-release-update.py, so it MUST
+    ship in FEATURE_INCLUDES['contract'] (issue #605). Without this entry a
+    plugin install omits the probe and the release check fails at runtime.
+    Same packaging-closure class as #570 (rabbit-feature/audit-owner.py)."""
+    mod = _load_install()
+    contract = mod.FEATURE_INCLUDES["contract"]
+    assert "scripts/check-release-update.py" in contract, (
+        "FEATURE_INCLUDES['contract'] must include "
+        "'scripts/check-release-update.py' (subprocessed by contract's "
+        "check_release_update runtime API and /rabbit-update check); "
+        f"got {contract}"
+    )
+    src = REPO / ".claude/features/contract/scripts/check-release-update.py"
+    assert src.is_file(), f"source probe missing on disk: {src}"
+    print("PASS test_contract_includes_check_release_update_script")
+
+
 def test_hooks_has_five_entries():
     """HOOKS must lay down 4 rabbit-cage dispatchers + _dispatcher_lib.
 
@@ -124,6 +143,7 @@ def main() -> int:
     test_exports_file_closure_constants()
     test_feature_includes_has_expected_features()
     test_rabbit_feature_includes_audit_owner_script()
+    test_contract_includes_check_release_update_script()
     test_hooks_has_five_entries()
     return 0
 

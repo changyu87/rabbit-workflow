@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.45.0
+version: 5.46.0
 template_version: 2.0.0
 ---
 
