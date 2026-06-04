@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.5.1
+version: 0.5.2
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
