@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.57.0
+version: 0.58.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill

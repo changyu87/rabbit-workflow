@@ -13,6 +13,25 @@ own version.
 
 ## Version notes
 
+- **v0.58.0 — 2026-06-03** — `update-state.py` now MIGRATES-IN-PLACE an older
+  but additively-compatible on-disk state instead of hard-failing at the
+  persist phase (#761). When #727 bumped the state schema 1.2.0 → 1.3.0 by
+  ADDING the optional `decomposition_parents` field, no migration was provided,
+  so an older `.rabbit/auto-evolve-state.json` wedged persist (Inv 11) every
+  full post-dispatch tick with `schema_version: expected '1.3.0', got '1.2.0'`,
+  aborting the tick (Inv 20). The fix adds an explicit, deterministic
+  version-migration LADDER (`1.1.0 → 1.2.0` seeds `pending_post_merge=[]`;
+  `1.2.0 → 1.3.0` seeds `decomposition_parents={}`): an older version on the
+  ladder is walked rung-by-rung to current, each newly-added optional field is
+  seeded with its documented default only when absent (pre-existing data is
+  preserved), `schema_version` is set to current, and THEN the state is
+  validated. A current-version state is a no-op (untouched/idempotent). A
+  newer-than-current version, or an older version NOT on the ladder, STILL
+  errors clearly and writes nothing. Future additive bumps append one rung.
+  Script-and-test only (no spec/contract/SKILL prose change); `update-state.py`
+  module Version bumped 1.3.0 → 1.4.0, and the feature four-way version bumped
+  0.57.0 → 0.58.0 to keep the lockstep equality.
+
 - **v0.57.0 — 2026-06-03** — Queue selection switched to ACTIONABILITY basis
   (#758, coexistence step 1 of #753 "retire rabbit-managed"). `fetch-queue.py`
   now selects OPEN issues that carry BOTH a valid `feature:` label AND a valid
