@@ -21,8 +21,6 @@ EXPECTED_RUNTIME_APIS = {
     "check_marker_consume_alert",
     "check_counter_threshold_refresh",
     "welcome_with_policy",
-    "iterate_configurables_alerts",
-    "iterate_configurables_banner",
     "emit_configurable_alert",
     "check_prompt_injection_failures",
     "cleanup_old_prompts",

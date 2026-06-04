@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "runtime.schema.json",
-  "schema_version": "1.3.0",
+  "schema_version": "1.4.0",
   "owner": "rabbit-workflow team",
   "deprecation_criterion": "when Claude Code exposes a native per-event hook plugin mechanism that subsumes this schema",
   "title": "Feature RUNTIME",
@@ -43,8 +43,6 @@
               "check_marker_consume_alert",
               "check_counter_threshold_refresh",
               "welcome_with_policy",
-              "iterate_configurables_alerts",
-              "iterate_configurables_banner",
               "emit_configurable_alert",
               "check_prompt_injection_failures",
               "cleanup_old_prompts",

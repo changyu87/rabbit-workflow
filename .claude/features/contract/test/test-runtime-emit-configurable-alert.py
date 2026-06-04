@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-runtime-emit-configurable-alert.py — exercises
-emit_configurable_alert: on-demand sibling of iterate_configurables_alerts.
+emit_configurable_alert on the live per-feature path.
 Resolves a single configurable by feature_name + configurable_id, evaluates
 its current value against alert-on, returns print_result on match,
 ok_result on miss, or error_result on resolution failure.
