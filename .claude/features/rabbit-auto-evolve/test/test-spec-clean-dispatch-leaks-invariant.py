@@ -61,7 +61,6 @@ def norm(text):
 spec_low = norm(SPEC_MD.read_text()).lower()
 
 SPEC_REQUIRED = [
-    "583",
     "clean-dispatch-leaks.py",
     ".rabbit-scope-active",
     "tdd_last_cycle_impl_commit",

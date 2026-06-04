@@ -72,7 +72,6 @@ spec = norm(spec_raw)
 spec_low = spec.lower()
 
 SPEC_REQUIRED = [
-    "524",
     "sync-tree.py",
     "git pull --ff-only origin dev",
     "git merge",

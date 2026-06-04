@@ -73,7 +73,6 @@ spec = norm(spec_raw)
 spec_low = spec.lower()
 
 SPEC_REQUIRED = [
-    "404",
     "log-tick.py",
     "log-path.py",
     "auto-evolve.log",
@@ -111,7 +110,6 @@ else:
 # tick/session_id must carry real, deterministic values derived from the
 # running marker; the marker source is injectable for tests.
 ATTR_REQUIRED = [
-    "627",
     "running marker",
     "rabbit_auto_evolve_running_marker",
     "session_id",

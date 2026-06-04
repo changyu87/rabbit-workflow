@@ -59,9 +59,6 @@ spec = norm(SPEC_MD.read_text())
 spec_low = spec.lower()
 
 SPEC_REQUIRED = [
-    "414",
-    "509",
-    "521",
     "system cron",
     "tick-headless.py",
     "install-cron.py",
@@ -79,7 +76,6 @@ else:
 # passed faithfully and at most one refire alive (CronList -> CronDelete ->
 # CronCreate). The spec text MUST document this.
 PINNED_REQUIRED = [
-    "531",
     "recurring: false",
     "durable: false",
     "pinned",

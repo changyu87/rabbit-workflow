@@ -49,7 +49,6 @@ REQUIRED_SPEC = [
     # The defect being closed: stale local dev after the remote merge.
     "origin/dev",
     # Issue reference.
-    "#516",
 ]
 missing = [s for s in REQUIRED_SPEC if s not in spec_lower]
 if missing:

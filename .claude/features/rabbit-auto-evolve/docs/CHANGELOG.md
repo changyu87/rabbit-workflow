@@ -13,6 +13,24 @@ own version.
 
 ## Version notes
 
+- **v0.45.0 — 2026-06-03** — Housekeeping Phase 2: history-free doc surfaces.
+  Scrubbed historical-burden tags (bare `#NNN` issue/PR refs, "per issue/bug/PR"
+  prose, parenthetical issue trailers, and version-narrative "this invariant was
+  introduced by issue #NNN in vX" paragraphs) from `docs/spec.md`,
+  `docs/contract.md`, and `skills/rabbit-auto-evolve/SKILL.md` — ~187 strict-tier
+  hits removed. Every invariant NUMBER, substantive rule, operational
+  instruction, command, and script path is preserved; only the historical
+  framing was stripped and rewritten present-tense. Stale-but-live descriptions
+  were corrected to current reality (the spec/contract live at the flat `docs/`
+  layout, not `specs/`; the `scripts/` surface is on disk, not "Phase C planned").
+  Removed the dead "Phase A prerequisites landed in commits …" intro block and
+  the "prerequisites landed on dev" Known-gaps bullet (relocated here). The
+  strict-tier opt-in flag (`housekeeping_clean`) is NOT yet flipped: one
+  irreducible status-enum literal remains — `feature.json.status == "retired"` in
+  the triage decision table (Inv-22 rule 4), the verbatim value
+  `triage-issue.py` checks — which needs a contract-owned ALLOWLIST entry (the
+  #634 precedent for contract/rabbit-config). A follow-up lands the allowlist
+  entry and flips `housekeeping_clean: true` together.
 - **v0.44.0 — 2026-06-03** — Observability-log attribution: `tick` and
   `session_id` now carry real, deterministic values instead of the stubs
   (`tick:0` / `session_id:''`) that made Inv 37's cross-session attribution

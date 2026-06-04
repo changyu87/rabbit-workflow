@@ -53,7 +53,6 @@ def norm(text):
 spec_low = norm(SPEC_MD.read_text()).lower()
 
 SPEC_REQUIRED = [
-    "628",
     "inv 53",
     "prune-worktrees.py",
     "agent-*",

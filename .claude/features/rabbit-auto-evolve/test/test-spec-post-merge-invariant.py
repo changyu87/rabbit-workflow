@@ -59,7 +59,6 @@ SPEC_REQUIRED = [
     "classify-merge-restart.py",
     "1.2.0",
     "--record-pending",
-    "499",
 ]
 missing = [s for s in SPEC_REQUIRED if s.lower() not in spec_low]
 if missing:
