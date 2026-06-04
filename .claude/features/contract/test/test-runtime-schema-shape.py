@@ -23,6 +23,7 @@ EXPECTED_RUNTIME_APIS = {
     "welcome_with_policy",
     "iterate_configurables_alerts",
     "iterate_configurables_banner",
+    "emit_configurable_alert",
     "check_prompt_injection_failures",
     "cleanup_old_prompts",
     "write_mode_marker",
