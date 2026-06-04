@@ -107,6 +107,27 @@ else:
     fail("spec.md does not state #404 leaves tick-log.py / Inv 36 untouched")
 
 
+# --- (2b) Inv 54: observability-log attribution (issue #627) -----------
+# tick/session_id must carry real, deterministic values derived from the
+# running marker; the marker source is injectable for tests.
+ATTR_REQUIRED = [
+    "627",
+    "running marker",
+    "rabbit_auto_evolve_running_marker",
+    "session_id",
+]
+attr_missing = [s for s in ATTR_REQUIRED if s.lower() not in spec_low]
+if attr_missing:
+    fail(f"spec.md missing Inv 54 attribution phrase(s): {attr_missing!r}")
+else:
+    ok("spec.md carries the observability-log attribution invariant (Inv 54)")
+# The no-stub guarantee must be explicit.
+if "never stub" in spec_low or "never stubs" in spec_low:
+    ok("spec.md states tick/session_id are never stubs (Inv 54)")
+else:
+    fail("spec.md does not state the no-stub guarantee for tick/session_id")
+
+
 # --- (3) BOTH SKILL.md copies document the log subcommand group -------
 LOG_SUBCMDS = ["log on", "log off", "log level", "log path", "log tail",
                "log clear"]
