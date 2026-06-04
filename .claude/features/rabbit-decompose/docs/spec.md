@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.3.0
+version: 0.4.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -106,7 +106,7 @@ for parallel large-codebase analysis.
 coverage: `test-docs-layout.py` (E2E — pins the feature to the flat
 `docs/` layout: `docs/spec.md` + `docs/contract.md` + `docs/CHANGELOG.md`
 present, no legacy `specs/` dir, no root `CHANGELOG.md`, four-way version
-alignment, and resolution via the contract resolver; issue #399 Phase 2b).
+alignment, and resolution via the contract resolver).
 
 ## Out of Scope
 
