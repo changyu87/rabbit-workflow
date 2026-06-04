@@ -84,5 +84,6 @@ run_test("test-spec-clean-dispatch-leaks-invariant.py")
 run_test("test-spec-branch-switch-guard-invariant.py")
 run_test("test-skill-description-triggers.py")
 run_test("test-spec-priority-score-invariant.py")
+run_test("test-changelog-continuity.py")
 
 print("ALL TESTS PASSED")
