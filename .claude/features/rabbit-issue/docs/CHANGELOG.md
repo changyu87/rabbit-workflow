@@ -12,6 +12,27 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.8.0 (retire legacy B/B terminology on live surfaces):** Replaced the
+  legacy "bug-and-backlog (B/B)" / standalone "backlog" custom-store vocabulary
+  on the live surfaces with current rabbit-issue terminology — "issue" / "bug or
+  enhancement" / "rabbit-managed issue" (GitHub's bug/enhancement taxonomy).
+  `docs/spec.md`: Purpose now says GH Issues is "rabbit's issue store for bugs
+  and enhancements"; the Projects-v2 NOT-defined bullet now says "file a
+  separate issue" instead of "backlog". `skills/rabbit-issue/SKILL.md`:
+  description and Overview now say "rabbit-managed issue surface"; the
+  branch-store narration says "branch-backed item storage" (B/B abbreviation
+  dropped). `feature.json` summary now narrates "retired branch-backed item
+  store" instead of "bug-and-backlog (B/B) storage". Historical narration of the
+  retired custom store is preserved; only the dead vocabulary is removed. The
+  literal `origin/bug-backlog-files` branch name (a real historical artifact)
+  stays as-is on contract.md and SKILL.md. New static test
+  `test/test-bb-terminology.py` asserts no live "B/B" abbreviation or
+  "bug-and-backlog" vocabulary remains on the four live surfaces (RED with 7
+  violations -> GREEN). Lockstep minor bump of `feature.json` / `spec.md` /
+  `SKILL.md` (1.7.0 -> 1.8.0); `contract.md` unchanged (1.6.0). SKILL.md
+  changed, so the deployed copy under `.claude/skills/` drifts until the
+  dispatcher republishes (republish_needed).
+
 - **v1.7.0 (housekeeping Phase 2 — history-free doc surfaces + Inv 49 strict
   tier opt-in, #554):** Opted rabbit-issue into the contract Inv 49 strict tier
   by declaring top-level `"housekeeping_clean": true` in `feature.json`, then
