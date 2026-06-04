@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.6.0
+version: 1.7.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -13,8 +13,8 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
 ## Purpose
 
 Wrap the `gh` CLI to provide rabbit's file / list / work / show operations
-against GitHub Issues, replacing the retiring `rabbit-file` feature's
-custom branch-backed bug-and-backlog (B/B) system.
+against GitHub Issues. GitHub Issues is rabbit's bug-and-backlog (B/B)
+store; rabbit-issue owns the file / list / work / show surface over it.
 
 ## Schema / Behavior
 
@@ -47,7 +47,7 @@ Every issue filed via `rabbit-issue` carries six labels:
 Labels are auto-created on demand at first `file-item.py` call via
 idempotent `gh label create … || true`. No separate bootstrap script.
 
-### Provenance label (issue #496)
+### Provenance label
 
 `file-item.py` accepts `--filed-by <source>` and stamps the created issue
 with a machine-readable provenance label `filed-by:<source>` (e.g.
@@ -81,8 +81,7 @@ applied.
   forms `completed` and `not-planned`; the script translates `not-planned`
   to gh's space-separated `not planned` at the CLI boundary, which GitHub
   records as `state_reason = not_planned`.
-- **Close-reason gating (issue #423).** A close must assert something
-  real:
+- **Close-reason gating.** A close must assert something real:
   - `--reason completed` REQUIRES `--commit-sha <sha>`. The script
     validates that the SHA resolves to a real commit in the local git
     repo (`git rev-parse --verify <sha>^{commit}`). A missing or
@@ -95,8 +94,8 @@ applied.
     that is long enough and clean is accepted.
   - **The validated `--reason-text` is PERSISTED, not just gated.** A
     `not-planned` close posts the reason-text as the close comment so the
-    closed issue carries its justification (the audit trail #423 Part D
-    intends). When `--comment` is also supplied, the close comment is the
+    closed issue carries its justification as an audit trail. When
+    `--comment` is also supplied, the close comment is the
     reason-text followed by the comment (reason-text first, separated by a
     blank line); when only `--reason-text` is given it is the close comment
     on its own. The comment travels with the same `gh issue close` call.
@@ -135,7 +134,7 @@ provide.
 
 Scripts still fail loudly when `gh auth status` is not green.
 
-### Reading issue comments (issue #522)
+### Reading issue comments
 
 When rabbit-issue needs to read an issue's comment bodies, it MUST go
 through the JSON API — `gh issue view <N> --json comments` — and parse
@@ -158,8 +157,8 @@ script or skill guidance uses `gh issue view … --comments`; the
 
 ## What this feature does NOT define
 
-- **Branch-backed item storage** — `rabbit-file` owned that; retired by
-  this feature's predecessor cutover.
+- **Branch-backed item storage** — out of scope; GH Issues is the
+  backing store and the GH Timeline owns history.
 - **GH Projects v2 boards / kanban / sub-status workflows** — out of
   scope; if needed, file a separate backlog.
 - **Cross-tracker abstractions** (Linear, Jira, etc.) — only `gh` is

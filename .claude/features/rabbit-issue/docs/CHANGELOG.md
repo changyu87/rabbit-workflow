@@ -12,6 +12,31 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.7.0 (housekeeping Phase 2 — history-free doc surfaces + Inv 49 strict
+  tier opt-in, #554):** Opted rabbit-issue into the contract Inv 49 strict tier
+  by declaring top-level `"housekeeping_clean": true` in `feature.json`, then
+  scrubbed all historical-burden framing from the three scanned doc surfaces
+  (`docs/spec.md`, `docs/contract.md`, `skills/rabbit-issue/SKILL.md`) so they
+  describe only the current design. Removed bare issue references — `#496` (the
+  provenance-label section header and SKILL Label-Schema paragraph), `#423`
+  (close-reason gating in spec + SKILL Work Protocol / Lifecycle), and `#522`
+  (reading-issue-comments section in spec + SKILL Work Protocol, and the
+  contract `invokes.gh` / `never` notes); replaced the `per issue` cardinality
+  prose in the SKILL Label-Schema table with `per item` (matching spec.md);
+  and removed the tombstone framing ("REPLACES the retired rabbit-file", "the
+  legacy ... is gone", "retired by predecessor cutover", "deleted by
+  migration", "what superseded it"), rephrasing each to present-tense
+  declarative that keeps the substantive behaviour (rabbit-issue is the sole
+  B/B surface; do NOT invoke rabbit-file; GH Issues / Timeline is the store).
+  No invariants renumbered or removed. Strict test
+  `contract/test/test-spec-bodies-no-historical-tags.py` goes RED (19
+  violations) -> GREEN; full `contract/test/run.py` GREEN. Lockstep minor bump
+  of `feature.json` / `spec.md` / `SKILL.md` (1.6.0 -> 1.7.0) and `contract.md`
+  (1.5.0 -> 1.6.0). SKILL.md changed, so the deployed copy under
+  `.claude/skills/` drifts until the dispatcher republishes
+  (republish_needed). The removed `#NNN` provenance lives here in the
+  CHANGELOG tombstone, which the strict scan never reads.
+
 - **v1.6.0 (read issue comments via `gh --json comments`, #522):** `gh issue
   view <N> --comments` triggers a deprecated Projects-classic `projectCards`
   GraphQL field that FAILS and returns an EMPTY body on this repo, so comments
