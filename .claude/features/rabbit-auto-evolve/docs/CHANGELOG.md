@@ -13,6 +13,16 @@ own version.
 
 ## Version notes
 
+- **v0.44.0 — 2026-06-03** — Observability-log attribution: `tick` and
+  `session_id` now carry real, deterministic values instead of the stubs
+  (`tick:0` / `session_id:''`) that made Inv 37's cross-session attribution
+  non-functional (Inv 54, issue #627). `log-tick.py emit` derives both from the
+  Inv 35 running marker when the flags are omitted: `session_id` = `pid<n>-<ts>`
+  (stable per session) and `tick` = a monotonic per-session counter persisted in
+  `<state_dir>/auto-evolve-log-tick.json` (`tick-start` increments, other kinds
+  reuse it). The marker source is injectable via
+  `RABBIT_AUTO_EVOLVE_RUNNING_MARKER` so the derivation is deterministic under
+  test. Explicit `--tick` / `--session-id` are still honored verbatim.
 - **v0.43.0 — 2026-06-03** — Tick-start orphan sweep that bounds disk usage
   from parallel TDD dispatch (Inv 53, issue #628). Parallel dispatch
   (worktree isolation, #430) creates one `agent-*` git worktree per subagent

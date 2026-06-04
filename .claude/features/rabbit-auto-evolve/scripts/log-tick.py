@@ -32,7 +32,20 @@ Verbosity levels (Inv 37 b):
 A record below the active level is DROPPED (no file growth). When the enable
 flag is off, NOTHING is written (zero file growth) — a hard requirement.
 
-Version: 1.0.0
+Attribution (Inv 54, issue #627): `tick` and `session_id` carry REAL,
+deterministic values, never the old stubs (`0` / `''`). When `--session-id` /
+`--tick` are omitted they are DERIVED from the Inv 35 running marker
+(`<repo_root>/.rabbit-auto-evolve-running`, content `pid=<n> ts=<iso> session`):
+  session_id = `pid<n>-<ts>` (or `ts-<ts>` for a PID-free marker, or
+               `pid<getpid>` when the marker is absent) — stable per session.
+  tick       = a monotonic per-session counter persisted in
+               `<state_dir>/auto-evolve-log-tick.json`; `tick-start` increments
+               (resetting on a new session_id), other kinds reuse it.
+The marker path resolves via `RABBIT_AUTO_EVOLVE_RUNNING_MARKER` (injectable
+for tests), else `<repo_root>/.rabbit-auto-evolve-running` (`<repo_root>` via
+`RABBIT_AUTO_EVOLVE_REPO_ROOT`, else cwd). Explicit flags always win.
+
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -42,10 +55,16 @@ import argparse
 import datetime
 import json
 import os
+import re
 import sys
 
 LOG_NAME = "auto-evolve.log"
 CONFIG_NAME = "auto-evolve-log-config.json"
+TICK_STATE_NAME = "auto-evolve-log-tick.json"
+RUNNING_MARKER = ".rabbit-auto-evolve-running"
+
+_MARKER_PID_RE = re.compile(r"pid=(\d+)")
+_MARKER_TS_RE = re.compile(r"ts=(\S+)")
 
 MAX_LINE_BYTES = 2048
 MAX_LOG_BYTES = 5 * 1024 * 1024
@@ -79,6 +98,72 @@ def _log_path():
 
 def _config_path():
     return os.path.join(_state_dir(), CONFIG_NAME)
+
+
+def _tick_state_path():
+    return os.path.join(_state_dir(), TICK_STATE_NAME)
+
+
+def _marker_path():
+    """Resolve the Inv 35 running-marker path. RABBIT_AUTO_EVOLVE_RUNNING_MARKER
+    wins (injectable for tests); else <repo_root>/.rabbit-auto-evolve-running,
+    repo_root via RABBIT_AUTO_EVOLVE_REPO_ROOT (matching running-guard.py)."""
+    override = os.environ.get("RABBIT_AUTO_EVOLVE_RUNNING_MARKER")
+    if override:
+        return override
+    repo_root = os.environ.get("RABBIT_AUTO_EVOLVE_REPO_ROOT") or os.getcwd()
+    return os.path.join(repo_root, RUNNING_MARKER)
+
+
+def _derive_session_id():
+    """Derive a stable, non-empty per-session id (Inv 54). Pure function of the
+    running-marker content: `pid<n>-<ts>` when a pid is recorded, `ts-<ts>` for
+    a PID-free marker, else `pid<getpid>` when the marker is absent/unreadable.
+    Never returns the old empty stub."""
+    try:
+        content = open(_marker_path()).read()
+    except OSError:
+        return f"pid{os.getpid()}"
+    pid_m = _MARKER_PID_RE.search(content)
+    ts_m = _MARKER_TS_RE.search(content)
+    ts = ts_m.group(1) if ts_m else None
+    if pid_m and ts:
+        return f"pid{pid_m.group(1)}-{ts}"
+    if pid_m:
+        return f"pid{pid_m.group(1)}"
+    if ts:
+        return f"ts-{ts}"
+    return f"pid{os.getpid()}"
+
+
+def _read_tick_state():
+    try:
+        with open(_tick_state_path()) as f:
+            data = json.load(f)
+        if isinstance(data, dict) and isinstance(data.get("tick"), int):
+            return data.get("session_id"), data["tick"]
+    except (OSError, json.JSONDecodeError):
+        pass
+    return None, 0
+
+
+def _write_tick_state(session_id, tick):
+    state_dir = _state_dir()
+    os.makedirs(state_dir, exist_ok=True)
+    with open(_tick_state_path(), "w") as f:
+        json.dump({"session_id": session_id, "tick": tick}, f)
+
+
+def _derive_tick(record_kind, session_id):
+    """Monotonic per-session tick counter (Inv 54). `tick-start` increments and
+    persists (resetting to 1 when the recorded session_id differs — a new
+    session); other record-kinds reuse the current counter (>=1)."""
+    prev_session, prev_tick = _read_tick_state()
+    if record_kind == "tick-start":
+        tick = prev_tick + 1 if prev_session == session_id else 1
+        _write_tick_state(session_id, tick)
+        return tick
+    return prev_tick if prev_tick >= 1 else 1
 
 
 def _now_iso():
@@ -159,6 +244,12 @@ def cmd_emit(args):
         return 0
     if args.record_kind not in LEVEL_KINDS[cfg["level"]]:
         return 0  # below active level — drop, no file growth
+    # Inv 54: fill omitted attribution from the running marker. Done only after
+    # the level gate so a dropped record never touches the tick counter.
+    if args.session_id is None:
+        args.session_id = _derive_session_id()
+    if args.tick is None:
+        args.tick = _derive_tick(args.record_kind, args.session_id)
     state_dir = _state_dir()
     os.makedirs(state_dir, exist_ok=True)
     line = _serialize_capped(_build_record(args))
@@ -211,8 +302,10 @@ def build_parser():
     p_emit = sub.add_parser("emit", help="append one per-tick JSON line")
     p_emit.add_argument("--record-kind", required=True, choices=RECORD_KINDS,
                         dest="record_kind")
-    p_emit.add_argument("--tick", type=int, default=0)
-    p_emit.add_argument("--session-id", dest="session_id", default="")
+    # Default None => DERIVE from the running marker (Inv 54). An explicit
+    # value (incl. 0 / '') is honored verbatim.
+    p_emit.add_argument("--tick", type=int, default=None)
+    p_emit.add_argument("--session-id", dest="session_id", default=None)
     p_emit.add_argument("--phase-reached", dest="phase_reached", default="")
     p_emit.add_argument("--phase-result", dest="phase_result", default="")
     p_emit.add_argument("--in-flight", dest="in_flight", default="")

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.43.0
+version: 0.44.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2549,7 +2549,8 @@ Phase E merges complete.
     `queue_head` (array), `queue_len` (int), `merged_this_tick` (array),
     `blockers` (array), `next_action`. Each line is capped at 2 KB hard — the
     writer summarizes/truncates to stay under the cap rather than emit an
-    oversized line.
+    oversized line. `tick` and `session_id` MUST carry real attribution, never
+    stub `0` / `''` — their derivation is governed by Inv 54.
 
     **(b) Verbosity (three strictly-additive levels).** `quiet` = tick
     start/end only (one line per tick); `normal` (DEFAULT) = tick boundaries +
@@ -3327,6 +3328,65 @@ Phase E merges complete.
     sweep script, the tick-start pre-dispatch sequencing, the
     `agent-*`-only / under-`.claude/worktrees/`-only safety constraint, and
     the prompt-dir bounding via the contract cleanup invoke).
+
+54. **Observability-log attribution — `tick` and `session_id` carry real,
+    deterministic values, never stubs (issue #627).** Inv 37 declared a
+    `session_id` and `tick` per record, but `log-tick.py emit` defaulted both
+    to stubs (`session_id=''`, `tick=0`) and the SKILL.md tick driver passed
+    neither, so EVERY record carried `tick:0` / `session_id:''`. The
+    cross-session attribution Inv 37 promised (which session/tick a record
+    belongs to) was therefore non-functional. This invariant wires both to
+    real, DETERMINISTIC, testable sources.
+
+    **(a) Single source of truth — the running marker.** The per-session
+    identity is derived from the Inv 35 running marker
+    (`<repo_root>/.rabbit-auto-evolve-running`, content
+    `pid=<n> ts=<iso> session` built by `start-loop.py._marker_content`). The
+    marker is written once per session and persists for its whole lifetime, so
+    it is a STABLE per-session anchor. The marker path resolves via
+    `RABBIT_AUTO_EVOLVE_RUNNING_MARKER` when set, else
+    `<repo_root>/.rabbit-auto-evolve-running` (`<repo_root>` via
+    `RABBIT_AUTO_EVOLVE_REPO_ROOT`, else cwd) — the env override makes the
+    source INJECTABLE so the unit is deterministic under test (no live-PID or
+    wall-clock dependence inside the assert).
+
+    **(b) `session_id` derivation.** When `--session-id` is NOT passed,
+    `log-tick.py` derives a non-empty id from the marker: `pid<n>-<ts>` when a
+    `pid=<n>` is recorded, else `ts-<ts>` (PID-free markers are valid per Inv
+    35). The id is STABLE across every record of the session (it is a pure
+    function of the marker content). When the marker is absent it falls back to
+    the owning process pid (`pid<getpid>`), never to the empty stub.
+
+    **(c) `tick` derivation — a monotonic per-session counter.** When `--tick`
+    is NOT passed, `log-tick.py` reads a small counter file
+    `<state_dir>/auto-evolve-log-tick.json` (`{"session_id":…, "tick":…}`).
+    A `tick-start` record INCREMENTS the counter (resetting to 1 when the
+    recorded session_id differs from the current one — a new session) and
+    persists it; every other record-kind REUSES the current counter value
+    (defaulting to 1 before the first tick-start). The counter is thus
+    monotonic within a session and meaningful (never the hardcoded `0`), and is
+    a pure function of the on-disk state, so it is deterministic under test.
+
+    **(d) Explicit override.** An explicitly passed `--tick` / `--session-id`
+    is ALWAYS honored verbatim (the derivation only fills the gap when the flag
+    is omitted), preserving back-compat with callers that already supply real
+    values.
+
+    **(e) Tick-driver integration.** The SKILL.md tick pipeline relies on the
+    derivation: it MUST NOT pass stub `--tick 0` / `--session-id ''`. Omitting
+    the flags (the documented default) yields correct attribution.
+
+    This invariant was introduced by issue #627. It amends, not supersedes,
+    Inv 37(a).
+
+    Enforced by `test/test-log-tick.py` (scenario H: with NO --session-id/--tick
+    and an injected marker, a tick's records carry a non-empty stable
+    session_id and a non-zero tick, and a second tick advances the monotonic
+    counter while the session_id stays stable; scenario I: explicit
+    --tick/--session-id override the derived values) and by
+    `test/test-spec-tick-log-invariant.py` (the spec documents the attribution
+    derivation from the running marker, the injectable
+    `RABBIT_AUTO_EVOLVE_RUNNING_MARKER` source, and the no-stub guarantee).
 
 ## Known gaps
 

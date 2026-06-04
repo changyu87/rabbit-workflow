@@ -25,6 +25,11 @@ Scenarios:
   E) `log-path.py` prints the resolved `.rabbit/auto-evolve.log` path.
   F) `--help` smoke for both scripts: exit 0 with recognizable usage text.
   G) Record carries the minimum spec keys.
+  H) Attribution (Inv 54, issue #627): with NO --session-id/--tick passed,
+     the writer DERIVES a non-stub session_id (non-empty) and a meaningful
+     monotonic tick (not hardcoded 0) from the running marker — the source is
+     injectable (RABBIT_AUTO_EVOLVE_RUNNING_MARKER) so the unit is deterministic.
+  I) Explicit --session-id / --tick still override the derived values.
 """
 
 import json
@@ -243,5 +248,91 @@ for label, script in (("log-tick.py", LOGTICK), ("log-path.py", LOGPATH)):
         ok(f"F: {label} --help exits 0 with recognizable usage")
     else:
         fail(f"F: {label} --help exit {proc.returncode}; out={proc.stdout!r}")
+
+# --- H: attribution derived from the running marker (Inv 54 / #627) ---
+# The running marker (start-loop.py _marker_content) records
+#   "pid=<n> ts=<iso> session".
+# With NO --session-id/--tick passed, log-tick.py must DERIVE a non-stub
+# session_id (non-empty, NOT '') and a monotonic tick (NOT hardcoded 0) from
+# that marker. The marker path is injected via RABBIT_AUTO_EVOLVE_RUNNING_MARKER
+# so the unit is deterministic (no live PID / clock dependence in the assert).
+def emit_marker(state_dir, marker_path, record_kind, **fields):
+    argv = [sys.executable, LOGTICK, "emit", "--record-kind", record_kind]
+    for k, v in fields.items():
+        argv += [f"--{k.replace('_', '-')}", str(v)]
+    env = env_for(state_dir)
+    env["RABBIT_AUTO_EVOLVE_RUNNING_MARKER"] = marker_path
+    return subprocess.run(argv, capture_output=True, text=True, env=env)
+
+
+with tempfile.TemporaryDirectory() as d:
+    state_dir = os.path.join(d, ".rabbit")
+    os.makedirs(state_dir, exist_ok=True)
+    run_config(state_dir, "level", "debug")
+    marker = os.path.join(d, ".rabbit-auto-evolve-running")
+    with open(marker, "w") as f:
+        f.write("pid=4242 ts=2026-06-03T12:00:00Z session\n")
+    # A tick: tick-start then three more records (no explicit --tick/--session-id).
+    emit_marker(state_dir, marker, "tick-start", phase_reached="0",
+                phase_result="ok", next_action="fetch")
+    emit_marker(state_dir, marker, "phase", phase_reached="2",
+                phase_result="ok", next_action="triage")
+    emit_marker(state_dir, marker, "phase-transition", phase_reached="3",
+                phase_result="ok", next_action="plan")
+    emit_marker(state_dir, marker, "tick-end", phase_reached="11",
+                phase_result="ok", next_action="idle")
+    lines = log_lines(state_dir)
+    if len(lines) != 4:
+        fail(f"H: expected 4 records, got {len(lines)}")
+    else:
+        recs = [json.loads(ln) for ln in lines]
+        # session_id non-stub (non-empty) and stable across the tick.
+        sids = {r["session_id"] for r in recs}
+        if "" in sids:
+            fail(f"H: empty session_id present (stub not wired): {sids!r}")
+        elif len(sids) != 1:
+            fail(f"H: session_id not stable across one tick: {sids!r}")
+        else:
+            ok(f"H: derived non-stub stable session_id ({sids.pop()!r})")
+        # tick must be meaningful (not all hardcoded 0).
+        ticks = [r["tick"] for r in recs]
+        if all(t == 0 for t in ticks):
+            fail(f"H: tick still stub 0 in every record: {ticks!r}")
+        else:
+            ok(f"H: derived non-stub tick (tick={ticks[0]!r})")
+
+    # Second tick (a new tick-start) must advance the monotonic counter.
+    emit_marker(state_dir, marker, "tick-start", phase_reached="0",
+                phase_result="ok", next_action="fetch")
+    rec2 = json.loads(log_lines(state_dir)[-1])
+    rec1_start = json.loads(lines[0])
+    if rec2["tick"] > rec1_start["tick"]:
+        ok(f"H: tick advances across ticks "
+           f"({rec1_start['tick']} -> {rec2['tick']})")
+    else:
+        fail(f"H: tick did not advance: {rec1_start['tick']} -> {rec2['tick']}")
+    # session_id stable across the whole session (same marker).
+    if rec2["session_id"] == rec1_start["session_id"]:
+        ok("H: session_id stable across ticks within one session")
+    else:
+        fail(f"H: session_id changed mid-session: "
+             f"{rec1_start['session_id']!r} -> {rec2['session_id']!r}")
+
+# --- I: explicit --session-id / --tick override the derived values ----
+with tempfile.TemporaryDirectory() as d:
+    state_dir = os.path.join(d, ".rabbit")
+    os.makedirs(state_dir, exist_ok=True)
+    run_config(state_dir, "level", "normal")
+    marker = os.path.join(d, ".rabbit-auto-evolve-running")
+    with open(marker, "w") as f:
+        f.write("pid=99 ts=2026-06-03T01:02:03Z session\n")
+    emit_marker(state_dir, marker, "tick-end", tick=77, session_id="explicit-x",
+                phase_reached="11", phase_result="ok", next_action="idle")
+    rec = json.loads(log_lines(state_dir)[-1])
+    if rec["tick"] == 77 and rec["session_id"] == "explicit-x":
+        ok("I: explicit --tick / --session-id override the derived values")
+    else:
+        fail(f"I: explicit values not honored: "
+             f"tick={rec['tick']!r} session_id={rec['session_id']!r}")
 
 sys.exit(FAIL)
