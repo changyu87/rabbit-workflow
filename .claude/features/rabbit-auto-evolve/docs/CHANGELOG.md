@@ -13,6 +13,22 @@ own version.
 
 ## Version notes
 
+- **v0.48.4 — 2026-06-03** — Land the gitignore-seeding feature (#691, closes
+  #398, authorized by #701). Inv 57 (proactive `.gitignore` seeding is the
+  policy; reactive single-file additions are a fallback) is added to
+  `docs/spec.md`; the repo-root `.gitignore` gains the per-feature
+  `.rabbit-scope-active-*` scope-marker glob (the bare `.rabbit-scope-active`
+  token does not match a per-feature `.rabbit-scope-active-<feature>` marker,
+  so a stray marker could be committed without the glob). New E2E regression
+  `test/test-gitignore-seeded-runtime-artifacts.py` (wired into `test/run.py`)
+  copies the repo-root `.gitignore` into a tempdir git repo, writes each
+  artifact in the known seed set including a per-feature scope marker, and
+  asserts `git status --porcelain` reports none of them. Landed by merging
+  `origin/dev` into the PR branch; the only content conflict was the transient
+  `feature.json` `spec_no_change_reason` field, removed here since `docs/spec.md`
+  does change in this landing (it gains Inv 57). Four version surfaces bumped
+  0.48.3 → 0.48.4 in lockstep.
+
 - **v0.48.3 — 2026-06-03** — Housekeeping round 2 (#681, under #639): measured
   dead-prose REMOVAL pass on `docs/spec.md` (the whale; round 1 reworded instead
   of removing). Deleted, each verified DEAD by a deterministic #639 check:

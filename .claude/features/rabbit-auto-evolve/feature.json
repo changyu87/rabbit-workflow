@@ -1,11 +1,11 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.48.3",
+  "version": "0.48.4",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "tdd_state": "test-green",
-  "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and is fired on a fixed cadence by the system cron where available (with a durable CronCreate fallback where crontab is blocked; Inv 32) until the user issues an explicit stop.",
+  "summary": "rabbit-auto-evolve — self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and is fired on a fixed cadence by the system cron where available (with a durable CronCreate fallback where crontab is blocked; Inv 32) until the user issues an explicit stop.",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -15,7 +15,7 @@
     ]
   },
   "deprecation_criterion": "when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill",
-  "updated": "2026-06-04",
+  "updated": "2026-06-03",
   "manifest": [
     {
       "api": "publish_skill",
@@ -39,6 +39,5 @@
     ]
   },
   "configuration": [],
-  "prompts": [],
-  "spec_no_change_reason": "Housekeeping REMOVAL pass (#681): the spec deletions ARE the implementation and land in the IMPLEMENT step; spec-update added only the dead-prose regression test (test-spec-housekeeping-681-dead-prose-removed.py), which is RED until the removals land."
+  "prompts": []
 }

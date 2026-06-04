@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.48.3
+version: 0.48.4
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -3473,6 +3473,31 @@ Phase E merges complete.
     `parallel-per-feature`, listing it under `cross_scope_items`) and
     `test/test-spec-cross-scope-invariant.py` (the spec carries Inv 56,
     including the parent-reference exclusion).
+
+57. **Proactive `.gitignore` seeding is the policy; reactive single-file
+    additions are a fallback only.** The repo-root `.gitignore` MUST be
+    proactively seeded with the full known set of runtime artifacts that
+    the Claude Code platform and the rabbit workflow write into a checkout,
+    so a newly-running loop or subagent never trips `safety-check.py`
+    Invariant 5 ("working tree clean") on an artifact discovered the hard
+    way. Discovering an untracked runtime file at merge time and filing an
+    issue to add that one pattern is the FALLBACK posture, never the
+    primary one: the primary posture is that the set is enumerated up front
+    from its sources (the markers and runtime files declared across the
+    feature specs and written by the hooks/scripts) and seeded in one
+    sweep. Concretely, beyond the `.rabbit-auto-evolve-*` glob (Inv 23) and
+    the `.claude/scheduled_tasks.{lock,json}` entries (Inv 24), the
+    `.gitignore` MUST carry the per-feature scope-marker glob
+    `.rabbit-scope-active-*` — the bare `.rabbit-scope-active` token alone
+    does NOT match a per-feature `.rabbit-scope-active-<feature>` marker, so
+    without the glob a stray per-feature marker can be committed. Seeded
+    patterns MUST be grouped under comments naming their source (Claude
+    Code platform vs. rabbit feature) so the provenance of each entry is
+    auditable. Enforced by `test/test-gitignore-seeded-runtime-artifacts.py`,
+    which copies the repo-root `.gitignore` into a tempdir initialized as a
+    git repo, writes each artifact in the known seed set — including a
+    per-feature `.rabbit-scope-active-<feature>` marker — runs
+    `git status --porcelain`, and asserts none of them appear in the output.
 
 ## Known gaps
 
