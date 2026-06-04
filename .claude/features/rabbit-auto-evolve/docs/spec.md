@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.48.5
+version: 0.49.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -178,6 +178,15 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
   (no-op, `/rabbit-refresh`, restart-required); the loop handles the
   rung automatically without user intervention for the first two rungs.
   (design doc §7)
+- When an item is shaped as `decomposition` (>= `--decompose-threshold`
+  features), the dispatcher records the parent->children linkage in
+  machine-readable form via `record-decomposition.py` (state field
+  `decomposition_parents`), then the per-tick post-merge drain runs
+  `close-decomposed-parents.py`: for every tracked parent whose children
+  are ALL closed it closes the parent (`--reason completed`) and drops the
+  parent key. A parent with any open child is left untouched. The
+  decomposed-parent lifecycle is closed deterministically by the machine,
+  never by manual cleanup (Inv 58).
 - Loop state is persisted to `.rabbit/auto-evolve-state.json` on every
   tick; a Claude restart followed by `/rabbit-auto-evolve start` resumes
   from the last persisted state without replaying completed work.
@@ -3493,6 +3502,39 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     git repo, writes each artifact in the known seed set — including a
     per-feature `.rabbit-scope-active-<feature>` marker — runs
     `git status --porcelain`, and asserts none of them appear in the output.
+
+58. **Decomposed-parent lifecycle closes deterministically; the
+    parent->children linkage is machine-readable, never a prose table.**
+    When `plan-batch.py` shapes an item as `decomposition`
+    (>= `--decompose-threshold` features) and the dispatcher files the N
+    per-feature child sub-issues (a `rabbit-issue` contract INVOKE, not a
+    cross-feature edit), it MUST record the parent->children linkage in
+    machine-readable form by invoking
+    `python3 .claude/features/rabbit-auto-evolve/scripts/record-decomposition.py
+    <parent#> <child#> [<child#> ...]`, which persists the link under the
+    state's `decomposition_parents` map (parent-issue-number string ->
+    list of child issue numbers; schema 1.3.0). The historical prose
+    comment table on the parent issue is NEVER the loop's source of truth —
+    enumerating a parent's children from prose is a machine-first violation
+    and is what historically left decomposed parents lingering OPEN after
+    every child closed.
+    Each tick, the post-merge drain (`run-post-merge.py`, after the
+    catch-up phase) runs
+    `python3 .claude/features/rabbit-auto-evolve/scripts/close-decomposed-parents.py`,
+    which for EVERY tracked parent enumerates its recorded children, queries
+    each child's state via `gh`, and — only when EVERY child is closed —
+    closes the parent (`gh issue close <parent#> --reason completed` with a
+    roll-up comment) and removes the parent key from `decomposition_parents`.
+    A parent with ANY child still OPEN is left untouched (the step is a
+    no-op for it). The step is idempotent: a clean no-op when the map is
+    empty/absent, and a parent already closed (key already removed) is never
+    re-processed. The roll-up close is SCRIPT-BACKED (script > CLI > spec >
+    prompt) — it is never a dispatcher judgment call. Enforced by
+    `test/test-close-decomposed-parents.py` (all-children-closed -> parent
+    closed + key dropped; one-open-child -> parent untouched; empty map ->
+    clean no-op) and `test/test-record-decomposition.py` (the linkage record
+    round-trips through `decomposition_parents` and validates against schema
+    1.3.0), with the wiring asserted by `test/test-run-post-merge.py`.
 
 ## Known gaps
 

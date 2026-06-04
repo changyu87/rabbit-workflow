@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "schema_version": "1.2.0",
+  "schema_version": "1.3.0",
   "owner": "rabbit-workflow team",
   "deprecation_criterion": "when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill",
   "title": "rabbit-auto-evolve loop state",
@@ -20,7 +20,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "1.2.0"
+      "const": "1.3.0"
     },
     "updated_at": {
       "type": "string",
@@ -31,23 +31,41 @@
       "items": {
         "type": "object",
         "additionalProperties": true,
-        "required": ["issue", "decision", "feature"],
+        "required": [
+          "issue",
+          "decision",
+          "feature"
+        ],
         "properties": {
-          "issue": {"type": "integer"},
-          "decision": {"type": "string"},
-          "feature": {"type": "string"}
+          "issue": {
+            "type": "integer"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "feature": {
+            "type": "string"
+          }
         }
       }
     },
     "in_flight": {
       "type": "array",
-      "items": {"type": "integer"}
+      "items": {
+        "type": "integer"
+      }
     },
     "last_merged_sha": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "last_tagged_version": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "consecutive_failures": {
       "type": "integer",
@@ -57,7 +75,10 @@
       "type": "boolean"
     },
     "restart_needed": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "defer_counts": {
       "type": "object",
@@ -70,7 +91,19 @@
     "pending_post_merge": {
       "type": "array",
       "description": "Merged PR numbers owed post-merge processing (phases 7-9, issue #499). Optional/additive (schema 1.2.0); cleared by run-post-merge.py once phases 7-9 complete.",
-      "items": {"type": "integer"}
+      "items": {
+        "type": "integer"
+      }
+    },
+    "decomposition_parents": {
+      "type": "object",
+      "description": "Machine-readable decomposition parent->children linkage (issue #721). Keyed by parent issue-number string; value is the list of child sub-issue numbers filed for that parent at decomposition time. The loop's close-decomposed-parents phase enumerates a parent's children from this map (never a prose comment table) and closes the parent once every child is closed, then removes the parent key. Optional/additive (schema 1.3.0).",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "integer"
+        }
+      }
     }
   }
 }

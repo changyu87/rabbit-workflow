@@ -21,10 +21,16 @@ It:
        - Phase 8 (release):  `release-bump.py <pr#>` once per PR.
        - Phase 9 (cleanup):  `cleanup-branches.py <comma-joined pr-list>` once.
        - Phase 10 (catch-up): `classify-merge-restart.py <pr#>` once per PR.
-  4. On completion (all phase scripts exited 0 AND every release-bump.py
+  4. Runs the decomposed-parent roll-up (`close-decomposed-parents.py`,
+     Inv 58 / #721) AFTER catch-up on the non-empty path AND on the empty
+     no-op path (a decomposition's children close on their OWN ticks, not
+     only when a PR merges). It closes every tracked decomposition parent
+     whose children are all closed and drops the parent key; a clean no-op
+     when nothing is tracked.
+  5. On completion (all phase scripts exited 0 AND every release-bump.py
      reported status "released"), clears `pending_post_merge` to [] in the
      state file (atomic via temp+rename).
-  5. Emits a result JSON object on stdout recording the pending set and each
+  6. Emits a result JSON object on stdout recording the pending set and each
      phase's outcome.
 
 Exit code: 0 on success (including the no-op path). Non-zero on any phase
@@ -42,7 +48,7 @@ release-bump.py / cleanup-branches.py). The state dir resolves via
 RABBIT_AUTO_EVOLVE_STATE_DIR when set, else `<cwd>/.rabbit` (matching
 update-state.py).
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -128,10 +134,25 @@ def _run_phase(script_name, args):
     return proc
 
 
+def _run_rollup():
+    """Run the decomposed-parent roll-up (close-decomposed-parents.py, Inv 58 /
+    #721). Returns its CompletedProcess. This runs EVERY tick — even on the
+    empty pending_post_merge no-op path — because a decomposition's children
+    close on their OWN ticks, not only when a PR merges. A non-zero roll-up
+    return is surfaced by the caller but the roll-up is itself a clean no-op
+    when nothing is tracked."""
+    return _run_phase("close-decomposed-parents.py", [])
+
+
 def run():
     pending = _read_pending()
     if not pending:
-        json.dump({"status": "noop", "pending": []}, sys.stdout, indent=2)
+        # The decomposed-parent roll-up runs every tick, including the empty
+        # no-op path (Inv 58 / #721): children close on their own ticks.
+        rollup = _run_rollup()
+        result = {"status": "noop", "pending": [],
+                  "phases": {"close_decomposed_parents": rollup.returncode}}
+        json.dump(result, sys.stdout, indent=2)
         sys.stdout.write("\n")
         return 0
 
@@ -185,6 +206,14 @@ def run():
             sys.stdout.write("\n")
             return 1
     result["phases"]["catch_up"] = catchup
+
+    # Decomposed-parent roll-up (Inv 58 / #721) — runs AFTER catch-up. Closes
+    # every tracked decomposition parent whose recorded children are all closed
+    # and drops its decomposition_parents key. A non-zero return is recorded
+    # but never withholds clearing pending_post_merge (the owed post-merge work
+    # already completed) — the next tick's drain retries the roll-up.
+    rollup = _run_rollup()
+    result["phases"]["close_decomposed_parents"] = rollup.returncode
 
     # All phases succeeded — clear the owed-work list.
     _clear_pending()

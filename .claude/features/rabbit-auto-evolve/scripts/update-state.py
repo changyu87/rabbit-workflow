@@ -18,7 +18,7 @@ are rejected with a type-mismatch detail in stderr.
 Exit code: 0 on successful write; non-zero on schema-validation failure or
 write error. On validation failure the state file is NOT touched.
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -74,18 +74,19 @@ def validate(instance):
         return errors
 
     # additionalProperties: false, except the optional `defer_counts` map
-    # (issue #423 Part B, schema 1.1.0) and the optional `pending_post_merge`
-    # array (issue #499, schema 1.2.0).
-    optional = {"defer_counts", "pending_post_merge"}
+    # (issue #423 Part B, schema 1.1.0), the optional `pending_post_merge`
+    # array (issue #499, schema 1.2.0), and the optional
+    # `decomposition_parents` map (issue #721, schema 1.3.0).
+    optional = {"defer_counts", "pending_post_merge", "decomposition_parents"}
     extra = set(instance.keys()) - set(required) - optional
     if extra:
         errors.append(
             "additional properties not allowed: " + ", ".join(sorted(extra))
         )
 
-    if instance["schema_version"] != "1.2.0":
+    if instance["schema_version"] != "1.3.0":
         errors.append(
-            f"schema_version: expected '1.2.0', got {instance['schema_version']!r}"
+            f"schema_version: expected '1.3.0', got {instance['schema_version']!r}"
         )
 
     updated_at = instance["updated_at"]
@@ -182,6 +183,31 @@ def validate(instance):
                         f"pending_post_merge[{i}]: expected integer, got "
                         f"{type(n).__name__}"
                     )
+
+    # decomposition_parents (optional): object of parent-issue-number-string ->
+    # list of child issue numbers (issue #721). The machine-readable
+    # parent->children linkage the close-decomposed-parents phase enumerates.
+    if "decomposition_parents" in instance:
+        dp = instance["decomposition_parents"]
+        if not isinstance(dp, dict):
+            errors.append(
+                f"decomposition_parents: expected object, got "
+                f"{type(dp).__name__}"
+            )
+        else:
+            for k, v in dp.items():
+                if not isinstance(v, list):
+                    errors.append(
+                        f"decomposition_parents[{k!r}]: expected array, got "
+                        f"{type(v).__name__}"
+                    )
+                    continue
+                for i, n in enumerate(v):
+                    if not _is_int(n):
+                        errors.append(
+                            f"decomposition_parents[{k!r}][{i}]: expected "
+                            f"integer, got {type(n).__name__}"
+                        )
 
     return errors
 

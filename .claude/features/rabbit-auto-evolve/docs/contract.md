@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.48.5
+version: 0.49.0
 template_version: 2.0.0
 ---
 
@@ -17,6 +17,18 @@ template_version: 2.0.0
         "subcommands": ["write", "status", "clear"],
         "version": "1.0.0",
         "rationale": "advisory-restart marker lifecycle (Inv 52). `status` emits {\"advised\": bool, \"reason\"?: str} on stdout (always exit 0) and `clear` removes the marker (idempotent); these are the INVOKE surfaces rabbit-cage's Stop/SessionStart dispatcher calls to surface and clear the advisory restart signal cross-feature. Distinct from the hard `.rabbit-auto-evolve-restart-needed` marker — advisory, never pauses the loop"
+      },
+      {
+        "path": ".claude/features/rabbit-auto-evolve/scripts/record-decomposition.py",
+        "subcommands": [],
+        "version": "1.0.0",
+        "rationale": "decomposition parent->children linkage recorder (Inv 58). The dispatcher invokes `record-decomposition.py <parent#> <child#>...` at decompose time to persist the machine-readable link under the state's `decomposition_parents` map. This is the INVOKE surface the SKILL.md decomposition path calls so the parent's children are enumerable deterministically (never from a prose table)"
+      },
+      {
+        "path": ".claude/features/rabbit-auto-evolve/scripts/close-decomposed-parents.py",
+        "subcommands": [],
+        "version": "1.0.0",
+        "rationale": "per-tick roll-up close of decomposed parents (Inv 58). Invoked by run-post-merge.py after the catch-up phase: for each tracked parent whose recorded children are ALL closed it closes the parent (`gh issue close --reason completed`) and drops its `decomposition_parents` key. Idempotent no-op when the map is empty or any child is still open"
       }
     ],
     "schemas": [],

@@ -142,7 +142,7 @@ def _default_state() -> dict:
         "%Y-%m-%dT%H:%M:%SZ"
     )
     return {
-        "schema_version": "1.2.0",
+        "schema_version": "1.3.0",
         "updated_at": now,
         "queue": [],
         "in_flight": [],
