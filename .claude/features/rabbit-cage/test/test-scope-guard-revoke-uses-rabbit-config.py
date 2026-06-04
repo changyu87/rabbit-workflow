@@ -3,7 +3,7 @@
 
 The scope-guard override REVOKE instruction must point at the clean
 `/rabbit-config scope-guard on` command, consistent with sibling
-configurables (`/rabbit-config human-approval|bypass-permissions`), NOT
+configurables (`/rabbit-config tdd-autonomous|bypass-permissions`), NOT
 the raw `.claude/features/rabbit-cage/scripts/scope-guard-on.py` path.
 
 Asserts four things:

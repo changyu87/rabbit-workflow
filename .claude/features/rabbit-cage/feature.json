@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.54.0",
+  "version": "5.55.0",
   "contiguous_invariants": true,
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
@@ -239,20 +239,20 @@
       "default": "on"
     },
     {
-      "id": "human-approval",
-      "subcommand": "human-approval",
+      "id": "tdd-autonomous",
+      "subcommand": "tdd-autonomous",
       "storage": {
         "type": "marker-file",
         "path": ".rabbit-human-approval-bypass"
       },
       "values": {
-        "true": {
+        "false": {
           "api": "delete_marker",
           "args": {
             "path": ".rabbit-human-approval-bypass"
           }
         },
-        "false": {
+        "true": {
           "api": "write_marker",
           "args": {
             "path": ".rabbit-human-approval-bypass",
@@ -260,10 +260,10 @@
           }
         }
       },
-      "default": "true",
-      "alert-on": "false",
+      "default": "false",
+      "alert-on": "true",
       "alert-message": {
-        "text": "HUMAN APPROVAL BYPASS ACTIVE - Step 4 skipped",
+        "text": "TDD-AUTONOMOUS MODE ACTIVE \u2014 TDD cycle Step 4 (human approval) skipped",
         "icon": "\ud83d\udd11",
         "color": "red"
       }

@@ -2,7 +2,7 @@
 """rabbit-cage regression — rabbit-config skill MUST ship in install.py MVP closure.
 
 Bug #278: install.py's MVP file closure omitted the rabbit-config skill, so
-plugin users could not manage configurables (human-approval bypass, bypass-
+plugin users could not manage configurables (tdd-autonomous, bypass-
 permissions, prompt-threshold, allowed-tools, ...) without manual
 settings.local.json edits.
 
