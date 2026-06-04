@@ -57,7 +57,6 @@ spec = norm(SPEC_MD.read_text())
 spec_low = spec.lower()
 
 SPEC_REQUIRED = [
-    "545",
     "inv 52",
     ADVISED.lower(),
     "advise-restart.py",

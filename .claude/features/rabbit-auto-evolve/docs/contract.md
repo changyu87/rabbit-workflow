@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.44.0
+version: 0.45.0
 template_version: 2.0.0
 ---
 
@@ -16,7 +16,7 @@ template_version: 2.0.0
         "path": ".claude/features/rabbit-auto-evolve/scripts/advise-restart.py",
         "subcommands": ["write", "status", "clear"],
         "version": "1.0.0",
-        "rationale": "advisory-restart marker lifecycle (Inv 52, issue #545). `status` emits {\"advised\": bool, \"reason\"?: str} on stdout (always exit 0) and `clear` removes the marker (idempotent); these are the INVOKE surfaces rabbit-cage's Stop/SessionStart dispatcher calls to surface and clear the advisory restart signal cross-feature (Part B). Distinct from the hard `.rabbit-auto-evolve-restart-needed` marker — advisory, never pauses the loop"
+        "rationale": "advisory-restart marker lifecycle (Inv 52). `status` emits {\"advised\": bool, \"reason\"?: str} on stdout (always exit 0) and `clear` removes the marker (idempotent); these are the INVOKE surfaces rabbit-cage's Stop/SessionStart dispatcher calls to surface and clear the advisory restart signal cross-feature. Distinct from the hard `.rabbit-auto-evolve-restart-needed` marker — advisory, never pauses the loop"
       }
     ],
     "schemas": [],
@@ -32,12 +32,12 @@ template_version: 2.0.0
       {
         "path": ".claude/features/rabbit-issue/scripts/item-status.py",
         "subcommand": "close",
-        "rationale": "merge-prs.py explicitly closes issues referenced (Fixes/Closes/Resolves #N) by a PR merged to dev, since GitHub auto-close only fires for default-branch (main) merges (issue #392); the close passes --reason completed --commit-sha <merge-sha>, since item-status.py requires --commit-sha for a completed closure (issue #423)"
+        "rationale": "merge-prs.py explicitly closes issues referenced (Fixes/Closes/Resolves) by a PR merged to dev, since GitHub auto-close only fires for default-branch (main) merges; the close passes --reason completed --commit-sha <merge-sha>, since item-status.py requires --commit-sha for a completed closure"
       },
       {
         "path": ".claude/features/rabbit-issue/scripts/file-item.py",
         "subcommand": "",
-        "rationale": "the dispatch_shape == decomposition path (Inv 26 / issue #435) files N per-feature sub-issues for a very-large cross-feature item; filing a sub-issue is a contract INVOKE of rabbit-issue, NOT a cross-feature edit, so every write stays inside one feature's scope"
+        "rationale": "the dispatch_shape == decomposition path (Inv 26) files N per-feature sub-issues for a very-large cross-feature item; filing a sub-issue is a contract INVOKE of rabbit-issue, NOT a cross-feature edit, so every write stays inside one feature's scope"
       }
     ],
     "agents": [],
@@ -45,7 +45,7 @@ template_version: 2.0.0
       {
         "path": ".claude/features/contract/lib/runtime.py",
         "function": "cleanup_old_prompts",
-        "rationale": "prune-worktrees.py invokes contract.lib.runtime.cleanup_old_prompts(max_age_days=7, repo_root=...) at tick start (pre-dispatch) to bound .rabbit/prompts/ (Inv 53, issue #628). This is a cross-scope INVOKE of the contract-owned cleanup API — rabbit-auto-evolve never edits the contract feature"
+        "rationale": "prune-worktrees.py invokes contract.lib.runtime.cleanup_old_prompts(max_age_days=7, repo_root=...) at tick start (pre-dispatch) to bound .rabbit/prompts/ (Inv 53). This is a cross-scope INVOKE of the contract-owned cleanup API — rabbit-auto-evolve never edits the contract feature"
       }
     ],
     "files": [

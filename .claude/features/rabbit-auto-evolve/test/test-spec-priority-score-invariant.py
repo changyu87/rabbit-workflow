@@ -74,13 +74,6 @@ if missing:
 else:
     ok("spec.md carries the loop-computed-priority-score invariant (Inv 46)")
 
-# The invariant MUST reconcile with #479 explicitly (not silently override it).
-if "479" not in lowered:
-    fail("spec.md priority-score invariant must reference issue #479 "
-         "(the composite key it refines)")
-else:
-    ok("spec.md priority-score invariant reconciles with issue #479")
-
 
 # ---------------------------------------------------------------------------
 # E2E (issue #606 / Inv 51): the bug-vs-enhancement and age signals of the

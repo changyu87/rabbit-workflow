@@ -68,7 +68,6 @@ def norm(text):
 spec_low = norm(SPEC_MD.read_text()).lower()
 
 SPEC_REQUIRED = [
-    "596",
     "clean-dispatch-leaks.py",
     "checkout -b",
     "head",

@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.44.0
+version: 0.45.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -12,9 +12,9 @@ A self-driving rabbit loop. Continuously fetches open `rabbit-managed`
 issues, triages each, dispatches TDD subagents, merges approved PRs into
 `dev`, tags releases, and is fired on a fixed cadence by a **system cron**
 (the tick scheduler where available, installed at `on`) until the user
-issues an explicit stop. Per Inv 32 (issues #414, #509, #521) the loop
-NEVER self-chains via the deprecated in-session wakeup mechanisms (see spec
-Inv 32 for the forbidden set). Scheduling lives in the external system cron
+issues an explicit stop. Per Inv 32 the loop NEVER self-chains via the
+deprecated in-session wakeup mechanisms (see spec Inv 32 for the forbidden
+set). Scheduling lives in the external system cron
 WHERE AVAILABLE; on hosts where crontab is blocked, a durable `CronCreate`
 heartbeat is the SANCTIONED fallback trigger (a Claude idle-REPL prompt
 scheduler — durable, not an in-session wakeup harness). When work remains at
@@ -44,7 +44,7 @@ After the three markers, `set-evolve-mode.py on` invokes
 `.claude/features/rabbit-auto-evolve/scripts/install-cron.py`, which uses
 `detect-scheduler.py` (Inv 34) to choose the mechanism. WHERE crontab is
 usable it idempotently installs the system-cron entry that fires the
-headless tick (Inv 32 / issue #414) — the cron is the tick scheduler. WHERE
+headless tick (Inv 32) — the cron is the tick scheduler. WHERE
 crontab is administratively blocked it does NOT fail: it exits 0 and emits a
 JSON signal `{"scheduler":"croncreate","action":"dispatcher-must-create-heartbeat",
 "cron":"13,43 * * * *","prompt":"/rabbit-auto-evolve tick","durable":true}`
@@ -97,7 +97,7 @@ The script reports on the three preconditions as structured JSON:
    `.claude/settings.local.json` has
    `permissions.defaultMode == "bypassPermissions"`).
 
-#### Routing table (per Inv 10, v0.7.7 — issue #386)
+#### Routing table (per Inv 10)
 
 Route on the report's `all_pass` field AND the per-check `ok` values.
 NEVER dump the raw failing checklist as the sole user response — the
@@ -111,11 +111,10 @@ user already expressed intent ("enter auto-evolve mode") by invoking
 | `all_pass: false` AND `active-marker` check `ok: true` AND `bypass-permissions` check `ok: false` (markers exist but user forgot to restart Claude after a previous `on`) | Surface ONE short branded reminder line: `🔁 Markers set — restart Claude Code, then /rabbit-auto-evolve start again`. Do NOT re-run `on` (the markers are already correct). Do NOT show the full checklist. |
 | Any other `all_pass: false` shape (genuinely unexpected — partial corruption, manual tampering) | Surface the failing `checks[*].detail` strings as actionable guidance and STOP. This is the fallback branch only — the two routing branches above cover the common fresh-state and forgot-to-restart cases. |
 
-The auto-on routing on fresh state was introduced by issue #386 in
-v0.7.7: in v0.7.6 the skill fragmented a single user intent ("enter
-auto-evolve mode") into a two-step manual flow by surfacing the
-precondition checklist verbatim and waiting for the user to type
-`/rabbit-auto-evolve on` themselves.
+The auto-on routing on fresh state keeps a single user intent ("enter
+auto-evolve mode") from fragmenting into a two-step manual flow: the skill
+never surfaces the precondition checklist verbatim and waits for the user to
+type `/rabbit-auto-evolve on` themselves.
 
 #### Start the loop (only on `all_pass: true`)
 
@@ -146,8 +145,8 @@ precondition checklist verbatim and waiting for the user to type
 2. End the turn. The HOUSEKEEPING tick is fired by the **system cron**
    installed at `on` (where crontab is available) running `tick-headless.py`;
    the DEVELOPMENT tick (phase 5 dispatch) is re-triggered by the scheduler
-   firing `/rabbit-auto-evolve tick` in a FRESH context (Inv 32 amendment /
-   #509). Every MACHINE wake-up fires the internal `tick`, NEVER the
+   firing `/rabbit-auto-evolve tick` in a FRESH context (Inv 32). Every
+   MACHINE wake-up fires the internal `tick`, NEVER the
    USER-intent `start` (Inv 41): `tick` respects but never deletes the stop
    marker, so a heartbeat can never cancel a human's explicit stop. There is
    NO in-session wakeup-harness self-chaining (the forbidden mechanisms are
@@ -165,7 +164,7 @@ wrapped in a script for the same scope-guard reason as `start`.
 
 ### `status`
 
-`status` is read-only (performs no mutations). Per Inv 29 (issue #405), the
+`status` is read-only (performs no mutations). Per Inv 29, the
 status report is owned by
 `status-report.py` — invoke it and surface its stdout. Do NOT LLM-assemble
 a bash pipeline; bare `ls .rabbit-auto-evolve-*` / `cat
@@ -198,7 +197,7 @@ except on a genuine invocation error):
 
 `status` performs no mutations.
 
-### `log` (per-tick observability log — Inv 37, issue #404)
+### `log` (per-tick observability log — Inv 37)
 
 Manage the FULL per-tick observability log at `.rabbit/auto-evolve.log` — a
 persistent, append-only, machine-readable (JSON-lines) execution trace written
@@ -289,15 +288,16 @@ mutation). The deterministic walk runs in two segments around Phase 5:
    Phase 6 FIRST runs `clean-dispatch-leaks.py` (Inv 43, Inv 44) to
    deterministically clean KNOWN worktree-dispatch leak-class noise from the
    main tree BEFORE the merge. As its first step it restores a leaked main-HEAD
-   branch switch (Inv 44 / #596): when a subagent's `git checkout -B <branch>
+   branch switch (Inv 44): when a subagent's `git checkout -B <branch>
    origin/dev` left the dispatcher's MAIN HEAD on a feature branch (which would
    trip safety-check Inv 1 "branch is dev" and skip the batch), and the tree is
    clean with no un-pushed unique commits, it runs `git checkout dev` to
    restore HEAD; if the tree is dirty or the branch has un-pushed work it FAILS
-   LOUDLY rather than discard it. It then cleans the #583 file-leak classes —
-   an untracked stray `.rabbit-scope-active-*` marker or a bookkeeping-only
-   `feature.json` edit that a worktree-isolated Phase 5 dispatch leaked (which
-   would otherwise trip safety-check Inv 5 and skip the batch, #583). The
+   LOUDLY rather than discard it. It then cleans the worktree-dispatch
+   file-leak classes — an untracked stray `.rabbit-scope-active-*` marker or a
+   bookkeeping-only `feature.json` edit that a worktree-isolated Phase 5
+   dispatch leaked (which would otherwise trip safety-check Inv 5 and skip the
+   batch). The
    cleanup FAILS LOUDLY (the tick aborts) on any unexpected tracked change, so
    a genuine uncommitted change is never destroyed. It then runs the rest of
    phase 6 (merge the PRs in the state's transient `merge_ready` hint),
@@ -321,7 +321,7 @@ session walks them via the two `run-tick-phases.py` segments plus Phase 5.
 | 1 | `restart-check`   | (none — file existence check on `.rabbit-auto-evolve-restart-needed`) |
 | 1.5 | `post-merge-drain` | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — drains any `pending_post_merge` owed by a previous truncated tick BEFORE fetch (Inv 30) |
 | 2 | `fetch`           | `.claude/features/rabbit-auto-evolve/scripts/fetch-queue.py` |
-| 3 | `triage`          | `.claude/features/rabbit-auto-evolve/scripts/triage-batch.py` (wraps `.claude/features/rabbit-auto-evolve/scripts/triage-issue.py` per issue) |
+| 3 | `triage`          | `.claude/features/rabbit-auto-evolve/scripts/triage-batch.py` (wraps `.claude/features/rabbit-auto-evolve/scripts/triage-issue.py` once per queued issue) |
 | 4 | `plan`            | `.claude/features/rabbit-auto-evolve/scripts/plan-batch.py` |
 | 5 | `dispatch`        | (rabbit-feature-touch — TDD subagent dispatch) |
 | 6 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/clean-dispatch-leaks.py` (Inv 43, Inv 44 — deterministic pre-merge cleanup of known worktree-dispatch leaks: restores a leaked main-HEAD branch switch to `dev` FIRST, then cleans file-leak classes; refuses non-zero on unexpected dirt or un-pushed leaked-branch work) → `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
@@ -329,13 +329,13 @@ session walks them via the two `run-tick-phases.py` segments plus Phase 5.
 |10 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
 |11 | `schedule`        | `.claude/features/rabbit-auto-evolve/scripts/schedule-decision.py` — decide immediate-refire vs idle (Inv 33); on `immediate-refire` the DISPATCHER schedules the one-shot. See "Scheduling (Inv 32–33)" below |
 
-### Post-merge phases (Inv 30 — issue #499)
+### Post-merge phases (Inv 30)
 
-Phases 7 (`release`), 8 (`cleanup`), and 9 (`catch-up`) used to be prose
-walked by the LLM orchestrator. After phase 6 (`merge`) landed a large batch
-of PRs, the orchestrator ended the tick for scale/context reasons and phases
-7–9 were SILENTLY dropped (same class as #405 / #409 / #439). They are now
-owned by a single deterministic, non-skippable script:
+Phases 7 (`release`), 8 (`cleanup`), and 9 (`catch-up`) are owned by a single
+deterministic, non-skippable script rather than prose walked by the LLM
+orchestrator. Prose-walked post-merge phases are silently dropped when phase
+6 (`merge`) lands a large batch of PRs and the orchestrator ends the tick for
+scale/context reasons; the script makes them non-skippable:
 
 ```
 python3 .claude/features/rabbit-auto-evolve/scripts/run-post-merge.py
@@ -345,11 +345,11 @@ python3 .claude/features/rabbit-auto-evolve/scripts/run-post-merge.py
 by `merge-prs.py --record-pending` in phase 6) from
 `.rabbit/auto-evolve-state.json` and runs, IN ORDER:
 `.claude/features/rabbit-auto-evolve/scripts/release-bump.py <pr#>`
-(phase 7, once per PR) →
+(phase 7, once per merged PR) →
 `.claude/features/rabbit-auto-evolve/scripts/cleanup-branches.py <pr-list>`
 (phase 8, once) →
 `.claude/features/rabbit-auto-evolve/scripts/classify-merge-restart.py <pr#>`
-(phase 9, once per PR). On completion it clears `pending_post_merge`. An
+(phase 9, once per merged PR). On completion it clears `pending_post_merge`. An
 empty/absent list is a clean no-op. A phase failure exits non-zero and leaves
 `pending_post_merge` intact so the next tick's tick-start drain retries the
 owed work.
@@ -369,7 +369,7 @@ A non-zero `run-post-merge.py` exit is an error-abort (Inv 20): run
 `end-tick.py` and surface the failure rather than continue with owed work
 silently dropped.
 
-### Scheduling (Inv 32–33 — issues #414, #509, #521)
+### Scheduling (Inv 32–33)
 
 Phase 11 (`schedule`) is NO LONGER a pure no-op. It runs
 `python3 .claude/features/rabbit-auto-evolve/scripts/schedule-decision.py`,
@@ -384,7 +384,7 @@ scheduler mechanism from `detect-scheduler.py`, logs the decision via
   `tick`, NEVER `start` (Inv 41) — a halting tick must never cancel a pending
   stop. The `#refire` MARKER on the prompt makes the refire one-shot
   distinguishable from the recurring heartbeat (bare `/rabbit-auto-evolve
-  tick`) so dedup can never tear down the heartbeat (Inv 49, #559). The
+  tick`) so dedup can never tear down the heartbeat (Inv 49). The
   DISPATCHER then schedules
   the near-immediate (~1 min) ONE-SHOT in a FRESH context and ENDS the turn
   (do NOT continue inline):
@@ -394,17 +394,16 @@ scheduler mechanism from `detect-scheduler.py`, logs the decision via
     The emitted `croncreate.cron` is a PINNED next-minute `M H * * *`
     expression (never `*/1 * * * *`), so a dropped `recurring` fails
     benignly (at most once/day at minute M, not an every-minute storm — Inv 33
-    pinned-minute amendment, #531). Three non-negotiable dispatcher rules:
-    - **Faithful flag passing (#531).** Pass `recurring` and `durable` to
+    pinned-minute amendment). Three non-negotiable dispatcher rules:
+    - **Faithful flag passing.** Pass `recurring` and `durable` to
       `CronCreate` EXACTLY as emitted (both `false`) — never rely on
       `CronCreate` defaults (its default is recurring), never
-      hand-translate-and-drop a field (the #513 anti-pattern). Forward
-      `croncreate.cron` verbatim too.
-    - **At-most-one refire (#531, #559).** Before creating a new refire
+      hand-translate-and-drop a field. Forward `croncreate.cron` verbatim too.
+    - **At-most-one refire.** Before creating a new refire
       one-shot, `CronList` and `CronDelete` any prior immediate-refire
       one-shot, so at most ONE is alive at a time; never create a refire whose
       cadence duplicates the recurring heartbeat.
-    - **Follow `dispatcher_actions` verbatim (Inv 49, #559).** To make the
+    - **Follow `dispatcher_actions` verbatim (Inv 49).** To make the
       above deterministic, pass the `CronList` result back to
       `schedule-decision.py` via the `RABBIT_AUTO_EVOLVE_CRON_LIST` env var; it
       emits `dispatcher_actions` = `{"delete_refire_ids":[...],
@@ -450,7 +449,7 @@ phase-walk (`run-tick-phases.py`, Inv 40) the in-session tick walks — chaining
 walks every deterministic phase EXCEPT phase 5 (`dispatch`), which requires
 Claude:
 
-- tick-start self-sync (Inv 38 / #524) — BEFORE any phase, it runs
+- tick-start self-sync (Inv 38) — BEFORE any phase, it runs
   `python3 .claude/features/rabbit-auto-evolve/scripts/sync-tree.py` so the
   cron path also self-syncs to the latest merged scripts (`git pull
   --ff-only origin dev`, NEVER the permission-denied `git merge`). On a
@@ -540,7 +539,7 @@ phase 5:
 
 - `selection_order` — **Stage 1, dispatch-shape blind.** The order to work
   items in, by the composite key `(priority desc, contract_touch desc,
-  issue asc)` (issue #479): priority is PRIMARY, the contract-touch barrier
+  issue asc)`: priority is PRIMARY, the contract-touch barrier
   is the SECONDARY tiebreak (contract items lead WITHIN a priority tier,
   never across tiers), issue asc is the final tiebreak. The same key drives
   `barrier_first`, so the two agree. It NEVER consults dispatch shape,
@@ -566,10 +565,10 @@ phase 5:
   uses a full per-feature touch gated by `.rabbit-scope-active-<feature>`; it
   NEVER writes a persistent `.rabbit-scope-override session` for feature
   edits. Bounded scope is a hard constraint, not waivable by autonomy
-  (maintainer policy on issue #435). A one-time override is permitted ONLY
+  (maintainer policy). A one-time override is permitted ONLY
   for plan / temporary-document writing — never for feature code edits.
 
-### Worktree isolation for TDD dispatches (Inv 28 — issue #430)
+### Worktree isolation for TDD dispatches (Inv 28)
 
 **Every Agent call for a TDD-subagent dispatch in phase 5 MUST include
 `isolation: "worktree"`.** This is a DISPATCHER policy, not a subagent
@@ -587,10 +586,8 @@ serial-on-one-branch shape (`multi-subagent-barrier`) stay collision-free.
 
 Worktrees are created branched from `dev` HEAD (NOT `main`, NOT a fresh
 tree) per the `worktree.baseRef: "head"` setting in
-`.claude/settings.local.json`. This requirement formalizes an
-already-manual practice — the maintainer has been passing
-`isolation: "worktree"` by hand on every dispatch; issue #430 makes it a
-binding invariant.
+`.claude/settings.local.json`. Inv 28 makes passing `isolation: "worktree"`
+on every dispatch a binding invariant rather than a manual practice.
 
 **Known limitation (stale base):** `worktree.baseRef: "head"` requires a
 session restart to take effect; until the session has been restarted after
@@ -604,7 +601,7 @@ a feature defect; it resolves on the next session restart.
 Deactivate auto-evolve mode. Invokes
 `.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py off`,
 which performs a FULL teardown — it first removes the system-cron entry
-(via `uninstall-cron.py`, Inv 32 / issue #414) so a torn-down mode never
+(via `uninstall-cron.py`, Inv 32) so a torn-down mode never
 leaves a live cron, then deletes the four loop-runtime markers (innermost
 first, idempotent), then reverses the three `on` mutations in inverse
 order:

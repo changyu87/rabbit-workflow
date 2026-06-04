@@ -118,7 +118,6 @@ SPEC_REQUIRED = [
     ".rabbit-auto-evolve-active",
     ".rabbit-auto-evolve-restart-needed",
     ".rabbit-auto-evolve-running",
-    "424",
 ]
 missing = [s for s in SPEC_REQUIRED if s.lower() not in spec_low]
 if missing:

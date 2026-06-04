@@ -69,10 +69,4 @@ if missing:
 else:
     ok("spec.md carries the at-most-one-refire dedup invariant (Inv 49)")
 
-# The invariant MUST reference issue #559 (the double-fire bug it closes).
-if "559" not in lowered:
-    fail("spec.md refire-dedup invariant must reference issue #559")
-else:
-    ok("spec.md refire-dedup invariant references issue #559")
-
 sys.exit(FAIL)
