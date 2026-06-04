@@ -129,3 +129,20 @@ Apply the action table to each result:
 **Annotate-and-continue.** An unverifiable sentence is flagged as a separate
 sub-issue and the pass CONTINUES. One uncertain sentence never stalls a
 feature's cleanup.
+
+---
+
+## 7. Parenthetical Clarity
+
+**Prefer declarative sentences over parenthetical asides.**
+
+For each parenthetical aside, decide:
+
+- **Load-bearing** → fold it into the sentence as a clause, or promote it to
+  its own sentence.
+- **Redundant or decorative** → drop it.
+
+This is a clarity guideline, not an absolute ban. A load-bearing parenthetical
+— a precise clarifying term, a citation like `(Inv 49)`, a code token — is
+fine to keep inline. Apply this when authoring or editing prose; it does not
+mandate a sweep of existing text.

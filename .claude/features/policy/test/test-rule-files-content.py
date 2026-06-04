@@ -130,6 +130,19 @@ check_phrase("coding-rules.md", "One uncertain sentence never stalls a")
 # History-free: the rule text must not carry issue/PR refs or tombstone words.
 check_phrase_absent("coding-rules.md", "#639")
 
+# Parenthetical-clarity guideline: prefer declarative sentences over
+# parenthetical asides; fold a load-bearing aside into the sentence and drop a
+# redundant one. It is framed as a clarity GUIDELINE, NOT an absolute ban —
+# load-bearing parentheticals (precise terms, citations, code tokens) stay.
+check_phrase("coding-rules.md", "Parenthetical Clarity")
+check_phrase("coding-rules.md", "Prefer declarative sentences over parenthetical asides")
+check_phrase("coding-rules.md", "fold")
+check_phrase("coding-rules.md", "drop")
+check_phrase("coding-rules.md", "not an absolute ban")
+check_phrase("coding-rules.md", "load-bearing")
+# History-free: the guideline text must not carry the issue ref.
+check_phrase_absent("coding-rules.md", "#638")
+
 # philosophy.md
 check_phrase("philosophy.md", "Machine First")
 check_phrase("philosophy.md", "Bounded Scope")
