@@ -13,6 +13,21 @@ own version.
 
 ## Version notes
 
+- **v0.48.5 — 2026-06-03** — Housekeeping (#695, follow-up of #681, under #639).
+  Remove the stale pre-implementation "Current behaviour" scaffolding preamble from
+  `docs/spec.md` — the paragraph claiming "The feature directory was scaffolded in
+  Phase B of the plan. No scripts, no SKILL.md, and no tests exist yet ... become
+  verifiable once Phase C through Phase E merges complete." A #639 behaviour check
+  proves it dead: the feature is fully implemented (36+ scripts, a deployed SKILL.md,
+  70+ passing tests; "Known gaps" already says "All implementation phases complete").
+  The live `## Current behaviour` section header and its behaviour bullets are kept;
+  only the false narration paragraph is deleted (REMOVAL, not reword). #681 deferred
+  this removal because the contract historical-tags ALLOWLIST was line-number-pinned,
+  so a line shift reddened the gate; #696 made that allowlist content-keyed, making
+  the removal safe. New E2E regression
+  `test/test-spec-housekeeping-695-current-behaviour-preamble-removed.py` (wired into
+  `test/run.py`) asserts the dead phrases stay absent.
+
 - **v0.48.4 — 2026-06-03** — Land the gitignore-seeding feature (#691, closes
   #398, authorized by #701). Inv 57 (proactive `.gitignore` seeding is the
   policy; reactive single-file additions are a fallback) is added to
