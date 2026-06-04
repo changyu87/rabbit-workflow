@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.48.4
+version: 0.48.5
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -125,11 +125,6 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
   pauses the loop; distinct from the hard `.rabbit-auto-evolve-restart-needed`.
 
 ## Current behaviour
-
-The feature directory was scaffolded in Phase B of the plan. No scripts,
-no SKILL.md, and no tests exist yet. The following bullets describe the
-behaviour as designed — they become verifiable once Phase C through
-Phase E merges complete.
 
 - Entering the mode via `/rabbit-config auto-evolve on` performs three
   mutations in order (flip `human-approval=false`, flip

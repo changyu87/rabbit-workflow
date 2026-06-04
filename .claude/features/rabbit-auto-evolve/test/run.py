@@ -96,5 +96,6 @@ run_test("test-spec-republish-feature-invariant.py")
 run_test("test-cross-scope.py")
 run_test("test-spec-cross-scope-invariant.py")
 run_test("test-spec-housekeeping-681-dead-prose-removed.py")
+run_test("test-spec-housekeeping-695-current-behaviour-preamble-removed.py")
 
 print("ALL TESTS PASSED")
