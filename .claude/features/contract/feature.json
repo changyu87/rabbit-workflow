@@ -1,15 +1,16 @@
 {
   "name": "contract",
-  "version": "2.19.0",
+  "version": "2.20.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
   "tdd_state": "test-green",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
-  "updated": "2026-06-03",
+  "updated": "2026-06-04",
   "tdd_last_cycle_impl_commit": "d8b10bb595c685fea4d9ba2946f33b6707930272",
   "manifest": [],
   "runtime": {},
-  "configuration": []
+  "configuration": [],
+  "spec_no_change_reason": "data-file + test change only (workspace-structure.json node description + test docstring); no spec.md/contract.md prose change required for this retired-label cleanup"
 }
