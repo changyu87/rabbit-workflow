@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "feature.json.schema.json",
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "owner": "rabbit-workflow team",
   "deprecation_criterion": "when Claude Code exposes a native feature-manifest schema that supersedes feature.json",
   "title": "Feature JSON Schema",
@@ -40,7 +40,7 @@
     },
     "tdd_state": {
       "type": "string",
-      "enum": ["spec", "test-red", "impl", "test-green", "review", "merged", "deprecated"],
+      "enum": ["spec", "spec-update", "test-red", "impl", "sync-deployed", "test-green", "review", "merged", "deprecated"],
       "description": "Current TDD state."
     },
     "status": {
