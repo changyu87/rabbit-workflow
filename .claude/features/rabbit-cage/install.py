@@ -179,6 +179,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
     ],
     "rabbit-feature": [
         "feature.json",
+        "commands/rabbit-tdd-autonomous.md",
         "scripts/audit-owner.py",
         "scripts/format-feature-context.py",
         "scripts/resolve-scope.py",

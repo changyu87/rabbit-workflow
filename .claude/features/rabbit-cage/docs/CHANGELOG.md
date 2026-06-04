@@ -12,6 +12,16 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.58.1 (include rabbit-feature rabbit-tdd-autonomous command in install closure (fix #767 manifest gap)):**
+  Added `commands/rabbit-tdd-autonomous.md` to `install.py`'s
+  `FEATURE_INCLUDES["rabbit-feature"]` so the command declared by
+  rabbit-feature's `feature.json` manifest (added in #767) is shipped by the
+  installer. Closes the rabbit-cage-suite `test-feature-includes-manifest-closure.py`
+  gap (#777). The deployed root `install.py` is republished from this source so
+  the Inv 22h self-update byte comparison stays in sync (the source/deployed
+  drift was the sole cause of the self-update e2e breakage; no COMMANDS-map or
+  re-exec-fixture change was needed).
+
 - **v5.58.0 (migrate rabbit-cage config refs to /rabbit-cage-config; phase 4 of #733):**
   Migrated rabbit-cage's user-facing config reference sites from the central
   `/rabbit-config <sub>` command to its own per-feature `/rabbit-cage-config <sub>`
