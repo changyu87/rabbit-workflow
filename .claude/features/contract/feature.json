@@ -3,7 +3,7 @@
   "version": "2.16.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
   "updated": "2026-06-04",
