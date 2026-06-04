@@ -12,6 +12,24 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.51.0 (file-scoped scope-guard override; #649):** Added a least-privilege
+  variant to the `.rabbit-scope-override` marker. `_consume_override()` in
+  `hooks/scope-guard.py` now recognizes a third content form
+  `one-time:<repo-relative-path>` alongside `session` and bare `one-time`: it
+  authorizes a SINGLE write to exactly the declared path (resolved against
+  `REPO_ROOT`) and then consumes the marker with the same delete-marker +
+  create-`.rabbit-scope-override-used` semantics as bare `one-time`; a write to
+  any OTHER path does not match, leaving the override un-consumed so it never
+  widens beyond its declared path. `_consume_override()` now takes the candidate
+  absolute target path; the two call sites in `decide()` pass `abs_path`. Bare
+  `session` and bare `one-time` are unchanged (backward compatible); the
+  file-scoped form is documented as PREFERRED when the target path is known.
+  New invariant Inv 41 in rabbit-cage's own namespace; enforced by new e2e
+  `test/test-scope-guard-file-scoped-override.py` (allow-to-declared-path +
+  consume; deny-other-path + retain; deny-after-consume; session/one-time
+  regression), wired into `test/run.py`. `hooks/scope-guard.py` is a deployed
+  hook (`publish_hook`) — its `.claude/hooks/` copy drifts until republished.
+
 - **v5.50.0 (housekeeping Phase 2 — history-free doc surfaces; strict-tier opt-in, #549):**
   Opted rabbit-cage into the strict housekeeping tier by setting top-level
   `"housekeeping_clean": true` in `feature.json`, then scrubbed all

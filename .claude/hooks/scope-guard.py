@@ -6,7 +6,10 @@ Standalone mode (legacy): any write inside the repo root is denied unless:
   (b) a .rabbit-scope-active marker exists in some ancestor of the target, or
   (c) a .rabbit-scope-active-<feature> per-feature marker exists at repo root
       and the target is inside that feature's directory, or
-  (d) a .rabbit-scope-override file at repo root grants a session/one-time bypass.
+  (d) a .rabbit-scope-override file at repo root grants a bypass: session
+      (any write, marker retained), one-time (any single write, consumed), or
+      the file-scoped one-time:<repo-relative-path> form (a single write to
+      ONLY the declared path, consumed; preferred least-privilege variant).
 
 Plugin mode (Inv 17): when <repo_root>/.rabbit/.runtime/mode contains the
 literal string "plugin", scope-guard takes a different branch — see
@@ -465,7 +468,7 @@ def decide(target: str) -> Tuple[bool, str]:
                 pass
             if tdd_state == "test-green":
                 # Override marker — human-approved bypass of test-green deny
-                allow_msg = _consume_override()
+                allow_msg = _consume_override(abs_path)
                 if allow_msg:
                     return True, allow_msg
                 return False, (
@@ -476,7 +479,7 @@ def decide(target: str) -> Tuple[bool, str]:
         return True, "ALLOW (under active scope)"
 
     # 4b-override. Override marker — human-approved bypass for no-scope-marker case
-    allow_msg = _consume_override()
+    allow_msg = _consume_override(abs_path)
     if allow_msg:
         return True, allow_msg
 
@@ -500,7 +503,10 @@ def decide(target: str) -> Tuple[bool, str]:
         "\n"
         "  (2) ONE-TIME OVERRIDE — bypasses scope-guard for a single "
         "write only. Requires explicit in-conversation user confirmation "
-        "before writing '.rabbit-scope-override' with content 'one-time'.\n"
+        "before writing '.rabbit-scope-override' with content 'one-time' "
+        "(any single write) or, PREFERRED when the target path is known, the "
+        "least-privilege file-scoped form 'one-time:<repo-relative-path>' "
+        "(authorizes a single write only to that one declared path).\n"
         "\n"
         "  (3) USE rabbit-feature-touch (recommended) — the correct "
         "governed path for feature edits. Invokes the TDD cycle, advances "
@@ -508,7 +514,7 @@ def decide(target: str) -> Tuple[bool, str]:
     )
 
 
-def _consume_override() -> Optional[str]:
+def _consume_override(abs_path: Optional[str] = None) -> Optional[str]:
     """If override file present, consume per its mode and return ALLOW message.
 
     Inv 27: marker path is per-mode (plugin → <rabbit_root>/.rabbit/.rabbit-scope-override,
@@ -516,6 +522,15 @@ def _consume_override() -> Optional[str]:
     The 'used' sibling marker lives next to the override marker in both modes
     so check_marker_consume_alert (Stop hook) finds it under the same repo_root
     that resolves the override.
+
+    Inv 41: three content forms are recognized — `session` (any write, marker
+    retained), bare `one-time` (any single write, marker consumed), and the
+    file-scoped form `one-time:<repo-relative-path>` (a single write ONLY to
+    the declared path, then consumed). `abs_path` is the candidate write
+    target; it is required to evaluate the file-scoped form (the call sites in
+    decide() pass abs_path). When `abs_path` does not equal the declared path,
+    the file-scoped override does NOT match — None is returned and the marker
+    is NOT consumed, so the override never widens beyond its declared path.
     """
     override_file = _override_marker_path()
     if override_file is None:
@@ -524,23 +539,50 @@ def _consume_override() -> Optional[str]:
     if not override_file.is_file():
         return None
     try:
-        mode = override_file.read_text()
+        raw = override_file.read_text()
     except Exception:
         return None
-    mode = "".join(c for c in mode if not c.isspace())
+    # The exact-equality forms tolerate any surrounding whitespace, matching
+    # the historical all-whitespace-stripped parse.
+    mode = "".join(c for c in raw if not c.isspace())
     if mode == "session":
         return "ALLOW (session override active)"
     if mode == "one-time":
-        try:
-            override_file.unlink()
-        except Exception:
-            pass
-        try:
-            used_file.touch()
-        except Exception:
-            pass
+        _consume_marker(override_file, used_file)
         return "ALLOW (one-time override consumed)"
+    # Inv 41: file-scoped form `one-time:<repo-relative-path>`. Use a
+    # trim-only parse (leading/trailing whitespace) so the declared path is
+    # preserved verbatim, then resolve it against REPO_ROOT.
+    stripped = raw.strip()
+    prefix = "one-time:"
+    if stripped.startswith(prefix) and REPO_ROOT is not None:
+        rel = stripped[len(prefix):].strip()
+        if rel and abs_path is not None:
+            declared_abs = os.path.realpath(os.path.join(str(REPO_ROOT), rel))
+            if abs_path == declared_abs:
+                _consume_marker(override_file, used_file)
+                return "ALLOW (file-scoped one-time override consumed)"
+        # Declared but non-matching (or no candidate target) → no match, and
+        # the marker is left in place so it is not widened or wasted.
+        return None
     return None
+
+
+def _consume_marker(override_file: Path, used_file: Path) -> None:
+    """Delete the override marker and create the consumed-alert sibling.
+
+    Shared by bare `one-time` and the file-scoped `one-time:<path>` form so
+    both honor the same consume semantics: the marker cannot be reused and the
+    Stop-hook check_marker_consume_alert fires on the `used` sibling.
+    """
+    try:
+        override_file.unlink()
+    except Exception:
+        pass
+    try:
+        used_file.touch()
+    except Exception:
+        pass
 
 
 # ---------- Bash command target extraction ----------
