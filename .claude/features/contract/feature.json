@@ -1,6 +1,6 @@
 {
   "name": "contract",
-  "version": "2.13.0",
+  "version": "2.14.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "tdd_state": "test-green",
@@ -10,5 +10,6 @@
   "tdd_last_cycle_impl_commit": "d8b10bb595c685fea4d9ba2946f33b6707930272",
   "manifest": [],
   "runtime": {},
-  "configuration": []
+  "configuration": [],
+  "spec_no_change_reason": "internal test ALLOWLIST extension only; no boundary contract or invariant change (#634)"
 }

@@ -158,6 +158,15 @@ ALLOWLIST = {
     ("contract", "spec.md", 185, "#[0-9]+"),
     ("contract", "spec.md", 186, "superseded"),
     ("contract", "spec.md", 187, "obsoleted"),
+    # rabbit-config Inv 36 — the literal `status` enum value "retired".
+    # rabbit-config's spec.md documents rabbit-config.py's
+    # `data.get("status") == "retired"` check (status enum
+    # ["active","retired"]); the "skipping retired features" line names the
+    # load-bearing literal value the interpreter checks verbatim. It is a
+    # live status-enum literal, not a historical-burden tombstone, and
+    # cannot be reworded without making the spec inaccurate. Mirrors the
+    # contract OWN-spec retired-enum precedent above (#634).
+    ("rabbit-config", "spec.md", 44, "retired"),
 }
 
 
