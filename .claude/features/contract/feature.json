@@ -1,6 +1,6 @@
 {
   "name": "contract",
-  "version": "2.17.1",
+  "version": "2.18.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "tdd_state": "test-green",
@@ -10,6 +10,5 @@
   "tdd_last_cycle_impl_commit": "d8b10bb595c685fea4d9ba2946f33b6707930272",
   "manifest": [],
   "runtime": {},
-  "configuration": [],
-  "spec_no_change_reason": "#702 bug fix — schema/validator data fix (tdd_state enum); no spec invariant change"
+  "configuration": []
 }

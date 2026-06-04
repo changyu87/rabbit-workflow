@@ -44,6 +44,16 @@ A hardcoded ALLOWLIST permits legitimate occurrences (algorithm-output
 examples whose textual content happens to match the pattern); it applies
 to BOTH tiers.
 
+Allowlist matching is CONTENT-keyed, not line-number-keyed (#696). Each
+allowlist entry is `(feature, logical_doc, content_substring)`; an
+occurrence is allowed when the flagged line CONTAINS `content_substring`,
+regardless of the line number it lands on. The previous scheme pinned each
+entry to an ABSOLUTE line number in another feature's spec, so any
+housekeeping line removal/insertion in that spec shifted the pinned line
+and reddened this cross-feature gate even though the allowed content was
+unchanged (this blocked #695). Content-keying delinks the gate from
+cross-feature line counts.
+
 Self-testability: RABBIT_HISTORICAL_TAGS_FEATURES_ROOT overrides the
 features root, and RABBIT_HISTORICAL_TAGS_CLEANED (comma-separated
 feature names), when set, REPLACES the feature.json-derived opt-in set
@@ -51,7 +61,10 @@ feature names), when set, REPLACES the feature.json-derived opt-in set
 at fixture feature trees. RABBIT_HISTORICAL_TAGS_ALLOWLIST, when set,
 ADDS fixture allowlist entries to the production ALLOWLIST (it never
 replaces it): the value is a newline-or-semicolon-separated list of
-`feature:logical_doc:line:substring` records, so a hermetic test can
+`feature:logical_doc:line:substring` records. The 4-field record shape is
+retained for backward compatibility, but the `line` field is accepted and
+IGNORED for matching (matching is content-keyed); only
+`(feature, logical_doc, substring)` is used. A hermetic test can thus
 assert allowlist suppression (applies to BOTH tiers per Inv 70) without
 editing the live production allowlist. Absent the overrides the checker
 behaves exactly as the production check (real features root; opt-in read
@@ -127,37 +140,39 @@ if _cleaned_override is not None:
 else:
     CLEANED_FEATURES = derive_cleaned_features()
 
-# (feature, logical_doc, line_number, substring-on-line) tuples.
-# Each entry records a legitimate occurrence and WHY it is permitted.
-# Update only after manual review confirms the line is not a project
-# tag but a genuine value (e.g. algorithm-output sample).
+# (feature, logical_doc, content_substring) tuples — CONTENT-keyed (#696).
+# Each entry records a legitimate occurrence and WHY it is permitted. An
+# occurrence is allowed when its line CONTAINS content_substring; the line
+# NUMBER is deliberately not part of the key, so housekeeping line shifts in
+# a feature's spec do not redden this cross-feature gate. Update only after
+# manual review confirms the line is not a project tag but a genuine value
+# (e.g. algorithm-output sample).
 #
-# The key is the LOGICAL doc name (the path relative to the feature dir
+# The key uses the LOGICAL doc name (the path relative to the feature dir
 # with the leading docs/ or specs/ layout prefix stripped: "spec.md",
 # "contract.md", or "skills/<name>/SKILL.md"), NOT a layout-pinned
 # "specs/..." / "docs/..." string. An entry therefore stays live after a
 # feature migrates between the specs/ and docs/ layouts — no dead keys.
+#
+# content_substring MUST be specific enough to identify the intended
+# occurrence without matching unrelated lines in the same surface (it is the
+# only disambiguator now that line numbers are gone).
 ALLOWLIST = {
-    # tdd-subagent spec.md migration note — names the prompt-contract
-    # migration backlog (CONTRACT-BACKLOG-1) so future readers can find
-    # the design doc and PR stack. The reference is documentary, not a
-    # live project-management tag, and the migration is a permanent
-    # architectural fact.
-    ("tdd-subagent", "spec.md", 60, "CONTRACT-BACKLOG-1"),
     # contract Inv 36 — the literal `status` enum value "retired" and its
     # documented retirement semantics. "retired" here is a live design
     # term (the feature-status API value), not a historical-burden tag.
-    ("contract", "spec.md", 139, "retired"),
-    ("contract", "spec.md", 140, "retired"),
-    ("contract", "spec.md", 141, "retired"),
-    ("contract", "spec.md", 142, "retired"),
+    # The substrings pin the specific Inv 36 enum-semantics sentences.
+    ("contract", "spec.md", '(default when omitted) or `"retired"`'),
+    ("contract", "spec.md", 'enum: ["active", "retired"]'),
+    ("contract", "spec.md", "exit 0 with a `RETIRED:` notice"),
+    ("contract", "spec.md", "MUST mark retired features"),
     # contract Inv 49 — the strict-tier pattern DEFINITIONS. These lines
     # quote the regex (`#[0-9]+`) and the tombstone-word vocabulary
     # (`superseded`, `retired`, `obsoleted`) that the check itself rejects;
     # they are algorithm-spec samples, not historical references.
-    ("contract", "spec.md", 185, "#[0-9]+"),
-    ("contract", "spec.md", 186, "superseded"),
-    ("contract", "spec.md", 187, "obsoleted"),
+    ("contract", "spec.md", "(`#[0-9]+`), `per issue`"),
+    ("contract", "spec.md", "tombstone language (`superseded`, `retired`,"),
+    ("contract", "spec.md", "`obsoleted`, case-insensitive)"),
     # rabbit-config Inv 36 — the literal `status` enum value "retired".
     # rabbit-config's spec.md documents rabbit-config.py's
     # `data.get("status") == "retired"` check (status enum
@@ -166,7 +181,7 @@ ALLOWLIST = {
     # live status-enum literal, not a historical-burden tombstone, and
     # cannot be reworded without making the spec inaccurate. Mirrors the
     # contract OWN-spec retired-enum precedent above (#634).
-    ("rabbit-config", "spec.md", 44, "retired"),
+    ("rabbit-config", "spec.md", "skipping retired features"),
     # rabbit-auto-evolve Inv 22 / contract Inv 36 — the literal `status`
     # enum value "retired". rabbit-auto-evolve's spec.md documents
     # triage-issue.py's verbatim `status == "retired"` check (feature.json
@@ -178,7 +193,7 @@ ALLOWLIST = {
     # tombstone, and cannot be reworded without making the spec inaccurate.
     # Mirrors the contract OWN-spec and rabbit-config retired-enum
     # precedents above (#556 / #634).
-    ("rabbit-auto-evolve", "spec.md", 462, "retired"),
+    ("rabbit-auto-evolve", "spec.md", 'feature.json.status == "retired"'),
 }
 
 
@@ -186,14 +201,17 @@ def _parse_allowlist_override(raw):
     """Parse the RABBIT_HISTORICAL_TAGS_ALLOWLIST override value (Inv 70).
 
     The value is a newline-or-semicolon-separated list of
-    `feature:logical_doc:line:substring` records. Each record is split on
-    the FIRST three colons only, so a substring containing `:` is preserved
-    verbatim. Malformed records (fewer than four fields, or a non-integer
-    line) are skipped silently — the override exists only for fixture tests,
-    which supply well-formed records.
+    `feature:logical_doc:line:substring` records. The 4-field record shape
+    is retained for backward compatibility, but matching is CONTENT-keyed
+    (#696): the `line` field is parsed and DISCARDED — only
+    (feature, logical_doc, substring) is added to the allowlist. Each record
+    is split on the FIRST three colons only, so a substring containing `:`
+    is preserved verbatim. Malformed records (fewer than four fields, or a
+    non-integer line) are skipped silently — the override exists only for
+    fixture tests, which supply well-formed records.
 
-    Returns a set of (feature, logical_doc, line_int, substring) tuples to
-    ADD to the production ALLOWLIST.
+    Returns a set of (feature, logical_doc, substring) tuples to ADD to the
+    production ALLOWLIST.
     """
     extra = set()
     for record in re.split(r"[;\n]", raw):
@@ -205,10 +223,10 @@ def _parse_allowlist_override(raw):
             continue
         feature, logical_doc, line_s, substr = parts
         try:
-            line_no = int(line_s)
+            int(line_s)  # validated for format compatibility, then ignored
         except ValueError:
             continue
-        extra.add((feature, logical_doc, line_no, substr))
+        extra.add((feature, logical_doc, substr))
     return extra
 
 
@@ -264,10 +282,14 @@ def feature_doc_surfaces():
     return paths
 
 
-def is_allowlisted(feature, logical_doc, line_no, line_text):
-    for a_feature, a_doc, a_line, a_substr in ALLOWLIST:
+def is_allowlisted(feature, logical_doc, line_text):
+    """Content-keyed allowlist match (#696): an occurrence is allowed when,
+    for its (feature, logical_doc), some ALLOWLIST entry's content_substring
+    appears in the line text. There is deliberately NO line-number argument,
+    so a legitimate occurrence stays allowed wherever the line lands."""
+    for a_feature, a_doc, a_substr in ALLOWLIST:
         if (a_feature == feature and a_doc == logical_doc
-                and a_line == line_no and a_substr in line_text):
+                and a_substr in line_text):
             return True
     return False
 
@@ -285,8 +307,7 @@ for feature, doc_path in surfaces:
     with open(doc_path) as f:
         for line_no, line in enumerate(f, start=1):
             if any(p.search(line) for p in patterns):
-                if is_allowlisted(feature, logical_doc, line_no,
-                                  line.rstrip("\n")):
+                if is_allowlisted(feature, logical_doc, line.rstrip("\n")):
                     continue
                 violations.append((rel_path, line_no, line.rstrip("\n")))
 
