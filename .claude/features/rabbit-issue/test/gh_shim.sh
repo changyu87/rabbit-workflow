@@ -3,7 +3,7 @@
 # Mock `gh` CLI for tests. Records args to $GH_SHIM_LOG.
 # Returns canned responses from $GH_SHIM_RESPONSE_<SUBCOMMAND>_<VERB> or default.
 #
-# Version: 1.1.0
+# Version: 1.2.0
 # Owner: rabbit-workflow team
 # Deprecation criterion: when rabbit-issue is retired
 
@@ -30,7 +30,7 @@ case "$1 $2" in
     elif [ -n "$GH_SHIM_ISSUE_BODY" ]; then
       cat "$GH_SHIM_ISSUE_BODY"
     else
-      echo "{\"number\":$NUM,\"title\":\"test\",\"state\":\"open\",\"labels\":[{\"name\":\"rabbit-managed\"},{\"name\":\"bug\"},{\"name\":\"feature:test\"},{\"name\":\"priority:high\"}],\"body\":\"...\"}"
+      echo "{\"number\":$NUM,\"title\":\"test\",\"state\":\"open\",\"labels\":[{\"name\":\"bug\"},{\"name\":\"feature:test\"},{\"name\":\"priority:high\"}],\"body\":\"...\"}"
     fi
     ;;
   "issue close"|"issue reopen")

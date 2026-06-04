@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.9.0
+version: 1.10.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -33,15 +33,14 @@ defines the Work Protocol that orchestrates the three runtime scripts.
 
 ### Label schema
 
-Every issue filed via `rabbit-issue` carries the type, `rabbit-managed`,
-`feature:`, and `priority:` labels; the `filed-by:` provenance label is
-optional (present only for non-human filers):
+Every issue filed via `rabbit-issue` carries the type, `feature:`, and
+`priority:` labels; the `filed-by:` provenance label is optional (present
+only for non-human filers):
 
 | Label | Purpose | Cardinality |
 |---|---|---|
 | `bug` *(GH default)* | Type — exclusive with `enhancement` | exactly one of bug/enhancement |
 | `enhancement` *(GH default)* | Type — exclusive with `bug` | exactly one of bug/enhancement |
-| `rabbit-managed` | Distinguishes rabbit-filed issues from human-filed | required |
 | `feature:<name>` | Feature scope | required, one per item |
 | `priority:<low\|medium\|high\|critical>` | Priority | required, one per item |
 | `filed-by:<rabbit\|autonomous-evolve>` | Provenance — non-human filer | optional; absent ⇒ human-filed |

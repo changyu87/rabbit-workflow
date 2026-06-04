@@ -3,7 +3,7 @@
 
 Prints JSON {number, url, type} to stdout on success.
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -49,7 +49,6 @@ def main() -> None:
     require_auth()
     labels = [
         args.type,
-        "rabbit-managed",
         "feature:{}".format(args.feature),
         "priority:{}".format(args.priority),
     ]

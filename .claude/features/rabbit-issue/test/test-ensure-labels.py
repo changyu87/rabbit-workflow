@@ -23,7 +23,7 @@ def _fresh_gh():
 
 def test_ensure_labels_calls_gh_label_create(gh_shim, fake_repo):
     gh = _fresh_gh()
-    gh.ensure_labels(["bug", "rabbit-managed", "feature:foo", "priority:high"])
+    gh.ensure_labels(["bug", "filed-by:rabbit", "feature:foo", "priority:high"])
     log = gh_shim.read_text().strip().split("\n")
     creates = [line for line in log if line.startswith("label create")]
     assert len(creates) == 4

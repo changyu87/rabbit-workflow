@@ -8,7 +8,7 @@ Repo slug resolves to $RABBIT_ISSUE_REPO env var when set, else the
 module-level const RABBIT_REPO_DEFAULT. No git remote consultation —
 bugs about rabbit always go to rabbit's repo, regardless of the cwd.
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -89,8 +89,7 @@ def require_actionable(number: int) -> None:
     touch issues that are not actionable. An issue is actionable iff it
     carries a valid `feature:<name>` label — so a raw, hand-filed GitHub
     issue with no labels is never auto-mutated. This is the actionability
-    basis adopted by the queue in coexistence step 1 of #753 (#758);
-    `rabbit-managed` is no longer the guard basis.
+    basis adopted by the queue in coexistence step 1 of #753 (#758).
     """
     issue = gh_issue_view(number, "number,labels")
     labels = {lbl["name"] for lbl in issue.get("labels", [])}

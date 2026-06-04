@@ -21,7 +21,9 @@ def test_list_open_bugs_calls_gh_with_correct_labels(gh_shim, fake_repo):
     assert r.returncode == 0, r.stderr
     log = gh_shim.read_text()
     assert "issue list" in log
-    assert "rabbit-managed" in log
+    # Selection is actionability-based (step 3 of #753, #760): the gh list
+    # call MUST NOT filter on the retired `rabbit-managed` label.
+    assert "rabbit-managed" not in log
     assert "--state open" in log
     # bug appears as a label filter
     assert "--label bug" in log
@@ -31,7 +33,8 @@ def test_list_all_types_omits_type_label(gh_shim, fake_repo):
     r = _run("--type", "all")
     assert r.returncode == 0, r.stderr
     log = gh_shim.read_text()
-    assert "rabbit-managed" in log
+    # No `rabbit-managed` filter — selection is actionability-based.
+    assert "rabbit-managed" not in log
     # type=all → no bug/enhancement label filter
     list_call = log.split("issue list", 1)[1]
     assert "--label bug" not in list_call
@@ -72,6 +75,36 @@ def test_deterministic_sort_by_number_asc(gh_shim, fake_repo, tmp_path):
     assert lines[0].startswith("#3 ")
     assert lines[1].startswith("#9 ")
     assert lines[2].startswith("#17 ")
+
+
+def test_non_actionable_issue_excluded(gh_shim, fake_repo, tmp_path):
+    """Selection is actionability-based (step 3 of #753, #760).
+
+    Without `--feature`, gh returns every open issue; list-items.py must
+    drop issues lacking a valid `feature:` label. A `rabbit-managed` label
+    is NOT sufficient — only `feature:` makes an issue actionable.
+    """
+    fixture = tmp_path / "list.json"
+    fixture.write_text(json.dumps([
+        # Actionable: carries a valid feature: label.
+        {"number": 10, "title": "actionable", "state": "open",
+         "labels": [{"name": "bug"}, {"name": "priority:high"},
+                    {"name": "feature:rabbit-cage"}]},
+        # NOT actionable: no feature: label (rabbit-managed alone is moot).
+        {"number": 11, "title": "raw human issue", "state": "open",
+         "labels": [{"name": "bug"}, {"name": "rabbit-managed"}]},
+        # NOT actionable: no labels at all.
+        {"number": 12, "title": "bare", "state": "open", "labels": []},
+    ]))
+    env = os.environ.copy()
+    env["GH_SHIM_LIST_RESPONSE"] = str(fixture)
+    r = _run("--type", "all", env=env)
+    assert r.returncode == 0, r.stderr
+    lines = [l for l in r.stdout.strip().split("\n") if l.startswith("#")]
+    assert len(lines) == 1
+    assert lines[0].startswith("#10 ")
+    assert "#11" not in r.stdout
+    assert "#12" not in r.stdout
 
 
 def test_output_format_includes_type_state_priority_feature(gh_shim, fake_repo, tmp_path):
