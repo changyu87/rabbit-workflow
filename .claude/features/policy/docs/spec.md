@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.12.0
+version: 1.13.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native subagent-policy injection point
@@ -30,7 +30,7 @@ directory.
 1. **Rule files present.** Each of `philosophy.md`, `spec-rules.md`, and
    `coding-rules.md` exists at the feature root and is non-empty.
 
-2. **Retired file absent.** `workflow-rules.md` does NOT exist anywhere
+2. **Legacy rule file absent.** `workflow-rules.md` does NOT exist anywhere
    within the feature directory.
 
 3. **No shell scripts.** No file ending in `.sh` exists anywhere within
@@ -68,7 +68,7 @@ directory.
    for closed historical tickets. It MUST declare a module-level
    `TICKETS_COVERED` list whose elements are ticket-id string literals
    (one per element). Its module docstring MUST name the retirement
-   pointer: the file is retired once `test/test-policy-invariants.py`
+   pointer: the file is removed once `test/test-policy-invariants.py`
    carries a `# Subsumes: <ticket-id>` marker comment for every ticket
    in `TICKETS_COVERED`. A companion watch test
    `test/test-historical-fixes-retirement.py` MUST exist; it MUST FAIL
