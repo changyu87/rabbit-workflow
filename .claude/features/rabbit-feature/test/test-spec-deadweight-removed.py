@@ -111,6 +111,34 @@ def test_live_surfaces_name_only_existing_test_files() -> None:
     )
 
 
+def test_no_spec_seeder_reference() -> None:
+    # Issue #717 (housekeeping under #639): the `spec-seeder` feature was
+    # absorbed into rabbit-spec (now rabbit-spec-create / spec-creator). Its
+    # feature directory and dispatch script are gone; live surfaces must not
+    # name the dead feature dir or its retired dispatcher.
+    assert not (
+        FEATURE_DIR.parent / "spec-seeder"
+    ).exists(), (
+        "spec-seeder feature dir still exists; this guard assumes it was "
+        "absorbed into the rabbit-spec feature"
+    )
+    dead_tokens = (
+        "spec-seeder",
+        "dispatch-spec-seeder.py",
+        ".claude/features/spec-seeder",
+    )
+    hits: list[str] = []
+    for surface in LIVE_SURFACES:
+        for i, line in enumerate(surface.read_text(encoding="utf-8").splitlines(), 1):
+            if any(tok in line for tok in dead_tokens):
+                hits.append(f"{surface.relative_to(FEATURE_DIR)}:{i}: {line.strip()}")
+    assert not hits, (
+        "live surfaces reference the absorbed spec-seeder feature "
+        "(now owned by rabbit-spec: rabbit-spec-create / spec-creator); remove "
+        "or retarget the dead reference:\n" + "\n".join(hits)
+    )
+
+
 def test_no_withdrawn_tombstone_placeholders() -> None:
     hits = [
         f"docs/spec.md:{i}: {line.strip()}"
@@ -142,6 +170,7 @@ def main() -> int:
     tests = [
         test_no_rabbit_feature_spec_reference,
         test_scaffold_skill_md_no_rabbit_feature_spec_reference,
+        test_no_spec_seeder_reference,
         test_live_surfaces_name_only_existing_test_files,
         test_no_withdrawn_tombstone_placeholders,
         test_contract_provides_only_shipped_skills,
