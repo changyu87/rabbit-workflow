@@ -1,6 +1,6 @@
 ---
 feature: rabbit-meta
-version: 0.2.2
+version: 0.2.3
 template_version: 2.0.0
 ---
 

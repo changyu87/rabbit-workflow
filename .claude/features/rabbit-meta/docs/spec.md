@@ -1,6 +1,6 @@
 ---
 feature: rabbit-meta
-version: 0.7.2
+version: 0.7.3
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when a native Claude Code workflow contract mechanism supersedes rabbit's per-project plugin model
@@ -30,6 +30,13 @@ features.
 - `.claude/features/rabbit-meta/templates/README.md.template`
 
 ## Invariants
+
+This feature opts into the strict contiguous-invariant-numbering tier by
+declaring `"contiguous_invariants": true` in its `feature.json`. The
+invariants below MUST be numbered contiguously 1..N with no gaps; the contract
+suite's Inv 30 strict tier enforces this. Use
+`scripts/reflow-invariants.py` (owned by `contract`) to renumber if a gap is
+ever introduced.
 
 1. `lib/mode_detection.py` MUST export `detect_mode(cwd: str) -> str` returning the literal string `"plugin"` or `"standalone"`.
     (a) **Plugin signature.** Returns `"plugin"` iff ALL of: `os.path.basename(cwd) == ".rabbit"` AND the parent directory `os.path.dirname(cwd)` exists AND that parent contains at least one entry whose name is not `".rabbit"`. Otherwise returns `"standalone"`.
