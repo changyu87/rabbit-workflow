@@ -1,6 +1,6 @@
 ---
 feature: rabbit-meta
-version: 0.6.0
+version: 0.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when a native Claude Code workflow contract mechanism supersedes rabbit's per-project plugin model
@@ -64,7 +64,7 @@ Python 3 stdlib only. No external dependencies (matches the Python-only invarian
 ## What this feature does NOT define
 
 - TDD discipline on user-project code. Users keep their existing test suite; rabbit does not run tests against user code.
-- Bug/backlog tracking on user-project code. Users keep GitHub Issues or their existing tracker; rabbit's internal B/B system is reserved for rabbit-self development.
+- Issue tracking on user-project code. Users keep GitHub Issues or their existing tracker; rabbit-issue (rabbit-managed GitHub Issues) is reserved for rabbit-self development.
 - The `rabbit-feature-new` path-glob enhancement for plugin-mode feature mapping — owned by `rabbit-feature`.
 - Scope-guard plugin-mode block-and-bypass logic — owned by `rabbit-cage` (the hook owner).
 - The `project-map.json` schema — owned by `contract` (schema registry).
