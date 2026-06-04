@@ -43,6 +43,7 @@ MARKERS = [
     ".rabbit-auto-evolve-stop-requested",
     ".rabbit-auto-evolve-restart-needed",
     ".rabbit-auto-evolve-aborted",
+    ".rabbit-auto-evolve-restart-advised",
 ]
 
 
