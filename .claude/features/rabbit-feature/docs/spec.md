@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.27.0
+version: 1.28.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -169,7 +169,7 @@ their source path and not deployed):
     `<repo_root>/.rabbit/.runtime/mode`, resolving the standalone
     (`.claude/features/<name>/`, `git add`) vs plugin
     (`.rabbit/rabbit-project/features/<name>/`, `git add -f`) feature-dir
-    and staging form, resolving the spec path (`specs/spec.md` preferred,
+    and staging form, resolving the spec path (flat `docs/spec.md` preferred,
     `docs/spec/spec.md` fallback), skipping the commit on an empty staged
     diff, and otherwise committing with the message above — are OWNED BY
     the companion script and locked by
@@ -181,9 +181,8 @@ their source path and not deployed):
 
 51. **Spec path resolution (flat docs/ preferred, script-backed).** A
     feature's spec MUST be resolved preferring the flat `docs/spec.md` layout,
-    falling back to `specs/spec.md` and then
-    the legacy `docs/spec/spec.md` for not-yet-migrated features (dual-read
-    coexistence window). Per the SKILL.md Authoring Standard
+    falling back to the legacy `docs/spec/spec.md` for any not-yet-migrated
+    nested-docs feature. Per the SKILL.md Authoring Standard
     (`spec-rules.md` §4 Script-Backed Orchestration), this computed
     resolution is owned by the companion `feature-touch.py resolve-spec-path`
     subcommand (Inv 54), not assembled inline. Step 5's `--spec` argument to
@@ -191,10 +190,10 @@ their source path and not deployed):
     `feature-touch.py resolve-spec-path <feature-name>`, and Step 3's
     spec-commit obligation resolves the same path via the `commit-spec`
     subcommand. Enforced by `test/test-touch-skill.py`
-    (`test_inv399_step5_delegates_spec_path_to_companion`) for the Step 5
+    (`test_inv56_step5_delegates_spec_path_to_companion`) for the Step 5
     delegation and by `test/test-touch-skill-authoring-standard.py`
-    (`test_inv54_resolve_spec_path_prefers_specs_layout`) plus
-    `test/test-touch-docs-resolver.py` (Inv 56) for the dual-read behaviour.
+    (`test_inv54_resolve_spec_path_prefers_flat_docs`) plus
+    `test/test-touch-docs-resolver.py` (Inv 56) for the resolution behaviour.
 
 52. **Step 5 dispatches the `rabbit-tdd-subagent` agent type.**
     The `rabbit-feature-touch` SKILL.md Step 5 Agent tool call MUST pass
@@ -237,12 +236,12 @@ their source path and not deployed):
     skill's computed / mode-aware orchestration logic. It is executable,
     Python-3-stdlib-only, and exposes three subcommands:
     (a) `resolve-spec-path <feature-name>` — prints the repo-root-relative
-        resolved spec path (flat `docs/spec.md` preferred, then `specs/spec.md`,
-        then legacy `docs/spec/spec.md`), mode-aware via
+        resolved spec path (flat `docs/spec.md` preferred, then legacy
+        `docs/spec/spec.md`), mode-aware via
         `<repo_root>/.rabbit/.runtime/mode`.
     (b) `resolve-contract-path <feature-name>` — same preference order for the
-        contract (flat `docs/contract.md` preferred, then `specs/contract.md`,
-        then legacy `docs/spec/contract.md`).
+        contract (flat `docs/contract.md` preferred, then legacy
+        `docs/spec/contract.md`).
     (c) `commit-spec <feature-name> <summary>` — stages the feature dir with
         the mode-appropriate `git add` form (plugin mode uses `git add -f`),
         skips the commit on an empty staged spec diff, and otherwise commits
@@ -256,7 +255,7 @@ their source path and not deployed):
     (`test_inv54_companion_exists_and_executable`,
     `test_inv54_companion_usage_lists_subcommands`,
     `test_inv54_companion_owns_mode_branching`,
-    `test_inv54_resolve_spec_path_prefers_specs_layout`,
+    `test_inv54_resolve_spec_path_prefers_flat_docs`,
     `test_inv54_commit_spec_commits_change_and_skips_noop`).
 
 55. **§4 Verbatim Policy Embedding — Red Flags cite canonical policy.**
@@ -272,14 +271,14 @@ their source path and not deployed):
 56. **Flat `docs/` resolver preference.** The companion
     `feature-touch.py` spec/contract resolvers (`resolve-spec-path`,
     `resolve-contract-path`) MUST PREFER the flat `docs/` layout
-    (`docs/spec.md`, `docs/contract.md` — the ratified migration target), falling
-    back to `specs/` and then the legacy `docs/spec/` layouts. When both a
-    flat `docs/` file and a `specs/` file exist, the flat `docs/` file wins.
-    When none exists yet, resolution defaults to the flat `docs/` target so
-    new resolutions point at the ratified location. The preference order is
-    mode-aware (standalone and plugin feature-dir prefixes) and the legacy
-    `specs/` / `docs/spec/` fallbacks are preserved during the coexistence
-    window (no files move in this phase). Enforced by
+    (`docs/spec.md`, `docs/contract.md` — the ratified migration target),
+    falling back ONLY to the legacy `docs/spec/` layout. The dead `specs/`
+    fallback is removed: every feature has migrated to flat `docs/`, so a
+    stray `specs/` file is NOT resolved and is irrelevant to resolution.
+    When neither a flat `docs/` nor a legacy `docs/spec/` file exists,
+    resolution defaults to the flat `docs/` target so new resolutions point
+    at the ratified location. The preference order is mode-aware (standalone
+    and plugin feature-dir prefixes). Enforced by
     `test/test-touch-docs-resolver.py`.
 
 ### rabbit-feature-scope SKILL.md and scripts
@@ -349,13 +348,13 @@ their source path and not deployed):
 
 29. **Spec update precedes impl-suggestion.** The SKILL.md instructs the
     skill to update the target feature's resolved `spec.md`
-    (`.claude/features/<feature-name>/specs/spec.md`, with a
+    (`.claude/features/<feature-name>/docs/spec.md`, with a
     `docs/spec/spec.md` fallback for not-yet-migrated features)
     BEFORE writing the impl-suggestion file.
 
 30. **Read-comprehend-write on spec edits.** The SKILL.md MUST express
     as a hard MUST in Step 1 (Read Current State) that the skill Read
-    the target feature's resolved `spec.md` (`specs/spec.md` preferred,
+    the target feature's resolved `spec.md` (flat `docs/spec.md` preferred,
     `docs/spec/spec.md` fallback) via the Read tool
     in-session, and MUST repeat the obligation as a pre-condition note
     in Step 4 (Update the Spec). Reading is mandatory comprehension
@@ -382,9 +381,8 @@ their source path and not deployed):
     directory containing `feature.json` (with `template_version`),
     `docs/spec.md`, `docs/contract.md`, `docs/bugs/`, and `test/run.py`
     (no `test/run.sh`). New features are created at the flat `docs/` layout,
-    NOT the `specs/` or legacy `docs/spec/`
-    layouts; the scaffolded directory passes `validate-feature.py`
-    immediately (which dual-reads flat `docs/` then `specs/`).
+    NOT the legacy `docs/spec/` layout; the scaffolded directory passes
+    `validate-feature.py` immediately.
 
 44. **scaffold-feature.py plugin-mode invocation.** Plugin-mode detection MUST walk UP from cwd to find the nearest ancestor directory `D` such that EITHER `D/.runtime/mode` exists with content `plugin` (cwd is inside `.rabbit/` itself) OR `D/.rabbit/.runtime/mode` exists with content `plugin` (cwd is inside the user-project root or any subdirectory thereof). On first match, plugin mode is active and the resolved `rabbit_root` is either `D` itself (first case) or `D/.rabbit` (second case); the user-project root is `rabbit_root.parent`. The walk terminates at the filesystem root; if no ancestor `.runtime/mode` or `.rabbit/.runtime/mode` is found, the script falls through cleanly to the standalone form `scaffold-feature.py <root> <name> [...]`. When plugin mode is detected, `scaffold-feature.py` honors the plugin-mode CLI form `scaffold-feature.py <name> <path-glob> [<path-glob>...]`. The walk-up replaces the original single-check semantics (which only looked at `<cwd>/.rabbit/.runtime/mode`) — that semantics failed silently when cwd was `.rabbit/` itself (the typical rabbit session cwd in plugin mode), because the script then looked for `.rabbit/.rabbit/.runtime/mode` which never exists. The detection happens before any argument parsing so a `<name>+<glob>` pair is never misinterpreted as a `<root>+<name>` pair. Enforced by 5 tests under `.claude/features/rabbit-feature/test/`: cwd=project root, cwd=.rabbit/ itself, cwd=arbitrary nested subdir of project, cwd outside any rabbit install (standalone fallback), and cwd=/ (filesystem root terminates cleanly).
 
@@ -416,15 +414,16 @@ their source path and not deployed):
         `owner` (defaulted from `$USER`), `paths` (the declared globs
         verbatim), `created` (ISO 8601 UTC `YYYY-MM-DDTHH:MM:SSZ`),
         and `deprecation_criterion: null`.
-    (b) `specs/spec.md` — a placeholder seeded for the spec-seeder
+    (b) `docs/spec.md` — a placeholder seeded for the spec-seeder
         subagent to fill in.
-    (c) `specs/contract.md` — empty contract placeholder mirroring
+    (c) `docs/contract.md` — empty contract placeholder mirroring
         the rabbit-self shape (frontmatter + `provides`/`reads`/
         `invokes`/`never` JSON block).
-    Plugin-mode scaffolds MUST NOT use the standalone-only
-    `template_version` field or the rabbit-self `test/run.py`
-    placeholder, because per-project features do not participate in the
-    rabbit-self build/audit surface.
+    Plugin-mode scaffolds use the flat `docs/` layout (the ratified
+    migration target) and MUST NOT create the legacy `specs/` layout.
+    They MUST NOT use the standalone-only `template_version` field or
+    the rabbit-self `test/run.py` placeholder, because per-project
+    features do not participate in the rabbit-self build/audit surface.
 
 47. **Plugin-mode project-map registration.** On successful scaffold,
     `scaffold-feature.py` registers the new feature in

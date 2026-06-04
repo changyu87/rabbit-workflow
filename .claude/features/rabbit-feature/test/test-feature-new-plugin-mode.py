@@ -4,8 +4,10 @@
 Exercises the plugin-mode branch of `scaffold-feature.py`:
 
   - t1: happy path — `<name> <path-glob>` produces
-        `<repo>/.rabbit/rabbit-project/features/<name>/` plus a
-        `project-map.json` entry mapping the matched paths.
+        `<repo>/.rabbit/rabbit-project/features/<name>/` (with the flat
+        docs/ layout — docs/spec.md, docs/contract.md — and no legacy
+        specs/ directory) plus a `project-map.json` entry mapping the
+        matched paths.
   - t2: a path-glob that resolves outside the user-project root is rejected
         (path traversal guard).
   - t3: a path-glob whose match is already declared by another feature in
@@ -71,11 +73,17 @@ def test_t1_plugin_happy_path() -> None:
         feat_dir = host / ".rabbit/rabbit-project/features/my-feature"
         assert feat_dir.is_dir(), f"missing scaffold dir: {feat_dir}"
         assert (feat_dir / "feature.json").is_file(), "missing feature.json"
-        assert (feat_dir / "specs/spec.md").is_file(), "missing specs/spec.md"
-        assert (feat_dir / "specs/contract.md").is_file(), "missing specs/contract.md"
-        # issue #399: plugin-mode scaffolds also use the specs/ layout.
+        # Plugin-mode scaffolds the ratified flat docs/ layout.
+        assert (feat_dir / "docs/spec.md").is_file(), "missing docs/spec.md"
+        assert (feat_dir / "docs/contract.md").is_file(), "missing docs/contract.md"
+        # The legacy specs/ layout must NOT be created.
+        assert not (feat_dir / "specs").exists(), (
+            "plugin-mode scaffold must NOT create the legacy specs/ layout "
+            "(flat docs/ is the ratified target)"
+        )
+        # Nor the legacy docs/spec/ layout.
         assert not (feat_dir / "docs/spec").exists(), (
-            "plugin-mode scaffold must NOT create the legacy docs/spec/ layout (issue #399)"
+            "plugin-mode scaffold must NOT create the legacy docs/spec/ layout"
         )
 
         fj = json.loads((feat_dir / "feature.json").read_text())

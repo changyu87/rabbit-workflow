@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.4.0
+version: 3.5.0
 owner: rabbit-feature
 deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
@@ -61,7 +61,7 @@ updates the feature spec, and writes `.rabbit/impl-suggestion-<feature-name>.jso
 spec edit it made under the feature directory must be staged and committed so
 the TDD subagent reads a clean committed baseline. This is a computed,
 mode-aware step (standalone vs plugin feature-dir prefix, `git add` vs
-`git add -f`, flat docs/ preferred + specs/ / docs/spec/ fallback spec-path
+`git add -f`, flat docs/ preferred + docs/spec/ fallback spec-path
 resolution, empty-diff skip), so
 per the SKILL.md Authoring Standard (`spec-rules.md` §4 Script-Backed
 Orchestration) the logic lives in the companion script and the SKILL.md
@@ -136,7 +136,7 @@ ACTIVE, the default).
 One subagent per feature. Dispatch all in parallel if multiple features.
 
 Shell (assemble the prompt — deterministic). The spec-path resolution
-(flat docs/ preferred, specs/ then docs/spec/ fallback, mode-aware feature-dir
+(flat docs/ preferred, docs/spec/ fallback, mode-aware feature-dir
 prefix) is a computed step, so per the SKILL.md Authoring Standard
 (`spec-rules.md` §4
 Script-Backed Orchestration) it is delegated to the companion
@@ -200,7 +200,7 @@ sections for the binding wording.
   HANDOFF. The only main-session writes permitted are: the confirm-token
   override flow (see Override Path), and rabbit-spec-update's writes to the
   resolved feature `spec.md` (flat `docs/spec.md` preferred, then
-  `specs/spec.md`, then `docs/spec/spec.md`) under the
+  `docs/spec/spec.md`) under the
   scope-guard path-pattern allowlist invoked during Step 3.
 - Main session creates `.rabbit-scope-active` (global) or
   `.rabbit-scope-active-<feature>` (per-feature) scope markers at the repo

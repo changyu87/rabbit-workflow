@@ -343,16 +343,16 @@ def test_inv16_step_3_delegates_to_companion_script() -> None:
         )
 
 
-# issue #399 Phase 2 (reframed for issue #440 / §4): the specs/ preferred +
-# docs/spec/ fallback spec-path resolution is now owned by the companion
-# feature-touch.py script (resolve-spec-path / commit-spec subcommands). The
-# SKILL.md no longer carries the inline specs/-vs-docs/spec/ branching bash
-# block (a §4 violation); Step 5 instead resolves the spec path via the
-# companion script. The dual-read details (specs/ preferred, docs/spec/
-# fallback) are locked by test-touch-skill-authoring-standard.py against the
-# script source. Here we assert Step 5 delegates spec-path resolution to the
-# script rather than assembling the path inline.
-def test_inv399_step5_delegates_spec_path_to_companion() -> None:
+# The flat docs/ preferred + docs/spec/ fallback spec-path resolution is
+# owned by the companion feature-touch.py script (resolve-spec-path /
+# commit-spec subcommands). The SKILL.md no longer carries the inline
+# branching bash block (a §4 violation); Step 5 instead resolves the spec
+# path via the companion script. The resolution details (flat docs/
+# preferred, docs/spec/ fallback) are locked by
+# test-touch-skill-authoring-standard.py against the script source. Here we
+# assert Step 5 delegates spec-path resolution to the script rather than
+# assembling the path inline.
+def test_inv56_step5_delegates_spec_path_to_companion() -> None:
     for skill_path in (SOURCE_SKILL, DEPLOYED_SKILL):
         assert skill_path.exists(), f"missing SKILL.md: {skill_path}"
         text = skill_path.read_text(encoding="utf-8")

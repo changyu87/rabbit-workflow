@@ -171,21 +171,24 @@ def test_inv54_companion_owns_mode_branching() -> None:
     assert "git add -f" in src or '"-f"' in src or "'-f'" in src, (
         "companion must own the plugin-mode 'git add -f' staging form"
     )
-    assert "specs/spec.md" in src and "docs/spec/spec.md" in src, (
-        "companion must own the specs/ preferred + docs/spec/ fallback logic"
+    assert "docs/spec.md" in src and "docs/spec/spec.md" in src, (
+        "companion must own the flat docs/ preferred + docs/spec/ fallback logic"
+    )
+    assert "specs/spec.md" not in src, (
+        "the dead specs/ fallback must be removed from the companion resolver"
     )
 
 
-def test_inv54_resolve_spec_path_prefers_specs_layout() -> None:
-    """E2E: in a temp git repo, resolve-spec-path prefers specs/ then falls
-    back to docs/spec/."""
+def test_inv54_resolve_spec_path_prefers_flat_docs() -> None:
+    """E2E: in a temp git repo, resolve-spec-path prefers flat docs/, ignores
+    the dead specs/ layout, and falls back to legacy docs/spec/."""
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         subprocess.run(["git", "init", "-q", str(root)], check=True)
         feat = root / ".claude/features/demo"
-        # Case A: specs/ layout present -> preferred.
-        (feat / "specs").mkdir(parents=True)
-        (feat / "specs/spec.md").write_text("x", encoding="utf-8")
+        # Case A: flat docs/ layout present -> preferred.
+        (feat / "docs").mkdir(parents=True)
+        (feat / "docs/spec.md").write_text("x", encoding="utf-8")
         r = subprocess.run(
             [sys.executable, str(COMPANION), "resolve-spec-path", "demo"],
             cwd=root,
@@ -193,8 +196,8 @@ def test_inv54_resolve_spec_path_prefers_specs_layout() -> None:
             text=True,
         )
         assert r.returncode == 0, r.stderr
-        assert r.stdout.strip() == ".claude/features/demo/specs/spec.md", (
-            f"expected specs/ layout, got {r.stdout.strip()!r}"
+        assert r.stdout.strip() == ".claude/features/demo/docs/spec.md", (
+            f"expected flat docs/ layout, got {r.stdout.strip()!r}"
         )
         # Case B: only legacy docs/spec/ present -> fallback.
         feat2 = root / ".claude/features/legacy"
@@ -220,7 +223,7 @@ def test_inv54_commit_spec_commits_change_and_skips_noop() -> None:
         subprocess.run(["git", "init", "-q", str(root)], check=True)
         subprocess.run(["git", "-C", str(root), "config", "user.email", "t@t"], check=True)
         subprocess.run(["git", "-C", str(root), "config", "user.name", "t"], check=True)
-        feat = root / ".claude/features/demo/specs"
+        feat = root / ".claude/features/demo/docs"
         feat.mkdir(parents=True)
         (feat / "spec.md").write_text("v1\n", encoding="utf-8")
         # Need at least one commit for diff --cached to behave; stage + commit base.
@@ -231,7 +234,7 @@ def test_inv54_commit_spec_commits_change_and_skips_noop() -> None:
         # Modify the spec, then run commit-spec.
         (feat / "spec.md").write_text("v2\n", encoding="utf-8")
         r = subprocess.run(
-            [sys.executable, str(COMPANION), "commit-spec", "demo", "issue #440 demo"],
+            [sys.executable, str(COMPANION), "commit-spec", "demo", "demo summary"],
             cwd=root,
             capture_output=True,
             text=True,
@@ -242,7 +245,7 @@ def test_inv54_commit_spec_commits_change_and_skips_noop() -> None:
             capture_output=True,
             text=True,
         ).stdout.strip()
-        assert log == "spec(demo): update spec for issue #440 demo", (
+        assert log == "spec(demo): update spec for demo summary", (
             f"commit message mismatch: {log!r}"
         )
         # Second run with no change -> no-op (no new commit).

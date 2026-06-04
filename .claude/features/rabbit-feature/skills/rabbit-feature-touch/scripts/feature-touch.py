@@ -10,16 +10,15 @@ Two subcommands:
 
   resolve-spec-path <feature-name>
       Print the resolved spec path for a feature. Prefers the flat
-      `docs/spec.md` layout (issue #399 migration target) and falls back to
-      `specs/spec.md`, then the legacy `docs/spec/spec.md`, for
-      not-yet-migrated features. Mode-aware: detects standalone vs plugin mode
-      from <repo_root>/.rabbit/.runtime/mode and picks the matching
-      feature_dir prefix.
+      `docs/spec.md` layout (ratified migration target) and falls back only
+      to the legacy `docs/spec/spec.md` for any not-yet-migrated nested-docs
+      feature. The dead specs/ fallback has been removed. Mode-aware: detects
+      standalone vs plugin mode from <repo_root>/.rabbit/.runtime/mode and
+      picks the matching feature_dir prefix.
 
   resolve-contract-path <feature-name>
       Like resolve-spec-path, for the contract: prefers flat
-      `docs/contract.md`, then `specs/contract.md`, then the legacy
-      `docs/spec/contract.md`.
+      `docs/contract.md`, then the legacy `docs/spec/contract.md`.
 
   commit-spec <feature-name> <summary>
       Stage and commit the feature's spec change (if any) BEFORE the TDD
@@ -37,7 +36,7 @@ All paths are resolved relative to the repo root, which the script derives
 by walking up from the cwd to the nearest ancestor containing a `.git`
 entry (file or directory, so git worktrees are handled).
 
-Version: 0.2.0
+Version: 0.3.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -78,31 +77,30 @@ def _feature_dir(repo_root: Path, feature: str, mode: str) -> Path:
 
 
 def _resolve_doc(feature_dir: Path, name: str) -> Path:
-    """Resolve a doc surface (spec.md / contract.md) across the #399 layouts.
+    """Resolve a doc surface (spec.md / contract.md) across the doc layouts.
 
-    Preference order (issue #399 dual-read coexistence window):
-      1. flat    docs/<name>        (migration target — PREFERRED)
-      2. specs/  specs/<name>       (current repo-wide layout — fallback)
-      3. legacy  docs/spec/<name>   (not-yet-migrated docs/spec/ layout)
+    Preference order:
+      1. flat    docs/<name>        (ratified migration target — PREFERRED)
+      2. legacy  docs/spec/<name>   (not-yet-migrated nested-docs layout)
     Returns the first that exists; defaults to the flat docs/ target when none
-    exists yet (so new resolutions point at the ratified location).
+    exists yet (so new resolutions point at the ratified location). The dead
+    specs/ fallback is removed — every feature has migrated to flat docs/.
     """
     flat = feature_dir / "docs" / name
-    specs = feature_dir / "specs" / name
     legacy = feature_dir / "docs/spec" / name
-    for cand in (flat, specs, legacy):
+    for cand in (flat, legacy):
         if cand.is_file():
             return cand
     return flat
 
 
 def _spec_path(feature_dir: Path) -> Path:
-    """Prefer flat docs/spec.md (issue #399); fall back to specs/, then legacy."""
+    """Prefer flat docs/spec.md; fall back to legacy docs/spec/spec.md."""
     return _resolve_doc(feature_dir, "spec.md")
 
 
 def _contract_path(feature_dir: Path) -> Path:
-    """Prefer flat docs/contract.md (issue #399); fall back to specs/, then legacy."""
+    """Prefer flat docs/contract.md; fall back to legacy docs/spec/contract.md."""
     return _resolve_doc(feature_dir, "contract.md")
 
 

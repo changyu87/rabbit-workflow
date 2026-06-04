@@ -1,33 +1,32 @@
 #!/usr/bin/env python3
-"""Inv 56 (issue #399 Phase 2a): feature-touch.py resolves the flat docs/ layout.
+"""Inv 56: feature-touch.py resolves the flat docs/ layout (dead specs/ fallback removed).
 
 The #399 migration's ratified target is a FLAT per-feature docs/ layout:
-docs/spec.md and docs/contract.md (preserving docs/bugs/). During the
-coexistence window the companion feature-touch.py resolvers MUST prefer the
-flat docs/ location and fall back to the legacy layouts so later file moves do
-not break tooling:
+docs/spec.md and docs/contract.md (preserving docs/bugs/). Every feature has
+migrated, so the dead specs/ fallback is removed. The companion
+feature-touch.py resolvers prefer the flat docs/ location and retain only the
+legacy docs/spec/ fallback for any not-yet-migrated nested-docs layout:
 
-  spec     : docs/spec.md  >  specs/spec.md  >  docs/spec/spec.md
-  contract : docs/contract.md  >  specs/contract.md  >  docs/spec/contract.md
+  spec     : docs/spec.md  >  docs/spec/spec.md
+  contract : docs/contract.md  >  docs/spec/contract.md
 
 End-to-end checks (real temp git repos, real subprocess invocations):
 
   * resolve-spec-path returns docs/spec.md when only the flat docs/ layout
     is present.
-  * resolve-spec-path still returns specs/spec.md when only the specs/ layout
-    is present (legacy behaviour preserved — fallback always hits today).
-  * resolve-spec-path returns docs/spec.md when BOTH layouts coexist
-    (docs/ wins).
-  * resolve-contract-path mirrors the same preference order.
+  * resolve-spec-path IGNORES a lone specs/spec.md (the dead specs/ fallback
+    is removed) and defaults to the flat docs/ target.
+  * resolve-spec-path returns docs/spec.md when flat docs/ and a stray specs/
+    coexist (docs/ wins; specs/ is irrelevant).
+  * resolve-contract-path mirrors the same behaviour.
   * commit-spec stages and commits the resolved spec under the flat docs/
     layout.
   * mode-aware: plugin mode resolves under .rabbit/rabbit-project/features/.
 
-Version: 1.0.0
+Version: 2.0.0
 Owner: rabbit-workflow team
-Deprecation criterion: when every rabbit feature has migrated to the flat
-docs/ layout and the dual-read fallback to specs/ and docs/spec/ is removed
-(issue #399 cleanup).
+Deprecation criterion: when feature-touch orchestration is natively handled
+by the rabbit CLI or by Claude Code's native workflow mechanism.
 """
 from __future__ import annotations
 
@@ -74,7 +73,9 @@ def test_resolve_spec_prefers_flat_docs() -> None:
         )
 
 
-def test_resolve_spec_falls_back_to_specs() -> None:
+def test_resolve_spec_ignores_dead_specs_layout() -> None:
+    """The dead specs/ fallback is removed: a lone specs/spec.md is ignored
+    and resolution defaults to the flat docs/ target."""
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         _git_init(root)
@@ -83,8 +84,9 @@ def test_resolve_spec_falls_back_to_specs() -> None:
         (feat / "spec.md").write_text("legacy specs", encoding="utf-8")
         r = _run(root, "resolve-spec-path", "demo")
         assert r.returncode == 0, r.stderr
-        assert r.stdout.strip() == ".claude/features/demo/specs/spec.md", (
-            f"expected specs/ fallback, got {r.stdout.strip()!r}"
+        assert r.stdout.strip() == ".claude/features/demo/docs/spec.md", (
+            f"specs/ must no longer resolve; expected default flat docs/spec.md, "
+            f"got {r.stdout.strip()!r}"
         )
 
 
@@ -102,7 +104,7 @@ def test_resolve_spec_falls_back_to_legacy_docs_spec() -> None:
         )
 
 
-def test_resolve_spec_flat_docs_wins_when_both_exist() -> None:
+def test_resolve_spec_flat_docs_wins_over_stray_specs() -> None:
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         _git_init(root)
@@ -114,7 +116,8 @@ def test_resolve_spec_flat_docs_wins_when_both_exist() -> None:
         r = _run(root, "resolve-spec-path", "demo")
         assert r.returncode == 0, r.stderr
         assert r.stdout.strip() == ".claude/features/demo/docs/spec.md", (
-            f"flat docs/ must win when both layouts exist, got {r.stdout.strip()!r}"
+            f"flat docs/ must resolve; a stray specs/ is irrelevant, "
+            f"got {r.stdout.strip()!r}"
         )
 
 
@@ -135,7 +138,8 @@ def test_resolve_contract_prefers_flat_docs() -> None:
         )
 
 
-def test_resolve_contract_falls_back_to_specs() -> None:
+def test_resolve_contract_ignores_dead_specs_layout() -> None:
+    """The dead specs/ fallback is removed for contract resolution too."""
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         _git_init(root)
@@ -144,12 +148,13 @@ def test_resolve_contract_falls_back_to_specs() -> None:
         (feat / "contract.md").write_text("legacy", encoding="utf-8")
         r = _run(root, "resolve-contract-path", "demo")
         assert r.returncode == 0, r.stderr
-        assert r.stdout.strip() == ".claude/features/demo/specs/contract.md", (
-            f"expected specs/ fallback, got {r.stdout.strip()!r}"
+        assert r.stdout.strip() == ".claude/features/demo/docs/contract.md", (
+            f"specs/ must no longer resolve; expected default flat "
+            f"docs/contract.md, got {r.stdout.strip()!r}"
         )
 
 
-def test_resolve_contract_flat_docs_wins_when_both_exist() -> None:
+def test_resolve_contract_flat_docs_wins_over_stray_specs() -> None:
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         _git_init(root)
@@ -161,7 +166,8 @@ def test_resolve_contract_flat_docs_wins_when_both_exist() -> None:
         r = _run(root, "resolve-contract-path", "demo")
         assert r.returncode == 0, r.stderr
         assert r.stdout.strip() == ".claude/features/demo/docs/contract.md", (
-            f"flat docs/ must win when both layouts exist, got {r.stdout.strip()!r}"
+            f"flat docs/ must resolve; a stray specs/ is irrelevant, "
+            f"got {r.stdout.strip()!r}"
         )
 
 
