@@ -2,7 +2,7 @@
 name: rabbit-spec-update
 description: Use when an existing feature spec needs to be revised or updated, in any context (standalone or plugin mode). Invoke as Skill("rabbit-spec-update", args: "<feature-name> <request>") from any skill, process, or directly. Auto-detects rabbit mode from .rabbit/.runtime/mode and resolves the target feature directory to .claude/features/<feature-name>/ in standalone mode or .rabbit/rabbit-project/features/<feature-name>/ in plugin mode. Reads the current spec, judges the request type, invokes superpowers as needed, updates the spec surgically, and produces an implementation suggestion file for whoever invoked it. Also use when a user asks to update, review, or revise a spec for any rabbit feature — even if they don't say "spec" explicitly (e.g., "think about what we need to build", "plan this feature", "what should change in the design", "update the design for this bug fix"). For drafting a BRAND NEW spec from scratch (no existing content), use rabbit-spec-create instead.
 model: opus
-version: 2.6.0
+version: 2.7.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 ---
@@ -48,7 +48,7 @@ Every `spec.md` / `contract.md` reference in the steps below means
 Args format: `<feature-name> <request-or-item-description>`
 
 - **feature-name**: the rabbit feature to update (e.g., `tdd-subagent`, `rabbit-issue`)
-- **request**: the user's raw request, or a bug/backlog item description in B/B mode
+- **request**: the user's raw request, or a rabbit-managed issue description
 
 ## Step 1 — Read Current State
 
@@ -89,7 +89,7 @@ Decide whether the request is **open-ended** or **specific**:
 | Signal | Classification |
 |--------|---------------|
 | Vague goal, exploratory language, "what should we do about X", no clear acceptance criteria | Open-ended |
-| Bug fix, backlog task, bounded change with clear outcome, "add invariant N", "rename X to Y" | Specific |
+| Bug fix, enhancement task, bounded change with clear outcome, "add invariant N", "rename X to Y" | Specific |
 
 When in doubt, lean toward **specific** — the brainstorming superpower adds cost and time, so only invoke it when the user genuinely needs design exploration.
 
@@ -167,7 +167,7 @@ Make `implementation_approach` genuinely useful — it should save any downstrea
 
 - Run tests
 - Write implementation code
-- File bugs or backlog items
+- File bugs or enhancements
 - Invoke skills other than the superpowers invoked in Step 3
   (`superpowers:brainstorming` and `superpowers:writing-plans`). Your
   output is the impl-suggestion file; what happens next is the caller's

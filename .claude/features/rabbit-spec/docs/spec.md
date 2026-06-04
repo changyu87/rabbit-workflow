@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.11.0
+version: 1.12.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -171,6 +171,17 @@ length including zero.
    layout) and the on-disk `test/test-docs-layout.py`. Both wired into
    `test/run.py`.
 
+7. **Live surfaces carry current issue vocabulary.**
+   rabbit-spec's live surfaces (`docs/spec.md`, `docs/contract.md`,
+   `skills/rabbit-spec-create/SKILL.md`, `skills/rabbit-spec-update/SKILL.md`,
+   `feature.json`) MUST describe request inputs and request classes using the
+   current rabbit-issue vocabulary — "issue", "bug or enhancement", and
+   "rabbit-managed issue" (GitHub's bug/enhancement taxonomy). The legacy
+   custom-store abbreviation and phrase family, and the standalone
+   request-class noun for the deferred-work bucket, MUST NOT appear as LIVE
+   description. Enforced by `test/test-bb-terminology.py`, wired into
+   `test/run.py`.
+
 ## Tech Stack
 
 Python 3 stdlib only.
@@ -197,6 +208,9 @@ coverage arrives with the surface artifacts in this stage:
   `docs/` layout (`docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`
   present; no `specs/` or root `CHANGELOG.md`; resolver + `validate_feature`
   resolve cleanly)
+- `test-bb-terminology.py` — Inv 7: scans every live surface and asserts the
+  legacy custom-store abbreviation, phrase family, and standalone
+  deferred-work request-class noun do not appear as live vocabulary
 
 ## Out of Scope
 
