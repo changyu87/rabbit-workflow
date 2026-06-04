@@ -1,13 +1,13 @@
-"""contract.lib.config_dispatch — reusable CORE of the /rabbit-config interpreter.
+"""contract.lib.config_dispatch — reusable CORE of the per-feature config interpreter.
 
-`/rabbit-config`'s skill interpreter is a ~228-line generic dispatcher that
+A per-feature config command's interpreter is a generic dispatcher that
 enumerates every feature's CONFIGURATION declarations, validates the user
 value, applies the mutation via contract.lib.mutation, and emits a branded
 "restart Claude" prompt when the configurable is restart-gated. Phase 3 of
 #733 factors that generic flow out into THIS module so each per-feature config
-command (e.g. `/rabbit-tdd-autonomous`) becomes a THIN wrapper over it — the
-interpreter logic lives ONCE in contract.lib (script > prompt; no N drifting
-copies).
+command (e.g. `/rabbit-cage-config`, `/rabbit-tdd-autonomous`) becomes a THIN
+wrapper over it — the interpreter logic lives ONCE in contract.lib (script >
+prompt; no N drifting copies).
 
 Public API:
     dispatch_config(cfg, value, *, repo_root, feature_dir=None,
@@ -92,7 +92,7 @@ def _restart_prompt(subcommand):
     """Render the branded restart-Claude line via the rabbit_print convention.
 
     rabbit_print lives under contract/scripts/; make it importable the same way
-    /rabbit-config's interpreter does, then delegate the framing to it.
+    a per-feature config interpreter does, then delegate the framing to it.
     """
     scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                "scripts")
