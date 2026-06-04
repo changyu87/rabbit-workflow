@@ -12,6 +12,18 @@ Each retirement entry below carries the original invariant number (as it appeare
 
 ## Version notes
 
+- **v1.14.0 (#742 opt into strict contiguous invariant numbering; #724 follow-up):**
+  rabbit-spec opts into the contract feature's strict CONTIGUOUS
+  invariant-numbering tier introduced in #724. Set `"contiguous_invariants":
+  true` at the top level of `feature.json` and added `docs/spec.md` Inv 8
+  documenting the opt-in. rabbit-spec's invariants were already contiguous
+  1..7, so NO reflow was required — this is a flag-only opt-in plus its
+  documenting invariant. New E2E guard
+  `test/test-contiguous-invariants-optin.py` asserts both the flag and 1..N
+  contiguity through the live contract `_contiguous_opt_in` /
+  `check_invariant_monotonic_order` surfaces; wired into `test/run.py`. No
+  invariant was retired (no tombstone). Behaviour of the skills is unchanged.
+
 - **v1.13.0 (#688 housekeeping round 2 — measured line-removal pass; under #639):**
   Removal pass, not a reword. `docs/spec.md` 221 -> 175 lines (-46): deleted the
   dead stage/relocation narration from `## Purpose` ("After Stage 2 it hosts ...

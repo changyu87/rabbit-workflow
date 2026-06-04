@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.13.0
+version: 1.14.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -155,6 +155,18 @@ orchestration wrapper.
    request-class noun for the deferred-work bucket, MUST NOT appear as LIVE
    description. Enforced by `test/test-bb-terminology.py`, wired into
    `test/run.py`.
+
+8. **Strict contiguous invariant numbering (opted in).**
+   rabbit-spec opts into the contract feature's strict CONTIGUOUS
+   invariant-numbering tier by declaring `"contiguous_invariants": true` at
+   the top level of `feature.json`. Its invariants MUST therefore be numbered
+   contiguously 1..N with no holes — the contract check
+   `check_invariant_monotonic_order` rejects any gap for an opted-in feature.
+   When an invariant is removed, survivors are renumbered to close the hole
+   via the deterministic reflow tool
+   `.claude/features/contract/scripts/reflow-invariants.py`; removed numbers
+   and their history live only in `docs/CHANGELOG.md`. Enforced by
+   `test/test-contiguous-invariants-optin.py`, wired into `test/run.py`.
 
 ## Tech Stack
 
