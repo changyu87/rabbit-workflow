@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.57.0",
+  "version": "5.58.0",
   "contiguous_invariants": true,
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
@@ -143,7 +143,7 @@
           "path": ".rabbit-scope-override",
           "content": "session",
           "alert": {
-            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-config scope-guard on",
+            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-cage-config scope-guard on",
             "icon": "\ud83d\udd13",
             "color": "red"
           }
@@ -208,7 +208,7 @@
           "path": ".rabbit-scope-override",
           "content": "session",
           "alert": {
-            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-config scope-guard on",
+            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-cage-config scope-guard on",
             "icon": "\ud83d\udd13",
             "color": "red"
           }
@@ -274,7 +274,7 @@
       "default": "false",
       "alert-on": "true",
       "alert-message": {
-        "text": "BYPASS-PERMISSIONS MODE ACTIVE \u2014 revoke: /rabbit-config bypass-permissions false",
+        "text": "BYPASS-PERMISSIONS MODE ACTIVE \u2014 revoke: /rabbit-cage-config bypass-permissions false",
         "icon": "\ud83d\udea8",
         "color": "red"
       },

@@ -1,7 +1,7 @@
 ---
 name: rabbit-tdd-autonomous
 description: Toggle TDD-autonomous mode — skip the feature-touch TDD cycle Step 4 (human approval). true bypasses the gate; false (default) keeps it active.
-version: 1.0.0
+version: 1.0.1
 owner: rabbit-workflow team
 deprecation_criterion: when the rabbit CLI exposes a native per-feature configuration mechanism that subsumes /rabbit-tdd-autonomous
 template_version: 1.0.0
@@ -14,7 +14,7 @@ Toggle TDD-autonomous mode for the `rabbit-feature-touch` cycle. This is the
 per-feature config command rabbit-feature owns (phase 3 of #733); it coexists
 with the central `/rabbit-config tdd-autonomous` surface — both work.
 
-The Step-4 human-approval gate lives in the dispatcher's main session. The
+The Step-4 approval gate lives in the dispatcher's main session. The
 bypass authorization is the marker `.rabbit-tdd-autonomous` at the repo root:
 
 - `false` (DEFAULT) — Step 4 gate ACTIVE; the marker is removed.

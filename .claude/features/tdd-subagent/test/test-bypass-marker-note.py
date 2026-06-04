@@ -37,15 +37,17 @@ sys.path.insert(0, CONTRACT_SCRIPTS)
 from rabbit_print import rabbit_print  # noqa: E402
 
 # Canonical preamble text — must match dispatch-tdd-subagent.py _BYPASS_NOTE_TEXT.
-# The note now names BOTH dual-read markers (issue #336 Phase 1) and still
-# references the DISPATCHER's Step 4 (not any subagent step) because the
-# subagent's prompt no longer contains a HUMAN-APPROVAL step at all
-# (TDD-SUBAGENT-BACKLOG-19).
+# The note names BOTH dual-read markers (canonical .rabbit-tdd-autonomous +
+# legacy .rabbit-human-approval-bypass) and still references the DISPATCHER's
+# Step 4 (not any subagent step) because the subagent's prompt no longer
+# contains a HUMAN-APPROVAL step at all (TDD-SUBAGENT-BACKLOG-19). Post-#336
+# the re-enable hint is `/rabbit-tdd-autonomous false` (false re-enables the
+# Step-4 gate; correct polarity).
 _EXPECTED_TEXT = (
-    "NOTE: human-approval bypass marker is active "
-    "(.rabbit-human-approval-bypass or .rabbit-tdd-autonomous). The "
+    "NOTE: tdd-autonomous bypass marker is active "
+    "(.rabbit-tdd-autonomous or legacy .rabbit-human-approval-bypass). The "
     "dispatcher's Step 4 HUMAN-APPROVAL gate was skipped for this "
-    "dispatch. Revoke via `/rabbit-config human-approval true`."
+    "dispatch. Re-enable the gate via `/rabbit-tdd-autonomous false`."
 )
 expected_note = rabbit_print(_EXPECTED_TEXT, "📢", "yellow")
 

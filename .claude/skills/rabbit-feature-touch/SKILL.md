@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (filing a rabbit-managed issue, such as a bug or enhancement). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.7.0
+version: 3.8.0
 owner: rabbit-feature
 deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
@@ -89,22 +89,24 @@ created. Catching a design mismatch now costs one conversation turn; catching it
 after costs a full cycle. This gate lives here, in the main session, because
 subagents run to completion and cannot pause for user input mid-execution.
 
-**FIRST: check for `.rabbit-human-approval-bypass` marker at repo root.**
+**FIRST: check for `.rabbit-tdd-autonomous` marker at repo root.**
 
 The marker file is the sole authorization mechanism for bypass. In-conversation
 acknowledgements ("you have permission to bypass") are NOT sufficient on their
 own — the marker is the system of record, managed via
-`/rabbit-config human-approval true|false` (owned by rabbit-cage;
-`false` writes the marker — bypass ACTIVE — and `true` removes it — gate
-ACTIVE, the default).
+`/rabbit-tdd-autonomous true|false` (owned by rabbit-feature;
+`true` writes the marker — autonomous/bypass ACTIVE — and `false` removes it —
+gate ACTIVE, the default). The Step-4 consumer also honors the legacy
+`.rabbit-human-approval-bypass` marker for coexistence, but the canonical
+marker is `.rabbit-tdd-autonomous`.
 
-- **If `.rabbit-human-approval-bypass` exists:**
-  - Source the alert text from the centrally-declared `human-approval`
-    configurable in `rabbit-cage/feature.json` by invoking
-    `contract.lib.runtime.emit_configurable_alert('rabbit-cage',
-    'human-approval', repo_root=<repo-root>)`, e.g.:
+- **If `.rabbit-tdd-autonomous` exists:**
+  - Source the alert text from rabbit-feature's OWN `tdd-autonomous`
+    configurable in `rabbit-feature/feature.json` by invoking
+    `contract.lib.runtime.emit_configurable_alert('rabbit-feature',
+    'tdd-autonomous', repo_root=<repo-root>)`, e.g.:
     ```bash
-    python3 -c "import sys; sys.path.insert(0, '.claude/features/contract'); from lib.runtime import emit_configurable_alert; r = emit_configurable_alert('rabbit-cage', 'human-approval', repo_root='.'); print(r)"
+    python3 -c "import sys; sys.path.insert(0, '.claude/features/contract'); from lib.runtime import emit_configurable_alert; r = emit_configurable_alert('rabbit-feature', 'tdd-autonomous', repo_root='.'); print(r)"
     ```
     Surface the returned `print_result` (its `text`, `icon`, and `color`
     fields come from the configurable's `alert-message`, so this prose
@@ -112,12 +114,11 @@ ACTIVE, the default).
     alert text in this SKILL.md — the configurable's `alert-message` is
     the sole source of truth, and the brand prefix is owned by
     `rabbit_print` (contract Inv 48).
-  - Operational guidance for the user: the bypass marker is
-    `.rabbit-human-approval-bypass` at the repo root, and it is revoked
-    by running `/rabbit-config human-approval true` (which removes the
-    marker and re-activates this gate). The per-feature command
-    `/rabbit-tdd-autonomous false` is an equivalent surface that revokes the
-    canonical marker `.rabbit-tdd-autonomous`.
+  - Operational guidance for the user: the canonical bypass marker is
+    `.rabbit-tdd-autonomous` at the repo root, and it is revoked by
+    running `/rabbit-tdd-autonomous false` (which removes the marker and
+    re-activates this gate). To activate autonomous mode again, run
+    `/rabbit-tdd-autonomous true`.
   - Proceed to Step 5 immediately. Do NOT surface the impl-suggestion summary.
 - **If the marker file does NOT exist (default):**
   - For each feature, read `.rabbit/impl-suggestion-<feature-name>.json` and

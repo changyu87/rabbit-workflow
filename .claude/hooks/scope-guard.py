@@ -498,7 +498,7 @@ def decide(target: str) -> Tuple[bool, str]:
         "  (1) SESSION OVERRIDE — bypasses scope-guard for the entire "
         "session. Requires explicit in-conversation user confirmation "
         "before writing '.rabbit-scope-override' with content 'session'. "
-        "Revoke any time via `/rabbit-config scope-guard on`.\n"
+        "Revoke any time via `/rabbit-cage-config scope-guard on`.\n"
         "\n"
         "  (2) ONE-TIME OVERRIDE — bypasses scope-guard for a single "
         "write only. Requires explicit in-conversation user confirmation "

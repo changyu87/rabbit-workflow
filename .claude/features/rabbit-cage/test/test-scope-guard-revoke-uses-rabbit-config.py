@@ -2,22 +2,24 @@
 """test-scope-guard-revoke-uses-rabbit-config.py — issue #709.
 
 The scope-guard override REVOKE instruction must point at the clean
-`/rabbit-config scope-guard on` command, consistent with sibling
-configurables (`/rabbit-config tdd-autonomous|bypass-permissions`), NOT
-the raw `.claude/features/rabbit-cage/scripts/scope-guard-on.py` path.
+per-feature `/rabbit-cage-config scope-guard on` command (phase 4 of #733),
+NOT the raw `.claude/features/rabbit-cage/scripts/scope-guard-on.py` path.
+The central `/rabbit-config scope-guard on` surface remains live during
+coexistence (#769 retires it); test 4 pins that the data-driven interpreter
+still dispatches the command.
 
 Asserts four things:
 
   1. The scope-guard.py default-deny SESSION OVERRIDE option instructs
-     revoke via `/rabbit-config scope-guard on` and does NOT surface the
-     raw `scripts/scope-guard-on.py` path.
+     revoke via `/rabbit-cage-config scope-guard on` and does NOT surface
+     the raw `scripts/scope-guard-on.py` path.
   2. The active-override banner alert text (the Stop + SessionStart
      `check_marker_alert` entries for `.rabbit-scope-override`) inlines the
-     `/rabbit-config scope-guard on` revoke hint.
+     `/rabbit-cage-config scope-guard on` revoke hint.
   3. rabbit-cage's feature.json declares a `scope-guard` configurable whose
      `on` value maps to `delete_marker` on `.rabbit-scope-override` (so the
-     existing data-driven rabbit-config interpreter dispatches the command).
-  4. E2E: invoking the rabbit-config interpreter as
+     data-driven config interpreter dispatches the command).
+  4. E2E (coexistence): invoking the central rabbit-config interpreter as
      `rabbit-config.py scope-guard on` actually deletes a present
      `.rabbit-scope-override` marker (re-arms default-deny).
 
@@ -47,7 +49,7 @@ RABBIT_CONFIG = (
     / "skills" / "rabbit-config" / "scripts" / "rabbit-config.py"
 )
 
-CLEAN_COMMAND = "/rabbit-config scope-guard on"
+CLEAN_COMMAND = "/rabbit-cage-config scope-guard on"
 RAW_PATH = ".claude/features/rabbit-cage/scripts/scope-guard-on.py"
 OVERRIDE_MARKER = ".rabbit-scope-override"
 

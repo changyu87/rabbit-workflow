@@ -3,7 +3,7 @@
 
 Pins the relocated `tdd-autonomous` configurable now declared in
 rabbit-feature's OWN feature.json configuration[] (phase 3 of #733). It gates
-the TDD feature-touch Step-4 human-approval cycle, so it is owned here, not by
+the TDD feature-touch Step-4 approval cycle, so it is owned here, not by
 rabbit-cage.
 
 Asserts the declaration shape and post-#336 polarity:
@@ -15,7 +15,7 @@ Asserts the declaration shape and post-#336 polarity:
   - values.true writes .rabbit-tdd-autonomous (bypass active);
   - alert-on == "true" with the exact alert text naming the skipped Step 4.
 
-Version: 1.0.0
+Version: 1.0.1
 Owner: rabbit-workflow team
 Deprecation criterion: when the per-feature config command is superseded by a
     native rabbit CLI configuration mechanism.

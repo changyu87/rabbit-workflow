@@ -137,12 +137,14 @@ The default install targets the latest stable release channel; `dev` is opt-in o
 | Command | Description |
 |---|---|
 | `/rabbit-refresh` | Re-inject policy into context |
-| `/rabbit-config prompt-threshold N` | Set auto-refresh interval to N prompts |
-| `/rabbit-config prompt-threshold` | Restore default (20 prompts) |
-| `/rabbit-config allowed-tools add\|remove <tool>` | Manage Claude Code tool permissions |
-| `/rabbit-config bash-allow add\|remove <cmd>` | Manage Bash command permissions |
+| `/rabbit-cage-config prompt-threshold N` | Set auto-refresh interval to N prompts |
+| `/rabbit-cage-config prompt-threshold` | Restore default (20 prompts) |
+| `/rabbit-cage-config allowed-tools add\|remove <tool>` | Manage Claude Code tool permissions |
+| `/rabbit-cage-config bash-allow add\|remove <cmd>` | Manage Bash command permissions |
 | `/rabbit-config permissions lock\|unlock` | Lock/unlock write bit on protected dirs |
-| `/rabbit-config scope-guard on` | Revoke an active scope-guard override (re-arm default-deny) |
+| `/rabbit-cage-config scope-guard on` | Revoke an active scope-guard override (re-arm default-deny) |
+
+> rabbit-cage's settings (`scope-guard`, `bypass-permissions`, `allowed-tools`, `bash-allow`, `prompt-threshold`) are managed via the per-feature `/rabbit-cage-config` command. The central `/rabbit-config <sub>` surface still works for the same settings during coexistence.
 
 ---
 
