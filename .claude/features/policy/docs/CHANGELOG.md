@@ -8,6 +8,14 @@ deprecation_criterion: when the policy feature is retired (Claude Code exposes a
 
 ## Version notes
 
+- **v1.20.0 (add rabbit-housekeep to the subagent-dispatching named set,
+  #730):** rabbit-housekeep is a subagent-dispatching skill — it decomposes
+  per-feature housekeeping work and dispatches subagents. Per spec-rules §4
+  "No Subagent-Dispatching Skill Inside `Agent()`", the authoritative named
+  set MUST list every known subagent-dispatching skill, so spec-rules.md §4
+  now names `rabbit-housekeep` alongside `rabbit-spec-create`,
+  `rabbit-feature-touch`, and `rabbit-feature-scope`. The
+  `test/test-rule-files-content.py` content guard asserts the new member.
 - **v1.19.0 (opt into contract strict contiguous-invariant tier, #739 /
   #724 follow-up):** policy/feature.json now declares
   `"contiguous_invariants": true`, opting policy into the contract strict
