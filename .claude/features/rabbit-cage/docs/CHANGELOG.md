@@ -12,6 +12,20 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.47.0 (command frontmatter compliance, #492):** Added Inv 38 — every
+  command deployed via `publish_command` MUST carry full frontmatter
+  (`name`, `description`, `version`, `owner`, `deprecation_criterion`,
+  `template_version`; owner exactly `rabbit-workflow team`) per spec-rules.md
+  "Skills and commands" + `contract/templates/command-template.md`. Fixed the
+  three violators: `commands/rabbit-project.md` had NO frontmatter (rendered
+  blank in the slash-command menu); `commands/rabbit-refresh.md` was missing
+  `name`/`version`/`owner`/`deprecation_criterion`/`template_version`;
+  `commands/rabbit-update.md` was missing `name`/`template_version`. Gated by
+  the new e2e test `test-command-frontmatter-compliance.py`, which enumerates
+  every `publish_command` source from the manifest (closure) and asserts the
+  full key set + owner on each. All three command files are deployed
+  artifacts (`publish_command`); their deployed `.claude/commands/` copies
+  drift until republished.
 - **v5.46.0 (FEATURE_INCLUDES closure — ship contract/check-release-update.py, #605):**
   Added `scripts/check-release-update.py` to `FEATURE_INCLUDES["contract"]` in
   install.py. The probe is subprocessed at runtime by contract's
