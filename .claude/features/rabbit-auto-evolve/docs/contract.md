@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.46.0
+version: 0.47.0
 template_version: 2.0.0
 ---
 
@@ -46,6 +46,11 @@ template_version: 2.0.0
         "path": ".claude/features/contract/lib/runtime.py",
         "function": "cleanup_old_prompts",
         "rationale": "prune-worktrees.py invokes contract.lib.runtime.cleanup_old_prompts(max_age_days=7, repo_root=...) at tick start (pre-dispatch) to bound .rabbit/prompts/ (Inv 53). This is a cross-scope INVOKE of the contract-owned cleanup API — rabbit-auto-evolve never edits the contract feature"
+      },
+      {
+        "path": ".claude/features/contract/lib/publish.py",
+        "function": "publish_skill|publish_hook|publish_file|publish_command|publish_*",
+        "rationale": "republish-feature.py reads a feature's feature.json manifest and invokes contract.lib.publish.<api>(**args, feature_dir=..., repo_root=...) for every publish_* entry to refresh the deployed copies a version-bumping subagent cannot write (out-of-scope), so test-deployed-skills-match-source.py is green in the PR (Inv 55). This is a cross-scope INVOKE of the contract-owned publish API — rabbit-auto-evolve never edits the contract feature"
       }
     ],
     "files": [

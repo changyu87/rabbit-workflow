@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.46.0
+version: 0.47.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -640,6 +640,33 @@ during phase 5 (`dispatch`) result processing:
   label to the original issue (where `N` is the discovered blocker if
   available, else the dispatch retains the existing reason) and leaves
   the issue OPEN so a future tick may retry.
+
+## Republish deployed surfaces before opening the PR (Inv 55)
+
+A version-bumping TDD subagent bumps a feature's SOURCE `SKILL.md` (required
+for four-way version equality across `feature.json`, `docs/`, the source
+skill, and the deployed skill) but CANNOT write the deployed
+`.claude/skills/<feature>/SKILL.md` copy — that path is outside the
+subagent's `.rabbit-scope-active-<feature>` scope, so the scope guard denies
+the write. Left unrepublished, the deployed copy lags source and
+`contract/test/test-deployed-skills-match-source.py` is RED in the PR.
+
+After a version-bumping subagent returns — or ANY HANDOFF reporting a changed
+deployed surface (a `SKILL.md`-changed note, a hook/command/file change) —
+the dispatcher MUST republish the feature's deployed copies IN THE WORKTREE,
+BEFORE opening the PR, by running:
+
+    python3 .claude/features/rabbit-auto-evolve/scripts/republish-feature.py <feature> --repo-root <worktree-root>
+
+`republish-feature.py` reads `<feature>`'s `feature.json` `manifest` and
+invokes the contract-owned `contract.lib.publish.<api>` for every `publish_*`
+entry (a cross-scope INVOKE declared in this feature's `contract.md`
+`invokes.modules`). It is idempotent (a deployed copy already matching source
+is a no-op), emits a JSON summary on stdout of what was (re)published, and is
+a clean no-op for a feature with no manifest. Commit the refreshed deployed
+copy into the PR so `test-deployed-skills-match-source.py` is green at merge
+time. Run it once per feature whose deployed surface changed (including
+rabbit-auto-evolve's own skill when this feature is the one touched).
 
 ## Markers (control flow)
 
