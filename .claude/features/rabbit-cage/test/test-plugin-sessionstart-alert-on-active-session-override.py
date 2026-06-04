@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-plugin-sessionstart-alert-on-active-session-override.py — Inv 16
-amendment + Inv 27.
+amendment + Inv 25.
 
 End-to-end SessionStart dispatch in plugin mode with an active
 session-override marker MUST surface the red 'SCOPE GUARD OFF' banner

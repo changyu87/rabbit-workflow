@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-plugin-scope-override-path-consistent.py — Inv 27.
+"""test-plugin-scope-override-path-consistent.py — Inv 25.
 
 Source-inspection e2e: the session-override marker `.rabbit-scope-override`
 MUST resolve to a SINGLE per-mode canonical location across all five

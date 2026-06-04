@@ -3,7 +3,7 @@
 sentinel on every Agent tool call by delegating to
 contract.lib.checks.validate_agent_prompt_sentinel.
 
-Five cases (per Inv 31's enforcement section):
+Five cases (per Inv 29's enforcement section):
   (i)   Agent call with prompt containing sentinel -> hook exits 0, stdout '{}',
         call proceeds.
   (ii)  Agent call with prompt missing sentinel + no bypass marker -> hook

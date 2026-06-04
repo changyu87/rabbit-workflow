@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""rabbit-cage Inv 38 — every published command file carries the full
+"""rabbit-cage Inv 36 — every published command file carries the full
 required frontmatter (issue #492).
 
 Per spec-rules.md "Skills and commands" + contract/templates/command-template.md,

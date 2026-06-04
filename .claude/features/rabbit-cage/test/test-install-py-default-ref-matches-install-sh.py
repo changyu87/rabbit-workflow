@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """rabbit-cage regression — install.py HARDCODED_STABLE_DEFAULT MUST byte-equal install.sh's RABBIT_REF default.
 
-Spec Inv 29: the hardcoded stable-release default in install.py and the
+Spec Inv 27: the hardcoded stable-release default in install.py and the
 RABBIT_REF default in install.sh are a single source of truth — each
 release-cut PR bumps both in lock-step. This test pins that lock-step so a
 drift between the two is a hard test failure.
@@ -74,7 +74,7 @@ sh_val = sh_m.group(1)
 if py_val == sh_val:
     ok(3, f"install.py default {py_val!r} byte-equals install.sh default {sh_val!r}")
 else:
-    fail_t(3, f"DRIFT: install.py default {py_val!r} != install.sh default {sh_val!r} (Inv 29 lock-step)")
+    fail_t(3, f"DRIFT: install.py default {py_val!r} != install.sh default {sh_val!r} (Inv 27 lock-step)")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")

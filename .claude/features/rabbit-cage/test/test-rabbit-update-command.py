@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""rabbit-cage Inv 37 — /rabbit-update command (check + install).
+"""rabbit-cage Inv 35 — /rabbit-update command (check + install).
 
 Covers issue #493: a user-invocable /rabbit-update slash command routing
 two DETERMINISTIC subcommands to a companion script:
@@ -22,7 +22,7 @@ Assertions (mix of unit + e2e):
   t7  feature.json manifest registers publish_command for
       commands/rabbit-update.md.
   t8  FEATURE_INCLUDES["rabbit-cage"] lists both the command md and the
-      backing script (Inv 21 manifest-source + Inv 25 script closure).
+      backing script (Inv 21 manifest-source + Inv 24 script closure).
 """
 from __future__ import annotations
 

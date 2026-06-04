@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-install-py-channel-dev-opt-in.py — e2e: install.main(--update --channel dev)
-resolves ref to literal 'dev' (Inv 29 (b)).
+resolves ref to literal 'dev' (Inv 27 (b)).
 
 Mocks fetch_upstream to capture the ref argument; asserts the captured ref is
 exactly 'dev' when --channel dev is supplied. Validates the explicit opt-in

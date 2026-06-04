@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """rabbit-cage regression — install.py HARDCODED_STABLE_DEFAULT MUST be a stable channel.
 
-Bug #286 / spec Inv 29 (amended #307): install.py's hardcoded default upstream
+Bug #286 / spec Inv 27 (amended #307): install.py's hardcoded default upstream
 ref MUST match a stable release branch — either 3-field
 `release/[0-9]+\\.[0-9]+\\.[0-9]+` (preferred, post-#307) or legacy 2-field
 `release/[0-9]+\\.[0-9]+` (retained for backwards compat with release/1.0-1.10)
@@ -75,7 +75,7 @@ ok(2, f"located HARDCODED_STABLE_DEFAULT: {default_value!r}")
 
 # t3 — default value is NOT exactly 'dev'.
 if default_value == "dev":
-    fail_t(3, "HARDCODED_STABLE_DEFAULT is literal 'dev' (FORBIDDEN per Inv 29)")
+    fail_t(3, "HARDCODED_STABLE_DEFAULT is literal 'dev' (FORBIDDEN per Inv 27)")
 else:
     ok(3, f"HARDCODED_STABLE_DEFAULT is not 'dev': {default_value!r}")
 

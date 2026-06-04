@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.53.0
+version: 5.54.0
 template_version: 2.0.0
 ---
 
@@ -30,7 +30,7 @@ template_version: 2.0.0
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-set-path.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py set-path"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-map.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py map"},
       {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.py", "stdin": "none", "stdout": "annotated workspace tree", "exit": "0=ok 1=error"},
-      {"path": ".claude/features/rabbit-cage/scripts/rabbit-update.py", "stdin": "none", "stdout": "check: current-vs-latest JSON; install: install.py log", "exit": "0=ok 1=error 2=usage", "note": "backs /rabbit-update; check reuses contract check-release-update.py probe (non-throttled), install invokes install.py --update (spec Inv 37)"},
+      {"path": ".claude/features/rabbit-cage/scripts/rabbit-update.py", "stdin": "none", "stdout": "check: current-vs-latest JSON; install: install.py log", "exit": "0=ok 1=error 2=usage", "note": "backs /rabbit-update; check reuses contract check-release-update.py probe (non-throttled), install invokes install.py --update (spec Inv 35)"},
       {"path": ".claude/features/rabbit-cage/lib/project_map_reader.py", "stdin": "none", "stdout": "none", "exit": "n/a (importable module)", "note": "plugin-mode project-map I/O + path matching; imported by scope-guard.py"}
     ],
     "schemas": [],
@@ -64,13 +64,13 @@ template_version: 2.0.0
     ],
     "scripts": [
       {"path": ".claude/features/contract/scripts/find-feature.py", "purpose": "scope-guard.py feature-name -> path resolution"},
-      {"path": ".claude/features/rabbit-auto-evolve/scripts/check-auto-resume.py", "purpose": "session-start-dispatcher.py mechanical restart-resume detection; surfaces resume banner + action when resume:true (Inv 35 / rabbit-auto-evolve Inv 31)"},
-      {"path": ".claude/features/rabbit-auto-evolve/scripts/advise-restart.py", "purpose": "stop-dispatcher.py + session-start-dispatcher.py ADVISORY-restart surfacing: `status` reports {advised, reason?} consumed by both (Stop + SessionStart surface the line), `clear` invoked by SessionStart to consume the advisory after surfacing (Inv 39 / rabbit-auto-evolve Inv 52)"},
-      {"path": ".claude/features/contract/scripts/check-release-update.py", "purpose": "scripts/rabbit-update.py check reuses read_version / fetch_upstream_version / resolve_repo_root / probe_self_update for the non-throttled current-vs-latest probe (Inv 37 / contract Inv 63)"}
+      {"path": ".claude/features/rabbit-auto-evolve/scripts/check-auto-resume.py", "purpose": "session-start-dispatcher.py mechanical restart-resume detection; surfaces resume banner + action when resume:true (Inv 33 / rabbit-auto-evolve Inv 29)"},
+      {"path": ".claude/features/rabbit-auto-evolve/scripts/advise-restart.py", "purpose": "stop-dispatcher.py + session-start-dispatcher.py ADVISORY-restart surfacing: `status` reports {advised, reason?} consumed by both (Stop + SessionStart surface the line), `clear` invoked by SessionStart to consume the advisory after surfacing (Inv 37 / rabbit-auto-evolve Inv 52)"},
+      {"path": ".claude/features/contract/scripts/check-release-update.py", "purpose": "scripts/rabbit-update.py check reuses read_version / fetch_upstream_version / resolve_repo_root / probe_self_update for the non-throttled current-vs-latest probe (Inv 35 / contract Inv 63)"}
     ],
     "functions": [
-      {"path": ".claude/features/contract/lib/checks.py", "function": "validate_agent_prompt_sentinel", "purpose": "scope-guard.py Agent-tool sentinel validation (Inv 31 / contract Inv 66)"},
-      {"path": ".claude/features/contract/lib/runtime.py", "function": "emit_stop_timestamp", "purpose": "universal Stop-event turn-end timestamp marker (Inv 32 / contract Inv 67)"}
+      {"path": ".claude/features/contract/lib/checks.py", "function": "validate_agent_prompt_sentinel", "purpose": "scope-guard.py Agent-tool sentinel validation (Inv 29 / contract Inv 66)"},
+      {"path": ".claude/features/contract/lib/runtime.py", "function": "emit_stop_timestamp", "purpose": "universal Stop-event turn-end timestamp marker (Inv 30 / contract Inv 67)"}
     ]
   },
   "manages": {

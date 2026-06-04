@@ -95,7 +95,7 @@ def _display_width(text: str) -> int:
     """Display-column width counting the box rabbit (🐇, U+1F407) as 2 columns.
 
     Emoji render as ~2 terminal columns; every other char counts as 1. This
-    is the common-case approximation the alignment fix targets (Inv 40 /
+    is the common-case approximation the alignment fix targets (Inv 38 /
     issue #629); perfect width is terminal-dependent.
     """
     return sum(2 if ch == RABBIT else 1 for ch in text)

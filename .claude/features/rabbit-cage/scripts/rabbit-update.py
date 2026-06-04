@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""rabbit-update.py — backs the /rabbit-update slash command (spec Inv 37).
+"""rabbit-update.py — backs the /rabbit-update slash command (spec Inv 35).
 
 Two deterministic subcommands:
 
@@ -69,7 +69,7 @@ def repo_root() -> Path:
 
 
 def _load_check_release(rroot: Path):
-    """Import the contract-owned release-check helpers (Inv 37 reuse)."""
+    """Import the contract-owned release-check helpers (Inv 35 reuse)."""
     path = rroot / ".claude/features/contract/scripts/check-release-update.py"
     spec = importlib.util.spec_from_file_location(
         "rabbit_check_release_update", str(path))

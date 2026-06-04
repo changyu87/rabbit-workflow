@@ -121,7 +121,7 @@ _ADVISE_RESTART_SCRIPT = (
 
 
 def _advise_restart_status(repo_root):
-    """INVOKE rabbit-auto-evolve's advise-restart.py `status` (issue #545, Inv 39).
+    """INVOKE rabbit-auto-evolve's advise-restart.py `status` (issue #545, Inv 37).
 
     Returns the parsed `{"advised": <bool>, "reason": <str>?}` verdict dict, or
     None on any failure path (script absent, non-zero exit, timeout,
@@ -153,7 +153,7 @@ def _advise_restart_status(repo_root):
 
 
 def advisory_restart_payloads(repo_root):
-    """Issue #545 / Inv 39: INVOKE advise-restart.py status and, when the marker
+    """Issue #545 / Inv 37: INVOKE advise-restart.py status and, when the marker
     is present, return the single ADVISORY-restart print payload.
 
     The advisory line is deliberately distinct from the hard #503 auto-resume
@@ -179,7 +179,7 @@ def advisory_restart_payloads(repo_root):
 
 
 def clear_advisory_restart(repo_root):
-    """Issue #545 / Inv 39: INVOKE advise-restart.py `clear` to consume the
+    """Issue #545 / Inv 37: INVOKE advise-restart.py `clear` to consume the
     advisory after SessionStart has surfaced it (the advised restart occurred).
 
     Best-effort and graceful: an absent / erroring / timed-out script is a
@@ -212,7 +212,7 @@ def render_emission(payloads):
     error  -> written to stderr (one line per error); not surfaced.
 
     Rendered banner/print/subline lines are ordered by a stable footer
-    partition (Inv 33): payloads carrying order=='footer' are held back and
+    partition (Inv 31): payloads carrying order=='footer' are held back and
     appended AFTER all non-footer lines, each group preserving dispatch
     order. inject ordering is unaffected by the partition.
 
