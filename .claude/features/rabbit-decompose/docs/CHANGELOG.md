@@ -13,6 +13,23 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.4.0 (history-free doc surfaces + Inv 49 strict tier, #551 / #530
+  Phase 2):** Opted rabbit-decompose into the contract's strict-tier
+  historical-burden check by declaring top-level `"housekeeping_clean": true`
+  in `feature.json` (data-driven opt-in; no contract-owned file edited).
+  Scrubbed the one strict-tier hit: `docs/spec.md` Tests section carried a
+  trailing historical parenthetical naming the migration ticket that produced
+  the flat-layout test. The parenthetical was removed and the sentence left as
+  a present-tense declarative statement; the substantive test description (flat
+  `docs/` layout, four-way version alignment, contract-resolver resolution) is
+  unchanged. The genuinely-historical migration note already lives in this
+  CHANGELOG (v0.3.0 entry below), which is exempt from the doc-surface scan by
+  construction. Frontmatter `version` bumped to 0.4.0 across `feature.json`,
+  `docs/spec.md`, `docs/contract.md`, and the source SKILL.md (four-way
+  alignment); the deployed `.claude/skills/` copy needs a dispatcher republish
+  because the source SKILL.md frontmatter version changed. No invariants were
+  renumbered or removed; only the historical wrapper text was stripped.
+
 - **v0.3.0 (flat `docs/` layout migration, #399 Phase 2b):** Relocated the
   feature's documentation surfaces from the legacy spec directory to the flat
   `docs/` layout. `specs/spec.md` → `docs/spec.md`, `specs/contract.md` →
