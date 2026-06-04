@@ -18,7 +18,14 @@ are rejected with a type-mismatch detail in stderr.
 Exit code: 0 on successful write; non-zero on schema-validation failure or
 write error. On validation failure the state file is NOT touched.
 
-Version: 1.3.0
+Issue #761: when the on-disk state carries an OLDER schema_version whose delta
+to current is purely additive (new optional keys), it is migrated in place via
+an explicit version ladder (older version accepted, new optional fields seeded
+with documented defaults, schema_version set to current) and THEN validated,
+rather than hard-failing on the version-string mismatch. A newer-than-current
+version, or an older version not on the additive ladder, still errors clearly.
+
+Version: 1.4.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -36,6 +43,64 @@ SCHEMA_PATH = os.path.join(HERE, "schemas", "auto-evolve-state.schema.json")
 UPDATED_AT_RE = re.compile(
     r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
 )
+
+CURRENT_SCHEMA_VERSION = "1.3.0"
+
+# Explicit additive-migration LADDER (issue #761). Each entry upgrades an
+# OLDER on-disk schema_version to the next version by filling the optional
+# field that version ADDED with its documented default (see
+# scripts/schemas/auto-evolve-state.schema.json). The delta between adjacent
+# rungs is purely additive (a new optional key), so an older structurally
+# backward-compatible state migrates in place instead of hard-failing.
+#
+# Each step is (from_version, to_version, default_fields). default_fields is a
+# {field: factory} map; a field is only seeded if absent (existing data is
+# preserved). Future additive bumps append one rung here.
+MIGRATION_LADDER = [
+    ("1.1.0", "1.2.0", {"pending_post_merge": list}),
+    ("1.2.0", "1.3.0", {"decomposition_parents": dict}),
+]
+
+
+def migrate(instance):
+    """Migrate an older but additively-compatible state up to the current
+    schema_version, in place. Returns (migrated_instance, error_or_None).
+
+    - A current-version state is returned unchanged (no-op).
+    - An older version on the ladder is walked rung-by-rung to current,
+      seeding each newly-added optional field with its documented default
+      only when absent (pre-existing data is preserved).
+    - A newer-than-current version, or an older version NOT reachable on the
+      ladder, returns an error string and is NOT migrated.
+    """
+    if not isinstance(instance, dict) or "schema_version" not in instance:
+        # Defer to validate() for the structural / missing-field complaint.
+        return instance, None
+
+    version = instance["schema_version"]
+    if version == CURRENT_SCHEMA_VERSION:
+        return instance, None
+
+    steps_by_from = {frm: (to, defaults)
+                     for frm, to, defaults in MIGRATION_LADDER}
+
+    while version != CURRENT_SCHEMA_VERSION:
+        step = steps_by_from.get(version)
+        if step is None:
+            return instance, (
+                f"schema_version: cannot migrate {version!r} to "
+                f"{CURRENT_SCHEMA_VERSION!r} (unknown or non-additive "
+                f"version; only older versions on the additive-migration "
+                f"ladder are upgradable)"
+            )
+        to_version, defaults = step
+        for field, factory in defaults.items():
+            if field not in instance:
+                instance[field] = factory()
+        instance["schema_version"] = to_version
+        version = to_version
+
+    return instance, None
 
 
 def _is_int(value):
@@ -84,9 +149,10 @@ def validate(instance):
             "additional properties not allowed: " + ", ".join(sorted(extra))
         )
 
-    if instance["schema_version"] != "1.3.0":
+    if instance["schema_version"] != CURRENT_SCHEMA_VERSION:
         errors.append(
-            f"schema_version: expected '1.3.0', got {instance['schema_version']!r}"
+            f"schema_version: expected {CURRENT_SCHEMA_VERSION!r}, "
+            f"got {instance['schema_version']!r}"
         )
 
     updated_at = instance["updated_at"]
@@ -232,6 +298,15 @@ def main():
         instance = json.loads(raw)
     except json.JSONDecodeError as e:
         sys.stderr.write(f"update-state: stdin is not valid JSON: {e}\n")
+        sys.exit(1)
+
+    # Issue #761: migrate-in-place an older but additively-compatible on-disk
+    # state up to the current schema_version BEFORE validation, rather than
+    # hard-failing on the version-string mismatch alone. A newer/unknown
+    # version returns an error here and is reported like a validation failure.
+    instance, migrate_err = migrate(instance)
+    if migrate_err is not None:
+        sys.stderr.write(f"update-state: validation error: {migrate_err}\n")
         sys.exit(1)
 
     errors = validate(instance)
