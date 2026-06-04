@@ -13,6 +13,19 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.5.2 (opt into contiguous-invariants strict tier, #740 / #724
+  follow-up):** Declared `"contiguous_invariants": true` at the top level of
+  `feature.json`, opting rabbit-decompose into the contract suite's Inv 30
+  strict tier (#724): its `## Invariants` section must now number contiguously
+  1..N with no holes, not merely strictly increasing. No reflow was needed —
+  the section was already contiguous 1..4 (verified via
+  `reflow-invariants.py --dry-run`). Flag-flip only; no SKILL.md body change,
+  so the four-way version lockstep (feature.json + docs/spec.md +
+  docs/contract.md + SKILL.md frontmatter) bumps 0.5.1 → 0.5.2. New E2E test
+  `test/test-contiguous-invariants-optin.py` asserts the flag is set and that
+  the live contract check (`check_invariant_monotonic_order`) passes for the
+  feature under the strict tier.
+
 - **v0.5.1 (housekeeping round 2 — measured line removal, #684 / #677 / #639):**
   Removal-not-reword pass over the feature's md surfaces under coding-rules §6
   (prove-it-dead-or-flag). Deletions, each verified: (1) the speculative
