@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.40.0
+version: 0.41.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1014,7 +1014,7 @@ Phase E merges complete.
 
    | Rung | Trigger (any file in the PR's diff matches) |
    |---|---|
-   | `restart` | (a) any path containing `settings.json`, OR (b) a brand-new file under `.claude/skills/*/SKILL.md` (additions > 0 AND deletions == 0 — i.e. pure-add), OR (c) any path matching `.claude/hooks/*.py` |
+   | `restart` | (a) any path containing `settings.json`, OR (b) a brand-new file under `.claude/skills/*/SKILL.md` (additions > 0 AND deletions == 0 — i.e. pure-add), OR (c) any path matching `.claude/hooks/*.py`, OR (d) any path matching `.claude/agents/*.md` — agent definitions load at session start, so BOTH a pure-add AND a modification require a restart (#537) |
    | `refresh` | any path matching `.claude/features/policy/*.md` OR `CLAUDE.md` (at any depth) |
    | `no-op` | none of the above |
 
@@ -1035,6 +1035,8 @@ Phase E merges complete.
    - `restart` from a `settings.json` touch.
    - `restart` from a brand-new `.claude/skills/foo/SKILL.md` add.
    - `restart` from a `.claude/hooks/bar.py` modification.
+   - `restart` from a brand-new `.claude/agents/foo.md` add (#537).
+   - `restart` from a `.claude/agents/foo.md` modification (#537).
    - `refresh` from `.claude/features/policy/coding-rules.md`.
    - `refresh` from `CLAUDE.md` touch.
    - `no-op` from an arbitrary
