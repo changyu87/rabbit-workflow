@@ -1,0 +1,34 @@
+{
+  "name": "rabbit-housekeep",
+  "version": "0.1.0",
+  "owner": "rabbit-workflow team",
+  "tdd_state": "test-green",
+  "housekeeping_clean": true,
+  "contiguous_invariants": true,
+  "status": "active",
+  "summary": "Repeatable measured verify-or-flag housekeeping skill. Runs slim/reduction against a feature, a set of features, or the whole repo in complexity-sized waves: each wave proves-it-dead-or-flags every claim, measures before/after line counts with a deterministic script, mandates actual removal (not rewording), and preserves named load-bearing tokens. Cross-feature/repo-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path.",
+  "surface": {
+    "skills": [
+      "skills/rabbit-housekeep/SKILL.md"
+    ],
+    "agents": [],
+    "hooks": [],
+    "commands": [],
+    "scripts": [
+      "scripts/measure-reduction.py"
+    ]
+  },
+  "deprecation_criterion": "when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand",
+  "manifest": [
+    {
+      "api": "publish_skill",
+      "args": {
+        "source": "skills/rabbit-housekeep/SKILL.md"
+      }
+    }
+  ],
+  "runtime": {},
+  "configuration": [],
+  "prompts": [],
+  "updated": "2026-06-04"
+}
