@@ -12,6 +12,29 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.55.0 (rename CONFIGURATION `human-approval` -> `tdd-autonomous` + polarity flip; #336 / phase 2 of #733):**
+  BREAKING rename of rabbit-cage's TDD-gating configurable. The `subcommand`
+  `human-approval` becomes `tdd-autonomous`, and the boolean polarity is
+  FLIPPED to match the CLI positive-streamlined naming rule (contract Inv 12):
+
+  | old | new | meaning |
+  | --- | --- | --- |
+  | `human-approval true` (default, gate active) | `tdd-autonomous false` (default, gate active) | Step 4 prompts for approval each cycle. |
+  | `human-approval false` (bypass active) | `tdd-autonomous true` (bypass active) | Step 4 is skipped; cycle runs autonomously. |
+
+  The default (`tdd-autonomous false`) keeps the TDD Step-4 human-approval
+  gate ACTIVE, identical to the prior default (`human-approval true`). The
+  `alert-on` value flips from `false` to `true` (bypass is now the positive
+  state), and `alert-message.text` is amended to
+  "TDD-AUTONOMOUS MODE ACTIVE — TDD cycle Step 4 (human approval) skipped".
+  The on-disk marker path (`.rabbit-human-approval-bypass`) is UNCHANGED —
+  marker dual-read coexistence already landed in #766, so the running
+  auto-evolve loop's preconditions are not disturbed. Cross-feature doc
+  references to `/rabbit-config human-approval` (rabbit-feature-touch SKILL,
+  tdd-subagent, scope-guard deny prose) are intentionally left for phase 3
+  (#768); this touch is bounded to rabbit-cage. rabbit-config (the mutation
+  surface) is retired separately in phase 4 (#769).
+
 - **v5.54.0 (reflow invariants to contiguous 1..N + opt into contiguous_invariants; #737):**
   rabbit-cage's `## Invariants` numbering had two holes (24 and 26) left by
   retired invariants. Ran the deterministic `contract/scripts/reflow-invariants.py`

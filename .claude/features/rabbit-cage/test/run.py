@@ -79,6 +79,7 @@ SUITES = [
     "test-install-update-reexec-loop-guard.py",
     "test-changelog-shape.py",
     "test-bypass-permissions-alert-text-inlines-revoke.py",
+    "test-tdd-autonomous-configurable.py",
     "test-scope-guard-revoke-uses-rabbit-config.py",
     "test-scope-guard-agent-sentinel.py",
     "test-stop-timestamp-entry-present.py",
