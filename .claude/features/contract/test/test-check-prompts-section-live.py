@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-check-prompts-section-live.py — Inv 53 live-repo integration test.
+"""test-check-prompts-section-live.py — Inv 45 live-repo integration test.
 
 Runs check_prompts_section against the REAL .claude/features/ tree (not a
 synthetic tempdir). Closes the regression class where a synthetic-mock

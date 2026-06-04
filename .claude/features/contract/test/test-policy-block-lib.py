@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-policy-block-lib.py — Inv 54
+"""test-policy-block-lib.py — Inv 46
 
 E2E test that contract.lib.policy_block.render_policy_block emits the
 canonical framing (sentinel, header banner, per-file section separators,

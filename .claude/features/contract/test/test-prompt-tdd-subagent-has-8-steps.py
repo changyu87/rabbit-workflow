@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-prompt-tdd-subagent-has-8-steps.py — Inv 57 (tdd-subagent.txt body shape)
+"""test-prompt-tdd-subagent-has-8-steps.py — Inv 47 (tdd-subagent.txt body shape)
 
 End-to-end test verifying the tdd-subagent.txt prompt template carries the
 8-step TDD cycle (with SYNC-DEPLOYED inserted as STEP 5 between IMPLEMENT and
@@ -181,7 +181,7 @@ else:
         )
 
 # t-placeholders-preserved: the original 9 placeholder names must still all
-# appear at least once (Inv 57 bidirectional slot correspondence is enforced
+# appear at least once (Inv 47 bidirectional slot correspondence is enforced
 # separately by test-templates-prompts-bundle.py, but this is an extra guard
 # against accidental rename during the rewrite).
 REQUIRED_PLACEHOLDERS = {

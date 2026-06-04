@@ -17,7 +17,7 @@ Public API:
       plus the file's full contents), and the footer banner. Raises
       FileNotFoundError if any path does not exist.
 
-Per spec Inv 54.
+Per spec Inv 46.
 
 Version: 1.0.0
 Owner: rabbit-workflow team (contract)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-spec-bodies-docs-layout.py — Inv 69 dual-read scan coverage.
+"""test-spec-bodies-docs-layout.py — Inv 59 dual-read scan coverage.
 
 End-to-end test proving the contract spec-body scanners
 (test-spec-bodies-no-historical-tags.py and, by extension, the
@@ -15,7 +15,7 @@ under tempfile.TemporaryDirectory(), using the
 RABBIT_HISTORICAL_TAGS_FEATURES_ROOT and RABBIT_HISTORICAL_TAGS_CLEANED
 env overrides so the test never depends on the live repo's layout.
 
-Behaviours covered (each from Inv 69):
+Behaviours covered (each from Inv 59):
 
   t1: a feature laid out flat-docs/ (docs/spec.md) with a baseline-tier
       historical tag is DETECTED (proving migrated features are scanned).

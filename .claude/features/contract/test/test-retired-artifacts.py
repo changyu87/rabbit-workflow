@@ -3,7 +3,7 @@
 
 Consolidates the unique assertions from three predecessor files (deleted in
 CONTRACT-BACKLOG-30 F6 consolidation):
-  - test-dead-relink-tests-deleted.py  (BUG-35 / Inv 17)
+  - test-dead-relink-tests-deleted.py  (BUG-35 / Inv 14)
   - test-backlog-27-retirements.py     (CONTRACT-BACKLOG-27)
   - test-bug-41-cleanup.py             (CONTRACT-BUG-41)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-runtime-check-release-update.py — exercises Inv 47's
+"""test-runtime-check-release-update.py — exercises Inv 39's
 check_release_update runtime API.
 
 check_release_update(*, repo_root) subprocesses scripts/check-release-update.py
@@ -64,7 +64,7 @@ else:
     elif "claude --resume" not in text:
         fail(f"t1: missing claude --resume hint: {text!r}")
     elif not text.startswith("\n"):
-        # rabbit_block leading newline contract (Inv 48c).
+        # rabbit_block leading newline contract (Inv 40c).
         fail(f"t1: text does not start with rabbit_block leading newline: {text!r}")
     else:
         ok("t1: newer + self_update_available=true -> print_result with all three lines")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-build-prompt.py — Inv 54
+"""test-build-prompt.py — Inv 46
 
 E2E test that scripts/build-prompt.py assembles a prompt file from the
 policy block plus a slot-substituted template body, walks

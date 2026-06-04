@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-runtime-api-enum-sourced-from-schema.py — CONTRACT-BUG-47 / Inv 41.
+"""test-runtime-api-enum-sourced-from-schema.py — CONTRACT-BUG-47 / Inv 33.
 
 Asserts that contract.lib.checks._RUNTIME_API_ENUM is sourced from
 schemas/runtime.schema.json at module-import time rather than being

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """build-prompt.py — assemble a complete prompt file from a registered
-prompts entry (per spec Inv 54).
+prompts entry (per spec Inv 46).
 
 Walks every <repo>/.claude/features/*/feature.json looking for a `prompts`
 entry whose `id` matches --callable-id, then assembles:

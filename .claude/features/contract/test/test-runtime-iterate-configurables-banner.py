@@ -3,7 +3,7 @@
 iterate_configurables_banner: per active configurable, emits EXACTLY ONE
 print_result (the alert-message). No auto-generated revoke line is
 appended; the configurable's alert-message.text is the SOLE source of
-user-facing alert prose (Inv 47).
+user-facing alert prose (Inv 39).
 """
 
 import json
@@ -82,7 +82,7 @@ with tempfile.TemporaryDirectory() as td:
     else:
         ok("t3: alert icon/color come from alert-message")
 
-# Inv 64 — per-id suppression hook driven by .rabbit-auto-evolve-active marker.
+# Inv 54 — per-id suppression hook driven by .rabbit-auto-evolve-active marker.
 # Suppression is scoped to ids {human-approval, bypass-permissions} only; other
 # configurables continue to emit even when the marker is present.
 

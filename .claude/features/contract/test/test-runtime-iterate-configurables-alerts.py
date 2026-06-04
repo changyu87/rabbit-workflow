@@ -221,7 +221,7 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t10: expected one BYPASS-PERMISSIONS alert, got {r!r}")
 
-# Inv 64 — per-id suppression hook driven by .rabbit-auto-evolve-active marker.
+# Inv 54 — per-id suppression hook driven by .rabbit-auto-evolve-active marker.
 # Suppression is scoped to ids {human-approval, bypass-permissions} only; other
 # configurables continue to emit even when the marker is present.
 

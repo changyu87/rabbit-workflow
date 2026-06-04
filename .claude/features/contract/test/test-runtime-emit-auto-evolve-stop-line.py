@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-runtime-emit-auto-evolve-stop-line.py — exercises
-emit_auto_evolve_stop_line per Inv 65. Returns [] only when
+emit_auto_evolve_stop_line per Inv 55. Returns [] only when
 .rabbit-auto-evolve-active is absent (the marker gates the whole composite
 surface). When active, returns exactly ONE entry: a state marker (strict
 priority aborted > restart-needed > stop-requested > running) wins when

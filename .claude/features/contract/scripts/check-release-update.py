@@ -15,7 +15,7 @@ latest published release regardless of target branch. The old branch-ref
 .version fetch (raw.githubusercontent.com/<repo>/<channel>/.version) was
 retired in #508 because it silently never detected tag-based releases.
 
-Behavior (per contract spec Inv 63):
+Behavior (per contract spec Inv 53):
 
   - missing/unreadable .version: silent exit 0, no stdout.
   - throttled (now - last_check < interval): silent exit 0, no stdout.

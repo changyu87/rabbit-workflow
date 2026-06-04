@@ -34,7 +34,7 @@ import sys
 import time
 
 
-# Inv 64 — per-id suppression for the rabbit-auto-evolve composite banner.
+# Inv 54 — per-id suppression for the rabbit-auto-evolve composite banner.
 # When .rabbit-auto-evolve-active is present, the two configurables whose ids
 # appear in this set are skipped by iterate_configurables_alerts/_banner.
 # Any other configurable continues to emit normally (per-id-scoped, not
@@ -234,7 +234,7 @@ def check_drift_regenerate(target: str, producer: str, alert: dict,
 
     args - optional dict of producer-specific kwargs forwarded to
     lib.producers.call_producer. Defaults to None (treated as {}). Per
-    spec Inv 47, this parameter exists because producers like
+    spec Inv 39, this parameter exists because producers like
     generate-claude-md require named kwargs (policy_source,
     header_source) declared in the RUNTIME entry's args block; a
     hardcoded-empty-args call path leaves the producer unable to
@@ -443,7 +443,7 @@ def iterate_configurables_alerts(*, repo_root: str):
             continue
         for cfg in configuration:
             if suppressed and cfg.get("id") in _AUTO_EVOLVE_SUPPRESSED_IDS:
-                continue  # Inv 64: per-id suppressed under auto-evolve marker
+                continue  # Inv 54: per-id suppressed under auto-evolve marker
             alert_on = cfg.get("alert-on")
             alert_msg = cfg.get("alert-message")
             if alert_on is None or not isinstance(alert_msg, dict):
@@ -462,7 +462,7 @@ def iterate_configurables_banner(*, repo_root: str):
     """Like iterate_configurables_alerts but for SessionStart. Each active
     override emits EXACTLY ONE print_result: the alert-message line.
 
-    Per Inv 47, both iterate_configurables_alerts and
+    Per Inv 39, both iterate_configurables_alerts and
     iterate_configurables_banner emit one print_result per active override;
     neither appends an auto-generated revoke line. The configurable's
     alert-message.text is the SOLE source of user-facing alert prose, and
@@ -477,7 +477,7 @@ def iterate_configurables_banner(*, repo_root: str):
             continue
         for cfg in configuration:
             if suppressed and cfg.get("id") in _AUTO_EVOLVE_SUPPRESSED_IDS:
-                continue  # Inv 64: per-id suppressed under auto-evolve marker
+                continue  # Inv 54: per-id suppressed under auto-evolve marker
             alert_on = cfg.get("alert-on")
             alert_msg = cfg.get("alert-message")
             if alert_on is None or not isinstance(alert_msg, dict):
@@ -689,7 +689,7 @@ def check_release_update(*, repo_root: str) -> dict:
     """Thin runtime wrapper around scripts/check-release-update.py.
 
     Subprocesses the helper (which owns the throttle, urllib fetch, and
-    version compare per Inv 63), parses its JSON stdout, and translates
+    version compare per Inv 53), parses its JSON stdout, and translates
     the result into a typed runtime return:
 
       - {"newer": true, ...}  -> print_result(text, "📦", "yellow") where
@@ -701,7 +701,7 @@ def check_release_update(*, repo_root: str) -> dict:
         subprocess exception) -> ok_result() silently. NEVER blocks or
         surfaces errors to Claude.
 
-    Per spec Inv 47, this function contains NO HTTP, version-compare, or
+    Per spec Inv 39, this function contains NO HTTP, version-compare, or
     throttle logic — that all lives in the helper script.
     """
     script = os.path.join(repo_root, ".claude", "features", "contract",
@@ -749,7 +749,7 @@ def check_release_update(*, repo_root: str) -> dict:
 
 
 def emit_auto_evolve_banner(*, repo_root: str) -> list:
-    """Inv 65 — composite SessionStart banner for rabbit-auto-evolve.
+    """Inv 55 — composite SessionStart banner for rabbit-auto-evolve.
 
     Returns [] when .rabbit-auto-evolve-active is absent (the marker gates the
     entire auto-evolve composite surface). When active, delegates the line-1
@@ -800,7 +800,7 @@ def emit_auto_evolve_banner(*, repo_root: str) -> list:
         return []
 
 
-# Inv 65 stop-line priority order: aborted > restart-needed > stop-requested >
+# Inv 55 stop-line priority order: aborted > restart-needed > stop-requested >
 # running. The first matching state marker wins; later entries are dead-letter.
 _AUTO_EVOLVE_STOP_LINE_MARKERS = (
     (".rabbit-auto-evolve-aborted",
@@ -817,7 +817,7 @@ _AUTO_EVOLVE_STOP_LINE_MARKERS = (
      "🔁", "green"),
 )
 
-# Inv 65 steady active/idle line: emitted when .rabbit-auto-evolve-active is
+# Inv 55 steady active/idle line: emitted when .rabbit-auto-evolve-active is
 # present but none of the four short-lived state markers is. This is the
 # dominant steady state (active loop between ticks).
 _AUTO_EVOLVE_STOP_LINE_IDLE = (
@@ -826,7 +826,7 @@ _AUTO_EVOLVE_STOP_LINE_IDLE = (
 
 
 def emit_auto_evolve_stop_line(*, repo_root: str) -> list:
-    """Inv 65 — composite Stop-hook line for rabbit-auto-evolve.
+    """Inv 55 — composite Stop-hook line for rabbit-auto-evolve.
 
     Returns [] only when .rabbit-auto-evolve-active is absent (the marker
     gates the entire auto-evolve composite surface). When active, returns
@@ -845,7 +845,7 @@ def emit_auto_evolve_stop_line(*, repo_root: str) -> list:
 
 
 def emit_stop_timestamp(*, repo_root: str) -> list:
-    """Inv 67 — universal Stop-event turn-end timestamp.
+    """Inv 57 — universal Stop-event turn-end timestamp.
 
     Returns exactly one print_result entry whose text is the current UTC
     time formatted as HH:MM:SS, icon ⏱, color green. Reads no markers, no

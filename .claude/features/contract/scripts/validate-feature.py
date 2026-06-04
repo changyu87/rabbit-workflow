@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """validate-feature.py — thin CLI shim around
-contract.lib.checks.validate_feature (spec Inv 14, Inv 32, Inv 36b, Inv 37).
+contract.lib.checks.validate_feature (spec Inv 11, Inv 25, Inv 28b, Inv 29).
 
 Usage: validate-feature.py <feature-dir>
 Exit:  0 pass; 1 validation error(s); 2 invocation error.

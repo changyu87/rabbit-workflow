@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # test-cli-naming-convention.py — assert spec declares CLI naming convention
-# (Inv 11: boolean values use true/false exclusively; Inv 12: positive-streamlined names).
+# (Inv 8: boolean values use true/false exclusively; Inv 9: positive-streamlined names).
 #
 # E2E spec-text assertions per impl-suggestion-contract.json.
 
@@ -33,28 +33,29 @@ check("spec contains '## CLI Naming Convention' section", section_match is not N
 
 SECTION = section_match.group(1) if section_match else ""
 
-# Locate invariant 11 — a numbered list item starting with "11." in the In Scope list.
-inv11_match = re.search(r"^11\.\s+(.+?)(?=^\d+\.\s|\Z)", SPEC, re.DOTALL | re.MULTILINE)
-check("spec contains invariant 11", inv11_match is not None)
+# Locate invariant 8 — a numbered list item starting with "8." (the boolean
+# true/false invariant after the #724 contiguous reflow).
+inv11_match = re.search(r"^8\.\s+(.+?)(?=^\d+\.\s|\Z)", SPEC, re.DOTALL | re.MULTILINE)
+check("spec contains invariant 8", inv11_match is not None)
 INV11 = inv11_match.group(1) if inv11_match else ""
 
-# Locate invariant 12.
-inv12_match = re.search(r"^12\.\s+(.+?)(?=^\d+\.\s|\Z|^##)", SPEC, re.DOTALL | re.MULTILINE)
-check("spec contains invariant 12", inv12_match is not None)
+# Locate invariant 9 (the positive-streamlined-names invariant).
+inv12_match = re.search(r"^9\.\s+(.+?)(?=^\d+\.\s|\Z|^##)", SPEC, re.DOTALL | re.MULTILINE)
+check("spec contains invariant 9", inv12_match is not None)
 INV12 = inv12_match.group(1) if inv12_match else ""
 
-# Inv 11 text — must mention true and false as the canonical boolean values,
+# Inv 8 text — must mention true and false as the canonical boolean values,
 # and prohibit at least `enabled`/`disabled`.
-check("Inv 11 mentions 'true'", "true" in INV11)
-check("Inv 11 mentions 'false'", "false" in INV11)
-check("Inv 11 prohibits 'enabled'", "enabled" in INV11)
-check("Inv 11 prohibits 'disabled'", "disabled" in INV11)
+check("Inv 8 mentions 'true'", "true" in INV11)
+check("Inv 8 mentions 'false'", "false" in INV11)
+check("Inv 8 prohibits 'enabled'", "enabled" in INV11)
+check("Inv 8 prohibits 'disabled'", "disabled" in INV11)
 
-# Inv 12 text — must prohibit each negating prefix.
-check("Inv 12 prohibits 'no-' prefix", "no-" in INV12)
-check("Inv 12 prohibits 'disable-' prefix", "disable-" in INV12)
-check("Inv 12 prohibits 'skip-' prefix", "skip-" in INV12)
-check("Inv 12 prohibits 'without-' prefix", "without-" in INV12)
+# Inv 9 text — must prohibit each negating prefix.
+check("Inv 9 prohibits 'no-' prefix", "no-" in INV12)
+check("Inv 9 prohibits 'disable-' prefix", "disable-" in INV12)
+check("Inv 9 prohibits 'skip-' prefix", "skip-" in INV12)
+check("Inv 9 prohibits 'without-' prefix", "without-" in INV12)
 
 # CLI Naming Convention section — Rule 1 must declare true/false.
 check("Section Rule 1 contains 'true'", "true" in SECTION)

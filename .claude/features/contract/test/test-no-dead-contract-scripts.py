@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-no-dead-contract-scripts.py — Inv 34 / CONTRACT-BACKLOG-24
+"""test-no-dead-contract-scripts.py — Inv 27 / CONTRACT-BACKLOG-24
 
 E2E test that every Python script under
 `.claude/features/contract/scripts/` (excluding `enforcement/`) has at least
@@ -132,7 +132,7 @@ def has_production_caller(basename):
     return qualifying
 
 
-# KNOWN_ISSUES — scripts pending a production caller. Follow the Inv 38
+# KNOWN_ISSUES — scripts pending a production caller. Follow the Inv 30
 # pattern: add only when a multi-plan cycle is in flight, remove once the
 # caller lands. Each entry must name the plan / backlog that will close it.
 KNOWN_ISSUES = {

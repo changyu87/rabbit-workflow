@@ -12,7 +12,7 @@ EITHER layout: a feature whose spec.md/contract.md has been moved to the flat
 docs/ layout is still scanned, closing the false-green class where a migrated
 feature silently dropped out of the scan.
 
-Two-tier enforcement with per-feature opt-in (Inv 49):
+Two-tier enforcement with per-feature opt-in (Inv 41):
 
   Baseline tier (enforced on ALL features, unconditionally):
     Plan [A-F]      — cleanup wave / plan identifiers
@@ -65,7 +65,7 @@ replaces it): the value is a newline-or-semicolon-separated list of
 retained for backward compatibility, but the `line` field is accepted and
 IGNORED for matching (matching is content-keyed); only
 `(feature, logical_doc, substring)` is used. A hermetic test can thus
-assert allowlist suppression (applies to BOTH tiers per Inv 70) without
+assert allowlist suppression (applies to BOTH tiers per Inv 60) without
 editing the live production allowlist. Absent the overrides the checker
 behaves exactly as the production check (real features root; opt-in read
 from each feature's feature.json housekeeping_clean flag; production
@@ -158,22 +158,22 @@ else:
 # occurrence without matching unrelated lines in the same surface (it is the
 # only disambiguator now that line numbers are gone).
 ALLOWLIST = {
-    # contract Inv 36 — the literal `status` enum value "retired" and its
+    # contract Inv 28 — the literal `status` enum value "retired" and its
     # documented retirement semantics. "retired" here is a live design
     # term (the feature-status API value), not a historical-burden tag.
-    # The substrings pin the specific Inv 36 enum-semantics sentences.
+    # The substrings pin the specific Inv 28 enum-semantics sentences.
     ("contract", "spec.md", '(default when omitted) or `"retired"`'),
     ("contract", "spec.md", 'enum: ["active", "retired"]'),
     ("contract", "spec.md", "exit 0 with a `RETIRED:` notice"),
     ("contract", "spec.md", "MUST mark retired features"),
-    # contract Inv 49 — the strict-tier pattern DEFINITIONS. These lines
+    # contract Inv 41 — the strict-tier pattern DEFINITIONS. These lines
     # quote the regex (`#[0-9]+`) and the tombstone-word vocabulary
     # (`superseded`, `retired`, `obsoleted`) that the check itself rejects;
     # they are algorithm-spec samples, not historical references.
     ("contract", "spec.md", "(`#[0-9]+`), `per issue`"),
     ("contract", "spec.md", "tombstone language (`superseded`, `retired`,"),
     ("contract", "spec.md", "`obsoleted`, case-insensitive)"),
-    # rabbit-config Inv 36 — the literal `status` enum value "retired".
+    # rabbit-config Inv 28 — the literal `status` enum value "retired".
     # rabbit-config's spec.md documents rabbit-config.py's
     # `data.get("status") == "retired"` check (status enum
     # ["active","retired"]); the "skipping retired features" line names the
@@ -182,10 +182,10 @@ ALLOWLIST = {
     # cannot be reworded without making the spec inaccurate. Mirrors the
     # contract OWN-spec retired-enum precedent above (#634).
     ("rabbit-config", "spec.md", "skipping retired features"),
-    # rabbit-auto-evolve Inv 22 / contract Inv 36 — the literal `status`
+    # rabbit-auto-evolve Inv 19 / contract Inv 28 — the literal `status`
     # enum value "retired". rabbit-auto-evolve's spec.md documents
     # triage-issue.py's verbatim `status == "retired"` check (feature.json
-    # status enum) on the Inv 22 triage decision-table row
+    # status enum) on the Inv 19 triage decision-table row
     # (`feature.json.status == "retired"` -> `close-not-planned` /
     # `feature-retired`); the row names the load-bearing literal value the
     # triage interpreter checks verbatim plus the `feature-retired` reason
@@ -198,7 +198,7 @@ ALLOWLIST = {
 
 
 def _parse_allowlist_override(raw):
-    """Parse the RABBIT_HISTORICAL_TAGS_ALLOWLIST override value (Inv 70).
+    """Parse the RABBIT_HISTORICAL_TAGS_ALLOWLIST override value (Inv 60).
 
     The value is a newline-or-semicolon-separated list of
     `feature:logical_doc:line:substring` records. The 4-field record shape

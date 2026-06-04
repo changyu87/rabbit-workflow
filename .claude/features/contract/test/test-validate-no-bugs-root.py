@@ -31,7 +31,7 @@ def make_fixture():
     with open(os.path.join(d, "specs/contract.md"), "w") as f:
         f.write("# Minimal contract\nContent for test fixture.\n")
 
-    # test/run.py must exist and be executable (validate-feature.py checks for run.py per Inv 14)
+    # test/run.py must exist and be executable (validate-feature.py checks for run.py per Inv 11)
     run_py = os.path.join(d, "test/run.py")
     with open(run_py, "w") as f:
         f.write('#!/usr/bin/env python3\nimport sys; sys.exit(0)\n')

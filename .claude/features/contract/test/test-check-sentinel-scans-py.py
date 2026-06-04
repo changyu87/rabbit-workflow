@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-check-sentinel-scans-py.py — Inv 20.
+"""test-check-sentinel-scans-py.py — Inv 17.
 
 check-sentinel.py MUST scan .py files (Python-only stack). End-to-end: on a
 directory with a .py file lacking the sentinel, the script must fail.
@@ -26,9 +26,9 @@ if '.py' not in src:
 else:
     print("PASS t1: script source mentions .py")
 
-# t1b: script must NOT walk .sh files (Python-only stack per Inv 8)
+# t1b: script must NOT walk .sh files (Python-only stack per Inv 5)
 if '.sh' in src:
-    print("FAIL t1b: script still references .sh (Python-only stack per Inv 8)", file=sys.stderr)
+    print("FAIL t1b: script still references .sh (Python-only stack per Inv 5)", file=sys.stderr)
     FAIL = 1
 else:
     print("PASS t1b: script does not reference .sh")

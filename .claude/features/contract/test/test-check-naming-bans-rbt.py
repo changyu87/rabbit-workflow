@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""test-check-naming-bans-rbt.py — BUG-3 / Inv 15
+"""test-check-naming-bans-rbt.py — BUG-3 / Inv 12
 
-End-to-end test that check-naming.py bans the 'rbt-' prefix (rabbit-cage Inv 10).
+End-to-end test that check-naming.py bans the 'rbt-' prefix (rabbit-cage Inv 7).
 
 t1: a fixture .claude/ tree containing a file under .claude/agents/ with an
     'rbt-' prefix triggers a violation (exit 1, stderr mentions rbt-).

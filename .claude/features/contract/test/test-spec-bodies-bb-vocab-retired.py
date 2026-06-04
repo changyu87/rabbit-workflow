@@ -9,7 +9,7 @@ current vocabulary ("issue", "rabbit-managed issue", "bug or enhancement"),
 NOT the retired "B/B" / "bug-and-backlog" / "bug/backlog" / standalone
 "backlog" terms.
 
-This is a regression guard for the prove-it-dead retirement, not an Inv 49
+This is a regression guard for the prove-it-dead retirement, not an Inv 41
 strict-tier check (which already bans #NNN and tombstone language). It scans
 contract's OWN live doc surfaces line by line, flagging current-usage B/B
 prose tokens. A small ALLOWLIST exempts load-bearing literals that legitimately
@@ -17,7 +17,7 @@ contain these tokens and CANNOT be reworded without making the spec inaccurate:
 
   - the `bug-backlog-files` git branch name (the actual storage branch where
     rabbit-files live; referenced verbatim across features), and
-  - the `BACKLOG-[0-9]` / "BACKLOG-N" regex tokens enforced by Inv 49's
+  - the `BACKLOG-[0-9]` / "BACKLOG-N" regex tokens enforced by Inv 41's
     baseline tier (the literal pattern the checker matches).
 
 Allowlist entries are matched by (relative_path, substring) so a token only
@@ -54,7 +54,7 @@ ALLOWLIST = {
     "docs/spec.md": [
         # The actual git branch name where rabbit-files are stored.
         "bug-backlog-files",
-        # Inv 49 baseline-tier regex tokens — the literal patterns enforced.
+        # Inv 41 baseline-tier regex tokens — the literal patterns enforced.
         "BACKLOG-[0-9]",
         "BACKLOG-N",
     ],

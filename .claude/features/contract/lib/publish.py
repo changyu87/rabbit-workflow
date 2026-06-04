@@ -104,7 +104,7 @@ def publish_hook(event: str, source: str, matcher: str = "*", *,
     if not isinstance(data, dict):
         data = {}
 
-    # Inv 50: command MUST be CWD-independent. Two forms are emitted based on
+    # Inv 42: command MUST be CWD-independent. Two forms are emitted based on
     # the caller's runtime env. Plugin form is used when RABBIT_ROOT is set
     # (deployed `.rabbit/` install where install.py writes env.RABBIT_ROOT into
     # settings.json). Standalone form is used otherwise (dev workspace with
@@ -156,7 +156,7 @@ def publish_settings(source: str, *, feature_dir: str, repo_root: str) -> CheckR
 
     source — feature-dir-relative path to the settings JSON source file.
 
-    Per spec Inv 44: the destination ``hooks`` section is the shared registration
+    Per spec Inv 36: the destination ``hooks`` section is the shared registration
     surface for every feature's ``publish_hook`` calls, so a raw file copy
     clobbers cross-feature hook registrations. The merge rule is:
       - non-hooks fields: source-wins (overlay every source key onto existing);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-find-feature-plugin-mode.py — Inv 23 (amended for #300).
+"""test-find-feature-plugin-mode.py — Inv 20 (amended for #300).
 
 find-feature.py MUST dual-detect plugin mode from either root form:
 

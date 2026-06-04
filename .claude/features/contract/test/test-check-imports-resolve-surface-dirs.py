@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-check-imports-resolve-surface-dirs.py — Inv 25.
+"""test-check-imports-resolve-surface-dirs.py — Inv 22.
 
 check-imports-resolve.py import-target regex MUST cover all .claude surface
 dirs: features/, hooks/, skills/, commands/, agents/. End-to-end: a doc

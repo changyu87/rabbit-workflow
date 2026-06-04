@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-templates-validate-against-schemas.py — CONTRACT-BUG-48 / Inv 60.
+"""test-templates-validate-against-schemas.py — CONTRACT-BUG-48 / Inv 50.
 
 Every <X>-template.json under templates/ MUST validate against its sibling
 <X>.schema.json (or <X>.json.schema.json) under schemas/ — except for
@@ -8,7 +8,7 @@ strings like {{version}}. Coverage:
 
   t1: project-map-template.json validates against project-map.json.schema.json
   t2: feature-json-template.json validates against feature.json.schema.json
-      (redundant with Inv 22 but kept for cross-template consistency)
+      (redundant with Inv 19 but kept for cross-template consistency)
 
 Hand-rolled stdlib validation (no jsonschema dep) matching the pattern in
 test-project-map-schema-shape.py. Pattern checks are intentionally skipped
@@ -115,8 +115,8 @@ check_template_schema_pair(
 )
 
 # t2: feature-json-template.json validates against feature.json.schema.json
-# (redundant with Inv 22's test-feature-template-validates-schema.py but
-# asserted here for cross-template consistency of Inv 60).
+# (redundant with Inv 19's test-feature-template-validates-schema.py but
+# asserted here for cross-template consistency of Inv 50).
 check_template_schema_pair(
     "t2",
     "feature-json-template.json",

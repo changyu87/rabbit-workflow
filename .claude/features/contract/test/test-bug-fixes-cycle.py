@@ -12,7 +12,7 @@ stubs here.
   BUG-27    test-files-exist.py checks skill-template.md, command-template.md, handoff-template.md
   BACKLOG-3 test-templates-have-version.py tightened to reject _template_version
   BACKLOG-4 every feature.json in the repo validates against feature.json.schema.json
-  BACKLOG-5 spec Inv 10 (rbt- banned) asserted by behavioural test (check-naming.py rejects rbt-)
+  BACKLOG-5 spec Inv 7 (rbt- banned) asserted by behavioural test (check-naming.py rejects rbt-)
   (BACKLOG-6 entry RETIRED in Plan F.1 — per-feature publish.json files were
    deleted; copy-file basename consistency no longer applies. Equivalent
    source→deployed parity is asserted byte-for-byte by each feature's
@@ -115,7 +115,7 @@ except ImportError:
     ok("BACKLOG-4: skipped (jsonschema not installed)")
 
 
-# BACKLOG-5: spec Inv 10 — check-naming.py bans rbt-. Run the script against a temp file with rbt- name.
+# BACKLOG-5: spec Inv 7 — check-naming.py bans rbt-. Run the script against a temp file with rbt- name.
 import tempfile
 
 check_naming = os.path.join(FEATURE_DIR, "scripts/enforcement/check-naming.py")
@@ -127,7 +127,7 @@ if os.path.isfile(check_naming):
         open(os.path.join(cmds, "rbt-bogus.md"), "w").close()
         result = subprocess.run([sys.executable, check_naming, td], capture_output=True, text=True)
         if result.returncode != 0 and "rbt-" in (result.stdout + result.stderr):
-            ok("BACKLOG-5: check-naming.py rejects rbt- prefix (Inv 10 enforced)")
+            ok("BACKLOG-5: check-naming.py rejects rbt- prefix (Inv 7 enforced)")
         else:
             ko(f"BACKLOG-5: check-naming.py did not flag rbt- (rc={result.returncode}, out={result.stdout!r}, err={result.stderr!r})")
 else:
@@ -157,7 +157,7 @@ else:
 # no longer applies because the wrappers no longer exist. The surviving
 # requirement (producers go through rabbit_print rather than emitting inline
 # ANSI/brand strings) is covered by test-bypass-marker-note.py (tdd-subagent
-# Inv 24) and test-branding.py (tdd-state-machine Inv 9).
+# Inv 21) and test-branding.py (tdd-state-machine Inv 6).
 
 
 # BACKLOG-9: contract.md provides.scripts includes all live scripts in scripts/ tree

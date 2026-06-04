@@ -10,7 +10,7 @@ narration belongs in commit messages and the CHANGELOG, not the spec body.
 
 The phrases removed and the #639 check that proved each dead:
 
-  1. "written by the PreToolUse `prompt-injector.py` hook from Inv 55" (Inv 47)
+  1. "written by the PreToolUse `prompt-injector.py` hook from Inv 55" (Inv 39)
      — path/symbol check: `prompt-injector.py` is not git-tracked anywhere in the
        real surface and Inv 55 is RETIRED (CHANGELOG "Retired invariants" entry
        Inv 55). The dead cross-reference to a deleted hook + retired invariant is
@@ -18,20 +18,20 @@ The phrases removed and the #639 check that proved each dead:
        `check_prompt_injection_failures` is preserved.
 
   2. "The previous behavior (3 inlined line-2 variants in this function) is
-     REMOVED in v1.51.1." (Inv 65) — historical-edit narration of a past
+     REMOVED in v1.51.1." (Inv 55) — historical-edit narration of a past
      refactor. The CURRENT behavior (delegate to banner-status.py) is stated
      immediately above; the "what it used to do and when it changed" sentence is
      CHANGELOG material (recorded verbatim in CHANGELOG v1.51.1).
 
   3. "All future line-2 variants — including the running variant introduced by
      rabbit-auto-evolve v0.7.5 — are picked up automatically without any change
-     to contract." (Inv 65) — version-pinned forward-looking narration; the
+     to contract." (Inv 55) — version-pinned forward-looking narration; the
      delegation contract already establishes that contract owns the mechanism and
      rabbit-auto-evolve owns the content.
 
   4. "The Surface list and the \"Plain-text templates\" template-marker-convention
      bullet have both been updated to remove all references to the dead template."
-     (Inv 58) — historical-edit narration. The CURRENT invariant ("the dead
+     (Inv 48) — historical-edit narration. The CURRENT invariant ("the dead
      template MUST NOT exist") is the normative statement; the past editing action
      that achieved compliance is CHANGELOG material.
 
