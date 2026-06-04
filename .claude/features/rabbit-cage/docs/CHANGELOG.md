@@ -12,6 +12,33 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.50.0 (housekeeping Phase 2 — history-free doc surfaces; strict-tier opt-in, #549):**
+  Opted rabbit-cage into the strict housekeeping tier by setting top-level
+  `"housekeeping_clean": true` in `feature.json`, then scrubbed all
+  historical-burden tags from `docs/spec.md` and `docs/contract.md` so the
+  surfaces describe the CURRENT design only (Inv 49 strict tier). No invariant
+  was retired, removed, or renumbered — only historical framing was stripped;
+  the substantive behaviour of every invariant is preserved verbatim. The
+  stripped references, recorded here for provenance:
+  - Load-bearing `feature.json status == "retired"` enum references (Dispatcher
+    Behavior step 1, `run_publish_loop`, Inv 2, and the install-closure
+    exclusion of tdd-state-machine) were rephrased to cite the contract status
+    enum / retirement semantics (contract Inv 36) instead of restating the
+    tombstone word — mirroring the rabbit-feature (#555) / rabbit-config (#634)
+    precedent, keeping the change single-feature.
+  - Inv 14's "stale `@`-import to a retired source" → "to a removed source"
+    (here "retired" meant a deleted file, not the status enum).
+  - Bare issue/PR refs stripped from prose and invariant titles:
+    Inv 22 ("the flag was retired per #273"), Inv 22h (#297), Inv 28 (#307),
+    Inv 29a (bug #287), Inv 29 (#499/#508), Inv 30 (example `#318` → `#N`;
+    "this PR" + `#281`–`#318` seed narrative reworded present-tense),
+    Inv 33 (#413), Inv 34 (#503 title + "pre-#503"), Inv 36 (#449 title +
+    "#326 form"), Inv 37 (#493), Inv 38 (#492), Inv 39 (#545 title + "#503"
+    cross-refs + "pre-#545"), Inv 40 (#629 title + "#326/#449 form").
+  CHANGELOG.md is exempt from the strict scan (history lives here), so the
+  issue numbers above are retained for traceability. Doc surfaces only:
+  no behaviour, hook, command, or script changed; no republish needed.
+
 - **v5.49.0 (version-box release source + emoji alignment fix, #629):** Added
   Inv 40 — the SessionStart version box (Inv 36) now shows the rabbit RELEASE
   version (the git tag cut by release-bump.py, e.g. `v1.11.0`) rather than
