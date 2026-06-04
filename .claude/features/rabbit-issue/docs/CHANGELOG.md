@@ -12,6 +12,32 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.8.1 (housekeeping round 2 — measured dead-prose removal, #686):**
+  REMOVAL pass under #639 (prove-it-dead-or-flag) and #677 (success = lines
+  deleted, not tags scrubbed). Total md reduction: 524 → 464 lines (−60,
+  −11.5%). `skills/rabbit-issue/SKILL.md` (290 → 249): deleted the
+  "Why This Shape" rationale section (pure historical narration of the
+  retired rabbit-file design — the live routing fact survives in Overview);
+  removed the duplicated SHA/history negative-space paragraph from Lifecycle
+  (spec §SHA/event history is authoritative); collapsed the verbatim 6-row
+  Label-Schema table to a prose summary pointing at spec §Label schema;
+  trimmed the duplicated projectCards rationale and dead `specs/spec.md`
+  fallback from the Work Protocol (spec is authoritative; specs/ cutover is
+  complete and test-pinned); collapsed the filed-by rationale to a terse
+  operational pointer. `docs/spec.md` (185 → 166): deleted the
+  git-remote-removal history paragraph (dead historical burden — the live
+  resolution order remains); deleted the dead "live smoke test" clause
+  (grep-proven absent: no smoke-test artifact exists) and the feature's own
+  TDD-bootstrap narration; collapsed the redundant third projectCards
+  paragraph and the filed-by metrics over-explanation to single authoritative
+  statements. `docs/contract.md` (49, unchanged) and the runtime scripts/test
+  suite were left untouched — every contract key is load-bearing and the
+  e2e/static suite already pins every preserved behavior. #639 checks per
+  deletion: `--fix-commits` (grep: never existed in code), `live smoke test`
+  (grep: absent), `git remote get-url origin` (grep: removed from _gh.py),
+  `specs/` fallback (test-spec-presence pins cutover complete). No new test
+  files (md-only mandate); all suites GREEN before and after.
+
 - **v1.8.0 (retire legacy B/B terminology on live surfaces):** Replaced the
   legacy "bug-and-backlog (B/B)" / standalone "backlog" custom-store vocabulary
   on the live surfaces with current rabbit-issue terminology — "issue" / "bug or
