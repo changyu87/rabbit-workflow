@@ -12,6 +12,27 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v0.7.1 (housekeeping round 2 — measured line removal, #687, under #639):**
+  Removal pass on `docs/spec.md` (80 → 67 lines, −13). Deletions, each verified
+  by a deterministic check before removal: (1) the `scripts/` Surface entry and
+  Inv 4 describing `scripts/bootstrap.sh` — `find` returns no such file and no
+  `test/test-bootstrap.py` exists, so the artifact and its coverage are proven
+  dead (the spec framed it as speculative "MAY exist"); the now-orphaned "and
+  the bootstrap helper" fragment in Purpose was removed with it; (2) the Inv 1
+  t1–t5 behavioral-case enumeration and the Inv 2/Inv 3 per-test (t1–t7)
+  coverage parentheticals — redundant restatements of `test/test-*.py`, which
+  remain the authoritative source (collapsed to a pointer); (3) the Tests
+  section's stale Inv-4 bootstrap line and per-invariant test-mapping recap,
+  collapsed to one sentence. `docs/contract.md` was inspected and left unchanged:
+  its JSON block is the minimal all-empty machine-first contract schema with no
+  removable dead content. The "spec-seeder feature" ownership exclusion was
+  FLAGGED (unverifiable — no `spec-seeder` dir, rabbit-spec calls it the
+  "former" feature, rabbit-feature still references its dispatch path) as
+  housekeeping issue #706 and KEPT per coding-rules §6. No invariants renumbered
+  beyond removing Inv 4; no behaviour changed; existing E2E suite stays green.
+  `feature.json` and `docs/spec.md` versions bumped to 0.7.1, `docs/contract.md`
+  to 0.2.1.
+
 - **v0.7.0 (retire live B/B vocabulary, #665, part of #420):** Reworded the
   one live bug-and-backlog ("B/B") prose reference in `docs/spec.md` to the
   current rabbit-issue vocabulary. The "What this feature does NOT define"
