@@ -26,7 +26,7 @@ SUITES = [
     "test-scope-guard-rabbit-allowlist.py",
     "test-scope-per-feature-marker.py",
     "test-RABBIT-CAGE-17-quoted-strings.py",
-    "test-repo-permissions.py",
+    "test-repo-permissions-retired.py",
     "test-RABBIT-CAGE-BUG-104-hook-path-format.py",
     "test-write-mode-marker-wired.py",
     "test-scope-guard-plugin-mode.py",

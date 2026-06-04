@@ -12,6 +12,7 @@ SUITES = [
     "test-feature-json-shape.py",
     "test-skill-structure.py",
     "test-skill-description.py",
+    "test-skill-no-dead-permissions.py",
     "test-interpreter-unknown-subcommand.py",
     "test-interpreter-value-dispatch.py",
     "test-interpreter-action-dispatch.py",

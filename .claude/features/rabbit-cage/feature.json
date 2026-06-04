@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.51.0",
+  "version": "5.52.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "housekeeping_clean": true,
@@ -363,30 +363,6 @@
       },
       "validation": {
         "reject_chars": "():\\s"
-      }
-    },
-    {
-      "id": "permissions",
-      "subcommand": "permissions",
-      "actions": {
-        "lock": {
-          "api": "run_feature_script",
-          "args": {
-            "script": "scripts/repo-permissions.py",
-            "args": [
-              "lock"
-            ]
-          }
-        },
-        "unlock": {
-          "api": "run_feature_script",
-          "args": {
-            "script": "scripts/repo-permissions.py",
-            "args": [
-              "unlock"
-            ]
-          }
-        }
       }
     }
   ]

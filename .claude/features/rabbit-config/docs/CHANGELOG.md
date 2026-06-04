@@ -14,6 +14,26 @@ version, and the `skills/rabbit-config/SKILL.md` frontmatter version
 
 ## Version notes
 
+- **v1.7.1 (drop dangling `permissions lock/unlock` references):** rabbit-cage
+  retired the dead `permissions lock|unlock` configurable and deleted its
+  backing script `repo-permissions.py`. rabbit-config's `SKILL.md` still
+  documented that subcommand, so those references dangled. Removed the
+  `permissions (lock/unlock)` enumeration item and the `permissions lock|unlock`
+  trigger phrase from the frontmatter description (configurables enumeration now
+  ends at (5) bash-allow); removed the `permissions lock|unlock` CLI-table row;
+  and removed the `rabbit-config permissions lock` / `unlock` example block
+  (the now-empty "Actions-style subcommands (no extra value)" subsection was
+  dropped with it). The active `bypass-permissions` configurable (sets
+  `permissions.defaultMode`) is load-bearing and was left untouched, as were
+  `human-approval`, `prompt-threshold`, `allowed-tools`, and `bash-allow`.
+  Regression test `test/test-skill-no-dead-permissions.py` asserts the dead
+  references are gone while every active configurable remains documented.
+  Frontmatter `version` bumped in four-way lockstep across `feature.json`,
+  `docs/spec.md`, `docs/contract.md`, and `skills/rabbit-config/SKILL.md`
+  (1.7.0 → 1.7.1). Because the source SKILL.md frontmatter version changed,
+  the deployed copy at `.claude/skills/rabbit-config/SKILL.md` needs a
+  dispatcher republish.
+
 - **v1.7.0 (housekeeping strict-tier opt-in):** Declared top-level
   `"housekeeping_clean": true` in `feature.json`, opting rabbit-config into
   the contract historical-burden strict tier (bare issue/PR refs, per-issue

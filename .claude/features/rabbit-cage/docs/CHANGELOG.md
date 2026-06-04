@@ -12,6 +12,23 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.52.0 (retire dead `permissions` lock/unlock configurable; #366):**
+  Removed the `permissions` configurable (`subcommand: "permissions"`,
+  actions `lock`/`unlock`) from `feature.json` `configuration[]` and deleted
+  its backing `scripts/repo-permissions.py` — a post-clone chmod drift guard
+  over `archive/` + `test/` that was never invoked in practice (no hook,
+  script, or workflow ever called it). Designed Deprecation: the dead artifact
+  is removed rather than carried forward. Deleted the unit suite
+  `test/test-repo-permissions.py` and unwired it from `test/run.py`; added
+  `test/test-repo-permissions-retired.py` (e2e) asserting the script is absent,
+  the suite is unwired, and no `configuration[]` entry references
+  `scripts/repo-permissions.py`. Dropped the `repo-permissions.py` row from
+  `docs/contract.md` `provides.scripts`. NOTE: this is the dead repo-permissions
+  `permissions` configurable ONLY — the ACTIVE `bypass-permissions` configurable
+  (backed by `permissions.defaultMode`) is untouched and load-bearing. Part A
+  of the #366 two-feature barrier; the rabbit-config SKILL CLI-table row is
+  retired separately in Part B.
+
 - **v5.51.0 (file-scoped scope-guard override; #649):** Added a least-privilege
   variant to the `.rabbit-scope-override` marker. `_consume_override()` in
   `hooks/scope-guard.py` now recognizes a third content form

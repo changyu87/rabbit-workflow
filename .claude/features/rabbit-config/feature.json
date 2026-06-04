@@ -1,6 +1,6 @@
 {
   "name": "rabbit-config",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "housekeeping_clean": true,
@@ -12,7 +12,7 @@
   },
   "deprecation_criterion": "when the rabbit CLI exposes native configuration mutation that subsumes this feature",
   "status": "active",
-  "updated": "2026-06-03",
+  "updated": "2026-06-04",
   "manifest": [
     {
       "api": "publish_skill",
@@ -36,5 +36,6 @@
     ]
   },
   "configuration": [],
-  "prompts": []
+  "prompts": [],
+  "spec_no_change_reason": "Dead 'permissions lock/unlock' subcommand removal from SKILL.md only; spec.md has no references to this retired subcommand (its only 'permissions' mentions are the active bypass-permissions / permissions.defaultMode invariant)."
 }
