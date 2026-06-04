@@ -87,6 +87,29 @@ check_phrase(
     "Before editing an existing file, Read it. Before writing alongside existing code, Read the surrounding module. Edits made without reading are speculative.",
 )
 
+# Inv 12: prove-it-dead-or-flag cleanup methodology. coding-rules.md MUST carry
+# the cleanup definition-of-done rule with VERIFICATION-driven checks, the
+# three-row action table, and the annotate-and-continue discipline.
+check_phrase("coding-rules.md", "Prove It Dead or Flag It")
+check_phrase("coding-rules.md", "never silently keep")
+# The four verification check kinds.
+check_phrase("coding-rules.md", "path reference")
+check_phrase("coding-rules.md", "`find`")
+check_phrase("coding-rules.md", "`grep`")
+check_phrase("coding-rules.md", "reachable code path")
+check_phrase("coding-rules.md", "cross-feature claim")
+# The three-row action table actions.
+check_phrase("coding-rules.md", "Proven dead")
+check_phrase("coding-rules.md", "Proven live")
+check_phrase("coding-rules.md", "Unverifiable")
+check_phrase("coding-rules.md", "`housekeeping`")
+# Annotate-and-continue.
+check_phrase("coding-rules.md", "Annotate-and-continue")
+check_phrase("coding-rules.md", "the pass CONTINUES")
+check_phrase("coding-rules.md", "One uncertain sentence never stalls a")
+# History-free: the rule text must not carry issue/PR refs or tombstone words.
+check_phrase_absent("coding-rules.md", "#639")
+
 # philosophy.md
 check_phrase("philosophy.md", "Machine First")
 check_phrase("philosophy.md", "Bounded Scope")
