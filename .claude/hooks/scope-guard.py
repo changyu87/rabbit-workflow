@@ -147,7 +147,7 @@ def find_feature_path(repo_root: Path, feature: str) -> Optional[str]:
 
 
 def _override_marker_path() -> Optional[Path]:
-    """Inv 27: per-mode canonical location for the session-override marker.
+    """Inv 25: per-mode canonical location for the session-override marker.
 
     Plugin mode (presence of <REPO_ROOT>/.rabbit/.runtime/mode == "plugin"):
         <REPO_ROOT>/.rabbit/.rabbit-scope-override
@@ -191,7 +191,7 @@ def plugin_decide(abs_path: str) -> Tuple[bool, str]:
     """Inv 17: plugin-mode decision tree. Called from decide() when
     .rabbit/.runtime/mode == "plugin"."""
     # Carve-outs first: .rabbit/CLAUDE.md and .rabbit/.gitignore are
-    # editable user-facing surface even in plugin mode. Inv 27 adds
+    # editable user-facing surface even in plugin mode. Inv 25 adds
     # .rabbit/.rabbit-scope-override so the user (or agent) can WRITE
     # the session-override marker at its per-mode canonical location.
     rabbit_root = str(REPO_ROOT) + "/.rabbit"
@@ -256,7 +256,7 @@ def plugin_decide(abs_path: str) -> Tuple[bool, str]:
                     "entire session. Requires explicit in-conversation user "
                     "confirmation before writing "
                     "'.rabbit/.rabbit-scope-override' with content 'session' "
-                    "(Inv 27: plugin-mode canonical location).\n"
+                    "(Inv 25: plugin-mode canonical location).\n"
                     "\n"
                     "  (2) ONE-TIME OVERRIDE — bypasses scope-guard for a "
                     "single write only. Requires explicit in-conversation "
@@ -329,7 +329,7 @@ def plugin_decide(abs_path: str) -> Tuple[bool, str]:
         "  (1) SESSION OVERRIDE — bypasses scope-guard for the entire "
         "session. Requires explicit in-conversation user confirmation "
         "before writing '.rabbit/.rabbit-scope-override' with content "
-        "'session' (Inv 27: plugin-mode canonical location).\n"
+        "'session' (Inv 25: plugin-mode canonical location).\n"
         "\n"
         "  (2) ONE-TIME OVERRIDE — bypasses scope-guard for a single "
         "write only. Requires explicit in-conversation user confirmation "
@@ -516,13 +516,13 @@ def decide(target: str) -> Tuple[bool, str]:
 def _consume_override(abs_path: Optional[str] = None) -> Optional[str]:
     """If override file present, consume per its mode and return ALLOW message.
 
-    Inv 27: marker path is per-mode (plugin → <rabbit_root>/.rabbit/.rabbit-scope-override,
+    Inv 25: marker path is per-mode (plugin → <rabbit_root>/.rabbit/.rabbit-scope-override,
     standalone → <repo_root>/.rabbit-scope-override) via _override_marker_path().
     The 'used' sibling marker lives next to the override marker in both modes
     so check_marker_consume_alert (Stop hook) finds it under the same repo_root
     that resolves the override.
 
-    Inv 41: three content forms are recognized — `session` (any write, marker
+    Inv 39: three content forms are recognized — `session` (any write, marker
     retained), bare `one-time` (any single write, marker consumed), and the
     file-scoped form `one-time:<repo-relative-path>` (a single write ONLY to
     the declared path, then consumed). `abs_path` is the candidate write
@@ -549,7 +549,7 @@ def _consume_override(abs_path: Optional[str] = None) -> Optional[str]:
     if mode == "one-time":
         _consume_marker(override_file, used_file)
         return "ALLOW (one-time override consumed)"
-    # Inv 41: file-scoped form `one-time:<repo-relative-path>`. Use a
+    # Inv 39: file-scoped form `one-time:<repo-relative-path>`. Use a
     # trim-only parse (leading/trailing whitespace) so the declared path is
     # preserved verbatim, then resolve it against REPO_ROOT.
     stripped = raw.strip()
@@ -689,7 +689,7 @@ def extract_bash_targets(cmd: str) -> List[str]:
 
 
 def _emit_deny(reason: str) -> None:
-    """Emit the PreToolUse deny-shape JSON to stdout (Inv 31 / contract Inv 66 a).
+    """Emit the PreToolUse deny-shape JSON to stdout (Inv 29 / contract Inv 66 a).
 
     Claude Code's PreToolUse contract treats a JSON payload with
     permissionDecision == "deny" as a block; exit code is 0. The reason
@@ -725,7 +725,7 @@ def main() -> int:
     tool = payload.get("tool_name", "")
     tool_input = payload.get("tool_input", {}) or {}
 
-    # Inv 31: when the intercepted tool is Agent, delegate to
+    # Inv 29: when the intercepted tool is Agent, delegate to
     # contract.lib.checks.validate_agent_prompt_sentinel (contract Inv 66 b)
     # and emit the PreToolUse deny-shape JSON on failure. Pass-through for
     # all other tool names (file-write enforcement below is unchanged).

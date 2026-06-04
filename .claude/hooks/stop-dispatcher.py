@@ -5,7 +5,7 @@ Enumerates every active feature's `feature.json runtime.Stop` declarations,
 invokes each declared API via `contract.lib.runtime`, partitions returns
 into print/inject/ok/error, and emits at most one JSON object to stdout.
 
-Issue #545 (Inv 39): after the per-feature Stop payloads, INVOKES
+Issue #545 (Inv 37): after the per-feature Stop payloads, INVOKES
 rabbit-auto-evolve's `scripts/advise-restart.py status` (a contract INVOKE, not
 a cross-feature edit) and, while the advisory marker is present, appends ONE
 concise ADVISORY-restart line per tick-end (icon 🔄, distinct from the hard

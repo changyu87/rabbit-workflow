@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""rabbit-cage e2e — CHANGELOG.md shape enforcement (spec Inv 30).
+"""rabbit-cage e2e — CHANGELOG.md shape enforcement (spec Inv 28).
 
-Pins the four shape assertions described in rabbit-cage spec.md Inv 30:
+Pins the four shape assertions described in rabbit-cage spec.md Inv 28:
   (i)   CHANGELOG.md exists at repo root.
   (ii)  The top-most non-intro `## [` header is `## [Unreleased]`.
   (iii) Every `## [release/X.Y]` header matches the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-stop-timestamp-entry-present.py — pins Inv 32: rabbit-cage's
+"""test-stop-timestamp-entry-present.py — pins Inv 30: rabbit-cage's
 `feature.json` `runtime.Stop` array MUST include an entry
 `{"api": "emit_stop_timestamp", "args": {}}` so the Stop dispatcher
 surfaces the universal `[rabbit] HH:MM:SS` turn-end marker (defined
@@ -20,7 +20,7 @@ def test_stop_runtime_declares_emit_stop_timestamp_entry():
     matches = [e for e in entries if e.get("api") == "emit_stop_timestamp"]
     assert matches, (
         "runtime.Stop must include an entry with api='emit_stop_timestamp' "
-        f"(per Inv 32); got apis={[e.get('api') for e in entries]}"
+        f"(per Inv 30); got apis={[e.get('api') for e in entries]}"
     )
     assert len(matches) == 1, (
         f"expected exactly one emit_stop_timestamp entry; got {len(matches)}"

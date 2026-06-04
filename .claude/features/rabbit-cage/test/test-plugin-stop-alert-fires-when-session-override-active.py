@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-plugin-stop-alert-fires-when-session-override-active.py — Inv 27.
+"""test-plugin-stop-alert-fires-when-session-override-active.py — Inv 25.
 
 In plugin mode, the session-override marker `.rabbit-scope-override`
 content `'session'` lives at `<rabbit_root>/.rabbit-scope-override`

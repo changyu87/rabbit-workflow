@@ -49,7 +49,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-# Inv 29: hardcoded stable-release default for --update self-fetch when neither
+# Inv 27: hardcoded stable-release default for --update self-fetch when neither
 # --version/--ref CLI flag, --channel dev, nor RABBIT_REF env var is supplied.
 # MUST match install.sh's RABBIT_REF="${RABBIT_REF:-…}" default — single source
 # of truth, bumped together each release cut. The literal value "dev" is
@@ -435,7 +435,7 @@ def main() -> int:
                         help="target install dir (optional under --update; inferred from script location if omitted)")
     parser.add_argument("--update", action="store_true",
                         help="refresh an existing install in place (Inv 22)")
-    # Inv 29: shell-agnostic ref-selection flags for --update self-fetch.
+    # Inv 27: shell-agnostic ref-selection flags for --update self-fetch.
     # Precedence (highest wins): --version/--ref > --channel dev > RABBIT_REF env
     # > HARDCODED_STABLE_DEFAULT. Never silent 'dev'.
     parser.add_argument("--version", default=None,
@@ -470,7 +470,7 @@ def main() -> int:
         # Inv 22g (a): self-fetch when --update is set and --src is omitted.
         if args.update and args.src is None:
             repo = os.environ.get("RABBIT_REPO", "changyu87/rabbit-workflow")
-            # Inv 29 precedence ladder. NEVER silent 'dev'.
+            # Inv 27 precedence ladder. NEVER silent 'dev'.
             if args.version is not None:
                 ref = args.version
             elif args.ref is not None:

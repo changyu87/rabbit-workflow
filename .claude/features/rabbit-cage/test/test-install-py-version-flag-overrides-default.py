@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-install-py-version-flag-overrides-default.py — e2e: install.main(--update --version <ref>)
-resolves ref from CLI flag, overriding both RABBIT_REF env var and the hardcoded default (Inv 29 (a)).
+resolves ref from CLI flag, overriding both RABBIT_REF env var and the hardcoded default (Inv 27 (a)).
 
 Mocks fetch_upstream to capture the ref argument; asserts the captured ref
 matches the value passed via --version. Validates bug #287 fix: csh/tcsh users

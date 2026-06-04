@@ -12,6 +12,39 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.54.0 (reflow invariants to contiguous 1..N + opt into contiguous_invariants; #737):**
+  rabbit-cage's `## Invariants` numbering had two holes (24 and 26) left by
+  retired invariants. Ran the deterministic `contract/scripts/reflow-invariants.py`
+  on this feature to renumber to contiguous 1..39 and atomically rewrite every
+  live `Inv N` cross-reference WITHIN rabbit-cage (spec.md, contract.md, hooks/,
+  scripts/, install.py, test/). Invariants 1..23 are unchanged; 24 and 26 were
+  the gaps. Then set `"contiguous_invariants": true` in `feature.json` to opt
+  into contract's strict CONTIGUOUS tier (contract Inv 30), so future holes are
+  caught by `contract/test/run.py`. No cross-feature `Inv N` references to
+  rabbit-cage's renumbered invariants exist (verified by repo-wide grep), so no
+  cross-feature edit was needed. `docs/CHANGELOG.md` tombstones are point-in-time
+  history and were not renumbered (the reflow tool never touches CHANGELOG).
+  Old -> new invariant mapping (invariants not listed are unchanged):
+
+  | old | new |
+  | --- | --- |
+  | 25  | 24  |
+  | 27  | 25  |
+  | 28  | 26  |
+  | 29  | 27  |
+  | 30  | 28  |
+  | 31  | 29  |
+  | 32  | 30  |
+  | 33  | 31  |
+  | 34  | 32  |
+  | 35  | 33  |
+  | 36  | 34  |
+  | 37  | 35  |
+  | 38  | 36  |
+  | 39  | 37  |
+  | 40  | 38  |
+  | 41  | 39  |
+
 - **v5.53.0 (scope-override revoke uses /rabbit-config command, not raw script path; #709):**
   The scope-guard override REVOKE instruction now surfaces the clean
   `/rabbit-config scope-guard on` command form that sibling configurables

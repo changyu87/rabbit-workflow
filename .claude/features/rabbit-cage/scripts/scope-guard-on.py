@@ -2,7 +2,7 @@
 """scope-guard-on.py — Revoke the scope-guard override, re-arming default-deny.
 
 Removes the session-override marker (if present) so scope-guard.py returns
-to its default-deny posture. Inv 27 (path-equality): the marker location is
+to its default-deny posture. Inv 25 (path-equality): the marker location is
 per-mode:
   - Plugin mode (<repo_root>/.rabbit/.runtime/mode == "plugin"):
         <repo_root>/.rabbit/.rabbit-scope-override
@@ -49,7 +49,7 @@ def repo_root() -> Path:
 
 
 def _override_marker_path(root: Path) -> Path:
-    """Inv 27: per-mode canonical location for the session-override marker.
+    """Inv 25: per-mode canonical location for the session-override marker.
     Mirrors scope-guard.py::_override_marker_path so the two consumers
     resolve the same path under the same mode.
     """

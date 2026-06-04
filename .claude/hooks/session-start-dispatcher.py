@@ -28,7 +28,7 @@ resume banner to the systemMessage and injects the `action` into
 additionalContext so Claude Code mechanically self-resumes the loop after a
 restart. Absent / erroring script degrades gracefully (no resume surfaced).
 
-Issue #545 (Inv 39): also INVOKES rabbit-auto-evolve's
+Issue #545 (Inv 37): also INVOKES rabbit-auto-evolve's
 `scripts/advise-restart.py status` and, while the ADVISORY-restart marker is
 present, surfaces ONE advisory line in the banner (icon 🔄, distinct from the
 hard #503 resume banner so it reads as OPTIONAL) AND THEN clears the marker
@@ -284,7 +284,7 @@ def main() -> int:
     advisory = advisory_restart_payloads(root)
     if advisory:
         # Surface the advisory line, then consume the marker — the advised
-        # restart has now occurred (Inv 39).
+        # restart has now occurred (Inv 37).
         payloads.extend(advisory)
         clear_advisory_restart(root)
     alert = _check_rabbit_root_env()

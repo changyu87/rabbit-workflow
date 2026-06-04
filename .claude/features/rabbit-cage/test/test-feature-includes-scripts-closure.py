@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""rabbit-cage Inv 25 — FEATURE_INCLUDES skill-referenced script closure.
+"""rabbit-cage Inv 24 — FEATURE_INCLUDES skill-referenced script closure.
 
 For every skill shipped via install.py's SKILLS list, every script that the
 SKILL.md body references via a literal path under

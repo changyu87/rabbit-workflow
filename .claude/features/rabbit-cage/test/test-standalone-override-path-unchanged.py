@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-standalone-override-path-unchanged.py — Inv 27.
+"""test-standalone-override-path-unchanged.py — Inv 25.
 
 In STANDALONE mode (no `.rabbit/.runtime/mode == 'plugin'` file),
 the session-override marker lives at `<repo_root>/.rabbit-scope-override`

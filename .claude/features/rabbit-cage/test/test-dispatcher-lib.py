@@ -221,7 +221,7 @@ def test_render_emission_banner_and_sublines_order():
 
 
 def test_render_emission_footer_renders_last():
-    """Inv 33 (i): a normal print + a footer-tagged print renders the
+    """Inv 31 (i): a normal print + a footer-tagged print renders the
     footer line LAST in systemMessage."""
     lib = _load_lib()
     payloads = [
@@ -240,7 +240,7 @@ def test_render_emission_footer_renders_last():
 
 
 def test_render_emission_footer_relative_order_preserved():
-    """Inv 33 (ii): two footer payloads preserve their relative dispatch
+    """Inv 31 (ii): two footer payloads preserve their relative dispatch
     order among themselves, after all non-footer lines."""
     lib = _load_lib()
     payloads = [
@@ -263,7 +263,7 @@ def test_render_emission_footer_relative_order_preserved():
 
 
 def test_render_emission_no_footer_unchanged_order():
-    """Inv 33 (iii): no footer-tagged entries -> unchanged dispatch order
+    """Inv 31 (iii): no footer-tagged entries -> unchanged dispatch order
     (regression)."""
     lib = _load_lib()
     payloads = [
@@ -283,7 +283,7 @@ def test_render_emission_no_footer_unchanged_order():
 
 
 def test_render_emission_inject_unaffected_by_footer():
-    """Inv 33 (iv): inject payloads are unaffected by a footer-tagged print."""
+    """Inv 31 (iv): inject payloads are unaffected by a footer-tagged print."""
     lib = _load_lib()
     payloads = [
         {"type": "inject", "content": "INJ-A\n"},

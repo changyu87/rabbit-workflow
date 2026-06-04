@@ -12,14 +12,14 @@ not the spec body.
 
 The phrases removed and the #639 check that proved each dead/redundant:
 
-  1. "Before this invariant was added, scope-guard wrote at" (Inv 27)
+  1. "Before this invariant was added, scope-guard wrote at" (Inv 25)
      — historical-edit narration of a past defect. The CURRENT invariant
        (single per-mode canonical location) is fully stated immediately
        above; the "what it used to do and why it was broken" sentence is
        CHANGELOG material.
 
   2. "the prior `_BOX_WIDTH - 2 = 30` char-column math under-counted"
-     (Inv 40) — past-defect narration. The CURRENT math (inner field of
+     (Inv 38) — past-defect narration. The CURRENT math (inner field of
        2*_BOX_WIDTH - 4 = 60) is fully specified; the prior-math clause is
        CHANGELOG material.
 
@@ -28,18 +28,18 @@ The phrases removed and the #639 check that proved each dead/redundant:
        The normative "MUST os.execv ... BEFORE the copy loops" statement is
        the contract; the failure-mode storytelling is redundant.
 
-  4. "Rationale — REJECTED alternative: dynamic" (Inv 29d) — verbatim
+  4. "Rationale — REJECTED alternative: dynamic" (Inv 27d) — verbatim
        duplicate of the GitHub-API rejection rationale already stated in
-       Inv 28 (the line even says "Same rejection as Inv 28"). Collapsed to
-       the single Inv 28 authoritative statement (rule #3, collapse
+       Inv 26 (the line even says "Same rejection as Inv 26"). Collapsed to
+       the single Inv 26 authoritative statement (rule #3, collapse
        redundancy).
 
-  5. "csh/tcsh users have no way to inline-set" (Inv 29a) — rationale
+  5. "csh/tcsh users have no way to inline-set" (Inv 27a) — rationale
        narration. The shell-agnostic behavior ("works in bash/zsh/csh/...")
        is stated; the justification paragraph is redundant.
 
   6. The three-layout dual-read carve-out is the AUTHORITATIVE subject of
-       Inv 35; the full restatement in the scope-guard Semantics prose
+       Inv 33; the full restatement in the scope-guard Semantics prose
        section (and Inv 17 a2) is redundant (rule #3). The verbose
        "Under `specs/` and legacy `docs/spec/` only the basename" sentence
        MUST survive in at most one location.
@@ -65,7 +65,7 @@ BANNED_PHRASES = [
 
 # The verbose three-layout dual-read sentence MUST appear at most ONCE across
 # the spec (round-1 left it restated in full in the scope-guard Semantics prose
-# section AND Inv 17(a2) AND the authoritative Inv 35).
+# section AND Inv 17(a2) AND the authoritative Inv 33).
 COLLAPSE_MARKER = "Under `specs/` and legacy `docs/spec/` only the basename"
 COLLAPSE_MAX = 1
 
@@ -109,7 +109,7 @@ else:
     if count > COLLAPSE_MAX:
         fail("collapse",
              f"three-layout dual-read restated {count}x (max {COLLAPSE_MAX}); "
-             "collapse to the authoritative Inv 35")
+             "collapse to the authoritative Inv 33")
     else:
         ok("collapse",
            f"three-layout dual-read description appears {count}x (<= {COLLAPSE_MAX})")

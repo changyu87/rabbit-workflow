@@ -1,6 +1,7 @@
 {
   "name": "rabbit-cage",
-  "version": "5.53.0",
+  "version": "5.54.0",
+  "contiguous_invariants": true,
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "housekeeping_clean": true,
@@ -136,7 +137,7 @@
           "path": ".rabbit-scope-override",
           "content": "session",
           "alert": {
-            "text": "SCOPE GUARD OFF (session override active) — revoke: /rabbit-config scope-guard on",
+            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-config scope-guard on",
             "icon": "\ud83d\udd13",
             "color": "red"
           }
@@ -201,7 +202,7 @@
           "path": ".rabbit-scope-override",
           "content": "session",
           "alert": {
-            "text": "SCOPE GUARD OFF (session override active) — revoke: /rabbit-config scope-guard on",
+            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-config scope-guard on",
             "icon": "\ud83d\udd13",
             "color": "red"
           }
