@@ -13,6 +13,20 @@ own version.
 
 ## Version notes
 
+- **v0.46.0 — 2026-06-03** — Housekeeping Phase 2 final step: strict-tier
+  opt-in flipped. Set top-level `"housekeeping_clean": true` in `feature.json`,
+  enrolling rabbit-auto-evolve in the contract strict tier
+  (`test-spec-bodies-no-historical-tags.py`: bare `#NNN` refs, "per issue/bug/PR"
+  prose, and `superseded`/`retired`/`obsoleted` tombstone language). The
+  v0.45.0 doc-surface scrub (#650) removed all 187 strict-tier hits and the
+  contract-owned line-pinned ALLOWLIST entry (#651) suppresses the one
+  irreducible status-enum literal — `feature.json.status == "retired"` on the
+  Inv-22 triage decision-table row (`docs/spec.md:462`), the verbatim value
+  `triage-issue.py` checks. The live strict test now PASSES with the real flag
+  set. Data-driven opt-in only: no `docs/spec.md` body change (frontmatter
+  lockstep version bump 0.45.0 -> 0.46.0 across `feature.json`, `docs/spec.md`,
+  `docs/contract.md`, and `skills/rabbit-auto-evolve/SKILL.md`; line 462 not
+  shifted).
 - **v0.45.0 — 2026-06-03** — Housekeeping Phase 2: history-free doc surfaces.
   Scrubbed historical-burden tags (bare `#NNN` issue/PR refs, "per issue/bug/PR"
   prose, parenthetical issue trailers, and version-narrative "this invariant was
