@@ -8,7 +8,8 @@ silently regress back onto the live doc surfaces (docs/spec.md, docs/contract.md
      was relocated to the `rabbit-spec` feature (rabbit-spec-create /
      rabbit-spec-update). No live surface may reference `rabbit-feature-spec`
      or its retired invariant section. Verified dead: the skill directory
-     `skills/rabbit-feature-spec/` does not exist.
+     `skills/rabbit-feature-spec/` does not exist. (Issue #700 extends this to
+     the `rabbit-feature-scaffold` SKILL.md "What You Do NOT Do" example.)
 
   2. The live surfaces (spec.md Tests section and contract.md lock strings)
      may only name test files that actually exist under test/. Stale mappings
@@ -41,6 +42,7 @@ SPEC_MD = FEATURE_DIR / "docs/spec.md"
 CONTRACT_MD = FEATURE_DIR / "docs/contract.md"
 SKILLS_DIR = FEATURE_DIR / "skills"
 TEST_DIR = FEATURE_DIR / "test"
+SCAFFOLD_SKILL_MD = SKILLS_DIR / "rabbit-feature-scaffold/SKILL.md"
 
 LIVE_SURFACES = [SPEC_MD, CONTRACT_MD]
 
@@ -66,6 +68,30 @@ def test_no_rabbit_feature_spec_reference() -> None:
         "live surfaces reference the relocated rabbit-feature-spec skill "
         "(now owned by rabbit-spec); remove the dead reference:\n"
         + "\n".join(hits)
+    )
+
+
+def test_scaffold_skill_md_no_rabbit_feature_spec_reference() -> None:
+    # Issue #700: the rabbit-feature-scaffold SKILL.md "What You Do NOT Do"
+    # section named the relocated rabbit-feature-spec skill as a do-not-invoke
+    # example. The skill no longer exists under this feature; the live SKILL.md
+    # must not name it.
+    assert not (SKILLS_DIR / "rabbit-feature-spec").exists(), (
+        "rabbit-feature-spec skill dir still exists; this guard assumes it was "
+        "relocated to the rabbit-spec feature"
+    )
+    assert SCAFFOLD_SKILL_MD.exists(), f"missing SKILL.md: {SCAFFOLD_SKILL_MD}"
+    hits = [
+        f"{SCAFFOLD_SKILL_MD.relative_to(FEATURE_DIR)}:{i}: {line.strip()}"
+        for i, line in enumerate(
+            SCAFFOLD_SKILL_MD.read_text(encoding="utf-8").splitlines(), 1
+        )
+        if "rabbit-feature-spec" in line
+    ]
+    assert not hits, (
+        "rabbit-feature-scaffold SKILL.md references the relocated "
+        "rabbit-feature-spec skill (now owned by rabbit-spec); replace the dead "
+        "example with the live successor or remove it:\n" + "\n".join(hits)
     )
 
 
@@ -115,6 +141,7 @@ def test_contract_provides_only_shipped_skills() -> None:
 def main() -> int:
     tests = [
         test_no_rabbit_feature_spec_reference,
+        test_scaffold_skill_md_no_rabbit_feature_spec_reference,
         test_live_surfaces_name_only_existing_test_files,
         test_no_withdrawn_tombstone_placeholders,
         test_contract_provides_only_shipped_skills,
