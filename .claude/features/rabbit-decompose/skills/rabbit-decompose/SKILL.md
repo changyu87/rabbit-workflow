@@ -1,7 +1,7 @@
 ---
 name: rabbit-decompose
 description: Propose a feature decomposition for an existing codebase or a high-level spec, interactively iterate with the user until accepted, then orchestrate scaffolding + initial spec drafting per accepted feature. Use when the user wants to start a new rabbit-managed project from a spec/prompt, or when the user wants to retroactively organize an existing codebase into rabbit features. Phrases like "decompose this into features", "propose a feature breakdown", "let's organize this codebase with rabbit", "/rabbit-decompose", "what features should this project have". Do NOT use to revise individual feature specs (that's rabbit-spec-update) or to scaffold a single feature whose name + globs you already know (that's rabbit-feature-scaffold).
-version: 0.4.0
+version: 0.5.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
 ---
@@ -77,11 +77,11 @@ Once the user accepts:
   ```
   Run these sequentially; they're cheap.
 
-**B. Seed specs.** For each accepted feature that has non-empty globs, dispatch the spec-create skill:
+**B. Seed specs.** For each accepted feature that has non-empty globs, invoke the spec-create skill:
 ```
 Skill("rabbit-spec-create", args: "<feature-name> <glob1> <glob2> ...")
 ```
-These dispatch the `spec-creator` subagent and can be run in parallel via the Agent tool for batch parallelism (the subagent is read-only and parallel-safe). For greenfield features with no globs, invoke once with just the name to produce a skeleton.
+Run these calls **sequentially**, one per accepted feature, from the main session. Do **not** wrap them in `Agent(...)` calls. `rabbit-spec-create` is itself a subagent-dispatching skill: it internally dispatches the `rabbit-spec-creator` subagent via the Agent tool. Wrapping a subagent-dispatching skill inside an `Agent(...)` call produces an illegal two-level subagent nesting chain (decompose -> Agent level-1 -> rabbit-spec-creator level-2) that Claude Code does not support — the level-2 dispatch is blocked. Invoking `rabbit-spec-create` directly with `Skill(...)` keeps `rabbit-spec-creator` at level-1 (main session -> rabbit-spec-creator), which is the only supported path. For greenfield features with no globs, invoke once with just the name to produce a skeleton.
 
 **C. Report.** Tell the user: `N` features scaffolded; `M` spec drafts produced; paths to each. Note that the spec drafts are *starting points* — the user reviews and edits before they're final.
 

@@ -13,6 +13,28 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.5.0 (Step 4B nesting-safety fix, #646):** Corrected the spec-create
+  hand-off in `SKILL.md` Step 4B. The step previously claimed
+  `rabbit-spec-create` calls "can be run in parallel via the Agent tool for
+  batch parallelism." That is architecturally invalid: `rabbit-spec-create`
+  is itself a subagent-dispatching skill (it internally dispatches the
+  `rabbit-spec-creator` subagent via the Agent tool), so wrapping it in an
+  `Agent(...)` call creates a two-level subagent nesting chain
+  (decompose -> Agent level-1 -> rabbit-spec-creator level-2) that Claude
+  Code does not support — the level-2 dispatch is blocked. The fix rewrites
+  Step 4B to invoke `rabbit-spec-create` as sequential `Skill(...)` calls
+  from the main session (keeping `rabbit-spec-creator` at level-1) and
+  removes the illegal Agent-parallelization claim. The same correction is
+  reflected in `docs/spec.md`'s hand-off prose, plus a new spec invariant
+  (rabbit-decompose namespace) stating the spec-create hand-off MUST be a
+  sequential `Skill(...)` call and MUST NOT be wrapped in `Agent(...)`. A
+  new E2E test (`test/test-step4b-no-nested-dispatch.py`) pins both
+  surfaces: no Agent-parallelization claim, sequential wording present, and
+  the two-level-nesting constraint named. Frontmatter `version` bumped to
+  0.5.0 across `feature.json`, `docs/spec.md`, `docs/contract.md`, and the
+  source `SKILL.md` (four-way alignment); the deployed `.claude/skills/`
+  copy needs a dispatcher republish because the source SKILL.md changed.
+
 - **v0.4.0 (history-free doc surfaces + Inv 49 strict tier, #551 / #530
   Phase 2):** Opted rabbit-decompose into the contract's strict-tier
   historical-burden check by declaring top-level `"housekeeping_clean": true`
