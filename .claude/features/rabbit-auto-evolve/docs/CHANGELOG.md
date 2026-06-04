@@ -13,6 +13,25 @@ own version.
 
 ## Version notes
 
+- **v0.43.0 — 2026-06-03** — Tick-start orphan sweep that bounds disk usage
+  from parallel TDD dispatch (Inv 53, issue #628). Parallel dispatch
+  (worktree isolation, #430) creates one `agent-*` git worktree per subagent
+  under `.claude/worktrees/`; the Agent tool only auto-removes an UNCHANGED
+  worktree on exit, so changed TDD worktrees are never removed and accumulate
+  (61 leftover / 577 MB observed), and `.rabbit/prompts/` grew unbounded
+  (264 files / 23 MB observed). New `scripts/prune-worktrees.py` runs in
+  `run-tick-phases.py`'s pre-dispatch segment (BEFORE Phase 5 dispatch — at
+  tick start no dispatch is live, so every existing `agent-*` worktree is an
+  orphan and safe to force-remove). The sweep `git worktree remove --force`s
+  every `agent-*` worktree under `.claude/worktrees/` then `git worktree
+  prune`s; it NEVER touches the main checkout, a non-`agent-*` path, or a
+  path outside `.claude/worktrees/`, is a clean no-op with no orphans, and
+  never fails the tick on a sweep error (disk hygiene must never block
+  evolution). The same step bounds `.rabbit/prompts/` by INVOKING the
+  contract-owned `contract.lib.runtime.cleanup_old_prompts(max_age_days=7,
+  repo_root=...)` API (cross-scope INVOKE declared in `docs/contract.md`
+  `invokes.modules`; rabbit-auto-evolve does NOT edit the contract feature).
+
 - **v0.42.0 — 2026-06-03** — New advisory-restart marker
   `.rabbit-auto-evolve-restart-advised` and its lifecycle script
   `scripts/advise-restart.py` (Inv 52, issue #545, Part A). This is a

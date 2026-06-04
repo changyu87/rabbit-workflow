@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.42.0
+version: 0.43.0
 template_version: 2.0.0
 ---
 
@@ -41,6 +41,13 @@ template_version: 2.0.0
       }
     ],
     "agents": [],
+    "modules": [
+      {
+        "path": ".claude/features/contract/lib/runtime.py",
+        "function": "cleanup_old_prompts",
+        "rationale": "prune-worktrees.py invokes contract.lib.runtime.cleanup_old_prompts(max_age_days=7, repo_root=...) at tick start (pre-dispatch) to bound .rabbit/prompts/ (Inv 53, issue #628). This is a cross-scope INVOKE of the contract-owned cleanup API — rabbit-auto-evolve never edits the contract feature"
+      }
+    ],
     "files": [
       {
         "path": ".claude/features/contract/workspace-structure.json",
