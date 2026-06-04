@@ -11,14 +11,12 @@ Return-type vocabulary (built via the four factory helpers below):
 
 Functions that may emit both a print and an inject return a list of two
 results in [print, inject] order. The single-result APIs return one dict.
-The iterate_configurables_* APIs always return a (possibly empty) list of
-print results.
 
 Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.9.0
+Version: 1.10.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -32,15 +30,6 @@ import re
 import subprocess
 import sys
 import time
-
-
-# Inv 54 — per-id suppression for the rabbit-auto-evolve composite banner.
-# When .rabbit-auto-evolve-active is present, the two configurables whose ids
-# appear in this set are skipped by iterate_configurables_alerts/_banner.
-# Any other configurable continues to emit normally (per-id-scoped, not
-# blanket). Single source of truth: both iterate functions and the test
-# suite import from here.
-_AUTO_EVOLVE_SUPPRESSED_IDS = frozenset({"human-approval", "bypass-permissions"})
 
 
 def _auto_evolve_active(repo_root: str) -> bool:
@@ -293,7 +282,7 @@ def _enumerate_features(repo_root: str):
     """Yield (feature_name, feature_dir, feature_json_dict) for every
     feature directory under .claude/features/. Skips malformed
     feature.json files silently. Order: alphabetical by feature name.
-    Shared helper for check_manifest_drift and iterate_configurables_*.
+    Shared helper for check_manifest_drift.
     """
     features_root = os.path.join(repo_root, ".claude", "features")
     if not os.path.isdir(features_root):
@@ -476,75 +465,12 @@ def _resolve_current_value(repo_root: str, configurable: dict):
     return None
 
 
-def iterate_configurables_alerts(*, repo_root: str):
-    """Walk every feature's CONFIGURATION array; for each configurable whose
-    current value matches alert-on, return its alert-message as a
-    print_result. Order: alphabetical by feature name x declaration order.
-    Returns a list (possibly empty).
-    """
-    out = []
-    suppressed = _auto_evolve_active(repo_root)
-    for name, fdir, data in _enumerate_features(repo_root):
-        configuration = data.get("configuration")
-        if not isinstance(configuration, list):
-            continue
-        for cfg in configuration:
-            if suppressed and cfg.get("id") in _AUTO_EVOLVE_SUPPRESSED_IDS:
-                continue  # Inv 54: per-id suppressed under auto-evolve marker
-            alert_on = cfg.get("alert-on")
-            alert_msg = cfg.get("alert-message")
-            if alert_on is None or not isinstance(alert_msg, dict):
-                continue
-            current = _resolve_current_value(repo_root, cfg)
-            if current is None:
-                continue
-            if current == alert_on:
-                out.append(print_result(alert_msg["text"],
-                                        alert_msg["icon"],
-                                        alert_msg["color"]))
-    return out
-
-
-def iterate_configurables_banner(*, repo_root: str):
-    """Like iterate_configurables_alerts but for SessionStart. Each active
-    override emits EXACTLY ONE print_result: the alert-message line.
-
-    Per Inv 39, both iterate_configurables_alerts and
-    iterate_configurables_banner emit one print_result per active override;
-    neither appends an auto-generated revoke line. The configurable's
-    alert-message.text is the SOLE source of user-facing alert prose, and
-    it is the configurable owner's responsibility to inline any revoke
-    hint into that text. Returns a flat list (possibly empty).
-    """
-    out = []
-    suppressed = _auto_evolve_active(repo_root)
-    for name, fdir, data in _enumerate_features(repo_root):
-        configuration = data.get("configuration")
-        if not isinstance(configuration, list):
-            continue
-        for cfg in configuration:
-            if suppressed and cfg.get("id") in _AUTO_EVOLVE_SUPPRESSED_IDS:
-                continue  # Inv 54: per-id suppressed under auto-evolve marker
-            alert_on = cfg.get("alert-on")
-            alert_msg = cfg.get("alert-message")
-            if alert_on is None or not isinstance(alert_msg, dict):
-                continue
-            current = _resolve_current_value(repo_root, cfg)
-            if current is None or current != alert_on:
-                continue
-            out.append(print_result(alert_msg["text"],
-                                    alert_msg["icon"],
-                                    alert_msg["color"]))
-    return out
-
-
 def emit_configurable_alert(feature_name: str, configurable_id: str,
                             *, repo_root: str) -> dict:
-    """On-demand sibling of iterate_configurables_alerts: resolve a single
-    configurable by feature_name + configurable_id, evaluate its current
-    value against alert-on, return print_result on match, ok_result on
-    miss, or error_result when feature/configurable/alert-message cannot
-    be resolved.
+    """Resolve a single configurable by feature_name + configurable_id on
+    the live per-feature path, evaluate its current value against alert-on,
+    return print_result on match, ok_result on miss, or error_result when
+    feature/configurable/alert-message cannot be resolved.
 
     Inv 54 — suppressed under auto-evolve: when .rabbit-auto-evolve-active is
     present, this live per-feature alert is a no-op (ok_result) before any
