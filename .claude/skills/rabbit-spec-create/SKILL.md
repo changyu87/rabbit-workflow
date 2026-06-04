@@ -1,7 +1,7 @@
 ---
 name: rabbit-spec-create
 description: Draft the initial body of a newly-declared rabbit feature's spec.md (canonical flat docs/spec.md, fallbacks specs/spec.md and legacy docs/spec/spec.md) by dispatching the read-only rabbit-spec-creator subagent. Use when a fresh feature has been scaffolded and needs its first spec draft — phrases like "draft a spec for X", "seed the spec for X", "create initial spec for X", "/rabbit-spec-create". Works in both modes: standalone (no globs — produces a skeleton from feature name alone) and plugin (with globs — drafts from real user code). Single-feature per invocation. Invoke as Skill("rabbit-spec-create", args: "<feature-name>") for a skeleton, or Skill("rabbit-spec-create", args: "<feature-name> <glob1> <glob2> ...") to read from code.
-version: 1.4.0
+version: 1.5.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 ---
@@ -33,9 +33,9 @@ The mode affects only the destination feature root — the agent's drafting beha
 ### Spec-file layout (flat docs/ canonical, specs/ + docs/spec/ fallbacks)
 
 The in-feature spec-file layout is resolved INDEPENDENTLY of the mode root
-above. The `specs/ -> docs/` flatten migration (issue #399) runs feature-by-
-feature, so resolve the destination `<spec_path>` like this (first existing
-wins; otherwise create the canonical flat path):
+above. A feature may carry any of the flat `docs/`, `specs/`, or legacy
+`docs/spec/` layouts, so resolve the destination `<spec_path>` like this
+(first existing wins; otherwise create the canonical flat path):
 
 - If `<dest_root>/docs/spec.md` already exists, write the draft there
   (the **preferred**, canonical flat layout).

@@ -1,7 +1,8 @@
 {
   "name": "rabbit-spec",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "owner": "rabbit-workflow team",
+  "housekeeping_clean": true,
   "tdd_state": "test-green",
   "status": "active",
   "summary": "Owner of the rabbit workflow's spec-lifecycle skills. Hosts rabbit-spec-create (drafts initial spec bodies via the read-only rabbit-spec-creator subagent) and rabbit-spec-update (revises existing specs; absorbed from rabbit-feature/rabbit-feature-spec).",
@@ -58,5 +59,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.8.0 -> 1.9.0): issue #472 \u2014 Inv 3(b) now requires dispatch-spec-create.py to report the dropped-file count loudly on stderr when the resolved file count exceeds the 50-file cap (no silent alphabetical truncation); contract provides.scripts gains a stderr field; new test/test-dispatch-truncation-not-silent.py enforces it."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.9.0 -> 1.10.0): Housekeeping Phase 2 \u2014 stripped historical-burden framing (specs/->docs/ migration issue refs and coexistence-window language) from spec.md Inv 6 and both SKILL.md layout sections, and opted into the Inv 49 strict tier via housekeeping_clean=true. The live dual-read behaviour (docs/ preferred, specs/ then legacy docs/spec/ fallback) is preserved verbatim; only the historical wrapper was removed."
 }

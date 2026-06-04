@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.9.0
+version: 1.10.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -148,16 +148,16 @@ length including zero.
    the standalone-mode branch (no unconditional uses). Wired into
    `test/run.py`.
 
-6. **Spec-path layout dual-read (issue #399 Phase 2a coexistence window).**
+6. **Spec-path layout dual-read.**
    Both spec-lifecycle skills and the drafting agent resolve the in-feature
    spec-file *layout* independently of the mode prefix (Inv 5). The canonical
    layout is the FLAT `<feature_root>/docs/spec.md` (and
    `<feature_root>/docs/contract.md`); the fallbacks are the current
    `<feature_root>/specs/spec.md` and the legacy nested
-   `<feature_root>/docs/spec/spec.md`. During the `specs/ -> docs/` flatten
-   migration coexistence window, features migrate one-by-one, so the skills
-   MUST work against ALL THREE layouts in this preference order (first
-   existing wins): flat `docs/` → `specs/` → legacy `docs/spec/`.
+   `<feature_root>/docs/spec/spec.md`. Features may carry any of these three
+   layouts, so the skills MUST work against ALL THREE in this preference
+   order (first existing wins): flat `docs/` → `specs/` → legacy
+   `docs/spec/`.
    - `skills/rabbit-spec-update/SKILL.md` MUST instruct the skill to PREFER
      `<feature_root>/docs/spec.md`, FALL BACK to `<feature_root>/specs/spec.md`,
      then FALL BACK to the legacy `<feature_root>/docs/spec/spec.md` when the
@@ -182,7 +182,7 @@ length including zero.
      draft target (not the legacy `docs/spec/spec.md`).
    The deprecation criterion for this dual-read behavior: when every rabbit
    feature has migrated onto the flat `docs/` layout and the `specs/` +
-   `docs/spec/` fallbacks can be dropped (tracked by issue #399). rabbit-spec's
+   `docs/spec/` fallbacks can be dropped. rabbit-spec's
    own spec.md/contract.md/CHANGELOG.md live under the flat `docs/` layout
    (`docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`); no `specs/`
    directory remains. Enforced by `test/test-spec-path-layout-dual-read.py`
