@@ -1,7 +1,7 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.48.2",
+  "version": "0.48.3",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "tdd_state": "test-green",
@@ -39,5 +39,6 @@
     ]
   },
   "configuration": [],
-  "prompts": []
+  "prompts": [],
+  "spec_no_change_reason": "Housekeeping REMOVAL pass (#681): the spec deletions ARE the implementation and land in the IMPLEMENT step; spec-update added only the dead-prose regression test (test-spec-housekeeping-681-dead-prose-removed.py), which is RED until the removals land."
 }

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.48.2
+version: 0.48.3
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -615,7 +615,7 @@ Phase E merges complete.
    filesystem reads or writes other than stdin/stdout.
 
    `--max-parallel N` (positional flag, default 4) is the canonical
-   surface for the cap (resolved Open Question 1). The flag MUST be
+   surface for the cap. The flag MUST be
    integer-valued and ≥ 1; non-integer or `< 1` exits non-zero with
    argparse error.
 
@@ -705,7 +705,7 @@ Phase E merges complete.
    enforces the bottom-line safety invariants from design doc §9
    before any merge / release / cleanup action runs.
 
-   **Per resolved Open Question 2: the next tag is passed via the
+   **The next tag is passed via the
    `--next-tag vX.Y.Z` flag, NOT via env var.** The flag is REQUIRED
    iff `--phase release` and FORBIDDEN for `--phase merge|cleanup`.
 
@@ -877,8 +877,8 @@ Phase E merges complete.
    `python3 .claude/features/rabbit-auto-evolve/scripts/release-bump.py <pr#> [--features-threshold N]`
    reads the merged PR's labels, body, and changed-file list, applies
    the design-doc §9 bump table, runs `safety-check.py` under
-   `--phase release --next-tag vX.Y.Z` BEFORE any git operation (per
-   resolved Open Question 2), then creates and pushes the annotated
+   `--phase release --next-tag vX.Y.Z` BEFORE any git operation,
+   then creates and pushes the annotated
    tag and a GitHub release targeting `dev`.
 
    `--features-threshold N` (default 3) configures the
@@ -1066,7 +1066,7 @@ Phase E merges complete.
    | `last_tagged_version` | string \| null | last release tag (e.g. `"v0.5.3"`) |
    | `consecutive_failures` | int | ≥ 0 |
    | `stop_requested` | bool | stop marker observed |
-   | `restart_needed` | string \| null | reason string when set, else null (resolved Open Question 3 — NOT a pure boolean) |
+   | `restart_needed` | string \| null | reason string when set, else null (NOT a pure boolean) |
    | `defer_counts` | object (optional) | per-issue consecutive-defer counter (Part B), keyed by issue-number string → non-negative int. Additive in schema 1.1.0; absent in pre-1.1.0 states |
    | `pending_post_merge` | array of int (optional) | merged PR numbers owed post-merge processing (phases 7–9). Additive in schema 1.2.0; absent in pre-1.2.0 states. See Inv 30 |
 
@@ -1095,7 +1095,7 @@ Phase E merges complete.
    Exit code: 0 on successful write; non-zero on schema-validation
    failure or write error.
 
-   ### `restart_needed` typing rule (resolved Open Question 3)
+   ### `restart_needed` typing rule
 
    `restart_needed` is `string | null`. The string carries the
    restart reason (e.g. `"settings.json change"`, `"new skill: foo"`).
@@ -1294,21 +1294,13 @@ Phase E merges complete.
     them as a module — no shell
     invocations of the dispatchers.
 
-    **Ownership migration (in progress).** Inv 22 (added v0.7.5)
-    introduces `scripts/banner-status.py` which owns the line-2 text
-    variants going forward — including the new `running` variant
-    that this invariant does NOT yet cover. The user-visible banner
-    behavior remains governed by this invariant (3 variants) until
-    a follow-up cycle against the `contract` feature refactors
-    `emit_auto_evolve_banner` to call `banner-status.py`. After that
-    contract cycle merges, this invariant will be revised to defer
-    line-2 ownership to Inv 22.
+    Line-2 text ownership is held by `scripts/banner-status.py` (Inv 22),
+    which `contract.lib.runtime.emit_auto_evolve_banner` invokes.
 
 15. **Feature-shape compliance.** All four version fields agree:
     `feature.json.version` == spec.md frontmatter `version` ==
     contract.md frontmatter `version` == SKILL.md frontmatter
-    `version`. The current target is `0.4.0` (set during Phase E
-    Task 14; bumped on every subsequent compliance landing).
+    `version`.
 
     `feature.json` and SKILL.md MUST carry non-empty `owner` and
     `deprecation_criterion`. `feature.json.summary` MUST mention
@@ -1641,17 +1633,9 @@ Phase E merges complete.
     the `RABBIT_AUTO_EVOLVE_REPO_ROOT` env override fallback to
     `os.getcwd()` (matching the marker-write scripts).
 
-    **Ownership migration:** As of v0.7.5 the line-2 text variants
-    are owned by this script. The current `contract.lib.runtime`
-    `emit_auto_evolve_banner` implementation still inlines the
-    three pre-existing variants (aborted / restart-needed / default)
-    and does NOT yet call this script — a follow-up cycle against
-    the `contract` feature will refactor it to invoke
-    `banner-status.py` instead. Until that follow-up lands, the
-    `running` variant exists in this script but is NOT surfaced at
-    SessionStart. Inv 14 remains the source of truth for the
-    user-visible banner's current 3-variant behaviour until the
-    contract refactor merges.
+    This script owns all line-2 text variants (including the `running`
+    variant); `contract.lib.runtime.emit_auto_evolve_banner` invokes it
+    to render the SessionStart banner's line 2.
 
     Enforced by `test/test-banner-status.py`:
     - Active marker absent → `{active: false, line1: null, line2: null}`.
@@ -2779,9 +2763,7 @@ Phase E merges complete.
     2. **`start-loop.py` does NOT write the running marker.** The explicit user
        `start` entry (`start-loop.py`, Inv 19) runs ONLY its cancel-stop +
        bootstrap self-heal and then the dispatcher invokes the shared walk; the
-       walk owns the guard→mark sequence. The pre-walk guard + marker-write
-       steps that the in-session `start` sequence used to run before invoking
-       the walk are removed.
+       walk owns the guard→mark sequence (not `start-loop.py`).
     3. **Start-vs-tick authority is preserved (Inv 41 / Inv 19).** The
        cancel-stop and state-bootstrap self-heal stay tied to the EXPLICIT USER
        `start` ONLY: the explicit `start` runs `start-loop.py` (cancel-stop +
@@ -3499,58 +3481,6 @@ Phase E merges complete.
   manual smoke test (initiate `on`, restart Claude, observe banner,
   `start`, observe tick, `stop`, `off`) remains pending — it requires
   user-driven Claude restart and observation, not a TDD cycle.
-
-## Open questions (to resolve during Phases C–E)
-
-These were surfaced by the spec-creator subagent and require dispatcher /
-owner decisions during component implementation.
-
-1. **`max_parallel` configurability surface.** The design specifies a
-   default of 4 and says it is "declared in the auto-evolve configurable",
-   but the `feature.json` configuration block only shows `values: {on,
-   off}` for the `auto-evolve` subcommand. Is `max_parallel` a separate
-   `/rabbit-config` entry, an environment variable, a field in
-   `.rabbit/auto-evolve-state.json`, or a CLI flag passed to
-   `plan-batch.py --max-parallel`? The plan (Task 6) uses
-   `--max-parallel N` as a CLI flag — recommend pinning that as the
-   canonical surface and noting the default in spec text.
-
-2. **`safety-check.py` phase-release tag argument shape.** The design
-   says the next tag is passed via env `$RABBIT_AUTO_EVOLVE_NEXT_TAG`
-   when `--phase release`. Is env the agreed interface, or should
-   `release-bump.py` call `safety-check.py` with the tag as a positional
-   argument? Tasks 7 and 9 of the plan are ambiguous; pick one before
-   Task 7's TDD cycle starts.
-
-3. **(RESOLVED — Inv 9.)** `restart_needed` field type is `string | null`
-   (the string carries the reason). Encoded in
-   `scripts/schemas/auto-evolve-state.schema.json` and enforced by
-   `update-state.py`.
-
-4. **Glob registration / scope-protection.** Standalone feature; no
-   globs registered. Once scripts and markers are in place, should the
-   owner register the globs `.claude/features/rabbit-auto-evolve/**` and
-   `.rabbit/auto-evolve-state.json` and the markers `.rabbit-auto-evolve-*`
-   so scope-protection and drift checks apply, or are the markers
-   intentionally unscoped (since they are runtime state, not source)?
-
-5. **(RESOLVED — Inv 12 + contract.md `invokes`.)** The cross-scope
-   writes to `.claude/features/contract/workspace-structure.json`
-   (add `rabbit-auto-evolve` to `features.children`) and
-   `.claude/features/contract/templates/prompts/rabbit-auto-evolve.txt`
-   (the passthrough template matching the `prompts` declaration) are
-   explicitly declared in this feature's `specs/contract.md`
-   `invokes.files` block. The writes are performed via one-time
-   `.rabbit-scope-override` markers during the Phase D Task 12
-   feature touch.
-
-6. **`tdd_state` progression across multi-component build-out.**
-   `feature.json` currently shows `tdd_state: "spec"`. The plan calls
-   for advancing this through `test-red → impl → test-green`
-   per-component; however with 12 separate feature-touch cycles, the
-   `tdd_state` field will be bumped multiple times. Should the field
-   reflect the overall feature state (staying at `impl` until all 12
-   components are green) or track the most recently touched component?
 
 ## What this feature does NOT define
 
