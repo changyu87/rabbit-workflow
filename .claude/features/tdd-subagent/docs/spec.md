@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.17.0
+version: 5.18.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -21,9 +21,9 @@ human-approval gate are the dispatcher's responsibility, not the
 subagent's.
 
 The `rabbit-feature-touch` orchestration skill that consumes this
-feature's dispatch prompt is owned by `rabbit-feature`. The retired
-`tdd-state-machine` feature was absorbed into this one at v4.0.0; its
-14 invariants now appear below renumbered as Inv 31–44.
+feature's dispatch prompt is owned by `rabbit-feature`. This feature
+owns the state-machine surface formerly split into a separate feature;
+those 14 invariants appear below renumbered as Inv 31–44.
 
 ## Scripting Tech Stack
 
@@ -78,8 +78,7 @@ the template's `{{bypass_preamble_note}}` placeholder.
 1. **Owned surface.** This feature owns exactly three surface entries:
    `scripts/dispatch-tdd-subagent.py`, `scripts/tdd-step.py`, and
    `agents/rabbit-tdd-subagent.md`. The state-machine script `tdd-step.py`
-   lives at `.claude/features/tdd-subagent/scripts/tdd-step.py`
-   (absorbed from the retired `tdd-state-machine` feature at v4.0.0).
+   lives at `.claude/features/tdd-subagent/scripts/tdd-step.py`.
    The `.claude/features/tdd-state-machine/` directory MUST NOT exist.
 
 2. **`feature.json` surface fields.** `surface.hooks`, `surface.commands`,
@@ -100,9 +99,9 @@ the template's `{{bypass_preamble_note}}` placeholder.
    `--code-review-full-loop` (boolean flag),
    `--max-iterations N` (default `3`, minimum `1`).
 
-5. *(Retired — see CHANGELOG.md.)*
+5. *(Withdrawn; not part of the current design — see CHANGELOG.md.)*
 
-6. *(Retired — see CHANGELOG.md.)*
+6. *(Withdrawn; not part of the current design — see CHANGELOG.md.)*
 
 ### Dispatch script — prompt content
 
@@ -141,7 +140,7 @@ the template's `{{bypass_preamble_note}}` placeholder.
     - **Plugin mode** (`<repo_root>/.rabbit/.runtime/mode == 'plugin'`): marker at `<repo_root>/.rabbit/.runtime/scope-active-<feature>` (`.runtime/` subdir of the rabbit install, `scope-active-` prefix without leading dot).
     The mode-detection MUST happen at prompt-assembly time (in `dispatch-tdd-subagent.py`, NOT at subagent execution time) so that the assembled LOCK and UNLOCK lines contain the literal correct path for the current installation. Before this invariant was made mode-aware, the assembled prompt always emitted the standalone path, which produced an inert scope marker in plugin mode (scope-guard couldn't find it at the expected `<rabbit_root>/.runtime/scope-active-<name>` location) and made plugin-mode TDD cycles silently bypass scope discipline. Enforced by `test/test-prompt-lock-unlock-marker-path.py` which asserts: (a) in standalone mode (no `.rabbit/.runtime/mode` set), assembled prompt's LOCK line ends with `.rabbit-scope-active-<feature>` and UNLOCK matches; (b) in plugin mode (`.rabbit/.runtime/mode='plugin'`), assembled prompt's LOCK line ends with `.rabbit/.runtime/scope-active-<feature>` (note the slash-separated `.runtime/scope-active-` form, not the dashed standalone form) and UNLOCK matches. Both subprocess scenarios run dispatch-tdd-subagent.py against tmpdir fixtures.
 
-13. *(Retired — see CHANGELOG.md.)*
+13. *(Withdrawn; not part of the current design — see CHANGELOG.md.)*
 
 14. **IMPLEMENT/SYNC-DEPLOYED commit ordering.** Within the IMPLEMENT step,
     the assembled prompt instructs the subagent to write code (Edit/Write)
@@ -170,16 +169,16 @@ the template's `{{bypass_preamble_note}}` placeholder.
     preceded by a `Read` in the same session, as the Claude Code Edit
     tool rejects edits on un-Read files.
 
-19. *(Retired — see CHANGELOG.md.)*
+19. *(Withdrawn; not part of the current design — see CHANGELOG.md.)*
 
-20. *(Retired — see CHANGELOG.md.)*
+20. *(Withdrawn; not part of the current design — see CHANGELOG.md.)*
 
 21. **HANDOFF `closed_items` field.** The assembled prompt's HANDOFF
     JSON block declares `closed_items` as an empty list (the field is
     retained on the HANDOFF schema for forward compatibility per Inv 22
     even though the dispatcher no longer emits item-close instructions).
 
-30. *(Retired — see CHANGELOG.md.)*
+30. *(Withdrawn; not part of the current design — see CHANGELOG.md.)*
 
 ### HANDOFF schema
 
@@ -190,14 +189,12 @@ the template's `{{bypass_preamble_note}}` placeholder.
     source of truth). The JSON block includes
     `handoff_schema_version: "1.1.0"` and the fields `feature`,
     `tdd_state`, `test_result`, `spec_compliance`, `tdd_report_path`,
-    `closed_items`, `notes`. The version bump from `1.0.0` to `1.1.0`
-    landed in v5.6.0 as the additive-change marker for the `abort`
-    subcommand (Inv 50–53) and reserves the version for the new HANDOFF
-    fields (`aborted_reason`, `discovered_issues`) that companion issue
-    #328 will add. The bump is additive (existing producers continue to
-    emit valid 1.1.0 HANDOFFs without populating the new fields); the
-    fields themselves are NOT added in this version — only the version
-    integer is reserved.
+    `closed_items`, `notes`. The `1.1.0` version is the additive-change
+    marker for the `abort` subcommand (Inv 50–53) and reserves the
+    version for the additive HANDOFF fields `aborted_reason` and
+    `discovered_issues` (added under Inv 55). The bump is additive:
+    existing producers continue to emit valid 1.1.0 HANDOFFs without
+    populating the new fields.
 
 ### Bypass-marker preamble note
 
@@ -209,20 +206,20 @@ the template's `{{bypass_preamble_note}}` placeholder.
     preamble body lives in `dispatch-tdd-subagent.py` as the module-level
     `_BYPASS_NOTE_TEXT` constant; it names both marker forms). When
     neither marker is present, no such note appears. The dual-read accepts
-    either marker name for the duration of the issue #336 coexistence
-    window (Phase 1: dispatch reads either; no configurable rename and no
-    polarity flip).
+    either marker name for the duration of the coexistence window:
+    dispatch reads either; there is no configurable rename and no
+    polarity flip.
 
 24. **Bypass-marker note channel.** `dispatch-tdd-subagent.py` emits the
     bypass preamble note solely by calling `rabbit_print` from
     `.claude/features/contract/scripts/rabbit_print.py`. The script
     contains no inline ANSI escape codes and no inline brand strings.
 
-### `--human-approval-gate` branch (retired)
+### `--human-approval-gate` branch (withdrawn)
 
-25. *(Retired — see CHANGELOG.md.)*
+25. *(Withdrawn; not part of the current design — see CHANGELOG.md.)*
 
-26. *(Retired — see CHANGELOG.md.)*
+26. *(Withdrawn; not part of the current design — see CHANGELOG.md.)*
 
 ### Agent definition
 
@@ -231,7 +228,7 @@ the template's `{{bypass_preamble_note}}` placeholder.
     supplied by the dispatched prompt. It does not describe a dual-path
     layout (agent-local OR feature-local).
 
-57. **Agent manifest item name (issue #418).** The agent manifest item
+57. **Agent manifest item name.** The agent manifest item
     is named `rabbit-tdd-subagent`. The agent definition source lives at
     `agents/rabbit-tdd-subagent.md` and its YAML frontmatter declares
     `name: rabbit-tdd-subagent`. The `publish_agent` manifest entry
@@ -289,9 +286,8 @@ the template's `{{bypass_preamble_note}}` placeholder.
 
 ### State machine — schema/behaviour
 
-The 13 invariants in this section were absorbed from the retired
-`tdd-state-machine` feature at v4.0.0. They constrain
-`scripts/tdd-step.py`.
+The 13 invariants in this section constrain `scripts/tdd-step.py` (the
+state-machine surface this feature owns).
 
 31. **Valid state set.** The valid `tdd_state` values are exactly:
     `spec`, `spec-update`, `test-red`, `impl`, `sync-deployed`,
@@ -320,7 +316,7 @@ The 13 invariants in this section were absorbed from the retired
     rejected with exit `1`, including when `--force` is supplied.
 
 36. **`tdd-step.py` location.** `scripts/tdd-step.py` MUST be present at
-    `.claude/features/tdd-subagent/scripts/tdd-step.py`. The retired
+    `.claude/features/tdd-subagent/scripts/tdd-step.py`. The
     `.claude/features/tdd-state-machine/` directory MUST NOT exist.
 
 37. **Executable bit.** `scripts/tdd-step.py` is stored with the
@@ -332,7 +328,7 @@ The 13 invariants in this section were absorbed from the retired
     following holds:
 
     - `git diff HEAD` under the feature's spec dir is non-empty. The spec
-      dir is resolved dual-read (issue #399 Phase 2): `<feature-dir>/specs/`
+      dir is resolved dual-read: `<feature-dir>/specs/`
       is preferred, with the legacy `<feature-dir>/docs/spec/` honoured as a
       fallback during the coexistence window. OR
     - `--spec-no-change-reason <reason>` is supplied with a non-empty
@@ -369,7 +365,7 @@ The 13 invariants in this section were absorbed from the retired
     successful transition `spec-update -> test-red`, `tdd-step.py`
     calls `contract.lib.checks.check_numbered_lists` against the feature's
     spec dir, resolved dual-read (`<feature-dir>/specs/` preferred, legacy
-    `<feature-dir>/docs/spec/` fallback per issue #399 Phase 2). A
+    `<feature-dir>/docs/spec/` fallback). A
     non-passed `CheckResult` emits a
     warning via `rabbit_print` on stderr but does NOT block the
     transition. The Inv 38 gate remains the only blocking precondition
@@ -472,7 +468,7 @@ The 13 invariants in this section were absorbed from the retired
     implementation MAY require a coordinated edit on the contract
     feature or a scope-override on the template file.
 
-46. **STEP 5 SYNC-DEPLOYED — publish-sync the deployed copies before commit.** STEP 5 of the 8-step cycle (per Inv 8) MUST appear between IMPLEMENT (STEP 4) and CODE-REVIEW (STEP 6) and MUST instruct the subagent to: (a) enumerate every `publish_file`, `publish_hook`, `publish_skill`, and `publish_settings` entry in the feature-under-scope's `feature.json manifest`; (b) for each entry, invoke the corresponding `contract.lib.publish.<api>` function in-process (lazy-import from `.claude/features/contract/lib/publish.py`) — or, equivalently, invoke `run_publish_loop(target_root=<repo_root>)` scoped to this single feature via subprocess — so every deployed destination is byte-equal to its feature-local source-of-truth; (c) `git add` every deployed path that publishing modified, in addition to the already-staged feature-local source changes from STEP 4; (d) at the END of STEP 5, perform the SINGLE atomic commit `git commit -m "fix|feat(<feature>): <summary>"` covering BOTH the feature-local source changes (staged in STEP 4 per Inv 14) AND the deployed-copy sync (staged in step (c) above); (e) immediately after the commit, invoke `tdd-step.py transition <feature_dir> sync-deployed` to advance the state machine into `sync-deployed` (per Inv 31/32). If ANY publish call in step (b) returns a non-passed `CheckResult`, the subagent MUST stop, emit a fail-HANDOFF with `tdd_state: impl`, `test_result: not_run`, `spec_compliance: fail`, `tdd_report_path: null`, `notes: "SYNC-DEPLOYED failed: <api>(<source>) returned <message>"`, and MUST NOT proceed to CODE-REVIEW or commit. This makes the feature-local/deployed-copy drift class — the source of 4 fix-up commits between PRs #257 and #270 — impossible by construction: every deployed artifact is byte-equal to its source AT impl-commit time, not later when `check_manifest_drift` re-syncs at the next Stop hook. Enforced by `test/test-prompt-sync-deployed-step.py` which reads the template at `.claude/features/contract/templates/prompts/tdd-subagent.txt` and asserts: (i) STEP 5 section header is `SYNC-DEPLOYED`, (ii) step body names `publish_file`, `publish_hook`, `publish_skill`, and `publish_settings` explicitly, (iii) step body instructs `git add` of deployed paths AND the single atomic commit at end-of-step, (iv) step body instructs `tdd-step.py transition <feature_dir> sync-deployed` AFTER the commit, (v) step body specifies the fail-HANDOFF shape on publish failure with `tdd_state: impl`. The template file edit is a cross-feature operation relative to tdd-subagent's scope (template lives under contract per Inv 57) and MAY require a coordinated edit on the contract feature or a scope-override on the template file. The new `sync-deployed` state in the `tdd-step.py` state machine (Inv 31/32) lands the step at the state-machine level alongside the prompt-level step.
+46. **STEP 5 SYNC-DEPLOYED — publish-sync the deployed copies before commit.** STEP 5 of the 8-step cycle (per Inv 8) MUST appear between IMPLEMENT (STEP 4) and CODE-REVIEW (STEP 6) and MUST instruct the subagent to: (a) enumerate every `publish_file`, `publish_hook`, `publish_skill`, and `publish_settings` entry in the feature-under-scope's `feature.json manifest`; (b) for each entry, invoke the corresponding `contract.lib.publish.<api>` function in-process (lazy-import from `.claude/features/contract/lib/publish.py`) — or, equivalently, invoke `run_publish_loop(target_root=<repo_root>)` scoped to this single feature via subprocess — so every deployed destination is byte-equal to its feature-local source-of-truth; (c) `git add` every deployed path that publishing modified, in addition to the already-staged feature-local source changes from STEP 4; (d) at the END of STEP 5, perform the SINGLE atomic commit `git commit -m "fix|feat(<feature>): <summary>"` covering BOTH the feature-local source changes (staged in STEP 4 per Inv 14) AND the deployed-copy sync (staged in step (c) above); (e) immediately after the commit, invoke `tdd-step.py transition <feature_dir> sync-deployed` to advance the state machine into `sync-deployed` (per Inv 31/32). If ANY publish call in step (b) returns a non-passed `CheckResult`, the subagent MUST stop, emit a fail-HANDOFF with `tdd_state: impl`, `test_result: not_run`, `spec_compliance: fail`, `tdd_report_path: null`, `notes: "SYNC-DEPLOYED failed: <api>(<source>) returned <message>"`, and MUST NOT proceed to CODE-REVIEW or commit. This makes the feature-local/deployed-copy drift class impossible by construction: every deployed artifact is byte-equal to its source AT impl-commit time, not later when `check_manifest_drift` re-syncs at the next Stop hook. Enforced by `test/test-prompt-sync-deployed-step.py` which reads the template at `.claude/features/contract/templates/prompts/tdd-subagent.txt` and asserts: (i) STEP 5 section header is `SYNC-DEPLOYED`, (ii) step body names `publish_file`, `publish_hook`, `publish_skill`, and `publish_settings` explicitly, (iii) step body instructs `git add` of deployed paths AND the single atomic commit at end-of-step, (iv) step body instructs `tdd-step.py transition <feature_dir> sync-deployed` AFTER the commit, (v) step body specifies the fail-HANDOFF shape on publish failure with `tdd_state: impl`. The template file edit is a cross-feature operation relative to tdd-subagent's scope (template lives under contract per Inv 57) and MAY require a coordinated edit on the contract feature or a scope-override on the template file. The new `sync-deployed` state in the `tdd-step.py` state machine (Inv 31/32) lands the step at the state-machine level alongside the prompt-level step.
 
 47. **`dispatch-tdd-subagent.py` plugin-mode root resolution.** `dispatch-tdd-subagent.py` MUST prefer the `RABBIT_ROOT` environment variable (set by `install.py` per rabbit-cage Inv 19) when resolving the repo root used to (a) locate `find-feature.py` at `<repo_root>/.claude/features/contract/scripts/find-feature.py`, and (b) pass as the `--repo` argument to the same `find-feature.py` invocation. Both uses share a single resolved `repo_root` value — the script MUST NOT split them across two different roots. Fallback ordering, highest precedence first:
 
@@ -480,12 +476,12 @@ The 13 invariants in this section were absorbed from the retired
 
     (b) `git rev-parse --show-toplevel` (run in the process CURRENT WORKING DIRECTORY, per Inv 60) — fallback when `RABBIT_ROOT` is unset (standalone-workspace mode). The git toplevel is the rabbit-self repo root in standalone (or the operating worktree under worktree-isolated dispatch), which contains `.claude/features/contract/scripts/find-feature.py` directly.
 
-    Mirroring constraint: this matches the resolution pattern already in `rabbit-feature/scripts/resolve-scope.py` (lines ~60–70), so any caller of `find-feature.py` in the rabbit ecosystem uses the same precedence ladder. Divergence between the two sites was the root cause of #301/#302 — `resolve-scope.py` used `RABBIT_ROOT` correctly but `dispatch-tdd-subagent.py` jumped straight to `git rev-parse`, producing `<host_root>` and then a non-existent `find-feature.py` path in plugin installs.
+    Mirroring constraint: this matches the resolution pattern already in `rabbit-feature/scripts/resolve-scope.py` (lines ~60–70), so any caller of `find-feature.py` in the rabbit ecosystem uses the same precedence ladder. Divergence between the two sites must not recur: a site that jumps straight to `git rev-parse` (instead of preferring `RABBIT_ROOT`) produces `<host_root>` and then a non-existent `find-feature.py` path in plugin installs.
 
     Enforced by `test/test-dispatch-plugin-mode-root.py` (new), which:
     - Scenario A (standalone): unset `RABBIT_ROOT`, set cwd to a tmpdir containing `.git/` and `.claude/features/contract/scripts/find-feature.py`, invoke `dispatch-tdd-subagent.py --scope <known-feature> ...`, assert the call succeeds and finds the feature.
     - Scenario B (plugin, RABBIT_ROOT set): set `RABBIT_ROOT=<tmp>/.rabbit`, populate `<tmp>/.rabbit/.claude/features/contract/scripts/find-feature.py` + `<tmp>/.rabbit/.runtime/mode='plugin'` + `<tmp>/.rabbit/rabbit-project/features/run-ingest/feature.json`, invoke the dispatcher with `--scope run-ingest`, assert it succeeds and locates the project feature.
-    - Scenario C (regression for #301): plugin layout, RABBIT_ROOT set, assert the dispatcher does NOT fall back to git rev-parse (a stale `<host>/.claude/...` path) — verify by setting `<tmp>` to a directory that has `.git/` at host level but NO `.claude/` at host level; correct behavior must use `RABBIT_ROOT` and not error on the missing host-level `.claude/`.
+    - Scenario C (git-rev-parse-fallback regression): plugin layout, RABBIT_ROOT set, assert the dispatcher does NOT fall back to git rev-parse (a stale `<host>/.claude/...` path) — verify by setting `<tmp>` to a directory that has `.git/` at host level but NO `.claude/` at host level; correct behavior must use `RABBIT_ROOT` and not error on the missing host-level `.claude/`.
 
 48. **No doubled `.rabbit/.rabbit/` in assembled prompt paths.** The assembled prompt MUST NOT contain the literal substring `.rabbit/.rabbit/` anywhere — neither in STEP 1 LOCK (scope marker), STEP 7 mkdir, STEP 7 `Path:` for the tdd-report, STEP 8 UNLOCK, nor the HANDOFF block's `tdd_report_path` field. The doubling occurs when the template hardcodes `{{repo_root}}/.rabbit/<rest>` BUT the dispatcher's `repo_root` resolves to `RABBIT_ROOT` (= `<host>/.rabbit/`) per Inv 47 — the result is `<host>/.rabbit/.rabbit/<rest>`, a non-existent path.
 
@@ -510,11 +506,11 @@ The 13 invariants in this section were absorbed from the retired
 
         `> NOTE: scoped view of N selected invariants ({list}) from <feature> spec.md; for related-but-unembedded invariants run \`grep '^<num>\\.' <spec-path>\` against the spec.`
 
-        where `<spec-path>` is the repo-relative path of the `--spec` file the caller supplied (this resolves dual-read per issue #399 Phase 2: `.claude/features/<feature>/specs/spec.md` for migrated features, the legacy `.claude/features/<feature>/docs/spec/spec.md` otherwise). When `--spec` is not under the repo root, the hint falls back to the canonical `.claude/features/<feature>/specs/spec.md`.
+        where `<spec-path>` is the repo-relative path of the `--spec` file the caller supplied (this resolves dual-read: `.claude/features/<feature>/specs/spec.md` for migrated features, the legacy `.claude/features/<feature>/docs/spec/spec.md` otherwise). When `--spec` is not under the repo root, the hint falls back to the canonical `.claude/features/<feature>/specs/spec.md`.
 
-    (c) **Invariant lookup** — invariants are identified by the regex `^([0-9]+)\.\s` at the start of a line within the ## Invariants section. An invariant body extends from its number line to the line BEFORE the next invariant number (or to the end of the ## Invariants section if it's the last). Retired invariants (matching `*(Retired — see CHANGELOG.md.)*`) are recognized AND retrievable — passing a retired invariant number yields the one-line retirement notice (so the subagent sees that the number is allocated-but-retired rather than missing).
+    (c) **Invariant lookup** — invariants are identified by the regex `^([0-9]+)\.\s` at the start of a line within the ## Invariants section. An invariant body extends from its number line to the line BEFORE the next invariant number (or to the end of the ## Invariants section if it's the last). Withdrawn invariants (whose body is the one-line withdrawal notice) are recognized AND retrievable — passing a withdrawn invariant number yields that notice, so the subagent sees that the number is allocated-but-withdrawn rather than missing.
 
-    (d) **Unknown number — fatal.** If any requested number does NOT match an existing invariant in the spec (including retired tombstones), the dispatcher exits with code 1 and a stderr line `error: --affected-invariants includes unknown invariant number(s) for <feature>: [N, M]; available: [1..29]`. No silent skip.
+    (d) **Unknown number — fatal.** If any requested number does NOT match an existing invariant in the spec (including withdrawn invariant slots), the dispatcher exits with code 1 and a stderr line `error: --affected-invariants includes unknown invariant number(s) for <feature>: [N, M]; available: [1..29]`. No silent skip.
 
     (e) **Size win.** Typical scoped prompts are 20-30KB vs ~100KB for the full-spec form on rabbit-cage. The win scales with feature spec size — smaller features (rabbit-config, rabbit-issue) see proportionally less benefit. No worse than the unscoped form when omitted.
 
@@ -528,13 +524,12 @@ The 13 invariants in this section were absorbed from the retired
 
 ### State machine — abort subcommand
 
-The five invariants below (Inv 50–54) land the abort mechanism per
-issue #327. They extend the state-machine surface (`tdd-step.py`) and
-clarify the de facto convention that HANDOFF-only state values are not
-members of `_VALID_STATES` (Inv 31). The companion issue #328 adds
-HANDOFF JSON fields (`aborted_reason`, `discovered_issues`) that abort
-callers will populate; the version-integer reservation for that work
-lives in Inv 22 above.
+The five invariants below (Inv 50–54) define the abort mechanism. They
+extend the state-machine surface (`tdd-step.py`) and clarify the
+convention that HANDOFF-only state values are not members of
+`_VALID_STATES` (Inv 31). The HANDOFF JSON fields `aborted_reason` and
+`discovered_issues` that abort callers populate are defined in Inv 55;
+the version-integer reservation for that work lives in Inv 22 above.
 
 50. **`abort` subcommand.** `tdd-step.py` MUST expose a fifth
     subcommand `abort <feature_dir> --reason <code>` (in addition to
@@ -543,7 +538,7 @@ lives in Inv 22 above.
     `transition` shape (Inv 14, Inv 46). `--reason <code>` is required —
     abort without a recorded reason is rejected with exit code `2`
     (invocation error). Reason codes are free-form short tags;
-    convention is `<short-tag>` such as `blocked-by-#329`,
+    convention is `<short-tag>` such as `blocked-by-<issue>`,
     `discovered-blocker`, `external-dep-missing`. The `abort` verb is
     semantically distinct from `--force` backward transitions (Inv 34):
     `abort` is for loop- or subagent-driven blocker handling; `--force`
@@ -599,8 +594,8 @@ lives in Inv 22 above.
     value in `feature.json.tdd_state`. This invariant documents the
     de facto behavior so the convention is explicit: HANDOFF JSON may
     carry state-like values that are not members of `_VALID_STATES`
-    (Inv 31), and any future HANDOFF-only state values (such as
-    `aborted`, anticipated per #328 for dispatcher emission) follow
+    (Inv 31), and any future HANDOFF-only state values (such as a
+    dispatcher-emitted `aborted`) follow
     the same rule. `_VALID_STATES` (Inv 31) remains the authoritative
     set of `feature.json.tdd_state` values; HANDOFF-emitted
     state-like values are a separate vocabulary used only on the wire
@@ -609,8 +604,8 @@ lives in Inv 22 above.
 55. **HANDOFF additive fields: `discovered_issues` and
     `aborted_reason`.** The HANDOFF JSON block (declared in Inv 22)
     carries two ADDITIVE fields under `handoff_schema_version: "1.1.0"`
-    (the version-integer reservation landed in #327 / Inv 22; the
-    fields themselves land in v5.7.0 per this invariant):
+    (the version-integer reservation is described in Inv 22; the
+    fields themselves are defined by this invariant):
 
     - **`discovered_issues: [{title, body, labels}]`** — list of
       issues the subagent discovered during its cycle that warrant
@@ -627,7 +622,7 @@ lives in Inv 22 above.
       `null` in non-abort HANDOFFs. In abort HANDOFFs (emitted after
       the subagent invokes `tdd-step.py abort --reason <code>` per
       Inv 50), the value carries the same `<code>` passed to
-      `--reason` (a free-form short tag such as `blocked-by-#329`).
+      `--reason` (a free-form short tag such as `blocked-by-<issue>`).
 
     Both fields are ADDITIVE — the template MUST emit the default
     values (`[]` and `null`) in EVERY HANDOFF, including normal
@@ -660,12 +655,11 @@ lives in Inv 22 above.
     `.claude/features/<feature>/`, the dispatched subagent's scope —
     bounded to the primary feature and features it directly edits — does
     NOT cover other features whose test fixtures or install closures
-    INDIRECTLY reference the removed path. PR #401 (issue #391) was the
-    motivating failure: retiring the Skill-path injection deleted files
-    under the contract feature, ran the contract suite and the six
-    `feature.json prompts`-edited features green, but silently broke 15
-    rabbit-cage tests whose `install.py` and test fixtures referenced the
-    removed paths — rabbit-cage's `test/run.py` never ran.
+    INDIRECTLY reference the removed path. The failure class this guards
+    against: deleting files under one feature can silently break another
+    feature whose `install.py` and test fixtures reference the removed
+    paths, because that downstream feature's `test/run.py` never runs in
+    a scope bounded to the editing feature.
 
     The dispatched-subagent template at
     `.claude/features/contract/templates/prompts/tdd-subagent.txt` MUST,
@@ -734,8 +728,8 @@ lives in Inv 22 above.
     deployed `.claude/agents/rabbit-tdd-subagent.md` and asserts the `tools:`
     list contains `Skill` (and still contains the original six tools).
 
-58. **Assembled-prompt paths are repo-RELATIVE, not main-repo-absolute
-    (issue #527).** The four filesystem-path slots `dispatch-tdd-subagent.py`
+58. **Assembled-prompt paths are repo-RELATIVE, not main-repo-absolute.**
+    The four filesystem-path slots `dispatch-tdd-subagent.py`
     interpolates into the assembled prompt — `feature_dir`, `tdd_step_py`,
     `scope_marker_path`, `tdd_report_path` — MUST be emitted as paths RELATIVE
     to the repository root (i.e. `os.path.relpath(<abs>, repo_root)`), and the
@@ -819,7 +813,7 @@ lives in Inv 22 above.
     `_scope_marker_path_for_abort` and the `feature.json` bookkeeping anchored
     on the dispatcher's relativized `feature_dir`) point at the MAIN tree, so
     the marker and bookkeeping writes leaked into the dispatcher's main tree
-    — tripping `safety-check.py` Inv 5 and blocking the merge phase (#583).
+    — tripping `safety-check.py` Inv 5 and blocking the merge phase.
     The process cwd is the worktree under isolation and the main repo on the
     headless/main path, so cwd-based resolution is correct for BOTH. This is
     the resolver-side complement to Inv 58 (which makes the dispatcher emit
@@ -834,7 +828,7 @@ lives in Inv 22 above.
     toplevel (headless path); and `RABBIT_ROOT` set still wins verbatim
     (plugin path).
 
-61. **Oversized prompt slots bypass the argv 128 KB cap (issue #528).**
+61. **Oversized prompt slots bypass the argv 128 KB cap.**
     `dispatch-tdd-subagent.py` MUST assemble the prompt without ever passing
     a single `--slot name=value` argv string longer than Linux's
     `MAX_ARG_STRLEN` (128 KB per argument, independent of `ARG_MAX`) to
@@ -866,7 +860,7 @@ lives in Inv 22 above.
     oversized body verbatim (no truncation).
 
 62. **`rabbit_print` import resolves from the repo root, not a fixed
-    `parents[N]` offset (issue #561).** `tdd-step.py` loads the contract
+    `parents[N]` offset.** `tdd-step.py` loads the contract
     feature's `rabbit_print` module (per Inv 39) at import time. The module
     always lives at `<repo_root>/.claude/features/contract/scripts/rabbit_print.py`,
     but `tdd-step.py` is published to TWO locations at DIFFERENT depths: the
