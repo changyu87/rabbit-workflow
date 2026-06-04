@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.49.0
+version: 0.50.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2273,7 +2273,15 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       telling the user the durable `CronCreate` heartbeat will be set up on
       the next `/rabbit-auto-evolve start`. The heartbeat cron expression
       AVOIDS the `:00` and `:30` minute marks per CronCreate guidance (e.g.
-      `13,43 * * * *`, ~30-min cadence). The crontab path is unchanged when
+      `13,43 * * * *`, ~30-min cadence). **Single cadence source.** The tick
+      cadence is codified ONCE in `install-cron.py` as `CADENCE_MINUTES`; the
+      system-cron `SCHEDULE` (`*/N * * * *`) AND the fallback heartbeat both
+      DERIVE from it — the heartbeat is the same cadence shifted off the
+      `:00`/`:30` marks by a fixed offset (a deterministic transform, NOT a
+      second independent literal), so changing the cadence in one place
+      propagates to BOTH paths. `test/test-cron-cadence-source.py` pins the
+      codified source and every spec.md / SKILL.md cron literal to it so a
+      drift fails the gate. The crontab path is unchanged when
       available — cron remains the SOLE tick scheduler WHERE AVAILABLE; the
       `CronCreate` heartbeat is the SANCTIONED fallback only on
       crontab-restricted hosts so a mode flip is never blocked by an
