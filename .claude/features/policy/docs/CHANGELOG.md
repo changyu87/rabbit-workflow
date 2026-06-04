@@ -8,6 +8,26 @@ deprecation_criterion: when the policy feature is retired (Claude Code exposes a
 
 ## Version notes
 
+- **v1.13.0 (history-free doc surfaces + opt into Inv 49 strict tier, #547 /
+  Housekeeping Phase 2):** Opted the policy feature into the contract Inv 49
+  STRICT housekeeping tier by declaring top-level `"housekeeping_clean": true`
+  in `feature.json`. To satisfy the strict tier, two tombstone-flavoured
+  phrasings in `docs/spec.md` were rephrased to non-tombstone wording WITHOUT
+  changing the substantive behaviour they describe:
+  - Invariant 2's title "Retired file absent" became "Legacy rule file absent"
+    (the invariant still requires that `workflow-rules.md` does NOT exist
+    anywhere within the feature directory).
+  - Invariant 8's deletion-criterion clause "the file is retired once
+    `test/test-policy-invariants.py` carries a `# Subsumes:` marker …" became
+    "the file is removed once …" (same observable condition; only the verb
+    changed from the tombstone word "retired" to "removed").
+
+  No invariant was renumbered or removed; no rule meaning changed. The strict
+  check (`contract/test/test-spec-bodies-no-historical-tags.py`) now self-
+  verifies the policy doc surfaces are history-free, and the full repo-wide
+  contract gate (`contract/test/run.py`) stays green. Lockstep minor bump
+  across `feature.json`, `docs/spec.md`, and `docs/contract.md`.
+
 - **v1.12.0 (convention text names flat `docs/` home, #399 Phase 3a):**
   Updated the policy convention text so the canonical "Where the metadata
   lives" rule names the flat `docs/` layout that every feature now uses.

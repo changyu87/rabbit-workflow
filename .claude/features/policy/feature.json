@@ -1,7 +1,8 @@
 {
   "name": "policy",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "owner": "rabbit-workflow team",
+  "housekeeping_clean": true,
   "tdd_state": "test-green",
   "summary": "Canonical rule files fed to subagents; three policy docs (philosophy, spec-rules, coding-rules).",
   "surface": {
@@ -13,6 +14,5 @@
   "updated": "2026-06-03",
   "manifest": [],
   "runtime": {},
-  "configuration": [],
-  "spec_no_change_reason": "1.11.0 -> 1.12.0 updates the policy CONVENTION TEXT (spec-rules.md 'Where the metadata lives' Specs/contracts row, philosophy.md Bounded Scope) to name the flat docs/ home (docs/spec.md, docs/contract.md, docs/CHANGELOG.md) instead of the legacy spec-directory paths, completing #399 Phase 3a. The spec.md and contract.md BODIES are unchanged; only the convention text in the rule files (feature content, not the spec doc) and the lockstep version bump moved. Lockstep minor bump across feature.json, docs/spec.md, and docs/contract.md frontmatter."
+  "configuration": []
 }
