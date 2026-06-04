@@ -12,6 +12,33 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.56.0 (per-feature config command + alerts via shared helper; phase 3 of #733):**
+  rabbit-cage manifests its five genuinely-owned configurables (`scope-guard`,
+  `bypass-permissions`, `allowed-tools`, `bash-allow`, `prompt-threshold`) as a
+  single grouped per-feature config command `/rabbit-cage-config`, additively
+  alongside the still-live `/rabbit-config <sub>` central surface (coexistence —
+  both work; rabbit-config retired separately in phase 4 / #769). New artifacts:
+  `commands/rabbit-cage-config.md` (deployed via `publish_command`) and its
+  backing `scripts/rabbit-cage-config.py`, a THIN wrapper that reads rabbit-cage's
+  own `configuration[]` entry and delegates validation + mutation +
+  restart-prompt rendering to `contract.lib.config_dispatch.dispatch_config`
+  (no re-implemented interpreter; script > prompt). The five owned configurables
+  gain the optional `command` field (`configuration.schema.json` 1.1.0); the
+  `tdd-autonomous` configurable is left untouched (it is the TDD feature's
+  surface). Per-feature override alerts: rabbit-cage's `scope-guard` override
+  already surfaces via its OWN dedicated `check_marker_alert` entries (Inv 7 /
+  Inv 16) — per-feature alert ownership in place. Re-homing the json-key-storage
+  `bypass-permissions` alert needs `contract.lib.runtime.emit_configurable_alert`
+  admitted into the `runtime.schema.json` API enum (the function + its contract
+  test already exist; only the enum entry is missing — outside rabbit-cage's
+  bounded scope), so it is DEFERRED as a phase-3 cross-feature follow-up for
+  `contract` (#768); bypass-permissions' alert continues to surface via
+  rabbit-config's central `iterate_configurables_*` meanwhile (coexistence).
+  install.py's `COMMANDS` / `FEATURE_INCLUDES["rabbit-cage"]`
+  gain the command + script, and `FEATURE_INCLUDES["contract"]` gains
+  `lib/config_dispatch.py` (the cross-feature dependency the command shells
+  into). New invariant Inv 40.
+
 - **v5.55.0 (rename CONFIGURATION `human-approval` -> `tdd-autonomous` + polarity flip; #336 / phase 2 of #733):**
   BREAKING rename of rabbit-cage's TDD-gating configurable. The `subcommand`
   `human-approval` becomes `tdd-autonomous`, and the boolean polarity is

@@ -89,6 +89,7 @@ SUITES = [
     "test-install-agent-path-rabbit-spec-creator.py",
     "test-specs-layout.py",
     "test-rabbit-update-command.py",
+    "test-rabbit-cage-config-command.py",
     "test-command-frontmatter-compliance.py",
     "test-scope-guard-file-scoped-override.py",
     "test-spec-housekeeping-682-dead-prose-removed.py",

@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.55.0",
+  "version": "5.56.0",
   "contiguous_invariants": true,
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
@@ -100,6 +100,12 @@
       "api": "publish_command",
       "args": {
         "source": "commands/rabbit-update.md"
+      }
+    },
+    {
+      "api": "publish_command",
+      "args": {
+        "source": "commands/rabbit-cage-config.md"
       }
     }
   ],
@@ -224,6 +230,7 @@
     {
       "id": "scope-guard",
       "subcommand": "scope-guard",
+      "command": "rabbit-cage-config",
       "storage": {
         "type": "marker-file",
         "path": ".rabbit-scope-override"
@@ -271,6 +278,7 @@
     {
       "id": "bypass-permissions",
       "subcommand": "bypass-permissions",
+      "command": "rabbit-cage-config",
       "storage": {
         "type": "json-key",
         "file": ".claude/settings.local.json",
@@ -305,6 +313,7 @@
     {
       "id": "prompt-threshold",
       "subcommand": "prompt-threshold",
+      "command": "rabbit-cage-config",
       "storage": {
         "type": "json-key",
         "file": ".claude/settings.local.json",
@@ -325,6 +334,7 @@
     {
       "id": "allowed-tools",
       "subcommand": "allowed-tools",
+      "command": "rabbit-cage-config",
       "storage": {
         "type": "json-array",
         "file": ".claude/settings.local.json",
@@ -355,6 +365,7 @@
     {
       "id": "bash-allow",
       "subcommand": "bash-allow",
+      "command": "rabbit-cage-config",
       "storage": {
         "type": "json-array-templated",
         "file": ".claude/settings.local.json",

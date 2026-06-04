@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.55.0
+version: 5.56.0
 template_version: 2.0.0
 ---
 
@@ -18,6 +18,7 @@ template_version: 2.0.0
       ".claude/commands/rabbit-refresh.md",
       ".claude/commands/rabbit-project.md",
       ".claude/commands/rabbit-update.md",
+      ".claude/commands/rabbit-cage-config.md",
       "CLAUDE.md",
       "README.md",
       "install.py"
@@ -31,6 +32,7 @@ template_version: 2.0.0
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-map.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py map"},
       {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.py", "stdin": "none", "stdout": "annotated workspace tree", "exit": "0=ok 1=error"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-update.py", "stdin": "none", "stdout": "check: current-vs-latest JSON; install: install.py log", "exit": "0=ok 1=error 2=usage", "note": "backs /rabbit-update; check reuses contract check-release-update.py probe (non-throttled), install invokes install.py --update (spec Inv 35)"},
+      {"path": ".claude/features/rabbit-cage/scripts/rabbit-cage-config.py", "stdin": "none", "stdout": "config messages + restart prompt", "exit": "0=ok 1=error 2=usage", "note": "backs /rabbit-cage-config; thin wrapper over contract.lib.config_dispatch.dispatch_config for rabbit-cage's 5 owned configurables (spec Inv 40)"},
       {"path": ".claude/features/rabbit-cage/lib/project_map_reader.py", "stdin": "none", "stdout": "none", "exit": "n/a (importable module)", "note": "plugin-mode project-map I/O + path matching; imported by scope-guard.py"}
     ],
     "schemas": [],
@@ -60,7 +62,8 @@ template_version: 2.0.0
       {"path": ".claude/features/contract/lib/publish.py", "purpose": "install-time MANIFEST API calls"},
       {"path": ".claude/features/contract/lib/runtime.py", "purpose": "per-event RUNTIME API calls"},
       {"path": ".claude/features/contract/lib/producers.py", "purpose": "content producers invoked by publish_generated and check_drift_regenerate"},
-      {"path": ".claude/features/contract/scripts/rabbit_print.py", "purpose": "dispatcher output rendering (rabbit_subline, rabbit_block)"}
+      {"path": ".claude/features/contract/scripts/rabbit_print.py", "purpose": "dispatcher output rendering (rabbit_subline, rabbit_block)"},
+      {"path": ".claude/features/contract/lib/config_dispatch.py", "purpose": "scripts/rabbit-cage-config.py delegates validation + mutation + restart-prompt rendering to dispatch_config (spec Inv 40)"}
     ],
     "scripts": [
       {"path": ".claude/features/contract/scripts/find-feature.py", "purpose": "scope-guard.py feature-name -> path resolution"},
@@ -81,7 +84,7 @@ template_version: 2.0.0
     ]
   },
   "never": [
-    "writes .claude/settings.local.json except via /rabbit-config (owned by rabbit-config feature)",
+    "writes .claude/settings.local.json except via /rabbit-config (owned by rabbit-config feature) or the rabbit-cage-owned /rabbit-cage-config command (spec Inv 40) — both route the write through contract.lib.mutation",
     "modifies files inside another feature's directory",
     "writes outside its declared scope without an active scope marker or scope-guard override",
     "introduces a new .sh runtime script under hooks/ or scripts/"
