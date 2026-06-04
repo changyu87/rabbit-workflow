@@ -56,6 +56,10 @@ REQUIRED = [
     # on a parent-reference line must not set cross_scope.
     "parent-reference line",
     "sub-issue of",
+    # (a.2) edit-path-only feature-set signal (issue #669): the feature-set
+    # signal counts EDIT-PATH references, not bare feature-NAME mentions.
+    "edit-path references, not bare",
+    "edit target",
 ]
 
 missing = [s for s in REQUIRED if s not in lowered]
