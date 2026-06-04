@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """test-tdd-autonomous-alert.py — Inv 59 (e2e).
 
-The tdd-autonomous bypass override is re-homed here as a PER-FEATURE runtime[]
+The tdd-autonomous bypass override is owned here as a PER-FEATURE runtime[]
 alert (phase 3 of #733): rabbit-feature emits its own Stop AND SessionStart
-alert when the .rabbit-tdd-autonomous bypass marker is active, replacing
-rabbit-config's central iterate_configurables_* enumeration. The alert is
-consumed by rabbit-cage's generic event dispatcher via
-contract.lib.runtime.check_marker_alert.
+alert when the .rabbit-tdd-autonomous bypass marker is active. The alert is
+validated through rabbit-feature's OWN per-feature runtime entry, consumed by
+rabbit-cage's generic event dispatcher via
+contract.lib.runtime.check_marker_alert. (A central enumeration is no longer
+involved — see #769 retiring rabbit-config.)
 
 Asserts:
   (i)   feature.json runtime declares a check_marker_alert entry under BOTH

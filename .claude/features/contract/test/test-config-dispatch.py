@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-config-dispatch.py — exercises contract.lib.config_dispatch.dispatch_config,
-the reusable CORE of /rabbit-config's interpreter (phase 3 of #733).
+the reusable CORE of the per-feature config interpreter (phase 3 of #733).
 
 The helper validates the user value, resolves the {api, args} call from the
 configuration[] entry's values/actions, applies the mutation by DELEGATING to
@@ -48,7 +48,7 @@ def load(root, name):
         return json.load(f)
 
 
-# A values-style marker configurable mirroring rabbit-config's scope-guard shape.
+# A values-style marker configurable mirroring rabbit-cage's scope-guard shape.
 MARKER_CFG = {
     "id": "demo-marker",
     "subcommand": "demo-marker",
@@ -61,7 +61,7 @@ MARKER_CFG = {
     },
 }
 
-# A values-style json-key configurable mirroring rabbit-config's
+# A values-style json-key configurable mirroring rabbit-cage's
 # bypass-permissions shape (no restart in this fixture).
 JSONKEY_CFG = {
     "id": "demo-json",

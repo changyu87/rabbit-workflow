@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.34.0
+version: 1.35.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -528,9 +528,8 @@ their source path and not deployed):
     subcommand or value exits non-zero. The command frontmatter carries the six
     required keys (`name`, `description`, `version`, `owner`,
     `deprecation_criterion`, `template_version`) with owner exactly
-    `rabbit-workflow team`. COEXISTENCE: the central `/rabbit-config
-    tdd-autonomous` surface (which enumerates all features' `configuration[]`)
-    still mutates the same configurable. Enforced by
+    `rabbit-workflow team`. `/rabbit-tdd-autonomous` is the SOLE supported
+    surface for this configurable. Enforced by
     `test/test-tdd-autonomous-command.py`.
 
 59. **Per-feature tdd-autonomous override alert.** `rabbit-feature`'s

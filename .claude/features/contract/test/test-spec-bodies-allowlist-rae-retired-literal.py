@@ -14,8 +14,8 @@ tombstone language, but here it is the load-bearing literal value the triage
 interpreter checks verbatim (plus the `feature-retired` reason code) — it
 cannot be reworded without making the spec inaccurate. This is the single
 remaining strict-tier hit blocking rae from opting into the strict tier
-(the #556 housekeeping_clean opt-in). It mirrors both the contract OWN-spec
-retired-enum precedent and the rabbit-config status-enum precedent (#634).
+(the #556 housekeeping_clean opt-in). It mirrors the contract OWN-spec
+retired-enum precedent (#634).
 
 The test drives the REAL checker (no fixture features root) with
 rabbit-auto-evolve simulated as opted-in to the strict tier via the

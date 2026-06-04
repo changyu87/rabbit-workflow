@@ -210,7 +210,7 @@ e = validate_entry(without_new)
 if e:
     fail(f"entry WITHOUT new fields should still validate (coexistence): {e}")
 else:
-    ok("entry without new fields still validates (rabbit-config coexistence)")
+    ok("entry without new fields still validates (pre-command coexistence)")
 
 if FAIL:
     print("test-configuration-schema-shape: FAIL", file=sys.stderr)

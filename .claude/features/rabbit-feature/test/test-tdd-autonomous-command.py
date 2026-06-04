@@ -12,8 +12,11 @@ Exercises the per-feature config command /rabbit-tdd-autonomous (phase 3 of
         does NOT re-implement the interpreter (_apply_template / _validate).
   (v)   the command frontmatter carries the six required keys and the manifest
         registers commands/rabbit-tdd-autonomous.md via publish_command.
-  (vi)  /rabbit-config tdd-autonomous STILL mutates the configurable
-        (coexistence — rabbit-config enumerates all features' configuration[]).
+
+/rabbit-tdd-autonomous is the SOLE supported surface for this configurable: the
+historical central /rabbit-config tdd-autonomous coexistence window has ended
+ahead of rabbit-config's retirement (#769), so this test no longer asserts the
+rabbit-config interpreter.
 
 The mutation tests run the REAL script as a subprocess against a temp repo whose
 RABBIT_ROOT carries the live rabbit-feature feature.json and a symlink to the
@@ -40,9 +43,6 @@ FEATURE_FJ = FEATURE / "feature.json"
 SCRIPT = FEATURE / "scripts/rabbit-tdd-autonomous-config.py"
 COMMAND_MD = FEATURE / "commands/rabbit-tdd-autonomous.md"
 CONTRACT = REPO / ".claude/features/contract"
-RABBIT_CONFIG = (REPO
-                 / ".claude/features/rabbit-config"
-                 / "skills/rabbit-config/scripts/rabbit-config.py")
 
 MARKER = ".rabbit-tdd-autonomous"
 
@@ -134,23 +134,6 @@ def main() -> int:
                 ok("unknown value exits non-zero")
             else:
                 ko("unknown value unexpectedly exited 0")
-
-    # ---- (vi) coexistence: /rabbit-config tdd-autonomous still mutates it.
-    if RABBIT_CONFIG.is_file():
-        with tempfile.TemporaryDirectory() as tmp:
-            _make_temp_repo(tmp)
-            marker = Path(tmp) / MARKER
-            r = subprocess.run(
-                [sys.executable, str(RABBIT_CONFIG), "tdd-autonomous", "true"],
-                capture_output=True, text=True, cwd=tmp,
-            )
-            if r.returncode == 0 and marker.exists():
-                ok("/rabbit-config tdd-autonomous true still works (coexistence)")
-            else:
-                ko(f"/rabbit-config coexistence broken: rc={r.returncode} "
-                   f"exists={marker.exists()} err={r.stderr}")
-    else:
-        ko(f"rabbit-config interpreter missing (coexistence): {RABBIT_CONFIG}")
 
     # ---- (v) command frontmatter + manifest registration.
     data = json.loads(FEATURE_FJ.read_text())

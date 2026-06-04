@@ -173,15 +173,6 @@ ALLOWLIST = {
     ("contract", "spec.md", "(`#[0-9]+`), `per issue`"),
     ("contract", "spec.md", "tombstone language (`superseded`, `retired`,"),
     ("contract", "spec.md", "`obsoleted`, case-insensitive)"),
-    # rabbit-config Inv 28 — the literal `status` enum value "retired".
-    # rabbit-config's spec.md documents rabbit-config.py's
-    # `data.get("status") == "retired"` check (status enum
-    # ["active","retired"]); the "skipping retired features" line names the
-    # load-bearing literal value the interpreter checks verbatim. It is a
-    # live status-enum literal, not a historical-burden tombstone, and
-    # cannot be reworded without making the spec inaccurate. Mirrors the
-    # contract OWN-spec retired-enum precedent above (#634).
-    ("rabbit-config", "spec.md", "skipping retired features"),
     # rabbit-auto-evolve Inv 19 / contract Inv 28 — the literal `status`
     # enum value "retired". rabbit-auto-evolve's spec.md documents
     # triage-issue.py's verbatim `status == "retired"` check (feature.json
@@ -191,8 +182,7 @@ ALLOWLIST = {
     # triage interpreter checks verbatim plus the `feature-retired` reason
     # code. It is a live status-enum literal, not a historical-burden
     # tombstone, and cannot be reworded without making the spec inaccurate.
-    # Mirrors the contract OWN-spec and rabbit-config retired-enum
-    # precedents above (#556 / #634).
+    # Mirrors the contract OWN-spec retired-enum precedent above (#556 / #634).
     ("rabbit-auto-evolve", "spec.md", 'feature.json.status == "retired"'),
 }
 
