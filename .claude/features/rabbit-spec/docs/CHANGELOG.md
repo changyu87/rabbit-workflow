@@ -12,6 +12,34 @@ Each retirement entry below carries the original invariant number (as it appeare
 
 ## Version notes
 
+- **v1.13.0 (#688 housekeeping round 2 — measured line-removal pass; under #639):**
+  Removal pass, not a reword. `docs/spec.md` 221 -> 175 lines (-46): deleted the
+  dead stage/relocation narration from `## Purpose` ("After Stage 2 it hosts ...
+  Stage 3 will add ... absorbs the former `spec-seeder` / `rabbit-feature-spec`"
+  — both predecessor feature directories are gone and both skills are on disk),
+  removed the `## Mode awareness` section (fully duplicated by both SKILL.md
+  `## Modes` tables and Inv 5/6), trimmed the verbose `## Surface` sub-bullets
+  (the dispatcher glob/cap detail is restated verbatim in Inv 3(b)), collapsed
+  the `## Tests` per-test prose to a pointer (each test's docstring and each
+  invariant's "Enforced by" clause already carry it), and dropped the
+  "(or its successor `rabbit-feature-scaffold` in Stage 4)" hedge (the
+  successor has landed). `docs/contract.md` 66 -> 62 lines (-4): removed the
+  trailing `## Tech Stack` prose (not part of the JSON contract; duplicated in
+  spec.md; no contract scanner requires it). `skills/rabbit-spec-create/SKILL.md`
+  (v1.6.0 -> v1.6.1, net-zero lines): replaced dead references to the
+  nonexistent `rabbit-feature-new` skill and the dead `(Stage 3)` hedge with
+  the live `rabbit-feature-scaffold` / `rabbit-spec-update`. New regression
+  guard `test/test-no-relocation-narration.py` forbids the dead stage/relocation
+  narration from returning to spec.md; wired into `test/run.py`. #639 checks per
+  deletion: `find` confirmed `spec-seeder` and `rabbit-feature-spec`
+  directories absent; `find` confirmed no `rabbit-feature-new` SKILL.md exists
+  and `rabbit-feature-scaffold` does; both spec-lifecycle skills present on
+  disk; no contract test requires a `Tech Stack` section in contract.md.
+  Three-way version alignment bumped spec.md/contract.md/feature.json
+  1.12.0 -> 1.13.0. The deployed `.claude/skills/rabbit-spec-create/SKILL.md`
+  requires a dispatcher republish (deployed-skill-match RED until then).
+  Behaviour is unchanged.
+
 - **v1.12.0 (retire legacy B/B terminology on live surfaces, #666; part of #420):**
   Replaced the legacy "bug-and-backlog (B/B)" / standalone "backlog"
   custom-store vocabulary on rabbit-spec's live surfaces with the current
