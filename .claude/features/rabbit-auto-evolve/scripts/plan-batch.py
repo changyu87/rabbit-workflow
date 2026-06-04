@@ -12,6 +12,7 @@ on stdout:
     "barrier_first": [123, 124],
     "groups": [[125, 126], [127]],
     "research_items": [700],
+    "cross_scope_items": [602],
     "self_modifying_migrations": {"125": "coexistence-window"},
     "restart_needed": [127]
   }
@@ -50,8 +51,13 @@ Two decoupled decisions (Inv 26 / issue #435):
                                requirement).
   An item's feature count is `len(item["features"])` (the set emitted by
   triage-issue.py), falling back to 1 (the single `feature` label) when
-  `features` is absent. The struck shape 2 (sequential single-subagent with
-  a persistent `.rabbit-scope-override session`) is NEVER emitted — bounded
+  `features` is absent. An item triage flagged `cross_scope: true` (its BODY
+  spans multiple feature dirs — Inv 56 / issue #433) is NEVER shaped
+  parallel-per-feature even when its feature count is 1; the body-derived
+  cross_scope signal forces multi-subagent-barrier (below the threshold) or
+  decomposition (at/above it), and the item is listed under the
+  `cross_scope_items` output key. The struck shape 2 (sequential single-subagent
+  with a persistent `.rabbit-scope-override session`) is NEVER emitted — bounded
   scope is a hard constraint, not waivable by autonomy (maintainer policy on
   issue #435). No shape writes any marker; this script is a pure processor.
 
@@ -105,7 +111,7 @@ mutations.
 Exit code: 0 on success; non-zero on malformed stdin JSON or invalid
 --max-parallel / --decompose-threshold value.
 
-Version: 1.5.0
+Version: 1.6.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -372,11 +378,20 @@ def _dispatch_shape(item, decompose_threshold):
     >= threshold features -> decomposition
     > 1 feature           -> multi-subagent-barrier
     exactly 1 feature     -> parallel-per-feature (performance preference)
+
+    Cross-scope override (Inv 56 / issue #433): an item triage flagged
+    `cross_scope: true` (its BODY spans multiple feature dirs — a repo-wide
+    sweep / cross-feature rename) is NEVER shaped parallel-per-feature, even
+    when its single `feature:` LABEL gives it a feature count of 1. A bounded
+    per-feature subagent cannot write across features, so the body-derived
+    cross_scope signal forces the barrier/decomposition lane: decomposition at/
+    above the threshold, else multi-subagent-barrier. Bounded scope itself is
+    unchanged — the fix is routing, not widening subagent scope.
     """
     n = _feature_count(item)
     if n >= decompose_threshold:
         return SHAPE_DECOMPOSITION
-    if n > 1:
+    if n > 1 or item.get("cross_scope"):
         return SHAPE_BARRIER
     return SHAPE_PARALLEL
 
@@ -426,12 +441,20 @@ def plan(items, max_parallel, decompose_threshold):
     # cleanly (the loop NEVER stops to ask a human).
     self_modifying_migrations = {}
     restart_needed = []
+    # Cross-scope items (Inv 56 / issue #433): code-producing work items triage
+    # flagged `cross_scope: true` (their BODY spans multiple feature dirs). They
+    # are surfaced distinctly so the dispatcher/human sees which items need the
+    # barrier/decomposition path rather than ordinary parallel single-feature
+    # dispatch. Research items are excluded (they produce findings, not code).
+    cross_scope_items = []
     for i in selection:
         if i.get("decision") == "research":
             dispatch_shapes[str(i["issue"])] = SHAPE_RESEARCH
             continue
         dispatch_shapes[str(i["issue"])] = _dispatch_shape(
             i, decompose_threshold)
+        if i.get("cross_scope"):
+            cross_scope_items.append(i["issue"])
         pattern = _self_modifying_pattern(i)
         if pattern is not None:
             self_modifying_migrations[str(i["issue"])] = pattern
@@ -497,6 +520,11 @@ def plan(items, max_parallel, decompose_threshold):
         "barrier_first": barrier_first,
         "groups": groups,
         "research_items": research_items,
+        # Cross-scope work items (Inv 56 / issue #433), sorted ascending —
+        # always present (empty when none). The dispatcher routes these to the
+        # multi-subagent-barrier / decomposition path, never parallel
+        # single-feature dispatch.
+        "cross_scope_items": sorted(cross_scope_items),
         "self_modifying_migrations": self_modifying_migrations,
         "restart_needed": sorted(restart_needed),
     }
