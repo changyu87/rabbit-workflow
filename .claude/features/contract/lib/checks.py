@@ -538,8 +538,8 @@ def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
 
 # ---------- validate_feature -------------------------------------------------
 
-_VALID_TDD_STATES = {"spec", "spec-update", "test-red", "impl", "test-green",
-                     "review", "merged", "deprecated"}
+_VALID_TDD_STATES = {"spec", "spec-update", "test-red", "impl", "sync-deployed",
+                     "test-green", "review", "merged", "deprecated"}
 
 
 def validate_feature(feature_dir: str) -> CheckResult:

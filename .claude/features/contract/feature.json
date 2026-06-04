@@ -1,6 +1,6 @@
 {
   "name": "contract",
-  "version": "2.17.0",
+  "version": "2.17.1",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "tdd_state": "test-green",
@@ -11,5 +11,5 @@
   "manifest": [],
   "runtime": {},
   "configuration": [],
-  "spec_no_change_reason": "spec edits applied in IMPLEMENT step (removal pass)"
+  "spec_no_change_reason": "#702 bug fix — schema/validator data fix (tdd_state enum); no spec invariant change"
 }

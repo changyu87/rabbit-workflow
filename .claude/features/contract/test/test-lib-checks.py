@@ -519,6 +519,82 @@ if r.returncode == 0:
 else:
     fail("t12-validate-feature", f"shim returned {r.returncode}; stderr={r.stderr!r}")
 
+# t14 (#702): validate_feature must accept every tdd_state the TDD state
+# machine (tdd-subagent/scripts/tdd-step.py) can legitimately write —
+# including `sync-deployed`, the transient state between IMPLEMENT and
+# CODE-REVIEW. Before the fix, _VALID_TDD_STATES omitted `sync-deployed`,
+# so validate_feature failed spuriously mid-cycle. We build a minimally
+# valid feature dir and re-validate it at each cycle state.
+import json as _json2
+
+
+def _make_valid_feature(root, tdd_state):
+    fdir = os.path.join(root, "fixture_feature")
+    tdir = os.path.join(fdir, "test")
+    ddir = os.path.join(fdir, "docs")
+    os.makedirs(tdir)
+    os.makedirs(ddir)
+    with open(os.path.join(ddir, "spec.md"), "w") as f:
+        f.write("# Spec\n")
+    with open(os.path.join(ddir, "contract.md"), "w") as f:
+        f.write("# Contract\n")
+    run_py = os.path.join(tdir, "run.py")
+    with open(run_py, "w") as f:
+        f.write("#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n")
+    os.chmod(run_py, 0o755)
+    with open(os.path.join(fdir, "feature.json"), "w") as f:
+        _json2.dump({
+            "name": "fixture_feature",
+            "version": "1.0.0",
+            "owner": "rabbit-workflow team",
+            "tdd_state": tdd_state,
+            "summary": "fixture",
+            "deprecation_criterion": "never (test fixture)",
+        }, f)
+    return fdir
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    fdir = _make_valid_feature(tmp, "sync-deployed")
+    res = checks.validate_feature(fdir)
+    if isinstance(res, checks.CheckResult) and res.passed:
+        ok("t14a", "validate_feature accepts tdd_state='sync-deployed'")
+    else:
+        fail("t14a", f"expected passed=True for sync-deployed, got {res!r}")
+
+# t14b: parity guard — _VALID_TDD_STATES must be a superset of every state
+# tdd-step.py can write, so the two cannot drift out of sync again.
+TDD_STEP_PATH = os.path.normpath(os.path.join(
+    REPO_ROOT, ".claude", "features", "tdd-subagent", "scripts", "tdd-step.py"))
+if not os.path.isfile(TDD_STEP_PATH):
+    fail("t14b", f"tdd-step.py not found at {TDD_STEP_PATH}")
+else:
+    _step_spec = importlib.util.spec_from_file_location("tdd_step_mod", TDD_STEP_PATH)
+    _step_mod = importlib.util.module_from_spec(_step_spec)
+    _step_spec.loader.exec_module(_step_mod)
+    step_states = set(getattr(_step_mod, "_VALID_STATES", set()))
+    missing = step_states - checks._VALID_TDD_STATES
+    if not missing:
+        ok("t14b", "_VALID_TDD_STATES is a superset of tdd-step.py _VALID_STATES")
+    else:
+        fail("t14b", f"_VALID_TDD_STATES missing states tdd-step.py writes: {sorted(missing)}")
+
+# t14c: every state tdd-step.py can write validates cleanly (regression).
+with tempfile.TemporaryDirectory() as tmp:
+    bad = []
+    for st in sorted(step_states):
+        fdir = _make_valid_feature(tmp, st)
+        res = checks.validate_feature(fdir)
+        if not (isinstance(res, checks.CheckResult) and res.passed):
+            bad.append((st, res))
+        import shutil as _shutil
+        _shutil.rmtree(fdir)
+    if not bad:
+        ok("t14c", "validate_feature accepts every tdd-step.py state")
+    else:
+        fail("t14c", f"validate_feature rejected states: {[s for s, _ in bad]}")
+
+
 print()
 print(f"Results: {PASS} passed, {FAIL} failed")
 sys.exit(0 if FAIL == 0 else 1)
