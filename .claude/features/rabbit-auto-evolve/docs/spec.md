@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.58.0
+version: 0.59.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -20,8 +20,8 @@ status: active
 ## Purpose
 
 A self-driving rabbit loop that continuously fetches open ACTIONABLE
-GitHub issues (those carrying a valid `feature:` + `priority:` label;
-`rabbit-managed` is tolerated but no longer the selection key — see Inv 2),
+GitHub issues (those carrying a valid `feature:` + `priority:` label — the
+actionability selection basis, see Inv 2),
 triages each one, dispatches TDD subagents to implement
 actionable work, merges approved PRs into `dev`, tags versioned releases,
 and is fired on a fixed cadence by a system cron (the sole tick scheduler;
@@ -74,7 +74,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | Script | Kind | Description |
 |---|---|---|
 | `scripts/set-evolve-mode.py` | CLI | Compound mutator: `on` flips `human-approval=false`, `bypass-permissions=true`, writes `.rabbit-auto-evolve-active` in order with rollback on failure; `off` reverses in inverse order |
-| `scripts/fetch-queue.py` | CLI | Lists open ACTIONABLE issues (valid `feature:` + `priority:` label; `rabbit-managed` tolerated, not required) via `gh`, sorts by priority then `createdAt`, emits JSON array |
+| `scripts/fetch-queue.py` | CLI | Lists open ACTIONABLE issues (valid `feature:` + `priority:` label) via `gh`, sorts by priority then `createdAt`, emits JSON array |
 | `scripts/triage-issue.py` | CLI | Per-issue classifier; reads issue metadata and the named feature's spec front matter; emits a triage JSON object with `decision`, `reason_code`, `rationale`, `feature`, `contract_touch`, `blocked_by` |
 | `scripts/plan-batch.py` | CLI | Reads a work-set JSON from stdin; partitions contract-touch issues into `barrier_first`; greedy graph-colors the rest by feature-conflict into `groups`; applies `max_parallel` cap |
 | `scripts/safety-check.py` | CLI | Validates five bottom-line invariants (branch is `dev`, PR base is `dev`, head branch matches `^feat/.+`, tag does not already exist, no uncommitted modifications to tracked files); exits non-zero on any violation |
@@ -293,10 +293,10 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    four recognized levels). This is the actionable-work gate; an issue
    lacking either label is not yet actionable and is excluded.
 
-   Selection is NOT keyed on `rabbit-managed`. The `rabbit-managed` label is
-   still TOLERATED — an actionable issue is selected whether or not it carries
-   it — and this actionability basis aligns the actual selection with the
-   already-LABEL-INDEPENDENT convergence guarantee (Inv 25).
+   Selection is purely ACTIONABILITY-based: only the `feature:` and
+   `priority:` labels participate. No other label gates the queue, and this
+   actionability basis aligns the selection with the already-LABEL-INDEPENDENT
+   convergence guarantee (Inv 25).
 
    The script invokes `gh issue list --repo <repo> --state open
    --json number,title,labels,body,createdAt --limit 500` and filters to the
@@ -320,12 +320,10 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
      (critical → high → medium → low) and ascending `createdAt` inside
      each bucket.
    - Actionability-selection test: a fixture mixing actionable issues
-     (valid `feature:` + valid `priority:`) — including one with NO
-     `rabbit-managed` label — against non-actionable issues (missing a
-     `feature:` label, missing a `priority:` label, an unrecognized
-     priority value, or neither). Assert the selected set is exactly the
-     actionable issues, label-independently (the unmanaged actionable
-     issue IS selected; the non-actionable ones are excluded).
+     (valid `feature:` + valid `priority:`) against non-actionable issues
+     (missing a `feature:` label, missing a `priority:` label, an
+     unrecognized priority value, or neither). Assert the selected set is
+     exactly the actionable issues (the non-actionable ones are excluded).
    - Network-dependent listing against real GitHub is covered by the
      Phase F end-to-end smoke test, not by this unit test.
 
@@ -1580,64 +1578,47 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       non-dispatch terminal action is `.rabbit-auto-evolve-aborted` on a
       genuine hard blocker — not a routine "kick it to a human" deferral.
     - **No de-queue escape hatch (Red Flag).** While
-      `.rabbit-auto-evolve-running` is present, **the dispatcher MUST NOT remove
-      `rabbit-managed` from an OPEN issue as a parking or hand-back action.**
+      `.rabbit-auto-evolve-running` is present, **the dispatcher MUST NOT strip
+      the actionability labels (`feature:`/`priority:`) from an OPEN issue as a
+      parking or hand-back action.**
       "De-queue" — dropping a queue-gating label while leaving the issue OPEN —
       is the same human-handoff escape that the AskUserQuestion ban (Inv 13)
       forbids, leaking through a different mechanism: stripping the labels that
       make an issue actionable silently exits it from the loop's view and
       strands it open-but-untracked. `fetch-queue.py` selects on ACTIONABILITY
-      — valid `feature:` + `priority:` — rather than `rabbit-managed`, so an
-      issue that loses only `rabbit-managed` still appears; the ban remains as
-      defense-in-depth and forward-compatible against any
-      de-queue-by-label-removal. The only
+      — valid `feature:` + `priority:` — so removing either label is exactly
+      what drops an open issue from the queue; the ban forbids that. The only
       permitted non-work outcomes remain a bounded `defer` (tracked) OR
       `close-not-planned` with a strong reason. This rule is recorded in the
       `Red Flags — STOP` section of `skills/rabbit-auto-evolve/SKILL.md` as the
       literal string:
 
-      > **While `.rabbit-auto-evolve-running` is present, the dispatcher MUST NOT remove `rabbit-managed` from an OPEN issue as a parking or hand-back action.**
+      > **While `.rabbit-auto-evolve-running` is present, the dispatcher MUST NOT strip the actionability labels (`feature:`/`priority:`) from an OPEN issue as a parking or hand-back action.**
 
-    **Convergence is label-independent.** The convergence
-    guarantee applies to every open VALID issue REGARDLESS of whether it
-    still carries `rabbit-managed`. An open valid issue must converge to a
-    terminal-or-tracked state — worked → closed-completed, close-not-planned
-    with a strong reason, or a bounded defer — and that obligation does NOT
-    lapse when the label is absent. Removing the label while an issue is open
-    is explicitly NOT a convergence outcome: it is the forbidden "de-queue"
-    action. Aligning the SELECTION with this label-independence is exactly what
-    Inv 2 does — `fetch-queue.py` selects on ACTIONABILITY (valid `feature:` +
-    `priority:`) rather than `rabbit-managed` — so an issue that loses only
-    `rabbit-managed` no longer exits the loop's view; the de-queue ban persists
-    as defense-in-depth against stripping any queue-gating label.
-
-    **Leak detector (defense in depth).**
-    `python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py
-    --detect-leaks` queries all open issues and emits a deterministic JSON
-    object `{"leaks": [...]}` listing every OPEN issue that once entered the
-    rabbit pipeline (carries a `filed-by:*` provenance label, proving it was
-    `rabbit-managed` at filing time) but has LOST the `rabbit-managed` label
-    without being closed. This is the deterministic, `gh`-available signal for a
-    de-queue leak; a surfaced leak is re-converged rather than lost. The primary
-    fix is forbidding the action so leaks cannot be created; the detector is the
-    backstop for pre-existing leaks.
+    **Convergence is label-independent.** Every open VALID issue must converge
+    to a terminal-or-tracked state — worked → closed-completed,
+    close-not-planned with a strong reason, or a bounded defer — and that
+    obligation does NOT lapse short of those outcomes. Stripping
+    the actionability labels while an issue is open is explicitly NOT a
+    convergence outcome: it is the forbidden "de-queue" action. SELECTION and
+    convergence share one basis — ACTIONABILITY (valid `feature:` +
+    `priority:`), per Inv 2 — so dropping a gating label is the one way to
+    drop an open issue the loop is obligated to converge.
 
     NOTE: a sanctioned, tracked "blocked-on-human-precondition" state — the
     durable home for items that fit neither bounded `defer` nor
     `close-not-planned` (e.g. an item that needs a human-paused window before the
     loop can safely self-modify its own live marker) — is explicitly DEFERRED as
-    a maintainer-call follow-up and is NOT introduced here. Forbidding de-queue is
-    correct regardless of that follow-up.
+    a maintainer-call follow-up and is NOT introduced here.
 
     Enforced by `test/test-spec-convergence-invariant.py` (asserts the
     invariant text is present in this spec),
     `test/test-spec-forbid-dequeue-invariant.py` (asserts the
     label-independence clause and the de-queue ban literal are present in spec
     and SKILL.md), `test/test-triage-rules.py` (asserts `close-completed` is
-    never emitted and every defer carries a planning_note),
+    never emitted and every defer carries a planning_note), and
     `test/test-triage-batch.py` (asserts the 4th consecutive defer is forced
-    to `work`), and `test/test-fetch-queue.py` scenario C (the leak detector
-    surfaces a synthetic open-issue-that-lost-the-label case against a mock `gh`).
+    to `work`).
 
 26. **Work-selection / dispatch-shape decoupling.** The loop
     makes two SEPARATE decisions, in order, and never lets the second
@@ -1672,7 +1653,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     |---|---|---|---|
     | 1 (perf preference) | `parallel-per-feature` | item edits exactly one feature dir | one full single-feature TDD touch, its own `.rabbit-scope-active-<feature>` marker; multiple such items dispatch in parallel |
     | 2 | `multi-subagent-barrier` | item edits >1 feature dir, below `--decompose-threshold` (default 10) | per-feature subagents land SERIALLY on ONE shared branch; the serialization contract is: subagent k+1 fetches subagent k's pushed commit before starting; each piece is a full single-feature touch with its own scope marker; one PR closes the item |
-    | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs | file N per-feature sub-issues via the contract INVOKE `rabbit-issue/scripts/file-item.py` (NOT a cross-feature edit — do not edit rabbit-issue files), each labelled `rabbit-managed` + the right `feature:<name>` label; the parent stays OPEN and the sub-issues are queued, re-entering Stage 1/Stage 2 on the next tick |
+    | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs | file N per-feature sub-issues via the contract INVOKE `rabbit-issue/scripts/file-item.py` (NOT a cross-feature edit — do not edit rabbit-issue files), each labelled with the right `feature:<name>` + `priority:<level>` label; the parent stays OPEN and the sub-issues are queued, re-entering Stage 1/Stage 2 on the next tick |
 
     Every shape uses a full per-feature touch gated by
     `.rabbit-scope-active-<feature>`. The dispatcher MUST NOT skip, defer
