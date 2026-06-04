@@ -91,6 +91,16 @@ def _lines(sysmsg: str):
     return [ln for ln in clean.split("\n") if ln.strip()]
 
 
+def _display_width(text: str) -> int:
+    """Display-column width counting the box rabbit (🐇, U+1F407) as 2 columns.
+
+    Emoji render as ~2 terminal columns; every other char counts as 1. This
+    is the common-case approximation the alignment fix targets (Inv 40 /
+    issue #629); perfect width is terminal-dependent.
+    """
+    return sum(2 if ch == RABBIT else 1 for ch in text)
+
+
 def test_three_row_box_around_centered_version():
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
@@ -126,6 +136,35 @@ def test_three_row_box_around_centered_version():
         assert TOP in bottom_line, f"bottom border missing; got {bottom_line!r}"
 
     print("PASS test_three_row_box_around_centered_version")
+
+
+def test_version_row_display_width_matches_border():
+    """Issue #629 Defect 2: the version row's display width (counting each
+    box 🐇 as 2 columns) MUST equal the border row's display width, so the
+    closing 🐇 lands on the border column instead of drifting off it."""
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td).resolve()
+        install_root = _build_install_root(td_path, version_text="v1.2.3")
+        proc = _run(install_root)
+        assert proc.returncode == 0, f"dispatcher failed: stderr={proc.stderr!r}"
+        sysmsg = _system_message(proc.stdout)
+        lines = _lines(sysmsg)
+
+        top_idx = next((i for i, ln in enumerate(lines) if TOP in ln), None)
+        assert top_idx is not None, f"top border missing; got {lines!r}"
+
+        # Strip the brand prefix `[🐇 rabbit 🐇] ` so we compare only the box
+        # region (the bordered row), which is what must align.
+        border_inner = lines[top_idx].split("]", 1)[1].strip()
+        ver_inner = lines[top_idx + 1].split("]", 1)[1].strip()
+
+        bw = _display_width(border_inner)
+        vw = _display_width(ver_inner)
+        assert bw == vw, (
+            f"version row display width must equal border display width; "
+            f"border={bw} version={vw} (border={border_inner!r} "
+            f"version={ver_inner!r})")
+    print("PASS test_version_row_display_width_matches_border")
 
 
 def test_welcome_line_is_plain():
@@ -178,6 +217,7 @@ def test_box_precedes_welcome():
 
 def main() -> int:
     test_three_row_box_around_centered_version()
+    test_version_row_display_width_matches_border()
     test_welcome_line_is_plain()
     test_policy_sublines_unchanged()
     test_box_precedes_welcome()
