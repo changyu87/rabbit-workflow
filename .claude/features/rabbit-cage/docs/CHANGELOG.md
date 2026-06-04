@@ -12,6 +12,27 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.49.0 (version-box release source + emoji alignment fix, #629):** Added
+  Inv 40 — the SessionStart version box (Inv 36) now shows the rabbit RELEASE
+  version (the git tag cut by release-bump.py, e.g. `v1.11.0`) rather than
+  rabbit-cage's per-feature `feature.json` `version` (the spec version, e.g.
+  `5.49.0`). `_read_installed_version` reads `<install_root>/.version` in
+  plugin mode (unchanged), derives the latest tag via `git describe --tags
+  --abbrev=0` in standalone/dev mode, and falls back to `"unknown"` when
+  neither is resolvable (graceful: missing git / non-repo / tag-free repo
+  never raises) — replacing the old feature.json fallback (Defect 1). SEPARATELY,
+  `_version_box` now centers the version row across `2*_BOX_WIDTH - 4` DISPLAY
+  columns (was `_BOX_WIDTH - 2` character columns) so the closing 🐇 lands on
+  the 32-emoji border instead of drifting off it, on the emoji=2-columns common
+  case (Defect 2). Documented assumption: perfect emoji alignment is
+  terminal-dependent; the fix targets the common 2-column rendering, the same
+  width model the borders already assume. `hooks/session-start-dispatcher.py`
+  is a deployed hook (`publish_hook`); its deployed `.claude/hooks/` copy drifts
+  until republished. Enforced by `test/test-session-start-version-line.py`
+  (version source: plugin / standalone-no-tag → unknown / standalone-with-tag →
+  tag) and `test/test-runtime-banner-shape.py` (version row display width equals
+  border display width). No invariants retired or renumbered.
+
 - **v5.48.0 (advisory-restart surfacing in Stop + SessionStart, #545 part B):**
   Added Inv 39 — the Stop and SessionStart dispatchers surface
   rabbit-auto-evolve's ADVISORY-restart signal (a restart that WOULD unlock a

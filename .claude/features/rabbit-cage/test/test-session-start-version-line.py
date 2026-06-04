@@ -5,9 +5,11 @@ session-start-dispatcher.py emits a brief version line at the START of its
 systemMessage output showing the installed rabbit version.
 
   - Plugin mode (detected by <install_root>/.version): the line shows the
-    content of the .version file.
-  - Standalone mode (no .version file): the line falls back to the
-    `version` field in rabbit-cage/feature.json.
+    content of the .version file (the release tag pinned at install).
+  - Standalone/dev mode (no .version file): the line shows the RELEASE tag
+    from `git describe --tags --abbrev=0`, or "unknown" when no tag is
+    resolvable (#629). It NO LONGER reads rabbit-cage's feature.json
+    `version` (the per-feature spec version is not the rabbit release).
 
 The version line is rendered FIRST (before the welcome banner / any other
 SessionStart payload).
@@ -98,18 +100,60 @@ def test_plugin_mode_shows_version_from_dotversion_file():
     print("PASS test_plugin_mode_shows_version_from_dotversion_file")
 
 
-def test_standalone_mode_falls_back_to_feature_json_version():
+def test_standalone_no_git_tag_shows_unknown():
+    """Issue #629 Defect 1: standalone mode with NO .version and NO git tag
+    (the tempdir install root is not a git repo) shows "unknown" — NOT the
+    rabbit-cage feature.json version."""
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
         install_root = _build_install_root(td_path, with_version=False)
-        expected = json.loads(RABBIT_CAGE_FEATURE_JSON.read_text())["version"]
+        cage_version = json.loads(
+            RABBIT_CAGE_FEATURE_JSON.read_text())["version"]
         proc = _run(install_root)
         assert proc.returncode == 0, f"dispatcher failed: stderr={proc.stderr!r}"
         sysmsg = _system_message(proc.stdout)
-        assert f"rabbit v{expected}" in sysmsg, (
-            f"expected feature.json version v{expected} in version line; "
+        assert "rabbit vunknown" in sysmsg or "rabbit unknown" in sysmsg, (
+            f"expected 'unknown' when no .version and no git tag; "
             f"got {sysmsg!r}")
-    print("PASS test_standalone_mode_falls_back_to_feature_json_version")
+        assert f"rabbit v{cage_version}" not in sysmsg, (
+            f"version box must NOT show rabbit-cage feature.json version "
+            f"v{cage_version}; got {sysmsg!r}")
+    print("PASS test_standalone_no_git_tag_shows_unknown")
+
+
+def _git(install_root: Path, *args: str) -> None:
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
+    }
+    subprocess.run(
+        ["git", "-C", str(install_root), *args],
+        check=True, capture_output=True, text=True, env=env)
+
+
+def test_standalone_with_git_tag_shows_tag():
+    """Issue #629 Defect 1: standalone mode with NO .version but a git tag
+    shows the RELEASE TAG (from `git describe --tags --abbrev=0`), not the
+    rabbit-cage feature.json version."""
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td).resolve()
+        install_root = _build_install_root(td_path, with_version=False)
+        cage_version = json.loads(
+            RABBIT_CAGE_FEATURE_JSON.read_text())["version"]
+        _git(install_root, "init", "-q")
+        _git(install_root, "add", "-A")
+        _git(install_root, "commit", "-q", "-m", "init")
+        _git(install_root, "tag", "v7.7.7")
+        proc = _run(install_root)
+        assert proc.returncode == 0, f"dispatcher failed: stderr={proc.stderr!r}"
+        sysmsg = _system_message(proc.stdout)
+        assert "rabbit v7.7.7" in sysmsg, (
+            f"expected git release tag v7.7.7 in version box; got {sysmsg!r}")
+        assert f"rabbit v{cage_version}" not in sysmsg, (
+            f"version box must NOT show feature.json version v{cage_version}; "
+            f"got {sysmsg!r}")
+    print("PASS test_standalone_with_git_tag_shows_tag")
 
 
 def test_version_line_rendered_first():
@@ -132,7 +176,8 @@ def test_version_line_rendered_first():
 
 def main() -> int:
     test_plugin_mode_shows_version_from_dotversion_file()
-    test_standalone_mode_falls_back_to_feature_json_version()
+    test_standalone_no_git_tag_shows_unknown()
+    test_standalone_with_git_tag_shows_tag()
     test_version_line_rendered_first()
     return 0
 

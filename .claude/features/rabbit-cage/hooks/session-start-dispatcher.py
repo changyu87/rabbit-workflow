@@ -10,12 +10,16 @@ Inv 20 (plugin-mode RABBIT_ROOT check): when running in plugin mode
 (detected by presence of <install_root>/.version), appends a banner
 payload to the dispatch result if RABBIT_ROOT is unset or mismatched.
 
-Issue #326 / #449: prepends a 3-row rabbit box around the centered version
-at the start of the SessionStart output (top border of 32 🐇, version row
-`🐇 rabbit v<version> 🐇` centered in the box, bottom border), and renders
+Issue #326 / #449 / #629: prepends a 3-row rabbit box around the centered
+version at the start of the SessionStart output (top border of 32 🐇, version
+row `🐇 rabbit v<version> 🐇` centered in the box, bottom border), and renders
 the welcome line PLAIN (brand prefix only — no ✅ icon, no ━━━ bars). The
-version is read from <install_root>/.version in plugin mode, falling back to
-rabbit-cage/feature.json `version` standalone.
+version shown is the rabbit RELEASE version (the git tag cut by
+release-bump.py): read from <install_root>/.version in plugin mode, derived
+from `git describe --tags --abbrev=0` in standalone/dev mode, falling back to
+"unknown" when neither is resolvable (#629 Defect 1). The version row is
+centered across `2*_BOX_WIDTH - 4` DISPLAY columns so the closing 🐇 lands on
+the 32-emoji border on the emoji=2-columns common case (#629 Defect 2).
 
 Issue #503: after the welcome block, INVOKES rabbit-auto-evolve's
 `scripts/check-auto-resume.py` (a contract INVOKE, not a cross-feature edit)
@@ -31,7 +35,7 @@ hard #503 resume banner so it reads as OPTIONAL) AND THEN clears the marker
 (`advise-restart.py clear`) since the advised restart has now occurred. Absent
 / erroring script degrades gracefully (no advisory line, no clear).
 
-Version: 1.5.0
+Version: 1.6.0
 Owner: rabbit-workflow team (rabbit-cage)
 Deprecation criterion: when Claude Code exposes native SessionStart
     dispatchers that subsume this hook.
@@ -94,13 +98,20 @@ def _check_rabbit_root_env():
 
 
 def _read_installed_version(root: str) -> str:
-    """Resolve the installed rabbit version for the welcome line (issue #326).
+    """Resolve the rabbit RELEASE version for the version box (issues #326,
+    #629).
+
+    The box must show the rabbit RELEASE version (the git tag cut by
+    release-bump.py, e.g. v1.11.0), NOT rabbit-cage's per-feature spec
+    version from feature.json (issue #629 Defect 1).
 
     Plugin mode: read <install_root>/.version (install_root is the deployed
-    dispatcher's parent.parent.parent — same anchor Inv 20 uses). Standalone
-    mode (no .version file): fall back to the `version` field in
-    <root>/.claude/features/rabbit-cage/feature.json (root is the resolved
-    repo root). Returns "unknown" only if both sources fail.
+    dispatcher's parent.parent.parent — same anchor Inv 20 uses). The install
+    pin already carries the release ref, so this is unchanged.
+    Standalone/dev mode (no .version file): derive the latest release tag via
+    `git describe --tags --abbrev=0` run against the resolved repo root.
+    Returns "unknown" when no .version and no resolvable tag (graceful: no
+    crash when git is absent or the tree has no tags).
     """
     install_root = Path(__file__).resolve().parent.parent.parent
     version_file = install_root / ".version"
@@ -111,16 +122,25 @@ def _read_installed_version(root: str) -> str:
                 return raw
         except OSError:
             pass
-    feature_json = (Path(root) / ".claude" / "features" / "rabbit-cage"
-                    / "feature.json")
-    try:
-        data = json.loads(feature_json.read_text())
-        version = data.get("version")
-        if version:
-            return str(version)
-    except (OSError, json.JSONDecodeError, AttributeError):
-        pass
+    tag = _git_latest_tag(root)
+    if tag:
+        return tag
     return _VERSION_UNKNOWN
+
+
+def _git_latest_tag(root: str):
+    """Return the latest git tag (`git describe --tags --abbrev=0`) for the
+    repo at `root`, or None when git is absent, the tree is not a repo, or it
+    carries no tags. Never raises (graceful degradation, issue #629)."""
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", str(root), "describe", "--tags", "--abbrev=0"],
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    tag = out.decode().strip()
+    return tag or None
 
 
 _BOX_WIDTH = 32
@@ -134,15 +154,28 @@ def _version_box(root: str):
     version. Each row carries the brand prefix `[🐇 rabbit 🐇]` via the
     dispatcher's subline renderer:
       Row 1: top border of 32 🐇
-      Row 2: 🐇 + `rabbit v<version>` centered in the 32-wide box + 🐇
+      Row 2: 🐇 + `rabbit v<version>` centered + 🐇
       Row 3: bottom border of 32 🐇
     Prepended ahead of every other SessionStart payload so the box leads
     the welcome block.
+
+    Column math (issue #629 Defect 2): the border is 32 🐇 and each 🐇
+    renders as 2 display columns on the emoji=2-cols common case, so a border
+    row spans 64 display columns. The middle row carries a side 🐇 each end
+    (4 display columns total), so the version label must be centered across
+    the inner field of `2*_BOX_WIDTH - 4` (= 60) DISPLAY columns. The label
+    is ASCII (1 column per char), so centering it over 60 character columns
+    yields 60 display columns; the full row is then 4 + 60 = 64 = the border
+    width, keeping the closing 🐇 on the border. ASSUMPTION: a terminal that
+    renders 🐇 as 2 columns; perfect alignment is terminal-dependent (some
+    terminals render emoji as 1 column), but this matches the common case and
+    is the same width model the borders already assume.
     """
     version = _read_installed_version(root)
     label = version if version.startswith("v") else f"v{version}"
     border = _BOX_RABBIT * _BOX_WIDTH
-    centered = f"rabbit {label}".center(_BOX_WIDTH - 2)
+    inner_cols = 2 * _BOX_WIDTH - 4
+    centered = f"rabbit {label}".center(inner_cols)
     middle = f"{_BOX_RABBIT}{centered}{_BOX_RABBIT}"
     return [
         {"type": "subline", "text": border, "color": "green"},
