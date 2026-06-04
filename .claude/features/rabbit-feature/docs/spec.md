@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.29.0
+version: 1.30.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -16,9 +16,9 @@ status: active
 ## Purpose
 
 Owns the dispatcher-side feature-touch orchestration surface: the
-`rabbit-feature-touch` skill plus four general-purpose helper skills
-(`rabbit-feature-scope`, `rabbit-feature-spec`, `rabbit-feature-scaffold`,
-`rabbit-feature-audit`) and their backing scripts.
+`rabbit-feature-touch` skill plus three general-purpose helper skills
+(`rabbit-feature-scope`, `rabbit-feature-scaffold`, `rabbit-feature-audit`)
+and their backing scripts.
 
 The executor-side TDD machinery (`dispatch-tdd-subagent.py`,
 `tdd-step.py`, the 8-step TDD cycle) lives in `tdd-subagent`. This
@@ -38,9 +38,6 @@ Skills (under `skills/`):
 - `rabbit-feature-scope/SKILL.md` — general-purpose shared skill that
   resolves a natural-language request to the list of rabbit features its
   files would modify.
-- `rabbit-feature-spec/SKILL.md` — general-purpose spec-authoring skill
-  that updates a feature spec and writes an implementation-suggestion
-  file.
 - `rabbit-feature-scaffold/SKILL.md` — feature-scaffolding skill.
 - `rabbit-feature-audit/SKILL.md` — feature-conformance audit skill.
 
@@ -100,7 +97,7 @@ their source path and not deployed):
 
 6. **Step 3 spec authoring via Skill tool.** The SKILL.md Step 3
    instructs the dispatcher to invoke
-   `Skill("rabbit-feature-spec", args: "<feature-name> <request>")`.
+   `Skill("rabbit-spec-update", args: "<feature-name> <request>")`.
 
 7. **Step 4 dispatcher-side gate.** The SKILL.md Step 4 (Human Approval)
    explicitly states the gate "lives here, in the main session" and
@@ -116,10 +113,6 @@ their source path and not deployed):
 9. **Step 4 bypass-check ordering.** The SKILL.md Step 4 documents the
    `.rabbit-human-approval-bypass` check as the FIRST action of the
    step, before any impl-suggestion surfacing or in-conversation wait.
-
-10. *(Withdrawn — folded into CHANGELOG.md.)*
-
-11. *(Withdrawn — folded into CHANGELOG.md.)*
 
 12. **Step 4 alert routing via `emit_configurable_alert`.** The SKILL.md
     Step 4 bypass-active path MUST instruct the dispatcher to source the
@@ -138,14 +131,11 @@ their source path and not deployed):
     distinct from the alert-message text. The sole source of truth for
     the alert text is the configurable's `alert-message` field.
 
-13. *(Withdrawn — folded into CHANGELOG.md.)*
-
 14. **Red Flag — no main-session Write/Edit on features.** The SKILL.md
     Red Flags section forbids the main session from using Write or Edit
     on any file under `.claude/features/`. The documented exceptions
-    are confirm-token overrides (Override Path) and
-    `rabbit-feature-spec`'s spec writes via the scope-guard path-pattern
-    allowlist during Step 3.
+    are confirm-token overrides (Override Path) and `rabbit-spec-update`'s
+    spec writes via the scope-guard path-pattern allowlist during Step 3.
 
 15. **Red Flag — no main-session scope-marker creation.** The SKILL.md
     Red Flags section forbids the main session from creating
@@ -328,46 +318,6 @@ their source path and not deployed):
     specific guidance derives from the live feature list emitted by
     `find-feature.py list-json` or is generalized.
 
-### rabbit-feature-spec SKILL.md
-
-26. **Frontmatter declares `model: opus`.** The `rabbit-feature-spec`
-    SKILL.md YAML frontmatter declares `model: opus`.
-
-27. **Request classification gates superpowers.** The SKILL.md instructs
-    the skill to judge whether a request is open-ended or specific
-    BEFORE deciding which superpowers to invoke. Open-ended requests
-    invoke `superpowers:brainstorming` followed by
-    `superpowers:writing-plans`; specific requests invoke
-    `superpowers:writing-plans` only.
-
-28. **impl-suggestion file output.** The SKILL.md instructs the skill
-    to write `.rabbit/impl-suggestion-<feature-name>.json` conforming
-    to `schema_version: 1.0.0`. The documented `generated_at` field
-    format is ISO 8601 UTC in the shape `YYYY-MM-DDTHH:MM:SSZ`
-    (no fractional seconds, no timezone offset).
-
-29. **Spec update precedes impl-suggestion.** The SKILL.md instructs the
-    skill to update the target feature's resolved `spec.md`
-    (`.claude/features/<feature-name>/docs/spec.md`, with a
-    `docs/spec/spec.md` fallback for not-yet-migrated features)
-    BEFORE writing the impl-suggestion file.
-
-30. **Read-comprehend-write on spec edits.** The SKILL.md MUST express
-    as a hard MUST in Step 1 (Read Current State) that the skill Read
-    the target feature's resolved `spec.md` (flat `docs/spec.md` preferred,
-    `docs/spec/spec.md` fallback) via the Read tool
-    in-session, and MUST repeat the obligation as a pre-condition note
-    in Step 4 (Update the Spec). Reading is mandatory comprehension
-    before any Edit or Write on that file.
-
-31. **Process-agnostic SKILL.md.** The SKILL.md MUST NOT identify a
-    specific caller (e.g., "you are Step 3 in rabbit-feature-touch") as
-    the primary or sole invocation context, and MUST NOT reference a
-    specific downstream consumer (e.g., "the TDD subagent reads this
-    file") as a guaranteed next step. The "What You Do NOT Do" section
-    MUST NOT name specific skills it must not invoke; only generic
-    rules ("do not invoke other skills") are acceptable.
-
 ### rabbit-feature-scaffold SKILL.md and scaffold-feature.py
 
 32. **rabbit-feature-scaffold SKILL.md invocation.** The SKILL.md instructs
@@ -516,8 +466,6 @@ their source path and not deployed):
     entries deploys the set of `.claude/skills/<name>/SKILL.md`
     artifacts byte-identically.
 
-42. *(Withdrawn — folded into CHANGELOG.md.)*
-
 ### Dispatcher continuity
 
 41. **Dispatcher continuity directive.** The `rabbit-feature-touch`
@@ -538,43 +486,6 @@ their source path and not deployed):
     placement: near the Overview, or as the closing paragraph after
     Step 7's body).
 
-### Prompt-contract declaration
-
-43. **`prompts` section declares all five skills.**
-    `.claude/features/rabbit-feature/feature.json` MUST declare a
-    `prompts` array containing EXACTLY FIVE entries, one per skill
-    surfaced by this feature, with these field values:
-    (a) `{"id": "rabbit-feature-touch", "kind": "skill", "inject":
-        [".claude/features/policy/philosophy.md",
-         ".claude/features/policy/spec-rules.md",
-         ".claude/features/policy/coding-rules.md"],
-        "slots": ["args"]}` — orchestrates code changes and spec edits;
-        needs the full policy bundle.
-    (b) `{"id": "rabbit-feature-spec", "kind": "skill", "inject":
-        [".claude/features/policy/philosophy.md",
-         ".claude/features/policy/spec-rules.md"],
-        "slots": ["args"]}` — authors specs; needs spec-rules but not
-        coding-rules.
-    (c) `{"id": "rabbit-feature-scaffold", "kind": "skill", "inject":
-        [".claude/features/policy/philosophy.md",
-         ".claude/features/policy/coding-rules.md"],
-        "slots": ["args"]}` — scaffolds code; needs coding-rules.
-    (d) `{"id": "rabbit-feature-audit", "kind": "skill", "inject":
-        [".claude/features/policy/philosophy.md",
-         ".claude/features/policy/coding-rules.md"],
-        "slots": ["args"]}` — validates code; needs coding-rules for
-        context.
-    (e) `{"id": "rabbit-feature-scope", "kind": "skill", "inject":
-        [".claude/features/policy/philosophy.md"], "slots": ["args"]}`
-        — JSON classifier; philosophy only.
-    Each entry's matching template at
-    `.claude/features/contract/templates/prompts/<id>.txt` (the
-    passthrough body created by contract Inv 57 in Phase A.4) declares
-    the single ``args`` placeholder matching the entry's
-    `slots: ["args"]`. Enforced by `test/test-prompts-declared.py`,
-    which loads `feature.json` and asserts the five entries exist with
-    the ids and inject lists named above.
-
 ## What this feature does NOT define
 
 - The TDD subagent's 8-step cycle, the `tdd-step.py` state machine, or
@@ -590,23 +501,20 @@ their source path and not deployed):
 `test/run.py` runs every `test-*.py` under `test/`. The active tests are
 listed below, each tagged with the invariant(s) it covers.
 
-- `test-build-source.py` — Inv 1
 - `test-cross-feature-interface.py` — Inv 2, 3
 - `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 12, 14, 15, 16, 41, 51, 52
 - `test-touch-skill-authoring-standard.py` — Inv 53, 54, 55
 - `test-touch-docs-resolver.py` — Inv 56
 - `test-scope-skill.py` — Inv 24
 - `test-scope-scripts.py` — Inv 17, 18, 19, 20, 21, 22, 23, 25
-- `test-spec-skill.py` — Inv 26, 27, 28, 29, 30, 31
-- `test-new-skill.py` — Inv 32
 - `test-new-feature-scaffolder.py` — Inv 33
 - `test-audit-skill.py` — Inv 34, 35
+- `test-audit-owner.py` — Inv 50
 - `test-version-sync.py` — Inv 36
 - `test-skill-md-frontmatter.py` — Inv 37
 - `test-feature-json-summary.py` — Inv 38
 - `test-contract-md.py` — Inv 39
 - `test-manifest-shape.py` — Inv 40
 - `test-manifest-deploys-correctly.py` — Inv 40
-- `test-prompts-declared.py` — Inv 43
 - `test-feature-new-plugin-mode.py` — Inv 44, 45, 46, 47, 48
 - `test-new-skill.py` — Inv 32, 49
