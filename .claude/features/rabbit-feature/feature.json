@@ -1,7 +1,7 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-feature",
-  "version": "1.27.0",
+  "version": "1.28.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "tdd_state": "test-green",
@@ -24,7 +24,7 @@
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
-  "updated": "2026-06-03",
+  "updated": "2026-06-04",
   "manifest": [
     {
       "api": "publish_skill",
@@ -53,6 +53,5 @@
   ],
   "runtime": {},
   "configuration": [],
-  "prompts": [],
-  "spec_no_change_reason": "issue #399 Phase 2b file-location refactor: spec/contract/CHANGELOG relocate specs/ -> flat docs/; normative invariant content unchanged, version-bump + self-reference updates applied in IMPLEMENT"
+  "prompts": []
 }

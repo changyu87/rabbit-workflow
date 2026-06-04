@@ -23,7 +23,7 @@ Exit:
     empty match, schema-validation failure)
   2 invocation error
 
-Version: 2.2.0
+Version: 2.3.0
 Owner: rabbit-workflow team (rabbit-feature)
 Deprecation criterion: when feature scaffolding is exposed as a native
     rabbit CLI subcommand.
@@ -182,9 +182,9 @@ def _resolve_glob_under_root(pattern: str, root: Path) -> tuple[list[Path] | Non
 
 
 def _scaffold_plugin_feature(target: Path, name: str, owner: str, globs: list[str]) -> None:
-    """Write feature.json, specs/spec.md, specs/contract.md for the
-    per-project plugin feature (issue #399: specs/ layout)."""
-    for sub in ("specs",):
+    """Write feature.json, docs/spec.md, docs/contract.md for the
+    per-project plugin feature (flat docs/ layout)."""
+    for sub in ("docs",):
         (target / sub).mkdir(parents=True)
     created = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     feature_json = {
@@ -208,7 +208,7 @@ def _scaffold_plugin_feature(target: Path, name: str, owner: str, globs: list[st
         + "".join(f"- `{g}`\n" for g in globs)
         + "\n## Invariants\n\nTODO.\n"
     )
-    (target / "specs/spec.md").write_text(spec_md)
+    (target / "docs/spec.md").write_text(spec_md)
 
     contract_md = (
         "---\n"
@@ -225,7 +225,7 @@ def _scaffold_plugin_feature(target: Path, name: str, owner: str, globs: list[st
         "}\n"
         "```\n"
     )
-    (target / "specs/contract.md").write_text(contract_md)
+    (target / "docs/contract.md").write_text(contract_md)
 
 
 def _run_plugin_mode(repo_root: Path, name: str, globs: list[str]) -> int:
@@ -320,7 +320,7 @@ def _run_plugin_mode(repo_root: Path, name: str, globs: list[str]) -> int:
     dispatcher = ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py"
     print(
         "\nNEXT: invoke the rabbit-spec-create skill (or run the dispatcher\n"
-        "directly) to seed specs/spec.md:\n"
+        "directly) to seed docs/spec.md:\n"
         f"  Skill(\"rabbit-spec-create\", args: \"{name} {' '.join(globs)}\")\n"
         "or equivalently:\n"
         f"  python3 {dispatcher} \\\n"
@@ -469,9 +469,8 @@ def main() -> int:
         desc = "TODO: one-sentence purpose"
     today = datetime.date.today().isoformat()  # noqa: F841
 
-    # issue #399: new features are created at the ratified flat docs/ layout
-    # (docs/spec.md, docs/contract.md), preserving docs/bugs/. Spec/contract
-    # resolution still dual-reads specs/ for not-yet-migrated features.
+    # New features are created at the ratified flat docs/ layout
+    # (docs/spec.md, docs/contract.md), preserving docs/bugs/.
     for sub in ("test", "scripts", "docs/bugs"):
         (target / sub).mkdir(parents=True)
 

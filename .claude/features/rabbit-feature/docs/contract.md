@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.27.0
+version: 1.28.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -37,7 +37,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py",
-        "purpose": "Companion script for the rabbit-feature-touch skill (spec-rules.md §4 Script-Backed Orchestration). Owns the skill's computed / mode-aware orchestration: 'resolve-spec-path <feature-name>' prints the resolved spec path (flat docs/spec.md preferred, then specs/spec.md, then legacy docs/spec/spec.md; mode-aware via .rabbit/.runtime/mode); 'resolve-contract-path <feature-name>' mirrors that order for contract.md; 'commit-spec <feature-name> <summary>' stages (mode-aware git add / git add -f), skips on empty diff, else commits 'spec(<name>): update spec for <summary>'. No-arg invocation prints usage and exits 2."
+        "purpose": "Companion script for the rabbit-feature-touch skill (spec-rules.md §4 Script-Backed Orchestration). Owns the skill's computed / mode-aware orchestration: 'resolve-spec-path <feature-name>' prints the resolved spec path (flat docs/spec.md preferred, then legacy docs/spec/spec.md; mode-aware via .rabbit/.runtime/mode); 'resolve-contract-path <feature-name>' mirrors that order for contract.md; 'commit-spec <feature-name> <summary>' stages (mode-aware git add / git add -f), skips on empty diff, else commits 'spec(<name>): update spec for <summary>'. No-arg invocation prints usage and exits 2."
       }
     ],
     "schemas": [],
