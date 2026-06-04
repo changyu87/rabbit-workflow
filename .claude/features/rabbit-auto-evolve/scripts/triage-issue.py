@@ -3,7 +3,14 @@
 
 Per rabbit-auto-evolve spec.md Inv 3, emits a JSON object on stdout with
 fields: issue, decision, reason_code, rationale, feature, features,
-contract_touch, priority, issue_type, created_at, blocked_by, planning_note.
+cross_scope, cross_scope_features, contract_touch, priority, issue_type,
+created_at, blocked_by, planning_note. The `cross_scope` boolean (Inv 56 /
+issue #433) is True when the issue body implicates more than one feature dir
+(the `features` set spans >= 2 dirs) OR a cross-scope phrase ("repo-wide",
+"across all features", "rename across", ...) appears; it routes a body-spanning
+sweep to plan-batch.py's barrier/decomposition lane instead of ordinary
+parallel-per-feature single-feature work. `cross_scope_features` echoes the
+same sorted `features` set.
 The `issue_type` (bug/enhancement, from the GH label) and `created_at` (the
 issue's ISO-8601 UTC creation timestamp) fields (issue #606 / Inv 51) feed
 the bug-vs-enhancement and age signals of plan-batch.py's _computed_score
@@ -59,7 +66,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.8.0
+Version: 1.9.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -298,6 +305,47 @@ def _feature_set(feature_label, body, title="", feature_names=None):
         feats |= _bare_name_matches(f"{title or ''}\n{body or ''}",
                                     feature_names)
     return sorted(feats)
+
+
+# Cross-scope detection (Inv 56 / issue #433) -------------------------------
+# An issue whose BODY spans multiple feature directories is a cross-scope item:
+# a single bounded per-feature TDD subagent (one .rabbit-scope-active-<feature>)
+# cannot write outside its one feature, so plan-batch.py MUST route it to the
+# barrier/decomposition lane instead of ordinary parallel-per-feature work. We
+# emit a `cross_scope` boolean (and `cross_scope_features`) so the body-derived
+# signal is an additional input to Stage-2 shaping even when the single
+# feature: LABEL would otherwise mislead the planner.
+#
+# Cross-scope phrases that imply a repo-wide / multi-feature sweep regardless
+# of how many feature dirs the body literally names (whole-phrase,
+# case-insensitive).
+_CROSS_SCOPE_PHRASE = re.compile(
+    r"repo-wide"
+    r"|every feature"
+    r"|across all features"
+    r"|across every feature"
+    r"|all features"
+    r"|rename across",
+    re.IGNORECASE,
+)
+
+
+def _cross_scope(features, title, body):
+    """True iff the issue implicates more than one feature (Inv 56).
+
+    Two independent signals (either suffices):
+      (a) the distinct feature set `features` (the Inv 26 union of the label,
+          body `.claude/features/<name>/` paths, and bare names) spans >= 2
+          feature dirs; OR
+      (b) the title/body carries an explicit cross-scope phrase (repo-wide,
+          across all features, rename across, ...).
+    Default False when at most one feature dir is implicated and no phrase
+    appears.
+    """
+    if len(features) >= 2:
+        return True
+    text = f"{title or ''}\n{body or ''}"
+    return bool(_CROSS_SCOPE_PHRASE.search(text))
 
 
 # Research/investigation classification (issue #478) ------------------------
@@ -578,6 +626,15 @@ def classify(issue_num, repo_root):
     # Canonical feature vocabulary (discovered from .claude/features/) — the
     # basis for Stage-2 bare-name cross-feature detection (issue #443).
     feature_names = _discover_feature_names(repo_root)
+    # Distinct feature set (Inv 26) computed once — reused for both `features`
+    # and the cross-scope signal (Inv 56).
+    features = _feature_set(feature_label, body, title, feature_names)
+    # `cross_scope` (Inv 56 / issue #433): true when the issue body spans more
+    # than one feature dir OR carries a cross-scope phrase. Drives plan-batch's
+    # body-derived routing so a body-spanning sweep is shaped barrier/
+    # decomposition, never parallel-per-feature, even when its single feature:
+    # LABEL would mislead the planner.
+    cross_scope = _cross_scope(features, title, body)
 
     base = {
         "issue": issue_num,
@@ -588,7 +645,16 @@ def classify(issue_num, repo_root):
         # word in the body/title (issue #443). The Stage-2 dispatch-shape
         # basis (Inv 26 / issue #435). Always present; for a malformed-labels
         # issue with no body paths and no bare-name mention it is [].
-        "features": _feature_set(feature_label, body, title, feature_names),
+        "features": features,
+        # `cross_scope` (Inv 56 / issue #433) is True when the issue body
+        # implicates more than one feature (the `features` set spans >= 2 dirs)
+        # OR a cross-scope phrase ("repo-wide", "across all features", ...)
+        # appears. Always present on EVERY decision; plan-batch.py routes a
+        # cross_scope item to multi-subagent-barrier/decomposition, never
+        # parallel-per-feature. `cross_scope_features` is the same sorted
+        # `features` set so the dispatcher sees WHICH features it spans.
+        "cross_scope": cross_scope,
+        "cross_scope_features": features,
         "contract_touch": ctouch,
         # `priority` (issue #484) echoes the issue's priority:<level> label
         # value (None when absent). plan-batch.py folds it into the loop's

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.47.0
+version: 0.48.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -3396,6 +3396,59 @@ Phase E merges complete.
     Inv 55, contract.md `invokes.modules` declares the
     `contract.lib.publish` cross-scope invoke, and SKILL.md documents the
     pre-PR republish step invoking the script).
+
+56. **Cross-scope detection routes body-spanning issues away from
+    `parallel-per-feature`.** `triage-issue.py` assigns exactly ONE feature to
+    each issue from its `feature:` label, and Stage-2 shaping (Inv 26) keys the
+    dispatch shape off the distinct feature-dir count. But an issue whose BODY
+    touches MULTIPLE feature directories — a repo-wide sweep, a cross-feature
+    rename, an explicit multi-feature "Files touched" list — is a cross-scope
+    item: a single bounded per-feature TDD subagent (one
+    `.rabbit-scope-active-<feature>`) cannot write outside its one feature, so
+    dispatching such an item as ordinary `parallel-per-feature` single-feature
+    work aborts at the first cross-feature write. The fix is DETECTION +
+    ROUTING; bounded scope itself is unchanged (Inv 26(d) — bounded scope is a
+    hard constraint, not waivable).
+
+    **(a) Triage emits a `cross_scope` signal.** `triage-issue.py` sets
+    `cross_scope` (bool) on EVERY triage record. It is `true` when the issue
+    body implicates more than one feature — either the distinct feature set
+    spans 2 or more feature dirs (the `features` list already computed under
+    Inv 26, union of the label, body `.claude/features/<name>/` paths, and bare
+    names), OR the body/title carries an explicit cross-scope phrase
+    (case-insensitive: `repo-wide`, `every feature`, `across all features`,
+    `across every feature`, `all features`, `rename across`). It is `false`
+    when at most one feature dir is implicated and no cross-scope phrase
+    appears. The record also carries `cross_scope_features` — the sorted
+    distinct feature set (the same value as `features`) — so the dispatcher
+    sees WHICH features a cross-scope item spans. Both fields appear on every
+    decision (work, defer, close-not-planned, research); a phrase-only signal
+    with a sparse `features` set still yields `cross_scope: true` with whatever
+    features were detected.
+
+    **(b) plan-batch routes `cross_scope` items distinctly.** A `cross_scope`
+    item MUST NOT be shaped as `parallel-per-feature`, even when its
+    feature-dir count is 1 (its single `feature:` label would otherwise mislead
+    Stage-2). `plan-batch.py` folds the body-derived `cross_scope` signal into
+    Stage-2 shaping as an additional input: a `cross_scope` work item gets
+    `decomposition` when its feature count is at/above `--decompose-threshold`,
+    else `multi-subagent-barrier` — NEVER `parallel-per-feature`. A
+    non-cross-scope item is shaped by feature count exactly as before. Research
+    items are unaffected (they get `research` regardless).
+
+    **(c) Cross-scope items are surfaced distinctly.** `plan-batch.py` lists
+    every `cross_scope` work item's issue number under a `cross_scope_items`
+    output key (sorted ascending; always present, empty when none) so the
+    dispatcher/human sees which items need the barrier/decomposition path
+    rather than ordinary parallel single-feature dispatch.
+
+    Enforced by `test/test-cross-scope.py` (triage sets `cross_scope: true`
+    for a body referencing two or more `.claude/features/<name>/` paths and for
+    a `repo-wide` phrase, `false` for an ordinary single-feature body;
+    plan-batch shapes a `cross_scope` item as `multi-subagent-barrier` /
+    `decomposition` and never `parallel-per-feature`, listing it under
+    `cross_scope_items`) and `test/test-spec-cross-scope-invariant.py` (the
+    spec carries Inv 56).
 
 ## Known gaps
 

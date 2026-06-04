@@ -13,6 +13,30 @@ own version.
 
 ## Version notes
 
+- **v0.48.0 — 2026-06-03** — Cross-scope detection + routing (Inv 56, issue
+  #433). `triage-issue.py` now emits `cross_scope` (bool) and
+  `cross_scope_features` (sorted feature set) on EVERY triage record:
+  `cross_scope` is `true` when the issue body implicates more than one feature
+  — either the distinct `features` set spans ≥ 2 dirs (the Inv 26 union of
+  label + `.claude/features/<name>/` body paths + bare names) OR the body/title
+  carries an explicit cross-scope phrase (`repo-wide`, `every feature`,
+  `across all features`, `across every feature`, `all features`, `rename
+  across`), else `false`. `plan-batch.py` folds the body-derived `cross_scope`
+  signal into Stage-2 shaping: a `cross_scope` work item is NEVER shaped
+  `parallel-per-feature` (even when its single `feature:` label would mislead
+  the planner) — it gets `decomposition` at/above `--decompose-threshold`, else
+  `multi-subagent-barrier`. Every `cross_scope` work item is surfaced under the
+  new `cross_scope_items` plan output key (sorted, always present). This fixes
+  the dispatch-abort-at-first-cross-feature-write class: a body-spanning sweep
+  no longer routes to a bounded single-feature subagent that cannot write
+  across features. Bounded scope itself is unchanged (Inv 26(d)) — the fix is
+  detection + routing, not widening subagent scope. Tests:
+  `test/test-cross-scope.py` (triage `cross_scope` true/false cases via gh
+  shim; plan-batch shapes a cross_scope item as multi-subagent-barrier /
+  decomposition, never parallel-per-feature; `cross_scope_items` surface) and
+  `test/test-spec-cross-scope-invariant.py` (spec carries Inv 56). Lockstep
+  version bump 0.47.0 -> 0.48.0 across `feature.json`, `docs/spec.md`,
+  `docs/contract.md`, and `skills/rabbit-auto-evolve/SKILL.md`.
 - **v0.47.0 — 2026-06-03** — Deterministic deployed-surface republish step
   (Inv 55, issue #562). Added `scripts/republish-feature.py`: given a feature
   name (and optional `--repo-root`), it reads that feature's `feature.json`

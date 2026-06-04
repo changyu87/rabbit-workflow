@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.47.0
+version: 0.48.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -559,6 +559,17 @@ phase 5:
   requirement** — items that don't fit it still get done via shape 2 or 3,
   just slower. The dispatcher MUST NOT skip, defer indefinitely, or escalate
   an item merely because it doesn't fit shape 1.
+
+  **Cross-scope routing (Inv 56).** `triage-issue.py` flags an issue whose
+  BODY spans multiple feature dirs (a repo-wide sweep, a cross-feature rename,
+  or an explicit cross-scope phrase like "repo-wide" / "across all features")
+  with `cross_scope: true`. `plan-batch.py` NEVER shapes such an item as
+  `parallel-per-feature` — a single bounded per-feature subagent cannot write
+  across features, so a cross_scope item is routed to `multi-subagent-barrier`
+  (below the decompose threshold) or `decomposition` (at/above it). Every
+  cross_scope work item's issue number is listed under the plan's
+  `cross_scope_items` key so the dispatcher sees which items need the
+  barrier/decomposition path rather than parallel single-feature dispatch.
 
   The struck shape ("sequential single-subagent with a persistent
   `.rabbit-scope-override session`") is NEVER used. Autonomous-evolve ALWAYS

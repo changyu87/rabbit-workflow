@@ -91,5 +91,7 @@ run_test("test-prune-worktrees.py")
 run_test("test-spec-prune-worktrees-invariant.py")
 run_test("test-republish-feature.py")
 run_test("test-spec-republish-feature-invariant.py")
+run_test("test-cross-scope.py")
+run_test("test-spec-cross-scope-invariant.py")
 
 print("ALL TESTS PASSED")
