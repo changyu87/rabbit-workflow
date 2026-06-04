@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.7.0
+version: 1.8.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -13,8 +13,8 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
 ## Purpose
 
 Wrap the `gh` CLI to provide rabbit's file / list / work / show operations
-against GitHub Issues. GitHub Issues is rabbit's bug-and-backlog (B/B)
-store; rabbit-issue owns the file / list / work / show surface over it.
+against GitHub Issues. GitHub Issues is rabbit's issue store for bugs and
+enhancements; rabbit-issue owns the file / list / work / show surface over it.
 
 ## Schema / Behavior
 
@@ -160,7 +160,7 @@ script or skill guidance uses `gh issue view … --comments`; the
 - **Branch-backed item storage** — out of scope; GH Issues is the
   backing store and the GH Timeline owns history.
 - **GH Projects v2 boards / kanban / sub-status workflows** — out of
-  scope; if needed, file a separate backlog.
+  scope; if needed, file a separate issue.
 - **Cross-tracker abstractions** (Linear, Jira, etc.) — only `gh` is
   supported in v1.
 - **User-install plugin-mode backend** — the original framing for this
