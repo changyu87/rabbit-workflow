@@ -1,9 +1,11 @@
 ---
+name: rabbit-update
 description: Check for or install a newer rabbit-workflow release.
-allowed-tools: Bash
 version: 1.0.0
 owner: rabbit-workflow team
 deprecation_criterion: when the rabbit CLI exposes a native self-update command that subsumes /rabbit-update
+template_version: 1.0.0
+allowed-tools: Bash
 ---
 
 # /rabbit-update
