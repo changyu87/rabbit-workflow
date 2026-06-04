@@ -3,14 +3,14 @@
 tick (`tick-headless.py`) and the in-session tick (SKILL.md `start`/`tick`)
 invoke (Inv 40 / issue #513).
 
-The deterministic tick phases are walked in TWO segments so that Phase 5
+The deterministic tick phases are walked in TWO segments so that Phase 6
 (`dispatch`) — the ONLY phase that needs a live Claude session — can be
 inserted BETWEEN them by the in-session path without either path
 hand-assembling any inter-phase data structure:
 
   pre-dispatch   tick-start self-sync (Inv 38), phase 0/1 stop/abort
                  short-circuit, running-guard (Inv 35), running-marker WRITE
-                 (Inv 42 — only after the guard returns proceed), phases 2-4
+                 (Inv 42 — only after the guard returns proceed), phases 3-5
                  (fetch | triage | plan, Inv 18). Emits a result with
                  `action: "proceed"` (continue to dispatch) or
                  `action: "skip"` (a clean no-op short-circuit fired).
@@ -22,19 +22,19 @@ path false-skips on a marker it itself wrote. start-loop.py (the explicit user
 `start` entry) keeps ONLY its cancel-stop + bootstrap self-heal (Inv 19) and no
 longer writes the running marker.
 
-  post-dispatch  phase 6 (merge ready PRs from the state's `merge_ready`
+  post-dispatch  phase 7 (merge ready PRs from the state's `merge_ready`
                  hint), a post-merge re-sync to origin/dev when PRs merged
-                 (Inv 47), phases 7-9 (`run-post-merge.py` drain), phase 10
+                 (Inv 47), phases 8-10 (`run-post-merge.py` drain), phase 11
                  (persist: re-read the on-disk state — already mutated by the
                  phase scripts — drop the transient `merge_ready` key, and
                  pipe through `update-state.py`). Emits a result summary.
 
 The headless tick chains:   pre-dispatch -> (skip dispatch) -> post-dispatch.
-The in-session tick chains: pre-dispatch -> Phase 5 (Claude) -> post-dispatch.
+The in-session tick chains: pre-dispatch -> Phase 6 (Claude) -> post-dispatch.
 
 Every phase handoff is script-to-script (stdin/stdout pipes or on-disk state
 mutation). The dispatcher NEVER reads `update-state.py` source or the state
-schema to hand-assemble the new-state object — Phase 10 re-reads from disk and
+schema to hand-assemble the new-state object — Phase 11 re-reads from disk and
 pipes the existing object back through `update-state.py`, identically in both
 paths.
 
@@ -165,7 +165,7 @@ def _run_prune_worktrees():
 def run_pre_dispatch():
     """Phases: tick-start sync (Inv 38) -> phase 0/1 stop/abort short-circuit
     -> running-guard (Inv 35) -> running-marker write (Inv 42, only on proceed)
-    -> phases 2-4 fetch|triage|plan (Inv 18).
+    -> phases 3-5 fetch|triage|plan (Inv 18).
 
     Returns `(result_dict, exit_code)`. The result's `action` is "proceed"
     (continue to dispatch) or "skip" (a clean no-op short-circuit fired). On a
@@ -219,7 +219,7 @@ def run_pre_dispatch():
     result["running_marker"] = "written"
 
     # Tick-start orphan sweep (Inv 53 / #628). The running-guard above returned
-    # `proceed`, so no OTHER tick is live, and Phase 5 dispatch has not begun —
+    # `proceed`, so no OTHER tick is live, and Phase 6 dispatch has not begun —
     # therefore every existing `.claude/worktrees/agent-*` worktree is an orphan
     # from a prior or interrupted tick and is safe to force-remove. The same
     # step bounds `.rabbit/prompts/` by invoking the contract cleanup API. Disk
@@ -228,7 +228,7 @@ def run_pre_dispatch():
     sweep = _run_prune_worktrees()
     result["phases"]["prune_worktrees"] = sweep.returncode
 
-    # phases 2-4: fetch | triage | plan (Inv 18).
+    # phases 3-5: fetch | triage | plan (Inv 18).
     fetch = _run("fetch-queue.py", [])
     result["phases"]["fetch"] = fetch.returncode
     if fetch.returncode != 0:
@@ -262,9 +262,9 @@ def run_post_dispatch():
     Returns `(result_dict, exit_code)`. The caller owns emitting the result."""
     result = {"segment": "post-dispatch", "status": "completed", "phases": {}}
 
-    # phase 6 (FIRST action, BEFORE merge): deterministic pre-merge cleanup of
+    # phase 7 (FIRST action, BEFORE merge): deterministic pre-merge cleanup of
     # KNOWN worktree-dispatch leak-class noise from the main tree (Inv 43 /
-    # #583). Worktree-isolated Phase 5 dispatches sometimes leak a stray
+    # #583). Worktree-isolated Phase 6 dispatches sometimes leak a stray
     # `.rabbit-scope-active-*` marker or a bookkeeping-only `feature.json`
     # edit into the dispatcher's main tree, which trips safety-check Inv 5 and
     # makes merge-prs.py skip the whole batch. The cleanup restores ONLY that
@@ -277,7 +277,7 @@ def run_post_dispatch():
         result["reason"] = "clean-leaks-refused"
         return result, 1
 
-    # phase 6: merge ready PRs (from the transient merge_ready hint).
+    # phase 7: merge ready PRs (from the transient merge_ready hint).
     ready = _merge_ready()
     if ready:
         pr_list = ",".join(str(n) for n in ready)
@@ -291,7 +291,7 @@ def run_post_dispatch():
         # Post-merge re-sync to origin/dev (Inv 47 / #516). merge-prs.py did a
         # REMOTE squash-merge via `gh pr merge`, which advances origin/dev but
         # NOT the loop's LOCAL dev checkout. Fast-forward local dev to
-        # origin/dev NOW, before the phases 7-9 release drain, so
+        # origin/dev NOW, before the phases 8-10 release drain, so
         # release-bump.py computes its tag against fresh (not stale) state and
         # succeeds on the FIRST in-loop attempt (no reliance on the #512
         # next-tick retry). Reuses sync-tree.py (git pull --ff-only origin dev,
@@ -309,7 +309,7 @@ def run_post_dispatch():
     else:
         result["phases"]["merge"] = "skipped-no-ready-prs"
 
-    # phases 7-9: post-merge drain (release -> cleanup -> catch-up).
+    # phases 8-10: post-merge drain (release -> cleanup -> catch-up).
     post = _run("run-post-merge.py", [])
     result["phases"]["post_merge"] = post.returncode
     if post.returncode != 0:
@@ -317,7 +317,7 @@ def run_post_dispatch():
         result["reason"] = "post-merge-failed"
         return result, 1
 
-    # phase 10: persist. Re-read the (phase-script-mutated) on-disk state and
+    # phase 11: persist. Re-read the (phase-script-mutated) on-disk state and
     # write it back through update-state.py. `merge_ready` is a transient
     # per-tick hint (not part of the Inv 9 schema), so drop it before handing
     # the object to update-state.py, whose validator rejects unknown keys.
@@ -337,9 +337,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Run one segment of the shared scripted tick phase-walk. "
                     "`pre-dispatch` walks the tick-start sync, phase 0/1 "
-                    "short-circuit, running-guard, and phases 2-4; "
-                    "`post-dispatch` walks phase 6 (merge), phases 7-9 "
-                    "(post-merge), and phase 10 (persist). Phase 5 (dispatch) "
+                    "short-circuit, running-guard, and phases 3-5; "
+                    "`post-dispatch` walks phase 7 (merge), phases 8-10 "
+                    "(post-merge), and phase 11 (persist). Phase 6 (dispatch) "
                     "is inserted between the segments by the in-session path "
                     "only (it needs Claude)."
     )

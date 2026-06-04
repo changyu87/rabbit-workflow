@@ -130,7 +130,7 @@ type `/rabbit-auto-evolve on` themselves.
    phase-walk (Inv 42). A MACHINE-fired `tick` NEVER runs this step (see
    "`tick` (internal)" below).
 1. Run one `tick` by walking the shared scripted phase-walk — the dispatcher
-   supplies ONLY Phase 5 (see "`tick` (internal)" below). The walk's
+   supplies ONLY Phase 6 (see "`tick` (internal)" below). The walk's
    pre-dispatch segment self-syncs the tree (Inv 38), runs the running-guard
    (Inv 35), and — ONLY when the guard returns `proceed` — writes the
    `.rabbit-auto-evolve-running` marker itself (Inv 42), carrying a DURABLE
@@ -140,11 +140,11 @@ type `/rabbit-auto-evolve on` themselves.
    `{"action":"skip",...}` (sync-fail, stop, abort, or a FRESH marker from a
    DIFFERENT live tick — `reason: tick-running`) do NOT start a second tick:
    run `end-tick.py` and end the turn. On `{"action":"proceed",...}` continue
-   to Phase 5. Phase 11 runs `schedule-decision.py` (Inv 33) and the dispatcher
+   to Phase 6. Phase 12 runs `schedule-decision.py` (Inv 33) and the dispatcher
    schedules the immediate-refire when work remains — see "Scheduling" below.
 2. End the turn. The HOUSEKEEPING tick is fired by the **system cron**
    installed at `on` (where crontab is available) running `tick-headless.py`;
-   the DEVELOPMENT tick (phase 5 dispatch) is re-triggered by the scheduler
+   the DEVELOPMENT tick (phase 6 dispatch) is re-triggered by the scheduler
    firing `/rabbit-auto-evolve tick` in a FRESH context (Inv 32). Every
    MACHINE wake-up fires the internal `tick`, NEVER the
    USER-intent `start` (Inv 41): `tick` respects but never deletes the stop
@@ -258,34 +258,34 @@ itself wrote.
 
 Walked by a live Claude session (via `start` or a cron-surfaced resume). The
 in-session tick runs the SAME single shared scripted phase-walk the headless
-tick runs (`run-tick-phases.py`, Inv 40); the dispatcher supplies ONLY Phase 5
+tick runs (`run-tick-phases.py`, Inv 40); the dispatcher supplies ONLY Phase 6
 (`dispatch`), the one phase that needs Claude. The dispatcher does NOT
 hand-build any inter-phase data structure (state objects, handoffs) — every
 phase handoff is script-to-script (stdin/stdout pipes or on-disk state
-mutation). The deterministic walk runs in two segments around Phase 5:
+mutation). The deterministic walk runs in two segments around Phase 6:
 
-1. **Pre-dispatch segment** (phases 0-1, running-guard, 2-4):
+1. **Pre-dispatch segment** (phases 0-1, running-guard, 3-5):
    ```
    python3 .claude/features/rabbit-auto-evolve/scripts/run-tick-phases.py pre-dispatch
    ```
    It runs the tick-start self-sync (Inv 38), the phase 0/1 stop/abort
    short-circuit, the running-guard (Inv 35), then — ONLY when the guard returns
    `proceed` — writes the `.rabbit-auto-evolve-running` marker itself (Inv 42),
-   and finally phases 2-4 (`fetch | triage | plan`). Sequencing the guard before
+   and finally phases 3-5 (`fetch | triage | plan`). Sequencing the guard before
    the marker write, in this ONE place for both the in-session and headless
    paths, is what stops a path from false-skipping on a marker it itself wrote.
    On `{"action":"skip",...}` a clean short-circuit fired (sync-fail, stop,
    abort, or a FRESH marker from a different live tick — `tick-running`) — run
    `end-tick.py` and end the turn. On `{"action":"proceed",...}` continue to
-   Phase 5.
-2. **Phase 5 (`dispatch`)** — the dispatcher's ONLY hand-driven phase. Dispatch
+   Phase 6.
+2. **Phase 6 (`dispatch`)** — the dispatcher's ONLY hand-driven phase. Dispatch
    the TDD subagents per the Stage-1/Stage-2 plan (Inv 26), each with
    `isolation: "worktree"` (Inv 28).
-3. **Post-dispatch segment** (phases 6, 7-9, 10):
+3. **Post-dispatch segment** (phases 7, 8-10, 11):
    ```
    python3 .claude/features/rabbit-auto-evolve/scripts/run-tick-phases.py post-dispatch
    ```
-   Phase 6 FIRST runs `clean-dispatch-leaks.py` (Inv 43, Inv 44) to
+   Phase 7 FIRST runs `clean-dispatch-leaks.py` (Inv 43, Inv 44) to
    deterministically clean KNOWN worktree-dispatch leak-class noise from the
    main tree BEFORE the merge. As its first step it restores a leaked main-HEAD
    branch switch (Inv 44): when a subagent's `git checkout -B <branch>
@@ -295,46 +295,46 @@ mutation). The deterministic walk runs in two segments around Phase 5:
    restore HEAD; if the tree is dirty or the branch has un-pushed work it FAILS
    LOUDLY rather than discard it. It then cleans the worktree-dispatch
    file-leak classes — an untracked stray `.rabbit-scope-active-*` marker or a
-   bookkeeping-only `feature.json` edit that a worktree-isolated Phase 5
+   bookkeeping-only `feature.json` edit that a worktree-isolated Phase 6
    dispatch leaked (which would otherwise trip safety-check Inv 5 and skip the
    batch). The
    cleanup FAILS LOUDLY (the tick aborts) on any unexpected tracked change, so
    a genuine uncommitted change is never destroyed. It then runs the rest of
-   phase 6 (merge the PRs in the state's transient `merge_ready` hint),
-   phases 7-9 (`run-post-merge.py` drain), and phase 10 (persist). Phase 10
+   phase 7 (merge the PRs in the state's transient `merge_ready` hint),
+   phases 8-10 (`run-post-merge.py` drain), and phase 11 (persist). Phase 11
    re-reads the on-disk state (already mutated by the phase scripts), drops the
    transient `merge_ready` key, and pipes the object through `update-state.py`.
    The dispatcher does NOT read `update-state.py` source or the state schema to
    assemble state — the persist is deterministic and identical to the headless
    tick's.
-4. **Phase 11 (`schedule`)** — run `schedule-decision.py` (Inv 33) and schedule
+4. **Phase 12 (`schedule`)** — run `schedule-decision.py` (Inv 33) and schedule
    the immediate-refire when work remains (see "Scheduling" below).
 
 Any phase MAY abort the tick early without affecting the next tick's ability to
 pick up from disk-persisted state in `.rabbit/auto-evolve-state.json`. The
 phase table below maps each phase to its owning script for reference; the live
-session walks them via the two `run-tick-phases.py` segments plus Phase 5.
+session walks them via the two `run-tick-phases.py` segments plus Phase 6.
 
 | # | Phase             | Script(s) invoked                            |
 |---|-------------------|----------------------------------------------|
 | 0 | `stop-check`      | `.claude/features/rabbit-auto-evolve/scripts/log-tick.py rotate` (rotate the observability log if >5MB — Inv 37) then `log-tick.py emit --record-kind tick-start …`; plus the file-existence check on `.rabbit-auto-evolve-stop-requested` |
 | 1 | `restart-check`   | (none — file existence check on `.rabbit-auto-evolve-restart-needed`) |
-| 1.5 | `post-merge-drain` | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — drains any `pending_post_merge` owed by a previous truncated tick BEFORE fetch (Inv 30) |
-| 2 | `fetch`           | `.claude/features/rabbit-auto-evolve/scripts/fetch-queue.py` |
-| 3 | `triage`          | `.claude/features/rabbit-auto-evolve/scripts/triage-batch.py` (wraps `.claude/features/rabbit-auto-evolve/scripts/triage-issue.py` once per queued issue) |
-| 4 | `plan`            | `.claude/features/rabbit-auto-evolve/scripts/plan-batch.py` |
-| 5 | `dispatch`        | (rabbit-feature-touch — TDD subagent dispatch) |
-| 6 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/clean-dispatch-leaks.py` (Inv 43, Inv 44 — deterministic pre-merge cleanup of known worktree-dispatch leaks: restores a leaked main-HEAD branch switch to `dev` FIRST, then cleans file-leak classes; refuses non-zero on unexpected dirt or un-pushed leaked-branch work) → `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
-| 7-9 | `post-merge`    | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — deterministically runs release (7) → cleanup (8) → catch-up (9) for every PR in `pending_post_merge`, then clears it (Inv 30) — see "Post-merge phases (Inv 30)" below |
-|10 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
-|11 | `schedule`        | `.claude/features/rabbit-auto-evolve/scripts/schedule-decision.py` — decide immediate-refire vs idle (Inv 33); on `immediate-refire` the DISPATCHER schedules the one-shot. See "Scheduling (Inv 32–33)" below |
+| 2 | `post-merge-drain` | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — drains any `pending_post_merge` owed by a previous truncated tick BEFORE fetch (Inv 30) |
+| 3 | `fetch`           | `.claude/features/rabbit-auto-evolve/scripts/fetch-queue.py` |
+| 4 | `triage`          | `.claude/features/rabbit-auto-evolve/scripts/triage-batch.py` (wraps `.claude/features/rabbit-auto-evolve/scripts/triage-issue.py` once per queued issue) |
+| 5 | `plan`            | `.claude/features/rabbit-auto-evolve/scripts/plan-batch.py` |
+| 6 | `dispatch`        | (rabbit-feature-touch — TDD subagent dispatch) |
+| 7 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/clean-dispatch-leaks.py` (Inv 43, Inv 44 — deterministic pre-merge cleanup of known worktree-dispatch leaks: restores a leaked main-HEAD branch switch to `dev` FIRST, then cleans file-leak classes; refuses non-zero on unexpected dirt or un-pushed leaked-branch work) → `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
+| 8-10 | `post-merge`    | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — deterministically runs release (8) → cleanup (9) → catch-up (10) for every PR in `pending_post_merge`, then clears it (Inv 30) — see "Post-merge phases (Inv 30)" below |
+|11 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json` |
+|12 | `schedule`        | `.claude/features/rabbit-auto-evolve/scripts/schedule-decision.py` — decide immediate-refire vs idle (Inv 33); on `immediate-refire` the DISPATCHER schedules the one-shot. See "Scheduling (Inv 32–33)" below |
 
 ### Post-merge phases (Inv 30)
 
-Phases 7 (`release`), 8 (`cleanup`), and 9 (`catch-up`) are owned by a single
+Phases 8 (`release`), 9 (`cleanup`), and 10 (`catch-up`) are owned by a single
 deterministic, non-skippable script rather than prose walked by the LLM
 orchestrator. Prose-walked post-merge phases are silently dropped when phase
-6 (`merge`) lands a large batch of PRs and the orchestrator ends the tick for
+7 (`merge`) lands a large batch of PRs and the orchestrator ends the tick for
 scale/context reasons; the script makes them non-skippable:
 
 ```
@@ -342,28 +342,28 @@ python3 .claude/features/rabbit-auto-evolve/scripts/run-post-merge.py
 ```
 
 `run-post-merge.py` reads `pending_post_merge` (the merged PR numbers recorded
-by `merge-prs.py --record-pending` in phase 6) from
+by `merge-prs.py --record-pending` in phase 7) from
 `.rabbit/auto-evolve-state.json` and runs, IN ORDER:
 `.claude/features/rabbit-auto-evolve/scripts/release-bump.py <pr#>`
-(phase 7, once per merged PR) →
+(phase 8, once per merged PR) →
 `.claude/features/rabbit-auto-evolve/scripts/cleanup-branches.py <pr-list>`
-(phase 8, once) →
+(phase 9, once) →
 `.claude/features/rabbit-auto-evolve/scripts/classify-merge-restart.py <pr#>`
-(phase 9, once per merged PR). On completion it clears `pending_post_merge`. An
+(phase 10, once per merged PR). On completion it clears `pending_post_merge`. An
 empty/absent list is a clean no-op. A phase failure exits non-zero and leaves
 `pending_post_merge` intact so the next tick's tick-start drain retries the
 owed work.
 
 Invoke `run-post-merge.py` in TWO places:
 
-1. **After phase 6 (`merge`)** when any PR merged — the merge phase wrote the
+1. **After phase 7 (`merge`)** when any PR merged — the merge phase wrote the
    merged PR numbers via `merge-prs.py --record-pending`, so this drains them
-   through phases 7–9 in the same tick.
-2. **At tick START (phase 1.5, between `restart-check` and `fetch`)** — to
+   through phases 8–10 in the same tick.
+2. **At tick START (phase 2, between `restart-check` and `fetch`)** — to
    DRAIN any owed post-merge work from a previous truncated tick BEFORE
    fetching new work. This is what makes the dropped-phase failure mode
-   self-healing: even if a tick ends right after phase 6, the next tick
-   finishes phases 7–9 before doing anything else.
+   self-healing: even if a tick ends right after phase 7, the next tick
+   finishes phases 8–10 before doing anything else.
 
 A non-zero `run-post-merge.py` exit is an error-abort (Inv 20): run
 `end-tick.py` and surface the failure rather than continue with owed work
@@ -371,7 +371,7 @@ silently dropped.
 
 ### Scheduling (Inv 32–33)
 
-Phase 11 (`schedule`) is NO LONGER a pure no-op. It runs
+Phase 12 (`schedule`) is NO LONGER a pure no-op. It runs
 `python3 .claude/features/rabbit-auto-evolve/scripts/schedule-decision.py`,
 which counts open work (authoritatively, via `fetch-queue.py`), reads the
 scheduler mechanism from `detect-scheduler.py`, logs the decision via
@@ -390,7 +390,7 @@ scheduler mechanism from `detect-scheduler.py`, logs the decision via
   (do NOT continue inline):
   - **croncreate path:** invoke the actual one-shot `CronCreate(...)` per the
     emitted `croncreate` params. A script cannot call `CronCreate`; this tool
-    action is the irreducible Claude step (exactly like phase 5 dispatch).
+    action is the irreducible Claude step (exactly like phase 6 dispatch).
     The emitted `croncreate.cron` is a PINNED next-minute `M H * * *`
     expression (never `*/1 * * * *`), so a dropped `recurring` fails
     benignly (at most once/day at minute M, not an every-minute storm — Inv 33
@@ -446,7 +446,7 @@ The cron-fired headless tick is owned by
 runs WITHOUT a Claude session and walks the SAME single shared scripted
 phase-walk (`run-tick-phases.py`, Inv 40) the in-session tick walks — chaining
 `pre-dispatch -> (skip dispatch, no Claude) -> post-dispatch`. It therefore
-walks every deterministic phase EXCEPT phase 5 (`dispatch`), which requires
+walks every deterministic phase EXCEPT phase 6 (`dispatch`), which requires
 Claude:
 
 - tick-start self-sync (Inv 38) — BEFORE any phase, it runs
@@ -458,21 +458,21 @@ Claude:
 - phase 0 (`stop-check`) + phase 1 (`restart-check`) — if
   `.rabbit-auto-evolve-stop-requested` or `.rabbit-auto-evolve-aborted`
   exists, the tick short-circuits to a clean no-op.
-- phases 2–4 (`fetch | triage | plan`) — the canonical pipe.
-- phase 5 (`dispatch`) — SKIPPED (no Claude session).
-- phase 6 (`merge`) — `merge-prs.py --record-pending` for the PRs listed in
+- phases 3–5 (`fetch | triage | plan`) — the canonical pipe.
+- phase 6 (`dispatch`) — SKIPPED (no Claude session).
+- phase 7 (`merge`) — `merge-prs.py --record-pending` for the PRs listed in
   the state's `merge_ready` field; skipped when there are none.
-- phases 7–9 (`post-merge`) — `run-post-merge.py` drains
+- phases 8–10 (`post-merge`) — `run-post-merge.py` drains
   `pending_post_merge`.
-- phase 10 (`persist`) — `update-state.py`.
-- phase 11 (`schedule`) — NO-OP in the headless tick: the recurring heartbeat
+- phase 11 (`persist`) — `update-state.py`.
+- phase 12 (`schedule`) — NO-OP in the headless tick: the recurring heartbeat
   owns the HOUSEKEEPING cadence (Inv 32 amendment). The development-tier
   immediate-refire (Inv 33) needs a live session and is handled in the
-  SESSION tick's phase 11 via `schedule-decision.py`, not here.
+  SESSION tick's phase 12 via `schedule-decision.py`, not here.
 
 `tick-headless.py` emits a single JSON result object on stdout summarizing
 which phases ran (with `dispatch` always marked `"skipped"`). Dispatch
-(phase 5) only happens during a live Claude session tick (`start` / `tick`).
+(phase 6) only happens during a live Claude session tick (`start` / `tick`).
 
 ### Tick exit invariant (Inv 20)
 
@@ -486,7 +486,7 @@ allowlist).
 
 The four named exit paths are:
 
-- **normal completion** — phase 11 (`schedule`) runs
+- **normal completion** — phase 12 (`schedule`) runs
   `schedule-decision.py` (Inv 33): if work remains, the DISPATCHER schedules
   the near-immediate fresh-context refire (croncreate one-shot, or the
   crontab transient hint) per the emitted params; if the queue is empty it
@@ -497,7 +497,7 @@ The four named exit paths are:
   the top of the tick. Post the run summary, then run
   `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py`,
   then end the turn (the cron is removed by `off`).
-- **safety abort** — any safety violation during phases 6–8 writes
+- **safety abort** — any safety violation during phases 7–9 writes
   `.rabbit-auto-evolve-aborted` via
   `python3 .claude/features/rabbit-auto-evolve/scripts/mark-aborted.py "<reason>"`.
   Immediately after, run
@@ -520,7 +520,7 @@ exit path emit a `tick-end` record via
 --record-kind tick-end …` before `end-tick.py`. These emits are no-ops when the
 enable flag is off, so the trace adds zero file growth when logging is disabled.
 
-Phases 2–4 form the canonical fetch → triage → plan pipe (per Inv 18):
+Phases 3–5 form the canonical fetch → triage → plan pipe (per Inv 18):
 
 ```
 python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py \
@@ -534,8 +534,8 @@ invoked by `tick` — it runs only when the user flips the mode via
 
 ### Dispatch shape selection (Stage 1 / Stage 2 — Inv 26)
 
-Phase 4 (`plan`) emits TWO decoupled outputs the dispatcher consumes in
-phase 5:
+Phase 5 (`plan`) emits TWO decoupled outputs the dispatcher consumes in
+phase 6:
 
 - `selection_order` — **Stage 1, dispatch-shape blind.** The order to work
   items in, by the composite key `(priority desc, contract_touch desc,
@@ -581,7 +581,7 @@ phase 5:
 
 ### Worktree isolation for TDD dispatches (Inv 28)
 
-**Every Agent call for a TDD-subagent dispatch in phase 5 MUST include
+**Every Agent call for a TDD-subagent dispatch in phase 6 MUST include
 `isolation: "worktree"`.** This is a DISPATCHER policy, not a subagent
 policy — the dispatcher requests the isolated worktree on the Agent call;
 the subagent itself is isolation-agnostic.
@@ -641,7 +641,7 @@ Disk-persisted state lives at `.rabbit/auto-evolve-state.json`, schema
 ## Discovered issues and aborted_reason handling
 
 The TDD subagent HANDOFF carries two optional fields the loop reacts to
-during phase 5 (`dispatch`) result processing:
+during phase 6 (`dispatch`) result processing:
 
 - `discovered_issues` — array of `{title, body, labels}` objects. The loop
   files each via `rabbit-issue` (script

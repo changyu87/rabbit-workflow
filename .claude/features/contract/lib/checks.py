@@ -6,7 +6,7 @@ function calls sys.exit, prints, or raises on contract-violation conditions.
 
 Per spec Inv 37.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when a native rabbit CLI exposes equivalent bindings.
 """
@@ -338,12 +338,35 @@ def check_template_producer_consistency(template_path: str) -> CheckResult:
 
 # ---------- check_numbered_lists ---------------------------------------------
 
+# Line-anchored patterns: an ordered-list item or heading whose number uses a
+# decimal sub-number or letter suffix. Matched with rx.match() at line start.
 _NUMBERED_PATTERNS = [
     (re.compile(r"^\s*#{1,6}\s+\d+\.\d+(?:\.\d+)*\b"), "heading-decimal"),
     (re.compile(r"^\s*#{1,6}\s+\d+[a-z]\b"), "heading-letter"),
     (re.compile(r"^\s*[-*+]?\s*\d+\.\d+(?:\.\d+)*\.\s"), "list-decimal"),
     (re.compile(r"^\s*[-*+]?\s*\d+[a-z][.):]\s"), "list-letter"),
 ]
+
+# Prose patterns (Inv 33): a numbering keyword (phase|step|item|part|section,
+# singular or plural) IMMEDIATELY followed by a fractional (N.M) or
+# letter-suffixed (Na / N.a) index anywhere in running text or a table cell.
+# Matched with rx.search() on a line whose inline code spans have been
+# stripped. The keyword anchor + the requirement that the index directly
+# follow the keyword keep legitimate decimal literals out of scope: semver /
+# version strings (1.12.0, v1.5.0), schema_version/template_version values
+# (2.16.0), invariant references (Inv 33), dotted filenames (foo.1.5.bar),
+# currency ($5.50) carry no preceding numbering keyword, and a number that
+# does not immediately follow the keyword ("phase completed in 1.5 seconds")
+# is excluded by the \s+ adjacency requirement. Documentation examples written
+# inside `inline code spans` are stripped before matching, so a feature's own
+# spec describing the `phase 1.5` example does not trip its own check.
+_NUMBERED_PROSE_PATTERNS = [
+    (re.compile(r"\b(?:phase|step|item|part|section)s?\s+\d+\.\d+", re.IGNORECASE),
+     "prose-decimal"),
+    (re.compile(r"\b(?:phase|step|item|part|section)s?\s+\d+\.?[a-z]\b", re.IGNORECASE),
+     "prose-letter"),
+]
+_INLINE_CODE_RE = re.compile(r"`[^`]*`")
 _NUMBERED_SKIP = ("/archive/", "/docs/superpowers/")
 
 
@@ -367,8 +390,19 @@ def _numbered_check_file(path: str) -> List[tuple]:
             continue
         if in_fence:
             continue
+        matched = False
         for rx, name in _NUMBERED_PATTERNS:
             if rx.match(line):
+                violations.append((i, name, line.rstrip("\n")))
+                matched = True
+                break
+        if matched:
+            continue
+        # Prose patterns run on the line with inline code spans removed so a
+        # numbered index inside backticks (a literal/example) is not flagged.
+        bare = _INLINE_CODE_RE.sub("", line)
+        for rx, name in _NUMBERED_PROSE_PATTERNS:
+            if rx.search(bare):
                 violations.append((i, name, line.rstrip("\n")))
                 break
     return violations
@@ -391,7 +425,9 @@ def _numbered_collect(target: str):
 
 
 def check_numbered_lists(targets: List[str]) -> CheckResult:
-    """Inv 33: reject decimal/letter-suffix numbering in Markdown ordered lists & headings."""
+    """Inv 33: reject decimal/letter-suffix numbering in Markdown ordered
+    lists & headings, AND prose-embedded fractional/letter numbering anchored
+    to a numbering keyword (phase|step|item|part|section)."""
     messages: List[str] = []
     for target in targets:
         if not os.path.exists(target):
