@@ -13,6 +13,29 @@ own version.
 
 ## Version notes
 
+- **v0.55.2 — 2026-06-03** — Spec-accuracy fix (#736): the "fresh context"
+  claim in Inv 32 (DEVELOPMENT tick) and Inv 33 over-promised — it is true
+  ONLY for the system-cron / headless path (each tick is a brand-new
+  Claude-free OS process via `tick-headless.py`, zero accumulated history).
+  On the `CronCreate` FALLBACK path (crontab-restricted hosts) there is NO
+  fresh context: the one-shot enqueues the tick prompt into the SAME live
+  Claude session, so it fires as a NEW TURN in the existing conversation —
+  session history is REUSED and ACCUMULATES across ticks, bounded by Claude
+  Code auto-compaction, NOT freshness. Inv 32 and Inv 33 now PATH-QUALIFY the
+  fresh-context guarantee (system-cron path only) and document the fallback's
+  compaction-managed context reuse; the mirrored SKILL.md prose (top blurb,
+  Scheduling section, exit-paths block) and the `schedule-decision.py` script
+  table row are corrected to match. Prose-only: NO invariant renumbered, no
+  invariant added/removed, no cross-reference broken; the Inv 33 title is
+  reworded from "Immediate fresh-context refire" to "Immediate refire when
+  work remains" (the over-claim was in the title itself). No code change. The
+  spec-prose regression `test/test-spec-cron-invariant.py` is extended (#736
+  checks) to assert the fresh-context claim is path-qualified and the
+  fallback reuse/compaction wording is present in spec.md and the SOURCE
+  SKILL.md (RED before the edit, GREEN after). Versions bumped 0.55.1 →
+  0.55.2 across feature.json, docs/spec.md + docs/contract.md frontmatter,
+  and the source SKILL.md; the deployed `.claude/skills/` copy is republished
+  by the dispatcher (out of this feature's edit scope).
 - **v0.55.1 — 2026-06-03** — Removed the invariant count-floor ratchet from
   `test/test-spec-invariant-numbering-contiguous.py` (#750). The test had a
   `COUNT_FLOOR = 59` constant and an assertion (c) failing whenever the invariant

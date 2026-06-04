@@ -101,6 +101,46 @@ if "*/1 * * * *" in spec and "never" in spec_low:
 else:
     fail("spec.md does not reject the every-minute '*/1 * * * *' form")
 
+# --- (1c) Fresh-context claim is PATH-QUALIFIED (#736) ------------------
+# The fresh-context property is true ONLY for the system-cron / headless
+# path (each tick is a brand-new Claude-free OS process). It is NOT true for
+# the CronCreate FALLBACK path, where the tick arrives as a new TURN in the
+# SAME live session: history is REUSED and ACCUMULATES across ticks, bounded
+# by auto-compaction, NOT by freshness. Inv 32/33 must distinguish the two
+# paths and stop claiming a fresh context for the fallback. We assert the
+# fallback's compaction-managed-reuse wording is present in the spec.
+FALLBACK_REUSE_REQUIRED = [
+    "same",        # same live session
+    "accumulat",   # context accumulates across ticks
+    "compaction",  # bounded by auto-compaction
+    "not a fresh", # explicit: the fallback is NOT a fresh context
+]
+reuse_missing = [s for s in FALLBACK_REUSE_REQUIRED if s.lower() not in spec_low]
+if reuse_missing:
+    fail(
+        "spec.md does not document the CronCreate-fallback's "
+        f"compaction-managed context REUSE (#736); missing: {reuse_missing!r}"
+    )
+else:
+    ok("spec.md documents the CronCreate-fallback context reuse (#736)")
+# The fresh-context guarantee must be scoped to the system-cron / headless
+# path. Require the spec to tie "fresh" explicitly to that path's new PROCESS.
+if "system-cron" in spec_low or "system cron" in spec_low:
+    if (
+        "fresh process" in spec_low
+        or "fresh os process" in spec_low
+        or "brand-new" in spec_low
+    ):
+        ok("spec.md scopes the fresh-context claim to the system-cron path (#736)")
+    else:
+        fail(
+            "spec.md does not scope fresh-context to a fresh PROCESS on the "
+            "system-cron path (#736)"
+        )
+else:
+    fail("spec.md does not name the system-cron path for the fresh-context claim")
+
+
 # --- (2) ScheduleWakeup and /loop are FORBIDDEN -------------------------
 # The amended Inv 32 names ScheduleWakeup/loop only to FORBID them, so the
 # tokens DO appear in the spec as forbidden-list items. We therefore require
@@ -172,6 +212,20 @@ if src_low is not None:
         ok("source: SKILL.md frames CronCreate as a non-wakeup idle scheduler")
     else:
         fail("source: SKILL.md does not frame CronCreate vs the wakeup harness")
+    # Fresh-context claim must be PATH-QUALIFIED in the SOURCE SKILL.md too
+    # (#736): the prose must NOT promise a bare "fresh context" without
+    # noting the fallback REUSES the same session (compaction-managed).
+    if (
+        "same" in src_low
+        and "accumulat" in src_low
+        and "compaction" in src_low
+    ):
+        ok("source: SKILL.md path-qualifies the fresh-context claim (#736)")
+    else:
+        fail(
+            "source: SKILL.md does not path-qualify fresh-context — the "
+            "CronCreate-fallback session REUSE/compaction wording is missing (#736)"
+        )
 
 # Deployed copy: ONLY the ScheduleWakeup/loop-absence + cron/headless checks.
 # CronCreate presence is DEFERRED to issue #511's deployment sync — the
