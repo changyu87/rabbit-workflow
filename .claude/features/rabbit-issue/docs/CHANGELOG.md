@@ -12,6 +12,26 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.9.0 (filed-by fixed enum + actionability guard — coexistence step 2 of
+  #753, closes #759):** Cleaned the `filed-by:` provenance scheme into a FIXED
+  ENUM `{rabbit, autonomous-evolve}` with human as the UNTAGGED default.
+  `file-item.py` now validates `--filed-by`: omit it for human (no label
+  stamped), pass `rabbit` (bot/wrapped script) or `autonomous-evolve` (the
+  evolve loop); the legacy `loop`, the literal `human`, and any other or
+  space-bearing value are REJECTED before any gh call, so polluted values
+  (e.g. `filed-by:tdd-subagent (#685)`) can never recur. Legacy `filed-by:loop`
+  semantics map onto `filed-by:autonomous-evolve`; `filed-by:human` drops to
+  untagged. Rebased the `_gh.py` safety guard from a `rabbit-managed` basis
+  onto ACTIONABILITY: `item-status.py close`/`reopen` now refuse issues lacking
+  a valid `feature:` label (a raw hand-filed issue with no labels stays out of
+  rabbit's reach), aligning with the actionability basis the queue adopted in
+  coexistence step 1 (#758). COEXISTENCE: `rabbit-managed` APPLICATION is
+  UNTOUCHED — `file-item.py` still stamps it; its removal is step 3 (#760).
+  Four-way version lockstep 1.8.1 → 1.9.0 (feature.json + spec.md + SKILL.md;
+  contract.md 1.6.0 → 1.7.0). Tests: `test-file-item.py` rewrites filed-by
+  cases to the enum; `test-rabbit-managed-guard.py` rebased to actionability
+  (refuses no-`feature:` issue, permits an actionable one).
+
 - **v1.8.1 (housekeeping round 2 — measured dead-prose removal, #686):**
   REMOVAL pass under #639 (prove-it-dead-or-flag) and #677 (success = lines
   deleted, not tags scrubbed). Total md reduction: 524 → 464 lines (−60,

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.8.1
+version: 1.9.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -33,7 +33,9 @@ defines the Work Protocol that orchestrates the three runtime scripts.
 
 ### Label schema
 
-Every issue filed via `rabbit-issue` carries six labels:
+Every issue filed via `rabbit-issue` carries the type, `rabbit-managed`,
+`feature:`, and `priority:` labels; the `filed-by:` provenance label is
+optional (present only for non-human filers):
 
 | Label | Purpose | Cardinality |
 |---|---|---|
@@ -42,30 +44,45 @@ Every issue filed via `rabbit-issue` carries six labels:
 | `rabbit-managed` | Distinguishes rabbit-filed issues from human-filed | required |
 | `feature:<name>` | Feature scope | required, one per item |
 | `priority:<low\|medium\|high\|critical>` | Priority | required, one per item |
-| `filed-by:<source>` | Provenance — who filed it (e.g. `loop`, `human`) | required, one per item |
+| `filed-by:<rabbit\|autonomous-evolve>` | Provenance — non-human filer | optional; absent ⇒ human-filed |
 
 Labels are auto-created on demand at first `file-item.py` call via
 idempotent `gh label create … || true`. No separate bootstrap script.
 
 ### Provenance label
 
-`file-item.py` accepts `--filed-by <source>` and stamps the created issue
-with a machine-readable provenance label `filed-by:<source>` (e.g.
-`filed-by:loop`, `filed-by:human`). The label is additive — it does not
-change any of the other five labels.
+The `filed-by:` provenance scheme is a **fixed enum** with exactly two
+non-human values:
 
-`--filed-by` defaults to **`human`** when omitted; only the autonomous
-evolve loop passes `--filed-by loop` explicitly, so an unattributed
-filing is never mis-counted as loop self-discovery. This keeps
-loop-performance metrics (self-discovery rate, discovery→fix ratio)
-answerable by querying the `filed-by:loop` label.
+| Filer | `--filed-by` value | Label stamped |
+|---|---|---|
+| Human | *(omit `--filed-by`)* | none — human is the untagged default |
+| Bot / wrapped rabbit script | `rabbit` | `filed-by:rabbit` |
+| Autonomous evolve loop | `autonomous-evolve` | `filed-by:autonomous-evolve` |
+
+`file-item.py` VALIDATES `--filed-by` against the enum `{rabbit,
+autonomous-evolve}`. Human provenance is expressed by OMITTING
+`--filed-by`, in which case no `filed-by:` label is stamped. Any explicit
+value outside the enum — including the literal `human` or any
+space-bearing/polluted value — is REJECTED with a clear error before any
+gh call. Validation guarantees only the two enum values plus the untagged
+human default ever reach the label set; malformed, space-bearing
+provenance values cannot enter the system.
+
+The label is additive — when present it does not change any of the other
+labels. Provenance keeps loop-performance metrics (self-discovery rate,
+discovery→fix ratio) answerable by querying the
+`filed-by:autonomous-evolve` label.
 
 ### Safety invariant
 
 `item-status.py close` and `item-status.py reopen` refuse to act on
-issues that lack the `rabbit-managed` label. Human-filed issues stay
-out of rabbit's automation reach unless the label is explicitly
-applied.
+issues that are NOT **actionable** — an actionable issue is one carrying
+a valid `feature:<name>` label. A raw, hand-filed GitHub issue with no
+labels (or only stray labels) lacks a `feature:` label, so it is not
+actionable and stays out of rabbit's automation reach. This is the same
+actionability basis the queue itself uses to decide what is workable, so
+the guard and the queue agree on which issues are subject to automation.
 
 ### Lifecycle
 
@@ -95,9 +112,9 @@ applied.
     reason-text followed by the comment (reason-text first, separated by a
     blank line); when only `--reason-text` is given it is the close comment
     on its own. The comment travels with the same `gh issue close` call.
-  - The `rabbit-managed` guard runs first (the safety boundary), then
+  - The actionability guard runs first (the safety boundary), then
     the reason gating, then the gh call — so a rejected close never
-    issues `gh issue close` and never touches a human-filed issue.
+    issues `gh issue close` and never touches a non-actionable issue.
 - Reopen restores `state = open`, `state_reason = reopened`
 
 ### SHA / event history

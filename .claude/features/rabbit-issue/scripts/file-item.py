@@ -3,7 +3,7 @@
 
 Prints JSON {number, url, type} to stdout on success.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -18,6 +18,12 @@ from _gh import ensure_labels, repo_slug, require_auth  # noqa: E402
 
 VALID_TYPES = ("bug", "enhancement")
 VALID_PRIORITIES = ("low", "medium", "high", "critical")
+# Provenance is a fixed enum (issue #759, coexistence step 2 of #753).
+# Human is the UNTAGGED default — expressed by OMITTING --filed-by, never
+# an explicit value. Only these two non-human values are accepted; any
+# other value (legacy `loop`, literal `human`, or polluted/space-bearing
+# strings) is rejected so malformed provenance labels can never recur.
+VALID_FILED_BY = ("rabbit", "autonomous-evolve")
 
 
 def main() -> None:
@@ -27,12 +33,18 @@ def main() -> None:
     p.add_argument("--title", required=True)
     p.add_argument("--priority", required=True, choices=VALID_PRIORITIES)
     p.add_argument("--description", required=True)
-    # Provenance (issue #496): who filed this item. Defaults to `human` so
-    # only callers that know they are the autonomous evolve loop tag
-    # `filed-by:loop`; an unattributed filing is never mis-counted as loop
-    # self-discovery.
-    p.add_argument("--filed-by", default="human")
+    # Provenance (issue #759): omit for human (no label); pass `rabbit`
+    # or `autonomous-evolve` for a non-human filer. Validated below so the
+    # error message can name the enum.
+    p.add_argument("--filed-by", default=None)
     args = p.parse_args()
+
+    if args.filed_by is not None and args.filed_by not in VALID_FILED_BY:
+        sys.exit(
+            "rabbit-issue: --filed-by {!r} is not a valid provenance value; "
+            "omit --filed-by for human-filed issues, or pass one of {}"
+            .format(args.filed_by, " / ".join(VALID_FILED_BY))
+        )
 
     require_auth()
     labels = [
@@ -40,8 +52,9 @@ def main() -> None:
         "rabbit-managed",
         "feature:{}".format(args.feature),
         "priority:{}".format(args.priority),
-        "filed-by:{}".format(args.filed_by),
     ]
+    if args.filed_by is not None:
+        labels.append("filed-by:{}".format(args.filed_by))
     ensure_labels(labels)
 
     slug = repo_slug()
