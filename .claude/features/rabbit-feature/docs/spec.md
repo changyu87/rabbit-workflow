@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.32.0
+version: 1.33.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -488,6 +488,57 @@ their source path and not deployed):
     placement: near the Overview, or as the closing paragraph after
     Step 7's body).
 
+### tdd-autonomous configurable + /rabbit-tdd-autonomous command
+
+57. **tdd-autonomous configurable owned here.** `rabbit-feature`'s
+    `feature.json` `configuration[]` declares exactly one entry with
+    `id`/`subcommand` `tdd-autonomous` — the human-approval gate over the
+    TDD feature-touch Step-4 cycle. It declares `command:
+    "rabbit-tdd-autonomous"` and `restart_required: true`. Its storage is a
+    `marker-file` at the canonical bypass marker `.rabbit-tdd-autonomous`.
+    Polarity: `default` is `"false"` — the Step-4 gate is ACTIVE by default
+    with no bypass marker; `values.false` deletes `.rabbit-tdd-autonomous`
+    (gate active) and `values.true` writes it (bypass active). `alert-on` is
+    `"true"` and `alert-message.text` is exactly
+    `TDD-AUTONOMOUS MODE ACTIVE — TDD cycle Step 4 (human approval) skipped`.
+    The on-disk marker scripts (`set-evolve-mode.py`,
+    `check-preconditions.py`) and the auto-evolve loop are unaffected — they
+    mutate bypass markers via `contract.lib.mutation` directly — and the
+    Step-4 gate consumer `dispatch-tdd-subagent.py` reads both
+    `.rabbit-human-approval-bypass` and `.rabbit-tdd-autonomous`, so writing
+    the canonical marker is honored. Enforced by
+    `test/test-tdd-autonomous-configurable.py`.
+
+58. **/rabbit-tdd-autonomous thin command.** `rabbit-feature` manifests the
+    `/rabbit-tdd-autonomous true|false` command (a `publish_command` manifest
+    entry for `commands/rabbit-tdd-autonomous.md`, listed in
+    `surface.commands`). Its backing script
+    `scripts/rabbit-tdd-autonomous-config.py` is a THIN wrapper: it reads
+    rabbit-feature's own `feature.json configuration[]` `tdd-autonomous` entry
+    and delegates ALL validation, mutation, and restart-prompt rendering to
+    `contract.lib.config_dispatch.dispatch_config`; it MUST NOT re-implement the
+    interpreter (no `_apply_template` / `_validate`). `tdd-autonomous true`
+    writes `.rabbit-tdd-autonomous` and emits the branded restart prompt
+    (restart_required); `tdd-autonomous false` deletes it; an unknown
+    subcommand or value exits non-zero. The command frontmatter carries the six
+    required keys (`name`, `description`, `version`, `owner`,
+    `deprecation_criterion`, `template_version`) with owner exactly
+    `rabbit-workflow team`. COEXISTENCE: the central `/rabbit-config
+    tdd-autonomous` surface (which enumerates all features' `configuration[]`)
+    still mutates the same configurable. Enforced by
+    `test/test-tdd-autonomous-command.py`.
+
+59. **Per-feature tdd-autonomous override alert.** `rabbit-feature`'s
+    `feature.json` `runtime[]` declares a `check_marker_alert` entry under BOTH
+    `Stop` and `SessionStart` targeting `.rabbit-tdd-autonomous` with the
+    canonical Step-4 bypass `alert` (`text` matching Inv 57's alert-message,
+    `color: red`), consumed by the generic event dispatcher via
+    `contract.lib.runtime.check_marker_alert`. The override alert is owned by
+    this feature — the one that owns the gated behavior — rather than emitted
+    from a central enumeration: the alert FIRES (red `print_result`) when the
+    bypass marker is present and is SILENT (no banner) when absent. Enforced by
+    `test/test-tdd-autonomous-alert.py`.
+
 ## What this feature does NOT define
 
 - The TDD subagent's 8-step cycle, the `tdd-step.py` state machine, or
@@ -520,3 +571,6 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-manifest-deploys-correctly.py` — Inv 40
 - `test-feature-new-plugin-mode.py` — Inv 44, 45, 46, 47, 48
 - `test-new-skill.py` — Inv 32, 49
+- `test-tdd-autonomous-configurable.py` — Inv 57
+- `test-tdd-autonomous-command.py` — Inv 58
+- `test-tdd-autonomous-alert.py` — Inv 59
