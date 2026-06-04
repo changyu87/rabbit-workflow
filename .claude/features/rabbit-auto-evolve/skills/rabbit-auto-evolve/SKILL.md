@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.55.1
+version: 0.55.2
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -18,8 +18,12 @@ set). Scheduling lives in the external system cron
 WHERE AVAILABLE; on hosts where crontab is blocked, a durable `CronCreate`
 heartbeat is the SANCTIONED fallback trigger (a Claude idle-REPL prompt
 scheduler — durable, not an in-session wakeup harness). When work remains at
-the end of a tick the loop refires near-immediately in a FRESH context
-(Inv 33); when the queue is empty it relies on the heartbeat.
+the end of a tick the loop refires near-immediately (Inv 33); when the queue
+is empty it relies on the heartbeat. The refired tick gets a FRESH context
+ONLY on the system-cron / headless path (a brand-new Claude-free process);
+on the `CronCreate` fallback the prompt re-enters the SAME live session, so
+context is REUSED and ACCUMULATES across ticks, bounded by auto-compaction —
+NOT a fresh context (Inv 33).
 
 The mode is entered via `/rabbit-auto-evolve on` (compound mutator
 `.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py on`);
@@ -145,7 +149,9 @@ type `/rabbit-auto-evolve on` themselves.
 2. End the turn. The HOUSEKEEPING tick is fired by the **system cron**
    installed at `on` (where crontab is available) running `tick-headless.py`;
    the DEVELOPMENT tick (phase 6 dispatch) is re-triggered by the scheduler
-   firing `/rabbit-auto-evolve tick` in a FRESH context (Inv 32). Every
+   firing `/rabbit-auto-evolve tick` (Inv 32) — a FRESH context on the
+   system-cron path, but the SAME live session (context reused, accumulating,
+   auto-compaction-bounded) on the `CronCreate` fallback. Every
    MACHINE wake-up fires the internal `tick`, NEVER the
    USER-intent `start` (Inv 41): `tick` respects but never deletes the stop
    marker, so a heartbeat can never cancel a human's explicit stop. There is
@@ -386,8 +392,11 @@ scheduler mechanism from `detect-scheduler.py`, logs the decision via
   distinguishable from the recurring heartbeat (bare `/rabbit-auto-evolve
   tick`) so dedup can never tear down the heartbeat (Inv 49). The
   DISPATCHER then schedules
-  the near-immediate (~1 min) ONE-SHOT in a FRESH context and ENDS the turn
-  (do NOT continue inline):
+  the near-immediate (~1 min) ONE-SHOT and ENDS the turn
+  (do NOT continue inline). The refired tick's context is FRESH only on the
+  system-cron / headless path; on the croncreate path the one-shot re-enters
+  the SAME live session (context reused/accumulating, auto-compaction-bounded,
+  NOT a fresh context):
   - **croncreate path:** invoke the actual one-shot `CronCreate(...)` per the
     emitted `croncreate` params. A script cannot call `CronCreate`; this tool
     action is the irreducible Claude step (exactly like phase 6 dispatch).
@@ -504,9 +513,12 @@ The four named exit paths are:
 
 - **normal completion** — phase 12 (`schedule`) runs
   `schedule-decision.py` (Inv 33): if work remains, the DISPATCHER schedules
-  the near-immediate fresh-context refire (croncreate one-shot, or the
+  the near-immediate refire (croncreate one-shot, or the
   crontab transient hint) per the emitted params; if the queue is empty it
-  relies on the heartbeat. Then
+  relies on the heartbeat. The refired tick's context is FRESH only on the
+  system-cron / headless path; the croncreate one-shot REUSES the same live
+  session (history accumulates, bounded by auto-compaction — Inv 33).
+  Then
   `python3 .claude/features/rabbit-auto-evolve/scripts/end-tick.py` runs, then
   the turn ends.
 - **phase 0 halt** — `.rabbit-auto-evolve-stop-requested` observed at
