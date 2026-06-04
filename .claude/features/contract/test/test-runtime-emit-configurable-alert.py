@@ -226,6 +226,47 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t11: expected print_result on present legacy marker, got {r!r}")
 
+# t12 (#789): override ACTIVE + .rabbit-auto-evolve-active ABSENT -> alert FIRES.
+#     Confirms the suppression hook is marker-gated (regression-safe baseline).
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [BP_CONF_REAL])
+    sf = os.path.join(td, ".claude", "settings.local.json")
+    os.makedirs(os.path.dirname(sf), exist_ok=True)
+    with open(sf, "w") as f:
+        json.dump({"permissions": {"defaultMode": "bypassPermissions"}}, f)
+    r = emit_configurable_alert("rabbit-cage", "bypass-permissions", repo_root=td)
+    if r.get("type") == "print" and r.get("text") == "BYPASS-PERMISSIONS MODE ACTIVE":
+        ok("t12: override active + auto-evolve ABSENT -> alert FIRES")
+    else:
+        fail(f"t12: expected print_result, got {r!r}")
+
+# t13 (#789): override ACTIVE + .rabbit-auto-evolve-active PRESENT -> SILENT.
+#     Re-homes the Inv 54 suppression into the live per-feature path: the
+#     auto-evolve composite banner is the single replacement surface.
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [BP_CONF_REAL])
+    sf = os.path.join(td, ".claude", "settings.local.json")
+    os.makedirs(os.path.dirname(sf), exist_ok=True)
+    with open(sf, "w") as f:
+        json.dump({"permissions": {"defaultMode": "bypassPermissions"}}, f)
+    open(os.path.join(td, ".rabbit-auto-evolve-active"), "w").close()
+    r = emit_configurable_alert("rabbit-cage", "bypass-permissions", repo_root=td)
+    if r == {"type": "ok"}:
+        ok("t13: override active + auto-evolve PRESENT -> suppressed (ok_result)")
+    else:
+        fail(f"t13: expected ok_result (suppressed), got {r!r}")
+
+# t14 (#789): override INACTIVE + .rabbit-auto-evolve-active PRESENT -> SILENT.
+#     Suppression does not change the inactive-override no-op outcome.
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [BP_CONF_REAL])
+    open(os.path.join(td, ".rabbit-auto-evolve-active"), "w").close()
+    r = emit_configurable_alert("rabbit-cage", "bypass-permissions", repo_root=td)
+    if r == {"type": "ok"}:
+        ok("t14: override inactive + auto-evolve PRESENT -> silent (ok_result)")
+    else:
+        fail(f"t14: expected ok_result, got {r!r}")
+
 if FAIL:
     print("test-runtime-emit-configurable-alert: FAIL", file=sys.stderr)
     sys.exit(1)

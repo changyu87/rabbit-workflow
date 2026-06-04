@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.24.0
+version: 2.25.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native workflow contract mechanism that supersedes this feature's template, schema, and dispatch responsibilities
@@ -283,6 +283,8 @@ Numbering is strictly increasing and CONTIGUOUS (1..N, no holes): contract opts 
     (a) marker absent → existing behavior unchanged (regression);
     (b) marker present + both muted configurables active → both suppressed (zero emission for those two ids);
     (c) marker present + a third (synthetic) configurable active and alerting → still emits for that third id (per-id-scoped, not blanket).
+
+    **The live per-feature path honors the same suppression.** The per-feature alert functions — `emit_configurable_alert` (for json-key overrides such as rabbit-cage's `bypass-permissions`) and `check_marker_alert` (for marker overrides such as scope-guard and tdd-autonomous) — are the authoritative live alert surface, not the central iterate. BOTH `emit_configurable_alert(feature_name, configurable_id, *, repo_root)` and `check_marker_alert(path, content, alert, *, repo_root)` MUST return a no-op (`ok_result()`) when `<repo_root>/.rabbit-auto-evolve-active` is present, matching the central iterate's suppression so the per-feature surface does not double up on the auto-evolve composite banner. The per-feature path suppresses unconditionally when the marker is present: it is a single-configurable / single-marker call, not a walk, so there is no per-id allowlist to consult; the auto-evolve composite banner (Inv 55) is the single replacement surface during autonomous mode. Both functions reuse the same `_auto_evolve_active(repo_root)` helper (the sole marker reader). When the marker is absent, behavior is unchanged: alerts fire normally (regression-safe). Enforced by extending `test/test-runtime-emit-configurable-alert.py` and `test/test-runtime-check-marker-alert.py` with three cases each: override/marker active + auto-evolve ABSENT → alert FIRES; override/marker active + auto-evolve PRESENT → suppressed (`ok_result`); override/marker inactive + auto-evolve PRESENT → silent (`ok_result`).
 
 55. **`emit_auto_evolve_banner` and `emit_auto_evolve_stop_line` APIs.** Two new module-level functions in `lib/runtime.py`, introduced together. Both have the signature `(*, repo_root: str) -> list[dict]` and return a list of `print_result` entries (NOT `subline_result` — `print_result` carries `icon`, which Inv 39's `subline_result` factory does not). Both functions short-circuit to `[]` when `<repo_root>/.rabbit-auto-evolve-active` is ABSENT (the marker gates the entire auto-evolve composite surface).
 

@@ -76,6 +76,40 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t5: expected ok, got {r!r}")
 
+# t6 (#789): marker active + .rabbit-auto-evolve-active ABSENT -> alert FIRES.
+#     Confirms the suppression hook is marker-gated (regression-safe baseline).
+with tempfile.TemporaryDirectory() as td:
+    with open(os.path.join(td, ".rabbit-scope-override"), "w") as f:
+        f.write("session")
+    r = check_marker_alert(".rabbit-scope-override", "session", ALERT, repo_root=td)
+    if r.get("type") == "print":
+        ok("t6: marker active + auto-evolve ABSENT -> alert FIRES")
+    else:
+        fail(f"t6: expected print, got {r!r}")
+
+# t7 (#789): marker active + .rabbit-auto-evolve-active PRESENT -> SILENT.
+#     Re-homes the Inv 54 suppression into the live per-feature path: the
+#     auto-evolve composite banner is the single replacement surface.
+with tempfile.TemporaryDirectory() as td:
+    with open(os.path.join(td, ".rabbit-scope-override"), "w") as f:
+        f.write("session")
+    open(os.path.join(td, ".rabbit-auto-evolve-active"), "w").close()
+    r = check_marker_alert(".rabbit-scope-override", "session", ALERT, repo_root=td)
+    if r == {"type": "ok"}:
+        ok("t7: marker active + auto-evolve PRESENT -> suppressed (ok_result)")
+    else:
+        fail(f"t7: expected ok_result (suppressed), got {r!r}")
+
+# t8 (#789): marker inactive + .rabbit-auto-evolve-active PRESENT -> SILENT.
+#     Suppression does not change the absent-marker no-op outcome.
+with tempfile.TemporaryDirectory() as td:
+    open(os.path.join(td, ".rabbit-auto-evolve-active"), "w").close()
+    r = check_marker_alert(".rabbit-scope-override", None, ALERT, repo_root=td)
+    if r == {"type": "ok"}:
+        ok("t8: marker absent + auto-evolve PRESENT -> silent (ok_result)")
+    else:
+        fail(f"t8: expected ok_result, got {r!r}")
+
 if FAIL:
     print("test-runtime-check-marker-alert: FAIL", file=sys.stderr)
     sys.exit(1)
