@@ -12,6 +12,21 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v0.6.0 (Housekeeping Phase 2 — history-free doc surfaces, #548):** Opted
+  `rabbit-meta` into the contract Inv 49 STRICT tier by setting top-level
+  `"housekeeping_clean": true` in `feature.json` (data-driven opt-in via the
+  contract checker's `derive_cleaned_features()`). Scrubbed the two strict-tier
+  hits from `docs/spec.md`: (1) the layout paragraph dropped its parenthetical
+  historical wrapper ("issue #399 Phase 2b migration from the `specs/` layout")
+  in favour of a present-tense declarative statement of the current flat `docs/`
+  layout — the migration history is recorded in the v0.5.0 note below; (2) the
+  `deprecation_criterion` frontmatter was rephrased to active voice ("when a
+  native Claude Code workflow contract mechanism supersedes rabbit's per-project
+  plugin model") so the forward-looking lifecycle criterion no longer trips the
+  tombstone-word pattern while keeping its meaning intact. No invariants were
+  renumbered or removed; no substantive behaviour changed. `feature.json` and
+  `docs/spec.md` frontmatter versions bumped to 0.6.0 in lockstep.
+
 - **v0.5.0 (flat docs/ layout, #399 Phase 2b):** Migrated the feature's spec
   artifacts from `specs/` to the flat `docs/` layout
   (`git mv specs/spec.md docs/spec.md`, `git mv specs/contract.md
