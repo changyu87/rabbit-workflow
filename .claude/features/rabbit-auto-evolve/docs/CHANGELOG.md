@@ -13,6 +13,25 @@ own version.
 
 ## Version notes
 
+- **v0.53.1 — 2026-06-04** — Locked in the contiguous invariant-numbering
+  reflow required by #725. Re-assessment of the CURRENT `docs/spec.md` found
+  the numbering ALREADY contiguous 1..59 with NO gaps, no duplicates, and no
+  dangling rae-local `Inv N` references — the 14-gap set the #725 issue body
+  describes (gaps at 10,11,12,17,31,32,34,39,41–46; 33 live invariants → 47)
+  predates the housekeeping that has since landed (the earlier gap-closing
+  reflows and #726/#731). No spec renumbering was therefore needed; doing one
+  would have been a no-op rewrite. The deliverable is a durable regression
+  guard: new e2e test `test/test-spec-invariant-numbering-contiguous.py`
+  asserting (a) the `## Invariants` section is exactly contiguous 1..N (no
+  gaps/dups), (b) no in-range `Inv n` citation dangles (numbers above N are
+  cross-feature references — contract Inv 64/65, rabbit-config Inv 17 — and
+  are excluded), and (c) the invariant count never drops below the #725
+  baseline of 59. The contract-suite monotonic check (contract Inv 38) only
+  guards strictly-increasing order and tolerates gaps; this feature-level
+  test adds the missing CONTIGUITY guarantee. No SKILL.md body change
+  (frontmatter version bump only; dispatcher still republishes the deployed
+  copy for the version field).
+
 - **v0.53.0 — 2026-06-03** — Forbade "de-queue" — the convergence hole that
   stranded open valid issues (#731). The loop had been removing `rabbit-managed`
   from OPEN issues as a parking/hand-back action, dropping them out of
