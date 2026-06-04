@@ -18,7 +18,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.8.0
+Version: 1.8.1
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -356,15 +356,54 @@ def check_manifest_drift(alert: dict, *, repo_root: str) -> dict:
                         alert["icon"], alert["color"])
 
 
-def _resolve_marker_value(repo_root: str, storage: dict) -> str:
-    """marker-file semantics: present -> 'false', absent -> 'true'.
-    Matches the rabbit-cage human-approval CONFIGURATION example
-    (values.true => delete_marker, values.false => write_marker).
+def _marker_polarity(configurable: dict):
+    """Derive (present_value, absent_value) from the configurable's OWN
+    values map: the value whose action WRITES the marker is the 'present'
+    value; the value whose action DELETES the marker is the 'absent' value.
+
+    This makes marker polarity self-describing per configurable rather than a
+    hardcoded human-approval assumption (#775): the legacy human-approval
+    shape (values.false => write_marker, values.true => delete_marker)
+    yields present='false'/absent='true', while the flipped tdd-autonomous
+    shape (values.true => write_marker, values.false => delete_marker)
+    yields present='true'/absent='false'.
+
+    Returns (None, None) when the values map does not declare both a
+    write_marker and a delete_marker action, leaving the caller to fall back
+    to the legacy default.
     """
+    values = configurable.get("values") or {}
+    present = absent = None
+    for label, mutation in values.items():
+        if not isinstance(mutation, dict):
+            continue
+        api = mutation.get("api")
+        if api == "write_marker":
+            present = label
+        elif api == "delete_marker":
+            absent = label
+    return present, absent
+
+
+def _resolve_marker_value(repo_root: str, configurable: dict) -> str:
+    """Resolve a marker-file configurable's current user-facing value by
+    presence on disk, with polarity derived from the configurable's own
+    values map (#775): present -> the write_marker value, absent -> the
+    delete_marker value.
+
+    Falls back to the legacy human-approval polarity (present -> 'false',
+    absent -> 'true') only when the values map does not declare both a
+    write_marker and a delete_marker action.
+    """
+    storage = configurable.get("storage") or {}
     path = storage.get("path")
     if not path:
         return ""
-    return "false" if os.path.isfile(os.path.join(repo_root, path)) else "true"
+    present_value, absent_value = _marker_polarity(configurable)
+    if present_value is None or absent_value is None:
+        present_value, absent_value = "false", "true"
+    is_present = os.path.isfile(os.path.join(repo_root, path))
+    return present_value if is_present else absent_value
 
 
 def _resolve_json_key_value(repo_root: str, storage: dict, default: str) -> str:
@@ -421,7 +460,7 @@ def _resolve_current_value(repo_root: str, configurable: dict):
     stype = storage.get("type")
     default = configurable.get("default", "")
     if stype == "marker-file":
-        return _resolve_marker_value(repo_root, storage)
+        return _resolve_marker_value(repo_root, configurable)
     if stype == "json-key":
         raw = _resolve_json_key_value(repo_root, storage, default)
         return _reverse_map_json_value(raw, configurable)

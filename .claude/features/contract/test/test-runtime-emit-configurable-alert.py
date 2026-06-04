@@ -49,6 +49,27 @@ HA_CONF = {
                        "icon": "key", "color": "red"},
 }
 
+# Flipped-polarity marker configurable (post-#336 tdd-autonomous shape):
+# values.true => write_marker (present = autonomous active),
+# values.false => delete_marker (absent), alert-on="true" (fire on presence).
+# This is the OPPOSITE marker->value polarity from HA_CONF, and exercises
+# #775: _resolve_marker_value MUST derive polarity from this values map, not
+# a hardcoded human-approval assumption.
+TDD_AUTO_CONF = {
+    "id": "tdd-autonomous",
+    "subcommand": "tdd-autonomous",
+    "storage": {"type": "marker-file", "path": ".rabbit-tdd-autonomous"},
+    "values": {"false": {"api": "delete_marker",
+                         "args": {"path": ".rabbit-tdd-autonomous"}},
+               "true": {"api": "write_marker",
+                        "args": {"path": ".rabbit-tdd-autonomous",
+                                 "content": "session"}}},
+    "default": "false",
+    "alert-on": "true",
+    "alert-message": {"text": "TDD AUTONOMOUS MODE ACTIVE",
+                      "icon": "robot", "color": "yellow"},
+}
+
 BP_CONF_REAL = {
     "id": "bypass-permissions",
     "subcommand": "bypass-permissions",
@@ -157,6 +178,53 @@ with tempfile.TemporaryDirectory() as td:
         ok("t7: action-style json-array configurable -> ok_result")
     else:
         fail(f"t7: expected ok_result, got {r!r}")
+
+# t8 (#775): FLIPPED-polarity marker PRESENT (values.true=>write_marker).
+#     present resolves to "true", matching alert-on="true" -> alert FIRES.
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-feature", [TDD_AUTO_CONF])
+    with open(os.path.join(td, ".rabbit-tdd-autonomous"), "w") as f:
+        f.write("session")
+    r = emit_configurable_alert("rabbit-feature", "tdd-autonomous", repo_root=td)
+    if (r.get("type") == "print"
+            and r.get("text") == "TDD AUTONOMOUS MODE ACTIVE"
+            and r.get("icon") == "robot"
+            and r.get("color") == "yellow"):
+        ok("t8: flipped polarity, marker PRESENT -> value 'true' matches alert-on -> alert FIRES")
+    else:
+        fail(f"t8: expected print_result on present flipped marker, got {r!r}")
+
+# t9 (#775): FLIPPED-polarity marker ABSENT (values.false=>delete_marker).
+#     absent resolves to "false", != alert-on="true" -> ok_result (silent).
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-feature", [TDD_AUTO_CONF])
+    r = emit_configurable_alert("rabbit-feature", "tdd-autonomous", repo_root=td)
+    if r == {"type": "ok"}:
+        ok("t9: flipped polarity, marker ABSENT -> value 'false' != alert-on -> silent")
+    else:
+        fail(f"t9: expected ok_result on absent flipped marker, got {r!r}")
+
+# t10 (#775): LEGACY-polarity (values.false=>write_marker) UNCHANGED.
+#     marker ABSENT resolves to "true", != alert-on="false" -> silent.
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [HA_CONF])
+    r = emit_configurable_alert("rabbit-cage", "human-approval", repo_root=td)
+    if r == {"type": "ok"}:
+        ok("t10: legacy polarity, marker ABSENT -> value 'true' != alert-on -> silent (unchanged)")
+    else:
+        fail(f"t10: expected ok_result on absent legacy marker, got {r!r}")
+
+# t11 (#775): LEGACY-polarity marker PRESENT resolves to "false" matching
+#     alert-on="false" -> alert FIRES (unchanged behavior).
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [HA_CONF])
+    with open(os.path.join(td, ".rabbit-human-approval-bypass"), "w") as f:
+        f.write("session")
+    r = emit_configurable_alert("rabbit-cage", "human-approval", repo_root=td)
+    if r.get("type") == "print" and r.get("text") == "HUMAN APPROVAL BYPASS ACTIVE":
+        ok("t11: legacy polarity, marker PRESENT -> value 'false' matches alert-on -> FIRES (unchanged)")
+    else:
+        fail(f"t11: expected print_result on present legacy marker, got {r!r}")
 
 if FAIL:
     print("test-runtime-emit-configurable-alert: FAIL", file=sys.stderr)
