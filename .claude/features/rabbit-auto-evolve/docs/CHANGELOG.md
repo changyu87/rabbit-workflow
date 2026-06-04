@@ -13,6 +13,21 @@ own version.
 
 ## Version notes
 
+- **v0.54.0 — 2026-06-03** — Opted rabbit-auto-evolve into the contract STRICT
+  contiguous invariant-numbering tier (#738, a #724 follow-up). The strict tier
+  (contract Inv 30 / `check_invariant_monotonic_order`) is per-feature opt-in
+  via `feature.json "contiguous_invariants": true`; rae reflowed to contiguous
+  1..N under #725 and now declares the flag, so the contract suite permanently
+  enforces contiguity (no gaps) on rae instead of merely tolerating it. A fresh
+  `scripts/reflow-invariants.py --dry-run` confirmed the numbering was ALREADY
+  contiguous 1..59, so NO renumber was needed — this release is the single-flag
+  opt-in plus its regression guard. New e2e test
+  `test/test-contiguous-invariants-optin.py` asserts (a) the feature.json flag
+  is `true`, (b) docs/spec.md `## Invariants` is contiguous 1..N, and (c) the
+  live contract strict-tier check runs GREEN for rae. No SKILL.md body change
+  (frontmatter version bump only; dispatcher still republishes the deployed
+  copy for the version field).
+
 - **v0.53.1 — 2026-06-04** — Locked in the contiguous invariant-numbering
   reflow required by #725. Re-assessment of the CURRENT `docs/spec.md` found
   the numbering ALREADY contiguous 1..59 with NO gaps, no duplicates, and no

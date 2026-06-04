@@ -104,5 +104,6 @@ run_test("test-spec-housekeeping-695-current-behaviour-preamble-removed.py")
 run_test("test-spec-housekeeping-726-top10-invariants-slimmed.py")
 run_test("test-spec-forbid-dequeue-invariant.py")
 run_test("test-spec-invariant-numbering-contiguous.py")
+run_test("test-contiguous-invariants-optin.py")
 
 print("ALL TESTS PASSED")
