@@ -4,7 +4,7 @@
   "version": "0.48.2",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open rabbit-managed issues, triages, dispatches TDD subagents, merges PRs into dev, tags releases, and is fired on a fixed cadence by the system cron where available (with a durable CronCreate fallback where crontab is blocked; Inv 32) until the user issues an explicit stop.",
   "surface": {
     "hooks": [],
@@ -39,5 +39,6 @@
     ]
   },
   "configuration": [],
-  "prompts": []
+  "prompts": [],
+  "spec_no_change_reason": "Inv 57 spec text already committed in e8652ce5; this cycle adds the enforcing test and the .gitignore glob"
 }
