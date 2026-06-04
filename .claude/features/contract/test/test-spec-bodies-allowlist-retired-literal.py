@@ -25,14 +25,16 @@ occurrence is the single strict-tier match in rabbit-config's doc
 surfaces, so:
 
   - WITH the production ALLOWLIST entry the run PASSES against the real
-    features root (proving the line-pinned entry suppresses the real
+    features root (proving the content-keyed entry suppresses the real
     occurrence).
-  - WITHOUT a matching (line-pinned) entry the same line is a genuine
-    strict-tier violation — simulated by reproducing the "retired" line at
-    a DIFFERENT line number in a fixture features root so the line-pinned
-    production allowlist entry cannot match it; that run FAILS, naming
-    rabbit-config (proving the suppression is the line-pinned entry, not
-    an unrelated condition).
+  - The allowlist is CONTENT-keyed, not line-pinned (#696): the SAME
+    "retired" content reproduced at a DIFFERENT line number in a fixture
+    features root is STILL suppressed (the run PASSES). This is the
+    line-shift-independence regression — a housekeeping line removal that
+    shifts the real "retired" line no longer reddens the gate. (A genuine
+    strict-tier violation is exercised by the separate
+    test-spec-bodies-strict-tier.py negative arms; here the point is that a
+    legitimate, allowlisted occurrence survives an arbitrary line shift.)
 
 Non-interactive. Exits non-zero on failure.
 """
@@ -109,8 +111,8 @@ ok("t0b", f"rabbit-config 'retired' status-enum literal on line "
           f"{RETIRED_LINE}")
 
 # t1: against the REAL features root with rabbit-config opted in, the run
-# PASSES — the production ALLOWLIST entry (line-pinned to RETIRED_LINE)
-# suppresses the only strict-tier match in rabbit-config's doc surfaces.
+# PASSES — the production ALLOWLIST entry (content-keyed) suppresses the only
+# strict-tier match in rabbit-config's doc surfaces.
 r_real = run(FEATURES_ROOT, "rabbit-config")
 if r_real.returncode == 0:
     ok("t1", "production allowlist suppresses real rabbit-config 'retired' "
@@ -120,17 +122,18 @@ else:
                f"opted in; exit={r_real.returncode}; "
                f"stdout={r_real.stdout}; stderr={r_real.stderr}")
 
-# t2: paired negative arm — reproduce rabbit-config's spec.md in a fixture
-# features root with the "retired" line shifted to a DIFFERENT line number
-# so the line-pinned production allowlist entry cannot match it. The run
-# MUST FAIL, naming rabbit-config — proving the line is otherwise a genuine
-# strict-tier violation and the suppression in t1 is the line-pinned entry,
-# not an unrelated condition.
+# t2: line-shift independence (#696). Reproduce rabbit-config's "skipping
+# retired features" line at a DIFFERENT line number in a fixture features
+# root. Under the OLD line-pinned allowlist this run FAILED (the pinned line
+# number no longer matched), penalizing any housekeeping line removal. Under
+# the content-keyed allowlist the SAME content is STILL suppressed wherever
+# it lands, so the run MUST PASS — proving the gate is delinked from the
+# cross-feature line count.
 with tempfile.TemporaryDirectory() as tmp:
     fdir = os.path.join(tmp, "rabbit-config", "docs")
     os.makedirs(fdir, exist_ok=True)
     # Prepend blank lines so "skipping retired features" lands at a line
-    # number that is NOT the pinned production allowlist line for
+    # number that is NOT the original production allowlist line for
     # rabbit-config.
     shifted = ["\n"] * (RETIRED_LINE + 5) + [
         "   alphabetical order by feature directory name, "
@@ -139,12 +142,12 @@ with tempfile.TemporaryDirectory() as tmp:
     with open(os.path.join(fdir, "spec.md"), "w") as f:
         f.writelines(shifted)
     r_shift = run(tmp, "rabbit-config")
-    out = r_shift.stdout + r_shift.stderr
-    if r_shift.returncode != 0 and "rabbit-config" in out:
-        ok("t2", "unpinned 'retired' line is a genuine strict-tier violation")
+    if r_shift.returncode == 0:
+        ok("t2", "content-keyed allowlist suppresses the 'retired' literal at "
+                 "a shifted line (line-shift independent)")
     else:
-        fail("t2", "expected nonzero + 'rabbit-config' when 'retired' line is "
-                   f"NOT at the pinned number; exit={r_shift.returncode}; "
+        fail("t2", "expected exit 0 when the allowlisted 'retired' content is "
+                   f"shifted to a new line; exit={r_shift.returncode}; "
                    f"stdout={r_shift.stdout}; stderr={r_shift.stderr}")
 
 print()
