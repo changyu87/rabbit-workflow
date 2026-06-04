@@ -13,6 +13,25 @@ own version.
 
 ## Version notes
 
+- **v0.51.0 — 2026-06-03** — Configurable tick cadence (#722). The cadence
+  was single-sourced (#723) but still hardcoded to `CADENCE_MINUTES = 30` —
+  tuning it required a source edit + redeploy. Now the cadence is OPERATIONAL
+  CONFIG with 30 (`*/30`) as the DEFAULT: `install-cron.py` (script
+  1.3.0 -> 1.4.0) resolves the effective cadence via a new
+  `_configured_cadence()` helper with precedence env var
+  `RABBIT_AUTO_EVOLVE_CADENCE` > `cadence_minutes` in the OWN state-dir config
+  file `<state_dir>/auto-evolve-cadence-config.json` (mirroring the
+  `auto-evolve-log-config.json` pattern; NOT rabbit-cage's `configuration`
+  array nor rabbit-config) > the `CADENCE_MINUTES` default. The resolved value
+  is VALIDATED (integer in `1..59`); a non-integer or out-of-range value is
+  REJECTED — the script warns (branded) and falls back to the default rather
+  than install a nonsense cron line. BOTH scheduler paths derive from the SAME
+  resolved cadence at install time: the system-cron entry line and the
+  `CronCreate`-fallback heartbeat move together (e.g. cadence 15 →
+  `*/15 * * * *` + `13,28,43,58 * * * *`). New e2e
+  `test/test-cron-cadence-config.py` pins the default-30, the env override, the
+  config-file override (both paths), and validation/rejection. The default
+  (no env, no config file) is unchanged: `*/30 * * * *` + `13,43 * * * *`.
 - **v0.50.0 — 2026-06-03** — Single cadence source of truth (#723). The tick
   cadence had no single source: `install-cron.py` held TWO independent
   hardcoded literals — `SCHEDULE = "*/30 * * * *"` (system-cron path) and

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.50.0
+version: 0.51.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2281,7 +2281,31 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       second independent literal), so changing the cadence in one place
       propagates to BOTH paths. `test/test-cron-cadence-source.py` pins the
       codified source and every spec.md / SKILL.md cron literal to it so a
-      drift fails the gate. The crontab path is unchanged when
+      drift fails the gate.
+
+      **Operational cadence config.** `CADENCE_MINUTES = 30` is
+      the DEFAULT, not a hard floor: the cadence is OPERATIONAL CONFIG that an
+      operator can tune without editing source. `install-cron.py` resolves the
+      EFFECTIVE cadence via `_configured_cadence()` with this precedence:
+      (1) the `RABBIT_AUTO_EVOLVE_CADENCE` env var; (2) a `cadence_minutes`
+      integer in rabbit-auto-evolve's OWN state-dir config file
+      `<state_dir>/auto-evolve-cadence-config.json` (state dir via
+      `RABBIT_AUTO_EVOLVE_STATE_DIR`, else `<cwd>/.rabbit`, mirroring the
+      `auto-evolve-log-config.json` pattern — this is rabbit-auto-evolve's own
+      config, NOT rabbit-cage's `configuration` array nor rabbit-config); (3)
+      the `CADENCE_MINUTES` default. The resolved value is VALIDATED: it must
+      be an integer in `1..59` (a sub-hour cadence). A non-integer or
+      out-of-range value is REJECTED — `install-cron.py` falls back to the
+      default cadence and emits a branded warning, never installing a nonsense
+      cron line. BOTH scheduler paths read the SAME resolved cadence: the
+      system-cron entry line and the `CronCreate`-fallback heartbeat are each
+      derived from `_configured_cadence()` at install time, so an operator who
+      sets cadence to 15 gets a `*/15`-step system cron AND a four-mark
+      heartbeat at the derived minutes `13,28,43,58` on the fallback path —
+      never a split where one path moves and the other lags. The default (no
+      env, no config file) remains exactly `*/30 * * * *` and `13,43 * * * *`.
+      Enforced by `test/test-cron-cadence-config.py` (e2e). The crontab path
+      is unchanged when
       available — cron remains the SOLE tick scheduler WHERE AVAILABLE; the
       `CronCreate` heartbeat is the SANCTIONED fallback only on
       crontab-restricted hosts so a mode flip is never blocked by an
