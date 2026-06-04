@@ -13,6 +13,27 @@ own version.
 
 ## Version notes
 
+- **v0.47.0 — 2026-06-03** — Deterministic deployed-surface republish step
+  (Inv 55, issue #562). Added `scripts/republish-feature.py`: given a feature
+  name (and optional `--repo-root`), it reads that feature's `feature.json`
+  `manifest` and INVOKES `contract.lib.publish.<api>(**args, feature_dir=...,
+  repo_root=...)` for every `publish_*` entry, refreshing the deployed copies a
+  version-bumping TDD subagent cannot write (out-of-scope). Idempotent (no-op
+  when deployed already matches source); emits a JSON summary of what was
+  (re)published; a feature with no manifest / no publish entries is a clean
+  no-op. The cross-scope INVOKE of `contract.lib.publish` is declared in this
+  feature's own `docs/contract.md` `invokes.modules` (the contract feature is
+  not edited). SKILL.md now documents the post-handoff dispatcher step: after a
+  version-bumping subagent returns (or any HANDOFF reporting a changed deployed
+  surface), the dispatcher runs `republish-feature.py <feature>` in the
+  worktree BEFORE opening the PR, so the deployed copy is in the PR and
+  `contract/test/test-deployed-skills-match-source.py` is green. Tests:
+  `test/test-republish-feature.py` (fixture-repo e2e: differing copy made to
+  match + reported; matching copy no-op; no-manifest clean no-op) and
+  `test/test-spec-republish-feature-invariant.py` (spec/contract/SKILL
+  documentation guard). Lockstep version bump 0.46.0 -> 0.47.0 across
+  `feature.json`, `docs/spec.md`, `docs/contract.md`, and
+  `skills/rabbit-auto-evolve/SKILL.md`.
 - **v0.46.0 — 2026-06-03** — Housekeeping Phase 2 final step: strict-tier
   opt-in flipped. Set top-level `"housekeeping_clean": true` in `feature.json`,
   enrolling rabbit-auto-evolve in the contract strict tier

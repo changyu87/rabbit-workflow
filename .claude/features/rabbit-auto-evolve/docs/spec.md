@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.46.0
+version: 0.47.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -3341,6 +3341,61 @@ Phase E merges complete.
     `test/test-spec-tick-log-invariant.py` (the spec documents the attribution
     derivation from the running marker, the injectable
     `RABBIT_AUTO_EVOLVE_RUNNING_MARKER` source, and the no-stub guarantee).
+
+55. **Deployed-surface republish — after a version-bumping subagent returns,
+    the dispatcher republishes the feature's deployed copies BEFORE opening
+    the PR.** A version-bumping TDD subagent bumps a feature's SOURCE
+    `SKILL.md` (required for four-way version equality across `feature.json`,
+    `docs/`, the source skill, and the deployed skill) but CANNOT write the
+    deployed `.claude/skills/<feature>/SKILL.md` copy — that path is outside
+    the subagent's `.rabbit-scope-active-<feature>` scope, so the scope guard
+    denies the write. The result is a RED
+    `contract/test/test-deployed-skills-match-source.py` on every
+    version-bumping feature touch until the deployed copy is republished from
+    source. This invariant makes that republish a deterministic, repeatable
+    DISPATCHER step rather than a hand-run manifest walk.
+
+    **(a) Republish script — `scripts/republish-feature.py`.** Given a feature
+    name (and optional `--repo-root`, defaulting to `os.getcwd()`), the script
+    reads that feature's `feature.json` `manifest` and runs each deploy entry
+    by INVOKING `contract.lib.publish.<api>(**args, feature_dir=...,
+    repo_root=...)` for every `publish_skill` / `publish_hook` /
+    `publish_file` / `publish_command` / `publish_*` entry — exactly what the
+    dispatcher otherwise does by hand. It resolves `contract.lib.publish` by
+    inserting the sibling `contract` feature dir onto `sys.path` and importing
+    `from lib import publish` (the established cross-scope import pattern used
+    by `prune-worktrees.py`). This is a cross-scope INVOKE of the
+    contract-owned publish API declared in this feature's `contract.md`
+    `invokes.modules`; rabbit-auto-evolve does NOT edit the contract feature.
+
+    **(b) Idempotent, JSON-summarized, clean no-op on no manifest.** The
+    contract publish APIs are idempotent (a deployed copy that already matches
+    source by SHA-256 is a no-op), so re-running the script is safe. The script
+    emits a single JSON object on stdout summarizing what was (re)published:
+    `{"feature": <name>, "published": [{"api": ..., "message": ...,
+    "changed": bool}], "status": "ok"}`. A feature with no `manifest` key, or a
+    `manifest` with no publish entries, is a clean no-op (empty `published`
+    list, `status: "ok"`). A missing/unparseable `feature.json` or a publish
+    call that returns `passed=False` is reported with `status: "error"` and a
+    non-zero exit so the dispatcher does not open a PR with a broken deploy.
+
+    **(c) Dispatcher post-handoff sequencing.** After a version-bumping
+    subagent returns (or ANY HANDOFF reporting a changed deployed surface —
+    `SKILL.md`-changed, a hook/command/file change), the dispatcher runs
+    `republish-feature.py <feature>` IN THE WORKTREE, BEFORE opening the PR, so
+    the refreshed deployed copy is committed into the PR and
+    `contract/test/test-deployed-skills-match-source.py` is green at merge
+    time. The step is script-tier: SKILL.md invokes the script, it carries no
+    inline python.
+
+    Enforced by `test/test-republish-feature.py` (in a temp fixture repo: a
+    feature whose source `SKILL.md` differs from its deployed copy is made to
+    match and reported as changed; a feature whose copies already match is a
+    no-op with `changed:false`; a feature with no manifest is a clean no-op)
+    and `test/test-spec-republish-feature-invariant.py` (the spec carries
+    Inv 55, contract.md `invokes.modules` declares the
+    `contract.lib.publish` cross-scope invoke, and SKILL.md documents the
+    pre-PR republish step invoking the script).
 
 ## Known gaps
 

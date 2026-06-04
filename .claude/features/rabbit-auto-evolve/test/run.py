@@ -89,5 +89,7 @@ run_test("test-advise-restart.py")
 run_test("test-spec-advise-restart-invariant.py")
 run_test("test-prune-worktrees.py")
 run_test("test-spec-prune-worktrees-invariant.py")
+run_test("test-republish-feature.py")
+run_test("test-spec-republish-feature-invariant.py")
 
 print("ALL TESTS PASSED")
