@@ -119,8 +119,10 @@ MERGED_CONTENT = [
     "_marker_content",
     # Inv 47 (refire dedup) merged into Inv 33 (immediate-refire)
     "is_refire_oneshot", "delete_refire_ids", "preserve_heartbeat_ids",
-    # Inv 59 (no de-queue) merged into Inv 25 (convergence)
-    "--detect-leaks", "de-queue",
+    # Inv 59 (no de-queue) merged into Inv 25 (convergence). The #731
+    # leak-detector ("--detect-leaks") was removed in #753 (step 3) once
+    # rabbit-managed was retired; the de-queue ban prose itself survives.
+    "de-queue",
 ]
 
 PASS = 0

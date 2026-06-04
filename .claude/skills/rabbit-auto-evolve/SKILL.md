@@ -1,16 +1,16 @@
 ---
 name: rabbit-auto-evolve
-version: 0.58.0
+version: 0.59.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
-description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label; `rabbit-managed` tolerated, not required), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
+description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
 ---
 
 # rabbit-auto-evolve
 
 A self-driving rabbit loop. Continuously fetches open ACTIONABLE issues
-(valid `feature:` + `priority:` label; `rabbit-managed` is tolerated but no
-longer the selection key — Inv 2),
+(valid `feature:` + `priority:` label — the actionability selection basis,
+Inv 2),
 triages each, dispatches TDD subagents, merges approved PRs into
 `dev`, tags releases, and is fired on a fixed cadence by a **system cron**
 (the tick scheduler where available, installed at `on`) until the user
@@ -583,7 +583,7 @@ phase 6:
   |---|---|---|---|
   | 1 (perf preference) | `parallel-per-feature` | item edits exactly one feature dir | one full single-feature TDD touch (its own `.rabbit-scope-active-<feature>` marker); multiple such items dispatch in parallel |
   | 2 | `multi-subagent-barrier` | item edits >1 feature dir, below the decompose threshold | per-feature subagents land SERIALLY on ONE shared branch; subagent k+1 fetches subagent k's pushed commit before starting; each piece is a full single-feature touch with its own scope marker; one PR closes the item |
-  | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs (default 10) | file N per-feature sub-issues via `python3 .claude/features/rabbit-issue/scripts/file-item.py …` (a contract INVOKE, not a cross-feature edit), each labelled `rabbit-managed` + the right `feature:<name>` label; **then record the parent→children linkage machine-readably** via `python3 .claude/features/rabbit-auto-evolve/scripts/record-decomposition.py <parent#> <child#> …` (Inv 53) — NEVER rely on a prose comment table; keep the parent OPEN and queue the sub-issues, which re-enter Stage 1/Stage 2 on the next tick. The per-tick `run-post-merge.py` drain then deterministically closes the parent once all its recorded children are closed (`close-decomposed-parents.py`, Inv 53) — the dispatcher NEVER hand-closes a decomposed parent |
+  | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs (default 10) | file N per-feature sub-issues via `python3 .claude/features/rabbit-issue/scripts/file-item.py …` (a contract INVOKE, not a cross-feature edit), each labelled with the right `feature:<name>` + `priority:<level>` label; **then record the parent→children linkage machine-readably** via `python3 .claude/features/rabbit-auto-evolve/scripts/record-decomposition.py <parent#> <child#> …` (Inv 53) — NEVER rely on a prose comment table; keep the parent OPEN and queue the sub-issues, which re-enter Stage 1/Stage 2 on the next tick. The per-tick `run-post-merge.py` drain then deterministically closes the parent once all its recorded children are closed (`close-decomposed-parents.py`, Inv 53) — the dispatcher NEVER hand-closes a decomposed parent |
 
   `parallel-per-feature` is the **performance preference, not a correctness
   requirement** — items that don't fit it still get done via shape 2 or 3,
@@ -675,8 +675,9 @@ during phase 6 (`dispatch`) result processing:
 
 - `discovered_issues` — array of `{title, body, labels}` objects. The loop
   files each via `rabbit-issue` (script
-  `python3 .claude/features/rabbit-issue/scripts/file-item.py …`) with the
-  `rabbit-managed` label so the next tick's `fetch` phase picks them up.
+  `python3 .claude/features/rabbit-issue/scripts/file-item.py …`) with a
+  `feature:<name>` + `priority:<level>` label so the next tick's `fetch`
+  phase picks them up.
 - `aborted_reason` — non-null string. The loop adds a `blocked-by:#N`
   label to the original issue (where `N` is the discovered blocker if
   available, else the dispatch retains the existing reason) and leaves
@@ -732,23 +733,18 @@ The abort marker makes the cron-fired headless tick short-circuit to a
 clean no-op, so the loop stays halted. The next SessionStart banner
 surfaces the abort to the user.
 
-**While `.rabbit-auto-evolve-running` is present, the dispatcher MUST NOT remove `rabbit-managed` from an OPEN issue as a parking or hand-back action.**
+**While `.rabbit-auto-evolve-running` is present, the dispatcher MUST NOT strip the actionability labels (`feature:`/`priority:`) from an OPEN issue as a parking or hand-back action.**
 
 "De-queue" — dropping a queue-gating label while leaving the issue OPEN — is
 the AskUserQuestion human-handoff escape (above) leaking through a different
 mechanism (Inv 25). `fetch-queue.py` selects on ACTIONABILITY (open +
-valid `feature:` + valid `priority:`), NOT on `rabbit-managed`; the label is
-tolerated, not required. So an issue that loses
-only `rabbit-managed` still appears, but stripping the labels that make it
-actionable would silently exit it from the loop's view and strand it
+valid `feature:` + valid `priority:`), so stripping either label silently
+exits the issue from the loop's view and strands it
 open-but-untracked, defeating the convergence guarantee (Inv 25). The
 convergence guarantee is LABEL-INDEPENDENT: an open valid issue must converge
-regardless of whether it still carries the label. The only permitted non-work
+to a terminal-or-tracked state. The only permitted non-work
 outcomes are a bounded `defer` (tracked) or `close-not-planned` with a strong
-reason — never label removal. The backstop
-`python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py
---detect-leaks` re-surfaces any pre-existing leak (open issues with a
-`filed-by:*` provenance label but no `rabbit-managed`) for re-convergence.
+reason — never label removal.
 
 Other red flags:
 

@@ -12,6 +12,30 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.10.0 (remove rabbit-managed application — coexistence step 3 of #753,
+  part of #760):** The FINAL "remove last" cleanup. Now that selection is
+  actionability-based (#758) and provenance is migrated (#759), nothing
+  depends on `rabbit-managed`. `file-item.py` STOPS applying the
+  `rabbit-managed` label to newly filed issues (the label is dropped from the
+  applied set; `type` / `feature:` / `priority:` / optional `filed-by:` are
+  unchanged). `list-items.py` SELECTION switches off the `--label
+  rabbit-managed` gh filter onto the ACTIONABILITY basis — it lists only issues
+  carrying a valid `feature:<name>` label (filtered in Python, consistent with
+  rabbit-auto-evolve's fetch-queue). Removed the residual `rabbit-managed`
+  mention from the `_gh.py` actionability-guard docstring. Prose: dropped the
+  `rabbit-managed` row from the spec.md / SKILL.md label schema and from the
+  contract `issue_labels` list. The descriptive phrase "rabbit-managed issue
+  surface" (= managed by rabbit, not the label) is retained per the sanctioned
+  terminology. Four-way version lockstep 1.9.0 → 1.10.0 (feature.json +
+  spec.md + SKILL.md; contract.md 1.7.0 → 1.8.0). Script Version lines:
+  file-item.py 1.2.0 → 1.3.0, list-items.py 1.0.0 → 1.1.0, _gh.py 1.3.0 →
+  1.4.0. Tests: `test-file-item.py` asserts `rabbit-managed` is ABSENT from
+  the applied label set; `test-list-items.py` asserts the gh list call no
+  longer passes `--label rabbit-managed` and that non-actionable
+  (no-`feature:`) issues are excluded. Cross-feature `rabbit-managed`
+  references in rabbit-auto-evolve and contract/workspace-structure.json are
+  out of this feature's scope (barrier subagents 2 and 3 of #760).
+
 - **v1.9.0 (filed-by fixed enum + actionability guard — coexistence step 2 of
   #753, closes #759):** Cleaned the `filed-by:` provenance scheme into a FIXED
   ENUM `{rabbit, autonomous-evolve}` with human as the UNTAGGED default.

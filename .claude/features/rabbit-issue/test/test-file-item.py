@@ -34,8 +34,11 @@ def test_file_bug_creates_gh_issue(gh_shim, fake_repo):
     assert out["url"] == "https://github.com/test/repo/issues/9001"
     log = gh_shim.read_text()
     assert "issue create" in log
-    for lbl in ("bug", "rabbit-managed", "feature:rabbit-cage", "priority:high"):
+    for lbl in ("bug", "feature:rabbit-cage", "priority:high"):
         assert lbl in log
+    # rabbit-managed application is retired (coexistence step 3 of #753, #760):
+    # the label MUST NOT be applied to newly filed issues.
+    assert "rabbit-managed" not in _created_labels(log)
 
 
 def test_file_enhancement_uses_enhancement_label(gh_shim, fake_repo):
@@ -198,11 +201,11 @@ def test_filed_by_rabbit_is_additive_other_labels_unchanged(gh_shim, fake_repo):
     )
     assert r.returncode == 0, r.stderr
     labels = _created_labels(gh_shim.read_text())
-    # The four base labels are present and unchanged; filed-by is additive.
-    # rabbit-managed is still applied here (coexistence: removal is step 3).
+    # The three base labels are present and unchanged; filed-by is additive.
+    # rabbit-managed application is retired (step 3 of #753, #760) — it is
+    # NOT in the applied set.
     assert labels == {
         "bug",
-        "rabbit-managed",
         "feature:rabbit-cage",
         "priority:high",
         "filed-by:rabbit",
@@ -210,7 +213,10 @@ def test_filed_by_rabbit_is_additive_other_labels_unchanged(gh_shim, fake_repo):
 
 
 def test_omitted_filed_by_yields_base_labels_only(gh_shim, fake_repo):
-    """Human filing carries exactly the four base labels, no filed-by."""
+    """Human filing carries exactly the three base labels, no filed-by.
+
+    rabbit-managed is no longer applied (step 3 of #753, #760).
+    """
     r = _run(
         "--type", "bug",
         "--feature", "rabbit-cage",
@@ -222,10 +228,10 @@ def test_omitted_filed_by_yields_base_labels_only(gh_shim, fake_repo):
     labels = _created_labels(gh_shim.read_text())
     assert labels == {
         "bug",
-        "rabbit-managed",
         "feature:rabbit-cage",
         "priority:high",
     }
+    assert "rabbit-managed" not in labels
 
 
 def test_requires_auth(gh_shim, fake_repo, monkeypatch):

@@ -156,7 +156,7 @@ with tempfile.TemporaryDirectory() as repo_root:
         "number": 101,
         "title": "Do thing X",
         "body": "Some description.",
-        "labels": [{"name": "rabbit-managed"}],  # no feature: or priority:
+        "labels": [],  # no feature: or priority:
         "state": "OPEN",
         "comments": [],
     })
@@ -178,7 +178,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add a missing feature behavior",
         "body": "irrelevant",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:nonexistent-feature"},
             {"name": "priority:medium"},
         ],
@@ -204,7 +203,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "fix login bug",
         "body": "Login is broken.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:my-feature"},
             {"name": "priority:high"},
         ],
@@ -233,7 +231,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Improve old feature",
         "body": "Body",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:old-feature"},
             {"name": "priority:low"},
         ],
@@ -258,7 +255,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add the thing",
         "body": "We can't do this yet. blocked-by: #200",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:blocked-feature"},
             {"name": "priority:medium"},
         ],
@@ -292,7 +288,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Please add unique-marker-phrase support",
         "body": "Body",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:specd-feature"},
             {"name": "priority:medium"},
         ],
@@ -317,7 +312,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add brand-new-behavior to active-feature",
         "body": "Implement this fresh behavior.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:active-feature"},
             {"name": "priority:high"},
         ],
@@ -344,7 +338,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         # blocked-by: declared but with no integer reference — ambiguous.
         "body": "Has blocked-by: somewhere but no number\n",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:amb-feature"},
             {"name": "priority:medium"},
         ],
@@ -372,7 +365,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Some valid but unscoped behavior",
         "body": "Has blocked-by: somewhere but no number\n",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:note-feature"},
             {"name": "priority:medium"},
         ],
@@ -409,7 +401,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add a brand-new sweep behavior",
         "body": "Implement this fresh behavior.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:sweep-feature"},
             {"name": "priority:high"},
         ],
@@ -451,7 +442,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Touch the contract",
         "body": "Body",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:contract"},
             {"name": "priority:high"},
         ],
@@ -490,7 +480,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Migrate layout",
         "body": "Rename docs/spec/ to specs/.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:corr-feature"},
             {"name": "priority:high"},
         ],
@@ -531,7 +520,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Migrate layout -> docs/{spec,contract,CHANGELOG}.md",
         "body": "Rename docs/spec/ to specs/ across the repo.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:reopen-feature"},
             {"name": "priority:high"},
         ],
@@ -572,7 +560,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add brand-new-behavior to noregress-feature",
         "body": "Implement this fresh behavior.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:noregress-feature"},
             {"name": "priority:high"},
         ],
@@ -611,7 +598,6 @@ with tempfile.TemporaryDirectory() as repo_root:
                  "recommendation — no code change is expected, just an "
                  "analysis report."),
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:research-feature"},
             {"name": "priority:high"},
         ],
@@ -657,7 +643,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "body": ("Implement a retry wrapper around the fetch helper so "
                  "transient failures are retried up to 3 times."),
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:impl-feature"},
             {"name": "priority:high"},
         ],
@@ -686,7 +671,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add a brand-new prio behavior",
         "body": "Implement this fresh behavior.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:prio-feature"},
             {"name": "priority:high"},
         ],
@@ -718,7 +702,7 @@ with tempfile.TemporaryDirectory() as repo_root:
         "number": 485,
         "title": "Do thing with no priority label",
         "body": "Some description.",
-        "labels": [{"name": "rabbit-managed"}],  # no priority: label
+        "labels": [],  # no priority: label
         "state": "OPEN",
         "comments": [],
     })
@@ -904,7 +888,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Fix the broken thing in bug-feature",
         "body": "Implement this fix.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:bug-feature"},
             {"name": "priority:high"},
             {"name": "bug"},
@@ -940,7 +923,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add a brand-new behavior to enh-feature",
         "body": "Implement this fresh behavior.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:enh-feature"},
             {"name": "priority:medium"},
             {"name": "enhancement"},
@@ -976,7 +958,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add a behavior to both-feature",
         "body": "Implement this.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:both-feature"},
             {"name": "priority:high"},
             {"name": "enhancement"},
@@ -1011,7 +992,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add a behavior to notype-feature",
         "body": "Implement this.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:notype-feature"},
             {"name": "priority:low"},
         ],

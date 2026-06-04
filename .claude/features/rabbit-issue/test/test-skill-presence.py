@@ -9,8 +9,10 @@ spec's "Surface" section):
   2. The frontmatter `name` field MUST be exactly `rabbit-issue`.
   3. The SKILL.md body MUST mention that rabbit-issue REPLACES the retired
      rabbit-file feature (so triggering routes here, not to rabbit-file).
-  4. The SKILL.md body MUST document the `rabbit-managed` safety guard
-     (Work Protocol invariant from the spec).
+  4. The SKILL.md body MUST document the actionability safety guard
+     (Work Protocol invariant from the spec). Rebased off the retired
+     `rabbit-managed` basis onto actionability in coexistence step 3 of
+     #753 (#760).
   5. The SKILL.md body MUST NOT contain the hardcoded user-decision-gate
      question prose ("Ask explicitly:" / "close** this issue without
      working it"). The dispatcher surfaces a recommendation in natural
@@ -67,10 +69,11 @@ def check(path: Path) -> list[str]:
         fails.append(
             f"{path} body MUST mention rabbit-file (replacement notice)"
         )
-    # Body MUST document the rabbit-managed safety guard
-    if "rabbit-managed" not in body:
+    # Body MUST document the actionability safety guard (rebased off the
+    # retired rabbit-managed basis in coexistence step 3 of #753, #760).
+    if "actionability" not in body.lower():
         fails.append(
-            f"{path} body MUST document the `rabbit-managed` safety guard"
+            f"{path} body MUST document the actionability safety guard"
         )
     # Body MUST NOT carry the hardcoded user-decision-gate question prose.
     forbidden_phrases = (

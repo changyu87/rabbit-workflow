@@ -145,7 +145,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add a behavior to score-bug",
         "body": "Implement this.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:score-bug"},
             {"name": "priority:medium"},
             {"name": "bug"},
@@ -159,7 +158,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add a behavior to score-enh",
         "body": "Implement this.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:score-enh"},
             {"name": "priority:medium"},
             {"name": "enhancement"},

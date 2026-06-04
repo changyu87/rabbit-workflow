@@ -326,8 +326,7 @@ try:
             ".claude/features/Fc/docs/spec/spec.md as well.")
     view_payload = json.dumps({
         "number": 800, "title": "cross-feature change", "body": body,
-        "labels": [{"name": "feature:Fa"}, {"name": "priority:high"},
-                   {"name": "rabbit-managed"}],
+        "labels": [{"name": "feature:Fa"}, {"name": "priority:high"}],
         "state": "OPEN", "comments": [],
     })
     write_triage_shim(shim_dir, view_payload)

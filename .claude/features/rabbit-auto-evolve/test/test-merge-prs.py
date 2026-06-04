@@ -512,7 +512,7 @@ with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
         td, base_ref="dev", safety_exit=0, merge_exit=0,
         pr_body="Fixes #99\n",
-        item_status_exit=1, item_status_stderr="not rabbit-managed\n",
+        item_status_exit=1, item_status_stderr="item-status failure\n",
     )
     proc = _run(cwd, env, "42")
     if proc.returncode != 0:

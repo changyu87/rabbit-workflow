@@ -134,7 +134,7 @@ with tempfile.TemporaryDirectory() as repo_root:
     issue_payload = json.dumps({
         "number": 4331, "title": "Cross-feature sweep", "body": body,
         "labels": [{"name": "feature:rabbit-auto-evolve"},
-                   {"name": "priority:high"}, {"name": "rabbit-managed"}],
+                   {"name": "priority:high"}],
         "state": "OPEN", "comments": [],
     })
     shim_dir = os.path.join(repo_root, "shim")
@@ -161,7 +161,7 @@ with tempfile.TemporaryDirectory() as repo_root:
         "body": "This is a repo-wide change; rename the marker token "
                 "everywhere.",
         "labels": [{"name": "feature:rabbit-auto-evolve"},
-                   {"name": "priority:high"}, {"name": "rabbit-managed"}],
+                   {"name": "priority:high"}],
         "state": "OPEN", "comments": [],
     })
     shim_dir = os.path.join(repo_root, "shim")
@@ -183,7 +183,7 @@ with tempfile.TemporaryDirectory() as repo_root:
         "number": 4333, "title": "Sweep",
         "body": "Apply this consistently across all features.",
         "labels": [{"name": "feature:rabbit-auto-evolve"},
-                   {"name": "priority:medium"}, {"name": "rabbit-managed"}],
+                   {"name": "priority:medium"}],
         "state": "OPEN", "comments": [],
     })
     shim_dir = os.path.join(repo_root, "shim")
@@ -214,7 +214,7 @@ with tempfile.TemporaryDirectory() as repo_root:
         "number": 6601, "title": "Retire B/B terminology in rabbit-auto-evolve",
         "body": body,
         "labels": [{"name": "feature:rabbit-auto-evolve"},
-                   {"name": "priority:medium"}, {"name": "rabbit-managed"}],
+                   {"name": "priority:medium"}],
         "state": "OPEN", "comments": [],
     })
     shim_dir = os.path.join(repo_root, "shim")
@@ -260,7 +260,7 @@ with tempfile.TemporaryDirectory() as repo_root:
         "number": 6602, "title": "Repo-wide token rename",
         "body": body,
         "labels": [{"name": "feature:rabbit-auto-evolve"},
-                   {"name": "priority:high"}, {"name": "rabbit-managed"}],
+                   {"name": "priority:high"}],
         "state": "OPEN", "comments": [],
     })
     shim_dir = os.path.join(repo_root, "shim")
@@ -294,7 +294,7 @@ with tempfile.TemporaryDirectory() as repo_root:
         "number": 6603, "title": "Cross-feature rewrite",
         "body": body,
         "labels": [{"name": "feature:rabbit-auto-evolve"},
-                   {"name": "priority:high"}, {"name": "rabbit-managed"}],
+                   {"name": "priority:high"}],
         "state": "OPEN", "comments": [],
     })
     shim_dir = os.path.join(repo_root, "shim")
@@ -335,7 +335,7 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Adopt rabbit-issue vocabulary in rabbit-auto-evolve",
         "body": body,
         "labels": [{"name": "feature:rabbit-auto-evolve"},
-                   {"name": "priority:medium"}, {"name": "rabbit-managed"}],
+                   {"name": "priority:medium"}],
         "state": "OPEN", "comments": [],
     })
     shim_dir = os.path.join(repo_root, "shim")
@@ -381,7 +381,7 @@ with tempfile.TemporaryDirectory() as repo_root:
         "number": 6605, "title": "Two-feature edit",
         "body": body,
         "labels": [{"name": "feature:rabbit-auto-evolve"},
-                   {"name": "priority:high"}, {"name": "rabbit-managed"}],
+                   {"name": "priority:high"}],
         "state": "OPEN", "comments": [],
     })
     shim_dir = os.path.join(repo_root, "shim")
@@ -404,7 +404,7 @@ with tempfile.TemporaryDirectory() as repo_root:
         "number": 4334, "title": "Add a retry wrapper",
         "body": "Implement a small retry wrapper around the fetch helper.",
         "labels": [{"name": "feature:rabbit-auto-evolve"},
-                   {"name": "priority:low"}, {"name": "rabbit-managed"}],
+                   {"name": "priority:low"}],
         "state": "OPEN", "comments": [],
     })
     shim_dir = os.path.join(repo_root, "shim")
@@ -426,7 +426,7 @@ with tempfile.TemporaryDirectory() as repo_root:
     issue_payload = json.dumps({
         "number": 4335, "title": "no labels",
         "body": "repo-wide change with no feature label",
-        "labels": [{"name": "rabbit-managed"}],
+        "labels": [],
         "state": "OPEN", "comments": [],
     })
     shim_dir = os.path.join(repo_root, "shim")

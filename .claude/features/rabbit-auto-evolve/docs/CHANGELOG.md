@@ -13,6 +13,23 @@ own version.
 
 ## Version notes
 
+- **v0.59.0 — 2026-06-04** — remove `rabbit-managed` selection + the #731
+  leak-detector (step 3 of #753). Now that selection is actionability-based
+  (#758) and provenance is migrated (#759), nothing depends on the
+  `rabbit-managed` label. `fetch-queue.py` drops the `--detect-leaks` flag and
+  its `is_leak`/`detect_leaks` code path (moot — Inv 25 convergence is
+  label-independent and actionability selection already surfaces every open
+  feature+priority issue); script Version 1.2.0 → 1.3.0. spec.md and the source
+  SKILL.md drop `rabbit-managed` as a selection/queue concept: Inv 2 selection
+  is purely actionability; the Inv 25 de-queue Red-Flag is rephrased from "MUST
+  NOT remove `rabbit-managed` from an OPEN issue" to "MUST NOT strip the
+  actionability labels (`feature:`/`priority:`) from an OPEN issue"; the
+  leak-detector mention and the `discovered_issues` `rabbit-managed`-on-file
+  note are removed (file with `feature:`/`priority:` only). rae tests migrated
+  to the actionability basis. Four-way version lockstep 0.58.0 → 0.59.0
+  (feature.json + spec.md + contract.md + SKILL.md frontmatter). Historical
+  CHANGELOG entries are unchanged.
+
 - **v0.58.0 — 2026-06-03** — `update-state.py` now MIGRATES-IN-PLACE an older
   but additively-compatible on-disk state instead of hard-failing at the
   persist phase (#761). When #727 bumped the state schema 1.2.0 → 1.3.0 by

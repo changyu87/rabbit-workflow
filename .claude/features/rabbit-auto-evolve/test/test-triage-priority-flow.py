@@ -120,7 +120,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Add new behavior to prio-hi",
         "body": "Implement this fresh behavior.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:prio-hi"},
             {"name": "priority:high"},
         ],
@@ -133,7 +132,6 @@ with tempfile.TemporaryDirectory() as repo_root:
         "title": "Tweak the contract surface",
         "body": "A small contract touch.",
         "labels": [
-            {"name": "rabbit-managed"},
             {"name": "feature:contract"},
             {"name": "priority:low"},
         ],

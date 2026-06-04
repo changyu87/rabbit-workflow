@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.9.0
+version: 1.10.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours an actionability safety guard (it refuses to close/reopen issues lacking a valid `feature:` label) so raw human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -39,8 +39,8 @@ The shared helper `_gh.py` resolves the repo slug and wraps `gh` calls.
 ## Label Schema
 
 Every issue filed via `rabbit-issue` carries the type label
-(`bug` / `enhancement`), plus `rabbit-managed`, `feature:<name>`, and
-`priority:<…>`. The `filed-by:` provenance label is OPTIONAL — present
+(`bug` / `enhancement`), plus `feature:<name>` and `priority:<…>`. The
+`filed-by:` provenance label is OPTIONAL — present
 only for non-human filers. They are auto-created on demand (idempotent
 `gh label create … || true`) at first `file-item.py` call — there is no
 separate bootstrap step. See docs/spec.md §Label schema for the full

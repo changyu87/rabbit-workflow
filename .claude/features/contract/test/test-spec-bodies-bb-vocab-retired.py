@@ -5,7 +5,7 @@ End-to-end content test that contract's live docs/spec.md and docs/contract.md
 no longer carry legacy bug-and-backlog ("B/B") LIVE vocabulary as current
 prose. The retired bug-and-backlog system was succeeded by the rabbit-issue
 system; doc surfaces describe the current design, so they must speak the
-current vocabulary ("issue", "rabbit-managed issue", "bug or enhancement"),
+current vocabulary ("issue", "bug or enhancement"),
 NOT the retired "B/B" / "bug-and-backlog" / "bug/backlog" / standalone
 "backlog" terms.
 
