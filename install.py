@@ -89,7 +89,6 @@ SKILLS = [
     (".claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md", ".claude/skills/rabbit-feature-touch/SKILL.md"),
     (".claude/features/rabbit-feature/skills/rabbit-feature-scope/SKILL.md", ".claude/skills/rabbit-feature-scope/SKILL.md"),
     (".claude/features/rabbit-feature/skills/rabbit-feature-audit/SKILL.md", ".claude/skills/rabbit-feature-audit/SKILL.md"),
-    (".claude/features/rabbit-config/skills/rabbit-config/SKILL.md", ".claude/skills/rabbit-config/SKILL.md"),
     (".claude/features/rabbit-issue/skills/rabbit-issue/SKILL.md", ".claude/skills/rabbit-issue/SKILL.md"),
     (".claude/features/rabbit-spec/skills/rabbit-spec-create/SKILL.md", ".claude/skills/rabbit-spec-create/SKILL.md"),
     (".claude/features/rabbit-spec/skills/rabbit-spec-update/SKILL.md", ".claude/skills/rabbit-spec-update/SKILL.md"),
@@ -188,11 +187,6 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "skills/rabbit-feature-scaffold/SKILL.md",
         "skills/rabbit-feature-scope/SKILL.md",
         "skills/rabbit-feature-touch/SKILL.md",
-    ],
-    "rabbit-config": [
-        "feature.json",
-        "skills/rabbit-config/SKILL.md",
-        "skills/rabbit-config/scripts/rabbit-config.py",
     ],
     "rabbit-issue": [
         "feature.json",
