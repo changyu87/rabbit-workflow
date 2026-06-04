@@ -1,6 +1,6 @@
 ---
 feature: rabbit-meta
-version: 0.7.1
+version: 0.7.2
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when a native Claude Code workflow contract mechanism supersedes rabbit's per-project plugin model
@@ -58,7 +58,7 @@ Python 3 stdlib only. No external dependencies (matches the Python-only invarian
 - The `rabbit-feature-new` path-glob enhancement for plugin-mode feature mapping — owned by `rabbit-feature`.
 - Scope-guard plugin-mode block-and-bypass logic — owned by `rabbit-cage` (the hook owner).
 - The `project-map.json` schema — owned by `contract` (schema registry).
-- The spec-seeding subagent invoked by `rabbit-feature-new` — owned by the `spec-seeder` feature.
+- The spec-drafting subagent invoked during feature scaffolding (`rabbit-feature-scaffold`) — owned by `rabbit-spec`.
 - The user-facing `.rabbit/README.md` carries the killer story, not this spec.
 
 ## Tests
