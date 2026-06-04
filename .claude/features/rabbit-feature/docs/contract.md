@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.28.0
+version: 1.29.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -79,7 +79,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py",
-        "signature": "dispatch-tdd-subagent.py --scope <feature-name> --spec <spec-path> [--impl-suggestion <path>] [--linked-item <item-dir> --item-type bug|backlog] [--linked-items <feature>:<type>:<id>[,...]] [--code-review-full-loop] [--max-iterations N]",
+        "signature": "dispatch-tdd-subagent.py --scope <feature-name> --spec <spec-path> [--impl-suggestion <path>] [--affected-invariants <n,n,...>] [--code-review-full-loop] [--max-iterations N]",
         "exit": "0=success, 1=feature not found, 2=bad invocation",
         "lock": "test/test-cross-feature-interface.py asserts --help exits 0 with 'usage:' text (Inv 3)"
       },
