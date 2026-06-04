@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.39.0
+version: 0.40.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -339,10 +339,23 @@ Phase E merges complete.
      "features": ["<feature-name>", "..."],
      "contract_touch": true,
      "priority": "critical" | "high" | "medium" | "low" | null,
+     "issue_type": "bug" | "enhancement" | null,
+     "created_at": "2026-01-02T03:04:05Z" | null,
      "blocked_by": [124],
      "planning_note": "<non-empty string for defer/research, else null>"
    }
    ```
+
+   The `issue_type` and `created_at` fields (issue #606, see Inv 51) feed the
+   bug-vs-enhancement and age signals of the loop's computed priority score
+   (Inv 46). `issue_type` is `"bug"` when the issue carries a GitHub `bug`
+   label, `"enhancement"` when it carries an `enhancement` label, else `null`
+   (a `bug` label wins if both are present). `created_at` echoes the issue's
+   ISO-8601 UTC creation timestamp (the `createdAt` field of the same single
+   `gh issue view` call, trailing-`Z` shape preserved), or `null` when gh does
+   not return it. Both are emitted on EVERY triage record so `plan-batch.py`'s
+   `_computed_score` can consume them; without them the bug and age signals
+   silently contribute zero (the #606 dead-letter symptom).
 
    The `priority` field (issue #484) is the value of the issue's
    `priority:<level>` label (`"priority:high"` → `"high"`), or `null` when
@@ -3166,6 +3179,48 @@ Phase E merges complete.
     `test/test-release-bump.py` (e2e: a `released` run sets
     `last_tagged_version` to `next_tag`; a safety-check skip and a git-tag
     failure both leave a prior value intact).
+
+51. **`triage-issue.py` emits `issue_type` and `created_at` so the computed
+    score's bug and age signals are non-zero (issue #606).** Inv 46's
+    `_computed_score` blends five signals, two of which —
+    bug-vs-enhancement (`item.issue_type == "bug"`) and age
+    (`item.created_at`) — read fields that `triage-issue.py` did NOT emit.
+    The result was a silent dead letter: both signals always contributed
+    `0.0`, so the #441 score collapsed to the filer/fanout/scope subset.
+    This invariant wires the two fields through, a deterministic in-scope
+    completion of #441.
+
+    **(a) `issue_type` — derived from the issue's GitHub labels.** Triage
+    sets `issue_type` to `"bug"` when the fetched issue carries a `bug`
+    label, `"enhancement"` when it carries an `enhancement` label, else
+    `null`. A `bug` label WINS when both are present (a bug is the
+    higher-urgency signal). The value is read from the SAME `labels` array
+    `gh issue view` already returns — no new `gh` call. `plan-batch.py`'s
+    bug signal fires (`1.0`) exactly when `issue_type == "bug"`.
+
+    **(b) `created_at` — the issue's creation timestamp.** Triage echoes
+    the issue's ISO-8601 UTC `createdAt` (trailing-`Z` shape) into
+    `created_at`, added to the field list of the SAME single `gh issue
+    view` call (`number,title,body,labels,state,stateReason,comments` →
+    plus `createdAt`) — again no extra `gh` call. `plan-batch.py`'s
+    `_age_days` parses it and the age signal saturates at 30 days. A
+    missing/unparseable `createdAt` yields `created_at: null`, which the
+    age signal tolerates as `0.0` (no crash).
+
+    **(c) Always present, on every decision.** Both fields appear on EVERY
+    triage record (work, defer, close-not-planned, research) so
+    `_computed_score` can rely on them uniformly; absent labels/timestamp
+    simply yield `null` (contributing zero) rather than an omitted key.
+
+    Enforced by `test/test-triage-rules.py` (a bug-labelled issue emits
+    `issue_type: "bug"` and a non-null `created_at`; an enhancement-labelled
+    issue emits `issue_type: "enhancement"`; a both-labelled issue emits
+    `"bug"`; a no-type-label issue emits `issue_type: null`) and
+    `test/test-spec-priority-score-invariant.py` (e2e through plan-batch:
+    given two otherwise-identical triage records, the one with
+    `issue_type: "bug"` and an old `created_at` scores STRICTLY higher than
+    the one with `issue_type: "enhancement"` and no `created_at` — proving
+    the two signals are live, non-zero contributions).
 
 ## Known gaps
 

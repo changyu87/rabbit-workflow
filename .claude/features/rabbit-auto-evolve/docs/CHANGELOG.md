@@ -13,6 +13,22 @@ own version.
 
 ## Version notes
 
+- **v0.40.0 — 2026-06-03** — `triage-issue.py` now emits `issue_type` and
+  `created_at` on every triage record so the #441 computed-priority score's
+  bug-vs-enhancement and age signals are non-zero (Inv 51, #606). Before
+  this, `plan-batch.py`'s `_computed_score` (Inv 46) read
+  `item.issue_type == "bug"` and `item.created_at`, but triage never emitted
+  either field — so both signals were silent dead letters contributing
+  `0.0`, collapsing the score to the filer/fanout/scope subset.
+  `issue_type` is derived from the issue's GitHub `bug`/`enhancement` label
+  (bug wins when both are present), read from the labels array gh already
+  returns; `created_at` echoes the issue's ISO-8601 UTC `createdAt`, added to
+  the field list of the SAME single `gh issue view` call (no new gh round-
+  trip). Both are always present (work/defer/close/research), `null` when the
+  label/timestamp is absent (contributing zero, no crash). A deterministic
+  in-scope completion of #441. `triage-issue.py` → v1.8.0; no SKILL.md
+  change.
+
 - **v0.39.0 — 2026-06-03** — `last_merged_sha` / `last_tagged_version` are
   now persisted at the source (Inv 50, #564). After #513 converged phase 10
   on the deterministic re-read-and-validate persist (Inv 40), no phase

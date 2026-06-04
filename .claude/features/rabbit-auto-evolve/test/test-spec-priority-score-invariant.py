@@ -15,11 +15,18 @@ feature spec (specs/spec.md, dual-read with docs/spec/ fallback per issue
     inference) and is emitted for transparency.
 """
 
+import json
+import os
 import re
+import stat
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
+TRIAGE = str(FEATURE_DIR / "scripts" / "triage-issue.py")
+PLAN = str(FEATURE_DIR / "scripts" / "plan-batch.py")
 # Dual-read (issue #399): prefer the flat docs/spec.md layout, fall back to
 # specs/spec.md, then legacy docs/spec/spec.md.
 SPEC_MD = (FEATURE_DIR / "docs" / "spec.md")
@@ -73,5 +80,149 @@ if "479" not in lowered:
          "(the composite key it refines)")
 else:
     ok("spec.md priority-score invariant reconciles with issue #479")
+
+
+# ---------------------------------------------------------------------------
+# E2E (issue #606 / Inv 51): the bug-vs-enhancement and age signals of the
+# computed score are LIVE, non-zero contributions — they read `issue_type` and
+# `created_at` that triage-issue.py now emits. Run the full pipe with no
+# hand-authored signal values:
+#   1. triage two issues that differ ONLY in type label + age (same priority,
+#      same single-feature scope, no blocked_by):
+#        #800  bug label,         old createdAt  → bug + age both fire
+#        #801  enhancement label, no createdAt   → neither fires
+#   2. pipe both triage records into plan-batch.py
+#   3. assert computed_scores[800] > computed_scores[801] STRICTLY.
+# Before #606 triage dropped issue_type/created_at, so both items scored
+# identically and this assertion FAILS (RED).
+# ---------------------------------------------------------------------------
+def _write_shim(shim_dir, view_responses, list_response):
+    for num, payload in view_responses.items():
+        with open(os.path.join(shim_dir, f"view-{num}.json"), "w") as f:
+            f.write(payload)
+    with open(os.path.join(shim_dir, "list.json"), "w") as f:
+        f.write(list_response)
+    shim_path = os.path.join(shim_dir, "gh")
+    with open(shim_path, "w") as f:
+        f.write("#!/bin/sh\n")
+        f.write('sub="$1"; verb="$2"\n')
+        f.write('if [ "$sub" = "issue" ] && [ "$verb" = "view" ]; then\n')
+        f.write('  num="$3"\n')
+        f.write(f'  cat "{shim_dir}/view-${{num}}.json"\n')
+        f.write('  exit 0\n')
+        f.write('elif [ "$sub" = "issue" ] && [ "$verb" = "list" ]; then\n')
+        f.write(f'  cat "{shim_dir}/list.json"\n')
+        f.write('  exit 0\n')
+        f.write('fi\n')
+        f.write('echo "gh-shim: unrecognized: $@" >&2\n')
+        f.write('exit 2\n')
+    os.chmod(shim_path, stat.S_IRWXU)
+
+
+def _make_feature(repo_root, feature_name):
+    fdir = os.path.join(repo_root, ".claude", "features", feature_name)
+    os.makedirs(os.path.join(fdir, "specs"), exist_ok=True)
+    with open(os.path.join(fdir, "feature.json"), "w") as f:
+        json.dump({
+            "name": feature_name, "version": "0.1.0",
+            "owner": "rabbit-workflow team", "status": "active",
+            "deprecation_criterion": "n/a",
+        }, f)
+    with open(os.path.join(fdir, "specs", "spec.md"), "w") as f:
+        f.write("---\nfeature: %s\nversion: 0.1.0\n"
+                "owner: rabbit-workflow team\n---\n\n# Spec\n\nBody.\n"
+                % feature_name)
+
+
+def _run_triage(repo_root, num, shim_dir):
+    env = os.environ.copy()
+    env["PATH"] = shim_dir + os.pathsep + env.get("PATH", "")
+    env["RABBIT_ISSUE_REPO"] = "testowner/testrepo"
+    return subprocess.run(
+        [sys.executable, TRIAGE, str(num)],
+        capture_output=True, text=True, env=env, cwd=repo_root,
+    )
+
+
+with tempfile.TemporaryDirectory() as repo_root:
+    _make_feature(repo_root, "score-bug")
+    _make_feature(repo_root, "score-enh")
+    issue_bug = json.dumps({
+        "number": 800,
+        "title": "Add a behavior to score-bug",
+        "body": "Implement this.",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:score-bug"},
+            {"name": "priority:medium"},
+            {"name": "bug"},
+        ],
+        "state": "OPEN", "stateReason": None, "comments": [],
+        # An old timestamp so the age signal saturates near 1.0.
+        "createdAt": "2020-01-01T00:00:00Z",
+    })
+    issue_enh = json.dumps({
+        "number": 801,
+        "title": "Add a behavior to score-enh",
+        "body": "Implement this.",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:score-enh"},
+            {"name": "priority:medium"},
+            {"name": "enhancement"},
+        ],
+        "state": "OPEN", "stateReason": None, "comments": [],
+        # No createdAt → age signal contributes 0.
+    })
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    _write_shim(shim_dir, {"800": issue_bug, "801": issue_enh},
+                json.dumps([]))
+
+    records = []
+    abort = False
+    for num in (800, 801):
+        proc = _run_triage(repo_root, num, shim_dir)
+        if proc.returncode != 0:
+            fail(f"score-e2e: triage #{num} exit {proc.returncode}; "
+                 f"stderr={proc.stderr!r}")
+            abort = True
+            break
+        try:
+            records.append(json.loads(proc.stdout))
+        except json.JSONDecodeError as e:
+            fail(f"score-e2e: triage #{num} bad JSON ({e})")
+            abort = True
+            break
+
+    if not abort:
+        plan_proc = subprocess.run(
+            [sys.executable, PLAN], input=json.dumps(records),
+            capture_output=True, text=True,
+        )
+        if plan_proc.returncode != 0:
+            fail(f"score-e2e: plan-batch exit {plan_proc.returncode}; "
+                 f"stderr={plan_proc.stderr!r}")
+        else:
+            try:
+                out = json.loads(plan_proc.stdout)
+            except json.JSONDecodeError as e:
+                fail(f"score-e2e: plan-batch bad JSON ({e})")
+            else:
+                scores = out.get("computed_scores", {})
+                s_bug = scores.get("800")
+                s_enh = scores.get("801")
+                if s_bug is None or s_enh is None:
+                    fail(f"score-e2e: computed_scores missing 800/801; "
+                         f"got {scores!r}")
+                elif not (s_bug > s_enh):
+                    fail(f"score-e2e: bug+old item (800={s_bug}) must score "
+                         f"STRICTLY HIGHER than enhancement+no-age item "
+                         f"(801={s_enh}) — the bug and age signals are dead "
+                         f"(triage dropped issue_type/created_at, #606)")
+                else:
+                    ok(f"score-e2e: bug+age signals live — 800={s_bug} > "
+                       f"801={s_enh} end-to-end (Inv 51)")
+
 
 sys.exit(FAIL)

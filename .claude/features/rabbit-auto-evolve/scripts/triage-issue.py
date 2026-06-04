@@ -3,7 +3,11 @@
 
 Per rabbit-auto-evolve spec.md Inv 3, emits a JSON object on stdout with
 fields: issue, decision, reason_code, rationale, feature, features,
-contract_touch, priority, blocked_by, planning_note. The `priority` field
+contract_touch, priority, issue_type, created_at, blocked_by, planning_note.
+The `issue_type` (bug/enhancement, from the GH label) and `created_at` (the
+issue's ISO-8601 UTC creation timestamp) fields (issue #606 / Inv 51) feed
+the bug-vs-enhancement and age signals of plan-batch.py's _computed_score
+(Inv 46); without them both signals silently contribute 0. The `priority` field
 (issue #484) echoes the issue's priority:<level> label value (None when
 absent); plan-batch.py folds it into the loop's computed priority score as
 ONE weighted input among several (Inv 46 / issue #441, refining the
@@ -31,7 +35,10 @@ report); the `work` and `close-not-planned` decisions carry
 
 Read surface (strictly bounded):
   - Issue metadata via `gh issue view <N> --json
-    number,title,body,labels,state,stateReason,comments`. The full comment
+    number,title,body,labels,state,stateReason,comments,createdAt`. The
+    `createdAt` timestamp (issue #606) is read in this SAME single call (no
+    extra gh round-trip) to feed the age signal of the computed score (Inv
+    46). The full comment
     thread and the state reason are read so rule 7 can reconcile a
     correction comment / conflicting retitle that supersedes the original
     body (issue #463): the most recent coherent intent is authoritative; a
@@ -52,7 +59,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.7.0
+Version: 1.8.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -102,6 +109,22 @@ def _label_value(labels, prefix):
         name = lbl.get("name", "")
         if name.startswith(prefix + ":"):
             return name.split(":", 1)[1]
+    return None
+
+
+def _issue_type(labels):
+    """Derive the bug-vs-enhancement issue type from the GH labels (issue
+    #606 / Inv 51). Returns "bug" when a `bug` label is present, else
+    "enhancement" when an `enhancement` label is present, else None. A `bug`
+    label WINS when both are present (the higher-urgency signal).
+
+    plan-batch.py's _computed_score fires the bug signal (1.0) exactly when
+    the emitted `issue_type` equals "bug"."""
+    names = {lbl.get("name", "") for lbl in labels}
+    if "bug" in names:
+        return "bug"
+    if "enhancement" in names:
+        return "enhancement"
     return None
 
 
@@ -528,8 +551,12 @@ def _reconcile(base, title, body, state_reason, comments):
 def classify(issue_num, repo_root):
     """Run the seven-rule decision table. Returns a dict ready for json.dump."""
     # ---- Fetch issue metadata ----
+    # `createdAt` is added to the SAME single gh call (issue #606) so the
+    # age signal of plan-batch._computed_score (Inv 46) has data — no extra
+    # gh round-trip.
     issue = _gh_issue_view(
-        issue_num, "number,title,body,labels,state,stateReason,comments"
+        issue_num,
+        "number,title,body,labels,state,stateReason,comments,createdAt",
     )
 
     title = issue.get("title", "") or ""
@@ -542,6 +569,11 @@ def classify(issue_num, repo_root):
 
     feature_label = _label_value(labels, "feature")
     priority_label = _label_value(labels, "priority")
+    # issue_type / created_at (issue #606 / Inv 51) feed plan-batch's
+    # bug-vs-enhancement and age signals (Inv 46). Both are derived from the
+    # SAME gh fetch above (labels + createdAt) — no extra gh call.
+    issue_type = _issue_type(labels)
+    created_at = issue.get("createdAt") or None
     ctouch = _contract_touch(labels, body)
     # Canonical feature vocabulary (discovered from .claude/features/) — the
     # basis for Stage-2 bare-name cross-feature detection (issue #443).
@@ -564,6 +596,16 @@ def classify(issue_num, repo_root):
         # refining the priority-primary key of Inv 4 / issue #479); a None
         # filer label simply contributes nothing to the score.
         "priority": priority_label,
+        # `issue_type` (issue #606 / Inv 51) is "bug"/"enhancement"/None,
+        # derived from the GH bug/enhancement label (bug wins if both). It
+        # drives the bug-vs-enhancement signal of plan-batch._computed_score
+        # (Inv 46); a None type contributes nothing to the score.
+        "issue_type": issue_type,
+        # `created_at` (issue #606 / Inv 51) echoes the issue's ISO-8601 UTC
+        # createdAt (trailing-Z shape), None when gh omits it. It drives the
+        # age signal of plan-batch._computed_score (Inv 46); a None timestamp
+        # contributes nothing (no crash — _age_days tolerates absence).
+        "created_at": created_at,
         "blocked_by": [],
         # planning_note is null for non-defer decisions; each defer return
         # overrides it with a non-empty note (issue #423 Part A).

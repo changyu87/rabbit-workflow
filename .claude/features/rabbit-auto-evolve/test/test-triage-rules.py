@@ -888,4 +888,157 @@ with tempfile.TemporaryDirectory() as repo_root:
     )
 
 
+# ---------------------------------------------------------------------------
+# issue_type + created_at fields (issue #606 / Inv 51): the triage record MUST
+# carry `issue_type` (derived from the GH bug/enhancement label) and
+# `created_at` (the issue's creation timestamp) so plan-batch's _computed_score
+# bug and age signals are non-zero. Without these fields both signals silently
+# contribute 0 (the #606 dead-letter symptom).
+# ---------------------------------------------------------------------------
+
+# Case: a BUG-labelled issue → issue_type == "bug", created_at echoed through.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "bug-feature")
+    issue_payload = json.dumps({
+        "number": 606,
+        "title": "Fix the broken thing in bug-feature",
+        "body": "Implement this fix.",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:bug-feature"},
+            {"name": "priority:high"},
+            {"name": "bug"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+        "createdAt": "2026-01-02T03:04:05Z",
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"606": issue_payload}, list_payload)
+    proc = run_script(repo_root, 606, shim_dir)
+    expect_decision(
+        "type-bug", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None
+            if r.get("issue_type") == "bug"
+            and r.get("created_at") == "2026-01-02T03:04:05Z"
+            else "bug issue must emit issue_type 'bug' and the createdAt "
+                 f"timestamp; got issue_type={r.get('issue_type')!r}, "
+                 f"created_at={r.get('created_at')!r}"
+        ),
+    )
+
+
+# Case: an ENHANCEMENT-labelled issue → issue_type == "enhancement".
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "enh-feature")
+    issue_payload = json.dumps({
+        "number": 6061,
+        "title": "Add a brand-new behavior to enh-feature",
+        "body": "Implement this fresh behavior.",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:enh-feature"},
+            {"name": "priority:medium"},
+            {"name": "enhancement"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+        "createdAt": "2026-05-30T00:00:00Z",
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"6061": issue_payload}, list_payload)
+    proc = run_script(repo_root, 6061, shim_dir)
+    expect_decision(
+        "type-enhancement", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None
+            if r.get("issue_type") == "enhancement"
+            and r.get("created_at") == "2026-05-30T00:00:00Z"
+            else "enhancement issue must emit issue_type 'enhancement'; "
+                 f"got issue_type={r.get('issue_type')!r}, "
+                 f"created_at={r.get('created_at')!r}"
+        ),
+    )
+
+
+# Case: BOTH bug and enhancement labels → bug wins (higher-urgency signal).
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "both-feature")
+    issue_payload = json.dumps({
+        "number": 6062,
+        "title": "Add a behavior to both-feature",
+        "body": "Implement this.",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:both-feature"},
+            {"name": "priority:high"},
+            {"name": "enhancement"},
+            {"name": "bug"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+        "createdAt": "2026-04-01T00:00:00Z",
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"6062": issue_payload}, list_payload)
+    proc = run_script(repo_root, 6062, shim_dir)
+    expect_decision(
+        "type-both-bug-wins", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None if r.get("issue_type") == "bug"
+            else "both bug+enhancement labels must resolve to 'bug'; "
+                 f"got {r.get('issue_type')!r}"
+        ),
+    )
+
+
+# Case: NO type label → issue_type is null but the KEY is always present;
+# created_at is null when gh returns no createdAt.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "notype-feature")
+    issue_payload = json.dumps({
+        "number": 6063,
+        "title": "Add a behavior to notype-feature",
+        "body": "Implement this.",
+        "labels": [
+            {"name": "rabbit-managed"},
+            {"name": "feature:notype-feature"},
+            {"name": "priority:low"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+        # No createdAt key at all.
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"6063": issue_payload}, list_payload)
+    proc = run_script(repo_root, 6063, shim_dir)
+    expect_decision(
+        "type-none-null-keys", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None
+            if ("issue_type" in r and r.get("issue_type") is None
+                and "created_at" in r and r.get("created_at") is None)
+            else "no-type/no-createdAt issue must carry issue_type:null AND "
+                 f"created_at:null (keys present); got "
+                 f"issue_type={r.get('issue_type')!r} "
+                 f"(present={'issue_type' in r}), "
+                 f"created_at={r.get('created_at')!r} "
+                 f"(present={'created_at' in r})"
+        ),
+    )
+
+
 sys.exit(FAIL)
