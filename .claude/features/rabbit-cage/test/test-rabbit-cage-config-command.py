@@ -12,7 +12,7 @@ Exercises the per-feature config command /rabbit-cage-config (phase 3 of #733):
   (v)   the backing script is a THIN wrapper — it imports dispatch_config and
         does NOT redefine the interpreter (_apply_template / _validate).
   (vi)  the five owned configurables declare command == "rabbit-cage-config"
-        and tdd-autonomous does NOT.
+        (tdd-autonomous is relocated out of rabbit-cage per #733 phase 3).
   (vii) /rabbit-config <sub> STILL mutates a rabbit-cage configurable
         (coexistence preserved).
   (viii)the command frontmatter carries the six required keys and the manifest
@@ -196,10 +196,10 @@ def main() -> int:
         else:
             ko(f"{cid} missing command == rabbit-cage-config: "
                f"{config.get(cid, {}).get('command')!r}")
-    if config.get("tdd-autonomous", {}).get("command") is None:
-        ok("tdd-autonomous declares NO command (TDD feature's surface)")
+    if "tdd-autonomous" not in config:
+        ok("tdd-autonomous not declared in rabbit-cage (relocated, #733 ph3)")
     else:
-        ko("tdd-autonomous unexpectedly declares a command")
+        ko("tdd-autonomous unexpectedly still declared in rabbit-cage")
 
     # (viii) command frontmatter + manifest registration.
     if COMMAND_MD.is_file():

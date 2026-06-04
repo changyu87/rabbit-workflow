@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.56.0
+version: 5.57.0
 template_version: 2.0.0
 ---
 
@@ -47,7 +47,6 @@ template_version: 2.0.0
       ".rabbit-scope-active-*",
       ".rabbit-scope-override",
       ".rabbit-scope-override-used",
-      ".rabbit-human-approval-bypass",
       ".rabbit-skills-updated",
       ".rabbit/.runtime/mode",
       ".rabbit/.runtime/scope-active-*",

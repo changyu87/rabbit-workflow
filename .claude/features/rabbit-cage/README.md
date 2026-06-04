@@ -142,7 +142,6 @@ The default install targets the latest stable release channel; `dev` is opt-in o
 | `/rabbit-config allowed-tools add\|remove <tool>` | Manage Claude Code tool permissions |
 | `/rabbit-config bash-allow add\|remove <cmd>` | Manage Bash command permissions |
 | `/rabbit-config permissions lock\|unlock` | Lock/unlock write bit on protected dirs |
-| `/rabbit-config tdd-autonomous true\|false` | Control TDD cycle Step 4 approval gate (false = gate active [default], true = autonomous/bypass) |
 | `/rabbit-config scope-guard on` | Revoke an active scope-guard override (re-arm default-deny) |
 
 ---

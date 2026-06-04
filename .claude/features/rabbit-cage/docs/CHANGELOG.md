@@ -12,6 +12,29 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.57.0 (relocate tdd-autonomous out of rabbit-cage; phase 3 of #733):**
+  Removed the `tdd-autonomous` configurable from rabbit-cage's
+  `feature.json configuration[]`. It gates the TDD feature-touch Step-4 cycle
+  (consumers: `tdd-subagent/dispatch-tdd-subagent.py` + the
+  `rabbit-feature-touch` SKILL), NOT any rabbit-cage behavior — it is mis-homed
+  here (added under the `human-approval` name by an earlier feature, renamed by
+  #336) and is being re-declared in its owning TDD feature (rabbit-feature) in
+  the SAME PR. A configurable declared in two features' `configuration[]` would
+  be ambiguous, so it MUST NOT remain in rabbit-cage once relocated. Dropped
+  the now-stale `.rabbit-human-approval-bypass` entry from contract.md
+  `reads.files` (rabbit-cage no longer reads that marker for an alert — only a
+  scope-guard sibling-path comment references the name). The on-disk marker
+  `.rabbit-human-approval-bypass` itself is UNAFFECTED: the auto-evolve loop
+  mutates it via `set-evolve-mode.py` / `contract.lib.mutation` directly, not
+  via this `configuration[]` entry, so loop activation is undisturbed (and the
+  marker stays in `.gitignore` per Inv 9). The five genuinely-owned
+  configurables (`scope-guard`, `bypass-permissions`, `allowed-tools`,
+  `bash-allow`, `prompt-threshold`) and `/rabbit-cage-config` are untouched.
+  Removed the #336 test `test-tdd-autonomous-configurable.py`; added
+  `test-tdd-autonomous-relocated-out.py` pinning the removal + the five owned
+  configurables staying. Doc references to `/rabbit-config tdd-autonomous` are
+  migrated to the new owning-feature command in #768.
+
 - **v5.56.0 (per-feature config command + alerts via shared helper; phase 3 of #733):**
   rabbit-cage manifests its five genuinely-owned configurables (`scope-guard`,
   `bypass-permissions`, `allowed-tools`, `bash-allow`, `prompt-threshold`) as a
