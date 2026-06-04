@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.33.0
+version: 1.34.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -20,7 +20,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "commands": [
       {
         "path": ".claude/commands/rabbit-tdd-autonomous.md",
-        "purpose": "Per-feature config command /rabbit-tdd-autonomous true|false. Toggles TDD-autonomous mode — the human-approval gate over the feature-touch TDD cycle Step 4. true writes the .rabbit-tdd-autonomous bypass marker (gate skipped); false (default) deletes it (gate active). Thin wrapper over contract.lib.config_dispatch via scripts/rabbit-tdd-autonomous-config.py. Deployed from commands/rabbit-tdd-autonomous.md via the feature.json manifest publish_command call. Coexists with the central /rabbit-config tdd-autonomous surface."
+        "purpose": "Per-feature config command /rabbit-tdd-autonomous true|false. Toggles TDD-autonomous mode — the approval gate over the feature-touch TDD cycle Step 4. true writes the .rabbit-tdd-autonomous bypass marker (gate skipped); false (default) deletes it (gate active). Thin wrapper over contract.lib.config_dispatch via scripts/rabbit-tdd-autonomous-config.py. Deployed from commands/rabbit-tdd-autonomous.md via the feature.json manifest publish_command call. Coexists with the central /rabbit-config tdd-autonomous surface."
       }
     ],
     "scripts": [

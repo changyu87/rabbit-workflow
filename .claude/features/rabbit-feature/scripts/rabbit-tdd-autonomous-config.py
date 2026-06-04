@@ -3,7 +3,7 @@
 
 THIN wrapper over contract.lib.config_dispatch.dispatch_config for rabbit-feature's
 ONE owned configurable: tdd-autonomous, which gates the TDD feature-touch Step-4
-human-approval cycle (consumers: tdd-subagent/dispatch-tdd-subagent.py + the
+approval cycle (consumers: tdd-subagent/dispatch-tdd-subagent.py + the
 rabbit-feature-touch SKILL). Phase 3 of #733 relocates this configurable to its
 owning feature (out of rabbit-cage); the per-feature config command delegates
 validation + mutation + restart-prompt rendering to the shared helper so the

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.33.0
+version: 1.34.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -104,29 +104,34 @@ their source path and not deployed):
    explains that subagents run to completion and cannot pause for user
    input, locking the gate to the dispatcher.
 
-8. **Step 4 bypass mechanism.** The bypass authorization is the file
-   marker `.rabbit-human-approval-bypass` at the repo root. The SKILL.md
-   names this marker as the sole bypass mechanism and names
-   `/rabbit-config human-approval true|false` as the management
-   command (`false` writes the marker, `true` removes it).
+8. **Step 4 bypass mechanism.** The bypass authorization is the canonical
+   file marker `.rabbit-tdd-autonomous` at the repo root. The SKILL.md
+   names this canonical marker as the sole bypass mechanism and names
+   `/rabbit-tdd-autonomous true|false` as the management command.
+   Polarity: `true` writes the marker — autonomous/bypass ACTIVE;
+   `false` (the default) removes it — the Step-4 gate is ACTIVE. The
+   Step-4 consumer also dual-reads the marker `.rabbit-human-approval-bypass`
+   for coexistence, but the SKILL.md documents the canonical marker.
 
 9. **Step 4 bypass-check ordering.** The SKILL.md Step 4 documents the
-   `.rabbit-human-approval-bypass` check as the FIRST action of the
-   step, before any impl-suggestion surfacing or in-conversation wait.
+   `.rabbit-tdd-autonomous` check as the FIRST action of the step,
+   before any impl-suggestion surfacing or in-conversation wait.
 
 12. **Step 4 alert routing via `emit_configurable_alert`.** The SKILL.md
     Step 4 bypass-active path MUST instruct the dispatcher to source the
     alert by invoking
-    `contract.lib.runtime.emit_configurable_alert('rabbit-cage',
-    'human-approval', repo_root=<repo-root>)`. The returned
-    `print_result` carries the centrally-declared `alert-message` from
-    `rabbit-cage/feature.json`'s `human-approval` configurable (text,
-    icon, color); the brand prefix `[🐇 rabbit 🐇]` is owned by
+    `contract.lib.runtime.emit_configurable_alert('rabbit-feature',
+    'tdd-autonomous', repo_root=<repo-root>)`. The returned
+    `print_result` carries the declared `alert-message` from
+    `rabbit-feature/feature.json`'s OWN `tdd-autonomous` configurable
+    (text, icon, color); sourcing the alert from this feature's own
+    configurable keeps the read in-scope (no cross-feature read). The
+    brand prefix `[🐇 rabbit 🐇]` is owned by
     `rabbit_print` (Inv 48 of `contract`), so the SKILL.md MUST NOT
     inline a hardcoded brand prefix or duplicate the alert-message text
-    in prose. The SKILL.md Step 4 prose MUST still name the marker path
-    (`.rabbit-human-approval-bypass`) and the revoke command
-    (`/rabbit-config human-approval true`) as operational guidance for
+    in prose. The SKILL.md Step 4 prose MUST still name the canonical
+    marker path (`.rabbit-tdd-autonomous`) and the management command
+    (`/rabbit-tdd-autonomous true|false`) as operational guidance for
     the user — both are operational (skill-specific) instructions
     distinct from the alert-message text. The sole source of truth for
     the alert text is the configurable's `alert-message` field.
@@ -492,7 +497,7 @@ their source path and not deployed):
 
 57. **tdd-autonomous configurable owned here.** `rabbit-feature`'s
     `feature.json` `configuration[]` declares exactly one entry with
-    `id`/`subcommand` `tdd-autonomous` — the human-approval gate over the
+    `id`/`subcommand` `tdd-autonomous` — the approval gate over the
     TDD feature-touch Step-4 cycle. It declares `command:
     "rabbit-tdd-autonomous"` and `restart_required: true`. Its storage is a
     `marker-file` at the canonical bypass marker `.rabbit-tdd-autonomous`.

@@ -3,9 +3,11 @@
 
 Locks the rabbit-feature-touch SKILL.md (and the deployed copy) against
 drift on the seven-step sequence, scope-resolution invocation, spec
-authoring invocation, Step 3 spec-commit obligation, Step 4 human-approval
-semantics (dispatcher-side gate, bypass marker mechanism, alert routing
-via emit_configurable_alert), and Red Flags content. Inv 10 and Inv 11
+authoring invocation, Step 3 spec-commit obligation, Step 4 TDD-autonomous
+approval semantics (dispatcher-side gate, canonical bypass marker
+mechanism, alert routing via emit_configurable_alert against the
+rabbit-feature tdd-autonomous configurable), and Red Flags content. Inv 10
+and Inv 11
 retired in the TDD-SUBAGENT-BACKLOG-19 cascade (the --human-approval-gate
 CLI flag was removed in tdd-subagent v5.0.0); Inv 13 and Inv 42 retired in
 the Phase 7c cleanup (B/B mode removed from the SKILL.md after rabbit-file
@@ -15,7 +17,7 @@ SKILL.md. Inv 52 (issue #418) locks the Step 5 dispatch agent type to
 'rabbit-tdd-subagent' (and guards against the old bare 'tdd-subagent' agent
 type).
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -45,9 +47,13 @@ EXPECTED_STEPS = [
 STEP_HEADING_RE = re.compile(
     r"^###\s+Step\s+(\d+)\s+[-—]\s+(.+?)\s*$", re.MULTILINE
 )
-MARKER_PATH = ".rabbit-human-approval-bypass"
-REVOKE_CMD = "/rabbit-config human-approval true"
-ALERT_TEXT = "HUMAN APPROVAL BYPASS ACTIVE"
+MARKER_PATH = ".rabbit-tdd-autonomous"
+# Step 4 manages the bypass via the per-feature command (phase 4 of #733).
+# 'true' activates autonomous/bypass; 'false' (default) keeps the gate active.
+MGMT_CMD = "/rabbit-tdd-autonomous"
+ALERT_TEXT = "TDD-AUTONOMOUS MODE ACTIVE"
+# No stale central /rabbit-config human-approval surface may remain in Step 4.
+STALE_CONFIG_CMD = "/rabbit-config human-approval"
 
 
 def _text() -> str:
@@ -126,11 +132,33 @@ def test_inv7_step_4_lives_in_main_session() -> None:
     )
 
 
-# Inv 8: Step 4 bypass mechanism named
+# Inv 8: Step 4 bypass mechanism named (migrated to the per-feature command +
+# canonical marker, phase 4 of #733).
 def test_inv8_step_4_names_marker_and_command() -> None:
     body = _step_body(_text(), 4)
     assert MARKER_PATH in body, f"Step 4 must name the marker path {MARKER_PATH!r}"
-    assert REVOKE_CMD in body, f"Step 4 must name the revoke command {REVOKE_CMD!r}"
+    assert MGMT_CMD in body, f"Step 4 must name the management command {MGMT_CMD!r}"
+
+
+# Inv 8 (migration guard): Step 4 must NOT carry the retired central
+# /rabbit-config human-approval surface or the bare 'human-approval' name —
+# both were migrated to /rabbit-tdd-autonomous (phase 4 of #733).
+def test_inv8_step_4_no_stale_config_refs() -> None:
+    body = _step_body(_text(), 4)
+    assert STALE_CONFIG_CMD not in body, (
+        f"Step 4 must NOT reference the retired central command "
+        f"{STALE_CONFIG_CMD!r}; use {MGMT_CMD!r} (phase 4 of #733)"
+    )
+    # The legacy marker name '.rabbit-human-approval-bypass' is intentionally
+    # retained as a coexistence/dual-read note (#770); mask it out before
+    # asserting the bare 'human-approval' configurable name is gone.
+    masked = body.replace(".rabbit-human-approval-bypass", "")
+    assert "human-approval" not in masked, (
+        "Step 4 must NOT reference the old 'human-approval' configurable name "
+        "(the legacy '.rabbit-human-approval-bypass' marker note is exempt); "
+        "it was renamed to 'tdd-autonomous' (#336) and relocated to "
+        "rabbit-feature (phase 4 of #733)"
+    )
 
 
 # Inv 9: bypass-check is the FIRST action of Step 4
@@ -229,26 +257,28 @@ def test_inv52_deployed_no_bare_old_agent_type() -> None:
 
 
 # Inv 12: Step 4 bypass-active path routes the alert through
-# contract.lib.runtime.emit_configurable_alert(rabbit-cage, human-approval).
-# The SKILL.md must reference the helper and the configurable coordinates;
-# it must NOT inline the alert-message text (single source of truth is the
-# rabbit-cage human-approval configurable's alert-message field).
+# contract.lib.runtime.emit_configurable_alert(rabbit-feature, tdd-autonomous).
+# After the #733 chain the configurable was relocated to its owning feature,
+# so the alert is sourced from rabbit-feature's OWN tdd-autonomous configurable
+# (no cross-scope read of rabbit-cage). The SKILL.md must reference the helper
+# and the configurable coordinates; it must NOT inline the alert-message text
+# (single source of truth is the tdd-autonomous configurable's alert-message).
 def _assert_inv12(text: str, label: str) -> None:
     body = _step_body(text, 4)
     assert "emit_configurable_alert" in body, (
         f"Step 4 ({label}) must invoke emit_configurable_alert"
     )
-    assert "rabbit-cage" in body, (
-        f"Step 4 ({label}) must reference the 'rabbit-cage' feature when "
-        "invoking emit_configurable_alert"
+    assert "rabbit-feature" in body, (
+        f"Step 4 ({label}) must reference the 'rabbit-feature' feature when "
+        "invoking emit_configurable_alert (the configurable's owning feature)"
     )
-    assert "human-approval" in body, (
-        f"Step 4 ({label}) must reference the 'human-approval' configurable "
+    assert "tdd-autonomous" in body, (
+        f"Step 4 ({label}) must reference the 'tdd-autonomous' configurable "
         "when invoking emit_configurable_alert"
     )
     assert ALERT_TEXT not in body, (
         f"Step 4 ({label}) must NOT inline the alert-message text {ALERT_TEXT!r}; "
-        "the centrally-declared alert text lives in rabbit-cage/feature.json"
+        "the declared alert text lives in rabbit-feature/feature.json"
     )
 
 
