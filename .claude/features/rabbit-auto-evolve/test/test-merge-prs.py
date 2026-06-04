@@ -669,4 +669,81 @@ with tempfile.TemporaryDirectory() as td:
         ok("no-record: no state write without --record-pending")
 
 
+# ===========================================================================
+# Issue #564 — `--record-pending` also writes `last_merged_sha` to the
+# on-disk state. No phase script previously persisted this field, so it
+# lagged perpetually; phase-10's deterministic re-read (update-state.py)
+# then captures it. The merge commit SHA is the one the gh shim returns via
+# `gh pr view <#> --json mergeCommit -q .mergeCommit.oid`.
+# ===========================================================================
+
+# --- (E) last_merged_sha is set to the merge commit SHA after a merge ------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        merge_sha="cafe123",
+    )
+    state_dir = os.path.join(td, "state")
+    os.makedirs(state_dir)
+    _seed_state(state_dir, pending=[])
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    proc = _run(cwd, env, "42", "--record-pending")
+    if proc.returncode != 0:
+        fail(f"last-merged-sha: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    with open(_state_path(state_dir)) as f:
+        state = json.load(f)
+    if state.get("last_merged_sha") != "cafe123":
+        fail(f"last-merged-sha: last_merged_sha "
+             f"{state.get('last_merged_sha')!r} != 'cafe123' (issue #564)")
+    else:
+        ok("last-merged-sha: state.last_merged_sha == merge commit SHA")
+
+
+# --- (F) last_merged_sha lands for a multi-PR run --------------------------
+# The gh shim returns one fixed merge_sha for every PR; a multi-PR run still
+# ends with that real SHA in last_merged_sha (not the seeded null).
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        merge_sha="beef456",
+    )
+    state_dir = os.path.join(td, "state")
+    os.makedirs(state_dir)
+    _seed_state(state_dir, pending=[])
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    _run(cwd, env, "1,2,3", "--record-pending")
+    with open(_state_path(state_dir)) as f:
+        state = json.load(f)
+    if state.get("last_merged_sha") != "beef456":
+        fail(f"last-merged-sha-multi: last_merged_sha "
+             f"{state.get('last_merged_sha')!r} != 'beef456' (issue #564)")
+    else:
+        ok("last-merged-sha-multi: state.last_merged_sha set after multi-PR run")
+
+
+# --- (G) no merged PR → last_merged_sha is left untouched ------------------
+# base != dev → the only PR is skipped; the seeded last_merged_sha must NOT
+# be overwritten (no merge happened, so there is no merge SHA to record).
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main")
+    state_dir = os.path.join(td, "state")
+    os.makedirs(state_dir)
+    _seed_state(state_dir, pending=[])
+    with open(_state_path(state_dir)) as f:
+        s = json.load(f)
+    s["last_merged_sha"] = "prior999"
+    with open(_state_path(state_dir), "w") as f:
+        json.dump(s, f)
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    _run(cwd, env, "42", "--record-pending")
+    with open(_state_path(state_dir)) as f:
+        state = json.load(f)
+    if state.get("last_merged_sha") != "prior999":
+        fail(f"last-merged-sha-skip: a skipped PR overwrote last_merged_sha "
+             f"to {state.get('last_merged_sha')!r} (should stay 'prior999')")
+    else:
+        ok("last-merged-sha-skip: no merge → last_merged_sha preserved")
+
+
 sys.exit(FAIL)

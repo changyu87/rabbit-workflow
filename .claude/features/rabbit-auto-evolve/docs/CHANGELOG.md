@@ -13,6 +13,22 @@ own version.
 
 ## Version notes
 
+- **v0.39.0 — 2026-06-03** — `last_merged_sha` / `last_tagged_version` are
+  now persisted at the source (Inv 50, #564). After #513 converged phase 10
+  on the deterministic re-read-and-validate persist (Inv 40), no phase
+  script wrote these two informational state fields: `merge-prs.py` wrote
+  only `pending_post_merge` and `release-bump.py` emitted to stdout only, so
+  both fields lagged perpetually (live evidence: state stuck at
+  `last_merged_sha: da1bb2e` / `last_tagged_version: v1.9.1` after recent
+  merges/releases). `merge-prs.py --record-pending` now writes the merge
+  commit SHA into `last_merged_sha` in the same atomic read-modify-write
+  that updates `pending_post_merge`; `release-bump.py` writes the cut tag
+  into `last_tagged_version` on the `released` status via the identical
+  pattern. Phase 10's re-read (`update-state.py`) then captures both off
+  disk — never dispatcher hand-set (the #513 anti-pattern Inv 40 forbids).
+  A non-success (skipped/failed merge or release) leaves the field
+  untouched. These fields are informational (surfaced by
+  `status-report.py`), not control-critical.
 - **v0.38.1 — 2026-06-03** — Refire one-shots no longer accumulate (Inv 49,
   #559). Every tick's phase 11 scheduled an immediate-refire one-shot (Inv 33)
   but nothing cancelled a prior pending refire, so overlapping/retried ticks

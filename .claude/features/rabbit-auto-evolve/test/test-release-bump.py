@@ -710,4 +710,119 @@ with tempfile.TemporaryDirectory() as td:
             ok("no-ref: no closing issue, no PR label → patch")
 
 
+# ===========================================================================
+# Issue #564 — when release-bump.py cuts a release, it writes the new tag
+# into `last_tagged_version` in the on-disk state. No phase script previously
+# persisted this field, so it lagged perpetually; phase-10's deterministic
+# re-read (update-state.py) then captures it. The write mirrors the
+# read-modify-write pattern merge-prs.py uses for pending_post_merge.
+# ===========================================================================
+
+def _state_path(state_dir):
+    return os.path.join(state_dir, "auto-evolve-state.json")
+
+
+def _seed_state(state_dir, last_tagged_version=None):
+    state = {
+        "schema_version": "1.2.0",
+        "updated_at": "2026-06-03T00:00:00Z",
+        "queue": [],
+        "in_flight": [],
+        "last_merged_sha": None,
+        "last_tagged_version": last_tagged_version,
+        "consecutive_failures": 0,
+        "stop_requested": False,
+        "restart_needed": None,
+    }
+    with open(_state_path(state_dir), "w") as f:
+        json.dump(state, f)
+
+
+# --- (A) released → last_tagged_version equals next_tag --------------------
+with tempfile.TemporaryDirectory() as td:
+    payload = _make_payload(
+        labels=["priority:medium"],
+        body="",
+        files=[".claude/features/foo/scripts/a.py"],
+    )
+    cwd, env, call_log = _make_env(td, payload, prior_tag="v0.5.2")
+    state_dir = os.path.join(td, "state")
+    os.makedirs(state_dir)
+    _seed_state(state_dir)
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"last-tagged: exit {proc.returncode}; stderr={proc.stderr!r}")
+    try:
+        result = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"last-tagged: stdout not JSON: {e}")
+        result = None
+    if result is not None and result.get("status") != "released":
+        fail(f"last-tagged: status {result.get('status')!r} != 'released'")
+    with open(_state_path(state_dir)) as f:
+        state = json.load(f)
+    if state.get("last_tagged_version") != "v0.5.3":
+        fail(f"last-tagged: last_tagged_version "
+             f"{state.get('last_tagged_version')!r} != 'v0.5.3' (issue #564)")
+    else:
+        ok("last-tagged: state.last_tagged_version == cut tag")
+
+
+# --- (B) safety-check fail (skipped) → last_tagged_version untouched -------
+with tempfile.TemporaryDirectory() as td:
+    payload = _make_payload(
+        labels=["priority:medium"],
+        body="",
+        files=[".claude/features/foo/scripts/a.py"],
+    )
+    cwd, env, call_log = _make_env(
+        td, payload, prior_tag="v0.5.2", safety_exit=2,
+    )
+    state_dir = os.path.join(td, "state")
+    os.makedirs(state_dir)
+    _seed_state(state_dir, last_tagged_version="v0.5.2")
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    proc = _run(cwd, env, "42")
+    with open(_state_path(state_dir)) as f:
+        state = json.load(f)
+    if state.get("last_tagged_version") != "v0.5.2":
+        fail(f"last-tagged-skip: a skipped release overwrote "
+             f"last_tagged_version to {state.get('last_tagged_version')!r} "
+             f"(should stay 'v0.5.2')")
+    else:
+        ok("last-tagged-skip: skipped release → last_tagged_version preserved")
+
+
+# --- (C) git tag fail (failed) → last_tagged_version untouched -------------
+with tempfile.TemporaryDirectory() as td:
+    payload = _make_payload(
+        labels=["priority:medium"],
+        body="",
+        files=[".claude/features/foo/scripts/a.py"],
+    )
+    cwd, env, call_log = _make_env(
+        td, payload, prior_tag="v0.5.2", tag_exit=1,
+    )
+    state_dir = os.path.join(td, "state")
+    os.makedirs(state_dir)
+    _seed_state(state_dir, last_tagged_version="v0.5.2")
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    proc = _run(cwd, env, "42")
+    try:
+        result = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        result = None
+    if result is not None and result.get("status") != "failed":
+        fail(f"last-tagged-fail: status {result.get('status')!r} != 'failed'")
+    with open(_state_path(state_dir)) as f:
+        state = json.load(f)
+    if state.get("last_tagged_version") != "v0.5.2":
+        fail(f"last-tagged-fail: a failed release overwrote "
+             f"last_tagged_version to {state.get('last_tagged_version')!r} "
+             f"(should stay 'v0.5.2')")
+    else:
+        ok("last-tagged-fail: failed release → last_tagged_version preserved")
+
+
 sys.exit(FAIL)

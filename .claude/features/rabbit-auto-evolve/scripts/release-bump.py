@@ -53,11 +53,21 @@ Emits a single JSON object on stdout (prior_tag is null on first release):
 
 Exit 0 always except argparse / unexpected error.
 
+On a `released` status this script also writes the cut `next_tag` into
+`last_tagged_version` in `<state_dir>/auto-evolve-state.json` (issue #564):
+read-modify-write, atomic via temp+rename, mirroring the pattern merge-prs.py
+uses for `pending_post_merge` / `last_merged_sha`. No phase script previously
+persisted this informational field (surfaced by status-report.py), so it
+lagged perpetually; phase 10's deterministic re-read (update-state.py,
+Inv 40) now captures it off disk — it is never dispatcher hand-set. A
+skipped/failed run leaves the field untouched. The state dir resolves via
+RABBIT_AUTO_EVOLVE_STATE_DIR when set, else `<cwd>/.rabbit`.
+
 The sibling `safety-check.py` is resolved via RABBIT_AUTO_EVOLVE_SCRIPT_DIR
 when set; otherwise via this script's own dirname (mirrors merge-prs.py and
 cleanup-branches.py).
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -86,6 +96,48 @@ _PRIORITY_LABELS = ("priority:critical", "priority:high",
 def _script_dir():
     return os.environ.get("RABBIT_AUTO_EVOLVE_SCRIPT_DIR",
                           os.path.dirname(os.path.abspath(__file__)))
+
+
+def _state_dir():
+    override = os.environ.get("RABBIT_AUTO_EVOLVE_STATE_DIR")
+    if override:
+        return override
+    return os.path.join(os.getcwd(), ".rabbit")
+
+
+def _record_last_tagged_version(next_tag):
+    """Write `next_tag` into `last_tagged_version` in the on-disk state file
+    (issue #564). Read-modify-write, atomic via temp+rename, mirroring the
+    pattern merge-prs.py uses for `pending_post_merge` / `last_merged_sha`.
+
+    Called ONLY on a `released` status — a skipped/failed run leaves the
+    field untouched. Best-effort: a missing/malformed state file or write
+    error emits a stderr warning and never fails the release (the result
+    JSON on stdout is the authoritative outcome). Phase 10's deterministic
+    re-read (update-state.py, Inv 40) later captures it off disk — it is
+    never dispatcher hand-set."""
+    state_path = os.path.join(_state_dir(), "auto-evolve-state.json")
+    try:
+        with open(state_path) as f:
+            state = json.load(f)
+    except (OSError, ValueError) as e:
+        sys.stderr.write(
+            f"release-bump: cannot read state file {state_path}: {e}\n"
+        )
+        return
+    state["last_tagged_version"] = next_tag
+    tmp_path = state_path + ".tmp"
+    try:
+        with open(tmp_path, "w") as f:
+            json.dump(state, f, indent=2)
+            f.write("\n")
+        os.replace(tmp_path, state_path)
+    except OSError as e:
+        sys.stderr.write(f"release-bump: state write failed: {e}\n")
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
 
 def _fetch_pr(pr):
@@ -301,6 +353,9 @@ def run(pr, features_threshold):
 
     result["status"] = "released"
     result["reason"] = ""
+    # Persist the cut tag to on-disk state (issue #564). Phase 10's
+    # deterministic re-read (update-state.py, Inv 40) captures it next tick.
+    _record_last_tagged_version(next_tag)
     return result
 
 
