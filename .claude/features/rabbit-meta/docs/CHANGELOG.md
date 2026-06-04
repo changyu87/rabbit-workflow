@@ -12,6 +12,17 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v0.7.3 (opt into contiguous_invariants strict tier, #741, #724
+  follow-up):** Declared `"contiguous_invariants": true` at the top level of
+  `feature.json`, opting rabbit-meta into the strict contiguous-numbering tier
+  of contract Inv 30. The spec's three invariants were already contiguous
+  (1..3) — verified via `scripts/reflow-invariants.py` reporting a no-op — so
+  no reflow was needed; this is a pure opt-in. Added the "## Invariants"
+  preamble documenting the opt-in and the reflow recourse, plus
+  `test/test-contiguous-invariants-optin.py` (t1: flag is true; t2: numbering
+  passes the canonical strict-tier checker). Contract version 0.2.2 → 0.2.3
+  (own track).
+
 - **v0.7.2 (housekeeping — verify-or-fix stale spec-seeder ownership claim,
   #706, under #639):** Resolved the FLAGGED unverifiable exclusion from v0.7.1.
   Deterministic verification: (1) `find .claude/features/spec-seeder` → EMPTY
