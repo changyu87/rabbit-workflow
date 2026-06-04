@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.3.0
+version: 3.4.0
 owner: rabbit-feature
 deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
@@ -200,14 +200,14 @@ sections for the binding wording.
   HANDOFF. The only main-session writes permitted are: the confirm-token
   override flow (see Override Path), and rabbit-spec-update's writes to the
   resolved feature `spec.md` (flat `docs/spec.md` preferred, then
-  `specs/spec.md`, then `docs/spec/spec.md` per issue #399) under the
+  `specs/spec.md`, then `docs/spec/spec.md`) under the
   scope-guard path-pattern allowlist invoked during Step 3.
 - Main session creates `.rabbit-scope-active` (global) or
   `.rabbit-scope-active-<feature>` (per-feature) scope markers at the repo
   root → STOP. Scope markers are exclusively the TDD subagent's responsibility,
   written as the first action at LOCK (Step 3 of the subagent's named steps).
   Main-session-authored markers bypass scope-guard's intended boundary and
-  have caused constitution violations (PR #93).
+  can cause constitution violations.
 
 ## Override Path
 

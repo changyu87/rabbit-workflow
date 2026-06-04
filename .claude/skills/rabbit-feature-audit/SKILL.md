@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-audit
 description: Validate one rabbit feature or sweep every feature for contract conformance. Use when the user asks to audit, validate, lint, or check rabbit features — phrases like "audit all features", "validate rabbit-foo", "check feature conformance", "/rabbit-feature-audit", "are all features OK", "run the feature checker". Invoke as Skill("rabbit-feature-audit", args: "all") to sweep every feature, or Skill("rabbit-feature-audit", args: "<feature-name>") to audit a single feature.
-version: 1.1.0
+version: 1.2.0
 owner: rabbit-workflow team
 deprecation_criterion: When contract.lib.checks.validate_feature is exposed via a first-class CLI in the contract feature.
 ---
@@ -52,17 +52,18 @@ python3 .claude/features/rabbit-feature/scripts/audit-owner.py <feature-dir>
 ```
 
 This enforces that every repo-level feature's `feature.json` `owner` is
-exactly `rabbit-workflow team` (issue #416 Part C). Repo-level features
+exactly `rabbit-workflow team`. Repo-level features
 distributed as part of rabbit-workflow MUST be team-owned, never owned by an
 individual; an individual owner FAILS the audit with a message naming the
 offending feature and its current owner. The script exits 0 on pass (or for
-retired features), 1 on owner mismatch, and 2 on bad invocation. Fold its
+a feature exempted by contract Inv 36's status short-circuit), 1 on owner
+mismatch, and 2 on bad invocation. Fold its
 exit code and message into the per-feature finding: a target PASSES only when
 BOTH `validate-feature.py` and `audit-owner.py` pass.
 
 Notes on semantics owned by `validate_feature`:
-- Retired features (`feature.json` `status: retired`) short-circuit to
-  `passed=True` with a "RETIRED" note. Do not skip them yourself; let
+- A feature exempted by contract Inv 36's status short-circuit returns
+  `passed=True` with a status note. Do not skip such features yourself; let
   `validate_feature` handle the short-circuit so the rule lives in one place.
 
 ### Step 3 — Report the results
@@ -87,7 +88,7 @@ caller can detect breakage.
   belongs to the owning feature's TDD cycle.
 - Do not invoke other skills. This skill is a small wrapper; the caller
   decides what to do with the findings.
-- Do not skip features based on your own heuristics. The retired
+- Do not skip features based on your own heuristics. The status
   short-circuit and any future exemptions live inside `validate_feature`
   so the rules stay centralized.
 
@@ -96,6 +97,5 @@ caller can detect breakage.
 - The checks come from `contract.lib.checks.validate_feature` (called via
   the `validate-feature.py` CLI shim); if you want to change what "valid"
   means, change the library, not this skill.
-- This skill replaces the older `rabbit-cage/scripts/validate-all.py` sweep
-  for cross-feature audit. Reach for this skill instead of the retired
-  script.
+- This skill is the cross-feature audit sweep. Reach for it whenever you
+  need to validate one feature or every feature.
