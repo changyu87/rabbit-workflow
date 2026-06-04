@@ -1,0 +1,194 @@
+---
+name: rabbit-housekeep
+description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole repo — in complexity-sized waves. Each wave proves-it-dead-or-flags every claim, measures before/after line counts, mandates ACTUAL removal (not rewording), and preserves named load-bearing tokens. Cross-feature or repo-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or the repo, remove dead prose, scrub historical burden, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "run a reduction wave", "clean up dead prose", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
+version: 0.1.0
+owner: rabbit-workflow team
+deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
+---
+
+# rabbit-housekeep — Measured Verify-or-Flag Housekeeping in Waves
+
+Your job: turn a housekeeping intent — "slim this feature", "scrub dead prose
+repo-wide", "reduce the specs" — into a MEASURED reduction with zero behavior
+loss. Housekeeping that rewords without removing is a failure. Housekeeping
+that deletes a load-bearing token is a regression. This skill enforces both
+guards: it measures the reduction with a deterministic script, and it asserts
+named load-bearing tokens survive.
+
+## The governing policy (embedded verbatim)
+
+Every claim in scope is resolved by the prove-it-dead-or-flag protocol from
+`coding-rules.md` §6. It is embedded here VERBATIM (per the SKILL.md authoring
+standard's Verbatim Policy Embedding rule); the canonical source is
+`@.claude/features/policy/coding-rules.md`. Do not paraphrase it — apply it.
+
+<!-- BEGIN VERBATIM coding-rules.md §6 -->
+## 6. Cleanup: Prove It Dead or Flag It
+
+**A cleanup pass removes dead-but-plausible content, not just syntactically
+tagged historical burden — and never silently keeps the uncertain.**
+
+A cleanup pass is done only when every claim in scope has been resolved by a
+deterministic VERIFICATION check, not by judgment. For each claim, run the
+matching check:
+
+- **path reference** → `find` it across the repo; zero matches = dead.
+- **function / flag / script / symbol** → `grep` for callers/usages; none =
+  dead.
+- **described behavior** → a reachable code path and/or a test exercising it;
+  neither = dead.
+- **cross-feature claim** → inspect the other feature directly.
+
+Apply the action table to each result:
+
+| Verification result            | Action                                      |
+| ------------------------------ | ------------------------------------------- |
+| **Proven dead** (check empty)  | DELETE with confidence.                     |
+| **Proven live** (check finds it)| KEEP.                                       |
+| **Unverifiable** (no cheap check)| FLAG: file a `housekeeping`-tagged sub-issue naming the file, the sentence, and why it could not be verified. |
+
+**Annotate-and-continue.** An unverifiable sentence is flagged as a separate
+sub-issue and the pass CONTINUES. One uncertain sentence never stalls a
+feature's cleanup.
+<!-- END VERBATIM coding-rules.md §6 -->
+
+## Inputs
+
+Args format: `<target>`
+
+The target is one of:
+- a single feature name (`rabbit-issue`) — a one-wave tidy;
+- a set of feature names (`rabbit-issue rabbit-spec`) — one wave per feature;
+- a repo-wide directive (`--repo` or `all`) — many waves, decomposed.
+
+When the target is unclear, ask the user one focused question. Do not guess
+the scope.
+
+## Protocol
+
+### Step 1 — Size the work into waves
+
+Assess the target's complexity and choose a wave plan:
+
+- **Single-feature tidy** → ONE wave. Run Steps 3-6 inline against that
+  feature.
+- **Multi-feature or repo-wide** → MANY waves. Go to Step 2 (decompose),
+  then each per-feature unit is its own wave executed through the governed
+  TDD path.
+
+A wave is the unit of measured reduction: one feature, measured before and
+after, with its own reduction verdict.
+
+### Step 2 — Decompose cross-feature / repo-wide scope
+
+Reuse the existing decomposition machinery — do NOT reinvent it. For a
+repo-wide mandate:
+
+1. Enumerate the in-scope features (the decomposition shape rabbit-decompose
+   uses: one bounded per-feature unit each).
+2. File one `housekeeping`-tagged per-feature sub-issue per feature via the
+   rabbit-issue filing script (contract INVOKE — do not edit rabbit-issue
+   files):
+   ```bash
+   python3 .claude/features/rabbit-issue/scripts/file-item.py \
+     --type enhancement --feature <name> --priority medium \
+     --title "housekeep <name>: measured reduction wave" \
+     --description "<scope>" --filed-by rabbit
+   ```
+3. Record the parent→children linkage so the decomposed parent closes
+   itself deterministically when every child closes (the parent-close
+   machinery owned by rabbit-auto-evolve):
+   ```bash
+   python3 .claude/features/rabbit-auto-evolve/scripts/record-decomposition.py \
+     <parent#> <child#> [<child#> ...]
+   ```
+   The parent stays OPEN while children are worked; the per-tick drain runs
+   `close-decomposed-parents.py`, which closes the parent once all children
+   close. The parent-close is the machine's job, not a manual step.
+
+### Step 3 — Measure BEFORE
+
+Snapshot the per-artifact line counts of the target with the measurement
+script (measurement is script-tier — deterministic, not judgment):
+
+```bash
+python3 .claude/features/rabbit-housekeep/scripts/measure-reduction.py \
+  count .claude/features/<name> > /tmp/housekeep-<name>-before.json
+```
+
+### Step 4 — Verify-or-flag every claim, then REMOVE
+
+Walk the target's doc surfaces (`docs/spec.md`, `docs/contract.md`, each
+`skills/*/SKILL.md`). For EACH claim, run the matching deterministic check
+from the embedded §6 protocol above:
+
+- proven dead → DELETE;
+- proven live → KEEP (preserve schemas, decision tables, exit codes, script
+  names, and cross-references verbatim);
+- unverifiable → FLAG a `housekeeping`-tagged sub-issue (Step 2 filing
+  shape) and CONTINUE — one uncertain sentence never stalls the wave.
+
+Slim under coding-rules §2 (Simplicity First) and §7 (Parenthetical Clarity):
+drop redundant sentences, restated rationale, and decorative parentheticals;
+fold load-bearing parentheticals into clauses. History belongs in
+`docs/CHANGELOG.md`, never in the doc surfaces.
+
+### Step 5 — Execute the per-feature unit through the governed TDD path
+
+Each per-feature reduction is a real edit and goes through the governed TDD
+cycle, not an ad-hoc edit. Invoke the feature-touch path so the change is
+test-driven:
+
+```
+Skill("rabbit-feature-touch", args: "<name> housekeep: measured reduction wave")
+```
+
+The housekeeping test pattern the TDD subagent authors MUST assert BOTH:
+- **measured reduction** — `measure-reduction.py diff before.json after.json`
+  reports `reduced: true` (total line delta is negative); and
+- **load-bearing survival** — the named load-bearing tokens (script names,
+  schema fields, key cross-references) are still present after the wave.
+
+A wave that rewords without removing FAILS the reduction assertion. A wave
+that deletes a load-bearing token FAILS the survival assertion.
+
+### Step 6 — Measure AFTER and report
+
+Snapshot again and diff:
+
+```bash
+python3 .claude/features/rabbit-housekeep/scripts/measure-reduction.py \
+  count .claude/features/<name> > /tmp/housekeep-<name>-after.json
+python3 .claude/features/rabbit-housekeep/scripts/measure-reduction.py \
+  diff /tmp/housekeep-<name>-before.json /tmp/housekeep-<name>-after.json
+```
+
+Report to the user: total lines removed (the `total_delta`), per-artifact
+breakdown, any `housekeeping`-tagged sub-issues filed for unverifiable items,
+and confirmation that load-bearing tokens survived (zero behavior loss).
+
+## Nesting constraint — do NOT invoke this skill inside an Agent() call
+
+rabbit-housekeep is a SUBAGENT-DISPATCHING skill: Step 5 dispatches the TDD
+subagent via the rabbit-feature-touch path, and Step 2 decomposes scope and
+files sub-issues. Per the SKILL.md authoring standard's "No Subagent-
+Dispatching Skill Inside Agent()" rule, rabbit-housekeep MUST NOT itself be
+invoked inside an `Agent(...)` call. Doing so creates illegal two-level
+subagent nesting (main → Agent level-1 → TDD subagent level-2), which Claude
+Code does not support — the level-2 dispatch is blocked. To parallelize
+per-feature housekeeping waves, do NOT wrap this skill in parallel `Agent()`
+calls; dispatch the underlying TDD subagent directly at level-1 (main → N
+parallel subagents), reusing this skill's measurement script and decomposition
+shape. The skill wrapper exists for a single, main-session invocation.
+
+## What you do NOT do
+
+- Reword to manufacture a diff. A reduction wave REMOVES; the
+  `measure-reduction.py diff` verdict (`reduced: true`) is the gate.
+- Delete a load-bearing token to inflate the line delta. Schemas, decision
+  tables, exit codes, script names, and cross-references are KEPT verbatim.
+- Silently keep an unverifiable claim. FLAG it as a `housekeeping`-tagged
+  sub-issue and continue.
+- Edit files outside the target feature's directory. Cross-feature scope is
+  DECOMPOSED into per-feature units, each scoped to its own feature.
+- Wrap this skill in an `Agent(...)` call (see the nesting constraint above).

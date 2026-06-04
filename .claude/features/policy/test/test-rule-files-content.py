@@ -78,6 +78,10 @@ check_phrase("spec-rules.md", "rabbit-feature-touch")
 # untyped dispatches, not only `Agent(subagent_type=...)` ones.
 check_phrase("spec-rules.md", "rabbit-feature-scope")
 check_phrase("spec-rules.md", "Agent(prompt=...)")
+# Issue #730: rabbit-housekeep is a subagent-dispatching skill — it decomposes
+# per-feature housekeeping work and dispatches subagents. The authoritative
+# named set MUST include it.
+check_phrase("spec-rules.md", "rabbit-housekeep")
 check_phrase("spec-rules.md", "any future subagent-dispatching skill inherits")
 # History-free: the rule text must not carry issue/PR refs.
 check_phrase_absent("spec-rules.md", "#647")

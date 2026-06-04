@@ -128,9 +128,10 @@ principle above; cite the source, do not restate it.
   persistence). The skill wrapper exists for a single, main-session
   invocation. The known subagent-dispatching skills are `rabbit-spec-create`
   (dispatches rabbit-spec-creator), `rabbit-feature-touch` (dispatches
-  tdd-subagent), and `rabbit-feature-scope` (dispatches an untyped
-  default-model Agent); this named set is authoritative, and
-  any future subagent-dispatching skill inherits this constraint and MUST
-  be added to it.
+  tdd-subagent), `rabbit-feature-scope` (dispatches an untyped
+  default-model Agent), and `rabbit-housekeep` (decomposes per-feature
+  housekeeping work and dispatches housekeeping subagents); this named set
+  is authoritative, and any future subagent-dispatching skill inherits this
+  constraint and MUST be added to it.
 
 ---
