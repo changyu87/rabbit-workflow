@@ -1,9 +1,9 @@
 ---
 name: rabbit-issue
-version: 1.6.0
+version: 1.7.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
-description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue REPLACES the retired rabbit-file feature; do NOT invoke rabbit-file or its scripts — they are gone. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours the `rabbit-managed` label as a safety guard so human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
+description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only bug-and-backlog surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours the `rabbit-managed` label as a safety guard so human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
 ---
 
 ## Overview
@@ -16,11 +16,11 @@ set `RABBIT_ISSUE_REPO=<owner>/<repo>` to override for forks or testing.
 `gh auth status` must be green or the scripts fail loudly with an
 actionable error.
 
-rabbit-issue REPLACES the retired `rabbit-file` feature. The legacy
-branch-backed bug-and-backlog (B/B) storage on `origin/bug-backlog-files`
-is gone. Do not invoke `rabbit-file`, its scripts, or any
-`item-status.py` / `file-item.py` under `.claude/features/rabbit-file/`.
-All lifecycle operations route through this skill.
+rabbit-issue is the sole bug-and-backlog surface. There is no
+branch-backed B/B storage on `origin/bug-backlog-files`. Do not invoke
+`rabbit-file`, its scripts, or any `item-status.py` / `file-item.py`
+under `.claude/features/rabbit-file/`. All lifecycle operations route
+through this skill.
 
 There are no slash commands. The invocation surface is direct script
 invocation:
@@ -47,14 +47,14 @@ first `file-item.py` call — there is no separate bootstrap step.
 | `bug` *(GH default)* | Type — exclusive with `enhancement` | exactly one of bug/enhancement |
 | `enhancement` *(GH default)* | Type — exclusive with `bug` | exactly one of bug/enhancement |
 | `rabbit-managed` | Distinguishes rabbit-filed issues from human-filed | required |
-| `feature:<name>` | Feature scope | required, one per issue |
-| `priority:<low\|medium\|high\|critical>` | Priority | required, one per issue |
-| `filed-by:<source>` | Provenance — who filed it (e.g. `loop`, `human`) | required, one per issue |
+| `feature:<name>` | Feature scope | required, one per item |
+| `priority:<low\|medium\|high\|critical>` | Priority | required, one per item |
+| `filed-by:<source>` | Provenance — who filed it (e.g. `loop`, `human`) | required, one per item |
 
 The `rabbit-managed` label is load-bearing for the safety invariant
 below. Do not strip it from issues filed via this skill.
 
-The `filed-by:<source>` provenance label (issue #496) records *who*
+The `filed-by:<source>` provenance label records *who*
 filed the issue, so loop-performance metrics (self-discovery rate,
 discovery→fix ratio) can be derived by querying `filed-by:loop`. It is
 set from `file-item.py --filed-by <source>`, which **defaults to
@@ -125,8 +125,8 @@ When the user asks to work, close, or reopen an issue:
    returned JSON), never the human view `gh issue view <N> --comments`.
    The `--comments` view hits a deprecated Projects-classic
    `projectCards` GraphQL field that FAILS and returns EMPTY on this
-   repo, so comments silently read as absent even when present (issue
-   #522); `--json comments` does not touch that field.
+   repo, so comments silently read as absent even when present;
+   `--json comments` does not touch that field.
 
 2. **Eval subagent** — dispatch a read-only default-model subagent with
    the fetched issue JSON and the affected feature's spec.md (resolved
@@ -163,13 +163,13 @@ When the user asks to work, close, or reopen an issue:
    boundary, yielding `state_reason = not_planned`. The safety guard
    below still applies.
 
-   `--reason-text` is **required** for `--reason not-planned` (issue
-   #423): it must be at least 50 characters and must not contain
-   reflexive-deferral boilerplate — the script rejects (case-insensitive)
-   any of `too risky`, `out of scope` / `out-of-scope`, `declined
-   autonomous dispatch`, `not now`, `later`, `don't want` / `do not
-   want`. Write a concrete reason that names *why* the issue is stale or
-   invalid (e.g. what superseded it), not a generic deferral.
+   `--reason-text` is **required** for `--reason not-planned`: it must be
+   at least 50 characters and must not contain reflexive-deferral
+   boilerplate — the script rejects (case-insensitive) any of `too
+   risky`, `out of scope` / `out-of-scope`, `declined autonomous
+   dispatch`, `not now`, `later`, `don't want` / `do not want`. Write a
+   concrete reason that names *why* the issue is stale or invalid (e.g.
+   what replaced it), not a generic deferral.
 
 5. **If the user confirms to proceed**:
    - Invoke `rabbit-feature-touch` via its **default full seven-step TDD
@@ -194,9 +194,9 @@ When the user asks to work, close, or reopen an issue:
          --commit-sha <sha> \
          --comment "TDD cycle complete in <commit-sha>"
        ```
-       `--commit-sha` is **required** for `--reason completed` (issue
-       #423) and must resolve to a real commit in the local git repo —
-       "completed" can only be asserted when work actually landed. Pass
+       `--commit-sha` is **required** for `--reason completed` and must
+       resolve to a real commit in the local git repo — "completed" can
+       only be asserted when work actually landed. Pass
        the SHA of the commit that carried the fix.
        Always verify state with `gh issue view <N>` before the
        fallback close so an already-closed issue is not re-closed.
@@ -245,9 +245,9 @@ GH issue state is binary; `state_reason` distinguishes the close path.
   - `completed` — closed after a TDD fix (default close reason for work
     that landed). Set automatically by `Fixes #N` auto-close, or
     manually via the `--reason completed --commit-sha <sha>` fallback
-    (the SHA must be a real local commit — issue #423).
+    (the SHA must be a real local commit).
   - `not_planned` — closed without work (stale or invalid); requires a
-    specific `--reason-text` (>= 50 chars, no boilerplate — issue #423).
+    specific `--reason-text` (>= 50 chars, no boilerplate).
   - `null` — pre-rabbit closures or external closes; not produced by
     this skill.
 - Reopen restores `state = open` with `state_reason = reopened`.
