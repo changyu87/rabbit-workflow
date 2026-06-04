@@ -82,10 +82,10 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/classify-merge-restart.py` | CLI | Reads merged PR file list; classifies into `no-op`, `refresh`, or `restart` based on which path patterns appear; emits a single string on stdout |
 | `scripts/update-state.py` | CLI | Reads JSON from stdin; validates against `schemas/auto-evolve-state.schema.json`; atomically writes `.rabbit/auto-evolve-state.json` via temp+rename |
 | `scripts/status-report.py` | CLI | Read-only `status` backing script: reads `.rabbit/auto-evolve-state.json` (defaults on missing/empty/malformed) and the five runtime markers; emits a fixed-format status JSON on stdout |
-| `scripts/run-post-merge.py` | CLI | Deterministic non-skippable runner for tick phases 7–9 (release → cleanup → catch-up): reads `pending_post_merge` from state, invokes `release-bump.py` / `cleanup-branches.py` / `classify-merge-restart.py` in order, then clears the field; clean no-op when empty (Inv 30) |
+| `scripts/run-post-merge.py` | CLI | Deterministic non-skippable runner for tick phases 8–10 (release → cleanup → catch-up): reads `pending_post_merge` from state, invokes `release-bump.py` / `cleanup-branches.py` / `classify-merge-restart.py` in order, then clears the field; clean no-op when empty (Inv 30) |
 | `scripts/install-cron.py` | CLI | Idempotently installs the `*/30` system-cron entry that fires `tick-headless.py` (the sole tick scheduler); invoked by `set-evolve-mode.py on` (Inv 32) |
 | `scripts/uninstall-cron.py` | CLI | Idempotently removes the system-cron entry; safe no-op when absent; invoked by `set-evolve-mode.py off` (Inv 32) |
-| `scripts/tick-headless.py` | CLI | The Claude-free headless tick fired by the system cron: walks phases 0–1, 2–4, 6, 7–9, 10; skips phase 5 (dispatch needs Claude); phase 11 is a no-op (Inv 32) |
+| `scripts/tick-headless.py` | CLI | The Claude-free headless tick fired by the system cron: walks phases 0–1, 3–5, 7, 8–10, 11; skips phase 6 (dispatch needs Claude); phase 12 is a no-op (Inv 32) |
 | `scripts/detect-scheduler.py` | CLI | Probes `crontab -l` (via `RABBIT_CRONTAB_CMD`) and emits `{"scheduler":"crontab"|"croncreate","reason":...}`: crontab where usable, CronCreate fallback where restricted (Inv 34 / D2) |
 | `scripts/running-guard.py` | CLI | Inspects `.rabbit-auto-evolve-running`, clears a STALE marker (mtime/PID), and emits a proceed/skip verdict so a wedged tick never blocks the loop (Inv 35 / D3) |
 | `scripts/tick-log.py` | CLI | Minimal append-only JSON-per-line logger to `.rabbit/tick.log` for heartbeat/guard/schedule decisions; full verbosity config is Inv 37's scope (Inv 36 / D4) |
@@ -943,7 +943,7 @@ Phase E merges complete.
 
    First release (zero prior tags): `prior_tag` is `null`, `next_tag` is
    `v1.0.0`. This is what lets the auto-evolve loop cut its very first
-   release after a successful Phase 6 merge instead of crashing on a
+   release after a successful Phase 7 merge instead of crashing on a
    tag-free `git describe`.
 
    Output JSON (single object on stdout):
@@ -1068,7 +1068,7 @@ Phase E merges complete.
    | `stop_requested` | bool | stop marker observed |
    | `restart_needed` | string \| null | reason string when set, else null (resolved Open Question 3 — NOT a pure boolean) |
    | `defer_counts` | object (optional) | per-issue consecutive-defer counter (Part B), keyed by issue-number string → non-negative int. Additive in schema 1.1.0; absent in pre-1.1.0 states |
-   | `pending_post_merge` | array of int (optional) | merged PR numbers owed post-merge processing (phases 7–9). Additive in schema 1.2.0; absent in pre-1.2.0 states. See Inv 30 |
+   | `pending_post_merge` | array of int (optional) | merged PR numbers owed post-merge processing (phases 8–10). Additive in schema 1.2.0; absent in pre-1.2.0 states. See Inv 30 |
 
    The schema file itself carries top-level `schema_version`, `owner`,
    and `deprecation_criterion` keys per spec-rules §3. Schema 1.1.0 added
@@ -1424,7 +1424,7 @@ Phase E merges complete.
     file already existing. This enforces the convergence guarantee in
     Inv 25.
 
-    The canonical tick pipe in SKILL.md phases 2–4:
+    The canonical tick pipe in SKILL.md phases 3–5:
 
     ```
     python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py \
@@ -1866,7 +1866,7 @@ Phase E merges complete.
     (asserts this invariant text is present in the spec).
 
 28. **Parallel TDD dispatches MUST use isolated git worktrees.**
-    Phase 5 (`dispatch`) dispatches each selected work item via the
+    Phase 6 (`dispatch`) dispatches each selected work item via the
     Agent tool (per Inv 26 the shape is `parallel-per-feature`,
     `multi-subagent-barrier`, or `decomposition`). **Every Agent call for a
     TDD-subagent dispatch MUST include `isolation: "worktree"`.** This is a
@@ -1994,11 +1994,11 @@ Phase E merges complete.
       `python3 .claude/features/rabbit-auto-evolve/scripts/status-report.py`
       and contains no bare `ls .rabbit-auto-evolve-*` pattern.
 
-30. **`run-post-merge.py` deterministically runs phases 7–9.**
-    Phases 7 (`release`), 8 (`cleanup`), and 9 (`catch-up`) were prose in
-    SKILL.md walked by the LLM orchestrator. After phase 6 (`merge`) lands a
+30. **`run-post-merge.py` deterministically runs phases 8–10.**
+    Phases 8 (`release`), 9 (`cleanup`), and 10 (`catch-up`) were prose in
+    SKILL.md walked by the LLM orchestrator. After phase 7 (`merge`) lands a
     large batch of PRs, the orchestrator ended the tick for scale/context
-    reasons and phases 7–9 were SILENTLY dropped — the same class of failure
+    reasons and phases 8–10 were SILENTLY dropped — the same class of failure
     as LLM-walked-prose phase skips. Per spec-rules §1
     (`script > CLI > spec > prompt`) the phase-7-through-9 sequencing is moved
     out of prose and into a deterministic, non-skippable script.
@@ -2009,7 +2009,7 @@ Phase E merges complete.
 
     | Field | Type | Notes |
     |---|---|---|
-    | `pending_post_merge` | array of int (optional) | merged PR numbers owed post-merge processing (phases 7–9). Additive in schema 1.2.0; absent in pre-1.2.0 states |
+    | `pending_post_merge` | array of int (optional) | merged PR numbers owed post-merge processing (phases 8–10). Additive in schema 1.2.0; absent in pre-1.2.0 states |
 
     `schema_version` is bumped to `"1.2.0"`. The change is backward-compatible
     additive: a state written WITHOUT `pending_post_merge` still validates.
@@ -2034,7 +2034,7 @@ Phase E merges complete.
        it is a CLEAN NO-OP: emit `{"status": "noop", "pending": []}` on
        stdout and exit 0 (no phase script is invoked).
     3. Otherwise, in order:
-       - **Phase 7 (release):** invoke
+       - **Phase 8 (release):** invoke
          `release-bump.py <pr#>` once per pending PR.
          Release success is keyed on `release-bump.py`'s stdout JSON
          `status` field — NOT merely on its exit code. `release-bump.py`
@@ -2048,9 +2048,9 @@ Phase E merges complete.
          set to `"failed"` with the offending release JSON included, and
          the run exits non-zero leaving `pending_post_merge` INTACT so the
          next tick's tick-start drain retries the owed work.
-       - **Phase 8 (cleanup):** invoke
+       - **Phase 9 (cleanup):** invoke
          `cleanup-branches.py <comma-joined pr-list>` once for the whole set.
-       - **Phase 9 (catch-up):** invoke
+       - **Phase 10 (catch-up):** invoke
          `classify-merge-restart.py <pr#>` once per pending PR.
     4. On completion (all phase scripts exited 0), clear
        `pending_post_merge` from state by reading the current state,
@@ -2066,7 +2066,7 @@ Phase E merges complete.
 
     Exit code: 0 on success (including the no-op path). Non-zero on any phase
     failure — either a phase script exiting non-zero, OR a release-bump
-    `status` other than `"released"` (see Phase 7) — so the caller
+    `status` other than `"released"` (see Phase 8) — so the caller
     (`end-tick.py` / the SKILL schedule phase) sees a loud, locatable
     failure instead of a silently-dropped phase. On a phase failure
     `pending_post_merge` is NOT cleared, so the next tick's tick-start drain
@@ -2074,12 +2074,12 @@ Phase E merges complete.
 
     ### SKILL invocation
 
-    The SKILL replaces the prose descriptions of phases 7–9 with a single
+    The SKILL replaces the prose descriptions of phases 8–10 with a single
     `python3 .claude/features/rabbit-auto-evolve/scripts/run-post-merge.py`
     invocation, called in TWO places:
-    - After phase 6 (`merge`) when any PR merged (the merge phase records the
+    - After phase 7 (`merge`) when any PR merged (the merge phase records the
       merged PR numbers via `merge-prs.py --record-pending`).
-    - At the START of the tick, between phase 1 (`restart-check`) and phase 2
+    - At the START of the tick, between phase 1 (`restart-check`) and phase 3
       (`fetch`), to DRAIN any owed post-merge work from a previous truncated
       tick BEFORE fetching new work.
 
@@ -2192,12 +2192,12 @@ Phase E merges complete.
       (cron/daemon) owns its cadence. `tick-headless.py` is its
       implementation; Inv 32's "no self-chaining" rule is UNCHANGED for this
       tier.
-    - The **DEVELOPMENT tick** (phase 5, `dispatch`) requires a live Claude
+    - The **DEVELOPMENT tick** (phase 6, `dispatch`) requires a live Claude
       session and CANNOT run headless. It is re-triggered by the scheduler
       firing `/rabbit-auto-evolve start` in a FRESH Claude context (a
       one-shot), realizing the "development tier may self-resume
       in-session" model. Each fired tick is a full in-session tick (it INCLUDES
-      phase 5). This is NOT inline continuation (the turn ENDS; a new context
+      phase 6). This is NOT inline continuation (the turn ENDS; a new context
       picks up the next tick); see Inv 33 (D1).
 
     **AMENDMENT — scheduler mechanism + sanctioned fallback.**
@@ -2222,7 +2222,7 @@ Phase E merges complete.
     (what to schedule and with which mechanism/params) — while the
     DISPATCHER (the live Claude session, via SKILL.md instructions) performs
     the irreducible tool action of calling `CronCreate(...)` with the params
-    a decision script emits, exactly as phase 5 dispatch is the
+    a decision script emits, exactly as phase 6 dispatch is the
     irreducible-Claude action.
 
     **Observability is preserved, not by banning in-session scheduling.**
@@ -2238,21 +2238,21 @@ Phase E merges complete.
       `python3 .claude/features/rabbit-auto-evolve/scripts/tick-headless.py`.
       It walks the deterministic, Claude-free phases:
       phase 0 (`stop-check`), phase 1 (`restart-check`),
-      phases 2–4 (`fetch | triage | plan`),
-      phase 6 (`merge` of the PRs listed in the state's transient
+      phases 3–5 (`fetch | triage | plan`),
+      phase 7 (`merge` of the PRs listed in the state's transient
       `merge_ready` hint field, skipped when empty),
-      phases 7–9 (`run-post-merge.py` when `pending_post_merge` non-empty),
-      phase 10 (`persist`). `merge_ready` is a transient per-tick hint, NOT
+      phases 8–10 (`run-post-merge.py` when `pending_post_merge` non-empty),
+      phase 11 (`persist`). `merge_ready` is a transient per-tick hint, NOT
       part of the canonical Inv 9 state schema, so the headless tick drops it
       before handing the state object to `update-state.py` (whose validator
-      rejects unknown keys). It does NOT run phase 5 (`dispatch`) — that
-      requires a Claude session — and it does NOT schedule anything (phase 11
+      rejects unknown keys). It does NOT run phase 6 (`dispatch`) — that
+      requires a Claude session — and it does NOT schedule anything (phase 12
       is a no-op; the cron fires the next tick). A pending stop
       (`.rabbit-auto-evolve-stop-requested`) or abort
       (`.rabbit-auto-evolve-aborted`) marker short-circuits the headless tick
       to a clean no-op.
     - **Session tick (Claude active).** The full 12-phase tick walked by
-      SKILL.md still runs, INCLUDING phase 5 (`dispatch`). Phase 11
+      SKILL.md still runs, INCLUDING phase 6 (`dispatch`). Phase 12
       (`schedule`) no longer calls `ScheduleWakeup` — it is documented as a
       no-op because the cron owns scheduling.
 
@@ -2308,7 +2308,7 @@ Phase E merges complete.
     exits 0 without crashing and emits the `CronCreate`-fallback JSON signal
     plus the branded heartbeat notice. By
     `test/test-tick-headless.py` (e2e): the headless tick runs phases 0–1,
-    2–4 (plan only — no dispatch), 6, 7–9, and 10 without a Claude session,
+    3–5 (plan only — no dispatch), 7, 8–10, and 11 without a Claude session,
     and short-circuits on a stop/abort marker. And by
     `test/test-spec-cron-invariant.py` (e2e): this invariant text is present
     in the spec AND `ScheduleWakeup` / `/loop` are absent from the spec and
@@ -2325,7 +2325,7 @@ Phase E merges complete.
     (do NOT continue inline). **Queue empty → schedule nothing; rely on the
     recurring heartbeat.** The refire is a near-immediate FRESH-context
     one-shot, NOT inline continuation: each fired tick is a full in-session
-    tick (it includes phase 5 dispatch), and the turn ends between ticks so a
+    tick (it includes phase 6 dispatch), and the turn ends between ticks so a
     new context starts clean. The decision is computed by
     `scripts/schedule-decision.py`, which determines open-work presence
     AUTHORITATIVELY by invoking the EXISTING `fetch-queue.py` and counting
@@ -2335,7 +2335,7 @@ Phase E merges complete.
     "prompt":"/rabbit-auto-evolve start","when":"~1min","croncreate":{...}}`;
     queue empty → `{"decision":"idle","detail":"rely on heartbeat"}`. The
     decision is logged via `tick-log.py` (Inv 36). On the `croncreate` path
-    the DISPATCHER reads this JSON at phase 11 and performs the actual
+    the DISPATCHER reads this JSON at phase 12 and performs the actual
     one-shot `CronCreate(...)` (the irreducible Claude action); on the
     `crontab` path the emitted hint documents the transient/`at`-style
     one-shot for the dispatcher/SKILL.
@@ -2657,7 +2657,7 @@ Phase E merges complete.
     `test/test-spec-self-modifying-migration-invariant.py` (this invariant text
     is present in the spec).
 
-40. **One shared scripted phase-walk; the in-session tick adds only Phase 5.**
+40. **One shared scripted phase-walk; the in-session tick adds only Phase 6.**
     The deterministic tick phases live in ONE shared scripted implementation,
     `python3 .claude/features/rabbit-auto-evolve/scripts/run-tick-phases.py`,
     which BOTH the headless tick (`tick-headless.py`) and the in-session tick
@@ -2665,22 +2665,22 @@ Phase E merges complete.
     single Claude-only phase:
 
     - `run-tick-phases.py pre-dispatch` — tick-start self-sync (Inv 38), phase
-      0/1 stop/abort short-circuit, running-guard (Inv 35), phases 2-4
+      0/1 stop/abort short-circuit, running-guard (Inv 35), phases 3-5
       (`fetch | triage | plan`, Inv 18). Emits a result whose `action` is
       `proceed` (continue to dispatch) or `skip` (a clean no-op short-circuit
       fired).
-    - `run-tick-phases.py post-dispatch` — phase 6 (merge the PRs in the
+    - `run-tick-phases.py post-dispatch` — phase 7 (merge the PRs in the
       state's transient `merge_ready` hint), a post-merge re-sync to
-      `origin/dev` when PRs merged (Inv 47), phases 7-9 (`run-post-merge.py`
-      drain), phase 10 (persist).
+      `origin/dev` when PRs merged (Inv 47), phases 8-10 (`run-post-merge.py`
+      drain), phase 11 (persist).
 
     The headless tick chains `pre-dispatch -> (skip dispatch) -> post-dispatch`;
-    the in-session tick chains `pre-dispatch -> Phase 5 (dispatch) ->
+    the in-session tick chains `pre-dispatch -> Phase 6 (dispatch) ->
     post-dispatch`. The in-session path differs from the headless path ONLY by
-    inserting Phase 5 (dispatch), which needs Claude. There is exactly ONE
+    inserting Phase 6 (dispatch), which needs Claude. There is exactly ONE
     deterministic phase-walk implementation; the dispatcher only adds dispatch.
 
-    **Phase 10 persist is deterministic and never hand-assembled.** Phase 10
+    **Phase 11 persist is deterministic and never hand-assembled.** Phase 11
     re-reads the on-disk state (the phase scripts — `merge-prs.py`,
     `run-post-merge.py` — already mutated it on disk), drops the transient
     `merge_ready` key (not part of the Inv 9 schema), and pipes the resulting
@@ -2702,7 +2702,7 @@ Phase E merges complete.
     ready PRs, drains post-merge, and persists through the REAL update-state.py
     dropping `merge_ready`; dispatch NEVER runs inside the walk), by
     `test/test-tick-persist-convergence.py` (the in-session path —
-    `pre-dispatch` then `post-dispatch` with a no-state-mutation Phase 5 between
+    `pre-dispatch` then `post-dispatch` with a no-state-mutation Phase 6 between
     — persists BYTE-IDENTICAL state to the headless tick for the same on-disk
     phase-script mutations), by `test/test-tick-headless.py` (the headless tick
     delegates to the shared walk), and by
@@ -2812,7 +2812,7 @@ Phase E merges complete.
     present in the spec and the SKILL.md documents the corrected ordering).
 
 43. **Deterministic pre-merge cleanup of known worktree-dispatch leaks; never
-    discard unexpected dirt.** Worktree-isolated Phase 5 dispatches sometimes
+    discard unexpected dirt.** Worktree-isolated Phase 6 dispatches sometimes
     leave working-tree noise in the dispatcher's MAIN tree because a subagent's
     process cwd is occasionally the main/shared checkout (not its worktree)
     when it runs its LOCK / tdd-step bookkeeping (a harness limitation the
@@ -2826,7 +2826,7 @@ Phase E merges complete.
     `scripts/clean-dispatch-leaks.py` performs a deterministic,
     defense-in-depth cleanup of ONLY this known leak class, and
     `run-tick-phases.py run_post_dispatch` invokes it as the FIRST action of
-    Phase 6, BEFORE `merge-prs.py`. The cleanup operates on the repo's main
+    Phase 7, BEFORE `merge-prs.py`. The cleanup operates on the repo's main
     working tree and:
 
     1. **Removes untracked stray markers.** Deletes any untracked
@@ -2866,7 +2866,7 @@ Phase E merges complete.
     cleanup classes cover.
 
     `scripts/clean-dispatch-leaks.py` (the Inv 43 cleanup that runs as the FIRST
-    action of Phase 6, BEFORE `merge-prs.py`) detects and restores this leak as
+    action of Phase 7, BEFORE `merge-prs.py`) detects and restores this leak as
     its FIRST step — before the file cleanup, so the file cleanup and the merge
     see the right branch:
 
@@ -3000,9 +3000,9 @@ Phase E merges complete.
     invariant text is present and reconciles with the ordering-key rule).
 
 47. **Post-merge re-sync to origin/dev before the release drain.**
-    Phase 6 (`merge-prs.py`) does a REMOTE squash-merge via `gh pr
+    Phase 7 (`merge-prs.py`) does a REMOTE squash-merge via `gh pr
     merge`, which advances `origin/dev` but NOT the loop's LOCAL `dev`
-    checkout. Phases 7-9 (`run-post-merge.py` → `release-bump.py`) then run
+    checkout. Phases 8-10 (`run-post-merge.py` → `release-bump.py`) then run
     immediately on the STALE local `dev` (lagging `origin/dev`), so
     `release-bump.py`'s safety-check / next-tag computation sees stale state
     and SKIPS the release on the FIRST in-loop attempt — a manual re-run with
@@ -3011,7 +3011,7 @@ Phase E merges complete.
 
     `run-tick-phases.py run_post_dispatch` therefore re-syncs the local tree to
     `origin/dev` AFTER the Phase-6 merge step reports merged PRs and BEFORE the
-    phases 7-9 post-merge / release drain, so `release-bump.py` runs on fresh
+    phases 8-10 post-merge / release drain, so `release-bump.py` runs on fresh
     state and the FIRST in-loop release attempt succeeds (no reliance on the
     next-tick retry). The re-sync REUSES the existing `sync-tree.py`
     (`git pull --ff-only origin dev` — NEVER `git merge`, which is
@@ -3067,7 +3067,7 @@ Phase E merges complete.
     patch; no closing reference → patch).
 
 49. **At-most-one immediate-refire one-shot — refire dedup with a labelled
-    signature.** Every tick's phase 11 schedules an
+    signature.** Every tick's phase 12 schedules an
     immediate-refire one-shot (Inv 33), but nothing cancelled a prior pending
     refire, so overlapping/retried ticks PILED UP refires that fired together
     (an observed double-fire at a non-heartbeat minute). The
@@ -3107,10 +3107,10 @@ Phase E merges complete.
     `is_refire_oneshot` (marker + non-recurring → True; the heartbeat → False).
 
 50. **The merge and release phase scripts persist `last_merged_sha` /
-    `last_tagged_version` to on-disk state; phase 10 captures them via the
+    `last_tagged_version` to on-disk state; phase 11 captures them via the
     re-read.** These two informational state fields
     (surfaced by `status-report.py`, NOT control-critical) lagged
-    perpetually because NO phase script ever wrote them: once phase 10
+    perpetually because NO phase script ever wrote them: once phase 11
     converged on the deterministic re-read-and-validate persist
     (Inv 40), `merge-prs.py` wrote only `pending_post_merge` and
     `release-bump.py` emitted its result to stdout only. So both fields
@@ -3127,7 +3127,7 @@ Phase E merges complete.
     error never fails the merge). When `release-bump.py` reaches the
     `released` status, it writes the cut `next_tag` into
     `last_tagged_version` via the identical read-modify-write pattern.
-    Phase 10's deterministic re-read (`update-state.py`, Inv 40) then
+    Phase 11's deterministic re-read (`update-state.py`, Inv 40) then
     captures both off disk with no dispatcher inference.
 
     **A non-success leaves the field untouched.** A skipped/failed merge
@@ -3235,7 +3235,7 @@ Phase E merges complete.
     never-pauses / distinct-from-hard-marker contract).
 
 53. **Tick-start orphan sweep (Inv 53) — leftover TDD dispatch worktrees and
-    the prompt dir are bounded at tick start, before Phase 5 dispatch.**
+    the prompt dir are bounded at tick start, before Phase 6 dispatch.**
     Parallel TDD dispatch (worktree isolation, Inv 28) creates one git
     worktree per subagent under `.claude/worktrees/agent-*`. The Agent tool
     auto-removes a dispatch worktree ONLY when it is unchanged on exit; a TDD
@@ -3260,7 +3260,7 @@ Phase E merges complete.
 
     **(b) Safety by sequencing — the sweep runs at TICK START, pre-dispatch.**
     The sweep is wired into `run-tick-phases.py`'s pre-dispatch segment,
-    BEFORE Phase 5 dispatch begins. At tick start no dispatch is live, so
+    BEFORE Phase 6 dispatch begins. At tick start no dispatch is live, so
     every existing `agent-*` worktree is an orphan from a prior or interrupted
     tick and is safe to force-remove. The sweep is a clean no-op when there
     are no orphans, and never short-circuits or fails the tick on a sweep

@@ -50,7 +50,7 @@ script appends every successfully-merged PR number to the
 modify-write, de-duplicated, atomic via temp+rename). The state dir resolves
 via the RABBIT_AUTO_EVOLVE_STATE_DIR env var when set, else `<cwd>/.rabbit`
 (matching update-state.py). `run-post-merge.py` later drains this list to run
-tick phases 7-9. Without `--record-pending` no state write occurs and the
+tick phases 8-10. Without `--record-pending` no state write occurs and the
 behavior is unchanged.
 
 The SAME `--record-pending` write also records `last_merged_sha` (issue
@@ -58,7 +58,7 @@ The SAME `--record-pending` write also records `last_merged_sha` (issue
 `mergeCommit.oid` already fetched per the Inv 6 close-after-merge step) is
 written into the state file in the same read-modify-write. No phase script
 previously persisted this informational field (surfaced by
-status-report.py), so it lagged perpetually; phase 10's deterministic
+status-report.py), so it lagged perpetually; phase 11's deterministic
 re-read (update-state.py, Inv 40) now captures it off disk — it is never
 dispatcher hand-set. A run with no merge leaves `last_merged_sha` untouched.
 
@@ -115,7 +115,7 @@ def _record_pending(merged_prs, last_merged_sha=None):
 
     `last_merged_sha` (the merge commit SHA of the last successfully-merged
     PR) is written ONLY when truthy: a run with no merge leaves the field
-    untouched. Phase 10's deterministic re-read (update-state.py, Inv 40)
+    untouched. Phase 11's deterministic re-read (update-state.py, Inv 40)
     later captures it off disk — it is never dispatcher hand-set."""
     if not merged_prs:
         return
@@ -287,7 +287,7 @@ def main():
         "--record-pending", action="store_true",
         help="append successfully-merged PR numbers to pending_post_merge in "
              ".rabbit/auto-evolve-state.json (issue #499) so run-post-merge.py "
-             "drains them through tick phases 7-9",
+             "drains them through tick phases 8-10",
     )
     args = parser.parse_args()
 

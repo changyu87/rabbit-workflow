@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""run-post-merge.py — deterministic, non-skippable runner for tick phases 7-9.
+"""run-post-merge.py — deterministic, non-skippable runner for tick phases 8-10.
 
 Usage:
   run-post-merge.py
 
-Per rabbit-auto-evolve spec.md Inv 30 (issue #499), tick phases 7 (release),
+Per rabbit-auto-evolve spec.md Inv 30 (issue #499), tick phases 8 (release),
 8 (cleanup), and 9 (catch-up) were prose in SKILL.md walked by the LLM
-orchestrator. After phase 6 (merge) landed a large batch of PRs, the
-orchestrator ended the tick for scale/context reasons and phases 7-9 were
+orchestrator. After phase 7 (merge) landed a large batch of PRs, the
+orchestrator ended the tick for scale/context reasons and phases 8-10 were
 silently dropped — the same class of failure as the LLM-walked-prose skips
 in #405 / #409 / #439. This script owns the phase-7-through-9 sequencing so
 the steps are deterministic and non-skippable.
@@ -18,9 +18,9 @@ It:
   2. If empty / missing / malformed → CLEAN NO-OP: emit
      {"status": "noop", "pending": []} and exit 0 (no phase script invoked).
   3. Otherwise, in order:
-       - Phase 7 (release):  `release-bump.py <pr#>` once per PR.
-       - Phase 8 (cleanup):  `cleanup-branches.py <comma-joined pr-list>` once.
-       - Phase 9 (catch-up): `classify-merge-restart.py <pr#>` once per PR.
+       - Phase 8 (release):  `release-bump.py <pr#>` once per PR.
+       - Phase 9 (cleanup):  `cleanup-branches.py <comma-joined pr-list>` once.
+       - Phase 10 (catch-up): `classify-merge-restart.py <pr#>` once per PR.
   4. On completion (all phase scripts exited 0 AND every release-bump.py
      reported status "released"), clears `pending_post_merge` to [] in the
      state file (atomic via temp+rename).
@@ -138,7 +138,7 @@ def run():
     pr_list = ",".join(str(n) for n in pending)
     result = {"status": "completed", "pending": pending, "phases": {}}
 
-    # Phase 7 — release (once per PR). release-bump.py exits 0 even when it
+    # Phase 8 — release (once per PR). release-bump.py exits 0 even when it
     # SKIPS or FAILS the release (status in its stdout JSON), so success is
     # keyed on that status, not the exit code (issue #512). A skipped/failed/
     # unparseable release leaves pending_post_merge intact for the next
@@ -162,7 +162,7 @@ def run():
             return 1
     result["phases"]["release"] = release
 
-    # Phase 8 — cleanup (once with the whole list).
+    # Phase 9 — cleanup (once with the whole list).
     proc = _run_phase("cleanup-branches.py", [pr_list])
     result["phases"]["cleanup"] = {"pr_list": pr_list,
                                    "returncode": proc.returncode}
@@ -172,7 +172,7 @@ def run():
         sys.stdout.write("\n")
         return 1
 
-    # Phase 9 — catch-up (once per PR).
+    # Phase 10 — catch-up (once per PR).
     catchup = []
     for pr in pending:
         proc = _run_phase("classify-merge-restart.py", [str(pr)])
@@ -196,7 +196,7 @@ def run():
 
 def main():
     argparse.ArgumentParser(
-        description="Deterministically run tick phases 7-9 (release -> "
+        description="Deterministically run tick phases 8-10 (release -> "
                     "cleanup -> catch-up) for every PR in the state's "
                     "pending_post_merge list, then clear it. Clean no-op when "
                     "the list is empty. Exits non-zero on any phase failure."
