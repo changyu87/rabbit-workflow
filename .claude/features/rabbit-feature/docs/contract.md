@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.32.0
+version: 1.33.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -17,8 +17,17 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
   "provides": {
     "files": [],
-    "commands": [],
+    "commands": [
+      {
+        "path": ".claude/commands/rabbit-tdd-autonomous.md",
+        "purpose": "Per-feature config command /rabbit-tdd-autonomous true|false. Toggles TDD-autonomous mode — the human-approval gate over the feature-touch TDD cycle Step 4. true writes the .rabbit-tdd-autonomous bypass marker (gate skipped); false (default) deletes it (gate active). Thin wrapper over contract.lib.config_dispatch via scripts/rabbit-tdd-autonomous-config.py. Deployed from commands/rabbit-tdd-autonomous.md via the feature.json manifest publish_command call. Coexists with the central /rabbit-config tdd-autonomous surface."
+      }
+    ],
     "scripts": [
+      {
+        "path": ".claude/features/rabbit-feature/scripts/rabbit-tdd-autonomous-config.py",
+        "purpose": "THIN wrapper backing the /rabbit-tdd-autonomous command. Reads rabbit-feature's own feature.json configuration[] tdd-autonomous entry and delegates validation + mutation + restart-prompt rendering to contract.lib.config_dispatch.dispatch_config. Owns only argv parsing and IO; never re-implements the interpreter."
+      },
       {
         "path": ".claude/features/rabbit-feature/scripts/resolve-scope.py",
         "purpose": "Builds the Agent-dispatch prompt that maps a natural-language request to the list of rabbit features the request will modify. Emits the prompt to stdout for default-model Agent dispatch."
@@ -68,6 +77,12 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "invokes": {
     "scripts": [
       {
+        "path": ".claude/features/contract/lib/config_dispatch.py",
+        "signature": "dispatch_config(cfg, value, *, repo_root, feature_dir=None, template_value=None) -> {ok, messages, restart_prompt, error}",
+        "exit": "returns a structured dict; never prints, never sys.exit",
+        "lock": "test-tdd-autonomous-command.py asserts scripts/rabbit-tdd-autonomous-config.py imports dispatch_config and does not re-implement the interpreter (Inv 58)"
+      },
+      {
         "path": ".claude/features/tdd-subagent/scripts/tdd-step.py",
         "signature": "tdd-step.py {show|next|transitions|transition} <feature-dir> [<new-state>] [--force] [--spec-no-change-reason <reason>]",
         "exit": "0=success, 1=denied/invalid, 2=bad invocation",
@@ -101,7 +116,15 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "agents": []
   },
   "manages": {
-    "runtime_markers": []
+    "runtime_markers": [
+      {
+        "path": ".rabbit-tdd-autonomous",
+        "writer": "/rabbit-tdd-autonomous (scripts/rabbit-tdd-autonomous-config.py) or /rabbit-config tdd-autonomous, via contract.lib.mutation write_marker/delete_marker",
+        "reader": "dispatch-tdd-subagent.py (Step-4 gate, read alongside .rabbit-human-approval-bypass); Stop/SessionStart dispatcher via check_marker_alert (Inv 59)",
+        "lifecycle": "written on `tdd-autonomous true` (bypass active); deleted on `tdd-autonomous false` (default, gate active)",
+        "gitignored": true
+      }
+    ]
   },
   "never": [
     "modifies tdd-subagent spec, contract, feature.json, or scripts",

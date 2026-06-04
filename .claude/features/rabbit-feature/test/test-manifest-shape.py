@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Inv 40: manifest declares deployment.
 
-`rabbit-feature.feature.json` declares a `manifest` array of N
-publish_skill calls — one per skill in `skills/`. Each entry is
+`rabbit-feature.feature.json` declares a `manifest` whose publish_skill
+calls are exactly one per skill in `skills/`; each is
 `{"api": "publish_skill", "args": {"source": "skills/<name>/SKILL.md"}}`.
-Also asserts `runtime` is a dict and `configuration` is a list (the
-two sibling meta-contract arms required by the schema, even when empty).
+The manifest MAY also carry publish_command entries (each
+`{"api": "publish_command", "args": {"source": "commands/<name>.md"}}`)
+for the feature's per-feature config command(s) (e.g.
+/rabbit-tdd-autonomous, phase 3 of #733). Also asserts `runtime` is a dict
+and `configuration` is a list (the two sibling meta-contract arms required
+by the schema, even when empty).
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -44,33 +48,37 @@ def test_manifest_shape() -> None:
     )
 
     skill_dirs = sorted(d.name for d in SKILLS_DIR.iterdir() if d.is_dir())
-    assert len(manifest) == len(skill_dirs), (
-        f"manifest length {len(manifest)} != number of skill dirs "
-        f"{len(skill_dirs)} ({skill_dirs})"
-    )
 
-    manifest_sources = set()
+    skill_sources = set()
     for i, entry in enumerate(manifest):
         assert isinstance(entry, dict), f"manifest[{i}] not a dict"
-        assert entry.get("api") == "publish_skill", (
-            f"manifest[{i}].api expected 'publish_skill', got {entry.get('api')!r}"
+        api = entry.get("api")
+        assert api in ("publish_skill", "publish_command"), (
+            f"manifest[{i}].api expected 'publish_skill' or 'publish_command', "
+            f"got {api!r}"
         )
         args = entry.get("args")
         assert isinstance(args, dict), f"manifest[{i}].args must be a dict"
         src = args.get("source")
         assert isinstance(src, str), f"manifest[{i}].args.source must be a string"
-        assert src.startswith("skills/") and src.endswith("/SKILL.md"), (
-            f"manifest[{i}].args.source must match 'skills/<name>/SKILL.md', "
-            f"got {src!r}"
-        )
-        manifest_sources.add(src)
+        if api == "publish_skill":
+            assert src.startswith("skills/") and src.endswith("/SKILL.md"), (
+                f"manifest[{i}].args.source must match 'skills/<name>/SKILL.md', "
+                f"got {src!r}"
+            )
+            skill_sources.add(src)
+        else:  # publish_command
+            assert src.startswith("commands/") and src.endswith(".md"), (
+                f"manifest[{i}].args.source must match 'commands/<name>.md', "
+                f"got {src!r}"
+            )
 
     expected_sources = {
         f"skills/{name}/SKILL.md" for name in skill_dirs
     }
-    assert manifest_sources == expected_sources, (
-        f"manifest sources mismatch.\n  got: {sorted(manifest_sources)}\n  "
-        f"want: {sorted(expected_sources)}"
+    assert skill_sources == expected_sources, (
+        f"manifest publish_skill sources mismatch.\n"
+        f"  got: {sorted(skill_sources)}\n  want: {sorted(expected_sources)}"
     )
 
 

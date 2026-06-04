@@ -107,6 +107,7 @@ COMMANDS: list[tuple[str, str]] = [
     (".claude/features/rabbit-cage/commands/rabbit-refresh.md", ".claude/commands/rabbit-refresh.md"),
     (".claude/features/rabbit-cage/commands/rabbit-project.md", ".claude/commands/rabbit-project.md"),
     (".claude/features/rabbit-cage/commands/rabbit-update.md", ".claude/commands/rabbit-update.md"),
+    (".claude/features/rabbit-cage/commands/rabbit-cage-config.md", ".claude/commands/rabbit-cage-config.md"),
 ]
 
 # Per-feature sub-path includes (whole subset; same path on both sides)
@@ -127,6 +128,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "scripts/find-feature.py",
         "scripts/policy-block.py",
         "scripts/check-release-update.py",
+        "lib/config_dispatch.py",
         "schemas/feature.json.schema.json",
         "schemas/runtime.schema.json",
         "schemas/prompts.schema.json",
@@ -160,7 +162,9 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "commands/rabbit-refresh.md",
         "commands/rabbit-project.md",
         "commands/rabbit-update.md",
+        "commands/rabbit-cage-config.md",
         "scripts/rabbit-update.py",
+        "scripts/rabbit-cage-config.py",
         "lib/__init__.py",
         "lib/project_map_reader.py",
     ],

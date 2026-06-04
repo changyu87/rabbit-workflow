@@ -75,8 +75,10 @@ COLLAPSE_MAX = 1
 # Ceiling raised 500 -> 510 by #709, which expanded Inv 7 to document the new
 # `scope-guard` /rabbit-config configurable and the command-form revoke
 # instruction — a real spec addition, not reword re-inflation; still well
-# below the 518 starting count.
-SPEC_LINE_CEILING = 510
+# below the 518 starting count. Raised 510 -> 515 by #767 (phase 3 of #733),
+# which added Inv 40 documenting the per-feature `/rabbit-cage-config` command
+# + the deferred per-feature alert — a real spec addition, not re-inflation.
+SPEC_LINE_CEILING = 515
 
 PASS = 0
 FAIL = 0

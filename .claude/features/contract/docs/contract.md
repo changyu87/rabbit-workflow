@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.10.0
+version: 2.16.0
 template_version: 2.0.0
 ---
 
@@ -27,7 +27,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/schemas/bug.json.schema.json",
       ".claude/features/contract/schemas/project-map.json.schema.json",
       ".claude/features/contract/schemas/rabbit-print.schema.json",
-      ".claude/features/contract/schemas/prompts.schema.json"
+      ".claude/features/contract/schemas/prompts.schema.json",
+      ".claude/features/contract/schemas/configuration.schema.json"
     ],
     "declarations": [
       ".claude/features/contract/workspace-structure.json"
@@ -55,13 +56,16 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/lib/__init__.py",
       ".claude/features/contract/lib/checks.py",
       ".claude/features/contract/lib/publish.py",
-      ".claude/features/contract/lib/policy_block.py"
+      ".claude/features/contract/lib/policy_block.py",
+      ".claude/features/contract/lib/mutation.py",
+      ".claude/features/contract/lib/config_dispatch.py"
     ],
     "hooks": [],
     "skills": [],
     "functions": [
       "contract.lib.checks.validate_agent_prompt_sentinel",
-      "contract.lib.runtime.emit_stop_timestamp"
+      "contract.lib.runtime.emit_stop_timestamp",
+      "contract.lib.config_dispatch.dispatch_config"
     ]
   },
   "reads": {

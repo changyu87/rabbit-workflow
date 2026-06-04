@@ -11,6 +11,7 @@
 .rabbit-scope-override-used
 .rabbit-skills-updated
 .rabbit-human-approval-bypass
+.rabbit-tdd-autonomous
 .rabbit-auto-evolve-*
 # Claude Code platform runtime files
 .claude/settings.local.json

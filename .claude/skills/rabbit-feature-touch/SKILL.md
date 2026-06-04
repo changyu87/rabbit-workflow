@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (filing a rabbit-managed issue, such as a bug or enhancement). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.6.0
+version: 3.7.0
 owner: rabbit-feature
 deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
@@ -115,7 +115,9 @@ ACTIVE, the default).
   - Operational guidance for the user: the bypass marker is
     `.rabbit-human-approval-bypass` at the repo root, and it is revoked
     by running `/rabbit-config human-approval true` (which removes the
-    marker and re-activates this gate).
+    marker and re-activates this gate). The per-feature command
+    `/rabbit-tdd-autonomous false` is an equivalent surface that revokes the
+    canonical marker `.rabbit-tdd-autonomous`.
   - Proceed to Step 5 immediately. Do NOT surface the impl-suggestion summary.
 - **If the marker file does NOT exist (default):**
   - For each feature, read `.rabbit/impl-suggestion-<feature-name>.json` and
