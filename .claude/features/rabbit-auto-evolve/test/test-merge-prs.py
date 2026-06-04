@@ -571,7 +571,7 @@ def _state_path(state_dir):
 
 def _seed_state(state_dir, pending=None):
     state = {
-        "schema_version": "1.2.0",
+        "schema_version": "1.3.0",
         "updated_at": "2026-06-03T00:00:00Z",
         "queue": [],
         "in_flight": [],

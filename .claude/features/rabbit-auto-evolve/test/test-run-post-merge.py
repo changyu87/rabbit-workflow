@@ -65,7 +65,7 @@ def _write_phase_shim(script_dir, name, call_log, exit_code=0, stdout=None):
 
 def _seed_state(state_dir, pending):
     state = {
-        "schema_version": "1.2.0",
+        "schema_version": "1.3.0",
         "updated_at": "2026-06-03T00:00:00Z",
         "queue": [],
         "in_flight": [],
@@ -96,6 +96,10 @@ def _make_env(tmpdir, release_exit=0, cleanup_exit=0, catchup_exit=0,
     _write_phase_shim(script_dir, "cleanup-branches.py", call_log, cleanup_exit)
     _write_phase_shim(script_dir, "classify-merge-restart.py", call_log,
                       catchup_exit)
+    # Inv 58 / #721: the decomposed-parent roll-up step run-post-merge.py
+    # invokes each tick (after the catch-up phase, AND even on the empty
+    # no-op path). Shimmed here so its invocation can be asserted.
+    _write_phase_shim(script_dir, "close-decomposed-parents.py", call_log)
 
     env = os.environ.copy()
     env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = script_dir
@@ -221,6 +225,19 @@ with tempfile.TemporaryDirectory() as td:
     else:
         ok("nonempty: pending_post_merge cleared to []")
 
+    # Inv 58 / #721: the decomposed-parent roll-up runs after catch-up.
+    cdp_idx = [i for i, n in enumerate(names)
+               if n == "close-decomposed-parents.py"]
+    if not cdp_idx:
+        fail(f"nonempty: close-decomposed-parents.py not invoked; "
+             f"calls={calls!r}")
+    elif cat_idx and min(cdp_idx) < max(cat_idx):
+        fail(f"nonempty: close-decomposed-parents.py ran before catch-up "
+             f"finished; names={names!r}")
+    else:
+        ok("nonempty: close-decomposed-parents.py invoked after catch-up "
+           "(Inv 58)")
+
 
 # ---------------------------------------------------------------------------
 # Empty pending_post_merge: clean no-op, no phase invoked, status noop.
@@ -234,10 +251,24 @@ with tempfile.TemporaryDirectory() as td:
              f"stderr={proc.stderr!r}")
     else:
         ok("empty: exit 0")
-    if _calls(call_log):
-        fail(f"empty: a phase shim was invoked; calls={_calls(call_log)!r}")
+    # Inv 58 / #721: the decomposed-parent roll-up runs EVERY tick, even
+    # when pending_post_merge is empty (children close on their own ticks,
+    # not only when a PR merges). So the ONLY phase shim allowed to run on
+    # the empty path is close-decomposed-parents.py.
+    empty_calls = _calls(call_log)
+    empty_names = [c.split()[0] for c in empty_calls]
+    non_rollup = [n for n in empty_names if n != "close-decomposed-parents.py"]
+    if non_rollup:
+        fail(f"empty: an owed-work phase shim was invoked; "
+             f"calls={empty_calls!r}")
     else:
-        ok("empty: no phase shim invoked (clean no-op)")
+        ok("empty: no release/cleanup/catch-up shim invoked (clean no-op)")
+    if "close-decomposed-parents.py" not in empty_names:
+        fail(f"empty: close-decomposed-parents.py not invoked on the empty "
+             f"path; calls={empty_calls!r}")
+    else:
+        ok("empty: close-decomposed-parents.py invoked even with empty "
+           "pending (Inv 58)")
     try:
         out = json.loads(proc.stdout)
         if out.get("status") != "noop":
@@ -260,10 +291,14 @@ with tempfile.TemporaryDirectory() as td:
              f"stderr={proc.stderr!r}")
     else:
         ok("missing: exit 0 (no state file is a clean no-op)")
-    if _calls(call_log):
-        fail(f"missing: a phase shim was invoked; calls={_calls(call_log)!r}")
+    # The decomposed-parent roll-up still runs (its own clean no-op when the
+    # state file is missing); no OWED-WORK phase shim may run though.
+    missing_names = [c.split()[0] for c in _calls(call_log)]
+    if [n for n in missing_names if n != "close-decomposed-parents.py"]:
+        fail(f"missing: an owed-work phase shim was invoked; "
+             f"calls={_calls(call_log)!r}")
     else:
-        ok("missing: no phase shim invoked")
+        ok("missing: no release/cleanup/catch-up shim invoked")
 
 
 # ---------------------------------------------------------------------------

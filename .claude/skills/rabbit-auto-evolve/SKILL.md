@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.48.5
+version: 0.49.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -553,7 +553,7 @@ phase 6:
   |---|---|---|---|
   | 1 (perf preference) | `parallel-per-feature` | item edits exactly one feature dir | one full single-feature TDD touch (its own `.rabbit-scope-active-<feature>` marker); multiple such items dispatch in parallel |
   | 2 | `multi-subagent-barrier` | item edits >1 feature dir, below the decompose threshold | per-feature subagents land SERIALLY on ONE shared branch; subagent k+1 fetches subagent k's pushed commit before starting; each piece is a full single-feature touch with its own scope marker; one PR closes the item |
-  | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs (default 10) | file N per-feature sub-issues via `python3 .claude/features/rabbit-issue/scripts/file-item.py …` (a contract INVOKE, not a cross-feature edit), each labelled `rabbit-managed` + the right `feature:<name>` label; keep the parent OPEN and queue the sub-issues, which re-enter Stage 1/Stage 2 on the next tick |
+  | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs (default 10) | file N per-feature sub-issues via `python3 .claude/features/rabbit-issue/scripts/file-item.py …` (a contract INVOKE, not a cross-feature edit), each labelled `rabbit-managed` + the right `feature:<name>` label; **then record the parent→children linkage machine-readably** via `python3 .claude/features/rabbit-auto-evolve/scripts/record-decomposition.py <parent#> <child#> …` (Inv 58) — NEVER rely on a prose comment table; keep the parent OPEN and queue the sub-issues, which re-enter Stage 1/Stage 2 on the next tick. The per-tick `run-post-merge.py` drain then deterministically closes the parent once all its recorded children are closed (`close-decomposed-parents.py`, Inv 58) — the dispatcher NEVER hand-closes a decomposed parent |
 
   `parallel-per-feature` is the **performance preference, not a correctness
   requirement** — items that don't fit it still get done via shape 2 or 3,

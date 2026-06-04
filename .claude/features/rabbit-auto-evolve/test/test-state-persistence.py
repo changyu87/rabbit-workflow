@@ -46,7 +46,7 @@ def ok(msg):
 def _valid_state():
     """A fully-populated valid state object matching the Inv 9 schema."""
     return {
-        "schema_version": "1.2.0",
+        "schema_version": "1.3.0",
         "updated_at": "2026-06-02T12:34:56Z",
         "queue": [
             {"issue": 101, "decision": "work", "feature": "rabbit-issue"},
@@ -224,7 +224,7 @@ with tempfile.TemporaryDirectory() as td:
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     stale = {
-        "schema_version": "1.2.0",
+        "schema_version": "1.3.0",
         "updated_at": "2020-01-01T00:00:00Z",
         "queue": [],
         "in_flight": [],
@@ -273,14 +273,14 @@ with tempfile.TemporaryDirectory() as td:
 # accepted and round-trips. Old states WITHOUT defer_counts still validate
 # (additive change).
 # ---------------------------------------------------------------------------
-# H1 — schema_version const is 1.2.0 (issue #499 bumped 1.1.0 -> 1.2.0)
+# H1 — schema_version const is 1.3.0 (issue #721 bumped 1.2.0 -> 1.3.0)
 with open(SCHEMA) as f:
     schema_obj = json.load(f)
-if schema_obj.get("schema_version") != "1.2.0":
+if schema_obj.get("schema_version") != "1.3.0":
     fail(f"H1: schema top-level schema_version "
-         f"{schema_obj.get('schema_version')!r} != '1.2.0'")
+         f"{schema_obj.get('schema_version')!r} != '1.3.0'")
 else:
-    ok("H1: schema_version bumped to 1.2.0")
+    ok("H1: schema_version bumped to 1.3.0")
 
 # H2 — defer_counts accepted and round-trips
 with tempfile.TemporaryDirectory() as td:
@@ -355,6 +355,57 @@ with tempfile.TemporaryDirectory() as td:
         fail(f"I3: stderr should name pending_post_merge; got {proc.stderr!r}")
     else:
         ok("I3: pending_post_merge with a non-int element rejected")
+
+
+# ---------------------------------------------------------------------------
+# Scenario J — issue #721: schema 1.3.0 adds the optional
+# `decomposition_parents` map (parent-issue-number string -> list of child
+# issue numbers). Accepted and round-trips; states WITHOUT it still validate
+# (additive); a non-int child element is rejected with a field-naming message.
+# ---------------------------------------------------------------------------
+# J1 — decomposition_parents accepted and round-trips
+with tempfile.TemporaryDirectory() as td:
+    state = _valid_state()
+    state["decomposition_parents"] = {"677": [679, 680, 681]}
+    proc = _run(json.dumps(state), td)
+    if proc.returncode != 0:
+        fail(f"J1: decomposition_parents should be accepted; "
+             f"stderr={proc.stderr!r}")
+    else:
+        with open(os.path.join(td, "auto-evolve-state.json")) as f:
+            got = json.load(f)
+        if got.get("decomposition_parents") != {"677": [679, 680, 681]}:
+            fail(f"J1: decomposition_parents not preserved; "
+                 f"got {got.get('decomposition_parents')!r}")
+        else:
+            ok("J1: decomposition_parents accepted and round-trips")
+
+# J2 — a state WITHOUT decomposition_parents still validates (additive)
+with tempfile.TemporaryDirectory() as td:
+    state = _valid_state()  # no decomposition_parents key
+    proc = _run(json.dumps(state), td)
+    if proc.returncode != 0:
+        fail(f"J2: state without decomposition_parents should still validate; "
+             f"stderr={proc.stderr!r}")
+    else:
+        ok("J2: decomposition_parents is optional (state without it validates)")
+
+# J3 — a non-int child element is rejected, stderr naming the field
+with tempfile.TemporaryDirectory() as td:
+    state = _valid_state()
+    state["decomposition_parents"] = {"677": [679, "x"]}
+    proc = _run(json.dumps(state), td)
+    final_path = os.path.join(td, "auto-evolve-state.json")
+    if proc.returncode == 0:
+        fail("J3: decomposition_parents with a non-int child should be "
+             "rejected")
+    elif os.path.exists(final_path):
+        fail("J3: state file written despite invalid decomposition_parents")
+    elif "decomposition_parents" not in proc.stderr:
+        fail(f"J3: stderr should name decomposition_parents; "
+             f"got {proc.stderr!r}")
+    else:
+        ok("J3: decomposition_parents with a non-int child rejected")
 
 
 sys.exit(FAIL)

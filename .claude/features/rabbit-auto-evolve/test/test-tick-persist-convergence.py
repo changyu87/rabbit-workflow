@@ -98,7 +98,7 @@ def make_stub_scripts(dirpath, trace_file):
 
 
 INITIAL_STATE = {
-    "schema_version": "1.2.0",
+    "schema_version": "1.3.0",
     "updated_at": "2026-06-03T00:00:00Z",
     "queue": [],
     "in_flight": [],

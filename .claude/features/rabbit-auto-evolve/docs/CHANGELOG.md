@@ -13,6 +13,27 @@ own version.
 
 ## Version notes
 
+- **v0.49.0 — 2026-06-04** — Decomposed-parent autoclose (#721). The loop
+  decomposed cross-feature mandates into N per-feature children but never
+  closed the parent once all children closed (#530, #677 both lingered OPEN
+  and were closed by hand). Two root causes fixed: (1) the parent->children
+  link was only a prose comment table (a machine-first violation) — now
+  recorded machine-readably under the new `decomposition_parents` state map
+  (schema bumped 1.2.0 -> 1.3.0) by the new `scripts/record-decomposition.py`
+  helper, which the SKILL.md decomposition path invokes at decompose time;
+  (2) no tick phase rolled the parent up — now the new
+  `scripts/close-decomposed-parents.py` runs each tick inside
+  `run-post-merge.py` (after the catch-up phase): for every tracked parent
+  whose recorded children are ALL closed it closes the parent
+  (`gh issue close --reason completed`) and drops the parent key; a parent
+  with any open child is left untouched; idempotent no-op when the map is
+  empty. New Inv 58 documents the deterministic lifecycle. New E2E tests
+  `test/test-record-decomposition.py` (linkage round-trips + schema 1.3.0
+  validation) and `test/test-close-decomposed-parents.py` (all-children-closed
+  -> parent closed + key dropped; one-open-child -> untouched; empty map ->
+  no-op), both wired into `test/run.py`; `test/test-run-post-merge.py` asserts
+  the wiring.
+
 - **v0.48.5 — 2026-06-03** — Housekeeping (#695, follow-up of #681, under #639).
   Remove the stale pre-implementation "Current behaviour" scaffolding preamble from
   `docs/spec.md` — the paragraph claiming "The feature directory was scaffolded in
