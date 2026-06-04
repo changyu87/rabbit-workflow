@@ -88,6 +88,7 @@ SUITES = [
     "test-specs-layout.py",
     "test-rabbit-update-command.py",
     "test-command-frontmatter-compliance.py",
+    "test-scope-guard-file-scoped-override.py",
 ]
 
 
