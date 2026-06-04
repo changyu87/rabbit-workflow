@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.50.0
+version: 0.51.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -432,6 +432,18 @@ entry has the form:
   .claude/features/rabbit-auto-evolve/scripts/tick-headless.py \
   >> .rabbit/tick-headless.log 2>&1
 ```
+
+**Tuning the cadence (operational config).** The `*/30` above is the
+DEFAULT, not a hard wire. The tick cadence is operational config: set the
+`RABBIT_AUTO_EVOLVE_CADENCE` env var, or write `{"cadence_minutes": <n>}` to
+rabbit-auto-evolve's own `.rabbit/auto-evolve-cadence-config.json` (state dir
+honors `RABBIT_AUTO_EVOLVE_STATE_DIR`), then re-run `set-evolve-mode.py on` (or
+`install-cron.py`) to reinstall. `install-cron.py` resolves the cadence once
+(env > config file > the `CADENCE_MINUTES = 30` default), VALIDATES it as an
+integer in `1..59`, and derives BOTH the system-cron `*/N * * * *` entry AND
+the `CronCreate`-fallback heartbeat from that SAME value — so the two paths
+never split. An invalid value is rejected: `install-cron.py` warns and falls
+back to the default rather than installing a nonsense cron line.
 
 This converts the prior silent-stop failure mode (a dropped in-session
 wakeup once halted the loop for 5h+ with no error) into an external,
