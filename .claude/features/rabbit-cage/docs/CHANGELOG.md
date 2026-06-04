@@ -12,6 +12,25 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.53.0 (scope-override revoke uses /rabbit-config command, not raw script path; #709):**
+  The scope-guard override REVOKE instruction now surfaces the clean
+  `/rabbit-config scope-guard on` command form that sibling configurables
+  use, instead of the raw `.claude/features/rabbit-cage/scripts/scope-guard-on.py`
+  path. Changes: (1) `feature.json configuration` gains a `scope-guard`
+  configurable (subcommand `scope-guard`, value `on` → `delete_marker` on
+  `.rabbit-scope-override`), so the existing data-driven rabbit-config
+  interpreter dispatches `/rabbit-config scope-guard on` with no rabbit-config
+  edit; (2) the scope-guard.py default-deny SESSION OVERRIDE option now reads
+  "Revoke any time via `/rabbit-config scope-guard on`"; (3) the
+  active-override banner (`.rabbit-scope-override` `check_marker_alert` Stop +
+  SessionStart entries) inlines the same revoke hint. `scope-guard-on.py`
+  remains the implementation the command wraps (script-tier preserved); only
+  the user-facing instruction changed. Spec Inv 7 amended to document the
+  `scope-guard` configurable and the command-form revoke instruction.
+  Regression: `test/test-scope-guard-revoke-uses-rabbit-config.py` (deny
+  message + banner text + configurable declaration + E2E command deletes the
+  override marker).
+
 - **v5.52.1 (housekeeping round 2 — measured dead-prose removal in spec; #682):**
   Measured line-removal pass under the #639 prove-it-dead-or-flag methodology
   (parent #677, round 2 re-run; round 1 only reworded). `docs/spec.md`:

@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.52.1",
+  "version": "5.53.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "housekeeping_clean": true,
@@ -136,7 +136,7 @@
           "path": ".rabbit-scope-override",
           "content": "session",
           "alert": {
-            "text": "SCOPE GUARD OFF (session override active)",
+            "text": "SCOPE GUARD OFF (session override active) — revoke: /rabbit-config scope-guard on",
             "icon": "\ud83d\udd13",
             "color": "red"
           }
@@ -201,7 +201,7 @@
           "path": ".rabbit-scope-override",
           "content": "session",
           "alert": {
-            "text": "SCOPE GUARD OFF (session override active)",
+            "text": "SCOPE GUARD OFF (session override active) — revoke: /rabbit-config scope-guard on",
             "icon": "\ud83d\udd13",
             "color": "red"
           }
@@ -220,6 +220,23 @@
     ]
   },
   "configuration": [
+    {
+      "id": "scope-guard",
+      "subcommand": "scope-guard",
+      "storage": {
+        "type": "marker-file",
+        "path": ".rabbit-scope-override"
+      },
+      "values": {
+        "on": {
+          "api": "delete_marker",
+          "args": {
+            "path": ".rabbit-scope-override"
+          }
+        }
+      },
+      "default": "on"
+    },
     {
       "id": "human-approval",
       "subcommand": "human-approval",
