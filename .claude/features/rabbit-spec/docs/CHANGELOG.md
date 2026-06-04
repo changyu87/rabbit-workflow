@@ -12,6 +12,34 @@ Each retirement entry below carries the original invariant number (as it appeare
 
 ## Version notes
 
+- **v1.12.0 (retire legacy B/B terminology on live surfaces, #666; part of #420):**
+  Replaced the legacy "bug-and-backlog (B/B)" / standalone "backlog"
+  custom-store vocabulary on rabbit-spec's live surfaces with the current
+  rabbit-issue terminology — "issue" / "bug or enhancement" /
+  "rabbit-managed issue" (GitHub's bug/enhancement taxonomy). The only live
+  hits were in `skills/rabbit-spec-update/SKILL.md` (v2.6.0 -> v2.7.0): the
+  Inputs `request` bullet ("a bug/backlog item description in B/B mode" ->
+  "a rabbit-managed issue description" — "B/B mode" was vestigial input
+  framing, not a current operating mode; the skill's real modes are
+  standalone/plugin), the Step 2 Specific request-class row ("backlog task"
+  -> "enhancement task"), and the What-You-Do-NOT-Do bullet ("File bugs or
+  backlog items" -> "File bugs or enhancements"). `docs/spec.md`,
+  `docs/contract.md`, `skills/rabbit-spec-create/SKILL.md`, and
+  `feature.json` carried no legacy vocabulary. spec.md gains Inv 7 (live
+  surfaces carry current issue vocabulary), worded so it does not itself
+  reintroduce the banned tokens. New content guard
+  `test/test-bb-terminology.py` scans every live surface
+  (`docs/spec.md`, `docs/contract.md`, both SKILL.md, `feature.json`) for the
+  `B/B` abbreviation, the `bug-and-backlog`/`bug/backlog` phrase family, and
+  the standalone `backlog` request-class noun (the literal
+  `bug-backlog-files` branch name is exempt as a historical artifact); wired
+  into `test/run.py`. Three-way version alignment bumped
+  spec.md/contract.md/feature.json 1.11.0 -> 1.12.0 (contract.md content
+  unchanged this cycle — version-only bump to satisfy the lockstep assertion
+  in `test/test-docs-layout.py`). Behaviour is unchanged. The deployed `.claude/skills/rabbit-spec-update/SKILL.md`
+  requires a dispatcher republish (deployed-skill-match RED until then);
+  `rabbit-spec-create` was not touched.
+
 - **v1.11.0 (drop dead spec-path fallbacks, #633):** The `specs/` -> flat `docs/` spec migration is COMPLETE — all 11 features carry `docs/spec.md`; a repo-wide `find` for `specs/spec.md` and `docs/spec/spec.md` returns zero matches, so the triple-fallback resolution (flat `docs/` preferred → `specs/` → legacy `docs/spec/`) was unreachable dead code. Applying prove-it-dead (coding-rules §6) the dead branches were deleted and the surfaces collapsed to the single canonical flat `docs/spec.md` / `docs/contract.md`. spec.md Inv 6 rewritten from "dual-read" to "canonical flat docs/ only" (no `specs/`/`docs/spec/` fallback); Purpose, Surface, and Tests sections updated. `skills/rabbit-spec-create/SKILL.md` (v1.5.0 -> v1.6.0): description, body intro, the `Spec-file layout` subsection, Step 3, and the "When to use" bullet collapsed to canonical-only. `skills/rabbit-spec-update/SKILL.md` (v2.5.0 -> v2.6.0): the `Spec-file layout` subsection, Step 1, and Step 4 path references collapsed to canonical `docs/spec.md` / `docs/contract.md`. `docs/contract.md` never-clause simplified (was "resolved layout: flat docs/spec.md preferred, then specs/spec.md, then legacy docs/spec/spec.md"). `agents/rabbit-spec-creator.md` already targeted canonical `docs/spec.md` only — no change. The dispatch script implements no fallback resolution — no change. Test `test/test-spec-path-layout-dual-read.py` -> `test/test-spec-path-layout-canonical.py` (v2.1.0 -> v3.0.0): inverted to assert both SKILL bodies and the agent name `docs/spec.md` ONLY and do NOT mention `specs/spec.md` or `docs/spec/spec.md`. Four-way version alignment bumped spec.md/contract.md/feature.json 1.10.0 -> 1.11.0. Deployed `.claude/skills/rabbit-spec-create/SKILL.md` and `.claude/skills/rabbit-spec-update/SKILL.md` require a dispatcher republish (deployed-skill-match RED until then). The `docs/`/`specs/` resolver in the contract feature is out of scope for this issue (it carries its own coexistence window).
 
 - **v1.10.0 (housekeeping Phase 2 — history-free doc surfaces + Inv 49 strict-tier opt-in, #553):** Scrubbed the historical-burden framing from rabbit-spec's doc surfaces so they describe only the CURRENT design. spec.md Inv 6's heading lost the `(issue #399 Phase 2a coexistence window)` parenthetical and the body's `During the specs/ -> docs/ flatten migration coexistence window, features migrate one-by-one` clause was rephrased to the present-tense `Features may carry any of these three layouts`; the deprecation-criterion sentence dropped the `(tracked by issue #399)` pointer. Both layout subsections in `skills/rabbit-spec-create/SKILL.md` and `skills/rabbit-spec-update/SKILL.md` had the same `specs/ -> docs/ flatten migration (issue #399) runs feature-by-feature` historical clause replaced with present-tense `A feature may carry any of the flat docs/, specs/, or legacy docs/spec/ layouts`. The live three-layout dual-read BEHAVIOUR (flat `docs/` preferred → `specs/` → legacy `docs/spec/`) is unchanged — only the historical wrapper and `#399` issue refs were removed; the migration history those refs pointed to is preserved here in this CHANGELOG (see the v1.5.0–v1.8.0 notes below). Opted into the Inv 49 strict tier by adding top-level `"housekeeping_clean": true` to `feature.json`. No invariants renumbered or retired; no contract-owned file edited. Four-way version alignment bumped spec.md/contract.md/feature.json 1.9.0 -> 1.10.0; source `skills/rabbit-spec-create/SKILL.md` (v1.4.0 -> v1.5.0) and `skills/rabbit-spec-update/SKILL.md` (v2.4.0 -> v2.5.0) each took a minor bump. The deployed `.claude/skills/rabbit-spec-create/SKILL.md` and `.claude/skills/rabbit-spec-update/SKILL.md` require a dispatcher republish (deployed-skill-match RED until then).
