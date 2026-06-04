@@ -8,6 +8,22 @@ deprecation_criterion: when the policy feature is retired (Claude Code exposes a
 
 ## Version notes
 
+- **v1.15.0 (no-nesting authoring rule, #647):** Added a
+  **No Subagent-Dispatching Skill Inside `Agent()`** bullet to the
+  "SKILL.md Authoring Standard" section of `spec-rules.md`. The rule codifies
+  that a skill whose body dispatches a subagent (any `Agent(subagent_type=...)`
+  call) MUST NOT itself be invoked inside an `Agent()` call, since that creates
+  illegal two-level nesting (`main → Agent level 1 → subagent level 2`)
+  unsupported by Claude Code. It directs that parallelization be done by
+  dispatching the underlying subagent directly at level 1
+  (`main → N parallel subagents`) through shared `scripts/`, not by wrapping the
+  skill in parallel `Agent()` calls, and names the known subagent-dispatching
+  skills (`rabbit-spec-create`, `rabbit-feature-touch`) plus the
+  inheritance clause for future such skills. New `docs/spec.md` Invariant 13
+  pins the rule's presence; `test/test-rule-files-content.py` asserts its
+  distinctive phrases. Rule text is declarative and history-free, keeping policy
+  within the Inv 49 strict tier.
+
 - **v1.14.0 (prove-it-dead-or-flag cleanup methodology, #639):** Added
   `coding-rules.md` Section 6 "Cleanup: Prove It Dead or Flag It", encoding the
   housekeeping definition-of-done methodology as a durable, declarative rule.

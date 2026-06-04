@@ -1,6 +1,6 @@
 {
   "name": "policy",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "tdd_state": "test-green",
@@ -11,7 +11,7 @@
     "skills": []
   },
   "deprecation_criterion": "when Claude Code exposes a native subagent-policy injection point",
-  "updated": "2026-06-03",
+  "updated": "2026-06-04",
   "manifest": [],
   "runtime": {},
   "configuration": []

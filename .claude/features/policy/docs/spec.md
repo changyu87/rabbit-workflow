@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.14.0
+version: 1.15.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native subagent-policy injection point
@@ -132,6 +132,25 @@ directory.
     separate sub-issue and the pass CONTINUES; one uncertain sentence never
     stalls a feature's cleanup. The rule text is declarative and history-free
     (no issue/PR references, no tombstone language). The
+    `test/test-rule-files-content.py` content guard asserts the rule's
+    distinctive phrases.
+
+### No-nesting authoring rule
+
+13. **No subagent-dispatching skill inside `Agent()`.** The "SKILL.md
+    Authoring Standard" section of `spec-rules.md` MUST carry a
+    **No Subagent-Dispatching Skill Inside `Agent()`** rule stating that a
+    skill whose body dispatches a subagent (any `Agent(subagent_type=...)`
+    call) MUST NOT itself be invoked inside an `Agent()` call, because that
+    creates illegal two-level nesting (`main → Agent level 1 → subagent
+    level 2`) which Claude Code does not support. The rule MUST direct that
+    parallelization of such a skill be done by dispatching the underlying
+    subagent directly at level 1 (`main → N parallel subagents`) through
+    shared `scripts/`, not by wrapping the skill in parallel `Agent()`
+    calls. The rule MUST name the known subagent-dispatching skills
+    `rabbit-spec-create` and `rabbit-feature-touch` and state that any
+    future subagent-dispatching skill inherits the constraint. The rule
+    text is declarative and history-free (no issue/PR references). The
     `test/test-rule-files-content.py` content guard asserts the rule's
     distinctive phrases.
 
