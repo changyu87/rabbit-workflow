@@ -34,13 +34,16 @@ from rabbit_print import rabbit_print  # noqa: E402
 # rabbit-feature-touch), not any step inside the assembled subagent prompt.
 # The subagent itself no longer contains a HUMAN-APPROVAL step
 # (TDD-SUBAGENT-BACKLOG-19 retired Inv 25, 26).
-# Issue #336 Phase 1: the bypass is dual-read — EITHER marker name is valid
-# during the coexistence window, so the note names both forms.
+# Issue #336: the configurable is `tdd-autonomous`; the bypass is dual-read —
+# canonical `.rabbit-tdd-autonomous` plus legacy `.rabbit-human-approval-bypass`
+# are both valid during the coexistence window, so the note names both forms.
+# Re-enable hint uses the per-feature command `/rabbit-tdd-autonomous false`
+# (false re-enables the Step-4 gate; correct post-#336 polarity).
 _BYPASS_NOTE_TEXT = (
-    "NOTE: human-approval bypass marker is active "
-    "(.rabbit-human-approval-bypass or .rabbit-tdd-autonomous). The "
+    "NOTE: tdd-autonomous bypass marker is active "
+    "(.rabbit-tdd-autonomous or legacy .rabbit-human-approval-bypass). The "
     "dispatcher's Step 4 HUMAN-APPROVAL gate was skipped for this "
-    "dispatch. Revoke via `/rabbit-config human-approval true`."
+    "dispatch. Re-enable the gate via `/rabbit-tdd-autonomous false`."
 )
 
 
@@ -350,16 +353,16 @@ def main(argv):
         if raw != "(not found)":
             impl_suggestion_block = f"\n## Implementation Suggestion\n\n```json\n{raw}\n```\n"
 
-    # Emit the bypass-marker preamble note when the human-approval
-    # bypass marker exists at the repo root (Inv 23). Issue #336 Phase 1:
-    # dual-read — the bypass is active when EITHER
-    # `.rabbit-human-approval-bypass` OR `.rabbit-tdd-autonomous` exists.
-    # The note appears on every dispatch while a marker is present; it
+    # Emit the bypass-marker preamble note when the tdd-autonomous
+    # bypass marker exists at the repo root (Inv 23). Issue #336:
+    # dual-read — the bypass is active when EITHER the canonical
+    # `.rabbit-tdd-autonomous` OR the legacy `.rabbit-human-approval-bypass`
+    # exists. The note appears on every dispatch while a marker is present; it
     # does not consume the marker. rabbit_print is the sole emission path
     # (Inv 24) — no inline ANSI/brand strings in this file.
     bypass_marker_paths = (
-        os.path.join(repo_root, ".rabbit-human-approval-bypass"),
         os.path.join(repo_root, ".rabbit-tdd-autonomous"),
+        os.path.join(repo_root, ".rabbit-human-approval-bypass"),
     )
     if any(os.path.isfile(p) for p in bypass_marker_paths):
         bypass_preamble_note = "\n" + rabbit_print(
