@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.31.0
+version: 1.32.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -364,8 +364,8 @@ their source path and not deployed):
         `owner` (defaulted from `$USER`), `paths` (the declared globs
         verbatim), `created` (ISO 8601 UTC `YYYY-MM-DDTHH:MM:SSZ`),
         and `deprecation_criterion: null`.
-    (b) `docs/spec.md` — a placeholder seeded for the spec-seeder
-        subagent to fill in.
+    (b) `docs/spec.md` — a placeholder for the spec-creator subagent
+        (dispatched via the `rabbit-spec-create` skill) to fill in.
     (c) `docs/contract.md` — empty contract placeholder mirroring
         the rabbit-self shape (frontmatter + `provides`/`reads`/
         `invokes`/`never` JSON block).
@@ -387,15 +387,16 @@ their source path and not deployed):
     Validation runs against the would-be-written object BEFORE the
     write; on schema failure the write is skipped and exit is 1.
 
-48. **Plugin-mode spec-seeder dispatch handoff.** After a successful
-    scaffold, `scaffold-feature.py` prints to stdout the literal
-    `dispatch-spec-seeder.py` command line (the
-    `.claude/features/spec-seeder/scripts/dispatch-spec-seeder.py`
+48. **Plugin-mode spec-create dispatch handoff.** After a successful
+    scaffold, `scaffold-feature.py` prints to stdout a `NEXT:` line
+    naming the `rabbit-spec-create` skill invocation and the equivalent
+    `dispatch-spec-create.py` command line (the
+    `.claude/features/rabbit-spec/scripts/dispatch-spec-create.py`
     invocation, with `--feature-name <name>` and a comma-joined
     `--paths` argument). The script itself MUST NOT invoke the
     subagent; subagent dispatch is the caller's responsibility (the
     skill / dispatcher layer reads the printed command and dispatches
-    the seeder). This keeps `scaffold-feature.py` free of Agent/Skill tool
+    the spec-creator). This keeps `scaffold-feature.py` free of Agent/Skill tool
     coupling.
 
 49. **rabbit-feature-scaffold SKILL.md documents plugin-mode invocation.**
@@ -404,8 +405,9 @@ their source path and not deployed):
     <path-glob>+` form — and names the plugin-mode trigger
     (`<repo>/.rabbit/.runtime/mode` containing `plugin`). The SKILL.md
     also documents the two-step user flow in plugin mode: (1) invoke
-    the skill, (2) dispatch the spec-seeder subagent using the
-    command printed by `scaffold-feature.py`'s stdout `NEXT:` line.
+    the skill, (2) dispatch the spec-creator subagent (via the
+    `rabbit-spec-create` skill) using the command printed by
+    `scaffold-feature.py`'s stdout `NEXT:` line.
 
 ### rabbit-feature-audit SKILL.md
 

@@ -109,9 +109,9 @@ def test_t1_plugin_happy_path() -> None:
         assert entry.get("paths") == ["src/**/*.py"]
         assert entry.get("feature_dir") == "rabbit-project/features/my-feature"
 
-        # Plugin-mode MUST print the spec-seeder dispatch instruction so the
-        # caller can hand off to the seeder subagent. The output should name
-        # both the seeder script and the new feature name.
+        # Plugin-mode MUST print the spec-create dispatch instruction so the
+        # caller can hand off to the spec-creator subagent. The output should
+        # name both the dispatch script and the new feature name.
         out = res.stdout
         assert "dispatch-spec-create.py" in out, (
             f"plugin-mode output must reference dispatch-spec-create.py; got {out!r}"
