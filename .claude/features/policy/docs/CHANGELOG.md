@@ -8,6 +8,20 @@ deprecation_criterion: when the policy feature is retired (Claude Code exposes a
 
 ## Version notes
 
+- **v1.17.0 (register rabbit-feature-scope as a subagent-dispatching skill, #690):**
+  Broadened §4's "No Subagent-Dispatching Skill Inside `Agent()`" rule to cover
+  UNTYPED default-model dispatches (`Agent(prompt=...)` with no `subagent_type`),
+  not only typed `Agent(subagent_type=...)` ones, and added `rabbit-feature-scope`
+  (which dispatches an untyped default-model Agent) to the authoritative named
+  set of known subagent-dispatching skills (was `rabbit-spec-create`,
+  `rabbit-feature-touch`). The named set is now declared authoritative and any
+  future such skill MUST be added to it. Audit confirmed the set of three is
+  complete: a repo-wide grep for `Agent(` in SKILL.md bodies surfaced only these
+  three genuine dispatchers (`rabbit-decompose` merely warns against wrapping,
+  it does not dispatch). `test-rule-files-content.py` now asserts both the
+  `rabbit-feature-scope` name and the `Agent(prompt=...)` untyped-dispatch
+  coverage.
+
 - **v1.16.0 (housekeeping round 2 — measured spec redundancy removal, #680):**
   Measured line-removal pass under #639 prove-it-dead-or-flag, per #677's
   mandate to remove (not reword) cross-surface redundancy. `docs/spec.md`

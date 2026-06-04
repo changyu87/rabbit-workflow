@@ -72,6 +72,12 @@ check_phrase("spec-rules.md", "illegal two-level nesting")
 check_phrase("spec-rules.md", "main → N parallel subagents")
 check_phrase("spec-rules.md", "rabbit-spec-create")
 check_phrase("spec-rules.md", "rabbit-feature-touch")
+# Issue #690: rabbit-feature-scope is the THIRD subagent-dispatching skill —
+# it dispatches an UNTYPED default-model Agent (`Agent(prompt=...)`, no
+# subagent_type). The named set MUST include it, and the rule MUST cover
+# untyped dispatches, not only `Agent(subagent_type=...)` ones.
+check_phrase("spec-rules.md", "rabbit-feature-scope")
+check_phrase("spec-rules.md", "Agent(prompt=...)")
 check_phrase("spec-rules.md", "any future subagent-dispatching skill inherits")
 # History-free: the rule text must not carry issue/PR refs.
 check_phrase_absent("spec-rules.md", "#647")
