@@ -18,7 +18,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.8.1
+Version: 1.9.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -91,7 +91,15 @@ def check_marker_alert(path: str, content, alert: dict, *, repo_root: str) -> di
     result built from `alert` ({text, icon, color}). If `content` is not
     None, the marker file must also contain exactly that string; otherwise
     treat as absent.
+
+    Inv 54 — suppressed under auto-evolve: when .rabbit-auto-evolve-active is
+    present, this live per-feature alert is a no-op (ok_result). During
+    autonomous mode the auto-evolve composite banner (emit_auto_evolve_banner /
+    emit_auto_evolve_stop_line, Inv 55) is the single replacement surface, so
+    the per-feature override alert must not double up on it.
     """
+    if _auto_evolve_active(repo_root):
+        return ok_result()
     full = os.path.join(repo_root, path)
     if not os.path.isfile(full):
         return ok_result()
@@ -537,7 +545,16 @@ def emit_configurable_alert(feature_name: str, configurable_id: str,
     value against alert-on, return print_result on match, ok_result on
     miss, or error_result when feature/configurable/alert-message cannot
     be resolved.
+
+    Inv 54 — suppressed under auto-evolve: when .rabbit-auto-evolve-active is
+    present, this live per-feature alert is a no-op (ok_result) before any
+    resolution work. During autonomous mode the auto-evolve composite banner
+    (emit_auto_evolve_banner / emit_auto_evolve_stop_line, Inv 55) is the
+    single replacement surface, so the per-feature override alert must not
+    double up on it.
     """
+    if _auto_evolve_active(repo_root):
+        return ok_result()
     fj = os.path.join(repo_root, ".claude", "features", feature_name,
                        "feature.json")
     if not os.path.isfile(fj):

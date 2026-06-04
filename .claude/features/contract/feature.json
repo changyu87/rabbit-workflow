@@ -1,6 +1,6 @@
 {
   "name": "contract",
-  "version": "2.24.0",
+  "version": "2.25.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
