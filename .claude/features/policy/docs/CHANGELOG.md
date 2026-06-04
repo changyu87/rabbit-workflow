@@ -8,6 +8,35 @@ deprecation_criterion: when the policy feature is retired (Claude Code exposes a
 
 ## Version notes
 
+- **v1.16.0 (housekeeping round 2 — measured spec redundancy removal, #680):**
+  Measured line-removal pass under #639 prove-it-dead-or-flag, per #677's
+  mandate to remove (not reword) cross-surface redundancy. `docs/spec.md`
+  163 → 146 lines (17 removed). Three invariants collapsed their bodies to the
+  normative skeleton (presence requirement + authoritative-source pointer +
+  enforcing test), with the full rule text preserved in its single
+  authoritative home:
+  - Inv 6 — dropped the cross-feature provenance narration ("propagates the
+    lesson of rabbit-feature's spec-edit Read-before-Edit obligation … remains
+    stable across rabbit-feature renumbers"); the normative named-not-numbered
+    directive survives.
+  - Inv 12 — dropped the verbatim re-description of the four #639 check kinds,
+    the three-row action table, and the annotate-and-continue discipline. That
+    text is authoritative in `coding-rules.md` Section 6 (session-injected) and
+    every distinctive phrase is already asserted by
+    `test/test-rule-files-content.py`. The spec keeps the presence requirement
+    and the enforcing-test pointer.
+  - Inv 13 — dropped the verbatim re-description of the no-nesting rule
+    (illegal two-level nesting, dispatch-at-level-1, named skills). That text
+    is authoritative in `spec-rules.md` Section 4 and is content-guard-tested.
+    The spec keeps the presence requirement and the enforcing-test pointer.
+  No invariant added/renumbered/removed; no numbering gap; `docs/contract.md`
+  JSON boundary unchanged. New E2E regression
+  `test/test-spec-housekeeping-680-dead-prose-removed.py` (wired into
+  `test/run.py`) asserts each removed phrase is absent AND each surviving
+  normative anchor is present; RED on all seven pre-edit phrases, GREEN after.
+  Four-way version bump (feature.json + docs/spec.md + docs/contract.md +
+  this entry). Policy stays within the Inv 49 strict tier. Contract suite GREEN.
+
 - **v1.15.0 (no-nesting authoring rule, #647):** Added a
   **No Subagent-Dispatching Skill Inside `Agent()`** bullet to the
   "SKILL.md Authoring Standard" section of `spec-rules.md`. The rule codifies

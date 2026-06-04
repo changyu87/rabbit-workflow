@@ -12,6 +12,42 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.52.1 (housekeeping round 2 — measured dead-prose removal in spec; #682):**
+  Measured line-removal pass under the #639 prove-it-dead-or-flag methodology
+  (parent #677, round 2 re-run; round 1 only reworded). `docs/spec.md`:
+  518 -> 497 lines (-21). Removed/collapsed, each verified by a deterministic
+  check before deletion:
+  (1) Inv 27 historical narration "Before this invariant was added, scope-guard
+  wrote at <git_toplevel>..." — past-defect storytelling; the CURRENT
+  single-canonical-location invariant is stated immediately above (CHANGELOG
+  material).
+  (2) Inv 40 "the prior `_BOX_WIDTH - 2 = 30` char-column math under-counted"
+  plus the "Two defects in the earlier version-box form / Defect 1 / Defect 2"
+  framing — past-fix narration; the CURRENT math (inner field 2*_BOX_WIDTH-4=60)
+  is fully specified.
+  (3) Inv 22h "a confusing and load-bearing two-run requirement that produces
+  spurious 'missing feature' failures" — rationale narration of a defect the
+  MUST already prevents.
+  (4) Inv 29d "Rationale — REJECTED alternative: dynamic ... Same rejection as
+  Inv 28" — verbatim duplicate of the GitHub-API rejection already in Inv 28;
+  collapsed to a one-line back-reference (rule #3 collapse-redundancy).
+  (5) Inv 29a csh/tcsh rationale paragraph — the shell-agnostic behavior is
+  stated; the justification was redundant.
+  (6) Three-layout dual-read carve-out (scope-guard Semantics prose section +
+  Inv 17(a2)) — restated in full in three places; the carve-out is the
+  AUTHORITATIVE subject of Inv 35, so the prose section and Inv 17(a2) now
+  point at Inv 35 (rule #3).
+  (7) Inv 30 "Initial seed: CHANGELOG.md carries ... release/1.0 through
+  release/1.10 reconstructed from the git log" — one-time historical seeding
+  narration; not load-bearing (test-changelog-shape.py validates shape, not
+  the seed content).
+  Verbose per-test "(i)/(ii)/(iii)" enumerations in several "Enforced by"
+  blocks collapsed to one-line summaries (the test docstrings own the detail).
+  No deployed artifact changed; rabbit-cage owns no SKILL.md. New e2e
+  regression `test/test-spec-housekeeping-682-dead-prose-removed.py` pins the
+  banned phrases absent, the dual-read collapse, and a 500-line spec ceiling;
+  wired into `test/run.py`. Doc-only; contract suite GREEN.
+
 - **v5.52.0 (retire dead `permissions` lock/unlock configurable; #366):**
   Removed the `permissions` configurable (`subcommand: "permissions"`,
   actions `lock`/`unlock`) from `feature.json` `configuration[]` and deleted

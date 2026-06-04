@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.5.0
+version: 0.5.1
 template_version: 2.0.0
 ---
 
@@ -52,7 +52,3 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   ]
 }
 ```
-
-## Tech Stack
-
-Dispatcher-orchestrated; no scripting tech stack of its own in the MVP.

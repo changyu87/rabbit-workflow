@@ -13,6 +13,32 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.5.1 (housekeeping round 2 — measured line removal, #684 / #677 / #639):**
+  Removal-not-reword pass over the feature's md surfaces under coding-rules §6
+  (prove-it-dead-or-flag). Deletions, each verified: (1) the speculative
+  "deferred `decomposer` subagent / `dispatch-decompose.py`" future-work prose,
+  stated three times — `docs/spec.md` Surface, Tech Stack ("Future
+  enhancement"), and Out of Scope; collapsed to the single remaining factual
+  MVP statement (no such subagent/script exists — `grep -r decomposer` over the
+  feature returns only these prose mentions). (2) The full multi-line
+  two-level-nesting rationale duplicated across `docs/spec.md` Protocol step 4
+  and Invariant 4; the canonical operational rationale lives in `SKILL.md`
+  step 4B (which the E2E test pins), so the spec copies were collapsed to a
+  reference + a tightened normative invariant — the constraint is still named
+  on a surface and the E2E `test-step4b-no-nested-dispatch.py` stays green.
+  (3) The redundant `## Tech Stack` prose section in `docs/contract.md` (the
+  contract header instructs consumers to "ignore prose"; no contract check
+  requires the section — `grep "Tech Stack"` over contract lib/scripts/tests
+  is empty). The source `SKILL.md` body was left unchanged (no reword to
+  manufacture a diff); only its frontmatter `version` moved in lockstep.
+  Cross-feature `invokes`/`reads` claims were re-verified LIVE and KEPT
+  (`scaffold-feature.py --batch`, `rabbit-feature-scaffold`, `rabbit-spec-create`
+  all exist; `.rabbit/.runtime/mode` present). Frontmatter `version` bumped to
+  0.5.1 across `feature.json`, `docs/spec.md`, `docs/contract.md`, and the
+  source `SKILL.md` (four-way alignment); the deployed `.claude/skills/` copy
+  needs a dispatcher republish because the source SKILL.md frontmatter version
+  changed.
+
 - **v0.5.0 (Step 4B nesting-safety fix, #646):** Corrected the spec-create
   hand-off in `SKILL.md` Step 4B. The step previously claimed
   `rabbit-spec-create` calls "can be run in parallel via the Agent tool for

@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.8.0
+version: 1.8.1
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours the `rabbit-managed` label as a safety guard so human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -38,29 +38,20 @@ The shared helper `_gh.py` resolves the repo slug and wraps `gh` calls.
 
 ## Label Schema
 
-Every issue filed via `rabbit-issue` carries **six** labels. The labels
-are auto-created on demand (idempotent `gh label create … || true`) at
-first `file-item.py` call — there is no separate bootstrap step.
-
-| Label | Purpose | Cardinality |
-|---|---|---|
-| `bug` *(GH default)* | Type — exclusive with `enhancement` | exactly one of bug/enhancement |
-| `enhancement` *(GH default)* | Type — exclusive with `bug` | exactly one of bug/enhancement |
-| `rabbit-managed` | Distinguishes rabbit-filed issues from human-filed | required |
-| `feature:<name>` | Feature scope | required, one per item |
-| `priority:<low\|medium\|high\|critical>` | Priority | required, one per item |
-| `filed-by:<source>` | Provenance — who filed it (e.g. `loop`, `human`) | required, one per item |
+Every issue filed via `rabbit-issue` carries **six** labels: one of
+`bug` / `enhancement`, plus `rabbit-managed`, `feature:<name>`,
+`priority:<…>`, and `filed-by:<source>`. They are auto-created on demand
+(idempotent `gh label create … || true`) at first `file-item.py` call —
+there is no separate bootstrap step. See docs/spec.md §Label schema for
+the full cardinality table.
 
 The `rabbit-managed` label is load-bearing for the safety invariant
 below. Do not strip it from issues filed via this skill.
 
-The `filed-by:<source>` provenance label records *who*
-filed the issue, so loop-performance metrics (self-discovery rate,
-discovery→fix ratio) can be derived by querying `filed-by:loop`. It is
-set from `file-item.py --filed-by <source>`, which **defaults to
-`human`** when omitted; only callers that know they are the autonomous
-evolve loop pass `--filed-by loop`. The label is additive — it never
-changes the other five.
+The `filed-by:<source>` provenance label is set from
+`file-item.py --filed-by <source>` (**defaults to `human`**; only the
+autonomous evolve loop passes `--filed-by loop`). It is additive — it
+never changes the other five.
 
 ---
 
@@ -121,17 +112,11 @@ When the user asks to work, close, or reopen an issue:
    reads the issue from GH. If the issue is not found, inform the user
    and stop. When the issue's comment thread is also needed (e.g. to
    feed the eval subagent the full discussion), read the comment bodies
-   via the JSON API — `gh issue view <N> --json comments` (parse the
-   returned JSON), never the human view `gh issue view <N> --comments`.
-   The `--comments` view hits a deprecated Projects-classic
-   `projectCards` GraphQL field that FAILS and returns EMPTY on this
-   repo, so comments silently read as absent even when present;
-   `--json comments` does not touch that field.
+   via `gh issue view <N> --json comments`, never the human view
+   `--comments` (see docs/spec.md §Reading issue comments for why).
 
 2. **Eval subagent** — dispatch a read-only default-model subagent with
-   the fetched issue JSON and the affected feature's spec.md (resolved
-   dual-read: flat `docs/spec.md` preferred, legacy `specs/spec.md`
-   fallback).
+   the fetched issue JSON and the affected feature's `docs/spec.md`.
    It returns:
    - **Verdict**: `valid` (still relevant and reproducible) or
      `stale/invalid` with reason.
@@ -251,32 +236,6 @@ GH issue state is binary; `state_reason` distinguishes the close path.
   - `null` — pre-rabbit closures or external closes; not produced by
     this skill.
 - Reopen restores `state = open` with `state_reason = reopened`.
-
-SHA / event history is delegated entirely to GH's Timeline API. There
-is no local `history` array and no `--fix-commits` parameter — the
-closing-reference feature (`Fixes #N` in commit messages) auto-links
-commits to issue closure and records the SHA in the timeline event.
-
----
-
-## Why This Shape
-
-- **GH Issues, not a custom branch.** The legacy `rabbit-file` feature
-  maintained items as JSON on `origin/bug-backlog-files`. That gave us
-  CLI-only auditability but cost a custom counter, custom history
-  array, and custom worktree machinery — all of which GH already
-  provides. Moving to GH Issues removes that surface entirely and lets
-  the Timeline API own SHA history.
-- **`rabbit-managed` label, not a private repo.** rabbit needs to
-  automate issues without accidentally closing or reopening a human's
-  issue. A label is the cheapest opt-in marker GH offers, and the guard
-  is enforced at the script boundary (not at the gh layer) so the
-  refusal is locatable in our code.
-- **`Fixes #N` auto-close, not a `--fix-commits` flag.** GH already
-  links commits to closures via the closing-reference syntax. Adding a
-  rabbit-side flag would duplicate that work and drift from what
-  reviewers see in the GH UI. The fallback exists for the rare
-  squash-merge-stripped trailer case, not as the primary path.
 
 ---
 

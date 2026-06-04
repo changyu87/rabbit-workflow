@@ -13,6 +13,47 @@ own version.
 
 ## Version notes
 
+- **v0.48.4 — 2026-06-03** — Land the gitignore-seeding feature (#691, closes
+  #398, authorized by #701). Inv 57 (proactive `.gitignore` seeding is the
+  policy; reactive single-file additions are a fallback) is added to
+  `docs/spec.md`; the repo-root `.gitignore` gains the per-feature
+  `.rabbit-scope-active-*` scope-marker glob (the bare `.rabbit-scope-active`
+  token does not match a per-feature `.rabbit-scope-active-<feature>` marker,
+  so a stray marker could be committed without the glob). New E2E regression
+  `test/test-gitignore-seeded-runtime-artifacts.py` (wired into `test/run.py`)
+  copies the repo-root `.gitignore` into a tempdir git repo, writes each
+  artifact in the known seed set including a per-feature scope marker, and
+  asserts `git status --porcelain` reports none of them. Landed by merging
+  `origin/dev` into the PR branch; the only content conflict was the transient
+  `feature.json` `spec_no_change_reason` field, removed here since `docs/spec.md`
+  does change in this landing (it gains Inv 57). Four version surfaces bumped
+  0.48.3 → 0.48.4 in lockstep.
+
+- **v0.48.3 — 2026-06-03** — Housekeeping round 2 (#681, under #639): measured
+  dead-prose REMOVAL pass on `docs/spec.md` (the whale; round 1 reworded instead
+  of removing). Deleted, each verified DEAD by a deterministic #639 check:
+  (1) the "Current behaviour" preamble claiming "No scripts, no SKILL.md, and no
+  tests exist yet … become verifiable once Phase C through Phase E merges
+  complete" — behaviour check: the scripts/, SKILL.md, and 70+ tests all exist
+  and pass; (2) the entire "Open questions (to resolve during Phases C–E)"
+  section (6 items, RESOLVED or moot) — the feature is fully implemented and the
+  resolved facts already live inline in the relevant invariants; (3) Inv 22's
+  "Ownership migration: As of v0.7.5 … does NOT yet call this script … a
+  follow-up cycle … will refactor" block and Inv 14's mirror "this invariant
+  will be revised to defer line-2 ownership to Inv 22" — cross-feature
+  inspection: `contract.lib.runtime.emit_auto_evolve_banner` now delegates to
+  `scripts/banner-status.py`, so the follow-up HAS landed; (4) Inv 15's stale
+  "current target is `0.4.0` (set during Phase E Task 14)" — live version is
+  0.48.3, not 0.4.0; (5) Inv 42's "the steps that the in-session `start`
+  sequence used to run before invoking the walk are removed" past-refactor
+  narration. The dangling "(resolved Open Question N)" provenance tags left by
+  removing the Open-questions section were trimmed (the normative facts they
+  cited stay inline). Each surviving invariant keeps its current normative
+  statement; only stale/pre-implementation/past-edit narration was deleted.
+  Net: spec.md ~3570 → ~3490 lines. Regression-guarded by
+  `test/test-spec-housekeeping-681-dead-prose-removed.py`. Four-way version
+  lockstep bump (feature.json + spec + contract + SKILL).
+
 - **v0.48.2 — 2026-06-04** — Cross-scope false-positive fix for bare
   feature-NAME mentions (Inv 56(a.2), issue #669; follow-up to #667). A
   single-feature sub-issue (one `feature:` label, edit-paths under ONE feature

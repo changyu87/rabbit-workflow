@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.15.0
+version: 1.16.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native subagent-policy injection point
@@ -52,9 +52,7 @@ directory.
    principle expressing all three of: (a) read an existing file before
    editing it, (b) read the surrounding module before writing alongside
    existing code, (c) edits made without reading are speculative. The
-   principle propagates the lesson of rabbit-feature's spec-edit
-   Read-before-Edit obligation — named, not numbered, so the citation
-   remains stable across rabbit-feature renumbers.
+   principle is named, not numbered, so the citation stays stable.
 
 7. **Canonical invariants test name.**
    `test/test-policy-invariants.py` is the canonical name for the
@@ -114,24 +112,12 @@ directory.
 ### Cleanup methodology
 
 12. **Prove-it-dead-or-flag cleanup methodology present.**
-    `coding-rules.md` MUST carry a cleanup-methodology rule that redefines a
-    cleanup pass's definition of done so that dead-but-plausible content is
-    removed, not only syntactically-tagged historical burden. The rule MUST
-    state that every claim is evaluated by a deterministic VERIFICATION check
-    (not judgment) and MUST name the four check kinds: a path reference is
-    `find`-ed across the repo (zero matches = dead); a
-    function/flag/script/symbol is `grep`-ed for callers/usages (none = dead);
-    a described behavior must have a reachable code path and/or a test
-    exercising it (neither = dead); a cross-feature claim is verified by
-    inspecting the other feature directly. The rule MUST carry a
-    three-row action table — proven dead (check empty) → DELETE; proven live
-    (check finds it) → KEEP; unverifiable (no cheap check) → FLAG a
-    `housekeeping`-tagged sub-issue naming the file, the sentence, and why it
-    could not be verified, never silently keep. The rule MUST state the
-    annotate-and-continue discipline: an unverifiable sentence is flagged as a
-    separate sub-issue and the pass CONTINUES; one uncertain sentence never
-    stalls a feature's cleanup. The rule text is declarative and history-free
-    (no issue/PR references, no tombstone language). The
+    `coding-rules.md` MUST carry a cleanup-methodology rule — its
+    authoritative text is Section 6 of `coding-rules.md` ("Cleanup: Prove It
+    Dead or Flag It"), which defines the VERIFICATION-driven definition of
+    done, the four check kinds, the three-row action table, and the
+    annotate-and-continue discipline. The rule text is declarative and
+    history-free (no issue/PR references, no tombstone language). The
     `test/test-rule-files-content.py` content guard asserts the rule's
     distinctive phrases.
 
@@ -139,18 +125,13 @@ directory.
 
 13. **No subagent-dispatching skill inside `Agent()`.** The "SKILL.md
     Authoring Standard" section of `spec-rules.md` MUST carry a
-    **No Subagent-Dispatching Skill Inside `Agent()`** rule stating that a
-    skill whose body dispatches a subagent (any `Agent(subagent_type=...)`
-    call) MUST NOT itself be invoked inside an `Agent()` call, because that
-    creates illegal two-level nesting (`main → Agent level 1 → subagent
-    level 2`) which Claude Code does not support. The rule MUST direct that
-    parallelization of such a skill be done by dispatching the underlying
-    subagent directly at level 1 (`main → N parallel subagents`) through
-    shared `scripts/`, not by wrapping the skill in parallel `Agent()`
-    calls. The rule MUST name the known subagent-dispatching skills
-    `rabbit-spec-create` and `rabbit-feature-touch` and state that any
-    future subagent-dispatching skill inherits the constraint. The rule
-    text is declarative and history-free (no issue/PR references). The
+    **No Subagent-Dispatching Skill Inside `Agent()`** rule — its
+    authoritative text is the matching bullet in Section 4 of
+    `spec-rules.md`, which forbids invoking a subagent-dispatching skill
+    inside an `Agent()` call, directs parallelization via dispatching the
+    underlying subagent at level 1, and names the known subagent-dispatching
+    skills `rabbit-spec-create` and `rabbit-feature-touch`. The rule text is
+    declarative and history-free (no issue/PR references). The
     `test/test-rule-files-content.py` content guard asserts the rule's
     distinctive phrases.
 

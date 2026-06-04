@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.8.0
+version: 1.8.1
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -54,15 +54,11 @@ with a machine-readable provenance label `filed-by:<source>` (e.g.
 `filed-by:loop`, `filed-by:human`). The label is additive — it does not
 change any of the other five labels.
 
-`--filed-by` defaults to **`human`** when omitted. The default is
-deliberately the conservative attribution: only an explicit caller that
-knows it is the autonomous evolve loop passes `--filed-by loop`, so an
-unattributed filing is never mis-counted as loop self-discovery. The
-autonomous evolve loop's own discovered-issue and decomposition filings
-pass `--filed-by loop` explicitly; every other (human-driven) filing
-inherits the `human` default. This makes loop-performance metrics —
-self-discovery rate and the discovery→fix ratio — answerable by querying
-the `filed-by:loop` label.
+`--filed-by` defaults to **`human`** when omitted; only the autonomous
+evolve loop passes `--filed-by loop` explicitly, so an unattributed
+filing is never mis-counted as loop self-discovery. This keeps
+loop-performance metrics (self-discovery rate, discovery→fix ratio)
+answerable by querying the `filed-by:loop` label.
 
 ### Safety invariant
 
@@ -124,13 +120,9 @@ repo, period — never to the user's project repo.
 2. Otherwise the const `RABBIT_REPO_DEFAULT = "changyu87/rabbit-workflow"`
    declared at module top in `_gh.py`.
 
-`_gh.py` does NOT call `git remote get-url origin` at any point. The
-old cwd-derived discovery (and its "fails loudly if origin is not a
-GitHub URL" branch) is intentionally removed — in plugin installs the
-cwd was the user's project, which silently directed bugs to the wrong
-target (or loudly aborted on non-GH origins like Perforce / local
-paths), defeating the bug-capture path that rabbit-issue exists to
-provide.
+`_gh.py` does NOT call `git remote get-url origin` at any point — in
+plugin installs the cwd is the user's project, which would silently
+direct bugs to the wrong target.
 
 Scripts still fail loudly when `gh auth status` is not green.
 
@@ -144,16 +136,10 @@ view.
 `gh issue view <N> --comments` triggers a deprecated Projects-classic
 `projectCards` GraphQL field on repos that touch that path. On this repo
 that request FAILS and returns an EMPTY body, so comments appear absent
-even when they are present — a silent correctness trap (comments are
-read as "none" rather than erroring). The `--json comments` path does
-NOT hit the deprecated `projectCards` field and returns the comment
-bodies reliably.
-
-`_gh.py` exposes `gh_issue_comments(number)`, which calls
-`gh issue view <N> -R <slug> --json comments` and returns the parsed
-list of comment objects (each carrying at least `body`). No rabbit-issue
-script or skill guidance uses `gh issue view … --comments`; the
-`--json comments` form is the only sanctioned comment-read path.
+even when they are present — a silent correctness trap. The
+`--json comments` path does NOT hit the deprecated field and returns the
+comment bodies reliably; `_gh.py` exposes `gh_issue_comments(number)` as
+the only sanctioned comment-read path.
 
 ## What this feature does NOT define
 
@@ -177,9 +163,4 @@ script or skill guidance uses `gh issue view … --comments`; the
 
 `test/run.py` runs the end-to-end suite. The suite uses a `gh` CLI
 shim (`test/gh_shim.sh`) on `PATH` to avoid hitting real GitHub
-during unit tests; the live smoke test is operational verification
-only and is not part of `run.py`.
-
-Per the TDD state machine: spec authored here, then transition to
-`test-red` once the test files land, then to `impl`/`test-green`
-as the runtime scripts come online.
+during unit tests.
