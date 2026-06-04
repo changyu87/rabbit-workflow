@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.56.0
+version: 0.57.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -19,8 +19,10 @@ status: active
 
 ## Purpose
 
-A self-driving rabbit loop that continuously fetches open `rabbit-managed`
-GitHub issues, triages each one, dispatches TDD subagents to implement
+A self-driving rabbit loop that continuously fetches open ACTIONABLE
+GitHub issues (those carrying a valid `feature:` + `priority:` label;
+`rabbit-managed` is tolerated but no longer the selection key — see Inv 2),
+triages each one, dispatches TDD subagents to implement
 actionable work, merges approved PRs into `dev`, tags versioned releases,
 and is fired on a fixed cadence by a system cron (the sole tick scheduler;
 see Inv 32) until the user issues an explicit stop — all without requiring
@@ -72,7 +74,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | Script | Kind | Description |
 |---|---|---|
 | `scripts/set-evolve-mode.py` | CLI | Compound mutator: `on` flips `human-approval=false`, `bypass-permissions=true`, writes `.rabbit-auto-evolve-active` in order with rollback on failure; `off` reverses in inverse order |
-| `scripts/fetch-queue.py` | CLI | Lists open `rabbit-managed` issues via `gh`, sorts by priority then `createdAt`, emits JSON array |
+| `scripts/fetch-queue.py` | CLI | Lists open ACTIONABLE issues (valid `feature:` + `priority:` label; `rabbit-managed` tolerated, not required) via `gh`, sorts by priority then `createdAt`, emits JSON array |
 | `scripts/triage-issue.py` | CLI | Per-issue classifier; reads issue metadata and the named feature's spec front matter; emits a triage JSON object with `decision`, `reason_code`, `rationale`, `feature`, `contract_touch`, `blocked_by` |
 | `scripts/plan-batch.py` | CLI | Reads a work-set JSON from stdin; partitions contract-touch issues into `barrier_first`; greedy graph-colors the rest by feature-conflict into `groups`; applies `max_parallel` cap |
 | `scripts/safety-check.py` | CLI | Validates five bottom-line invariants (branch is `dev`, PR base is `dev`, head branch matches `^feat/.+`, tag does not already exist, no uncommitted modifications to tracked files); exits non-zero on any violation |
@@ -284,15 +286,21 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 2. **`fetch-queue.py` deterministic queue emission.** The CLI
    `python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py`
    emits a deterministic JSON array on stdout, sorted by priority
-   (`critical` > `high` > `medium` > `low`; issues missing a priority
-   label sort to the END) then `createdAt` ascending (oldest first
-   within the same priority bucket). Only issues carrying the
-   `rabbit-managed` label appear (this is what gates rabbit's
-   automation from human-filed issues).
+   (`critical` > `high` > `medium` > `low`) then `createdAt` ascending
+   (oldest first within the same priority bucket). Selection is
+   ACTIONABILITY-based: an OPEN issue appears iff it carries BOTH a valid
+   `feature:<name>` label AND a valid `priority:<level>` label (one of the
+   four recognized levels). This is the actionable-work gate; an issue
+   lacking either label is not yet actionable and is excluded.
+
+   Selection is NOT keyed on `rabbit-managed`. The `rabbit-managed` label is
+   still TOLERATED — an actionable issue is selected whether or not it carries
+   it — and this actionability basis aligns the actual selection with the
+   already-LABEL-INDEPENDENT convergence guarantee (Inv 25).
 
    The script invokes `gh issue list --repo <repo> --state open
-   --label rabbit-managed --json number,title,labels,body,createdAt
-   --limit 500`, where `<repo>` is resolved via
+   --json number,title,labels,body,createdAt --limit 500` and filters to the
+   actionable set in-script, where `<repo>` is resolved via
    `rabbit_issue._gh.resolve_repo` (importable from
    `.claude/features/rabbit-issue/scripts/`) — no `git remote get-url`
    shellouts. The script never reads or writes anything other than
@@ -305,12 +313,19 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    - Smoke test: invoke with `--help`; assert exit 0 and recognizable
      usage text.
    - Sort-order test: under `tempfile.TemporaryDirectory()` create a
-     `gh` shim on `$PATH` that emits a fixture JSON list of issues
-     mixing all four priorities plus a no-priority issue, with
-     non-monotonic `createdAt` values inside each priority bucket.
-     Invoke the script and assert: priority order
-     (critical → high → medium → low → no-priority) and ascending
-     `createdAt` inside each bucket.
+     `gh` shim on `$PATH` that emits a fixture JSON list of actionable
+     issues (each carrying a `feature:` + `priority:` label) mixing all
+     four priorities, with non-monotonic `createdAt` values inside each
+     priority bucket. Invoke the script and assert: priority order
+     (critical → high → medium → low) and ascending `createdAt` inside
+     each bucket.
+   - Actionability-selection test: a fixture mixing actionable issues
+     (valid `feature:` + valid `priority:`) — including one with NO
+     `rabbit-managed` label — against non-actionable issues (missing a
+     `feature:` label, missing a `priority:` label, an unrecognized
+     priority value, or neither). Assert the selected set is exactly the
+     actionable issues, label-independently (the unmanaged actionable
+     issue IS selected; the non-actionable ones are excluded).
    - Network-dependent listing against real GitHub is covered by the
      Phase F end-to-end smoke test, not by this unit test.
 
@@ -1567,14 +1582,19 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     - **No de-queue escape hatch (Red Flag).** While
       `.rabbit-auto-evolve-running` is present, **the dispatcher MUST NOT remove
       `rabbit-managed` from an OPEN issue as a parking or hand-back action.**
-      "De-queue" — dropping the label while leaving the issue OPEN — is the same
-      human-handoff escape that the AskUserQuestion ban (Inv 13) forbids, leaking
-      through a different mechanism: because `fetch-queue.py` selects only
-      `--state open --label rabbit-managed`, a de-queued issue silently exits the
-      loop's view and is stranded open-but-untracked. The only permitted non-work
-      outcomes remain a bounded `defer` (tracked) OR `close-not-planned` with a
-      strong reason. This rule is recorded in the `Red Flags — STOP` section of
-      `skills/rabbit-auto-evolve/SKILL.md` as the literal string:
+      "De-queue" — dropping a queue-gating label while leaving the issue OPEN —
+      is the same human-handoff escape that the AskUserQuestion ban (Inv 13)
+      forbids, leaking through a different mechanism: stripping the labels that
+      make an issue actionable silently exits it from the loop's view and
+      strands it open-but-untracked. `fetch-queue.py` selects on ACTIONABILITY
+      — valid `feature:` + `priority:` — rather than `rabbit-managed`, so an
+      issue that loses only `rabbit-managed` still appears; the ban remains as
+      defense-in-depth and forward-compatible against any
+      de-queue-by-label-removal. The only
+      permitted non-work outcomes remain a bounded `defer` (tracked) OR
+      `close-not-planned` with a strong reason. This rule is recorded in the
+      `Red Flags — STOP` section of `skills/rabbit-auto-evolve/SKILL.md` as the
+      literal string:
 
       > **While `.rabbit-auto-evolve-running` is present, the dispatcher MUST NOT remove `rabbit-managed` from an OPEN issue as a parking or hand-back action.**
 
@@ -1585,10 +1605,11 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     with a strong reason, or a bounded defer — and that obligation does NOT
     lapse when the label is absent. Removing the label while an issue is open
     is explicitly NOT a convergence outcome: it is the forbidden "de-queue"
-    action, which strands the issue open-but-untracked because
-    `fetch-queue.py` selects only `--state open --label rabbit-managed` and a
-    de-queued issue thereby exits the loop's view before this guarantee can
-    apply.
+    action. Aligning the SELECTION with this label-independence is exactly what
+    Inv 2 does — `fetch-queue.py` selects on ACTIONABILITY (valid `feature:` +
+    `priority:`) rather than `rabbit-managed` — so an issue that loses only
+    `rabbit-managed` no longer exits the loop's view; the de-queue ban persists
+    as defense-in-depth against stripping any queue-gating label.
 
     **Leak detector (defense in depth).**
     `python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py

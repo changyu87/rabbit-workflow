@@ -1,16 +1,24 @@
 #!/usr/bin/env python3
-"""fetch-queue.py — emit a deterministic JSON array of open rabbit-managed issues.
+"""fetch-queue.py — emit a deterministic JSON array of open ACTIONABLE issues.
 
 Usage:
   fetch-queue.py            # emit sorted JSON array on stdout
   fetch-queue.py --detect-leaks   # emit {"leaks": [...]} for de-queued issues
 
 Per rabbit-auto-evolve spec.md Inv 2, invokes
-  gh issue list --repo <repo> --state open --label rabbit-managed
+  gh issue list --repo <repo> --state open
                 --json number,title,labels,body,createdAt --limit 500
-and emits a deterministic JSON array on stdout, sorted by priority
-(critical > high > medium > low; no-priority issues sort to the END)
-then createdAt ascending within each bucket.
+and selects the OPEN issues that carry BOTH a valid `feature:<name>` label
+AND a valid `priority:<level>` label — the ACTIONABILITY basis. It emits a
+deterministic JSON array on stdout, sorted by priority
+(critical > high > medium > low) then createdAt ascending within each bucket.
+
+Selection is ACTIONABILITY-based, not keyed on `rabbit-managed` (coexistence
+step 1 of #753, which retires the label). The `rabbit-managed` label is still
+TOLERATED — an actionable issue is selected whether or not it carries it — so
+this switch is behavior-preserving today (per #753's finding, 0 open
+feature-labeled issues lack `rabbit-managed`). This aligns the actual
+selection with the already-LABEL-INDEPENDENT convergence guarantee (Inv 25).
 
 `--detect-leaks` (Inv 59, issue #731) is the de-queue defense-in-depth
 backstop: it queries ALL open issues and flags any that once entered the
@@ -28,7 +36,7 @@ output stream (no git, no filesystem mutations).
 Exit code: 0 on success; non-zero on gh-auth failure or any unexpected gh
 error (stderr passthrough).
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -82,6 +90,20 @@ def label_names(issue):
     return {lbl.get("name", "") for lbl in issue.get("labels", [])}
 
 
+def is_actionable(issue):
+    """An issue is ACTIONABLE (and thus belongs in the queue) when it carries
+    BOTH a `feature:<name>` label AND a recognized `priority:<level>` label
+    (one of critical/high/medium/low). This is the actionability selection
+    basis (Inv 2 / #758, coexistence step 1 of #753) — it does NOT depend on
+    the `rabbit-managed` label, which is merely tolerated during the #753
+    coexistence window."""
+    has_feature = any(
+        n.startswith("feature:") and n.split(":", 1)[1]
+        for n in label_names(issue)
+    )
+    return has_feature and priority_rank(issue) != NO_PRIORITY_RANK
+
+
 def is_leak(issue):
     """An issue is a de-queue LEAK (Inv 59) when it is OPEN, once entered the
     rabbit pipeline (carries any `filed-by:*` provenance label, proving it was
@@ -128,8 +150,9 @@ def detect_leaks():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="List open rabbit-managed issues, sorted by priority "
-                    "then createdAt, as JSON on stdout."
+        description="List open ACTIONABLE issues (valid feature: + priority: "
+                    "label), sorted by priority then createdAt, as JSON on "
+                    "stdout."
     )
     parser.add_argument(
         "--detect-leaks", action="store_true",
@@ -145,13 +168,17 @@ def main():
 
     issues = _gh_issue_list(
         ["--state", "open",
-         "--label", "rabbit-managed",
          "--json", "number,title,labels,body,createdAt",
          "--limit", "500"]
     )
 
-    issues.sort(key=sort_key)
-    json.dump(issues, sys.stdout, indent=2)
+    # Actionability-based selection (Inv 2 / #758): keep OPEN issues with both
+    # a valid feature: label and a valid priority: label. NOT keyed on
+    # rabbit-managed — the label is tolerated, not required (coexistence step 1
+    # of #753).
+    queue = [i for i in issues if is_actionable(i)]
+    queue.sort(key=sort_key)
+    json.dump(queue, sys.stdout, indent=2)
     sys.stdout.write("\n")
 
 

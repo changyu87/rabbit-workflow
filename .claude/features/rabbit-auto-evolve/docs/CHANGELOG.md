@@ -13,6 +13,23 @@ own version.
 
 ## Version notes
 
+- **v0.57.0 — 2026-06-03** — Queue selection switched to ACTIONABILITY basis
+  (#758, coexistence step 1 of #753 "retire rabbit-managed"). `fetch-queue.py`
+  now selects OPEN issues that carry BOTH a valid `feature:` label AND a valid
+  `priority:` label, instead of `--state open --label rabbit-managed`. Per
+  #753's verified finding (0 open feature-labeled issues lack rabbit-managed)
+  this returns the IDENTICAL set today, so the change is BEHAVIOR-PRESERVING.
+  COEXISTENCE: `rabbit-managed` is still TOLERATED (selected issues may carry
+  it) and the #731 de-queue leak detector (`--detect-leaks`) is unchanged —
+  only the selection BASIS moved, so later #753 steps can retire the label
+  without the loop ever losing its queue. This aligns the actual selection
+  with the already-LABEL-INDEPENDENT convergence guarantee (Inv 25). Inv 2
+  prose, the Purpose statement, the component table, and the Red Flag /
+  convergence prose in spec.md + SKILL.md updated to the actionability basis;
+  `test/test-fetch-queue.py` gains an actionability-selection scenario
+  (label-independence + exclusion of non-actionable issues). No invariant
+  renumbering.
+
 - **v0.56.0 — 2026-06-04** — Deep slim housekeeping wave (#751, under #639):
   consolidated six redundant/overlapping invariants into their load-bearing
   parents and reflowed the numbering to contiguous 1..53. Merges (old → parent):
