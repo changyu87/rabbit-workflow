@@ -7,8 +7,8 @@ Subcommands:
   close  <N> --reason not-planned --reason-text <text> [--comment <c>]
   reopen <N> [--comment <c>]
 
-`close` and `reopen` enforce the `rabbit-managed` safety guard before
-issuing the gh command.
+`close` and `reopen` enforce the actionability safety guard (the issue
+must carry a valid `feature:` label) before issuing the gh command.
 
 The two close reasons are gated so a closure asserts something real
 (issue #423):
@@ -19,7 +19,7 @@ The two close reasons are gated so a closure asserts something real
     that is free of banned boilerplate phrases — a deliberate, specific
     justification, not a reflexive deferral.
 
-Version: 1.1.1
+Version: 1.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -33,8 +33,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _gh import (  # noqa: E402
     gh_issue_view,
     repo_slug,
+    require_actionable,
     require_auth,
-    require_managed,
 )
 
 VALID_REASONS = ("completed", "not-planned")
@@ -94,8 +94,8 @@ def _validate_reason_text(text: str) -> None:
 
 
 def cmd_close(args: argparse.Namespace) -> None:
-    # Safety boundary first: refuse to act on human-filed issues.
-    require_managed(args.number)
+    # Safety boundary first: refuse to act on non-actionable issues.
+    require_actionable(args.number)
 
     # Then gate the close reason before the gh call (issue #423).
     if args.reason == "completed":
@@ -137,7 +137,7 @@ def cmd_close(args: argparse.Namespace) -> None:
 
 
 def cmd_reopen(args: argparse.Namespace) -> None:
-    require_managed(args.number)
+    require_actionable(args.number)
     cmd = ["gh", "issue", "reopen", str(args.number), "-R", repo_slug()]
     if args.comment:
         cmd += ["--comment", args.comment]

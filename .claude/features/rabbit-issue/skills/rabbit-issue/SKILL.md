@@ -1,9 +1,9 @@
 ---
 name: rabbit-issue
-version: 1.8.1
+version: 1.9.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
-description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours the `rabbit-managed` label as a safety guard so human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
+description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours an actionability safety guard (it refuses to close/reopen issues lacking a valid `feature:` label) so raw human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
 ---
 
 ## Overview
@@ -38,20 +38,22 @@ The shared helper `_gh.py` resolves the repo slug and wraps `gh` calls.
 
 ## Label Schema
 
-Every issue filed via `rabbit-issue` carries **six** labels: one of
-`bug` / `enhancement`, plus `rabbit-managed`, `feature:<name>`,
-`priority:<…>`, and `filed-by:<source>`. They are auto-created on demand
-(idempotent `gh label create … || true`) at first `file-item.py` call —
-there is no separate bootstrap step. See docs/spec.md §Label schema for
-the full cardinality table.
+Every issue filed via `rabbit-issue` carries the type label
+(`bug` / `enhancement`), plus `rabbit-managed`, `feature:<name>`, and
+`priority:<…>`. The `filed-by:` provenance label is OPTIONAL — present
+only for non-human filers. They are auto-created on demand (idempotent
+`gh label create … || true`) at first `file-item.py` call — there is no
+separate bootstrap step. See docs/spec.md §Label schema for the full
+cardinality table.
 
-The `rabbit-managed` label is load-bearing for the safety invariant
-below. Do not strip it from issues filed via this skill.
-
-The `filed-by:<source>` provenance label is set from
-`file-item.py --filed-by <source>` (**defaults to `human`**; only the
-autonomous evolve loop passes `--filed-by loop`). It is additive — it
-never changes the other five.
+The `filed-by:` provenance label is a **fixed enum** with two non-human
+values. Human is the untagged default (OMIT `--filed-by`); pass
+`--filed-by rabbit` for a bot/wrapped rabbit script, or
+`--filed-by autonomous-evolve` for the autonomous evolve loop.
+`file-item.py` REJECTS any value outside `{rabbit, autonomous-evolve}`
+(including `human`, the legacy `loop`, and any polluted/space-bearing
+value) with a clear error. The label is additive — when present it never
+changes the other labels.
 
 ---
 
@@ -73,10 +75,11 @@ When the user confirms they want to file a bug or enhancement:
      --description "..." \
      [--filed-by <source>]
    ```
-   `--filed-by <source>` stamps the provenance label `filed-by:<source>`
-   (e.g. `filed-by:loop`); it **defaults to `human`** when omitted. The
-   script auto-creates any missing labels, then calls `gh issue create`
-   with all six labels attached.
+   `--filed-by <rabbit|autonomous-evolve>` stamps the matching
+   `filed-by:` provenance label; OMIT it for human-filed issues (the
+   untagged default). Any other value is rejected. The script
+   auto-creates any missing labels, then calls `gh issue create` with the
+   resolved labels attached.
 4. **Report** the assigned issue number and URL back to the user. GH
    allocates the number; rabbit does not maintain a local counter.
 
@@ -193,12 +196,12 @@ When the user asks to work, close, or reopen an issue:
 These guard the boundary between human-filed and rabbit-filed issues,
 and between rabbit and the GH API.
 
-- **`rabbit-managed` guard** — `item-status.py close` and
-  `item-status.py reopen` refuse to act on issues that lack the
-  `rabbit-managed` label. Human-filed issues stay out of rabbit's
-  automation reach unless that label is explicitly applied. Do not work
-  around the guard by adding the label without the human's consent;
-  ask first.
+- **Actionability guard** — `item-status.py close` and
+  `item-status.py reopen` refuse to act on issues that are NOT
+  actionable, i.e. that lack a valid `feature:<name>` label. A raw,
+  hand-filed GitHub issue with no labels stays out of rabbit's
+  automation reach. Do not work around the guard by slapping a
+  `feature:` label on a human's issue without their consent; ask first.
 - **`gh auth` required** — every script checks `gh auth status` and
   fails with an actionable error if authentication is not green. Do
   not fall back to unauthenticated calls.
@@ -243,7 +246,7 @@ GH issue state is binary; `state_reason` distinguishes the close path.
 
 | Script | Purpose |
 |---|---|
-| `file-item.py` | File a new bug or enhancement (auto-creates labels); `--filed-by <source>` stamps the `filed-by:<source>` provenance label (default `human`) |
-| `item-status.py` | `show <N>` / `close <N>` / `reopen <N>` (rabbit-managed guard enforced on close/reopen; `close --reason completed` requires `--commit-sha`, `close --reason not-planned` requires `--reason-text`) |
+| `file-item.py` | File a new bug or enhancement (auto-creates labels); `--filed-by <rabbit\|autonomous-evolve>` stamps the matching `filed-by:` label (omit for human; other values rejected) |
+| `item-status.py` | `show <N>` / `close <N>` / `reopen <N>` (actionability guard enforced on close/reopen — refuses issues lacking a valid `feature:` label; `close --reason completed` requires `--commit-sha`, `close --reason not-planned` requires `--reason-text`) |
 | `list-items.py` | List with `--type`, `--feature`, `--status` filters; deterministic sort |
 | `_gh.py` | Shared helper — repo slug discovery, `gh` invocation wrappers |

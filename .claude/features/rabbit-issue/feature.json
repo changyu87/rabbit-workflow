@@ -1,11 +1,11 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-issue",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "housekeeping_clean": true,
-  "summary": "GitHub Issues wrapper for filing, listing, and lifecycle-managing bugs and enhancements via the `gh` CLI. Replaces rabbit-file's retired branch-backed item store with native GH Issues; the rabbit-managed label gates rabbit's automation from touching human-filed issues.",
+  "summary": "GitHub Issues wrapper for filing, listing, and lifecycle-managing bugs and enhancements via the `gh` CLI. Replaces rabbit-file's retired branch-backed item store with native GH Issues; an actionability guard (valid `feature:` label required) gates rabbit's automation from touching raw human-filed issues, and the `filed-by:` provenance scheme is a fixed enum {rabbit, autonomous-evolve} with human as the untagged default.",
   "surface": {
     "hooks": [],
     "commands": [],
@@ -32,6 +32,5 @@
   ],
   "runtime": {},
   "configuration": [],
-  "prompts": [],
-  "spec_no_change_reason": "housekeeping removal pass (#686): md-only dead-prose deletion; test surface unchanged per md-only mandate, existing e2e suite pins all preserved behaviors"
+  "prompts": []
 }

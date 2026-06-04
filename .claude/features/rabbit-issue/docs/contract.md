@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.6.0
+version: 1.7.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -23,7 +23,7 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
       "rabbit-managed",
       "feature:<name>",
       "priority:<low|medium|high|critical>",
-      "filed-by:<source>"
+      "filed-by:<rabbit|autonomous-evolve>"
     ]
   },
   "reads": {
@@ -42,7 +42,8 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
     "writes to origin/bug-backlog-files (not a rabbit-issue surface)",
     "maintains counter.json (GH allocates issue numbers)",
     "maintains item.json history array (GH Timeline is source of truth)",
-    "closes/reopens issues lacking the `rabbit-managed` label",
+    "closes/reopens non-actionable issues (those lacking a valid `feature:` label)",
+    "stamps a `filed-by:` label outside the fixed enum {rabbit, autonomous-evolve}",
     "reads issue comments via `gh issue view --comments` (deprecated projectCards GraphQL path)"
   ]
 }

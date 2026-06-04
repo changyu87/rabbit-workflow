@@ -1,6 +1,6 @@
 """Tests for scripts/_gh.py shared helpers.
 
-Covers ensure_labels idempotency and require_managed safety guard.
+Covers ensure_labels idempotency and the actionability safety guard.
 Repo-slug resolution is covered by test-gh-helper-resolves-rabbit-repo.py.
 """
 import importlib
@@ -36,16 +36,8 @@ def test_ensure_labels_idempotent_on_duplicate(gh_shim, fake_repo, monkeypatch):
     gh.ensure_labels(["bug"])
 
 
-def test_require_managed_raises_on_unmanaged(gh_shim, fake_repo, tmp_path, monkeypatch):
-    body = tmp_path / "issue.json"
-    body.write_text(json.dumps({"number": 1, "labels": [{"name": "bug"}]}))
-    monkeypatch.setenv("GH_SHIM_ISSUE_BODY", str(body))
-    gh = _fresh_gh()
-    with pytest.raises(SystemExit):
-        gh.require_managed(1)
-
-
-def test_require_managed_passes_when_label_present(gh_shim, fake_repo, tmp_path, monkeypatch):
+def test_require_actionable_raises_when_no_feature_label(gh_shim, fake_repo, tmp_path, monkeypatch):
+    # rabbit-managed alone is NOT actionable under the new basis.
     body = tmp_path / "issue.json"
     body.write_text(json.dumps({
         "number": 1,
@@ -53,7 +45,19 @@ def test_require_managed_passes_when_label_present(gh_shim, fake_repo, tmp_path,
     }))
     monkeypatch.setenv("GH_SHIM_ISSUE_BODY", str(body))
     gh = _fresh_gh()
-    gh.require_managed(1)  # no exception
+    with pytest.raises(SystemExit):
+        gh.require_actionable(1)
+
+
+def test_require_actionable_passes_with_feature_label(gh_shim, fake_repo, tmp_path, monkeypatch):
+    body = tmp_path / "issue.json"
+    body.write_text(json.dumps({
+        "number": 1,
+        "labels": [{"name": "bug"}, {"name": "feature:rabbit-cage"}],
+    }))
+    monkeypatch.setenv("GH_SHIM_ISSUE_BODY", str(body))
+    gh = _fresh_gh()
+    gh.require_actionable(1)  # no exception
 
 
 def test_require_auth_exits_when_gh_unauth(gh_shim, fake_repo, monkeypatch):

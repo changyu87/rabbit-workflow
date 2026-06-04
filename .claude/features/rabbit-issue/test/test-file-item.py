@@ -103,22 +103,37 @@ def _created_labels(log_text):
     raise AssertionError("no `issue create` line with --label in gh log")
 
 
-def test_filed_by_loop_adds_filed_by_loop_label(gh_shim, fake_repo):
+def test_filed_by_rabbit_adds_filed_by_rabbit_label(gh_shim, fake_repo):
     r = _run(
         "--type", "bug",
         "--feature", "rabbit-cage",
         "--title", "t",
         "--priority", "high",
         "--description", "d",
-        "--filed-by", "loop",
+        "--filed-by", "rabbit",
     )
     assert r.returncode == 0, r.stderr
     labels = _created_labels(gh_shim.read_text())
-    assert "filed-by:loop" in labels
+    assert "filed-by:rabbit" in labels
     assert "filed-by:human" not in labels
 
 
-def test_filed_by_defaults_to_human_when_omitted(gh_shim, fake_repo):
+def test_filed_by_autonomous_evolve_adds_matching_label(gh_shim, fake_repo):
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "high",
+        "--description", "d",
+        "--filed-by", "autonomous-evolve",
+    )
+    assert r.returncode == 0, r.stderr
+    labels = _created_labels(gh_shim.read_text())
+    assert "filed-by:autonomous-evolve" in labels
+
+
+def test_filed_by_omitted_stamps_no_filed_by_label(gh_shim, fake_repo):
+    """Human is the untagged default: omitting --filed-by emits NO label."""
     r = _run(
         "--type", "bug",
         "--feature", "rabbit-cage",
@@ -128,11 +143,10 @@ def test_filed_by_defaults_to_human_when_omitted(gh_shim, fake_repo):
     )
     assert r.returncode == 0, r.stderr
     labels = _created_labels(gh_shim.read_text())
-    assert "filed-by:human" in labels
-    assert "filed-by:loop" not in labels
+    assert not any(lbl.startswith("filed-by:") for lbl in labels), labels
 
 
-def test_filed_by_is_additive_other_labels_unchanged(gh_shim, fake_repo):
+def test_filed_by_rejects_legacy_loop(gh_shim, fake_repo):
     r = _run(
         "--type", "bug",
         "--feature", "rabbit-cage",
@@ -141,16 +155,76 @@ def test_filed_by_is_additive_other_labels_unchanged(gh_shim, fake_repo):
         "--description", "d",
         "--filed-by", "loop",
     )
+    assert r.returncode != 0
+    assert "filed-by" in (r.stderr + r.stdout).lower()
+    assert "issue create" not in gh_shim.read_text()
+
+
+def test_filed_by_rejects_explicit_human(gh_shim, fake_repo):
+    """Human provenance is expressed by OMISSION, not an explicit value."""
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "high",
+        "--description", "d",
+        "--filed-by", "human",
+    )
+    assert r.returncode != 0
+    assert "issue create" not in gh_shim.read_text()
+
+
+def test_filed_by_rejects_polluted_space_bearing_value(gh_shim, fake_repo):
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "high",
+        "--description", "d",
+        "--filed-by", "tdd-subagent (#685)",
+    )
+    assert r.returncode != 0
+    assert "issue create" not in gh_shim.read_text()
+
+
+def test_filed_by_rabbit_is_additive_other_labels_unchanged(gh_shim, fake_repo):
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "high",
+        "--description", "d",
+        "--filed-by", "rabbit",
+    )
     assert r.returncode == 0, r.stderr
     labels = _created_labels(gh_shim.read_text())
-    # The five pre-existing labels are present and unchanged; filed-by is
-    # purely additive (sixth label).
+    # The four base labels are present and unchanged; filed-by is additive.
+    # rabbit-managed is still applied here (coexistence: removal is step 3).
     assert labels == {
         "bug",
         "rabbit-managed",
         "feature:rabbit-cage",
         "priority:high",
-        "filed-by:loop",
+        "filed-by:rabbit",
+    }
+
+
+def test_omitted_filed_by_yields_base_labels_only(gh_shim, fake_repo):
+    """Human filing carries exactly the four base labels, no filed-by."""
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "high",
+        "--description", "d",
+    )
+    assert r.returncode == 0, r.stderr
+    labels = _created_labels(gh_shim.read_text())
+    assert labels == {
+        "bug",
+        "rabbit-managed",
+        "feature:rabbit-cage",
+        "priority:high",
     }
 
 

@@ -1,14 +1,14 @@
 """Shared helpers for rabbit-issue runtime scripts.
 
 Provides repo discovery, label bootstrap, issue fetch, and the
-`rabbit-managed` safety guard. All `gh` invocations go through subprocess
+actionability safety guard. All `gh` invocations go through subprocess
 so the test suite can swap `gh` for a PATH-resident shim.
 
 Repo slug resolves to $RABBIT_ISSUE_REPO env var when set, else the
 module-level const RABBIT_REPO_DEFAULT. No git remote consultation —
 bugs about rabbit always go to rabbit's repo, regardless of the cwd.
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -82,18 +82,22 @@ def gh_issue_comments(number: int) -> list:
     return json.loads(out).get("comments", [])
 
 
-def require_managed(number: int) -> None:
-    """Exit non-zero if issue #number lacks the `rabbit-managed` label.
+def require_actionable(number: int) -> None:
+    """Exit non-zero if issue #number is not actionable.
 
     Enforces the safety invariant: rabbit's close/reopen flows refuse to
-    touch human-filed issues unless explicitly opted in via the label.
+    touch issues that are not actionable. An issue is actionable iff it
+    carries a valid `feature:<name>` label — so a raw, hand-filed GitHub
+    issue with no labels is never auto-mutated. This is the actionability
+    basis adopted by the queue in coexistence step 1 of #753 (#758);
+    `rabbit-managed` is no longer the guard basis.
     """
     issue = gh_issue_view(number, "number,labels")
     labels = {lbl["name"] for lbl in issue.get("labels", [])}
-    if "rabbit-managed" not in labels:
+    if not any(name.startswith("feature:") for name in labels):
         sys.exit(
-            "rabbit-issue: #{} lacks `rabbit-managed` label; refusing to act"
-            .format(number)
+            "rabbit-issue: #{} is not actionable (lacks a valid `feature:` "
+            "label); refusing to act".format(number)
         )
 
 
