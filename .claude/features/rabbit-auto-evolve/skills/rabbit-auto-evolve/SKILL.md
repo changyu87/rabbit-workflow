@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.54.0
+version: 0.55.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open `rabbit-managed` GitHub issues, triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -391,10 +391,14 @@ scheduler mechanism from `detect-scheduler.py`, logs the decision via
   - **croncreate path:** invoke the actual one-shot `CronCreate(...)` per the
     emitted `croncreate` params. A script cannot call `CronCreate`; this tool
     action is the irreducible Claude step (exactly like phase 6 dispatch).
-    The emitted `croncreate.cron` is a PINNED next-minute `M H * * *`
-    expression (never `*/1 * * * *`), so a dropped `recurring` fails
-    benignly (at most once/day at minute M, not an every-minute storm — Inv 33
-    pinned-minute amendment). Three non-negotiable dispatcher rules:
+    The emitted `croncreate.cron` is a PINNED near-future `M H * * *`
+    expression (current minute + 2, never `*/1 * * * *`), so a dropped
+    `recurring` fails benignly (at most once/day at minute M, not an
+    every-minute storm — Inv 33 pinned-minute amendment). The `+2` BUFFER
+    keeps the pinned minute strictly in the future even after the
+    `CronList`/`CronDelete`/`CronCreate` dedup round-trip below crosses a
+    wall-clock minute boundary (a `+1` minute was dropped intermittently).
+    Three non-negotiable dispatcher rules:
     - **Faithful flag passing.** Pass `recurring` and `durable` to
       `CronCreate` EXACTLY as emitted (both `false`) — never rely on
       `CronCreate` defaults (its default is recurring), never

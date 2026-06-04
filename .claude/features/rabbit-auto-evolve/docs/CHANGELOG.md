@@ -13,6 +13,29 @@ own version.
 
 ## Version notes
 
+- **v0.55.0 — 2026-06-03** — Fixed the Inv 33 immediate-refire one-shot being
+  intermittently dropped (~14% of the time) by a minute-boundary skid (#748).
+  `schedule-decision.py` pinned the one-shot's cron minute as `current minute +
+  1` at DECISION time, but the dispatcher arms it only after the Inv 49 dedup
+  round-trip (`CronList` → `CronDelete` → `CronCreate`), which eats several
+  seconds. A decision landing in the final seconds of a wall-clock minute let
+  that round-trip cross the minute boundary, so the `+1` pinned minute became
+  the CURRENT (already-started) minute; since the one-shot is pinned to a
+  specific `M H * * *` minute (not `*/1`), cron's next match was ~24h later —
+  the refire was effectively parked (liveness backstopped by the heartbeat, so
+  a responsiveness, not a liveness, regression). The deterministic fix changes
+  the pinned-minute buffer from `+1` to `+2` (`_ONESHOT_MINUTE_BUFFER` in
+  `schedule-decision.py`), keeping the pinned minute strictly in the future even
+  after the multi-second round-trip while staying "~1 min" responsive and
+  minutes-based. The `#refire` marker and `durable: false` / `recurring: false`
+  semantics are unchanged. Inv 33 prose in `docs/spec.md` and the dispatcher
+  prose in `skills/rabbit-auto-evolve/SKILL.md` now document the `+2` buffer and
+  its arm-time-skid rationale. `test/test-schedule-decision.py` gains scenario J
+  (the pinned minute is `>= 2` min ahead for every near-boundary decision
+  minute, the cron stays a valid pinned `M H * * *`, and the marker + flags are
+  preserved); `test/test-spec-cron-invariant.py` now requires the buffer prose.
+  `schedule-decision.py` bumped to 1.3.0.
+
 - **v0.54.0 — 2026-06-03** — Opted rabbit-auto-evolve into the contract STRICT
   contiguous invariant-numbering tier (#738, a #724 follow-up). The strict tier
   (contract Inv 30 / `check_invariant_monotonic_order`) is per-feature opt-in

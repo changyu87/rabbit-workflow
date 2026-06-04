@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.54.0
+version: 0.55.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2258,17 +2258,32 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     **Pinned-minute one-shot — benign failure mode.** The
     `croncreate` params MUST carry `recurring: false` AND `durable: false`, and
     the cron expression MUST be a PINNED specific near-future minute (computed
-    as the current minute + 1, emitted as a fixed `M H * * *` form), NEVER the
+    as the current minute + 2 — a 2-minute buffer, see the arm-time-skid
+    rationale below — emitted as a fixed `M H * * *` form), NEVER the
     fragile every-minute `*/1 * * * *`. Rationale: the catastrophic failure
     mode is the dispatcher dropping `recurring: false` (a CronCreate default is
     recurring). With `*/1 * * * *` that drop produces an every-MINUTE storm
     (back-to-back ticks, concurrent-tick state corruption); with a pinned
     `M H * * *` the same drop fires at most ONCE PER DAY at minute M — a benign
     blast radius. The pinned minute also AVOIDS the `:00` and `:30` marks per
-    CronCreate guidance (when minute+1 lands on 0 or 30, nudge to an adjacent
-    minute). `schedule-decision.py` computes and emits this pinned expression in
-    the `croncreate.cron` field (it MAY use the wall clock — it is an ordinary
-    Python script, not a workflow-sandboxed one).
+    CronCreate guidance (when the buffered minute lands on 0 or 30, nudge to an
+    adjacent minute). `schedule-decision.py` computes and emits this pinned
+    expression in the `croncreate.cron` field (it MAY use the wall clock — it is
+    an ordinary Python script, not a workflow-sandboxed one).
+
+    **Arm-time minute-boundary skid — the 2-minute buffer.** The pinned
+    minute carries a `+2` BUFFER rather than `+1` because the dispatcher does
+    not arm the one-shot at decision time: it first runs the Inv 49 dedup
+    round-trip (`CronList` → `CronDelete` prior refires → `CronCreate`), which
+    eats several seconds. A decision landing in the final seconds of a
+    wall-clock minute lets that round-trip CROSS the minute boundary, so a `+1`
+    pinned minute becomes the CURRENT (already-started) minute; because the
+    one-shot is pinned to a specific `M H * * *` minute (not `*/1`), cron's next
+    match for that minute is ~24h later — the refire is effectively dropped
+    (backstopped by the heartbeat, so a responsiveness, not a liveness, bug). A
+    2-minute buffer keeps the pinned minute STRICTLY in the future even after
+    the multi-second round-trip while staying "~1 min" responsive, and stays
+    minutes-based (cron has no sub-minute granularity).
 
     **Faithful flag passing + idempotency.** The DISPATCHER MUST
     pass `recurring` and `durable` to `CronCreate` EXACTLY as emitted (both
