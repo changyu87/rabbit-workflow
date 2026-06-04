@@ -2,21 +2,29 @@
 """test-banner-suppression.py — Inv 14 end-to-end banner suppression contract.
 
 When .rabbit-auto-evolve-active is present at the repo root, the SessionStart
-and Stop dispatchers MUST emit the auto-evolve composite banner INSTEAD of
-the per-configurable alerts for `human-approval` and `bypass-permissions`.
-When the marker is absent, the per-configurable alerts emit normally and
-the auto-evolve banner is a no-op.
+and Stop dispatchers MUST emit the auto-evolve composite banner / stop-line.
+When the marker is absent, the auto-evolve banner and stop-line are no-ops.
+
+Scope note (#786): the per-configurable alert SUPPRESSION hook itself lives
+in `contract.lib.runtime` (Inv 54, the `_AUTO_EVOLVE_SUPPRESSED_IDS` filter
+inside iterate_configurables_*) and is owned by the `contract` feature — see
+rabbit-auto-evolve/docs/spec.md "What this feature does NOT define". Its
+coverage belongs to contract's own suite
+(contract/test/test-runtime-iterate-configurables-alerts.py t12+). This rae
+test therefore exercises only the rae-OWNED half of the suppression contract:
+the auto-evolve composite banner + stop-line, which emit IN PLACE OF the
+suppressed per-configurable alerts when the marker is present and are a no-op
+when it is absent. It no longer imports the (now-dead, post rabbit-config
+retirement) central iterate_configurables_alerts.
 
 Test approach: build a synthetic .claude/features/ tree under a tempdir
-containing a minimal rabbit-cage feature.json (declaring just the two
-suppressed configurables) and a minimal rabbit-auto-evolve feature.json
-(no configurables — only the runtime block). Then call the real
-contract.lib.runtime APIs in-process across four scenarios:
+containing a minimal rabbit-auto-evolve feature.json (no configurables —
+only the runtime block) plus a copy of banner-status.py, then call the real
+contract.lib.runtime banner/stop-line APIs in-process across four scenarios:
 
-  S1: marker absent — alerts emit (2 entries), banner returns [].
-  S2: marker + adjunct configurables active — alerts filter the two
-      suppressed ids (returns 0 entries here), banner returns 2 lines
-      with default start hint as line 2.
+  S1: marker absent — banner returns [], stop-line returns [].
+  S2: marker present — banner returns 2 lines with default start hint as
+      line 2; stop-line returns the active/idle steady line.
   S3: marker + .rabbit-auto-evolve-restart-needed — banner line 2 is
       the restart-resume hint substring.
   S4: marker + .rabbit-auto-evolve-aborted (highest precedence) — banner
@@ -52,7 +60,6 @@ BANNER_STATUS_SRC = os.path.join(
 from lib.runtime import (  # noqa: E402
     emit_auto_evolve_banner,
     emit_auto_evolve_stop_line,
-    iterate_configurables_alerts,
 )
 
 FAIL = 0
@@ -75,63 +82,6 @@ def touch(root, name, content=""):
         f.write(content)
 
 
-# Minimal rabbit-cage feature.json declaring just the two configurables
-# whose alerts get suppressed when .rabbit-auto-evolve-active is present.
-# Storage shapes match the real rabbit-cage entries so _resolve_current_value
-# reports `alert-on` when the markers below are set.
-RABBIT_CAGE_FJ = {
-    "name": "rabbit-cage",
-    "configuration": [
-        {
-            "id": "human-approval",
-            "subcommand": "human-approval",
-            "storage": {
-                "type": "marker-file",
-                "path": ".rabbit-human-approval-bypass",
-            },
-            "values": {
-                "true": {"api": "delete_marker", "args": {
-                    "path": ".rabbit-human-approval-bypass"}},
-                "false": {"api": "write_marker", "args": {
-                    "path": ".rabbit-human-approval-bypass",
-                    "content": "session"}},
-            },
-            "default": "true",
-            "alert-on": "false",
-            "alert-message": {
-                "text": "HUMAN APPROVAL BYPASS ACTIVE",
-                "icon": "K",
-                "color": "red",
-            },
-        },
-        {
-            "id": "bypass-permissions",
-            "subcommand": "bypass-permissions",
-            "storage": {
-                "type": "json-key",
-                "file": ".claude/settings.local.json",
-                "key": "permissions.defaultMode",
-            },
-            "values": {
-                "true": {"api": "set_json_key", "args": {
-                    "file": ".claude/settings.local.json",
-                    "key": "permissions.defaultMode",
-                    "value": "bypassPermissions"}},
-                "false": {"api": "delete_json_key", "args": {
-                    "file": ".claude/settings.local.json",
-                    "key": "permissions.defaultMode"}},
-            },
-            "default": "false",
-            "alert-on": "true",
-            "alert-message": {
-                "text": "BYPASS-PERMISSIONS MODE ACTIVE",
-                "icon": "!",
-                "color": "red",
-            },
-        },
-    ],
-}
-
 # Minimal rabbit-auto-evolve feature.json — only the runtime block, no
 # configurables (the suppression filter targets rabbit-cage configurables,
 # not the rabbit-auto-evolve configurable's own alert).
@@ -146,12 +96,8 @@ RABBIT_AUTO_EVOLVE_FJ = {
 
 def build_repo(td):
     """Lay down the minimal .claude/features/ tree inside tempdir td."""
-    cage_dir = os.path.join(td, ".claude", "features", "rabbit-cage")
     ae_dir = os.path.join(td, ".claude", "features", "rabbit-auto-evolve")
-    os.makedirs(cage_dir, exist_ok=True)
     os.makedirs(ae_dir, exist_ok=True)
-    with open(os.path.join(cage_dir, "feature.json"), "w") as f:
-        json.dump(RABBIT_CAGE_FJ, f)
     with open(os.path.join(ae_dir, "feature.json"), "w") as f:
         json.dump(RABBIT_AUTO_EVOLVE_FJ, f)
     # Copy banner-status.py into the synthetic tempdir so the subprocess
@@ -162,62 +108,27 @@ def build_repo(td):
                  os.path.join(scripts_dir, "banner-status.py"))
 
 
-def set_adjuncts(td):
-    """Set BOTH per-configurable adjunct markers so the alerts would fire
-    if not suppressed: write .rabbit-human-approval-bypass (marker-file
-    semantics: present => 'false' which matches alert-on='false') AND set
-    permissions.defaultMode='bypassPermissions' in .claude/settings.local.json
-    (matches alert-on='true' after reverse-map).
-    """
-    touch(td, ".rabbit-human-approval-bypass", "session")
-    settings = {"permissions": {"defaultMode": "bypassPermissions"}}
-    settings_path = os.path.join(td, ".claude", "settings.local.json")
-    os.makedirs(os.path.dirname(settings_path), exist_ok=True)
-    with open(settings_path, "w") as f:
-        json.dump(settings, f)
-
-
-def filter_target_ids(alerts):
-    """Reduce iterate_configurables_alerts output to a count of alerts whose
-    text matches one of the two suppressed configurables. We can't read the
-    id from the print_result dict (it's just text/icon/color), so we match
-    by text substring."""
-    suppressed_texts = ("HUMAN APPROVAL BYPASS", "BYPASS-PERMISSIONS MODE")
-    return [a for a in alerts
-            if any(s in a.get("text", "") for s in suppressed_texts)]
-
-
-# S1: marker absent — alerts emit normally, banner is a no-op
+# S1: marker absent — banner and stop-line are both no-ops
 with tempfile.TemporaryDirectory() as td:
     build_repo(td)
-    set_adjuncts(td)
-    alerts = iterate_configurables_alerts(repo_root=td)
-    targeted = filter_target_ids(alerts)
     banner = emit_auto_evolve_banner(repo_root=td)
     stop = emit_auto_evolve_stop_line(repo_root=td)
-    if len(targeted) != 2:
-        fail(f"S1: expected 2 per-configurable alerts (human-approval + "
-             f"bypass-permissions), got {len(targeted)}: {targeted!r}")
-    elif banner != []:
+    if banner != []:
         fail(f"S1: expected banner == [] when marker absent, got {banner!r}")
     elif stop != []:
         fail(f"S1: expected stop == [] when marker absent, got {stop!r}")
     else:
-        ok("S1: marker absent -> per-configurable alerts emit, banner is no-op")
+        ok("S1: marker absent -> banner and stop-line are no-ops")
 
-# S2: marker present + adjuncts active — alerts for the two ids filtered,
-# banner emits 2 lines with default start hint
+# S2: marker present — banner emits 2 lines with default start hint, and the
+# stop-line emits the active/idle steady state line. This composite surface
+# is what replaces the suppressed per-configurable alerts under auto-evolve.
 with tempfile.TemporaryDirectory() as td:
     build_repo(td)
-    set_adjuncts(td)
     touch(td, ".rabbit-auto-evolve-active")
-    alerts = iterate_configurables_alerts(repo_root=td)
-    targeted = filter_target_ids(alerts)
     banner = emit_auto_evolve_banner(repo_root=td)
-    if len(targeted) != 0:
-        fail(f"S2: expected 0 per-configurable alerts for the two suppressed "
-             f"ids, got {len(targeted)}: {targeted!r}")
-    elif len(banner) != 2:
+    stop = emit_auto_evolve_stop_line(repo_root=td)
+    if len(banner) != 2:
         fail(f"S2: expected banner with 2 entries, got {len(banner)}: {banner!r}")
     elif "AUTONOMOUS-EVOLVE MODE ACTIVE" not in banner[0].get("text", ""):
         fail(f"S2: banner line 1 missing AUTONOMOUS-EVOLVE MODE ACTIVE; "
@@ -225,8 +136,13 @@ with tempfile.TemporaryDirectory() as td:
     elif "/rabbit-auto-evolve start" not in banner[1].get("text", ""):
         fail(f"S2: banner line 2 missing '/rabbit-auto-evolve start' default "
              f"start hint; got {banner[1]!r}")
+    elif len(stop) != 1:
+        fail(f"S2: expected stop-line with 1 entry, got {len(stop)}: {stop!r}")
+    elif "auto-evolve loop active" not in stop[0].get("text", ""):
+        fail(f"S2: stop-line missing active/idle steady substring; "
+             f"got {stop[0]!r}")
     else:
-        ok("S2: marker present -> 2 alerts suppressed, banner emits composite")
+        ok("S2: marker present -> composite banner + active stop-line emit")
 
 # S3: marker + restart-needed -> line 2 is the restart-resume substring
 with tempfile.TemporaryDirectory() as td:

@@ -13,6 +13,35 @@ own version.
 
 ## Version notes
 
+- **v0.60.1 — 2026-06-03** — decouple from the dead central
+  `iterate_configurables_*` runtime functions ahead of their removal (#786,
+  subagent 1 of the 2-feature barrier; contract deletes the functions in
+  subagent 2). After rabbit-config was retired (#769) the central
+  `contract.lib.runtime.iterate_configurables_alerts` / `_banner` functions
+  are dead — no `feature.json` `runtime[]` declares them, and per-feature
+  `emit_configurable_alert` entries replaced them. rae's
+  `test/test-banner-suppression.py` was the last live importer/caller of
+  `iterate_configurables_alerts`, so it is decoupled FIRST (landing green
+  while the function still exists). The test is rewritten to exercise ONLY
+  the rae-OWNED half of the suppression contract — the auto-evolve composite
+  banner (`emit_auto_evolve_banner`) and stop-line
+  (`emit_auto_evolve_stop_line`), which emit IN PLACE OF the suppressed
+  per-configurable alerts when `.rabbit-auto-evolve-active` is present and are
+  a no-op when it is absent. The per-id alert SUPPRESSION HOOK itself lives in
+  `contract.lib.runtime` (Inv 54) and is owned by the `contract` feature (per
+  spec.md "What this feature does NOT define"); its coverage already lives in
+  `contract/test/test-runtime-iterate-configurables-alerts.py` (t12+), so the
+  rae test no longer duplicates it. S1–S4 scenarios are preserved as
+  banner/stop-line assertions; the now-redundant synthetic rabbit-cage
+  feature.json + alert-filter helper are dropped. `set-evolve-mode.py` (script
+  Version 1.3.0 → 1.3.1): the two cosmetic docstring mentions of the retired
+  `rabbit-config.py` (describing the shared sys.path import pattern) are
+  reframed to describe the pattern directly — non-functional. No spec or SKILL
+  prose change; four-way frontmatter version bump 0.60.0 → 0.60.1 to keep
+  lockstep equality with the CHANGELOG entry (dispatcher republishes the
+  deployed SKILL copy for the version bump). No contract
+  `provides`/`reads`/`invokes`/`never` schema change.
+
 - **v0.60.0 — 2026-06-04** — marker dual-read coexistence (phase 1 of
   #733/#336). The approval-bypass marker gains a new name
   `.rabbit-tdd-autonomous` alongside the legacy `.rabbit-human-approval-bypass`.

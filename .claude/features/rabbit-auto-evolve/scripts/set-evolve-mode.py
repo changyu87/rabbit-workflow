@@ -12,7 +12,7 @@ best-effort rolls back any prior steps; reports the failed step on stderr.
 Exit 0 on full success, non-zero on any step failure (after rollback attempt).
 Idempotent in the steady state (delegated to contract.lib.mutation primitives).
 
-Version: 1.3.0
+Version: 1.3.1
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -51,7 +51,9 @@ def _import_mutation():
     """Lazy-import contract.lib.mutation by inserting the contract feature
     dir onto sys.path. The contract dir is resolved relative to this
     script's location (not cwd) so the import works regardless of where
-    the script is invoked from. Mirrors the pattern used by rabbit-config.py."""
+    the script is invoked from. Standard sibling-feature import pattern:
+    resolve the contract feature dir relative to this file, then insert it
+    onto sys.path before importing lib.mutation."""
     here = os.path.dirname(os.path.abspath(__file__))
     # scripts/ -> rabbit-auto-evolve/ -> features/ -> .claude/
     contract_dir = os.path.normpath(os.path.join(here, "..", "..", "contract"))
@@ -63,8 +65,8 @@ def _import_mutation():
 
 def _import_rabbit_print():
     """Lazy-import rabbit_print from the contract feature's scripts dir.
-    Mirrors the sys.path-insert pattern used by rabbit-config.py for the
-    same module — contract scripts dir is not on sys.path by default."""
+    Same sys.path-insert pattern as _import_mutation above — the contract
+    scripts dir is not on sys.path by default."""
     here = os.path.dirname(os.path.abspath(__file__))
     scripts_dir = os.path.normpath(
         os.path.join(here, "..", "..", "contract", "scripts"))
