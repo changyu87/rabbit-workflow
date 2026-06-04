@@ -12,7 +12,7 @@ best-effort rolls back any prior steps; reports the failed step on stderr.
 Exit 0 on full success, non-zero on any step failure (after rollback attempt).
 Idempotent in the steady state (delegated to contract.lib.mutation primitives).
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -22,6 +22,12 @@ import os
 import sys
 
 MARKER_BYPASS = ".rabbit-human-approval-bypass"
+# Inv 1 (issue #766 Phase 1 of #733/#336): the bypass state gains a new marker
+# name during the coexistence window. `on` writes BOTH the legacy and the new
+# name (additive; the reader check-preconditions.py dual-reads either), and
+# `off` deletes BOTH. Phase 2 (#336) renames the read path; removal of the
+# legacy write is a later cleanup (#769). PRESENCE semantics are unchanged.
+MARKER_BYPASS_NEW = ".rabbit-tdd-autonomous"
 MARKER_BYPASS_CONTENT = "session"
 SETTINGS_FILE = ".claude/settings.local.json"
 SETTINGS_KEY = "permissions.defaultMode"
@@ -110,6 +116,15 @@ def _on(mutation, repo_root):
         )
         completed.append(("step 1", lambda: mutation.delete_marker(MARKER_BYPASS, repo_root=repo_root)))
 
+        # Step 1b (#766 Phase 1): also write the new .rabbit-tdd-autonomous
+        # name during the coexistence window so the Phase-2 read-path rename
+        # finds the marker. Additive — the legacy write above is unchanged.
+        _do(
+            "step 1b (write_marker .rabbit-tdd-autonomous)",
+            mutation.write_marker, MARKER_BYPASS_NEW, MARKER_BYPASS_CONTENT, repo_root=repo_root,
+        )
+        completed.append(("step 1b", lambda: mutation.delete_marker(MARKER_BYPASS_NEW, repo_root=repo_root)))
+
         # Step 2
         _do(
             "step 2 (set_json_key permissions.defaultMode=bypassPermissions)",
@@ -190,6 +205,16 @@ def _off(mutation, repo_root):
         _do(
             "step 3 off (delete_marker .rabbit-human-approval-bypass)",
             mutation.delete_marker, MARKER_BYPASS, repo_root=repo_root,
+        )
+
+        # Step 3b (off, #766 Phase 1): also delete the new
+        # .rabbit-tdd-autonomous name. Idempotent (delete-if-exists; a missing
+        # marker is a no-op) so `off` cleans up both names regardless of which
+        # were written. No rollback bookkeeping — a torn-down bypass state
+        # should not be resurrected.
+        _do(
+            "step 3b off (delete_marker .rabbit-tdd-autonomous)",
+            mutation.delete_marker, MARKER_BYPASS_NEW, repo_root=repo_root,
         )
         return True, None, None
     except StepError as e:

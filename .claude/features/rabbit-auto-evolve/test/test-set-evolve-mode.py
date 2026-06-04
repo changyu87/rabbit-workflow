@@ -27,6 +27,10 @@ REPO_ROOT = os.path.normpath(os.path.join(HERE, "..", "..", "..", ".."))
 CONTRACT_DIR = os.path.join(REPO_ROOT, ".claude", "features", "contract")
 
 MARKER_BYPASS = ".rabbit-human-approval-bypass"
+# Issue #766 Phase 1 (of #733/#336): the new tdd-autonomous bypass marker
+# name. During the coexistence window `on` writes this NEW name and `off`
+# deletes BOTH the legacy and new names.
+MARKER_BYPASS_NEW = ".rabbit-tdd-autonomous"
 MARKER_ACTIVE = ".rabbit-auto-evolve-active"
 # Inv 1 v0.7.1 (#371): the four loop-runtime markers that `off` must also
 # delete (innermost first) before reversing the activation mutations.
@@ -418,6 +422,65 @@ with tempfile.TemporaryDirectory() as root:
              f"cron={cron_body2!r}")
     else:
         ok("I: `off` removed the tick-headless crontab entry")
+
+
+# ---------------------------------------------------------------------------
+# Scenario J — `on` writes the NEW .rabbit-tdd-autonomous bypass marker
+# (issue #766 Phase 1 / coexistence window). During the window `on` MUST
+# write the new name (so a Phase-2 rename of the read path finds it) AND keep
+# honoring the legacy name. Here we assert the new marker appears after `on`.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as root:
+    proc = run_script(root, "on")
+    if proc.returncode != 0:
+        fail(f"J: pre-setup `on` failed: {proc.stderr!r}")
+    if not os.path.isfile(os.path.join(root, MARKER_BYPASS_NEW)):
+        fail(f"J: expected {MARKER_BYPASS_NEW} to exist after `on`")
+    else:
+        ok(f"J: `on` writes the new {MARKER_BYPASS_NEW} marker")
+    # The legacy marker must still be written during the coexistence window.
+    if not os.path.isfile(os.path.join(root, MARKER_BYPASS)):
+        fail(f"J: expected legacy {MARKER_BYPASS} to still exist after `on`")
+    else:
+        ok(f"J: `on` still writes the legacy {MARKER_BYPASS} (coexistence)")
+
+
+# ---------------------------------------------------------------------------
+# Scenario K — `off` deletes BOTH the legacy and new bypass markers
+# (issue #766 Phase 1). Pre-seed both bypass markers + active + settings, run
+# `off`, assert both bypass markers are gone. Idempotent: missing new marker
+# is a no-op.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as root:
+    with open(os.path.join(root, MARKER_BYPASS), "w") as f:
+        f.write("session")
+    with open(os.path.join(root, MARKER_BYPASS_NEW), "w") as f:
+        f.write("session")
+    with open(os.path.join(root, MARKER_ACTIVE), "w") as f:
+        f.write("")
+    write_settings(root, {"permissions": {"defaultMode": "bypassPermissions"}})
+
+    proc = run_script(root, "off")
+    if proc.returncode != 0:
+        fail(f"K: expected exit 0 from `off`, got {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("K: `off` exited 0 with both bypass markers present")
+    if os.path.exists(os.path.join(root, MARKER_BYPASS)):
+        fail(f"K: expected legacy {MARKER_BYPASS} removed after `off`")
+    else:
+        ok(f"K: `off` removed legacy {MARKER_BYPASS}")
+    if os.path.exists(os.path.join(root, MARKER_BYPASS_NEW)):
+        fail(f"K: expected new {MARKER_BYPASS_NEW} removed after `off`")
+    else:
+        ok(f"K: `off` removed new {MARKER_BYPASS_NEW}")
+
+# `off` deleting the new marker is idempotent even when it was never written.
+with tempfile.TemporaryDirectory() as root:
+    proc = run_script(root, "off")
+    if proc.returncode != 0:
+        fail(f"K: `off` (clean, no new marker) should be no-op, got {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("K: `off` is idempotent when new marker absent")
 
 
 sys.exit(FAIL)
