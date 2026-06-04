@@ -48,7 +48,7 @@ A single JSON result object is emitted on stdout. Exit code is 0 on a
 completed segment (including every short-circuit no-op); non-zero on an
 unexpected phase-script failure.
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -144,6 +144,24 @@ def _write_running_marker():
         f.write(mod._marker_content())
 
 
+def _run_prune_worktrees():
+    """Invoke the tick-start orphan sweep (prune-worktrees.py, Inv 53 / #628).
+    Resolved next to THIS file (like _write_running_marker), NOT via the
+    configurable phase-script dir which a test harness may point at stubs —
+    the sweep is a fixed sibling, not a swappable phase. Always returns the
+    CompletedProcess; a non-zero sweep return is recorded by the caller but
+    never short-circuits or fails the tick (disk hygiene must not block it)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    script = os.path.join(here, "prune-worktrees.py")
+    proc = subprocess.run(
+        [sys.executable, script],
+        capture_output=True, text=True,
+    )
+    if proc.stderr:
+        sys.stderr.write(proc.stderr)
+    return proc
+
+
 def run_pre_dispatch():
     """Phases: tick-start sync (Inv 38) -> phase 0/1 stop/abort short-circuit
     -> running-guard (Inv 35) -> running-marker write (Inv 42, only on proceed)
@@ -199,6 +217,16 @@ def run_pre_dispatch():
     # and headless paths get the marker written this single way.
     _write_running_marker()
     result["running_marker"] = "written"
+
+    # Tick-start orphan sweep (Inv 53 / #628). The running-guard above returned
+    # `proceed`, so no OTHER tick is live, and Phase 5 dispatch has not begun —
+    # therefore every existing `.claude/worktrees/agent-*` worktree is an orphan
+    # from a prior or interrupted tick and is safe to force-remove. The same
+    # step bounds `.rabbit/prompts/` by invoking the contract cleanup API. Disk
+    # hygiene must NEVER block evolution: a sweep failure is recorded and the
+    # tick proceeds unchanged (never short-circuits, never fails the tick).
+    sweep = _run_prune_worktrees()
+    result["phases"]["prune_worktrees"] = sweep.returncode
 
     # phases 2-4: fetch | triage | plan (Inv 18).
     fetch = _run("fetch-queue.py", [])

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.42.0
+version: 0.43.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -3277,6 +3277,56 @@ Phase E merges complete.
     `test/test-spec-advise-restart-invariant.py` (the spec documents the
     advisory marker, its three subcommands, the JSON status shape, and the
     never-pauses / distinct-from-hard-marker contract).
+
+53. **Tick-start orphan sweep (Inv 53) — leftover TDD dispatch worktrees and
+    the prompt dir are bounded at tick start, before Phase 5 dispatch (issue
+    #628).** Parallel TDD dispatch (worktree isolation, #430) creates one git
+    worktree per subagent under `.claude/worktrees/agent-*`. The Agent tool
+    auto-removes a dispatch worktree ONLY when it is unchanged on exit; a TDD
+    worktree is always changed, so it is NEVER auto-removed and the `agent-*`
+    worktrees accumulate (~9–14 MB each — 61 leftover / 577 MB observed). The
+    `.rabbit/prompts/` dir likewise accumulated unbounded (264 files / 23 MB
+    observed) because the prompt-cleanup API was never invoked on the tick
+    path. This invariant bounds BOTH at tick start.
+
+    **(a) Worktree sweep — `scripts/prune-worktrees.py`.** A deterministic
+    sweep that, for every path `git worktree list --porcelain` reports whose
+    basename matches `agent-*` AND that lies under
+    `<repo_root>/.claude/worktrees/`, runs `git worktree remove --force
+    <path>` then a single `git worktree prune`. It NEVER removes the main
+    checkout, NEVER removes a non-`agent-*` path, and NEVER removes a path
+    outside `.claude/worktrees/`. Emits a JSON summary on stdout
+    (`{"removed": [...], "kept": [...], "status": "ok"}`); a failed `git
+    worktree remove` on one path does not abort the sweep (it is recorded and
+    the sweep continues), so a single stuck worktree never blocks the tick.
+    `<repo_root>` defaults to `os.getcwd()`, overridable via
+    `RABBIT_AUTO_EVOLVE_REPO_ROOT` for tests.
+
+    **(b) Safety by sequencing — the sweep runs at TICK START, pre-dispatch.**
+    The sweep is wired into `run-tick-phases.py`'s pre-dispatch segment,
+    BEFORE Phase 5 dispatch begins. At tick start no dispatch is live, so
+    every existing `agent-*` worktree is an orphan from a prior or interrupted
+    tick and is safe to force-remove. The sweep is a clean no-op when there
+    are no orphans, and never short-circuits or fails the tick on a sweep
+    error (it logs and proceeds — disk hygiene must never block evolution).
+
+    **(c) Prompt-dir bounding — invoke the contract cleanup API.** The same
+    pre-dispatch path bounds `.rabbit/prompts/` by INVOKING the
+    contract-owned `contract.lib.runtime.cleanup_old_prompts(max_age_days, *,
+    repo_root)` API (a cross-scope INVOKE declared in this feature's
+    `contract.md` `invokes.modules`; rabbit-auto-evolve does NOT edit the
+    contract feature). The effective threshold is `max_age_days=7` so the
+    prompt dir stays bounded across ticks. `prune-worktrees.py` owns the
+    invocation so the bounding logic stays script-tier (Tool-Choice Tier).
+
+    Enforced by `test/test-prune-worktrees.py` (a simulated leftover
+    `agent-*` worktree in a temp git repo is pruned; the main worktree and a
+    non-`agent-*` worktree are NEVER removed; the sweep is a clean no-op with
+    no orphans; the prompt-dir bounding caps `.rabbit/prompts/`) and
+    `test/test-spec-prune-worktrees-invariant.py` (the spec documents the
+    sweep script, the tick-start pre-dispatch sequencing, the
+    `agent-*`-only / under-`.claude/worktrees/`-only safety constraint, and
+    the prompt-dir bounding via the contract cleanup invoke).
 
 ## Known gaps
 
