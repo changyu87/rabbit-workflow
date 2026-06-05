@@ -16,6 +16,12 @@ This module has two distinct roles:
      doesn't depend on the publish flow having been run against the source
      tarball.
 
+     After the closure copy, main() RUNS THE PUBLISH FLOW against the freshly
+     installed tree (canonicalize_installed_surfaces) so the installed manifest
+     surfaces are byte-identical to what the Stop hook's check_manifest_drift
+     republishes at runtime. This makes a fresh install drift-free on its first
+     Stop even when a committed deployed surface shipped stale.
+
      Excludes development surfaces: test/, docs/, scripts/enforcement/,
      deferred features (tdd-subagent), retired
      tombstones (tdd-state-machine).
@@ -25,14 +31,15 @@ This module has two distinct roles:
          install.py --update    (self-fetch upstream; infer target from script
                                  location — see Inv 22g)
 
-  2. Dev-test helper (run_publish_loop()):
-     Importable function used by rabbit-cage test suites
-     (test-deployed-hooks-execute.py, test-install-publish-loop.py) to
-     exercise the publish flow against a freshly copied .claude tree.
-     This helper is NOT invoked from main() — main() lays down an explicit
-     file closure rather than running the publish flow at install time.
+  2. Publish flow (run_publish_loop()):
+     Walks every <target>/.claude/features/*/feature.json manifest and invokes
+     each declared API via contract.lib.publish. Invoked from main() (via
+     canonicalize_installed_surfaces) to canonicalize installed surfaces, and
+     also imported directly by rabbit-cage test suites
+     (test-deployed-hooks-execute.py, test-install-publish-loop.py) to exercise
+     the publish flow against a freshly copied .claude tree.
 
-Version: 6.6.0
+Version: 6.7.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit's per-project plugin model is superseded
 """
@@ -451,10 +458,10 @@ def run_publish_loop(target_root: str) -> int:
     Skips features with status == 'retired' and features with no manifest.
     Writes one stderr line per failure naming the feature + API.
 
-    NOT invoked from main() — main() lays down an explicit file closure
-    rather than executing the publish flow at install time. This function
-    is retained as an importable helper for rabbit-cage test suites that
-    exercise the publish flow against a freshly copied .claude tree
+    Invoked from main() via canonicalize_installed_surfaces to make the
+    installed surfaces canonical (drift-free first Stop, #851), and also
+    imported directly by rabbit-cage test suites that exercise the publish
+    flow against a freshly copied .claude tree
     (test-deployed-hooks-execute.py, test-install-publish-loop.py).
     """
     contract_dir = os.path.join(target_root, ".claude/features/contract")
@@ -507,6 +514,57 @@ def run_publish_loop(target_root: str) -> int:
                     sys.stderr.write(f"install: {name}::{api_name}: {msg}\n")
                 failures += 1
     return failures
+
+
+def canonicalize_installed_surfaces(dst_root: Path) -> None:
+    """Inv 43: run the publish flow against the freshly installed target so
+    every feature's manifest surfaces are CANONICAL — byte-identical to what
+    the Stop hook's `check_manifest_drift` republishes from source at runtime.
+
+    Without this, install lays down the COMMITTED deployed surfaces verbatim. A
+    committed copy that was never republished after a source change (stale at
+    ref-cut time) ships stale, and the user's FIRST Stop runs the same publish
+    APIs from source, finds a diff, rebuilds, and reports
+    "Surface drift detected - rebuilt: ..." for edits the user never made.
+    Republishing here makes the installed surfaces match the runtime republish,
+    so the first Stop is a clean no-op.
+
+    Reuses `run_publish_loop`, which walks each installed feature.json manifest
+    and invokes the SAME contract-owned publish APIs (`contract.lib.publish`)
+    that `check_manifest_drift` calls — install output == runtime-republish
+    output by construction.
+
+    Sets `RABBIT_ROOT` in the environment for the duration of the loop so
+    `publish_hook` emits the PLUGIN command form (`$RABBIT_ROOT/.claude/hooks/...`)
+    — matching the `rewrite_settings_for_plugin` rewrite and what the deployed
+    Stop hook (which runs with `RABBIT_ROOT` set) republishes. Without it,
+    `publish_hook` would emit the standalone git-rev-parse form and append a
+    duplicate entry beside the rewritten one.
+
+    Degrades gracefully: a non-zero failure count (or an unexpected error) is
+    reported to stderr but does NOT fail the install — the closure copy already
+    laid down working surfaces; canonicalization is a best-effort upgrade.
+    """
+    prev_rabbit_root = os.environ.get("RABBIT_ROOT")
+    os.environ["RABBIT_ROOT"] = str(dst_root.resolve())
+    try:
+        failures = run_publish_loop(str(dst_root))
+    except Exception as e:  # noqa: BLE001 — never let canonicalization break install
+        sys.stderr.write(
+            f"install: surface canonicalization skipped (publish flow error: "
+            f"{e}); installed closure retained\n"
+        )
+        return
+    finally:
+        if prev_rabbit_root is None:
+            os.environ.pop("RABBIT_ROOT", None)
+        else:
+            os.environ["RABBIT_ROOT"] = prev_rabbit_root
+    if failures:
+        sys.stderr.write(
+            f"install: surface canonicalization had {failures} publish "
+            f"failure(s); installed closure retained (see lines above)\n"
+        )
 
 
 def _publish_settings_merge(src_root: Path, dst_root: Path) -> bool:
@@ -751,6 +809,12 @@ def _main_with_args(args: argparse.Namespace) -> int:
     rewrite_settings_for_plugin(dst_root)
     write_rabbit_gitignore(dst_root)
     write_version_pin(dst_root)
+
+    # Inv 43: canonicalize surfaces AFTER rewrite_settings_for_plugin so the
+    # publish flow reads the already-rewritten ($RABBIT_ROOT) source settings —
+    # matching what check_manifest_drift republishes at runtime — and makes the
+    # fresh install drift-free on its first Stop.
+    canonicalize_installed_surfaces(dst_root)
 
     total_files = sum(1 for p in dst_root.rglob("*") if p.is_file())
     print(f"Installed {total_files} files to {dst_root}")

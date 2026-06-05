@@ -194,9 +194,15 @@ def test_update_refreshes_closure_file_when_source_changes():
         rc, _ = _run_install(install, ["install.py", "--src", str(src), "--target", str(dst)])
         assert rc == 0
 
-        # Mutate a closure source file and re-run with --update.
-        # Pick CLAUDE.md (always in SAME_PATH_FILES).
-        target_rel = "CLAUDE.md"
+        # Mutate a closure source file and re-run with --update. Pick a
+        # FEATURE_INCLUDES file that no manifest republishes — a contract script
+        # (contract carries no manifest) — so the probe tests the raw closure
+        # refresh in isolation. Top-level CLAUDE.md / README.md / install.py are
+        # NOT valid probes: install-time canonicalization (Inv 43) regenerates
+        # CLAUDE.md from policy and re-publishes README.md / install.py from
+        # their feature-local sources, so a raw same-path edit to them is
+        # superseded by the publish flow rather than copied verbatim.
+        target_rel = ".claude/features/contract/scripts/find-feature.py"
         src_file = src / target_rel
         dst_file = dst / target_rel
         original = dst_file.read_text()
@@ -209,7 +215,7 @@ def test_update_refreshes_closure_file_when_source_changes():
         assert rc2 == 0
 
         assert dst_file.read_text() == new_content, (
-            "closure file CLAUDE.md was not refreshed under --update"
+            f"closure file {target_rel} was not refreshed under --update"
         )
     print("PASS test_update_refreshes_closure_file_when_source_changes")
 
