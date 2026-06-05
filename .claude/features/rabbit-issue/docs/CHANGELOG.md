@@ -12,6 +12,17 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.13.1 (mark List-Protocol synopsis as illustrative, closes #874):**
+  Annotate the SKILL.md §List Protocol `list-items.py` CLI synopsis with the
+  `<!-- example -->` marker shipped in #869 so the rabbit-housekeep
+  script-backed scanner treats its bracketed-optional `<feature-name>`
+  placeholder as non-executable documentation rather than a live
+  orchestration step. The block is a usage synopsis, not a step the model
+  assembles. Adds `test/test-script-backed-clean.py`, which runs
+  `check-script-backed.py scan` over the feature tree and asserts zero
+  findings so a future SKILL edit that introduces a real unmarked placeholder
+  fails loudly. Docs-only and test-only; no runtime-script behaviour changed.
+
 - **v1.13.0 (`in-progress` sanctioned category label, closes #859):** Add
   `in-progress` to rabbit-issue's documented label schema as a sanctioned
   category label marking an issue as a member of the loop's live dispatch set

@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.13.0
+version: 1.13.1
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours an actionability safety guard (it refuses to close/reopen issues lacking a valid `feature:` label) so raw human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -99,6 +99,7 @@ When the user confirms they want to file a bug or enhancement:
 
 When the user wants to see open or closed issues:
 
+<!-- example: illustrative CLI synopsis for list-items.py; bracketed args are optional, not a live step the model assembles. -->
 ```bash
 python3 .claude/features/rabbit-issue/scripts/list-items.py \
   [--type bug|enhancement|all] \
