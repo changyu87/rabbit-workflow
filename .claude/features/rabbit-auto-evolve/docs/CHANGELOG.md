@@ -16,6 +16,34 @@ authoritative).
 
 ## Version notes
 
+- **v0.72.0 — 2026-06-04** — Address the #881 REOPEN: replace the #883
+  "jitter range" ETA with an HONEST, root-cause-correct ETA in
+  `banner-status.py`. The #883 fix rendered the next-tick ETA as a
+  jitter-inclusive RANGE `~HH:MM–HH:MM (scheduler jitter)`, premised on "cron
+  jitter". The user reopened: cron always fires at its exact schedule boundary
+  — there is no cron jitter — so the range papered over the symptom and
+  misdiagnosed the cause. ROOT CAUSE (verified against spec.md line ~2003,
+  which already names CronCreate the "idle-REPL prompt scheduler"): the loop's
+  CronCreate fallback fires a scheduled prompt ONLY while the REPL is IDLE,
+  never mid-query. The next-fire BOUNDARY is exactly computable from the cron
+  spec, but actual DELIVERY waits until the session is next idle — a busy
+  session (long tick, auto-compaction, active user interaction) pushes the
+  fire past the boundary. This idle-gating is the dominant source of the
+  observed 13-min overshoot (08:56 heartbeat → boundary 09:13 → fired 09:26),
+  NOT scheduler jitter. FIX: `_next_tick_eta` now returns the EXACT next cron
+  boundary as a lower bound `≥ HH:MM (fires when the session is next idle)`;
+  the misleading `(scheduler jitter)` range and the `_cadence_period_minutes`
+  / `_cadence_jitter_minutes` helpers (and the now-unused `import math`) are
+  removed. spec.md Inv 22's ETA paragraph rewritten to the honest model
+  (kept at the #751 3384-line ceiling by tightening adjacent prose);
+  `test-banner-status.py` updated to assert the boundary + idle-gating
+  qualifier, no jitter band, and that the jitter helpers are gone.
+  banner-status.py script version 1.4.0 → 1.5.0. Four-way lockstep
+  0.71.0 → 0.72.0. NOTE for the contract-side twin (#884): mirror THIS
+  honest idle-gating approach into
+  `contract.lib.runtime._auto_evolve_next_tick_eta` /
+  `emit_auto_evolve_stop_line`, NOT the old #883 jitter range.
+
 - **v0.71.0 — 2026-06-04** — Complete the #882 reopen: make the `in-progress`
   label cover the FULL phase-6 TDD subagent execution window. The #882 FIRST fix
   (v0.70.0) added a post-dispatch add-on-entry reconcile, but `post-dispatch`

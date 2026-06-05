@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.71.0
+version: 0.72.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1402,16 +1402,16 @@ summary is restated here.
     rather than depending on it): read the heartbeat cron from repo-root
     `.claude/scheduled_tasks.json`, parse its MINUTE field against an
     unrestricted HOUR, and walk to the next matching wall-clock minute from an
-    injectable `now`. The ETA is a jitter-inclusive RANGE `~HH:MM–HH:MM
-    (scheduler jitter)`, not a single `~HH:MM` — LOW bound is that scheduled
-    minute, HIGH bound is it plus the bounded CronCreate jitter `min(15,
-    ceil(period * 0.10))` (≥ 1) for the cadence period derived from the
-    fire-minute set. CronCreate delays recurring fires by up to that jitter,
-    so a bare minute read as a hard promise it fired LATE against; the range
-    never reads early. The ETA degrades to the bare idle line when the cadence
-    source is absent/unparseable. Only this started-then-idle line carries an
-    ETA — the four priority-marker lines, the restart-pending line, and the
-    inactive (`{active: false}`) case never do.
+    injectable `now`. The ETA is the EXACT next cron boundary shown as a LOWER
+    bound `≥ HH:MM (fires when the session is next idle)` — NOT a jitter range,
+    NOT a bare `~HH:MM`. Root cause of the observed overshoot: the CronCreate
+    fallback is the idle-REPL prompt scheduler — it fires a scheduled prompt ONLY
+    while the REPL is IDLE, so a busy session DELAYS delivery until the session
+    next goes idle. The boundary is deterministic (there is no "cron jitter"); the
+    non-determinism is the idle-gated wait, so the shown minute is the exact next
+    boundary. The ETA degrades to the bare idle line when the cadence is
+    absent/unparseable. Only this started-then-idle line carries an ETA; the
+    priority-marker, restart-pending, and `{active: false}` lines never do.
 
     The script reads the five runtime markers via `os.path.exists` and
     additionally probes for `.rabbit/auto-evolve-state.json` via
@@ -1435,7 +1435,7 @@ summary is restated here.
     - Active only, state file PRESENT, no cadence source → `line2.text`
       is the bare `paste: /rabbit-auto-evolve start` (no ETA), color yellow.
     - Active only, state file PRESENT, cadence source present → `line2.text`
-      appends the jitter range `, next tick ~HH:MM–HH:MM (scheduler jitter)`.
+      appends `, next tick ≥ HH:MM (fires when the session is next idle)`.
     - Active only, state file PRESENT, unparseable cadence → bare idle line,
       no ETA.
     - The restart-pending and running lines carry no ETA even when the

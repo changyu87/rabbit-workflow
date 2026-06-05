@@ -48,15 +48,19 @@ the cadence source is absent/unparseable. The four priority-marker lines and
 the restart-pending line never carry an ETA. The wall-clock is overridable via
 `RABBIT_AUTO_EVOLVE_NOW` (ISO-8601) for deterministic tests.
 
-#881: the displayed ETA is a jitter-inclusive RANGE — `paste:
-/rabbit-auto-evolve start, next tick ~HH:MM–HH:MM (scheduler jitter)` — not a
-single `~HH:MM`. CronCreate adds up to 10% of the cadence period (capped at 15
-min) of jitter to recurring fires, plus the harness only ticks while the REPL
-is idle, so the bare scheduled minute read as a hard promise the runtime fired
-LATE against (observed #881: printed `~09:13`, fired 09:26). The range's low
-bound is the scheduled fire minute; the high bound is that fire plus the
-bounded jitter (`_cadence_jitter_minutes`), so the printed window is honest and
-never systematically early.
+#881 (reopen): the displayed ETA is the EXACT next cron boundary as a LOWER
+bound — `paste: /rabbit-auto-evolve start, next tick ≥ HH:MM (fires when the
+session is next idle)` — NOT a jitter-inclusive range and NOT a bare `~HH:MM`.
+Root cause of the observed overshoot (printed `~09:13`, fired 09:26): the
+loop's CronCreate fallback is the idle-REPL prompt scheduler — it fires a
+scheduled prompt ONLY while the REPL is idle, never mid-query. So a busy
+session (a long tick, auto-compaction, or active user interaction) DELAYS
+delivery until the session next goes idle. The cron boundary itself is
+deterministic — cron always matches its exact minute; there is no "cron
+jitter". The non-determinism is the idle-gated DELIVERY wait, so the #883
+"(scheduler jitter)" range MISATTRIBUTED the cause. The honest ETA shows the
+exact next boundary and the `≥` plus the idle-gating qualifier name the real
+mechanism: the tick fires AT or AFTER that boundary, never before.
 
 Marker file contents (for aborted/restart-needed) are surfaced in the line2
 text alongside the literal substring above when non-empty.
@@ -70,7 +74,7 @@ maps the JSON result to the SessionStart banner. This script is therefore the
 single owner of all line-2 variants (including `running`), every one of which
 is surfaced at SessionStart.
 
-Version: 1.4.0
+Version: 1.5.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -81,7 +85,6 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
-import math
 import os
 import sys
 
@@ -160,50 +163,29 @@ def _parse_cron_minutes(field: str) -> set:
     return minutes
 
 
-def _cadence_period_minutes(minutes: set) -> int:
-    """Derive the heartbeat cadence period (minutes between consecutive fires)
-    from the parsed fire-minute set. The period is the smallest gap between two
-    consecutive fire minutes, wrapping across the hour boundary. A single fire
-    minute means once-per-hour => period 60. Used solely to bound the displayed
-    scheduler jitter (#881)."""
-    ms = sorted(minutes)
-    if len(ms) <= 1:
-        return 60
-    gaps = [b - a for a, b in zip(ms, ms[1:])]
-    gaps.append((ms[0] + 60) - ms[-1])  # wrap last -> first across the hour
-    return min(gaps)
-
-
-def _cadence_jitter_minutes(period: int) -> int:
-    """The bounded CronCreate scheduler jitter for a given cadence period: up to
-    10% of the period, capped at 15 minutes, and at least 1 minute for any
-    positive period (#881). CronCreate adds this much delay to recurring fires,
-    so the displayed ETA's upper bound is the scheduled fire plus this jitter —
-    making the printed time never systematically EARLY."""
-    return max(1, min(15, math.ceil(period * 0.10)))
-
-
 def _next_tick_eta(repo_root: str, now: datetime.datetime):
-    """Approximate next rabbit-auto-evolve heartbeat fire as a jitter-inclusive
-    `~HH:MM–HH:MM (scheduler jitter)` RANGE string, at or strictly after the
+    """Next rabbit-auto-evolve heartbeat fire as an HONEST lower-bound string
+    `≥ HH:MM (fires when the session is next idle)`, at or strictly after the
     injected `now`, or None on any absent/unreadable/unparseable/no-match
     condition (caller degrades to the bare idle line — no fabricated ETA).
     #844: mirrors contract Inv 55's cadence computation so the SessionStart
     banner and the Stop line agree.
 
-    #881: the range's LOW bound is the scheduled fire minute; the HIGH bound is
-    that fire plus the bounded CronCreate jitter (`_cadence_jitter_minutes` — up
-    to 10% of the cadence period, capped at 15 min) plus the explicit
-    "(scheduler jitter)" qualifier. The earlier bare `~HH:MM` read as a hard
-    promise the scheduler could not keep (it systematically fired LATE by the
-    jitter), so the range form makes the estimate honest and never early.
+    #881 (reopen): the displayed minute is the EXACT next cron boundary — cron
+    matches its exact minute, so the boundary is deterministic and there is no
+    "cron jitter". The non-determinism observed (printed `~09:13`, fired 09:26)
+    is the idle-gated DELIVERY wait: the CronCreate fallback fires a scheduled
+    prompt only while the REPL is idle, so a busy session delays the tick past
+    the boundary. The `≥` and the "(fires when the session is next idle)"
+    qualifier name that mechanism honestly — the tick fires AT or AFTER the
+    boundary, never before. This replaces the #883 "(scheduler jitter)" range,
+    which misattributed the cause.
 
     Reads the durable heartbeat cadence from
     `<repo_root>/.claude/scheduled_tasks.json` — the `tasks[]` entry whose
     `prompt` references rabbit-auto-evolve. Only the cron MINUTE field is
     matched against an unrestricted (`*`) HOUR, the shape the heartbeat uses
-    (`13,43 * * * *`). The ETA is APPROXIMATE (`~`): the scheduled fire window,
-    not a guarantee."""
+    (`13,43 * * * *`)."""
     path = os.path.join(repo_root, ".claude", "scheduled_tasks.json")
     try:
         with open(path) as f:
@@ -230,11 +212,8 @@ def _next_tick_eta(repo_root: str, now: datetime.datetime):
     candidate = now.replace(second=0, microsecond=0) + datetime.timedelta(minutes=1)
     for _ in range(1440):
         if candidate.minute in minutes:
-            jitter = _cadence_jitter_minutes(_cadence_period_minutes(minutes))
-            upper = candidate + datetime.timedelta(minutes=jitter)
-            low = candidate.strftime("%H:%M")
-            high = upper.strftime("%H:%M")
-            return f"~{low}–{high} (scheduler jitter)"
+            boundary = candidate.strftime("%H:%M")
+            return f"≥ {boundary} (fires when the session is next idle)"
         candidate += datetime.timedelta(minutes=1)
     return None
 
@@ -273,10 +252,11 @@ def _line2(repo_root: str) -> dict:
     if not os.path.isfile(os.path.join(repo_root, STATE_FILE)):
         return {"text": RESTART_PENDING_TEXT, "icon": "⏸", "color": "yellow"}
 
-    # #844/#881: the started-then-idle line appends the approximate next-tick
-    # ETA the Stop line carries (contract Inv 55) for SessionStart<->Stop
-    # symmetry, using the ", next tick ~HH:MM–HH:MM (scheduler jitter)" range
-    # suffix. Honest degradation: the bare idle line when the cadence source is
+    # #844/#881: the started-then-idle line appends the next-tick ETA the Stop
+    # line carries (contract Inv 55) for SessionStart<->Stop symmetry, using the
+    # honest ", next tick ≥ HH:MM (fires when the session is next idle)" suffix —
+    # the exact cron boundary qualified by idle-gated delivery, not a jitter
+    # range. Honest degradation: the bare idle line when the cadence source is
     # absent/unparseable (no crash, no fabricated ETA).
     text = "paste: /rabbit-auto-evolve start"
     eta = _next_tick_eta(repo_root, _now())
