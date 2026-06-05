@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -76,15 +77,29 @@ def fail_t(t: str, msg: str) -> None:
     fail_n += 1
 
 
-def _run(repo_root: Path) -> subprocess.CompletedProcess:
+def _run(repo_root: Path, now: str | None = None) -> subprocess.CompletedProcess:
     env = os.environ.copy()
     env["RABBIT_AUTO_EVOLVE_REPO_ROOT"] = str(repo_root)
+    # #844: inject a fixed wall-clock so the idle next-tick ETA is deterministic
+    # (never the real clock). Absent => script falls back to the real clock.
+    if now is not None:
+        env["RABBIT_AUTO_EVOLVE_NOW"] = now
     return subprocess.run(
         [sys.executable, str(SCRIPT)],
         env=env,
         capture_output=True,
         text=True,
     )
+
+
+def _seed_cadence(td: Path, cron: str, prompt: str = "/rabbit-auto-evolve tick") -> None:
+    """#844: write the heartbeat cadence source the idle ETA reads — the
+    repo-root .claude/scheduled_tasks.json entry whose prompt references
+    rabbit-auto-evolve (mirrors contract Inv 55's cadence source)."""
+    claude_dir = td / ".claude"
+    claude_dir.mkdir(parents=True, exist_ok=True)
+    payload = {"tasks": [{"id": "hb", "cron": cron, "prompt": prompt}]}
+    (claude_dir / "scheduled_tasks.json").write_text(json.dumps(payload))
 
 
 def _seed(td: Path, names: list[str], content: str = "session") -> None:
@@ -165,13 +180,14 @@ with tempfile.TemporaryDirectory() as td_str:
         else:
             ok("restart-pending", "state-file-absent → exact restart-pending line2 (⏸, yellow)")
 
-# --- t4b (#793): active only, state file PRESENT → existing idle 'paste' line ---
+# --- t4b (#793): active only, state file PRESENT, NO cadence source →
+# bare idle 'paste' line, NO ETA (graceful fallback, #844). ---
 # Loop has been started at least once; retain the unchanged idle/active line.
 with tempfile.TemporaryDirectory() as td_str:
     td = Path(td_str)
     _seed(td, [ACTIVE])
     _seed_state(td)
-    r = _run(td)
+    r = _run(td, now="2026-06-04T14:05:00")  # cadence source deliberately absent
     if r.returncode != 0:
         fail_t("idle", f"exit {r.returncode}; stderr={r.stderr!r}")
     else:
@@ -183,25 +199,91 @@ with tempfile.TemporaryDirectory() as td_str:
             fail_t("idle", f"line2 missing 'paste: ...': {line2!r}")
         elif line2.get("text") == RESTART_PENDING_TEXT:
             fail_t("idle", f"line2 must NOT be restart-pending when state present: {line2!r}")
+        elif "next tick" in line2.get("text", ""):
+            fail_t("idle", f"line2 must NOT carry ETA when cadence absent: {line2!r}")
         elif line2.get("color") != "yellow":
             fail_t("idle", f"line2 color != yellow: {line2!r}")
         else:
-            ok("idle", "state-file-present → idle 'paste: /rabbit-auto-evolve start' line")
+            ok("idle", "state-file-present, no cadence → bare idle line, no ETA")
+
+# --- t4c (#844): idle line carries an approximate next-tick ETA when the
+# cadence source is present. Symmetric with contract Inv 55's Stop idle line
+# ("... idle, next tick ~HH:MM"). Uses an INJECTED now + fixed cadence. ---
+with tempfile.TemporaryDirectory() as td_str:
+    td = Path(td_str)
+    _seed(td, [ACTIVE])
+    _seed_state(td)
+    _seed_cadence(td, "13,43 * * * *")
+    r = _run(td, now="2026-06-04T14:20:00")
+    if r.returncode != 0:
+        fail_t("idle-eta", f"exit {r.returncode}; stderr={r.stderr!r}")
+    else:
+        data = _parse(r)
+        line2 = data.get("line2") or {}
+        text = line2.get("text", "")
+        if "paste: /rabbit-auto-evolve start" not in text:
+            fail_t("idle-eta", f"line2 missing base idle text: {line2!r}")
+        elif ", next tick ~14:43" not in text:
+            fail_t("idle-eta", f"line2 missing exact next-tick ETA suffix: {line2!r}")
+        elif not re.search(r", next tick ~\d\d:\d\d$", text):
+            fail_t("idle-eta", f"line2 ETA not ~HH:MM-shaped at end: {line2!r}")
+        elif line2.get("color") != "yellow":
+            fail_t("idle-eta", f"line2 color != yellow: {line2!r}")
+        else:
+            ok("idle-eta", "idle line appends ', next tick ~14:43' for 13,43 cron @14:20")
+
+# --- t4d (#844): idle ETA degrades to bare line on an unparseable cadence ---
+with tempfile.TemporaryDirectory() as td_str:
+    td = Path(td_str)
+    _seed(td, [ACTIVE])
+    _seed_state(td)
+    _seed_cadence(td, "not a cron")
+    r = _run(td, now="2026-06-04T14:20:00")
+    data = _parse(r)
+    line2 = data.get("line2") or {}
+    text = line2.get("text", "")
+    if "paste: /rabbit-auto-evolve start" not in text:
+        fail_t("idle-eta-fallback", f"line2 missing base idle text: {line2!r}")
+    elif "next tick" in text:
+        fail_t("idle-eta-fallback", f"line2 must NOT carry ETA on bad cron: {line2!r}")
+    else:
+        ok("idle-eta-fallback", "unparseable cron → bare idle line, no ETA")
+
+# --- t4e (#844): the ETA only attaches to the idle line — the restart-pending
+# (never-started) line carries NO ETA even when a cadence source is present. ---
+with tempfile.TemporaryDirectory() as td_str:
+    td = Path(td_str)
+    _seed(td, [ACTIVE])  # state file deliberately absent => never-started
+    _seed_cadence(td, "13,43 * * * *")
+    r = _run(td, now="2026-06-04T14:20:00")
+    data = _parse(r)
+    line2 = data.get("line2") or {}
+    if line2.get("text") != RESTART_PENDING_TEXT:
+        fail_t("restart-pending-no-eta", f"expected exact restart-pending line: {line2!r}")
+    elif "next tick" in line2.get("text", ""):
+        fail_t("restart-pending-no-eta", f"restart-pending must NOT carry ETA: {line2!r}")
+    else:
+        ok("restart-pending-no-eta", "restart-pending line carries no ETA (cadence present)")
 
 # --- t5: active + running → line2 contains 'loop in progress' ---
+# Cadence + state present: a priority marker line must NOT carry an ETA (#844).
 with tempfile.TemporaryDirectory() as td_str:
     td = Path(td_str)
     _seed(td, [ACTIVE, RUNNING])
-    r = _run(td)
+    _seed_state(td)
+    _seed_cadence(td, "13,43 * * * *")
+    r = _run(td, now="2026-06-04T14:20:00")
     data = _parse(r)
     if not data.get("active"):
         fail_t("running", f"active not true: {data!r}")
     elif "loop in progress" not in (data.get("line2") or {}).get("text", ""):
         fail_t("running", f"line2 missing 'loop in progress': {data.get('line2')!r}")
+    elif "next tick" in (data.get("line2") or {}).get("text", ""):
+        fail_t("running", f"running line must NOT carry ETA: {data.get('line2')!r}")
     elif (data.get("line2") or {}).get("color") != "yellow":
         fail_t("running", f"line2 color != yellow: {data.get('line2')!r}")
     else:
-        ok("running", "line2 contains 'loop in progress'")
+        ok("running", "line2 contains 'loop in progress', no ETA")
 
 # --- t6: active + restart-needed → line2 contains 'resume after restart' ---
 with tempfile.TemporaryDirectory() as td_str:

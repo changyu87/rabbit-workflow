@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.65.0
+version: 0.66.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1464,15 +1464,32 @@ summary is restated here.
     — a restart is pending", and the restart-pending line2 is emitted
     VERBATIM the same as the Stop line so the SessionStart banner and the
     Stop line agree. Once the loop has been started at least once (state
-    file present) the existing `paste: /rabbit-auto-evolve start` idle line
-    is retained.
+    file present) the `paste: /rabbit-auto-evolve start` idle line is
+    retained, extended with the same approximate next-tick ETA the Stop
+    line carries (`paste: /rabbit-auto-evolve start, next tick ~HH:MM`)
+    for SessionStart↔Stop symmetry with Inv 55. The ETA is computed by
+    mirroring Inv 55's cadence computation — the contract helper is a
+    private internal, so rabbit-auto-evolve mirrors the small computation
+    rather than depending on contract internals: read the heartbeat cron
+    from repo-root `.claude/scheduled_tasks.json` (the `tasks[]` entry
+    whose `prompt` references rabbit-auto-evolve), parse its MINUTE field
+    against an unrestricted HOUR, and walk to the next matching wall-clock
+    minute from an injectable `now`. The ETA is APPROXIMATE (`~`,
+    scheduled not guaranteed) and degrades to the bare idle line when the
+    cadence source is absent/unparseable (no crash, no fabricated ETA).
+    Only this started-then-idle line carries an ETA — the four
+    priority-marker lines, the restart-pending line, and the inactive
+    (`{active: false}`) case never do.
 
     The script reads the five runtime markers via `os.path.exists` and
     additionally probes for `.rabbit/auto-evolve-state.json` via
-    `os.path.isfile` (the never-started distinction) — no other
-    filesystem access, no git, no `gh`. Repo root resolution uses
-    the `RABBIT_AUTO_EVOLVE_REPO_ROOT` env override fallback to
-    `os.getcwd()` (matching the marker-write scripts).
+    `os.path.isfile` (the never-started distinction); for the idle ETA it
+    reads `.claude/scheduled_tasks.json` — no other filesystem access, no
+    git, no `gh`. Repo root resolution uses the
+    `RABBIT_AUTO_EVOLVE_REPO_ROOT` env override fallback to `os.getcwd()`
+    (matching the marker-write scripts). The wall-clock for the ETA is
+    overridable via `RABBIT_AUTO_EVOLVE_NOW` (ISO-8601) for deterministic
+    tests, falling back to the real clock.
 
     This script owns all line-2 text variants (including the `running`
     variant); `contract.lib.runtime.emit_auto_evolve_banner` invokes it
@@ -1483,8 +1500,14 @@ summary is restated here.
     - Active only, state file ABSENT → `line2.text` is
       `auto-evolve configured — restart Claude Code, then run /rabbit-auto-evolve start`,
       icon ⏸, color yellow.
-    - Active only, state file PRESENT → `line2.text` contains
-      `paste: /rabbit-auto-evolve start`, color yellow.
+    - Active only, state file PRESENT, no cadence source → `line2.text`
+      is the bare `paste: /rabbit-auto-evolve start` (no ETA), color yellow.
+    - Active only, state file PRESENT, cadence source present → `line2.text`
+      appends `, next tick ~HH:MM` (the exact slot for the injected `now`).
+    - Active only, state file PRESENT, unparseable cadence → bare idle line,
+      no ETA.
+    - The restart-pending and running lines carry no ETA even when the
+      cadence source is present.
     - Active + running → `line2.text` contains `loop in progress`.
     - Active + restart-needed → `line2.text` contains `resume after restart`.
     - Active + aborted → `line2.text` contains `loop aborted on safety violation`.

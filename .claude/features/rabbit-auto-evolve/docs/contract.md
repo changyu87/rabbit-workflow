@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.65.0
+version: 0.66.0
 template_version: 2.0.0
 ---
 
@@ -36,7 +36,13 @@ template_version: 2.0.0
     "skills": [{"name": "rabbit-auto-evolve", "version": "0.23.0"}]
   },
   "reads": {
-    "files": [],
+    "files": [
+      {
+        "path": ".claude/scheduled_tasks.json",
+        "operation": "read-heartbeat-cadence",
+        "rationale": "banner-status.py reads the repo-root heartbeat registry (the tasks[] entry whose prompt references rabbit-auto-evolve) to compute the idle banner line's approximate next-tick ETA, mirroring contract Inv 55's cadence computation. Read-only of a repo-root runtime artifact; rabbit-auto-evolve already owns this file's lifecycle via install-cron.py / the CronCreate heartbeat"
+      }
+    ],
     "external": []
   },
   "invokes": {
