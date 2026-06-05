@@ -279,13 +279,16 @@ with tempfile.TemporaryDirectory() as td:
                    f"state file is not valid JSON: {e}")
             data = None
         if data is not None:
-            if data.get("schema_version") != "1.3.0":
+            if data.get("schema_version") != "1.4.0":
                 fail_t("start-self-heal/bootstrap-missing",
-                       f"schema_version != '1.3.0': {data.get('schema_version')!r}")
-            elif data.get("queue") != [] or data.get("in_flight") != []:
+                       f"schema_version != '1.4.0': {data.get('schema_version')!r}")
+            elif data.get("queue") != []:
                 fail_t("start-self-heal/bootstrap-missing",
-                       f"queue/in_flight not empty: queue={data.get('queue')!r}, "
-                       f"in_flight={data.get('in_flight')!r}")
+                       f"queue not empty: queue={data.get('queue')!r}")
+            elif data.get("dispatch_journal") != {}:
+                fail_t("start-self-heal/bootstrap-missing",
+                       f"dispatch_journal should default to {{}} (Inv 54): "
+                       f"{data.get('dispatch_journal')!r}")
             elif data.get("restart_needed") is not None:
                 fail_t("start-self-heal/bootstrap-missing",
                        f"restart_needed should be null: {data.get('restart_needed')!r}")
@@ -294,7 +297,7 @@ with tempfile.TemporaryDirectory() as td:
                        f"stop_requested should be False: {data.get('stop_requested')!r}")
             else:
                 ok("start-self-heal/bootstrap-missing",
-                   "default state file written with schema_version=1.3.0")
+                   "default state file written with schema_version=1.4.0")
 
 # --- t9: Inv 19 — start-loop.py recovers an empty state file ---
 with tempfile.TemporaryDirectory() as td:
@@ -314,12 +317,12 @@ with tempfile.TemporaryDirectory() as td:
             fail_t("start-self-heal/recover-empty",
                    f"state file still invalid after start-loop: {e}")
         else:
-            if data.get("schema_version") == "1.3.0":
+            if data.get("schema_version") == "1.4.0":
                 ok("start-self-heal/recover-empty",
                    "empty state file replaced with default")
             else:
                 fail_t("start-self-heal/recover-empty",
-                       f"schema_version != '1.3.0': {data.get('schema_version')!r}")
+                       f"schema_version != '1.4.0': {data.get('schema_version')!r}")
 
 # --- t10: Inv 19 — start-loop.py recovers a malformed state file ---
 with tempfile.TemporaryDirectory() as td:
@@ -339,12 +342,12 @@ with tempfile.TemporaryDirectory() as td:
             fail_t("start-self-heal/recover-malformed",
                    f"state file still invalid after start-loop: {e}")
         else:
-            if data.get("schema_version") == "1.3.0":
+            if data.get("schema_version") == "1.4.0":
                 ok("start-self-heal/recover-malformed",
                    "malformed state file replaced with default")
             else:
                 fail_t("start-self-heal/recover-malformed",
-                       f"schema_version != '1.3.0': {data.get('schema_version')!r}")
+                       f"schema_version != '1.4.0': {data.get('schema_version')!r}")
 
 # --- t11: Inv 19 — start-loop.py preserves a valid non-default state file ---
 with tempfile.TemporaryDirectory() as td:

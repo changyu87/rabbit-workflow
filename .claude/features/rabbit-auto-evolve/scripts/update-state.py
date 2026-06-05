@@ -25,7 +25,13 @@ with documented defaults, schema_version set to current) and THEN validated,
 rather than hard-failing on the version-string mismatch. A newer-than-current
 version, or an older version not on the additive ladder, still errors clearly.
 
-Version: 1.4.0
+Issue #838: schema 1.4.0 adds the optional `dispatch_journal` object (the
+per-tick dispatch journal, Inv 54) and RETIRES `in_flight` from the required
+set (subsumed by the journal; still accepted as an optional field). The
+additive-migration ladder seeds `dispatch_journal` to `{}` for a pre-1.4.0
+state.
+
+Version: 1.5.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -44,7 +50,7 @@ UPDATED_AT_RE = re.compile(
     r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
 )
 
-CURRENT_SCHEMA_VERSION = "1.3.0"
+CURRENT_SCHEMA_VERSION = "1.4.0"
 
 # Explicit additive-migration LADDER (issue #761). Each entry upgrades an
 # OLDER on-disk schema_version to the next version by filling the optional
@@ -59,6 +65,7 @@ CURRENT_SCHEMA_VERSION = "1.3.0"
 MIGRATION_LADDER = [
     ("1.1.0", "1.2.0", {"pending_post_merge": list}),
     ("1.2.0", "1.3.0", {"decomposition_parents": dict}),
+    ("1.3.0", "1.4.0", {"dispatch_journal": dict}),
 ]
 
 
@@ -125,7 +132,6 @@ def validate(instance):
         "schema_version",
         "updated_at",
         "queue",
-        "in_flight",
         "last_merged_sha",
         "last_tagged_version",
         "consecutive_failures",
@@ -140,9 +146,12 @@ def validate(instance):
 
     # additionalProperties: false, except the optional `defer_counts` map
     # (issue #423 Part B, schema 1.1.0), the optional `pending_post_merge`
-    # array (issue #499, schema 1.2.0), and the optional
-    # `decomposition_parents` map (issue #721, schema 1.3.0).
-    optional = {"defer_counts", "pending_post_merge", "decomposition_parents"}
+    # array (issue #499, schema 1.2.0), the optional `decomposition_parents`
+    # map (issue #721, schema 1.3.0), the RETIRED-but-accepted `in_flight`
+    # array (issue #838, schema 1.4.0 — subsumed by dispatch_journal, Inv 54),
+    # and the optional `dispatch_journal` object (issue #838, schema 1.4.0).
+    optional = {"defer_counts", "pending_post_merge", "decomposition_parents",
+                "in_flight", "dispatch_journal"}
     extra = set(instance.keys()) - set(required) - optional
     if extra:
         errors.append(
@@ -179,13 +188,16 @@ def validate(instance):
                 if not want_int and not isinstance(v, str):
                     errors.append(f"queue[{i}].{k}: expected string, got {type(v).__name__}")
 
-    in_flight = instance["in_flight"]
-    if not isinstance(in_flight, list):
-        errors.append(f"in_flight: expected array, got {type(in_flight).__name__}")
-    else:
-        for i, n in enumerate(in_flight):
-            if not _is_int(n):
-                errors.append(f"in_flight[{i}]: expected integer, got {type(n).__name__}")
+    # in_flight (optional, RETIRED as required in schema 1.4.0, Inv 54):
+    # still shape-validated when present (array of int) for backward compat.
+    if "in_flight" in instance:
+        in_flight = instance["in_flight"]
+        if not isinstance(in_flight, list):
+            errors.append(f"in_flight: expected array, got {type(in_flight).__name__}")
+        else:
+            for i, n in enumerate(in_flight):
+                if not _is_int(n):
+                    errors.append(f"in_flight[{i}]: expected integer, got {type(n).__name__}")
 
     if not _is_str_or_none(instance["last_merged_sha"]):
         errors.append(
@@ -275,7 +287,65 @@ def validate(instance):
                             f"integer, got {type(n).__name__}"
                         )
 
+    # dispatch_journal (optional, schema 1.4.0, Inv 54): object keyed by
+    # tick-id string; each value is {started_at: iso, entries: [<entry>]}
+    # where each entry requires issue(int)/feature(str)/shape(str)/status(enum)
+    # and may carry nullable branch/worktree/pr.
+    if "dispatch_journal" in instance:
+        _validate_dispatch_journal(instance["dispatch_journal"], errors)
+
     return errors
+
+
+_JOURNAL_STATUSES = {"dispatched", "pr_open", "completed", "aborted"}
+
+
+def _validate_dispatch_journal(dj, errors):
+    """Append shape errors for the dispatch_journal object (Inv 54). Every
+    message is prefixed `dispatch_journal` so test assertions can grep it."""
+    if not isinstance(dj, dict):
+        errors.append(
+            f"dispatch_journal: expected object, got {type(dj).__name__}")
+        return
+    for tick_id, tick in dj.items():
+        ctx = f"dispatch_journal[{tick_id!r}]"
+        if not isinstance(tick, dict):
+            errors.append(f"{ctx}: expected object, got {type(tick).__name__}")
+            continue
+        started = tick.get("started_at")
+        if not isinstance(started, str) or not UPDATED_AT_RE.match(started):
+            errors.append(
+                f"{ctx}.started_at: expected ISO-8601 UTC "
+                f"'YYYY-MM-DDTHH:MM:SSZ', got {started!r}")
+        entries = tick.get("entries")
+        if not isinstance(entries, list):
+            errors.append(
+                f"{ctx}.entries: expected array, got {type(entries).__name__}")
+            continue
+        for i, e in enumerate(entries):
+            ectx = f"{ctx}.entries[{i}]"
+            if not isinstance(e, dict):
+                errors.append(f"{ectx}: expected object, got {type(e).__name__}")
+                continue
+            if not _is_int(e.get("issue")):
+                errors.append(f"{ectx}.issue: expected integer")
+            if not isinstance(e.get("feature"), str):
+                errors.append(f"{ectx}.feature: expected string")
+            if not isinstance(e.get("shape"), str):
+                errors.append(f"{ectx}.shape: expected string")
+            status = e.get("status")
+            if status not in _JOURNAL_STATUSES:
+                errors.append(
+                    f"{ectx}.status: expected one of "
+                    f"{sorted(_JOURNAL_STATUSES)}, got {status!r}")
+            for nullable, want_int in (("branch", False), ("worktree", False),
+                                       ("pr", True)):
+                if nullable in e and e[nullable] is not None:
+                    v = e[nullable]
+                    if want_int and not _is_int(v):
+                        errors.append(f"{ectx}.{nullable}: expected integer|null")
+                    if not want_int and not isinstance(v, str):
+                        errors.append(f"{ectx}.{nullable}: expected string|null")
 
 
 def _resolve_state_dir():

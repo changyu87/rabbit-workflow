@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.64.0
+version: 0.65.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -84,7 +84,9 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/classify-merge-restart.py` | CLI | Reads merged PR file list; classifies into `no-op`, `refresh`, or `restart` based on which path patterns appear; emits a single string on stdout |
 | `scripts/update-state.py` | CLI | Reads JSON from stdin; validates against `schemas/auto-evolve-state.schema.json`; atomically writes `.rabbit/auto-evolve-state.json` via temp+rename |
 | `scripts/status-report.py` | CLI | Read-only `status` backing script: reads `.rabbit/auto-evolve-state.json` (defaults on missing/empty/malformed) and the five runtime markers; emits a fixed-format status JSON on stdout |
-| `scripts/run-post-merge.py` | CLI | Deterministic non-skippable runner for tick phases 8–10 (release → cleanup → catch-up): reads `pending_post_merge` from state, invokes `release-bump.py` / `cleanup-branches.py` / `classify-merge-restart.py` in order, then clears the field; clean no-op when empty (Inv 30) |
+| `scripts/run-post-merge.py` | CLI | Deterministic non-skippable runner for tick phases 8–10 (release → cleanup → catch-up): reads `pending_post_merge` from state, invokes `release-bump.py` / `cleanup-branches.py` / `classify-merge-restart.py` in order, then clears the field; clean no-op when empty (Inv 30); also prunes fully-`completed`/`aborted` ticks from `dispatch_journal` (Inv 54) |
+| `scripts/record-dispatch.py` | CLI | The script-owned dispatch-journal WRITE point (Inv 54): atomic read-modify-write of a per-tick dispatch entry (issue, feature, shape, status, branch, worktree, pr) into `dispatch_journal` in `.rabbit/auto-evolve-state.json`; invoked by the dispatcher at Phase 6 |
+| `scripts/resume-dispatch.py` | CLI | The script-owned dispatch-journal READ/RESUME point (Inv 54): reads the active tick's journal and partitions the planned `selection_order` (stdin) into `dispatch` (re-enter Phase 6) and `skip` (already completed/pr_open this cycle) |
 | `scripts/install-cron.py` | CLI | Idempotently installs the `*/30` system-cron entry that fires `tick-headless.py` (the sole tick scheduler); invoked by `set-evolve-mode.py on` (Inv 32) |
 | `scripts/uninstall-cron.py` | CLI | Idempotently removes the system-cron entry; safe no-op when absent; invoked by `set-evolve-mode.py off` (Inv 32) |
 | `scripts/tick-headless.py` | CLI | The Claude-free headless tick fired by the system cron: walks phases 0–1, 3–5, 7, 8–10, 11; skips phase 6 (dispatch needs Claude); phase 12 is a no-op (Inv 32) |
@@ -97,10 +99,12 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 
 **State file (runtime artifact):**
 
-- `.rabbit/auto-evolve-state.json` — schema version `1.0.0`; fields:
-  `schema_version`, `updated_at`, `queue`, `in_flight`, `last_merged_sha`,
+- `.rabbit/auto-evolve-state.json` — schema version `1.4.0`; required fields:
+  `schema_version`, `updated_at`, `queue`, `last_merged_sha`,
   `last_tagged_version`, `consecutive_failures`, `stop_requested`,
-  `restart_needed`.
+  `restart_needed`; optional fields: `in_flight` (no longer required,
+  subsumed by `dispatch_journal` per Inv 54), `defer_counts`,
+  `pending_post_merge`, `decomposition_parents`, `dispatch_journal` (Inv 54).
 
 **Runtime hooks (to be declared in `feature.json.runtime`):**
 
@@ -884,17 +888,18 @@ summary is restated here.
 
    | Field | Type | Notes |
    |---|---|---|
-   | `schema_version` | string | Literal `"1.2.0"` |
+   | `schema_version` | string | Literal `"1.4.0"` |
    | `updated_at` | string | ISO 8601 UTC timestamp, `YYYY-MM-DDTHH:MM:SSZ` |
    | `queue` | array of objects | each `{issue: int, decision: string, feature: string}` |
-   | `in_flight` | array of int | currently-dispatched issue numbers |
    | `last_merged_sha` | string \| null | last PR merge commit SHA |
    | `last_tagged_version` | string \| null | last release tag (e.g. `"v0.5.3"`) |
    | `consecutive_failures` | int | ≥ 0 |
    | `stop_requested` | bool | stop marker observed |
    | `restart_needed` | string \| null | reason string when set, else null (NOT a pure boolean) |
+   | `in_flight` | array of int (optional) | no longer required (schema 1.4.0): subsumed by `dispatch_journal` (Inv 54). Still accepted as an optional field for backward compatibility; a state carrying it still validates |
    | `defer_counts` | object (optional) | per-issue consecutive-defer counter (Part B), keyed by issue-number string → non-negative int. Additive in schema 1.1.0; absent in pre-1.1.0 states |
    | `pending_post_merge` | array of int (optional) | merged PR numbers owed post-merge processing (phases 8–10). Additive in schema 1.2.0; absent in pre-1.2.0 states. See Inv 30 |
+   | `dispatch_journal` | object (optional) | per-tick dispatch record keyed by tick-id string (Inv 54). Additive in schema 1.4.0; absent in pre-1.4.0 states |
 
    The schema file itself carries top-level `schema_version`, `owner`,
    and `deprecation_criterion` keys per spec-rules §3. Schema 1.1.0 added
@@ -902,7 +907,10 @@ summary is restated here.
    compatible additive change: states written without `defer_counts` still
    validate. Schema 1.2.0 adds the optional `pending_post_merge` field
    — likewise backward-compatible additive: states written
-   without it still validate.
+   without it still validate. Schema 1.4.0 adds the optional
+   `dispatch_journal` field and drops `in_flight` from the required set
+   (Inv 54) — both backward-compatible additive: a state without
+   `dispatch_journal`, or one still carrying `in_flight`, validates.
 
    ### `update-state.py`
 
@@ -1827,7 +1835,12 @@ summary is restated here.
     ```
 
     - `queue_length` — integer length of the state `queue` array.
-    - `in_flight` — the state `in_flight` array (issue numbers).
+    - `in_flight` — the in-flight issue set. DERIVED (Inv 54) as a read-only
+      projection of the `dispatch_journal` (the union of `dispatched` /
+      `pr_open` issue numbers across tracked ticks, sorted), falling back to
+      the literal state `in_flight` array when no journal is present — so the
+      surface is unchanged for consumers now that `in_flight` is no longer a
+      required field.
     - `last_merged_sha` / `last_tagged_version` — the state fields verbatim
       (string or null).
     - `consecutive_failures` — the state field (integer ≥ 0).
@@ -3358,6 +3371,94 @@ summary is restated here.
     clean no-op) and `test/test-record-decomposition.py` (the linkage record
     round-trips through `decomposition_parents` and validates against schema
     1.3.0), with the wiring asserted by `test/test-run-post-merge.py`.
+
+54. **Per-tick dispatch journal — resume skips completed subagents and
+    re-dispatches only the unfinished; it subsumes the vestigial `in_flight`
+    field.** Phase 6 fans out N TDD subagents (Inv 28). A tick interrupted
+    after K of N finish (context cutoff, scheduler kill, crash) must let the
+    NEXT tick resume the remaining N-K without re-running the K completed and
+    without racing a duplicate dispatch against an already-open PR. A
+    rabbit-native, on-disk per-tick dispatch journal — owned by this feature's
+    dispatch state, with NO dependency on native Workflow (the COEXIST verdict
+    stands) — closes that gap.
+
+    ### `dispatch_journal` state field (schema 1.4.0)
+
+    The state schema gains an OPTIONAL `dispatch_journal` object (additive
+    `schema_version` bump to `"1.4.0"`; absent pre-1.4.0 states behave exactly
+    as today), keyed by tick-id string. Each value is
+    `{started_at: ISO-8601 UTC, entries: [<entry>, ...]}`; each entry records
+    one dispatched subagent. `issue` (int), `feature` (string), `shape`
+    (string), and `status` are REQUIRED; `branch`/`worktree`/`pr` are nullable
+    (a dispatch is recorded before its branch/PR exist). The `status` enum is
+    exactly `{dispatched, pr_open, completed, aborted}`: `dispatched` (Agent
+    issued, no result), `pr_open` (PR returned, not merged), `completed` (PR
+    merged / issue closed), `aborted` (subagent aborted). `update-state.py`'s
+    validator recognizes the field; the additive-migration ladder seeds a
+    pre-1.4.0 state's `dispatch_journal` to `{}`.
+
+    ### `record-dispatch.py` — the script-owned WRITE point
+
+    `record-dispatch.py --tick-id <id> --issue <N> --feature <name>
+    --shape <shape> [--status <status>] [--branch <b>] [--worktree <w>]
+    [--pr <N>]` performs an atomic read-modify-write of the journal entry for
+    `<issue>` under tick `<id>` in `<state_dir>/auto-evolve-state.json` (state
+    dir via `RABBIT_AUTO_EVOLVE_STATE_DIR`, else `<cwd>/.rabbit`). The
+    dispatcher invokes it at Phase 6: one append per Agent call at dispatch
+    time (`status: dispatched`), and one UPDATE when each HANDOFF returns
+    (`pr_open`/`aborted`, recording branch/PR). A repeated call for the same
+    `(tick-id, issue)` UPDATES the existing entry in place (never duplicates),
+    seeding `started_at` once per tick. The write is SCRIPT-OWNED so the
+    SKILL.md Phase 6 body carries no computed-value bash (Script-Backed
+    Orchestration). Emits the entry as JSON; exit non-zero (loud, locatable —
+    never a silent drop) on a missing state file or invalid args.
+
+    ### `resume-dispatch.py` — the script-owned READ/RESUME point
+
+    `cat plan.json | resume-dispatch.py --tick-id <id>` reads the active
+    tick's journal and partitions the planned `selection_order` (stdin) into a
+    `dispatch` set (re-enter Phase 6) and a `skip` set, emitting
+    `{"dispatch": [...], "skip": [...]}`. Per journal status: `completed` and
+    `pr_open` -> SKIP (the open PR drains through the merge path, Phase 7 —
+    never a second dispatch); `dispatched` with no PR, `aborted`, or an issue
+    ABSENT from the journal -> RE-dispatch. This converts whole-tick
+    re-derivation into per-subagent resume; a missing/empty journal yields
+    every planned issue in `dispatch` (the no-regression base).
+
+    ### `completed` transition and journal lifecycle
+
+    `merge-prs.py --record-pending` marks an issue's journal entry `completed`
+    (recording its `pr`) in the SAME read-modify-write that appends to
+    `pending_post_merge` (Inv 30): every issue a merged PR closes (the parsed
+    `Closes/Fixes/Resolves #N` set) whose journal entry exists is promoted. No
+    new write site. `run-post-merge.py` prunes the journal where it clears
+    `pending_post_merge`: a tick whose entries are all `completed`/`aborted`
+    has its key dropped, bounding on-disk growth (the designed-deprecation
+    end-of-life).
+
+    ### `in_flight` subsumption and off-ramp
+
+    The vestigial `in_flight` field — declared/validated but NEVER populated by
+    any phase script nor consulted by `fetch-queue.py` — is dropped from the
+    schema's REQUIRED set (still accepted as OPTIONAL for backward compat; a
+    state carrying it still validates). The journal's `dispatched`/`pr_open`
+    entries are the real in-flight set; `status-report.py` DERIVES its
+    `in_flight` output as a read-only projection of the journal, falling back
+    to a literal `in_flight` array when no journal is present — so the `status`
+    surface is unchanged. The block is additive: to roll back, make
+    `record-dispatch.py` a no-op and drop the `resume-dispatch.py` consult; the
+    loop reverts to re-fetch-each-tick with GitHub open-state as the de-facto
+    journal (`pending_post_merge` + `clean-dispatch-leaks.py` UNCHANGED). No
+    data is lost — open issues remain the authoritative recovery source.
+
+    Enforced by `test/test-record-dispatch.py` (append + update-in-place +
+    `started_at`-once + missing-state error), `test/test-resume-dispatch.py`
+    (completed/pr_open SKIP; dispatched-no-PR/aborted/absent re-dispatch;
+    empty journal = no-regression base), `test/test-merge-prs.py` (merge marks
+    the entry `completed`), `test/test-run-post-merge.py` (drained tick pruned
+    on clear), `test/test-status-report.py` (`in_flight` derived), and
+    `test/test-state-persistence.py` (schema 1.4.0 accepts `dispatch_journal`,
+    `in_flight` not required, 1.3.0 -> 1.4.0 migration seeds it `{}`).
 
 ## Known gaps
 

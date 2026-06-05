@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.64.0
+version: 0.65.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -193,7 +193,8 @@ except on a genuine invocation error):
 
 - `queue_length` — queue length (from `.rabbit/auto-evolve-state.json`
   `queue` field)
-- `in_flight` — in-flight issue set (from `in_flight`)
+- `in_flight` — in-flight issue set (derived from `dispatch_journal`, Inv 54;
+  falls back to a literal `in_flight` array when no journal is present)
 - `last_merged_sha` — last-merged PR (from `last_merged_sha`)
 - `last_tagged_version` — last-tagged version (from `last_tagged_version`)
 - `consecutive_failures` — consecutive-failure count (from
@@ -289,9 +290,22 @@ mutation). The deterministic walk runs in two segments around Phase 6:
    abort, or a FRESH marker from a different live tick — `tick-running`) — run
    `end-tick.py` and end the turn. On `{"action":"proceed",...}` continue to
    Phase 6.
-2. **Phase 6 (`dispatch`)** — the dispatcher's ONLY hand-driven phase. Dispatch
-   the TDD subagents per the Stage-1/Stage-2 plan (Inv 26), each with
-   `isolation: "worktree"` (Inv 28).
+2. **Phase 6 (`dispatch`)** — the dispatcher's ONLY hand-driven phase. Before
+   dispatching, consult the per-tick dispatch journal (Inv 54) so a resumed
+   tick skips already-handled subagents:
+   ```
+   <plan-json> | python3 .claude/features/rabbit-auto-evolve/scripts/resume-dispatch.py --tick-id <tick-id>
+   ```
+   It returns `{"dispatch": [...], "skip": [...]}`; dispatch ONLY the
+   `dispatch` set (the `skip` set is `completed`/`pr_open` this cycle and
+   drains via the merge path). Then dispatch the TDD subagents per the
+   Stage-1/Stage-2 plan (Inv 26), each with `isolation: "worktree"` (Inv 28).
+   Record each dispatch in the journal (Inv 54) — once at dispatch time
+   (`--status dispatched`) and once when its HANDOFF returns
+   (`--status pr_open`/`aborted` with `--branch`/`--pr`):
+   ```
+   python3 .claude/features/rabbit-auto-evolve/scripts/record-dispatch.py --tick-id <tick-id> --issue <N> --feature <name> --shape <shape> --status <status> [--branch <b>] [--worktree <w>] [--pr <N>]
+   ```
 3. **Post-dispatch segment** (phases 7, 8-10, 11):
    ```
    python3 .claude/features/rabbit-auto-evolve/scripts/run-tick-phases.py post-dispatch
@@ -671,7 +685,7 @@ A Claude restart is required so the cleared `permissions.defaultMode`
 takes effect.
 
 Disk-persisted state lives at `.rabbit/auto-evolve-state.json`, schema
-`scripts/schemas/auto-evolve-state.schema.json` (v1.0.0).
+`scripts/schemas/auto-evolve-state.schema.json` (v1.4.0).
 
 ## Discovered issues and aborted_reason handling
 

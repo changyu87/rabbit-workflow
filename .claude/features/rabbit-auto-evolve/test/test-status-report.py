@@ -269,6 +269,81 @@ if SCRIPT.is_file():
                 else:
                     ok("markers/subset", "markers_present is exactly the sorted seeded subset")
 
+# --- t8: in_flight DERIVED from dispatch_journal (Inv 54) ---
+# When dispatch_journal is present, in_flight is the union of dispatched /
+# pr_open issue numbers (NOT completed/aborted), sorted; a literal in_flight
+# array in the state is IGNORED in favour of the journal projection.
+if SCRIPT.is_file():
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        state = {
+            "schema_version": "1.4.0",
+            "updated_at": "2026-06-04T00:00:00Z",
+            "queue": [],
+            "last_merged_sha": None,
+            "last_tagged_version": None,
+            "consecutive_failures": 0,
+            "stop_requested": False,
+            "restart_needed": None,
+            # literal in_flight MUST be ignored once a journal is present.
+            "in_flight": [999],
+            "dispatch_journal": {
+                "tick-1": {"started_at": "2026-06-04T00:00:00Z", "entries": [
+                    {"issue": 803, "feature": "f", "shape": "x",
+                     "status": "dispatched"},
+                    {"issue": 802, "feature": "f", "shape": "x",
+                     "status": "pr_open", "pr": 902},
+                    {"issue": 801, "feature": "f", "shape": "x",
+                     "status": "completed", "pr": 901},
+                    {"issue": 804, "feature": "f", "shape": "x",
+                     "status": "aborted"},
+                ]},
+            },
+        }
+        _write_state(td_path, state)
+        r = _run(td_path)
+        if r.returncode != 0:
+            fail_t("journal/exit", f"expected exit 0; got {r.returncode}; "
+                                   f"stderr={r.stderr!r}")
+        else:
+            rpt = json.loads(r.stdout)
+            # dispatched (803) + pr_open (802); NOT completed (801)/aborted
+            # (804); literal in_flight [999] ignored. Sorted.
+            if rpt.get("in_flight") != [802, 803]:
+                fail_t("journal/in_flight",
+                       f"expected in_flight derived [802, 803]; got "
+                       f"{rpt.get('in_flight')!r}")
+            else:
+                ok("journal/in_flight",
+                   "in_flight derived from dispatch_journal (dispatched+pr_open)")
+
+# --- t9: no journal -> in_flight falls back to literal array (no-regression) ---
+if SCRIPT.is_file():
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        state = {
+            "schema_version": "1.4.0",
+            "updated_at": "2026-06-04T00:00:00Z",
+            "queue": [],
+            "last_merged_sha": None,
+            "last_tagged_version": None,
+            "consecutive_failures": 0,
+            "stop_requested": False,
+            "restart_needed": None,
+            "in_flight": [301, 302],
+        }
+        _write_state(td_path, state)
+        r = _run(td_path)
+        rpt = json.loads(r.stdout)
+        if rpt.get("in_flight") != [301, 302]:
+            fail_t("journal/fallback",
+                   f"expected literal in_flight fallback [301, 302]; got "
+                   f"{rpt.get('in_flight')!r}")
+        else:
+            ok("journal/fallback",
+               "no journal -> in_flight falls back to literal array")
+
+
 # --- t7: SKILL surface (source + deployed) invokes the script, no bare ls ---
 INVOCATION = (
     "python3 .claude/features/rabbit-auto-evolve/scripts/status-report.py"

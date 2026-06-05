@@ -50,7 +50,7 @@ def ok(msg):
 
 def _seed_state(state_dir, decomposition_parents):
     state = {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "updated_at": "2026-06-04T00:00:00Z",
         "queue": [],
         "in_flight": [],
@@ -253,7 +253,7 @@ with tempfile.TemporaryDirectory() as td:
     env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
     # state WITHOUT a decomposition_parents key
     state = {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "updated_at": "2026-06-04T00:00:00Z",
         "queue": [], "in_flight": [],
         "last_merged_sha": None, "last_tagged_version": None,

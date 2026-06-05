@@ -7,14 +7,14 @@ the decomposed-parent roll-up enumerates. Covered surface:
   - --help smoke
   - first record on a fresh state file creates `decomposition_parents` with
     the parent key -> child list, and the round-tripped state validates
-    against update-state.py (schema 1.3.0)
+    against update-state.py (schema 1.4.0)
   - a second record for a DIFFERENT parent is additive (both keys present)
   - recording children for an EXISTING parent unions the child sets (dedup,
     sorted) rather than clobbering
-  - the written state still passes update-state.py validation (schema 1.3.0)
+  - the written state still passes update-state.py validation (schema 1.4.0)
 
 Fixtures: a state_dir (via RABBIT_AUTO_EVOLVE_STATE_DIR) seeded with a
-schema-1.3.0 auto-evolve-state.json.
+schema-1.4.0 auto-evolve-state.json.
 """
 
 import json
@@ -44,7 +44,7 @@ def ok(msg):
 
 def _seed_state(state_dir, decomposition_parents=None):
     state = {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "updated_at": "2026-06-04T00:00:00Z",
         "queue": [],
         "in_flight": [],
@@ -120,7 +120,7 @@ with tempfile.TemporaryDirectory() as td:
     if not valid:
         fail(f"first: written state fails schema validation: {err!r}")
     else:
-        ok("first: written state validates (schema 1.3.0)")
+        ok("first: written state validates (schema 1.4.0)")
 
 
 # --- second parent is additive --------------------------------------------
@@ -156,7 +156,7 @@ with tempfile.TemporaryDirectory() as td:
     if not valid:
         fail(f"union: written state fails schema validation: {err!r}")
     else:
-        ok("union: written state validates (schema 1.3.0)")
+        ok("union: written state validates (schema 1.4.0)")
 
 
 sys.exit(FAIL)

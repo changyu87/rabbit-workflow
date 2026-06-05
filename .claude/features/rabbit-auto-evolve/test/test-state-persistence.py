@@ -44,9 +44,14 @@ def ok(msg):
 
 
 def _valid_state():
-    """A fully-populated valid state object matching the Inv 9 schema."""
+    """A fully-populated valid state object matching the Inv 9 schema.
+
+    `in_flight` is RETIRED as a required field (schema 1.4.0, Inv 54) but
+    remains an accepted OPTIONAL field; it is kept here to assert it still
+    validates when present.
+    """
     return {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "updated_at": "2026-06-02T12:34:56Z",
         "queue": [
             {"issue": 101, "decision": "work", "feature": "rabbit-issue"},
@@ -135,8 +140,9 @@ with tempfile.TemporaryDirectory() as td:
 # ---------------------------------------------------------------------------
 # Scenario D — missing-required-field for each required field
 # ---------------------------------------------------------------------------
+# `in_flight` is RETIRED from the required set (schema 1.4.0, Inv 54).
 REQUIRED_FIELDS = [
-    "schema_version", "updated_at", "queue", "in_flight",
+    "schema_version", "updated_at", "queue",
     "last_merged_sha", "last_tagged_version",
     "consecutive_failures", "stop_requested", "restart_needed",
 ]
@@ -224,7 +230,7 @@ with tempfile.TemporaryDirectory() as td:
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     stale = {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "updated_at": "2020-01-01T00:00:00Z",
         "queue": [],
         "in_flight": [],
@@ -273,14 +279,14 @@ with tempfile.TemporaryDirectory() as td:
 # accepted and round-trips. Old states WITHOUT defer_counts still validate
 # (additive change).
 # ---------------------------------------------------------------------------
-# H1 — schema_version const is 1.3.0 (issue #721 bumped 1.2.0 -> 1.3.0)
+# H1 — schema_version const is 1.4.0 (issue #838 bumped 1.3.0 -> 1.4.0)
 with open(SCHEMA) as f:
     schema_obj = json.load(f)
-if schema_obj.get("schema_version") != "1.3.0":
+if schema_obj.get("schema_version") != "1.4.0":
     fail(f"H1: schema top-level schema_version "
-         f"{schema_obj.get('schema_version')!r} != '1.3.0'")
+         f"{schema_obj.get('schema_version')!r} != '1.4.0'")
 else:
-    ok("H1: schema_version bumped to 1.3.0")
+    ok("H1: schema_version bumped to 1.4.0")
 
 # H2 — defer_counts accepted and round-trips
 with tempfile.TemporaryDirectory() as td:
@@ -416,24 +422,24 @@ with tempfile.TemporaryDirectory() as td:
 # newer/unknown version still errors. A current-version file is untouched.
 # ---------------------------------------------------------------------------
 def _state_at(version):
-    """A valid 1.3.0 state body re-stamped at an older schema_version, with the
-    optional fields introduced AFTER that version removed (simulating a real
-    older on-disk state)."""
+    """A valid current state body re-stamped at an older schema_version, with
+    the optional fields introduced AFTER that version removed (simulating a
+    real older on-disk state)."""
     s = _valid_state()
     s["schema_version"] = version
     s.pop("defer_counts", None)
     s.pop("pending_post_merge", None)
     s.pop("decomposition_parents", None)
+    s.pop("dispatch_journal", None)
     return s
 
-# K1 — a 1.2.0 state (no decomposition_parents) is migrated to 1.3.0, the new
-# field is defaulted to {}, the write succeeds (exit 0), and the persisted file
-# carries schema_version 1.3.0 with decomposition_parents == {}.
+# K1 — a 1.2.0 state migrates up the ladder to 1.4.0, defaulting the newly-
+# added optional fields (decomposition_parents -> {}, dispatch_journal -> {}),
+# the write succeeds, and the persisted file carries schema_version 1.4.0.
 with tempfile.TemporaryDirectory() as td:
     state = _state_at("1.2.0")
-    if "decomposition_parents" in state:
-        fail("K1: test setup error — 1.2.0 fixture should omit "
-             "decomposition_parents")
+    if "decomposition_parents" in state or "dispatch_journal" in state:
+        fail("K1: test setup error — 1.2.0 fixture should omit later fields")
     proc = _run(json.dumps(state), td)
     final_path = os.path.join(td, "auto-evolve-state.json")
     if proc.returncode != 0:
@@ -444,34 +450,38 @@ with tempfile.TemporaryDirectory() as td:
     else:
         with open(final_path) as f:
             got = json.load(f)
-        if got.get("schema_version") != "1.3.0":
-            fail(f"K1: schema_version not migrated to 1.3.0; "
+        if got.get("schema_version") != "1.4.0":
+            fail(f"K1: schema_version not migrated to 1.4.0; "
                  f"got {got.get('schema_version')!r}")
         elif got.get("decomposition_parents") != {}:
             fail(f"K1: decomposition_parents not defaulted to {{}}; "
                  f"got {got.get('decomposition_parents')!r}")
+        elif got.get("dispatch_journal") != {}:
+            fail(f"K1: dispatch_journal not defaulted to {{}}; "
+                 f"got {got.get('dispatch_journal')!r}")
         else:
-            ok("K1: 1.2.0 state migrated to 1.3.0 (decomposition_parents={})")
+            ok("K1: 1.2.0 state migrated to 1.4.0 (new optional fields "
+               "defaulted)")
 
-# K2 — a current 1.3.0 state is untouched (idempotent migration / no-op): it
+# K2 — a current 1.4.0 state is untouched (idempotent migration / no-op): it
 # persists exactly as supplied, byte-for-byte semantically equal.
 with tempfile.TemporaryDirectory() as td:
-    state = _valid_state()  # already 1.3.0, no optional fields
+    state = _valid_state()  # already 1.4.0
     proc = _run(json.dumps(state), td)
     final_path = os.path.join(td, "auto-evolve-state.json")
     if proc.returncode != 0:
-        fail(f"K2: current 1.3.0 state should persist (exit 0); "
+        fail(f"K2: current 1.4.0 state should persist (exit 0); "
              f"stderr={proc.stderr!r}")
     else:
         with open(final_path) as f:
             got = json.load(f)
-        # idempotent: a current-version state with no optional fields is NOT
-        # mutated by migration (no spurious optional-field injection).
+        # idempotent: a current-version state is NOT mutated by migration (no
+        # spurious optional-field injection).
         if got != state:
-            fail(f"K2: current 1.3.0 state was mutated by migration; "
+            fail(f"K2: current 1.4.0 state was mutated by migration; "
                  f"wrote={state} read={got}")
         else:
-            ok("K2: current 1.3.0 state untouched (migration is a no-op)")
+            ok("K2: current 1.4.0 state untouched (migration is a no-op)")
 
 # K3 — a newer-than-known version (9.9.9) still ERRORS clearly, names
 # schema_version, and does NOT write the file.
@@ -489,8 +499,9 @@ with tempfile.TemporaryDirectory() as td:
     else:
         ok("K3: newer/unknown version 9.9.9 rejected, file NOT written")
 
-# K4 — a 1.1.0 state migrates UP THE LADDER through 1.2.0 to 1.3.0, defaulting
-# BOTH pending_post_merge (->[]) and decomposition_parents (->{}).
+# K4 — a 1.1.0 state migrates UP THE LADDER through 1.2.0/1.3.0 to 1.4.0,
+# defaulting pending_post_merge (->[]), decomposition_parents (->{}) AND
+# dispatch_journal (->{}).
 with tempfile.TemporaryDirectory() as td:
     state = _state_at("1.1.0")
     proc = _run(json.dumps(state), td)
@@ -501,8 +512,8 @@ with tempfile.TemporaryDirectory() as td:
     else:
         with open(final_path) as f:
             got = json.load(f)
-        if got.get("schema_version") != "1.3.0":
-            fail(f"K4: schema_version not migrated to 1.3.0; "
+        if got.get("schema_version") != "1.4.0":
+            fail(f"K4: schema_version not migrated to 1.4.0; "
                  f"got {got.get('schema_version')!r}")
         elif got.get("pending_post_merge") != []:
             fail(f"K4: pending_post_merge not defaulted to []; "
@@ -510,8 +521,11 @@ with tempfile.TemporaryDirectory() as td:
         elif got.get("decomposition_parents") != {}:
             fail(f"K4: decomposition_parents not defaulted to {{}}; "
                  f"got {got.get('decomposition_parents')!r}")
+        elif got.get("dispatch_journal") != {}:
+            fail(f"K4: dispatch_journal not defaulted to {{}}; "
+                 f"got {got.get('dispatch_journal')!r}")
         else:
-            ok("K4: 1.1.0 state migrated up the ladder to 1.3.0")
+            ok("K4: 1.1.0 state migrated up the ladder to 1.4.0")
 
 # K5 — an unknown OLDER version not on the ladder (e.g. 1.0.0) still ERRORS
 # clearly rather than silently passing through.
@@ -545,11 +559,84 @@ with tempfile.TemporaryDirectory() as td:
         if got.get("defer_counts") != {"500": 3}:
             fail(f"K6: existing defer_counts lost during migration; "
                  f"got {got.get('defer_counts')!r}")
-        elif got.get("schema_version") != "1.3.0":
+        elif got.get("schema_version") != "1.4.0":
             fail(f"K6: schema_version not migrated; "
                  f"got {got.get('schema_version')!r}")
         else:
             ok("K6: migration preserves pre-existing optional data")
+
+
+# ---------------------------------------------------------------------------
+# Scenario L — issue #838: schema 1.4.0 adds the optional `dispatch_journal`
+# object (Inv 54) and RETIRES `in_flight` from the required set. The journal
+# is accepted and round-trips; a state WITHOUT it still validates (additive);
+# a state WITHOUT `in_flight` validates (no longer required); an entry missing
+# a required sub-field is rejected with a field-naming message.
+# ---------------------------------------------------------------------------
+def _journal():
+    return {"tick-1": {"started_at": "2026-06-04T12:00:00Z", "entries": [
+        {"issue": 815, "feature": "rabbit-housekeep",
+         "shape": "parallel-per-feature", "branch": "feat/815-x",
+         "worktree": ".claude/worktrees/agent-x", "pr": 820,
+         "status": "completed"},
+    ]}}
+
+# L1 — dispatch_journal accepted and round-trips
+with tempfile.TemporaryDirectory() as td:
+    state = _valid_state()
+    state["dispatch_journal"] = _journal()
+    proc = _run(json.dumps(state), td)
+    if proc.returncode != 0:
+        fail(f"L1: dispatch_journal should be accepted; stderr={proc.stderr!r}")
+    else:
+        with open(os.path.join(td, "auto-evolve-state.json")) as f:
+            got = json.load(f)
+        if got.get("dispatch_journal") != _journal():
+            fail(f"L1: dispatch_journal not preserved; "
+                 f"got {got.get('dispatch_journal')!r}")
+        else:
+            ok("L1: dispatch_journal accepted and round-trips")
+
+# L2 — a state WITHOUT dispatch_journal still validates (additive)
+with tempfile.TemporaryDirectory() as td:
+    state = _valid_state()  # no dispatch_journal key
+    proc = _run(json.dumps(state), td)
+    if proc.returncode != 0:
+        fail(f"L2: state without dispatch_journal should validate; "
+             f"stderr={proc.stderr!r}")
+    else:
+        ok("L2: dispatch_journal is optional (state without it validates)")
+
+# L3 — a state WITHOUT in_flight validates (retired from required, Inv 54)
+with tempfile.TemporaryDirectory() as td:
+    state = _valid_state()
+    state.pop("in_flight", None)
+    proc = _run(json.dumps(state), td)
+    if proc.returncode != 0:
+        fail(f"L3: state without in_flight should validate (retired); "
+             f"stderr={proc.stderr!r}")
+    else:
+        ok("L3: in_flight no longer required (state without it validates)")
+
+# L4 — a journal entry missing a required sub-field (status) is rejected,
+# stderr naming dispatch_journal.
+with tempfile.TemporaryDirectory() as td:
+    state = _valid_state()
+    state["dispatch_journal"] = {"tick-1": {
+        "started_at": "2026-06-04T12:00:00Z",
+        "entries": [{"issue": 1, "feature": "f",
+                     "shape": "parallel-per-feature"}],  # no status
+    }}
+    proc = _run(json.dumps(state), td)
+    final_path = os.path.join(td, "auto-evolve-state.json")
+    if proc.returncode == 0:
+        fail("L4: journal entry missing `status` should be rejected")
+    elif os.path.exists(final_path):
+        fail("L4: state file written despite invalid dispatch_journal")
+    elif "dispatch_journal" not in proc.stderr:
+        fail(f"L4: stderr should name dispatch_journal; got {proc.stderr!r}")
+    else:
+        ok("L4: journal entry missing a required sub-field rejected")
 
 
 sys.exit(FAIL)

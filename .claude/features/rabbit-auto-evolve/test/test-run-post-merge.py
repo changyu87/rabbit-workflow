@@ -63,12 +63,11 @@ def _write_phase_shim(script_dir, name, call_log, exit_code=0, stdout=None):
     os.chmod(shim, stat.S_IRWXU)
 
 
-def _seed_state(state_dir, pending):
+def _seed_state(state_dir, pending, dispatch_journal=None):
     state = {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "updated_at": "2026-06-03T00:00:00Z",
         "queue": [],
-        "in_flight": [],
         "last_merged_sha": None,
         "last_tagged_version": None,
         "consecutive_failures": 0,
@@ -76,6 +75,8 @@ def _seed_state(state_dir, pending):
         "restart_needed": None,
         "pending_post_merge": pending,
     }
+    if dispatch_journal is not None:
+        state["dispatch_journal"] = dispatch_journal
     with open(os.path.join(state_dir, "auto-evolve-state.json"), "w") as f:
         json.dump(state, f)
 
@@ -363,6 +364,39 @@ with tempfile.TemporaryDirectory() as td:
             ok("release-skipped: result status 'failed'")
     except json.JSONDecodeError as e:
         fail(f"release-skipped: stdout not JSON: {e}; stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Issue #838 (Inv 54) — journal pruning. On a successful drain (the same place
+# pending_post_merge is cleared), a tick whose journal entries are ALL
+# completed/aborted has its key DROPPED; a tick with a still-`dispatched`/
+# `pr_open` entry is KEPT (bounded growth, designed end-of-life).
+# ---------------------------------------------------------------------------
+def _entry(issue, status):
+    return {"issue": issue, "feature": "f", "shape": "parallel-per-feature",
+            "branch": None, "worktree": None, "pr": None, "status": status}
+
+with tempfile.TemporaryDirectory() as td:
+    script_dir, state_dir, call_log, env = _make_env(td)
+    journal = {
+        "tick-done": {"started_at": "2026-06-04T12:00:00Z", "entries": [
+            _entry(10, "completed"), _entry(11, "aborted")]},
+        "tick-live": {"started_at": "2026-06-04T13:00:00Z", "entries": [
+            _entry(20, "completed"), _entry(21, "dispatched")]},
+    }
+    _seed_state(state_dir, [10], dispatch_journal=journal)
+    proc = _run(env)
+    if proc.returncode != 0:
+        fail(f"journal-prune: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    state = _read_state(state_dir)
+    jrnl = state.get("dispatch_journal", {})
+    if "tick-done" in jrnl:
+        fail("journal-prune: an all-completed/aborted tick key was NOT pruned")
+    elif "tick-live" not in jrnl:
+        fail("journal-prune: a tick with a live entry was wrongly pruned")
+    else:
+        ok("journal-prune: completed tick pruned; live tick kept (Inv 54)")
 
 
 sys.exit(FAIL)

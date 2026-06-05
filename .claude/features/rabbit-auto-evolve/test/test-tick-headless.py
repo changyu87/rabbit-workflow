@@ -131,7 +131,7 @@ with tempfile.TemporaryDirectory() as d:
     os.makedirs(script_dir)
     make_stub_scripts(script_dir, trace)
     write_state(state_dir, {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "queue": [],
         "in_flight": [],
         "merge_ready": [111, 222],
@@ -255,7 +255,7 @@ with tempfile.TemporaryDirectory() as d:
     os.makedirs(script_dir)
     make_stub_scripts(script_dir, trace)
     write_state(state_dir, {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "queue": [],
         "in_flight": [],
         "merge_ready": [],
@@ -309,7 +309,7 @@ with tempfile.TemporaryDirectory() as d:
         shutil.copytree(real_schema_dir, os.path.join(script_dir, "schemas"))
     # A fully-valid Inv 9 state PLUS the transient merge_ready hint.
     write_state(state_dir, {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "updated_at": "2026-06-03T00:00:00Z",
         "queue": [],
         "in_flight": [],
@@ -359,7 +359,7 @@ with tempfile.TemporaryDirectory() as d:
             sys.exit(1)
             """))
     write_state(state_dir, {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "queue": [],
         "in_flight": [],
         "merge_ready": [111],

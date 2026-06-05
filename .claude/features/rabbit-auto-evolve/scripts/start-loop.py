@@ -40,7 +40,10 @@ functions PID-free).
 
 Exit 0 on success; non-zero on self-heal error.
 
-Version: 1.6.0
+Issue #838 (Inv 54): the bootstrap default seeds schema 1.4.0 with an empty
+`dispatch_journal` and no longer seeds the retired `in_flight` field.
+
+Version: 1.7.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -142,16 +145,16 @@ def _default_state() -> dict:
         "%Y-%m-%dT%H:%M:%SZ"
     )
     return {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "updated_at": now,
         "queue": [],
-        "in_flight": [],
         "last_merged_sha": None,
         "last_tagged_version": None,
         "consecutive_failures": 0,
         "stop_requested": False,
         "restart_needed": None,
         "pending_post_merge": [],
+        "dispatch_journal": {},
     }
 
 
