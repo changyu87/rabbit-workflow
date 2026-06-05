@@ -117,6 +117,81 @@ def main():
               file=sys.stderr)
         sys.exit(1)
 
+    # Inv 55 (issue #882 reopen): the in-session phase-6 reconcile.
+    # The `in-progress` label must cover the FULL TDD subagent execution
+    # window, so the dispatcher records all `dispatched` journal entries,
+    # THEN runs reconcile-labels.py, THEN fires the Agent calls. Assert the
+    # SKILL.md phase-6 (`dispatch`) section documents this ordering: the
+    # record-all-dispatched step, a reconcile-labels.py invocation, and the
+    # Agent dispatch — in that physical order in the text.
+    reconcile_ref = (
+        ".claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py"
+    )
+    if reconcile_ref not in text:
+        print(
+            "FAIL: Inv 55: SKILL.md missing feature-relative reference to "
+            f"{reconcile_ref}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    lower = text.lower()
+    # Scope the ordering assertion to the SKILL.md phase-6 (`dispatch`)
+    # section ONLY: between the "Phase 6 (`dispatch`)" heading and the
+    # "Post-dispatch segment" heading that follows it. The phase-6 reconcile
+    # must live HERE (in-session, before the Agent calls) — the post-dispatch
+    # reconcile (a different, later touchpoint) must NOT satisfy this check.
+    p6_start = lower.find("phase 6 (`dispatch`)")
+    if p6_start < 0:
+        print("FAIL: Inv 55: SKILL.md has no 'Phase 6 (`dispatch`)' section",
+              file=sys.stderr)
+        sys.exit(1)
+    p6_end = lower.find("post-dispatch segment", p6_start)
+    if p6_end < 0:
+        print("FAIL: Inv 55: SKILL.md phase-6 section has no following "
+              "'Post-dispatch segment' boundary", file=sys.stderr)
+        sys.exit(1)
+    p6 = lower[p6_start:p6_end]
+
+    # Within phase 6: record-dispatch.py (--status dispatched) -> a
+    # reconcile-labels.py call -> the Agent dispatch, in ascending position.
+    pos_record = p6.find("record-dispatch.py")
+    pos_reconcile = p6.find("reconcile-labels.py", pos_record if pos_record >= 0 else 0)
+    pos_agent = p6.find("agent call", pos_reconcile if pos_reconcile >= 0 else 0)
+    if pos_record < 0:
+        print("FAIL: Inv 55: SKILL.md phase-6 lacks a record-dispatch.py step",
+              file=sys.stderr)
+        sys.exit(1)
+    if pos_reconcile < 0:
+        print(
+            "FAIL: Inv 55: SKILL.md phase-6 lacks a reconcile-labels.py call "
+            "AFTER recording dispatched entries (covering the live TDD window)",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if pos_agent < 0 or not (pos_record < pos_reconcile < pos_agent):
+        print(
+            "FAIL: Inv 55: SKILL.md phase-6 must document the ordering "
+            "record-all-dispatched -> reconcile-labels.py -> Agent calls",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # spec Inv 55 must enumerate the phase-6 in-session touchpoint.
+    spec_path = os.path.join(
+        REPO_ROOT,
+        ".claude/features/rabbit-auto-evolve/docs/spec.md",
+    )
+    with open(spec_path) as f:
+        spec = f.read().lower()
+    if "phase-6 in-session add" not in spec:
+        print(
+            "FAIL: Inv 55: spec.md does not enumerate the phase-6 in-session "
+            "reconcile touchpoint",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     print("PASS: test-tick-skill.py")
 
 
