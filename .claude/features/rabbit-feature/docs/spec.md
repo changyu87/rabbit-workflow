@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.36.0
+version: 1.37.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -16,9 +16,12 @@ status: active
 ## Purpose
 
 Owns the dispatcher-side feature-touch orchestration surface: the
-`rabbit-feature-touch` skill plus three general-purpose helper skills
-(`rabbit-feature-scope`, `rabbit-feature-scaffold`, `rabbit-feature-audit`)
-and their backing scripts.
+`rabbit-feature-touch` skill plus two general-purpose helper skills
+(`rabbit-feature-scope`, `rabbit-feature-scaffold`) and their backing
+scripts. Feature-conformance auditing is run directly via the
+contract-owned `validate-feature.py <feature-dir>|all` CLI; this feature
+additionally owns the standalone team-owner enforcement script
+`audit-owner.py`.
 
 The executor-side TDD machinery (`dispatch-tdd-subagent.py`,
 `tdd-step.py`, the 8-step TDD cycle) lives in `tdd-subagent`. This
@@ -39,7 +42,6 @@ Skills (under `skills/`):
   resolves a natural-language request to the list of rabbit features its
   files would modify.
 - `rabbit-feature-scaffold/SKILL.md` — feature-scaffolding skill.
-- `rabbit-feature-audit/SKILL.md` — feature-conformance audit skill.
 
 Scripts (under `scripts/`):
 
@@ -49,6 +51,9 @@ Scripts (under `scripts/`):
   output into the feature-context block consumed by `resolve-scope.py`.
 - `scaffold-feature.py` — scaffolds a conforming feature directory at any
   path; invoked by `rabbit-feature-scaffold`.
+- `audit-owner.py` — standalone team-owner enforcement: validates that a
+  feature's `feature.json` `owner` equals exactly `rabbit-workflow team`.
+  Run directly as `python3 audit-owner.py <feature-dir>` (script-tier).
 
 Skill-local companion scripts (under `skills/<skill>/scripts/`, invoked from
 their source path and not deployed):
@@ -411,33 +416,21 @@ their source path and not deployed):
     `rabbit-spec-create` skill) using the command printed by
     `scaffold-feature.py`'s stdout `NEXT:` line.
 
-### rabbit-feature-audit SKILL.md
+### audit-owner.py team-owner enforcement
 
-34. **rabbit-feature-audit invocation surface.** The SKILL.md accepts
-    `Skill("rabbit-feature-audit", args: "all")` to sweep every
-    immediate subdirectory of `.claude/features/`, and
-    `Skill("rabbit-feature-audit", args: "<feature-name>")` to audit a
-    single feature.
-
-35. **rabbit-feature-audit uses validate-feature.py.** For each
-    target, the SKILL.md instructs the skill to invoke
-    `python3 .claude/features/contract/scripts/validate-feature.py
-    <feature-dir>` and to emit per-feature pass/fail output.
-
-50. **rabbit-feature-audit enforces team ownership.** The
-    `rabbit-feature-audit` SKILL.md instructs the skill to invoke
+50. **audit-owner.py enforces team ownership.** The standalone
+    `scripts/audit-owner.py` script is run directly (script-tier) as
     `python3 .claude/features/rabbit-feature/scripts/audit-owner.py
-    <feature-dir>` for each target and to fold its result into the
-    per-feature finding — a target PASSES only when BOTH
-    `validate-feature.py` and `audit-owner.py` pass. `audit-owner.py`
-    requires `feature.json` `owner` to equal exactly `rabbit-workflow team`;
-    any other (individual) owner FAILS with a message naming the offending
-    feature and its current owner (exit 1). A feature exempted by contract
-    Inv 36b's status short-circuit skips the owner check and passes, mirroring
-    `validate_feature`'s behaviour. The script exits 0 on pass, 1 on owner
-    mismatch, and 2 on bad invocation. This is defense-in-depth catching
-    future drift back to individual owners on repo-level
-    features distributed as part of rabbit-workflow.
+    <feature-dir>`. It requires `feature.json` `owner` to equal exactly
+    `rabbit-workflow team`; any other (individual) owner FAILS with a
+    message naming the offending feature and its current owner (exit 1). A
+    feature exempted by contract Inv 36b's status short-circuit skips the
+    owner check and passes, mirroring `validate_feature`'s behaviour. The
+    script exits 0 on pass, 1 on owner mismatch, and 2 on bad invocation.
+    This is defense-in-depth catching future drift back to individual owners
+    on repo-level features distributed as part of rabbit-workflow.
+    Cross-feature conformance auditing itself is run directly via the
+    contract-owned `validate-feature.py <feature-dir>|all` CLI.
 
 ### Feature-level metadata
 
@@ -562,7 +555,6 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-scope-skill.py` — Inv 24
 - `test-scope-scripts.py` — Inv 17, 18, 19, 20, 21, 22, 23, 25
 - `test-new-feature-scaffolder.py` — Inv 33
-- `test-audit-skill.py` — Inv 34, 35
 - `test-audit-owner.py` — Inv 50
 - `test-version-sync.py` — Inv 36
 - `test-skill-md-frontmatter.py` — Inv 37

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Inv 40 (e2e): manifest deploys the 5 SKILL.md files byte-identically.
+"""Inv 40 (e2e): the manifest deploys every skill SKILL.md byte-identically.
 
 Drives install.run_publish_loop against a temp target containing the real
-contract feature plus a copy of rabbit-feature; asserts that the 5
-SKILL.md files land at .claude/skills/<name>/SKILL.md with matching
-SHA-256 against the source files.
+contract feature plus a copy of rabbit-feature; asserts that each SKILL.md
+under skills/ lands at .claude/skills/<name>/SKILL.md with matching SHA-256
+against the source file (the skill set is discovered dynamically from
+skills/).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature lifecycle management is natively
     handled by Claude Code's workflow mechanism.

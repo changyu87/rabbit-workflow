@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Inv 50: rabbit-feature-audit team-owner enforcement (issue #416 Part C).
+"""Inv 50: audit-owner.py team-owner enforcement.
 
 Repo-level features MUST declare feature.json owner == "rabbit-workflow team".
-An individual owner FAILS the audit. Covers the backing script
+An individual owner FAILS the audit. Covers the standalone script
 scripts/audit-owner.py (CLI surface, pass/fail exit codes, failure message
-naming the offending feature + its current owner) and the SKILL.md wiring
-that invokes it.
+naming the offending feature + its current owner). The script is run directly
+(script-tier); the former rabbit-feature-audit skill wrapper was retired once
+contract's validate-feature.py exposed single-feature + `all` sweep validation.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when contract.lib.checks.validate_feature is
 exposed via a first-class CLI in the contract feature and enforces the
@@ -24,7 +25,6 @@ from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
 SCRIPT = FEATURE_DIR / "scripts" / "audit-owner.py"
-SKILL_MD = FEATURE_DIR / "skills/rabbit-feature-audit/SKILL.md"
 
 REQUIRED_OWNER = "rabbit-workflow team"
 
@@ -144,22 +144,6 @@ def test_all_repo_features_pass() -> None:
         if r.returncode != 0:
             failures.append((feat.name, (r.stdout + r.stderr).strip()))
     assert not failures, f"live tree features failed team-owner audit: {failures}"
-
-
-# --- SKILL.md wires the new check ------------------------------------------
-
-def test_skill_references_audit_owner() -> None:
-    text = SKILL_MD.read_text()
-    assert "audit-owner.py" in text, (
-        "rabbit-feature-audit SKILL.md must invoke scripts/audit-owner.py"
-    )
-
-
-def test_skill_mentions_team_owner_rule() -> None:
-    text = SKILL_MD.read_text()
-    assert REQUIRED_OWNER in text, (
-        "SKILL.md must document the required 'rabbit-workflow team' owner rule"
-    )
 
 
 if __name__ == "__main__":
