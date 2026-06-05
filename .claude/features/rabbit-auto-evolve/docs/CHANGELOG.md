@@ -16,6 +16,22 @@ authoritative).
 
 ## Version notes
 
+- **v0.63.0 — 2026-06-04** — fetch-before-close fix for the Inv 6
+  close-after-merge step (#802, `merge-prs.py` 1.5.0 → 1.5.1). `gh pr merge
+  --squash` creates the squash commit on the REMOTE `dev` only, so the local
+  repo has not seen that SHA when the close step runs; `item-status.py close
+  --commit-sha <sha>` (which requires the SHA to resolve to a real local
+  commit, #423 Part C) then failed and the referenced issue leaked OPEN in
+  headless ticks that have no dispatcher to recover. `merge-prs.py` now runs
+  `git fetch origin <sha>` (falling back to `git fetch origin dev`) before the
+  first close so the SHA resolves locally and the close succeeds; it never
+  runs the permission-denied `git merge`, and the fetch is best-effort and
+  never fails the merge. Regression test `test-merge-prs.py` adds the
+  "SHA not yet local at close time" case (a `git`-fetch shim plus a
+  SHA-gated `item-status.py` shim). Discovered follow-up (not built here):
+  a persisted `close_failed` retry that re-drains on a later tick, so a
+  transient close failure self-heals even when the fetch path cannot reach
+  the SHA.
 - **v0.62.0 — 2026-06-04** — housekeeping cycle bundling three small
   rabbit-auto-evolve-scoped corrections (#797, #798, #799), all strictly within
   this feature.

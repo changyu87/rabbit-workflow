@@ -746,4 +746,126 @@ with tempfile.TemporaryDirectory() as td:
         ok("last-merged-sha-skip: no merge → last_merged_sha preserved")
 
 
+# ===========================================================================
+# Issue #802 — fetch-before-close. `gh pr merge --squash` creates the squash
+# commit on the REMOTE dev only; the local repo has not seen that SHA yet, so
+# item-status.py (which requires --commit-sha to resolve to a real LOCAL
+# commit, #423 Part C) rejects the close. BEFORE the close calls, merge-prs.py
+# must run `git fetch origin <sha>` (falling back to `git fetch origin dev`)
+# to make the merge SHA resolvable locally — NEVER `git merge`.
+# ===========================================================================
+
+def _write_git_shim(shim_dir, call_log, fetch_marker):
+    """Write a `git` shim that records every invocation argv into `call_log`
+    (one line per call). On a `fetch` subcommand it `touch`es `fetch_marker`
+    (simulating the SHA becoming locally resolvable) and exits 0. Every other
+    git subcommand exits 0 (no-op)."""
+    shim = os.path.join(shim_dir, "git")
+    with open(shim, "w") as f:
+        f.write("#!/bin/sh\n")
+        f.write(f'printf "%s\\n" "$*" >> {call_log!r}\n')
+        f.write('if [ "$1" = "fetch" ]; then\n')
+        f.write(f'  : > {fetch_marker!r}\n')
+        f.write('fi\n')
+        f.write('exit 0\n')
+    os.chmod(shim, stat.S_IRWXU)
+
+
+def _write_sha_gated_item_status_shim(shim_dir, call_log, fetch_marker):
+    """Write an `item-status.py` shim that simulates the #423 Part C local-SHA
+    requirement: the close FAILS (exit 1) unless `fetch_marker` exists,
+    standing in for 'the --commit-sha does not resolve to a local commit'. Once
+    the git-fetch shim has created the marker, the close succeeds. Records
+    every invocation argv into `call_log`."""
+    shim = os.path.join(shim_dir, "item-status.py")
+    with open(shim, "w") as f:
+        f.write("#!/usr/bin/env python3\n")
+        f.write("import os, sys\n")
+        f.write(f"with open({call_log!r}, 'a') as _f:\n")
+        f.write("    _f.write(' '.join(sys.argv[1:]) + '\\n')\n")
+        f.write(f"if not os.path.exists({fetch_marker!r}):\n")
+        f.write("    sys.stderr.write('rabbit-issue: --commit-sha does not "
+                "resolve to a commit in the local git repo\\n')\n")
+        f.write("    sys.exit(1)\n")
+        f.write("sys.exit(0)\n")
+    os.chmod(shim, stat.S_IRWXU)
+
+
+# --- (H) SHA not local at close time → git fetch lands it, close succeeds ---
+with tempfile.TemporaryDirectory() as td:
+    bin_dir = os.path.join(td, "bin")
+    os.makedirs(bin_dir)
+    script_dir = os.path.join(td, "scripts")
+    os.makedirs(script_dir)
+    issue_dir = os.path.join(td, "issue-scripts")
+    os.makedirs(issue_dir)
+    gh_call_log = os.path.join(td, "gh-calls.log")
+    open(gh_call_log, "w").close()
+    git_call_log = os.path.join(td, "git-calls.log")
+    open(git_call_log, "w").close()
+    is_call_log = os.path.join(td, "item-status-calls.log")
+    open(is_call_log, "w").close()
+    fetch_marker = os.path.join(td, "sha-fetched.marker")
+
+    _write_gh_shim(bin_dir, gh_call_log, base_ref="dev", merge_exit=0,
+                   pr_body="Fixes #802\n", merge_sha="squash99")
+    _write_safety_shim(script_dir, exit_code=0)
+    _write_git_shim(bin_dir, git_call_log, fetch_marker)
+    _write_sha_gated_item_status_shim(issue_dir, is_call_log, fetch_marker)
+
+    env = os.environ.copy()
+    env["PATH"] = bin_dir + os.pathsep + env.get("PATH", "")
+    env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = script_dir
+    env["RABBIT_ISSUE_SCRIPT_DIR"] = issue_dir
+    proc = _run(td, env, "42")
+
+    if proc.returncode != 0:
+        fail(f"fetch-before-close: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"fetch-before-close: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+
+    git_calls = _gh_calls(git_call_log)
+    fetch_calls = [c for c in git_calls if c.startswith("fetch")]
+    if not fetch_calls:
+        fail(f"fetch-before-close: git fetch was NOT called before close; "
+             f"git_calls={git_calls!r}")
+    else:
+        ok("fetch-before-close: git fetch invoked")
+    # The fetch must target the merge SHA (preferred) — assert the SHA appears
+    # in at least one fetch invocation.
+    if fetch_calls and not any("squash99" in c for c in fetch_calls):
+        fail(f"fetch-before-close: no fetch targeted the merge SHA 'squash99'; "
+             f"fetch_calls={fetch_calls!r}")
+    elif fetch_calls:
+        ok("fetch-before-close: a git fetch targeted the merge SHA")
+    # NEVER `git merge` (permission-denied in the loop environment).
+    if any(c.startswith("merge") for c in git_calls):
+        fail(f"fetch-before-close: git merge was called (forbidden); "
+             f"git_calls={git_calls!r}")
+    else:
+        ok("fetch-before-close: git merge NOT called")
+
+    # Ordering: the fetch must precede the FIRST item-status close. The marker
+    # exists only after fetch, and the gated shim succeeds only when the marker
+    # exists — so a successful close proves fetch-then-close ordering.
+    if results is not None and len(results) == 1:
+        r = results[0]
+        if r.get("status") != "merged":
+            fail(f"fetch-before-close: status {r.get('status')!r} != 'merged'")
+        if r.get("closed_issues", []) != [802]:
+            fail(f"fetch-before-close: closed_issues "
+                 f"{r.get('closed_issues')!r} != [802] (close should now "
+                 f"succeed because the SHA was fetched first)")
+        else:
+            ok("fetch-before-close: issue 802 closed after the SHA was fetched")
+        if r.get("close_failed", []):
+            fail(f"fetch-before-close: close_failed non-empty "
+                 f"{r.get('close_failed')!r} (the fetch should have made the "
+                 f"close succeed)")
+
+
 sys.exit(FAIL)
