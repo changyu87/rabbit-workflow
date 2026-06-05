@@ -13,6 +13,40 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.6.0 (Step 4 hand-off made script-tier, #890):** Step 4's scaffold
+  hand-off was prose-tier orchestration: the `SKILL.md` body did the mode
+  detection (read `<repo>/.rabbit/.runtime/mode`), the batch temp-file
+  authoring (`--batch /tmp/decompose-batch-<ts>.json` — a model-assembled
+  `<ts>`), and the plugin-vs-standalone scaffolder branch inline, violating
+  spec-rules §4 Script-Backed Orchestration. The `<repo>` placeholder was
+  also ambiguous — a model could resolve it to the decomposition SOURCE or
+  git-toplevel and read the wrong/absent mode marker, taking the wrong
+  scaffold branch silently. Fix: added `scripts/handoff-scaffold.py`, a
+  SCRIPT-tier orchestrator that (a) resolves the rabbit root and detects mode
+  deterministically by REUSING `rabbit-meta.lib.mode_detection.detect_mode`
+  (lazy-import, mirroring the established `contract.lib.runtime.write_mode_marker`
+  pattern) instead of a single hard-coded mode-path read; (b) authors the
+  batch temp file with a script-owned timestamp (no model-assembled `<ts>`);
+  and (c) dispatches the scaffolder on the mode-correct branch (plugin →
+  `scaffold-feature.py --batch <file>`; standalone → emits the per-feature
+  `rabbit-feature-scaffold` plan, batch being plugin-only). `SKILL.md` Step 4
+  was rewritten to a single clean script invocation (the only remaining bash
+  is read-only/illustrative per the §4 exception); the prose mode-branch and
+  placeholder blocks are gone. New spec Invariant 5 pins the script-tier
+  requirement and the `detect_mode` reuse; the cross-feature INVOKE is
+  declared in `docs/contract.md` `invokes.scripts`. New E2E test
+  `test/test-step4-script-backed.py` runs the script end-to-end against temp
+  plugin and standalone trees (asserting `detect_mode`-driven branching, a
+  script-owned timestamped batch file, and no single hard-coded mode path)
+  and asserts the `SKILL.md` Step 4 body carries no prose mode-branch and no
+  runtime-placeholder bash block. New surface (`scripts/handoff-scaffold.py`)
+  declared in `feature.json` `surface.scripts`. Frontmatter `version` bumped
+  to 0.6.0 across `feature.json`, `docs/spec.md`, `docs/contract.md`, and the
+  source `SKILL.md` (four-way alignment); the deployed `.claude/` copy needs a
+  dispatcher republish because the source SKILL.md AND the new `scripts/` tree
+  changed the deployed surface. Cross-feature boundary respected: `detect_mode`
+  is IMPORTED/INVOKED, never edited.
+
 - **v0.5.4 (spec<->artifact prompts coherence fix, #825):** Resolved a
   spec<->artifact mismatch discovered during #811: spec Invariant 1 required
   the `prompts` array to "contain exactly one entry with `id:

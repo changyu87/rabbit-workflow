@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.5.4
+version: 0.6.0
 template_version: 2.0.0
 ---
 
@@ -15,7 +15,9 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/rabbit-decompose/skills/rabbit-decompose/SKILL.md"
     ],
     "agents": [],
-    "scripts": [],
+    "scripts": [
+      ".claude/features/rabbit-decompose/scripts/handoff-scaffold.py"
+    ],
     "files": [],
     "templates": [],
     "schemas": []
@@ -42,6 +44,10 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       {
         "path": ".claude/features/rabbit-feature/scripts/scaffold-feature.py",
         "purpose": "called via --batch <file> in plugin mode to scaffold N features in one project-map.json mutation"
+      },
+      {
+        "path": ".claude/features/rabbit-meta/lib/mode_detection.py",
+        "purpose": "handoff-scaffold.py lazy-imports detect_mode(cwd) to resolve plugin-vs-standalone mode deterministically instead of reading a single hard-coded mode path"
       }
     ]
   },
