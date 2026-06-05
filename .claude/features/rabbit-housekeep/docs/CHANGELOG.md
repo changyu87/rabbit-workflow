@@ -13,6 +13,32 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.3.0 (script-backed-orchestration verify-or-flag dimension, issue
+  #862):** Added a NEW verification DIMENSION enforcing the spec-rules §4
+  Script-Backed Orchestration standard. New companion script
+  `scripts/check-script-backed.py` (`scan <feature-dir>`) deterministically
+  walks a target feature's `skills/*/SKILL.md`, `agents/*.md`, and
+  `commands/*.md` bodies and reports, as JSON (`findings` + `count`), every
+  orchestration step that is NOT script-backed: a bash block carrying runtime
+  placeholders (e.g. `<feature-name>`, `<branch-name>`) the model assembles at
+  invocation time, or a computed-value / mode-aware-branching step held as
+  prose or inline bash instead of a companion `scripts/` invocation. The §4
+  read-only-informational exception holds: simple read-only informational
+  commands inline (e.g. `git log --oneline -5`) and trivial one-liners are NOT
+  flagged. Detection is SCRIPT-tier (the check enforces the same tier it
+  embodies). The disposition reuses housekeep's existing prove-it-dead-or-flag
+  machinery — each non-conformant step is FLAGged as a `housekeeping`-tagged
+  sub-issue naming the file, the step, and the conversion target. The SKILL.md
+  now embeds spec-rules §4 verbatim (byte-for-byte) and documents the new
+  dimension. Added spec invariants #7 (the scan script) and #8 (the verbatim
+  §4 embed + dimension documentation), extended invariant #6 to name the new
+  script under `provides`, and added a new E2E gate
+  `test-check-script-backed.py`. The new step was renumbered into the flat
+  numeric sequence (Steps 5/6/7) to satisfy the cross-feature numbered-lists
+  convention, which forbids letter-suffixed step numbers. The deployed
+  `.claude/skills/` copy needs a dispatcher republish because the source
+  SKILL.md changed.
+
 - **v0.2.1 (machine-readable rabbit-decompose INVOKE, issue #822):**
   Declared the rabbit-decompose decomposition-shape reuse in the
   machine-readable `invokes.skills` block of `docs/contract.md`. Previously

@@ -6,21 +6,25 @@ This test IS the housekeeping test pattern the feature mandates, applied to
 the feature itself: it drives the real measure-reduction.py against the live
 doc surfaces and asserts BOTH halves of a wave's contract.
 
-  t0: MEASURED REDUCTION — the live doc surfaces (docs/spec.md,
-      docs/contract.md, skills/rabbit-housekeep/SKILL.md) total strictly
-      fewer lines than the pre-wave baseline. The verdict is computed by
+  t0: MEASURED CEILING — the live doc surfaces (docs/spec.md,
+      docs/contract.md, skills/rabbit-housekeep/SKILL.md) total no MORE lines
+      than the recorded ceiling. The verdict is computed by
       measure-reduction.py `count` + `diff` (script-tier, not judgment): the
-      diff against the recorded pre-wave snapshot reports reduced=true with a
-      negative total_delta. A reword that left totals flat would FAIL here.
+      diff against the recorded ceiling snapshot reports a non-positive
+      total_delta. A reword/bloat that pushed totals above the ceiling would
+      FAIL here. The ceiling is refreshed after each governed touch that
+      adds behavior additively (e.g. v0.3.0 added the script-backed-
+      orchestration dimension), so it keeps guarding future reword-bloat
+      without forbidding additive growth.
 
-  t1: LOAD-BEARING SURVIVAL — every named load-bearing token (script name,
+  t1: LOAD-BEARING SURVIVAL — every named load-bearing token (script names,
       subcommand names, exit codes, schema/verdict fields, the verbatim §6
-      markers, the nesting-constraint tokens, and contract relationships)
-      is still present somewhere in the doc surfaces after the wave.
+      and §4 markers, the nesting-constraint tokens, and contract
+      relationships) is still present somewhere in the doc surfaces.
 
 Non-interactive. Exits non-zero on failure.
 
-Version: 0.2.0
+Version: 0.3.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-housekeep is retired.
 """
@@ -39,14 +43,15 @@ CONTRACT = os.path.join(FEATURE_DIR, "docs", "contract.md")
 SKILL = os.path.join(FEATURE_DIR, "skills", "rabbit-housekeep", "SKILL.md")
 DOC_SURFACES = [SPEC, CONTRACT, SKILL]
 
-# Pre-wave baseline, snapshotted by measure-reduction.py count before the
-# reduction wave edited the doc surfaces. The wave must drive the live total
-# strictly below this.
-PRE_WAVE_BASELINE = {
-    SPEC: 154,
-    CONTRACT: 79,
-    SKILL: 194,
-    "__total__": 427,
+# Recorded ceiling, snapshotted by measure-reduction.py count after the last
+# governed touch. The live total must stay at or below this; a reword/bloat
+# that pushed it higher FAILS. Refreshed when a governed touch adds behavior
+# additively (v0.3.0: script-backed-orchestration dimension).
+DOC_CEILING = {
+    SPEC: 213,
+    CONTRACT: 83,
+    SKILL: 233,
+    "__total__": 529,
 }
 
 PASS = 0
@@ -65,12 +70,14 @@ def fail(name, msg):
     FAIL += 1
 
 
-# t0: measured reduction, via the real count + diff path.
+# t0: measured ceiling, via the real count + diff path. The diff is
+# ceiling(before) vs live(after): a non-positive total_delta means the live
+# surfaces are at or below the recorded ceiling.
 with tempfile.TemporaryDirectory() as tmp:
     before = os.path.join(tmp, "before.json")
     after = os.path.join(tmp, "after.json")
     with open(before, "w") as f:
-        json.dump(PRE_WAVE_BASELINE, f)
+        json.dump(DOC_CEILING, f)
     count = subprocess.run(
         ["python3", SCRIPT, "count", *DOC_SURFACES],
         capture_output=True, text=True,
@@ -85,10 +92,10 @@ with tempfile.TemporaryDirectory() as tmp:
             capture_output=True, text=True,
         )
         d = json.loads(diff.stdout)
-        if d.get("reduced") is True and d.get("total_delta", 0) < 0:
-            ok("t0", f"doc surfaces reduced (total_delta={d['total_delta']})")
+        if d.get("total_delta", 1) <= 0:
+            ok("t0", f"doc surfaces at or below ceiling (total_delta={d['total_delta']})")
         else:
-            fail("t0", f"no measured reduction vs pre-wave baseline: {d}")
+            fail("t0", f"doc surfaces grew above recorded ceiling: {d}")
 
 # t1: load-bearing token survival across the doc surfaces.
 blob = ""
@@ -113,6 +120,14 @@ REQUIRED_TOKENS = [
     "BEGIN VERBATIM coding-rules.md §6",
     "END VERBATIM coding-rules.md §6",
     "## 6. Cleanup: Prove It Dead or Flag It",
+    # script-backed-orchestration dimension + verbatim §4 embed markers
+    "check-script-backed.py",
+    "scan",
+    "BEGIN VERBATIM spec-rules.md §4 Script-Backed Orchestration",
+    "END VERBATIM spec-rules.md §4 Script-Backed Orchestration",
+    "runtime-placeholder",
+    "computed-value",
+    "mode-aware-branching",
     # nesting constraint tokens
     "subagent-dispatching",
     "two-level",

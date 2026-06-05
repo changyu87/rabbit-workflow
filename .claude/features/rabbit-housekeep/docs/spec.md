@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.2.1
+version: 0.3.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -27,6 +27,10 @@ housekeeping test asserts named load-bearing tokens survive.
 - `skills/rabbit-housekeep/SKILL.md` — the user-invocable skill.
 - `scripts/measure-reduction.py` — deterministic per-artifact line accounting
   and before/after reduction diff.
+- `scripts/check-script-backed.py` — deterministic scan of a target feature's
+  `skills/*/SKILL.md`, `agents/*.md`, and `commands/*.md` bodies for
+  orchestration steps that violate the spec-rules §4 Script-Backed
+  Orchestration standard (a NEW verify-or-flag dimension).
 - `docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`, `feature.json`,
   `test/run.py` — feature scaffolding.
 
@@ -86,6 +90,44 @@ docstring):
 Exit `0` success, `2` invocation error. The reduction verdict is the
 `reduced` field — the script reports, the caller's test gates.
 
+## Script-backed-orchestration verify-or-flag dimension
+
+Housekeeping also enforces the spec-rules §4 **Script-Backed Orchestration**
+standard as a NEW verification DIMENSION (not new machinery): an orchestration
+step that involves a COMPUTED VALUE or MODE-AWARE BRANCHING MUST live in a
+companion script under `scripts/` that the body invokes — not as prose or
+inline bash; and a bash block carrying RUNTIME PLACEHOLDERS (e.g.
+`<feature-name>`, `<branch-name>`) the model assembles at invocation time is
+prompt-tier, not script-tier. The §4 read-only-informational exception holds:
+simple read-only informational commands inline (e.g. `git log --oneline -5`)
+and trivial one-liners are NOT flagged.
+
+Detection is SCRIPT-tier (the check enforces the same tier it embodies):
+`scripts/check-script-backed.py` deterministically scans the target feature's
+`skills/*/SKILL.md`, `agents/*.md`, and `commands/*.md` bodies and reports each
+non-conformant step. The disposition reuses housekeep's existing
+prove-it-dead-or-flag machinery: each non-conformant step is FLAGged as a
+`housekeeping`-tagged sub-issue (the Step 2 filing shape) naming the file, the
+step, and the conversion target (move the logic into `scripts/`; the
+SKILL/command invokes it). Straightforward conversions MAY be done inline
+within a governed touch; complex orchestration is never silently rewritten.
+
+## check-script-backed.py
+
+Deterministic, stdlib-only (full interface in the script docstring):
+
+- `scan <feature-dir>` — walk the feature's `skills/*/SKILL.md`, `agents/*.md`,
+  and `commands/*.md` bodies, find every fenced bash block, and emit a JSON
+  object `{"findings": [...], "count": N}`. Each finding records `file`,
+  `line` (1-based start of the offending block), `reason` (one of
+  `runtime-placeholder`, `computed-value`, `mode-aware-branching`), and
+  `snippet`. Read-only informational commands and trivial one-liners are
+  excluded.
+
+Exit `0` when the scan ran (regardless of whether findings were emitted), `2`
+on invocation error (missing/bad feature-dir). The verdict is the `count`
+field — the script reports, the caller's verify-or-flag disposition acts.
+
 ## Invariants
 
 1. `feature.json` MUST declare `status: "active"`, `version: "0.1.0"` or later,
@@ -119,9 +161,27 @@ Exit `0` success, `2` invocation error. The reduction verdict is the
    decomposition-shape reuse, the rabbit-issue filing script `file-item.py`,
    and the rabbit-auto-evolve parent-close machinery — every reuse declared in
    the machine-readable `invokes` block, never in trailing prose only;
-   `provides` names the skill and the measurement script; `never` includes
-   editing files outside the target feature's directory and rewording without
-   measured removal.
+   `provides` names the skill and the measurement and script-backed-check
+   scripts; `never` includes editing files outside the target feature's
+   directory and rewording without measured removal.
+
+7. `scripts/check-script-backed.py` MUST provide a deterministic `scan`
+   subcommand that walks a target feature's `skills/*/SKILL.md`, `agents/*.md`,
+   and `commands/*.md` bodies and reports, as JSON, every orchestration step
+   that violates spec-rules §4 Script-Backed Orchestration: a bash block with
+   runtime placeholders, or a computed-value / mode-aware-branching step held
+   as prose or inline bash instead of a companion `scripts/` invocation. It
+   MUST NOT flag read-only informational commands or trivial one-liners (the
+   §4 read-only-informational exception). Output reports a `findings` list and
+   a `count`; exit `2` on invocation error.
+
+8. The SKILL.md MUST embed spec-rules.md §4 Script-Backed Orchestration text
+   VERBATIM (byte-for-byte, not paraphrased), delimited by explicit BEGIN/END
+   markers, AND document the script-backed-orchestration verify-or-flag
+   dimension: it invokes `scripts/check-script-backed.py` and routes each
+   non-conformant step through the prove-it-dead-or-flag disposition (FLAG a
+   `housekeeping`-tagged sub-issue naming the file, the step, and the
+   conversion target).
 
 ## Tests
 
@@ -132,8 +192,16 @@ Exit `0` success, `2` invocation error. The reduction verdict is the
   yields `reduced: false`, invocation error exits `2`.
 - `test-skill-structure.py` — E2E asserting the skill is present and
   manifest-published, the coding-rules §6 block is embedded byte-for-byte
-  verbatim, and the subagent-dispatching no-Agent-nesting constraint is
-  documented.
+  verbatim, the spec-rules §4 Script-Backed Orchestration block is embedded
+  byte-for-byte verbatim, the script-backed-orchestration verify-or-flag
+  dimension is documented, and the subagent-dispatching no-Agent-nesting
+  constraint is documented.
+- `test-check-script-backed.py` — E2E driving `scan` against fixture feature
+  trees: a SKILL.md with a runtime-placeholder bash block is flagged, a
+  computed-value / mode-aware-branching prose step is flagged, a read-only
+  informational one-liner and a script-backed invocation are NOT flagged,
+  agents/*.md and commands/*.md bodies are scanned, and invocation error
+  exits `2`.
 
 ## Out of Scope
 
