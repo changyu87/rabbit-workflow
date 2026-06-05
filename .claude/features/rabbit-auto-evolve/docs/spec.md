@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.63.0
+version: 0.63.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -128,77 +128,13 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 
 ## Current behaviour
 
-- Entering the mode via `/rabbit-config auto-evolve on` performs three
-  mutations in order (flip `human-approval=false`, flip
-  `bypass-permissions=true`, write `.rabbit-auto-evolve-active`) and
-  requires a Claude restart before the loop can start. (design doc §2)
-- After restart, the SessionStart banner emits exactly two composite lines
-  replacing the individual `human-approval` and `bypass-permissions`
-  alerts: a red "AUTONOMOUS-EVOLVE MODE ACTIVE" line and a yellow line
-  with the literal start command to paste. (design doc §8)
-- `/rabbit-auto-evolve start` verifies all three preconditions before
-  launching; if any fail it refuses and explains which condition is not
-  met. (design doc §3)
-- Each tick walks twelve phases in sequence (stop-check, restart-check,
-  fetch, triage, plan, dispatch, merge, release, cleanup, catch-up,
-  persist, schedule); any phase can abort the tick without affecting the
-  next tick's ability to pick up. (design doc §4)
-- Triage classifies each issue using a seven-rule decision table
-  (top-down, first match wins); any ambiguous case defaults to
-  `defer/needs-judgment` rather than silently to `work`. (design doc §5)
-- The loop computes its OWN priority score (Inv 44): a
-  deterministic weighted blend of observable signals (blocking-fanout,
-  filer `priority:` label, scope size, bug-vs-enhancement, age). That
-  `computed_score` is the PRIMARY dispatch-ordering key; the filer label is
-  one input among several, no longer the sole determinant. The contract-touch
-  barrier remains the SECONDARY tiebreak.
-  Contract-touch issues (`feature:contract` label or body paths under
-  `.claude/features/contract/`) lead the `barrier_first` queue only when
-  they sort ahead of every non-contract item on the computed score — a
-  higher-scoring non-contract item is dispatched before a lower-scoring
-  contract item. Within a score tier, contract-touch items precede
-  non-contract items and run one at a time before that tier's parallel
-  group. The computed score is emitted under `computed_scores` for
-  transparency. (design doc §6)
-- Parallelism is bounded by `max_parallel` (default 4); same-feature
-  issues are never dispatched in parallel (conflict edge = shared
-  `feature:<name>` label). (design doc §6)
-- When a TDD subagent's HANDOFF carries `discovered_issues`, the loop
-  files each via `rabbit-issue`; when `aborted_reason` is set, the loop
-  adds a `blocked-by:#N` label to the original issue and leaves it open
-  for the next tick. (design doc §6)
-- Merges target `dev` exclusively; `safety-check.py` aborts the merge
-  phase if the current branch or PR base is not `dev`. (design doc §9)
-- Each merged PR triggers a deterministic semver bump: `low`/`medium`
-  priority → patch; `high`/`critical` → minor; `bump:major` directive,
-  ≥ 3 features touched, or `contract/schemas` touched → major. (design
-  doc §9)
-- A safety violation writes `.rabbit-auto-evolve-aborted`, emits a red
-  alert, and does not reschedule; the loop remains halted until the user
-  clears the marker. (design doc §9)
-- The catch-up phase classifies each merged PR into one of three rungs
-  (no-op, `/rabbit-refresh`, restart-required); the loop handles the
-  rung automatically without user intervention for the first two rungs.
-  (design doc §7)
-- When an item is shaped as `decomposition` (>= `--decompose-threshold`
-  features), the dispatcher records the parent->children linkage in
-  machine-readable form via `record-decomposition.py` (state field
-  `decomposition_parents`), then the per-tick post-merge drain runs
-  `close-decomposed-parents.py`: for every tracked parent whose children
-  are ALL closed it closes the parent (`--reason completed`) and drops the
-  parent key. A parent with any open child is left untouched. The
-  decomposed-parent lifecycle is closed deterministically by the machine,
-  never by manual cleanup (Inv 53).
-- Loop state is persisted to `.rabbit/auto-evolve-state.json` on every
-  tick; a Claude restart followed by `/rabbit-auto-evolve start` resumes
-  from the last persisted state without replaying completed work.
-  (design doc §7)
-- `/rabbit-auto-evolve stop` writes the stop marker; the loop observes it
-  at the next tick's stop-check phase, posts a run summary, and does not
-  call `ScheduleWakeup`. (design doc §3)
-- Exiting the mode via `/rabbit-config auto-evolve off` reverses the
-  three mutations in inverse order and requires another restart. (design
-  doc §2)
+The end-to-end behaviour — activation/teardown, the SessionStart banner,
+start preconditions, the twelve-phase tick, triage, the computed priority
+score and dispatch grouping, merge/release/cleanup/catch-up, decomposition,
+state persistence, stop, and self-resume — is specified normatively and in
+full by the numbered Invariants below. Each invariant names the script that
+owns the behaviour, the data shape, and the enforcing test; no behaviour
+summary is restated here.
 
 ## Invariants
 
@@ -1688,7 +1624,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     |---|---|---|---|
     | 1 (perf preference) | `parallel-per-feature` | item edits exactly one feature dir | one full single-feature TDD touch, its own `.rabbit-scope-active-<feature>` marker; multiple such items dispatch in parallel |
     | 2 | `multi-subagent-barrier` | item edits >1 feature dir, below `--decompose-threshold` (default 10) | per-feature subagents land SERIALLY on ONE shared branch; the serialization contract is: subagent k+1 fetches subagent k's pushed commit before starting; each piece is a full single-feature touch with its own scope marker; one PR closes the item |
-    | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs | file N per-feature sub-issues via the contract INVOKE `rabbit-issue/scripts/file-item.py` (NOT a cross-feature edit — do not edit rabbit-issue files), each labelled with the right `feature:<name>` + `priority:<level>` label; the parent stays OPEN and the sub-issues are queued, re-entering Stage 1/Stage 2 on the next tick |
+    | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs | file N per-feature sub-issues via the contract INVOKE `rabbit-issue/scripts/file-item.py` (NOT a cross-feature edit — do not edit rabbit-issue files), each labelled with the right `feature:<name>` + `priority:<level>` label; the parent stays OPEN and the sub-issues are queued, re-entering Stage 1/Stage 2 on the next tick; the parent->children linkage is recorded and the parent closed deterministically once every child closes (Inv 53) |
 
     Every shape uses a full per-feature touch gated by
     `.rabbit-scope-active-<feature>`. The dispatcher MUST NOT skip, defer
