@@ -12,6 +12,24 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.67.0 (fix #891: plugin-mode mode-marker written one `.rabbit` too
+  deep):** In a plugin install (`RABBIT_ROOT = <project>/.rabbit`), the
+  SessionStart mode marker was written to `<project>/.rabbit/.rabbit/.runtime/mode`
+  (doubled `.rabbit`) because the dispatcher forwarded `RABBIT_ROOT` verbatim
+  to `contract.lib.runtime.write_mode_marker`, which APPENDS `.rabbit` to its
+  `repo_root` arg. `scope-guard.py` reads the SINGLE-`.rabbit`
+  `<git-toplevel>/.rabbit/.runtime/mode`, so the absent marker mis-detected
+  mode. `hooks/session-start-dispatcher.py` now reconciles the marker
+  (`_reconcile_mode_marker`) after dispatch: when the resolved root is itself
+  a `.rabbit` install dir, it relocates the doubled marker to the canonical
+  single-`.rabbit` path (where scope-guard reads) and prunes the stray doubled
+  tree; no-op in standalone mode. The detection logic stays owned by
+  rabbit-meta/contract — only the file the contract API produced is relocated.
+  A cleaner upstream fix (separating `write_mode_marker`'s rabbit-meta IMPORT
+  root from its WRITE root) lives in the contract feature and is flagged for
+  follow-up. New invariant 44; enforced by
+  `test/test-mode-marker-root-consistency.py`. The deployed
+  `.claude/hooks/session-start-dispatcher.py` copy is republished.
 - **v5.66.0 (CRITICAL fix #880: fresh install aborts on a retired closure
   source):** `install.py`'s hardcoded file closure still referenced the
   `rabbit-feature-audit` skill that #853 deleted — the

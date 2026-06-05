@@ -114,7 +114,11 @@ COLLAPSE_MAX = 1
 # drift-free on its first Stop (with the RABBIT_ROOT-anchored publish_hook form
 # + graceful degradation) — a real spec addition documenting new behavior, not
 # reword re-inflation.
-SPEC_LINE_CEILING = 541
+# Raised 541 -> 542 by #891, which added Inv 44 documenting that the SessionStart
+# mode-marker WRITE path is reconciled to equal the scope-guard READ path (the
+# plugin-install doubled-.rabbit fix) — a real spec addition documenting new
+# behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 542
 
 PASS = 0
 FAIL = 0

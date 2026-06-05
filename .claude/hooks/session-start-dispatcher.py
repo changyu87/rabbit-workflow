@@ -35,7 +35,15 @@ hard #503 resume banner so it reads as OPTIONAL) AND THEN clears the marker
 (`advise-restart.py clear`) since the advised restart has now occurred. Absent
 / erroring script degrades gracefully (no advisory line, no clear).
 
-Version: 1.6.0
+Issue #891: after dispatch, reconciles the mode marker written by
+contract.lib.runtime.write_mode_marker — which appends `.rabbit` to its
+repo_root arg — back to the SINGLE-`.rabbit` canonical path scope-guard reads.
+In a plugin install the dispatcher's resolved root IS the `.rabbit` install dir
+(RABBIT_ROOT), so the marker would otherwise land one `.rabbit` too deep; the
+reconciliation relocates it to `<parent>/.rabbit/.runtime/mode`. No-op in
+standalone mode (root is the repo root, not a `.rabbit` dir).
+
+Version: 1.7.0
 Owner: rabbit-workflow team (rabbit-cage)
 Deprecation criterion: when Claude Code exposes native SessionStart
     dispatchers that subsume this hook.
@@ -73,6 +81,54 @@ def repo_root() -> Path:
         return Path(out.decode().strip())
     except Exception:
         return here
+
+
+def _reconcile_mode_marker(root: str) -> None:
+    """Issue #891: pin the mode-marker WRITE path to the SAME location
+    scope-guard READS.
+
+    `contract.lib.runtime.write_mode_marker(repo_root=X)` APPENDS `.rabbit`
+    to its `repo_root` arg, writing `<X>/.rabbit/.runtime/mode`. Its
+    `repo_root` is therefore contractually the USER-PROJECT root (parent of
+    `.rabbit`). But the dispatcher resolves `root` to `RABBIT_ROOT`, which in
+    a plugin install IS the `.rabbit` install dir — so the marker lands one
+    `.rabbit` too deep at `<RABBIT_ROOT>/.rabbit/.runtime/mode`, while
+    scope-guard reads `<git-toplevel>/.rabbit/.runtime/mode` (single
+    `.rabbit`) and mis-detects mode.
+
+    A clean fix would have `write_mode_marker` separate its rabbit-meta
+    IMPORT root (which must be `RABBIT_ROOT`, since `.claude/features` lives
+    under `.rabbit` in a plugin install) from its WRITE root (the
+    user-project root). That signature change lives in the contract feature
+    (out of rabbit-cage scope), so this helper does the caller-side
+    reconciliation: when `root` is itself a `.rabbit` install dir, relocate
+    the doubled marker to the canonical single-`.rabbit` path
+    `<parent(root)>/.rabbit/.runtime/mode` and prune the stray doubled tree.
+
+    No-op in standalone mode (root basename != `.rabbit`): there the write
+    root and the canonical path already coincide.
+    """
+    root_path = Path(root)
+    if root_path.name != ".rabbit":
+        return
+    doubled = root_path / ".rabbit" / ".runtime" / "mode"
+    if not doubled.is_file():
+        return
+    canonical = root_path / ".runtime" / "mode"
+    if doubled == canonical:
+        return
+    try:
+        canonical.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(str(doubled), str(canonical))
+    except OSError:
+        return
+    # Prune the now-stray doubled `.rabbit/.runtime` (and `.rabbit`) tree,
+    # but only when empty — never remove a dir that holds other state.
+    for stray in (doubled.parent, doubled.parent.parent):
+        try:
+            stray.rmdir()
+        except OSError:
+            break
 
 
 def _check_rabbit_root_env():
@@ -277,6 +333,7 @@ def main() -> int:
         pass
     root = str(repo_root())
     payloads = dispatch_event("SessionStart", root)
+    _reconcile_mode_marker(root)
     _strip_welcome_decoration(payloads)
     for i, row in enumerate(_version_box(root)):
         payloads.insert(i, row)
