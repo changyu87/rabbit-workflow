@@ -1,6 +1,6 @@
 {
   "name": "rabbit-spec",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
@@ -60,5 +60,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.14.0 -> 1.15.0): measured-reduction wave. Cut restated rationale from Inv 3(b) (downstream consumption owned by rabbit-spec-create Step 4) and Inv 3(e) (parents[0..4] path-arithmetic enumeration + expanded forbidden-mechanism prose, both owned by the dispatch script comment). All load-bearing tokens kept; no invariant renumbered. New E2E guard test-no-restated-rationale.py forbids the removed restatement and asserts the load-bearing tokens survive."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.15.0 -> 1.16.0, #875): script-backed-orchestration cleanup (child of #863). Added Inv 9 requiring zero check-script-backed.py findings and documenting the <!-- example --> exemption marker for the illustrative dispatch-spec-create.py CLI synopsis in rabbit-spec-create Step 1. Marked that fenced bash block as an example; new E2E guard test-script-backed-clean.py asserts scan reports count: 0. No invariant renumbered; numbering stays contiguous 1..9."
 }

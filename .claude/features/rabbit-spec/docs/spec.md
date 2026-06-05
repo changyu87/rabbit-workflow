@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.15.0
+version: 1.16.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -161,6 +161,22 @@ orchestration wrapper.
    `.claude/features/contract/scripts/reflow-invariants.py`; removed numbers
    and their history live only in `docs/CHANGELOG.md`. Enforced by
    `test/test-contiguous-invariants-optin.py`, wired into `test/run.py`.
+
+9. **Script-backed orchestration: zero unmarked runtime-placeholder steps.**
+   The feature's authored SKILL.md / agent / command bodies MUST carry zero
+   `check-script-backed.py` findings (spec-rules §4 Script-Backed
+   Orchestration). Live orchestration steps that compute a value or assemble a
+   runtime placeholder belong in a companion `scripts/` invocation, not inline
+   in a SKILL.md body. An ILLUSTRATIVE CLI synopsis that documents HOW to
+   invoke an existing companion script — e.g. the
+   `scripts/dispatch-spec-create.py --feature-name <feature-name> --paths ...`
+   usage block in `skills/rabbit-spec-create/SKILL.md` Step 1 — is
+   non-executable documentation, NOT a live step the model assembles; it MUST
+   carry the `<!-- example -->` exemption marker on the line directly above its
+   opening fence so the scanner treats it as documentation. Enforced by
+   `test/test-script-backed-clean.py` (asserts
+   `.claude/features/rabbit-housekeep/scripts/check-script-backed.py scan` of
+   the feature dir reports `count: 0`), wired into `test/run.py`.
 
 ## Tech Stack
 
