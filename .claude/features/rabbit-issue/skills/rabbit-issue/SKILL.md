@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.11.0
+version: 1.11.1
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours an actionability safety guard (it refuses to close/reopen issues lacking a valid `feature:` label) so raw human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -16,11 +16,11 @@ set `RABBIT_ISSUE_REPO=<owner>/<repo>` to override for forks or testing.
 `gh auth status` must be green or the scripts fail loudly with an
 actionable error.
 
-rabbit-issue is the sole rabbit-managed issue surface. There is no
-branch-backed item storage on `origin/bug-backlog-files`. Do not invoke
-`rabbit-file`, its scripts, or any `item-status.py` / `file-item.py`
-under `.claude/features/rabbit-file/`. All lifecycle operations route
-through this skill.
+rabbit-issue is the sole rabbit-managed issue surface; all lifecycle
+operations route through this skill. There is no branch-backed item
+storage on `origin/bug-backlog-files`. Do not invoke `rabbit-file`, its
+scripts, or any `item-status.py` / `file-item.py` under
+`.claude/features/rabbit-file/`.
 
 There are no slash commands. The invocation surface is direct script
 invocation:
@@ -51,14 +51,12 @@ values. Human is the untagged default (OMIT `--filed-by`); pass
 `--filed-by rabbit` for a bot/wrapped rabbit script, or
 `--filed-by autonomous-evolve` for the autonomous evolve loop.
 `file-item.py` REJECTS any value outside `{rabbit, autonomous-evolve}`
-(including `human`, the legacy `loop`, and any polluted/space-bearing
-value) with a clear error. The label is additive — when present it never
-changes the other labels.
+with a clear error. See docs/spec.md §Provenance label.
 
 `housekeeping` is a sanctioned category label marking housekeeping-wave
-work. Pass `--housekeeping` to `file-item.py` to stamp it at filing time
-in one step; omit it for non-housekeeping issues. The label is additive —
-when present it never changes the other labels. See docs/spec.md
+work. Pass `--housekeeping` to `file-item.py` to stamp it at filing time;
+omit it for non-housekeeping issues. Both labels are additive — when
+present they never change the other labels. See docs/spec.md
 §Housekeeping label.
 
 ---
@@ -82,12 +80,9 @@ When the user confirms they want to file a bug or enhancement:
      [--filed-by <source>] \
      [--housekeeping]
    ```
-   `--filed-by <rabbit|autonomous-evolve>` stamps the matching
-   `filed-by:` provenance label; OMIT it for human-filed issues (the
-   untagged default). Any other value is rejected. `--housekeeping` stamps
-   the `housekeeping` category label for housekeeping-wave work; omit it
-   otherwise. The script auto-creates any missing labels, then calls
-   `gh issue create` with the resolved labels attached.
+   See §Label Schema above for `--filed-by` and `--housekeeping`. The
+   script auto-creates any missing labels, then calls `gh issue create`
+   with the resolved labels attached.
 4. **Report** the assigned issue number and URL back to the user. GH
    allocates the number; rabbit does not maintain a local counter.
 
@@ -159,13 +154,11 @@ When the user asks to work, close, or reopen an issue:
    boundary, yielding `state_reason = not_planned`. The safety guard
    below still applies.
 
-   `--reason-text` is **required** for `--reason not-planned`: it must be
-   at least 50 characters and must not contain reflexive-deferral
-   boilerplate — the script rejects (case-insensitive) any of `too
-   risky`, `out of scope` / `out-of-scope`, `declined autonomous
-   dispatch`, `not now`, `later`, `don't want` / `do not want`. Write a
-   concrete reason that names *why* the issue is stale or invalid (e.g.
-   what replaced it), not a generic deferral.
+   `--reason-text` is **required** for `--reason not-planned`: at least 50
+   characters and free of reflexive-deferral boilerplate, which the script
+   rejects (see docs/spec.md §Lifecycle for the rejected-phrase list).
+   Write a concrete reason that names *why* the issue is stale or invalid
+   (e.g. what replaced it), not a generic deferral.
 
 5. **If the user confirms to proceed**:
    - Invoke `rabbit-feature-touch` via its **default full seven-step TDD
@@ -225,16 +218,6 @@ and between rabbit and the GH API.
 ## Lifecycle
 
 GH issue state is binary; `state_reason` distinguishes the close path.
-
-```
-                +-- reason: completed   --> closed (the fix landed)
-                |
-   open  --close---+-- reason: not_planned --> closed (stale / invalid)
-     ^            |
-     |            +-- reason: null        --> closed (legacy / external)
-     |
-   reopen <--- closed
-```
 
 - `state` ∈ {`open`, `closed`}
 - `state_reason` ∈ {`completed`, `not_planned`, `null`}

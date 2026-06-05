@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.11.0
+version: 1.11.1
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -13,8 +13,7 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
 ## Purpose
 
 Wrap the `gh` CLI to provide rabbit's file / list / work / show operations
-against GitHub Issues. GitHub Issues is rabbit's issue store for bugs and
-enhancements; rabbit-issue owns the file / list / work / show surface over it.
+against GitHub Issues — rabbit's issue store for bugs and enhancements.
 
 ## Schema / Behavior
 
@@ -66,14 +65,11 @@ autonomous-evolve}`. Human provenance is expressed by OMITTING
 `--filed-by`, in which case no `filed-by:` label is stamped. Any explicit
 value outside the enum — including the literal `human` or any
 space-bearing/polluted value — is REJECTED with a clear error before any
-gh call. Validation guarantees only the two enum values plus the untagged
-human default ever reach the label set; malformed, space-bearing
-provenance values cannot enter the system.
+gh call.
 
 The label is additive — when present it does not change any of the other
-labels. Provenance keeps loop-performance metrics (self-discovery rate,
-discovery→fix ratio) answerable by querying the
-`filed-by:autonomous-evolve` label.
+labels. Provenance keeps loop-performance metrics answerable by querying
+the `filed-by:autonomous-evolve` label.
 
 ### Housekeeping label
 
@@ -86,13 +82,10 @@ step via the `--housekeeping` flag on `file-item.py`:
 | *(omit `--housekeeping`)* | none |
 | `--housekeeping` | `housekeeping` |
 
-The flag is a boolean switch: when passed, `file-item.py` adds the
-`housekeeping` label to the created issue's label set in the same
-`gh issue create` call; when omitted, no `housekeeping` label is stamped.
-The label is additive — it does not change any of the other labels. This
-gives the housekeeping-wave filing path a first-class, single-step way to
-tag a sub-issue, with no ad-hoc post-filing `gh issue edit --add-label`
-dance.
+When `--housekeeping` is passed, `file-item.py` adds the `housekeeping`
+label in the same `gh issue create` call; when omitted, no `housekeeping`
+label is stamped. The label is additive — it does not change any of the
+other labels.
 
 ### Safety invariant
 
@@ -100,9 +93,7 @@ dance.
 issues that are NOT **actionable** — an actionable issue is one carrying
 a valid `feature:<name>` label. A raw, hand-filed GitHub issue with no
 labels (or only stray labels) lacks a `feature:` label, so it is not
-actionable and stays out of rabbit's automation reach. This is the same
-actionability basis the queue itself uses to decide what is workable, so
-the guard and the queue agree on which issues are subject to automation.
+actionable and stays out of rabbit's automation reach.
 
 ### Lifecycle
 
@@ -186,9 +177,8 @@ the only sanctioned comment-read path.
   scope; if needed, file a separate issue.
 - **Cross-tracker abstractions** (Linear, Jira, etc.) — only `gh` is
   supported in v1.
-- **User-install plugin-mode backend** — the original framing for this
-  was scoped to user installs and is deferred until rabbit-self validates
-  the design. The install MVP does not ship `rabbit-issue` yet.
+- **User-install plugin-mode backend** — deferred until rabbit-self
+  validates the design; the install MVP does not ship `rabbit-issue` yet.
 - **The TDD cycle** — `rabbit-feature-touch` (in `rabbit-feature`)
   drives TDD; the Work Protocol invokes it via its default full
   seven-step TDD cycle (NOT the lightweight Override Path), passing the
