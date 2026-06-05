@@ -2,16 +2,18 @@
 """test-runtime-next-tick-eta.py — exercises the contract.lib.runtime
 _auto_evolve_next_tick_eta helper. The helper reads repo-root
 .claude/scheduled_tasks.json, locates the rabbit-auto-evolve heartbeat task,
-parses its 5-field cron minute/hour fields, and renders the next wall-clock
-fire at/after an INJECTED `now` as a jitter-inclusive RANGE
-"~HH:MM–HH:MM (scheduler jitter)" (or None on any
-absent/unreadable/unparseable/no-match condition). The range's LOW bound is
-the scheduled fire minute; the HIGH bound is that fire plus the bounded
-CronCreate scheduler jitter (up to 10% of the cadence period, capped at 15
-min, floored at 1 min), so the displayed window is honest and never reads
-EARLY. Determinism: `now` is always injected; the helper never reads the real
-clock. This mirrors the rabbit-auto-evolve banner-status.py range form so the
-SessionStart banner and the Stop line read consistently.
+parses its 5-field cron minute/hour fields, and renders the EXACT next
+wall-clock fire at/after an INJECTED `now` as the idle-gated boundary form
+"≥ HH:MM (fires when the session is next idle)" (or None on any
+absent/unreadable/unparseable/no-match condition). The displayed HH:MM is the
+deterministic next cron boundary — cron matches its exact minute, so there is
+no "scheduler jitter". The next-tick overshoot is the idle-gated DELIVERY wait
+(the CronCreate fallback fires a scheduled prompt only while the REPL is idle),
+so the tick fires AT or AFTER the boundary, never before — named honestly by
+the `≥` and the "(fires when the session is next idle)" qualifier.
+Determinism: `now` is always injected; the helper never reads the real clock.
+This mirrors the rabbit-auto-evolve banner-status.py boundary form byte-for-byte
+so the SessionStart banner and the Stop line read consistently.
 """
 
 import datetime
@@ -65,33 +67,30 @@ def check(cron, now, expected, label):
 
 D = datetime.datetime
 
-# All expected values are the jitter-inclusive RANGE form
-# "~HH:MM–HH:MM (scheduler jitter)" — LOW is the next scheduled fire at/after
-# now, HIGH is LOW + the bounded scheduler jitter (max(1, min(15,
-# ceil(period*0.10)))). Cadence periods below: 13,43 -> 30 min (jitter 3);
-# */15 -> 15 min (jitter 2); * -> 1 min (jitter 1); single fixed -> 60 (jitter
-# 6).
+# All expected values are the idle-gated boundary form
+# "≥ HH:MM (fires when the session is next idle)" — HH:MM is the EXACT next
+# cron fire at/after now (deterministic; no jitter range).
+Q = " (fires when the session is next idle)"
 
-# minute list, next slot within the same hour: period 30 -> jitter 3
-check("13,43 * * * *", D(2026, 6, 4, 14, 5), "~14:13–14:16 (scheduler jitter)", "list-before-first")
-check("13,43 * * * *", D(2026, 6, 4, 14, 20), "~14:43–14:46 (scheduler jitter)", "list-between")
+# minute list, next slot within the same hour
+check("13,43 * * * *", D(2026, 6, 4, 14, 5), "≥ 14:13" + Q, "list-before-first")
+check("13,43 * * * *", D(2026, 6, 4, 14, 20), "≥ 14:43" + Q, "list-between")
 # on-boundary now -> strictly-later slot
-check("13,43 * * * *", D(2026, 6, 4, 14, 13), "~14:43–14:46 (scheduler jitter)", "on-boundary")
+check("13,43 * * * *", D(2026, 6, 4, 14, 13), "≥ 14:43" + Q, "on-boundary")
 # wrap to next hour
-check("13,43 * * * *", D(2026, 6, 4, 14, 50), "~15:13–15:16 (scheduler jitter)", "wrap-next-hour")
+check("13,43 * * * *", D(2026, 6, 4, 14, 50), "≥ 15:13" + Q, "wrap-next-hour")
 # wrap across midnight
-check("13,43 * * * *", D(2026, 6, 4, 23, 50), "~00:13–00:16 (scheduler jitter)", "wrap-midnight")
-# upper bound itself wraps across the hour boundary (13,58 -> period 15 ->
-# jitter 2; next fire 14:58 + 2 -> 15:00)
-check("13,58 * * * *", D(2026, 6, 4, 14, 50), "~14:58–15:00 (scheduler jitter)", "upper-wrap-hour")
-# step form */15 -> 0,15,30,45: period 15 -> jitter 2
-check("*/15 * * * *", D(2026, 6, 4, 9, 7), "~09:15–09:17 (scheduler jitter)", "step-15")
-check("*/15 * * * *", D(2026, 6, 4, 9, 46), "~10:00–10:02 (scheduler jitter)", "step-15-wrap")
-# every minute: period 1 -> jitter 1
-check("* * * * *", D(2026, 6, 4, 9, 7), "~09:08–09:09 (scheduler jitter)", "every-minute")
-check("* * * * *", D(2026, 6, 4, 9, 59), "~10:00–10:01 (scheduler jitter)", "every-minute-wrap")
-# single fixed minute: period 60 -> jitter 6
-check("0 * * * *", D(2026, 6, 4, 9, 7), "~10:00–10:06 (scheduler jitter)", "single-minute")
+check("13,43 * * * *", D(2026, 6, 4, 23, 50), "≥ 00:13" + Q, "wrap-midnight")
+# late-hour fire minute, next slot same hour
+check("13,58 * * * *", D(2026, 6, 4, 14, 50), "≥ 14:58" + Q, "late-minute-same-hour")
+# step form */15 -> 0,15,30,45
+check("*/15 * * * *", D(2026, 6, 4, 9, 7), "≥ 09:15" + Q, "step-15")
+check("*/15 * * * *", D(2026, 6, 4, 9, 46), "≥ 10:00" + Q, "step-15-wrap")
+# every minute
+check("* * * * *", D(2026, 6, 4, 9, 7), "≥ 09:08" + Q, "every-minute")
+check("* * * * *", D(2026, 6, 4, 9, 59), "≥ 10:00" + Q, "every-minute-wrap")
+# single fixed minute
+check("0 * * * *", D(2026, 6, 4, 9, 7), "≥ 10:00" + Q, "single-minute")
 
 # --- None fallbacks ---
 with tempfile.TemporaryDirectory() as td:
