@@ -13,8 +13,8 @@ Exercises the per-feature config command /rabbit-cage-config (phase 3 of #733):
         does NOT redefine the interpreter (_apply_template / _validate).
   (vi)  the five owned configurables declare command == "rabbit-cage-config"
         (tdd-autonomous is relocated out of rabbit-cage per #733 phase 3).
-  (vii) /rabbit-config <sub> STILL mutates a rabbit-cage configurable
-        (coexistence preserved).
+  (vii) the retired central rabbit-config interpreter is absent — the
+        per-feature command is the sole config surface.
   (viii)the command frontmatter carries the six required keys and the manifest
         registers it.
   (ix)  FEATURE_INCLUDES / COMMANDS list the command + script + config_dispatch.py.
@@ -165,24 +165,11 @@ def main() -> int:
             else:
                 ko("unknown value unexpectedly exited 0")
 
-    # ---- coexistence: /rabbit-config STILL mutates rabbit-cage's 5 configurables.
-    if RABBIT_CONFIG.is_file():
-        with tempfile.TemporaryDirectory() as tmp:
-            _make_temp_repo(tmp)
-            override = Path(tmp) / ".rabbit-scope-override"
-            override.write_text("session")
-            # rabbit-config.py resolves repo_root from os.getcwd().
-            r = subprocess.run(
-                [sys.executable, str(RABBIT_CONFIG), "scope-guard", "on"],
-                capture_output=True, text=True, cwd=tmp,
-            )
-            if r.returncode == 0 and not override.exists():
-                ok("/rabbit-config scope-guard on still works (coexistence)")
-            else:
-                ko(f"/rabbit-config coexistence broken: rc={r.returncode} "
-                   f"exists={override.exists()} err={r.stderr}")
+    # ---- (vii) the central rabbit-config interpreter is retired: absent.
+    if not RABBIT_CONFIG.exists():
+        ok("central rabbit-config interpreter absent (retired)")
     else:
-        ko(f"rabbit-config interpreter missing (coexistence): {RABBIT_CONFIG}")
+        ko(f"central rabbit-config interpreter still present: {RABBIT_CONFIG}")
 
     # ---- declaration assertions on the live feature.json.
     data = json.loads(CAGE_FJ.read_text())
