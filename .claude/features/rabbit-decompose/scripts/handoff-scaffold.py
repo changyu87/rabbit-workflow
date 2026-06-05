@@ -10,8 +10,9 @@ cannot disagree and the model never hand-resolves an ambiguous `<repo>`.
 
 Responsibilities:
 
-  1. Resolve the rabbit root (from --rabbit-root, else the cwd-based git
-     toplevel) and DETECT MODE deterministically by REUSING the canonical
+  1. Resolve the rabbit root (from --rabbit-root, else the cwd, which in a
+     rabbit session IS the mode-correct rabbit root) and DETECT MODE
+     deterministically by REUSING the canonical
      resolver `rabbit-meta.lib.mode_detection.detect_mode` (lazy-imported,
      mirroring contract.lib.runtime.write_mode_marker). NOT a single
      hard-coded `<repo>/.rabbit/.runtime/mode` path read.
@@ -43,9 +44,10 @@ CLI:
 
   --features     path to a JSON array of accepted features:
                  [{"name": "<kebab>", "globs": ["..."]}, ...]
-  --rabbit-root  the rabbit root used for mode detection. Default: the
-                 cwd-based git toplevel. In plugin mode this is the vendored
-                 `.rabbit/` directory; in standalone mode the repo root.
+  --rabbit-root  the rabbit root used for mode detection. Default: the cwd,
+                 which in a rabbit session IS the mode-correct rabbit root —
+                 the vendored `.rabbit/` directory in plugin mode, the repo
+                 root in standalone mode.
   --plan-only    resolve mode + author the batch file (plugin) but do NOT
                  invoke the scaffolder; print the decision as JSON and exit 0.
                  Used by the SKILL body's dry-run and by the test.
@@ -73,7 +75,7 @@ Exit:
   1 scaffolder dispatch failed
   2 invocation error (bad args, unreadable/invalid features file)
 
-Version: 0.1.0
+Version: 0.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Step 4 scaffold hand-off is provided natively by
     the rabbit CLI, retiring this companion script.
@@ -135,16 +137,16 @@ def _resolve_scaffolder() -> "Path | None":
 
 
 def _default_rabbit_root() -> str:
-    """The cwd-based git toplevel; falls back to cwd when git is unavailable."""
-    try:
-        out = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, check=False,
-        )
-        if out.returncode == 0 and out.stdout.strip():
-            return out.stdout.strip()
-    except Exception:
-        pass
+    """The current working directory (#906).
+
+    In a rabbit session the cwd IS the mode-correct rabbit root: the vendored
+    `.rabbit/` install dir in plugin mode and the repo root in standalone
+    mode — exactly what `detect_mode` requires (it returns `plugin` only when
+    the rabbit-root's basename is `.rabbit`). The git toplevel is WRONG for a
+    plugin install: `.rabbit/` lives inside the user project's git repo, so
+    `git rev-parse --show-toplevel` returns the user-project root (the PARENT
+    of `.rabbit`), whose basename is not `.rabbit`, mis-classifying the plugin
+    install as `standalone`."""
     return os.getcwd()
 
 
