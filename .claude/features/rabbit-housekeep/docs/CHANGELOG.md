@@ -13,6 +13,26 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.4.0 (illustrative-example scanner exemption, issue #869):** Resolved a
+  self-flag: `scripts/check-script-backed.py`, run against rabbit-housekeep
+  itself, flagged three `runtime-placeholder` findings in the SKILL.md's OWN
+  example invocation bash blocks (the measure-reduction / check-script-backed
+  snippets carrying `<name>` slots). Those are illustrative snippets shown to
+  document how to invoke the scripts, not live orchestration steps the model
+  assembles at invocation time. Applied the preferred narrow scanner exemption:
+  the scan now skips any fenced bash block carrying an `<!-- example -->` marker
+  on the line directly above its opening fence. The exemption is NARROW — it
+  must sit on the immediately-preceding line, so an unmarked live step with a
+  placeholder STILL flags; it does not weaken detection of real orchestration
+  steps. Marked the three illustrative SKILL.md blocks accordingly, so a
+  self-scan now reports zero findings. Extended `test-check-script-backed.py`
+  with three cases (a marked example is skipped, a mixed file flags only the
+  unmarked live step, and the real SKILL.md self-scans clean) and refreshed the
+  `test-reduction-wave.py` doc-surface ceiling for the additive growth. Spec
+  invariant #7 and the check-script-backed.py section now document the marker.
+  The deployed `.claude/skills/` copy needs a dispatcher republish because the
+  source SKILL.md changed.
+
 - **v0.3.0 (script-backed-orchestration verify-or-flag dimension, issue
   #862):** Added a NEW verification DIMENSION enforcing the spec-rules §4
   Script-Backed Orchestration standard. New companion script

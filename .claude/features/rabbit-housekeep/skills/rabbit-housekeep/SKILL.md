@@ -1,7 +1,7 @@
 ---
 name: rabbit-housekeep
 description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole repo — in complexity-sized waves. Each wave proves-it-dead-or-flags every claim, measures before/after line counts, mandates ACTUAL removal (not rewording), and preserves named load-bearing tokens. Also enforces the spec-rules §4 Script-Backed Orchestration standard as a script-tier verify-or-flag dimension: it scans SKILL/agent/command bodies for non-script-backed orchestration steps and flags each. Cross-feature or repo-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or the repo, remove dead prose, scrub historical burden, check that orchestration is script-backed, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "run a reduction wave", "clean up dead prose", "check script-backed orchestration", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
-version: 0.3.0
+version: 0.4.0
 owner: rabbit-workflow team
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
 ---
@@ -126,8 +126,10 @@ repo-wide mandate:
 ### Step 3 — Measure BEFORE
 
 Snapshot the per-artifact line counts of the target with the measurement
-script (measurement is script-tier — deterministic, not judgment):
+script (measurement is script-tier — deterministic, not judgment). The
+`<name>` slot is the target feature name:
 
+<!-- example: illustrative invocation, not a live step -->
 ```bash
 python3 .claude/features/rabbit-housekeep/scripts/measure-reduction.py \
   count .claude/features/<name> > /tmp/housekeep-<name>-before.json
@@ -154,8 +156,10 @@ fold load-bearing parentheticals into clauses. History belongs in
 
 This is a SECOND verify-or-flag DIMENSION on the same target, enforcing the
 spec-rules §4 Script-Backed Orchestration standard embedded verbatim above.
-Detection is SCRIPT-tier (the check enforces the same tier it embodies):
+Detection is SCRIPT-tier (the check enforces the same tier it embodies). The
+`<name>` slot is the target feature name:
 
+<!-- example: illustrative invocation, not a live step -->
 ```bash
 python3 .claude/features/rabbit-housekeep/scripts/check-script-backed.py \
   scan .claude/features/<name>
@@ -195,8 +199,9 @@ The housekeeping test the TDD subagent authors MUST assert BOTH:
 
 ### Step 7 — Measure AFTER and report
 
-Snapshot again and diff:
+Snapshot again and diff. The `<name>` slot is the target feature name:
 
+<!-- example: illustrative invocation, not a live step -->
 ```bash
 python3 .claude/features/rabbit-housekeep/scripts/measure-reduction.py \
   count .claude/features/<name> > /tmp/housekeep-<name>-after.json
