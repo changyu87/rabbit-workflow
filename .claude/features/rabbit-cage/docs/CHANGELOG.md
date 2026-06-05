@@ -12,6 +12,24 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.61.0 (fix #848: install.sh + install.py default ref resolves latest release dynamically):**
+  Fresh `curl … install.sh | bash` installs were frozen at the hardcoded
+  `RABBIT_REF=v1.14.14` default while GitHub's latest release had advanced to
+  v9.0.26 — the release process never bumped the install.sh/install.py default.
+  Reworked Inv 26 and Inv 27 so the DEFAULT path (no explicit `RABBIT_REF`/CLI
+  ref) resolves GitHub's latest published release dynamically — install.sh via a
+  `curl` query to `releases/latest`, install.py by reusing the contract-owned
+  `fetch_upstream_version` (the same logic the update-check and `/rabbit-update`
+  use). An explicit `RABBIT_REF` (or `--version`/`--ref`/`--channel dev`) still
+  short-circuits the lookup verbatim; only the default became dynamic. When the
+  latest-release lookup fails (offline / API outage), both installers degrade
+  gracefully to a hardcoded last-known-good tag (`RABBIT_FALLBACK_REF` /
+  `HARDCODED_STABLE_DEFAULT`, now `v9.0.26`, kept in lock-step and never `dev`)
+  with a clear stderr line. README reconciled to describe the dynamic mechanism.
+  New tests `test-install-sh-resolves-latest-release.py` and
+  `test-install-py-resolves-latest-release.py`; the former default-ref pins
+  repurposed to guard the offline fallback.
+
 - **v5.60.0 (measured reduction: cut dead `/rabbit-config` coexistence prose):**
   The rabbit-config feature is retired, so every spec/contract/README claim that
   the central `/rabbit-config` surface is "still live" or "coexisting" is now

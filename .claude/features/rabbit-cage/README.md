@@ -37,7 +37,7 @@ Rabbit installs as a vendored `.rabbit/` directory committed to your project. No
 
 ### Install
 
-The one-liner fetches the latest stable release and runs `install.py --src ... --target .rabbit`:
+The one-liner fetches the latest published release and runs `install.py --src ... --target .rabbit`:
 
 ```bash
 cd /path/to/your/project
@@ -47,7 +47,10 @@ curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/instal
 The pipe to `bash` is explicit — this works from any shell including csh and tcsh.
 
 The `install.sh` bootstrap is fetched from `dev` (small, stable shell wrapper);
-the install itself lands on the current stable release channel (`release/1.0`).
+the install itself resolves GitHub's latest release dynamically — `install.sh`
+queries the `releases/latest` API and installs that tag, so first-install tracks
+the latest release with no per-release bump. If the lookup is unavailable
+(offline / API outage) it falls back to a hardcoded last-known-good release tag.
 
 If you prefer to download first:
 
@@ -115,9 +118,11 @@ git commit -m "chore(rabbit): update to latest"
 
 ### Pin to a specific version
 
+Setting `RABBIT_REF` short-circuits the dynamic latest-release lookup and installs the exact ref you name:
+
 ```bash
+RABBIT_REF=v9.0.26     curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
 RABBIT_REF=release/1.0 curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
-RABBIT_REF=v1.0.0      curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
 ```
 
 `RABBIT_REF` accepts any branch, tag, or commit SHA. `RABBIT_REPO` overrides the default repo.
@@ -128,7 +133,7 @@ RABBIT_REF=v1.0.0      curl -sSL https://raw.githubusercontent.com/changyu87/rab
 RABBIT_REF=dev curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
 ```
 
-The default install targets the latest stable release channel; `dev` is opt-in only.
+The default install resolves GitHub's latest release dynamically; `dev` is opt-in only.
 
 ---
 

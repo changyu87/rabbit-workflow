@@ -32,7 +32,7 @@ This module has two distinct roles:
      This helper is NOT invoked from main() — main() lays down an explicit
      file closure rather than running the publish flow at install time.
 
-Version: 6.5.0
+Version: 6.6.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit's per-project plugin model is superseded
 """
@@ -40,6 +40,7 @@ Deprecation criterion: when rabbit's per-project plugin model is superseded
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import shutil
@@ -49,12 +50,13 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-# Inv 27: hardcoded stable-release default for --update self-fetch when neither
-# --version/--ref CLI flag, --channel dev, nor RABBIT_REF env var is supplied.
-# MUST match install.sh's RABBIT_REF="${RABBIT_REF:-…}" default — single source
-# of truth, bumped together each release cut. The literal value "dev" is
-# FORBIDDEN here (enforced by test-install-py-default-ref-not-dev.py).
-HARDCODED_STABLE_DEFAULT = "v1.14.14"
+# Inv 26/27 (amended #848): the default --update self-fetch ref is now resolved
+# DYNAMICALLY from GitHub's latest published release (see resolve_latest_release
+# below). HARDCODED_STABLE_DEFAULT is the OFFLINE FALLBACK — used only when the
+# latest-release lookup fails (network/offline, API outage). MUST byte-equal
+# install.sh's RABBIT_FALLBACK_REF (single source of truth). The literal value
+# "dev" is FORBIDDEN here (enforced by test-install-py-default-ref-not-dev.py).
+HARDCODED_STABLE_DEFAULT = "v9.0.26"
 
 # Inv 22h: env-var infinite-loop guard for the --update self-exec branch. The
 # OLD process sets this to "1" before os.execv; the NEW process (started by
@@ -336,6 +338,54 @@ def fetch_upstream(repo: str, ref: str, dest: Path) -> Path:
     )
 
 
+def resolve_latest_release(repo: str) -> str | None:
+    """Inv 26/27 (#848): resolve the latest published release's tag_name.
+
+    Reuses the contract-owned `fetch_upstream_version` (the SAME logic the
+    update-check and /rabbit-update use) by importing
+    `.claude/features/contract/scripts/check-release-update.py`. Returns the
+    tag string on success, or None on ANY failure (missing contract script,
+    network/offline, API outage, empty tag) so the caller can fall back to the
+    hardcoded offline default. For deterministic testing the resolved tag may
+    be injected via the RABBIT_UPDATE_TEST_LATEST env var (mirrors
+    /rabbit-update check), bypassing the network fetch.
+    """
+    injected = os.environ.get("RABBIT_UPDATE_TEST_LATEST")
+    if injected is not None:
+        tag = injected.strip()
+        return tag or None
+
+    # Locate the running install.py's repo/install root, then the contract
+    # release-check helper relative to it. The running install.py lives at
+    # either <root>/install.py (deployed) or <root>/.claude/features/rabbit-cage/
+    # install.py (source); probe both candidate roots.
+    here = Path(__file__).resolve()
+    candidates = [here.parent]                       # <root>/install.py
+    if len(here.parents) >= 4:
+        candidates.append(here.parents[3])           # source layout root
+    cru_path = None
+    for root in candidates:
+        p = root / ".claude/features/contract/scripts/check-release-update.py"
+        if p.is_file():
+            cru_path = p
+            break
+    if cru_path is None:
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "install_check_release_update", str(cru_path))
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        tag = module.fetch_upstream_version(repo, "")
+    except Exception:  # noqa: BLE001 — never block install on a resolution error
+        return None
+    if not isinstance(tag, str) or not tag.strip():
+        return None
+    return tag.strip()
+
+
 def run_publish_loop(target_root: str) -> int:
     """Dev-test helper: enumerate every <target_root>/.claude/features/*/feature.json
     and invoke each MANIFEST API via contract.lib.publish. Continues past
@@ -436,7 +486,8 @@ def main() -> int:
                         help="refresh an existing install in place (Inv 22)")
     # Inv 27: shell-agnostic ref-selection flags for --update self-fetch.
     # Precedence (highest wins): --version/--ref > --channel dev > RABBIT_REF env
-    # > HARDCODED_STABLE_DEFAULT. Never silent 'dev'.
+    # > dynamic latest-release lookup > HARDCODED_STABLE_DEFAULT offline
+    # fallback. Never silent 'dev'.
     parser.add_argument("--version", default=None,
                         help="upstream ref to install (branch, tag, or SHA); shell-agnostic alternative to RABBIT_REF env var")
     parser.add_argument("--ref", default=None,
@@ -469,7 +520,10 @@ def main() -> int:
         # Inv 22g (a): self-fetch when --update is set and --src is omitted.
         if args.update and args.src is None:
             repo = os.environ.get("RABBIT_REPO", "changyu87/rabbit-workflow")
-            # Inv 27 precedence ladder. NEVER silent 'dev'.
+            # Inv 26/27 precedence ladder. NEVER silent 'dev'. The default
+            # (no explicit flag/env) resolves the latest published release
+            # DYNAMICALLY, falling back to the hardcoded offline default only
+            # when resolution fails (#848).
             if args.version is not None:
                 ref = args.version
             elif args.ref is not None:
@@ -479,7 +533,14 @@ def main() -> int:
             elif "RABBIT_REF" in os.environ:
                 ref = os.environ["RABBIT_REF"]
             else:
-                ref = HARDCODED_STABLE_DEFAULT
+                ref = resolve_latest_release(repo)
+                if ref is None:
+                    ref = HARDCODED_STABLE_DEFAULT
+                    print(
+                        f"warning: could not resolve latest release; "
+                        f"falling back to {HARDCODED_STABLE_DEFAULT}",
+                        file=sys.stderr,
+                    )
             url = f"https://github.com/{repo}/archive/{ref}.tar.gz"
             try:
                 fetched = fetch_upstream(repo, ref, Path(fetch_tmp.name))

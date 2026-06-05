@@ -92,8 +92,12 @@ COLLAPSE_MAX = 1
 # `/rabbit-config` coexistence prose from Inv 7, Inv 31, Inv 40, Inv 40c,
 # and Out of Scope. The cuts are inline-sentence removals inside wrapped
 # paragraphs, so the honest line delta is 4 — no load-bearing prose was
-# force-cut to chase a larger number.
-SPEC_LINE_CEILING = 515
+# force-cut to chase a larger number. Raised 515 -> 525 by #848, which reworked
+# Inv 26 + Inv 27 to make the install default ref resolve GitHub's latest
+# release dynamically (with an offline fallback) — a real spec addition
+# documenting the new resolution ladder + graceful-degradation contract, not
+# reword re-inflation.
+SPEC_LINE_CEILING = 525
 
 PASS = 0
 FAIL = 0

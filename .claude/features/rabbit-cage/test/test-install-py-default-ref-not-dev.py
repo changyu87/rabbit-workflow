@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """rabbit-cage regression — install.py HARDCODED_STABLE_DEFAULT MUST be a stable channel.
 
-Bug #286 / spec Inv 27 (amended #307): install.py's hardcoded default upstream
-ref MUST match a stable release branch — either 3-field
-`release/[0-9]+\\.[0-9]+\\.[0-9]+` (preferred, post-#307) or legacy 2-field
-`release/[0-9]+\\.[0-9]+` (retained for backwards compat with release/1.0-1.10)
-— or a semver tag (`v[0-9]+\\.[0-9]+\\.[0-9]+`). The literal value `dev` is
-FORBIDDEN as the default.
-
-Mirror of test-install-sh-default-ref-not-dev.py but pinned at install.py — the
-Python installer must NOT silently land plugin users on bleeding-edge dev.
+Bug #286 / spec Inv 27 (amended #307, #848): install.py's HARDCODED_STABLE_DEFAULT
+is the OFFLINE FALLBACK ref used when the dynamic latest-release lookup fails
+(#848 made the default path resolve latest dynamically). The fallback literal
+MUST still match a stable release channel — either 3-field
+`release/[0-9]+\\.[0-9]+\\.[0-9]+`, legacy 2-field `release/[0-9]+\\.[0-9]+`,
+or a semver tag (`v[0-9]+\\.[0-9]+\\.[0-9]+`). The literal value `dev` is
+FORBIDDEN as the fallback — a failed lookup must never silently land plugin
+users on bleeding-edge dev.
 """
 from __future__ import annotations
 
