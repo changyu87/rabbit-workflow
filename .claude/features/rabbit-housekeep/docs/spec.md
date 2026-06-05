@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.2.0
+version: 0.2.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -115,8 +115,10 @@ Exit `0` success, `2` invocation error. The reduction verdict is the
 
 6. `docs/contract.md` MUST exist with proper frontmatter and a JSON block
    declaring the cross-feature relationships: `invokes` names the TDD subagent
-   dispatch (rabbit-feature-touch / tdd-subagent), the rabbit-issue filing
-   script `file-item.py`, and the rabbit-auto-evolve parent-close machinery;
+   dispatch (rabbit-feature-touch / tdd-subagent), the rabbit-decompose
+   decomposition-shape reuse, the rabbit-issue filing script `file-item.py`,
+   and the rabbit-auto-evolve parent-close machinery — every reuse declared in
+   the machine-readable `invokes` block, never in trailing prose only;
    `provides` names the skill and the measurement script; `never` includes
    editing files outside the target feature's directory and rewording without
    measured removal.
