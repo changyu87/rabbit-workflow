@@ -1,7 +1,7 @@
 ---
 name: rabbit-decompose
 description: Propose a feature decomposition for an existing codebase or a high-level spec, interactively iterate with the user until accepted, then orchestrate scaffolding + initial spec drafting per accepted feature. Use when the user wants to start a new rabbit-managed project from a spec/prompt, or when the user wants to retroactively organize an existing codebase into rabbit features. Phrases like "decompose this into features", "propose a feature breakdown", "let's organize this codebase with rabbit", "/rabbit-decompose", "what features should this project have". Do NOT use to revise individual feature specs (that's rabbit-spec-update) or to scaffold a single feature whose name + globs you already know (that's rabbit-feature-scaffold).
-version: 0.6.0
+version: 0.7.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
 ---
@@ -30,7 +30,14 @@ When unclear, ask the user one focused question to disambiguate. Do not guess.
 Confirm the scenario and source material with the user. Two cases:
 
 - **Greenfield**: the source is a spec, design doc, or natural-language description. The decomposition produces a feature list with names + purposes; globs MAY be empty (features will be authored from scratch).
-- **Existing codebase**: the source is a directory under the repo root. The decomposition produces a feature list with names + purposes + path globs (each feature owns a slice of the existing code).
+- **Existing codebase**: the source is a directory under the project root. The decomposition produces a feature list with names + purposes + path globs (each feature owns a slice of the existing code).
+
+**Where the source lives — resolve it, do not guess.** When the user does not give an explicit source path (e.g. a no-args existing-codebase run), the decomposition SOURCE ROOT is resolved by the canonical resolver `scripts/handoff-scaffold.py`, the same resolver Step 4 uses — so Step 1 and Step 4 cannot disagree. It detects mode via `rabbit-meta`'s `detect_mode` and returns the source root: in **plugin mode** the source root is the **parent of the `.rabbit` install** (the rabbit-root is the vendored `.rabbit/` tooling dir, so the project to decompose is its parent — never the `.rabbit/` workflow tooling itself); in **standalone mode** it is the repo root. Run the resolver and confirm the resolved `source_root` with the user before pointing Glob/Read at it:
+
+<!-- example -->
+```bash
+python3 .claude/features/rabbit-decompose/scripts/handoff-scaffold.py --source-root
+```
 
 ### Step 2 — Analyze and propose
 
