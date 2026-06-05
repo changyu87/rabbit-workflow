@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.3.0
+version: 0.4.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -122,7 +122,10 @@ Deterministic, stdlib-only (full interface in the script docstring):
   `line` (1-based start of the offending block), `reason` (one of
   `runtime-placeholder`, `computed-value`, `mode-aware-branching`), and
   `snippet`. Read-only informational commands and trivial one-liners are
-  excluded.
+  excluded, as is any block carrying an `<!-- example -->` marker on the line
+  directly above its opening fence — a non-executable illustrative snippet that
+  documents how to invoke a script, not a live step. The marker is NARROW: an
+  unmarked live step with a placeholder STILL flags.
 
 Exit `0` when the scan ran (regardless of whether findings were emitted), `2`
 on invocation error (missing/bad feature-dir). The verdict is the `count`
@@ -171,9 +174,12 @@ field — the script reports, the caller's verify-or-flag disposition acts.
    that violates spec-rules §4 Script-Backed Orchestration: a bash block with
    runtime placeholders, or a computed-value / mode-aware-branching step held
    as prose or inline bash instead of a companion `scripts/` invocation. It
-   MUST NOT flag read-only informational commands or trivial one-liners (the
-   §4 read-only-informational exception). Output reports a `findings` list and
-   a `count`; exit `2` on invocation error.
+   MUST NOT flag read-only informational commands, trivial one-liners (the
+   §4 read-only-informational exception), or blocks explicitly marked
+   illustrative via an `<!-- example -->` marker directly above the fence; that
+   marker MUST stay NARROW so an unmarked live step with a placeholder still
+   flags. Output reports a `findings` list and a `count`; exit `2` on
+   invocation error.
 
 8. The SKILL.md MUST embed spec-rules.md §4 Script-Backed Orchestration text
    VERBATIM (byte-for-byte, not paraphrased), delimited by explicit BEGIN/END
@@ -199,9 +205,10 @@ field — the script reports, the caller's verify-or-flag disposition acts.
 - `test-check-script-backed.py` — E2E driving `scan` against fixture feature
   trees: a SKILL.md with a runtime-placeholder bash block is flagged, a
   computed-value / mode-aware-branching prose step is flagged, a read-only
-  informational one-liner and a script-backed invocation are NOT flagged,
-  agents/*.md and commands/*.md bodies are scanned, and invocation error
-  exits `2`.
+  informational one-liner and a script-backed invocation are NOT flagged, a
+  block marked illustrative via `<!-- example -->` is skipped while an unmarked
+  live step with a placeholder STILL flags, agents/*.md and commands/*.md
+  bodies are scanned, and invocation error exits `2`.
 
 ## Out of Scope
 

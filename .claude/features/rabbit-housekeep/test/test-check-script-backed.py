@@ -26,10 +26,19 @@ Behaviours covered:
   t6: a clean feature (no offending blocks) yields count == 0, findings == [],
       exit 0.
   t7: invocation error (missing subcommand / nonexistent feature-dir) exits 2.
+  t8: a fenced bash block EXPLICITLY MARKED as a non-executable illustrative
+      example (an `<!-- example -->` marker on the line directly above the
+      opening fence) is SKIPPED even when it carries a runtime placeholder —
+      illustrative invocation snippets do not self-flag.
+  t9: the marker is NARROW: in a file mixing one marked example block with one
+      UNMARKED live orchestration step that carries a placeholder, only the
+      UNMARKED step is flagged. A live step with a placeholder STILL flags.
+  t10: the real rabbit-housekeep SKILL.md (its own example invocation blocks
+      marked illustrative) self-scans with ZERO findings.
 
 Non-interactive. Exits non-zero on failure.
 
-Version: 0.3.0
+Version: 0.4.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-housekeep is retired.
 """
@@ -151,6 +160,46 @@ python3 .claude/features/feat/scripts/orchestrate.py run
 ```
 """
 
+# A marked illustrative example: documents HOW to invoke a script, not a live
+# orchestration step the model assembles. The `<!-- example -->` marker on the
+# line directly above the opening fence exempts it.
+MARKED_EXAMPLE_BODY = """---
+name: feat
+---
+
+# feat
+
+Here is how you would invoke the touch (illustrative only):
+
+<!-- example -->
+```bash
+python3 scripts/touch.py --feature <feature-name>
+```
+"""
+
+# A file mixing a marked illustrative example (with a placeholder) and an
+# UNMARKED live orchestration step (also with a placeholder). Only the unmarked
+# live step must flag — the marker must NOT weaken real detection.
+MIXED_MARKER_BODY = """---
+name: feat
+---
+
+# feat
+
+Example invocation (illustrative, not a live step):
+
+<!-- example -->
+```bash
+python3 scripts/touch.py --feature <feature-name>
+```
+
+Now run the live step:
+
+```bash
+git checkout -B feat/<branch-name> origin/dev
+```
+"""
+
 
 # t0
 if not (os.path.isfile(SCRIPT) and os.access(SCRIPT, os.X_OK)):
@@ -249,6 +298,42 @@ if r1.returncode == 2 and r2.returncode == 2 and r3.returncode == 2:
     ok("t7", "invocation errors exit 2")
 else:
     fail("t7", f"expected exit 2; got {r1.returncode}, {r2.returncode}, {r3.returncode}")
+
+# t8: a marked illustrative example with a placeholder is SKIPPED
+with tempfile.TemporaryDirectory() as tmp:
+    feat = make_feature(tmp, skill_body=MARKED_EXAMPLE_BODY)
+    r = run("scan", feat)
+    data = json.loads(r.stdout)
+    if r.returncode == 0 and data.get("count") == 0 and data.get("findings") == []:
+        ok("t8", "marked illustrative example block is skipped (not flagged)")
+    else:
+        fail("t8", f"expected zero findings for marked example; rc={r.returncode}; data={data}")
+
+# t9: marker is NARROW — only the unmarked live step flags
+with tempfile.TemporaryDirectory() as tmp:
+    feat = make_feature(tmp, skill_body=MIXED_MARKER_BODY)
+    r = run("scan", feat)
+    data = json.loads(r.stdout)
+    findings = data.get("findings", [])
+    only_live = (
+        data.get("count") == 1
+        and len(findings) == 1
+        and findings[0]["reason"] == "runtime-placeholder"
+        and "<branch-name>" in findings[0]["snippet"]
+    )
+    if r.returncode == 0 and only_live:
+        ok("t9", "marker is narrow: unmarked live step with placeholder STILL flags")
+    else:
+        fail("t9", f"expected exactly one finding (the live step); rc={r.returncode}; data={data}")
+
+# t10: the real rabbit-housekeep SKILL.md self-scans with ZERO findings
+REAL_FEATURE_DIR = FEATURE_DIR
+r = run("scan", REAL_FEATURE_DIR)
+data = json.loads(r.stdout)
+if r.returncode == 0 and data.get("count") == 0 and data.get("findings") == []:
+    ok("t10", "real rabbit-housekeep SKILL.md self-scans with zero findings")
+else:
+    fail("t10", f"expected zero self-findings; rc={r.returncode}; data={data}")
 
 print()
 print(f"Results: {PASS} passed, {FAIL} failed")

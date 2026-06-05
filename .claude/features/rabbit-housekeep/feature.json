@@ -1,6 +1,6 @@
 {
   "name": "rabbit-housekeep",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "housekeeping_clean": true,
@@ -31,5 +31,5 @@
   "runtime": {},
   "configuration": [],
   "prompts": [],
-  "updated": "2026-06-05"
+  "updated": "2026-06-04"
 }

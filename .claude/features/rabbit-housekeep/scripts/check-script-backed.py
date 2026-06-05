@@ -24,6 +24,13 @@ EXCEPTION (§4 read-only-informational): a block that does none of the above —
 e.g. a read-only informational command `git log --oneline -5`, or a trivial
 one-liner that simply invokes a companion `scripts/*.py` — is NOT flagged.
 
+EXCEPTION (illustrative example): a block carrying an `<!-- example -->` marker
+on the line DIRECTLY ABOVE its opening fence is a NON-EXECUTABLE illustrative
+snippet — it documents HOW to invoke a script, not a live orchestration step
+the model assembles at invocation time — and is NOT flagged. The marker is
+NARROW: it must sit on the immediately-preceding line, so an unmarked live step
+that carries a placeholder STILL flags.
+
 Subcommand:
 
   scan <feature-dir>
@@ -47,7 +54,7 @@ Exit:
   0 scan ran (whether or not findings were emitted)
   2 invocation error (missing subcommand, missing/bad feature-dir)
 
-Version: 0.3.0
+Version: 0.4.0
 Owner: rabbit-workflow team
 Deprecation criterion: when script-backed-orchestration linting is provided
     natively by the rabbit CLI as a housekeeping subcommand.
@@ -80,6 +87,26 @@ _BACKTICK = re.compile(r"`[^`]+`")
 _FENCE = re.compile(
     r"(?ms)^```(?:bash|sh|shell)[^\n]*\n(.*?)^```",
 )
+
+# An illustrative-example marker: an HTML comment whose body begins with the
+# word `example` (case-insensitive), placed on the line DIRECTLY ABOVE the
+# opening fence. It exempts a NON-EXECUTABLE illustrative snippet — a block
+# shown to document HOW to invoke a script, not a live orchestration step the
+# model assembles at invocation time. The marker is NARROW: it must sit on the
+# immediately-preceding line, so an unmarked live step still flags. It does NOT
+# weaken detection of real orchestration steps — only blocks the author
+# explicitly annotates as illustrative are skipped.
+_EXAMPLE_MARKER = re.compile(r"(?i)^<!--\s*example\b[^>]*-->\s*$")
+
+
+def _is_marked_example(text: str, fence_start: int) -> bool:
+    """True iff an `<!-- example -->` marker sits on the line directly above
+    the opening fence at offset `fence_start`."""
+    preceding = text[:fence_start].rstrip("\n")
+    if not preceding:
+        return False
+    prev_line = preceding.rsplit("\n", 1)[-1].strip()
+    return bool(_EXAMPLE_MARKER.match(prev_line))
 
 
 def _first_matching_line(block: str, pattern: re.Pattern) -> str:
@@ -117,6 +144,10 @@ def _scan_file(path: str):
     with open(path, encoding="utf-8") as f:
         text = f.read()
     for m in _FENCE.finditer(text):
+        # An explicitly-marked illustrative example is non-executable
+        # documentation, not a live orchestration step — skip it.
+        if _is_marked_example(text, m.start()):
+            continue
         block = m.group(1)
         verdict = _classify(block)
         if verdict is None:
