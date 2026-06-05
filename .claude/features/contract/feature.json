@@ -1,14 +1,14 @@
 {
   "name": "contract",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
   "tdd_state": "test-green",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "deprecation_criterion": "when Claude Code exposes a native mechanism that supersedes contract's governance surface \u2014 the cross-feature contract gate, version-lockstep, invariant numbering, and schema/template ownership \u2014 not merely when a native orchestration/workflow primitive exists",
-  "updated": "2026-06-05",
-  "tdd_last_cycle_impl_commit": "52204af72d2fa7913a67866b18470bcf73895cb4",
+  "updated": "2026-06-04",
+  "tdd_last_cycle_impl_commit": "92a3dc724d809be5e16135da41da2d67a8f2f696",
   "manifest": [],
   "runtime": {},
   "configuration": []

@@ -16,7 +16,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.11.0
+Version: 1.12.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -830,7 +830,87 @@ def _auto_evolve_ever_started(repo_root: str) -> bool:
         os.path.join(repo_root, ".rabbit", "auto-evolve-state.json"))
 
 
-def emit_auto_evolve_stop_line(*, repo_root: str) -> list:
+def _parse_cron_minutes(field: str) -> set:
+    """Parse a crontab MINUTE field into the set of minutes (0..59) it fires
+    on. Supports the cadence forms the heartbeat actually uses: ``*`` (every
+    minute), comma lists (``13,43``), and step expressions (``*/15``).
+    Returns an empty set for any minute it cannot parse (caller treats empty
+    as "no parseable cron")."""
+    field = field.strip()
+    if field == "*":
+        return set(range(60))
+    if field.startswith("*/"):
+        try:
+            step = int(field[2:])
+        except ValueError:
+            return set()
+        if step <= 0:
+            return set()
+        return set(range(0, 60, step))
+    minutes = set()
+    for part in field.split(","):
+        part = part.strip()
+        if not part.isdigit():
+            return set()
+        m = int(part)
+        if not 0 <= m <= 59:
+            return set()
+        minutes.add(m)
+    return minutes
+
+
+def _auto_evolve_next_tick_eta(repo_root: str, now) -> str:
+    """Compute the approximate next rabbit-auto-evolve heartbeat fire as a
+    ``"~HH:MM"`` string, at or strictly after the injected ``now`` datetime.
+
+    Reads the durable heartbeat cadence from
+    ``<repo_root>/.claude/scheduled_tasks.json`` — the ``tasks[]`` entry whose
+    ``prompt`` references ``rabbit-auto-evolve``. Only the cron MINUTE field is
+    matched against an unrestricted (``*``) HOUR, which is the cadence shape
+    the heartbeat uses (``13,43 * * * *``); the result is the next wall-clock
+    minute in that minute-set, wrapping to the next hour (and across midnight)
+    as needed.
+
+    Returns ``None`` on any of: missing file, unreadable file, JSON parse
+    error, no matching task, or no parseable cron minutes — so the caller
+    degrades to the bare idle line rather than rendering a fabricated ETA.
+    The ETA is APPROXIMATE (``~``): the scheduled fire, not a guarantee.
+    """
+    path = os.path.join(repo_root, ".claude", "scheduled_tasks.json")
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    cron = None
+    for task in data.get("tasks", []) or []:
+        if not isinstance(task, dict):
+            continue
+        if "rabbit-auto-evolve" in str(task.get("prompt", "")):
+            cron = task.get("cron")
+            break
+    if not isinstance(cron, str):
+        return None
+    parts = cron.split()
+    if len(parts) < 1:
+        return None
+    minutes = _parse_cron_minutes(parts[0])
+    if not minutes:
+        return None
+    # Walk forward minute-by-minute from now+1 until a fire minute is hit.
+    # Bounded by 24h (1440 minutes) — always terminates since minutes is
+    # non-empty and the hour field is treated as unrestricted.
+    candidate = now.replace(second=0, microsecond=0) + datetime.timedelta(minutes=1)
+    for _ in range(1440):
+        if candidate.minute in minutes:
+            return candidate.strftime("~%H:%M")
+        candidate += datetime.timedelta(minutes=1)
+    return None
+
+
+def emit_auto_evolve_stop_line(*, repo_root: str, now=None) -> list:
     """Inv 55 — composite Stop-hook line for rabbit-auto-evolve.
 
     Returns [] only when .rabbit-auto-evolve-active is absent (the marker
@@ -841,6 +921,14 @@ def emit_auto_evolve_stop_line(*, repo_root: str) -> list:
     loop has never been started (.rabbit/auto-evolve-state.json absent) or
     the steady active/idle line when it has (active loop between ticks),
     symmetric with emit_auto_evolve_banner.
+
+    Only the steady idle line is extended with an approximate next-tick ETA
+    ("auto-evolve loop active — idle, next tick ~HH:MM") when the heartbeat
+    cadence at .claude/scheduled_tasks.json is present and parseable; it
+    degrades to the bare idle text otherwise. The `now` argument is the
+    injected wall-clock used solely for that ETA (default None -> real
+    clock); it changes no marker/state-file logic. The four priority-marker
+    lines and the restart-pending line never carry an ETA.
     """
     if not _auto_evolve_active(repo_root):
         return []
@@ -848,7 +936,14 @@ def emit_auto_evolve_stop_line(*, repo_root: str) -> list:
         if os.path.isfile(os.path.join(repo_root, path)):
             return [print_result(text=text, icon=icon, color=color)]
     if _auto_evolve_ever_started(repo_root):
-        text, icon, color = _AUTO_EVOLVE_STOP_LINE_IDLE
+        _, icon, color = _AUTO_EVOLVE_STOP_LINE_IDLE
+        if now is None:
+            now = datetime.datetime.now()
+        eta = _auto_evolve_next_tick_eta(repo_root, now)
+        if eta is not None:
+            text = f"auto-evolve loop active — idle, next tick {eta}"
+        else:
+            text = _AUTO_EVOLVE_STOP_LINE_IDLE[0]
     else:
         text, icon, color = _AUTO_EVOLVE_STOP_LINE_RESTART_PENDING
     return [print_result(text=text, icon=icon, color=color)]
