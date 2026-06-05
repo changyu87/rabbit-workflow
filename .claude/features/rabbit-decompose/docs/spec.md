@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.7.0
+version: 0.7.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -139,6 +139,22 @@ constrains only the structural shape.
    and MUST NOT hand-resolve an ambiguous `<repo>` source root in a live
    (non-`<!-- example -->`) bash block.
 
+7. The default rabbit-root used for mode detection (when `--rabbit-root`
+   is not supplied) MUST be the current working directory
+   (`os.getcwd()`), NOT the git toplevel. In a rabbit session the cwd IS
+   the mode-correct rabbit root: the vendored `.rabbit/` install dir in
+   plugin mode and the repo root in standalone mode — exactly what
+   `detect_mode` requires (it returns `plugin` only when the rabbit-root's
+   basename is `.rabbit`). The git toplevel is WRONG for a plugin install:
+   `.rabbit/` lives inside the user project's git repo, so
+   `git rev-parse --show-toplevel` returns the user-project root (the
+   PARENT of `.rabbit`), whose basename is not `.rabbit`, causing
+   `detect_mode` to mis-classify the plugin install as `standalone` and the
+   scaffolder to take the wrong (per-feature instead of plugin `--batch`)
+   branch. The `SKILL.md` Step 1 and Step 4 bash blocks invoke the
+   resolver WITHOUT `--rabbit-root`, relying on this corrected default, so
+   they MUST resolve the mode-correct root from the cwd.
+
 ## Tests
 
 `test/run.py` invokes every `test-*.py` file under `test/`. Current
@@ -173,6 +189,14 @@ coverage:
   plan JSON carries the same `source_root`, and that the `SKILL.md` Step 1 body
   references the canonical resolver and no longer hand-resolves an ambiguous
   `<repo>` source root in a live bash block).
+- `test-default-rabbit-root.py` (E2E — asserts Invariant 7: the default
+  rabbit-root resolver returns the cwd; running `handoff-scaffold.py
+  --source-root` WITHOUT `--rabbit-root` from a simulated plugin cwd
+  (`.../.rabbit` inside a git repo) detects `plugin` and the batch branch,
+  and from a repo root detects `standalone`; the corrected default keeps the
+  `source_root` resolution correct (plugin → parent-of-`.rabbit`); and
+  the `SKILL.md` Step 1 and Step 4 bash blocks invoke the resolver without a
+  `--rabbit-root` flag, relying on the cwd default).
 
 ## Out of Scope
 

@@ -13,6 +13,30 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.7.1 (default rabbit-root for mode detection is now the cwd, not the
+  git toplevel, #906):** `handoff-scaffold.py._default_rabbit_root()` (used
+  when `--rabbit-root` is not supplied) returned
+  `git rev-parse --show-toplevel`. In a plugin install the vendored
+  `.rabbit/` dir lives INSIDE the user project's git repo, so the git
+  toplevel is the user-project root (the PARENT of `.rabbit`), whose
+  basename is not `.rabbit`. `detect_mode` requires `basename == '.rabbit'`
+  to return `plugin`, so the default invocation mis-detected plugin installs
+  as `standalone` and silently took the wrong scaffold branch (per-feature
+  instead of plugin `--batch`). Fix (issue option (a)):
+  `_default_rabbit_root()` now returns `os.getcwd()`. In a rabbit session
+  the cwd IS the mode-correct rabbit root — the `.rabbit/` dir in plugin
+  mode, the repo root in standalone mode — exactly what `detect_mode`
+  expects, so the default invocation from `cwd=.rabbit` detects `plugin` and
+  from a repo root detects `standalone`. The #901 `_resolve_source_root`
+  stays correct: with `rabbit_root = cwd = .rabbit`, plugin source_root =
+  `.rabbit`.parent = the project root. The `SKILL.md` Step 1 and Step 4 bash
+  blocks (which invoke the resolver WITHOUT `--rabbit-root`) now rely on the
+  corrected cwd default and resolve the mode-correct root. New spec
+  Invariant 7 and E2E `test-default-rabbit-root.py` lock this in. Deployed
+  surface changed: `handoff-scaffold.py` (script body); `SKILL.md` body
+  unchanged in wording but bumped in lockstep — dispatcher republishes both
+  deployed copies.
+
 - **v0.7.0 (Step 1 source-root guidance folded into the canonical resolver,
   #901):** Step 1 (Gather inputs) gave NO guidance on WHERE the decomposition
   SOURCE lives in plugin mode. In plugin mode the cwd / rabbit-root is the
