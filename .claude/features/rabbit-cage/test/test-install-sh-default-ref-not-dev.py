@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
-"""rabbit-cage regression — install.sh default RABBIT_REF MUST be a stable channel.
+"""rabbit-cage regression — install.sh offline-fallback ref MUST be a stable channel.
 
-Bug #279 / spec Inv 24 (amended #307): the default value of RABBIT_REF declared
-in install.sh MUST match a stable release branch — either 3-field
-`release/[0-9]+\\.[0-9]+\\.[0-9]+` (preferred, post-#307) or legacy 2-field
-`release/[0-9]+\\.[0-9]+` (retained for backwards compat with release/1.0-1.10)
-— or a semver tag (`v[0-9]+\\.[0-9]+\\.[0-9]+`). The literal value `dev` is
-FORBIDDEN as the default.
+Bug #279 / spec Inv 26 (amended #307, #848): #848 made install.sh's DEFAULT path
+resolve the latest published release DYNAMICALLY (GitHub releases/latest). The
+hardcoded `RABBIT_FALLBACK_REF` is now an OFFLINE FALLBACK only — used when the
+dynamic latest-lookup fails. The fallback literal MUST match ONE of the allowed
+stable-channel patterns: 3-field `release/[0-9]+\\.[0-9]+\\.[0-9]+`, legacy
+2-field `release/[0-9]+\\.[0-9]+`, or a semver tag (`v[0-9]+\\.[0-9]+\\.[0-9]+`).
+The literal value `dev` is FORBIDDEN as the fallback.
 
-Plugin users running the documented one-liner without an explicit RABBIT_REF
-override MUST land on a stable, semver-tagged channel — never the bleeding-edge
-dev branch. Developers who want dev can opt-in via `RABBIT_REF=dev curl ... | bash`.
-
-Cutting a new release (e.g. release/1.1) MUST bump install.sh's default in the
-same PR — this test is the load-bearing safety against accidentally re-pointing
-the default at dev during a refactor.
+A failed latest-lookup MUST never silently land plugin users on bleeding-edge
+dev — this test is the load-bearing safety against re-pointing the fallback at
+dev during a refactor.
 """
 from __future__ import annotations
 
@@ -35,9 +32,9 @@ ALLOWED_PATTERNS = [
     r"^v[0-9]+\.[0-9]+\.[0-9]+$",
 ]
 
-# Pattern that locates the RABBIT_REF default declaration:
-#   RABBIT_REF="${RABBIT_REF:-<value>}"
-DEFAULT_RE = re.compile(r'RABBIT_REF="\$\{RABBIT_REF:-([^}]+)\}"')
+# Pattern that locates the RABBIT_FALLBACK_REF declaration:
+#   RABBIT_FALLBACK_REF="v9.0.0"
+FALLBACK_RE = re.compile(r'RABBIT_FALLBACK_REF="([^"]+)"')
 
 pass_n = 0
 fail_n = 0
@@ -68,27 +65,27 @@ else:
 
 source = open(INSTALL_SH).read()
 
-# t2 — locate the RABBIT_REF default declaration.
-m = DEFAULT_RE.search(source)
+# t2 — locate the RABBIT_FALLBACK_REF declaration.
+m = FALLBACK_RE.search(source)
 if m is None:
-    fail_t(2, "could not locate RABBIT_REF default declaration in install.sh")
+    fail_t(2, "could not locate RABBIT_FALLBACK_REF declaration in install.sh")
     print()
     print(f"Results: {pass_n} passed, {fail_n} failed")
     sys.exit(1)
-default_value = m.group(1)
-ok(2, f"located RABBIT_REF default declaration: {default_value!r}")
+fallback_value = m.group(1)
+ok(2, f"located RABBIT_FALLBACK_REF declaration: {fallback_value!r}")
 
-# t3 — default value is NOT exactly 'dev'.
-if default_value == "dev":
-    fail_t(3, "RABBIT_REF default is the literal 'dev' (FORBIDDEN per Inv 24)")
+# t3 — fallback value is NOT exactly 'dev'.
+if fallback_value == "dev":
+    fail_t(3, "RABBIT_FALLBACK_REF is the literal 'dev' (FORBIDDEN per Inv 26)")
 else:
-    ok(3, f"RABBIT_REF default is not 'dev': {default_value!r}")
+    ok(3, f"RABBIT_FALLBACK_REF is not 'dev': {fallback_value!r}")
 
-# t4 — default value matches one of the allowed patterns.
-if any(re.match(p, default_value) for p in ALLOWED_PATTERNS):
-    ok(4, f"RABBIT_REF default {default_value!r} matches an allowed stable channel pattern")
+# t4 — fallback value matches one of the allowed patterns.
+if any(re.match(p, fallback_value) for p in ALLOWED_PATTERNS):
+    ok(4, f"RABBIT_FALLBACK_REF {fallback_value!r} matches an allowed stable channel pattern")
 else:
-    fail_t(4, f"RABBIT_REF default {default_value!r} does not match release/X.Y[.Z] or vX.Y.Z")
+    fail_t(4, f"RABBIT_FALLBACK_REF {fallback_value!r} does not match release/X.Y[.Z] or vX.Y.Z")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")

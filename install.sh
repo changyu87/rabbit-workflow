@@ -10,25 +10,61 @@
 # Or download + run:
 #   curl -fsSLO https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh && bash install.sh
 #
-# Channel selection (spec Inv 24):
-#   The default RABBIT_REF tracks the latest stable release branch. Cutting
-#   a new release (e.g. release/1.1) bumps this default in the same PR.
+# Channel selection (spec Inv 26):
+#   With no RABBIT_REF override, install.sh resolves the LATEST published
+#   GitHub release dynamically (the releases/latest tag_name) — the same
+#   release source install.py --update and the update-check use. First-install
+#   therefore tracks latest with no per-release bump (Fixes #848).
 #
-#   Pin a specific version:
+#   Pin a specific version (explicit override short-circuits the lookup):
+#     RABBIT_REF=v9.0.26    curl -sSL .../install.sh | bash
 #     RABBIT_REF=release/1.0 curl -sSL .../install.sh | bash
-#     RABBIT_REF=v1.0.0      curl -sSL .../install.sh | bash
 #
 #   Bleeding edge (developers — opt-in only):
 #     RABBIT_REF=dev curl -sSL .../install.sh | bash
 #
 # Env vars:
 #   RABBIT_REPO  — default changyu87/rabbit-workflow
-#   RABBIT_REF   — default v1.14.14 (branch, tag, or SHA)
+#   RABBIT_REF   — explicit ref override (branch, tag, or SHA); when unset the
+#                  latest published release is resolved dynamically.
 
 set -euo pipefail
 
 RABBIT_REPO="${RABBIT_REPO:-changyu87/rabbit-workflow}"
-RABBIT_REF="${RABBIT_REF:-v1.14.14}"
+
+# Offline fallback: a last-known-good release tag used ONLY when the dynamic
+# latest-release lookup fails (network/offline, rate-limit, API outage). This
+# is a safety net, NOT the primary channel — the default path resolves latest
+# dynamically. MUST byte-equal install.py's HARDCODED_STABLE_DEFAULT (Inv 26/27
+# lock-step) and MUST NOT be 'dev'.
+RABBIT_FALLBACK_REF="v9.0.26"
+
+# Resolve the latest published release's tag_name via the GitHub Releases API.
+# Echoes the tag on success; empty on any failure (caller falls back).
+resolve_latest_release() {
+  local body tag
+  body=$(curl -fsSL \
+    -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/repos/${RABBIT_REPO}/releases/latest" 2>/dev/null) || return 0
+  # Extract "tag_name": "<tag>" without requiring jq.
+  tag=$(printf '%s' "$body" \
+    | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' \
+    | head -1 \
+    | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/')
+  printf '%s' "$tag"
+}
+
+# Ref selection: explicit RABBIT_REF wins; otherwise resolve latest dynamically;
+# otherwise fall back to the hardcoded last-known-good tag (never 'dev').
+if [ -n "${RABBIT_REF:-}" ]; then
+  : # explicit override honored verbatim
+else
+  RABBIT_REF=$(resolve_latest_release)
+  if [ -z "${RABBIT_REF}" ]; then
+    RABBIT_REF="${RABBIT_FALLBACK_REF}"
+    echo "warning: could not resolve latest release; falling back to ${RABBIT_FALLBACK_REF}" >&2
+  fi
+fi
 
 # Pre-flight
 for cmd in python3 curl tar; do

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""rabbit-cage regression — install.py HARDCODED_STABLE_DEFAULT MUST byte-equal install.sh's RABBIT_REF default.
+"""rabbit-cage regression — install.py HARDCODED_STABLE_DEFAULT MUST byte-equal install.sh's RABBIT_FALLBACK_REF.
 
-Spec Inv 27: the hardcoded stable-release default in install.py and the
-RABBIT_REF default in install.sh are a single source of truth — each
-release-cut PR bumps both in lock-step. This test pins that lock-step so a
-drift between the two is a hard test failure.
+Spec Inv 26/27 (amended #848): the default install path now resolves the latest
+published release DYNAMICALLY in both installers. The hardcoded offline-fallback
+ref — `HARDCODED_STABLE_DEFAULT` in install.py and `RABBIT_FALLBACK_REF` in
+install.sh — is a single source of truth: the two MUST byte-equal so a failed
+latest-lookup lands on the same last-known-good ref regardless of which installer
+ran. This test pins that lock-step so a drift between the two is a hard failure.
 """
 from __future__ import annotations
 
@@ -22,7 +24,7 @@ INSTALL_PY = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage/install.py")
 INSTALL_SH = os.path.join(REPO_ROOT, "install.sh")
 
 PY_RE = re.compile(r'HARDCODED_STABLE_DEFAULT\s*=\s*"([^"]+)"')
-SH_RE = re.compile(r'RABBIT_REF="\$\{RABBIT_REF:-([^}]+)\}"')
+SH_RE = re.compile(r'RABBIT_FALLBACK_REF="([^"]+)"')
 
 pass_n = 0
 fail_n = 0
@@ -63,18 +65,18 @@ if py_m is None:
     print(f"Results: {pass_n} passed, {fail_n} failed")
     sys.exit(1)
 if sh_m is None:
-    fail_t(2, "could not locate RABBIT_REF default in install.sh")
+    fail_t(2, "could not locate RABBIT_FALLBACK_REF in install.sh")
     print(f"Results: {pass_n} passed, {fail_n} failed")
     sys.exit(1)
-ok(2, "located both defaults")
+ok(2, "located both fallback refs")
 
 py_val = py_m.group(1)
 sh_val = sh_m.group(1)
 
 if py_val == sh_val:
-    ok(3, f"install.py default {py_val!r} byte-equals install.sh default {sh_val!r}")
+    ok(3, f"install.py HARDCODED_STABLE_DEFAULT {py_val!r} byte-equals install.sh RABBIT_FALLBACK_REF {sh_val!r}")
 else:
-    fail_t(3, f"DRIFT: install.py default {py_val!r} != install.sh default {sh_val!r} (Inv 27 lock-step)")
+    fail_t(3, f"DRIFT: install.py HARDCODED_STABLE_DEFAULT {py_val!r} != install.sh RABBIT_FALLBACK_REF {sh_val!r} (Inv 26/27 lock-step)")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")
