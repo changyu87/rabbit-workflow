@@ -12,6 +12,27 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.63.0 (fix #855: rabbit-cage's scope marker authorizes its owned repo-root bootstrap files):**
+  rabbit-cage owns three repo-root bootstrap files — `install.sh`, `install.py`,
+  and the root `README.md` (`install.py` + `README.md` are `publish_file`
+  destinations in the manifest; `install.sh` is the committed bootstrap) — that
+  live OUTSIDE its feature directory. The standalone per-feature scope-marker
+  gate (Inv 5) authorized writes only INSIDE the named feature's directory, so a
+  rabbit-cage TDD cycle editing those owned root files (e.g. #848/#850) had to
+  fall back to an ad-hoc scope-guard override, which the override rule reserves
+  for plan / temporary-document writing — never feature code. Added Inv 41 and
+  extended `hooks/scope-guard.py`'s standalone per-feature marker branch: when
+  the active marker is `.rabbit-scope-active-rabbit-cage`, a write whose absolute
+  target equals `<REPO_ROOT>/install.sh`, `<REPO_ROOT>/install.py`, or
+  `<REPO_ROOT>/README.md` is ALLOWED with no override. The owned-root set is an
+  EXPLICIT, MINIMAL module-level constant `RABBIT_CAGE_OWNED_ROOT` (exactly those
+  three basenames); the carve-out does NOT broaden rabbit-cage to arbitrary root
+  paths (an unrelated root file or another feature's dir still DENIES), and ONLY
+  rabbit-cage's marker authorizes the set (another feature's marker does not).
+  New e2e `test/test-scope-guard-cage-owned-root.py`, wired into `test/run.py`.
+  `hooks/scope-guard.py` is a deployed hook (`publish_hook`) — its
+  `.claude/hooks/` copy drifts until republished.
+
 - **v5.62.0 (fix #850: `install.py --update` downgrade guard; action tracks the check):**
   `install.py --update` could DOWNGRADE — a v1.14.14 install slid back to the
   dead `release/1.12.0` branch while the update-CHECK banner advertised v9.0.26;
