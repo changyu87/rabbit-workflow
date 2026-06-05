@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.35.0
+version: 2.36.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native mechanism that supersedes contract's governance surface — the cross-feature contract gate, version-lockstep, invariant numbering, and schema/template ownership — not merely when a native orchestration/workflow primitive exists
@@ -402,6 +402,10 @@ Numbering is strictly increasing and CONTIGUOUS (1..N, no holes): contract opts 
     (a) `test/test-install-closure-integrity.py` MUST import the importable `check_install_sources_exist(repo_root) -> list[str]` from `.claude/features/rabbit-cage/install.py` and assert it returns an EMPTY list against the REAL repo root — i.e. every closure source exists on disk. A non-empty result FAILS the gate and names the dangling source path(s).
     (b) The test MUST be wired into `test/run.py` so it runs as part of the cross-feature gate.
     (c) The import MUST be resilient: when `rabbit-cage/install.py` is legitimately absent (a degenerate self-build with no install closure to verify), the check SKIPS gracefully rather than erroring. In the normal repo `install.py` is present and the check MUST run and pass.
+65. **Cross-feature install referenced→listed closure gate.** Inv 64 screens the install closure in the listed→exists direction (every source the closure lists EXISTS on disk). The INVERSE direction — every script a shipped SKILL.md REFERENCES is LISTED in the closure so it is actually shipped — was screened only by the rabbit-cage suite (`test/test-feature-includes-scripts-closure.py`), which runs when rabbit-cage is touched but does NOT gate an arbitrary feature's PR. A SKILL-referenced `scripts/<name>.py` that is absent from `install.py`'s `FEATURE_INCLUDES[<feature>]` therefore reaches a fresh install missing a script its skill needs, undetected by the repo-wide gate. The contract cross-feature gate (`test/run.py`) MUST therefore screen the referenced→listed direction on every change, as the companion to Inv 64's listed→exists.
+    (a) `test/test-install-referenced-scripts-listed.py` MUST scan every deployed SKILL.md body for literal references to `.claude/features/<feature>/scripts/<name>.py`, import `FEATURE_INCLUDES` from `.claude/features/rabbit-cage/install.py`, and assert every referenced `scripts/<name>.py` is present in `FEATURE_INCLUDES[<feature>]`. A referenced-but-unlisted script FAILS the gate and names the (skill, feature, missing-script) triple.
+    (b) The test MUST be wired into `test/run.py` so it runs as part of the cross-feature gate.
+    (c) The import MUST be resilient: when `rabbit-cage/install.py` is legitimately absent (a degenerate self-build), the check SKIPS gracefully rather than erroring. In the normal repo `install.py` is present and the check MUST run and pass.
 
 ## Template marker convention
 

@@ -142,5 +142,6 @@ run_test("test-invariant-contiguous-opt-in.py")
 run_test("test-reflow-invariants.py")
 run_test("test-no-rabbit-managed-label-refs.py")
 run_test("test-install-closure-integrity.py")
+run_test("test-install-referenced-scripts-listed.py")
 
 print("ALL TESTS PASSED")
