@@ -16,6 +16,34 @@ authoritative).
 
 ## Version notes
 
+- **v0.69.0 — 2026-06-04** — Fix the SessionStart banner next-tick ETA
+  overshoot (closes #881). `scripts/banner-status.py`'s idle line previously
+  printed a single `~HH:MM` scheduled-fire minute (`_next_tick_eta`), but the
+  CronCreate-fired tick arrives systematically LATER: the runtime adds up to
+  10% of the cadence period (capped at 15 min) of jitter to recurring fires
+  and ticks only while the REPL is idle, so the bare minute read as a hard
+  promise it could not keep (observed: printed `~09:13`, fired 09:26). FIX
+  (option 1, accurate-with-jitter): `_next_tick_eta` now returns a
+  jitter-inclusive RANGE `~HH:MM–HH:MM (scheduler jitter)` — LOW bound the
+  scheduled minute, HIGH bound that minute plus the bounded jitter from two
+  new helpers `_cadence_period_minutes` (the period derived from the
+  fire-minute set, single fire minute => 60) and `_cadence_jitter_minutes`
+  (`min(15, ceil(period * 0.10))`, ≥ 1) — so the printed window is never
+  systematically early. Graceful degradation (absent/unparseable cadence =>
+  bare idle line, no ETA) and the "only the started-then-idle line carries an
+  ETA" rule are unchanged. Inv 22 prose + enforcement bullets updated to the
+  range form; `test/test-banner-status.py` extended (jitter-bound unit cases
+  incl. the 15-min cap, the 30-min cadence range `~14:43–14:46`, and a
+  once-per-hour 6-min range). `scripts/banner-status.py` module version bumped
+  1.3.0 → 1.4.0; feature triplet+SKILL lockstep bumped 0.68.0 → 0.69.0.
+  Deployed surface (SKILL.md frontmatter version) changed — dispatcher must
+  republish. The TWIN ETA on the Stop-hook idle line
+  (`contract.lib.runtime._auto_evolve_next_tick_eta` /
+  `emit_auto_evolve_stop_line`, contract Inv 55) carries the IDENTICAL
+  overshoot bug but is contract-owned (out of rabbit-auto-evolve scope);
+  flagged as a contract-side discovered_issue for the symmetric fix. No
+  invariant added/renumbered/removed; spec.md held at the #751 ceiling (3384).
+
 - **v0.68.0 — 2026-06-04** — Close the title-only convergence hole in
   `scripts/merge-prs.py` (closes #868). The close-ref parse (`_parse_close_refs`)
   scanned the PR BODY only; PRs merge into `dev` (not the default branch) so
