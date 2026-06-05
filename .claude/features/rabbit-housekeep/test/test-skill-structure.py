@@ -15,10 +15,17 @@ Asserts, against the real feature tree:
   t4: SKILL.md documents the subagent-dispatching no-Agent()-nesting
       constraint: it names the two-level-nesting prohibition and states the
       skill MUST NOT be invoked inside an Agent() call.
+  t5: SKILL.md embeds spec-rules.md §4 "Script-Backed Orchestration" bullet
+      VERBATIM — the bullet text extracted from the canonical policy file
+      appears byte-for-byte inside the SKILL.md body (Verbatim Policy
+      Embedding, no paraphrase).
+  t6: SKILL.md documents the script-backed-orchestration verify-or-flag
+      dimension: it invokes scripts/check-script-backed.py and routes each
+      non-conformant step through the prove-it-dead-or-flag disposition.
 
 Non-interactive. Exits non-zero on failure.
 
-Version: 0.1.0
+Version: 0.3.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-housekeep is retired.
 """
@@ -36,6 +43,9 @@ SKILL_MD = os.path.join(
 FEATURE_JSON = os.path.join(FEATURE_DIR, "feature.json")
 CODING_RULES = os.path.join(
     REPO_ROOT, ".claude", "features", "policy", "coding-rules.md"
+)
+SPEC_RULES = os.path.join(
+    REPO_ROOT, ".claude", "features", "policy", "spec-rules.md"
 )
 
 PASS = 0
@@ -135,6 +145,44 @@ else:
                "NOT be invoked inside an Agent() call, and name the two-level "
                f"nesting constraint (nesting={bool(nesting)}, "
                f"no_agent={bool(no_agent)}, dispatching={bool(dispatching)})")
+
+# t5: verbatim spec-rules §4 Script-Backed Orchestration embed
+with open(SPEC_RULES, encoding="utf-8") as f:
+    spec_rules_text = f.read()
+sb_match = re.search(
+    r"(- \*\*Script-Backed Orchestration\*\*.*?)(?=\n\n- \*\*)",
+    spec_rules_text,
+    re.DOTALL,
+)
+if not sb_match:
+    fail("t5", "could not locate §4 Script-Backed Orchestration bullet in "
+               "spec-rules.md (extraction failed)")
+else:
+    sb_bullet = sb_match.group(1).rstrip()
+    if sb_bullet in skill_text:
+        ok("t5", "spec-rules §4 Script-Backed Orchestration embedded verbatim")
+    else:
+        fail("t5", "SKILL.md does not contain spec-rules §4 Script-Backed "
+                   "Orchestration verbatim; the embedded block must match the "
+                   "policy source exactly")
+
+# t6: script-backed-orchestration verify-or-flag dimension documented
+invokes_script = re.search(
+    r"check-script-backed\.py", skill_text
+)
+flag_disposition = re.search(
+    r"(?:FLAG|flag).{0,120}housekeeping.{0,40}sub-issue",
+    skill_text,
+    re.IGNORECASE | re.DOTALL,
+)
+if invokes_script and flag_disposition:
+    ok("t6", "script-backed-orchestration dimension documented (invokes "
+             "check-script-backed.py + flag disposition)")
+else:
+    fail("t6", "SKILL.md must invoke scripts/check-script-backed.py and route "
+               "non-conformant steps through the flag disposition "
+               f"(invokes={bool(invokes_script)}, "
+               f"flag={bool(flag_disposition)})")
 
 print()
 print(f"Results: {PASS} passed, {FAIL} failed")
