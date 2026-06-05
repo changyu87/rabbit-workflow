@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.62.0
+version: 0.63.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -714,18 +714,24 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
       `{pr: N, status: "merged"}`; on failure →
       `{pr: N, status: "failed", reason: "gh-merge-failed: <stderr>"}`.
    4. After a successful merge, parse the merged PR body
-      (`gh pr view <#> --json body -q .body`) for closing-keyword
-      references — `Fixes #N` / `Closes #N` / `Resolves #N` and their
-      variants (`Fixed`, `Closed`, `Resolved`, `Close`, `Fix`, `Resolve`),
-      case-insensitive. For each distinct referenced issue, fetch the merge
-      SHA (`gh pr view <#> --json mergeCommit -q .mergeCommit.oid`) and
-      invoke `item-status.py close <N> --reason completed --commit-sha <sha>
+      (`gh pr view <#> --json body -q .body`) for closing-keyword references —
+      `Fixes`/`Closes`/`Resolves #N` and their variants (`Fixed`, `Closed`,
+      `Resolved`, `Close`, `Fix`, `Resolve`), case-insensitive. For each
+      distinct referenced issue, fetch the merge SHA
+      (`gh pr view <#> --json mergeCommit -q .mergeCommit.oid`) and invoke
+      `item-status.py close <N> --reason completed --commit-sha <sha>
       --comment "TDD cycle complete in <sha>"`. The `--commit-sha` flag is
       REQUIRED for a `completed` closure (it must point at the real merge
-      commit). This explicit step is necessary because GitHub's native
-      `Fixes/Closes/Resolves` auto-close fires ONLY on a merge to the default
-      branch (`main`); auto-evolve PRs target `dev`, so referenced issues
-      would otherwise stay open. `item-status.py close` is idempotent against
+      commit). Because `gh pr merge --squash` creates the squash commit on the
+      REMOTE `dev` only, that SHA is not yet local and `item-status.py` would
+      reject the close — so BEFORE the close calls, `merge-prs.py` runs
+      `git fetch origin <sha>` (falling back to `git fetch origin dev`) to make
+      it locally resolvable, NEVER `git merge` (permission-denied in the loop).
+      The fetch is best-effort and never fails the merge. This explicit step is
+      necessary because GitHub's native `Fixes/Closes/Resolves` auto-close
+      fires ONLY on a merge to the default branch (`main`); auto-evolve PRs
+      target `dev`, so referenced issues would otherwise stay open.
+      `item-status.py close` is idempotent against
       already-closed issues, so it is called unconditionally. Closed issue
       numbers go in the result row under `closed_issues` (sorted); close
       failures go under `close_failed` with a stderr warning and NEVER fail
@@ -777,7 +783,9 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
    once per distinct issue with `close <N> --reason completed --commit-sha
    <merge-sha>`, the row carries `closed_issues`; no refs → not invoked; a close
    failure leaves `status: "merged"` with the issue under `close_failed`;
-   skipped PRs NEVER invoke it).
+   skipped PRs NEVER invoke it); fetch-before-close (a body with refs →
+   `git fetch origin <merge-sha>` runs BEFORE the first close so the SHA
+   resolves locally and the close succeeds, NEVER `git merge`).
 
    `test/test-cleanup-branches.py`: a `--help` smoke; skip-on-non-feat-branch
    (`headRefName=main` → `skipped` / `non-feat-branch`, stderr warning, no

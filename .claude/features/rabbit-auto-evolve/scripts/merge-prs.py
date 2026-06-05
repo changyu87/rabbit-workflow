@@ -22,7 +22,13 @@ Per rabbit-auto-evolve spec.md Inv 6, for each PR this script:
      `Fixes #N` / `Closes #N` / `Resolves #N` references (case-insensitive)
      and explicitly closes each referenced issue via
      `item-status.py close <N> --reason completed --commit-sha <merge-sha>
-     --comment "...<sha>..."`. The `--commit-sha` is REQUIRED by
+     --comment "...<sha>..."`. Because `gh pr merge --squash` creates the
+     squash commit on the REMOTE `dev` only, the SHA is not yet in the local
+     repo; so before the first close this script runs
+     `git fetch origin <sha>` (falling back to `git fetch origin dev`) to make
+     the SHA locally resolvable — NEVER `git merge` (permission-denied in the
+     loop environment). The fetch is best-effort and never fails the merge.
+     The `--commit-sha` is REQUIRED by
      item-status.py for a `completed` closure (issue #423 Part C): a
      completed closure must point at the real merge commit that landed the
      work. GitHub's native auto-close only fires for default-branch (`main`)
@@ -62,7 +68,7 @@ status-report.py), so it lagged perpetually; phase 11's deterministic
 re-read (update-state.py, Inv 40) now captures it off disk — it is never
 dispatcher hand-set. A run with no merge leaves `last_merged_sha` untouched.
 
-Version: 1.5.0
+Version: 1.5.1
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -225,6 +231,41 @@ def _item_status_close(num, sha):
     )
 
 
+def _fetch_merge_sha(sha):
+    """Make the just-merged squash commit SHA resolvable in the LOCAL repo
+    before the close step (issue #802). `gh pr merge --squash` creates the
+    squash commit on the REMOTE `dev` only; the local repo has not seen it
+    yet, so `item-status.py close --commit-sha <sha>` (which requires the SHA
+    to resolve to a real LOCAL commit, #423 Part C) would fail in a headless
+    tick with no dispatcher to recover.
+
+    Run `git fetch origin <sha>` (the specific object); if that fails — some
+    remotes reject fetching an arbitrary SHA — fall back to
+    `git fetch origin dev`, which also lands the squash commit. NEVER `git
+    merge` (a permission-denied operation in the loop's environment); a plain
+    fetch lands the object without touching the working tree. Best-effort: any
+    fetch failure emits a stderr warning and returns so the close still runs
+    (and records close_failed if the SHA is still unresolvable). Never raises;
+    never fails the merge."""
+    if not sha:
+        return
+    proc = subprocess.run(
+        ["git", "fetch", "origin", sha],
+        capture_output=True, text=True,
+    )
+    if proc.returncode == 0:
+        return
+    proc = subprocess.run(
+        ["git", "fetch", "origin", "dev"],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        sys.stderr.write(
+            f"warning: git fetch of merge SHA {sha} failed "
+            f"(close may not resolve it locally): {proc.stderr.strip()}\n"
+        )
+
+
 def _close_referenced_issues(pr, result):
     """After a successful merge, close every issue referenced by a closing
     keyword in the PR body. Mutates `result` in place, adding `closed_issues`
@@ -236,6 +277,9 @@ def _close_referenced_issues(pr, result):
     sha = _pr_field(pr, "mergeCommit", ".mergeCommit.oid")
     result["merge_sha"] = sha
     refs = _parse_close_refs(body)
+    # Make the squash SHA resolvable locally before any close (issue #802).
+    if refs:
+        _fetch_merge_sha(sha)
     closed, failed = [], []
     for num in refs:
         proc = _item_status_close(num, sha)
