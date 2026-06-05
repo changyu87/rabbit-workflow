@@ -1,6 +1,6 @@
 {
   "name": "rabbit-decompose",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "housekeeping_clean": true,
@@ -14,7 +14,9 @@
     "agents": [],
     "hooks": [],
     "commands": [],
-    "scripts": []
+    "scripts": [
+      "scripts/handoff-scaffold.py"
+    ]
   },
   "deprecation_criterion": "when Claude Code exposes native feature-decomposition assistance that supersedes this skill",
   "updated": "2026-06-05",

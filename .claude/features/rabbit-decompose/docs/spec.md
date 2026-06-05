@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.5.4
+version: 0.6.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -25,11 +25,21 @@ feature).
 ## Surface
 
 - `skills/rabbit-decompose/SKILL.md` — the user-invocable skill
+- `scripts/handoff-scaffold.py` — the Step 4 hand-off orchestrator: resolves
+  the rabbit root, detects mode deterministically (reusing
+  `rabbit-meta.lib.mode_detection.detect_mode`), authors the batch temp file
+  with a script-owned timestamp, and dispatches the scaffolder on the
+  mode-correct branch (plugin → `scaffold-feature.py --batch <file>`,
+  standalone → emits the per-feature `rabbit-feature-scaffold` plan)
 - `docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`, `feature.json`,
   `test/run.py` — feature scaffolding
 
-No backing agent or dispatch script in this MVP — the dispatcher Claude
-runs the interactive protocol inline.
+The interactive protocol (Steps 1–3) runs inline in the dispatcher session.
+Step 4's mode detection, batch-file authoring, and scaffolder dispatch are
+SCRIPT-tier: the SKILL invokes `scripts/handoff-scaffold.py` rather than
+assembling mode branches and runtime placeholders in prose (spec-rules §4
+Script-Backed Orchestration). The spec-create seeding remains inline
+sequential `Skill(...)` calls under the nesting constraint of Invariant 4.
 
 ## Interactive Protocol
 
@@ -47,11 +57,14 @@ The skill is interactive by design. The dispatcher MUST:
    removals / boundary changes; the dispatcher updates the proposal
    and re-presents until the user accepts.
 4. **Hand off** — once accepted, the dispatcher:
-   - In plugin mode, writes the accepted list to a tmp file and runs
-     `scaffold-feature.py --batch <file>` to scaffold all features
-     and register them in `project-map.json`.
-   - In standalone mode, invokes `rabbit-feature-scaffold` per
-     accepted feature individually (batch form is plugin-only).
+   - Runs `scripts/handoff-scaffold.py` with the accepted feature list.
+     The script resolves the rabbit root, detects mode deterministically
+     (reusing `rabbit-meta.lib.mode_detection.detect_mode` — NOT a single
+     hard-coded `<repo>/.rabbit/.runtime/mode` read), authors the batch
+     temp file with a script-owned timestamp, and dispatches the scaffolder
+     on the mode-correct branch: plugin → `scaffold-feature.py --batch
+     <file>` (one `project-map.json` mutation); standalone → emits the
+     per-feature `rabbit-feature-scaffold` plan (batch form is plugin-only).
    - Then for each accepted feature with non-empty `globs`, invokes
      `rabbit-spec-create` (one sequential `Skill(...)` call per feature)
      to seed the initial spec body, under the nesting constraint of
@@ -93,6 +106,19 @@ constrains only the structural shape.
    `SKILL.md` nor this spec may claim the spec-create calls can be
    parallelized via the Agent tool.
 
+5. Step 4's scaffold hand-off MUST be SCRIPT-tier (spec-rules §4
+   Script-Backed Orchestration). The mode-aware branching, the batch
+   temp-file authoring, and the scaffolder dispatch MUST live in
+   `scripts/handoff-scaffold.py`; the `SKILL.md` Step 4 body invokes that
+   script and MUST NOT carry a bash block with a runtime placeholder
+   (e.g. `<ts>`, `<repo>`) that the model assembles at invocation time,
+   nor a prose mode-branch the model executes. The script MUST detect mode
+   by reusing `rabbit-meta.lib.mode_detection.detect_mode` (a cross-feature
+   INVOKE declared in `docs/contract.md`), NOT by reimplementing a single
+   hard-coded `<repo>/.rabbit/.runtime/mode` path read, and MUST own the
+   batch file's timestamp/path (no model-assembled `<ts>`). Read-only
+   informational commands in the body are exempt (§4 read-only exception).
+
 ## Tests
 
 `test/run.py` invokes every `test-*.py` file under `test/`. Current
@@ -111,6 +137,14 @@ coverage:
   `feature.json` `prompts` artifact agree: `prompts` is empty, Invariant 1
   documents the empty/absent prompt-contract surface rather than requiring
   an entry, and no `templates/prompts/rabbit-decompose.txt` template exists).
+- `test-step4-script-backed.py` (E2E — asserts Invariant 5: runs
+  `scripts/handoff-scaffold.py` end-to-end against a temp plugin tree and a
+  temp standalone tree, confirming it resolves mode via `detect_mode`
+  (plugin → batch branch, standalone → per-feature plan), authors the batch
+  file with a script-owned timestamp, and never reads a single hard-coded
+  `<repo>/.rabbit/.runtime/mode` path; and asserts the `SKILL.md` Step 4
+  body carries no prose mode-branch and no runtime-placeholder bash block,
+  invoking the script instead).
 
 ## Out of Scope
 
