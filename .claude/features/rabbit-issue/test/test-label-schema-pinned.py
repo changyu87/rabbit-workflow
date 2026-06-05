@@ -3,16 +3,17 @@
 
 The label schema is the load-bearing contract of rabbit-issue: the type
 labels, the `feature:` / `priority:` required labels, the `filed-by:`
-provenance enum, and the `housekeeping` category label. A measured-reduction
-housekeeping pass trims redundant prose; this guard ensures it can never
-silently drop a documented label token from the doc surfaces.
+provenance enum, the `housekeeping` category label, and the `in-progress`
+loop-managed category label. A measured-reduction housekeeping pass trims
+redundant prose; this guard ensures it can never silently drop a documented
+label token from the doc surfaces.
 
 Invariants:
 
   1. docs/spec.md MUST document every label token in its label-schema table:
-     `bug`, `enhancement`, `feature:<name>`, `priority:`, `filed-by:`, and
-     `housekeeping`.
-  2. docs/contract.md MUST list the same six label tokens in its
+     `bug`, `enhancement`, `feature:<name>`, `priority:`, `filed-by:`,
+     `housekeeping`, and `in-progress`.
+  2. docs/contract.md MUST list the same seven label tokens in its
      `issue_labels` provides block.
   3. The `filed-by:` provenance enum MUST name BOTH non-human values
      (`rabbit`, `autonomous-evolve`) on the spec surface, since human is the
@@ -42,6 +43,7 @@ SPEC_TOKENS = (
     "`priority:",
     "filed-by:",
     "`housekeeping`",
+    "`in-progress`",
 )
 CONTRACT_TOKENS = (
     '"bug"',
@@ -50,6 +52,7 @@ CONTRACT_TOKENS = (
     "priority:<low|medium|high|critical>",
     "filed-by:<rabbit|autonomous-evolve>",
     '"housekeeping"',
+    '"in-progress"',
 )
 # The provenance enum is closed; both non-human values must be named.
 PROVENANCE_VALUES = ("rabbit", "autonomous-evolve")

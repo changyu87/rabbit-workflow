@@ -29,6 +29,19 @@ def test_ensure_labels_calls_gh_label_create(gh_shim, fake_repo):
     assert len(creates) == 4
 
 
+def test_ensure_labels_creates_in_progress_label(gh_shim, fake_repo):
+    # The `in-progress` sanctioned category label is loop-managed (applied by
+    # the rabbit-auto-evolve reconcile, not at filing time), so it is created
+    # the same idempotent way every other sanctioned label is — through
+    # ensure_labels -> `gh label create in-progress`. This guards that the
+    # label exists on its first reconcile use (issue #859, barrier piece 1/2).
+    gh = _fresh_gh()
+    gh.ensure_labels(["in-progress"])
+    log = gh_shim.read_text().strip().split("\n")
+    creates = [line for line in log if line.startswith("label create")]
+    assert any(line.split()[2] == "in-progress" for line in creates), creates
+
+
 def test_ensure_labels_idempotent_on_duplicate(gh_shim, fake_repo, monkeypatch):
     monkeypatch.setenv("GH_SHIM_LABEL_CREATE_EXIT", "1")
     gh = _fresh_gh()

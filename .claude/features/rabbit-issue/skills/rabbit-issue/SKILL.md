@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.12.0
+version: 1.13.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours an actionability safety guard (it refuses to close/reopen issues lacking a valid `feature:` label) so raw human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -58,6 +58,13 @@ work. Pass `--housekeeping` to `file-item.py` to stamp it at filing time;
 omit it for non-housekeeping issues. Both labels are additive — when
 present they never change the other labels. See docs/spec.md
 §Housekeeping label.
+
+`in-progress` is a sanctioned category label marking an issue as a member
+of the loop's live dispatch set. Unlike `housekeeping`, it has NO
+`file-item.py` flag and is NOT stamped at filing time: the autonomous
+evolve loop's reconcile mirrors its dispatch journal's live set onto this
+label and auto-creates it on first use via the same `ensure_labels` path.
+It is additive. See docs/spec.md §In-progress label.
 
 ---
 

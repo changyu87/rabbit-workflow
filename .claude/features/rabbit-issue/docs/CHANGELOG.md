@@ -12,6 +12,27 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.13.0 (`in-progress` sanctioned category label, closes #859):** Add
+  `in-progress` to rabbit-issue's documented label schema as a sanctioned
+  category label marking an issue as a member of the loop's live dispatch set
+  (present while a subagent is actively working the issue). Mirrors how
+  `housekeeping` was added in #800 across the three doc surfaces — the spec
+  label-schema table plus a new §In-progress label section, SKILL.md §Label
+  Schema, and the contract `issue_labels` provides block — and is pinned by
+  `test/test-label-schema-pinned.py` (spec + contract token guards extended to
+  cover `in-progress`). Unlike `housekeeping`, `in-progress` is NOT applied at
+  filing time and has NO `file-item.py` flag: the autonomous evolve loop's
+  reconcile mirrors its dispatch journal's live set onto the label and
+  auto-creates it on first use via the same idempotent `ensure_labels` path
+  every sanctioned label uses, so no separate bootstrap is needed. This is
+  barrier piece 1/2 (the rabbit-issue label-schema entry); piece 2/2 (the
+  rabbit-auto-evolve reconcile that APPLIES the label) lands as a follow-up
+  commit on the same branch before merge. Four-way version lockstep 1.12.0 →
+  1.13.0 (feature.json + spec.md + SKILL.md; contract.md 1.10.0 → 1.11.0). No
+  runtime-script change in this piece. SKILL.md changed, so the deployed copy
+  under `.claude/skills/` drifts until the dispatcher republishes
+  (republish_needed).
+
 - **v1.12.0 (`--findings-comment-url` close gate for the SMALL research-outcome
   path, closes #841):** `item-status.py close --reason completed` now accepts a
   second, mutually-exclusive deliverable proof: `--findings-comment-url <url>`.
