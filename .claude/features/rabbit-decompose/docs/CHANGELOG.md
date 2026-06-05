@@ -13,6 +13,32 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.5.3 (housekeeping round 3 — measured line removal, #811 / #794):**
+  Removal-not-reword pass over the feature's doc surfaces under coding-rules
+  §6 (prove-it-dead-or-flag), §2 (Simplicity First), §7 (Parenthetical
+  Clarity). Cuts in `docs/spec.md`, each verified: (1) the Purpose section
+  restated the greenfield/existing-codebase scenarios in full bullet detail,
+  duplicating Interactive Protocol Step 1 — collapsed to a one-line scenario
+  summary that defers to the protocol, and dropped the decorative rhetorical
+  question. (2) Removed the `## Tech Stack` section ("No Python script in this
+  MVP — the skill is dispatcher-orchestrated"), a verbatim restatement of the
+  Surface note immediately above it; no contract check requires the section
+  (`grep "Tech Stack"` over the contract feature returns only its own spec).
+  (3) Dropped the parenthetical "(rabbit-decompose proposes; it does not
+  modify code)" in Invariant 3, which restated the `never` clause it quotes.
+  All named load-bearing tokens preserved: invariants stay contiguous 1..4,
+  the two-level-nesting constraint and "sequential" wording stay on both
+  surfaces (`test-step4b-no-nested-dispatch.py` green), and the
+  decomposition-shape + cross-feature `invokes`/`reads` tokens are unchanged.
+  Cross-feature claims re-verified LIVE and KEPT (`scaffold-feature.py
+  --batch`, `rabbit-feature-scaffold`, `rabbit-spec-create`,
+  `.rabbit/.runtime/mode` all present). `SKILL.md` body unchanged (no reword
+  to manufacture a diff); only its frontmatter `version` moved in lockstep.
+  Frontmatter `version` bumped to 0.5.3 across `feature.json`, `docs/spec.md`,
+  `docs/contract.md`, and the source `SKILL.md` (four-way alignment); the
+  deployed `.claude/skills/` copy needs a dispatcher republish because the
+  source SKILL.md frontmatter version changed. spec.md 130 -> 117 lines.
+
 - **v0.5.2 (opt into contiguous-invariants strict tier, #740 / #724
   follow-up):** Declared `"contiguous_invariants": true` at the top level of
   `feature.json`, opting rabbit-decompose into the contract suite's Inv 30

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.5.2
+version: 0.5.3
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -12,24 +12,15 @@ status: active
 ## Purpose
 
 rabbit-decompose proposes a feature decomposition for the user to review,
-edit, and accept. It is the "upstream scoper" that addresses the question
-the rest of the rabbit workflow can't answer on its own: *given a high-level
-intent or an existing codebase, what should the features actually be?*
+edit, and accept. It is the upstream scoper that decides, given a high-level
+intent or an existing codebase, what the features should be.
 
-Two scenarios drive the design:
-
-- **Greenfield** — user supplies a spec, design doc, or natural-language
-  description of the system. rabbit-decompose proposes a feature list
-  with names, purposes, and (optionally) path globs the future scaffolds
-  should govern.
-- **Existing codebase** — user points at a directory or supplies a
-  project root. rabbit-decompose analyzes the surface and proposes a
-  feature decomposition: each feature with a name, a one-line purpose,
-  and the path globs it should govern.
-
-In both cases the output is the same: an *accepted feature list* that
-feeds the downstream pipeline (`rabbit-feature-scaffold --batch` then
-`rabbit-spec-create` per feature).
+Two scenarios drive the design — **greenfield** (a spec, design doc, or
+natural-language description) and **existing codebase** (a directory or
+project root) — detailed in the Interactive Protocol below. In both cases
+the output is the same: an accepted feature list that feeds the downstream
+pipeline (`rabbit-feature-scaffold --batch` then `rabbit-spec-create` per
+feature).
 
 ## Surface
 
@@ -91,7 +82,7 @@ constrains only the structural shape.
    JSON block declaring the cross-feature relationships: `invokes`
    names `rabbit-feature-scaffold` (with the `--batch` form) and
    `rabbit-spec-create`; `never` includes "edits the user's source
-   code" (rabbit-decompose proposes; it does not modify code).
+   code".
 
 4. The spec-create hand-off MUST invoke `rabbit-spec-create` as a
    sequential `Skill(...)` call from the main session and MUST NOT wrap
@@ -100,10 +91,6 @@ constrains only the structural shape.
    creates an unsupported two-level subagent nesting chain. Neither
    `SKILL.md` nor this spec may claim the spec-create calls can be
    parallelized via the Agent tool.
-
-## Tech Stack
-
-No Python script in this MVP — the skill is dispatcher-orchestrated.
 
 ## Tests
 
