@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.14.0
+version: 1.15.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -60,10 +60,7 @@ orchestration wrapper.
         contain the substring `dropped` and the integer dropped count
         (e.g. `NOTE: resolved <N> files; capped at 50, <M> dropped`).
         When the deduped resolved count is at or below the cap, NO such
-        note is emitted (silent success). The dropped count is consumed by
-        `rabbit-spec-create` Step 4 so the user is told "and M dropped"
-        rather than silently receiving an incomplete `## Public surface` /
-        `## Current behaviour` draft. Enforced by
+        note is emitted (silent success). Enforced by
         `test/test-dispatch-truncation-not-silent.py` (>cap reports the
         dropped count on stderr; <=cap emits no note).
     (c) Invoke `python3 <repo_root>/.claude/features/contract/scripts/build-prompt.py
@@ -74,13 +71,10 @@ orchestration wrapper.
     (d) Stdlib only (argparse, glob, os, subprocess, sys, pathlib).
     (e) `<repo_root>` MUST be resolved via `Path(__file__).resolve().parents[4]` —
         NOT via `subprocess git rev-parse --show-toplevel` and NOT via `os.getcwd()`.
-        The script lives at `<repo_root>/.claude/features/rabbit-spec/scripts/dispatch-spec-create.py`,
-        so parents[0]=scripts, [1]=rabbit-spec, [2]=features, [3]=.claude, [4]=repo_root —
-        which resolves correctly whether `<repo_root>` is the dev workspace OR a plugin
-        `.rabbit/` install root. The `git rev-parse` and `os.getcwd()` mechanisms are
-        forbidden because in plugin mode (where rabbit lives under `.rabbit/.claude/`)
-        they resolve to the user-project root, NOT the rabbit root — causing the
-        build-prompt.py path to point to a non-existent location. Enforced by 3 tests
+        Both forbidden mechanisms point at the user-project root rather than the
+        rabbit root in plugin mode (rabbit lives under `.rabbit/.claude/`),
+        breaking the build-prompt.py path; `parents[4]` resolves correctly in
+        both the dev workspace and a plugin `.rabbit/` install. Enforced by 3 tests
         under `.claude/features/rabbit-spec/test/`: plugin-layout resolution,
         standalone-layout resolution from external cwd, and nested-git-repo immunity.
 
