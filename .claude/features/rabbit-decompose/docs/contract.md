@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.5.3
+version: 0.5.4
 template_version: 2.0.0
 ---
 
