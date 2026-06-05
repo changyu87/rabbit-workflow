@@ -41,9 +41,11 @@ BASELINE_TOTAL_LINES = 3594
 # The slimming pass must keep the spec total at least this many lines below the
 # baseline. This is a floor, not the achieved figure: it guards against a token-trim
 # regression while leaving headroom for future (additive) invariants. Issue #731
-# appended Inv 59 (~50 lines), so the ceiling is relaxed from the original 140-line
-# margin to an 80-line margin — still well below the baseline.
-MIN_LINES_CUT = 80
+# appended Inv 59 (~50 lines), so the ceiling was relaxed from the original 140-line
+# margin to an 80-line margin; issue #859 appended Inv 55 (the in-progress label
+# reconcile, ~25 lines), relaxing it further to a 55-line margin — still a meaningful
+# distance below the baseline.
+MIN_LINES_CUT = 55
 MAX_TOTAL_LINES = BASELINE_TOTAL_LINES - MIN_LINES_CUT
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,

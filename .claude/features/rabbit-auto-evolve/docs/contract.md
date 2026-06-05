@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.66.0
+version: 0.67.0
 template_version: 2.0.0
 ---
 
@@ -60,6 +60,11 @@ template_version: 2.0.0
     ],
     "agents": [],
     "modules": [
+      {
+        "path": ".claude/features/rabbit-issue/scripts/_gh.py",
+        "function": "ensure_labels|repo_slug",
+        "rationale": "reconcile-labels.py (Inv 55) imports rabbit-issue/_gh.ensure_labels to idempotently bootstrap the sanctioned `in-progress` category label before stamping it, and _gh.repo_slug to resolve the target repo without a `git remote` shellout. This is a cross-scope INVOKE of rabbit-issue's gh helpers (the same _gh module fetch-queue.py / triage-issue.py already bridge to) — rabbit-auto-evolve never edits rabbit-issue"
+      },
       {
         "path": ".claude/features/contract/lib/runtime.py",
         "function": "cleanup_old_prompts",

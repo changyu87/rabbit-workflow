@@ -27,7 +27,10 @@ longer writes the running marker.
                  (Inv 45), phases 8-10 (`run-post-merge.py` drain), phase 11
                  (persist: re-read the on-disk state — already mutated by the
                  phase scripts — drop the transient `merge_ready` key, and
-                 pipe through `update-state.py`). Emits a result summary.
+                 pipe through `update-state.py`), then the `in-progress` label
+                 reconcile (`reconcile-labels.py`, Inv 55) AFTER persist — a
+                 reconcile failure is recorded but never fails the tick. Emits
+                 a result summary.
 
 The headless tick chains:   pre-dispatch -> (skip dispatch) -> post-dispatch.
 The in-session tick chains: pre-dispatch -> Phase 6 (Claude) -> post-dispatch.
@@ -48,7 +51,7 @@ A single JSON result object is emitted on stdout. Exit code is 0 on a
 completed segment (including every short-circuit no-op); non-zero on an
 unexpected phase-script failure.
 
-Version: 1.4.0
+Version: 1.5.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -329,6 +332,15 @@ def run_post_dispatch():
         result["status"] = "failed"
         result["reason"] = "persist-failed"
         return result, 1
+
+    # Inv 55: per-tick `in-progress` label reconcile. AFTER persist (the journal
+    # is fully written on disk), mirror the journal-derived live set onto the
+    # GitHub `in-progress` label (add to newly-live issues, strip from issues no
+    # longer live). Idempotent and self-healing. Label hygiene must NEVER block
+    # evolution: a reconcile failure is recorded but never short-circuits or
+    # fails the tick (mirroring the Inv 49 sweep's never-fail-the-tick contract).
+    reconcile = _run("reconcile-labels.py", [])
+    result["phases"]["reconcile_labels"] = reconcile.returncode
 
     return result, 0
 
