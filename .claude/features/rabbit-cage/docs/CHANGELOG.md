@@ -12,6 +12,24 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.62.0 (fix #850: `install.py --update` downgrade guard; action tracks the check):**
+  `install.py --update` could DOWNGRADE — a v1.14.14 install slid back to the
+  dead `release/1.12.0` branch while the update-CHECK banner advertised v9.0.26;
+  the action and the check disagreed and the action went BACKWARDS. Extended Inv
+  27 with a downgrade guard on the dynamic-default channel: after resolving the
+  latest ref, `--update` reads `<target>/.version` and refuses to fetch when the
+  resolved ref is not strictly newer (semver-tuple comparison; `release/1.12.0`
+  → `(1,12,0)`, `v9.0.26` → `(9,0,26)`). An older-or-equal latest is a no-op —
+  it prints "already up to date", makes no change, and leaves `.version`
+  byte-untouched. The guard governs ONLY the dynamic default; an explicit
+  `--version`/`--ref`, `--channel dev`, or `RABBIT_REF` bypasses it and installs
+  the named ref verbatim (intentional downgrade still possible). README
+  reconciled: the dead `release/*` example replaced with a live tag and the
+  no-downgrade behavior documented. New test
+  `test-install-py-update-no-downgrade.py` (newer → fetch on advertised tag;
+  older → refused, untouched; equal → no-op; explicit older `--version` →
+  bypasses guard, fetches verbatim).
+
 - **v5.61.0 (fix #848: install.sh + install.py default ref resolves latest release dynamically):**
   Fresh `curl … install.sh | bash` installs were frozen at the hardcoded
   `RABBIT_REF=v1.14.14` default while GitHub's latest release had advanced to

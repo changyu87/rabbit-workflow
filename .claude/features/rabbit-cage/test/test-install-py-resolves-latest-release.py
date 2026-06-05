@@ -100,14 +100,20 @@ def test_default_resolves_injected_latest_tag():
         calls = _capture_fetch(install, fixture)
         # Wipe any inherited override so the default (dynamic) path runs.
         saved_ref = os.environ.pop("RABBIT_REF", None)
+        # main() sets RABBIT_INSTALLED_REF as a side effect; save/restore it so
+        # it does not leak into the next test's fresh-install .version pin.
+        saved_installed = os.environ.pop("RABBIT_INSTALLED_REF", None)
         os.environ["RABBIT_UPDATE_TEST_LATEST"] = "v9.0.26"
         try:
             rc, _ = _run_install(install, ["install.py", "--update", "--target", str(dst)])
         finally:
             install.fetch_upstream = original_fetch
             os.environ.pop("RABBIT_UPDATE_TEST_LATEST", None)
+            os.environ.pop("RABBIT_INSTALLED_REF", None)
             if saved_ref is not None:
                 os.environ["RABBIT_REF"] = saved_ref
+            if saved_installed is not None:
+                os.environ["RABBIT_INSTALLED_REF"] = saved_installed
 
         assert rc == 0, f"--update default path must succeed; got rc={rc}"
         assert len(calls) == 1, f"fetch_upstream must fire once; got {len(calls)}"
@@ -131,14 +137,18 @@ def test_default_falls_back_when_latest_unresolvable():
         original_resolve = install.resolve_latest_release
         install.resolve_latest_release = lambda *a, **k: None
         saved_ref = os.environ.pop("RABBIT_REF", None)
+        saved_installed = os.environ.pop("RABBIT_INSTALLED_REF", None)
         os.environ.pop("RABBIT_UPDATE_TEST_LATEST", None)
         try:
             rc, _ = _run_install(install, ["install.py", "--update", "--target", str(dst)])
         finally:
             install.fetch_upstream = original_fetch
             install.resolve_latest_release = original_resolve
+            os.environ.pop("RABBIT_INSTALLED_REF", None)
             if saved_ref is not None:
                 os.environ["RABBIT_REF"] = saved_ref
+            if saved_installed is not None:
+                os.environ["RABBIT_INSTALLED_REF"] = saved_installed
 
         assert rc == 0, f"--update offline-fallback path must succeed; got rc={rc}"
         assert len(calls) == 1, f"fetch_upstream must fire once; got {len(calls)}"

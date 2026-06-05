@@ -74,6 +74,7 @@ SUITES = [
     "test-install-py-resolves-latest-release.py",
     "test-install-py-version-flag-overrides-default.py",
     "test-install-py-update-tag-ref.py",
+    "test-install-py-update-no-downgrade.py",
     "test-install-py-channel-dev-opt-in.py",
     "test-install-update-self-reexec.py",
     "test-install-update-no-reexec-with-explicit-src.py",

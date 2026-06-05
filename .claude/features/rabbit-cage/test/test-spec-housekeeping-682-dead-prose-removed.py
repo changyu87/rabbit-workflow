@@ -96,8 +96,12 @@ COLLAPSE_MAX = 1
 # Inv 26 + Inv 27 to make the install default ref resolve GitHub's latest
 # release dynamically (with an offline fallback) — a real spec addition
 # documenting the new resolution ladder + graceful-degradation contract, not
+# reword re-inflation. Raised 525 -> 526 by #850, which extended Inv 27 with
+# the dynamic-default downgrade guard (the update ACTION must track the
+# update-CHECK and never resolve a ref older than what is installed) plus its
+# enforcing-test reference — a real spec addition documenting new behavior, not
 # reword re-inflation.
-SPEC_LINE_CEILING = 525
+SPEC_LINE_CEILING = 526
 
 PASS = 0
 FAIL = 0
