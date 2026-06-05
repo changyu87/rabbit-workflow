@@ -3272,7 +3272,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     `across every feature`, `all features`, `rename across`), OR the body/title
     carries an explicit cross-feature scope DECLARATION (case-insensitive:
     `Cross-feature (A + B)`, `Cross-feature: A, B`, `spans <feature> and
-    <feature>`; issue #797) outside any parent-reference line; else `false`.
+    <feature>`) outside any parent-reference line; else `false`.
     The record also carries `cross_scope_features` — the sorted distinct Inv 26
     feature set (same value as `features`) — so the dispatcher sees WHICH
     features the item spans. Both fields appear on every decision; a phrase-only
@@ -3300,8 +3300,8 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     `.claude/features/<name>/` PATH literally referenced in the body. Bare-name
     matches (Inv 26 method-(c)) are EXCLUDED here, though they remain in
     `features` / `cross_scope_features` for Stage-2 shaping. A
-    `.claude/features/<name>/` PATH on a READ-ONLY line is ALSO EXCLUDED (issue
-    #797): a line carrying a read-only verb (case-insensitive: `verify against`,
+    `.claude/features/<name>/` PATH on a READ-ONLY line is ALSO EXCLUDED:
+    a line carrying a read-only verb (case-insensitive: `verify against`,
     `confirm against`, `read-only`, `do not edit`, `don't edit`, `refer to`,
     `see`) names a CONFIRMATION target, not an EDIT target — e.g. `verify
     against .claude/features/contract/lib/runtime.py` — so it MUST NOT inflate
@@ -3330,9 +3330,9 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     decomposition sub-issue whose only cross-scope phrase is on a
     parent-reference line (a.1), for a sub-issue that merely MENTIONS other
     feature NAMES with no second EDIT-PATH (a.2), and for a sub-issue whose only
-    second-feature path is a read-only `verify against <path>` mention (a.2 /
-    #797); `true` for an explicit `Cross-feature (A + B)` / `spans X and Y`
-    DECLARATION even with no second edit-path (#797) — so plan-batch shapes the
+    second-feature path is a read-only `verify against <path>` mention
+    (a.2); `true` for an explicit `Cross-feature (A + B)` / `spans X and Y`
+    DECLARATION even with no second edit-path — so plan-batch shapes the
     `false` ones `parallel-per-feature`; a genuine `cross_scope` item is shaped
     `multi-subagent-barrier` / `decomposition`, never `parallel-per-feature`,
     and listed under `cross_scope_items`) and
