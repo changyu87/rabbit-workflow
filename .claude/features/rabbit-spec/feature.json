@@ -1,6 +1,6 @@
 {
   "name": "rabbit-spec",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
@@ -22,7 +22,7 @@
     ]
   },
   "deprecation_criterion": "when Claude Code exposes native spec-lifecycle skills that supersede this feature",
-  "updated": "2026-06-04",
+  "updated": "2026-06-05",
   "manifest": [
     {
       "api": "publish_skill",
@@ -60,5 +60,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.13.0 -> 1.14.0): #742 opt rabbit-spec into the contract strict CONTIGUOUS invariant-numbering tier (#724 follow-up). Added Inv 8 documenting the contiguous_invariants opt-in; set feature.json contiguous_invariants: true. Numbering was already contiguous 1..7 so no reflow was needed. New E2E guard test-contiguous-invariants-optin.py asserts the flag + contiguity via the live contract check."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.14.0 -> 1.15.0): measured-reduction wave. Cut restated rationale from Inv 3(b) (downstream consumption owned by rabbit-spec-create Step 4) and Inv 3(e) (parents[0..4] path-arithmetic enumeration + expanded forbidden-mechanism prose, both owned by the dispatch script comment). All load-bearing tokens kept; no invariant renumbered. New E2E guard test-no-restated-rationale.py forbids the removed restatement and asserts the load-bearing tokens survive."
 }

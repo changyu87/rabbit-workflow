@@ -12,6 +12,41 @@ Each retirement entry below carries the original invariant number (as it appeare
 
 ## Version notes
 
+- **v1.15.0 (#816 measured-reduction wave; child of #794):**
+  Removal pass (prove-it-dead-or-flag, coding-rules §6/§2/§7), not a reword.
+  rabbit-spec had already been through two reduction passes (#553, #688) and a
+  fallback-removal pass (#633), so it was lean; this wave makes minimal honest
+  cuts to the only surviving restated rationale. `docs/spec.md` 187 -> 181
+  lines (-6):
+    - Inv 3(b): cut the downstream-consumption restatement ("the dropped count
+      is consumed by `rabbit-spec-create` Step 4 so the user is told 'and M
+      dropped' ...") — that consumption is owned by
+      `skills/rabbit-spec-create/SKILL.md` Step 4. The load-bearing NOTE
+      behaviour (non-silent stderr note naming the dropped count; silent
+      at/below cap) and the "Enforced by" clause stay.
+    - Inv 3(e): cut the `parents[0]=scripts ... [4]=repo_root` path-arithmetic
+      enumeration and the expanded "forbidden because ... resolve to the
+      user-project root ... causing the build-prompt.py path to point to a
+      non-existent location" prose — both restate the inline comment in
+      `scripts/dispatch-spec-create.py`. Compressed to a one-sentence reason.
+      The load-bearing constraint (`Path(__file__).resolve().parents[4]`; NOT
+      `git rev-parse`; NOT `os.getcwd()`) and the "Enforced by 3 tests" clause
+      stay.
+  Verification: SKILL.md Step 4 inspected (owns the dropped-count surfacing);
+  `scripts/dispatch-spec-create.py` comment inspected (owns the parents[4]
+  arithmetic + forbidden-mechanism rationale). No invariant renumbered or
+  retired (no tombstone); numbering stays contiguous 1..8. New E2E content
+  guard `test/test-no-restated-rationale.py` forbids the removed restatement
+  AND asserts the load-bearing tokens (`dropped`,
+  `Path(__file__).resolve().parents[4]`, `git rev-parse`, `os.getcwd()`,
+  `test-dispatch-truncation-not-silent.py`) survive; auto-wired via
+  `test/run.py` glob. Four-way version alignment bumped
+  spec.md/contract.md/feature.json 1.14.0 -> 1.15.0 (contract.md content
+  unchanged — version-only bump to satisfy the lockstep assertion in
+  `test/test-docs-layout.py`). No deployed skill/agent surface changed
+  (cuts are spec-only), so NO dispatcher republish is required. Behaviour is
+  unchanged.
+
 - **v1.14.0 (#742 opt into strict contiguous invariant numbering; #724 follow-up):**
   rabbit-spec opts into the contract feature's strict CONTIGUOUS
   invariant-numbering tier introduced in #724. Set `"contiguous_invariants":
