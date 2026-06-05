@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.70.0
+version: 0.71.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2565,13 +2565,12 @@ summary is restated here.
 
     - `run-tick-phases.py pre-dispatch` — tick-start self-sync (Inv 38), phase
       0/1 stop/abort short-circuit, running-guard (Inv 35), phases 3-5
-      (`fetch | triage | plan`, Inv 18). Emits a result whose `action` is
-      `proceed` (continue to dispatch) or `skip` (a clean no-op short-circuit
-      fired).
+      (`fetch | triage | plan`, Inv 18). Emits `action` = `proceed` (continue to
+      dispatch) or `skip` (a clean no-op short-circuit fired).
     - `run-tick-phases.py post-dispatch` — an Inv 55 add-on-entry reconcile at
       the START (before merge drains the live set), phase 7 (merge the
       `merge_ready` PRs), a post-merge re-sync (Inv 45), phases 8-10
-      (`run-post-merge.py` drain), phase 11 (persist), then a SECOND Inv 55
+      (`run-post-merge.py` drain), phase 11 (persist), then an Inv 55
       strip-on-exit reconcile.
 
     The headless tick chains `pre-dispatch -> (skip dispatch) -> post-dispatch`;
@@ -3301,33 +3300,30 @@ summary is restated here.
     `merge-prs.py --record-pending` marks an issue's journal entry `completed`
     (recording its `pr`) in the SAME read-modify-write that appends to
     `pending_post_merge` (Inv 30): every issue a merged PR closes (the parsed
-    `Closes/Fixes/Resolves #N` set) whose journal entry exists is promoted. No
+    `Closes/Fixes/Resolves #N` set) whose journal entry exists is promoted — no
     new write site. `run-post-merge.py` prunes the journal where it clears
-    `pending_post_merge`: a tick whose entries are all `completed`/`aborted`
-    has its key dropped, bounding on-disk growth (the designed-deprecation
-    end-of-life).
+    `pending_post_merge` (a tick whose entries are all `completed`/`aborted` has
+    its key dropped, bounding on-disk growth).
 
     ### `in_flight` subsumption and off-ramp
 
     The vestigial `in_flight` field — declared/validated but NEVER populated by
     any phase script nor consulted by `fetch-queue.py` — is dropped from the
-    schema's REQUIRED set (still accepted as OPTIONAL for backward compat; a
-    state carrying it still validates). The journal's `dispatched`/`pr_open`
-    entries are the real in-flight set; `status-report.py` DERIVES its
-    `in_flight` output as a read-only projection of the journal, falling back
-    to a literal `in_flight` array when no journal is present — so the `status`
-    surface is unchanged. The block is additive: to roll back, make
+    schema's REQUIRED set (still OPTIONAL for backward compat). The journal's
+    `dispatched`/`pr_open` entries are the real in-flight set; `status-report.py`
+    DERIVES its `in_flight` output as a read-only projection of the journal,
+    falling back to a literal `in_flight` array when no journal is present — so
+    the `status` surface is unchanged. The block is additive: to roll back, make
     `record-dispatch.py` a no-op and drop the `resume-dispatch.py` consult; the
     loop reverts to re-fetch-each-tick with GitHub open-state as the de-facto
-    journal (`pending_post_merge` + `clean-dispatch-leaks.py` UNCHANGED). No
-    data is lost — open issues remain the authoritative recovery source.
+    journal (`pending_post_merge` + `clean-dispatch-leaks.py` UNCHANGED).
 
     Enforced by `test/test-record-dispatch.py` (append + update-in-place +
     `started_at`-once + missing-state error), `test/test-resume-dispatch.py`
-    (completed/pr_open SKIP; dispatched-no-PR/aborted/absent re-dispatch;
-    empty journal = no-regression base), `test/test-merge-prs.py` (merge marks
-    the entry `completed`), `test/test-run-post-merge.py` (drained tick pruned
-    on clear), `test/test-status-report.py` (`in_flight` derived), and
+    (completed/pr_open SKIP; dispatched-no-PR/aborted/absent re-dispatch; empty
+    journal = no-regression base), `test/test-merge-prs.py` (merge marks the
+    entry `completed`), `test/test-run-post-merge.py` (drained tick pruned on
+    clear), `test/test-status-report.py` (`in_flight` derived), and
     `test/test-state-persistence.py` (schema 1.4.0 accepts `dispatch_journal`,
     `in_flight` not required, 1.3.0 -> 1.4.0 migration seeds it `{}`).
 
@@ -3344,41 +3340,45 @@ summary is restated here.
     `rabbit-issue/scripts/_gh.ensure_labels`, declared in `contract.md`
     `invokes.modules` — never a cross-feature edit). `gh`/network failure is
     logged and the reconcile continues, NEVER crashing the tick (label hygiene
-    must not block evolution, like the Inv 49 sweep). It runs TWICE per tick in
-    `run-tick-phases.py`'s `post-dispatch` segment — script-owned (Tool-Choice
-    Tier), identical on both paths — as add-on-entry / strip-on-exit: the FIRST
-    call is at the START, BEFORE any merge drains the live set, so it ADDS
-    `in-progress` to what phase 6 just dispatched and even a single-tick item is
-    labelled while live; the SECOND, AFTER phase 11 (persist), STRIPS
-    the label from issues that have left the live set. Either call failing is
-    recorded but never fails the tick. Known limitation: the in-session phase-6
-    window WHILE subagents run is NOT covered (it needs a dispatcher-side call
-    conflicting with the script-owned constraint), but the early call resolves
-    the headless and across-tick bug. Enforced by `test-reconcile-labels.py`
-    (add/strip; idempotent; self-heal; graceful `gh` failure; empty-journal
-    no-op) and `test-run-tick-phases.py` (runs before merge AND after persist).
+    must not block evolution, like the Inv 49 sweep). The reconcile fires at
+    THREE touchpoints, each a SCRIPTED invocation of `reconcile-labels.py` — the
+    logic stays in the script; a caller only triggers it, per the
+    script-backed-orchestration standard (the SKILL invokes the script, never
+    hand-assembling label logic): (a) **phase-6 in-session add** — the
+    live-session dispatcher runs it at the END of phase 6, AFTER recording all
+    `dispatched` journal entries and BEFORE firing the Agent calls, so
+    `in-progress` is stamped on the just-dispatched set and stays visible for the
+    FULL minutes-to-hours TDD subagent execution window users observe; (b)
+    **post-dispatch add-on-entry** — `run-tick-phases.py`'s `post-dispatch`
+    segment runs it at the START, BEFORE any merge drains the live set, so even a
+    single-tick item is labelled before merge AND the HEADLESS path (which skips
+    phase 6) still gets the add; (c) **post-persist strip-on-exit** — the same
+    segment runs it AFTER phase 11 (persist) to STRIP the label from issues that
+    have left the live set. The (b)/(c) calls are script-owned and identical on
+    both paths; (a) is a dispatcher-triggered SCRIPTED invocation, NOT a
+    hand-assembled label step. Any call failing is recorded but never fails the
+    tick. Enforced by `test-reconcile-labels.py` (add/strip; idempotent;
+    self-heal; graceful `gh` failure; empty-journal no-op),
+    `test-run-tick-phases.py` (before merge AND after persist), and
+    `test-tick-skill.py` (phase-6 record-all → reconcile → Agent order).
 
 ## Known gaps
 
-- All implementation phases complete. The activation
-  surface lives on `/rabbit-auto-evolve on|off` (Inv 11). The Phase F
-  manual smoke test (initiate `on`, restart Claude, observe banner,
-  `start`, observe tick, `stop`, `off`) remains pending — it requires
-  user-driven Claude restart and observation, not a TDD cycle.
+- All implementation phases complete. The activation surface lives on
+  `/rabbit-auto-evolve on|off` (Inv 11). The Phase F manual smoke test (`on`,
+  restart Claude, observe banner, `start`, observe tick, `stop`, `off`) remains
+  pending — it needs user-driven restart and observation, not a TDD cycle.
 
 ## What this feature does NOT define
 
 - The `contract.lib.runtime` APIs `emit_auto_evolve_banner`,
   `emit_auto_evolve_stop_line`, and the suppression hook in
-  `iterate_configurables_alerts` / `_banner` — owned by the `contract`
-  feature (Inv 64–65, landed in commit `73d1217`).
+  `iterate_configurables_alerts` / `_banner` — owned by the `contract` feature.
 - The `tdd-step.py abort` subcommand and the HANDOFF JSON fields
-  `discovered_issues` / `aborted_reason` — owned by the `tdd-subagent`
-  feature (Inv 50–55, landed in commits `7b4e4b4` and `5a6d195`).
-- The `human-approval` and `bypass-permissions` configurables themselves
-  — owned by the `rabbit-cage` feature. This feature only flips them
-  during `set-evolve-mode.py`.
-- The TDD cycle itself — owned by `tdd-subagent` and orchestrated by
+  `discovered_issues` / `aborted_reason` — owned by the `tdd-subagent` feature.
+- The `human-approval` and `bypass-permissions` configurables themselves —
+  owned by the `rabbit-cage` feature. This feature only flips them during
+  `set-evolve-mode.py`.
+- The TDD cycle itself — owned by `tdd-subagent`, orchestrated by
   `rabbit-feature-touch`. This feature consumes them.
-- The `gh` CLI wrapper for issues — owned by `rabbit-issue`. This
-  feature consumes it.
+- The `gh` CLI wrapper for issues — owned by `rabbit-issue`, consumed here.

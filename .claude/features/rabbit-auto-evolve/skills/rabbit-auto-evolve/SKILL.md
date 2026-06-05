@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.70.0
+version: 0.71.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -298,22 +298,40 @@ mutation). The deterministic walk runs in two segments around Phase 6:
    ```
    It returns `{"dispatch": [...], "skip": [...]}`; dispatch ONLY the
    `dispatch` set (the `skip` set is `completed`/`pr_open` this cycle and
-   drains via the merge path). Then dispatch the TDD subagents per the
-   Stage-1/Stage-2 plan (Inv 26), each with `isolation: "worktree"` (Inv 28).
-   Record each dispatch in the journal (Inv 54) — once at dispatch time
-   (`--status dispatched`) and once when its HANDOFF returns
-   (`--status pr_open`/`aborted` with `--branch`/`--pr`):
-   ```
-   python3 .claude/features/rabbit-auto-evolve/scripts/record-dispatch.py --tick-id <tick-id> --issue <N> --feature <name> --shape <shape> --status <status> [--branch <b>] [--worktree <w>] [--pr <N>]
-   ```
+   drains via the merge path). Then run the dispatch set in this STRICT order
+   (Inv 54, Inv 55) so the GitHub `in-progress` label is visible for the FULL
+   minutes-to-hours TDD subagent execution window — NOT just a flicker:
+   1. **Record ALL `dispatched` journal entries first** — one entry for every
+      issue in the dispatch set, BEFORE any Agent call, so the journal's live set
+      is complete:
+      ```
+      python3 .claude/features/rabbit-auto-evolve/scripts/record-dispatch.py --tick-id <tick-id> --issue <N> --feature <name> --shape <shape> --status dispatched [--branch <b>] [--worktree <w>]
+      ```
+   2. **Then run `reconcile-labels.py`** — a SCRIPTED invocation (the label
+      logic stays in the script; the dispatcher only triggers it here) that
+      stamps `in-progress` on the now-live dispatched set BEFORE the Agent calls,
+      so the label covers the entire subagent run:
+      ```
+      python3 .claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py
+      ```
+   3. **Then fire the Agent calls** — dispatch the TDD subagents per the
+      Stage-1/Stage-2 plan (Inv 26), each with `isolation: "worktree"` (Inv 28).
+      The label is already live; the subagents now run for minutes/hours.
+   4. **Record each HANDOFF return** — when a dispatch's HANDOFF comes back,
+      update its journal entry (`--status pr_open`/`aborted` with `--branch`/`--pr`):
+      ```
+      python3 .claude/features/rabbit-auto-evolve/scripts/record-dispatch.py --tick-id <tick-id> --issue <N> --feature <name> --shape <shape> --status <status> [--branch <b>] [--pr <N>]
+      ```
 3. **Post-dispatch segment** (phases 7, 8-10, 11):
    ```
    python3 .claude/features/rabbit-auto-evolve/scripts/run-tick-phases.py post-dispatch
    ```
    The segment FIRST runs `reconcile-labels.py` (Inv 55, add-on-entry) BEFORE
-   any merge, so the `dispatched`/`pr_open` live set Phase 6 just recorded gets
-   the GitHub `in-progress` label added while still live — even a single-tick
-   item (dispatch → PR → merge in one tick) is labelled before merge drains it.
+   any merge, so the `dispatched`/`pr_open` live set gets the GitHub
+   `in-progress` label added while still live — even a single-tick item
+   (dispatch → PR → merge in one tick) is labelled before merge drains it. This
+   add-on-entry call ALSO covers the HEADLESS path, which skips Phase 6 entirely
+   and so never runs the phase-6 in-session reconcile above.
    Phase 7 then runs `clean-dispatch-leaks.py` (Inv 43, Inv 44) to
    deterministically clean KNOWN worktree-dispatch leak-class noise from the
    main tree BEFORE the merge. As its first step it restores a leaked main-HEAD
@@ -338,10 +356,12 @@ mutation). The deterministic walk runs in two segments around Phase 6:
    tick's. AFTER persist, the segment runs `reconcile-labels.py` (Inv 55) a
    SECOND time (strip-on-exit) to mirror the journal-derived live set onto the
    GitHub `in-progress` label, primarily STRIPPING it from issues that left the
-   live set during this segment (merged → `completed`); the early add-on-entry
-   call and this strip-on-exit call together keep the label truthful. Both are
-   script-owned (NOT a dispatcher hand-step) and a reconcile failure never fails
-   the tick.
+   live set during this segment (merged → `completed`); the phase-6 in-session
+   add, this segment's add-on-entry, and this strip-on-exit together keep the
+   label truthful across all three Inv 55 touchpoints. The two post-dispatch
+   calls are script-owned; the phase-6 call is a dispatcher-triggered SCRIPTED
+   invocation of `reconcile-labels.py` (NOT hand-assembled label logic). A
+   reconcile failure never fails the tick.
 4. **Phase 12 (`schedule`)** — run `schedule-decision.py` (Inv 33) and schedule
    the immediate-refire when work remains (see "Scheduling" below).
 
@@ -358,7 +378,7 @@ session walks them via the two `run-tick-phases.py` segments plus Phase 6.
 | 3 | `fetch`           | `.claude/features/rabbit-auto-evolve/scripts/fetch-queue.py` |
 | 4 | `triage`          | `.claude/features/rabbit-auto-evolve/scripts/triage-batch.py` (wraps `.claude/features/rabbit-auto-evolve/scripts/triage-issue.py` once per queued issue) |
 | 5 | `plan`            | `.claude/features/rabbit-auto-evolve/scripts/plan-batch.py` |
-| 6 | `dispatch`        | (rabbit-feature-touch — TDD subagent dispatch) |
+| 6 | `dispatch`        | record ALL `dispatched` journal entries → `.claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py` (Inv 55 — phase-6 in-session add: stamps `in-progress` on the just-dispatched set BEFORE the Agent calls, so the label covers the full TDD subagent run) → rabbit-feature-touch TDD subagent dispatch (Agent calls) |
 | 7 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py` (Inv 55 — add-on-entry: labels the just-dispatched live set BEFORE merge drains it) → `.claude/features/rabbit-auto-evolve/scripts/clean-dispatch-leaks.py` (Inv 43, Inv 44 — deterministic pre-merge cleanup of known worktree-dispatch leaks: restores a leaked main-HEAD branch switch to `dev` FIRST, then cleans file-leak classes; refuses non-zero on unexpected dirt or un-pushed leaked-branch work) → `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
 | 8-10 | `post-merge`    | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — deterministically runs release (8) → cleanup (9) → catch-up (10) for every PR in `pending_post_merge`, then clears it (Inv 30) — see "Post-merge phases (Inv 30)" below |
 |11 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json`, then `.claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py` runs AGAIN (Inv 55 — strip-on-exit: strips the `in-progress` label from issues that left the live set after merge; pairs with the phase-7 add-on-entry call; add/strip via rabbit-issue `ensure_labels`; never fails the tick) |

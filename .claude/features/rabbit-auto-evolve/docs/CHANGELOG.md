@@ -16,6 +16,28 @@ authoritative).
 
 ## Version notes
 
+- **v0.71.0 — 2026-06-04** — Complete the #882 reopen: make the `in-progress`
+  label cover the FULL phase-6 TDD subagent execution window. The #882 FIRST fix
+  (v0.70.0) added a post-dispatch add-on-entry reconcile, but `post-dispatch`
+  runs AFTER all phase-6 subagents complete, so the label only flickered for a
+  few seconds at post-dispatch start and was NEVER visible during the
+  hours-long TDD window users want to observe. FIX: the SKILL.md phase-6
+  (`dispatch`) section now mandates a STRICT order — the dispatcher records ALL
+  `dispatched` journal entries, THEN runs `reconcile-labels.py` (a SCRIPTED
+  invocation stamping `in-progress` on the now-live set), THEN fires the Agent
+  calls — so the label is live for the entire subagent run. Spec Inv 55 rewritten
+  to enumerate THREE reconcile touchpoints with rationale: (a) phase-6 in-session
+  add (covers the live TDD window), (b) post-dispatch add-on-entry (covers the
+  HEADLESS path, which skips phase 6), (c) post-persist strip-on-exit; the prior
+  "NOT covered / conflicts with script-owned constraint" limitation is resolved —
+  the phase-6 reconcile is a dispatcher-TRIGGERED scripted invocation, permitted
+  by the script-backed-orchestration standard (the SKILL invokes the script).
+  `reconcile-labels.py` unchanged (already labels the journal-derived live set).
+  `test-tick-skill.py` extended to assert the phase-6 record-all → reconcile →
+  Agent ordering and that Inv 55 lists the phase-6 touchpoint. spec.md kept at
+  the #751 ceiling (3384 lines) by tightening adjacent prose. Four-way lockstep
+  0.70.0 → 0.71.0.
+
 - **v0.70.0 — 2026-06-04** — Make the `in-progress` label visible during
   active dispatch (closes #882). `reconcile-labels.py` (Inv 55) previously ran
   ONLY at the very END of the post-dispatch segment (after merge → persist), so
