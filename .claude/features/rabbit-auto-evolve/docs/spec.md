@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.60.1
+version: 0.61.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1496,13 +1496,28 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     | `.rabbit-auto-evolve-aborted` (highest) | `loop aborted on safety violation` | 🛑 | red |
     | `.rabbit-auto-evolve-restart-needed` | `resume after restart` | 🔁 | yellow |
     | `.rabbit-auto-evolve-running` (NEW) | `loop in progress` | 🔄 | yellow |
-    | none | `paste: /rabbit-auto-evolve start` | ▶ | yellow |
+    | none, `.rabbit/auto-evolve-state.json` ABSENT | `auto-evolve configured — restart Claude Code, then run /rabbit-auto-evolve start` | ⏸ | yellow |
+    | none, `.rabbit/auto-evolve-state.json` PRESENT | `paste: /rabbit-auto-evolve start` | ▶ | yellow |
 
     Marker contents (for aborted/restart-needed) MAY be concatenated
     into the text for surfacing the reason, but the substring listed
     above is always present.
 
-    The script reads markers via `os.path.exists` only — no other
+    The two `none` rows distinguish the post-`on`/pre-`start`
+    window from a started-then-idle loop, exactly as the symmetric
+    Stop-hook line does (`contract.lib.runtime.emit_auto_evolve_stop_line`,
+    Inv 55). `set-evolve-mode.py on` writes the activation markers but NOT
+    `.rabbit/auto-evolve-state.json`; only `start-loop.py` creates that file
+    on the first `start`. So its ABSENCE means "configured but never started
+    — a restart is pending", and the restart-pending line2 is emitted
+    VERBATIM the same as the Stop line so the SessionStart banner and the
+    Stop line agree. Once the loop has been started at least once (state
+    file present) the existing `paste: /rabbit-auto-evolve start` idle line
+    is retained.
+
+    The script reads the five runtime markers via `os.path.exists` and
+    additionally probes for `.rabbit/auto-evolve-state.json` via
+    `os.path.isfile` (the never-started distinction) — no other
     filesystem access, no git, no `gh`. Repo root resolution uses
     the `RABBIT_AUTO_EVOLVE_REPO_ROOT` env override fallback to
     `os.getcwd()` (matching the marker-write scripts).
@@ -1513,13 +1528,18 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 
     Enforced by `test/test-banner-status.py`:
     - Active marker absent → `{active: false, line1: null, line2: null}`.
-    - Active only → `line2.text` contains `paste: /rabbit-auto-evolve start`.
+    - Active only, state file ABSENT → `line2.text` is
+      `auto-evolve configured — restart Claude Code, then run /rabbit-auto-evolve start`,
+      icon ⏸, color yellow.
+    - Active only, state file PRESENT → `line2.text` contains
+      `paste: /rabbit-auto-evolve start`, color yellow.
     - Active + running → `line2.text` contains `loop in progress`.
     - Active + restart-needed → `line2.text` contains `resume after restart`.
     - Active + aborted → `line2.text` contains `loop aborted on safety violation`.
     - Precedence: active + running + restart-needed → restart-needed wins.
     - Precedence: active + running + aborted → aborted wins.
     - Precedence: active + restart-needed + aborted → aborted wins.
+    - Precedence: a priority marker wins even when the state file is absent.
     - Exit 0 in all cases.
 
 23. **All runtime markers MUST be gitignored.** The repo-root

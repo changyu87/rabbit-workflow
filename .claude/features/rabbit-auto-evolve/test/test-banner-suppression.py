@@ -23,8 +23,13 @@ only the runtime block) plus a copy of banner-status.py, then call the real
 contract.lib.runtime banner/stop-line APIs in-process across four scenarios:
 
   S1: marker absent — banner returns [], stop-line returns [].
-  S2: marker present — banner returns 2 lines with default start hint as
-      line 2; stop-line returns the active/idle steady line.
+  S2: marker present + .rabbit/auto-evolve-state.json present (started-then-
+      idle, #793) — banner returns 2 lines with default start hint as line 2;
+      stop-line returns the active/idle steady line.
+  S2b: marker present + state file ABSENT (post-`on`/pre-`start`, #793) — both
+      surfaces emit the SAME restart-pending line so SessionStart and Stop
+      agree: banner line 2 and the stop-line carry the verbatim
+      'auto-evolve configured — restart Claude Code, then run /rabbit-auto-evolve start'.
   S3: marker + .rabbit-auto-evolve-restart-needed — banner line 2 is
       the restart-resume hint substring.
   S4: marker + .rabbit-auto-evolve-aborted (highest precedence) — banner
@@ -120,12 +125,14 @@ with tempfile.TemporaryDirectory() as td:
     else:
         ok("S1: marker absent -> banner and stop-line are no-ops")
 
-# S2: marker present — banner emits 2 lines with default start hint, and the
-# stop-line emits the active/idle steady state line. This composite surface
-# is what replaces the suppressed per-configurable alerts under auto-evolve.
+# S2 (#793): marker present + state file present (started-then-idle) — banner
+# emits 2 lines with default start hint, and the stop-line emits the active/idle
+# steady state line. This composite surface is what replaces the suppressed
+# per-configurable alerts under auto-evolve.
 with tempfile.TemporaryDirectory() as td:
     build_repo(td)
     touch(td, ".rabbit-auto-evolve-active")
+    touch(td, os.path.join(".rabbit", "auto-evolve-state.json"), "{}")
     banner = emit_auto_evolve_banner(repo_root=td)
     stop = emit_auto_evolve_stop_line(repo_root=td)
     if len(banner) != 2:
@@ -142,7 +149,30 @@ with tempfile.TemporaryDirectory() as td:
         fail(f"S2: stop-line missing active/idle steady substring; "
              f"got {stop[0]!r}")
     else:
-        ok("S2: marker present -> composite banner + active stop-line emit")
+        ok("S2: marker + state file -> composite banner + active stop-line emit")
+
+# S2b (#793): marker present + state file ABSENT (post-`on`/pre-`start` window)
+# — both the SessionStart banner line 2 and the Stop line carry the SAME
+# verbatim restart-pending text so the two surfaces agree.
+RESTART_PENDING = (
+    "auto-evolve configured — restart Claude Code, then run "
+    "/rabbit-auto-evolve start"
+)
+with tempfile.TemporaryDirectory() as td:
+    build_repo(td)
+    touch(td, ".rabbit-auto-evolve-active")  # state file deliberately absent
+    banner = emit_auto_evolve_banner(repo_root=td)
+    stop = emit_auto_evolve_stop_line(repo_root=td)
+    if len(banner) != 2:
+        fail(f"S2b: expected banner with 2 entries, got {len(banner)}: {banner!r}")
+    elif banner[1].get("text") != RESTART_PENDING:
+        fail(f"S2b: banner line 2 != restart-pending verbatim; got {banner[1]!r}")
+    elif len(stop) != 1:
+        fail(f"S2b: expected stop-line with 1 entry, got {len(stop)}: {stop!r}")
+    elif stop[0].get("text") != RESTART_PENDING:
+        fail(f"S2b: stop-line != restart-pending verbatim; got {stop[0]!r}")
+    else:
+        ok("S2b: state file absent -> banner and stop-line agree on restart-pending")
 
 # S3: marker + restart-needed -> line 2 is the restart-resume substring
 with tempfile.TemporaryDirectory() as td:

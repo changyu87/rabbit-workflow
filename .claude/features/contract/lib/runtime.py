@@ -16,7 +16,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.10.0
+Version: 1.11.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -800,11 +800,34 @@ _AUTO_EVOLVE_STOP_LINE_MARKERS = (
 )
 
 # Inv 55 steady active/idle line: emitted when .rabbit-auto-evolve-active is
-# present but none of the four short-lived state markers is. This is the
+# present, none of the four short-lived state markers is, AND the loop has been
+# started at least once (.rabbit/auto-evolve-state.json exists). This is the
 # dominant steady state (active loop between ticks).
 _AUTO_EVOLVE_STOP_LINE_IDLE = (
     "auto-evolve loop active — idle between ticks", "🔁", "green",
 )
+
+# Inv 55 restart-pending line (#793): emitted when .rabbit-auto-evolve-active is
+# present, none of the four short-lived state markers is, AND the loop has NEVER
+# been started — detected by the ABSENCE of .rabbit/auto-evolve-state.json
+# (only rabbit-auto-evolve's start-loop.py creates it on the first `start`).
+# set-evolve-mode.py `on` writes the activation markers but NOT the state file,
+# so the post-`on`/pre-`start` window lands here: configured but not yet running,
+# with a restart pending. Reusable by rabbit-auto-evolve's banner-status.py so
+# the SessionStart banner agrees verbatim.
+_AUTO_EVOLVE_STOP_LINE_RESTART_PENDING = (
+    "auto-evolve configured — restart Claude Code, then run /rabbit-auto-evolve start",
+    "⏸", "yellow",
+)
+
+
+def _auto_evolve_ever_started(repo_root: str) -> bool:
+    """True iff .rabbit/auto-evolve-state.json exists at repo root — the
+    signal that rabbit-auto-evolve's start-loop.py has bootstrapped the loop
+    at least once (#793). Its absence marks the post-`on`/pre-`start` window.
+    """
+    return os.path.isfile(
+        os.path.join(repo_root, ".rabbit", "auto-evolve-state.json"))
 
 
 def emit_auto_evolve_stop_line(*, repo_root: str) -> list:
@@ -814,15 +837,20 @@ def emit_auto_evolve_stop_line(*, repo_root: str) -> list:
     gates the entire auto-evolve composite surface). When active, returns
     exactly one print_result entry: a state marker chosen by the strict
     priority order aborted > restart-needed > stop-requested > running when one
-    is present, otherwise the steady active/idle line (active loop between
-    ticks), symmetric with emit_auto_evolve_banner.
+    is present, otherwise (no state marker) the restart-pending line when the
+    loop has never been started (.rabbit/auto-evolve-state.json absent, #793) or
+    the steady active/idle line when it has (active loop between ticks),
+    symmetric with emit_auto_evolve_banner.
     """
     if not _auto_evolve_active(repo_root):
         return []
     for path, text, icon, color in _AUTO_EVOLVE_STOP_LINE_MARKERS:
         if os.path.isfile(os.path.join(repo_root, path)):
             return [print_result(text=text, icon=icon, color=color)]
-    text, icon, color = _AUTO_EVOLVE_STOP_LINE_IDLE
+    if _auto_evolve_ever_started(repo_root):
+        text, icon, color = _AUTO_EVOLVE_STOP_LINE_IDLE
+    else:
+        text, icon, color = _AUTO_EVOLVE_STOP_LINE_RESTART_PENDING
     return [print_result(text=text, icon=icon, color=color)]
 
 
