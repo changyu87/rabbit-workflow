@@ -39,7 +39,7 @@ This module has two distinct roles:
      (test-deployed-hooks-execute.py, test-install-publish-loop.py) to exercise
      the publish flow against a freshly copied .claude tree.
 
-Version: 6.7.0
+Version: 6.8.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit's per-project plugin model is superseded
 """
@@ -98,7 +98,6 @@ SKILLS = [
     (".claude/features/rabbit-feature/skills/rabbit-feature-scaffold/SKILL.md", ".claude/skills/rabbit-feature-scaffold/SKILL.md"),
     (".claude/features/rabbit-feature/skills/rabbit-feature-touch/SKILL.md", ".claude/skills/rabbit-feature-touch/SKILL.md"),
     (".claude/features/rabbit-feature/skills/rabbit-feature-scope/SKILL.md", ".claude/skills/rabbit-feature-scope/SKILL.md"),
-    (".claude/features/rabbit-feature/skills/rabbit-feature-audit/SKILL.md", ".claude/skills/rabbit-feature-audit/SKILL.md"),
     (".claude/features/rabbit-issue/skills/rabbit-issue/SKILL.md", ".claude/skills/rabbit-issue/SKILL.md"),
     (".claude/features/rabbit-spec/skills/rabbit-spec-create/SKILL.md", ".claude/skills/rabbit-spec-create/SKILL.md"),
     (".claude/features/rabbit-spec/skills/rabbit-spec-update/SKILL.md", ".claude/skills/rabbit-spec-update/SKILL.md"),
@@ -193,7 +192,6 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "scripts/format-feature-context.py",
         "scripts/resolve-scope.py",
         "scripts/scaffold-feature.py",
-        "skills/rabbit-feature-audit/SKILL.md",
         "skills/rabbit-feature-scaffold/SKILL.md",
         "skills/rabbit-feature-scope/SKILL.md",
         "skills/rabbit-feature-touch/SKILL.md",
@@ -224,6 +222,46 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "scripts/tdd-step.py",
     ],
 }
+
+
+def closure_source_rels() -> list[str]:
+    """Every repo-relative SOURCE path the install closure reads, in order.
+
+    The single enumeration of SAME_PATH_FILES + HOOKS + SKILLS + AGENTS +
+    COMMANDS + FEATURE_INCLUDES sources. `check_install_sources_exist` and the
+    install-integrity tests consume this so the closure is described in exactly
+    one place.
+    """
+    rels: list[str] = list(SAME_PATH_FILES)
+    rels += [src for src, _dst in HOOKS]
+    rels += [src for src, _dst in SKILLS]
+    rels += [src for src, _dst in AGENTS]
+    rels += [src for src, _dst in COMMANDS]
+    for feature, paths in FEATURE_INCLUDES.items():
+        base = f".claude/features/{feature}"
+        rels += [f"{base}/{rel}" for rel in paths]
+    return rels
+
+
+def check_install_sources_exist(repo_root) -> list[str]:
+    """Inv 21 integrity guard (#880): return the closure source paths that do
+    NOT exist as files under `repo_root`.
+
+    install.main() requires EVERY closure source to exist (copy_one aborts on a
+    missing source), so a surface retirement that leaves a stale closure entry
+    silently breaks `curl … install.sh | bash` on every fresh install. This is
+    the deterministic, importable check that catches that class: it is run as a
+    fail-loud self-check inside main() (before any copy) and exercised against
+    the real repo by the rabbit-cage install-integrity tests. It is also
+    importable by the cross-feature contract gate so a surface change to ANY
+    feature — not only rabbit-cage — is screened against the install closure.
+
+    Returns the (sorted, de-duplicated) list of missing repo-relative source
+    paths; an empty list means the closure is intact.
+    """
+    root = Path(repo_root)
+    missing = {rel for rel in closure_source_rels() if not (root / rel).is_file()}
+    return sorted(missing)
 
 
 def copy_one(src_root: Path, dst_root: Path, src_rel: str, dst_rel: str) -> bool:
@@ -713,6 +751,24 @@ def _main_with_args(args: argparse.Namespace) -> int:
         return 1
     if not args.update and dst_root.exists() and any(dst_root.iterdir()):
         print(f"error: --target exists and is not empty: {dst_root}", file=sys.stderr)
+        return 1
+
+    # Inv 21 integrity self-check (#880): fail loud — naming the offending
+    # path(s) — when the hardcoded closure references a source the extracted
+    # tarball does not contain. Without this, copy_one's per-file abort still
+    # fires but only as a late "missing required source file" once the loop
+    # reaches the stale entry; this surfaces the whole dangling set up front and
+    # makes a surface retirement that orphaned a closure entry diagnosable.
+    missing_sources = check_install_sources_exist(src_root)
+    if missing_sources:
+        print(
+            "error: install closure references source files absent from --src "
+            "(dangling required-file; a retired surface left a stale "
+            "install.py entry):",
+            file=sys.stderr,
+        )
+        for rel in missing_sources:
+            print(f"  {rel}", file=sys.stderr)
         return 1
 
     # Inv 22e: print version transition before any refresh so the operator
