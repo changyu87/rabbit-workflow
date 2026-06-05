@@ -16,7 +16,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.13.0
+Version: 1.14.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -25,6 +25,7 @@ Deprecation criterion: when the rabbit CLI exposes native per-event
 import datetime
 import importlib.util
 import json
+import math
 import os
 import re
 import subprocess
@@ -859,22 +860,56 @@ def _parse_cron_minutes(field: str) -> set:
     return minutes
 
 
+def _cadence_period_minutes(minutes: set) -> int:
+    """Derive the heartbeat cadence period (minutes between consecutive fires)
+    from the parsed fire-minute set. The period is the smallest gap between two
+    consecutive fire minutes, wrapping across the hour boundary. A single fire
+    minute means once-per-hour, so the period is 60. Used solely to bound the
+    displayed scheduler jitter.
+    """
+    ms = sorted(minutes)
+    if len(ms) <= 1:
+        return 60
+    gaps = [b - a for a, b in zip(ms, ms[1:])]
+    gaps.append((ms[0] + 60) - ms[-1])  # wrap last -> first across the hour
+    return min(gaps)
+
+
+def _cadence_jitter_minutes(period: int) -> int:
+    """The bounded CronCreate scheduler jitter for a given cadence period: up
+    to 10% of the period, capped at 15 minutes, and at least 1 minute for any
+    positive period. CronCreate adds this much delay to recurring fires, so the
+    displayed ETA's upper bound is the scheduled fire plus this jitter — making
+    the printed time never systematically EARLY. Mirrors rabbit-auto-evolve
+    ``banner-status.py:_cadence_jitter_minutes`` so banner and Stop line agree.
+    """
+    return max(1, min(15, math.ceil(period * 0.10)))
+
+
 def _auto_evolve_next_tick_eta(repo_root: str, now) -> str:
     """Compute the approximate next rabbit-auto-evolve heartbeat fire as a
-    ``"~HH:MM"`` string, at or strictly after the injected ``now`` datetime.
+    jitter-inclusive RANGE string ``"~HH:MM–HH:MM (scheduler jitter)"``, at or
+    strictly after the injected ``now`` datetime.
 
     Reads the durable heartbeat cadence from
     ``<repo_root>/.claude/scheduled_tasks.json`` — the ``tasks[]`` entry whose
     ``prompt`` references ``rabbit-auto-evolve``. Only the cron MINUTE field is
     matched against an unrestricted (``*``) HOUR, which is the cadence shape
-    the heartbeat uses (``13,43 * * * *``); the result is the next wall-clock
-    minute in that minute-set, wrapping to the next hour (and across midnight)
-    as needed.
+    the heartbeat uses (``13,43 * * * *``); the range's LOW bound is the next
+    wall-clock minute in that minute-set, wrapping to the next hour (and across
+    midnight) as needed, and the HIGH bound is that fire plus the bounded
+    CronCreate scheduler jitter (``_cadence_jitter_minutes`` — up to 10% of the
+    cadence period, capped at 15 min) — the upper bound may itself wrap across
+    the hour or midnight. The bare single-point ETA read systematically EARLY
+    because it ignored that jitter plus idle-check latency, so the range form
+    makes the estimate honest and never early. This mirrors the
+    rabbit-auto-evolve ``banner-status.py`` range form so the SessionStart
+    banner and the Stop line read consistently.
 
     Returns ``None`` on any of: missing file, unreadable file, JSON parse
     error, no matching task, or no parseable cron minutes — so the caller
     degrades to the bare idle line rather than rendering a fabricated ETA.
-    The ETA is APPROXIMATE (``~``): the scheduled fire, not a guarantee.
+    The ETA is APPROXIMATE (``~``): the scheduled fire window, not a guarantee.
     """
     path = os.path.join(repo_root, ".claude", "scheduled_tasks.json")
     try:
@@ -905,7 +940,11 @@ def _auto_evolve_next_tick_eta(repo_root: str, now) -> str:
     candidate = now.replace(second=0, microsecond=0) + datetime.timedelta(minutes=1)
     for _ in range(1440):
         if candidate.minute in minutes:
-            return candidate.strftime("~%H:%M")
+            jitter = _cadence_jitter_minutes(_cadence_period_minutes(minutes))
+            upper = candidate + datetime.timedelta(minutes=jitter)
+            low = candidate.strftime("%H:%M")
+            high = upper.strftime("%H:%M")
+            return f"~{low}–{high} (scheduler jitter)"
         candidate += datetime.timedelta(minutes=1)
     return None
 
@@ -923,9 +962,10 @@ def emit_auto_evolve_stop_line(*, repo_root: str, now=None) -> list:
     symmetric with emit_auto_evolve_banner.
 
     Only the steady idle line is extended with an approximate next-tick ETA
-    ("auto-evolve loop active — idle, next tick ~HH:MM") when the heartbeat
-    cadence at .claude/scheduled_tasks.json is present and parseable; it
-    degrades to the bare idle text otherwise. The `now` argument is the
+    rendered as a jitter-inclusive range ("auto-evolve loop active — idle, next
+    tick ~HH:MM–HH:MM (scheduler jitter)") when the heartbeat cadence at
+    .claude/scheduled_tasks.json is present and parseable; it degrades to the
+    bare idle text otherwise. The `now` argument is the
     injected wall-clock used solely for that ETA (default None -> real
     clock); it changes no marker/state-file logic. The four priority-marker
     lines and the restart-pending line never carry an ETA.

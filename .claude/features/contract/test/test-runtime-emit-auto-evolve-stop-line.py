@@ -196,7 +196,13 @@ with tempfile.TemporaryDirectory() as td:
     r = emit_auto_evolve_stop_line(repo_root=td)
     assert_one(r, ABORTED, "L")
 
-# ---- idle-line next-tick ETA (#837) ----
+# ---- idle-line next-tick ETA (jitter-inclusive range) ----
+# The idle line carries the jitter-inclusive RANGE form
+# "next tick ~HH:MM–HH:MM (scheduler jitter)" — LOW is the next scheduled fire
+# at/after now, HIGH is LOW + the bounded scheduler jitter. For the 13,43
+# cadence the period is 30 min so the jitter is 3 min. This mirrors the
+# rabbit-auto-evolve banner-status.py range form so the SessionStart banner
+# and the Stop line read consistently.
 NOW = datetime.datetime(2026, 6, 4, 14, 5, 0)  # fixed injected now
 
 
@@ -211,13 +217,13 @@ def assert_text(r, expected_text, label):
     ok(f"{label}: emitted {expected_text!r}")
 
 
-# M: idle + cadence present -> idle line carries ~HH:MM ETA (next fire after now)
+# M: idle + cadence present -> idle line carries the jitter-inclusive RANGE ETA
 with tempfile.TemporaryDirectory() as td:
     touch(td, ".rabbit-auto-evolve-active")
     write_state_file(td)
     write_cadence(td, "13,43 * * * *")
     r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
-    assert_text(r, "auto-evolve loop active — idle, next tick ~14:13", "M")
+    assert_text(r, "auto-evolve loop active — idle, next tick ~14:13–14:16 (scheduler jitter)", "M")
     # icon/color unchanged on the ETA idle line
     if r and (r[0].get("icon") != "🔁" or r[0].get("color") != "green"):
         fail(f"M: idle ETA line icon/color changed: {r[0]!r}")
@@ -275,23 +281,23 @@ with tempfile.TemporaryDirectory() as td:
         fail(f"S: expected [], got {r!r}")
 
 # T: minute already exactly on a fire boundary at now -> next is the LATER slot
-#    now=14:13 with 13,43 -> next is 14:43 (strictly after now)
+#    now=14:13 with 13,43 -> next is 14:43 (strictly after now), +3 jitter
 with tempfile.TemporaryDirectory() as td:
     touch(td, ".rabbit-auto-evolve-active")
     write_state_file(td)
     write_cadence(td, "13,43 * * * *")
     r = emit_auto_evolve_stop_line(
         repo_root=td, now=datetime.datetime(2026, 6, 4, 14, 13, 0))
-    assert_text(r, "auto-evolve loop active — idle, next tick ~14:43", "T")
+    assert_text(r, "auto-evolve loop active — idle, next tick ~14:43–14:46 (scheduler jitter)", "T")
 
-# U: wrap to next hour: now=14:50 with 13,43 -> next is 15:13
+# U: wrap to next hour: now=14:50 with 13,43 -> next is 15:13, +3 jitter
 with tempfile.TemporaryDirectory() as td:
     touch(td, ".rabbit-auto-evolve-active")
     write_state_file(td)
     write_cadence(td, "13,43 * * * *")
     r = emit_auto_evolve_stop_line(
         repo_root=td, now=datetime.datetime(2026, 6, 4, 14, 50, 0))
-    assert_text(r, "auto-evolve loop active — idle, next tick ~15:13", "U")
+    assert_text(r, "auto-evolve loop active — idle, next tick ~15:13–15:16 (scheduler jitter)", "U")
 
 if FAIL:
     print("test-runtime-emit-auto-evolve-stop-line: FAIL", file=sys.stderr)
