@@ -16,7 +16,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.12.0
+Version: 1.13.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -949,15 +949,27 @@ def emit_auto_evolve_stop_line(*, repo_root: str, now=None) -> list:
     return [print_result(text=text, icon=icon, color=color)]
 
 
-def emit_stop_timestamp(*, repo_root: str) -> list:
+def emit_stop_timestamp(*, repo_root: str, now=None) -> list:
     """Inv 57 — universal Stop-event turn-end timestamp.
 
-    Returns exactly one print_result entry whose text is the current UTC
-    time formatted as HH:MM:SS, icon ⏱, color green. Reads no markers, no
-    files, no env vars; repo_root is accepted for dispatcher-signature
-    consistency but unused. NEVER short-circuits to [] — every invocation
-    emits the timestamp line so every Stop event in every session has a
-    turn-end marker visible regardless of auto-evolve mode.
+    Returns exactly one print_result entry whose text is the current LOCAL
+    wall-clock time formatted as ``"%H:%M:%S %Z"`` (e.g. ``"03:32:07 EDT"``),
+    icon ⏱, color green. The clock is LOCAL, not UTC: the idle Stop-line
+    next-tick ETA (Inv 55, via ``_auto_evolve_next_tick_eta``) and the
+    SessionStart banner ETA both render local wall-clock, and the heartbeat
+    cron fires in local time — so a UTC clock next to a local ETA would read
+    as hours in the past. Rendering local with an explicit tz label keeps the
+    whole composite Stop-line consistent and unambiguous.
+
+    Reads no markers, no files, no env vars; ``repo_root`` is accepted for
+    dispatcher-signature consistency but unused. The optional ``now`` is an
+    injected AWARE ``datetime`` used solely for deterministic test rendering
+    (default ``None`` → the real local clock via
+    ``datetime.datetime.now().astimezone()``, an aware local datetime so
+    ``%Z`` populates with the real zone abbreviation). NEVER short-circuits
+    to [] — every invocation emits the timestamp line so every Stop event in
+    every session has a turn-end marker visible regardless of auto-evolve
+    mode.
 
     The single entry is tagged with the footer-ordering marker
     ``"order": "footer"``. ``order`` is an optional
@@ -971,5 +983,7 @@ def emit_stop_timestamp(*, repo_root: str) -> list:
     print_result/banner_result/subline_result factories are unchanged —
     they never set ``order``; only this function adds it (by dict-merge).
     """
-    text = datetime.datetime.utcnow().strftime("%H:%M:%S")
+    if now is None:
+        now = datetime.datetime.now().astimezone()
+    text = now.strftime("%H:%M:%S %Z")
     return [{**print_result(text, "⏱", "green"), "order": "footer"}]
