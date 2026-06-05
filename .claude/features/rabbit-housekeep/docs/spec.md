@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.1.0
+version: 0.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -11,21 +11,16 @@ status: active
 
 ## Purpose
 
-rabbit-housekeep distills the housekeeping-wave methodology — especially the
-slim / line-reduction work — into a first-class, repeatable capability. It
-manifests ONE skill. Invoking the skill runs measured verify-or-flag
-housekeeping against a target in WAVES sized to the target's complexity, and
-decomposes cross-feature scope into per-feature work the way the autonomous
-loop already does.
+rabbit-housekeep distills the housekeeping-wave slim / line-reduction work
+into a first-class, repeatable capability. It manifests ONE skill that runs
+measured verify-or-flag housekeeping against a target in WAVES sized to the
+target's complexity, and decomposes cross-feature scope into per-feature work.
 
-Two failure modes the feature exists to prevent:
-
-- **Reword-not-remove.** A pass that reshuffles prose while line counts stay
-  flat is not housekeeping. Reduction is MEASURED with a deterministic script;
-  a negative line delta is the gate.
-- **Load-bearing deletion.** A pass that deletes a script name, a schema
-  field, an exit code, a decision table, or a cross-reference is a regression.
-  The housekeeping test asserts named load-bearing tokens survive.
+It guards two failure modes: reword-not-remove (reshuffling prose while line
+counts stay flat) and load-bearing deletion (dropping a script name, schema
+field, exit code, decision table, or cross-reference). Reduction is MEASURED
+with a deterministic script — a negative line delta is the gate — and the
+housekeeping test asserts named load-bearing tokens survive.
 
 ## Surface
 
@@ -38,17 +33,15 @@ Two failure modes the feature exists to prevent:
 ## Methodology
 
 The skill applies the prove-it-dead-or-flag protocol from coding-rules.md §6,
-embedded VERBATIM in the SKILL.md body (not paraphrased). For each claim in
-scope it runs the matching deterministic check (path → `find`; symbol → `grep`;
-behavior → reachable code or test; cross-feature → inspect the other feature),
-then DELETEs proven-dead content, KEEPs proven-live content, and FLAGs an
-unverifiable claim as a `housekeeping`-tagged sub-issue — annotate-and-continue,
-so one uncertain sentence never stalls the wave.
+embedded VERBATIM in the SKILL.md body (not paraphrased): each claim runs its
+matching deterministic check, then proven-dead content is DELETEd, proven-live
+KEPT, and an unverifiable claim FLAGged as a `housekeeping`-tagged sub-issue so
+one uncertain sentence never stalls the wave.
 
 Slim decisions apply coding-rules §2 (Simplicity First) and §7 (Parenthetical
 Clarity). Schemas, decision tables, exit codes, script names, and
-cross-references are preserved verbatim. Deep history lives in
-`docs/CHANGELOG.md`; the doc surfaces describe the current design only.
+cross-references are preserved verbatim. History lives in `docs/CHANGELOG.md`;
+the doc surfaces describe the current design only.
 
 ## Waves and decomposition
 
@@ -58,13 +51,13 @@ The skill sizes the work into waves by target complexity:
   measure after, report.
 - A multi-feature or repo-wide mandate is MANY waves: the scope is DECOMPOSED
   into one bounded per-feature unit each, reusing the decomposition dispatch
-  shape. Each per-feature unit is filed as a `housekeeping`-tagged sub-issue
-  via the rabbit-issue filing script, and the parent→children linkage is
-  recorded so the parent closes itself deterministically when every child
-  closes (the parent-close machinery owned by rabbit-auto-evolve).
+  shape. Each unit is filed as a `housekeeping`-tagged sub-issue via the
+  rabbit-issue filing script, and the parent→children linkage is recorded so
+  the rabbit-auto-evolve parent-close machinery closes the parent when every
+  child closes.
 
-Each per-feature unit executes through the governed TDD path (the
-rabbit-feature-touch path, which dispatches the TDD subagent). The housekeeping
+Each per-feature unit executes through the governed TDD path —
+rabbit-feature-touch, which dispatches the TDD subagent. The housekeeping
 test pattern asserts BOTH the measured reduction (`measure-reduction.py diff`
 reports a negative total delta) AND that the named load-bearing tokens survive.
 
@@ -74,27 +67,24 @@ reports a negative total delta) AND that the named load-bearing tokens survive.
   `scripts/measure-reduction.py` owns them deterministically.
 - Slim decisions (redundant vs load-bearing) are SPEC-tier directives that
   tightly constrain the subagent.
-- Decomposition, dispatch, and parent-close reuse existing scripted machinery
-  (rabbit-decompose's decomposition shape, rabbit-issue filing, and
-  rabbit-auto-evolve's parent-close), not reinvented here.
+- Decomposition, dispatch, and parent-close reuse existing scripted
+  machinery — rabbit-decompose's decomposition shape, rabbit-issue filing,
+  and rabbit-auto-evolve's parent-close — not reinvented here.
 
 ## measure-reduction.py
 
-The measurement script is deterministic and stdlib-only. It has two
-subcommands:
+Deterministic, stdlib-only, two subcommands (full interface in the script
+docstring):
 
-- `count <path> [<path> ...]` — print a JSON object mapping each text file to
-  its line count plus a `__total__` key; directory arguments are walked
-  recursively, binary files skipped. This is the machine-first BEFORE/AFTER
-  snapshot.
-- `diff <before.json> <after.json>` — print a JSON object with `per_artifact`
-  (each path's `before`/`after`/`delta`), `total_before`, `total_after`,
+- `count <path> ...` — JSON of each text file's line count plus `__total__`;
+  directories walked recursively, binary files skipped. The machine-first
+  BEFORE/AFTER snapshot.
+- `diff <before.json> <after.json>` — JSON with `per_artifact`,
   `total_delta` (after − before; negative means lines removed), `reduced`
   (true iff `total_delta < 0`), `removed_paths`, and `added_paths`.
 
-Exit codes: `0` success, `2` invocation error (bad args or unreadable
-snapshot). The reduction verdict is the `reduced` field — the script reports;
-the caller's test gates on it.
+Exit `0` success, `2` invocation error. The reduction verdict is the
+`reduced` field — the script reports, the caller's test gates.
 
 ## Invariants
 
@@ -135,14 +125,13 @@ the caller's test gates on it.
 
 `test/run.py` invokes every `test-*.py` file under `test/`. Coverage:
 
-- `test-measure-reduction.py` (E2E — drives `measure-reduction.py count` and
-  `diff` against fixture trees: count totals are correct, a removal yields
-  `reduced: true` with a negative `total_delta`, a reword yields
-  `reduced: false`, and the invocation-error exit code is `2`).
-- `test-skill-structure.py` (E2E — asserts the skill is present and
+- `test-measure-reduction.py` — E2E driving `count` and `diff` against
+  fixture trees: correct totals, removal yields `reduced: true`, reword
+  yields `reduced: false`, invocation error exits `2`.
+- `test-skill-structure.py` — E2E asserting the skill is present and
   manifest-published, the coding-rules §6 block is embedded byte-for-byte
   verbatim, and the subagent-dispatching no-Agent-nesting constraint is
-  documented).
+  documented.
 
 ## Out of Scope
 
