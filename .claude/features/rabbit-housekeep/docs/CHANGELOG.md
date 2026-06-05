@@ -13,6 +13,22 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.2.0 (measured-reduction housekeeping wave, issue #813):** Ran the
+  feature's own measured verify-or-flag reduction wave against its doc
+  surfaces (`docs/spec.md`, `docs/contract.md`,
+  `skills/rabbit-housekeep/SKILL.md`). Every claim was resolved by a
+  deterministic check; all were proven-live and KEPT, so the wave removed
+  redundant restatement, restated rationale, and decorative parentheticals
+  only — no behavior, invariant, schema field, exit code, script name, or
+  cross-reference was dropped. The verbatim coding-rules.md §6 embed was left
+  byte-faithful. Doc surfaces went from 427 to 411 lines (−16). Added a new
+  E2E gate, `test-reduction-wave.py`, that drives `measure-reduction.py`
+  `count`/`diff` against the live doc surfaces and asserts both the measured
+  reduction (`reduced: true`) and load-bearing-token survival. No
+  unverifiable claims were found, so no `housekeeping`-tagged sub-issues were
+  filed. The deployed `.claude/skills/` copy needs a dispatcher republish
+  because the source SKILL.md changed.
+
 - **v0.1.0 (initial feature, issue #730):** New `rabbit-housekeep` feature
   that distills the proven housekeeping-wave methodology — especially the
   slim / line-reduction work — into a first-class, repeatable capability.

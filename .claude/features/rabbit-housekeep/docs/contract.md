@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.1.0
+version: 0.2.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -64,10 +64,10 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "runtime_markers": []
   },
   "never": [
-    "edits files outside the target feature's directory (cross-feature scope is decomposed into per-feature units, each scoped to its own feature)",
-    "rewords doc surfaces without measured line removal (a reduction wave removes; the measure-reduction.py diff reduced verdict is the gate)",
+    "edits files outside the target feature's directory",
+    "rewords doc surfaces without measured line removal (the measure-reduction.py diff reduced verdict is the gate)",
     "deletes load-bearing tokens (script names, schema fields, exit codes, decision tables, cross-references) to inflate the line delta",
-    "silently keeps an unverifiable claim (it is flagged as a housekeeping-tagged sub-issue, never silently retained)",
+    "silently keeps an unverifiable claim instead of flagging it as a housekeeping-tagged sub-issue",
     "is invoked inside an Agent() call (it is a subagent-dispatching skill; doing so creates illegal two-level subagent nesting)"
   ]
 }
@@ -75,5 +75,4 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
 
 The decomposition dispatch shape is reused from rabbit-decompose; the
 parent->children linkage and roll-up close are owned by rabbit-auto-evolve.
-rabbit-housekeep consumes these via the INVOKE relationships above and never
-edits those features' files.
+rabbit-housekeep consumes these via the INVOKE relationships above.
