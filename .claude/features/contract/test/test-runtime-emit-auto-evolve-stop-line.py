@@ -9,6 +9,8 @@ present; otherwise the fall-through distinguishes the never-started window
 started-and-idle steady state (state file present -> idle line).
 """
 
+import datetime
+import json
 import os
 import sys
 import tempfile
@@ -44,6 +46,25 @@ def write_state_file(root):
     os.makedirs(rabbit_dir, exist_ok=True)
     with open(os.path.join(rabbit_dir, "auto-evolve-state.json"), "w") as f:
         f.write("{}")
+
+
+def write_cadence(root, cron):
+    """Write repo-root .claude/scheduled_tasks.json with a heartbeat task."""
+    claude_dir = os.path.join(root, ".claude")
+    os.makedirs(claude_dir, exist_ok=True)
+    payload = {"tasks": [{"id": "abc", "cron": cron,
+                          "prompt": "/rabbit-auto-evolve tick",
+                          "recurring": True}]}
+    with open(os.path.join(claude_dir, "scheduled_tasks.json"), "w") as f:
+        json.dump(payload, f)
+
+
+def write_raw_cadence(root, raw):
+    """Write a raw (possibly malformed) scheduled_tasks.json body."""
+    claude_dir = os.path.join(root, ".claude")
+    os.makedirs(claude_dir, exist_ok=True)
+    with open(os.path.join(claude_dir, "scheduled_tasks.json"), "w") as f:
+        f.write(raw)
 
 
 ABORTED = ("auto-evolve loop aborted — see .rabbit/auto-evolve-state.json",
@@ -174,6 +195,103 @@ with tempfile.TemporaryDirectory() as td:
     write_state_file(td)
     r = emit_auto_evolve_stop_line(repo_root=td)
     assert_one(r, ABORTED, "L")
+
+# ---- idle-line next-tick ETA (#837) ----
+NOW = datetime.datetime(2026, 6, 4, 14, 5, 0)  # fixed injected now
+
+
+def assert_text(r, expected_text, label):
+    if len(r) != 1:
+        fail(f"{label}: expected 1 entry, got {r!r}")
+        return
+    e = r[0]
+    if e.get("text") != expected_text:
+        fail(f"{label}: text wrong: {e.get('text')!r} (expected {expected_text!r})")
+        return
+    ok(f"{label}: emitted {expected_text!r}")
+
+
+# M: idle + cadence present -> idle line carries ~HH:MM ETA (next fire after now)
+with tempfile.TemporaryDirectory() as td:
+    touch(td, ".rabbit-auto-evolve-active")
+    write_state_file(td)
+    write_cadence(td, "13,43 * * * *")
+    r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
+    assert_text(r, "auto-evolve loop active — idle, next tick ~14:13", "M")
+    # icon/color unchanged on the ETA idle line
+    if r and (r[0].get("icon") != "🔁" or r[0].get("color") != "green"):
+        fail(f"M: idle ETA line icon/color changed: {r[0]!r}")
+    else:
+        ok("M: idle ETA line keeps icon 🔁 / color green")
+
+# N: idle + cadence absent -> bare idle line (graceful)
+with tempfile.TemporaryDirectory() as td:
+    touch(td, ".rabbit-auto-evolve-active")
+    write_state_file(td)
+    r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
+    assert_one(r, ACTIVE_IDLE, "N")
+
+# O: idle + cadence unparseable JSON -> bare idle line (graceful)
+with tempfile.TemporaryDirectory() as td:
+    touch(td, ".rabbit-auto-evolve-active")
+    write_state_file(td)
+    write_raw_cadence(td, "{not json")
+    r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
+    assert_one(r, ACTIVE_IDLE, "O")
+
+# P: idle + cadence with no rabbit-auto-evolve task -> bare idle line
+with tempfile.TemporaryDirectory() as td:
+    touch(td, ".rabbit-auto-evolve-active")
+    write_state_file(td)
+    write_raw_cadence(td, json.dumps(
+        {"tasks": [{"id": "x", "cron": "0 * * * *", "prompt": "/something-else"}]}))
+    r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
+    assert_one(r, ACTIVE_IDLE, "P")
+
+# Q: cadence present must NOT leak ETA into the running state-marker line
+with tempfile.TemporaryDirectory() as td:
+    touch(td, ".rabbit-auto-evolve-active")
+    write_state_file(td)
+    write_cadence(td, "13,43 * * * *")
+    touch(td, ".rabbit-auto-evolve-running")
+    r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
+    assert_one(r, RUNNING, "Q")
+
+# R: cadence present must NOT leak ETA into the restart-pending line
+#    (active, no state markers, NO state file, cadence present)
+with tempfile.TemporaryDirectory() as td:
+    touch(td, ".rabbit-auto-evolve-active")
+    write_cadence(td, "13,43 * * * *")
+    r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
+    assert_one(r, RESTART_PENDING, "R")
+
+# S: cadence present + active marker absent -> still [] (no ETA, gate holds)
+with tempfile.TemporaryDirectory() as td:
+    write_cadence(td, "13,43 * * * *")
+    r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
+    if r == []:
+        ok("S: active absent gates surface even with cadence present")
+    else:
+        fail(f"S: expected [], got {r!r}")
+
+# T: minute already exactly on a fire boundary at now -> next is the LATER slot
+#    now=14:13 with 13,43 -> next is 14:43 (strictly after now)
+with tempfile.TemporaryDirectory() as td:
+    touch(td, ".rabbit-auto-evolve-active")
+    write_state_file(td)
+    write_cadence(td, "13,43 * * * *")
+    r = emit_auto_evolve_stop_line(
+        repo_root=td, now=datetime.datetime(2026, 6, 4, 14, 13, 0))
+    assert_text(r, "auto-evolve loop active — idle, next tick ~14:43", "T")
+
+# U: wrap to next hour: now=14:50 with 13,43 -> next is 15:13
+with tempfile.TemporaryDirectory() as td:
+    touch(td, ".rabbit-auto-evolve-active")
+    write_state_file(td)
+    write_cadence(td, "13,43 * * * *")
+    r = emit_auto_evolve_stop_line(
+        repo_root=td, now=datetime.datetime(2026, 6, 4, 14, 50, 0))
+    assert_text(r, "auto-evolve loop active — idle, next tick ~15:13", "U")
 
 if FAIL:
     print("test-runtime-emit-auto-evolve-stop-line: FAIL", file=sys.stderr)
