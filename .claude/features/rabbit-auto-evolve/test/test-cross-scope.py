@@ -397,6 +397,123 @@ with tempfile.TemporaryDirectory() as repo_root:
             ok("triage: >=2 distinct feature edit-paths -> cross_scope true")
 
 
+# (2h) EXPLICIT CROSS-FEATURE DECLARATION (issue #797 — false-negative fix):
+#      a #793-shaped body whose `## Scope` heading reads
+#      "Cross-feature (rabbit-auto-evolve + contract)." names two features by
+#      a Scope DECLARATION (no `.claude/features/<name>/` edit-path, no
+#      repo-wide phrase). Before #797 this was mis-shaped parallel-per-feature
+#      because the edit-path signal saw only the labelled feature. The explicit
+#      "Cross-feature (A + B)" declaration MUST set cross_scope TRUE.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    make_feature(repo_root, "contract")
+    body = (
+        "## Scope\n\n"
+        "Cross-feature (rabbit-auto-evolve + contract).\n\n"
+        "Move the banner dispatch ownership and update both sides."
+    )
+    issue_payload = json.dumps({
+        "number": 7931, "title": "Re-home banner dispatch",
+        "body": body,
+        "labels": [{"name": "feature:rabbit-auto-evolve"},
+                   {"name": "priority:low"}],
+        "state": "OPEN", "comments": [],
+    })
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, issue_payload)
+    r = triage_record("triage-crossfeat-decl", repo_root, 7931, shim_dir)
+    if r is not None:
+        if r.get("cross_scope") is not True:
+            fail(f"triage-crossfeat-decl: an explicit 'Cross-feature (A + B)' "
+                 f"scope DECLARATION must set cross_scope TRUE even with no "
+                 f"second edit-path; got {r.get('cross_scope')!r}; record={r!r}")
+        else:
+            ok("triage: explicit 'Cross-feature (A + B)' declaration -> "
+               "cross_scope true")
+
+
+# (2i) 'spans X and Y' DECLARATION (issue #797): a body declaring it
+#      "spans rabbit-auto-evolve and contract" is an explicit cross-feature
+#      scope declaration -> cross_scope TRUE.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    make_feature(repo_root, "contract")
+    body = (
+        "This work spans rabbit-auto-evolve and contract; both must change "
+        "in lockstep."
+    )
+    issue_payload = json.dumps({
+        "number": 7932, "title": "Lockstep change",
+        "body": body,
+        "labels": [{"name": "feature:rabbit-auto-evolve"},
+                   {"name": "priority:low"}],
+        "state": "OPEN", "comments": [],
+    })
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, issue_payload)
+    r = triage_record("triage-spans-decl", repo_root, 7932, shim_dir)
+    if r is not None:
+        if r.get("cross_scope") is not True:
+            fail(f"triage-spans-decl: a 'spans <feature> and <feature>' "
+                 f"declaration must set cross_scope TRUE; got "
+                 f"{r.get('cross_scope')!r}; record={r!r}")
+        else:
+            ok("triage: 'spans X and Y' declaration -> cross_scope true")
+
+
+# (2j) READ-ONLY PATH MENTION (issue #798 — false-positive fix): a
+#      single-feature body whose ONLY second-feature path reference is a
+#      read-only "verify against .claude/features/contract/lib/runtime.py"
+#      mention (the actual edit-paths are all under one feature). A
+#      "verify against <path>" reference is a read-only confirmation, not an
+#      EDIT TARGET, so it MUST NOT count toward the cross-scope edit-path set.
+#      cross_scope MUST be FALSE and plan-batch shapes it parallel-per-feature.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "rabbit-auto-evolve")
+    make_feature(repo_root, "contract")
+    body = (
+        "Scope: only this feature. Remove the stale docstring paragraph in "
+        ".claude/features/rabbit-auto-evolve/scripts/banner-status.py. "
+        "Verify against .claude/features/contract/lib/runtime.py that the "
+        "migration has landed (read-only confirmation; do NOT edit it)."
+    )
+    issue_payload = json.dumps({
+        "number": 7981, "title": "Drop stale banner-status docstring",
+        "body": body,
+        "labels": [{"name": "feature:rabbit-auto-evolve"},
+                   {"name": "priority:low"}],
+        "state": "OPEN", "comments": [],
+    })
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, issue_payload)
+    r = triage_record("triage-verify-against", repo_root, 7981, shim_dir)
+    if r is not None:
+        if r.get("cross_scope") is not False:
+            fail(f"triage-verify-against: a read-only 'verify against <path>' "
+                 f"mention of another feature must NOT set cross_scope; the "
+                 f"only edit-path is one feature; got {r.get('cross_scope')!r}; "
+                 f"record={r!r}")
+        else:
+            ok("triage: read-only 'verify against <path>' mention -> "
+               "cross_scope false")
+            out = plan_json("plan-verify-against", [r])
+            if out is not None:
+                shape = out.get("dispatch_shapes", {}).get(str(r.get("issue")))
+                if shape != "parallel-per-feature":
+                    fail(f"plan-verify-against: a read-only-mention sub-issue "
+                         f"must be shaped parallel-per-feature; got {shape!r}")
+                elif out.get("cross_scope_items") != []:
+                    fail(f"plan-verify-against: a non-cross_scope sub-issue must "
+                         f"NOT appear in cross_scope_items; got "
+                         f"{out.get('cross_scope_items')!r}")
+                else:
+                    ok("plan: read-only-mention sub-issue -> "
+                       "parallel-per-feature (not in cross_scope_items)")
+
+
 # (3) Ordinary single-feature body, no phrase, no extra paths -> false.
 with tempfile.TemporaryDirectory() as repo_root:
     make_feature(repo_root, "rabbit-auto-evolve")

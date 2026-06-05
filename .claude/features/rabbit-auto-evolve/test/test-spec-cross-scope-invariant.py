@@ -61,6 +61,13 @@ REQUIRED = [
     # signal counts EDIT-PATH references, not bare feature-NAME mentions.
     "edit-path references, not bare",
     "edit target",
+    # (a.2 / #797) read-only path references are excluded from the edit-path
+    # count: a "verify against <path>" mention is a confirmation target.
+    "verify against",
+    "read-only line",
+    # (#797) an explicit cross-feature DECLARATION sets cross_scope true.
+    "cross-feature scope declaration",
+    "spans <feature> and",
 ]
 
 missing = [s for s in REQUIRED if s not in lowered]
