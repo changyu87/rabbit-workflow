@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.12.0
+version: 1.13.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -45,9 +45,14 @@ optional (present only when the filer marks the issue as housekeeping work):
 | `priority:<low\|medium\|high\|critical>` | Priority | required, one per item |
 | `filed-by:<rabbit\|autonomous-evolve>` | Provenance — non-human filer | optional; absent ⇒ human-filed |
 | `housekeeping` | Category — housekeeping-wave work | optional; present ⇒ housekeeping sub-issue |
+| `in-progress` | Category — issue is in the loop's live dispatch set | optional; present ⇒ a subagent is actively working the issue |
 
 Labels are auto-created on demand at first `file-item.py` call via
 idempotent `gh label create … || true`. No separate bootstrap script.
+The same idempotent `ensure_labels` mechanism creates a sanctioned
+category label the first time any caller stamps it — so the `in-progress`
+label, applied by the loop rather than at filing time, is created on its
+first reconcile use without a separate bootstrap step.
 
 ### Provenance label
 
@@ -86,6 +91,22 @@ When `--housekeeping` is passed, `file-item.py` adds the `housekeeping`
 label in the same `gh issue create` call; when omitted, no `housekeeping`
 label is stamped. The label is additive — it does not change any of the
 other labels.
+
+### In-progress label
+
+`in-progress` is a sanctioned category label marking an issue as a member
+of the loop's live dispatch set — present while a subagent is actively
+working the issue, absent otherwise. Unlike `housekeeping`, it is NOT
+applied at filing time and has no `file-item.py` flag: the autonomous
+evolve loop's reconcile mirrors its dispatch journal's live set onto this
+label (adds `in-progress` when an issue enters the live set, removes it
+when the issue leaves), so the label is loop-managed and transient.
+
+`rabbit-issue` owns only the label's place in the sanctioned schema and
+its auto-creatability: the reconcile stamps `in-progress` through the same
+idempotent `ensure_labels` path every other sanctioned label uses, so the
+label exists on its first reconcile use. The label is additive — it does
+not change any of the other labels.
 
 ### Safety invariant
 

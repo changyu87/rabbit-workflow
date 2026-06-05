@@ -60,6 +60,7 @@ STUBS = {
     "run-post-merge.py": "print('{\"status\": \"noop\", \"pending\": []}')",
     # update-state replaced with the REAL script by tests that need persist.
     "update-state.py": "import sys; sys.stdin.read(); print('{\"ok\": true}')",
+    "reconcile-labels.py": "print('{\"status\": \"reconciled\"}')",
     "dispatch.py": "print('DISPATCH RAN')",
 }
 
@@ -267,6 +268,18 @@ with tempfile.TemporaryDirectory() as d:
         fail(f"D: persisted state still carries merge_ready: {persisted!r}")
     else:
         ok("D: transient merge_ready dropped from persisted state")
+    # Inv 55: the in-progress label reconcile runs in post-dispatch, AFTER the
+    # post-merge drain (and after persist — persist uses the REAL
+    # update-state.py which does not write the trace, so we anchor on
+    # run-post-merge.py which precedes persist).
+    if "reconcile-labels.py" not in t:
+        fail(f"D: reconcile-labels.py did not run in post-dispatch (Inv 55); "
+             f"trace={t!r}")
+    elif t.index("run-post-merge.py") > t.index("reconcile-labels.py"):
+        fail(f"D: reconcile ran BEFORE the post-merge drain; must run after "
+             f"persist (Inv 55); trace={t!r}")
+    else:
+        ok("D: reconcile-labels.py ran after the post-merge drain (Inv 55)")
 
 
 # ---------------------------------------------------------------------------
@@ -405,6 +418,31 @@ with tempfile.TemporaryDirectory() as d:
              f"trace={t!r}")
     else:
         ok("J: run-post-merge.py did NOT run after re-sync failure (Inv 45)")
+
+
+# ---------------------------------------------------------------------------
+# K — a reconcile-labels.py failure NEVER fails the tick (Inv 55: label
+# hygiene must not block evolution). post-dispatch still exits 0 and the
+# reconcile is recorded as having been attempted.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir, trace = fresh(d, overrides={
+        "reconcile-labels.py":
+            "import sys; sys.stderr.write('gh down\\n'); sys.exit(1)",
+    })
+    install_real_update_state(script_dir)
+    write_state(state_dir, dict(VALID_STATE, merge_ready=[]))
+    proc = run_segment("post-dispatch", repo_root, script_dir, state_dir, trace)
+    if proc.returncode != 0:
+        fail(f"K: a reconcile failure must NOT fail the tick (Inv 55); "
+             f"rc={proc.returncode} stderr={proc.stderr!r}")
+    else:
+        ok("K: post-dispatch exited 0 despite a reconcile-labels.py failure")
+    t = read_trace(trace)
+    if "reconcile-labels.py" not in t:
+        fail(f"K: reconcile-labels.py was not attempted; trace={t!r}")
+    else:
+        ok("K: reconcile-labels.py was attempted (recorded, never fatal)")
 
 
 # ---------------------------------------------------------------------------

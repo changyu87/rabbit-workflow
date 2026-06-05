@@ -16,6 +16,20 @@ authoritative).
 
 ## Version notes
 
+- **v0.67.0 — 2026-06-05** — Per-tick `in-progress` label reconcile
+  (Inv 55; closes #859, piece 2/2). New `scripts/reconcile-labels.py` mirrors
+  the dispatch-journal live set (the `dispatched`/`pr_open` issues, reusing
+  `status-report.py`'s live-set logic) onto the sanctioned GitHub
+  `in-progress` category label: it ADDs the label to newly-live open issues
+  and STRIPs it from open issues no longer live (status `completed`/`aborted`,
+  pruned, or never tracked), so a crashed/interrupted tick's stale label is
+  self-healed on the next tick. The label is bootstrapped via the rabbit-issue
+  `ensure_labels` cross-scope INVOKE (piece 1/2 added the sanctioned category);
+  `gh`/network failure is logged and never crashes the tick. Wired into
+  `run-tick-phases.py`'s `post-dispatch` segment AFTER phase 11 (persist), so
+  it runs script-owned on BOTH the headless and in-session tick paths.
+  Declared in `docs/contract.md` `invokes.modules` (rabbit-issue `_gh`).
+
 - **v0.66.0 — 2026-06-04** — SessionStart banner idle line now shows the
   approximate next-tick ETA, matching the Stop-line's wording for
   SessionStart↔Stop symmetry (Inv 22; closes #844). The started-then-idle
