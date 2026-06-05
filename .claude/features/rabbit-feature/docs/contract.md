@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.36.0
+version: 1.37.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -42,7 +42,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/rabbit-feature/scripts/audit-owner.py",
-        "purpose": "Team-owner enforcement script invoked by rabbit-feature-audit. Validates that a feature's feature.json owner equals 'rabbit-workflow team'; exits 0 on pass (or for a feature exempted by contract Inv 36's status short-circuit), 1 on individual-owner mismatch (message names feature + current owner), 2 on bad invocation."
+        "purpose": "Standalone team-owner enforcement script, run directly (script-tier). Validates that a feature's feature.json owner equals 'rabbit-workflow team'; exits 0 on pass (or for a feature exempted by contract Inv 36's status short-circuit), 1 on individual-owner mismatch (message names feature + current owner), 2 on bad invocation."
       },
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py",
@@ -63,10 +63,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-scaffold/",
         "purpose": "Feature-scaffolding skill. Shells out to scaffold-feature.py to create a conforming feature dir, then validates via contract's validate-feature.py."
-      },
-      {
-        "path": ".claude/features/rabbit-feature/skills/rabbit-feature-audit/",
-        "purpose": "Feature-audit skill. Validates a single feature or sweeps every feature directory via contract's validate-feature.py; returns structured per-feature pass/fail findings."
       }
     ]
   },
@@ -102,9 +98,9 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/contract/scripts/validate-feature.py",
-        "signature": "validate-feature.py <feature-dir>",
+        "signature": "validate-feature.py <feature-dir>|all",
         "exit": "0=pass, 1=validation failure, 2=bad invocation",
-        "lock": "test-audit-skill.py asserts rabbit-feature-audit invokes this script; test-new-skill.py asserts rabbit-feature-scaffold invokes this script (Inv 35, 33)"
+        "lock": "test-new-skill.py asserts rabbit-feature-scaffold invokes this script (Inv 33)"
       },
       {
         "path": ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py",

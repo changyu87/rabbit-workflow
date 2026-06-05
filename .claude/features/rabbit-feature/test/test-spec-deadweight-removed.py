@@ -23,7 +23,16 @@ silently regress back onto the live doc surfaces (docs/spec.md, docs/contract.md
      not by a placeholder line. No test asserts these placeholders exist.
 
   4. The contract.md provides.skills block lists only skills this feature
-     actually ships (the four directories under skills/).
+     actually ships (the directories under skills/).
+
+  5. The `rabbit-feature-audit` skill is retired (issue #853): its
+     deprecation criterion ("validate_feature exposed via a first-class CLI
+     in the contract feature") is met by contract's validate-feature.py
+     (single-feature + `all` sweep). Auditing is run directly via that
+     script (script-tier). No live surface (spec.md, contract.md,
+     feature.json manifest/surface) may reference the retired skill, and the
+     skill directory must be gone. The standalone team-owner check
+     `scripts/audit-owner.py` survives and is run directly.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -199,6 +208,61 @@ def test_contract_provides_only_shipped_skills() -> None:
     )
 
 
+FEATURE_JSON = FEATURE_DIR / "feature.json"
+AUDIT_SKILL_DIR = SKILLS_DIR / "rabbit-feature-audit"
+AUDIT_OWNER_SCRIPT = FEATURE_DIR / "scripts/audit-owner.py"
+
+
+def test_audit_skill_retired() -> None:
+    # Issue #853: the rabbit-feature-audit skill is retired now that contract's
+    # validate-feature.py exposes single-feature + `all` sweep validation. The
+    # skill directory must be gone and no live surface may reference it.
+    assert not AUDIT_SKILL_DIR.exists(), (
+        "skills/rabbit-feature-audit/ still exists; the audit skill is retired "
+        "(auditing runs directly via contract's validate-feature.py)"
+    )
+    data = json.loads(FEATURE_JSON.read_text())
+    surface_skills = data.get("surface", {}).get("skills", [])
+    assert "skills/rabbit-feature-audit/SKILL.md" not in surface_skills, (
+        "feature.json surface.skills still lists the retired rabbit-feature-audit skill"
+    )
+    manifest_sources = [
+        e.get("args", {}).get("source")
+        for e in data.get("manifest", [])
+        if e.get("api") == "publish_skill"
+    ]
+    assert "skills/rabbit-feature-audit/SKILL.md" not in manifest_sources, (
+        "feature.json manifest still publishes the retired rabbit-feature-audit skill"
+    )
+    provided = {s["path"] for s in _contract_block()["provides"]["skills"]}
+    audit_path = ".claude/features/rabbit-feature/skills/rabbit-feature-audit/"
+    assert audit_path not in provided, (
+        "contract.md provides.skills still lists the retired rabbit-feature-audit skill"
+    )
+    hits: list[str] = []
+    for surface in LIVE_SURFACES:
+        for i, line in enumerate(surface.read_text(encoding="utf-8").splitlines(), 1):
+            if "rabbit-feature-audit" in line:
+                hits.append(f"{surface.relative_to(FEATURE_DIR)}:{i}: {line.strip()}")
+    assert not hits, (
+        "live surfaces reference the retired rabbit-feature-audit skill; auditing "
+        "is now run directly via contract's validate-feature.py:\n" + "\n".join(hits)
+    )
+
+
+def test_audit_owner_script_survives() -> None:
+    # The standalone team-owner enforcement script is NOT retired — it enforces
+    # a rule (Inv 50) that validate_feature does not cover. It survives and is
+    # run directly (script-tier).
+    import os
+    assert AUDIT_OWNER_SCRIPT.is_file(), (
+        "scripts/audit-owner.py must survive the audit-skill retirement"
+    )
+    assert os.access(AUDIT_OWNER_SCRIPT, os.X_OK), (
+        "scripts/audit-owner.py must remain executable"
+    )
+
+
 def main() -> int:
     tests = [
         test_no_rabbit_feature_spec_reference,
@@ -208,6 +272,8 @@ def main() -> int:
         test_no_withdrawn_tombstone_placeholders,
         test_live_surfaces_no_restated_rationale,
         test_contract_provides_only_shipped_skills,
+        test_audit_skill_retired,
+        test_audit_owner_script_survives,
     ]
     fail = 0
     for t in tests:
