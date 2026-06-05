@@ -16,6 +16,25 @@ authoritative).
 
 ## Version notes
 
+- **v0.66.0 — 2026-06-04** — SessionStart banner idle line now shows the
+  approximate next-tick ETA, matching the Stop-line's wording for
+  SessionStart↔Stop symmetry (Inv 22; closes #844). The started-then-idle
+  banner line (`banner-status.py` `_line2`) appends `, next tick ~HH:MM` —
+  the same suffix contract Inv 55's Stop idle line carries. The contract
+  helper `_auto_evolve_next_tick_eta` is a private internal, so this MIRRORS
+  the small cadence computation in rabbit-auto-evolve (read the heartbeat
+  cron from repo-root `.claude/scheduled_tasks.json`, parse its MINUTE field
+  against an unrestricted HOUR, walk to the next matching wall-clock minute
+  from an injectable `now`) rather than depending on contract internals; the
+  read is declared in `docs/contract.md` `reads.files`. Same honesty contract
+  as #837: `~` approximate prefix and graceful degradation to the bare idle
+  line when the cadence source is absent/unparseable (no crash, no fabricated
+  ETA). Only the started-then-idle line carries an ETA — the four
+  priority-marker lines, the restart-pending line, and the inactive case are
+  unchanged. The ETA wall-clock is injectable via `RABBIT_AUTO_EVOLVE_NOW`
+  (ISO-8601) for deterministic tests. `banner-status.py` 1.2.0 → 1.3.0; new
+  test coverage in `test/test-banner-status.py`.
+
 - **v0.65.0 — 2026-06-04** — Add a rabbit-native per-tick dispatch journal so
   a resumed tick skips completed subagents and re-dispatches only the
   unfinished (Inv 54; closes #838; implements the journal/resume research
