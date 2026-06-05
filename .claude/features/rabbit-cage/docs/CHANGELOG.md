@@ -12,6 +12,25 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.65.0 (fix #851: fresh install reports no surface drift on first run):**
+  `install.py` now RUNS THE PUBLISH FLOW against the freshly installed tree
+  after the closure copy and settings rewrite
+  (`canonicalize_installed_surfaces`, calling the existing `run_publish_loop`
+  which invokes the contract-owned `contract.lib.publish` APIs — the SAME path
+  `check_manifest_drift` uses at runtime). Previously the installer laid down
+  the COMMITTED deployed surfaces verbatim; a committed copy left un-republished
+  after a source change shipped stale, and the user's first Stop hook
+  re-published from source, found a diff, rebuilt, and emitted
+  "Surface drift detected - rebuilt: ..." for edits the user never made
+  (RABBIT-CAGE-16 class). Canonicalizing at install time makes the installed
+  surfaces byte-identical to the runtime republish, so the first Stop is a clean
+  no-op. Degrades gracefully: a publish failure is reported to stderr but does
+  not fail the install (the closure copy is retained). New e2e regression test
+  `test/test-install-no-drift-on-first-run.py` installs via the real
+  `install.main()` then runs the real `check_manifest_drift` against the
+  install and asserts no drift, including a deliberately-stale committed-surface
+  case that the install must canonicalize.
+
 - **v5.64.0 (feat #849: end-to-end plugin-install readiness test):** Added Inv
   42 and a new e2e test `test/test-install-e2e-ready-to-run.py` that runs the
   REAL user-facing installer `install.main()` (its real `--src/--target` CLI —

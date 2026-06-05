@@ -109,7 +109,12 @@ COLLAPSE_MAX = 1
 # plugin-install readiness test (the REAL installer run into a sandbox, asserting
 # the whole tree is present + every hook path wired, no Claude launch) — a real
 # spec addition documenting new test-enforced behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 539
+# Raised 539 -> 541 by #851, which added Inv 43 documenting that install.py
+# canonicalizes installed surfaces via the publish flow so a fresh install is
+# drift-free on its first Stop (with the RABBIT_ROOT-anchored publish_hook form
+# + graceful degradation) — a real spec addition documenting new behavior, not
+# reword re-inflation.
+SPEC_LINE_CEILING = 541
 
 PASS = 0
 FAIL = 0
