@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.11.1
+version: 1.12.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -106,10 +106,29 @@ actionable and stays out of rabbit's automation reach.
   to gh's space-separated `not planned` at the CLI boundary, which GitHub
   records as `state_reason = not_planned`.
 - **Close-reason gating.** A close must assert something real:
-  - `--reason completed` REQUIRES `--commit-sha <sha>`. The script
-    validates that the SHA resolves to a real commit in the local git
-    repo (`git rev-parse --verify <sha>^{commit}`). A missing or
-    unresolvable SHA aborts the close before any gh call.
+  - `--reason completed` REQUIRES exactly one deliverable proof —
+    either `--commit-sha <sha>` (work that landed as a commit) or
+    `--findings-comment-url <url>` (a research finding whose deliverable
+    is a linked comment, with no landed commit). The two are mutually
+    exclusive; supplying both, or supplying neither, aborts the close
+    before any gh call.
+  - `--commit-sha <sha>`: the script validates that the SHA resolves to a
+    real commit in the local git repo (`git rev-parse --verify
+    <sha>^{commit}`). A missing or unresolvable SHA aborts the close
+    before any gh call.
+  - `--findings-comment-url <url>`: the comment-only close gate for a
+    research SMALL-outcome disposition — the findings are appended as a
+    COMMENT on the request issue, then the issue is closed `completed`
+    with that comment as its deliverable. The script validates that the
+    URL is a plausible GitHub issue-comment URL of the form
+    `https://github.com/<owner>/<repo>/issues/<N>#issuecomment-<id>`; a
+    URL that does not match this shape aborts the close before any gh
+    call. The validated URL is PERSISTED as the close comment so the
+    closed issue links to the findings comment as an audit trail; when
+    `--comment` is also supplied, the close comment is the URL followed
+    by the comment (URL first, separated by a blank line). A research
+    finding has no landed commit, so this path does NOT require — and
+    rejects — `--commit-sha`.
   - `--reason not-planned` REQUIRES `--reason-text <text>` of at least
     50 characters, free of reflexive-deferral boilerplate. The script
     rejects (case-insensitive substring match) any of: `too risky`,
