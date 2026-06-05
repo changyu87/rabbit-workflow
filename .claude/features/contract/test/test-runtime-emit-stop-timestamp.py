@@ -138,8 +138,8 @@ with tempfile.TemporaryDirectory() as td:
 # fixed aware `now` and a written heartbeat cadence, the idle Stop-line ETA
 # (emit_auto_evolve_stop_line) and the ⏱ clock (emit_stop_timestamp) must
 # both derive from the SAME injected LOCAL now — the ⏱ HH:MM equals now's
-# local HH:MM, and the ETA ~HH:MM is at/after now's local HH:MM. Before the
-# fix the clock was UTC and the two lines disagreed by the tz offset.
+# local HH:MM, and the ETA ≥ HH:MM boundary is at/after now's local HH:MM.
+# Before the fix the clock was UTC and the two lines disagreed by the tz offset.
 with tempfile.TemporaryDirectory() as td:
     os.makedirs(os.path.join(td, ".claude"))
     with open(os.path.join(td, ".claude", "scheduled_tasks.json"), "w") as f:
@@ -154,17 +154,17 @@ with tempfile.TemporaryDirectory() as td:
         json.dump({"started": True}, f)
 
     tz = datetime.timezone(datetime.timedelta(hours=-4), name="EDT")
-    now = datetime.datetime(2026, 6, 4, 3, 13, 5, tzinfo=tz)  # local 03:13, next fire 03:13
+    now = datetime.datetime(2026, 6, 4, 3, 13, 5, tzinfo=tz)  # local 03:13, on-boundary -> next fire 03:43
 
     stop_lines = emit_auto_evolve_stop_line(repo_root=td, now=now)
     ts_lines = emit_stop_timestamp(repo_root=td, now=now)
     idle_text = stop_lines[0]["text"] if stop_lines else ""
     clock_text = ts_lines[0]["text"] if ts_lines else ""
 
-    m_eta = re.search(r"~(\d{2}):(\d{2})", idle_text)
+    m_eta = re.search(r"≥ (\d{2}):(\d{2})", idle_text)
     m_clk = re.match(r"^(\d{2}):(\d{2}):\d{2} ", clock_text)
     if "next tick" not in idle_text or m_eta is None:
-        fail(f"x: idle line missing a ~HH:MM ETA; got {idle_text!r}")
+        fail(f"x: idle line missing a ≥ HH:MM ETA; got {idle_text!r}")
     elif m_clk is None:
         fail(f"x: clock line not 'HH:MM:SS TZ'; got {clock_text!r}")
     else:
