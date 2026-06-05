@@ -16,6 +16,21 @@ authoritative).
 
 ## Version notes
 
+- **v0.67.1 — 2026-06-04** — Deep-slim consolidation of `docs/spec.md` back
+  under the #751 ceiling (closes #864). Inv 54 (#838), Inv 55 (#859), and
+  #837/#844 ETA work had re-inflated the spec to 3537 lines, over the 3384
+  ceiling enforced by `test-spec-housekeeping-751-deep-slim-consolidated.py`.
+  A MEASURED verify-or-flag prose-consolidation wave (coding-rules §6/§2/§7)
+  tightened restated rationale and decorative parentheticals across the
+  fattest invariants (Inv 1, 3, 6, 9, 10, 30, 31, 32, 37, 38, 39, 40, 45) to
+  3382 lines with ZERO behavior/contract loss: every Inv N remains present and
+  semantically intact, numbering stays flat and contiguous 1..55, and every
+  load-bearing token (script basenames, schema fields, markers, decision-table
+  rows, merged-invariant content) survives. Prose-only — no script, contract
+  schema, or behavior changed. Also wired the standalone-RED ceiling test into
+  the rae `run.py` gate (per contract Inv 17) so future re-inflation is caught
+  at merge. No deployed-surface (script/SKILL body) behavior change.
+
 - **v0.67.0 — 2026-06-05** — Per-tick `in-progress` label reconcile
   (Inv 55; closes #859, piece 2/2). New `scripts/reconcile-labels.py` mirrors
   the dispatch-journal live set (the `dispatched`/`pr_open` issues, reusing

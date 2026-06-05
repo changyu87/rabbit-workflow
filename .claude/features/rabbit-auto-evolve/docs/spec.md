@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.67.0
+version: 0.67.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -211,24 +211,16 @@ summary is restated here.
    verbatim (no skill-generated paraphrase); the message text lives in the
    script so it stays centralized.
 
-   Enforced by `test/test-set-evolve-mode.py` using
-   `tempfile.TemporaryDirectory()` fixtures (per rabbit-config Inv 17
-   isolation pattern):
-   - `on` from clean state — all three side effects appear (both
-     markers exist; settings.local.json has
-     `permissions.defaultMode == "bypassPermissions"`).
-   - `off` from on state — all three side effects revert cleanly.
-   - Failure simulation at step 2 — monkey-patch
-     `contract.lib.mutation.set_json_key` (or import-time inject) to
-     raise; assert step 1's marker is removed during rollback; assert
-     exit non-zero; assert stderr names the failed step.
-   - Idempotency — `on`-from-`on` and `off`-from-`off` are clean no-ops
-     (no errors, exit 0, state unchanged).
-   - Branded confirmation on `on` success — stdout contains the
-     literal substrings `[🐇 rabbit 🐇]`, `AUTONOMOUS-EVOLVE MODE
-     CONFIGURED`, `restart Claude`, AND `/rabbit-auto-evolve start`.
-   - Branded confirmation on `off` success — stdout contains the
-     literal substrings `[🐇 rabbit 🐇]` AND `deactivated`.
+   Enforced by `test/test-set-evolve-mode.py` (`tempfile.TemporaryDirectory()`
+   fixtures, rabbit-config Inv 17 isolation): `on` from clean state (all three
+   side effects appear; `permissions.defaultMode == "bypassPermissions"`); `off`
+   from on state (all three revert); step-2 failure simulation (monkey-patch
+   `contract.lib.mutation.set_json_key` to raise → step 1's marker removed in
+   rollback, non-zero exit, stderr names the step); idempotency
+   (`on`-from-`on` / `off`-from-`off` clean no-ops); branded `on` confirmation
+   (stdout has `[🐇 rabbit 🐇]`, `AUTONOMOUS-EVOLVE MODE CONFIGURED`, `restart
+   Claude`, `/rabbit-auto-evolve start`); branded `off` confirmation
+   (`[🐇 rabbit 🐇]` AND `deactivated`).
 
 2. **`fetch-queue.py` deterministic queue emission.** The CLI
    `python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py`
@@ -296,99 +288,73 @@ summary is restated here.
    ```
 
    The `issue_type` and `created_at` fields (see Inv 48) feed the
-   bug-vs-enhancement and age signals of the loop's computed priority score
-   (Inv 44). `issue_type` is `"bug"` when the issue carries a GitHub `bug`
-   label, `"enhancement"` for an `enhancement` label, else `null` (`bug`
-   wins if both are present). `created_at` echoes the issue's ISO-8601 UTC
-   creation timestamp (the `createdAt` field of the same single `gh issue
-   view` call, trailing-`Z` preserved), or `null` when gh omits it. Both are
-   emitted on EVERY triage record so `plan-batch.py`'s `_computed_score` can
-   consume them; without them the bug and age signals silently contribute zero.
+   bug-vs-enhancement and age signals of the computed priority score (Inv 44),
+   and are emitted on EVERY record so `plan-batch.py`'s `_computed_score` can
+   consume them. `issue_type` is `"bug"` (GitHub `bug` label, wins if both
+   present), `"enhancement"`, or `null`. `created_at` echoes the issue's
+   ISO-8601 UTC `createdAt` (trailing-`Z` preserved) or `null`.
 
-   The `priority` field is the value of the issue's `priority:<level>` label
-   (`"priority:high"` → `"high"`), or `null` when no `priority:` label is
-   present. It is the PRIMARY ordering key `plan-batch.py` consumes for
-   Stage-1 selection (Inv 4); an omitted `priority` collapses the
-   priority-primary ordering to the contract-touch-only tiebreak, so triage
-   MUST emit `priority` on every record.
+   The `priority` field is the issue's `priority:<level>` label value or
+   `null`. It is the PRIMARY ordering key `plan-batch.py` consumes for Stage-1
+   selection (Inv 4); an omitted `priority` collapses the ordering to the
+   contract-touch-only tiebreak, so triage MUST emit it on every record.
 
-   The `features` field (Inv 26) is the sorted, distinct set of feature
-   directories the item touches — the basis for the per-item dispatch shape
-   (Stage 2) — computed as the union of THREE detection methods:
-   (a) the `feature:<name>` label;
-   (b) every `.claude/features/<name>/` path literally referenced in the
-   issue body; and
-   (c) every canonical feature name (discovered by listing
-   `.claude/features/` at triage time) that appears as a whole word
-   (word-boundary `\b<name>\b` match) in the issue body OR title. Method (c)
-   catches features named in prose or a markdown table without the full path;
-   without it such issues were mis-seen as single-feature and got the wrong
-   dispatch shape. A malformed-labels issue with no body paths and no bare
-   feature-name mention carries `features: []`.
+   The `features` field (Inv 26) is the sorted, distinct set of feature dirs
+   the item touches — the basis for the per-item dispatch shape (Stage 2) —
+   the union of THREE detection methods: (a) the `feature:<name>` label;
+   (b) every `.claude/features/<name>/` path referenced in the body; and
+   (c) every canonical feature name (discovered by listing `.claude/features/`
+   at triage time) appearing as a whole word (`\b<name>\b`) in the body OR
+   title. Method (c) catches features named in prose or a table without the
+   full path. A malformed-labels issue with no body paths and no bare mention
+   carries `features: []`.
 
    The decision set is EXACTLY `{work, defer, close-not-planned, research}`.
-   `close-completed` is NEVER emittable from triage — a completed closure
-   can only be claimed once work has landed, which is the merge phase's job
-   (Inv 6 step 4 via `item-status.py close --reason completed
-   --commit-sha`). Every `defer` and `research` decision MUST carry a
-   non-empty `planning_note` describing what analysis would unblock dispatch
-   (`defer`) or what to investigate (`research`); `work` and
-   `close-not-planned` carry `planning_note: null`.
+   `close-completed` is NEVER emittable from triage — a completed closure is
+   the merge phase's job (Inv 6 step 4 via `item-status.py close --reason
+   completed --commit-sha`). Every `defer` and `research` decision MUST carry
+   a non-empty `planning_note`; `work` and `close-not-planned` carry
+   `planning_note: null`.
 
    ### Research/investigation classification
 
-   A research/spike/investigation item ("study X", "evaluate Y", "recommend
-   an approach", "compare A and B") asks for FINDINGS, not a behavior change.
-   Since the loop's only code-producing shape is a TDD-cycle PR, without a
-   dedicated home such items would be wrongly closed `not-planned` — a valid
-   issue silently dropped, violating Inv 25 (convergence). Triage classifies
-   them `decision=research` so the loop routes them to the research dispatch
-   shape (Inv 27).
+   A research/spike item asks for FINDINGS, not a behavior change. Since the
+   loop's only code-producing shape is a TDD-cycle PR, without a dedicated home
+   such items would be wrongly closed `not-planned` — a valid issue dropped,
+   violating Inv 25 (convergence). Triage routes them to the research dispatch
+   shape (Inv 27). Classification runs AFTER rule 7 would return `work`
+   (alongside comment-thread reconciliation) and NEVER overrides a
+   `close-not-planned` / `blocked` / `malformed-labels` verdict. Detection
+   signals (ALL must hold, so a normal "implement X" item is never misrouted):
 
-   Research classification runs AFTER rule 7 would otherwise return `work`
-   (alongside comment-thread reconciliation) — it NEVER overrides a
-   `close-not-planned` / `blocked` / `malformed-labels` verdict (structural
-   facts, not intent wording). Detection signals (ALL must hold, so a normal
-   "implement X" item is never misrouted):
-
-   1. **Research verb present.** The title OR body contains a
-      research/investigation verb (case-insensitive whole-word match):
-      `study`, `evaluate`, `investigate`, `survey`, `assess`,
-      `recommend`, `compare`, `explore`.
-   2. **No concrete code-change target.** The body declares no concrete
-      code-change target — no `.claude/features/<name>/` path reference
+   1. **Research verb present.** The title OR body contains a research verb
+      (case-insensitive whole-word): `study`, `evaluate`, `investigate`,
+      `survey`, `assess`, `recommend`, `compare`, `explore`.
+   2. **No concrete code-change target.** No `.claude/features/<name>/` path
       beyond the labelled feature dir, and no imperative implement/fix/add
       phrasing pointing at a behavior change.
    3. **Findings/recommendation requested.** The body asks for a
-      recommendation, findings, a report, an analysis, or an evaluation
-      rather than a behavior change.
+      recommendation, findings, a report, an analysis, or an evaluation.
 
    When all three hold, triage emits `decision=research`,
-   `reason_code=research`, and a non-empty `planning_note` summarizing what
-   to investigate. A research item is NEVER `close-not-planned` (it is a
-   valid issue) and NEVER `work`/`dispatch` (it produces findings, not
-   code).
+   `reason_code=research`, and a non-empty `planning_note`. A research item is
+   NEVER `close-not-planned` and NEVER `work`/`dispatch`.
 
    The script reads only:
-   - Issue metadata (title, body, labels, state, state reason, full comment
-     thread) via `gh issue view <N> --repo <repo> --json
+   - Issue metadata via `gh issue view <N> --repo <repo> --json
      number,title,body,labels,state,stateReason,comments`. The `comments`
      array (`[{body, createdAt, author}, …]`, oldest first) and `stateReason`
      (e.g. `"reopened"`) feed comment-thread reconciliation (below).
-   - The named feature's spec head matter (YAML frontmatter and the
-     first markdown section only) — for rule 6. The path is resolved
-     dual-read: the flat `docs/spec.md` layout is preferred, with the
-     legacy `specs/spec.md` and `docs/spec/spec.md` layouts accepted as
-     fallbacks during the coexistence window.
-   - The named feature's `feature.json` (for rule 4 — `status` field).
-   - The list of closed issues in the last 30 days (for rule 3) via
-     `gh issue list --state closed --search "closed:>=<date>"`.
+   - The named feature's spec head matter (frontmatter + first section only)
+     for rule 6, resolved dual-read (flat `docs/spec.md` preferred; legacy
+     `specs/spec.md` / `docs/spec/spec.md` fallbacks).
+   - The named feature's `feature.json` (rule 4 — `status` field).
+   - Closed issues in the last 30 days (rule 3) via `gh issue list --state
+     closed --search "closed:>=<date>"`.
 
-   It MUST NOT read the codebase at large; it MUST NOT read any spec
-   file outside the named feature's head matter.
-
-   Repo discovery uses `rabbit_issue._gh.repo_slug` (same pattern as
-   `fetch-queue.py`). No filesystem mutations.
+   It MUST NOT read the codebase at large or any spec outside the named
+   feature's head matter. Repo discovery uses `rabbit_issue._gh.repo_slug`
+   (same as `fetch-queue.py`). No filesystem mutations.
 
    Decision rules (evaluated top-down, first match wins):
 
@@ -415,55 +381,40 @@ summary is restated here.
 
    ### Comment-thread reconciliation
 
-   Triage MUST read the FULL comment thread, not just the issue body. An
-   issue's body is frozen at filing time; a maintainer who realizes the
-   framing was wrong corrects it in a comment (often reopening or
-   retitling). Reading only the body makes the loop implement the stale
-   original design.
+   Triage MUST read the FULL comment thread, not just the body: a body is
+   frozen at filing time, and a maintainer who realizes the framing was wrong
+   corrects it in a comment (often reopening/retitling). Reconciliation runs
+   AFTER rule 7 would return `work`, never overrides a `close-not-planned` /
+   `blocked` / `malformed-labels` verdict, and refines an actionable verdict
+   between `work` and `defer`:
 
-   Reconciliation runs AFTER rule 7 would otherwise return `work` — it
-   never overrides a `close-not-planned` / `blocked` / `malformed-labels`
-   verdict (structural facts, not intent wording). It refines an actionable
-   issue's verdict between `work` and `defer`:
-
-   1. **Detection signals** (any one triggers reconciliation analysis):
-      - The issue carries at least one comment AND
-        `stateReason == "reopened"` (case-insensitive) — a STRONG signal;
-        always reconcile.
-      - Any comment body contains supersession language
-        (case-insensitive substring match against: `supersedes`,
-        `correction`, `corrected proposal`, `ignore the original`,
-        `revised scope`, `original body was wrong`) — treat that comment
-        as an authoritative correction.
-      - The title and body describe DIFFERENT targets — detected as a
-        conflict when the title contains a path/target token (e.g. a
-        `docs/...` or `specs/...` path, or text after a `→`/`->` arrow)
-        that does NOT appear in the body, while the body declares its own
-        distinct path/target token. This is a title-vs-body conflict.
+   1. **Detection signals** (any one triggers analysis):
+      - A comment is present AND `stateReason == "reopened"`
+        (case-insensitive) — STRONG signal; always reconcile.
+      - A comment body contains supersession language (case-insensitive
+        substring: `supersedes`, `correction`, `corrected proposal`,
+        `ignore the original`, `revised scope`, `original body was wrong`) —
+        treat as an authoritative correction.
+      - Title and body describe DIFFERENT targets — a conflict when the title
+        carries a path/target token (a `docs/...`/`specs/...` path, or text
+        after a `→`/`->` arrow) absent from the body while the body declares
+        its own distinct token.
 
    2. **Resolution:**
-      - When a correction comment (supersession language) is present and
-        its corrected intent is coherent, treat the MOST RECENT coherent
-        intent as authoritative: emit `decision=work`,
-        `reason_code=actionable`, and the `rationale` MUST note that a
-        correction was applied (literal substring `correction` in the
-        rationale) and name the superseding source.
-      - When the title and body conflict on the target and the latest
-        signal (title or correction comment) yields a single coherent
-        target, the latest/title wins: emit `decision=work` with the
-        `rationale` noting the conflict and which side won.
-      - When body and comments (or title and body) conflict and the
-        correct target is genuinely AMBIGUOUS (no single coherent latest
-        intent), emit `decision=defer`, `reason_code=needs-judgment`,
-        with `planning_note` of the form `"Body and correction comment
-        conflict on target [X vs Y]; need maintainer clarification before
-        dispatch."` (the bracketed `[X vs Y]` names the two conflicting
-        targets).
+      - Correction comment present with coherent intent → MOST RECENT coherent
+        intent is authoritative: `decision=work`, `reason_code=actionable`,
+        `rationale` noting a `correction` was applied and naming the source.
+      - Title/body conflict where the latest signal yields a single coherent
+        target → latest/title wins: `decision=work`, `rationale` noting the
+        conflict and winner.
+      - Genuinely AMBIGUOUS (no single coherent latest intent) →
+        `decision=defer`, `reason_code=needs-judgment`, `planning_note` of the
+        form `"Body and correction comment conflict on target [X vs Y]; need
+        maintainer clarification before dispatch."`.
 
-   3. **No-signal pass-through:** an actionable issue with no comments and
-      no title/body conflict reconciles to the unreconciled base behavior —
-      `decision=work`, `reason_code=actionable`, no correction noted. This
-      is a strict no-regression requirement.
+   3. **No-signal pass-through:** no comments and no title/body conflict →
+      the unreconciled base (`decision=work`, `reason_code=actionable`, no
+      correction). Strict no-regression requirement.
 
    Exit code: 0 on successful classification (any decision); non-zero
    on `gh` failure or other unexpected error (stderr passthrough).
@@ -705,11 +656,10 @@ summary is restated here.
 
    ### Refusal invariant
 
-   `merge-prs.py` will NEVER call `gh pr merge` on a PR whose base is not
-   `dev`; `cleanup-branches.py` will NEVER call any deletion command for a
-   branch not matching `^feat/.+`. These refusals are defense-in-depth above
-   `safety-check.py` — they gate destructive actions even if `safety-check.py`
-   were skipped.
+   `merge-prs.py` NEVER calls `gh pr merge` on a non-`dev`-base PR;
+   `cleanup-branches.py` NEVER deletes a branch not matching `^feat/.+`.
+   Defense-in-depth above `safety-check.py` — gating destructive actions even
+   if `safety-check.py` were skipped.
 
    ### Tests
 
@@ -901,16 +851,11 @@ summary is restated here.
    | `pending_post_merge` | array of int (optional) | merged PR numbers owed post-merge processing (phases 8–10). Additive in schema 1.2.0; absent in pre-1.2.0 states. See Inv 30 |
    | `dispatch_journal` | object (optional) | per-tick dispatch record keyed by tick-id string (Inv 54). Additive in schema 1.4.0; absent in pre-1.4.0 states |
 
-   The schema file itself carries top-level `schema_version`, `owner`,
-   and `deprecation_criterion` keys per spec-rules §3. Schema 1.1.0 added
-   the optional `defer_counts` field (Part B) — a backward-
-   compatible additive change: states written without `defer_counts` still
-   validate. Schema 1.2.0 adds the optional `pending_post_merge` field
-   — likewise backward-compatible additive: states written
-   without it still validate. Schema 1.4.0 adds the optional
-   `dispatch_journal` field and drops `in_flight` from the required set
-   (Inv 54) — both backward-compatible additive: a state without
-   `dispatch_journal`, or one still carrying `in_flight`, validates.
+   The schema file carries top-level `schema_version`, `owner`, and
+   `deprecation_criterion` keys per spec-rules §3. Every bump is
+   backward-compatible additive (older states still validate): 1.1.0 added
+   `defer_counts` (Part B); 1.2.0 added `pending_post_merge`; 1.4.0 added
+   `dispatch_journal` and dropped `in_flight` from the required set (Inv 54).
 
    ### `update-state.py`
 
@@ -936,20 +881,12 @@ summary is restated here.
    Pure boolean is REJECTED by the schema — booleans get type-error
    responses. `null` indicates no restart is needed.
 
-   Enforced by `test/test-state-persistence.py`:
-   - Round-trip: pipe a fully-populated valid state object →
-     update-state.py → read back the written file → assert
-     field-by-field equality.
-   - Missing-required-field: for each required field, omit it and
-     assert non-zero exit + stderr names the field; assert the file
-     was NOT created.
-   - `restart_needed` typing: accept `null`, accept
-     `"some reason"`; reject `true` (boolean), reject `42` (int) —
-     each rejection non-zero with type-mismatch detail in stderr.
-   - Atomicity: pre-create a stale
-     `.rabbit/auto-evolve-state.json`; update with new content; read
-     back; assert content equals new (no partial write, no merge).
-   - `--help` smoke: exit 0 with recognizable usage text.
+   Enforced by `test/test-state-persistence.py`: round-trip (valid object →
+   update-state.py → read back, field-by-field equality); missing-required-field
+   (each omission → non-zero, stderr names the field, file NOT created);
+   `restart_needed` typing (accept `null` / a reason string; reject `true`,
+   `42` with type-mismatch detail); atomicity (a stale state is fully replaced,
+   no partial write/merge); `--help` smoke.
 
 10. **`rabbit-auto-evolve` SKILL documents 6 subcommands and the
     12-phase tick.** `skills/rabbit-auto-evolve/SKILL.md` documents
@@ -981,33 +918,26 @@ summary is restated here.
       | `all_pass: false` AND `active-marker` check is `ok: true` but `bypass-permissions` check is `ok: false` (markers exist but user forgot to restart Claude after a previous `on`) | Surface a SHORT branded reminder line (`🔁 Markers set — restart Claude Code, then /rabbit-auto-evolve start again`). Do NOT re-run `on` (markers are already correct); do NOT show the full checklist. |
       | Any other `all_pass: false` shape | Surface the failing `checks[].detail` strings (this branch handles genuinely unexpected states, e.g. partial corruption). |
 
-      The auto-on routing on fresh state keeps a single user intent
-      ("enter auto-evolve mode") from fragmenting into a two-step manual
-      flow: the skill never surfaces the precondition checklist verbatim
-      and waits for the user to run `on` themselves.
-    - `stop` — invokes `scripts/stop-loop.py` (which writes
-      `.rabbit-auto-evolve-stop-requested`); the next tick observes
-      and does NOT call `ScheduleWakeup`.
-    - `status` — read-only: queue length, in-flight set, last-merged
-      PR, last-tagged version, consecutive-failure count, restart
-      marker (if any).
-    - `tick` — internal subcommand; walks the 12 phases (0–11) from
-      design doc §4 in order, naming every script invoked
-      (`set-evolve-mode.py`, `fetch-queue.py`, `triage-issue.py`,
-      `plan-batch.py`, `safety-check.py`, `merge-prs.py`,
-      `release-bump.py`, `cleanup-branches.py`,
-      `classify-merge-restart.py`, `update-state.py`) and the
-      disk-state path (`.rabbit/auto-evolve-state.json`).
-    - `off` — invokes `scripts/set-evolve-mode.py off` to reverse
-      the three mutations cleanly (delete
-      `.rabbit-auto-evolve-active`, delete `permissions.defaultMode`,
-      delete `.rabbit-human-approval-bypass`).
+      Auto-on routing on fresh state keeps a single user intent from
+      fragmenting into a two-step manual flow.
+    - `stop` — invokes `scripts/stop-loop.py` (writes
+      `.rabbit-auto-evolve-stop-requested`); the next tick observes and does
+      NOT call `ScheduleWakeup`.
+    - `status` — read-only: queue length, in-flight set, last-merged PR,
+      last-tagged version, consecutive-failure count, restart marker (if any).
+    - `tick` — internal; walks the 12 phases (0–11) in order, naming every
+      script invoked (`set-evolve-mode.py`, `fetch-queue.py`,
+      `triage-issue.py`, `plan-batch.py`, `safety-check.py`, `merge-prs.py`,
+      `release-bump.py`, `cleanup-branches.py`, `classify-merge-restart.py`,
+      `update-state.py`) and the disk-state path
+      (`.rabbit/auto-evolve-state.json`).
+    - `off` — invokes `scripts/set-evolve-mode.py off` to reverse the three
+      mutations cleanly (delete `.rabbit-auto-evolve-active`,
+      `permissions.defaultMode`, `.rabbit-human-approval-bypass`).
 
-    The SKILL.md also describes the in-loop discovery handling per
-    design §6: when a TDD subagent's HANDOFF carries
-    `discovered_issues`, file each via `rabbit-issue`; when
-    `aborted_reason` is set, label `blocked-by:#N` on the original
-    issue and leave it open.
+    SKILL.md also describes in-loop discovery handling (design §6): a HANDOFF's
+    `discovered_issues` are filed via `rabbit-issue`; an `aborted_reason` labels
+    `blocked-by:#N` on the original issue and leaves it open.
 
     Enforced by `test/test-tick-skill.py`,
     `test/test-start-stop-skill.py`,
@@ -1902,30 +1832,23 @@ summary is restated here.
       and contains no bare `ls .rabbit-auto-evolve-*` pattern.
 
 30. **`run-post-merge.py` deterministically runs phases 8–10.**
-    Phases 8 (`release`), 9 (`cleanup`), and 10 (`catch-up`) were LLM-walked
-    prose in SKILL.md, and after a large phase-7 (`merge`) batch the
-    orchestrator ended the tick for context reasons, SILENTLY dropping them.
-    Per spec-rules §1 (`script > CLI > spec > prompt`) the sequencing moves
-    into a deterministic, non-skippable script.
+    Phases 8 (`release`), 9 (`cleanup`), 10 (`catch-up`) were LLM-walked prose
+    in SKILL.md; after a large phase-7 (`merge`) batch the orchestrator ended
+    the tick for context reasons, SILENTLY dropping them. Per spec-rules §1
+    (`script > CLI > spec > prompt`) the sequencing moves into a deterministic,
+    non-skippable script.
 
     ### `pending_post_merge` state field (schema 1.2.0)
 
-    The state schema gains a new field:
-
-    | Field | Type | Notes |
-    |---|---|---|
-    | `pending_post_merge` | array of int (optional) | merged PR numbers owed post-merge processing (phases 8–10). Additive in schema 1.2.0; absent in pre-1.2.0 states |
-
-    `schema_version` is bumped to `"1.2.0"` (backward-compatible additive: a
-    state WITHOUT `pending_post_merge` still validates). `start-loop.py`'s
-    bootstrap default and `update-state.py`'s validator both recognize the
-    field. `merge-prs.py` gains a `--record-pending` flag: when present it
-    appends every successfully-merged PR number (the `status == "merged"`
-    rows) to the `pending_post_merge` array in
-    `<state_dir>/auto-evolve-state.json` (read-modify-write, de-duplicated,
-    atomic via temp+rename; state dir via `RABBIT_AUTO_EVOLVE_STATE_DIR` with
-    the `<cwd>/.rabbit` fallback). Without the flag `merge-prs.py` writes no
-    state; the per-PR stdout result array is unchanged in both modes.
+    `pending_post_merge` (optional array of int) holds merged PR numbers owed
+    post-merge processing; additive in schema 1.2.0 (a state WITHOUT it still
+    validates), absent in pre-1.2.0 states. `start-loop.py`'s bootstrap default
+    and `update-state.py`'s validator both recognize it. `merge-prs.py`'s
+    `--record-pending` flag appends every `status == "merged"` PR number to the
+    array in `<state_dir>/auto-evolve-state.json` (read-modify-write,
+    de-duplicated, atomic temp+rename; state dir via
+    `RABBIT_AUTO_EVOLVE_STATE_DIR`, `<cwd>/.rabbit` fallback). Without the flag
+    `merge-prs.py` writes no state; the per-PR stdout result is unchanged.
 
     ### `scripts/run-post-merge.py`
 
@@ -1979,39 +1902,27 @@ summary is restated here.
       (`fetch`), to DRAIN any owed post-merge work from a previous truncated
       tick BEFORE fetching new work.
 
-    Enforced by `test/test-run-post-merge.py`:
-    - Non-empty `pending_post_merge` (e.g. `[10, 20]`): the
-      `release-bump.py`, `cleanup-branches.py`, and `classify-merge-restart.py`
-      shims are each invoked (release + catch-up once per pending PR; cleanup once
-      with the comma-joined list), IN ORDER (release before cleanup before
-      catch-up, asserted via a shared ordered call log); `pending_post_merge`
-      is cleared to `[]` in the written state; exit 0.
-    - Empty `pending_post_merge` (and missing state file): clean no-op —
-      no phase shim is invoked; exit 0; `status: "noop"`.
-    - A phase shim exiting non-zero: `run-post-merge.py` exits non-zero and
-      does NOT clear `pending_post_merge` (owed work survives for the next
-      tick's drain).
-    - A `release-bump.py` shim emitting `{"status": "skipped", ...}` with
-      exit 0: `run-post-merge.py` exits non-zero, does NOT invoke
-      cleanup/catch-up, and does NOT clear `pending_post_merge` (a skipped release is an owed release, not a success).
-    - `--help` smoke: exit 0 with recognizable usage text.
+    Enforced by `test/test-run-post-merge.py`: non-empty `pending_post_merge`
+    (e.g. `[10, 20]`) invokes the `release-bump.py`, `cleanup-branches.py`,
+    `classify-merge-restart.py` shims IN ORDER (release+catch-up per pending PR; cleanup
+    once with the comma-joined list, asserted via a shared ordered call log) and
+    clears the field to `[]`, exit 0; empty/missing state is a clean no-op
+    (`status: "noop"`, no shim invoked); a phase shim exiting non-zero or a
+    `release-bump.py` `{"status": "skipped"}` (exit 0) makes `run-post-merge.py`
+    exit non-zero WITHOUT clearing the field (skipped is owed, not success), and
+    skipped stops before cleanup/catch-up; `--help` smoke. By
+    `test/test-merge-prs.py` (extended): `--record-pending` appends merged PRs
+    (de-duplicated), without it no state write. By
+    `test/test-spec-post-merge-invariant.py` (e2e): the Inv 30 text is present
+    AND both source and deployed SKILL.md invoke `run-post-merge.py` after merge
+    AND at tick start.
 
-    And by `test/test-merge-prs.py` (extended): with `--record-pending`, the
-    merged PR numbers are appended (de-duplicated) to `pending_post_merge` in
-    the state file; without it, no state write occurs.
-
-    And by `test/test-spec-post-merge-invariant.py` (e2e): asserts the Inv 30
-    text is present in the spec AND that both the source and deployed SKILL.md
-    invoke `run-post-merge.py` after the merge phase AND at tick start.
-
-31. **`check-auto-resume.py` owns mechanical restart-resume detection
-   .** Today's restart recovery is convention-enforced: after a
-    `restart-needed` tick the human must read the SessionStart banner (Inv 22
-    line-2 `resume after restart` variant) and manually paste
-    `/rabbit-auto-evolve start`. A missed read silently stalls the loop. Per
-    spec-rules §1 (`script > CLI > spec > prompt`) the resume decision is
-    moved out of human convention and into a deterministic script so the
-    SessionStart hook can mechanically self-resume.
+31. **`check-auto-resume.py` owns mechanical restart-resume detection.**
+    Convention-enforced restart recovery (human reads the SessionStart banner,
+    Inv 22 `resume after restart` variant, and pastes `/rabbit-auto-evolve
+    start`) silently stalls the loop on a missed read. Per spec-rules §1
+    (`script > CLI > spec > prompt`) the resume decision moves into a
+    deterministic script so the SessionStart hook self-resumes.
 
     The CLI
     `python3 .claude/features/rabbit-auto-evolve/scripts/check-auto-resume.py`
@@ -2032,29 +1943,20 @@ summary is restated here.
        running).
 
     When all three hold the script emits `{"resume": true, "action":
-    "/rabbit-auto-evolve start"}`; otherwise it emits `{"resume": false,
-    "action": null}`. The `.rabbit-auto-evolve-aborted` marker is NOT
-    consulted here — abort handling is the banner's responsibility (Inv 22);
-    this script answers only the narrow "should we mechanically re-launch the
-    loop after a restart" question.
+    "/rabbit-auto-evolve start"}`; else `{"resume": false, "action": null}`.
+    `.rabbit-auto-evolve-aborted` is NOT consulted here — abort handling is the
+    banner's responsibility (Inv 22); this script answers only "should we
+    re-launch after a restart". Exit code is ALWAYS 0 (verdict in `resume`); it
+    reads files only (`os.path.exists`), never `ls`/`test -f`. `<repo_root>`
+    defaults to `os.getcwd()`, overridable via `RABBIT_AUTO_EVOLVE_REPO_ROOT`.
 
-    Exit code is ALWAYS 0 — the verdict is carried in `resume`, not in the
-    exit code. The script reads files only (`os.path.exists`) and never
-    invokes `ls`, `test -f`, or any command that would exit non-zero on the
-    expected "not active" path. `<repo_root>` defaults to `os.getcwd()`;
-    overridable via the `RABBIT_AUTO_EVOLVE_REPO_ROOT` env var for tests.
-
-    **rabbit-cage integration (cross-scope INVOKE, NOT a feature edit).** The
-    SessionStart hook is owned by rabbit-cage. The CORRECT cross-scope
-    mechanism is for rabbit-cage's SessionStart hook to INVOKE this
-    rabbit-auto-evolve script and, when `resume` is true, surface the `action`
-    so the loop auto-resumes — exactly the contract-INVOKE pattern already
-    used elsewhere (this feature's `invokes` block). The actual hook wiring is
-    a SEPARATE rabbit-cage touch filed as a discovered issue; it is out of
-    this feature's scope. This invariant fixes only the rabbit-auto-evolve
-    side: the deterministic resume-detection script plus the documented
-    conditions the hook consumes.
-
+    **rabbit-cage integration (cross-scope INVOKE).** rabbit-cage's
+    SessionStart hook (owned by rabbit-cage) INVOKEs this script and, when
+    `resume` is true, surfaces the `action` — the contract-INVOKE pattern in
+    this feature's `invokes` block. The hook wiring is a separate rabbit-cage
+    touch filed as a discovered issue; this invariant fixes only the
+    rabbit-auto-evolve side (the resume-detection script + documented
+    conditions).
 
     Enforced by `test/test-check-auto-resume.py`:
     - All three conditions met (active + restart-needed, no running) →
@@ -2070,79 +1972,61 @@ summary is restated here.
 
 32. **Tick scheduling is owned by the system cron WHERE AVAILABLE, with a
     durable `CronCreate` fallback where crontab is blocked; `ScheduleWakeup`
-    and `/loop` are NEVER used in rabbit-auto-evolve.** The prior
-    architecture self-chained ticks from inside a live Claude session via
-    `ScheduleWakeup` (Inv 29 / Inv 31), coupling cadence to an open session
-    and making the next tick a Claude-harness side effect that could silently
-    drop. The current architecture replaces self-chaining with an EXTERNAL
-    trigger: a single system `cron` entry is the SOLE tick scheduler. The
-    two-tier model and the CronCreate fallback (below) REFINE this invariant
-    additively, without weakening its observability goal.
+    and `/loop` are NEVER used in rabbit-auto-evolve.** Self-chaining ticks via
+    `ScheduleWakeup` (Inv 29 / Inv 31) coupled cadence to an open session and
+    could silently drop the next tick. The architecture replaces self-chaining
+    with an EXTERNAL trigger: a single system `cron` entry is the SOLE tick
+    scheduler. The two-tier model and CronCreate fallback REFINE this
+    additively, without weakening observability.
 
-    **AMENDMENT — two-tier tick model.** The tick splits into
-    two tiers with DIFFERENT re-trigger ownership:
+    **Two-tier tick model** (different re-trigger ownership):
 
-    - The **HOUSEKEEPING tick** (the deterministic, Claude-free phases:
-      0–1, 2–4, 6, 7–9, 10) NEVER self-chains — the external scheduler
-      (cron/daemon) owns its cadence. `tick-headless.py` is its
-      implementation; Inv 32's "no self-chaining" rule is UNCHANGED for this
-      tier.
-    - The **DEVELOPMENT tick** (phase 6, `dispatch`) requires a live Claude
-      session and CANNOT run headless. It is re-triggered by the scheduler
-      firing `/rabbit-auto-evolve start` as a one-shot. Each fired tick is a
-      full in-session tick (INCLUDING phase 6). This is NOT inline continuation:
-      the turn ENDS; the next tick's context is FRESH on the system-cron path
-      but a reused/accumulating session on the fallback (Inv 33 / D1).
+    - The **HOUSEKEEPING tick** (deterministic Claude-free phases 0–1, 2–4, 6,
+      7–9, 10), implemented by `tick-headless.py`, NEVER self-chains — the
+      external scheduler owns its cadence.
+    - The **DEVELOPMENT tick** (phase 6, `dispatch`) needs a live Claude
+      session, so the scheduler re-triggers it by firing `/rabbit-auto-evolve
+      start` as a one-shot full in-session tick. NOT inline continuation: the
+      turn ENDS; context is FRESH on the system-cron path, reused/accumulating
+      on the fallback (Inv 33 / D1).
 
-    **AMENDMENT — scheduler mechanism + sanctioned fallback.**
-    The scheduler is the system `crontab` WHERE AVAILABLE (the default). On
-    hosts where the `crontab` binary is administratively blocked, a **durable
-    `CronCreate` heartbeat is the SANCTIONED fallback** trigger. The
-    forbidden / permitted set is:
+    **Scheduler mechanism + sanctioned fallback.** The default is the system
+    `crontab`; where the `crontab` binary is administratively blocked, a durable
+    `CronCreate` heartbeat is the SANCTIONED fallback. The forbidden/permitted
+    set:
 
-    - `ScheduleWakeup` remains FORBIDDEN: it requires `/loop` and couples
-      cadence to an open session in the failure-prone way the cron switch fixed.
-    - `/loop` remains FORBIDDEN anywhere in this feature.
-    - `CronCreate` (the Claude-Code idle-REPL prompt scheduler — `durable`-
-      capable, persisting to `.claude/scheduled_tasks.json`; it is NOT
-      `/loop` and NOT `ScheduleWakeup`) is PERMITTED solely as the fallback
-      trigger on crontab-restricted hosts AND as the one-shot
-      immediate-refire mechanism (Inv 33 / D1) on those hosts.
+    - `ScheduleWakeup` FORBIDDEN (requires `/loop`, couples cadence to a
+      session).
+    - `/loop` FORBIDDEN anywhere in this feature.
+    - `CronCreate` (the Claude-Code idle-REPL prompt scheduler — `durable`,
+      persisting to `.claude/scheduled_tasks.json`; NOT `/loop`, NOT
+      `ScheduleWakeup`) PERMITTED solely as the fallback trigger on
+      crontab-restricted hosts AND the one-shot immediate-refire (Inv 33 / D1)
+      there.
 
-    **CronCreate is a Claude TOOL, not a Python call.** A script CANNOT
-    invoke `CronCreate`. So the scripts own the DETERMINISTIC parts —
-    scheduler detection (Inv 34 / D2), the stale-marker running-guard
-    (Inv 35 / D3), decision logging (Inv 36 / D4), and the schedule DECISION
-    (what to schedule, with which mechanism/params) — while the DISPATCHER
-    (the live Claude session, via SKILL.md instructions) performs the
-    irreducible tool action of calling `CronCreate(...)` with the emitted
-    params, exactly as phase 6 dispatch is the irreducible-Claude action.
-    Inv 32's observability goal is upheld by Inv 35 (stale running-markers
-    are cleared so the loop never wedges) and Inv 36 (every heartbeat/guard/
-    schedule decision is logged), NOT by forbidding the `CronCreate` fallback.
+    **CronCreate is a Claude TOOL, not a Python call**, so the scripts own the
+    DETERMINISTIC parts — scheduler detection (Inv 34 / D2), the running-guard
+    (Inv 35 / D3), decision logging (Inv 36 / D4), the schedule DECISION — while
+    the DISPATCHER calls `CronCreate(...)` with the emitted params, as phase 6
+    dispatch is the irreducible-Claude action. Observability is upheld by Inv 35
+    (stale markers cleared) and Inv 36 (every decision logged), NOT by
+    forbidding the fallback.
 
     **The split between headless and session ticks.**
 
     - **Headless tick (cron-fired, no Claude session).** The cron entry runs
-      `python3 .claude/features/rabbit-auto-evolve/scripts/tick-headless.py`.
-      It walks the deterministic, Claude-free phases:
-      phase 0 (`stop-check`), phase 1 (`restart-check`),
-      phases 3–5 (`fetch | triage | plan`),
-      phase 7 (`merge` of the PRs listed in the state's transient
-      `merge_ready` hint field, skipped when empty),
-      phases 8–10 (`run-post-merge.py` when `pending_post_merge` non-empty),
-      phase 11 (`persist`). `merge_ready` is a transient per-tick hint, NOT
-      part of the canonical Inv 9 schema, so the headless tick drops it before
-      handing the state to `update-state.py` (whose validator rejects unknown
-      keys). It does NOT run phase 6 (`dispatch`) and does NOT schedule
-      (phase 12 is a no-op; the cron fires the next tick). A pending stop
-      (`.rabbit-auto-evolve-stop-requested`) or abort
-      (`.rabbit-auto-evolve-aborted`) marker short-circuits the headless tick
-      to a clean no-op.
-    - **Session tick (Claude active).** The full 12-phase tick walked by
-      SKILL.md still runs, INCLUDING phase 6 (`dispatch`). Phase 12
-      (`schedule`) no longer calls `ScheduleWakeup` — it is documented as a
-      no-op because the cron owns scheduling.
+      `tick-headless.py`, walking the Claude-free phases: 0 (`stop-check`),
+      1 (`restart-check`), 3–5 (`fetch | triage | plan`), 7 (`merge` of the
+      state's transient `merge_ready` hint field, skipped when empty), 8–10
+      (`run-post-merge.py` when `pending_post_merge` non-empty), 11 (`persist`).
+      `merge_ready` is a transient hint NOT in the Inv 9 schema, so the headless
+      tick drops it before `update-state.py` (validator rejects unknown keys).
+      No phase 6 (`dispatch`); no schedule (phase 12 no-op; cron fires next). A
+      pending `.rabbit-auto-evolve-stop-requested` or
+      `.rabbit-auto-evolve-aborted` marker short-circuits it to a clean no-op.
+    - **Session tick (Claude active).** The full SKILL.md 12-phase tick runs
+      INCLUDING phase 6. Phase 12 (`schedule`) no longer calls `ScheduleWakeup`
+      — it is a documented no-op because the cron owns scheduling.
 
     **Cron lifecycle (owned by `set-evolve-mode.py`).**
 
@@ -2153,46 +2037,36 @@ summary is restated here.
       `crontab -` pattern. It is IDEMPOTENT (an existing `tick-headless.py`
       entry yields a clean no-op; two runs leave exactly one entry). Exit 0.
 
-      **Restricted-host CronCreate fallback.** When the `crontab` binary is
-      administratively restricted, `install-cron.py` DETECTS it via the SAME
-      permission-denial signal `detect-scheduler.py` uses (Inv 34 / D2) — a
-      "not allowed" stderr signal on `crontab -l`, distinguished from the
-      legitimate empty "no crontab for user" case — and FALLS BACK
-      GRACEFULLY: it exits 0 and emits (a) a machine-readable JSON signal
+      **Restricted-host CronCreate fallback.** When `crontab` is restricted,
+      `install-cron.py` DETECTS it via the SAME permission-denial signal
+      `detect-scheduler.py` uses (Inv 34 / D2) — a "not allowed" stderr on
+      `crontab -l`, distinguished from the empty "no crontab for user" case —
+      and FALLS BACK GRACEFULLY (exit 0), emitting (a) a JSON signal
       `{"scheduler":"croncreate","action":"dispatcher-must-create-heartbeat",
       "cron":"13,43 * * * *","prompt":"/rabbit-auto-evolve start",
-      "durable":true}` naming the durable `CronCreate` heartbeat the
-      DISPATCHER must create (a script cannot call `CronCreate`), and (b) a
-      branded `rabbit_print` line (per contract Inv 46) telling the user the
-      heartbeat will be set up on the next `/rabbit-auto-evolve start`. The
-      heartbeat cron AVOIDS the `:00`/`:30` minute marks per CronCreate
-      guidance (`13,43 * * * *`, ~30-min cadence). **Single cadence source.**
-      The cadence is codified ONCE in `install-cron.py` as `CADENCE_MINUTES`;
-      the system-cron `SCHEDULE` (`*/N * * * *`) AND the fallback heartbeat
-      both DERIVE from it (the heartbeat is the same cadence shifted off the
-      `:00`/`:30` marks by a fixed offset — a deterministic transform, not a
-      second literal), so a cadence change propagates to BOTH paths.
-      `test/test-cron-cadence-source.py` pins the source and every spec.md /
-      SKILL.md cron literal to it.
+      "durable":true}` naming the durable `CronCreate` heartbeat the DISPATCHER
+      must create, and (b) a branded `rabbit_print` line (contract Inv 46)
+      telling the user the heartbeat is set up on the next start. The heartbeat
+      AVOIDS the `:00`/`:30` marks (`13,43 * * * *`, ~30-min). **Single cadence
+      source:** codified ONCE in `install-cron.py` as `CADENCE_MINUTES`; both
+      the system-cron `SCHEDULE` (`*/N * * * *`) and the heartbeat DERIVE from
+      it (heartbeat = same cadence shifted off `:00`/`:30` by a fixed offset),
+      so a change propagates to both. `test/test-cron-cadence-source.py` pins
+      the source and every spec.md/SKILL.md cron literal.
 
       **Operational cadence config.** `CADENCE_MINUTES = 30` is the DEFAULT,
-      not a floor: cadence is OPERATIONAL CONFIG tunable without editing
-      source. `install-cron.py` resolves the EFFECTIVE cadence via
-      `_configured_cadence()` in precedence: (1) the
-      `RABBIT_AUTO_EVOLVE_CADENCE` env var; (2) a `cadence_minutes` integer in
-      rabbit-auto-evolve's OWN state-dir config
-      `<state_dir>/auto-evolve-cadence-config.json` (state dir via
-      `RABBIT_AUTO_EVOLVE_STATE_DIR`, else `<cwd>/.rabbit`; NOT rabbit-cage's
-      `configuration` array nor rabbit-config); (3) the `CADENCE_MINUTES`
-      default. The resolved value is VALIDATED as an integer in `1..59`; a
-      non-integer or out-of-range value is REJECTED — falls back to the
-      default and emits a branded warning, never installing a nonsense cron.
-      BOTH paths read the SAME resolved cadence (e.g. cadence 15 yields a
-      `*/15` system cron AND a heartbeat at `13,28,43,58`), so they never
-      split. The default remains exactly `*/30 * * * *` and `13,43 * * * *`.
-      Enforced by `test/test-cron-cadence-config.py` (e2e). The
-      `RABBIT_CRONTAB_CMD` and `RABBIT_AUTO_EVOLVE_REPO_ROOT` overrides are
-      preserved.
+      not a floor — cadence is OPERATIONAL CONFIG tunable without editing
+      source. `install-cron.py._configured_cadence()` resolves in precedence:
+      (1) `RABBIT_AUTO_EVOLVE_CADENCE` env; (2) `cadence_minutes` in
+      rabbit-auto-evolve's OWN `<state_dir>/auto-evolve-cadence-config.json`
+      (state dir via `RABBIT_AUTO_EVOLVE_STATE_DIR`, else `<cwd>/.rabbit`; NOT
+      rabbit-cage's `configuration` nor rabbit-config); (3) `CADENCE_MINUTES`.
+      The value is VALIDATED as an integer in `1..59`; out-of-range REJECTED
+      (default + branded warning, never a nonsense cron). Both paths read the
+      SAME resolved cadence (cadence 15 → `*/15` cron AND a `13,28,43,58`
+      heartbeat); default stays `*/30 * * * *` / `13,43 * * * *`. Enforced by
+      `test/test-cron-cadence-config.py` (e2e). `RABBIT_CRONTAB_CMD` and
+      `RABBIT_AUTO_EVOLVE_REPO_ROOT` overrides preserved.
     - `scripts/uninstall-cron.py` removes the entry via
       `crontab -l | grep -v tick-headless | crontab -`. It is IDEMPOTENT and
       safe when the entry (or any crontab) is absent. Exit 0 including the
@@ -2542,37 +2416,25 @@ summary is restated here.
     derived attribution below.
 
     **(h) Attribution — `tick` and `session_id` carry real, deterministic
-    values, never stubs.** `tick` and `session_id` MUST carry real attribution,
-    NEVER the stub `0` / `''` — the cross-session attribution this log promises
-    (which session/tick a record belongs to) depends on it. Both derive from
-    DETERMINISTIC, testable sources:
+    values, never the stub `0` / `''`** (the cross-session attribution depends
+    on it). Both derive from DETERMINISTIC, testable sources:
 
-    - **Single source of truth — the running marker.** The per-session identity
-      is derived from the running marker
+    - **Single source of truth — the running marker**
       (`<repo_root>/.rabbit-auto-evolve-running`, content `pid=<n> ts=<iso>
-      session` built by `start-loop.py._marker_content`), a STABLE per-session
-      anchor written once and persisting for the session's lifetime. The marker
-      path resolves via `RABBIT_AUTO_EVOLVE_RUNNING_MARKER` when set, else
+      session` built by `start-loop.py._marker_content`), a stable per-session
+      anchor. Path via `RABBIT_AUTO_EVOLVE_RUNNING_MARKER`, else
       `<repo_root>/.rabbit-auto-evolve-running` (`<repo_root>` via
-      `RABBIT_AUTO_EVOLVE_REPO_ROOT`, else cwd) — the env override makes the
-      source INJECTABLE so the unit is deterministic under test.
-    - **`session_id` derivation.** When `--session-id` is NOT passed,
-      `log-tick.py` derives a non-empty id from the marker: `pid<n>-<ts>` when a
-      `pid=<n>` is recorded, else `ts-<ts>` (PID-free markers are valid). The id
-      is STABLE across every record of the session. When the marker is absent it
-      falls back to the owning process pid (`pid<getpid>`), never the empty stub.
-    - **`tick` derivation — a monotonic per-session counter.** When `--tick` is
-      NOT passed, `log-tick.py` reads a counter file
+      `RABBIT_AUTO_EVOLVE_REPO_ROOT`, else cwd) — injectable for tests.
+    - **`session_id`** (when `--session-id` omitted): `pid<n>-<ts>` when a
+      `pid=<n>` is recorded, else `ts-<ts>` (PID-free markers valid), stable
+      across the session; absent marker → `pid<getpid>`, never the empty stub.
+    - **`tick`** (when `--tick` omitted): a monotonic per-session counter in
       `<state_dir>/auto-evolve-log-tick.json` (`{"session_id":…, "tick":…}`). A
-      `tick-start` record INCREMENTS the counter (resetting to 1 when the
-      recorded session_id differs — a new session) and persists it; every other
-      record-kind REUSES the current value (defaulting to 1 before the first
-      tick-start). The counter is monotonic within a session and a pure function
-      of the on-disk state, so it is deterministic under test.
-    - **Explicit override.** An explicitly passed `--tick` / `--session-id` is
-      ALWAYS honored verbatim (the derivation only fills the gap when the flag is
-      omitted), preserving back-compat with callers that already supply real
-      values.
+      `tick-start` INCREMENTS (resetting to 1 on a new session_id) and persists;
+      other record-kinds REUSE the current value (default 1). A pure function of
+      on-disk state, deterministic under test.
+    - **Explicit override.** A passed `--tick` / `--session-id` is honored
+      verbatim (derivation fills the gap only when the flag is omitted).
 
     Enforced by `test/test-log-tick.py`:
     - Writes 100 ticks at each verbosity (`quiet`/`normal`/`debug`) and
@@ -2597,13 +2459,12 @@ summary is restated here.
     guarantee.
 
 38. **Tick-start working-tree self-sync via `git pull --ff-only`.**
-    The loop runs its phase scripts from its LOCAL working-tree checkout. After
-    it merges PRs to `origin/dev` (via `gh pr merge`), local `dev` falls behind
-    and subsequent ticks run STALE script versions until a human manually
-    fast-forwards — directly undercutting autonomy (the loop can ship a fix and
-    keep running the pre-fix code). The loop MUST self-sync at tick start.
+    The loop runs its phase scripts from its LOCAL checkout. After it merges PRs
+    to `origin/dev`, local `dev` falls behind and subsequent ticks run STALE
+    script versions until a human fast-forwards — undercutting autonomy. The
+    loop MUST self-sync at tick start.
 
-    **Mechanism (`scripts/sync-tree.py`).** A new script
+    **Mechanism (`scripts/sync-tree.py`).**
     `python3 .claude/features/rabbit-auto-evolve/scripts/sync-tree.py` performs
     the deterministic sync:
 
@@ -2666,18 +2527,16 @@ summary is restated here.
 
     The consumption type of loop-critical runtime state is declared in the
     data-driven registry
-    `scripts/schemas/self-modifying-migration-registry.json`, which maps known
-    markers, resolved paths, agent types, and config keys to a consumption
-    type, and declares the fallback heuristic for unlisted state: marker files
-    & resolved paths → disk-each-tick (coexistence-window); agent types &
-    session config → memory-at-start (restart-safe). The Stage-2 classifier in
-    `scripts/plan-batch.py` consumes this registry: per work item it detects a
-    self-modifying migration, tags the chosen pattern in
-    `self_modifying_migrations` (issue-number-string → pattern), and lists
-    restart-safe items under `restart_needed`. `plan-batch.py` is a pure JSON
-    processor — it writes no marker; the tick driver sets
-    `.rabbit-auto-evolve-restart-needed` for the `restart_needed` items (via
-    `mark-restart-needed.py`, Inv 17) and ends the tick cleanly.
+    `scripts/schemas/self-modifying-migration-registry.json`, mapping known
+    markers, resolved paths, agent types, config keys to a consumption type,
+    with the fallback heuristic for unlisted state: marker files & resolved
+    paths → disk-each-tick (coexistence-window); agent types & session config →
+    memory-at-start (restart-safe). The Stage-2 classifier in `plan-batch.py`
+    consumes the registry: per item it detects a self-modifying migration, tags
+    the pattern in `self_modifying_migrations` (issue-number-string → pattern),
+    and lists restart-safe items under `restart_needed`. `plan-batch.py` writes
+    no marker; the tick driver sets `.rabbit-auto-evolve-restart-needed` for
+    those items (via `mark-restart-needed.py`, Inv 17) and ends cleanly.
 
     The one yield point for a restart-required migration is the
     `.rabbit-auto-evolve-restart-needed` marker (consumed by the SessionStart
@@ -2715,25 +2574,21 @@ summary is restated here.
 
     The headless tick chains `pre-dispatch -> (skip dispatch) -> post-dispatch`;
     the in-session tick chains `pre-dispatch -> Phase 6 (dispatch) ->
-    post-dispatch`. The in-session path differs from the headless path ONLY by
-    inserting Phase 6 (dispatch), which needs Claude. There is exactly ONE
-    deterministic phase-walk implementation; the dispatcher only adds dispatch.
+    post-dispatch`. The in-session path differs ONLY by inserting Phase 6, which
+    needs Claude. There is exactly ONE deterministic phase-walk; the dispatcher
+    only adds dispatch.
 
-    **Phase 11 persist is deterministic and never hand-assembled.** Phase 11
-    re-reads the on-disk state (the phase scripts — `merge-prs.py`,
-    `run-post-merge.py` — already mutated it on disk), drops the transient
-    `merge_ready` key (not part of the Inv 9 schema), and pipes the resulting
-    object through `update-state.py`. The dispatcher NEVER reads
-    `update-state.py` source or the state schema to hand-assemble the new-state
-    JSON by LLM inference. Every in-session phase handoff is script-to-script
-    (stdin/stdout pipes or on-disk state mutation), exactly as the headless
-    tick chains them — no in-session phase handoff requires the dispatcher to
-    hand-assemble a data structure.
+    **Phase 11 persist is deterministic and never hand-assembled.** It re-reads
+    the on-disk state (mutated on disk by `merge-prs.py` / `run-post-merge.py`),
+    drops the transient `merge_ready` key (not in the Inv 9 schema), and pipes
+    through `update-state.py`. The dispatcher NEVER reads `update-state.py`
+    source or the schema to hand-assemble new-state JSON; every in-session
+    handoff is script-to-script (pipes or on-disk state mutation), exactly as
+    the headless tick chains them.
 
-    Because the loop's phase scripts re-read state from disk each tick, this is
-    a re-read-from-disk self-modifying migration (Inv 39): it needs no
-    coexistence window and no restart, and takes effect on the next tick after
-    merge + sync.
+    Because the phase scripts re-read state from disk each tick, this is a
+    re-read-from-disk self-modifying migration (Inv 39): no coexistence window,
+    no restart; takes effect next tick after merge + sync.
 
     Enforced by `test/test-run-tick-phases.py` (e2e: each segment walks exactly
     its phases against stub phase scripts; `pre-dispatch` short-circuits on the
@@ -2993,43 +2848,33 @@ summary is restated here.
     than an `enhancement` with no `created_at`).
 
 45. **Post-merge re-sync to origin/dev before the release drain.**
-    Phase 7 (`merge-prs.py`) does a REMOTE squash-merge via `gh pr
-    merge`, which advances `origin/dev` but NOT the loop's LOCAL `dev`
-    checkout. Phases 8-10 (`run-post-merge.py` → `release-bump.py`) then run
-    immediately on the STALE local `dev` (lagging `origin/dev`), so
-    `release-bump.py`'s safety-check / next-tag computation sees stale state
-    and SKIPS the release on the FIRST in-loop attempt — a manual re-run with
-    identical-but-synced state then succeeds. The next-tick `skipped`-release
-    retry mitigates the SYMPTOM, but the ROOT CAUSE is the stale local tree.
+    Phase 7 (`merge-prs.py`) does a REMOTE squash-merge via `gh pr merge`,
+    advancing `origin/dev` but NOT the loop's LOCAL `dev`. Phases 8-10
+    (`run-post-merge.py` → `release-bump.py`) then run on the STALE local `dev`,
+    so `release-bump.py`'s safety-check / next-tag computation SKIPS the release
+    on the FIRST attempt; the next-tick retry mitigates the symptom, but the
+    root cause is the stale tree.
 
     `run-tick-phases.py run_post_dispatch` therefore re-syncs the local tree to
-    `origin/dev` AFTER the Phase-6 merge step reports merged PRs and BEFORE the
-    phases 8-10 post-merge / release drain, so `release-bump.py` runs on fresh
-    state and the FIRST in-loop release attempt succeeds (no reliance on the
-    next-tick retry). The re-sync REUSES the existing `sync-tree.py`
-    (`git pull --ff-only origin dev` — NEVER `git merge`, which is
-    permission-denied per Inv 38), so it inherits Inv 38's dirty-tree refusal
-    (a dirty tree fails loudly and is never synced over) and its non-ff
-    divergence refusal. The ordering is strict:
+    `origin/dev` AFTER the Phase-6 merge reports merged PRs and BEFORE the
+    8-10 drain, so the FIRST in-loop release succeeds. It REUSES `sync-tree.py`
+    (`git pull --ff-only origin dev` — NEVER `git merge`, permission-denied per
+    Inv 38), inheriting Inv 38's dirty-tree and non-ff divergence refusals. The
+    ordering is strict:
 
-    1. **Gated on actual merges.** The re-sync runs ONLY when the Phase-6
-       merge step ran with ready PRs (the `merge_ready` hint was non-empty).
-       With zero merges, `origin/dev` did not advance, so the re-sync is
-       skipped entirely — a harmless no-op, no spurious sync error.
-    2. **Ordered between merge and drain.** When PRs merged, `sync-tree.py`
-       runs AFTER `merge-prs.py` and BEFORE `run-post-merge.py`, so the merged
-       commits are local before release-bump computes its tag.
-    3. **Fails loudly.** If the re-sync cannot fast-forward (dirty or divergent
-       local tree), `run_post_dispatch` aborts non-zero BEFORE the post-merge
-       drain — `release-bump.py` never runs on a tree that could not be brought
-       current. This preserves the Inv 5 / Inv 38 safety property.
+    1. **Gated on actual merges.** Runs ONLY when the merge step ran with ready
+       PRs (`merge_ready` non-empty); zero merges → skipped no-op.
+    2. **Ordered between merge and drain.** `sync-tree.py` runs AFTER
+       `merge-prs.py` and BEFORE `run-post-merge.py`, so merged commits are
+       local before release-bump computes its tag.
+    3. **Fails loudly.** A non-ff (dirty/divergent) re-sync aborts
+       `run_post_dispatch` non-zero BEFORE the drain — `release-bump.py` never
+       runs on a tree that could not be brought current (Inv 5 / Inv 38).
 
-    Enforced by `test/test-run-tick-phases.py` (e2e: with merged PRs the
-    re-sync runs between `merge-prs.py` and `run-post-merge.py`; with zero
-    merges no re-sync runs and post-dispatch is a clean no-op; a failing
-    re-sync aborts non-zero before the post-merge drain) and by
-    `test/test-spec-post-merge-resync-invariant.py` (asserts this invariant
-    text is present in the spec).
+    Enforced by `test/test-run-tick-phases.py` (e2e: merged PRs → re-sync
+    between `merge-prs.py` and `run-post-merge.py`; zero merges → no re-sync,
+    clean no-op; failing re-sync aborts non-zero before the drain) and by
+    `test/test-spec-post-merge-resync-invariant.py` (this text present).
 
 46. **`release-bump.py` reads the closing issue's priority when the PR has
     none.** The dispatch flow opens PRs WITHOUT copying the
