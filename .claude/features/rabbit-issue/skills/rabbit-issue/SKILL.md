@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.11.1
+version: 1.12.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours an actionability safety guard (it refuses to close/reopen issues lacking a valid `feature:` label) so raw human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -183,12 +183,26 @@ When the user asks to work, close, or reopen an issue:
          --commit-sha <sha> \
          --comment "TDD cycle complete in <commit-sha>"
        ```
-       `--commit-sha` is **required** for `--reason completed` and must
-       resolve to a real commit in the local git repo — "completed" can
-       only be asserted when work actually landed. Pass
-       the SHA of the commit that carried the fix.
+       `--reason completed` requires **exactly one** deliverable proof.
+       For landed work pass `--commit-sha <sha>`, which must resolve to a
+       real commit in the local git repo — "completed" can only be
+       asserted when work actually landed. Pass the SHA of the commit
+       that carried the fix.
        Always verify state with `gh issue view <N>` before the
        fallback close so an already-closed issue is not re-closed.
+   - **Research SMALL-outcome close** (the comment-only deliverable):
+     when a research item's deliverable is findings appended as a COMMENT
+     on the request issue (no landed commit), close `completed` with the
+     comment URL instead of a commit SHA:
+     ```bash
+     python3 .claude/features/rabbit-issue/scripts/item-status.py close <N> \
+       --reason completed \
+       --findings-comment-url https://github.com/<owner>/<repo>/issues/<N>#issuecomment-<id>
+     ```
+     `--findings-comment-url` is validated against the GitHub
+     issue-comment URL shape and is mutually exclusive with
+     `--commit-sha`; the URL is persisted as the close comment so the
+     closed issue links to its findings. See docs/spec.md §Lifecycle.
 
 ---
 
@@ -224,7 +238,10 @@ GH issue state is binary; `state_reason` distinguishes the close path.
   - `completed` — closed after a TDD fix (default close reason for work
     that landed). Set automatically by `Fixes #N` auto-close, or
     manually via the `--reason completed --commit-sha <sha>` fallback
-    (the SHA must be a real local commit).
+    (the SHA must be a real local commit). A research SMALL-outcome item
+    whose deliverable is a linked comment closes `completed` via
+    `--findings-comment-url <url>` instead (mutually exclusive with
+    `--commit-sha`; the URL must be a GitHub issue-comment URL).
   - `not_planned` — closed without work (stale or invalid); requires a
     specific `--reason-text` (>= 50 chars, no boilerplate).
   - `null` — pre-rabbit closures or external closes; not produced by
@@ -238,6 +255,6 @@ GH issue state is binary; `state_reason` distinguishes the close path.
 | Script | Purpose |
 |---|---|
 | `file-item.py` | File a new bug or enhancement (auto-creates labels); `--filed-by <rabbit\|autonomous-evolve>` stamps the matching `filed-by:` label (omit for human; other values rejected); `--housekeeping` stamps the `housekeeping` category label |
-| `item-status.py` | `show <N>` / `close <N>` / `reopen <N>` (actionability guard enforced on close/reopen — refuses issues lacking a valid `feature:` label; `close --reason completed` requires `--commit-sha`, `close --reason not-planned` requires `--reason-text`) |
+| `item-status.py` | `show <N>` / `close <N>` / `reopen <N>` (actionability guard enforced on close/reopen — refuses issues lacking a valid `feature:` label; `close --reason completed` requires exactly one of `--commit-sha` or `--findings-comment-url`, `close --reason not-planned` requires `--reason-text`) |
 | `list-items.py` | List with `--type`, `--feature`, `--status` filters; deterministic sort |
 | `_gh.py` | Shared helper — repo slug discovery, `gh` invocation wrappers |

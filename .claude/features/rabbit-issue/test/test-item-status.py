@@ -158,6 +158,86 @@ def test_close_completed_does_not_inject_reason_text(gh_shim, fake_repo):
     assert "fixed" in log
 
 
+# A plausible GitHub issue-comment URL for the research SMALL-outcome
+# close gate (issue #841).
+GOOD_COMMENT_URL = (
+    "https://github.com/changyu87/rabbit-workflow/issues/841"
+    "#issuecomment-1234567890"
+)
+
+
+def test_close_completed_with_findings_comment_url(gh_shim, fake_repo):
+    """`--reason completed --findings-comment-url <url>` closes without a
+    commit sha (the SMALL research-outcome path, Inv 27d / #841)."""
+    r = _run("close", "42", "--reason", "completed",
+             "--findings-comment-url", GOOD_COMMENT_URL)
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue close" in log
+    assert "completed" in log
+    # The validated URL is persisted as the close comment (audit link).
+    assert GOOD_COMMENT_URL in log
+
+
+def test_close_findings_comment_url_rejects_invalid(gh_shim, fake_repo):
+    """A URL that is not a GitHub issue-comment URL is rejected."""
+    r = _run("close", "42", "--reason", "completed",
+             "--findings-comment-url", "https://example.com/not-a-comment")
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_findings_comment_url_rejects_missing_fragment(gh_shim, fake_repo):
+    """An issue URL without the #issuecomment-<id> fragment is rejected."""
+    r = _run("close", "42", "--reason", "completed",
+             "--findings-comment-url",
+             "https://github.com/changyu87/rabbit-workflow/issues/841")
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_completed_requires_a_deliverable_proof(gh_shim, fake_repo):
+    """`--reason completed` with neither --commit-sha nor
+    --findings-comment-url is rejected."""
+    r = _run("close", "42", "--reason", "completed")
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_completed_rejects_both_proofs(gh_shim, fake_repo):
+    """--commit-sha and --findings-comment-url are mutually exclusive."""
+    sha = _commit_in(fake_repo)
+    r = _run("close", "42", "--reason", "completed",
+             "--commit-sha", sha,
+             "--findings-comment-url", GOOD_COMMENT_URL)
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_findings_comment_url_combines_with_comment(gh_shim, fake_repo):
+    """With both --findings-comment-url and --comment the close comment
+    shows both, the URL first (#841)."""
+    r = _run("close", "42", "--reason", "completed",
+             "--findings-comment-url", GOOD_COMMENT_URL,
+             "--comment", "research item closed with findings comment")
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue close" in log
+    ui = log.find(GOOD_COMMENT_URL)
+    ci = log.find("research item closed with findings comment")
+    assert ui != -1 and ci != -1
+    assert ui < ci
+
+
+def test_close_findings_comment_url_rejected_for_not_planned(gh_shim, fake_repo):
+    """--findings-comment-url is a `completed`-only gate; it does not apply
+    to a not-planned close (which still requires --reason-text)."""
+    r = _run("close", "42", "--reason", "not-planned",
+             "--findings-comment-url", GOOD_COMMENT_URL)
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
 def test_close_rejects_unknown_reason(gh_shim, fake_repo):
     r = _run("close", "42", "--reason", "wontfix")
     assert r.returncode != 0

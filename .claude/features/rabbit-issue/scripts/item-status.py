@@ -4,6 +4,7 @@
 Subcommands:
   show   <N>                              — print issue JSON
   close  <N> --reason completed   --commit-sha <sha> [--comment <c>]
+  close  <N> --reason completed   --findings-comment-url <url> [--comment <c>]
   close  <N> --reason not-planned --reason-text <text> [--comment <c>]
   reopen <N> [--comment <c>]
 
@@ -12,19 +13,27 @@ must carry a valid `feature:` label) before issuing the gh command.
 
 The two close reasons are gated so a closure asserts something real
 (issue #423):
-  - `completed` requires `--commit-sha <sha>` that resolves to a real
-    commit in the local git repo — "completed" can only be claimed when
-    work actually landed.
+  - `completed` requires EXACTLY ONE deliverable proof, mutually
+    exclusive:
+      - `--commit-sha <sha>` that resolves to a real commit in the local
+        git repo — "completed" can only be claimed when work actually
+        landed; or
+      - `--findings-comment-url <url>`, a plausible GitHub issue-comment
+        URL — the SMALL research-outcome path (issue #841): the findings
+        are appended as a comment and that comment is the deliverable, so
+        there is no landed commit. The URL is persisted as the close
+        comment (audit link).
   - `not-planned` requires `--reason-text <text>` of at least 50 chars
     that is free of banned boilerplate phrases — a deliberate, specific
     justification, not a reflexive deferral.
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -42,6 +51,12 @@ SHOW_FIELDS = "number,title,state,stateReason,labels,body,createdAt,closedAt"
 
 # Minimum length for a not-planned justification (issue #423 Part D).
 REASON_MIN_LEN = 50
+
+# A plausible GitHub issue-comment URL (issue #841). Shape:
+#   https://github.com/<owner>/<repo>/issues/<N>#issuecomment-<id>
+COMMENT_URL_RE = re.compile(
+    r"^https://github\.com/[^/\s]+/[^/\s]+/issues/\d+#issuecomment-\d+$"
+)
 
 # Boilerplate that signals a reflexive deferral rather than a real
 # justification. Matched case-insensitively as substrings of --reason-text.
@@ -76,6 +91,17 @@ def _validate_commit_sha(sha: str) -> None:
         )
 
 
+def _validate_findings_comment_url(url: str) -> None:
+    """Exit non-zero unless `url` is a plausible GitHub issue-comment URL."""
+    if not COMMENT_URL_RE.match(url):
+        sys.exit(
+            "rabbit-issue: --findings-comment-url {!r} is not a GitHub "
+            "issue-comment URL; expected the form "
+            "https://github.com/<owner>/<repo>/issues/<N>#issuecomment-<id>"
+            .format(url)
+        )
+
+
 def _validate_reason_text(text: str) -> None:
     """Exit non-zero unless `text` is a specific, non-boilerplate reason."""
     if len(text) < REASON_MIN_LEN:
@@ -99,13 +125,32 @@ def cmd_close(args: argparse.Namespace) -> None:
 
     # Then gate the close reason before the gh call (issue #423).
     if args.reason == "completed":
-        if not args.commit_sha:
+        # `completed` requires EXACTLY ONE deliverable proof: a landed
+        # commit, or a research-findings comment URL (issue #841). They
+        # are mutually exclusive.
+        if args.commit_sha and args.findings_comment_url:
+            sys.exit(
+                "rabbit-issue: `--reason completed` takes EITHER --commit-sha "
+                "OR --findings-comment-url, not both; pick the one proof that "
+                "matches the deliverable"
+            )
+        if args.commit_sha:
+            _validate_commit_sha(args.commit_sha)
+        elif args.findings_comment_url:
+            _validate_findings_comment_url(args.findings_comment_url)
+        else:
             sys.exit(
                 "rabbit-issue: `--reason completed` requires --commit-sha "
-                "<sha>; a completed closure must point at a real commit"
+                "<sha> (a real landed commit) or --findings-comment-url "
+                "<url> (a research-findings comment)"
             )
-        _validate_commit_sha(args.commit_sha)
     else:  # not-planned
+        if args.findings_comment_url:
+            sys.exit(
+                "rabbit-issue: --findings-comment-url applies only to "
+                "`--reason completed`; a not-planned close requires "
+                "--reason-text"
+            )
         if not args.reason_text:
             sys.exit(
                 "rabbit-issue: `--reason not-planned` requires --reason-text "
@@ -113,15 +158,22 @@ def cmd_close(args: argparse.Namespace) -> None:
             )
         _validate_reason_text(args.reason_text)
 
-    # Persist the validated not-planned justification as the close comment
-    # (issue #476). The text was being validated then dropped, leaving the
-    # closed issue with no audit trail. When --comment is also supplied the
-    # reason-text leads, separated from the comment by a blank line.
+    # Persist the validated audit trail as the close comment. A not-planned
+    # close persists --reason-text (issue #476); a completed close via the
+    # findings-comment path persists the comment URL (issue #841). The text
+    # was being validated then dropped, leaving the closed issue with no
+    # audit trail. When --comment is also supplied the validated text leads,
+    # separated from the comment by a blank line.
     comment = args.comment
     if args.reason == "not-planned":
+        lead = args.reason_text
+    elif args.findings_comment_url:
+        lead = args.findings_comment_url
+    else:
+        lead = ""
+    if lead:
         comment = (
-            "{}\n\n{}".format(args.reason_text, args.comment)
-            if args.comment else args.reason_text
+            "{}\n\n{}".format(lead, args.comment) if args.comment else lead
         )
 
     # argparse accepts the hyphen form (Python/shell-friendly), but
@@ -158,8 +210,13 @@ def main() -> None:
     # Gating args (issue #423); required-ness is enforced per-reason in
     # cmd_close so the error message can name the reason it applies to.
     c.add_argument("--commit-sha", default="",
-                   help="required with --reason completed; must be a real "
-                        "commit in the local git repo")
+                   help="with --reason completed: a real commit in the local "
+                        "git repo (mutually exclusive with "
+                        "--findings-comment-url)")
+    c.add_argument("--findings-comment-url", default="",
+                   help="with --reason completed: a GitHub issue-comment URL "
+                        "for a research SMALL-outcome close (mutually "
+                        "exclusive with --commit-sha)")
     c.add_argument("--reason-text", default="",
                    help="required with --reason not-planned; >= {} chars, "
                         "no boilerplate".format(REASON_MIN_LEN))

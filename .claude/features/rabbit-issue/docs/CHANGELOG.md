@@ -12,6 +12,31 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.12.0 (`--findings-comment-url` close gate for the SMALL research-outcome
+  path, closes #841):** `item-status.py close --reason completed` now accepts a
+  second, mutually-exclusive deliverable proof: `--findings-comment-url <url>`.
+  This executes rabbit-auto-evolve Inv 27(d)'s SMALL research-outcome
+  disposition (refined in #835/#839) — the findings are appended as a COMMENT on
+  the request issue and the issue is closed `completed` with that comment as its
+  deliverable, so no landed commit (and thus no `--commit-sha`) is required. The
+  URL is validated against the GitHub issue-comment shape
+  `https://github.com/<owner>/<repo>/issues/<N>#issuecomment-<id>` (regex
+  `COMMENT_URL_RE`) and a non-matching URL aborts before any gh call; the
+  validated URL is PERSISTED as the close comment (audit link), leading the
+  `--comment` text when both are supplied (URL first, blank-line separated,
+  mirroring the not-planned reason-text persistence of #476). `completed` now
+  requires EXACTLY ONE of `--commit-sha` or `--findings-comment-url` — supplying
+  both, or neither, is rejected; `--findings-comment-url` is a `completed`-only
+  gate and is rejected on a `not-planned` close. The `--commit-sha` /
+  `not-planned --reason-text` paths are otherwise unchanged. Tests: seven new
+  cases in `test/test-item-status.py` (valid URL closes + records the link;
+  invalid URL and missing `#issuecomment-` fragment rejected; neither-proof and
+  both-proofs rejected; composes with `--comment` URL-first; rejected for
+  not-planned). Four-way version lockstep 1.11.1 → 1.12.0 (feature.json +
+  spec.md + SKILL.md; contract.md 1.9.1 → 1.10.0). Script Version line:
+  item-status.py 1.2.0 → 1.3.0. SKILL.md changed, so the deployed copy under
+  `.claude/skills/` drifts until the dispatcher republishes (republish_needed).
+
 - **v1.11.1 (measured-reduction housekeeping wave, closes #814; child of
   #794):** Verify-or-flag prose reduction of the doc surfaces per
   coding-rules §6/§2/§7, with zero behavior or contract change. Cut redundant
