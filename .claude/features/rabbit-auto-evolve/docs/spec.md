@@ -1904,7 +1904,7 @@ summary is restated here.
 
     Enforced by `test/test-run-post-merge.py`: non-empty `pending_post_merge`
     (e.g. `[10, 20]`) invokes the `release-bump.py`, `cleanup-branches.py`,
-    `classify-merge-restart.py` shims IN ORDER (release+catch-up per PR; cleanup
+    `classify-merge-restart.py` shims IN ORDER (release+catch-up per pending PR; cleanup
     once with the comma-joined list, asserted via a shared ordered call log) and
     clears the field to `[]`, exit 0; empty/missing state is a clean no-op
     (`status: "noop"`, no shim invoked); a phase shim exiting non-zero or a
