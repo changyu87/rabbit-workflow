@@ -326,7 +326,7 @@ def check_manifest_drift(alert: dict, *, repo_root: str) -> dict:
         # calls that read-modify-write the same settings.json. Breaking
         # after the first non-no-op leaves the file half-built until the
         # next full publish loop runs, observable as missing hooks after
-        # any Stop-event surface-drift rebuild (CONTRACT-BACKLOG-37).
+        # any Stop-event surface-drift rebuild.
         for entry in manifest:
             api_name = entry.get("api")
             args = entry.get("args", {}) or {}
@@ -359,7 +359,7 @@ def _marker_polarity(configurable: dict):
     value; the value whose action DELETES the marker is the 'absent' value.
 
     This makes marker polarity self-describing per configurable rather than a
-    hardcoded human-approval assumption (#775): the legacy human-approval
+    hardcoded human-approval assumption: the legacy human-approval
     shape (values.false => write_marker, values.true => delete_marker)
     yields present='false'/absent='true', while the flipped tdd-autonomous
     shape (values.true => write_marker, values.false => delete_marker)
@@ -385,7 +385,7 @@ def _marker_polarity(configurable: dict):
 def _resolve_marker_value(repo_root: str, configurable: dict) -> str:
     """Resolve a marker-file configurable's current user-facing value by
     presence on disk, with polarity derived from the configurable's own
-    values map (#775): present -> the write_marker value, absent -> the
+    values map: present -> the write_marker value, absent -> the
     delete_marker value.
 
     Falls back to the legacy human-approval polarity (present -> 'false',
@@ -807,7 +807,7 @@ _AUTO_EVOLVE_STOP_LINE_IDLE = (
     "auto-evolve loop active — idle between ticks", "🔁", "green",
 )
 
-# Inv 55 restart-pending line (#793): emitted when .rabbit-auto-evolve-active is
+# Inv 55 restart-pending line: emitted when .rabbit-auto-evolve-active is
 # present, none of the four short-lived state markers is, AND the loop has NEVER
 # been started — detected by the ABSENCE of .rabbit/auto-evolve-state.json
 # (only rabbit-auto-evolve's start-loop.py creates it on the first `start`).
@@ -824,7 +824,7 @@ _AUTO_EVOLVE_STOP_LINE_RESTART_PENDING = (
 def _auto_evolve_ever_started(repo_root: str) -> bool:
     """True iff .rabbit/auto-evolve-state.json exists at repo root — the
     signal that rabbit-auto-evolve's start-loop.py has bootstrapped the loop
-    at least once (#793). Its absence marks the post-`on`/pre-`start` window.
+    at least once. Its absence marks the post-`on`/pre-`start` window.
     """
     return os.path.isfile(
         os.path.join(repo_root, ".rabbit", "auto-evolve-state.json"))
@@ -838,7 +838,7 @@ def emit_auto_evolve_stop_line(*, repo_root: str) -> list:
     exactly one print_result entry: a state marker chosen by the strict
     priority order aborted > restart-needed > stop-requested > running when one
     is present, otherwise (no state marker) the restart-pending line when the
-    loop has never been started (.rabbit/auto-evolve-state.json absent, #793) or
+    loop has never been started (.rabbit/auto-evolve-state.json absent) or
     the steady active/idle line when it has (active loop between ticks),
     symmetric with emit_auto_evolve_banner.
     """
@@ -865,7 +865,7 @@ def emit_stop_timestamp(*, repo_root: str) -> list:
     turn-end marker visible regardless of auto-evolve mode.
 
     The single entry is tagged with the footer-ordering marker
-    ``"order": "footer"`` (issue #413). ``order`` is an optional
+    ``"order": "footer"``. ``order`` is an optional
     payload-level rendering hint whose only defined value is ``"footer"``;
     absence (the default for every other producer) means normal order. A
     payload carrying ``"order": "footer"`` instructs the rabbit-cage

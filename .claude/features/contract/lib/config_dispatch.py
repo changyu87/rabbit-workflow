@@ -3,11 +3,11 @@
 A per-feature config command's interpreter is a generic dispatcher that
 enumerates every feature's CONFIGURATION declarations, validates the user
 value, applies the mutation via contract.lib.mutation, and emits a branded
-"restart Claude" prompt when the configurable is restart-gated. Phase 3 of
-#733 factors that generic flow out into THIS module so each per-feature config
-command (e.g. `/rabbit-cage-config`, `/rabbit-tdd-autonomous`) becomes a THIN
-wrapper over it — the interpreter logic lives ONCE in contract.lib (script >
-prompt; no N drifting copies).
+"restart Claude" prompt when the configurable is restart-gated. This module
+holds that generic flow so each per-feature config command (e.g.
+`/rabbit-cage-config`, `/rabbit-tdd-autonomous`) becomes a THIN wrapper over
+it — the interpreter logic lives ONCE in contract.lib (script > prompt; no N
+drifting copies).
 
 Public API:
     dispatch_config(cfg, value, *, repo_root, feature_dir=None,

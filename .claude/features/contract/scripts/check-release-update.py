@@ -9,11 +9,9 @@ API https://api.github.com/repos/<RABBIT_REPO>/releases/latest via stdlib
 urllib, and writes a single JSON line to stdout describing the comparison
 outcome.
 
-Release model: tags + GitHub Releases (#499; releases cut as vX.Y.Z tags
+Release model: tags + GitHub Releases (releases cut as vX.Y.Z tags
 targeting dev via `gh release create --target dev`). The check tracks the
-latest published release regardless of target branch. The old branch-ref
-.version fetch (raw.githubusercontent.com/<repo>/<channel>/.version) was
-retired in #508 because it silently never detected tag-based releases.
+latest published release regardless of target branch.
 
 Behavior (per contract spec Inv 53):
 
@@ -29,8 +27,8 @@ Behavior (per contract spec Inv 53):
     exit 0.
 
 self_update_available is true when <rabbit_root>/install.py exists AND
-contains the literal string 'fetch_upstream' (the post-#262 self-update
-marker). Otherwise false (the consumer suggests the curl|bash fresh-install
+contains the literal string 'fetch_upstream' (the self-update marker).
+Otherwise false (the consumer suggests the curl|bash fresh-install
 fallback).
 
 repo_root is resolved from environment variable RABBIT_ROOT when set
@@ -111,11 +109,10 @@ def resolve_interval():
 
 
 def fetch_upstream_version(repo, channel):
-    # Release model is tags + GitHub Releases (#499/#508): track the latest
-    # published release's tag_name rather than fetching .version off a branch
-    # ref (which silently never detected tag-based releases). The `channel`
-    # argument is the local installed ref, retained only for the comparison
-    # payload; it no longer selects the fetch URL.
+    # Release model is tags + GitHub Releases: track the latest published
+    # release's tag_name rather than fetching .version off a branch ref. The
+    # `channel` argument is the local installed ref, retained only for the
+    # comparison payload; it does not select the fetch URL.
     url = f"https://api.github.com/repos/{repo}/releases/latest"
     req = urllib.request.Request(
         url, headers={"Accept": "application/vnd.github+json"}
