@@ -8,6 +8,31 @@ deprecation_criterion: when the policy feature is retired (Claude Code exposes a
 
 ## Version notes
 
+- **v1.21.0 (measured verify-or-flag reduction wave, #808; child of #794):**
+  Ran a coding-rules §6 (prove-it-dead-or-flag), §2 (Simplicity First), and §7
+  (Parenthetical Clarity) reduction pass over the whole policy feature
+  (`philosophy.md`, `spec-rules.md`, `coding-rules.md`, `docs/spec.md`,
+  `docs/CHANGELOG.md`). Honest measured result: **zero normative prose
+  removed.** Every clause in the three canonical rule files is load-bearing —
+  these are NORMATIVE governance documents injected wholesale into the repo
+  CLAUDE.md via the three policy `@`-imports and cited verbatim by other
+  features' SKILL.md files (Verbatim Policy Embedding), so every numbered
+  section, rule clause, citation, and code token is consumed in-place.
+  Every parenthetical was classified under §7 and found load-bearing (a
+  precise clarifying term, an example list that constrains scope, a code token
+  like `Agent(prompt=...)`, or a citation like `(Inv 49)` — exactly the
+  load-bearing class §7 keeps inline). Cross-surface redundancy in
+  `docs/spec.md` had already been collapsed to its one authoritative home by
+  the #618/#680 passes, so no second-copy prose remained to cut. No candidate
+  reached the "proven dead" bar; nothing was unverifiable enough to FLAG
+  (every claim resolved to proven-live via the on-disk rule files and the
+  `test/test-rule-files-content.py` phrase guard). A new E2E guard
+  `test/test-housekeep-808-docs-already-tight.py` records the decision so a
+  future over-zealous pass cannot silently delete the load-bearing
+  parenthetical/citation exemplars this wave verified-and-kept. This is the
+  expected outcome for a content-only governance feature already through two
+  prior reduction rounds: a near-zero delta with everything verified-and-kept
+  is the success condition, not a failure.
 - **v1.20.0 (add rabbit-housekeep to the subagent-dispatching named set,
   #730):** rabbit-housekeep is a subagent-dispatching skill — it decomposes
   per-feature housekeeping work and dispatches subagents. Per spec-rules §4

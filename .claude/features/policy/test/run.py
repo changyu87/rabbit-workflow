@@ -33,6 +33,7 @@ run_test("test-meta-contract-sections.py")
 run_test("test-spec-layout-migration.py")
 run_test("test-canonical-convention-text.py")
 run_test("test-spec-housekeeping-680-dead-prose-removed.py")
+run_test("test-housekeep-808-docs-already-tight.py")
 run_test("test-contiguous-invariants-optin.py")
 
 print()
