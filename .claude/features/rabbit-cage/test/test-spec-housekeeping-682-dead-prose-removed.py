@@ -55,12 +55,18 @@ FEATURE_DIR = os.path.normpath(os.path.join(TEST_DIR, ".."))
 SPEC = os.path.join(FEATURE_DIR, "docs", "spec.md")
 
 # Verbatim dead/redundant phrases that MUST be absent from the live spec body.
+# The `/rabbit-config` coexistence phrases are DEAD: the rabbit-config feature
+# was retired, so the spec MUST NOT claim the central surface is "still live"
+# or that "both surfaces are live".
 BANNED_PHRASES = [
     "Before this invariant was added, scope-guard wrote at",
     "the prior `_BOX_WIDTH - 2 = 30` char-column math under-counted",
     "a confusing and load-bearing two-run requirement that produces",
     "Rationale — REJECTED alternative: dynamic",
     "csh/tcsh users have no way to inline-set",
+    "The central `/rabbit-config scope-guard on`",
+    "still-live central `/rabbit-config <sub>` surface",
+    "both surfaces are live and mutate the same configurable",
 ]
 
 # The verbose three-layout dual-read sentence MUST appear at most ONCE across
@@ -81,8 +87,13 @@ COLLAPSE_MAX = 1
 # Raised 515 -> 520 by #780 (retire-rabbit-config step 1 of #769), which
 # re-homed the bypass-permissions per-feature alert into Inv 16 + Inv 40c
 # (a fifth SessionStart entry + new emit_configurable_alert wiring) — a real
-# spec addition, not re-inflation.
-SPEC_LINE_CEILING = 520
+# spec addition, not re-inflation. Lowered 520 -> 515 by the rabbit-config
+# retirement reduction wave (measured 519 -> 515), which cut the now-dead
+# `/rabbit-config` coexistence prose from Inv 7, Inv 31, Inv 40, Inv 40c,
+# and Out of Scope. The cuts are inline-sentence removals inside wrapped
+# paragraphs, so the honest line delta is 4 — no load-bearing prose was
+# force-cut to chase a larger number.
+SPEC_LINE_CEILING = 515
 
 PASS = 0
 FAIL = 0

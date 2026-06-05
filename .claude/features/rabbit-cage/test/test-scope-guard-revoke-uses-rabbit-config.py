@@ -4,9 +4,8 @@
 The scope-guard override REVOKE instruction must point at the clean
 per-feature `/rabbit-cage-config scope-guard on` command (phase 4 of #733),
 NOT the raw `.claude/features/rabbit-cage/scripts/scope-guard-on.py` path.
-The central `/rabbit-config scope-guard on` surface remains live during
-coexistence (#769 retires it); test 4 pins that the data-driven interpreter
-still dispatches the command.
+The central rabbit-config interpreter is retired; revoke now flows solely
+through the per-feature command.
 
 Asserts four things:
 
@@ -19,14 +18,12 @@ Asserts four things:
   3. rabbit-cage's feature.json declares a `scope-guard` configurable whose
      `on` value maps to `delete_marker` on `.rabbit-scope-override` (so the
      data-driven config interpreter dispatches the command).
-  4. E2E (coexistence): invoking the central rabbit-config interpreter as
-     `rabbit-config.py scope-guard on` actually deletes a present
-     `.rabbit-scope-override` marker (re-arms default-deny).
+  4. The retired central rabbit-config interpreter is ABSENT — the revoke
+     surface no longer depends on it.
 
-Version: 1.0.0
+Version: 2.0.0
 Owner: rabbit-workflow team (rabbit-cage)
-Deprecation criterion: when the scope-guard override mechanism is retired
-or the /rabbit-config command interface is superseded.
+Deprecation criterion: when the scope-guard override mechanism is retired.
 """
 
 import glob
@@ -166,31 +163,13 @@ def test_configurable_declared():
         ko(f"scope-guard 'on' path != {OVERRIDE_MARKER}: {on_val.get('args')!r}")
 
 
-def test_e2e_command_deletes_marker():
-    """E2E: rabbit-config scope-guard on deletes a present override marker."""
-    marker = REPO_ROOT / OVERRIDE_MARKER
-    pre_existed = marker.is_file()
-    saved = marker.read_text() if pre_existed else None
-    marker.write_text("session")
-    try:
-        res = subprocess.run(
-            [sys.executable, str(RABBIT_CONFIG), "scope-guard", "on"],
-            capture_output=True, text=True,
-        )
-        if res.returncode == 0:
-            ok("rabbit-config scope-guard on exits 0")
-        else:
-            ko(f"rabbit-config scope-guard on exit {res.returncode}; "
-               f"stderr={res.stderr!r}")
-        if not marker.is_file():
-            ok("override marker deleted by the command (default-deny re-armed)")
-        else:
-            ko("override marker still present after command")
-    finally:
-        if saved is not None:
-            marker.write_text(saved)
-        elif marker.is_file():
-            marker.unlink()
+def test_central_interpreter_retired():
+    """The central rabbit-config interpreter is retired; revoke depends only
+    on the per-feature command."""
+    if not RABBIT_CONFIG.exists():
+        ok("central rabbit-config interpreter is absent (retired)")
+    else:
+        ko(f"central rabbit-config interpreter still present: {RABBIT_CONFIG}")
 
 
 def main():
@@ -205,8 +184,8 @@ def main():
     print("=== 3. scope-guard configurable declared ===")
     test_configurable_declared()
     print()
-    print("=== 4. E2E: command deletes override marker ===")
-    test_e2e_command_deletes_marker()
+    print("=== 4. central rabbit-config interpreter retired ===")
+    test_central_interpreter_retired()
     print()
     print(f"summary: {PASS} passed, {FAIL} failed")
     return 0 if FAIL == 0 else 1

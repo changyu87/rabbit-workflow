@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.59.0
+version: 5.60.0
 template_version: 2.0.0
 ---
 
@@ -83,7 +83,7 @@ template_version: 2.0.0
     ]
   },
   "never": [
-    "writes .claude/settings.local.json except via /rabbit-config (owned by rabbit-config feature) or the rabbit-cage-owned /rabbit-cage-config command (spec Inv 40) — both route the write through contract.lib.mutation",
+    "writes .claude/settings.local.json except via the rabbit-cage-owned /rabbit-cage-config command (spec Inv 40), which routes the write through contract.lib.mutation",
     "modifies files inside another feature's directory",
     "writes outside its declared scope without an active scope marker or scope-guard override",
     "introduces a new .sh runtime script under hooks/ or scripts/"

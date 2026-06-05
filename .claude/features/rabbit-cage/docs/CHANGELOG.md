@@ -12,6 +12,23 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.60.0 (measured reduction: cut dead `/rabbit-config` coexistence prose):**
+  The rabbit-config feature is retired, so every spec/contract/README claim that
+  the central `/rabbit-config` surface is "still live" or "coexisting" is now
+  dead-but-plausible prose. Removed it deterministically: Inv 7 (the "central
+  `/rabbit-config scope-guard on` surface still dispatches" sentence), Inv 31
+  (the dead `rabbit-config`'s `iterate_configurables_alerts` footer example,
+  generalized to "features sorting alphabetically after rabbit-cage"), Inv 40
+  intro + Inv 40c (the "both surfaces are live" / "central `iterate_configurables_*`
+  alert path remains live" coexistence sentences), Inv 40(d) ("identical to the
+  central path"), Inv 40 test-clause (vii) (now "the retired central rabbit-config
+  interpreter is absent"), the contract `never`-clause, the Out-of-Scope
+  `/rabbit-config` skill bullet, and the README command-table `/rabbit-config
+  permissions lock|unlock` row + coexistence note. Repointed two tests
+  (`test-scope-guard-revoke-uses-rabbit-config.py`,
+  `test-rabbit-cage-config-command.py`) from the dead coexistence E2E to a
+  retirement-absence assertion (this also re-greens the suite, which the
+  rabbit-config retirement had left red). spec.md 519 -> 515 lines.
 - **v5.59.0 (re-home bypass-permissions per-feature alert + drop rabbit-config from install.py (retire-rabbit-config step 1)):**
   Re-homed the bypass-permissions active-override alert as a PER-FEATURE
   `runtime[]` entry: rabbit-cage now declares
