@@ -689,4 +689,130 @@ else:
         fail(f"score-tier-barrier: bad JSON ({e}); stdout={proc.stdout!r}")
 
 
+# ---------------------------------------------------------------------------
+# Scenario 20 — Full composite-key sweep across all priorities + contract +
+#   issue numbers (issue #907). When every OTHER observable signal is held
+#   equal (same scope size, no fanout, same issue_type, same created_at), the
+#   filer label is the only differentiating score input, so ordering collapses
+#   to the documented composite key:
+#     (computed_score desc, contract_touch desc, issue asc).
+#   With signals-equal-but-label, the label rank drives the score tiers
+#   (critical > high > medium > low), contract_touch breaks ties WITHIN a tier
+#   (contract leads), and issue# is the final stable tiebreak. This is the
+#   single authoritative assertion the bug report asked for: the EXACT
+#   selection_order over a queue mixing all priorities, contract/non-contract,
+#   and various issue numbers — and barrier_first agreeing with it.
+# ---------------------------------------------------------------------------
+_COMMON = {"decision": "work", "issue_type": "enhancement",
+           "created_at": "2026-05-01T00:00:00Z", "blocked_by": [],
+           "features": ["F"]}
+items = [
+    # low tier (rank 3)
+    {"issue": 2010, "feature": "Fa", "contract_touch": False, "priority": "low", **_COMMON},
+    {"issue": 2009, "feature": "contract", "contract_touch": True, "priority": "low", **_COMMON},
+    # medium tier (rank 2)
+    {"issue": 2008, "feature": "Fb", "contract_touch": False, "priority": "medium", **_COMMON},
+    {"issue": 2007, "feature": "contract", "contract_touch": True, "priority": "medium", **_COMMON},
+    # high tier (rank 1)
+    {"issue": 2006, "feature": "Fc", "contract_touch": False, "priority": "high", **_COMMON},
+    # critical tier (rank 0) — two items to exercise the issue-asc tiebreak
+    {"issue": 2005, "feature": "Fd", "contract_touch": False, "priority": "critical", **_COMMON},
+    {"issue": 2001, "feature": "Fe", "contract_touch": False, "priority": "critical", **_COMMON},
+    {"issue": 2002, "feature": "contract", "contract_touch": True, "priority": "critical", **_COMMON},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"composite-sweep: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        # critical tier: contract (2002) leads, then non-contract by issue asc
+        #   (2001 before 2005); high (2006); medium: contract (2007) before
+        #   non-contract (2008); low: contract (2009) before non-contract (2010).
+        want = [2002, 2001, 2005, 2006, 2007, 2008, 2009, 2010]
+        if sel != want:
+            fail(f"composite-sweep: selection_order={sel!r}, want {want!r}")
+        else:
+            # barrier_first is the LEADING run of contract items: just [2002]
+            # (the next item, 2001, is non-contract critical).
+            bar = out.get("barrier_first", [])
+            if bar != [2002]:
+                fail(f"composite-sweep: barrier_first={bar!r}, want [2002]")
+            elif sel[:len(bar)] != bar:
+                fail(f"composite-sweep: barrier_first {bar!r} not a leading "
+                     f"subsequence of selection_order {sel!r}")
+            else:
+                ok("composite-sweep: exact (computed_score desc, contract_touch "
+                   "desc, issue asc) order; barrier_first agrees")
+    except json.JSONDecodeError as e:
+        fail(f"composite-sweep: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 21 — Medium leads low when all other signals are equal (#907 reg 1).
+#   Queue {medium/contract, low/contract, low, low} with every other observable
+#   signal held equal: the medium item MUST lead (its filer label gives it a
+#   higher score tier than the low items). This is the #907 regression-1 shape;
+#   it asserts the filer label still wins WHEN it is the only differing signal,
+#   so a medium does not silently fall behind a low.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 898, "feature": "contract", "contract_touch": True, "priority": "medium", **_COMMON},
+    {"issue": 894, "feature": "contract", "contract_touch": True, "priority": "low", **_COMMON},
+    {"issue": 901, "feature": "rabbit-decompose", "contract_touch": False, "priority": "low", **_COMMON},
+    {"issue": 889, "feature": "rabbit-cage", "contract_touch": False, "priority": "low", **_COMMON},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"medium-leads-low: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        # medium #898 first; then low tier: contract #894 before non-contract
+        #   #889, #901 (issue asc).
+        want = [898, 894, 889, 901]
+        if sel != want:
+            fail(f"medium-leads-low: selection_order={sel!r}, want {want!r} "
+                 f"(#907 reg 1: medium must lead low at equal other signals)")
+        elif sel[0] != 898:
+            fail(f"medium-leads-low: medium #898 must lead, got {sel!r}")
+        else:
+            ok("medium-leads-low: medium item leads low items when other "
+               "signals are equal (#907 reg 1)")
+    except json.JSONDecodeError as e:
+        fail(f"medium-leads-low: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 22 — Issue-asc final tiebreak under a true score tie (#907 reg 2).
+#   Queue {medium, medium, low} with all other signals equal: within the medium
+#   tier (neither contract) the final tiebreak is issue ASC, so the lower issue
+#   number leads. Locks the stable final tiebreak the bug report flagged.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 906, "feature": "Fa", "contract_touch": False, "priority": "medium", **_COMMON},
+    {"issue": 902, "feature": "Fb", "contract_touch": False, "priority": "medium", **_COMMON},
+    {"issue": 894, "feature": "Fc", "contract_touch": False, "priority": "low", **_COMMON},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"issue-asc-tiebreak: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        # medium tier: #902 before #906 (issue asc); low #894 last.
+        want = [902, 906, 894]
+        if sel != want:
+            fail(f"issue-asc-tiebreak: selection_order={sel!r}, want {want!r} "
+                 f"(#907 reg 2: issue-asc within an equal tier)")
+        else:
+            ok("issue-asc-tiebreak: lower issue# leads within a true score tie "
+               "(#907 reg 2)")
+    except json.JSONDecodeError as e:
+        fail(f"issue-asc-tiebreak: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
 sys.exit(FAIL)

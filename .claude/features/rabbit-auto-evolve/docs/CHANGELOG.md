@@ -16,6 +16,33 @@ authoritative).
 
 ## Version notes
 
+- **v0.72.1 — 2026-06-05** — Fix #907: reconcile the STALE Stage-1
+  selection-order documentation that contradicted the authoritative
+  computed-score ordering key (Inv 44 / #441) and made correct behavior look
+  like a sort bug. Investigation: `plan-batch.py`'s sort already applies the
+  documented composite key `(computed_score desc, contract_touch desc, issue
+  asc)` correctly — the new E2E regressions (#907 reg 1 "medium leads low at
+  equal other signals" and reg 2 "issue-asc final tiebreak under a true score
+  tie") PASS against the unmodified script, and `selection_order` /
+  `barrier_first` agree. The reported "priority-desc violated" cases arise
+  because Inv 44 (#441) DELIBERATELY makes `computed_score` the PRIMARY key
+  (filer `priority:` label is one weighted input among several: blocking-fanout
+  0.30, filer-label 0.15, scope 0.10, bug 0.05, age 0.05), so a `low` item with
+  higher fanout / smaller scope / bug-type / age can legitimately outrank a
+  `medium` — intended, not a defect. The genuine in-scope defect was three
+  stale references that the #441 refactor left saying `(priority desc, …)` with
+  "priority is PRIMARY", contradicting Inv 44: spec Inv 26(a), the spec Inv 4
+  "both derive from priority-desc ranking" summary line, and the SKILL.md
+  `selection_order` bullet — all corrected to `(computed_score desc,
+  contract_touch desc, issue asc)` with the filer-label-folded-in note. No
+  behavior change to `plan-batch.py` (script version unchanged at 1.6.0).
+  `test/test-plan-batch.py` gains scenarios 20–22 (full all-priorities +
+  contract + issue-number composite sweep with `barrier_first` agreement; the
+  two #907 regressions as locks). Four-way lockstep 0.72.0 → 0.72.1 across
+  feature.json, spec.md, contract.md, SKILL.md frontmatter; the SKILL.md source
+  changed so the dispatcher must republish the deployed copy via the
+  `publish_skill` manifest contract (Inv 50). spec.md held at the 3384-line cap.
+
 - **v0.72.0 — 2026-06-04** — Address the #881 REOPEN: replace the #883
   "jitter range" ETA with an HONEST, root-cause-correct ETA in
   `banner-status.py`. The #883 fix rendered the next-tick ETA as a
