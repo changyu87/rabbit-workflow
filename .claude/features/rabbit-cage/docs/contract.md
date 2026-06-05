@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.67.0
+version: 5.68.0
 template_version: 2.0.0
 ---
 
@@ -33,7 +33,8 @@ template_version: 2.0.0
       {"path": ".claude/features/rabbit-cage/scripts/workspace-tree.py", "stdin": "none", "stdout": "annotated workspace tree", "exit": "0=ok 1=error"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-update.py", "stdin": "none", "stdout": "check: current-vs-latest JSON; install: install.py log", "exit": "0=ok 1=error 2=usage", "note": "backs /rabbit-update; check reuses contract check-release-update.py probe (non-throttled), install invokes install.py --update (spec Inv 35)"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-cage-config.py", "stdin": "none", "stdout": "config messages + restart prompt", "exit": "0=ok 1=error 2=usage", "note": "backs /rabbit-cage-config; thin wrapper over contract.lib.config_dispatch.dispatch_config for rabbit-cage's 5 owned configurables (spec Inv 40)"},
-      {"path": ".claude/features/rabbit-cage/lib/project_map_reader.py", "stdin": "none", "stdout": "none", "exit": "n/a (importable module)", "note": "plugin-mode project-map I/O + path matching; imported by scope-guard.py"}
+      {"path": ".claude/features/rabbit-cage/lib/project_map_reader.py", "stdin": "none", "stdout": "none", "exit": "n/a (importable module)", "note": "plugin-mode project-map I/O + path matching; imported by scope-guard.py"},
+      {"path": ".claude/features/rabbit-cage/scripts/show-mode.py", "stdin": "none", "stdout": "single-line JSON {mode,rabbit_root,project_root,feature_dir,evidence} + one human `Mode: …` summary line", "exit": "0=ok (both modes and the rabbit-meta-unavailable degenerate case)", "note": "deterministic plugin/standalone mode reporter; delegates detection to rabbit-meta.lib.mode_detection.detect_mode (spec Inv 45); runs from source (no deployed copy)"}
     ],
     "schemas": [],
     "templates": [],
@@ -75,7 +76,8 @@ template_version: 2.0.0
     ],
     "functions": [
       {"path": ".claude/features/contract/lib/checks.py", "function": "validate_agent_prompt_sentinel", "purpose": "scope-guard.py Agent-tool sentinel validation (Inv 29 / contract Inv 66)"},
-      {"path": ".claude/features/contract/lib/runtime.py", "function": "emit_stop_timestamp", "purpose": "universal Stop-event turn-end timestamp marker (Inv 30 / contract Inv 67)"}
+      {"path": ".claude/features/contract/lib/runtime.py", "function": "emit_stop_timestamp", "purpose": "universal Stop-event turn-end timestamp marker (Inv 30 / contract Inv 67)"},
+      {"path": ".claude/features/rabbit-meta/lib/mode_detection.py", "function": "detect_mode", "purpose": "scripts/show-mode.py delegates plugin/standalone detection to the canonical resolver so the reporter always agrees with the rest of the system (Inv 45 / rabbit-meta Inv 1)"}
     ]
   },
   "manages": {
