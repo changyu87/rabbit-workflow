@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.69.0
+version: 0.70.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2568,11 +2568,11 @@ summary is restated here.
       (`fetch | triage | plan`, Inv 18). Emits a result whose `action` is
       `proceed` (continue to dispatch) or `skip` (a clean no-op short-circuit
       fired).
-    - `run-tick-phases.py post-dispatch` — phase 7 (merge the PRs in the
-      state's transient `merge_ready` hint), a post-merge re-sync to
-      `origin/dev` when PRs merged (Inv 45), phases 8-10 (`run-post-merge.py`
-      drain), phase 11 (persist), then the `in-progress` label reconcile
-      (`reconcile-labels.py`, Inv 55) AFTER persist.
+    - `run-tick-phases.py post-dispatch` — an Inv 55 add-on-entry reconcile at
+      the START (before merge drains the live set), phase 7 (merge the
+      `merge_ready` PRs), a post-merge re-sync (Inv 45), phases 8-10
+      (`run-post-merge.py` drain), phase 11 (persist), then a SECOND Inv 55
+      strip-on-exit reconcile.
 
     The headless tick chains `pre-dispatch -> (skip dispatch) -> post-dispatch`;
     the in-session tick chains `pre-dispatch -> Phase 6 (dispatch) ->
@@ -3336,27 +3336,27 @@ summary is restated here.
     (Inv 54) is the authoritative in-flight set but lives only on disk;
     `reconcile-labels.py` reflects it onto the sanctioned `in-progress` category
     label so GitHub stays truthful. It computes the LIVE set by REUSING
-    `status-report.py`'s live-set logic (the `dispatched`/`pr_open` union — the
-    status definition is never forked), then reconciles the label: ADD it to
-    live OPEN issues lacking it; STRIP it from OPEN issues carrying it but no
-    longer live (status `completed`/`aborted`, pruned, or never tracked), so a
-    crashed tick's stale label is corrected next tick (self-healing, like the
-    Inv 42 leak-cleanup and Inv 35 staleness clear). The action is purely a
-    function of the journal-derived live set and current GitHub label state, so
-    a re-run is a no-op (idempotent). The label is ensured to exist first via
-    the rabbit-issue `ensure_labels` mechanism (a cross-scope INVOKE of
+    `status-report.py`'s live-set logic (the `dispatched`/`pr_open` union — never
+    forked), then reconciles: ADD the label to live OPEN issues lacking it; STRIP
+    it from OPEN issues carrying it but no longer live, so a crashed tick's stale
+    label self-heals next tick. It is idempotent. The label is ensured to exist
+    first via the rabbit-issue `ensure_labels` mechanism (a cross-scope INVOKE of
     `rabbit-issue/scripts/_gh.ensure_labels`, declared in `contract.md`
-    `invokes.modules` — never a cross-feature edit); add/strip apply via
-    `gh issue edit <N> --add-label/--remove-label`; repo slug resolves via
-    `rabbit-issue/_gh.repo_slug`. `gh`/network failure is logged and the
-    reconcile continues, NEVER crashing the tick (label hygiene must not block
-    evolution, like the Inv 49 sweep). It runs every tick in
-    `run-tick-phases.py`'s `post-dispatch` segment AFTER phase 11 (persist) —
-    script-owned (Tool-Choice Tier), so identical on the headless and in-session
-    paths; a failure is recorded but never fails the tick. Enforced by
-    `test/test-reconcile-labels.py` (add/strip sets from a mixed journal;
-    idempotent; stale-label self-heal; graceful on `gh` failure; empty-journal
-    no-op) and `test/test-run-tick-phases.py` (reconcile runs after persist).
+    `invokes.modules` — never a cross-feature edit). `gh`/network failure is
+    logged and the reconcile continues, NEVER crashing the tick (label hygiene
+    must not block evolution, like the Inv 49 sweep). It runs TWICE per tick in
+    `run-tick-phases.py`'s `post-dispatch` segment — script-owned (Tool-Choice
+    Tier), identical on both paths — as add-on-entry / strip-on-exit: the FIRST
+    call is at the START, BEFORE any merge drains the live set, so it ADDS
+    `in-progress` to what phase 6 just dispatched and even a single-tick item is
+    labelled while live; the SECOND, AFTER phase 11 (persist), STRIPS
+    the label from issues that have left the live set. Either call failing is
+    recorded but never fails the tick. Known limitation: the in-session phase-6
+    window WHILE subagents run is NOT covered (it needs a dispatcher-side call
+    conflicting with the script-owned constraint), but the early call resolves
+    the headless and across-tick bug. Enforced by `test-reconcile-labels.py`
+    (add/strip; idempotent; self-heal; graceful `gh` failure; empty-journal
+    no-op) and `test-run-tick-phases.py` (runs before merge AND after persist).
 
 ## Known gaps
 

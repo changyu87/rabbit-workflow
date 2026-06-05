@@ -22,15 +22,17 @@ path false-skips on a marker it itself wrote. start-loop.py (the explicit user
 `start` entry) keeps ONLY its cancel-stop + bootstrap self-heal (Inv 19) and no
 longer writes the running marker.
 
-  post-dispatch  phase 7 (merge ready PRs from the state's `merge_ready`
-                 hint), a post-merge re-sync to origin/dev when PRs merged
-                 (Inv 45), phases 8-10 (`run-post-merge.py` drain), phase 11
-                 (persist: re-read the on-disk state — already mutated by the
-                 phase scripts — drop the transient `merge_ready` key, and
-                 pipe through `update-state.py`), then the `in-progress` label
-                 reconcile (`reconcile-labels.py`, Inv 55) AFTER persist — a
-                 reconcile failure is recorded but never fails the tick. Emits
-                 a result summary.
+  post-dispatch  the `in-progress` label reconcile (`reconcile-labels.py`,
+                 Inv 55) as the FIRST action — add-on-entry, BEFORE merge drains
+                 the just-dispatched live set (#882) — then phase 7 (merge ready
+                 PRs from the state's `merge_ready` hint), a post-merge re-sync
+                 to origin/dev when PRs merged (Inv 45), phases 8-10
+                 (`run-post-merge.py` drain), phase 11 (persist: re-read the
+                 on-disk state — already mutated by the phase scripts — drop the
+                 transient `merge_ready` key, and pipe through
+                 `update-state.py`), then a SECOND reconcile AFTER persist
+                 (strip-on-exit). Either reconcile failure is recorded but never
+                 fails the tick. Emits a result summary.
 
 The headless tick chains:   pre-dispatch -> (skip dispatch) -> post-dispatch.
 The in-session tick chains: pre-dispatch -> Phase 6 (Claude) -> post-dispatch.
@@ -51,7 +53,7 @@ A single JSON result object is emitted on stdout. Exit code is 0 on a
 completed segment (including every short-circuit no-op); non-zero on an
 unexpected phase-script failure.
 
-Version: 1.5.0
+Version: 1.6.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -258,12 +260,26 @@ def run_pre_dispatch():
 
 
 def run_post_dispatch():
-    """Phases: 6 merge ready PRs -> 7-9 run-post-merge drain -> 10 persist
-    (re-read on-disk state, drop transient merge_ready, pipe through
-    update-state.py).
+    """Phases: Inv 55 add-on-entry reconcile -> 6 merge ready PRs -> 7-9
+    run-post-merge drain -> 10 persist (re-read on-disk state, drop transient
+    merge_ready, pipe through update-state.py) -> Inv 55 strip-on-exit reconcile.
 
     Returns `(result_dict, exit_code)`. The caller owns emitting the result."""
     result = {"segment": "post-dispatch", "status": "completed", "phases": {}}
+
+    # Inv 55 ADD-ON-ENTRY reconcile (#882). This is the FIRST action of the
+    # post-dispatch segment — BEFORE clean-leaks/merge — so the live set that
+    # Phase 6 just recorded (`dispatched`/`pr_open` journal entries) gets the
+    # `in-progress` label added BEFORE merge drains those items to `completed`.
+    # Without this early call a single-tick item (dispatch -> PR -> merge in one
+    # tick) would already be `completed` by the time the post-persist reconcile
+    # runs and would never be labelled while live. Paired with the post-persist
+    # reconcile below (strip-on-exit), the two idempotent calls are
+    # add-on-entry / strip-on-exit. Label hygiene must NEVER block evolution: a
+    # reconcile failure is recorded but never short-circuits or fails the tick
+    # (mirroring the post-persist call and the Inv 49 sweep contract).
+    reconcile_entry = _run("reconcile-labels.py", [])
+    result["phases"]["reconcile_labels_entry"] = reconcile_entry.returncode
 
     # phase 7 (FIRST action, BEFORE merge): deterministic pre-merge cleanup of
     # KNOWN worktree-dispatch leak-class noise from the main tree (Inv 42 /
@@ -333,12 +349,15 @@ def run_post_dispatch():
         result["reason"] = "persist-failed"
         return result, 1
 
-    # Inv 55: per-tick `in-progress` label reconcile. AFTER persist (the journal
-    # is fully written on disk), mirror the journal-derived live set onto the
-    # GitHub `in-progress` label (add to newly-live issues, strip from issues no
-    # longer live). Idempotent and self-healing. Label hygiene must NEVER block
-    # evolution: a reconcile failure is recorded but never short-circuits or
-    # fails the tick (mirroring the Inv 49 sweep's never-fail-the-tick contract).
+    # Inv 55 STRIP-ON-EXIT reconcile (#882). AFTER persist (the journal is fully
+    # written on disk), re-mirror the journal-derived live set onto the GitHub
+    # `in-progress` label. Its primary job now is to STRIP the label from issues
+    # that have LEFT the live set during this segment (merged -> `completed`),
+    # complementing the add-on-entry call above. The reconcile is idempotent and
+    # self-healing (add to any still-live issue lacking it; strip from any no
+    # longer live), so running it both before merge and after persist is safe.
+    # Label hygiene must NEVER block evolution: a reconcile failure is recorded
+    # but never short-circuits or fails the tick (mirroring the Inv 49 sweep).
     reconcile = _run("reconcile-labels.py", [])
     result["phases"]["reconcile_labels"] = reconcile.returncode
 

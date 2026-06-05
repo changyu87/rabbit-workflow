@@ -16,6 +16,26 @@ authoritative).
 
 ## Version notes
 
+- **v0.70.0 — 2026-06-04** — Make the `in-progress` label visible during
+  active dispatch (closes #882). `reconcile-labels.py` (Inv 55) previously ran
+  ONLY at the very END of the post-dispatch segment (after merge → persist), so
+  single-tick items (dispatch → PR → merge in one tick) were already
+  `completed` and out of the live set before the label was ever added — the
+  label only appeared for `pr_open` items straddling tick boundaries. FIX:
+  `run-tick-phases.py` now runs the reconcile TWICE per tick as add-on-entry /
+  strip-on-exit — a FIRST call at the START of `post-dispatch` (BEFORE
+  clean-leaks/merge) ADDS `in-progress` to the just-dispatched live set before
+  merge drains it, and the existing post-persist call STRIPS the label from
+  issues that have since left the live set. Both calls stay script-owned (Inv
+  55) and idempotent, and either failing is non-fatal to the tick. Covering the
+  in-session phase-6 window WHILE subagents literally run would require a
+  dispatcher-side call during phase 6 (conflicts with the script-owned
+  constraint) and is left as a documented out-of-scope limitation; the
+  early-post-dispatch call resolves the headless and across-tick bug. Spec Inv
+  55 + the post-dispatch phase table updated; `test-run-tick-phases.py` extended
+  with before-merge ordering + single-tick add-window + early-failure-non-fatal
+  assertions. Script version 1.5.0 → 1.6.0; four-way lockstep 0.69.0 → 0.70.0.
+
 - **v0.69.0 — 2026-06-04** — Fix the SessionStart banner next-tick ETA
   overshoot (closes #881). `scripts/banner-status.py`'s idle line previously
   printed a single `~HH:MM` scheduled-fire minute (`_next_tick_eta`), but the
