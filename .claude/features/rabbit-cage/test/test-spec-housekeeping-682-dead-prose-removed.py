@@ -105,7 +105,11 @@ COLLAPSE_MAX = 1
 # rabbit-cage's scope marker authorizes its owned repo-root bootstrap files
 # (install.sh / install.py / README.md) without an override — a real spec
 # addition documenting new scope-guard behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 537
+# Raised 537 -> 539 by #849, which added Inv 42 documenting the end-to-end
+# plugin-install readiness test (the REAL installer run into a sandbox, asserting
+# the whole tree is present + every hook path wired, no Claude launch) — a real
+# spec addition documenting new test-enforced behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 539
 
 PASS = 0
 FAIL = 0
