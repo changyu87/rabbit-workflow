@@ -13,6 +13,36 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.5.4 (spec<->artifact prompts coherence fix, #825):** Resolved a
+  spec<->artifact mismatch discovered during #811: spec Invariant 1 required
+  the `prompts` array to "contain exactly one entry with `id:
+  rabbit-decompose`, `kind: skill`, ...", but `feature.json` shipped
+  `prompts: []`. The contract gate's `check_prompts_section` validates only
+  *present* prompt entries and treats an empty `prompts` as vacuously valid,
+  so the mismatch went uncaught. rabbit-decompose is an inline,
+  dispatcher-orchestrated skill with no backing subagent, dispatch script, or
+  slot-filled prompt template (spec Surface: "No backing agent or dispatch
+  script in this MVP"), and no `templates/prompts/rabbit-decompose.txt`
+  exists — so the coherent state is `prompts: []`. Picked the
+  artifact-matches-reality resolution: rewrote Invariant 1 to require the
+  `prompts` array be empty (documenting the absent prompt-contract surface)
+  rather than require a prompt entry that has never existed. Had the inverse
+  resolution been taken (add the entry), the contract gate would have failed
+  on the missing convention-resolved template — confirming the spec
+  requirement, not the artifact, was wrong. New E2E test
+  `test/test-prompts-spec-artifact-agree.py` pins the coherence: `prompts` is
+  empty, Invariant 1 documents the empty surface (and no longer requires an
+  entry), and no `rabbit-decompose.txt` prompt template exists; it is the
+  canonical flip point if a backing prompt is ever genuinely added.
+  Discovered (out of scope, filed separately): the contract gate's
+  empty-`prompts` vacuous pass is the structural reason this drift went
+  uncaught; tightening it to validate spec<->prompts coherence cross-feature
+  lives in the contract feature, not here. Frontmatter `version` bumped to
+  0.5.4 across `feature.json`, `docs/spec.md`, `docs/contract.md`, and the
+  source `SKILL.md` (four-way alignment); the deployed `.claude/skills/` copy
+  needs a dispatcher republish because the source SKILL.md frontmatter
+  version changed (body otherwise unchanged).
+
 - **v0.5.3 (housekeeping round 3 — measured line removal, #811 / #794):**
   Removal-not-reword pass over the feature's doc surfaces under coding-rules
   §6 (prove-it-dead-or-flag), §2 (Simplicity First), §7 (Parenthetical

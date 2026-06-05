@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.5.3
+version: 0.5.4
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -67,9 +67,10 @@ constrains only the structural shape.
    non-empty `summary`, non-empty `deprecation_criterion`. The `surface`
    block MUST list the skill at `skills/rabbit-decompose/SKILL.md`. The
    `manifest` MUST contain a `publish_skill` entry sourcing the skill.
-   The `prompts` array MUST contain exactly one entry with
-   `id: "rabbit-decompose"`, `kind: "skill"`, `inject` listing
-   philosophy + spec-rules, and `slots: ["args"]`.
+   The `prompts` array MUST be empty: rabbit-decompose runs its protocol
+   inline in the dispatcher session, with no backing subagent, dispatch
+   script, or slot-filled prompt template, so it owns no prompt-contract
+   surface.
 
 2. `skills/rabbit-decompose/SKILL.md` MUST exist with YAML frontmatter
    declaring `name: rabbit-decompose`, a description naming both the
@@ -106,6 +107,10 @@ coverage:
   `rabbit-spec-create` can be Agent-parallelized, states the calls run
   sequentially, and names the two-level subagent-nesting constraint that
   makes the sequential level-1 hand-off mandatory).
+- `test-prompts-spec-artifact-agree.py` (E2E — asserts Invariant 1 and the
+  `feature.json` `prompts` artifact agree: `prompts` is empty, Invariant 1
+  documents the empty/absent prompt-contract surface rather than requiring
+  an entry, and no `templates/prompts/rabbit-decompose.txt` template exists).
 
 ## Out of Scope
 
