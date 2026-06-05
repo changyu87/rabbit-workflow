@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-scaffold
 description: Scaffold a new rabbit feature directory with the standard skeleton (feature.json, docs/spec.md, docs/contract.md, test/run.py) in standalone mode, or scaffold a per-project plugin feature under .rabbit/rabbit-project/features/<name>/ with path-glob mapping in plugin mode. Use when the user asks to create, scaffold, or initialize a new rabbit feature — phrases like "create a new feature", "scaffold a feature called X", "/rabbit-feature-scaffold", "set up a new rabbit feature", "bootstrap a feature dir". Invoke as Skill("rabbit-feature-scaffold", args: "<feature-name>") in standalone mode or Skill("rabbit-feature-scaffold", args: "<feature-name> <path-glob> [<path-glob>...]") in plugin mode.
-version: 1.7.0
+version: 1.8.0
 owner: rabbit-workflow team
 deprecation_criterion: When this skill's scaffolding step is absorbed into a native `rabbit-feature` CLI subcommand or into the rabbit CLI itself.
 ---
@@ -33,13 +33,17 @@ This skill has two invocation modes. The mode is auto-detected from
   `my-tool`). The underlying scaffolder enforces naming rules and rejects
   invalid names.
 
-**Plugin mode** — Args format: `<feature-name> <path-glob> [<path-glob>...]`
+**Plugin mode** — Args format: `<feature-name> [<path-glob>...]`
 
 - **feature-name**: same naming rules as standalone.
-- **path-glob**: one or more shell-style glob patterns, relative to the
-  user-project root (the directory containing `.rabbit/`). Recursive
-  globs (`**/*.py`) are supported. The scaffolder validates each glob
-  against three rules and aborts on any failure:
+- **path-glob**: zero or more shell-style glob patterns, relative to the
+  user-project root (the directory containing `.rabbit/`). Globs are
+  OPTIONAL — a bare `<feature-name>` scaffolds a greenfield feature that
+  owns no existing paths yet (symmetric with standalone mode); such
+  a feature is scaffolded without a `project-map.json` glob registration.
+  Recursive globs (`**/*.py`) are supported. When one or more globs ARE
+  supplied, the scaffolder validates each glob against three rules and
+  aborts on any failure:
   - Boundary: the glob's literal anchor must resolve under the
     user-project root (no `../../etc/**`).
   - Non-empty match: the union of matches must include at least one
@@ -75,17 +79,19 @@ so no flag is needed):
 <!-- example: invocation synopsis of scaffold-feature.py (plugin form) -->
 ```bash
 python3 .claude/features/rabbit-feature/scripts/scaffold-feature.py \
-  <feature-name> <path-glob> [<path-glob>...]
+  <feature-name> [<path-glob>...]
 ```
 
 On success the scaffolder creates
 `<repo>/.rabbit/rabbit-project/features/<feature-name>/` with
-`feature.json`, `docs/spec.md`, and `docs/contract.md`; it also
-registers the new feature in
+`feature.json`, `docs/spec.md`, and `docs/contract.md`. When one or more
+globs are supplied, it also registers the new feature in
 `<repo>/.rabbit/rabbit-project/project-map.json` (schema-validated
 against `.claude/features/contract/schemas/project-map.json.schema.json`
-before write). On glob-validation failure (boundary, empty-match, or
-overlap) it exits non-zero — surface that error to the caller and stop.
+before write); a greenfield (globless) feature owns no paths yet and is
+NOT registered in `project-map.json`. On glob-validation failure
+(boundary, empty-match, or overlap) it exits non-zero — surface that
+error to the caller and stop.
 
 After a successful plugin-mode scaffold, the script prints a `NEXT:`
 block to stdout naming the `rabbit-spec-create` skill (and equivalently
