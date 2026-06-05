@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-scaffold
 description: Scaffold a new rabbit feature directory with the standard skeleton (feature.json, docs/spec.md, docs/contract.md, test/run.py) in standalone mode, or scaffold a per-project plugin feature under .rabbit/rabbit-project/features/<name>/ with path-glob mapping in plugin mode. Use when the user asks to create, scaffold, or initialize a new rabbit feature — phrases like "create a new feature", "scaffold a feature called X", "/rabbit-feature-scaffold", "set up a new rabbit feature", "bootstrap a feature dir". Invoke as Skill("rabbit-feature-scaffold", args: "<feature-name>") in standalone mode or Skill("rabbit-feature-scaffold", args: "<feature-name> <path-glob> [<path-glob>...]") in plugin mode.
-version: 1.6.0
+version: 1.7.0
 owner: rabbit-workflow team
 deprecation_criterion: When this skill's scaffolding step is absorbed into a native `rabbit-feature` CLI subcommand or into the rabbit CLI itself.
 ---
@@ -57,6 +57,7 @@ steps in order; do not skip the validation step in standalone mode.
 **Standalone mode.** Shell out to the rabbit-feature scaffolder, pointing
 it at the rabbit features root and passing the requested feature name:
 
+<!-- example: invocation synopsis of scaffold-feature.py (standalone form) -->
 ```bash
 python3 .claude/features/rabbit-feature/scripts/scaffold-feature.py \
   .claude/features <feature-name>
@@ -71,6 +72,7 @@ exists — surface that error to the caller and stop.
 form (the script detects plugin mode from `.rabbit/.runtime/mode` itself,
 so no flag is needed):
 
+<!-- example: invocation synopsis of scaffold-feature.py (plugin form) -->
 ```bash
 python3 .claude/features/rabbit-feature/scripts/scaffold-feature.py \
   <feature-name> <path-glob> [<path-glob>...]
@@ -97,6 +99,7 @@ the scaffolder itself never invokes the spec-creator subagent.
 directory conforms by calling the contract feature's CLI shim around
 `validate_feature`:
 
+<!-- example: invocation synopsis of the validate-feature.py CLI shim -->
 ```bash
 python3 .claude/features/contract/scripts/validate-feature.py .claude/features/<feature-name>
 ```

@@ -6,7 +6,16 @@ branching, so the SKILL.md body stays script-tier (spec-rules.md §4
 Script-Backed Orchestration) instead of carrying bash blocks with runtime
 placeholders the model would assemble at invocation time.
 
-Two subcommands:
+Subcommands:
+
+  create-branch [--multi] <feature-name> <request>
+      Assemble the deterministic feature-touch branch name from the
+      `feat/<feature-name>-<keywords>` pattern (or
+      `feat/<feature-name>-multi-<keywords>` with --multi) and `git checkout
+      -b` it (Step 2). `<keywords>` = the first 2–4 request words, lowercased,
+      hyphen-joined, with non-alphanumerics stripped. The script owns the
+      branch-name computation so the SKILL body stays script-tier (no
+      model-assembled `git checkout -b <branch-name>` step).
 
   resolve-spec-path <feature-name>
       Print the resolved spec path for a feature. Prefers the flat
@@ -36,13 +45,14 @@ All paths are resolved relative to the repo root, which the script derives
 by walking up from the cwd to the nearest ancestor containing a `.git`
 entry (file or directory, so git worktrees are handled).
 
-Version: 0.3.0
+Version: 0.4.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
 """
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -112,6 +122,35 @@ def _emit_relative(repo_root: Path, path: Path) -> None:
         print(str(path))
 
 
+def _keywords(request: str, count: int = 4) -> str:
+    """First `count` request words, lowercased, alnum-only, hyphen-joined."""
+    words = []
+    for tok in request.split():
+        cleaned = re.sub(r"[^a-z0-9]", "", tok.lower())
+        if cleaned:
+            words.append(cleaned)
+        if len(words) == count:
+            break
+    return "-".join(words)
+
+
+def cmd_create_branch(feature: str, request: str, multi: bool) -> int:
+    keywords = _keywords(request)
+    if not keywords:
+        sys.stderr.write(
+            "ERROR: could not derive branch keywords from request\n"
+        )
+        return 2
+    infix = "-multi" if multi else ""
+    branch = f"feat/{feature}{infix}-{keywords}"
+    r = subprocess.run(["git", "checkout", "-b", branch], check=False)
+    if r.returncode != 0:
+        sys.stderr.write(f"ERROR: git checkout -b {branch} failed\n")
+        return 1
+    print(branch)
+    return 0
+
+
 def cmd_resolve_spec_path(feature: str) -> int:
     repo_root = _repo_root(Path.cwd())
     mode = _mode(repo_root)
@@ -167,13 +206,28 @@ def main(argv: list[str]) -> int:
     if len(argv) < 2:
         sys.stderr.write(
             "usage: feature-touch.py "
-            "{resolve-spec-path|resolve-contract-path|commit-spec} ...\n"
+            "{create-branch|resolve-spec-path|resolve-contract-path"
+            "|commit-spec} ...\n"
+            "  create-branch [--multi] <feature-name> <request>\n"
             "  resolve-spec-path <feature-name>\n"
             "  resolve-contract-path <feature-name>\n"
             "  commit-spec <feature-name> <summary>\n"
         )
         return 2
     sub = argv[1]
+    if sub == "create-branch":
+        rest = argv[2:]
+        multi = False
+        if rest and rest[0] == "--multi":
+            multi = True
+            rest = rest[1:]
+        if len(rest) != 2:
+            sys.stderr.write(
+                "usage: feature-touch.py create-branch [--multi] "
+                "<feature-name> <request>\n"
+            )
+            return 2
+        return cmd_create_branch(rest[0], rest[1], multi)
     if sub == "resolve-spec-path":
         if len(argv) != 3:
             sys.stderr.write(
