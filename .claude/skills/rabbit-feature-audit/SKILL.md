@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-audit
 description: Validate one rabbit feature or sweep every feature for contract conformance. Use when the user asks to audit, validate, lint, or check rabbit features — phrases like "audit all features", "validate rabbit-foo", "check feature conformance", "/rabbit-feature-audit", "are all features OK", "run the feature checker". Invoke as Skill("rabbit-feature-audit", args: "all") to sweep every feature, or Skill("rabbit-feature-audit", args: "<feature-name>") to audit a single feature.
-version: 1.2.0
+version: 1.3.0
 owner: rabbit-workflow team
 deprecation_criterion: When contract.lib.checks.validate_feature is exposed via a first-class CLI in the contract feature.
 ---
@@ -94,8 +94,5 @@ caller can detect breakage.
 
 ## Notes
 
-- The checks come from `contract.lib.checks.validate_feature` (called via
-  the `validate-feature.py` CLI shim); if you want to change what "valid"
-  means, change the library, not this skill.
 - This skill is the cross-feature audit sweep. Reach for it whenever you
   need to validate one feature or every feature.

@@ -152,6 +152,39 @@ def test_no_withdrawn_tombstone_placeholders() -> None:
     )
 
 
+TOUCH_SKILL_MD = SKILLS_DIR / "rabbit-feature-touch/SKILL.md"
+
+# Restated rationale / history that a measured reduction wave cut from the live
+# doc surfaces. Each fragment's load-bearing content survives elsewhere (the
+# behavioural spec line, a test docstring, or CHANGELOG.md); the restated copy
+# on the live surface is dead weight that must not regrow.
+DEAD_RESTATEMENT_FRAGMENTS = [
+    # spec.md Inv 44 — history of the pre-walk-up single-check semantics. The
+    # walk-up behaviour itself remains specified; the "replaces the original"
+    # backstory lives in the test docstring + CHANGELOG.
+    "replaces the original single-check semantics",
+    # spec.md Inv 56 — restated rationale for the removed specs/ fallback. The
+    # behavioural spec (prefer flat docs/, fall back to legacy docs/spec/)
+    # remains; the "dead specs/ fallback is removed" backstory is history.
+    "fallback is removed",
+]
+
+
+def test_live_surfaces_no_restated_rationale() -> None:
+    surfaces = [SPEC_MD, CONTRACT_MD, TOUCH_SKILL_MD]
+    hits: list[str] = []
+    for surface in surfaces:
+        text = surface.read_text(encoding="utf-8")
+        for frag in DEAD_RESTATEMENT_FRAGMENTS:
+            if frag in text:
+                hits.append(f"{surface.relative_to(FEATURE_DIR)}: {frag!r}")
+    assert not hits, (
+        "live surfaces carry restated rationale/history cut by the reduction "
+        "wave; the load-bearing content survives in the behavioural spec line "
+        "or CHANGELOG, so the restated copy is dead weight:\n" + "\n".join(hits)
+    )
+
+
 def test_contract_provides_only_shipped_skills() -> None:
     shipped = {
         f".claude/features/rabbit-feature/skills/{d.name}/"
@@ -173,6 +206,7 @@ def main() -> int:
         test_no_spec_seeder_reference,
         test_live_surfaces_name_only_existing_test_files,
         test_no_withdrawn_tombstone_placeholders,
+        test_live_surfaces_no_restated_rationale,
         test_contract_provides_only_shipped_skills,
     ]
     fail = 0

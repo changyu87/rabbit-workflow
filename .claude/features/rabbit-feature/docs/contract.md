@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.35.0
+version: 1.36.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
