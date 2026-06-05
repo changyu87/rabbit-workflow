@@ -234,6 +234,70 @@ def test_omitted_filed_by_yields_base_labels_only(gh_shim, fake_repo):
     assert "rabbit-managed" not in labels
 
 
+def test_housekeeping_flag_adds_housekeeping_label(gh_shim, fake_repo):
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "medium",
+        "--description", "d",
+        "--housekeeping",
+    )
+    assert r.returncode == 0, r.stderr
+    labels = _created_labels(gh_shim.read_text())
+    assert "housekeeping" in labels
+
+
+def test_housekeeping_omitted_stamps_no_housekeeping_label(gh_shim, fake_repo):
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "medium",
+        "--description", "d",
+    )
+    assert r.returncode == 0, r.stderr
+    labels = _created_labels(gh_shim.read_text())
+    assert "housekeeping" not in labels
+
+
+def test_housekeeping_is_additive_other_labels_unchanged(gh_shim, fake_repo):
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "high",
+        "--description", "d",
+        "--housekeeping",
+    )
+    assert r.returncode == 0, r.stderr
+    labels = _created_labels(gh_shim.read_text())
+    # The three base labels are present and unchanged; housekeeping is additive.
+    assert labels == {
+        "bug",
+        "feature:rabbit-cage",
+        "priority:high",
+        "housekeeping",
+    }
+
+
+def test_housekeeping_composes_with_filed_by(gh_shim, fake_repo):
+    """A housekeeping sub-issue filed by a non-human filer carries both."""
+    r = _run(
+        "--type", "bug",
+        "--feature", "rabbit-cage",
+        "--title", "t",
+        "--priority", "medium",
+        "--description", "d",
+        "--filed-by", "rabbit",
+        "--housekeeping",
+    )
+    assert r.returncode == 0, r.stderr
+    labels = _created_labels(gh_shim.read_text())
+    assert "housekeeping" in labels
+    assert "filed-by:rabbit" in labels
+
+
 def test_requires_auth(gh_shim, fake_repo, monkeypatch):
     env = os.environ.copy()
     env["GH_SHIM_AUTH_EXIT"] = "1"

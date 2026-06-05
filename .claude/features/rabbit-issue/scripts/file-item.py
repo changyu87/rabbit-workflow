@@ -3,7 +3,7 @@
 
 Prints JSON {number, url, type} to stdout on success.
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -37,6 +37,9 @@ def main() -> None:
     # or `autonomous-evolve` for a non-human filer. Validated below so the
     # error message can name the enum.
     p.add_argument("--filed-by", default=None)
+    # Category (issue #800): mark the issue as housekeeping-wave work so a
+    # housekeeping sub-issue is tagged in one deterministic filing step.
+    p.add_argument("--housekeeping", action="store_true")
     args = p.parse_args()
 
     if args.filed_by is not None and args.filed_by not in VALID_FILED_BY:
@@ -54,6 +57,8 @@ def main() -> None:
     ]
     if args.filed_by is not None:
         labels.append("filed-by:{}".format(args.filed_by))
+    if args.housekeeping:
+        labels.append("housekeeping")
     ensure_labels(labels)
 
     slug = repo_slug()
