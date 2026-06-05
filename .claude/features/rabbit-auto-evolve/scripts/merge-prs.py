@@ -18,9 +18,10 @@ Per rabbit-auto-evolve spec.md Inv 6, for each PR this script:
      enabled and fails on repos without it). On success records
      {pr, status:"merged"}; on failure records
      {pr, status:"failed", reason:"gh-merge-failed: <stderr>"}.
-  4. After a successful merge, parses the merged PR body for
-     `Fixes #N` / `Closes #N` / `Resolves #N` references (case-insensitive)
-     and explicitly closes each referenced issue via
+  4. After a successful merge, parses the merged PR TITLE and body for
+     `Fixes #N` / `Closes #N` / `Resolves #N` references (case-insensitive,
+     unioned across title and body — issue #868: a title-only ref still
+     closes) and explicitly closes each referenced issue via
      `item-status.py close <N> --reason completed --commit-sha <merge-sha>
      --comment "...<sha>..."`. Because `gh pr merge --squash` creates the
      squash commit on the REMOTE `dev` only, the SHA is not yet in the local
@@ -73,7 +74,7 @@ promotes the dispatch_journal entry of every issue a merged PR closed to
 `completed` (recording its PR number) — the journal's `completed` transition,
 no new write site.
 
-Version: 1.6.0
+Version: 1.7.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -237,10 +238,18 @@ def _pr_field(pr, field, query):
     return proc.stdout.strip()
 
 
-def _parse_close_refs(body):
+def _parse_close_refs(*texts):
     """Return the sorted, de-duplicated list of issue numbers referenced by a
-    closing keyword (Fixes/Closes/Resolves #N) in the PR body."""
-    nums = {int(m) for m in _CLOSE_REF_RE.findall(body or "")}
+    closing keyword (Fixes/Closes/Resolves #N) across all `texts`.
+
+    Issue #868: callers pass BOTH the PR title and the PR body so a close-ref
+    in the title ALONE also closes its issue. PRs merge into `dev` (not the
+    default branch), so GitHub's native auto-close never fires; this explicit
+    parse is the loop's only close path. Numbers found across the texts are
+    unioned, so a ref present in both title and body is closed once."""
+    nums = set()
+    for text in texts:
+        nums.update(int(m) for m in _CLOSE_REF_RE.findall(text or ""))
     return sorted(nums)
 
 
@@ -300,15 +309,21 @@ def _fetch_merge_sha(sha):
 
 def _close_referenced_issues(pr, result):
     """After a successful merge, close every issue referenced by a closing
-    keyword in the PR body. Mutates `result` in place, adding `closed_issues`
-    and `close_failed`. A close failure never fails the merge.
+    keyword in the PR title OR body. Mutates `result` in place, adding
+    `closed_issues` and `close_failed`. A close failure never fails the merge.
+
+    Issue #868: the close-ref scan unions the title and the body, so a
+    subagent that put `Closes #N` in the title alone still closes its issue —
+    PRs merge into `dev`, where GitHub's native auto-close never fires, so this
+    explicit parse is the loop's only close path.
 
     Also records the fetched merge commit SHA under `result["merge_sha"]`
     (issue #564) so `_record_pending` can persist it as `last_merged_sha`."""
+    title = _pr_field(pr, "title", ".title")
     body = _pr_field(pr, "body", ".body")
     sha = _pr_field(pr, "mergeCommit", ".mergeCommit.oid")
     result["merge_sha"] = sha
-    refs = _parse_close_refs(body)
+    refs = _parse_close_refs(title, body)
     # Make the squash SHA resolvable locally before any close (issue #802).
     if refs:
         _fetch_merge_sha(sha)

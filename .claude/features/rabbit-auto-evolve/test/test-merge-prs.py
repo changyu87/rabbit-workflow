@@ -45,19 +45,22 @@ def ok(msg):
 
 
 def _write_gh_shim(shim_dir, call_log, base_ref="dev", head_ref="feat/x",
-                   merge_exit=0, merge_stderr="", pr_body="",
+                   merge_exit=0, merge_stderr="", pr_body="", pr_title="",
                    merge_sha="abc1234"):
     """Write a `gh` shim that:
        - dispatches on `pr view --json <field> -q .<field>` and echoes the
-         right value (baseRefName, headRefName, body, mergeCommit.oid)
+         right value (baseRefName, headRefName, title, body, mergeCommit.oid)
        - dispatches on `pr merge ... --squash` and exits `merge_exit`
        - appends every invocation to `call_log` (one JSON line per call)
     """
-    # The PR body may contain newlines; write it to a sidecar file the shim
-    # `cat`s, so shell escaping never mangles the embedded newlines.
+    # The PR body/title may contain newlines; write each to a sidecar file the
+    # shim `cat`s, so shell escaping never mangles the embedded newlines.
     body_file = os.path.join(shim_dir, "pr-body.txt")
     with open(body_file, "w") as bf:
         bf.write(pr_body)
+    title_file = os.path.join(shim_dir, "pr-title.txt")
+    with open(title_file, "w") as tf:
+        tf.write(pr_title)
     shim = os.path.join(shim_dir, "gh")
     with open(shim, "w") as f:
         f.write("#!/bin/sh\n")
@@ -69,6 +72,7 @@ def _write_gh_shim(shim_dir, call_log, base_ref="dev", head_ref="feat/x",
         f.write(f'MERGE_EXIT={merge_exit}\n')
         f.write(f'MERGE_STDERR={merge_stderr!r}\n')
         f.write(f'BODY_FILE={body_file!r}\n')
+        f.write(f'TITLE_FILE={title_file!r}\n')
         f.write(f'MERGE_SHA={merge_sha!r}\n')
         # Walk args. First arg is subcommand `pr`, second is the action.
         f.write('SUB="$1"; shift\n')
@@ -87,6 +91,7 @@ def _write_gh_shim(shim_dir, call_log, base_ref="dev", head_ref="feat/x",
         f.write('  case "$QUERY" in\n')
         f.write('    .baseRefName) printf "%s\\n" "$BASE_REF" ;;\n')
         f.write('    .headRefName) printf "%s\\n" "$HEAD_REF" ;;\n')
+        f.write('    .title) cat "$TITLE_FILE" ;;\n')
         f.write('    .body) cat "$BODY_FILE" ;;\n')
         f.write('    .mergeCommit.oid) printf "%s\\n" "$MERGE_SHA" ;;\n')
         f.write('    *) printf "{}\\n" ;;\n')
@@ -133,7 +138,7 @@ def _write_item_status_shim(shim_dir, call_log, exit_code=0, stderr_msg=""):
 def _make_env(tmpdir, base_ref="dev", head_ref="feat/x",
               merge_exit=0, merge_stderr="",
               safety_exit=0, safety_stderr="",
-              pr_body="", merge_sha="abc1234",
+              pr_body="", pr_title="", merge_sha="abc1234",
               item_status_exit=0, item_status_stderr=""):
     """Build a sandbox: a bin/ dir on PATH with the gh shim, and a
     script-dir holding the real merge-prs.py copy (via env override) plus a
@@ -154,7 +159,7 @@ def _make_env(tmpdir, base_ref="dev", head_ref="feat/x",
     _write_gh_shim(bin_dir, call_log,
                    base_ref=base_ref, head_ref=head_ref,
                    merge_exit=merge_exit, merge_stderr=merge_stderr,
-                   pr_body=pr_body, merge_sha=merge_sha)
+                   pr_body=pr_body, pr_title=pr_title, merge_sha=merge_sha)
     _write_safety_shim(script_dir, exit_code=safety_exit,
                        stderr_msg=safety_stderr)
     _write_item_status_shim(issue_dir, item_status_log,
@@ -913,6 +918,123 @@ with tempfile.TemporaryDirectory() as td:
              f"{entries[999].get('status')!r}")
     else:
         ok("journal-complete: merge marks the closed issue's entry completed")
+
+
+# ===========================================================================
+# Issue #868 — close-ref in the PR TITLE (not just the body).
+# PRs merge into `dev`, not the default branch, so GitHub's native auto-close
+# never fires; the loop's explicit close depends entirely on merge-prs.py's
+# close-ref parsing. That parsing previously scanned the PR BODY only, so a
+# subagent that put `Closes #N` in the TITLE alone merged the PR but left the
+# issue OPEN (a silent convergence hole — observed: PR #865 left #862 open).
+# merge-prs.py MUST now scan BOTH the title AND the body, unioning the
+# referenced issue numbers (deduplicated).
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Title-only close: the close-ref lives in the PR TITLE, the body has none.
+# Expected: the referenced issue is closed (RED before #868, GREEN after).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        pr_title="fix(loop): patch the hole (closes #862)",
+        pr_body="A change with no close-ref in the body.\n",
+        merge_sha="title99",
+    )
+    proc = _run(cwd, env, "865")
+    if proc.returncode != 0:
+        fail(f"title-only-close: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"title-only-close: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        r = results[0]
+        if r.get("status") != "merged":
+            fail(f"title-only-close: status {r.get('status')!r} != 'merged'")
+        if r.get("closed_issues", []) != [862]:
+            fail(f"title-only-close: closed_issues {r.get('closed_issues')!r} "
+                 f"!= [862] (a TITLE-only close-ref must now close the issue)")
+        else:
+            ok("title-only-close: TITLE-only close-ref closes issue 862")
+    is_calls = _item_status_calls(item_status_log)
+    closed_nums = {c.split()[1] for c in is_calls if c.split()[:1] == ["close"]}
+    if closed_nums != {"862"}:
+        fail(f"title-only-close: item-status closed {closed_nums!r} != {{862}}")
+    else:
+        ok("title-only-close: item-status.py close invoked for 862")
+
+
+# ---------------------------------------------------------------------------
+# Body-only close STILL works (backward-compatibility): close-ref in the body,
+# title carries no ref. The existing behavior must be preserved.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        pr_title="fix(loop): a plain title with no close-ref",
+        pr_body="Some change.\n\nCloses #770\n",
+        merge_sha="body99",
+    )
+    proc = _run(cwd, env, "771")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"body-only-close: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        if results[0].get("closed_issues", []) != [770]:
+            fail(f"body-only-close: closed_issues "
+                 f"{results[0].get('closed_issues')!r} != [770]")
+        else:
+            ok("body-only-close: BODY-only close-ref still closes issue 770")
+    is_calls = _item_status_calls(item_status_log)
+    closed_nums = {c.split()[1] for c in is_calls if c.split()[:1] == ["close"]}
+    if closed_nums != {"770"}:
+        fail(f"body-only-close: item-status closed {closed_nums!r} != {{770}}")
+    else:
+        ok("body-only-close: item-status.py close invoked for 770")
+
+
+# ---------------------------------------------------------------------------
+# Title AND body both reference issues, with one shared issue. Expected: the
+# UNION of distinct issue numbers is closed, and the shared issue is closed
+# exactly ONCE (dedup across the two locations).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        pr_title="feat: do the thing (Closes #100, fixes #200)",
+        pr_body="Detail.\n\nCloses #200\nResolves #300\n",
+        merge_sha="union99",
+    )
+    proc = _run(cwd, env, "999")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"union-close: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        if sorted(results[0].get("closed_issues", [])) != [100, 200, 300]:
+            fail(f"union-close: closed_issues "
+                 f"{results[0].get('closed_issues')!r} != [100, 200, 300]")
+        else:
+            ok("union-close: title+body union closes 100/200/300")
+    is_calls = [c for c in _item_status_calls(item_status_log)
+                if c.split()[:1] == ["close"]]
+    closed_list = [c.split()[1] for c in is_calls]
+    if sorted(closed_list) != ["100", "200", "300"]:
+        fail(f"union-close: item-status close targets {sorted(closed_list)!r} "
+             f"!= ['100', '200', '300']")
+    elif closed_list.count("200") != 1:
+        fail(f"union-close: shared issue 200 closed "
+             f"{closed_list.count('200')} times (must dedup to 1): "
+             f"{closed_list!r}")
+    else:
+        ok("union-close: shared issue 200 closed exactly once (dedup)")
 
 
 sys.exit(FAIL)
