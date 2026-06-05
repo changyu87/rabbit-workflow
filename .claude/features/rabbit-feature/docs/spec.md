@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.37.0
+version: 1.38.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -533,6 +533,22 @@ their source path and not deployed):
     bypass marker is present and is SILENT (no banner) when absent. Enforced by
     `test/test-tdd-autonomous-alert.py`.
 
+60. **Script-backed branch creation + zero non-script-backed orchestration
+    findings.** Per the SKILL.md Authoring Standard (`spec-rules.md` §4
+    Script-Backed Orchestration), the `rabbit-feature-touch` Step 2 branch
+    creation is a computed step (the deterministic
+    `feat/<feature-name>[-multi]-<keywords>` branch name is assembled from the
+    request), so it is OWNED BY the companion `feature-touch.py create-branch`
+    subcommand — the SKILL body MUST invoke `create-branch` and MUST NOT
+    assemble the branch name and `git checkout -b` it inline. Every remaining
+    fenced bash block across the feature's SKILL bodies that carries a runtime
+    placeholder is an illustrative usage/synopsis snippet annotated with the
+    `<!-- example -->` exemption marker (the non-executable-documentation
+    mechanism shipped in rabbit-housekeep's `check-script-backed.py`), not a
+    live model-assembled orchestration step. As a standing gate, running
+    `check-script-backed.py scan` against this feature MUST report
+    `{"count": 0}`. Enforced E2E by `test/test-script-backed-clean.py`.
+
 ## What this feature does NOT define
 
 - The TDD subagent's 8-step cycle, the `tdd-step.py` state machine, or
@@ -567,3 +583,4 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-tdd-autonomous-configurable.py` — Inv 57
 - `test-tdd-autonomous-command.py` — Inv 58
 - `test-tdd-autonomous-alert.py` — Inv 59
+- `test-script-backed-clean.py` — Inv 60
