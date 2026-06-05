@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.6.0
+version: 0.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -25,9 +25,11 @@ feature).
 ## Surface
 
 - `skills/rabbit-decompose/SKILL.md` — the user-invocable skill
-- `scripts/handoff-scaffold.py` — the Step 4 hand-off orchestrator: resolves
-  the rabbit root, detects mode deterministically (reusing
-  `rabbit-meta.lib.mode_detection.detect_mode`), authors the batch temp file
+- `scripts/handoff-scaffold.py` — the single canonical mode/root resolver and
+  Step 4 hand-off orchestrator: resolves the rabbit root, detects mode
+  deterministically (reusing `rabbit-meta.lib.mode_detection.detect_mode`),
+  resolves the Step 1 decomposition source root (plugin → `rabbit_root.parent`,
+  standalone → the repo root) via `--source-root`, authors the batch temp file
   with a script-owned timestamp, and dispatches the scaffolder on the
   mode-correct branch (plugin → `scaffold-feature.py --batch <file>`,
   standalone → emits the per-feature `rabbit-feature-scaffold` plan)
@@ -47,7 +49,13 @@ The skill is interactive by design. The dispatcher MUST:
 
 1. **Gather inputs** — confirm with the user which scenario applies
    (greenfield vs existing codebase) and gather the source material
-   (spec text, design doc path, or codebase root).
+   (spec text, design doc path, or codebase root). When no explicit source
+   path is supplied, the decomposition source root is resolved by the same
+   canonical resolver Step 4 uses (`scripts/handoff-scaffold.py
+   --source-root`, reusing `rabbit-meta.lib.mode_detection.detect_mode`):
+   in plugin mode it is the PARENT of the `.rabbit` install (the user
+   project — NOT the `.rabbit/` tooling), in standalone mode the repo root.
+   The dispatcher MUST NOT hand-resolve an ambiguous `<repo>` source root.
 2. **Analyze and propose** — produce a proposed feature list as a
    structured table the user can review:
    `[{"name": "<kebab>", "purpose": "<one line>", "globs": ["..."]}, ...]`.
@@ -119,6 +127,18 @@ constrains only the structural shape.
    batch file's timestamp/path (no model-assembled `<ts>`). Read-only
    informational commands in the body are exempt (§4 read-only exception).
 
+6. Step 1's decomposition SOURCE ROOT MUST be resolved by the same canonical
+   resolver Step 4 uses (`scripts/handoff-scaffold.py`), so Step 1 and Step 4
+   cannot disagree. The resolver detects mode via
+   `rabbit-meta.lib.mode_detection.detect_mode` and returns the source root:
+   in plugin mode the PARENT of the `.rabbit` install (`rabbit_root.parent`,
+   matching `scaffold-feature.py._detect_plugin_mode`), in standalone mode the
+   repo root itself; `--source-root` prints `{mode, source_root}` and the Step
+   4 plan JSON carries the same `source_root`. The `SKILL.md` Step 1 body MUST
+   reference this resolver and the plugin-mode parent-of-`.rabbit` source root,
+   and MUST NOT hand-resolve an ambiguous `<repo>` source root in a live
+   (non-`<!-- example -->`) bash block.
+
 ## Tests
 
 `test/run.py` invokes every `test-*.py` file under `test/`. Current
@@ -145,6 +165,14 @@ coverage:
   `<repo>/.rabbit/.runtime/mode` path; and asserts the `SKILL.md` Step 4
   body carries no prose mode-branch and no runtime-placeholder bash block,
   invoking the script instead).
+- `test-step1-source-root.py` (E2E — asserts Invariant 6: runs
+  `scripts/handoff-scaffold.py --source-root` end-to-end against a temp plugin
+  tree and a temp standalone tree, confirming the decomposition source root is
+  the parent of the `.rabbit` install in plugin mode and the repo root in
+  standalone mode, that the resolution is `detect_mode`-driven, that the Step 4
+  plan JSON carries the same `source_root`, and that the `SKILL.md` Step 1 body
+  references the canonical resolver and no longer hand-resolves an ambiguous
+  `<repo>` source root in a live bash block).
 
 ## Out of Scope
 

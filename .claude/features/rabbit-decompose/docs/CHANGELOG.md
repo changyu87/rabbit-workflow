@@ -13,6 +13,27 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.7.0 (Step 1 source-root guidance folded into the canonical resolver,
+  #901):** Step 1 (Gather inputs) gave NO guidance on WHERE the decomposition
+  SOURCE lives in plugin mode. In plugin mode the cwd / rabbit-root is the
+  vendored `.rabbit/` install dir, but the project to decompose is its PARENT
+  (`rabbit_root.parent`); without guidance a no-args plugin-mode run could
+  point Glob/Read at the `.rabbit` workflow tooling itself and "decompose" the
+  workflow instead of the user project. Fix: extended the #890 canonical
+  resolver `scripts/handoff-scaffold.py` to ALSO resolve the decomposition
+  SOURCE ROOT — plugin → `rabbit_root.parent` (the user project, matching
+  `scaffold-feature.py._detect_plugin_mode`), standalone → the repo root —
+  exposed via a new `--source-root` mode (prints `{mode, source_root}`) and
+  added to the Step 4 plan JSON as `source_root`, so Step 1 and Step 4 share
+  one resolver and cannot disagree. Mode detection still reuses
+  `rabbit-meta.lib.mode_detection.detect_mode` (NOT a hard-coded
+  `.rabbit/.runtime/mode` path read, post-#891). The `SKILL.md` Step 1 body
+  now references the canonical resolver and the plugin-mode parent-of-`.rabbit`
+  source root instead of hand-resolving an ambiguous `<repo>`. New spec
+  Invariant 6 and E2E `test-step1-source-root.py` lock this in. Deployed
+  surface changed (SKILL.md + handoff-scaffold.py) — dispatcher must
+  republish.
+
 - **v0.6.0 (Step 4 hand-off made script-tier, #890):** Step 4's scaffold
   hand-off was prose-tier orchestration: the `SKILL.md` body did the mode
   detection (read `<repo>/.rabbit/.runtime/mode`), the batch temp-file
