@@ -12,6 +12,21 @@ Each retirement entry below carries the original invariant number (as it appeare
 
 ## Version notes
 
+- **v1.16.0 (#875 script-backed-orchestration cleanup; child of #863):**
+  `check-script-backed.py scan` of the feature reported 1 `runtime-placeholder`
+  finding: the `scripts/dispatch-spec-create.py --feature-name <feature-name>
+  --paths ...` fenced bash block in `skills/rabbit-spec-create/SKILL.md` Step 1.
+  Disposition (verify-or-flag, spec-rules §4): the block is an ILLUSTRATIVE CLI
+  synopsis documenting how to invoke the existing companion script — the live
+  invocation is assembled by `dispatch-spec-create.py` itself (rabbit-spec-create
+  is a subagent-dispatching skill already script-backed for prompt assembly),
+  not by the model inline. EXEMPTED, not converted: added the `<!-- example -->`
+  marker (the mechanism shipped in #869) on the line directly above the opening
+  fence. Added Inv 9 codifying the zero-findings requirement and the example
+  exemption; numbering stays contiguous 1..9 (no renumber). New E2E guard
+  `test/test-script-backed-clean.py` asserts the scan reports `count: 0`. SKILL.md
+  body changed -> deployed surface republished by the dispatcher.
+
 - **v1.15.0 (#816 measured-reduction wave; child of #794):**
   Removal pass (prove-it-dead-or-flag, coding-rules §6/§2/§7), not a reword.
   rabbit-spec had already been through two reduction passes (#553, #688) and a
