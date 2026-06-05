@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.2.0
+version: 0.2.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -37,6 +37,10 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       {
         "name": "rabbit-feature-touch",
         "purpose": "run each per-feature housekeeping unit through the governed TDD path; dispatches the tdd-subagent for the measured-reduction wave"
+      },
+      {
+        "name": "rabbit-decompose",
+        "purpose": "reuse the decomposition shape (one bounded per-feature unit each) when splitting cross-feature / repo-wide housekeeping scope into per-feature sub-issues in Step 2 of the skill"
       }
     ],
     "agents": [
@@ -73,6 +77,5 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
 }
 ```
 
-The decomposition dispatch shape is reused from rabbit-decompose; the
-parent->children linkage and roll-up close are owned by rabbit-auto-evolve.
-rabbit-housekeep consumes these via the INVOKE relationships above.
+Human view: the cross-feature reuses above are declared in the `invokes`
+block; this prose is derived from it, not a second source of truth.

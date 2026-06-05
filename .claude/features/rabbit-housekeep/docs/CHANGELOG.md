@@ -13,6 +13,23 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.2.1 (machine-readable rabbit-decompose INVOKE, issue #822):**
+  Declared the rabbit-decompose decomposition-shape reuse in the
+  machine-readable `invokes.skills` block of `docs/contract.md`. Previously
+  this cross-feature reuse lived only in trailing prose after the JSON block,
+  violating Machine First (philosophy §1): a consumer reading the structured
+  contract could not see the relationship. The file-item.py filing call and
+  record-decomposition.py parent-close call were already in `invokes.scripts`;
+  rabbit-decompose was the missing machine declaration. Reduced the trailing
+  prose to the derived human view (it no longer re-declares the reuse).
+  Tightened spec invariant #6 to require every reuse be declared in the
+  machine block, never in prose only. Added a new E2E gate,
+  `test-contract-invokes.py`, that parses the contract JSON and asserts each
+  declared INVOKE (skill / script) is present and resolves to a real file on
+  disk, and that the rabbit-decompose reuse is not prose-only. The deployed
+  `.claude/skills/` copy needs a dispatcher republish because the source
+  SKILL.md frontmatter version changed.
+
 - **v0.2.0 (measured-reduction housekeeping wave, issue #813):** Ran the
   feature's own measured verify-or-flag reduction wave against its doc
   surfaces (`docs/spec.md`, `docs/contract.md`,
