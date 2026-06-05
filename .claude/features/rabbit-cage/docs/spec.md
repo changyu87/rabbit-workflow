@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.68.1
+version: 5.69.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -272,7 +272,20 @@ string BEFORE splitting on `;|&` segment delimiters.
     that fires the APIs); detection logic for `write_mode_marker` is owned
     by rabbit-meta, the helper script + fetch logic for `check_release_update`
     is owned by contract, and the API implementations are both owned by
-    contract.
+    contract. The `welcome_with_policy` entry's `sublines` array carries a
+    FOURTH subline (after the three policy-summary sublines) making the
+    rabbit-native persisted permission-mode path discoverable in always-loaded
+    SessionStart context: it advertises BOTH the ephemeral live toggle
+    (`Shift+Tab`, current session only) AND the persisted path
+    (`/rabbit-cage-config bypass-permissions true|false`, which writes
+    `permissions.defaultMode`, taking effect after a Claude relaunch). It is
+    distinct from the bypass-permissions active-override alert (Inv 40c), which
+    only fires once bypass is ALREADY active and so cannot aid discovery while
+    bypass is OFF. Enforced by
+    `test/test-bypass-permissions-discoverable-at-sessionstart.py` (e2e via the
+    real deployed dispatcher): the rendered systemMessage carries
+    `/rabbit-cage-config bypass-permissions` AND names the `Shift+Tab` toggle,
+    policy sublines unchanged. Wired into `test/run.py`.
 17. **Plugin-mode scope-guard decision tree.** When `scope-guard.py` runs
     and `<repo_root>/.rabbit/.runtime/mode` exists with content `"plugin"`,
     it takes the plugin-mode branch instead of the standalone decision

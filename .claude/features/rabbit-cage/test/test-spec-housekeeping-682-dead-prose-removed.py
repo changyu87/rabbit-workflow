@@ -122,7 +122,12 @@ COLLAPSE_MAX = 1
 # the deterministic one-invocation plugin/standalone mode reporter that delegates
 # detection to rabbit-meta.lib.mode_detection.detect_mode — a real spec addition
 # documenting new test-enforced behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 544
+# Raised 544 -> 557 by #889, which extended Inv 16 to document the FOURTH
+# SessionStart welcome subline that makes the rabbit-native bypass-permissions
+# path discoverable (Shift+Tab live toggle vs persisted /rabbit-cage-config
+# bypass-permissions) plus its e2e test — a real spec addition documenting new
+# test-enforced behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 557
 
 PASS = 0
 FAIL = 0
