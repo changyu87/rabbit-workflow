@@ -141,5 +141,6 @@ run_test("test-retirement-skill-injection.py")
 run_test("test-invariant-contiguous-opt-in.py")
 run_test("test-reflow-invariants.py")
 run_test("test-no-rabbit-managed-label-refs.py")
+run_test("test-install-closure-integrity.py")
 
 print("ALL TESTS PASSED")

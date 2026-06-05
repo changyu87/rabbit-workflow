@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.33.1
+version: 2.34.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native mechanism that supersedes contract's governance surface — the cross-feature contract gate, version-lockstep, invariant numbering, and schema/template ownership — not merely when a native orchestration/workflow primitive exists
@@ -397,6 +397,10 @@ Numbering is strictly increasing and CONTIGUOUS (1..N, no holes): contract opts 
     (b) **Sweep invocation.** `validate-feature.py all` MUST resolve every immediate subdirectory of `.claude/features/` (skipping non-directories, dotfiles, and the non-feature `policy` directory which carries no `feature.json`), call `validate_feature` on each, and aggregate the results. Passing TWO OR MORE feature-dir paths positionally (`validate-feature.py <dir-a> <dir-b> ...`) MUST likewise validate each named dir and aggregate; `all` is the convenience spelling for "every feature dir". The features root is resolved relative to the repo root (`get_repo_root`, honouring `RABBIT_ROOT`).
     (c) **Aggregated machine-readable output.** The sweep MUST print, for each feature, a stable per-feature line of the form `<feature-name>: PASS` or `<feature-name>: FAIL` followed by that feature's `CheckResult` messages, then a final one-line summary `SUMMARY: <total> features, <pass> passed, <fail> failed`. The sweep MUST exit 0 when every feature passes and 1 when any feature fails (2 on invocation error, e.g. an unresolvable features root). A feature short-circuited by the `status` enum short-circuit (Inv 28b) counts as PASS.
     (d) Coverage is enforced by `test/test-validate-feature-sweep.py`, which exercises: single-feature mode is unchanged (a valid fixture passes, exit 0); `all` validates every real feature dir and exits 0 when the repo is green; a sweep containing one failing fixture dir reports that dir as FAIL, emits the summary line, and exits 1; and the per-feature PASS/FAIL line shape and SUMMARY line are present.
+64. **Cross-feature install-closure-integrity gate.** The rabbit-cage install closure (`.claude/features/rabbit-cage/install.py`) enumerates a SOURCE path for every feature surface it copies during a fresh `install.sh` run, and `install.main()` aborts on a missing source. The closure spans EVERY feature's surfaces, so a surface change in ANY feature — not only rabbit-cage — can leave a stale closure entry that silently breaks fresh install. The contract cross-feature gate (`test/run.py`, the repo-wide gate that runs on every feature change) MUST therefore screen the install closure on every change, not only when rabbit-cage is touched.
+    (a) `test/test-install-closure-integrity.py` MUST import the importable `check_install_sources_exist(repo_root) -> list[str]` from `.claude/features/rabbit-cage/install.py` and assert it returns an EMPTY list against the REAL repo root — i.e. every closure source exists on disk. A non-empty result FAILS the gate and names the dangling source path(s).
+    (b) The test MUST be wired into `test/run.py` so it runs as part of the cross-feature gate.
+    (c) The import MUST be resilient: when `rabbit-cage/install.py` is legitimately absent (a degenerate self-build with no install closure to verify), the check SKIPS gracefully rather than erroring. In the normal repo `install.py` is present and the check MUST run and pass.
 
 ## Template marker convention
 
