@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.7.1
+version: 0.7.2
 template_version: 2.0.0
 ---
 
@@ -24,7 +24,6 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   },
   "reads": {
     "files": [
-      ".rabbit/.runtime/mode",
       ".rabbit/rabbit-project/project-map.json"
     ],
     "external": ["user-supplied spec text or codebase root"]
