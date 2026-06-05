@@ -55,6 +55,20 @@ _raw_root = _git_toplevel(Path(__file__).resolve().parent)
 REPO_ROOT = Path(os.path.realpath(str(_raw_root))) if _raw_root else None
 
 
+# Inv 41: rabbit-cage owns three bootstrap files at the repo root, OUTSIDE its
+# feature directory: install.sh (the one-liner shell wrapper), install.py, and
+# the root README.md (install.py + README.md are publish_file destinations in
+# rabbit-cage's manifest; install.sh is the committed bootstrap that drives
+# install.py main()). The standalone per-feature marker gate authorizes writes
+# only INSIDE the named feature's directory, so a rabbit-cage TDD cycle editing
+# these owned root files would otherwise need an ad-hoc override. When the
+# active marker is `.rabbit-scope-active-rabbit-cage`, writes to exactly these
+# repo-root basenames are authorized with no override. EXPLICIT + MINIMAL: the
+# carve-out never broadens to arbitrary root paths, and ONLY rabbit-cage's
+# marker authorizes them.
+RABBIT_CAGE_OWNED_ROOT = ("install.sh", "install.py", "README.md")
+
+
 _SPEC_MD_PATTERN = None
 _PLUGIN_SPEC_MD_PATTERN = None
 
@@ -432,6 +446,18 @@ def decide(target: str) -> Tuple[bool, str]:
         per_abs = str(REPO_ROOT) + "/" + per_path
         if abs_path.startswith(per_abs):
             return True, f"ALLOW (per-feature scope marker: {per_feature})"
+        # Inv 41: rabbit-cage's marker ALSO authorizes its owned repo-root
+        # bootstrap files (install.sh, install.py, README.md), which live
+        # OUTSIDE its feature directory. Keyed to rabbit-cage's marker alone
+        # and to the EXACT owned-root paths — no other feature's marker grants
+        # them, and the set never broadens to arbitrary root paths.
+        if per_feature == "rabbit-cage" and abs_path in [
+            str(REPO_ROOT) + "/" + name for name in RABBIT_CAGE_OWNED_ROOT
+        ]:
+            return True, (
+                "ALLOW (rabbit-cage marker: owned repo-root bootstrap file "
+                f"'{base}')"
+            )
 
     # 4. Active scope marker at repo root (the only location ever written).
     scope_marker = REPO_ROOT / ".rabbit-scope-active"

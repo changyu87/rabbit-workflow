@@ -100,8 +100,12 @@ COLLAPSE_MAX = 1
 # the dynamic-default downgrade guard (the update ACTION must track the
 # update-CHECK and never resolve a ref older than what is installed) plus its
 # enforcing-test reference — a real spec addition documenting new behavior, not
-# reword re-inflation.
-SPEC_LINE_CEILING = 526
+# reword re-inflation. Raised 526 -> 537 by #855, which added Inv 41 (and a
+# bullet in the scope-guard Semantics ALLOWED list) documenting that
+# rabbit-cage's scope marker authorizes its owned repo-root bootstrap files
+# (install.sh / install.py / README.md) without an override — a real spec
+# addition documenting new scope-guard behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 537
 
 PASS = 0
 FAIL = 0
