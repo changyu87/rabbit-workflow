@@ -13,6 +13,24 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.7.2 (contract `reads.files` accuracy fix — stale `.rabbit/.runtime/mode`
+  read removed, #908):** `docs/contract.md` `reads.files` still listed
+  `.rabbit/.runtime/mode` as a read. Since #890/#901/#906,
+  `handoff-scaffold.py` resolves plugin-vs-standalone mode by reusing
+  rabbit-meta's canonical `detect_mode` — a STRUCTURAL check on the
+  rabbit-root's basename, NOT a file read of that marker path. The
+  `reads.files` entry was therefore stale (proven dead: `grep` finds no
+  genuine read of `.rabbit/.runtime/mode` in any rabbit-decompose script; the
+  only mention is a docstring noting what the script does NOT do). Removed the
+  stale `reads.files` entry. The real cross-feature dependency — the
+  `detect_mode` INVOKE — was already correctly declared under
+  `invokes.scripts` (`rabbit-meta/lib/mode_detection.py`, from #901), so no
+  duplication was added. Contract-accuracy fix only; NO behavior change.
+  New E2E `test-contract-reads-accurate.py` locks the corrected block in.
+  Deployed surface: `SKILL.md` body unchanged (frontmatter `version` bumped
+  in four-way lockstep); the dispatcher republishes the deployed `SKILL.md`
+  copy so the deployed frontmatter version stays consistent.
+
 - **v0.7.1 (default rabbit-root for mode detection is now the cwd, not the
   git toplevel, #906):** `handoff-scaffold.py._default_rabbit_root()` (used
   when `--rabbit-root` is not supplied) returned
