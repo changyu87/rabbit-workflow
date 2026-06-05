@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.20.0
+version: 5.21.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -56,14 +56,11 @@ upstream commit obligation lives in the caller's spec
 
 ## Invariants
 
-`dispatch-tdd-subagent.py` builds a slot dict and delegates prompt
-assembly to `.claude/features/contract/scripts/build-prompt.py` against
-the template at `.claude/features/contract/templates/prompts/tdd-subagent.txt`
-(see Inv 44). Every invariant below whose constraint applies to the content
-of the dispatched prompt constrains that template file. Inv 23/24 retain
-their script-level constraint on how the `bypass_preamble_note` slot value
-is COMPUTED (via `rabbit_print`); where it APPEARS is governed by the
-template's `{{bypass_preamble_note}}` placeholder.
+`dispatch-tdd-subagent.py` delegates prompt assembly to
+`.claude/features/contract/scripts/build-prompt.py` against the template at
+`.claude/features/contract/templates/prompts/tdd-subagent.txt` (see Inv 44).
+Every invariant below whose constraint applies to the content of the
+dispatched prompt constrains that template file.
 
 ### Surface scope
 
@@ -166,9 +163,8 @@ template's `{{bypass_preamble_note}}` placeholder.
 20. *(Withdrawn; not part of the current design — see CHANGELOG.md.)*
 
 21. **HANDOFF `closed_items` field.** The assembled prompt's HANDOFF
-    JSON block declares `closed_items` as an empty list (the field is
-    retained on the HANDOFF schema for forward compatibility per Inv 22
-    even though the dispatcher no longer emits item-close instructions).
+    JSON block declares `closed_items` as an empty list, retained on the
+    HANDOFF schema for forward compatibility per Inv 22.
 
 30. *(Withdrawn; not part of the current design — see CHANGELOG.md.)*
 
@@ -309,8 +305,7 @@ state-machine surface this feature owns).
     `.claude/features/tdd-state-machine/` directory MUST NOT exist.
 
 37. **Executable bit.** `scripts/tdd-step.py` is stored with the
-    user-executable bit set (any mode satisfying `mode & 0o100`; in
-    practice `0o755` or `0o775` depending on the contributor's umask).
+    user-executable bit set (any mode satisfying `mode & 0o100`).
 
 38. **`spec-update -> test-red` precondition.** The transition
     `spec-update -> test-red` is accepted only when at least one of the
@@ -445,9 +440,6 @@ state-machine surface this feature owns).
 
     (b) `git rev-parse --show-toplevel` (run in the process CURRENT WORKING DIRECTORY, per Inv 60) — fallback when `RABBIT_ROOT` is unset (standalone-workspace mode). The git toplevel is the rabbit-self repo root in standalone (or the operating worktree under worktree-isolated dispatch), which contains `.claude/features/contract/scripts/find-feature.py` directly.
 
-    The same precedence ladder is shared with other `find-feature.py`
-    callers in the rabbit ecosystem (e.g. `rabbit-feature/scripts/resolve-scope.py`).
-
     Enforced by `test/test-dispatch-plugin-mode-root.py` (standalone,
     plugin RABBIT_ROOT-set, and git-rev-parse-fallback regression scenarios).
 
@@ -478,7 +470,7 @@ state-machine surface this feature owns).
 
     (d) **Unknown number — fatal.** If any requested number does NOT match an existing invariant in the spec (including withdrawn invariant slots), the dispatcher exits with code 1 and a stderr line `error: --affected-invariants includes unknown invariant number(s) for <feature>: [N, M]; available: [1..29]`. No silent skip.
 
-    (e) **Size win.** Typical scoped prompts are 20-30KB vs ~100KB for the full-spec form on rabbit-cage. The win scales with feature spec size — smaller features (rabbit-config, rabbit-issue) see proportionally less benefit. No worse than the unscoped form when omitted.
+    (e) **Size win.** Scoped prompts are smaller than the full-spec form; the win scales with feature spec size. No worse than the unscoped form when omitted.
 
     (f) **Caller convention.** The impl-suggestion file (`<repo_root>/.rabbit/impl-suggestion-<feature>.json`) MAY include an optional top-level `affected_invariants: [N, M, ...]` field; the dispatcher caller (rabbit-feature-touch Step 5) MAY plumb that field into `--affected-invariants` when present. This is OPTIONAL and per-caller — the spec only mandates the dispatcher's behavior when the flag IS supplied; whether to supply it is the caller's choice.
 
@@ -503,8 +495,7 @@ defined in Inv 55.
     `discovered-blocker`, `external-dep-missing`. The `abort` verb is
     semantically distinct from `--force` backward transitions (Inv 34):
     `abort` is for loop- or subagent-driven blocker handling; `--force`
-    remains for human-driven rollback. Distinct semantics → distinct
-    verbs → distinct audit trail.
+    remains for human-driven rollback.
 
 51. **`abort` acceptance / rejection by state.** `abort` is accepted
     when `feature.json.tdd_state` is one of `test-red`, `impl`, or
@@ -512,10 +503,7 @@ defined in Inv 55.
     stderr diagnostic when `tdd_state` is `spec`, `spec-update`, or
     `deprecated`. The `deprecated` rejection holds unconditionally
     (no `--force` override; Inv 35 still applies — `deprecated` is
-    terminal in every direction including abort). Rationale: abort is
-    a mid-cycle recovery mechanism for the executor states; pre-executor
-    states (`spec`/`spec-update`) and the terminal state (`deprecated`)
-    have no scope locks or in-flight implementation state to roll back.
+    terminal in every direction including abort).
     Enforced by `test/test-abort-transition.py`.
 
 52. **`abort` scope-marker release (mode-aware).** On accepted abort,
@@ -552,8 +540,7 @@ defined in Inv 55.
 54. **`tdd_state: blocked` is HANDOFF-only.** The `blocked` value
     emitted under the `tdd_state` key of the blocked-HANDOFF schema
     (Inv 10) is HANDOFF-only — it MUST NEVER appear as a persisted
-    value in `feature.json.tdd_state`. This invariant documents the
-    de facto behavior so the convention is explicit: HANDOFF JSON may
+    value in `feature.json.tdd_state`. HANDOFF JSON may
     carry state-like values that are not members of `_VALID_STATES`
     (Inv 31), and any future HANDOFF-only state values (such as a
     dispatcher-emitted `aborted`) follow

@@ -1,10 +1,10 @@
 {
   "name": "tdd-subagent",
-  "version": "5.20.0",
+  "version": "5.21.0",
   "owner": "rabbit-workflow team",
   "status": "active",
   "housekeeping_clean": true,
-  "tdd_state": "test-green",
+  "tdd_state": "test-red",
   "summary": "Provides dispatch-tdd-subagent.py (per-feature TDD-cycle prompt assembler), tdd-step.py (forward-only TDD state machine, absorbed from the retired tdd-state-machine feature at v4.0.0), and the tdd-subagent agent definition. The rabbit-feature-touch orchestration skill is owned by rabbit-feature.",
   "surface": {
     "hooks": [],
