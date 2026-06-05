@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (filing a rabbit-managed issue, such as a bug or enhancement). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.9.0
+version: 3.10.0
 owner: rabbit-feature
 deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
@@ -43,9 +43,22 @@ Create before any dispatch. Never write to main.
 
 `<keywords>` = 2–4 words from the request, hyphenated, lowercase.
 
+Branch-name assembly is a computed step, so per the SKILL.md Authoring
+Standard (`spec-rules.md` §4 Script-Backed Orchestration) the companion
+script owns it — the SKILL does NOT assemble the branch name and check it out
+inline. Invoke the `create-branch` subcommand with the feature name and the
+raw request (add `--multi` for multi-feature scope, passing the primary
+feature as the feature name):
+
+<!-- example: invocation synopsis of the create-branch subcommand -->
 ```bash
-git checkout -b <branch-name>
+.claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py \
+  create-branch [--multi] <feature-name> "<request>"
 ```
+
+The subcommand derives `<keywords>` from the request, assembles the
+`feat/<feature-name>[-multi]-<keywords>` branch name, runs `git checkout -b`,
+and prints the branch it created.
 
 ### Step 3 — Spec Authoring
 
@@ -63,6 +76,7 @@ computed, mode-aware step, so per the SKILL.md Authoring Standard
 (`spec-rules.md` §4 Script-Backed Orchestration) the logic lives in the
 companion script — it is NOT assembled inline here:
 
+<!-- example: invocation synopsis of the commit-spec subcommand -->
 ```bash
 .claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py \
   commit-spec <feature-name> "<one-line request summary>"
@@ -133,6 +147,7 @@ Shell (assemble the prompt — deterministic). The spec-path resolution is a
 computed step (§4 Script-Backed Orchestration), delegated to the companion
 `resolve-spec-path` subcommand rather than assembled inline:
 
+<!-- example: invocation synopsis wiring resolve-spec-path into the dispatch prompt -->
 ```bash
 spec_arg=$(.claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py \
   resolve-spec-path <feature-name>)
@@ -164,6 +179,10 @@ Read `.rabbit/tdd-report-<feature-name>.json` for full details.
 
 ### Step 7 — PR / Hand Off
 
+The PR title and body are free-form prose synthesized from the TDD report —
+author them in-context; they are not a script-computable value.
+
+<!-- example: gh pr create command shape; title/body are model-authored prose -->
 ```bash
 gh pr create --title "<summary>" --body "<tdd report highlights>"
 ```
