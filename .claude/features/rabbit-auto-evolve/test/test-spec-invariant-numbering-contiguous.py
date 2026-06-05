@@ -126,10 +126,9 @@ if passed_b:
 else:
     fail(f"(b) dangling rae-local invariant reference(s): {detail_b}")
 
-# --- #750 regression: the checker must enforce ONLY (a) and (b), never a
-# count threshold. Exercise the same logic on a small contiguous surface whose
-# count is well below the old #725 baseline of 59; it must still pass. If a
-# count constraint ever creeps back in, this guard fails. ---
+# --- (c) the checker is size-agnostic: it enforces ONLY contiguity (a) and
+# no-dangling (b). Exercise the same logic on a tiny contiguous surface; it must
+# pass exactly like the full spec. The invariant count is unconstrained. ---
 synthetic = (
     "## Invariants\n\n"
     "1. **Alpha** — first.\n"
@@ -140,8 +139,24 @@ syn_nums = [n for n, _ in collect_defined(synthetic)]
 syn_a, _ = check_contiguous(syn_nums)
 syn_b, _ = check_no_dangling(synthetic, len(syn_nums), set(syn_nums))
 if syn_a and syn_b:
-    ok("(#750) contiguous low-count surface still passes (a)+(b)")
+    ok("(c) a tiny contiguous surface passes (a)+(b) — size-agnostic")
 else:
-    fail("(#750) checker rejected a valid contiguous low-count surface")
+    fail("(c) checker rejected a valid contiguous surface")
+
+# --- (d) self-guard: this file must mention the invariant COUNT nowhere. The
+# count is absolutely free; documenting a count number, baseline, or threshold
+# is itself noise (#792). Scan this file's own source (excluding this guard's
+# own body, which must name the forbidden tokens) and fail if they reappear. ---
+GUARD_MARKER = "# --- (d) self-guard:"
+scanned = Path(__file__).read_text(encoding="utf-8").split(GUARD_MARKER, 1)[0]
+forbidden = re.findall(
+    r"\bbaseline\b|(?<!\d)59(?!\d)|count[ -](?:floor|threshold)",
+    scanned,
+    re.IGNORECASE,
+)
+if not forbidden:
+    ok("(d) no invariant-count baseline language in this file")
+else:
+    fail(f"(d) residual count-baseline language: {sorted(set(forbidden))}")
 
 sys.exit(FAIL)
