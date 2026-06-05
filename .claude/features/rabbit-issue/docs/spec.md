@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.10.0
+version: 1.11.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -35,7 +35,8 @@ defines the Work Protocol that orchestrates the three runtime scripts.
 
 Every issue filed via `rabbit-issue` carries the type, `feature:`, and
 `priority:` labels; the `filed-by:` provenance label is optional (present
-only for non-human filers):
+only for non-human filers), and the `housekeeping` category label is
+optional (present only when the filer marks the issue as housekeeping work):
 
 | Label | Purpose | Cardinality |
 |---|---|---|
@@ -44,6 +45,7 @@ only for non-human filers):
 | `feature:<name>` | Feature scope | required, one per item |
 | `priority:<low\|medium\|high\|critical>` | Priority | required, one per item |
 | `filed-by:<rabbit\|autonomous-evolve>` | Provenance — non-human filer | optional; absent ⇒ human-filed |
+| `housekeeping` | Category — housekeeping-wave work | optional; present ⇒ housekeeping sub-issue |
 
 Labels are auto-created on demand at first `file-item.py` call via
 idempotent `gh label create … || true`. No separate bootstrap script.
@@ -72,6 +74,25 @@ The label is additive — when present it does not change any of the other
 labels. Provenance keeps loop-performance metrics (self-discovery rate,
 discovery→fix ratio) answerable by querying the
 `filed-by:autonomous-evolve` label.
+
+### Housekeeping label
+
+`housekeeping` is a sanctioned category label marking an issue as
+housekeeping-wave work. It is applied at filing time in one deterministic
+step via the `--housekeeping` flag on `file-item.py`:
+
+| Flag | Label stamped |
+|---|---|
+| *(omit `--housekeeping`)* | none |
+| `--housekeeping` | `housekeeping` |
+
+The flag is a boolean switch: when passed, `file-item.py` adds the
+`housekeeping` label to the created issue's label set in the same
+`gh issue create` call; when omitted, no `housekeeping` label is stamped.
+The label is additive — it does not change any of the other labels. This
+gives the housekeeping-wave filing path a first-class, single-step way to
+tag a sub-issue, with no ad-hoc post-filing `gh issue edit --add-label`
+dance.
 
 ### Safety invariant
 

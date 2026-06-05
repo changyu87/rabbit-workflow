@@ -12,6 +12,26 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.11.0 (first-class `housekeeping` category label, closes #800):** The
+  `housekeeping` tag is now first-class. `file-item.py` gains a `--housekeeping`
+  boolean flag that appends the `housekeeping` label to the created issue's
+  label set in the same `gh issue create` call (auto-created via the existing
+  `ensure_labels` bootstrap); omit it for non-housekeeping issues. This
+  replaces the ad-hoc 2-step file-then-`gh issue edit --add-label` dance, so a
+  housekeeping-wave sub-issue is tagged in ONE deterministic filing step.
+  Added `housekeeping` to the documented label schema as a sanctioned category
+  label: the spec.md label table gains a `housekeeping` row plus a new
+  §Housekeeping label subsection, the SKILL.md Label Schema / File Protocol /
+  Scripts Reference document the flag, and the contract `issue_labels` list
+  gains `housekeeping`. The label is additive — the type / `feature:` /
+  `priority:` / optional `filed-by:` labels are unchanged. Four-way version
+  lockstep 1.10.0 → 1.11.0 (feature.json + spec.md + SKILL.md; contract.md
+  1.8.0 → 1.9.0). Script Version line: file-item.py 1.3.0 → 1.4.0. Tests:
+  `test-file-item.py` asserts `--housekeeping` adds the label, omitting it does
+  not, the label is additive against the base set, and it composes with
+  `--filed-by`. SKILL.md changed, so the deployed copy under `.claude/skills/`
+  drifts until the dispatcher republishes (republish_needed).
+
 - **v1.10.0 (remove rabbit-managed application — coexistence step 3 of #753,
   part of #760):** The FINAL "remove last" cleanup. Now that selection is
   actionability-based (#758) and provenance is migrated (#759), nothing

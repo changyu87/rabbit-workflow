@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.10.0
+version: 1.11.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours an actionability safety guard (it refuses to close/reopen issues lacking a valid `feature:` label) so raw human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -55,6 +55,12 @@ values. Human is the untagged default (OMIT `--filed-by`); pass
 value) with a clear error. The label is additive — when present it never
 changes the other labels.
 
+`housekeeping` is a sanctioned category label marking housekeeping-wave
+work. Pass `--housekeeping` to `file-item.py` to stamp it at filing time
+in one step; omit it for non-housekeeping issues. The label is additive —
+when present it never changes the other labels. See docs/spec.md
+§Housekeeping label.
+
 ---
 
 ## File Protocol
@@ -73,13 +79,15 @@ When the user confirms they want to file a bug or enhancement:
      --title "..." \
      --priority <low|medium|high|critical> \
      --description "..." \
-     [--filed-by <source>]
+     [--filed-by <source>] \
+     [--housekeeping]
    ```
    `--filed-by <rabbit|autonomous-evolve>` stamps the matching
    `filed-by:` provenance label; OMIT it for human-filed issues (the
-   untagged default). Any other value is rejected. The script
-   auto-creates any missing labels, then calls `gh issue create` with the
-   resolved labels attached.
+   untagged default). Any other value is rejected. `--housekeeping` stamps
+   the `housekeeping` category label for housekeeping-wave work; omit it
+   otherwise. The script auto-creates any missing labels, then calls
+   `gh issue create` with the resolved labels attached.
 4. **Report** the assigned issue number and URL back to the user. GH
    allocates the number; rabbit does not maintain a local counter.
 
@@ -246,7 +254,7 @@ GH issue state is binary; `state_reason` distinguishes the close path.
 
 | Script | Purpose |
 |---|---|
-| `file-item.py` | File a new bug or enhancement (auto-creates labels); `--filed-by <rabbit\|autonomous-evolve>` stamps the matching `filed-by:` label (omit for human; other values rejected) |
+| `file-item.py` | File a new bug or enhancement (auto-creates labels); `--filed-by <rabbit\|autonomous-evolve>` stamps the matching `filed-by:` label (omit for human; other values rejected); `--housekeeping` stamps the `housekeeping` category label |
 | `item-status.py` | `show <N>` / `close <N>` / `reopen <N>` (actionability guard enforced on close/reopen — refuses issues lacking a valid `feature:` label; `close --reason completed` requires `--commit-sha`, `close --reason not-planned` requires `--reason-text`) |
 | `list-items.py` | List with `--type`, `--feature`, `--status` filters; deterministic sort |
 | `_gh.py` | Shared helper — repo slug discovery, `gh` invocation wrappers |
