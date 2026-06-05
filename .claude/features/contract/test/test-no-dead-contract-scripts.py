@@ -138,8 +138,8 @@ def has_production_caller(basename):
 KNOWN_ISSUES = {
     # Added by Plan A of CONTRACT-BACKLOG-36 (meta-contract foundation).
     # The CLI shim is user-invocable today but has no programmatic caller
-    # until Plan C wires it into rabbit-cage's install dispatcher OR Plan E
-    # adds it to rabbit-feature-audit. Remove this entry once either lands.
+    # until Plan C wires it into rabbit-cage's install dispatcher. Remove
+    # this entry once that lands.
     "validate-meta-contract.py",
 }
 

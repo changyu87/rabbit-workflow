@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """test-rabbit-feature-skills-deployment.py — CONTRACT-BUG-41 (bundled deploy).
 
-End-to-end assertions for the bundled deployment of all five
+End-to-end assertions for the bundled deployment of all three
 rabbit-feature skills via rabbit-feature/feature.json `manifest`:
 
   - rabbit-feature-touch
   - rabbit-feature-scope
-  - rabbit-feature-spec
   - rabbit-feature-scaffold   (BUG-41)
-  - rabbit-feature-audit (BUG-41)
 
 Each skill MUST have:
   - a publish_skill entry in rabbit-feature/feature.json manifest with
@@ -34,7 +32,6 @@ EXPECTED_SKILLS = [
     "rabbit-feature-touch",
     "rabbit-feature-scope",
     "rabbit-feature-scaffold",
-    "rabbit-feature-audit",
 ]
 
 passed = 0
