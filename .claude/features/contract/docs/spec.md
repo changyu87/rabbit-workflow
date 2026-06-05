@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.33.0
+version: 2.33.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native mechanism that supersedes contract's governance surface — the cross-feature contract gate, version-lockstep, invariant numbering, and schema/template ownership — not merely when a native orchestration/workflow primitive exists
@@ -30,12 +30,7 @@ Owns all cross-feature templates, schemas, dispatch scripts, and enforcement scr
 
 **templates/prompts/**
 - `.claude/features/contract/templates/prompts/tdd-subagent.txt`
-- `.claude/features/contract/templates/prompts/rabbit-feature-touch.txt`
-- `.claude/features/contract/templates/prompts/rabbit-spec-update.txt`
-- `.claude/features/contract/templates/prompts/rabbit-feature-scaffold.txt`
-- `.claude/features/contract/templates/prompts/rabbit-feature-audit.txt`
-- `.claude/features/contract/templates/prompts/rabbit-feature-scope.txt`
-- `.claude/features/contract/templates/prompts/rabbit-issue.txt`
+- `.claude/features/contract/templates/prompts/spec-create.txt`
 
 **schemas/**
 - `.claude/features/contract/schemas/feature.json.schema.json`
