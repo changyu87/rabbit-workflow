@@ -12,6 +12,28 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.69.0 (feat #889: make the bypass-permissions path discoverable):**
+  rabbit-cage owns a first-class `bypass-permissions` configurable
+  (`/rabbit-cage-config bypass-permissions true|false`, which writes
+  `permissions.defaultMode`), but nothing in loaded context advertised it, so
+  when a user expressed permission-mode intent the dispatcher defaulted to
+  upstream Claude Code mechanisms (Shift+Tab, `--dangerously-skip-permissions`)
+  and never surfaced the rabbit-native path. The active-override alert (Inv 40c)
+  only fires once bypass is ALREADY active, so it cannot help discovery while
+  bypass is OFF. Fix: added a FOURTH `welcome_with_policy` subline to
+  rabbit-cage's `runtime.SessionStart` (its own feature.json) that advertises
+  BOTH mechanisms and their difference in always-loaded SessionStart context —
+  the ephemeral live toggle (`Shift+Tab`, this session only) and the persisted
+  path (`/rabbit-cage-config bypass-permissions true|false`, writes
+  `defaultMode`, takes effect after a Claude relaunch). Spec Inv 16 updated;
+  enforced end-to-end by
+  `test/test-bypass-permissions-discoverable-at-sessionstart.py` (drives the
+  real deployed session-start-dispatcher subprocess and asserts the rendered
+  systemMessage carries `/rabbit-cage-config bypass-permissions` AND names the
+  Shift+Tab live toggle, with the three policy sublines unchanged). Wired into
+  `test/run.py`. The signal is intentionally in-scope: the issue suggested a
+  CLAUDE.md / policy edit, but those are outside rabbit-cage scope, so the fix
+  uses rabbit-cage's OWN SessionStart welcome surface.
 - **v5.68.1 (fix #897: fresh install omitted a SKILL-referenced script):**
   `#890` added `.claude/features/rabbit-decompose/scripts/handoff-scaffold.py`
   and referenced it from rabbit-decompose's `SKILL.md` Step 4, but
