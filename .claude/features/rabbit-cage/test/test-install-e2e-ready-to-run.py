@@ -31,6 +31,8 @@ execute via run_publish_loop) by exercising the REAL main() closure end to end
 and proving the wired-ness of the whole tree in one pass.
 """
 
+from __future__ import annotations
+
 import importlib.util
 import json
 import os
@@ -54,33 +56,45 @@ def _load_install():
     return mod
 
 
+def _closure_src_rels(install_mod) -> list[str]:
+    """Every repo-relative SOURCE path install.main() reads, in closure order.
+
+    SAME_PATH_FILES + HOOKS + SKILLS + AGENTS + COMMANDS + FEATURE_INCLUDES.
+    This is the single enumeration shared by the real-repo existence check
+    (#880, de-circularization) and the sandbox builder, so the two can never
+    drift apart.
+    """
+    rels: list[str] = list(install_mod.SAME_PATH_FILES)
+    rels += [src for src, _dst in install_mod.HOOKS]
+    rels += [src for src, _dst in install_mod.SKILLS]
+    rels += [src for src, _dst in install_mod.AGENTS]
+    rels += [src for src, _dst in install_mod.COMMANDS]
+    for feature, paths in install_mod.FEATURE_INCLUDES.items():
+        base = f".claude/features/{feature}"
+        rels += [f"{base}/{rel}" for rel in paths]
+    return rels
+
+
 def _build_src_tree(src_root: Path, install_mod) -> None:
     """Copy every file install.main() needs from the real repo into src_root.
 
-    Mirrors the closure main() reads: SAME_PATH_FILES + HOOKS + SKILLS +
-    AGENTS + COMMANDS + FEATURE_INCLUDES. Sourcing only these from the clean
-    repo tree keeps the sandbox a faithful stand-in for the extracted tarball.
+    Mirrors the closure main() reads (see _closure_src_rels). Sourcing only
+    these from the clean repo tree keeps the sandbox a faithful stand-in for
+    the extracted tarball.
+
+    Pre-#880 this builder copied exactly install.SAME_PATH_FILES et al. and
+    then ran install against that sandbox — a CIRCULAR check that validated
+    install.py against its OWN list and could never observe a source the repo
+    was missing. The de-circularization (test_closure_sources_exist_in_repo
+    below) validates the closure against the REAL repo surface BEFORE any
+    sandbox is built; this builder still copies the closure to exercise the
+    real main() end to end.
     """
-    def _copy_rel(rel: str) -> None:
+    for rel in _closure_src_rels(install_mod):
         s = REPO / rel
         d = src_root / rel
         d.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(s, d)
-
-    for rel in install_mod.SAME_PATH_FILES:
-        _copy_rel(rel)
-    for src_rel, _dst_rel in install_mod.HOOKS:
-        _copy_rel(src_rel)
-    for src_rel, _dst_rel in install_mod.SKILLS:
-        _copy_rel(src_rel)
-    for src_rel, _dst_rel in install_mod.AGENTS:
-        _copy_rel(src_rel)
-    for src_rel, _dst_rel in install_mod.COMMANDS:
-        _copy_rel(src_rel)
-    for feature, paths in install_mod.FEATURE_INCLUDES.items():
-        base = f".claude/features/{feature}"
-        for rel in paths:
-            _copy_rel(f"{base}/{rel}")
 
 
 def _run_install(install_mod, src: Path, dst: Path) -> int:
@@ -131,6 +145,70 @@ def _install_into(td: Path):
 # ───────────────────────────────────────────────────────────────────────────
 # Checks
 # ───────────────────────────────────────────────────────────────────────────
+
+def test_closure_sources_exist_in_repo():
+    """De-circularization (#880): every SOURCE the install closure declares
+    EXISTS on disk in the REAL repo.
+
+    This is the check the old sandbox-only flow could never make: it copied
+    exactly the closure list then ran install against that copy, so a closure
+    entry whose source the repo had retired (e.g. #853's deletion of
+    rabbit-feature-audit/SKILL.md) was invisible. Here we resolve every
+    closure source against the REAL repo tree and fail loud — naming the
+    offending path — when one is absent. Delegates to install.py's own
+    importable `check_install_sources_exist` so the contract gate (piece 2)
+    and this E2E share one implementation.
+    """
+    install = _load_install()
+    missing = install.check_install_sources_exist(REPO)
+    assert missing == [], (
+        "install closure references source files absent from the repo "
+        "(dangling required-file -> fresh-install abort, #880):\n  "
+        + "\n  ".join(missing)
+    )
+    print("PASS test_closure_sources_exist_in_repo")
+
+
+def test_every_feature_deployed_surface_covered():
+    """Every runtime-deployed surface each shipped feature publishes (its
+    feature.json manifest `source` paths) is present in install.py's closure
+    for that feature — no surface omitted from the install (#880).
+
+    Pairs with test_closure_sources_exist_in_repo: that check proves no
+    listed source is dangling; this one proves no published surface is
+    MISSING from the list. Together they bound the closure on both sides
+    against the real repo, replacing the circular sandbox-only validation.
+    """
+    install = _load_install()
+    _PUBLISH_SOURCE_APIS = {
+        "publish_hook", "publish_file", "publish_command",
+        "publish_settings", "publish_skill",
+    }
+    uncovered: list[str] = []
+    for feature, paths in install.FEATURE_INCLUDES.items():
+        included = set(paths)
+        fj = REPO / ".claude/features" / feature / "feature.json"
+        if not fj.is_file():
+            continue
+        data = json.loads(fj.read_text())
+        for entry in data.get("manifest") or []:
+            if entry.get("api", "") not in _PUBLISH_SOURCE_APIS:
+                continue
+            src = (entry.get("args") or {}).get("source")
+            if not isinstance(src, str) or not src:
+                continue
+            # Only feature-dir-relative sources are shipped via FEATURE_INCLUDES.
+            if src.startswith("/") or src.startswith(".claude/"):
+                continue
+            if src not in included:
+                uncovered.append(f"{feature}: {src}")
+    assert uncovered == [], (
+        "feature manifest declares deployed surfaces absent from install.py "
+        "FEATURE_INCLUDES (omitted from the install):\n  "
+        + "\n  ".join(uncovered)
+    )
+    print("PASS test_every_feature_deployed_surface_covered")
+
 
 def test_toplevel_closure_present():
     """Top-level CLAUDE.md / README.md / install.py land in the install."""
@@ -265,6 +343,11 @@ def test_no_dangling_references():
 
 
 def main() -> int:
+    # Run the real-repo closure checks FIRST: they validate install.py against
+    # the actual repo surface and fail loud on a dangling/omitted source before
+    # any sandbox is built (#880 de-circularization).
+    test_closure_sources_exist_in_repo()
+    test_every_feature_deployed_surface_covered()
     test_toplevel_closure_present()
     test_every_hook_path_exists_and_executable()
     test_every_feature_dir_has_valid_feature_json()

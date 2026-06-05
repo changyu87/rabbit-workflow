@@ -12,6 +12,29 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.66.0 (CRITICAL fix #880: fresh install aborts on a retired closure
+  source):** `install.py`'s hardcoded file closure still referenced the
+  `rabbit-feature-audit` skill that #853 deleted — the
+  `SKILLS` entry and the `FEATURE_INCLUDES['rabbit-feature']`
+  `skills/rabbit-feature-audit/SKILL.md` entry. Because `install.main()`
+  requires every closure source to exist, the missing source aborted
+  `curl … install.sh | bash` on every fresh install with
+  "missing required source file: …/rabbit-feature-audit/SKILL.md". Both stale
+  entries are removed. To prevent the class systemically, install.py gains the
+  importable `check_install_sources_exist(repo_root)` (built on a new
+  `closure_source_rels()` enumeration) — run as a fail-loud self-check inside
+  `_main_with_args` (before any copy, naming the offending path) and exercised
+  against the REAL repo by the new `test/test-install-closure-sources-exist.py`.
+  The cross-feature contract gate (separate change) wires the SAME function so a
+  surface retirement in ANY feature is screened against the install closure, not
+  only when rabbit-cage is touched. Separately, the #849 e2e readiness test
+  `test/test-install-e2e-ready-to-run.py` was CIRCULAR — its `_build_src_tree`
+  copied exactly `install.SAME_PATH_FILES` et al. from the repo then ran install
+  against that sandbox, validating install.py against its OWN list and never the
+  repo's actual surface set. It now validates the closure against the REAL repo
+  surface first (`test_closure_sources_exist_in_repo` via
+  `check_install_sources_exist`, plus `test_every_feature_deployed_surface_covered`
+  asserting no published surface is omitted) before building any sandbox.
 - **v5.65.0 (fix #851: fresh install reports no surface drift on first run):**
   `install.py` now RUNS THE PUBLISH FLOW against the freshly installed tree
   after the closure copy and settings rewrite

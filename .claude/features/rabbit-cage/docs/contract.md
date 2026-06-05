@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.65.0
+version: 5.66.0
 template_version: 2.0.0
 ---
 
@@ -37,7 +37,10 @@ template_version: 2.0.0
     ],
     "schemas": [],
     "templates": [],
-    "skills": []
+    "skills": [],
+    "functions": [
+      {"path": ".claude/features/rabbit-cage/install.py", "function": "check_install_sources_exist", "signature": "check_install_sources_exist(repo_root) -> list[str]", "purpose": "install-closure integrity check: returns the closure source paths absent under repo_root (empty list = closure intact). Imported by the cross-feature contract gate so a surface retirement in ANY feature is screened against the install closure, not only when rabbit-cage is touched"}
+    ]
   },
   "reads": {
     "files": [
