@@ -102,6 +102,7 @@ SUITES = [
     "test-install-e2e-ready-to-run.py",
     "test-install-closure-sources-exist.py",
     "test-install-no-drift-on-first-run.py",
+    "test-show-mode-command.py",
 ]
 
 

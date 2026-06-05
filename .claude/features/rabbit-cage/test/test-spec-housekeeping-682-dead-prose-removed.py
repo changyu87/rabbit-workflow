@@ -118,7 +118,11 @@ COLLAPSE_MAX = 1
 # mode-marker WRITE path is reconciled to equal the scope-guard READ path (the
 # plugin-install doubled-.rabbit fix) — a real spec addition documenting new
 # behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 542
+# Raised 542 -> 544 by #888, which added Inv 45 documenting scripts/show-mode.py,
+# the deterministic one-invocation plugin/standalone mode reporter that delegates
+# detection to rabbit-meta.lib.mode_detection.detect_mode — a real spec addition
+# documenting new test-enforced behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 544
 
 PASS = 0
 FAIL = 0

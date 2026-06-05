@@ -12,6 +12,25 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.68.0 (feat #888: deterministic `/show-mode` reporter):** Adds
+  `scripts/show-mode.py`, a single-invocation, zero-AI reporter that prints
+  whether rabbit is running in `plugin` or `standalone` mode plus the key
+  evidence, so the model no longer has to infer mode from env/dir/settings
+  across multiple tool calls. Output is Machine First: a single-line JSON
+  object (`{mode, rabbit_root, project_root, feature_dir, evidence}`) followed
+  by one derivative human `Mode: …` summary line; exit 0 in both modes (and in
+  the degenerate rabbit-meta-unavailable case, where `mode` is `"unknown"`).
+  Detection is delegated to the canonical resolver
+  `rabbit-meta.lib.mode_detection.detect_mode` (a cross-feature INVOKE, now
+  declared in `docs/contract.md`), lazy-imported relative to the script's own
+  location so the reporter always agrees with the rest of the system. The
+  script runs from SOURCE (no `publish_file` manifest entry, so no deployed
+  copy drifts). New invariant 45; enforced by
+  `test/test-show-mode-command.py` (e2e, plugin + standalone layouts), wired
+  into `test/run.py`. Surfacing the reporter from the SessionStart banner or a
+  `/rabbit-project status` subcommand is left as a follow-up to keep this touch
+  to the script + its test.
+
 - **v5.67.0 (fix #891: plugin-mode mode-marker written one `.rabbit` too
   deep):** In a plugin install (`RABBIT_ROOT = <project>/.rabbit`), the
   SessionStart mode marker was written to `<project>/.rabbit/.rabbit/.runtime/mode`
