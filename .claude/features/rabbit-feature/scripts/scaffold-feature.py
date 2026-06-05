@@ -14,7 +14,11 @@ Two modes:
   `<repo>/.rabbit/rabbit-project/features/<name>/` and registers it in
   `<repo>/.rabbit/rabbit-project/project-map.json`, mapping a list of
   user-code path globs to the feature:
-      scaffold-feature.py <name> <path-glob> [<path-glob>...]
+      scaffold-feature.py <name> [<path-glob>...]
+  Globs are OPTIONAL: a bare `<name>` (or a `--batch` entry with empty/absent
+  `globs`) scaffolds a greenfield feature that owns no existing paths yet,
+  symmetric with standalone mode. Greenfield features are scaffolded without
+  a project-map glob registration.
 
 Exit:
   0 success
@@ -23,7 +27,7 @@ Exit:
     empty match, schema-validation failure)
   2 invocation error
 
-Version: 2.3.0
+Version: 2.4.0
 Owner: rabbit-workflow team (rabbit-feature)
 Deprecation criterion: when feature scaffolding is exposed as a native
     rabbit CLI subcommand.
@@ -45,11 +49,12 @@ from pathlib import Path
 def usage(stream=sys.stderr) -> None:
     stream.write(
         "usage: scaffold-feature.py <root> <name> [--owner <name>] [--description <desc>]\n"
-        "       scaffold-feature.py <name> <path-glob> [<path-glob>...]   "
+        "       scaffold-feature.py <name> [<path-glob>...]   "
         "(plugin mode; requires <cwd>/.rabbit/.runtime/mode == 'plugin')\n"
         "  <root>      parent directory under which <name>/ will be created\n"
         "  <name>      lowercase kebab-case, [a-z][a-z0-9-]*, max 50 chars\n"
-        "  <path-glob> user-code path pattern (relative to user-project root)\n"
+        "  <path-glob> user-code path pattern (relative to user-project root);\n"
+        "              OPTIONAL — a bare <name> scaffolds a greenfield feature\n"
     )
 
 
@@ -236,6 +241,33 @@ def _run_plugin_mode(repo_root: Path, name: str, globs: list[str]) -> int:
         )
         return 1
 
+    # Greenfield (globless) feature: a feature that owns no existing paths
+    # yet. Mirror standalone's no-glob path — scaffold the feature dir +
+    # feature.json with an empty path set and skip project-map glob
+    # registration entirely (the project-map schema requires non-empty
+    # paths per registered feature, so a globless feature is simply not
+    # registered). Bug #902.
+    if not globs:
+        target = repo_root / ".rabbit/rabbit-project/features" / name
+        if target.exists():
+            sys.stderr.write(f"ERROR: scaffold target {target} already exists\n")
+            return 1
+        owner = os.environ.get("USER", "unknown")
+        _scaffold_plugin_feature(target, name, owner, [])
+        print(f"scaffolded plugin feature: {target}")
+        print("(greenfield: no globs supplied; not registered in project-map.json)")
+        dispatcher = ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py"
+        print(
+            "\nNEXT: invoke the rabbit-spec-create skill (or run the dispatcher\n"
+            "directly) to seed docs/spec.md:\n"
+            f"  Skill(\"rabbit-spec-create\", args: \"{name}\")\n"
+            "or equivalently:\n"
+            f"  python3 {dispatcher} \\\n"
+            f"    --feature-name {name}\n"
+            "then dispatch the spec-creator subagent with the assembled prompt."
+        )
+        return 0
+
     # Resolve each glob under repo_root; track which paths each feature claims.
     new_matches: list[Path] = []
     for g in globs:
@@ -356,12 +388,16 @@ def _run_plugin_mode_batch(repo_root: Path, batch_file: Path) -> int:
             sys.stderr.write(f"ERROR: batch[{i}] must be an object {{name, globs}}\n")
             return 2
         name = entry.get("name")
-        globs = entry.get("globs")
+        # `globs` is OPTIONAL: an absent or empty list means a greenfield
+        # feature that owns no existing paths yet (symmetric with standalone
+        # mode). Bug #902. A present-but-malformed `globs` (not a list, or a
+        # list containing a non-string) is still rejected.
+        globs = entry.get("globs", [])
         if not isinstance(name, str) or not _valid_name(name):
             sys.stderr.write(f"ERROR: batch[{i}].name invalid: {name!r}\n")
             return 1
-        if not isinstance(globs, list) or not globs or not all(isinstance(g, str) for g in globs):
-            sys.stderr.write(f"ERROR: batch[{i}].globs must be a non-empty list of strings\n")
+        if not isinstance(globs, list) or not all(isinstance(g, str) for g in globs):
+            sys.stderr.write(f"ERROR: batch[{i}].globs must be a list of strings\n")
             return 1
         parsed.append((name, globs))
 
@@ -407,8 +443,10 @@ def main() -> int:
                 return 2
             return _run_plugin_mode_batch(project_root, Path(args[1]))
 
-        # Plugin form: <name> <path-glob> [<path-glob>...]
-        if len(args) < 2:
+        # Plugin form: <name> [<path-glob>...] — globs are OPTIONAL; a bare
+        # <name> scaffolds a greenfield (globless) feature, symmetric with
+        # standalone mode. Bug #902.
+        if len(args) < 1:
             usage(sys.stderr)
             return 2
         name = args[0]
