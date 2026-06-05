@@ -16,6 +16,22 @@ authoritative).
 
 ## Version notes
 
+- **v0.68.0 — 2026-06-04** — Close the title-only convergence hole in
+  `scripts/merge-prs.py` (closes #868). The close-ref parse (`_parse_close_refs`)
+  scanned the PR BODY only; PRs merge into `dev` (not the default branch) so
+  GitHub's native auto-close never fires and this parse is the loop's only
+  close path. A subagent that put `Closes #N` in the PR TITLE alone merged the
+  PR but left the issue OPEN (observed: PR #865 left #862 open). Fix Option 1
+  (minimal, additive): `_close_referenced_issues` now fetches the PR `title`
+  (`gh pr view --json title`) alongside the body and feeds BOTH through
+  `_parse_close_refs`, which unions the referenced issue numbers (dedup) — a
+  body-only ref still closes, a title-only ref now ALSO closes, and a ref in
+  both is closed once. The existing `closed_issues`/`close_failed` recording
+  and the close-never-fails-the-merge semantics are preserved. Inv 6 step 4 in
+  `docs/spec.md` updated to say title AND body. New e2e tests in
+  `test-merge-prs.py`: title-only-close (RED before this change), body-only
+  backward-compat, and title+body union with shared-issue dedup. `merge-prs.py`
+  1.6.0 → 1.7.0.
 - **v0.67.1 — 2026-06-04** — Deep-slim consolidation of `docs/spec.md` back
   under the #751 ceiling (closes #864). Inv 54 (#838), Inv 55 (#859), and
   #837/#844 ETA work had re-inflated the spec to 3537 lines, over the 3384

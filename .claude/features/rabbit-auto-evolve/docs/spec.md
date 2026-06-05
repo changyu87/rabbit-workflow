@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.67.1
+version: 0.68.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -604,11 +604,12 @@ summary is restated here.
       mergeability is already gated by steps 1–2). On success →
       `{pr: N, status: "merged"}`; on failure →
       `{pr: N, status: "failed", reason: "gh-merge-failed: <stderr>"}`.
-   4. After a successful merge, parse the merged PR body
-      (`gh pr view <#> --json body -q .body`) for closing-keyword references —
-      `Fixes`/`Closes`/`Resolves #N` and their variants (`Fixed`, `Closed`,
-      `Resolved`, `Close`, `Fix`, `Resolve`), case-insensitive. For each
-      distinct referenced issue, fetch the merge SHA
+   4. After a successful merge, parse the merged PR title AND body
+      (`gh pr view <#> --json title,body`) for closing-keyword references —
+      `Fixes`/`Closes`/`Resolves #N` and variants, case-insensitive, unioning
+      the numbers from either location so a title-only ref also closes and one
+      in both is closed once. For each distinct referenced issue, fetch the
+      merge SHA
       (`gh pr view <#> --json mergeCommit -q .mergeCommit.oid`) and invoke
       `item-status.py close <N> --reason completed --commit-sha <sha>
       --comment "TDD cycle complete in <sha>"`. The `--commit-sha` flag is
