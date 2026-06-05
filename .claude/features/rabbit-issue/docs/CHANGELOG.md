@@ -12,6 +12,29 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.11.1 (measured-reduction housekeeping wave, closes #814; child of
+  #794):** Verify-or-flag prose reduction of the doc surfaces per
+  coding-rules §6/§2/§7, with zero behavior or contract change. Cut redundant
+  restatement and restated rationale: the provenance validation paragraph's
+  duplicate "validation guarantees…" sentence, the housekeeping flag's
+  boolean-switch restatement of its own table plus the `gh issue edit
+  --add-label` history aside, the safety-invariant queue-agreement rationale,
+  the User-install-backend history clause, and the Purpose duplicate sentence
+  in spec.md; in SKILL.md, the provenance/housekeeping prose that duplicates
+  the spec sections it already points to, the File-Protocol flag re-explanation,
+  the close-without-work rejected-phrase enum (now a pointer to spec
+  §Lifecycle), and the decorative Lifecycle ASCII state diagram (the precise
+  bullets are retained). spec.md 203 → 193, SKILL.md 260 → 243 (−27 doc-surface
+  lines); contract.md was already lean (pure JSON block) and is unchanged
+  except its version. All load-bearing tokens preserved (invariant ids, label
+  schema incl. `housekeeping`, the `filed-by:` enum, code tokens). Added
+  `test-label-schema-pinned.py`: a guard asserting every documented label token
+  survives in spec.md and contract.md and that the provenance enum names both
+  non-human values, so a future reduction cannot silently drop a label token.
+  Four-way version lockstep 1.11.0 → 1.11.1 (feature.json + spec.md + SKILL.md;
+  contract.md 1.9.0 → 1.9.1). SKILL.md changed, so the deployed copy under
+  `.claude/skills/` drifts until the dispatcher republishes (republish_needed).
+
 - **v1.11.0 (first-class `housekeeping` category label, closes #800):** The
   `housekeeping` tag is now first-class. `file-item.py` gains a `--housekeeping`
   boolean flag that appends the `housekeeping` label to the created issue's
