@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (filing a rabbit-managed issue, such as a bug or enhancement). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.8.0
+version: 3.9.0
 owner: rabbit-feature
 deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
@@ -57,30 +57,21 @@ Skill("rabbit-spec-update", args: "<feature-name> <request>")
 rabbit-spec-update reads the current spec, judges open vs. specific, invokes superpowers,
 updates the feature spec, and writes `.rabbit/impl-suggestion-<feature-name>.json`.
 
-**Commit spec changes BEFORE Step 5.** After rabbit-spec-update returns, the
-spec edit it made under the feature directory must be staged and committed so
-the TDD subagent reads a clean committed baseline. This is a computed,
-mode-aware step (standalone vs plugin feature-dir prefix, `git add` vs
-`git add -f`, flat docs/ preferred + docs/spec/ fallback spec-path
-resolution, empty-diff skip), so
-per the SKILL.md Authoring Standard (`spec-rules.md` §4 Script-Backed
-Orchestration) the logic lives in the companion script and the SKILL.md
-invokes it — it is NOT assembled inline here:
+**Commit spec changes BEFORE Step 5.** The spec edit must be staged and
+committed so the TDD subagent reads a clean committed baseline. This is a
+computed, mode-aware step, so per the SKILL.md Authoring Standard
+(`spec-rules.md` §4 Script-Backed Orchestration) the logic lives in the
+companion script — it is NOT assembled inline here:
 
 ```bash
 .claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py \
   commit-spec <feature-name> "<one-line request summary>"
 ```
 
-The companion `commit-spec` subcommand detects the rabbit mode from
-`<repo_root>/.rabbit/.runtime/mode`, resolves the feature directory and spec
-path accordingly, stages with the mode-appropriate `git add` form, skips the
-commit when the staged spec diff is empty, and otherwise commits with the
-message `spec(<feature-name>): update spec for <one-line request summary>`.
-
-This prevents spec edits from falling through uncommitted and ensures the
-TDD subagent reads a clean committed baseline in both standalone and plugin
-modes.
+The `commit-spec` subcommand detects the rabbit mode, resolves the feature
+directory and spec path, stages with the mode-appropriate `git add` form,
+skips the commit when the staged spec diff is empty, and otherwise commits
+with the message `spec(<feature-name>): update spec for <one-line request summary>`.
 
 ### Step 4 — Human Approval
 
@@ -138,11 +129,8 @@ marker is `.rabbit-tdd-autonomous`.
 
 One subagent per feature. Dispatch all in parallel if multiple features.
 
-Shell (assemble the prompt — deterministic). The spec-path resolution
-(flat docs/ preferred, docs/spec/ fallback, mode-aware feature-dir
-prefix) is a computed step, so per the SKILL.md Authoring Standard
-(`spec-rules.md` §4
-Script-Backed Orchestration) it is delegated to the companion
+Shell (assemble the prompt — deterministic). The spec-path resolution is a
+computed step (§4 Script-Backed Orchestration), delegated to the companion
 `resolve-spec-path` subcommand rather than assembled inline:
 
 ```bash
