@@ -33,8 +33,11 @@ frontmatter, the `version` field in `feature.json`, and the source
   dimension. Added spec invariants #7 (the scan script) and #8 (the verbatim
   §4 embed + dimension documentation), extended invariant #6 to name the new
   script under `provides`, and added a new E2E gate
-  `test-check-script-backed.py`. The deployed `.claude/skills/` copy needs a
-  dispatcher republish because the source SKILL.md changed.
+  `test-check-script-backed.py`. The new step was renumbered into the flat
+  numeric sequence (Steps 5/6/7) to satisfy the cross-feature numbered-lists
+  convention, which forbids letter-suffixed step numbers. The deployed
+  `.claude/skills/` copy needs a dispatcher republish because the source
+  SKILL.md changed.
 
 - **v0.2.1 (machine-readable rabbit-decompose INVOKE, issue #822):**
   Declared the rabbit-decompose decomposition-shape reuse in the

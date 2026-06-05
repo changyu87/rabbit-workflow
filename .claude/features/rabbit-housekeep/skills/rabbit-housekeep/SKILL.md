@@ -87,7 +87,7 @@ the scope.
 
 Assess the target's complexity and choose a wave plan:
 
-- **Single-feature tidy** → ONE wave. Run Steps 3-6 inline against that
+- **Single-feature tidy** → ONE wave. Run Steps 3-7 inline against that
   feature.
 - **Multi-feature or repo-wide** → MANY waves. Go to Step 2 (decompose),
   then each per-feature unit is its own wave executed through the governed
@@ -150,7 +150,7 @@ drop redundant sentences, restated rationale, and decorative parentheticals;
 fold load-bearing parentheticals into clauses. History belongs in
 `docs/CHANGELOG.md`, never in the doc surfaces.
 
-### Step 4b — Scan for non-script-backed orchestration, then verify-or-flag
+### Step 5 — Scan for non-script-backed orchestration, then verify-or-flag
 
 This is a SECOND verify-or-flag DIMENSION on the same target, enforcing the
 spec-rules §4 Script-Backed Orchestration standard embedded verbatim above.
@@ -177,7 +177,7 @@ For EACH finding, apply the prove-it-dead-or-flag disposition:
   (move the computed/branching logic into a companion script and invoke it).
 - Do NOT silently rewrite complex orchestration — FLAG it and CONTINUE.
 
-### Step 5 — Execute the per-feature unit through the governed TDD path
+### Step 6 — Execute the per-feature unit through the governed TDD path
 
 Each per-feature reduction is a real edit through the governed TDD cycle, not
 an ad-hoc edit. Invoke the feature-touch path so the change is test-driven:
@@ -193,7 +193,7 @@ The housekeeping test the TDD subagent authors MUST assert BOTH:
   schema fields, key cross-references) are still present; deleting one FAILS
   here.
 
-### Step 6 — Measure AFTER and report
+### Step 7 — Measure AFTER and report
 
 Snapshot again and diff:
 
@@ -210,7 +210,7 @@ and confirmation that load-bearing tokens survived (zero behavior loss).
 
 ## Nesting constraint — do NOT invoke this skill inside an Agent() call
 
-rabbit-housekeep is a SUBAGENT-DISPATCHING skill: Step 5 dispatches the TDD
+rabbit-housekeep is a SUBAGENT-DISPATCHING skill: Step 6 dispatches the TDD
 subagent and Step 2 files sub-issues. Per the SKILL.md authoring standard's
 "No Subagent-Dispatching Skill Inside Agent()" rule, it MUST NOT itself be
 invoked inside an `Agent(...)` call — that creates illegal two-level subagent
