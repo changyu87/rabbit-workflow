@@ -16,6 +16,35 @@ authoritative).
 
 ## Version notes
 
+- **v0.64.0 — 2026-06-04** — Refine Inv 27(d) (research/investigation
+  deliverable + close path) with a SIZE-KEYED findings-disposition rule
+  (closes #835). The deliverable mode is now keyed to the SIZE of the
+  outcome: a SMALL outcome (a short verdict, a couple of paragraphs) is
+  appended directly as a COMMENT on the request issue and closed `completed`
+  via the comment-only `--findings-comment-url` path; a BIG outcome
+  (substantial analysis, mapping tables, a multi-section recommendation) is
+  written as a self-contained committed findings DOC under the feature's
+  `docs/decisions/` or `docs/research/` (or the historical `docs/findings/`)
+  with lifecycle frontmatter, then the issue is closed `completed` with a
+  link to the doc. The standing INVARIANT is made explicit: the request issue
+  ALWAYS ends closed `completed` — findings inline (small) or linked (big),
+  never left open, never with the deliverable buried. A new Inv 27(e) records
+  that findings disposition is distinct from follow-up work: any actionable
+  code/spec change surfaced by an exploration is filed as its OWN separate
+  work issue, never folded into the research item. The committed-doc-vs-
+  separate-issue rationale (version-controlled, owned, deprecation-carrying,
+  in-repo-discoverable) follows the #469 precedent
+  (`docs/decisions/native-workflow-coexistence.md`). Spec-only refinement:
+  no contract `provides`/`reads`/`invokes`/`never` schema change, no script
+  behavior change; the comment-only close gate (`--findings-comment-url`)
+  remains owned by `rabbit-issue` and is NOT edited here. Tests:
+  `test/test-spec-research-shape-invariant.py` extended to assert the
+  size-keyed disposition, the always-closed invariant, and the
+  follow-up-work separation. Versions bumped 0.63.1 → 0.64.0 across
+  feature.json, spec.md, contract.md, and SKILL.md frontmatter. SKILL.md
+  body unchanged (it does not surface research disposition), so no deployed
+  republish is required by this change.
+
 - **v0.63.1 — 2026-06-04** — housekeeping measured-reduction wave (#809,
   child of #794). Consolidated the "Current behaviour" section, which
   restated every invariant's normative content as a parallel bullet list

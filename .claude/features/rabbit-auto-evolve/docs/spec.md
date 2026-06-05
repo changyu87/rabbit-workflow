@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.63.1
+version: 0.64.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1697,23 +1697,41 @@ summary is restated here.
     except the findings document. No TDD cycle, no scope-active marker for
     code edits.
 
-    **(d) Deliverable + close path.** Findings are committed as a document
-    under `docs/findings/<issue-N>-<slug>.md` in the named feature's scope
-    (e.g. `.claude/features/<feature>/docs/findings/478-research-path.md`).
-    No PR is required — a direct commit of the findings doc to the feature's
-    `docs/findings/` subdirectory is sufficient and provides the commit SHA.
-    The item is then closed `completed` referencing that findings commit SHA
-    (via `item-status.py close --reason completed --commit-sha <sha>`, the
-    existing `completed` gate). A valid research item is NEVER closed
-    `not-planned`.
+    **(d) Deliverable + close path — disposition by outcome size.** The
+    deliverable mode is keyed to the SIZE of the findings, and EITHER WAY the
+    request issue ALWAYS ends closed `completed` — findings inline (small) or
+    linked (big), never left open, never with the deliverable buried:
 
-    A future enhancement (DISCOVERED ISSUE, rabbit-issue scope) would let
-    `item-status.py close --reason completed` accept a
-    `--findings-comment-url <url>` alternative to `--commit-sha` so a
-    comment-only findings deliverable needs no committed doc. Until that
-    lands, the committed-doc path above is the canonical research close path
-    and reuses the existing `--commit-sha` gate. `item-status.py` is owned by
-    `rabbit-issue` and is NOT edited by this feature.
+    - SMALL outcome (a short verdict, a couple of paragraphs) → append the
+      findings directly as a COMMENT on the request issue, then close it
+      `completed` (the comment-only path: `item-status.py close --reason
+      completed --findings-comment-url <url>`).
+    - BIG outcome (substantial analysis, mapping tables, a multi-section
+      recommendation) → write a detailed, self-contained findings DOCUMENT
+      under the named feature's scope (`docs/decisions/` or `docs/research/`,
+      or the historical `docs/findings/<issue-N>-<slug>.md`), with lifecycle
+      frontmatter (owner, version, deprecation criterion). No PR is required —
+      a direct commit of the findings doc provides the commit SHA. Then close
+      the request issue `completed` with a clear pointer/link to the doc
+      (`item-status.py close --reason completed --commit-sha <sha>`, the
+      existing `completed` gate).
+
+    A committed doc is preferred for the big case over a separate issue: it is
+    version-controlled, owned, carries a deprecation criterion, and is
+    discoverable in-repo, where a closed issue is an archive with none of
+    those. A valid research item is NEVER closed `not-planned`.
+
+    The comment-only close gate (`--findings-comment-url`) is provided by
+    `item-status.py`, which is owned by `rabbit-issue` and is NOT edited by
+    this feature. Where that gate is not yet available, the committed-doc path
+    (`--commit-sha`) is used for both sizes — the small outcome becomes a
+    short committed doc — but the issue still ends closed `completed`.
+
+    **(e) Findings disposition is distinct from follow-up work.** This shape
+    governs the FINDINGS record only. Any actionable FOLLOW-UP WORK surfaced
+    by an exploration (a real code or spec change) is filed as its OWN work
+    issue, separate from the findings record — never folded into the research
+    item, which closes on the findings alone.
 
     Enforced by `test/test-triage-rules.py` (a "study X" findings issue →
     `decision=research`, never `not-planned`; a normal "implement X" issue
