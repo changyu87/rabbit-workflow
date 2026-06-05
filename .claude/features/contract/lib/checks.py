@@ -444,15 +444,9 @@ def check_numbered_lists(targets: List[str]) -> CheckResult:
 # ---------- check_invariant_monotonic_order ----------------------------------
 
 # Features listed here are skipped by check_invariant_monotonic_order while
-# their spec.md still has out-of-order invariant numbering. Remove an entry
-# once the corresponding renumber cycle lands. The list is now empty:
-#   - contract was pruned in CONTRACT-BACKLOG-31 (single section, monotonic
-#     1..39 after gap-closing renumber).
-#   - rabbit-feature was pruned when PR #162 merged (single Invariants section,
-#     monotonic after Inv 28 relocation).
-#   - rabbit-cage was pruned in RABBIT-CAGE-BACKLOG-30 (continuous monotonic
-#     1..90 across all 7 Invariants sections).
-# The check now fully validates every feature on disk without skips.
+# their spec.md still has out-of-order invariant numbering. Add an entry only
+# for a feature pending a renumber; remove it once that renumber lands. The
+# list is empty — the check fully validates every feature on disk without skips.
 _MONOTONIC_KNOWN_ISSUES = []
 
 _INVARIANTS_HEADING_RE = re.compile(r"^(##|###)\s+Invariants\b")
@@ -696,7 +690,7 @@ def validate_feature(feature_dir: str) -> CheckResult:
     if not data.get("summary", ""):
         err("feature.json: missing summary")
 
-    # `surface` is DEPRECATED (issue #468): `manifest` is the single source of
+    # `surface` is DEPRECATED: `manifest` is the single source of
     # truth for a feature's published artifacts. `surface` is no longer
     # required — its absence is valid. When a feature still carries it (for
     # backwards compatibility during the migration sweep), it MUST remain a

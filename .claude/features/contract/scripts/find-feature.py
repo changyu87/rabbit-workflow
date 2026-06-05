@@ -15,9 +15,9 @@ canonical `rabbit_root` from whichever was supplied.
     (i)  <repo>/.runtime/mode == "plugin"           → candidate rabbit_root=<repo>
     (ii) <repo>/.rabbit/.runtime/mode == "plugin"   → candidate rabbit_root=<repo>/.rabbit
     A candidate is accepted only when <rabbit_root>/.claude/ exists as a
-    directory; otherwise fall through. This closes #311 — a rogue
+    directory; otherwise fall through. This rejects a rogue
     <rabbit_root>/.rabbit/.runtime/mode file (created when a skill wrote
-    a relative .rabbit/* path with CWD=<rabbit_root>) no longer wins
+    a relative .rabbit/* path with CWD=<rabbit_root>) so it cannot win
     over the canonical outer marker.
 
   Standalone scan (no marker matched):
@@ -55,9 +55,9 @@ def _detect_plugin_rabbit_root(repo):
     validated by requiring <rabbit_root>/.claude/ to exist as a directory
     before accepting.
 
-    #311 regression: a rogue inner <repo>/.rabbit/.runtime/mode file (e.g.
-    created when a skill wrote a relative .rabbit/* path with CWD already
-    set to <rabbit_root>) no longer wins, because either:
+    Rogue-inner-marker guard: a rogue inner <repo>/.rabbit/.runtime/mode
+    file (e.g. created when a skill wrote a relative .rabbit/* path with CWD
+    already set to <rabbit_root>) cannot win, because either:
       (i)  the outer <repo>/.runtime/mode is checked first (precedence), or
       (ii) the inner candidate <repo>/.rabbit lacks .claude/ (validation).
     """
@@ -78,7 +78,7 @@ def _detect_plugin_rabbit_root(repo):
         # Validate: candidate must have .claude/ to be a real rabbit_root.
         if os.path.isdir(os.path.join(candidate_root, '.claude')):
             return candidate_root
-        # else: fall through to next candidate (closes #311).
+        # else: fall through to next candidate.
     return None
 
 
