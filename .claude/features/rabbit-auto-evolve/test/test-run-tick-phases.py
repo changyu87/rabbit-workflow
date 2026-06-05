@@ -268,18 +268,30 @@ with tempfile.TemporaryDirectory() as d:
         fail(f"D: persisted state still carries merge_ready: {persisted!r}")
     else:
         ok("D: transient merge_ready dropped from persisted state")
-    # Inv 55: the in-progress label reconcile runs in post-dispatch, AFTER the
-    # post-merge drain (and after persist — persist uses the REAL
-    # update-state.py which does not write the trace, so we anchor on
-    # run-post-merge.py which precedes persist).
-    if "reconcile-labels.py" not in t:
-        fail(f"D: reconcile-labels.py did not run in post-dispatch (Inv 55); "
-             f"trace={t!r}")
-    elif t.index("run-post-merge.py") > t.index("reconcile-labels.py"):
-        fail(f"D: reconcile ran BEFORE the post-merge drain; must run after "
-             f"persist (Inv 55); trace={t!r}")
+    # Inv 55 (#882): the in-progress label reconcile runs TWICE per tick —
+    # add-on-entry at the START of post-dispatch (BEFORE clean-leaks/merge so the
+    # just-dispatched live set gets labelled before merge drains it to
+    # completed), and strip-on-exit AFTER the post-merge drain (after persist).
+    # With ready PRs both calls fire; assert the first reconcile precedes the
+    # cleanup/merge and a second reconcile follows the drain.
+    recon_idxs = [i for i, x in enumerate(t) if x == "reconcile-labels.py"]
+    if len(recon_idxs) < 2:
+        fail(f"D: reconcile-labels.py must run TWICE in post-dispatch "
+             f"(add-on-entry + strip-on-exit, Inv 55/#882); trace={t!r}")
     else:
-        ok("D: reconcile-labels.py ran after the post-merge drain (Inv 55)")
+        ok("D: reconcile-labels.py ran twice (add-on-entry + strip-on-exit)")
+    if "clean-dispatch-leaks.py" in t and recon_idxs and \
+            recon_idxs[0] > t.index("clean-dispatch-leaks.py"):
+        fail(f"D: first reconcile did not run BEFORE clean-leaks/merge "
+             f"(add-on-entry, Inv 55/#882); trace={t!r}")
+    else:
+        ok("D: first reconcile ran BEFORE clean-leaks/merge (add-on-entry)")
+    if "run-post-merge.py" in t and recon_idxs and \
+            recon_idxs[-1] < t.index("run-post-merge.py"):
+        fail(f"D: last reconcile did not run AFTER the post-merge drain "
+             f"(strip-on-exit, Inv 55); trace={t!r}")
+    else:
+        ok("D: last reconcile ran AFTER the post-merge drain (strip-on-exit)")
 
 
 # ---------------------------------------------------------------------------
@@ -443,6 +455,47 @@ with tempfile.TemporaryDirectory() as d:
         fail(f"K: reconcile-labels.py was not attempted; trace={t!r}")
     else:
         ok("K: reconcile-labels.py was attempted (recorded, never fatal)")
+    # #882: the FAILING reconcile is the FIRST step (add-on-entry), so its
+    # non-fatal handling must NOT short-circuit the rest of the segment — the
+    # cleanup/merge drain still ran after it.
+    if "clean-dispatch-leaks.py" not in t:
+        fail(f"K: a failing EARLY reconcile short-circuited the segment "
+             f"(clean-leaks never ran, Inv 55/#882); trace={t!r}")
+    else:
+        ok("K: a failing early reconcile did not short-circuit the segment")
+
+
+# ---------------------------------------------------------------------------
+# L — #882: with NO ready PRs (the single-tick add window), the add-on-entry
+# reconcile STILL fires at the very START of post-dispatch, BEFORE clean-leaks,
+# so a just-dispatched item is labelled even though no merge happens this call.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir, trace = fresh(d)
+    install_real_update_state(script_dir)
+    write_state(state_dir, dict(VALID_STATE, merge_ready=[]))
+    proc = run_segment("post-dispatch", repo_root, script_dir, state_dir, trace)
+    if proc.returncode != 0:
+        fail(f"L: no-ready post-dispatch exit {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    else:
+        ok("L: no-ready post-dispatch exited 0")
+    t = read_trace(trace)
+    recon_idxs = [i for i, x in enumerate(t) if x == "reconcile-labels.py"]
+    if not recon_idxs:
+        fail(f"L: add-on-entry reconcile did not run (Inv 55/#882); trace={t!r}")
+    elif "clean-dispatch-leaks.py" in t and \
+            recon_idxs[0] > t.index("clean-dispatch-leaks.py"):
+        fail(f"L: reconcile did not run BEFORE clean-leaks (add-on-entry "
+             f"must be the FIRST post-dispatch step, Inv 55/#882); trace={t!r}")
+    else:
+        ok("L: add-on-entry reconcile ran FIRST, before clean-leaks (#882)")
+    # The strip-on-exit reconcile still runs after persist (two calls total).
+    if len(recon_idxs) < 2:
+        fail(f"L: strip-on-exit reconcile missing on the no-ready path "
+             f"(Inv 55); trace={t!r}")
+    else:
+        ok("L: strip-on-exit reconcile also ran after persist (#882)")
 
 
 # ---------------------------------------------------------------------------
