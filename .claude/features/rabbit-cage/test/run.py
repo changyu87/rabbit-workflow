@@ -98,6 +98,7 @@ SUITES = [
     "test-spec-housekeeping-682-dead-prose-removed.py",
     "test-invariants-contiguous-737.py",
     "test-scope-guard-cage-owned-root.py",
+    "test-install-e2e-ready-to-run.py",
 ]
 
 

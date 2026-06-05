@@ -12,6 +12,23 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.64.0 (feat #849: end-to-end plugin-install readiness test):** Added Inv
+  42 and a new e2e test `test/test-install-e2e-ready-to-run.py` that runs the
+  REAL user-facing installer `install.main()` (its real `--src/--target` CLI —
+  not mocks, not the `run_publish_loop` dev-test path) into a throwaway
+  `tempfile.TemporaryDirectory` sandbox sourced from the clean repo tree, then
+  asserts the install is structurally complete AND wired ("ready to run short of
+  launching Claude") without launching Claude: top-level closure present;
+  `.claude/settings.json` present with every hook command across all four wired
+  events (PreToolUse / Stop / SessionStart / UserPromptSubmit) resolving (via
+  the install-rewritten `$RABBIT_ROOT`, Inv 19) to an EXISTING, EXECUTABLE file;
+  every shipped feature dir carrying a valid `feature.json`; deployed
+  agent/skill/command/hook copies byte-matching their source (deployed-copies-
+  match), excepting installer-rewritten settings files; the `rabbit-project`
+  command scaffold + `.claude/agents/` deployed; and no dangling references
+  across the settings hook commands and every installer manifest destination.
+  Test-only addition wired into `test/run.py`; no deployed surface changed.
+
 - **v5.63.0 (fix #855: rabbit-cage's scope marker authorizes its owned repo-root bootstrap files):**
   rabbit-cage owns three repo-root bootstrap files — `install.sh`, `install.py`,
   and the root `README.md` (`install.py` + `README.md` are `publish_file`
