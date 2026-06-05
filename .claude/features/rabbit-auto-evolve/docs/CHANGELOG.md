@@ -16,6 +16,20 @@ authoritative).
 
 ## Version notes
 
+- **v0.63.1 — 2026-06-04** — housekeeping measured-reduction wave (#809,
+  child of #794). Consolidated the "Current behaviour" section, which
+  restated every invariant's normative content as a parallel bullet list
+  with "(design doc §N)" citations, into a one-paragraph pointer to the
+  numbered Invariants (the normative source). Pure prose reduction: zero
+  behavior/contract loss, no invariant retired, numbering still contiguous,
+  every load-bearing token preserved. spec.md dropped from 3431 to 3367
+  lines, clearing the advisory deep-slim ceiling of 3384 enforced (soft)
+  by `test-spec-housekeeping-751-deep-slim-consolidated.py`. The
+  decomposition-lifecycle cross-reference (Inv 53) that lived only in the
+  removed bullet was re-homed into the Inv 26 shape-3 (`decomposition`)
+  table row where it is normatively accurate. Four-way version lockstep
+  bumped 0.63.0 → 0.63.1; deployed SKILL.md republished from source.
+
 - **v0.63.0 — 2026-06-04** — fetch-before-close fix for the Inv 6
   close-after-merge step (#802, `merge-prs.py` 1.5.0 → 1.5.1). `gh pr merge
   --squash` creates the squash commit on the REMOTE `dev` only, so the local
