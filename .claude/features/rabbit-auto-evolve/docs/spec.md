@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.61.0
+version: 0.62.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -3269,7 +3269,10 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     `.claude/features/<name>/` PATH reference; bare-name mentions do NOT count,
     see (a.2)), OR the body/title carries an explicit cross-scope phrase
     (case-insensitive: `repo-wide`, `every feature`, `across all features`,
-    `across every feature`, `all features`, `rename across`); else `false`.
+    `across every feature`, `all features`, `rename across`), OR the body/title
+    carries an explicit cross-feature scope DECLARATION (case-insensitive:
+    `Cross-feature (A + B)`, `Cross-feature: A, B`, `spans <feature> and
+    <feature>`) outside any parent-reference line; else `false`.
     The record also carries `cross_scope_features` — the sorted distinct Inv 26
     feature set (same value as `features`) — so the dispatcher sees WHICH
     features the item spans. Both fields appear on every decision; a phrase-only
@@ -3296,10 +3299,16 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     ONLY EDIT-TARGET references: the `feature:` label PLUS every distinct
     `.claude/features/<name>/` PATH literally referenced in the body. Bare-name
     matches (Inv 26 method-(c)) are EXCLUDED here, though they remain in
-    `features` / `cross_scope_features` for Stage-2 shaping. So a one-feature
-    sub-issue whose prose merely MENTIONS other feature NAMES yields
-    `cross_scope: false`; a body listing 2 or more distinct feature EDIT-PATHS
-    still yields `cross_scope: true`.
+    `features` / `cross_scope_features` for Stage-2 shaping. A
+    `.claude/features/<name>/` PATH on a READ-ONLY line is ALSO EXCLUDED:
+    a line carrying a read-only verb (case-insensitive: `verify against`,
+    `confirm against`, `read-only`, `do not edit`, `don't edit`, `refer to`,
+    `see`) names a CONFIRMATION target, not an EDIT target — e.g. `verify
+    against .claude/features/contract/lib/runtime.py` — so it MUST NOT inflate
+    the cross-scope EDIT-PATH count. So a one-feature sub-issue whose prose
+    merely MENTIONS other feature NAMES, or merely verifies-against another
+    feature's path, yields `cross_scope: false`; a body listing 2 or more
+    distinct feature EDIT-PATHS still yields `cross_scope: true`.
 
     **(b) plan-batch routes `cross_scope` items distinctly.** A `cross_scope`
     item MUST NOT be shaped `parallel-per-feature`, even at feature-dir count
@@ -3319,9 +3328,12 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
     for a body referencing 2 or more `.claude/features/<name>/` paths and for a
     `repo-wide` phrase; `false` for an ordinary single-feature body, for a
     decomposition sub-issue whose only cross-scope phrase is on a
-    parent-reference line (a.1), and for a sub-issue that merely MENTIONS other
-    feature NAMES with no second EDIT-PATH (a.2) — so plan-batch shapes those
-    `parallel-per-feature`; a genuine `cross_scope` item is shaped
+    parent-reference line (a.1), for a sub-issue that merely MENTIONS other
+    feature NAMES with no second EDIT-PATH (a.2), and for a sub-issue whose only
+    second-feature path is a read-only `verify against <path>` mention
+    (a.2); `true` for an explicit `Cross-feature (A + B)` / `spans X and Y`
+    DECLARATION even with no second edit-path — so plan-batch shapes the
+    `false` ones `parallel-per-feature`; a genuine `cross_scope` item is shaped
     `multi-subagent-barrier` / `decomposition`, never `parallel-per-feature`,
     and listed under `cross_scope_items`) and
     `test/test-spec-cross-scope-invariant.py` (the spec carries Inv 51,

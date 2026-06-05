@@ -42,14 +42,13 @@ text alongside the literal substring above when non-empty.
 `<repo_root>` defaults to `os.getcwd()`; overridable via the
 `RABBIT_AUTO_EVOLVE_REPO_ROOT` env var for tests.
 
-Ownership migration (v0.7.5): the current `contract.lib.runtime`
-`emit_auto_evolve_banner` implementation still inlines the three pre-existing
-variants (aborted / restart-needed / default) and does NOT yet call this
-script. A follow-up cycle against the `contract` feature will refactor it to
-invoke `banner-status.py` instead. Until that follow-up lands, the `running`
-variant exists in this script but is NOT surfaced at SessionStart.
+Ownership: `contract.lib.runtime.emit_auto_evolve_banner` is a pure subprocess
+dispatcher — it delegates both line-1 and line-2 content to this script and
+maps the JSON result to the SessionStart banner. This script is therefore the
+single owner of all line-2 variants (including `running`), every one of which
+is surfaced at SessionStart.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.

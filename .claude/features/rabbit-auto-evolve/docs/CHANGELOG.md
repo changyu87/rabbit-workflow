@@ -7,11 +7,51 @@ deprecation_criterion: when the rabbit-auto-evolve feature is retired or its cha
 # rabbit-auto-evolve — Changelog
 
 Version-keyed change log for the rabbit-auto-evolve feature. The version here
-tracks the spec version declared in `docs/spec.md` frontmatter and the
-`version` field in `feature.json` (lockstep); `docs/contract.md` carries its
-own version.
+tracks a single four-way lockstep version that the contract repo-gate's
+feature-shape check ENFORCES as equal across `feature.json`, `docs/spec.md`
+frontmatter, `docs/contract.md` frontmatter, and `skills/rabbit-auto-evolve/
+SKILL.md` frontmatter; `docs/contract.md` participates in that lockstep
+equality rather than carrying an independent version (the gate is
+authoritative).
 
 ## Version notes
+
+- **v0.62.0 — 2026-06-04** — housekeeping cycle bundling three small
+  rabbit-auto-evolve-scoped corrections (#797, #798, #799), all strictly within
+  this feature.
+  - **#797 (triage cross_scope accuracy, `triage-issue.py` 1.9.0 → 1.10.0)** —
+    fixed two observed Inv 51 detection bugs. FALSE NEGATIVE: an explicit
+    cross-feature scope DECLARATION (`Cross-feature (A + B)`, `Cross-feature:
+    A, B`, `spans <feature> and <feature>`) now sets `cross_scope: true` even
+    when the body names no second `.claude/features/<name>/` edit-path and
+    carries no repo-wide phrase (new `_CROSS_FEATURE_DECL` signal, checked
+    outside parent-reference lines). FALSE POSITIVE: a `.claude/features/<name>/`
+    path on a READ-ONLY line (a line carrying `verify against`, `confirm
+    against`, `read-only`, `do not edit`, `refer to`, `see`) is now stripped
+    before the edit-target feature set is computed, so a `verify against
+    .claude/features/contract/lib/runtime.py` confirmation no longer inflates
+    the cross-scope count. `test/test-cross-scope.py` extended with three
+    regression cases (true `Cross-feature (A + B)` declaration, true `spans X
+    and Y` declaration, false `verify against <path>` read-only mention); the
+    Inv 51 spec text and `test/test-spec-cross-scope-invariant.py` updated to
+    match.
+  - **#798 (stale `banner-status.py` docstring, 1.1.0 → 1.2.0)** — removed the
+    obsolete `Ownership migration (v0.7.5)` paragraph claiming
+    `contract.lib.runtime.emit_auto_evolve_banner` still inlines the variants
+    and does NOT yet call this script. That migration has landed:
+    `emit_auto_evolve_banner` is now a pure subprocess dispatcher delegating
+    line1/line2 to `banner-status.py`. The docstring now states that ownership
+    reality. Pure docstring cleanup (read-only confirmation against the
+    contract-scope file; no contract edit).
+  - **#799 (CHANGELOG version-equality note)** — corrected the misleading note
+    claiming `docs/contract.md` "carries its own version"; the contract
+    repo-gate's feature-shape check ENFORCES four-way version equality
+    (`feature.json` == `docs/spec.md` == `docs/contract.md` == `SKILL.md`), so
+    `docs/contract.md` participates in that lockstep rather than versioning
+    independently.
+  - Four-way version lockstep 0.61.0 → 0.62.0 (feature.json + docs/spec.md +
+    docs/contract.md + SKILL.md frontmatter); dispatcher republishes the
+    deployed SKILL copy in-branch.
 
 - **v0.61.0 — 2026-06-04** — SessionStart banner agreement for the
   post-`on`/pre-`start` restart-pending window (#793, piece 2 of 2; piece 1

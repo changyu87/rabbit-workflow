@@ -8,8 +8,11 @@ created_at, blocked_by, planning_note. The `cross_scope` boolean (Inv 51 /
 issue #433) is True when the issue body implicates more than one feature
 EDIT-PATH (the label PLUS body `.claude/features/<name>/` PATH references span
 >= 2 dirs; bare feature-NAME mentions in prose are EXCLUDED per Inv 51(a.2) /
-issue #669) OR a cross-scope phrase ("repo-wide", "across all features",
-"rename across", ...) appears OUTSIDE a parent-reference line; it routes a
+issue #669, and READ-ONLY "verify against <path>" path mentions are EXCLUDED
+per issue #797) OR a cross-scope phrase ("repo-wide", "across all features",
+"rename across", ...) OR an explicit cross-feature DECLARATION ("Cross-feature
+(A + B)", "spans <feature> and <feature>"; issue #797) appears OUTSIDE a
+parent-reference line; it routes a
 body-spanning sweep to plan-batch.py's barrier/decomposition lane instead of
 ordinary parallel-per-feature single-feature work. The parent-reference
 exclusion (Inv 51(a.1) / issue #667) drops parent-pointer lines ("Sub-issue of
@@ -72,7 +75,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.9.0
+Version: 1.10.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -366,6 +369,56 @@ def _strip_parent_ref_lines(body):
     return "\n".join(kept)
 
 
+# Read-only path-reference lines (Inv 51(a.2) / issue #797). A
+# `.claude/features/<name>/` path appearing on a line that carries a read-only
+# verb names a CONFIRMATION target, not an EDIT target: the issue reads or
+# verifies against that path but does NOT write under it (e.g. "verify against
+# .claude/features/contract/lib/runtime.py that the migration landed"). Such a
+# path must NOT inflate the cross-scope EDIT-PATH count, so it is stripped
+# before the edit-target feature set is computed. Detected by a read-only verb
+# anywhere on the line (whole-phrase, case-insensitive).
+_READONLY_PATH_LINE = re.compile(
+    r"verify against"
+    r"|confirm against"
+    r"|read-only"
+    r"|do not edit"
+    r"|don't edit"
+    r"|refer to"
+    r"|\bsee\b",
+    re.IGNORECASE,
+)
+
+
+def _strip_readonly_path_lines(body):
+    """Return `body` with every read-only path-reference line removed (Inv
+    51(a.2) / issue #797).
+
+    A line matching `_READONLY_PATH_LINE` names a read-only confirmation target,
+    not an edit target, so any `.claude/features/<name>/` path on it is dropped
+    before the cross-scope EDIT-PATH feature set is computed.
+    """
+    lines = (body or "").splitlines()
+    kept = [ln for ln in lines if not _READONLY_PATH_LINE.search(ln)]
+    return "\n".join(kept)
+
+
+# Explicit cross-feature scope DECLARATIONS (Inv 51(b) / issue #797). A body
+# may declare a cross-feature scope in prose without naming two
+# `.claude/features/<name>/` edit-paths and without a repo-wide phrase — e.g. a
+# `## Scope` heading reading "Cross-feature (rabbit-auto-evolve + contract)" or
+# "Cross-feature: A, B", or a sentence "this work spans A and B". Such an
+# explicit declaration MUST set cross_scope true (it was a false NEGATIVE
+# before #797). Matched case-insensitive:
+#   - "cross-feature" / "cross feature" followed (within a short window) by a
+#     "<name> + <name>" or "<name>, <name>" enumeration; OR
+#   - "spans <feature> and <feature>".
+_CROSS_FEATURE_DECL = re.compile(
+    r"cross[ -]feature\b[^\n]{0,40}?[\w.-]+\s*(?:\+|,|and)\s*[\w.-]+"
+    r"|\bspans\s+[\w.-]+\s+and\s+[\w.-]+",
+    re.IGNORECASE,
+)
+
+
 def _edit_target_features(feature_label, body):
     """EDIT-TARGET feature set for the cross-scope signal (Inv 51(a.2)).
 
@@ -375,13 +428,18 @@ def _edit_target_features(feature_label, body):
     feature-NAME mentions in descriptive prose (the Inv 26 method-(c) whole-word
     detection) are EXCLUDED: a phrase like "use rabbit-issue vocabulary" names a
     vocabulary, not an edit target, and MUST NOT inflate the cross-scope count
-    (issue #669). This is intentionally NARROWER than `_feature_set`, which keeps
-    bare names for Stage-2 dispatch shaping.
+    (issue #669). READ-ONLY path references — a `.claude/features/<name>/` path
+    on a line that carries a read-only verb ("verify against", "see", "refer
+    to", "read-only", "confirm against", "do not edit") — are ALSO EXCLUDED
+    (issue #797): a "verify against .claude/features/contract/lib/runtime.py"
+    mention is a confirmation target, not an edit target, and MUST NOT inflate
+    the cross-scope count. This is intentionally NARROWER than `_feature_set`,
+    which keeps bare names for Stage-2 dispatch shaping.
     """
     feats = set()
     if feature_label:
         feats.add(feature_label)
-    for m in _FEATURE_PATH.findall(body or ""):
+    for m in _FEATURE_PATH.findall(_strip_readonly_path_lines(body)):
         feats.add(m)
     return feats
 
@@ -389,29 +447,38 @@ def _edit_target_features(feature_label, body):
 def _cross_scope(feature_label, title, body):
     """True iff the issue implicates more than one feature (Inv 51).
 
-    Two independent signals (either suffices):
+    Three independent signals (any suffices):
       (a) the EDIT-TARGET feature set (the label PLUS every distinct body
           `.claude/features/<name>/` PATH reference — dirs the issue will write
-          under) spans >= 2 feature dirs (Inv 51(a.2) / issue #669); OR
+          under) spans >= 2 feature dirs (Inv 51(a.2) / issue #669, #797); OR
       (b) an explicit cross-scope phrase (repo-wide, across all features,
           rename across, ...) appears in the title OR in the body OUTSIDE any
-          parent-reference line (Inv 51(a.1) / issue #667).
+          parent-reference line (Inv 51(a.1) / issue #667); OR
+      (c) an explicit cross-feature scope DECLARATION ("Cross-feature (A + B)",
+          "Cross-feature: A, B", "spans <feature> and <feature>") appears in the
+          title OR body OUTSIDE any parent-reference line (Inv 51(b) / #797).
 
     Signal (a) counts EDIT-PATH references only — bare feature-NAME mentions in
-    prose are excluded (issue #669) so a single-feature sub-issue whose text
-    merely names another feature (e.g. "mirrors rabbit-spec") is NOT mis-flagged
-    cross_scope. The phrase signal (b) excludes parent-reference lines so a
-    sub-issue that merely QUOTES its parent's "repo-wide" framing on a
-    parent-pointer line is NOT mis-flagged (Inv 51(a.1) / issue #667). A body
-    whose OWN scope enumerates >= 2 distinct feature EDIT-PATHS still yields True.
+    prose are excluded (issue #669) and READ-ONLY path references on a "verify
+    against <path>" / "see <path>" line are excluded (issue #797), so a
+    single-feature sub-issue whose text merely names or verifies-against another
+    feature is NOT mis-flagged cross_scope. The phrase signal (b) and the
+    declaration signal (c) exclude parent-reference lines so a sub-issue that
+    merely QUOTES its parent's framing on a parent-pointer line is NOT
+    mis-flagged (Inv 51(a.1) / issue #667). A body whose OWN scope enumerates
+    >= 2 distinct feature EDIT-PATHS, or explicitly declares a cross-feature
+    scope, still yields True.
 
     Default False when at most one edit-target feature dir is implicated and no
-    cross-scope phrase appears outside parent-reference lines.
+    cross-scope phrase or cross-feature declaration appears outside
+    parent-reference lines.
     """
     if len(_edit_target_features(feature_label, body)) >= 2:
         return True
-    phrase_text = f"{title or ''}\n{_strip_parent_ref_lines(body)}"
-    return bool(_CROSS_SCOPE_PHRASE.search(phrase_text))
+    own_scope_text = f"{title or ''}\n{_strip_parent_ref_lines(body)}"
+    if _CROSS_SCOPE_PHRASE.search(own_scope_text):
+        return True
+    return bool(_CROSS_FEATURE_DECL.search(own_scope_text))
 
 
 # Research/investigation classification (issue #478) ------------------------
