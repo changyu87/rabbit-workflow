@@ -100,6 +100,7 @@ SUITES = [
     "test-invariants-contiguous-737.py",
     "test-scope-guard-cage-owned-root.py",
     "test-install-e2e-ready-to-run.py",
+    "test-install-ships-skill-referenced-scripts.py",
     "test-install-closure-sources-exist.py",
     "test-install-no-drift-on-first-run.py",
     "test-show-mode-command.py",

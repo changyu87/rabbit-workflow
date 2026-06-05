@@ -214,6 +214,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
     "rabbit-decompose": [
         "feature.json",
         "skills/rabbit-decompose/SKILL.md",
+        "scripts/handoff-scaffold.py",
     ],
     "tdd-subagent": [
         "feature.json",

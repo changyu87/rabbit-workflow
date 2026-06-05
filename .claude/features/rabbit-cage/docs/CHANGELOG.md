@@ -12,6 +12,19 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.68.1 (fix #897: fresh install omitted a SKILL-referenced script):**
+  `#890` added `.claude/features/rabbit-decompose/scripts/handoff-scaffold.py`
+  and referenced it from rabbit-decompose's `SKILL.md` Step 4, but
+  `install.py`'s `FEATURE_INCLUDES['rabbit-decompose']` was not updated, so a
+  fresh `curl … | bash` install did NOT ship the script and Step 4 failed at
+  runtime with `No such file or directory`. Fix: added
+  `"scripts/handoff-scaffold.py"` to `FEATURE_INCLUDES['rabbit-decompose']`
+  (Inv 24 closure). The existing `test-feature-includes-scripts-closure.py`
+  (t14) already caught the gap statically; this change additionally adds an
+  end-to-end guard `test/test-install-ships-skill-referenced-scripts.py` that
+  runs the REAL `install.main()` and asserts every SKILL-referenced backing
+  script actually lands on disk AND is executable in the fresh install
+  (derived from the deployed SKILL bodies, not from `FEATURE_INCLUDES`).
 - **v5.68.0 (feat #888: deterministic `/show-mode` reporter):** Adds
   `scripts/show-mode.py`, a single-invocation, zero-AI reporter that prints
   whether rabbit is running in `plugin` or `standalone` mode plus the key
