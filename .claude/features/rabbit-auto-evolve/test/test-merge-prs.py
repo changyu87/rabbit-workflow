@@ -569,12 +569,11 @@ def _state_path(state_dir):
     return os.path.join(state_dir, "auto-evolve-state.json")
 
 
-def _seed_state(state_dir, pending=None):
+def _seed_state(state_dir, pending=None, dispatch_journal=None):
     state = {
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "updated_at": "2026-06-03T00:00:00Z",
         "queue": [],
-        "in_flight": [],
         "last_merged_sha": None,
         "last_tagged_version": None,
         "consecutive_failures": 0,
@@ -583,6 +582,8 @@ def _seed_state(state_dir, pending=None):
     }
     if pending is not None:
         state["pending_post_merge"] = pending
+    if dispatch_journal is not None:
+        state["dispatch_journal"] = dispatch_journal
     with open(_state_path(state_dir), "w") as f:
         json.dump(state, f)
 
@@ -866,6 +867,52 @@ with tempfile.TemporaryDirectory() as td:
             fail(f"fetch-before-close: close_failed non-empty "
                  f"{r.get('close_failed')!r} (the fetch should have made the "
                  f"close succeed)")
+
+
+# ===========================================================================
+# Issue #838 — `--record-pending` promotes a merged PR's journal entry to
+# `completed` (Inv 54) in the SAME read-modify-write that appends to
+# pending_post_merge. Every issue the PR closes (parsed Closes/Fixes/Resolves)
+# whose journal entry exists is marked `completed` with its `pr` recorded.
+# ===========================================================================
+
+# --- (I) a merge marks the closed issue's journal entry completed -----------
+with tempfile.TemporaryDirectory() as td:
+    body = "Fixes #815\n"
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        pr_body=body, merge_sha="deadbee",
+    )
+    state_dir = os.path.join(td, "state")
+    os.makedirs(state_dir)
+    journal = {"tick-1": {"started_at": "2026-06-04T12:00:00Z", "entries": [
+        {"issue": 815, "feature": "rabbit-housekeep",
+         "shape": "parallel-per-feature", "branch": "feat/815-x",
+         "worktree": None, "pr": None, "status": "dispatched"},
+        {"issue": 999, "feature": "other", "shape": "parallel-per-feature",
+         "branch": None, "worktree": None, "pr": None, "status": "dispatched"},
+    ]}}
+    _seed_state(state_dir, pending=[], dispatch_journal=journal)
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    proc = _run(cwd, env, "820", "--record-pending")
+    if proc.returncode != 0:
+        fail(f"journal-complete: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    with open(_state_path(state_dir)) as f:
+        state = json.load(f)
+    entries = {e["issue"]: e
+               for e in state["dispatch_journal"]["tick-1"]["entries"]}
+    if entries[815].get("status") != "completed":
+        fail(f"journal-complete: issue 815 entry status "
+             f"{entries[815].get('status')!r} != 'completed'")
+    elif entries[815].get("pr") != 820:
+        fail(f"journal-complete: issue 815 entry pr "
+             f"{entries[815].get('pr')!r} != 820")
+    elif entries[999].get("status") != "dispatched":
+        fail(f"journal-complete: unrelated issue 999 was wrongly mutated to "
+             f"{entries[999].get('status')!r}")
+    else:
+        ok("journal-complete: merge marks the closed issue's entry completed")
 
 
 sys.exit(FAIL)

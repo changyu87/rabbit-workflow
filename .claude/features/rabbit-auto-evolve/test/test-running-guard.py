@@ -97,7 +97,7 @@ def write_state(repo_root, age_secs=0):
     spath = os.path.join(repo_root, STATE_REL)
     os.makedirs(os.path.dirname(spath), exist_ok=True)
     with open(spath, "w") as f:
-        json.dump({"schema_version": "1.3.0"}, f)
+        json.dump({"schema_version": "1.4.0"}, f)
     if age_secs:
         old = time.time() - age_secs
         os.utime(spath, (old, old))

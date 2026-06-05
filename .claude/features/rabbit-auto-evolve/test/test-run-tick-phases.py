@@ -127,10 +127,9 @@ def fresh(d, overrides=None):
 
 
 VALID_STATE = {
-    "schema_version": "1.3.0",
+    "schema_version": "1.4.0",
     "updated_at": "2026-06-03T00:00:00Z",
     "queue": [],
-    "in_flight": [],
     "last_merged_sha": None,
     "last_tagged_version": None,
     "consecutive_failures": 0,
@@ -296,7 +295,7 @@ with tempfile.TemporaryDirectory() as d:
     # remains present and valid (re-read -> validate -> atomic write).
     with open(os.path.join(state_dir, "auto-evolve-state.json")) as f:
         repersisted = json.load(f)
-    if repersisted.get("schema_version") != "1.3.0":
+    if repersisted.get("schema_version") != "1.4.0":
         fail(f"E: phase 10 persist did not re-persist a valid state: {repersisted!r}")
     else:
         ok("E: phase 10 persist re-persisted a valid state")

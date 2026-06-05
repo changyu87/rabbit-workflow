@@ -48,7 +48,11 @@ release-bump.py / cleanup-branches.py). The state dir resolves via
 RABBIT_AUTO_EVOLVE_STATE_DIR when set, else `<cwd>/.rabbit` (matching
 update-state.py).
 
-Version: 1.2.0
+Issue #838 (Inv 54): the same step that clears pending_post_merge also prunes
+fully-drained (all-completed/aborted) ticks from the dispatch_journal, bounding
+its on-disk growth.
+
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -91,10 +95,35 @@ def _read_pending():
     return [n for n in pending if isinstance(n, int) and not isinstance(n, bool)]
 
 
+def _prune_journal(state):
+    """Drop every dispatch_journal tick whose entries are ALL completed/aborted
+    (issue #838, Inv 54), bounding the journal's on-disk growth — the
+    designed-deprecation end-of-life. A tick with ANY still-`dispatched`/
+    `pr_open` entry is KEPT. A tick with no entries is also dropped (nothing to
+    resume). Mutates `state` in place; no-op when there is no journal."""
+    journal = state.get("dispatch_journal")
+    if not isinstance(journal, dict):
+        return
+    terminal = {"completed", "aborted"}
+    survivors = {}
+    for tick_id, tick in journal.items():
+        if not isinstance(tick, dict):
+            continue
+        entries = tick.get("entries")
+        if not isinstance(entries, list) or not entries:
+            continue  # empty tick: nothing to resume, drop it
+        if all(isinstance(e, dict) and e.get("status") in terminal
+               for e in entries):
+            continue  # fully drained: drop it
+        survivors[tick_id] = tick
+    state["dispatch_journal"] = survivors
+
+
 def _clear_pending():
-    """Set pending_post_merge to [] in the state file (atomic temp+rename).
-    Best-effort: a missing/malformed state file or write error is reported on
-    stderr but does not fail the run (phases already completed)."""
+    """Set pending_post_merge to [] in the state file (atomic temp+rename) and
+    prune fully-drained dispatch_journal ticks (issue #838, Inv 54) in the same
+    write. Best-effort: a missing/malformed state file or write error is
+    reported on stderr but does not fail the run (phases already completed)."""
     path = _state_path()
     try:
         with open(path) as f:
@@ -105,6 +134,7 @@ def _clear_pending():
         )
         return
     state["pending_post_merge"] = []
+    _prune_journal(state)
     tmp = path + ".tmp"
     try:
         with open(tmp, "w") as f:

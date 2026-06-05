@@ -36,7 +36,11 @@ never in the exit code.
 RABBIT_AUTO_EVOLVE_REPO_ROOT env var for tests (matching
 check-preconditions.py and banner-status.py).
 
-Version: 1.0.0
+Issue #838 (Inv 54): `in_flight` is DERIVED as a read-only projection of the
+`dispatch_journal` (the union of dispatched/pr_open issue numbers), falling
+back to a literal `in_flight` array when no journal is present.
+
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -95,15 +99,41 @@ def _markers_present(repo_root: str) -> list[str]:
     )
 
 
+def _derive_in_flight(state: dict) -> list:
+    """The in-flight issue set (Inv 54). DERIVED as a read-only projection of
+    the dispatch_journal — the sorted union of issue numbers whose journal
+    status is `dispatched` or `pr_open` (NOT completed/aborted) across every
+    tracked tick. Falls back to the literal `in_flight` array when no journal
+    is present, so the surface is unchanged for consumers after `in_flight`
+    was retired as a required field."""
+    journal = state.get("dispatch_journal")
+    if isinstance(journal, dict) and journal:
+        live = {"dispatched", "pr_open"}
+        issues = set()
+        for tick in journal.values():
+            if not isinstance(tick, dict):
+                continue
+            for e in tick.get("entries", []):
+                if not isinstance(e, dict):
+                    continue
+                issue = e.get("issue")
+                if e.get("status") in live and isinstance(issue, int) \
+                        and not isinstance(issue, bool):
+                    issues.add(issue)
+        return sorted(issues)
+    literal = state.get("in_flight")
+    if isinstance(literal, list):
+        return literal
+    return []
+
+
 def build_report(repo_root: str) -> dict:
     state, state_file = _read_state(repo_root)
 
     queue = state.get("queue")
     queue_length = len(queue) if isinstance(queue, list) else 0
 
-    in_flight = state.get("in_flight")
-    if not isinstance(in_flight, list):
-        in_flight = []
+    in_flight = _derive_in_flight(state)
 
     last_merged_sha = state.get("last_merged_sha")
     if not isinstance(last_merged_sha, str):

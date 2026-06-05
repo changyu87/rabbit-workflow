@@ -16,6 +16,32 @@ authoritative).
 
 ## Version notes
 
+- **v0.65.0 — 2026-06-04** — Add a rabbit-native per-tick dispatch journal so
+  a resumed tick skips completed subagents and re-dispatches only the
+  unfinished (Inv 54; closes #838; implements the journal/resume research
+  spike #836 verdict CAN). The state schema gains an OPTIONAL
+  `dispatch_journal` object keyed by tick-id (additive `schema_version` bump
+  1.3.0 → 1.4.0); each tick records every dispatched subagent (issue, feature,
+  shape, status, branch, worktree, pr) with a fixed status enum
+  `{dispatched, pr_open, completed, aborted}`. New `record-dispatch.py` is the
+  script-owned WRITE point (append/update-in-place per (tick-id, issue)), and
+  `resume-dispatch.py` is the script-owned READ/RESUME point (partitions the
+  planned `selection_order` into dispatch vs skip — completed/pr_open SKIP,
+  dispatched-no-PR/aborted/absent RE-dispatch). `merge-prs.py --record-pending`
+  promotes a merged PR's closed-issue journal entries to `completed` in the
+  same read-modify-write; `run-post-merge.py` prunes fully-drained
+  (all-completed/aborted) ticks where it clears `pending_post_merge`, bounding
+  on-disk growth. The vestigial `in_flight` field (declared/validated but never
+  populated/consulted) is RETIRED from the schema's required set — still
+  accepted as optional for backward compatibility — and `status-report.py` now
+  DERIVES its `in_flight` output as a read-only projection of the journal
+  (dispatched/pr_open), falling back to a literal array when no journal exists.
+  `pending_post_merge` and `clean-dispatch-leaks.py` are unchanged; the journal
+  stays entirely in rabbit's governance tier (does NOT move the loop lifecycle
+  onto native Workflow — #469 COEXIST stands). Script bumps: update-state.py
+  1.4.0 → 1.5.0, merge-prs.py 1.5.1 → 1.6.0, run-post-merge.py 1.2.0 → 1.3.0,
+  status-report.py 1.0.0 → 1.1.0, start-loop.py 1.6.0 → 1.7.0;
+  record-dispatch.py / resume-dispatch.py 1.0.0 (new).
 - **v0.64.0 — 2026-06-04** — Refine Inv 27(d) (research/investigation
   deliverable + close path) with a SIZE-KEYED findings-disposition rule
   (closes #835). The deliverable mode is now keyed to the SIZE of the

@@ -68,7 +68,12 @@ status-report.py), so it lagged perpetually; phase 11's deterministic
 re-read (update-state.py, Inv 40) now captures it off disk — it is never
 dispatcher hand-set. A run with no merge leaves `last_merged_sha` untouched.
 
-Version: 1.5.1
+Issue #838 (Inv 54): the SAME `--record-pending` read-modify-write also
+promotes the dispatch_journal entry of every issue a merged PR closed to
+`completed` (recording its PR number) — the journal's `completed` transition,
+no new write site.
+
+Version: 1.6.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -111,13 +116,39 @@ def _state_dir():
     return os.path.join(os.getcwd(), ".rabbit")
 
 
-def _record_pending(merged_prs, last_merged_sha=None):
+def _promote_journal_completed(state, completed_map):
+    """Mark each issue's dispatch_journal entry `completed` and record its `pr`
+    (issue #838, Inv 54) — the SAME read-modify-write that appends to
+    pending_post_merge. `completed_map` is {issue: pr} for every issue the
+    merged PRs closed. An issue with no journal entry is silently skipped (the
+    journal is a local accelerant, not a source of truth). Mutates `state` in
+    place; no-op when there is no journal."""
+    if not completed_map:
+        return
+    journal = state.get("dispatch_journal")
+    if not isinstance(journal, dict):
+        return
+    for tick in journal.values():
+        if not isinstance(tick, dict):
+            continue
+        for e in tick.get("entries", []):
+            if not isinstance(e, dict):
+                continue
+            issue = e.get("issue")
+            if issue in completed_map:
+                e["status"] = "completed"
+                e["pr"] = completed_map[issue]
+
+
+def _record_pending(merged_prs, last_merged_sha=None, completed_map=None):
     """Append `merged_prs` to pending_post_merge in the state file (issue
-    #499) and, when a merge happened, record `last_merged_sha` (issue #564).
-    Read-modify-write, de-duplicated, order-preserving, atomic via
-    temp+rename. Best-effort: a missing/malformed state file or write error
-    emits a stderr warning and never fails the merge run (the per-PR result
-    array on stdout is the authoritative outcome).
+    #499), record `last_merged_sha` when a merge happened (issue #564), and
+    promote the dispatch_journal entries of issues those merges closed to
+    `completed` (issue #838, Inv 54) — all in ONE read-modify-write.
+    De-duplicated, order-preserving, atomic via temp+rename. Best-effort: a
+    missing/malformed state file or write error emits a stderr warning and
+    never fails the merge run (the per-PR result array on stdout is the
+    authoritative outcome).
 
     `last_merged_sha` (the merge commit SHA of the last successfully-merged
     PR) is written ONLY when truthy: a run with no merge leaves the field
@@ -146,6 +177,7 @@ def _record_pending(merged_prs, last_merged_sha=None):
     state["pending_post_merge"] = combined
     if last_merged_sha:
         state["last_merged_sha"] = last_merged_sha
+    _promote_journal_completed(state, completed_map or {})
     tmp_path = state_path + ".tmp"
     try:
         with open(tmp_path, "w") as f:
@@ -349,7 +381,14 @@ def main():
         # #564). Empty when no merge happened or the SHA fetch failed → the
         # state field is then left untouched.
         last_sha = merged_rows[-1].get("merge_sha") if merged_rows else None
-        _record_pending(merged, last_merged_sha=last_sha)
+        # {issue: pr} for every issue a merged PR closed (issue #838, Inv 54)
+        # so its dispatch_journal entry is promoted to `completed`.
+        completed_map = {}
+        for r in merged_rows:
+            for issue in r.get("closed_issues", []):
+                completed_map[issue] = r["pr"]
+        _record_pending(merged, last_merged_sha=last_sha,
+                        completed_map=completed_map)
 
     # `merge_sha` is an internal handoff field (issue #564), not part of the
     # documented per-PR result JSON contract — strip it before emitting.
