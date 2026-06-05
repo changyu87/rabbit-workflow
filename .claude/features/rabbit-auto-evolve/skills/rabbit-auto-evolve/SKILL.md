@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.72.0
+version: 0.72.1
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -615,14 +615,17 @@ Phase 5 (`plan`) emits TWO decoupled outputs the dispatcher consumes in
 phase 6:
 
 - `selection_order` — **Stage 1, dispatch-shape blind.** The order to work
-  items in, by the composite key `(priority desc, contract_touch desc,
-  issue asc)`: priority is PRIMARY, the contract-touch barrier
-  is the SECONDARY tiebreak (contract items lead WITHIN a priority tier,
-  never across tiers), issue asc is the final tiebreak. The same key drives
-  `barrier_first`, so the two agree. It NEVER consults dispatch shape,
-  feature count, or "knows how": a high-priority cross-feature item is
-  selected before a low-priority single-feature item, and a critical
-  non-contract item beats a low-priority contract item.
+  items in, by the composite key `(computed_score desc, contract_touch desc,
+  issue asc)`: the loop's `computed_score` (Inv 44) is PRIMARY, the
+  contract-touch barrier is the SECONDARY tiebreak (contract items lead WITHIN
+  a score tier, never across tiers), issue asc is the final tiebreak. The
+  filer `priority:` label is ONE weighted input folded into `computed_score`,
+  not the standalone primary key — so a higher-scoring `low` item can sort
+  ahead of a `medium` whose other observable signals are weaker (Inv 44 by
+  design). The same key drives `barrier_first`, so the two agree. It NEVER
+  consults dispatch shape, feature count, or "knows how": a higher-scoring
+  cross-feature item is selected before a lower-scoring single-feature item,
+  and a higher-scoring non-contract item beats a lower-scoring contract item.
 - `dispatch_shapes` — **Stage 2, item-shaped.** A map of issue-number-string
   → one of exactly THREE shapes. Per item, pick the FIRST that fits:
 

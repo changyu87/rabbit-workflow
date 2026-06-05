@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.72.0
+version: 0.72.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -507,8 +507,8 @@ summary is restated here.
       processed sequentially).
 
    `selection_order` (Stage 1) and `barrier_first` (Stage 2) agree on
-   ordering: both derive from priority-desc ranking, so a contract-touch
-   item never leads `barrier_first` unless it also leads `selection_order`.
+   ordering: both derive from the same composite key, so a contract item never
+   leads `barrier_first` unless it also leads `selection_order`.
 
    **Research items** (the 4th dispatch shape) are sorted into
    `selection_order` by the same composite key and get
@@ -1559,23 +1559,23 @@ summary is restated here.
     contaminate the first.
 
     **(a) Stage 1 work selection is dispatch-shape blind.** The next item(s)
-    to work are selected purely by priority label (`critical` > `high` >
-    `medium` > `low`; no-priority last), logical readiness (barriers cleared,
-    dependencies merged, no open blocking sub-issue), and issue age / queue
-    position. Stage 1 MUST NOT consider dispatch shape, feature count, or
-    whether the loop "knows how" to do the item. `plan-batch.py` emits the
-    Stage-1 result as `selection_order`, ordered by the composite key
-    `(priority desc, contract_touch desc, issue asc)` over work-only items
-   : priority is PRIMARY, the contract-touch barrier is the
-    SECONDARY tiebreak (contract items lead WITHIN a priority tier, never
-    across tiers), and issue number is the final stable tiebreak. Because
-    `barrier_first` (Inv 4) is derived from the same composite key,
-    `selection_order` and `barrier_first` always agree on ordering. The
-    `contract_touch` flag is a barrier/conflict property, NOT a dispatch
-    shape, so consulting it does not violate shape-blindness. A
-    high-priority cross-feature item is therefore
-    selected BEFORE a low-priority single-feature item, even though the
-    latter is the loop's performance preference.
+    to work are selected by the loop's `computed_score` (Inv 44 — a blend in
+    which the filer `priority:` label `critical` > `high` > `medium` > `low`
+    (no-priority last) is ONE weighted input among several), logical readiness,
+    and issue age / queue position. Stage 1 MUST NOT consider dispatch shape,
+    feature count, or whether the loop "knows how" to do the item.
+    `plan-batch.py` emits the Stage-1 result as `selection_order`, ordered by
+    the composite key `(computed_score desc, contract_touch desc, issue asc)`
+    over work-only items: `computed_score` (Inv 44) is PRIMARY, the
+    contract-touch barrier is the SECONDARY tiebreak (contract items lead
+    WITHIN a score tier, never across tiers), and issue number is the final
+    stable tiebreak. The filer `priority:` label is folded INTO
+    `computed_score`, not a standalone primary key — so a higher-scoring `low`
+    item can sort ahead of a `medium` whose other observable signals are weaker
+    (Inv 44 by design). Because `barrier_first` (Inv 4) derives from the same
+    composite key, `selection_order` and `barrier_first` always agree. The
+    `contract_touch` flag is a barrier/conflict property, NOT a dispatch shape,
+    so consulting it does not violate shape-blindness.
 
     **(b) Stage 2 picks among exactly THREE shapes in preference order.** For
     each selected work item, `plan-batch.py` emits `dispatch_shapes`
