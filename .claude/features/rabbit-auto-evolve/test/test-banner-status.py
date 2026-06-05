@@ -19,7 +19,14 @@ Line-2 precedence (first match wins):
   aborted (highest)  → "loop aborted on safety violation"   icon, red
   restart-needed     → "resume after restart"               icon, yellow
   running (NEW)      → "loop in progress"                   icon, yellow
-  none (default)     → "paste: /rabbit-auto-evolve start"   icon, yellow
+  none, state ABSENT → "auto-evolve configured — restart … start"  ⏸, yellow (#793)
+  none, state PRESENT→ "paste: /rabbit-auto-evolve start"   ▶,  yellow
+
+The two `none` sub-cases (#793) distinguish the post-`on`/pre-`start` window
+(`.rabbit/auto-evolve-state.json` absent — only start-loop.py creates it) from
+a started-then-idle loop (state file present). The restart-pending line2 is
+emitted VERBATIM the same as `contract.lib.runtime.emit_auto_evolve_stop_line`
+so the SessionStart banner and the Stop line agree.
 
 The script honors RABBIT_AUTO_EVOLVE_REPO_ROOT for test isolation.
 """
@@ -40,6 +47,17 @@ ACTIVE = ".rabbit-auto-evolve-active"
 RUNNING = ".rabbit-auto-evolve-running"
 RESTART = ".rabbit-auto-evolve-restart-needed"
 ABORTED = ".rabbit-auto-evolve-aborted"
+
+# #793: the never-started signal — absence of this file means the loop was
+# configured by `on` but never started (only start-loop.py creates it).
+STATE_FILE = ".rabbit/auto-evolve-state.json"
+
+# #793: the restart-pending line2, VERBATIM the same as the Stop line in
+# contract.lib.runtime so SessionStart and Stop agree.
+RESTART_PENDING_TEXT = (
+    "auto-evolve configured — restart Claude Code, then run "
+    "/rabbit-auto-evolve start"
+)
 
 
 pass_n = 0
@@ -72,6 +90,13 @@ def _run(repo_root: Path) -> subprocess.CompletedProcess:
 def _seed(td: Path, names: list[str], content: str = "session") -> None:
     for n in names:
         (td / n).write_text(content)
+
+
+def _seed_state(td: Path) -> None:
+    """Create .rabbit/auto-evolve-state.json — the loop-started signal (#793)."""
+    state_path = td / STATE_FILE
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text("{}")
 
 
 def _parse(r: subprocess.CompletedProcess) -> dict:
@@ -115,25 +140,53 @@ with tempfile.TemporaryDirectory() as td_str:
         else:
             fail_t("absent", f"unexpected payload: {data!r}")
 
-# --- t4: active only → default line2 contains 'paste: /rabbit-auto-evolve start' ---
+# --- t4a (#793): active only, state file ABSENT → restart-pending line2 ---
+# Post-`on`/pre-`start` window: configured but never started. Must emit the
+# restart-pending line2 VERBATIM the same as the symmetric Stop line.
 with tempfile.TemporaryDirectory() as td_str:
     td = Path(td_str)
     _seed(td, [ACTIVE])
     r = _run(td)
     if r.returncode != 0:
-        fail_t("default", f"exit {r.returncode}; stderr={r.stderr!r}")
+        fail_t("restart-pending", f"exit {r.returncode}; stderr={r.stderr!r}")
     else:
         data = _parse(r)
+        line2 = data.get("line2") or {}
         if not data.get("active"):
-            fail_t("default", f"active not true: {data!r}")
+            fail_t("restart-pending", f"active not true: {data!r}")
         elif "AUTONOMOUS-EVOLVE MODE ACTIVE" not in (data.get("line1") or {}).get("text", ""):
-            fail_t("default", f"line1 missing expected text: {data.get('line1')!r}")
-        elif "paste: /rabbit-auto-evolve start" not in (data.get("line2") or {}).get("text", ""):
-            fail_t("default", f"line2 missing 'paste: ...': {data.get('line2')!r}")
-        elif (data.get("line2") or {}).get("color") != "yellow":
-            fail_t("default", f"line2 color != yellow: {data.get('line2')!r}")
+            fail_t("restart-pending", f"line1 missing expected text: {data.get('line1')!r}")
+        elif line2.get("text") != RESTART_PENDING_TEXT:
+            fail_t("restart-pending", f"line2.text != restart-pending exact wording: {line2!r}")
+        elif line2.get("icon") != "⏸":
+            fail_t("restart-pending", f"line2.icon != ⏸: {line2!r}")
+        elif line2.get("color") != "yellow":
+            fail_t("restart-pending", f"line2 color != yellow: {line2!r}")
         else:
-            ok("default", "line2 contains 'paste: /rabbit-auto-evolve start'")
+            ok("restart-pending", "state-file-absent → exact restart-pending line2 (⏸, yellow)")
+
+# --- t4b (#793): active only, state file PRESENT → existing idle 'paste' line ---
+# Loop has been started at least once; retain the unchanged idle/active line.
+with tempfile.TemporaryDirectory() as td_str:
+    td = Path(td_str)
+    _seed(td, [ACTIVE])
+    _seed_state(td)
+    r = _run(td)
+    if r.returncode != 0:
+        fail_t("idle", f"exit {r.returncode}; stderr={r.stderr!r}")
+    else:
+        data = _parse(r)
+        line2 = data.get("line2") or {}
+        if not data.get("active"):
+            fail_t("idle", f"active not true: {data!r}")
+        elif "paste: /rabbit-auto-evolve start" not in line2.get("text", ""):
+            fail_t("idle", f"line2 missing 'paste: ...': {line2!r}")
+        elif line2.get("text") == RESTART_PENDING_TEXT:
+            fail_t("idle", f"line2 must NOT be restart-pending when state present: {line2!r}")
+        elif line2.get("color") != "yellow":
+            fail_t("idle", f"line2 color != yellow: {line2!r}")
+        else:
+            ok("idle", "state-file-present → idle 'paste: /rabbit-auto-evolve start' line")
 
 # --- t5: active + running → line2 contains 'loop in progress' ---
 with tempfile.TemporaryDirectory() as td_str:
@@ -221,6 +274,22 @@ with tempfile.TemporaryDirectory() as td_str:
         fail_t("prec-aborted>restart", f"line2 should NOT mention restart, got: {text!r}")
     else:
         ok("prec-aborted>restart", "aborted wins over restart-needed")
+
+# --- t12 (#793): a priority marker wins even when the state file is absent ---
+# The never-started distinction only applies to the lowest-priority `none`
+# branch; the four priority markers must still pre-empt restart-pending.
+with tempfile.TemporaryDirectory() as td_str:
+    td = Path(td_str)
+    _seed(td, [ACTIVE, RUNNING])  # state file deliberately absent
+    r = _run(td)
+    data = _parse(r)
+    line2 = data.get("line2") or {}
+    if "loop in progress" not in line2.get("text", ""):
+        fail_t("prec-running>restart-pending", f"running should win, got: {line2!r}")
+    elif line2.get("text") == RESTART_PENDING_TEXT:
+        fail_t("prec-running>restart-pending", f"must NOT be restart-pending: {line2!r}")
+    else:
+        ok("prec-running>restart-pending", "running marker wins over restart-pending (state absent)")
 
 # --- t11: exit code is always 0 ---
 with tempfile.TemporaryDirectory() as td_str:

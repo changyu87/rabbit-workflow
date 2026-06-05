@@ -1,7 +1,7 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.60.1",
+  "version": "0.61.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
@@ -40,6 +40,5 @@
     ]
   },
   "configuration": [],
-  "prompts": [],
-  "spec_no_change_reason": "decouple-only refactor: no spec/SKILL prose change; frontmatter patch bump 0.60.0->0.60.1 for lockstep equality (#786)"
+  "prompts": []
 }

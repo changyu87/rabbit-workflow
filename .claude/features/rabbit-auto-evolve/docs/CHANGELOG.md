@@ -13,6 +13,20 @@ own version.
 
 ## Version notes
 
+- **v0.61.0 — 2026-06-04** — SessionStart banner agreement for the
+  post-`on`/pre-`start` restart-pending window (#793, piece 2 of 2; piece 1
+  fixed the symmetric Stop line in `contract`). `banner-status.py` now splits
+  its lowest-priority `none` branch (Inv 22) by the presence of
+  `.rabbit/auto-evolve-state.json`: ABSENT (loop configured by `on` but never
+  started — only `start-loop.py` creates that file) emits the restart-pending
+  line2 `auto-evolve configured — restart Claude Code, then run /rabbit-auto-evolve start`
+  (icon ⏸, color yellow), VERBATIM the same as the Stop line so SessionStart
+  and Stop agree; PRESENT retains the existing `paste: /rabbit-auto-evolve start`
+  idle line. The four priority markers (aborted > restart-needed > running)
+  still win regardless of the state file. Detection is a single
+  `os.path.isfile` probe — no git, no `gh`. `test/test-banner-status.py`
+  extended to cover both `none` sub-cases and priority-wins-when-state-absent.
+
 - **v0.60.1 — 2026-06-03** — decouple from the dead central
   `iterate_configurables_*` runtime functions ahead of their removal (#786,
   subagent 1 of the 2-feature barrier; contract deletes the functions in
