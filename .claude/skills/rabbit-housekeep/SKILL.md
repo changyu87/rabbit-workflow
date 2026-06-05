@@ -1,7 +1,7 @@
 ---
 name: rabbit-housekeep
-description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole repo — in complexity-sized waves. Each wave proves-it-dead-or-flags every claim, measures before/after line counts, mandates ACTUAL removal (not rewording), and preserves named load-bearing tokens. Cross-feature or repo-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or the repo, remove dead prose, scrub historical burden, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "run a reduction wave", "clean up dead prose", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
-version: 0.2.1
+description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole repo — in complexity-sized waves. Each wave proves-it-dead-or-flags every claim, measures before/after line counts, mandates ACTUAL removal (not rewording), and preserves named load-bearing tokens. Also enforces the spec-rules §4 Script-Backed Orchestration standard as a script-tier verify-or-flag dimension: it scans SKILL/agent/command bodies for non-script-backed orchestration steps and flags each. Cross-feature or repo-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or the repo, remove dead prose, scrub historical burden, check that orchestration is script-backed, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "run a reduction wave", "clean up dead prose", "check script-backed orchestration", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
+version: 0.3.0
 owner: rabbit-workflow team
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
 ---
@@ -51,6 +51,24 @@ sub-issue and the pass CONTINUES. One uncertain sentence never stalls a
 feature's cleanup.
 <!-- END VERBATIM coding-rules.md §6 -->
 
+## The script-backed-orchestration standard (embedded verbatim)
+
+Housekeeping also enforces the spec-rules §4 **Script-Backed Orchestration**
+standard, embedded here VERBATIM per the SKILL.md authoring standard's Verbatim
+Policy Embedding rule; canonical source `@.claude/features/policy/spec-rules.md`.
+Do not paraphrase it — apply it.
+
+<!-- BEGIN VERBATIM spec-rules.md §4 Script-Backed Orchestration -->
+- **Script-Backed Orchestration** (derives from §1 Tool-Choice Tier). An
+  orchestration step that involves a computed value or mode-aware
+  branching MUST live in a companion script under `scripts/`; the SKILL.md
+  invokes the script and the script owns the logic. SKILL.md bodies MUST
+  NOT carry bash blocks with runtime placeholders (e.g. `<feature-name>`,
+  `<branch-name>`) that the model assembles at invocation time — that is
+  prompt-tier, not script-tier. Exception: read-only informational
+  commands (e.g. `git log --oneline -5`) are acceptable inline.
+<!-- END VERBATIM spec-rules.md §4 Script-Backed Orchestration -->
+
 ## Inputs
 
 Args format: `<target>`
@@ -69,7 +87,7 @@ the scope.
 
 Assess the target's complexity and choose a wave plan:
 
-- **Single-feature tidy** → ONE wave. Run Steps 3-6 inline against that
+- **Single-feature tidy** → ONE wave. Run Steps 3-7 inline against that
   feature.
 - **Multi-feature or repo-wide** → MANY waves. Go to Step 2 (decompose),
   then each per-feature unit is its own wave executed through the governed
@@ -132,7 +150,34 @@ drop redundant sentences, restated rationale, and decorative parentheticals;
 fold load-bearing parentheticals into clauses. History belongs in
 `docs/CHANGELOG.md`, never in the doc surfaces.
 
-### Step 5 — Execute the per-feature unit through the governed TDD path
+### Step 5 — Scan for non-script-backed orchestration, then verify-or-flag
+
+This is a SECOND verify-or-flag DIMENSION on the same target, enforcing the
+spec-rules §4 Script-Backed Orchestration standard embedded verbatim above.
+Detection is SCRIPT-tier (the check enforces the same tier it embodies):
+
+```bash
+python3 .claude/features/rabbit-housekeep/scripts/check-script-backed.py \
+  scan .claude/features/<name>
+```
+
+The script scans the feature's `skills/*/SKILL.md`, `agents/*.md`, and
+`commands/*.md` bodies and emits JSON `{"findings": [...], "count": N}`. Each
+finding names the `file`, `line`, `reason` (`runtime-placeholder`,
+`computed-value`, or `mode-aware-branching`), and `snippet`. Read-only
+informational commands inline (e.g. `git log --oneline -5`) and trivial
+one-liners are NOT flagged (the §4 read-only-informational exception).
+
+For EACH finding, apply the prove-it-dead-or-flag disposition:
+
+- FLAG it as a `housekeeping`-tagged sub-issue (the Step 2 filing shape)
+  naming the file, the offending step, and the conversion target — move the
+  logic into `scripts/`; the SKILL/command invokes it.
+- A straightforward conversion MAY be done inline within this governed touch
+  (move the computed/branching logic into a companion script and invoke it).
+- Do NOT silently rewrite complex orchestration — FLAG it and CONTINUE.
+
+### Step 6 — Execute the per-feature unit through the governed TDD path
 
 Each per-feature reduction is a real edit through the governed TDD cycle, not
 an ad-hoc edit. Invoke the feature-touch path so the change is test-driven:
@@ -148,7 +193,7 @@ The housekeeping test the TDD subagent authors MUST assert BOTH:
   schema fields, key cross-references) are still present; deleting one FAILS
   here.
 
-### Step 6 — Measure AFTER and report
+### Step 7 — Measure AFTER and report
 
 Snapshot again and diff:
 
@@ -165,7 +210,7 @@ and confirmation that load-bearing tokens survived (zero behavior loss).
 
 ## Nesting constraint — do NOT invoke this skill inside an Agent() call
 
-rabbit-housekeep is a SUBAGENT-DISPATCHING skill: Step 5 dispatches the TDD
+rabbit-housekeep is a SUBAGENT-DISPATCHING skill: Step 6 dispatches the TDD
 subagent and Step 2 files sub-issues. Per the SKILL.md authoring standard's
 "No Subagent-Dispatching Skill Inside Agent()" rule, it MUST NOT itself be
 invoked inside an `Agent(...)` call — that creates illegal two-level subagent
