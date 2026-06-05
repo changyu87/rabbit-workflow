@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.69.0
+version: 0.70.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -310,7 +310,11 @@ mutation). The deterministic walk runs in two segments around Phase 6:
    ```
    python3 .claude/features/rabbit-auto-evolve/scripts/run-tick-phases.py post-dispatch
    ```
-   Phase 7 FIRST runs `clean-dispatch-leaks.py` (Inv 43, Inv 44) to
+   The segment FIRST runs `reconcile-labels.py` (Inv 55, add-on-entry) BEFORE
+   any merge, so the `dispatched`/`pr_open` live set Phase 6 just recorded gets
+   the GitHub `in-progress` label added while still live — even a single-tick
+   item (dispatch → PR → merge in one tick) is labelled before merge drains it.
+   Phase 7 then runs `clean-dispatch-leaks.py` (Inv 43, Inv 44) to
    deterministically clean KNOWN worktree-dispatch leak-class noise from the
    main tree BEFORE the merge. As its first step it restores a leaked main-HEAD
    branch switch (Inv 44): when a subagent's `git checkout -B <branch>
@@ -331,11 +335,13 @@ mutation). The deterministic walk runs in two segments around Phase 6:
    transient `merge_ready` key, and pipes the object through `update-state.py`.
    The dispatcher does NOT read `update-state.py` source or the state schema to
    assemble state — the persist is deterministic and identical to the headless
-   tick's. AFTER persist, the segment runs `reconcile-labels.py` (Inv 55) to
-   mirror the journal-derived live set onto the GitHub `in-progress` label
-   (add to newly-live issues, strip from issues no longer live); it is
-   script-owned (NOT a dispatcher hand-step) and a reconcile failure never
-   fails the tick.
+   tick's. AFTER persist, the segment runs `reconcile-labels.py` (Inv 55) a
+   SECOND time (strip-on-exit) to mirror the journal-derived live set onto the
+   GitHub `in-progress` label, primarily STRIPPING it from issues that left the
+   live set during this segment (merged → `completed`); the early add-on-entry
+   call and this strip-on-exit call together keep the label truthful. Both are
+   script-owned (NOT a dispatcher hand-step) and a reconcile failure never fails
+   the tick.
 4. **Phase 12 (`schedule`)** — run `schedule-decision.py` (Inv 33) and schedule
    the immediate-refire when work remains (see "Scheduling" below).
 
@@ -353,9 +359,9 @@ session walks them via the two `run-tick-phases.py` segments plus Phase 6.
 | 4 | `triage`          | `.claude/features/rabbit-auto-evolve/scripts/triage-batch.py` (wraps `.claude/features/rabbit-auto-evolve/scripts/triage-issue.py` once per queued issue) |
 | 5 | `plan`            | `.claude/features/rabbit-auto-evolve/scripts/plan-batch.py` |
 | 6 | `dispatch`        | (rabbit-feature-touch — TDD subagent dispatch) |
-| 7 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/clean-dispatch-leaks.py` (Inv 43, Inv 44 — deterministic pre-merge cleanup of known worktree-dispatch leaks: restores a leaked main-HEAD branch switch to `dev` FIRST, then cleans file-leak classes; refuses non-zero on unexpected dirt or un-pushed leaked-branch work) → `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
+| 7 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py` (Inv 55 — add-on-entry: labels the just-dispatched live set BEFORE merge drains it) → `.claude/features/rabbit-auto-evolve/scripts/clean-dispatch-leaks.py` (Inv 43, Inv 44 — deterministic pre-merge cleanup of known worktree-dispatch leaks: restores a leaked main-HEAD branch switch to `dev` FIRST, then cleans file-leak classes; refuses non-zero on unexpected dirt or un-pushed leaked-branch work) → `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
 | 8-10 | `post-merge`    | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — deterministically runs release (8) → cleanup (9) → catch-up (10) for every PR in `pending_post_merge`, then clears it (Inv 30) — see "Post-merge phases (Inv 30)" below |
-|11 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json`, then `.claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py` mirrors the live dispatch set onto the GitHub `in-progress` label (Inv 55 — add/strip; ensures the label via rabbit-issue `ensure_labels`; never fails the tick) |
+|11 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json`, then `.claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py` runs AGAIN (Inv 55 — strip-on-exit: strips the `in-progress` label from issues that left the live set after merge; pairs with the phase-7 add-on-entry call; add/strip via rabbit-issue `ensure_labels`; never fails the tick) |
 |12 | `schedule`        | `.claude/features/rabbit-auto-evolve/scripts/schedule-decision.py` — decide immediate-refire vs idle (Inv 33); on `immediate-refire` the DISPATCHER schedules the one-shot. See "Scheduling (Inv 32–33)" below |
 
 ### Post-merge phases (Inv 30)
