@@ -1,6 +1,6 @@
 ---
 feature: rabbit-meta
-version: 0.7.3
+version: 0.7.4
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when a native Claude Code workflow contract mechanism supersedes rabbit's per-project plugin model
@@ -13,10 +13,8 @@ status: active
 
 Owns plugin-mode machinery for rabbit's per-project install: mode detection
 at session start, and CLAUDE.md and README.md generators for the vendored
-`.rabbit/` install. Tier-1 drift protection deliverables live here;
-Tier-2 surfaces (rabbit-feature-new path-glob
-enhancement, scope-guard plugin-mode logic) live in their respective owning
-features.
+`.rabbit/` install. Surfaces owned by other features are listed under "What
+this feature does NOT define".
 
 ## Surface
 
@@ -34,9 +32,7 @@ features.
 This feature opts into the strict contiguous-invariant-numbering tier by
 declaring `"contiguous_invariants": true` in its `feature.json`. The
 invariants below MUST be numbered contiguously 1..N with no gaps; the contract
-suite's Inv 30 strict tier enforces this. Use
-`scripts/reflow-invariants.py` (owned by `contract`) to renumber if a gap is
-ever introduced.
+suite's Inv 30 strict tier enforces this.
 
 1. `lib/mode_detection.py` MUST export `detect_mode(cwd: str) -> str` returning the literal string `"plugin"` or `"standalone"`.
     (a) **Plugin signature.** Returns `"plugin"` iff ALL of: `os.path.basename(cwd) == ".rabbit"` AND the parent directory `os.path.dirname(cwd)` exists AND that parent contains at least one entry whose name is not `".rabbit"`. Otherwise returns `"standalone"`.
@@ -56,7 +52,7 @@ ever introduced.
 
 ## Tech Stack
 
-Python 3 stdlib only. No external dependencies (matches the Python-only invariants in `contract` and `rabbit-cage`).
+Python 3 stdlib only. No external dependencies.
 
 ## What this feature does NOT define
 

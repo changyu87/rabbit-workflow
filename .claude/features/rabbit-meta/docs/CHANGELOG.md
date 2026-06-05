@@ -12,6 +12,30 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v0.7.4 (housekeeping — measured reduction wave, #815, under #794):**
+  Measured verify-or-flag reduction pass on `docs/spec.md` (73 → 69 lines,
+  −4), cutting redundant restatement and a decorative parenthetical with zero
+  behaviour or contract loss. Removals, each resolved by a deterministic check
+  first: (1) the Purpose paragraph's Tier-1/Tier-2 boundary restatement — the
+  "What this feature does NOT define" section owns that boundary
+  authoritatively, and every named owner there (`rabbit-feature`,
+  `rabbit-cage`, `contract`, `rabbit-spec`) was confirmed live by inspecting
+  each owning feature; Purpose now points to that section instead of
+  duplicating it; (2) the Invariants preamble's reflow-recourse sentence
+  naming `scripts/reflow-invariants.py` — recoverable from the `contract`
+  feature's own spec, so a decorative cross-reference here; the load-bearing
+  opt-in claim (the `feature.json` flag and the Inv 30 strict-tier
+  enforcement) was kept verbatim; (3) the Tech Stack decorative parenthetical
+  "(matches the Python-only invariants in `contract` and `rabbit-cage`)". The
+  lib modules, templates, contract JSON, and the existing test suite were
+  inspected and left unchanged — already lean after the v0.7.1/v0.7.2 rounds.
+  New E2E guard `test/test-spec-lean.py` pins the reduction outcome (removed
+  prose stays removed; load-bearing scope-exclusion owners and the
+  contiguous-invariant opt-in claim survive); wired into `test/run.py`. No
+  invariants renumbered; no behaviour changed. `feature.json` and
+  `docs/spec.md` versions 0.7.3 → 0.7.4, `docs/contract.md` 0.2.3 → 0.2.4
+  (own track).
+
 - **v0.7.3 (opt into contiguous_invariants strict tier, #741, #724
   follow-up):** Declared `"contiguous_invariants": true` at the top level of
   `feature.json`, opting rabbit-meta into the strict contiguous-numbering tier
