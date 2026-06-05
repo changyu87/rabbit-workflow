@@ -43,6 +43,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import shutil
 import sys
 import tarfile
@@ -386,6 +387,62 @@ def resolve_latest_release(repo: str) -> str | None:
     return tag.strip()
 
 
+def _parse_version(ref: str | None) -> tuple[int, ...] | None:
+    """Inv 27 downgrade guard (#850): extract a comparable semver tuple from a
+    ref string, or None when the ref carries no semver.
+
+    Recognizes a leading `vX.Y.Z` / `X.Y.Z` (optional `v`, any extra suffix
+    ignored) anywhere in the ref. A dead release-branch ref like
+    `release/1.12.0` yields `(1, 12, 0)`; `v9.0.26` yields `(9, 0, 26)`. Refs
+    with no embedded semver (a bare branch name, a SHA, `dev`) return None — the
+    caller treats an unparseable side as "cannot compare" and does NOT block.
+    """
+    if not ref:
+        return None
+    m = re.search(r"(\d+)\.(\d+)\.(\d+)", ref)
+    if not m:
+        return None
+    return tuple(int(g) for g in m.groups())
+
+
+def _is_strictly_newer(candidate: str | None, installed: str | None) -> bool:
+    """Inv 27 downgrade guard (#850): True only when `candidate` parses to a
+    semver STRICTLY greater than `installed`'s semver.
+
+    Returns False when the candidate is older-or-equal. When EITHER side carries
+    no parseable semver the comparison is indeterminate; this returns True
+    (do-not-block) so the guard never refuses an upgrade it merely failed to
+    parse — the guard's job is to catch the proven-older case, not to gate on
+    ambiguity.
+    """
+    cand = _parse_version(candidate)
+    inst = _parse_version(installed)
+    if cand is None or inst is None:
+        return True
+    return cand > inst
+
+
+def _installed_version_for_update(args: argparse.Namespace) -> str | None:
+    """Inv 27 downgrade guard (#850): read the currently-installed ref from the
+    update target's `.version`, for the strictly-newer comparison.
+
+    The target is `args.target` when supplied explicitly, otherwise the
+    inferred install root (the directory containing the running install.py,
+    matching Inv 22g (b)). Returns the trimmed `.version` content, or None when
+    it is absent/unreadable/empty (in which case the guard cannot compare and
+    does NOT block).
+    """
+    target = args.target
+    if target is None:
+        target = Path(__file__).resolve().parent
+    version_file = Path(target) / ".version"
+    try:
+        text = version_file.read_text().strip()
+    except OSError:
+        return None
+    return text or None
+
+
 def run_publish_loop(target_root: str) -> int:
     """Dev-test helper: enumerate every <target_root>/.claude/features/*/feature.json
     and invoke each MANIFEST API via contract.lib.publish. Continues past
@@ -541,6 +598,24 @@ def main() -> int:
                         f"falling back to {HARDCODED_STABLE_DEFAULT}",
                         file=sys.stderr,
                     )
+                # Inv 27 downgrade guard (#850): on the DYNAMIC-DEFAULT channel
+                # the update ACTION must track the update-CHECK and never go
+                # BACKWARDS. Compare the resolved latest against the currently
+                # installed ref (<target>/.version); if it is not strictly
+                # newer, do NOT fetch or rewrite anything — report up-to-date and
+                # exit 0. Explicit overrides (--version/--ref/--channel dev/
+                # RABBIT_REF) bypass this guard above: an explicit operator
+                # choice — even an intentional downgrade — is honored verbatim.
+                installed_ref = _installed_version_for_update(args)
+                if installed_ref is not None and not _is_strictly_newer(
+                    ref, installed_ref
+                ):
+                    print(
+                        f"already up to date: installed {installed_ref} is "
+                        f"current; latest release {ref} is not newer "
+                        f"(no downgrade)"
+                    )
+                    return 0
             url = f"https://github.com/{repo}/archive/{ref}.tar.gz"
             try:
                 fetched = fetch_upstream(repo, ref, Path(fetch_tmp.name))

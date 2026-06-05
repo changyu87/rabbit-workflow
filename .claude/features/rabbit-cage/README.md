@@ -116,13 +116,20 @@ git add .rabbit/
 git commit -m "chore(rabbit): update to latest"
 ```
 
+The default `--update` resolves GitHub's latest published release — the same
+release the update-check banner advertises — and installs it. It NEVER
+downgrades: when the latest release is not newer than what is installed,
+`--update` reports "already up to date" and changes nothing. To install a
+specific ref regardless (including an intentional downgrade), name it
+explicitly with `--version <ref>` (or `--ref <ref>`).
+
 ### Pin to a specific version
 
 Setting `RABBIT_REF` short-circuits the dynamic latest-release lookup and installs the exact ref you name:
 
 ```bash
-RABBIT_REF=v9.0.26     curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
-RABBIT_REF=release/1.0 curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
+RABBIT_REF=v9.0.26 curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
+RABBIT_REF=v1.14.0 curl -sSL https://raw.githubusercontent.com/changyu87/rabbit-workflow/dev/install.sh | bash
 ```
 
 `RABBIT_REF` accepts any branch, tag, or commit SHA. `RABBIT_REPO` overrides the default repo.
