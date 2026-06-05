@@ -29,6 +29,7 @@ SUITES = [
     "test-repo-permissions-retired.py",
     "test-RABBIT-CAGE-BUG-104-hook-path-format.py",
     "test-write-mode-marker-wired.py",
+    "test-mode-marker-root-consistency.py",
     "test-scope-guard-plugin-mode.py",
     "test-install-rewrites-settings.py",
     "test-session-start-alerts-if-rabbit-root-unset.py",
