@@ -2,8 +2,10 @@
 """show-mode.py — deterministic "what mode am I in?" reporter (issue #888).
 
 ONE invocation, ZERO AI reasoning: prints whether rabbit is running in
-`plugin` or `standalone` mode plus the key evidence, so the model never has to
-infer this from env/dir/settings across multiple tool calls.
+vendored or standalone mode plus the key evidence, so the model never has to
+infer this from env/dir/settings across multiple tool calls. The `mode` value
+is `detect_mode`'s string passed through verbatim; the vendored project-root
+branch dual-accepts both `"vendored"` and the legacy `"plugin"` value (Inv 49).
 
 Machine First: emits a machine-readable JSON object on stdout followed by a
 single human-readable summary line, e.g.
@@ -21,7 +23,7 @@ process cwd.
 
 Rabbit root resolution: `RABBIT_ROOT` if set, else the install root inferred
 from this script's location (`<root>/.claude/features/rabbit-cage/scripts/`).
-In plugin mode RABBIT_ROOT is the vendored `.rabbit/` install dir and the
+In vendored mode RABBIT_ROOT is the vendored `.rabbit/` install dir and the
 project root is its parent; in standalone mode the install root IS the repo
 root and the project root coincides with it.
 
@@ -89,10 +91,12 @@ def main() -> int:
 
     mode = detect_mode(rabbit_root)
 
-    # Plugin: rabbit_root is the vendored `.rabbit/` dir; project root is its
+    # Vendored: rabbit_root is the vendored `.rabbit/` dir; project root is its
     # parent. Standalone: install root IS the repo root; they coincide.
+    # Inv 49: dual-accept both the new "vendored" value and the legacy "plugin"
+    # value (the canonical rename is owned by rabbit-meta's detect_mode).
     rabbit_root_path = Path(rabbit_root)
-    if mode == "plugin":
+    if mode in ("vendored", "plugin"):
         project_root = str(rabbit_root_path.parent)
     else:
         project_root = rabbit_root

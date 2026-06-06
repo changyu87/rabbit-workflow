@@ -180,7 +180,9 @@ def _override_marker_path() -> Optional[Path]:
     mode_file = REPO_ROOT / ".rabbit" / ".runtime" / "mode"
     if mode_file.is_file():
         try:
-            if mode_file.read_text().strip() == "plugin":
+            # Inv 49: dual-accept both the new "vendored" value and the legacy
+            # "plugin" value (the canonical rename is owned by rabbit-meta).
+            if mode_file.read_text().strip() in ("vendored", "plugin"):
                 return REPO_ROOT / ".rabbit" / ".rabbit-scope-override"
         except Exception:
             pass
@@ -463,16 +465,17 @@ def decide(target: str) -> Tuple[bool, str]:
     if abs_path == str(REPO_ROOT) + "/.rabbit/.runtime/scope-bypass-once":
         return True, "ALLOW (scope-bypass-once marker path is allowlisted)"
 
-    # Plugin-mode branch (Inv 17). Read .rabbit/.runtime/mode and dispatch
-    # to plugin_decide() when present and equal to "plugin". Otherwise fall
-    # through to the standalone decision tree.
+    # Vendored-mode branch (Inv 17). Read .rabbit/.runtime/mode and dispatch
+    # to plugin_decide() when present. Inv 49: dual-accept both the new
+    # "vendored" value and the legacy "plugin" value (the canonical rename is
+    # owned by rabbit-meta). Otherwise fall through to the standalone tree.
     mode_file = REPO_ROOT / ".rabbit" / ".runtime" / "mode"
     if mode_file.is_file():
         try:
             mode = mode_file.read_text().strip()
         except Exception:
             mode = ""
-        if mode == "plugin":
+        if mode in ("vendored", "plugin"):
             return plugin_decide(abs_path)
 
     # 3b. Path-prefix allowlist — always allow (dispatcher metadata + bug/backlog storage).

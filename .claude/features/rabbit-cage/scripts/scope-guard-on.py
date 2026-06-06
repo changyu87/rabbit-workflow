@@ -4,7 +4,7 @@
 Removes the session-override marker (if present) so scope-guard.py returns
 to its default-deny posture. Inv 25 (path-equality): the marker location is
 per-mode:
-  - Plugin mode (<repo_root>/.rabbit/.runtime/mode == "plugin"):
+  - Vendored mode (<repo_root>/.rabbit/.runtime/mode is "vendored" or "plugin"):
         <repo_root>/.rabbit/.rabbit-scope-override
   - Standalone mode (any other state):
         <repo_root>/.rabbit-scope-override
@@ -56,7 +56,9 @@ def _override_marker_path(root: Path) -> Path:
     mode_file = root / ".rabbit" / ".runtime" / "mode"
     if mode_file.is_file():
         try:
-            if mode_file.read_text().strip() == "plugin":
+            # Inv 49: dual-accept both the new "vendored" value and the legacy
+            # "plugin" value (the canonical rename is owned by rabbit-meta).
+            if mode_file.read_text().strip() in ("vendored", "plugin"):
                 return root / ".rabbit" / ".rabbit-scope-override"
         except Exception:
             pass

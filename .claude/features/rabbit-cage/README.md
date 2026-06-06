@@ -13,7 +13,7 @@ Rabbit runs in two modes, detected automatically from the directory `claude` is 
 | Mode | Launch from | Who uses it |
 |------|-------------|-------------|
 | **Standalone** | repo root (`rabbit-workflow/`) | Developing rabbit itself |
-| **Plugin** | `<your-project>/.rabbit/` | Applying rabbit to your project |
+| **Vendored** | `<your-project>/.rabbit/` | Applying rabbit to your project |
 
 ---
 
@@ -31,7 +31,7 @@ Feature work lives in `.claude/features/`. The scope-guard enforces feature boun
 
 ---
 
-## Plugin mode (installing into your project)
+## Vendored mode (installing into your project)
 
 Rabbit installs as a vendored `.rabbit/` directory committed to your project. No submodules; no external dependencies at runtime.
 
@@ -163,6 +163,6 @@ The default install resolves GitHub's latest release dynamically; `dev` is opt-i
 
 ## Uninstall
 
-**Plugin mode:** `rm -rf .rabbit/` and remove `.rabbit` from `.gitignore` if present.
+**Vendored mode:** `rm -rf .rabbit/` and remove `.rabbit` from `.gitignore` if present.
 
 **Standalone mode:** delete the cloned repo.
