@@ -108,6 +108,7 @@ SUITES = [
     "test-install-no-drift-on-first-run.py",
     "test-show-mode-command.py",
     "test-scope-guard-decompose-context.py",
+    "test-install-version-pin-local-src-not-unknown.py",
 ]
 
 

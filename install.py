@@ -359,8 +359,45 @@ def write_rabbit_gitignore(dst_root: Path) -> None:
     (dst_root / ".gitignore").write_text(content)
 
 
-def write_version_pin(dst_root: Path) -> None:
-    label = os.environ.get("RABBIT_INSTALLED_REF", "unknown")
+def _local_src_marker(src_root: Path | None) -> str:
+    """Inv 48: derive a MEANINGFUL pin label for a local `--src` install that
+    resolves no published ref (RABBIT_INSTALLED_REF unset).
+
+    A local checkout has no release tag, so the pin must NOT be the bare
+    sentinel `unknown` — that string flows verbatim into both the SessionStart
+    version box (`rabbit vunknown`) and the update-check headline (`current:
+    unknown ... on channel unknown`), comparing a real release against a
+    non-version. Instead derive `local-<short-sha>` from the source git
+    checkout via a read-only `git -C <src_root> rev-parse --short HEAD`, and
+    fall back to the literal `local` when no SHA is resolvable (git absent,
+    `src_root` is not a checkout, `src_root` is None). Never raises.
+    """
+    if src_root is not None:
+        try:
+            out = subprocess.run(
+                ["git", "-C", str(src_root), "rev-parse", "--short", "HEAD"],
+                capture_output=True, text=True, check=False,
+            )
+            if out.returncode == 0:
+                sha = out.stdout.strip()
+                if sha:
+                    return f"local-{sha}"
+        except (OSError, ValueError):
+            pass
+    return "local"
+
+
+def write_version_pin(dst_root: Path, src_root: Path | None = None) -> None:
+    """Write the install pin to <dst_root>/.version.
+
+    Precedence: an explicit `RABBIT_INSTALLED_REF` env var (the published
+    install / `--update` path) wins verbatim. When it is unset or empty — the
+    local `--src` install case — derive a meaningful local marker from
+    `src_root` (Inv 48) rather than pinning the literal `unknown`.
+    """
+    label = os.environ.get("RABBIT_INSTALLED_REF", "").strip()
+    if not label:
+        label = _local_src_marker(src_root)
     (dst_root / ".version").write_text(label + "\n")
 
 
@@ -964,7 +1001,7 @@ def _main_with_args(args: argparse.Namespace) -> int:
 
     rewrite_settings_for_plugin(dst_root)
     write_rabbit_gitignore(dst_root)
-    write_version_pin(dst_root)
+    write_version_pin(dst_root, src_root)
 
     # Inv 43: canonicalize surfaces AFTER rewrite_settings_for_plugin so the
     # publish flow reads the already-rewritten ($RABBIT_ROOT) source settings —
