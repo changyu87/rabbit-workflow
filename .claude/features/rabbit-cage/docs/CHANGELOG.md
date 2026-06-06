@@ -12,6 +12,25 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.75.1 (fix #958: meaningful version/channel fallback for local `--src`
+  installs — no more `vunknown`):** added Inv 48. `install.write_version_pin`
+  now derives a meaningful `.version` pin when `RABBIT_INSTALLED_REF` is unset
+  or empty (the local `python3 install.py --src <checkout> --target ...` case)
+  instead of writing the literal `unknown`. It derives `local-<short-sha>` via
+  a read-only `git -C <src_root> rev-parse --short HEAD` against the source
+  tree, falling back to the literal `local` when no SHA is resolvable (git
+  absent, source not a checkout). Previously the `unknown` sentinel flowed
+  verbatim into the SessionStart version box (`rabbit vunknown`) and the
+  update-check headline (`current: unknown ... on channel unknown`), comparing
+  a real upstream release against a non-version. An explicit
+  `RABBIT_INSTALLED_REF` still wins verbatim (the published-install /
+  `--update` self-fetch path is unchanged). New helper signature
+  `write_version_pin(dst_root, src_root=None)` plus private
+  `_local_src_marker(src_root)`; both best-effort, never raise. Enforced by
+  `test/test-install-version-pin-local-src-not-unknown.py` (e2e: the produced
+  `.version` fed through the deployed SessionStart dispatcher yields a banner
+  with neither `vunknown` nor `channel unknown`).
+
 - **v5.75.0 (fix #931: source the post-update changelog summary from the live
   `vX.Y.Z` release track):** repointed the Inv 46 post-update changelog summary
   added by #924 off the dead-track root `CHANGELOG.md` (frozen at

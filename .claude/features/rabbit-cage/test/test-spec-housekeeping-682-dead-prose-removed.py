@@ -150,7 +150,12 @@ COLLAPSE_MAX = 1
 # replacement for the manual session override that authorizes batch writes
 # across the named feature dirs — plus its e2e test. A real spec addition
 # documenting new test-enforced behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 591
+# Raised 591 -> 593 by #958, which added Inv 48 (install.py writes a meaningful
+# local marker into .version for a local --src install instead of the bare
+# `unknown` sentinel, so the SessionStart banner never reads `vunknown` /
+# `channel unknown`) plus its e2e test. A real spec addition documenting new
+# test-enforced behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 593
 
 PASS = 0
 FAIL = 0
