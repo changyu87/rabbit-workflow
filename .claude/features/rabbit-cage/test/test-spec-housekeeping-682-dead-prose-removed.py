@@ -127,7 +127,14 @@ COLLAPSE_MAX = 1
 # path discoverable (Shift+Tab live toggle vs persisted /rabbit-cage-config
 # bypass-permissions) plus its e2e test — a real spec addition documenting new
 # test-enforced behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 557
+# Raised 557 -> 569 by #917, which added a SECOND check_marker_alert (plugin
+# canonical path .rabbit/.rabbit-scope-override) to runtime.Stop and
+# runtime.SessionStart so the SCOPE GUARD OFF notice fires in plugin mode, and
+# extended Inv 16 (FIVE -> SIX SessionStart entries) and Inv 25 (consumer (5)
+# now declares both the standalone and plugin marker paths) to document it — a
+# real spec addition documenting new test-enforced behavior, not reword
+# re-inflation.
+SPEC_LINE_CEILING = 569
 
 PASS = 0
 FAIL = 0

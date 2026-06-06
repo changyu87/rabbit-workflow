@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.69.0",
+  "version": "5.70.0",
   "contiguous_invariants": true,
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
@@ -150,6 +150,18 @@
         }
       },
       {
+        "api": "check_marker_alert",
+        "args": {
+          "path": ".rabbit/.rabbit-scope-override",
+          "content": "session",
+          "alert": {
+            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-cage-config scope-guard on",
+            "icon": "\ud83d\udd13",
+            "color": "red"
+          }
+        }
+      },
+      {
         "api": "emit_configurable_alert",
         "args": {
           "feature_name": "rabbit-cage",
@@ -216,6 +228,18 @@
         "api": "check_marker_alert",
         "args": {
           "path": ".rabbit-scope-override",
+          "content": "session",
+          "alert": {
+            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-cage-config scope-guard on",
+            "icon": "\ud83d\udd13",
+            "color": "red"
+          }
+        }
+      },
+      {
+        "api": "check_marker_alert",
+        "args": {
+          "path": ".rabbit/.rabbit-scope-override",
           "content": "session",
           "alert": {
             "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-cage-config scope-guard on",

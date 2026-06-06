@@ -203,15 +203,17 @@ for label, entry in [("Stop", stop_alert), ("SessionStart", ss_alert)]:
 
 # ---------------------------------------------------------------- t6
 print()
-print("=== t6: SessionStart entry count is FIVE (Inv 16 + Inv 40c bypass alert) ===")
+print("=== t6: SessionStart entry count is SIX (Inv 16 + Inv 40c bypass alert + #917 plugin-path alert) ===")
 # #780 re-homed the bypass-permissions per-feature alert as a SessionStart
 # emit_configurable_alert entry appended after the scope-guard check_marker_alert.
-if len(ss_entries) == 5:
-    ok("SessionStart declares exactly 5 entries")
+# #917 added a SECOND scope-guard check_marker_alert for the plugin-mode
+# canonical marker path '.rabbit/.rabbit-scope-override'.
+if len(ss_entries) == 6:
+    ok("SessionStart declares exactly 6 entries")
 else:
     fail_t(
         f"SessionStart declares {len(ss_entries)} entries; "
-        f"expected 5. APIs: {[e.get('api') for e in ss_entries]}"
+        f"expected 6. APIs: {[e.get('api') for e in ss_entries]}"
     )
 
 # emit_configurable_alert (bypass-permissions) is the LAST SessionStart entry,
@@ -230,6 +232,53 @@ else:
         "check_marker_alert missing from SessionStart. "
         f"Order: {[e.get('api') for e in ss_entries]}"
     )
+
+# ---------------------------------------------------------------- t7
+print()
+print("=== t7: BOTH Stop and SessionStart declare the PLUGIN-PATH override alert (#917) ===")
+# The plugin-mode canonical marker location is '.rabbit/.rabbit-scope-override'
+# relative to repo_root (Inv 25). check_marker_alert resolves a relative path
+# against repo_root, so the standalone '.rabbit-scope-override' entry alone
+# never fires in plugin mode — a second entry with the plugin path is required.
+
+
+def _plugin_override_alert_entry(entries):
+    for e in entries:
+        if e.get("api") != "check_marker_alert":
+            continue
+        args = e.get("args", {})
+        if (
+            args.get("path") == ".rabbit/.rabbit-scope-override"
+            and args.get("content") == "session"
+        ):
+            return e
+    return None
+
+
+for label, entries in [("Stop", stop_entries), ("SessionStart", ss_entries)]:
+    entry = _plugin_override_alert_entry(entries)
+    if entry is None:
+        fail_t(
+            f"runtime.{label} missing check_marker_alert for plugin path "
+            "'.rabbit/.rabbit-scope-override' content='session' (#917)"
+        )
+        continue
+    alert = entry.get("args", {}).get("alert", {})
+    if (
+        "SCOPE GUARD OFF" in alert.get("text", "")
+        and alert.get("icon") == "🔓"
+        and alert.get("color") == "red"
+    ):
+        ok(
+            f"{label} plugin-path alert present with text 'SCOPE GUARD OFF', "
+            "icon '🔓', color 'red'"
+        )
+    else:
+        fail_t(
+            f"{label} plugin-path alert shape wrong; got "
+            f"text={alert.get('text')!r} icon={alert.get('icon')!r} "
+            f"color={alert.get('color')!r}"
+        )
 
 print()
 print(f"Results: {total - failures} passed, {failures} failed")
