@@ -135,8 +135,9 @@ constrains only the structural shape.
    main-session orchestration with no intermediate subagent-dispatching skill,
    the subagent is a level-1 dispatch (main session -> rabbit-spec-creator),
    so the N per-feature dispatches MAY run in parallel. Neither `SKILL.md` nor
-   this spec may reference the retired spec-create skill wrapper (#922) or its
-   former input-assembler script name; the subagent is now dispatched directly.
+   this spec references a spec-create skill wrapper or a standalone input
+   assembler other than `dispatch-spec-creator.py`; spec seeding dispatches the
+   `rabbit-spec-creator` subagent directly.
 
 5. Step 4's scaffold hand-off MUST be SCRIPT-tier (spec-rules §4
    Script-Backed Orchestration). The mode-aware branching, the batch
@@ -218,13 +219,13 @@ coverage:
   present, no legacy `specs/` dir, no root `CHANGELOG.md`, four-way version
   alignment, and resolution via the contract resolver).
 - `test-step4b-no-nested-dispatch.py` (E2E — asserts the spec-seeding
-  hand-off, in both `SKILL.md` and `docs/spec.md`, references neither the
-  retired spec-create skill wrapper nor its former input-assembler script name
-  (#922), names the new direct-dispatch path (the `dispatch-spec-creator.py`
-  input assembler and a direct `rabbit-spec-creator` Agent dispatch), and that
-  the `SKILL.md` Step 4-B dispatches `rabbit-spec-creator` directly via
-  `Agent(subagent_type: ...)` at level-1 and states the per-feature dispatches
-  may run in parallel).
+  hand-off, in both `SKILL.md` and `docs/spec.md`, names only the
+  direct-dispatch path (the `dispatch-spec-creator.py` input assembler and a
+  direct `rabbit-spec-creator` Agent dispatch) and carries no spec-create
+  skill-wrapper reference and no standalone non-`creator` dispatch-script name;
+  and that the `SKILL.md` Step 4-B dispatches `rabbit-spec-creator`
+  directly via `Agent(subagent_type: ...)` at level-1 and states the
+  per-feature dispatches may run in parallel).
 - `test-prompts-spec-artifact-agree.py` (E2E — asserts Invariant 1 and the
   `feature.json` `prompts` artifact agree: `prompts` is empty, Invariant 1
   documents the empty/absent prompt-contract surface rather than requiring
