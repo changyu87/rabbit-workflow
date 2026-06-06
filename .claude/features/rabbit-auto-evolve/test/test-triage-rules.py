@@ -248,7 +248,50 @@ with tempfile.TemporaryDirectory() as repo_root:
     os.makedirs(shim_dir)
     write_shim(shim_dir, {"103": issue_payload}, list_payload)
     proc = run_script(repo_root, 103, shim_dir)
-    expect_decision("rule3", proc, "close-not-planned", "duplicate")
+    # Detection heuristic unchanged (close-not-planned/duplicate) AND the
+    # matched closed issue's number is echoed in `duplicate_of` (Inv 60), so
+    # the resolution path can record the native duplicate link.
+    expect_decision(
+        "rule3", proc, "close-not-planned", "duplicate",
+        extra_assert=lambda r: (
+            None if r.get("duplicate_of") == 90
+            else f"duplicate_of should echo the matched closed issue 90, "
+                 f"got {r.get('duplicate_of')!r}"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# duplicate_of is null on a NON-duplicate decision (Inv 60): the key is always
+# present so the dispatcher can rely on it; an actionable issue carries null.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "nondup-feature")
+    issue_payload = json.dumps({
+        "number": 1030,
+        "title": "Add a brand-new non-duplicate behavior",
+        "body": "Implement this fresh behavior.",
+        "labels": [
+            {"name": "feature:nondup-feature"},
+            {"name": "priority:high"},
+        ],
+        "state": "OPEN",
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"1030": issue_payload}, list_payload)
+    proc = run_script(repo_root, 1030, shim_dir)
+    expect_decision(
+        "duplicate_of-null", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None if ("duplicate_of" in r and r.get("duplicate_of") is None)
+            else "non-duplicate decision must carry duplicate_of:null "
+                 f"(key present); got {r.get('duplicate_of')!r} "
+                 f"(present={'duplicate_of' in r})"
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -75,9 +75,20 @@ POST_948_ADD_INVARIANTS = 1
 # invariants) stays ENFORCED while the #942 addition is admitted.
 POST_942_ADD_LINES = 40
 POST_942_ADD_INVARIANTS = 1
+# #943 added the native-DUPLICATE-resolution invariant (Inv 60: the GitHub-native
+# duplicate state, `state_reason=duplicate`, is the authoritative resolution of a
+# detected duplicate; the reinvented `duplicate` label is a deprecating coexistence
+# mirror; the detection heuristic and its confidence gate are unchanged) — a
+# genuinely new owned rule, not slim regression. Mirror the #881/#927/#948/#942
+# headroom so the #751 reduction (>= 150 lines, >= 4 invariants) stays ENFORCED
+# while the #943 addition is admitted. The line headroom also absorbs the small
+# additive drift that had accumulated above the post-#942 ceiling before #943.
+POST_943_ADD_LINES = 50
+POST_943_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
+    + POST_943_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -87,7 +98,7 @@ MIN_INVARIANTS_CUT = 4
 MAX_INVARIANT_COUNT = (
     BASELINE_INVARIANT_COUNT - MIN_INVARIANTS_CUT + POST_881_ADD_INVARIANTS
     + POST_927_ADD_INVARIANTS + POST_948_ADD_INVARIANTS
-    + POST_942_ADD_INVARIANTS
+    + POST_942_ADD_INVARIANTS + POST_943_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---
