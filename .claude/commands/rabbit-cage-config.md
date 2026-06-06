@@ -1,7 +1,7 @@
 ---
 name: rabbit-cage-config
 description: Configure rabbit-cage's owned settings (scope-guard, bypass-permissions, allowed-tools, bash-allow, prompt-threshold).
-version: 1.0.0
+version: 1.1.0
 owner: rabbit-workflow team
 deprecation_criterion: when the rabbit CLI exposes a native per-feature configuration mechanism that subsumes /rabbit-cage-config
 template_version: 1.0.0
@@ -21,6 +21,12 @@ config command for rabbit-cage (phase 3 of #733); it coexists with the central
 /rabbit-cage-config allowed-tools add|remove <Tool>
 /rabbit-cage-config bash-allow add|remove <command>
 /rabbit-cage-config prompt-threshold set <N>
+/rabbit-cage-config help
+
+`/rabbit-cage-config help` prints usage plus the on-demand permission-bypass
+guidance (the ephemeral `Shift+Tab` live toggle and the persisted
+`bypass-permissions true|false` path). That guidance is shown ONLY here on
+request — it no longer prints on every session start (issue #914).
 
 ## Implementation
 

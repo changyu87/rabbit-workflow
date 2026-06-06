@@ -134,7 +134,12 @@ COLLAPSE_MAX = 1
 # now declares both the standalone and plugin marker paths) to document it — a
 # real spec addition documenting new test-enforced behavior, not reword
 # re-inflation.
-SPEC_LINE_CEILING = 569
+# Raised 569 -> 573 by #914, which rewrote Inv 16 (the FOURTH SessionStart
+# welcome subline removed — permission-bypass guidance no longer advertised on
+# every startup) and added Inv 40(e) documenting the on-demand permission-bypass
+# guidance via the /rabbit-cage-config help/query path — a real spec change
+# documenting new behavior (WHEN the message shows), not reword re-inflation.
+SPEC_LINE_CEILING = 573
 
 PASS = 0
 FAIL = 0

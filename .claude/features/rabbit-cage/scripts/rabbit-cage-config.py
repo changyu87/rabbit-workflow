@@ -31,7 +31,7 @@ Usage:
 
 Exit: 0 success, 1 dispatch/mutation error, 2 bad invocation.
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when the rabbit CLI exposes a native per-feature
     configuration mechanism that subsumes /rabbit-cage-config.
@@ -46,6 +46,20 @@ from pathlib import Path
 # This script lives at .claude/features/rabbit-cage/scripts/; the rabbit-cage
 # feature dir is its parent's parent.
 FEATURE_DIR = Path(__file__).resolve().parents[1]
+
+
+# Permission-bypass guidance — surfaced ON-DEMAND via the help/query path only
+# (issue #914). It used to print on EVERY SessionStart as a welcome subline
+# (issue #889); the always-on startup advertisement was removed so this useful
+# but non-urgent information shows only when explicitly queried. The message
+# content/branding is preserved verbatim: the ephemeral live toggle AND the
+# persisted rabbit-native path. This is NOT the scope-override SAFETY notice
+# (which still fires on startup) — only the permission-bypass info message moved.
+PERMISSION_BYPASS_HELP = (
+    "permission bypass — live toggle: Shift+Tab (ephemeral, this session); "
+    "persisted: /rabbit-cage-config bypass-permissions true|false "
+    "(writes defaultMode, takes effect after a Claude relaunch)"
+)
 
 
 def usage() -> None:
@@ -86,6 +100,9 @@ def main() -> int:
         return 2
     if args[0] in ("-h", "--help", "help"):
         usage()
+        # On-demand surface for the permission-bypass guidance (issue #914):
+        # print to stdout so the query path emits it on explicit request.
+        print(PERMISSION_BYPASS_HELP)
         return 0
 
     subcommand = args[0]

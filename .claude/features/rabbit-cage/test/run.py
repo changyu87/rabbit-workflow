@@ -84,7 +84,7 @@ SUITES = [
     "test-changelog-shape.py",
     "test-bypass-permissions-alert-text-inlines-revoke.py",
     "test-bypass-permissions-per-feature-alert.py",
-    "test-bypass-permissions-discoverable-at-sessionstart.py",
+    "test-bypass-permissions-on-demand-not-startup.py",
     "test-tdd-autonomous-relocated-out.py",
     "test-scope-guard-revoke-uses-rabbit-config.py",
     "test-scope-guard-agent-sentinel.py",

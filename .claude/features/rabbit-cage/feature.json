@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.70.0",
+  "version": "5.71.0",
   "contiguous_invariants": true,
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
@@ -209,9 +209,6 @@
             },
             {
               "text": "coding-rules.md  \u2014 think first; simplicity; surgical edits; goal-driven TDD"
-            },
-            {
-              "text": "permission bypass \u2014 live toggle: Shift+Tab (ephemeral, this session); persisted: /rabbit-cage-config bypass-permissions true|false (writes defaultMode, takes effect after a Claude relaunch)"
             }
           ]
         }
