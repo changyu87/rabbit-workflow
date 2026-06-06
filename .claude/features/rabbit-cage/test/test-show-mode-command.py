@@ -5,8 +5,9 @@ Drives scripts/show-mode.py as a SUBPROCESS (one invocation, zero AI) and
 asserts it:
   t1: emits valid JSON to stdout with a `mode` field and the evidence fields
       (rabbit_root, project_root, feature_dir, evidence{}), exit 0, in a
-      simulated PLUGIN layout (RABBIT_ROOT points at a `.rabbit` subdir that
-      sits inside a larger project) -> mode == "plugin".
+      simulated VENDORED layout (RABBIT_ROOT points at a `.rabbit` subdir that
+      sits inside a larger project) -> mode in ("vendored", "plugin")
+      (dual-accept of the in-flight rename, Inv 50).
   t2: same, in a simulated STANDALONE layout (RABBIT_ROOT points at the repo
       root which IS the rabbit install) -> mode == "standalone".
   t3: emits a human-readable one-line summary beginning `Mode: ` alongside the
@@ -110,8 +111,12 @@ with tempfile.TemporaryDirectory() as tmp:
         fail_t("t1", f"exit {res.returncode}; stderr={res.stderr!r}")
     elif obj is None:
         fail_t("t1", f"no JSON with `mode` in stdout: {res.stdout!r}")
-    elif obj.get("mode") != "plugin":
-        fail_t("t1", f"expected mode 'plugin', got {obj.get('mode')!r}")
+    elif obj.get("mode") not in ("vendored", "plugin"):
+        # Dual-accept (Inv 50): the canonical vendored-mode value is being
+        # renamed from "plugin" to "vendored" by rabbit-meta; accept EITHER so
+        # this stays green across the detect_mode flip.
+        fail_t("t1", f"expected mode 'vendored' or 'plugin', "
+                     f"got {obj.get('mode')!r}")
     else:
         missing = [k for k in ("rabbit_root", "project_root", "feature_dir",
                                "evidence") if k not in obj]
@@ -160,7 +165,9 @@ with tempfile.TemporaryDirectory() as tmp:
         fail_t("t3", f"exit {res.returncode}; stderr={res.stderr!r}")
     elif not summary_lines:
         fail_t("t3", f"no `Mode: ` human summary line in stdout: {res.stdout!r}")
-    elif "plugin" not in summary_lines[0]:
+    elif not any(v in summary_lines[0] for v in ("vendored", "plugin")):
+        # Dual-accept (Inv 50): the human summary names the mode verbatim, so it
+        # carries EITHER spelling depending on what detect_mode returns.
         fail_t("t3", f"summary line does not name mode: {summary_lines[0]!r}")
     else:
         ok("t3", f"human summary line present: {summary_lines[0].strip()!r}")

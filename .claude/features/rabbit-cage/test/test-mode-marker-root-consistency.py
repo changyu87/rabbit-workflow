@@ -154,8 +154,12 @@ def test_plugin_write_path_equals_scope_guard_read_path():
             f"mode marker not at canonical single-.rabbit path {canonical}; "
             f"doubled-present={doubled.is_file()} stderr={proc.stderr!r}"
         )
-        assert canonical.read_text() == "plugin", (
-            f"expected 'plugin', got {canonical.read_text()!r}"
+        # Dual-accept (Inv 50): write_mode_marker writes detect_mode's value
+        # VERBATIM, and rabbit-meta is renaming the vendored-mode value from
+        # "plugin" to "vendored". Accept EITHER so this stays green across the
+        # detect_mode flip.
+        assert canonical.read_text() in ("vendored", "plugin"), (
+            f"expected 'vendored' or 'plugin', got {canonical.read_text()!r}"
         )
         assert not doubled.is_file(), (
             f"mode marker wrongly written to DOUBLED path {doubled} "

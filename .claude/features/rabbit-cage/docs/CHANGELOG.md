@@ -12,6 +12,32 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.80.0 (feat #1001: dual-accept the remaining strict `"plugin"`
+  assertions in rabbit-cage's own tests; unblocks #990):** the earlier
+  dual-accept prep relaxed every rabbit-cage CODE site that branches on the
+  vendored-mode value, but three rabbit-cage TEST assertions still pinned the
+  OBSERVED value strictly to `"plugin"` — each of which drives the real
+  `write_mode_marker` (which writes `detect_mode`'s value verbatim) or the real
+  `detect_mode`/`show-mode.py` output against a vendored-signature layout, so
+  each would go RED on the pending `detect_mode -> "vendored"` flip even though
+  the code under test already dual-accepts. This change relaxes those three
+  observe-side assertions to the same dual-accept membership test: (1)
+  `test-show-mode-command.py` t1 (the `mode` field) and t3 (the human-summary
+  line); (2) `test-write-mode-marker-wired.py` (marker content after a real
+  SessionStart dispatch); (3) `test-mode-marker-root-consistency.py` (the
+  canonical-path marker content in a faithful vendored install layout).
+  Test fixtures that WRITE a chosen `"plugin"` marker as an INPUT to exercise a
+  consumer (the `test-plugin-*` scope-guard/alert tests) are unchanged — they
+  pin their own valid legacy input, not an observed output. The existing Inv 50
+  is extended to require the dual-accept of rabbit-cage's own observe-side test
+  assertions, and `test-mode-value-dual-accept.py` gains a guard that drives
+  `write_mode_marker` with a `detect_mode` stub returning `"vendored"` and
+  confirms the observed marker content satisfies the dual-accept. Simulated
+  `detect_mode -> "vendored"` flip verified: rabbit-cage's full `test/run.py`
+  stays green. rabbit-cage does NOT change `detect_mode` or `write_mode_marker`
+  (#990/rabbit-meta scope). Coexistence deprecation criterion: drop the
+  `"plugin"` arm from every dual-accept site once #980 completes.
+
 - **v5.79.0 (feat #989: dual-accept vendored-mode value + rename surface
   terminology; gate-safe prep for the #980 `"plugin"` -> `"vendored"`
   rename):** prepares rabbit-cage for rabbit-meta's pending rename of the
