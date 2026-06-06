@@ -1,7 +1,7 @@
 ---
 name: rabbit-decompose
 description: Propose a feature decomposition for an existing codebase or a high-level spec, interactively iterate with the user until accepted, then orchestrate scaffolding + initial spec drafting per accepted feature. Use when the user wants to start a new rabbit-managed project from a spec/prompt, or when the user wants to retroactively organize an existing codebase into rabbit features. Phrases like "decompose this into features", "propose a feature breakdown", "let's organize this codebase with rabbit", "/rabbit-decompose", "what features should this project have". Do NOT use to revise individual feature specs (that's rabbit-spec-update) or to scaffold a single feature whose name + globs you already know (that's rabbit-feature-scaffold).
-version: 0.7.2
+version: 0.8.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
 ---
@@ -77,7 +77,7 @@ Once the user accepts:
 python3 .claude/features/rabbit-decompose/scripts/handoff-scaffold.py --features <accepted.json>
 ```
 
-The script owns the mode branch: in **plugin mode** it runs the scaffolder in batch form (one `project-map.json` mutation); in **standalone mode** the batch form is plugin-only, so the script emits a `per-feature` plan. When the script reports `branch: "per-feature"`, invoke the scaffolder once per accepted feature, sequentially (they're cheap):
+The script owns the mode branch: in **plugin mode** it runs the scaffolder in batch form through the `rabbit-feature-scaffold` skill's batch interface (`scaffold-batch.py --batch <file>`, one `project-map.json` mutation) — the declared cross-feature interface, not a direct shell-out to rabbit-feature's `scaffold-feature.py` implementation detail; in **standalone mode** the batch form is plugin-only, so the script emits a `per-feature` plan. When the script reports `branch: "per-feature"`, invoke the scaffolder once per accepted feature, sequentially (they're cheap):
 
 ```
 Skill("rabbit-feature-scaffold", args: the feature name)
