@@ -13,6 +13,37 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.12.0 (dual-accept vendored/plugin mode in handoff-scaffold — prep for
+  the #980 rename, #988):** Gate-safe preparation for the #980 migration that
+  renames the vendored-mode value resolved by
+  `rabbit-meta.lib.mode_detection.detect_mode` from `"plugin"` to `"vendored"`.
+  `scripts/handoff-scaffold.py` had 5 `mode == "plugin"` comparison sites — the
+  source-root resolver, the project-map path resolver, the decompose-marker
+  path resolver, and the two main-dispatch branch sites — that would SILENTLY
+  fall through to the standalone path the moment the value flipped to
+  `"vendored"`, mis-routing every vendored install to the wrong (per-feature,
+  no-batch, wrong project-map / marker) branch. Each comparison is now a
+  dual-accept `mode in ("vendored", "plugin")` (inline, NOT a cross-feature
+  helper import), so BOTH values take the vendored path; the script is correct
+  before AND after the rename. The value is NOT flipped here (it stays
+  `"plugin"`, so the contract gate stays green now), and `detect_mode` is NOT
+  changed (rabbit-meta owns it; the value flip is the blocked-on-this #990
+  child). The four affected E2E tests (`test-decompose-context-marker`,
+  `test-step1-source-root`, `test-step4-script-backed`,
+  `test-step4-skill-batch-interface`) had their docstrings/notes updated to the
+  dual-accept truth, and a new E2E `test-dual-accept-vendored-mode.py` drives
+  each of the five comparison sites with BOTH `"vendored"` and `"plugin"`,
+  asserting they resolve to the SAME vendored result and diverge from
+  `"standalone"`. New spec Invariant 10 pins the dual-accept contract and names
+  its coexistence-window deprecation criterion (the `"plugin"` arm is removed
+  only after the rename completes and the legacy value is fully retired).
+  Four-way version lockstep bumped to 0.12.0. Deployed surface: only
+  `handoff-scaffold.py` (the script body) and the `SKILL.md` frontmatter
+  version changed — the dispatcher republishes the deployed `rabbit-decompose`
+  skill so the deployed frontmatter version stays consistent. Part of the
+  four-feature #980 migration barrier (this is the decompose child; the
+  rabbit-meta value flip is gated on the four prep children landing first).
+
 - **v0.11.0 (adopt the decompose-context scope-guard pass-through, #923 piece
   2/2):** Step 4's batch scaffold + spec-seed work writes across SEVERAL
   feature directories at once, which previously required the undiscoverable

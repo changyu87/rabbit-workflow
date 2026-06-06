@@ -87,7 +87,7 @@ CLI:
 Output (always JSON on stdout):
   Step 4 (--features):
     {
-      "mode": "plugin" | "standalone",
+      "mode": "vendored" | "plugin" | "standalone",
       "branch": "batch" | "per-feature",
       "batch_file": "<abs path>" | null,
       "source_root": "<abs path>",
@@ -96,12 +96,12 @@ Output (always JSON on stdout):
     }
   Step 1 (--source-root):
     {
-      "mode": "plugin" | "standalone",
+      "mode": "vendored" | "plugin" | "standalone",
       "source_root": "<abs path>"
     }
   Pre-Step-2 (--detect-existing):
     {
-      "mode": "plugin" | "standalone",
+      "mode": "vendored" | "plugin" | "standalone",
       "project_map_path": "<abs path>",
       "existing": <bool>,                 # true iff non-empty features map
       "existing_features": [ "<name>", ... ],   # sorted; [] when not existing
@@ -116,7 +116,15 @@ Exit:
   1 scaffolder dispatch failed
   2 invocation error (bad args, unreadable/invalid features file)
 
-Version: 0.5.0
+Mode comparisons that select the vendored path dual-accept BOTH the legacy
+"plugin" value and the post-rename "vendored" value (spec Invariant 10, #988):
+the canonical value resolved by rabbit-meta's detect_mode is currently
+"plugin", with a coordinated rename to "vendored" planned (#980). Dual-accepting
+both keeps this script correct before AND after that rename. The legacy
+"plugin" arm is removed only after the rename completes and the old value is
+fully retired (coexistence-window deprecation).
+
+Version: 0.6.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Step 4 scaffold hand-off is provided natively by
     the rabbit CLI, retiring this companion script.
@@ -132,6 +140,18 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+
+
+# The vendored-mode values that select the vendored (plugin) path. The
+# canonical mode value resolved by rabbit-meta's detect_mode is currently
+# "plugin"; a coordinated rename to "vendored" is planned (#980). Every
+# mode comparison that selects the vendored path dual-accepts BOTH values
+# (spec Invariant 10, #988) so this script is correct before AND after the
+# rename and never silently falls through to the standalone path. This is an
+# inline local constant, NOT a cross-feature import. Coexistence-window
+# deprecation: the legacy "plugin" entry is removed only after the #980 rename
+# completes and the old value is fully retired.
+_VENDORED_MODES = ("vendored", "plugin")
 
 
 def _err(msg: str) -> None:
@@ -222,7 +242,7 @@ def _resolve_source_root(rabbit_root: str, mode: str) -> str:
     the project to decompose is its PARENT (matching
     scaffold-feature.py._detect_plugin_mode, project_root = rabbit_root.parent).
     In standalone mode the source root is the repo root itself."""
-    if mode == "plugin":
+    if mode in _VENDORED_MODES:
         return str(Path(rabbit_root).parent)
     return str(Path(rabbit_root))
 
@@ -237,7 +257,7 @@ def _resolve_project_map_path(rabbit_root: str, mode: str) -> str:
     `.rabbit/rabbit-project/project-map.json` read declared in
     docs/contract.md)."""
     root = Path(rabbit_root)
-    if mode == "plugin":
+    if mode in _VENDORED_MODES:
         return str(root / "rabbit-project" / "project-map.json")
     return str(root / ".rabbit" / "rabbit-project" / "project-map.json")
 
@@ -254,7 +274,7 @@ def _resolve_decompose_marker_path(rabbit_root: str, mode: str) -> str:
     rabbit_root is the repo root, so it lives at
     `<rabbit_root>/.rabbit/.runtime/decompose-active`."""
     root = Path(rabbit_root)
-    if mode == "plugin":
+    if mode in _VENDORED_MODES:
         return str(root / ".runtime" / "decompose-active")
     return str(root / ".rabbit" / ".runtime" / "decompose-active")
 
@@ -481,10 +501,10 @@ def main(argv) -> int:
         print(json.dumps({"mode": mode, "source_root": source_root}))
         return 0
 
-    if mode == "plugin":
+    if mode in _VENDORED_MODES:
         batch_file = _author_batch_file(features)
         result = {
-            "mode": "plugin",
+            "mode": mode,
             "branch": "batch",
             "batch_file": batch_file,
             "source_root": source_root,

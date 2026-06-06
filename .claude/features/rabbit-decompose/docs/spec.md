@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.11.0
+version: 0.12.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -245,6 +245,27 @@ constrains only the structural shape.
    MUST NOT reference the manual `.rabbit-scope-override` session workaround
    as the recommended path.
 
+10. `scripts/handoff-scaffold.py`'s mode-aware comparison sites MUST
+    DUAL-ACCEPT both the vendored-mode values `"vendored"` and `"plugin"` —
+    each `mode` comparison that selects the vendored path is written
+    `mode in ("vendored", "plugin")` (inline, NOT a cross-feature helper
+    import), so BOTH values take the vendored path. This covers all five
+    sites: the source-root resolver (vendored → `rabbit_root.parent`), the
+    project-map path resolver (vendored → `<rabbit_root>/rabbit-project/...`),
+    the decompose-marker path resolver (vendored →
+    `<rabbit_root>/.runtime/decompose-active`), and the two main-dispatch
+    branch sites (vendored → the batch branch authoring the batch file). It is
+    a forward-compatibility measure: the canonical mode value resolved by
+    `rabbit-meta.lib.mode_detection.detect_mode` is currently `"plugin"`, and
+    a coordinated rename to `"vendored"` is planned; dual-accepting both keeps
+    this script correct before AND after that rename, so it never silently
+    falls through to the standalone path when the value flips. The
+    `detect_mode` resolver itself is NOT changed here; it is owned by
+    rabbit-meta. Coexistence-window end-of-life: the `"plugin"` arm of each
+    dual-accept is dropped only after the rename completes and the old value is
+    no longer emitted anywhere, leaving the comparisons checking `"vendored"`
+    alone.
+
 ## Tests
 
 `test/run.py` invokes every `test-*.py` file under `test/`. Current
@@ -321,6 +342,13 @@ coverage:
   `source_root` resolution correct (plugin → parent-of-`.rabbit`); and
   the `SKILL.md` Step 1 and Step 4 bash blocks invoke the resolver without a
   `--rabbit-root` flag, relying on the cwd default).
+- `test-dual-accept-vendored-mode.py` (E2E — asserts Invariant 10: loads
+  `scripts/handoff-scaffold.py` and drives each of the five vendored-mode
+  comparison sites with BOTH `"vendored"` and `"plugin"`, confirming the three
+  path resolvers return the SAME vendored path for both values and a different
+  path for `"standalone"`, and that a `"vendored"`-mode `--plan-only` run takes
+  the same batch branch as a `"plugin"`-mode run while `"standalone"` takes the
+  per-feature branch).
 
 ## Out of Scope
 

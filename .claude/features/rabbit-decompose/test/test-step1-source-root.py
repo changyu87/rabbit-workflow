@@ -30,6 +30,12 @@ This test asserts, end-to-end:
      hand-resolves an ambiguous `<repo>` source root in a live (non-example)
      bash block.
 
+The vendored-mode source-root branch is now a dual-accept
+`mode in ("vendored", "plugin")` (spec Invariant 10, #988). This test drives
+the live `detect_mode`, which currently returns `"plugin"`, so it exercises the
+`"plugin"` arm; the `"vendored"` arm is exercised by
+`test-dual-accept-vendored-mode.py`.
+
 Run non-interactively. Exits non-zero on failure.
 
 Version: 0.1.0
