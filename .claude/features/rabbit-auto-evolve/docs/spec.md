@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.74.0
+version: 0.75.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1601,7 +1601,7 @@ summary is restated here.
     |---|---|---|---|
     | 1 (perf preference) | `parallel-per-feature` | item edits exactly one feature dir | one full single-feature TDD touch, its own `.rabbit-scope-active-<feature>` marker; multiple such items dispatch in parallel |
     | 2 | `multi-subagent-barrier` | item edits >1 feature dir, below `--decompose-threshold` (default 10) | per-feature subagents land SERIALLY on ONE shared branch; the serialization contract is: subagent k+1 fetches subagent k's pushed commit before starting; each piece is a full single-feature touch with its own scope marker; one PR closes the item |
-    | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs | file N per-feature sub-issues via the contract INVOKE `rabbit-issue/scripts/file-item.py` (NOT a cross-feature edit — do not edit rabbit-issue files), each labelled with the right `feature:<name>` + `priority:<level>` label; the parent stays OPEN and the sub-issues are queued, re-entering Stage 1/Stage 2 on the next tick; the parent->children linkage is recorded and the parent closed deterministically once every child closes (Inv 53) |
+    | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs | file N per-feature sub-issues via the contract INVOKE `rabbit-issue/scripts/file-item.py --parent <parent#>` (NOT a cross-feature edit — do not edit rabbit-issue files), each labelled with the right `feature:<name>` + `priority:<level>` label and born as a GitHub-native sub-issue of the parent; the parent stays OPEN and the sub-issues are queued, re-entering Stage 1/Stage 2 on the next tick; the authoritative parent->children linkage is recorded in `decomposition_parents` and the parent closed deterministically once every child closes (Inv 53) |
 
     Every shape uses a full per-feature touch gated by
     `.rabbit-scope-active-<feature>`. The dispatcher MUST NOT skip, defer
@@ -3224,18 +3224,25 @@ summary is restated here.
     `git status --porcelain`, and asserts none of them appear in the output.
 
 53. **Decomposed-parent lifecycle closes deterministically; the
-    parent->children linkage is machine-readable, never a prose table.**
+    parent->children linkage is machine-readable, never a prose table, and is
+    mirrored by a derivative GitHub-native sub-issue link.**
     When `plan-batch.py` shapes an item as `decomposition`
     (>= `--decompose-threshold` features) and the dispatcher files the N
     per-feature child sub-issues (a `rabbit-issue` contract INVOKE, not a
-    cross-feature edit), it MUST record the parent->children linkage in
-    machine-readable form by invoking
+    cross-feature edit), it establishes the parent->children linkage in TWO
+    forms. (1) The AUTHORITATIVE machine-readable form: invoking
     `python3 .claude/features/rabbit-auto-evolve/scripts/record-decomposition.py
     <parent#> <child#> [<child#> ...]`, which persists the link under the
     state's `decomposition_parents` map (parent-issue-number string ->
-    list of child issue numbers; schema 1.3.0). The historical prose
-    comment table on the parent issue is NEVER the loop's source of truth —
-    enumerating a parent's children from prose is a machine-first violation
+    list of child issue numbers; schema 1.3.0). (2) A DERIVATIVE
+    human-readable form: each child is filed with
+    `rabbit-issue/scripts/file-item.py --parent <parent#>`, so the child is
+    born linked to the parent as a GitHub-native sub-issue visible in the
+    GitHub UI. The state map remains authoritative — the GitHub-native link
+    is a derivative view of it and never replaces it; the loop enumerates a
+    parent's children only from `decomposition_parents`, never from the
+    GitHub UI link and never from the historical prose comment table.
+    Enumerating a parent's children from prose is a machine-first violation
     and is what historically left decomposed parents lingering OPEN after
     every child closed.
     Each tick, the post-merge drain (`run-post-merge.py`, after the
