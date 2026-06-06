@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.10.0
+version: 0.11.0
 template_version: 2.0.0
 ---
 
@@ -18,7 +18,12 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "scripts": [
       ".claude/features/rabbit-decompose/scripts/handoff-scaffold.py"
     ],
-    "files": [],
+    "files": [
+      {
+        "path": ".rabbit/.runtime/decompose-active",
+        "purpose": "the decompose-context scope-guard pass-through marker; handoff-scaffold.py --decompose-context set writes it (operation + the accepted feature NAMES) before the batch scaffold/spec-seed work and --decompose-context clear deletes it after, authorizing cross-feature writes for the named features without a per-feature scope marker (rabbit-cage scope-guard Inv 47 contract)"
+      }
+    ],
     "templates": [],
     "schemas": []
   },
@@ -58,7 +63,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   },
   "never": [
     "edits the user's source code",
-    "writes files outside .claude/features/rabbit-decompose/ (the skill's deliverable is structured handoff to other skills, not direct file writes)",
+    "writes feature-directory files directly (the skill's deliverable is structured handoff to other skills; its only direct write is the .rabbit/.runtime/decompose-active orchestration marker declared in provides.files)",
     "scaffolds features without explicit in-conversation user approval of the proposed list"
   ]
 }

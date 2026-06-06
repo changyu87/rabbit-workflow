@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.10.0
+version: 0.11.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -34,7 +34,10 @@ direct `rabbit-spec-creator` subagent dispatch per feature).
   mode-correct branch (plugin → the `rabbit-feature-scaffold` skill batch
   interface `scaffold-batch.py --batch <file>`, NOT a direct shell-out to
   rabbit-feature's `scaffold-feature.py`; standalone → emits the per-feature
-  `rabbit-feature-scaffold` plan)
+  `rabbit-feature-scaffold` plan). It also owns the decompose-context
+  scope-guard pass-through via `--decompose-context set|clear`: the bounded,
+  auto-cleared marker that authorizes batch writes across the accepted
+  features' directories (see Interactive Protocol Step 4 and Invariant 9)
 - `docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`, `feature.json`,
   `test/run.py` — feature scaffolding
 
@@ -78,6 +81,13 @@ The skill is interactive by design. The dispatcher MUST:
    removals / boundary changes; the dispatcher updates the proposal
    and re-presents until the user accepts.
 4. **Hand off** — once accepted, the dispatcher:
+   - SETS the decompose-context scope-guard pass-through BEFORE any batch
+     work: `scripts/handoff-scaffold.py --decompose-context set` writes the
+     bounded, auto-cleared marker recording the exact accepted feature NAMES,
+     so the cross-feature scaffold + spec-seed writes are authorized without
+     a per-feature scope marker (Invariant 9). After ALL batch work completes
+     — success OR failure — the dispatcher CLEARS it with
+     `--decompose-context clear`, so the marker never lingers.
    - Runs `scripts/handoff-scaffold.py` with the accepted feature list.
      The script resolves the rabbit root, detects mode deterministically
      (reusing `rabbit-meta.lib.mode_detection.detect_mode` — NOT a single
@@ -209,6 +219,32 @@ constrains only the structural shape.
    `--detect-existing` step, name `project-map.json`, and document the
    three-way skip / add / re-decompose branch.
 
+9. The batch scaffold flow MUST authorize its cross-feature writes through the
+   decompose-context scope-guard pass-through, NOT through the manual
+   `.rabbit-scope-override` session workaround. The set/clear MUST be
+   SCRIPT-tier: `scripts/handoff-scaffold.py --decompose-context set
+   --features <accepted.json>` writes
+   `<repo_root>/.rabbit/.runtime/decompose-active` BEFORE the batch scaffold
+   and spec-seed work, and `--decompose-context clear` deletes it AFTER the
+   work completes (success OR failure), so the marker never lingers. The
+   marker JSON matches the scope-guard contract: a non-empty string
+   `operation` (a decompose label), a non-empty list `features` carrying the
+   EXACT accepted feature NAMES authorized this batch, and an OPTIONAL
+   ISO-8601 `expires` defense-in-depth bound. The marker path is mode-correct
+   (mirroring the project-map path resolution): plugin →
+   `<rabbit_root>/.runtime/decompose-active`; standalone →
+   `<rabbit_root>/.rabbit/.runtime/decompose-active`. The script's own batch
+   dispatch wraps the scaffolder invocation in set-before / clear-after so a
+   FAILING scaffolder still clears the marker (try/finally). That self-guard
+   is OWN-ONLY: when a marker is ALREADY present (the `SKILL.md` Step 4-A set
+   it to span the later spec-seed step too), the batch dispatch leaves it
+   untouched — it only sets and clears a marker it itself created, so it never
+   clears the outer orchestration's marker out from under the spec-seed step.
+   The `SKILL.md`
+   Step 4 body MUST invoke the `--decompose-context set|clear` subcommand and
+   MUST NOT reference the manual `.rabbit-scope-override` session workaround
+   as the recommended path.
+
 ## Tests
 
 `test/run.py` invokes every `test-*.py` file under `test/`. Current
@@ -267,6 +303,16 @@ coverage:
   `.rabbit/rabbit-project/...`); and that the `SKILL.md` body references
   `--detect-existing`, names `project-map.json`, and documents the three-way
   branch).
+- `test-decompose-context-marker.py` (E2E — asserts Invariant 9: runs
+  `scripts/handoff-scaffold.py --decompose-context set` end-to-end against
+  temp plugin and standalone trees, confirming the bounded marker is written
+  at the mode-correct path with the scope-guard schema (`operation` plus the
+  exact accepted feature NAMES in `features`); that `--decompose-context
+  clear` deletes it idempotently; that the script's own batch dispatch sets
+  the marker before the scaffolder runs and clears it after even when the
+  scaffolder FAILS (try/finally), so it never lingers; and that the `SKILL.md`
+  Step 4 body invokes `--decompose-context` and no longer references the
+  manual `.rabbit-scope-override` session workaround).
 - `test-default-rabbit-root.py` (E2E — asserts Invariant 7: the default
   rabbit-root resolver returns the cwd; running `handoff-scaffold.py
   --source-root` WITHOUT `--rabbit-root` from a simulated plugin cwd

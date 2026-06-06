@@ -1,7 +1,7 @@
 ---
 name: rabbit-decompose
 description: Propose a feature decomposition for an existing codebase or a high-level spec, interactively iterate with the user until accepted, then orchestrate scaffolding + initial spec drafting per accepted feature. Use when the user wants to start a new rabbit-managed project from a spec/prompt, or when the user wants to retroactively organize an existing codebase into rabbit features. Phrases like "decompose this into features", "propose a feature breakdown", "let's organize this codebase with rabbit", "/rabbit-decompose", "what features should this project have". Do NOT use to revise individual feature specs (that's rabbit-spec-update) or to scaffold a single feature whose name + globs you already know (that's rabbit-feature-scaffold).
-version: 0.10.0
+version: 0.11.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
 ---
@@ -86,7 +86,16 @@ Loop until the user explicitly accepts ("looks good", "go ahead", "ship it"). Do
 
 Once the user accepts:
 
-**A. Scaffold.** Write the accepted list to a JSON file — `[{"name": "X", "globs": [...]}, ...]` — then run the hand-off orchestrator. It resolves the rabbit root, detects mode deterministically (reusing `rabbit-meta`'s `detect_mode`), authors the batch temp file with a script-owned timestamp, and dispatches the scaffolder on the mode-correct branch:
+**A. Open the decompose-context pass-through.** The batch scaffold + spec-seed work writes across SEVERAL feature directories at once. Instead of the undiscoverable manual session override, open a bounded, auto-cleared scope-guard pass-through that authorizes exactly the accepted features' directories. Write the accepted list to a JSON file — `[{"name": "X", "globs": [...]}, ...]` — then SET the marker BEFORE any batch work:
+
+<!-- example -->
+```bash
+python3 .claude/features/rabbit-decompose/scripts/handoff-scaffold.py --decompose-context set --features <accepted.json>
+```
+
+This writes `.rabbit/.runtime/decompose-active` recording the accepted feature NAMES; while present, scope-guard ALLOWS writes inside any of those feature directories without a per-feature scope marker. You MUST CLEAR it after ALL batch work (Step 4-D below) — on success OR failure — so it never lingers.
+
+**B. Scaffold.** Run the hand-off orchestrator. It resolves the rabbit root, detects mode deterministically (reusing `rabbit-meta`'s `detect_mode`), authors the batch temp file with a script-owned timestamp, and dispatches the scaffolder on the mode-correct branch (its own batch dispatch also re-sets the marker before and clears it after, so the deterministic scaffold step is self-guarded):
 
 <!-- example -->
 ```bash
@@ -99,7 +108,7 @@ The script owns the mode branch: in **plugin mode** it runs the scaffolder in ba
 Skill("rabbit-feature-scaffold", args: the feature name)
 ```
 
-**B. Seed specs.** Seed each accepted feature's initial `docs/spec.md` by dispatching the `rabbit-spec-creator` subagent directly. The subagent reads the matched code and WRITES the spec itself, returning only a `{path_written, summary}` handoff. The prompt is script-assembled by `rabbit-spec`'s input assembler `dispatch-spec-creator.py`, which resolves the path globs and prints the absolute path of the assembled prompt file to stdout.
+**C. Seed specs.** Seed each accepted feature's initial `docs/spec.md` by dispatching the `rabbit-spec-creator` subagent directly. The subagent reads the matched code and WRITES the spec itself, returning only a `{path_written, summary}` handoff. The prompt is script-assembled by `rabbit-spec`'s input assembler `dispatch-spec-creator.py`, which resolves the path globs and prints the absolute path of the assembled prompt file to stdout.
 
 For each accepted feature **with non-empty globs**, assemble the prompt by passing the feature name and its comma-separated globs:
 
@@ -122,7 +131,16 @@ Agent(subagent_type: "rabbit-spec-creator", prompt: <contents of the assembled p
 
 Because `rabbit-spec-creator` is dispatched DIRECTLY at level-1 (decompose is a main-session orchestration, with no intermediate subagent-dispatching skill), the N per-feature spec-creator dispatches may run in **parallel** — fire all the `Agent(...)` calls together and collect their `{path_written, summary}` handoffs.
 
-**C. Report.** Tell the user: `N` features scaffolded; `M` spec drafts produced; paths to each. Note that the spec drafts are *starting points* — the user reviews and edits before they're final.
+**D. Close the decompose-context pass-through.** After ALL batch work (scaffold + every spec-seed dispatch) completes — whether every step succeeded or any failed — CLEAR the marker so it never lingers:
+
+<!-- example -->
+```bash
+python3 .claude/features/rabbit-decompose/scripts/handoff-scaffold.py --decompose-context clear
+```
+
+The clear is idempotent (clearing an absent marker is a no-op), so run it unconditionally as the final batch step even if an earlier step errored.
+
+**E. Report.** Tell the user: `N` features scaffolded; `M` spec drafts produced; paths to each. Note that the spec drafts are *starting points* — the user reviews and edits before they're final.
 
 ## What you do NOT do
 
