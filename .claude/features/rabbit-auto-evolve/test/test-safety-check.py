@@ -76,9 +76,14 @@ def _write_gh_shim(shim_dir, base_ref="dev", head_ref="feat/some-thing"):
     os.chmod(shim_path, stat.S_IRWXU)
 
 
-def _make_clean_repo(tmpdir, base_ref="dev", head_ref="feat/some-thing"):
-    """Create a tempdir-local git repo on branch `dev`, with an initial
-    commit, and a `gh` shim on PATH. Return (cwd, env)."""
+def _make_clean_repo(tmpdir, base_ref="dev", head_ref="feat/some-thing",
+                     init_branch="dev", integration_target=None):
+    """Create a tempdir-local git repo on branch `init_branch` (default
+    `dev`), with an initial commit, and a `gh` shim on PATH. Return (cwd, env).
+
+    `integration_target` (Inv 61): when None the env var is cleared so the
+    check resolves the coexistence default (`dev`); set it to 'dev'/'main' to
+    drive the resolved integration target Inv 1/2 assert against."""
     repo = os.path.join(tmpdir, "repo")
     os.makedirs(repo)
     shim_dir = os.path.join(tmpdir, "bin")
@@ -92,9 +97,12 @@ def _make_clean_repo(tmpdir, base_ref="dev", head_ref="feat/some-thing"):
     env["GIT_AUTHOR_EMAIL"] = "tester@example.com"
     env["GIT_COMMITTER_NAME"] = "tester"
     env["GIT_COMMITTER_EMAIL"] = "tester@example.com"
+    env.pop("RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET", None)
+    if integration_target is not None:
+        env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = integration_target
 
-    # Init repo on `dev` and make a commit so HEAD exists.
-    subprocess.run(["git", "init", "-b", "dev", repo],
+    # Init repo on `init_branch` and make a commit so HEAD exists.
+    subprocess.run(["git", "init", "-b", init_branch, repo],
                    check=True, capture_output=True, env=env)
     subprocess.run(["git", "-C", repo, "commit", "--allow-empty", "-m", "init"],
                    check=True, capture_output=True, env=env)
@@ -183,35 +191,67 @@ with tempfile.TemporaryDirectory() as td:
 
 
 # ---------------------------------------------------------------------------
-# Inv 1 negative — current git branch is not `dev`.
-#   Run under --phase merge; should detect branch != dev.
+# Inv 1 negative — current git branch is not the integration target.
+#   During the dev<->main coexistence window the branch must be dev OR main;
+#   any other branch (e.g. release/x) fails Inv 1. Run under --phase merge.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     repo, env = _make_clean_repo(td)
-    subprocess.run(["git", "-C", repo, "checkout", "-b", "main"],
+    subprocess.run(["git", "-C", repo, "checkout", "-b", "release/x"],
                    check=True, capture_output=True, env=env)
     proc = _run(repo, env, "42", "--phase", "merge")
     if proc.returncode == 0:
-        fail("inv1: on main branch should fail")
+        fail("inv1: on release/x branch should fail")
     elif "Invariant 1" not in proc.stderr:
         fail(f"inv1: stderr should name 'Invariant 1'; got {proc.stderr!r}")
     else:
-        ok("inv1: on main branch fails with 'Invariant 1' in stderr")
+        ok("inv1: on release/x branch fails with 'Invariant 1' in stderr")
 
 
 # ---------------------------------------------------------------------------
-# Inv 2 negative — PR base branch is not `dev`.
-#   Run under --phase merge with gh shim emitting baseRefName=main.
+# Inv 1 coexistence (Inv 61) — current branch == main is ACCEPTED while the
+# resolved integration target is main. Init the repo on main, set the target.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
-    repo, env = _make_clean_repo(td, base_ref="main")
+    repo, env = _make_clean_repo(td, base_ref="main", init_branch="main",
+                                 integration_target="main")
+    proc = _run(repo, env, "42", "--phase", "merge")
+    if proc.returncode != 0:
+        fail(f"inv1-coexist-main: branch=main target=main should pass; "
+             f"got exit {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("inv1-coexist-main: branch==main passes when target=main")
+
+
+# ---------------------------------------------------------------------------
+# Inv 2 negative — PR base branch is not the integration target.
+#   A base outside the accepted {dev, main} coexistence set (e.g. release/x)
+#   fails Inv 2. Run under --phase merge.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    repo, env = _make_clean_repo(td, base_ref="release/x")
     proc = _run(repo, env, "42", "--phase", "merge")
     if proc.returncode == 0:
-        fail("inv2: PR base=main should fail")
+        fail("inv2: PR base=release/x should fail")
     elif "Invariant 2" not in proc.stderr:
         fail(f"inv2: stderr should name 'Invariant 2'; got {proc.stderr!r}")
     else:
-        ok("inv2: PR base=main fails with 'Invariant 2' in stderr")
+        ok("inv2: PR base=release/x fails with 'Invariant 2' in stderr")
+
+
+# ---------------------------------------------------------------------------
+# Inv 2 coexistence (Inv 61) — PR base==main is ACCEPTED while the resolved
+# integration target is main (init the repo on main so Inv 1 also holds).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    repo, env = _make_clean_repo(td, base_ref="main", init_branch="main",
+                                 integration_target="main")
+    proc = _run(repo, env, "42", "--phase", "merge")
+    if proc.returncode != 0:
+        fail(f"inv2-coexist-main: base=main target=main should pass merge; "
+             f"got exit {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("inv2-coexist-main: base==main passes merge when target=main")
 
 
 # ---------------------------------------------------------------------------

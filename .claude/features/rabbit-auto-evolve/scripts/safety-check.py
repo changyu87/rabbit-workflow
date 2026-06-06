@@ -4,16 +4,25 @@
 Usage:
   safety-check.py <pr#> --phase {merge|release|cleanup} [--next-tag vX.Y.Z]
 
-Per rabbit-auto-evolve spec.md Inv 5, the script enforces the bottom-line
-safety invariants from design doc §9 before any merge / release / cleanup
-action runs. Each numbered invariant is gated to specific phases:
+Per rabbit-auto-evolve spec.md Inv 5 / Inv 61, the script enforces the
+bottom-line safety invariants from design doc §9 before any merge / release /
+cleanup action runs. Each numbered invariant is gated to specific phases:
 
-  Invariant 1 — current git branch is `dev`             (merge, release, cleanup)
-  Invariant 2 — PR base branch is `dev`                 (merge, release)
+  Invariant 1 — current git branch is the integration target
+                (dev OR main during the coexistence window)  (merge, release, cleanup)
+  Invariant 2 — PR base branch is an accepted integration
+                target (dev OR main during coexistence)      (merge, release)
   Invariant 3 — PR head matches ^feat/.+ and is not
                 `dev`, `main`, or `release/...`         (cleanup)
   Invariant 4 — the --next-tag tag does not exist       (release)
   Invariant 5 — no uncommitted tracked-file modifications  (merge, release, cleanup)
+
+Inv 61 (dev<->main coexistence): the integration target is resolved by the
+sibling `integration_target` module (default `dev`, overridable to `main` via
+RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET). Inv 1 asserts the current branch is
+that resolved target; Inv 2 accepts ANY base in the coexistence set
+({dev, main}). The defense-in-depth intent is preserved: a branch/base outside
+the accepted set is still refused.
 
 `--next-tag vX.Y.Z` is REQUIRED iff `--phase release`, FORBIDDEN otherwise
 (resolved Open Question 2).
@@ -25,16 +34,22 @@ The script never auto-fixes.
 
 The script reads `gh` and `git` state only — no filesystem mutations.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
 """
 
 import argparse
+import os
 import re
 import subprocess
 import sys
+
+# Resolved relative to THIS file's dir (the real scripts dir). The
+# integration-target abstraction (Inv 61) is a sibling library, never shimmed.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import integration_target  # noqa: E402
 
 
 PHASES = ("merge", "release", "cleanup")
@@ -48,8 +63,8 @@ INV_BY_PHASE = {
 
 # Short names for stderr reporting.
 INV_SHORT = {
-    1: "branch is dev",
-    2: "PR base is dev",
+    1: "branch is integration target",
+    2: "PR base is integration target",
     3: "PR head matches ^feat/.+",
     4: "next-tag does not exist",
     5: "no uncommitted tracked-file modifications",
@@ -73,18 +88,24 @@ def _gh(*args):
 
 
 def check_inv_1(args):
-    """Current git branch is `dev`."""
+    """Current git branch is the resolved integration target (Inv 61): `dev`
+    by default, `main` when the target is overridden during coexistence."""
     rc, out, err = _git("rev-parse", "--abbrev-ref", "HEAD")
     if rc != 0:
         return f"git rev-parse failed: {err.strip()}"
     branch = out.strip()
-    if branch != "dev":
-        return f"current branch is {branch!r}, expected 'dev'"
+    try:
+        target = integration_target.resolve_target()
+    except ValueError as e:
+        return str(e)
+    if branch != target:
+        return f"current branch is {branch!r}, expected {target!r}"
     return None
 
 
 def check_inv_2(args):
-    """PR base branch (gh pr view) is `dev`."""
+    """PR base branch (gh pr view) is an accepted integration target (Inv 61):
+    `dev` OR `main` during the coexistence window; any other base is refused."""
     rc, out, err = _gh(
         "pr", "view", str(args.pr),
         "--json", "baseRefName", "-q", ".baseRefName",
@@ -92,8 +113,9 @@ def check_inv_2(args):
     if rc != 0:
         return f"gh pr view failed: {err.strip()}"
     base = out.strip()
-    if base != "dev":
-        return f"PR base is {base!r}, expected 'dev'"
+    accepted = integration_target.accepted_targets()
+    if base not in accepted:
+        return f"PR base is {base!r}, expected one of {accepted}"
     return None
 
 

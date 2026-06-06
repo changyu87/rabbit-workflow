@@ -174,6 +174,9 @@ def _make_env(tmpdir, pr_view_payload,
     env = os.environ.copy()
     env["PATH"] = bin_dir + os.pathsep + env.get("PATH", "")
     env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = script_dir
+    # Inv 61: clear any inherited integration-target so the default (dev)
+    # resolves unless a test sets it explicitly.
+    env.pop("RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET", None)
     return tmpdir, env, call_log
 
 
@@ -215,6 +218,45 @@ if "usage" not in (proc.stdout + proc.stderr).lower():
     fail(f"help: 'usage' missing; stdout={proc.stdout!r}")
 else:
     ok("help: usage text present")
+
+
+# ---------------------------------------------------------------------------
+# Coexistence (Inv 61): `gh release create` targets the resolved integration
+# target. Default (no override) → --target dev; override main → --target main.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    payload = _make_payload(labels=["priority:low"], body="x",
+                            files=[".claude/features/foo/scripts/a.py"])
+    cwd, env, call_log = _make_env(td, payload, prior_tag="v0.5.2")
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"target-default: exit {proc.returncode}; stderr={proc.stderr!r}")
+    rel_calls = [c for c in _calls(call_log) if c.startswith("gh release create")]
+    if not rel_calls:
+        fail(f"target-default: no gh release create call; calls logged")
+    elif not any("--target dev" in c for c in rel_calls):
+        fail(f"target-default: gh release create missing '--target dev'; "
+             f"{rel_calls!r}")
+    else:
+        ok("target-default: gh release create --target dev (coexistence "
+           "default)")
+
+with tempfile.TemporaryDirectory() as td:
+    payload = _make_payload(labels=["priority:low"], body="x",
+                            files=[".claude/features/foo/scripts/a.py"])
+    cwd, env, call_log = _make_env(td, payload, prior_tag="v0.5.2")
+    env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = "main"
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"target-main: exit {proc.returncode}; stderr={proc.stderr!r}")
+    rel_calls = [c for c in _calls(call_log) if c.startswith("gh release create")]
+    if not rel_calls:
+        fail("target-main: no gh release create call")
+    elif not any("--target main" in c for c in rel_calls):
+        fail(f"target-main: gh release create missing '--target main'; "
+             f"{rel_calls!r}")
+    else:
+        ok("target-main: gh release create --target main under override")
 
 
 # ---------------------------------------------------------------------------

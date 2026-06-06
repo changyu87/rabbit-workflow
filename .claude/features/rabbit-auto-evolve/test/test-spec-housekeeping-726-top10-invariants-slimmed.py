@@ -48,8 +48,11 @@ BASELINE_TOTAL_LINES = 3594
 # as a small ABSOLUTE headroom above the live total rather than a sub-baseline margin:
 # the slim ratchet is preserved (a fresh top-10 slim would still pass) while honest
 # additive growth is not penalised. MAX_TOTAL_LINES sits a meaningful margin below
-# the no-headroom point a token-trim regression would push toward.
-MAX_TOTAL_LINES = 3620
+# the no-headroom point a token-trim regression would push toward. The
+# integration-target / dev<->main coexistence invariant (Inv 61, ~49 lines with its
+# resolution rules, script-table row, and deprecation criterion) is additive, so the
+# absolute ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 3675
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

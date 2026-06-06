@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.80.0
+version: 0.81.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -845,7 +845,7 @@ reason — never label removal.
 
 Other red flags:
 
-- Never call `gh pr merge` on a PR whose base is not `dev`.
+- Never call `gh pr merge` on a PR whose base is outside the `{dev, main}` integration-target coexistence set.
 - Never delete a branch not matching `^feat/.+`.
 - Never create a tag that already exists.
 - Never merge when the working tree is dirty.

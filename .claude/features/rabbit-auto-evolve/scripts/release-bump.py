@@ -38,7 +38,9 @@ Per rabbit-auto-evolve spec.md Inv 7, this script:
      reason:safety-check-failed} and stop (no git mutation, exit 0).
   5. Otherwise: `git tag -a <next_tag> -m <auto-evolve msg>`,
      `git push origin <next_tag>`,
-     `gh release create <next_tag> --notes-from-tag --target dev`.
+     `gh release create <next_tag> --notes-from-tag --target <integration
+     target>` — the resolved integration target (Inv 61: default `dev`,
+     `main` under the coexistence override), not a hard-coded `dev`.
 
 Emits a single JSON object on stdout (prior_tag is null on first release):
   {
@@ -67,7 +69,7 @@ The sibling `safety-check.py` is resolved via RABBIT_AUTO_EVOLVE_SCRIPT_DIR
 when set; otherwise via this script's own dirname (mirrors merge-prs.py and
 cleanup-branches.py).
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -79,6 +81,11 @@ import os
 import re
 import subprocess
 import sys
+
+# Resolved relative to THIS file's dir (the real scripts dir). The
+# integration-target abstraction (Inv 61) is a sibling library, never shimmed.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import integration_target  # noqa: E402
 
 
 CONTRACT_SCHEMAS_PREFIX = ".claude/features/contract/schemas/"
@@ -299,9 +306,13 @@ def _git_push_tag(next_tag):
 
 
 def _gh_release(next_tag):
+    # Inv 61 — target the resolved integration target (default `dev`,
+    # overridable to `main` during the coexistence window) rather than a
+    # hard-coded `dev`.
+    target = integration_target.resolve_target()
     return subprocess.run(
         ["gh", "release", "create", next_tag,
-         "--notes-from-tag", "--target", "dev"],
+         "--notes-from-tag", "--target", target],
         capture_output=True, text=True,
     )
 
