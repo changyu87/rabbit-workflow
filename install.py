@@ -52,6 +52,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -487,46 +488,24 @@ def _installed_version_for_update(args: argparse.Namespace) -> str | None:
     return text or None
 
 
-def _parse_changelog_sections(body: str) -> list[tuple[str, list[str]]]:
-    """Inv 46 (#924): split a keep-a-changelog body into ordered
-    `(label, body_lines)` sections, top-to-bottom (newest first).
-
-    A section begins at a `## [<label>]` header line; `<label>` is the bracket
-    content (e.g. `v9.4.12`, `Unreleased`, `release/1.12.0`). Lines before the
-    first header (the intro) are discarded. Returns sections in document order.
-    """
-    sections: list[tuple[str, list[str]]] = []
-    label: str | None = None
-    lines: list[str] = []
-    for raw in body.splitlines():
-        m = re.match(r"^## \[([^\]]+)\]", raw)
-        if m:
-            if label is not None:
-                sections.append((label, lines))
-            label = m.group(1)
-            lines = []
-        elif label is not None:
-            lines.append(raw)
-    if label is not None:
-        sections.append((label, lines))
-    return sections
-
-
 def render_changelog_summary(old_ref: str | None, new_ref: str | None,
-                             changelog_body: str) -> str:
-    """Inv 46 (#924): render a brief, DETERMINISTIC post-update changelog
-    summary from the repo `CHANGELOG.md` body — NOT AI-inferred.
+                             tags) -> str:
+    """Inv 46 (#924, re-sourced by #931): render a brief, DETERMINISTIC
+    post-update changelog summary from the LIVE `vX.Y.Z` release track — the
+    git tags carried in the source tree — NOT AI-inferred and NOT the dead
+    `release/1.x` root `CHANGELOG.md`.
 
-    Selects the keep-a-changelog sections whose label parses to a semver
-    STRICTLY newer than `old_ref` and newer-than-or-equal-to `new_ref`
-    (`old < section <= new`), naming the `old_ref -> new_ref` range and
-    listing each selected section's bullet entries verbatim, closing with a
-    pointer to the full changelog.
+    `tags` is an iterable of `(tag, subject)` pairs, where `tag` is a release
+    tag name (e.g. `v9.4.12`) and `subject` is its annotation subject line.
+    Selects the tags whose name parses to a semver (via `_parse_version`,
+    Inv 27) STRICTLY newer than `old_ref` and newer-than-or-equal-to `new_ref`
+    (`old < tag <= new`), orders them newest-first, names the
+    `old_ref -> new_ref` range, lists each selected tag with its subject line
+    verbatim, and closes with a pointer to the release history.
 
     Returns the empty string for a no-op (same version, or no parseable
-    upgrade range) — the caller then prints nothing. Pure string→string; no
-    IO, no network, no inference. The `Unreleased` section (and any section
-    whose label carries no semver) is skipped.
+    upgrade range) — the caller then prints nothing. Pure (no IO, no network,
+    no inference). Tags with no parseable semver are skipped.
     """
     if not new_ref:
         return ""
@@ -537,41 +516,70 @@ def render_changelog_summary(old_ref: str | None, new_ref: str | None,
     if old_t is None or new_t is None or not (new_t > old_t):
         return ""
 
-    selected: list[tuple[str, list[str]]] = []
-    for label, lines in _parse_changelog_sections(changelog_body):
-        sec_t = _parse_version(label)
-        if sec_t is None:
+    selected: list[tuple[tuple[int, int, int], str, str]] = []
+    for tag, subject in tags:
+        tag_t = _parse_version(tag)
+        if tag_t is None:
             continue
-        if old_t < sec_t <= new_t:
-            selected.append((label, lines))
+        if old_t < tag_t <= new_t:
+            selected.append((tag_t, tag, subject))
+    # Newest-first regardless of the input iteration order.
+    selected.sort(key=lambda e: e[0], reverse=True)
 
     out: list[str] = [f"Changelog {old_ref} -> {new_ref}:"]
-    for label, lines in selected:
-        out.append(f"  [{label}]")
-        for ln in lines:
-            stripped = ln.rstrip()
-            if stripped:
-                out.append(f"  {stripped}")
-    out.append("See the full changelog: CHANGELOG.md")
+    for _t, tag, subject in selected:
+        if subject:
+            out.append(f"  [{tag}] {subject}")
+        else:
+            out.append(f"  [{tag}]")
+    out.append("See the release history: the vX.Y.Z release tags (git tag).")
     return "\n".join(out)
+
+
+def _collect_release_tags(src_root: Path) -> list[tuple[str, str]]:
+    """Inv 46 (#931): enumerate the `vX.Y.Z` release tags in the source tree
+    via a read-only `git -C <src_root> tag`, returning `(tag, subject)` pairs
+    where `subject` is each tag's annotation subject line.
+
+    The source tree is the freshly-fetched (or `--src`-supplied) upstream git
+    checkout. Best-effort: when git is unavailable, the tree is not a git
+    checkout, or the command fails, returns an empty list — the summary then
+    degrades cleanly (prints nothing) rather than failing the install.
+    """
+    try:
+        res = subprocess.run(
+            ["git", "-C", str(src_root), "tag", "--list", "v[0-9]*",
+             "--format=%(refname:short)%09%(contents:subject)"],
+            capture_output=True, text=True, check=False,
+        )
+    except (OSError, ValueError):
+        return []
+    if res.returncode != 0:
+        return []
+    tags: list[tuple[str, str]] = []
+    for line in res.stdout.splitlines():
+        if not line.strip():
+            continue
+        name, _, subject = line.partition("\t")
+        tags.append((name.strip(), subject.strip()))
+    return tags
 
 
 def emit_changelog_summary(old_ref: str | None, new_ref: str | None,
                            src_root: Path) -> None:
-    """Inv 46 (#924): print the post-update changelog summary to stdout after a
-    successful `--update`, sourcing the text from `<src_root>/CHANGELOG.md`.
+    """Inv 46 (#924, re-sourced by #931): print the post-update changelog
+    summary to stdout after a successful `--update`, sourcing the text from the
+    LIVE `vX.Y.Z` git tags in `<src_root>` — NOT the dead-track root
+    `CHANGELOG.md`.
 
-    The source tree is the freshly-fetched (or `--src`-supplied) upstream, so
-    its CHANGELOG.md is the just-installed content. Best-effort: a missing or
-    unreadable CHANGELOG.md, or a no-op range, prints nothing — the summary is
-    a courtesy, never a new failure mode.
+    The source tree is the freshly-fetched (or `--src`-supplied) upstream git
+    checkout, so its tags are the just-installed release track. Best-effort:
+    when git is unavailable, no tags fall in the range, or the range is a
+    no-op, prints nothing — the summary is a courtesy, never a new failure
+    mode.
     """
-    changelog = src_root / "CHANGELOG.md"
-    try:
-        body = changelog.read_text()
-    except OSError:
-        return
-    summary = render_changelog_summary(old_ref, new_ref, body)
+    tags = _collect_release_tags(src_root)
+    summary = render_changelog_summary(old_ref, new_ref, tags)
     if summary:
         print(summary)
 
@@ -967,9 +975,10 @@ def _main_with_args(args: argparse.Namespace) -> int:
     total_files = sum(1 for p in dst_root.rglob("*") if p.is_file())
     print(f"Installed {total_files} files to {dst_root}")
 
-    # Inv 46 (#924): after a successful --update, show a brief, deterministic
-    # changelog summary of what changed between the OLD and NEWLY-INSTALLED
-    # version, sourced from the just-installed CHANGELOG.md (NOT inferred).
+    # Inv 46 (#924, re-sourced by #931): after a successful --update, show a
+    # brief, deterministic changelog summary of what changed between the OLD
+    # and NEWLY-INSTALLED version, sourced from the live vX.Y.Z git tags in the
+    # source tree (NOT inferred, NOT the dead-track root CHANGELOG.md).
     if args.update:
         emit_changelog_summary(update_old_ref, update_new_ref, src_root)
     return 0
