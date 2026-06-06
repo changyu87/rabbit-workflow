@@ -12,6 +12,27 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.71.0 (fix #914: show the permission-bypass message on-demand, not on
+  every startup):** the permission-bypass info message used to print on EVERY
+  SessionStart as a `welcome_with_policy` welcome subline (added by #889 for
+  discoverability), so a fresh `.rabbit` install surfaced it on every session
+  start. That information is useful but non-urgent and should appear only when
+  explicitly queried. The FOURTH SessionStart welcome subline was removed from
+  `feature.json runtime.SessionStart` (the three policy-summary sublines remain),
+  and the same message content/branding is now surfaced ON-DEMAND through the
+  `/rabbit-cage-config` query path: `scripts/rabbit-cage-config.py`'s help path
+  (`-h`/`--help`/`help`) prints the guidance (the ephemeral `Shift+Tab` live
+  toggle AND the persisted `/rabbit-cage-config bypass-permissions true|false`
+  path that writes `defaultMode` and takes effect after a Claude relaunch). The
+  change targets ONLY the permission-bypass info message; the scope-override
+  SAFETY notice (#917, Inv 16/25) STILL fires on startup when a `session`
+  override is active. Inv 16 rewritten (FOURTH subline removed), Inv 40 gains
+  clause (e) documenting the on-demand surface; obsolete #889 test
+  `test-bypass-permissions-discoverable-at-sessionstart.py` removed and replaced
+  by `test-bypass-permissions-on-demand-not-startup.py` (e2e: no startup advert,
+  on-demand help emits the message, #917 safety notice intact). rabbit-cage
+  5.70.0 -> 5.71.0.
+
 - **v5.70.0 (fix #917: notify the user when a session scope override is active
   in plugin mode):** in plugin mode the session scope-override marker's
   canonical location is `<repo_root>/.rabbit/.rabbit-scope-override` (Inv 25),

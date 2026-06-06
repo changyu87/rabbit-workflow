@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.70.0
+version: 5.71.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -284,20 +284,23 @@ string BEFORE splitting on `;|&` segment delimiters.
     that fires the APIs); detection logic for `write_mode_marker` is owned
     by rabbit-meta, the helper script + fetch logic for `check_release_update`
     is owned by contract, and the API implementations are both owned by
-    contract. The `welcome_with_policy` entry's `sublines` array carries a
-    FOURTH subline (after the three policy-summary sublines) making the
-    rabbit-native persisted permission-mode path discoverable in always-loaded
-    SessionStart context: it advertises BOTH the ephemeral live toggle
-    (`Shift+Tab`, current session only) AND the persisted path
-    (`/rabbit-cage-config bypass-permissions true|false`, which writes
-    `permissions.defaultMode`, taking effect after a Claude relaunch). It is
-    distinct from the bypass-permissions active-override alert (Inv 40c), which
-    only fires once bypass is ALREADY active and so cannot aid discovery while
-    bypass is OFF. Enforced by
-    `test/test-bypass-permissions-discoverable-at-sessionstart.py` (e2e via the
-    real deployed dispatcher): the rendered systemMessage carries
-    `/rabbit-cage-config bypass-permissions` AND names the `Shift+Tab` toggle,
-    policy sublines unchanged. Wired into `test/run.py`.
+    contract. The `welcome_with_policy` entry's `sublines` array carries
+    EXACTLY the three policy-summary sublines (philosophy.md / spec-rules.md /
+    coding-rules.md) and NO permission-bypass info subline. The permission-bypass
+    guidance is NOT advertised on startup — it is useful but non-urgent
+    information that would otherwise print on EVERY session start (including a
+    fresh `.rabbit` install). The guidance is instead surfaced ON-DEMAND through
+    the `/rabbit-cage-config` config-query path (Inv 40 clause (e)), not the
+    automatic SessionStart path. This is
+    distinct from the scope-override SAFETY notices (Inv 16 entries (4)/(5),
+    Inv 25), which are safety alerts that MUST still fire on startup when an
+    override is active. Enforced by
+    `test/test-bypass-permissions-on-demand-not-startup.py` (e2e via the real
+    deployed dispatcher): the rendered systemMessage carries NO permission-bypass
+    advert, the three policy sublines remain, the message IS emitted by the
+    on-demand `rabbit-cage-config.py help` query path, and the scope-override
+    SAFETY notice still fires when a `session` override is active. Wired into
+    `test/run.py`.
 17. **Plugin-mode scope-guard decision tree.** When `scope-guard.py` runs
     and `<repo_root>/.rabbit/.runtime/mode` exists with content `"plugin"`,
     it takes the plugin-mode branch instead of the standalone decision
@@ -545,6 +548,7 @@ string BEFORE splitting on `;|&` segment delimiters.
     (b) **Thin wrapper over the shared dispatch helper.** rabbit-cage ships the command file `commands/rabbit-cage-config.md` (deployed via `publish_command`) and its backing script `scripts/rabbit-cage-config.py`. The script is a THIN wrapper: it resolves `repo_root` (`RABBIT_ROOT` env in plugin mode, else `git rev-parse --show-toplevel`), reads rabbit-cage's OWN `feature.json configuration[]`, finds the entry whose `subcommand` matches `argv[1]`, and delegates validation + mutation + restart-prompt rendering to `contract.lib.config_dispatch.dispatch_config(cfg, value, repo_root=…, feature_dir=…, template_value=…)`. It MUST NOT re-implement the values/actions interpreter, the template substitution, the validation rules, or the restart-prompt framing — those live ONCE in `contract.lib.config_dispatch` (script > prompt; no N drifting copies). The script owns ONLY argv parsing and IO: it prints `result["messages"]` then `result["restart_prompt"]` (when present) to stdout, and exits non-zero with `result["error"]` to stderr on failure. Usage: `rabbit-cage-config.py <subcommand> <value-or-action> [<template-value>]` (e.g. `rabbit-cage-config scope-guard on`, `rabbit-cage-config bypass-permissions true`, `rabbit-cage-config bash-allow add npm`).
     (c) **Per-feature override alerts via the generic runtime dispatcher.** rabbit-cage's per-feature override alerts are emitted by its existing generic event dispatcher. The `scope-guard` override surfaces via rabbit-cage's OWN dedicated `check_marker_alert` entries in `runtime.Stop` and `runtime.SessionStart` (Inv 7 / Inv 16) — the per-feature alert ownership for scope-guard. The `bypass-permissions` configurable is json-key storage (`permissions.defaultMode`), for which the fitting per-feature alert API is `contract.lib.runtime.emit_configurable_alert(feature_name, configurable_id)` (an on-demand single-configurable alert). rabbit-cage declares a `runtime[]` entry `{"api": "emit_configurable_alert", "args": {"feature_name": "rabbit-cage", "configurable_id": "bypass-permissions"}}` in BOTH `runtime.Stop` and `runtime.SessionStart`; `emit_configurable_alert` resolves the configurable's current `permissions.defaultMode` value (reverse-mapped `bypassPermissions` -> `true`), compares it to `alert-on` (`true`), and returns the `alert-message` print_result when the override is active (an `ok_result` no-op otherwise). This is the per-feature alert ownership for bypass-permissions. The other three owned configurables (`allowed-tools`, `bash-allow`, `prompt-threshold`) carry no `alert-on`/`alert-message` and emit no alert. Enforced by `test/test-bypass-permissions-per-feature-alert.py`: (i) both `runtime.Stop` and `runtime.SessionStart` carry an `emit_configurable_alert` entry resolving `feature_name == "rabbit-cage"` + `configurable_id == "bypass-permissions"`; (ii) it FIRES (inlined-revoke `alert-message` print_result) when `permissions.defaultMode == "bypassPermissions"` is set in `.claude/settings.local.json`; (iii) it is silent (`ok_result`) when absent. Wired into `test/run.py`.
     (d) **settings.local.json write path.** The command writes `.claude/settings.local.json` (for `bypass-permissions` / `allowed-tools` / `bash-allow` / `prompt-threshold`) through `dispatch_config` → `contract.lib.mutation`; the contract `never`-clause carve-out for settings.local.json mutation extends to this rabbit-cage config command.
+    (e) **On-demand permission-bypass guidance via the help/query path.** The permission-bypass info message is surfaced ON-DEMAND through the `/rabbit-cage-config` query path, NOT on every session start. `scripts/rabbit-cage-config.py`'s help path (`-h` / `--help` / `help`, and the module-level `PERMISSION_BYPASS_HELP` constant) prints the guidance — the ephemeral `Shift+Tab` live toggle AND the persisted `/rabbit-cage-config bypass-permissions true|false` path (writes `permissions.defaultMode`, takes effect after a Claude relaunch) — to stdout and exits 0. The message content/branding matches the bypass-permissions guidance; only WHEN it shows is on-request, not every startup. This is distinct from the per-feature bypass-permissions active-override alert (clause (c) / Inv 40c, which fires only once bypass is ALREADY active) and from the scope-override SAFETY notices (Inv 16/25, which still fire on startup when an override is active). Enforced by `test/test-bypass-permissions-on-demand-not-startup.py` (e2e): SessionStart carries no permission-bypass advert (three policy sublines intact), `rabbit-cage-config.py help` emits the guidance, and the scope-override SAFETY notice still fires on an active `session` override. Wired into `test/run.py`.
     `commands/rabbit-cage-config.md` carries the six required frontmatter keys (Inv 36) and is registered as a `publish_command` in `feature.json manifest`; both `commands/rabbit-cage-config.md` and `scripts/rabbit-cage-config.py` are listed in `install.py`'s `FEATURE_INCLUDES["rabbit-cage"]` and `COMMANDS` (Inv 21 / Inv 24), and `contract`'s `lib/config_dispatch.py` is listed in `FEATURE_INCLUDES["contract"]` (the cross-feature script-closure the command transitively depends on). The deployed `.claude/commands/rabbit-cage-config.md` copy drifts until republished. Enforced by `test/test-rabbit-cage-config-command.py`: (i) `scope-guard on` round-trips (writes/deletes the `.rabbit-scope-override` marker, no restart prompt); (ii) `bypass-permissions true` writes `permissions.defaultMode = bypassPermissions` to settings.local.json AND emits the restart prompt; (iii) `bash-allow add npm` appends `Bash(npm:*)`; (iv) an unknown subcommand / value exits non-zero; (v) the script is a thin wrapper — it imports `dispatch_config` and does NOT redefine the interpreter (no `_apply_template` / `_validate` of its own); (vi) the five owned configurables declare `command == "rabbit-cage-config"` and rabbit-cage's `configuration[]` declares no `tdd-autonomous` entry (it is the TDD feature's surface); (vii) no central rabbit-config interpreter exists on disk (the per-feature command is the sole config surface); (viii) the command frontmatter carries the six required keys and the manifest registers it; (ix) `FEATURE_INCLUDES`/`COMMANDS` list the command + script + `config_dispatch.py`. Wired into `test/run.py`.
 
 41. **rabbit-cage's scope marker authorizes its owned repo-root bootstrap files.** rabbit-cage owns three bootstrap files that live at the repo root, OUTSIDE its feature directory `.claude/features/rabbit-cage/`: `install.sh` (the one-liner shell wrapper), `install.py`, and the root `README.md` (`install.py` and `README.md` are `publish_file` destinations in this feature's `manifest`; `install.sh` is the committed bootstrap that drives `install.py main()`). The standalone per-feature scope-marker gate (Inv 5) authorizes writes only INSIDE the named feature's directory, so a rabbit-cage TDD cycle that legitimately edits these owned root files would otherwise be forced onto an ad-hoc scope-guard override — which the override rule reserves for plan / temporary-document writing, never feature code. `hooks/scope-guard.py` MUST therefore extend the standalone per-feature marker branch so that when the active marker is `.rabbit-scope-active-rabbit-cage`, a write whose absolute target equals `<REPO_ROOT>/install.sh`, `<REPO_ROOT>/install.py`, or `<REPO_ROOT>/README.md` is ALLOWED with no override.
