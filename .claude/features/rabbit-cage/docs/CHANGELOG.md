@@ -12,6 +12,26 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.79.0 (feat #989: dual-accept vendored-mode value + rename surface
+  terminology; gate-safe prep for the #980 `"plugin"` -> `"vendored"`
+  rename):** prepares rabbit-cage for rabbit-meta's pending rename of the
+  vendored-mode value WITHOUT flipping it here (the value flip is #990, blocked
+  on this). Two rabbit-cage-only changes: (1) every rabbit-cage site that
+  branches on the vendored-mode value now DUAL-ACCEPTS both spellings via
+  `mode in ("vendored", "plugin")` — `scripts/show-mode.py` (the `detect_mode`
+  return value driving the project-root derivation), `hooks/scope-guard.py`
+  (the two `.rabbit/.runtime/mode` content reads: the vendored-branch dispatch
+  and the per-mode override-marker path), and `scripts/scope-guard-on.py` (its
+  override-marker-path mirror) — so the gate stays green both before and after
+  the canonical value flips; (2) user-facing TERMINOLOGY `plugin mode` ->
+  `vendored mode` renamed in the README modes table/section + Uninstall note,
+  the `install.py` module docstring, and the spec Inv 45 prose, with the #981
+  disambiguation note kept consistent. New Inv 49 documents the dual-accept
+  coexistence shim and its deprecation criterion. rabbit-cage does NOT change
+  `detect_mode` or `write_mode_marker` (those are rabbit-meta/contract scope).
+  Enforced by test-mode-value-dual-accept.py and the updated
+  test-show-mode-command.py / test-vendored-mode-disambiguation-note.py.
+
 - **v5.78.0 (docs #981: clarify rabbit's vendored mode is distinct from Claude
   Code `/plugin` plugins):** added a one-line disambiguation callout to the
   README "Plugin mode" section noting that rabbit's vendored `.rabbit/` install

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""install.py — install rabbit as a plugin at <project>/.rabbit/ + dev-test helper.
+"""install.py — install rabbit in vendored mode at <project>/.rabbit/ + dev-test helper.
 
 This module has two distinct roles:
 
@@ -41,7 +41,7 @@ This module has two distinct roles:
 
 Version: 6.8.0
 Owner: rabbit-workflow team
-Deprecation criterion: when rabbit's per-project plugin model is superseded
+Deprecation criterion: when rabbit's per-project vendored model is superseded
 """
 
 from __future__ import annotations

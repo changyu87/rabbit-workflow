@@ -188,6 +188,43 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         ok("t4", f"show-mode agrees with canonical detect_mode ({canonical!r})")
 
+# --- t5: DUAL-ACCEPT of the vendored-mode value (Inv 49) -------------------
+# The canonical vendored-mode value is being renamed from "plugin" to
+# "vendored" (owned by rabbit-meta). show-mode.py's project-root branch — which
+# derives project_root as the PARENT of the .rabbit install dir — MUST fire for
+# BOTH values. Drive the script against a STUB detect_mode returning each value.
+def _build_stub_tree(install_root, detect_returns):
+    cage_scripts = os.path.join(
+        install_root, ".claude", "features", "rabbit-cage", "scripts")
+    meta_lib = os.path.join(
+        install_root, ".claude", "features", "rabbit-meta", "lib")
+    os.makedirs(cage_scripts)
+    os.makedirs(meta_lib)
+    dst = os.path.join(cage_scripts, "show-mode.py")
+    shutil.copy(REAL_SHOW_MODE, dst)
+    with open(os.path.join(meta_lib, "mode_detection.py"), "w") as f:
+        f.write("def detect_mode(cwd):\n    return %r\n" % detect_returns)
+    return dst
+
+
+for value in ("plugin", "vendored"):
+    with tempfile.TemporaryDirectory() as tmp:
+        project = os.path.join(tmp, "host-project")
+        rabbit = os.path.join(project, ".rabbit")
+        os.makedirs(project)
+        script = _build_stub_tree(rabbit, value)
+        res = _run(script, rabbit_root=rabbit, cwd=rabbit)
+        obj = _parse_json(res.stdout)
+        if res.returncode != 0 or obj is None:
+            fail_t("t5", f"[{value}] exit {res.returncode}; stdout={res.stdout!r}")
+        elif obj.get("mode") != value:
+            fail_t("t5", f"[{value}] mode not passed through: {obj.get('mode')!r}")
+        elif obj.get("project_root") != project:
+            fail_t("t5", f"[{value}] vendored project-root branch did not fire: "
+                         f"project_root={obj.get('project_root')!r} != {project!r}")
+        else:
+            ok("t5", f"[{value}] vendored project-root branch fires (dual-accept)")
+
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")
 sys.exit(0 if fail_n == 0 else 1)

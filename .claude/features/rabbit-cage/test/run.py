@@ -112,6 +112,7 @@ SUITES = [
     "test-scope-guard-decompose-context.py",
     "test-install-version-pin-local-src-not-unknown.py",
     "test-vendored-mode-disambiguation-note.py",
+    "test-mode-value-dual-accept.py",
 ]
 
 

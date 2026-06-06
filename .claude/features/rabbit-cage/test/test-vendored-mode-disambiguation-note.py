@@ -63,6 +63,18 @@ else:
         fail("distinctness",
              f"README must assert distinctness via one of: {DISTINCTNESS_PHRASES}")
 
+    # Terminology rename (#989): the user-facing surface labels the mode
+    # "Vendored mode", not "Plugin mode". The only remaining "plugin mode" is
+    # the disambiguation note's historical aside ("historically called ...").
+    if "## Vendored mode" in body:
+        ok("rename", "README section header reads 'Vendored mode'")
+    else:
+        fail("rename", "README missing '## Vendored mode' section header")
+    if "## Plugin mode" not in body:
+        ok("rename", "README has no leftover '## Plugin mode' section header")
+    else:
+        fail("rename", "README still carries a '## Plugin mode' section header")
+
 print()
 print(f"Results: {PASS} passed, {FAIL} failed")
 

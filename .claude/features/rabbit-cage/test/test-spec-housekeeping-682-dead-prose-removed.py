@@ -167,7 +167,12 @@ COLLAPSE_MAX = 1
 # and a genuine new-closure-required-but-missing ref still HARD-FAIL) plus its
 # e2e test. A real spec addition documenting new test-enforced behavior
 # (test-install-update-tolerates-closure-shrink.py), not reword re-inflation.
-SPEC_LINE_CEILING = 600
+# Raised 600 -> 602 by #989, which added Inv 50 (every rabbit-cage vendored-mode
+# value comparison dual-accepts both "vendored" and "plugin" — a gate-safe
+# coexistence shim ahead of the #980 canonical-value rename) plus its e2e test.
+# A real spec addition documenting new test-enforced behavior
+# (test-mode-value-dual-accept.py), not reword re-inflation.
+SPEC_LINE_CEILING = 602
 
 PASS = 0
 FAIL = 0
