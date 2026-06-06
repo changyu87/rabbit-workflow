@@ -1,22 +1,32 @@
 #!/usr/bin/env python3
 """test-install-update-changelog-summary.py — e2e: after a successful
 `install.py --update`, a brief changelog summary is emitted to the terminal
-naming the OLD -> NEW version range and the intervening CHANGELOG.md entries
-(spec Inv 46, #924).
+naming the OLD -> NEW version range and the intervening LIVE-track `vX.Y.Z`
+git-tag entries (spec Inv 46, #924 re-sourced by #931).
 
-Four behaviours, all exercising the REAL install.main(--update) path (the same
-call install.sh / rabbit-update.py drive) into a throwaway sandbox:
+Live releases are `vX.Y.Z` git tags cut by the release path; the repo-root
+`CHANGELOG.md` is a SEPARATE frozen `release/1.x` install-branch track that the
+release path does not maintain (rabbit-auto-evolve Inv 57). So the summary is
+sourced from the source tree's `vX.Y.Z` git tags, NEVER from root CHANGELOG.md.
+
+Five behaviours, exercising the REAL install.main(--update) path (the same call
+install.sh / rabbit-update.py drive) into a throwaway sandbox whose source tree
+is a git checkout carrying annotated `vX.Y.Z` tags:
 
   (a) After an update A -> B, the post-install summary names the `A -> B`
-      range AND lists the changelog entries between A and B, read verbatim
-      from the source-tree CHANGELOG.md (NOT AI-inferred).
-  (b) The summary content comes from the repo CHANGELOG.md file: a sentinel
-      string injected into the source CHANGELOG.md appears in the summary,
-      proving the text is sourced from the file rather than inferred.
+      range AND lists the tag entries strictly newer than A up to B, read from
+      the source-tree git tags (NOT AI-inferred), EXCLUDING the already-
+      installed tag A.
+  (b) The summary content comes from the tag annotation: a sentinel string in
+      a tag's annotation subject appears in the summary, proving the text is
+      git-sourced rather than inferred.
   (c) A no-op refresh (old version == new version) emits NO range summary;
       at most a clean "already current" line — never a fabricated changelog.
-  (d) The pure renderer `render_changelog_summary` is exported and parses
-      sections deterministically from a CHANGELOG body string.
+  (d) The pure renderer `render_changelog_summary` is exported and renders
+      deterministically from an in-memory `(tag, subject)` list.
+  (e) A normal `vX.Y.Z` update does NOT silently degrade to a bare version
+      pointer, and the summary does NOT read root `CHANGELOG.md` — a sentinel
+      injected into a DEAD-track root CHANGELOG.md never appears in the output.
 """
 
 from __future__ import annotations
@@ -25,6 +35,7 @@ import importlib.util
 import io
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 from contextlib import redirect_stdout
@@ -64,32 +75,36 @@ def _build_src_tree(src_root: Path, install_mod) -> None:
             _copy_rel(f"{base}/{rel}")
 
 
-# A deterministic CHANGELOG body installed into the source tree. The summary
-# must select the sections strictly newer than the OLD pin, up to NEW.
-CHANGELOG_BODY = """# Changelog
-
-All notable changes to the rabbit workflow are documented here.
-
-## [Unreleased]
-### Changed
-- Closes #999 — UNRELEASED-SENTINEL placeholder bullet.
-
-## [v9.4.12]
-### Fixed
-- Fixes #924 — NEW-VERSION-SENTINEL changelog summary after update.
-
-## [v9.4.11]
-### Added
-- Closes #900 — MIDDLE-VERSION-SENTINEL intervening entry.
-
-## [v9.4.9]
-### Fixed
-- Fixes #800 — OLD-VERSION-SENTINEL already-installed entry.
-"""
+def _git(src_root: Path, *args: str) -> None:
+    env = dict(os.environ)
+    env.update({
+        "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
+    })
+    subprocess.run(["git", "-C", str(src_root), *args],
+                   check=True, env=env,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def _write_changelog(root: Path, body: str) -> None:
-    (root / "CHANGELOG.md").write_text(body)
+# (tag, annotation-subject) pairs to lay down in the source git repo. Each
+# annotated tag's subject is the human-readable release line the summary lists.
+TAGS = [
+    ("v9.4.9", "OLD-VERSION-SENTINEL already-installed release"),
+    ("v9.4.11", "MIDDLE-VERSION-SENTINEL intervening release"),
+    ("v9.4.12", "NEW-VERSION-SENTINEL changelog summary after update"),
+]
+
+
+def _make_tagged_src(td_path: Path, install_mod) -> Path:
+    src = td_path / "src"
+    src.mkdir()
+    _build_src_tree(src, install_mod)
+    _git(src, "init", "-q")
+    _git(src, "add", "-A")
+    _git(src, "commit", "-q", "-m", "base")
+    for tag, subject in TAGS:
+        _git(src, "tag", "-a", tag, "-m", subject)
+    return src
 
 
 def _run_install(install_mod, argv, env_overrides=None):
@@ -115,14 +130,11 @@ def _run_install(install_mod, argv, env_overrides=None):
     return rc, buf.getvalue()
 
 
-def test_update_emits_range_and_intervening_entries():
+def test_update_emits_range_and_intervening_tags():
     install = _load_install()
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
-        src = td_path / "src"
-        src.mkdir()
-        _build_src_tree(src, install)
-        _write_changelog(src, CHANGELOG_BODY)
+        src = _make_tagged_src(td_path, install)
         dst = td_path / "dst"
 
         # First install pins to v9.4.9.
@@ -148,35 +160,25 @@ def test_update_emits_range_and_intervening_entries():
             f"expected a 'Changelog' summary naming 'v9.4.9 -> v9.4.12'; "
             f"got: {stdout!r}"
         )
-        # (a) lists the intervening entries (newer than old, up to new):
+        # (a) lists the intervening tags (newer than old, up to new):
         # v9.4.12 (new) and v9.4.11 (middle), NOT v9.4.9 (already installed).
         assert "NEW-VERSION-SENTINEL" in stdout, (
-            f"new-version entry missing from summary; got: {stdout!r}"
+            f"new-version tag missing from summary; got: {stdout!r}"
         )
         assert "MIDDLE-VERSION-SENTINEL" in stdout, (
-            f"intervening entry missing from summary; got: {stdout!r}"
+            f"intervening tag missing from summary; got: {stdout!r}"
         )
         assert "OLD-VERSION-SENTINEL" not in stdout, (
-            f"already-installed entry should be excluded; got: {stdout!r}"
+            f"already-installed tag should be excluded; got: {stdout!r}"
         )
-    print("PASS test_update_emits_range_and_intervening_entries")
+    print("PASS test_update_emits_range_and_intervening_tags")
 
 
-def test_summary_text_is_read_from_changelog_file():
+def test_summary_text_is_read_from_git_tag():
     install = _load_install()
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
-        src = td_path / "src"
-        src.mkdir()
-        _build_src_tree(src, install)
-        # Inject a unique sentinel bullet into the NEW version's section so we
-        # can prove the summary text is sourced from the file, not inferred.
-        unique = "VERBATIM-FROM-FILE-PROOF-31415"
-        body = CHANGELOG_BODY.replace(
-            "NEW-VERSION-SENTINEL changelog summary after update.",
-            f"NEW-VERSION-SENTINEL {unique}",
-        )
-        _write_changelog(src, body)
+        src = _make_tagged_src(td_path, install)
         dst = td_path / "dst"
 
         rc, _ = _run_install(
@@ -191,21 +193,20 @@ def test_summary_text_is_read_from_changelog_file():
             env_overrides={"RABBIT_INSTALLED_REF": "v9.4.12"},
         )
         assert rc2 == 0
-        assert unique in stdout, (
-            f"summary did not include the verbatim CHANGELOG sentinel "
-            f"{unique!r}; got: {stdout!r}"
+        # The tag's annotation subject appears verbatim, proving the summary
+        # text is git-sourced, not inferred.
+        assert "changelog summary after update" in stdout, (
+            f"summary did not include the verbatim tag annotation subject; "
+            f"got: {stdout!r}"
         )
-    print("PASS test_summary_text_is_read_from_changelog_file")
+    print("PASS test_summary_text_is_read_from_git_tag")
 
 
 def test_noop_same_version_emits_no_range_summary():
     install = _load_install()
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
-        src = td_path / "src"
-        src.mkdir()
-        _build_src_tree(src, install)
-        _write_changelog(src, CHANGELOG_BODY)
+        src = _make_tagged_src(td_path, install)
         dst = td_path / "dst"
 
         rc, _ = _run_install(
@@ -223,12 +224,12 @@ def test_noop_same_version_emits_no_range_summary():
         assert rc2 == 0
         # The pre-existing Inv 22e "updating A -> B" pin line still prints, but
         # NO dedicated changelog summary is emitted for a no-op, and no
-        # changelog entries are listed.
+        # tag entries are listed.
         assert "Changelog" not in stdout, (
             f"no-op refresh should not emit a changelog summary; got: {stdout!r}"
         )
         assert "MIDDLE-VERSION-SENTINEL" not in stdout, (
-            f"no-op refresh should not list changelog entries; got: {stdout!r}"
+            f"no-op refresh should not list tag entries; got: {stdout!r}"
         )
     print("PASS test_noop_same_version_emits_no_range_summary")
 
@@ -238,8 +239,13 @@ def test_render_changelog_summary_is_exported_and_pure():
     assert hasattr(install, "render_changelog_summary"), (
         "install.py must export render_changelog_summary"
     )
-    # Pure-string parse: select v9.4.11..v9.4.12 over the body.
-    summary = install.render_changelog_summary("v9.4.9", "v9.4.12", CHANGELOG_BODY)
+    # Pure render over an in-memory (tag, subject) list: select v9.4.11..v9.4.12.
+    tags = [
+        ("v9.4.9", "OLD-VERSION-SENTINEL already-installed release"),
+        ("v9.4.11", "MIDDLE-VERSION-SENTINEL intervening release"),
+        ("v9.4.12", "NEW-VERSION-SENTINEL changelog summary after update"),
+    ]
+    summary = install.render_changelog_summary("v9.4.9", "v9.4.12", tags)
     assert summary, "renderer returned empty for a real upgrade"
     assert "Changelog" in summary
     assert "v9.4.9 -> v9.4.12" in summary
@@ -247,17 +253,60 @@ def test_render_changelog_summary_is_exported_and_pure():
     assert "MIDDLE-VERSION-SENTINEL" in summary
     assert "OLD-VERSION-SENTINEL" not in summary
     # Same-version: no range summary (empty or an "already current" line only).
-    noop = install.render_changelog_summary("v9.4.12", "v9.4.12", CHANGELOG_BODY)
+    noop = install.render_changelog_summary("v9.4.12", "v9.4.12", tags)
     assert "v9.4.12 -> v9.4.12" not in (noop or "")
     assert "MIDDLE-VERSION-SENTINEL" not in (noop or "")
     print("PASS test_render_changelog_summary_is_exported_and_pure")
 
 
+def test_summary_does_not_read_root_changelog():
+    """(e) The summary sources off the live git tags, NOT the dead-track root
+    CHANGELOG.md: a sentinel injected ONLY into root CHANGELOG.md never appears,
+    and a normal vX.Y.Z update does NOT silently degrade (the tag lines DO
+    appear)."""
+    install = _load_install()
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td).resolve()
+        src = _make_tagged_src(td_path, install)
+        # Poison the dead-track root CHANGELOG.md with a sentinel that must
+        # NEVER leak into the summary.
+        (src / "CHANGELOG.md").write_text(
+            "# Changelog\n\n## [release/1.12.0]\n- DEAD-ROOT-CHANGELOG-LEAK\n"
+        )
+        _git(src, "add", "-A")
+        _git(src, "commit", "-q", "-m", "poison root changelog")
+        dst = td_path / "dst"
+
+        rc, _ = _run_install(
+            install,
+            ["install.py", "--src", str(src), "--target", str(dst)],
+            env_overrides={"RABBIT_INSTALLED_REF": "v9.4.9"},
+        )
+        assert rc == 0
+        rc2, stdout = _run_install(
+            install,
+            ["install.py", "--update", "--src", str(src), "--target", str(dst)],
+            env_overrides={"RABBIT_INSTALLED_REF": "v9.4.12"},
+        )
+        assert rc2 == 0
+        assert "DEAD-ROOT-CHANGELOG-LEAK" not in stdout, (
+            f"summary leaked dead-track root CHANGELOG.md content; "
+            f"got: {stdout!r}"
+        )
+        # Not silently degraded: the live-track tag lines DO appear.
+        assert "v9.4.9 -> v9.4.12" in stdout and "NEW-VERSION-SENTINEL" in stdout, (
+            f"summary silently degraded for a normal vX.Y.Z update; "
+            f"got: {stdout!r}"
+        )
+    print("PASS test_summary_does_not_read_root_changelog")
+
+
 def main() -> int:
-    test_update_emits_range_and_intervening_entries()
-    test_summary_text_is_read_from_changelog_file()
+    test_update_emits_range_and_intervening_tags()
+    test_summary_text_is_read_from_git_tag()
     test_noop_same_version_emits_no_range_summary()
     test_render_changelog_summary_is_exported_and_pure()
+    test_summary_does_not_read_root_changelog()
     return 0
 
 

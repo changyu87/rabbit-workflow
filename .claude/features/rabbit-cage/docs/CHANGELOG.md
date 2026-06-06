@@ -12,6 +12,30 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.75.0 (fix #931: source the post-update changelog summary from the live
+  `vX.Y.Z` release track):** repointed the Inv 46 post-update changelog summary
+  added by #924 off the dead-track root `CHANGELOG.md` (frozen at
+  `release/1.12.0`, not maintained by the release path — see rabbit-auto-evolve
+  Inv 57, a READ reference) and onto the LIVE release channel: the annotated
+  `vX.Y.Z` git tags carried in the source tree. `emit_changelog_summary` now
+  enumerates the source tree's tags via `git -C <src_root> tag` and delegates
+  to `render_changelog_summary(old_ref, new_ref, tags)` — whose signature
+  changed from a CHANGELOG-body string to an iterable of `(tag, subject)`
+  pairs. The renderer selects tags whose name parses to a semver in
+  `old < tag <= new` (reusing `_parse_version`), orders them newest-first,
+  names the `old -> new` range, lists each tag with its annotation subject
+  verbatim, and points at the release history. The now-dead
+  `_parse_changelog_sections` helper (which only fed the root-CHANGELOG path)
+  was removed. Best-effort and deterministic: when git is unavailable or no
+  tags fall in the range it degrades cleanly (prints nothing, never fabricates)
+  and is never a failure mode; a normal `vX.Y.Z` update no longer silently
+  degrades to a bare version-range pointer. `test/test-install-update-changelog-summary.py`
+  rewritten to build a tagged source git repo and assert the summary renders
+  the intervening tags (excluding the already-installed one), surfaces the tag
+  annotation verbatim, does not read root `CHANGELOG.md`, and the renderer is
+  pure over an in-memory `(tag, subject)` list. `install.py` is a deployed
+  `publish_file` surface — its repo-root deployed copy must be republished.
+
 - **v5.74.0 (feat #923: decompose-context scope-guard pass-through):** added a
   principled, explicit, auto-cleared pass-through to `hooks/scope-guard.py` for
   batch work that spans several feature directories — the documented
