@@ -111,6 +111,7 @@ SUITES = [
     "test-show-mode-command.py",
     "test-scope-guard-decompose-context.py",
     "test-install-version-pin-local-src-not-unknown.py",
+    "test-vendored-mode-disambiguation-note.py",
 ]
 
 

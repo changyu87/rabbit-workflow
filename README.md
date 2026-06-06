@@ -35,6 +35,8 @@ Feature work lives in `.claude/features/`. The scope-guard enforces feature boun
 
 Rabbit installs as a vendored `.rabbit/` directory committed to your project. No submodules; no external dependencies at runtime.
 
+> **Note:** rabbit's vendored `.rabbit/` install (historically called "plugin mode") is **unrelated** to Claude Code's native `/plugin` marketplace plugins — they are distinct, independent mechanisms that happen to share the word "plugin."
+
 ### Install
 
 The one-liner fetches the latest published release and runs `install.py --src ... --target .rabbit`:

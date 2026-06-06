@@ -12,6 +12,16 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.78.0 (docs #981: clarify rabbit's vendored mode is distinct from Claude
+  Code `/plugin` plugins):** added a one-line disambiguation callout to the
+  README "Plugin mode" section noting that rabbit's vendored `.rabbit/` install
+  (historically called "plugin mode") is unrelated to Claude Code's native
+  `/plugin` marketplace plugins — they are independent mechanisms that merely
+  share the word "plugin." Reduces the terminology collision identified in the
+  #956 research without renaming anything (the rename is tracked separately in
+  #980). Docs-only; no code or behavior change. Enforced by
+  test-vendored-mode-disambiguation-note.py.
+
 - **v5.77.0 (fix #968: `install.py --update` tolerates a closure that shrinks
   across a surface retirement):** the `--update` path is driven by the
   LOCALLY-installed (older) `install.py`, whose hardcoded closure still names
