@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.74.0
+version: 0.75.0
 template_version: 2.0.0
 ---
 
@@ -67,7 +67,7 @@ template_version: 2.0.0
       {
         "path": ".claude/features/rabbit-issue/scripts/file-item.py",
         "subcommand": "",
-        "rationale": "the dispatch_shape == decomposition path (Inv 26) files N per-feature sub-issues for a very-large cross-feature item; filing a sub-issue is a contract INVOKE of rabbit-issue, NOT a cross-feature edit, so every write stays inside one feature's scope"
+        "rationale": "the dispatch_shape == decomposition path (Inv 26/53) files N per-feature sub-issues for a very-large cross-feature item; each child is filed with `--parent <parent#>` so it is born linked to the parent as a GitHub-native sub-issue (a derivative human-readable view; the authoritative linkage stays in the state's `decomposition_parents` map). Filing a sub-issue with `--parent` is a contract INVOKE of rabbit-issue, NOT a cross-feature edit, so every write stays inside one feature's scope"
       }
     ],
     "agents": [],

@@ -16,6 +16,23 @@ authoritative).
 
 ## Version notes
 
+- **v0.75.0 — 2026-06-04** — Fix #934 (decomposition establishes the
+  GitHub-native parent/sub-issue link, state map stays authoritative). When
+  the loop shapes an item as `decomposition` (dispatch shape rank 3) and files
+  N per-feature child issues, it now passes `--parent <parent#>` to
+  rabbit-issue's `file-item.py` (the `--parent` capability #933 added — a
+  contract INVOKE of rabbit-issue, not a cross-feature edit), so each child is
+  born linked to the parent as a GitHub-native sub-issue visible in the GitHub
+  UI. This is a DERIVATIVE human-readable view: `record-decomposition.py` and
+  the `.rabbit/auto-evolve-state.json` `decomposition_parents` map remain the
+  AUTHORITATIVE machine source (Machine First), and `close-decomposed-parents.py`
+  keeps driving parent-closing off `decomposition_parents` (closing behavior
+  unchanged). spec Inv 53 amended to record BOTH links with the state map
+  authoritative; `docs/contract.md`'s rabbit-issue `file-item.py` invokes entry
+  widened to note the `--parent` decomposition-path call (still an INVOKE). New
+  e2e `test/test-decomposition-native-sub-issue.py` asserts the SKILL/spec
+  decomposition path prescribes `--parent` and that `decomposition_parents`
+  remains the close driver; wired into `test/run.py`.
 - **v0.74.0 — 2026-06-04** — Fix #927 (root `CHANGELOG.md` stale vs `v9.x`
   tags), rabbit-auto-evolve piece. New spec Inv 57 records the deterministic
   release-track decision: the LIVE release track is the `vX.Y.Z` git tags cut
