@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.39.0
+version: 1.40.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -38,7 +38,11 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/rabbit-feature/scripts/scaffold-feature.py",
-        "purpose": "Feature-scaffolding script invoked by rabbit-feature-scaffold. Creates a conforming feature directory (feature.json, flat docs/{spec,contract}.md, docs/bugs/, test/run.py) at the ratified flat docs/ layout, at any path."
+        "purpose": "Feature-scaffolding script invoked by rabbit-feature-scaffold. Creates a conforming feature directory (feature.json, flat docs/{spec,contract}.md, docs/bugs/, test/run.py) at the ratified flat docs/ layout, at any path. Plugin mode additionally supports --batch <features.json> to scaffold N features in one project-map.json mutation."
+      },
+      {
+        "path": ".claude/features/rabbit-feature/skills/rabbit-feature-scaffold/scripts/scaffold-batch.py",
+        "purpose": "Companion script for the rabbit-feature-scaffold skill (spec-rules.md §4 Script-Backed Orchestration). The declared skill-level interface for BOTH single and batch scaffolding: '--batch <features.json>' or '--list \"<name> [glob ...]; ...\"' normalize a batch input and delegate to scaffold-feature.py --batch; a bare '<name> [glob ...]' delegates byte-for-byte to scaffold-feature.py's single-feature surface. Callers (rabbit-decompose included) invoke the skill — which runs this script — rather than shelling out to scaffold-feature.py --batch directly. No-arg/-h prints usage; exit codes mirror scaffold-feature.py (0/1/2)."
       },
       {
         "path": ".claude/features/rabbit-feature/scripts/audit-owner.py",
@@ -62,7 +66,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-scaffold/",
-        "purpose": "Feature-scaffolding skill. Shells out to scaffold-feature.py to create a conforming feature dir, then validates via contract's validate-feature.py."
+        "purpose": "Feature-scaffolding skill — the user-facing scaffold primitive for adding one feature (single mode) or N features (plugin batch mode). Single mode shells out to scaffold-feature.py then validates via contract's validate-feature.py; batch mode routes through the companion scaffold-batch.py script (declared skill-level interface for both modes)."
       }
     ]
   },

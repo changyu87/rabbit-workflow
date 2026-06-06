@@ -27,8 +27,15 @@ Responsibilities:
   3. Author the batch temp file with a SCRIPT-OWNED timestamp (no
      model-assembled `<ts>`): the script owns the path and content.
   4. Dispatch the scaffolder on the mode-correct branch:
-       - plugin     -> scaffold-feature.py --batch <file> (one project-map
-                       mutation)
+       - plugin     -> the rabbit-feature-scaffold SKILL batch interface
+                       (scaffold-batch.py --batch <file>, one project-map
+                       mutation). The skill is rabbit-feature's declared
+                       cross-feature interface; calling its companion
+                       scaffold-batch.py is a contract INVOKE of that published
+                       interface, NOT a shell-out to the rabbit-feature
+                       scaffolder implementation detail. scaffold-batch.py
+                       mirrors scaffold-feature.py's exit codes 0/1/2 and runs
+                       in the same cwd/plugin-mode context, so it is a drop-in.
        - standalone -> emit the per-feature rabbit-feature-scaffold plan
                        (batch form is plugin-only; the dispatcher then runs
                        one `Skill("rabbit-feature-scaffold", ...)` per feature)
@@ -75,7 +82,7 @@ Exit:
   1 scaffolder dispatch failed
   2 invocation error (bad args, unreadable/invalid features file)
 
-Version: 0.2.0
+Version: 0.3.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Step 4 scaffold hand-off is provided natively by
     the rabbit CLI, retiring this companion script.
@@ -125,12 +132,22 @@ def _resolve_rabbit_meta_mode_detection() -> "callable | None":
 
 
 def _resolve_scaffolder() -> "Path | None":
-    """Resolve rabbit-feature/scripts/scaffold-feature.py by walking upward
-    from this script's location (same anchoring as the rabbit-meta resolver)."""
+    """Resolve the rabbit-feature-scaffold SKILL batch interface
+    (skills/rabbit-feature-scaffold/scripts/scaffold-batch.py) by walking
+    upward from this script's location (same anchoring as the rabbit-meta
+    resolver).
+
+    This is the declared cross-feature INVOKE: callers reach the scaffolder
+    through rabbit-feature's published skill interface, NOT by shelling out to
+    scaffold-feature.py directly (that script is rabbit-feature's
+    implementation detail). scaffold-batch.py mirrors scaffold-feature.py's
+    exit codes 0/1/2 and runs in the same cwd, so it is a drop-in replacement
+    for the prior `scaffold-feature.py --batch` dispatch."""
     here = Path(__file__).resolve()
     for parent in here.parents:
         cand = (parent / ".claude" / "features" / "rabbit-feature"
-                / "scripts" / "scaffold-feature.py")
+                / "skills" / "rabbit-feature-scaffold"
+                / "scripts" / "scaffold-batch.py")
         if cand.is_file():
             return cand
     return None
@@ -286,7 +303,8 @@ def main(argv) -> int:
             return 0
         scaffolder = _resolve_scaffolder()
         if scaffolder is None:
-            _err("scaffold-feature.py unavailable; cannot dispatch batch")
+            _err("rabbit-feature-scaffold skill batch interface "
+                 "(scaffold-batch.py) unavailable; cannot dispatch batch")
             return 1
         proc = subprocess.run(
             [sys.executable, str(scaffolder), "--batch", batch_file],

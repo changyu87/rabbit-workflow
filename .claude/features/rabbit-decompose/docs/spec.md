@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.7.2
+version: 0.8.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -19,8 +19,8 @@ Two scenarios drive the design — **greenfield** (a spec, design doc, or
 natural-language description) and **existing codebase** (a directory or
 project root) — detailed in the Interactive Protocol below. In both cases
 the output is the same: an accepted feature list that feeds the downstream
-pipeline (`rabbit-feature-scaffold --batch` then `rabbit-spec-create` per
-feature).
+pipeline (the `rabbit-feature-scaffold` skill's `--batch` interface then
+`rabbit-spec-create` per feature).
 
 ## Surface
 
@@ -31,8 +31,10 @@ feature).
   resolves the Step 1 decomposition source root (plugin → `rabbit_root.parent`,
   standalone → the repo root) via `--source-root`, authors the batch temp file
   with a script-owned timestamp, and dispatches the scaffolder on the
-  mode-correct branch (plugin → `scaffold-feature.py --batch <file>`,
-  standalone → emits the per-feature `rabbit-feature-scaffold` plan)
+  mode-correct branch (plugin → the `rabbit-feature-scaffold` skill batch
+  interface `scaffold-batch.py --batch <file>`, NOT a direct shell-out to
+  rabbit-feature's `scaffold-feature.py`; standalone → emits the per-feature
+  `rabbit-feature-scaffold` plan)
 - `docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`, `feature.json`,
   `test/run.py` — feature scaffolding
 
@@ -70,9 +72,12 @@ The skill is interactive by design. The dispatcher MUST:
      (reusing `rabbit-meta.lib.mode_detection.detect_mode` — NOT a single
      hard-coded `<repo>/.rabbit/.runtime/mode` read), authors the batch
      temp file with a script-owned timestamp, and dispatches the scaffolder
-     on the mode-correct branch: plugin → `scaffold-feature.py --batch
-     <file>` (one `project-map.json` mutation); standalone → emits the
-     per-feature `rabbit-feature-scaffold` plan (batch form is plugin-only).
+     on the mode-correct branch: plugin → the `rabbit-feature-scaffold` skill
+     batch interface `scaffold-batch.py --batch <file>` (one
+     `project-map.json` mutation, the declared cross-feature interface rather
+     than a direct shell-out to rabbit-feature's `scaffold-feature.py`);
+     standalone → emits the per-feature `rabbit-feature-scaffold` plan (batch
+     form is plugin-only).
    - Then for each accepted feature with non-empty `globs`, invokes
      `rabbit-spec-create` (one sequential `Skill(...)` call per feature)
      to seed the initial spec body, under the nesting constraint of
@@ -126,6 +131,14 @@ constrains only the structural shape.
    hard-coded `<repo>/.rabbit/.runtime/mode` path read, and MUST own the
    batch file's timestamp/path (no model-assembled `<ts>`). Read-only
    informational commands in the body are exempt (§4 read-only exception).
+   In plugin mode the scaffolder dispatch MUST go through the
+   `rabbit-feature-scaffold` skill's batch interface
+   (`skills/rabbit-feature-scaffold/scripts/scaffold-batch.py --batch <file>`,
+   a contract INVOKE of rabbit-feature's published skill interface), NOT a
+   direct shell-out to rabbit-feature's `scaffold-feature.py` implementation
+   detail; `scaffold-batch.py` mirrors `scaffold-feature.py`'s exit codes
+   0/1/2 and runs in the same cwd, so the exit-code propagation and batch-file
+   authoring are preserved unchanged.
 
 6. Step 1's decomposition SOURCE ROOT MUST be resolved by the same canonical
    resolver Step 4 uses (`scripts/handoff-scaffold.py`), so Step 1 and Step 4
@@ -181,6 +194,15 @@ coverage:
   `<repo>/.rabbit/.runtime/mode` path; and asserts the `SKILL.md` Step 4
   body carries no prose mode-branch and no runtime-placeholder bash block,
   invoking the script instead).
+- `test-step4-skill-batch-interface.py` (E2E — asserts the Invariant 5
+  layering clause: runs `scripts/handoff-scaffold.py` end-to-end against a
+  temp plugin tree whose rabbit-feature surface is replaced by recording
+  shims, confirming the plugin-mode dispatch goes through the
+  `rabbit-feature-scaffold` skill batch interface `scaffold-batch.py --batch
+  <file>` and NOT a direct shell-out to `scaffold-feature.py`, that the
+  authored batch JSON is preserved and handed to the skill interface
+  unchanged, and that exit codes 0/1 propagate from the skill interface to
+  `handoff-scaffold.py`).
 - `test-step1-source-root.py` (E2E — asserts Invariant 6: runs
   `scripts/handoff-scaffold.py --source-root` end-to-end against a temp plugin
   tree and a temp standalone tree, confirming the decomposition source root is
