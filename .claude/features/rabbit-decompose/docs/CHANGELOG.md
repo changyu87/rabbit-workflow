@@ -13,6 +13,41 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.13.0 (dual-accept the EMITTED mode field in the test suite — complete
+  the #988 coverage gap, #997, unblocks #990):** #988 dual-accepted
+  `handoff-scaffold.py`'s five INTERNAL branch comparisons, so the script
+  ROUTES a `"vendored"`-mode run down the vendored path. But the script emits
+  `detect_mode`'s value VERBATIM into its output `mode` field, and the feature's
+  own E2E suite still STRICTLY asserted that emitted field == `"plugin"` at
+  seven sites across four tests — the LAST consumers that would RED the moment
+  `detect_mode` flips its vendored value `"plugin"` → `"vendored"` (the #980
+  rename, owned by rabbit-meta, tracked as #990). Relaxed each emitted-`mode`
+  assertion to the dual-accept `mode not in ("vendored", "plugin")` mirroring
+  #988: `test-default-rabbit-root.py` (Checks ~136/147),
+  `test-step1-source-root.py` (Checks ~133/162), `test-step4-script-backed.py`
+  (Checks ~126/185), and `test-step4-skill-batch-interface.py` (Check ~209). On
+  the two toggle assertions the `"standalone"` arm stays STRICT (it proves the
+  toggle actually flipped the mode); only the vendored-value arm is relaxed.
+  Extended spec Invariant 10 with the emitted-field clause and added a new E2E
+  `test-emitted-mode-dual-accept.py` that stands up a temp `.claude/features/`
+  tree with a COPY of `handoff-scaffold.py` plus a FAKE
+  `rabbit-meta/lib/mode_detection.py` returning `"vendored"` — simulating the
+  rename WITHOUT touching the real detector — drives the three emitted-`mode`
+  consumers (`--source-root`, `--plan-only`, `--detect-existing`) confirming
+  each emits `"vendored"` with the vendored behaviour preserved, and greps the
+  whole `test/` suite to confirm no strict emitted-`mode == "plugin"` field
+  assertion remains. `detect_mode` is NOT changed here (rabbit-meta owns it; the
+  value flip is #990); the value stays `"plugin"` now so the contract gate stays
+  green. Coexistence-window end-of-life unchanged: the `"plugin"` arm (in the
+  script comparisons AND the emitted-field assertions) is dropped only after the
+  rename completes and the legacy value is fully retired. Four-way version
+  lockstep bumped to 0.13.0. Deployed surface: only the `SKILL.md` frontmatter
+  version changed (body unchanged) — the dispatcher republishes the deployed
+  `rabbit-decompose` skill so the deployed frontmatter version stays consistent.
+  Part of the four-feature #980 migration barrier (the decompose test-suite
+  child; the rabbit-meta value flip is gated on the prep children landing
+  first).
+
 - **v0.12.0 (dual-accept vendored/plugin mode in handoff-scaffold — prep for
   the #980 rename, #988):** Gate-safe preparation for the #980 migration that
   renames the vendored-mode value resolved by

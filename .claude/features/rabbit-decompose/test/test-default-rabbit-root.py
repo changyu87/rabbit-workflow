@@ -133,9 +133,12 @@ with tempfile.TemporaryDirectory() as td:
     host, plugin_root = _make_plugin_git_tree(td)
     # Run from cwd = the .rabbit dir, WITHOUT --rabbit-root.
     res = _run(["--source-root"], plugin_root)
-    if res.get("mode") != "plugin":
+    # Dual-accept the emitted vendored-mode value (spec Invariant 10): the
+    # script emits detect_mode's value verbatim, currently "plugin", renaming
+    # to "vendored" (#980). Both select the vendored path.
+    if res.get("mode") not in ("vendored", "plugin"):
         fail("default invocation from cwd=.rabbit (inside a git repo) must "
-             f"detect mode 'plugin', got {res.get('mode')!r} — the git "
+             f"detect a vendored mode, got {res.get('mode')!r} — the git "
              "toplevel (parent of .rabbit) is the WRONG default")
     # The batch branch must be selected by the Step 4 plan from the same cwd.
     feats_dir = os.path.join(td, "feats")
@@ -144,8 +147,9 @@ with tempfile.TemporaryDirectory() as td:
     with open(feats, "w", encoding="utf-8") as f:
         json.dump([{"name": "f-one", "globs": ["a/**"]}], f)
     plan = _run(["--features", feats, "--plan-only"], plugin_root)
-    if plan.get("mode") != "plugin" or plan.get("branch") != "batch":
-        fail("default --plan-only from cwd=.rabbit must select the plugin "
+    if plan.get("mode") not in ("vendored", "plugin") \
+            or plan.get("branch") != "batch":
+        fail("default --plan-only from cwd=.rabbit must select the vendored "
              f"batch branch, got mode={plan.get('mode')!r} "
              f"branch={plan.get('branch')!r}")
 

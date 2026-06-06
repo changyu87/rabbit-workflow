@@ -206,7 +206,11 @@ with tempfile.TemporaryDirectory() as td:
     plan = json.loads(proc.stdout)
     if plan.get("dispatched") is not True:
         fail(f"success dispatch did not report dispatched=true; plan={plan!r}")
-    if plan.get("branch") != "batch" or plan.get("mode") != "plugin":
+    # Dual-accept the emitted vendored-mode value (spec Invariant 10): the
+    # script emits detect_mode's value verbatim, currently "plugin", renaming
+    # to "vendored" (#980). Both select the vendored batch branch.
+    if plan.get("branch") != "batch" \
+            or plan.get("mode") not in ("vendored", "plugin"):
         fail(f"success dispatch wrong mode/branch; plan={plan!r}")
 
 # --- Check 3: exit-code propagation (skill interface exits 1) ----------------
