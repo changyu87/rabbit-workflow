@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.71.0
+version: 5.72.0
 template_version: 2.0.0
 ---
 
@@ -25,7 +25,7 @@ template_version: 2.0.0
     ],
     "commands": [],
     "scripts": [
-      {"path": ".claude/features/rabbit-cage/install.py", "stdin": "none", "stdout": "install log", "exit": "0=ok 1=error 2=usage", "note": "bootstrap installer; copies tree and invokes run_publish_loop; supports --update for in-place refresh (spec Inv 22)"},
+      {"path": ".claude/features/rabbit-cage/install.py", "stdin": "none", "stdout": "install log", "exit": "0=ok 1=error 2=usage", "note": "bootstrap installer; copies tree and invokes run_publish_loop; supports --update for in-place refresh (spec Inv 22), emitting a post-update changelog summary on success (spec Inv 46)"},
       {"path": ".claude/features/rabbit-cage/scripts/scope-guard-on.py", "stdin": "none", "stdout": "confirmation message", "exit": "0=ok", "note": "deletes .rabbit-scope-override; canonical 'scope guard back on'"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project.py", "stdin": "none", "stdout": "operation result", "exit": "0=ok 1=error 2=usage"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-project-set-path.py", "stdin": "none", "stdout": "none", "exit": "0=ok 1=error", "note": "helper invoked by rabbit-project.py set-path"},
@@ -45,6 +45,7 @@ template_version: 2.0.0
   },
   "reads": {
     "files": [
+      "CHANGELOG.md",
       ".claude/features/*/feature.json",
       ".claude/features/policy/*.md",
       ".rabbit-scope-active",

@@ -12,6 +12,28 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.72.0 (feat #924: post-update changelog summary after `install.py
+  --update`):** after a successful in-place refresh, `install.py main()` now
+  emits a brief, DETERMINISTIC summary of what changed between the OLD and
+  NEWLY-installed version, sourced from the just-installed repo `CHANGELOG.md`
+  (Inv 28) — NOT AI-inferred. Two new stdlib-only helpers exported by
+  `install.py` back this: `render_changelog_summary(old_ref, new_ref,
+  changelog_body) -> str` (pure string→string; parses the keep-a-changelog
+  body via `_parse_changelog_sections`, selects the sections whose label
+  parses to a semver in `old < section <= new` reusing `_parse_version`, names
+  the `old -> new` range, lists the intervening entries verbatim, and points
+  at the full `CHANGELOG.md`) and `emit_changelog_summary(old_ref, new_ref,
+  src_root)` (the IO wrapper `main()` calls, reading
+  `<src_root>/CHANGELOG.md`). Emitted ONLY under `--update` and ONLY for a
+  real upgrade: a no-op refresh (same version) emits no summary, and the
+  pre-existing Inv 22e `updating A -> B` pin line is unaffected. Best-effort:
+  a missing/unreadable `CHANGELOG.md` or an empty selection prints nothing and
+  is never a failure mode. New spec Inv 46; new e2e
+  `test/test-install-update-changelog-summary.py` (range + intervening entries;
+  verbatim-from-file sentinel; no-op suppression; pure-renderer export);
+  `CHANGELOG.md` added to this feature's `contract.md` `reads.files`.
+  `rabbit-cage` bumped 5.71.0 -> 5.72.0. Closes #924.
+
 - **v5.71.0 (fix #914: show the permission-bypass message on-demand, not on
   every startup):** the permission-bypass info message used to print on EVERY
   SessionStart as a `welcome_with_policy` welcome subline (added by #889 for

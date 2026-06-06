@@ -139,7 +139,12 @@ COLLAPSE_MAX = 1
 # every startup) and added Inv 40(e) documenting the on-demand permission-bypass
 # guidance via the /rabbit-cage-config help/query path — a real spec change
 # documenting new behavior (WHEN the message shows), not reword re-inflation.
-SPEC_LINE_CEILING = 573
+# Raised 573 -> 575 by #924, which added Inv 46 documenting the post-update
+# changelog summary install.py emits on a successful --update (the deterministic
+# render_changelog_summary / emit_changelog_summary helpers sourced from
+# CHANGELOG.md, never AI-inferred) plus its e2e test — a real spec addition
+# documenting new test-enforced behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 575
 
 PASS = 0
 FAIL = 0

@@ -39,6 +39,7 @@ SUITES = [
     "test-rabbit-project-consolidate-removed.py",
     "test-install-refuses-without-update.py",
     "test-install-update-mode.py",
+    "test-install-update-changelog-summary.py",
     "test-install-update-idempotent.py",
     "test-install-sh-refuses-update-flag.py",
     "test-install-sh-error-points-to-install-py.py",
