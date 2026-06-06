@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.81.1
+version: 0.81.2
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -484,7 +484,9 @@ summary is restated here.
    `fetch-queue | triage-batch | plan-batch`). `research` items are retained
    (see "Research items" below). An item flagged `decomposition_parent: true`
    is also filtered out of the plan (Inv 58): a decomposition parent converges
-   via child rollup, not dispatch.
+   via child rollup, not dispatch. A still NATIVELY-BLOCKED item (a non-empty
+   `blocked_by` of OPEN blockers plus a blocked-origin `reason_code`) is likewise
+   filtered out even when its `decision` reads `work` (Inv 62).
 
    ```json
    {
@@ -3651,6 +3653,29 @@ summary is restated here.
     close + refusal cases above), `test/test-release-bump.py` (the
     `gh release create --target` follows the resolved target), and
     `test/test-spec-integration-target-invariant.py` (this text present).
+
+62. **The dispatchable plan contains ONLY dispatchable `work` items.**
+    `plan-batch.py`'s single up-front filter (the same point that drops a
+    `decomposition_parent`, Inv 58) admits an item into ALL plan outputs
+    (`selection_order`, `dispatch_shapes`, `cross_scope_items`) ONLY when it is
+    genuinely dispatchable. An item is excluded when ANY holds: (1) its
+    `decision` is neither `work` nor `research`; (2) it is a
+    `decomposition_parent: true` (Inv 58); OR (3) it is still NATIVELY BLOCKED —
+    a non-empty `blocked_by` of OPEN blocker numbers (Inv 59) TOGETHER WITH a
+    blocked-origin `reason_code` (`blocked`, or `defer-limit-reached` after a
+    force-promotion). Clause 3 closes the leak: `triage-batch.py`'s
+    anti-infinite-defer counter (Inv 18) FORCES a repeatedly-deferred blocked
+    item to `decision=work` (`reason_code=defer-limit-reached`), lifting the
+    defer verdict but NOT clearing the open blocker, so the decision-only drop
+    would let it reach a TDD subagent it cannot land. The reason_code gate spares
+    a `blocked_by` carried purely as a blocking-fanout signal (Inv 44). No Inv 25
+    violation: a blocked item stays OPEN and tracked-by-dependency and re-enters
+    the plan once its blocker closes. An unblocked `work` item, a `research`
+    item, and a `cross_scope` work item are unaffected. Enforced by
+    `test/test-plan-batch.py` (a `defer`/`blocked` item, a
+    `close-not-planned`/`duplicate` item, and a force-promoted-but-still-blocked
+    `work` item all ABSENT from the plan; a plain `work` and a `cross_scope` work
+    item retained).
 
 ## Known gaps
 

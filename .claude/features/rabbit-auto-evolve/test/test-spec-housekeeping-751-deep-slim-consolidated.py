@@ -95,10 +95,19 @@ POST_943_ADD_INVARIANTS = 1
 # addition is admitted.
 POST_962_ADD_LINES = 50
 POST_962_ADD_INVARIANTS = 1
+# #970 added the dispatchable-plan-only-contains-work invariant (Inv 62: the
+# plan contains only genuinely dispatchable work items, generalizing the Inv 58
+# filter so a natively-blocked item — a non-empty `blocked_by` plus a
+# blocked-origin reason_code, which the defer-limit can force to decision=work —
+# is also excluded) — a genuinely new owned rule, not slim regression. Mirror
+# the #881/#927/#948/#942/#943/#962 headroom so the #751 reduction (>= 150
+# lines, >= 4 invariants) stays ENFORCED while the #970 addition is admitted.
+POST_970_ADD_LINES = 30
+POST_970_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
-    + POST_943_ADD_LINES + POST_962_ADD_LINES
+    + POST_943_ADD_LINES + POST_962_ADD_LINES + POST_970_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -109,7 +118,7 @@ MAX_INVARIANT_COUNT = (
     BASELINE_INVARIANT_COUNT - MIN_INVARIANTS_CUT + POST_881_ADD_INVARIANTS
     + POST_927_ADD_INVARIANTS + POST_948_ADD_INVARIANTS
     + POST_942_ADD_INVARIANTS + POST_943_ADD_INVARIANTS
-    + POST_962_ADD_INVARIANTS
+    + POST_962_ADD_INVARIANTS + POST_970_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---
