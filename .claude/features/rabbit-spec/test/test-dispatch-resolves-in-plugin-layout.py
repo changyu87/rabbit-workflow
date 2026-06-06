@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """test-dispatch-resolves-in-plugin-layout.py — rabbit-spec Inv 3(e).
 
-Asserts dispatch-spec-create.py resolves <repo_root> via
+Asserts dispatch-spec-creator.py resolves <repo_root> via
 Path(__file__).resolve().parents[4] when invoked from a plugin layout
 (under <user_project>/.rabbit/.claude/features/rabbit-spec/scripts/).
 The resolution MUST point at the rabbit root (<user_project>/.rabbit),
@@ -18,7 +18,7 @@ import sys
 import tempfile
 
 FEATURE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REAL_SCRIPT = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-create.py")
+REAL_SCRIPT = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-creator.py")
 
 
 def build_fixture(tmp):
@@ -30,7 +30,7 @@ def build_fixture(tmp):
     os.makedirs(contract_scripts)
 
     # Copy the real dispatch script into the plugin layout.
-    target_script = os.path.join(spec_scripts, "dispatch-spec-create.py")
+    target_script = os.path.join(spec_scripts, "dispatch-spec-creator.py")
     shutil.copy(REAL_SCRIPT, target_script)
     os.chmod(target_script, 0o755)
 
@@ -76,7 +76,7 @@ def main():
                   file=sys.stderr)
             return 1
 
-    print("PASS: dispatch-spec-create.py resolves repo_root via __file__ in plugin layout")
+    print("PASS: dispatch-spec-creator.py resolves repo_root via __file__ in plugin layout")
     return 0
 
 

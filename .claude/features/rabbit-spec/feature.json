@@ -1,15 +1,14 @@
 {
   "name": "rabbit-spec",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
   "tdd_state": "test-green",
   "status": "active",
-  "summary": "Owner of the rabbit workflow's spec-lifecycle skills. Hosts rabbit-spec-create (drafts initial spec bodies via the read-only rabbit-spec-creator subagent) and rabbit-spec-update (revises existing specs; absorbed from rabbit-feature/rabbit-feature-spec).",
+  "summary": "Owner of the rabbit workflow's spec-lifecycle surface. Hosts the rabbit-spec-creator subagent (drafts AND writes a new feature's initial docs/spec.md, returning a {path_written, summary} handoff) with its input assembler scripts/dispatch-spec-creator.py, and the rabbit-spec-update skill (revises existing specs; absorbed from rabbit-feature/rabbit-feature-spec).",
   "surface": {
     "skills": [
-      "skills/rabbit-spec-create/SKILL.md",
       "skills/rabbit-spec-update/SKILL.md"
     ],
     "agents": [
@@ -18,18 +17,12 @@
     "hooks": [],
     "commands": [],
     "scripts": [
-      "scripts/dispatch-spec-create.py"
+      "scripts/dispatch-spec-creator.py"
     ]
   },
   "deprecation_criterion": "when Claude Code exposes native spec-lifecycle skills that supersede this feature",
-  "updated": "2026-06-05",
+  "updated": "2026-06-06",
   "manifest": [
-    {
-      "api": "publish_skill",
-      "args": {
-        "source": "skills/rabbit-spec-create/SKILL.md"
-      }
-    },
     {
       "api": "publish_skill",
       "args": {
@@ -60,5 +53,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.15.0 -> 1.16.0, #875): script-backed-orchestration cleanup (child of #863). Added Inv 9 requiring zero check-script-backed.py findings and documenting the <!-- example --> exemption marker for the illustrative dispatch-spec-create.py CLI synopsis in rabbit-spec-create Step 1. Marked that fenced bash block as an example; new E2E guard test-script-backed-clean.py asserts scan reports count: 0. No invariant renumbered; numbering stays contiguous 1..9."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.16.0 -> 1.17.0, #922): retired the rabbit-spec-create skill wrapper. Removed Inv 4 (skill existence + 4-step protocol; renumber 5..9 -> 4..8), rewrote Inv 1/2/3/5/6/8 for the renamed dispatch-spec-creator.py input assembler and the upgraded write-capable rabbit-spec-creator subagent (Write+Explore tools, sole docs/spec.md write target, {path_written, summary} handoff). Numbering stays contiguous 1..8."
 }

@@ -10,7 +10,39 @@ This file holds the tombstones for invariants previously declared in the feature
 
 Each retirement entry below carries the original invariant number (as it appeared in spec.md at the time of retirement), a one-line summary of what the invariant asserted and why it was retired, and the cascade or backlog ID that drove the retirement.
 
+## Retired invariants
+
+- **Inv 4 (retired v1.17.0, #922): `skills/rabbit-spec-create/SKILL.md`
+  existence + 4-step orchestration protocol.** The rabbit-spec-create skill
+  wrapper is retired: the `rabbit-spec-creator` subagent now drafts AND writes
+  its own `docs/spec.md` and an orchestrator dispatches it directly (after
+  assembling the prompt with `scripts/dispatch-spec-creator.py`). With no skill
+  wrapper there is nothing for this invariant to assert. Surviving invariants
+  5..9 were renumbered to close the hole (now 4..8); numbering stays contiguous
+  1..8. The skill source dir was removed; the deployed copy
+  `.claude/skills/rabbit-spec-create/` and rabbit-cage's `install.py` listing
+  are removed by the rabbit-cage piece of #922.
+
 ## Version notes
+
+- **v1.17.0 (#922 retire the rabbit-spec-create skill wrapper):** Renamed
+  `scripts/dispatch-spec-create.py` -> `scripts/dispatch-spec-creator.py` (git
+  mv; name now matches the subagent it serves) and bumped it 1.2.0 -> 2.0.0.
+  Upgraded `agents/rabbit-spec-creator.md` 1.2.0 -> 2.0.0: granted `Write` +
+  `Explore` (no longer read-only), mandated `docs/spec.md` as its SOLE write
+  target, mandated Explore-superpower codebase reading, and mandated a
+  contracted `{path_written, summary}` handoff (the subagent writes the spec
+  itself and never echoes the full body — context isolation for the
+  orchestrator). Removed the `skills/rabbit-spec-create/` skill source, its
+  `feature.json` `surface.skills` + `publish_skill` manifest entries, and Inv 4
+  (renumber 5..9 -> 4..8). Four-way version bump (feature.json + spec.md +
+  contract.md + dispatch-spec-creator.py docstring; the surviving
+  rabbit-spec-update SKILL.md is on its own lineage and unchanged this cycle).
+  Deployed-surface deltas: republish `agents/rabbit-spec-creator.md`; the
+  retired `.claude/skills/rabbit-spec-create/` deployed dir is removed by the
+  rabbit-cage piece. The cross-feature contract gate stays red until the
+  later #922 pieces land (install.py + policy still reference the retired
+  skill) — expected and out of scope for this piece.
 
 - **v1.16.0 (#875 script-backed-orchestration cleanup; child of #863):**
   `check-script-backed.py scan` of the feature reported 1 `runtime-placeholder`

@@ -13,7 +13,7 @@ verbatim restatement of content the spec already points at:
 
   - Inv 3(e)'s parents[0..4] path-arithmetic enumeration and the "forbidden
     because ... resolve to the user-project root" expansion restate the inline
-    comment in scripts/dispatch-spec-create.py. The load-bearing constraint
+    comment in scripts/dispatch-spec-creator.py. The load-bearing constraint
     (resolve via Path(__file__).resolve().parents[4]; NOT git rev-parse, NOT
     os.getcwd(); plugin-mode reason; "Enforced by 3 tests") stays; only the
     doubled arithmetic + expanded rationale was cut.

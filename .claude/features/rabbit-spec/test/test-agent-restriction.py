@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """test-agent-restriction.py — rabbit-spec Inv 2.
 
-Asserts the rabbit-spec-creator agent file exists with the load-bearing
-read-only tool restriction in its YAML frontmatter, and (end-to-end) that
-the deployed copy under .claude/agents/ uses the rabbit- prefixed base name
-required by contract.lib.checks.check_naming (Inv 10/15) — with the old
-spec-creator.md removed.
+Asserts the rabbit-spec-creator agent file exists with the UPGRADED tool
+surface (post-#922 it is write-capable, not read-only) and the load-bearing
+body mandates, and (end-to-end) that the deployed copy under .claude/agents/
+uses the rabbit- prefixed base name required by
+contract.lib.checks.check_naming (Inv 10/15) — with the old spec-creator.md
+removed.
 
-Version: 1.1.0
+Post-#922 the rabbit-spec-creator subagent drafts AND writes its own
+docs/spec.md. The frontmatter `tools` list MUST grant Write and Explore
+alongside Read/Grep/Glob; the body MUST mandate (a) docs/spec.md as the SOLE
+write target, (b) Explore-superpower codebase reading, and (c) a contracted
+{path_written, summary} handoff that does NOT echo the full spec body.
+
+Version: 2.0.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Claude Code exposes native spec-lifecycle skills
 """
@@ -39,10 +46,11 @@ if not m:
     sys.exit(1)
 
 frontmatter = m.group(1)
+body = content[m.end():]
 
 def field(name):
-    m = re.search(rf"^{name}:\s*(.+)$", frontmatter, re.MULTILINE)
-    return m.group(1).strip() if m else None
+    fm = re.search(rf"^{name}:\s*(.+)$", frontmatter, re.MULTILINE)
+    return fm.group(1).strip() if fm else None
 
 name = field("name")
 tools = field("tools")
@@ -50,8 +58,34 @@ tools = field("tools")
 errors = []
 if name != "rabbit-spec-creator":
     errors.append(f"name must be 'rabbit-spec-creator', got {name!r}")
-if tools != "Read, Grep, Glob":
-    errors.append(f"tools must be exactly 'Read, Grep, Glob', got {tools!r}")
+
+# The agent is now write-capable: tools MUST include Write and Explore
+# alongside the read trio. No longer read-only.
+tool_set = {t.strip() for t in (tools or "").split(",") if t.strip()}
+for required in ("Read", "Grep", "Glob", "Write", "Explore"):
+    if required not in tool_set:
+        errors.append(
+            f"tools must grant {required!r} (write-capable post-#922); "
+            f"got {tools!r}"
+        )
+
+# Body mandate (a): docs/spec.md is the SOLE write target.
+if "docs/spec.md" not in body:
+    errors.append("body must name docs/spec.md as the write target")
+if not re.search(r"sole write target|SOLE write target", body, re.IGNORECASE):
+    errors.append(
+        "body must mandate docs/spec.md as the agent's SOLE write target"
+    )
+
+# Body mandate (b): Explore-superpower codebase reading.
+if "Explore" not in body:
+    errors.append("body must mandate use of the Explore superpower")
+
+# Body mandate (c): contracted {path_written, summary} handoff.
+if "path_written" not in body or "summary" not in body:
+    errors.append(
+        "body must mandate the contracted {path_written, summary} handoff"
+    )
 
 # End-to-end: the agent is deployed under the rabbit- prefixed name and the
 # stale spec-creator.md deployment is gone.
@@ -77,5 +111,6 @@ if errors:
         print(f"FAIL: {e}", file=sys.stderr)
     sys.exit(1)
 
-print("PASS: rabbit-spec-creator agent has correct name, load-bearing tool "
-      "restriction, and rabbit- prefixed deployment")
+print("PASS: rabbit-spec-creator agent has correct name, write-capable tool "
+      "surface (Write+Explore), sole-docs/spec.md-write mandate, Explore "
+      "mandate, {path_written, summary} handoff, and rabbit- prefixed deployment")

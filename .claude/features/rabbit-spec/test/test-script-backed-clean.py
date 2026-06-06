@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """#875 (child of #863): rabbit-spec carries zero script-backed-orchestration
-findings (Inv 9, spec-rules §4 Script-Backed Orchestration).
+findings (Inv 8, spec-rules §4 Script-Backed Orchestration).
 
 End-to-end guard: runs the canonical scanner
 `.claude/features/rabbit-housekeep/scripts/check-script-backed.py scan` against
-the rabbit-spec feature dir and asserts it reports `count: 0`. The single
-historical finding was the illustrative `dispatch-spec-create.py` CLI synopsis
-in `skills/rabbit-spec-create/SKILL.md` Step 1; it is non-executable
-documentation and carries the `<!-- example -->` exemption marker (the
-mechanism shipped in #869) on the line directly above its opening fence. This
-test keeps the feature clean: a future unmarked runtime-placeholder /
-computed-value / mode-aware-branching step re-flags and fails here.
+the rabbit-spec feature dir and asserts it reports `count: 0`. Post-#922 the
+rabbit-spec-create skill (whose Step 1 once carried the only historical
+finding) is retired; the surviving authored bodies (the rabbit-spec-update
+SKILL.md and the rabbit-spec-creator agent) carry no unmarked
+runtime-placeholder fenced blocks. This test keeps the feature clean: a future
+unmarked runtime-placeholder / computed-value / mode-aware-branching step
+re-flags and fails here.
 
 Static check; no runtime behaviour.
 
-Version: 1.0.0
+Version: 2.0.0
 Owner: rabbit-workflow team
 Deprecation criterion: when script-backed-orchestration linting is provided
     natively by the rabbit CLI as a housekeeping subcommand

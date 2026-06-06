@@ -18,7 +18,7 @@ LIVE vocabulary on the surfaces below:
      remains a real historical artifact and is exempt.
 
 Surfaces checked: docs/spec.md, docs/contract.md,
-skills/rabbit-spec-create/SKILL.md, skills/rabbit-spec-update/SKILL.md,
+agents/rabbit-spec-creator.md, skills/rabbit-spec-update/SKILL.md,
 feature.json.
 
 These are static checks; they do not exercise runtime behaviour.
@@ -38,7 +38,7 @@ FEATURE_DIR = Path(__file__).resolve().parents[1]
 SURFACES = (
     FEATURE_DIR / "docs" / "spec.md",
     FEATURE_DIR / "docs" / "contract.md",
-    FEATURE_DIR / "skills" / "rabbit-spec-create" / "SKILL.md",
+    FEATURE_DIR / "agents" / "rabbit-spec-creator.md",
     FEATURE_DIR / "skills" / "rabbit-spec-update" / "SKILL.md",
     FEATURE_DIR / "feature.json",
 )

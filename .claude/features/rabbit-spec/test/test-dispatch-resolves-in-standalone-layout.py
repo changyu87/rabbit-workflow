@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """test-dispatch-resolves-in-standalone-layout.py — rabbit-spec Inv 3(e).
 
-Asserts dispatch-spec-create.py resolves <repo_root> via
+Asserts dispatch-spec-creator.py resolves <repo_root> via
 Path(__file__).resolve().parents[4] when invoked against the real
 dev-workspace layout from an arbitrary outside cwd. The resolved
 build-prompt.py path MUST point at the dev-workspace location, NOT
@@ -17,7 +17,7 @@ import sys
 import tempfile
 
 FEATURE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCRIPT = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-create.py")
+SCRIPT = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-creator.py")
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(FEATURE_DIR)))
 EXPECTED_BUILD_PROMPT = os.path.join(
     REPO_ROOT, ".claude/features/contract/scripts/build-prompt.py"
@@ -63,7 +63,7 @@ def main():
               f"rabbit root, not cwd)", file=sys.stderr)
         return 1
 
-    print("PASS: dispatch-spec-create.py resolves repo_root via __file__ "
+    print("PASS: dispatch-spec-creator.py resolves repo_root via __file__ "
           "from outside cwd in standalone layout")
     return 0
 
