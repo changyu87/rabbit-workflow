@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.37.0
+version: 2.38.0
 template_version: 2.0.0
 ---
 
@@ -79,7 +79,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".rabbit-auto-evolve-stop-requested",
       ".rabbit-auto-evolve-running",
       ".rabbit/auto-evolve-state.json",
-      ".claude/scheduled_tasks.json"
+      ".claude/scheduled_tasks.json",
+      ".rabbit/auto-evolve-tick-jitter.json"
     ],
     "external": [
       "env-var:RABBIT_ROOT",
