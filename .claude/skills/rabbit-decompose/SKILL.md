@@ -1,7 +1,7 @@
 ---
 name: rabbit-decompose
 description: Propose a feature decomposition for an existing codebase or a high-level spec, interactively iterate with the user until accepted, then orchestrate scaffolding + initial spec drafting per accepted feature. Use when the user wants to start a new rabbit-managed project from a spec/prompt, or when the user wants to retroactively organize an existing codebase into rabbit features. Phrases like "decompose this into features", "propose a feature breakdown", "let's organize this codebase with rabbit", "/rabbit-decompose", "what features should this project have". Do NOT use to revise individual feature specs (that's rabbit-spec-update) or to scaffold a single feature whose name + globs you already know (that's rabbit-feature-scaffold).
-version: 0.9.0
+version: 0.10.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
 ---
@@ -82,7 +82,7 @@ The user will respond with edits: add features, remove features, merge two into 
 
 Loop until the user explicitly accepts ("looks good", "go ahead", "ship it"). Do not proceed to scaffolding without explicit approval.
 
-### Step 4 — Hand off to scaffold + spec-create
+### Step 4 — Hand off to scaffold + spec drafting
 
 Once the user accepts:
 
@@ -99,11 +99,28 @@ The script owns the mode branch: in **plugin mode** it runs the scaffolder in ba
 Skill("rabbit-feature-scaffold", args: the feature name)
 ```
 
-**B. Seed specs.** For each accepted feature that has non-empty globs, invoke the spec-create skill:
+**B. Seed specs.** Seed each accepted feature's initial `docs/spec.md` by dispatching the `rabbit-spec-creator` subagent directly. The subagent reads the matched code and WRITES the spec itself, returning only a `{path_written, summary}` handoff. The prompt is script-assembled by `rabbit-spec`'s input assembler `dispatch-spec-creator.py`, which resolves the path globs and prints the absolute path of the assembled prompt file to stdout.
+
+For each accepted feature **with non-empty globs**, assemble the prompt by passing the feature name and its comma-separated globs:
+
+<!-- example -->
+```bash
+python3 .claude/features/rabbit-spec/scripts/dispatch-spec-creator.py --feature-name <name> --paths <glob1>,<glob2>,...
 ```
-Skill("rabbit-spec-create", args: "<feature-name> <glob1> <glob2> ...")
+
+For a **greenfield feature with no globs**, omit `--paths` so the subagent produces a skeleton:
+
+<!-- example -->
+```bash
+python3 .claude/features/rabbit-spec/scripts/dispatch-spec-creator.py --feature-name <name>
 ```
-Run these calls **sequentially**, one per accepted feature, from the main session. Do **not** wrap them in `Agent(...)` calls. `rabbit-spec-create` is itself a subagent-dispatching skill: it internally dispatches the `rabbit-spec-creator` subagent via the Agent tool. Wrapping a subagent-dispatching skill inside an `Agent(...)` call produces an illegal two-level subagent nesting chain (decompose -> Agent level-1 -> rabbit-spec-creator level-2) that Claude Code does not support — the level-2 dispatch is blocked. Invoking `rabbit-spec-create` directly with `Skill(...)` keeps `rabbit-spec-creator` at level-1 (main session -> rabbit-spec-creator), which is the only supported path. For greenfield features with no globs, invoke once with just the name to produce a skeleton.
+
+Then dispatch the subagent directly, passing the contents of the assembled prompt file:
+```
+Agent(subagent_type: "rabbit-spec-creator", prompt: <contents of the assembled prompt file>)
+```
+
+Because `rabbit-spec-creator` is dispatched DIRECTLY at level-1 (decompose is a main-session orchestration, with no intermediate subagent-dispatching skill), the N per-feature spec-creator dispatches may run in **parallel** — fire all the `Agent(...)` calls together and collect their `{path_written, summary}` handoffs.
 
 **C. Report.** Tell the user: `N` features scaffolded; `M` spec drafts produced; paths to each. Note that the spec drafts are *starting points* — the user reviews and edits before they're final.
 
