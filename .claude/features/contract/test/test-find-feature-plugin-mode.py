@@ -19,6 +19,11 @@ pre-amendment standalone form).
 
 Order: rabbit-internal first then rabbit-project, alphabetical within each.
 No dedup.
+
+Vendored-mode value dual-acceptance (#987, prep for #980): the marker value
+is dual-accepted as EITHER "vendored" (canonical) OR "plugin" (legacy).
+Scenarios (vi)/(vi-b) assert a "vendored" marker resolves the same
+rabbit_root as the legacy "plugin" value, in both root forms.
 """
 
 import os
@@ -317,6 +322,80 @@ try:
                 FAIL = 1
             else:
                 print("PASS t6 (Scenario v #311): outer .runtime/mode wins + bogus inner .rabbit/ rejected by .claude/ validation")
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+# Scenario (vi) (#987, prep for #980): vendored-mode value dual-acceptance.
+# The mode-marker value is being renamed "plugin" -> "vendored" upstream.
+# find-feature.py MUST treat a marker carrying the canonical "vendored"
+# value EXACTLY like one carrying the legacy "plugin": detection succeeds
+# and BOTH the rabbit-internal feature AND the project feature surface.
+# Pre-change (reader pinned `== 'plugin'`) a "vendored" marker is ignored,
+# detection falls through to standalone, and my-feature is missing -> RED.
+tmp = _setup_tmpdir("vendored")
+try:
+    results = _list_json(tmp)
+    if results is None:
+        FAIL = 1
+    else:
+        names = [r["name"] for r in results]
+        if "rabbit-cage" not in names:
+            print(f"FAIL t7 (Scenario vi #987): rabbit-cage missing with 'vendored' marker (got {names})", file=sys.stderr)
+            FAIL = 1
+        elif "my-feature" not in names:
+            print(f"FAIL t7 (Scenario vi #987): my-feature missing — 'vendored' marker not accepted as vendored mode (got {names})", file=sys.stderr)
+            FAIL = 1
+        elif names.index("rabbit-cage") > names.index("my-feature"):
+            print(f"FAIL t7 (Scenario vi #987): rabbit-cage must precede my-feature; got order {names}", file=sys.stderr)
+            FAIL = 1
+        else:
+            print("PASS t7 (Scenario vi #987): 'vendored' marker value dual-accepted exactly like legacy 'plugin'")
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+# Scenario (vi-b) (#987): rabbit-root form ('vendored' at <repo>/.runtime/mode)
+# resolves rabbit_root identically to the legacy 'plugin' value.
+tmp = tempfile.mkdtemp()
+try:
+    rabbit_root = os.path.join(tmp, ".rabbit")
+    _write_feature_json(
+        os.path.join(rabbit_root, ".claude/features/rabbit-cage/feature.json"),
+        "rabbit-cage",
+        "cage",
+    )
+    _write_feature_json(
+        os.path.join(rabbit_root, "rabbit-project/features/my-feature/feature.json"),
+        "my-feature",
+        "user feature",
+    )
+    runtime_dir = os.path.join(rabbit_root, ".runtime")
+    os.makedirs(runtime_dir, exist_ok=True)
+    with open(os.path.join(runtime_dir, "mode"), "w") as f:
+        f.write("vendored")
+
+    proc = subprocess.run(
+        ["python3", SCRIPT, rabbit_root, "list-json"],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        print(f"FAIL t8 (Scenario vi-b #987): list-json exited {proc.returncode}; stderr={proc.stderr}", file=sys.stderr)
+        FAIL = 1
+    else:
+        try:
+            results = json.loads(proc.stdout)
+        except json.JSONDecodeError as e:
+            print(f"FAIL t8 (Scenario vi-b #987): invalid JSON; stdout={proc.stdout!r}", file=sys.stderr)
+            FAIL = 1
+            results = None
+        if results is not None:
+            names = sorted(r["name"] for r in results)
+            if "rabbit-cage" not in names or "my-feature" not in names:
+                print(f"FAIL t8 (Scenario vi-b #987): expected BOTH rabbit-cage AND my-feature with 'vendored' at <repo>/.runtime/mode; got {names}", file=sys.stderr)
+                FAIL = 1
+            else:
+                print("PASS t8 (Scenario vi-b #987): rabbit-root 'vendored' marker resolves rabbit_root like legacy 'plugin'")
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 
