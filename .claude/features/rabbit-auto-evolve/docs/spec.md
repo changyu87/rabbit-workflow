@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.81.0
+version: 0.81.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2637,8 +2637,8 @@ summary is restated here.
     - `run-tick-phases.py post-dispatch` — an Inv 55 add-on-entry reconcile at
       the START (before merge drains the live set), phase 7 (merge the
       `merge_ready` PRs), a post-merge re-sync (Inv 45), phases 8-10
-      (`run-post-merge.py` drain), phase 11 (persist), then an Inv 55
-      strip-on-exit reconcile.
+      (`run-post-merge.py` drain), phase 11 (persist), an Inv 55 strip-on-exit
+      reconcile, then the Inv 56 jitter-artifact refresh.
 
     The headless tick chains `pre-dispatch -> (skip dispatch) -> post-dispatch`;
     the in-session tick chains `pre-dispatch -> Phase 6 (dispatch) ->
@@ -3467,7 +3467,9 @@ summary is restated here.
     deprecation_criterion}`. When there is NO recorded fire history yet,
     `observed_jitter_minutes` falls back to the documented cold-start bound
     `min(15, ceil(period_minutes * 0.10))` and `cold_start` is set true; this
-    is clearly a fallback, NOT the empirical value. The CronCreate constraint
+    is clearly a fallback, NOT the empirical value. The `compute` that WRITES the
+    artifact is wired into the shared phase-walk (`run-tick-phases.py
+    post-dispatch`, Inv 40) as a both-paths hygiene step. The CronCreate constraint
     that jobs fire only while the REPL is idle (never mid-query) means a
     boundary missed mid-query is DELIVERED at the next idle moment, not
     silently skipped — but on an idle session every boundary is delivered
@@ -3476,8 +3478,9 @@ summary is restated here.
     `tick-log.py` / `update-state.py`), and the wall-clock is overridable via
     `RABBIT_AUTO_EVOLVE_NOW` (ISO-8601) for deterministic tests. Enforced by
     `test/test-tick-jitter.py` (median over a `+13` fire history; cold-start
-    fallback; absent/unreadable log degradation; persisted schema) and the
-    `test-banner-status.py` boundary-plus-offset and purged-wording assertions.
+    fallback; log degradation; persisted schema), the `test-banner-status.py`
+    boundary-plus-offset assertions, and `test/test-tick-jitter-compute-wired.py`
+    (the post-dispatch compute wiring: the banner reads the empirical ETA).
 
 57. **The live release track is the `vX.Y.Z` git tags + per-feature
     changelogs — NOT the dead-track root `CHANGELOG.md`.** The canonical,

@@ -31,8 +31,11 @@ longer writes the running marker.
                  on-disk state — already mutated by the phase scripts — drop the
                  transient `merge_ready` key, and pipe through
                  `update-state.py`), then a SECOND reconcile AFTER persist
-                 (strip-on-exit). Either reconcile failure is recorded but never
-                 fails the tick. Emits a result summary.
+                 (strip-on-exit), then the Inv 56 jitter-artifact refresh
+                 (`tick-jitter.py compute`, #959) so the banner's idle-ETA offset
+                 stays fresh on both paths. Either reconcile failure or the jitter
+                 refresh failure is recorded but never fails the tick. Emits a
+                 result summary.
 
 The headless tick chains:   pre-dispatch -> (skip dispatch) -> post-dispatch.
 The in-session tick chains: pre-dispatch -> Phase 6 (Claude) -> post-dispatch.
@@ -53,7 +56,7 @@ A single JSON result object is emitted on stdout. Exit code is 0 on a
 completed segment (including every short-circuit no-op); non-zero on an
 unexpected phase-script failure.
 
-Version: 1.6.0
+Version: 1.7.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -360,6 +363,19 @@ def run_post_dispatch():
     # but never short-circuits or fails the tick (mirroring the Inv 49 sweep).
     reconcile = _run("reconcile-labels.py", [])
     result["phases"]["reconcile_labels"] = reconcile.returncode
+
+    # Inv 56 jitter-artifact refresh (#959). Recompute and persist the empirical
+    # CronCreate jitter offset from the now-current tick.log fire history
+    # (tick-jitter.py owns the math; the walk only invokes it). Run on BOTH the
+    # in-session and headless paths via this shared post-dispatch segment, so the
+    # `.rabbit/auto-evolve-tick-jitter.json` artifact banner-status.py READS
+    # (Inv 56) stays fresh every tick instead of never materializing — without it
+    # the banner falls back to the cold-start bound and renders the idle ETA
+    # minutes too early. Hygiene step: a compute failure is recorded but NEVER
+    # short-circuits or fails the tick (mirroring the Inv 49 sweep and the Inv 55
+    # reconcile contracts above).
+    jitter = _run("tick-jitter.py", ["compute"])
+    result["phases"]["tick_jitter"] = jitter.returncode
 
     return result, 0
 
