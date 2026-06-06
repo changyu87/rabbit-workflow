@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.39.0
+version: 2.40.0
 template_version: 2.0.0
 ---
 
@@ -58,7 +58,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       ".claude/features/contract/lib/publish.py",
       ".claude/features/contract/lib/policy_block.py",
       ".claude/features/contract/lib/mutation.py",
-      ".claude/features/contract/lib/config_dispatch.py"
+      ".claude/features/contract/lib/config_dispatch.py",
+      ".claude/features/contract/lib/feature_suites.py"
     ],
     "hooks": [],
     "skills": [],
@@ -90,7 +91,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "invokes": {
     "scripts": [
       ".claude/features/rabbit-auto-evolve/scripts/banner-status.py",
-      ".claude/features/rabbit-cage/install.py"
+      ".claude/features/rabbit-cage/install.py",
+      ".claude/features/*/test/run.py"
     ],
     "agents": []
   },

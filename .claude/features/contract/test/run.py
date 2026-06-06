@@ -143,5 +143,9 @@ run_test("test-reflow-invariants.py")
 run_test("test-no-rabbit-managed-label-refs.py")
 run_test("test-install-closure-integrity.py")
 run_test("test-install-referenced-scripts-listed.py")
+# Per-feature-suite gate (Inv 66) runs LAST: it invokes every other feature's
+# own test/run.py, so it is the slowest check. Keeping it last lets the fast
+# cross-feature checks surface their failures first.
+run_test("test-run-per-feature-suites.py")
 
 print("ALL TESTS PASSED")

@@ -1,6 +1,6 @@
 ---
 feature: contract
-version: 2.39.0
+version: 2.40.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native mechanism that supersedes contract's governance surface — the cross-feature contract gate, version-lockstep, invariant numbering, and schema/template ownership — not merely when a native orchestration/workflow primitive exists
@@ -407,6 +407,11 @@ Numbering is strictly increasing and CONTIGUOUS (1..N, no holes): contract opts 
     (a) `test/test-install-referenced-scripts-listed.py` MUST scan every deployed SKILL.md body for literal references to `.claude/features/<feature>/scripts/<name>.py`, import `FEATURE_INCLUDES` from `.claude/features/rabbit-cage/install.py`, and assert every referenced `scripts/<name>.py` is present in `FEATURE_INCLUDES[<feature>]`. A referenced-but-unlisted script FAILS the gate and names the (skill, feature, missing-script) triple.
     (b) The test MUST be wired into `test/run.py` so it runs as part of the cross-feature gate.
     (c) The import MUST be resilient: when `rabbit-cage/install.py` is legitimately absent (a degenerate self-build), the check SKIPS gracefully rather than erroring. In the normal repo `install.py` is present and the check MUST run and pass.
+66. **Cross-feature per-feature-suite gate.** The contract repo-gate (`test/run.py`) runs cross-feature contract checks; on its own it does NOT run each feature's own `test/run.py` suite, so a change in feature A that REDS feature B's per-feature suite lands undetected — A's TDD subagent runs only A's suite, and the cross-feature gate never touches B's. The contract cross-feature gate MUST therefore discover every feature's `.claude/features/<name>/test/run.py` and RUN each, failing the gate if any per-feature suite reds.
+    (a) The behaviour is owned by the reusable library module `.claude/features/contract/lib/feature_suites.py`, which MUST carry a module-level docstring (Version/Owner/Deprecation criterion per spec-rules §3) and export two functions. `discover_feature_suites(features_root)` returns a deterministic, name-sorted list of `(feature_name, run_py_path)` for every feature dir under `features_root` that owns a `test/run.py`. `run_feature_suites(features_root, *, timeout=None)` runs each discovered suite and returns a name-sorted list of `(feature_name, passed, output)`, where `passed` is True iff that suite exited 0 and `output` is its combined stdout+stderr.
+    (b) **No recursion.** `discover_feature_suites` MUST exclude the `contract` feature itself, so the per-feature-suite check never re-invokes the very `test/run.py` that runs it. Any feature dir lacking a `test/run.py` (e.g. `policy`) is skipped silently, not treated as a failure.
+    (c) **Runtime characteristic + escape hatch.** Running every feature suite on every gate is the slow path (it executes each feature's full suite serially), so the gate check is wired LAST in `test/run.py`, after the fast cross-feature checks. The default is to run them all — the gate exists to catch the regression. `run_feature_suites` MUST honour a `RABBIT_SKIP_PER_FEATURE_SUITES` env escape hatch: when set to a truthy value it returns an empty list without running anything, for fast local iteration only. The escape hatch is never set in the repo gate.
+    (d) `test/test-run-per-feature-suites.py` MUST isolate the helpers against a TEMP features layout for the RED/GREEN cases (an all-green stub layout passes; a layout with one deliberately-failing stub suite reports that feature FAILED; ordering is deterministic; a no-suite dir is skipped; the real `contract` feature is excluded from discovery) and, as the live gate assertion, run every REAL per-feature suite and FAIL if any reds. The check is deterministic and not network-dependent. Wired into `test/run.py` (the cross-feature gate).
 
 ## Template marker convention
 
