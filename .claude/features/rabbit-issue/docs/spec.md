@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.14.0
+version: 1.15.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -75,6 +75,33 @@ gh call.
 The label is additive — when present it does not change any of the other
 labels. Provenance keeps loop-performance metrics answerable by querying
 the `filed-by:autonomous-evolve` label.
+
+#### Native-first exception
+
+`filed-by:` is a **justified native-first exception**. The binding design
+rule is GitHub-native first: a custom label is permitted ONLY when no
+native primitive covers the need, and then only with an inline
+justification plus a deprecation criterion. GitHub records an issue's
+author natively, so provenance would normally read from the native author
+rather than a custom label.
+
+On THIS repo it cannot: the autonomous evolve loop and the human file
+under the SAME single GitHub identity, so the native author cannot
+distinguish loop-filed from human-filed work. The custom `filed-by:` label
+is therefore the only provenance signal that separates the two, and it is
+retained for exactly that reason.
+
+A human filing carries no `filed-by:` label (absence is the human signal);
+a loop filing carries `filed-by:autonomous-evolve`. Absence-as-human keeps
+the convention deterministic: every non-human filer stamps an explicit
+enum value, so the missing label is an unambiguous human marker rather
+than a mere default.
+
+**Deprecation criterion** — when the loop and human file under DISTINCT
+GitHub identities or apps, the native author becomes sufficient to
+distinguish provenance and `filed-by:` is no longer needed; at that point
+provenance migrates to the native author (coexistence window per
+spec-rules §3). Until distinct identities exist, the exception stands.
 
 ### Housekeeping label
 

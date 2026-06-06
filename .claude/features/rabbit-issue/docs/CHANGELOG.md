@@ -12,6 +12,42 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.15.0 (record `filed-by:` as a justified native-first exception;
+  reconcile the human-provenance convention, closes #944; child of #935 R3):**
+  Documentation/spec reconciliation, no runtime behaviour change. The #935 R3
+  validation confirmed the claim "`filed-by:` duplicates the native author" is
+  FALSE on this repo: the autonomous evolve loop and the human file under the
+  SAME single GitHub identity, so the native author cannot distinguish
+  loop-filed from human-filed work — the custom `filed-by:` label is the only
+  provenance signal. Per #935's binding GitHub-native-first design rule (a
+  custom label is permitted only when no native primitive covers the need, and
+  then only with an inline justification + deprecation criterion),
+  `filed-by:` is recorded as a JUSTIFIED exception. spec.md §Provenance label
+  gains a `Native-first exception` subsection naming the single-identity
+  justification and a deprecation criterion ("when the loop and human file
+  under DISTINCT GitHub identities/apps, the native author becomes sufficient
+  and provenance migrates to it, coexistence window per spec-rules §3").
+  contract.md gains a machine-readable `native_first_exceptions` block with the
+  same justification + deprecation criterion. SKILL.md §Label Schema notes the
+  exception tersely and points at the spec. Reconciled the human-provenance
+  convention onto the ABSENCE convention that the code already implements:
+  `VALID_FILED_BY = {rabbit, autonomous-evolve}` (#759), a human filing carries
+  NO `filed-by:` label (absence is the human signal), a loop filing carries
+  `filed-by:autonomous-evolve`. The legacy polluted `filed-by:` labels were
+  already removed by #935's data-hygiene pass, and the residual unused
+  `filed-by:human` label is a separate label-hygiene question, not code. Tests:
+  new `test/test-filed-by-native-exception.py` pins (1) the spec records the
+  native-first justification + deprecation criterion + distinct-identity
+  migration trigger, (2) the human-absence convention is stated positively, and
+  (3) `file-item.py`'s `VALID_FILED_BY` enum equals the documented
+  `{rabbit, autonomous-evolve}` so code and spec cannot drift; registered in
+  `test/run.py`. Existing `test-file-item.py` already pins the runtime
+  convention (omitted `--filed-by` → no label; `autonomous-evolve` → matching
+  label; out-of-enum values rejected). Four-way version lockstep 1.14.0 →
+  1.15.0 (feature.json + spec.md + SKILL.md; contract.md 1.12.0 → 1.13.0). No
+  runtime-script change. SKILL.md changed, so the deployed copy under
+  `.claude/skills/` drifts until the dispatcher republishes (republish_needed).
+
 - **v1.14.0 (`--parent` establishes a GitHub-native sub-issue link, closes
   #933):** `file-item.py` gains an OPTIONAL `--parent <N>` flag. When supplied,
   after the child issue is created it is linked under parent `<N>` as a
