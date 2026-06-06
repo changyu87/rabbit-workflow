@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.8.0
+version: 0.9.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -58,6 +58,16 @@ The skill is interactive by design. The dispatcher MUST:
    in plugin mode it is the PARENT of the `.rabbit` install (the user
    project — NOT the `.rabbit/` tooling), in standalone mode the repo root.
    The dispatcher MUST NOT hand-resolve an ambiguous `<repo>` source root.
+   - **Detect an existing decomposition (pre-check before step 2)** — before proposing,
+     run the same resolver in `--detect-existing` mode to read the
+     project's `project-map.json`. When it reports `existing: false` (no
+     project-map or an empty features map), proceed unchanged (first run).
+     When it reports `existing: true`, present a SUMMARY of the existing
+     features and ask the user which of the three-way branch to take:
+     (a) skip, (b) add only the new/unrabbified features, (c) re-decompose
+     (full). The detector classifies a supplied candidate list into
+     `already_rabbified` vs `new` so the "add" branch proposes only the new
+     features (Invariant 8).
 2. **Analyze and propose** — produce a proposed feature list as a
    structured table the user can review:
    `[{"name": "<kebab>", "purpose": "<one line>", "globs": ["..."]}, ...]`.
@@ -168,6 +178,27 @@ constrains only the structural shape.
    resolver WITHOUT `--rabbit-root`, relying on this corrected default, so
    they MUST resolve the mode-correct root from the cwd.
 
+8. Before Step 2, the dispatcher MUST detect an EXISTING decomposition
+   rather than blindly re-proposing the full feature set. The
+   detection MUST be SCRIPT-tier: `scripts/handoff-scaffold.py
+   --detect-existing` resolves mode via
+   `rabbit-meta.lib.mode_detection.detect_mode` and reads the project's
+   `project-map.json` (plugin → `<rabbit-root>/rabbit-project/project-map.json`;
+   standalone → `<rabbit-root>/.rabbit/rabbit-project/project-map.json`,
+   matching the `.rabbit/rabbit-project/project-map.json` read declared in
+   `docs/contract.md`). It emits `existing: true` iff the `features` map is
+   present and non-empty; a missing project-map, unparseable JSON, or an empty
+   `features` map all collapse to `existing: false` (the first-run signal,
+   which leaves the existing propose flow unchanged). When `existing: true` the
+   JSON carries `existing_features` (the sorted SUMMARY of existing feature
+   names) and `options: ["skip", "add", "re-decompose"]` (the three-way
+   branch). When a candidate feature list is supplied via `--features`, the
+   detector classifies candidates into `already_rabbified` (name present in the
+   existing map) and `new` (absent), so the "add" branch proposes ONLY the
+   new/unrabbified features. The `SKILL.md` body MUST reference the
+   `--detect-existing` step, name `project-map.json`, and document the
+   three-way skip / add / re-decompose branch.
+
 ## Tests
 
 `test/run.py` invokes every `test-*.py` file under `test/`. Current
@@ -211,6 +242,18 @@ coverage:
   plan JSON carries the same `source_root`, and that the `SKILL.md` Step 1 body
   references the canonical resolver and no longer hand-resolves an ambiguous
   `<repo>` source root in a live bash block).
+- `test-detect-existing-project-map.py` (E2E — asserts Invariant 8: runs
+  `scripts/handoff-scaffold.py --detect-existing` end-to-end against temp
+  plugin and standalone trees, confirming a non-empty `project-map.json`
+  features map yields `existing: true` with the existing-feature SUMMARY and
+  the three-way skip / add / re-decompose `options`; that a supplied candidate
+  list is classified into `already_rabbified` vs `new` so "add" proposes only
+  the new/unrabbified features; that a missing or empty project-map yields
+  `existing: false` (first-run unchanged); that the project-map path is
+  `detect_mode`-driven (plugin `rabbit-project/...` vs standalone
+  `.rabbit/rabbit-project/...`); and that the `SKILL.md` body references
+  `--detect-existing`, names `project-map.json`, and documents the three-way
+  branch).
 - `test-default-rabbit-root.py` (E2E — asserts Invariant 7: the default
   rabbit-root resolver returns the cwd; running `handoff-scaffold.py
   --source-root` WITHOUT `--rabbit-root` from a simulated plugin cwd

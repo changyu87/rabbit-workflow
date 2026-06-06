@@ -1,7 +1,7 @@
 ---
 name: rabbit-decompose
 description: Propose a feature decomposition for an existing codebase or a high-level spec, interactively iterate with the user until accepted, then orchestrate scaffolding + initial spec drafting per accepted feature. Use when the user wants to start a new rabbit-managed project from a spec/prompt, or when the user wants to retroactively organize an existing codebase into rabbit features. Phrases like "decompose this into features", "propose a feature breakdown", "let's organize this codebase with rabbit", "/rabbit-decompose", "what features should this project have". Do NOT use to revise individual feature specs (that's rabbit-spec-update) or to scaffold a single feature whose name + globs you already know (that's rabbit-feature-scaffold).
-version: 0.8.0
+version: 0.9.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
 ---
@@ -38,6 +38,22 @@ Confirm the scenario and source material with the user. Two cases:
 ```bash
 python3 .claude/features/rabbit-decompose/scripts/handoff-scaffold.py --source-root
 ```
+
+### Detect an existing decomposition (pre-check before Step 2)
+
+Before proposing anything, check whether this project was **already decomposed**. Re-proposing the full feature set on an already-rabbified project is redundant and confusing. The detection is SCRIPT-tier: run the resolver in `--detect-existing` mode. It resolves mode deterministically (reusing `rabbit-meta`'s `detect_mode`) and reads the project's `project-map.json` (plugin: `<.rabbit>/rabbit-project/project-map.json`; standalone: `<repo>/.rabbit/rabbit-project/project-map.json`):
+
+```bash
+python3 .claude/features/rabbit-decompose/scripts/handoff-scaffold.py --detect-existing
+```
+
+- When the JSON reports `existing: false` (no `project-map.json`, or an empty `features` map), this is a **first run** — proceed to Step 2 unchanged.
+- When it reports `existing: true`, the project already has features. Present a SUMMARY of the existing features (the `existing_features` names) and ask the user which path to take — the three-way branch in `options`:
+  - **(a) skip** — the user is satisfied with the existing decomposition. Stop; do not re-propose or scaffold anything.
+  - **(b) add** — decompose only the NEW work. Re-run the detector with your proposed candidate list (`--detect-existing --features <candidates.json>`); it classifies candidates into `already_rabbified` vs `new`. Propose and scaffold ONLY the `new` (unrabbified) features, leaving the existing ones untouched.
+  - **(c) re-decompose** — the user wants a full re-decomposition. Proceed to Step 2 as if first-run, proposing the complete feature set.
+
+Do not choose for the user. Present the summary and the three options, then wait for an explicit choice before continuing.
 
 ### Step 2 — Analyze and propose
 

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.8.0
+version: 0.9.0
 template_version: 2.0.0
 ---
 
@@ -46,7 +46,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/rabbit-meta/lib/mode_detection.py",
-        "purpose": "handoff-scaffold.py lazy-imports detect_mode(cwd) to resolve plugin-vs-standalone mode deterministically (for both the Step 1 decomposition source root and the Step 4 scaffolder dispatch) instead of reading a single hard-coded mode path"
+        "purpose": "handoff-scaffold.py lazy-imports detect_mode(cwd) to resolve plugin-vs-standalone mode deterministically (for the Step 1 decomposition source root, the existing-decomposition pre-check's project-map.json path, and the Step 4 scaffolder dispatch) instead of reading a single hard-coded mode path"
       }
     ]
   },
