@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.14.0
+version: 1.15.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours an actionability safety guard (it refuses to close/reopen issues lacking a valid `feature:` label) so raw human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -47,11 +47,15 @@ separate bootstrap step. See docs/spec.md §Label schema for the full
 cardinality table.
 
 The `filed-by:` provenance label is a **fixed enum** with two non-human
-values. Human is the untagged default (OMIT `--filed-by`); pass
-`--filed-by rabbit` for a bot/wrapped rabbit script, or
-`--filed-by autonomous-evolve` for the autonomous evolve loop.
-`file-item.py` REJECTS any value outside `{rabbit, autonomous-evolve}`
-with a clear error. See docs/spec.md §Provenance label.
+values. Human is the untagged default (OMIT `--filed-by`), so a human
+filing carries no `filed-by:` label; pass `--filed-by rabbit` for a
+bot/wrapped rabbit script, or `--filed-by autonomous-evolve` for the
+autonomous evolve loop. `file-item.py` REJECTS any value outside
+`{rabbit, autonomous-evolve}` with a clear error. `filed-by:` is a
+justified native-first exception — the loop and human file under the same
+single GitHub identity here, so the native author cannot tell them apart;
+it carries a deprecation criterion for migration to the native author once
+those identities diverge. See docs/spec.md §Provenance label.
 
 `housekeeping` is a sanctioned category label marking housekeeping-wave
 work. Pass `--housekeeping` to `file-item.py` to stamp it at filing time;

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.12.0
+version: 1.13.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -38,6 +38,12 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
   },
   "manages": {
     "runtime_markers": []
+  },
+  "native_first_exceptions": {
+    "filed-by:": {
+      "justification": "the autonomous evolve loop and the human file under the SAME single GitHub identity on this repo, so the native issue author cannot distinguish loop-filed from human-filed work; the custom `filed-by:` label is the only provenance signal that separates them. A human filing carries no label (absence is the human signal); a loop filing carries filed-by:autonomous-evolve.",
+      "deprecation_criterion": "when the loop and human file under DISTINCT GitHub identities or apps, the native author becomes sufficient and provenance migrates to the native author (coexistence window per spec-rules section 3)"
+    }
   },
   "never": [
     "writes to origin/bug-backlog-files (not a rabbit-issue surface)",

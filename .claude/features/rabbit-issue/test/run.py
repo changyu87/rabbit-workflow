@@ -37,6 +37,7 @@ SUITES = (
     ("py", "test-owner-sweep.py"),
     ("py", "test-bb-terminology.py"),
     ("py", "test-label-schema-pinned.py"),
+    ("py", "test-filed-by-native-exception.py"),
     ("py", "test-script-backed-clean.py"),
     ("pytest", "test-ensure-labels.py"),
     ("pytest", "test-gh-helper-resolves-rabbit-repo.py"),
