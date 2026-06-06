@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.72.1
+version: 0.73.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1402,22 +1402,31 @@ summary is restated here.
     rather than depending on it): read the heartbeat cron from repo-root
     `.claude/scheduled_tasks.json`, parse its MINUTE field against an
     unrestricted HOUR, and walk to the next matching wall-clock minute from an
-    injectable `now`. The ETA is the EXACT next cron boundary shown as a LOWER
-    bound `≥ HH:MM (fires when the session is next idle)` — NOT a jitter range,
-    NOT a bare `~HH:MM`. Root cause of the observed overshoot: the CronCreate
-    fallback is the idle-REPL prompt scheduler — it fires a scheduled prompt ONLY
-    while the REPL is IDLE, so a busy session DELAYS delivery until the session
-    next goes idle. The boundary is deterministic (there is no "cron jitter"); the
-    non-determinism is the idle-gated wait, so the shown minute is the exact next
-    boundary. The ETA degrades to the bare idle line when the cadence is
-    absent/unparseable. Only this started-then-idle line carries an ETA; the
-    priority-marker, restart-pending, and `{active: false}` lines never do.
+    injectable `now`.
+
+    The ETA is rendered as a single EXACT wall-clock time `HH:MM` — no `≥`,
+    no `~`, no range, no qualifier. It is the next cron boundary PLUS the
+    deterministic CronCreate jitter offset (Inv 56). CronCreate adds a
+    deterministic per-job jitter to recurring tasks: recurring jobs fire up to
+    10% of their period late, capped at 15 min. On an idle session this is a
+    stable constant — the `13,43 * * * *` (30-min period) heartbeat fired a
+    constant `+13` min late every time (ETA 21:43 fired 21:56, 22:13 fired
+    22:26, 22:43 fired 22:56). So the honest displayed minute is
+    `boundary + observed_jitter_minutes`, where `observed_jitter_minutes` is the
+    empirically observed offset persisted by Inv 56 (computed from the recorded
+    fire history; on a cold start with no recorded fires it falls back to the
+    documented bound `min(15, ceil(period_minutes * 0.10))`). The ETA degrades
+    to the bare idle line when the cadence is absent/unparseable. Only this
+    started-then-idle line carries an ETA; the priority-marker, restart-pending,
+    and `{active: false}` lines never do.
 
     The script reads the five runtime markers via `os.path.exists` and
     additionally probes for `.rabbit/auto-evolve-state.json` via
     `os.path.isfile` (the never-started distinction); for the idle ETA it
-    reads `.claude/scheduled_tasks.json` — no other filesystem access, no
-    git, no `gh`. Repo root resolution uses the
+    reads `.claude/scheduled_tasks.json` for the cadence and the persisted
+    jitter offset `.rabbit/auto-evolve-tick-jitter.json` (Inv 56) for the
+    `observed_jitter_minutes` to add to the boundary — no other filesystem
+    access, no git, no `gh`. Repo root resolution uses the
     `RABBIT_AUTO_EVOLVE_REPO_ROOT` env override fallback to `os.getcwd()`
     (matching the marker-write scripts). The wall-clock for the ETA is
     overridable via `RABBIT_AUTO_EVOLVE_NOW` (ISO-8601) for deterministic
@@ -1435,9 +1444,14 @@ summary is restated here.
     - Active only, state file PRESENT, no cadence source → `line2.text`
       is the bare `paste: /rabbit-auto-evolve start` (no ETA), color yellow.
     - Active only, state file PRESENT, cadence source present → `line2.text`
-      appends `, next tick ≥ HH:MM (fires when the session is next idle)`.
+      appends `, next tick HH:MM` where `HH:MM` is the next cron boundary plus
+      `observed_jitter_minutes` (Inv 56) — a single exact time, no `≥`, no `~`,
+      no qualifier, no range.
     - Active only, state file PRESENT, unparseable cadence → bare idle line,
       no ETA.
+    - No rejected wording (`≥`, `(scheduler jitter)`, `(fires when the session
+      is next idle)`, the idle-gating lower-bound framing) appears anywhere in
+      `scripts/banner-status.py`.
     - The restart-pending and running lines carry no ETA even when the
       cadence source is present.
     - Active + running → `line2.text` contains `loop in progress`.
@@ -3361,6 +3375,37 @@ summary is restated here.
     self-heal; graceful `gh` failure; empty-journal no-op),
     `test-run-tick-phases.py` (before merge AND after persist), and
     `test-tick-skill.py` (phase-6 record-all → reconcile → Agent order).
+
+56. **The empirical CronCreate jitter offset is owned, computed, and
+    persisted by this feature.** CronCreate applies a DETERMINISTIC
+    per-job jitter to recurring tasks: a recurring job fires up to 10% of its
+    period late, capped at 15 min (CronCreate's own documented bound). On an
+    idle session this is a stable constant, not a range and not idle-gating —
+    the `13,43 * * * *` 30-min-period heartbeat fired a constant `+13` min late
+    every time (ETA 21:43 fired 21:56, 22:13 fired 22:26, 22:43 fired 22:56).
+    `scripts/tick-jitter.py` owns this value. It computes the offset as the
+    median of `actual_fire_time − nearest_prior_cron_boundary` over the recent
+    recorded fires in `.rabbit/tick.log` (Inv 36; each line carries an
+    ISO-8601 UTC `ts`), and persists it to the rabbit-auto-evolve-owned state
+    artifact `.rabbit/auto-evolve-tick-jitter.json` so other features (e.g.
+    `contract`'s Stop line) can READ the value WITHOUT importing this feature.
+    The artifact schema is
+    `{schema_version, observed_jitter_minutes (int ≥ 0), period_minutes,
+    sample_count, cold_start (bool), computed_at, owner,
+    deprecation_criterion}`. When there is NO recorded fire history yet,
+    `observed_jitter_minutes` falls back to the documented cold-start bound
+    `min(15, ceil(period_minutes * 0.10))` and `cold_start` is set true; this
+    is clearly a fallback, NOT the empirical value. The CronCreate constraint
+    that jobs fire only while the REPL is idle (never mid-query) means a
+    boundary missed mid-query is DELIVERED at the next idle moment, not
+    silently skipped — but on an idle session every boundary is delivered
+    on time-plus-jitter, which is why the offset is a stable constant. The
+    state-dir resolution honors `RABBIT_AUTO_EVOLVE_STATE_DIR` (matching
+    `tick-log.py` / `update-state.py`), and the wall-clock is overridable via
+    `RABBIT_AUTO_EVOLVE_NOW` (ISO-8601) for deterministic tests. Enforced by
+    `test/test-tick-jitter.py` (median over a `+13` fire history; cold-start
+    fallback; absent/unreadable log degradation; persisted schema) and the
+    `test-banner-status.py` boundary-plus-offset and purged-wording assertions.
 
 ## Known gaps
 

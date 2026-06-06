@@ -102,6 +102,25 @@ def _seed_cadence(td: Path, cron: str, prompt: str = "/rabbit-auto-evolve tick")
     (claude_dir / "scheduled_tasks.json").write_text(json.dumps(payload))
 
 
+def _seed_jitter(td: Path, observed: int, cold_start: bool = False) -> None:
+    """#881 (Inv 56): write the rabbit-auto-evolve-owned jitter offset the idle
+    ETA adds to the next cron boundary. The banner renders boundary + observed
+    as a single EXACT HH:MM (no >=, no ~, no qualifier)."""
+    state_dir = td / ".rabbit"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": "1.0.0",
+        "observed_jitter_minutes": observed,
+        "period_minutes": 30,
+        "sample_count": 3,
+        "cold_start": cold_start,
+        "computed_at": "2026-06-04T22:56:00Z",
+        "owner": "rabbit-workflow team",
+        "deprecation_criterion": "n/a",
+    }
+    (state_dir / "auto-evolve-tick-jitter.json").write_text(json.dumps(payload))
+
+
 def _seed(td: Path, names: list[str], content: str = "session") -> None:
     for n in names:
         (td / n).write_text(content)
@@ -130,18 +149,39 @@ def _import_banner_module():
 
 print("test-banner-status.py")
 
-# --- t0 (#881 reopen): the misleading jitter helpers are GONE ---
-# #883 added a jitter-inclusive ETA range premised on "cron jitter". The #881
-# reopen establishes the real root cause is idle-gated DELIVERY: the CronCreate
-# fallback fires a scheduled prompt ONLY while the REPL is idle, so a busy
-# session delays the tick past the boundary. Cron itself has no jitter — it
-# matches its exact minute. So the jitter helpers and the "(scheduler jitter)"
-# framing MUST be removed; assert they no longer exist on the module.
+# --- t0 (#881 third reopen): the rejected mental-model helpers are GONE ---
+# Two prior cycles were REJECTED: (1) the #883 "(scheduler jitter)" range and
+# (2) the idle-gating "≥ HH:MM (fires when the session is next idle)" lower
+# bound. The ACCEPTED root cause is CronCreate's DETERMINISTIC per-job jitter:
+# recurring tasks fire up to 10% of their period late (capped 15 min); on an
+# idle session this is a stable constant (observed +13 for 13,43). The display
+# is now the EXACT boundary + observed offset. The old jitter-range helpers
+# MUST be gone.
 _mod = _import_banner_module()
 if hasattr(_mod, "_cadence_jitter_minutes") or hasattr(_mod, "_cadence_period_minutes"):
-    fail_t("no-jitter-helpers", "jitter helpers must be removed (#881 reopen)")
+    fail_t("no-jitter-helpers", "old jitter-range helpers must be removed (#881)")
 else:
-    ok("no-jitter-helpers", "jitter/period helpers removed — root cause is idle-gating, not jitter")
+    ok("no-jitter-helpers", "old jitter-range helpers removed")
+
+# --- t0b (#881 cleanup pass): NONE of the rejected wording remains in source ---
+# The maintainer-directed purge: no "(scheduler jitter)" range, no idle-gating,
+# no "≥" lower-bound framing, no "(fires when the session is next idle)".
+_SRC = SCRIPT.read_text(encoding="utf-8")
+_FORBIDDEN = [
+    "fires when the session is next idle",
+    "scheduler jitter",
+    "≥",
+    "idle-gat",
+    "cron jitter",
+    "next goes idle",
+    "LOWER bound",
+    "lower-bound",
+]
+_hits = [p for p in _FORBIDDEN if p in _SRC]
+if _hits:
+    fail_t("purged-wording", f"banner-status.py still contains rejected wording: {_hits!r}")
+else:
+    ok("purged-wording", "no rejected mental-model wording remains in banner-status.py")
 
 # --- t1: script exists on disk ---
 if SCRIPT.is_file():
@@ -229,21 +269,17 @@ with tempfile.TemporaryDirectory() as td_str:
         else:
             ok("idle", "state-file-present, no cadence → bare idle line, no ETA")
 
-# --- t4c (#844, revised #881 reopen): the idle line carries an HONEST next-tick
-# ETA when the cadence source is present — the EXACT next cron boundary as a
-# LOWER bound, qualified by idle-gating. Symmetric with contract Inv 55's Stop
-# idle line. Uses an INJECTED now + fixed cadence. The boundary is deterministic
-# (cron matches its exact minute); the actual delivery may be LATER because the
-# CronCreate fallback fires only while the REPL is idle. So for a 13,43 cadence
-# from now=14:20 the next boundary is 14:43, rendered
-# "≥ 14:43 (fires when the session is next idle)" — NOT a jitter range, NOT a
-# bare "~14:43", and NO "(scheduler jitter)" framing. ---
-EXPECTED_QUALIFIER = "(fires when the session is next idle)"
+# --- t4c (#881 third reopen): the idle line carries the EXACT next-tick time —
+# the next cron boundary PLUS the observed CronCreate jitter offset (Inv 56),
+# rendered as a single bare HH:MM. NO ">=", NO "~", NO range, NO qualifier.
+# For a 13,43 cadence from now=14:20 the next boundary is 14:43; with a +13
+# observed offset the displayed time is 14:56 ("next tick 14:56"). ---
 with tempfile.TemporaryDirectory() as td_str:
     td = Path(td_str)
     _seed(td, [ACTIVE])
     _seed_state(td)
     _seed_cadence(td, "13,43 * * * *")
+    _seed_jitter(td, 13)
     r = _run(td, now="2026-06-04T14:20:00")
     if r.returncode != 0:
         fail_t("idle-eta", f"exit {r.returncode}; stderr={r.stderr!r}")
@@ -253,33 +289,66 @@ with tempfile.TemporaryDirectory() as td_str:
         text = line2.get("text", "")
         if "paste: /rabbit-auto-evolve start" not in text:
             fail_t("idle-eta", f"line2 missing base idle text: {line2!r}")
-        elif f", next tick ≥ 14:43 {EXPECTED_QUALIFIER}" not in text:
-            fail_t("idle-eta", f"line2 missing honest boundary ETA: {line2!r}")
-        elif "jitter" in text or "–" in text:
-            fail_t("idle-eta", f"line2 must NOT carry jitter range/framing: {line2!r}")
-        elif not re.search(r", next tick ≥ \d\d:\d\d \(fires when the session is next idle\)$", text):
-            fail_t("idle-eta", f"line2 ETA not boundary-shaped at end: {line2!r}")
+        elif ", next tick 14:56" not in text:
+            fail_t("idle-eta", f"line2 missing exact boundary+offset ETA 14:56: {line2!r}")
+        elif "≥" in text or "~" in text or "jitter" in text or "next idle" in text:
+            fail_t("idle-eta", f"line2 must carry NO qualifier/range/jitter: {line2!r}")
+        elif not re.search(r", next tick \d\d:\d\d$", text):
+            fail_t("idle-eta", f"line2 ETA not a bare HH:MM at end: {line2!r}")
         elif line2.get("color") != "yellow":
             fail_t("idle-eta", f"line2 color != yellow: {line2!r}")
         else:
-            ok("idle-eta", "idle line appends honest '≥ 14:43 (fires when the session is next idle)'")
+            ok("idle-eta", "idle line appends exact 'next tick 14:56' (boundary 14:43 + offset 13)")
 
-# --- t4c2 (#881 reopen): a once-per-hour cadence (single fire minute). Cron
-# "10 * * * *" from now=14:20 => next boundary 15:10, rendered as the exact
-# boundary "≥ 15:10 (fires when the session is next idle)" — no jitter math. ---
+# --- t4c2 (#881): a once-per-hour cadence (single fire minute). Cron
+# "10 * * * *" from now=14:20 => next boundary 15:10; with a +6 offset the
+# exact displayed time is 15:16 — a single bare HH:MM, no qualifier. ---
 with tempfile.TemporaryDirectory() as td_str:
     td = Path(td_str)
     _seed(td, [ACTIVE])
     _seed_state(td)
     _seed_cadence(td, "10 * * * *")
+    _seed_jitter(td, 6)
     r = _run(td, now="2026-06-04T14:20:00")
     text = (_parse(r).get("line2") or {}).get("text", "")
-    if f", next tick ≥ 15:10 {EXPECTED_QUALIFIER}" not in text:
-        fail_t("idle-eta-hourly", f"once-per-hour boundary ETA wrong: {text!r}")
-    elif "jitter" in text:
-        fail_t("idle-eta-hourly", f"must NOT carry jitter framing: {text!r}")
+    if ", next tick 15:16" not in text:
+        fail_t("idle-eta-hourly", f"once-per-hour boundary+offset ETA wrong: {text!r}")
+    elif "≥" in text or "jitter" in text or "next idle" in text:
+        fail_t("idle-eta-hourly", f"must carry no qualifier/jitter: {text!r}")
     else:
-        ok("idle-eta-hourly", "once-per-hour cadence => exact boundary ≥ 15:10")
+        ok("idle-eta-hourly", "once-per-hour cadence => exact 15:16 (boundary 15:10 + offset 6)")
+
+# --- t4c3 (#881): offset wraps the hour. Boundary 14:43 + 20 offset => 15:03.
+# Confirms the rendered minute carries the hour-carry correctly. ---
+with tempfile.TemporaryDirectory() as td_str:
+    td = Path(td_str)
+    _seed(td, [ACTIVE])
+    _seed_state(td)
+    _seed_cadence(td, "13,43 * * * *")
+    _seed_jitter(td, 20)
+    r = _run(td, now="2026-06-04T14:20:00")
+    text = (_parse(r).get("line2") or {}).get("text", "")
+    if ", next tick 15:03" not in text:
+        fail_t("idle-eta-wrap", f"offset hour-carry wrong (expected 15:03): {text!r}")
+    else:
+        ok("idle-eta-wrap", "boundary 14:43 + offset 20 => 15:03 (hour carry)")
+
+# --- t4c4 (#881): cold-start — no jitter artifact present. The banner falls
+# back to the documented cold bound min(15, ceil(period*0.10)); for a 30-min
+# period that is +3, so boundary 14:43 + 3 => 14:46 as a bare HH:MM. ---
+with tempfile.TemporaryDirectory() as td_str:
+    td = Path(td_str)
+    _seed(td, [ACTIVE])
+    _seed_state(td)
+    _seed_cadence(td, "13,43 * * * *")  # NO jitter artifact => cold start
+    r = _run(td, now="2026-06-04T14:20:00")
+    text = (_parse(r).get("line2") or {}).get("text", "")
+    if ", next tick 14:46" not in text:
+        fail_t("idle-eta-coldstart", f"cold-start fallback ETA wrong (expected 14:46): {text!r}")
+    elif "≥" in text or "next idle" in text:
+        fail_t("idle-eta-coldstart", f"cold-start must carry no qualifier: {text!r}")
+    else:
+        ok("idle-eta-coldstart", "no jitter artifact => cold fallback +3 => 14:46")
 
 # --- t4d (#844): idle ETA degrades to bare line on an unparseable cadence ---
 with tempfile.TemporaryDirectory() as td_str:
