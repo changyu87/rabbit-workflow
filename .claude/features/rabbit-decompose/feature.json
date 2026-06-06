@@ -1,12 +1,12 @@
 {
   "name": "rabbit-decompose",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
   "status": "active",
-  "summary": "Interactive feature-decomposition skill. Given a high-level spec (greenfield scenario) or a codebase (existing-code scenario), proposes a list of features for the user to review, edit, and accept; then orchestrates rabbit-feature-scaffold + rabbit-spec-create per accepted feature.",
+  "summary": "Interactive feature-decomposition skill. Given a high-level spec (greenfield scenario) or a codebase (existing-code scenario), proposes a list of features for the user to review, edit, and accept; then orchestrates rabbit-feature-scaffold plus a direct rabbit-spec-creator subagent dispatch per accepted feature.",
   "surface": {
     "skills": [
       "skills/rabbit-decompose/SKILL.md"
@@ -19,7 +19,7 @@
     ]
   },
   "deprecation_criterion": "when Claude Code exposes native feature-decomposition assistance that supersedes this skill",
-  "updated": "2026-06-04",
+  "updated": "2026-06-06",
   "manifest": [
     {
       "api": "publish_skill",

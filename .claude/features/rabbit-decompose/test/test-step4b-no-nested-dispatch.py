@@ -1,35 +1,34 @@
 #!/usr/bin/env python3
-"""test-step4b-no-nested-dispatch.py — Step 4B nesting-safety guard.
+"""test-step4b-no-nested-dispatch.py — Step 4B direct-dispatch shape check.
 
-End-to-end shape check of rabbit-decompose's spec-create hand-off step.
+End-to-end shape check of rabbit-decompose's spec-seeding hand-off step.
 
-rabbit-spec-create is a skill that INTERNALLY dispatches the
-rabbit-spec-creator subagent via the Agent tool. Wrapping such a
-subagent-dispatching skill inside another Agent() call from rabbit-decompose
-would create a two-level subagent nesting chain
-(decompose -> Agent level-1 -> rabbit-spec-creator level-2), which Claude
-Code does not support: the level-2 dispatch is blocked / silently dropped.
-
-The correct, unblocked hand-off therefore invokes rabbit-spec-create as
-SEQUENTIAL Skill() calls from the main session context, where
-rabbit-spec-creator is always a level-1 subagent (main session ->
-rabbit-spec-creator).
+Since #922 the rabbit-spec-create skill WRAPPER is retired: the
+rabbit-spec-creator SUBAGENT drafts AND writes its own docs/spec.md and is
+dispatched DIRECTLY. rabbit-decompose Step 4-B is a main-session
+orchestration, so it dispatches `rabbit-spec-creator` at LEVEL-1
+(main session -> rabbit-spec-creator) via the input assembler
+`scripts/dispatch-spec-creator.py`. There is no longer any intermediate
+subagent-dispatching skill, so the old two-level-nesting workaround (which
+forced the seeding calls to be sequential `Skill()` calls) no longer applies:
+the N per-feature dispatches may now run in TRUE PARALLEL.
 
 This test asserts, against BOTH the source SKILL.md and docs/spec.md:
 
-  - Neither surface tells the reader to run / parallelize rabbit-spec-create
-    via the Agent tool (the illegal two-level-nesting claim is absent).
-  - The SKILL.md hand-off step states the spec-create calls run
-    sequentially.
-  - At least one surface names the two-level-nesting constraint (a
-    subagent-dispatching skill must not be wrapped in Agent()).
+  - Neither surface references the RETIRED `rabbit-spec-create` skill name,
+    nor the OLD `dispatch-spec-create.py` script name.
+  - Both surfaces name the NEW direct-dispatch path: the
+    `dispatch-spec-creator.py` input assembler and a direct
+    `rabbit-spec-creator` Agent dispatch.
+  - The SKILL.md Step 4-B states the per-feature dispatches may run in
+    parallel (the level-1 direct dispatch removed the sequential constraint).
 
 Run non-interactively. Exits non-zero on failure.
 
-Version: 0.1.0
+Version: 0.2.0
 Owner: rabbit-workflow team
-Deprecation criterion: when Claude Code supports nested subagent dispatch,
-making the sequential level-1 hand-off constraint obsolete.
+Deprecation criterion: when the rabbit-spec-creator dispatch interface is
+superseded by a native spec-lifecycle capability.
 """
 import os
 import re
@@ -60,70 +59,56 @@ def read_text(path, label):
 skill_text = read_text(SKILL_MD, "SKILL.md")
 spec_text = read_text(SPEC_MD, "docs/spec.md")
 
-# 1. No surface may make the POSITIVE claim that rabbit-spec-create can be
-#    run / parallelized via the Agent tool — that is the illegal
-#    two-level-nesting claim the fix removes.
-#
-#    Note: a correct surface still *mentions* the Agent tool — to explain that
-#    rabbit-spec-create internally dispatches its subagent via Agent, and to
-#    forbid wrapping it (e.g. "may NOT be parallelized via the Agent tool").
-#    So we must match the asserting/permitting form, not every Agent mention.
-#    Each pattern below requires an enabling verb (can/may/run/parallelize)
-#    bound to spec-create + Agent, and must NOT be immediately negated.
-illegal_patterns = [
-    # "... rabbit-spec-create ... can be run in parallel via the Agent tool ..."
-    r"(?:can|may)\s+be\s+run\s+in\s+parallel\s+via\s+(?:the\s+)?Agent",
-    # "... MAY run in parallel via independent Agent dispatches ..."
-    r"(?:can|may)\s+run\s+in\s+parallel\s+via\s+(?:\w+\s+){0,3}Agent",
-    # "... run in parallel via the Agent tool for batch parallelism ..."
-    r"in\s+parallel\s+via\s+(?:the\s+)?Agent\s+tool\s+for\s+batch",
-    # "... parallel via independent Agent dispatches ..."
-    r"parallel\s+via\s+independent\s+Agent\s+dispatch",
+# 1. The retired skill name and the old script name must be GONE from both
+#    surfaces. `rabbit-spec-create` is matched with a trailing boundary that
+#    excludes `rabbit-spec-creator` (the subagent, which is the NEW target).
+retired_patterns = [
+    # the retired skill wrapper — but NOT rabbit-spec-creator (the subagent)
+    (r"rabbit-spec-create(?!r)", "retired rabbit-spec-create skill"),
+    # the old input-assembler script name (renamed to dispatch-spec-creator.py)
+    (r"dispatch-spec-create\.py", "old dispatch-spec-create.py script name"),
 ]
-
-NEGATION = re.compile(
-    r"\b(?:not|never|MUST\s+NOT|MUST\s+NEVER|no\b|cannot|can't|may\s+not)\b",
-    re.IGNORECASE,
-)
-
-
-def _negated_window(text, start):
-    # Look back up to 60 chars from the match start for an explicit negation,
-    # so a prohibition ("may NOT ... parallel via Agent") is not flagged.
-    window = text[max(0, start - 60):start]
-    return bool(NEGATION.search(window))
-
-
 for surface_name, text in (("SKILL.md", skill_text), ("docs/spec.md", spec_text)):
-    for pat in illegal_patterns:
-        for m in re.finditer(pat, text, re.IGNORECASE):
-            if _negated_window(text, m.start()):
-                continue
+    for pat, label in retired_patterns:
+        m = re.search(pat, text)
+        if m:
             fail(
-                f"{surface_name} still claims rabbit-spec-create can be "
-                f"Agent-parallelized (illegal 2-level nesting): "
+                f"{surface_name} still references {label}: "
                 f"matched {pat!r} -> {m.group(0)!r}"
             )
 
-# 2. The SKILL.md spec-create hand-off must state the calls run sequentially.
-if not re.search(r"sequential", skill_text, re.IGNORECASE):
+# 2. Both surfaces must name the NEW direct-dispatch path: the input
+#    assembler script and the rabbit-spec-creator subagent.
+for surface_name, text in (("SKILL.md", skill_text), ("docs/spec.md", spec_text)):
+    if "dispatch-spec-creator.py" not in text:
+        fail(
+            f"{surface_name} does not reference the dispatch-spec-creator.py "
+            f"input assembler (the new direct-dispatch path)"
+        )
+    if "rabbit-spec-creator" not in text:
+        fail(
+            f"{surface_name} does not name the rabbit-spec-creator subagent "
+            f"(the direct level-1 dispatch target)"
+        )
+
+# 3. The SKILL.md must dispatch the subagent DIRECTLY via the Agent tool
+#    (level-1), not via a Skill() wrapper.
+if not re.search(
+    r"Agent\(\s*subagent_type\s*[:=]\s*[\"']rabbit-spec-creator", skill_text
+):
     fail(
-        "SKILL.md does not state the rabbit-spec-create calls run "
-        "sequentially (level-1 hand-off)"
+        "SKILL.md Step 4-B does not dispatch rabbit-spec-creator directly via "
+        "Agent(subagent_type: \"rabbit-spec-creator\", ...) (level-1 dispatch)"
     )
 
-# 3. At least one surface must name the two-level-nesting constraint: a
-#    subagent-dispatching skill must not be wrapped in an Agent() call.
-combined = skill_text + "\n" + spec_text
-nesting_constraint = re.search(
-    r"(two-level|2-level)\s+nesting", combined, re.IGNORECASE
-) or re.search(
-    r"nest(?:ed|ing).*(?:subagent|Agent)", combined, re.IGNORECASE
-)
-if not nesting_constraint:
+# 4. The SKILL.md Step 4-B must state the per-feature dispatches may run in
+#    PARALLEL — the level-1 direct dispatch removed the old sequential
+#    two-level-nesting constraint.
+if not re.search(r"parallel", skill_text, re.IGNORECASE):
     fail(
-        "no surface names the two-level subagent-nesting constraint that "
-        "justifies the sequential level-1 hand-off"
+        "SKILL.md Step 4-B does not state the rabbit-spec-creator dispatches "
+        "may run in parallel (the level-1 direct dispatch removed the "
+        "sequential constraint)"
     )
 
 print("All checks passed.")

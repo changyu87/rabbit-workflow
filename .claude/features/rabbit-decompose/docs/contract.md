@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.9.0
+version: 0.10.0
 template_version: 2.0.0
 ---
 
@@ -33,13 +33,19 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       {
         "name": "rabbit-feature-scaffold",
         "purpose": "scaffold each accepted feature's directory; plugin mode dispatches the skill's batch interface (scaffold-batch.py --batch), per-feature in standalone mode"
-      },
+      }
+    ],
+    "agents": [
       {
-        "name": "rabbit-spec-create",
-        "purpose": "seed the initial docs/spec.md body for each accepted feature"
+        "subagent_type": "rabbit-spec-creator",
+        "purpose": "seed each accepted feature's initial docs/spec.md; dispatched DIRECTLY at level-1 (Step 4-B) with a prompt assembled by rabbit-spec's dispatch-spec-creator.py; the subagent writes the spec itself and returns a {path_written, summary} handoff"
       }
     ],
     "scripts": [
+      {
+        "path": ".claude/features/rabbit-spec/scripts/dispatch-spec-creator.py",
+        "purpose": "rabbit-spec's input assembler for the rabbit-spec-creator subagent; Step 4-B runs it per accepted feature (--feature-name <name>, plus --paths <globs> or none for a greenfield skeleton) to print the assembled prompt-file path, then dispatches the subagent directly"
+      },
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-scaffold/scripts/scaffold-batch.py",
         "purpose": "the rabbit-feature-scaffold skill's batch interface; handoff-scaffold.py invokes it via --batch <file> in plugin mode to scaffold N features in one project-map.json mutation (the declared skill interface, not a direct shell-out to scaffold-feature.py)"

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.9.0
+version: 0.10.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -19,8 +19,8 @@ Two scenarios drive the design — **greenfield** (a spec, design doc, or
 natural-language description) and **existing codebase** (a directory or
 project root) — detailed in the Interactive Protocol below. In both cases
 the output is the same: an accepted feature list that feeds the downstream
-pipeline (the `rabbit-feature-scaffold` skill's `--batch` interface then
-`rabbit-spec-create` per feature).
+pipeline (the `rabbit-feature-scaffold` skill's `--batch` interface then a
+direct `rabbit-spec-creator` subagent dispatch per feature).
 
 ## Surface
 
@@ -42,8 +42,9 @@ The interactive protocol (Steps 1–3) runs inline in the dispatcher session.
 Step 4's mode detection, batch-file authoring, and scaffolder dispatch are
 SCRIPT-tier: the SKILL invokes `scripts/handoff-scaffold.py` rather than
 assembling mode branches and runtime placeholders in prose (spec-rules §4
-Script-Backed Orchestration). The spec-create seeding remains inline
-sequential `Skill(...)` calls under the nesting constraint of Invariant 4.
+Script-Backed Orchestration). The spec seeding dispatches the
+`rabbit-spec-creator` subagent DIRECTLY at level-1 — the prompt assembled by
+`rabbit-spec`'s `dispatch-spec-creator.py` input assembler — per Invariant 4.
 
 ## Interactive Protocol
 
@@ -88,10 +89,14 @@ The skill is interactive by design. The dispatcher MUST:
      than a direct shell-out to rabbit-feature's `scaffold-feature.py`);
      standalone → emits the per-feature `rabbit-feature-scaffold` plan (batch
      form is plugin-only).
-   - Then for each accepted feature with non-empty `globs`, invokes
-     `rabbit-spec-create` (one sequential `Skill(...)` call per feature)
-     to seed the initial spec body, under the nesting constraint of
-     Invariant 4.
+   - Then for each accepted feature, seeds the initial spec body by
+     dispatching the `rabbit-spec-creator` subagent DIRECTLY (the prompt
+     assembled by `rabbit-spec`'s `scripts/dispatch-spec-creator.py`:
+     `--feature-name <name>` plus `--paths <globs>`, or no `--paths` for a
+     greenfield skeleton). The subagent writes its own `docs/spec.md` and
+     returns a `{path_written, summary}` handoff. Because the subagent is
+     dispatched at level-1 (Invariant 4), the per-feature dispatches MAY run
+     in parallel.
 
 The protocol's exact prompt wording is owned by SKILL.md; this spec
 constrains only the structural shape.
@@ -117,17 +122,21 @@ constrains only the structural shape.
 
 3. `docs/contract.md` MUST exist with proper frontmatter and a
    JSON block declaring the cross-feature relationships: `invokes`
-   names `rabbit-feature-scaffold` (with the `--batch` form) and
-   `rabbit-spec-create`; `never` includes "edits the user's source
-   code".
+   names `rabbit-feature-scaffold` (with the `--batch` form) and the
+   `rabbit-spec-creator` subagent (dispatched directly via the
+   `dispatch-spec-creator.py` input assembler); `never` includes "edits the
+   user's source code".
 
-4. The spec-create hand-off MUST invoke `rabbit-spec-create` as a
-   sequential `Skill(...)` call from the main session and MUST NOT wrap
-   it in an `Agent(...)` dispatch: `rabbit-spec-create` itself dispatches
-   the `rabbit-spec-creator` subagent, so wrapping it in `Agent(...)`
-   creates an unsupported two-level subagent nesting chain. Neither
-   `SKILL.md` nor this spec may claim the spec-create calls can be
-   parallelized via the Agent tool.
+4. The spec-seeding hand-off MUST dispatch the `rabbit-spec-creator` subagent
+   DIRECTLY via `Agent(subagent_type: "rabbit-spec-creator", ...)`, with the
+   prompt assembled by `rabbit-spec`'s `scripts/dispatch-spec-creator.py`
+   (`--feature-name <name>`, plus `--paths <globs>` for features with globs or
+   no `--paths` for a greenfield skeleton). Because rabbit-decompose is a
+   main-session orchestration with no intermediate subagent-dispatching skill,
+   the subagent is a level-1 dispatch (main session -> rabbit-spec-creator),
+   so the N per-feature dispatches MAY run in parallel. Neither `SKILL.md` nor
+   this spec may reference the retired spec-create skill wrapper (#922) or its
+   former input-assembler script name; the subagent is now dispatched directly.
 
 5. Step 4's scaffold hand-off MUST be SCRIPT-tier (spec-rules §4
    Script-Backed Orchestration). The mode-aware branching, the batch
@@ -208,11 +217,14 @@ coverage:
   layout: `docs/spec.md` + `docs/contract.md` + `docs/CHANGELOG.md`
   present, no legacy `specs/` dir, no root `CHANGELOG.md`, four-way version
   alignment, and resolution via the contract resolver).
-- `test-step4b-no-nested-dispatch.py` (E2E — asserts the spec-create
-  hand-off, in both `SKILL.md` and `docs/spec.md`, never claims
-  `rabbit-spec-create` can be Agent-parallelized, states the calls run
-  sequentially, and names the two-level subagent-nesting constraint that
-  makes the sequential level-1 hand-off mandatory).
+- `test-step4b-no-nested-dispatch.py` (E2E — asserts the spec-seeding
+  hand-off, in both `SKILL.md` and `docs/spec.md`, references neither the
+  retired spec-create skill wrapper nor its former input-assembler script name
+  (#922), names the new direct-dispatch path (the `dispatch-spec-creator.py`
+  input assembler and a direct `rabbit-spec-creator` Agent dispatch), and that
+  the `SKILL.md` Step 4-B dispatches `rabbit-spec-creator` directly via
+  `Agent(subagent_type: ...)` at level-1 and states the per-feature dispatches
+  may run in parallel).
 - `test-prompts-spec-artifact-agree.py` (E2E — asserts Invariant 1 and the
   `feature.json` `prompts` artifact agree: `prompts` is empty, Invariant 1
   documents the empty/absent prompt-contract surface rather than requiring
@@ -269,5 +281,5 @@ coverage:
   list — encoded in the skill prose, not the spec. Iteration on the
   prompt happens in the SKILL.md, not here.
 - Writing the user's source code or modifying it in any way.
-- Replacing rabbit-feature-scaffold or rabbit-spec-create — those skills
-  remain the building blocks rabbit-decompose orchestrates.
+- Replacing rabbit-feature-scaffold or the rabbit-spec-creator subagent —
+  those remain the building blocks rabbit-decompose orchestrates.
