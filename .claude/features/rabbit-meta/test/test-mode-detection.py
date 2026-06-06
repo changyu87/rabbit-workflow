@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """test-mode-detection.py — Inv 1
 
-End-to-end test verifying detect_mode(cwd) plugin/standalone detection:
-  - t1: cwd ends in .rabbit and parent has sibling content -> "plugin"
+End-to-end test verifying detect_mode(cwd) vendored/standalone detection:
+  - t1: cwd ends in .rabbit and parent has sibling content -> "vendored"
   - t2: cwd is a non-.rabbit directory with no .rabbit ancestor -> "standalone"
   - t3: cwd ends in .rabbit but parent contains only .rabbit -> "standalone"
   - t4: cwd is a sub-directory of .rabbit (basename != .rabbit) -> "standalone"
   - t5: cwd does not exist on disk -> "standalone" (MUST NOT raise)
+
+And the is_vendored(mode) coexistence predicate (Inv 1(b)):
+  - t6: is_vendored("vendored") -> True
+  - t7: is_vendored("plugin") -> True (dual-accepts the older marker spelling)
+  - t8: is_vendored("standalone") -> False
+  - t9: is_vendored(<any other value>) -> False
 """
 
 import os
@@ -16,7 +22,7 @@ import tempfile
 FEATURE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 sys.path.insert(0, FEATURE_DIR)
 
-from lib.mode_detection import detect_mode  # noqa: E402
+from lib.mode_detection import detect_mode, is_vendored  # noqa: E402
 
 PASS = 0
 FAIL = 0
@@ -34,17 +40,17 @@ def fail_t(n, msg):
     FAIL += 1
 
 
-# t1: cwd ends in .rabbit and parent has sibling content -> "plugin"
+# t1: cwd ends in .rabbit and parent has sibling content -> "vendored"
 with tempfile.TemporaryDirectory() as tmp:
     proj = os.path.join(tmp, "proj")
     os.makedirs(os.path.join(proj, ".rabbit"))
     os.makedirs(os.path.join(proj, "src"))
     rabbit_dir = os.path.join(proj, ".rabbit")
     result = detect_mode(rabbit_dir)
-    if result == "plugin":
-        ok("t1", f"sibling content -> 'plugin' (got {result!r})")
+    if result == "vendored":
+        ok("t1", f"sibling content -> 'vendored' (got {result!r})")
     else:
-        fail_t("t1", f"expected 'plugin', got {result!r}")
+        fail_t("t1", f"expected 'vendored', got {result!r}")
 
 # t2: cwd is a non-.rabbit directory with no .rabbit ancestor -> "standalone"
 with tempfile.TemporaryDirectory() as tmp:
@@ -94,6 +100,30 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("t5", f"non-existent path -> 'standalone' (got {result!r})")
     elif result is not None:
         fail_t("t5", f"expected 'standalone', got {result!r}")
+
+# t6: is_vendored("vendored") -> True (the current spelling)
+if is_vendored("vendored") is True:
+    ok("t6", "is_vendored('vendored') -> True")
+else:
+    fail_t("t6", f"expected True, got {is_vendored('vendored')!r}")
+
+# t7: is_vendored("plugin") -> True (dual-accepts the older marker spelling)
+if is_vendored("plugin") is True:
+    ok("t7", "is_vendored('plugin') -> True (older marker dual-accepted)")
+else:
+    fail_t("t7", f"expected True, got {is_vendored('plugin')!r}")
+
+# t8: is_vendored("standalone") -> False
+if is_vendored("standalone") is False:
+    ok("t8", "is_vendored('standalone') -> False")
+else:
+    fail_t("t8", f"expected False, got {is_vendored('standalone')!r}")
+
+# t9: is_vendored(<any other value>) -> False
+if is_vendored("bogus") is False and is_vendored("") is False:
+    ok("t9", "is_vendored(other) -> False")
+else:
+    fail_t("t9", "expected False for unrecognized values")
 
 print()
 print(f"Results: {PASS} passed, {FAIL} failed")
