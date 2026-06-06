@@ -280,6 +280,26 @@ def copy_one(src_root: Path, dst_root: Path, src_rel: str, dst_rel: str) -> bool
     return True
 
 
+def copy_one_tolerant(
+    src_root: Path, dst_root: Path, src_rel: str, dst_rel: str, tolerate_shrink: bool
+) -> bool:
+    """copy_one, but under a tolerated closure SHRINK (Inv 49 #968) a source
+    absent from `src_root` is DROPPED — not a hard failure.
+
+    On --update the OLD install.py drives the refresh with its stale closure,
+    which may name surfaces the NEW source legitimately RETIRED. When
+    `tolerate_shrink` is set (the pre-re-exec --update self-fetch window), a
+    missing source is skipped silently and the run continues to the Inv 22h
+    re-exec into the NEW install.py, which then validates its OWN corrected
+    closure strictly. When `tolerate_shrink` is False (fresh install,
+    explicit-src dev path, or post-re-exec NEW closure) the strict copy_one
+    abort applies, so a genuine dangling ref still fails.
+    """
+    if tolerate_shrink and not (src_root / src_rel).is_file():
+        return True
+    return copy_one(src_root, dst_root, src_rel, dst_rel)
+
+
 def _rewrite_one(path: Path, rabbit_root: str) -> None:
     """Apply the two Inv 19 edits in place to a single settings.json file.
 
@@ -898,8 +918,28 @@ def _main_with_args(args: argparse.Namespace) -> int:
     # fires but only as a late "missing required source file" once the loop
     # reaches the stale entry; this surfaces the whole dangling set up front and
     # makes a surface retirement that orphaned a closure entry diagnosable.
+    #
+    # Inv 49 (#968): the gate is ASYMMETRIC by mode. On --update, the OLD
+    # (locally-installed) install.py drives the refresh and validates ITS OWN
+    # stale closure — which still names surfaces the NEW source legitimately
+    # RETIRED — against that new source. Applied verbatim here, the OLD
+    # closure's retired entries would abort as dangling, making any release
+    # that crosses a retirement permanently un-installable from an older
+    # install. So in the pre-re-exec --update window (self-fetch path: --update,
+    # not explicit --src, re-exec guard not yet set) a missing source is a
+    # TOLERATED closure SHRINK — dropped, not aborted. The refresh proceeds to
+    # the Inv 22h re-exec, after which the NEW install.py runs THIS same check
+    # with the re-exec guard set and its OWN corrected closure: a path the NEW
+    # closure REQUIRES but the NEW source omits is a real dangling ref and
+    # HARD-FAILS. A fresh install and the explicit-src dev path (no skew) keep
+    # the strict abort.
+    tolerate_shrink = (
+        args.update
+        and not args.src_was_explicit
+        and os.environ.get(_REEXEC_GUARD) != "1"
+    )
     missing_sources = check_install_sources_exist(src_root)
-    if missing_sources:
+    if missing_sources and not tolerate_shrink:
         print(
             "error: install closure references source files absent from --src "
             "(dangling required-file; a retired surface left a stale "
@@ -946,7 +986,7 @@ def _main_with_args(args: argparse.Namespace) -> int:
         same_path_to_copy = [r for r in SAME_PATH_FILES if r != ".claude/settings.json"]
 
     for rel in same_path_to_copy:
-        ok &= copy_one(src_root, dst_root, rel, rel)
+        ok &= copy_one_tolerant(src_root, dst_root, rel, rel, tolerate_shrink)
 
     # Inv 22h: re-exec into the freshly-copied <target>/install.py AFTER the
     # SAME_PATH_FILES copy (which wrote the NEW install.py to disk) AND BEFORE
@@ -976,22 +1016,22 @@ def _main_with_args(args: argparse.Namespace) -> int:
             # os.execv does not return
 
     for src_rel, dst_rel in HOOKS:
-        ok &= copy_one(src_root, dst_root, src_rel, dst_rel)
+        ok &= copy_one_tolerant(src_root, dst_root, src_rel, dst_rel, tolerate_shrink)
 
     for src_rel, dst_rel in SKILLS:
-        ok &= copy_one(src_root, dst_root, src_rel, dst_rel)
+        ok &= copy_one_tolerant(src_root, dst_root, src_rel, dst_rel, tolerate_shrink)
 
     for src_rel, dst_rel in AGENTS:
-        ok &= copy_one(src_root, dst_root, src_rel, dst_rel)
+        ok &= copy_one_tolerant(src_root, dst_root, src_rel, dst_rel, tolerate_shrink)
 
     for src_rel, dst_rel in COMMANDS:
-        ok &= copy_one(src_root, dst_root, src_rel, dst_rel)
+        ok &= copy_one_tolerant(src_root, dst_root, src_rel, dst_rel, tolerate_shrink)
 
     for feature, paths in FEATURE_INCLUDES.items():
         base = f".claude/features/{feature}"
         for rel in paths:
             full = f"{base}/{rel}"
-            ok &= copy_one(src_root, dst_root, full, full)
+            ok &= copy_one_tolerant(src_root, dst_root, full, full, tolerate_shrink)
 
     if not ok:
         print("install: aborting due to missing source files", file=sys.stderr)
