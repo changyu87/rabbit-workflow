@@ -130,8 +130,11 @@ def _realpath(p):
 with tempfile.TemporaryDirectory() as td:
     host, plugin_root = _make_plugin_tree(td)
     res = _run_source_root(plugin_root, td)
-    if res.get("mode") != "plugin":
-        fail(f"plugin tree: expected mode 'plugin', got {res.get('mode')!r}")
+    # Dual-accept the emitted vendored-mode value (spec Invariant 10): the
+    # script emits detect_mode's value verbatim, currently "plugin", renaming
+    # to "vendored" (#980). Both select the vendored path.
+    if res.get("mode") not in ("vendored", "plugin"):
+        fail(f"plugin tree: expected a vendored mode, got {res.get('mode')!r}")
     got = res.get("source_root")
     if not got:
         fail("plugin tree: --source-root did not report a source_root")
@@ -159,7 +162,10 @@ with tempfile.TemporaryDirectory() as td2:
     lone_rabbit = os.path.join(lone_parent, ".rabbit")
     os.makedirs(lone_rabbit)
     p2 = _run_source_root(lone_rabbit, td2)
-    if p1.get("mode") != "plugin" or p2.get("mode") != "standalone":
+    # The vendored-value arm dual-accepts (Inv 10); the standalone arm stays
+    # strict — that arm is what proves the toggle actually flipped the mode.
+    if p1.get("mode") not in ("vendored", "plugin") \
+            or p2.get("mode") != "standalone":
         fail("source-root resolution is not detect_mode-driven: toggling the "
              f"plugin signature did not flip the mode (got {p1.get('mode')!r}, "
              f"{p2.get('mode')!r})")

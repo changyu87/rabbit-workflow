@@ -123,8 +123,11 @@ with tempfile.TemporaryDirectory() as td:
     # PLUGIN tree
     plugin_root = _make_plugin_tree(td)
     plan = _run_plan(plugin_root, feats, td)
-    if plan.get("mode") != "plugin":
-        fail(f"plugin tree: expected mode 'plugin', got {plan.get('mode')!r}")
+    # Dual-accept the emitted vendored-mode value (spec Invariant 10): the
+    # script emits detect_mode's value verbatim, currently "plugin", renaming
+    # to "vendored" (#980). Both select the vendored path.
+    if plan.get("mode") not in ("vendored", "plugin"):
+        fail(f"plugin tree: expected a vendored mode, got {plan.get('mode')!r}")
     if plan.get("branch") != "batch":
         fail(f"plugin tree: expected branch 'batch', got {plan.get('branch')!r}")
     batch_file = plan.get("batch_file")
@@ -182,7 +185,10 @@ with tempfile.TemporaryDirectory() as td2:
     lone_rabbit = os.path.join(lone_parent, ".rabbit")
     os.makedirs(lone_rabbit)
     p2 = _run_plan(lone_rabbit, feats2, td2)
-    if p1.get("mode") != "plugin" or p2.get("mode") != "standalone":
+    # The vendored-value arm dual-accepts (Inv 10); the standalone arm stays
+    # strict — that arm is what proves the toggle actually flipped the mode.
+    if p1.get("mode") not in ("vendored", "plugin") \
+            or p2.get("mode") != "standalone":
         fail("mode decision is not detect_mode-driven: toggling the plugin "
              f"signature did not flip the mode (got {p1.get('mode')!r}, "
              f"{p2.get('mode')!r})")

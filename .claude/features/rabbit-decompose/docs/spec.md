@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.12.0
+version: 0.13.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -261,10 +261,19 @@ constrains only the structural shape.
     this script correct before AND after that rename, so it never silently
     falls through to the standalone path when the value flips. The
     `detect_mode` resolver itself is NOT changed here; it is owned by
-    rabbit-meta. Coexistence-window end-of-life: the `"plugin"` arm of each
-    dual-accept is dropped only after the rename completes and the old value is
-    no longer emitted anywhere, leaving the comparisons checking `"vendored"`
-    alone.
+    rabbit-meta. The dual-accept also extends to the EMITTED `mode` field:
+    `handoff-scaffold.py` emits the resolved `detect_mode` value VERBATIM into
+    its output `mode` field, so every assertion in `test/` that checks that
+    emitted field MUST dual-accept `mode in ("vendored", "plugin")` too — no
+    strict `mode == "plugin"` / `mode != "plugin"` field assertion survives; a
+    toggle assertion's `"standalone"` arm stays strict, only its vendored-value
+    arm is relaxed. This keeps `test/run.py` fully green whether `detect_mode`
+    returns `"plugin"` (now) or `"vendored"` (after the rename), so the test
+    suite is not a consumer blocking the value flip. Coexistence-window
+    end-of-life: the `"plugin"` arm of each dual-accept (in the script
+    comparisons AND the emitted-field assertions) is dropped only after the
+    rename completes and the old value is no longer emitted anywhere, leaving
+    the comparisons checking `"vendored"` alone.
 
 ## Tests
 
@@ -349,6 +358,17 @@ coverage:
   path for `"standalone"`, and that a `"vendored"`-mode `--plan-only` run takes
   the same batch branch as a `"plugin"`-mode run while `"standalone"` takes the
   per-feature branch).
+- `test-emitted-mode-dual-accept.py` (E2E — asserts the Invariant 10
+  emitted-field clause: stands up a temp `.claude/features/` tree with a COPY of
+  `scripts/handoff-scaffold.py` and a FAKE
+  `rabbit-meta/lib/mode_detection.py` whose `detect_mode` returns `"vendored"`,
+  simulating the planned rename WITHOUT touching the real detector; drives the
+  three emitted-`mode` consumers (`--source-root`, `--plan-only`,
+  `--detect-existing`) and confirms each emits `"vendored"` while the vendored
+  behaviour is preserved (batch branch, parent-of-`.rabbit` source root,
+  vendored-location project-map); and greps the whole `test/` suite to confirm
+  no strict emitted-`mode == "plugin"` / `!= "plugin"` field assertion remains,
+  so a future `detect_mode` flip leaves `test/run.py` fully green).
 
 ## Out of Scope
 
