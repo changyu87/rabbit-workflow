@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-mode-value-dual-accept.py — Inv 49 e2e.
+"""test-mode-value-dual-accept.py — Inv 50 e2e.
 
 Every rabbit-cage site that branches on the vendored-mode value (the string
 `detect_mode` returns and `write_mode_marker` writes into
@@ -20,6 +20,14 @@ This drives the REAL deployed scripts as subprocesses:
   t5/t6: `scripts/show-mode.py` derives the PARENT-of-`.rabbit` project_root
          (the vendored branch) for BOTH `detect_mode` values, simulated by a
          stub mode_detection lib returning each value.
+  t7:    OBSERVE-side guard — drives the REAL `write_mode_marker` (which writes
+         `detect_mode`'s value VERBATIM) against a vendored layout with
+         `detect_mode` STUBBED to return EACH value, and confirms the written
+         marker content satisfies the dual-accept membership test. This proves
+         rabbit-cage's observe-side test assertions (test-write-mode-marker-
+         wired, test-mode-marker-root-consistency, test-show-mode-command t1/t3)
+         must accept BOTH spellings, since a `detect_mode -> "vendored"` flip
+         changes the observed value verbatim.
 
 Non-interactive. Exits non-zero on failure.
 """
@@ -206,6 +214,54 @@ for value in MODE_VALUES:
                        f"expected {project!r}")
         else:
             ok(name, "vendored project-root branch (parent of .rabbit) fired")
+
+
+# --- t7: write_mode_marker observe-side guard (both stubbed values) ---------
+# Load the REAL contract.lib.runtime.write_mode_marker and drive it against a
+# temp repo whose rabbit-meta detect_mode is STUBBED to return each value. The
+# helper writes detect_mode's value VERBATIM, so the observed marker content
+# carries each spelling. rabbit-cage's observe-side test assertions MUST accept
+# BOTH — a strict `== "plugin"` would go RED on the "vendored" run.
+import importlib.util  # noqa: E402
+
+_runtime_path = os.path.join(
+    REPO_ROOT, ".claude", "features", "contract", "lib", "runtime.py")
+_spec = importlib.util.spec_from_file_location("cage_dual_runtime", _runtime_path)
+_runtime = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_runtime)
+
+for value in MODE_VALUES:
+    with tempfile.TemporaryDirectory() as tmp:
+        # write_mode_marker appends `.rabbit` to its repo_root arg, so repo_root
+        # is the USER-PROJECT root (parent of .rabbit). detect_mode is resolved
+        # from <repo_root>/.claude/features/rabbit-meta/lib/mode_detection.py.
+        proj = os.path.join(tmp, "proj")
+        meta_lib = os.path.join(
+            proj, ".claude", "features", "rabbit-meta", "lib")
+        os.makedirs(meta_lib)
+        with open(os.path.join(meta_lib, "mode_detection.py"), "w") as f:
+            f.write("def detect_mode(cwd):\n    return %r\n" % value)
+        name = f"write_mode_marker[{value}]"
+        result = _runtime.write_mode_marker(repo_root=proj)
+        if result.get("type") != "ok":
+            fail(name, f"write_mode_marker errored: {result!r}")
+            continue
+        marker = os.path.join(proj, ".rabbit", ".runtime", "mode")
+        if not os.path.isfile(marker):
+            fail(name, f"marker not written at {marker}")
+            continue
+        with open(marker) as f:
+            content = f.read()
+        # OBSERVE-side dual-accept: the assertion MUST accept both spellings.
+        if content not in MODE_VALUES:
+            fail(name, f"marker content {content!r} not in dual-accept set "
+                       f"{MODE_VALUES!r}")
+        elif content != value:
+            fail(name, f"marker content {content!r} != stubbed detect_mode "
+                       f"{value!r} (value not written verbatim)")
+        else:
+            ok("write_mode_marker", f"[{value}] observed marker content "
+                                    f"dual-accepted (written verbatim)")
 
 
 print()
