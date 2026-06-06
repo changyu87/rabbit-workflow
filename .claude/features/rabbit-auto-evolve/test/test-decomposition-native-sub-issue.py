@@ -2,13 +2,13 @@
 """test-decomposition-native-sub-issue.py — e2e tests for issue #934.
 
 When the loop shapes an item as `decomposition` (dispatch shape rank 3) and
-files N per-feature child issues, it MUST ALSO establish the GitHub-native
+files N per-feature child issues, it MUST establish the GitHub-native
 parent/sub-issue link by passing `--parent <parent#>` to rabbit-issue's
-`file-item.py` when filing each child — while keeping the internal state map
-(`decomposition_parents`) authoritative (Machine First). The GitHub-native
-link is a DERIVATIVE human-readable view; it must NOT replace the state map,
-and `close-decomposed-parents.py` keeps driving parent-closing off
-`decomposition_parents` (closing behavior unchanged).
+`file-item.py` when filing each child, and it records the linkage in the
+state's `decomposition_parents` map as a mirror. The GitHub-native sub-issue
+rollup is the AUTHORITATIVE close-source; `decomposition_parents` is a
+deprecating mirror honored during the coexistence window (a recorded parent
+with no native sub-issues yet falls back to the hand-rolled per-child check).
 
 This test covers two halves of the acceptance criteria:
 
@@ -16,18 +16,18 @@ This test covers two halves of the acceptance criteria:
   prescribes `file-item.py … --parent <parent#>` for each child. Asserted
   against BOTH the source SKILL.md decomposition mechanics row and the spec
   Inv 53 text (the two surfaces that direct the dispatcher). Also asserts the
-  state map is named the authoritative source on both surfaces.
+  GitHub-native sub-issue link is described and the state map is recorded.
 
-  Part B (state map is still the close driver) — an end-to-end run of
-  `close-decomposed-parents.py` against a seeded `decomposition_parents` map
-  with a PATH-resident `gh` shim: when every recorded child is CLOSED the
-  parent is closed and its key dropped; the close decision is driven SOLELY
-  from `decomposition_parents`, never from the GitHub-native sub-issue link.
-  This pins that #934's derivative GitHub link did not displace the
-  authoritative map as the close driver.
+  Part B (the link drives closing) — an end-to-end run of
+  `close-decomposed-parents.py` with a PATH-resident `gh` shim: when the
+  parent's GitHub-native sub-issue rollup shows every sub-issue complete the
+  parent is closed and its `decomposition_parents` key dropped; the close
+  decision reads the native rollup (`gh api repos/.../issues/<parent>` ->
+  `sub_issues_summary`), not a per-child enumeration of the legacy map. This
+  pins that the GitHub-native link is the close driver.
 
-Fixtures for Part B mirror test-close-decomposed-parents.py: a PATH-resident
-`gh` shim answering `gh issue view <n> --json state` from a baked table and
+Fixtures for Part B: a PATH-resident `gh` shim answering
+`gh api repos/<slug>/issues/<n>` from a baked sub_issues_summary table and
 logging `gh issue close ...` calls; state_dir via
 RABBIT_AUTO_EVOLVE_STATE_DIR.
 """
@@ -96,40 +96,47 @@ if "file-item.py --parent" not in spec_low and "--parent <parent#>" not in spec_
 else:
     ok("spec.md Inv 53 prescribes file-item.py --parent for children (#934)")
 
-# The GitHub-native link must be named a DERIVATIVE view; the state map must be
-# named AUTHORITATIVE — the link must not be presented as replacing the map.
+# The GitHub-native sub-issue link/rollup must be named, and the state map
+# recorded as a mirror — the close-source is the native rollup.
 if "github-native" not in spec_low and "github native" not in spec_low:
-    fail("spec.md Inv 53 does not mention the GitHub-native sub-issue link (#934)")
+    fail("spec.md Inv 53 does not mention the GitHub-native sub-issue link")
 else:
-    ok("spec.md Inv 53 mentions the GitHub-native sub-issue link (#934)")
+    ok("spec.md Inv 53 mentions the GitHub-native sub-issue link")
 
-if "authoritative" not in spec_low or "decomposition_parents" not in spec_low:
-    fail("spec.md Inv 53 does not name decomposition_parents as authoritative")
+if "decomposition_parents" not in spec_low:
+    fail("spec.md Inv 53 does not mention decomposition_parents")
 else:
-    ok("spec.md Inv 53 names decomposition_parents authoritative (state map "
-       "stays the source of truth; #934)")
+    ok("spec.md Inv 53 records the decomposition_parents mirror")
 
-if "derivative" not in spec_low:
-    fail("spec.md Inv 53 does not frame the GitHub-native link as derivative")
+if "sub_issues_summary" not in spec_low and "sub-issue rollup" not in spec_low:
+    fail("spec.md Inv 53 does not name the GitHub-native sub-issue rollup as "
+         "the close-source")
 else:
-    ok("spec.md Inv 53 frames the GitHub-native link as a derivative view")
+    ok("spec.md Inv 53 names the GitHub-native sub-issue rollup the close-source")
 
 
 # ---------------------------------------------------------------------------
-# Part B — close-decomposed-parents.py still drives closing from the state map.
+# Part B — close-decomposed-parents.py drives closing from the GitHub-native
+# sub-issue rollup (sub_issues_summary on the parent).
 # ---------------------------------------------------------------------------
 
-GH_SHIM = """#!/usr/bin/env python3
-import json, os, sys
+GH_SHIM = r"""#!/usr/bin/env python3
+import json, os, re, sys
 CALL_LOG = os.environ["GH_CALL_LOG"]
-STATE_TABLE = json.loads(os.environ["GH_CHILD_STATES"])
+SUMMARIES = json.loads(os.environ["GH_PARENT_SUMMARIES"])
 argv = sys.argv[1:]
 with open(CALL_LOG, "a") as f:
-    f.write(" ".join(argv) + "\\n")
+    f.write(" ".join(argv) + "\n")
+if len(argv) >= 2 and argv[0] == "api":
+    m = re.match(r"repos/[^/]+/[^/]+/issues/(\d+)$", argv[1])
+    if m:
+        num = m.group(1)
+        summ = SUMMARIES.get(num, {"total": 0, "completed": 0})
+        print(json.dumps({"number": int(num), "sub_issues_summary": summ}))
+        sys.exit(0)
+    sys.exit(3)
 if len(argv) >= 2 and argv[0] == "issue" and argv[1] == "view":
-    num = argv[2]
-    state = STATE_TABLE.get(num, "OPEN")
-    print(json.dumps({"state": state}))
+    print(json.dumps({"state": "OPEN"}))
     sys.exit(0)
 if len(argv) >= 2 and argv[0] == "issue" and argv[1] == "close":
     sys.exit(0)
@@ -137,7 +144,7 @@ sys.exit(0)
 """
 
 
-def _make_gh_shim(bindir, child_states, call_log):
+def _make_gh_shim(bindir, parent_summaries, call_log):
     path = os.path.join(bindir, "gh")
     with open(path, "w") as f:
         f.write(GH_SHIM)
@@ -145,7 +152,7 @@ def _make_gh_shim(bindir, child_states, call_log):
              stat.S_IXOTH)
     env = dict(os.environ)
     env["GH_CALL_LOG"] = call_log
-    env["GH_CHILD_STATES"] = json.dumps(child_states)
+    env["GH_PARENT_SUMMARIES"] = json.dumps(parent_summaries)
     env["PATH"] = bindir + os.pathsep + env.get("PATH", "")
     return env
 
@@ -180,12 +187,13 @@ with tempfile.TemporaryDirectory() as td:
     os.makedirs(bindir)
     call_log = os.path.join(td, "gh-calls.log")
 
-    # Parent 100 has children 101,102 — both CLOSED -> parent closes, key drops.
-    # Parent 200 has child 201 still OPEN -> parent untouched, key retained.
+    # Parent 100 native rollup 2/2 complete -> parent closes, key drops.
+    # Parent 200 native rollup 0/1 complete -> parent untouched, key retained.
     _seed_state(state_dir, {"100": [101, 102], "200": [201]})
     env = _make_gh_shim(
         bindir,
-        {"101": "CLOSED", "102": "CLOSED", "201": "OPEN"},
+        {"100": {"total": 2, "completed": 2},
+         "200": {"total": 1, "completed": 0}},
         call_log)
     env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
 
@@ -199,20 +207,20 @@ with tempfile.TemporaryDirectory() as td:
     state = _read_state(state_dir)
     dp = state.get("decomposition_parents", {})
 
-    # The all-closed parent (100) is closed and dropped FROM THE STATE MAP.
+    # The complete-rollup parent (100) is closed and dropped from the map.
     if "100" in dp:
-        fail("parent 100 (all children closed) was NOT dropped from "
-             "decomposition_parents — the state map is the close driver")
-    else:
-        ok("parent 100 dropped from decomposition_parents after all children "
-           "closed (state map drives the close)")
-
-    # The parent with an open child (200) is retained.
-    if dp.get("200") != [201]:
-        fail("parent 200 (child still open) was not retained in "
+        fail("parent 100 (native rollup complete) was NOT dropped from "
              "decomposition_parents")
     else:
-        ok("parent 200 retained (child still open)")
+        ok("parent 100 dropped from decomposition_parents after its native "
+           "rollup showed all sub-issues complete")
+
+    # The incomplete-rollup parent (200) is retained.
+    if dp.get("200") != [201]:
+        fail("parent 200 (rollup incomplete) was not retained in "
+             "decomposition_parents")
+    else:
+        ok("parent 200 retained (native rollup incomplete)")
 
     log = open(call_log).read() if os.path.exists(call_log) else ""
     if "issue close 100" not in log:
@@ -220,20 +228,20 @@ with tempfile.TemporaryDirectory() as td:
     else:
         ok("gh issue close invoked for parent 100")
     if "issue close 200" in log:
-        fail("gh issue close was wrongly invoked for parent 200 (open child)")
+        fail("gh issue close was wrongly invoked for parent 200 (rollup "
+             "incomplete)")
     else:
-        ok("parent 200 not closed (open child)")
+        ok("parent 200 not closed (rollup incomplete)")
 
-    # The close driver consulted the children listed in decomposition_parents
-    # (gh issue view of 101/102/201), NOT a GitHub-native sub-issue lookup of
-    # the parent — confirming the state map, not the derivative GitHub link, is
-    # the authoritative source the close path reads.
-    if "issue view 101" not in log or "issue view 102" not in log:
-        fail("close path did not enumerate parent 100's recorded children "
-             "from decomposition_parents")
+    # The close driver read the GitHub-native sub-issue rollup on the parent
+    # (gh api repos/.../issues/100), confirming the native rollup, not a
+    # per-child enumeration of the legacy map, is the close-source.
+    if "api repos/" not in log or "/issues/100" not in log:
+        fail("close path did not read the GitHub-native sub-issue rollup for "
+             "parent 100 (gh api repos/.../issues/100)")
     else:
-        ok("close path enumerated children from decomposition_parents (state "
-           "map authoritative; GitHub-native link not consulted; #934)")
+        ok("close path read the GitHub-native sub-issue rollup (native rollup "
+           "is the authoritative close-source)")
 
 
 sys.exit(FAIL)
