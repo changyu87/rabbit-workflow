@@ -50,6 +50,9 @@ CLI:
   handoff-scaffold.py --source-root [--rabbit-root <path>]
   handoff-scaffold.py --detect-existing [--features <candidates.json>]
                       [--rabbit-root <path>]
+  handoff-scaffold.py --decompose-context set --features <accepted.json>
+                      [--rabbit-root <path>] [--operation <label>]
+  handoff-scaffold.py --decompose-context clear [--rabbit-root <path>]
 
   --features     path to a JSON array of accepted/candidate features:
                  [{"name": "<kebab>", "globs": ["..."]}, ...]
@@ -70,6 +73,16 @@ CLI:
                  list is supplied via --features, classify candidates into
                  already_rabbified vs new so the "add" branch proposes ONLY the
                  new/unrabbified features. No --features required.
+  --decompose-context  Manage the decompose-context scope-guard pass-through
+                 marker (#923) — the bounded, auto-cleared replacement for the
+                 manual `.rabbit-scope-override = session` workaround. `set`
+                 writes <repo_root>/.rabbit/.runtime/decompose-active with the
+                 accepted feature NAMES (requires --features) BEFORE the batch
+                 work; `clear` deletes it (idempotent) AFTER, so the marker
+                 never lingers. While present, scope-guard ALLOWS writes inside
+                 any named feature's directory without a per-feature marker.
+  --operation    optional decompose-context label recorded in the marker's
+                 `operation` field (default: "rabbit-decompose batch scaffold").
 
 Output (always JSON on stdout):
   Step 4 (--features):
@@ -103,7 +116,7 @@ Exit:
   1 scaffolder dispatch failed
   2 invocation error (bad args, unreadable/invalid features file)
 
-Version: 0.4.0
+Version: 0.5.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Step 4 scaffold hand-off is provided natively by
     the rabbit CLI, retiring this companion script.
@@ -229,6 +242,50 @@ def _resolve_project_map_path(rabbit_root: str, mode: str) -> str:
     return str(root / ".rabbit" / "rabbit-project" / "project-map.json")
 
 
+def _resolve_decompose_marker_path(rabbit_root: str, mode: str) -> str:
+    """The decompose-context scope-guard marker path for the resolved mode
+    (#923).
+
+    Mirrors `_resolve_project_map_path`'s mode logic so the marker lands at the
+    location scope-guard reads — `<repo_root>/.rabbit/.runtime/decompose-active`
+    where `repo_root` is the git toplevel. In plugin mode the rabbit_root IS
+    the vendored `.rabbit/` install dir, so the marker lives at
+    `<rabbit_root>/.runtime/decompose-active`. In standalone mode the
+    rabbit_root is the repo root, so it lives at
+    `<rabbit_root>/.rabbit/.runtime/decompose-active`."""
+    root = Path(rabbit_root)
+    if mode == "plugin":
+        return str(root / ".runtime" / "decompose-active")
+    return str(root / ".rabbit" / ".runtime" / "decompose-active")
+
+
+def _set_decompose_marker(marker_path: str, feature_names, operation: str
+                          ) -> None:
+    """Write the decompose-context marker (#923).
+
+    The content matches the scope-guard contract: a non-empty string
+    `operation` (a decompose label) and a non-empty list `features` carrying
+    the EXACT accepted feature NAMES authorized this batch. `expires` is
+    omitted — the orchestration clears the marker promptly on completion, so an
+    explicit bound is not required for the deterministic in-process flow."""
+    Path(marker_path).parent.mkdir(parents=True, exist_ok=True)
+    payload = {"operation": operation, "features": list(feature_names)}
+    with open(marker_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f)
+
+
+def _clear_decompose_marker(marker_path: str) -> None:
+    """Delete the decompose-context marker (#923); idempotent (a missing
+    marker is a no-op)."""
+    try:
+        os.unlink(marker_path)
+    except FileNotFoundError:
+        pass
+
+
+_DEFAULT_DECOMPOSE_OPERATION = "rabbit-decompose batch scaffold"
+
+
 def _read_existing_features(project_map_path: str):
     """Read the project-map's features map, or {} when absent/empty/unreadable.
 
@@ -254,6 +311,8 @@ def _parse_args(argv):
     plan_only = False
     source_root_only = False
     detect_existing = False
+    decompose_context = None
+    operation = None
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -278,6 +337,21 @@ def _parse_args(argv):
         elif a == "--detect-existing":
             detect_existing = True
             i += 1
+        elif a == "--decompose-context":
+            if i + 1 >= len(argv):
+                _err("--decompose-context requires a 'set' or 'clear' argument")
+                return None
+            decompose_context = argv[i + 1]
+            if decompose_context not in ("set", "clear"):
+                _err("--decompose-context must be 'set' or 'clear'")
+                return None
+            i += 2
+        elif a == "--operation":
+            if i + 1 >= len(argv):
+                _err("--operation requires a label argument")
+                return None
+            operation = argv[i + 1]
+            i += 2
         elif a in ("-h", "--help"):
             sys.stdout.write(__doc__ or "")
             sys.exit(0)
@@ -285,12 +359,16 @@ def _parse_args(argv):
             _err(f"unknown argument: {a}")
             return None
         continue
-    if not source_root_only and not detect_existing and not features_file:
+    if decompose_context == "set" and not features_file:
+        _err("--decompose-context set requires --features <accepted.json>")
+        return None
+    if (not source_root_only and not detect_existing
+            and decompose_context is None and not features_file):
         _err("--features <accepted.json> is required (or use --source-root / "
-             "--detect-existing)")
+             "--detect-existing / --decompose-context)")
         return None
     return (features_file, rabbit_root, plan_only, source_root_only,
-            detect_existing)
+            detect_existing, decompose_context, operation)
 
 
 def _load_features(path: str):
@@ -327,12 +405,17 @@ def main(argv) -> int:
     if parsed is None:
         return 2
     (features_file, rabbit_root, plan_only, source_root_only,
-     detect_existing) = parsed
+     detect_existing, decompose_context, operation) = parsed
 
-    # --detect-existing accepts an OPTIONAL candidate list; --source-root takes
-    # none; every other mode requires --features.
+    # --detect-existing accepts an OPTIONAL candidate list; --source-root and
+    # --decompose-context clear take none; every other mode requires --features.
     features = None
-    if not source_root_only and not (detect_existing and features_file is None):
+    needs_features = not (
+        source_root_only
+        or (detect_existing and features_file is None)
+        or decompose_context == "clear"
+    )
+    if needs_features:
         features = _load_features(features_file)
         if features is None:
             return 2
@@ -347,6 +430,24 @@ def main(argv) -> int:
         return 2
 
     source_root = _resolve_source_root(rabbit_root, mode)
+
+    # Decompose-context pass-through (#923): set/clear the scope-guard marker
+    # that authorizes batch writes across the accepted features' directories.
+    if decompose_context is not None:
+        marker_path = _resolve_decompose_marker_path(rabbit_root, mode)
+        if decompose_context == "set":
+            names = [e.get("name") for e in features if e.get("name")]
+            _set_decompose_marker(
+                marker_path, names,
+                operation or _DEFAULT_DECOMPOSE_OPERATION)
+        else:  # clear
+            _clear_decompose_marker(marker_path)
+        print(json.dumps({
+            "mode": mode,
+            "decompose_context": decompose_context,
+            "marker_path": marker_path,
+        }))
+        return 0
 
     # Pre-Step-2 mode (#925): detect an existing decomposition and emit the
     # SUMMARY + three-way branch the SKILL offers when the project-map already
@@ -398,10 +499,30 @@ def main(argv) -> int:
             _err("rabbit-feature-scaffold skill batch interface "
                  "(scaffold-batch.py) unavailable; cannot dispatch batch")
             return 1
-        proc = subprocess.run(
-            [sys.executable, str(scaffolder), "--batch", batch_file],
-            cwd=source_root,
-        )
+        # Decompose-context pass-through (#923): ensure the marker is present
+        # BEFORE the scaffolder runs (so its cross-feature writes are
+        # authorized) and clear it AFTER — in a finally, so a FAILING scaffolder
+        # never leaves a lingering marker. This is OWN-ONLY: when the SKILL's
+        # Step 4-A already SET the marker (it spans the later spec-seed step
+        # too), the script must NOT clear it out from under that outer
+        # orchestration. So it only self-manages the marker it itself created —
+        # if a marker is already present, the outer orchestration owns its
+        # lifecycle and the script leaves it untouched.
+        marker_path = _resolve_decompose_marker_path(rabbit_root, mode)
+        owns_marker = not Path(marker_path).is_file()
+        if owns_marker:
+            names = [e.get("name") for e in features if e.get("name")]
+            _set_decompose_marker(
+                marker_path, names,
+                operation or _DEFAULT_DECOMPOSE_OPERATION)
+        try:
+            proc = subprocess.run(
+                [sys.executable, str(scaffolder), "--batch", batch_file],
+                cwd=source_root,
+            )
+        finally:
+            if owns_marker:
+                _clear_decompose_marker(marker_path)
         result["dispatched"] = proc.returncode == 0
         print(json.dumps(result))
         return 0 if proc.returncode == 0 else 1

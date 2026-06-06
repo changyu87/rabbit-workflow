@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.73.0
+version: 5.74.0
 template_version: 2.0.0
 ---
 
@@ -56,6 +56,7 @@ template_version: 2.0.0
       ".rabbit/.runtime/mode",
       ".rabbit/.runtime/scope-active-*",
       ".rabbit/.runtime/scope-bypass-once",
+      ".rabbit/.runtime/decompose-active",
       ".rabbit/rabbit-project/project-map.json",
       ".rabbit/agent-sentinel-bypass"
     ],
@@ -85,7 +86,8 @@ template_version: 2.0.0
     "runtime_markers": [
       {"path": ".rabbit-scope-override", "writer": "human or Claude (after explicit in-conversation user approval)", "reader": "scope-guard.py, stop-dispatcher.py (via check_marker_alert)", "lifecycle": "human or Claude creates; scope-guard.py deletes on one-time consumption; persists for session mode", "gitignored": true},
       {"path": ".rabbit-scope-override-used", "writer": "scope-guard.py", "reader": "stop-dispatcher.py (via check_marker_consume_alert)", "lifecycle": "created by scope-guard.py on one-time consumption; consumed (deleted) by check_marker_consume_alert", "gitignored": true},
-      {"path": ".rabbit/.runtime/scope-bypass-once", "writer": "human or Claude (after explicit in-conversation user approval)", "reader": "scope-guard.py", "lifecycle": "human or Claude creates via touch; scope-guard.py consumes (deletes) before evaluating any decision so failed edits cannot leave a persistent bypass", "gitignored": true}
+      {"path": ".rabbit/.runtime/scope-bypass-once", "writer": "human or Claude (after explicit in-conversation user approval)", "reader": "scope-guard.py", "lifecycle": "human or Claude creates via touch; scope-guard.py consumes (deletes) before evaluating any decision so failed edits cannot leave a persistent bypass", "gitignored": true},
+      {"path": ".rabbit/.runtime/decompose-active", "writer": "decompose/batch orchestration (e.g. rabbit-decompose)", "reader": "scope-guard.py", "lifecycle": "orchestration writes the JSON marker {operation, features, expires?} BEFORE batch work and deletes it AFTER; scope-guard.py honors it ONLY while present + un-expired to ALLOW writes inside the named feature dirs; an optional ISO-8601 expires bounds an orphaned marker (spec Inv 47)", "gitignored": true}
     ]
   },
   "never": [

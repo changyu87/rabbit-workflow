@@ -144,7 +144,13 @@ COLLAPSE_MAX = 1
 # render_changelog_summary / emit_changelog_summary helpers sourced from
 # CHANGELOG.md, never AI-inferred) plus its e2e test — a real spec addition
 # documenting new test-enforced behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 575
+# Raised 575 -> 591 by #923, which added Inv 47 (and a bullet in the scope-guard
+# Semantics ALLOWED list) documenting the decompose-context pass-through marker
+# .rabbit/.runtime/decompose-active — a bounded, auto-cleared, explicit
+# replacement for the manual session override that authorizes batch writes
+# across the named feature dirs — plus its e2e test. A real spec addition
+# documenting new test-enforced behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 591
 
 PASS = 0
 FAIL = 0

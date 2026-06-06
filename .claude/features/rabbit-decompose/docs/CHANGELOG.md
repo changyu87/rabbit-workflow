@@ -13,6 +13,42 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.11.0 (adopt the decompose-context scope-guard pass-through, #923 piece
+  2/2):** Step 4's batch scaffold + spec-seed work writes across SEVERAL
+  feature directories at once, which previously required the undiscoverable
+  manual `.rabbit/.rabbit-scope-override = 'session'` workaround to get past
+  the repo-wide default-deny scope guard. #923 piece 1 added a principled,
+  bounded, auto-cleared pass-through to rabbit-cage's `scope-guard.py`: a
+  `.rabbit/.runtime/decompose-active` marker carrying
+  `{operation, features, expires?}` that, while present, AUTHORIZES writes
+  inside any named feature's directory (Inv 47). This piece adopts that
+  pass-through. `scripts/handoff-scaffold.py` gained a `--decompose-context
+  set|clear` subcommand: `set` (with `--features <accepted.json>`) writes the
+  marker at the mode-correct path (plugin →
+  `<rabbit_root>/.runtime/decompose-active`; standalone →
+  `<rabbit_root>/.rabbit/.runtime/decompose-active`, mirroring the project-map
+  path resolution) recording `operation` plus the EXACT accepted feature
+  NAMES; `clear` deletes it idempotently. The script's own plugin-mode batch
+  dispatch now wraps the scaffolder invocation in set-before / clear-after via
+  a try/finally, so a FAILING scaffolder still clears the marker. `SKILL.md`
+  Step 4 was restructured (A open the pass-through → B scaffold → C seed specs
+  → D close the pass-through → E report): it SETS the marker before any batch
+  work and CLEARS it after all batch work (success OR failure), and no longer
+  references the manual `.rabbit-scope-override` session workaround. New spec
+  Invariant 9 pins the set/clear contract, the marker JSON schema, the
+  mode-correct path, and the try/finally clear-on-failure. `docs/contract.md`
+  declares the marker under `provides.files` and narrows the `never` clause to
+  exclude this one orchestration write. New E2E
+  `test-decompose-context-marker.py` asserts the set writes the mode-correct
+  marker with piece-1's schema, the clear deletes it idempotently, the batch
+  dispatch sets-before / clears-after even on scaffolder failure, and the
+  `SKILL.md` body invokes `--decompose-context` and drops the manual override.
+  Four-way version lockstep bumped to 0.11.0. Deployed surface changed (source
+  `SKILL.md` body + `handoff-scaffold.py`) — the dispatcher republishes the
+  deployed `rabbit-decompose` skill before the final #923 PR; the deployed
+  rabbit-cage `scope-guard.py` hook from piece 1 is also republished by the
+  dispatcher.
+
 - **v0.10.0 (Step 4-B retires the spec-create skill wrapper; dispatch
   rabbit-spec-creator directly, #922 piece 4/5):** Step 4-B previously seeded
   each accepted feature's spec by invoking the `rabbit-spec-create` skill as

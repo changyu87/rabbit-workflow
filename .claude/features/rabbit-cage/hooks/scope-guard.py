@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scope-guard.py v2.5.0 — PreToolUse hook enforcing repo-wide default-deny.
+"""scope-guard.py v2.6.0 — PreToolUse hook enforcing repo-wide default-deny.
 
 Standalone mode (legacy): any write inside the repo root is denied unless:
   (a) the target basename is on the filename allowlist, or
@@ -9,11 +9,15 @@ Standalone mode (legacy): any write inside the repo root is denied unless:
   (d) a .rabbit-scope-override file at repo root grants a bypass: session
       (any write, marker retained), one-time (any single write, consumed), or
       the file-scoped one-time:<repo-relative-path> form (a single write to
-      ONLY the declared path, consumed; preferred least-privilege variant).
+      ONLY the declared path, consumed; preferred least-privilege variant), or
+  (e) a .rabbit/.runtime/decompose-active marker authorizes the target's
+      feature directory (Inv 47): a bounded, auto-cleared pass-through for
+      batch work spanning several features — see decompose_authorized().
 
 Plugin mode (Inv 17): when <repo_root>/.rabbit/.runtime/mode contains the
 literal string "plugin", scope-guard takes a different branch — see
 plugin_decide(). Detection happens per-invocation by reading the mode file.
+The decompose-context pass-through (Inv 47) is honored in BOTH modes.
 
 Pre-evaluation (Inv 18): before any decision logic in either mode, the
 one-shot bypass-once marker .rabbit/.runtime/scope-bypass-once is consumed
@@ -24,6 +28,7 @@ Writes outside the repo root are unrestricted.
 The .rabbit-scope-active marker file itself is always exempt.
 """
 
+import datetime
 import glob
 import json
 import os
@@ -201,6 +206,70 @@ def consume_bypass_once() -> bool:
     return True
 
 
+def _decompose_expired(expires: Optional[str]) -> bool:
+    """Inv 47: return True when an OPTIONAL `expires` ISO-8601 timestamp is
+    present AND already in the past. An absent expiry never expires; an
+    unparseable expiry is treated as expired (a broken bound disables the
+    pass-through rather than granting it indefinitely)."""
+    if expires is None:
+        return False
+    raw = str(expires).strip()
+    if not raw:
+        return False
+    # Accept a trailing 'Z' (Python <3.11 fromisoformat rejects it).
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    try:
+        deadline = datetime.datetime.fromisoformat(raw)
+    except ValueError:
+        return True
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if deadline.tzinfo is None:
+        # Naive timestamp — interpret as UTC for the comparison.
+        deadline = deadline.replace(tzinfo=datetime.timezone.utc)
+    return deadline <= now
+
+
+def decompose_authorized(abs_path: str) -> bool:
+    """Inv 47: decompose-context pass-through.
+
+    Reads <repo_root>/.rabbit/.runtime/decompose-active. When the marker is
+    present, well-formed JSON `{operation, features, expires?}`, un-expired,
+    and carries a non-empty `features` list, return True if `abs_path` is
+    inside any named feature's directory (resolved via find-feature.py, the
+    same lookup the per-feature markers use). A malformed, empty-`features`,
+    or expired marker is treated as ABSENT (returns False) so a broken or
+    stale marker never silently widens scope. The orchestration that wrote
+    the marker owns deleting it on completion; scope-guard never mutates it.
+    """
+    if REPO_ROOT is None:
+        return False
+    marker = REPO_ROOT / ".rabbit" / ".runtime" / "decompose-active"
+    if not marker.is_file():
+        return False
+    try:
+        data = json.loads(marker.read_text())
+    except Exception:
+        return False
+    if not isinstance(data, dict):
+        return False
+    if _decompose_expired(data.get("expires")):
+        return False
+    features = data.get("features")
+    if not isinstance(features, list) or not features:
+        return False
+    for feature in features:
+        if not isinstance(feature, str) or not feature:
+            continue
+        rel = find_feature_path(REPO_ROOT, feature)
+        if not rel:
+            continue
+        feature_abs = str(REPO_ROOT) + "/" + rel
+        if abs_path == feature_abs or abs_path.startswith(feature_abs + "/"):
+            return True
+    return False
+
+
 def plugin_decide(abs_path: str) -> Tuple[bool, str]:
     """Inv 17: plugin-mode decision tree. Called from decide() when
     .rabbit/.runtime/mode == "plugin"."""
@@ -224,6 +293,14 @@ def plugin_decide(abs_path: str) -> Tuple[bool, str]:
             f"rabbit's own machinery under '{claude_protected}/'. Edit "
             "user-project files instead."
         )
+
+    # (a1) Decompose-context pass-through (Inv 47). Evaluated AFTER the
+    # always-DENY of rabbit's own machinery (so the marker can never grant
+    # `.rabbit/.claude/**`) but BEFORE the per-feature marker gate, so batch
+    # work across the named feature dirs is authorized without a per-feature
+    # scope marker. The marker is honored only while present + un-expired.
+    if decompose_authorized(abs_path):
+        return True, "ALLOW (decompose-context marker authorizes feature dir)"
 
     # (a2) Plugin spec-artifact path-pattern carve-out. Evaluated BEFORE
     # the per-feature marker gate so an initial spec write to a freshly
@@ -423,6 +500,13 @@ def decide(target: str) -> Tuple[bool, str]:
     pattern = _spec_md_pattern()
     if pattern and pattern.match(abs_path):
         return True, "ALLOW (path-pattern allowlist: feature spec artifact)"
+
+    # 3d. Decompose-context pass-through (Inv 47). A bounded, auto-cleared
+    # marker authorizing batch work across the named feature dirs; honored
+    # only while present + un-expired. Sits alongside the per-feature markers
+    # below — additive and coexistent with them and the legacy override.
+    if decompose_authorized(abs_path):
+        return True, "ALLOW (decompose-context marker authorizes feature dir)"
 
     # 4a. Per-feature scope markers
     for per_marker in glob.glob(str(REPO_ROOT) + "/.rabbit-scope-active-*"):
