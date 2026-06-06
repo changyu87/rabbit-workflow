@@ -27,7 +27,7 @@ Exit:
     empty match, schema-validation failure)
   2 invocation error
 
-Version: 2.4.0
+Version: 2.5.0
 Owner: rabbit-workflow team (rabbit-feature)
 Deprecation criterion: when feature scaffolding is exposed as a native
     rabbit CLI subcommand.
@@ -204,9 +204,9 @@ def _scaffold_plugin_feature(target: Path, name: str, owner: str, globs: list[st
 
     spec_md = (
         f"# {name}\n\n"
-        "> Per-project feature spec (plugin mode). Seeded by the spec-creator\n"
-        "> subagent via the rabbit-spec-create skill — replace this placeholder\n"
-        "> with real content.\n\n"
+        "> Per-project feature spec (plugin mode). Seeded by the\n"
+        "> rabbit-spec-creator subagent (dispatched directly) — replace this\n"
+        "> placeholder with real content.\n\n"
         "## Purpose\n\n"
         "TODO: one-sentence purpose.\n\n"
         "## Path globs\n\n"
@@ -256,15 +256,15 @@ def _run_plugin_mode(repo_root: Path, name: str, globs: list[str]) -> int:
         _scaffold_plugin_feature(target, name, owner, [])
         print(f"scaffolded plugin feature: {target}")
         print("(greenfield: no globs supplied; not registered in project-map.json)")
-        dispatcher = ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py"
+        dispatcher = ".claude/features/rabbit-spec/scripts/dispatch-spec-creator.py"
         print(
-            "\nNEXT: invoke the rabbit-spec-create skill (or run the dispatcher\n"
-            "directly) to seed docs/spec.md:\n"
-            f"  Skill(\"rabbit-spec-create\", args: \"{name}\")\n"
-            "or equivalently:\n"
+            "\nNEXT: seed docs/spec.md by dispatching the rabbit-spec-creator\n"
+            "subagent directly. Assemble its prompt with rabbit-spec's input\n"
+            "assembler (it prints the assembled prompt-file path to stdout):\n"
             f"  python3 {dispatcher} \\\n"
             f"    --feature-name {name}\n"
-            "then dispatch the spec-creator subagent with the assembled prompt."
+            "then dispatch the subagent with the assembled prompt:\n"
+            "  Agent(subagent_type: \"rabbit-spec-creator\", prompt: <contents of the assembled prompt file>)"
         )
         return 0
 
@@ -345,20 +345,21 @@ def _run_plugin_mode(repo_root: Path, name: str, globs: list[str]) -> int:
 
     print(f"scaffolded plugin feature: {target}")
     print(f"registered in: {pmap_path}")
-    # Plugin-mode handoff: the caller invokes the rabbit-spec-create skill
-    # (under rabbit-spec) which dispatches the spec-creator subagent. We do
-    # not invoke the skill ourselves — the dispatch happens at the
-    # dispatcher (skill caller) layer.
-    dispatcher = ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py"
+    # Plugin-mode handoff: the caller dispatches the rabbit-spec-creator
+    # subagent directly. The subagent writes its own docs/spec.md; its prompt
+    # is assembled by rabbit-spec's input assembler dispatch-spec-creator.py.
+    # We do not dispatch the subagent ourselves — the dispatch happens at the
+    # caller (skill / dispatcher) layer, free of Agent/Skill tool coupling.
+    dispatcher = ".claude/features/rabbit-spec/scripts/dispatch-spec-creator.py"
     print(
-        "\nNEXT: invoke the rabbit-spec-create skill (or run the dispatcher\n"
-        "directly) to seed docs/spec.md:\n"
-        f"  Skill(\"rabbit-spec-create\", args: \"{name} {' '.join(globs)}\")\n"
-        "or equivalently:\n"
+        "\nNEXT: seed docs/spec.md by dispatching the rabbit-spec-creator\n"
+        "subagent directly. Assemble its prompt with rabbit-spec's input\n"
+        "assembler (it prints the assembled prompt-file path to stdout):\n"
         f"  python3 {dispatcher} \\\n"
         f"    --feature-name {name} \\\n"
         f"    --paths '{','.join(globs)}'\n"
-        "then dispatch the spec-creator subagent with the assembled prompt."
+        "then dispatch the subagent with the assembled prompt:\n"
+        "  Agent(subagent_type: \"rabbit-spec-creator\", prompt: <contents of the assembled prompt file>)"
     )
     return 0
 

@@ -5,8 +5,8 @@ Locks in the measured line-removal pass so the proven-dead content cannot
 silently regress back onto the live doc surfaces (docs/spec.md, docs/contract.md):
 
   1. The `rabbit-feature-spec` skill is no longer owned by this feature — it
-     was relocated to the `rabbit-spec` feature (rabbit-spec-create /
-     rabbit-spec-update). No live surface may reference `rabbit-feature-spec`
+     was relocated to the `rabbit-spec` feature (the rabbit-spec-creator
+     subagent / rabbit-spec-update). No live surface may reference `rabbit-feature-spec`
      or its retired invariant section. Verified dead: the skill directory
      `skills/rabbit-feature-spec/` does not exist. (Issue #700 extends this to
      the `rabbit-feature-scaffold` SKILL.md "What You Do NOT Do" example.)
@@ -122,7 +122,7 @@ def test_live_surfaces_name_only_existing_test_files() -> None:
 
 def test_no_spec_seeder_reference() -> None:
     # Issue #717 (housekeeping under #639): the `spec-seeder` feature was
-    # absorbed into rabbit-spec (now rabbit-spec-create / spec-creator). Its
+    # absorbed into rabbit-spec (now the rabbit-spec-creator subagent). Its
     # feature directory and dispatch script are gone; live surfaces must not
     # name the dead feature dir or its retired dispatcher.
     assert not (
@@ -143,9 +143,48 @@ def test_no_spec_seeder_reference() -> None:
                 hits.append(f"{surface.relative_to(FEATURE_DIR)}:{i}: {line.strip()}")
     assert not hits, (
         "live surfaces reference the absorbed spec-seeder feature "
-        "(now owned by rabbit-spec: rabbit-spec-create / spec-creator); remove "
+        "(now owned by rabbit-spec: the rabbit-spec-creator subagent); remove "
         "or retarget the dead reference:\n" + "\n".join(hits)
     )
+
+
+SCAFFOLD_SCRIPT = FEATURE_DIR / "scripts/scaffold-feature.py"
+
+
+def test_no_retired_spec_create_reference() -> None:
+    # Issue #922: the rabbit-spec-create SKILL is retired. The
+    # rabbit-spec-creator subagent now writes its own docs/spec.md and is
+    # dispatched DIRECTLY; rabbit-spec's renamed input assembler is
+    # dispatch-spec-creator.py. No rabbit-feature surface may name the retired
+    # skill or the old dispatch-spec-create.py script name; the plugin-mode
+    # handoff surfaces (SKILL.md, scaffold-feature.py, spec.md, contract.md)
+    # must name dispatch-spec-creator.py + the rabbit-spec-creator subagent.
+    dead_tokens = ("dispatch-spec-create.py",)
+    surfaces = [SPEC_MD, CONTRACT_MD, SCAFFOLD_SKILL_MD, SCAFFOLD_SCRIPT]
+    hits: list[str] = []
+    for surface in surfaces:
+        for i, line in enumerate(surface.read_text(encoding="utf-8").splitlines(), 1):
+            if any(tok in line for tok in dead_tokens):
+                hits.append(f"{surface.relative_to(FEATURE_DIR)}:{i}: {line.strip()}")
+            # "rabbit-spec-create" but not "rabbit-spec-creator"
+            stripped = line.replace("rabbit-spec-creator", "")
+            if "rabbit-spec-create" in stripped:
+                hits.append(f"{surface.relative_to(FEATURE_DIR)}:{i}: {line.strip()}")
+    assert not hits, (
+        "rabbit-feature surfaces reference the retired rabbit-spec-create skill "
+        "or the old dispatch-spec-create.py script name (#922); retarget to "
+        "dispatch-spec-creator.py + direct rabbit-spec-creator dispatch:\n"
+        + "\n".join(hits)
+    )
+    # Positive: the live plugin-mode handoff surfaces name the new path.
+    for surface in (SCAFFOLD_SKILL_MD, SCAFFOLD_SCRIPT):
+        text = surface.read_text(encoding="utf-8")
+        assert "dispatch-spec-creator.py" in text, (
+            f"{surface.relative_to(FEATURE_DIR)} must name dispatch-spec-creator.py"
+        )
+        assert "rabbit-spec-creator" in text, (
+            f"{surface.relative_to(FEATURE_DIR)} must name the rabbit-spec-creator subagent"
+        )
 
 
 def test_no_withdrawn_tombstone_placeholders() -> None:
@@ -268,6 +307,7 @@ def main() -> int:
         test_no_rabbit_feature_spec_reference,
         test_scaffold_skill_md_no_rabbit_feature_spec_reference,
         test_no_spec_seeder_reference,
+        test_no_retired_spec_create_reference,
         test_live_surfaces_name_only_existing_test_files,
         test_no_withdrawn_tombstone_placeholders,
         test_live_surfaces_no_restated_rationale,

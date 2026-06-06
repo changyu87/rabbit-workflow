@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.40.0
+version: 1.41.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -374,8 +374,8 @@ their source path and not deployed):
         verbatim, or `[]` for a greenfield globless feature),
         `created` (ISO 8601 UTC `YYYY-MM-DDTHH:MM:SSZ`),
         and `deprecation_criterion: null`.
-    (b) `docs/spec.md` — a placeholder for the spec-creator subagent
-        (dispatched via the `rabbit-spec-create` skill) to fill in.
+    (b) `docs/spec.md` — a placeholder for the `rabbit-spec-creator`
+        subagent (dispatched directly) to fill in.
     (c) `docs/contract.md` — empty contract placeholder mirroring
         the rabbit-self shape (frontmatter + `provides`/`reads`/
         `invokes`/`never` JSON block).
@@ -401,17 +401,17 @@ their source path and not deployed):
     requires a non-empty `paths` list per registered feature, so a
     globless feature is simply omitted from the map.
 
-48. **Plugin-mode spec-create dispatch handoff.** After a successful
-    scaffold, `scaffold-feature.py` prints to stdout a `NEXT:` line
-    naming the `rabbit-spec-create` skill invocation and the equivalent
-    `dispatch-spec-create.py` command line (the
-    `.claude/features/rabbit-spec/scripts/dispatch-spec-create.py`
-    invocation, with `--feature-name <name>` and a comma-joined
-    `--paths` argument). The script itself MUST NOT invoke the
-    subagent; subagent dispatch is the caller's responsibility (the
-    skill / dispatcher layer reads the printed command and dispatches
-    the spec-creator). This keeps `scaffold-feature.py` free of Agent/Skill tool
-    coupling.
+48. **Plugin-mode spec-creator dispatch handoff.** After a successful
+    scaffold, `scaffold-feature.py` prints to stdout a `NEXT:` block
+    naming rabbit-spec's input assembler
+    `.claude/features/rabbit-spec/scripts/dispatch-spec-creator.py`
+    (with `--feature-name <name>` and a comma-joined `--paths` argument)
+    and the `rabbit-spec-creator` subagent the caller dispatches
+    directly with the assembled prompt. The script itself MUST NOT
+    dispatch the subagent; subagent dispatch is the caller's
+    responsibility (the skill / dispatcher layer runs the assembler and
+    dispatches `rabbit-spec-creator` at level-1). This keeps
+    `scaffold-feature.py` free of Agent/Skill tool coupling.
 
 49. **rabbit-feature-scaffold SKILL.md documents plugin-mode invocation.**
     The SKILL.md describes both invocation forms — the standalone
@@ -419,9 +419,10 @@ their source path and not deployed):
     [<path-glob>...]` form (globs optional) — and names the plugin-mode trigger
     (`<repo>/.rabbit/.runtime/mode` containing `plugin`). The SKILL.md
     also documents the two-step user flow in plugin mode: (1) invoke
-    the skill, (2) dispatch the spec-creator subagent (via the
-    `rabbit-spec-create` skill) using the command printed by
-    `scaffold-feature.py`'s stdout `NEXT:` line.
+    the skill, (2) dispatch the `rabbit-spec-creator` subagent directly
+    using the command printed by `scaffold-feature.py`'s stdout `NEXT:`
+    block (run `dispatch-spec-creator.py` to assemble the prompt, then
+    dispatch the subagent).
 
 ### audit-owner.py team-owner enforcement
 

@@ -109,12 +109,23 @@ def test_t1_plugin_happy_path() -> None:
         assert entry.get("paths") == ["src/**/*.py"]
         assert entry.get("feature_dir") == "rabbit-project/features/my-feature"
 
-        # Plugin-mode MUST print the spec-create dispatch instruction so the
-        # caller can hand off to the spec-creator subagent. The output should
-        # name both the dispatch script and the new feature name.
+        # Plugin-mode MUST print the spec-creator dispatch instruction so the
+        # caller can hand off to the rabbit-spec-creator subagent directly
+        # (#922 retired the rabbit-spec-create skill wrapper). The output names
+        # the renamed input assembler dispatch-spec-creator.py and the new
+        # feature name, and names the rabbit-spec-creator subagent to dispatch.
         out = res.stdout
-        assert "dispatch-spec-create.py" in out, (
-            f"plugin-mode output must reference dispatch-spec-create.py; got {out!r}"
+        assert "dispatch-spec-creator.py" in out, (
+            f"plugin-mode output must reference dispatch-spec-creator.py; got {out!r}"
+        )
+        assert "rabbit-spec-creator" in out, (
+            f"plugin-mode output must name the rabbit-spec-creator subagent; got {out!r}"
+        )
+        assert "dispatch-spec-create.py" not in out, (
+            f"plugin-mode output must not reference the retired dispatch-spec-create.py; got {out!r}"
+        )
+        assert "rabbit-spec-create" not in out.replace("rabbit-spec-creator", ""), (
+            f"plugin-mode output must not reference the retired rabbit-spec-create skill; got {out!r}"
         )
         assert "my-feature" in out, (
             f"plugin-mode output must name the new feature; got {out!r}"
