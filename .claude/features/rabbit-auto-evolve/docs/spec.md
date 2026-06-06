@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.86.0
+version: 0.86.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -96,7 +96,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/detect-scheduler.py` | CLI | Probes `crontab -l` (via `RABBIT_CRONTAB_CMD`) and emits `{"scheduler":"crontab"|"croncreate","reason":...}`: crontab where usable, CronCreate fallback where restricted (Inv 34 / D2) |
 | `scripts/running-guard.py` | CLI | Inspects `.rabbit-auto-evolve-running`, clears a STALE marker (mtime/PID), and emits a proceed/skip verdict so a wedged tick never blocks the loop (Inv 35 / D3) |
 | `scripts/tick-log.py` | CLI | Minimal append-only JSON-per-line logger to `.rabbit/tick.log` for heartbeat/guard/schedule decisions; full verbosity config is Inv 37's scope (Inv 36 / D4) |
-| `scripts/schedule-decision.py` | CLI | At tick end/heartbeat, counts open work via `fetch-queue.py` and emits `immediate-refire` (near-immediate one-shot) vs `idle`; the dispatcher performs the `CronCreate` one-shot (Inv 33 / D1). Every decision also carries `authoritative_version` — the current version resolved FRESH this tick from `git describe --tags --abbrev=0` with a state `last_tagged_version` fallback (Inv 64) |
+| `scripts/schedule-decision.py` | CLI | At tick end/heartbeat, counts DISPATCHABLE work via the `fetch-queue.py \| triage-batch.py \| plan-batch.py` pipe (the plan's `selection_order`, which excludes blocked/deferred items, decomposition parents, and non-work verdicts) and emits `immediate-refire` (near-immediate one-shot) vs `idle`; the dispatcher performs the `CronCreate` one-shot (Inv 33 / D1). Every decision also carries `authoritative_version` — the current version resolved FRESH this tick from `git describe --tags --abbrev=0` with a state `last_tagged_version` fallback (Inv 64) |
 | `scripts/log-tick.py` | CLI | Full per-tick observability logger: owns all writes to the append-only JSON-lines log at `.rabbit/auto-evolve.log`; structured kwargs → one record/line, with on/off enable, three verbosity levels, a <2KB per-line cap and 5MB rotation (Inv 37). Distinct from the minimal `tick-log.py` (different file + purpose) |
 | `scripts/log-path.py` | CLI | Prints the absolute path of the `.rabbit/auto-evolve.log` file so a cross-session daemon can `tail -f $(… log-path.py)` (Inv 37) |
 
@@ -2191,12 +2191,22 @@ summary is restated here.
     copy lags and is NOT asserted for `CronCreate`), and both copies document
     the system cron and the headless tick.
 
-33. **Immediate refire when work remains (D1).** At the END of a tick (and equivalently when a heartbeat enters a
-    tick), the loop decides whether to schedule the next tick based on open
-    work: **queue non-empty → schedule the next tick to fire NEAR-IMMEDIATELY
-    (~1 minute) as a one-shot, then END the turn** (do NOT continue inline).
-    **Queue empty → schedule nothing; rely on the
-    recurring heartbeat.** The refire is a near-immediate one-shot (each fired
+33. **Immediate refire when DISPATCHABLE work remains (D1).** At the END of a tick (and equivalently when a heartbeat enters a
+    tick), the loop decides whether to schedule the next tick based on
+    DISPATCHABLE work — work phase 6 can actually dispatch THIS tick, NOT the
+    raw count of open issues: **dispatchable plan non-empty → schedule the next
+    tick to fire NEAR-IMMEDIATELY (~1 minute) as a one-shot, then END the turn**
+    (do NOT continue inline); **no dispatchable work → schedule nothing; rely on
+    the recurring heartbeat.** Dispatchability is the plan's `selection_order`
+    from the `fetch-queue.py | triage-batch.py | plan-batch.py` pipe, which DROPS
+    blocked/deferred items (open native `blocked_by` + blocked-origin
+    `reason_code`, Inv 62), decomposition parents (Inv 58), and non-work verdicts.
+    Keying refire off the RAW open count (the prior behaviour) spun the loop into
+    a ~1-minute no-op refire storm whenever the only remaining open issues were
+    human-gated/blocked — a non-empty open queue but an EMPTY dispatchable plan
+    (#1004); the recurring heartbeat already backstops the eventual unblock, so an
+    all-gated backlog goes `idle` and quiesces until the heartbeat or a human
+    unblock. The refire is a near-immediate one-shot (each fired
     tick is a full in-session tick incl. phase 6 dispatch; the turn ends between
     ticks), NOT inline continuation. Context isolation is PATH-DEPENDENT: on the
     **system-cron / headless path** the refired tick is a brand-new Claude-free
@@ -2205,13 +2215,16 @@ summary is restated here.
     REUSED and ACCUMULATES across ticks, bounded by auto-compaction — NOT a fresh
     context. The fresh-context guarantee belongs to the system-cron path ONLY.
     The decision is computed by
-    `scripts/schedule-decision.py`, which determines open-work presence
-    AUTHORITATIVELY by invoking the EXISTING `fetch-queue.py` and counting
-    items (it does NOT re-derive the queue), reads the scheduler mechanism
-    from `detect-scheduler.py` (Inv 34), and emits JSON: queue non-empty →
+    `scripts/schedule-decision.py`, which determines DISPATCHABLE-work presence
+    AUTHORITATIVELY by reusing the EXISTING `fetch-queue.py | triage-batch.py |
+    plan-batch.py` pipe (the same pipe phase 6 dispatches from) and counting the
+    plan's `selection_order` — it neither re-derives the queue nor re-implements
+    the blocked/parent/non-work filtering, so the refire count matches exactly
+    what phase 6 can dispatch. It reads the scheduler mechanism from
+    `detect-scheduler.py` (Inv 34), and emits JSON: dispatchable plan non-empty →
     `{"decision":"immediate-refire","scheduler":"crontab"|"croncreate",
     "prompt":"/rabbit-auto-evolve start","when":"~1min","croncreate":{...}}`;
-    queue empty → `{"decision":"idle","detail":"rely on heartbeat"}`. The
+    no dispatchable work → `{"decision":"idle","detail":"rely on heartbeat"}`. The
     decision is logged via `tick-log.py` (Inv 36). On the `croncreate` path
     the DISPATCHER reads this JSON at phase 12 and performs the actual
     one-shot `CronCreate(...)` (the irreducible Claude action); on the
@@ -2286,8 +2299,11 @@ summary is restated here.
 
     Enforced by `test/test-spec-cron-invariant.py` and
     `test/test-spec-refire-dedup-invariant.py` (spec text) and
-    `test/test-schedule-decision.py` (e2e: a `fetch-queue.py` shim that emits a
-    non-empty array yields `immediate-refire` with `croncreate.recurring ==
+    `test/test-schedule-decision.py` (e2e: a pipe whose `selection_order` is
+    non-empty yields `immediate-refire` while an all-blocked/all-gated backlog
+    whose `selection_order` is EMPTY — even with a non-empty raw open queue —
+    yields `idle` (#1004); and a `fetch-queue.py` shim that
+    emits a non-empty array yields `immediate-refire` with `croncreate.recurring ==
     false`, `croncreate.durable == false`, and a `croncreate.cron` that is a
     pinned `M H * * *` expression — NOT `*/1 * * * *` — whose minute field is
     neither `0` nor `30`; an empty array yields `idle`; a `CronList` snapshot

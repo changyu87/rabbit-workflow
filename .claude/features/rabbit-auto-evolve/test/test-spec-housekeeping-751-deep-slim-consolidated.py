@@ -129,11 +129,18 @@ POST_966_ADD_INVARIANTS = 1
 # stays ENFORCED while the #986 addition is admitted.
 POST_986_ADD_LINES = 40
 POST_986_ADD_INVARIANTS = 1
+# #1004 amended Inv 33 (immediate-refire keys off the fetch|triage|plan pipe's
+# DISPATCHABLE selection_order, not the raw open count, so an all-gated/blocked
+# backlog goes idle instead of spinning the loop). Additive prose on an EXISTING
+# invariant (no new invariant), so headroom is added for the lines but not the
+# count. Mirror the prior headroom so the #751 reduction stays ENFORCED.
+POST_1004_ADD_LINES = 15
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
     + POST_943_ADD_LINES + POST_962_ADD_LINES + POST_970_ADD_LINES
     + POST_973_ADD_LINES + POST_966_ADD_LINES + POST_986_ADD_LINES
+    + POST_1004_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).

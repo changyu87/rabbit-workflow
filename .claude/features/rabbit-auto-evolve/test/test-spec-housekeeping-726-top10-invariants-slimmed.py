@@ -66,8 +66,13 @@ BASELINE_TOTAL_LINES = 3594
 # authoritative_version field schedule-decision.py surfaces FRESH each tick — git describe
 # with a state last_tagged_version fallback — never a value carried in accumulated session
 # context, plus the script-table row extension) is additive, so the ceiling is raised once
-# more to absorb it.
-MAX_TOTAL_LINES = 3815
+# more to absorb it. The dispatchable-refire amendment to Inv 33 (#1004: the immediate-
+# refire-vs-idle decision now keys off the fetch|triage|plan pipe's `selection_order` —
+# DISPATCHABLE work phase 6 can land — instead of the raw open count, so an all-gated /
+# all-blocked open backlog goes idle instead of spinning the loop into a ~1-minute no-op
+# refire storm; ~14 lines across the Inv 33 rationale, the schedule-decision script-table
+# row, and the test prose) is additive, so the ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 3829
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

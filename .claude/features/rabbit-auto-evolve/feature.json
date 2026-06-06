@@ -1,11 +1,11 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-auto-evolve",
-  "version": "0.86.0",
+  "version": "0.86.1",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
-  "tdd_state": "spec-update",
+  "tdd_state": "test-green",
   "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open actionable issues (valid feature: + priority: label), triages, dispatches TDD subagents, merges PRs into dev, tags releases, and is fired on a fixed cadence by the system cron where available (with a durable CronCreate fallback where crontab is blocked; Inv 32) until the user issues an explicit stop.",
   "surface": {
     "hooks": [],
