@@ -51,12 +51,16 @@ Two decoupled decisions (Inv 26 / issue #435):
                                requirement).
   An item's feature count is `len(item["features"])` (the set emitted by
   triage-issue.py), falling back to 1 (the single `feature` label) when
-  `features` is absent. An item triage flagged `cross_scope: true` (its BODY
-  spans multiple feature dirs — Inv 51 / issue #433) is NEVER shaped
-  parallel-per-feature even when its feature count is 1; the body-derived
-  cross_scope signal forces multi-subagent-barrier (below the threshold) or
-  decomposition (at/above it), and the item is listed under the
-  `cross_scope_items` output key. The struck shape 2 (sequential single-subagent
+  `features` is absent. Two multi-feature signals are UNIONED (Inv 51 / issue
+  #984): EITHER a feature-dir count >1 OR a triage `cross_scope: true` flag (its
+  BODY prose spans multiple feature dirs — #433) routes the item to the
+  barrier/decomposition lane and lists it under `cross_scope_items`. The
+  feature-count signal is the stronger, more direct one: a multi-feature item
+  (`len(features) > 1`) is NEVER shaped parallel-per-feature EVEN WHEN its
+  prose-based `cross_scope` flag is false (the heuristic missed the second
+  feature — the #980 under-shaping bug). A `cross_scope: true` item is likewise
+  never parallel-per-feature even at feature count 1. Only when BOTH say
+  single-scope is the item shaped parallel-per-feature. The struck shape 2 (sequential single-subagent
   with a persistent `.rabbit-scope-override session`) is NEVER emitted — bounded
   scope is a hard constraint, not waivable by autonomy (maintainer policy on
   issue #435). No shape writes any marker; this script is a pure processor.
@@ -141,7 +145,7 @@ mutations.
 Exit code: 0 on success; non-zero on malformed stdin JSON or invalid
 --max-parallel / --decompose-threshold value.
 
-Version: 1.8.0
+Version: 1.9.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -418,20 +422,27 @@ def _dispatch_shape(item, decompose_threshold):
     above the threshold, else multi-subagent-barrier. Bounded scope itself is
     unchanged — the fix is routing, not widening subagent scope.
 
-    Cross-scope authority (Inv 51(a.2) / issue #669): the body-derived
-    `cross_scope` signal is the AUTHORITATIVE multi-feature gate when present.
-    triage-issue.py counts only EDIT-PATH references for `cross_scope` (bare
-    feature-NAME mentions in prose are excluded), but the `features` list still
-    carries those bare names for visibility (Inv 26 / #443). So an item with an
-    EXPLICIT `cross_scope: false` is single-scope work — the labelled feature is
-    the only edit target — and is shaped parallel-per-feature even when its
-    `features` count is inflated by bare-name mentions. Only when `cross_scope`
-    is ABSENT (legacy pre-#433 records) does the raw `features` count drive the
-    multi-feature lane.
+    Two multi-feature signals are UNIONED (Inv 51 / issue #984): the
+    `len(features) > 1` feature-dir count AND the body-derived `cross_scope`
+    flag. EITHER one routes the item to the barrier/decomposition lane;
+    parallel-per-feature is emitted only when BOTH say single-scope.
+
+    The `len(features) > 1` fact is the stronger, more direct signal: it means
+    the item literally edits more than one feature dir, so a single bounded
+    per-feature subagent (one `.rabbit-scope-active-<feature>`) cannot complete
+    it. It therefore forces the barrier/decomposition lane REGARDLESS of the
+    separate prose-based `cross_scope` flag — a multi-feature item with an
+    explicit `cross_scope: false` (the body's prose heuristic missed the second
+    feature) is still shaped multi-subagent-barrier (or decomposition at/above
+    the threshold), never parallel-per-feature (issue #984; the under-shaping
+    bug observed on #980, features=["rabbit-cage","rabbit-meta"],
+    cross_scope=false). The body-derived `cross_scope: true` signal still forces
+    the lane even when the feature count is 1 (a phrase-only repo-wide sweep
+    whose lone `feature:` label gives it a count of 1). Only when BOTH signals
+    say single-scope — `len(features) <= 1` AND `cross_scope` not true — is the
+    item shaped parallel-per-feature.
     """
     n = _feature_count(item)
-    if item.get("cross_scope") is False:
-        return SHAPE_PARALLEL
     if n >= decompose_threshold:
         return SHAPE_DECOMPOSITION
     if n > 1 or item.get("cross_scope"):
@@ -523,19 +534,24 @@ def plan(items, max_parallel, decompose_threshold):
     # cleanly (the loop NEVER stops to ask a human).
     self_modifying_migrations = {}
     restart_needed = []
-    # Cross-scope items (Inv 51 / issue #433): code-producing work items triage
-    # flagged `cross_scope: true` (their BODY spans multiple feature dirs). They
-    # are surfaced distinctly so the dispatcher/human sees which items need the
-    # barrier/decomposition path rather than ordinary parallel single-feature
-    # dispatch. Research items are excluded (they produce findings, not code).
+    # Cross-scope items (Inv 51 / issue #433, #984): code-producing work items
+    # that need the barrier/decomposition path rather than ordinary parallel
+    # single-feature dispatch. An item earns this lane via EITHER multi-feature
+    # signal (unioned, #984): its feature-dir count is >1, OR triage flagged
+    # `cross_scope: true` (its BODY prose spans multiple feature dirs). The
+    # membership is therefore keyed off the SHAPE the item received — any item
+    # shaped multi-subagent-barrier or decomposition is a cross-scope item — so
+    # cross_scope_items stays in lock-step with the unioned routing decision and
+    # never under-lists a multi-feature item whose prose-based cross_scope flag
+    # happened to be false. Research items are excluded (findings, not code).
     cross_scope_items = []
     for i in selection:
         if i.get("decision") == "research":
             dispatch_shapes[str(i["issue"])] = SHAPE_RESEARCH
             continue
-        dispatch_shapes[str(i["issue"])] = _dispatch_shape(
-            i, decompose_threshold)
-        if i.get("cross_scope"):
+        shape = _dispatch_shape(i, decompose_threshold)
+        dispatch_shapes[str(i["issue"])] = shape
+        if shape in (SHAPE_BARRIER, SHAPE_DECOMPOSITION):
             cross_scope_items.append(i["issue"])
         pattern = _self_modifying_pattern(i)
         if pattern is not None:

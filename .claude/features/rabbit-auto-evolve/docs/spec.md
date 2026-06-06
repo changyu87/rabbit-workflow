@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.83.0
+version: 0.84.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -3245,19 +3245,28 @@ summary is restated here.
     feature's path, yields `cross_scope: false`; a body listing 2 or more
     distinct feature EDIT-PATHS still yields `cross_scope: true`.
 
-    **(b) plan-batch routes `cross_scope` items distinctly.** A `cross_scope`
-    item MUST NOT be shaped `parallel-per-feature`, even at feature-dir count
-    1 (its lone `feature:` label would otherwise mislead Stage-2).
-    `plan-batch.py` folds the `cross_scope` signal into Stage-2 as an extra
-    input: a `cross_scope` work item gets `decomposition` when its feature
-    count is at/above `--decompose-threshold`, else `multi-subagent-barrier`
-    — NEVER `parallel-per-feature`. Non-cross-scope and research items are
-    shaped as before.
+    **(b) plan-batch routes multi-feature items — TWO signals, UNIONED.**
+    `plan-batch.py` routes a work item to the barrier/decomposition lane on
+    EITHER multi-feature signal, shaping `parallel-per-feature` only when BOTH
+    say single-scope: (1) the feature-dir count `len(item["features"]) > 1` —
+    the AUTHORITATIVE, stronger signal: the item touches >1 feature dir, so a
+    single bounded per-feature subagent cannot complete it, so it is routed
+    REGARDLESS of the prose-based `cross_scope` flag (which can read `false` for a
+    genuinely multi-feature item — e.g. `features: ["rabbit-cage",
+    "rabbit-meta"]`, `cross_scope: false` would otherwise mis-shape
+    `parallel-per-feature`); or (2) `cross_scope: true` — never
+    `parallel-per-feature` even at feature-dir count 1 (a phrase-only repo-wide
+    sweep). Either way the item gets `decomposition` at/above
+    `--decompose-threshold`, else `multi-subagent-barrier`. Over-shaping a
+    one-edit-dir item whose `features` list carries a bare-name/read-only second
+    entry to the serial barrier lane is SAFE; under-shaping a true multi-feature
+    item FAILS — so count wins.
 
     **(c) Cross-scope items are surfaced distinctly.** `plan-batch.py` lists
-    every `cross_scope` work item's issue number under a `cross_scope_items`
-    output key (sorted ascending; always present, empty when none) so the
-    dispatcher sees which items need the barrier/decomposition path.
+    every item it shaped `multi-subagent-barrier` or `decomposition` under a
+    `cross_scope_items` output key (sorted ascending; always present, empty when
+    none), so membership stays in lock-step with routing and never under-lists a
+    multi-feature `cross_scope: false` item.
 
     Enforced by `test/test-cross-scope.py` (triage sets `cross_scope: true`
     for a body referencing 2 or more `.claude/features/<name>/` paths and for a
@@ -3267,12 +3276,15 @@ summary is restated here.
     feature NAMES with no second EDIT-PATH (a.2), and for a sub-issue whose only
     second-feature path is a read-only `verify against <path>` mention
     (a.2); `true` for an explicit `Cross-feature (A + B)` / `spans X and Y`
-    DECLARATION even with no second edit-path — so plan-batch shapes the
-    `false` ones `parallel-per-feature`; a genuine `cross_scope` item is shaped
-    `multi-subagent-barrier` / `decomposition`, never `parallel-per-feature`,
-    and listed under `cross_scope_items`) and
-    `test/test-spec-cross-scope-invariant.py` (the spec carries Inv 51,
-    including the parent-reference exclusion).
+    DECLARATION — and plan-batch routes on the UNION (b): a `cross_scope: true`
+    item is `multi-subagent-barrier` / `decomposition`, never
+    `parallel-per-feature`; a `cross_scope: false` item whose `features` list has
+    length > 1 is ALSO `multi-subagent-barrier` + in `cross_scope_items`;
+    only a one-feature `cross_scope: false` item is `parallel-per-feature`),
+    `test/test-plan-batch.py` (`features=["a","b"]`, `cross_scope=false` below
+    threshold → `multi-subagent-barrier` + in `cross_scope_items`;
+    `features=["a"]` → `parallel-per-feature`; `len(features) >=
+    --decompose-threshold` → `decomposition`), and `test-spec-cross-scope-invariant.py`.
 
 52. **Proactive `.gitignore` seeding is the policy; reactive single-file
     additions are a fallback only.** The repo-root `.gitignore` MUST be

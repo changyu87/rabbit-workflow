@@ -938,4 +938,72 @@ else:
         fail(f"non-work-exclude: bad JSON ({e}); stdout={proc.stdout!r}")
 
 
+# ---------------------------------------------------------------------------
+# Scenario — multi-feature item forces barrier regardless of cross_scope flag
+#   (issue #984). The `len(features) > 1` fact is the AUTHORITATIVE multi-feature
+#   signal: it means the item edits >1 feature dir, so a single bounded
+#   per-feature subagent cannot complete it. Such an item MUST be shaped
+#   multi-subagent-barrier (or decomposition at/above the threshold) and listed
+#   in cross_scope_items — EVEN WHEN the separate prose-based `cross_scope` flag
+#   is false. The bug: plan-batch shaped a 2-feature item parallel-per-feature
+#   because `cross_scope: false` short-circuited the feature-count check
+#   (observed on #980, features=["rabbit-cage","rabbit-meta"], cross_scope=false).
+#   A genuinely single-feature item (len(features) == 1) with cross_scope:false
+#   still shapes parallel-per-feature (no regression).
+# ---------------------------------------------------------------------------
+items = [
+    # 2-feature item, cross_scope explicitly false, below decompose-threshold.
+    # MUST be multi-subagent-barrier AND in cross_scope_items (#984).
+    {"issue": 2101, "feature": "rabbit-cage",
+     "features": ["rabbit-cage", "rabbit-meta"],
+     "contract_touch": False, "priority": "medium", "decision": "work",
+     "cross_scope": False},
+    # genuine single-feature item, cross_scope false -> parallel-per-feature.
+    {"issue": 2102, "feature": "rabbit-cage", "features": ["rabbit-cage"],
+     "contract_touch": False, "priority": "medium", "decision": "work",
+     "cross_scope": False},
+    # multi-feature item at/above the decompose-threshold (=3 here) with
+    # cross_scope false -> decomposition (#984; threshold behavior intact).
+    {"issue": 2103, "feature": "rabbit-cage",
+     "features": ["rabbit-cage", "rabbit-meta", "rabbit-spec"],
+     "contract_touch": False, "priority": "medium", "decision": "work",
+     "cross_scope": False},
+]
+proc = run_plan(items, ["--decompose-threshold", "3"])
+if proc.returncode != 0:
+    fail(f"multifeature-forces-barrier: exit {proc.returncode}; "
+         f"stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        shapes = out.get("dispatch_shapes", {})
+        cross = out.get("cross_scope_items", [])
+        if shapes.get("2101") != "multi-subagent-barrier":
+            fail(f"multifeature-forces-barrier: 2-feature cross_scope:false item "
+                 f"shape={shapes.get('2101')!r}, want 'multi-subagent-barrier' "
+                 f"(#984)")
+        elif 2101 not in cross:
+            fail(f"multifeature-forces-barrier: 2-feature item must be in "
+                 f"cross_scope_items, got {cross!r} (#984)")
+        elif shapes.get("2102") != "parallel-per-feature":
+            fail(f"multifeature-forces-barrier: single-feature cross_scope:false "
+                 f"item shape={shapes.get('2102')!r}, want 'parallel-per-feature' "
+                 f"(no regression, #984)")
+        elif 2102 in cross:
+            fail(f"multifeature-forces-barrier: single-feature item must NOT be "
+                 f"in cross_scope_items, got {cross!r} (#984)")
+        elif shapes.get("2103") != "decomposition":
+            fail(f"multifeature-forces-barrier: 3-feature item at threshold=3 "
+                 f"shape={shapes.get('2103')!r}, want 'decomposition' (#984)")
+        elif 2103 not in cross:
+            fail(f"multifeature-forces-barrier: 3-feature decomposition item must "
+                 f"be in cross_scope_items, got {cross!r} (#984)")
+        else:
+            ok("multifeature-forces-barrier: len(features)>1 forces barrier/"
+               "decomposition + cross_scope_items regardless of cross_scope:false; "
+               "single-feature item still parallel-per-feature (#984)")
+    except json.JSONDecodeError as e:
+        fail(f"multifeature-forces-barrier: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
 sys.exit(FAIL)
