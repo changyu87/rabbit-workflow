@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.15.0
+version: 1.16.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -167,6 +167,43 @@ issues that are NOT **actionable** — an actionable issue is one carrying
 a valid `feature:<name>` label. A raw, hand-filed GitHub issue with no
 labels (or only stray labels) lacks a `feature:` label, so it is not
 actionable and stays out of rabbit's automation reach.
+
+### Human-filing enforcement (Issue Form)
+
+`file-item.py` enforces the required `feature:` and `priority:` labels for
+the loop/CLI (programmatic) filing path, but a raw human web filing bypasses
+that script entirely. A native **GitHub Issue Form** closes that gap at the
+human boundary so a hand-filed issue lands actionable rather than as a
+label-less issue the actionability guard later refuses to touch:
+
+- The Issue Form (deployed to repo-root `.github/ISSUE_TEMPLATE/`) declares
+  **REQUIRED** `feature` and `priority` dropdowns. A human cannot submit the
+  form without choosing one valid feature scope and one priority — the same
+  two required selections `file-item.py` demands via `--feature` and
+  `--priority`.
+- The `priority` dropdown's options are the closed enum
+  `{low, medium, high, critical}`, mirroring `file-item.py`'s
+  `VALID_PRIORITIES`. The `feature` dropdown's options are the live feature
+  set (every feature scope a `feature:<name>` label can name). A drift guard
+  in the test suite holds the form's option sets to the script enum and the
+  live feature set, so the two surfaces cannot silently diverge.
+- A companion **GitHub Actions workflow** (deployed to repo-root
+  `.github/workflows/`) is the native auto-label primitive: it triggers on
+  issue open, reads the submitted Feature and Priority answers from the issue
+  body, and stamps `feature:<x>` and `priority:<y>`. A form submission is
+  therefore actionable by the same rule the safety invariant upholds.
+
+The Issue Form and its auto-label workflow are **governed deployed surfaces**
+owned by rabbit-issue: the source lives under the feature, and `publish_file`
+manifest entries deploy each artifact to the repo-root `.github/` tree.
+
+The Issue Form covers only the **human** boundary — GitHub renders a form
+for a web filing, not for a programmatic `gh issue create` call. The
+programmatic path (bot / loop filings) therefore stays on `file-item.py`,
+which keeps its own required-label enforcement. This is a justified native
+division of labour, not a duplicate: forms are the native enforcement
+primitive for humans, and the script is the enforcement primitive for
+programmatic filers that forms do not reach.
 
 ### Lifecycle
 

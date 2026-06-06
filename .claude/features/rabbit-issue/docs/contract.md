@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.13.0
+version: 1.16.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -16,6 +16,10 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
       "scripts/item-status.py",
       "scripts/list-items.py",
       "scripts/_gh.py"
+    ],
+    "github_artifacts": [
+      ".github/ISSUE_TEMPLATE/file-item.yml — Issue Form with REQUIRED feature + priority dropdowns for the human filing boundary",
+      ".github/workflows/issue-form-autolabel.yml — auto-label workflow stamping feature:<x>/priority:<y> from the form answers on issue open"
     ],
     "issue_labels": [
       "bug",
@@ -34,7 +38,7 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
   },
   "invokes": {
     "rabbit-feature-scope": "skill — resolve feature for ambiguous filings",
-    "gh": "CLI tool — issue create/view/close/reopen/list, label create; issue comments are read via `gh issue view <N> --json comments` (NOT --comments, which hits deprecated projectCards GraphQL and returns empty); sub-issue linkage uses `gh api repos/{slug}/issues/{child}` to resolve the child database id and POSTs `gh api repos/{slug}/issues/{parent}/sub_issues` with `{\"sub_issue_id\": <child_id>}`"
+    "gh": "CLI tool — issue create/view/close/reopen/list, label create; issue comments are read via `gh issue view <N> --json comments` (NOT --comments, which hits deprecated projectCards GraphQL and returns empty); sub-issue linkage uses `gh api repos/{slug}/issues/{child}` to resolve the child database id and POSTs `gh api repos/{slug}/issues/{parent}/sub_issues` with `{\"sub_issue_id\": <child_id>}`; the Issue Form auto-label workflow runs `gh issue edit <N> --add-label feature:<x>,priority:<y>` on issue open"
   },
   "manages": {
     "runtime_markers": []
