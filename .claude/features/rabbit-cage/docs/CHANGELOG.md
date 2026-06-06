@@ -12,6 +12,16 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.75.2 (fix #961: include rabbit-issue Issue-Form/workflow surfaces in
+  install FEATURE_INCLUDES):** added the two governed deployed surfaces
+  declared by rabbit-issue's manifest — `github/ISSUE_TEMPLATE/file-item.yml`
+  and `github/workflows/issue-form-autolabel.yml` — to
+  `FEATURE_INCLUDES["rabbit-issue"]` in `install.py`. Without them the install
+  set did not cover rabbit-issue's full manifest, so the manifest-closure
+  invariant failed on a clean checkout and `check_manifest_drift` would rebuild
+  rabbit-issue's surface on first Stop. No new invariant; the existing
+  closure tests are the gate.
+
 - **v5.75.1 (fix #958: meaningful version/channel fallback for local `--src`
   installs — no more `vunknown`):** added Inv 48. `install.write_version_pin`
   now derives a meaningful `.version` pin when `RABBIT_INSTALLED_REF` is unset
