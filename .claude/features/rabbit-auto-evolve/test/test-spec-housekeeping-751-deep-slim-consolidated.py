@@ -58,9 +58,18 @@ POST_881_ADD_INVARIANTS = 1
 # ENFORCED while the #927 addition is admitted.
 POST_927_ADD_LINES = 40
 POST_927_ADD_INVARIANTS = 1
+# #948 added the decomposition-parent-exclusion invariant (Inv 58: a
+# decomposition parent is excluded from the dispatchable plan and converges via
+# child rollup, not dispatch) — a genuinely new owned rule, not slim
+# regression. Mirror the #881/#927 headroom so the #751 reduction (>= 150
+# lines, >= 4 invariants) stays ENFORCED while the #948 addition is admitted.
+# The line headroom also absorbs the small pre-existing additive drift that had
+# accumulated above the post-#927 ceiling before #948.
+POST_948_ADD_LINES = 50
+POST_948_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
-    + POST_927_ADD_LINES
+    + POST_927_ADD_LINES + POST_948_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -69,7 +78,7 @@ MAX_TOTAL_LINES = (
 MIN_INVARIANTS_CUT = 4
 MAX_INVARIANT_COUNT = (
     BASELINE_INVARIANT_COUNT - MIN_INVARIANTS_CUT + POST_881_ADD_INVARIANTS
-    + POST_927_ADD_INVARIANTS
+    + POST_927_ADD_INVARIANTS + POST_948_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---

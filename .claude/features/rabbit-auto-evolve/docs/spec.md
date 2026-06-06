@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.77.0
+version: 0.78.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -456,7 +456,9 @@ summary is restated here.
    pre-filtered work-only array OR the full unfiltered triage output of
    `triage-batch.py` (per Inv 18 the standard pipe is
    `fetch-queue | triage-batch | plan-batch`). `research` items are retained
-   (see "Research items" below).
+   (see "Research items" below). An item flagged `decomposition_parent: true`
+   is also filtered out of the plan (Inv 58): a decomposition parent converges
+   via child rollup, not dispatch.
 
    ```json
    {
@@ -3467,6 +3469,40 @@ summary is restated here.
     invariant records both the live track — git tags via `release-bump.py`
     plus per-feature changelogs — and the dead/out-of-scope root
     `CHANGELOG.md` `release/1.x` track).
+
+58. **A decomposition parent is excluded from the dispatchable plan; it
+    converges via child rollup, not dispatch.** A decomposition parent — an
+    OPEN issue that HAS children — carries no own code change: its work landed
+    across N per-feature child sub-issues, and it is closed deterministically
+    off the GitHub-native sub-issue rollup once every child closes (Inv 53). It
+    must therefore NEVER be dispatched to a TDD subagent. `triage-issue.py`
+    detects a parent and emits `decomposition_parent: true` on the triage
+    object, aligning with the authoritative source: PRIMARY, the GitHub-native
+    sub-issue rollup shows the issue HAS children
+    (`gh api repos/{slug}/issues/<n>` -> `sub_issues_summary.total > 0`);
+    COEXISTENCE fallback, the issue is a key in the `decomposition_parents`
+    state map (read via the `RABBIT_AUTO_EVOLVE_STATE_DIR` state-access path the
+    sibling phase scripts share). The native-rollup read reuses the same
+    `sub_issues_summary` access `close-decomposed-parents.py` uses. A still-OPEN
+    issue flagged `decomposition_parent: true` is FILTERED out of the plan by
+    `plan-batch.py`: it is neither selected (`selection_order`) nor shaped
+    (`dispatch_shapes`) nor listed in `cross_scope_items`, while remaining OPEN
+    and tracked. This does NOT violate the convergence guarantee (Inv 25): the
+    parent is tracked-by-decomposition, an existing non-work tracked outcome
+    that converges via child rollup rather than dispatch. A child sub-issue (it
+    has a PARENT link but no children of its own, so its rollup total is 0 and
+    it is not a map key) is NOT a parent and is selected and shaped normally;
+    an ordinary single-feature issue is unaffected. The
+    `decomposition_parents` map-based fallback is a deprecating mirror honored
+    during the same coexistence window Inv 53 established; its deprecation
+    criterion: drop the map-based fallback once no open parent carries a
+    `decomposition_parents` entry. Enforced by
+    `test/test-exclude-decomposition-parents.py` (the full triage -> plan pipe:
+    a native-rollup parent and a state-map-only parent are both excluded from
+    `selection_order` / `dispatch_shapes` / `cross_scope_items`, while a child
+    with a parent link and an ordinary issue are still selected and shaped) and
+    by `test/test-plan-batch.py` (a `decomposition_parent: true` item is dropped
+    from the plan while co-batched ordinary items remain).
 
 ## Known gaps
 

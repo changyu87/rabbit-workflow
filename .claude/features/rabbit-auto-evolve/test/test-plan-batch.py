@@ -815,4 +815,53 @@ else:
         fail(f"issue-asc-tiebreak: bad JSON ({e}); stdout={proc.stdout!r}")
 
 
+# ---------------------------------------------------------------------------
+# Scenario — decomposition-parent exclusion (issue #948)
+#   A work item carrying `decomposition_parent: true` (set upstream by
+#   triage-issue.py from the native sub-issue rollup / the
+#   decomposition_parents state map) is a recorded decomposition parent: it
+#   carries no own code change and auto-closes via close-decomposed-parents.py
+#   once its children close. plan-batch.py MUST filter it out of the
+#   dispatchable plan (selection_order, dispatch_shapes, cross_scope_items)
+#   while ordinary items remain selected and shaped.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 935, "feature": "feat-a", "contract_touch": False,
+     "priority": "medium", "decomposition_parent": True, **_COMMON},
+    {"issue": 950, "feature": "feat-b", "contract_touch": False,
+     "priority": "medium", **_COMMON},
+    {"issue": 942, "feature": "feat-c", "contract_touch": False,
+     "priority": "medium", "decomposition_parent": False, **_COMMON},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"decomp-parent-exclude: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        shapes = out.get("dispatch_shapes", {})
+        cross = out.get("cross_scope_items", [])
+        if 935 in sel:
+            fail(f"decomp-parent-exclude: parent 935 still in selection_order "
+                 f"{sel!r} (#948)")
+        elif "935" in shapes:
+            fail("decomp-parent-exclude: parent 935 still in dispatch_shapes "
+                 "(#948)")
+        elif 935 in cross:
+            fail("decomp-parent-exclude: parent 935 still in cross_scope_items "
+                 "(#948)")
+        elif 950 not in sel or 942 not in sel:
+            fail(f"decomp-parent-exclude: non-parent item wrongly dropped; "
+                 f"selection_order={sel!r} (#948)")
+        elif shapes.get("950") != "parallel-per-feature":
+            fail(f"decomp-parent-exclude: non-parent 950 shape="
+                 f"{shapes.get('950')!r}, want parallel-per-feature (#948)")
+        else:
+            ok("decomp-parent-exclude: decomposition_parent item filtered from "
+               "the plan; ordinary items still selected and shaped (#948)")
+    except json.JSONDecodeError as e:
+        fail(f"decomp-parent-exclude: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
 sys.exit(FAIL)
