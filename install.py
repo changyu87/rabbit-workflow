@@ -773,15 +773,17 @@ def main() -> int:
     parser.add_argument("--update", action="store_true",
                         help="refresh an existing install in place (Inv 22)")
     # Inv 27: shell-agnostic ref-selection flags for --update self-fetch.
-    # Precedence (highest wins): --version/--ref > --channel dev > RABBIT_REF env
-    # > dynamic latest-release lookup > HARDCODED_STABLE_DEFAULT offline
-    # fallback. Never silent 'dev'.
+    # Precedence (highest wins): --version/--ref > --channel main|dev > RABBIT_REF
+    # env > dynamic latest-release lookup > HARDCODED_STABLE_DEFAULT offline
+    # fallback. The named development channel is main-centric: 'main' resolves to
+    # ref 'main' (the default development tip); 'dev' coexists as an explicit
+    # opt-in channel during the transition. Never silent 'dev'.
     parser.add_argument("--version", default=None,
                         help="upstream ref to install (branch, tag, or SHA); shell-agnostic alternative to RABBIT_REF env var")
     parser.add_argument("--ref", default=None,
                         help="alias for --version")
-    parser.add_argument("--channel", default=None, choices=["stable", "dev"],
-                        help="opt-in shorthand: 'dev' for bleeding-edge, 'stable' for hardcoded release default")
+    parser.add_argument("--channel", default=None, choices=["stable", "main", "dev"],
+                        help="opt-in shorthand: 'main' for the default development tip, 'dev' for the legacy bleeding-edge channel (coexistence), 'stable' for the dynamic latest-release default")
     args = parser.parse_args()
     # Inv 22h skip-condition (i): capture whether --src was explicitly supplied
     # BEFORE the self-fetch branch overwrites args.src. Explicit --src is the
@@ -816,6 +818,8 @@ def main() -> int:
                 ref = args.version
             elif args.ref is not None:
                 ref = args.ref
+            elif args.channel == "main":
+                ref = "main"
             elif args.channel == "dev":
                 ref = "dev"
             elif "RABBIT_REF" in os.environ:

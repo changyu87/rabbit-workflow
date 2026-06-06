@@ -16,11 +16,18 @@
 #   release source install.py --update and the update-check use. First-install
 #   therefore tracks latest with no per-release bump (Fixes #848).
 #
+#   The named development channel is main-centric: 'main' is the default
+#   development tip and 'dev' coexists as the legacy opt-in channel during the
+#   transition window. Either branch ref can be pinned explicitly below.
+#
 #   Pin a specific version (explicit override short-circuits the lookup):
 #     RABBIT_REF=v9.0.26    curl -sSL .../install.sh | bash
 #     RABBIT_REF=release/1.0 curl -sSL .../install.sh | bash
 #
-#   Bleeding edge (developers — opt-in only):
+#   Default development tip (main-centric):
+#     RABBIT_REF=main curl -sSL .../install.sh | bash
+#
+#   Legacy bleeding-edge channel (developers — opt-in coexistence):
 #     RABBIT_REF=dev curl -sSL .../install.sh | bash
 #
 # Env vars:

@@ -12,6 +12,31 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.76.0 (feat #963: main-centric install/release channel with dev opt-in
+  coexistence — Part 2 of #957):** moved the named development channel to a
+  main-centric model. `install.py`'s `--channel` flag now accepts a third value
+  `main` (resolves the `--update` self-fetch ref to the literal `main`, the
+  default development tip) alongside the existing `stable` (dynamic
+  latest-release default) and `dev` channels. `dev` is retained as an explicit
+  opt-in channel during the coexistence window — the loop is still dev-based
+  until the #957 admin cutover (dev->main merge + branch protection, tracked
+  separately in the blocked #964), so naming `--channel dev` (or
+  `RABBIT_REF=dev`) keeps working unchanged. The dynamic latest-release default
+  (no flag) and the downgrade guard are untouched; the user still MUST name a
+  branch tip to land on it. `install.sh`'s channel documentation now describes
+  the main-centric model and adds a `RABBIT_REF=main` example beside the legacy
+  `RABBIT_REF=dev` one; the live bootstrap one-liner URLs stay on `dev` until
+  the #964 cutover lands install.sh on `main`. Amended Inv 26/27 (no new
+  invariant). Enforced by the new
+  `test/test-install-py-channel-main-default.py` (e2e: `--channel main`
+  resolves to ref `main` via a mocked `fetch_upstream`; `main` is an accepted
+  argparse choice and `dev` still is too) plus the reconciled existing channel
+  tests (`test-install-py-channel-dev-opt-in.py`,
+  `test-install-py-default-ref-not-dev.py`,
+  `test-install-sh-default-ref-not-dev.py`,
+  `test-install-py-default-ref-matches-install-sh.py`), all unchanged in intent
+  and still green. Deployed repo-root `install.py` re-synced in-branch.
+
 - **v5.75.2 (fix #961: include rabbit-issue Issue-Form/workflow surfaces in
   install FEATURE_INCLUDES):** added the two governed deployed surfaces
   declared by rabbit-issue's manifest — `github/ISSUE_TEMPLATE/file-item.yml`
