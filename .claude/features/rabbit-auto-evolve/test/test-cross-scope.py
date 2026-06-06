@@ -350,19 +350,30 @@ with tempfile.TemporaryDirectory() as repo_root:
         else:
             ok("triage: bare other-feature-name mention (one edit-path) -> "
                "cross_scope false")
+            # Plan-batch shape (issue #984): the `features` list carries the
+            # bare-name mentions (Inv 26 method-c), so its length is >1 here even
+            # though cross_scope is false. Per #984 the `len(features) > 1` fact
+            # is the AUTHORITATIVE multi-feature signal and forces the
+            # barrier/decomposition lane regardless of the cross_scope flag, so
+            # the item is shaped multi-subagent-barrier (the safe over-shape — a
+            # bounded single-feature subagent cannot be relied on when triage
+            # listed >1 feature) and appears in cross_scope_items. The
+            # under-shaping failure mode (#980) is worse than over-shaping a
+            # genuinely single-feature item to the serial barrier lane.
             out = plan_json("plan-bare-name", [r])
             if out is not None:
                 shape = out.get("dispatch_shapes", {}).get(str(r.get("issue")))
-                if shape != "parallel-per-feature":
-                    fail(f"plan-bare-name: a bare-name-mention sub-issue must be "
-                         f"shaped parallel-per-feature; got {shape!r}")
-                elif out.get("cross_scope_items") != []:
-                    fail(f"plan-bare-name: a non-cross_scope sub-issue must NOT "
-                         f"appear in cross_scope_items; got "
+                if shape != "multi-subagent-barrier":
+                    fail(f"plan-bare-name: a sub-issue whose features list has >1 "
+                         f"entry must be shaped multi-subagent-barrier (#984); "
+                         f"got {shape!r}")
+                elif r.get("issue") not in out.get("cross_scope_items", []):
+                    fail(f"plan-bare-name: a >1-feature item must appear in "
+                         f"cross_scope_items (#984); got "
                          f"{out.get('cross_scope_items')!r}")
                 else:
-                    ok("plan: bare-name-mention sub-issue -> parallel-per-feature "
-                       "(not in cross_scope_items)")
+                    ok("plan: bare-name-mention sub-issue (features>1) -> "
+                       "multi-subagent-barrier + cross_scope_items (#984)")
 
 
 # (2g) GENUINE 2-EDIT-PATH issue (issue #669 — preserve true detection): a body
@@ -499,19 +510,28 @@ with tempfile.TemporaryDirectory() as repo_root:
         else:
             ok("triage: read-only 'verify against <path>' mention -> "
                "cross_scope false")
+            # Plan-batch shape (issue #984): the read-only `contract` path still
+            # lands in the `features` list (Inv 26), so its length is >1 even
+            # though cross_scope is false (the read-only path is excluded from
+            # the cross_scope edit-target count). Per #984 `len(features) > 1` is
+            # the authoritative multi-feature signal and forces the
+            # barrier/decomposition lane regardless of cross_scope, so the item
+            # is shaped multi-subagent-barrier (the safe over-shape) and appears
+            # in cross_scope_items.
             out = plan_json("plan-verify-against", [r])
             if out is not None:
                 shape = out.get("dispatch_shapes", {}).get(str(r.get("issue")))
-                if shape != "parallel-per-feature":
-                    fail(f"plan-verify-against: a read-only-mention sub-issue "
-                         f"must be shaped parallel-per-feature; got {shape!r}")
-                elif out.get("cross_scope_items") != []:
-                    fail(f"plan-verify-against: a non-cross_scope sub-issue must "
-                         f"NOT appear in cross_scope_items; got "
+                if shape != "multi-subagent-barrier":
+                    fail(f"plan-verify-against: a sub-issue whose features list "
+                         f"has >1 entry must be shaped multi-subagent-barrier "
+                         f"(#984); got {shape!r}")
+                elif r.get("issue") not in out.get("cross_scope_items", []):
+                    fail(f"plan-verify-against: a >1-feature item must appear in "
+                         f"cross_scope_items (#984); got "
                          f"{out.get('cross_scope_items')!r}")
                 else:
-                    ok("plan: read-only-mention sub-issue -> "
-                       "parallel-per-feature (not in cross_scope_items)")
+                    ok("plan: read-only-mention sub-issue (features>1) -> "
+                       "multi-subagent-barrier + cross_scope_items (#984)")
 
 
 # (3) Ordinary single-feature body, no phrase, no extra paths -> false.

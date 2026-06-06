@@ -16,6 +16,31 @@ authoritative).
 
 ## Version notes
 
+- **v0.84.0 — 2026-06-04** — Bug #984 (plan-batch under-shaped a multi-feature
+  item as `parallel-per-feature` when the prose-based `cross_scope` heuristic was
+  false). `scripts/plan-batch.py` (1.9.0) now UNIONS the two multi-feature
+  signals in Stage-2 shaping: an item is routed to the barrier/decomposition lane
+  on EITHER `len(item["features"]) > 1` OR `cross_scope: true`, and is shaped
+  `parallel-per-feature` only when BOTH say single-scope. The
+  `len(features) > 1` feature-dir count is the AUTHORITATIVE, more-direct signal
+  and forces `multi-subagent-barrier` (below `--decompose-threshold`) or
+  `decomposition` (at/above it) REGARDLESS of the `cross_scope` flag — fixing the
+  #980 case (`features: ["rabbit-cage", "rabbit-meta"]`, `cross_scope: false`,
+  mis-shaped `parallel-per-feature` so a bounded per-feature subagent could not
+  write across both features). `cross_scope_items` membership is now keyed off the
+  assigned shape (any `multi-subagent-barrier`/`decomposition` item is listed), so
+  it stays in lock-step with the unioned routing and never under-lists a
+  multi-feature item. Over-shaping a one-edit-dir item whose `features` list
+  carries a bare-name/read-only second entry to the serial barrier lane is safe;
+  under-shaping a true multi-feature item to `parallel-per-feature` fails the
+  dispatch — so the count signal wins (the #669/#798 bare-name + read-only
+  sub-issue cases now shape `multi-subagent-barrier`, their `cross_scope` TRIAGE
+  detection unchanged). Inv 51 extended (a UNION of feature-count + cross_scope);
+  the decompose-threshold (Inv 26), decomposition-parent exclusion (Inv 58), and
+  natively-blocked exclusion (Inv 62) are unchanged. Enforced by a new
+  `test/test-plan-batch.py` scenario and updated `test/test-cross-scope.py`
+  shape expectations.
+
 - **v0.83.0 — 2026-06-04** — Enhancement #966 (pre-merge isolated install +
   update smoke gate to catch install/closure breakage BEFORE a PR merges). This
   session saw install regressions slip into dev — `--update` closure-shrink
