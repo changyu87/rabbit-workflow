@@ -155,7 +155,13 @@ COLLAPSE_MAX = 1
 # `unknown` sentinel, so the SessionStart banner never reads `vunknown` /
 # `channel unknown`) plus its e2e test. A real spec addition documenting new
 # test-enforced behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 593
+# Raised 593 -> 594 by #963, which amended Inv 27 (b) to the main-centric
+# channel model (the `--channel main` branch in the ref-resolution pseudo-code
+# plus its named-channel prose) — `main` is the default development tip and
+# `dev` coexists as the legacy opt-in. A real spec addition documenting new
+# test-enforced behavior (test-install-py-channel-main-default.py), not reword
+# re-inflation.
+SPEC_LINE_CEILING = 594
 
 PASS = 0
 FAIL = 0

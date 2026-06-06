@@ -79,6 +79,7 @@ SUITES = [
     "test-install-py-update-tag-ref.py",
     "test-install-py-update-no-downgrade.py",
     "test-install-py-channel-dev-opt-in.py",
+    "test-install-py-channel-main-default.py",
     "test-install-update-self-reexec.py",
     "test-install-update-no-reexec-with-explicit-src.py",
     "test-install-update-reexec-loop-guard.py",
