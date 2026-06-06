@@ -3,8 +3,8 @@
 
 Per rabbit-auto-evolve spec.md Inv 3, emits a JSON object on stdout with
 fields: issue, decision, reason_code, rationale, feature, features,
-cross_scope, cross_scope_features, decomposition_parent, contract_touch,
-priority, issue_type, created_at, blocked_by, planning_note. The
+edit_features, cross_scope, cross_scope_features, decomposition_parent,
+contract_touch, priority, issue_type, created_at, blocked_by, planning_note. The
 `decomposition_parent` boolean (Inv 58 / issue #948) is True when this OPEN
 issue is a recorded decomposition parent — it HAS GitHub-native sub-issues
 (`gh api repos/{slug}/issues/<n>` -> `sub_issues_summary.total > 0`) OR is a
@@ -39,8 +39,13 @@ issue #435, #443) is the distinct set of feature directories the item
 touches — the union of the feature:<name> label, every
 `.claude/features/<name>/` body path, and every canonical feature name
 (discovered by listing .claude/features/) matched word-for-word in the
-body/title (bare-name detection, issue #443). It is the basis plan-batch.py
-uses to choose a per-item dispatch shape.
+body/title (bare-name detection, issue #443). It is the full-mention
+transparency set. The `edit_features` field (Inv 51 / issue #991) is the NARROW
+EDIT-TARGET set — the features the item will actually WRITE to (the label PLUS
+body `.claude/features/<name>/` PATHs EXCEPT read-only "verify against <path>"
+lines; bare-name prose mentions are EXCLUDED). It is the basis plan-batch.py
+uses to choose a per-item dispatch shape, so a single-EDIT item that merely
+MENTIONS another feature is NOT over-shaped to the serial barrier lane.
 Implements the seven-rule decision table
 (top-down, first match wins); any ambiguity defaults to decision=defer,
 reason_code=needs-judgment (never silently to work).
@@ -88,7 +93,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.13.0
+Version: 1.14.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -921,6 +926,15 @@ def classify(issue_num, repo_root):
     # Distinct feature set (Inv 26) computed once — reused for both `features`
     # and the cross-scope signal (Inv 51).
     features = _feature_set(feature_label, body, title, feature_names)
+    # `edit_features` (Inv 51 / issue #991): the NARROW EDIT-TARGET set — the
+    # features the item will actually WRITE to (the `feature:` label PLUS body
+    # `.claude/features/<name>/` PATHs, EXCLUDING read-only `verify against
+    # <path>` lines and bare-name prose mentions). It reuses the same edit-intent
+    # logic `_cross_scope` already trusts. plan-batch.py shapes off this count so
+    # a single-EDIT item that merely MENTIONS another feature is NOT over-shaped
+    # to the serial barrier lane (the over-shaping the dispatcher had to override
+    # on the single-feature context-mention items).
+    edit_features = sorted(_edit_target_features(feature_label, body))
     # `cross_scope` (Inv 51 / issue #433): true when the issue body spans more
     # than one feature EDIT-PATH (label + body `.claude/features/<name>/` paths;
     # bare-name mentions excluded per Inv 51(a.2) / issue #669) OR carries a
@@ -951,6 +965,15 @@ def classify(issue_num, repo_root):
         # basis (Inv 26 / issue #435). Always present; for a malformed-labels
         # issue with no body paths and no bare-name mention it is [].
         "features": features,
+        # `edit_features` (Inv 51 / issue #991) is the NARROW EDIT-TARGET set:
+        # the features the item will actually WRITE to — the union of (a) the
+        # `feature:` label and (b) body `.claude/features/<name>/` PATHs EXCEPT
+        # read-only ("verify against", "see", ...) lines; bare-name prose
+        # mentions are EXCLUDED. plan-batch.py shapes off this count (Inv 26(b))
+        # so a single-EDIT item that merely MENTIONS another feature shapes
+        # parallel-per-feature, not the serial barrier lane. Always present;
+        # `[]` for a malformed-labels issue with no label and no edit-paths.
+        "edit_features": edit_features,
         # `cross_scope` (Inv 51 / issue #433) is True when the issue body
         # implicates more than one feature EDIT-PATH (the label + body
         # `.claude/features/<name>/` paths span >= 2 dirs; bare-name mentions

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.85.0
+version: 0.86.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -308,15 +308,20 @@ summary is restated here.
    selection (Inv 4); an omitted `priority` collapses the ordering to the
    contract-touch-only tiebreak, so triage MUST emit it on every record.
 
-   The `features` field (Inv 26) is the sorted, distinct set of feature dirs
-   the item touches — the basis for the per-item dispatch shape (Stage 2) —
-   the union of THREE detection methods: (a) the `feature:<name>` label;
-   (b) every `.claude/features/<name>/` path referenced in the body; and
-   (c) every canonical feature name (discovered by listing `.claude/features/`
-   at triage time) appearing as a whole word (`\b<name>\b`) in the body OR
-   title. Method (c) catches features named in prose or a table without the
-   full path. A malformed-labels issue with no body paths and no bare mention
-   carries `features: []`.
+   The `features` field (Inv 26) is the sorted distinct set of feature dirs the
+   item MENTIONS — the full-mention transparency set — the union of THREE
+   detection methods: (a) the `feature:<name>` label; (b) every
+   `.claude/features/<name>/` path referenced in the body; and (c) every
+   canonical feature name (discovered by listing `.claude/features/` at triage
+   time) appearing as a whole word (`\b<name>\b`) in the body OR title. Method
+   (c) catches features named in prose or a table without the full path. A
+   malformed-labels issue carries `features: []`.
+
+   The `edit_features` field (Inv 51) is the sorted distinct EDIT-TARGET set —
+   the features the item will WRITE to, NARROWER than `features`: the
+   `feature:<name>` label PLUS body `.claude/features/<name>/` PATHs EXCEPT
+   read-only-line paths (Inv 51(a.2)); bare-name mentions (method (c)) are
+   EXCLUDED. The SHAPE-routing basis (Stage 2 / Inv 26(b)), `[]` when malformed.
 
    The decision set is EXACTLY `{work, defer, close-not-planned, research}`.
    `close-completed` is NEVER emittable from triage — a completed closure is
@@ -1670,8 +1675,11 @@ summary is restated here.
     **(b) Stage 2 picks among exactly THREE shapes in preference order.** For
     each selected work item, `plan-batch.py` emits `dispatch_shapes`
     (issue-number-string → shape), choosing the FIRST fitting shape. The
-    item's distinct feature-dir count is `len(item["features"])` (from
-    triage), or 1 when `features` is absent.
+    item's feature-dir count for shaping is the EDIT-TARGET count
+    `len(item["edit_features"])` (from triage), falling back to
+    `len(item["features"])` when `edit_features` is absent/empty, then to 1; so
+    an item that EDITS one feature but merely MENTIONS another shapes
+    `parallel-per-feature` (Inv 51(b)).
 
     | Rank | Shape key | When it fits | Mechanics |
     |---|---|---|---|
@@ -3245,45 +3253,46 @@ summary is restated here.
     feature's path, yields `cross_scope: false`; a body listing 2 or more
     distinct feature EDIT-PATHS still yields `cross_scope: true`.
 
-    **(b) plan-batch routes multi-feature items — TWO signals, UNIONED.**
-    `plan-batch.py` routes a work item to the barrier/decomposition lane on
-    EITHER multi-feature signal, shaping `parallel-per-feature` only when BOTH
-    say single-scope: (1) the feature-dir count `len(item["features"]) > 1` —
-    the AUTHORITATIVE, stronger signal: the item touches >1 feature dir, so a
-    single bounded per-feature subagent cannot complete it, so it is routed
-    REGARDLESS of the prose-based `cross_scope` flag (which can read `false` for a
-    genuinely multi-feature item — e.g. `features: ["rabbit-cage",
-    "rabbit-meta"]`, `cross_scope: false` would otherwise mis-shape
-    `parallel-per-feature`); or (2) `cross_scope: true` — never
-    `parallel-per-feature` even at feature-dir count 1 (a phrase-only repo-wide
-    sweep). Either way the item gets `decomposition` at/above
-    `--decompose-threshold`, else `multi-subagent-barrier`. Over-shaping a
-    one-edit-dir item whose `features` list carries a bare-name/read-only second
-    entry to the serial barrier lane is SAFE; under-shaping a true multi-feature
-    item FAILS — so count wins.
+    **(b) plan-batch routes on the EDIT-TARGET count, unioned with
+    `cross_scope`.** `plan-batch.py` routes a work item to the
+    barrier/decomposition lane on EITHER multi-feature signal, shaping
+    `parallel-per-feature` only when BOTH say single-scope: (1) the EDIT-TARGET
+    count `len(item["edit_features"]) > 1` — the item WRITES to >1 feature dir,
+    so a bounded per-feature subagent cannot complete it; or (2) `cross_scope:
+    true` — never `parallel-per-feature` even at edit-target count 1 (a
+    phrase-only repo-wide sweep or cross-feature DECLARATION). Either way the
+    item gets `decomposition` at/above `--decompose-threshold`, else
+    `multi-subagent-barrier`. The count is `edit_features`, NOT the broader
+    `features` mention set: an item that EDITS one feature but merely MENTIONS
+    another (a bare-name in prose, or a read-only `verify against <path>`) has
+    `len(edit_features) == 1` and shapes `parallel-per-feature` even though its
+    `features` list is longer; a genuine multi-EDIT still shapes
+    barrier/decomposition. **Conservative bias:** when edit-intent is AMBIGUOUS
+    the broader routing (barrier) is SAFER — under-shaping a genuine multi-EDIT
+    item FAILS dispatch at the first cross-feature write, over-shaping merely
+    runs slower — so the `cross_scope: true` union is kept and the
+    `edit_features` count falls back to `len(item["features"])` (then 1) when
+    absent/empty rather than collapsing to 1 directly.
 
     **(c) Cross-scope items are surfaced distinctly.** `plan-batch.py` lists
     every item it shaped `multi-subagent-barrier` or `decomposition` under a
     `cross_scope_items` output key (sorted ascending; always present, empty when
-    none), so membership stays in lock-step with routing and never under-lists a
-    multi-feature `cross_scope: false` item.
+    none), in lock-step with routing.
 
-    Enforced by `test/test-cross-scope.py` (triage sets `cross_scope: true`
-    for a body referencing 2 or more `.claude/features/<name>/` paths and for a
-    `repo-wide` phrase; `false` for an ordinary single-feature body, for a
-    decomposition sub-issue whose only cross-scope phrase is on a
-    parent-reference line (a.1), for a sub-issue that merely MENTIONS other
-    feature NAMES with no second EDIT-PATH (a.2), and for a sub-issue whose only
-    second-feature path is a read-only `verify against <path>` mention
-    (a.2); `true` for an explicit `Cross-feature (A + B)` / `spans X and Y`
-    DECLARATION — and plan-batch routes on the UNION (b): a `cross_scope: true`
-    item is `multi-subagent-barrier` / `decomposition`, never
-    `parallel-per-feature`; a `cross_scope: false` item whose `features` list has
-    length > 1 is ALSO `multi-subagent-barrier` + in `cross_scope_items`;
-    only a one-feature `cross_scope: false` item is `parallel-per-feature`),
-    `test/test-plan-batch.py` (`features=["a","b"]`, `cross_scope=false` below
-    threshold → `multi-subagent-barrier` + in `cross_scope_items`;
-    `features=["a"]` → `parallel-per-feature`; `len(features) >=
+    Enforced by `test/test-cross-scope.py` (triage sets `cross_scope: true` for
+    a body referencing 2 or more `.claude/features/<name>/` paths and for a
+    `repo-wide` phrase; `false` for an ordinary single-feature body, a
+    parent-reference-line quote (a.1), a bare-NAME mention (a.2), and a read-only
+    `verify against <path>` mention (a.2); `true` for an explicit `Cross-feature
+    (A + B)` / `spans X and Y` DECLARATION — and triage emits `edit_features`
+    narrow to the labelled feature for the mention/read-only cases — and
+    plan-batch routes on the EDIT-TARGET count unioned with `cross_scope` (b): an
+    item that EDITS one feature but MENTIONS another (`edit_features` length 1)
+    shapes `parallel-per-feature`, absent from `cross_scope_items`; a genuine
+    multi-EDIT (`edit_features` length > 1) and a `cross_scope: true` item are
+    barrier/decomposition + in `cross_scope_items`), `test/test-plan-batch.py`
+    (`edit_features=["a","b"]` → barrier; `edit_features=["a"]` with
+    `features=["a","b"]` → `parallel-per-feature`; `len(edit_features) >=
     --decompose-threshold` → `decomposition`), and `test-spec-cross-scope-invariant.py`.
 
 52. **Proactive `.gitignore` seeding is the policy; reactive single-file
