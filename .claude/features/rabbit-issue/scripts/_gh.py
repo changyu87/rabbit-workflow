@@ -8,7 +8,7 @@ Repo slug resolves to $RABBIT_ISSUE_REPO env var when set, else the
 module-level const RABBIT_REPO_DEFAULT. No git remote consultation —
 bugs about rabbit always go to rabbit's repo, regardless of the cwd.
 
-Version: 1.4.0
+Version: 1.5.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-issue is retired
 """
@@ -105,3 +105,37 @@ def require_auth() -> None:
     r = subprocess.run(["gh", "auth", "status"], capture_output=True)
     if r.returncode != 0:
         sys.exit("rabbit-issue: `gh auth status` failed — run `gh auth login`")
+
+
+def link_sub_issue(parent_number: int, child_number: int) -> None:
+    """Link issue #child_number as a GitHub-native sub-issue of #parent_number.
+
+    The GitHub sub-issues API keys on the child's database **id**, NOT its
+    issue number (the two differ — this is the footgun). So:
+
+      1. Resolve the CHILD numeric id via `gh api repos/{slug}/issues/{child}`
+         reading `.id`.
+      2. POST to `repos/{slug}/issues/{parent}/sub_issues` with the JSON body
+         `{"sub_issue_id": <child_id>}`.
+
+    Idempotent: when the child is already a sub-issue of the parent the POST is
+    rejected by GitHub. This degrades gracefully — the call returns normally
+    rather than raising, so a re-link is a no-op success.
+    """
+    slug = repo_slug()
+    child = gh_api_json("repos/{}/issues/{}".format(slug, child_number))
+    child_id = child["id"]
+    # `-F` sends a typed (raw) field so `sub_issue_id` is a JSON number, which
+    # the API requires (`-f` would send it as a string).
+    subprocess.run(
+        ["gh", "api", "repos/{}/issues/{}/sub_issues".format(slug, parent_number),
+         "-X", "POST", "-F", "sub_issue_id={}".format(child_id)],
+        capture_output=True, text=True,
+    )
+    # Non-zero is expected when the child is already linked; do not raise.
+
+
+def gh_api_json(endpoint: str) -> dict:
+    """Return parsed JSON from `gh api <endpoint>` (a GET)."""
+    out = subprocess.check_output(["gh", "api", endpoint], text=True)
+    return json.loads(out)

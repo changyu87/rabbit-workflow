@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.13.1
+version: 1.14.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -107,6 +107,31 @@ its auto-creatability: the reconcile stamps `in-progress` through the same
 idempotent `ensure_labels` path every other sanctioned label uses, so the
 label exists on its first reconcile use. The label is additive — it does
 not change any of the other labels.
+
+### Sub-issue linkage
+
+`file-item.py` can link a newly-filed issue as a GitHub-native **sub-issue**
+of a parent via the REST sub-issues API. The `--parent <N>` flag is OPTIONAL:
+
+| Flag | Behavior |
+|---|---|
+| *(omit `--parent`)* | No link is established. No extra gh calls are made; the emitted JSON is exactly `{number, url, type}`. This is the NORMAL case — a missing `--parent` is never an error or warning. |
+| `--parent <N>` | After the child issue is created, it is linked under parent `<N>`. On success the emitted JSON gains a `parent` field carrying `<N>`; the `parent` field is present ONLY when a link was made. |
+
+The linkage is performed by `_gh.link_sub_issue(parent_number,
+child_number)`. The GitHub sub-issues API keys on the child's database
+**id**, NOT its issue number — the two differ. `link_sub_issue` therefore:
+
+1. Resolves the CHILD numeric `id` via `gh api repos/{slug}/issues/{child}`,
+   reading `.id` (the footgun: passing the issue number as `sub_issue_id`
+   fails or mis-links).
+2. POSTs to `repos/{slug}/issues/{parent}/sub_issues` with the JSON body
+   `{"sub_issue_id": <child_id>}`.
+
+The link is **idempotent**: when the child is already a sub-issue of the
+parent the POST is rejected by GitHub, and `link_sub_issue` degrades
+gracefully — it does NOT raise or fail the filing. Re-linking an
+already-linked child is a no-op success.
 
 ### Safety invariant
 

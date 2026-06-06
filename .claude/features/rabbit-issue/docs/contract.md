@@ -1,6 +1,6 @@
 ---
 feature: rabbit-issue
-version: 1.11.0
+version: 1.12.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 ---
@@ -34,7 +34,7 @@ deprecation_criterion: when GH Issues is replaced or the workflow moves to a dif
   },
   "invokes": {
     "rabbit-feature-scope": "skill — resolve feature for ambiguous filings",
-    "gh": "CLI tool — issue create/view/close/reopen/list, label create; issue comments are read via `gh issue view <N> --json comments` (NOT --comments, which hits deprecated projectCards GraphQL and returns empty)"
+    "gh": "CLI tool — issue create/view/close/reopen/list, label create; issue comments are read via `gh issue view <N> --json comments` (NOT --comments, which hits deprecated projectCards GraphQL and returns empty); sub-issue linkage uses `gh api repos/{slug}/issues/{child}` to resolve the child database id and POSTs `gh api repos/{slug}/issues/{parent}/sub_issues` with `{\"sub_issue_id\": <child_id>}`"
   },
   "manages": {
     "runtime_markers": []

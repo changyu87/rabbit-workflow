@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.13.1
+version: 1.14.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours an actionability safety guard (it refuses to close/reopen issues lacking a valid `feature:` label) so raw human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -85,11 +85,16 @@ When the user confirms they want to file a bug or enhancement:
      --priority <low|medium|high|critical> \
      --description "..." \
      [--filed-by <source>] \
-     [--housekeeping]
+     [--housekeeping] \
+     [--parent <N>]
    ```
    See §Label Schema above for `--filed-by` and `--housekeeping`. The
    script auto-creates any missing labels, then calls `gh issue create`
-   with the resolved labels attached.
+   with the resolved labels attached. `--parent <N>` is OPTIONAL: when
+   supplied, after the child is created it is linked as a GitHub-native
+   sub-issue of parent `<N>` and the emitted JSON gains a `parent` field;
+   when omitted, no link is made, no extra gh calls run, and the JSON is
+   exactly `{number, url, type}`. See docs/spec.md §Sub-issue linkage.
 4. **Report** the assigned issue number and URL back to the user. GH
    allocates the number; rabbit does not maintain a local counter.
 
@@ -262,7 +267,7 @@ GH issue state is binary; `state_reason` distinguishes the close path.
 
 | Script | Purpose |
 |---|---|
-| `file-item.py` | File a new bug or enhancement (auto-creates labels); `--filed-by <rabbit\|autonomous-evolve>` stamps the matching `filed-by:` label (omit for human; other values rejected); `--housekeeping` stamps the `housekeeping` category label |
+| `file-item.py` | File a new bug or enhancement (auto-creates labels); `--filed-by <rabbit\|autonomous-evolve>` stamps the matching `filed-by:` label (omit for human; other values rejected); `--housekeeping` stamps the `housekeeping` category label; `--parent <N>` links the child as a GitHub-native sub-issue of `<N>` (omit for no link) |
 | `item-status.py` | `show <N>` / `close <N>` / `reopen <N>` (actionability guard enforced on close/reopen — refuses issues lacking a valid `feature:` label; `close --reason completed` requires exactly one of `--commit-sha` or `--findings-comment-url`, `close --reason not-planned` requires `--reason-text`) |
 | `list-items.py` | List with `--type`, `--feature`, `--status` filters; deterministic sort |
 | `_gh.py` | Shared helper — repo slug discovery, `gh` invocation wrappers |
