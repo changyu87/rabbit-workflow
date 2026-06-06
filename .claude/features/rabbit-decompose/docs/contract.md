@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.7.2
+version: 0.8.0
 template_version: 2.0.0
 ---
 
@@ -32,7 +32,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "skills": [
       {
         "name": "rabbit-feature-scaffold",
-        "purpose": "scaffold each accepted feature's directory; uses --batch form in plugin mode"
+        "purpose": "scaffold each accepted feature's directory; plugin mode dispatches the skill's batch interface (scaffold-batch.py --batch), per-feature in standalone mode"
       },
       {
         "name": "rabbit-spec-create",
@@ -41,8 +41,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ],
     "scripts": [
       {
-        "path": ".claude/features/rabbit-feature/scripts/scaffold-feature.py",
-        "purpose": "called via --batch <file> in plugin mode to scaffold N features in one project-map.json mutation"
+        "path": ".claude/features/rabbit-feature/skills/rabbit-feature-scaffold/scripts/scaffold-batch.py",
+        "purpose": "the rabbit-feature-scaffold skill's batch interface; handoff-scaffold.py invokes it via --batch <file> in plugin mode to scaffold N features in one project-map.json mutation (the declared skill interface, not a direct shell-out to scaffold-feature.py)"
       },
       {
         "path": ".claude/features/rabbit-meta/lib/mode_detection.py",

@@ -13,6 +13,23 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.8.0 (route Step 4 scaffold dispatch through the rabbit-feature-scaffold
+  skill batch interface — layering fix, #921):** plugin-mode Step 4 previously
+  shelled out to rabbit-feature's `scripts/scaffold-feature.py --batch`
+  directly — a layering violation, since the skill (not its implementation
+  script) is rabbit-feature's declared cross-feature interface. Piece 1 of
+  #921 published a skill-level batch surface
+  (`skills/rabbit-feature-scaffold/scripts/scaffold-batch.py`, exit codes
+  0/1/2 mirrored). `handoff-scaffold.py._resolve_scaffolder` now resolves and
+  dispatches that skill batch interface (`scaffold-batch.py --batch <file>`)
+  instead; the batch-JSON authoring and exit-code propagation are unchanged.
+  `docs/contract.md` `invokes.scripts` now references `scaffold-batch.py`,
+  Invariant 5 gained a layering clause, and `SKILL.md` Step 4 prose names the
+  skill batch interface. New E2E `test-step4-skill-batch-interface.py` asserts
+  the dispatch goes through the skill interface and not the scaffolder script
+  directly. Part of the two-feature #921 barrier (piece 2/2; piece 1 was
+  rabbit-feature 1.40.0).
+
 - **v0.7.2 (contract `reads.files` accuracy fix — stale `.rabbit/.runtime/mode`
   read removed, #908):** `docs/contract.md` `reads.files` still listed
   `.rabbit/.runtime/mode` as a read. Since #890/#901/#906,
