@@ -12,6 +12,28 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.74.0 (feat #923: decompose-context scope-guard pass-through):** added a
+  principled, explicit, auto-cleared pass-through to `hooks/scope-guard.py` for
+  batch work that spans several feature directories — the documented
+  replacement for the undiscoverable manual `.rabbit/.rabbit-scope-override =
+  'session'` workaround. A new decompose-context marker
+  `.rabbit/.runtime/decompose-active` carries a JSON object
+  `{operation, features, expires?}`; while it is present, un-expired, and
+  well-formed, scope-guard ALLOWs writes inside any feature directory named in
+  `features` (resolved via the same `find-feature.py` lookup the per-feature
+  markers use), in BOTH standalone and plugin mode. The marker is honored ONLY
+  while present (orchestration sets it before batch work and clears it after);
+  an optional ISO-8601 `expires` bounds an orphaned marker as defense in depth;
+  a malformed, empty-`features`, or already-expired marker is treated as
+  absent. The per-feature `.rabbit-scope-active-<feature>` markers, the global
+  `.rabbit-scope-active` marker, and the legacy manual `.rabbit-scope-override`
+  paths are unchanged (additive coexistence). New invariant Inv 47 specifies the
+  marker path, content schema, set/clear semantics, and scope-guard
+  interpretation; enforced end-to-end by
+  `test/test-scope-guard-decompose-context.py` (wired into `test/run.py`).
+  scope-guard.py is a deployed hook — its `.claude/hooks/` copy must be
+  republished.
+
 - **v5.73.0 (feat #922 piece 3/5: retire rabbit-spec-create from the install
   manifest):** updated `install.py` so the bootstrap closure no longer deploys
   the retired `rabbit-spec-create` skill and tracks the renamed dispatch
