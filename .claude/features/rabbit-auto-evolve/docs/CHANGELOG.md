@@ -16,6 +16,25 @@ authoritative).
 
 ## Version notes
 
+- **v0.86.1 — 2026-06-04** — Bug #1004 (schedule-decision immediate-refired on
+  open-but-BLOCKED work, spinning the loop every ~1 minute into a no-op tick
+  whenever the only remaining open issues were human-gated/blocked, e.g. #964
+  blocked on tracker #977 and #979 blocked on #964 — a non-empty open queue but
+  an EMPTY dispatchable plan). `schedule-decision.py` counted RAW open work via
+  `fetch-queue.py`; that count includes blocked/deferred items (Inv 62),
+  decomposition parents (Inv 58), and non-work verdicts that phase 6 cannot
+  dispatch. The fix bases the immediate-refire-vs-idle decision on DISPATCHABLE
+  work: it reuses the EXISTING `fetch-queue.py | triage-batch.py | plan-batch.py`
+  pipe (the same pipe phase 6 dispatches from) and refires only when the plan's
+  `selection_order` is non-empty, else goes idle and relies on the recurring
+  heartbeat. All existing emitted fields on both the immediate-refire and idle
+  shapes are preserved, and the dedup/`dispatcher_actions` logic is unchanged.
+  Amends Inv 33; `schedule-decision.py` 1.4.0 → 1.5.0 (adds
+  `RABBIT_AUTO_EVOLVE_TRIAGE_BATCH_CMD` / `RABBIT_AUTO_EVOLVE_PLAN_BATCH_CMD`
+  pipe-stage overrides for tests). Test: an all-blocked/all-gated backlog
+  (non-empty raw queue, empty `selection_order`) yields `idle`; a backlog with
+  >= 1 dispatchable item yields `immediate-refire`.
+
 - **v0.86.0 — 2026-06-04** — Bug #991 (after #984 routed `len(features) > 1` to
   the barrier lane, single-EDIT items whose body merely MENTIONED a second
   feature as CONTEXT were over-shaped `multi-subagent-barrier` and the dispatcher

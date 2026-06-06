@@ -111,15 +111,100 @@ def make_crontab_shim(dirpath, restricted):
     return shim
 
 
-def run(d, queue_json, restricted=False, cron_list=None):
-    fetch = make_fetch_shim(d, queue_json)
+def make_triage_passthrough_shim(dirpath):
+    """A triage-batch.py stand-in that turns each raw fetch item into a
+    `decision: work` triage object. Lets the e2e tests drive the
+    fetch|triage|plan pipe deterministically without shelling `gh`
+    (#1004)."""
+    shim = os.path.join(dirpath, "triage-batch-shim.py")
+    with open(shim, "w") as f:
+        f.write(textwrap.dedent(f"""\
+            #!{sys.executable}
+            import json, sys
+            raw = sys.stdin.read()
+            try:
+                items = json.loads(raw) if raw.strip() else []
+            except json.JSONDecodeError:
+                items = []
+            out = []
+            for it in items:
+                out.append({{
+                    "issue": it.get("number"),
+                    "decision": "work",
+                    "feature": "rabbit-auto-evolve",
+                    "features": ["rabbit-auto-evolve"],
+                    "edit_features": ["rabbit-auto-evolve"],
+                    "contract_touch": False,
+                    "blocked_by": [],
+                }})
+            sys.stdout.write(json.dumps(out))
+            sys.exit(0)
+            """))
+    os.chmod(shim, 0o755)
+    return shim
+
+
+def make_plan_shim(dirpath, selection_order):
+    """A plan-batch.py stand-in emitting a canned `selection_order` so a test
+    can assert the refire/idle decision keys off DISPATCHABLE work (#1004),
+    independent of the real planner's filtering."""
+    shim = os.path.join(dirpath, "plan-batch-shim.py")
+    with open(shim, "w") as f:
+        f.write(textwrap.dedent(f"""\
+            #!{sys.executable}
+            import json, sys
+            sys.stdin.read()
+            sys.stdout.write(json.dumps({{"selection_order": {selection_order!r}}}))
+            sys.exit(0)
+            """))
+    os.chmod(shim, 0o755)
+    return shim
+
+
+def _base_env(d, restricted, cron_list):
     cron = make_crontab_shim(d, restricted)
     env = os.environ.copy()
-    env["RABBIT_AUTO_EVOLVE_FETCH_QUEUE_CMD"] = fetch
     env["RABBIT_CRONTAB_CMD"] = cron
     env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = os.path.join(d, ".rabbit")
     if cron_list is not None:
         env["RABBIT_AUTO_EVOLVE_CRON_LIST"] = cron_list
+    return env
+
+
+def run(d, queue_json, restricted=False, cron_list=None):
+    """Existing harness: a raw fetch shim with `queue_json`, plus a
+    pass-through triage shim and a plan shim whose `selection_order` mirrors
+    the raw items (so a non-empty raw queue is also non-empty dispatchable
+    work, preserving the pre-#1004 scenarios)."""
+    fetch = make_fetch_shim(d, queue_json)
+    try:
+        items = json.loads(queue_json)
+    except json.JSONDecodeError:
+        items = []
+    selection = [it.get("number") for it in items] if isinstance(items, list) else []
+    triage = make_triage_passthrough_shim(d)
+    plan = make_plan_shim(d, selection)
+    env = _base_env(d, restricted, cron_list)
+    env["RABBIT_AUTO_EVOLVE_FETCH_QUEUE_CMD"] = fetch
+    env["RABBIT_AUTO_EVOLVE_TRIAGE_BATCH_CMD"] = triage
+    env["RABBIT_AUTO_EVOLVE_PLAN_BATCH_CMD"] = plan
+    return subprocess.run(
+        [sys.executable, DECIDE], capture_output=True, text=True, env=env,
+    )
+
+
+def run_pipe(d, queue_json, selection_order, restricted=False):
+    """Drive the fetch|triage|plan pipe with a raw queue AND an explicit
+    plan `selection_order`, decoupling the raw open count from the
+    dispatchable count (#1004). Used to prove an all-blocked backlog
+    (non-empty raw queue, EMPTY selection_order) -> idle."""
+    fetch = make_fetch_shim(d, queue_json)
+    triage = make_triage_passthrough_shim(d)
+    plan = make_plan_shim(d, selection_order)
+    env = _base_env(d, restricted, None)
+    env["RABBIT_AUTO_EVOLVE_FETCH_QUEUE_CMD"] = fetch
+    env["RABBIT_AUTO_EVOLVE_TRIAGE_BATCH_CMD"] = triage
+    env["RABBIT_AUTO_EVOLVE_PLAN_BATCH_CMD"] = plan
     return subprocess.run(
         [sys.executable, DECIDE], capture_output=True, text=True, env=env,
     )
@@ -452,5 +537,57 @@ with tempfile.TemporaryDirectory() as d:
         ok("J2: #refire marker + durable/recurring=false preserved after buffer fix")
     else:
         fail(f"J2: marker/flags not preserved: croncreate={cc!r} create={create!r}")
+
+# --- K: refire keys off DISPATCHABLE work, not the raw open count (#1004) -----
+# The bug: schedule-decision counted the RAW open queue (fetch-queue.py), so an
+# all-blocked / all-gated backlog (open issues exist, but every one is
+# blocked_by a human tracker / decomposition parent / non-work) returned
+# immediate-refire and spun the loop into a ~1-min no-op refire storm even though
+# plan-batch's selection_order — what phase 6 can actually dispatch — was EMPTY.
+# The fix bases the decision on the fetch|triage|plan pipe's selection_order.
+
+# A non-empty raw open queue (3 issues) but an EMPTY dispatchable plan
+# (everything blocked/gated) -> idle.
+with tempfile.TemporaryDirectory() as d:
+    raw = json.dumps([{"number": n, "title": "blocked", "labels": []}
+                      for n in (964, 977, 979)])
+    proc = run_pipe(d, raw, selection_order=[], restricted=False)
+    j = parsed(proc)
+    if proc.returncode == 0 and j and j.get("decision") == "idle":
+        ok("K: all-blocked backlog (open!=0, selection_order=[]) -> idle (#1004)")
+    else:
+        fail(f"K: all-blocked backlog should be idle: out={proc.stdout!r} "
+             f"err={proc.stderr!r}")
+
+# >= 1 dispatchable item (selection_order non-empty) -> immediate-refire, even
+# if the raw queue happens to be the same size.
+with tempfile.TemporaryDirectory() as d:
+    raw = json.dumps([{"number": n, "title": "x", "labels": []}
+                      for n in (964, 977, 979)])
+    proc = run_pipe(d, raw, selection_order=[964], restricted=False)
+    j = parsed(proc)
+    if proc.returncode == 0 and j and j.get("decision") == "immediate-refire":
+        ok("K: >=1 dispatchable (selection_order=[964]) -> immediate-refire (#1004)")
+    else:
+        fail(f"K: dispatchable backlog should refire: out={proc.stdout!r} "
+             f"err={proc.stderr!r}")
+    # All existing immediate-refire fields must still be present on the
+    # dispatchable-gated refire shape (no regression).
+    missing = [k for k in ("scheduler", "prompt", "when", "croncreate",
+                           "dispatcher_actions", "authoritative_version")
+               if k not in (j or {})]
+    if not missing:
+        ok("K: dispatchable refire preserves all existing emitted fields")
+    else:
+        fail(f"K: dispatchable refire dropped fields {missing!r}: {j!r}")
+
+# An empty raw queue is still idle (selection_order is necessarily empty).
+with tempfile.TemporaryDirectory() as d:
+    proc = run_pipe(d, "[]", selection_order=[], restricted=False)
+    j = parsed(proc)
+    if proc.returncode == 0 and j and j.get("decision") == "idle":
+        ok("K: empty raw queue -> idle (selection_order empty)")
+    else:
+        fail(f"K: empty queue should be idle: out={proc.stdout!r}")
 
 sys.exit(FAIL)

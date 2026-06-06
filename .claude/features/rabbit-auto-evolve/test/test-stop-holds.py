@@ -256,11 +256,51 @@ def make_crontab_shim(dirpath, restricted):
     return shim
 
 
-def run_decide(d, queue_json, restricted=False):
+def make_plan_shim(dirpath, selection_order):
+    """A plan-batch.py stand-in emitting a canned `selection_order` so this
+    test drives schedule-decision's dispatchable-work gate (#1004) without
+    shelling `gh` through the real triage|plan pipe."""
+    shim = os.path.join(dirpath, "plan-batch-shim.py")
+    with open(shim, "w") as f:
+        f.write(textwrap.dedent(f"""\
+            #!{sys.executable}
+            import json, sys
+            sys.stdin.read()
+            sys.stdout.write(json.dumps({{"selection_order": {selection_order!r}}}))
+            sys.exit(0)
+            """))
+    os.chmod(shim, 0o755)
+    return shim
+
+
+def make_triage_shim(dirpath):
+    """A no-op triage-batch.py stand-in (the plan shim ignores its output)."""
+    shim = os.path.join(dirpath, "triage-batch-shim.py")
+    with open(shim, "w") as f:
+        f.write(textwrap.dedent(f"""\
+            #!{sys.executable}
+            import sys
+            sys.stdin.read()
+            sys.stdout.write("[]")
+            sys.exit(0)
+            """))
+    os.chmod(shim, 0o755)
+    return shim
+
+
+def run_decide(d, queue_json, restricted=False, selection_order=(1,)):
+    """Run schedule-decision with a non-empty DISPATCHABLE plan by default
+    (Inv 33 / #1004 now keys the refire off the fetch|triage|plan pipe's
+    selection_order, not the raw open count), so the refire-prompt assertions
+    below still exercise the immediate-refire path."""
     fetch = make_fetch_shim(d, queue_json)
     cron = make_crontab_shim(d, restricted)
+    triage = make_triage_shim(d)
+    plan = make_plan_shim(d, list(selection_order))
     env = os.environ.copy()
     env["RABBIT_AUTO_EVOLVE_FETCH_QUEUE_CMD"] = fetch
+    env["RABBIT_AUTO_EVOLVE_TRIAGE_BATCH_CMD"] = triage
+    env["RABBIT_AUTO_EVOLVE_PLAN_BATCH_CMD"] = plan
     env["RABBIT_CRONTAB_CMD"] = cron
     env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = os.path.join(d, ".rabbit")
     return subprocess.run(

@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.86.0
+version: 0.86.1
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -432,15 +432,18 @@ silently dropped.
 
 Phase 12 (`schedule`) is NO LONGER a pure no-op. It runs
 `python3 .claude/features/rabbit-auto-evolve/scripts/schedule-decision.py`,
-which counts open work (authoritatively, via `fetch-queue.py`), reads the
+which counts DISPATCHABLE work (authoritatively, via the same
+`fetch-queue.py | triage-batch.py | plan-batch.py` pipe phase 6 dispatches
+from — the plan's `selection_order`, not the raw open count, so blocked/gated
+backlogs go idle instead of spinning the loop; #1004), reads the
 scheduler mechanism from `detect-scheduler.py`, logs the decision via
 `tick-log.py`, and emits JSON:
 
 - `{"decision":"immediate-refire","scheduler":"crontab"|"croncreate",
   "prompt":"/rabbit-auto-evolve tick #refire","when":"~1min",
   "croncreate":{...},"dispatcher_actions":{...},
-  "authoritative_version":"<vX.Y.Z|null>"}` when the queue is non-empty
-  (Inv 33 / D1). The one-shot fires the internal
+  "authoritative_version":"<vX.Y.Z|null>"}` when the dispatchable plan is
+  non-empty (Inv 33 / D1). The one-shot fires the internal
   `tick`, NEVER `start` (Inv 41) — a halting tick must never cancel a pending
   stop. The `#refire` MARKER on the prompt makes the refire one-shot
   distinguishable from the recurring heartbeat (bare `/rabbit-auto-evolve

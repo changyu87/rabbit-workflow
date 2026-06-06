@@ -6,14 +6,25 @@ Usage:
 
 Per rabbit-auto-evolve spec.md Inv 33 (D1, issue #521 + #509), at the END of
 a tick (and equivalently at a heartbeat) the loop decides whether to schedule
-the next tick based on open work:
+the next tick based on DISPATCHABLE work:
 
-  - queue NON-EMPTY -> schedule the next tick NEAR-IMMEDIATELY (~1 min) in a
-    FRESH Claude context as a one-shot, then the dispatcher ends the turn.
-  - queue EMPTY     -> schedule nothing; rely on the recurring heartbeat.
+  - dispatchable plan NON-EMPTY -> schedule the next tick NEAR-IMMEDIATELY
+    (~1 min) in a FRESH Claude context as a one-shot, then the dispatcher ends
+    the turn.
+  - NO dispatchable work        -> schedule nothing; rely on the recurring
+    heartbeat.
 
-Open-work presence is determined AUTHORITATIVELY by invoking the EXISTING
-fetch-queue.py and counting items (this script does NOT re-derive the queue).
+Dispatchable-work presence is determined AUTHORITATIVELY by REUSING the EXISTING
+`fetch-queue.py | triage-batch.py | plan-batch.py` pipe (the same pipe phase 6
+dispatches from) and counting the plan's `selection_order` — NOT the raw open
+count (issue #1004). The plan's selection_order already EXCLUDES blocked/deferred
+items (Inv 62), decomposition parents (Inv 58), and non-work verdicts, so this
+script does NOT re-derive the queue or re-implement that filtering: the refire
+count matches exactly what phase 6 can dispatch. Counting the raw open queue
+(the prior behaviour) spun the loop into a ~1-minute no-op refire storm whenever
+the only remaining open issues were human-gated/blocked (a non-empty open queue
+but an EMPTY dispatchable plan); the recurring heartbeat already backstops the
+eventual unblock, so an all-gated backlog now goes idle.
 The scheduler mechanism (crontab vs croncreate) is read from
 detect-scheduler.py. The decision is logged via tick-log.py.
 
@@ -66,13 +77,18 @@ Emitted JSON:
 Resolution:
   - fetch-queue.py via RABBIT_AUTO_EVOLVE_FETCH_QUEUE_CMD when set (tests
     inject a shim), else the sibling scripts/fetch-queue.py.
+  - triage-batch.py via RABBIT_AUTO_EVOLVE_TRIAGE_BATCH_CMD when set, else the
+    sibling scripts/triage-batch.py.
+  - plan-batch.py via RABBIT_AUTO_EVOLVE_PLAN_BATCH_CMD when set, else the
+    sibling scripts/plan-batch.py (run with --max-parallel 4, matching the tick
+    phase-walk).
   - detect-scheduler.py is the sibling script.
   - state dir (for the log) via RABBIT_AUTO_EVOLVE_STATE_DIR.
 
 Exit code is always 0 (the verdict is carried in `decision`); non-zero only
-if fetch-queue.py itself errors.
+if a fetch|triage|plan pipe stage itself errors.
 
-Version: 1.4.0
+Version: 1.5.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -251,28 +267,69 @@ def _script_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 
-def _fetch_queue_cmd():
-    override = os.environ.get("RABBIT_AUTO_EVOLVE_FETCH_QUEUE_CMD")
+def _pipe_cmd(env_var, default_script):
+    """Resolve one stage of the fetch|triage|plan pipe: the env override
+    (a test shim) if set, else the sibling script."""
+    override = os.environ.get(env_var)
     if override:
         return [sys.executable, override]
-    return [sys.executable, os.path.join(_script_dir(), "fetch-queue.py")]
+    return [sys.executable, os.path.join(_script_dir(), default_script)]
 
 
-def _open_work_count():
-    """Invoke fetch-queue.py and return the number of open items. Raises
-    RuntimeError on a fetch failure."""
+def _fetch_queue_cmd():
+    return _pipe_cmd("RABBIT_AUTO_EVOLVE_FETCH_QUEUE_CMD", "fetch-queue.py")
+
+
+def _triage_batch_cmd():
+    return _pipe_cmd("RABBIT_AUTO_EVOLVE_TRIAGE_BATCH_CMD", "triage-batch.py")
+
+
+def _plan_batch_cmd():
+    # plan-batch.py shares run-tick-phases.py's --max-parallel 4 default so the
+    # dispatchable count matches the plan phase 6 actually walks.
+    cmd = _pipe_cmd("RABBIT_AUTO_EVOLVE_PLAN_BATCH_CMD", "plan-batch.py")
+    if not os.environ.get("RABBIT_AUTO_EVOLVE_PLAN_BATCH_CMD"):
+        cmd += ["--max-parallel", "4"]
+    return cmd
+
+
+def _run_stage(cmd, stdin_text, label):
+    """Run one pipe stage, returning its stdout. Raises RuntimeError on a
+    non-zero exit so the tick reports a pipe failure rather than silently
+    treating it as no work."""
     proc = subprocess.run(
-        _fetch_queue_cmd(), capture_output=True, text=True,
+        cmd, input=stdin_text, capture_output=True, text=True,
     )
     if proc.returncode != 0:
         raise RuntimeError(
-            f"fetch-queue failed (exit {proc.returncode}): {proc.stderr}"
+            f"{label} failed (exit {proc.returncode}): {proc.stderr}"
         )
+    return proc.stdout
+
+
+def _dispatchable_count():
+    """Inv 33 (#1004): the count of DISPATCHABLE work — what phase 6 can
+    actually dispatch THIS tick — NOT the raw open-issue count.
+
+    Reuses the EXISTING `fetch-queue.py | triage-batch.py | plan-batch.py` pipe
+    (the same pipe phase 6 dispatches from) and counts the plan's
+    `selection_order`, so the refire decision excludes blocked/deferred items
+    (Inv 62), decomposition parents (Inv 58), and non-work verdicts WITHOUT
+    re-implementing any of that filtering here. An all-blocked / all-gated open
+    backlog therefore has a non-empty raw queue but an EMPTY selection_order and
+    goes idle, relying on the recurring heartbeat instead of spinning the loop
+    into a ~1-minute no-op refire storm.
+
+    Raises RuntimeError on any pipe-stage failure."""
+    fetched = _run_stage(_fetch_queue_cmd(), None, "fetch-queue")
+    triaged = _run_stage(_triage_batch_cmd(), fetched, "triage-batch")
+    planned = _run_stage(_plan_batch_cmd(), triaged, "plan-batch")
     try:
-        items = json.loads(proc.stdout)
+        plan = json.loads(planned)
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"fetch-queue emitted invalid JSON: {e}") from e
-    return len(items) if isinstance(items, list) else 0
+        raise RuntimeError(f"plan-batch emitted invalid JSON: {e}") from e
+    selection = plan.get("selection_order") if isinstance(plan, dict) else None
+    return len(selection) if isinstance(selection, list) else 0
 
 
 def _scheduler():
@@ -361,7 +418,7 @@ def resolve_authoritative_version():
 
 
 def decide():
-    count = _open_work_count()
+    count = _dispatchable_count()
     authoritative_version = resolve_authoritative_version()
     if count > 0:
         scheduler = _scheduler()
@@ -394,7 +451,8 @@ def decide():
             # rather than from accumulated session context.
             "authoritative_version": authoritative_version,
         }
-        _log("immediate-refire", f"open work={count}, scheduler={scheduler}")
+        _log("immediate-refire",
+             f"dispatchable work={count}, scheduler={scheduler}")
         return result
     result = {
         "decision": "idle",
@@ -403,7 +461,7 @@ def decide():
         # the fresh authoritative version.
         "authoritative_version": authoritative_version,
     }
-    _log("idle: no work", "queue empty")
+    _log("idle: no dispatchable work", "selection_order empty")
     return result
 
 
