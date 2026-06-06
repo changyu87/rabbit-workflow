@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.80.0
+version: 0.81.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -78,9 +78,10 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/triage-issue.py` | CLI | Per-issue classifier; reads issue metadata and the named feature's spec front matter; emits a triage JSON object with `decision`, `reason_code`, `rationale`, `feature`, `contract_touch`, `blocked_by`, `duplicate_of` |
 | `scripts/resolve-duplicate.py` | CLI | Records the GitHub-native duplicate resolution (Inv 60): `resolve <dup> <canonical>` closes the duplicate with `state_reason=duplicate` and cross-links the canonical issue; `status <n>` reports whether an issue is recognized as a duplicate (native state authoritative; legacy `duplicate` label honored on read as a deprecating mirror) |
 | `scripts/plan-batch.py` | CLI | Reads a work-set JSON from stdin; partitions contract-touch issues into `barrier_first`; greedy graph-colors the rest by feature-conflict into `groups`; applies `max_parallel` cap |
-| `scripts/safety-check.py` | CLI | Validates five bottom-line invariants (branch is `dev`, PR base is `dev`, head branch matches `^feat/.+`, tag does not already exist, no uncommitted modifications to tracked files); exits non-zero on any violation |
-| `scripts/merge-prs.py` | CLI | Calls `safety-check.py --phase merge` then `gh pr merge --squash` (direct merge, NOT `--auto`) for each PR; refuses any PR whose base is not `dev` |
-| `scripts/release-bump.py` | CLI | Reads merged PR priority label and diff scope; applies patch/minor/major semver bump per design table; creates annotated git tag and `gh release` targeting `dev` |
+| `scripts/integration_target.py` | CLI + lib | Resolves the loop's integration target branch (Inv 61): default `dev`, overridable to `main` via `RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET`; exposes `resolve_target`, `accepted_targets` ({dev, main}), `is_default_branch`; the sibling phase scripts import it |
+| `scripts/safety-check.py` | CLI | Validates five bottom-line invariants (branch is the integration target, PR base is an accepted integration target, head branch matches `^feat/.+`, tag does not already exist, no uncommitted modifications to tracked files); exits non-zero on any violation |
+| `scripts/merge-prs.py` | CLI | Calls `safety-check.py --phase merge` then `gh pr merge --squash` (direct merge, NOT `--auto`) for each PR; accepts a base in the `{dev, main}` coexistence set and refuses any other; runs the manual close-after-merge only while the target is not the default branch |
+| `scripts/release-bump.py` | CLI | Reads merged PR priority label and diff scope; applies patch/minor/major semver bump per design table; creates annotated git tag and `gh release` targeting the resolved integration target |
 | `scripts/cleanup-branches.py` | CLI | Derives head branch from each merged PR; calls `safety-check.py --phase cleanup`; deletes branch locally and on origin; refuses to delete anything not matching `^feat/.+` |
 | `scripts/classify-merge-restart.py` | CLI | Reads merged PR file list; classifies into `no-op`, `refresh`, or `restart` based on which path patterns appear; emits a single string on stdout |
 | `scripts/update-state.py` | CLI | Reads JSON from stdin; validates against `schemas/auto-evolve-state.schema.json`; atomically writes `.rabbit/auto-evolve-state.json` via temp+rename |
@@ -585,8 +586,8 @@ summary is restated here.
 
    | # | Invariant | Enforced in phases |
    |---|---|---|
-   | 1 | Current git branch is `dev` (never `main`) | all |
-   | 2 | PR base branch (via `gh pr view <#> --json baseRefName`) is `dev` | merge, release |
+   | 1 | Current git branch is the resolved integration target (`dev` OR `main` during the coexistence window; see Inv 61) | all |
+   | 2 | PR base branch (via `gh pr view <#> --json baseRefName`) is an accepted integration target (`dev` OR `main` during coexistence; see Inv 61) | merge, release |
    | 3 | PR head branch (via `gh pr view <#> --json headRefName`) matches `^feat/.+` AND is not `dev`, `main`, or `release/...` | cleanup |
    | 4 | The tag passed via `--next-tag vX.Y.Z` does not already exist (`git rev-parse <tag>^{}` exits non-zero) | release |
    | 5 | No uncommitted modifications to tracked files — both `git diff --quiet` (unstaged) and `git diff --cached --quiet` (staged) exit 0. Untracked files (`??`) are intentionally ignored: they cannot affect a merge, and counting them deadlocked the loop whenever a new runtime artifact appeared. | all |
@@ -636,8 +637,9 @@ summary is restated here.
    PR:
    1. Verify the PR base via
       `gh pr view <#> --json baseRefName -q .baseRefName`.
-      If base ≠ `dev` → record
-      `{pr: N, status: "skipped", reason: "base-not-dev"}` and continue.
+      Accept any base in the `{dev, main}` coexistence set (Inv 61); if the
+      base is NEITHER → record
+      `{pr: N, status: "skipped", reason: "base-not-accepted"}` and continue.
    2. Invoke `safety-check.py <pr#> --phase merge`. If non-zero exit →
       record `{pr: N, status: "skipped", reason: "safety-check-failed"}`.
    3. Otherwise call `gh pr merge <#> --squash` — a DIRECT squash merge,
@@ -661,17 +663,21 @@ summary is restated here.
       reject the close — so BEFORE the close calls, `merge-prs.py` runs
       `git fetch origin <sha>` (falling back to `git fetch origin dev`) to make
       it locally resolvable, NEVER `git merge` (permission-denied in the loop).
-      The fetch is best-effort and never fails the merge. This explicit step is
-      necessary because GitHub's native `Fixes/Closes/Resolves` auto-close
-      fires ONLY on a merge to the default branch (`main`); auto-evolve PRs
-      target `dev`, so referenced issues would otherwise stay open.
-      `item-status.py close` is idempotent against
-      already-closed issues, so it is called unconditionally. Closed issue
-      numbers go in the result row under `closed_issues` (sorted); close
-      failures go under `close_failed` with a stderr warning and NEVER fail
-      the merge (`status` stays `"merged"`). `item-status.py` is resolved via
-      the `RABBIT_ISSUE_SCRIPT_DIR` env var when set, else relative to the
-      repo's `.claude/features/rabbit-issue/scripts/`.
+      The fetch is best-effort and never fails the merge. This manual-close
+      step is CONDITIONAL on the PR's base — the branch it merged INTO — NOT
+      being the default branch (Inv 61): GitHub's native `Fixes/Closes/Resolves`
+      auto-close fires ONLY on a merge to the default branch (`main`), so a
+      `dev`-base merge (a non-default branch) runs this explicit close while a
+      `main`-base merge skips it because the native close fires. The merge SHA
+      is still recorded as `last_merged_sha` under either base. `item-status.py close` is
+      idempotent against already-closed issues, so it is called
+      unconditionally on the dev-target path. Closed issue numbers go in the
+      result row under `closed_issues` (sorted); close failures go under
+      `close_failed` with a stderr warning and NEVER fail the merge (`status`
+      stays `"merged"`); when the step is skipped both lists are empty.
+      `item-status.py` is resolved via the `RABBIT_ISSUE_SCRIPT_DIR` env var
+      when set, else relative to the repo's
+      `.claude/features/rabbit-issue/scripts/`.
 
    Emits the result array on stdout. Exit 0 always except argparse /
    unexpected error.
@@ -699,26 +705,29 @@ summary is restated here.
 
    ### Refusal invariant
 
-   `merge-prs.py` NEVER calls `gh pr merge` on a non-`dev`-base PR;
-   `cleanup-branches.py` NEVER deletes a branch not matching `^feat/.+`.
-   Defense-in-depth above `safety-check.py` — gating destructive actions even
-   if `safety-check.py` were skipped.
+   `merge-prs.py` NEVER calls `gh pr merge` on a PR whose base is outside the
+   `{dev, main}` coexistence set; `cleanup-branches.py` NEVER deletes a branch
+   not matching `^feat/.+`. Defense-in-depth above `safety-check.py` — gating
+   destructive actions even if `safety-check.py` were skipped.
 
    ### Tests
 
-   `test/test-merge-prs.py`: a `--help` smoke; skip-on-non-dev-base
-   (`baseRefName=main` → `skipped` / `base-not-dev`; `gh pr merge` NEVER
-   called); skip-on-safety-fail (safety-check non-zero → `skipped` /
-   `safety-check-failed`; `gh pr merge` NEVER called); happy path → `merged`,
-   exit 0; the no-`--auto` regression (the recorded `gh pr merge` MUST NOT
-   contain `--auto`, still `--squash`); close-after-merge (a body referencing
-   `Fixes`/`Closes`/`Resolves` (case-insensitive) → `item-status.py` invoked
-   once per distinct issue with `close <N> --reason completed --commit-sha
-   <merge-sha>`, the row carries `closed_issues`; no refs → not invoked; a close
-   failure leaves `status: "merged"` with the issue under `close_failed`;
-   skipped PRs NEVER invoke it); fetch-before-close (a body with refs →
-   `git fetch origin <merge-sha>` runs BEFORE the first close so the SHA
-   resolves locally and the close succeeds, NEVER `git merge`).
+   `test/test-merge-prs.py`: a `--help` smoke; skip-on-base-not-accepted (a
+   base that is neither `dev` nor `main`, e.g. `release/x` → `skipped` /
+   `base-not-accepted`; `gh pr merge` NEVER called); coexistence (target=`dev`:
+   a `dev`-based PR merges AND the manual close runs; target=`main`: a
+   `main`-based PR merges AND the manual close is skipped); skip-on-safety-fail
+   (safety-check non-zero → `skipped` / `safety-check-failed`; `gh pr merge`
+   NEVER called); happy path → `merged`, exit 0; the no-`--auto` regression
+   (the recorded `gh pr merge` MUST NOT contain `--auto`, still `--squash`);
+   close-after-merge (a body referencing `Fixes`/`Closes`/`Resolves`
+   (case-insensitive) → `item-status.py` invoked once per distinct issue with
+   `close <N> --reason completed --commit-sha <merge-sha>`, the row carries
+   `closed_issues`; no refs → not invoked; a close failure leaves `status:
+   "merged"` with the issue under `close_failed`; skipped PRs NEVER invoke it);
+   fetch-before-close (a body with refs → `git fetch origin <merge-sha>` runs
+   BEFORE the first close so the SHA resolves locally and the close succeeds,
+   NEVER `git merge`).
 
    `test/test-cleanup-branches.py`: a `--help` smoke; skip-on-non-feat-branch
    (`headRefName=main` → `skipped` / `non-feat-branch`, stderr warning, no
@@ -789,7 +798,9 @@ summary is restated here.
       and stop (no git mutation, exit 0).
    5. `git tag -a <next_tag> -m "<auto-evolve> #<pr> <title>"`.
    6. `git push origin <next_tag>`.
-   7. `gh release create <next_tag> --notes-from-tag --target dev`.
+   7. `gh release create <next_tag> --notes-from-tag --target <integration
+      target>` — the resolved integration target (Inv 61: default `dev`,
+      `main` under the coexistence override).
 
    Output JSON (single object on stdout):
 
@@ -3585,6 +3596,58 @@ summary is restated here.
     the native PATCH and a `gh issue view` read) and by
     `test/test-triage-rules.py` (rule 3 still emits
     `close-not-planned`/`duplicate` AND echoes `duplicate_of`).
+
+61. **The loop integrates merged work into a single resolved integration
+    target, with a `dev`<->`main` coexistence window.** The loop's merge,
+    safety, and release phase scripts integrate into ONE resolved "integration
+    target" branch rather than a hard-coded `dev`. The target is resolved by
+    `scripts/integration_target.py`: the `RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET`
+    env var when set, else the default `dev`. The module exposes
+    `resolve_target()`, `accepted_targets()` (the coexistence set `{dev,
+    main}`), and `is_default_branch(t)` (true iff `t` is the default branch
+    `main`); the sibling phase scripts import it relative to their own file (not
+    via `RABBIT_AUTO_EVOLVE_SCRIPT_DIR`, which tests repoint at a shim dir). An
+    override outside the accepted set is an error.
+
+    During the coexistence window BOTH branches are honored so the running loop
+    keeps operating before the admin cutover (the `dev`→`main` merge plus branch
+    protection) flips the default. Concretely:
+
+    1. `merge-prs.py` ACCEPTS a PR whose base is EITHER `dev` or `main`
+       (`accepted_targets()`); a base that is neither is refused with
+       `reason: "base-not-accepted"` and `gh pr merge` is never invoked
+       (defense-in-depth above `safety-check.py`).
+    2. `safety-check.py` Inv 1 asserts the current branch IS the resolved
+       target; Inv 2 accepts any base in the coexistence set. The
+       defense-in-depth intent is preserved — a branch/base outside the
+       accepted set is refused.
+    3. `release-bump.py` cuts the `gh release` against the resolved integration
+       target (`--target <target>`) rather than a hard-coded `dev`.
+    4. The manual close-after-merge in `merge-prs.py` (Inv 6 step 4) runs ONLY
+       when the PR's base — the branch it merged INTO — is NOT the default
+       branch. GitHub's native `Fixes/Closes/Resolves` keyword auto-close fires
+       on a merge to the default branch (`main`) but not on a non-default
+       branch (`dev`); keying the decision on the merged-into base is the
+       precise condition (it coincides with the resolved target in the normal
+       flow, where work targets the resolved branch). So the loop performs the
+       explicit close for a `dev`-base merge and skips it for a `main`-base
+       merge because the native close fires. The merge SHA is still recorded as
+       `last_merged_sha` under either base.
+
+    Deprecation criterion: when `main` is the sole integration target after the
+    cutover, drop the coexistence accepted-set and the
+    `RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET` override (the resolved target
+    becomes a constant `main`) and remove the manual close-after-merge path
+    (native keyword auto-close is then the only close path).
+
+    Enforced by `test/test-integration-target.py` (default resolves to `dev`;
+    env override resolves to `main`; an unrecognized override is rejected; the
+    accepted set is exactly `{dev, main}`; `is_default_branch` recognizes
+    `main` not `dev`; CLI surface), `test/test-merge-prs.py` and
+    `test/test-safety-check.py` (the coexistence acceptance + conditional
+    close + refusal cases above), `test/test-release-bump.py` (the
+    `gh release create --target` follows the resolved target), and
+    `test/test-spec-integration-target-invariant.py` (this text present).
 
 ## Known gaps
 

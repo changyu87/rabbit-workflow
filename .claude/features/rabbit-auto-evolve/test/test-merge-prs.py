@@ -139,12 +139,17 @@ def _make_env(tmpdir, base_ref="dev", head_ref="feat/x",
               merge_exit=0, merge_stderr="",
               safety_exit=0, safety_stderr="",
               pr_body="", pr_title="", merge_sha="abc1234",
-              item_status_exit=0, item_status_stderr=""):
+              item_status_exit=0, item_status_stderr="",
+              integration_target=None):
     """Build a sandbox: a bin/ dir on PATH with the gh shim, and a
     script-dir holding the real merge-prs.py copy (via env override) plus a
     safety-check.py shim, plus an item-status.py shim in a separate
     rabbit-issue scripts dir (via env override). Return
-    (cwd=tmpdir, env, call_log_path, item_status_log_path)."""
+    (cwd=tmpdir, env, call_log_path, item_status_log_path).
+
+    `integration_target` (Inv 61): when None the env var is cleared so the
+    script resolves the coexistence default (`dev`); set it to 'dev'/'main'
+    to drive the resolved integration target."""
     bin_dir = os.path.join(tmpdir, "bin")
     os.makedirs(bin_dir)
     script_dir = os.path.join(tmpdir, "scripts")
@@ -170,6 +175,9 @@ def _make_env(tmpdir, base_ref="dev", head_ref="feat/x",
     env["PATH"] = bin_dir + os.pathsep + env.get("PATH", "")
     env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = script_dir
     env["RABBIT_ISSUE_SCRIPT_DIR"] = issue_dir
+    env.pop("RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET", None)
+    if integration_target is not None:
+        env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = integration_target
     return tmpdir, env, call_log, item_status_log
 
 
@@ -208,12 +216,14 @@ else:
 
 
 # ---------------------------------------------------------------------------
-# Skip-on-non-dev-base: gh shim returns baseRefName=main.
-# Expected: status=skipped, reason=base-not-dev. `gh pr merge` MUST NOT
+# Skip-on-base-not-accepted (Inv 61): gh shim returns a base that is NEITHER
+# dev NOR main (e.g. release/x). During the dev<->main coexistence window
+# both dev and main are accepted; any other base is refused.
+# Expected: status=skipped, reason=base-not-accepted. `gh pr merge` MUST NOT
 # appear in the call log (refusal invariant).
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main")
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="release/x")
     proc = _run(cwd, env, "42")
     if proc.returncode != 0:
         fail(f"skip-base: expected exit 0, got {proc.returncode}; "
@@ -232,15 +242,95 @@ with tempfile.TemporaryDirectory() as td:
                 fail(f"skip-base: pr field {r.get('pr')!r} != 42")
             if r.get("status") != "skipped":
                 fail(f"skip-base: status {r.get('status')!r} != 'skipped'")
-            if r.get("reason") != "base-not-dev":
-                fail(f"skip-base: reason {r.get('reason')!r} != 'base-not-dev'")
+            if r.get("reason") != "base-not-accepted":
+                fail(f"skip-base: reason {r.get('reason')!r} != "
+                     f"'base-not-accepted'")
             else:
-                ok("skip-base: returns skipped/base-not-dev")
+                ok("skip-base: returns skipped/base-not-accepted")
     calls = _gh_calls(call_log)
     if any("pr merge" in c for c in calls):
         fail(f"skip-base: gh pr merge was called; calls={calls!r}")
     else:
         ok("skip-base: gh pr merge was NOT called (refusal invariant)")
+
+
+# ---------------------------------------------------------------------------
+# Coexistence (Inv 61) — target=dev (default): a dev-based PR is ACCEPTED and
+# the manual close-after-merge STILL runs (target dev is not the default
+# branch, so GitHub's native auto-close does not fire).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        pr_body="Closes #501\n", merge_sha="dev9999",
+        integration_target="dev",
+    )
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"coexist-dev: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"coexist-dev: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        r = results[0]
+        if r.get("status") != "merged":
+            fail(f"coexist-dev: status {r.get('status')!r} != 'merged'")
+        elif r.get("closed_issues", []) != [501]:
+            fail(f"coexist-dev: closed_issues {r.get('closed_issues')!r} "
+                 f"!= [501] (manual close MUST run while target=dev)")
+        else:
+            ok("coexist-dev: dev base merged AND manual close ran")
+    if not _item_status_calls(item_status_log):
+        fail("coexist-dev: item-status.py NOT invoked (manual close must run "
+             "while target=dev)")
+    else:
+        ok("coexist-dev: item-status.py invoked (manual close)")
+
+
+# ---------------------------------------------------------------------------
+# Coexistence (Inv 61) — target=main: a main-based PR is ACCEPTED and the
+# manual close-after-merge is SKIPPED (main IS the default branch, so
+# GitHub's native keyword auto-close fires; the manual close is redundant).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="main", safety_exit=0, merge_exit=0,
+        pr_body="Closes #502\n", merge_sha="main9999",
+        integration_target="main",
+    )
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"coexist-main: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"coexist-main: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        r = results[0]
+        if r.get("status") != "merged":
+            fail(f"coexist-main: status {r.get('status')!r} != 'merged' "
+                 f"(main base must be accepted under coexistence)")
+        elif r.get("closed_issues", []) != []:
+            fail(f"coexist-main: closed_issues {r.get('closed_issues')!r} "
+                 f"!= [] (manual close MUST be skipped when target=main; "
+                 f"native auto-close fires)")
+        else:
+            ok("coexist-main: main base merged AND manual close skipped")
+    calls = _gh_calls(call_log)
+    if not any("pr merge" in c for c in calls):
+        fail(f"coexist-main: gh pr merge was NOT called; calls={calls!r}")
+    else:
+        ok("coexist-main: gh pr merge was called for the main-based PR")
+    if _item_status_calls(item_status_log):
+        fail("coexist-main: item-status.py invoked (manual close must be "
+             "skipped when target=main; GitHub closes natively)")
+    else:
+        ok("coexist-main: item-status.py NOT invoked (native auto-close)")
 
 
 # ---------------------------------------------------------------------------
@@ -551,11 +641,12 @@ with tempfile.TemporaryDirectory() as td:
 
 # ---------------------------------------------------------------------------
 # Refusal invariant for close: item-status.py is NEVER invoked when the
-# merge itself did not succeed (e.g. base != dev).
+# merge itself did not succeed (e.g. a base outside the accepted {dev, main}
+# coexistence set).
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="main", pr_body="Fixes #5\n",
+        td, base_ref="release/x", pr_body="Fixes #5\n",
     )
     _run(cwd, env, "42")
     if _item_status_calls(item_status_log):
@@ -645,7 +736,7 @@ with tempfile.TemporaryDirectory() as td:
 
 # --- (C) skipped/failed PRs are NOT recorded -------------------------------
 with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main")
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="release/x")
     state_dir = os.path.join(td, "state")
     os.makedirs(state_dir)
     _seed_state(state_dir, pending=[])
@@ -729,10 +820,11 @@ with tempfile.TemporaryDirectory() as td:
 
 
 # --- (G) no merged PR → last_merged_sha is left untouched ------------------
-# base != dev → the only PR is skipped; the seeded last_merged_sha must NOT
-# be overwritten (no merge happened, so there is no merge SHA to record).
+# base outside {dev, main} → the only PR is skipped; the seeded
+# last_merged_sha must NOT be overwritten (no merge happened, so there is no
+# merge SHA to record).
 with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main")
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="release/x")
     state_dir = os.path.join(td, "state")
     os.makedirs(state_dir)
     _seed_state(state_dir, pending=[])

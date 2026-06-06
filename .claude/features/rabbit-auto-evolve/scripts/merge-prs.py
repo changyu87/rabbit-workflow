@@ -6,11 +6,13 @@ Usage:
 
 Where <pr-list> is a comma-separated list of PR numbers.
 
-Per rabbit-auto-evolve spec.md Inv 6, for each PR this script:
+Per rabbit-auto-evolve spec.md Inv 6 / Inv 61, for each PR this script:
   1. Verifies the PR base via `gh pr view <#> --json baseRefName -q .baseRefName`.
-     If base != 'dev' it records {pr, status:"skipped", reason:"base-not-dev"}
-     and continues. The local `base != dev` check is defense-in-depth above
-     safety-check.py — `gh pr merge` is NEVER invoked when base is not dev.
+     During the dev<->main coexistence window (Inv 61), the accepted bases are
+     `{dev, main}` (integration_target.accepted_targets()). If base is NEITHER
+     it records {pr, status:"skipped", reason:"base-not-accepted"} and
+     continues. The local accepted-set check is defense-in-depth above
+     safety-check.py — `gh pr merge` is NEVER invoked on an out-of-set base.
   2. Invokes `safety-check.py <pr#> --phase merge`. If it exits non-zero,
      records {pr, status:"skipped", reason:"safety-check-failed"}.
   3. Otherwise calls `gh pr merge <#> --squash` (a direct squash merge — NOT
@@ -33,11 +35,16 @@ Per rabbit-auto-evolve spec.md Inv 6, for each PR this script:
      item-status.py for a `completed` closure (issue #423 Part C): a
      completed closure must point at the real merge commit that landed the
      work. GitHub's native auto-close only fires for default-branch (`main`)
-     merges; auto-evolve PRs always target `dev`, so without this step
-     referenced issues would stay open indefinitely. Successfully-closed
-     issue numbers are recorded under `closed_issues`; issues whose close
-     command failed are recorded under `close_failed` and a warning is
-     written to stderr — a close failure never fails the merge.
+     merges; while the integration target is `dev` (a non-default branch),
+     without this step referenced issues would stay open indefinitely.
+     Successfully-closed issue numbers are recorded under `closed_issues`;
+     issues whose close command failed are recorded under `close_failed` and a
+     warning is written to stderr — a close failure never fails the merge.
+     Inv 61: this whole manual-close step is CONDITIONAL on the PR's base —
+     the branch it merged INTO — NOT being the default branch (the native
+     close fires based on the merged-into branch). It runs for a `dev`-base
+     merge and is skipped for a `main`-base merge (native auto-close fires).
+     The merge SHA is still recorded under `last_merged_sha` in either case.
 
 The aggregated per-PR result list is emitted as JSON on stdout. The script
 exits 0 except on argparse / unexpected error — partial-outcome reporting
@@ -74,7 +81,7 @@ promotes the dispatch_journal entry of every issue a merged PR closed to
 `completed` (recording its PR number) — the journal's `completed` transition,
 no new write site.
 
-Version: 1.7.0
+Version: 1.8.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -86,6 +93,12 @@ import os
 import re
 import subprocess
 import sys
+
+# Resolved relative to THIS file's dir (the real scripts dir) — NOT via
+# RABBIT_AUTO_EVOLVE_SCRIPT_DIR, which tests repoint at a shim dir. The
+# integration-target abstraction (Inv 61) is a sibling library, never shimmed.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import integration_target  # noqa: E402
 
 # Matches GitHub's closing-keyword references: Fixes/Closes/Resolves #N
 # (and their common variants), case-insensitive. Captures the issue number.
@@ -347,8 +360,11 @@ def process(pr):
     if rc != 0:
         return {"pr": pr, "status": "skipped",
                 "reason": f"gh-view-failed: {stderr.strip()}"}
-    if base != "dev":
-        return {"pr": pr, "status": "skipped", "reason": "base-not-dev"}
+    # Inv 61 — accept any base in the coexistence set ({dev, main}); refuse a
+    # base that is neither. Defense-in-depth above safety-check.py: `gh pr
+    # merge` is NEVER invoked on an out-of-set base.
+    if base not in integration_target.accepted_targets():
+        return {"pr": pr, "status": "skipped", "reason": "base-not-accepted"}
 
     sc = _safety_check(pr)
     if sc.returncode != 0:
@@ -361,7 +377,21 @@ def process(pr):
                 "reason": f"gh-merge-failed: {merge.stderr.strip()}"}
 
     result = {"pr": pr, "status": "merged"}
-    _close_referenced_issues(pr, result)
+    # Inv 61 — the manual close-after-merge exists ONLY because a merge to a
+    # non-default branch (dev) does not trigger GitHub's native keyword
+    # auto-close. GitHub fires the native close based on the branch the PR
+    # actually merged INTO, so the decision keys on the PR base: when the base
+    # IS the default branch (main) the native close fires and the manual path
+    # is skipped as redundant; while the base is dev (a non-default branch) the
+    # loop runs the explicit close. The merge SHA is still recorded
+    # (last_merged_sha, issue #564) so the informational state field stays
+    # current under either base.
+    if integration_target.is_default_branch(base):
+        result["merge_sha"] = _pr_field(pr, "mergeCommit", ".mergeCommit.oid")
+        result["closed_issues"] = []
+        result["close_failed"] = []
+    else:
+        _close_referenced_issues(pr, result)
     return result
 
 
@@ -369,7 +399,8 @@ def main():
     parser = argparse.ArgumentParser(
         description="Squash-merge each PR in <pr-list> (comma-separated) "
                     "after delegating to safety-check.py. Refuses to merge "
-                    "PRs whose base is not 'dev'. Emits per-PR result JSON "
+                    "PRs whose base is outside the {dev, main} coexistence "
+                    "set (Inv 61). Emits per-PR result JSON "
                     "array on stdout; always exit 0 except argparse error."
     )
     parser.add_argument("pr_list",

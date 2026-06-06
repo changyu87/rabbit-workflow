@@ -16,6 +16,33 @@ authoritative).
 
 ## Version notes
 
+- **v0.81.0 — 2026-06-04** — Enhancement #962 (integration-target abstraction
+  with a `dev`<->`main` coexistence window; Part 2 of #957, the
+  rabbit-auto-evolve share). The loop's merge / safety / release phase scripts
+  now integrate into a single RESOLVED integration target rather than a
+  hard-coded `dev`. New `scripts/integration_target.py` resolves the target
+  (`RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET` env var when set, else default
+  `dev`) and exposes `resolve_target` / `accepted_targets` ({dev, main}) /
+  `is_default_branch`. During the coexistence window BOTH branches are honored
+  so the running loop keeps merging dev-based PRs before the admin cutover
+  (#964: dev→main merge + branch protection, which is BLOCKED on this issue).
+  Concretely: `merge-prs.py` accepts a base in `{dev, main}` and refuses any
+  other (`reason: base-not-accepted`); `safety-check.py` Inv 1/2 assert the
+  current branch / PR base is the integration target (dev OR main);
+  `release-bump.py` cuts the `gh release` against the resolved target. The
+  manual close-after-merge in `merge-prs.py` is now CONDITIONAL on the target
+  NOT being the default branch — kept while target=`dev` (GitHub's native
+  keyword auto-close does not fire on a non-default branch), skipped when
+  target=`main` (native close fires). Deprecation criterion: once `main` is
+  the sole integration target after the cutover, drop the coexistence
+  accepted-set / env override and remove the manual close-after-merge path.
+  New spec invariant Inv 61; new `test/test-integration-target.py` and
+  `test/test-spec-integration-target-invariant.py`; `test/test-merge-prs.py`,
+  `test/test-safety-check.py`, `test/test-release-bump.py` extended for the
+  coexistence cases. Out of scope (#964): the dev→main merge, branch
+  protection, and the `.claude/settings.local.json` worktree base ref. Four-way
+  version bump to 0.81.0; SKILL contract version 0.25.0.
+
 - **v0.80.0 — 2026-06-04** — Fix #943 (resolve detected duplicates via the
   GitHub-native duplicate state; R5 of #935, the last remaining child). The
   duplicate-DETECTION heuristic is UNCHANGED: `triage-issue.py` rule 3 still
