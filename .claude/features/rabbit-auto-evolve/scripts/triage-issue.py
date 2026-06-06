@@ -3,8 +3,15 @@
 
 Per rabbit-auto-evolve spec.md Inv 3, emits a JSON object on stdout with
 fields: issue, decision, reason_code, rationale, feature, features,
-cross_scope, cross_scope_features, contract_touch, priority, issue_type,
-created_at, blocked_by, planning_note. The `cross_scope` boolean (Inv 51 /
+cross_scope, cross_scope_features, decomposition_parent, contract_touch,
+priority, issue_type, created_at, blocked_by, planning_note. The
+`decomposition_parent` boolean (Inv 58 / issue #948) is True when this OPEN
+issue is a recorded decomposition parent — it HAS GitHub-native sub-issues
+(`gh api repos/{slug}/issues/<n>` -> `sub_issues_summary.total > 0`) OR is a
+key in the `decomposition_parents` state map (coexistence fallback); it tells
+plan-batch.py to EXCLUDE the item from the dispatchable plan, since a
+decomposition parent carries no own code change and converges via child rollup
+(Inv 53), never via dispatch. The `cross_scope` boolean (Inv 51 /
 issue #433) is True when the issue body implicates more than one feature
 EDIT-PATH (the label PLUS body `.claude/features/<name>/` PATH references span
 >= 2 dirs; bare feature-NAME mentions in prose are EXCLUDED per Inv 51(a.2) /
@@ -75,7 +82,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.11.0
+Version: 1.12.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -154,6 +161,83 @@ def _gh_issue_view(num, fields):
         capture_output=True, text=True, check=True,
     )
     return json.loads(proc.stdout)
+
+
+def _native_sub_issue_total(num):
+    """Return the issue's GitHub-native sub-issue rollup total, read from
+    `gh api repos/{slug}/issues/<num>` -> `sub_issues_summary.total` (issue
+    #948). A `total > 0` means the issue HAS children — it is a parent of
+    sub-issues, i.e. a decomposition parent. Reuses the same native-rollup
+    access pattern close-decomposed-parents.py added in #940. Any read failure
+    / unexpected payload returns 0 (treated as "no native sub-issues"), so a
+    transient gh error never mis-flags a non-parent as a parent."""
+    try:
+        proc = subprocess.run(
+            ["gh", "api", "repos/{}/issues/{}".format(repo_slug(), num)],
+            capture_output=True, text=True,
+        )
+    except OSError:
+        return 0
+    if proc.returncode != 0:
+        return 0
+    try:
+        payload = json.loads(proc.stdout or "")
+    except ValueError:
+        return 0
+    summary = payload.get("sub_issues_summary") or {}
+    try:
+        return int(summary.get("total", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _state_decomposition_parents():
+    """Return the set of parent-issue numbers recorded in the
+    `decomposition_parents` map of <state_dir>/auto-evolve-state.json (issue
+    #948), the COEXISTENCE fallback source. The state dir resolves via
+    RABBIT_AUTO_EVOLVE_STATE_DIR (the test seam shared with the sibling phase
+    scripts) else <cwd>/.rabbit. Best-effort: any read/parse failure or a
+    missing file yields an empty set (no fallback exclusions)."""
+    override = os.environ.get("RABBIT_AUTO_EVOLVE_STATE_DIR")
+    state_dir = override if override else os.path.join(os.getcwd(), ".rabbit")
+    path = os.path.join(state_dir, "auto-evolve-state.json")
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return set()
+    dp = data.get("decomposition_parents") if isinstance(data, dict) else None
+    if not isinstance(dp, dict):
+        return set()
+    parents = set()
+    for key in dp:
+        try:
+            parents.add(int(key))
+        except (TypeError, ValueError):
+            continue
+    return parents
+
+
+def _is_decomposition_parent(issue_num, state_parents):
+    """True iff the OPEN issue is a recorded decomposition parent (issue #948)
+    and so must be EXCLUDED from the dispatchable plan — it carries no own code
+    change and converges via child rollup (closed by close-decomposed-parents.py
+    once all children close, Inv 53), never via dispatch.
+
+    Detection aligns with #940's authoritative source:
+      - PRIMARY: the GitHub-native sub-issue rollup shows the issue HAS children
+        (`sub_issues_summary.total > 0`); OR
+      - COEXISTENCE fallback: the issue is a key in the `decomposition_parents`
+        state map (honored during the same coexistence window #940 established;
+        deprecation criterion: drop the map-based fallback once no open parent
+        carries a `decomposition_parents` entry).
+
+    A child sub-issue (it has a PARENT link but no children of its own, so
+    `total == 0` and it is not a map KEY) is NOT a decomposition parent and is
+    still dispatched normally."""
+    if issue_num in state_parents:
+        return True
+    return _native_sub_issue_total(issue_num) > 0
 
 
 def _gh_issue_list_closed_last_30():
@@ -796,6 +880,17 @@ def classify(issue_num, repo_root):
     # the planner.
     cross_scope = _cross_scope(feature_label, title, body)
 
+    # `decomposition_parent` (issue #948): True when this OPEN issue is a
+    # recorded decomposition parent — a parent of GitHub-native sub-issues
+    # (`sub_issues_summary.total > 0`) OR a key in the `decomposition_parents`
+    # state map (coexistence fallback). plan-batch.py EXCLUDES such an item from
+    # the dispatchable plan: a decomposition parent carries no own code change
+    # and converges via child rollup (Inv 53), never via dispatch. Computed once
+    # here so the per-issue gh-api/state read does not leak into the pure-JSON
+    # planner.
+    decomposition_parent = _is_decomposition_parent(
+        issue_num, _state_decomposition_parents())
+
     base = {
         "issue": issue_num,
         "feature": feature_label,
@@ -818,6 +913,15 @@ def classify(issue_num, repo_root):
         # bare-name mentions) so the dispatcher sees WHICH features it spans.
         "cross_scope": cross_scope,
         "cross_scope_features": features,
+        # `decomposition_parent` (issue #948) is True when this OPEN issue is a
+        # recorded decomposition parent — it HAS GitHub-native sub-issues
+        # (`sub_issues_summary.total > 0`) OR is a key in the
+        # `decomposition_parents` state map (coexistence fallback). Always
+        # present on EVERY decision; plan-batch.py filters a
+        # `decomposition_parent: true` item out of selection_order /
+        # dispatch_shapes / cross_scope_items so the parent is never dispatched
+        # to a TDD subagent (it converges via child rollup, Inv 53).
+        "decomposition_parent": decomposition_parent,
         "contract_touch": ctouch,
         # `priority` (issue #484) echoes the issue's priority:<level> label
         # value (None when absent). plan-batch.py folds it into the loop's

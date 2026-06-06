@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.77.0
+version: 0.78.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -650,6 +650,20 @@ phase 6:
   cross_scope work item's issue number is listed under the plan's
   `cross_scope_items` key so the dispatcher sees which items need the
   barrier/decomposition path rather than parallel single-feature dispatch.
+
+  **Decomposition-parent exclusion (Inv 58).** `triage-issue.py` flags an OPEN
+  issue that is a recorded decomposition PARENT — it HAS GitHub-native
+  sub-issues (`gh api repos/{slug}/issues/<n>` → `sub_issues_summary.total >
+  0`) OR is a key in the `decomposition_parents` state map (coexistence
+  fallback) — with `decomposition_parent: true`. `plan-batch.py` FILTERS such
+  an item out of the dispatchable plan entirely: it appears in neither
+  `selection_order`, `dispatch_shapes`, nor `cross_scope_items`. A
+  decomposition parent carries no own code change and converges via child
+  rollup (closed by `close-decomposed-parents.py` once all children close, Inv
+  53), never via dispatch — so the dispatcher never sees it and never hand-skips
+  it. The parent stays OPEN and tracked-by-decomposition (it does not violate
+  the convergence guarantee, Inv 25). A child sub-issue (it has a PARENT link
+  but no children of its own) is still selected and shaped normally.
 
   The struck shape ("sequential single-subagent with a persistent
   `.rabbit-scope-override session`") is NEVER used. Autonomous-evolve ALWAYS

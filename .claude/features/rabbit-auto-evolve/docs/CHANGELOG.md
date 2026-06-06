@@ -16,6 +16,30 @@ authoritative).
 
 ## Version notes
 
+- **v0.78.0 — 2026-06-04** — Fix #948 (exclude decomposition parents from the
+  dispatchable plan). A recorded decomposition parent (observed live: #935,
+  decomposed into #940–#945) kept reappearing at the bottom of `selection_order`
+  every tick, forcing the dispatcher to recognize and skip it by hand — a
+  convergence/safety hole, since a parent carries no own code change and
+  auto-closes via `close-decomposed-parents.py` once its children close (Inv
+  53). `scripts/triage-issue.py` now flags such an issue with
+  `decomposition_parent: true`, detected by the authoritative source: PRIMARY,
+  the GitHub-native sub-issue rollup shows it HAS children (`gh api
+  repos/{slug}/issues/<n>` -> `sub_issues_summary.total > 0`); COEXISTENCE
+  fallback, the issue is a key in the `decomposition_parents` state map (read
+  via the shared `RABBIT_AUTO_EVOLVE_STATE_DIR` state-access path; deprecation
+  criterion mirrors #940 — drop the map fallback once no open parent carries an
+  entry). The native-rollup read reuses the same `sub_issues_summary` access
+  #940 added to `close-decomposed-parents.py`. `scripts/plan-batch.py` then
+  FILTERS any `decomposition_parent: true` item out of the plan — it is neither
+  selected (`selection_order`) nor shaped (`dispatch_shapes`) nor listed in
+  `cross_scope_items` — while the parent stays OPEN and tracked-by-decomposition
+  (no Inv 25 convergence violation). A child sub-issue (parent link but no
+  children of its own, rollup total 0) and ordinary single-feature issues are
+  still selected and shaped. New spec Inv 58; new
+  `test/test-exclude-decomposition-parents.py` (full triage -> plan pipe) plus a
+  `test/test-plan-batch.py` scenario. Four-way version bump 0.77.0 -> 0.78.0.
+
 - **v0.77.0 — 2026-06-04** — Fix #940 (decomposed-parent closing now reads the
   GitHub-native sub-issue rollup; `decomposition_parents` becomes a deprecating
   mirror). `scripts/close-decomposed-parents.py` previously decided a parent was

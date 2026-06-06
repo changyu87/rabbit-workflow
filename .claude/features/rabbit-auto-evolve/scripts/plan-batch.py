@@ -105,13 +105,27 @@ processor) sets the .rabbit-auto-evolve-restart-needed marker for them and
 ends the tick cleanly. The loop NEVER stops to ask a human for a
 self-modifying migration.
 
+DECOMPOSITION-PARENT EXCLUSION (issue #948). A recorded decomposition parent
+— an OPEN issue triage flagged `decomposition_parent: true` (it HAS
+GitHub-native sub-issues, `sub_issues_summary.total > 0`, OR is a key in the
+`decomposition_parents` state map during coexistence) — is FILTERED OUT of the
+dispatchable plan: it is neither selected (`selection_order`) nor shaped
+(`dispatch_shapes`) nor listed in `cross_scope_items`. A decomposition parent
+carries no own code change; it converges via child rollup (closed by
+close-decomposed-parents.py once all children close, Inv 53), never via
+dispatch, so it must NEVER reach a TDD subagent. The parent stays OPEN and
+tracked-by-decomposition — an existing non-work tracked outcome, so the
+exclusion does not violate the convergence guarantee (Inv 25). A child
+sub-issue (it has a PARENT link but no children of its own, so
+`decomposition_parent` is false) is dispatched normally.
+
 The script is a pure JSON processor — no gh, no git, no filesystem
 mutations.
 
 Exit code: 0 on success; non-zero on malformed stdin JSON or invalid
 --max-parallel / --decompose-threshold value.
 
-Version: 1.6.0
+Version: 1.7.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -419,6 +433,21 @@ def plan(items, max_parallel, decompose_threshold):
     # pre-Inv-18 callers that pre-filter).
     items = [i for i in items
              if i.get("decision", "work") in ("work", "research")]
+
+    # Exclude recorded DECOMPOSITION PARENTS (issue #948). triage-issue.py
+    # flags an OPEN issue that is a parent of GitHub-native sub-issues
+    # (`sub_issues_summary.total > 0`) OR a key in the `decomposition_parents`
+    # state map (coexistence fallback) with `decomposition_parent: true`. Such
+    # an item carries no own code change and converges via child rollup (closed
+    # by close-decomposed-parents.py once all children close, Inv 53), never via
+    # dispatch — so it must NEVER reach a TDD subagent. Filtering it here drops
+    # it from selection_order, dispatch_shapes, and cross_scope_items in one
+    # place. This does NOT violate the convergence guarantee (Inv 25): the
+    # parent stays OPEN and tracked-by-decomposition, an existing non-work
+    # tracked outcome. A child (it has a PARENT link but no children of its own,
+    # so `decomposition_parent` is false) is NOT filtered and is dispatched
+    # normally.
+    items = [i for i in items if not i.get("decomposition_parent")]
 
     # Loop-computed priority score (issue #441). Blocking-fanout is a
     # cross-item signal, so it is computed once over the whole dispatchable
