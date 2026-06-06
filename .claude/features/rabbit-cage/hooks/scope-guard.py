@@ -119,8 +119,8 @@ def _plugin_spec_md_pattern():
 
     <feature> is a single path segment (matched as `[^/]+`). Inv 17 clause
     (a2): plugin-mode writes to a freshly scaffolded feature's spec artifacts
-    are permitted regardless of scope-marker state so rabbit-spec-create can
-    write initial spec bodies. Mirrors standalone Inv 5, including the flat
+    are permitted regardless of scope-marker state so the rabbit-spec-creator
+    subagent can write initial spec bodies. Mirrors standalone Inv 5, including the flat
     `docs/{spec,contract,CHANGELOG}.md` layout dual-read.
     """
     global _PLUGIN_SPEC_MD_PATTERN
