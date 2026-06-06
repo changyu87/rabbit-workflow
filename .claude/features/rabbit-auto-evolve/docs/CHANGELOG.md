@@ -16,6 +16,32 @@ authoritative).
 
 ## Version notes
 
+- **v0.86.0 — 2026-06-04** — Bug #991 (after #984 routed `len(features) > 1` to
+  the barrier lane, single-EDIT items whose body merely MENTIONED a second
+  feature as CONTEXT were over-shaped `multi-subagent-barrier` and the dispatcher
+  had to override; observed on #987/#988/#989, each editing ONE feature but
+  triaged `features=[ownfeature, rabbit-meta]` because their bodies referenced
+  `detect_mode`/`rabbit-meta` as context). The fix distinguishes EDIT-TARGET
+  features from merely-MENTIONED ones and drives shape routing off edit-targets.
+  `scripts/triage-issue.py` (1.14.0) now emits a new `edit_features` field — the
+  sorted distinct EDIT-TARGET set (the `feature:` label PLUS body
+  `.claude/features/<name>/` PATH references, EXCLUDING read-only `verify against
+  <path>` lines and bare-name prose mentions), reusing the existing
+  `_edit_target_features` edit-intent logic already proven for the `cross_scope`
+  signal. The full-mention `features` field is unchanged (kept for transparency).
+  `scripts/plan-batch.py` (1.10.0) Stage-2 shaping now keys the feature count off
+  `edit_features` (falling back to `features`, then 1), so an item that EDITS one
+  feature but MENTIONS another shapes `parallel-per-feature` instead of the
+  serial barrier lane; a genuine multi-EDIT item (`len(edit_features) > 1`) still
+  shapes `multi-subagent-barrier`/`decomposition`, preserving #984's intent, and
+  the `cross_scope: true` union is preserved (cross_scope items are never
+  `parallel-per-feature`). Conservative bias documented: when edit-intent is
+  ambiguous (the narrower signal is missing) routing widens back to the broader
+  `features` count rather than under-shaping, since under-shaping fails dispatch
+  while over-shaping merely runs slower. Inv 26 / Inv 51 routing prose extended
+  to count edit-targets. Enforced by `test/test-cross-scope.py`,
+  `test/test-dispatch-shape.py`, and `test/test-plan-batch.py`. Four-way lockstep
+  bump to 0.86.0 (feature.json + docs/spec.md + docs/contract.md + SKILL.md).
 - **v0.85.0 — 2026-06-04** — Bug #986 (the evolver narrated a STALE version on
   the CronCreate session-reuse path: with the dispatcher session REUSED across
   ticks and context ACCUMULATING (Inv 33), a narrator kept citing an old

@@ -350,30 +350,42 @@ with tempfile.TemporaryDirectory() as repo_root:
         else:
             ok("triage: bare other-feature-name mention (one edit-path) -> "
                "cross_scope false")
-            # Plan-batch shape (issue #984): the `features` list carries the
-            # bare-name mentions (Inv 26 method-c), so its length is >1 here even
-            # though cross_scope is false. Per #984 the `len(features) > 1` fact
-            # is the AUTHORITATIVE multi-feature signal and forces the
-            # barrier/decomposition lane regardless of the cross_scope flag, so
-            # the item is shaped multi-subagent-barrier (the safe over-shape — a
-            # bounded single-feature subagent cannot be relied on when triage
-            # listed >1 feature) and appears in cross_scope_items. The
-            # under-shaping failure mode (#980) is worse than over-shaping a
-            # genuinely single-feature item to the serial barrier lane.
+            # triage emits a NARROW edit_features set (#991): only the labelled
+            # feature is an EDIT TARGET here — the bare-name mentions of
+            # rabbit-issue / rabbit-spec name a vocabulary/peer, not an edit
+            # target, so they appear in `features` (transparency) but NOT in
+            # `edit_features`.
+            if r.get("edit_features") != ["rabbit-auto-evolve"]:
+                fail(f"triage-bare-name: edit_features must be just the labelled "
+                     f"feature ['rabbit-auto-evolve']; got "
+                     f"{r.get('edit_features')!r}; record={r!r}")
+            elif "rabbit-issue" not in (r.get("features") or []):
+                fail(f"triage-bare-name: the bare-name mention must remain in the "
+                     f"full `features` set; got {r.get('features')!r}")
+            else:
+                ok("triage: bare-name mention -> edit_features=[label], still "
+                   "in features (#991)")
+            # Plan-batch shape (#991): shaping keys off the EDIT-TARGET count,
+            # not the broader `features` mention set. This item EDITS exactly one
+            # feature (edit_features length 1) even though its `features` list has
+            # length > 1 from the bare-name mentions, so it shapes
+            # parallel-per-feature and is ABSENT from cross_scope_items. This
+            # corrects the #984 over-shaping the dispatcher had to override.
             out = plan_json("plan-bare-name", [r])
             if out is not None:
                 shape = out.get("dispatch_shapes", {}).get(str(r.get("issue")))
-                if shape != "multi-subagent-barrier":
-                    fail(f"plan-bare-name: a sub-issue whose features list has >1 "
-                         f"entry must be shaped multi-subagent-barrier (#984); "
-                         f"got {shape!r}")
-                elif r.get("issue") not in out.get("cross_scope_items", []):
-                    fail(f"plan-bare-name: a >1-feature item must appear in "
-                         f"cross_scope_items (#984); got "
+                if shape != "parallel-per-feature":
+                    fail(f"plan-bare-name: a sub-issue that EDITS one feature but "
+                         f"MENTIONS another (edit_features length 1) must be "
+                         f"parallel-per-feature (#991); got {shape!r}; "
+                         f"record={r!r}")
+                elif r.get("issue") in out.get("cross_scope_items", []):
+                    fail(f"plan-bare-name: a single-EDIT item must NOT appear in "
+                         f"cross_scope_items (#991); got "
                          f"{out.get('cross_scope_items')!r}")
                 else:
-                    ok("plan: bare-name-mention sub-issue (features>1) -> "
-                       "multi-subagent-barrier + cross_scope_items (#984)")
+                    ok("plan: bare-name-mention sub-issue (edit_features=1) -> "
+                       "parallel-per-feature, not in cross_scope_items (#991)")
 
 
 # (2g) GENUINE 2-EDIT-PATH issue (issue #669 — preserve true detection): a body
@@ -406,6 +418,31 @@ with tempfile.TemporaryDirectory() as repo_root:
                  f"{r.get('cross_scope')!r}; record={r!r}")
         else:
             ok("triage: >=2 distinct feature edit-paths -> cross_scope true")
+            # GENUINE multi-EDIT (#991): edit_features carries BOTH feature dirs
+            # (they are real edit targets), so shaping routes to the serial
+            # barrier lane and the item is listed in cross_scope_items.
+            if sorted(r.get("edit_features") or []) != [
+                    "rabbit-auto-evolve", "rabbit-issue"]:
+                fail(f"triage-two-editpaths: edit_features must be the sorted "
+                     f"2-edit-target set; got {r.get('edit_features')!r}; "
+                     f"record={r!r}")
+            else:
+                ok("triage: genuine 2-edit-path issue -> edit_features = both "
+                   "dirs (#991)")
+            out = plan_json("plan-two-editpaths", [r])
+            if out is not None:
+                shape = out.get("dispatch_shapes", {}).get(str(r.get("issue")))
+                if shape != "multi-subagent-barrier":
+                    fail(f"plan-two-editpaths: a genuine 2-EDIT item "
+                         f"(edit_features length 2) must be multi-subagent-barrier "
+                         f"(#991); got {shape!r}; record={r!r}")
+                elif r.get("issue") not in out.get("cross_scope_items", []):
+                    fail(f"plan-two-editpaths: a genuine multi-EDIT item must "
+                         f"appear in cross_scope_items (#991); got "
+                         f"{out.get('cross_scope_items')!r}")
+                else:
+                    ok("plan: genuine 2-edit-path issue (edit_features=2) -> "
+                       "multi-subagent-barrier + cross_scope_items (#991)")
 
 
 # (2h) EXPLICIT CROSS-FEATURE DECLARATION (issue #797 — false-negative fix):
@@ -510,28 +547,39 @@ with tempfile.TemporaryDirectory() as repo_root:
         else:
             ok("triage: read-only 'verify against <path>' mention -> "
                "cross_scope false")
-            # Plan-batch shape (issue #984): the read-only `contract` path still
-            # lands in the `features` list (Inv 26), so its length is >1 even
-            # though cross_scope is false (the read-only path is excluded from
-            # the cross_scope edit-target count). Per #984 `len(features) > 1` is
-            # the authoritative multi-feature signal and forces the
-            # barrier/decomposition lane regardless of cross_scope, so the item
-            # is shaped multi-subagent-barrier (the safe over-shape) and appears
-            # in cross_scope_items.
+            # triage emits a NARROW edit_features set (#991): the read-only
+            # `contract` path is a confirmation target, not an edit target, so it
+            # is EXCLUDED from `edit_features` (only the labelled feature is an
+            # edit target) while it remains in the broader `features` set.
+            if r.get("edit_features") != ["rabbit-auto-evolve"]:
+                fail(f"triage-verify-against: edit_features must exclude the "
+                     f"read-only contract path; want ['rabbit-auto-evolve'], got "
+                     f"{r.get('edit_features')!r}; record={r!r}")
+            elif "contract" not in (r.get("features") or []):
+                fail(f"triage-verify-against: the read-only path must remain in "
+                     f"the full `features` set; got {r.get('features')!r}")
+            else:
+                ok("triage: read-only path -> edit_features=[label], still in "
+                   "features (#991)")
+            # Plan-batch shape (#991): shaping keys off edit_features. The item
+            # EDITS exactly one feature (edit_features length 1) even though the
+            # read-only contract path lands in `features` (length > 1), so it
+            # shapes parallel-per-feature and is ABSENT from cross_scope_items.
             out = plan_json("plan-verify-against", [r])
             if out is not None:
                 shape = out.get("dispatch_shapes", {}).get(str(r.get("issue")))
-                if shape != "multi-subagent-barrier":
-                    fail(f"plan-verify-against: a sub-issue whose features list "
-                         f"has >1 entry must be shaped multi-subagent-barrier "
-                         f"(#984); got {shape!r}")
-                elif r.get("issue") not in out.get("cross_scope_items", []):
-                    fail(f"plan-verify-against: a >1-feature item must appear in "
-                         f"cross_scope_items (#984); got "
+                if shape != "parallel-per-feature":
+                    fail(f"plan-verify-against: a sub-issue whose only second "
+                         f"feature is a read-only path (edit_features length 1) "
+                         f"must be parallel-per-feature (#991); got {shape!r}; "
+                         f"record={r!r}")
+                elif r.get("issue") in out.get("cross_scope_items", []):
+                    fail(f"plan-verify-against: a single-EDIT item must NOT appear "
+                         f"in cross_scope_items (#991); got "
                          f"{out.get('cross_scope_items')!r}")
                 else:
-                    ok("plan: read-only-mention sub-issue (features>1) -> "
-                       "multi-subagent-barrier + cross_scope_items (#984)")
+                    ok("plan: read-only-mention sub-issue (edit_features=1) -> "
+                       "parallel-per-feature, not in cross_scope_items (#991)")
 
 
 # (3) Ordinary single-feature body, no phrase, no extra paths -> false.

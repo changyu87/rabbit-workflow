@@ -39,28 +39,36 @@ Two decoupled decisions (Inv 26 / issue #435):
 
   STAGE 2 — dispatch shape (`dispatch_shapes`, issue-number-string -> shape).
   Per work item, choose the FIRST fitting shape from exactly three:
-    - `decomposition`          when the item touches >= --decompose-threshold
+    - `decomposition`          when the item EDITS >= --decompose-threshold
                                distinct feature dirs (default 10) — split into
                                per-feature sub-issues, each re-enters dispatch.
-    - `multi-subagent-barrier` when the item touches >1 feature dir (below
+    - `multi-subagent-barrier` when the item EDITS >1 feature dir (below
                                the threshold) — per-feature subagents land
                                serially on one shared branch, each a full
                                single-feature touch with its own scope marker.
-    - `parallel-per-feature`   when the item touches exactly one feature dir —
+    - `parallel-per-feature`   when the item EDITS exactly one feature dir —
                                the performance preference (NOT a correctness
                                requirement).
-  An item's feature count is `len(item["features"])` (the set emitted by
-  triage-issue.py), falling back to 1 (the single `feature` label) when
-  `features` is absent. Two multi-feature signals are UNIONED (Inv 51 / issue
-  #984): EITHER a feature-dir count >1 OR a triage `cross_scope: true` flag (its
-  BODY prose spans multiple feature dirs — #433) routes the item to the
-  barrier/decomposition lane and lists it under `cross_scope_items`. The
-  feature-count signal is the stronger, more direct one: a multi-feature item
-  (`len(features) > 1`) is NEVER shaped parallel-per-feature EVEN WHEN its
-  prose-based `cross_scope` flag is false (the heuristic missed the second
-  feature — the #980 under-shaping bug). A `cross_scope: true` item is likewise
-  never parallel-per-feature even at feature count 1. Only when BOTH say
-  single-scope is the item shaped parallel-per-feature. The struck shape 2 (sequential single-subagent
+  An item's feature count is the EDIT-TARGET count `len(item["edit_features"])`
+  (the features the item will WRITE to, emitted by triage-issue.py), falling
+  back to `len(item["features"])` (the full mention set) when `edit_features` is
+  absent or empty, then to 1 (the single `feature` label) when neither is
+  present. Routing keys off EDIT-TARGETS, not the broader mention set (issue
+  #991): an item that EDITS one feature but merely MENTIONS another (a bare name
+  in prose, or a read-only `verify against <path>` reference) has an edit-target
+  count of 1 and shapes parallel-per-feature, even though its `features` list is
+  longer. Two multi-feature signals are UNIONED (Inv 51): EITHER an edit-target
+  count >1 OR a triage `cross_scope: true` flag (its BODY prose spans multiple
+  feature dirs — #433) routes the item to the barrier/decomposition lane and
+  lists it under `cross_scope_items`. The edit-target count is the AUTHORITATIVE
+  routing signal: a genuine multi-EDIT item (`len(edit_features) > 1`) is NEVER
+  shaped parallel-per-feature EVEN WHEN its prose-based `cross_scope` flag is
+  false; a `cross_scope: true` item is likewise never parallel-per-feature even
+  at edit-target count 1. Only when BOTH say single-scope is the item shaped
+  parallel-per-feature. Conservative bias: when `edit_features` is absent the
+  count falls back to the broader `features` set rather than collapsing to 1,
+  since under-shaping a genuine multi-EDIT item FAILS dispatch while over-shaping
+  merely runs slower. The struck shape 2 (sequential single-subagent
   with a persistent `.rabbit-scope-override session`) is NEVER emitted — bounded
   scope is a hard constraint, not waivable by autonomy (maintainer policy on
   issue #435). No shape writes any marker; this script is a pure processor.
@@ -145,7 +153,7 @@ mutations.
 Exit code: 0 on success; non-zero on malformed stdin JSON or invalid
 --max-parallel / --decompose-threshold value.
 
-Version: 1.9.0
+Version: 1.10.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -397,9 +405,23 @@ SHAPE_RESEARCH = "research"
 
 
 def _feature_count(item):
-    """Distinct feature dirs an item touches. Prefers the `features` list
-    emitted by triage-issue.py (Inv 26); falls back to 1 for the single
-    `feature` label when `features` is absent (pre-#435 triage objects)."""
+    """EDIT-TARGET feature-dir count for Stage-2 shaping (Inv 51 / issue #991).
+
+    Shaping routes off the features the item will actually WRITE to, NOT the
+    broader mention set, so a single-EDIT item that merely MENTIONS another
+    feature shapes parallel-per-feature rather than the serial barrier lane.
+
+    Prefers `edit_features` (the narrow edit-target set emitted by
+    triage-issue.py); falls back to `features` (the full mention set) when
+    `edit_features` is absent or empty — the CONSERVATIVE bias: when the narrow
+    edit-intent signal is missing it is SAFER to over-shape (route on the broader
+    mention count → barrier) than to under-shape (a genuine multi-EDIT item
+    shaped parallel-per-feature FAILS dispatch at the first cross-feature write).
+    Falls back to 1 (the single `feature` label) when neither list is present
+    (pre-#435 triage objects)."""
+    edits = item.get("edit_features")
+    if isinstance(edits, list) and edits:
+        return len(edits)
     feats = item.get("features")
     if isinstance(feats, list) and feats:
         return len(feats)
@@ -409,38 +431,38 @@ def _feature_count(item):
 def _dispatch_shape(item, decompose_threshold):
     """Stage-2 per-item shape: FIRST fitting shape in preference order.
 
-    >= threshold features -> decomposition
-    > 1 feature           -> multi-subagent-barrier
-    exactly 1 feature     -> parallel-per-feature (performance preference)
+    >= threshold edit-targets -> decomposition
+    > 1 edit-target           -> multi-subagent-barrier
+    exactly 1 edit-target     -> parallel-per-feature (performance preference)
 
     Cross-scope override (Inv 51 / issue #433): an item triage flagged
     `cross_scope: true` (its BODY spans multiple feature dirs — a repo-wide
     sweep / cross-feature rename) is NEVER shaped parallel-per-feature, even
-    when its single `feature:` LABEL gives it a feature count of 1. A bounded
-    per-feature subagent cannot write across features, so the body-derived
-    cross_scope signal forces the barrier/decomposition lane: decomposition at/
-    above the threshold, else multi-subagent-barrier. Bounded scope itself is
-    unchanged — the fix is routing, not widening subagent scope.
+    when its edit-target count is 1. A bounded per-feature subagent cannot write
+    across features, so the body-derived cross_scope signal forces the
+    barrier/decomposition lane: decomposition at/above the threshold, else
+    multi-subagent-barrier. Bounded scope itself is unchanged — the fix is
+    routing, not widening subagent scope.
 
-    Two multi-feature signals are UNIONED (Inv 51 / issue #984): the
-    `len(features) > 1` feature-dir count AND the body-derived `cross_scope`
-    flag. EITHER one routes the item to the barrier/decomposition lane;
-    parallel-per-feature is emitted only when BOTH say single-scope.
+    Two multi-feature signals are UNIONED (Inv 51): the EDIT-TARGET count
+    `len(edit_features) > 1` (via _feature_count) AND the body-derived
+    `cross_scope` flag. EITHER one routes the item to the barrier/decomposition
+    lane; parallel-per-feature is emitted only when BOTH say single-scope.
 
-    The `len(features) > 1` fact is the stronger, more direct signal: it means
-    the item literally edits more than one feature dir, so a single bounded
-    per-feature subagent (one `.rabbit-scope-active-<feature>`) cannot complete
-    it. It therefore forces the barrier/decomposition lane REGARDLESS of the
-    separate prose-based `cross_scope` flag — a multi-feature item with an
-    explicit `cross_scope: false` (the body's prose heuristic missed the second
-    feature) is still shaped multi-subagent-barrier (or decomposition at/above
-    the threshold), never parallel-per-feature (issue #984; the under-shaping
-    bug observed on #980, features=["rabbit-cage","rabbit-meta"],
-    cross_scope=false). The body-derived `cross_scope: true` signal still forces
-    the lane even when the feature count is 1 (a phrase-only repo-wide sweep
-    whose lone `feature:` label gives it a count of 1). Only when BOTH signals
-    say single-scope — `len(features) <= 1` AND `cross_scope` not true — is the
-    item shaped parallel-per-feature.
+    The count is the EDIT-TARGET count, NOT the broader `features` mention set
+    (issue #991). _feature_count prefers `edit_features` (the features the item
+    will WRITE to), so an item that EDITS exactly one feature but merely MENTIONS
+    another (a bare name in prose, or a read-only `verify against <path>`
+    reference) has count 1 and shapes parallel-per-feature — correcting the
+    over-shaping where a single-EDIT context-mention item was routed to the
+    serial barrier lane. A genuine multi-EDIT item (`len(edit_features) > 1`,
+    real second `.claude/features/<name>/` edit-path) still forces the
+    barrier/decomposition lane. When `edit_features` is absent _feature_count
+    falls back to the broader `features` count (the conservative over-shape).
+    The body-derived `cross_scope: true` signal still forces the lane even when
+    the edit-target count is 1 (a phrase-only repo-wide sweep). Only when BOTH
+    signals say single-scope — edit-target count <= 1 AND `cross_scope` not true
+    — is the item shaped parallel-per-feature.
     """
     n = _feature_count(item)
     if n >= decompose_threshold:
@@ -534,16 +556,17 @@ def plan(items, max_parallel, decompose_threshold):
     # cleanly (the loop NEVER stops to ask a human).
     self_modifying_migrations = {}
     restart_needed = []
-    # Cross-scope items (Inv 51 / issue #433, #984): code-producing work items
+    # Cross-scope items (Inv 51 / issue #433, #991): code-producing work items
     # that need the barrier/decomposition path rather than ordinary parallel
     # single-feature dispatch. An item earns this lane via EITHER multi-feature
-    # signal (unioned, #984): its feature-dir count is >1, OR triage flagged
+    # signal (unioned): its EDIT-TARGET count is >1, OR triage flagged
     # `cross_scope: true` (its BODY prose spans multiple feature dirs). The
     # membership is therefore keyed off the SHAPE the item received — any item
     # shaped multi-subagent-barrier or decomposition is a cross-scope item — so
     # cross_scope_items stays in lock-step with the unioned routing decision and
-    # never under-lists a multi-feature item whose prose-based cross_scope flag
-    # happened to be false. Research items are excluded (findings, not code).
+    # never under-lists a genuine multi-EDIT item whose prose-based cross_scope
+    # flag happened to be false, nor over-lists a single-EDIT item that merely
+    # MENTIONS a second feature. Research items are excluded (findings, not code).
     cross_scope_items = []
     for i in selection:
         if i.get("decision") == "research":

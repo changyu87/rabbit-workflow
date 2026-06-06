@@ -1006,4 +1006,97 @@ else:
         fail(f"multifeature-forces-barrier: bad JSON ({e}); stdout={proc.stdout!r}")
 
 
+# ---------------------------------------------------------------------------
+# Scenario — shape routing keys off EDIT-TARGET count, not the mention set
+#   (issue #991). After #984 routed `len(features) > 1` to the barrier lane,
+#   single-EDIT items whose body merely MENTIONED a second feature as CONTEXT
+#   were over-shaped barrier and the dispatcher had to override. The fix: triage
+#   emits a narrow `edit_features` set and plan-batch shapes off it.
+#     - edit_features length 1 + features length > 1 (a mention) -> the item
+#       EDITS one feature, so parallel-per-feature, NOT in cross_scope_items.
+#     - edit_features length 2 -> a genuine multi-EDIT, so multi-subagent-barrier
+#       and in cross_scope_items (#984's intent preserved on the genuine case).
+#     - edit_features length >= threshold -> decomposition.
+#     - cross_scope:true still routes to barrier even at edit_features length 1.
+#     - edit_features absent -> fall back to features (backward compat).
+# ---------------------------------------------------------------------------
+items = [
+    # EDITS one feature, MENTIONS a second (features>1) -> parallel-per-feature.
+    {"issue": 9911, "feature": "rabbit-auto-evolve",
+     "features": ["rabbit-auto-evolve", "rabbit-meta"],
+     "edit_features": ["rabbit-auto-evolve"],
+     "contract_touch": False, "priority": "medium", "decision": "work",
+     "cross_scope": False},
+    # genuine 2-EDIT item -> multi-subagent-barrier + cross_scope_items.
+    {"issue": 9912, "feature": "rabbit-auto-evolve",
+     "features": ["rabbit-auto-evolve", "rabbit-issue"],
+     "edit_features": ["rabbit-auto-evolve", "rabbit-issue"],
+     "contract_touch": False, "priority": "medium", "decision": "work",
+     "cross_scope": False},
+    # genuine multi-EDIT at/above the decompose-threshold (=3) -> decomposition.
+    {"issue": 9913, "feature": "rabbit-auto-evolve",
+     "features": ["rabbit-auto-evolve", "rabbit-issue", "rabbit-spec"],
+     "edit_features": ["rabbit-auto-evolve", "rabbit-issue", "rabbit-spec"],
+     "contract_touch": False, "priority": "medium", "decision": "work",
+     "cross_scope": False},
+    # cross_scope:true still forces barrier even at edit_features length 1.
+    {"issue": 9914, "feature": "rabbit-auto-evolve",
+     "features": ["rabbit-auto-evolve"],
+     "edit_features": ["rabbit-auto-evolve"],
+     "contract_touch": False, "priority": "medium", "decision": "work",
+     "cross_scope": True},
+    # edit_features ABSENT -> fall back to features (length 2) -> barrier.
+    {"issue": 9915, "feature": "rabbit-auto-evolve",
+     "features": ["rabbit-auto-evolve", "rabbit-meta"],
+     "contract_touch": False, "priority": "medium", "decision": "work",
+     "cross_scope": False},
+]
+proc = run_plan(items, ["--decompose-threshold", "3"])
+if proc.returncode != 0:
+    fail(f"edit-target-routing: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        shapes = out.get("dispatch_shapes", {})
+        cross = out.get("cross_scope_items", [])
+        if shapes.get("9911") != "parallel-per-feature":
+            fail(f"edit-target-routing: single-EDIT item that MENTIONS a 2nd "
+                 f"feature shape={shapes.get('9911')!r}, want "
+                 f"'parallel-per-feature' (#991)")
+        elif 9911 in cross:
+            fail(f"edit-target-routing: single-EDIT item must NOT be in "
+                 f"cross_scope_items, got {cross!r} (#991)")
+        elif shapes.get("9912") != "multi-subagent-barrier":
+            fail(f"edit-target-routing: genuine 2-EDIT item "
+                 f"shape={shapes.get('9912')!r}, want 'multi-subagent-barrier' "
+                 f"(#991)")
+        elif 9912 not in cross:
+            fail(f"edit-target-routing: genuine 2-EDIT item must be in "
+                 f"cross_scope_items, got {cross!r} (#991)")
+        elif shapes.get("9913") != "decomposition":
+            fail(f"edit-target-routing: 3-EDIT item at threshold=3 "
+                 f"shape={shapes.get('9913')!r}, want 'decomposition' (#991)")
+        elif shapes.get("9914") != "multi-subagent-barrier":
+            fail(f"edit-target-routing: cross_scope:true item at edit_features=1 "
+                 f"shape={shapes.get('9914')!r}, want 'multi-subagent-barrier' "
+                 f"(cross_scope union preserved, #991)")
+        elif 9914 not in cross:
+            fail(f"edit-target-routing: cross_scope:true item must be in "
+                 f"cross_scope_items, got {cross!r} (#991)")
+        elif shapes.get("9915") != "multi-subagent-barrier":
+            fail(f"edit-target-routing: edit_features-absent item must fall back "
+                 f"to features (length 2) -> 'multi-subagent-barrier'; got "
+                 f"{shapes.get('9915')!r} (#991)")
+        elif 9915 not in cross:
+            fail(f"edit-target-routing: edit_features-absent 2-feature item must "
+                 f"be in cross_scope_items, got {cross!r} (#991)")
+        else:
+            ok("edit-target-routing: shape keys off edit_features — single-EDIT "
+               "(mention) -> parallel-per-feature; genuine multi-EDIT -> barrier/"
+               "decomposition; cross_scope:true union + features fallback intact "
+               "(#991)")
+    except json.JSONDecodeError as e:
+        fail(f"edit-target-routing: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
 sys.exit(FAIL)
