@@ -489,6 +489,95 @@ def _installed_version_for_update(args: argparse.Namespace) -> str | None:
     return text or None
 
 
+def _parse_changelog_sections(body: str) -> list[tuple[str, list[str]]]:
+    """Inv 46 (#924): split a keep-a-changelog body into ordered
+    `(label, body_lines)` sections, top-to-bottom (newest first).
+
+    A section begins at a `## [<label>]` header line; `<label>` is the bracket
+    content (e.g. `v9.4.12`, `Unreleased`, `release/1.12.0`). Lines before the
+    first header (the intro) are discarded. Returns sections in document order.
+    """
+    sections: list[tuple[str, list[str]]] = []
+    label: str | None = None
+    lines: list[str] = []
+    for raw in body.splitlines():
+        m = re.match(r"^## \[([^\]]+)\]", raw)
+        if m:
+            if label is not None:
+                sections.append((label, lines))
+            label = m.group(1)
+            lines = []
+        elif label is not None:
+            lines.append(raw)
+    if label is not None:
+        sections.append((label, lines))
+    return sections
+
+
+def render_changelog_summary(old_ref: str | None, new_ref: str | None,
+                             changelog_body: str) -> str:
+    """Inv 46 (#924): render a brief, DETERMINISTIC post-update changelog
+    summary from the repo `CHANGELOG.md` body — NOT AI-inferred.
+
+    Selects the keep-a-changelog sections whose label parses to a semver
+    STRICTLY newer than `old_ref` and newer-than-or-equal-to `new_ref`
+    (`old < section <= new`), naming the `old_ref -> new_ref` range and
+    listing each selected section's bullet entries verbatim, closing with a
+    pointer to the full changelog.
+
+    Returns the empty string for a no-op (same version, or no parseable
+    upgrade range) — the caller then prints nothing. Pure string→string; no
+    IO, no network, no inference. The `Unreleased` section (and any section
+    whose label carries no semver) is skipped.
+    """
+    if not new_ref:
+        return ""
+    if old_ref is not None and old_ref == new_ref:
+        return ""
+    old_t = _parse_version(old_ref)
+    new_t = _parse_version(new_ref)
+    if old_t is None or new_t is None or not (new_t > old_t):
+        return ""
+
+    selected: list[tuple[str, list[str]]] = []
+    for label, lines in _parse_changelog_sections(changelog_body):
+        sec_t = _parse_version(label)
+        if sec_t is None:
+            continue
+        if old_t < sec_t <= new_t:
+            selected.append((label, lines))
+
+    out: list[str] = [f"Changelog {old_ref} -> {new_ref}:"]
+    for label, lines in selected:
+        out.append(f"  [{label}]")
+        for ln in lines:
+            stripped = ln.rstrip()
+            if stripped:
+                out.append(f"  {stripped}")
+    out.append("See the full changelog: CHANGELOG.md")
+    return "\n".join(out)
+
+
+def emit_changelog_summary(old_ref: str | None, new_ref: str | None,
+                           src_root: Path) -> None:
+    """Inv 46 (#924): print the post-update changelog summary to stdout after a
+    successful `--update`, sourcing the text from `<src_root>/CHANGELOG.md`.
+
+    The source tree is the freshly-fetched (or `--src`-supplied) upstream, so
+    its CHANGELOG.md is the just-installed content. Best-effort: a missing or
+    unreadable CHANGELOG.md, or a no-op range, prints nothing — the summary is
+    a courtesy, never a new failure mode.
+    """
+    changelog = src_root / "CHANGELOG.md"
+    try:
+        body = changelog.read_text()
+    except OSError:
+        return
+    summary = render_changelog_summary(old_ref, new_ref, body)
+    if summary:
+        print(summary)
+
+
 def run_publish_loop(target_root: str) -> int:
     """Dev-test helper: enumerate every <target_root>/.claude/features/*/feature.json
     and invoke each MANIFEST API via contract.lib.publish. Continues past
@@ -773,13 +862,17 @@ def _main_with_args(args: argparse.Namespace) -> int:
         return 1
 
     # Inv 22e: print version transition before any refresh so the operator
-    # sees the pin movement even if a later copy fails partway through.
+    # sees the pin movement even if a later copy fails partway through. The
+    # captured (old_ref, new_ref) also drive the post-install changelog
+    # summary (Inv 46) once the refresh has completed.
+    update_old_ref: str | None = None
+    update_new_ref: str | None = None
     if args.update:
         version_file = dst_root / ".version"
         if version_file.is_file():
-            old_ref = version_file.read_text().strip()
-            new_ref = os.environ.get("RABBIT_INSTALLED_REF", "unknown")
-            print(f"updating {old_ref} -> {new_ref}")
+            update_old_ref = version_file.read_text().strip()
+            update_new_ref = os.environ.get("RABBIT_INSTALLED_REF", "unknown")
+            print(f"updating {update_old_ref} -> {update_new_ref}")
 
     dst_root.mkdir(parents=True, exist_ok=True)
     ok = True
@@ -875,6 +968,12 @@ def _main_with_args(args: argparse.Namespace) -> int:
 
     total_files = sum(1 for p in dst_root.rglob("*") if p.is_file())
     print(f"Installed {total_files} files to {dst_root}")
+
+    # Inv 46 (#924): after a successful --update, show a brief, deterministic
+    # changelog summary of what changed between the OLD and NEWLY-INSTALLED
+    # version, sourced from the just-installed CHANGELOG.md (NOT inferred).
+    if args.update:
+        emit_changelog_summary(update_old_ref, update_new_ref, src_root)
     return 0
 
 
