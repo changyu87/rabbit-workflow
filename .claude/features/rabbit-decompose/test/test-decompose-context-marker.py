@@ -38,6 +38,12 @@ Asserts, end-to-end:
      set before / clear after) and carries NO reference to the manual
      `.rabbit-scope-override` session workaround as the recommended path.
 
+The vendored-mode marker-path branch is now a dual-accept
+`mode in ("vendored", "plugin")` (spec Invariant 10, #988). This test drives
+the live `detect_mode`, which currently returns `"plugin"`, so it exercises the
+`"plugin"` arm; the `"vendored"` arm is exercised by
+`test-dual-accept-vendored-mode.py`.
+
 Run non-interactively. Exits non-zero on failure.
 
 Version: 0.1.0

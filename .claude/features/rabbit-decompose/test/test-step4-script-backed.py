@@ -32,6 +32,12 @@ This test asserts, end-to-end:
      mode-branch and no runtime-placeholder bash block (the §4 violation the
      fix removes).
 
+The vendored-mode branch is now a dual-accept `mode in ("vendored", "plugin")`
+(spec Invariant 10, #988). This test drives the live `detect_mode`, which
+currently returns `"plugin"`, so it exercises the `"plugin"` arm of that
+dual-accept; the `"vendored"` arm is exercised by
+`test-dual-accept-vendored-mode.py`.
+
 Run non-interactively. Exits non-zero on failure.
 
 Version: 0.1.0

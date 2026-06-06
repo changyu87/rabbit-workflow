@@ -30,6 +30,12 @@ test then asserts:
      handoff-scaffold.py exits 1 and reports dispatched=false; when it exits 0,
      handoff-scaffold.py exits 0 and reports dispatched=true.
 
+The plugin-mode dispatch branch is now a dual-accept
+`mode in ("vendored", "plugin")` (spec Invariant 10, #988). This test drives
+the live `detect_mode`, which currently returns `"plugin"`, so it exercises the
+`"plugin"` arm; the `"vendored"` arm is exercised by
+`test-dual-accept-vendored-mode.py`.
+
 Run non-interactively. Exits non-zero on failure.
 
 Version: 0.1.0
