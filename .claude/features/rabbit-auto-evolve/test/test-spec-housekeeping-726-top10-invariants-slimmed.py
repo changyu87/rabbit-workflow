@@ -57,8 +57,12 @@ BASELINE_TOTAL_LINES = 3594
 # The admin-override-merge extension to Inv 61 (a `main`-base merge adds `--admin` so the
 # loop can land its own PR past the protected default branch's required review; ~16 lines
 # across the merge-prs step, the Inv 61 concrete-item list, the script-table row, and the
-# test prose) is additive, so the ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 3715
+# test prose) is additive, so the ceiling is raised once more to absorb it. The pre-merge
+# install-smoke gate (Inv 63: a new top-level invariant, an install-smoke.py script-table
+# row, the safety-check bottom-line check-6 row, and the contract install.py INVOKE; the
+# safety-check subsection points at Inv 63 rather than duplicating it) is additive, so the
+# ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 3775
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

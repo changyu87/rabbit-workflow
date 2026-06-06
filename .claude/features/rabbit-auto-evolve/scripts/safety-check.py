@@ -16,6 +16,18 @@ cleanup action runs. Each numbered invariant is gated to specific phases:
                 `dev`, `main`, or `release/...`         (cleanup)
   Invariant 4 — the --next-tag tag does not exist       (release)
   Invariant 5 — no uncommitted tracked-file modifications  (merge, release, cleanup)
+  Invariant 6 — the isolated install + update smoke passes      (merge)
+
+Invariant 6 (spec Inv 63 / issue #966): the merge phase ALSO runs an isolated,
+network-free install + update smoke (sibling `install-smoke.py`, which invokes
+rabbit-cage's install.py as a black box) so install/closure breakage —
+fresh-install `publish_file ... source not found` aborts, `--update`
+closure-shrink failures — is caught BEFORE a PR merges. A non-zero smoke exit
+fails the merge phase; merge-prs.py then records the PR
+`skipped`/`safety-check-failed`, blocking the batch. The sibling
+`install-smoke.py` is resolved via this script's dirname, overridable for tests
+via the RABBIT_AUTO_EVOLVE_INSTALL_SMOKE env var. It is a merge-only bottom-line
+check: release and cleanup do not run the smoke.
 
 Inv 61 (dev<->main coexistence): the integration target is resolved by the
 sibling `integration_target` module (default `dev`, overridable to `main` via
@@ -32,9 +44,11 @@ violated invariant is emitted on stderr as:
   Invariant N (<short>) failed: <detail>
 The script never auto-fixes.
 
-The script reads `gh` and `git` state only — no filesystem mutations.
+The script reads `gh` and `git` state only — no filesystem mutations of its
+own. The Invariant 6 install smoke runs entirely inside its own tempdir (cleaned up
+on exit), so the working tree is untouched.
 
-Version: 1.2.0
+Version: 1.3.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -54,9 +68,11 @@ import integration_target  # noqa: E402
 
 PHASES = ("merge", "release", "cleanup")
 
-# Phase -> ordered list of invariant numbers to enforce.
+# Phase -> ordered list of invariant numbers to enforce. The install smoke
+# (bottom-line check 6, spec Inv 63 / issue #966) is merge-only and runs LAST
+# so the cheap git/gh checks fail fast before the heavier install smoke.
 INV_BY_PHASE = {
-    "merge":   [1, 2, 5],
+    "merge":   [1, 2, 5, 6],
     "release": [1, 2, 4, 5],
     "cleanup": [1, 3, 5],
 }
@@ -68,6 +84,7 @@ INV_SHORT = {
     3: "PR head matches ^feat/.+",
     4: "next-tag does not exist",
     5: "no uncommitted tracked-file modifications",
+    6: "isolated install + update smoke passes",
 }
 
 
@@ -168,20 +185,53 @@ def check_inv_5(args):
     return None
 
 
+def _install_smoke_path():
+    """Resolve the sibling install-smoke.py. Overridable for tests via
+    RABBIT_AUTO_EVOLVE_INSTALL_SMOKE."""
+    override = os.environ.get("RABBIT_AUTO_EVOLVE_INSTALL_SMOKE")
+    if override:
+        return override
+    return os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "install-smoke.py"
+    )
+
+
+def check_inv_6(args):
+    """The isolated install + update smoke passes (spec Inv 63 / issue #966).
+
+    Runs the sibling `install-smoke.py`, which performs a network-free fresh
+    install + `--update` of rabbit-cage's install.py against the current tree
+    inside its own tempdir, asserting no install/closure/publish failure. A
+    non-zero smoke exit is a violation (the merge is then blocked). The smoke
+    skips gracefully (exit 0) when install.py is absent, so this check is inert
+    in a degenerate self-build."""
+    smoke = _install_smoke_path()
+    proc = subprocess.run(
+        [sys.executable, smoke], capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        detail = proc.stderr.strip() or proc.stdout.strip() or "no output"
+        return f"install smoke failed (exit {proc.returncode}): {detail}"
+    return None
+
+
 CHECKS = {
     1: check_inv_1,
     2: check_inv_2,
     3: check_inv_3,
     4: check_inv_4,
     5: check_inv_5,
+    6: check_inv_6,
 }
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Enforce the five bottom-line safety invariants before "
-                    "any merge / release / cleanup action runs. Exits "
-                    "non-zero on any violation; never auto-fixes."
+        description="Enforce the bottom-line safety invariants before any "
+                    "merge / release / cleanup action runs (the merge phase "
+                    "also runs the isolated install + update smoke, spec "
+                    "Inv 63). "
+                    "Exits non-zero on any violation; never auto-fixes."
     )
     parser.add_argument("pr", type=int, help="PR number")
     parser.add_argument(

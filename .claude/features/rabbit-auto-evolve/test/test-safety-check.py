@@ -417,4 +417,71 @@ with tempfile.TemporaryDirectory() as td:
         ok("phase-gating-cleanup: Inv 2 violation does not fail cleanup phase")
 
 
+# ---------------------------------------------------------------------------
+# Bottom-line check 6 (spec Inv 63 / issue #966) — the merge phase runs the
+# install smoke and BLOCKS on a failure. The smoke is delegated to the sibling
+# install-smoke.py, overridable for tests via RABBIT_AUTO_EVOLVE_INSTALL_SMOKE.
+# The release and cleanup phases do NOT run the smoke.
+# ---------------------------------------------------------------------------
+
+def _write_smoke_shim(shim_dir, exit_code):
+    """Write a fake install-smoke.py that just exits `exit_code`."""
+    import stat as _stat
+    path = os.path.join(shim_dir, "install-smoke.py")
+    with open(path, "w") as f:
+        f.write("#!/usr/bin/env python3\n")
+        f.write("import sys\n")
+        if exit_code != 0:
+            f.write("sys.stderr.write('install-smoke: simulated failure\\n')\n")
+        f.write(f"sys.exit({exit_code})\n")
+    os.chmod(path, _stat.S_IRWXU)
+    return path
+
+# (a) merge phase BLOCKS when the install smoke fails (non-zero).
+with tempfile.TemporaryDirectory() as td:
+    repo, env = _make_clean_repo(td)
+    shim = _write_smoke_shim(td, 7)
+    env["RABBIT_AUTO_EVOLVE_INSTALL_SMOKE"] = shim
+    proc = _run(repo, env, "42", "--phase", "merge")
+    if proc.returncode == 0:
+        fail("inv6-merge-block: failing install smoke should fail merge phase")
+    elif "Invariant 6" not in proc.stderr:
+        fail(f"inv6-merge-block: stderr should name 'Invariant 6'; "
+             f"got {proc.stderr!r}")
+    else:
+        ok("inv6-merge-block: failing install smoke fails merge with "
+           "'Invariant 6' in stderr")
+
+# (b) merge phase PASSES when the install smoke passes (exit 0).
+with tempfile.TemporaryDirectory() as td:
+    repo, env = _make_clean_repo(td)
+    shim = _write_smoke_shim(td, 0)
+    env["RABBIT_AUTO_EVOLVE_INSTALL_SMOKE"] = shim
+    proc = _run(repo, env, "42", "--phase", "merge")
+    if proc.returncode != 0:
+        fail(f"inv6-merge-pass: passing install smoke should pass merge; "
+             f"got {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("inv6-merge-pass: passing install smoke passes merge phase")
+
+# (c) release / cleanup phases do NOT run the install smoke — a failing shim
+#     does not affect them (the install smoke is merge-only).
+with tempfile.TemporaryDirectory() as td:
+    repo, env = _make_clean_repo(td)
+    shim = _write_smoke_shim(td, 7)
+    env["RABBIT_AUTO_EVOLVE_INSTALL_SMOKE"] = shim
+    proc = _run(repo, env, "42", "--phase", "release", "--next-tag", "v9.9.9")
+    if "install smoke" in proc.stderr.lower():
+        fail(f"inv6-release-skip: release phase must NOT run install smoke; "
+             f"got {proc.stderr!r}")
+    else:
+        ok("inv6-release-skip: release phase does not run the install smoke")
+    proc = _run(repo, env, "42", "--phase", "cleanup")
+    if "install smoke" in proc.stderr.lower():
+        fail(f"inv6-cleanup-skip: cleanup phase must NOT run install smoke; "
+             f"got {proc.stderr!r}")
+    else:
+        ok("inv6-cleanup-skip: cleanup phase does not run the install smoke")
+
+
 sys.exit(FAIL)

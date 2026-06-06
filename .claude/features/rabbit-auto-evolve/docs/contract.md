@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.82.0
+version: 0.83.0
 template_version: 2.0.0
 ---
 
@@ -85,6 +85,11 @@ template_version: 2.0.0
         "path": ".claude/features/rabbit-issue/scripts/file-item.py",
         "subcommand": "",
         "rationale": "the dispatch_shape == decomposition path (Inv 26/53) files N per-feature sub-issues for a very-large cross-feature item; each child is filed with `--parent <parent#>` so it is born linked to the parent as a GitHub-native sub-issue (a derivative human-readable view; the authoritative linkage stays in the state's `decomposition_parents` map). Filing a sub-issue with `--parent` is a contract INVOKE of rabbit-issue, NOT a cross-feature edit, so every write stays inside one feature's scope"
+      },
+      {
+        "path": ".claude/features/rabbit-cage/install.py",
+        "subcommand": "",
+        "rationale": "install-smoke.py (Inv 63 pre-merge install smoke) invokes rabbit-cage's install.py as a BLACK BOX subprocess — a fresh install plus an `--update`, both with explicit `--src <repo-root>` so the smoke is network-free — to catch install/closure/publish breakage before a PR merges. Running install.py as a subprocess is a contract INVOKE of rabbit-cage, NOT a cross-feature edit; install.py itself is never modified"
       }
     ],
     "agents": [],

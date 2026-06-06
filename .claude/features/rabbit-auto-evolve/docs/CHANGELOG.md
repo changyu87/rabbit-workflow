@@ -16,6 +16,61 @@ authoritative).
 
 ## Version notes
 
+- **v0.83.0 — 2026-06-04** — Enhancement #966 (pre-merge isolated install +
+  update smoke gate to catch install/closure breakage BEFORE a PR merges). This
+  session saw install regressions slip into dev — `--update` closure-shrink
+  failures (#968) and a fresh-install `publish_file ... source not found` abort
+  (#969) — that a per-PR install smoke test would have caught. **New
+  `scripts/install-smoke.py` (1.0.0):** runs an ISOLATED, network-free smoke
+  test of rabbit-cage's `install.py` against the current tree inside a
+  `tempfile.TemporaryDirectory()` (cleaned up on exit) — a FRESH install
+  (`install.py --src <repo-root> --target <tmp>/fresh`) followed by an
+  `--update` against that same target, asserting exit 0 AND no install-failure
+  signature (`source not found`, `publish failure`, closure/dangling wording)
+  in the combined output of either invocation. Both invocations pass `--src
+  <repo-root>` so the smoke is fully offline. install.py is invoked as a BLACK
+  BOX subprocess — a contract INVOKE of rabbit-cage, never an edit. The repo
+  root defaults to the script's inferred repo (overridable via `--repo-root` /
+  `RABBIT_AUTO_EVOLVE_REPO_ROOT`); install.py resolves at
+  `<repo-root>/.claude/features/rabbit-cage/install.py` (overridable via
+  `RABBIT_AUTO_EVOLVE_INSTALL_PY`, a test seam). Resilient SKIP (exit 0): when
+  install.py is absent (a degenerate self-build / an isolated git tempdir) the
+  smoke skips gracefully rather than failing, matching the contract Inv 64/65
+  resilient-skip pattern. **`safety-check.py` (1.2.0 → 1.3.0):** the merge
+  phase now enforces the install smoke as bottom-line check 6 (`INV_BY_PHASE`
+  `merge` = `[1, 2, 5, 6]`), invoking the sibling `install-smoke.py` (resolved
+  via this script's dirname, overridable for tests via
+  `RABBIT_AUTO_EVOLVE_INSTALL_SMOKE`) and running it LAST so the cheap git/gh
+  checks fail fast first; a non-zero smoke exit fails the merge phase, so
+  `merge-prs.py` records the PR `skipped`/`safety-check-failed` and the batch
+  does NOT merge (the smoke never silently passes). It is merge-only: release
+  and cleanup never run it. Runtime is a single fresh install + one `--update`
+  to tmp (sub-second on a warm tree). **Spec:** new top-level **Inv 63**
+  documents the pre-merge install-smoke gate, the block-the-merge semantics,
+  and the resilient skip; the `safety-check.py` bottom-line table gains check 6
+  and a dedicated `install-smoke.py` subsection; the script table gains the
+  new script row. The originating issue's "Inv 66" reflects the *contract*
+  feature's invariant namespace; this feature's `## Invariants` section is
+  locally numbered and 62 was the prior highest, so 63 is the correct next
+  monotonic number (no gap, no renumber). **Contract:** `invokes.scripts`
+  gains the `.claude/features/rabbit-cage/install.py` black-box INVOKE entry.
+  **SKILL.md:** a new red-flag line — never merge when the pre-merge install
+  smoke fails. **Tests:** new `test/test-install-smoke.py` (PASS on the real
+  tree e2e; FAIL on a shim install.py that exits non-zero; FAIL on a
+  `source not found` signature even at exit 0; FAIL on an `--update` failure;
+  SKIP when install.py is absent), new
+  `test/test-spec-install-smoke-invariant.py` (spec Inv 63 text present; the
+  contract install.py INVOKE declared; the merge phase wires check 6),
+  `test/test-safety-check.py` extended (the merge phase blocks on a failing
+  smoke shim and passes on a passing one; release/cleanup never run it);
+  `test/run.py` registers both new tests. Versions bumped 0.82.0 → 0.83.0 in
+  lockstep across feature.json, docs/spec.md, docs/contract.md,
+  skills/rabbit-auto-evolve/SKILL.md (+ deployed SKILL.md republish). No
+  cross-feature contract `provides`/`reads`/`never` schema change — the smoke
+  script and its safety-check wiring are internal to this feature; the only
+  cross-feature touch is the additive `invokes.scripts` install.py entry (a
+  black-box subprocess INVOKE, not an edit).
+
 - **v0.82.0 — 2026-06-04** — Enhancement #973 (admin-override merge into the
   protected default branch `main`). `main` is the repo default branch AND is
   branch-protected with `required_approving_review_count: 1` /
