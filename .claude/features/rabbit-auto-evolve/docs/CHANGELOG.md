@@ -16,6 +16,25 @@ authoritative).
 
 ## Version notes
 
+- **v0.80.0 — 2026-06-04** — Fix #943 (resolve detected duplicates via the
+  GitHub-native duplicate state; R5 of #935, the last remaining child). The
+  duplicate-DETECTION heuristic is UNCHANGED: `triage-issue.py` rule 3 still
+  flags a duplicate by the case-folded title-substring match against
+  closed-in-last-30-days issues and keeps its confidence gate, now also
+  echoing the matched closed issue's number in a new `duplicate_of` field.
+  Only the RESOLUTION mechanism changes: the new
+  `scripts/resolve-duplicate.py resolve <dup> <canonical>` closes the
+  duplicate with `gh api --method PATCH repos/{slug}/issues/<dup> -f
+  state=closed -f state_reason=duplicate` (the authoritative native marker,
+  probed available on this instance) and posts one cross-reference comment to
+  the canonical issue. The reinvented `duplicate` label is now a deprecating
+  coexistence mirror honored only on read (`resolve-duplicate.py status <n>`);
+  a new resolution never stamps the label, only the native state. The
+  close-as-duplicate is a terminal convergence (Inv 25). New spec invariant
+  Inv 60; new `test/test-resolve-duplicate.py`; `test/test-triage-rules.py`
+  extended to assert the `duplicate_of` echo. Four-way version bump to
+  0.80.0; SKILL contract version 0.24.0.
+
 - **v0.79.0 — 2026-06-06** — Fix #942 (native GitHub dependencies as the
   authoritative blocked state; R2b of #935). `triage-issue.py` rule 5 now reads
   an issue's blocked state from the GitHub-native dependencies graph

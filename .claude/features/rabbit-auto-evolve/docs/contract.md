@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.79.0
+version: 0.80.0
 template_version: 2.0.0
 ---
 
@@ -41,11 +41,17 @@ template_version: 2.0.0
         "subcommands": [],
         "version": "1.0.0",
         "rationale": "per-tick roll-up close of decomposed parents (Inv 53). Invoked by run-post-merge.py after the catch-up phase: for each tracked parent it reads the AUTHORITATIVE close-source, the GitHub-native sub-issue rollup (`gh api repos/{slug}/issues/<parent>` -> `sub_issues_summary{total, completed}`), and closes the parent (`gh issue close --reason completed`) when `total > 0 and completed == total`, dropping its `decomposition_parents` key. COEXISTENCE: a recorded parent with no native sub-issues yet (`total == 0`) falls back to the legacy hand-rolled per-child `gh issue view` check. `decomposition_parents` is a deprecating mirror honored during the coexistence window; its deprecation criterion is to drop the field and the legacy fallback once no open parent carries an entry. Idempotent no-op when the map is empty or the close-source shows the parent incomplete"
+      },
+      {
+        "path": ".claude/features/rabbit-auto-evolve/scripts/resolve-duplicate.py",
+        "subcommands": ["resolve", "status"],
+        "version": "1.0.0",
+        "rationale": "native-duplicate resolution recorder (Inv 60). `resolve <dup> <canonical>` records the AUTHORITATIVE GitHub-native duplicate state by closing the duplicate with `gh api --method PATCH repos/{slug}/issues/<dup> -f state=closed -f state_reason=duplicate` and posting one cross-reference comment naming the canonical issue, so the native duplicate relationship is visible. `status <n>` reports whether an issue is recognized as a duplicate, with the native `state_reason=duplicate` authoritative and the reinvented `duplicate` label honored only on read as a deprecating coexistence mirror. The DETECTION heuristic stays in triage-issue.py rule 3 (unchanged confidence gate); this script owns only RESOLUTION. The close is a terminal convergence (Inv 25), never a label-strip-while-open de-queue. Reuses the `gh api repos/{slug}/issues/...` access pattern Inv 53/58/59 use; deprecation criterion: drop the `duplicate` label read once no open or recently-closed issue carries the label and native `state_reason=duplicate` is the sole expressed duplicate marker"
       }
     ],
     "schemas": [],
     "templates": [],
-    "skills": [{"name": "rabbit-auto-evolve", "version": "0.23.0"}]
+    "skills": [{"name": "rabbit-auto-evolve", "version": "0.24.0"}]
   },
   "reads": {
     "files": [
@@ -60,6 +66,11 @@ template_version: 2.0.0
         "name": "github-issue-dependencies",
         "operation": "read-blocked-by",
         "rationale": "triage-issue.py rule 5 (Inv 59) reads the AUTHORITATIVE source of an issue's blocked state from the GitHub-native dependencies graph (`gh api repos/{slug}/issues/<n>/dependencies/blocked_by` -> array of blocker issues each `{number, state, title}`); when any listed blocker is still `open` the issue defers `blocked`. The dispatch path that records a discovered blocker WRITES the relationship (`gh api --method POST repos/{slug}/issues/<n>/dependencies/blocked_by -F issue_id=<blocker-id>`). The body `blocked-by: #N` text declaration and the legacy `blocked-by:` label are a deprecating coexistence mirror, consulted only when the native source reports no open blocker; deprecation criterion: drop the body parser and label once no open issue carries a `blocked-by:` body marker or label and native dependencies are the sole expressed ordering source. Reuses the `gh api repos/{slug}/issues/...` access pattern the sub-issue rollup (Inv 53/58) already uses"
+      },
+      {
+        "name": "github-issue-duplicate-state",
+        "operation": "write-state-reason-duplicate",
+        "rationale": "resolve-duplicate.py (Inv 60) records the AUTHORITATIVE GitHub-native duplicate resolution by closing the duplicate with `gh api --method PATCH repos/{slug}/issues/<dup> -f state=closed -f state_reason=duplicate` and posting one cross-reference comment naming the canonical issue. `status <n>` READS `gh issue view <n> --json state,stateReason,labels` to report whether an issue is a recognized duplicate: native `stateReason == duplicate` is authoritative, the reinvented `duplicate` label is honored only on read as a deprecating coexistence mirror. The DETECTION heuristic is unchanged (triage-issue.py rule 3); this is RESOLUTION only. Deprecation criterion: drop the `duplicate` label read once no open or recently-closed issue carries the label and native `state_reason=duplicate` is the sole expressed duplicate marker. Reuses the `gh api repos/{slug}/issues/...` access pattern Inv 53/58/59 already use"
       }
     ]
   },

@@ -990,6 +990,12 @@ def classify(issue_num, repo_root):
         # contributes nothing (no crash — _age_days tolerates absence).
         "created_at": created_at,
         "blocked_by": [],
+        # `duplicate_of` (issue #943, Inv 60) is the matched closed issue's
+        # number when rule 3's duplicate-DETECTION heuristic fires, else None.
+        # It is the canonical issue the duplicate resolves to; resolve-duplicate.py
+        # reads it to record the AUTHORITATIVE GitHub-native duplicate state.
+        # Always present on EVERY decision so the dispatcher can rely on it.
+        "duplicate_of": None,
         # planning_note is null for non-defer decisions; each defer return
         # overrides it with a non-empty note (issue #423 Part A).
         "planning_note": None,
@@ -1030,9 +1036,13 @@ def classify(issue_num, repo_root):
     for ci in closed:
         cti = (ci.get("title", "") or "").casefold()
         if title_cf and title_cf in cti:
+            # Detection heuristic unchanged; echo the matched closed issue's
+            # number in `duplicate_of` (Inv 60) so the resolution path can
+            # record the native duplicate link to the canonical issue.
             return dict(base,
                         decision="close-not-planned",
                         reason_code="duplicate",
+                        duplicate_of=ci.get("number"),
                         rationale=f"Title is a case-folded substring match of closed issue #{ci.get('number')}.")
 
     # ---- Rule 4: feature-retired ----

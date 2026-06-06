@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.79.0
+version: 0.80.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -75,7 +75,8 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 |---|---|---|
 | `scripts/set-evolve-mode.py` | CLI | Compound mutator: `on` flips `human-approval=false`, `bypass-permissions=true`, writes `.rabbit-auto-evolve-active` in order with rollback on failure; `off` reverses in inverse order |
 | `scripts/fetch-queue.py` | CLI | Lists open ACTIONABLE issues (valid `feature:` + `priority:` label) via `gh`, sorts by priority then `createdAt`, emits JSON array |
-| `scripts/triage-issue.py` | CLI | Per-issue classifier; reads issue metadata and the named feature's spec front matter; emits a triage JSON object with `decision`, `reason_code`, `rationale`, `feature`, `contract_touch`, `blocked_by` |
+| `scripts/triage-issue.py` | CLI | Per-issue classifier; reads issue metadata and the named feature's spec front matter; emits a triage JSON object with `decision`, `reason_code`, `rationale`, `feature`, `contract_touch`, `blocked_by`, `duplicate_of` |
+| `scripts/resolve-duplicate.py` | CLI | Records the GitHub-native duplicate resolution (Inv 60): `resolve <dup> <canonical>` closes the duplicate with `state_reason=duplicate` and cross-links the canonical issue; `status <n>` reports whether an issue is recognized as a duplicate (native state authoritative; legacy `duplicate` label honored on read as a deprecating mirror) |
 | `scripts/plan-batch.py` | CLI | Reads a work-set JSON from stdin; partitions contract-touch issues into `barrier_first`; greedy graph-colors the rest by feature-conflict into `groups`; applies `max_parallel` cap |
 | `scripts/safety-check.py` | CLI | Validates five bottom-line invariants (branch is `dev`, PR base is `dev`, head branch matches `^feat/.+`, tag does not already exist, no uncommitted modifications to tracked files); exits non-zero on any violation |
 | `scripts/merge-prs.py` | CLI | Calls `safety-check.py --phase merge` then `gh pr merge --squash` (direct merge, NOT `--auto`) for each PR; refuses any PR whose base is not `dev` |
@@ -283,9 +284,15 @@ summary is restated here.
      "issue_type": "bug" | "enhancement" | null,
      "created_at": "2026-01-02T03:04:05Z" | null,
      "blocked_by": [124],
+     "duplicate_of": 90 | null,
      "planning_note": "<non-empty string for defer/research, else null>"
    }
    ```
+
+   The `duplicate_of` field (Inv 60) is the matched closed issue's number when
+   rule 3's duplicate-detection heuristic fires (`reason_code=duplicate`), else
+   `null`. It is the canonical issue the duplicate resolves to;
+   `resolve-duplicate.py` reads it to record the native duplicate state.
 
    The `issue_type` and `created_at` fields (see Inv 48) feed the
    bug-vs-enhancement and age signals of the computed priority score (Inv 44),
@@ -362,7 +369,7 @@ summary is restated here.
    |---|---|---|---|
    | 1 | Issue lacks `feature:<name>` OR `priority:<level>` label | `defer` | `malformed-labels` |
    | 2 | Feature named by label does not exist at `.claude/features/<name>/` | `close-not-planned` | `unknown-feature` |
-   | 3 | Issue title is a case-folded substring match of a closed-in-last-30-days issue's title | `close-not-planned` | `duplicate` |
+   | 3 | Issue title is a case-folded substring match of a closed-in-last-30-days issue's title (the DETECTION heuristic; the matched closed issue's number is echoed in `duplicate_of`) | `close-not-planned` | `duplicate` |
    | 4 | Feature's `feature.json.status == "retired"` | `close-not-planned` | `feature-retired` |
    | 5 | The issue is blocked by a still-open dependency. The AUTHORITATIVE source is the GitHub-native dependency relationship (`gh api repos/{slug}/issues/<n>/dependencies/blocked_by` returns a blocker whose `state` is `open`); the body `blocked-by: #N` text declaration is a deprecating coexistence mirror, consulted only when the native source reports no open blocker | `defer` (set `blocked_by`) | `blocked` |
    | 6 | Feature's spec head matter already documents the requested behavior verbatim (case-folded substring match of the issue title's content-word tail) | `close-not-planned` | `already-spec'd` |
@@ -393,6 +400,17 @@ summary is restated here.
    `blocked-by:` token after only optional list/quote markers. A structural
    declaration that botches the issue number defers `needs-judgment`; an
    ambiguous prose occurrence resolves conservatively toward `work`.
+
+   The duplicate authority (rule 3, Inv 60) separates DETECTION from
+   RESOLUTION. Detection stays the case-folded substring heuristic above —
+   the confidence gate is unchanged. Resolution is recorded in the
+   GitHub-native duplicate state: the loop closes the duplicate issue with
+   `gh api --method PATCH repos/{slug}/issues/<n> -f state=closed -f
+   state_reason=duplicate`, the authoritative native marker, and cross-links
+   the canonical issue (`duplicate_of`) so the native relationship is
+   visible. A reinvented `duplicate` label is a deprecating coexistence
+   mirror honored only on read; the native `state_reason=duplicate` is
+   authoritative going forward.
 
    ### Comment-thread reconciliation
 
@@ -3539,6 +3557,34 @@ summary is restated here.
     `blocked`; all-CLOSED native blockers are actionable; no native blocker but
     a structural `blocked-by: #N` to an open issue still defers via the mirror;
     a prose-only `blocked-by:` mention passes through as `work`).
+
+60. **The GitHub-native duplicate state is the authoritative resolution of a
+    detected duplicate; the reinvented `duplicate` label is a deprecating
+    coexistence mirror.** DETECTION is unchanged: `triage-issue.py` rule 3
+    flags a duplicate by the case-folded title-substring match against
+    closed-in-last-30-days issues; that confidence gate is preserved exactly,
+    and the rule still emits `decision=close-not-planned`,
+    `reason_code=duplicate`, now also echoing the matched closed issue's number
+    in `duplicate_of` (null when no match). RESOLUTION is recorded natively:
+    `scripts/resolve-duplicate.py resolve <dup> <canonical>` closes the
+    duplicate with `gh api --method PATCH repos/{slug}/issues/<dup> -f
+    state=closed -f state_reason=duplicate` — the authoritative native marker —
+    and posts one cross-reference comment naming the canonical issue. The close
+    is a TERMINAL convergence (consistent with Inv 25): a native
+    close-as-duplicate is a CLOSE, never a label-strip-while-open de-queue, and
+    fires only on a heuristic-confirmed match (gate never loosened). The
+    reinvented `duplicate` label is honored ONLY on read (`resolve-duplicate.py
+    status <n>` reports a legacy label-stamped duplicate as recognized); a new
+    resolution NEVER stamps the label, only the native state. The read reuses
+    the `gh api repos/{slug}/issues/...` pattern Inv 53/58/59 use; a transient
+    gh failure is reported as an error, never silently stripping a label or
+    leaving the issue open-but-untracked. Deprecation criterion: drop the
+    `duplicate` label read once no open or recently-closed issue carries the
+    label and native `state_reason=duplicate` is the sole expressed duplicate
+    marker. Enforced by `test/test-resolve-duplicate.py` (the `gh` shim serves
+    the native PATCH and a `gh issue view` read) and by
+    `test/test-triage-rules.py` (rule 3 still emits
+    `close-not-planned`/`duplicate` AND echoes `duplicate_of`).
 
 ## Known gaps
 

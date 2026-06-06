@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.79.0
+version: 0.80.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -608,6 +608,33 @@ python3 .claude/features/rabbit-auto-evolve/scripts/fetch-queue.py \
 `.claude/features/rabbit-auto-evolve/scripts/set-evolve-mode.py` is NOT
 invoked by `tick` — it runs only when the user flips the mode via
 `/rabbit-auto-evolve on|off`.
+
+### Duplicate resolution via native GitHub state (Inv 60)
+
+The duplicate-DETECTION heuristic is unchanged: `triage-issue.py` rule 3
+flags a duplicate by the case-folded title-substring match against
+closed-in-last-30-days issues and emits `decision=close-not-planned`,
+`reason_code=duplicate`, and the matched closed issue's number in
+`duplicate_of`. When the dispatcher acts on a `reason_code=duplicate`
+verdict it resolves the duplicate via the AUTHORITATIVE GitHub-native
+duplicate state — NOT a reinvented `duplicate` label or a free-prose
+not-planned close — by invoking the script:
+
+```
+python3 .claude/features/rabbit-auto-evolve/scripts/resolve-duplicate.py resolve <dup#> <duplicate_of#>
+```
+
+This closes `<dup#>` with `gh api --method PATCH repos/{slug}/issues/<dup#>
+-f state=closed -f state_reason=duplicate` and posts one cross-reference
+comment naming `<duplicate_of#>`, so the native duplicate relationship is
+visible. The native close-as-duplicate is a CLOSE — a terminal convergence
+consistent with the convergence guarantee (Inv 25) — never a
+label-strip-while-open de-queue. The reinvented `duplicate` label is a
+deprecating coexistence mirror honored ONLY on read (`resolve-duplicate.py
+status <n>`); a new resolution NEVER stamps the label, only the native
+state. Deprecation criterion: drop the `duplicate` label read once no open
+or recently-closed issue carries the label and native
+`state_reason=duplicate` is the sole expressed duplicate marker.
 
 ### Dispatch shape selection (Stage 1 / Stage 2 — Inv 26)
 
