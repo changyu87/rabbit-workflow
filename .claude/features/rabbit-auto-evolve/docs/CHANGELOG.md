@@ -16,6 +16,25 @@ authoritative).
 
 ## Version notes
 
+- **v0.76.0 — 2026-06-04** — Fix #941 (triage blocked-by detection
+  over-matched on prose). `scripts/triage-issue.py`'s rule-5 malformed
+  detection used a substring `blocked-by:` match (`_BLOCKED_BY_ANY`), so an
+  issue whose body merely DESCRIBED or discussed the blocked-by mechanism in
+  prose (a sentence, code span, or table) — never declaring a real ordering
+  dependency — was false-deferred `defer`/`needs-judgment`. This false-deferred
+  legitimate work (it repeatedly deferred the very issues proposing to redesign
+  the mechanism, and #941 itself). The detection is now STRUCTURAL: rule 5
+  fires only on the concrete `blocked-by: #N` form (which still parses `N` as
+  the blocker) OR on a line that STARTS with the `blocked-by:` token after only
+  optional list/quote markers. A leading structural `blocked-by:` line with no
+  valid `#N` remains the sole malformed-defer case; an ordinary prose mention
+  now passes through as actionable `work`. spec Inv 3 rule-5 row + ambiguity
+  default amended to specify the structural (never substring) rule. New e2e
+  cases in `test/test-triage-rules.py`: a realistic prose mention triages
+  `work`/actionable; a genuine `blocked-by: #N` still extracts `N`; a leading
+  structural malformed declaration still defers `needs-judgment`. Source
+  SKILL.md unchanged except the lockstep version bump — dispatcher MUST
+  republish the deployed skill copy.
 - **v0.75.0 — 2026-06-04** — Fix #934 (decomposition establishes the
   GitHub-native parent/sub-issue link, state map stays authoritative). When
   the loop shapes an item as `decomposition` (dispatch shape rank 3) and files

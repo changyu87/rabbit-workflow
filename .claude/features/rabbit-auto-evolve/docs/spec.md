@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.75.0
+version: 0.76.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -364,7 +364,7 @@ summary is restated here.
    | 2 | Feature named by label does not exist at `.claude/features/<name>/` | `close-not-planned` | `unknown-feature` |
    | 3 | Issue title is a case-folded substring match of a closed-in-last-30-days issue's title | `close-not-planned` | `duplicate` |
    | 4 | Feature's `feature.json.status == "retired"` | `close-not-planned` | `feature-retired` |
-   | 5 | Issue body declares `blocked-by: #N` AND any cited `#N` is still open | `defer` (set `blocked_by`) | `blocked` |
+   | 5 | Issue body STRUCTURALLY declares a blocked-by dependency (a `blocked-by: #N` form anywhere, OR a line that STARTS with the `blocked-by:` token after only optional list/quote markers) AND any cited `#N` is still open | `defer` (set `blocked_by`) | `blocked` |
    | 6 | Feature's spec head matter already documents the requested behavior verbatim (case-folded substring match of the issue title's content-word tail) | `close-not-planned` | `already-spec'd` |
    | 7 | Otherwise actionable; refined by research classification and comment-thread reconciliation | `work` / `research` / `defer` | `actionable` / `research` / `needs-judgment` |
 
@@ -373,11 +373,23 @@ summary is restated here.
    under `.claude/features/contract/`.
 
    **Ambiguity default:** Any case the seven rules cannot resolve
-   (e.g. malformed `blocked-by` syntax, unparsable spec head matter,
-   `gh` returning a payload missing expected fields) defaults to
-   `decision=defer`, `reason_code=needs-judgment`. The triage MUST
-   NEVER fall through silently to `work`; the loop under-dispatches
-   rather than over-dispatches.
+   (e.g. unparsable spec head matter, `gh` returning a payload missing
+   expected fields) defaults to `decision=defer`,
+   `reason_code=needs-judgment`. The triage MUST NEVER fall through
+   silently to `work`; the loop under-dispatches rather than
+   over-dispatches.
+
+   The blocked-by detection (rule 5) is STRUCTURAL, never substring: a
+   prose mention of the `blocked-by:` token mid-sentence — an issue that
+   merely DESCRIBES or discusses the dependency mechanism in a sentence,
+   code span, or table — is NOT a dependency declaration and MUST pass
+   through as actionable, NEVER deferred. Only a STRUCTURAL declaration
+   counts: the concrete `blocked-by: #N` form (which parses `N` as the
+   blocker), or a line that STARTS with the `blocked-by:` token after
+   only optional list/quote markers. A structural declaration that botches
+   the issue number (a leading `blocked-by:` line with no valid `#N`) is
+   the sole malformed case that defers with `needs-judgment`; an ambiguous
+   prose occurrence is resolved conservatively toward `work`.
 
    ### Comment-thread reconciliation
 
@@ -423,7 +435,10 @@ summary is restated here.
    `tempfile.TemporaryDirectory()` serves fixture `gh issue view` / `gh issue
    list` responses; no live network): one unit test per decision-table row (7
    rules) from fixtures under `test/fixtures/triage/`; a `needs-judgment`
-   ambiguity case (e.g. `blocked-by:` without an integer ref); comment-thread
+   ambiguity case (a STRUCTURAL leading `blocked-by:` line with no integer
+   ref) AND its converse — a body that merely MENTIONS the `blocked-by:`
+   token in prose passes through as `work`/actionable, never deferred;
+   comment-thread
    reconciliation (a correction comment → `decision=work` with `correction`
    noted in the `rationale`; an ambiguous reopened-retitle conflict →
    `decision=defer` / `needs-judgment` naming both targets; no comments and no
