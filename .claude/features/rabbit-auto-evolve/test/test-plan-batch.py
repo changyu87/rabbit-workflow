@@ -864,4 +864,78 @@ else:
         fail(f"decomp-parent-exclude: bad JSON ({e}); stdout={proc.stdout!r}")
 
 
+# ---------------------------------------------------------------------------
+# Scenario — non-work / natively-blocked exclusion (issue #970, Inv 62)
+#   plan-batch must surface ONLY dispatchable `work` items. A non-`work` triage
+#   verdict (defer/blocked, close-not-planned/duplicate) MUST be absent from
+#   ALL plan outputs (selection_order, dispatch_shapes, cross_scope_items),
+#   mirroring the Inv 58 decomposition-parent filter. The genuine #970 leak:
+#   triage-batch.py's defer-limit can FORCE a natively-blocked item to
+#   `decision=work` (reason_code=defer-limit-reached) while it still carries an
+#   OPEN `blocked_by` dependency (the authoritative blocked signal, Inv 59) —
+#   such an item is NOT yet dispatchable and MUST also be excluded. A plain
+#   `work` item and an ordinary cross_scope work item keep their existing
+#   behaviour (no regression).
+# ---------------------------------------------------------------------------
+items = [
+    # Plain work — selected and shaped normally.
+    {"issue": 960, "feature": "feat-a", "features": ["feat-a"],
+     "contract_touch": False, "priority": "high", "decision": "work",
+     "blocked_by": []},
+    # Natively blocked, deferred — must be absent.
+    {"issue": 964, "feature": "feat-b", "features": ["feat-b"],
+     "contract_touch": False, "priority": "high", "decision": "defer",
+     "reason_code": "blocked", "blocked_by": [950]},
+    # Duplicate close-not-planned — must be absent.
+    {"issue": 965, "feature": "feat-c", "features": ["feat-c"],
+     "contract_touch": False, "priority": "high",
+     "decision": "close-not-planned", "reason_code": "duplicate",
+     "blocked_by": []},
+    # Force-promoted to work by the defer-limit, but STILL natively blocked
+    # (open blocker in blocked_by) — the genuine #970 leak; must be absent.
+    {"issue": 966, "feature": "feat-d", "features": ["feat-d"],
+     "contract_touch": False, "priority": "high", "decision": "work",
+     "reason_code": "defer-limit-reached", "blocked_by": [951]},
+    # Cross-scope work item — still selected, shaped, and in cross_scope_items.
+    {"issue": 967, "feature": "feat-e", "features": ["feat-e", "feat-f"],
+     "contract_touch": False, "priority": "high", "decision": "work",
+     "cross_scope": True, "blocked_by": []},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"non-work-exclude: exit {proc.returncode}; stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        shapes = out.get("dispatch_shapes", {})
+        cross = out.get("cross_scope_items", [])
+        # Deferred/blocked, duplicate, and force-promoted-but-blocked are gone.
+        absent = [964, 965, 966]
+        leaked = [n for n in absent
+                  if n in sel or str(n) in shapes or n in cross]
+        if leaked:
+            fail(f"non-work-exclude: non-dispatchable items {leaked} leaked into "
+                 f"the plan (selection_order={sel!r}, dispatch_shapes keys="
+                 f"{sorted(shapes)!r}, cross_scope_items={cross!r}) (#970)")
+        elif 960 not in sel:
+            fail(f"non-work-exclude: plain work #960 must remain selected, "
+                 f"got {sel!r} (#970)")
+        elif shapes.get("960") != "parallel-per-feature":
+            fail(f"non-work-exclude: work #960 shape={shapes.get('960')!r}, "
+                 f"want parallel-per-feature (#970)")
+        elif 967 not in sel:
+            fail(f"non-work-exclude: cross_scope work #967 must remain "
+                 f"selected, got {sel!r} (#970)")
+        elif 967 not in cross:
+            fail(f"non-work-exclude: cross_scope work #967 must remain in "
+                 f"cross_scope_items, got {cross!r} (#970)")
+        else:
+            ok("non-work-exclude: defer/blocked, duplicate, and "
+               "force-promoted-but-still-blocked items excluded from the plan; "
+               "plain work + cross_scope work retained (#970)")
+    except json.JSONDecodeError as e:
+        fail(f"non-work-exclude: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
 sys.exit(FAIL)

@@ -16,6 +16,31 @@ authoritative).
 
 ## Version notes
 
+- **v0.81.2 — 2026-06-04** — Bug #970 (plan-batch surfaced a natively-blocked
+  item in the dispatchable plan). `triage-batch.py`'s anti-infinite-defer
+  counter (Inv 18) FORCES a repeatedly-deferred item to `decision=work`
+  (`reason_code=defer-limit-reached`) after 3 consecutive defers. For an item
+  whose defer reason is an OPEN native `blocked_by` dependency (Inv 59), forcing
+  `work` lifts the defer verdict but does NOT clear the blocker — yet
+  `plan-batch.py` then surfaced it in `selection_order` / `dispatch_shapes`,
+  presenting an item a TDD subagent could not land (observed: #964 with an open
+  blocker). Fix: `plan-batch.py`'s single up-front filter — the same point that
+  drops a `decomposition_parent` (Inv 58) — now also drops any item carrying a
+  non-empty `blocked_by` list TOGETHER WITH a blocked-origin `reason_code`
+  (`blocked` or `defer-limit-reached`), so a natively-blocked item is excluded
+  from ALL plan outputs (`selection_order`, `dispatch_shapes`,
+  `cross_scope_items`) regardless of how its `decision` reads. The reason_code
+  gate keeps a `blocked_by` carried purely as a blocking-fanout signal (Inv 44)
+  on an actionable item from being wrongly dropped. The existing
+  non-`work`/non-`research`
+  drop is unchanged; an unblocked `work` item, a `research` item, a
+  `cross_scope` work item, and the `decomposition_parent` exclusion all keep
+  their behaviour (no regression). New Inv 62 generalizes the filter to "the
+  plan contains only dispatchable work items"; `plan-batch.py` bumped to v1.8.0.
+  `test/test-plan-batch.py` gains the #970 e2e (defer/blocked, duplicate, and
+  force-promoted-but-still-blocked items absent from the plan; plain work +
+  cross_scope work retained).
+
 - **v0.81.1 — 2026-06-04** — Bug #959 (Inv 56 self-correcting jitter was
   half-wired). `banner-status.py` rendered the idle next-tick ETA as the next
   heartbeat boundary plus the empirical jitter offset read from

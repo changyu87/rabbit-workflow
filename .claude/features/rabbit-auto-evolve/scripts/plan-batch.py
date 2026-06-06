@@ -119,13 +119,29 @@ exclusion does not violate the convergence guarantee (Inv 25). A child
 sub-issue (it has a PARENT link but no children of its own, so
 `decomposition_parent` is false) is dispatched normally.
 
+NATIVELY-BLOCKED EXCLUSION (issue #970, Inv 62). An item still carrying a
+non-empty `blocked_by` list — the OPEN native blocker numbers triage-issue.py
+emits from the GitHub-native dependencies graph (the authoritative blocked
+source, Inv 59) — TOGETHER WITH a blocked-origin `reason_code` (`blocked` from
+rule 5, or `defer-limit-reached` after a force-promotion) is FILTERED OUT of the
+dispatchable plan even when its `decision` reads `work`. triage-batch.py's
+anti-infinite-defer counter (Inv 18) can FORCE a repeatedly-deferred item to
+`decision=work` (`reason_code=defer-limit-reached`); that lifts the defer verdict
+but does NOT clear an open blocker, so the decision-only drop alone would let a
+still-blocked item through. Filtering on the `blocked_by` + blocked-origin-
+`reason_code` signal at the same point as the Inv 58 parent filter keeps it out
+of selection_order, dispatch_shapes, and cross_scope_items. The reason_code gate
+spares a `blocked_by` carried purely as a cross-item blocking-fanout signal
+(Inv 44) on an actionable item. The item stays OPEN and tracked-by-dependency
+(no Inv 25 violation) and re-enters the plan once its blocker closes.
+
 The script is a pure JSON processor — no gh, no git, no filesystem
 mutations.
 
 Exit code: 0 on success; non-zero on malformed stdin JSON or invalid
 --max-parallel / --decompose-threshold value.
 
-Version: 1.7.0
+Version: 1.8.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -448,6 +464,30 @@ def plan(items, max_parallel, decompose_threshold):
     # so `decomposition_parent` is false) is NOT filtered and is dispatched
     # normally.
     items = [i for i in items if not i.get("decomposition_parent")]
+
+    # Exclude NATIVELY-BLOCKED items (issue #970, Inv 62). triage-issue.py rule 5
+    # populates a non-empty `blocked_by` (the OPEN native blocker numbers from
+    # `gh api .../dependencies/blocked_by`, the authoritative blocked source,
+    # Inv 59) ONLY on a blocked verdict — `reason_code == "blocked"`. The plain
+    # blocked verdict (`decision=defer`/`blocked`) is already dropped by the
+    # decision filter above; the #970 LEAK is the force-promoted case:
+    # triage-batch.py's anti-infinite-defer counter (Inv 18) flips a
+    # repeatedly-deferred blocked item to `decision=work` with
+    # `reason_code="defer-limit-reached"`, which lifts the defer verdict but does
+    # NOT clear the open native blocker, so the decision-only drop lets it
+    # through. An item is natively blocked iff it carries a non-empty `blocked_by`
+    # AND a blocked-origin `reason_code` ("blocked" or "defer-limit-reached"); it
+    # is filtered here — at the same point as the Inv 58 parent filter — out of
+    # selection_order, dispatch_shapes, and cross_scope_items, regardless of how
+    # `decision` reads. This does NOT violate the convergence guarantee (Inv 25):
+    # the item stays OPEN and tracked-by-dependency and re-enters the plan once
+    # its blocker closes. An unblocked item is unaffected; a `blocked_by` carried
+    # purely as a cross-item blocking-fanout signal on an actionable item (issue
+    # #441) does not match the blocked-origin reason_code and is NOT filtered.
+    _BLOCKED_REASONS = ("blocked", "defer-limit-reached")
+    items = [i for i in items
+             if not (i.get("blocked_by")
+                     and i.get("reason_code") in _BLOCKED_REASONS)]
 
     # Loop-computed priority score (issue #441). Blocking-fanout is a
     # cross-item signal, so it is computed once over the whole dispatchable
