@@ -333,6 +333,71 @@ with tempfile.TemporaryDirectory() as td:
         ok("coexist-main: item-status.py NOT invoked (native auto-close)")
 
 
+# ===========================================================================
+# Issue #973 — admin-override merge into the protected default branch (main).
+#
+# Once the integration target switches to `main` (#964), the loop's own PRs
+# carry 0 approvals; `main` is branch-protected with required_approving_
+# review_count: 1 (enforce_admins: false), so a plain `gh pr merge --squash`
+# is BLOCKED — the bot cannot approve its own PR. The fix: a merge whose base
+# is the DEFAULT branch (main) uses `gh pr merge --squash --admin` to bypass
+# ONLY the required-review the bot structurally cannot satisfy (the contract
+# repo-gate, run PRE-merge, is the real quality gate and is unchanged).
+# Coexistence (Inv 61): a `dev`-base merge (non-default, no required-review
+# protection) keeps the CURRENT behavior — `--squash`, NO `--admin`.
+# ===========================================================================
+
+def _merge_calls(call_log):
+    return [c for c in _gh_calls(call_log) if "pr merge" in c]
+
+
+# --- (J) main-base merge uses --admin (admin-override past required review) --
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="main", safety_exit=0, merge_exit=0,
+        merge_sha="main9999", integration_target="main",
+    )
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"admin-main: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    merge_calls = _merge_calls(call_log)
+    if not merge_calls:
+        fail(f"admin-main: gh pr merge was NOT called; "
+             f"calls={_gh_calls(call_log)!r}")
+    elif not all("--admin" in c for c in merge_calls):
+        fail(f"admin-main: main-base merge missing --admin (issue #973): "
+             f"{merge_calls!r}")
+    elif not all("--squash" in c for c in merge_calls):
+        fail(f"admin-main: main-base merge missing --squash: {merge_calls!r}")
+    else:
+        ok("admin-main: main-base merge uses --squash --admin")
+
+
+# --- (K) dev-base merge does NOT use --admin (coexistence; current behavior) -
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        merge_sha="dev9999", integration_target="dev",
+    )
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"no-admin-dev: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    merge_calls = _merge_calls(call_log)
+    if not merge_calls:
+        fail(f"no-admin-dev: gh pr merge was NOT called; "
+             f"calls={_gh_calls(call_log)!r}")
+    elif any("--admin" in c for c in merge_calls):
+        fail(f"no-admin-dev: dev-base merge wrongly used --admin (Inv 61 "
+             f"coexistence; only the default-branch path adds --admin): "
+             f"{merge_calls!r}")
+    elif not all("--squash" in c for c in merge_calls):
+        fail(f"no-admin-dev: dev-base merge missing --squash: {merge_calls!r}")
+    else:
+        ok("no-admin-dev: dev-base merge uses --squash WITHOUT --admin")
+
+
 # ---------------------------------------------------------------------------
 # Skip-on-safety-fail: gh shim returns base=dev; safety-check.py shim
 # exits non-zero. Expected: status=skipped, reason=safety-check-failed;

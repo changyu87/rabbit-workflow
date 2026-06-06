@@ -16,6 +16,25 @@ authoritative).
 
 ## Version notes
 
+- **v0.82.0 — 2026-06-04** — Enhancement #973 (admin-override merge into the
+  protected default branch `main`). `main` is the repo default branch AND is
+  branch-protected with `required_approving_review_count: 1` /
+  `enforce_admins: false`; once the integration target cuts over to `main`
+  (#964) the loop's own PRs carry 0 approvals and a plain
+  `gh pr merge --squash` would be BLOCKED — the bot cannot approve its own PR,
+  deadlocking every merge. `merge-prs.py` now adds `--admin` to the merge
+  invocation when the PR's base IS the default branch (resolved via the
+  existing `integration_target.is_default_branch(base)` predicate), overriding
+  ONLY the structural required-review the bot cannot satisfy
+  (`enforce_admins: false` permits the override; the loop's real quality gate,
+  the contract repo-gate run pre-merge, is unchanged). Coexistence (Inv 61):
+  a `dev`-base merge (a non-default branch with no required-review protection)
+  keeps the current behavior — `--squash` with NO `--admin` — on the SAME
+  default-branch axis as the manual-close skip (`main`-base ⇒ `--admin` AND
+  skip manual close; `dev`-base ⇒ no `--admin` AND run manual close). Inv 61
+  extended (new concrete item 5); `merge-prs.py` 1.8.0 → 1.9.0; four-way
+  lockstep bump 0.81.2 → 0.82.0.
+
 - **v0.81.2 — 2026-06-04** — Bug #970 (plan-batch surfaced a natively-blocked
   item in the dispatchable plan). `triage-batch.py`'s anti-infinite-defer
   counter (Inv 18) FORCES a repeatedly-deferred item to `decision=work`

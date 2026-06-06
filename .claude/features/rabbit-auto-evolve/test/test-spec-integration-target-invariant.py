@@ -58,6 +58,16 @@ if missing:
 else:
     ok("spec.md carries the integration-target / coexistence invariant")
 
+# Admin-override merge on the protected default branch (issue #973): a
+# default-branch (main) merge uses `gh pr merge --squash --admin` to bypass the
+# required-review the bot cannot satisfy; the dev-base merge keeps --squash
+# WITHOUT --admin (Inv 61 coexistence axis).
+if "--admin" not in spec_lower:
+    fail("spec.md missing the admin-override merge flag (--admin) for the "
+         "protected default-branch merge path (issue #973)")
+else:
+    ok("spec.md carries the --admin default-branch admin-override merge prose")
+
 # The invariant's title is present as a numbered list item (number not pinned).
 # The title may wrap across lines, so match the numbered-bullet opener followed
 # by the "integrat..." stem (the rest of the phrase may continue on a wrap).
