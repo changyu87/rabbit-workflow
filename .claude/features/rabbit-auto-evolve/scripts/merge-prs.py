@@ -17,8 +17,15 @@ Per rabbit-auto-evolve spec.md Inv 6 / Inv 61, for each PR this script:
      records {pr, status:"skipped", reason:"safety-check-failed"}.
   3. Otherwise calls `gh pr merge <#> --squash` (a direct squash merge — NOT
      `--auto`; see issue #429: `--auto` requires the repo to have auto-merge
-     enabled and fails on repos without it). On success records
-     {pr, status:"merged"}; on failure records
+     enabled and fails on repos without it). Inv 61 / issue #973: when the PR's
+     base IS the default branch (main, which is branch-protected with a
+     required review the bot cannot satisfy on its own PR) the merge adds
+     `--admin` (`gh pr merge <#> --squash --admin`) to override ONLY that
+     structural required-review; a `dev`-base merge (non-default branch, no
+     required-review protection) keeps the plain `--squash` with NO `--admin`.
+     `enforce_admins: false` permits the admin override, and the loop's REAL
+     quality gate (the contract repo-gate, run pre-merge) is unchanged. On
+     success records {pr, status:"merged"}; on failure records
      {pr, status:"failed", reason:"gh-merge-failed: <stderr>"}.
   4. After a successful merge, parses the merged PR TITLE and body for
      `Fixes #N` / `Closes #N` / `Resolves #N` references (case-insensitive,
@@ -81,7 +88,7 @@ promotes the dispatch_journal entry of every issue a merged PR closed to
 `completed` (recording its PR number) — the journal's `completed` transition,
 no new write site.
 
-Version: 1.8.0
+Version: 1.9.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -225,18 +232,27 @@ def _safety_check(pr):
     )
 
 
-def _gh_merge(pr):
+def _gh_merge(pr, admin=False):
     # Direct squash merge — NOT `--auto`. The `--auto` flag requires the repo
     # to have auto-merge enabled (enablePullRequestAutoMerge); on repos without
     # it, `gh pr merge --auto` fails for any PR that is not immediately
     # mergeable with "Auto merge is not allowed for this repository" (issue
-    # #429). Mergeability is already gated by the base==dev refusal in
+    # #429). Mergeability is already gated by the base-not-accepted refusal in
     # process() plus safety-check.py, so a direct merge is correct and does
     # not depend on the repo's auto-merge setting.
-    return subprocess.run(
-        ["gh", "pr", "merge", str(pr), "--squash"],
-        capture_output=True, text=True,
-    )
+    #
+    # Issue #973 (Inv 61): when `admin` is set — i.e. the PR base is the
+    # protected default branch (main) — add `--admin` so the loop can land its
+    # OWN PRs despite `main`'s required_approving_review_count: 1 protection
+    # (the bot cannot approve its own PR). `enforce_admins: false` permits the
+    # admin override; `--admin` bypasses ONLY the structural required-review,
+    # never the loop's real quality gate (the contract repo-gate, run
+    # pre-merge). A `dev`-base merge (non-default branch, no required-review
+    # protection) keeps the plain `--squash` with NO `--admin`.
+    cmd = ["gh", "pr", "merge", str(pr), "--squash"]
+    if admin:
+        cmd.append("--admin")
+    return subprocess.run(cmd, capture_output=True, text=True)
 
 
 def _pr_field(pr, field, query):
@@ -371,7 +387,15 @@ def process(pr):
         return {"pr": pr, "status": "skipped",
                 "reason": "safety-check-failed"}
 
-    merge = _gh_merge(pr)
+    # Inv 61 / issue #973 — a merge whose base IS the default branch (main) is
+    # blocked by `main`'s required-review protection (the bot cannot approve its
+    # own PR), so it uses an admin-override merge (`--admin`); a `dev`-base
+    # merge (non-default branch, no required-review protection) keeps the plain
+    # `--squash`. The same default-branch axis drives the manual-close skip
+    # below — keeping the two consistent (main ⇒ --admin AND skip manual close;
+    # dev ⇒ no --admin AND run manual close).
+    on_default_branch = integration_target.is_default_branch(base)
+    merge = _gh_merge(pr, admin=on_default_branch)
     if merge.returncode != 0:
         return {"pr": pr, "status": "failed",
                 "reason": f"gh-merge-failed: {merge.stderr.strip()}"}
@@ -386,7 +410,7 @@ def process(pr):
     # loop runs the explicit close. The merge SHA is still recorded
     # (last_merged_sha, issue #564) so the informational state field stays
     # current under either base.
-    if integration_target.is_default_branch(base):
+    if on_default_branch:
         result["merge_sha"] = _pr_field(pr, "mergeCommit", ".mergeCommit.oid")
         result["closed_issues"] = []
         result["close_failed"] = []
