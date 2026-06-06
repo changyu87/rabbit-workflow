@@ -43,9 +43,10 @@ BASELINE_TOTAL_LINES = 3594
 # regression while leaving headroom for future (additive) invariants. Issue #731
 # appended Inv 59 (~50 lines), so the ceiling was relaxed from the original 140-line
 # margin to an 80-line margin; issue #859 appended Inv 55 (the in-progress label
-# reconcile, ~25 lines), relaxing it further to a 55-line margin — still a meaningful
-# distance below the baseline.
-MIN_LINES_CUT = 55
+# reconcile, ~25 lines), relaxing it to a 55-line margin; the native-dependency
+# blocked-state invariant (~25 lines, with its Rule-5 prose) relaxes it to a
+# 30-line margin — still a meaningful distance below the baseline.
+MIN_LINES_CUT = 30
 MAX_TOTAL_LINES = BASELINE_TOTAL_LINES - MIN_LINES_CUT
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,

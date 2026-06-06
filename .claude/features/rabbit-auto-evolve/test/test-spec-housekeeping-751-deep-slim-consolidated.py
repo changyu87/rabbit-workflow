@@ -67,9 +67,17 @@ POST_927_ADD_INVARIANTS = 1
 # accumulated above the post-#927 ceiling before #948.
 POST_948_ADD_LINES = 50
 POST_948_ADD_INVARIANTS = 1
+# #942 added the native-dependency-authoritative blocked-state invariant (Inv
+# 59: the GitHub-native dependency relationship is the authoritative source of
+# an issue's blocked state; the body `blocked-by:` text is a deprecating
+# coexistence mirror) — a genuinely new owned rule, not slim regression. Mirror
+# the #881/#927/#948 headroom so the #751 reduction (>= 150 lines, >= 4
+# invariants) stays ENFORCED while the #942 addition is admitted.
+POST_942_ADD_LINES = 40
+POST_942_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
-    + POST_927_ADD_LINES + POST_948_ADD_LINES
+    + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -79,6 +87,7 @@ MIN_INVARIANTS_CUT = 4
 MAX_INVARIANT_COUNT = (
     BASELINE_INVARIANT_COUNT - MIN_INVARIANTS_CUT + POST_881_ADD_INVARIANTS
     + POST_927_ADD_INVARIANTS + POST_948_ADD_INVARIANTS
+    + POST_942_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---

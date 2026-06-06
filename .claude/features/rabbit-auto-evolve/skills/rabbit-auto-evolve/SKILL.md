@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.78.0
+version: 0.79.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -744,10 +744,14 @@ during phase 6 (`dispatch`) result processing:
   `python3 .claude/features/rabbit-issue/scripts/file-item.py …`) with a
   `feature:<name>` + `priority:<level>` label so the next tick's `fetch`
   phase picks them up.
-- `aborted_reason` — non-null string. The loop adds a `blocked-by:#N`
-  label to the original issue (where `N` is the discovered blocker if
-  available, else the dispatch retains the existing reason) and leaves
-  the issue OPEN so a future tick may retry.
+- `aborted_reason` — non-null string. When a concrete blocker issue `N` is
+  discovered, the loop records the dependency in the AUTHORITATIVE
+  GitHub-native dependencies graph (`gh api --method POST
+  repos/{slug}/issues/<original>/dependencies/blocked_by -F issue_id=<N-id>`)
+  so the next tick's triage reads the blocked state natively; the
+  `blocked-by:#N` label/body marker is a deprecating fallback retained only
+  during the coexistence window. The original issue stays OPEN so a future
+  tick may retry once the native blocker closes.
 
 ## Republish deployed surfaces before opening the PR (Inv 50)
 

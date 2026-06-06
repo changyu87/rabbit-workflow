@@ -73,6 +73,12 @@ Read surface (strictly bounded):
   - The named feature's feature.json — for rule 4 (status field).
   - The last-30-days closed-issue list via `gh issue list --state closed
     --search "closed:>=<iso-date>"` — for rule 3.
+  - The issue's GitHub-native dependency relationships via `gh api
+    repos/{slug}/issues/<N>/dependencies/blocked_by` — for rule 5 (issue
+    #942 / Inv 59), the AUTHORITATIVE blocked-state source. An issue blocked
+    by a still-open native dependency defers `blocked`. The body `blocked-by:
+    #N` text declaration is a deprecating coexistence mirror consulted only
+    when the native source reports no open blocker.
 
 No filesystem mutations. No reads outside the above surface.
 
@@ -82,7 +88,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.12.0
+Version: 1.13.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -189,6 +195,50 @@ def _native_sub_issue_total(num):
         return int(summary.get("total", 0))
     except (TypeError, ValueError):
         return 0
+
+
+def _native_blocked_by_open(num):
+    """Return the sorted list of still-OPEN blocker issue numbers from the
+    GitHub-native dependencies graph (issue #942, Inv 59).
+
+    Reads the AUTHORITATIVE blocked-state source —
+    `gh api repos/{slug}/issues/<num>/dependencies/blocked_by`, an array of
+    blocker issues each carrying `{number, state, title}` — and returns the
+    numbers of those whose `state` is `open` (case-insensitive). Reuses the
+    same `gh api repos/{slug}/issues/...` access pattern the sub-issue rollup
+    (Inv 53/58) uses.
+
+    Any read failure / unexpected payload returns [] (treated as "no native
+    blocker"), so a transient gh error never strands an issue — rule 5 then
+    consults the deprecating body-text mirror."""
+    try:
+        proc = subprocess.run(
+            ["gh", "api",
+             "repos/{}/issues/{}/dependencies/blocked_by".format(
+                 repo_slug(), num)],
+            capture_output=True, text=True,
+        )
+    except OSError:
+        return []
+    if proc.returncode != 0:
+        return []
+    try:
+        payload = json.loads(proc.stdout or "")
+    except ValueError:
+        return []
+    if not isinstance(payload, list):
+        return []
+    open_blockers = set()
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        if (entry.get("state") or "").lower() != "open":
+            continue
+        try:
+            open_blockers.add(int(entry.get("number")))
+        except (TypeError, ValueError):
+            continue
+    return sorted(open_blockers)
 
 
 def _state_decomposition_parents():
@@ -994,10 +1044,30 @@ def classify(issue_num, repo_root):
                     rationale=f"Feature {feature_label} status is 'retired'.")
 
     # ---- Rule 5: blocked-by ----
-    # Rule 5 fires only on a STRUCTURAL dependency declaration, never on a bare
-    # prose mention of the `blocked-by:` token (issue #941): an issue that
-    # merely describes/discusses the mechanism is NOT a dependency and passes
-    # through as actionable.
+    # The AUTHORITATIVE blocked-state source is the GitHub-native dependency
+    # relationship (issue #942, Inv 59): an issue blocked by a still-OPEN issue
+    # in the native dependencies graph defers `blocked`. When the native source
+    # reports any open blocker it wins outright; the body-text declaration below
+    # is consulted ONLY when native reports no open blocker, so it is a
+    # deprecating coexistence mirror that keeps in-flight issues (which pre-date
+    # a native dependency link) from being stranded.
+    native_open = _native_blocked_by_open(issue_num)
+    if native_open:
+        return dict(base,
+                    decision="defer",
+                    reason_code="blocked",
+                    rationale=f"Blocked by still-open issue(s): {native_open} "
+                              f"(native GitHub dependency).",
+                    blocked_by=native_open,
+                    planning_note=f"Wait for blocking issue(s) "
+                                  f"{native_open} to close, then re-triage; "
+                                  f"dispatch is unblocked once they land.")
+
+    # Coexistence mirror (deprecating, issue #942): the body-text declaration
+    # fires only on a STRUCTURAL declaration, never on a bare prose mention of
+    # the `blocked-by:` token (issue #941): an issue that merely
+    # describes/discusses the mechanism is NOT a dependency and passes through
+    # as actionable.
     if _declares_blocked_by(body):
         matches = _BLOCKED_BY_GOOD.findall(body)
         if not matches:

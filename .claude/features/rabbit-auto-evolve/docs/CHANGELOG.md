@@ -16,6 +16,22 @@ authoritative).
 
 ## Version notes
 
+- **v0.79.0 — 2026-06-06** — Fix #942 (native GitHub dependencies as the
+  authoritative blocked state; R2b of #935). `triage-issue.py` rule 5 now reads
+  an issue's blocked state from the GitHub-native dependencies graph
+  (`gh api repos/{slug}/issues/<n>/dependencies/blocked_by`) as the
+  AUTHORITATIVE source: an issue with an OPEN native blocker defers `blocked`,
+  one whose native blockers are all closed is actionable. The body
+  `blocked-by: #N` text declaration (#941's prose-hardened structural parser,
+  preserved) and the legacy `blocked-by:` label become a deprecating
+  coexistence mirror, consulted only when the native source reports no open
+  blocker so in-flight issues are not stranded. The dispatch path that records a
+  discovered blocker prefers creating the native dependency relationship
+  (`gh api --method POST .../dependencies/blocked_by -F issue_id=<id>`). Probed
+  live: the native blocked_by READ, WRITE (POST), and DELETE endpoints all
+  return HTTP 200 on this instance. Added Inv 59; bumped four-way version to
+  0.79.0.
+
 - **v0.78.0 — 2026-06-04** — Fix #948 (exclude decomposition parents from the
   dispatchable plan). A recorded decomposition parent (observed live: #935,
   decomposed into #940–#945) kept reappearing at the bottom of `selection_order`
