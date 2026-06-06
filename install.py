@@ -203,6 +203,8 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "scripts/file-item.py",
         "scripts/item-status.py",
         "scripts/list-items.py",
+        "github/ISSUE_TEMPLATE/file-item.yml",
+        "github/workflows/issue-form-autolabel.yml",
     ],
     "rabbit-spec": [
         "feature.json",
