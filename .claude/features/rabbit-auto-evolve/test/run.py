@@ -115,5 +115,6 @@ run_test("test-spec-housekeeping-751-deep-slim-consolidated.py")
 run_test("test-spec-forbid-dequeue-invariant.py")
 run_test("test-spec-invariant-numbering-contiguous.py")
 run_test("test-contiguous-invariants-optin.py")
+run_test("test-authoritative-version.py")
 
 print("ALL TESTS PASSED")

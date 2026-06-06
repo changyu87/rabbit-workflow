@@ -37,6 +37,18 @@ snapshot (RABBIT_AUTO_EVOLVE_CRON_LIST). The actual CronList/CronDelete/
 CronCreate are DISPATCHER (Claude) actions; this script only emits the
 deterministic instruction set.
 
+Issue #986 (Inv 64): on the CronCreate session-reuse path the dispatcher
+session is REUSED across ticks and context ACCUMULATES (Inv 33), so a narrator
+can keep citing a STALE version anchored in old context even though the
+authoritative state is current. To ground version narration in a FRESH,
+deterministic source, EVERY decision this script emits carries an
+`authoritative_version` field — the current version resolved THIS TICK from
+`git describe --tags --abbrev=0`, falling back to the state
+`last_tagged_version`, falling back to null. It is NEVER a value carried in
+accumulated session context; the dispatcher/banner reads it fresh each tick.
+The git invocation is overridable via RABBIT_AUTO_EVOLVE_GIT_DESCRIBE_CMD for
+tests; the state dir via RABBIT_AUTO_EVOLVE_STATE_DIR (same as the tick log).
+
 Emitted JSON:
   - {"decision": "immediate-refire", "scheduler": "crontab"|"croncreate",
      "prompt": "/rabbit-auto-evolve tick #refire", "when": "~1min",
@@ -46,8 +58,10 @@ Emitted JSON:
      "dispatcher_actions": {"delete_refire_ids": [...],
                             "preserve_heartbeat_ids": [...],
                             "create_refire": {<the one-shot to CronCreate>}},
-     "crontab_hint": <transient/at-style hint for the dispatcher>}
-  - {"decision": "idle", "detail": "rely on heartbeat"}
+     "crontab_hint": <transient/at-style hint for the dispatcher>,
+     "authoritative_version": <str|null>}
+  - {"decision": "idle", "detail": "rely on heartbeat",
+     "authoritative_version": <str|null>}
 
 Resolution:
   - fetch-queue.py via RABBIT_AUTO_EVOLVE_FETCH_QUEUE_CMD when set (tests
@@ -58,7 +72,7 @@ Resolution:
 Exit code is always 0 (the verdict is carried in `decision`); non-zero only
 if fetch-queue.py itself errors.
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -68,9 +82,12 @@ import argparse
 import importlib.util
 import json
 import os
+import shlex
 import subprocess
 import sys
 from datetime import datetime, timedelta
+
+STATE_FILE = "auto-evolve-state.json"
 
 # The refire wake-up fires the INTERNAL `tick` (the scripted phase-walk that
 # RESPECTS the stop marker at phase 0 and NEVER deletes it), NOT the USER-intent
@@ -282,8 +299,70 @@ def _log(decision, detail):
         sys.stderr.write(f"schedule-decision: tick-log append failed: {e}\n")
 
 
+def _state_dir():
+    """The state dir holding auto-evolve-state.json (mirror of tick-log.py's
+    resolution). Overridable via RABBIT_AUTO_EVOLVE_STATE_DIR for tests."""
+    override = os.environ.get("RABBIT_AUTO_EVOLVE_STATE_DIR")
+    if override:
+        return override
+    return os.path.join(os.getcwd(), ".rabbit")
+
+
+def _git_describe_cmd():
+    """The argv for `git describe --tags --abbrev=0`. Overridable via
+    RABBIT_AUTO_EVOLVE_GIT_DESCRIBE_CMD (a shell-quoted command) for tests so
+    no real `git` is shelled out."""
+    override = os.environ.get("RABBIT_AUTO_EVOLVE_GIT_DESCRIBE_CMD")
+    if override:
+        return shlex.split(override)
+    return ["git", "describe", "--tags", "--abbrev=0"]
+
+
+def _state_last_tagged_version():
+    """Read `last_tagged_version` from .rabbit/auto-evolve-state.json. Returns
+    the string, or None on any absent/unreadable/malformed/non-string case."""
+    path = os.path.join(_state_dir(), STATE_FILE)
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    val = data.get("last_tagged_version")
+    return val if isinstance(val, str) and val.strip() else None
+
+
+def resolve_authoritative_version():
+    """Inv 64 (#986): resolve the AUTHORITATIVE current version FRESH this tick.
+
+    Source precedence:
+      1. `git describe --tags --abbrev=0` — the live repo tag (authoritative).
+      2. state `last_tagged_version` — fallback when git-describe is
+         unavailable (no tags, git failure, sandboxed tree).
+      3. None — honest absence; never a value carried in accumulated session
+         context, never a fabricated string.
+
+    The git-describe value WINS over the state value so a stale cached
+    `last_tagged_version` can never shadow the live tag — the precise #986
+    failure mode. No side effects; safe to call every tick.
+    """
+    try:
+        proc = subprocess.run(
+            _git_describe_cmd(), capture_output=True, text=True,
+        )
+        if proc.returncode == 0:
+            tag = proc.stdout.strip()
+            if tag:
+                return tag
+    except (OSError, ValueError):
+        pass
+    return _state_last_tagged_version()
+
+
 def decide():
     count = _open_work_count()
+    authoritative_version = resolve_authoritative_version()
     if count > 0:
         scheduler = _scheduler()
         # The single refire to CronCreate (Inv 33). PROMPT carries the #refire
@@ -310,10 +389,20 @@ def decide():
                 "self-removing crontab entry) that runs "
                 f"`{PROMPT}` in a fresh context"
             ),
+            # Inv 64 (#986): the authoritative current version, resolved FRESH
+            # this tick so any narrator reads it from a deterministic source
+            # rather than from accumulated session context.
+            "authoritative_version": authoritative_version,
         }
         _log("immediate-refire", f"open work={count}, scheduler={scheduler}")
         return result
-    result = {"decision": "idle", "detail": "rely on heartbeat"}
+    result = {
+        "decision": "idle",
+        "detail": "rely on heartbeat",
+        # Inv 64 (#986): surfaced on the idle path too — every tick exit emits
+        # the fresh authoritative version.
+        "authoritative_version": authoritative_version,
+    }
     _log("idle: no work", "queue empty")
     return result
 
