@@ -610,8 +610,12 @@ def write_mode_marker(*, repo_root: str) -> dict:
     rabbit-meta.lib.mode_detection.detect_mode from
     <repo_root>/.claude/features/rabbit-meta/lib/mode_detection.py, calls
     detect_mode(os.getcwd()), ensures <repo_root>/.rabbit/.runtime/ exists,
-    writes the resulting "plugin" or "standalone" string to
-    <repo_root>/.rabbit/.runtime/mode.
+    writes the value detect_mode returns VERBATIM to
+    <repo_root>/.rabbit/.runtime/mode. The vendored-install value is either
+    "vendored" (canonical) or the legacy "plugin" — both dual-accepted by
+    every contract reader (Inv 20) — and standalone is "standalone". This
+    helper does NOT canonicalize the value; it bridges whatever detect_mode
+    produces.
 
     Idempotent: re-running with unchanged content is a no-op (content-equality
     check before write — preserves mtime when the mode hasn't changed).
