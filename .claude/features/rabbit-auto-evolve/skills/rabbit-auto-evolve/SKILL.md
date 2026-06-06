@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.81.0
+version: 0.81.1
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -361,7 +361,11 @@ mutation). The deterministic walk runs in two segments around Phase 6:
    label truthful across all three Inv 55 touchpoints. The two post-dispatch
    calls are script-owned; the phase-6 call is a dispatcher-triggered SCRIPTED
    invocation of `reconcile-labels.py` (NOT hand-assembled label logic). A
-   reconcile failure never fails the tick.
+   reconcile failure never fails the tick. FINALLY the segment runs
+   `tick-jitter.py compute` (Inv 56) to refresh the empirical CronCreate
+   jitter-offset artifact from the current `.rabbit/tick.log` fire history, so the
+   idle banner's next-tick ETA stays accurate; like the reconcile, this runs on
+   BOTH paths and a compute failure never fails the tick.
 4. **Phase 12 (`schedule`)** — run `schedule-decision.py` (Inv 33) and schedule
    the immediate-refire when work remains (see "Scheduling" below).
 
@@ -381,7 +385,7 @@ session walks them via the two `run-tick-phases.py` segments plus Phase 6.
 | 6 | `dispatch`        | record ALL `dispatched` journal entries → `.claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py` (Inv 55 — phase-6 in-session add: stamps `in-progress` on the just-dispatched set BEFORE the Agent calls, so the label covers the full TDD subagent run) → rabbit-feature-touch TDD subagent dispatch (Agent calls) |
 | 7 | `merge`           | `.claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py` (Inv 55 — add-on-entry: labels the just-dispatched live set BEFORE merge drains it) → `.claude/features/rabbit-auto-evolve/scripts/clean-dispatch-leaks.py` (Inv 43, Inv 44 — deterministic pre-merge cleanup of known worktree-dispatch leaks: restores a leaked main-HEAD branch switch to `dev` FIRST, then cleans file-leak classes; refuses non-zero on unexpected dirt or un-pushed leaked-branch work) → `.claude/features/rabbit-auto-evolve/scripts/merge-prs.py --record-pending` → `.claude/features/rabbit-auto-evolve/scripts/safety-check.py --phase merge` (records merged PRs to `pending_post_merge`) |
 | 8-10 | `post-merge`    | `.claude/features/rabbit-auto-evolve/scripts/run-post-merge.py` — deterministically runs release (8) → cleanup (9) → catch-up (10) for every PR in `pending_post_merge`, then clears it (Inv 30) — see "Post-merge phases (Inv 30)" below |
-|11 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json`, then `.claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py` runs AGAIN (Inv 55 — strip-on-exit: strips the `in-progress` label from issues that left the live set after merge; pairs with the phase-7 add-on-entry call; add/strip via rabbit-issue `ensure_labels`; never fails the tick) |
+|11 | `persist`         | `.claude/features/rabbit-auto-evolve/scripts/update-state.py` writes `.rabbit/auto-evolve-state.json`, then `.claude/features/rabbit-auto-evolve/scripts/reconcile-labels.py` runs AGAIN (Inv 55 — strip-on-exit: strips the `in-progress` label from issues that left the live set after merge; pairs with the phase-7 add-on-entry call; add/strip via rabbit-issue `ensure_labels`; never fails the tick), then `.claude/features/rabbit-auto-evolve/scripts/tick-jitter.py compute` (Inv 56 — refreshes the empirical jitter-offset artifact from `.rabbit/tick.log` so the idle banner ETA stays accurate; never fails the tick) |
 |12 | `schedule`        | `.claude/features/rabbit-auto-evolve/scripts/schedule-decision.py` — decide immediate-refire vs idle (Inv 33); on `immediate-refire` the DISPATCHER schedules the one-shot. See "Scheduling (Inv 32–33)" below |
 
 ### Post-merge phases (Inv 30)

@@ -16,6 +16,29 @@ authoritative).
 
 ## Version notes
 
+- **v0.81.1 — 2026-06-04** — Bug #959 (Inv 56 self-correcting jitter was
+  half-wired). `banner-status.py` rendered the idle next-tick ETA as the next
+  heartbeat boundary plus the empirical jitter offset read from
+  `.rabbit/auto-evolve-tick-jitter.json`, but NOTHING in the feature invoked
+  `tick-jitter.py compute` to WRITE that artifact — `tick-jitter` was referenced
+  only by `banner-status.py` (read-only). The artifact never materialized, so the
+  banner always fell back to the cold-start bound
+  `min(15, ceil(30 * 0.10)) = 3` min while the real `13,43` heartbeat jitter is
+  `+13` min, making the displayed ETA a constant ~10 min EARLIER than the tick
+  actually fired. Fix: wire `tick-jitter.py compute` into the shared scripted
+  phase-walk (`run-tick-phases.py post-dispatch`, Inv 40) as a post-persist
+  hygiene step — it runs on BOTH the in-session and the headless tick paths, so
+  the artifact is refreshed every tick and the banner reads an accurate offset. A
+  compute failure is recorded but never fails the tick (mirroring the Inv 49
+  sweep / Inv 55 reconcile contracts). The math stays owned by `tick-jitter.py`
+  (the walk only invokes its existing `compute` entry point; Tool-Choice Tier).
+  Inv 56 wording updated to state the compute is now wired into the tick walk;
+  `run-tick-phases.py` bumped to v1.7.0. New
+  `test/test-tick-jitter-compute-wired.py` is the e2e (post-dispatch writes the
+  artifact with the empirical offset from a mocked fire history; the banner then
+  renders the empirical fire ETA, not the cold-start value; a compute failure
+  never fails the tick).
+
 - **v0.81.0 — 2026-06-04** — Enhancement #962 (integration-target abstraction
   with a `dev`<->`main` coexistence window; Part 2 of #957, the
   rabbit-auto-evolve share). The loop's merge / safety / release phase scripts
