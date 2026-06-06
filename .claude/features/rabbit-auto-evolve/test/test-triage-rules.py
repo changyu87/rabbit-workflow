@@ -335,8 +335,10 @@ with tempfile.TemporaryDirectory() as repo_root:
     issue_payload = json.dumps({
         "number": 108,
         "title": "Some new behavior",
-        # blocked-by: declared but with no integer reference — ambiguous.
-        "body": "Has blocked-by: somewhere but no number\n",
+        # Structural leading blocked-by: line with no integer reference —
+        # malformed declaration → ambiguous (issue #941: must be a STRUCTURAL
+        # declaration, not a prose mention, to trigger needs-judgment).
+        "body": "Intro.\n\nblocked-by: somewhere but no number\n",
         "labels": [
             {"name": "feature:amb-feature"},
             {"name": "priority:medium"},
@@ -363,7 +365,8 @@ with tempfile.TemporaryDirectory() as repo_root:
     issue_payload = json.dumps({
         "number": 120,
         "title": "Some valid but unscoped behavior",
-        "body": "Has blocked-by: somewhere but no number\n",
+        # Structural leading blocked-by: line, no integer ref → defer note.
+        "body": "Intro.\n\nblocked-by: somewhere but no number\n",
         "labels": [
             {"name": "feature:note-feature"},
             {"name": "priority:medium"},
@@ -1017,6 +1020,135 @@ with tempfile.TemporaryDirectory() as repo_root:
                  f"(present={'issue_type' in r}), "
                  f"created_at={r.get('created_at')!r} "
                  f"(present={'created_at' in r})"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rule 5 over-match regression (issue #941): a body that merely MENTIONS the
+# `blocked-by:` token in PROSE (describing/discussing the dependency mechanism
+# — in a sentence, code span, or table) does NOT declare a real ordering
+# dependency and MUST pass through as actionable `work`, NEVER deferred. Before
+# the fix the substring `_BLOCKED_BY_ANY` match false-deferred such issues
+# `defer`/`needs-judgment`. Body modelled on issues that propose to redesign
+# the mechanism itself.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "prose-feature")
+    prose_body = (
+        "The triage parser over-matches: it treats any literal `blocked-by:` "
+        "substring as a dependency. We should only honor the real "
+        "`blocked-by: #N` form, or a line that starts with the blocked-by "
+        "token. This issue DESCRIBES the mechanism; it declares no actual "
+        "blocker. See the `blocked-by:NNN` labels and the body regex.\n"
+    )
+    issue_payload = json.dumps({
+        "number": 941,
+        "title": "Redesign the blocked-by detection in triage",
+        "body": prose_body,
+        "labels": [
+            {"name": "feature:prose-feature"},
+            {"name": "priority:high"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"941": issue_payload}, list_payload)
+    proc = run_script(repo_root, 941, shim_dir)
+    expect_decision("blocked-by-prose-passthrough", proc, "work", "actionable")
+
+
+# Rule 5 (issue #941): a GENUINE `blocked-by: #N` declaration still parses N
+# and (when the cited dep is open) defers `blocked` with blocked_by == [N].
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "realdep-feature")
+    issue_payload_main = json.dumps({
+        "number": 9410,
+        "title": "Do the thing once unblocked",
+        "body": "Cannot start yet.\n\nblocked-by: #123\n",
+        "labels": [
+            {"name": "feature:realdep-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    issue_payload_dep = json.dumps({"number": 123, "state": "OPEN"})
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir,
+               {"9410": issue_payload_main, "123": issue_payload_dep},
+               list_payload)
+    proc = run_script(repo_root, 9410, shim_dir)
+    expect_decision(
+        "blocked-by-real-dep-extracts-N", proc, "defer", "blocked",
+        extra_assert=lambda r: (
+            None if r.get("blocked_by") == [123]
+            else f"blocked_by should be [123], got {r.get('blocked_by')!r}"
+        ),
+    )
+
+
+# Rule 5 (issue #941): a STRUCTURAL leading `blocked-by:` line with no valid
+# `#N` is the sole malformed case → defer/needs-judgment (conservative).
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "malformed-feature")
+    issue_payload = json.dumps({
+        "number": 9411,
+        "title": "Some behavior with a botched dependency line",
+        "body": "Intro.\n\nblocked-by: TBD\n",
+        "labels": [
+            {"name": "feature:malformed-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"9411": issue_payload}, list_payload)
+    proc = run_script(repo_root, 9411, shim_dir)
+    expect_decision("blocked-by-structural-malformed", proc,
+                    "defer", "needs-judgment")
+
+
+# Rule 5 (issue #941): a structural leading `blocked-by:` line that carries
+# list/quote markers and a valid `#N` (open dep) still defers `blocked`.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "listdep-feature")
+    issue_payload_main = json.dumps({
+        "number": 9412,
+        "title": "Bullet-listed dependency",
+        "body": "Deps:\n\n- blocked-by: #456\n",
+        "labels": [
+            {"name": "feature:listdep-feature"},
+            {"name": "priority:low"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    issue_payload_dep = json.dumps({"number": 456, "state": "OPEN"})
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir,
+               {"9412": issue_payload_main, "456": issue_payload_dep},
+               list_payload)
+    proc = run_script(repo_root, 9412, shim_dir)
+    expect_decision(
+        "blocked-by-list-marker-dep", proc, "defer", "blocked",
+        extra_assert=lambda r: (
+            None if r.get("blocked_by") == [456]
+            else f"blocked_by should be [456], got {r.get('blocked_by')!r}"
         ),
     )
 

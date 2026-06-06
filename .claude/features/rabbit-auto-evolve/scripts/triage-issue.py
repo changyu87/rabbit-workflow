@@ -75,7 +75,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.10.0
+Version: 1.11.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -545,10 +545,35 @@ def _is_research(title, body, feature_label):
     return True
 
 
-# Match `blocked-by: #N` (case-insensitive). Captures the integer N.
+# Match `blocked-by: #N` (case-insensitive). Captures the integer N. A real
+# dependency declaration: it is honored anywhere in the body (the `#N` ref is
+# unambiguous on its own).
 _BLOCKED_BY_GOOD = re.compile(r"blocked-by:\s*#(\d+)", re.IGNORECASE)
-# Match `blocked-by:` declared at all (used to detect malformed variants).
-_BLOCKED_BY_ANY = re.compile(r"blocked-by:", re.IGNORECASE)
+# Match a STRUCTURAL blocked-by declaration: a line that STARTS with the
+# `blocked-by:` token after only optional list/quote markers (`-`, `*`, `>`,
+# whitespace). This is deliberately NOT a substring match (issue #941): a prose
+# MENTION of the `blocked-by:` token mid-sentence (an issue describing or
+# discussing the dependency mechanism in a sentence, code span, or table) does
+# NOT declare an ordering dependency and must never trigger the malformed-defer.
+# Only a line genuinely declaring a dependency in the structural position counts.
+_BLOCKED_BY_STRUCTURAL = re.compile(
+    r"^[ \t>*\-]*blocked-by:", re.IGNORECASE | re.MULTILINE)
+
+
+def _declares_blocked_by(body):
+    """True iff `body` STRUCTURALLY declares a blocked-by dependency (Inv 3
+    rule 5, issue #941).
+
+    A declaration is recognized only when the body carries the concrete
+    `blocked-by: #N` form ANYWHERE, OR a line that STARTS with the
+    `blocked-by:` token after only optional list/quote markers. A bare prose
+    occurrence of the `blocked-by:` token mid-sentence is NOT a declaration and
+    returns False, so it passes through as actionable rather than false-deferred.
+    """
+    text = body or ""
+    if _BLOCKED_BY_GOOD.search(text):
+        return True
+    return bool(_BLOCKED_BY_STRUCTURAL.search(text))
 
 
 # Supersession phrases (case-insensitive) that mark a comment as an
@@ -865,10 +890,15 @@ def classify(issue_num, repo_root):
                     rationale=f"Feature {feature_label} status is 'retired'.")
 
     # ---- Rule 5: blocked-by ----
-    if _BLOCKED_BY_ANY.search(body):
+    # Rule 5 fires only on a STRUCTURAL dependency declaration, never on a bare
+    # prose mention of the `blocked-by:` token (issue #941): an issue that
+    # merely describes/discusses the mechanism is NOT a dependency and passes
+    # through as actionable.
+    if _declares_blocked_by(body):
         matches = _BLOCKED_BY_GOOD.findall(body)
         if not matches:
-            # Declared but malformed — ambiguity default.
+            # Structurally declared but malformed (no valid #N) — ambiguity
+            # default.
             return dict(base,
                         decision="defer",
                         reason_code="needs-judgment",
