@@ -1,7 +1,7 @@
 {
   "template_version": "2.0.0",
   "name": "rabbit-issue",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "housekeeping_clean": true,
@@ -27,6 +27,20 @@
       "api": "publish_skill",
       "args": {
         "source": "skills/rabbit-issue/SKILL.md"
+      }
+    },
+    {
+      "api": "publish_file",
+      "args": {
+        "source": "github/ISSUE_TEMPLATE/file-item.yml",
+        "dest": ".github/ISSUE_TEMPLATE/file-item.yml"
+      }
+    },
+    {
+      "api": "publish_file",
+      "args": {
+        "source": "github/workflows/issue-form-autolabel.yml",
+        "dest": ".github/workflows/issue-form-autolabel.yml"
       }
     }
   ],

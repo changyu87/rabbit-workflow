@@ -1,6 +1,6 @@
 ---
 name: rabbit-issue
-version: 1.15.0
+version: 1.16.0
 owner: rabbit-workflow team
 deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
 description: Use whenever Claude detects intent to file, list, show, close, reopen, or otherwise lifecycle-manage a bug or enhancement in this repository's GitHub Issues — including casual phrasings like "file a bug", "log an enhancement", "open a feature request", "what bugs are open", "list issues for <feature>", "show issue 42", "work this bug", "close that issue", "mark issue N as not planned", or "reopen issue N". rabbit-issue is the only rabbit-managed issue surface; do NOT invoke rabbit-file or its scripts. rabbit-issue wraps the `gh` CLI to operate on GitHub Issues, honours an actionability safety guard (it refuses to close/reopen issues lacking a valid `feature:` label) so raw human-filed issues are never touched, and orchestrates the File / List / Work protocols against the three runtime scripts under `.claude/features/rabbit-issue/scripts/`. Trigger on any GH-Issues lifecycle phrasing — even when the user does not say "GitHub" or "issue" explicitly.
@@ -234,6 +234,17 @@ and between rabbit and the GH API.
   hand-filed GitHub issue with no labels stays out of rabbit's
   automation reach. Do not work around the guard by slapping a
   `feature:` label on a human's issue without their consent; ask first.
+- **Human-filing enforcement (Issue Form)** — a native GitHub Issue Form
+  (`.github/ISSUE_TEMPLATE/file-item.yml`) makes `feature` and `priority`
+  REQUIRED dropdowns for a human web filing, and a companion workflow
+  (`.github/workflows/issue-form-autolabel.yml`) stamps `feature:<x>` /
+  `priority:<y>` from the answers on issue open — so a hand-filed issue
+  lands actionable rather than label-less. The form's option sets mirror
+  `file-item.py`'s enums (a drift guard holds them in sync). The form and
+  workflow are governed deployed surfaces (`publish_file` manifest
+  entries); `file-item.py` remains the enforcement path for bot/loop
+  filings, which forms do not reach. See docs/spec.md
+  §Human-filing enforcement.
 - **`gh auth` required** — every script checks `gh auth status` and
   fails with an actionable error if authentication is not green. Do
   not fall back to unauthenticated calls.

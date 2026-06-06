@@ -12,6 +12,36 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.16.0 (add GitHub Issue Forms enforcing feature:/priority: at the human
+  filing boundary, closes #945; child of #935 R6):** `file-item.py` enforces
+  the required `feature:` and `priority:` labels for loop/CLI (programmatic)
+  filings, but a raw human web filing bypassed that script entirely because the
+  repo shipped no `.github/ISSUE_TEMPLATE/`. Added a native GitHub Issue Form
+  (`github/ISSUE_TEMPLATE/file-item.yml`, deployed to repo-root
+  `.github/ISSUE_TEMPLATE/`) with REQUIRED `feature` and `priority` dropdowns:
+  the `priority` options mirror `file-item.py`'s `VALID_PRIORITIES`
+  `{low, medium, high, critical}` and the `feature` options mirror the live
+  feature set (every directory under `.claude/features/` carrying a
+  `feature.json`). A companion GitHub Actions workflow
+  (`github/workflows/issue-form-autolabel.yml`, deployed to repo-root
+  `.github/workflows/`) is the native auto-label primitive: it triggers on
+  issue open, reads the submitted Feature/Priority answers, and stamps
+  `feature:<x>` / `priority:<y>` so a hand-filed issue lands actionable. Both
+  artifacts are governed deployed surfaces — sources live under the feature and
+  `publish_file` manifest entries deploy each to the repo-root `.github/` tree.
+  The programmatic path (`file-item.py`) is unchanged: forms cover only the
+  human boundary, the script remains the enforcement path for bot/loop filings
+  that forms do not reach (a justified native division of labour). spec.md
+  gains a §Human-filing enforcement invariant; contract.md gains a
+  `github_artifacts` provides block and the workflow's `gh issue edit
+  --add-label` invocation. Tests: new `test/test-issue-form-enforcement.py`
+  pins (1) the form exists and both artifacts are governed `publish_file`
+  surfaces, (2) the `feature`/`priority` dropdowns are REQUIRED, (3) the
+  priority options equal `VALID_PRIORITIES`, (4) the feature options equal the
+  live feature set (a drift guard), (5) the auto-label workflow triggers on
+  issue open and derives the labels, and (6) the programmatic `--feature` /
+  `--priority` contract is unchanged.
+
 - **v1.15.0 (record `filed-by:` as a justified native-first exception;
   reconcile the human-provenance convention, closes #944; child of #935 R3):**
   Documentation/spec reconciliation, no runtime behaviour change. The #935 R3
