@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
-"""Inv 6: spec-path layout resolves to the canonical flat docs/ only.
+"""Inv 5: spec-path layout resolves to the canonical flat docs/ only.
 
-Source-inspection test over BOTH spec-lifecycle SKILL.md bodies and the
+Source-inspection test over the rabbit-spec-update SKILL.md body and the
 rabbit-spec-creator agent body. Every rabbit feature carries the flat docs/
 layout (docs/spec.md, docs/contract.md); there is no specs/ or legacy
-docs/spec/ fallback. The skills that resolve ANY feature's spec path MUST
-target the canonical flat docs/spec.md ONLY and MUST NOT describe any
+docs/spec/ fallback. The skill and the agent that resolve ANY feature's spec
+path MUST target the canonical flat docs/spec.md ONLY and MUST NOT describe any
 specs/spec.md or docs/spec/spec.md fallback.
+
+Post-#922: the rabbit-spec-create skill wrapper is retired; the
+rabbit-spec-creator agent now WRITES docs/spec.md directly, so the agent body
+(not a skill) carries the create-side canonical-target assertion.
 
 Asserts:
   rabbit-spec-update SKILL.md
     - mentions the canonical flat docs/spec.md path
     - does NOT mention the specs/spec.md fallback path
     - does NOT mention the legacy docs/spec/spec.md fallback path
-  rabbit-spec-create SKILL.md
-    - mentions the canonical flat docs/spec.md destination for new specs
-    - does NOT mention the specs/spec.md fallback path
-    - does NOT mention the legacy docs/spec/spec.md path
   rabbit-spec-creator agent
-    - names the flat docs/spec.md target
+    - names the flat docs/spec.md write target
     - does NOT name the legacy docs/spec/spec.md target
+  the retired rabbit-spec-create skill source is gone
 
 Also asserts rabbit-spec ITSELF carries the flat docs/ layout:
   - rabbit-spec/docs/spec.md and docs/contract.md exist
@@ -27,7 +28,7 @@ Also asserts rabbit-spec ITSELF carries the flat docs/ layout:
 
 Run non-interactively. Exits non-zero on failure.
 
-Version: 3.0.0
+Version: 4.0.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Claude Code exposes native spec-lifecycle skills
 that supersede this feature.
@@ -64,26 +65,18 @@ def test_update_targets_canonical_only() -> None:
     )
 
 
-def test_create_targets_canonical_only() -> None:
-    text = _text(CREATE_MD)
-    assert "docs/spec.md" in text, (
-        "rabbit-spec-create SKILL.md must name the canonical flat "
-        "'docs/spec.md' destination"
-    )
-    assert "specs/spec.md" not in text, (
-        "rabbit-spec-create SKILL.md must NOT describe the dead "
-        "'specs/spec.md' fallback path"
-    )
-    assert "docs/spec/spec.md" not in text, (
-        "rabbit-spec-create SKILL.md must NOT describe the dead legacy "
-        "'docs/spec/spec.md' fallback path"
+def test_create_skill_retired() -> None:
+    assert not CREATE_MD.exists(), (
+        "the rabbit-spec-create skill source must be retired (#922); "
+        f"unexpected file still present: {CREATE_MD}"
     )
 
 
 def test_creator_agent_targets_canonical_only() -> None:
     text = _text(CREATOR_AGENT)
     assert "docs/spec.md" in text, (
-        "rabbit-spec-creator agent must name the flat 'docs/spec.md' target"
+        "rabbit-spec-creator agent must name the flat 'docs/spec.md' "
+        "write target"
     )
     assert "docs/spec/spec.md" not in text, (
         "rabbit-spec-creator agent must NOT name the legacy "

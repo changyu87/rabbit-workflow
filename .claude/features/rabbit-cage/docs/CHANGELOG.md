@@ -12,6 +12,20 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.73.0 (feat #922 piece 3/5: retire rabbit-spec-create from the install
+  manifest):** updated `install.py` so the bootstrap closure no longer deploys
+  the retired `rabbit-spec-create` skill and tracks the renamed dispatch
+  script. Removed the `rabbit-spec-create/SKILL.md` entry from `SKILLS`;
+  renamed the `FEATURE_INCLUDES["rabbit-spec"]` script entry
+  `scripts/dispatch-spec-create.py` -> `scripts/dispatch-spec-creator.py` and
+  removed its `skills/rabbit-spec-create/SKILL.md` entry. The
+  `agents/rabbit-spec-creator.md` deploy mapping (AGENTS + FEATURE_INCLUDES)
+  and the `templates/prompts/spec-create.txt` contract template are KEPT — the
+  agent is upgraded, not retired, and the template is out of #922 scope. Inv 64
+  install-closure (listed -> exists) is GREEN again. Spec Inv 21 prose and the
+  Inv 17 (a2) carve-out comment updated to name the renamed script and the
+  write-capable `rabbit-spec-creator` subagent as the spec-body writer.
+
 - **v5.72.0 (feat #924: post-update changelog summary after `install.py
   --update`):** after a successful in-place refresh, `install.py main()` now
   emits a brief, DETERMINISTIC summary of what changed between the OLD and

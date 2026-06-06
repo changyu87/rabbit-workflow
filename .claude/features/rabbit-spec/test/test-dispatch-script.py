@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """test-dispatch-script.py — rabbit-spec Inv 3.
 
-Invokes dispatch-spec-create.py in both modes (standalone — no globs, and
+Invokes dispatch-spec-creator.py in both modes (standalone — no globs, and
 plugin — with globs) and asserts each emits a prompt-file path on stdout
 and exits 0.
 
@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 FEATURE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCRIPT = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-create.py")
+SCRIPT = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-creator.py")
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(FEATURE_DIR)))
 
 if not os.access(SCRIPT, os.X_OK):
@@ -53,4 +53,4 @@ if errors:
         print(f"FAIL: {e}", file=sys.stderr)
     sys.exit(1)
 
-print("PASS: dispatch-spec-create.py handles both plugin and standalone modes")
+print("PASS: dispatch-spec-creator.py handles both plugin and standalone modes")

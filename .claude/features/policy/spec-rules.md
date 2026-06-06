@@ -126,9 +126,8 @@ principle above; cite the source, do not restate it.
   directly at level 1 (`main → N parallel subagents`), reusing the skill's
   mechanics through shared `scripts/` (prompt assembly, result
   persistence). The skill wrapper exists for a single, main-session
-  invocation. The known subagent-dispatching skills are `rabbit-spec-create`
-  (dispatches rabbit-spec-creator), `rabbit-feature-touch` (dispatches
-  tdd-subagent), `rabbit-feature-scope` (dispatches an untyped
+  invocation. The known subagent-dispatching skills are `rabbit-feature-touch`
+  (dispatches tdd-subagent), `rabbit-feature-scope` (dispatches an untyped
   default-model Agent), and `rabbit-housekeep` (decomposes per-feature
   housekeeping work and dispatches housekeeping subagents); this named set
   is authoritative, and any future subagent-dispatching skill inherits this

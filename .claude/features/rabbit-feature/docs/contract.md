@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.40.0
+version: 1.41.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -107,13 +107,18 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
         "lock": "test-new-skill.py asserts rabbit-feature-scaffold invokes this script (Inv 33)"
       },
       {
-        "path": ".claude/features/rabbit-spec/scripts/dispatch-spec-create.py",
-        "signature": "dispatch-spec-create.py --feature-name <name> [--paths <glob1>,<glob2>,...]",
+        "path": ".claude/features/rabbit-spec/scripts/dispatch-spec-creator.py",
+        "signature": "dispatch-spec-creator.py --feature-name <name> [--paths <glob1>,<glob2>,...]",
         "exit": "0=success, 1=invocation error, 2=build-prompt.py subprocess failure",
         "lock": "test-feature-new-plugin-mode.py asserts plugin-mode scaffold-feature.py prints this exact dispatch command to stdout (Inv 48); the command string is also referenced by name in scaffold-feature.py source so test-contract-md.py picks it up as a cross-feature reference."
       }
     ],
-    "agents": []
+    "agents": [
+      {
+        "subagent_type": "rabbit-spec-creator",
+        "purpose": "seed a plugin-mode feature's docs/spec.md; scaffold-feature.py NAMES it in its NEXT: handoff block and the rabbit-feature-scaffold skill instructs the caller to dispatch it DIRECTLY (level-1) with a prompt assembled by rabbit-spec's dispatch-spec-creator.py. The skill/script never dispatch the subagent themselves (no Agent/Skill coupling)."
+      }
+    ]
   },
   "manages": {
     "runtime_markers": [

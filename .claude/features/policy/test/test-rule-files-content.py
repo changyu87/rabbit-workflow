@@ -70,7 +70,10 @@ check_phrase("spec-rules.md", "No Subagent-Dispatching Skill Inside `Agent()`")
 check_phrase("spec-rules.md", "MUST NOT itself be invoked inside an")
 check_phrase("spec-rules.md", "illegal two-level nesting")
 check_phrase("spec-rules.md", "main → N parallel subagents")
-check_phrase("spec-rules.md", "rabbit-spec-create")
+# The named subagent-dispatching set is `rabbit-feature-touch`,
+# `rabbit-feature-scope`, `rabbit-housekeep`. The retired `rabbit-spec-create`
+# skill MUST NOT appear in the authoritative set.
+check_phrase_absent("spec-rules.md", "rabbit-spec-create")
 check_phrase("spec-rules.md", "rabbit-feature-touch")
 # Issue #690: rabbit-feature-scope is the THIRD subagent-dispatching skill —
 # it dispatches an UNTYPED default-model Agent (`Agent(prompt=...)`, no

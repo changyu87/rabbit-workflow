@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """test-dispatch-ignores-git-toplevel.py — rabbit-spec Inv 3(e).
 
-Asserts dispatch-spec-create.py is immune to a misleading nested git
+Asserts dispatch-spec-creator.py is immune to a misleading nested git
 repository. Builds a plugin layout under a tmp dir, initializes a nested
 git repo at the user-project level (above the .rabbit root), and invokes
 the dispatcher from inside that nested git checkout. The dispatcher MUST
@@ -20,7 +20,7 @@ import sys
 import tempfile
 
 FEATURE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REAL_SCRIPT = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-create.py")
+REAL_SCRIPT = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-creator.py")
 
 
 def build_fixture(tmp):
@@ -31,7 +31,7 @@ def build_fixture(tmp):
     os.makedirs(spec_scripts)
     os.makedirs(contract_scripts)
 
-    target_script = os.path.join(spec_scripts, "dispatch-spec-create.py")
+    target_script = os.path.join(spec_scripts, "dispatch-spec-creator.py")
     shutil.copy(REAL_SCRIPT, target_script)
     os.chmod(target_script, 0o755)
 
@@ -83,7 +83,7 @@ def main():
                   file=sys.stderr)
             return 1
 
-    print("PASS: dispatch-spec-create.py ignores misleading nested git toplevel")
+    print("PASS: dispatch-spec-creator.py ignores misleading nested git toplevel")
     return 0
 
 

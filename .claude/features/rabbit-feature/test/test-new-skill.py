@@ -58,9 +58,21 @@ def test_skill_documents_plugin_mode() -> None:
     assert ".rabbit/.runtime/mode" in text, (
         "SKILL.md must name the .rabbit/.runtime/mode trigger for plugin mode"
     )
-    # Spec-create dispatch handoff named.
-    assert "dispatch-spec-create.py" in text or "rabbit-spec-create" in text, (
-        "SKILL.md must document the rabbit-spec-create dispatch handoff"
+    # Spec-creator dispatch handoff named (the renamed input assembler +
+    # the direct rabbit-spec-creator subagent dispatch). The retired
+    # rabbit-spec-create skill / old dispatch-spec-create.py name must NOT
+    # appear (#922).
+    assert "dispatch-spec-creator.py" in text, (
+        "SKILL.md must document the dispatch-spec-creator.py handoff"
+    )
+    assert "rabbit-spec-creator" in text, (
+        "SKILL.md must name the rabbit-spec-creator subagent dispatch"
+    )
+    assert "dispatch-spec-create.py" not in text, (
+        "SKILL.md must not reference the retired dispatch-spec-create.py"
+    )
+    assert 'Skill("rabbit-spec-create"' not in text and "rabbit-spec-create skill" not in text, (
+        "SKILL.md must not reference the retired rabbit-spec-create skill"
     )
     # The project-map registration target named.
     assert "project-map.json" in text, (

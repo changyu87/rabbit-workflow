@@ -13,6 +13,41 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.10.0 (Step 4-B retires the spec-create skill wrapper; dispatch
+  rabbit-spec-creator directly, #922 piece 4/5):** Step 4-B previously seeded
+  each accepted feature's spec by invoking the `rabbit-spec-create` skill as
+  sequential `Skill(...)` calls, with a paragraph explaining the old
+  two-level-nesting workaround (the skill was a subagent-dispatching wrapper,
+  so it could not be wrapped in `Agent(...)`). #922 retired that skill wrapper:
+  the `rabbit-spec-creator` SUBAGENT now drafts AND writes its own
+  `docs/spec.md` and is dispatched DIRECTLY, with its prompt assembled by
+  `rabbit-spec`'s renamed input assembler `scripts/dispatch-spec-creator.py`.
+  Rewrote Step 4-B to the new model: for each accepted feature with globs, run
+  `dispatch-spec-creator.py --feature-name <name> --paths <globs>` (no
+  `--paths` for a greenfield skeleton) to print the assembled prompt-file path,
+  then dispatch `Agent(subagent_type: "rabbit-spec-creator", prompt: <prompt>)`
+  directly. Because the subagent is now a level-1 dispatch (decompose is a
+  main-session orchestration with no intermediate subagent-dispatching skill),
+  the N per-feature dispatches MAY run in parallel — the old sequential
+  constraint is gone. Deleted the obsolete two-level-nesting workaround prose.
+  `docs/contract.md` `invokes` now declares the `rabbit-spec-creator` subagent
+  (new `invokes.agents` entry, mirroring rabbit-spec's contract) plus the
+  `dispatch-spec-creator.py` script invoke, and drops the retired
+  `rabbit-spec-create` skill invoke; `docs/spec.md` Purpose/Surface/Protocol,
+  Invariant 3, Invariant 4, the Tests entry, and Out of Scope were updated to
+  the direct-dispatch model. `test-step4b-no-nested-dispatch.py` was rewritten
+  to assert the NEW truth: both surfaces reference neither the retired
+  `rabbit-spec-create` skill nor the old `dispatch-spec-create.py` name, both
+  name the new direct-dispatch path, and Step 4-B dispatches
+  `rabbit-spec-creator` directly via `Agent(subagent_type: ...)` at level-1 and
+  states the dispatches may run in parallel. Four-way version lockstep bumped
+  to 0.10.0. Deployed surface changed (source `SKILL.md` body) — the dispatcher
+  republishes the deployed `rabbit-decompose` skill before the final #922 PR.
+  Part of the five-feature #922 barrier (piece 4/5; pieces 1-3 landed
+  rabbit-spec/policy/rabbit-cage, piece 5 lands rabbit-feature); the
+  cross-feature contract gate stays red until piece 5 lands AND the dispatcher
+  syncs deployed surfaces (expected).
+
 - **v0.9.0 (detect an existing decomposition before re-proposing, #925):**
   rabbit-decompose previously re-proposed the FULL feature set on every run,
   even when the project was already decomposed — redundant and confusing

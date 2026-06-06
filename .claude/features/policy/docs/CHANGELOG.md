@@ -8,6 +8,17 @@ deprecation_criterion: when the policy feature is retired (Claude Code exposes a
 
 ## Version notes
 
+- **v1.22.0 (retire rabbit-spec-create from the authoritative
+  subagent-dispatching set, #922):** The `rabbit-spec-create` skill wrapper
+  was retired (its subagent now writes its own spec), so the "No
+  Subagent-Dispatching Skill Inside `Agent()`" rule in `spec-rules.md` §4 no
+  longer names it. The authoritative named set is now exactly
+  `rabbit-feature-touch`, `rabbit-feature-scope`, `rabbit-housekeep`; the rule
+  and its level-1-dispatch parallelization guidance are otherwise unchanged
+  and still bind any future subagent-dispatching skill. Synced the `docs/spec.md`
+  Inv 13 example list and flipped the `test/test-rule-files-content.py`
+  assertion to require `rabbit-spec-create` ABSENT from the set.
+
 - **v1.21.0 (measured verify-or-flag reduction wave, #808; child of #794):**
   Ran a coding-rules §6 (prove-it-dead-or-flag), §2 (Simplicity First), and §7
   (Parenthetical Clarity) reduction pass over the whole policy feature

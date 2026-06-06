@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
-"""dispatch-spec-create.py — assemble the rabbit-spec-creator subagent prompt.
+"""dispatch-spec-creator.py — assemble the rabbit-spec-creator subagent prompt.
 
-Used by the rabbit-spec-create skill (and by rabbit-decompose's downstream
-pipeline) when a new feature's initial spec body needs to be drafted.
-Resolves the declared path globs, caps the resolved file list at 50 entries,
+The INPUT ASSEMBLER for the rabbit-spec-creator subagent: an orchestrator
+(rabbit-decompose's downstream pipeline, rabbit-feature) runs this script to
+build the subagent's prompt, then dispatches `rabbit-spec-creator` directly.
+The subagent itself reads the matched code and WRITES the feature's
+docs/spec.md, returning only a {path_written, summary} handoff. This script
+resolves the declared path globs, caps the resolved file list at 50 entries,
 and invokes contract/scripts/build-prompt.py to assemble the prompt.
 
 When the resolved file count exceeds the cap, the truncation is NOT silent
 (#472): a structured NOTE naming the inspected and dropped counts is written
-to stderr so the caller (rabbit-spec-create Step 4) can surface "and M
-dropped" instead of silently emitting an incomplete draft. stdout stays a
-single prompt-file path the skill parses.
+to stderr so the orchestrator can surface "and M dropped" to the user instead
+of silently building a prompt over an incomplete file list. stdout stays a
+single prompt-file path the orchestrator parses.
 
 Both modes are supported:
   - Plugin mode: --paths populated with code globs the agent reads from.
   - Standalone mode: --paths empty (or omitted) — agent produces a skeleton.
 
 Usage:
-    dispatch-spec-create.py --feature-name <name> [--paths <glob1>,<glob2>,...] [--description <text>]
+    dispatch-spec-creator.py --feature-name <name> [--paths <glob1>,<glob2>,...]
 
 Prints the absolute path of the assembled prompt file to stdout on success.
 
@@ -26,7 +29,7 @@ Exit codes:
     1 = invocation error (missing args, glob resolution failure)
     2 = build-prompt.py subprocess failure
 
-Version: 1.2.0
+Version: 2.0.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 """
@@ -42,7 +45,7 @@ MAX_FILES = 50
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Dispatch the rabbit-spec-creator subagent prompt")
+    parser = argparse.ArgumentParser(description="Assemble the rabbit-spec-creator subagent prompt")
     parser.add_argument("--feature-name", required=True, help="Feature name (kebab-case)")
     parser.add_argument("--paths", default="", help="Comma-separated path globs (empty in standalone mode)")
     args = parser.parse_args()
