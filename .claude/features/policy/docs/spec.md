@@ -1,6 +1,6 @@
 ---
 feature: policy
-version: 1.21.0
+version: 1.22.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes a native subagent-policy injection point
@@ -130,7 +130,7 @@ directory.
     `spec-rules.md`, which forbids invoking a subagent-dispatching skill
     inside an `Agent()` call, directs parallelization via dispatching the
     underlying subagent at level 1, and names the known subagent-dispatching
-    skills `rabbit-spec-create` and `rabbit-feature-touch`. The rule text is
+    skills `rabbit-feature-touch` and `rabbit-housekeep`. The rule text is
     declarative and history-free (no issue/PR references). The
     `test/test-rule-files-content.py` content guard asserts the rule's
     distinctive phrases.
