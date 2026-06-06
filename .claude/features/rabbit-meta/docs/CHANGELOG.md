@@ -12,6 +12,29 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v0.8.0 (detect_mode returns `"vendored"` — completes the #980
+  plugin→vendored migration, #990):** Flipped `lib/mode_detection.py`
+  `detect_mode()` to return the literal string `"vendored"` (was `"plugin"`)
+  for the vendored `.rabbit/` case; `"standalone"` is unchanged. This is the
+  final, value-flip step of the staged #980 migration: the preparatory ticks
+  (#987/#988/#989/#997/#1001) already made every consumer dual-accept BOTH
+  spellings, and the contract repo-gate (post-#998, running all per-feature
+  suites) was confirmed fully green after the flip, so no consumer was
+  reddened. Added the `is_vendored(mode: str) -> bool` coexistence predicate
+  to the same module: it dual-accepts BOTH `"vendored"` and the older
+  `"plugin"` spelling as the vendored install and returns `False` for every
+  other value (including `"standalone"`). Coexistence deprecation criterion:
+  drop the `"plugin"` acceptance in `is_vendored` once no install carries the
+  older marker spelling. Updated the module docstring and Inv 1 (now an
+  Inv 1(a) vendored-signature clause plus a new Inv 1(b) coexistence-helper
+  clause; subsequent clauses re-lettered c–e, no invariant renumbered). The
+  Purpose line's "plugin-mode machinery" wording was retitled to
+  "vendored-mode machinery". `test/test-mode-detection.py` updated to assert
+  the `"vendored"` return for the `.rabbit/` cwd and `"standalone"` for the
+  repo root, plus new cases pinning `is_vendored` dual-accept. `feature.json`
+  and `docs/spec.md` versions 0.7.4 → 0.8.0; `docs/contract.md` 0.2.4 → 0.2.5
+  (own track; JSON block unchanged).
+
 - **v0.7.4 (housekeeping — measured reduction wave, #815, under #794):**
   Measured verify-or-flag reduction pass on `docs/spec.md` (73 → 69 lines,
   −4), cutting redundant restatement and a decorative parenthetical with zero
