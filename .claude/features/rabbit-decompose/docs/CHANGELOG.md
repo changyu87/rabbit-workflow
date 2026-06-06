@@ -13,6 +13,29 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.9.0 (detect an existing decomposition before re-proposing, #925):**
+  rabbit-decompose previously re-proposed the FULL feature set on every run,
+  even when the project was already decomposed — redundant and confusing
+  output. Added a deterministic, script-backed pre-Step-2 detection: a new
+  `--detect-existing` mode on `scripts/handoff-scaffold.py` resolves mode via
+  `rabbit-meta`'s `detect_mode` and reads the project's `project-map.json`
+  (plugin → `<rabbit-root>/rabbit-project/project-map.json`; standalone →
+  `<rabbit-root>/.rabbit/rabbit-project/project-map.json`). When the `features`
+  map is non-empty it emits `existing: true` with the existing-feature SUMMARY
+  (`existing_features`) and the three-way branch `options`
+  (`skip` / `add` / `re-decompose`); a missing/unparseable/empty project-map
+  collapses to `existing: false`, leaving the first-run propose flow unchanged.
+  When a candidate list is supplied via `--features`, candidates are classified
+  into `already_rabbified` vs `new` so the "add" branch proposes ONLY the
+  new/unrabbified features. The `SKILL.md` gained a pre-check section documenting the
+  detection and the three-way escalation; `docs/spec.md` gained Invariant 8 and
+  the new test entry; `docs/contract.md`'s `mode_detection` invoke note now
+  cites the detection path (the `project-map.json` read was already declared in
+  `reads`). New E2E `test-detect-existing-project-map.py` asserts the detection,
+  the SUMMARY, the three-way branch, the candidate classification, the
+  first-run-unchanged path, and the mode-driven project-map path resolution.
+  Four-way version lockstep bumped to 0.9.0.
+
 - **v0.8.0 (route Step 4 scaffold dispatch through the rabbit-feature-scaffold
   skill batch interface — layering fix, #921):** plugin-mode Step 4 previously
   shelled out to rabbit-feature's `scripts/scaffold-feature.py --batch`

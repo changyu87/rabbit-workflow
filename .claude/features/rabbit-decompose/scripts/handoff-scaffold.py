@@ -48,8 +48,10 @@ CLI:
   handoff-scaffold.py --features <accepted.json> [--rabbit-root <path>]
                       [--plan-only]
   handoff-scaffold.py --source-root [--rabbit-root <path>]
+  handoff-scaffold.py --detect-existing [--features <candidates.json>]
+                      [--rabbit-root <path>]
 
-  --features     path to a JSON array of accepted features:
+  --features     path to a JSON array of accepted/candidate features:
                  [{"name": "<kebab>", "globs": ["..."]}, ...]
   --rabbit-root  the rabbit root used for mode detection. Default: the cwd,
                  which in a rabbit session IS the mode-correct rabbit root —
@@ -60,6 +62,14 @@ CLI:
                  Used by the SKILL body's dry-run and by the test.
   --source-root  Step 1 mode: resolve mode + the decomposition source root
                  ONLY (no --features required); print JSON and exit 0.
+  --detect-existing  Pre-Step-2 detection mode (#925): resolve mode + read the
+                 project-map.json and report whether the project is ALREADY
+                 decomposed (a non-empty features map). When it is, emit the
+                 SUMMARY of existing feature names plus the three-way branch
+                 the SKILL offers (skip / add / re-decompose); when a candidate
+                 list is supplied via --features, classify candidates into
+                 already_rabbified vs new so the "add" branch proposes ONLY the
+                 new/unrabbified features. No --features required.
 
 Output (always JSON on stdout):
   Step 4 (--features):
@@ -76,13 +86,24 @@ Output (always JSON on stdout):
       "mode": "plugin" | "standalone",
       "source_root": "<abs path>"
     }
+  Pre-Step-2 (--detect-existing):
+    {
+      "mode": "plugin" | "standalone",
+      "project_map_path": "<abs path>",
+      "existing": <bool>,                 # true iff non-empty features map
+      "existing_features": [ "<name>", ... ],   # sorted; [] when not existing
+      "options": ["skip", "add", "re-decompose"],   # [] when not existing
+      "already_rabbified": [ {"name": ..., "globs": [...]}, ... ],
+      "new": [ {"name": ..., "globs": [...]}, ... ]   # the "add" candidates
+    }
 
 Exit:
-  0 success (plan computed; scaffolder dispatched unless --plan-only/--source-root)
+  0 success (plan computed; scaffolder dispatched unless
+    --plan-only/--source-root/--detect-existing)
   1 scaffolder dispatch failed
   2 invocation error (bad args, unreadable/invalid features file)
 
-Version: 0.3.0
+Version: 0.4.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Step 4 scaffold hand-off is provided natively by
     the rabbit CLI, retiring this companion script.
@@ -193,11 +214,46 @@ def _resolve_source_root(rabbit_root: str, mode: str) -> str:
     return str(Path(rabbit_root))
 
 
+def _resolve_project_map_path(rabbit_root: str, mode: str) -> str:
+    """The project-map.json path for the resolved mode (#925).
+
+    In plugin mode the rabbit_root IS the vendored `.rabbit/` install dir, so
+    the project-map lives at `<rabbit_root>/rabbit-project/project-map.json`. In
+    standalone mode the rabbit_root is the repo root, so the project-map lives
+    at `<rabbit_root>/.rabbit/rabbit-project/project-map.json` (matching the
+    `.rabbit/rabbit-project/project-map.json` read declared in
+    docs/contract.md)."""
+    root = Path(rabbit_root)
+    if mode == "plugin":
+        return str(root / "rabbit-project" / "project-map.json")
+    return str(root / ".rabbit" / "rabbit-project" / "project-map.json")
+
+
+def _read_existing_features(project_map_path: str):
+    """Read the project-map's features map, or {} when absent/empty/unreadable.
+
+    Returns the `features` object (a dict keyed by feature name). A missing
+    file, unparseable JSON, or a non-dict/empty `features` map all collapse to
+    {} — the first-run signal (#925)."""
+    try:
+        with open(project_map_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    feats = data.get("features")
+    if not isinstance(feats, dict):
+        return {}
+    return feats
+
+
 def _parse_args(argv):
     features_file = None
     rabbit_root = None
     plan_only = False
     source_root_only = False
+    detect_existing = False
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -219,6 +275,9 @@ def _parse_args(argv):
         elif a == "--source-root":
             source_root_only = True
             i += 1
+        elif a == "--detect-existing":
+            detect_existing = True
+            i += 1
         elif a in ("-h", "--help"):
             sys.stdout.write(__doc__ or "")
             sys.exit(0)
@@ -226,10 +285,12 @@ def _parse_args(argv):
             _err(f"unknown argument: {a}")
             return None
         continue
-    if not source_root_only and not features_file:
-        _err("--features <accepted.json> is required (or use --source-root)")
+    if not source_root_only and not detect_existing and not features_file:
+        _err("--features <accepted.json> is required (or use --source-root / "
+             "--detect-existing)")
         return None
-    return features_file, rabbit_root, plan_only, source_root_only
+    return (features_file, rabbit_root, plan_only, source_root_only,
+            detect_existing)
 
 
 def _load_features(path: str):
@@ -265,9 +326,13 @@ def main(argv) -> int:
     parsed = _parse_args(argv)
     if parsed is None:
         return 2
-    features_file, rabbit_root, plan_only, source_root_only = parsed
+    (features_file, rabbit_root, plan_only, source_root_only,
+     detect_existing) = parsed
 
-    if not source_root_only:
+    # --detect-existing accepts an OPTIONAL candidate list; --source-root takes
+    # none; every other mode requires --features.
+    features = None
+    if not source_root_only and not (detect_existing and features_file is None):
         features = _load_features(features_file)
         if features is None:
             return 2
@@ -282,6 +347,33 @@ def main(argv) -> int:
         return 2
 
     source_root = _resolve_source_root(rabbit_root, mode)
+
+    # Pre-Step-2 mode (#925): detect an existing decomposition and emit the
+    # SUMMARY + three-way branch the SKILL offers when the project-map already
+    # carries features.
+    if detect_existing:
+        project_map_path = _resolve_project_map_path(rabbit_root, mode)
+        existing_map = _read_existing_features(project_map_path)
+        existing = bool(existing_map)
+        existing_names = sorted(existing_map.keys())
+        already_rabbified = []
+        new = []
+        if existing and features:
+            for entry in features:
+                if entry.get("name") in existing_map:
+                    already_rabbified.append(entry)
+                else:
+                    new.append(entry)
+        print(json.dumps({
+            "mode": mode,
+            "project_map_path": project_map_path,
+            "existing": existing,
+            "existing_features": existing_names if existing else [],
+            "options": ["skip", "add", "re-decompose"] if existing else [],
+            "already_rabbified": already_rabbified,
+            "new": new,
+        }))
+        return 0
 
     # Step 1 mode: resolve mode + the decomposition source root only.
     if source_root_only:
