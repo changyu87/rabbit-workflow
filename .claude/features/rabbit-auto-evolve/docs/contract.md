@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.76.0
+version: 0.77.0
 template_version: 2.0.0
 ---
 
@@ -40,7 +40,7 @@ template_version: 2.0.0
         "path": ".claude/features/rabbit-auto-evolve/scripts/close-decomposed-parents.py",
         "subcommands": [],
         "version": "1.0.0",
-        "rationale": "per-tick roll-up close of decomposed parents (Inv 53). Invoked by run-post-merge.py after the catch-up phase: for each tracked parent whose recorded children are ALL closed it closes the parent (`gh issue close --reason completed`) and drops its `decomposition_parents` key. Idempotent no-op when the map is empty or any child is still open"
+        "rationale": "per-tick roll-up close of decomposed parents (Inv 53). Invoked by run-post-merge.py after the catch-up phase: for each tracked parent it reads the AUTHORITATIVE close-source, the GitHub-native sub-issue rollup (`gh api repos/{slug}/issues/<parent>` -> `sub_issues_summary{total, completed}`), and closes the parent (`gh issue close --reason completed`) when `total > 0 and completed == total`, dropping its `decomposition_parents` key. COEXISTENCE: a recorded parent with no native sub-issues yet (`total == 0`) falls back to the legacy hand-rolled per-child `gh issue view` check. `decomposition_parents` is a deprecating mirror honored during the coexistence window; its deprecation criterion is to drop the field and the legacy fallback once no open parent carries an entry. Idempotent no-op when the map is empty or the close-source shows the parent incomplete"
       }
     ],
     "schemas": [],

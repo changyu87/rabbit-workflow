@@ -16,6 +16,31 @@ authoritative).
 
 ## Version notes
 
+- **v0.77.0 — 2026-06-04** — Fix #940 (decomposed-parent closing now reads the
+  GitHub-native sub-issue rollup; `decomposition_parents` becomes a deprecating
+  mirror). `scripts/close-decomposed-parents.py` previously decided a parent was
+  closeable by iterating its `decomposition_parents` children and querying each
+  child's state by hand, duplicating GitHub's native
+  `sub_issues_summary{total, completed}` rollup. Native sub-issue LINKING
+  already shipped (#933 `file-item.py --parent`; #934 the decomposition path
+  uses it), so the hand-rolled per-child check was redundant. The close side now
+  reads the AUTHORITATIVE close-source — `gh api repos/{slug}/issues/<parent>`
+  -> `sub_issues_summary` — and closes a parent when `total > 0 and completed
+  == total`. COEXISTENCE (spec-rules §3): a parent recorded in
+  `decomposition_parents` but with no native sub-issues yet (`total == 0`)
+  falls back to the legacy hand-rolled per-child `gh issue view` check, so the
+  live `935 -> [940..945]` entry keeps closing. The `decomposition_parents`
+  schema field is retained as a deprecating mirror; its deprecation criterion is
+  to drop the field and the legacy fallback once no open parent carries an
+  entry. Spec Inv 53 + `docs/contract.md` updated; decomposition WRITES
+  (`record-decomposition.py`, `file-item.py --parent`; #934) are unchanged.
+  Four-way version bump 0.76.0 -> 0.77.0. Enforced by
+  `test/test-close-decomposed-parents.py` (native rollup complete -> close;
+  incomplete -> untouched; legacy coexistence with no native sub-issues ->
+  recorded parent still closes off the hand-rolled check) and
+  `test/test-decomposition-native-sub-issue.py` (the native rollup is the close
+  driver).
+
 - **v0.76.0 — 2026-06-04** — Fix #941 (triage blocked-by detection
   over-matched on prose). `scripts/triage-issue.py`'s rule-5 malformed
   detection used a substring `blocked-by:` match (`_BLOCKED_BY_ANY`), so an

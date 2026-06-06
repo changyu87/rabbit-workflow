@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.76.0
+version: 0.77.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1616,7 +1616,7 @@ summary is restated here.
     |---|---|---|---|
     | 1 (perf preference) | `parallel-per-feature` | item edits exactly one feature dir | one full single-feature TDD touch, its own `.rabbit-scope-active-<feature>` marker; multiple such items dispatch in parallel |
     | 2 | `multi-subagent-barrier` | item edits >1 feature dir, below `--decompose-threshold` (default 10) | per-feature subagents land SERIALLY on ONE shared branch; the serialization contract is: subagent k+1 fetches subagent k's pushed commit before starting; each piece is a full single-feature touch with its own scope marker; one PR closes the item |
-    | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs | file N per-feature sub-issues via the contract INVOKE `rabbit-issue/scripts/file-item.py --parent <parent#>` (NOT a cross-feature edit — do not edit rabbit-issue files), each labelled with the right `feature:<name>` + `priority:<level>` label and born as a GitHub-native sub-issue of the parent; the parent stays OPEN and the sub-issues are queued, re-entering Stage 1/Stage 2 on the next tick; the authoritative parent->children linkage is recorded in `decomposition_parents` and the parent closed deterministically once every child closes (Inv 53) |
+    | 3 | `decomposition` | item edits ≥ `--decompose-threshold` feature dirs | file N per-feature sub-issues via the contract INVOKE `rabbit-issue/scripts/file-item.py --parent <parent#>` (NOT a cross-feature edit — do not edit rabbit-issue files), each labelled with the right `feature:<name>` + `priority:<level>` label and born as a GitHub-native sub-issue of the parent; the parent stays OPEN and the sub-issues are queued, re-entering Stage 1/Stage 2 on the next tick; the parent->children linkage is recorded in `decomposition_parents` as a mirror and the parent is closed deterministically off the GitHub-native sub-issue rollup once it shows all sub-issues complete (Inv 53) |
 
     Every shape uses a full per-feature touch gated by
     `.rabbit-scope-active-<feature>`. The dispatcher MUST NOT skip, defer
@@ -3238,45 +3238,57 @@ summary is restated here.
     per-feature `.rabbit-scope-active-<feature>` marker — runs
     `git status --porcelain`, and asserts none of them appear in the output.
 
-53. **Decomposed-parent lifecycle closes deterministically; the
-    parent->children linkage is machine-readable, never a prose table, and is
-    mirrored by a derivative GitHub-native sub-issue link.**
+53. **Decomposed-parent lifecycle closes deterministically off the
+    GitHub-native sub-issue rollup; `decomposition_parents` is a deprecating
+    machine mirror honored during coexistence.**
     When `plan-batch.py` shapes an item as `decomposition`
     (>= `--decompose-threshold` features) and the dispatcher files the N
     per-feature child sub-issues (a `rabbit-issue` contract INVOKE, not a
-    cross-feature edit), it establishes the parent->children linkage in TWO
-    forms. (1) The AUTHORITATIVE machine-readable form: invoking
+    cross-feature edit), it links each child to its parent as a GitHub-native
+    sub-issue by filing it with
+    `rabbit-issue/scripts/file-item.py --parent <parent#>`, and it records the
+    parent->children linkage in machine-readable form by invoking
     `python3 .claude/features/rabbit-auto-evolve/scripts/record-decomposition.py
     <parent#> <child#> [<child#> ...]`, which persists the link under the
     state's `decomposition_parents` map (parent-issue-number string ->
-    list of child issue numbers; schema 1.3.0). (2) A DERIVATIVE
-    human-readable form: each child is filed with
-    `rabbit-issue/scripts/file-item.py --parent <parent#>`, so the child is
-    born linked to the parent as a GitHub-native sub-issue visible in the
-    GitHub UI. The state map remains authoritative — the GitHub-native link
-    is a derivative view of it and never replaces it; the loop enumerates a
-    parent's children only from `decomposition_parents`, never from the
-    GitHub UI link and never from the historical prose comment table.
-    Enumerating a parent's children from prose is a machine-first violation
-    and is what historically left decomposed parents lingering OPEN after
-    every child closed.
+    list of child issue numbers; schema 1.3.0). Both writes are machine-first:
+    the GitHub-native sub-issue link is itself a machine source (GitHub exposes
+    `sub_issues_summary{total, completed}` on the parent), and the state map
+    mirrors it. The loop NEVER enumerates a parent's children from a prose
+    comment table — that historical machine-first violation is what left
+    decomposed parents lingering OPEN after every child closed.
     Each tick, the post-merge drain (`run-post-merge.py`, after the
     catch-up phase) runs
     `python3 .claude/features/rabbit-auto-evolve/scripts/close-decomposed-parents.py`,
-    which for EVERY tracked parent enumerates its recorded children, queries
-    each child's state via `gh`, and — only when EVERY child is closed —
-    closes the parent (`gh issue close <parent#> --reason completed` with a
-    roll-up comment) and removes the parent key from `decomposition_parents`.
-    A parent with ANY child still OPEN is left untouched (the step is a
-    no-op for it). The step is idempotent: a clean no-op when the map is
-    empty/absent, and a parent already closed (key already removed) is never
-    re-processed. The roll-up close is SCRIPT-BACKED (script > CLI > spec >
-    prompt) — it is never a dispatcher judgment call. Enforced by
-    `test/test-close-decomposed-parents.py` (all-children-closed -> parent
-    closed + key dropped; one-open-child -> parent untouched; empty map ->
-    clean no-op) and `test/test-record-decomposition.py` (the linkage record
-    round-trips through `decomposition_parents` and validates against schema
-    1.3.0), with the wiring asserted by `test/test-run-post-merge.py`.
+    which for EVERY tracked parent reads the AUTHORITATIVE close-source — the
+    GitHub-native sub-issue rollup on the parent
+    (`gh api repos/{slug}/issues/<parent>` -> `sub_issues_summary`) — and,
+    when the parent has sub-issues and ALL are complete
+    (`total > 0 and completed == total`), closes the parent
+    (`gh issue close <parent#> --reason completed` with a roll-up comment) and
+    removes the parent key from `decomposition_parents`. COEXISTENCE: a parent
+    that carries a `decomposition_parents` entry but has NO GitHub-native
+    sub-issues yet (`total == 0`) falls back to the legacy hand-rolled check —
+    its recorded children are queried individually via `gh issue view <child#>`
+    and the parent is closed only when EVERY recorded child is CLOSED. A parent
+    whose native rollup is incomplete, or whose legacy fallback finds any child
+    still OPEN, is left untouched (the step is a no-op for it). The step is
+    idempotent: a clean no-op when the map is empty/absent, and a parent already
+    closed (key already removed) is never re-processed. The roll-up close is
+    SCRIPT-BACKED (script > CLI > spec > prompt) — it is never a dispatcher
+    judgment call.
+    The `decomposition_parents` map is a deprecating mirror: it is honored
+    during the coexistence window so the parents recorded before native linking
+    shipped keep closing. Its deprecation criterion: drop the
+    `decomposition_parents` schema field and the legacy hand-rolled fallback
+    once no open parent carries a `decomposition_parents` entry.
+    Enforced by `test/test-close-decomposed-parents.py` (native rollup
+    completed==total>0 -> parent closed + key dropped; native rollup
+    completed<total -> parent untouched; legacy-map coexistence with no native
+    sub-issues -> recorded parent still closes off the hand-rolled check; empty
+    map -> clean no-op) and `test/test-record-decomposition.py` (the linkage
+    record round-trips through `decomposition_parents` and validates against
+    schema 1.3.0), with the wiring asserted by `test/test-run-post-merge.py`.
 
 54. **Per-tick dispatch journal — resume skips completed subagents and
     re-dispatches only the unfinished; it subsumes the vestigial `in_flight`
