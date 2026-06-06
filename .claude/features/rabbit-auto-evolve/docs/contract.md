@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.78.0
+version: 0.79.0
 template_version: 2.0.0
 ---
 
@@ -55,7 +55,13 @@ template_version: 2.0.0
         "rationale": "banner-status.py reads the repo-root heartbeat registry (the tasks[] entry whose prompt references rabbit-auto-evolve) to compute the idle banner line's exact next-tick ETA (next cron boundary plus the Inv 56 observed jitter offset), mirroring contract Inv 55's cadence computation. Read-only of a repo-root runtime artifact; rabbit-auto-evolve already owns this file's lifecycle via install-cron.py / the CronCreate heartbeat"
       }
     ],
-    "external": []
+    "external": [
+      {
+        "name": "github-issue-dependencies",
+        "operation": "read-blocked-by",
+        "rationale": "triage-issue.py rule 5 (Inv 59) reads the AUTHORITATIVE source of an issue's blocked state from the GitHub-native dependencies graph (`gh api repos/{slug}/issues/<n>/dependencies/blocked_by` -> array of blocker issues each `{number, state, title}`); when any listed blocker is still `open` the issue defers `blocked`. The dispatch path that records a discovered blocker WRITES the relationship (`gh api --method POST repos/{slug}/issues/<n>/dependencies/blocked_by -F issue_id=<blocker-id>`). The body `blocked-by: #N` text declaration and the legacy `blocked-by:` label are a deprecating coexistence mirror, consulted only when the native source reports no open blocker; deprecation criterion: drop the body parser and label once no open issue carries a `blocked-by:` body marker or label and native dependencies are the sole expressed ordering source. Reuses the `gh api repos/{slug}/issues/...` access pattern the sub-issue rollup (Inv 53/58) already uses"
+      }
+    ]
   },
   "invokes": {
     "scripts": [

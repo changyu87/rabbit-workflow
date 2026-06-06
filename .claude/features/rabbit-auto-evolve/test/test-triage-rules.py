@@ -37,12 +37,18 @@ def ok(msg):
 # ---------------------------------------------------------------------------
 # Helpers — build a fake repo + gh shim under a tempdir.
 # ---------------------------------------------------------------------------
-def write_shim(shim_dir, view_responses, list_response):
+def write_shim(shim_dir, view_responses, list_response, dep_responses=None):
     """Write a `gh` shim that dispatches by subcommand.
 
     view_responses: dict mapping issue-number-string -> JSON string to emit
                     for `gh issue view <N> ...`.
     list_response:  JSON string emitted for `gh issue list ...`.
+    dep_responses:  optional dict mapping issue-number-string -> JSON array
+                    string to emit for the GitHub-native
+                    `gh api repos/<slug>/issues/<N>/dependencies/blocked_by`
+                    read (Inv 59). A number absent from the map serves `[]`
+                    (no native blocker), which is the default for issues that
+                    only carry a body `blocked-by:` coexistence mirror.
     """
     shim_path = os.path.join(shim_dir, "gh")
     # Write each view response and the list response into separate files
@@ -53,10 +59,13 @@ def write_shim(shim_dir, view_responses, list_response):
             f.write(payload)
     with open(os.path.join(shim_dir, "list.json"), "w") as f:
         f.write(list_response)
+    for num, payload in (dep_responses or {}).items():
+        with open(os.path.join(shim_dir, f"dep-{num}.json"), "w") as f:
+            f.write(payload)
 
     with open(shim_path, "w") as f:
         f.write("#!/bin/sh\n")
-        f.write('# args: issue view <N> ... or issue list ...\n')
+        f.write('# args: issue view <N> ... | issue list ... | api <path>\n')
         f.write('sub="$1"; verb="$2"\n')
         f.write('if [ "$sub" = "issue" ] && [ "$verb" = "view" ]; then\n')
         f.write('  num="$3"\n')
@@ -65,6 +74,27 @@ def write_shim(shim_dir, view_responses, list_response):
         f.write('elif [ "$sub" = "issue" ] && [ "$verb" = "list" ]; then\n')
         f.write(f'  cat "{shim_dir}/list.json"\n')
         f.write('  exit 0\n')
+        f.write('elif [ "$sub" = "api" ]; then\n')
+        # Native dependencies read: repos/<o>/<r>/issues/<N>/dependencies/blocked_by
+        f.write('  path="$2"\n')
+        f.write('  case "$path" in\n')
+        f.write('    */issues/*/dependencies/blocked_by)\n')
+        f.write('      rest="${path%/dependencies/blocked_by}"\n')
+        f.write('      num="${rest##*/}"\n')
+        f.write(f'      if [ -f "{shim_dir}/dep-${{num}}.json" ]; then\n')
+        f.write(f'        cat "{shim_dir}/dep-${{num}}.json"\n')
+        f.write('      else\n')
+        f.write('        printf "[]"\n')
+        f.write('      fi\n')
+        f.write('      exit 0\n')
+        f.write('      ;;\n')
+        # Any other gh api call (e.g. the sub-issue rollup) — emit a benign
+        # empty object so the unrelated read degrades to its no-data default.
+        f.write('    *)\n')
+        f.write('      printf "{}"\n')
+        f.write('      exit 0\n')
+        f.write('      ;;\n')
+        f.write('  esac\n')
         f.write('fi\n')
         f.write('echo "gh-shim: unrecognized: $@" >&2\n')
         f.write('exit 2\n')
@@ -1151,6 +1181,152 @@ with tempfile.TemporaryDirectory() as repo_root:
             else f"blocked_by should be [456], got {r.get('blocked_by')!r}"
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# Rule 5 (issue #942 / Inv 59): the GitHub-native dependency relationship is
+# the AUTHORITATIVE blocked-state source. An issue with an OPEN native blocker
+# defers `blocked` with that blocker's number in `blocked_by` — even though its
+# body carries NO `blocked-by:` text declaration.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "native-dep-feature")
+    issue_payload_main = json.dumps({
+        "number": 942,
+        "title": "Do the thing once the native blocker lands",
+        # No body `blocked-by:` text at all — the block is expressed ONLY in
+        # the native dependencies graph.
+        "body": "We want to add the thing. No textual blocker declared here.",
+        "labels": [
+            {"name": "feature:native-dep-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    # Native dependencies read: 942 is blocked_by #800, which is still OPEN.
+    dep_payload = json.dumps([
+        {"number": 800, "state": "open", "title": "the foundational blocker"},
+    ])
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"942": issue_payload_main}, list_payload,
+               dep_responses={"942": dep_payload})
+    proc = run_script(repo_root, 942, shim_dir)
+    expect_decision(
+        "native-dep-open-blocker-defers", proc, "defer", "blocked",
+        extra_assert=lambda r: (
+            None if r.get("blocked_by") == [800]
+            else f"blocked_by should be [800], got {r.get('blocked_by')!r}"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rule 5 (issue #942 / Inv 59): an issue whose native blockers are ALL CLOSED
+# is NOT blocked — it passes through to an actionable verdict.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "native-closed-feature")
+    issue_payload_main = json.dumps({
+        "number": 943,
+        "title": "Now unblocked work item",
+        "body": "Ready to go.",
+        "labels": [
+            {"name": "feature:native-closed-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    # Native dependencies read: 943 was blocked_by #801, now CLOSED.
+    dep_payload = json.dumps([
+        {"number": 801, "state": "closed", "title": "the now-closed blocker"},
+    ])
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"943": issue_payload_main}, list_payload,
+               dep_responses={"943": dep_payload})
+    proc = run_script(repo_root, 943, shim_dir)
+    expect_decision(
+        "native-dep-closed-blocker-actionable", proc, "work", "actionable")
+
+
+# ---------------------------------------------------------------------------
+# Rule 5 (issue #942 / Inv 59): coexistence window. An issue with NO native
+# blocker but a STRUCTURAL body `blocked-by: #N` to a still-open issue still
+# defers via the deprecating body-text mirror, so in-flight issues that
+# pre-date a native dependency link are not stranded.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "coexist-feature")
+    issue_payload_main = json.dumps({
+        "number": 944,
+        "title": "Legacy blocked item",
+        "body": "Cannot start yet.\n\nblocked-by: #802\n",
+        "labels": [
+            {"name": "feature:coexist-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    issue_payload_dep = json.dumps({"number": 802, "state": "OPEN"})
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    # No dep_responses entry for 944 -> native read serves [] (no native
+    # blocker), so the body-text mirror is consulted and finds #802 open.
+    write_shim(shim_dir,
+               {"944": issue_payload_main, "802": issue_payload_dep},
+               list_payload)
+    proc = run_script(repo_root, 944, shim_dir)
+    expect_decision(
+        "coexistence-body-mirror-defers", proc, "defer", "blocked",
+        extra_assert=lambda r: (
+            None if r.get("blocked_by") == [802]
+            else f"blocked_by should be [802], got {r.get('blocked_by')!r}"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rule 5 (issue #942 / Inv 59): #941's prose-hardening is preserved. An issue
+# that merely MENTIONS the `blocked-by:` token in prose (no native blocker,
+# no structural declaration) still passes through as `work`/actionable.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "prose-feature")
+    issue_payload_main = json.dumps({
+        "number": 945,
+        "title": "Redesign the blocked-by detection in triage",
+        "body": (
+            "The triage parser over-matches: it treats any literal "
+            "`blocked-by:` token as a dependency. We should only honor a real "
+            "`blocked-by: #N` form. See the `blocked-by:NNN` labels and the "
+            "body regex for context.\n"
+        ),
+        "labels": [
+            {"name": "feature:prose-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    # No native blocker, no structural body declaration -> actionable.
+    write_shim(shim_dir, {"945": issue_payload_main}, list_payload)
+    proc = run_script(repo_root, 945, shim_dir)
+    expect_decision(
+        "native-coexist-prose-passthrough", proc, "work", "actionable")
 
 
 sys.exit(FAIL)

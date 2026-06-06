@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.78.0
+version: 0.79.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -364,7 +364,7 @@ summary is restated here.
    | 2 | Feature named by label does not exist at `.claude/features/<name>/` | `close-not-planned` | `unknown-feature` |
    | 3 | Issue title is a case-folded substring match of a closed-in-last-30-days issue's title | `close-not-planned` | `duplicate` |
    | 4 | Feature's `feature.json.status == "retired"` | `close-not-planned` | `feature-retired` |
-   | 5 | Issue body STRUCTURALLY declares a blocked-by dependency (a `blocked-by: #N` form anywhere, OR a line that STARTS with the `blocked-by:` token after only optional list/quote markers) AND any cited `#N` is still open | `defer` (set `blocked_by`) | `blocked` |
+   | 5 | The issue is blocked by a still-open dependency. The AUTHORITATIVE source is the GitHub-native dependency relationship (`gh api repos/{slug}/issues/<n>/dependencies/blocked_by` returns a blocker whose `state` is `open`); the body `blocked-by: #N` text declaration is a deprecating coexistence mirror, consulted only when the native source reports no open blocker | `defer` (set `blocked_by`) | `blocked` |
    | 6 | Feature's spec head matter already documents the requested behavior verbatim (case-folded substring match of the issue title's content-word tail) | `close-not-planned` | `already-spec'd` |
    | 7 | Otherwise actionable; refined by research classification and comment-thread reconciliation | `work` / `research` / `defer` | `actionable` / `research` / `needs-judgment` |
 
@@ -379,17 +379,20 @@ summary is restated here.
    silently to `work`; the loop under-dispatches rather than
    over-dispatches.
 
-   The blocked-by detection (rule 5) is STRUCTURAL, never substring: a
-   prose mention of the `blocked-by:` token mid-sentence — an issue that
-   merely DESCRIBES or discusses the dependency mechanism in a sentence,
-   code span, or table — is NOT a dependency declaration and MUST pass
-   through as actionable, NEVER deferred. Only a STRUCTURAL declaration
-   counts: the concrete `blocked-by: #N` form (which parses `N` as the
-   blocker), or a line that STARTS with the `blocked-by:` token after
-   only optional list/quote markers. A structural declaration that botches
-   the issue number (a leading `blocked-by:` line with no valid `#N`) is
-   the sole malformed case that defers with `needs-judgment`; an ambiguous
-   prose occurrence is resolved conservatively toward `work`.
+   The blocked-state authority (rule 5) is the GitHub-native dependency
+   relationship (Inv 59): triage reads `gh api
+   repos/{slug}/issues/<n>/dependencies/blocked_by` and defers `blocked`
+   when ANY listed blocker is still `open`. The body-text declaration is a
+   deprecating coexistence mirror, consulted ONLY when the native source
+   reports no open blocker so in-flight issues that pre-date a native link
+   are not stranded. The body mirror is STRUCTURAL, never substring: a prose
+   mention of the `blocked-by:` token mid-sentence — an issue that merely
+   DESCRIBES the mechanism — is NOT a declaration and passes through as
+   actionable, NEVER deferred. Only a STRUCTURAL declaration counts: the
+   concrete `blocked-by: #N` form, or a line that STARTS with the
+   `blocked-by:` token after only optional list/quote markers. A structural
+   declaration that botches the issue number defers `needs-judgment`; an
+   ambiguous prose occurrence resolves conservatively toward `work`.
 
    ### Comment-thread reconciliation
 
@@ -433,8 +436,12 @@ summary is restated here.
 
    Enforced by `test/test-triage-rules.py` (a `gh` shim on `$PATH` under
    `tempfile.TemporaryDirectory()` serves fixture `gh issue view` / `gh issue
-   list` responses; no live network): one unit test per decision-table row (7
-   rules) from fixtures under `test/fixtures/triage/`; a `needs-judgment`
+   list` / `gh api .../dependencies/blocked_by` responses; no live network):
+   one unit test per decision-table row (7 rules) from fixtures under
+   `test/fixtures/triage/`; the native-dependency blocked path (OPEN native
+   blocker defers `blocked`; all-CLOSED native blockers actionable; the body
+   `blocked-by: #N` mirror still defers when no native blocker exists);
+   a `needs-judgment`
    ambiguity case (a STRUCTURAL leading `blocked-by:` line with no integer
    ref) AND its converse — a body that merely MENTIONS the `blocked-by:`
    token in prose passes through as `work`/actionable, never deferred;
@@ -3503,6 +3510,35 @@ summary is restated here.
     with a parent link and an ordinary issue are still selected and shaped) and
     by `test/test-plan-batch.py` (a `decomposition_parent: true` item is dropped
     from the plan while co-batched ordinary items remain).
+
+59. **The GitHub-native dependency relationship is the authoritative source of
+    an issue's blocked state; the body `blocked-by:` text is a deprecating
+    coexistence mirror.** `triage-issue.py` rule 5 reads the AUTHORITATIVE
+    source — `gh api repos/{slug}/issues/<n>/dependencies/blocked_by`, an array
+    of blocker issues each carrying `{number, state, title}` — and defers
+    `blocked` (with the open blocker numbers in `blocked_by`) when any listed
+    blocker's `state` is `open`. An issue whose native blockers are all CLOSED,
+    or which has no native blocker, is not blocked by this source. The read
+    reuses the `gh api repos/{slug}/issues/...` pattern Inv 53/58 use; a
+    transient read failure yields no native blocker (the body mirror is then
+    consulted), so a flaky `gh` call never strands an issue. The body
+    `blocked-by: #N` text declaration is a deprecating coexistence mirror,
+    consulted ONLY when the native source reports no open blocker so an
+    in-flight issue that pre-dates a native dependency link is honored; the
+    mirror keeps the STRUCTURAL, never-substring detection (a prose mention of
+    the `blocked-by:` token is NOT a declaration and passes through). The
+    dispatch path that records a discovered blocker prefers creating the native
+    relationship (`gh api --method POST
+    repos/{slug}/issues/<n>/dependencies/blocked_by -F issue_id=<blocker-id>`);
+    the label/body marker is a deprecating fallback. Deprecation criterion:
+    drop the `blocked-by: #N` body parser and the legacy `blocked-by:` label
+    once no open issue carries a `blocked-by:` body marker or label and native
+    dependencies are the sole expressed ordering source. Enforced by
+    `test/test-triage-rules.py` (the `gh` shim serves
+    `gh api .../dependencies/blocked_by`: an OPEN native blocker defers
+    `blocked`; all-CLOSED native blockers are actionable; no native blocker but
+    a structural `blocked-by: #N` to an open issue still defers via the mirror;
+    a prose-only `blocked-by:` mention passes through as `work`).
 
 ## Known gaps
 
