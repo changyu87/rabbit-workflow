@@ -16,6 +16,24 @@ authoritative).
 
 ## Version notes
 
+- **v0.74.0 — 2026-06-04** — Fix #927 (root `CHANGELOG.md` stale vs `v9.x`
+  tags), rabbit-auto-evolve piece. New spec Inv 57 records the deterministic
+  release-track decision: the LIVE release track is the `vX.Y.Z` git tags cut
+  by `release-bump.py` (Inv 7, now at the `v9.x` line) plus each touched
+  feature's own `docs/CHANGELOG.md` — NOT the repo-root `CHANGELOG.md`, which
+  is a SEPARATE, now-dead versioning track owned by `rabbit-cage` (Inv 28/45)
+  and frozen at the legacy `release/1.12.0` install-branch scheme (rabbit-cage
+  Inv 22g names "the dead `release/*` branch channel (frozen at 1.12.0)").
+  Root `CHANGELOG.md` is OUT of this feature's writable scope
+  (`RABBIT_CAGE_OWNED_ROOT` excludes it; no rabbit-auto-evolve marker grants a
+  repo-root write), so `release-bump.py` does NOT — and must NOT — write it.
+  The #924 `rabbit-update install` post-update changelog summary surfaced the
+  staleness by reading root `CHANGELOG.md`; re-sourcing that summary off the
+  git tags + per-feature changelogs is a `rabbit-cage` concern (#924 Inv 46 is
+  rabbit-cage-owned) filed as a discovered issue, not edited here (bounded
+  scope). New e2e `test/test-release-track-source.py` pins the Inv 57 decision
+  (live track = git tags via `release-bump.py` + per-feature changelogs; root
+  `CHANGELOG.md` = dead/out-of-scope `release/1.x` track) into `test/run.py`.
 - **v0.73.0 — 2026-06-05** — Fix #881 (third reopen), rabbit-auto-evolve
   piece: render the SessionStart idle banner's next-tick ETA as a single
   EXACT wall-clock `HH:MM` — the next cron boundary plus the empirically

@@ -51,13 +51,25 @@ MIN_LINES_CUT = 150              # deep slim must remove >= this many lines
 # invariants) is still ENFORCED while the #881 addition is admitted.
 POST_881_ADD_LINES = 60
 POST_881_ADD_INVARIANTS = 1
-MAX_TOTAL_LINES = BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
+# #927 added the release-track-decision invariant (Inv 57: the live release
+# track is the vX.Y.Z git tags + per-feature changelogs, NOT the dead-track
+# root CHANGELOG.md) — a genuinely new owned rule, not slim regression. Mirror
+# the #881 headroom so the #751 reduction (>= 150 lines, >= 4 invariants) stays
+# ENFORCED while the #927 addition is admitted.
+POST_927_ADD_LINES = 40
+POST_927_ADD_INVARIANTS = 1
+MAX_TOTAL_LINES = (
+    BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
+    + POST_927_ADD_LINES
+)
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
-# At least this many invariants must be consolidated away (then #881 re-adds 1).
+# At least this many invariants must be consolidated away (then #881 and #927
+# each re-add 1).
 MIN_INVARIANTS_CUT = 4
 MAX_INVARIANT_COUNT = (
     BASELINE_INVARIANT_COUNT - MIN_INVARIANTS_CUT + POST_881_ADD_INVARIANTS
+    + POST_927_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---
