@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.73.0
+version: 0.74.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -3406,6 +3406,33 @@ summary is restated here.
     `test/test-tick-jitter.py` (median over a `+13` fire history; cold-start
     fallback; absent/unreadable log degradation; persisted schema) and the
     `test-banner-status.py` boundary-plus-offset and purged-wording assertions.
+
+57. **The live release track is the `vX.Y.Z` git tags + per-feature
+    changelogs — NOT the dead-track root `CHANGELOG.md`.** The canonical,
+    machine-truth record of what this feature ships at each release is the
+    annotated `vX.Y.Z` git tag cut by `release-bump.py` (Inv 7) — now at
+    the `v9.x` line — together with each touched feature's own
+    `docs/CHANGELOG.md` entry written by its version-bumping subagent. The
+    repo-root `CHANGELOG.md` is a SEPARATE, now-dead versioning track: it
+    is owned by `rabbit-cage` and maintained under the legacy `release/1.x`
+    install-branch protocol, frozen at `release/1.12.0` (`rabbit-cage`'s
+    install spec names "the dead `release/*` branch channel (frozen at
+    1.12.0)" against "the live dev-tag release channel"). Root
+    `CHANGELOG.md` therefore does NOT track the `v9.x` tags and is NOT this
+    feature's authority. It is also OUT of this feature's writable scope —
+    `rabbit-cage`'s scope-guard `RABBIT_CAGE_OWNED_ROOT` does not include
+    `CHANGELOG.md`, and no rabbit-auto-evolve scope marker authorizes a
+    repo-root write — so `release-bump.py` MUST NOT write root
+    `CHANGELOG.md`. Any consumer needing the live release history (e.g. the
+    `rabbit-update install` post-update changelog summary) MUST source it
+    from the git tags plus per-feature changelogs, never from the
+    dead-track root `CHANGELOG.md`; re-sourcing that summary is a
+    `rabbit-cage` concern (the install post-update summary is
+    rabbit-cage-owned) and is filed as a discovered issue, not edited here
+    (bounded scope). Enforced by `test/test-release-track-source.py` (an
+    invariant records both the live track — git tags via `release-bump.py`
+    plus per-feature changelogs — and the dead/out-of-scope root
+    `CHANGELOG.md` `release/1.x` track).
 
 ## Known gaps
 
