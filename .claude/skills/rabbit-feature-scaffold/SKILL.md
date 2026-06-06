@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-scaffold
-description: Scaffold a new rabbit feature directory with the standard skeleton (feature.json, docs/spec.md, docs/contract.md, test/run.py) in standalone mode, or scaffold a per-project plugin feature under .rabbit/rabbit-project/features/<name>/ with path-glob mapping in plugin mode. Use when the user asks to create, scaffold, or initialize a new rabbit feature — phrases like "create a new feature", "scaffold a feature called X", "/rabbit-feature-scaffold", "set up a new rabbit feature", "bootstrap a feature dir". Invoke as Skill("rabbit-feature-scaffold", args: "<feature-name>") in standalone mode or Skill("rabbit-feature-scaffold", args: "<feature-name> <path-glob> [<path-glob>...]") in plugin mode.
-version: 1.8.0
+description: Scaffold a new rabbit feature directory with the standard skeleton (feature.json, docs/spec.md, docs/contract.md, test/run.py) in standalone mode, or scaffold a per-project plugin feature under .rabbit/rabbit-project/features/<name>/ with path-glob mapping in plugin mode. Adds N features in one shot via a batch input (a JSON file path, or an inline ';'-separated list) in plugin mode. Use when the user asks to create, scaffold, or initialize a new rabbit feature — phrases like "create a new feature", "scaffold a feature called X", "/rabbit-feature-scaffold", "set up a new rabbit feature", "bootstrap a feature dir", "scaffold these features in a batch". Invoke as Skill("rabbit-feature-scaffold", args: "<feature-name>") in standalone mode, Skill("rabbit-feature-scaffold", args: "<feature-name> <path-glob> [<path-glob>...]") in plugin single mode, or Skill("rabbit-feature-scaffold", args: "--batch <features.json>") / Skill("rabbit-feature-scaffold", args: "--list \"<name> [glob ...]; ...\"") in plugin batch mode.
+version: 1.9.0
 owner: rabbit-workflow team
 deprecation_criterion: When this skill's scaffolding step is absorbed into a native `rabbit-feature` CLI subcommand or into the rabbit CLI itself.
 ---
@@ -24,6 +24,12 @@ This skill has two invocation modes. The mode is auto-detected from
   and registers it in
   `<repo>/.rabbit/rabbit-project/project-map.json` with a list of
   user-code path globs.
+
+Each mode adds a single feature OR a batch of features. Both the single
+and the batch surface are the skill's declared interface — callers
+(including `rabbit-decompose`) invoke this skill rather than shelling out
+to the scaffolder directly. The batch surface is plugin-mode only and is
+described in the "Batch mode" subsections below.
 
 ## Inputs
 
@@ -50,6 +56,22 @@ This skill has two invocation modes. The mode is auto-detected from
     filesystem path (typo guard).
   - No overlap: no existing feature in `project-map.json` may already
     claim any matched path; on conflict the error names the incumbent.
+
+**Plugin batch mode** — Args format: `--batch <features.json>` OR
+`--list "<name> [glob ...]; <name> [glob ...]; ..."`
+
+- **`--batch <features.json>`**: a path to a JSON array file. Each entry is
+  an object `{"name": "<feature-name>", "globs": ["<glob>", ...]}`; `globs`
+  is OPTIONAL (empty/absent scaffolds a greenfield feature). The whole array
+  is scaffolded in one shot, with a single `project-map.json` mutation.
+- **`--list "<entries>"`**: an inline, `;`-separated batch. Each entry is a
+  whitespace-separated `<name> [glob ...]`. The companion script normalizes
+  this into the same JSON-array shape before delegating.
+
+Per-entry naming, glob-validation, overlap, and project-map schema rules are
+identical to single plugin mode. The batch is pre-validated then scaffolded
+sequentially; a late filesystem failure leaves earlier entries committed
+(no transactional rollback).
 
 ## Protocol
 
@@ -98,6 +120,31 @@ block to stdout naming the `rabbit-spec-create` skill (and equivalently
 the `dispatch-spec-create.py` command) the caller should invoke to seed
 `docs/spec.md`. Capture that block and follow it (see Step 3 below);
 the scaffolder itself never invokes the spec-creator subagent.
+
+**Plugin batch mode.** To add several features in one shot, invoke the
+companion `scaffold-batch.py` script (the declared skill-level batch
+interface). It validates and normalizes the input, then delegates to
+`scaffold-feature.py --batch` so a single `project-map.json` mutation
+covers the whole set. Do NOT shell out to `scaffold-feature.py --batch`
+directly — the companion script is the boundary callers (including
+`rabbit-decompose`) use:
+
+<!-- example: invocation synopsis of the scaffold-batch.py companion (batch forms) -->
+```bash
+# JSON-file form
+python3 .claude/features/rabbit-feature/skills/rabbit-feature-scaffold/scripts/scaffold-batch.py \
+  --batch <features.json>
+
+# Inline-list form (';'-separated "<name> [glob ...]" entries)
+python3 .claude/features/rabbit-feature/skills/rabbit-feature-scaffold/scripts/scaffold-batch.py \
+  --list "<name> [glob ...]; <name> [glob ...]"
+```
+
+The companion script also handles single mode (`<name> [glob ...]`), so a
+caller that does not know ahead of time whether it is scaffolding one or N
+features can route every invocation through it. On any per-entry validation
+failure it exits non-zero (mirroring the scaffolder's codes) — surface that
+error to the caller and stop.
 
 ### Step 2 — Validate the scaffold
 
