@@ -12,6 +12,32 @@ field in `feature.json` (lockstep); `contract.md` carries its own version.
 
 ## Version notes
 
+- **v1.14.0 (`--parent` establishes a GitHub-native sub-issue link, closes
+  #933):** `file-item.py` gains an OPTIONAL `--parent <N>` flag. When supplied,
+  after the child issue is created it is linked under parent `<N>` as a
+  GitHub-native sub-issue via the REST sub-issues API, and the emitted JSON
+  gains a `parent` field carrying `<N>`. When OMITTED — the NORMAL case, never
+  an error or warning — behaviour is byte-identical to before: no link, no
+  extra gh calls, and the JSON is exactly `{number, url, type}` with no
+  `parent` field. Added `_gh.link_sub_issue(parent_number, child_number)`,
+  which resolves the CHILD database `id` via `gh api repos/{slug}/issues/{child}`
+  reading `.id` (the API keys on the database id, NOT the issue number — the
+  footgun), then POSTs to `repos/{slug}/issues/{parent}/sub_issues` with body
+  `{"sub_issue_id": <child_id>}`. The link is idempotent: an already-linked
+  child makes the POST fail, and `link_sub_issue` degrades gracefully without
+  raising or failing the filing. Spec gains a §Sub-issue linkage section; the
+  contract `invokes.gh` note records the two new `gh api` endpoints; the
+  SKILL.md File Protocol and Scripts Reference document `--parent`. Tests:
+  new `test/test-link-sub-issue.py` (id-resolution number≠id, POST carries the
+  resolved id not the number, already-linked idempotence) plus E2E cases in
+  `test/test-file-item.py` (link path, idempotent re-link, no-parent path
+  byte-identical with zero `gh api` calls); `gh_shim.sh` 1.2.0 → 1.3.0 grows a
+  `gh api` mock returning a database id distinct from the issue number. Four-way
+  version lockstep 1.13.1 → 1.14.0 (feature.json + spec.md + SKILL.md;
+  contract.md 1.11.0 → 1.12.0). Script Version lines: file-item.py 1.4.0 →
+  1.5.0, _gh.py 1.4.0 → 1.5.0. SKILL.md changed, so the deployed copy under
+  `.claude/skills/` drifts until the dispatcher republishes (republish_needed).
+
 - **v1.13.1 (mark List-Protocol synopsis as illustrative, closes #874):**
   Annotate the SKILL.md §List Protocol `list-items.py` CLI synopsis with the
   `<!-- example -->` marker shipped in #869 so the rabbit-housekeep

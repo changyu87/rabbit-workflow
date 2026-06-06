@@ -40,6 +40,7 @@ SUITES = (
     ("py", "test-script-backed-clean.py"),
     ("pytest", "test-ensure-labels.py"),
     ("pytest", "test-gh-helper-resolves-rabbit-repo.py"),
+    ("pytest", "test-link-sub-issue.py"),
     ("pytest", "test-file-item.py"),
     ("pytest", "test-item-status.py"),
     ("pytest", "test-list-items.py"),
