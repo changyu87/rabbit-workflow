@@ -16,7 +16,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.15.0
+Version: 1.16.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -25,6 +25,7 @@ Deprecation criterion: when the rabbit CLI exposes native per-event
 import datetime
 import importlib.util
 import json
+import math
 import os
 import re
 import subprocess
@@ -859,30 +860,83 @@ def _parse_cron_minutes(field: str) -> set:
     return minutes
 
 
+# rabbit-auto-evolve-owned artifact carrying the empirical CronCreate jitter
+# offset (Inv 56). Declared in this feature's contract.md reads.files; contract
+# READS observed_jitter_minutes without importing rabbit-auto-evolve.
+_AUTO_EVOLVE_TICK_JITTER_FILE = os.path.join(".rabbit", "auto-evolve-tick-jitter.json")
+
+
+def _cadence_period_minutes(minutes: set) -> int:
+    """The cadence period: the smallest gap (mod 60) between consecutive fire
+    minutes. A single fire minute per hour is a 60-min period. Mirrors
+    rabbit-auto-evolve banner-status.py._period_minutes so the cold-start
+    fallback offset matches byte-for-byte.
+    """
+    if not minutes:
+        return 0
+    ordered = sorted(minutes)
+    if len(ordered) == 1:
+        return 60
+    gaps = []
+    for i in range(len(ordered)):
+        gap = (ordered[(i + 1) % len(ordered)] - ordered[i]) % 60
+        if gap == 0:
+            gap = 60
+        gaps.append(gap)
+    return min(gaps)
+
+
+def _auto_evolve_jitter_offset_minutes(repo_root: str, period_minutes: int) -> int:
+    """The deterministic CronCreate per-job jitter offset (Inv 56) to ADD to
+    the next cron boundary. Reads ``observed_jitter_minutes`` from the
+    rabbit-auto-evolve-owned artifact ``.rabbit/auto-evolve-tick-jitter.json``
+    (a contract-bound cross-feature read declared in contract.md reads.files).
+    When the artifact is absent, unreadable, or carries no usable non-negative
+    integer, falls back to the documented cold-start bound
+    ``min(15, ceil(period_minutes * 0.10))`` — exactly as rabbit-auto-evolve's
+    banner-status.py does, so the SessionStart banner and the Stop line render
+    the same value.
+    """
+    path = os.path.join(repo_root, _AUTO_EVOLVE_TICK_JITTER_FILE)
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            val = data.get("observed_jitter_minutes")
+            if isinstance(val, int) and val >= 0:
+                return val
+    except (OSError, ValueError):
+        pass
+    if period_minutes <= 0:
+        return 0
+    return min(15, math.ceil(period_minutes * 0.10))
+
+
 def _auto_evolve_next_tick_eta(repo_root: str, now) -> str:
-    """Compute the next rabbit-auto-evolve heartbeat fire as an HONEST
-    lower-bound string ``"≥ HH:MM (fires when the session is next idle)"``, at
-    or strictly after the injected ``now`` datetime.
+    """Compute the next rabbit-auto-evolve heartbeat fire as a SINGLE bare
+    EXACT-TIME ``"HH:MM"`` string — the next cron boundary at/after the injected
+    ``now`` PLUS the deterministic CronCreate per-job jitter offset (Inv 56).
+    A single bare wall-clock time: no lower-bound sign, no range, no qualifier.
 
     Reads the durable heartbeat cadence from
     ``<repo_root>/.claude/scheduled_tasks.json`` — the ``tasks[]`` entry whose
     ``prompt`` references ``rabbit-auto-evolve``. Only the cron MINUTE field is
     matched against an unrestricted (``*``) HOUR, which is the cadence shape
-    the heartbeat uses (``13,43 * * * *``); the displayed minute is the next
-    wall-clock minute in that minute-set, wrapping to the next hour (and across
-    midnight) as needed.
+    the heartbeat uses (``13,43 * * * *``); the boundary is the next wall-clock
+    minute in that minute-set, wrapping to the next hour (and across midnight)
+    as needed.
 
-    #894 (mirrors #881 reopen+correction): the displayed minute is the EXACT
-    next cron boundary — cron matches its exact minute, so the boundary is
-    deterministic and there is no "cron jitter". The non-determinism observed
-    is the idle-gated DELIVERY wait: the CronCreate fallback fires a scheduled
-    prompt only while the REPL is idle, so a busy session delays the tick past
-    the boundary. The ``≥`` and the "(fires when the session is next idle)"
-    qualifier name that mechanism honestly — the tick fires AT or AFTER the
-    boundary, never before. This replaces the prior "(scheduler jitter)" range,
-    which misattributed the cause. The form mirrors the rabbit-auto-evolve
-    ``banner-status.py`` boundary string byte-for-byte so the SessionStart
-    banner and the Stop line read consistently.
+    #881 (third reopen): CronCreate adds a deterministic per-job jitter to
+    recurring tasks — they fire late by a stable per-job offset (observed
+    CONSTANT +13 min on the 30-min ``13,43`` heartbeat, on an IDLE session;
+    scheduled prompts fire only while the REPL is idle, never mid-query). The
+    displayed time is therefore boundary + offset, where the offset is READ
+    from the rabbit-auto-evolve-owned artifact
+    ``.rabbit/auto-evolve-tick-jitter.json`` (``observed_jitter_minutes``), with
+    a cold-start fallback ``min(15, ceil(period_minutes * 0.10))`` when the
+    artifact is absent. The value mirrors the rabbit-auto-evolve
+    ``banner-status.py`` ``next tick HH:MM`` string byte-for-byte so the
+    SessionStart banner and the Stop line read consistently.
 
     Returns ``None`` on any of: missing file, unreadable file, JSON parse
     error, no matching task, or no parseable cron minutes — so the caller
@@ -917,8 +971,10 @@ def _auto_evolve_next_tick_eta(repo_root: str, now) -> str:
     candidate = now.replace(second=0, microsecond=0) + datetime.timedelta(minutes=1)
     for _ in range(1440):
         if candidate.minute in minutes:
-            boundary = candidate.strftime("%H:%M")
-            return f"≥ {boundary} (fires when the session is next idle)"
+            offset = _auto_evolve_jitter_offset_minutes(
+                repo_root, _cadence_period_minutes(minutes))
+            fire = candidate + datetime.timedelta(minutes=offset)
+            return fire.strftime("%H:%M")
         candidate += datetime.timedelta(minutes=1)
     return None
 
@@ -935,14 +991,17 @@ def emit_auto_evolve_stop_line(*, repo_root: str, now=None) -> list:
     the steady active/idle line when it has (active loop between ticks),
     symmetric with emit_auto_evolve_banner.
 
-    Only the steady idle line is extended with an honest lower-bound next-tick
-    ETA rendered as the idle-gated boundary form ("auto-evolve loop active —
-    idle, next tick ≥ HH:MM (fires when the session is next idle)") when the
+    Only the steady idle line is extended with a single bare EXACT-TIME
+    next-tick ETA ("auto-evolve loop active — idle, next tick HH:MM") when the
     heartbeat cadence at .claude/scheduled_tasks.json is present and parseable;
-    it degrades to the bare idle text otherwise. The `now` argument is the
-    injected wall-clock used solely for that ETA (default None -> real
-    clock); it changes no marker/state-file logic. The four priority-marker
-    lines and the restart-pending line never carry an ETA.
+    it degrades to the bare idle text otherwise. The displayed HH:MM is the
+    next cron boundary plus the deterministic CronCreate per-job jitter offset
+    (Inv 56), read from .rabbit/auto-evolve-tick-jitter.json (cold-start bound
+    when absent) — matching rabbit-auto-evolve's banner-status.py "next tick
+    HH:MM" string byte-for-byte. The `now` argument is the injected wall-clock
+    used solely for that ETA (default None -> real clock); it changes no
+    marker/state-file logic. The four priority-marker lines and the
+    restart-pending line never carry an ETA.
     """
     if not _auto_evolve_active(repo_root):
         return []

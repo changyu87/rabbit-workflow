@@ -59,6 +59,25 @@ def write_cadence(root, cron):
         json.dump(payload, f)
 
 
+def write_jitter(root, observed):
+    """Write the rabbit-auto-evolve-owned jitter artifact (the offset contract
+    READS to render the exact-time next-tick ETA)."""
+    rabbit_dir = os.path.join(root, ".rabbit")
+    os.makedirs(rabbit_dir, exist_ok=True)
+    payload = {
+        "schema_version": 1,
+        "observed_jitter_minutes": observed,
+        "period_minutes": 30,
+        "sample_count": 8,
+        "cold_start": False,
+        "computed_at": "2026-06-04T14:00:00",
+        "owner": "rabbit-workflow team (rabbit-auto-evolve)",
+        "deprecation_criterion": "when CronCreate exposes a jitter-free schedule",
+    }
+    with open(os.path.join(rabbit_dir, "auto-evolve-tick-jitter.json"), "w") as f:
+        json.dump(payload, f)
+
+
 def write_raw_cadence(root, raw):
     """Write a raw (possibly malformed) scheduled_tasks.json body."""
     claude_dir = os.path.join(root, ".claude")
@@ -196,12 +215,14 @@ with tempfile.TemporaryDirectory() as td:
     r = emit_auto_evolve_stop_line(repo_root=td)
     assert_one(r, ABORTED, "L")
 
-# ---- idle-line next-tick ETA (idle-gated boundary) ----
-# The idle line carries the idle-gated boundary form
-# "next tick ≥ HH:MM (fires when the session is next idle)" — HH:MM is the
-# EXACT next cron fire at/after now (deterministic; no jitter range). This
-# mirrors the rabbit-auto-evolve banner-status.py boundary form byte-for-byte
-# so the SessionStart banner and the Stop line read consistently.
+# ---- idle-line next-tick ETA (exact-time, boundary + jitter offset) ----
+# The idle line carries a single bare EXACT-TIME form
+# "next tick HH:MM" — HH:MM is the next cron fire at/after now PLUS the
+# deterministic CronCreate per-job jitter offset (Inv 56), read from
+# .rabbit/auto-evolve-tick-jitter.json (cold-start bound when absent). No ≥,
+# no range, no qualifier. This mirrors the rabbit-auto-evolve banner-status.py
+# "next tick HH:MM" form byte-for-byte so the SessionStart banner and the Stop
+# line read consistently.
 NOW = datetime.datetime(2026, 6, 4, 14, 5, 0)  # fixed injected now
 
 
@@ -216,13 +237,15 @@ def assert_text(r, expected_text, label):
     ok(f"{label}: emitted {expected_text!r}")
 
 
-# M: idle + cadence present -> idle line carries the idle-gated boundary ETA
+# M: idle + cadence + jitter artifact present -> idle line carries the exact
+#    boundary+offset ETA. now=14:05, 13,43 -> boundary 14:13, +13 -> 14:26.
 with tempfile.TemporaryDirectory() as td:
     touch(td, ".rabbit-auto-evolve-active")
     write_state_file(td)
     write_cadence(td, "13,43 * * * *")
+    write_jitter(td, 13)
     r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
-    assert_text(r, "auto-evolve loop active — idle, next tick ≥ 14:13 (fires when the session is next idle)", "M")
+    assert_text(r, "auto-evolve loop active — idle, next tick 14:26", "M")
     # icon/color unchanged on the ETA idle line
     if r and (r[0].get("icon") != "🔁" or r[0].get("color") != "green"):
         fail(f"M: idle ETA line icon/color changed: {r[0]!r}")
@@ -280,23 +303,34 @@ with tempfile.TemporaryDirectory() as td:
         fail(f"S: expected [], got {r!r}")
 
 # T: minute already exactly on a fire boundary at now -> next is the LATER slot
-#    now=14:13 with 13,43 -> next is 14:43 (strictly after now)
+#    now=14:13 with 13,43 -> boundary 14:43, +13 -> 14:56
 with tempfile.TemporaryDirectory() as td:
     touch(td, ".rabbit-auto-evolve-active")
     write_state_file(td)
     write_cadence(td, "13,43 * * * *")
+    write_jitter(td, 13)
     r = emit_auto_evolve_stop_line(
         repo_root=td, now=datetime.datetime(2026, 6, 4, 14, 13, 0))
-    assert_text(r, "auto-evolve loop active — idle, next tick ≥ 14:43 (fires when the session is next idle)", "T")
+    assert_text(r, "auto-evolve loop active — idle, next tick 14:56", "T")
 
-# U: wrap to next hour: now=14:50 with 13,43 -> next is 15:13
+# U: wrap to next hour: now=14:50 with 13,43 -> boundary 15:13, +13 -> 15:26
 with tempfile.TemporaryDirectory() as td:
     touch(td, ".rabbit-auto-evolve-active")
     write_state_file(td)
     write_cadence(td, "13,43 * * * *")
+    write_jitter(td, 13)
     r = emit_auto_evolve_stop_line(
         repo_root=td, now=datetime.datetime(2026, 6, 4, 14, 50, 0))
-    assert_text(r, "auto-evolve loop active — idle, next tick ≥ 15:13 (fires when the session is next idle)", "U")
+    assert_text(r, "auto-evolve loop active — idle, next tick 15:26", "U")
+
+# V: cadence present, jitter artifact ABSENT -> cold-start fallback offset.
+#    now=14:05, 13,43 -> boundary 14:13, period 30 -> +min(15,ceil(3))=+3 -> 14:16
+with tempfile.TemporaryDirectory() as td:
+    touch(td, ".rabbit-auto-evolve-active")
+    write_state_file(td)
+    write_cadence(td, "13,43 * * * *")
+    r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
+    assert_text(r, "auto-evolve loop active — idle, next tick 14:16", "V")
 
 if FAIL:
     print("test-runtime-emit-auto-evolve-stop-line: FAIL", file=sys.stderr)

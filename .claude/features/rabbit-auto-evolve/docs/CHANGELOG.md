@@ -16,6 +16,30 @@ authoritative).
 
 ## Version notes
 
+- **v0.73.0 — 2026-06-05** — Fix #881 (third reopen), rabbit-auto-evolve
+  piece: render the SessionStart idle banner's next-tick ETA as a single
+  EXACT wall-clock `HH:MM` — the next cron boundary plus the empirically
+  observed CronCreate jitter offset — replacing the rejected
+  `≥ HH:MM (fires when the session is next idle)` lower-bound/idle-gating
+  form. Accepted root cause: CronCreate applies a DETERMINISTIC per-job
+  jitter to recurring tasks (up to 10% of the period late, capped at 15
+  min); on an idle session this is a stable constant (observed `+13` min for
+  the `13,43 * * * *` 30-min heartbeat). New `scripts/tick-jitter.py` (Inv
+  56) computes the offset as the median of
+  `actual_fire_time − nearest_prior_cron_boundary` over recent
+  `.rabbit/tick.log` fires (cold-start fallback
+  `min(15, ceil(period_minutes * 0.10))` when no history) and persists it to
+  the rabbit-auto-evolve-owned state artifact
+  `.rabbit/auto-evolve-tick-jitter.json` so the `contract` feature's Stop
+  line can READ the value without importing this feature. Cleanup pass:
+  purged every trace of the rejected mental models — the `(scheduler
+  jitter)` range, the idle-gating framing, the `≥` lower-bound, and the
+  `(fires when the session is next idle)` qualifier — from
+  `scripts/banner-status.py` and the spec. Four-way version bump
+  (feature.json + spec + contract + SKILL) and a new test
+  `test/test-tick-jitter.py`, with `test/test-banner-status.py` rewritten
+  for the exact-time form and a purged-wording grep guard.
+
 - **v0.72.1 — 2026-06-05** — Fix #907: reconcile the STALE Stage-1
   selection-order documentation that contradicted the authoritative
   computed-score ordering key (Inv 44 / #441) and made correct behavior look

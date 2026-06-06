@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.72.1
+version: 0.73.0
 template_version: 2.0.0
 ---
 
@@ -9,9 +9,21 @@ template_version: 2.0.0
 ```json
 {
   "provides": {
-    "files": [],
+    "files": [
+      {
+        "path": ".rabbit/auto-evolve-tick-jitter.json",
+        "schema_version": "1.0.0",
+        "rationale": "the empirical CronCreate jitter offset (Inv 56), owned and persisted by rabbit-auto-evolve's tick-jitter.py from the recorded fire history in .rabbit/tick.log. Schema: {schema_version, observed_jitter_minutes (int >= 0), period_minutes, sample_count, cold_start (bool), computed_at, owner, deprecation_criterion}. Other features (the contract feature's Stop line) READ observed_jitter_minutes to render the exact-time next-tick ETA WITHOUT importing this feature"
+      }
+    ],
     "commands": [],
     "scripts": [
+      {
+        "path": ".claude/features/rabbit-auto-evolve/scripts/tick-jitter.py",
+        "subcommands": ["compute", "show"],
+        "version": "1.0.0",
+        "rationale": "Inv 56: computes the deterministic CronCreate jitter offset as the median of actual_fire_time - nearest_prior_cron_boundary over recent .rabbit/tick.log fires (cold-start fallback min(15, ceil(period*0.10)) when no history), and persists it to .rabbit/auto-evolve-tick-jitter.json. `show` emits the persisted/recomputed value as JSON on stdout; `compute` writes the artifact. The boundary-plus-offset value banner-status.py and the contract Stop line render"
+      },
       {
         "path": ".claude/features/rabbit-auto-evolve/scripts/advise-restart.py",
         "subcommands": ["write", "status", "clear"],
@@ -40,7 +52,7 @@ template_version: 2.0.0
       {
         "path": ".claude/scheduled_tasks.json",
         "operation": "read-heartbeat-cadence",
-        "rationale": "banner-status.py reads the repo-root heartbeat registry (the tasks[] entry whose prompt references rabbit-auto-evolve) to compute the idle banner line's approximate next-tick ETA, mirroring contract Inv 55's cadence computation. Read-only of a repo-root runtime artifact; rabbit-auto-evolve already owns this file's lifecycle via install-cron.py / the CronCreate heartbeat"
+        "rationale": "banner-status.py reads the repo-root heartbeat registry (the tasks[] entry whose prompt references rabbit-auto-evolve) to compute the idle banner line's exact next-tick ETA (next cron boundary plus the Inv 56 observed jitter offset), mirroring contract Inv 55's cadence computation. Read-only of a repo-root runtime artifact; rabbit-auto-evolve already owns this file's lifecycle via install-cron.py / the CronCreate heartbeat"
       }
     ],
     "external": []
