@@ -16,6 +16,24 @@ authoritative).
 
 ## Version notes
 
+- **v0.85.0 — 2026-06-04** — Bug #986 (the evolver narrated a STALE version on
+  the CronCreate session-reuse path: with the dispatcher session REUSED across
+  ticks and context ACCUMULATING (Inv 33), a narrator kept citing an old
+  `vX.Y.Z` anchored in old context even though `auto-evolve-state.json`
+  `last_tagged_version` and `git describe --tags` were current — the stale
+  string lived only in accumulated session context, no persistent artifact).
+  New Inv 64 grounds version narration in the authoritative current version,
+  surfaced FRESH each tick. `scripts/schedule-decision.py` (1.4.0) now emits an
+  `authoritative_version` field on EVERY tick-exit decision (both
+  `immediate-refire` and `idle`), resolved this tick from `git describe --tags
+  --abbrev=0` (the live tag, authoritative), falling back to the state
+  `last_tagged_version`, falling back to null. The git-describe value WINS over
+  the cached state value so a stale `last_tagged_version` can never shadow the
+  live tag. The pure resolver `resolve_authoritative_version()` and the git/
+  state-dir injection points (`RABBIT_AUTO_EVOLVE_GIT_DESCRIBE_CMD`,
+  `RABBIT_AUTO_EVOLVE_STATE_DIR`) keep it deterministically testable. Enforced
+  by `test/test-authoritative-version.py`. Four-way lockstep bump to 0.85.0
+  (feature.json + docs/spec.md + docs/contract.md + SKILL.md).
 - **v0.84.0 — 2026-06-04** — Bug #984 (plan-batch under-shaped a multi-feature
   item as `parallel-per-feature` when the prose-based `cross_scope` heuristic was
   false). `scripts/plan-batch.py` (1.9.0) now UNIONS the two multi-feature

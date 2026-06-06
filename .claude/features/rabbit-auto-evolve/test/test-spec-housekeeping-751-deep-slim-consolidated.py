@@ -120,11 +120,20 @@ POST_973_ADD_LINES = 20
 # drift that had accumulated above the post-#973 ceiling before #966.
 POST_966_ADD_LINES = 50
 POST_966_ADD_INVARIANTS = 1
+# #986 added the authoritative-version narration-grounding invariant (Inv 64:
+# version narration is grounded in the current version surfaced FRESH each tick
+# by schedule-decision.py's authoritative_version field — git describe with a
+# state last_tagged_version fallback — never a value carried in accumulated
+# session context) — a genuinely new owned rule, not slim regression. Mirror
+# the prior headroom so the #751 reduction (>= 150 lines, >= 4 invariants)
+# stays ENFORCED while the #986 addition is admitted.
+POST_986_ADD_LINES = 40
+POST_986_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
     + POST_943_ADD_LINES + POST_962_ADD_LINES + POST_970_ADD_LINES
-    + POST_973_ADD_LINES + POST_966_ADD_LINES
+    + POST_973_ADD_LINES + POST_966_ADD_LINES + POST_986_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -136,7 +145,7 @@ MAX_INVARIANT_COUNT = (
     + POST_927_ADD_INVARIANTS + POST_948_ADD_INVARIANTS
     + POST_942_ADD_INVARIANTS + POST_943_ADD_INVARIANTS
     + POST_962_ADD_INVARIANTS + POST_970_ADD_INVARIANTS
-    + POST_966_ADD_INVARIANTS
+    + POST_966_ADD_INVARIANTS + POST_986_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---

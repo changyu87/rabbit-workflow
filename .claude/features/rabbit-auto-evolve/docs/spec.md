@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.84.0
+version: 0.85.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -96,7 +96,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/detect-scheduler.py` | CLI | Probes `crontab -l` (via `RABBIT_CRONTAB_CMD`) and emits `{"scheduler":"crontab"|"croncreate","reason":...}`: crontab where usable, CronCreate fallback where restricted (Inv 34 / D2) |
 | `scripts/running-guard.py` | CLI | Inspects `.rabbit-auto-evolve-running`, clears a STALE marker (mtime/PID), and emits a proceed/skip verdict so a wedged tick never blocks the loop (Inv 35 / D3) |
 | `scripts/tick-log.py` | CLI | Minimal append-only JSON-per-line logger to `.rabbit/tick.log` for heartbeat/guard/schedule decisions; full verbosity config is Inv 37's scope (Inv 36 / D4) |
-| `scripts/schedule-decision.py` | CLI | At tick end/heartbeat, counts open work via `fetch-queue.py` and emits `immediate-refire` (near-immediate one-shot) vs `idle`; the dispatcher performs the `CronCreate` one-shot (Inv 33 / D1) |
+| `scripts/schedule-decision.py` | CLI | At tick end/heartbeat, counts open work via `fetch-queue.py` and emits `immediate-refire` (near-immediate one-shot) vs `idle`; the dispatcher performs the `CronCreate` one-shot (Inv 33 / D1). Every decision also carries `authoritative_version` — the current version resolved FRESH this tick from `git describe --tags --abbrev=0` with a state `last_tagged_version` fallback (Inv 64) |
 | `scripts/log-tick.py` | CLI | Full per-tick observability logger: owns all writes to the append-only JSON-lines log at `.rabbit/auto-evolve.log`; structured kwargs → one record/line, with on/off enable, three verbosity levels, a <2KB per-line cap and 5MB rotation (Inv 37). Distinct from the minimal `tick-log.py` (different file + purpose) |
 | `scripts/log-path.py` | CLI | Prints the absolute path of the `.rabbit/auto-evolve.log` file so a cross-session daemon can `tail -f $(… log-path.py)` (Inv 37) |
 
@@ -3751,6 +3751,36 @@ summary is restated here.
     passes on a passing one, release/cleanup never run it), and
     `test/test-spec-install-smoke-invariant.py` (this text + the contract
     install.py INVOKE + the merge-phase check-6 wiring).
+
+64. **Version narration is grounded in the AUTHORITATIVE current version,
+    surfaced FRESH each tick — never a value carried in accumulated session
+    context.** On the CronCreate session-reuse path the dispatcher
+    session is REUSED across ticks and context ACCUMULATES (Inv 33), so the
+    evolver can narrate a STALE version anchored in old context — citing
+    an old `vX.Y.Z` even though the authoritative state
+    (`auto-evolve-state.json` `last_tagged_version`) and `git describe --tags`
+    were current. The stale string lived ONLY in accumulated session context;
+    no persistent artifact carried it. To eliminate the failure mode, the loop
+    SURFACES the authoritative current version each tick so any narrator reads
+    it fresh: `schedule-decision.py` (the tick-exit / heartbeat schedule
+    output) emits an `authoritative_version` field on EVERY decision (both
+    `immediate-refire` and `idle`), resolved THIS TICK from `git describe
+    --tags --abbrev=0` (the live repo tag, authoritative), falling back to the
+    state `last_tagged_version`, falling back to null (honest absence, never a
+    fabricated string). The git-describe value WINS over the state value so a
+    stale cached `last_tagged_version` can never shadow the live tag. The
+    loop's version narration / banner MUST cite this authoritative value — the
+    git-describe / state `last_tagged_version` source — and MUST NOT cite a
+    version carried in accumulated session context: this is the machine-first
+    grounding (a fresh authoritative number every tick for the dispatcher to
+    cite). The git invocation is overridable via
+    `RABBIT_AUTO_EVOLVE_GIT_DESCRIBE_CMD` and the state dir via
+    `RABBIT_AUTO_EVOLVE_STATE_DIR` for deterministic tests. The pure resolver
+    is exposed as `resolve_authoritative_version()`. Enforced by
+    `test/test-authoritative-version.py` (the fresh value on both decision
+    paths; the git-describe value overriding a stale cached state value; the
+    state fallback when git-describe is unavailable; null when neither
+    resolves).
 
 ## Known gaps
 

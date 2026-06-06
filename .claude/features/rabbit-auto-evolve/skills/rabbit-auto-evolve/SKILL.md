@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.84.0
+version: 0.85.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -438,7 +438,8 @@ scheduler mechanism from `detect-scheduler.py`, logs the decision via
 
 - `{"decision":"immediate-refire","scheduler":"crontab"|"croncreate",
   "prompt":"/rabbit-auto-evolve tick #refire","when":"~1min",
-  "croncreate":{...},"dispatcher_actions":{...}}` when the queue is non-empty
+  "croncreate":{...},"dispatcher_actions":{...},
+  "authoritative_version":"<vX.Y.Z|null>"}` when the queue is non-empty
   (Inv 33 / D1). The one-shot fires the internal
   `tick`, NEVER `start` (Inv 41) — a halting tick must never cancel a pending
   stop. The `#refire` MARKER on the prompt makes the refire one-shot
@@ -483,6 +484,18 @@ scheduler mechanism from `detect-scheduler.py`, logs the decision via
   Schedule nothing; the recurring heartbeat (the `*/…` system-cron entry, or
   the durable `CronCreate` heartbeat on restricted hosts) fires the next
   check.
+
+EVERY decision (both shapes) ALSO carries `authoritative_version` — the
+current version resolved THIS TICK from `git describe --tags --abbrev=0`,
+falling back to the state `last_tagged_version`, falling back to null
+(Inv 64). **Version narration grounding:** whenever the dispatcher
+narrates or cites the current version (in a tick summary, a banner, or any
+status sentence), it MUST cite this `authoritative_version` read FRESH from
+the tick output — NEVER a version number carried in accumulated session
+context. On the croncreate session-reuse path the session is REUSED across
+ticks and context ACCUMULATES, so a remembered version goes stale; the
+`authoritative_version` field is the fresh, deterministic source the narrator
+reads each tick instead.
 
 `CronCreate` is PERMITTED solely as the fallback trigger — a durable
 idle-REPL prompt scheduler, NOT an in-session wakeup harness (the forbidden

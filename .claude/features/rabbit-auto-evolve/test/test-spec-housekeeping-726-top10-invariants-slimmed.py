@@ -61,8 +61,13 @@ BASELINE_TOTAL_LINES = 3594
 # install-smoke gate (Inv 63: a new top-level invariant, an install-smoke.py script-table
 # row, the safety-check bottom-line check-6 row, and the contract install.py INVOKE; the
 # safety-check subsection points at Inv 63 rather than duplicating it) is additive, so the
-# ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 3775
+# ceiling is raised once more to absorb it. The authoritative-version narration-grounding
+# invariant (Inv 64, #986: a new top-level invariant grounding version narration in the
+# authoritative_version field schedule-decision.py surfaces FRESH each tick — git describe
+# with a state last_tagged_version fallback — never a value carried in accumulated session
+# context, plus the script-table row extension) is additive, so the ceiling is raised once
+# more to absorb it.
+MAX_TOTAL_LINES = 3815
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a
