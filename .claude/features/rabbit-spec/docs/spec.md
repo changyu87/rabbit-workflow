@@ -34,10 +34,9 @@ handoff so the orchestrator's context stays isolated from the full draft body.
    non-empty `summary`, non-empty `deprecation_criterion`, and a `surface`
    block that lists the agent at `agents/rabbit-spec-creator.md` and the
    input-assembler script at `scripts/dispatch-spec-creator.py`. The
-   `surface.skills` list MUST NOT contain the retired
-   `skills/rabbit-spec-create/SKILL.md` entry. The `manifest` MUST contain a
-   `publish_agent` entry sourcing the agent and MUST NOT contain a
-   `publish_skill` entry sourcing `skills/rabbit-spec-create/SKILL.md`. The
+   `surface.skills` list contains exactly `skills/rabbit-spec-update/SKILL.md`.
+   The `manifest` contains a `publish_agent` entry sourcing the agent and a
+   `publish_skill` entry sourcing `skills/rabbit-spec-update/SKILL.md`. The
    `prompts` array MUST contain exactly one entry with `id: "spec-create"`,
    `kind: "subagent"`, `inject` listing philosophy + coding-rules, and
    `slots: ["feature_name", "paths_globs", "paths_resolved"]`.
