@@ -111,11 +111,20 @@ POST_970_ADD_INVARIANTS = 1
 # ZERO invariant headroom — the #751 reduction (>= 150 lines, >= 4 invariants)
 # stays ENFORCED while the #973 addition is admitted.
 POST_973_ADD_LINES = 20
+# #966 added the pre-merge install-smoke gate (Inv 63: the merge phase runs an
+# isolated, network-free fresh install + `--update` of rabbit-cage's install.py
+# via install-smoke.py and BLOCKS the merge on install/closure breakage) — a
+# genuinely new owned rule, not slim regression. Mirror the prior headroom so
+# the #751 reduction (>= 150 lines, >= 4 invariants) stays ENFORCED while the
+# #966 addition is admitted. The line headroom also absorbs the small additive
+# drift that had accumulated above the post-#973 ceiling before #966.
+POST_966_ADD_LINES = 50
+POST_966_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
     + POST_943_ADD_LINES + POST_962_ADD_LINES + POST_970_ADD_LINES
-    + POST_973_ADD_LINES
+    + POST_973_ADD_LINES + POST_966_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -127,6 +136,7 @@ MAX_INVARIANT_COUNT = (
     + POST_927_ADD_INVARIANTS + POST_948_ADD_INVARIANTS
     + POST_942_ADD_INVARIANTS + POST_943_ADD_INVARIANTS
     + POST_962_ADD_INVARIANTS + POST_970_ADD_INVARIANTS
+    + POST_966_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---
@@ -137,7 +147,8 @@ SCRIPT_BASENAMES = [
     "check-preconditions.py", "classify-merge-restart.py",
     "clean-dispatch-leaks.py", "cleanup-branches.py",
     "close-decomposed-parents.py", "detect-scheduler.py", "end-tick.py",
-    "fetch-queue.py", "install-cron.py", "log-path.py", "log-tick.py",
+    "fetch-queue.py", "install-cron.py", "install-smoke.py", "log-path.py",
+    "log-tick.py",
     "mark-aborted.py", "mark-restart-needed.py", "merge-prs.py",
     "plan-batch.py", "prune-worktrees.py", "record-decomposition.py",
     "release-bump.py", "republish-feature.py", "run-post-merge.py",

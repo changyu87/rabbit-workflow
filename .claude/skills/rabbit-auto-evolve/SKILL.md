@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.82.0
+version: 0.83.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -853,6 +853,11 @@ Other red flags:
 - Never delete a branch not matching `^feat/.+`.
 - Never create a tag that already exists.
 - Never merge when the working tree is dirty.
+- Never merge when the pre-merge install smoke fails — `safety-check.py
+  --phase merge` runs `install-smoke.py` (Inv 63, bottom-line check 6: an
+  isolated network-free fresh install + `--update` of rabbit-cage's install.py
+  against the current tree); a non-zero smoke exit blocks the batch so
+  install/closure breakage never lands on the integration target.
 - Never write a persistent `.rabbit-scope-override session` for feature
   edits. Cross-feature work is handled by `decomposition` or
   `multi-subagent-barrier` (Inv 26) — every write stays inside one feature's

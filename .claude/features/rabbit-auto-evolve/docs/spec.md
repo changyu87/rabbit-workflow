@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.82.0
+version: 0.83.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -79,7 +79,8 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/resolve-duplicate.py` | CLI | Records the GitHub-native duplicate resolution (Inv 60): `resolve <dup> <canonical>` closes the duplicate with `state_reason=duplicate` and cross-links the canonical issue; `status <n>` reports whether an issue is recognized as a duplicate (native state authoritative; legacy `duplicate` label honored on read as a deprecating mirror) |
 | `scripts/plan-batch.py` | CLI | Reads a work-set JSON from stdin; partitions contract-touch issues into `barrier_first`; greedy graph-colors the rest by feature-conflict into `groups`; applies `max_parallel` cap |
 | `scripts/integration_target.py` | CLI + lib | Resolves the loop's integration target branch (Inv 61): default `dev`, overridable to `main` via `RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET`; exposes `resolve_target`, `accepted_targets` ({dev, main}), `is_default_branch`; the sibling phase scripts import it |
-| `scripts/safety-check.py` | CLI | Validates five bottom-line invariants (branch is the integration target, PR base is an accepted integration target, head branch matches `^feat/.+`, tag does not already exist, no uncommitted modifications to tracked files); exits non-zero on any violation |
+| `scripts/safety-check.py` | CLI | Validates the bottom-line invariants (branch is the integration target, PR base is an accepted integration target, head branch matches `^feat/.+`, tag does not already exist, no uncommitted modifications to tracked files, and — merge phase only — the isolated install + update smoke passes via `install-smoke.py`, Inv 63); exits non-zero on any violation |
+| `scripts/install-smoke.py` | CLI | Pre-merge install smoke (Inv 63): runs a network-free fresh install + `--update` of rabbit-cage's `install.py` against the current tree inside a tempdir, asserting no install/closure/publish failure; invoked as bottom-line check 6 by `safety-check.py --phase merge` so install breakage blocks the merge; skips gracefully when install.py is absent |
 | `scripts/merge-prs.py` | CLI | Calls `safety-check.py --phase merge` then `gh pr merge --squash` (direct merge, NOT `--auto`) for each PR, adding `--admin` when the base is the protected default branch (`main`) to land past the required-review the loop cannot satisfy; accepts a base in the `{dev, main}` coexistence set and refuses any other; runs the manual close-after-merge only while the target is not the default branch |
 | `scripts/release-bump.py` | CLI | Reads merged PR priority label and diff scope; applies patch/minor/major semver bump per design table; creates annotated git tag and `gh release` targeting the resolved integration target |
 | `scripts/cleanup-branches.py` | CLI | Derives head branch from each merged PR; calls `safety-check.py --phase cleanup`; deletes branch locally and on origin; refuses to delete anything not matching `^feat/.+` |
@@ -584,7 +585,8 @@ summary is restated here.
    `--next-tag vX.Y.Z` flag, NOT via env var.** The flag is REQUIRED
    iff `--phase release` and FORBIDDEN for `--phase merge|cleanup`.
 
-   Five invariants (numbered for stable cross-reference):
+   Six bottom-line checks (numbered for stable cross-reference; check 6 is the
+   pre-merge install smoke, see the dedicated top-level Inv 63 below):
 
    | # | Invariant | Enforced in phases |
    |---|---|---|
@@ -593,17 +595,21 @@ summary is restated here.
    | 3 | PR head branch (via `gh pr view <#> --json headRefName`) matches `^feat/.+` AND is not `dev`, `main`, or `release/...` | cleanup |
    | 4 | The tag passed via `--next-tag vX.Y.Z` does not already exist (`git rev-parse <tag>^{}` exits non-zero) | release |
    | 5 | No uncommitted modifications to tracked files — both `git diff --quiet` (unstaged) and `git diff --cached --quiet` (staged) exit 0. Untracked files (`??`) are intentionally ignored: they cannot affect a merge, and counting them deadlocked the loop whenever a new runtime artifact appeared. | all |
+   | 6 | The isolated install + update smoke passes (spec Inv 63): the sibling `install-smoke.py` runs a network-free fresh install + `--update` of rabbit-cage's install.py against the current tree and exits 0 | merge |
 
    Phase-specific gating:
-   - `merge` enforces invariants 1, 2, 5.
-   - `release` enforces invariants 1, 2, 4, 5.
-   - `cleanup` enforces invariants 1, 3, 5.
+   - `merge` enforces checks 1, 2, 5, 6.
+   - `release` enforces checks 1, 2, 4, 5.
+   - `cleanup` enforces checks 1, 3, 5.
 
    Exit code: 0 on pass; non-zero on any violation. On violation, the
    stderr line names the violated invariant (`Invariant N (<short>)
    failed: <detail>`); the script never auto-fixes.
 
-   The script reads `gh` and `git` state only — no filesystem mutations.
+   The script reads `gh` and `git` state only — it makes no filesystem
+   mutations of its own. The install smoke (check 6, Inv 63) runs entirely
+   inside its own tempdir (cleaned up on exit), so the working tree is
+   untouched.
 
    Enforced by `test/test-safety-check.py` under
    `tempfile.TemporaryDirectory()` fixtures:
@@ -615,6 +621,10 @@ summary is restated here.
      untracked file in the working tree PASSES Inv 5; a tracked file
      with an unstaged modification FAILS; a tracked file with a
      staged modification FAILS; a clean tree PASSES.
+   - Install-smoke merge-gating (check 6, Inv 63): a shim install-smoke.py
+     (injected via `RABBIT_AUTO_EVOLVE_INSTALL_SMOKE`) that exits non-zero
+     FAILS the merge phase (stderr names Invariant 6) and a passing shim
+     PASSES; release and cleanup never run the smoke.
    - One positive test per phase: all required invariants satisfied
      → exit 0.
    - `--next-tag` required-when-release: omitting it under
@@ -624,6 +634,10 @@ summary is restated here.
    - `--help` smoke: exit 0 with recognizable usage text.
    - Test fixtures use a real `git init` in a tempdir plus a `gh`
      shim on `$PATH` to serve PR base/head responses; no live network.
+
+   Bottom-line check 6 (the merge-phase install smoke) is the sibling
+   `scripts/install-smoke.py`, defined in full as the dedicated top-level
+   **Inv 63** below.
 
 6. **`merge-prs.py` + `cleanup-branches.py` delegation and refusal.**
    Both scripts delegate destructive actions to `safety-check.py` and
@@ -3692,6 +3706,39 @@ summary is restated here.
     `close-not-planned`/`duplicate` item, and a force-promoted-but-still-blocked
     `work` item all ABSENT from the plan; a plain `work` and a `cross_scope` work
     item retained).
+
+63. **The merge phase runs an isolated pre-merge install + update smoke that
+    BLOCKS the merge on install/closure breakage.** `safety-check.py --phase
+    merge` runs the sibling `install-smoke.py` (bottom-line check 6) before any
+    `gh pr merge`, so install/closure breakage — fresh-install
+    `publish_file ... source not found` aborts, `--update` closure-shrink
+    failures — is caught BEFORE a PR merges, not after it lands on dev.
+    `install-smoke.py` runs, inside a `tempfile.TemporaryDirectory()` (cleaned
+    up on exit), a fresh install (`install.py --src <repo-root> --target
+    <tmp>/fresh`) plus an `--update` against that same target, asserting exit 0
+    AND no install-failure signature (`source not found`, `publish failure`,
+    closure/dangling wording) in the combined output of either invocation. Both
+    invocations pass `--src <repo-root>` so the smoke is fully offline;
+    install.py is invoked as a BLACK BOX subprocess — a contract INVOKE of
+    rabbit-cage, never an edit. The repo root defaults to the script's inferred
+    repo (overridable via `--repo-root` / `RABBIT_AUTO_EVOLVE_REPO_ROOT`);
+    install.py resolves at `<repo-root>/.claude/features/rabbit-cage/install.py`
+    (overridable via `RABBIT_AUTO_EVOLVE_INSTALL_PY`); the sibling
+    `install-smoke.py` is overridable for safety-check tests via
+    `RABBIT_AUTO_EVOLVE_INSTALL_SMOKE`. A non-zero smoke exit fails the merge
+    phase, so `merge-prs.py` records the PR `skipped`/`safety-check-failed` and
+    the batch does NOT merge (the smoke never silently passes). It is
+    merge-only (release and cleanup never run it). Resilient SKIP (exit 0): when
+    install.py is absent (a degenerate self-build / isolated git tempdir) the
+    smoke skips gracefully, matching the contract Inv 64/65 resilient-skip
+    pattern. Runtime is one fresh install + one `--update` to tmp (sub-second on
+    a warm tree). Enforced by `test/test-install-smoke.py` (PASS on the real
+    tree; FAIL on a shim install.py exiting non-zero, on a `source not found`
+    signature at exit 0, and on an `--update` failure; SKIP when install.py is
+    absent), `test/test-safety-check.py` (merge blocks on a failing smoke shim,
+    passes on a passing one, release/cleanup never run it), and
+    `test/test-spec-install-smoke-invariant.py` (this text + the contract
+    install.py INVOKE + the merge-phase check-6 wiring).
 
 ## Known gaps
 
