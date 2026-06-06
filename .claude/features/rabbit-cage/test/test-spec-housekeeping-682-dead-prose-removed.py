@@ -161,7 +161,13 @@ COLLAPSE_MAX = 1
 # `dev` coexists as the legacy opt-in. A real spec addition documenting new
 # test-enforced behavior (test-install-py-channel-main-default.py), not reword
 # re-inflation.
-SPEC_LINE_CEILING = 594
+# Raised 594 -> 600 by #968, which added Inv 49 (the install.py --update path
+# TOLERATES a closure that shrinks across a surface retirement — a source the
+# new --src retired is dropped, not a dangling abort — while a fresh install
+# and a genuine new-closure-required-but-missing ref still HARD-FAIL) plus its
+# e2e test. A real spec addition documenting new test-enforced behavior
+# (test-install-update-tolerates-closure-shrink.py), not reword re-inflation.
+SPEC_LINE_CEILING = 600
 
 PASS = 0
 FAIL = 0

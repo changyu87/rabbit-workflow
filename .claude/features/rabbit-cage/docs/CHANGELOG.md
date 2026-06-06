@@ -12,6 +12,31 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.77.0 (fix #968: `install.py --update` tolerates a closure that shrinks
+  across a surface retirement):** the `--update` path is driven by the
+  LOCALLY-installed (older) `install.py`, whose hardcoded closure still names
+  surfaces the NEW upstream source has intentionally RETIRED (deleted/renamed
+  files). The Inv 21 fresh-install integrity self-check treated EVERY closure
+  source absent from `--src` as a hard "dangling required-file" abort, so a
+  release crossing a retirement was permanently un-installable from an older
+  install — the stale local closure could never be reconciled before the Inv
+  22h re-exec into the new `install.py`. A FRESH install from the same new
+  source succeeded (new installer + new closure are self-consistent), confirming
+  the failure was specific to the `--update` path crossing a retirement. New Inv
+  49 makes the integrity gate ASYMMETRIC by mode: a fresh install (no
+  `--update`) still HARD-ABORTS on any absent closure source (unchanged); under
+  `--update`, a closure source absent from the NEW `--src` is a TOLERATED
+  closure SHRINK (a retired surface) — dropped, not aborted — so the per-file
+  copy loops skip it and the in-place refresh proceeds to the re-exec, after
+  which the NEW `install.py` validates its OWN corrected closure against the NEW
+  source. Tolerance is scoped EXACTLY to the shrink: a path the NEW closure
+  REQUIRES but the NEW source omits (a real packaging defect, not a retirement)
+  still HARD-FAILS under the new code and at CI via the fresh-install integrity
+  tests and the cross-feature contract gate. `check_install_sources_exist` is
+  unchanged; the asymmetry lives in how `main()` consumes it. Added Inv 49.
+  Enforced by the new `test/test-install-update-tolerates-closure-shrink.py`
+  (e2e via the real `install.main()`). Wired into `test/run.py`.
+
 - **v5.76.0 (feat #963: main-centric install/release channel with dev opt-in
   coexistence — Part 2 of #957):** moved the named development channel to a
   main-centric model. `install.py`'s `--channel` flag now accepts a third value
