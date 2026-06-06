@@ -69,6 +69,7 @@ SUITES = [
     "test-plugin-scope-override-path-consistent.py",
     "test-plugin-stop-alert-fires-when-session-override-active.py",
     "test-plugin-sessionstart-alert-on-active-session-override.py",
+    "test-plugin-sessionstart-alert-at-canonical-override-path.py",
     "test-standalone-override-path-unchanged.py",
     "test-install-py-default-ref-not-dev.py",
     "test-install-py-default-ref-matches-install-sh.py",

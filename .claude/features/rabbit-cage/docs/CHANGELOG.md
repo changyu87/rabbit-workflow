@@ -12,6 +12,28 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.70.0 (fix #917: notify the user when a session scope override is active
+  in plugin mode):** in plugin mode the session scope-override marker's
+  canonical location is `<repo_root>/.rabbit/.rabbit-scope-override` (Inv 25),
+  but `runtime.Stop` and `runtime.SessionStart` only declared a
+  `check_marker_alert` for the standalone relative path `.rabbit-scope-override`
+  — which `contract.lib.runtime` resolves against `repo_root` to the STANDALONE
+  location. So a plugin-mode session running with an ACTIVE override got NO
+  `[rabbit]` SCOPE GUARD OFF notice at session-start or tick-end: the user was
+  never told the scope guard had been bypassed, asymmetric with the
+  always-present bypass-permissions notice (a safety gap). Fix: added a SECOND
+  `check_marker_alert` entry to BOTH `runtime.Stop` and `runtime.SessionStart`
+  with the plugin-mode relative path `.rabbit/.rabbit-scope-override`, so the
+  banner fires in either mode. The two entries never double-fire — the marker
+  lives at exactly ONE canonical location per mode and `check_marker_alert`
+  no-ops on an absent marker. A per-feature `.rabbit-scope-active-<feature>`
+  marker (the normal bounded-scope mechanism) does NOT trip the notice. Inv 16
+  (now SIX SessionStart entries) and Inv 25 (consumer (5) now declares both
+  paths) updated. New e2e test
+  `test-plugin-sessionstart-alert-at-canonical-override-path.py`; existing
+  `test-plugin-scope-override-path-consistent.py` extended (t6 → 6 entries, new
+  t7 pins the plugin-path entry in both events).
+
 - **v5.69.0 (feat #889: make the bypass-permissions path discoverable):**
   rabbit-cage owns a first-class `bypass-permissions` configurable
   (`/rabbit-cage-config bypass-permissions true|false`, which writes
