@@ -435,7 +435,7 @@ Phase 12 (`schedule`) is NO LONGER a pure no-op. It runs
 which counts DISPATCHABLE work (authoritatively, via the same
 `fetch-queue.py | triage-batch.py | plan-batch.py` pipe phase 6 dispatches
 from — the plan's `selection_order`, not the raw open count, so blocked/gated
-backlogs go idle instead of spinning the loop; #1004), reads the
+backlogs go idle instead of spinning the loop), reads the
 scheduler mechanism from `detect-scheduler.py`, logs the decision via
 `tick-log.py`, and emits JSON:
 

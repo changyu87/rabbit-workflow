@@ -2204,7 +2204,7 @@ summary is restated here.
     Keying refire off the RAW open count (the prior behaviour) spun the loop into
     a ~1-minute no-op refire storm whenever the only remaining open issues were
     human-gated/blocked — a non-empty open queue but an EMPTY dispatchable plan
-    (#1004); the recurring heartbeat already backstops the eventual unblock, so an
+    (the dispatchable-work immediate-refire fix); the recurring heartbeat already backstops the eventual unblock, so an
     all-gated backlog goes `idle` and quiesces until the heartbeat or a human
     unblock. The refire is a near-immediate one-shot (each fired
     tick is a full in-session tick incl. phase 6 dispatch; the turn ends between
@@ -2302,7 +2302,7 @@ summary is restated here.
     `test/test-schedule-decision.py` (e2e: a pipe whose `selection_order` is
     non-empty yields `immediate-refire` while an all-blocked/all-gated backlog
     whose `selection_order` is EMPTY — even with a non-empty raw open queue —
-    yields `idle` (#1004); and a `fetch-queue.py` shim that
+    yields `idle`; and a `fetch-queue.py` shim that
     emits a non-empty array yields `immediate-refire` with `croncreate.recurring ==
     false`, `croncreate.durable == false`, and a `croncreate.cron` that is a
     pinned `M H * * *` expression — NOT `*/1 * * * *` — whose minute field is
