@@ -500,7 +500,7 @@ string BEFORE splitting on `;|&` segment delimiters.
 
     Maintenance protocol:
     - Each PR that closes a bug or ships a feature MUST add a bullet to the `## [Unreleased]` section under the appropriate sub-section, naming the issue number (e.g. `- Fixes #N — bypass-permissions config now emits restart prompt`).
-    - Each release-cut PR (the `chore(rabbit-cage): bump install.sh+install.py -> release/X.Y` PR per Inv 26) MUST in the SAME PR convert the `## [Unreleased]` section to `## [release/X.Y] - <ISO-date>` and re-open an empty `## [Unreleased]` block at the top. This way every release branch carries the changelog state at its cut moment, and dev's CHANGELOG.md always shows the cumulative unreleased work.
+    - Each release-cut PR (the `chore(rabbit-cage): bump install.sh+install.py -> release/X.Y` PR per Inv 26) MUST in the SAME PR convert the `## [Unreleased]` section to `## [release/X.Y] - <ISO-date>` and re-open an empty `## [Unreleased]` block at the top. This way every release branch carries the changelog state at its cut moment, and the development line's CHANGELOG.md always shows the cumulative unreleased work.
     - The CHANGELOG.md is NOT part of the plugin install closure (`SAME_PATH_FILES`) — plugin users view it on GitHub or in the repo source. Adding it to SAME_PATH_FILES would force every plugin install to carry an unbounded-growth file; the GitHub UI is the better surface for browsing release history.
 
     Format requirements:
