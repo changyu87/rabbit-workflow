@@ -40,12 +40,12 @@ def _load_scaffold_module():
     return mod
 
 
-def _seed_plugin_marker(project_root: Path) -> Path:
-    """Write `<project_root>/.rabbit/.runtime/mode = 'plugin'`. Return the .rabbit dir."""
+def _seed_plugin_marker(project_root: Path, value: str = "plugin") -> Path:
+    """Write `<project_root>/.rabbit/.runtime/mode = value`. Return the .rabbit dir."""
     rabbit_dir = project_root / ".rabbit"
     runtime = rabbit_dir / ".runtime"
     runtime.mkdir(parents=True, exist_ok=True)
-    (runtime / "mode").write_text("plugin")
+    (runtime / "mode").write_text(value)
     return rabbit_dir
 
 
@@ -101,6 +101,45 @@ def test_detect_when_cwd_is_nested_subdir() -> None:
         is_plugin, rabbit_root = _unwrap(mod._detect_plugin_mode(nested))
         assert is_plugin is True, (
             "cwd=<project>/src/sub/deep with marker at project root MUST detect plugin"
+        )
+        assert rabbit_root == rabbit_dir, (
+            f"rabbit_root must resolve to <project>/.rabbit; got {rabbit_root!r}"
+        )
+
+
+def test_detect_vendored_mode_value() -> None:
+    """Issue #1034: `.runtime/mode == 'vendored'` MUST detect plugin mode.
+
+    rabbit-meta's `detect_mode` emits `'vendored'` as the post-#980 synonym
+    for `'plugin'`; `_detect_plugin_mode` MUST dual-accept both values. The
+    case (b) marker at `<project>/.rabbit/.runtime/mode` carries 'vendored'.
+    """
+    with tempfile.TemporaryDirectory(prefix="rf-walkup-vendored-") as tmp:
+        project = Path(tmp).resolve()
+        rabbit_dir = _seed_plugin_marker(project, value="vendored")
+        mod = _load_scaffold_module()
+        is_plugin, rabbit_root = _unwrap(mod._detect_plugin_mode(project))
+        assert is_plugin is True, (
+            "cwd=project root with marker == 'vendored' MUST detect plugin mode (#1034)"
+        )
+        assert rabbit_root == rabbit_dir, (
+            f"rabbit_root must resolve to <project>/.rabbit; got {rabbit_root!r}"
+        )
+
+
+def test_detect_vendored_mode_case_a_dot_rabbit() -> None:
+    """Issue #1034: case (a) marker (`<.rabbit>/.runtime/mode`) == 'vendored'.
+
+    When cwd is `.rabbit/` itself and its `.runtime/mode` holds 'vendored',
+    the script MUST detect plugin mode and resolve rabbit_root to that dir.
+    """
+    with tempfile.TemporaryDirectory(prefix="rf-walkup-vendored-a-") as tmp:
+        project = Path(tmp).resolve()
+        rabbit_dir = _seed_plugin_marker(project, value="vendored")
+        mod = _load_scaffold_module()
+        is_plugin, rabbit_root = _unwrap(mod._detect_plugin_mode(rabbit_dir))
+        assert is_plugin is True, (
+            "cwd=.rabbit/ with marker == 'vendored' MUST detect plugin mode (#1034)"
         )
         assert rabbit_root == rabbit_dir, (
             f"rabbit_root must resolve to <project>/.rabbit; got {rabbit_root!r}"
