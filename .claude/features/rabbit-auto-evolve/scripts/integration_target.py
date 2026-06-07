@@ -3,12 +3,12 @@
 (Inv 61) with a dev<->main coexistence window.
 
 The autonomous-evolve loop integrates merged work into a SINGLE resolved
-"integration target" branch. During the coexistence window — open until the
-admin cutover (dev→main merge + branch protection) flips the live workflow to
-main — BOTH `dev` and `main` are accepted:
+"integration target" branch. The dev→main cutover is complete, so the resolved
+target now defaults to `main`. A `dev` base is still ACCEPTED during the
+coexistence teardown:
 
-  - The RESOLVED target is `dev` by default (the live behavior while the
-    workflow is still dev-based) and can be overridden to `main` via the
+  - The RESOLVED target is `main` by default (the cutover is done and main is
+    the live integration target) and can be overridden via the
     `RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET` env var. Any value outside the
     accepted set is an error.
   - The ACCEPTED set (what a PR base / current branch may be) is exactly
@@ -47,9 +47,9 @@ DEFAULT_BRANCH = "main"
 # these during the window. A base outside this set is refused.
 ACCEPTED_TARGETS = ("dev", "main")
 
-# The resolved target when no override is set (the live coexistence default
-# until the cutover flips it to main).
-DEFAULT_TARGET = "dev"
+# The resolved target when no override is set (the post-cutover default; main
+# is the live integration target).
+DEFAULT_TARGET = "main"
 
 ENV_VAR = "RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"
 
@@ -67,7 +67,7 @@ def is_default_branch(target):
 
 def resolve_target():
     """Resolve the integration target: the `RABBIT_AUTO_EVOLVE_INTEGRATION_
-    TARGET` env var when set, else the coexistence default (dev).
+    TARGET` env var when set, else the post-cutover default (main).
 
     Raises ValueError when the override is not one of the accepted targets —
     the loop refuses to integrate into an unrecognized branch."""
@@ -85,7 +85,7 @@ def resolve_target():
 def main():
     parser = argparse.ArgumentParser(
         description="Print the loop's resolved integration target branch "
-                    "(dev<->main coexistence; default dev, overridable via "
+                    "(dev<->main coexistence; default main, overridable via "
                     f"{ENV_VAR}). Exits non-zero on an unrecognized override.",
     )
     parser.parse_args()

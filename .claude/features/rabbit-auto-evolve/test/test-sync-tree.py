@@ -8,8 +8,9 @@ loop runs the LATEST merged scripts instead of stale ones. The sync:
      same condition as safety-check.py Inv 5 — `git diff --quiet` AND
      `git diff --cached --quiet`; untracked files ignored). A dirty tree
      exits non-zero WITHOUT pulling.
-  2. Runs `git pull --ff-only origin dev`. A non-fast-forwardable divergence
-     fails loudly (exit non-zero); the script NEVER falls back to git merge.
+  2. Runs `git pull --ff-only origin <integration-target>` (Inv 61: default
+     main). A non-fast-forwardable divergence fails loudly (exit non-zero);
+     the script NEVER falls back to git merge.
   3. On success emits a result line and logs the outcome via tick-log.py.
 
 These tests build a real local git fixture (a bare `origin` remote + a local
@@ -20,16 +21,16 @@ then exec's the real git. After each run the tests assert no logged call
 begins with `merge`.
 
 Scenarios:
-  A) Clean tree behind origin/dev → fast-forwards via `git pull --ff-only
-     origin dev`, exits 0, status "synced"; `git merge` NEVER logged.
+  A) Clean tree behind origin/main → fast-forwards via `git pull --ff-only
+     origin main`, exits 0, status "synced"; `git merge` NEVER logged.
   B) Already up-to-date clean tree → exits 0 (noop-or-synced), no merge.
   C) Dirty tracked-file tree → exits non-zero, NO pull happened (origin sha
      unchanged in local HEAD), `git merge` NEVER logged.
   D) Divergent (non-ff) local history → exits non-zero loudly, `git merge`
      NEVER logged.
-  E) Target=dev (default/coexistence) → the pull source is resolved from the
-     integration target, so the shim call-log shows `pull --ff-only origin
-     dev` (issue #1006 / Inv 61).
+  E) Target=dev (override; still accepted during coexistence teardown) → the
+     pull source is resolved from the integration target, so the shim call-log
+     shows `pull --ff-only origin dev` (issue #1006 / Inv 61).
   F) Target=main (RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET=main) → the pull
      source resolves to main, so the shim call-log shows `pull --ff-only
      origin main` and the clone fast-forwards to origin/main (issue #1006 /
@@ -107,7 +108,7 @@ def merge_invoked(call_log):
     return False
 
 
-def make_fixture(root, branch="dev"):
+def make_fixture(root, branch="main"):
     """Build a bare `origin` with `branch` + a local clone tracking it.
 
     Returns (origin_dir, seed_dir, clone_dir).
@@ -139,7 +140,7 @@ def make_fixture(root, branch="dev"):
     return origin, seed, clone
 
 
-def advance_origin(seed, content, branch="dev"):
+def advance_origin(seed, content, branch="main"):
     """Add one more commit to origin/<branch> via the seed clone."""
     with open(os.path.join(seed, "tracked.txt"), "w") as f:
         f.write(content)
@@ -155,7 +156,7 @@ def run_sync(clone, git_shim, call_log, target=None):
     # Keep tick-log writes inside the tmpdir.
     env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = os.path.join(clone, ".rabbit")
     # Resolve the pull source from the integration target (Inv 61). When
-    # target is None the env var is left as inherited so default (dev) applies.
+    # target is None the env var is cleared so the default (main) applies.
     if target is not None:
         env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = target
     else:
@@ -167,11 +168,11 @@ def run_sync(clone, git_shim, call_log, target=None):
 
 
 # ---------------------------------------------------------------------------
-# Scenario A — clean tree behind origin/dev fast-forwards, exit 0, no merge
+# Scenario A — clean tree behind origin/main fast-forwards, exit 0, no merge
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
     origin, seed, clone = make_fixture(d)
-    advance_origin(seed, "v2\n")  # origin/dev now ahead of the clone
+    advance_origin(seed, "v2\n")  # origin/main now ahead of the clone
     call_log = os.path.join(d, "calls-A.txt")
     shim = write_git_shim(d, call_log)
 
@@ -187,7 +188,7 @@ with tempfile.TemporaryDirectory() as d:
     if after == before:
         fail("A: HEAD did not advance — fast-forward did not happen")
     else:
-        ok("A: HEAD advanced to origin/dev (fast-forward applied)")
+        ok("A: HEAD advanced to origin/main (fast-forward applied)")
     if merge_invoked(call_log):
         fail(f"A: git merge WAS invoked; calls={read_calls(call_log)!r}")
     else:
@@ -259,7 +260,7 @@ with tempfile.TemporaryDirectory() as d:
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
     origin, seed, clone = make_fixture(d)
-    advance_origin(seed, "origin-side\n")  # origin/dev advances
+    advance_origin(seed, "origin-side\n")  # origin/main advances
     # Commit a DIFFERENT change locally so histories diverge (non-ff).
     with open(os.path.join(clone, "tracked.txt"), "w") as f:
         f.write("local-side\n")
@@ -291,7 +292,7 @@ def pull_source(call_log):
 
 
 # ---------------------------------------------------------------------------
-# Scenario E — target=dev (default) resolves the pull source to `origin dev`
+# Scenario E — target=dev (override) resolves the pull source to `origin dev`
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
     origin, seed, clone = make_fixture(d, branch="dev")
