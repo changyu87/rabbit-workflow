@@ -2588,9 +2588,18 @@ summary is restated here.
        same condition as `safety-check.py` Invariant 5 — `git diff --quiet`
        AND `git diff --cached --quiet`; untracked files are ignored). A dirty
        tree → exit non-zero, fail loudly (do NOT sync over local edits).
-    2. Run `git pull --ff-only origin dev`. On a non-fast-forwardable
-       divergence `--ff-only` fails loudly (exit non-zero); the loop surfaces
-       it and does NOT fall back to a non-ff merge.
+    2. Run `git pull --ff-only origin <integration-target>`, where
+       `<integration-target>` is resolved from the sibling
+       `integration_target.py` `resolve_target()` (Inv 61) — NOT a hardcoded
+       `dev`. After the dev→main cutover the resolved target is `main`, so the
+       sync pulls `origin main` (the branch that now receives merges); during
+       the coexistence window with target=dev it pulls `origin dev`. Pulling a
+       branch other than the live integration target is a silent no-op that
+       lets the local working branch fall behind `origin/<target>` as the loop
+       merges its own PRs, eventually wedging the loop on a phantom
+       `diverged`/stale report. On a non-fast-forwardable divergence
+       `--ff-only` fails loudly (exit non-zero); the loop surfaces it and does
+       NOT fall back to a non-ff merge.
     3. On success, emit a result line and log the sync outcome via
        `tick-log.py`.
 
@@ -2600,9 +2609,11 @@ summary is restated here.
     `permissions.defaultMode: bypassPermissions`. So `git merge --ff-only
     origin/dev` is permission-denied and an `allow` in `settings.local.json`
     cannot override it. `git pull` is NOT in the deny list and runs cleanly
-    (verified: `git pull --ff-only origin dev` fetches + fast-forwards and
-    updates `.claude/` files without scope-guard intervention). `sync-tree.py`
-    therefore uses `git pull --ff-only origin dev` exclusively. The `git merge`
+    (verified: `git pull --ff-only origin <integration-target>` fetches +
+    fast-forwards and updates `.claude/` files without scope-guard
+    intervention). `sync-tree.py` therefore uses `git pull --ff-only origin
+    <integration-target>` exclusively (the target resolved per step 2 above),
+    and NEVER `git merge`. The `git merge`
     deny is an intentional guardrail (the loop merges via `gh pr merge`, never
     a local merge) and MUST NOT be narrowed/removed in `settings.json`.
 
@@ -2617,10 +2628,15 @@ summary is restated here.
 
     Enforced by `test/test-sync-tree.py` (e2e, against a tmpdir git fixture
     with a local `origin` remote): a clean tree behind origin fast-forwards via
-    `git pull --ff-only origin dev` and exits 0; a dirty tracked-file tree
-    exits non-zero WITHOUT pulling; a divergent (non-ff) local history exits
-    non-zero loudly; the script NEVER invokes `git merge` (assert via a `git`
-    shim call-log). And by `test/test-spec-worktree-sync-invariant.py`:
+    `git pull --ff-only origin <integration-target>` and exits 0; a dirty
+    tracked-file tree exits non-zero WITHOUT pulling; a divergent (non-ff)
+    local history exits non-zero loudly; the script NEVER invokes `git merge`
+    (assert via a `git` shim call-log). The pull source is resolved from the
+    integration target, NOT hardcoded: with
+    `RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET=main` the script pulls `origin main`,
+    and with target=dev (default/coexistence) it pulls `origin dev` — both
+    asserted via the `git` shim call-log. And by
+    `test/test-spec-worktree-sync-invariant.py`:
     asserts this invariant text is present in the spec AND that both the source
     and deployed `SKILL.md` document the tick-start `sync-tree.py` step using
     `git pull --ff-only` (and contain no `git merge` sync instruction).
