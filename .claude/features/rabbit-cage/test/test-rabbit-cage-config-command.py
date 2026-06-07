@@ -11,8 +11,9 @@ Exercises the per-feature config command /rabbit-cage-config (phase 3 of #733):
   (iv)  unknown subcommand / value exits non-zero.
   (v)   the backing script is a THIN wrapper — it imports dispatch_config and
         does NOT redefine the interpreter (_apply_template / _validate).
-  (vi)  the five owned configurables declare command == "rabbit-cage-config"
-        (tdd-autonomous is relocated out of rabbit-cage per #733 phase 3).
+  (vi)  the six owned configurables declare command == "rabbit-cage-config"
+        (tdd-autonomous is relocated out of rabbit-cage per #733 phase 3;
+        display-timezone is the sixth owned configurable per #1011).
   (vii) the retired central rabbit-config interpreter is absent — the
         per-feature command is the sole config surface.
   (viii)the command frontmatter carries the six required keys and the manifest
@@ -87,6 +88,17 @@ def _run(tmp, *args):
     )
 
 
+def config_for(tmp, cid):
+    """Return the configuration[] entry with id == cid from the temp repo's
+    copy of rabbit-cage's feature.json."""
+    fj = Path(tmp) / ".claude" / "features" / "rabbit-cage" / "feature.json"
+    data = json.loads(fj.read_text())
+    for c in data.get("configuration", []):
+        if c.get("id") == cid:
+            return c
+    return {}
+
+
 def main() -> int:
     # ---- (v) thin-wrapper: imports dispatch_config, no re-implemented interp.
     if not SCRIPT.is_file():
@@ -153,6 +165,27 @@ def main() -> int:
                 ko(f"bash-allow add npm failed: rc={r.returncode} "
                    f"allow={allow} err={r.stderr}")
 
+            # (display-timezone round-trip, #1011) — the SAME thin wrapper
+            # dispatches the free-scalar display-timezone with no special-casing.
+            dt_cfg = config_for(tmp, "display-timezone")
+            dt_action = next(iter((dt_cfg.get("actions") or {}).keys()), None)
+            r = _run(tmp, "display-timezone", dt_action, "UTC")
+            wrote_tz = ""
+            if slj.is_file():
+                wrote_tz = json.loads(slj.read_text()).get(
+                    "env", {}).get("RABBIT_DISPLAY_TIMEZONE", "")
+            if r.returncode == 0 and wrote_tz == "UTC":
+                ok("display-timezone set UTC writes env.RABBIT_DISPLAY_TIMEZONE=UTC")
+            else:
+                ko(f"display-timezone set UTC failed: rc={r.returncode} "
+                   f"wrote={wrote_tz!r} err={r.stderr}")
+            # default resolves to local (no value stored before the set above —
+            # asserted via the configurable default declaration).
+            if dt_cfg.get("default") == "local":
+                ok("display-timezone default resolves to local")
+            else:
+                ko(f"display-timezone default != local: {dt_cfg.get('default')!r}")
+
             # (iv) unknown subcommand / value exit non-zero.
             r = _run(tmp, "no-such-sub")
             if r.returncode != 0:
@@ -175,7 +208,7 @@ def main() -> int:
     data = json.loads(CAGE_FJ.read_text())
     config = {c["id"]: c for c in data.get("configuration", [])}
     owned = ("scope-guard", "bypass-permissions", "allowed-tools",
-             "bash-allow", "prompt-threshold")
+             "bash-allow", "prompt-threshold", "display-timezone")
     # (vi) command field.
     for cid in owned:
         if config.get(cid, {}).get("command") == "rabbit-cage-config":
