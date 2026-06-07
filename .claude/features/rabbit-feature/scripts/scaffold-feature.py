@@ -8,8 +8,10 @@ Two modes:
   directory at the requested root:
       scaffold-feature.py <root> <name> [--owner <name>] [--description <desc>]
 
-* Plugin — triggered when `<cwd>/.rabbit/.runtime/mode` contains "plugin"
-  (the marker is written at SessionStart by rabbit-meta's mode detector).
+* Plugin — triggered when `<cwd>/.rabbit/.runtime/mode` contains a
+  plugin-mode value ("plugin" or its current synonym "vendored", both
+  dual-accepted; the marker is written at SessionStart by rabbit-meta's
+  mode detector).
   Scaffolds a per-project feature under
   `<repo>/.rabbit/rabbit-project/features/<name>/` and registers it in
   `<repo>/.rabbit/rabbit-project/project-map.json`, mapping a list of
@@ -27,7 +29,7 @@ Exit:
     empty match, schema-validation failure)
   2 invocation error
 
-Version: 2.5.0
+Version: 2.6.0
 Owner: rabbit-workflow team (rabbit-feature)
 Deprecation criterion: when feature scaffolding is exposed as a native
     rabbit CLI subcommand.
@@ -50,12 +52,21 @@ def usage(stream=sys.stderr) -> None:
     stream.write(
         "usage: scaffold-feature.py <root> <name> [--owner <name>] [--description <desc>]\n"
         "       scaffold-feature.py <name> [<path-glob>...]   "
-        "(plugin mode; requires <cwd>/.rabbit/.runtime/mode == 'plugin')\n"
+        "(plugin mode; requires <cwd>/.rabbit/.runtime/mode in {'plugin','vendored'})\n"
         "  <root>      parent directory under which <name>/ will be created\n"
         "  <name>      lowercase kebab-case, [a-z][a-z0-9-]*, max 50 chars\n"
         "  <path-glob> user-code path pattern (relative to user-project root);\n"
         "              OPTIONAL — a bare <name> scaffolds a greenfield feature\n"
     )
+
+
+# Plugin-mode content values, dual-accepted. rabbit-meta's `detect_mode`
+# emits `vendored` as the current synonym for the legacy `plugin` value;
+# both are honored across the codebase (e.g. rabbit-decompose's
+# `handoff-scaffold.py`). Coexistence-window deprecation: the legacy
+# `plugin` entry is removed only after the rename completes and the old
+# value is fully retired.
+_VENDORED_MODES = ("vendored", "plugin")
 
 
 def _detect_plugin_mode(cwd: Path) -> tuple[bool, Path | None]:
@@ -69,10 +80,13 @@ def _detect_plugin_mode(cwd: Path) -> tuple[bool, Path | None]:
     Two ancestor shapes count as a match, checked at each candidate `D`
     (starting at `cwd` and walking to `/`):
 
-      (a) `D/.runtime/mode` contains `plugin` — cwd is inside `.rabbit/`
-          itself; resolved `rabbit_root` is `D`.
-      (b) `D/.rabbit/.runtime/mode` contains `plugin` — cwd is at or
-          below the user-project root; resolved `rabbit_root` is `D/.rabbit`.
+      (a) `D/.runtime/mode` contains a plugin-mode value — cwd is inside
+          `.rabbit/` itself; resolved `rabbit_root` is `D`.
+      (b) `D/.rabbit/.runtime/mode` contains a plugin-mode value — cwd is at
+          or below the user-project root; resolved `rabbit_root` is `D/.rabbit`.
+
+    A plugin-mode value is any of `_VENDORED_MODES` (`vendored` or `plugin`),
+    matching rabbit-meta's `detect_mode` dual-accept semantics.
 
     Inv 44 (amended) — replaces the original single-check semantics that only
     inspected `<cwd>/.rabbit/.runtime/mode`. That semantics failed silently
@@ -85,7 +99,7 @@ def _detect_plugin_mode(cwd: Path) -> tuple[bool, Path | None]:
         marker_a = candidate / ".runtime" / "mode"
         if marker_a.is_file():
             try:
-                if marker_a.read_text().strip() == "plugin":
+                if marker_a.read_text().strip() in _VENDORED_MODES:
                     return (True, candidate)
             except OSError:
                 pass
@@ -93,7 +107,7 @@ def _detect_plugin_mode(cwd: Path) -> tuple[bool, Path | None]:
         marker_b = candidate / ".rabbit" / ".runtime" / "mode"
         if marker_b.is_file():
             try:
-                if marker_b.read_text().strip() == "plugin":
+                if marker_b.read_text().strip() in _VENDORED_MODES:
                     return (True, candidate / ".rabbit")
             except OSError:
                 pass

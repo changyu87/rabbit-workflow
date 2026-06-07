@@ -25,7 +25,7 @@
     ]
   },
   "deprecation_criterion": "When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.",
-  "updated": "2026-06-05",
+  "updated": "2026-06-07",
   "manifest": [
     {
       "api": "publish_skill",
