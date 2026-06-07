@@ -462,8 +462,8 @@ with tempfile.TemporaryDirectory() as td_str:
             fail_t("idle-eta-zone", f"ETA must be UTC-converted 09:46 (boundary 09:43 + cold +3): {text!r}")
         elif expected is None:
             fail_t("idle-eta-zone", "contract _auto_evolve_next_tick_eta returned None unexpectedly")
-        elif m.group(0).removeprefix(", next tick ") != expected:
-            fail_t("idle-eta-zone", f"banner ETA {m.group(0)!r} != contract ETA {expected!r} (mirror)")
+        elif f"{m.group(1)} {m.group(2)}" != expected:
+            fail_t("idle-eta-zone", f"banner ETA {m.group(1)+' '+m.group(2)!r} != contract ETA {expected!r} (mirror)")
         else:
             ok("idle-eta-zone", f"idle ETA converts to display zone + label, equals contract ({expected!r})")
 

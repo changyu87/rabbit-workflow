@@ -142,12 +142,20 @@ POST_1004_ADD_LINES = 15
 # headroom is added for the lines but not the count. Mirror the prior headroom
 # so the #751 reduction stays ENFORCED.
 POST_1006_ADD_LINES = 16
+# #1012 amended Inv 22 (banner-status.py next-tick ETA): the ETA now renders
+# HH:MM plus a `%Z` zone label in the resolved display zone, importing contract's
+# public resolve_display_tz (contract Inv 67) so the SessionStart banner ETA
+# equals contract's _auto_evolve_next_tick_eta byte-for-byte (the Inv 55 mirror).
+# Additive prose on an EXISTING invariant (no new invariant), so headroom is
+# added for the lines but not the count. Mirror the prior headroom so the #751
+# reduction stays ENFORCED.
+POST_1012_ADD_LINES = 13
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
     + POST_943_ADD_LINES + POST_962_ADD_LINES + POST_970_ADD_LINES
     + POST_973_ADD_LINES + POST_966_ADD_LINES + POST_986_ADD_LINES
-    + POST_1004_ADD_LINES + POST_1006_ADD_LINES
+    + POST_1004_ADD_LINES + POST_1006_ADD_LINES + POST_1012_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).

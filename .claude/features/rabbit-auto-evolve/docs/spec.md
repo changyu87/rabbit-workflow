@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.86.1
+version: 0.87.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1485,9 +1485,18 @@ summary is restated here.
     unrestricted HOUR, and walk to the next matching wall-clock minute from an
     injectable `now`.
 
-    The ETA is rendered as a single EXACT wall-clock time `HH:MM` — no `≥`,
-    no `~`, no range, no qualifier. It is the next cron boundary PLUS the
-    deterministic CronCreate jitter offset (Inv 56). CronCreate adds a
+    The ETA is rendered as `HH:MM` PLUS a `%Z` zone label in the resolved
+    display zone (#1012) — no `≥`, no `~`, no range, no qualifier beyond the
+    trailing label. The wall-clock minute is the next cron boundary PLUS the
+    deterministic CronCreate jitter offset (Inv 56), converted into the display
+    zone and labelled so the banner ETA and the Stop `⏱` line agree
+    byte-for-byte (the Inv 55 mirror obligation). The zone is resolved by
+    importing contract's public
+    `contract.lib.runtime.resolve_display_tz(repo_root)` (contract Inv 67), not
+    by mirroring it, so the banner ETA never drifts from contract's
+    `_auto_evolve_next_tick_eta`; an aware `fire` is CONVERTED into the zone, a
+    naive one is treated as already in it (label only). Machine artifacts stay
+    UTC; this is the DISPLAY ETA only. CronCreate adds a
     deterministic per-job jitter to recurring tasks: recurring jobs fire up to
     10% of their period late, capped at 15 min. On an idle session this is a
     stable constant — the `13,43 * * * *` (30-min period) heartbeat fired a
@@ -1525,9 +1534,12 @@ summary is restated here.
     - Active only, state file PRESENT, no cadence source → `line2.text`
       is the bare `paste: /rabbit-auto-evolve start` (no ETA), color yellow.
     - Active only, state file PRESENT, cadence source present → `line2.text`
-      appends `, next tick HH:MM` where `HH:MM` is the next cron boundary plus
-      `observed_jitter_minutes` (Inv 56) — a single exact time, no `≥`, no `~`,
-      no qualifier, no range.
+      appends `, next tick HH:MM <zone>`: the next cron boundary plus
+      `observed_jitter_minutes` (Inv 56), CONVERTED into the resolved display
+      zone (#1012, contract Inv 67) and `%Z`-labelled — no `≥`, no `~`, no
+      qualifier beyond the label. With an injected aware `now` and display zone
+      UTC this equals contract's `_auto_evolve_next_tick_eta` byte-for-byte (the
+      Inv 55 mirror assertion).
     - Active only, state file PRESENT, unparseable cadence → bare idle line,
       no ETA.
     - No rejected wording (`≥`, `(scheduler jitter)`, `(fires when the session
