@@ -3,7 +3,7 @@
   "version": "5.81.0",
   "contiguous_invariants": true,
   "owner": "rabbit-workflow team",
-  "tdd_state": "impl",
+  "tdd_state": "test-green",
   "housekeeping_clean": true,
   "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
   "surface": {
