@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.87.0
+version: 0.88.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into `dev`, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -336,10 +336,12 @@ mutation). The deterministic walk runs in two segments around Phase 6:
    deterministically clean KNOWN worktree-dispatch leak-class noise from the
    main tree BEFORE the merge. As its first step it restores a leaked main-HEAD
    branch switch (Inv 44): when a subagent's `git checkout -B <branch>
-   origin/dev` left the dispatcher's MAIN HEAD on a feature branch (which would
-   trip safety-check Inv 1 "branch is dev" and skip the batch), and the tree is
-   clean with no un-pushed unique commits, it runs `git checkout dev` to
-   restore HEAD; if the tree is dirty or the branch has un-pushed work it FAILS
+   origin/<integration-target>` left the dispatcher's MAIN HEAD on a feature
+   branch (which would trip safety-check Inv 1 "branch is the integration
+   target" and skip the batch), and the tree is clean with no un-pushed unique
+   commits, it checks out the resolved integration target (Inv 61: dev during
+   the coexistence default, main post-cutover — NOT a hardcoded dev) to restore
+   HEAD; if the tree is dirty or the branch has un-pushed work it FAILS
    LOUDLY rather than discard it. It then cleans the worktree-dispatch
    file-leak classes — an untracked stray `.rabbit-scope-active-*` marker or a
    bookkeeping-only `feature.json` edit that a worktree-isolated Phase 6
@@ -545,10 +547,11 @@ Claude:
 
 - tick-start self-sync (Inv 38) — BEFORE any phase, it runs
   `python3 .claude/features/rabbit-auto-evolve/scripts/sync-tree.py` so the
-  cron path also self-syncs to the latest merged scripts (`git pull
-  --ff-only origin dev`, NEVER the permission-denied `git merge`). On a
-  dirty/divergent tree it short-circuits to a clean no-op (logged) rather
-  than run stale scripts.
+  cron path also self-syncs to the latest merged scripts. `sync-tree.py`
+  resolves the integration target (Inv 61: dev default, main post-cutover) and
+  runs `git pull --ff-only origin <integration-target>`, NEVER the
+  permission-denied `git merge`. On a dirty/divergent tree it short-circuits to
+  a clean no-op (logged) rather than run stale scripts.
 - phase 0 (`stop-check`) + phase 1 (`restart-check`) — if
   `.rabbit-auto-evolve-stop-requested` or `.rabbit-auto-evolve-aborted`
   exists, the tick short-circuits to a clean no-op.

@@ -12,21 +12,24 @@ Inv 5 ("no uncommitted tracked-file modifications"), which makes merge-prs.py
 SKIP every PR in the batch.
 
 A more severe variant of the SAME root cause (#596): a subagent's
-`git checkout -B <branch> origin/dev` runs in the MAIN checkout and switches
-the dispatcher's MAIN HEAD onto a feature branch. safety-check Inv 1 ("branch
-is dev") then fails and merge-prs.py skips the whole batch with a CLEAN tree
-(so this is NOT the #583 file-leak path).
+`git checkout -B <branch> origin/<target>` runs in the MAIN checkout and
+switches the dispatcher's MAIN HEAD onto a feature branch. safety-check Inv 1
+("branch is the integration target") then fails and merge-prs.py skips the
+whole batch with a CLEAN tree (so this is NOT the #583 file-leak path).
 
 `run-tick-phases.py run_post_dispatch` invokes this script as the FIRST action
 of Phase 6, BEFORE merge-prs.py. The cleanup runs the branch-restore FIRST (so
 the subsequent file cleanup and the merge see the right branch), then handles
 ONLY the known file-leak classes and FAILS LOUDLY on anything else:
 
-  0. **Leaked HEAD switch (#596).** If the main repo's HEAD is NOT `dev`:
+  0. **Leaked HEAD switch (#596).** The restore is INTEGRATION-TARGET-AWARE
+     (Inv 61): the target is resolved via integration_target.resolve_target()
+     (`dev` during the coexistence default, `main` post-cutover), NOT a
+     hardcoded `dev`. If the main repo's HEAD is NOT the resolved target:
      - When the working tree is CLEAN and the branch has NO un-pushed unique
        commits (every local commit is on its `origin/<branch>` remote), restore
-       with `git checkout dev` — the feature work lives safely on its pushed
-       branch.
+       with `git checkout <target>` — the feature work lives safely on its
+       pushed branch.
      - When the tree is DIRTY or the branch has un-pushed unique commits,
        REFUSE loudly (non-zero) and do NOT switch/discard — let the tick abort
        (Inv 20) so a human/next-tick investigates. Mirrors the unexpected-dirt
@@ -42,8 +45,8 @@ ONLY the known file-leak classes and FAILS LOUDLY on anything else:
      critical safety property — clean ONLY known leak-class noise.
 
 What was cleaned is logged via tick-log.py (Inv 36) so the cleanup is
-observable. On a clean tree on `dev` the script is a no-op (exit 0, nothing
-logged).
+observable. On a clean tree already on the resolved integration target the
+script is a no-op (exit 0, nothing logged).
 
 Resolution:
   - repo root via `RABBIT_AUTO_EVOLVE_REPO_ROOT`, else `git rev-parse
@@ -56,7 +59,7 @@ Exit code: 0 on a successful cleanup or no-op; non-zero on unexpected dirt, a
 leaked HEAD switch that cannot be safely restored (reported on stderr), or a
 git failure. The script never discards an unexpected change or un-pushed work.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -68,6 +71,14 @@ import json
 import os
 import subprocess
 import sys
+
+# Resolve the loop's integration target (Inv 61) so the leaked-branch detection
+# and restore key off the RESOLVED target (dev during the coexistence default,
+# main post-cutover) — NOT a hardcoded `dev`. Mirrors sync-tree.py's reuse of
+# the sibling module. The filename has an underscore, so a normal import works
+# once the script's own dir is on sys.path.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import integration_target
 
 # The loop-bookkeeping keys a tdd-step / LOCK write touches in feature.json.
 # A tracked feature.json modification is RESTORED only when its diff vs HEAD
@@ -118,8 +129,9 @@ def _tree_dirty(repo):
 
 def _has_unpushed_unique_commits(repo, branch):
     """True iff `branch` has local commits NOT present on its `origin/<branch>`
-    remote (work that a `git checkout dev` would orphan). A branch with no
-    matching remote-tracking ref is treated as un-pushed (conservative)."""
+    remote (work that restoring to the integration target would orphan). A
+    branch with no matching remote-tracking ref is treated as un-pushed
+    (conservative)."""
     remote_ref = f"origin/{branch}"
     if _git(repo, "rev-parse", "--verify", "--quiet", remote_ref).returncode != 0:
         # No remote counterpart — assume there is unique local work to protect.
@@ -207,8 +219,13 @@ def clean(repo):
 
     # Step 0 (#596): detect + restore a leaked main-HEAD branch switch FIRST,
     # so the file cleanup below and the subsequent merge see the right branch.
+    # The leak is "HEAD is not the RESOLVED integration target" (Inv 61: dev
+    # during the coexistence default, main post-cutover) — NOT "HEAD != dev".
+    # Hardcoding `dev` would wrongly treat a live `main` HEAD as a leak and
+    # switch the dispatcher off `main`.
+    target = integration_target.resolve_target()
     branch = _current_branch(repo)
-    if branch and branch != "dev":
+    if branch and branch != target:
         if _tree_dirty(repo) or _has_unpushed_unique_commits(repo, branch):
             # Un-pushed work or uncommitted dirt on the leaked branch — REFUSE
             # loudly; never discard it by switching away.
@@ -218,12 +235,12 @@ def clean(repo):
                 "commits; refusing to switch (Inv 44)",
             ))
             return 1, cleaned, refused
-        co = _git(repo, "checkout", "dev")
+        co = _git(repo, "checkout", target)
         if co.returncode != 0:
             refused.append((branch,
-                            f"could not restore HEAD to dev: {co.stderr.strip()}"))
+                            f"could not restore HEAD to {target}: {co.stderr.strip()}"))
             return 1, cleaned, refused
-        cleaned.append(f"restored leaked HEAD switch from {branch} to dev")
+        cleaned.append(f"restored leaked HEAD switch from {branch} to {target}")
 
     for xy, path in _porcelain(repo):
         x, y = xy[0], xy[1]
@@ -265,7 +282,8 @@ def main():
     parser = argparse.ArgumentParser(
         description="Deterministically clean KNOWN worktree-dispatch leak-class "
                     "noise from the main tree before merge: restore a leaked "
-                    "main-HEAD branch switch to dev (Inv 44 / #596) FIRST, then "
+                    "main-HEAD branch switch to the resolved integration target "
+                    "(Inv 44 / Inv 61 / #596) FIRST, then "
                     "remove stray .rabbit-scope-active-* markers and revert "
                     "bookkeeping-only feature.json edits (Inv 43 / #583). Fails "
                     "loudly on any unexpected tracked change, a dirty/un-pushed "

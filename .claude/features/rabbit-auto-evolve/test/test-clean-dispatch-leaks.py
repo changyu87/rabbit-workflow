@@ -53,13 +53,16 @@ def _head(repo):
     return _git(repo, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
 
 
-def _make_repo(tmp):
-    """A git repo on `dev` with a committed feature.json under a feature dir,
-    wired to a bare `origin` remote with `dev` pushed (so branch-restore tests
-    can tell pushed feature commits from un-pushed ones)."""
+def _make_repo(tmp, target="dev"):
+    """A git repo on the integration `target` branch with a committed
+    feature.json under a feature dir, wired to a bare `origin` remote with the
+    target pushed (so branch-restore tests can tell pushed feature commits from
+    un-pushed ones). The cleanup is integration-target-aware (Inv 44 / Inv 61):
+    a `target`-default repo simulates the coexistence default; a `target=main`
+    repo simulates the post-cutover workflow."""
     repo = os.path.join(tmp, "repo")
     os.makedirs(repo)
-    _git(repo, "init", "-b", "dev")
+    _git(repo, "init", "-b", target)
     _git(repo, "config", "user.email", "t@t")
     _git(repo, "config", "user.name", "t")
     feat_dir = os.path.join(repo, ".claude", "features", "rabbit-auto-evolve")
@@ -84,14 +87,20 @@ def _make_repo(tmp):
     subprocess.run(["git", "init", "--bare", bare],
                    capture_output=True, text=True)
     _git(repo, "remote", "add", "origin", bare)
-    _git(repo, "push", "-u", "origin", "dev")
+    _git(repo, "push", "-u", "origin", target)
     return repo, fj, spec
 
 
-def _run(repo):
+def _run(repo, target=None):
+    """Run the cleanup. When `target` is given, set the integration-target env
+    override so the cleanup resolves that branch as the restore destination."""
     env = os.environ.copy()
     env["RABBIT_AUTO_EVOLVE_REPO_ROOT"] = repo
     env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = os.path.join(repo, ".rabbit")
+    if target is not None:
+        env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = target
+    else:
+        env.pop("RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET", None)
     return subprocess.run([sys.executable, SCRIPT], cwd=repo,
                           capture_output=True, text=True, env=env)
 
@@ -342,6 +351,67 @@ with tempfile.TemporaryDirectory() as tmp:
         fail("K: stray marker not removed after branch restore")
     else:
         ok("K: file-leak cleanup still ran after branch restore")
+
+
+# ---------------------------------------------------------------------------
+# L — INTEGRATION-TARGET AWARENESS (post-cutover, target=main): HEAD already on
+#     the resolved target `main` is NOT a leak → branch-restore is a no-op.
+#     Hardcoding `dev` would WRONGLY treat the live `main` HEAD as leaked and
+#     switch the dispatcher OFF main (Inv 44 / Inv 61).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    repo, fj, spec = _make_repo(tmp, target="main")
+    proc = _run(repo, target="main")
+    if proc.returncode != 0:
+        fail(f"L: clean main tree (target=main) must be a no-op (exit 0); "
+             f"stderr={proc.stderr!r}")
+    elif _head(repo) != "main":
+        fail(f"L: HEAD switched off the resolved target main (now {_head(repo)!r}) "
+             f"— hardcoded-dev regression")
+    else:
+        ok("L: HEAD on resolved target main → branch-restore is a no-op "
+           "(not treated as a leak)")
+
+
+# ---------------------------------------------------------------------------
+# M — INTEGRATION-TARGET AWARENESS (target=main): a leaked feature-branch
+#     switch on a clean, pushed branch is restored to the RESOLVED target
+#     `main`, NOT to a hardcoded `dev`.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    repo, fj, spec = _make_repo(tmp, target="main")
+    _git(repo, "checkout", "-B", "feat/leaked", "main")
+    _git(repo, "push", "-u", "origin", "feat/leaked")
+    if _head(repo) != "feat/leaked":
+        fail("M: precondition — HEAD should be on feat/leaked before cleanup")
+    proc = _run(repo, target="main")
+    if proc.returncode != 0:
+        fail(f"M: cleanup exit {proc.returncode}; stderr={proc.stderr!r}")
+    if _head(repo) != "main":
+        fail(f"M: leaked HEAD not restored to resolved target main "
+             f"(still {_head(repo)!r})")
+    else:
+        ok("M: leaked HEAD switch restored to resolved target main (Inv 61)")
+
+
+# ---------------------------------------------------------------------------
+# N — INTEGRATION-TARGET AWARENESS (target=main): the legacy `dev` branch, when
+#     it is NOT the resolved target, IS treated as a leaked switch and restored
+#     to `main`. (Post-cutover, sitting on `dev` is itself the leak.)
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    repo, fj, spec = _make_repo(tmp, target="main")
+    # Create a `dev` branch pointing at main's (pushed) commit and switch to it.
+    _git(repo, "checkout", "-B", "dev", "main")
+    _git(repo, "push", "-u", "origin", "dev")
+    proc = _run(repo, target="main")
+    if proc.returncode != 0:
+        fail(f"N: cleanup exit {proc.returncode}; stderr={proc.stderr!r}")
+    if _head(repo) != "main":
+        fail(f"N: HEAD on non-target `dev` not restored to main "
+             f"(still {_head(repo)!r})")
+    else:
+        ok("N: HEAD on legacy `dev` (not the resolved target) restored to main")
 
 
 # ---------------------------------------------------------------------------

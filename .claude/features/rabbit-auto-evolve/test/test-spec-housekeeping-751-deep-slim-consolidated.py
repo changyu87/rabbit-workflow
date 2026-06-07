@@ -233,8 +233,12 @@ MERGED_CONTENT = [
     "issue_type", "created_at",
     # Inv 50 (log attribution) merged into Inv 37 (log-tick.py)
     "session_id", "RABBIT_AUTO_EVOLVE_RUNNING_MARKER",
-    # Inv 44 (branch-switch leak) merged into Inv 43 (clean-dispatch-leaks)
-    "git checkout dev",
+    # Inv 44 (branch-switch leak) merged into Inv 43 (clean-dispatch-leaks).
+    # The restore became integration-target-aware (Inv 61 / #1020): the spec no
+    # longer hardcodes `git checkout dev` — it checks out the RESOLVED target via
+    # integration_target.resolve_target(). The surviving load-bearing token is
+    # the resolved-target restore, not the literal `dev`.
+    "resolve_target",
     # Inv 42 (guard-before-marker) merged into Inv 35 (running-guard)
     "_marker_content",
     # Inv 47 (refire dedup) merged into Inv 33 (immediate-refire)

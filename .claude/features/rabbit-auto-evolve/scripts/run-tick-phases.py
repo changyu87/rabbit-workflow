@@ -310,18 +310,20 @@ def run_post_dispatch():
             result["reason"] = "merge-failed"
             return result, 1
 
-        # Post-merge re-sync to origin/dev (Inv 45 / #516). merge-prs.py did a
-        # REMOTE squash-merge via `gh pr merge`, which advances origin/dev but
-        # NOT the loop's LOCAL dev checkout. Fast-forward local dev to
-        # origin/dev NOW, before the phases 8-10 release drain, so
-        # release-bump.py computes its tag against fresh (not stale) state and
-        # succeeds on the FIRST in-loop attempt (no reliance on the #512
-        # next-tick retry). Reuses sync-tree.py (git pull --ff-only origin dev,
-        # NEVER git merge — Inv 38), inheriting its dirty-tree / non-ff
-        # refusal: a tree that cannot be fast-forwarded aborts the tick here
-        # rather than running release-bump on stale state. Gated on actual
-        # merges — with zero merges origin/dev did not advance, so the re-sync
-        # is skipped (harmless no-op, no spurious sync error).
+        # Post-merge re-sync to the integration target (Inv 45 / #516).
+        # merge-prs.py did a REMOTE squash-merge via `gh pr merge`, which
+        # advances origin/<target> but NOT the loop's LOCAL checkout.
+        # Fast-forward the local checkout to origin/<target> NOW, before the
+        # phases 8-10 release drain, so release-bump.py computes its tag against
+        # fresh (not stale) state and succeeds on the FIRST in-loop attempt (no
+        # reliance on the #512 next-tick retry). Reuses sync-tree.py, which
+        # resolves the integration target (Inv 61: dev default, main
+        # post-cutover) and runs `git pull --ff-only origin <target>`, NEVER
+        # git merge (Inv 38), inheriting its dirty-tree / non-ff refusal: a tree
+        # that cannot be fast-forwarded aborts the tick here rather than running
+        # release-bump on stale state. Gated on actual merges — with zero merges
+        # origin/<target> did not advance, so the re-sync is skipped (harmless
+        # no-op, no spurious sync error).
         resync = _run("sync-tree.py", [])
         result["phases"]["resync"] = resync.returncode
         if resync.returncode != 0:

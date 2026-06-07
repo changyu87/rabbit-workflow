@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.87.0
+version: 0.88.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2823,18 +2823,17 @@ summary is restated here.
     order (branch restore FIRST so the file cleanup and the merge see the right
     branch):
 
-    1. **Restore a leaked branch switch FIRST.** Read the main repo's HEAD
-       branch. When it is NOT `dev`, the branch was leaked. Restore with
-       `git checkout dev` ONLY when HEAD != `dev` AND the working tree is CLEAN
-       (no uncommitted tracked changes) AND the branch has NO un-pushed unique
-       commits (every local commit is present on its `origin/<branch>` remote) —
-       safe because the feature work lives on its own pushed branch; the restore
-       is logged via `tick-log.py` (Inv 36). If HEAD != `dev` AND the tree is
-       DIRTY OR the branch has un-pushed unique commits (or a branch with no
-       remote counterpart, treated conservatively as un-pushed), the cleanup
-       exits non-zero and does NOT switch or discard anything, so the tick aborts
-       (Inv 20) — never destroy un-pushed work. With HEAD already on `dev`, this
-       step is a no-op.
+    1. **Restore a leaked branch switch FIRST.** Compare the main repo's HEAD
+       branch against the RESOLVED integration target (Inv 61:
+       `integration_target.resolve_target()` — `dev` coexistence default, `main`
+       post-cutover — NOT a hardcoded `dev`). When HEAD is NOT the resolved
+       target, the branch was leaked. Check out the resolved target ONLY when the
+       tree is CLEAN (no uncommitted tracked changes) AND the branch has NO
+       un-pushed unique commits (every local commit is on its `origin/<branch>`
+       remote); the restore is logged via `tick-log.py` (Inv 36). If the tree is
+       DIRTY OR the branch has un-pushed unique commits (or no remote counterpart,
+       treated as un-pushed), the cleanup exits non-zero and does NOT switch or
+       discard anything, so the tick aborts (Inv 20).
     2. **Remove untracked stray markers.** Deletes any untracked
        `.rabbit-scope-active-*` file at the repo root.
     3. **Restore only bookkeeping-only `feature.json` leaks.** For a TRACKED
@@ -2851,19 +2850,21 @@ summary is restated here.
        arbitrary changes.
 
     The cleanup logs what it removed/restored via `tick-log.py` (Inv 36) so it
-    is observable. On a clean tree on `dev` the cleanup is a no-op (exit 0,
-    nothing logged as cleaned).
+    is observable. On a clean tree already on the resolved integration target it
+    is a no-op (exit 0, nothing logged as cleaned).
 
     Enforced by `test/test-clean-dispatch-leaks.py` (e2e in a temp git repo
-    wired to a bare origin: a clean, pushed leaked branch is restored to `dev`
-    and logged; a dirty or un-pushed leaked branch makes the cleanup refuse
-    non-zero without switching or discarding; HEAD already on `dev` is a no-op; a
-    bookkeeping-only `feature.json` leak + a stray marker are cleaned to a clean
-    tree; a leaked branch + a stray marker restores the branch then removes the
-    marker; an unexpected `spec.md` edit makes the cleanup refuse non-zero and
-    preserves the edit), by `test/test-run-tick-phases.py` (post-dispatch invokes
-    the cleanup before the merge step), and by
-    `test/test-spec-branch-switch-guard-invariant.py`.
+    wired to a bare origin: a clean, pushed leaked branch is restored to the
+    resolved integration target and logged; a dirty or un-pushed leaked branch
+    makes the cleanup refuse non-zero without switching or discarding; HEAD
+    already on the resolved target is a no-op; a bookkeeping-only `feature.json`
+    leak + a stray marker are cleaned to a clean tree; a leaked branch + a stray
+    marker restores the branch then removes the marker; an unexpected `spec.md`
+    edit makes the cleanup refuse non-zero and preserves the edit; target-aware
+    — with target=`main` a leaked feature branch and a legacy `dev` branch both
+    restore to `main` and a live `main` HEAD is NOT a leak), by
+    `test/test-run-tick-phases.py` (post-dispatch invokes the cleanup before the
+    merge step), and by `test/test-spec-branch-switch-guard-invariant.py`.
 
 43. **SKILL.md `description:` trigger enumeration covers common natural
     phrasings, including the unhyphenated "auto evolve" and "enter … mode"

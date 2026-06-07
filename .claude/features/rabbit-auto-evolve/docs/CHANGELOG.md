@@ -16,6 +16,30 @@ authoritative).
 
 ## Version notes
 
+- **v0.88.0 — 2026-06-06** — #1020 (final child of #1008). Housekeeping
+  verify-or-flag pass on dev→main migration debris. `clean-dispatch-leaks.py`
+  hardcoded `dev` for BOTH the leaked-branch detection (`branch != "dev"`) and
+  the restore (`git checkout dev`); post-cutover the dispatcher works on `main`,
+  so a live `main` HEAD was wrongly treated as a leak and the script tried to
+  switch off `main`. The script is now integration-target-aware (Inv 61):
+  imports `integration_target.resolve_target()` (mirroring sync-tree.py), keys
+  the leak on "HEAD != the resolved target", and restores by checking out the
+  resolved target (`dev` coexistence default, `main` post-cutover). Module
+  version 1.1.0 → 1.2.0. Spec Inv 44 branch-restore prose reworded to
+  integration-target wording; `test/test-clean-dispatch-leaks.py` gains
+  target=main cases (live `main` HEAD is a no-op; a leaked feature branch and a
+  legacy `dev` branch both restore to `main`);
+  `test/test-spec-branch-switch-guard-invariant.py` asserts target-aware prose.
+  Stale prose de-staled: `SKILL.md` headless tick-start self-sync example
+  (`git pull --ff-only origin dev` → `origin <integration-target>`, since
+  sync-tree.py already resolves the target) and the branch-restore step;
+  `run-tick-phases.py` post-merge re-sync comment. Verified-legitimate-and-kept:
+  the `{dev,main}` coexistence accepted-set in `integration_target.py` /
+  `merge-prs.py` / `safety-check.py`, the conditional close-after-merge path
+  (still required for dev-base merges during coexistence), and CHANGELOG
+  tombstones. Versions bumped 0.87.0 → 0.88.0 in four-way lockstep. No contract
+  `provides`/`reads`/`invokes`/`never` schema change.
+
 - **v0.87.0 — 2026-06-06** — #1012 (final child of #1007). `banner-status.py`'s
   next-tick ETA helper rendered a bare `HH:MM` with no zone label, drifting from
   contract's `_auto_evolve_next_tick_eta`, which now renders `HH:MM %Z` in the

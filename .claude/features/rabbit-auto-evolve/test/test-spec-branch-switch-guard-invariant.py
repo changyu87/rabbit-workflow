@@ -13,12 +13,19 @@ The #751 deep slim CONSOLIDATED the branch-switch restore into the same
 SAME script, the SAME Phase-7-first sequencing), so the content is asserted
 spec-wide rather than pinned to a specific invariant number.
 
+The restore is INTEGRATION-TARGET-AWARE (Inv 61): the leak is "HEAD is not the
+resolved integration target" and the restore checks out that resolved target
+(`dev` during the coexistence default, `main` post-cutover), NOT a hardcoded
+`dev`. Hardcoding `dev` would wrongly treat the live `main` HEAD as a leak and
+switch the dispatcher off `main`.
+
 This e2e regression asserts:
 
   1. The spec carries the branch-switch-restore text (the leaked
-     `git checkout -B`, HEAD != dev detection, the clean-tree restore via
-     `git checkout dev`, the fail-loudly refusal on a DIRTY tree or an un-pushed
-     unique commit, and the detect/restore-branch-FIRST ordering).
+     `git checkout -B`, the HEAD-not-the-resolved-integration-target detection,
+     the clean-tree restore to the resolved integration target, the fail-loudly
+     refusal on a DIRTY tree or an un-pushed unique commit, and the
+     detect/restore-branch-FIRST ordering).
   2. The source SKILL.md documents the branch-restore step.
   3. All four versioned artifacts (feature.json, spec.md, contract.md, source
      SKILL.md frontmatter) are bumped in lockstep to the SAME version (Inv 15).
@@ -75,7 +82,7 @@ SPEC_REQUIRED = [
     "clean-dispatch-leaks.py",
     "checkout -b",
     "head",
-    "checkout dev",
+    "integration target",
     "un-pushed",
 ]
 missing = [s for s in SPEC_REQUIRED if s.lower() not in spec_low]
@@ -100,7 +107,7 @@ else:
 # --- (2) Source SKILL.md documents the branch-restore step -------------
 if SOURCE_SKILL.is_file():
     skill_low = norm(SOURCE_SKILL.read_text()).lower()
-    if "head" in skill_low and "checkout dev" in skill_low:
+    if "head" in skill_low and "integration target" in skill_low:
         ok("source SKILL.md documents the leaked-branch restore step")
     else:
         fail("source SKILL.md does not document the leaked-branch restore step")
