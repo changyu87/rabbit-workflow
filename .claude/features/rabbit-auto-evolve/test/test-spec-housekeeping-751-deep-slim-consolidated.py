@@ -135,12 +135,19 @@ POST_986_ADD_INVARIANTS = 1
 # invariant (no new invariant), so headroom is added for the lines but not the
 # count. Mirror the prior headroom so the #751 reduction stays ENFORCED.
 POST_1004_ADD_LINES = 15
+# #1006 amended Inv 38 (tick-start self-sync) to resolve its pull source from
+# the integration target via integration_target.py resolve_target() (Inv 61)
+# instead of a hardcoded `origin dev`, so the post-cutover loop fast-forwards
+# from `main`. Additive prose on an EXISTING invariant (no new invariant), so
+# headroom is added for the lines but not the count. Mirror the prior headroom
+# so the #751 reduction stays ENFORCED.
+POST_1006_ADD_LINES = 16
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
     + POST_943_ADD_LINES + POST_962_ADD_LINES + POST_970_ADD_LINES
     + POST_973_ADD_LINES + POST_966_ADD_LINES + POST_986_ADD_LINES
-    + POST_1004_ADD_LINES
+    + POST_1004_ADD_LINES + POST_1006_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).

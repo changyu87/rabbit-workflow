@@ -17,18 +17,23 @@ It performs the deterministic sync:
      same condition as safety-check.py Inv 5 — `git diff --quiet` AND
      `git diff --cached --quiet`; untracked files are ignored). A dirty tree
      exits non-zero, failing loudly (do NOT sync over local edits).
-  2. Run `git pull --ff-only origin dev`. On a non-fast-forwardable
-     divergence `--ff-only` fails loudly (exit non-zero); the loop surfaces
-     it and does NOT fall back to a non-ff merge.
+  2. Run `git pull --ff-only origin <integration-target>`, where the target
+     is resolved from the sibling integration_target.py resolve_target()
+     (Inv 61) — NOT a hardcoded `dev`. After the dev→main cutover the
+     resolved target is `main`, so the sync pulls `origin main`; during the
+     coexistence window with target=dev it pulls `origin dev`. On a
+     non-fast-forwardable divergence `--ff-only` fails loudly (exit
+     non-zero); the loop surfaces it and does NOT fall back to a non-ff merge.
   3. On success, emit a result line and best-effort log the sync outcome via
      tick-log.py.
 
 `git pull`, NEVER `git merge` (the binding constraint). `settings.json`
 declares `deny: ["Bash(git merge *)"]` — a permissions `deny`, which is
 absolute (it beats any `allow` and even `defaultMode: bypassPermissions`).
-So `git merge --ff-only origin/dev` is permission-denied. `git pull` is NOT
-denied and fast-forwards cleanly. This script therefore uses
-`git pull --ff-only origin dev` exclusively and NEVER calls `git merge`.
+So `git merge --ff-only origin/<target>` is permission-denied. `git pull` is
+NOT denied and fast-forwards cleanly. This script therefore uses
+`git pull --ff-only origin <integration-target>` exclusively and NEVER calls
+`git merge`.
 
 Resolution:
   - repo root via RABBIT_AUTO_EVOLVE_REPO_ROOT, else os.getcwd().
@@ -38,8 +43,9 @@ Resolution:
     tick-log.py), else <cwd>/.rabbit.
 
 Status values emitted on stdout: "synced" (fast-forward applied or already
-up to date), "dirty" (uncommitted tracked changes — no pull ran),
-"diverged" (non-ff or other pull failure). Exit 0 only on "synced".
+up to date against the resolved integration target), "dirty" (uncommitted
+tracked changes — no pull ran), "diverged" (non-ff or other pull failure).
+Exit 0 only on "synced".
 
 Version: 1.0.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
@@ -61,6 +67,11 @@ try:
     tick_log = importlib.import_module("tick-log")
 except Exception:  # pragma: no cover - logging is best-effort
     tick_log = None
+
+# Resolve the loop's integration target (Inv 61) for the pull source. The
+# filename has an underscore, so a normal import works once the script dir is
+# on sys.path (inserted above for tick-log).
+import integration_target
 
 
 def _git_cmd():
@@ -112,8 +123,11 @@ def sync():
         _log("sync: dirty tree", detail)
         return 1
 
-    # --- Step B: git pull --ff-only origin dev (NEVER git merge) ---------
-    pull = _git(repo_root, "pull", "--ff-only", "origin", "dev")
+    # --- Step B: git pull --ff-only origin <target> (NEVER git merge) ----
+    # Resolve the pull source from the integration target (Inv 61); an
+    # unrecognized override raises ValueError and propagates loudly.
+    target = integration_target.resolve_target()
+    pull = _git(repo_root, "pull", "--ff-only", "origin", target)
     if pull.returncode != 0:
         detail = (pull.stderr or pull.stdout or "non-fast-forward").strip()
         sys.stderr.write(f"sync-tree: pull failed: {detail}\n")
@@ -123,7 +137,7 @@ def sync():
 
     # --- Step C: success ------------------------------------------------
     _emit("synced")
-    _log("sync: tree synced", "git pull --ff-only origin dev")
+    _log("sync: tree synced", f"git pull --ff-only origin {target}")
     return 0
 
 
@@ -131,10 +145,11 @@ def main():
     argparse.ArgumentParser(
         description="Tick-start working-tree self-sync: verify the tree is "
                     "clean of tracked changes, then `git pull --ff-only "
-                    "origin dev` (NEVER git merge — it is permission-denied). "
-                    "Fails loudly on a dirty or divergent tree (Inv 38 / "
-                    "#524). Honors RABBIT_AUTO_EVOLVE_REPO_ROOT and "
-                    "RABBIT_GIT_CMD."
+                    "origin <integration-target>` — the target resolved via "
+                    "integration_target.py (Inv 61), NEVER git merge (it is "
+                    "permission-denied). Fails loudly on a dirty or divergent "
+                    "tree (Inv 38 / #524). Honors RABBIT_AUTO_EVOLVE_REPO_ROOT "
+                    "and RABBIT_GIT_CMD."
     ).parse_args()
     return sync()
 

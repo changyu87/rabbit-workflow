@@ -16,7 +16,7 @@
     ]
   },
   "deprecation_criterion": "when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill",
-  "updated": "2026-06-04",
+  "updated": "2026-06-07",
   "manifest": [
     {
       "api": "publish_skill",
@@ -40,5 +40,6 @@
     ]
   },
   "configuration": [],
-  "prompts": []
+  "prompts": [],
+  "spec_no_change_reason": "spec change committed earlier on this branch (13834c3e) \u2014 already in history, not working-tree diff"
 }
