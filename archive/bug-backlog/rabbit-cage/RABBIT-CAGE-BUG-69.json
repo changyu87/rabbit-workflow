@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-69",
+  "type": "bug",
+  "title": "feature.json updated date stale relative to repo state (manual maintenance burden)",
+  "status": "close",
+  "priority": "low",
+  "description": "rabbit-cage/feature.json line 22: '\"updated\": \"2026-05-17\"'. The 'updated' timestamp is hand-maintained, so any edit that forgets to bump it leaves stale provenance. The contract feature template (per new-feature.py) doesn't even include 'updated' in the scaffold (line 86-99) \u2014 so the field is inconsistently used across features. Either move to git-derived metadata (last-commit-touching-feature.json) or remove the field from feature.json since validators don't enforce monotonic updates.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:22:56Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:42:39Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:22:56Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:42:39Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "788a58639ca778bbd13d0c3ad927659d81183263"
+}

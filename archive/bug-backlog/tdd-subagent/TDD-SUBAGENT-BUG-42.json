@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-42",
+  "type": "bug",
+  "title": "test-tdd-step.py t9 walks past test-green to deprecated, ignoring spec invariant about deprecation criterion",
+  "status": "close",
+  "priority": "low",
+  "description": "test-tdd-step.py t9 (line 182-199) drives the state machine spec -> spec-update -> test-red -> impl -> test-green -> deprecated in one shot. Per spec, the deprecation_criterion gates when a feature can move to deprecated. Going to deprecated in a unit test is fine, but the test exercises a transition that real consumers should never run unless the criterion is met. Either guard the transition in tdd-step.py against missing criterion, or add a note that t9 deliberately exercises the unguarded path.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:55:33Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:39:18Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:55:33Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:39:18Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "20cb9c5148b418a15026e7bde701730a693ef84a"
+}

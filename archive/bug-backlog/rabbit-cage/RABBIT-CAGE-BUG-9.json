@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-9",
+  "type": "bug",
+  "title": "scope-guard false positive: parses bash command text for write paths, triggers on description argument content",
+  "status": "close",
+  "priority": "medium",
+  "description": "scope-guard scans the full bash command string for write-path patterns, causing false positives when non-path text resembles an absolute path.\n\nObserved: filing a bug via file-item.py with a long --description argument caused scope-guard to deny the command, extracting the path /home/cyxu/workflow-dev/rabbit-marathon/ws26/). from the trailing characters of the description text. The script was not writing to that path.\n\nRoot cause: scope-guard's path detection regex is too broad \u2014 it matches path-like substrings inside quoted string arguments rather than limiting to actual write destinations.\n\nFix: narrow path extraction to actual write operations only (e.g. Write tool calls, cat/echo redirections, mv/cp destinations) and exclude text inside quoted --flag arguments. Alternatively, validate that extracted paths exist or are being opened for write before triggering the deny.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-17T15:19:30Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-17T15:38:09Z",
+  "history": [
+    {
+      "ts": "2026-05-17T15:19:30Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-17T15:38:09Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed as part of RABBIT-CAGE-BUG-8 work cycle (PR #102). Quote stripping moved from per-segment to full-command-before-split in extract_bash_targets(), eliminating false-positive path detection on --description argument text containing ;|& characters.",
+      "fix_commits": "2cfe9437dab0cfdef63a476602f67dae04593cc5"
+    }
+  ],
+  "commit_sha": "d230194364db4810201293de97041daf563cb716"
+}

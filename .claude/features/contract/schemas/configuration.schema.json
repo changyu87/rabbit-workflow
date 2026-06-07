@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "configuration.schema.json",
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "owner": "rabbit-workflow team",
   "deprecation_criterion": "when Claude Code exposes a native per-feature configuration mechanism that subsumes this schema",
   "title": "Feature CONFIGURATION",
-  "description": "Declarations of user-mutable configurables. Each declares an id, subcommand, storage location, mutation API per value or action, default state, and optional active-override alert. rabbit-config reads these declarations at runtime to dispatch /rabbit-config calls and emit Stop alerts.",
+  "description": "Declarations of user-mutable configurables. Each declares an id, subcommand, storage location, mutation API per value or action, default state, and optional active-override alert. Per-feature config commands read these declarations at runtime to dispatch config calls and emit Stop alerts. A feature MAY also declare an optional `command` (the per-feature config command name a thin wrapper over contract.lib.config_dispatch exposes) and an optional `restart_required` boolean (consumed by the dispatch helper to gate the restart prompt).",
   "type": "array",
   "items": {
     "type": "object",
@@ -14,6 +14,8 @@
     "properties": {
       "id": {"type": "string", "minLength": 1},
       "subcommand": {"type": "string", "minLength": 1},
+      "command": {"type": "string", "minLength": 1},
+      "restart_required": {"type": "boolean"},
       "storage": {
         "type": "object",
         "required": ["type"],

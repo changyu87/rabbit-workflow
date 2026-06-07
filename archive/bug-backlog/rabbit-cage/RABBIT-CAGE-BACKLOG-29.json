@@ -1,0 +1,41 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-29",
+  "type": "backlog",
+  "title": "Wave-2 deferred: invariant numbering monotonic-order reorder + enforcement test",
+  "status": "close",
+  "priority": "medium",
+  "description": "Deferred from wave-1 housekeeping (separate from BACKLOG-25 which is about duplicate numbering; this is about non-monotonic ORDERING).\n\nSpec.md has invariants in non-sequential document order:\n- Inv 86, 87 (added by wave-1) appear inline among Inv 53-60.\n- Inv 88, 89 (added by BACKLOG-27 in wave-1) sit between Inv 59 and 60.\n- Numerically-out-of-order blocks create reader confusion: scanning sequentially produces 53 -> 86 -> 87 -> 54 -> 55 -> 88 -> 89 -> 56...\n\nThis is structural debt that compounds with each future invariant addition (new invariants get appended wherever they conceptually fit, not where their number sequences).\n\nResolution: one-pass renumber of all invariants in spec.md so document order matches numeric order monotonically. Then add a new contract-feature enforcement: 'check-invariant-monotonic-order.py' (or extend check-numbered-lists.py) that walks each feature's spec.md and verifies invariant numbers appear in monotonically-increasing order. Wire into contract/test/run.py.\n\nThis invariant could become a project-wide rule (file under contract). All features benefit.\n\nCross-feature consideration: rabbit-feature has the same problem (Inv 35 appears before Inv 33/34 in document order \u2014 tracked separately in RABBIT-FEATURE-BACKLOG-X). The new enforcement test would catch both at once.\n\nAcceptance: rabbit-cage spec.md invariants in monotonic document order; new enforcement test exists and passes for every feature; reference numbers in tests/code updated where renumbering changed any invariant identity.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-20T13:18:17Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T14:29:05Z",
+  "history": [
+    {
+      "ts": "2026-05-20T13:18:17Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T14:28:07Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "a574d80a2abf592546af4c966ab9ef362ed1d1f1"
+    },
+    {
+      "ts": "2026-05-20T14:28:45Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "Reopening to re-close with explanatory reason per wave-2 orchestration decision (overrides default auto-close from TDD subagent)."
+    },
+    {
+      "ts": "2026-05-20T14:29:05Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Spec renumber complete (this cycle's impl commit). Enforcement test (check-invariant-monotonic-order.py) moved to CONTRACT-BACKLOG-30 scope per wave-2 orchestration decision; folded into that cycle to land alongside contract's other test/spec cleanup.",
+      "fix_commits": "a7191277"
+    }
+  ],
+  "commit_sha": "a628d09b47625370e06635d6b8c7b52b6bc69589"
+}

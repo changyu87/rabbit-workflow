@@ -25,7 +25,7 @@ def ko(msg):
 # Inv 1: owned surface entries present (three entries post-v4.0.0 absorption).
 dispatch = os.path.join(FEATURE_DIR, "scripts", "dispatch-tdd-subagent.py")
 tdd_step = os.path.join(FEATURE_DIR, "scripts", "tdd-step.py")
-agent = os.path.join(FEATURE_DIR, "agents", "tdd-subagent.md")
+agent = os.path.join(FEATURE_DIR, "agents", "rabbit-tdd-subagent.md")
 if os.path.isfile(dispatch):
     ok("inv1: scripts/dispatch-tdd-subagent.py exists")
 else:
@@ -35,9 +35,9 @@ if os.path.isfile(tdd_step):
 else:
     ko("inv1: scripts/tdd-step.py missing")
 if os.path.isfile(agent):
-    ok("inv1: agents/tdd-subagent.md exists")
+    ok("inv1: agents/rabbit-tdd-subagent.md exists")
 else:
-    ko("inv1: agents/tdd-subagent.md missing")
+    ko("inv1: agents/rabbit-tdd-subagent.md missing")
 
 # Inv 1: only tdd-step.py belongs to the absorbed state-machine surface;
 # the other historical state-machine scripts (tdd-context.py, tdd-drift-check.py)

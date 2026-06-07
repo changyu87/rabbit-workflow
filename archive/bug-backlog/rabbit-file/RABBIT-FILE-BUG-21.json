@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FILE-BUG-21",
+  "type": "bug",
+  "title": "ID format is ambiguous when feature name contains hyphens",
+  "status": "close",
+  "priority": "medium",
+  "description": "branch_ops._format_id produces e.g. 'RABBIT-CAGE-BUG-17' for feature 'rabbit-cage'. Because the feature is upper-cased but hyphens are preserved, parsing this back into (feature, type, n) is ambiguous - is the feature 'RABBIT' with type 'CAGE-BUG' and n=17, or 'RABBIT-CAGE' with type 'BUG' and n=17? No regex split is reliable for multi-word features. Spec example explicitly shows 'RABBIT-CAGE-BUG-17' as the canonical format but provides no parser. Fix: pick an unambiguous separator (e.g. RABBIT_CAGE-BUG-17 using underscore inside feature, or RABBIT.CAGE-BUG-17) OR commit to type-position-from-right parsing convention and document it.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-18T03:12:49Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:35:28Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:12:49Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:35:28Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete - Wave 4 cleanup",
+      "fix_commits": "90176bbfe340b70fde89102e7599f47cc41f5565"
+    }
+  ],
+  "commit_sha": "655d69a551d935743ba29db0bb1fcba9219936ea"
+}

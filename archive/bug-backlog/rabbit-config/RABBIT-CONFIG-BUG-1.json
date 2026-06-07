@@ -1,0 +1,41 @@
+{
+  "name": "RABBIT-CONFIG-BUG-1",
+  "type": "bug",
+  "title": "SKILL.md frontmatter missing description \u2014 skill never triggers naturally",
+  "status": "close",
+  "priority": "high",
+  "description": "rabbit-config/skills/rabbit-config/SKILL.md frontmatter declares name/version/owner/deprecation_criterion but NO description field. Claude Code uses the description to match user intent against available skills; an empty/missing description means the skill is never auto-invoked from natural language. Observed: user said 'human approval off, bypass permission mode on' and the session fell back to the generic update-config skill (which writes settings.local.json directly) instead of /rabbit-config. Fix: add a description that names the configurables this skill mutates AND trigger phrases that map to them (e.g. 'human approval', 'bypass permissions', 'rabbit configurable', 'prompt threshold', '/rabbit-config' literal). The description should be dynamic in spirit \u2014 enumerating subcommands from feature CONFIGURATION declarations \u2014 but a static description listing the current subcommands is acceptable for now. Plan D's spec already requires the SKILL.md to name every discoverable subcommand; the implementation either dropped the field or stored it in the wrong location. Filed during Wave 1 prep observation; do NOT fix in Wave 1 scope \u2014 file a focused fix wave or defer to rabbit-config's audit wave.",
+  "related_feature": "rabbit-config",
+  "filed": "2026-05-23T12:57:04Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-23T13:39:07Z",
+  "history": [
+    {
+      "ts": "2026-05-23T12:57:04Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-23T13:08:07Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "fix wave complete",
+      "fix_commits": "fea9f55d"
+    },
+    {
+      "ts": "2026-05-23T13:37:49Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "Reopening: ws53's fix added a description but the model still ignored the skill in ws54 when user said 'human approval off and enter permission bypass mode'. The trigger phrases are present but the model's default interpretation of 'human approval / permission bypass' as platform-level concepts overrode skill matching. Need a stronger description that disambiguates explicitly: rabbit configurables are repo-local marker files and JSON keys, NOT Claude's judgment or safety behaviors."
+    },
+    {
+      "ts": "2026-05-23T13:39:07Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "stronger description added: explicit disambiguation from platform-level concepts + per-configurable file targets + ALWAYS-invoke directive. Backstop fix in ws42.",
+      "fix_commits": "7800b6412bff0a42934b3c4cd3454e724ff1cb80"
+    }
+  ],
+  "commit_sha": "318eba10fc5555a4cc61161c6ad203fbe9cd6322"
+}

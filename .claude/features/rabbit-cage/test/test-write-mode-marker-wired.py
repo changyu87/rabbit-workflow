@@ -3,10 +3,13 @@
 invokes contract.lib.runtime.write_mode_marker, which writes the detected
 operating mode to <repo_root>/.rabbit/.runtime/mode.
 
-Plugin-mode signature: cwd is `.rabbit/` AND its parent has a sibling entry.
+Vendored-mode signature: cwd is `.rabbit/` AND its parent has a sibling entry.
 This test arranges that signature inside a temp repo and asserts the
 SessionStart dispatcher (driven by rabbit-cage's own feature.json) produces
-the `.rabbit/.runtime/mode` file with content "plugin".
+the `.rabbit/.runtime/mode` file whose content DUAL-ACCEPTS the vendored-mode
+value — "vendored" (canonical) or the legacy "plugin" — since
+write_mode_marker writes detect_mode's value verbatim and rabbit-meta is
+renaming it (Inv 50).
 """
 
 import json
@@ -89,8 +92,13 @@ def test_session_start_writes_plugin_mode_marker():
             f"stderr={proc.stderr!r} stdout={proc.stdout!r}"
         )
         content = marker.read_text()
-        assert content == "plugin", (
-            f"expected mode marker content 'plugin', got {content!r}"
+        # Dual-accept (Inv 50): write_mode_marker writes detect_mode's value
+        # VERBATIM, and rabbit-meta is renaming the vendored-mode value from
+        # "plugin" to "vendored". Accept EITHER so this stays green across the
+        # detect_mode flip.
+        assert content in ("vendored", "plugin"), (
+            f"expected mode marker content 'vendored' or 'plugin', "
+            f"got {content!r}"
         )
     print("PASS test_session_start_writes_plugin_mode_marker")
 

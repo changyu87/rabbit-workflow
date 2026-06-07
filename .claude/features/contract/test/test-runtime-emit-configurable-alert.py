@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-runtime-emit-configurable-alert.py — exercises
-emit_configurable_alert: on-demand sibling of iterate_configurables_alerts.
+emit_configurable_alert on the live per-feature path.
 Resolves a single configurable by feature_name + configurable_id, evaluates
 its current value against alert-on, returns print_result on match,
 ok_result on miss, or error_result on resolution failure.
@@ -47,6 +47,27 @@ HA_CONF = {
     "alert-on": "false",
     "alert-message": {"text": "HUMAN APPROVAL BYPASS ACTIVE",
                        "icon": "key", "color": "red"},
+}
+
+# Flipped-polarity marker configurable (post-#336 tdd-autonomous shape):
+# values.true => write_marker (present = autonomous active),
+# values.false => delete_marker (absent), alert-on="true" (fire on presence).
+# This is the OPPOSITE marker->value polarity from HA_CONF, and exercises
+# #775: _resolve_marker_value MUST derive polarity from this values map, not
+# a hardcoded human-approval assumption.
+TDD_AUTO_CONF = {
+    "id": "tdd-autonomous",
+    "subcommand": "tdd-autonomous",
+    "storage": {"type": "marker-file", "path": ".rabbit-tdd-autonomous"},
+    "values": {"false": {"api": "delete_marker",
+                         "args": {"path": ".rabbit-tdd-autonomous"}},
+               "true": {"api": "write_marker",
+                        "args": {"path": ".rabbit-tdd-autonomous",
+                                 "content": "session"}}},
+    "default": "false",
+    "alert-on": "true",
+    "alert-message": {"text": "TDD AUTONOMOUS MODE ACTIVE",
+                      "icon": "robot", "color": "yellow"},
 }
 
 BP_CONF_REAL = {
@@ -157,6 +178,94 @@ with tempfile.TemporaryDirectory() as td:
         ok("t7: action-style json-array configurable -> ok_result")
     else:
         fail(f"t7: expected ok_result, got {r!r}")
+
+# t8 (#775): FLIPPED-polarity marker PRESENT (values.true=>write_marker).
+#     present resolves to "true", matching alert-on="true" -> alert FIRES.
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-feature", [TDD_AUTO_CONF])
+    with open(os.path.join(td, ".rabbit-tdd-autonomous"), "w") as f:
+        f.write("session")
+    r = emit_configurable_alert("rabbit-feature", "tdd-autonomous", repo_root=td)
+    if (r.get("type") == "print"
+            and r.get("text") == "TDD AUTONOMOUS MODE ACTIVE"
+            and r.get("icon") == "robot"
+            and r.get("color") == "yellow"):
+        ok("t8: flipped polarity, marker PRESENT -> value 'true' matches alert-on -> alert FIRES")
+    else:
+        fail(f"t8: expected print_result on present flipped marker, got {r!r}")
+
+# t9 (#775): FLIPPED-polarity marker ABSENT (values.false=>delete_marker).
+#     absent resolves to "false", != alert-on="true" -> ok_result (silent).
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-feature", [TDD_AUTO_CONF])
+    r = emit_configurable_alert("rabbit-feature", "tdd-autonomous", repo_root=td)
+    if r == {"type": "ok"}:
+        ok("t9: flipped polarity, marker ABSENT -> value 'false' != alert-on -> silent")
+    else:
+        fail(f"t9: expected ok_result on absent flipped marker, got {r!r}")
+
+# t10 (#775): LEGACY-polarity (values.false=>write_marker) UNCHANGED.
+#     marker ABSENT resolves to "true", != alert-on="false" -> silent.
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [HA_CONF])
+    r = emit_configurable_alert("rabbit-cage", "human-approval", repo_root=td)
+    if r == {"type": "ok"}:
+        ok("t10: legacy polarity, marker ABSENT -> value 'true' != alert-on -> silent (unchanged)")
+    else:
+        fail(f"t10: expected ok_result on absent legacy marker, got {r!r}")
+
+# t11 (#775): LEGACY-polarity marker PRESENT resolves to "false" matching
+#     alert-on="false" -> alert FIRES (unchanged behavior).
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [HA_CONF])
+    with open(os.path.join(td, ".rabbit-human-approval-bypass"), "w") as f:
+        f.write("session")
+    r = emit_configurable_alert("rabbit-cage", "human-approval", repo_root=td)
+    if r.get("type") == "print" and r.get("text") == "HUMAN APPROVAL BYPASS ACTIVE":
+        ok("t11: legacy polarity, marker PRESENT -> value 'false' matches alert-on -> FIRES (unchanged)")
+    else:
+        fail(f"t11: expected print_result on present legacy marker, got {r!r}")
+
+# t12 (#789): override ACTIVE + .rabbit-auto-evolve-active ABSENT -> alert FIRES.
+#     Confirms the suppression hook is marker-gated (regression-safe baseline).
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [BP_CONF_REAL])
+    sf = os.path.join(td, ".claude", "settings.local.json")
+    os.makedirs(os.path.dirname(sf), exist_ok=True)
+    with open(sf, "w") as f:
+        json.dump({"permissions": {"defaultMode": "bypassPermissions"}}, f)
+    r = emit_configurable_alert("rabbit-cage", "bypass-permissions", repo_root=td)
+    if r.get("type") == "print" and r.get("text") == "BYPASS-PERMISSIONS MODE ACTIVE":
+        ok("t12: override active + auto-evolve ABSENT -> alert FIRES")
+    else:
+        fail(f"t12: expected print_result, got {r!r}")
+
+# t13 (#789): override ACTIVE + .rabbit-auto-evolve-active PRESENT -> SILENT.
+#     Re-homes the Inv 54 suppression into the live per-feature path: the
+#     auto-evolve composite banner is the single replacement surface.
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [BP_CONF_REAL])
+    sf = os.path.join(td, ".claude", "settings.local.json")
+    os.makedirs(os.path.dirname(sf), exist_ok=True)
+    with open(sf, "w") as f:
+        json.dump({"permissions": {"defaultMode": "bypassPermissions"}}, f)
+    open(os.path.join(td, ".rabbit-auto-evolve-active"), "w").close()
+    r = emit_configurable_alert("rabbit-cage", "bypass-permissions", repo_root=td)
+    if r == {"type": "ok"}:
+        ok("t13: override active + auto-evolve PRESENT -> suppressed (ok_result)")
+    else:
+        fail(f"t13: expected ok_result (suppressed), got {r!r}")
+
+# t14 (#789): override INACTIVE + .rabbit-auto-evolve-active PRESENT -> SILENT.
+#     Suppression does not change the inactive-override no-op outcome.
+with tempfile.TemporaryDirectory() as td:
+    make_feature(td, "rabbit-cage", [BP_CONF_REAL])
+    open(os.path.join(td, ".rabbit-auto-evolve-active"), "w").close()
+    r = emit_configurable_alert("rabbit-cage", "bypass-permissions", repo_root=td)
+    if r == {"type": "ok"}:
+        ok("t14: override inactive + auto-evolve PRESENT -> silent (ok_result)")
+    else:
+        fail(f"t14: expected ok_result, got {r!r}")
 
 if FAIL:
     print("test-runtime-emit-configurable-alert: FAIL", file=sys.stderr)

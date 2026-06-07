@@ -61,6 +61,8 @@ ANNOTATIONS = {
     "tdd-subagent":           "TDD subagent dispatch protocol (dispatch-tdd-subagent.py) + tdd-step.py forward-only state machine",
     "tdd-subagent/":          "TDD subagent dispatch protocol (dispatch-tdd-subagent.py) + tdd-step.py forward-only state machine",
     "feature.json":           "feature manifest: owner, tdd_state, surface, deprecation_criterion",
+    "specs":                  "spec and contract for this feature",
+    "specs/":                 "spec and contract for this feature",
     "docs/spec":              "spec and contract for this feature",
     "docs/spec/":             "spec and contract for this feature",
     "registry.json":          "feature registry (name -> path map)",
@@ -68,19 +70,17 @@ ANNOTATIONS = {
     "backlog-contract.md":    "backlog item contract",
     "bugs":                   "centralized bug tracker (.claude/bugs, subdirs by feature name)",
     "backlogs":               "centralized backlog tracker (.claude/backlogs, subdirs by feature name)",
-    "rabbit-file":            "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
-    "rabbit-file/":           "bug/backlog item filing and lifecycle (file-item.py, item-status.py, list-items.py)",
     "rabbit-feature":         "feature lifecycle orchestration (new, touch, scope resolution, spec authoring)",
     "rabbit-feature/":        "feature lifecycle orchestration (new, touch, scope resolution, spec authoring)",
 }
 
 STRUCTURAL_DIRS = {
-    "features", "docs", "bugs", "spec", "backlog", "backlogs",
+    "features", "docs", "bugs", "spec", "specs", "backlog", "backlogs",
     "commands", "hooks", "skills", "agents", "scripts",
     "test", "enforcement", ".claude",
     "rabbit-cage", "contract", "policy",
     "tdd-subagent",
-    "rabbit-file", "rabbit-feature",
+    "rabbit-feature",
 }
 
 KEY_FILES = {
@@ -94,12 +94,31 @@ def is_structural_dir(name):
     return name in STRUCTURAL_DIRS
 
 
+FLAT_DOCS_ARTIFACTS = {"spec.md", "contract.md", "CHANGELOG.md"}
+
+
+def is_flat_docs_artifact(name, relpath):
+    """True when relpath is a feature's flat docs/ spec artifact —
+    docs/{spec,contract,CHANGELOG}.md as a direct child of docs/ (NOT the
+    older nested docs/spec/spec.md, which the docs/spec branch already
+    covers)."""
+    if name not in FLAT_DOCS_ARTIFACTS:
+        return False
+    return relpath.replace("\\", "/").endswith("/docs/" + name)
+
+
 def is_key_file(name, relpath):
     if name in KEY_FILES:
         return True
     if name.endswith(".md") and "/docs/spec" in ("/" + relpath):
         return True
     if name.endswith(".md") and "docs/spec" in relpath:
+        return True
+    # specs/ layout for feature spec + contract.
+    if name.endswith(".md") and "/specs/" in ("/" + relpath + "/"):
+        return True
+    # Flat docs/ layout: spec/contract/changelog as siblings under docs/.
+    if is_flat_docs_artifact(name, relpath):
         return True
     return False
 
@@ -128,7 +147,17 @@ def retired_tag_for(item_path, is_dir):
     return ""
 
 
+FLAT_DOCS_ANNOTATIONS = {
+    "spec.md":      "feature spec (flat docs/ layout)",
+    "contract.md":  "feature contract (flat docs/ layout)",
+    "CHANGELOG.md": "feature changelog (flat docs/ layout)",
+}
+
+
 def annotation_for(name, relpath):
+    # Flat docs/ layout: spec/contract/changelog as siblings under docs/.
+    if is_flat_docs_artifact(name, relpath):
+        return FLAT_DOCS_ANNOTATIONS[name]
     for key, ann in ANNOTATIONS.items():
         if relpath == key or relpath == key.rstrip("/") or relpath == key.rstrip("/") + "/":
             return ann

@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-55",
+  "type": "bug",
+  "title": "test-scope-guard-centralized.py: t1/t2 use weak substring matching ('bugs' in sg / 'backlogs' in sg)",
+  "status": "close",
+  "priority": "low",
+  "description": "test/test-scope-guard-centralized.py lines 47-56: checks 'if \"bugs\" in sg' and 'if \"backlogs\" in sg' against scope-guard.py source. Any unrelated comment or variable name containing those substrings (e.g., the docstring 'no scope marker') would falsely satisfy the assertion. The current source happens to contain '.claude/bugs/' and '.claude/backlogs/' literally, so the tests pass for the right reason, but the assertion is not precise. Strengthen to check the exact path-prefix tuple ('/.claude/bugs/' and '/.claude/backlogs/').",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:16:30Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T09:08:04Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:16:30Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T09:08:04Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "WAVE5 cleanup: fixed in 505c834",
+      "fix_commits": "505c834"
+    }
+  ],
+  "commit_sha": "c8f5e33dbb4635869ccfa0080400eaf1f3eed52c"
+}

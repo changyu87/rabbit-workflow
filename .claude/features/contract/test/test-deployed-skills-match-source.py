@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-deployed-skills-match-source.py — RABBIT-CAGE-BACKLOG-34 / Inv 61.
+"""test-deployed-skills-match-source.py — RABBIT-CAGE-BACKLOG-34 / Inv 51.
 
 For every source SKILL.md at .claude/features/*/skills/<name>/SKILL.md, the
 deployed copy at .claude/skills/<name>/SKILL.md MUST exist and be

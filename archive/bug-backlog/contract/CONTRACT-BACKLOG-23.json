@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-23",
+  "type": "backlog",
+  "title": "Track 1: add check-numbered-lists.py enforcement script + wire into Stop drift check",
+  "status": "close",
+  "priority": "high",
+  "description": "CONTRACT-BACKLOG-19 Track 1. Add .claude/features/contract/scripts/enforcement/check-numbered-lists.py that rejects .md files using decimal sub-numbers (1.1, 1.2.3) or letter suffixes (1a, 1b) in ordered lists/headings. Plain 1. 2. 3. only.\\n\\nScope (in): .claude/features/**/docs/spec/*.md, .claude/features/**/skills/**/SKILL.md, .claude/features/**/agents/**/*.md, .claude/features/policy/*.md, .claude/features/contract/docs/**/*.md, top-level CLAUDE.md/README.md.\\n\\nScope (out): archive/**, docs/superpowers/**, bug-backlog-files branch content.\\n\\nPatterns to flag:\\n  ^\\s*#{1,6}\\s+\\d+\\.\\d+        # ## 2.6 Foo\\n  ^\\s*#{1,6}\\s+\\d+[a-z]\\b      # ## 3a Foo\\n  ^\\s*[-*+]?\\s*\\d+\\.\\d+\\.\\s    # 1.2. ... list item\\n  ^\\s*[-*+]?\\s*\\d+[a-z][.):]   # 3a) ... list item\\n\\nFix any current violations by rewriting to plain 1/2/3. Add an e2e test. Wire into contract test suite (test/run.py).",
+  "related_feature": "contract",
+  "filed": "2026-05-19T11:28:04Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T12:27:54Z",
+  "history": [
+    {
+      "ts": "2026-05-19T11:28:04Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T12:27:54Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "8905e8f678eb79cba227d117d1ee2b0b3e64eb3d"
+    }
+  ],
+  "commit_sha": "357ff2eeb4843215c5fa78f95c7f9ec644527456"
+}

@@ -52,6 +52,55 @@ check_phrase("spec-rules.md", "Tool-Choice Tier")
 check_phrase("spec-rules.md", "Schemas and Contracts")
 check_phrase("spec-rules.md", "Lifecycle and Ownership")
 
+# Issue #439: spec-rules.md establishes the SKILL.md Authoring Standard with
+# three citable rules deriving from the existing policy principles.
+check_phrase("spec-rules.md", "SKILL.md Authoring Standard")
+# Rule 1 — orchestration logic is script-backed, not prompt-tier placeholders.
+check_phrase("spec-rules.md", "Script-Backed Orchestration")
+# Rule 2 — policy is embedded verbatim from the canonical source, not paraphrased.
+check_phrase("spec-rules.md", "Verbatim Policy Embedding")
+# Rule 3 — SKILL.md changes are validated through skill-creator before deployment.
+check_phrase("spec-rules.md", "skill-creator Validation")
+
+# Inv 13: the SKILL.md Authoring Standard carries the no-nesting rule — a
+# subagent-dispatching skill MUST NOT be invoked inside an Agent() call (illegal
+# two-level nesting). Parallelize by dispatching the underlying subagent at
+# level 1, not by wrapping the skill in parallel Agent() calls.
+check_phrase("spec-rules.md", "No Subagent-Dispatching Skill Inside `Agent()`")
+check_phrase("spec-rules.md", "MUST NOT itself be invoked inside an")
+check_phrase("spec-rules.md", "illegal two-level nesting")
+check_phrase("spec-rules.md", "main → N parallel subagents")
+# The named subagent-dispatching set is `rabbit-feature-touch`,
+# `rabbit-feature-scope`, `rabbit-housekeep`. The retired `rabbit-spec-create`
+# skill MUST NOT appear in the authoritative set.
+check_phrase_absent("spec-rules.md", "rabbit-spec-create")
+check_phrase("spec-rules.md", "rabbit-feature-touch")
+# Issue #690: rabbit-feature-scope is the THIRD subagent-dispatching skill —
+# it dispatches an UNTYPED default-model Agent (`Agent(prompt=...)`, no
+# subagent_type). The named set MUST include it, and the rule MUST cover
+# untyped dispatches, not only `Agent(subagent_type=...)` ones.
+check_phrase("spec-rules.md", "rabbit-feature-scope")
+check_phrase("spec-rules.md", "Agent(prompt=...)")
+# Issue #730: rabbit-housekeep is a subagent-dispatching skill — it decomposes
+# per-feature housekeeping work and dispatches subagents. The authoritative
+# named set MUST include it.
+check_phrase("spec-rules.md", "rabbit-housekeep")
+check_phrase("spec-rules.md", "any future subagent-dispatching skill inherits")
+# History-free: the rule text must not carry issue/PR refs.
+check_phrase_absent("spec-rules.md", "#647")
+
+# Issue #416 (Part A): §3 Owner bullet mandates `rabbit-workflow team` for
+# repo-level features distributed as part of rabbit-workflow; individual
+# ownership is reserved for personal/experimental/out-of-distribution artifacts.
+check_phrase(
+    "spec-rules.md",
+    "For repo-level features distributed as part of rabbit-workflow, the owner MUST be `rabbit-workflow team`, not an individual.",
+)
+check_phrase(
+    "spec-rules.md",
+    "Individual ownership is reserved for personal scripts, experimental tooling, and out-of-distribution artifacts.",
+)
+
 # coding-rules.md
 check_phrase("coding-rules.md", "Think Before Coding")
 check_phrase("coding-rules.md", "Simplicity First")
@@ -64,6 +113,42 @@ check_phrase(
     "coding-rules.md",
     "Before editing an existing file, Read it. Before writing alongside existing code, Read the surrounding module. Edits made without reading are speculative.",
 )
+
+# Inv 12: prove-it-dead-or-flag cleanup methodology. coding-rules.md MUST carry
+# the cleanup definition-of-done rule with VERIFICATION-driven checks, the
+# three-row action table, and the annotate-and-continue discipline.
+check_phrase("coding-rules.md", "Prove It Dead or Flag It")
+check_phrase("coding-rules.md", "never silently keep")
+# The four verification check kinds.
+check_phrase("coding-rules.md", "path reference")
+check_phrase("coding-rules.md", "`find`")
+check_phrase("coding-rules.md", "`grep`")
+check_phrase("coding-rules.md", "reachable code path")
+check_phrase("coding-rules.md", "cross-feature claim")
+# The three-row action table actions.
+check_phrase("coding-rules.md", "Proven dead")
+check_phrase("coding-rules.md", "Proven live")
+check_phrase("coding-rules.md", "Unverifiable")
+check_phrase("coding-rules.md", "`housekeeping`")
+# Annotate-and-continue.
+check_phrase("coding-rules.md", "Annotate-and-continue")
+check_phrase("coding-rules.md", "the pass CONTINUES")
+check_phrase("coding-rules.md", "One uncertain sentence never stalls a")
+# History-free: the rule text must not carry issue/PR refs or tombstone words.
+check_phrase_absent("coding-rules.md", "#639")
+
+# Parenthetical-clarity guideline: prefer declarative sentences over
+# parenthetical asides; fold a load-bearing aside into the sentence and drop a
+# redundant one. It is framed as a clarity GUIDELINE, NOT an absolute ban —
+# load-bearing parentheticals (precise terms, citations, code tokens) stay.
+check_phrase("coding-rules.md", "Parenthetical Clarity")
+check_phrase("coding-rules.md", "Prefer declarative sentences over parenthetical asides")
+check_phrase("coding-rules.md", "fold")
+check_phrase("coding-rules.md", "drop")
+check_phrase("coding-rules.md", "not an absolute ban")
+check_phrase("coding-rules.md", "load-bearing")
+# History-free: the guideline text must not carry the issue ref.
+check_phrase_absent("coding-rules.md", "#638")
 
 # philosophy.md
 check_phrase("philosophy.md", "Machine First")

@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-CAGE-BUG-5",
+  "type": "bug",
+  "title": "Scope guard override switch (one-time and session-long) not detected or utilized by main session",
+  "status": "close",
+  "priority": "medium",
+  "description": "The scope guard hook is designed to support two override modes: one-time (permits a single guarded operation) and session-long (permits all guarded operations for the duration of the session). Neither mode is currently detected from user-granted permission in the conversation, nor is the override applied to allow the guarded Bash operation to proceed. Observed in conversation: user explicitly granted one-time permission twice; the scope guard continued to DENY both times. The workaround was to manually touch .rabbit-scope-active before the guarded command in a separate Bash call.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-15T05:55:38Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-17T05:31:16Z",
+  "history": [
+    {
+      "ts": "2026-05-15T05:55:38Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-17T05:31:16Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Stale: the mechanism is fully implemented. scope-guard.py _consume_override() handles one-time and session modes correctly; .rabbit-scope-override is on the allowlist so Claude can write it; the spec (lines 165-171) and rabbit-feature-touch Override Path both define the confirm-token flow. Bug described absence of mechanism that now exists."
+    }
+  ],
+  "commit_sha": "65de3c9e36b0eba546e6658c216679da4096f72b"
+}

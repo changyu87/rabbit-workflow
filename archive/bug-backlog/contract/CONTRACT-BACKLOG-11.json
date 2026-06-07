@@ -1,0 +1,27 @@
+{
+  "name": "CONTRACT-BACKLOG-11",
+  "type": "backlog",
+  "title": "dispatch scripts do not sanity-check policy-block output before embedding",
+  "status": "close",
+  "priority": "low",
+  "description": "Both dispatch-feature-edit.py and dispatch-spec-update.py call policy-block.py and embed its stdout, but neither checks the subprocess return code or that the output begins with the sentinel. A silent failure would yield a prompt with no policy guidance.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T04:06:01Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:06:36Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:06:01Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:06:36Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "superseded by CONTRACT-BACKLOG-1 (collapses into versioned schema-based subagent prompt contract; per cluster analysis 2026-05-18, this concern becomes trivial or free once the prompt is a structured contract with inspect/edit surface)"
+    }
+  ],
+  "commit_sha": "f309bf0926eb1c23b3d45d1e6939edd29fd2618b"
+}

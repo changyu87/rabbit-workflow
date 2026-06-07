@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Inv 36: three-way version alignment.
 
-`feature.json.version`, `docs/spec/spec.md` frontmatter `version`, and
-`docs/spec/contract.md` frontmatter `version` MUST match exactly.
+`feature.json.version`, `docs/spec.md` frontmatter `version`, and
+`docs/contract.md` frontmatter `version` MUST match exactly.
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -18,8 +18,8 @@ from pathlib import Path
 
 FEATURE_DIR = Path(__file__).resolve().parents[1]
 FEATURE_JSON = FEATURE_DIR / "feature.json"
-SPEC_MD = FEATURE_DIR / "docs/spec/spec.md"
-CONTRACT_MD = FEATURE_DIR / "docs/spec/contract.md"
+SPEC_MD = FEATURE_DIR / "docs/spec.md"
+CONTRACT_MD = FEATURE_DIR / "docs/contract.md"
 
 
 def _frontmatter_version(md_path: Path) -> str:

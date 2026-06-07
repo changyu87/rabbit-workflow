@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """check-prompts-section.py — thin CLI shim around
-contract.lib.checks.check_prompts_section (spec Inv 51, 52, 53, 37).
+contract.lib.checks.check_prompts_section (spec Inv 43, 52, 53, 37).
 
 Usage: check-prompts-section.py [<features-root>]
 Exit:  0 no violations; 1 violations found; 2 invocation error.

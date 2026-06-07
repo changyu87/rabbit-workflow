@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """check-template-schema-producer-consistency.py — thin CLI shim around
-contract.lib.checks.check_template_producer_consistency (spec Inv 19, Inv 37).
+contract.lib.checks.check_template_producer_consistency (spec Inv 16, Inv 29).
 
 Usage: check-template-schema-producer-consistency.py <template-path>
 Exit:  0 consistent; 1 unknown key(s); 2 invocation error.

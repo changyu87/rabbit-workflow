@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-41",
+  "type": "bug",
+  "title": "Tests refer to deleted dispatch-tdd-subagent.sh in messages despite .py",
+  "status": "close",
+  "priority": "low",
+  "description": "test-parallel-orchestration-scripts.py messages (e.g., t4, t5, t6, t7, t8) say 'dispatch-tdd-subagent.sh' in the ok/ko strings while the actual script is dispatch-tdd-subagent.py. Same pattern in test-skill-invocation-and-rabbit-report-path.py messages ('dispatch-tdd-subagent.sh'). Test logic is correct but log output is stale and misleading. Rename messages to .py for accuracy.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:54:47Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:39:10Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:54:47Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:39:10Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "c3a8b117c44bd2410615a41624df1135559acb47"
+}

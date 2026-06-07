@@ -1,0 +1,28 @@
+{
+  "name": "TDD-STATE-MACHINE-BACKLOG-6",
+  "type": "backlog",
+  "title": "Test coverage gaps + simplification: defensive branches, _post_transition_hooks consolidation",
+  "status": "close",
+  "priority": "medium",
+  "description": "Test gap closures:\n1. _load_checks_module returns None when contract/lib/checks.py is absent (silent failure mode)\n2. _run_spec_update_checks no-op when feature-dir/docs/spec/ does not exist\n3. check_numbered_lists raising exception (bare except return path)\n4. Force path through spec-update to test-red fires _run_spec_update_checks (only normal-forward tested)\n\nSimplification: collapse the two duplicated branches in tdd-step.py (lines 388-389 and 397-398) into a single post-transition hook dispatcher _post_transition_hooks(cur, new, d) that owns both _post_test_green_hooks and _run_spec_update_checks routing.\n\nPromote import importlib to file-level imports.\n\nDocument or drop the sys.modules.pop purge in _load_checks_module (only needed for multi-call assumption).",
+  "related_feature": "tdd-state-machine",
+  "filed": "2026-05-20T04:24:47Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-23T16:45:50Z",
+  "history": [
+    {
+      "ts": "2026-05-20T04:24:47Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-23T16:45:50Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete (secondary item resolved by same commit)",
+      "fix_commits": "0e14043f54b6a5af8194996503d94826f99e8dfa"
+    }
+  ],
+  "commit_sha": "be96007827ab33c37829cd1da5e4e769d5edba43"
+}

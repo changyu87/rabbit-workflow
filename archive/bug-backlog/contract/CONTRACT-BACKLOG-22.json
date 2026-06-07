@@ -1,0 +1,27 @@
+{
+  "name": "CONTRACT-BACKLOG-22",
+  "type": "backlog",
+  "title": "Housekeeping wave: per-feature gap/dead-code/mismatch cleanup + numbered-list enforcement",
+  "status": "close",
+  "priority": "high",
+  "description": "Comprehensive housekeeping pass across all features. Two tracks:\n\nTRACK 1 \u2014 Numbered list enforcement (from CONTRACT-BACKLOG-19):\nAdd a contract enforcement script check-numbered-lists.py that rejects .md files using decimal sub-numbers (1.1, 1.2.3) or letter suffixes (1a, 1b) in ordered lists. Plain 1. 2. 3. only. Wire into contract test suite and Stop drift check.\n\nTRACK 2 \u2014 Per-feature audit (spec, functional code, tests):\nFor each feature (contract, rabbit-cage, rabbit-feature-scope, rabbit-spec, rabbit-file, tdd-subagent, policy):\n- Spec gaps: invariants that are documented but have no test coverage; invariants that reference deleted/renamed artifacts\n- Dead code: functions, scripts, or test files that are no longer called or referenced\n- Mismatches: spec says X, implementation does Y (silent drift)\n- Simplification: overly complex code that can be reduced without behavior change\n- Test gaps: behaviors with no test, tests that pass vacuously (e.g., checking for .sh files in a Python-only repo)\n\nSuggested approach: one subagent per feature in parallel, each reads spec + implementation + tests and emits a structured audit report. Main session aggregates and files bugs/backlogs for each finding, then works them in priority order.",
+  "related_feature": "contract",
+  "filed": "2026-05-19T09:14:26Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T09:16:20Z",
+  "history": [
+    {
+      "ts": "2026-05-19T09:14:26Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T09:16:20Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Duplicate \u2014 CONTRACT-BACKLOG-19 updated in place with the same expanded scope."
+    }
+  ],
+  "commit_sha": "4028df56b74eefb4be03374a7146c31a6ed6dc33"
+}

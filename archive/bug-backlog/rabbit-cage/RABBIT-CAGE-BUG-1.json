@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-1",
+  "type": "bug",
+  "title": "SCOPE GUARD OFF message shows garbled chars instead of emoji and box-drawing chars",
+  "status": "close",
+  "priority": "medium",
+  "description": "sync-check.sh uses Python \\xNN byte escapes in the SCOPE GUARD OFF alert string (session override path). In Python 3, \\xNN in a string literal is Unicode code point U+00NN, not the raw byte. So \\xf0\\x9f\\x94\\x93 (UTF-8 bytes for padlock emoji) becomes four separate code points, printing as '\u00f0' plus invisible control chars instead of the padlock emoji. Similarly \\xe2\\x94\\x81 (UTF-8 bytes for box-drawing heavy horizontal) becomes '\u00e2' plus invisible control chars instead of the expected char. Terminal shows garbled output. All other messages in the same script use literal emoji and chars correctly. Fix: replace the byte escape sequences in the SCOPE GUARD OFF line with literal emoji and chars, matching the style of every other message. Both sync-check.sh copies (.claude/hooks/ and .claude/features/rabbit-cage/hooks/) are identical and need the same fix.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-15T02:23:10Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-15T02:54:59Z",
+  "history": [
+    {
+      "ts": "2026-05-15T02:23:10Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-15T02:54:59Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "3a81be92be1a38fe4ae0238f9d48097117fb3fc8"
+    }
+  ],
+  "commit_sha": "2b76c4ea93bd823c2ce66478e71be41e7d8492aa"
+}

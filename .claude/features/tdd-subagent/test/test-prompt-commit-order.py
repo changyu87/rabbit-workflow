@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Inv 14, 15, 16 — IMPLEMENT commit ordering, TEST-GREEN impl-SHA
-capture, UNLOCK chore commit pattern."""
+"""Inv 14, 15, 16 — IMPLEMENT staging (no commit), TEST-GREEN impl-SHA
+capture, UNLOCK chore commit pattern (8-step layout: STEP 7 TEST-GREEN,
+STEP 8 UNLOCK; commit now happens at end of SYNC-DEPLOYED, not IMPLEMENT)."""
 import re
 
 from _helpers import run_dispatch, report
@@ -26,8 +27,9 @@ if res.returncode != 0:
     raise SystemExit(1)
 prompt = res.stdout
 
-# Inv 14: IMPLEMENT step has the commit-inside-loop pattern with the
-# correct conventional-commit verbs.
+# Inv 14 (amended): IMPLEMENT step stages with `git add` and runs the
+# `tdd-step.py transition ... impl` call at end-of-step — but DEFERS the
+# commit until SYNC-DEPLOYED.
 impl_match = re.search(r"STEP 4 — IMPLEMENT\n═+\n(.*?)\n═+\nSTEP 5", prompt, re.DOTALL)
 if not impl_match:
     ko("inv14: STEP 4 IMPLEMENT section not isolated")
@@ -37,26 +39,45 @@ else:
         ok("inv14: IMPLEMENT loop has `git add`")
     else:
         ko("inv14: IMPLEMENT loop missing `git add`")
-    if 'fix(tdd-subagent):' in impl or 'fix(<feature>):' in impl:
-        ok("inv14: IMPLEMENT loop has fix(<feature>): commit message")
+    # Inv 14 (amended): IMPLEMENT must NOT contain `git commit` — the
+    # atomic commit was moved to SYNC-DEPLOYED. IMPLEMENT must also
+    # explicitly point at STEP 5 as the commit's new home (the prose
+    # contains either "STEP 5" with "commit" nearby, or the word "defer").
+    if "git commit" not in impl:
+        ok("inv14: IMPLEMENT contains no `git commit` invocation (deferred to SYNC-DEPLOYED)")
     else:
-        ko("inv14: IMPLEMENT loop missing fix(<feature>): commit message")
-    if 'feat(' in impl:
-        ok("inv14: IMPLEMENT loop documents feat() alternative")
+        ko("inv14: IMPLEMENT still contains `git commit` — should be deferred to SYNC-DEPLOYED")
+    if re.search(r"STEP 5", impl) and re.search(r"commit", impl, re.IGNORECASE):
+        ok("inv14: IMPLEMENT documents the commit lands at STEP 5 SYNC-DEPLOYED")
     else:
-        ko("inv14: IMPLEMENT loop missing feat() alternative")
-    # Ordering: commit must appear BEFORE the impl transition call.
-    commit_pos = impl.find("git commit")
-    transition_pos = impl.find("transition")
-    if 0 <= commit_pos < transition_pos:
-        ok("inv14: commit precedes `tdd-step.py transition ... impl`")
+        ko("inv14: IMPLEMENT missing pointer to STEP 5 as commit landing site")
+    # tdd-step.py transition into impl must appear in IMPLEMENT (the state
+    # advance for `code written` happens here per Inv 14 amended).
+    if re.search(r"tdd-step\.py.*?transition\s+\S+\s+impl", impl, re.DOTALL):
+        ok("inv14: IMPLEMENT runs `tdd-step.py transition <dir> impl`")
     else:
-        ko(f"inv14: commit ordering wrong (commit={commit_pos}, transition={transition_pos})")
+        ko("inv14: IMPLEMENT missing tdd-step.py transition into impl")
 
-# Inv 15: TEST-GREEN captures IMPL_SHA BEFORE writing tdd-report.
-tg_match = re.search(r"STEP 6 — TEST-GREEN\n═+\n(.*?)\n═+\nSTEP 7", prompt, re.DOTALL)
+# Inv 14 (amended) — SYNC-DEPLOYED step contains the single atomic
+# commit covering BOTH feature-local staged changes and deployed-copy sync.
+sync_match = re.search(r"STEP 5 — SYNC-DEPLOYED\n═+\n(.*?)\n═+\nSTEP 6", prompt, re.DOTALL)
+if not sync_match:
+    ko("inv14: STEP 5 SYNC-DEPLOYED section not isolated")
+else:
+    sync = sync_match.group(1)
+    if 'fix(tdd-subagent):' in sync or 'fix(<feature>):' in sync or re.search(r'fix\(\S+\):', sync):
+        ok("inv14: SYNC-DEPLOYED contains the atomic fix(<feature>): commit")
+    else:
+        ko("inv14: SYNC-DEPLOYED missing atomic commit message")
+    if 'feat(' in sync:
+        ok("inv14: SYNC-DEPLOYED documents feat() alternative")
+    else:
+        ko("inv14: SYNC-DEPLOYED missing feat() alternative")
+
+# Inv 15: TEST-GREEN (now STEP 7) captures IMPL_SHA BEFORE writing tdd-report.
+tg_match = re.search(r"STEP 7 — TEST-GREEN\n═+\n(.*?)\n═+\nSTEP 8", prompt, re.DOTALL)
 if not tg_match:
-    ko("inv15: STEP 6 TEST-GREEN section not isolated")
+    ko("inv15: STEP 7 TEST-GREEN section not isolated")
 else:
     tg = tg_match.group(1)
     sha_pos = tg.find("IMPL_SHA=$(git rev-parse HEAD)")
@@ -70,10 +91,10 @@ else:
     else:
         ko("inv15: tdd-report JSON does not bind impl_commit to $IMPL_SHA")
 
-# Inv 16: UNLOCK chore commit has the documented pattern.
-unlock_match = re.search(r"STEP 7 — UNLOCK\n═+\n(.*?)\n═+\n", prompt, re.DOTALL)
+# Inv 16: UNLOCK (now STEP 8) chore commit has the documented pattern.
+unlock_match = re.search(r"STEP 8 — UNLOCK\n═+\n(.*?)\n═+\n", prompt, re.DOTALL)
 if not unlock_match:
-    ko("inv16: STEP 7 UNLOCK section not isolated")
+    ko("inv16: STEP 8 UNLOCK section not isolated")
 else:
     body = unlock_match.group(1)
     if 'chore(tdd-subagent): advance tdd_state to test-green' in body:

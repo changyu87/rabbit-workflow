@@ -1,8 +1,9 @@
 {
   "name": "tdd-subagent",
-  "version": "5.0.0",
+  "version": "5.22.0",
   "owner": "rabbit-workflow team",
   "status": "active",
+  "housekeeping_clean": true,
   "tdd_state": "test-green",
   "summary": "Provides dispatch-tdd-subagent.py (per-feature TDD-cycle prompt assembler), tdd-step.py (forward-only TDD state machine, absorbed from the retired tdd-state-machine feature at v4.0.0), and the tdd-subagent agent definition. The rabbit-feature-touch orchestration skill is owned by rabbit-feature.",
   "surface": {
@@ -14,7 +15,7 @@
     {
       "api": "publish_agent",
       "args": {
-        "source": "agents/tdd-subagent.md"
+        "source": "agents/rabbit-tdd-subagent.md"
       }
     },
     {
@@ -53,15 +54,11 @@
         "repo_root",
         "max_iterations",
         "code_review_loop_note",
-        "linked_item_value",
-        "item_type_value",
-        "close_calls_block",
-        "handoff_closed_items_block",
-        "handoff_closed_items_json"
+        "scope_marker_path",
+        "tdd_report_path"
       ]
     }
   ],
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
-  "updated": "2026-05-26",
-  "spec_no_change_reason": "TDD-SUBAGENT-BACKLOG-20: spec already contains Inv 46; this cycle only adds the regression test."
+  "updated": "2026-06-05"
 }

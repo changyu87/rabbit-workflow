@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Inv 33: new-feature.py scaffolds a conforming feature dir.
+"""Inv 33: scaffold-feature.py scaffolds a conforming feature dir.
 
 The scaffolder is executable and produces a directory containing feature.json
-(with template_version), docs/spec/spec.md, docs/spec/contract.md, and
-test/run.py (no test/run.sh). The scaffolded directory passes
-validate-feature.py immediately.
+(with template_version), docs/spec.md, docs/contract.md, and
+test/run.py (no test/run.sh). New features are created at the flat docs/ layout
+(issue #399 migration target); the scaffolded directory passes
+validate-feature.py immediately (which dual-reads docs/ then specs/).
 
 Version: 1.0.0
 Owner: rabbit-workflow team
@@ -20,13 +21,13 @@ import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-NEW_FEATURE = REPO_ROOT / ".claude/features/rabbit-feature/scripts/new-feature.py"
+NEW_FEATURE = REPO_ROOT / ".claude/features/rabbit-feature/scripts/scaffold-feature.py"
 VALIDATE = REPO_ROOT / ".claude/features/contract/scripts/validate-feature.py"
 
 
 def test_executable() -> None:
     assert NEW_FEATURE.is_file(), f"missing scaffolder: {NEW_FEATURE}"
-    assert os.access(NEW_FEATURE, os.X_OK), "new-feature.py must be executable"
+    assert os.access(NEW_FEATURE, os.X_OK), "scaffold-feature.py must be executable"
 
 
 def test_scaffolds_conforming_dir() -> None:
@@ -43,9 +44,19 @@ def test_scaffolds_conforming_dir() -> None:
         )
         feature_dir = Path(tmp) / "demo-feature"
         assert (feature_dir / "feature.json").is_file(), "scaffold missing feature.json"
-        assert (feature_dir / "docs/spec/spec.md").is_file(), "scaffold missing docs/spec/spec.md"
-        assert (feature_dir / "docs/spec/contract.md").is_file(), (
-            "scaffold missing docs/spec/contract.md"
+        # issue #399: new features are created at the flat docs/ layout.
+        assert (feature_dir / "docs/spec.md").is_file(), "scaffold missing docs/spec.md"
+        assert (feature_dir / "docs/contract.md").is_file(), (
+            "scaffold missing docs/contract.md"
+        )
+        # docs/bugs/ is preserved alongside the flat docs/ surfaces.
+        assert (feature_dir / "docs/bugs").is_dir(), "scaffold missing docs/bugs/"
+        # Must NOT create the specs/ layout or the legacy docs/spec/ layout.
+        assert not (feature_dir / "specs").exists(), (
+            "scaffold must NOT create the specs/ layout (issue #399 target is flat docs/)"
+        )
+        assert not (feature_dir / "docs/spec").exists(), (
+            "scaffold must NOT create the legacy docs/spec/ layout (issue #399)"
         )
         assert (feature_dir / "test/run.py").is_file(), "scaffold missing test/run.py"
         assert not (feature_dir / "test/run.sh").exists(), (

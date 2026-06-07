@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-24",
+  "type": "backlog",
+  "title": "Delete dead production scripts: audit-orphan-storage.py, check-maps-consistent.py, render-template.py, dispatch-spec-update.py, rabbit-triage.py",
+  "status": "close",
+  "priority": "medium",
+  "description": "Five scripts under .claude/features/contract/scripts/ have no production callers (grep outside contract/ and archive/ returns zero):\\n- audit-orphan-storage.py (depends on non-existent registry.json)\\n- check-maps-consistent.py (depends on non-existent registry.json)\\n- render-template.py (no test exercises behavior; only existence checks)\\n- dispatch-spec-update.py (spec-update flow absorbed into rabbit-spec / rabbit-feature-touch)\\n- rabbit-triage.py (triage workflow subsumed by rabbit-file / rabbit-spec)\\n\\nAlso delete: schemas/registry.json.schema.json (no consumer) and the orphan tests/test_python_scripts.py (entire tests/ plural directory; not invoked by test/run.py, fully duplicates test-python-only-stack.py + test-files-exist.py).\\n\\nAlso delete the stale __pycache__/rabbit_print.cpython-37.pyc committed to repo.\\n\\nUpdate any test files (test-files-exist.py, test-bug-fixes-cycle.py) and contract.md provides.scripts to remove references to deleted scripts. ~650 lines of dead code + tests.",
+  "related_feature": "contract",
+  "filed": "2026-05-19T11:28:12Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T12:43:55Z",
+  "history": [
+    {
+      "ts": "2026-05-19T11:28:12Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T12:43:55Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "32c989595d3c392b485757fb37fa078729431be7"
+    }
+  ],
+  "commit_sha": "4b9f367c14785fb95d5bfe0db76c673012da039a"
+}

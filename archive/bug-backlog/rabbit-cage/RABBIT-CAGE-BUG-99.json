@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-99",
+  "type": "bug",
+  "title": "SessionStart welcome lost 3 policy-file sub-lines \u2014 regression from Plan C",
+  "status": "close",
+  "priority": "high",
+  "description": "User reports the SessionStart welcome banner now emits only one line ('Rabbit workflow ready') instead of the original 4-line block. Original (pre-Plan-C) emitted: (1) banner 'Welcome to rabbit workflow'; (2) sub-line 'philosophy.md    \u2014 machine-first \u00b7 bounded scope \u00b7 designed deprecation'; (3) sub-line 'spec-rules.md    \u2014 determinism first; schema contracts; lifecycle ownership'; (4) sub-line 'coding-rules.md  \u2014 think first; simplicity; surgical edits; goal-driven TDD'. Plan C's spec carved this out as 'Out of Scope' and the implementation collapsed to one banner line via welcome_with_policy. User decision (post-Plan-C reflection): welcome message must not change \u2014 restore the 3 sub-lines. The additionalContext policy injection appears intact; only the visible sub-lines are missing. Fix candidates: (a) extend contract.lib.runtime.welcome_with_policy to accept an optional sublines arg (list of {text, color}); rabbit-cage's SessionStart RUNTIME declaration in feature.json provides the 3 sub-line texts as args. (b) new API welcome_with_policy_sublines that hardcodes the sub-line shape but accepts the texts. (a) is more general. EITHER fix requires: (i) extend contract spec for whichever API changes; (ii) ensure dispatcher handles multi-print result emission with proper sub-line shape via rabbit_print/rabbit_subline; (iii) rabbit-cage spec rewords / removes the 'sub-lines out of scope' carve-out; (iv) regression test for the deployed welcome banner content. Cross-feature change: needs contract feature + rabbit-cage feature both touched. Blocks: nothing functionally, but the user explicitly requires this be restored before merge.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-23T12:25:51Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-23T12:39:55Z",
+  "history": [
+    {
+      "ts": "2026-05-23T12:25:51Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-23T12:39:55Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "fix wave complete",
+      "fix_commits": "82c242da"
+    }
+  ],
+  "commit_sha": "1b351c1477828a3e2091aef352997757d6746cec"
+}

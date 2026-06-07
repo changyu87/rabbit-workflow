@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-scope
 description: Resolve a natural-language request to the list of rabbit features whose files it will modify. Emits a prompt for a default-model Agent; caller parses the JSON response. General-purpose shared skill — no assumptions about callers.
-version: 1.1.0
+version: 1.2.0
 owner: rabbit-workflow team
 deprecation_criterion: when feature-scope resolution is automated natively by the dispatch infrastructure.
 ---
@@ -14,8 +14,11 @@ not prescribed.
 
 ## Usage
 
-Step 1 — generate the prompt. This is a shell command; run it in your shell:
+Step 1 — generate the prompt. Run the companion `resolve-scope.py` script in
+your shell, passing the caller's natural-language request verbatim as its
+single argument and capturing the emitted prompt:
 
+<!-- example: invocation synopsis of resolve-scope.py; the request is passed verbatim -->
 ```bash
 PROMPT=$(.claude/features/rabbit-feature/scripts/resolve-scope.py "<request-description>")
 ```

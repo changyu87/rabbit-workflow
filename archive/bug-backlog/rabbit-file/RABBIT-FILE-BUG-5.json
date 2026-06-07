@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-FILE-BUG-5",
+  "type": "bug",
+  "title": "branch_ops.py worktree checkout picks up stale local branch instead of freshly fetched remote tip",
+  "status": "close",
+  "priority": "high",
+  "description": "branch_ops.py _worktree() context manager fetches origin/bug-backlog-files to get the latest tip, then does git worktree add ... --no-checkout, then tries git checkout bug-backlog-files inside the worktree. If a local branch named bug-backlog-files exists (created in a prior session), that checkout picks up the LOCAL branch tip instead of the freshly fetched remote tip. The local branch can be arbitrarily behind the remote, causing the subsequent push to fail with non-fast-forward.\n\nObserved: filing of TDD-STATE-MACHINE-BUG-3 failed repeatedly with non-fast-forward push error. Root cause: local bug-backlog-files branch existed at a stale SHA; worktree checked it out instead of origin/bug-backlog-files. Fixed temporarily by running git branch -f bug-backlog-files origin/bug-backlog-files.\n\nFix in branch_ops.py _worktree(): change the checkout sequence so it always creates or resets the local tracking branch from the remote tip, not from any pre-existing local branch. Concretely: replace the two-step try/fallback checkout with a single git checkout -B bug-backlog-files origin/bug-backlog-files which resets the branch to the remote tip if it already exists.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-17T13:04:37Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-17T13:47:12Z",
+  "history": [
+    {
+      "ts": "2026-05-17T13:04:37Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-17T13:47:12Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed by PR #97: same root cause and same fix as BUG-4 \u2014 git checkout -B in branch_ops._worktree() eliminates stale local branch on both reads and writes."
+    }
+  ],
+  "commit_sha": "99909abad58a81b2fe0251a02c04b08a7e41d1a7"
+}

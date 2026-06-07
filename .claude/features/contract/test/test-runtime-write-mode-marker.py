@@ -2,10 +2,20 @@
 """test-runtime-write-mode-marker.py — exercises write_mode_marker:
 lazy-imports rabbit-meta.lib.mode_detection.detect_mode, calls
 detect_mode(os.getcwd()), ensures <repo_root>/.rabbit/.runtime/ exists,
-writes the resulting "plugin" or "standalone" string to
+writes the value detect_mode returns VERBATIM (the vendored-mode value —
+"vendored" or the legacy "plugin", both accepted — or "standalone") to
 <repo_root>/.rabbit/.runtime/mode. Returns ok_result on success,
 error_result on ImportError or OSError. Idempotent (content-equality).
+
+t1 asserts the written vendored-mode value is in {"vendored", "plugin"}
+rather than pinning the legacy "plugin", so the test is GREEN both before
+and after detect_mode flips the value "plugin" -> "vendored" (the separate
+rabbit-meta change). write_mode_marker writes detect_mode's output verbatim
+and does NOT canonicalize it.
 """
+
+# Vendored-install marker values contract dual-accepts (canonical + legacy).
+VENDORED_MODE_VALUES = {"vendored", "plugin"}
 
 import os
 import shutil
@@ -52,7 +62,10 @@ def _chdir_and_call(target_cwd, **kwargs):
         os.chdir(saved)
 
 
-# t1: plugin mode — cwd is .rabbit/ inside a host project tree -> "plugin"
+# t1: vendored mode — cwd is .rabbit/ inside a host project tree -> the
+# vendored-mode value. The written value is detect_mode's verbatim output,
+# accepted as EITHER "vendored" (canonical) OR "plugin" (legacy) so this is
+# green both before and after the value flip.
 with tempfile.TemporaryDirectory() as td:
     install_rabbit_meta(td)
     rabbit_dir = os.path.join(td, ".rabbit")
@@ -68,10 +81,10 @@ with tempfile.TemporaryDirectory() as td:
     else:
         with open(mode_path) as f:
             content = f.read()
-        if content == "plugin":
-            ok("t1: plugin mode detected, mode file content == 'plugin'")
+        if content in VENDORED_MODE_VALUES:
+            ok(f"t1: vendored mode detected, mode file content {content!r} in {sorted(VENDORED_MODE_VALUES)}")
         else:
-            fail(f"t1: expected content 'plugin', got {content!r}")
+            fail(f"t1: expected content in {sorted(VENDORED_MODE_VALUES)}, got {content!r}")
 
 
 # t2: standalone mode — cwd is a plain dir, no .rabbit basename

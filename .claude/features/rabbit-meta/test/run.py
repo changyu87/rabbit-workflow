@@ -27,5 +27,11 @@ def run_test(script):
 run_test("test-mode-detection.py")
 run_test("test-generate-claude-md.py")
 run_test("test-generate-readme.py")
+run_test("test-owner-team.py")
+run_test("test-specs-layout.py")
+run_test("test-bb-vocab-retired.py")
+run_test("test-spec-seeder-ownership-retired.py")
+run_test("test-contiguous-invariants-optin.py")
+run_test("test-spec-lean.py")
 
 print("ALL TESTS PASSED")

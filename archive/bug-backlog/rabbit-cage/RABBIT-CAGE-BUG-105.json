@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-105",
+  "type": "bug",
+  "title": "validate-meta-contract fails on configuration[2] (prompt-threshold): no values or actions declared",
+  "status": "close",
+  "priority": "medium",
+  "description": "rabbit-cage feature.json configuration[2] (id: prompt-threshold) declares 'storage: json-key' but NEITHER a 'values' block NOR an 'actions' block. The CONFIGURATION schema (contract spec Inv 42) requires oneOf [{required: [values]}, {required: [actions]}] \u2014 every configurable MUST declare exactly one mutation style.\n\nREPRODUCTION (HEAD 46bc7ba8):\n  python3 .claude/features/contract/scripts/validate-meta-contract.py .claude/features/rabbit-cage\n  \u2192 configuration[2] must declare exactly one of 'values' or 'actions' (oneOf)\n  \u2192 exit 1\n\nprompt-threshold is a numeric configurable \u2014 user sets the value via /rabbit-config prompt-threshold N. The current schema vocabulary only supports toggle-style (values: {true: ..., false: ...}) and arbitrary action lists. Numeric 'set this integer' isn't modeled cleanly. The configurable is currently functional at runtime (subcommand reaches the rabbit-config dispatcher which writes to settings.local.json env.RABBIT_REFRESH_EVERY) \u2014 the failure is schema-side only.\n\nTWO POSSIBLE FIXES:\n(a) Extend the configurable to declare an actions block: {'set': {'api': 'set_json_key', 'args': {file: '.claude/settings.local.json', key: 'env.RABBIT_REFRESH_EVERY', value: '{value}'}}}. Aligns with how allowed-tools and bash-allow declare actions for arbitrary user input.\n(b) Extend the meta-contract CONFIGURATION schema to admit a third style for free-form/numeric values (e.g., a 'value-storage' style that's just 'set the json-key to the user-supplied value'), then declare prompt-threshold with that style.\n\n(a) is the smaller fix; (b) is the cleaner abstraction. Recommend (a) for the bug fix wave and file (b) as a separate backlog if there's enough collective demand.\n\nDETECTED BY: ws04 CONTRACT-BACKLOG-38 wave during full-suite validation, 2026-05-25.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-25T13:21:17Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-25T13:54:14Z",
+  "history": [
+    {
+      "ts": "2026-05-25T13:21:17Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-25T13:54:14Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete (session-override + superpowers TDD, cross-feature bundle wave)",
+      "fix_commits": "4f13f0ed4994194895466f104ee3e7babeebb261"
+    }
+  ],
+  "commit_sha": "6233cf7600ad9123d1716cf3b77d9429eb3c5dc3"
+}

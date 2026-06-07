@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Task 3.2 — new-feature.py plugin-mode behavior.
+"""Task 3.2 — scaffold-feature.py plugin-mode behavior.
 
-Exercises the plugin-mode branch of `new-feature.py`:
+Exercises the plugin-mode branch of `scaffold-feature.py`:
 
   - t1: happy path — `<name> <path-glob>` produces
-        `<repo>/.rabbit/rabbit-project/features/<name>/` plus a
-        `project-map.json` entry mapping the matched paths.
+        `<repo>/.rabbit/rabbit-project/features/<name>/` (with the flat
+        docs/ layout — docs/spec.md, docs/contract.md — and no legacy
+        specs/ directory) plus a `project-map.json` entry mapping the
+        matched paths.
   - t2: a path-glob that resolves outside the user-project root is rejected
         (path traversal guard).
   - t3: a path-glob whose match is already declared by another feature in
@@ -33,7 +35,7 @@ import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-NEW_FEATURE = REPO_ROOT / ".claude/features/rabbit-feature/scripts/new-feature.py"
+NEW_FEATURE = REPO_ROOT / ".claude/features/rabbit-feature/scripts/scaffold-feature.py"
 
 
 def _set_plugin_mode(host_root: Path) -> None:
@@ -71,8 +73,18 @@ def test_t1_plugin_happy_path() -> None:
         feat_dir = host / ".rabbit/rabbit-project/features/my-feature"
         assert feat_dir.is_dir(), f"missing scaffold dir: {feat_dir}"
         assert (feat_dir / "feature.json").is_file(), "missing feature.json"
-        assert (feat_dir / "docs/spec/spec.md").is_file(), "missing spec.md"
-        assert (feat_dir / "docs/spec/contract.md").is_file(), "missing contract.md"
+        # Plugin-mode scaffolds the ratified flat docs/ layout.
+        assert (feat_dir / "docs/spec.md").is_file(), "missing docs/spec.md"
+        assert (feat_dir / "docs/contract.md").is_file(), "missing docs/contract.md"
+        # The legacy specs/ layout must NOT be created.
+        assert not (feat_dir / "specs").exists(), (
+            "plugin-mode scaffold must NOT create the legacy specs/ layout "
+            "(flat docs/ is the ratified target)"
+        )
+        # Nor the legacy docs/spec/ layout.
+        assert not (feat_dir / "docs/spec").exists(), (
+            "plugin-mode scaffold must NOT create the legacy docs/spec/ layout"
+        )
 
         fj = json.loads((feat_dir / "feature.json").read_text())
         assert fj.get("name") == "my-feature"
@@ -97,12 +109,23 @@ def test_t1_plugin_happy_path() -> None:
         assert entry.get("paths") == ["src/**/*.py"]
         assert entry.get("feature_dir") == "rabbit-project/features/my-feature"
 
-        # Plugin-mode MUST print the spec-seeder dispatch instruction so the
-        # caller can hand off to the seeder subagent. The output should name
-        # both the seeder script and the new feature name.
+        # Plugin-mode MUST print the spec-creator dispatch instruction so the
+        # caller can hand off to the rabbit-spec-creator subagent directly
+        # (#922 retired the rabbit-spec-create skill wrapper). The output names
+        # the renamed input assembler dispatch-spec-creator.py and the new
+        # feature name, and names the rabbit-spec-creator subagent to dispatch.
         out = res.stdout
-        assert "dispatch-spec-seeder.py" in out, (
-            f"plugin-mode output must reference dispatch-spec-seeder.py; got {out!r}"
+        assert "dispatch-spec-creator.py" in out, (
+            f"plugin-mode output must reference dispatch-spec-creator.py; got {out!r}"
+        )
+        assert "rabbit-spec-creator" in out, (
+            f"plugin-mode output must name the rabbit-spec-creator subagent; got {out!r}"
+        )
+        assert "dispatch-spec-create.py" not in out, (
+            f"plugin-mode output must not reference the retired dispatch-spec-create.py; got {out!r}"
+        )
+        assert "rabbit-spec-create" not in out.replace("rabbit-spec-creator", ""), (
+            f"plugin-mode output must not reference the retired rabbit-spec-create skill; got {out!r}"
         )
         assert "my-feature" in out, (
             f"plugin-mode output must name the new feature; got {out!r}"
@@ -197,8 +220,16 @@ def test_t5_standalone_unchanged() -> None:
         )
         feat_dir = Path(tmp) / "demo-standalone"
         assert (feat_dir / "feature.json").is_file()
-        assert (feat_dir / "docs/spec/spec.md").is_file()
-        assert (feat_dir / "docs/spec/contract.md").is_file()
+        # issue #399 Phase 2a: standalone scaffold writes the flat docs/ layout.
+        assert (feat_dir / "docs/spec.md").is_file()
+        assert (feat_dir / "docs/contract.md").is_file()
+        assert not (feat_dir / "specs").exists(), (
+            "standalone scaffold must NOT create the specs/ layout "
+            "(issue #399 target is flat docs/)"
+        )
+        assert not (feat_dir / "docs/spec").exists(), (
+            "standalone scaffold must NOT create the legacy docs/spec/ layout (issue #399)"
+        )
         assert (feat_dir / "test/run.py").is_file()
         # Standalone scaffold MUST NOT use the plugin schema (no top-level paths key).
         data = json.loads((feat_dir / "feature.json").read_text())

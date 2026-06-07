@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """check-sentinel.py — thin CLI shim around contract.lib.checks.check_sentinel
-(spec Inv 20, Inv 37).
+(spec Inv 17, Inv 29).
 
 Usage: check-sentinel.py <file-or-dir>
 Exit:  0 sentinel present; 1 missing; 2 invocation error.

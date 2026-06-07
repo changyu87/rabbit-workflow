@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-CAGE-BUG-7",
+  "type": "bug",
+  "title": ".rabbit/ not on scope-guard allowlist \u2014 rabbit-feature-touch protocol requires session override for impl-suggestion and tdd-report writes",
+  "status": "close",
+  "priority": "medium",
+  "description": "The scope-guard filename allowlist (scope-guard.py:96) permits writes to settings.json, settings.local.json, .gitignore, and .rabbit-scope-override unconditionally. It does NOT cover .rabbit/ at the repo root.\n\nThe rabbit-feature-touch protocol requires writes to .rabbit/ as part of its normal execution:\n- rabbit-spec (Step 3) writes .rabbit/impl-suggestion-<feature>.json\n- TDD subagent (Step 8) writes .rabbit/tdd-report-<feature>.json\n\nNeither the per-feature scope marker (.rabbit-scope-active-<feature>) nor any other scope mechanism covers .rabbit/ \u2014 per-feature markers only permit writes inside the feature's own directory under .claude/features/. The only way to write to .rabbit/ without a scope marker is via the session override, which is semantically wrong: override is for human-approved exceptional bypasses, not for routine workflow writes.\n\nObserved during fix of RABBIT-CAGE-BUG-6 (2026-05-17): required echo session > .rabbit-scope-override before mkdir -p .rabbit and Write to .rabbit/impl-suggestion-rabbit-cage.json. The TDD subagent also needed the override active to write its tdd-report.\n\nRoot cause: .rabbit/ is a known gitignored runtime artifact directory owned by the rabbit workflow, analogous to the already-allowlisted .claude/bugs/ and .claude/backlogs/ paths (scope-guard.py:99-103). It should be on the same unconditional allowlist so rabbit-feature-touch dispatchers can write impl-suggestion and tdd-report files using only the per-feature scope marker.\n\nFix: add .rabbit/ prefix check to scope-guard.py alongside the existing .claude/bugs/ and .claude/backlogs/ checks. Update the spec (Invariant 20) to list .rabbit/ as an always-permitted write target.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-17T05:50:16Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-17T13:53:25Z",
+  "history": [
+    {
+      "ts": "2026-05-17T05:50:16Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-17T13:53:25Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed by PR #98: added .rabbit/ to scope-guard.py path-prefix allowlist. rabbit-feature-touch dispatchers no longer need session override for impl-suggestion/tdd-report writes."
+    }
+  ],
+  "commit_sha": "41f4ce3386825023dfb78f91094050a452777cf8"
+}

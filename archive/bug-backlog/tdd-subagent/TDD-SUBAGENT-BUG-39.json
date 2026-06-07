@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-39",
+  "type": "bug",
+  "title": "Spec invariant numbering already exhausted: dispatch-tdd-subagent.py has duplicated invariant logic",
+  "status": "close",
+  "priority": "low",
+  "description": "Spec lists 22 invariants. dispatch-tdd-subagent.py emits a 'SCOPE BOUNDARY RED FLAG' block (per Inv 18) and a 'SKILL.md ROUTING' block (per Inv 20). These are essentially repeated rule statements that already exist in the spec. The subagent has to learn them at prompt-time. Either: refactor the rule into a single source of truth (e.g., contract.md or a policy file the script reads), or accept that prompt assembly is the canonical materialisation \u2014 but then mark the spec invariants as 'redundant; rendered into prompt'. Currently any change to rule text needs editing TWO places (spec + prompt builder) which is exactly the drift Designed Deprecation tries to prevent.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:53:14Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:38:53Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:53:14Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:38:53Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "b6f61f8928ed85f459b5ba68e323eb87be607ab5"
+}

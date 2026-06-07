@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BACKLOG-20",
+  "type": "backlog",
+  "title": "TDD subagent mis-reports test_result=pass when individual tests fail",
+  "status": "close",
+  "priority": "medium",
+  "description": "Observed during CONTRACT-BACKLOG-1 Phase D dispatch on contract: the TDD subagent's HANDOFF reported test_result=pass and spec_compliance=pass, but python3 .claude/features/contract/test/run.py exited 1 with one test (test-spec-bodies-no-historical-tags.py) failing.\n\nThe subagent's own description noted '84/85 tests pass; the single failing test flags a historical-burden tag in tdd-subagent/docs/spec/spec.md \u2014 pre-existing and out-of-scope for this cycle.' The triage may have been correct (it WAS a pre-existing violation from Phase B that this cycle did not introduce), but the HANDOFF schema does not have a field for 'pre-existing failures noted but not introduced by this cycle' \u2014 the only fields are test_result (pass|fail) and spec_compliance (pass|fail).\n\nThe subagent appears to have classified the failure as 'pre-existing/out-of-scope' and reported pass anyway. The reporting is misleading: the dispatcher (and any reviewer reading the HANDOFF) sees pass and assumes the suite is green, when it is not.\n\nFix candidates:\n(a) HANDOFF schema gains a 'pre_existing_failures' field listing tests that failed but were not introduced by this cycle, with the subagent required to set test_result=fail if ANY test in the suite fails (even if it pre-existed)\n(b) Subagent runs the full suite at LOCK time (before any edits) to capture a baseline failure set, then at TEST-GREEN reports test_result=pass ONLY if no NEW failures appeared (failures present at baseline are tolerated and listed in pre_existing_failures)\n(c) Simpler: subagent ALWAYS reports test_result=fail when exit code is nonzero; never silently triages pre-existing failures as pass\n\nOption (b) is the most rigorous but adds a LOCK-time test run. Option (c) is the simplest and matches the HANDOFF schema's binary nature. Tracked separately from the underlying historical-burden violation, which has been resolved via an ALLOWLIST entry in PR #194.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-27T01:22:14Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-27T02:04:31Z",
+  "history": [
+    {
+      "ts": "2026-05-27T01:22:14Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-27T02:04:31Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete (cross-feature template edit via session scope-override)",
+      "fix_commits": "0fc995cb"
+    }
+  ],
+  "commit_sha": "d7cecdda56d228f4482cec3ffa59e0f652e0c7dc"
+}

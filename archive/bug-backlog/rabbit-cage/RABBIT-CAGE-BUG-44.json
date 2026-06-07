@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-44",
+  "type": "bug",
+  "title": "build-targets.py prints '[built]' even when copy is a no-op (misleading)",
+  "status": "close",
+  "priority": "low",
+  "description": "scripts/build-targets.py lines 50-52: when content_changed is False (destination sha matches source), the shutil.copy2 call is skipped (correctly), but line 52 still prints '  [built] {name}'. The message is misleading: nothing was actually built. Suggest distinct messages: '[built]' on actual copy, '[unchanged]' or '[ok]' on sha-match no-op. Helps drift debugging.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:13:10Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:40:41Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:13:10Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:40:41Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "46add0e354f0a0294bcdef44bf6b1d5d34ff7a21"
+}

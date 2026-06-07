@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-41",
+  "type": "bug",
+  "title": "contract.md provides.commands lists rabbit-config.md which Inv 25 forbids (spec/contract contradiction)",
+  "status": "close",
+  "priority": "medium",
+  "description": "docs/spec/contract.md line 14 declares: 'commands': [{'path': '.claude/commands/rabbit-config.md', 'subcommands': [...]}]. Spec Inv 25 (spec.md L165-166) explicitly forbids this file's existence: 'The slash-command file commands/rabbit-config.md does NOT exist... The deleted command file MUST NOT be recreated.' The contract advertises a file the spec forbids. Either remove the rabbit-config.md entry from contract.md provides.commands (since /rabbit-config is now skill-only), or revise Inv 25. Also contract.md invokes section lists '.claude/features/contract/scripts/relink.sh' and 'dispatch-feature-edit.sh' (.sh files) \u2014 contradicts the Python-only never-list at line 64.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:12:02Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:40:21Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:12:02Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:40:21Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "wave-4 cleanup; fixed in e10610a (impl) and 91f2c68 (tests)",
+      "fix_commits": "e10610a42a526d926fac760b39ae1d86da7f7c06"
+    }
+  ],
+  "commit_sha": "d5e0d2e2fbdc90d0c325fc614c1fdd75b25ab2a8"
+}

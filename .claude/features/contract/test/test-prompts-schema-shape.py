@@ -4,7 +4,7 @@ prompts.schema.json: it must be valid JSON, declare itself as a JSON Schema
 draft-07 document, describe an array of {id, kind, inject, slots} objects
 with closed shape, and enumerate the closed kind set (skill, subagent).
 
-Per spec Inv 51.
+Per spec Inv 43.
 """
 
 import os

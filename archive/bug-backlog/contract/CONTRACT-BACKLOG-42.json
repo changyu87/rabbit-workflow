@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-42",
+  "type": "backlog",
+  "title": "build-prompt.py orphan-check vs single-pass substitution leaks slot-value placeholders",
+  "status": "close",
+  "priority": "medium",
+  "description": "build-prompt.py's orphan-placeholder check (regex \\{\\{\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\}\\}) matches any double-brace name pattern in the assembled body, not just in the template body. Because substitution is single-pass, any slot value that contains literal double-brace text (e.g. spec.md prose describing the placeholder syntax, impl-suggestion JSON content referencing slot names) leaks through and trips the orphan check.\n\nMade Phase C and Phase D dispatch fragile during CONTRACT-BACKLOG-1 implementation \u2014 multiple times had to defang spec/impl-suggestion text by replacing the literal placeholder syntax with backticked names to unblock dispatch.\n\nFix candidates:\n(a) only check for orphans whose names are NOT in the declared slot set \u2014 substituted names by definition removed them; remaining unknown names are real orphans; this preserves the template-author safety net without false positives from slot values\n(b) two-pass substitution where slot values are quoted/escaped before substitution and unescaped after\n(c) require a distinct placeholder syntax in templates (e.g. {{$name}}) that is unlikely to occur in slot content\n\nOption (a) is least disruptive and recommended.",
+  "related_feature": "contract",
+  "filed": "2026-05-27T01:21:48Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-27T01:56:52Z",
+  "history": [
+    {
+      "ts": "2026-05-27T01:21:48Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-27T01:56:52Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "f182c957da27a16fb5980fb08fdda2f4325af2a5"
+    }
+  ],
+  "commit_sha": "6ac6f216ae6d6a771cd37992549ab6f331f2c0be"
+}

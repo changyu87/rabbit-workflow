@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-workspace-structure-naming.py — Inv 26.
+"""test-workspace-structure-naming.py — Inv 23.
 
 workspace-structure.json schema field naming MUST be internally consistent:
 all snake_case (no mixed camelCase keys).

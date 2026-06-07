@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-43",
+  "type": "bug",
+  "title": "scope-guard.py silently ALLOWS write when scope marker references unknown feature",
+  "status": "close",
+  "priority": "medium",
+  "description": "hooks/scope-guard.py decide() at lines 152-186: when .rabbit-scope-active marker exists in ancestor chain, code reads marker content, calls find_feature_path(REPO_ROOT, scope_feature). If find_feature_path returns None (feature not in registry, lookup failed, find-feature.py missing), the code falls through to line 186 and returns True with 'ALLOW (under active scope)'. This silently bypasses scope enforcement: a marker file with invalid/typo feature name allows ANY write to ANY path. The default-deny invariant is violated by a single bad marker. The code should DENY with a clear error message ('unknown feature in scope marker') when feature lookup fails.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:12:58Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T06:40:04Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:12:58Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T06:40:04Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed in Wave 2 PR. session-init R1 implementation restored (BUG-17); sync-check drift color now RED (BUG-34); tests use isolated temp-dir fixtures (BUG-40); scope-guard DENIES on unresolvable feature (BUG-43); @-import handling fixed (BUG-78). 9 new e2e tests; all 39 rabbit-cage suites pass.",
+      "fix_commits": "bbeb0baab241952e5e690be15b8036ecdd84655e"
+    }
+  ],
+  "commit_sha": "fa0ebcf3162ee85cb1c20a471ea52be8ef368d48"
+}

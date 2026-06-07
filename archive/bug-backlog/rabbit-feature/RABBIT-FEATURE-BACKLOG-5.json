@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FEATURE-BACKLOG-5",
+  "type": "backlog",
+  "title": "Housekeeping wave 1: tests inventory sync + cross-ref qualification + SKILL.md metadata + stale refs + invariant ordering + Inv 35 test extension",
+  "status": "close",
+  "priority": "medium",
+  "description": "Bundled housekeeping items for rabbit-feature, surfaced by wave-1 review.\n\nMEDIUM:\n(M5) Spec.md 'Tests' section enumerates 11 tests; test/ directory has 18 test files. Missing: test-skill-rabbit-feature-new.py, test-skill-md-validate-feature-cli.py, test-contract-cross-feature-deps.py, test-backlog-1-inv-5-8-coverage.py, test-bug-5-skillmd-brand-prefix.py, test-bug-6-spec-skill-read-before-edit.py. Sync.\n\n(M6) Cross-feature invariant references in Inv 8/9 say 'per contract Inv 35/36 brand convention' \u2014 but rabbit-feature/docs/spec/contract.md is a pure JSON block (no numbered invariants). The reference targets rabbit-cage contract (or rabbit-cage spec, depending on which 'Inv 35/36' actually anchors brand prefix). Qualify: 'per rabbit-cage Inv 35/36' (verify which feature's invariants actually anchor the brand convention first). Also update test-bug-5-skillmd-brand-prefix.py docstring.\n\n(M7) rabbit-feature-spec/SKILL.md frontmatter MISSING version, owner, deprecation_criterion. The four sibling SKILL.md files (touch, scope, new, audit) all carry the full set. This one is the outlier (was just edited this session for BUG-6 without metadata promotion).\n\n(M8) rabbit-feature-touch/SKILL.md frontmatter has deprecation_criterion citing 'dispatch-feature-edit.py' (deleted). Rewrite to reference a live successor (e.g. 'native rabbit CLI orchestration'). Plus Step 4 prose says 'invoke rabbit-spec' \u2014 legacy name (renamed rabbit-feature-spec per Inv 32). Replace.\n\nLOW:\n(F1) spec.md numbering/ordering: Inv 35 (BUG-6) appears in document order BEFORE Inv 33/34 because it's filed under 'Absorbed from rabbit-spec' subsection. Sequential reader sees 32 -> 35 -> 33 -> 34. Either renumber sequentially OR add explicit numbering callout.\n\n(F4) feature.json 'summary' describes only rabbit-feature-touch + the two absorbed skills. Two newer skills (rabbit-feature-new, rabbit-feature-audit) declared in surface.skills are absent. Update summary.\n\n(F7) Inv 35 says obligation extends to any caller bypassing Step 1 \u2014 but test-bug-6-spec-skill-read-before-edit.py only asserts Step 1 + Step 4 mandate phrasing. Add assertion that the caller-bypass clause appears in SKILL.md (or that Inv 35 text in spec.md retains the clause).\n\nAcceptance: tests list synced to live state, cross-feature refs qualified, frontmatter metadata complete on all 5 SKILL.md files, stale deprecation_criterion + name references corrected, invariant ordering addressed (or callout added), feature.json summary updated, Inv 35 caller-bypass test added.",
+  "related_feature": "rabbit-feature",
+  "filed": "2026-05-20T07:33:51Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T08:17:40Z",
+  "history": [
+    {
+      "ts": "2026-05-20T07:33:51Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T08:17:40Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "90e07b235acb1a289196689ae16c7108254c1a0e"
+    }
+  ],
+  "commit_sha": "5021839232299eb72559ae653299ba8d9df802ee"
+}

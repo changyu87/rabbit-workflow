@@ -1,0 +1,28 @@
+{
+  "name": "POLICY-BACKLOG-13",
+  "type": "backlog",
+  "title": "Housekeeping wave 1: Read-before-Edit principle + test consolidation + metadata gaps",
+  "status": "close",
+  "priority": "medium",
+  "description": "Bundled housekeeping items for policy feature, surfaced by wave-1 review.\n\n(M1) HIGH-SIGNAL: Add a general Read-before-Edit principle to coding-rules.md. BUG-6 shipped Inv 35 to rabbit-feature mandating Read-before-Edit for rabbit-feature-spec specifically. The lesson is general: every actor editing existing code should Read it first. Encoding in coding-rules.md propagates via policy-block injection to every subagent dispatch, instead of needing per-skill invariants.\n\nSuggested addition (coding-rules.md Section 1 or as new principle): 'Before editing an existing file, Read it. Before writing alongside existing code, Read the surrounding module. Edits made without reading are speculative.' Wire one assertion in test-rule-files-content.py.\n\n(M11) Rename test-policy-invariants-v1-4-0.py to test-spec-invariants.py (or test-policy-invariants.py). The versioned filename triggers a rename cycle every spec bump (v1-2-0 -> v1-3-0 -> v1-4-0 per run.py comments). Tests inside are not version-specific.\n\n(M12) Delete or consolidate: test-files-exist.py is fully subsumed by test-policy-invariants-v1-4-0.py.\n\n(M13) Policy test scripts missing required Version/Owner/Deprecation criterion module docstring per spec-rules section 3. Non-compliant: test-files-exist.py, test-rule-files-content.py, test-imports-resolve.py, test-backlog003.py, test-policy-invariants-v1-4-0.py, test-backlog-11-12.py, run.py. The policy feature itself violates its own metadata rule.\n\n(LOW F5) test-policy-bug-fixes.py is an unbounded kitchen-sink (9+ closed-ticket assertions). Restate as 'regression guard for historical fixes' with concrete retirement criterion.\n\n(LOW F6) Test filename conventions inconsistent (5 styles across 8 files). Pick one (behavior-first names) and rename.\n\nAcceptance: all policy tests have required metadata; coding-rules.md sanctions Read-before-Edit; versioned filename retired; duplicates consolidated; one test naming convention applied.",
+  "related_feature": "policy",
+  "filed": "2026-05-20T07:31:59Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T07:39:33Z",
+  "history": [
+    {
+      "ts": "2026-05-20T07:31:59Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T07:39:33Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "39eb4001c806fd13b512eedcd642eca68fcbe482"
+    }
+  ],
+  "commit_sha": "9bdac4fb75b9cc61709789c6721b6b3853481f57"
+}

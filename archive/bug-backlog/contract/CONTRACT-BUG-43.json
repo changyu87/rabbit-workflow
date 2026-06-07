@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-43",
+  "type": "bug",
+  "title": "generate-claude-md producer fails: missing required args at runtime",
+  "status": "close",
+  "priority": "high",
+  "description": "When the deployed Stop dispatcher invokes the check_drift_regenerate runtime API with producer=generate-claude-md, the producer call fails with: generate_claude_md() missing 2 required positional arguments: 'policy_source' and 'header_source'. The runtime API forwards args via lib.producers.call_producer, but the generate-claude-md producer entrypoint apparently expects positional rather than keyword args (or the args dict isn't being unpacked correctly). Symptom is benign at the dispatcher level (the error is caught and logged to stderr, dispatcher continues), but it means CLAUDE.md drift regeneration NEVER actually runs in deployed sessions. Discovered while fixing RABBIT-CAGE-BUG-98 (deployed dispatcher import failure); surfaced once the dispatcher could execute past the import. Reproduce: cd to a deployed clone, run 'echo {} | python3 .claude/hooks/stop-dispatcher.py' and observe stderr. Fix likely lives in contract/lib/producers.py call_producer or in the producer entrypoint signature. Out of scope for the BUG-98 wave.",
+  "related_feature": "contract",
+  "filed": "2026-05-23T12:19:30Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-24T06:02:49Z",
+  "history": [
+    {
+      "ts": "2026-05-23T12:19:30Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-24T06:02:49Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Fixed in CONTRACT-WAVE-9: check_drift_regenerate now accepts args parameter, forwards to producers.call_producer. Regression covered by test-runtime-check-drift-regenerate-real-producer.py exercising the real generate_claude_md producer.",
+      "fix_commits": "27d2f0ec778785ef11fcce8baa011c449b0bebed"
+    }
+  ],
+  "commit_sha": "0581127369f4b1ba70323773a40c219a19a989d3"
+}

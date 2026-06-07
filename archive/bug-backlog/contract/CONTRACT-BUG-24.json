@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-24",
+  "type": "bug",
+  "title": "bug-template.json uses _template_version while other templates use template_version",
+  "status": "close",
+  "priority": "low",
+  "description": "templates/bug-template.json declares _template_version (underscore) at line 2 while all other templates use template_version. Spec invariant 1 satisfied lexically by substring match but semantically inconsistent. Drop underscore or document.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T03:20:45Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:35:01Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:20:45Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:35:01Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3 batch 2: schema permissiveness, template fields, enforcement script corrections per Inv 22-33.",
+      "fix_commits": "51fc7f3"
+    }
+  ],
+  "commit_sha": "07ccabf5194f153790842051a9cac0ccec4a5e2e"
+}

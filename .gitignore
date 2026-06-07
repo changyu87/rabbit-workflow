@@ -1,4 +1,6 @@
+# Rabbit workflow runtime markers (per-session operational state, never committed)
 .rabbit-scope-active
+.rabbit-scope-active-*
 *.swp
 .nfs*
 .rbt-sync-counter
@@ -9,7 +11,12 @@
 .rabbit-scope-override-used
 .rabbit-skills-updated
 .rabbit-human-approval-bypass
+.rabbit-tdd-autonomous
+.rabbit-auto-evolve-*
+# Claude Code platform runtime files
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/scheduled_tasks.json
 
 # Ephemeral TDD artifacts
 tdd-report.json

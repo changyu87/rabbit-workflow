@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# test-validate-feature-real-features.py — e2e test for spec Inv 32 (BUG-38).
+# test-validate-feature-real-features.py — e2e test for spec Inv 25 (BUG-38).
 #
 # validate-feature.py MUST exit 0 for a feature directory that is otherwise
 # valid (correct feature.json, spec.md, contract.md, executable test/run.py)
-# but lacks the legacy `docs/bugs/` directory. Per Inv 14, bug storage is
+# but lacks the legacy `docs/bugs/` directory. Per Inv 11, bug storage is
 # centralized to `<repo-root>/.claude/bugs/<feature-name>/`; per-feature
 # `docs/bugs/` no longer applies.
 #
@@ -26,13 +26,13 @@ def make_fixture_without_docs_bugs():
     d = tempfile.mkdtemp(prefix="contract-bug-38-fixture-")
     name = os.path.basename(d)
 
-    os.makedirs(os.path.join(d, "docs/spec"), exist_ok=True)
+    os.makedirs(os.path.join(d, "specs"), exist_ok=True)
     os.makedirs(os.path.join(d, "test"), exist_ok=True)
     # NOTE: intentionally do NOT create docs/bugs/ — this is the BUG-38 scenario.
 
-    with open(os.path.join(d, "docs/spec/spec.md"), "w") as f:
+    with open(os.path.join(d, "specs/spec.md"), "w") as f:
         f.write("# Fixture spec\nBody.\n")
-    with open(os.path.join(d, "docs/spec/contract.md"), "w") as f:
+    with open(os.path.join(d, "specs/contract.md"), "w") as f:
         f.write("# Fixture contract\nBody.\n")
 
     run_py = os.path.join(d, "test/run.py")

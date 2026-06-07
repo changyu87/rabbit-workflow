@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-31",
+  "type": "backlog",
+  "title": "Rename /rabbit-config human-approval subcommand to bypass-human-approval for parallel semantics with bypass-permissions",
+  "status": "close",
+  "priority": "medium",
+  "description": "Naming asymmetry between the two safety-gate subcommands creates confusion:\n\nCurrent state:\n  /rabbit-config human-approval true        \u2192 gate ACTIVE (safe/default)\n  /rabbit-config human-approval false       \u2192 gate BYPASSED (dangerous)\n  /rabbit-config bypass-permissions true    \u2192 bypass ACTIVE (dangerous)\n  /rabbit-config bypass-permissions false   \u2192 bypass off (safe/default)\n\nSame boolean value (true) means OPPOSITE outcomes between the two\nsubcommands. Operators have to mentally invert depending on which\nsubcommand they're using.\n\nProposed rename (parallel bypass-X naming):\n  /rabbit-config bypass-human-approval true    \u2192 bypass ACTIVE\n  /rabbit-config bypass-human-approval false   \u2192 bypass off (default)\n  /rabbit-config bypass-permissions true       \u2192 bypass ACTIVE\n  /rabbit-config bypass-permissions false      \u2192 bypass off (default)\n\nBoth subcommands now:\n  - Lead with 'bypass-' prefix\n  - true = bypass on (dangerous state)\n  - false = bypass off (safe/default state)\n  - Match the banner text ('HUMAN APPROVAL BYPASS ACTIVE',\n    'BYPASS-PERMISSIONS MODE ACTIVE')\n  - Match the marker file naming (.rabbit-human-approval-bypass\n    already has 'bypass' in it)\n\nWHY KEEP bypass-permissions UNCHANGED:\n- Claude Code API literally uses string 'bypassPermissions' as the\n  defaultMode value. Our subcommand name should mirror the API to\n  prevent mental disconnect between the CLI knob and the underlying\n  setting. Renaming bypass-permissions in another direction breaks\n  this mapping.\n\nCONTRACT INVARIANT COMPLIANCE:\n- Contract Inv 16 forbids 'no-/disable-/skip-/without-' prefixes\n  (negation via name). 'bypass-' is NOT a negation prefix \u2014 it\n  describes the active state of the bypass mode. Both names are\n  Inv 16-compliant.\n- Contract Inv 15: boolean CLI values use 'true'/'false' exclusively.\n  Both subcommands already comply.\n\nSCOPE OF CHANGE:\n1. .claude/features/rabbit-cage/skills/rabbit-config/scripts/rabbit-config.py\n   - Rename cmd_human_approval \u2192 cmd_bypass_human_approval\n   - Update argparse subparser name + help text\n   - For backwards-compat: optionally accept legacy 'human-approval'\n     with a deprecation warning for one cycle, then retire\n2. .claude/features/rabbit-cage/skills/rabbit-config/SKILL.md\n   - Update CLI surface section (description + body) to use new name\n3. .claude/features/rabbit-cage/docs/spec/spec.md\n   - Update Inv 55, 56, 57, 68 (reference the subcommand name)\n   - Update any other invariants citing 'human-approval' subcommand\n   - Update the subcommand description block in the rabbit-config\n     section\n4. .claude/features/rabbit-cage/docs/spec/contract.md\n   - Update any subcommand references\n5. Tests\n   - Update tests asserting subcommand name\n6. Cross-feature references\n   - Grep for '/rabbit-config human-approval' across .claude/\n   - Update each (likely in rabbit-feature SKILL.md per Step 4\n     bypass warning, dispatch-tdd-subagent.py preamble note)\n7. Rebuild deployed copies via build.py\n\nMARKER FILE UNCHANGED:\n- .rabbit-human-approval-bypass keeps its name (it describes what\n  the marker IS, not the subcommand that toggles it)\n\nBANNER TEXT UNCHANGED:\n- 'HUMAN APPROVAL BYPASS ACTIVE' already uses the bypass-flavored\n  wording\n\nDEPENDENCY:\n- BLOCKED on RABBIT-CAGE-BACKLOG-30 (rabbit-cage spec.md monotonic\n  renumber) landing first. Both cycles edit rabbit-cage/docs/spec/\n  spec.md and would collide if run concurrently. Run AFTER renumber\n  cycle merges so this cycle works on the renumbered baseline.\n\nAcceptance:\n- /rabbit-config bypass-human-approval CLI works\n- /rabbit-config human-approval either (a) errors with helpful\n  message pointing at new name, OR (b) accepts with deprecation\n  warning, depending on coexistence-window decision at impl time\n- Spec invariants reference the new name\n- Cross-feature references updated\n- All tests pass\n- Banner text + marker file unchanged",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-21T02:12:15Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-21T04:11:37Z",
+  "history": [
+    {
+      "ts": "2026-05-21T02:12:15Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-21T04:11:37Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete (secondary item resolved by same commit)",
+      "fix_commits": "df227a4f129c8ec922d500033360dc55312d458e"
+    }
+  ],
+  "commit_sha": "a656ce429b20c1b4e607dc062fda255258e08f62"
+}

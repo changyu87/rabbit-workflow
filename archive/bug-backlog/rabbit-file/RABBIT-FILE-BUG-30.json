@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FILE-BUG-30",
+  "type": "bug",
+  "title": "list-items.py output is non-deterministic; rglob order is filesystem dependent",
+  "status": "close",
+  "priority": "low",
+  "description": "list-items.py iterates results from branch_ops.read_branch which uses Path.rglob('item.json') with no sort. Filesystem traversal order is OS- and inode-dependent, so list-items.py prints items in an unpredictable order across machines and filesystem snapshots. Determinism would help users scan output and helps test assertions. Fix: sort results by name (which encodes type and numeric ID) or by filed timestamp before printing.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-18T03:28:42Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:36:04Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:28:42Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:36:04Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete - Wave 4 cleanup",
+      "fix_commits": "90176bbfe340b70fde89102e7599f47cc41f5565"
+    }
+  ],
+  "commit_sha": "d5993b6349d9e5e6c7491d37ebcd5afa1ac2c18e"
+}

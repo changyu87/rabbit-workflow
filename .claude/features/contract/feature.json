@@ -1,41 +1,15 @@
 {
   "name": "contract",
-  "version": "1.40.0",
+  "version": "2.40.0",
   "owner": "rabbit-workflow team",
+  "housekeeping_clean": true,
+  "contiguous_invariants": true,
   "tdd_state": "test-green",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
-  "surface": {
-    "hooks": [],
-    "commands": [],
-    "skills": []
-  },
-  "deprecation_criterion": "when Claude Code exposes a native workflow contract mechanism",
-  "updated": "2026-05-28",
-  "tdd_last_cycle_impl_commit": "27d2f0ec778785ef11fcce8baa011c449b0bebed",
-  "spec_no_change_reason": "spec changes already committed in 927f3de2 (frontmatter bump 1.39.0->1.40.0, Inv 41 refinement, new Inv 60+61)",
-  "manifest": [
-    {
-      "api": "publish_hook",
-      "args": {
-        "event": "PreToolUse",
-        "source": "hooks/prompt-injector.py"
-      }
-    }
-  ],
-  "runtime": {
-    "Stop": [
-      {
-        "api": "check_prompt_injection_failures",
-        "args": {
-          "log_path": ".rabbit/prompts/.injection-failures.log"
-        }
-      },
-      {
-        "api": "cleanup_old_prompts",
-        "args": {
-          "max_age_days": 7
-        }
-      }
-    ]
-  }
+  "deprecation_criterion": "when Claude Code exposes a native mechanism that supersedes contract's governance surface \u2014 the cross-feature contract gate, version-lockstep, invariant numbering, and schema/template ownership \u2014 not merely when a native orchestration/workflow primitive exists",
+  "updated": "2026-06-04",
+  "tdd_last_cycle_impl_commit": "b180ff0e9ef7e09f5fe4dc74fafac79f899d2a45",
+  "manifest": [],
+  "runtime": {},
+  "configuration": []
 }

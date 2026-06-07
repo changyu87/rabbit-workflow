@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0.0",
+  "owner": "rabbit-workflow team",
+  "deprecation_criterion": "when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill",
+  "title": "rabbit-auto-evolve loop-critical runtime-state registry",
+  "description": "Maps loop-critical runtime state (markers, resolved paths, agent types, config keys) to the consumption type by which the loop reads it, and thence to the safe-execution pattern a self-modifying migration of that state MUST use. plan-batch.py consumes this registry to classify self-modifying-migration work items.",
+  "consumption_to_pattern": {
+    "disk-each-tick": "coexistence-window",
+    "self-contained": "last-tick-action",
+    "memory-at-start": "restart-safe"
+  },
+  "fallback_heuristic": {
+    "marker": "disk-each-tick",
+    "path": "disk-each-tick",
+    "agent-type": "memory-at-start",
+    "config-key": "memory-at-start"
+  },
+  "entries": [
+    {"token": ".rabbit-auto-evolve-running", "kind": "marker", "consumption": "disk-each-tick"},
+    {"token": ".rabbit-auto-evolve-stop-requested", "kind": "marker", "consumption": "disk-each-tick"},
+    {"token": ".rabbit-auto-evolve-restart-needed", "kind": "marker", "consumption": "disk-each-tick"},
+    {"token": ".rabbit-auto-evolve-aborted", "kind": "marker", "consumption": "disk-each-tick"},
+    {"token": ".rabbit-auto-evolve-active", "kind": "marker", "consumption": "disk-each-tick"},
+    {"token": ".rabbit-human-approval-bypass", "kind": "marker", "consumption": "disk-each-tick"},
+    {"token": ".claude/features/rabbit-auto-evolve/scripts", "kind": "path", "consumption": "disk-each-tick"},
+    {"token": "tdd-subagent", "kind": "agent-type", "consumption": "memory-at-start"},
+    {"token": "research-subagent", "kind": "agent-type", "consumption": "memory-at-start"}
+  ]
+}

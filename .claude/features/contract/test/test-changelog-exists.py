@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-changelog-exists.py — Inv 39 / CONTRACT-BACKLOG-30.
+"""test-changelog-exists.py — Inv 31 / CONTRACT-BACKLOG-30.
 
 End-to-end test that .claude/features/contract/CHANGELOG.md exists and is
 structurally well-formed:
@@ -19,7 +19,9 @@ import sys
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 FEATURE_DIR = os.path.normpath(os.path.join(TEST_DIR, ".."))
-CHANGELOG = os.path.join(FEATURE_DIR, "CHANGELOG.md")
+# Flat docs/ layout (#399 Phase 2b): contract's CHANGELOG lives at
+# docs/CHANGELOG.md.
+CHANGELOG = os.path.join(FEATURE_DIR, "docs", "CHANGELOG.md")
 
 PASS = 0
 FAIL = 0

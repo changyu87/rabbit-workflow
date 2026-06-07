@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-23",
+  "type": "bug",
+  "title": "policy-block.py print_usage prints None because no module docstring exists",
+  "status": "close",
+  "priority": "low",
+  "description": "scripts/policy-block.py line 69 calls print(__doc__) but no module-level docstring exists (only # comments). __doc__ is None so print_usage prints 'None'. Replace with literal usage string or add docstring.",
+  "related_feature": "contract",
+  "filed": "2026-05-18T03:15:45Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:20:51Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:15:45Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:20:51Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3 batch 1: validate-feature.py run.py path; check-naming.py rbt- prefix; module docstrings; runner invokes all tests; dead tests deleted.",
+      "fix_commits": "443923a"
+    }
+  ],
+  "commit_sha": "22576a67d97d24f76523b4657e77fd8cf8010ebe"
+}

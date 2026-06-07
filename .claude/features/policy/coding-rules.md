@@ -99,3 +99,50 @@ override, but only when explicitly justified.
 
 The test: every file you create should trace directly to the user's request
 or to a clearly named follow-up they approved.
+
+---
+
+## 6. Cleanup: Prove It Dead or Flag It
+
+**A cleanup pass removes dead-but-plausible content, not just syntactically
+tagged historical burden — and never silently keeps the uncertain.**
+
+A cleanup pass is done only when every claim in scope has been resolved by a
+deterministic VERIFICATION check, not by judgment. For each claim, run the
+matching check:
+
+- **path reference** → `find` it across the repo; zero matches = dead.
+- **function / flag / script / symbol** → `grep` for callers/usages; none =
+  dead.
+- **described behavior** → a reachable code path and/or a test exercising it;
+  neither = dead.
+- **cross-feature claim** → inspect the other feature directly.
+
+Apply the action table to each result:
+
+| Verification result            | Action                                      |
+| ------------------------------ | ------------------------------------------- |
+| **Proven dead** (check empty)  | DELETE with confidence.                     |
+| **Proven live** (check finds it)| KEEP.                                       |
+| **Unverifiable** (no cheap check)| FLAG: file a `housekeeping`-tagged sub-issue naming the file, the sentence, and why it could not be verified. |
+
+**Annotate-and-continue.** An unverifiable sentence is flagged as a separate
+sub-issue and the pass CONTINUES. One uncertain sentence never stalls a
+feature's cleanup.
+
+---
+
+## 7. Parenthetical Clarity
+
+**Prefer declarative sentences over parenthetical asides.**
+
+For each parenthetical aside, decide:
+
+- **Load-bearing** → fold it into the sentence as a clause, or promote it to
+  its own sentence.
+- **Redundant or decorative** → drop it.
+
+This is a clarity guideline, not an absolute ban. A load-bearing parenthetical
+— a precise clarifying term, a citation like `(Inv 49)`, a code token — is
+fine to keep inline. Apply this when authoring or editing prose; it does not
+mandate a sweep of existing text.

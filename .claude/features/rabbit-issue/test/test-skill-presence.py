@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+"""Presence and frontmatter tests for rabbit-issue SKILL.md.
+
+Skill-side invariants enforced (per spec-rules.md §3 and the rabbit-issue
+spec's "Surface" section):
+
+  1. skills/rabbit-issue/SKILL.md MUST exist with a YAML frontmatter block
+     carrying name / version / owner / deprecation_criterion.
+  2. The frontmatter `name` field MUST be exactly `rabbit-issue`.
+  3. The SKILL.md body MUST mention that rabbit-issue REPLACES the retired
+     rabbit-file feature (so triggering routes here, not to rabbit-file).
+  4. The SKILL.md body MUST document the actionability safety guard
+     (Work Protocol invariant from the spec). Rebased off the retired
+     `rabbit-managed` basis onto actionability in coexistence step 3 of
+     #753 (#760).
+  5. The SKILL.md body MUST NOT contain the hardcoded user-decision-gate
+     question prose ("Ask explicitly:" / "close** this issue without
+     working it"). The dispatcher surfaces a recommendation in natural
+     language; the gate semantics live in the "Do NOT invoke
+     `rabbit-feature-touch` until the user confirms" bullet alone.
+  6. The SKILL.md body MUST NOT reference an invented "normal mode" of
+     rabbit-feature-touch (issue #436): that skill defines no such mode.
+     Its only behavioural fork is the default full seven-step TDD cycle
+     vs. the lightweight Override Path. The Work Protocol "proceed" step
+     MUST instead name the accurate invocation — rabbit-feature-touch's
+     default/full seven-step TDD cycle (NOT the Override Path).
+
+These are static checks; runtime behaviour is exercised by the
+file-item / item-status / list-items pytest suites.
+
+Version: 1.0.0
+Owner: rabbit-workflow team
+Deprecation criterion: when rabbit-issue is retired
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+FEATURE_DIR = Path(__file__).resolve().parents[1]
+SKILL_MD = FEATURE_DIR / "skills" / "rabbit-issue" / "SKILL.md"
+
+REQUIRED_FM_KEYS = ("name:", "version:", "owner:", "deprecation_criterion:")
+
+
+def check(path: Path) -> list[str]:
+    """Return a list of failure messages for `path` (empty list = pass)."""
+    fails = []
+    if not path.is_file():
+        fails.append(f"{path} does not exist")
+        return fails
+    text = path.read_text()
+    if not text.startswith("---\n"):
+        fails.append(f"{path} missing leading YAML frontmatter block")
+        return fails
+    parts = text.split("---\n", 2)
+    if len(parts) < 3:
+        fails.append(f"{path} has unterminated YAML frontmatter")
+        return fails
+    fm, body = parts[1], parts[2]
+    for key in REQUIRED_FM_KEYS:
+        if key not in fm:
+            fails.append(f"{path} frontmatter missing key '{key}'")
+    # name MUST be exactly rabbit-issue (anchored to its own line)
+    if "name: rabbit-issue" not in fm:
+        fails.append(f"{path} frontmatter `name` is not 'rabbit-issue'")
+    # Body MUST mention rabbit-file replacement (routing invariant)
+    if "rabbit-file" not in body:
+        fails.append(
+            f"{path} body MUST mention rabbit-file (replacement notice)"
+        )
+    # Body MUST document the actionability safety guard (rebased off the
+    # retired rabbit-managed basis in coexistence step 3 of #753, #760).
+    if "actionability" not in body.lower():
+        fails.append(
+            f"{path} body MUST document the actionability safety guard"
+        )
+    # Body MUST NOT carry the hardcoded user-decision-gate question prose.
+    forbidden_phrases = (
+        "Ask explicitly:",
+        "close** this issue without working it",
+    )
+    for phrase in forbidden_phrases:
+        if phrase in body:
+            fails.append(
+                f"{path} body MUST NOT contain hardcoded gate-question "
+                f"prose: {phrase!r}"
+            )
+    # Body MUST NOT reference an invented "normal mode" of
+    # rabbit-feature-touch (issue #436) — that skill defines no such mode.
+    if "normal mode" in body.lower():
+        fails.append(
+            f"{path} body references an invented \"normal mode\" of "
+            f"rabbit-feature-touch (issue #436); name the default full "
+            f"seven-step TDD cycle instead"
+        )
+    # The proceed step MUST name the accurate invocation: the default/full
+    # seven-step TDD cycle. Require the vocabulary rabbit-feature-touch
+    # actually uses for its standard path.
+    if "seven-step" not in body:
+        fails.append(
+            f"{path} body MUST name rabbit-feature-touch's default/full "
+            f"seven-step TDD cycle in the Work Protocol proceed step "
+            f"(issue #436)"
+        )
+    return fails
+
+
+def main() -> int:
+    all_fails = check(SKILL_MD)
+    if all_fails:
+        for msg in all_fails:
+            print(f"FAIL: {msg}", file=sys.stderr)
+        return 1
+    print("PASS test-skill-presence")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -3,7 +3,7 @@
 Inv 2 of the rabbit-meta feature. Pure stdlib; idempotent via byte-equality.
 
 Version: 1.0.0
-Owner: cyxu
+Owner: rabbit-workflow team
 Deprecation criterion: inherits from rabbit-meta feature deprecation
     (when rabbit's per-project plugin model is superseded by a native
     Claude Code workflow contract mechanism).

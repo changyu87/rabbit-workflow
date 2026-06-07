@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """check-invariant-monotonic-order.py — thin CLI shim around
-contract.lib.checks.check_invariant_monotonic_order (spec Inv 38, Inv 37).
+contract.lib.checks.check_invariant_monotonic_order (spec Inv 30, Inv 29).
 
 Usage: check-invariant-monotonic-order.py <feature-dir> [<feature-dir> ...]
 Exit:  0 no violations; 1 violations found; 2 invocation error.
 
-Each <feature-dir> is a feature root containing docs/spec/spec.md. Features
-in the library's KNOWN_ISSUES allowlist are skipped (pending renumber).
+Each <feature-dir> is a feature root containing spec.md, resolved through
+the dual-read resolver in lib/checks.py (flat docs/spec.md preferred,
+specs/spec.md fallback), so a feature on either layout is scanned identically.
+Features in the library's KNOWN_ISSUES allowlist are skipped (pending renumber).
 
 Version: 1.0.0
 Owner: rabbit-workflow team (contract)

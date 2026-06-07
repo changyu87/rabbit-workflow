@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-CAGE-BUG-50",
+  "type": "bug",
+  "title": "Stale .pyc files committed/checked-in under hooks and test __pycache__",
+  "status": "close",
+  "priority": "low",
+  "description": "Two compiled bytecode files exist in the feature tree: .claude/features/rabbit-cage/hooks/__pycache__/scope-guard.cpython-37.pyc and .claude/features/rabbit-cage/test/__pycache__/run.cpython-37.pyc. __pycache__ directories should be gitignored repo-wide. Either add __pycache__/ to .gitignore (recommended) or rm -r these directories and add the ignore rule to prevent recurrence.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:15:07Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:02:27Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:15:07Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:02:27Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 triage: duplicate of RABBIT-CAGE-BUG-49 (stale .pyc)"
+    }
+  ],
+  "commit_sha": "fd9156d5792a9e0f397323c8e79039273c57cd5e"
+}

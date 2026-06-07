@@ -1,6 +1,6 @@
 """contract.lib.mutation — API library for state-mutation primitives used by
-the rabbit-config dispatcher when a feature's CONFIGURATION declares a value
-change.
+the per-feature config dispatcher when a feature's CONFIGURATION declares a
+value change.
 
 Each function implements one mutation API call as declared in a feature's
 CONFIGURATION section. Functions accept their declared args plus keyword-only

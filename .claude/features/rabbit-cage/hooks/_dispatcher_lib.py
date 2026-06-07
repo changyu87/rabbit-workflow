@@ -20,6 +20,7 @@ Deprecation criterion: when Claude Code exposes native per-event
 import inspect
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -114,6 +115,91 @@ def dispatch_event(event, repo_root):
     return payloads
 
 
+_ADVISE_RESTART_SCRIPT = (
+    ".claude/features/rabbit-auto-evolve/scripts/advise-restart.py"
+)
+
+
+def _advise_restart_status(repo_root):
+    """INVOKE rabbit-auto-evolve's advise-restart.py `status` (issue #545, Inv 37).
+
+    Returns the parsed `{"advised": <bool>, "reason": <str>?}` verdict dict, or
+    None on any failure path (script absent, non-zero exit, timeout,
+    unparseable / malformed JSON) — graceful degradation that surfaces no
+    advisory line and never crashes the dispatcher.
+    """
+    script = Path(repo_root) / _ADVISE_RESTART_SCRIPT
+    if not script.is_file():
+        return None
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "status"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    try:
+        data = json.loads(proc.stdout)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
+def advisory_restart_payloads(repo_root):
+    """Issue #545 / Inv 37: INVOKE advise-restart.py status and, when the marker
+    is present, return the single ADVISORY-restart print payload.
+
+    The advisory line is deliberately distinct from the hard #503 auto-resume
+    banner — it reads as OPTIONAL and never implies a pause:
+
+        🔄 restart ADVISED (not required): <reason> — loop continues meanwhile
+
+    Returns `[]` when no advisory is due OR on any failure path (graceful
+    degradation). The Stop and SessionStart dispatchers share this helper so
+    they emit identical wording.
+    """
+    data = _advise_restart_status(repo_root)
+    if not data or not data.get("advised"):
+        return []
+    reason = data.get("reason")
+    reason = reason.strip() if isinstance(reason, str) else ""
+    text = (
+        f"restart ADVISED (not required): {reason} "
+        "— loop continues meanwhile"
+    )
+    return [{"type": "print", "text": text, "icon": "\U0001f504",
+             "color": "green"}]
+
+
+def clear_advisory_restart(repo_root):
+    """Issue #545 / Inv 37: INVOKE advise-restart.py `clear` to consume the
+    advisory after SessionStart has surfaced it (the advised restart occurred).
+
+    Best-effort and graceful: an absent / erroring / timed-out script is a
+    silent no-op so SessionStart never crashes on a missing advisory detector.
+    """
+    script = Path(repo_root) / _ADVISE_RESTART_SCRIPT
+    if not script.is_file():
+        return
+    try:
+        subprocess.run(
+            [sys.executable, str(script), "clear"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return
+
+
 def render_emission(payloads):
     """Partition payloads and assemble the final Claude Code JSON dict.
 
@@ -125,23 +211,30 @@ def render_emission(payloads):
     ok     -> dropped.
     error  -> written to stderr (one line per error); not surfaced.
 
+    Rendered banner/print/subline lines are ordered by a stable footer
+    partition (Inv 31): payloads carrying order=='footer' are held back and
+    appended AFTER all non-footer lines, each group preserving dispatch
+    order. inject ordering is unaffected by the partition.
+
     Returns None when no renderable lines and no inject are present.
     """
-    lines = []
+    rendered = []  # (is_footer, str)
     injects = []
     for p in payloads:
         t = p.get("type")
+        is_footer = p.get("order") == "footer"
         if t == "banner":
-            lines.append(rabbit_print(p["text"], p["icon"], p["color"], format="banner"))
+            rendered.append((is_footer, rabbit_print(p["text"], p["icon"], p["color"], format="banner")))
         elif t == "print":
-            lines.append(rabbit_subline(p["text"], color=p["color"], icon=p["icon"]))
+            rendered.append((is_footer, rabbit_subline(p["text"], color=p["color"], icon=p["icon"])))
         elif t == "subline":
-            lines.append(rabbit_subline(p["text"], color=p.get("color", "green")))
+            rendered.append((is_footer, rabbit_subline(p["text"], color=p.get("color", "green"))))
         elif t == "inject":
             injects.append(p)
         elif t == "error":
             sys.stderr.write(f"dispatcher: {p.get('message', '')}\n")
         # 'ok' and unknown: drop
+    lines = [s for f, s in rendered if not f] + [s for f, s in rendered if f]
     if not lines and not injects:
         return None
     out = {}

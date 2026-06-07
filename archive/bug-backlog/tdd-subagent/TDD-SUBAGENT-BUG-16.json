@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-16",
+  "type": "bug",
+  "title": "tdd-context.py reads wrong key for deprecation criterion",
+  "status": "close",
+  "priority": "medium",
+  "description": "tdd-context.py main() reads deprecation = data.get('deprecation') or {} then deprecation.get('criterion'). But real feature.json uses a flat 'deprecation_criterion' top-level field (no nested 'deprecation' object). For every real feature, tdd-context.py emits empty 'deprecation_criterion' and 'Deprecation criterion:' (text mode). Test test-context.py c4 passes only because its fixture uses the legacy nested 'deprecation': {'criterion': ...} form, so the bug is invisible to tests. Fix: read data.get('deprecation_criterion') with fallback to nested form for backward compat. Similarly, tdd-context.py reads 'status' and 'contract' fields that no longer exist in feature.json schema \u2014 these output as null.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:34:53Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:03:43Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:34:53Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:03:43Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed in Wave 3: BUG-16 flat deprecation_criterion key; BUG-17 test/run.py; BUG-37 item.json in SKILL.md B/B mode.",
+      "fix_commits": "5b7d781e555b6ceed4992d6ebb9d045eed078efa"
+    }
+  ],
+  "commit_sha": "3fa0d76d9f0d453908df0b27710fb89d31ee824a"
+}

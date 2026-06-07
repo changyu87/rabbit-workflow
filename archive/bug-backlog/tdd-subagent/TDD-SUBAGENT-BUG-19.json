@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-19",
+  "type": "bug",
+  "title": "TDD subagent prompt is missing the spec-update transition step",
+  "status": "close",
+  "priority": "high",
+  "description": "The assembled subagent prompt transitions via tdd-step.py to test-red (Step 5), impl (Step 6), and test-green (Step 6). But the spec's forward chain is spec -> spec-update -> test-red -> impl -> test-green. The subagent never explicitly advances state to 'spec-update' before attempting test-red. If the feature starts at 'test-green' (typical post-merge state) the very first transition call (transition X test-red) goes BACKWARD and fails without --force. There is no --force in the prompt, and the SKILL.md commits spec changes before dispatch so the spec-update gate would be passable \u2014 but the state must first BE spec-update for the test-red transition to be a forward move. Fix: either explicitly add a 'transition <dir> spec-update' step before LOCK, or assume the dispatcher/spec authoring already pushed the state to spec-update. Spec must be explicit about the expected starting state.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:37:14Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:57:32Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:37:14Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:57:32Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed: prompt now prepends spec-update transition before test-red. Note: subagent surfaced an inconsistency \u2014 actual tdd-step.py chain is test-green\u2192deprecated, not test-green\u2192spec-update. Filing follow-up backlog to reconcile spec vs state machine.",
+      "fix_commits": "75ecfa4"
+    }
+  ],
+  "commit_sha": "2a60ed81b583d343a67e4eedc66ba3367f8ae6f4"
+}

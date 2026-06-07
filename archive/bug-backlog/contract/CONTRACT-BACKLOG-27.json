@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BACKLOG-27",
+  "type": "backlog",
+  "title": "Retire/delete obsolete scripts: dispatch-feature-edit.py, workspace-map.py, rabbit-workspace-map skill, check-no-main-edits.py, check-opus-for-planning-agents.py",
+  "status": "close",
+  "priority": "high",
+  "description": "Cleanup of dead/orphan/intentionally-retired items in contract:\\n\\nDELETE entirely:\\n- scripts/dispatch-feature-edit.py \u2014 zero runtime callers (only mentioned in an error string and a SKILL.md deprecation criterion); superseded by dispatch-tdd-subagent.py via rabbit-feature-touch\\n- scripts/workspace-map.py \u2014 orphan since rabbit-workspace-map skill was retired\\n- skills/rabbit-workspace-map/ \u2014 already marked [RETIRED]; remove entirely\\n- scripts/enforcement/check-no-main-edits.py \u2014 never auto-invoked; workflow naturally prevents main edits (feature-touch creates branch, TDD works on it, PR back; operator self-checks); retire\\n- scripts/enforcement/check-opus-for-planning-agents.py \u2014 never auto-invoked; model-choice enforcement at agent definition level is fragile; retire\\n\\nUpdate build-contract.json to remove the rabbit-workspace-map skill copy-file entry.\\nUpdate spec.md to remove invariants tied to deleted scripts.\\nUpdate workspace-structure.json to remove retired skill from any declarations.",
+  "related_feature": "contract",
+  "filed": "2026-05-20T03:13:40Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T03:35:15Z",
+  "history": [
+    {
+      "ts": "2026-05-20T03:13:40Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T03:35:15Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "6b5ab95db046935bafe7101f8b8a296864a19d93"
+    }
+  ],
+  "commit_sha": "5ba9c80540be519ad46e1fceb6e9bd7a57d9cb98"
+}

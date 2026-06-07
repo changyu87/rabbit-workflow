@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-76",
+  "type": "bug",
+  "title": "test-RABBIT-CAGE-19-confirm-token-override.py t1 uses overly specific substring (would miss reformatted wording)",
+  "status": "close",
+  "priority": "low",
+  "description": "test-RABBIT-CAGE-19-confirm-token-override.py t1 (line 49): asserts 'only a human creates this file' is NOT in spec. If the spec ever rephrases to e.g. 'only a human creates the file', the assertion silently passes (the test stops detecting the prohibited concept) even though the prohibited concept may have returned. Use a regex like r'only.*human.*create.*file' to catch reformulations.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:25:33Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T09:08:42Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:25:33Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T09:08:42Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "WAVE5 cleanup: fixed in 505c834",
+      "fix_commits": "505c834"
+    }
+  ],
+  "commit_sha": "d6ccdef9c33685e3cc5e331a99da45038817bec3"
+}

@@ -1,0 +1,322 @@
+---
+feature: rabbit-issue
+version: 1.16.0
+owner: rabbit-workflow team
+deprecation_criterion: when GH Issues is replaced or the workflow moves to a different tracker; revisit when claude-plugins-official ships a GH Issues skill
+---
+
+# rabbit-issue
+
+> **Note:** LLM-prose view (machine-targeted, like everything in rabbit).
+> Structured source of truth is [`feature.json`](../feature.json).
+
+## Purpose
+
+Wrap the `gh` CLI to provide rabbit's file / list / work / show operations
+against GitHub Issues — rabbit's issue store for bugs and enhancements.
+
+## Schema / Behavior
+
+### Surface
+
+Three runtime scripts under `.claude/features/rabbit-issue/scripts/`:
+
+- `file-item.py` — file a new bug or enhancement issue
+- `item-status.py` — show, close, or reopen an issue
+- `list-items.py` — list issues with type / feature / status filters
+
+Plus a shared helper module `_gh.py`.
+
+A single `rabbit-issue` skill (under `skills/rabbit-issue/SKILL.md`)
+defines the Work Protocol that orchestrates the three runtime scripts.
+
+### Label schema
+
+Every issue filed via `rabbit-issue` carries the type, `feature:`, and
+`priority:` labels; the `filed-by:` provenance label is optional (present
+only for non-human filers), and the `housekeeping` category label is
+optional (present only when the filer marks the issue as housekeeping work):
+
+| Label | Purpose | Cardinality |
+|---|---|---|
+| `bug` *(GH default)* | Type — exclusive with `enhancement` | exactly one of bug/enhancement |
+| `enhancement` *(GH default)* | Type — exclusive with `bug` | exactly one of bug/enhancement |
+| `feature:<name>` | Feature scope | required, one per item |
+| `priority:<low\|medium\|high\|critical>` | Priority | required, one per item |
+| `filed-by:<rabbit\|autonomous-evolve>` | Provenance — non-human filer | optional; absent ⇒ human-filed |
+| `housekeeping` | Category — housekeeping-wave work | optional; present ⇒ housekeeping sub-issue |
+| `in-progress` | Category — issue is in the loop's live dispatch set | optional; present ⇒ a subagent is actively working the issue |
+
+Labels are auto-created on demand at first `file-item.py` call via
+idempotent `gh label create … || true`. No separate bootstrap script.
+The same idempotent `ensure_labels` mechanism creates a sanctioned
+category label the first time any caller stamps it — so the `in-progress`
+label, applied by the loop rather than at filing time, is created on its
+first reconcile use without a separate bootstrap step.
+
+### Provenance label
+
+The `filed-by:` provenance scheme is a **fixed enum** with exactly two
+non-human values:
+
+| Filer | `--filed-by` value | Label stamped |
+|---|---|---|
+| Human | *(omit `--filed-by`)* | none — human is the untagged default |
+| Bot / wrapped rabbit script | `rabbit` | `filed-by:rabbit` |
+| Autonomous evolve loop | `autonomous-evolve` | `filed-by:autonomous-evolve` |
+
+`file-item.py` VALIDATES `--filed-by` against the enum `{rabbit,
+autonomous-evolve}`. Human provenance is expressed by OMITTING
+`--filed-by`, in which case no `filed-by:` label is stamped. Any explicit
+value outside the enum — including the literal `human` or any
+space-bearing/polluted value — is REJECTED with a clear error before any
+gh call.
+
+The label is additive — when present it does not change any of the other
+labels. Provenance keeps loop-performance metrics answerable by querying
+the `filed-by:autonomous-evolve` label.
+
+#### Native-first exception
+
+`filed-by:` is a **justified native-first exception**. The binding design
+rule is GitHub-native first: a custom label is permitted ONLY when no
+native primitive covers the need, and then only with an inline
+justification plus a deprecation criterion. GitHub records an issue's
+author natively, so provenance would normally read from the native author
+rather than a custom label.
+
+On THIS repo it cannot: the autonomous evolve loop and the human file
+under the SAME single GitHub identity, so the native author cannot
+distinguish loop-filed from human-filed work. The custom `filed-by:` label
+is therefore the only provenance signal that separates the two, and it is
+retained for exactly that reason.
+
+A human filing carries no `filed-by:` label (absence is the human signal);
+a loop filing carries `filed-by:autonomous-evolve`. Absence-as-human keeps
+the convention deterministic: every non-human filer stamps an explicit
+enum value, so the missing label is an unambiguous human marker rather
+than a mere default.
+
+**Deprecation criterion** — when the loop and human file under DISTINCT
+GitHub identities or apps, the native author becomes sufficient to
+distinguish provenance and `filed-by:` is no longer needed; at that point
+provenance migrates to the native author (coexistence window per
+spec-rules §3). Until distinct identities exist, the exception stands.
+
+### Housekeeping label
+
+`housekeeping` is a sanctioned category label marking an issue as
+housekeeping-wave work. It is applied at filing time in one deterministic
+step via the `--housekeeping` flag on `file-item.py`:
+
+| Flag | Label stamped |
+|---|---|
+| *(omit `--housekeeping`)* | none |
+| `--housekeeping` | `housekeeping` |
+
+When `--housekeeping` is passed, `file-item.py` adds the `housekeeping`
+label in the same `gh issue create` call; when omitted, no `housekeeping`
+label is stamped. The label is additive — it does not change any of the
+other labels.
+
+### In-progress label
+
+`in-progress` is a sanctioned category label marking an issue as a member
+of the loop's live dispatch set — present while a subagent is actively
+working the issue, absent otherwise. Unlike `housekeeping`, it is NOT
+applied at filing time and has no `file-item.py` flag: the autonomous
+evolve loop's reconcile mirrors its dispatch journal's live set onto this
+label (adds `in-progress` when an issue enters the live set, removes it
+when the issue leaves), so the label is loop-managed and transient.
+
+`rabbit-issue` owns only the label's place in the sanctioned schema and
+its auto-creatability: the reconcile stamps `in-progress` through the same
+idempotent `ensure_labels` path every other sanctioned label uses, so the
+label exists on its first reconcile use. The label is additive — it does
+not change any of the other labels.
+
+### Sub-issue linkage
+
+`file-item.py` can link a newly-filed issue as a GitHub-native **sub-issue**
+of a parent via the REST sub-issues API. The `--parent <N>` flag is OPTIONAL:
+
+| Flag | Behavior |
+|---|---|
+| *(omit `--parent`)* | No link is established. No extra gh calls are made; the emitted JSON is exactly `{number, url, type}`. This is the NORMAL case — a missing `--parent` is never an error or warning. |
+| `--parent <N>` | After the child issue is created, it is linked under parent `<N>`. On success the emitted JSON gains a `parent` field carrying `<N>`; the `parent` field is present ONLY when a link was made. |
+
+The linkage is performed by `_gh.link_sub_issue(parent_number,
+child_number)`. The GitHub sub-issues API keys on the child's database
+**id**, NOT its issue number — the two differ. `link_sub_issue` therefore:
+
+1. Resolves the CHILD numeric `id` via `gh api repos/{slug}/issues/{child}`,
+   reading `.id` (the footgun: passing the issue number as `sub_issue_id`
+   fails or mis-links).
+2. POSTs to `repos/{slug}/issues/{parent}/sub_issues` with the JSON body
+   `{"sub_issue_id": <child_id>}`.
+
+The link is **idempotent**: when the child is already a sub-issue of the
+parent the POST is rejected by GitHub, and `link_sub_issue` degrades
+gracefully — it does NOT raise or fail the filing. Re-linking an
+already-linked child is a no-op success.
+
+### Safety invariant
+
+`item-status.py close` and `item-status.py reopen` refuse to act on
+issues that are NOT **actionable** — an actionable issue is one carrying
+a valid `feature:<name>` label. A raw, hand-filed GitHub issue with no
+labels (or only stray labels) lacks a `feature:` label, so it is not
+actionable and stays out of rabbit's automation reach.
+
+### Human-filing enforcement (Issue Form)
+
+`file-item.py` enforces the required `feature:` and `priority:` labels for
+the loop/CLI (programmatic) filing path, but a raw human web filing bypasses
+that script entirely. A native **GitHub Issue Form** closes that gap at the
+human boundary so a hand-filed issue lands actionable rather than as a
+label-less issue the actionability guard later refuses to touch:
+
+- The Issue Form (deployed to repo-root `.github/ISSUE_TEMPLATE/`) declares
+  **REQUIRED** `feature` and `priority` dropdowns. A human cannot submit the
+  form without choosing one valid feature scope and one priority — the same
+  two required selections `file-item.py` demands via `--feature` and
+  `--priority`.
+- The `priority` dropdown's options are the closed enum
+  `{low, medium, high, critical}`, mirroring `file-item.py`'s
+  `VALID_PRIORITIES`. The `feature` dropdown's options are the live feature
+  set (every feature scope a `feature:<name>` label can name). A drift guard
+  in the test suite holds the form's option sets to the script enum and the
+  live feature set, so the two surfaces cannot silently diverge.
+- A companion **GitHub Actions workflow** (deployed to repo-root
+  `.github/workflows/`) is the native auto-label primitive: it triggers on
+  issue open, reads the submitted Feature and Priority answers from the issue
+  body, and stamps `feature:<x>` and `priority:<y>`. A form submission is
+  therefore actionable by the same rule the safety invariant upholds.
+
+The Issue Form and its auto-label workflow are **governed deployed surfaces**
+owned by rabbit-issue: the source lives under the feature, and `publish_file`
+manifest entries deploy each artifact to the repo-root `.github/` tree.
+
+The Issue Form covers only the **human** boundary — GitHub renders a form
+for a web filing, not for a programmatic `gh issue create` call. The
+programmatic path (bot / loop filings) therefore stays on `file-item.py`,
+which keeps its own required-label enforcement. This is a justified native
+division of labour, not a duplicate: forms are the native enforcement
+primitive for humans, and the script is the enforcement primitive for
+programmatic filers that forms do not reach.
+
+### Lifecycle
+
+- `state` is GH's binary `open` / `closed`
+- `state_reason` ∈ {`completed`, `not_planned`, `null`}
+  - `completed` — closed after TDD fix (default close reason)
+  - `not_planned` — closed without work (stale or invalid issue)
+- `item-status.py close --reason` accepts the hyphenated, shell-friendly
+  forms `completed` and `not-planned`; the script translates `not-planned`
+  to gh's space-separated `not planned` at the CLI boundary, which GitHub
+  records as `state_reason = not_planned`.
+- **Close-reason gating.** A close must assert something real:
+  - `--reason completed` REQUIRES exactly one deliverable proof —
+    either `--commit-sha <sha>` (work that landed as a commit) or
+    `--findings-comment-url <url>` (a research finding whose deliverable
+    is a linked comment, with no landed commit). The two are mutually
+    exclusive; supplying both, or supplying neither, aborts the close
+    before any gh call.
+  - `--commit-sha <sha>`: the script validates that the SHA resolves to a
+    real commit in the local git repo (`git rev-parse --verify
+    <sha>^{commit}`). A missing or unresolvable SHA aborts the close
+    before any gh call.
+  - `--findings-comment-url <url>`: the comment-only close gate for a
+    research SMALL-outcome disposition — the findings are appended as a
+    COMMENT on the request issue, then the issue is closed `completed`
+    with that comment as its deliverable. The script validates that the
+    URL is a plausible GitHub issue-comment URL of the form
+    `https://github.com/<owner>/<repo>/issues/<N>#issuecomment-<id>`; a
+    URL that does not match this shape aborts the close before any gh
+    call. The validated URL is PERSISTED as the close comment so the
+    closed issue links to the findings comment as an audit trail; when
+    `--comment` is also supplied, the close comment is the URL followed
+    by the comment (URL first, separated by a blank line). A research
+    finding has no landed commit, so this path does NOT require — and
+    rejects — `--commit-sha`.
+  - `--reason not-planned` REQUIRES `--reason-text <text>` of at least
+    50 characters, free of reflexive-deferral boilerplate. The script
+    rejects (case-insensitive substring match) any of: `too risky`,
+    `out of scope`, `out-of-scope`, `declined autonomous dispatch`,
+    `not now`, `later`, `don't want`, `do not want`. A specific reason
+    that is long enough and clean is accepted.
+  - **The validated `--reason-text` is PERSISTED, not just gated.** A
+    `not-planned` close posts the reason-text as the close comment so the
+    closed issue carries its justification as an audit trail. When
+    `--comment` is also supplied, the close comment is the
+    reason-text followed by the comment (reason-text first, separated by a
+    blank line); when only `--reason-text` is given it is the close comment
+    on its own. The comment travels with the same `gh issue close` call.
+  - The actionability guard runs first (the safety boundary), then
+    the reason gating, then the gh call — so a rejected close never
+    issues `gh issue close` and never touches a non-actionable issue.
+- Reopen restores `state = open`, `state_reason = reopened`
+
+### SHA / event history
+
+Delegated entirely to GitHub's Timeline API. No local `history` array,
+no `--fix-commits` parameter. The "closing reference" feature
+(`Fixes #N` in commit messages) auto-links commits to issue closure
+and records the SHA in the timeline event.
+
+### Repository discovery
+
+`rabbit-issue` ALWAYS targets the upstream rabbit-workflow repo,
+regardless of the cwd's git remote. Bugs about rabbit go to rabbit's
+repo, period — never to the user's project repo.
+
+`_gh.py` resolves the target repo slug as:
+
+1. The `RABBIT_ISSUE_REPO` environment variable when set (override for
+   forks, testing, etc. — e.g. `RABBIT_ISSUE_REPO=myfork/rabbit-workflow`).
+2. Otherwise the const `RABBIT_REPO_DEFAULT = "changyu87/rabbit-workflow"`
+   declared at module top in `_gh.py`.
+
+`_gh.py` does NOT call `git remote get-url origin` at any point — in
+plugin installs the cwd is the user's project, which would silently
+direct bugs to the wrong target.
+
+Scripts still fail loudly when `gh auth status` is not green.
+
+### Reading issue comments
+
+When rabbit-issue needs to read an issue's comment bodies, it MUST go
+through the JSON API — `gh issue view <N> --json comments` — and parse
+the returned JSON, NOT the human-readable `gh issue view <N> --comments`
+view.
+
+`gh issue view <N> --comments` triggers a deprecated Projects-classic
+`projectCards` GraphQL field on repos that touch that path. On this repo
+that request FAILS and returns an EMPTY body, so comments appear absent
+even when they are present — a silent correctness trap. The
+`--json comments` path does NOT hit the deprecated field and returns the
+comment bodies reliably; `_gh.py` exposes `gh_issue_comments(number)` as
+the only sanctioned comment-read path.
+
+## What this feature does NOT define
+
+- **Branch-backed item storage** — out of scope; GH Issues is the
+  backing store and the GH Timeline owns history.
+- **GH Projects v2 boards / kanban / sub-status workflows** — out of
+  scope; if needed, file a separate issue.
+- **Cross-tracker abstractions** (Linear, Jira, etc.) — only `gh` is
+  supported in v1.
+- **User-install plugin-mode backend** — deferred until rabbit-self
+  validates the design; the install MVP does not ship `rabbit-issue` yet.
+- **The TDD cycle** — `rabbit-feature-touch` (in `rabbit-feature`)
+  drives TDD; the Work Protocol invokes it via its default full
+  seven-step TDD cycle (NOT the lightweight Override Path), passing the
+  issue title + body as the request text. `rabbit-issue` does not own
+  that cycle and does not invent a "normal mode" / "issue mode" of it —
+  `rabbit-feature-touch` defines no such mode.
+
+## Tests
+
+`test/run.py` runs the end-to-end suite. The suite uses a `gh` CLI
+shim (`test/gh_shim.sh`) on `PATH` to avoid hitting real GitHub
+during unit tests.

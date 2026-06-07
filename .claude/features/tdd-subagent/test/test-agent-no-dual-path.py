@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Inv 27 — agents/tdd-subagent.md does not describe a dual-path layout
-for the state-machine scripts (agent-local OR feature-local fork)."""
+"""Inv 27 — agents/rabbit-tdd-subagent.md does not describe a dual-path
+layout for the state-machine scripts (agent-local OR feature-local fork)."""
 from _helpers import AGENT_PATH, report
 
 passed = failed = 0

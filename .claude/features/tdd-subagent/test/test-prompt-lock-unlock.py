@@ -33,7 +33,7 @@ if not lock_match:
 else:
     lock_body = lock_match.group(1)
     if "touch " in lock_body and ".rabbit-scope-active-tdd-subagent" in lock_body:
-        ok("inv12: LOCK uses touch <repo_root>/.rabbit-scope-active-<feature>")
+        ok("inv12: LOCK uses touch .rabbit-scope-active-<feature> (Inv 58 relative)")
     else:
         ko("inv12: LOCK missing touch invocation")
     # Inv 12: no actual `trap '<handler>' EXIT` invocation. The LOCK
@@ -47,13 +47,13 @@ else:
         ko("inv12: LOCK contains an executable `trap '...'` invocation")
 
 # Inv 12: UNLOCK section does explicit rm of the per-feature marker.
-unlock_match = re.search(r"STEP 7 — UNLOCK\n═+\n(.*?)\n═+\n", prompt, re.DOTALL)
+unlock_match = re.search(r"STEP 8 — UNLOCK\n═+\n(.*?)\n═+\n", prompt, re.DOTALL)
 if not unlock_match:
-    ko("inv12: STEP 7 UNLOCK section not isolated")
+    ko("inv12: STEP 8 UNLOCK section not isolated")
 else:
     unlock_body = unlock_match.group(1)
-    if re.search(r"rm -f \S+\.rabbit-scope-active-tdd-subagent", unlock_body):
-        ok("inv12: UNLOCK has explicit `rm -f <root>/.rabbit-scope-active-<feature>`")
+    if re.search(r"rm -f\s+\.rabbit-scope-active-tdd-subagent\b", unlock_body):
+        ok("inv12: UNLOCK has explicit `rm -f .rabbit-scope-active-<feature>` (Inv 58 relative)")
     else:
         ko("inv12: UNLOCK missing explicit rm of scope marker")
     if 'chore(tdd-subagent): advance tdd_state to test-green' in unlock_body:

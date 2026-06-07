@@ -220,6 +220,84 @@ def test_render_emission_banner_and_sublines_order():
     print("PASS test_render_emission_banner_and_sublines_order")
 
 
+def test_render_emission_footer_renders_last():
+    """Inv 31 (i): a normal print + a footer-tagged print renders the
+    footer line LAST in systemMessage."""
+    lib = _load_lib()
+    payloads = [
+        {"type": "print", "text": "FOOTER-LINE", "icon": "⏱", "color": "green",
+         "order": "footer"},
+        {"type": "print", "text": "NORMAL-LINE", "icon": "i", "color": "red"},
+    ]
+    out = lib.render_emission(payloads)
+    assert out is not None
+    sm = out["systemMessage"]
+    pos_normal = sm.find("NORMAL-LINE")
+    pos_footer = sm.find("FOOTER-LINE")
+    assert pos_normal != -1 and pos_footer != -1, sm
+    assert pos_normal < pos_footer, f"footer should render last: normal={pos_normal} footer={pos_footer}"
+    print("PASS test_render_emission_footer_renders_last")
+
+
+def test_render_emission_footer_relative_order_preserved():
+    """Inv 31 (ii): two footer payloads preserve their relative dispatch
+    order among themselves, after all non-footer lines."""
+    lib = _load_lib()
+    payloads = [
+        {"type": "print", "text": "FOOTER-1", "icon": "i", "color": "green",
+         "order": "footer"},
+        {"type": "print", "text": "NORMAL-1", "icon": "i", "color": "red"},
+        {"type": "print", "text": "FOOTER-2", "icon": "i", "color": "green",
+         "order": "footer"},
+    ]
+    out = lib.render_emission(payloads)
+    assert out is not None
+    sm = out["systemMessage"]
+    pos_normal = sm.find("NORMAL-1")
+    pos_f1 = sm.find("FOOTER-1")
+    pos_f2 = sm.find("FOOTER-2")
+    assert pos_normal != -1 and pos_f1 != -1 and pos_f2 != -1, sm
+    assert pos_normal < pos_f1 < pos_f2, \
+        f"footers after normal, relative order preserved: normal={pos_normal} f1={pos_f1} f2={pos_f2}"
+    print("PASS test_render_emission_footer_relative_order_preserved")
+
+
+def test_render_emission_no_footer_unchanged_order():
+    """Inv 31 (iii): no footer-tagged entries -> unchanged dispatch order
+    (regression)."""
+    lib = _load_lib()
+    payloads = [
+        {"type": "print", "text": "L1", "icon": "i", "color": "red"},
+        {"type": "print", "text": "L2", "icon": "i", "color": "green"},
+        {"type": "print", "text": "L3", "icon": "i", "color": "green"},
+    ]
+    out = lib.render_emission(payloads)
+    assert out is not None
+    sm = out["systemMessage"]
+    pos_1 = sm.find("L1")
+    pos_2 = sm.find("L2")
+    pos_3 = sm.find("L3")
+    assert pos_1 != -1 and pos_2 != -1 and pos_3 != -1, sm
+    assert pos_1 < pos_2 < pos_3, f"order should be unchanged: {pos_1} {pos_2} {pos_3}"
+    print("PASS test_render_emission_no_footer_unchanged_order")
+
+
+def test_render_emission_inject_unaffected_by_footer():
+    """Inv 31 (iv): inject payloads are unaffected by a footer-tagged print."""
+    lib = _load_lib()
+    payloads = [
+        {"type": "inject", "content": "INJ-A\n"},
+        {"type": "print", "text": "FOOTER-LINE", "icon": "⏱", "color": "green",
+         "order": "footer"},
+        {"type": "inject", "content": "INJ-B"},
+    ]
+    out = lib.render_emission(payloads)
+    assert out is not None
+    assert out["additionalContext"] == "INJ-A\nINJ-B", out
+    assert "FOOTER-LINE" in out["systemMessage"], out
+    print("PASS test_render_emission_inject_unaffected_by_footer")
+
+
 def main() -> int:
     test_enumerate_alpha_and_skips()
     test_dispatch_event_invokes_runtime_api()
@@ -230,6 +308,10 @@ def main() -> int:
     test_render_emission_banner_type_produces_banner_line()
     test_render_emission_subline_type_renders_as_subline()
     test_render_emission_banner_and_sublines_order()
+    test_render_emission_footer_renders_last()
+    test_render_emission_footer_relative_order_preserved()
+    test_render_emission_no_footer_unchanged_order()
+    test_render_emission_inject_unaffected_by_footer()
     return 0
 
 

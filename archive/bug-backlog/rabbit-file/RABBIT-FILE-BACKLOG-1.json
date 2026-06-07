@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FILE-BACKLOG-1",
+  "type": "backlog",
+  "title": "item-status.py: add field-update subcommand for open items",
+  "status": "close",
+  "priority": "medium",
+  "description": "item-status.py only supports open/close transitions. Any field edit (priority, title, description) on an open item requires manually entering the worktree and editing item.json directly \u2014 bypassing audit trail.\n\nRequired: a new subcommand (e.g. 'item-status.py update') that:\n- Accepts --field <name> --value <new-value> --reason <why>\n- Works only on open items (closed items are immutable except via reopen)\n- Appends a history entry with ts, actor, action=updated, field, old_value, new_value, reason\n- Supports at minimum: priority, title, description\n- Rejects unknown fields with a clear error\n\nAll field mutations must go through this path \u2014 no direct item.json edits allowed.",
+  "related_feature": "rabbit-file",
+  "filed": "2026-05-15T11:16:55Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T02:36:50Z",
+  "history": [
+    {
+      "ts": "2026-05-15T11:16:55Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T02:36:50Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "TDD cycle complete. item-status.py update subcommand added with full audit trail.",
+      "fix_commits": "6bf172ee2e4dfaadac750d07af30fe85099c354d"
+    }
+  ],
+  "commit_sha": "990eea5cbdc95f99a0d0bc2b05bd7c2d1dea3009"
+}

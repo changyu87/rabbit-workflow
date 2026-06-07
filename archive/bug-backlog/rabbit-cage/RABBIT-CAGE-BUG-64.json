@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-64",
+  "type": "bug",
+  "title": "test files often hard-code repo root depth via os.path.join(SCRIPT_DIR, '../../../..')",
+  "status": "close",
+  "priority": "low",
+  "description": "test-RABBIT-CAGE-BACKLOG2-python-only.py line 9 uses 'os.path.abspath(os.path.join(SCRIPT_DIR, \"../../../..\"))' to derive REPO_ROOT instead of git rev-parse like other tests. test-repo-permissions.py line 10 uses similar relative paths. If the feature directory ever moves, these tests silently compute the wrong REPO_ROOT. Standardize on the 'git rev-parse --show-toplevel' pattern used by other tests.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:21:11Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T09:08:17Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:21:11Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T09:08:17Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "WAVE5 cleanup: fixed in 505c834",
+      "fix_commits": "505c834"
+    }
+  ],
+  "commit_sha": "c6febcc405b9dbff4b681d0426eba80bbb4fa8f6"
+}

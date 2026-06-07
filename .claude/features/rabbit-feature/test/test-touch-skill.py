@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""Inv 4-9, 12-16, 41, 42: rabbit-feature-touch SKILL.md content.
+"""Inv 4-9, 12, 14-16, 41, 52: rabbit-feature-touch SKILL.md content.
 
 Locks the rabbit-feature-touch SKILL.md (and the deployed copy) against
 drift on the seven-step sequence, scope-resolution invocation, spec
-authoring invocation, Step 3 spec-commit obligation, Step 4 human-approval
-semantics (dispatcher-side gate, bypass marker mechanism, alert routing
-via emit_configurable_alert), B/B mode item.json reads, B/B item
-materialization documentation, and Red Flags content. Inv 10 and Inv 11
+authoring invocation, Step 3 spec-commit obligation, Step 4 TDD-autonomous
+approval semantics (dispatcher-side gate, canonical bypass marker
+mechanism, alert routing via emit_configurable_alert against the
+rabbit-feature tdd-autonomous configurable), and Red Flags content. Inv 10
+and Inv 11
 retired in the TDD-SUBAGENT-BACKLOG-19 cascade (the --human-approval-gate
-CLI flag was removed in tdd-subagent v5.0.0); a regression guard asserts
-the flag string is absent from both source and deployed SKILL.md.
+CLI flag was removed in tdd-subagent v5.0.0); Inv 13 and Inv 42 retired in
+the Phase 7c cleanup (B/B mode removed from the SKILL.md after rabbit-file
+retirement in Phase 7b). A regression guard asserts the
+--human-approval-gate flag string is absent from both source and deployed
+SKILL.md. Inv 52 (issue #418) locks the Step 5 dispatch agent type to
+'rabbit-tdd-subagent' (and guards against the old bare 'tdd-subagent' agent
+type).
 
-Version: 1.0.0
+Version: 1.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -41,9 +47,13 @@ EXPECTED_STEPS = [
 STEP_HEADING_RE = re.compile(
     r"^###\s+Step\s+(\d+)\s+[-—]\s+(.+?)\s*$", re.MULTILINE
 )
-MARKER_PATH = ".rabbit-human-approval-bypass"
-REVOKE_CMD = "/rabbit-config human-approval true"
-ALERT_TEXT = "HUMAN APPROVAL BYPASS ACTIVE"
+MARKER_PATH = ".rabbit-tdd-autonomous"
+# Step 4 manages the bypass via the per-feature command (phase 4 of #733).
+# 'true' activates autonomous/bypass; 'false' (default) keeps the gate active.
+MGMT_CMD = "/rabbit-tdd-autonomous"
+ALERT_TEXT = "TDD-AUTONOMOUS MODE ACTIVE"
+# No stale central /rabbit-config human-approval surface may remain in Step 4.
+STALE_CONFIG_CMD = "/rabbit-config human-approval"
 
 
 def _text() -> str:
@@ -73,8 +83,8 @@ def _red_flags(text: str) -> str:
 
 # Inv 4: seven-step sequence
 def test_inv4_overview_heading_says_seven_step() -> None:
-    assert re.search(r"##\s+Unified\s+Seven-Step\s+Sequence", _text()), (
-        "SKILL.md must declare the unified sequence as 'Seven-Step' in the section heading"
+    assert re.search(r"##\s+Seven-Step\s+Sequence", _text()), (
+        "SKILL.md must declare the sequence as 'Seven-Step' in the section heading"
     )
 
 
@@ -90,24 +100,20 @@ def test_inv4_seven_step_headings_in_order() -> None:
         )
 
 
-# Inv 5: Step 1 normal mode uses Skill("rabbit-feature-scope")
+# Inv 5: Step 1 uses Skill("rabbit-feature-scope")
 def test_inv5_step_1_uses_scope_skill() -> None:
     body = _step_body(_text(), 1)
-    normal_m = re.search(
-        r"\*\*Normal mode:\*\*(.*?)(?=\*\*B/B mode:\*\*|\Z)", body, re.DOTALL
-    )
-    assert normal_m, "Step 1 must contain a '**Normal mode:**' block"
-    assert 'Skill("rabbit-feature-scope"' in normal_m.group(1), (
-        'Step 1 normal mode must invoke Skill("rabbit-feature-scope", ...); '
+    assert 'Skill("rabbit-feature-scope"' in body, (
+        'Step 1 must invoke Skill("rabbit-feature-scope", ...); '
         "shell-out to resolve-scope.py is not permitted"
     )
 
 
-# Inv 6: Step 3 invokes Skill("rabbit-feature-spec")
+# Inv 6: Step 3 invokes Skill("rabbit-spec-update")
 def test_inv6_step_3_uses_spec_skill() -> None:
     body = _step_body(_text(), 3)
-    assert 'Skill("rabbit-feature-spec"' in body, (
-        'Step 3 must invoke Skill("rabbit-feature-spec", ...)'
+    assert 'Skill("rabbit-spec-update"' in body, (
+        'Step 3 must invoke Skill("rabbit-spec-update", ...)'
     )
 
 
@@ -126,11 +132,33 @@ def test_inv7_step_4_lives_in_main_session() -> None:
     )
 
 
-# Inv 8: Step 4 bypass mechanism named
+# Inv 8: Step 4 bypass mechanism named (migrated to the per-feature command +
+# canonical marker, phase 4 of #733).
 def test_inv8_step_4_names_marker_and_command() -> None:
     body = _step_body(_text(), 4)
     assert MARKER_PATH in body, f"Step 4 must name the marker path {MARKER_PATH!r}"
-    assert REVOKE_CMD in body, f"Step 4 must name the revoke command {REVOKE_CMD!r}"
+    assert MGMT_CMD in body, f"Step 4 must name the management command {MGMT_CMD!r}"
+
+
+# Inv 8 (migration guard): Step 4 must NOT carry the retired central
+# /rabbit-config human-approval surface or the bare 'human-approval' name —
+# both were migrated to /rabbit-tdd-autonomous (phase 4 of #733).
+def test_inv8_step_4_no_stale_config_refs() -> None:
+    body = _step_body(_text(), 4)
+    assert STALE_CONFIG_CMD not in body, (
+        f"Step 4 must NOT reference the retired central command "
+        f"{STALE_CONFIG_CMD!r}; use {MGMT_CMD!r} (phase 4 of #733)"
+    )
+    # The legacy marker name '.rabbit-human-approval-bypass' is intentionally
+    # retained as a coexistence/dual-read note (#770); mask it out before
+    # asserting the bare 'human-approval' configurable name is gone.
+    masked = body.replace(".rabbit-human-approval-bypass", "")
+    assert "human-approval" not in masked, (
+        "Step 4 must NOT reference the old 'human-approval' configurable name "
+        "(the legacy '.rabbit-human-approval-bypass' marker note is exempt); "
+        "it was renamed to 'tdd-autonomous' (#336) and relocated to "
+        "rabbit-feature (phase 4 of #733)"
+    )
 
 
 # Inv 9: bypass-check is the FIRST action of Step 4
@@ -169,27 +197,88 @@ def test_no_human_approval_gate_flag_in_deployed_skill() -> None:
     )
 
 
+# Inv 52: Step 5 dispatches the TDD subagent by the agent type
+# 'rabbit-tdd-subagent' (issue #418). The Step 5 Agent(...) call MUST name
+# subagent_type: rabbit-tdd-subagent in both source and deployed SKILL.md.
+# The bare agent type 'tdd-subagent' MUST NOT appear (the feature-dir /
+# script-path 'tdd-subagent/scripts/dispatch-tdd-subagent.py' reference is
+# unaffected — only the AGENT type was renamed).
+def _assert_inv52(text: str, label: str) -> None:
+    body = _step_body(text, 5)
+    assert "rabbit-tdd-subagent" in body, (
+        f"Step 5 ({label}) must dispatch subagent_type 'rabbit-tdd-subagent' "
+        "(issue #418)"
+    )
+    # The Agent call must carry the subagent_type field set to the new name.
+    assert re.search(r"subagent_type\s*:\s*rabbit-tdd-subagent", body), (
+        f"Step 5 ({label}) Agent(...) call must pass "
+        "'subagent_type: rabbit-tdd-subagent' (issue #418)"
+    )
+
+
+def test_inv52_source_step5_dispatches_rabbit_tdd_subagent() -> None:
+    _assert_inv52(_text(), "source SKILL.md")
+
+
+def test_inv52_deployed_step5_dispatches_rabbit_tdd_subagent() -> None:
+    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
+    _assert_inv52(DEPLOYED_SKILL.read_text(encoding="utf-8"), "deployed SKILL.md")
+
+
+def _assert_no_bare_agent_type(text: str, label: str) -> None:
+    """The old AGENT type 'tdd-subagent' must not appear as an agent-type
+    token. The only legitimate 'tdd-subagent' substrings are the feature-dir
+    path '.claude/features/tdd-subagent/' and the script name
+    'dispatch-tdd-subagent.py' (both keep their names — only the AGENT type
+    was renamed). Mask those out, then assert no bare 'tdd-subagent' token
+    remains.
+    """
+    stripped = text.replace(".claude/features/tdd-subagent/", "")
+    stripped = stripped.replace("dispatch-tdd-subagent.py", "")
+    # 'rabbit-tdd-subagent' contains 'tdd-subagent' as a suffix; mask it out
+    # before scanning for the bare old name.
+    stripped = stripped.replace("rabbit-tdd-subagent", "")
+    assert "tdd-subagent" not in stripped, (
+        f"{label} must not reference the old AGENT type 'tdd-subagent' "
+        "outside the feature-dir/script-path; rename to 'rabbit-tdd-subagent' "
+        "(issue #418)"
+    )
+
+
+def test_inv52_source_no_bare_old_agent_type() -> None:
+    _assert_no_bare_agent_type(_text(), "source SKILL.md")
+
+
+def test_inv52_deployed_no_bare_old_agent_type() -> None:
+    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
+    _assert_no_bare_agent_type(
+        DEPLOYED_SKILL.read_text(encoding="utf-8"), "deployed SKILL.md"
+    )
+
+
 # Inv 12: Step 4 bypass-active path routes the alert through
-# contract.lib.runtime.emit_configurable_alert(rabbit-cage, human-approval).
-# The SKILL.md must reference the helper and the configurable coordinates;
-# it must NOT inline the alert-message text (single source of truth is the
-# rabbit-cage human-approval configurable's alert-message field).
+# contract.lib.runtime.emit_configurable_alert(rabbit-feature, tdd-autonomous).
+# After the #733 chain the configurable was relocated to its owning feature,
+# so the alert is sourced from rabbit-feature's OWN tdd-autonomous configurable
+# (no cross-scope read of rabbit-cage). The SKILL.md must reference the helper
+# and the configurable coordinates; it must NOT inline the alert-message text
+# (single source of truth is the tdd-autonomous configurable's alert-message).
 def _assert_inv12(text: str, label: str) -> None:
     body = _step_body(text, 4)
     assert "emit_configurable_alert" in body, (
         f"Step 4 ({label}) must invoke emit_configurable_alert"
     )
-    assert "rabbit-cage" in body, (
-        f"Step 4 ({label}) must reference the 'rabbit-cage' feature when "
-        "invoking emit_configurable_alert"
+    assert "rabbit-feature" in body, (
+        f"Step 4 ({label}) must reference the 'rabbit-feature' feature when "
+        "invoking emit_configurable_alert (the configurable's owning feature)"
     )
-    assert "human-approval" in body, (
-        f"Step 4 ({label}) must reference the 'human-approval' configurable "
+    assert "tdd-autonomous" in body, (
+        f"Step 4 ({label}) must reference the 'tdd-autonomous' configurable "
         "when invoking emit_configurable_alert"
     )
     assert ALERT_TEXT not in body, (
         f"Step 4 ({label}) must NOT inline the alert-message text {ALERT_TEXT!r}; "
-        "the centrally-declared alert text lives in rabbit-cage/feature.json"
+        "the declared alert text lives in rabbit-feature/feature.json"
     )
 
 
@@ -202,15 +291,9 @@ def test_inv12_deployed_step4_uses_emit_configurable_alert() -> None:
     _assert_inv12(DEPLOYED_SKILL.read_text(encoding="utf-8"), "deployed SKILL.md")
 
 
-# Inv 13: B/B mode reads item.json via python3 (never bug.json / jq)
-def test_inv13_bb_mode_uses_item_json_via_python3() -> None:
-    body = _step_body(_text(), 1)
-    assert "item.json" in body, "Step 1 B/B mode must reference 'item.json'"
-    assert "bug.json" not in body, "Step 1 B/B mode must NOT reference legacy 'bug.json'"
-    assert "python3" in body, "Step 1 B/B mode must use 'python3' for extraction"
-    assert not re.search(r"\bjq\s+[-'\"\.]", body), (
-        "Step 1 B/B mode must NOT use 'jq' (not a declared dependency)"
-    )
+# Inv 13 retired in Phase 7c cleanup — B/B mode (and the item.json read
+# path the assertion locked) was removed from the SKILL.md after rabbit-file
+# retirement in Phase 7b.
 
 
 # Inv 14: Red Flags — no main-session Write/Edit on features
@@ -239,7 +322,13 @@ def test_inv15_red_flags_prohibit_scope_marker_creation() -> None:
     )
 
 
-# Inv 16: Step 3 spec-commit obligation documented in SKILL.md
+# Inv 16 (reframed for issue #440 / §4 Script-Backed Orchestration): Step 3
+# documents the spec-commit obligation in PROSE and delegates the mode-aware
+# git-add + empty-diff-skip + commit logic to the companion feature-touch.py
+# script. The prose obligation MUST remain; the bash-block that previously
+# carried the mode-aware branching inline is now a §4 violation and moves into
+# the script (the script-side details are locked by
+# test-touch-skill-authoring-standard.py Inv 54).
 def test_inv16_step_3_spec_commit_obligation() -> None:
     for skill_path in (SOURCE_SKILL, DEPLOYED_SKILL):
         assert skill_path.exists(), f"missing SKILL.md: {skill_path}"
@@ -253,9 +342,58 @@ def test_inv16_step_3_spec_commit_obligation() -> None:
             f"Step 3 in {skill_path} must document the commit message pattern "
             "'spec(<feature-name>): update spec for ...'"
         )
-        assert "git diff --cached --quiet" in body, (
-            f"Step 3 in {skill_path} must phrase the empty-diff skip condition "
-            "as a 'git diff --cached --quiet' test"
+        # The empty-diff skip is now owned by the companion script; the prose
+        # must still name the skip behaviour but no longer carries the inline
+        # 'git diff --cached --quiet' bash form (that moved into the script).
+        assert "empty" in body.lower() and "skip" in body.lower(), (
+            f"Step 3 in {skill_path} must still document the empty-diff skip "
+            "behaviour in prose"
+        )
+
+
+# Inv 16 (reframed): the mode-aware spec-commit is delegated to the companion
+# feature-touch.py script. Step 3's body MUST invoke that script's commit-spec
+# subcommand rather than carrying an inline mode-branching bash block. The
+# mode-detection source (.rabbit/.runtime/mode), the plugin 'git add -f' form,
+# the standalone 'git add' form, and both feature_dir prefixes are now OWNED
+# by the script and locked by test-touch-skill-authoring-standard.py.
+def test_inv16_step_3_delegates_to_companion_script() -> None:
+    for skill_path in (SOURCE_SKILL, DEPLOYED_SKILL):
+        assert skill_path.exists(), f"missing SKILL.md: {skill_path}"
+        text = skill_path.read_text(encoding="utf-8")
+        body = _step_body(text, 3)
+        assert "feature-touch.py" in body, (
+            f"Step 3 in {skill_path} must invoke the companion "
+            "feature-touch.py script for the mode-aware spec-commit "
+            "(§4 Script-Backed Orchestration)"
+        )
+        assert "commit-spec" in body, (
+            f"Step 3 in {skill_path} must invoke the 'commit-spec' subcommand "
+            "(§4 Script-Backed Orchestration)"
+        )
+
+
+# The flat docs/ preferred + docs/spec/ fallback spec-path resolution is
+# owned by the companion feature-touch.py script (resolve-spec-path /
+# commit-spec subcommands). The SKILL.md no longer carries the inline
+# branching bash block (a §4 violation); Step 5 instead resolves the spec
+# path via the companion script. The resolution details (flat docs/
+# preferred, docs/spec/ fallback) are locked by
+# test-touch-skill-authoring-standard.py against the script source. Here we
+# assert Step 5 delegates spec-path resolution to the script rather than
+# assembling the path inline.
+def test_inv56_step5_delegates_spec_path_to_companion() -> None:
+    for skill_path in (SOURCE_SKILL, DEPLOYED_SKILL):
+        assert skill_path.exists(), f"missing SKILL.md: {skill_path}"
+        text = skill_path.read_text(encoding="utf-8")
+        step5 = _step_body(text, 5)
+        assert "feature-touch.py" in step5, (
+            f"Step 5 in {skill_path} must resolve the spec path via the "
+            "companion feature-touch.py script (§4 Script-Backed Orchestration)"
+        )
+        assert "resolve-spec-path" in step5, (
+            f"Step 5 in {skill_path} must invoke the 'resolve-spec-path' "
+            "subcommand (§4 Script-Backed Orchestration)"
         )
 
 
@@ -320,55 +458,9 @@ def test_inv41_source_and_deployed_byte_identical() -> None:
     )
 
 
-# Inv 42: B/B item materialization documented in SKILL.md (source + deployed,
-# byte-identical). The B/B mode block of Step 1 must cover all four points:
-# (a) why materialization is needed (origin/bug-backlog-files not in working tree),
-# (b) local mirror path layout under .rabbit/rabbit/features/<feature>/<type>s/<id>/,
-# (c) the git show origin/bug-backlog-files:... fetch command,
-# (d) what gets passed to --linked-item (the local mirror dir).
-_MATERIALIZATION_REQUIRED_PHRASES = [
-    "bug-backlog-files",
-    ".rabbit/rabbit/features/",
-    "git show origin/bug-backlog-files",
-    "--linked-item",
-]
-
-
-def _step1_text(text: str) -> str:
-    return _step_body(text, 1)
-
-
-def test_inv42_source_documents_materialization() -> None:
-    body = _step1_text(_text())
-    for phrase in _MATERIALIZATION_REQUIRED_PHRASES:
-        assert phrase in body, (
-            f"Step 1 (source SKILL.md) must document B/B item materialization; "
-            f"missing phrase {phrase!r}"
-        )
-
-
-def test_inv42_deployed_documents_materialization() -> None:
-    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
-    body = _step1_text(DEPLOYED_SKILL.read_text(encoding="utf-8"))
-    for phrase in _MATERIALIZATION_REQUIRED_PHRASES:
-        assert phrase in body, (
-            f"Step 1 (deployed SKILL.md) must document B/B item materialization; "
-            f"missing phrase {phrase!r}"
-        )
-
-
-def test_inv42_source_and_deployed_materialization_byte_identical() -> None:
-    """Inv 42 requires byte-identical presence of the materialization docs
-    in both source and deployed SKILL.md."""
-    assert SOURCE_SKILL.exists(), f"missing source SKILL.md: {SOURCE_SKILL}"
-    assert DEPLOYED_SKILL.exists(), f"missing deployed SKILL.md: {DEPLOYED_SKILL}"
-    src = SOURCE_SKILL.read_bytes()
-    dep = DEPLOYED_SKILL.read_bytes()
-    assert src == dep, (
-        "source and deployed rabbit-feature-touch SKILL.md must be "
-        "byte-identical (Inv 42 requires the materialization documentation "
-        "to appear byte-identically in both)"
-    )
+# Inv 42 retired in Phase 7c cleanup — the "B/B item materialization"
+# subsection of Step 1 was removed along with the rest of B/B mode after
+# rabbit-file retirement in Phase 7b.
 
 
 def test_inv41_directive_visible_before_step_7_end() -> None:

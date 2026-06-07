@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-34",
+  "type": "bug",
+  "title": "tdd-drift-check.py guards on file executability that may be irrelevant",
+  "status": "close",
+  "priority": "low",
+  "description": "tdd-drift-check.py run_tests_get_rc requires that runner is executable (os.access X_OK). It then invokes the runner via sys.executable, ignoring the +x bit. The check is wrong: 'python3 path/to/run.py' works regardless of whether run.py has +x set. Removing the +x guard would let drift-check work in worktrees where +x bits aren't preserved. Alternatively justify the guard in spec.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T03:49:00Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:38:25Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:49:00Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:38:25Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave-5 cleanup TDD cycle complete",
+      "fix_commits": "160d6ac5956fd20934ec1b4370c6ad188a909e20"
+    }
+  ],
+  "commit_sha": "750429a283f34e8fe1295f326fa73c06f6baf1e4"
+}

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """test-validate-meta-contract-prompts.py — exercises the prompts-section
-arm of validate_meta_contract. Per spec Inv 53, validate_meta_contract
+arm of validate_meta_contract. Per spec Inv 45, validate_meta_contract
 MUST be extended to dispatch to validate_prompts_section.
 
 validate_prompts_section is the per-feature wrapper: it validates schema

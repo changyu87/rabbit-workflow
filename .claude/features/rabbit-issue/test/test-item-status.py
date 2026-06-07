@@ -1,0 +1,267 @@
+"""E2E tests for scripts/item-status.py (show / close / reopen).
+
+Close-path gating (issue #423):
+  - `--reason completed`  requires `--commit-sha <sha>`; the sha must
+    resolve to a real commit in the local git repo.
+  - `--reason not-planned` requires `--reason-text <text>` of >= 50 chars
+    that is free of banned boilerplate phrases.
+"""
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
+ITEM_STATUS = SCRIPTS / "item-status.py"
+
+# A specific, non-boilerplate, >= 50-char reason for not-planned closes.
+GOOD_REASON = (
+    "Superseded by the new sandbox executor introduced in PR #410; "
+    "the code path this issue targets no longer exists after that refactor."
+)
+
+
+def _run(*args, env=None):
+    return subprocess.run(
+        [sys.executable, str(ITEM_STATUS), *args],
+        capture_output=True, text=True, env=env or os.environ.copy(),
+    )
+
+
+def _commit_in(repo):
+    """Create one commit in `repo` and return its full SHA."""
+    subprocess.run(["git", "-C", str(repo), "config", "user.email",
+                    "t@t.t"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name",
+                    "t"], check=True)
+    (repo / "f.txt").write_text("x")
+    subprocess.run(["git", "-C", str(repo), "add", "f.txt"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "x"],
+                   check=True)
+    return subprocess.check_output(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True
+    ).strip()
+
+
+def test_show_prints_issue_json(gh_shim, fake_repo):
+    r = _run("show", "42")
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["number"] == 42
+
+
+def test_close_completed_requires_commit_sha(gh_shim, fake_repo):
+    """`--reason completed` without `--commit-sha` is rejected."""
+    r = _run("close", "42", "--reason", "completed", "--comment", "done")
+    assert r.returncode != 0
+    log = gh_shim.read_text()
+    assert "issue close" not in log
+
+
+def test_close_completed_with_valid_sha(gh_shim, fake_repo):
+    sha = _commit_in(fake_repo)
+    r = _run("close", "42", "--reason", "completed", "--commit-sha", sha,
+             "--comment", "fixed")
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue close" in log
+    assert "completed" in log
+
+
+def test_close_completed_with_invalid_sha(gh_shim, fake_repo):
+    _commit_in(fake_repo)
+    r = _run("close", "42", "--reason", "completed",
+             "--commit-sha", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_not_planned_requires_reason_text(gh_shim, fake_repo):
+    """`--reason not-planned` without `--reason-text` is rejected."""
+    r = _run("close", "42", "--reason", "not-planned")
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_not_planned_rejects_short_reason(gh_shim, fake_repo):
+    r = _run("close", "42", "--reason", "not-planned",
+             "--reason-text", "stale")
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_not_planned_rejects_boilerplate(gh_shim, fake_repo):
+    """A 50+ char reason that contains a banned phrase is still rejected."""
+    boiler = ("This one is honestly too risky to attempt right now so we "
+              "are going to leave it for some later time, thanks.")
+    assert len(boiler) >= 50
+    r = _run("close", "42", "--reason", "not-planned",
+             "--reason-text", boiler)
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_not_planned_accepts_specific_reason(gh_shim, fake_repo):
+    assert len(GOOD_REASON) >= 50
+    r = _run("close", "42", "--reason", "not-planned",
+             "--reason-text", GOOD_REASON)
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    # #419 translation kept intact: hyphenated form becomes the space form
+    # gh expects, and the hyphen form never reaches gh.
+    assert "issue close" in log
+    assert "not planned" in log
+    assert "not-planned" not in log
+
+
+def test_close_not_planned_persists_reason_text_as_comment(gh_shim, fake_repo):
+    """The validated --reason-text is posted as the close comment (#476).
+
+    The bug: --reason-text was validated then discarded, so the closed
+    issue carried no justification. The reason-text MUST reach gh as the
+    close comment.
+    """
+    r = _run("close", "42", "--reason", "not-planned",
+             "--reason-text", GOOD_REASON)
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue close" in log
+    # The justification text must be present in the gh invocation.
+    assert "Superseded by the new sandbox executor" in log
+
+
+def test_close_not_planned_combines_reason_text_and_comment(gh_shim, fake_repo):
+    """With both --comment and --reason-text the close comment shows both,
+    reason-text first (#476)."""
+    r = _run("close", "42", "--reason", "not-planned",
+             "--reason-text", GOOD_REASON, "--comment", "closing as stale")
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue close" in log
+    # Both pieces present, and the reason-text precedes the comment.
+    ri = log.find("Superseded by the new sandbox executor")
+    ci = log.find("closing as stale")
+    assert ri != -1 and ci != -1
+    assert ri < ci
+
+
+def test_close_completed_does_not_inject_reason_text(gh_shim, fake_repo):
+    """A `completed` close never carries reason-text persistence logic; its
+    comment is exactly --comment (regression guard for #476)."""
+    sha = _commit_in(fake_repo)
+    r = _run("close", "42", "--reason", "completed", "--commit-sha", sha,
+             "--comment", "fixed")
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue close" in log
+    assert "fixed" in log
+
+
+# A plausible GitHub issue-comment URL for the research SMALL-outcome
+# close gate (issue #841).
+GOOD_COMMENT_URL = (
+    "https://github.com/changyu87/rabbit-workflow/issues/841"
+    "#issuecomment-1234567890"
+)
+
+
+def test_close_completed_with_findings_comment_url(gh_shim, fake_repo):
+    """`--reason completed --findings-comment-url <url>` closes without a
+    commit sha (the SMALL research-outcome path, Inv 27d / #841)."""
+    r = _run("close", "42", "--reason", "completed",
+             "--findings-comment-url", GOOD_COMMENT_URL)
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue close" in log
+    assert "completed" in log
+    # The validated URL is persisted as the close comment (audit link).
+    assert GOOD_COMMENT_URL in log
+
+
+def test_close_findings_comment_url_rejects_invalid(gh_shim, fake_repo):
+    """A URL that is not a GitHub issue-comment URL is rejected."""
+    r = _run("close", "42", "--reason", "completed",
+             "--findings-comment-url", "https://example.com/not-a-comment")
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_findings_comment_url_rejects_missing_fragment(gh_shim, fake_repo):
+    """An issue URL without the #issuecomment-<id> fragment is rejected."""
+    r = _run("close", "42", "--reason", "completed",
+             "--findings-comment-url",
+             "https://github.com/changyu87/rabbit-workflow/issues/841")
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_completed_requires_a_deliverable_proof(gh_shim, fake_repo):
+    """`--reason completed` with neither --commit-sha nor
+    --findings-comment-url is rejected."""
+    r = _run("close", "42", "--reason", "completed")
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_completed_rejects_both_proofs(gh_shim, fake_repo):
+    """--commit-sha and --findings-comment-url are mutually exclusive."""
+    sha = _commit_in(fake_repo)
+    r = _run("close", "42", "--reason", "completed",
+             "--commit-sha", sha,
+             "--findings-comment-url", GOOD_COMMENT_URL)
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_findings_comment_url_combines_with_comment(gh_shim, fake_repo):
+    """With both --findings-comment-url and --comment the close comment
+    shows both, the URL first (#841)."""
+    r = _run("close", "42", "--reason", "completed",
+             "--findings-comment-url", GOOD_COMMENT_URL,
+             "--comment", "research item closed with findings comment")
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue close" in log
+    ui = log.find(GOOD_COMMENT_URL)
+    ci = log.find("research item closed with findings comment")
+    assert ui != -1 and ci != -1
+    assert ui < ci
+
+
+def test_close_findings_comment_url_rejected_for_not_planned(gh_shim, fake_repo):
+    """--findings-comment-url is a `completed`-only gate; it does not apply
+    to a not-planned close (which still requires --reason-text)."""
+    r = _run("close", "42", "--reason", "not-planned",
+             "--findings-comment-url", GOOD_COMMENT_URL)
+    assert r.returncode != 0
+    assert "issue close" not in gh_shim.read_text()
+
+
+def test_close_rejects_unknown_reason(gh_shim, fake_repo):
+    r = _run("close", "42", "--reason", "wontfix")
+    assert r.returncode != 0
+
+
+def test_reopen(gh_shim, fake_repo):
+    r = _run("reopen", "42")
+    assert r.returncode == 0, r.stderr
+    assert "issue reopen" in gh_shim.read_text()
+
+
+def test_reopen_with_comment(gh_shim, fake_repo):
+    r = _run("reopen", "42", "--comment", "actually still broken")
+    assert r.returncode == 0, r.stderr
+    log = gh_shim.read_text()
+    assert "issue reopen" in log
+    assert "actually still broken" in log
+
+
+def test_show_does_not_require_managed(gh_shim, fake_repo, tmp_path, monkeypatch):
+    """`show` is read-only; safety guard does not apply."""
+    body = tmp_path / "issue.json"
+    body.write_text(json.dumps({"number": 7, "labels": [{"name": "bug"}]}))
+    env = os.environ.copy()
+    env["GH_SHIM_ISSUE_BODY"] = str(body)
+    r = _run("show", "7", env=env)
+    assert r.returncode == 0, r.stderr

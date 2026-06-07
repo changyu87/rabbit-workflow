@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-24",
+  "type": "backlog",
+  "title": "Remove new-feature.py + validate-all.py after rabbit-feature-new + rabbit-feature-audit skills land",
+  "status": "close",
+  "priority": "medium",
+  "description": "Cleanup after the feature-lifecycle ownership move.\\n\\nOnce rabbit-feature-new and rabbit-feature-audit skills are in place (separate backlogs), delete:\\n- .claude/features/rabbit-cage/scripts/new-feature.py\\n- .claude/features/rabbit-cage/scripts/validate-all.py\\n\\nUpdate rabbit-cage spec.md and contract.md to remove invariants/provides entries for the deleted scripts. Update tests. Bump version.\\n\\nDEPENDS ON: both rabbit-feature-new and rabbit-feature-audit backlogs landing first.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-20T03:14:07Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T04:13:56Z",
+  "history": [
+    {
+      "ts": "2026-05-20T03:14:07Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T04:13:56Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "cb0659672eca073608bbb719787c31cd748e8897"
+    }
+  ],
+  "commit_sha": "47baa936771b5e4ee05754b0f43670b051beb84e"
+}

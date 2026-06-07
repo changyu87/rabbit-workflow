@@ -1,0 +1,28 @@
+{
+  "name": "TDD-SUBAGENT-BUG-51",
+  "type": "bug",
+  "title": "Spec Inv 31 claims test-green \u2192 spec-update transition that tdd-step.py state machine does not implement",
+  "status": "close",
+  "priority": "high",
+  "description": "Wave 3 BUG-19 fix (PR #125) landed a spec invariant (Inv 31) claiming the forward state-machine chain is test-green \u2192 spec-update. The actual tdd-step.py implementation transitions test-green \u2192 deprecated. The prompt-shape fix is in place and tests pass, but Inv 31's transition claim is inconsistent with the state machine.\n\nDecision needed: either (a) extend tdd-step.py with a spec-update state and the test-green \u2192 spec-update transition (matching the prompt and Inv 31 \u2014 most invasive), or (b) rewrite Inv 31 and the prompt to use whatever actual mechanism the state machine provides for re-entering a cycle from test-green (e.g., use --force, or add an explicit reset command). Option (b) is less invasive but requires picking a real cycle re-entry mechanism.",
+  "related_feature": "tdd-subagent",
+  "filed": "2026-05-18T07:57:37Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:10:20Z",
+  "history": [
+    {
+      "ts": "2026-05-18T07:57:37Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:10:20Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4: auto_close uses item-status.py; state machine accepts test-green \u2192 spec-update for cycle restart.",
+      "fix_commits": "e0f1c67"
+    }
+  ],
+  "commit_sha": "6c98b9cbf21b1fbf7c42ca5cde225ba91e0f5d3f"
+}

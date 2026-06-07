@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inv 7, 8, 9 — scope marker convention, 7-step banners in order, E2E
+"""Inv 7, 8, 9 — scope marker convention, 8-step banners in order, E2E
 test rule mentioned."""
 from _helpers import run_dispatch, report
 
@@ -30,12 +30,13 @@ if ".rabbit-scope-active-tdd-subagent" in prompt:
 else:
     ko("inv7: per-feature scope marker not mentioned")
 
-# Inv 8: seven step banners present in declared order, numbered STEP 1..STEP 7.
+# Inv 8: eight step banners present in declared order, numbered STEP 1..STEP 8.
 steps = [
     "LOCK",
     "TEST-WRITE",
     "TEST-RED",
     "IMPLEMENT",
+    "SYNC-DEPLOYED",
     "CODE-REVIEW",
     "TEST-GREEN",
     "UNLOCK",
@@ -52,7 +53,7 @@ for s in steps:
 
 valid_positions = [p for p in positions if p is not None]
 if len(valid_positions) == len(steps) and valid_positions == sorted(valid_positions):
-    ok("inv8: seven step banners present in declared order")
+    ok("inv8: eight step banners present in declared order")
 elif len(valid_positions) == len(steps):
     ko("inv8: step banners present but out of order")
 
@@ -72,11 +73,11 @@ if not _re.search(r"STEP \d+ — HUMAN-APPROVAL", prompt):
 else:
     ko("inv8: retired HUMAN-APPROVAL step banner still present in prompt")
 
-# Inv 8 (count): exactly seven STEP N banners, numbered 1..7 — no STEP 8/9.
-if "STEP 8 —" not in prompt and "STEP 9 —" not in prompt:
-    ok("inv8: no STEP 8/9 banners remain after renumber")
+# Inv 8 (count): exactly eight STEP N banners, numbered 1..8 — no STEP 9/10.
+if "STEP 9 —" not in prompt and "STEP 10 —" not in prompt:
+    ok("inv8: no STEP 9/10 banners remain after 8-step promotion")
 else:
-    ko("inv8: stray STEP 8 or STEP 9 banner present")
+    ko("inv8: stray STEP 9 or STEP 10 banner present")
 
 # Inv 9: E2E test rule mentioned in prompt.
 if "E2E TEST RULE" in prompt and "Unit tests alone are insufficient" in prompt:

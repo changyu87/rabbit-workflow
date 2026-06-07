@@ -1,0 +1,27 @@
+{
+  "name": "POLICY-BACKLOG-7",
+  "type": "backlog",
+  "title": "coding-rules.md should reference TDD discipline mandated by CLAUDE.md",
+  "status": "close",
+  "priority": "medium",
+  "description": "Top-level CLAUDE.md mandates TDD via /rabbit-feature-touch ('full TDD cycle (spec -> test-green). TDD is token-heavy; skip it only for trivial edits'). But coding-rules.md section 4 'Goal-Driven Execution' only talks generically about tests and gives examples like 'Write a test that reproduces it, then make it pass' without naming TDD as the governing process. Add explicit cross-reference to the TDD workflow and the trivial-edit override, so subagents know the rule when CLAUDE.md is not in their context. Location: .claude/features/policy/coding-rules.md section 4, lines 54-70.",
+  "related_feature": "policy",
+  "filed": "2026-05-18T03:06:42Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T03:08:31Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:06:42Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T03:08:31Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "duplicate of POLICY-BACKLOG-6 (filed twice due to worktree race)"
+    }
+  ],
+  "commit_sha": "69a55040fd46648258bf5b1ae8f8faa5e67ab840"
+}

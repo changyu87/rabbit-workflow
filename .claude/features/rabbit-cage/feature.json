@@ -1,8 +1,10 @@
 {
   "name": "rabbit-cage",
-  "version": "5.8.0",
+  "version": "5.80.0",
+  "contiguous_invariants": true,
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
+  "housekeeping_clean": true,
   "summary": "Service dispatcher of the rabbit workflow. Owns four Claude Code event hooks (PreToolUse, Stop, SessionStart, UserPromptSubmit) and the bootstrap installer. The three event-dispatcher hooks enumerate every feature's runtime[<event>] declarations and invoke each via contract.lib.runtime; install.py enumerates every feature's manifest and invokes each via contract.lib.publish. PreToolUse is owned outright by scope-guard.py.",
   "surface": {
     "hooks": [],
@@ -12,7 +14,7 @@
   },
   "deprecation_criterion": "when Claude Code exposes native event dispatchers and artifact publishing that subsume this role",
   "status": "active",
-  "updated": "2026-05-27",
+  "updated": "2026-06-06",
   "manifest": [
     {
       "api": "publish_settings",
@@ -93,6 +95,18 @@
       "args": {
         "source": "commands/rabbit-project.md"
       }
+    },
+    {
+      "api": "publish_command",
+      "args": {
+        "source": "commands/rabbit-update.md"
+      }
+    },
+    {
+      "api": "publish_command",
+      "args": {
+        "source": "commands/rabbit-cage-config.md"
+      }
     }
   ],
   "runtime": {
@@ -129,10 +143,29 @@
           "path": ".rabbit-scope-override",
           "content": "session",
           "alert": {
-            "text": "SCOPE GUARD OFF (session override active)",
+            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-cage-config scope-guard on",
             "icon": "\ud83d\udd13",
             "color": "red"
           }
+        }
+      },
+      {
+        "api": "check_marker_alert",
+        "args": {
+          "path": ".rabbit/.rabbit-scope-override",
+          "content": "session",
+          "alert": {
+            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-cage-config scope-guard on",
+            "icon": "\ud83d\udd13",
+            "color": "red"
+          }
+        }
+      },
+      {
+        "api": "emit_configurable_alert",
+        "args": {
+          "feature_name": "rabbit-cage",
+          "configurable_id": "bypass-permissions"
         }
       },
       {
@@ -156,6 +189,10 @@
             "color": "green"
           }
         }
+      },
+      {
+        "api": "emit_stop_timestamp",
+        "args": {}
       }
     ],
     "SessionStart": [
@@ -179,6 +216,41 @@
       {
         "api": "write_mode_marker",
         "args": {}
+      },
+      {
+        "api": "check_release_update",
+        "args": {}
+      },
+      {
+        "api": "check_marker_alert",
+        "args": {
+          "path": ".rabbit-scope-override",
+          "content": "session",
+          "alert": {
+            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-cage-config scope-guard on",
+            "icon": "\ud83d\udd13",
+            "color": "red"
+          }
+        }
+      },
+      {
+        "api": "check_marker_alert",
+        "args": {
+          "path": ".rabbit/.rabbit-scope-override",
+          "content": "session",
+          "alert": {
+            "text": "SCOPE GUARD OFF (session override active) \u2014 revoke: /rabbit-cage-config scope-guard on",
+            "icon": "\ud83d\udd13",
+            "color": "red"
+          }
+        }
+      },
+      {
+        "api": "emit_configurable_alert",
+        "args": {
+          "feature_name": "rabbit-cage",
+          "configurable_id": "bypass-permissions"
+        }
       }
     ],
     "UserPromptSubmit": [
@@ -194,38 +266,27 @@
   },
   "configuration": [
     {
-      "id": "human-approval",
-      "subcommand": "human-approval",
+      "id": "scope-guard",
+      "subcommand": "scope-guard",
+      "command": "rabbit-cage-config",
       "storage": {
         "type": "marker-file",
-        "path": ".rabbit-human-approval-bypass"
+        "path": ".rabbit-scope-override"
       },
       "values": {
-        "true": {
+        "on": {
           "api": "delete_marker",
           "args": {
-            "path": ".rabbit-human-approval-bypass"
-          }
-        },
-        "false": {
-          "api": "write_marker",
-          "args": {
-            "path": ".rabbit-human-approval-bypass",
-            "content": "session"
+            "path": ".rabbit-scope-override"
           }
         }
       },
-      "default": "true",
-      "alert-on": "false",
-      "alert-message": {
-        "text": "HUMAN APPROVAL BYPASS ACTIVE - Step 4 skipped",
-        "icon": "\ud83d\udd11",
-        "color": "red"
-      }
+      "default": "on"
     },
     {
       "id": "bypass-permissions",
       "subcommand": "bypass-permissions",
+      "command": "rabbit-cage-config",
       "storage": {
         "type": "json-key",
         "file": ".claude/settings.local.json",
@@ -251,14 +312,16 @@
       "default": "false",
       "alert-on": "true",
       "alert-message": {
-        "text": "BYPASS-PERMISSIONS MODE ACTIVE - scope-guard is sole write-auth gate",
+        "text": "BYPASS-PERMISSIONS MODE ACTIVE \u2014 revoke: /rabbit-cage-config bypass-permissions false",
         "icon": "\ud83d\udea8",
         "color": "red"
-      }
+      },
+      "restart_required": true
     },
     {
       "id": "prompt-threshold",
       "subcommand": "prompt-threshold",
+      "command": "rabbit-cage-config",
       "storage": {
         "type": "json-key",
         "file": ".claude/settings.local.json",
@@ -279,6 +342,7 @@
     {
       "id": "allowed-tools",
       "subcommand": "allowed-tools",
+      "command": "rabbit-cage-config",
       "storage": {
         "type": "json-array",
         "file": ".claude/settings.local.json",
@@ -309,6 +373,7 @@
     {
       "id": "bash-allow",
       "subcommand": "bash-allow",
+      "command": "rabbit-cage-config",
       "storage": {
         "type": "json-array-templated",
         "file": ".claude/settings.local.json",
@@ -336,31 +401,6 @@
       "validation": {
         "reject_chars": "():\\s"
       }
-    },
-    {
-      "id": "permissions",
-      "subcommand": "permissions",
-      "actions": {
-        "lock": {
-          "api": "run_feature_script",
-          "args": {
-            "script": "scripts/repo-permissions.py",
-            "args": [
-              "lock"
-            ]
-          }
-        },
-        "unlock": {
-          "api": "run_feature_script",
-          "args": {
-            "script": "scripts/repo-permissions.py",
-            "args": [
-              "unlock"
-            ]
-          }
-        }
-      }
     }
-  ],
-  "spec_no_change_reason": "Spec changes (Inv 17 + Inv 18 + version bump 5.7.0 -> 5.8.0) committed at c1fa5a05 in this cycle along with tests"
+  ]
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-no-dead-contract-scripts.py — Inv 34 / CONTRACT-BACKLOG-24
+"""test-no-dead-contract-scripts.py — Inv 27 / CONTRACT-BACKLOG-24
 
 E2E test that every Python script under
 `.claude/features/contract/scripts/` (excluding `enforcement/`) has at least
@@ -10,7 +10,7 @@ A "production caller" is a reference to the script's basename anywhere in
   - `.claude/archive/`
   - any `__pycache__/`
   - the contract feature's own `scripts/`, `tests/`, `test/`, and
-    `docs/spec/` (self-references, including spec/contract.md that
+    `specs/` (self-references, including spec/contract.md that
     merely declare the surface).
 
 Also verifies that the five scripts deleted by CONTRACT-BACKLOG-24 are
@@ -126,20 +126,20 @@ def has_production_caller(basename):
             continue
         if norm.startswith(os.path.join(FEATURE_DIR, "tests") + os.sep):
             continue
-        if norm.startswith(os.path.join(FEATURE_DIR, "docs", "spec") + os.sep):
+        if norm.startswith(os.path.join(FEATURE_DIR, "docs") + os.sep):
             continue
         qualifying.append(norm)
     return qualifying
 
 
-# KNOWN_ISSUES — scripts pending a production caller. Follow the Inv 38
+# KNOWN_ISSUES — scripts pending a production caller. Follow the Inv 30
 # pattern: add only when a multi-plan cycle is in flight, remove once the
 # caller lands. Each entry must name the plan / backlog that will close it.
 KNOWN_ISSUES = {
     # Added by Plan A of CONTRACT-BACKLOG-36 (meta-contract foundation).
     # The CLI shim is user-invocable today but has no programmatic caller
-    # until Plan C wires it into rabbit-cage's install dispatcher OR Plan E
-    # adds it to rabbit-feature-audit. Remove this entry once either lands.
+    # until Plan C wires it into rabbit-cage's install dispatcher. Remove
+    # this entry once that lands.
     "validate-meta-contract.py",
 }
 

@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-40",
+  "type": "bug",
+  "title": "Post-consolidation cleanup: fix stale test-bug-fixes-cycle.py path, update Inv 36 schema reference, add retirement semantics, update workspace-structure.json for retired features",
+  "status": "close",
+  "priority": "high",
+  "description": "Post-consolidation audit findings for contract feature:\\n\\n1. test-bug-fixes-cycle.py:164 RABBIT_PRINT_PRODUCERS list still includes .claude/features/tdd-subagent/scripts/tdd-step.py \u2014 file was moved to tdd-state-machine. Test currently fails.\\n2. Inv 36 prose references 'rabbit-print.schema.json producers array' but the schema no longer has that array. Either restore schema source-of-truth or rewrite Inv 36.\\n3. Add tdd-state-machine to Inv 38 parenthetical (currently only mentions Cycle B additions).\\n4. Add an invariant covering rabbit-feature-spec skill rename (deployment source/destination locked).\\n5. Add retirement semantics: define what 'status: retired' means in feature.json; validate-feature.py must short-circuit on retired features. Add 'status' field to feature.json.schema.json with enum [active, retired].\\n6. workspace-structure.json: mark rabbit-feature-scope and rabbit-spec as retired (not required), add tdd-state-machine as required. Add retirement marker to the schema if needed.",
+  "related_feature": "contract",
+  "filed": "2026-05-19T15:23:16Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T15:39:38Z",
+  "history": [
+    {
+      "ts": "2026-05-19T15:23:16Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T15:39:38Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "a716824c4ddd2c5303b413515c8a5b2f1ccd091f"
+    }
+  ],
+  "commit_sha": "79376006a965b646f47f4476352c5cfc16a26444"
+}

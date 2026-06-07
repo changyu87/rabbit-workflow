@@ -1,0 +1,28 @@
+{
+  "name": "CONTRACT-BUG-47",
+  "type": "bug",
+  "title": "_RUNTIME_API_ENUM in lib/checks.py drifts from runtime.schema.json closed-enum",
+  "status": "close",
+  "priority": "medium",
+  "description": "## Repro\n\ncontract/lib/checks.py declares  as a hardcoded frozenset (lines ~636-647). contract/schemas/runtime.schema.json declares the same closed-enum independently. Any new runtime API addition must touch BOTH places, in sync. Drift between them is silent until validate-meta-contract.py runs against a feature.json declaring the new API name.\n\n## How it manifested\n\nDuring Task 2.1 (RABBIT-CAGE-BUG-106 follow-on), commit 639fa684 added 'write_mode_marker' to lib/runtime.py and runtime.schema.json but missed the third place: _RUNTIME_API_ENUM in checks.py. The miss was caught only when rabbit-cage's TDD subagent (Task 2.1b) tried to declare write_mode_marker in feature.json runtime.SessionStart and validate-meta-contract.py rejected it with 'unknown runtime api'. Required an inline patch commit (5d794936) on the same branch to fix.\n\nThis was the second time the drift bit (the first was during the meta-contract work itself); it WILL bite again on every future runtime API addition.\n\n## Suggested fix\n\nSource the enum directly from runtime.schema.json so it cannot drift:\n\n```python\nimport json\nfrom pathlib import Path\n\n_RUNTIME_SCHEMA = json.loads(Path(__file__).parent.parent.joinpath('schemas/runtime.schema.json').read_text())\n_RUNTIME_API_ENUM = frozenset(_RUNTIME_SCHEMA['definitions']['call_list']['items']['properties']['api']['enum'])\n```\n\nOr whatever the actual schema path to the enum is \u2014 read the schema structure first.\n\n## Suggested test gap\n\nAdd a regression test that loads both definitions and asserts they describe the same set. Or a test that adds a hypothetical API to the schema and asserts checks.py picks it up automatically without any other edit.\n\n## Related\n\nSpec note in PR #204 description: 'File-as-backlog candidate: deduplicate _RUNTIME_API_ENUM by sourcing directly from runtime.schema.json so future API additions cannot drift across the two definitions.'",
+  "related_feature": "contract",
+  "filed": "2026-05-28T08:51:05Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-28T09:00:37Z",
+  "history": [
+    {
+      "ts": "2026-05-28T08:51:05Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-28T09:00:37Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "Fixed via schema-sourced _RUNTIME_API_ENUM + regression test",
+      "fix_commits": "7de4be790c6e6f6fc13258c808602ea53bcd80d4"
+    }
+  ],
+  "commit_sha": "3abc067039405ca95c5be1aabd5820649cf2e856"
+}

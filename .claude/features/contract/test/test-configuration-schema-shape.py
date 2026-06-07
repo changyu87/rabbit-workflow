@@ -138,6 +138,80 @@ if color_enum != EXPECTED_COLORS:
 else:
     ok("alert-message.color enum is the closed color set")
 
+# --- phase 3 of #733: additive per-feature command + restart manifestation ---
+
+props = items.get("properties", {})
+
+# The entry stays closed (additionalProperties false) so additions are explicit.
+if items.get("additionalProperties") is not False:
+    fail("items.additionalProperties must stay false (closed entry shape)")
+else:
+    ok("items.additionalProperties stays false")
+
+command_prop = props.get("command")
+if not isinstance(command_prop, dict) or command_prop.get("type") != "string":
+    fail(f"optional `command` property must be a declared string, got {command_prop!r}")
+elif "command" in required:
+    fail("`command` must be OPTIONAL (not in items.required)")
+else:
+    ok("optional `command` property declared (per-feature command name)")
+
+restart_prop = props.get("restart_required")
+if not isinstance(restart_prop, dict) or restart_prop.get("type") != "boolean":
+    fail(f"optional `restart_required` property must be a declared boolean, got {restart_prop!r}")
+elif "restart_required" in required:
+    fail("`restart_required` must be OPTIONAL (not in items.required)")
+else:
+    ok("optional `restart_required` property declared (boolean)")
+
+
+def validate_entry(entry):
+    """Minimal hand-rolled validator: required keys present; no key outside the
+    declared properties (additionalProperties false); types of the two new
+    optional fields when present. Mirrors the existing stdlib-only pattern.
+    """
+    errs = []
+    for r in required:
+        if r not in entry:
+            errs.append(f"missing required key {r!r}")
+    if not (("values" in entry) ^ ("actions" in entry)):
+        errs.append("must declare exactly one of values/actions")
+    for k in entry:
+        if k not in props:
+            errs.append(f"unknown property {k!r} (additionalProperties false)")
+    if "command" in entry and not isinstance(entry["command"], str):
+        errs.append("command must be a string")
+    if "restart_required" in entry and not isinstance(entry["restart_required"], bool):
+        errs.append("restart_required must be a boolean")
+    return errs
+
+
+# An entry carrying the two new fields validates.
+with_new = {
+    "id": "tdd-autonomous",
+    "subcommand": "tdd-autonomous",
+    "command": "rabbit-tdd-autonomous",
+    "restart_required": True,
+    "values": {"true": {"api": "write_marker", "args": {}}},
+}
+e = validate_entry(with_new)
+if e:
+    fail(f"entry WITH new fields should validate: {e}")
+else:
+    ok("entry carrying command + restart_required validates")
+
+# An existing-style entry WITHOUT the new fields still validates (coexistence).
+without_new = {
+    "id": "scope-guard",
+    "subcommand": "scope-guard",
+    "values": {"true": {"api": "delete_marker", "args": {}}},
+}
+e = validate_entry(without_new)
+if e:
+    fail(f"entry WITHOUT new fields should still validate (coexistence): {e}")
+else:
+    ok("entry without new fields still validates (pre-command coexistence)")
+
 if FAIL:
     print("test-configuration-schema-shape: FAIL", file=sys.stderr)
     sys.exit(1)

@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-FEATURE-BACKLOG-3",
+  "type": "backlog",
+  "title": "Add rabbit-feature-audit skill for batch-or-single feature validation/sweep",
+  "status": "close",
+  "priority": "medium",
+  "description": "Move feature audit ownership from rabbit-cage (validate-all.py) to rabbit-feature.\\n\\nCreate new skill rabbit-feature-audit at .claude/features/rabbit-feature/skills/rabbit-feature-audit/SKILL.md. Signature:\\n  Skill('rabbit-feature-audit', args: 'all')          # sweep every feature\\n  Skill('rabbit-feature-audit', args: '<feature-name>') # audit single feature\\n\\nUses contract.lib.checks.validate_feature for the actual validation. Returns structured findings (pass/fail per feature + reasons).\\n\\nUpdate rabbit-feature feature.json surface.skills + contract.md provides.skills. Add e2e test.\\n\\nDEPENDS ON: contract library extraction backlog (uses checks.validate_feature). NOTE: this cycle ADDS the skill. A LATER cycle removes validate-all.py from rabbit-cage.",
+  "related_feature": "rabbit-feature",
+  "filed": "2026-05-20T03:14:00Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-20T03:54:44Z",
+  "history": [
+    {
+      "ts": "2026-05-20T03:14:00Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-20T03:54:44Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "beb472d4e1caed6f22c689b472ff078f154ffcf8"
+    }
+  ],
+  "commit_sha": "346d883c999591fe8c9eaef9ba6aa9f445507766"
+}

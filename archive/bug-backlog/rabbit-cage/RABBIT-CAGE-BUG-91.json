@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-91",
+  "type": "bug",
+  "title": "Three-way version mismatch: feature.json 3.12.0 / spec.md 3.13.0 / contract.md 4.0.0",
+  "status": "close",
+  "priority": "high",
+  "description": "rabbit-cage manifests declare three different versions: feature.json=3.12.0, spec.md=3.13.0, contract.md=4.0.0. The spec_no_change_reason field in feature.json narrates the spec bump to 3.13.0 but the top-level version was not bumped. Designed Deprecation principle violated. Fix: pick correct version (likely 4.0.0 since contract.md leads), sync all three locations, add a test asserting feature.json/spec.md/contract.md version alignment for rabbit-cage.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-19T11:26:14Z",
+  "filed_by": "Changyu",
+  "closed": "2026-05-19T11:53:03Z",
+  "history": [
+    {
+      "ts": "2026-05-19T11:26:14Z",
+      "actor": "Changyu",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-19T11:53:03Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "414e47cb256b1f15645575e27adc21e1395f1ab7"
+    }
+  ],
+  "commit_sha": "8f90de396e330769424174814cd1ce14ccaa323d"
+}

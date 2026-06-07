@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-SPEC-BUG-6",
+  "type": "bug",
+  "title": "Invariant 3 (impl-suggestion conforms to schema_version 1.0.0) has no test",
+  "status": "close",
+  "priority": "medium",
+  "description": "spec.md Invariant 3 states the impl-suggestion file is written conforming to schema_version 1.0.0 on every invocation. No test in test/ verifies this. A structural test could assert SKILL.md body contains the full required schema field list (schema_version, feature, generated_at, request_summary, spec_changes, implementation_approach, affected_files, key_invariants) to prevent field drift.",
+  "related_feature": "rabbit-spec",
+  "filed": "2026-05-18T04:31:41Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:08:53Z",
+  "history": [
+    {
+      "ts": "2026-05-18T04:31:41Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:08:53Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed in Wave 3: feature.json version synced to spec.md (1.2.0); tests added for Inv 3 (schema documented) and Inv 5 (Step 4 before Step 5).",
+      "fix_commits": "ae93342"
+    }
+  ],
+  "commit_sha": "615f2ba218c7921371dddd1323c38fe87b273000"
+}

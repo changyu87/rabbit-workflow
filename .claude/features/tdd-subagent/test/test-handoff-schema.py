@@ -63,9 +63,87 @@ else:
         ok("inv22: HANDOFF_JSON has all required fields")
     else:
         ko(f"inv22: HANDOFF_JSON missing fields: {missing}")
-    if '"handoff_schema_version": "1.0.0"' in raw:
-        ok("inv22: HANDOFF_JSON declares handoff_schema_version 1.0.0")
+    if '"handoff_schema_version": "1.1.0"' in raw:
+        ok("inv22: HANDOFF_JSON declares handoff_schema_version 1.1.0")
     else:
-        ko("inv22: HANDOFF_JSON missing handoff_schema_version 1.0.0")
+        ko("inv22: HANDOFF_JSON missing handoff_schema_version 1.1.0")
+
+# Inv 55 — discovered_issues and aborted_reason additive fields.
+# (a) presence-and-default assertions on EVERY HANDOFF_JSON block in the
+#     template. The dispatcher's assembled prompt embeds three such blocks:
+#     STEP 5 fail-HANDOFF, STEP 7 fail-HANDOFF, completion HANDOFF.
+#     The fail-HANDOFF blocks live inside indented step bodies; use a
+#     leading-whitespace-tolerant pattern and a brace-balanced extractor.
+all_blocks = re.findall(
+    r"HANDOFF_JSON:\n[ \t]*```json\n(.*?)\n[ \t]*```",
+    prompt,
+    re.DOTALL,
+)
+if len(all_blocks) != 3:
+    ko(f"inv55: expected 3 HANDOFF_JSON blocks in template, found {len(all_blocks)}")
+else:
+    ok("inv55: found 3 HANDOFF_JSON blocks (STEP 5 fail, STEP 7 fail, completion)")
+
+for i, block in enumerate(all_blocks):
+    label = ["STEP-5-fail", "STEP-7-fail", "completion"][i] if i < 3 else f"block-{i}"
+    if '"discovered_issues": []' in block:
+        ok(f"inv55: {label} HANDOFF_JSON has discovered_issues: [] default")
+    else:
+        ko(f"inv55: {label} HANDOFF_JSON missing literal 'discovered_issues': []")
+    if '"aborted_reason": null' in block:
+        ok(f"inv55: {label} HANDOFF_JSON has aborted_reason: null default")
+    else:
+        ko(f"inv55: {label} HANDOFF_JSON missing literal 'aborted_reason': null")
+
+# (b) populated-case parse test — a synthetic HANDOFF JSON with both fields
+#     populated parses as valid JSON and conforms to Inv 55 typing.
+synthetic = {
+    "handoff_schema_version": "1.1.0",
+    "feature": "x",
+    "tdd_state": "test-green",
+    "test_result": "pass",
+    "spec_compliance": "pass",
+    "tdd_report_path": None,
+    "closed_items": [],
+    "notes": "...",
+    "discovered_issues": [{"title": "x", "body": "y", "labels": ["z"]}],
+    "aborted_reason": "blocked-by-#999",
+}
+try:
+    parsed = json.loads(json.dumps(synthetic))
+    di = parsed["discovered_issues"]
+    ar = parsed["aborted_reason"]
+    typing_ok = (
+        isinstance(di, list)
+        and all(
+            isinstance(e, dict)
+            and isinstance(e.get("title"), str)
+            and isinstance(e.get("body"), str)
+            and isinstance(e.get("labels"), list)
+            and all(isinstance(l, str) for l in e["labels"])
+            for e in di
+        )
+        and isinstance(ar, str)
+        and len(ar) > 0
+    )
+    if typing_ok:
+        ok("inv55: populated synthetic HANDOFF conforms to Inv 55 typing")
+    else:
+        ko("inv55: populated synthetic HANDOFF failed Inv 55 typing check")
+except Exception as e:
+    ko(f"inv55: synthetic HANDOFF parse failed: {e}")
+
+# (c) negative test — a discovered_issues element missing a required key
+#     does NOT conform to the invariant's typing.
+bad = {
+    "discovered_issues": [{"title": "x", "body": "y"}],  # missing labels
+}
+elem = bad["discovered_issues"][0]
+required_keys = {"title", "body", "labels"}
+missing_keys = required_keys - set(elem.keys())
+if missing_keys:
+    ok(f"inv55: negative case rejected — element missing keys: {sorted(missing_keys)}")
+else:
+    ko("inv55: negative case incorrectly considered conforming")
 
 report(passed, failed)

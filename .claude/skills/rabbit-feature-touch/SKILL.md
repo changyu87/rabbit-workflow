@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
-description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (bug filing, backlog filing). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.0.2
+description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (filing a rabbit-managed issue, such as a bug or enhancement). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
+version: 3.10.0
 owner: rabbit-feature
 deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
@@ -11,9 +11,7 @@ deprecation_criterion: when feature-touch orchestration is natively handled by t
 The main session's role is **orchestration only**: resolve scope, create branch,
 dispatch TDD subagents, verify HANDOFFs. It does NOT read feature code.
 
-**Two modes:**
-- **Normal mode** — invoked directly for a feature work request
-- **B/B mode** — invoked by the bug or backlog skill, which passes a bug/item dir
+Invoked directly for a feature work request.
 
 ## Dispatcher Continuity
 
@@ -24,100 +22,70 @@ transaction. A subagent returning a HANDOFF is a **phase boundary** inside
 your own ongoing turn — it is **not a turn boundary**. Continue to the next
 step immediately.
 
-## Unified Seven-Step Sequence
-
-All modes follow these seven steps. Mode determines branch name and step 7 behaviour.
+## Seven-Step Sequence
 
 ### Step 1 — Scope Resolution
 
-**Normal mode:** Invoke `rabbit-feature-scope` via the Skill tool:
+Invoke `rabbit-feature-scope` via the Skill tool:
 ```
 Skill("rabbit-feature-scope", args: "<request>")
 # Parse JSON response: {"features": [...], "rationale": "..."}
-```
-
-**B/B mode:** Skip — feature name comes from `related_feature` in the bug/item JSON.
-Use Python 3 (always available) rather than `jq` (not a declared dependency):
-```bash
-FEATURE=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('related_feature',''))" "<item-dir>/item.json")
-```
-The rabbit-file schema stores both bug and backlog items as `item.json`
-(unified storage).
-
-#### B/B item materialization
-
-The canonical bug/backlog items live on the dedicated `bug-backlog-files`
-branch, which is **never checked out** in the dispatcher's working tree.
-The canonical `item.json` is therefore not reachable as a plain
-working-tree path. Before passing a path to
-`dispatch-tdd-subagent.py --linked-item`, the caller MUST materialize the
-item into a local working-tree mirror.
-
-- **Local mirror path layout** — mirror the rabbit-file storage layout
-  (`rabbit/features/<feature>/<type>s/<id>/`) under a `.rabbit/` prefix:
-  `.rabbit/rabbit/features/<feature>/<type>s/<id>/item.json`. The
-  `.rabbit/` prefix is gitignored by contract, so the mirror never
-  pollutes commits.
-- **Fetch `item.json` from `origin/bug-backlog-files`** into the local
-  mirror path with `git show`:
-
-```bash
-mkdir -p .rabbit/rabbit/features/<feature>/<type>s/<id>
-git show origin/bug-backlog-files:rabbit/features/<feature>/<type>s/<id>/item.json \
-  > .rabbit/rabbit/features/<feature>/<type>s/<id>/item.json
-```
-
-- **Pass to `--linked-item`** — the local mirror **directory** path
-  (the directory containing the freshly materialized `item.json`), NOT
-  the canonical `rabbit/features/<feature>/<type>s/<id>/` path on the
-  dedicated branch:
-
-```
---linked-item .rabbit/rabbit/features/<feature>/<type>s/<id>
 ```
 
 ### Step 2 — Create Branch
 
 Create before any dispatch. Never write to main.
 
-| Mode | Branch pattern |
+| Scope | Branch pattern |
 |---|---|
-| Normal, single feature | `feat/<feature-name>-<keywords>` |
-| Normal, multi-feature | `feat/<primary-feature>-multi-<keywords>` (primary = first feature in scope response) |
-| Bug fix (B/B) | `fix/<bug-id>-<keywords>` |
-| Backlog task (B/B) | `task/<backlog-id>-<keywords>` |
+| Single feature | `feat/<feature-name>-<keywords>` |
+| Multi-feature | `feat/<primary-feature>-multi-<keywords>` (primary = first feature in scope response) |
 
 `<keywords>` = 2–4 words from the request, hyphenated, lowercase.
 
+Branch-name assembly is a computed step, so per the SKILL.md Authoring
+Standard (`spec-rules.md` §4 Script-Backed Orchestration) the companion
+script owns it — the SKILL does NOT assemble the branch name and check it out
+inline. Invoke the `create-branch` subcommand with the feature name and the
+raw request (add `--multi` for multi-feature scope, passing the primary
+feature as the feature name):
+
+<!-- example: invocation synopsis of the create-branch subcommand -->
 ```bash
-git checkout -b <branch-name>
+.claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py \
+  create-branch [--multi] <feature-name> "<request>"
 ```
+
+The subcommand derives `<keywords>` from the request, assembles the
+`feat/<feature-name>[-multi]-<keywords>` branch name, runs `git checkout -b`,
+and prints the branch it created.
 
 ### Step 3 — Spec Authoring
 
-Invoke rabbit-feature-spec inline:
+Invoke rabbit-spec-update inline:
 ```
-Skill("rabbit-feature-spec", args: "<feature-name> <request-or-item-description>")
+Skill("rabbit-spec-update", args: "<feature-name> <request>")
 ```
-In B/B mode, pass the bug/backlog item description as the request.
 
-rabbit-feature-spec reads the current spec, judges open vs. specific, invokes superpowers,
+rabbit-spec-update reads the current spec, judges open vs. specific, invokes superpowers,
 updates the feature spec, and writes `.rabbit/impl-suggestion-<feature-name>.json`.
 
-**Commit spec changes BEFORE Step 5.** After rabbit-feature-spec returns, stage and
-commit any modifications under `.claude/features/<feature-name>/` (the spec
-and any other files rabbit-feature-spec touched). If no changes were made (empty
-diff), skip the commit.
+**Commit spec changes BEFORE Step 5.** The spec edit must be staged and
+committed so the TDD subagent reads a clean committed baseline. This is a
+computed, mode-aware step, so per the SKILL.md Authoring Standard
+(`spec-rules.md` §4 Script-Backed Orchestration) the logic lives in the
+companion script — it is NOT assembled inline here:
 
+<!-- example: invocation synopsis of the commit-spec subcommand -->
 ```bash
-git add .claude/features/<feature-name>/
-if ! git diff --cached --quiet -- .claude/features/<feature-name>/docs/spec/spec.md; then
-  git commit -m "spec(<feature-name>): update spec for <one-line request summary>"
-fi
+.claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py \
+  commit-spec <feature-name> "<one-line request summary>"
 ```
 
-This prevents spec edits from falling through uncommitted and ensures the
-TDD subagent reads a clean committed baseline.
+The `commit-spec` subcommand detects the rabbit mode, resolves the feature
+directory and spec path, stages with the mode-appropriate `git add` form,
+skips the commit when the staged spec diff is empty, and otherwise commits
+with the message `spec(<feature-name>): update spec for <one-line request summary>`.
 
 ### Step 4 — Human Approval
 
@@ -126,22 +94,24 @@ created. Catching a design mismatch now costs one conversation turn; catching it
 after costs a full cycle. This gate lives here, in the main session, because
 subagents run to completion and cannot pause for user input mid-execution.
 
-**FIRST: check for `.rabbit-human-approval-bypass` marker at repo root.**
+**FIRST: check for `.rabbit-tdd-autonomous` marker at repo root.**
 
 The marker file is the sole authorization mechanism for bypass. In-conversation
 acknowledgements ("you have permission to bypass") are NOT sufficient on their
 own — the marker is the system of record, managed via
-`/rabbit-config human-approval true|false` (owned by rabbit-cage;
-`false` writes the marker — bypass ACTIVE — and `true` removes it — gate
-ACTIVE, the default).
+`/rabbit-tdd-autonomous true|false` (owned by rabbit-feature;
+`true` writes the marker — autonomous/bypass ACTIVE — and `false` removes it —
+gate ACTIVE, the default). The Step-4 consumer also honors the legacy
+`.rabbit-human-approval-bypass` marker for coexistence, but the canonical
+marker is `.rabbit-tdd-autonomous`.
 
-- **If `.rabbit-human-approval-bypass` exists:**
-  - Source the alert text from the centrally-declared `human-approval`
-    configurable in `rabbit-cage/feature.json` by invoking
-    `contract.lib.runtime.emit_configurable_alert('rabbit-cage',
-    'human-approval', repo_root=<repo-root>)`, e.g.:
+- **If `.rabbit-tdd-autonomous` exists:**
+  - Source the alert text from rabbit-feature's OWN `tdd-autonomous`
+    configurable in `rabbit-feature/feature.json` by invoking
+    `contract.lib.runtime.emit_configurable_alert('rabbit-feature',
+    'tdd-autonomous', repo_root=<repo-root>)`, e.g.:
     ```bash
-    python3 -c "import sys; sys.path.insert(0, '.claude/features/contract'); from lib.runtime import emit_configurable_alert; r = emit_configurable_alert('rabbit-cage', 'human-approval', repo_root='.'); print(r)"
+    python3 -c "import sys; sys.path.insert(0, '.claude/features/contract'); from lib.runtime import emit_configurable_alert; r = emit_configurable_alert('rabbit-feature', 'tdd-autonomous', repo_root='.'); print(r)"
     ```
     Surface the returned `print_result` (its `text`, `icon`, and `color`
     fields come from the configurable's `alert-message`, so this prose
@@ -149,10 +119,11 @@ ACTIVE, the default).
     alert text in this SKILL.md — the configurable's `alert-message` is
     the sole source of truth, and the brand prefix is owned by
     `rabbit_print` (contract Inv 48).
-  - Operational guidance for the user: the bypass marker is
-    `.rabbit-human-approval-bypass` at the repo root, and it is revoked
-    by running `/rabbit-config human-approval true` (which removes the
-    marker and re-activates this gate).
+  - Operational guidance for the user: the canonical bypass marker is
+    `.rabbit-tdd-autonomous` at the repo root, and it is revoked by
+    running `/rabbit-tdd-autonomous false` (which removes the marker and
+    re-activates this gate). To activate autonomous mode again, run
+    `/rabbit-tdd-autonomous true`.
   - Proceed to Step 5 immediately. Do NOT surface the impl-suggestion summary.
 - **If the marker file does NOT exist (default):**
   - For each feature, read `.rabbit/impl-suggestion-<feature-name>.json` and
@@ -164,7 +135,7 @@ ACTIVE, the default).
   - For multiple features, present all summaries together and collect one
     approval decision before dispatching any subagent.
   - Wait for explicit in-conversation user approval ("looks good", "go ahead",
-    or equivalent). If the user requests changes, invoke rabbit-feature-spec again for
+    or equivalent). If the user requests changes, invoke rabbit-spec-update again for
     the affected features, then return to this step.
   - Proceed to Step 5.
 
@@ -172,20 +143,24 @@ ACTIVE, the default).
 
 One subagent per feature. Dispatch all in parallel if multiple features.
 
-Shell (assemble the prompt — deterministic):
+Shell (assemble the prompt — deterministic). The spec-path resolution is a
+computed step (§4 Script-Backed Orchestration), delegated to the companion
+`resolve-spec-path` subcommand rather than assembled inline:
 
+<!-- example: invocation synopsis wiring resolve-spec-path into the dispatch prompt -->
 ```bash
+spec_arg=$(.claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py \
+  resolve-spec-path <feature-name>)
 PROMPT=$(python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py \
   --scope <feature-name> \
-  --spec .claude/features/<feature-name>/docs/spec/spec.md \
-  --impl-suggestion .rabbit/impl-suggestion-<feature-name>.json \
-  [--linked-item <bug-or-item-dir> --item-type <bug|backlog>])
+  --spec "$spec_arg" \
+  --impl-suggestion .rabbit/impl-suggestion-<feature-name>.json)
 ```
 
 Agent tool call (dispatch the assembled prompt — main session only):
 
 ```
-Agent(model: opus, prompt: $PROMPT)
+Agent(subagent_type: rabbit-tdd-subagent, model: opus, prompt: $PROMPT)
 ```
 
 Each subagent runs its named steps (LOCK → UNLOCK), writes
@@ -204,48 +179,45 @@ Read `.rabbit/tdd-report-<feature-name>.json` for full details.
 
 ### Step 7 — PR / Hand Off
 
-**Normal mode:**
+The PR title and body are free-form prose synthesized from the TDD report —
+author them in-context; they are not a script-computable value.
+
+<!-- example: gh pr create command shape; title/body are model-authored prose -->
 ```bash
 gh pr create --title "<summary>" --body "<tdd report highlights>"
 ```
 Summarize the TDD report to the user.
 
-**B/B mode:** Commit code to branch. Hand off to calling skill:
-```
-{
-  "mode": "bug|backlog",
-  "linked_item": "<path>",
-  "feature": "<name>",
-  "branch": "<branch-name>",
-  "tdd_report_path": "<repo-root>/.rabbit/tdd-report-<feature-name>.json",
-  "status": "success|failed"
-}
-```
-
-If `status: failed`, calling skill surfaces the failure before any item close.
-PR creation is the calling skill's responsibility in B/B mode.
-
 
 ## Red Flags — STOP
 
+The main-session boundary below is the operational projection of the
+bounded-scope policy; the canonical, authoritative statement of that rule is
+`.claude/features/policy/philosophy.md` §2 (Bounded Scope) and
+`.claude/features/policy/spec-rules.md` §2 (Schemas and Contracts). Per the
+SKILL.md Authoring Standard (`spec-rules.md` §4 Verbatim Policy Embedding),
+the canonical text is cited here rather than re-paraphrased — read those
+sections for the binding wording.
+
 - Reading feature code directly in the main session → STOP. Subagent's job.
-- Skipping scope resolution in normal mode → STOP.
+- Skipping scope resolution → STOP.
 - Dispatching features sequentially when multiple → STOP. Use parallel.
 - HANDOFF shows `tdd_state ≠ test-green` → STOP and investigate.
 - Main session uses Write or Edit on any file under `.claude/features/` → STOP.
   All feature-code edits are the TDD subagent's job, performed under an active
   scope marker. Main session role is orchestration only: resolve scope, create
-  branch, invoke rabbit-feature-spec, surface impl-suggestion, dispatch subagent, verify
+  branch, invoke rabbit-spec-update, surface impl-suggestion, dispatch subagent, verify
   HANDOFF. The only main-session writes permitted are: the confirm-token
-  override flow (see Override Path), and rabbit-feature-spec's writes to
-  `docs/spec/spec.md` under the scope-guard path-pattern allowlist invoked
-  during Step 3.
+  override flow (see Override Path), and rabbit-spec-update's writes to the
+  resolved feature `spec.md` (flat `docs/spec.md` preferred, then
+  `docs/spec/spec.md`) under the
+  scope-guard path-pattern allowlist invoked during Step 3.
 - Main session creates `.rabbit-scope-active` (global) or
   `.rabbit-scope-active-<feature>` (per-feature) scope markers at the repo
   root → STOP. Scope markers are exclusively the TDD subagent's responsibility,
   written as the first action at LOCK (Step 3 of the subagent's named steps).
   Main-session-authored markers bypass scope-guard's intended boundary and
-  have caused constitution violations (PR #93).
+  can cause constitution violations.
 
 ## Override Path
 

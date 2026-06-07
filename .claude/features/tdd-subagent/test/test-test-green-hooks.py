@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-# test-test-green-hooks.py — Inv 10, 11 coverage.
+# test-test-green-hooks.py — Inv 10 coverage.
 #
 # Inv 10: test-green calls six check functions from contract.lib.checks
 #         in-process. A non-passed CheckResult emits a non-empty warning
 #         via rabbit_print on stderr; the hook never blocks.
-# Inv 11: test-green invokes rabbit-project.py consolidate <project> when
-#         project-map.json exists in the enclosing project directory; the
-#         hook never blocks.
 import json
 import os
 import shutil
@@ -79,7 +76,7 @@ def t_enforcement_warning():
     )
     _build_synthetic_contract(repo, check_module_body=body)
     feat = os.path.join(repo, '.claude', 'features', 'enf_warn_feat')
-    _make_feature_dir(feat, 'enf_warn_feat', 'impl')
+    _make_feature_dir(feat, 'enf_warn_feat', 'sync-deployed')
     env = {**os.environ, 'RABBIT_ROOT': repo}
     rc, _out, err = _run(['python3', TDD_STEP, 'transition', feat, 'test-green'], env=env)
     if rc == 0 and b'R3 check failed' in err:
@@ -110,7 +107,7 @@ def t_sentinel_warning():
     )
     _build_synthetic_contract(repo, check_module_body=body)
     feat = os.path.join(repo, '.claude', 'features', 'sentinel_feat')
-    _make_feature_dir(feat, 'sentinel_feat', 'impl')
+    _make_feature_dir(feat, 'sentinel_feat', 'sync-deployed')
     env = {**os.environ, 'RABBIT_ROOT': repo}
     rc, _out, err = _run(['python3', TDD_STEP, 'transition', feat, 'test-green'], env=env)
     if rc == 0 and b'sentinel' in err:
@@ -139,7 +136,7 @@ def t_hook_non_blocking():
     )
     _build_synthetic_contract(repo, check_module_body=body)
     feat = os.path.join(repo, '.claude', 'features', 'nonblock_feat')
-    _make_feature_dir(feat, 'nonblock_feat', 'impl')
+    _make_feature_dir(feat, 'nonblock_feat', 'sync-deployed')
     env = {**os.environ, 'RABBIT_ROOT': repo}
     rc, _out, _err = _run(['python3', TDD_STEP, 'transition', feat, 'test-green'], env=env)
     with open(os.path.join(feat, 'feature.json')) as f:
@@ -150,58 +147,8 @@ def t_hook_non_blocking():
         ko(f"nonblock: rc={rc} state={state}")
 
 
-# Inv 11: project-map.json triggers rabbit-project.py consolidate <project>.
-def t_project_consolidate():
-    repo = os.path.join(TMPROOT, 'consolidate')
-    project = os.path.join(repo, '.claude', 'consolidate_project')
-    features_dir = os.path.join(project, 'features')
-    feat = os.path.join(features_dir, 'consolidate_feat')
-    _make_feature_dir(feat, 'consolidate_feat', 'impl')
-    with open(os.path.join(project, 'project-map.json'), 'w') as f:
-        json.dump({"project": "consolidate_project"}, f)
-    onboard_dir = os.path.join(repo, '.claude', 'features', 'rabbit-cage', 'scripts')
-    os.makedirs(onboard_dir, exist_ok=True)
-    sentinel = os.path.join(TMPROOT, 'consolidate_sentinel.txt')
-    stub = os.path.join(onboard_dir, 'rabbit-project.py')
-    with open(stub, 'w') as f:
-        f.write(
-            '#!/usr/bin/env python3\n'
-            'import sys\n'
-            f'open({sentinel!r}, "w").write(" ".join(sys.argv[1:]))\n'
-            'sys.exit(0)\n'
-        )
-    os.chmod(stub, 0o755)
-    env = {**os.environ, 'RABBIT_ROOT': repo}
-    rc, _, _ = _run(['python3', TDD_STEP, 'transition', feat, 'test-green'], env=env)
-    if rc == 0 and os.path.isfile(sentinel):
-        with open(sentinel) as f:
-            args = f.read()
-        if 'consolidate' in args and 'consolidate_project' in args:
-            ok('Inv 11: project-map.json triggers rabbit-project.py consolidate')
-        else:
-            ko(f"consolidate: args={args!r}")
-    else:
-        ko(f"consolidate: rc={rc} sentinel_exists={os.path.isfile(sentinel)}")
-
-
-# Inv 11: when project-map.json is absent, the hook is silently skipped (never blocks).
-def t_no_project_map():
-    repo = os.path.join(TMPROOT, 'no_pm')
-    feat = os.path.join(repo, '.claude', 'features', 'no_pm_feat')
-    _make_feature_dir(feat, 'no_pm_feat', 'impl')
-    env = {**os.environ, 'RABBIT_ROOT': repo}
-    rc, _, _ = _run(['python3', TDD_STEP, 'transition', feat, 'test-green'], env=env)
-    with open(os.path.join(feat, 'feature.json')) as f:
-        state = json.load(f)['tdd_state']
-    if rc == 0 and state == 'test-green':
-        ok('Inv 11: missing project-map.json silently skipped (hook never blocks)')
-    else:
-        ko(f"no pm: rc={rc} state={state}")
-
-
 print(f"running test-green hook tests against {TDD_STEP}")
 t_enforcement_warning(); t_sentinel_warning(); t_hook_non_blocking()
-t_project_consolidate(); t_no_project_map()
 print()
 print(f"summary: {PASS} passed, {FAIL} failed")
 shutil.rmtree(TMPROOT, ignore_errors=True)

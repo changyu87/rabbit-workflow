@@ -1,0 +1,27 @@
+{
+  "name": "RABBIT-CAGE-BUG-16",
+  "type": "bug",
+  "title": "session-init.py does not implement R1 branch enforcement (Inv 21-23 violated)",
+  "status": "close",
+  "priority": "critical",
+  "description": "Spec invariants 21-23 (spec.md L411-437, Session-Init Branch Enforcement) mandate that on SessionStart, session-init.py runs git branch --show-current and if main/master, runs git checkout -b session/YYYYMMDD-HHMMSS then emits a green systemMessage. hooks/session-init.py (75 lines) contains NO branch enforcement code at all \u2014 only @-import injection. Worse, test-POLICY-BACKLOG-1-session-init-branch.py asserts the OPPOSITE (t1: hook left branch unchanged at main; failure reason: R1 branch creation should be removed). Spec, hook, and test are mutually contradictory.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:02:11Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T08:00:14Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:02:11Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T08:00:14Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Wave 4 triage: duplicate of RABBIT-CAGE-BUG-17 (session-init R1), fixed by PR #114"
+    }
+  ],
+  "commit_sha": "ed0e4e49070d85f94e5dea96a18eb15c1caaefc0"
+}

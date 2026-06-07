@@ -1,0 +1,41 @@
+{
+  "name": "RABBIT-CAGE-BACKLOG-12",
+  "type": "backlog",
+  "title": "Add bypassPermissions to settings.json; guide users to put skipDangerousModePermissionPrompt in settings.local.json",
+  "status": "close",
+  "priority": "medium",
+  "description": "With the scope-guard as the primary enforcement mechanism, Claude Code's native permission prompts are redundant and disruptive. Add defaultMode: bypassPermissions to the project settings.json so all sessions skip native permission dialogs automatically.\n\nSettings change for settings.json (project-wide, checked in):\n  {\"permissions\": {\"defaultMode\": \"bypassPermissions\"}}\n\nThe companion setting skipDangerousModePermissionPrompt suppresses the startup warning about bypass mode. This is a personal preference \u2014 different users may want different behavior \u2014 so it should NOT go in the shared settings.json. Instead, document that each user should add it to their own settings.local.json (gitignored, user-local):\n  {\"permissions\": {\"skipDangerousModePermissionPrompt\": true}}\n\nThe scope-guard PreToolUse hook continues to enforce feature-level discipline regardless of bypassPermissions mode, since hooks are independent of the native permission system.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-17T16:48:12Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-19T02:20:24Z",
+  "history": [
+    {
+      "ts": "2026-05-17T16:48:12Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T09:09:25Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "WAVE5 cleanup: implemented in 505c834",
+      "fix_commits": "505c834"
+    },
+    {
+      "ts": "2026-05-19T01:58:49Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "Reopening: as-implemented split is wrong. Item shipped 'bypassPermissions in shared settings.json + warning-suppression in settings.local.json' per the item's literal text, but the underlying reasoning ('different users may want different behavior') applies equally to bypass mode itself \u2014 forcing all users into bypass mode via shared settings.json contradicts the per-user principle. Correct intent: BOTH bypassPermissions and skipDangerousModePermissionPrompt go in settings.local.json. /rabbit-config must manage the bypassPermissions key in settings.local.json (new subcommand). Behavior change for existing users \u2014 needs a session-init transition hint ('rabbit no longer forces bypass mode; run /rabbit-config bypass-permissions true if you want it')."
+    },
+    {
+      "ts": "2026-05-19T02:20:24Z",
+      "actor": "Changyu",
+      "action": "closed",
+      "note": "TDD cycle complete",
+      "fix_commits": "36132679e8017ea967f6dbcac6de1d6edff2f252"
+    }
+  ],
+  "commit_sha": "363d3d6d240d4ecd820933f3b9c4f78f7887dde1"
+}

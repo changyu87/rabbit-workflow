@@ -1,0 +1,28 @@
+{
+  "name": "RABBIT-CAGE-BUG-29",
+  "type": "bug",
+  "title": "new-feature.py scaffolds bash test/run.sh and feature.json missing template_version (violates Python-only and template_version conventions)",
+  "status": "close",
+  "priority": "high",
+  "description": "scripts/new-feature.py at lines 141-151 creates a test/run.sh file with bash shebang ('#!/bin/bash'). This violates the spec's Python-only runtime mandate (spec.md Tech Stack section, Inv 39, Inv 40) and contract.md never-list entry forbidding new .sh runtime scripts. The scaffolded run.sh exits 1 as a TDD-red placeholder, so the bash content is intentional placeholder code \u2014 but it should be Python ('#!/usr/bin/env python3') to remain consistent with the workflow's tech stack. Also, the scaffolded feature.json lacks 'template_version' field that contract.md template_version='2.0.0' standard requires; new scaffolds drift from current template conventions immediately.",
+  "related_feature": "rabbit-cage",
+  "filed": "2026-05-18T03:08:38Z",
+  "filed_by": "rabbit-file",
+  "closed": "2026-05-18T07:42:40Z",
+  "history": [
+    {
+      "ts": "2026-05-18T03:08:38Z",
+      "actor": "rabbit-file",
+      "action": "opened",
+      "note": "initial filing"
+    },
+    {
+      "ts": "2026-05-18T07:42:40Z",
+      "actor": "rabbit-file",
+      "action": "closed",
+      "note": "Fixed Wave 3: BUG-29 new-feature.py scaffolds .py runner + template_version; BUG-31 rabbit-project.md uses real .py paths; BUG-52 human-approval messages name marker+effect.",
+      "fix_commits": "e96b24a"
+    }
+  ],
+  "commit_sha": "d58c029cad0b45ec47103fbdeaf3436ceac12fe6"
+}
