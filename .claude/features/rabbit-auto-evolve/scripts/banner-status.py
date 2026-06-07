@@ -47,9 +47,11 @@ cadence source is absent/unparseable. The four priority-marker lines and the
 restart-pending line never carry an ETA. The wall-clock is overridable via
 `RABBIT_AUTO_EVOLVE_NOW` (ISO-8601) for deterministic tests.
 
-#881 (third reopen): the displayed ETA is a single EXACT wall-clock time
-`paste: /rabbit-auto-evolve start, next tick HH:MM` — one bare timestamp, no
-range and no qualifier. It is the next cron boundary PLUS the deterministic
+#881 (third reopen) / #1012: the displayed ETA is a single EXACT time plus a
+zone label in the resolved display zone
+`paste: /rabbit-auto-evolve start, next tick HH:MM <zone>` — no range and no
+qualifier beyond the trailing zone label. It is the next cron boundary PLUS the
+deterministic
 CronCreate jitter offset (Inv 56). CronCreate adds a deterministic per-job
 jitter to recurring tasks: a recurring job fires up to 10% of its period late,
 capped at 15 min. On an idle session this is a stable constant — the
@@ -76,7 +78,7 @@ maps the JSON result to the SessionStart banner. This script is therefore the
 single owner of all line-2 variants (including `running`), every one of which
 is surfaced at SessionStart.
 
-Version: 1.6.0
+Version: 1.7.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -209,12 +211,41 @@ def _jitter_offset_minutes(repo_root: str, period_minutes: int) -> int:
     return min(15, math.ceil(period_minutes * 0.10))
 
 
+def _resolve_display_tz(repo_root: str) -> datetime.tzinfo:
+    """#1012: resolve the user-configurable display zone by importing contract's
+    PUBLIC `contract.lib.runtime.resolve_display_tz` (contract Inv 67). The
+    banner ETA must equal contract's `_auto_evolve_next_tick_eta` byte-for-byte
+    (the Inv 55 mirror obligation), so importing the public resolver — rather
+    than re-mirroring its cross-feature config scan — is the drift-proof path.
+    The resolver code is loaded from the real repo's `.claude/features` (added
+    to sys.path), but it reads the `display-timezone` config from `repo_root`.
+    On any import failure the display zone degrades to the system local zone so
+    the banner never crashes."""
+    features_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if features_dir not in sys.path:
+        sys.path.insert(0, features_dir)
+    try:
+        from contract.lib.runtime import resolve_display_tz  # noqa: PLC0415
+        return resolve_display_tz(repo_root)
+    except Exception:  # noqa: BLE001 - never let display resolution crash the banner
+        return datetime.datetime.now().astimezone().tzinfo
+
+
 def _next_tick_eta(repo_root: str, now: datetime.datetime):
-    """Next rabbit-auto-evolve heartbeat fire as a single EXACT wall-clock
-    string `HH:MM` — one bare timestamp, no range and no qualifier — or None on
-    any absent/unreadable/unparseable/no-match condition (caller degrades to the
+    """Next rabbit-auto-evolve heartbeat fire as a single EXACT time `HH:MM`
+    plus a zone label (`%Z`) in the resolved display zone (#1012) — no range and
+    no qualifier beyond the trailing label — or None on any
+    absent/unreadable/unparseable/no-match condition (caller degrades to the
     bare idle line, no fabricated ETA). #844: mirrors contract Inv 55's cadence
     computation so the SessionStart banner and the Stop line agree.
+
+    #1012: the displayed minute is rendered in the resolved display zone WITH a
+    zone label so it matches contract's `_auto_evolve_next_tick_eta`
+    byte-for-byte. An aware `fire` (the dispatcher passes an aware `now`) is
+    CONVERTED into the display zone; a naive `fire` (the cron wall-clock has no
+    zone) is treated as already in the display zone so its wall-clock value is
+    preserved and only the label is attached. Machine artifacts stay UTC; this
+    is the display ETA only.
 
     #881 (third reopen): the displayed minute is the next cron boundary PLUS the
     deterministic CronCreate jitter offset (Inv 56). CronCreate adds a
@@ -256,7 +287,18 @@ def _next_tick_eta(repo_root: str, now: datetime.datetime):
         if candidate.minute in minutes:
             offset = _jitter_offset_minutes(repo_root, _period_minutes(minutes))
             fire = candidate + datetime.timedelta(minutes=offset)
-            return fire.strftime("%H:%M")
+            # #1012 (contract Inv 67): render in the resolved display zone WITH a
+            # zone label (%Z), no longer a bare HH:MM. An aware `fire` is
+            # CONVERTED into the display zone; a naive `fire` (the cron
+            # wall-clock has no zone) is treated as already in the display zone
+            # so its wall-clock value is preserved and only the label attached —
+            # matching contract's _auto_evolve_next_tick_eta byte-for-byte.
+            tz = _resolve_display_tz(repo_root)
+            if fire.tzinfo is None:
+                fire = fire.replace(tzinfo=tz)
+            else:
+                fire = fire.astimezone(tz)
+            return fire.strftime("%H:%M %Z")
         candidate += datetime.timedelta(minutes=1)
     return None
 

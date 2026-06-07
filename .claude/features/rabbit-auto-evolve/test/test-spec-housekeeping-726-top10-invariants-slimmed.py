@@ -78,7 +78,13 @@ BASELINE_TOTAL_LINES = 3594
 # the post-cutover loop fast-forwards from `main`; +16 lines across the Inv 38 mechanism
 # step, the `git pull, never git merge` paragraph, and the enforced-by test prose) is
 # additive, so the ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 3845
+# The banner-status zone-label ETA amendment to Inv 22 (#1012: the next-tick ETA now
+# renders HH:MM plus a `%Z` zone label in the resolved display zone — importing contract's
+# public resolve_display_tz (contract Inv 67) so the SessionStart banner ETA equals
+# contract's _auto_evolve_next_tick_eta byte-for-byte, the Inv 55 mirror; ~13 lines across
+# the Inv 22 ETA-render paragraph and the enforced-by cadence-present bullet) is additive,
+# so the ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 3858
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

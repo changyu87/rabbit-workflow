@@ -16,6 +16,19 @@ authoritative).
 
 ## Version notes
 
+- **v0.87.0 — 2026-06-06** — #1012 (final child of #1007). `banner-status.py`'s
+  next-tick ETA helper rendered a bare `HH:MM` with no zone label, drifting from
+  contract's `_auto_evolve_next_tick_eta`, which now renders `HH:MM %Z` in the
+  resolved display zone (contract Inv 67). The helper now imports the PUBLIC
+  `contract.lib.runtime.resolve_display_tz(repo_root)` and renders
+  `HH:MM <zone>` — converting an aware `fire` into the display zone and treating
+  a naive `fire` as already in that zone (label-only) — so the SessionStart
+  banner ETA equals contract's ETA byte-for-byte (the Inv 55 mirror obligation).
+  Machine artifacts (state JSON, JSON-lines logs) stay UTC; only the display ETA
+  changed. Inv 22 updated; new e2e test asserts the zone label, the converted
+  time, and byte-for-byte equality with contract for an injected aware now +
+  display zone UTC.
+
 - **v0.86.1 — 2026-06-04** — Bug #1004 (schedule-decision immediate-refired on
   open-but-BLOCKED work, spinning the loop every ~1 minute into a no-op tick
   whenever the only remaining open issues were human-gated/blocked, e.g. #964
