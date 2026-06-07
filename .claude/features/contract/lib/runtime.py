@@ -16,7 +16,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.16.0
+Version: 1.17.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -515,6 +515,57 @@ def emit_configurable_alert(feature_name: str, configurable_id: str,
     return print_result(alert_msg["text"], alert_msg["icon"], alert_msg["color"])
 
 
+def resolve_display_tz(repo_root: str) -> datetime.tzinfo:
+    """Inv 67 — resolve the user-configurable display timezone to a tzinfo.
+
+    Reads the current value of the configurable with id ``display-timezone``
+    via the generic per-feature config path: scan every feature's
+    feature.json configuration[] for the entry whose id is
+    ``display-timezone`` and resolve its current value with
+    ``_resolve_current_value``. When NO feature declares it (the coexistence
+    state before the rabbit-cage child lands) OR the value is absent/empty,
+    DEFAULT to ``local``.
+
+    Accepted values:
+      - ``local`` -> the system local zone
+        (``datetime.datetime.now().astimezone().tzinfo``);
+      - ``UTC``   -> ``datetime.timezone.utc``;
+      - any other value -> a named IANA zone resolved via
+        ``zoneinfo.ZoneInfo`` ONLY when the ``zoneinfo`` module is importable.
+
+    Python-version constraint: the runtime is Python 3.7 (no stdlib
+    ``zoneinfo``), so a named-zone request degrades GRACEFULLY to ``local``
+    (NEVER raises) when ``zoneinfo`` is unavailable or the name is invalid;
+    ``local`` and ``UTC`` always work. This is a DISPLAY-layer concern only —
+    machine artifacts stay UTC and are untouched.
+    """
+    local = datetime.datetime.now().astimezone().tzinfo
+
+    value = ""
+    for _name, _fdir, data in _enumerate_features(repo_root):
+        configuration = data.get("configuration")
+        if not isinstance(configuration, list):
+            continue
+        for entry in configuration:
+            if isinstance(entry, dict) and entry.get("id") == "display-timezone":
+                resolved = _resolve_current_value(repo_root, entry)
+                if resolved:
+                    value = resolved
+                break
+        if value:
+            break
+
+    if not value or value == "local":
+        return local
+    if value == "UTC":
+        return datetime.timezone.utc
+    try:
+        from zoneinfo import ZoneInfo  # noqa: PLC0415
+        return ZoneInfo(value)
+    except Exception:  # noqa: BLE001 - py3.7 ImportError or invalid name -> local
+        return local
+
+
 # Filename pattern produced by build-prompt.py:
 #   <id>-<pid>-<YYYYMMDD>-<HHMMSS>-<ms>.txt
 _PROMPT_FILENAME_TS_RE = re.compile(
@@ -978,7 +1029,18 @@ def _auto_evolve_next_tick_eta(repo_root: str, now) -> str:
             offset = _auto_evolve_jitter_offset_minutes(
                 repo_root, _cadence_period_minutes(minutes))
             fire = candidate + datetime.timedelta(minutes=offset)
-            return fire.strftime("%H:%M")
+            # Inv 67 — render in the resolved display zone WITH a zone label
+            # (%Z), no longer a bare HH:MM. An aware `fire` (the dispatcher
+            # passes an aware `now`) is CONVERTED into the display zone; a naive
+            # `fire` (the cron wall-clock has no zone) is treated as already
+            # being in the display zone so its wall-clock value is preserved and
+            # only the label is attached.
+            tz = resolve_display_tz(repo_root)
+            if fire.tzinfo is None:
+                fire = fire.replace(tzinfo=tz)
+            else:
+                fire = fire.astimezone(tz)
+            return fire.strftime("%H:%M %Z")
         candidate += datetime.timedelta(minutes=1)
     return None
 
@@ -1060,7 +1122,15 @@ def emit_stop_timestamp(*, repo_root: str, now=None) -> list:
     print_result/banner_result/subline_result factories are unchanged —
     they never set ``order``; only this function adds it (by dict-merge).
     """
+    # Inv 67 — render via the resolved display zone (default local). An aware
+    # `now` is converted into the display zone; a naive `now` is anchored to the
+    # real UTC instant first (so the conversion is well-defined). In the default
+    # (local) case this is unchanged from the prior local-clock behavior.
+    tz = resolve_display_tz(repo_root)
     if now is None:
-        now = datetime.datetime.now().astimezone()
+        now = datetime.datetime.now(datetime.timezone.utc)
+    elif now.tzinfo is None:
+        now = now.replace(tzinfo=datetime.timezone.utc)
+    now = now.astimezone(tz)
     text = now.strftime("%H:%M:%S %Z")
     return [{**print_result(text, "⏱", "green"), "order": "footer"}]
