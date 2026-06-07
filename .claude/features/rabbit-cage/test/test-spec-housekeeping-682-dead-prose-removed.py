@@ -172,7 +172,14 @@ COLLAPSE_MAX = 1
 # coexistence shim ahead of the #980 canonical-value rename) plus its e2e test.
 # A real spec addition documenting new test-enforced behavior
 # (test-mode-value-dual-accept.py), not reword re-inflation.
-SPEC_LINE_CEILING = 602
+# Raised 602 -> 606 by #1011, which added Inv 51 (the user-configurable
+# display-timezone configurable in rabbit-cage's config surface, set via
+# /rabbit-cage-config display-timezone <value> and consumed by contract's
+# resolve_display_tz per contract Inv 67) plus its e2e test
+# (test-display-timezone-configurable.py) and the Inv 40 five->six owned-
+# configurable enumeration update. A real spec addition documenting new
+# test-enforced behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 606
 
 PASS = 0
 FAIL = 0
