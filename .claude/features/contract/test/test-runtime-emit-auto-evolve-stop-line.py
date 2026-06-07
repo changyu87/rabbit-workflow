@@ -22,6 +22,20 @@ from lib.runtime import emit_auto_evolve_stop_line  # noqa: E402
 
 FAIL = 0
 
+# Inv 67: the idle-line next-tick ETA is now zone-labelled. With no
+# `display-timezone` configurable declared in these temp repos the resolver
+# returns the local zone; a NAIVE injected `now` keeps its wall-clock value and
+# gains the local zone label. We compute it here and suffix the expected
+# "next tick HH:MM" strings so the boundary+offset arithmetic is unchanged,
+# only labelled.
+_LOCAL_TZ = datetime.datetime.now().astimezone().tzinfo
+
+
+def _eta_label(naive_hhmm):
+    h, m = (int(x) for x in naive_hhmm.split(":"))
+    dt = datetime.datetime(2026, 1, 1, h, m).replace(tzinfo=_LOCAL_TZ)
+    return dt.strftime("%H:%M %Z")
+
 
 def fail(msg):
     global FAIL
@@ -245,7 +259,7 @@ with tempfile.TemporaryDirectory() as td:
     write_cadence(td, "13,43 * * * *")
     write_jitter(td, 13)
     r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
-    assert_text(r, "auto-evolve loop active — idle, next tick 14:26", "M")
+    assert_text(r, f"auto-evolve loop active — idle, next tick {_eta_label('14:26')}", "M")
     # icon/color unchanged on the ETA idle line
     if r and (r[0].get("icon") != "🔁" or r[0].get("color") != "green"):
         fail(f"M: idle ETA line icon/color changed: {r[0]!r}")
@@ -311,7 +325,7 @@ with tempfile.TemporaryDirectory() as td:
     write_jitter(td, 13)
     r = emit_auto_evolve_stop_line(
         repo_root=td, now=datetime.datetime(2026, 6, 4, 14, 13, 0))
-    assert_text(r, "auto-evolve loop active — idle, next tick 14:56", "T")
+    assert_text(r, f"auto-evolve loop active — idle, next tick {_eta_label('14:56')}", "T")
 
 # U: wrap to next hour: now=14:50 with 13,43 -> boundary 15:13, +13 -> 15:26
 with tempfile.TemporaryDirectory() as td:
@@ -321,7 +335,7 @@ with tempfile.TemporaryDirectory() as td:
     write_jitter(td, 13)
     r = emit_auto_evolve_stop_line(
         repo_root=td, now=datetime.datetime(2026, 6, 4, 14, 50, 0))
-    assert_text(r, "auto-evolve loop active — idle, next tick 15:26", "U")
+    assert_text(r, f"auto-evolve loop active — idle, next tick {_eta_label('15:26')}", "U")
 
 # V: cadence present, jitter artifact ABSENT -> cold-start fallback offset.
 #    now=14:05, 13,43 -> boundary 14:13, period 30 -> +min(15,ceil(3))=+3 -> 14:16
@@ -330,7 +344,7 @@ with tempfile.TemporaryDirectory() as td:
     write_state_file(td)
     write_cadence(td, "13,43 * * * *")
     r = emit_auto_evolve_stop_line(repo_root=td, now=NOW)
-    assert_text(r, "auto-evolve loop active — idle, next tick 14:16", "V")
+    assert_text(r, f"auto-evolve loop active — idle, next tick {_eta_label('14:16')}", "V")
 
 if FAIL:
     print("test-runtime-emit-auto-evolve-stop-line: FAIL", file=sys.stderr)

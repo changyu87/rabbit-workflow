@@ -38,6 +38,21 @@ from lib.runtime import _auto_evolve_next_tick_eta  # noqa: E402
 
 FAIL = 0
 
+# Inv 67: the ETA is now zone-labelled. With no `display-timezone` configurable
+# declared in these temp repos the resolver returns the local zone; a NAIVE
+# injected `now` keeps its wall-clock value and gains the local zone label. We
+# compute that label here and SUFFIX the expected bare-HH:MM strings with it so
+# the deterministic boundary+offset arithmetic is unchanged, only labelled.
+_LOCAL_TZ = datetime.datetime.now().astimezone().tzinfo
+
+
+def _label(naive_hhmm):
+    """Attach the local zone label to a bare 'HH:MM' the same way the helper
+    does for a naive `now` (treat the wall-clock as being in the display zone)."""
+    h, m = (int(x) for x in naive_hhmm.split(":"))
+    dt = datetime.datetime(2026, 1, 1, h, m).replace(tzinfo=_LOCAL_TZ)
+    return dt.strftime("%H:%M %Z")
+
 
 def fail(msg):
     global FAIL
@@ -85,6 +100,7 @@ def write_raw(root, raw):
 
 def check_empirical(cron, now, jitter, expected, label):
     """Cadence + jitter artifact present -> boundary + observed_jitter_minutes."""
+    expected = _label(expected)
     with tempfile.TemporaryDirectory() as td:
         write_cadence(td, cron)
         write_jitter(td, jitter)
@@ -97,6 +113,7 @@ def check_empirical(cron, now, jitter, expected, label):
 
 def check_coldstart(cron, now, expected, label):
     """Cadence present, jitter artifact ABSENT -> boundary + cold-start bound."""
+    expected = _label(expected)
     with tempfile.TemporaryDirectory() as td:
         write_cadence(td, cron)
         got = _auto_evolve_next_tick_eta(td, now)
@@ -181,10 +198,10 @@ with tempfile.TemporaryDirectory() as td:
     with open(os.path.join(rabbit_dir, "auto-evolve-tick-jitter.json"), "w") as f:
         json.dump({"observed_jitter_minutes": -5}, f)
     got = _auto_evolve_next_tick_eta(td, D(2026, 6, 4, 14, 20))
-    if got == "14:46":  # falls back to cold-start +3
+    if got == _label("14:46"):  # falls back to cold-start +3
         ok("negative-offset -> cold-start fallback")
     else:
-        fail(f"negative-offset: expected cold-start 14:46, got {got!r}")
+        fail(f"negative-offset: expected cold-start {_label('14:46')!r}, got {got!r}")
 
 # --- source-grep guard: the rejected mental models must be PURGED ---
 RUNTIME_PATH = os.path.join(FEATURE_DIR, "lib", "runtime.py")
