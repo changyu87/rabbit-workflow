@@ -1,8 +1,8 @@
 {
   "name": "rabbit-decompose",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
   "status": "active",
@@ -19,7 +19,7 @@
     ]
   },
   "deprecation_criterion": "when Claude Code exposes native feature-decomposition assistance that supersedes this skill",
-  "updated": "2026-06-06",
+  "updated": "2026-06-07",
   "manifest": [
     {
       "api": "publish_skill",

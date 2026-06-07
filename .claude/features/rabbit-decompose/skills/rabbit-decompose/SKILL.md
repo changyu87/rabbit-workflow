@@ -1,7 +1,7 @@
 ---
 name: rabbit-decompose
 description: Propose a feature decomposition for an existing codebase or a high-level spec, interactively iterate with the user until accepted, then orchestrate scaffolding + initial spec drafting per accepted feature. Use when the user wants to start a new rabbit-managed project from a spec/prompt, or when the user wants to retroactively organize an existing codebase into rabbit features. Phrases like "decompose this into features", "propose a feature breakdown", "let's organize this codebase with rabbit", "/rabbit-decompose", "what features should this project have". Do NOT use to revise individual feature specs (that's rabbit-spec-update) or to scaffold a single feature whose name + globs you already know (that's rabbit-feature-scaffold).
-version: 0.13.0
+version: 0.14.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
 ---
@@ -54,6 +54,8 @@ python3 .claude/features/rabbit-decompose/scripts/handoff-scaffold.py --detect-e
   - **(c) re-decompose** — the user wants a full re-decomposition. Proceed to Step 2 as if first-run, proposing the complete feature set.
 
 Do not choose for the user. Present the summary and the three options, then wait for an explicit choice before continuing.
+
+**Orphan feature dirs — a partial/aborted decompose leaves inconsistency.** `--detect-existing` also SCANS the on-disk `features/` root (the sibling directory next to `project-map.json`) and surfaces, via the report fields `feature_dirs_on_disk` and `orphan_feature_dirs`, feature directories that exist on disk but are NOT represented in `project-map.json` — including the case where `project-map.json` is entirely absent while dirs exist. This is the inconsistent state a partial or aborted prior decompose leaves behind; left unsurfaced, a later `--features` scaffold run fails ("scaffold target .../features/<name> already exists") with no recovery path. When `orphan_feature_dirs` is non-empty, surface this inconsistency to the user and let them decide whether to ADOPT the existing dirs or PROCEED with only the remaining unscaffolded features. The detector only reports the facts — it does NOT auto-delete or auto-adopt the dirs; the adopt-vs-proceed decision is the user's.
 
 ### Step 2 — Analyze and propose
 
