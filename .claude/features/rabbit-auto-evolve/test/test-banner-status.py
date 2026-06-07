@@ -269,11 +269,14 @@ with tempfile.TemporaryDirectory() as td_str:
         else:
             ok("idle", "state-file-present, no cadence → bare idle line, no ETA")
 
-# --- t4c (#881 third reopen): the idle line carries the EXACT next-tick time —
-# the next cron boundary PLUS the observed CronCreate jitter offset (Inv 56),
-# rendered as a single bare HH:MM. NO ">=", NO "~", NO range, NO qualifier.
+# --- t4c (#881 third reopen; #1012): the idle line carries the EXACT next-tick
+# time — the next cron boundary PLUS the observed CronCreate jitter offset
+# (Inv 56), now rendered as HH:MM plus a zone label in the resolved display zone
+# (#1012, mirroring contract Inv 67). NO ">=", NO "~", NO range, NO qualifier.
 # For a 13,43 cadence from now=14:20 the next boundary is 14:43; with a +13
-# observed offset the displayed time is 14:56 ("next tick 14:56"). ---
+# observed offset the displayed time is 14:56 plus a local %Z label. The default
+# (no display-timezone declared) is the system local zone, so the naive injected
+# now keeps its wall-clock value 14:56 and only a label is attached. ---
 with tempfile.TemporaryDirectory() as td_str:
     td = Path(td_str)
     _seed(td, [ACTIVE])
@@ -293,12 +296,12 @@ with tempfile.TemporaryDirectory() as td_str:
             fail_t("idle-eta", f"line2 missing exact boundary+offset ETA 14:56: {line2!r}")
         elif "≥" in text or "~" in text or "jitter" in text or "next idle" in text:
             fail_t("idle-eta", f"line2 must carry NO qualifier/range/jitter: {line2!r}")
-        elif not re.search(r", next tick \d\d:\d\d$", text):
-            fail_t("idle-eta", f"line2 ETA not a bare HH:MM at end: {line2!r}")
+        elif not re.search(r", next tick \d\d:\d\d [A-Za-z0-9+\-]+$", text):
+            fail_t("idle-eta", f"line2 ETA not 'HH:MM <zone>' at end (#1012): {line2!r}")
         elif line2.get("color") != "yellow":
             fail_t("idle-eta", f"line2 color != yellow: {line2!r}")
         else:
-            ok("idle-eta", "idle line appends exact 'next tick 14:56' (boundary 14:43 + offset 13)")
+            ok("idle-eta", "idle line appends 'next tick 14:56 <zone>' (boundary 14:43 + offset 13, zone-labelled)")
 
 # --- t4c2 (#881): a once-per-hour cadence (single fire minute). Cron
 # "10 * * * *" from now=14:20 => next boundary 15:10; with a +6 offset the
@@ -382,6 +385,87 @@ with tempfile.TemporaryDirectory() as td_str:
         fail_t("restart-pending-no-eta", f"restart-pending must NOT carry ETA: {line2!r}")
     else:
         ok("restart-pending-no-eta", "restart-pending line carries no ETA (cadence present)")
+
+# --- t4f (#1012): the idle ETA carries a zone label in the resolved display
+# zone, converting an injected AWARE now, and equals contract's
+# _auto_evolve_next_tick_eta for the same inputs (the Inv 55/Inv 67 mirror).
+# Display zone UTC is seeded the contract way: a rabbit-cage feature.json
+# declaring a `display-timezone` json-key configurable whose stored value is
+# UTC. The injected now is aware in +05:00 (UTC 09:32), so with a 13,43 cadence
+# the next boundary in UTC is 09:43; with the cold-start +3 fallback the ETA is
+# 09:46 UTC — converted into UTC and zone-labelled, not the local wall-clock. ---
+def _seed_display_tz(td: Path, value: str) -> None:
+    """Mirror contract's test scaffold: declare a `display-timezone` json-key
+    configurable in a rabbit-cage feature.json so resolve_display_tz reads it
+    via the generic per-feature config path."""
+    feat_dir = td / ".claude" / "features" / "rabbit-cage"
+    feat_dir.mkdir(parents=True, exist_ok=True)
+    cfg = {
+        "id": "display-timezone",
+        "subcommand": "display-timezone",
+        "default": "local",
+        "storage": {
+            "type": "json-key",
+            "file": ".rabbit/display-config.json",
+            "key": "display_timezone",
+        },
+        "values": {},
+    }
+    (feat_dir / "feature.json").write_text(
+        json.dumps({"name": "rabbit-cage", "configuration": [cfg]})
+    )
+    rabbit_dir = td / ".rabbit"
+    rabbit_dir.mkdir(parents=True, exist_ok=True)
+    (rabbit_dir / "display-config.json").write_text(
+        json.dumps({"display_timezone": value})
+    )
+
+
+def _contract_eta(repo_root: Path, now_iso: str) -> str | None:
+    """The contract's authoritative ETA for the same inputs, imported in-process
+    from the real repo's contract.lib.runtime — the byte-for-byte mirror target
+    (Inv 55). repo_root is the temp dir so the cadence/display-tz reads resolve
+    against the same seeded config the subprocess sees."""
+    import datetime as _dt
+    import importlib
+
+    features_dir = FEATURE_DIR.parent  # .claude/features
+    if str(features_dir) not in sys.path:
+        sys.path.insert(0, str(features_dir))
+    runtime = importlib.import_module("contract.lib.runtime")
+    return runtime._auto_evolve_next_tick_eta(
+        str(repo_root), _dt.datetime.fromisoformat(now_iso)
+    )
+
+
+with tempfile.TemporaryDirectory() as td_str:
+    td = Path(td_str)
+    _seed(td, [ACTIVE])
+    _seed_state(td)
+    _seed_cadence(td, "13,43 * * * *")  # no jitter artifact => cold +3
+    _seed_display_tz(td, "UTC")
+    now_iso = "2026-06-04T14:32:07+05:00"  # UTC 09:32:07
+    r = _run(td, now=now_iso)
+    if r.returncode != 0:
+        fail_t("idle-eta-zone", f"exit {r.returncode}; stderr={r.stderr!r}")
+    else:
+        text = (_parse(r).get("line2") or {}).get("text", "")
+        m = re.search(r", next tick (\d\d:\d\d) ([A-Za-z0-9+\-]+)$", text)
+        expected = _contract_eta(td, now_iso)
+        if "paste: /rabbit-auto-evolve start" not in text:
+            fail_t("idle-eta-zone", f"line2 missing base idle text: {text!r}")
+        elif m is None:
+            fail_t("idle-eta-zone", f"ETA must be 'HH:MM <zone>' (zone-labelled): {text!r}")
+        elif "UTC" not in m.group(2):
+            fail_t("idle-eta-zone", f"ETA zone label must be UTC (display zone): {text!r}")
+        elif m.group(1) != "09:46":
+            fail_t("idle-eta-zone", f"ETA must be UTC-converted 09:46 (boundary 09:43 + cold +3): {text!r}")
+        elif expected is None:
+            fail_t("idle-eta-zone", "contract _auto_evolve_next_tick_eta returned None unexpectedly")
+        elif m.group(0).removeprefix(", next tick ") != expected:
+            fail_t("idle-eta-zone", f"banner ETA {m.group(0)!r} != contract ETA {expected!r} (mirror)")
+        else:
+            ok("idle-eta-zone", f"idle ETA converts to display zone + label, equals contract ({expected!r})")
 
 # --- t5: active + running → line2 contains 'loop in progress' ---
 # Cadence + state present: a priority marker line must NOT carry an ETA (#844).
