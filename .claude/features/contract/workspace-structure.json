@@ -18,7 +18,7 @@
         { "name": "rabbit-issue",     "required": true,  "description": "GitHub Issues wrapper for filing, listing, and lifecycle-managing bugs and enhancements via the gh CLI (successor to rabbit-file)", "children": [] },
         { "name": "rabbit-meta",      "required": true,  "description": "plugin-mode machinery for the per-project user-interfacer install — owns mode detection, CLAUDE.md/README.md generators, bootstrap helper", "children": [] },
         { "name": "rabbit-decompose", "required": true,  "description": "interactive feature-decomposition skill; takes a spec or codebase and proposes a feature list, then orchestrates scaffold + spec-create per accepted feature", "children": [] },
-        { "name": "rabbit-auto-evolve", "required": true, "description": "self-driving rabbit loop: fetches open actionable issues (valid feature: + priority: labels), triages, dispatches TDD subagents, merges into dev, tags releases, reschedules via ScheduleWakeup until stop", "children": [] },
+        { "name": "rabbit-auto-evolve", "required": true, "description": "self-driving rabbit loop: fetches open actionable issues (valid feature: + priority: labels), triages, dispatches TDD subagents, merges into the integration target, tags releases, fired on a fixed cadence by a system cron (or durable CronCreate heartbeat) until stop", "children": [] },
         { "name": "rabbit-housekeep", "required": true, "description": "repeatable measured verify-or-flag housekeeping skill; runs slim/reduction in complexity-sized waves, decomposes cross-feature scope into per-feature TDD touches, asserts measured reduction with load-bearing tokens preserved", "children": [] }
       ]
     },
