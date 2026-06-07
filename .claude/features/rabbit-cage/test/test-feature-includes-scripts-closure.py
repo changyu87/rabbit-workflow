@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""rabbit-cage Inv 24 — FEATURE_INCLUDES skill-referenced script closure.
+"""rabbit-cage Inv 24 — FEATURE_INCLUDES deployed-surface-referenced script closure.
 
-For every skill shipped via install.py's SKILLS list, every script that the
-SKILL.md body references via a literal path under
+For every deployed-surface body shipped via install.py — every SKILL.md in the
+SKILLS list AND every command .md shipped via the COMMANDS list or as a
+`commands/*.md` entry in FEATURE_INCLUDES — every script that the body
+references via a literal path under
 `.claude/features/<feature>/scripts/<script>.py` OR the skill-local form
 `.claude/features/<feature>/skills/<skill>/scripts/<script>.py` MUST appear in
 that feature's FEATURE_INCLUDES[<feature>] list AND MUST exist on disk at the
@@ -10,7 +12,11 @@ source path. Transitively, any script that one of THOSE scripts invokes
 (subprocess / pipe / exec) — when the invoked script lives in the same
 directory — MUST likewise appear in FEATURE_INCLUDES[<feature>].
 
-Failures name the (skill, feature, missing-script) triple so the fix is
+A shipped command .md whose delegated backing script is omitted from the
+closure is the exact #1035 bug (a vendored install fires the command and hits
+FileNotFoundError); the SKILL-only scan missed it.
+
+Failures name the (surface, feature, missing-script) triple so the fix is
 mechanical: extend FEATURE_INCLUDES[<feature>].
 """
 from __future__ import annotations
@@ -81,9 +87,25 @@ def extract_sibling_invokes(text: str) -> set[str]:
     return set(SIBLING_INVOKE_RE.findall(text))
 
 
+def shipped_command_md_rels(install_mod) -> set[str]:
+    """Every repo-relative command .md source the install ships, from BOTH the
+    dedicated COMMANDS list AND any `commands/*.md` entry in FEATURE_INCLUDES."""
+    rels: set[str] = {src for src, _dst in getattr(install_mod, "COMMANDS", [])}
+    for feature, paths in getattr(install_mod, "FEATURE_INCLUDES", {}).items():
+        for rel in paths:
+            if rel.startswith("commands/") and rel.endswith(".md"):
+                rels.add(f".claude/features/{feature}/{rel}")
+    return rels
+
+
 mod = load_install_module()
 includes: dict[str, list[str]] = getattr(mod, "FEATURE_INCLUDES", {})
 skills: list[tuple[str, str]] = getattr(mod, "SKILLS", [])
+commands: set[str] = shipped_command_md_rels(mod)
+
+# Deployed-surface bodies: (source_rel, kind) for every SKILL.md and command .md.
+surfaces: list[tuple[str, str]] = [(src, "skill") for src, _dst in skills]
+surfaces += [(src, "command") for src in sorted(commands)]
 
 if not includes:
     fail_t(1, "FEATURE_INCLUDES is empty or missing")
@@ -95,7 +117,12 @@ if not skills:
 else:
     ok(2, f"SKILLS loaded ({len(skills)} entries)")
 
-t = 3
+if not commands:
+    fail_t(3, "no shipped command .md discovered (COMMANDS/FEATURE_INCLUDES broke)")
+else:
+    ok(3, f"shipped commands loaded ({len(commands)} entries)")
+
+t = 4
 
 
 def check_script_in_includes(
@@ -125,21 +152,21 @@ def check_script_in_includes(
     return True
 
 
-for src_rel, _dst_rel in skills:
-    skill_src_abs = os.path.join(REPO_ROOT, src_rel)
-    if not os.path.isfile(skill_src_abs):
-        fail_t(t, f"skill source missing on disk: {src_rel}")
+for src_rel, kind in surfaces:
+    surface_src_abs = os.path.join(REPO_ROOT, src_rel)
+    if not os.path.isfile(surface_src_abs):
+        fail_t(t, f"{kind} source missing on disk: {src_rel}")
         t += 1
         continue
-    with open(skill_src_abs) as f:
-        skill_body = f.read()
-    refs = extract_script_refs(skill_body)
+    with open(surface_src_abs) as f:
+        surface_body = f.read()
+    refs = extract_script_refs(surface_body)
     if not refs:
-        ok(t, f"skill {src_rel!r}: no literal script references (skip)")
+        ok(t, f"{kind} {src_rel!r}: no literal script references (skip)")
         t += 1
         continue
     for feature, rel_path in sorted(refs):
-        label = f"skill {src_rel!r} -> {feature}/{rel_path}"
+        label = f"{kind} {src_rel!r} -> {feature}/{rel_path}"
         if not check_script_in_includes(feature, rel_path, label):
             continue
         # Transitive: read the script body and check sibling invocations.
