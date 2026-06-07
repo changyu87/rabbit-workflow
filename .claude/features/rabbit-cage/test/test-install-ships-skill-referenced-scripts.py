@@ -34,7 +34,12 @@ REPO = Path(__file__).resolve().parents[4]
 INSTALL_PY = REPO / ".claude/features/rabbit-cage/install.py"
 
 # Matches literal paths like .claude/features/<feature>/scripts/<script>.py
-SCRIPT_REF_RE = re.compile(r"\.claude/features/([\w-]+)/scripts/([\w.-]+\.py)")
+# AND skill-local scripts .claude/features/<feature>/skills/<skill>/scripts/<script>.py
+# Capture group 2 is the feature-relative path (e.g. "scripts/x.py" or
+# "skills/<skill>/scripts/x.py") — the same shape FEATURE_INCLUDES stores.
+SCRIPT_REF_RE = re.compile(
+    r"\.claude/features/([\w-]+)/((?:skills/[\w-]+/)?scripts/[\w.-]+\.py)"
+)
 
 
 def _load_install():
@@ -92,8 +97,12 @@ def _install_into(td: Path):
 
 
 def _skill_referenced_scripts(install_mod) -> set[tuple[str, str]]:
-    """Return {(feature, script_basename)} every SKILL in install's SKILLS list
-    references via a literal .claude/features/<feature>/scripts/<script>.py path.
+    """Return {(feature, feature_rel_path)} every SKILL in install's SKILLS list
+    references via a literal .claude/features/<feature>/scripts/<script>.py OR
+    .claude/features/<feature>/skills/<skill>/scripts/<script>.py path.
+
+    The second tuple element is the feature-relative path (e.g.
+    "scripts/x.py" or "skills/<skill>/scripts/x.py").
 
     Read from the REPO source SKILL bodies (the bodies the install ships
     verbatim), so the expectation is derived independently of FEATURE_INCLUDES.
@@ -117,8 +126,8 @@ def test_fresh_install_ships_every_skill_referenced_script():
     with tempfile.TemporaryDirectory() as td:
         _install, dst = _install_into(Path(td).resolve())
         missing: list[str] = []
-        for feature, script in sorted(refs):
-            rel = f".claude/features/{feature}/scripts/{script}"
+        for feature, rel_path in sorted(refs):
+            rel = f".claude/features/{feature}/{rel_path}"
             on_disk = dst / rel
             if not on_disk.is_file():
                 missing.append(rel)
@@ -131,9 +140,19 @@ def test_fresh_install_ships_every_skill_referenced_script():
         )
 
     # Regression anchor: the specific #897 script must be among those proven.
-    assert ("rabbit-decompose", "handoff-scaffold.py") in refs, (
+    assert ("rabbit-decompose", "scripts/handoff-scaffold.py") in refs, (
         "rabbit-decompose SKILL no longer references handoff-scaffold.py; "
         "update this anchor if Step 4 retired the script (see #897)"
+    )
+    # Regression anchor: the skill-local scaffold-batch.py backing script must
+    # be discovered and shipped (the omission that blocked every plugin/vendored
+    # decomposition — handoff-scaffold.py could not resolve the batch scaffolder).
+    assert (
+        "rabbit-feature",
+        "skills/rabbit-feature-scaffold/scripts/scaffold-batch.py",
+    ) in refs, (
+        "rabbit-feature-scaffold SKILL no longer references scaffold-batch.py; "
+        "update this anchor if the batch interface was retired"
     )
     print("PASS test_fresh_install_ships_every_skill_referenced_script")
 
