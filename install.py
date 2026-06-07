@@ -173,6 +173,9 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "commands/rabbit-cage-config.md",
         "scripts/rabbit-update.py",
         "scripts/rabbit-cage-config.py",
+        "scripts/rabbit-project.py",
+        "scripts/rabbit-project-set-path.py",
+        "scripts/rabbit-project-map.py",
         "lib/__init__.py",
         "lib/project_map_reader.py",
     ],
@@ -188,6 +191,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
     "rabbit-feature": [
         "feature.json",
         "commands/rabbit-tdd-autonomous.md",
+        "scripts/rabbit-tdd-autonomous-config.py",
         "scripts/audit-owner.py",
         "scripts/format-feature-context.py",
         "scripts/resolve-scope.py",

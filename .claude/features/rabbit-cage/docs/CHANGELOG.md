@@ -12,6 +12,8 @@ field in `feature.json` (lockstep).
 
 ## Version notes
 
+- **v5.82.0 (fix #1035: broaden Inv 24 script-closure to cover COMMAND-referenced scripts):** `install.py`'s `FEATURE_INCLUDES` omitted `scripts/rabbit-tdd-autonomous-config.py` for `rabbit-feature`, so the shipped `/rabbit-tdd-autonomous` command (deployed via `commands/rabbit-tdd-autonomous.md`) hit `FileNotFoundError` in a vendored install. The existing closure tests scanned only SKILL.md bodies, so the command-backed omission was silent. Inv 24 is broadened from "skill-referenced" to "deployed-surface-referenced": the source set is now the union of shipped SKILL.md and shipped command `.md` bodies (the `COMMANDS` list plus any `commands/*.md` entry in `FEATURE_INCLUDES`). Both `test-feature-includes-scripts-closure.py` (static) and `test-install-ships-skill-referenced-scripts.py` (e2e) now scan command bodies. The broadened tests caught FOUR genuine omissions of the same class — `rabbit-tdd-autonomous-config.py` (rabbit-feature) and the three `/rabbit-project` backing scripts (`rabbit-project.py`, `rabbit-project-set-path.py`, `rabbit-project-map.py`, rabbit-cage) — all four added to the closure. Feature/spec/contract versions bumped 5.81.0 -> 5.82.0 in lockstep (Inv 11).
+
 - **v5.80.0 (feat #1001: dual-accept the remaining strict `"plugin"`
   assertions in rabbit-cage's own tests; unblocks #990):** the earlier
   dual-accept prep relaxed every rabbit-cage CODE site that branches on the
