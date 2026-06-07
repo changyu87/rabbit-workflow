@@ -27,6 +27,13 @@ Scenarios:
      unchanged in local HEAD), `git merge` NEVER logged.
   D) Divergent (non-ff) local history → exits non-zero loudly, `git merge`
      NEVER logged.
+  E) Target=dev (default/coexistence) → the pull source is resolved from the
+     integration target, so the shim call-log shows `pull --ff-only origin
+     dev` (issue #1006 / Inv 61).
+  F) Target=main (RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET=main) → the pull
+     source resolves to main, so the shim call-log shows `pull --ff-only
+     origin main` and the clone fast-forwards to origin/main (issue #1006 /
+     Inv 61).
 """
 
 import os
@@ -100,10 +107,10 @@ def merge_invoked(call_log):
     return False
 
 
-def make_fixture(root):
-    """Build a bare `origin` with a `dev` branch + a local clone tracking it.
+def make_fixture(root, branch="dev"):
+    """Build a bare `origin` with `branch` + a local clone tracking it.
 
-    Returns (origin_dir, clone_dir).
+    Returns (origin_dir, seed_dir, clone_dir).
     """
     origin = os.path.join(root, "origin.git")
     seed = os.path.join(root, "seed")
@@ -111,10 +118,10 @@ def make_fixture(root):
     os.makedirs(origin)
     os.makedirs(seed)
 
-    git(origin, "init", "--bare", "-b", "dev")
+    git(origin, "init", "--bare", "-b", branch)
 
-    # Seed the dev branch with an initial commit.
-    git(seed, "init", "-b", "dev")
+    # Seed the integration branch with an initial commit.
+    git(seed, "init", "-b", branch)
     git(seed, "config", "user.email", "t@t")
     git(seed, "config", "user.name", "t")
     with open(os.path.join(seed, "tracked.txt"), "w") as f:
@@ -122,31 +129,37 @@ def make_fixture(root):
     git(seed, "add", "tracked.txt")
     git(seed, "commit", "-m", "seed")
     git(seed, "remote", "add", "origin", origin)
-    git(seed, "push", "origin", "dev")
+    git(seed, "push", "origin", branch)
 
     # Clone for the loop's working tree.
     git(root, "clone", origin, "clone")
     git(clone, "config", "user.email", "t@t")
     git(clone, "config", "user.name", "t")
-    git(clone, "checkout", "dev")
+    git(clone, "checkout", branch)
     return origin, seed, clone
 
 
-def advance_origin(seed, content):
-    """Add one more commit to origin/dev via the seed clone."""
+def advance_origin(seed, content, branch="dev"):
+    """Add one more commit to origin/<branch> via the seed clone."""
     with open(os.path.join(seed, "tracked.txt"), "w") as f:
         f.write(content)
     git(seed, "add", "tracked.txt")
     git(seed, "commit", "-m", "advance")
-    git(seed, "push", "origin", "dev")
+    git(seed, "push", "origin", branch)
 
 
-def run_sync(clone, git_shim, call_log):
+def run_sync(clone, git_shim, call_log, target=None):
     env = os.environ.copy()
     env["RABBIT_AUTO_EVOLVE_REPO_ROOT"] = clone
     env["RABBIT_GIT_CMD"] = git_shim
     # Keep tick-log writes inside the tmpdir.
     env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = os.path.join(clone, ".rabbit")
+    # Resolve the pull source from the integration target (Inv 61). When
+    # target is None the env var is left as inherited so default (dev) applies.
+    if target is not None:
+        env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = target
+    else:
+        env.pop("RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET", None)
     return subprocess.run(
         [sys.executable, SYNC],
         cwd=clone, capture_output=True, text=True, env=env,
@@ -265,6 +278,73 @@ with tempfile.TemporaryDirectory() as d:
              f"calls={read_calls(call_log)!r}")
     else:
         ok("D: git merge NEVER invoked on divergence (no force-merge fallback)")
+
+
+def pull_source(call_log):
+    """Return the `origin <branch>` source of the recorded `pull --ff-only`
+    invocation, or None if no such call was logged."""
+    for line in read_calls(call_log):
+        toks = line.split()
+        if toks[:2] == ["pull", "--ff-only"]:
+            return " ".join(toks[2:])
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Scenario E — target=dev (default) resolves the pull source to `origin dev`
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    origin, seed, clone = make_fixture(d, branch="dev")
+    advance_origin(seed, "v2\n", branch="dev")
+    call_log = os.path.join(d, "calls-E.txt")
+    shim = write_git_shim(d, call_log)
+
+    proc = run_sync(clone, shim, call_log, target="dev")
+    if proc.returncode != 0:
+        fail(f"E: target=dev sync exit {proc.returncode}; "
+             f"stdout={proc.stdout!r} stderr={proc.stderr!r}")
+    else:
+        ok("E: target=dev clean tree fast-forwards (exit 0)")
+    src = pull_source(call_log)
+    if src == "origin dev":
+        ok("E: pull source resolved to `origin dev` for target=dev")
+    else:
+        fail(f"E: expected `pull --ff-only origin dev`; got source {src!r}; "
+             f"calls={read_calls(call_log)!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario F — target=main resolves the pull source to `origin main`
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    origin, seed, clone = make_fixture(d, branch="main")
+    advance_origin(seed, "v2\n", branch="main")
+    call_log = os.path.join(d, "calls-F.txt")
+    shim = write_git_shim(d, call_log)
+
+    before = git(clone, "rev-parse", "HEAD").stdout.strip()
+    proc = run_sync(clone, shim, call_log, target="main")
+    after = git(clone, "rev-parse", "HEAD").stdout.strip()
+
+    if proc.returncode != 0:
+        fail(f"F: target=main sync exit {proc.returncode}; "
+             f"stdout={proc.stdout!r} stderr={proc.stderr!r}")
+    else:
+        ok("F: target=main clean tree fast-forwards (exit 0)")
+    src = pull_source(call_log)
+    if src == "origin main":
+        ok("F: pull source resolved to `origin main` for target=main")
+    else:
+        fail(f"F: expected `pull --ff-only origin main`; got source {src!r}; "
+             f"calls={read_calls(call_log)!r}")
+    if after == before:
+        fail("F: HEAD did not advance — fast-forward to origin/main did not happen")
+    else:
+        ok("F: HEAD advanced to origin/main (fast-forward applied)")
+    if merge_invoked(call_log):
+        fail(f"F: git merge WAS invoked; calls={read_calls(call_log)!r}")
+    else:
+        ok("F: git merge NEVER invoked (used git pull --ff-only)")
 
 
 # ---------------------------------------------------------------------------
