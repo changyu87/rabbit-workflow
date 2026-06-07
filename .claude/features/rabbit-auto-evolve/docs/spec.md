@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.88.0
+version: 0.89.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -23,7 +23,7 @@ A self-driving rabbit loop that continuously fetches open ACTIONABLE
 GitHub issues (those carrying a valid `feature:` + `priority:` label — the
 actionability selection basis, see Inv 2),
 triages each one, dispatches TDD subagents to implement
-actionable work, merges approved PRs into `dev`, tags versioned releases,
+actionable work, merges approved PRs into the integration target, tags versioned releases,
 and is fired on a fixed cadence by a system cron (the sole tick scheduler;
 see Inv 32) until the user issues an explicit stop — all without requiring
 human approval at each step.
