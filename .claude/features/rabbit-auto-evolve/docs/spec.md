@@ -1486,7 +1486,7 @@ summary is restated here.
     injectable `now`.
 
     The ETA is rendered as `HH:MM` PLUS a `%Z` zone label in the resolved
-    display zone (#1012) — no `≥`, no `~`, no range, no qualifier beyond the
+    display zone — no `≥`, no `~`, no range, no qualifier beyond the
     trailing label. The wall-clock minute is the next cron boundary PLUS the
     deterministic CronCreate jitter offset (Inv 56), converted into the display
     zone and labelled so the banner ETA and the Stop `⏱` line agree
@@ -1536,7 +1536,7 @@ summary is restated here.
     - Active only, state file PRESENT, cadence source present → `line2.text`
       appends `, next tick HH:MM <zone>`: the next cron boundary plus
       `observed_jitter_minutes` (Inv 56), CONVERTED into the resolved display
-      zone (#1012, contract Inv 67) and `%Z`-labelled — no `≥`, no `~`, no
+      zone (contract Inv 67) and `%Z`-labelled — no `≥`, no `~`, no
       qualifier beyond the label. With an injected aware `now` and display zone
       UTC this equals contract's `_auto_evolve_next_tick_eta` byte-for-byte (the
       Inv 55 mirror assertion).
