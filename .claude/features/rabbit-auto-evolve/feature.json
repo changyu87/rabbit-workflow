@@ -5,7 +5,7 @@
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "summary": "rabbit-auto-evolve \u2014 self-driving rabbit loop that continuously fetches open actionable issues (valid feature: + priority: label), triages, dispatches TDD subagents, merges PRs into dev, tags releases, and is fired on a fixed cadence by the system cron where available (with a durable CronCreate fallback where crontab is blocked; Inv 32) until the user issues an explicit stop.",
   "surface": {
     "hooks": [],
@@ -16,7 +16,7 @@
     ]
   },
   "deprecation_criterion": "when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill",
-  "updated": "2026-06-04",
+  "updated": "2026-06-07",
   "manifest": [
     {
       "api": "publish_skill",
@@ -40,5 +40,6 @@
     ]
   },
   "configuration": [],
-  "prompts": []
+  "prompts": [],
+  "spec_no_change_reason": "spec change committed earlier on this branch (13834c3e) \u2014 already in history, not working-tree diff"
 }

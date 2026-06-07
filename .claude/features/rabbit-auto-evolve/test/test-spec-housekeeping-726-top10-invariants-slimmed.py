@@ -72,7 +72,13 @@ BASELINE_TOTAL_LINES = 3594
 # all-blocked open backlog goes idle instead of spinning the loop into a ~1-minute no-op
 # refire storm; ~14 lines across the Inv 33 rationale, the schedule-decision script-table
 # row, and the test prose) is additive, so the ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 3829
+# The sync-tree integration-target amendment to Inv 38 (#1006: tick-start self-sync now
+# pulls `git pull --ff-only origin <integration-target>` with the target resolved via
+# integration_target.py resolve_target() (Inv 61) instead of a hardcoded `origin dev`, so
+# the post-cutover loop fast-forwards from `main`; +16 lines across the Inv 38 mechanism
+# step, the `git pull, never git merge` paragraph, and the enforced-by test prose) is
+# additive, so the ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 3845
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a
