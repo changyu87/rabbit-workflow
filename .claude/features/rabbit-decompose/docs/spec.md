@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.13.0
+version: 0.14.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -215,9 +215,20 @@ constrains only the structural shape.
    branch). When a candidate feature list is supplied via `--features`, the
    detector classifies candidates into `already_rabbified` (name present in the
    existing map) and `new` (absent), so the "add" branch proposes ONLY the
-   new/unrabbified features. The `SKILL.md` body MUST reference the
-   `--detect-existing` step, name `project-map.json`, and document the
-   three-way skip / add / re-decompose branch.
+   new/unrabbified features. `--detect-existing` MUST ALSO SCAN the resolved
+   on-disk `features/` root — the sibling `features/` directory next to
+   `project-map.json`, where the scaffolder writes each feature dir — and
+   SURFACE the inconsistency a partial/aborted decompose leaves behind: feature
+   directories that exist on disk but are NOT represented in `project-map.json`,
+   including the case where `project-map.json` is entirely ABSENT while dirs
+   exist. The report carries `feature_dirs_on_disk` (the sorted names of all
+   directories under `features/`) and `orphan_feature_dirs` (the sorted names
+   present on disk but ABSENT from the `features` map, treating an absent map as
+   empty). This is DETECTION + SURFACING only — the detector MUST NOT auto-delete
+   or auto-adopt the dirs; the adopt-vs-proceed decision stays the caller's. The
+   `SKILL.md` body MUST reference the `--detect-existing` step, name
+   `project-map.json`, and document the three-way skip / add / re-decompose
+   branch.
 
 9. The batch scaffold flow MUST authorize its cross-feature writes through the
    decompose-context scope-guard pass-through, NOT through the manual
@@ -333,6 +344,17 @@ coverage:
   `.rabbit/rabbit-project/...`); and that the `SKILL.md` body references
   `--detect-existing`, names `project-map.json`, and documents the three-way
   branch).
+- `test-detect-orphan-feature-dirs.py` (E2E — asserts the Invariant 8
+  orphan-surfacing clause: runs `scripts/handoff-scaffold.py --detect-existing`
+  end-to-end against temp plugin and standalone trees, confirming that feature
+  dirs on disk with NO `project-map.json` are all surfaced as
+  `orphan_feature_dirs` while `existing` stays false; that dirs partially
+  represented in the map surface only the absent ones as orphans; that a map
+  fully matching the on-disk dirs yields no orphans; that `feature_dirs_on_disk`
+  enumerates every dir under `features/` and ignores stray files; that an absent
+  `features/` dir yields empty lists without crashing; and that the `features/`
+  root is `detect_mode`-driven (standalone scans
+  `.rabbit/rabbit-project/features/`)).
 - `test-decompose-context-marker.py` (E2E — asserts Invariant 9: runs
   `scripts/handoff-scaffold.py --decompose-context set` end-to-end against
   temp plugin and standalone trees, confirming the bounded marker is written

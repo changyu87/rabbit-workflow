@@ -13,6 +13,23 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.14.0 (surface orphan feature dirs in --detect-existing, #1040):** After
+  a partial/aborted decompose the project can reach an inconsistent state —
+  feature directories exist on disk under the resolved `features/` root but are
+  NOT represented in `project-map.json` (or `project-map.json` is entirely
+  absent while dirs exist). In that state `handoff-scaffold.py --features` failed
+  at scaffold time ("scaffold target .../features/<name> already exists") with no
+  recovery path, and `--detect-existing` did not surface the inconsistency at
+  all. Extended `--detect-existing` to SCAN the on-disk `features/` root (the
+  sibling dir next to `project-map.json`) and add two additive report fields:
+  `feature_dirs_on_disk` (sorted names of all dirs under `features/`) and
+  `orphan_feature_dirs` (sorted names present on disk but absent from the
+  `features` map, treating an absent map as empty). Detection + surfacing only —
+  no auto-delete, no auto-adopt; the adopt-vs-proceed decision stays the
+  caller's. All prior `--detect-existing` fields and behavior are unchanged
+  (additive). New E2E test `test-detect-orphan-feature-dirs.py`. Four-way
+  version bump 0.13.0 → 0.14.0 (lockstep).
+
 - **v0.13.0 (dual-accept the EMITTED mode field in the test suite — complete
   the #988 coverage gap, #997, unblocks #990):** #988 dual-accepted
   `handoff-scaffold.py`'s five INTERNAL branch comparisons, so the script

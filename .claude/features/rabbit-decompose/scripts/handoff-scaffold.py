@@ -72,7 +72,11 @@ CLI:
                  the SKILL offers (skip / add / re-decompose); when a candidate
                  list is supplied via --features, classify candidates into
                  already_rabbified vs new so the "add" branch proposes ONLY the
-                 new/unrabbified features. No --features required.
+                 new/unrabbified features. Also SCANS the on-disk features/ root
+                 and surfaces feature_dirs_on_disk + orphan_feature_dirs (dirs
+                 present on disk but absent from project-map.json, including the
+                 absent-map case) so a partial/aborted decompose's inconsistent
+                 state is detectable (#1040). No --features required.
   --decompose-context  Manage the decompose-context scope-guard pass-through
                  marker (#923) — the bounded, auto-cleared replacement for the
                  manual `.rabbit-scope-override = session` workaround. `set`
@@ -107,7 +111,9 @@ Output (always JSON on stdout):
       "existing_features": [ "<name>", ... ],   # sorted; [] when not existing
       "options": ["skip", "add", "re-decompose"],   # [] when not existing
       "already_rabbified": [ {"name": ..., "globs": [...]}, ... ],
-      "new": [ {"name": ..., "globs": [...]}, ... ]   # the "add" candidates
+      "new": [ {"name": ..., "globs": [...]}, ... ],   # the "add" candidates
+      "feature_dirs_on_disk": [ "<name>", ... ],  # sorted dirs under features/
+      "orphan_feature_dirs": [ "<name>", ... ]    # on-disk but absent from map
     }
 
 Exit:
@@ -124,7 +130,7 @@ both keeps this script correct before AND after that rename. The legacy
 "plugin" arm is removed only after the rename completes and the old value is
 fully retired (coexistence-window deprecation).
 
-Version: 0.6.0
+Version: 0.7.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Step 4 scaffold hand-off is provided natively by
     the rabbit CLI, retiring this companion script.
@@ -306,6 +312,21 @@ def _clear_decompose_marker(marker_path: str) -> None:
 _DEFAULT_DECOMPOSE_OPERATION = "rabbit-decompose batch scaffold"
 
 
+def _scan_feature_dirs(project_map_path: str):
+    """Scan the resolved `features/` root for on-disk feature directories
+    (#1040).
+
+    The features root is the SIBLING `features/` directory next to
+    `project-map.json` — exactly where scaffold-feature.py writes each feature
+    dir (`<rabbit-project>/features/<name>`). Returns the sorted list of
+    subdirectory names found there; a missing/empty `features/` dir yields [].
+    Stray files at the features root are ignored — only directories count."""
+    feats_root = Path(project_map_path).parent / "features"
+    if not feats_root.is_dir():
+        return []
+    return sorted(p.name for p in feats_root.iterdir() if p.is_dir())
+
+
 def _read_existing_features(project_map_path: str):
     """Read the project-map's features map, or {} when absent/empty/unreadable.
 
@@ -485,6 +506,14 @@ def main(argv) -> int:
                     already_rabbified.append(entry)
                 else:
                     new.append(entry)
+        # Orphan feature-dir detection (#1040): scan the on-disk `features/`
+        # root and surface any dir ABSENT from the project-map's features map
+        # (treating an absent map as empty, so a partial/aborted decompose that
+        # left dirs behind without a project-map is surfaced too). Detection +
+        # surfacing only — the adopt-vs-proceed decision stays the caller's.
+        feature_dirs_on_disk = _scan_feature_dirs(project_map_path)
+        orphan_feature_dirs = [d for d in feature_dirs_on_disk
+                               if d not in existing_map]
         print(json.dumps({
             "mode": mode,
             "project_map_path": project_map_path,
@@ -493,6 +522,8 @@ def main(argv) -> int:
             "options": ["skip", "add", "re-decompose"] if existing else [],
             "already_rabbified": already_rabbified,
             "new": new,
+            "feature_dirs_on_disk": feature_dirs_on_disk,
+            "orphan_feature_dirs": orphan_feature_dirs,
         }))
         return 0
 
