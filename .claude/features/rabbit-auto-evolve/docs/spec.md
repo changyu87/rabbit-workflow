@@ -78,7 +78,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/triage-issue.py` | CLI | Per-issue classifier; reads issue metadata and the named feature's spec front matter; emits a triage JSON object with `decision`, `reason_code`, `rationale`, `feature`, `contract_touch`, `blocked_by`, `duplicate_of` |
 | `scripts/resolve-duplicate.py` | CLI | Records the GitHub-native duplicate resolution (Inv 60): `resolve <dup> <canonical>` closes the duplicate with `state_reason=duplicate` and cross-links the canonical issue; `status <n>` reports whether an issue is recognized as a duplicate (native state authoritative; legacy `duplicate` label honored on read as a deprecating mirror) |
 | `scripts/plan-batch.py` | CLI | Reads a work-set JSON from stdin; partitions contract-touch issues into `barrier_first`; greedy graph-colors the rest by feature-conflict into `groups`; applies `max_parallel` cap |
-| `scripts/integration_target.py` | CLI + lib | Resolves the loop's integration target branch (Inv 61): default `dev`, overridable to `main` via `RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET`; exposes `resolve_target`, `accepted_targets` ({dev, main}), `is_default_branch`; the sibling phase scripts import it |
+| `scripts/integration_target.py` | CLI + lib | Resolves the loop's integration target branch (Inv 61): default `main`, overridable via `RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET` (a `dev` base is still accepted during the coexistence teardown); exposes `resolve_target`, `accepted_targets` ({dev, main}), `is_default_branch`; the sibling phase scripts import it |
 | `scripts/safety-check.py` | CLI | Validates the bottom-line invariants (branch is the integration target, PR base is an accepted integration target, head branch matches `^feat/.+`, tag does not already exist, no uncommitted modifications to tracked files, and — merge phase only — the isolated install + update smoke passes via `install-smoke.py`, Inv 63); exits non-zero on any violation |
 | `scripts/install-smoke.py` | CLI | Pre-merge install smoke (Inv 63): runs a network-free fresh install + `--update` of rabbit-cage's `install.py` against the current tree inside a tempdir, asserting no install/closure/publish failure; invoked as bottom-line check 6 by `safety-check.py --phase merge` so install breakage blocks the merge; skips gracefully when install.py is absent |
 | `scripts/merge-prs.py` | CLI | Calls `safety-check.py --phase merge` then `gh pr merge --squash` (direct merge, NOT `--auto`) for each PR, adding `--admin` when the base is the protected default branch (`main`) to land past the required-review the loop cannot satisfy; accepts a base in the `{dev, main}` coexistence set and refuses any other; runs the manual close-after-merge only while the target is not the default branch |
@@ -827,8 +827,8 @@ summary is restated here.
    5. `git tag -a <next_tag> -m "<auto-evolve> #<pr> <title>"`.
    6. `git push origin <next_tag>`.
    7. `gh release create <next_tag> --notes-from-tag --target <integration
-      target>` — the resolved integration target (Inv 61: default `dev`,
-      `main` under the coexistence override).
+      target>` — the resolved integration target (Inv 61: default `main`,
+      overridable to `dev` during the coexistence teardown).
 
    Output JSON (single object on stdout):
 
@@ -2825,8 +2825,8 @@ summary is restated here.
 
     1. **Restore a leaked branch switch FIRST.** Compare the main repo's HEAD
        branch against the RESOLVED integration target (Inv 61:
-       `integration_target.resolve_target()` — `dev` coexistence default, `main`
-       post-cutover — NOT a hardcoded `dev`). When HEAD is NOT the resolved
+       `integration_target.resolve_target()` — `main` default, `dev` accepted
+       via override, NOT a hardcoded `dev`). When HEAD is NOT the resolved
        target, the branch was leaked. Check out the resolved target ONLY when the
        tree is CLEAN (no uncommitted tracked changes) AND the branch has NO
        un-pushed unique commits (every local commit is on its `origin/<branch>`
@@ -3694,16 +3694,16 @@ summary is restated here.
     safety, and release phase scripts integrate into ONE resolved "integration
     target" branch rather than a hard-coded `dev`. The target is resolved by
     `scripts/integration_target.py`: the `RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET`
-    env var when set, else the default `dev`. The module exposes
-    `resolve_target()`, `accepted_targets()` (the coexistence set `{dev,
-    main}`), and `is_default_branch(t)` (true iff `t` is the default branch
+    env var when set, else the default `main` (the cutover is complete; main is
+    the live integration target). The module exposes `resolve_target()`,
+    `accepted_targets()` (the coexistence set `{dev, main}`), and
+    `is_default_branch(t)` (true iff `t` is the default branch
     `main`); the sibling phase scripts import it relative to their own file (not
     via `RABBIT_AUTO_EVOLVE_SCRIPT_DIR`, which tests repoint at a shim dir). An
     override outside the accepted set is an error.
 
-    During the coexistence window BOTH branches are honored so the running loop
-    keeps operating before the admin cutover (the `dev`→`main` merge plus branch
-    protection) flips the default. Concretely:
+    During the coexistence teardown a `dev` base is still accepted even though
+    the resolved default is now `main`. Concretely:
 
     1. `merge-prs.py` ACCEPTS a PR whose base is EITHER `dev` or `main`
        (`accepted_targets()`); a base that is neither is refused with

@@ -13,7 +13,7 @@ positive test per phase asserts exit 0 when every required invariant
 holds. Additional tests exercise the --next-tag required-when-release /
 forbidden-elsewhere gating and the --help smoke contract.
 
-Fixtures use a real `git init -b dev` in a tempdir plus a PATH-resident
+Fixtures use a real `git init -b main` in a tempdir plus a PATH-resident
 `gh` shim that emits canned JSON for `gh pr view` calls. No live network.
 """
 
@@ -40,14 +40,14 @@ def ok(msg):
     print(f"PASS: {msg}")
 
 
-def _write_gh_shim(shim_dir, base_ref="dev", head_ref="feat/some-thing"):
+def _write_gh_shim(shim_dir, base_ref="main", head_ref="feat/some-thing"):
     """Write a `gh` shim that emits canned JSON for `gh pr view --json
     baseRefName` and `--json headRefName`."""
     shim_path = os.path.join(shim_dir, "gh")
     with open(shim_path, "w") as f:
         f.write("#!/bin/sh\n")
         # Parse for `--json <name>` and emit the right field. We default
-        # to baseRefName=dev, headRefName=feat/some-thing.
+        # to baseRefName=main, headRefName=feat/some-thing.
         f.write(f'BASE_REF={base_ref}\n')
         f.write(f'HEAD_REF={head_ref}\n')
         # Walk args for --json and -q
@@ -76,13 +76,13 @@ def _write_gh_shim(shim_dir, base_ref="dev", head_ref="feat/some-thing"):
     os.chmod(shim_path, stat.S_IRWXU)
 
 
-def _make_clean_repo(tmpdir, base_ref="dev", head_ref="feat/some-thing",
-                     init_branch="dev", integration_target=None):
+def _make_clean_repo(tmpdir, base_ref="main", head_ref="feat/some-thing",
+                     init_branch="main", integration_target=None):
     """Create a tempdir-local git repo on branch `init_branch` (default
-    `dev`), with an initial commit, and a `gh` shim on PATH. Return (cwd, env).
+    `main`), with an initial commit, and a `gh` shim on PATH. Return (cwd, env).
 
     `integration_target` (Inv 61): when None the env var is cleared so the
-    check resolves the coexistence default (`dev`); set it to 'dev'/'main' to
+    check resolves the post-cutover default (`main`); set it to 'dev'/'main' to
     drive the resolved integration target Inv 1/2 assert against."""
     repo = os.path.join(tmpdir, "repo")
     os.makedirs(repo)
@@ -173,7 +173,7 @@ with tempfile.TemporaryDirectory() as td:
         fail(f"merge-positive: expected exit 0, got {proc.returncode}; "
              f"stderr={proc.stderr!r}")
     else:
-        ok("merge-positive: clean state on dev passes merge phase")
+        ok("merge-positive: clean state on main passes merge phase")
 
     proc = _run(repo, env, "42", "--phase", "release", "--next-tag", "v9.9.9")
     if proc.returncode != 0:
