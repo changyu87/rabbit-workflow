@@ -3,12 +3,12 @@
 
 For every skill shipped via install.py's SKILLS list, every script that the
 SKILL.md body references via a literal path under
-`.claude/features/<feature>/scripts/<script>.py` MUST appear in that
-feature's FEATURE_INCLUDES[<feature>] list AND MUST exist on disk at the
+`.claude/features/<feature>/scripts/<script>.py` OR the skill-local form
+`.claude/features/<feature>/skills/<skill>/scripts/<script>.py` MUST appear in
+that feature's FEATURE_INCLUDES[<feature>] list AND MUST exist on disk at the
 source path. Transitively, any script that one of THOSE scripts invokes
-(subprocess / pipe / exec) — when the invoked script also lives under
-`.claude/features/<feature>/scripts/` — MUST likewise appear in
-FEATURE_INCLUDES[<feature>].
+(subprocess / pipe / exec) — when the invoked script lives in the same
+directory — MUST likewise appear in FEATURE_INCLUDES[<feature>].
 
 Failures name the (skill, feature, missing-script) triple so the fix is
 mechanical: extend FEATURE_INCLUDES[<feature>].
@@ -30,8 +30,11 @@ CAGE_DIR = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage")
 INSTALL_PY = os.path.join(CAGE_DIR, "install.py")
 
 # Matches literal paths like .claude/features/<feature>/scripts/<script>.py
+# AND skill-local scripts .claude/features/<feature>/skills/<skill>/scripts/<script>.py.
+# Capture group 2 is the feature-relative path (e.g. "scripts/x.py" or
+# "skills/<skill>/scripts/x.py") — the same shape FEATURE_INCLUDES stores.
 SCRIPT_REF_RE = re.compile(
-    r"\.claude/features/([\w-]+)/scripts/([\w.-]+\.py)"
+    r"\.claude/features/([\w-]+)/((?:skills/[\w-]+/)?scripts/[\w.-]+\.py)"
 )
 # Matches sibling-script invocations within a script body, e.g.
 #   os.path.join(script_dir, "format-feature-context.py")
@@ -67,7 +70,8 @@ def load_install_module():
 
 
 def extract_script_refs(text: str) -> set[tuple[str, str]]:
-    """Return set of (feature, script_basename) literal references."""
+    """Return set of (feature, feature_rel_path) literal references, where
+    feature_rel_path is e.g. 'scripts/x.py' or 'skills/<skill>/scripts/x.py'."""
     return set(SCRIPT_REF_RE.findall(text))
 
 
@@ -95,30 +99,28 @@ t = 3
 
 
 def check_script_in_includes(
-    feature: str, script_basename: str, label: str,
+    feature: str, rel_path: str, label: str,
 ) -> bool:
-    """Assert scripts/<basename> is in FEATURE_INCLUDES[feature] AND exists
-    on disk under .claude/features/<feature>/scripts/<basename>.
+    """Assert the feature-relative <rel_path> is in FEATURE_INCLUDES[feature]
+    AND exists on disk under .claude/features/<feature>/<rel_path>.
+    <rel_path> is e.g. 'scripts/x.py' or 'skills/<skill>/scripts/x.py'.
     Returns True on success, False on failure."""
     global t
-    rel = f"scripts/{script_basename}"
-    on_disk = os.path.join(
-        REPO_ROOT, ".claude/features", feature, "scripts", script_basename,
-    )
+    on_disk = os.path.join(REPO_ROOT, ".claude/features", feature, rel_path)
     feature_includes = set(includes.get(feature, []))
     if feature not in includes:
         fail_t(t, f"{label}: feature {feature!r} has no FEATURE_INCLUDES entry")
         t += 1
         return False
-    if rel not in feature_includes:
-        fail_t(t, f"{label}: {rel!r} not in FEATURE_INCLUDES[{feature!r}]")
+    if rel_path not in feature_includes:
+        fail_t(t, f"{label}: {rel_path!r} not in FEATURE_INCLUDES[{feature!r}]")
         t += 1
         return False
     if not os.path.isfile(on_disk):
         fail_t(t, f"{label}: source script missing on disk: {on_disk}")
         t += 1
         return False
-    ok(t, f"{label}: {rel!r} present in includes and on disk")
+    ok(t, f"{label}: {rel_path!r} present in includes and on disk")
     t += 1
     return True
 
@@ -136,24 +138,27 @@ for src_rel, _dst_rel in skills:
         ok(t, f"skill {src_rel!r}: no literal script references (skip)")
         t += 1
         continue
-    for feature, script_basename in sorted(refs):
-        label = f"skill {src_rel!r} -> {feature}/{script_basename}"
-        if not check_script_in_includes(feature, script_basename, label):
+    for feature, rel_path in sorted(refs):
+        label = f"skill {src_rel!r} -> {feature}/{rel_path}"
+        if not check_script_in_includes(feature, rel_path, label):
             continue
         # Transitive: read the script body and check sibling invocations.
+        # Siblings live in the SAME directory as the referenced script.
+        script_dir_rel = os.path.dirname(rel_path)
         script_path = os.path.join(
-            REPO_ROOT, ".claude/features", feature, "scripts", script_basename,
+            REPO_ROOT, ".claude/features", feature, rel_path,
         )
         with open(script_path) as sf:
             script_body = sf.read()
         siblings = extract_sibling_invokes(script_body)
         for sib in sorted(siblings):
-            if sib == script_basename:
+            sib_rel = os.path.join(script_dir_rel, sib)
+            if sib_rel == rel_path:
                 continue
             sib_label = (
-                f"transitive {feature}/{script_basename} -> {feature}/{sib}"
+                f"transitive {feature}/{rel_path} -> {feature}/{sib_rel}"
             )
-            check_script_in_includes(feature, sib, sib_label)
+            check_script_in_includes(feature, sib_rel, sib_label)
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")
