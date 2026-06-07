@@ -3,16 +3,16 @@
 abstraction (Inv 61).
 
 The autonomous-evolve loop integrates merged work into a single resolved
-"integration target" branch. During the dev<->main coexistence window BOTH
-`dev` and `main` are accepted; the resolved target defaults to `dev` (the live
-behavior until the admin cutover flips the default to `main`) and can be
-overridden via the RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET env var.
+"integration target" branch. The dev->main cutover is complete: the resolved
+target now defaults to `main`. A `dev` base is still ACCEPTED during the
+coexistence teardown, and the resolved target can be overridden via the
+RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET env var.
 
 This suite drives the module BOTH as an importable library (the surface the
 sibling phase scripts consume) and as a small CLI (`integration_target.py`),
 covering:
-  - default resolution → dev
-  - env-var override → main
+  - default resolution → main
+  - env-var override → dev (still an accepted target)
   - an unrecognized override is rejected (neither dev nor main)
   - the coexistence accepted-set is exactly {dev, main}
   - is_default_branch: main is the default branch, dev is not
@@ -59,24 +59,24 @@ def _run_cli(env, *args):
 # ---------------------------------------------------------------------------
 it = _load_module()
 
-# Default (no env override) resolves to dev — the live coexistence default.
+# Default (no env override) resolves to main — the post-cutover default.
 saved = os.environ.pop("RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET", None)
 try:
-    if it.resolve_target() != "dev":
-        fail(f"lib-default: resolve_target() {it.resolve_target()!r} != 'dev'")
+    if it.resolve_target() != "main":
+        fail(f"lib-default: resolve_target() {it.resolve_target()!r} != 'main'")
     else:
-        ok("lib-default: resolve_target() defaults to 'dev'")
+        ok("lib-default: resolve_target() defaults to 'main'")
 finally:
     if saved is not None:
         os.environ["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = saved
 
-# Env override → main.
-os.environ["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = "main"
+# Env override → dev (still an accepted target during coexistence teardown).
+os.environ["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = "dev"
 try:
-    if it.resolve_target() != "main":
-        fail(f"lib-override: resolve_target() {it.resolve_target()!r} != 'main'")
+    if it.resolve_target() != "dev":
+        fail(f"lib-override: resolve_target() {it.resolve_target()!r} != 'dev'")
     else:
-        ok("lib-override: env override resolves to 'main'")
+        ok("lib-override: env override resolves to 'dev'")
 finally:
     del os.environ["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"]
 
@@ -118,25 +118,25 @@ elif "usage" not in (proc.stdout + proc.stderr).lower():
 else:
     ok("cli-help: --help exits 0 with usage text")
 
-# CLI prints the resolved target (default dev).
+# CLI prints the resolved target (default main).
 env = os.environ.copy()
 env.pop("RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET", None)
 proc = _run_cli(env)
 if proc.returncode != 0:
     fail(f"cli-default: exit {proc.returncode}; stderr={proc.stderr!r}")
-elif proc.stdout.strip() != "dev":
-    fail(f"cli-default: stdout {proc.stdout.strip()!r} != 'dev'")
+elif proc.stdout.strip() != "main":
+    fail(f"cli-default: stdout {proc.stdout.strip()!r} != 'main'")
 else:
-    ok("cli-default: prints 'dev' by default")
+    ok("cli-default: prints 'main' by default")
 
-env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = "main"
+env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = "dev"
 proc = _run_cli(env)
 if proc.returncode != 0:
     fail(f"cli-override: exit {proc.returncode}; stderr={proc.stderr!r}")
-elif proc.stdout.strip() != "main":
-    fail(f"cli-override: stdout {proc.stdout.strip()!r} != 'main'")
+elif proc.stdout.strip() != "dev":
+    fail(f"cli-override: stdout {proc.stdout.strip()!r} != 'dev'")
 else:
-    ok("cli-override: prints 'main' under env override")
+    ok("cli-override: prints 'dev' under env override")
 
 env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = "garbage"
 proc = _run_cli(env)
