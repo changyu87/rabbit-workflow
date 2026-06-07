@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
-"""test-merge-prs.py — e2e tests for scripts/merge-prs.py (Inv 6).
+"""test-merge-prs.py — e2e tests for scripts/merge-prs.py (Inv 6 / Inv 61).
+
+The dev->main coexistence window has CLOSED: `main` is the sole accepted
+integration target. Every accepted base is the default branch, so GitHub's
+native `Fixes/Closes/Resolves` keyword auto-close ALWAYS fires and the manual
+close-after-merge path has been RETIRED. merge-prs.py no longer invokes
+item-status.py and no longer git-fetches the merge SHA to make a manual close
+resolvable.
 
 Covers the spec'd surface of `scripts/merge-prs.py`:
   - --help smoke
-  - skip-on-non-dev-base (defense-in-depth above safety-check.py)
+  - skip-on-base-not-accepted: a `dev` base (and any non-main base) is REFUSED
+    (defense-in-depth above safety-check.py)
   - skip-on-safety-fail
-  - happy path → status: merged
-  - refusal invariant: `gh pr merge` is NEVER called when base != dev
-  - close-after-merge (issue #392): explicit issue close after a dev merge
+  - happy path → status: merged, with `--admin` (main is branch-protected)
+  - refusal invariant: `gh pr merge` is NEVER called when base != main
+  - the manual close path is GONE: item-status.py is NEVER invoked
+  - journal promotion still works, deriving its closed-issue set from the PR's
+    parsed close-refs (title + body) — the same set GitHub auto-closes natively
+  - close-refs are still parsed (title + body union) into `closed_issues`
 
 Fixtures use a tempdir on PATH carrying:
   - a `gh` shim that dispatches on the subcommand (pr view / pr merge) and
     records every invocation into a call log
   - a `safety-check.py` shim that exits 0 by default (overrideable to non-zero)
-  - an `item-status.py` shim (in a separate rabbit-issue scripts dir) that
-    records every invocation into a call log
+  - an `item-status.py` shim (in a separate rabbit-issue scripts dir) whose
+    call log proves the RETIRED manual-close path is never invoked
 
 The script is configured to find these shims via the
 RABBIT_AUTO_EVOLVE_SCRIPT_DIR / RABBIT_ISSUE_SCRIPT_DIR env vars; when unset
@@ -44,7 +55,7 @@ def ok(msg):
     print(f"PASS: {msg}")
 
 
-def _write_gh_shim(shim_dir, call_log, base_ref="dev", head_ref="feat/x",
+def _write_gh_shim(shim_dir, call_log, base_ref="main", head_ref="feat/x",
                    merge_exit=0, merge_stderr="", pr_body="", pr_title="",
                    merge_sha="abc1234"):
     """Write a `gh` shim that:
@@ -121,8 +132,10 @@ def _write_safety_shim(shim_dir, exit_code=0, stderr_msg=""):
 
 def _write_item_status_shim(shim_dir, call_log, exit_code=0, stderr_msg=""):
     """Write an `item-status.py` shim into a rabbit-issue scripts dir.
-    Records every invocation argv into `call_log` (one line per call),
-    then exits `exit_code` (emitting `stderr_msg` on stderr first).
+    Records every invocation argv into `call_log` (one line per call).
+
+    The manual close-after-merge path has been RETIRED, so merge-prs.py must
+    NEVER invoke this shim; its call log is asserted EMPTY in every case.
     """
     shim = os.path.join(shim_dir, "item-status.py")
     with open(shim, "w") as f:
@@ -135,21 +148,20 @@ def _write_item_status_shim(shim_dir, call_log, exit_code=0, stderr_msg=""):
     os.chmod(shim, stat.S_IRWXU)
 
 
-def _make_env(tmpdir, base_ref="dev", head_ref="feat/x",
+def _make_env(tmpdir, base_ref="main", head_ref="feat/x",
               merge_exit=0, merge_stderr="",
               safety_exit=0, safety_stderr="",
               pr_body="", pr_title="", merge_sha="abc1234",
-              item_status_exit=0, item_status_stderr="",
-              integration_target=None):
+              item_status_exit=0, item_status_stderr=""):
     """Build a sandbox: a bin/ dir on PATH with the gh shim, and a
     script-dir holding the real merge-prs.py copy (via env override) plus a
     safety-check.py shim, plus an item-status.py shim in a separate
     rabbit-issue scripts dir (via env override). Return
     (cwd=tmpdir, env, call_log_path, item_status_log_path).
 
-    `integration_target` (Inv 61): when None the env var is cleared so the
-    script resolves the coexistence default (`dev`); set it to 'dev'/'main'
-    to drive the resolved integration target."""
+    Inv 61: `main` is the sole accepted integration target; the
+    RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET env var has been removed and is
+    cleared here for hygiene (it has no effect)."""
     bin_dir = os.path.join(tmpdir, "bin")
     os.makedirs(bin_dir)
     script_dir = os.path.join(tmpdir, "scripts")
@@ -176,8 +188,6 @@ def _make_env(tmpdir, base_ref="dev", head_ref="feat/x",
     env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = script_dir
     env["RABBIT_ISSUE_SCRIPT_DIR"] = issue_dir
     env.pop("RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET", None)
-    if integration_target is not None:
-        env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = integration_target
     return tmpdir, env, call_log, item_status_log
 
 
@@ -216,9 +226,8 @@ else:
 
 
 # ---------------------------------------------------------------------------
-# Skip-on-base-not-accepted (Inv 61): gh shim returns a base that is NEITHER
-# dev NOR main (e.g. release/x). During the dev<->main coexistence window
-# both dev and main are accepted; any other base is refused.
+# Skip-on-base-not-accepted (Inv 61): gh shim returns a base that is NOT the
+# sole accepted target `main` (e.g. release/x). Any non-main base is refused.
 # Expected: status=skipped, reason=base-not-accepted. `gh pr merge` MUST NOT
 # appear in the call log (refusal invariant).
 # ---------------------------------------------------------------------------
@@ -255,96 +264,99 @@ with tempfile.TemporaryDirectory() as td:
 
 
 # ---------------------------------------------------------------------------
-# Coexistence (Inv 61) — target=dev (default): a dev-based PR is ACCEPTED and
-# the manual close-after-merge STILL runs (target dev is not the default
-# branch, so GitHub's native auto-close does not fire).
+# Post-teardown (Inv 61): a `dev` base is now REFUSED — the coexistence window
+# has closed, so `dev` is no longer an accepted integration target. Expected:
+# status=skipped, reason=base-not-accepted; `gh pr merge` MUST NOT be called.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
         td, base_ref="dev", safety_exit=0, merge_exit=0,
         pr_body="Closes #501\n", merge_sha="dev9999",
-        integration_target="dev",
     )
     proc = _run(cwd, env, "42")
     if proc.returncode != 0:
-        fail(f"coexist-dev: expected exit 0, got {proc.returncode}; "
+        fail(f"dev-rejected: expected exit 0, got {proc.returncode}; "
              f"stderr={proc.stderr!r}")
     try:
         results = json.loads(proc.stdout)
     except json.JSONDecodeError as e:
-        fail(f"coexist-dev: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        fail(f"dev-rejected: stdout not JSON: {e}; stdout={proc.stdout!r}")
         results = None
     if results is not None and len(results) == 1:
         r = results[0]
-        if r.get("status") != "merged":
-            fail(f"coexist-dev: status {r.get('status')!r} != 'merged'")
-        elif r.get("closed_issues", []) != [501]:
-            fail(f"coexist-dev: closed_issues {r.get('closed_issues')!r} "
-                 f"!= [501] (manual close MUST run while target=dev)")
+        if r.get("status") != "skipped":
+            fail(f"dev-rejected: status {r.get('status')!r} != 'skipped' "
+                 f"(dev is no longer accepted post-teardown)")
+        elif r.get("reason") != "base-not-accepted":
+            fail(f"dev-rejected: reason {r.get('reason')!r} != "
+                 f"'base-not-accepted'")
         else:
-            ok("coexist-dev: dev base merged AND manual close ran")
-    if not _item_status_calls(item_status_log):
-        fail("coexist-dev: item-status.py NOT invoked (manual close must run "
-             "while target=dev)")
+            ok("dev-rejected: dev base refused with base-not-accepted")
+    calls = _gh_calls(call_log)
+    if any("pr merge" in c for c in calls):
+        fail(f"dev-rejected: gh pr merge was called for a dev base; "
+             f"calls={calls!r}")
     else:
-        ok("coexist-dev: item-status.py invoked (manual close)")
+        ok("dev-rejected: gh pr merge was NOT called for the dev base")
+    if _item_status_calls(item_status_log):
+        fail("dev-rejected: item-status.py invoked (manual close path is "
+             "retired and the dev base was refused anyway)")
+    else:
+        ok("dev-rejected: item-status.py NOT invoked")
 
 
 # ---------------------------------------------------------------------------
-# Coexistence (Inv 61) — target=main: a main-based PR is ACCEPTED and the
-# manual close-after-merge is SKIPPED (main IS the default branch, so
-# GitHub's native keyword auto-close fires; the manual close is redundant).
+# Main base (Inv 61): a main-based PR is ACCEPTED and merged. The manual
+# close-after-merge path is RETIRED — item-status.py is NEVER invoked; GitHub's
+# native keyword auto-close handles issue closure. The merged result row still
+# carries the PR's parsed close-refs under `closed_issues` (the set GitHub
+# auto-closes, used by journal promotion).
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
         td, base_ref="main", safety_exit=0, merge_exit=0,
         pr_body="Closes #502\n", merge_sha="main9999",
-        integration_target="main",
     )
     proc = _run(cwd, env, "42")
     if proc.returncode != 0:
-        fail(f"coexist-main: expected exit 0, got {proc.returncode}; "
+        fail(f"main-merge: expected exit 0, got {proc.returncode}; "
              f"stderr={proc.stderr!r}")
     try:
         results = json.loads(proc.stdout)
     except json.JSONDecodeError as e:
-        fail(f"coexist-main: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        fail(f"main-merge: stdout not JSON: {e}; stdout={proc.stdout!r}")
         results = None
     if results is not None and len(results) == 1:
         r = results[0]
         if r.get("status") != "merged":
-            fail(f"coexist-main: status {r.get('status')!r} != 'merged' "
-                 f"(main base must be accepted under coexistence)")
-        elif r.get("closed_issues", []) != []:
-            fail(f"coexist-main: closed_issues {r.get('closed_issues')!r} "
-                 f"!= [] (manual close MUST be skipped when target=main; "
-                 f"native auto-close fires)")
+            fail(f"main-merge: status {r.get('status')!r} != 'merged' "
+                 f"(main base must be accepted)")
+        elif r.get("closed_issues", []) != [502]:
+            fail(f"main-merge: closed_issues {r.get('closed_issues')!r} "
+                 f"!= [502] (the parsed close-refs feed journal promotion)")
         else:
-            ok("coexist-main: main base merged AND manual close skipped")
+            ok("main-merge: main base merged; closed_issues from close-refs")
     calls = _gh_calls(call_log)
     if not any("pr merge" in c for c in calls):
-        fail(f"coexist-main: gh pr merge was NOT called; calls={calls!r}")
+        fail(f"main-merge: gh pr merge was NOT called; calls={calls!r}")
     else:
-        ok("coexist-main: gh pr merge was called for the main-based PR")
+        ok("main-merge: gh pr merge was called for the main-based PR")
     if _item_status_calls(item_status_log):
-        fail("coexist-main: item-status.py invoked (manual close must be "
-             "skipped when target=main; GitHub closes natively)")
+        fail("main-merge: item-status.py invoked (manual close path is "
+             "RETIRED; GitHub closes natively)")
     else:
-        ok("coexist-main: item-status.py NOT invoked (native auto-close)")
+        ok("main-merge: item-status.py NOT invoked (native auto-close)")
 
 
 # ===========================================================================
 # Issue #973 — admin-override merge into the protected default branch (main).
 #
-# Once the integration target switches to `main` (#964), the loop's own PRs
-# carry 0 approvals; `main` is branch-protected with required_approving_
-# review_count: 1 (enforce_admins: false), so a plain `gh pr merge --squash`
-# is BLOCKED — the bot cannot approve its own PR. The fix: a merge whose base
-# is the DEFAULT branch (main) uses `gh pr merge --squash --admin` to bypass
+# `main` is branch-protected with required_approving_review_count: 1
+# (enforce_admins: false), so a plain `gh pr merge --squash` is BLOCKED — the
+# bot cannot approve its own PR. The fix: every merge (every accepted base is
+# now `main`, the default branch) uses `gh pr merge --squash --admin` to bypass
 # ONLY the required-review the bot structurally cannot satisfy (the contract
 # repo-gate, run PRE-merge, is the real quality gate and is unchanged).
-# Coexistence (Inv 61): a `dev`-base merge (non-default, no required-review
-# protection) keeps the CURRENT behavior — `--squash`, NO `--admin`.
 # ===========================================================================
 
 def _merge_calls(call_log):
@@ -355,7 +367,7 @@ def _merge_calls(call_log):
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
         td, base_ref="main", safety_exit=0, merge_exit=0,
-        merge_sha="main9999", integration_target="main",
+        merge_sha="main9999",
     )
     proc = _run(cwd, env, "42")
     if proc.returncode != 0:
@@ -374,38 +386,14 @@ with tempfile.TemporaryDirectory() as td:
         ok("admin-main: main-base merge uses --squash --admin")
 
 
-# --- (K) dev-base merge does NOT use --admin (coexistence; current behavior) -
-with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="dev", safety_exit=0, merge_exit=0,
-        merge_sha="dev9999", integration_target="dev",
-    )
-    proc = _run(cwd, env, "42")
-    if proc.returncode != 0:
-        fail(f"no-admin-dev: expected exit 0, got {proc.returncode}; "
-             f"stderr={proc.stderr!r}")
-    merge_calls = _merge_calls(call_log)
-    if not merge_calls:
-        fail(f"no-admin-dev: gh pr merge was NOT called; "
-             f"calls={_gh_calls(call_log)!r}")
-    elif any("--admin" in c for c in merge_calls):
-        fail(f"no-admin-dev: dev-base merge wrongly used --admin (Inv 61 "
-             f"coexistence; only the default-branch path adds --admin): "
-             f"{merge_calls!r}")
-    elif not all("--squash" in c for c in merge_calls):
-        fail(f"no-admin-dev: dev-base merge missing --squash: {merge_calls!r}")
-    else:
-        ok("no-admin-dev: dev-base merge uses --squash WITHOUT --admin")
-
-
 # ---------------------------------------------------------------------------
-# Skip-on-safety-fail: gh shim returns base=dev; safety-check.py shim
+# Skip-on-safety-fail: gh shim returns base=main; safety-check.py shim
 # exits non-zero. Expected: status=skipped, reason=safety-check-failed;
 # `gh pr merge` MUST NOT appear in the call log.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="dev", safety_exit=2,
+        td, base_ref="main", safety_exit=2,
         safety_stderr="Invariant 5 (working tree clean) failed: dirty\n",
     )
     proc = _run(cwd, env, "42")
@@ -436,11 +424,11 @@ with tempfile.TemporaryDirectory() as td:
 
 
 # ---------------------------------------------------------------------------
-# Happy path: gh shim returns base=dev, safety-check shim exits 0,
+# Happy path: gh shim returns base=main, safety-check shim exits 0,
 # gh pr merge exits 0. Expected: status=merged; gh pr merge was called.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(td, base_ref="dev",
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main",
                                                     safety_exit=0, merge_exit=0)
     proc = _run(cwd, env, "42")
     if proc.returncode != 0:
@@ -470,7 +458,7 @@ with tempfile.TemporaryDirectory() as td:
 # Happy path — multiple PRs (comma-separated): verify per-PR result rows.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(td, base_ref="dev",
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main",
                                                     safety_exit=0, merge_exit=0)
     proc = _run(cwd, env, "1,2,3")
     if proc.returncode != 0:
@@ -501,12 +489,10 @@ with tempfile.TemporaryDirectory() as td:
 # Merge); on repos without it, `gh pr merge --auto` fails for any PR that is
 # not immediately mergeable with `Auto merge is not allowed for this
 # repository`. The fix is a direct squash merge. This test asserts the merge
-# invocation recorded in the gh call log does NOT contain `--auto` (or, if
-# it ever did, the script would have to demonstrate a direct-merge fallback —
-# this test enforces the simpler invariant: no --auto on the merge call).
+# invocation recorded in the gh call log does NOT contain `--auto`.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(td, base_ref="dev",
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main",
                                                     safety_exit=0, merge_exit=0)
     proc = _run(cwd, env, "42")
     calls = _gh_calls(call_log)
@@ -530,7 +516,7 @@ with tempfile.TemporaryDirectory() as td:
 # reason starts with 'gh-merge-failed:'.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(td, base_ref="dev",
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main",
                                                     safety_exit=0,
                                                     merge_exit=1,
                                                     merge_stderr="merge conflict")
@@ -555,84 +541,55 @@ with tempfile.TemporaryDirectory() as td:
 
 
 # ===========================================================================
-# Issue #392 — explicit close-after-merge.
+# Native auto-close + close-ref parsing.
 #
-# Auto-evolve PRs target `dev`, never the default branch `main`, so GitHub's
-# `Fixes #N` / `Closes #N` auto-close never fires. After a successful merge,
-# merge-prs.py MUST parse the merged PR body for issue references and invoke
-# item-status.py close on each referenced issue.
+# Every accepted base is `main` (the default branch), so GitHub's
+# `Fixes/Closes/Resolves #N` keyword auto-close ALWAYS fires; the loop's
+# manual close path is RETIRED. merge-prs.py no longer invokes item-status.py.
+# It still PARSES the merged PR's close-refs (title + body union) into
+# `closed_issues` so journal promotion can derive the set of issues the merge
+# closed (native auto-close does not report the set back to the loop).
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
-# Close-after-merge happy path: PR body references three issues across the
-# three accepted keywords (Fixes / Closes / Resolves), case-insensitively.
-# Expected: status=merged; item-status.py close invoked once per distinct
-# issue with --reason completed and a --comment recording the merge SHA;
-# result row carries a sorted closed_issues list.
+# close-refs across the three accepted keywords (Fixes / Closes / Resolves),
+# case-insensitively. Expected: status=merged; closed_issues is the sorted,
+# deduplicated set; item-status.py is NEVER invoked (manual close retired).
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     body = "Some change.\n\nFixes #11\nCloses #22\nresolves #33\n"
     cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        td, base_ref="main", safety_exit=0, merge_exit=0,
         pr_body=body, merge_sha="deadbee",
     )
     proc = _run(cwd, env, "42")
     if proc.returncode != 0:
-        fail(f"close-after-merge: expected exit 0, got {proc.returncode}; "
+        fail(f"close-refs: expected exit 0, got {proc.returncode}; "
              f"stderr={proc.stderr!r}")
     try:
         results = json.loads(proc.stdout)
     except json.JSONDecodeError as e:
-        fail(f"close-after-merge: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        fail(f"close-refs: stdout not JSON: {e}; stdout={proc.stdout!r}")
         results = None
     if results is not None and isinstance(results, list) and len(results) == 1:
         r = results[0]
         if r.get("status") != "merged":
-            fail(f"close-after-merge: status {r.get('status')!r} != 'merged'")
+            fail(f"close-refs: status {r.get('status')!r} != 'merged'")
         else:
-            ok("close-after-merge: status merged")
+            ok("close-refs: status merged")
         if sorted(r.get("closed_issues", [])) != [11, 22, 33]:
-            fail(f"close-after-merge: closed_issues "
+            fail(f"close-refs: closed_issues "
                  f"{r.get('closed_issues')!r} != [11, 22, 33]")
         else:
-            ok("close-after-merge: closed_issues == [11, 22, 33]")
+            ok("close-refs: closed_issues == [11, 22, 33]")
     elif results is not None:
-        fail(f"close-after-merge: expected 1-element array, got {results!r}")
+        fail(f"close-refs: expected 1-element array, got {results!r}")
 
-    is_calls = _item_status_calls(item_status_log)
-    if len(is_calls) != 3:
-        fail(f"close-after-merge: expected 3 item-status calls, "
-             f"got {len(is_calls)}: {is_calls!r}")
+    if _item_status_calls(item_status_log):
+        fail("close-refs: item-status.py invoked (manual close path is "
+             "RETIRED; native auto-close handles closure)")
     else:
-        ok("close-after-merge: item-status.py invoked 3 times")
-    closed_nums = set()
-    for c in is_calls:
-        parts = c.split()
-        if parts[:1] != ["close"]:
-            fail(f"close-after-merge: call not a close subcommand: {c!r}")
-            continue
-        closed_nums.add(parts[1])
-        if "--reason" not in parts or \
-                parts[parts.index("--reason") + 1] != "completed":
-            fail(f"close-after-merge: call missing --reason completed: {c!r}")
-        if "--comment" not in parts:
-            fail(f"close-after-merge: call missing --comment: {c!r}")
-        elif "deadbee" not in c:
-            fail(f"close-after-merge: --comment missing SHA 'deadbee': {c!r}")
-        # Issue #423 Part C: item-status.py close --reason completed now
-        # REQUIRES --commit-sha <merge-sha>. merge-prs.py MUST pass it.
-        if "--commit-sha" not in parts:
-            fail(f"close-after-merge: call missing --commit-sha (issue "
-                 f"#423): {c!r}")
-        elif parts[parts.index("--commit-sha") + 1] != "deadbee":
-            fail(f"close-after-merge: --commit-sha "
-                 f"{parts[parts.index('--commit-sha') + 1]!r} != 'deadbee': "
-                 f"{c!r}")
-    if closed_nums == {"11", "22", "33"}:
-        ok("close-after-merge: closed issues 11/22/33 with reason+SHA comment")
-    else:
-        fail(f"close-after-merge: closed issue numbers {closed_nums!r} "
-             f"!= {{11,22,33}}")
+        ok("close-refs: item-status.py NOT invoked (native auto-close)")
 
 
 # ---------------------------------------------------------------------------
@@ -640,7 +597,7 @@ with tempfile.TemporaryDirectory() as td:
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        td, base_ref="main", safety_exit=0, merge_exit=0,
         pr_body="No issue refs here.\n",
     )
     proc = _run(cwd, env, "42")
@@ -658,62 +615,30 @@ with tempfile.TemporaryDirectory() as td:
         else:
             ok("no-refs: closed_issues empty")
     if _item_status_calls(item_status_log):
-        fail("no-refs: item-status.py was invoked for a body with no refs")
+        fail("no-refs: item-status.py was invoked (manual close retired)")
     else:
         ok("no-refs: item-status.py NOT invoked")
 
 
 # ---------------------------------------------------------------------------
-# item-status.py failure is non-fatal: merge still reports merged; a stderr
-# warning is emitted; the issue is recorded under close_failed, not
-# closed_issues. (Backward-compatibility acceptance criterion.)
-# ---------------------------------------------------------------------------
-with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="dev", safety_exit=0, merge_exit=0,
-        pr_body="Fixes #99\n",
-        item_status_exit=1, item_status_stderr="item-status failure\n",
-    )
-    proc = _run(cwd, env, "42")
-    if proc.returncode != 0:
-        fail(f"close-fail: expected exit 0, got {proc.returncode}; "
-             f"stderr={proc.stderr!r}")
-    try:
-        results = json.loads(proc.stdout)
-    except json.JSONDecodeError as e:
-        fail(f"close-fail: stdout not JSON: {e}; stdout={proc.stdout!r}")
-        results = None
-    if results is not None and len(results) == 1:
-        r = results[0]
-        if r.get("status") != "merged":
-            fail(f"close-fail: status {r.get('status')!r} != 'merged' "
-                 f"(close failure must not fail the merge)")
-        else:
-            ok("close-fail: merge still reports merged")
-        if r.get("closed_issues", []) != []:
-            fail(f"close-fail: failed issue leaked into closed_issues: "
-                 f"{r.get('closed_issues')!r}")
-        if r.get("close_failed", []) != [99]:
-            fail(f"close-fail: close_failed {r.get('close_failed')!r} != [99]")
-        else:
-            ok("close-fail: failed issue recorded under close_failed")
-    if "99" not in proc.stderr:
-        fail(f"close-fail: expected a stderr warning mentioning 99; "
-             f"stderr={proc.stderr!r}")
-    else:
-        ok("close-fail: stderr warning emitted for failed close")
-
-
-# ---------------------------------------------------------------------------
-# Refusal invariant for close: item-status.py is NEVER invoked when the
-# merge itself did not succeed (e.g. a base outside the accepted {dev, main}
-# coexistence set).
+# Refusal invariant for closed_issues: a skipped PR (base outside the accepted
+# {main} set) carries no closed_issues and never invokes item-status.py.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
         td, base_ref="release/x", pr_body="Fixes #5\n",
     )
-    _run(cwd, env, "42")
+    proc = _run(cwd, env, "42")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        results = None
+    if results is not None and len(results) == 1:
+        if results[0].get("closed_issues"):
+            fail(f"close-skip: skipped PR carries closed_issues "
+                 f"{results[0].get('closed_issues')!r}")
+        else:
+            ok("close-skip: skipped PR carries no closed_issues")
     if _item_status_calls(item_status_log):
         fail("close-skip: item-status.py invoked for a non-merged PR")
     else:
@@ -751,7 +676,7 @@ def _seed_state(state_dir, pending=None, dispatch_journal=None):
 
 # --- (A) --record-pending appends merged PRs to pending_post_merge ---------
 with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(td, base_ref="dev",
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main",
                                                     safety_exit=0, merge_exit=0)
     state_dir = os.path.join(td, "state")
     os.makedirs(state_dir)
@@ -783,7 +708,7 @@ with tempfile.TemporaryDirectory() as td:
 
 # --- (B) --record-pending de-duplicates against existing pending -----------
 with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(td, base_ref="dev",
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main",
                                                     safety_exit=0, merge_exit=0)
     state_dir = os.path.join(td, "state")
     os.makedirs(state_dir)
@@ -818,7 +743,7 @@ with tempfile.TemporaryDirectory() as td:
 
 # --- (D) WITHOUT --record-pending, no state write occurs -------------------
 with tempfile.TemporaryDirectory() as td:
-    cwd, env, call_log, item_status_log = _make_env(td, base_ref="dev",
+    cwd, env, call_log, item_status_log = _make_env(td, base_ref="main",
                                                     safety_exit=0, merge_exit=0)
     state_dir = os.path.join(td, "state")
     os.makedirs(state_dir)
@@ -842,7 +767,7 @@ with tempfile.TemporaryDirectory() as td:
 # --- (E) last_merged_sha is set to the merge commit SHA after a merge ------
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        td, base_ref="main", safety_exit=0, merge_exit=0,
         merge_sha="cafe123",
     )
     state_dir = os.path.join(td, "state")
@@ -867,7 +792,7 @@ with tempfile.TemporaryDirectory() as td:
 # ends with that real SHA in last_merged_sha (not the seeded null).
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        td, base_ref="main", safety_exit=0, merge_exit=0,
         merge_sha="beef456",
     )
     state_dir = os.path.join(td, "state")
@@ -885,9 +810,8 @@ with tempfile.TemporaryDirectory() as td:
 
 
 # --- (G) no merged PR → last_merged_sha is left untouched ------------------
-# base outside {dev, main} → the only PR is skipped; the seeded
-# last_merged_sha must NOT be overwritten (no merge happened, so there is no
-# merge SHA to record).
+# base outside {main} → the only PR is skipped; the seeded last_merged_sha must
+# NOT be overwritten (no merge happened, so there is no merge SHA to record).
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(td, base_ref="release/x")
     state_dir = os.path.join(td, "state")
@@ -910,139 +834,19 @@ with tempfile.TemporaryDirectory() as td:
 
 
 # ===========================================================================
-# Issue #802 — fetch-before-close. `gh pr merge --squash` creates the squash
-# commit on the REMOTE dev only; the local repo has not seen that SHA yet, so
-# item-status.py (which requires --commit-sha to resolve to a real LOCAL
-# commit, #423 Part C) rejects the close. BEFORE the close calls, merge-prs.py
-# must run `git fetch origin <sha>` (falling back to `git fetch origin dev`)
-# to make the merge SHA resolvable locally — NEVER `git merge`.
-# ===========================================================================
-
-def _write_git_shim(shim_dir, call_log, fetch_marker):
-    """Write a `git` shim that records every invocation argv into `call_log`
-    (one line per call). On a `fetch` subcommand it `touch`es `fetch_marker`
-    (simulating the SHA becoming locally resolvable) and exits 0. Every other
-    git subcommand exits 0 (no-op)."""
-    shim = os.path.join(shim_dir, "git")
-    with open(shim, "w") as f:
-        f.write("#!/bin/sh\n")
-        f.write(f'printf "%s\\n" "$*" >> {call_log!r}\n')
-        f.write('if [ "$1" = "fetch" ]; then\n')
-        f.write(f'  : > {fetch_marker!r}\n')
-        f.write('fi\n')
-        f.write('exit 0\n')
-    os.chmod(shim, stat.S_IRWXU)
-
-
-def _write_sha_gated_item_status_shim(shim_dir, call_log, fetch_marker):
-    """Write an `item-status.py` shim that simulates the #423 Part C local-SHA
-    requirement: the close FAILS (exit 1) unless `fetch_marker` exists,
-    standing in for 'the --commit-sha does not resolve to a local commit'. Once
-    the git-fetch shim has created the marker, the close succeeds. Records
-    every invocation argv into `call_log`."""
-    shim = os.path.join(shim_dir, "item-status.py")
-    with open(shim, "w") as f:
-        f.write("#!/usr/bin/env python3\n")
-        f.write("import os, sys\n")
-        f.write(f"with open({call_log!r}, 'a') as _f:\n")
-        f.write("    _f.write(' '.join(sys.argv[1:]) + '\\n')\n")
-        f.write(f"if not os.path.exists({fetch_marker!r}):\n")
-        f.write("    sys.stderr.write('rabbit-issue: --commit-sha does not "
-                "resolve to a commit in the local git repo\\n')\n")
-        f.write("    sys.exit(1)\n")
-        f.write("sys.exit(0)\n")
-    os.chmod(shim, stat.S_IRWXU)
-
-
-# --- (H) SHA not local at close time → git fetch lands it, close succeeds ---
-with tempfile.TemporaryDirectory() as td:
-    bin_dir = os.path.join(td, "bin")
-    os.makedirs(bin_dir)
-    script_dir = os.path.join(td, "scripts")
-    os.makedirs(script_dir)
-    issue_dir = os.path.join(td, "issue-scripts")
-    os.makedirs(issue_dir)
-    gh_call_log = os.path.join(td, "gh-calls.log")
-    open(gh_call_log, "w").close()
-    git_call_log = os.path.join(td, "git-calls.log")
-    open(git_call_log, "w").close()
-    is_call_log = os.path.join(td, "item-status-calls.log")
-    open(is_call_log, "w").close()
-    fetch_marker = os.path.join(td, "sha-fetched.marker")
-
-    _write_gh_shim(bin_dir, gh_call_log, base_ref="dev", merge_exit=0,
-                   pr_body="Fixes #802\n", merge_sha="squash99")
-    _write_safety_shim(script_dir, exit_code=0)
-    _write_git_shim(bin_dir, git_call_log, fetch_marker)
-    _write_sha_gated_item_status_shim(issue_dir, is_call_log, fetch_marker)
-
-    env = os.environ.copy()
-    env["PATH"] = bin_dir + os.pathsep + env.get("PATH", "")
-    env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = script_dir
-    env["RABBIT_ISSUE_SCRIPT_DIR"] = issue_dir
-    proc = _run(td, env, "42")
-
-    if proc.returncode != 0:
-        fail(f"fetch-before-close: expected exit 0, got {proc.returncode}; "
-             f"stderr={proc.stderr!r}")
-    try:
-        results = json.loads(proc.stdout)
-    except json.JSONDecodeError as e:
-        fail(f"fetch-before-close: stdout not JSON: {e}; stdout={proc.stdout!r}")
-        results = None
-
-    git_calls = _gh_calls(git_call_log)
-    fetch_calls = [c for c in git_calls if c.startswith("fetch")]
-    if not fetch_calls:
-        fail(f"fetch-before-close: git fetch was NOT called before close; "
-             f"git_calls={git_calls!r}")
-    else:
-        ok("fetch-before-close: git fetch invoked")
-    # The fetch must target the merge SHA (preferred) — assert the SHA appears
-    # in at least one fetch invocation.
-    if fetch_calls and not any("squash99" in c for c in fetch_calls):
-        fail(f"fetch-before-close: no fetch targeted the merge SHA 'squash99'; "
-             f"fetch_calls={fetch_calls!r}")
-    elif fetch_calls:
-        ok("fetch-before-close: a git fetch targeted the merge SHA")
-    # NEVER `git merge` (permission-denied in the loop environment).
-    if any(c.startswith("merge") for c in git_calls):
-        fail(f"fetch-before-close: git merge was called (forbidden); "
-             f"git_calls={git_calls!r}")
-    else:
-        ok("fetch-before-close: git merge NOT called")
-
-    # Ordering: the fetch must precede the FIRST item-status close. The marker
-    # exists only after fetch, and the gated shim succeeds only when the marker
-    # exists — so a successful close proves fetch-then-close ordering.
-    if results is not None and len(results) == 1:
-        r = results[0]
-        if r.get("status") != "merged":
-            fail(f"fetch-before-close: status {r.get('status')!r} != 'merged'")
-        if r.get("closed_issues", []) != [802]:
-            fail(f"fetch-before-close: closed_issues "
-                 f"{r.get('closed_issues')!r} != [802] (close should now "
-                 f"succeed because the SHA was fetched first)")
-        else:
-            ok("fetch-before-close: issue 802 closed after the SHA was fetched")
-        if r.get("close_failed", []):
-            fail(f"fetch-before-close: close_failed non-empty "
-                 f"{r.get('close_failed')!r} (the fetch should have made the "
-                 f"close succeed)")
-
-
-# ===========================================================================
 # Issue #838 — `--record-pending` promotes a merged PR's journal entry to
 # `completed` (Inv 54) in the SAME read-modify-write that appends to
-# pending_post_merge. Every issue the PR closes (parsed Closes/Fixes/Resolves)
-# whose journal entry exists is marked `completed` with its `pr` recorded.
+# pending_post_merge. The set of issues the PR closed is derived from its
+# parsed close-refs (title + body) — the same set GitHub auto-closes natively.
+# Every such issue whose journal entry exists is marked `completed` with its
+# `pr` recorded.
 # ===========================================================================
 
 # --- (I) a merge marks the closed issue's journal entry completed -----------
 with tempfile.TemporaryDirectory() as td:
     body = "Fixes #815\n"
     cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        td, base_ref="main", safety_exit=0, merge_exit=0,
         pr_body=body, merge_sha="deadbee",
     )
     state_dir = os.path.join(td, "state")
@@ -1075,26 +879,28 @@ with tempfile.TemporaryDirectory() as td:
              f"{entries[999].get('status')!r}")
     else:
         ok("journal-complete: merge marks the closed issue's entry completed")
+    if _item_status_calls(item_status_log):
+        fail("journal-complete: item-status.py invoked (journal promotion must "
+             "derive its set from close-refs, NOT a manual close)")
+    else:
+        ok("journal-complete: item-status.py NOT invoked (close-ref derived)")
 
 
 # ===========================================================================
 # Issue #868 — close-ref in the PR TITLE (not just the body).
-# PRs merge into `dev`, not the default branch, so GitHub's native auto-close
-# never fires; the loop's explicit close depends entirely on merge-prs.py's
-# close-ref parsing. That parsing previously scanned the PR BODY only, so a
-# subagent that put `Closes #N` in the TITLE alone merged the PR but left the
-# issue OPEN (a silent convergence hole — observed: PR #865 left #862 open).
-# merge-prs.py MUST now scan BOTH the title AND the body, unioning the
-# referenced issue numbers (deduplicated).
+# The loop derives the closed-issue set (for journal promotion) from the PR's
+# close-refs. That parsing must scan BOTH the title AND the body, unioning the
+# referenced issue numbers (deduplicated) — a subagent that put `Closes #N` in
+# the title alone must still have #N recorded under closed_issues.
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
-# Title-only close: the close-ref lives in the PR TITLE, the body has none.
-# Expected: the referenced issue is closed (RED before #868, GREEN after).
+# Title-only close-ref: the ref lives in the PR TITLE, the body has none.
+# Expected: the referenced issue appears in closed_issues.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        td, base_ref="main", safety_exit=0, merge_exit=0,
         pr_title="fix(loop): patch the hole (closes #862)",
         pr_body="A change with no close-ref in the body.\n",
         merge_sha="title99",
@@ -1114,24 +920,22 @@ with tempfile.TemporaryDirectory() as td:
             fail(f"title-only-close: status {r.get('status')!r} != 'merged'")
         if r.get("closed_issues", []) != [862]:
             fail(f"title-only-close: closed_issues {r.get('closed_issues')!r} "
-                 f"!= [862] (a TITLE-only close-ref must now close the issue)")
+                 f"!= [862] (a TITLE-only close-ref must be parsed)")
         else:
-            ok("title-only-close: TITLE-only close-ref closes issue 862")
-    is_calls = _item_status_calls(item_status_log)
-    closed_nums = {c.split()[1] for c in is_calls if c.split()[:1] == ["close"]}
-    if closed_nums != {"862"}:
-        fail(f"title-only-close: item-status closed {closed_nums!r} != {{862}}")
+            ok("title-only-close: TITLE-only close-ref recorded for 862")
+    if _item_status_calls(item_status_log):
+        fail("title-only-close: item-status.py invoked (manual close retired)")
     else:
-        ok("title-only-close: item-status.py close invoked for 862")
+        ok("title-only-close: item-status.py NOT invoked")
 
 
 # ---------------------------------------------------------------------------
-# Body-only close STILL works (backward-compatibility): close-ref in the body,
-# title carries no ref. The existing behavior must be preserved.
+# Body-only close-ref STILL works (backward-compatibility): ref in the body,
+# title carries no ref.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        td, base_ref="main", safety_exit=0, merge_exit=0,
         pr_title="fix(loop): a plain title with no close-ref",
         pr_body="Some change.\n\nCloses #770\n",
         merge_sha="body99",
@@ -1147,23 +951,16 @@ with tempfile.TemporaryDirectory() as td:
             fail(f"body-only-close: closed_issues "
                  f"{results[0].get('closed_issues')!r} != [770]")
         else:
-            ok("body-only-close: BODY-only close-ref still closes issue 770")
-    is_calls = _item_status_calls(item_status_log)
-    closed_nums = {c.split()[1] for c in is_calls if c.split()[:1] == ["close"]}
-    if closed_nums != {"770"}:
-        fail(f"body-only-close: item-status closed {closed_nums!r} != {{770}}")
-    else:
-        ok("body-only-close: item-status.py close invoked for 770")
+            ok("body-only-close: BODY-only close-ref recorded for 770")
 
 
 # ---------------------------------------------------------------------------
 # Title AND body both reference issues, with one shared issue. Expected: the
-# UNION of distinct issue numbers is closed, and the shared issue is closed
-# exactly ONCE (dedup across the two locations).
+# UNION of distinct issue numbers, deduplicated (the shared issue appears once).
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
-        td, base_ref="dev", safety_exit=0, merge_exit=0,
+        td, base_ref="main", safety_exit=0, merge_exit=0,
         pr_title="feat: do the thing (Closes #100, fixes #200)",
         pr_body="Detail.\n\nCloses #200\nResolves #300\n",
         merge_sha="union99",
@@ -1179,19 +976,7 @@ with tempfile.TemporaryDirectory() as td:
             fail(f"union-close: closed_issues "
                  f"{results[0].get('closed_issues')!r} != [100, 200, 300]")
         else:
-            ok("union-close: title+body union closes 100/200/300")
-    is_calls = [c for c in _item_status_calls(item_status_log)
-                if c.split()[:1] == ["close"]]
-    closed_list = [c.split()[1] for c in is_calls]
-    if sorted(closed_list) != ["100", "200", "300"]:
-        fail(f"union-close: item-status close targets {sorted(closed_list)!r} "
-             f"!= ['100', '200', '300']")
-    elif closed_list.count("200") != 1:
-        fail(f"union-close: shared issue 200 closed "
-             f"{closed_list.count('200')} times (must dedup to 1): "
-             f"{closed_list!r}")
-    else:
-        ok("union-close: shared issue 200 closed exactly once (dedup)")
+            ok("union-close: title+body union → 100/200/300 (deduplicated)")
 
 
 sys.exit(FAIL)

@@ -28,13 +28,12 @@ Scenarios:
      unchanged in local HEAD), `git merge` NEVER logged.
   D) Divergent (non-ff) local history → exits non-zero loudly, `git merge`
      NEVER logged.
-  E) Target=dev (override; still accepted during coexistence teardown) → the
-     pull source is resolved from the integration target, so the shim call-log
-     shows `pull --ff-only origin dev` (issue #1006 / Inv 61).
-  F) Target=main (RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET=main) → the pull
-     source resolves to main, so the shim call-log shows `pull --ff-only
-     origin main` and the clone fast-forwards to origin/main (issue #1006 /
-     Inv 61).
+  E) The removed RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET env var is IGNORED
+     (Inv 61): setting it to `dev` does not change the pull source, which still
+     resolves to `origin main` (issue #1006 / Inv 61).
+  F) Target=main → the pull source resolves to main, so the shim call-log shows
+     `pull --ff-only origin main` and the clone fast-forwards to origin/main
+     (issue #1006 / Inv 61).
 """
 
 import os
@@ -292,26 +291,29 @@ def pull_source(call_log):
 
 
 # ---------------------------------------------------------------------------
-# Scenario E — target=dev (override) resolves the pull source to `origin dev`
+# Scenario E — the removed RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET env var is
+# IGNORED (Inv 61): the coexistence window has closed, so resolve_target() is
+# constantly `main`. Setting the env var to `dev` does NOT change the pull
+# source — it still resolves to `origin main`.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
-    origin, seed, clone = make_fixture(d, branch="dev")
-    advance_origin(seed, "v2\n", branch="dev")
+    origin, seed, clone = make_fixture(d, branch="main")
+    advance_origin(seed, "v2\n", branch="main")
     call_log = os.path.join(d, "calls-E.txt")
     shim = write_git_shim(d, call_log)
 
     proc = run_sync(clone, shim, call_log, target="dev")
     if proc.returncode != 0:
-        fail(f"E: target=dev sync exit {proc.returncode}; "
+        fail(f"E: env-ignored sync exit {proc.returncode}; "
              f"stdout={proc.stdout!r} stderr={proc.stderr!r}")
     else:
-        ok("E: target=dev clean tree fast-forwards (exit 0)")
+        ok("E: env var set to dev is ignored; clean tree fast-forwards (exit 0)")
     src = pull_source(call_log)
-    if src == "origin dev":
-        ok("E: pull source resolved to `origin dev` for target=dev")
+    if src == "origin main":
+        ok("E: removed env var ignored → pull source resolves to `origin main`")
     else:
-        fail(f"E: expected `pull --ff-only origin dev`; got source {src!r}; "
-             f"calls={read_calls(call_log)!r}")
+        fail(f"E: expected `pull --ff-only origin main` (env ignored); "
+             f"got source {src!r}; calls={read_calls(call_log)!r}")
 
 
 # ---------------------------------------------------------------------------
