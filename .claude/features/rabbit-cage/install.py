@@ -193,8 +193,10 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "scripts/resolve-scope.py",
         "scripts/scaffold-feature.py",
         "skills/rabbit-feature-scaffold/SKILL.md",
+        "skills/rabbit-feature-scaffold/scripts/scaffold-batch.py",
         "skills/rabbit-feature-scope/SKILL.md",
         "skills/rabbit-feature-touch/SKILL.md",
+        "skills/rabbit-feature-touch/scripts/feature-touch.py",
     ],
     "rabbit-issue": [
         "feature.json",
