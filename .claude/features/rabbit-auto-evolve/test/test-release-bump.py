@@ -221,8 +221,10 @@ else:
 
 
 # ---------------------------------------------------------------------------
-# Coexistence (Inv 61): `gh release create` targets the resolved integration
-# target. Default (no override) → --target main; override dev → --target dev.
+# Inv 61: `gh release create` targets the resolved integration target, which is
+# now constantly `main` (the coexistence window has closed). The (removed)
+# RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET env var is IGNORED — setting it does not
+# change the release target.
 # ---------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as td:
     payload = _make_payload(labels=["priority:low"], body="x",
@@ -238,8 +240,7 @@ with tempfile.TemporaryDirectory() as td:
         fail(f"target-default: gh release create missing '--target main'; "
              f"{rel_calls!r}")
     else:
-        ok("target-default: gh release create --target main (post-cutover "
-           "default)")
+        ok("target-default: gh release create --target main (sole target)")
 
 with tempfile.TemporaryDirectory() as td:
     payload = _make_payload(labels=["priority:low"], body="x",
@@ -248,15 +249,16 @@ with tempfile.TemporaryDirectory() as td:
     env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = "dev"
     proc = _run(cwd, env, "42")
     if proc.returncode != 0:
-        fail(f"target-dev: exit {proc.returncode}; stderr={proc.stderr!r}")
+        fail(f"target-env-ignored: exit {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
     rel_calls = [c for c in _calls(call_log) if c.startswith("gh release create")]
     if not rel_calls:
-        fail("target-dev: no gh release create call")
-    elif not any("--target dev" in c for c in rel_calls):
-        fail(f"target-dev: gh release create missing '--target dev'; "
-             f"{rel_calls!r}")
+        fail("target-env-ignored: no gh release create call")
+    elif not any("--target main" in c for c in rel_calls):
+        fail(f"target-env-ignored: gh release create missing '--target main' "
+             f"(the removed env var must be ignored); {rel_calls!r}")
     else:
-        ok("target-dev: gh release create --target dev under override")
+        ok("target-env-ignored: removed env var ignored → --target main")
 
 
 # ---------------------------------------------------------------------------

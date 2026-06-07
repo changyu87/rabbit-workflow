@@ -2,19 +2,18 @@
 """test-integration-target.py — e2e tests for the integration-target
 abstraction (Inv 61).
 
-The autonomous-evolve loop integrates merged work into a single resolved
-"integration target" branch. The dev->main cutover is complete: the resolved
-target now defaults to `main`. A `dev` base is still ACCEPTED during the
-coexistence teardown, and the resolved target can be overridden via the
-RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET env var.
+The dev->main cutover is complete and the coexistence window has closed: `main`
+is now the SOLE accepted integration target. `resolve_target()` is
+deterministic — it returns `main` with no environment read — and the
+`RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET` env var no longer exists, so setting it
+has NO effect.
 
 This suite drives the module BOTH as an importable library (the surface the
 sibling phase scripts consume) and as a small CLI (`integration_target.py`),
 covering:
-  - default resolution → main
-  - env-var override → dev (still an accepted target)
-  - an unrecognized override is rejected (neither dev nor main)
-  - the coexistence accepted-set is exactly {dev, main}
+  - resolve_target() returns main deterministically
+  - the (removed) env var is IGNORED — setting it does not change the result
+  - the accepted-set is exactly {main}
   - is_default_branch: main is the default branch, dev is not
 """
 
@@ -59,44 +58,34 @@ def _run_cli(env, *args):
 # ---------------------------------------------------------------------------
 it = _load_module()
 
-# Default (no env override) resolves to main — the post-cutover default.
+# resolve_target() returns main — deterministic, no environment read.
 saved = os.environ.pop("RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET", None)
 try:
     if it.resolve_target() != "main":
         fail(f"lib-default: resolve_target() {it.resolve_target()!r} != 'main'")
     else:
-        ok("lib-default: resolve_target() defaults to 'main'")
+        ok("lib-default: resolve_target() returns 'main'")
 finally:
     if saved is not None:
         os.environ["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = saved
 
-# Env override → dev (still an accepted target during coexistence teardown).
+# The old env var is IGNORED: setting it to 'dev' does NOT change the result.
 os.environ["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = "dev"
 try:
-    if it.resolve_target() != "dev":
-        fail(f"lib-override: resolve_target() {it.resolve_target()!r} != 'dev'")
+    if it.resolve_target() != "main":
+        fail(f"lib-env-ignored: resolve_target() {it.resolve_target()!r} != "
+             f"'main' (the removed env var must be ignored)")
     else:
-        ok("lib-override: env override resolves to 'dev'")
+        ok("lib-env-ignored: the removed env var has no effect")
 finally:
     del os.environ["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"]
 
-# Unrecognized override is rejected (must be one of the coexistence set).
-os.environ["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = "release/x"
-try:
-    try:
-        it.resolve_target()
-        fail("lib-bad-override: an unrecognized target was not rejected")
-    except ValueError:
-        ok("lib-bad-override: an unrecognized target raises ValueError")
-finally:
-    del os.environ["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"]
-
-# Coexistence accepted set is exactly {dev, main}.
-if set(it.accepted_targets()) != {"dev", "main"}:
+# Accepted set is exactly {main}.
+if tuple(it.accepted_targets()) != ("main",):
     fail(f"lib-accepted: accepted_targets() {it.accepted_targets()!r} "
-         f"!= {{dev, main}}")
+         f"!= ('main',)")
 else:
-    ok("lib-accepted: accepted_targets() == {dev, main}")
+    ok("lib-accepted: accepted_targets() == ('main',)")
 
 # is_default_branch: main is the default branch, dev is not.
 if not it.is_default_branch("main"):
@@ -118,7 +107,7 @@ elif "usage" not in (proc.stdout + proc.stderr).lower():
 else:
     ok("cli-help: --help exits 0 with usage text")
 
-# CLI prints the resolved target (default main).
+# CLI prints the resolved target (main).
 env = os.environ.copy()
 env.pop("RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET", None)
 proc = _run_cli(env)
@@ -127,23 +116,19 @@ if proc.returncode != 0:
 elif proc.stdout.strip() != "main":
     fail(f"cli-default: stdout {proc.stdout.strip()!r} != 'main'")
 else:
-    ok("cli-default: prints 'main' by default")
+    ok("cli-default: prints 'main'")
 
+# The removed env var is IGNORED at the CLI too: setting it to 'dev' still
+# prints 'main' and exits 0 (no override path remains to reject it).
 env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = "dev"
 proc = _run_cli(env)
 if proc.returncode != 0:
-    fail(f"cli-override: exit {proc.returncode}; stderr={proc.stderr!r}")
-elif proc.stdout.strip() != "dev":
-    fail(f"cli-override: stdout {proc.stdout.strip()!r} != 'dev'")
+    fail(f"cli-env-ignored: exit {proc.returncode}; stderr={proc.stderr!r}")
+elif proc.stdout.strip() != "main":
+    fail(f"cli-env-ignored: stdout {proc.stdout.strip()!r} != 'main' "
+         f"(the removed env var must be ignored)")
 else:
-    ok("cli-override: prints 'dev' under env override")
-
-env["RABBIT_AUTO_EVOLVE_INTEGRATION_TARGET"] = "garbage"
-proc = _run_cli(env)
-if proc.returncode == 0:
-    fail("cli-bad-override: an unrecognized target should exit non-zero")
-else:
-    ok("cli-bad-override: an unrecognized target exits non-zero")
+    ok("cli-env-ignored: prints 'main' even with the removed env var set")
 
 
 sys.exit(FAIL)
