@@ -30,12 +30,20 @@ Per rabbit-auto-evolve spec.md Inv 6 / Inv 61, for each PR this script:
   4. After a successful merge, parses the merged PR TITLE and body for
      `Fixes #N` / `Closes #N` / `Resolves #N` references (case-insensitive,
      unioned across title and body — issue #868: a title-only ref still
-     counts) and records the sorted set under `closed_issues`. Because the merge
-     targets the default branch `main`, GitHub's native keyword auto-close fires
-     for every referenced issue; the loop performs NO manual close. The parsed
-     set exists solely so the dispatch-journal promotion (Inv 54) can mark those
-     entries `completed` — native auto-close does not report the closed set back
-     to the loop. The merge SHA is recorded under `last_merged_sha`.
+     counts), then CROSS-CHECKS each `#N` against `gh issue view <N> --json
+     state` and keeps ONLY currently-OPEN issues (issue #1101 / Inv 68), and
+     records that filtered, sorted set under `closed_issues`. The cross-check
+     defeats the enumeration trap: GitHub's closing grammar treats `Fix #N` as
+     a closing keyword, so a PR body listing `Fix #1 / Fix #2 / Fix #3` would
+     otherwise record #1/#2/#3 (PR numbers / closed issues the PR never
+     targeted); a non-open `#N` is dropped (logged to stderr, never recorded).
+     Because the merge targets the default branch `main`, GitHub's native
+     keyword auto-close fires for every referenced issue; the loop performs NO
+     manual close. The filtered set exists solely so the dispatch-journal
+     promotion (Inv 54) can mark those entries `completed` — native auto-close
+     does not report the closed set back to the loop, and the loop's recorded
+     bookkeeping must be accurate (open-only) even if GitHub's own auto-close is
+     broader. The merge SHA is recorded under `last_merged_sha`.
 
 The aggregated per-PR result list is emitted as JSON on stdout. The script
 exits 0 except on argparse / unexpected error — partial-outcome reporting
@@ -68,7 +76,7 @@ promotes the dispatch_journal entry of every issue a merged PR closed to
 `completed` (recording its PR number), deriving the closed set from the PR's
 parsed close-refs — the journal's `completed` transition, no new write site.
 
-Version: 2.0.0
+Version: 2.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -248,11 +256,55 @@ def _parse_close_refs(*texts):
     keyword auto-close fires for every referenced issue. The loop no longer
     closes issues itself; this parse exists only to derive the SET of issues a
     merge closed (native auto-close does not report that set back) so the
-    dispatch-journal promotion (Inv 54) can mark their entries `completed`."""
+    dispatch-journal promotion (Inv 54) can mark their entries `completed`.
+
+    NOTE: this is the RAW parse. GitHub's closing grammar treats `Fix #N` as a
+    closing keyword even when the author meant a bare enumeration (`Fix #1 /
+    Fix #2 / Fix #3`), so the raw set can carry numbers the PR never targeted.
+    Callers MUST pass the result through `_filter_open_issues` before recording
+    it (issue #1101 — the close-ref open-issue cross-check guard)."""
     nums = set()
     for text in texts:
         nums.update(int(m) for m in _CLOSE_REF_RE.findall(text or ""))
     return sorted(nums)
+
+
+def _issue_is_open(num):
+    """Return True iff `#num` is a currently-OPEN GitHub issue, via
+    `gh issue view <num> --json state -q .state` (state == "OPEN",
+    case-insensitive). Best-effort: a non-zero exit (the number is a PR, not an
+    issue, or otherwise unviewable) is treated as NOT-open, so a non-issue
+    enumeration number is dropped rather than recorded (issue #1101)."""
+    proc = subprocess.run(
+        ["gh", "issue", "view", str(num),
+         "--json", "state", "-q", ".state"],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        return False
+    return proc.stdout.strip().upper() == "OPEN"
+
+
+def _filter_open_issues(nums):
+    """Filter a raw close-ref set down to those that are currently-OPEN issues
+    (issue #1101). GitHub's closing grammar treats `Fix #N` as a closing
+    keyword, so a PR body enumerating `Fix #1 / Fix #2 / Fix #3` wrongly yields
+    #1/#2/#3 in the raw parse. Cross-checking each `#N` against
+    `gh issue view` (open?) drops every number that is NOT a live issue this PR
+    plausibly targets — a PR number, an already-closed issue, or a bare
+    enumeration — so the recorded `closed_issues` (and the loop bookkeeping
+    that derives from it) can never wrongly mark an unrelated issue closed.
+    A dropped ref is logged to stderr (observability), never acted on."""
+    kept = []
+    for n in nums:
+        if _issue_is_open(n):
+            kept.append(n)
+        else:
+            sys.stderr.write(
+                f"merge-prs: dropping close-ref #{n}: not a currently-open "
+                f"issue (issue #1101 enumeration guard)\n"
+            )
+    return kept
 
 
 def process(pr):
@@ -292,10 +344,19 @@ def process(pr):
     # native auto-close does not report the closed set back to the loop. The
     # merge SHA is recorded (last_merged_sha, issue #564) for the informational
     # state field.
+    #
+    # Issue #1101 (Inv 68) — cross-check every parsed `#N` against
+    # `gh issue view` and keep ONLY currently-OPEN issues. GitHub's closing
+    # grammar treats `Fix #N` as a closing keyword, so a PR body enumerating
+    # `Fix #1 / Fix #2 / Fix #3` would otherwise record #1/#2/#3 (the trap that
+    # produced closed_issues=[1,2,3,1096] for #1100). Dropping non-open numbers
+    # keeps the recorded set — and the loop bookkeeping derived from it — from
+    # ever wrongly marking an unrelated issue closed. Dropped refs are logged
+    # (in `_filter_open_issues`), never acted on.
     title = _pr_field(pr, "title", ".title")
     body = _pr_field(pr, "body", ".body")
     result["merge_sha"] = _pr_field(pr, "mergeCommit", ".mergeCommit.oid")
-    result["closed_issues"] = _parse_close_refs(title, body)
+    result["closed_issues"] = _filter_open_issues(_parse_close_refs(title, body))
     return result
 
 

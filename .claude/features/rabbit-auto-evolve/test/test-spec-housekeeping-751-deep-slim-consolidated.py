@@ -178,6 +178,15 @@ POST_1081_ADD_INVARIANTS = 1
 # invariants) stays ENFORCED while the #1091 addition is admitted.
 POST_1091_ADD_LINES = 50
 POST_1091_ADD_INVARIANTS = 1
+# #1101 added the close-ref open-issue cross-check invariant (Inv 68: the merge
+# phase records ONLY currently-OPEN issues in `closed_issues` — merge-prs.py
+# cross-checks every parsed close-ref `#N` against `gh issue view --json state`
+# and drops any non-OPEN number, defeating the `Fix #N` bare-enumeration trap
+# that wrongly recorded unrelated numbers) — a genuinely new owned rule, not
+# slim regression. Mirror the prior headroom so the #751 reduction (>= 150
+# lines, >= 4 invariants) stays ENFORCED while the #1101 addition is admitted.
+POST_1101_ADD_LINES = 40
+POST_1101_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
@@ -185,6 +194,7 @@ MAX_TOTAL_LINES = (
     + POST_973_ADD_LINES + POST_966_ADD_LINES + POST_986_ADD_LINES
     + POST_1004_ADD_LINES + POST_1006_ADD_LINES + POST_1012_ADD_LINES
     + POST_1051_ADD_LINES + POST_1081_ADD_LINES + POST_1091_ADD_LINES
+    + POST_1101_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -198,7 +208,7 @@ MAX_INVARIANT_COUNT = (
     + POST_962_ADD_INVARIANTS + POST_970_ADD_INVARIANTS
     + POST_966_ADD_INVARIANTS + POST_986_ADD_INVARIANTS
     + POST_1051_ADD_INVARIANTS + POST_1081_ADD_INVARIANTS
-    + POST_1091_ADD_INVARIANTS
+    + POST_1091_ADD_INVARIANTS + POST_1101_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---

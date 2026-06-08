@@ -101,7 +101,13 @@ BASELINE_TOTAL_LINES = 3594
 # prompt-assembly + file-item argv owned by capture-observed-error.py, a level-1 main-session
 # dispatch, and a recursion guard; ~50 lines across the invariant and the script-table row)
 # is additive, so the ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 3970
+# The close-ref open-issue cross-check invariant (Inv 68, #1101: a new top-level invariant
+# making the merge phase record ONLY currently-OPEN issues in `closed_issues` — merge-prs.py
+# cross-checks every parsed close-ref `#N` against `gh issue view --json state` and drops any
+# non-OPEN number, defeating the `Fix #N` bare-enumeration trap that wrongly recorded unrelated
+# numbers — plus a script-table-row extension and the merge-prs step-4 amendment; ~37 lines)
+# is additive, so the ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 4020
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a
