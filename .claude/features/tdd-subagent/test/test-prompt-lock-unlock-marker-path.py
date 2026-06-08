@@ -14,7 +14,16 @@ Two scenarios mirror rabbit-cage Inv 17(b):
      (slash-separated `.runtime/scope-active-` form, NOT the dashed
      standalone form). UNLOCK mirrors.
 
-Both scenarios run `dispatch-tdd-subagent.py` as a subprocess against a
+  C) Vendored (`.rabbit/.runtime/mode == 'vendored'`, the post-#980
+     canonical mode value): identical to scenario B — the dispatcher
+     dual-accepts `vendored`/`plugin` (matching scope-guard's
+     `_VENDORED_MODES`), so the LOCK/UNLOCK lines reference the
+     `.runtime/scope-active-<feature>` form, NOT the dashed standalone
+     form. This is the #1050 regression guard: a `vendored` install whose
+     marker fell through to the standalone form left the subagent's
+     in-scope writes blocked by scope-guard.
+
+All scenarios run `dispatch-tdd-subagent.py` as a subprocess against a
 tmpdir fixture populated with the live contract/tdd-subagent/policy
 feature trees so the dispatcher's build-prompt subprocess can resolve
 templates and slot declarations.
@@ -216,6 +225,66 @@ with tempfile.TemporaryDirectory() as tmp:
                 ok("scenario B: UNLOCK contains NO standalone path")
             else:
                 ko("scenario B: UNLOCK leaked standalone path")
+
+
+# ---------------------------------------------------------------------------
+# Scenario C: vendored — `.rabbit/.runtime/mode == 'vendored'` (#1050).
+#
+# The post-#980 canonical mode value is 'vendored', not 'plugin'. The
+# dispatcher MUST dual-accept it (matching scope-guard's _VENDORED_MODES)
+# and emit the SAME vendored marker form as scenario B. A 'vendored'
+# install that fell through to the dashed standalone marker left the
+# subagent's in-scope writes blocked by scope-guard. Identical fixture to
+# scenario B except the mode file content.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    rabbit_root = os.path.join(tmp, ".rabbit")
+    os.makedirs(rabbit_root)
+    _populate_rabbit_root(rabbit_root)
+    _write(os.path.join(rabbit_root, ".runtime", "mode"), "vendored")
+    proj_spec = _make_project_feature(rabbit_root, "run-ingest")
+
+    env = os.environ.copy()
+    env["RABBIT_ROOT"] = rabbit_root
+    res = subprocess.run(
+        [sys.executable, DISPATCH_PY, "--scope", "run-ingest",
+         "--spec", proj_spec],
+        capture_output=True, text=True, env=env,
+    )
+    if res.returncode != 0:
+        ko(f"scenario C: dispatch failed rc={res.returncode}: {res.stderr!r}")
+    else:
+        prompt = res.stdout
+        lock_body = _extract_lock_body(prompt)
+        unlock_body = _extract_unlock_body(prompt)
+        if lock_body is None:
+            ko("scenario C: LOCK section not isolated")
+        else:
+            if re.search(r"touch\s+\.runtime/scope-active-run-ingest\b",
+                         lock_body):
+                ok("scenario C: LOCK uses vendored relative path "
+                   "(.runtime/scope-active-run-ingest)")
+            else:
+                ko("scenario C: LOCK missing vendored-path touch")
+            if not re.search(r"\.rabbit-scope-active-run-ingest\b", lock_body):
+                ok("scenario C: LOCK contains NO standalone path "
+                   "(.rabbit-scope-active-run-ingest)")
+            else:
+                ko("scenario C: LOCK leaked standalone path "
+                   "(.rabbit-scope-active-run-ingest)")
+        if unlock_body is None:
+            ko("scenario C: UNLOCK section not isolated")
+        else:
+            if re.search(r"rm -f\s+\.runtime/scope-active-run-ingest\b",
+                         unlock_body):
+                ok("scenario C: UNLOCK uses vendored relative path "
+                   "(.runtime/scope-active-run-ingest)")
+            else:
+                ko("scenario C: UNLOCK missing vendored-path rm")
+            if not re.search(r"\.rabbit-scope-active-run-ingest\b", unlock_body):
+                ok("scenario C: UNLOCK contains NO standalone path")
+            else:
+                ko("scenario C: UNLOCK leaked standalone path")
 
 
 report(passed, failed)
