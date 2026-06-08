@@ -25,9 +25,12 @@ Behavior (per contract spec Inv 53):
     stdout. Throttle timestamp IS updated to avoid pounding the upstream on
     transient errors.
   - tag_name == local: stdout '{"newer": false}', exit 0.
-  - tag_name != local: stdout '{"newer": true, "channel": <local>,
+  - tag_name != local: stdout '{"newer": true, "channel": <channel>,
     "current": <local>, "new": <tag_name>, "self_update_available": <bool>}',
-    exit 0.
+    exit 0. <channel> is a REAL channel label DISTINCT from the version pin,
+    never the version string: a local '--src' install pin ('local-<sha>')
+    reports the bare literal 'local'; any other ref reports the ref as-read
+    (e.g. 'dev', 'stable', 'main'). <current> is the .version content verbatim.
 
 self_update_available is true when <rabbit_root>/install.py exists AND
 contains the literal string 'fetch_upstream' (the self-update marker).
@@ -47,7 +50,7 @@ Usage:
 Exit codes:
     0 — always (silent on errors; JSON to stdout on success).
 
-Version: 2.1.0
+Version: 2.2.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when Claude Code exposes a native release-channel
     update notification mechanism that supersedes this helper.
@@ -111,6 +114,21 @@ def read_version(version_path):
         return None
 
 
+def resolve_channel(local):
+    """Map the .version pin to a REAL channel label distinct from the pin.
+
+    A local `--src` install writes a `local-<sha>` pin; reporting that pin as
+    the channel rendered the nonsensical "on channel local-<sha>" banner line.
+    For such a pin the channel is the bare literal `local`; any other ref is a
+    configured channel ref already (e.g. `dev`, `stable`, `main`, `v1.2.3`) and
+    is reported as-read. The channel is never the version string when the pin is
+    a `local-*` pin.
+    """
+    if local == "local" or local.startswith("local-"):
+        return "local"
+    return local
+
+
 def read_throttle(ts_path):
     try:
         with open(ts_path) as f:
@@ -142,7 +160,7 @@ def resolve_interval():
 def fetch_upstream_version(repo, channel):
     # Release model is tags + GitHub Releases: track the latest published
     # release's tag_name rather than fetching .version off a branch ref. The
-    # `channel` argument is the local installed ref, retained only for the
+    # `channel` argument is the resolved channel label, retained only for the
     # comparison payload; it does not select the fetch URL.
     url = f"https://api.github.com/repos/{repo}/releases/latest"
     req = urllib.request.Request(
@@ -198,7 +216,7 @@ def main():
         return 0
 
     repo = os.environ.get("RABBIT_REPO", DEFAULT_REPO)
-    channel = local
+    channel = resolve_channel(local)
     upstream = fetch_upstream_version(repo, channel)
 
     # Update throttle after the attempt regardless of outcome.
