@@ -33,7 +33,7 @@ Exit:
     zero match for a NON-greenfield feature, schema-validation failure)
   2 invocation error
 
-Version: 2.7.0
+Version: 2.8.0
 Owner: rabbit-workflow team (rabbit-feature)
 Deprecation criterion: when feature scaffolding is exposed as a native
     rabbit CLI subcommand.
@@ -71,6 +71,33 @@ def usage(stream=sys.stderr) -> None:
 # `plugin` entry is removed only after the rename completes and the old
 # value is fully retired.
 _VENDORED_MODES = ("vendored", "plugin")
+
+
+# Placeholder test runner content, shared by BOTH the standalone and plugin
+# scaffold paths so a scaffolded feature always carries a `test/run.py` the
+# TDD cycle can invoke. Exits non-zero so a freshly-scaffolded feature is
+# honestly in TDD red until tests are authored.
+_RUN_PY = (
+    "#!/usr/bin/env python3\n"
+    '"""Placeholder test runner. Author real tests here, then transition\n'
+    'tdd_state to test-red. Exits non-zero so the feature is honestly in\n'
+    'TDD red until tests are authored."""\n'
+    "import sys\n"
+    "\n"
+    "sys.stderr.write(\n"
+    "    \"no tests yet — author tests in this directory (test-*.py) and \"\n"
+    "    \"transition tdd_state to test-red\\n\"\n"
+    ")\n"
+    "sys.exit(1)\n"
+)
+
+
+def _write_run_py(target: Path) -> None:
+    """Create `<target>/test/run.py` with the shared placeholder runner."""
+    run_path = target / "test/run.py"
+    run_path.parent.mkdir(parents=True, exist_ok=True)
+    run_path.write_text(_RUN_PY)
+    run_path.chmod(0o755)
 
 
 def _detect_plugin_mode(cwd: Path) -> tuple[bool, Path | None]:
@@ -249,6 +276,10 @@ def _scaffold_plugin_feature(target: Path, name: str, owner: str, globs: list[st
         "```\n"
     )
     (target / "docs/contract.md").write_text(contract_md)
+
+    # Bug #1114: create test/run.py so the feature-touch TDD cycle can invoke
+    # it. Uses the SAME shared runner as the standalone path (no divergence).
+    _write_run_py(target)
 
 
 def _run_plugin_mode(
@@ -622,22 +653,7 @@ def main() -> int:
 
     (target / "docs/bugs/.gitkeep").touch()
 
-    run_py = (
-        "#!/usr/bin/env python3\n"
-        '"""Placeholder test runner. Author real tests here, then transition\n'
-        'tdd_state to test-red. Exits non-zero so the feature is honestly in\n'
-        'TDD red until tests are authored."""\n'
-        "import sys\n"
-        "\n"
-        "sys.stderr.write(\n"
-        "    \"no tests yet — author tests in this directory (test-*.py) and \"\n"
-        "    \"transition tdd_state to test-red\\n\"\n"
-        ")\n"
-        "sys.exit(1)\n"
-    )
-    run_path = target / "test/run.py"
-    run_path.write_text(run_py)
-    run_path.chmod(0o755)
+    _write_run_py(target)
 
     print(f"scaffolded: {target}")
 
