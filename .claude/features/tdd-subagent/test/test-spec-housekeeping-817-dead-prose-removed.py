@@ -66,7 +66,8 @@ BANNED_PHRASES = [
 # re-inflation by REWORD; genuine new invariants legitimately add lines and
 # the ceiling is bumped in lockstep when one lands. Inv 63 (full-vendor-safe
 # --spec resolution) added a new invariant, raising the body to 810 lines.
-SPEC_LINE_CEILING = 812
+# Inv 64 (PR-body close-ref convention) added another, raising it to 836.
+SPEC_LINE_CEILING = 838
 
 PASS = 0
 FAIL = 0
