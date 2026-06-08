@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.26.0
+version: 5.27.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -652,6 +652,32 @@ defined in Inv 55.
     Enforced by `test/test-agent-skill-tool.py`, which asserts the `tools:`
     list in BOTH the source and deployed agent definitions contains `Skill`
     (and still contains the original six tools).
+
+64. **PR-body close-reference authoring convention.** The agent definition
+    at `agents/rabbit-tdd-subagent.md` MUST embed a PR-body authoring
+    convention governing issue-closing keywords, so a subagent never writes
+    an enumeration that GitHub's auto-close or the merge close-ref parser
+    mistakes for an issue close-reference. The convention states:
+
+    (a) **Forbidden enumeration form.** PR bodies, commit messages, and
+        HANDOFF notes MUST NOT use `Fix #N` / `Fixes #N` / `Closes #N` for
+        NON-issue enumeration (e.g. a `Fix #<n>` series listing several
+        sub-fixes) — those parse as issue close-references and can wrongly
+        close the same-numbered issues.
+
+    (b) **Plain enumeration instead.** Use a `Fix <n>` series or `Part N/M`
+        for non-issue enumeration (no `#`).
+
+    (c) **Reserved closing keyword.** The closing keyword is reserved for the
+        ACTUAL target issue: write exactly `Closes #<issue>` for the one
+        issue the cycle resolves.
+
+    The convention lives in the agent definition (a deployed surface via
+    `publish_agent`), so the tightened guidance takes effect for
+    newly-dispatched subagents only after the agent definition is
+    re-published. Enforced by `test/test-prbody-close-ref-convention.py`,
+    which asserts the convention tokens appear in BOTH the source and
+    deployed agent definitions.
 
 58. **Assembled-prompt paths are repo-RELATIVE, not main-repo-absolute.**
     The four filesystem-path slots `dispatch-tdd-subagent.py`

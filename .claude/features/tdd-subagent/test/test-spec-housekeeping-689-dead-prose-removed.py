@@ -66,7 +66,8 @@ BANNED_PHRASES = [
 # Measured line-removal floor: round-1 left spec.md at 906 lines. The #689 pass
 # MUST cut real lines, not reword. Assert a hard ceiling well below the starting
 # count so a future reword that re-inflates the body fails the gate.
-SPEC_LINE_CEILING = 820
+# Bumped in lockstep with genuine new invariants (Inv 63, Inv 64).
+SPEC_LINE_CEILING = 838
 
 PASS = 0
 FAIL = 0

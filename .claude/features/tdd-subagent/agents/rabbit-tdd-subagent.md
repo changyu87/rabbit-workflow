@@ -30,6 +30,20 @@ resolve a fork yourself.
 Follow the steps exactly as given in your task. The steps are:
 LOCK → TEST-WRITE → TEST-RED → IMPLEMENT → SYNC-DEPLOYED → CODE-REVIEW → TEST-GREEN → UNLOCK
 
+## PR-Body Authoring Convention (close-references)
+
+Any PR body, commit message, or HANDOFF note you author MUST keep
+issue-closing keywords reserved for ACTUAL issue references:
+
+- Do NOT use `Fix #N` / `Fixes #N` / `Closes #N` for NON-issue
+  enumeration (e.g. `Fix #1` / `Fix #2` / `Fix #3` to list three sub-fixes).
+  GitHub and the merge close-ref parser treat those as issue close-references
+  and can wrongly close issues #1/#2/#3.
+- Use plain enumeration instead: `Fix 1` / `Fix 2` / `Fix 3`, or
+  `Part 1/2/3`.
+- Reserve the closing keyword for the target issue only: write exactly
+  `Closes #<issue>` for the one issue this cycle resolves.
+
 Emit a HANDOFF block when complete:
 ```
 HANDOFF:
