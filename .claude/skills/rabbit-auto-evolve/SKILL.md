@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.91.0
+version: 0.92.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into the integration target, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -815,6 +815,39 @@ during phase 6 (`dispatch`) result processing:
   `blocked-by:#N` label/body marker is a deprecating fallback retained only
   during the coexistence window. The original issue stays OPEN so a future
   tick may retry once the native blocker closes.
+
+## Self-observed error capture (Inv 67)
+
+Beyond the REACTIVE filing above, when the orchestrator itself OBSERVES an
+error mid-tick — a non-zero bash/script exit, unexpected stderr/output, or any
+anomaly — it CAPTURES the defect into a well-formed issue for a later tick
+rather than dropping it. This is ROUTINE (the loop keeps going); it is distinct
+from the hard safety-abort path (`mark-aborted.py`, Red Flags below), which is
+reserved for hard blockers. The deep analysis runs in an ISOLATED subagent so
+it does NOT bloat the dispatcher's accumulating context (which it reuses across
+ticks on the croncreate path). The deterministic mechanics live in the script;
+the dispatcher only performs the irreducible Agent() dispatch between the two
+script steps:
+
+1. Build the isolated analysis-subagent prompt from a structured error record:
+   ```
+   echo '<error-record-json>' | python3 .claude/features/rabbit-auto-evolve/scripts/capture-observed-error.py analysis-prompt
+   ```
+2. Dispatch a single ISOLATED analysis subagent (a MAIN-SESSION, level-1
+   Agent() call — exactly like the Phase 6 TDD dispatch, NEVER nested inside
+   another subagent, so no illegal two-level nesting; spec-rules §4) with that
+   prompt. It returns a STRUCTURED verdict
+   (`{feature, priority, issue_type, title, summary}`).
+3. Assemble the file-item argv and file the well-formed issue:
+   ```
+   echo '{"error": <record>, "verdict": <verdict>}' | python3 .claude/features/rabbit-auto-evolve/scripts/capture-observed-error.py file-args
+   ```
+   then run the emitted `file-item.py` argv so the next tick's `fetch` phase
+   picks the issue up.
+
+Recursion guard: an error observed WHILE capturing an error carries
+`phase: "error-capture"`; `capture-observed-error.py` REFUSES such a record so
+capture-of-capture never recurses.
 
 ## Republish deployed surfaces before opening the PR (Inv 50)
 

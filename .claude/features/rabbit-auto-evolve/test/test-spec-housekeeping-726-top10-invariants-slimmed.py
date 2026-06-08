@@ -94,7 +94,14 @@ BASELINE_TOTAL_LINES = 3594
 # deterministic @rabbit-decision: marker, and a per-issue comment_watermarks watermark
 # triage-issue.py reads and triage-batch.py advances; ~38 lines) is additive, so the
 # ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 3915
+# The self-observed-error-capture invariant (Inv 67, #1091: a new top-level invariant
+# giving the orchestrator a bounded capability to capture a self-observed error — non-zero
+# exit / unexpected output / anomaly — into a well-formed issue via an ISOLATED analysis
+# subagent (context isolation on the croncreate session-reuse path), with the deterministic
+# prompt-assembly + file-item argv owned by capture-observed-error.py, a level-1 main-session
+# dispatch, and a recursion guard; ~50 lines across the invariant and the script-table row)
+# is additive, so the ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 3970
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

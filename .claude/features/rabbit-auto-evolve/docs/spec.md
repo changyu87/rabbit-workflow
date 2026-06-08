@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.91.0
+version: 0.92.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -100,6 +100,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/refire-guard.py` | CLI | At tick start, reconciles the PRIOR tick's schedule decision from the `.rabbit/tick.log` breadcrumb: a stale `immediate-refire` (no fresh decision after it) + a still-non-empty dispatchable plan + more than a heartbeat-interval elapsed → a dropped refire; appends a LOUD `tick.log` warning and emits `refire_owed: true` so the dispatcher acts (the `CronCreate` stays a Claude action; the guard only DETECTS + SURFACES). Exposes the pure `reconcile()` predicate (Inv 65) |
 | `scripts/log-tick.py` | CLI | Full per-tick observability logger: owns all writes to the append-only JSON-lines log at `.rabbit/auto-evolve.log`; structured kwargs → one record/line, with on/off enable, three verbosity levels, a <2KB per-line cap and 5MB rotation (Inv 37). Distinct from the minimal `tick-log.py` (different file + purpose) |
 | `scripts/log-path.py` | CLI | Prints the absolute path of the `.rabbit/auto-evolve.log` file so a cross-session daemon can `tail -f $(… log-path.py)` (Inv 37) |
+| `scripts/capture-observed-error.py` | CLI | Self-observed-error capture (Inv 67): `analysis-prompt` assembles the ISOLATED analysis-subagent dispatch prompt from a structured error record (stdin); `file-args` assembles the deterministic `file-item.py` argv from `{error, verdict}` (stdin) so the orchestrator files a well-formed issue for a later tick. Refuses a capture-phase record (recursion guard); routine, never an abort |
 
 **State file (runtime artifact):**
 
@@ -3886,6 +3887,60 @@ summary is restated here.
     no-comment cases), `test/test-triage-batch.py` (watermark advance +
     monotonic preservation), and
     `test/test-spec-comment-aware-triage-invariant.py`.
+
+67. **The orchestrator captures a self-observed error into a well-formed issue
+    via an ISOLATED analysis subagent.** The loop filed issues only REACTIVELY
+    (a subagent's `discovered_issues`, decomposition sub-issues) and had NO
+    mandate to capture a defect it observes ITSELF — a self-observed error
+    mid-tick was either aborted-and-halted or silently dropped. This invariant
+    gives the orchestrator a BOUNDED capture capability.
+
+    **WHEN.** Whenever the orchestrator observes an error — a non-zero
+    bash/script exit, unexpected stderr/output, or any anomaly mid-tick — it
+    captures the defect rather than dropping it. A routine captured error does
+    NOT halt the loop; it is distinct from the hard safety-abort path
+    (`mark-aborted.py`, Inv 13), reserved for hard blockers a tick cannot
+    proceed past. Capture files an issue and the tick keeps going.
+
+    **ISOLATED analysis (the key design constraint).** The root-cause analysis
+    runs in an ISOLATED subagent the orchestrator dispatches — NOT inline in
+    the orchestrator's own context. A deep analysis inlined into the dispatcher
+    would bloat and pollute its accumulating context, which matters especially
+    on the croncreate session-reuse path where the dispatcher's context
+    accumulates across ticks. The isolated subagent inspects the error, does a
+    bounded root-cause analysis, and returns a STRUCTURED verdict
+    (`{feature, priority, issue_type, title, summary}`) — a machine-first
+    handoff, not free-form prose the dispatcher must re-interpret.
+
+    **LEVEL-1 dispatch, no nesting.** The capture-analysis subagent is
+    dispatched by the ORCHESTRATOR from the MAIN session (level-1), exactly
+    like the Phase 6 TDD dispatch — the allowed shape. It is NEVER invoked from
+    within another subagent, so no illegal two-level nesting is created
+    (spec-rules §4 "No Subagent-Dispatching Skill Inside Agent()"). The
+    rabbit-auto-evolve skill is itself a subagent-dispatching context; the
+    Agent() call is the dispatcher's irreducible Claude step at runtime.
+
+    **WELL-FORMED issue for a LATER tick.** After the verdict returns, the
+    orchestrator files a well-formed issue via the rabbit-issue `file-item.py`
+    script (a contract INVOKE, not a cross-feature edit) with the verdict's
+    `feature:` + `priority:` labels and `--filed-by autonomous-evolve`
+    provenance, so a LATER tick's `fetch` phase picks it up.
+
+    **DETERMINISTIC mechanics (Tool-Choice Tier: script > spec > prompt).** The
+    prompt assembly and the file-item argv are owned by
+    `scripts/capture-observed-error.py`, NOT hand-assembled: `analysis-prompt`
+    reads the structured error record on stdin and emits the isolated-subagent
+    dispatch prompt; `file-args` reads `{error, verdict}` on stdin and emits the
+    file-item.py argv as a JSON array. The dispatcher only triggers the two
+    subcommands and performs the irreducible Agent() dispatch between them.
+
+    **BOUNDED — no recursion.** An error observed WHILE capturing an error must
+    not re-trigger capture infinitely. The record carries a `phase`; a record
+    whose phase is `error-capture` is REFUSED by both subcommands (the recursion
+    guard), so capture-of-capture cannot recurse.
+
+    Enforced by `test/test-capture-observed-error.py` and
+    `test/test-spec-self-observed-error-capture-invariant.py`.
 
 ## Known gaps
 
