@@ -35,13 +35,24 @@ def build_fixture(tmp):
     shutil.copy(REAL_SCRIPT, target_script)
     os.chmod(target_script, 0o755)
 
-    # Stub build-prompt.py — prints its own absolute path.
+    # Stub build-prompt.py — mirrors the real build-prompt's output-dir join
+    # (<repo_root>/.rabbit/prompts/...) and records its OWN absolute path as
+    # the prompt body so the test can still verify WHICH build-prompt resolved
+    # after the dispatcher relocates the prompt to the canonical runtime root.
     stub = os.path.join(contract_scripts, "build-prompt.py")
     with open(stub, "w") as f:
         f.write(
             "#!/usr/bin/env python3\n"
-            "import os, sys\n"
-            "print(os.path.abspath(__file__))\n"
+            "import os, sys, subprocess\n"
+            "root = os.environ.get('RABBIT_ROOT')\n"
+            "if not root:\n"
+            "    root = subprocess.run(['git','-C',os.path.dirname(os.path.abspath(__file__)),\n"
+            "        'rev-parse','--show-toplevel'], capture_output=True, text=True).stdout.strip()\n"
+            "out_dir = os.path.join(root, '.rabbit', 'prompts')\n"
+            "os.makedirs(out_dir, exist_ok=True)\n"
+            "p = os.path.join(out_dir, 'spec-create-%d.txt' % os.getpid())\n"
+            "open(p, 'w').write(os.path.abspath(__file__))\n"
+            "print(p)\n"
         )
     os.chmod(stub, 0o755)
 
@@ -75,7 +86,13 @@ def main():
                   f"stderr={r.stderr!r}", file=sys.stderr)
             return 1
 
-        resolved = r.stdout.strip()
+        prompt_path = r.stdout.strip()
+        if not os.path.isfile(prompt_path):
+            print(f"FAIL: emitted prompt path does not exist: {prompt_path!r}",
+                  file=sys.stderr)
+            return 1
+        with open(prompt_path) as f:
+            resolved = f.read().strip()
         if resolved != expected_build_prompt:
             print(f"FAIL: dispatch resolved build-prompt.py to {resolved!r}; "
                   f"expected plugin-layout path {expected_build_prompt!r} "

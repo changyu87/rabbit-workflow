@@ -25,6 +25,31 @@ Each retirement entry below carries the original invariant number (as it appeare
 
 ## Version notes
 
+- **v1.19.0 (bug #1066 — pin spec-create prompt to the single-`.rabbit`
+  runtime root):** `scripts/dispatch-spec-creator.py` invokes
+  `contract/scripts/build-prompt.py`, which unconditionally joins
+  `<its repo_root>/.rabbit/prompts/...`. In a vendored install the session
+  exports `RABBIT_ROOT=<host>/.rabbit`, so build-prompt's join DOUBLED to
+  `<host>/.rabbit/.rabbit/prompts/...`, splitting assembled prompts off the
+  single-`.rabbit` runtime root every other writer/reader (SessionStart,
+  scope-guard) uses. FIX: after build-prompt returns, the dispatcher resolves
+  the canonical runtime root via rabbit-cage's `rabbit_runtime_root`
+  (`.claude/features/rabbit-cage/lib/runtime_root.py`, Inv 52, #1046),
+  lazy-imported with the `importlib.util` cross-feature INVOKE pattern
+  rabbit-cage's session-start dispatcher establishes, and RELOCATES the prompt
+  to `<runtime_root>/prompts/` when build-prompt wrote it elsewhere, printing
+  that canonical path. Idempotent: in standalone mode build-prompt already
+  writes the canonical path and no move occurs. Inv 3 gains clause (f) stating
+  the canonical-prompts-dir + relocation rule; clause (d)'s stdlib list gains
+  `shutil` + `importlib.util`. `contract.md` `invokes.scripts` gains the
+  rabbit-cage `runtime_root.py` invoke. Added enforcing E2E tests
+  `test/test-dispatch-prompt-path-no-double-rabbit.py` (vendored layout with
+  `RABBIT_ROOT=<host>/.rabbit` → single-`.rabbit` path, file present) and
+  `test/test-dispatch-prompt-path-standalone.py` (standalone → canonical path,
+  no relocation). `dispatch-spec-creator.py` module version 2.0.0 -> 2.1.0.
+  Numbering stays contiguous 1..8. Version quad bumped 1.18.0 -> 1.19.0
+  (feature.json + spec.md + contract.md frontmatter + this note).
+
 - **v1.18.0 (bug #1043 — rabbit-spec-update dual-accept the `vendored` mode
   marker):** After the #980 plugin->vendored rename, `write_mode_marker`
   writes `vendored` (the value `detect_mode` now returns) verbatim to

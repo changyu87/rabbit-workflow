@@ -15,6 +15,18 @@ to stderr so the orchestrator can surface "and M dropped" to the user instead
 of silently building a prompt over an incomplete file list. stdout stays a
 single prompt-file path the orchestrator parses.
 
+The assembled prompt is pinned to the CANONICAL single-`.rabbit` runtime root
+(#1066) via rabbit-cage's `rabbit_runtime_root` resolver (Inv 52). In a
+vendored install the session exports `RABBIT_ROOT=<host>/.rabbit`, and
+contract/scripts/build-prompt.py unconditionally joins `<repo_root>/.rabbit/
+prompts/...` — so left alone it writes to the DOUBLED
+`<host>/.rabbit/.rabbit/prompts/...` tree, splitting prompts off the runtime
+root every other writer/reader uses. After build-prompt.py returns, this
+script relocates the prompt under `<rabbit_runtime_root(repo_root)>/prompts/`
+when build-prompt wrote it elsewhere, and prints that canonical path. The
+relocation is idempotent: in standalone mode build-prompt already writes the
+canonical path and no move occurs.
+
 Both modes are supported:
   - Plugin mode: --paths populated with code globs the agent reads from.
   - Standalone mode: --paths empty (or omitted) — agent produces a skeleton.
@@ -29,7 +41,7 @@ Exit codes:
     1 = invocation error (missing args, glob resolution failure)
     2 = build-prompt.py subprocess failure
 
-Version: 2.0.0
+Version: 2.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 """
@@ -37,11 +49,40 @@ Deprecation criterion: when Claude Code exposes native spec-lifecycle skills tha
 import argparse
 import glob
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 MAX_FILES = 50
+
+
+def _rabbit_runtime_root(repo_root):
+    """Resolve the canonical single-`.rabbit` runtime root for `repo_root`
+    via rabbit-cage's `rabbit_runtime_root` resolver (Inv 52), lazy-imported
+    from the install's feature lib using the same importlib.util pattern
+    rabbit-cage's session-start dispatcher uses (#1046).
+
+    Falls back to the inline basename rule when the resolver cannot be
+    imported (degenerate / partial install) so the prompt still lands on a
+    single-`.rabbit` path.
+    """
+    resolver_path = (
+        Path(repo_root) / ".claude" / "features" / "rabbit-cage"
+        / "lib" / "runtime_root.py"
+    )
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "rabbit_cage_runtime_root", str(resolver_path))
+        if spec is not None and spec.loader is not None:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.rabbit_runtime_root(str(repo_root))
+    except (FileNotFoundError, ImportError, AttributeError, OSError):
+        pass
+    rp = os.path.normpath(str(repo_root))
+    return rp if os.path.basename(rp) == ".rabbit" else os.path.join(rp, ".rabbit")
 
 
 def main():
@@ -90,7 +131,22 @@ def main():
         print(result.stderr, file=sys.stderr)
         return 2
 
-    print(result.stdout.strip())
+    built_path = result.stdout.strip()
+
+    # Pin the prompt to the canonical single-`.rabbit` runtime root (#1066).
+    # build-prompt.py joins `<its repo_root>/.rabbit/prompts/...`; in a vendored
+    # install where RABBIT_ROOT is already `<host>/.rabbit` that doubles to
+    # `<host>/.rabbit/.rabbit/prompts/...`. Relocate to the canonical dir when
+    # build-prompt wrote elsewhere; in standalone mode the two paths coincide
+    # and no move occurs.
+    canonical_dir = os.path.join(_rabbit_runtime_root(repo_root), "prompts")
+    if os.path.normpath(os.path.dirname(built_path)) != os.path.normpath(canonical_dir):
+        os.makedirs(canonical_dir, exist_ok=True)
+        canonical_path = os.path.join(canonical_dir, os.path.basename(built_path))
+        shutil.move(built_path, canonical_path)
+        built_path = canonical_path
+
+    print(built_path)
     return 0
 
 

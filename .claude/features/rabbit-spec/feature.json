@@ -1,10 +1,10 @@
 {
   "name": "rabbit-spec",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
-  "tdd_state": "sync-deployed",
+  "tdd_state": "test-green",
   "status": "active",
   "summary": "Owner of the rabbit workflow's spec-lifecycle surface. Hosts the rabbit-spec-creator subagent (drafts AND writes a new feature's initial docs/spec.md, returning a {path_written, summary} handoff) with its input assembler scripts/dispatch-spec-creator.py, and the rabbit-spec-update skill (revises existing specs; absorbed from rabbit-feature/rabbit-feature-spec).",
   "surface": {
@@ -53,5 +53,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.17.0 -> 1.18.0, bug #1043): Inv 4 now requires rabbit-spec-update's SKILL.md mode detection to dual-accept the vendored-marker value `vendored` (canonical) alongside the legacy `plugin` for the vendored feature_root branch, mirroring the _VENDORED_MODES = (\"vendored\", \"plugin\") coexistence idiom; previously it pinned `plugin` exactly, so a `vendored` marker fell through to the standalone path. Added enforcing test test-rabbit-spec-update-vendored-mode.py. Numbering stays contiguous 1..8."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.18.0 -> 1.19.0, bug #1066): Inv 3 gains clause (f) pinning the assembled prompt to the canonical single-`.rabbit` runtime root via rabbit-cage's rabbit_runtime_root resolver (Inv 52, #1046), fixing the vendored-mode `.rabbit/.rabbit/prompts/` doubling caused by build-prompt.py's unconditional `<repo_root>/.rabbit/prompts` join when RABBIT_ROOT is already `<host>/.rabbit`. Clause (d)'s stdlib list extended with shutil + importlib.util. Added enforcing tests test-dispatch-prompt-path-no-double-rabbit.py and test-dispatch-prompt-path-standalone.py. Numbering stays contiguous 1..8."
 }
