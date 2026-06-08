@@ -113,15 +113,17 @@ def test_contract_includes_check_release_update_script():
     print("PASS test_contract_includes_check_release_update_script")
 
 
-def test_hooks_has_five_entries():
-    """HOOKS must lay down 4 rabbit-cage dispatchers + _dispatcher_lib.
+def test_hooks_has_six_entries():
+    """HOOKS must lay down 4 rabbit-cage dispatchers + _dispatcher_lib +
+    restart_snapshot (the Inv 54 mid-session restart-advisory helper).
 
     prompt-injector.py was retired by PR #401 (Skill-path prompt injection
     was removed) and is no longer part of the rabbit-cage hook closure.
     """
     mod = _load_install()
-    assert len(mod.HOOKS) == 5, (
-        f"expected 5 HOOKS entries (scope-guard + 3 dispatchers + _dispatcher_lib); "
+    assert len(mod.HOOKS) == 6, (
+        f"expected 6 HOOKS entries (scope-guard + 3 dispatchers + "
+        f"_dispatcher_lib + restart_snapshot); "
         f"got {len(mod.HOOKS)}: {mod.HOOKS}"
     )
     dst_names = {dst for _src, dst in mod.HOOKS}
@@ -131,10 +133,11 @@ def test_hooks_has_five_entries():
         ".claude/hooks/stop-dispatcher.py",
         ".claude/hooks/user-prompt-submit-dispatcher.py",
         ".claude/hooks/_dispatcher_lib.py",
+        ".claude/hooks/restart_snapshot.py",
     }
     missing = required - dst_names
     assert not missing, f"HOOKS missing required deploy destinations: {sorted(missing)}"
-    print("PASS test_hooks_has_five_entries")
+    print("PASS test_hooks_has_six_entries")
 
 
 def main() -> int:
@@ -145,7 +148,7 @@ def main() -> int:
     test_feature_includes_has_expected_features()
     test_rabbit_feature_includes_audit_owner_script()
     test_contract_includes_check_release_update_script()
-    test_hooks_has_five_entries()
+    test_hooks_has_six_entries()
     return 0
 
 

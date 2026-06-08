@@ -193,7 +193,15 @@ COLLAPSE_MAX = 1
 # standalone-untouched) plus its e2e test
 # (test-install-host-gitignore-strategy-a.py). A real spec addition documenting
 # new test-enforced behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 615
+# Raised 615 -> 627 by #1117, which added Inv 54 (mid-session restart advisory
+# for ANY on-disk change to a loaded restart-sensitive surface — the SessionStart
+# snapshot of hooks/skills/agents/settings/CLAUDE.md re-checked in
+# Stop/UserPromptSubmit via hooks/restart_snapshot.py, firing the advisory for
+# every update path, not just /rabbit-update install) plus its e2e test
+# (test-restart-advisory-on-disk-change.py), and amended Inv 35(b)/Inv 22h. A
+# real spec addition documenting new test-enforced behavior, not reword
+# re-inflation.
+SPEC_LINE_CEILING = 627
 
 PASS = 0
 FAIL = 0

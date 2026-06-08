@@ -66,6 +66,11 @@ from _dispatcher_lib import (  # noqa: E402
     dispatch_event,
     render_emission,
 )
+try:
+    from restart_snapshot import write_session_snapshot  # noqa: E402
+except ImportError:  # helper absent (partial deploy) — degrade gracefully
+    def write_session_snapshot(repo_root):  # noqa: D103
+        return
 
 
 def repo_root() -> Path:
@@ -359,6 +364,10 @@ def main() -> int:
     root = str(repo_root())
     payloads = dispatch_event("SessionStart", root)
     _reconcile_mode_marker(root)
+    # Inv 54b: baseline the restart-sensitive surface signature for THIS
+    # session (a fresh SessionStart = a restart, so it re-baselines and clears
+    # any prior mid-session restart advisory).
+    write_session_snapshot(root)
     _strip_welcome_decoration(payloads)
     for i, row in enumerate(_version_box(root)):
         payloads.insert(i, row)

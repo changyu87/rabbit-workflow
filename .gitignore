@@ -13,6 +13,7 @@
 .rabbit-human-approval-bypass
 .rabbit-tdd-autonomous
 .rabbit-auto-evolve-*
+.rabbit-restart-snapshot
 # Claude Code platform runtime files
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
