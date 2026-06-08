@@ -16,6 +16,36 @@ authoritative).
 
 ## Version notes
 
+- **v0.92.0 — 2026-06-06** — #1091 (enhancement). New Inv 67: the orchestrator
+  now CAPTURES a self-observed error into a well-formed issue via an ISOLATED
+  analysis subagent. The loop filed issues only REACTIVELY (a subagent's
+  `discovered_issues`, decomposition sub-issues) and had no mandate to capture a
+  defect it observes ITSELF — a self-observed error mid-tick was either
+  aborted-and-halted or silently dropped. Whenever the orchestrator observes a
+  non-zero bash/script exit, unexpected stderr/output, or any anomaly, it now
+  does a bounded analysis and files a well-formed issue for a LATER tick. The
+  KEY design constraint is CONTEXT ISOLATION: the deep root-cause analysis runs
+  in an ISOLATED subagent the orchestrator dispatches, NOT inline in the
+  dispatcher's own context — so it does not bloat/pollute the dispatcher's
+  accumulating context (important on the croncreate session-reuse path where
+  context accumulates across ticks). New `scripts/capture-observed-error.py`
+  owns BOTH deterministic halves (Tool-Choice Tier: script > spec > prompt):
+  `analysis-prompt` assembles the isolated-subagent dispatch prompt from a
+  structured error record; `file-args` assembles the deterministic
+  `file-item.py` argv from `{error, verdict}` with the verdict's `feature:` +
+  `priority:` labels and `--filed-by autonomous-evolve` provenance. The
+  dispatcher only performs the irreducible Agent() dispatch between the two
+  steps — a MAIN-SESSION, level-1 dispatch exactly like the Phase 6 TDD dispatch
+  (NEVER nested inside another subagent; no illegal two-level nesting,
+  spec-rules §4). BOUNDED: routine capture never halts the loop (distinct from
+  the safety-abort path) and the recursion guard refuses a `phase:
+  "error-capture"` record so capture-of-capture cannot recurse. New tests
+  `test/test-capture-observed-error.py` and
+  `test/test-spec-self-observed-error-capture-invariant.py`. SKILL.md body
+  documents the dispatcher's Agent() trigger step (a republish is required).
+  Four-way version bump 0.91.0 → 0.92.0; the `provides.skills` version bumps
+  0.25.0 → 0.26.0 for the SKILL.md body change.
+
 - **v0.91.0 — 2026-06-06** — #1081 (bug). New Inv 66: comment-aware triage so a
   maintainer's COMMENT is never silently dropped. The loop keyed triage off
   title/body/labels/state/native-deps only — NOT free-form comment content — so

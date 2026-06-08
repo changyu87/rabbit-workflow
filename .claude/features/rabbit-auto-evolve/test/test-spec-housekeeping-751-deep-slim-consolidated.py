@@ -168,13 +168,23 @@ POST_1051_ADD_INVARIANTS = 1
 # invariants) stays ENFORCED while the #1081 addition is admitted.
 POST_1081_ADD_LINES = 40
 POST_1081_ADD_INVARIANTS = 1
+# #1091 added the self-observed-error-capture invariant (Inv 67: the orchestrator
+# captures a self-observed error — non-zero exit / unexpected output / anomaly —
+# into a well-formed issue via an ISOLATED analysis subagent (context isolation on
+# the croncreate session-reuse path), with the deterministic prompt-assembly +
+# file-item argv owned by capture-observed-error.py, a level-1 main-session
+# dispatch, and a recursion guard) — a genuinely new owned rule, not slim
+# regression. Mirror the prior headroom so the #751 reduction (>= 150 lines, >= 4
+# invariants) stays ENFORCED while the #1091 addition is admitted.
+POST_1091_ADD_LINES = 50
+POST_1091_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
     + POST_943_ADD_LINES + POST_962_ADD_LINES + POST_970_ADD_LINES
     + POST_973_ADD_LINES + POST_966_ADD_LINES + POST_986_ADD_LINES
     + POST_1004_ADD_LINES + POST_1006_ADD_LINES + POST_1012_ADD_LINES
-    + POST_1051_ADD_LINES + POST_1081_ADD_LINES
+    + POST_1051_ADD_LINES + POST_1081_ADD_LINES + POST_1091_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -188,13 +198,15 @@ MAX_INVARIANT_COUNT = (
     + POST_962_ADD_INVARIANTS + POST_970_ADD_INVARIANTS
     + POST_966_ADD_INVARIANTS + POST_986_ADD_INVARIANTS
     + POST_1051_ADD_INVARIANTS + POST_1081_ADD_INVARIANTS
+    + POST_1091_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---
 
 # Every public scripts/*.py basename (the feature's script surface).
 SCRIPT_BASENAMES = [
-    "advise-restart.py", "banner-status.py", "check-auto-resume.py",
+    "advise-restart.py", "banner-status.py", "capture-observed-error.py",
+    "check-auto-resume.py",
     "check-preconditions.py", "classify-merge-restart.py",
     "clean-dispatch-leaks.py", "cleanup-branches.py",
     "close-decomposed-parents.py", "detect-scheduler.py", "end-tick.py",
