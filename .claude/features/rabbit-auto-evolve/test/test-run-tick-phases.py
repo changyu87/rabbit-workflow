@@ -56,12 +56,12 @@ STUBS = {
     "triage-batch.py": "import sys; sys.stdin.read(); print('[]')",
     "plan-batch.py": "import sys; sys.stdin.read(); print('{}')",
     "clean-dispatch-leaks.py": "print('{\"status\": \"clean\"}')",
-    # refire-guard.py (Inv 65): echoes its plan-flag argv into the trace so the
-    # test can assert pre-dispatch passes plan-empty/nonempty correctly.
+    # refire-guard.py (Inv 65): records its plan-flag argv to a side file so the
+    # test can assert pre-dispatch passes plan-empty/nonempty correctly. One
+    # line so textwrap.dedent does not mangle continuation indentation.
     "refire-guard.py":
-        "import sys;\n"
-        "open(__import__('os').environ.get('REFIRE_GUARD_ARGV_FILE','/dev/null'),'a')"
-        ".write(' '.join(sys.argv[1:]) + chr(10));\n"
+        "import os as _o; _f=_o.environ.get('REFIRE_GUARD_ARGV_FILE'); "
+        "open(_f,'a').write(' '.join(sys.argv[1:])+chr(10)) if _f else None; "
         "print('{\"refire_owed\": false}')",
     "merge-prs.py": "print('[]')",
     "run-post-merge.py": "print('{\"status\": \"noop\", \"pending\": []}')",

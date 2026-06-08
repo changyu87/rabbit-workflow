@@ -87,6 +87,7 @@ STALE_REFIRE_TS = "2026-06-07T00:00:00Z"
 # stale ts (past the heartbeat); 1 min after (inside the window).
 NOW_40MIN = "2026-06-07T00:40:00Z"
 NOW_1MIN = "2026-06-07T00:01:00Z"
+NOW_3MIN = "2026-06-07T00:03:00Z"
 
 
 def run_now(state_dir, plan_nonempty, now):
@@ -148,7 +149,9 @@ with tempfile.TemporaryDirectory() as d:
          "detail": "dispatchable work=1, scheduler=croncreate"},
     ])
     before = len(read_log_lines(state_dir))
-    proc = run_now(state_dir, plan_nonempty=True, now=NOW_40MIN)
+    # `now` is just 2 min after the fresh decision — inside the heartbeat
+    # window, so the just-fired refire is not (yet) judged dropped.
+    proc = run_now(state_dir, plan_nonempty=True, now=NOW_3MIN)
     res = json.loads(proc.stdout)
     if res.get("refire_owed") is False:
         ok("B: refire_owed false when the last refire decision is fresh")
@@ -217,67 +220,66 @@ with tempfile.TemporaryDirectory() as d:
 
 
 # ---------------------------------------------------------------------------
-# F — pure reconcile() predicate unit tests.
+# F — pure reconcile() predicate unit tests. reconcile() takes the RAW JSON
+# lines of tick.log (the shape _read_log_lines returns), oldest first.
 # ---------------------------------------------------------------------------
 mod = _load_guard_module()
 HEARTBEAT = 1800  # 30 min
 
+
+def lines(*records):
+    return [json.dumps(r) for r in records]
+
+
+REFIRE = {"ts": STALE_REFIRE_TS, "decision": "immediate-refire", "detail": ""}
+IDLE = {"ts": STALE_REFIRE_TS, "decision": "idle: no dispatchable work",
+        "detail": ""}
+FRESH_REFIRE = {"ts": NOW_1MIN, "decision": "immediate-refire", "detail": ""}
+
 # dropped: stale immediate-refire, plan non-empty, elapsed > heartbeat.
-owed, _ = mod.reconcile(
-    [{"ts": STALE_REFIRE_TS, "decision": "immediate-refire", "detail": ""}],
-    plan_nonempty=True, now_iso=NOW_40MIN, heartbeat_secs=HEARTBEAT,
-)
+owed, _ = mod.reconcile(lines(REFIRE), plan_nonempty=True,
+                        now_iso=NOW_40MIN, heartbeat_secs=HEARTBEAT)
 if owed is True:
     ok("F: reconcile() owed=True on a stale dropped refire")
 else:
     fail(f"F: reconcile() owed not True on a dropped refire: {owed!r}")
 
 # within the heartbeat window -> not yet owed (the refire may still fire).
-owed, _ = mod.reconcile(
-    [{"ts": STALE_REFIRE_TS, "decision": "immediate-refire", "detail": ""}],
-    plan_nonempty=True, now_iso=NOW_1MIN, heartbeat_secs=HEARTBEAT,
-)
+owed, _ = mod.reconcile(lines(REFIRE), plan_nonempty=True,
+                        now_iso=NOW_1MIN, heartbeat_secs=HEARTBEAT)
 if owed is False:
     ok("F: reconcile() owed=False inside the heartbeat window")
 else:
     fail(f"F: reconcile() owed not False inside the window: {owed!r}")
 
 # plan empty -> not owed regardless of elapsed.
-owed, _ = mod.reconcile(
-    [{"ts": STALE_REFIRE_TS, "decision": "immediate-refire", "detail": ""}],
-    plan_nonempty=False, now_iso=NOW_40MIN, heartbeat_secs=HEARTBEAT,
-)
+owed, _ = mod.reconcile(lines(REFIRE), plan_nonempty=False,
+                        now_iso=NOW_40MIN, heartbeat_secs=HEARTBEAT)
 if owed is False:
     ok("F: reconcile() owed=False when the plan is empty")
 else:
     fail(f"F: reconcile() owed not False on an empty plan: {owed!r}")
 
 # last decision is idle -> not owed.
-owed, _ = mod.reconcile(
-    [{"ts": STALE_REFIRE_TS, "decision": "idle: no dispatchable work",
-      "detail": ""}],
-    plan_nonempty=True, now_iso=NOW_40MIN, heartbeat_secs=HEARTBEAT,
-)
+owed, _ = mod.reconcile(lines(IDLE), plan_nonempty=True,
+                        now_iso=NOW_40MIN, heartbeat_secs=HEARTBEAT)
 if owed is False:
     ok("F: reconcile() owed=False when the last decision is idle")
 else:
     fail(f"F: reconcile() owed not False on a prior idle decision: {owed!r}")
 
-# a fresh refire AFTER the stale one is the last decision -> the prior fired.
-owed, _ = mod.reconcile(
-    [{"ts": STALE_REFIRE_TS, "decision": "immediate-refire", "detail": ""},
-     {"ts": NOW_1MIN, "decision": "immediate-refire", "detail": ""}],
-    plan_nonempty=True, now_iso=NOW_40MIN, heartbeat_secs=HEARTBEAT,
-)
+# a fresh refire AFTER the stale one is the last decision -> the prior fired
+# (the last decision's ts is recent relative to now).
+owed, _ = mod.reconcile(lines(REFIRE, FRESH_REFIRE), plan_nonempty=True,
+                        now_iso=NOW_3MIN, heartbeat_secs=HEARTBEAT)
 if owed is False:
     ok("F: reconcile() owed=False when a fresh refire is the last decision")
 else:
     fail(f"F: reconcile() owed not False with a fresh last decision: {owed!r}")
 
 # empty log -> not owed.
-owed, _ = mod.reconcile(
-    [], plan_nonempty=True, now_iso=NOW_40MIN, heartbeat_secs=HEARTBEAT,
-)
+owed, _ = mod.reconcile([], plan_nonempty=True,
+                        now_iso=NOW_40MIN, heartbeat_secs=HEARTBEAT)
 if owed is False:
     ok("F: reconcile() owed=False on an empty log")
 else:

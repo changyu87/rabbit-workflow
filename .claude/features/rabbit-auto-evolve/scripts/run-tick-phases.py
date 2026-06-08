@@ -11,9 +11,12 @@ hand-assembling any inter-phase data structure:
   pre-dispatch   tick-start self-sync (Inv 38), phase 0/1 stop/abort
                  short-circuit, running-guard (Inv 35), running-marker WRITE
                  (Inv 35 — only after the guard returns proceed), phases 3-5
-                 (fetch | triage | plan, Inv 18). Emits a result with
-                 `action: "proceed"` (continue to dispatch) or
-                 `action: "skip"` (a clean no-op short-circuit fired).
+                 (fetch | triage | plan, Inv 18), then the dropped-refire
+                 liveness guard (refire-guard.py, Inv 65 — reconciles the PRIOR
+                 tick's immediate-refire decision against the freshly-computed
+                 plan, surfacing a dropped CronCreate one-shot; non-fatal).
+                 Emits a result with `action: "proceed"` (continue to dispatch)
+                 or `action: "skip"` (a clean no-op short-circuit fired).
 
 The running marker is written by THIS shared walk (after its own guard),
 not before it by the caller (Inv 35). Sequencing the guard BEFORE the marker
@@ -56,7 +59,7 @@ A single JSON result object is emitted on stdout. Exit code is 0 on a
 completed segment (including every short-circuit no-op); non-zero on an
 unexpected phase-script failure.
 
-Version: 1.7.0
+Version: 1.8.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -258,6 +261,33 @@ def run_pre_dispatch():
         result["status"] = "failed"
         result["reason"] = "plan-failed"
         return result, 1
+
+    # Dropped-refire liveness guard (Inv 65 / #1051). The PRIOR tick may have
+    # decided immediate-refire (Inv 33) but the dispatcher's irreducible
+    # CronCreate one-shot can be dropped — nothing verified it. Reconcile that
+    # decision from the tick.log breadcrumb at tick start, NOW that the plan is
+    # computed so plan-emptiness is known. refire-guard.py emits a LOUD tick.log
+    # warning + refire_owed:true when a refire was owed but clearly never fired.
+    # It DETECTS + SURFACES only (CronCreate stays a Claude action). Hygiene
+    # step: an owed verdict or a guard failure is RECORDED but NEVER
+    # short-circuits or fails the tick (mirroring the Inv 49 sweep / Inv 55
+    # reconcile contracts).
+    plan_flag = "--plan-empty"
+    try:
+        plan_obj = json.loads(plan.stdout)
+        selection = plan_obj.get("selection_order") if isinstance(plan_obj, dict) else None
+        if isinstance(selection, list) and selection:
+            plan_flag = "--plan-nonempty"
+    except (ValueError, AttributeError):
+        pass
+    refire_guard = _run("refire-guard.py", [plan_flag])
+    result["phases"]["refire_guard"] = refire_guard.returncode
+    try:
+        guard_verdict = json.loads(refire_guard.stdout)
+        if isinstance(guard_verdict, dict) and guard_verdict.get("refire_owed"):
+            result["refire_owed"] = True
+    except (ValueError, AttributeError):
+        pass
 
     return result, 0
 
