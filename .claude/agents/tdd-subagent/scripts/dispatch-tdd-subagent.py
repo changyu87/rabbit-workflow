@@ -59,7 +59,7 @@ _BYPASS_NOTE_TEXT = (
 def _tdd_report_path(repo_root, feature_name):
     """Per-mode canonical tdd-report absolute path (Inv 48).
 
-    Plugin mode: `repo_root` IS the rabbit_root, so the report sits at
+    Vendored mode: `repo_root` IS the rabbit_root, so the report sits at
       <repo_root>/tdd-report-<feature>.json
     (NO extra `.rabbit/` segment; that would double-up to
     `<host>/.rabbit/.rabbit/tdd-report-...json` which is the #313 bug.)
@@ -69,22 +69,27 @@ def _tdd_report_path(repo_root, feature_name):
 
     Mode detection mirrors _scope_marker_path's dual-candidate check:
     look for a `mode` marker either at `<repo_root>/.runtime/mode`
-    (plugin where repo_root==rabbit_root) or at
-    `<repo_root>/.rabbit/.runtime/mode` (plugin where repo_root==host).
+    (vendored where repo_root==rabbit_root) or at
+    `<repo_root>/.rabbit/.runtime/mode` (vendored where repo_root==host).
+    The mode value is dual-accepted via the shared `_VENDORED_MODES`
+    constant (`vendored`/`plugin`) during the `plugin`->`vendored` rename
+    coexistence window (#980), mirroring `_scope_marker_path` (#1050/#1058);
+    a `vendored` install whose report path fell through to the standalone
+    form would mis-root the tdd-report.
     """
     candidates = (
-        # Plugin mode where repo_root is RABBIT_ROOT (per Inv 47).
+        # Vendored mode where repo_root is RABBIT_ROOT (per Inv 47).
         (os.path.join(repo_root, ".runtime", "mode"),
          os.path.join(repo_root, f"tdd-report-{feature_name}.json")),
-        # Plugin mode where repo_root is the host project root.
+        # Vendored mode where repo_root is the host project root.
         (os.path.join(repo_root, ".rabbit", ".runtime", "mode"),
          os.path.join(repo_root, ".rabbit", f"tdd-report-{feature_name}.json")),
     )
-    for mode_file, plugin_path in candidates:
+    for mode_file, vendored_path in candidates:
         try:
             with open(mode_file) as f:
-                if f.read().strip() == "plugin":
-                    return plugin_path
+                if f.read().strip() in _VENDORED_MODES:
+                    return vendored_path
         except (OSError, IOError):
             continue
     return os.path.join(repo_root, ".rabbit", f"tdd-report-{feature_name}.json")
