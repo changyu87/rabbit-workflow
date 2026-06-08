@@ -21,15 +21,19 @@ Two modes:
   `globs`) scaffolds a greenfield feature that owns no existing paths yet,
   symmetric with standalone mode. Greenfield features are scaffolded without
   a project-map glob registration.
+  A `--batch` entry MAY also carry `greenfield: true` ALONGSIDE non-empty
+  `globs`: those globs may legitimately match ZERO existing files (they
+  describe paths a brand-new feature will create), so the zero-match typo
+  guard is bypassed and the declared globs are registered as-is.
 
 Exit:
   0 success
   1 invalid name, target exists, or plugin-mode validation failure
     (glob outside user-project root, overlap with existing feature,
-    empty match, schema-validation failure)
+    zero match for a NON-greenfield feature, schema-validation failure)
   2 invocation error
 
-Version: 2.6.0
+Version: 2.7.0
 Owner: rabbit-workflow team (rabbit-feature)
 Deprecation criterion: when feature scaffolding is exposed as a native
     rabbit CLI subcommand.
@@ -247,7 +251,9 @@ def _scaffold_plugin_feature(target: Path, name: str, owner: str, globs: list[st
     (target / "docs/contract.md").write_text(contract_md)
 
 
-def _run_plugin_mode(repo_root: Path, name: str, globs: list[str]) -> int:
+def _run_plugin_mode(
+    repo_root: Path, name: str, globs: list[str], greenfield: bool = False
+) -> int:
     if not _valid_name(name):
         sys.stderr.write(
             f"ERROR: invalid name {name!r} (must be lowercase kebab-case "
@@ -291,7 +297,14 @@ def _run_plugin_mode(repo_root: Path, name: str, globs: list[str]) -> int:
             return 1
         new_matches.extend(matched)
 
-    if not new_matches:
+    # Zero-match typo guard. A glob that matches no existing file is almost
+    # certainly a typo FOR AN EXISTING FEATURE, so we refuse it by default.
+    # But a GREENFIELD feature (greenfield=True) legitimately declares globs
+    # for paths that do not exist yet — those zero matches are expected, not a
+    # typo. Permit the greenfield case through and register the declared globs
+    # as the feature's path set (mirrors the globless greenfield path above,
+    # which is the empty-glob form of the same intent). Bug #1098.
+    if not new_matches and not greenfield:
         sys.stderr.write(
             f"ERROR: no files match any of the supplied globs {globs!r}; "
             "refuse to register a feature with zero matches (typo guard)\n"
@@ -397,7 +410,7 @@ def _run_plugin_mode_batch(repo_root: Path, batch_file: Path) -> int:
         sys.stderr.write("ERROR: batch file must contain a JSON array\n")
         return 2
 
-    parsed: list[tuple[str, list[str]]] = []
+    parsed: list[tuple[str, list[str], bool]] = []
     for i, entry in enumerate(entries):
         if not isinstance(entry, dict):
             sys.stderr.write(f"ERROR: batch[{i}] must be an object {{name, globs}}\n")
@@ -408,23 +421,30 @@ def _run_plugin_mode_batch(repo_root: Path, batch_file: Path) -> int:
         # mode). Bug #902. A present-but-malformed `globs` (not a list, or a
         # list containing a non-string) is still rejected.
         globs = entry.get("globs", [])
+        # `greenfield` is OPTIONAL (default False). When true, the entry's
+        # globs are permitted to match ZERO existing files — they describe
+        # paths a brand-new feature will create, not a typo. Bug #1098.
+        greenfield = entry.get("greenfield", False)
         if not isinstance(name, str) or not _valid_name(name):
             sys.stderr.write(f"ERROR: batch[{i}].name invalid: {name!r}\n")
             return 1
         if not isinstance(globs, list) or not all(isinstance(g, str) for g in globs):
             sys.stderr.write(f"ERROR: batch[{i}].globs must be a list of strings\n")
             return 1
-        parsed.append((name, globs))
+        if not isinstance(greenfield, bool):
+            sys.stderr.write(f"ERROR: batch[{i}].greenfield must be a boolean\n")
+            return 1
+        parsed.append((name, globs, greenfield))
 
     seen_names: set[str] = set()
-    for name, _ in parsed:
+    for name, _, _ in parsed:
         if name in seen_names:
             sys.stderr.write(f"ERROR: duplicate feature name {name!r} in batch\n")
             return 1
         seen_names.add(name)
 
-    for i, (name, globs) in enumerate(parsed):
-        rc = _run_plugin_mode(repo_root, name, globs)
+    for i, (name, globs, greenfield) in enumerate(parsed):
+        rc = _run_plugin_mode(repo_root, name, globs, greenfield=greenfield)
         if rc != 0:
             sys.stderr.write(
                 f"ERROR: batch entry [{i}] {name!r} failed (rc={rc}); "
