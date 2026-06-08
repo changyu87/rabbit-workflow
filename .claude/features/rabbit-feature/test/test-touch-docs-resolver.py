@@ -26,8 +26,13 @@ End-to-end checks (real temp git repos, real subprocess invocations):
     is treated identically to the legacy `plugin` value — resolve-spec-path
     resolves under .rabbit/rabbit-project/features/, and commit-spec
     force-stages (git add -f) and commits the gitignored vendored spec.
+  * vendored-mode cwd-relative spec/contract path (#1061): when the rabbit
+    session cwd IS the vendored `.rabbit/` install dir, resolve-spec-path /
+    resolve-contract-path emit a CWD-RELATIVE path (no leading `.rabbit/`
+    prefix) so the consumer dispatch-tdd-subagent.py resolves it correctly
+    against its cwd. Standalone resolution is unchanged.
 
-Version: 2.1.0
+Version: 2.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -293,6 +298,96 @@ def test_commit_spec_vendored_mode_force_adds_gitignored() -> None:
         ).stdout.strip()
         assert tracked == ".rabbit/rabbit-project/features/demo/docs/spec.md", (
             f"vendored spec was not force-staged/committed; ls-files={tracked!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# vendored-mode cwd-relative spec/contract path (#1061): the rabbit session
+# cwd IS the vendored `.rabbit/` install dir. The producer must emit a
+# CWD-RELATIVE path (no leading `.rabbit/` prefix) so the consumer
+# dispatch-tdd-subagent.py — which resolves --spec against its cwd — finds it.
+# ---------------------------------------------------------------------------
+def _vendored_layout(root: Path, mode_value: str) -> Path:
+    """Build a vendored install under <root>: <root> is the host git repo,
+    <root>/.rabbit is the install dir (the rabbit session cwd), with the mode
+    marker and a flat-docs feature spec/contract present. Returns the .rabbit
+    install dir (the cwd the producer runs from)."""
+    _git_init(root)
+    rabbit = root / ".rabbit"
+    runtime = rabbit / ".runtime"
+    runtime.mkdir(parents=True)
+    (runtime / "mode").write_text(mode_value, encoding="utf-8")
+    feat = rabbit / "rabbit-project/features/demo/docs"
+    feat.mkdir(parents=True)
+    (feat / "spec.md").write_text("flat", encoding="utf-8")
+    (feat / "contract.md").write_text("flat", encoding="utf-8")
+    return rabbit
+
+
+def test_resolve_spec_vendored_cwd_relative_no_rabbit_prefix() -> None:
+    """In a vendored install run from the `.rabbit/` cwd, resolve-spec-path
+    MUST emit `rabbit-project/features/demo/docs/spec.md` — CWD-RELATIVE,
+    with NO leading `.rabbit/` — so the consumer (dispatch-tdd-subagent.py,
+    which os.path.isfile()'s --spec against cwd) finds the file. Before #1061
+    the path was host-root-relative (`.rabbit/rabbit-project/.../spec.md`),
+    which the consumer resolved to `.rabbit/.rabbit/...` → ERROR exit 2."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        rabbit_cwd = _vendored_layout(root, "vendored")
+        r = _run(rabbit_cwd, "resolve-spec-path", "demo")
+        assert r.returncode == 0, r.stderr
+        emitted = r.stdout.strip()
+        assert emitted == "rabbit-project/features/demo/docs/spec.md", (
+            f"vendored cwd-relative spec path mismatch; expected no .rabbit/ "
+            f"prefix, got {emitted!r}"
+        )
+        # The emitted path MUST resolve to a real file from the cwd, exactly
+        # as the consumer validates it.
+        assert (rabbit_cwd / emitted).is_file(), (
+            f"emitted path {emitted!r} does not resolve to a file from cwd"
+        )
+
+
+def test_resolve_spec_vendored_legacy_plugin_marker_cwd_relative() -> None:
+    """The legacy `plugin` marker value behaves identically to `vendored`."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        rabbit_cwd = _vendored_layout(root, "plugin")
+        r = _run(rabbit_cwd, "resolve-spec-path", "demo")
+        assert r.returncode == 0, r.stderr
+        assert r.stdout.strip() == "rabbit-project/features/demo/docs/spec.md", (
+            f"legacy plugin marker must also emit cwd-relative, got "
+            f"{r.stdout.strip()!r}"
+        )
+
+
+def test_resolve_contract_vendored_cwd_relative_no_rabbit_prefix() -> None:
+    """resolve-contract-path mirrors the cwd-relative vendored behaviour."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        rabbit_cwd = _vendored_layout(root, "vendored")
+        r = _run(rabbit_cwd, "resolve-contract-path", "demo")
+        assert r.returncode == 0, r.stderr
+        emitted = r.stdout.strip()
+        assert emitted == "rabbit-project/features/demo/docs/contract.md", (
+            f"vendored cwd-relative contract path mismatch, got {emitted!r}"
+        )
+        assert (rabbit_cwd / emitted).is_file()
+
+
+def test_resolve_spec_standalone_unchanged_by_1061() -> None:
+    """Regression: standalone resolution is untouched — still repo-root
+    relative `.claude/features/demo/docs/spec.md`."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _git_init(root)
+        feat = root / ".claude/features/demo/docs"
+        feat.mkdir(parents=True)
+        (feat / "spec.md").write_text("flat", encoding="utf-8")
+        r = _run(root, "resolve-spec-path", "demo")
+        assert r.returncode == 0, r.stderr
+        assert r.stdout.strip() == ".claude/features/demo/docs/spec.md", (
+            f"standalone resolution must be unchanged, got {r.stdout.strip()!r}"
         )
 
 
