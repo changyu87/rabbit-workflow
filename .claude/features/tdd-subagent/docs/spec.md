@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.23.0
+version: 5.24.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -447,14 +447,16 @@ state-machine surface this feature owns).
 
     Path-construction discipline in `dispatch-tdd-subagent.py`:
     - The dispatcher MUST compute the canonical `tdd_report_path` at prompt-assembly time, choosing per mode:
-      - **Plugin** (RABBIT_ROOT set, or `.rabbit/.runtime/mode == 'plugin'` detected): `<rabbit_root>/tdd-report-<feature>.json` where `<rabbit_root>` is the resolved `RABBIT_ROOT`.
+      - **Vendored** (RABBIT_ROOT set, or the mode marker is in `_VENDORED_MODES` — `vendored` or the legacy `plugin`): `<rabbit_root>/tdd-report-<feature>.json` where `<rabbit_root>` is the resolved `RABBIT_ROOT`. The mode value is dual-accepted (`vendored`/`plugin`) via the shared module-level `_VENDORED_MODES` constant, matching scope-guard's `_VENDORED_MODES` and the `_scope_marker_path` resolver (Inv 12) during the `plugin`->`vendored` rename coexistence window; a `vendored` install whose report path falls through to the standalone form below would mis-root the tdd-report.
       - **Standalone**: `<repo_root>/.rabbit/tdd-report-<feature>.json` where `<repo_root>` is the git toplevel.
     - The dispatcher plumbs the resolved `tdd_report_path` value into a single template slot (e.g. `{{tdd_report_path}}`) — every reference in STEP 7 and HANDOFF uses the SAME computed value.
     - Similarly, the mkdir target `mkdir -p <dir>` uses `os.path.dirname(tdd_report_path)`, so the directory is also per-mode-correct.
     - The scope marker path is already handled by the `{{scope_marker_path}}` slot per Inv 12 amended — verify no remaining hardcoded `{{repo_root}}/.rabbit-scope-active-...` lines exist in STEP 1 LOCK or STEP 8 UNLOCK template body, EXCEPT the descriptive prose block (Inv 7 'Scope marker convention' which documents the standalone naming convention as illustration — that's commentary, not an executable instruction).
 
-    Enforced by `test/test-prompt-no-doubled-rabbit-paths.py` (standalone
-    and plugin scenarios; both assert the absence of the doubled substring).
+    Enforced by `test/test-prompt-no-doubled-rabbit-paths.py` (standalone,
+    plugin, and vendored scenarios; all assert the absence of the doubled
+    substring, and the vendored scenario asserts the report path roots at the
+    rabbit-root rather than falling through to the standalone `.rabbit/` form).
 
 49. **`--affected-invariants` scoped spec embedding.** The assembled prompt's spec embedding behavior is gated by the optional `--affected-invariants N[,N,...]` flag (see Inv 4 flag set):
 
