@@ -189,9 +189,11 @@ with tempfile.TemporaryDirectory() as td:
             else:
                 fail(f"t4: expected newer=false, got {payload!r}")
 
-# t5: newer detected — latest-release tag_name > local -> JSON with newer=true
+# t5: newer detected — latest-release tag_name > local -> JSON with newer=true.
+# For a NON-local (configured-channel) pin, channel == the ref as-read (here
+# `dev`) and current == the .version content verbatim.
 with tempfile.TemporaryDirectory() as td:
-    write_file(os.path.join(td, ".version"), "v1.0.6")
+    write_file(os.path.join(td, ".version"), "dev")
     # install.py present and contains fetch_upstream -> self_update_available=true
     write_file(os.path.join(td, "install.py"), "# stub\ndef fetch_upstream():\n    pass\n")
     shim = make_urlopen_shim(payload=release_body("v1.0.7"))
@@ -206,13 +208,42 @@ with tempfile.TemporaryDirectory() as td:
             payload = None
         if payload is not None:
             if (payload.get("newer") is True
-                and payload.get("channel") == "v1.0.6"
-                and payload.get("current") == "v1.0.6"
+                and payload.get("channel") == "dev"
+                and payload.get("current") == "dev"
                 and payload.get("new") == "v1.0.7"
                 and payload.get("self_update_available") is True):
                 ok("t5: newer tag_name -> JSON with all fields + self_update_available=true")
             else:
                 fail(f"t5: payload mismatch: {payload!r}")
+
+# t5-local: BUG #1111 regression — a local --src install pin (`local-<sha>`)
+# must NOT report the pin as the channel. The channel MUST be the bare literal
+# `local` (a real channel label) and MUST differ from `current` (the pin).
+with tempfile.TemporaryDirectory() as td:
+    write_file(os.path.join(td, ".version"), "local-d3a86562")
+    shim = make_urlopen_shim(payload=release_body("v1.0.7"))
+    r = run_with_shim(td, shim)
+    if r.returncode != 0:
+        fail(f"t5-local: expected exit 0, got {r.returncode}; stderr={r.stderr!r}")
+    else:
+        try:
+            payload = json.loads(r.stdout.strip())
+        except json.JSONDecodeError as e:
+            fail(f"t5-local: stdout not JSON: {e}; stdout={r.stdout!r}")
+            payload = None
+        if payload is not None:
+            chan = payload.get("channel")
+            cur = payload.get("current")
+            if cur != "local-d3a86562":
+                fail(f"t5-local: current must be the verbatim pin, got {cur!r}")
+            elif chan == cur:
+                fail(f"t5-local: channel must NOT equal the version pin: {payload!r}")
+            elif chan != "local":
+                fail(f"t5-local: local pin -> channel must be bare 'local', got {chan!r}")
+            elif payload.get("new") != "v1.0.7":
+                fail(f"t5-local: new mismatch: {payload!r}")
+            else:
+                ok("t5-local: local-<sha> pin -> channel='local' (real label, != pin)")
 
 # t6: self-update probe FALSE arm — install.py absent OR no fetch_upstream
 with tempfile.TemporaryDirectory() as td:
