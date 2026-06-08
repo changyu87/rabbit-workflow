@@ -2,7 +2,10 @@
 """check-release-update.py — deterministic release-channel update probe.
 
 Reads <repo_root>/.version for the locally-installed ref, throttles
-the upstream fetch via <repo_root>/.rabbit/.runtime/last-update-check
+the upstream fetch via <runtime_root>/.runtime/last-update-check, where
+<runtime_root> is the canonical single-`.rabbit` runtime root resolved by
+rabbit-cage's rabbit_runtime_root (Inv 52) — in a vendored install repo_root
+already IS the `.rabbit` dir, so anchoring there avoids doubling the segment
 (default window 8h, override via RABBIT_UPDATE_CHECK_INTERVAL_SECONDS),
 fetches the latest published release's tag_name from the GitHub Releases
 API https://api.github.com/repos/<RABBIT_REPO>/releases/latest via stdlib
@@ -44,7 +47,7 @@ Usage:
 Exit codes:
     0 — always (silent on errors; JSON to stdout on success).
 
-Version: 2.0.0
+Version: 2.1.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when Claude Code exposes a native release-channel
     update notification mechanism that supersedes this helper.
@@ -70,6 +73,34 @@ def resolve_repo_root():
     # .claude/features/contract/scripts/check-release-update.py
     # parents[0]=scripts, [1]=contract, [2]=features, [3]=.claude, [4]=repo_root
     return str(Path(__file__).resolve().parents[4])
+
+
+def rabbit_runtime_root(repo_root):
+    """Resolve the canonical single-`.rabbit` runtime root for `repo_root` via
+    rabbit-cage's `rabbit_runtime_root` resolver (Inv 52), lazy-imported from the
+    install's feature lib using the same importlib.util pattern rabbit-cage's
+    session-start dispatcher and rabbit-spec's dispatcher use.
+
+    Falls back to the inline basename rule when the resolver cannot be imported
+    (degenerate / partial install) so the throttle file still lands on a single-
+    `.rabbit` path.
+    """
+    resolver_path = (
+        Path(repo_root) / ".claude" / "features" / "rabbit-cage"
+        / "lib" / "runtime_root.py"
+    )
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "rabbit_cage_runtime_root", str(resolver_path))
+        if spec is not None and spec.loader is not None:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.rabbit_runtime_root(str(repo_root))
+    except (FileNotFoundError, ImportError, AttributeError, OSError):
+        pass
+    rp = os.path.normpath(str(repo_root))
+    return rp if os.path.basename(rp) == ".rabbit" else os.path.join(rp, ".rabbit")
 
 
 def read_version(version_path):
@@ -149,7 +180,12 @@ def probe_self_update(rabbit_root):
 def main():
     repo_root = resolve_repo_root()
     version_path = os.path.join(repo_root, ".version")
-    ts_path = os.path.join(repo_root, ".rabbit", ".runtime", "last-update-check")
+    # Anchor the throttle file at the canonical single-`.rabbit` runtime root
+    # (Inv 52). In a vendored install repo_root IS the `.rabbit` dir, so an
+    # unconditional `<repo_root>/.rabbit/...` join doubled the segment (#1065);
+    # rabbit_runtime_root collapses that to one `.rabbit`.
+    ts_path = os.path.join(
+        rabbit_runtime_root(repo_root), ".runtime", "last-update-check")
 
     local = read_version(version_path)
     if local is None or local == "":
