@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.89.0
+version: 0.90.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into the integration target, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -283,13 +283,22 @@ mutation). The deterministic walk runs in two segments around Phase 6:
    It runs the tick-start self-sync (Inv 38), the phase 0/1 stop/abort
    short-circuit, the running-guard (Inv 35), then — ONLY when the guard returns
    `proceed` — writes the `.rabbit-auto-evolve-running` marker itself (Inv 42),
-   and finally phases 3-5 (`fetch | triage | plan`). Sequencing the guard before
+   phases 3-5 (`fetch | triage | plan`), and finally the dropped-refire liveness
+   guard (`refire-guard.py`, Inv 65 — reconciles the PRIOR tick's
+   immediate-refire decision from the `tick.log` breadcrumb against the
+   freshly-computed plan; if a refire was owed but clearly never fired it appends
+   a LOUD `tick.log` warning and the segment result carries `"refire_owed":
+   true`). Sequencing the guard before
    the marker write, in this ONE place for both the in-session and headless
    paths, is what stops a path from false-skipping on a marker it itself wrote.
    On `{"action":"skip",...}` a clean short-circuit fired (sync-fail, stop,
    abort, or a FRESH marker from a different live tick — `tick-running`) — run
    `end-tick.py` and end the turn. On `{"action":"proceed",...}` continue to
-   Phase 6.
+   Phase 6. If the result carries `"refire_owed": true`, the PRIOR tick's
+   immediate-refire one-shot was dropped (the dispatcher likely ended the turn
+   without the `CronCreate`); the loop self-heals because THIS tick will itself
+   re-decide the schedule at Phase 12 — but treat it as a signal to be careful
+   to follow the Phase 12 `CronCreate` step below.
 2. **Phase 6 (`dispatch`)** — the dispatcher's ONLY hand-driven phase. Before
    dispatching, consult the per-tick dispatch journal (Inv 54) so a resumed
    tick skips already-handled subagents:
@@ -556,6 +565,10 @@ Claude:
   `.rabbit-auto-evolve-stop-requested` or `.rabbit-auto-evolve-aborted`
   exists, the tick short-circuits to a clean no-op.
 - phases 3–5 (`fetch | triage | plan`) — the canonical pipe.
+- dropped-refire liveness guard (`refire-guard.py`, Inv 65) — after the plan is
+  computed, reconciles the PRIOR tick's immediate-refire decision from the
+  `tick.log` breadcrumb; surfaces a dropped one-shot (a LOUD `tick.log` warning
+  + `refire_owed`) so a silently-dropped refire is observable. Non-fatal.
 - phase 6 (`dispatch`) — SKIPPED (no Claude session).
 - phase 7 (`merge`) — `merge-prs.py --record-pending` for the PRs listed in
   the state's `merge_ready` field; skipped when there are none.

@@ -150,12 +150,21 @@ POST_1006_ADD_LINES = 16
 # added for the lines but not the count. Mirror the prior headroom so the #751
 # reduction stays ENFORCED.
 POST_1012_ADD_LINES = 13
+# #1051 added the dropped-refire liveness-guard invariant (Inv 65: a dropped
+# immediate-refire one-shot is made deterministically observable via
+# refire-guard.py reconciling the prior tick's tick.log breadcrumb at tick
+# start, plus the script-table row) — a genuinely new owned rule, not slim
+# regression. Mirror the prior headroom so the #751 reduction (>= 150 lines,
+# >= 4 invariants) stays ENFORCED while the #1051 addition is admitted.
+POST_1051_ADD_LINES = 35
+POST_1051_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
     + POST_943_ADD_LINES + POST_962_ADD_LINES + POST_970_ADD_LINES
     + POST_973_ADD_LINES + POST_966_ADD_LINES + POST_986_ADD_LINES
     + POST_1004_ADD_LINES + POST_1006_ADD_LINES + POST_1012_ADD_LINES
+    + POST_1051_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -168,6 +177,7 @@ MAX_INVARIANT_COUNT = (
     + POST_942_ADD_INVARIANTS + POST_943_ADD_INVARIANTS
     + POST_962_ADD_INVARIANTS + POST_970_ADD_INVARIANTS
     + POST_966_ADD_INVARIANTS + POST_986_ADD_INVARIANTS
+    + POST_1051_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---

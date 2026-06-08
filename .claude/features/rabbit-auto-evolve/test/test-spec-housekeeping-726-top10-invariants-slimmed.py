@@ -84,7 +84,11 @@ BASELINE_TOTAL_LINES = 3594
 # contract's _auto_evolve_next_tick_eta byte-for-byte, the Inv 55 mirror; ~13 lines across
 # the Inv 22 ETA-render paragraph and the enforced-by cadence-present bullet) is additive,
 # so the ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 3858
+# The dropped-refire liveness-guard invariant (Inv 65, #1051: a new top-level invariant
+# making a dropped immediate-refire one-shot deterministically observable via refire-guard.py
+# reconciling the prior tick's tick.log breadcrumb at tick start, plus the script-table row;
+# ~32 lines) is additive, so the ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 3880
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

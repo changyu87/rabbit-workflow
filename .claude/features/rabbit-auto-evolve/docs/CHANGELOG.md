@@ -16,6 +16,25 @@ authoritative).
 
 ## Version notes
 
+- **v0.90.0 — 2026-06-07** — #1051. New Inv 65: a dropped immediate-refire is
+  now deterministically observable. Phase 12 `schedule-decision.py` emits
+  `immediate-refire` and the dispatcher must `CronCreate` the one-shot, but that
+  CronCreate is a Claude-only action nothing verified — a dropped one silently
+  degraded the loop to heartbeat cadence (observed live: many ticks ended on
+  `immediate-refire` with no refire created). New `scripts/refire-guard.py`
+  reconciles the prior tick's `tick.log` breadcrumb at tick start: a stale
+  `immediate-refire` (no fresher decision) + a still-non-empty dispatchable plan
+  + more than a heartbeat-interval elapsed → a LOUD `tick.log` warning and a
+  `refire_owed: true` signal the dispatcher must act on. The guard DETECTS +
+  SURFACES; CronCreate stays a Claude action. `run-tick-phases.py pre-dispatch`
+  invokes it at tick start after the plan is computed (passing plan-emptiness),
+  as a non-fatal hygiene/observability step. New tests
+  `test/test-refire-guard.py` and
+  `test/test-spec-refire-liveness-guard-invariant.py`;
+  `test/test-run-tick-phases.py` gains the pre-dispatch wiring cases. Four-way
+  version bump 0.89.0 → 0.90.0. SKILL.md tick-start section updated (republish
+  required).
+
 - **v0.88.0 — 2026-06-06** — #1020 (final child of #1008). Housekeeping
   verify-or-flag pass on dev→main migration debris. `clean-dispatch-leaks.py`
   hardcoded `dev` for BOTH the leaked-branch detection (`branch != "dev"`) and

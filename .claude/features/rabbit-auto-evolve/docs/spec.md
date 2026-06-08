@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.89.0
+version: 0.90.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -97,6 +97,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/running-guard.py` | CLI | Inspects `.rabbit-auto-evolve-running`, clears a STALE marker (mtime/PID), and emits a proceed/skip verdict so a wedged tick never blocks the loop (Inv 35 / D3) |
 | `scripts/tick-log.py` | CLI | Minimal append-only JSON-per-line logger to `.rabbit/tick.log` for heartbeat/guard/schedule decisions; full verbosity config is Inv 37's scope (Inv 36 / D4) |
 | `scripts/schedule-decision.py` | CLI | At tick end/heartbeat, counts DISPATCHABLE work via the `fetch-queue.py \| triage-batch.py \| plan-batch.py` pipe (the plan's `selection_order`, which excludes blocked/deferred items, decomposition parents, and non-work verdicts) and emits `immediate-refire` (near-immediate one-shot) vs `idle`; the dispatcher performs the `CronCreate` one-shot (Inv 33 / D1). Every decision also carries `authoritative_version` — the current version resolved FRESH this tick from `git describe --tags --abbrev=0` with a state `last_tagged_version` fallback (Inv 64) |
+| `scripts/refire-guard.py` | CLI | At tick start, reconciles the PRIOR tick's schedule decision from the `.rabbit/tick.log` breadcrumb: a stale `immediate-refire` (no fresh decision after it) + a still-non-empty dispatchable plan + more than a heartbeat-interval elapsed → a dropped refire; appends a LOUD `tick.log` warning and emits `refire_owed: true` so the dispatcher acts (the `CronCreate` stays a Claude action; the guard only DETECTS + SURFACES). Exposes the pure `reconcile()` predicate (Inv 65) |
 | `scripts/log-tick.py` | CLI | Full per-tick observability logger: owns all writes to the append-only JSON-lines log at `.rabbit/auto-evolve.log`; structured kwargs → one record/line, with on/off enable, three verbosity levels, a <2KB per-line cap and 5MB rotation (Inv 37). Distinct from the minimal `tick-log.py` (different file + purpose) |
 | `scripts/log-path.py` | CLI | Prints the absolute path of the `.rabbit/auto-evolve.log` file so a cross-session daemon can `tail -f $(… log-path.py)` (Inv 37) |
 
@@ -3801,6 +3802,45 @@ summary is restated here.
     paths; the git-describe value overriding a stale cached state value; the
     state fallback when git-describe is unavailable; null when neither
     resolves).
+
+65. **A dropped immediate-refire is deterministically observable at the next
+    tick start.** Phase 12 `schedule-decision.py` emits `immediate-refire` when
+    dispatchable work remains (Inv 33), and the dispatcher must then `CronCreate`
+    the one-shot — an irreducible CLAUDE action a script cannot make, and NOTHING
+    verified it happened. A dispatcher that ends the turn WITHOUT the one-shot
+    silently stops the loop self-continuing (degrades to heartbeat cadence, or
+    stalls) — the silent-stop mode the Scheduling section (Inv 32–33) claims to
+    eliminate (observed live: ticks ending on `immediate-refire` with no refire,
+    advanced only by a manual hand-fire). `CronCreate` stays Claude-only, so the
+    fix makes the DROP OBSERVABLE rather than scripting the create.
+
+    The breadcrumb already exists: `schedule-decision.py` logs each decision to
+    `.rabbit/tick.log` (Inv 36) with an ISO `ts`. A promptly-fired refire enters
+    a new tick within the pinned ~1-min window and logs a FRESH decision, so the
+    LAST `tick.log` decision being a STALE `immediate-refire` (no newer one after
+    it) is the signature of a refire that never fired. `scripts/refire-guard.py`
+    exposes the PURE predicate `reconcile(log_lines, plan_nonempty, now_iso,
+    heartbeat_secs)` → `(refire_owed, detail)`: OWED-BUT-NOT-FIRED iff ALL hold —
+    the last `tick.log` decision is `immediate-refire`; the dispatchable plan is
+    STILL non-empty (passed in, NOT re-derived — Inv 33's `selection_order` is
+    the authority); and MORE than a heartbeat-interval has elapsed since its `ts`
+    (so the refire clearly did not fire promptly). A fresh refire, a prior
+    `idle`, a now-empty plan, or an absent log all yield `refire_owed: false` —
+    the guard prefers a false-NEGATIVE (wait one heartbeat) over a false-POSITIVE.
+    When owed it appends a LOUD `tick.log` warning (a `refire-owed` decision
+    token) and emits `{"refire_owed": true, ...}`; the dispatcher MUST act on it.
+    The guard DETECTS + SURFACES; it NEVER calls `CronCreate`. `now` is
+    overridable via `RABBIT_AUTO_EVOLVE_NOW` for tests (state dir as `tick-log.py`).
+
+    `run-tick-phases.py pre-dispatch` invokes `refire-guard.py` at tick start
+    AFTER phases 3–5 compute the plan, passing `--plan-nonempty` / `--plan-empty`
+    from the plan's `selection_order`. Like the Inv 49 sweep / Inv 55 reconcile,
+    it is a hygiene step: a failure or an owed verdict is RECORDED, never fatal.
+    Enforced by `test/test-refire-guard.py` (dropped refire → `refire_owed: true`
+    + a LOUD warning; fresh-refire / prior-`idle` / empty-plan / absent-log →
+    `refire_owed: false`; the pure `reconcile()`; a `--help` smoke),
+    `test/test-run-tick-phases.py` (pre-dispatch invokes the guard after the plan
+    with the correct flag), and `test/test-spec-refire-liveness-guard-invariant.py`.
 
 ## Known gaps
 
