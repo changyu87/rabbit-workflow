@@ -18,8 +18,9 @@ Two deterministic subcommands:
            self-update path: <rabbit_root>/install.py --update (the SOLE update
            mechanism per spec Inv 22). No fetch/copy logic is re-implemented
            here; install.py owns the in-place refresh. After a SUCCESSFUL
-           update, it diffs restart-sensitive surfaces (the .claude/hooks tree,
-           any .claude/settings*.json, and CLAUDE.md) across the install via a
+           update, it diffs restart-sensitive surfaces (the .claude/hooks,
+           .claude/skills, and .claude/agents trees, any .claude/settings*.json,
+           and CLAUDE.md) across the install via a
            content-hash signature; if any changed it WRITES the restart-needed
            marker `<rabbit_root>/.rabbit-update-restart-needed` that contract's
            SessionStart update banner reads + consumes (contract Inv 39), so the
@@ -59,8 +60,11 @@ DEFAULT_REPO = "changyu87/rabbit-workflow"
 RESTART_MARKER = ".rabbit-update-restart-needed"
 
 # Surfaces whose change requires a Claude Code restart to take effect: the
-# hooks tree, any settings*.json under .claude/, and CLAUDE.md at the root.
-RESTART_SENSITIVE_DIRS = (".claude/hooks",)
+# hooks/skills/agents trees, any settings*.json under .claude/, and CLAUDE.md at
+# the root. The skills/agents trees match the Inv 54 mid-session monitored set
+# so the install path and the mid-session snapshot agree on what is
+# restart-sensitive.
+RESTART_SENSITIVE_DIRS = (".claude/hooks", ".claude/skills", ".claude/agents")
 RESTART_SENSITIVE_FILES = ("CLAUDE.md",)
 
 
@@ -177,7 +181,7 @@ def _mark_restart_needed(rroot: Path) -> None:
     try:
         (rroot / RESTART_MARKER).write_text(
             "rabbit-update changed a restart-sensitive surface "
-            "(hooks/settings/CLAUDE.md)\n")
+            "(hooks/skills/agents/settings/CLAUDE.md)\n")
     except OSError as e:  # best-effort; never fail the install over the marker
         sys.stderr.write(f"WARNING: could not write restart marker: {e}\n")
 

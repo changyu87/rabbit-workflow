@@ -12,6 +12,13 @@ concise ADVISORY-restart line per tick-end (icon 🔄, distinct from the hard
 #503 resume banner so it reads as OPTIONAL). The Stop dispatcher does NOT clear
 the advisory marker — it persists across tick-ends until a SessionStart
 consumes it. Absent / erroring advise-restart.py degrades gracefully (no line).
+
+Inv 54: also re-checks the restart-sensitive surface snapshot taken at
+SessionStart (hooks/restart_snapshot.py) and, when a loaded surface
+(hooks/skills/agents/settings/CLAUDE.md) has changed on disk since session
+start — via ANY update path, not just `/rabbit-update install` — appends ONE
+`restart ADVISED` line (icon 🔄). The snapshot is not rewritten here, so the
+advisory persists across tick-ends until a fresh SessionStart re-baselines it.
 """
 
 import json
@@ -28,6 +35,11 @@ from _dispatcher_lib import (  # noqa: E402
     dispatch_event,
     render_emission,
 )
+try:
+    from restart_snapshot import restart_advisory_payloads  # noqa: E402
+except ImportError:  # helper absent (partial deploy) — degrade gracefully
+    def restart_advisory_payloads(repo_root):  # noqa: D103
+        return []
 
 
 def repo_root() -> Path:
@@ -61,6 +73,7 @@ def main() -> int:
     root = str(repo_root())
     payloads = dispatch_event("Stop", root)
     payloads.extend(advisory_restart_payloads(root))
+    payloads.extend(restart_advisory_payloads(root))
     emission = render_emission(payloads)
     if emission is not None:
         sys.stdout.write(json.dumps(emission) + "\n")

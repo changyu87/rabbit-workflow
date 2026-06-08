@@ -92,6 +92,7 @@ HOOKS = [
     (".claude/features/rabbit-cage/hooks/stop-dispatcher.py", ".claude/hooks/stop-dispatcher.py"),
     (".claude/features/rabbit-cage/hooks/user-prompt-submit-dispatcher.py", ".claude/hooks/user-prompt-submit-dispatcher.py"),
     (".claude/features/rabbit-cage/hooks/_dispatcher_lib.py", ".claude/hooks/_dispatcher_lib.py"),
+    (".claude/features/rabbit-cage/hooks/restart_snapshot.py", ".claude/hooks/restart_snapshot.py"),
 ]
 
 # Skills: source SKILL.md → deployed SKILL.md
@@ -167,6 +168,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "hooks/session-start-dispatcher.py",
         "hooks/user-prompt-submit-dispatcher.py",
         "hooks/_dispatcher_lib.py",
+        "hooks/restart_snapshot.py",
         "commands/rabbit-refresh.md",
         "commands/rabbit-project.md",
         "commands/rabbit-update.md",
@@ -382,6 +384,7 @@ def write_rabbit_gitignore(dst_root: Path) -> None:
         "impl-suggestion-*.json\n"
         ".scope-active-*\n"
         ".scope-bypass-once\n"
+        ".rabbit-restart-snapshot\n"
         "__pycache__/\n"
         "*.pyc\n"
     )
@@ -1087,7 +1090,22 @@ def _main_with_args(args: argparse.Namespace) -> int:
             )
             sys.stderr.flush()
             os.environ[_REEXEC_GUARD] = "1"
-            os.execv(sys.executable, [sys.executable, str(new_install_py), *sys.argv[1:]])
+            # Reuse the ALREADY-RESOLVED source tree for the child rather than
+            # re-fetching from the network. The parent already self-fetched (or
+            # was handed) `src_root`; passing it as an explicit `--src` makes the
+            # child validate its NEW closure against the SAME tree the parent
+            # fetched (deterministic, no second network round-trip) and skips a
+            # redundant second re-exec/self-fetch (explicit `--src` disables
+            # both per Inv 22h). Without this, the child re-fetches upstream and
+            # would spuriously fail its fresh-install closure check whenever the
+            # NEW closure names a surface not yet published upstream.
+            child_argv = list(sys.argv[1:])
+            if "--src" not in child_argv:
+                child_argv += ["--src", str(src_root)]
+            os.execv(
+                sys.executable,
+                [sys.executable, str(new_install_py), *child_argv],
+            )
             # os.execv does not return
 
     for src_rel, dst_rel in HOOKS:
