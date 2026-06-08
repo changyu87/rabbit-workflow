@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.93.0
+version: 0.94.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -340,21 +340,29 @@ summary is restated here.
    violating Inv 25 (convergence). Triage routes them to the research dispatch
    shape (Inv 27). Classification runs AFTER rule 7 would return `work`
    (alongside comment-thread reconciliation) and NEVER overrides a
-   `close-not-planned` / `blocked` / `malformed-labels` verdict. Detection
-   signals (ALL must hold, so a normal "implement X" item is never misrouted):
+   `close-not-planned` / `blocked` / `malformed-labels` verdict. The classifier
+   routes to research only on a STRONG, deterministic signal,
+   NOT incidental keyword presence: an implementable enhancement/bug whose
+   USER-FACING prose merely mentions `recommend`/`alert`/`notify`/`suggest` (a
+   request that the LOOP recommend/notify the operator at runtime) is a concrete
+   code change and MUST NOT be misrouted. Either route classifies it research:
+   **Route A** — an explicit `research` LABEL (the maintainer's deterministic
+   request; wins outright, regardless of body prose). **Route B** — a
+   research-REQUEST shape in the issue's own framing, requiring ALL of: (1) a
+   STRONG signal — a research verb (case-insensitive whole-word `study`,
+   `evaluate`, `investigate`, `survey`, `assess`, `research`, `compare`,
+   `explore`) in the TITLE (the primary ask), OR an explicit research-request
+   PHRASE anywhere (`produce findings`, `investigate and …`, `evaluate options`,
+   `recommendation needed`, `an analysis`); a research verb sitting only in the
+   BODY is NOT enough; (2) no concrete code-change target — no
+   `.claude/features/<name>/` path beyond the labelled dir, no imperative
+   implement/fix/add phrasing; (3) a body asking for a recommendation, findings,
+   a report, an analysis, or an evaluation.
 
-   1. **Research verb present.** The title OR body contains a research verb
-      (case-insensitive whole-word): `study`, `evaluate`, `investigate`,
-      `survey`, `assess`, `recommend`, `compare`, `explore`.
-   2. **No concrete code-change target.** No `.claude/features/<name>/` path
-      beyond the labelled feature dir, and no imperative implement/fix/add
-      phrasing pointing at a behavior change.
-   3. **Findings/recommendation requested.** The body asks for a
-      recommendation, findings, a report, an analysis, or an evaluation.
-
-   When all three hold, triage emits `decision=research`,
+   When a route holds, triage emits `decision=research`,
    `reason_code=research`, and a non-empty `planning_note`. A research item is
-   NEVER `close-not-planned` and NEVER `work`/`dispatch`.
+   NEVER `close-not-planned` and NEVER `work`/`dispatch`. When ambiguous the
+   implementable shape is preferred (findings-instead-of-fix is the worse miss).
 
    The script reads only:
    - Issue metadata via `gh issue view <N> --repo <repo> --json
@@ -1737,14 +1745,19 @@ summary is restated here.
     (convergence). The research shape gives them a home.
 
     **(a) Classification (triage).** `triage-issue.py` classifies an item as
-    `decision=research` (`reason_code=research`) when ALL three signals hold:
-    a research/investigation verb (`study`, `evaluate`, `investigate`,
-    `survey`, `assess`, `recommend`, `compare`, `explore`) appears in the
-    title or body; the body declares no concrete code-change target; and the
-    body asks for a recommendation / findings / report / analysis rather than
-    a behavior change (Inv 3 "Research/investigation classification"
-    subsection). A research item is NEVER `close-not-planned` (it is valid)
-    and NEVER `work`/`dispatch` (it produces no code).
+    `decision=research` (`reason_code=research`) on a STRONG, deterministic
+    signal — NOT on incidental keyword presence. Either an explicit `research`
+    LABEL (wins outright), OR a research-REQUEST shape in the issue's own
+    framing: a research/investigation verb (`study`, `evaluate`, `investigate`,
+    `survey`, `assess`, `research`, `compare`, `explore`) in the TITLE — or an
+    explicit research-request PHRASE (`produce findings`, `investigate and …`,
+    `evaluate options`, `recommendation needed`, `an analysis`) anywhere — AND
+    no concrete code-change target AND a body asking for a recommendation /
+    findings / report / analysis (Inv 3 "Research/investigation classification"
+    subsection). A research verb sitting only in the body of an
+    otherwise-implementable enhancement/bug is NOT enough — that incidental-prose
+    path misrouted concrete code changes to the findings lane. A research item is
+    NEVER `close-not-planned` (it is valid) and NEVER `work`/`dispatch`.
 
     **(b) Routing (plan-batch).** `plan-batch.py` emits the research shape as
     the 4th dispatch shape alongside `parallel-per-feature`,

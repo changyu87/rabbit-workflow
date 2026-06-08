@@ -709,6 +709,149 @@ with tempfile.TemporaryDirectory() as repo_root:
 
 
 # ---------------------------------------------------------------------------
+# Research FALSE-POSITIVE guard (issue #1097): an implementable enhancement/bug
+# whose prose merely CONTAINS user-facing keywords like "recommend" / "alert" /
+# "notify" / "notification" / "suggest" — but which is NOT framed as a research
+# REQUEST (no research verb in the TITLE, no "produce findings"/"investigate"
+# primary ask) and carries a valid feature: label + a concrete acceptance-style
+# body — MUST NOT be routed to research. It is a normal implementable item
+# (decision=work). Modelled on #1096, which was a concrete CODE change that the
+# old body-keyword heuristic mis-classified as decision=research, sending it to
+# the findings path instead of a fix.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "alert-feature")
+    issue_payload = json.dumps({
+        "number": 1096,
+        # No imperative code verb in title or body (the gap the old heuristic
+        # fell into): a concrete acceptance-style enhancement whose prose merely
+        # CONTAINS recommend/alert/notify keywords.
+        "title": "Low-disk threshold notification in the tick loop",
+        "body": ("When free disk falls below the threshold the loop should "
+                 "emit an alert and notify the operator. Acceptance: a "
+                 "notification is produced once per tick; the operator gets a "
+                 "recommendation on what to prune. This is a concrete behavior "
+                 "the loop must perform."),
+        "labels": [
+            {"name": "feature:alert-feature"},
+            {"name": "priority:medium"},
+            {"name": "enhancement"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"1096": issue_payload}, list_payload)
+    proc = run_script(repo_root, 1096, shim_dir)
+    expect_decision(
+        "research-false-positive-1096", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None if r.get("decision") != "research"
+            else "an implementable enhancement with incidental "
+                 "recommend/alert/notify prose must NOT be routed to research"
+        ),
+    )
+
+
+# Companion (issue #1097): a BUG with "suggest" in its prose but a concrete
+# acceptance body is implementable, not research.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "suggest-feature")
+    issue_payload = json.dumps({
+        "number": 10960,
+        "title": "Banner omits the recommended next action",
+        "body": ("The status banner does not surface the recommended next "
+                 "action. It should recommend the next step to the operator. "
+                 "Acceptance: the banner prints a 'Recommended:' line."),
+        "labels": [
+            {"name": "feature:suggest-feature"},
+            {"name": "priority:high"},
+            {"name": "bug"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"10960": issue_payload}, list_payload)
+    proc = run_script(repo_root, 10960, shim_dir)
+    expect_decision("research-false-positive-suggest-bug", proc,
+                    "work", "actionable")
+
+
+# ---------------------------------------------------------------------------
+# Research STRONG-SIGNAL guard (issue #1097): a genuine research REQUEST is
+# still classified research. Two strong, deterministic signals:
+#   (1) a `research` label is an explicit research request → decision=research;
+#   (2) a research verb framing the PRIMARY ask in the TITLE plus a findings
+#       request in the body → decision=research.
+# ---------------------------------------------------------------------------
+
+# Signal 1: explicit `research` label routes to research even when the body
+# reads like an enhancement (the label is the maintainer's explicit intent).
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "labelled-research-feature")
+    issue_payload = json.dumps({
+        "number": 10961,
+        "title": "Caching strategy for the queue",
+        "body": ("We need to decide which caching approach to adopt. Produce a "
+                 "recommendation."),
+        "labels": [
+            {"name": "feature:labelled-research-feature"},
+            {"name": "priority:medium"},
+            {"name": "research"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"10961": issue_payload}, list_payload)
+    proc = run_script(repo_root, 10961, shim_dir)
+    expect_decision(
+        "research-label-routes", proc, "research", "research",
+        extra_assert=lambda r: (
+            None
+            if (isinstance(r.get("planning_note"), str)
+                and r["planning_note"].strip())
+            else "research-label decision must carry a non-empty planning_note"
+        ),
+    )
+
+
+# Signal 2: a research verb framing the TITLE as the primary ask + a findings
+# request → research (the genuine "investigate X and produce findings" shape).
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "title-research-feature")
+    issue_payload = json.dumps({
+        "number": 10962,
+        "title": "Investigate the queue-starvation report and produce findings",
+        "body": ("Look into why the queue starves under load. We want an "
+                 "analysis and a recommendation — no code change expected."),
+        "labels": [
+            {"name": "feature:title-research-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"10962": issue_payload}, list_payload)
+    proc = run_script(repo_root, 10962, shim_dir)
+    expect_decision("research-title-verb-routes", proc, "research", "research")
+
+
+# ---------------------------------------------------------------------------
 # Research over-trigger guard (issue #478): a normal "implement X" actionable
 # issue with NO research verb must stay decision=work — the research path must
 # not capture ordinary code-change items.
