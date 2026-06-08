@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.24.0
+version: 5.25.0
 template_version: 2.1.0
 owner: rabbit-workflow team
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -71,7 +71,8 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
   "invokes": {
     "scripts": [
       ".claude/features/contract/scripts/find-feature.py (resolve --scope to feature directory)",
-      ".claude/features/contract/scripts/build-prompt.py (assemble the prompt from the template and prepend the injected policy block)"
+      ".claude/features/contract/scripts/build-prompt.py (assemble the prompt from the template and prepend the injected policy block)",
+      ".claude/features/rabbit-cage/lib/runtime_root.py::rabbit_runtime_root (resolve the canonical single-`.rabbit` runtime root for the tdd-report artifact path; lazy-imported with an inline basename-rule fallback when the rabbit-cage feature tree is not co-located)"
     ],
     "agents": []
   },

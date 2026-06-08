@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.24.0
+version: 5.25.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -446,9 +446,10 @@ state-machine surface this feature owns).
 48. **No doubled `.rabbit/.rabbit/` in assembled prompt paths.** The assembled prompt MUST NOT contain the literal substring `.rabbit/.rabbit/` anywhere — neither in STEP 1 LOCK (scope marker), STEP 7 mkdir, STEP 7 `Path:` for the tdd-report, STEP 8 UNLOCK, nor the HANDOFF block's `tdd_report_path` field.
 
     Path-construction discipline in `dispatch-tdd-subagent.py`:
-    - The dispatcher MUST compute the canonical `tdd_report_path` at prompt-assembly time, choosing per mode:
-      - **Vendored** (RABBIT_ROOT set, or the mode marker is in `_VENDORED_MODES` — `vendored` or the legacy `plugin`): `<rabbit_root>/tdd-report-<feature>.json` where `<rabbit_root>` is the resolved `RABBIT_ROOT`. The mode value is dual-accepted (`vendored`/`plugin`) via the shared module-level `_VENDORED_MODES` constant, matching scope-guard's `_VENDORED_MODES` and the `_scope_marker_path` resolver (Inv 12) during the `plugin`->`vendored` rename coexistence window; a `vendored` install whose report path falls through to the standalone form below would mis-root the tdd-report.
-      - **Standalone**: `<repo_root>/.rabbit/tdd-report-<feature>.json` where `<repo_root>` is the git toplevel.
+    - The dispatcher MUST compute the canonical `tdd_report_path` at prompt-assembly time as `<rabbit_runtime_root(repo_root)>/tdd-report-<feature>.json`, where `rabbit_runtime_root` is rabbit-cage's canonical single-`.rabbit` runtime-root resolver (`.claude/features/rabbit-cage/lib/runtime_root.py`, rabbit-cage Inv 52). The dispatcher CROSS-FEATURE INVOKES that resolver (lazy-imported via `importlib` from the install's feature tree, mirroring rabbit-cage's `session-start-dispatcher.py::_canonical_runtime_root`), instead of probing on-disk mode markers with a bespoke heuristic. The resolver keys off the resolved `repo_root` basename, yielding:
+      - **Vendored** (`basename(repo_root) == ".rabbit"`; the dispatcher resolves `repo_root` to `RABBIT_ROOT`, which IS the vendored `.rabbit` install dir per Inv 47): `<repo_root>/tdd-report-<feature>.json` — the resolver returns `repo_root` unchanged, so NO doubled `.rabbit/.rabbit/` segment.
+      - **Standalone** (any other basename; `repo_root` is the git toplevel): `<repo_root>/.rabbit/tdd-report-<feature>.json`.
+      Anchoring on the canonical resolver removes the prior divergence where the bespoke mode-marker probe fell through to the standalone form for a vendored-basename `repo_root` carrying no on-disk mode marker, doubling the segment. When the rabbit-cage feature tree is not co-located under `repo_root` (degenerate / partial install), the dispatcher falls back to the resolver's own inline basename rule, so the result is identical without the cross-feature dependency present.
     - The dispatcher plumbs the resolved `tdd_report_path` value into a single template slot (e.g. `{{tdd_report_path}}`) — every reference in STEP 7 and HANDOFF uses the SAME computed value.
     - Similarly, the mkdir target `mkdir -p <dir>` uses `os.path.dirname(tdd_report_path)`, so the directory is also per-mode-correct.
     - The scope marker path is already handled by the `{{scope_marker_path}}` slot per Inv 12 amended — verify no remaining hardcoded `{{repo_root}}/.rabbit-scope-active-...` lines exist in STEP 1 LOCK or STEP 8 UNLOCK template body, EXCEPT the descriptive prose block (Inv 7 'Scope marker convention' which documents the standalone naming convention as illustration — that's commentary, not an executable instruction).
