@@ -22,8 +22,14 @@ t-true-orphan: template body contains a {{name}} not in declared slots →
 t-mixed-declared-and-undeclared: body has one declared and one undeclared
                 placeholder; slot value also contains literal {{declared}} →
                 exit 1 with stderr naming ONLY the undeclared one.
+t-standalone-out-dir: repo_root basename is NOT `.rabbit` → the assembled
+                prompt lands under <repo_root>/.rabbit/prompts/ (Inv 52).
+t-vendored-out-dir-no-doubling: repo_root basename IS `.rabbit` (vendored
+                install) → the assembled prompt lands under a SINGLE
+                .rabbit segment <repo_root>/prompts/, never the doubled
+                <repo_root>/.rabbit/prompts/ (Inv 52).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when prompt-contract assembly is native to Claude Code.
 """
@@ -286,6 +292,61 @@ with tempfile.TemporaryDirectory() as td:
              f"'args' as orphan; got {r.stderr!r}")
     else:
         ok("t-mixed-declared-and-undeclared: exit 1 naming only the undeclared placeholder")
+
+# ---------- t-standalone-out-dir ----------
+# repo_root basename is NOT `.rabbit`: the prompt must land under
+# <repo_root>/.rabbit/prompts/ (a single appended `.rabbit` segment).
+with tempfile.TemporaryDirectory() as td:
+    entry = {
+        "id": "demo-prompt",
+        "kind": "skill",
+        "inject": [".claude/features/policy/philosophy.md"],
+        "slots": ["args"],
+    }
+    make_tree(td, entry, template_body="TASK: {{args}}\n")
+    r = run_cli(td, "--callable-id", "demo-prompt", "--slot", "args=Foo")
+    if r.returncode != 0:
+        fail(f"t-standalone-out-dir: expected exit 0, got {r.returncode}; "
+             f"stdout={r.stdout!r} stderr={r.stderr!r}")
+    else:
+        out_path = os.path.normpath(r.stdout.strip())
+        expected_dir = os.path.normpath(os.path.join(td, ".rabbit", "prompts"))
+        if os.path.normpath(os.path.dirname(out_path)) != expected_dir:
+            fail(f"t-standalone-out-dir: prompt must land under {expected_dir!r}, "
+                 f"got {os.path.dirname(out_path)!r}")
+        else:
+            ok("t-standalone-out-dir: prompt under <repo_root>/.rabbit/prompts/")
+
+# ---------- t-vendored-out-dir-no-doubling ----------
+# repo_root basename IS `.rabbit` (vendored install): the prompt must land
+# under a SINGLE `.rabbit` segment <repo_root>/prompts/, NEVER the doubled
+# <repo_root>/.rabbit/prompts/.
+with tempfile.TemporaryDirectory() as td:
+    rabbit_root = os.path.join(td, ".rabbit")
+    entry = {
+        "id": "demo-prompt",
+        "kind": "skill",
+        "inject": [".claude/features/policy/philosophy.md"],
+        "slots": ["args"],
+    }
+    make_tree(rabbit_root, entry, template_body="TASK: {{args}}\n")
+    r = run_cli(rabbit_root, "--callable-id", "demo-prompt", "--slot", "args=Foo")
+    if r.returncode != 0:
+        fail(f"t-vendored-out-dir-no-doubling: expected exit 0, got {r.returncode}; "
+             f"stdout={r.stdout!r} stderr={r.stderr!r}")
+    else:
+        out_path = os.path.normpath(r.stdout.strip())
+        expected_dir = os.path.normpath(os.path.join(rabbit_root, "prompts"))
+        doubled_dir = os.path.normpath(os.path.join(rabbit_root, ".rabbit", "prompts"))
+        actual_dir = os.path.normpath(os.path.dirname(out_path))
+        if actual_dir == doubled_dir:
+            fail(f"t-vendored-out-dir-no-doubling: prompt doubled to {doubled_dir!r} "
+                 f"(the #1073 bug)")
+        elif actual_dir != expected_dir:
+            fail(f"t-vendored-out-dir-no-doubling: prompt must land under {expected_dir!r}, "
+                 f"got {actual_dir!r}")
+        else:
+            ok("t-vendored-out-dir-no-doubling: single `.rabbit` segment, no doubling")
 
 if FAIL:
     print("test-build-prompt: FAIL", file=sys.stderr)

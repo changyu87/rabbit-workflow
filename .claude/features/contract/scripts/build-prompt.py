@@ -9,8 +9,10 @@ entry whose `id` matches --callable-id, then assembles:
     <blank line>
     <slot-substituted body of templates/prompts/<id>.txt>
 
-and writes it to <repo>/.rabbit/prompts/<id>-<pid>-<ts>.txt where <ts> is
-YYYYMMDD-HHMMSS-ms. Prints the absolute path of the written file to stdout.
+and writes it to <runtime_root>/prompts/<id>-<pid>-<ts>.txt where <ts> is
+YYYYMMDD-HHMMSS-ms and <runtime_root> is the canonical single-`.rabbit`
+runtime root resolved by rabbit-cage's rabbit_runtime_root (Inv 52). Prints
+the absolute path of the written file to stdout.
 
 Usage:
   build-prompt.py --callable-id <id> [--slot name=value ...]
@@ -19,12 +21,17 @@ Repo root is resolved from:
   1. $RABBIT_ROOT environment variable (test harness override), or
   2. `git rev-parse --show-toplevel` rooted at this script's directory.
 
+The prompts dir anchors at rabbit_runtime_root(repo_root): in a vendored
+install repo_root already IS the `.rabbit` dir, so an unconditional
+`<repo_root>/.rabbit/prompts` join doubled the segment to
+`<host>/.rabbit/.rabbit/prompts`; rabbit_runtime_root collapses that to one.
+
 Exit:
   0 success
   1 read error / missing slot / orphan placeholder / template missing
   2 unknown --callable-id / invocation error (bad args, no repo root)
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when prompt-contract assembly is native to Claude Code.
 """
@@ -60,6 +67,33 @@ def get_repo_root():
         return result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
+
+
+def rabbit_runtime_root(repo_root):
+    """Resolve the canonical single-`.rabbit` runtime root for `repo_root` via
+    rabbit-cage's `rabbit_runtime_root` resolver (Inv 52), lazy-imported from the
+    install's feature lib using the same importlib.util pattern rabbit-cage's
+    session-start dispatcher and other contract scripts use.
+
+    Falls back to the inline basename rule when the resolver cannot be imported
+    (degenerate / partial install) so the prompts dir still lands on a single-
+    `.rabbit` path.
+    """
+    resolver_path = os.path.join(
+        repo_root, ".claude", "features", "rabbit-cage",
+        "lib", "runtime_root.py")
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "rabbit_cage_runtime_root", resolver_path)
+        if spec is not None and spec.loader is not None:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.rabbit_runtime_root(str(repo_root))
+    except (FileNotFoundError, ImportError, AttributeError, OSError):
+        pass
+    rp = os.path.normpath(str(repo_root))
+    return rp if os.path.basename(rp) == ".rabbit" else os.path.join(rp, ".rabbit")
 
 
 def parse_args(argv):
@@ -200,8 +234,11 @@ def main():
 
     assembled = policy_block + "\n\n" + body
 
-    # Write to .rabbit/prompts/<id>-<pid>-<ts>.txt
-    out_dir = os.path.join(repo_root, ".rabbit", "prompts")
+    # Write to <runtime_root>/prompts/<id>-<pid>-<ts>.txt, anchored at the
+    # canonical single-`.rabbit` runtime root (Inv 52). In a vendored install
+    # repo_root IS the `.rabbit` dir, so an unconditional `<repo_root>/.rabbit`
+    # join doubled the segment (#1073); rabbit_runtime_root collapses that.
+    out_dir = os.path.join(rabbit_runtime_root(repo_root), "prompts")
     os.makedirs(out_dir, exist_ok=True)
     now = time.time()
     ts = time.strftime("%Y%m%d-%H%M%S", time.localtime(now)) \
