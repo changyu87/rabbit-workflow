@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.14.0
+version: 0.15.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -224,8 +224,19 @@ constrains only the structural shape.
    exist. The report carries `feature_dirs_on_disk` (the sorted names of all
    directories under `features/`) and `orphan_feature_dirs` (the sorted names
    present on disk but ABSENT from the `features` map, treating an absent map as
-   empty). This is DETECTION + SURFACING only — the detector MUST NOT auto-delete
-   or auto-adopt the dirs; the adopt-vs-proceed decision stays the caller's. The
+   empty). A dir absent from the map is a TRUE orphan ONLY when its
+   `feature.json` declares NON-EMPTY `paths` — a real feature that belongs in
+   the map but isn't. A GREENFIELD feature has `paths: []` in its `feature.json`
+   BY DESIGN: the project-map schema requires non-empty paths, so the scaffolder
+   INTENTIONALLY never registers a greenfield feature in `project-map.json`. A
+   `paths: []` dir is therefore NOT an inconsistency and MUST be EXCLUDED from
+   `orphan_feature_dirs`. A dir whose `feature.json` is absent, unreadable, or
+   malformed cannot be proven greenfield, so the safe classification keeps it an
+   orphan, and the scan MUST NOT crash on it. `feature_dirs_on_disk` still
+   enumerates EVERY on-disk dir; only `orphan_feature_dirs` carries the
+   greenfield-aware filter. This is DETECTION + SURFACING only — the detector
+   MUST NOT auto-delete or auto-adopt the dirs; the adopt-vs-proceed decision
+   stays the caller's. The
    `SKILL.md` body MUST reference the `--detect-existing` step, name
    `project-map.json`, and document the three-way skip / add / re-decompose
    branch.
@@ -347,13 +358,17 @@ coverage:
 - `test-detect-orphan-feature-dirs.py` (E2E — asserts the Invariant 8
   orphan-surfacing clause: runs `scripts/handoff-scaffold.py --detect-existing`
   end-to-end against temp plugin and standalone trees, confirming that feature
-  dirs on disk with NO `project-map.json` are all surfaced as
-  `orphan_feature_dirs` while `existing` stays false; that dirs partially
-  represented in the map surface only the absent ones as orphans; that a map
-  fully matching the on-disk dirs yields no orphans; that `feature_dirs_on_disk`
-  enumerates every dir under `features/` and ignores stray files; that an absent
-  `features/` dir yields empty lists without crashing; and that the `features/`
-  root is `detect_mode`-driven (standalone scans
+  dirs (with NON-EMPTY-paths `feature.json`) on disk with NO `project-map.json`
+  are all surfaced as `orphan_feature_dirs` while `existing` stays false; that
+  dirs partially represented in the map surface only the absent ones as orphans;
+  that a map fully matching the on-disk dirs yields no orphans; that
+  `feature_dirs_on_disk` enumerates every dir under `features/` and ignores
+  stray files; that an absent `features/` dir yields empty lists without
+  crashing; that a GREENFIELD dir (`feature.json` `paths: []`) absent from the
+  map is EXCLUDED from `orphan_feature_dirs` while a non-empty-paths sibling
+  absent from the map is still flagged; that a dir with an absent or malformed
+  `feature.json` is still surfaced as an orphan without crashing; and that the
+  `features/` root is `detect_mode`-driven (standalone scans
   `.rabbit/rabbit-project/features/`)).
 - `test-decompose-context-marker.py` (E2E — asserts Invariant 9: runs
   `scripts/handoff-scaffold.py --decompose-context set` end-to-end against

@@ -1,8 +1,8 @@
 {
   "name": "rabbit-decompose",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "owner": "rabbit-workflow team",
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
   "status": "active",
