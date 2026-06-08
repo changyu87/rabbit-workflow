@@ -67,7 +67,7 @@ All paths are resolved relative to the repo root, which the script derives
 by walking up from the cwd to the nearest ancestor containing a `.git`
 entry (file or directory, so git worktrees are handled).
 
-Version: 0.7.0
+Version: 0.8.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -190,6 +190,54 @@ def _keywords(request: str, count: int = 4) -> str:
     return "-".join(words)
 
 
+def _rabbit_tracked_at_head(repo_root: Path) -> bool:
+    """True when `.rabbit/` is tracked at HEAD (Strategy D precondition).
+
+    A `git worktree add ... HEAD` only carries paths that are committed at
+    HEAD. Strategy D (#1086) assumes the WHOLE `.rabbit/` is tracked so the
+    new worktree is self-contained (tool + work present). On a fresh vendored
+    install where `.rabbit/` is gitignored and not yet committed, HEAD carries
+    no `.rabbit/`, so the worktree would be TOOLLESS (#1112).
+    """
+    r = subprocess.run(
+        ["git", "ls-tree", "HEAD", ".rabbit"],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return r.returncode == 0 and bool(r.stdout.strip())
+
+
+def _session_worktrees_exist(repo_root: Path) -> bool:
+    """True when at least one per-session worktree dir exists for this host."""
+    wt_root = repo_root / ".rabbit-worktrees"
+    if not wt_root.is_dir():
+        return False
+    return any(p.name.startswith("session-") for p in wt_root.iterdir())
+
+
+def _is_main_worktree(repo_root: Path) -> bool:
+    """True when cwd is the host's MAIN worktree (the shared main HEAD).
+
+    In the main worktree `git rev-parse --git-dir` and `--git-common-dir`
+    resolve to the same path; in a linked (per-session) worktree they differ.
+    """
+    def _resolve(flag: str) -> str:
+        r = subprocess.run(
+            ["git", "rev-parse", flag],
+            cwd=repo_root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return str(Path(r.stdout.strip()).resolve()) if r.returncode == 0 else ""
+
+    git_dir = _resolve("--git-dir")
+    common_dir = _resolve("--git-common-dir")
+    return bool(git_dir) and git_dir == common_dir
+
+
 def _session_worktree_path(repo_root: Path) -> Path:
     """Per-session worktree path OUTSIDE the tracked tree.
 
@@ -220,6 +268,22 @@ def cmd_create_branch(feature: str, request: str, multi: bool) -> int:
         # vendored sessions never share/stomp the host's single HEAD (#1059).
         # The worktree is self-contained because the whole .rabbit/ is tracked
         # (#1086), so the proven standalone worktree machinery is reused here.
+        # #1112 precondition: VERIFY the whole .rabbit/ is actually tracked at
+        # HEAD. On a fresh vendored install where .rabbit/ is gitignored and not
+        # yet committed, `git worktree add ... HEAD` would yield a TOOLLESS
+        # worktree (no .rabbit/ inside), and a subsequent commit-spec from the
+        # main-tree cwd would silently land on the host's shared main HEAD. Fail
+        # loudly instead of emitting that toolless worktree path.
+        if not _rabbit_tracked_at_head(repo_root):
+            sys.stderr.write(
+                "ERROR: vendored create-branch precondition unmet — `.rabbit/` "
+                "is not tracked at HEAD (Strategy D requires the whole "
+                "`.rabbit/` to be committed so the per-session worktree is "
+                "self-contained). Commit `.rabbit/` first "
+                "(e.g. `git add -f .rabbit && git commit -m \"vendor rabbit\"`), "
+                "then retry. Refusing to build a toolless worktree (#1112).\n"
+            )
+            return 1
         worktree = _session_worktree_path(repo_root)
         worktree.parent.mkdir(parents=True, exist_ok=True)
         # Capture git's chatter (it prints "HEAD is now at ..." to stdout) so
@@ -276,6 +340,26 @@ def cmd_commit_spec(feature: str, summary: str) -> int:
     repo_root = _repo_root(Path.cwd())
     mode = _mode(repo_root)
     feature_dir = _feature_dir(repo_root, feature, mode)
+
+    # #1112 guard: in vendored mode the whole TDD cycle runs inside a
+    # per-session worktree (Strategy D). If a per-session worktree exists but
+    # this command is running from the host's MAIN worktree (shared main HEAD —
+    # e.g. the dispatcher never cd'd into the worktree), committing here would
+    # silently pollute the host's main branch and leave the feature branch
+    # empty. Refuse and point at the worktree.
+    if (
+        mode == "plugin"
+        and _is_main_worktree(repo_root)
+        and _session_worktrees_exist(repo_root)
+    ):
+        sys.stderr.write(
+            "ERROR: refusing to commit the spec onto the host's shared main "
+            "HEAD while a per-session worktree exists. Run commit-spec from "
+            "inside the worktree's `.rabbit/` directory "
+            "(see `.rabbit-worktrees/session-*`), not from the main-tree "
+            "`.rabbit/` cwd (#1112).\n"
+        )
+        return 1
 
     # Mode-aware staging: plugin mode needs -f because the host .gitignore
     # typically ignores .rabbit/.
