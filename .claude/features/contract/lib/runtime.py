@@ -16,7 +16,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.18.0
+Version: 1.19.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -755,33 +755,29 @@ def write_mode_marker(*, repo_root: str) -> dict:
         return error_result(str(e))
 
 
-def _load_rabbit_block(repo_root: str):
-    """Lazy-load rabbit_block from contract/scripts/rabbit_print.py.
-
-    The script directory is not on sys.path by default; we resolve it
-    relative to repo_root and import via importlib.
-    """
-    path = os.path.join(repo_root, ".claude", "features", "contract",
-                         "scripts", "rabbit_print.py")
-    spec = importlib.util.spec_from_file_location("rabbit_print_runtime", path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"cannot load rabbit_print from {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.rabbit_block
+# Inv 39 — restart-required marker for the update banner. A successful update
+# that touched hooks/CLAUDE.md sets this marker; the next SessionStart banner
+# reads it, appends the restart-alert line, and consumes (deletes) it so the
+# alert fires exactly once.
+_UPDATE_RESTART_MARKER = ".rabbit-update-restart-needed"
 
 
-def check_release_update(*, repo_root: str) -> dict:
+def check_release_update(*, repo_root: str):
     """Thin runtime wrapper around scripts/check-release-update.py.
 
     Subprocesses the helper (which owns the throttle, urllib fetch, and
     version compare per Inv 53), parses its JSON stdout, and translates
     the result into a typed runtime return:
 
-      - {"newer": true, ...}  -> print_result(text, "📦", "yellow") where
-        text is a rabbit_block of three lines: update headline, the
-        install.py --update command (or fresh-install fallback when
-        self_update_available is false), and the `claude --resume` hint.
+      - {"newer": true, ...}  -> a LIST of print_result(line, "📦", "yellow")
+        entries, one per notification line: update-available headline, the
+        recommended action (run the `/rabbit-update` skill, or a fresh-install
+        fallback when self_update_available is false), and the `claude --resume`
+        hint. Each line is its OWN print result so the dispatcher renders every
+        line with the same [🐇 rabbit 🐇] brand prefix + color (rather than
+        prefixing only the first line of one multi-line block). When the
+        restart-required marker is present it is consumed and an extra
+        restart-alert line is appended (same 📦/yellow branding).
       - {"newer": false}      -> ok_result()
       - any other outcome (non-zero exit, empty stdout, malformed JSON,
         subprocess exception) -> ok_result() silently. NEVER blocks or
@@ -819,19 +815,27 @@ def check_release_update(*, repo_root: str) -> dict:
     new = payload.get("new", "?")
     self_update = bool(payload.get("self_update_available"))
 
-    try:
-        rabbit_block = _load_rabbit_block(repo_root)
-    except (ImportError, OSError):
-        return ok_result()
-
     headline = f"update available: {new} (current: {current}) on channel {channel}"
     if self_update:
-        update_line = "to update: cd <project-root> && python3 .rabbit/install.py --update"
+        update_line = "to update: run the /rabbit-update skill in this session"
     else:
         update_line = "to update: see README for first-install command"
     resume_line = "then resume: claude --resume"
-    text = rabbit_block(headline, update_line, resume_line)
-    return print_result(text, "📦", "yellow")
+
+    lines = [headline, update_line, resume_line]
+
+    # Fix #3 — restart-required alert. If a prior update flagged that a session
+    # restart is required, surface the alert and consume the marker so it fires
+    # exactly once.
+    marker_full = os.path.join(repo_root, _UPDATE_RESTART_MARKER)
+    if os.path.isfile(marker_full):
+        lines.append("RESTART REQUIRED: restart Claude Code before continuing")
+        try:
+            os.remove(marker_full)
+        except OSError:
+            pass
+
+    return [print_result(line, "📦", "yellow") for line in lines]
 
 
 def emit_auto_evolve_banner(*, repo_root: str) -> list:
