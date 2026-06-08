@@ -36,6 +36,7 @@ covering BACKLOG-15 architecturally, or a generic schema-shape test
 covering BUG-11/BACKLOG-3/4/10).
 """
 
+import importlib.util
 import json
 import os
 import re
@@ -44,6 +45,15 @@ import sys
 
 FEATURE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 REPO_ROOT = os.path.normpath(os.path.join(FEATURE_DIR, "..", "..", ".."))
+SCHEMAS_DIR = os.path.join(FEATURE_DIR, "schemas")
+CHECKS_PATH = os.path.join(FEATURE_DIR, "lib", "checks.py")
+
+
+def _load_checks():
+    spec = importlib.util.spec_from_file_location("contract_lib_checks_bugcycle", CHECKS_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 FAIL = 0
 
@@ -94,6 +104,11 @@ else:
 # BACKLOG-4: every feature.json in the repo validates against feature.json.schema.json.
 try:
     import jsonschema
+    # feature.json.schema.json carries relative sibling $refs; build the
+    # validator with the same local ref-resolver validate_feature uses so the
+    # refs resolve without a network fetch (issue #1053).
+    _resolver = _load_checks()._build_schema_resolver(SCHEMAS_DIR, schema)
+    _validator = jsonschema.Draft7Validator(schema, resolver=_resolver)
     features_dir = os.path.join(REPO_ROOT, ".claude/features")
     bad = []
     for entry in sorted(os.listdir(features_dir)):
@@ -103,10 +118,9 @@ try:
             continue
         with open(fjson) as f:
             data = json.load(f)
-        try:
-            jsonschema.validate(data, schema)
-        except jsonschema.ValidationError as e:
-            bad.append((entry, str(e).splitlines()[0]))
+        first = next(iter(_validator.iter_errors(data)), None)
+        if first is not None:
+            bad.append((entry, str(first.message).splitlines()[0]))
     if not bad:
         ok("BACKLOG-4: every feature.json validates against the schema")
     else:
