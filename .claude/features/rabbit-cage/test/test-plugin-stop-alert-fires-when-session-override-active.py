@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """test-plugin-stop-alert-fires-when-session-override-active.py — Inv 25.
 
-In plugin mode, the session-override marker `.rabbit-scope-override`
-content `'session'` lives at `<rabbit_root>/.rabbit-scope-override`
-(where `<rabbit_root>` is the install directory whose
+In plugin/vendored mode the session-override marker `.rabbit-scope-override`
+content `'session'` lives INSIDE the install dir at
+`<git-toplevel>/.rabbit/.rabbit-scope-override` (the install directory whose
 `.rabbit/.runtime/mode == 'plugin'`).
 
-contract.lib.runtime.check_marker_alert is invoked by the Stop hook
-with path='.rabbit-scope-override' content='session' alert={...}; the
-runtime resolves the relative path against `repo_root`. In plugin mode
-the Stop dispatcher passes the rabbit install root as `repo_root`, so
-the marker is found at `<rabbit_root>/.rabbit-scope-override` and a red
-SCOPE GUARD OFF banner fires.
+contract.lib.runtime.check_marker_alert (#1113) resolves a repo-root marker
+against the GIT TOPLEVEL (markers root) — `dirname(repo_root)` when vendored —
+so a repo-root-written marker like rabbit-feature's `.rabbit-tdd-autonomous`
+(written at the toplevel) fires. A marker that lives INSIDE `.rabbit` must
+therefore be declared with the explicit `.rabbit/`-prefixed path so it
+resolves back into the install dir: joining the toplevel with
+`".rabbit/.rabbit-scope-override"` yields `<repo_root>/.rabbit-scope-override`.
+That is exactly the rabbit-cage SessionStart/Stop PLUGIN entry (Inv 25 entry
+5). In plugin mode the dispatcher passes the rabbit install root as
+`repo_root`, so the `.rabbit/`-prefixed entry finds the marker at
+`<rabbit_root>/.rabbit-scope-override` and a red SCOPE GUARD OFF banner fires.
 
 This test isolates the runtime API behaviour. The sibling test
 `test-plugin-sessionstart-alert-on-active-session-override.py` covers
@@ -36,13 +41,18 @@ def test_plugin_check_marker_alert_fires_on_session_override():
         rabbit_root = Path(td) / ".rabbit"
         runtime_dir = rabbit_root / ".runtime"
         runtime_dir.mkdir(parents=True)
+        # A sibling entry so detect_mode reads the host as vendored.
+        (Path(td) / "src").mkdir()
         # Plugin-mode signature.
         (runtime_dir / "mode").write_text("plugin")
-        # Session override marker at the per-mode canonical location.
+        # Session override marker at the per-mode canonical location
+        # (INSIDE .rabbit in plugin mode).
         (rabbit_root / ".rabbit-scope-override").write_text("session")
 
+        # The PLUGIN entry declares the `.rabbit/`-prefixed path so it resolves
+        # back into the install dir under markers-root resolution (#1113).
         result = runtime.check_marker_alert(
-            path=".rabbit-scope-override",
+            path=".rabbit/.rabbit-scope-override",
             content="session",
             alert={
                 "text": "SCOPE GUARD OFF (session override active)",

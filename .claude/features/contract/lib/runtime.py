@@ -16,7 +16,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.19.0
+Version: 1.20.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -49,11 +49,13 @@ def _repo_markers_root(repo_root: str) -> str:
     `repo_root` unchanged when standalone — so the marker READ site matches the
     existing WRITE site.
 
-    NOT used by `check_marker_alert` / `check_marker_consume_alert`: their
-    `.rabbit-scope-override` / `.rabbit-scope-override-used` markers live INSIDE
-    the `.rabbit` install dir in vendored mode and are correctly resolved
-    against `repo_root` (rabbit-cage Inv 25). Sole caller is
-    `_resolve_marker_value`.
+    Callers: `_resolve_marker_value` (the configurable WRITE-side resolver) and
+    `check_marker_alert` (#1113 — the Stop/SessionStart READ side that backs the
+    rabbit-feature `.rabbit-tdd-autonomous` alert, Inv 59, plus any other
+    repo-root `.rabbit-*` marker alert). An entry whose path is explicitly
+    `.rabbit/`-prefixed (rabbit-cage's inside-`.rabbit` `.rabbit-scope-override`
+    entry) still resolves into the install dir, since joining the git toplevel
+    with `".rabbit/<marker>"` yields `repo_root/<marker>`.
 
     Vendored detection uses rabbit-meta's canonical `detect_mode`
     (lazy-imported from `<repo_root>/.claude/features/rabbit-meta/lib/
@@ -136,7 +138,14 @@ def check_marker_alert(path: str, content, alert: dict, *, repo_root: str) -> di
     """
     if _auto_evolve_active(repo_root):
         return ok_result()
-    full = os.path.join(repo_root, path)
+    # Inv 68 / #1113 — repo-root markers (e.g. .rabbit-tdd-autonomous, Inv 59)
+    # are WRITTEN at the git toplevel; resolve the READ root via
+    # _repo_markers_root so vendored-mode reads (where repo_root is the .rabbit
+    # install dir) match the write site. Standalone is unchanged because there
+    # _repo_markers_root(repo_root) == repo_root. An explicitly .rabbit-prefixed
+    # path (rabbit-cage's `.rabbit/.rabbit-scope-override` entry) then resolves
+    # inside the install dir: join(toplevel, ".rabbit/...") == repo_root/...
+    full = os.path.join(_repo_markers_root(repo_root), path)
     if not os.path.isfile(full):
         return ok_result()
     if content is not None:

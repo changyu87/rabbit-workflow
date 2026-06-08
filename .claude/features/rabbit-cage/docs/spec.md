@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.86.0
+version: 5.87.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
@@ -265,22 +265,22 @@ string BEFORE splitting on `;|&` segment delimiters.
     content: 'session', alert: {…same banner…}}`) — entries (4) and (5)
     together surface the active session-override alert at session-start in
     BOTH modes (Inv 25 makes the marker's canonical location per-mode:
-    `<rabbit_root>/.rabbit/.rabbit-scope-override` in plugin mode,
-    `<repo_root>/.rabbit-scope-override` in standalone; a single relative
-    `check_marker_alert` path resolves to only ONE of them against
-    `repo_root`, so both paths MUST be declared for the banner to fire in
-    either mode), in addition to the symmetric Stop-event alert —
-    and (6) `emit_configurable_alert`
-    (args `{feature_name: 'rabbit-cage', configurable_id:
-    'bypass-permissions'}`), the per-feature bypass-permissions
-    active-override alert (Inv 40c). The two `check_marker_alert` entries
-    never double-fire: the marker lives at exactly ONE canonical location
-    per mode and `check_marker_alert` no-ops on an absent marker. The
-    SessionStart dispatcher invokes all six in declaration order via
+    `<rabbit_root>/.rabbit/.rabbit-scope-override` in plugin/vendored mode,
+    `<repo_root>/.rabbit-scope-override` in standalone; the contract's
+    `check_marker_alert` resolves a repo-root marker against the GIT TOPLEVEL
+    (markers root — `dirname(repo_root)` vendored, `repo_root` standalone), so
+    the bare path matches the standalone location and the `.rabbit/`-prefixed
+    path resolves back INSIDE the install dir for plugin/vendored — both MUST be
+    declared for the banner to fire in either mode), in addition to the
+    symmetric Stop-event alert — and (6) `emit_configurable_alert` (args
+    `{feature_name: 'rabbit-cage', configurable_id: 'bypass-permissions'}`),
+    the per-feature bypass-permissions active-override alert (Inv 40c). The two
+    `check_marker_alert` entries never double-fire: the marker lives at exactly
+    ONE canonical location per mode and `check_marker_alert` no-ops on an absent
+    marker. The SessionStart dispatcher invokes all six in declaration order via
     `contract.lib.runtime`. The same dual-path pair is declared in
-    `runtime.Stop`. The
-    `write_mode_marker` API (owned by
-    `contract.lib.runtime` and built on top of `rabbit-meta.lib.mode_detection.detect_mode`)
+    `runtime.Stop`. The `write_mode_marker` API (owned by `contract.lib.runtime`
+    and built on top of `rabbit-meta.lib.mode_detection.detect_mode`)
     detects whether rabbit is running in `"plugin"` or `"standalone"` mode
     and writes the result to `<repo_root>/.rabbit/.runtime/mode` for
     downstream consumers. The `check_release_update` API (owned by

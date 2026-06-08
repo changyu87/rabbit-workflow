@@ -110,6 +110,74 @@ with tempfile.TemporaryDirectory() as td:
     else:
         fail(f"t8: expected ok_result, got {r!r}")
 
+# --- VENDORED layout (Inv 68 / #1113) -------------------------------------
+# check_marker_alert backs the rabbit-feature Stop/SessionStart
+# .rabbit-tdd-autonomous alert (Inv 59). In a VENDORED install the dispatcher
+# passes repo_root = RABBIT_ROOT = <git-toplevel>/.rabbit, but the marker is
+# written at the GIT TOPLEVEL (Inv 68 / #1048). So the READ root must be
+# resolved via _repo_markers_root(repo_root) (= dirname when vendored), not raw
+# repo_root, or the alert never fires.
+
+TDD_ALERT = {"text": "TDD-AUTONOMOUS MODE ACTIVE",
+             "icon": "\U0001f511", "color": "red"}
+
+# t9 (#1113): vendored, marker PRESENT at the git toplevel -> alert FIRES.
+with tempfile.TemporaryDirectory() as td:
+    rabbit_root = os.path.join(td, ".rabbit")
+    os.makedirs(rabbit_root)
+    os.makedirs(os.path.join(td, "src"))  # sibling so the host reads vendored
+    with open(os.path.join(td, ".rabbit-tdd-autonomous"), "w") as f:
+        f.write("session")
+    r = check_marker_alert(".rabbit-tdd-autonomous", None, TDD_ALERT,
+                           repo_root=rabbit_root)
+    if r.get("type") == "print" and r.get("text") == "TDD-AUTONOMOUS MODE ACTIVE":
+        ok("t9: vendored marker at git toplevel -> alert FIRES")
+    else:
+        fail(f"t9: expected print_result (marker read at toplevel), got {r!r}")
+
+# t10 (#1113): vendored, a stale marker ONE .rabbit too deep must NOT fire —
+#     the git-toplevel location is the sole read site for a repo-root marker.
+with tempfile.TemporaryDirectory() as td:
+    rabbit_root = os.path.join(td, ".rabbit")
+    os.makedirs(rabbit_root)
+    os.makedirs(os.path.join(td, "src"))
+    with open(os.path.join(rabbit_root, ".rabbit-tdd-autonomous"), "w") as f:
+        f.write("session")
+    r = check_marker_alert(".rabbit-tdd-autonomous", None, TDD_ALERT,
+                           repo_root=rabbit_root)
+    if r == {"type": "ok"}:
+        ok("t10: vendored, marker only inside .rabbit (wrong site) -> silent")
+    else:
+        fail(f"t10: expected ok_result (stale-inside-.rabbit ignored), got {r!r}")
+
+# t11 (#1113): vendored, NO marker anywhere -> silent (ok_result).
+with tempfile.TemporaryDirectory() as td:
+    rabbit_root = os.path.join(td, ".rabbit")
+    os.makedirs(rabbit_root)
+    os.makedirs(os.path.join(td, "src"))
+    r = check_marker_alert(".rabbit-tdd-autonomous", None, TDD_ALERT,
+                           repo_root=rabbit_root)
+    if r == {"type": "ok"}:
+        ok("t11: vendored, no marker -> silent (ok_result)")
+    else:
+        fail(f"t11: expected ok_result, got {r!r}")
+
+# t12 (#1113): vendored, an explicit `.rabbit/<marker>` declaration (the
+#     rabbit-cage inside-.rabbit scope-override entry) resolves INSIDE .rabbit,
+#     i.e. join(toplevel, ".rabbit/<marker>") == <repo_root>/<marker>.
+with tempfile.TemporaryDirectory() as td:
+    rabbit_root = os.path.join(td, ".rabbit")
+    os.makedirs(rabbit_root)
+    os.makedirs(os.path.join(td, "src"))
+    with open(os.path.join(rabbit_root, ".rabbit-scope-override"), "w") as f:
+        f.write("session")
+    r = check_marker_alert(".rabbit/.rabbit-scope-override", "session", ALERT,
+                           repo_root=rabbit_root)
+    if r.get("type") == "print":
+        ok("t12: vendored, `.rabbit/<marker>` entry resolves inside .rabbit -> FIRES")
+    else:
+        fail(f"t12: expected print_result (inside-.rabbit entry), got {r!r}")
+
 if FAIL:
     print("test-runtime-check-marker-alert: FAIL", file=sys.stderr)
     sys.exit(1)
