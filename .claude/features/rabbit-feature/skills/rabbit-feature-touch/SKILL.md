@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (filing a rabbit-managed issue, such as a bug or enhancement). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.10.0
+version: 3.11.0
 owner: rabbit-feature
 deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
@@ -57,8 +57,23 @@ feature as the feature name):
 ```
 
 The subcommand derives `<keywords>` from the request, assembles the
-`feat/<feature-name>[-multi]-<keywords>` branch name, runs `git checkout -b`,
-and prints the branch it created.
+`feat/<feature-name>[-multi]-<keywords>` branch name, and emits a single JSON
+line `{"branch", "worktree", "mode"}`. The mode-aware branching is owned by the
+companion script (it is a computed step):
+
+- **standalone** — the subcommand runs `git checkout -b <branch>` in the
+  current repo (which already owns a dedicated HEAD); `worktree` is null. Run
+  the rest of the cycle in the current repo, as before.
+- **plugin/vendored** — under Strategy D the WHOLE `.rabbit/` is tracked, so a
+  worktree of the host repo is self-contained (tool + work at consistent
+  paths). The subcommand creates a PER-SESSION git worktree of the host repo
+  OUTSIDE the tracked tree (at `<host>/.rabbit-worktrees/session-<token>/`,
+  NEVER under `.rabbit/`) and emits its path as `worktree`. Each session gets
+  its OWN HEAD, so concurrent vendored sessions never stomp the host's shared
+  HEAD. Run the rest of the cycle from `<worktree>/.rabbit`
+  (the self-contained vendored install inside the worktree) — every subsequent
+  step (Step 3 spec-commit, Step 5 dispatch, Step 7 PR) MUST execute with that
+  directory as cwd so all git ops land on the per-session worktree's HEAD.
 
 ### Step 3 — Spec Authoring
 

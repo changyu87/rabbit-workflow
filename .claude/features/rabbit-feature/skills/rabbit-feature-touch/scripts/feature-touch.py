@@ -11,11 +11,28 @@ Subcommands:
   create-branch [--multi] <feature-name> <request>
       Assemble the deterministic feature-touch branch name from the
       `feat/<feature-name>-<keywords>` pattern (or
-      `feat/<feature-name>-multi-<keywords>` with --multi) and `git checkout
-      -b` it (Step 2). `<keywords>` = the first 2–4 request words, lowercased,
+      `feat/<feature-name>-multi-<keywords>` with --multi) and start the cycle
+      on it (Step 2). `<keywords>` = the first 2–4 request words, lowercased,
       hyphen-joined, with non-alphanumerics stripped. The script owns the
       branch-name computation so the SKILL body stays script-tier (no
-      model-assembled `git checkout -b <branch-name>` step).
+      model-assembled `git checkout -b <branch-name>` step). Emits a single
+      JSON line `{"branch", "worktree", "mode"}` on success.
+      Mode-aware (#1087 / Strategy D, #1085):
+        - standalone: plain `git checkout -b <branch>` in the current repo
+          (it already has a dedicated repo/HEAD). `worktree` is null.
+        - plugin/vendored: the feature-touch git ops would otherwise run on
+          the HOST repo's SINGLE shared HEAD, so two concurrent sessions stomp
+          each other (#1059). Because the WHOLE `.rabbit/` is tracked
+          (Strategy D, shipped by #1086), a worktree of the HOST repo is
+          SELF-CONTAINED — tool (`.rabbit/.claude`) AND work
+          (`.rabbit/rabbit-project`) at consistent paths — so the proven
+          STANDALONE worktree machinery works unchanged. This subcommand
+          creates a PER-SESSION git worktree of the host repo OUTSIDE the
+          tracked tree (at `<host>/.rabbit-worktrees/session-<token>/`, NEVER
+          under `.rabbit/`) via `git worktree add -b <branch> <path> HEAD` and
+          emits its path as `worktree`. Each session gets its own HEAD, so
+          concurrent sessions never stomp the host HEAD. The caller runs the
+          rest of the cycle from `<worktree>/.rabbit`.
 
   resolve-spec-path <feature-name>
       Print the resolved spec path for a feature. Prefers the flat
@@ -50,14 +67,16 @@ All paths are resolved relative to the repo root, which the script derives
 by walking up from the cwd to the nearest ancestor containing a `.git`
 entry (file or directory, so git worktrees are handled).
 
-Version: 0.6.0
+Version: 0.7.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
 """
 from __future__ import annotations
 
+import json
 import re
+import secrets
 import subprocess
 import sys
 from pathlib import Path
@@ -171,6 +190,17 @@ def _keywords(request: str, count: int = 4) -> str:
     return "-".join(words)
 
 
+def _session_worktree_path(repo_root: Path) -> Path:
+    """Per-session worktree path OUTSIDE the tracked tree.
+
+    Sits at `<host>/.rabbit-worktrees/session-<token>/` — a sibling of (NEVER
+    under) the tracked `.rabbit/`. The random token keeps two concurrent
+    sessions on the same branch keywords from colliding on the path.
+    """
+    token = secrets.token_hex(4)
+    return repo_root / ".rabbit-worktrees" / f"session-{token}"
+
+
 def cmd_create_branch(feature: str, request: str, multi: bool) -> int:
     keywords = _keywords(request)
     if not keywords:
@@ -180,11 +210,49 @@ def cmd_create_branch(feature: str, request: str, multi: bool) -> int:
         return 2
     infix = "-multi" if multi else ""
     branch = f"feat/{feature}{infix}-{keywords}"
-    r = subprocess.run(["git", "checkout", "-b", branch], check=False)
+
+    repo_root = _repo_root(Path.cwd())
+    mode = _mode(repo_root)
+
+    if mode == "plugin":
+        # Strategy D: run the whole cycle in a per-session worktree of the
+        # host repo, placed OUTSIDE the tracked .rabbit/ tree, so concurrent
+        # vendored sessions never share/stomp the host's single HEAD (#1059).
+        # The worktree is self-contained because the whole .rabbit/ is tracked
+        # (#1086), so the proven standalone worktree machinery is reused here.
+        worktree = _session_worktree_path(repo_root)
+        worktree.parent.mkdir(parents=True, exist_ok=True)
+        # Capture git's chatter (it prints "HEAD is now at ..." to stdout) so
+        # only the JSON result lands on this script's stdout.
+        r = subprocess.run(
+            ["git", "worktree", "add", "-b", branch, str(worktree), "HEAD"],
+            cwd=repo_root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if r.returncode != 0:
+            sys.stderr.write(
+                f"ERROR: git worktree add -b {branch} {worktree} failed\n"
+                f"{r.stderr}"
+            )
+            return 1
+        print(json.dumps(
+            {"branch": branch, "worktree": str(worktree), "mode": "vendored"}
+        ))
+        return 0
+
+    # Standalone: the repo already has a dedicated HEAD; plain checkout -b.
+    r = subprocess.run(
+        ["git", "checkout", "-b", branch],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
     if r.returncode != 0:
-        sys.stderr.write(f"ERROR: git checkout -b {branch} failed\n")
+        sys.stderr.write(f"ERROR: git checkout -b {branch} failed\n{r.stderr}")
         return 1
-    print(branch)
+    print(json.dumps({"branch": branch, "worktree": None, "mode": "standalone"}))
     return 0
 
 

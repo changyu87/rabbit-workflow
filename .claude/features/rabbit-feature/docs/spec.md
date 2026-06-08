@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.41.3
+version: 1.42.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -577,6 +577,33 @@ their source path and not deployed):
     `check-script-backed.py scan` against this feature MUST report
     `{"count": 0}`. Enforced E2E by `test/test-script-backed-clean.py`.
 
+61. **Vendored feature-touch runs the cycle in a per-session worktree.**
+    The companion `feature-touch.py create-branch` subcommand is mode-aware
+    and emits a single JSON line `{"branch", "worktree", "mode"}`. In
+    STANDALONE mode it runs `git checkout -b <branch>` in the current repo
+    (which already owns a dedicated HEAD) and emits `worktree: null`,
+    `mode: "standalone"`. In PLUGIN/VENDORED mode — dual-accepting the
+    `vendored` and legacy `plugin` mode-marker values, matching the other
+    resolvers — it creates a PER-SESSION git worktree of the HOST repo via
+    `git worktree add -b <branch> <path> HEAD`, placed OUTSIDE the tracked
+    tree at `<host>/.rabbit-worktrees/session-<token>/` (NEVER under
+    `.rabbit/`), and emits that path as `worktree` with `mode: "vendored"`.
+    Each session thereby gets its OWN HEAD, so two concurrent vendored
+    sessions never share or stomp the host's single shared HEAD — the
+    concurrency property this invariant guarantees. This is coherent because
+    the WHOLE `.rabbit/` is tracked, making the host-repo
+    worktree self-contained: the tool (`.rabbit/.claude`) and the work
+    (`.rabbit/rabbit-project`) are present at the same relative paths inside
+    it, so the proven standalone worktree machinery is reused rather than a
+    parallel vendored implementation. The caller runs the rest of the cycle
+    from `<worktree>/.rabbit`. No tdd-subagent dispatch-contract change is
+    required: `dispatch-tdd-subagent.py` resolves `--spec` cwd-relative inside
+    the self-contained worktree. The SKILL.md Step 2 documents the mode-aware
+    behaviour in prose and continues to delegate the computed branch-name +
+    VCS work to the companion script (no inline control-flow bash, preserving
+    Inv 53/60). Enforced E2E by
+    `test/test-touch-vendored-worktree-cycle.py`.
+
 ## What this feature does NOT define
 
 - The TDD subagent's 8-step cycle, the `tdd-step.py` state machine, or
@@ -612,3 +639,4 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-tdd-autonomous-command.py` — Inv 58
 - `test-tdd-autonomous-alert.py` — Inv 59
 - `test-script-backed-clean.py` — Inv 60
+- `test-touch-vendored-worktree-cycle.py` — Inv 61
