@@ -1,6 +1,6 @@
 {
   "name": "tdd-subagent",
-  "version": "5.22.0",
+  "version": "5.23.0",
   "owner": "rabbit-workflow team",
   "status": "active",
   "housekeeping_clean": true,
@@ -60,5 +60,5 @@
     }
   ],
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
-  "updated": "2026-06-05"
+  "updated": "2026-06-07"
 }

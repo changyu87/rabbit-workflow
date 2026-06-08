@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.22.0
+version: 5.23.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -126,7 +126,7 @@ dispatched prompt constrains that template file.
 
 12. **LOCK / UNLOCK marker discipline (mode-aware).** The assembled prompt's LOCK step writes ONE scope marker and registers no shell trap; the UNLOCK step removes the same marker after the chore commit and before HANDOFF. The marker path is mode-aware, matching rabbit-cage's scope-guard expectation per Inv 17(b):
     - **Standalone mode** (mode marker absent or `standalone`): marker at `<repo_root>/.rabbit-scope-active-<feature>` (repo-root, dashed-name form).
-    - **Plugin mode** (`<repo_root>/.rabbit/.runtime/mode == 'plugin'`): marker at `<repo_root>/.rabbit/.runtime/scope-active-<feature>` (`.runtime/` subdir of the rabbit install, `scope-active-` prefix without leading dot).
+    - **Vendored mode** (`<repo_root>/.rabbit/.runtime/mode` is `vendored` or the legacy `plugin`): marker at `<repo_root>/.rabbit/.runtime/scope-active-<feature>` (`.runtime/` subdir of the rabbit install, `scope-active-` prefix without leading dot). The mode value is dual-accepted (`vendored`/`plugin`) to match scope-guard's `_VENDORED_MODES` set during the `plugin`->`vendored` rename coexistence window; a `vendored` install whose marker falls through to the standalone form leaves the subagent's in-scope writes blocked by scope-guard.
     The mode-detection MUST happen at prompt-assembly time (in `dispatch-tdd-subagent.py`, NOT at subagent execution time) so the assembled LOCK and UNLOCK lines contain the literal correct path for the current installation. Enforced by `test/test-prompt-lock-unlock-marker-path.py`.
 
 13. *(Withdrawn; not part of the current design — see CHANGELOG.md.)*

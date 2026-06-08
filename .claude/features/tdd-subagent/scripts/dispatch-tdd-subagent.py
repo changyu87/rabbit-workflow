@@ -10,7 +10,7 @@
 #     [--max-iterations N]
 #
 # Output: assembled prompt to stdout. Caller: Agent(model: opus, prompt: stdout).
-# Version: 4.5.0
+# Version: 4.6.0
 # Owner: rabbit-workflow team (tdd-subagent)
 # Deprecation criterion: when TDD cycle is natively supported by rabbit CLI.
 
@@ -28,6 +28,15 @@ _CONTRACT_SCRIPTS = _Path(__file__).resolve().parents[2] / "contract" / "scripts
 if str(_CONTRACT_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_CONTRACT_SCRIPTS))
 from rabbit_print import rabbit_print  # noqa: E402
+
+# The mode-marker values that select the vendored (formerly "plugin") path.
+# The on-disk `.rabbit/.runtime/mode` value is being renamed from "plugin" to
+# "vendored" (#980); every mode comparison that selects the vendored path
+# dual-accepts BOTH values during the coexistence window. Mirrors
+# rabbit-cage scope-guard's _VENDORED_MODES and handoff-scaffold.py's
+# _VENDORED_MODES (#1050 — keep this set in lock-step with scope-guard so the
+# emitted marker path is the one scope-guard honors).
+_VENDORED_MODES = ("vendored", "plugin")
 
 # Canonical preamble text. Grep-stable: tests assert this exact body.
 # The note refers to the DISPATCHER's Step 4 HUMAN-APPROVAL gate (owned by
@@ -84,36 +93,43 @@ def _tdd_report_path(repo_root, feature_name):
 def _scope_marker_path(repo_root, feature_name):
     """Per-mode scope-marker absolute path (Inv 12 mode-aware amendment).
 
-    Standalone (mode marker absent or != 'plugin'):
+    Standalone (mode marker absent or not in _VENDORED_MODES):
       <repo_root>/.rabbit-scope-active-<feature>
-    Plugin (mode marker == 'plugin'):
+    Vendored (mode marker is 'vendored' or the legacy 'plugin'):
       <rabbit_root>/.runtime/scope-active-<feature>
+
+    The mode value is dual-accepted (`vendored`/`plugin`) to match
+    scope-guard's `_VENDORED_MODES` set (rabbit-cage Inv 17/49) during the
+    `plugin`->`vendored` rename coexistence window (#980). #1050: a
+    `vendored` install that only honored the legacy `plugin` value fell
+    through to the dashed standalone marker, which scope-guard's vendored
+    branch does NOT honor, so the subagent's in-scope writes stayed blocked.
 
     The dispatcher's `repo_root` differs by mode (per Inv 47):
       - standalone: `repo_root` is the git toplevel; mode marker would be
         at `<repo_root>/.rabbit/.runtime/mode`.
-      - plugin: `repo_root` is `RABBIT_ROOT` (which IS `<host>/.rabbit/`);
+      - vendored: `repo_root` is `RABBIT_ROOT` (which IS `<host>/.rabbit/`);
         mode marker is at `<repo_root>/.runtime/mode`.
-    Both locations are checked so plugin-mode dispatches (where
+    Both locations are checked so vendored-mode dispatches (where
     `repo_root` is already the rabbit-root) and standalone-mode dispatches
     (where `repo_root` is the git toplevel) both reach the right answer.
     Mirrors rabbit-cage Inv 17(b) so scope-guard finds the marker at the
     path it expects for the current install mode.
     """
     candidates = (
-        # Plugin mode where repo_root is RABBIT_ROOT (per Inv 47).
+        # Vendored mode where repo_root is RABBIT_ROOT (per Inv 47).
         (os.path.join(repo_root, ".runtime", "mode"),
          os.path.join(repo_root, ".runtime", f"scope-active-{feature_name}")),
-        # Plugin mode where repo_root is the host project root.
+        # Vendored mode where repo_root is the host project root.
         (os.path.join(repo_root, ".rabbit", ".runtime", "mode"),
          os.path.join(repo_root, ".rabbit", ".runtime",
                       f"scope-active-{feature_name}")),
     )
-    for mode_file, plugin_path in candidates:
+    for mode_file, vendored_path in candidates:
         try:
             with open(mode_file) as f:
-                if f.read().strip() == "plugin":
-                    return plugin_path
+                if f.read().strip() in _VENDORED_MODES:
+                    return vendored_path
         except (OSError, IOError):
             continue
     return os.path.join(repo_root, f".rabbit-scope-active-{feature_name}")
