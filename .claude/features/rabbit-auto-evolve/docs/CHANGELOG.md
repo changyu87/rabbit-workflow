@@ -16,6 +16,30 @@ authoritative).
 
 ## Version notes
 
+- **v0.93.0 — 2026-06-06** — #1101 (bug). New Inv 68: the merge phase records
+  ONLY currently-OPEN issues as `closed_issues` (the close-ref open-issue
+  cross-check guard). When PR #1100 merged it recorded
+  `closed_issues = [1, 2, 3, 1096]` because its body enumerated three fixes as
+  `Fix #1 / Fix #2 / Fix #3` and GitHub's closing-keyword grammar treats
+  `Fix #N` as a closing keyword — harmless ONLY because #1/#2/#3 are ancient
+  already-merged PRs, but had they been OPEN issues the loop would have wrongly
+  marked unrelated open issues closed (a silent convergence-guarantee
+  violation). `merge-prs.py` now cross-checks every parsed `#N` against
+  `gh issue view <N> --json state -q .state` and keeps ONLY `OPEN` issues in
+  `closed_issues`; a non-open `#N` (a PR number, an already-closed issue, a
+  bare-enumeration ordinal, or a number `gh issue view` cannot resolve) is
+  dropped — logged to stderr, never recorded and never acted on. The recorded
+  bookkeeping is now accurate (open-only) even if GitHub's own server-side
+  auto-close is broader. Defense in depth: Inv 68 also documents the authoring
+  convention that PR bodies MUST NOT use `Fix #N`/`Fixes #N`/`Closes #N` for a
+  non-issue enumeration (use `Fix 1/2/3` or `Part 1/2/3`), reserving closing
+  keywords for the actual target issue. `merge-prs.py` -> 2.1.0; new
+  `test/test-merge-prs.py` cases `closeref-guard` / `closeref-open` /
+  `closeref-closed` / `closeref-mixed` plus an `issue view --json state` arm in
+  the gh shim. Cross-feature follow-up surfaced: the tdd-subagent dispatch
+  prompt that instructs PR-body authoring should embed the same convention
+  (tdd-subagent scope, not edited here).
+
 - **v0.92.0 — 2026-06-06** — #1091 (enhancement). New Inv 67: the orchestrator
   now CAPTURES a self-observed error into a well-formed issue via an ISOLATED
   analysis subagent. The loop filed issues only REACTIVELY (a subagent's

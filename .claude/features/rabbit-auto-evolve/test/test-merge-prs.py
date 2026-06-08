@@ -57,11 +57,16 @@ def ok(msg):
 
 def _write_gh_shim(shim_dir, call_log, base_ref="main", head_ref="feat/x",
                    merge_exit=0, merge_stderr="", pr_body="", pr_title="",
-                   merge_sha="abc1234"):
+                   merge_sha="abc1234", open_issues=None):
     """Write a `gh` shim that:
        - dispatches on `pr view --json <field> -q .<field>` and echoes the
          right value (baseRefName, headRefName, title, body, mergeCommit.oid)
        - dispatches on `pr merge ... --squash` and exits `merge_exit`
+       - dispatches on `issue view <N> --json state -q .state` and echoes
+         `OPEN` when N is in `open_issues`, else `CLOSED` (issue #1101: the
+         close-ref open-issue cross-check guard). `open_issues` is an iterable
+         of int issue numbers treated as currently-open; when None NO issue is
+         open, so every parsed close-ref is dropped (the strictest case).
        - appends every invocation to `call_log` (one JSON line per call)
     """
     # The PR body/title may contain newlines; write each to a sidecar file the
@@ -72,12 +77,16 @@ def _write_gh_shim(shim_dir, call_log, base_ref="main", head_ref="feat/x",
     title_file = os.path.join(shim_dir, "pr-title.txt")
     with open(title_file, "w") as tf:
         tf.write(pr_title)
+    # Space-delimited set of open issue numbers the shim recognizes; the
+    # `issue view` dispatch echoes OPEN for a member, CLOSED otherwise.
+    open_set = " ".join(str(int(n)) for n in (open_issues or []))
     shim = os.path.join(shim_dir, "gh")
     with open(shim, "w") as f:
         f.write("#!/bin/sh\n")
         # Record the call: just the argv joined by ASCII-unit-separator-ish.
         f.write(f'CALL_LOG="{call_log}"\n')
         f.write('printf "%s\\n" "$*" >> "$CALL_LOG"\n')
+        f.write(f'OPEN_SET={open_set!r}\n')
         f.write(f'BASE_REF={base_ref}\n')
         f.write(f'HEAD_REF={head_ref}\n')
         f.write(f'MERGE_EXIT={merge_exit}\n')
@@ -107,6 +116,16 @@ def _write_gh_shim(shim_dir, call_log, base_ref="main", head_ref="feat/x",
         f.write('    .mergeCommit.oid) printf "%s\\n" "$MERGE_SHA" ;;\n')
         f.write('    *) printf "{}\\n" ;;\n')
         f.write('  esac\n')
+        f.write('  exit 0\n')
+        f.write('fi\n')
+        # issue view <N> --json state -q .state → OPEN if N in OPEN_SET.
+        f.write('if [ "$SUB" = "issue" ] && [ "$ACTION" = "view" ]; then\n')
+        f.write('  N="$1"\n')
+        f.write('  STATE=CLOSED\n')
+        f.write('  for o in $OPEN_SET; do\n')
+        f.write('    if [ "$o" = "$N" ]; then STATE=OPEN; fi\n')
+        f.write('  done\n')
+        f.write('  printf "%s\\n" "$STATE"\n')
         f.write('  exit 0\n')
         f.write('fi\n')
         f.write('if [ "$SUB" = "pr" ] && [ "$ACTION" = "merge" ]; then\n')
@@ -152,7 +171,8 @@ def _make_env(tmpdir, base_ref="main", head_ref="feat/x",
               merge_exit=0, merge_stderr="",
               safety_exit=0, safety_stderr="",
               pr_body="", pr_title="", merge_sha="abc1234",
-              item_status_exit=0, item_status_stderr=""):
+              item_status_exit=0, item_status_stderr="",
+              open_issues=None):
     """Build a sandbox: a bin/ dir on PATH with the gh shim, and a
     script-dir holding the real merge-prs.py copy (via env override) plus a
     safety-check.py shim, plus an item-status.py shim in a separate
@@ -176,7 +196,8 @@ def _make_env(tmpdir, base_ref="main", head_ref="feat/x",
     _write_gh_shim(bin_dir, call_log,
                    base_ref=base_ref, head_ref=head_ref,
                    merge_exit=merge_exit, merge_stderr=merge_stderr,
-                   pr_body=pr_body, pr_title=pr_title, merge_sha=merge_sha)
+                   pr_body=pr_body, pr_title=pr_title, merge_sha=merge_sha,
+                   open_issues=open_issues)
     _write_safety_shim(script_dir, exit_code=safety_exit,
                        stderr_msg=safety_stderr)
     _write_item_status_shim(issue_dir, item_status_log,
@@ -316,6 +337,7 @@ with tempfile.TemporaryDirectory() as td:
     cwd, env, call_log, item_status_log = _make_env(
         td, base_ref="main", safety_exit=0, merge_exit=0,
         pr_body="Closes #502\n", merge_sha="main9999",
+        open_issues=[502],
     )
     proc = _run(cwd, env, "42")
     if proc.returncode != 0:
@@ -560,7 +582,7 @@ with tempfile.TemporaryDirectory() as td:
     body = "Some change.\n\nFixes #11\nCloses #22\nresolves #33\n"
     cwd, env, call_log, item_status_log = _make_env(
         td, base_ref="main", safety_exit=0, merge_exit=0,
-        pr_body=body, merge_sha="deadbee",
+        pr_body=body, merge_sha="deadbee", open_issues=[11, 22, 33],
     )
     proc = _run(cwd, env, "42")
     if proc.returncode != 0:
@@ -847,7 +869,7 @@ with tempfile.TemporaryDirectory() as td:
     body = "Fixes #815\n"
     cwd, env, call_log, item_status_log = _make_env(
         td, base_ref="main", safety_exit=0, merge_exit=0,
-        pr_body=body, merge_sha="deadbee",
+        pr_body=body, merge_sha="deadbee", open_issues=[815],
     )
     state_dir = os.path.join(td, "state")
     os.makedirs(state_dir)
@@ -903,7 +925,7 @@ with tempfile.TemporaryDirectory() as td:
         td, base_ref="main", safety_exit=0, merge_exit=0,
         pr_title="fix(loop): patch the hole (closes #862)",
         pr_body="A change with no close-ref in the body.\n",
-        merge_sha="title99",
+        merge_sha="title99", open_issues=[862],
     )
     proc = _run(cwd, env, "865")
     if proc.returncode != 0:
@@ -938,7 +960,7 @@ with tempfile.TemporaryDirectory() as td:
         td, base_ref="main", safety_exit=0, merge_exit=0,
         pr_title="fix(loop): a plain title with no close-ref",
         pr_body="Some change.\n\nCloses #770\n",
-        merge_sha="body99",
+        merge_sha="body99", open_issues=[770],
     )
     proc = _run(cwd, env, "771")
     try:
@@ -963,7 +985,7 @@ with tempfile.TemporaryDirectory() as td:
         td, base_ref="main", safety_exit=0, merge_exit=0,
         pr_title="feat: do the thing (Closes #100, fixes #200)",
         pr_body="Detail.\n\nCloses #200\nResolves #300\n",
-        merge_sha="union99",
+        merge_sha="union99", open_issues=[100, 200, 300],
     )
     proc = _run(cwd, env, "999")
     try:
@@ -977,6 +999,125 @@ with tempfile.TemporaryDirectory() as td:
                  f"{results[0].get('closed_issues')!r} != [100, 200, 300]")
         else:
             ok("union-close: title+body union → 100/200/300 (deduplicated)")
+
+
+# ===========================================================================
+# Issue #1101 — close-ref open-issue cross-check guard.
+#
+# THE BUG: PR #1100's body enumerated its three fixes as "Fix #1 / Fix #2 /
+# Fix #3" — GitHub's closing-keyword grammar treats `Fix #N` as a closing
+# keyword, so the merge recorded closed_issues = [1, 2, 3, 1096]. It was
+# harmless ONLY because #1/#2/#3 are ancient already-merged PRs; had they been
+# OPEN issues the merge would have WRONGLY recorded (and the loop acted on)
+# closing unrelated open issues — a silent convergence-guarantee violation.
+#
+# THE GUARD: merge-prs.py now cross-checks every parsed `#N` against
+# `gh issue view N --json state -q .state` and keeps ONLY currently-OPEN
+# issues in closed_issues. A `Fix #N` enumeration whose N is NOT an open issue
+# (a PR number, an already-closed issue, a bare number) is DROPPED — logged to
+# stderr, never recorded. The explicit `Closes #<open-target>` survives.
+# ===========================================================================
+
+# --- (K) the enumeration trap: "Fix #1 / Fix #2 / Fix #3" + "Closes #1096" --
+# Only #1096 is an OPEN issue; #1/#2/#3 are not (they are old PRs). Expected:
+# closed_issues == [1096] ONLY; #1/#2/#3 dropped (logged, not recorded).
+with tempfile.TemporaryDirectory() as td:
+    body = ("This PR makes three fixes:\n"
+            "Fix #1 do the first thing\n"
+            "Fix #2 do the second thing\n"
+            "Fix #3 do the third thing\n\n"
+            "Closes #1096\n")
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="main", safety_exit=0, merge_exit=0,
+        pr_body=body, merge_sha="trap999", open_issues=[1096],
+    )
+    proc = _run(cwd, env, "1100")
+    if proc.returncode != 0:
+        fail(f"closeref-guard: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"closeref-guard: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        r = results[0]
+        if r.get("status") != "merged":
+            fail(f"closeref-guard: status {r.get('status')!r} != 'merged'")
+        if r.get("closed_issues", []) != [1096]:
+            fail(f"closeref-guard: closed_issues {r.get('closed_issues')!r} "
+                 f"!= [1096] — the Fix #1/#2/#3 enumeration MUST be dropped "
+                 f"(only the OPEN target #1096 is recorded)")
+        else:
+            ok("closeref-guard: Fix #1/#2/#3 dropped; only OPEN #1096 recorded")
+
+
+# --- (L) a real Closes #N for an OPEN N is recorded -------------------------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="main", safety_exit=0, merge_exit=0,
+        pr_body="Closes #777\n", merge_sha="open999", open_issues=[777],
+    )
+    proc = _run(cwd, env, "778")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"closeref-open: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        if results[0].get("closed_issues", []) != [777]:
+            fail(f"closeref-open: closed_issues "
+                 f"{results[0].get('closed_issues')!r} != [777] (an OPEN "
+                 f"Closes-target MUST be recorded)")
+        else:
+            ok("closeref-open: OPEN Closes-target #777 recorded")
+
+
+# --- (M) a Closes #N where N is CLOSED/non-issue is dropped -----------------
+# No issue is open (open_issues=None). Even an explicit `Closes #N` is dropped
+# when N is not a currently-open issue — never silently "close" a closed/PR num.
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="main", safety_exit=0, merge_exit=0,
+        pr_body="Closes #3\n", merge_sha="closed999",
+    )
+    proc = _run(cwd, env, "779")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"closeref-closed: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        if results[0].get("closed_issues", []) != []:
+            fail(f"closeref-closed: closed_issues "
+                 f"{results[0].get('closed_issues')!r} != [] (a non-OPEN "
+                 f"#N MUST be dropped)")
+        else:
+            ok("closeref-closed: non-OPEN #3 dropped from closed_issues")
+
+
+# --- (N) mixed: title `Closes #500` (open) + body `Fix #2` (not open) -------
+# Union across title+body, THEN filter to open. Expected: [500] only.
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="main", safety_exit=0, merge_exit=0,
+        pr_title="feat: thing (Closes #500)",
+        pr_body="Detail.\nFix #2 some sub-task\n",
+        merge_sha="mixed999", open_issues=[500],
+    )
+    proc = _run(cwd, env, "501")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"closeref-mixed: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        if results[0].get("closed_issues", []) != [500]:
+            fail(f"closeref-mixed: closed_issues "
+                 f"{results[0].get('closed_issues')!r} != [500] (title OPEN "
+                 f"#500 kept; body Fix #2 dropped)")
+        else:
+            ok("closeref-mixed: title OPEN #500 kept; body Fix #2 dropped")
 
 
 sys.exit(FAIL)

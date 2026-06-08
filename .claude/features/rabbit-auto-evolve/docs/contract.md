@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.92.0
+version: 0.93.0
 template_version: 2.0.0
 ---
 
