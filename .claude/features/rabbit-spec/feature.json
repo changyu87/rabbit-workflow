@@ -4,7 +4,7 @@
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
-  "tdd_state": "impl",
+  "tdd_state": "sync-deployed",
   "status": "active",
   "summary": "Owner of the rabbit workflow's spec-lifecycle surface. Hosts the rabbit-spec-creator subagent (drafts AND writes a new feature's initial docs/spec.md, returning a {path_written, summary} handoff) with its input assembler scripts/dispatch-spec-creator.py, and the rabbit-spec-update skill (revises existing specs; absorbed from rabbit-feature/rabbit-feature-spec).",
   "surface": {
