@@ -16,6 +16,35 @@ authoritative).
 
 ## Version notes
 
+- **v0.94.0 — 2026-06-06** — #1097 (bug). Tightened the research-classification
+  heuristic in `triage-issue.py` so it no longer FALSE-POSITIVES on an
+  implementable enhancement/bug whose USER-FACING prose merely contains keywords
+  like `recommend`/`alert`/`notify`/`notification`/`suggest`. #1096 — a concrete
+  CODE change — was wrongly classified `decision=research` (it asked the loop to
+  recommend/notify the operator at RUNTIME, not to produce findings), so the
+  research path would have emitted a findings doc instead of fixing the bug and
+  the dispatcher had to override. `_is_research` now routes to research only on a
+  STRONG, deterministic signal, via two routes: Route A — an explicit `research`
+  LABEL (the maintainer's deterministic request, wins outright); Route B — a
+  research-REQUEST shape in the issue's own framing requiring ALL of (1) a STRONG
+  signal: a research verb in the TITLE (the primary ask) OR an explicit
+  research-request PHRASE (`produce findings`, `investigate and …`, `evaluate
+  options`, `recommendation needed`, `an analysis`) anywhere, (2) no concrete
+  code-change target, and (3) a findings/recommendation request in the body. A
+  research verb sitting only in the BODY is no longer sufficient. The bare verb
+  `recommend` was removed from the verb set (its body presence is the exact
+  source of the false-positive; it remains a findings-request keyword). When
+  ambiguous the implementable shape is preferred — a mis-routed implementable
+  issue (findings-doc-instead-of-fix) is worse than a mis-routed research issue.
+  `triage-issue.py` -> 1.16.0; `_reconcile` now threads the issue labels through
+  to `_is_research`. New `test/test-triage-rules.py` cases
+  `research-false-positive-1096` / `research-false-positive-suggest-bug`
+  (incidental keywords stay `work`), `research-label-routes` (Route A) and
+  `research-title-verb-routes` (Route B). The Inv 3 "Research/investigation
+  classification" subsection and Inv 27(a) in `docs/spec.md` updated to describe
+  the two routes. Deployed surface: SKILL.md frontmatter version bumped (four-way
+  lockstep) — republish required (Inv 50).
+
 - **v0.93.0 — 2026-06-06** — #1101 (bug). New Inv 68: the merge phase records
   ONLY currently-OPEN issues as `closed_issues` (the close-ref open-issue
   cross-check guard). When PR #1100 merged it recorded

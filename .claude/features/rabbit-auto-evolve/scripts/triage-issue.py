@@ -100,7 +100,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.15.0
+Version: 1.16.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -627,18 +627,28 @@ def _cross_scope(feature_label, title, body):
     return bool(_CROSS_FEATURE_DECL.search(own_scope_text))
 
 
-# Research/investigation classification (issue #478) ------------------------
+# Research/investigation classification (issue #478, tightened by #1097) ----
 # A research/spike item asks for FINDINGS or a RECOMMENDATION, not a behavior
 # change. The loop's only code-producing shape is a TDD-cycle PR, so such an
 # item has no dispatch home — before #478 it was wrongly closed not-planned
 # (an Inv 25 convergence violation). Triage classifies it as
 # decision=research so plan-batch can route it to the research shape (Inv 27).
+#
+# #1097 hardening: the pre-#1097 heuristic FALSE-POSITIVED — it routed an
+# implementable enhancement/bug to research merely because its USER-FACING prose
+# contained keywords like "recommend"/"alert"/"notify"/"notification"/"suggest"
+# (an item that, e.g., asks the LOOP to NOTIFY/RECOMMEND to the operator at
+# runtime, not a request for the LOOP to produce findings). #1096 — a concrete
+# CODE change — was mis-routed this way and the dispatcher had to override. The
+# fix demands a STRONGER, more deterministic research signal (a research verb in
+# the TITLE, an explicit research-request PHRASE, or a dedicated `research`
+# LABEL) and keeps an implementable issue out of the research lane when the
+# signal is only incidental body-keyword presence.
 
-# Research/investigation verbs (whole-word, case-insensitive). All three
-# detection signals must hold (see _is_research) so a normal "implement X"
-# item is never misrouted.
+# Research/investigation verbs (whole-word, case-insensitive).
 _RESEARCH_VERB = re.compile(
-    r"\b(study|evaluate|investigate|survey|assess|recommend|compare|explore)"
+    r"\b(study|evaluate|investigate|survey|assess|research|"
+    r"compare|explore)"
     r"(?:s|d|ing|ed|ment|ation|ations)?\b",
     re.IGNORECASE,
 )
@@ -661,24 +671,80 @@ _CODE_CHANGE_PHRASE = re.compile(
     re.IGNORECASE,
 )
 
+# Explicit research-REQUEST phrasing (#1097). A primary ask for findings /
+# investigation, not incidental keyword presence (whole-phrase,
+# case-insensitive). When such a phrase appears it is a STRONG research signal
+# regardless of where it sits in title or body.
+_RESEARCH_REQUEST_PHRASE = re.compile(
+    r"produce findings"
+    r"|provide findings"
+    r"|deliver findings"
+    r"|evaluate options"
+    r"|recommendation needed"
+    r"|needs? a recommendation"
+    r"|investigate and"
+    r"|research and"
+    r"|analysis of\b"
+    r"|an analysis\b",
+    re.IGNORECASE,
+)
 
-def _is_research(title, body, feature_label):
-    """True iff the issue is a research/investigation item (issue #478).
 
-    ALL three signals must hold:
-      1. a research verb appears in the title or body;
-      2. no concrete code-change target — no `.claude/features/<name>/` path
-         reference beyond the labelled feature dir, and no imperative
-         implement/fix/add phrasing pointing at a behavior change;
-      3. the body asks for a recommendation / findings / report / analysis.
+def _has_research_label(labels):
+    """True iff the issue carries an explicit `research` label (#1097).
+
+    A `research` label is the maintainer's explicit, deterministic request for
+    the research dispatch shape — the strongest signal, honored regardless of
+    the body prose."""
+    return any(lbl.get("name", "") == "research" for lbl in labels or [])
+
+
+def _is_research(title, body, feature_label, labels=None):
+    """True iff the issue is a research/investigation item (issue #478,
+    tightened by #1097).
+
+    Two routes, EITHER of which classifies the item research:
+
+      A. An explicit `research` LABEL — the maintainer's deterministic request
+         for the research shape (#1097). This wins outright.
+
+      B. A research-REQUEST SHAPE in the issue's own framing, which requires ALL
+         of:
+           1. a STRONG research signal — a research verb in the TITLE (the
+              primary ask), OR an explicit research-request phrase ("produce
+              findings", "investigate and ...", "evaluate options",
+              "recommendation needed", "an analysis", ...) anywhere;
+           2. no concrete code-change target — no `.claude/features/<name>/`
+              path beyond the labelled feature dir, and no imperative
+              implement/fix/add phrasing;
+           3. the body asks for a recommendation / findings / report / analysis.
+
+    Route B deliberately does NOT fire on incidental research-flavored KEYWORDS
+    sitting only in the body of an otherwise-implementable enhancement/bug
+    (#1097 / #1096): a request that the LOOP notify/recommend/alert the operator
+    at runtime contains "recommend"/"notify" in its USER-FACING prose but is a
+    concrete code change, not a request for findings. When ambiguous the
+    implementable shape is preferred — a mis-routed implementable issue
+    (findings-doc-instead-of-fix) is worse than a mis-routed research issue.
     """
-    text = f"{title or ''}\n{body or ''}"
-    # Signal 1 — research verb present.
-    if not _RESEARCH_VERB.search(text):
+    # Route A — explicit research label wins outright.
+    if _has_research_label(labels):
+        return True
+
+    # Route B — research-request shape in the issue's own framing.
+    title_text = title or ""
+    body_text = body or ""
+    text = f"{title_text}\n{body_text}"
+    # Signal 1 — a STRONG research signal: a research verb in the TITLE (the
+    # primary ask) OR an explicit research-request phrase anywhere. A research
+    # verb sitting only in the body is NOT strong enough on its own (#1097).
+    strong = bool(_RESEARCH_VERB.search(title_text)) or bool(
+        _RESEARCH_REQUEST_PHRASE.search(text))
+    if not strong:
         return False
     # Signal 2 — no concrete code-change target.
     #   (a) no extra feature-dir path reference beyond the labelled one.
-    body_feats = {m for m in _FEATURE_PATH.findall(body or "")}
+    body_feats = {m for m in _FEATURE_PATH.findall(body_text)}
     extra_feats = body_feats - ({feature_label} if feature_label else set())
     if extra_feats:
         return False
@@ -924,12 +990,13 @@ def _title_body_target_conflict(title, body):
     return None
 
 
-def _reconcile(base, title, body, state_reason, comments):
+def _reconcile(base, title, body, state_reason, comments, labels=None):
     """Comment-thread reconciliation (issue #463), applied to an otherwise
     actionable (rule-7 `work`) issue. Reads the full comment thread plus the
     state reason and the title/body targets and refines the verdict between
     `work` (corrected intent is coherent) and `defer` (genuinely ambiguous
-    conflict). Returns the reconciled decision dict.
+    conflict). Returns the reconciled decision dict. `labels` (the issue's GH
+    labels) feed the #1097 research-label signal of `_is_research`.
     """
     correction = _superseding_comment(comments)
     conflict = _title_body_target_conflict(title, body)
@@ -953,7 +1020,7 @@ def _reconcile(base, title, body, state_reason, comments):
     # to the research dispatch shape (Inv 27) instead of a TDD-cycle PR.
     # Checked after the correction-comment case (so a deliberate correction
     # still wins) but before the work pass-through / conflict resolution.
-    if _is_research(title, body, base.get("feature")):
+    if _is_research(title, body, base.get("feature"), labels):
         return dict(base,
                     decision="research",
                     reason_code="research",
@@ -1279,7 +1346,7 @@ def classify(issue_num, repo_root):
     # original body is honored (issue #463). Reconciliation only ever
     # refines between `work` and `defer` — it never overrides an earlier
     # close/blocked/malformed verdict.
-    return _reconcile(base, title, body, state_reason, comments)
+    return _reconcile(base, title, body, state_reason, comments, labels)
 
 
 def main():
