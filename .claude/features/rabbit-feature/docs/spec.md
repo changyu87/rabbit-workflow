@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.41.1
+version: 1.41.2
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -235,13 +235,19 @@ their source path and not deployed):
     `skills/rabbit-feature-touch/scripts/feature-touch.py` that owns the
     skill's computed / mode-aware orchestration logic. It is executable,
     Python-3-stdlib-only, and exposes three subcommands:
-    (a) `resolve-spec-path <feature-name>` — prints the repo-root-relative
-        resolved spec path (flat `docs/spec.md` preferred, then legacy
-        `docs/spec/spec.md`), mode-aware via
-        `<repo_root>/.rabbit/.runtime/mode`.
-    (b) `resolve-contract-path <feature-name>` — same preference order for the
-        contract (flat `docs/contract.md` preferred, then legacy
-        `docs/spec/contract.md`).
+    (a) `resolve-spec-path <feature-name>` — prints the resolved spec path
+        (flat `docs/spec.md` preferred, then legacy `docs/spec/spec.md`),
+        mode-aware via `<repo_root>/.rabbit/.runtime/mode`. The emitted path
+        is STANDALONE: repo-root-relative; PLUGIN/VENDORED: relative to the
+        current working directory — the rabbit session cwd, which IS the
+        `.rabbit/` install dir — so the consumer
+        `tdd-subagent/scripts/dispatch-tdd-subagent.py`, which resolves its
+        `--spec` argument against that same cwd, finds the file without a
+        doubled `.rabbit/.rabbit/` prefix. In standalone mode
+        repo_root == cwd, so the two bases coincide and behavior is unchanged.
+    (b) `resolve-contract-path <feature-name>` — same preference order and the
+        same standalone/plugin emission-base rule for the contract (flat
+        `docs/contract.md` preferred, then legacy `docs/spec/contract.md`).
     (c) `commit-spec <feature-name> <summary>` — stages the feature dir with
         the mode-appropriate `git add` form (plugin mode uses `git add -f`),
         skips the commit on an empty staged spec diff, and otherwise commits

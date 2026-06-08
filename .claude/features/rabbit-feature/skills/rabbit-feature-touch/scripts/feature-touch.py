@@ -23,7 +23,12 @@ Subcommands:
       to the legacy `docs/spec/spec.md` for any not-yet-migrated nested-docs
       feature. The dead specs/ fallback has been removed. Mode-aware: detects
       standalone vs plugin mode from <repo_root>/.rabbit/.runtime/mode and
-      picks the matching feature_dir prefix.
+      picks the matching feature_dir prefix. In plugin/vendored mode the path
+      is emitted relative to the CURRENT WORKING DIRECTORY (the rabbit session
+      cwd, which IS the `.rabbit/` install dir), so the consumer
+      dispatch-tdd-subagent.py — which resolves --spec against its cwd — finds
+      it without a doubled `.rabbit/.rabbit/` prefix (#1061). Standalone mode
+      emits repo-root-relative as before (repo_root == cwd there).
 
   resolve-contract-path <feature-name>
       Like resolve-spec-path, for the contract: prefers flat
@@ -45,7 +50,7 @@ All paths are resolved relative to the repo root, which the script derives
 by walking up from the cwd to the nearest ancestor containing a `.git`
 entry (file or directory, so git worktrees are handled).
 
-Version: 0.5.0
+Version: 0.6.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -124,12 +129,34 @@ def _contract_path(feature_dir: Path) -> Path:
     return _resolve_doc(feature_dir, "contract.md")
 
 
-def _emit_relative(repo_root: Path, path: Path) -> None:
-    # Emit repo-root-relative when possible, else absolute.
+def _emit_relative(base: Path, path: Path) -> None:
+    # Emit `base`-relative when possible, else absolute.
     try:
-        print(str(path.relative_to(repo_root)))
+        print(str(path.relative_to(base)))
     except ValueError:
         print(str(path))
+
+
+def _emit_base(repo_root: Path, mode: str) -> Path:
+    """Pick the base directory a resolved doc path is emitted relative to.
+
+    The consumer of resolve-spec-path / resolve-contract-path
+    (tdd-subagent's dispatch-tdd-subagent.py) validates and resolves the
+    emitted path relative to its CURRENT WORKING DIRECTORY, and it shares the
+    rabbit session cwd with this producer. In a vendored install that cwd IS
+    the `.rabbit/` install dir, while `repo_root` is the HOST git toplevel
+    (the parent of `.rabbit/`). Emitting relative to `repo_root` there yields
+    a leading `.rabbit/` the consumer then re-anchors onto its `.rabbit/` cwd
+    (`.rabbit/.rabbit/...`), so the file is not found (#1061). Emitting
+    relative to cwd in vendored mode strips that prefix
+    (`rabbit-project/features/<name>/docs/spec.md`) so the consumer resolves
+    it correctly. Standalone mode is unchanged: repo_root == cwd there, so
+    repo-root-relative and cwd-relative coincide; we keep repo_root for
+    parity with the existing standalone contract.
+    """
+    if mode == "plugin":
+        return Path.cwd().resolve()
+    return repo_root
 
 
 def _keywords(request: str, count: int = 4) -> str:
@@ -165,7 +192,7 @@ def cmd_resolve_spec_path(feature: str) -> int:
     repo_root = _repo_root(Path.cwd())
     mode = _mode(repo_root)
     feature_dir = _feature_dir(repo_root, feature, mode)
-    _emit_relative(repo_root, _spec_path(feature_dir))
+    _emit_relative(_emit_base(repo_root, mode), _spec_path(feature_dir))
     return 0
 
 
@@ -173,7 +200,7 @@ def cmd_resolve_contract_path(feature: str) -> int:
     repo_root = _repo_root(Path.cwd())
     mode = _mode(repo_root)
     feature_dir = _feature_dir(repo_root, feature, mode)
-    _emit_relative(repo_root, _contract_path(feature_dir))
+    _emit_relative(_emit_base(repo_root, mode), _contract_path(feature_dir))
     return 0
 
 
