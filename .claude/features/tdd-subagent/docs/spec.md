@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.25.0
+version: 5.26.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -773,6 +773,28 @@ defined in Inv 55.
     git repo staging both the source and deployed layouts plus the contract
     `rabbit_print.py`; `tdd-step.py --help` from each copy loads the module and
     exits 0).
+
+63. **`--spec` resolution is full-vendor-safe (no dispatch-contract
+    change).** `dispatch-tdd-subagent.py` resolves the `--spec` value
+    relative to the process CURRENT WORKING DIRECTORY: the path flows
+    unaltered into `os.path.isfile(args.spec)` (the Inv 3 fail-fast guard)
+    and `_read_file(args.spec)` (the `{spec_content}` embed), both of which
+    resolve a relative path against cwd. The dispatch boundary therefore
+    needs NO mode-aware spec-path rewriting. When the cycle invokes the
+    dispatcher from inside a self-contained vendored worktree — whose whole
+    tracked checkout is co-located, so the cycle runs with cwd at the rabbit
+    runtime root — the spec resolves cwd-relative exactly as in standalone
+    mode, where the dispatcher runs at the repo root. The per-mode feature
+    ROOT differs (standalone scans `.claude/features/`, vendored adds
+    `rabbit-project/features/`), but the `--spec` RESOLUTION is the same
+    cwd-relative lookup in both, so the dispatch contract is full-vendor-safe
+    unchanged.
+
+    Enforced by `test/test-spec-cwd-relative-full-vendor.py` (e2e: a
+    standalone layout and a self-contained vendored-worktree layout; the
+    live dispatcher runs with cwd at each operating root and a cwd-relative
+    `--spec`, and both assert the resolved spec body is embedded in the
+    assembled prompt).
 
 ## Out of Scope
 
