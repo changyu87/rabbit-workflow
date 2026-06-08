@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.19.1
+version: 1.20.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -78,8 +78,7 @@ handoff so the orchestrator's context stays isolated from the full draft body.
         paths_globs=<globs> --slot paths_resolved=<newline-joined>` as a
         subprocess; print the resulting prompt-file path to stdout on
         success; exit nonzero on subprocess failure.
-    (d) Stdlib only (argparse, glob, os, shutil, subprocess, sys, pathlib,
-        importlib.util).
+    (d) Stdlib only (argparse, glob, os, subprocess, sys, pathlib).
     (e) `<repo_root>` MUST be resolved via `Path(__file__).resolve().parents[4]` —
         NOT via `subprocess git rev-parse --show-toplevel` and NOT via `os.getcwd()`.
         Both forbidden mechanisms point at the user-project root rather than the
@@ -89,27 +88,20 @@ handoff so the orchestrator's context stays isolated from the full draft body.
         under `.claude/features/rabbit-spec/test/`: plugin-layout resolution,
         standalone-layout resolution from external cwd, and nested-git-repo immunity.
     (f) The emitted prompt MUST live under the CANONICAL single-`.rabbit`
-        runtime root: `<rabbit_runtime_root(repo_root)>/prompts/`.
-        `contract/scripts/build-prompt.py` unconditionally joins
-        `<its repo_root>/.rabbit/prompts/...`; in a vendored install where the
-        session exports `RABBIT_ROOT=<host>/.rabbit` that DOUBLES to
-        `<host>/.rabbit/.rabbit/prompts/...`, splitting prompts off the runtime
-        root every other writer/reader uses. After build-prompt.py returns,
-        the script MUST resolve the canonical runtime root via rabbit-cage's
-        `rabbit_runtime_root` resolver (`.claude/features/rabbit-cage/lib/
-        runtime_root.py`, Inv 52 — vendored: returns `repo_root` unchanged;
-        standalone: appends `.rabbit`), lazy-imported via `importlib.util`
-        (the cross-feature INVOKE pattern rabbit-cage's session-start
-        dispatcher establishes), and RELOCATE the assembled prompt to
-        `<runtime_root>/prompts/` when build-prompt wrote it elsewhere, then
-        print that canonical path. The relocation is idempotent: in standalone
-        mode build-prompt already writes the canonical path and no move occurs.
-        Enforced by 2 tests under `.claude/features/rabbit-spec/test/`:
+        runtime root: `<rabbit_runtime_root(repo_root)>/prompts/`, with NO
+        doubled `.rabbit/.rabbit/` segment in either mode. This guarantee is
+        ensured UPSTREAM by `contract/scripts/build-prompt.py`, which anchors
+        its output dir at rabbit-cage's `rabbit_runtime_root` resolver
+        (`.claude/features/rabbit-cage/lib/runtime_root.py`, Inv 52 — vendored:
+        returns `repo_root` unchanged; standalone: appends `.rabbit`) in both
+        modes. The dispatcher prints build-prompt's emitted path as-is and MUST
+        NOT relocate it. Enforced by 2 tests under
+        `.claude/features/rabbit-spec/test/`:
         `test-dispatch-prompt-path-no-double-rabbit.py` (vendored layout with
         `RABBIT_ROOT=<host>/.rabbit` → emitted path is single-`.rabbit` and the
         file exists there) and `test-dispatch-prompt-path-standalone.py`
         (standalone layout → path stays the canonical `<repo_root>/.rabbit/
-        prompts/...` with no relocation).
+        prompts/...`).
 
 4. **`skills/rabbit-spec-update/SKILL.md` dual-mode feature_root resolution.**
    `skills/rabbit-spec-update/SKILL.md` MUST exist with YAML frontmatter

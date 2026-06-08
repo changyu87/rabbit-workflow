@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-"""test-dispatch-prompt-path-no-double-rabbit.py — rabbit-spec Inv 3(f) (#1066).
+"""test-dispatch-prompt-path-no-double-rabbit.py — rabbit-spec Inv 3(f).
 
 Regression guard for the vendored-mode `.rabbit/.rabbit/prompts/` doubling.
 
 In a vendored install the dispatcher session exports `RABBIT_ROOT=<host>/.rabbit`.
-contract/scripts/build-prompt.py resolves its own repo_root from that env and
-unconditionally joins `<repo_root>/.rabbit/prompts/...`, so the assembled prompt
-lands at the DOUBLED `<host>/.rabbit/.rabbit/prompts/...` — splitting prompts off
-the single-`.rabbit` runtime root every other writer/reader uses.
+contract/scripts/build-prompt.py anchors its output dir at the canonical
+single-`.rabbit` runtime root resolved by rabbit-cage's `rabbit_runtime_root`,
+so the assembled prompt lands at `<rabbit_runtime_root(repo_root)>/prompts/...`
+with NO doubled `.rabbit/.rabbit` segment. dispatch-spec-creator.py prints that
+emitted path as-is — the upstream guarantee makes any in-dispatcher relocation
+redundant.
 
-dispatch-spec-creator.py MUST pin the emitted prompt to the canonical single-
-`.rabbit` runtime root via rabbit-cage's `rabbit_runtime_root` resolver: the
-final path it prints (and the file on disk) MUST live under
+The emitted path (and the file on disk) MUST live under
 `<rabbit_runtime_root(repo_root)>/prompts/`, with NO `.rabbit/.rabbit` segment.
 
-This test stubs build-prompt.py to reproduce build-prompt's real
-`repo_root + .rabbit/prompts` join (driven by RABBIT_ROOT), then asserts the
+This test stubs build-prompt.py to reproduce build-prompt's real output-dir
+anchoring (`rabbit_runtime_root(RABBIT_ROOT)/prompts`), then asserts the
 dispatcher's stdout path is the single-`.rabbit` canonical path and the prompt
 file actually exists there.
 
-Version: 1.0.0
+Version: 2.0.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Claude Code exposes native spec-lifecycle skills
 """
@@ -32,9 +32,12 @@ import tempfile
 FEATURE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REAL_SCRIPT = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-creator.py")
 
-# Stub build-prompt.py that mirrors the REAL build-prompt's output-dir join:
-# repo_root = $RABBIT_ROOT (env override) else git toplevel; write under
-# <repo_root>/.rabbit/prompts/<id>-<pid>.txt and print that path.
+# Stub build-prompt.py that mirrors the REAL (#1073-fixed) build-prompt's
+# output-dir anchoring: repo_root = $RABBIT_ROOT (env override) else git
+# toplevel; out_dir = rabbit_runtime_root(repo_root)/prompts, where
+# rabbit_runtime_root returns repo_root unchanged when it is already a
+# `.rabbit` dir (vendored) and appends `.rabbit` otherwise (standalone). This
+# is the upstream canonical-path guarantee the dispatcher now relies on.
 STUB_BUILD_PROMPT = (
     "#!/usr/bin/env python3\n"
     "import os, sys, subprocess\n"
@@ -42,7 +45,9 @@ STUB_BUILD_PROMPT = (
     "if not root:\n"
     "    root = subprocess.run(['git','-C',os.path.dirname(os.path.abspath(__file__)),\n"
     "        'rev-parse','--show-toplevel'], capture_output=True, text=True).stdout.strip()\n"
-    "out_dir = os.path.join(root, '.rabbit', 'prompts')\n"
+    "root = os.path.normpath(root)\n"
+    "runtime_root = root if os.path.basename(root) == '.rabbit' else os.path.join(root, '.rabbit')\n"
+    "out_dir = os.path.join(runtime_root, 'prompts')\n"
     "os.makedirs(out_dir, exist_ok=True)\n"
     "p = os.path.join(out_dir, 'spec-create-%d.txt' % os.getpid())\n"
     "open(p, 'w').write('PROMPT BODY')\n"

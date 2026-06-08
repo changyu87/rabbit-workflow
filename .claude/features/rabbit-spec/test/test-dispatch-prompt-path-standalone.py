@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""test-dispatch-prompt-path-standalone.py — rabbit-spec Inv 3(f) (#1066).
+"""test-dispatch-prompt-path-standalone.py — rabbit-spec Inv 3(f).
 
 Standalone-mode counterpart to test-dispatch-prompt-path-no-double-rabbit.py.
 
 In standalone mode `repo_root` (Path(__file__).parents[4]) is the git toplevel,
 so the canonical runtime root is `<repo_root>/.rabbit` and the prompt MUST land
 at `<repo_root>/.rabbit/prompts/...` — exactly where build-prompt already writes
-it (no doubling, no relocation). This test pins that the runtime-root pinning
-added for the vendored fix does NOT perturb the standalone path.
+it (no doubling). This test pins that the dispatcher prints the canonical
+standalone path unchanged.
 
-Version: 1.0.0
+Version: 2.0.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Claude Code exposes native spec-lifecycle skills
 """
@@ -22,6 +22,10 @@ import tempfile
 FEATURE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REAL_SCRIPT = os.path.join(FEATURE_DIR, "scripts/dispatch-spec-creator.py")
 
+# Stub build-prompt.py that mirrors the REAL (#1073-fixed) build-prompt's
+# canonical output-dir anchoring: out_dir = rabbit_runtime_root(repo_root)/
+# prompts (repo_root unchanged when already a `.rabbit` dir, else `.rabbit`
+# appended).
 STUB_BUILD_PROMPT = (
     "#!/usr/bin/env python3\n"
     "import os, sys, subprocess\n"
@@ -29,7 +33,9 @@ STUB_BUILD_PROMPT = (
     "if not root:\n"
     "    root = subprocess.run(['git','-C',os.path.dirname(os.path.abspath(__file__)),\n"
     "        'rev-parse','--show-toplevel'], capture_output=True, text=True).stdout.strip()\n"
-    "out_dir = os.path.join(root, '.rabbit', 'prompts')\n"
+    "root = os.path.normpath(root)\n"
+    "runtime_root = root if os.path.basename(root) == '.rabbit' else os.path.join(root, '.rabbit')\n"
+    "out_dir = os.path.join(runtime_root, 'prompts')\n"
     "os.makedirs(out_dir, exist_ok=True)\n"
     "p = os.path.join(out_dir, 'spec-create-%d.txt' % os.getpid())\n"
     "open(p, 'w').write('PROMPT BODY')\n"
