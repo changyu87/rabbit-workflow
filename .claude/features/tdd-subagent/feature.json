@@ -60,5 +60,6 @@
     }
   ],
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
-  "updated": "2026-06-06"
+  "updated": "2026-06-08",
+  "spec_no_change_reason": "Inv 64 spec edits already committed in this cycle"
 }
