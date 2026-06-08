@@ -12,5 +12,5 @@
   "manifest": [],
   "runtime": {},
   "configuration": [],
-  "spec_no_change_reason": "housekeeping JSON reword of workspace-structure.json description; no spec.md change, no new behaviour"
+  "spec_no_change_reason": "bug fix #1053: validate_feature ref-resolution plumbing; spec does not document jsonschema $ref resolution behavior, no invariant change"
 }

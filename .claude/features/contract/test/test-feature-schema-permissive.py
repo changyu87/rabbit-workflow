@@ -10,10 +10,20 @@ import os
 import sys
 import json
 import glob
+import importlib.util
 
 REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../.."))
 FEATURE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SCHEMA = os.path.join(FEATURE_DIR, "schemas/feature.json.schema.json")
+SCHEMAS_DIR = os.path.join(FEATURE_DIR, "schemas")
+CHECKS_PATH = os.path.join(FEATURE_DIR, "lib", "checks.py")
+
+
+def _load_checks():
+    spec = importlib.util.spec_from_file_location("contract_lib_checks_perm", CHECKS_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 FAIL = 0
 
@@ -45,7 +55,12 @@ except ImportError:
     have_jsonschema = False
 
 if have_jsonschema:
-    validator = jsonschema.Draft7Validator(schema)
+    # feature.json.schema.json carries relative sibling $refs; build the
+    # validator with the same local ref-resolver validate_feature uses so the
+    # refs resolve without a network fetch (issue #1053).
+    _checks = _load_checks()
+    _resolver = _checks._build_schema_resolver(SCHEMAS_DIR, schema)
+    validator = jsonschema.Draft7Validator(schema, resolver=_resolver)
     feature_jsons = sorted(glob.glob(os.path.join(REPO_ROOT, ".claude/features/*/feature.json")))
     if not feature_jsons:
         print("FAIL t3: no feature.json files found to validate", file=sys.stderr)

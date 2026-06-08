@@ -574,6 +574,40 @@ def check_invariant_monotonic_order(feature_dirs: List[str]) -> CheckResult:
 
 # ---------- validate_feature -------------------------------------------------
 
+
+def _build_schema_resolver(schemas_dir, root_schema):
+    """Build a jsonschema RefResolver that resolves the sibling $refs in
+    feature.json.schema.json against the local schemas/ directory.
+
+    feature.json.schema.json uses RELATIVE $refs (e.g. "manifest.schema.json")
+    to its sibling schema files. Out of the box jsonschema treats those as
+    remote URLs and tries to fetch them, raising RefResolutionError. We
+    preload every sibling *.schema.json into the resolver's store keyed by
+    BOTH its bare filename (the literal $ref string) and its declared $id, and
+    set the resolver's base URI to the schemas/ dir (file:// scheme) so any
+    other relative ref also resolves locally without a network round-trip.
+    """
+    import jsonschema  # type: ignore
+
+    store = {}
+    for entry in os.listdir(schemas_dir):
+        if not entry.endswith(".json"):
+            continue
+        path = os.path.join(schemas_dir, entry)
+        try:
+            with open(path) as f:
+                doc = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+        store[entry] = doc
+        doc_id = doc.get("$id")
+        if isinstance(doc_id, str) and doc_id:
+            store[doc_id] = doc
+
+    base_uri = Path(schemas_dir).as_uri() + "/"
+    return jsonschema.RefResolver(base_uri=base_uri, referrer=root_schema, store=store)
+
+
 _VALID_TDD_STATES = {"spec", "spec-update", "test-red", "impl", "sync-deployed",
                      "test-green", "review", "merged", "deprecated"}
 
@@ -646,19 +680,30 @@ def validate_feature(feature_dir: str) -> CheckResult:
         return CheckResult(False, errors)
 
     # Schema validation (jsonschema optional dep)
-    schema_path = os.path.normpath(os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..", "schemas", "feature.json.schema.json",
+    schemas_dir = os.path.normpath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "schemas",
     ))
+    schema_path = os.path.join(schemas_dir, "feature.json.schema.json")
     if os.path.isfile(schema_path):
         try:
             import jsonschema  # type: ignore
             with open(schema_path) as f:
                 schema = json.load(f)
+            # feature.json.schema.json carries RELATIVE sibling $refs
+            # (manifest/runtime/configuration/prompts.schema.json). A bare
+            # jsonschema.validate() cannot resolve those and raises
+            # RefResolutionError — NOT a ValidationError — the moment it
+            # descends into one (i.e. for any feature.json with a manifest).
+            # Build a RefResolver whose store preloads every sibling schema
+            # so refs resolve locally (no network), then validate against it.
+            resolver = _build_schema_resolver(schemas_dir, schema)
+            validator = jsonschema.Draft7Validator(schema, resolver=resolver)
             try:
-                jsonschema.validate(data, schema)
-            except jsonschema.ValidationError as e:
-                err(f"feature.json: schema violation: {e.message}")
+                first = next(iter(validator.iter_errors(data)), None)
+                if first is not None:
+                    err(f"feature.json: schema violation: {first.message}")
+            except jsonschema.exceptions.RefResolutionError as e:
+                err(f"feature.json: schema ref could not be resolved: {e}")
         except ImportError:
             pass
 
