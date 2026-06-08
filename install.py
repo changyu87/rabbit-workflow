@@ -388,6 +388,64 @@ def write_rabbit_gitignore(dst_root: Path) -> None:
     (dst_root / ".gitignore").write_text(content)
 
 
+# Strategy A host-gitignore tokens (#1052 / #1060). The vendored install lives
+# at <host>/.rabbit/; the rabbit-project features the TDD cycle commits live
+# UNDER <host>/.rabbit/rabbit-project/. A blanket `.rabbit/` host ignore makes
+# every cycle commit silently no-op (no impl_commit, no PR). Strategy A ignores
+# ONLY the vendored tool tree and the ephemerals, keeping rabbit-project
+# tracked/committable/PR-able in the host repo.
+_HOST_IGNORE_TOKENS = (".rabbit/.claude/", ".rabbit/.runtime/")
+# Over-broad host ignores Strategy A MIGRATES (replaces) rather than retains.
+# Each is matched after stripping a trailing slash so `.rabbit` and `.rabbit/`
+# both migrate.
+_HOST_BLANKET_IGNORES = (".rabbit", ".rabbit/")
+
+
+def write_host_gitignore(dst_root: Path) -> None:
+    """Strategy A (#1052/#1060): manage the HOST repo `.gitignore` so a vendored
+    install ignores ONLY the vendored tool tree (`.rabbit/.claude/`) and the
+    ephemerals (`.rabbit/.runtime/`) — NOT `.rabbit/rabbit-project/`, which must
+    stay tracked so the TDD cycle's commits and PRs land in the host repo.
+
+    Vendored-only: acts solely when `dst_root` is a `.rabbit` install dir (the
+    host repo is then `dst_root.parent`). A standalone install (dst_root is the
+    repo root itself) leaves the host `.gitignore` untouched.
+
+    Idempotent + migrating: a pre-existing blanket `.rabbit/` (or `.rabbit`)
+    ignore line is REMOVED (migrated away, not merely shadowed); the A-shaped
+    tokens are appended only when absent; unrelated user entries are preserved.
+    Re-running converges to the same content.
+    """
+    if dst_root.name != ".rabbit":
+        return  # standalone install — nothing to manage in the host repo
+    host_root = dst_root.parent
+    gi_path = host_root / ".gitignore"
+
+    existing = gi_path.read_text().splitlines() if gi_path.is_file() else []
+
+    kept: list[str] = []
+    have_tokens: set[str] = set()
+    for line in existing:
+        stripped = line.strip()
+        # Drop the over-broad blanket ignore (migration).
+        if stripped in _HOST_BLANKET_IGNORES:
+            continue
+        if stripped in _HOST_IGNORE_TOKENS:
+            have_tokens.add(stripped)
+        kept.append(line)
+
+    missing = [t for t in _HOST_IGNORE_TOKENS if t not in have_tokens]
+    if missing:
+        if kept and kept[-1].strip() != "":
+            kept.append("")
+        kept.append("# rabbit vendored install — ignore the tool tree and "
+                    "ephemerals, NOT rabbit-project (Strategy A, #1052)")
+        kept.extend(missing)
+
+    content = "\n".join(kept).rstrip("\n") + "\n"
+    gi_path.write_text(content)
+
+
 def _local_src_marker(src_root: Path | None) -> str:
     """Inv 48: derive a MEANINGFUL pin label for a local `--src` install that
     resolves no published ref (RABBIT_INSTALLED_REF unset).
@@ -1054,6 +1112,7 @@ def _main_with_args(args: argparse.Namespace) -> int:
 
     rewrite_settings_for_plugin(dst_root)
     write_rabbit_gitignore(dst_root)
+    write_host_gitignore(dst_root)
     write_version_pin(dst_root, src_root)
 
     # Inv 43: canonicalize surfaces AFTER rewrite_settings_for_plugin so the

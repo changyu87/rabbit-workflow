@@ -185,7 +185,15 @@ COLLAPSE_MAX = 1
 # `.rabbit/.rabbit/` doubling) plus its e2e test (test-runtime-root-resolver.py).
 # A real spec addition documenting new test-enforced behavior, not reword
 # re-inflation.
-SPEC_LINE_CEILING = 608
+# Raised 608 -> 615 by #1052, which added Inv 53 (Strategy A per #1060: the
+# vendored installer's write_host_gitignore manages the HOST repo .gitignore to
+# ignore only .rabbit/.claude/ + .rabbit/.runtime/ while keeping
+# .rabbit/rabbit-project/ tracked — restoring the TDD cycle's git-atomicity in
+# vendored installs — migrating any blanket .rabbit/ ignore, idempotent,
+# standalone-untouched) plus its e2e test
+# (test-install-host-gitignore-strategy-a.py). A real spec addition documenting
+# new test-enforced behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 615
 
 PASS = 0
 FAIL = 0

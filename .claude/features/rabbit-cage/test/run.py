@@ -113,6 +113,7 @@ SUITES = [
     "test-show-mode-command.py",
     "test-scope-guard-decompose-context.py",
     "test-install-version-pin-local-src-not-unknown.py",
+    "test-install-host-gitignore-strategy-a.py",
     "test-vendored-mode-disambiguation-note.py",
     "test-mode-value-dual-accept.py",
 ]
