@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.82.0
+version: 5.83.0
 template_version: 2.0.0
 ---
 
@@ -34,6 +34,7 @@ template_version: 2.0.0
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-update.py", "stdin": "none", "stdout": "check: current-vs-latest JSON; install: install.py log", "exit": "0=ok 1=error 2=usage", "note": "backs /rabbit-update; check reuses contract check-release-update.py probe (non-throttled), install invokes install.py --update (spec Inv 35)"},
       {"path": ".claude/features/rabbit-cage/scripts/rabbit-cage-config.py", "stdin": "none", "stdout": "config messages + restart prompt", "exit": "0=ok 1=error 2=usage", "note": "backs /rabbit-cage-config; thin wrapper over contract.lib.config_dispatch.dispatch_config for rabbit-cage's 5 owned configurables (spec Inv 40)"},
       {"path": ".claude/features/rabbit-cage/lib/project_map_reader.py", "stdin": "none", "stdout": "none", "exit": "n/a (importable module)", "note": "plugin-mode project-map I/O + path matching; imported by scope-guard.py"},
+      {"path": ".claude/features/rabbit-cage/lib/runtime_root.py", "stdin": "none", "stdout": "none", "exit": "n/a (importable module)", "note": "canonical single-.rabbit runtime-root resolver (spec Inv 52); imported by session-start-dispatcher.py's mode-marker reconciliation"},
       {"path": ".claude/features/rabbit-cage/scripts/show-mode.py", "stdin": "none", "stdout": "single-line JSON {mode,rabbit_root,project_root,feature_dir,evidence} + one human `Mode: …` summary line", "exit": "0=ok (both modes and the rabbit-meta-unavailable degenerate case)", "note": "deterministic plugin/standalone mode reporter; delegates detection to rabbit-meta.lib.mode_detection.detect_mode (spec Inv 45); runs from source (no deployed copy)"}
     ],
     "schemas": [],

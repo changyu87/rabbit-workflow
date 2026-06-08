@@ -83,9 +83,34 @@ def repo_root() -> Path:
         return here
 
 
+def _canonical_runtime_root(root: str) -> Path:
+    """Resolve the single-`.rabbit` runtime root for `root` via rabbit-cage's
+    canonical resolver (Inv 52), lazy-imported from the install's feature lib.
+
+    Falls back to the inline basename rule when the resolver cannot be
+    imported (degenerate / partial install) so reconciliation still works.
+    """
+    resolver_path = (
+        Path(root) / ".claude" / "features" / "rabbit-cage"
+        / "lib" / "runtime_root.py"
+    )
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "rabbit_cage_runtime_root", str(resolver_path))
+        if spec is not None and spec.loader is not None:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return Path(module.rabbit_runtime_root(str(root)))
+    except (FileNotFoundError, ImportError, AttributeError, OSError):
+        pass
+    root_path = Path(root)
+    return root_path if root_path.name == ".rabbit" else root_path / ".rabbit"
+
+
 def _reconcile_mode_marker(root: str) -> None:
-    """Issue #891: pin the mode-marker WRITE path to the SAME location
-    scope-guard READS.
+    """Issue #891 / #1046: pin the mode-marker WRITE path to the SAME location
+    scope-guard READS, via the canonical runtime-root resolver (Inv 52).
 
     `contract.lib.runtime.write_mode_marker(repo_root=X)` APPENDS `.rabbit`
     to its `repo_root` arg, writing `<X>/.rabbit/.runtime/mode`. Its
@@ -103,7 +128,7 @@ def _reconcile_mode_marker(root: str) -> None:
     (out of rabbit-cage scope), so this helper does the caller-side
     reconciliation: when `root` is itself a `.rabbit` install dir, relocate
     the doubled marker to the canonical single-`.rabbit` path
-    `<parent(root)>/.rabbit/.runtime/mode` and prune the stray doubled tree.
+    `rabbit_runtime_root(root)/.runtime/mode` and prune the stray doubled tree.
 
     No-op in standalone mode (root basename != `.rabbit`): there the write
     root and the canonical path already coincide.
@@ -114,7 +139,7 @@ def _reconcile_mode_marker(root: str) -> None:
     doubled = root_path / ".rabbit" / ".runtime" / "mode"
     if not doubled.is_file():
         return
-    canonical = root_path / ".runtime" / "mode"
+    canonical = _canonical_runtime_root(root) / ".runtime" / "mode"
     if doubled == canonical:
         return
     try:

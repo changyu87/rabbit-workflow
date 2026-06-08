@@ -179,7 +179,13 @@ COLLAPSE_MAX = 1
 # (test-display-timezone-configurable.py) and the Inv 40 five->six owned-
 # configurable enumeration update. A real spec addition documenting new
 # test-enforced behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 606
+# Raised 606 -> 608 by #1046, which added Inv 52 (the canonical single-`.rabbit`
+# runtime-root resolver lib/runtime_root.py, owned by rabbit-cage and used by
+# the SessionStart mode-marker reconciliation to prevent the vendored-mode
+# `.rabbit/.rabbit/` doubling) plus its e2e test (test-runtime-root-resolver.py).
+# A real spec addition documenting new test-enforced behavior, not reword
+# re-inflation.
+SPEC_LINE_CEILING = 608
 
 PASS = 0
 FAIL = 0
