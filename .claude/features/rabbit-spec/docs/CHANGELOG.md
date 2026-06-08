@@ -25,6 +25,31 @@ Each retirement entry below carries the original invariant number (as it appeare
 
 ## Version notes
 
+- **v1.18.0 (bug #1043 — rabbit-spec-update dual-accept the `vendored` mode
+  marker):** After the #980 plugin->vendored rename, `write_mode_marker`
+  writes `vendored` (the value `detect_mode` now returns) verbatim to
+  `.rabbit/.runtime/mode`. The `rabbit-spec-update` SKILL.md `## Modes` section
+  recognized only `standalone` and `plugin`, so following it literally a
+  `vendored` marker matched neither and fell through to the standalone path,
+  resolving `feature_root` to `.claude/features/<name>/` instead of the
+  vendored `.rabbit/rabbit-project/features/<name>/` and aborting at Step 1 (or
+  silently targeting the wrong path). Inv 4 now requires the body to
+  dual-accept BOTH `vendored` (canonical) and the legacy `plugin` for the
+  vendored branch — the same `_VENDORED_MODES = ("vendored", "plugin")`
+  coexistence idiom every contract reader uses; the legacy `plugin` acceptance
+  drops only once no install carries the older marker spelling. SKILL.md body
+  `## Modes` section rewritten (v2.7.0 -> v2.8.0), `feature_root` definition
+  updated to name the vendored branch. Added enforcing test
+  `test/test-rabbit-spec-update-vendored-mode.py` (asserts the body mentions
+  `vendored` and places every `vendored` mention in the vendored/plugin branch
+  context). Inv 4 "Enforced by" clause extended to cite it. No invariants
+  renumbered or retired; numbering stays contiguous 1..8. Four-way version
+  alignment bumped spec.md/contract.md/feature.json 1.17.0 -> 1.18.0. Deployed
+  `.claude/skills/rabbit-spec-update/SKILL.md` republished in this cycle.
+  Source SKILL.md change requires skill-creator validation; skill-creator was
+  invoked but the targeted dual-accept edit was applied directly (no eval-loop
+  rerun) given the constrained, test-pinned scope.
+
 - **v1.17.0 (#922 retire the rabbit-spec-create skill wrapper):** Renamed
   `scripts/dispatch-spec-create.py` -> `scripts/dispatch-spec-creator.py` (git
   mv; name now matches the subagent it serves) and bumped it 1.2.0 -> 2.0.0.

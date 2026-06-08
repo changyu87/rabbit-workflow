@@ -1,10 +1,10 @@
 {
   "name": "rabbit-spec",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
-  "tdd_state": "test-green",
+  "tdd_state": "impl",
   "status": "active",
   "summary": "Owner of the rabbit workflow's spec-lifecycle surface. Hosts the rabbit-spec-creator subagent (drafts AND writes a new feature's initial docs/spec.md, returning a {path_written, summary} handoff) with its input assembler scripts/dispatch-spec-creator.py, and the rabbit-spec-update skill (revises existing specs; absorbed from rabbit-feature/rabbit-feature-spec).",
   "surface": {
@@ -21,7 +21,7 @@
     ]
   },
   "deprecation_criterion": "when Claude Code exposes native spec-lifecycle skills that supersede this feature",
-  "updated": "2026-06-06",
+  "updated": "2026-06-07",
   "manifest": [
     {
       "api": "publish_skill",
@@ -53,5 +53,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.16.0 -> 1.17.0, #922): retired the rabbit-spec-create skill wrapper. Removed Inv 4 (skill existence + 4-step protocol; renumber 5..9 -> 4..8), rewrote Inv 1/2/3/5/6/8 for the renamed dispatch-spec-creator.py input assembler and the upgraded write-capable rabbit-spec-creator subagent (Write+Explore tools, sole docs/spec.md write target, {path_written, summary} handoff). Numbering stays contiguous 1..8."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.17.0 -> 1.18.0, bug #1043): Inv 4 now requires rabbit-spec-update's SKILL.md mode detection to dual-accept the vendored-marker value `vendored` (canonical) alongside the legacy `plugin` for the vendored feature_root branch, mirroring the _VENDORED_MODES = (\"vendored\", \"plugin\") coexistence idiom; previously it pinned `plugin` exactly, so a `vendored` marker fell through to the standalone path. Added enforcing test test-rabbit-spec-update-vendored-mode.py. Numbering stays contiguous 1..8."
 }

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.17.0
+version: 1.18.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -100,8 +100,14 @@ handoff so the orchestrator's context stays isolated from the full draft body.
    to:
    - `.claude/features/<feature-name>/` — standalone mode (mode marker
      absent or content equals `standalone`).
-   - `.rabbit/rabbit-project/features/<feature-name>/` — plugin mode (mode
-     marker content equals exactly `plugin`).
+   - `.rabbit/rabbit-project/features/<feature-name>/` — vendored mode (mode
+     marker content equals `vendored`, the canonical value, or the legacy
+     `plugin` value). The skill body MUST dual-accept BOTH spellings for the
+     vendored branch — the same `_VENDORED_MODES = ("vendored", "plugin")`
+     coexistence idiom every contract reader uses — so a marker that holds
+     `vendored` resolves to the vendored feature_root and never silently
+     falls through to the standalone path. The legacy `plugin` acceptance is
+     dropped only once no install carries the older marker spelling.
    Every subsequent path reference in the skill body (Step 1 Read of the
    target spec.md, Step 1 optional reads of contract.md / feature.json /
    implementation files, Step 4 Edit/Write of spec.md, and the
@@ -116,8 +122,10 @@ handoff so the orchestrator's context stays isolated from the full draft body.
    `.rabbit/.runtime/mode`, (b) at least one literal mention of
    `.rabbit/rabbit-project/features/`, (c) every literal occurrence of
    `.claude/features/<feature-name>/` appears in a context that names
-   the standalone-mode branch (no unconditional uses). Wired into
-   `test/run.py`.
+   the standalone-mode branch (no unconditional uses); and by
+   `test/test-rabbit-spec-update-vendored-mode.py` which asserts the body
+   mentions `vendored` and places every `vendored` mention in the
+   vendored/plugin branch context. Both wired into `test/run.py`.
 
 5. **Spec-path layout: canonical flat `docs/` only.**
    The `rabbit-spec-update` skill and the drafting agent resolve the in-feature

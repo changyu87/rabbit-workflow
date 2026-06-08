@@ -2,7 +2,7 @@
 name: rabbit-spec-update
 description: Use when an existing feature spec needs to be revised or updated, in any context (standalone or plugin mode). Invoke as Skill("rabbit-spec-update", args: "<feature-name> <request>") from any skill, process, or directly. Auto-detects rabbit mode from .rabbit/.runtime/mode and resolves the target feature directory to .claude/features/<feature-name>/ in standalone mode or .rabbit/rabbit-project/features/<feature-name>/ in plugin mode. Reads the current spec, judges the request type, invokes superpowers as needed, updates the spec surgically, and produces an implementation suggestion file for whoever invoked it. Also use when a user asks to update, review, or revise a spec for any rabbit feature — even if they don't say "spec" explicitly (e.g., "think about what we need to build", "plan this feature", "what should change in the design", "update the design for this bug fix"). For drafting a BRAND NEW spec from scratch (no existing content), use rabbit-spec-create instead.
 model: opus
-version: 2.7.0
+version: 2.8.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
 ---
@@ -19,12 +19,24 @@ rabbit-meta's `write_mode_marker`):
 
 - **Standalone mode** (default; marker absent or contains `standalone`).
   The target feature lives under `.claude/features/<feature-name>/`.
-- **Plugin mode** (marker contains `plugin`). The target feature lives
-  under `.rabbit/rabbit-project/features/<feature-name>/`.
+- **Vendored mode** (marker contains `vendored` or the legacy `plugin`).
+  The target feature lives under
+  `.rabbit/rabbit-project/features/<feature-name>/`.
+
+Dual-accept BOTH vendored-marker spellings for the vendored branch. The
+canonical value is `vendored`; the older value `plugin` is still honoured
+during the coexistence window — this is the same
+`_VENDORED_MODES = ("vendored", "plugin")` idiom every contract reader uses.
+Treat a marker of `vendored` exactly as you would `plugin`: resolve to the
+vendored feature_root below, never let it fall through to the standalone
+path. Only when the marker contains `standalone` (or is absent) do you take
+the standalone branch. The legacy `plugin` acceptance is dropped only once no
+install carries the older marker spelling.
 
 Define `feature_root` as the resolved prefix for the rest of this skill
 body — i.e. `.claude/features/<feature-name>/` in standalone mode and
-`.rabbit/rabbit-project/features/<feature-name>/` in plugin mode. Every
+`.rabbit/rabbit-project/features/<feature-name>/` in vendored mode (marker
+`vendored` or legacy `plugin`). Every
 Read/Edit/Write reference to the target feature's spec.md, contract.md,
 feature.json, or implementation files below uses `<feature_root>` as the
 prefix. The impl-suggestion path at
