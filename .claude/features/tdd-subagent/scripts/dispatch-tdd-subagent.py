@@ -15,6 +15,7 @@
 # Deprecation criterion: when TDD cycle is natively supported by rabbit CLI.
 
 import argparse
+import importlib.util
 import os
 import re
 import subprocess
@@ -28,6 +29,44 @@ _CONTRACT_SCRIPTS = _Path(__file__).resolve().parents[2] / "contract" / "scripts
 if str(_CONTRACT_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_CONTRACT_SCRIPTS))
 from rabbit_print import rabbit_print  # noqa: E402
+
+
+def _rabbit_runtime_root(repo_root):
+    """Resolve the canonical single-`.rabbit` runtime root for `repo_root` via
+    rabbit-cage's `rabbit_runtime_root` resolver (Inv 52, #1046/#1067).
+
+    Cross-scope INVOKE of rabbit-cage's `lib/runtime_root.py`, lazy-imported
+    from the install's feature tree (mirrors session-start-dispatcher.py's
+    `_canonical_runtime_root` convention). Returns `repo_root` unchanged when
+    its basename is `.rabbit` (vendored) else `<repo_root>/.rabbit`
+    (standalone), idempotently. This is the SINGLE root every report runtime
+    artifact anchors at, replacing the bespoke mode-marker candidate probing
+    that diverged for a vendored-basename `repo_root` carrying no on-disk mode
+    marker.
+
+    Falls back to the inline basename rule — the resolver's own logic — when
+    the resolver cannot be imported (degenerate / partial install where the
+    rabbit-cage feature tree is not co-located under `repo_root`), so path
+    resolution stays correct without the cross-feature dependency present.
+    """
+    resolver_path = os.path.join(
+        repo_root, ".claude", "features", "rabbit-cage",
+        "lib", "runtime_root.py",
+    )
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "rabbit_cage_runtime_root", resolver_path)
+        if spec is not None and spec.loader is not None:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.rabbit_runtime_root(repo_root)
+    except (FileNotFoundError, ImportError, AttributeError, OSError):
+        pass
+    normalized = os.path.normpath(repo_root)
+    if os.path.basename(normalized) == ".rabbit":
+        return normalized
+    return os.path.join(normalized, ".rabbit")
+
 
 # The mode-marker values that select the vendored (formerly "plugin") path.
 # The on-disk `.rabbit/.runtime/mode` value is being renamed from "plugin" to
@@ -57,42 +96,30 @@ _BYPASS_NOTE_TEXT = (
 
 
 def _tdd_report_path(repo_root, feature_name):
-    """Per-mode canonical tdd-report absolute path (Inv 48).
+    """Canonical tdd-report absolute path anchored at the single-`.rabbit`
+    runtime root (Inv 48, #1067).
 
-    Vendored mode: `repo_root` IS the rabbit_root, so the report sits at
-      <repo_root>/tdd-report-<feature>.json
-    (NO extra `.rabbit/` segment; that would double-up to
-    `<host>/.rabbit/.rabbit/tdd-report-...json` which is the #313 bug.)
+    The report sits at
+      <rabbit_runtime_root(repo_root)>/tdd-report-<feature>.json
+    where `rabbit_runtime_root` (rabbit-cage Inv 52) returns:
+      - Vendored: `repo_root` unchanged when its basename is `.rabbit` (the
+        dispatcher resolves `repo_root` to RABBIT_ROOT, which IS the vendored
+        `.rabbit` install dir per Inv 47), so the report is
+        `<repo_root>/tdd-report-<feature>.json` — NO doubled `.rabbit/.rabbit/`
+        segment (the #313 bug).
+      - Standalone: `<repo_root>/.rabbit/tdd-report-<feature>.json` when
+        `repo_root` is the git toplevel.
 
-    Standalone: `repo_root` is the git toplevel; report sits under
-      <repo_root>/.rabbit/tdd-report-<feature>.json
-
-    Mode detection mirrors _scope_marker_path's dual-candidate check:
-    look for a `mode` marker either at `<repo_root>/.runtime/mode`
-    (vendored where repo_root==rabbit_root) or at
-    `<repo_root>/.rabbit/.runtime/mode` (vendored where repo_root==host).
-    The mode value is dual-accepted via the shared `_VENDORED_MODES`
-    constant (`vendored`/`plugin`) during the `plugin`->`vendored` rename
-    coexistence window (#980), mirroring `_scope_marker_path` (#1050/#1058);
-    a `vendored` install whose report path fell through to the standalone
-    form would mis-root the tdd-report.
+    This delegates to the CANONICAL resolver instead of bespoke mode-marker
+    candidate probing (#1067): the old probe keyed off an on-disk `mode`
+    marker and diverged — a vendored-basename `repo_root` with no marker fell
+    through to the standalone form, doubling the segment. The resolver keys off
+    the basename, so report/impl runtime artifacts agree on one root.
     """
-    candidates = (
-        # Vendored mode where repo_root is RABBIT_ROOT (per Inv 47).
-        (os.path.join(repo_root, ".runtime", "mode"),
-         os.path.join(repo_root, f"tdd-report-{feature_name}.json")),
-        # Vendored mode where repo_root is the host project root.
-        (os.path.join(repo_root, ".rabbit", ".runtime", "mode"),
-         os.path.join(repo_root, ".rabbit", f"tdd-report-{feature_name}.json")),
+    return os.path.join(
+        _rabbit_runtime_root(repo_root),
+        f"tdd-report-{feature_name}.json",
     )
-    for mode_file, vendored_path in candidates:
-        try:
-            with open(mode_file) as f:
-                if f.read().strip() in _VENDORED_MODES:
-                    return vendored_path
-        except (OSError, IOError):
-            continue
-    return os.path.join(repo_root, ".rabbit", f"tdd-report-{feature_name}.json")
 
 
 def _scope_marker_path(repo_root, feature_name):
