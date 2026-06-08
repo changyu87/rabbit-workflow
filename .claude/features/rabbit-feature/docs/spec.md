@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.43.0
+version: 1.44.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -614,6 +614,28 @@ their source path and not deployed):
     Inv 53/60). Enforced E2E by
     `test/test-touch-vendored-worktree-cycle.py`.
 
+62. **Vendored feature-touch refuses a toolless worktree and a stray-HEAD
+    spec commit.** Inv 61's self-containment property depends on the WHOLE
+    `.rabbit/` being tracked at HEAD (Strategy D), but `create-branch` never
+    verified that precondition; on a fresh vendored install where `.rabbit/`
+    is gitignored and not yet committed, `git worktree add ... HEAD` produced
+    a TOOLLESS worktree (no `.rabbit/` inside), and a subsequent `commit-spec`
+    run from the original main-tree `.rabbit/` cwd silently committed the spec
+    onto the host's shared `main` HEAD, leaving the feature branch empty.
+    Two guards close this. (a) The `create-branch` VENDORED arm
+    precondition-checks that `.rabbit/` is tracked at HEAD
+    (`git ls-tree HEAD .rabbit` is non-empty); if not, it FAILS LOUDLY with a
+    non-zero exit and an actionable message ("commit `.rabbit/` first") and
+    emits NO worktree path. (b) The `commit-spec` VENDORED arm refuses to
+    commit when it is running from the host's MAIN worktree (the shared main
+    HEAD — detected via `git rev-parse --git-dir` equalling
+    `--git-common-dir`) WHILE a per-session worktree
+    (`.rabbit-worktrees/session-*`) exists; it exits non-zero and directs the
+    caller to run from inside the worktree's `.rabbit/`. Both guards are
+    scoped to the vendored arm only — STANDALONE create-branch/commit-spec are
+    unchanged. Enforced E2E by
+    `test/test-touch-vendored-toolless-worktree.py`.
+
 ## What this feature does NOT define
 
 - The TDD subagent's 8-step cycle, the `tdd-step.py` state machine, or
@@ -651,3 +673,4 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-tdd-autonomous-alert.py` — Inv 59
 - `test-script-backed-clean.py` — Inv 60
 - `test-touch-vendored-worktree-cycle.py` — Inv 61
+- `test-touch-vendored-toolless-worktree.py` — Inv 62
