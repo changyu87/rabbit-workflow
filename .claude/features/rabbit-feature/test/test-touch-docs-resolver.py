@@ -22,8 +22,12 @@ End-to-end checks (real temp git repos, real subprocess invocations):
   * commit-spec stages and commits the resolved spec under the flat docs/
     layout.
   * mode-aware: plugin mode resolves under .rabbit/rabbit-project/features/.
+  * mode-aware dual-accept (#1045): the `vendored` mode-marker content value
+    is treated identically to the legacy `plugin` value — resolve-spec-path
+    resolves under .rabbit/rabbit-project/features/, and commit-spec
+    force-stages (git add -f) and commits the gitignored vendored spec.
 
-Version: 2.0.0
+Version: 2.1.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -215,6 +219,80 @@ def test_resolve_spec_plugin_mode_flat_docs() -> None:
         assert r.returncode == 0, r.stderr
         assert r.stdout.strip() == ".rabbit/rabbit-project/features/demo/docs/spec.md", (
             f"plugin-mode flat docs/ resolution mismatch, got {r.stdout.strip()!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# mode-aware dual-accept (#1045): the `vendored` content value selects plugin
+# mode identically to the legacy `plugin` value.
+# ---------------------------------------------------------------------------
+def test_resolve_spec_vendored_mode_flat_docs() -> None:
+    """A `vendored` mode marker (rabbit-meta detect_mode's current value)
+    MUST resolve the spec under the plugin feature_dir prefix, exactly like
+    the legacy `plugin` value. Before #1045 this fell through to the
+    standalone .claude/features/ prefix."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _git_init(root)
+        mode = root / ".rabbit/.runtime"
+        mode.mkdir(parents=True)
+        (mode / "mode").write_text("vendored", encoding="utf-8")
+        feat = root / ".rabbit/rabbit-project/features/demo/docs"
+        feat.mkdir(parents=True)
+        (feat / "spec.md").write_text("flat", encoding="utf-8")
+        r = _run(root, "resolve-spec-path", "demo")
+        assert r.returncode == 0, r.stderr
+        assert r.stdout.strip() == ".rabbit/rabbit-project/features/demo/docs/spec.md", (
+            f"vendored-mode flat docs/ resolution mismatch, got {r.stdout.strip()!r}"
+        )
+
+
+def test_commit_spec_vendored_mode_force_adds_gitignored() -> None:
+    """In a `vendored` install the project's decomposed work lives under the
+    gitignored .rabbit/. commit-spec MUST force-stage (git add -f) and commit
+    the gitignored vendored spec. Before #1045 the stale `_mode()` fell
+    through to standalone, `git add`ed a nonexistent .claude/features/ dir,
+    hit the empty-diff skip, and silently committed nothing."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _git_init(root)
+        subprocess.run(["git", "-C", str(root), "config", "user.email", "t@t"], check=True)
+        subprocess.run(["git", "-C", str(root), "config", "user.name", "t"], check=True)
+        mode = root / ".rabbit/.runtime"
+        mode.mkdir(parents=True)
+        (mode / "mode").write_text("vendored", encoding="utf-8")
+        # Host .gitignore ignores the whole vendored .rabbit/ tree.
+        (root / ".gitignore").write_text(".rabbit/\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(root), "add", ".gitignore"], check=True)
+        subprocess.run(["git", "-C", str(root), "commit", "-q", "-m", "base"], check=True)
+        feat = root / ".rabbit/rabbit-project/features/demo/docs"
+        feat.mkdir(parents=True)
+        (feat / "spec.md").write_text("v1\n", encoding="utf-8")
+        # Sanity: the vendored spec really is gitignored.
+        ci = subprocess.run(
+            ["git", "-C", str(root), "check-ignore",
+             ".rabbit/rabbit-project/features/demo/docs/spec.md"],
+            capture_output=True, text=True,
+        )
+        assert ci.returncode == 0, "precondition: vendored spec must be gitignored"
+        r = _run(root, "commit-spec", "demo", "issue #1045 vendored")
+        assert r.returncode == 0, r.stderr
+        # The commit MUST exist with the expected message.
+        log = subprocess.run(
+            ["git", "-C", str(root), "log", "-1", "--pretty=%s"],
+            capture_output=True, text=True,
+        ).stdout.strip()
+        assert log == "spec(demo): update spec for issue #1045 vendored", (
+            f"commit message mismatch / commit missing: {log!r} (stdout={r.stdout!r})"
+        )
+        # The gitignored vendored spec MUST be tracked after the commit.
+        tracked = subprocess.run(
+            ["git", "-C", str(root), "ls-files",
+             ".rabbit/rabbit-project/features/demo/docs/spec.md"],
+            capture_output=True, text=True,
+        ).stdout.strip()
+        assert tracked == ".rabbit/rabbit-project/features/demo/docs/spec.md", (
+            f"vendored spec was not force-staged/committed; ls-files={tracked!r}"
         )
 
 
