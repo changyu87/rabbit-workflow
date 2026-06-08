@@ -124,10 +124,12 @@ def make_feature(repo_root, feature_name, status="active", spec_body=""):
         f.write(spec_body or "Body of the spec.\n")
 
 
-def run_script(repo_root, issue_num, shim_dir):
+def run_script(repo_root, issue_num, shim_dir, state_dir=None):
     env = os.environ.copy()
     env["PATH"] = shim_dir + os.pathsep + env.get("PATH", "")
     env["RABBIT_ISSUE_REPO"] = "testowner/testrepo"
+    if state_dir is not None:
+        env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
     # Run with cwd = repo_root so the script's relative
     # `.claude/features/<X>/` lookups land on our tempdir fake.
     return subprocess.run(
@@ -1370,6 +1372,223 @@ with tempfile.TemporaryDirectory() as repo_root:
     proc = run_script(repo_root, 945, shim_dir)
     expect_decision(
         "native-coexist-prose-passthrough", proc, "work", "actionable")
+
+
+# ---------------------------------------------------------------------------
+# Comment-aware triage (issue #1081 / Inv 66): triage must SURFACE a new
+# human (non-bot) comment left since the loop last triaged the issue so a
+# maintainer decision/clarification left as a COMMENT is not silently
+# dropped. Three machine-readable signals on EVERY triage record:
+#   - `latest_comment_at`: ISO timestamp of the most recent NON-BOT comment
+#     (null when there is none) — the watermark advance source.
+#   - `has_unactioned_human_comment`: true iff a non-bot comment is newer
+#     than the persisted per-issue watermark (`comment_watermarks[<N>]`).
+#   - `needs_human_decision_reflected`: true iff such a NEW human comment
+#     carries the structured decision marker (a leading `@rabbit-decision:`
+#     token) — a maintainer decision on a gated tracker becomes actionable.
+# The watermark lives in .rabbit/auto-evolve-state.json under
+# `comment_watermarks`; triage-issue.py READS it (no mutation), triage-batch
+# ADVANCES it. State dir resolves via RABBIT_AUTO_EVOLVE_STATE_DIR.
+# ---------------------------------------------------------------------------
+
+# Case A: an OPEN actionable issue with a NEW human comment and NO prior
+# watermark → has_unactioned_human_comment true, latest_comment_at echoed.
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "comment-feature")
+    issue_payload = json.dumps({
+        "number": 1081,
+        "title": "Add a brand-new behavior to comment-feature",
+        "body": "Implement this fresh behavior.",
+        "labels": [
+            {"name": "feature:comment-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [
+            {"author": {"login": "maint", "is_bot": False},
+             "createdAt": "2026-06-05T12:00:00Z",
+             "body": "Please proceed with the second option."},
+        ],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"1081": issue_payload}, list_payload)
+    state_dir = os.path.join(repo_root, "state")  # no watermark seeded
+    proc = run_script(repo_root, 1081, shim_dir, state_dir=state_dir)
+    expect_decision(
+        "comment-new-human", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None
+            if (r.get("has_unactioned_human_comment") is True
+                and r.get("latest_comment_at") == "2026-06-05T12:00:00Z"
+                and r.get("needs_human_decision_reflected") is False)
+            else "new human comment must set has_unactioned_human_comment "
+                 "true, echo latest_comment_at, and leave "
+                 "needs_human_decision_reflected false (no marker); got "
+                 f"{r!r}"
+        ),
+    )
+
+
+# Case B: a structured decision-comment marker on a NEW human comment →
+# needs_human_decision_reflected true (the gated-tracker decision signal).
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "decision-feature")
+    issue_payload = json.dumps({
+        "number": 1082,
+        "title": "Design tracker: choose a strategy",
+        "body": "Decide which strategy to use.",
+        "labels": [
+            {"name": "feature:decision-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [
+            {"author": {"login": "maint", "is_bot": False},
+             "createdAt": "2026-06-05T13:00:00Z",
+             "body": "@rabbit-decision: let's go with strategy A."},
+        ],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"1082": issue_payload}, list_payload)
+    state_dir = os.path.join(repo_root, "state")
+    proc = run_script(repo_root, 1082, shim_dir, state_dir=state_dir)
+    expect_decision(
+        "comment-decision-marker", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None
+            if (r.get("has_unactioned_human_comment") is True
+                and r.get("needs_human_decision_reflected") is True)
+            else "a leading @rabbit-decision: marker on a new human comment "
+                 "must set needs_human_decision_reflected true; got "
+                 f"{r!r}"
+        ),
+    )
+
+
+# Case C: bot-only comment → no unactioned-human signal (bots are filtered).
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "botcomment-feature")
+    issue_payload = json.dumps({
+        "number": 1083,
+        "title": "Add a behavior to botcomment-feature",
+        "body": "Implement this fresh behavior.",
+        "labels": [
+            {"name": "feature:botcomment-feature"},
+            {"name": "priority:low"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [
+            {"author": {"login": "github-actions[bot]", "is_bot": True},
+             "createdAt": "2026-06-05T14:00:00Z",
+             "body": "Automated CI note: build passed."},
+        ],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"1083": issue_payload}, list_payload)
+    state_dir = os.path.join(repo_root, "state")
+    proc = run_script(repo_root, 1083, shim_dir, state_dir=state_dir)
+    expect_decision(
+        "comment-bot-only", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None
+            if (r.get("has_unactioned_human_comment") is False
+                and r.get("latest_comment_at") is None
+                and r.get("needs_human_decision_reflected") is False)
+            else "a bot-only comment thread must not set any human-comment "
+                 f"signal and must leave latest_comment_at null; got {r!r}"
+        ),
+    )
+
+
+# Case D: watermark already at/after the latest comment → NOT re-flagged
+# (the same comment is not re-surfaced next tick once the watermark advanced).
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "watermark-feature")
+    issue_payload = json.dumps({
+        "number": 1084,
+        "title": "Add a behavior to watermark-feature",
+        "body": "Implement this fresh behavior.",
+        "labels": [
+            {"name": "feature:watermark-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [
+            {"author": {"login": "maint", "is_bot": False},
+             "createdAt": "2026-06-05T15:00:00Z",
+             "body": "An older comment already actioned."},
+        ],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"1084": issue_payload}, list_payload)
+    state_dir = os.path.join(repo_root, "state")
+    os.makedirs(state_dir)
+    with open(os.path.join(state_dir, "comment-watermarks.json"), "w") as f:
+        json.dump({"schema_version": "1.0.0",
+                   "owner": "rabbit-workflow team",
+                   "deprecation_criterion": "x",
+                   "watermarks": {"1084": "2026-06-05T15:00:00Z"}}, f)
+    proc = run_script(repo_root, 1084, shim_dir, state_dir=state_dir)
+    expect_decision(
+        "comment-watermark-suppresses", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None
+            if (r.get("has_unactioned_human_comment") is False
+                and r.get("latest_comment_at") == "2026-06-05T15:00:00Z")
+            else "a comment at/below the watermark must NOT be re-flagged "
+                 "(has_unactioned_human_comment false) yet still echo "
+                 f"latest_comment_at; got {r!r}"
+        ),
+    )
+
+
+# Case E: no comments at all → all three signals are null/false but the KEYS
+# are always present (the dispatcher can rely on them).
+with tempfile.TemporaryDirectory() as repo_root:
+    make_feature(repo_root, "nocomment-feature")
+    issue_payload = json.dumps({
+        "number": 1085,
+        "title": "Add a behavior to nocomment-feature",
+        "body": "Implement this fresh behavior.",
+        "labels": [
+            {"name": "feature:nocomment-feature"},
+            {"name": "priority:medium"},
+        ],
+        "state": "OPEN",
+        "stateReason": None,
+        "comments": [],
+    })
+    list_payload = json.dumps([])
+    shim_dir = os.path.join(repo_root, "shim")
+    os.makedirs(shim_dir)
+    write_shim(shim_dir, {"1085": issue_payload}, list_payload)
+    proc = run_script(repo_root, 1085, shim_dir)
+    expect_decision(
+        "comment-none-keys-present", proc, "work", "actionable",
+        extra_assert=lambda r: (
+            None
+            if ("has_unactioned_human_comment" in r
+                and r.get("has_unactioned_human_comment") is False
+                and "needs_human_decision_reflected" in r
+                and r.get("needs_human_decision_reflected") is False
+                and "latest_comment_at" in r
+                and r.get("latest_comment_at") is None)
+            else "comment signal keys must always be present; got "
+                 f"{r!r}"
+        ),
+    )
 
 
 sys.exit(FAIL)

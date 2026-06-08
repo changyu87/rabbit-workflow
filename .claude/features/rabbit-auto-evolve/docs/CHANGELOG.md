@@ -16,6 +16,33 @@ authoritative).
 
 ## Version notes
 
+- **v0.91.0 — 2026-06-06** — #1081 (bug). New Inv 66: comment-aware triage so a
+  maintainer's COMMENT is never silently dropped. The loop keyed triage off
+  title/body/labels/state/native-deps only — NOT free-form comment content — so
+  a maintainer decision/clarification left as a COMMENT was dropped (observed
+  live: on a design tracker the maintainer commented the exact decision the
+  tracker asked for and the loop took NO action; the tracker stayed OPEN and its
+  blocked downstream sat idle until a human manually transcribed the decision).
+  `triage-issue.py` now emits three machine-readable signals on EVERY record:
+  `latest_comment_at` (most-recent NON-bot comment timestamp), `has_unactioned_human_comment`
+  (a non-bot comment NEWER than the persisted per-issue watermark), and
+  `needs_human_decision_reflected` (such a new comment carries the structured
+  leading `@rabbit-decision:` marker). The marker is parsed DETERMINISTICALLY (a
+  documented convention, NOT a free-form LLM interpreter); bot comments
+  (`author.is_bot` / `[bot]` login) are filtered. "New since last triage" is
+  deterministic via a per-issue WATERMARK persisted in a DEDICATED owned
+  artifact `.rabbit/comment-watermarks.json` (its own `{schema_version, owner,
+  deprecation_criterion, watermarks}` lifecycle — a separate file from the
+  heavily-pinned `auto-evolve-state.json`): `triage-issue.py` READS it,
+  `triage-batch.py` ADVANCES it monotonically to each issue's `latest_comment_at`
+  via an atomic temp+rename write. New tests in
+  `test/test-triage-rules.py` (new-human / decision-marker / bot-only /
+  watermark-suppression / no-comment), `test/test-triage-batch.py` (watermark
+  advance + monotonic), and new `test/test-spec-comment-aware-triage-invariant.py`.
+  Four-way version bump 0.90.0 → 0.91.0. SKILL.md frontmatter version bumped for
+  lockstep equality only — no SKILL.md body change — so a republish is required
+  for the deployed-skill version check, not for any documented behavior change.
+
 - **v0.90.0 — 2026-06-07** — #1051. New Inv 65: a dropped immediate-refire is
   now deterministically observable. Phase 12 `schedule-decision.py` emits
   `immediate-refire` and the dispatcher must `CronCreate` the one-shot, but that

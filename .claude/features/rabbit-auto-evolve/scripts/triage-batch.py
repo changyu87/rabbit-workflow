@@ -41,11 +41,22 @@ update-state.py) else `<cwd>/.rabbit`.
 Exit code: 0 on success (including with per-issue failures handled as
 defer entries); non-zero on malformed stdin JSON.
 
+Comment watermark advance (issue #1081 / Inv 66): triage-batch.py also
+ADVANCES the per-issue last-seen-comment watermark in the DEDICATED owned
+artifact `.rabbit/comment-watermarks.json` (a `{schema_version, owner,
+deprecation_criterion, watermarks}` object; the `watermarks` map is keyed by
+issue-number string) to each issue's emitted `latest_comment_at` after triage,
+via an atomic temp+rename read-modify-write. It is a SEPARATE file from
+`auto-evolve-state.json` so it carries its own lifecycle. The advance is
+monotonic (a newer existing watermark is preserved), so a maintainer comment
+surfaced once (`has_unactioned_human_comment`) is not re-flagged the next tick.
+triage-issue READS the watermark; triage-batch ADVANCES it.
+
 The triage-issue.py path resolves via the env override
 `RABBIT_AUTO_EVOLVE_SCRIPT_DIR` (test seam) else the sibling script
 directory of this file.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -145,6 +156,85 @@ def _apply_defer_counter(results, defer_counts):
     return counts
 
 
+# Comment watermark artifact (issue #1081 / Inv 66) ------------------------
+# A DEDICATED owned file (NOT the heavily-pinned auto-evolve-state.json) so the
+# per-issue last-seen-comment watermark carries its own lifecycle.
+_WATERMARK_SCHEMA_VERSION = "1.0.0"
+_WATERMARK_OWNER = "rabbit-workflow team"
+_WATERMARK_DEPRECATION = (
+    "when Claude Code or rabbit gains a native always-on autonomous-agent mode "
+    "that supersedes this skill"
+)
+
+
+def _resolve_watermark_path():
+    """Path to .rabbit/comment-watermarks.json. Honors the
+    RABBIT_AUTO_EVOLVE_STATE_DIR override (matching the rest of the loop)."""
+    override = os.environ.get("RABBIT_AUTO_EVOLVE_STATE_DIR")
+    state_dir = override if override else os.path.join(os.getcwd(), ".rabbit")
+    return os.path.join(state_dir, "comment-watermarks.json")
+
+
+def _load_watermarks(path):
+    """Return the `watermarks` map from the artifact, or {} when the file is
+    absent / empty / unparseable (best-effort — never raises)."""
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    wm = data.get("watermarks") if isinstance(data, dict) else None
+    return wm if isinstance(wm, dict) else {}
+
+
+def _advance_comment_watermarks(results, watermarks):
+    """Mutate-and-return the watermark map (issue #1081 / Inv 66), keyed by
+    issue-number string, advancing each issue's watermark to its emitted
+    `latest_comment_at` after triage so the SAME human comment is not re-flagged
+    `has_unactioned_human_comment` next tick.
+
+    The advance is MONOTONIC: an existing watermark NEWER than the emitted
+    `latest_comment_at` is preserved (lexical comparison on the ISO-8601-Z
+    timestamps, which sort chronologically as strings). A result with a null /
+    missing `latest_comment_at` (no human comment) records no watermark."""
+    wm = dict(watermarks)
+    for r in results:
+        issue = r.get("issue")
+        if issue is None:
+            continue
+        latest = r.get("latest_comment_at")
+        if not isinstance(latest, str) or not latest:
+            continue
+        key = str(issue)
+        prior = wm.get(key)
+        if not isinstance(prior, str) or latest > prior:
+            wm[key] = latest
+    return wm
+
+
+def _persist_watermarks(path, watermarks):
+    """Atomically write the watermark artifact via temp+rename. Best-effort:
+    any OSError is swallowed so persistence never breaks the batch output."""
+    payload = {
+        "schema_version": _WATERMARK_SCHEMA_VERSION,
+        "owner": _WATERMARK_OWNER,
+        "deprecation_criterion": _WATERMARK_DEPRECATION,
+        "watermarks": watermarks,
+    }
+    tmp_path = path + ".tmp"
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(tmp_path, "w") as f:
+            json.dump(payload, f, indent=2)
+            f.write("\n")
+        os.rename(tmp_path, path)
+    except OSError:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
 def _defer_entry(issue_num, stderr):
     snippet = (stderr or "").strip()[:200] or "triage-issue exited non-zero"
     return {
@@ -220,6 +310,17 @@ def main():
         # No usable state file — apply forcing against an empty counter so
         # current-tick behavior is consistent, but skip persistence.
         _apply_defer_counter(results, {})
+
+    # Comment watermark advance (issue #1081 / Inv 66): advance each issue's
+    # last-seen-comment marker in the DEDICATED comment-watermarks.json artifact
+    # so an already-surfaced human comment is not re-flagged next tick. This is
+    # independent of the auto-evolve-state.json read-modify-write above and is
+    # always attempted (the artifact is self-creating, best-effort).
+    watermark_path = _resolve_watermark_path()
+    _persist_watermarks(
+        watermark_path,
+        _advance_comment_watermarks(results, _load_watermarks(watermark_path)),
+    )
 
     json.dump(results, sys.stdout, indent=2)
     sys.stdout.write("\n")

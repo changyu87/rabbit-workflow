@@ -443,4 +443,161 @@ with tempfile.TemporaryDirectory() as tmp:
             fail(f"no-state-file: bad output ({e}); stdout={proc.stdout!r}")
 
 
+# ===========================================================================
+# Issue #1081 / Inv 66 — comment watermark advance.
+#
+# triage-batch.py ADVANCES the per-issue comment watermark in the DEDICATED
+# owned artifact `.rabbit/comment-watermarks.json` (a {schema_version, owner,
+# deprecation_criterion, watermarks} object; the `watermarks` map keyed by
+# issue-number string) to each issue's emitted `latest_comment_at` after
+# triage, so the same human comment is not re-flagged
+# `has_unactioned_human_comment` next tick. It is a SEPARATE file from
+# auto-evolve-state.json so it carries its own lifecycle.
+# ===========================================================================
+
+WATERMARK_FILE = "comment-watermarks.json"
+
+
+def _read_watermarks(state_dir):
+    with open(os.path.join(state_dir, WATERMARK_FILE)) as f:
+        return json.load(f)
+
+
+# A shim that echoes a triage object carrying a latest_comment_at, so the
+# batch has a value to persist as the watermark.
+WATERMARK_SHIM = """#!/usr/bin/env python3
+import json
+import sys
+
+LATEST = {
+    "800": "2026-06-05T10:00:00Z",
+    "801": None,
+}
+arg = sys.argv[1]
+json.dump({
+    "issue": int(arg),
+    "decision": "work",
+    "reason_code": "actionable",
+    "rationale": "ok",
+    "feature": "alpha",
+    "contract_touch": False,
+    "blocked_by": [],
+    "latest_comment_at": LATEST.get(arg),
+    "has_unactioned_human_comment": LATEST.get(arg) is not None,
+    "needs_human_decision_reflected": False,
+}, sys.stdout)
+sys.stdout.write("\\n")
+"""
+
+
+# ---------------------------------------------------------------------------
+# Scenario 9 — the watermark advances to the issue's latest_comment_at and is
+# persisted in the dedicated artifact's `watermarks` map; an issue with a null
+# latest_comment_at records no watermark; the artifact names owner +
+# deprecation criterion (Designed Deprecation). The auto-evolve-state.json file
+# is NOT polluted with watermark data.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    script_dir = os.path.join(tmp, "scripts")
+    os.makedirs(script_dir)
+    _write_shim(script_dir, WATERMARK_SHIM)
+    state_dir = os.path.join(tmp, "state")
+    _seed_state(state_dir)
+    raw = [
+        {"number": 800, "title": "x", "labels": [], "body": "",
+         "createdAt": "2026-06-01T00:00:00Z"},
+        {"number": 801, "title": "y", "labels": [], "body": "",
+         "createdAt": "2026-06-01T00:00:01Z"},
+    ]
+    proc = run_batch_state(raw, script_dir, state_dir)
+    if proc.returncode != 0:
+        fail(f"watermark-advance: exit {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    else:
+        art = _read_watermarks(state_dir)
+        wm = art.get("watermarks", {})
+        if wm.get("800") != "2026-06-05T10:00:00Z":
+            fail(f"watermark-advance: watermarks['800'] != latest; got {wm!r}")
+        elif "801" in wm:
+            fail(f"watermark-advance: null latest_comment_at must not record "
+                 f"a watermark; got {wm!r}")
+        else:
+            ok("watermark-advance: watermark persisted to latest_comment_at")
+        # Designed Deprecation: artifact carries owner + deprecation criterion.
+        if not art.get("owner") or not art.get("deprecation_criterion") \
+                or not art.get("schema_version"):
+            fail(f"watermark-advance: artifact missing lifecycle metadata: "
+                 f"{sorted(art)!r}")
+        else:
+            ok("watermark-advance: artifact carries owner/version/EOL")
+        # auto-evolve-state.json must NOT be polluted with watermark data.
+        st = _read_state(state_dir)
+        if "comment_watermarks" in st or "watermarks" in st:
+            fail(f"watermark-advance: state file polluted with watermark data: "
+                 f"{sorted(st)!r}")
+        else:
+            ok("watermark-advance: auto-evolve-state.json not polluted")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 10 — the watermark does not regress: an existing watermark NEWER
+# than the emitted latest_comment_at is kept (advance is monotonic).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    script_dir = os.path.join(tmp, "scripts")
+    os.makedirs(script_dir)
+    _write_shim(script_dir, WATERMARK_SHIM)
+    state_dir = os.path.join(tmp, "state")
+    os.makedirs(state_dir, exist_ok=True)
+    # Seed a watermark NEWER than the shim's emitted latest_comment_at.
+    with open(os.path.join(state_dir, WATERMARK_FILE), "w") as f:
+        json.dump({
+            "schema_version": "1.0.0",
+            "owner": "rabbit-workflow team",
+            "deprecation_criterion": "x",
+            "watermarks": {"800": "2026-06-10T00:00:00Z"},
+        }, f)
+    raw = [{"number": 800, "title": "x", "labels": [], "body": "",
+            "createdAt": "2026-06-01T00:00:00Z"}]
+    proc = run_batch_state(raw, script_dir, state_dir)
+    if proc.returncode != 0:
+        fail(f"watermark-monotonic: exit {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    else:
+        art = _read_watermarks(state_dir)
+        if art.get("watermarks", {}).get("800") != "2026-06-10T00:00:00Z":
+            fail(f"watermark-monotonic: watermark regressed; "
+                 f"got {art.get('watermarks')!r}")
+        else:
+            ok("watermark-monotonic: newer existing watermark preserved")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 11 — the watermark artifact is self-creating: with NO state file and
+# NO pre-existing artifact, the batch still writes the watermark (tick liveness
+# must not depend on either file already existing).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    script_dir = os.path.join(tmp, "scripts")
+    os.makedirs(script_dir)
+    _write_shim(script_dir, WATERMARK_SHIM)
+    state_dir = os.path.join(tmp, "no-state")  # does not exist yet
+    raw = [{"number": 800, "title": "x", "labels": [], "body": "",
+            "createdAt": "2026-06-01T00:00:00Z"}]
+    proc = run_batch_state(raw, script_dir, state_dir)
+    if proc.returncode != 0:
+        fail(f"watermark-self-create: exit {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    else:
+        try:
+            art = _read_watermarks(state_dir)
+            if art.get("watermarks", {}).get("800") != "2026-06-05T10:00:00Z":
+                fail(f"watermark-self-create: watermark not written; "
+                     f"got {art!r}")
+            else:
+                ok("watermark-self-create: artifact created with no prior file")
+        except (OSError, json.JSONDecodeError) as e:
+            fail(f"watermark-self-create: artifact not created ({e})")
+
+
 sys.exit(FAIL)
