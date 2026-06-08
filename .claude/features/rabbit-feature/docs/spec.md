@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.42.0
+version: 1.43.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -374,9 +374,19 @@ their source path and not deployed):
         escapes the root (e.g., `../../etc/**`) are rejected with an
         error naming the boundary; the post-resolution match list is
         also screened for symlink escapes.
-    (b) **Non-empty match** — the union of matches across all globs
-        MUST contain at least one filesystem path. A feature whose
-        globs match zero files is rejected as a typo guard.
+    (b) **Non-empty match (typo guard), with a greenfield exception** —
+        the union of matches across all globs MUST contain at least one
+        filesystem path for an EXISTING feature: globs that should match
+        files but match none are almost certainly a typo and are rejected.
+        A GREENFIELD feature is exempt — a `--batch` entry may carry
+        `greenfield: true` (a boolean; default `false`, and a non-boolean
+        value is rejected) ALONGSIDE non-empty globs, declaring that those
+        globs name paths the brand-new feature will create and so are
+        EXPECTED to match zero files. A greenfield zero-match entry is
+        ACCEPTED: it scaffolds and registers the declared globs verbatim
+        (the with-globs analogue of the globless greenfield path, which
+        owns `[]`). The typo guard fires only for a NON-greenfield
+        zero-match.
     (c) **No overlap with declared features** — for every match
         produced by the new globs, no existing entry in
         `<repo>/.rabbit/rabbit-project/project-map.json` may already
@@ -634,6 +644,7 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-manifest-shape.py` — Inv 40
 - `test-manifest-deploys-correctly.py` — Inv 40
 - `test-feature-new-plugin-mode.py` — Inv 44, 45, 46, 47, 48
+- `test-scaffold-greenfield-zero-match.py` — Inv 45 (greenfield zero-match exception)
 - `test-new-skill.py` — Inv 32, 49
 - `test-tdd-autonomous-configurable.py` — Inv 57
 - `test-tdd-autonomous-command.py` — Inv 58
