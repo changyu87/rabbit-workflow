@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.18.0
+version: 1.19.0
 template_version: 2.0.0
 ---
 
@@ -51,6 +51,10 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       {
         "path": ".claude/features/contract/scripts/build-prompt.py",
         "purpose": "assemble the rabbit-spec-creator subagent prompt from the registered template + slot values"
+      },
+      {
+        "path": ".claude/features/rabbit-cage/lib/runtime_root.py",
+        "purpose": "rabbit_runtime_root(repo_root) — resolve the canonical single-`.rabbit` runtime root so the assembled prompt is pinned to <runtime_root>/prompts/, never the doubled `.rabbit/.rabbit/` path (#1066, Inv 52)"
       }
     ],
     "agents": [

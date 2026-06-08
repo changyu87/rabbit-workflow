@@ -34,14 +34,24 @@ def build_fixture(tmp):
     shutil.copy(REAL_SCRIPT, target_script)
     os.chmod(target_script, 0o755)
 
-    # Stub build-prompt.py — prints its own absolute path so we can verify
-    # which layout the dispatcher resolved.
+    # Stub build-prompt.py — mirrors the real build-prompt's output-dir join
+    # (<repo_root>/.rabbit/prompts/...) and records its OWN absolute path as
+    # the prompt body so we can verify which layout the dispatcher resolved
+    # even after the dispatcher relocates the prompt to the canonical root.
     stub = os.path.join(contract_scripts, "build-prompt.py")
     with open(stub, "w") as f:
         f.write(
             "#!/usr/bin/env python3\n"
-            "import os, sys\n"
-            "print(os.path.abspath(__file__))\n"
+            "import os, sys, subprocess\n"
+            "root = os.environ.get('RABBIT_ROOT')\n"
+            "if not root:\n"
+            "    root = subprocess.run(['git','-C',os.path.dirname(os.path.abspath(__file__)),\n"
+            "        'rev-parse','--show-toplevel'], capture_output=True, text=True).stdout.strip()\n"
+            "out_dir = os.path.join(root, '.rabbit', 'prompts')\n"
+            "os.makedirs(out_dir, exist_ok=True)\n"
+            "p = os.path.join(out_dir, 'spec-create-%d.txt' % os.getpid())\n"
+            "open(p, 'w').write(os.path.abspath(__file__))\n"
+            "print(p)\n"
         )
     os.chmod(stub, 0o755)
 
@@ -50,7 +60,13 @@ def build_fixture(tmp):
 
 def main():
     with tempfile.TemporaryDirectory() as tmp:
+        # Resolve symlinks so absolute paths match Path(__file__).resolve().
+        tmp = os.path.realpath(tmp)
         plugin_root, target_script, expected_build_prompt = build_fixture(tmp)
+
+        # Vendored install: the session exports RABBIT_ROOT=<host>/.rabbit.
+        env = dict(os.environ)
+        env["RABBIT_ROOT"] = plugin_root
 
         # Invoke from an arbitrary outside cwd (not the plugin root, not the
         # user project) so cwd-based resolution would fail/mis-resolve.
@@ -58,7 +74,7 @@ def main():
         try:
             r = subprocess.run(
                 ["python3", target_script, "--feature-name", "foo"],
-                cwd=outside_cwd, capture_output=True, text=True,
+                cwd=outside_cwd, capture_output=True, text=True, env=env,
             )
         finally:
             shutil.rmtree(outside_cwd, ignore_errors=True)
@@ -68,8 +84,15 @@ def main():
                   f"stderr={r.stderr!r}", file=sys.stderr)
             return 1
 
-        # The stub printed its own path. It MUST be the plugin-layout stub.
-        resolved = r.stdout.strip()
+        # The emitted prompt records which build-prompt stub resolved. It MUST
+        # be the plugin-layout stub.
+        prompt_path = r.stdout.strip()
+        if not os.path.isfile(prompt_path):
+            print(f"FAIL: emitted prompt path does not exist: {prompt_path!r}",
+                  file=sys.stderr)
+            return 1
+        with open(prompt_path) as f:
+            resolved = f.read().strip()
         if resolved != expected_build_prompt:
             print(f"FAIL: dispatch resolved build-prompt.py to {resolved!r}; "
                   f"expected plugin-layout path {expected_build_prompt!r}",
