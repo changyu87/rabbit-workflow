@@ -16,7 +16,7 @@ Path-arg convention: every path arg accepted by these APIs is repo-root-
 relative unless explicitly noted. (This differs from lib.producers, which
 resolves relative paths against feature_dir.)
 
-Version: 1.17.0
+Version: 1.18.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when the rabbit CLI exposes native per-event
     dispatchers that subsume this library.
@@ -31,6 +31,52 @@ import re
 import subprocess
 import sys
 import time
+
+
+def _repo_markers_root(repo_root: str) -> str:
+    """Inv 68 — resolve the GIT TOPLEVEL root against which a `marker-file`
+    configurable's repo-root marker (the `.rabbit-*` dotfile a per-feature
+    config command such as `/rabbit-tdd-autonomous` writes at the git toplevel)
+    is read.
+
+    The single `repo_root` arg the dispatcher passes is `RABBIT_ROOT`. In a
+    VENDORED install `RABBIT_ROOT` IS the `.rabbit` install dir
+    (`<git-toplevel>/.rabbit`), so framework features under
+    `repo_root/.claude/features` resolve correctly — but a git-toplevel-written
+    configurable marker read at `repo_root/.rabbit-*` looks one `.rabbit` too
+    deep and never matches the write site. This helper decouples the two roots:
+    it returns the git toplevel — `dirname(repo_root)` when vendored,
+    `repo_root` unchanged when standalone — so the marker READ site matches the
+    existing WRITE site.
+
+    NOT used by `check_marker_alert` / `check_marker_consume_alert`: their
+    `.rabbit-scope-override` / `.rabbit-scope-override-used` markers live INSIDE
+    the `.rabbit` install dir in vendored mode and are correctly resolved
+    against `repo_root` (rabbit-cage Inv 25). Sole caller is
+    `_resolve_marker_value`.
+
+    Vendored detection uses rabbit-meta's canonical `detect_mode`
+    (lazy-imported from `<repo_root>/.claude/features/rabbit-meta/lib/
+    mode_detection.py`), falling back to the same basename rule the canonical
+    resolver uses (`basename(repo_root) == ".rabbit"`) when rabbit-meta cannot
+    be imported (degenerate/partial install). Pure path math; never raises.
+    """
+    normalized = os.path.normpath(repo_root)
+    vendored = os.path.basename(normalized) == ".rabbit"
+    mode_path = os.path.join(repo_root, ".claude", "features",
+                              "rabbit-meta", "lib", "mode_detection.py")
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "rabbit_meta_mode_detection_markers", mode_path)
+        if spec is not None and spec.loader is not None:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            vendored = module.is_vendored(module.detect_mode(repo_root))
+    except (FileNotFoundError, ImportError, AttributeError, OSError):
+        pass
+    if vendored:
+        return os.path.dirname(normalized)
+    return repo_root
 
 
 def _auto_evolve_active(repo_root: str) -> bool:
@@ -400,7 +446,9 @@ def _resolve_marker_value(repo_root: str, configurable: dict) -> str:
     present_value, absent_value = _marker_polarity(configurable)
     if present_value is None or absent_value is None:
         present_value, absent_value = "false", "true"
-    is_present = os.path.isfile(os.path.join(repo_root, path))
+    # Inv 68 — marker-file configurables store repo-root markers; resolve them
+    # against the git toplevel so vendored-mode reads match the write site.
+    is_present = os.path.isfile(os.path.join(_repo_markers_root(repo_root), path))
     return present_value if is_present else absent_value
 
 
