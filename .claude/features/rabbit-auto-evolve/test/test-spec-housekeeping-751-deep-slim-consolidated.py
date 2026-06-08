@@ -187,6 +187,17 @@ POST_1091_ADD_INVARIANTS = 1
 # lines, >= 4 invariants) stays ENFORCED while the #1101 addition is admitted.
 POST_1101_ADD_LINES = 40
 POST_1101_ADD_INVARIANTS = 1
+# #1109 amended Inv 68 (no new invariant): the close-ref open-issue cross-check
+# is a PRE-merge SNAPSHOT, not a post-merge query. A genuine target auto-closed
+# BY its own merge (GitHub's server-side keyword auto-close fires on a
+# default-branch merge) was wrongly dropped as not-currently-open by the
+# post-merge query, recording closed_issues=[] for a PR that legitimately closed
+# an issue. The amendment adds the PRE-MERGE timing rule + per-PR-batch snapshot
+# prose to Inv 68, the merge-prs step-4 rewording, and the script-table row — a
+# genuine bug-fix expansion, not slim regression. Mirror the prior headroom so
+# the #751 reduction (>= 150 lines, >= 4 invariants) stays ENFORCED while the
+# #1109 amendment is admitted.
+POST_1109_ADD_LINES = 30
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
@@ -194,7 +205,7 @@ MAX_TOTAL_LINES = (
     + POST_973_ADD_LINES + POST_966_ADD_LINES + POST_986_ADD_LINES
     + POST_1004_ADD_LINES + POST_1006_ADD_LINES + POST_1012_ADD_LINES
     + POST_1051_ADD_LINES + POST_1081_ADD_LINES + POST_1091_ADD_LINES
-    + POST_1101_ADD_LINES
+    + POST_1101_ADD_LINES + POST_1109_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).

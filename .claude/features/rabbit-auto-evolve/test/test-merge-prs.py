@@ -57,18 +57,33 @@ def ok(msg):
 
 def _write_gh_shim(shim_dir, call_log, base_ref="main", head_ref="feat/x",
                    merge_exit=0, merge_stderr="", pr_body="", pr_title="",
-                   merge_sha="abc1234", open_issues=None):
+                   merge_sha="abc1234", open_issues=None, auto_close_map=None,
+                   pr_bodies=None):
     """Write a `gh` shim that:
-       - dispatches on `pr view --json <field> -q .<field>` and echoes the
+       - dispatches on `pr view <N> --json <field> -q .<field>` and echoes the
          right value (baseRefName, headRefName, title, body, mergeCommit.oid)
        - dispatches on `pr merge ... --squash` and exits `merge_exit`
        - dispatches on `issue view <N> --json state -q .state` and echoes
-         `OPEN` when N is in `open_issues`, else `CLOSED` (issue #1101: the
-         close-ref open-issue cross-check guard). `open_issues` is an iterable
-         of int issue numbers treated as currently-open; when None NO issue is
-         open, so every parsed close-ref is dropped (the strictest case).
+         `OPEN` when N is in `open_issues` (and not auto-closed by a prior
+         merge), else `CLOSED` (issue #1101: the close-ref open-issue
+         cross-check guard). `open_issues` is an iterable of int issue numbers
+         treated as currently-open; when None NO issue is open, so every parsed
+         close-ref is dropped (the strictest case).
        - appends every invocation to `call_log` (one JSON line per call)
-    """
+
+    Issue #1109 — `auto_close_map` simulates GitHub's server-side keyword
+    auto-close: a dict {pr_number: [issue, ...]} of the issues that flip from
+    OPEN to CLOSED *when that PR merges*. On `pr merge <N>`, the shim appends
+    `auto_close_map[N]` to a persistent closed-marker file; a subsequent
+    `issue view` for a marked issue returns CLOSED even though it is in
+    `open_issues`. This lets a test distinguish a PRE-merge open snapshot from a
+    POST-merge query: the genuine target is OPEN before its own merge and CLOSED
+    after. An issue auto-closes ONLY when ITS OWN PR merges (per-PR fidelity in
+    a batch), exactly as GitHub does.
+
+    `pr_bodies` is an optional dict {pr_number: body} for per-PR distinct
+    bodies (a batch where each PR closes its OWN target). When a viewed PR is
+    absent from `pr_bodies` the shim falls back to the single `pr_body`."""
     # The PR body/title may contain newlines; write each to a sidecar file the
     # shim `cat`s, so shell escaping never mangles the embedded newlines.
     body_file = os.path.join(shim_dir, "pr-body.txt")
@@ -77,9 +92,24 @@ def _write_gh_shim(shim_dir, call_log, base_ref="main", head_ref="feat/x",
     title_file = os.path.join(shim_dir, "pr-title.txt")
     with open(title_file, "w") as tf:
         tf.write(pr_title)
+    # Per-PR body sidecars (issue #1109 batch fidelity): pr-body-<N>.txt.
+    for pr_num, body in (pr_bodies or {}).items():
+        with open(os.path.join(shim_dir, f"pr-body-{int(pr_num)}.txt"),
+                  "w") as pf:
+            pf.write(body)
     # Space-delimited set of open issue numbers the shim recognizes; the
     # `issue view` dispatch echoes OPEN for a member, CLOSED otherwise.
     open_set = " ".join(str(int(n)) for n in (open_issues or []))
+    # The persistent closed-marker the merge writes to (auto-close simulation).
+    closed_marker = os.path.join(shim_dir, "auto-closed.txt")
+    # Per-PR auto-close lists, written to a sidecar file as `<pr>:<sp-joined-
+    # issues>` lines (a file, not an env string, so embedded newlines survive).
+    auto_close_file = os.path.join(shim_dir, "auto-close-spec.txt")
+    with open(auto_close_file, "w") as acf:
+        for pr_num, issues in (auto_close_map or {}).items():
+            acf.write(
+                f"{int(pr_num)}:" + " ".join(str(int(i)) for i in issues)
+                + "\n")
     shim = os.path.join(shim_dir, "gh")
     with open(shim, "w") as f:
         f.write("#!/bin/sh\n")
@@ -94,10 +124,15 @@ def _write_gh_shim(shim_dir, call_log, base_ref="main", head_ref="feat/x",
         f.write(f'BODY_FILE={body_file!r}\n')
         f.write(f'TITLE_FILE={title_file!r}\n')
         f.write(f'MERGE_SHA={merge_sha!r}\n')
+        f.write(f'SHIM_DIR={shim_dir!r}\n')
+        f.write(f'CLOSED_MARKER={closed_marker!r}\n')
+        f.write(f'AUTO_CLOSE_FILE={auto_close_file!r}\n')
         # Walk args. First arg is subcommand `pr`, second is the action.
         f.write('SUB="$1"; shift\n')
         f.write('ACTION="$1"; shift\n')
         f.write('if [ "$SUB" = "pr" ] && [ "$ACTION" = "view" ]; then\n')
+        # The viewed PR number is the first remaining positional arg.
+        f.write('  PRNUM="$1"\n')
         # Walk for --json and -q
         f.write('  JSON_FIELDS=""\n')
         f.write('  QUERY=""\n')
@@ -108,27 +143,48 @@ def _write_gh_shim(shim_dir, call_log, base_ref="main", head_ref="feat/x",
         f.write('      *) shift ;;\n')
         f.write('    esac\n')
         f.write('  done\n')
+        # Per-PR body sidecar wins over the shared body, when present.
+        f.write('  PR_BODY_FILE="$SHIM_DIR/pr-body-$PRNUM.txt"\n')
+        f.write('  if [ ! -f "$PR_BODY_FILE" ]; then PR_BODY_FILE="$BODY_FILE"; fi\n')
         f.write('  case "$QUERY" in\n')
         f.write('    .baseRefName) printf "%s\\n" "$BASE_REF" ;;\n')
         f.write('    .headRefName) printf "%s\\n" "$HEAD_REF" ;;\n')
         f.write('    .title) cat "$TITLE_FILE" ;;\n')
-        f.write('    .body) cat "$BODY_FILE" ;;\n')
+        f.write('    .body) cat "$PR_BODY_FILE" ;;\n')
         f.write('    .mergeCommit.oid) printf "%s\\n" "$MERGE_SHA" ;;\n')
         f.write('    *) printf "{}\\n" ;;\n')
         f.write('  esac\n')
         f.write('  exit 0\n')
         f.write('fi\n')
-        # issue view <N> --json state -q .state → OPEN if N in OPEN_SET.
+        # issue view <N> --json state -q .state → OPEN if N in OPEN_SET AND
+        # not already auto-closed by a prior merge (issue #1109).
         f.write('if [ "$SUB" = "issue" ] && [ "$ACTION" = "view" ]; then\n')
         f.write('  N="$1"\n')
         f.write('  STATE=CLOSED\n')
         f.write('  for o in $OPEN_SET; do\n')
         f.write('    if [ "$o" = "$N" ]; then STATE=OPEN; fi\n')
         f.write('  done\n')
+        # If a prior merge auto-closed N, it is now CLOSED (post-merge query).
+        f.write('  if [ -f "$CLOSED_MARKER" ]; then\n')
+        f.write('    for c in $(cat "$CLOSED_MARKER"); do\n')
+        f.write('      if [ "$c" = "$N" ]; then STATE=CLOSED; fi\n')
+        f.write('    done\n')
+        f.write('  fi\n')
         f.write('  printf "%s\\n" "$STATE"\n')
         f.write('  exit 0\n')
         f.write('fi\n')
         f.write('if [ "$SUB" = "pr" ] && [ "$ACTION" = "merge" ]; then\n')
+        # The merged PR number is the first remaining positional arg.
+        f.write('  PRNUM="$1"\n')
+        f.write('  if [ "$MERGE_EXIT" = "0" ] && [ -f "$AUTO_CLOSE_FILE" ]; then\n')
+        # Append this PR\'s auto-close issues to the persistent marker (GitHub\'s
+        # server-side keyword auto-close fires on merge, issue #1109).
+        f.write('    while IFS=: read pr issues; do\n')
+        f.write('      if [ "$pr" = "$PRNUM" ]; then\n')
+        f.write('        for i in $issues; do printf "%s\\n" "$i" >> "$CLOSED_MARKER"; done\n')
+        f.write('      fi\n')
+        f.write('    done < "$AUTO_CLOSE_FILE"\n')
+        f.write('  fi\n')
         f.write('  printf "%s" "$MERGE_STDERR" >&2\n')
         f.write('  exit $MERGE_EXIT\n')
         f.write('fi\n')
@@ -172,7 +228,7 @@ def _make_env(tmpdir, base_ref="main", head_ref="feat/x",
               safety_exit=0, safety_stderr="",
               pr_body="", pr_title="", merge_sha="abc1234",
               item_status_exit=0, item_status_stderr="",
-              open_issues=None):
+              open_issues=None, auto_close_map=None, pr_bodies=None):
     """Build a sandbox: a bin/ dir on PATH with the gh shim, and a
     script-dir holding the real merge-prs.py copy (via env override) plus a
     safety-check.py shim, plus an item-status.py shim in a separate
@@ -197,7 +253,8 @@ def _make_env(tmpdir, base_ref="main", head_ref="feat/x",
                    base_ref=base_ref, head_ref=head_ref,
                    merge_exit=merge_exit, merge_stderr=merge_stderr,
                    pr_body=pr_body, pr_title=pr_title, merge_sha=merge_sha,
-                   open_issues=open_issues)
+                   open_issues=open_issues, auto_close_map=auto_close_map,
+                   pr_bodies=pr_bodies)
     _write_safety_shim(script_dir, exit_code=safety_exit,
                        stderr_msg=safety_stderr)
     _write_item_status_shim(issue_dir, item_status_log,
@@ -1118,6 +1175,123 @@ with tempfile.TemporaryDirectory() as td:
                  f"#500 kept; body Fix #2 dropped)")
         else:
             ok("closeref-mixed: title OPEN #500 kept; body Fix #2 dropped")
+
+
+# ===========================================================================
+# Issue #1109 — the open-state cross-check must be a PRE-merge SNAPSHOT, not a
+# POST-merge query.
+#
+# THE REGRESSION (introduced by #1101 / Inv 68): the cross-check ran AFTER
+# `gh pr merge`. But the merge targets the default branch `main`, so GitHub's
+# server-side keyword auto-close closes the genuine target ON merge. The
+# post-merge `gh issue view` then sees the just-auto-closed genuine target as
+# "not currently-open" and DROPS it — recording closed_issues=[] for a PR that
+# legitimately closed an issue (observed: a 4-PR batch recorded [] for ALL).
+#
+# THE FIX: snapshot each PR's close-ref open-state BEFORE that PR's merge.
+# Record the refs that were OPEN in the pre-merge snapshot (the genuine target,
+# closed BY this merge), while still dropping a bare `Fix #N` enumeration whose
+# N was NOT open pre-merge. Snapshot per-PR immediately before its own merge so
+# a later PR in a batch is never judged against an issue an earlier PR closed.
+# ===========================================================================
+
+# --- (O) genuine target OPEN pre-merge, CLOSED by its own auto-close ---------
+# `Closes #500`; #500 is OPEN in the pre-merge snapshot, then GitHub auto-closes
+# it ON this PR's merge. The CURRENT (buggy) code queries post-merge, sees #500
+# closed, and records []. The fix records [500].
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="main", safety_exit=0, merge_exit=0,
+        pr_body="Closes #500\n", merge_sha="snap500",
+        open_issues=[500], auto_close_map={42: [500]},
+    )
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"premerge-snapshot: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"premerge-snapshot: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        r = results[0]
+        if r.get("status") != "merged":
+            fail(f"premerge-snapshot: status {r.get('status')!r} != 'merged'")
+        if r.get("closed_issues", []) != [500]:
+            fail(f"premerge-snapshot: closed_issues {r.get('closed_issues')!r} "
+                 f"!= [500] — a genuine target OPEN PRE-merge must be RECORDED "
+                 f"even though GitHub auto-closes it ON merge (issue #1109)")
+        else:
+            ok("premerge-snapshot: OPEN-pre-merge target recorded despite "
+               "post-merge auto-close")
+
+
+# --- (P) enumeration NOT open pre-merge dropped; genuine target kept ---------
+# `Fix #1 / Fix #2` (neither open pre-merge) + `Closes #500` (open pre-merge,
+# auto-closed on merge). Records ONLY [500]; #1/#2 dropped.
+with tempfile.TemporaryDirectory() as td:
+    body = ("This PR makes sub-tasks:\n"
+            "Fix #1 do the first thing\n"
+            "Fix #2 do the second thing\n\n"
+            "Closes #500\n")
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="main", safety_exit=0, merge_exit=0,
+        pr_body=body, merge_sha="snapmix",
+        open_issues=[500], auto_close_map={42: [500]},
+    )
+    proc = _run(cwd, env, "42")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"premerge-enum: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        if results[0].get("closed_issues", []) != [500]:
+            fail(f"premerge-enum: closed_issues "
+                 f"{results[0].get('closed_issues')!r} != [500] — the "
+                 f"Fix #1/#2 enumeration (NOT open pre-merge) must be dropped, "
+                 f"the OPEN-pre-merge target #500 kept (issue #1109)")
+        else:
+            ok("premerge-enum: Fix #1/#2 dropped; OPEN-pre-merge #500 kept")
+
+
+# --- (Q) batch: each PR closes its own OWN open target -----------------------
+# Two PRs, each closing its own target (#601 / #602), each auto-closed ON its
+# own merge. Each result row records its OWN target. The pre-merge snapshot for
+# PR2 must be taken BEFORE PR2's merge — PR1's earlier merge auto-closed #601,
+# which must not affect PR2's judgment of its own (still-open-pre-merge) #602.
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="main", safety_exit=0, merge_exit=0,
+        merge_sha="batchsha",
+        open_issues=[601, 602],
+        auto_close_map={71: [601], 72: [602]},
+        pr_bodies={71: "Closes #601\n", 72: "Closes #602\n"},
+    )
+    proc = _run(cwd, env, "71,72")
+    if proc.returncode != 0:
+        fail(f"premerge-batch: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"premerge-batch: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 2:
+        rows = {r.get("pr"): r for r in results}
+        if rows.get(71, {}).get("closed_issues", []) != [601]:
+            fail(f"premerge-batch: PR 71 closed_issues "
+                 f"{rows.get(71, {}).get('closed_issues')!r} != [601]")
+        elif rows.get(72, {}).get("closed_issues", []) != [602]:
+            fail(f"premerge-batch: PR 72 closed_issues "
+                 f"{rows.get(72, {}).get('closed_issues')!r} != [602] — PR2's "
+                 f"pre-merge snapshot must be taken before PR2's own merge, "
+                 f"unaffected by PR1's earlier auto-close (issue #1109)")
+        else:
+            ok("premerge-batch: each PR records its OWN pre-merge-open target")
+    elif results is not None:
+        fail(f"premerge-batch: expected 2 results, got {len(results)}")
 
 
 sys.exit(FAIL)

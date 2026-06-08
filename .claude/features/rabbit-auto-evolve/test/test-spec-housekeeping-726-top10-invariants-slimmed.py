@@ -107,7 +107,13 @@ BASELINE_TOTAL_LINES = 3594
 # non-OPEN number, defeating the `Fix #N` bare-enumeration trap that wrongly recorded unrelated
 # numbers — plus a script-table-row extension and the merge-prs step-4 amendment; ~37 lines)
 # is additive, so the ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 4020
+# The pre-merge-snapshot amendment to Inv 68 (#1109: the close-ref open-issue cross-check is a
+# PRE-merge snapshot, not a post-merge query — a genuine target auto-closed BY its own merge was
+# wrongly dropped as not-currently-open, recording closed_issues=[] for a PR that legitimately
+# closed an issue; the amendment adds the PRE-MERGE timing rule + per-PR-batch snapshot prose to
+# Inv 68, the merge-prs step-4 rewording, and the script-table-row extension; ~25 lines) is
+# additive, so the ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 4050
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

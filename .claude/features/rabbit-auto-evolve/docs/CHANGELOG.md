@@ -16,6 +16,32 @@ authoritative).
 
 ## Version notes
 
+- **v0.95.0 — 2026-06-06** — #1109 (bug, priority:high). Fixed a regression
+  introduced by #1101 / Inv 68: `merge-prs.py`'s close-ref open-issue
+  cross-check ran AFTER `gh pr merge`. Because every accepted base is the
+  default branch `main`, GitHub's server-side keyword auto-close closes the
+  genuine target ON merge; the post-merge `gh issue view` then saw the genuine,
+  just-auto-closed target as NOT-open and DROPPED it — recording
+  `closed_issues=[]` for a PR that legitimately closed an issue. Observed: a
+  4-PR batch (#1105/#1108/#1107/#1106, each a single legitimate `Closes #N`)
+  recorded `closed_issues: []` for all four, stranding the `in-progress` label
+  on the four closed issues (the issues DID auto-close, so convergence held,
+  but the loop's bookkeeping was wrong). The fix snapshots each PR's close-ref
+  open-state BEFORE that PR's merge: a ref OPEN in the pre-merge snapshot (the
+  genuine target, closed BY this merge) is RECORDED, while a bare `Fix #N`
+  enumeration NOT open pre-merge is still DROPPED. In a batch the snapshot is
+  per-PR, taken immediately before that PR's own merge, so a later PR is never
+  judged against an issue an earlier PR closed. `_filter_open_issues` is renamed
+  `_snapshot_open_refs`; `process()` parses + snapshots before `_gh_merge` and
+  records the snapshot verbatim post-merge (never re-queries). Inv 68 amended to
+  specify the PRE-merge snapshot. `merge-prs.py` → v2.2.0. New e2e tests:
+  `premerge-snapshot` (genuine target auto-closed BY its merge is recorded),
+  `premerge-enum` (enumeration dropped, genuine target kept), `premerge-batch`
+  (each PR records its own pre-merge-open target); the gh shim now simulates
+  GitHub's auto-close by flipping an issue's state from OPEN to CLOSED on
+  `pr merge`. Four-way version lockstep bumped; SKILL.md frontmatter version
+  bumped (republish per Inv 50).
+
 - **v0.94.0 — 2026-06-06** — #1097 (bug). Tightened the research-classification
   heuristic in `triage-issue.py` so it no longer FALSE-POSITIVES on an
   implementable enhancement/bug whose USER-FACING prose merely contains keywords

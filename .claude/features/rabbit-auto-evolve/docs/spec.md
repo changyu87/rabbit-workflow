@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.94.0
+version: 0.95.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -81,7 +81,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/integration_target.py` | CLI + lib | Resolves the loop's integration target branch (Inv 61): the cutover is complete, so `resolve_target` deterministically returns `main` (no env read, no override); exposes `resolve_target`, `accepted_targets` ({main}), `is_default_branch`; the sibling phase scripts import it |
 | `scripts/safety-check.py` | CLI | Validates the bottom-line invariants (branch is the integration target, PR base is an accepted integration target, head branch matches `^feat/.+`, tag does not already exist, no uncommitted modifications to tracked files, and — merge phase only — the isolated install + update smoke passes via `install-smoke.py`, Inv 63); exits non-zero on any violation |
 | `scripts/install-smoke.py` | CLI | Pre-merge install smoke (Inv 63): runs a network-free fresh install + `--update` of rabbit-cage's `install.py` against the current tree inside a tempdir, asserting no install/closure/publish failure; invoked as bottom-line check 6 by `safety-check.py --phase merge` so install breakage blocks the merge; skips gracefully when install.py is absent |
-| `scripts/merge-prs.py` | CLI | Calls `safety-check.py --phase merge` then `gh pr merge --squash --admin` (direct merge, NOT `--auto`) for each PR — `--admin` lands past the required-review the loop cannot satisfy on the protected default branch `main`; accepts only a `main` base and refuses any other; performs no manual close (native keyword auto-close fires on every default-branch merge), parsing close-refs only to drive journal promotion — and cross-checking each parsed `#N` against `gh issue view` so ONLY currently-OPEN issues land in `closed_issues` (Inv 68: a bare `Fix #N` enumeration is dropped, not wrongly recorded) |
+| `scripts/merge-prs.py` | CLI | Calls `safety-check.py --phase merge` then `gh pr merge --squash --admin` (direct merge, NOT `--auto`) for each PR — `--admin` lands past the required-review the loop cannot satisfy on the protected default branch `main`; accepts only a `main` base and refuses any other; performs no manual close (native keyword auto-close fires on every default-branch merge), parsing close-refs only to drive journal promotion — and snapshotting each parsed `#N`'s open-state via `gh issue view` BEFORE the merge so ONLY issues open in that pre-merge snapshot land in `closed_issues` (Inv 68: a bare `Fix #N` enumeration is dropped; a genuine target auto-closed BY this merge is still recorded, never re-queried post-merge) |
 | `scripts/release-bump.py` | CLI | Reads merged PR priority label and diff scope; applies patch/minor/major semver bump per design table; creates annotated git tag and `gh release` targeting the resolved integration target |
 | `scripts/cleanup-branches.py` | CLI | Derives head branch from each merged PR; calls `safety-check.py --phase cleanup`; deletes branch locally and on origin; refuses to delete anything not matching `^feat/.+` |
 | `scripts/classify-merge-restart.py` | CLI | Reads merged PR file list; classifies into `no-op`, `refresh`, or `restart` based on which path patterns appear; emits a single string on stdout |
@@ -682,25 +682,27 @@ summary is restated here.
       override ONLY that structural required-review (Inv 61). On success →
       `{pr: N, status: "merged"}`; on failure →
       `{pr: N, status: "failed", reason: "gh-merge-failed: <stderr>"}`.
-   4. After a successful merge, parse the merged PR title AND body
+   4. BEFORE the merge, parse the PR title AND body
       (`gh pr view <#> --json title,body`) for closing-keyword references —
       `Fixes`/`Closes`/`Resolves #N` and variants, case-insensitive, unioning
       the numbers from either location so a title-only ref is also captured and
-      one present in both is counted once. Then CROSS-CHECK every parsed `#N`
-      against `gh issue view <N> --json state -q .state` and keep ONLY
-      currently-OPEN issues (Inv 68); a non-open `#N` (a PR number, an
-      already-closed issue, a bare-enumeration number) is dropped — logged to
-      stderr, never recorded. The merge targets the default branch `main`, so
-      GitHub's native keyword auto-close fires for every referenced issue; the
-      loop performs NO explicit close (Inv 61). The filtered set is recorded in
-      the result row under `closed_issues` (sorted) solely so the
+      one present in both is counted once. Then SNAPSHOT each parsed `#N`'s
+      open-state via `gh issue view <N> --json state -q .state` and keep ONLY
+      currently-OPEN issues (Inv 68); a `#N` NOT open in the pre-merge snapshot
+      (a PR number, an already-closed issue, a bare-enumeration number) is
+      dropped — logged to stderr, never recorded. This snapshot is taken
+      PRE-merge, not post-merge (Inv 68): the merge targets the default branch
+      `main`, so GitHub's native keyword auto-close closes the genuine target ON
+      merge, and a post-merge query would see that just-auto-closed target as
+      NOT-open and wrongly drop it. After the merge, record the PRE-merge-open
+      set in the result row under `closed_issues` (sorted) solely so the
       dispatch-journal promotion (Inv 54) can derive which issues the merge
       closed — native auto-close does not report that set back, and the loop's
-      recorded bookkeeping must be accurate (open-only) even if GitHub's own
-      auto-close is broader. The merge SHA
-      (`gh pr view <#> --json mergeCommit -q .mergeCommit.oid`) is recorded as
-      `last_merged_sha`. When there are no open-issue refs, `closed_issues` is
-      empty.
+      recorded bookkeeping must be accurate even though GitHub's own auto-close
+      may be broader. The loop performs NO explicit close (Inv 61). The merge
+      SHA (`gh pr view <#> --json mergeCommit -q .mergeCommit.oid`) is recorded
+      as `last_merged_sha`. When no parsed ref was open pre-merge,
+      `closed_issues` is empty.
 
    Emits the result array on stdout. Exit 0 always except argparse /
    unexpected error.
@@ -754,7 +756,12 @@ summary is restated here.
    target — the bare ordinals (PR numbers / closed) are dropped — and an
    explicit `Closes #N` for a non-open N is likewise dropped (the gh shim's
    `issue view --json state` returns `OPEN` only for the test's declared
-   open-issue set).
+   open-issue set); and the PRE-merge-snapshot cases (Inv 68): a genuine
+   `Closes #N` whose N is OPEN in the pre-merge snapshot but is auto-closed BY
+   the merge is STILL recorded (the gh shim flips N's state from OPEN to CLOSED
+   on `pr merge`, simulating GitHub's server-side auto-close), a bare
+   enumeration NOT open pre-merge is still dropped, and a 2-PR batch each closing
+   its own pre-merge-open target records each target against its own PR.
 
    `test/test-cleanup-branches.py`: a `--help` smoke; skip-on-non-feat-branch
    (`headRefName=main` → `skipped` / `non-feat-branch`, stderr warning, no
@@ -3968,24 +3975,40 @@ summary is restated here.
     Enforced by `test/test-capture-observed-error.py` and
     `test/test-spec-self-observed-error-capture-invariant.py`.
 
-68. **The merge phase records ONLY currently-OPEN issues as `closed_issues`
-    (the close-ref open-issue cross-check guard).** GitHub's closing-keyword
-    grammar treats `Fix #N` / `Fixes #N` as a closing keyword EVEN when the
-    author meant a bare ordinal enumeration. Recording the raw close-ref parse
-    therefore risked recording — and the loop bookkeeping derived from it acting
-    on — numbers the PR never targeted (PR numbers, already-closed issues, bare
-    list ordinals); had any been OPEN issues the loop would have wrongly marked
-    an unrelated open issue closed, a silent convergence-guarantee violation.
+68. **The merge phase records ONLY issues that were OPEN in a PRE-merge
+    snapshot as `closed_issues` (the close-ref open-issue cross-check guard).**
+    GitHub's closing-keyword grammar treats `Fix #N` / `Fixes #N` as a closing
+    keyword EVEN when the author meant a bare ordinal enumeration. Recording the
+    raw close-ref parse therefore risked recording — and the loop bookkeeping
+    derived from it acting on — numbers the PR never targeted (PR numbers,
+    already-closed issues, bare list ordinals); had any been OPEN issues the loop
+    would have wrongly marked an unrelated open issue closed, a silent
+    convergence-guarantee violation.
 
-    **THE GUARD.** After `merge-prs.py` parses a merged PR's close-refs (title +
-    body union, Inv 6 step 4 / Inv 54), it CROSS-CHECKS every parsed `#N`
-    against `gh issue view <N> --json state -q .state` and keeps ONLY `OPEN`
-    issues. A non-open `#N` — a PR number, an already-closed issue, a bare
-    ordinal, or a number `gh issue view` cannot resolve (non-zero exit counts as
-    not-open) — is DROPPED: logged to stderr, never recorded in `closed_issues`
-    and never acted on. The explicit `Closes #<the-open-target>` survives. This
-    keeps the loop-owned bookkeeping (the Inv 54 dispatch-journal promotion and
-    any reader of the recorded set) accurate even though GitHub's own
+    **THE GUARD.** `merge-prs.py` parses a PR's close-refs (title + body union,
+    Inv 6 step 4 / Inv 54) and, BEFORE merging that PR, SNAPSHOTS every parsed
+    `#N`'s open-state via `gh issue view <N> --json state -q .state`, keeping
+    ONLY `OPEN` issues. A `#N` NOT open in that pre-merge snapshot — a PR number,
+    an already-closed issue, a bare ordinal, or a number `gh issue view` cannot
+    resolve (non-zero exit counts as not-open) — is DROPPED: logged to stderr,
+    never recorded in `closed_issues` and never acted on. The explicit
+    `Closes #<the-open-target>` survives. After the merge the script records the
+    pre-merge-open set verbatim; it does NOT re-query open-state post-merge.
+
+    **THE SNAPSHOT IS PRE-MERGE, NOT A POST-MERGE QUERY.** The open-check MUST
+    capture each PR's close-refs and their open-state BEFORE `gh pr merge`, not
+    after. Every accepted base is the default branch `main`, so GitHub's
+    server-side keyword auto-close closes the genuine target ON merge; a
+    post-merge query would see that genuine, just-auto-closed target as
+    NOT-open and WRONGLY DROP it — recording `closed_issues=[]` for a PR that
+    legitimately closed an issue (the regression a 4-PR batch exhibited, each
+    PR's single legitimate `Closes #N` dropped). Snapshotting pre-merge keeps
+    the genuine target (OPEN at snapshot time, closed BY this merge) while still
+    dropping a bare enumeration (NOT open at snapshot time). In a batch the
+    snapshot is taken PER-PR immediately before THAT PR's own merge, so a later
+    PR is never judged against an issue an earlier PR in the same batch closed.
+    This keeps the loop-owned bookkeeping (the Inv 54 dispatch-journal promotion
+    and any reader of the recorded set) accurate even though GitHub's own
     server-side auto-close on a body keyword is outside the loop's control and
     may itself be broader.
 
@@ -3996,7 +4019,9 @@ summary is restated here.
     auto-close nor the recorded set attaches to a number the PR did not target.
 
     Enforced by `test/test-merge-prs.py` (the `closeref-guard` /
-    `closeref-open` / `closeref-closed` / `closeref-mixed` cases).
+    `closeref-open` / `closeref-closed` / `closeref-mixed` cases, and the
+    PRE-merge-snapshot `premerge-snapshot` / `premerge-enum` / `premerge-batch`
+    cases).
 
 ## Known gaps
 
