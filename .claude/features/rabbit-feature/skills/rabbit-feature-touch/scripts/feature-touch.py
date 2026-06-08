@@ -45,7 +45,7 @@ All paths are resolved relative to the repo root, which the script derives
 by walking up from the cwd to the nearest ancestor containing a `.git`
 entry (file or directory, so git worktrees are handled).
 
-Version: 0.4.0
+Version: 0.5.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -68,14 +68,24 @@ def _repo_root(start: Path) -> Path:
     return cur
 
 
+# Plugin-mode content values, dual-accepted. rabbit-meta's `detect_mode`
+# emits `vendored` as the current synonym for the legacy `plugin` value
+# (#980); scaffold-feature.py dual-accepts both via its own _VENDORED_MODES
+# (Inv 44). _mode() mirrors that so a current `vendored` install resolves the
+# plugin feature_dir prefix and the `git add -f` staging form instead of
+# silently falling through to standalone (#1045).
+_VENDORED_MODES = ("vendored", "plugin")
+
+
 def _mode(repo_root: Path) -> str:
     """Detect rabbit mode from <repo_root>/.rabbit/.runtime/mode.
 
-    Returns 'plugin' only when the marker content equals 'plugin';
-    otherwise 'standalone' (marker absent or any other content).
+    Returns 'plugin' when the marker content is a plugin-mode value
+    (`vendored` or the legacy `plugin`); otherwise 'standalone' (marker
+    absent or any other content).
     """
     marker = repo_root / ".rabbit/.runtime/mode"
-    if marker.is_file() and marker.read_text(encoding="utf-8").strip() == "plugin":
+    if marker.is_file() and marker.read_text(encoding="utf-8").strip() in _VENDORED_MODES:
         return "plugin"
     return "standalone"
 
