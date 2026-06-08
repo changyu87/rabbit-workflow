@@ -1,6 +1,6 @@
 {
   "name": "rabbit-spec",
-  "version": "1.19.0",
+  "version": "1.19.1",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
