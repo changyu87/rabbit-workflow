@@ -76,7 +76,11 @@ CLI:
                  and surfaces feature_dirs_on_disk + orphan_feature_dirs (dirs
                  present on disk but absent from project-map.json, including the
                  absent-map case) so a partial/aborted decompose's inconsistent
-                 state is detectable (#1040). No --features required.
+                 state is detectable (#1040). A by-design GREENFIELD dir
+                 (feature.json `paths: []`, intentionally never in the map) is
+                 EXCLUDED from orphan_feature_dirs; a dir with an absent/malformed
+                 feature.json stays an orphan, the safe classification (#1042).
+                 No --features required.
   --decompose-context  Manage the decompose-context scope-guard pass-through
                  marker (#923) — the bounded, auto-cleared replacement for the
                  manual `.rabbit-scope-override = session` workaround. `set`
@@ -113,7 +117,8 @@ Output (always JSON on stdout):
       "already_rabbified": [ {"name": ..., "globs": [...]}, ... ],
       "new": [ {"name": ..., "globs": [...]}, ... ],   # the "add" candidates
       "feature_dirs_on_disk": [ "<name>", ... ],  # sorted dirs under features/
-      "orphan_feature_dirs": [ "<name>", ... ]    # on-disk but absent from map
+      "orphan_feature_dirs": [ "<name>", ... ]    # on-disk, absent from map,
+                                                  # and NOT by-design greenfield
     }
 
 Exit:
@@ -130,7 +135,7 @@ both keeps this script correct before AND after that rename. The legacy
 "plugin" arm is removed only after the rename completes and the old value is
 fully retired (coexistence-window deprecation).
 
-Version: 0.7.0
+Version: 0.8.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Step 4 scaffold hand-off is provided natively by
     the rabbit CLI, retiring this companion script.
@@ -327,6 +332,27 @@ def _scan_feature_dirs(project_map_path: str):
     return sorted(p.name for p in feats_root.iterdir() if p.is_dir())
 
 
+def _is_greenfield_feature_dir(project_map_path: str, name: str) -> bool:
+    """True iff the on-disk feature dir `name` is a BY-DESIGN greenfield feature
+    (#1042) — its `feature.json` declares an EMPTY `paths` list.
+
+    A greenfield feature has `paths: []` and is INTENTIONALLY never registered
+    in `project-map.json` (the project-map schema requires non-empty paths), so
+    its absence from the map is expected, NOT an orphan. A dir whose
+    `feature.json` is absent, unreadable, or malformed, or whose `paths` is
+    non-empty/non-list, is NOT treated as greenfield: it stays an orphan (the
+    safe classification) and this never raises."""
+    fjson = Path(project_map_path).parent / "features" / name / "feature.json"
+    try:
+        with open(fjson, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(data, dict):
+        return False
+    return data.get("paths") == []
+
+
 def _read_existing_features(project_map_path: str):
     """Read the project-map's features map, or {} when absent/empty/unreadable.
 
@@ -511,9 +537,18 @@ def main(argv) -> int:
         # (treating an absent map as empty, so a partial/aborted decompose that
         # left dirs behind without a project-map is surfaced too). Detection +
         # surfacing only — the adopt-vs-proceed decision stays the caller's.
+        # Greenfield exclusion (#1042): a dir absent from the map is a TRUE
+        # orphan ONLY when it is NOT a by-design greenfield feature. A greenfield
+        # feature has `paths: []` in its feature.json and is INTENTIONALLY never
+        # registered in project-map.json, so flagging it would be a false
+        # positive. A dir with an absent/malformed feature.json is not provably
+        # greenfield, so it stays an orphan (the safe classification).
         feature_dirs_on_disk = _scan_feature_dirs(project_map_path)
-        orphan_feature_dirs = [d for d in feature_dirs_on_disk
-                               if d not in existing_map]
+        orphan_feature_dirs = [
+            d for d in feature_dirs_on_disk
+            if d not in existing_map
+            and not _is_greenfield_feature_dir(project_map_path, d)
+        ]
         print(json.dumps({
             "mode": mode,
             "project_map_path": project_map_path,

@@ -13,6 +13,25 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.15.0 (greenfield dirs are not orphans — fix #1040 false positive,
+  #1042):** The #1040 orphan detector flagged EVERY feature dir on disk but
+  absent from `project-map.json` as an orphan. But a greenfield feature has
+  `paths: []` in its `feature.json`, and the project-map schema requires
+  non-empty paths, so `scaffold-feature.py` INTENTIONALLY never registers a
+  greenfield feature in `project-map.json`. The detector therefore emitted every
+  greenfield dir as an orphan — a guaranteed false positive on an all-greenfield
+  project, surfacing the misleading "partial/aborted decompose" message when no
+  inconsistency exists. Fixed: a dir absent from the map is a TRUE orphan ONLY
+  when its `feature.json` declares NON-EMPTY `paths`; a `paths: []` dir is
+  excluded from `orphan_feature_dirs`. A dir whose `feature.json` is absent,
+  unreadable, or malformed cannot be proven greenfield, so it stays an orphan
+  (the safe classification) and the scan never crashes. `feature_dirs_on_disk`
+  still enumerates every dir; only `orphan_feature_dirs` carries the
+  greenfield-aware filter. Extended `test-detect-orphan-feature-dirs.py` with
+  the greenfield-exclusion and missing/malformed-`feature.json` cases; updated
+  Invariant 8's orphan clause. Additive — all prior `--detect-existing` fields
+  unchanged. Four-way version bump 0.14.0 → 0.15.0 (lockstep).
+
 - **v0.14.0 (surface orphan feature dirs in --detect-existing, #1040):** After
   a partial/aborted decompose the project can reach an inconsistent state —
   feature directories exist on disk under the resolved `features/` root but are
