@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.19.0
+version: 1.19.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -89,7 +89,7 @@ handoff so the orchestrator's context stays isolated from the full draft body.
         under `.claude/features/rabbit-spec/test/`: plugin-layout resolution,
         standalone-layout resolution from external cwd, and nested-git-repo immunity.
     (f) The emitted prompt MUST live under the CANONICAL single-`.rabbit`
-        runtime root: `<rabbit_runtime_root(repo_root)>/prompts/` (#1066).
+        runtime root: `<rabbit_runtime_root(repo_root)>/prompts/`.
         `contract/scripts/build-prompt.py` unconditionally joins
         `<its repo_root>/.rabbit/prompts/...`; in a vendored install where the
         session exports `RABBIT_ROOT=<host>/.rabbit` that DOUBLES to
@@ -100,7 +100,7 @@ handoff so the orchestrator's context stays isolated from the full draft body.
         runtime_root.py`, Inv 52 — vendored: returns `repo_root` unchanged;
         standalone: appends `.rabbit`), lazy-imported via `importlib.util`
         (the cross-feature INVOKE pattern rabbit-cage's session-start
-        dispatcher establishes, #1046), and RELOCATE the assembled prompt to
+        dispatcher establishes), and RELOCATE the assembled prompt to
         `<runtime_root>/prompts/` when build-prompt wrote it elsewhere, then
         print that canonical path. The relocation is idempotent: in standalone
         mode build-prompt already writes the canonical path and no move occurs.

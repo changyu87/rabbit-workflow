@@ -25,6 +25,18 @@ Each retirement entry below carries the original invariant number (as it appeare
 
 ## Version notes
 
+- **v1.19.1 (bug #1076 — scrub bare issue tags from spec/contract bodies):**
+  The cross-feature contract gate `test-spec-bodies-no-historical-tags.py`
+  was RED on `main`: #1066 authored three bare `#NNNN` issue tags into
+  rabbit-spec doc BODIES (the strict tier forbids them on opted-in features —
+  they belong only in CHANGELOG tombstones / commit messages). Scrubbed
+  `(#1066)` from spec.md Inv 3 clause (f), `#1046)` from the clause (f)
+  cross-feature-INVOKE parenthetical, and `(#1066, Inv 52)` -> `(Inv 52)` in
+  contract.md's `runtime_root.py` invoke purpose. Semantic content fully
+  preserved (the `Inv 52` invariant id is NOT an issue tag and is kept).
+  Docs-only scrub; no code change. Version quad bumped 1.19.0 -> 1.19.1
+  (feature.json + spec.md + contract.md frontmatter + this note).
+
 - **v1.19.0 (bug #1066 — pin spec-create prompt to the single-`.rabbit`
   runtime root):** `scripts/dispatch-spec-creator.py` invokes
   `contract/scripts/build-prompt.py`, which unconditionally joins
