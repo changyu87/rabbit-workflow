@@ -56,6 +56,13 @@ STUBS = {
     "triage-batch.py": "import sys; sys.stdin.read(); print('[]')",
     "plan-batch.py": "import sys; sys.stdin.read(); print('{}')",
     "clean-dispatch-leaks.py": "print('{\"status\": \"clean\"}')",
+    # refire-guard.py (Inv 65): echoes its plan-flag argv into the trace so the
+    # test can assert pre-dispatch passes plan-empty/nonempty correctly.
+    "refire-guard.py":
+        "import sys;\n"
+        "open(__import__('os').environ.get('REFIRE_GUARD_ARGV_FILE','/dev/null'),'a')"
+        ".write(' '.join(sys.argv[1:]) + chr(10));\n"
+        "print('{\"refire_owed\": false}')",
     "merge-prs.py": "print('[]')",
     "run-post-merge.py": "print('{\"status\": \"noop\", \"pending\": []}')",
     # update-state replaced with the REAL script by tests that need persist.
@@ -496,6 +503,85 @@ with tempfile.TemporaryDirectory() as d:
              f"(Inv 55); trace={t!r}")
     else:
         ok("L: strip-on-exit reconcile also ran after persist (#882)")
+
+
+# ---------------------------------------------------------------------------
+# M — Inv 65 (#1051): pre-dispatch invokes refire-guard.py at tick start to
+# reconcile the PRIOR tick's immediate-refire decision, passing the dispatchable
+# plan's emptiness. With the default stub plan-batch.py emitting `{}` (empty
+# selection_order), the guard is invoked with --plan-empty.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir, trace = fresh(d)
+    write_state(state_dir, dict(VALID_STATE))
+    argv_file = os.path.join(d, "refire_guard_argv.txt")
+    env = os.environ.copy()
+    env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = script_dir
+    env["RABBIT_AUTO_EVOLVE_REPO_ROOT"] = repo_root
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    env["REFIRE_GUARD_ARGV_FILE"] = argv_file
+    proc = subprocess.run(
+        [sys.executable, WALK, "pre-dispatch"],
+        cwd=repo_root, capture_output=True, text=True, env=env,
+    )
+    if proc.returncode != 0:
+        fail(f"M: pre-dispatch exit {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("M: pre-dispatch exited 0")
+    t = read_trace(trace)
+    if "refire-guard.py" not in t:
+        fail(f"M: refire-guard.py was not invoked at tick start (Inv 65); "
+             f"trace={t!r}")
+    else:
+        ok("M: pre-dispatch invoked refire-guard.py at tick start (Inv 65)")
+    # The guard must run AFTER the plan is computed (it needs plan emptiness).
+    if "plan-batch.py" in t and "refire-guard.py" in t and \
+            t.index("refire-guard.py") < t.index("plan-batch.py"):
+        fail(f"M: refire-guard.py ran BEFORE plan-batch.py — it needs the "
+             f"computed plan (Inv 65); trace={t!r}")
+    else:
+        ok("M: refire-guard.py ran after the plan was computed (Inv 65)")
+    argv = ""
+    if os.path.isfile(argv_file):
+        argv = open(argv_file).read()
+    if "--plan-empty" in argv:
+        ok("M: refire-guard.py received --plan-empty (stub plan was empty)")
+    else:
+        fail(f"M: refire-guard.py did not receive a plan flag; argv={argv!r}")
+    # An empty stub plan -> the guard verdict is not owed; the walk still
+    # proceeds normally and the result records the guard ran.
+    res = json.loads(proc.stdout)
+    if res.get("action") != "proceed":
+        fail(f"M: pre-dispatch did not proceed after the guard: {res!r}")
+    else:
+        ok("M: pre-dispatch proceeds normally after the refire guard")
+
+
+# ---------------------------------------------------------------------------
+# N — Inv 65: a non-empty plan -> the guard is invoked with --plan-nonempty.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir, trace = fresh(d, overrides={
+        "plan-batch.py":
+            "import sys; sys.stdin.read(); "
+            "print('{\"selection_order\": [101, 102]}')",
+    })
+    write_state(state_dir, dict(VALID_STATE))
+    argv_file = os.path.join(d, "refire_guard_argv.txt")
+    env = os.environ.copy()
+    env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = script_dir
+    env["RABBIT_AUTO_EVOLVE_REPO_ROOT"] = repo_root
+    env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    env["REFIRE_GUARD_ARGV_FILE"] = argv_file
+    proc = subprocess.run(
+        [sys.executable, WALK, "pre-dispatch"],
+        cwd=repo_root, capture_output=True, text=True, env=env,
+    )
+    argv = open(argv_file).read() if os.path.isfile(argv_file) else ""
+    if "--plan-nonempty" in argv:
+        ok("N: refire-guard.py received --plan-nonempty for a non-empty plan")
+    else:
+        fail(f"N: refire-guard.py did not get --plan-nonempty; argv={argv!r}")
 
 
 # ---------------------------------------------------------------------------
