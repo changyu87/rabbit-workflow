@@ -99,6 +99,7 @@ SUITES = [
     "test-install-agent-path-rabbit-spec-creator.py",
     "test-specs-layout.py",
     "test-rabbit-update-command.py",
+    "test-rabbit-update-restart-marker.py",
     "test-rabbit-cage-config-command.py",
     "test-display-timezone-configurable.py",
     "test-command-frontmatter-compliance.py",

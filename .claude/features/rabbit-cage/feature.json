@@ -1,6 +1,6 @@
 {
   "name": "rabbit-cage",
-  "version": "5.85.1",
+  "version": "5.86.0",
   "contiguous_invariants": true,
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
