@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Inv 48 — No doubled `.rabbit/.rabbit/` substring in assembled prompt.
 
-Two scenarios:
+Three scenarios:
 
   A) Standalone tmpdir (no RABBIT_ROOT env, no .rabbit/.runtime/mode).
      Invoke dispatch.py via subprocess; assert the assembled stdout does
@@ -13,7 +13,18 @@ Two scenarios:
      ends with `/tdd-report-<feature>.json` rooted at the rabbit-root
      (single `.rabbit/`, not doubled).
 
-Both scenarios pin the absence of the doubled substring as the regression
+  C) Vendored tmpdir (.rabbit/.runtime/mode='vendored' + RABBIT_ROOT). The
+     post-#980 canonical mode value is 'vendored', not 'plugin'.
+     `_tdd_report_path` MUST dual-accept it (matching scope-guard's
+     `_VENDORED_MODES`, mirroring the #1050 fix to `_scope_marker_path`) and
+     resolve the vendored report path `<rabbit_root>/tdd-report-<feature>.json`
+     (relativizing to the bare `tdd-report-<feature>.json`) — NOT the
+     standalone `<repo_root>/.rabbit/tdd-report-<feature>.json`. A 'vendored'
+     install that fell through to the standalone form would emit a
+     `.rabbit/`-prefixed relative report path instead of the bare basename.
+     Identical fixture to scenario B except the mode file content.
+
+All scenarios pin the absence of the doubled substring as the regression
 assertion.
 """
 import os
@@ -177,6 +188,61 @@ with tempfile.TemporaryDirectory() as tmp:
         else:
             ko(f"scenario B: STEP 7 Path mismatch — got {m.group(1)!r}, "
                f"expected {expected_path!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario C: vendored — `.rabbit/.runtime/mode == 'vendored'` (#1058).
+#
+# The post-#980 canonical mode value is 'vendored'. `_tdd_report_path` MUST
+# dual-accept it (matching scope-guard's _VENDORED_MODES, mirroring the #1050
+# fix to _scope_marker_path) and resolve the vendored report path rooted at
+# the rabbit-root. A 'vendored' install that fell through to the standalone
+# form would emit a `.rabbit/`-prefixed relative report path instead of the
+# bare basename. Identical fixture to scenario B except the mode file content.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    rabbit_root = os.path.join(tmp, ".rabbit")
+    os.makedirs(rabbit_root)
+    _populate_rabbit_root(rabbit_root)
+    _write(os.path.join(rabbit_root, ".runtime", "mode"), "vendored")
+    proj_spec = _make_project_feature(rabbit_root, "run-ingest")
+
+    env = os.environ.copy()
+    env["RABBIT_ROOT"] = rabbit_root
+    res = subprocess.run(
+        [sys.executable, DISPATCH_PY, "--scope", "run-ingest",
+         "--spec", proj_spec],
+        capture_output=True, text=True, env=env,
+    )
+    if res.returncode != 0:
+        ko(f"scenario C: dispatch failed rc={res.returncode}: {res.stderr!r}")
+    else:
+        prompt = _strip_spec_block(res.stdout)
+        if ".rabbit/.rabbit/" not in prompt:
+            ok("scenario C: assembled prompt contains NO '.rabbit/.rabbit/' "
+               "doubled substring")
+        else:
+            idx = prompt.find(".rabbit/.rabbit/")
+            ctx = prompt[max(0, idx - 40): idx + 80]
+            ko(f"scenario C: '.rabbit/.rabbit/' leaked into assembled prompt; "
+               f"context: {ctx!r}")
+
+        # Inv 48 + #1058: in vendored mode repo_root IS the rabbit-root, so the
+        # vendored report `<rabbit_root>/tdd-report-<feature>.json` relativizes
+        # to the bare `tdd-report-<feature>.json`. A fall-through to the
+        # standalone form would yield `.rabbit/tdd-report-<feature>.json`.
+        expected_path = "tdd-report-run-ingest.json"
+        m = re.search(r"^\s*Path:\s*(\S+)\s*$",
+                      prompt, re.MULTILINE)
+        if m is None:
+            ko("scenario C: no STEP 7 'Path:' line for tdd-report found")
+        elif m.group(1) == expected_path:
+            ok(f"scenario C: STEP 7 Path is {expected_path!r} "
+               "(vendored, rooted at rabbit-root, not standalone .rabbit/)")
+        else:
+            ko(f"scenario C: STEP 7 Path mismatch — got {m.group(1)!r}, "
+               f"expected {expected_path!r} (vendored fell through to "
+               "standalone path?)")
 
 
 report(passed, failed)
