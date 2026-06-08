@@ -178,6 +178,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "scripts/rabbit-project-map.py",
         "lib/__init__.py",
         "lib/project_map_reader.py",
+        "lib/runtime_root.py",
     ],
     "rabbit-meta": [
         "feature.json",
