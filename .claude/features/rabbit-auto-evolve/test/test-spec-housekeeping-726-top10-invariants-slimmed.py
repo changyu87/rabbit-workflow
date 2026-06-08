@@ -88,7 +88,13 @@ BASELINE_TOTAL_LINES = 3594
 # making a dropped immediate-refire one-shot deterministically observable via refire-guard.py
 # reconciling the prior tick's tick.log breadcrumb at tick start, plus the script-table row;
 # ~32 lines) is additive, so the ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 3880
+# The comment-aware-triage invariant (Inv 66, #1081: a new top-level invariant making a
+# maintainer's COMMENT actionable so it is not silently dropped — three triage signals
+# (latest_comment_at / has_unactioned_human_comment / needs_human_decision_reflected), a
+# deterministic @rabbit-decision: marker, and a per-issue comment_watermarks watermark
+# triage-issue.py reads and triage-batch.py advances; ~38 lines) is additive, so the
+# ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 3915
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

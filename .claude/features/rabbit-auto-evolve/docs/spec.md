@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.90.0
+version: 0.91.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -3841,6 +3841,51 @@ summary is restated here.
     `refire_owed: false`; the pure `reconcile()`; a `--help` smoke),
     `test/test-run-tick-phases.py` (pre-dispatch invokes the guard after the plan
     with the correct flag), and `test/test-spec-refire-liveness-guard-invariant.py`.
+
+66. **Comment-aware triage surfaces a maintainer's comment so it is never
+    silently dropped.** Triage keyed off title, body, labels, state, and native
+    dependencies — NOT free-form comment content — so a maintainer
+    decision/clarification/new-requirement left as a COMMENT was silently
+    dropped (observed live: on a design tracker the maintainer commented the
+    exact decision the tracker asked for and the loop took NO action; the
+    tracker stayed OPEN and its blocked downstream sat idle until a human
+    manually transcribed the decision into issue bodies). `triage-issue.py`
+    emits three machine-readable signals on EVERY triage record so a comment is
+    ROUTED rather than passed over: `latest_comment_at` (the ISO timestamp of
+    the most recent NON-bot comment, null when none), `has_unactioned_human_comment`
+    (true iff a non-bot comment is NEWER than the persisted per-issue watermark),
+    and `needs_human_decision_reflected` (true iff such a NEW human comment
+    carries the structured leading `@rabbit-decision:` marker — a decision on a
+    gated tracker that should become actionable without the human ALSO
+    performing the exact state change by hand). The marker is parsed
+    DETERMINISTICALLY (Tool-Choice Tier: script > spec > prompt) — a documented
+    convention, NOT a free-form LLM comment-interpreter; bot comments
+    (`author.is_bot` OR a `[bot]`-suffixed login) are filtered so CI/automation
+    never masquerades as a maintainer decision, and an ambiguous case surfaces
+    the signal rather than guessing the decision.
+
+    "New since last triage" is made deterministic across ticks by a per-issue
+    WATERMARK persisted in a DEDICATED owned artifact —
+    `.rabbit/comment-watermarks.json` (a `{schema_version, owner,
+    deprecation_criterion, watermarks}` object whose `watermarks` map is keyed
+    by issue-number string, storing each issue's last-seen comment timestamp).
+    It is a SEPARATE file from the heavily-pinned `auto-evolve-state.json` so it
+    carries its own independent lifecycle (Designed Deprecation). `triage-issue.py`
+    READS it (no mutation — it is a pure classifier; the state dir resolves via
+    `RABBIT_AUTO_EVOLVE_STATE_DIR` else `<cwd>/.rabbit`); `triage-batch.py`
+    ADVANCES it after triage to each issue's emitted `latest_comment_at` via an
+    atomic temp+rename read-modify-write (the same best-effort pattern it uses
+    for `defer_counts`). The advance is MONOTONIC (a newer existing watermark is
+    preserved; lexical comparison on ISO-8601-Z timestamps that sort
+    chronologically as strings), so a comment surfaced once is not re-flagged
+    the next tick. The artifact is owned by the `rabbit-workflow team`; its
+    deprecation criterion is the same as the feature — when Claude Code or
+    rabbit gains a native always-on autonomous-agent mode that supersedes this
+    skill. Enforced by `test/test-triage-rules.py`
+    (new-human-comment / decision-marker / bot-only / watermark-suppression /
+    no-comment cases), `test/test-triage-batch.py` (watermark advance +
+    monotonic preservation), and
+    `test/test-spec-comment-aware-triage-invariant.py`.
 
 ## Known gaps
 

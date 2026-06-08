@@ -158,13 +158,23 @@ POST_1012_ADD_LINES = 13
 # >= 4 invariants) stays ENFORCED while the #1051 addition is admitted.
 POST_1051_ADD_LINES = 35
 POST_1051_ADD_INVARIANTS = 1
+# #1081 added the comment-aware-triage invariant (Inv 66: a maintainer's COMMENT
+# is made actionable so it is not silently dropped — three triage signals
+# (latest_comment_at / has_unactioned_human_comment / needs_human_decision_reflected),
+# a deterministic @rabbit-decision: marker, and a per-issue watermark in the
+# DEDICATED comment-watermarks.json artifact triage-issue.py reads and
+# triage-batch.py advances) — a genuinely new owned rule, not slim regression.
+# Mirror the prior headroom so the #751 reduction (>= 150 lines, >= 4
+# invariants) stays ENFORCED while the #1081 addition is admitted.
+POST_1081_ADD_LINES = 40
+POST_1081_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
     + POST_943_ADD_LINES + POST_962_ADD_LINES + POST_970_ADD_LINES
     + POST_973_ADD_LINES + POST_966_ADD_LINES + POST_986_ADD_LINES
     + POST_1004_ADD_LINES + POST_1006_ADD_LINES + POST_1012_ADD_LINES
-    + POST_1051_ADD_LINES
+    + POST_1051_ADD_LINES + POST_1081_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -177,7 +187,7 @@ MAX_INVARIANT_COUNT = (
     + POST_942_ADD_INVARIANTS + POST_943_ADD_INVARIANTS
     + POST_962_ADD_INVARIANTS + POST_970_ADD_INVARIANTS
     + POST_966_ADD_INVARIANTS + POST_986_ADD_INVARIANTS
-    + POST_1051_ADD_INVARIANTS
+    + POST_1051_ADD_INVARIANTS + POST_1081_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---

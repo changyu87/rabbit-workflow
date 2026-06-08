@@ -4,7 +4,14 @@
 Per rabbit-auto-evolve spec.md Inv 3, emits a JSON object on stdout with
 fields: issue, decision, reason_code, rationale, feature, features,
 edit_features, cross_scope, cross_scope_features, decomposition_parent,
-contract_touch, priority, issue_type, created_at, blocked_by, planning_note. The
+contract_touch, priority, issue_type, created_at, blocked_by, planning_note,
+latest_comment_at, has_unactioned_human_comment,
+needs_human_decision_reflected. The comment-aware triage trio (Inv 66 /
+issue #1081) surfaces a NEW non-bot comment left since the persisted per-issue
+watermark so a maintainer decision/clarification left as a COMMENT is not
+silently dropped; `latest_comment_at` is the watermark-advance source
+triage-batch.py persists, and a leading `@rabbit-decision:` marker on such a
+comment sets `needs_human_decision_reflected`. The
 `decomposition_parent` boolean (Inv 58 / issue #948) is True when this OPEN
 issue is a recorded decomposition parent — it HAS GitHub-native sub-issues
 (`gh api repos/{slug}/issues/<n>` -> `sub_issues_summary.total > 0`) OR is a
@@ -93,7 +100,7 @@ pattern as fetch-queue.py).
 Exit code: 0 on successful classification (any decision); non-zero on gh
 failure or other unexpected error (stderr passthrough).
 
-Version: 1.14.0
+Version: 1.15.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -746,6 +753,113 @@ def _comment_bodies(comments):
     return bodies
 
 
+# Comment-aware triage (issue #1081 / Inv 66) -------------------------------
+# The leading structured DECISION-COMMENT marker convention. A maintainer who
+# wants a decision on a gated tracker to become actionable (rather than having
+# to perform the exact state change by hand) opens the comment with this token.
+# Triage parses it DETERMINISTICALLY — no free-form LLM interpretation — into
+# the `needs_human_decision_reflected` signal. The token must lead the comment
+# (after only optional whitespace / markdown quote markers) so a mid-prose
+# mention of the token does not falsely trigger.
+_DECISION_MARKER = re.compile(r"^[ \t>*\-]*@rabbit-decision:", re.IGNORECASE)
+
+
+def _comment_author_is_bot(comment):
+    """True iff a comment's author is a bot (issue #1081). A bot comment is
+    NEVER an unactioned human signal. Detected by the gh `author.is_bot` flag
+    OR an author login ending in the conventional `[bot]` suffix (GitHub App
+    bots), so a CI/automation note never masquerades as a maintainer decision.
+    A missing / malformed author is treated as NON-bot (conservative: a human
+    comment is never silently dropped)."""
+    author = comment.get("author") if isinstance(comment, dict) else None
+    if not isinstance(author, dict):
+        return False
+    if author.get("is_bot") is True:
+        return True
+    login = author.get("login")
+    return isinstance(login, str) and login.lower().endswith("[bot]")
+
+
+def _human_comments(comments):
+    """Return the list of NON-bot comment dicts in chronological order,
+    skipping malformed (non-dict) entries (issue #1081)."""
+    out = []
+    for c in comments or []:
+        if isinstance(c, dict) and not _comment_author_is_bot(c):
+            out.append(c)
+    return out
+
+
+def _state_comment_watermark(issue_num):
+    """Return the persisted last-seen comment timestamp for `issue_num` from
+    the dedicated `comment_watermarks` artifact (issue #1081 / Inv 66), or None
+    when absent. The artifact is <state_dir>/comment-watermarks.json — its own
+    owned, versioned file (NOT the heavily-pinned auto-evolve-state.json) so the
+    watermark carries an independent lifecycle. The state dir resolves via
+    RABBIT_AUTO_EVOLVE_STATE_DIR (the shared test seam) else <cwd>/.rabbit.
+    Best-effort: any read/parse failure yields None (treated as "never
+    triaged" — a new human comment then surfaces, never silently dropped)."""
+    override = os.environ.get("RABBIT_AUTO_EVOLVE_STATE_DIR")
+    state_dir = override if override else os.path.join(os.getcwd(), ".rabbit")
+    path = os.path.join(state_dir, "comment-watermarks.json")
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    wm = data.get("watermarks") if isinstance(data, dict) else None
+    if not isinstance(wm, dict):
+        return None
+    val = wm.get(str(issue_num))
+    return val if isinstance(val, str) and val else None
+
+
+def _comment_signals(issue_num, comments):
+    """Compute the comment-aware triage signals (issue #1081 / Inv 66).
+
+    Returns a dict with three machine-readable fields, ALWAYS present so the
+    dispatcher can rely on them:
+      - `latest_comment_at`: the createdAt of the most recent NON-bot comment
+        (None when there is none). This is the watermark-advance source
+        triage-batch.py persists.
+      - `has_unactioned_human_comment`: True iff a non-bot comment is NEWER
+        than the persisted per-issue watermark — a human comment the loop has
+        not yet acted on, so it is SURFACED rather than silently dropped.
+      - `needs_human_decision_reflected`: True iff such a NEW human comment
+        carries the structured `@rabbit-decision:` leading marker — a
+        maintainer DECISION on a gated tracker that should become actionable.
+
+    Bot comments are filtered (CI/automation never masquerades as a maintainer
+    decision). Comparison is lexical on the ISO-8601-Z timestamps, which sort
+    chronologically as strings; a missing createdAt sorts as the empty string
+    (oldest)."""
+    humans = _human_comments(comments)
+    latest_at = None
+    for c in humans:
+        ts = c.get("createdAt")
+        if isinstance(ts, str) and ts:
+            if latest_at is None or ts > latest_at:
+                latest_at = ts
+    watermark = _state_comment_watermark(issue_num)
+    has_new = False
+    needs_decision = False
+    for c in humans:
+        ts = c.get("createdAt")
+        ts_cmp = ts if isinstance(ts, str) else ""
+        if watermark is not None and ts_cmp <= watermark:
+            continue
+        # This comment is newer than the watermark (or there is no watermark).
+        has_new = True
+        body = c.get("body")
+        if isinstance(body, str) and _DECISION_MARKER.search(body):
+            needs_decision = True
+    return {
+        "latest_comment_at": latest_at,
+        "has_unactioned_human_comment": has_new,
+        "needs_human_decision_reflected": needs_decision,
+    }
+
+
 def _superseding_comment(comments):
     """Return the body of the MOST RECENT comment containing supersession
     language (issue #463), or None when no comment carries a correction."""
@@ -1023,6 +1137,15 @@ def classify(issue_num, repo_root):
         # overrides it with a non-empty note (issue #423 Part A).
         "planning_note": None,
     }
+    # Comment-aware triage signals (issue #1081 / Inv 66). Merged into EVERY
+    # decision's base so a maintainer comment is never silently dropped: a NEW
+    # non-bot comment since the persisted per-issue watermark surfaces
+    # `has_unactioned_human_comment: true`, a leading `@rabbit-decision:`
+    # marker on such a comment surfaces `needs_human_decision_reflected: true`,
+    # and `latest_comment_at` is the watermark-advance source triage-batch.py
+    # persists. All three keys are ALWAYS present so the dispatcher can rely on
+    # them; bot comments are filtered.
+    base.update(_comment_signals(issue_num, comments))
 
     # ---- Rule 1: malformed-labels ----
     if not feature_label or not priority_label:
