@@ -16,11 +16,17 @@ marker .rabbit-tdd-autonomous so the cycle skips Step 4.
 
 This script owns ONLY argv parsing and IO. It:
   1. resolves repo_root (RABBIT_ROOT env in plugin mode, else
-     `git rev-parse --show-toplevel`),
-  2. reads rabbit-feature's OWN feature.json configuration[],
-  3. finds the tdd-autonomous entry whose `subcommand` matches argv[1],
-  4. calls dispatch_config(cfg, value, repo_root=..., feature_dir=...),
-  5. prints result["messages"] then result["restart_prompt"] (when present),
+     `git rev-parse --show-toplevel`) — the FRAMEWORK root, used to load
+     feature.json and import contract.lib,
+  2. resolves the markers root — the GIT TOPLEVEL where the
+     .rabbit-tdd-autonomous repo-root marker is written, matching the
+     #1048/Inv 68 READ site (contract.lib.runtime._repo_markers_root):
+     dirname(RABBIT_ROOT) in vendored mode (RABBIT_ROOT is the `.rabbit`
+     install dir), RABBIT_ROOT unchanged in standalone mode,
+  3. reads rabbit-feature's OWN feature.json configuration[],
+  4. finds the tdd-autonomous entry whose `subcommand` matches argv[1],
+  5. calls dispatch_config(cfg, value, repo_root=<markers root>, feature_dir=...),
+  6. prints result["messages"] then result["restart_prompt"] (when present),
      and exits non-zero with result["error"] to stderr on failure.
 
 It MUST NOT re-implement the values/actions interpreter, the validation rules,
@@ -37,6 +43,7 @@ Deprecation criterion: when the rabbit CLI exposes a native per-feature
     configuration mechanism that subsumes /rabbit-tdd-autonomous.
 """
 
+import importlib.util
 import json
 import os
 import subprocess
@@ -69,6 +76,40 @@ def repo_root() -> Path:
         # scripts/rabbit-tdd-autonomous-config.py -> parents:
         # [0]=scripts [1]=rabbit-feature [2]=features [3]=.claude [4]=repo_root
         return Path(__file__).resolve().parents[4]
+
+
+def markers_root(rroot: Path) -> Path:
+    """Resolve the GIT TOPLEVEL root where the .rabbit-tdd-autonomous repo-root
+    marker is written, matching the #1048/Inv 68 READ site
+    (contract.lib.runtime._repo_markers_root) byte-for-byte.
+
+    `rroot` is the framework root (RABBIT_ROOT in vendored mode — the `.rabbit`
+    install dir — else the git toplevel). The repo-root marker belongs at the
+    git toplevel, NOT inside `.rabbit`: in vendored mode that is
+    dirname(rroot); in standalone mode rroot already IS the toplevel.
+
+    Vendored detection mirrors the reader: rabbit-meta's canonical detect_mode /
+    is_vendored (lazy-imported from
+    <rroot>/.claude/features/rabbit-meta/lib/mode_detection.py), falling back to
+    the same basename rule the reader uses (basename(rroot) == ".rabbit") when
+    rabbit-meta cannot be imported. Pure path math; never raises.
+    """
+    normalized = os.path.normpath(str(rroot))
+    vendored = os.path.basename(normalized) == ".rabbit"
+    mode_path = os.path.join(str(rroot), ".claude", "features",
+                             "rabbit-meta", "lib", "mode_detection.py")
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "rabbit_meta_mode_detection_tdd_autonomous", mode_path)
+        if spec is not None and spec.loader is not None:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            vendored = module.is_vendored(module.detect_mode(str(rroot)))
+    except (FileNotFoundError, ImportError, AttributeError, OSError):
+        pass
+    if vendored:
+        return Path(os.path.dirname(normalized))
+    return rroot
 
 
 def _load_configuration(rroot: Path):
@@ -119,9 +160,12 @@ def main() -> int:
         return 2
     value = args[1]
 
+    # The repo-root marker is written at the GIT TOPLEVEL so the write site
+    # matches the #1048/Inv 68 read site; rroot (RABBIT_ROOT) is the install
+    # dir in vendored mode, not the marker location.
     result = dispatch_config(
         cfg, value,
-        repo_root=str(rroot),
+        repo_root=str(markers_root(rroot)),
         feature_dir=str(FEATURE_DIR),
     )
 
