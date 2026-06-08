@@ -4,7 +4,7 @@
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
-  "tdd_state": "impl",
+  "tdd_state": "test-green",
   "summary": "Meta-feature owning all cross-feature templates, schemas, dispatch scripts, and enforcement checks (hard-rules R1-R9, naming-convention).",
   "deprecation_criterion": "when Claude Code exposes a native mechanism that supersedes contract's governance surface \u2014 the cross-feature contract gate, version-lockstep, invariant numbering, and schema/template ownership \u2014 not merely when a native orchestration/workflow primitive exists",
   "updated": "2026-06-07",
