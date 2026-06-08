@@ -4,7 +4,7 @@
   "version": "1.41.1",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
-  "tdd_state": "impl",
+  "tdd_state": "sync-deployed",
   "summary": "Dispatcher-side feature-touch orchestration surface. Owns the rabbit-feature-touch skill and two general-purpose helper skills (rabbit-feature-scope, rabbit-feature-scaffold) plus their backing scripts (resolve-scope.py, format-feature-context.py, scaffold-feature.py, audit-owner.py). Feature-conformance auditing is run directly via the contract-owned validate-feature.py <feature-dir>|all CLI; audit-owner.py is the standalone team-owner enforcement script. Spec lifecycle (the rabbit-spec-creator subagent and the rabbit-spec-update skill) is owned by rabbit-spec. Executor-side TDD machinery (dispatch-tdd-subagent.py, tdd-step.py) lives in tdd-subagent and is consumed via the cross-feature contract.",
   "surface": {
     "hooks": [],
