@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.41.0
+version: 1.41.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -246,6 +246,20 @@ their source path and not deployed):
         the mode-appropriate `git add` form (plugin mode uses `git add -f`),
         skips the commit on an empty staged spec diff, and otherwise commits
         with `spec(<feature-name>): update spec for <summary>`.
+    The mode read from `<repo_root>/.rabbit/.runtime/mode` dual-accepts the
+    plugin-mode content values `plugin` and `vendored` — both select the
+    plugin feature-dir prefix (`.rabbit/rabbit-project/features/<name>/`) and
+    the `git add -f` staging form — matching rabbit-meta's `detect_mode`
+    semantics and `scaffold-feature.py`'s `_VENDORED_MODES` dual-accept (Inv
+    44), where `vendored` is the current synonym for the legacy `plugin`
+    value. Without this dual-accept the resolvers and `commit-spec` would
+    silently fall through to the standalone `.claude/features/<name>/` path in
+    a `vendored` install — `commit-spec` `git add`s a nonexistent dir, finds
+    an empty diff, and skips the commit, so the project's decomposed work
+    under the gitignored `.rabbit/` is never force-staged and nothing is
+    git-trackable. Because the gitignored vendored path is force-staged with
+    `git add -f`, no host `.gitignore` change is required for the project's
+    own decomposed work to be committed.
     A no-arg invocation prints usage naming the subcommands and exits 2.
     The script is declared in `contract.md.provides.scripts` (it is a
     skill-local companion invoked from its source path, not a deployed
