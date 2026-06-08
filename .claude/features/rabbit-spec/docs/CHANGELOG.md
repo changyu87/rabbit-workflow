@@ -25,6 +25,28 @@ Each retirement entry below carries the original invariant number (as it appeare
 
 ## Version notes
 
+- **v1.20.0 (#1079 — retire the now-redundant relocation shim):** #1073 fixed
+  the `.rabbit/.rabbit/prompts/` doubling at its SOURCE — `contract/scripts/
+  build-prompt.py` now anchors the prompts dir at the canonical
+  `rabbit_runtime_root(repo_root)` in BOTH vendored and standalone modes. The
+  defensive relocation shim #1066 added to `scripts/dispatch-spec-creator.py`
+  (resolve canonical runtime root via rabbit-cage's `rabbit_runtime_root`, then
+  `shutil.move` the prompt under `<runtime_root>/prompts/` when build-prompt
+  wrote it elsewhere) was therefore a VERIFIED no-op every call in both modes
+  and is removed (prove-it-dead cleanup, coding-rules §6). The dispatcher now
+  prints build-prompt's emitted path as-is. Orphaned `shutil` and
+  `importlib.util` imports and the `_rabbit_runtime_root` helper were removed.
+  Inv 3 clause (f) rewritten to STATE the upstream guarantee instead of
+  describing the relocation mechanism; clause (d)'s stdlib list narrowed back
+  to argparse/glob/os/subprocess/sys/pathlib. contract.md drops the rabbit-cage
+  `runtime_root.py` INVOKE (no longer imported). The two no-double regression
+  tests (`test-dispatch-prompt-path-no-double-rabbit.py`,
+  `test-dispatch-prompt-path-standalone.py`) now stub build-prompt with the
+  #1073-fixed canonical anchoring and still assert the single-`.rabbit` path,
+  relying on the upstream guarantee rather than a dispatcher relocation.
+  dispatch-spec-creator.py bumped 2.1.0 -> 3.0.0 (removed surface behavior).
+  Version quad bumped 1.19.1 -> 1.20.0. Numbering stays contiguous 1..8.
+
 - **v1.19.1 (bug #1076 — scrub bare issue tags from spec/contract bodies):**
   The cross-feature contract gate `test-spec-bodies-no-historical-tags.py`
   was RED on `main`: #1066 authored three bare `#NNNN` issue tags into

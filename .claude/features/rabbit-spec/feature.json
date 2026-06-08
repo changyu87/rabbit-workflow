@@ -1,6 +1,6 @@
 {
   "name": "rabbit-spec",
-  "version": "1.19.1",
+  "version": "1.20.0",
   "owner": "rabbit-workflow team",
   "housekeeping_clean": true,
   "contiguous_invariants": true,
@@ -53,5 +53,5 @@
       ]
     }
   ],
-  "spec_no_change_reason": "Spec amended this cycle (bumped 1.18.0 -> 1.19.0, bug #1066): Inv 3 gains clause (f) pinning the assembled prompt to the canonical single-`.rabbit` runtime root via rabbit-cage's rabbit_runtime_root resolver (Inv 52, #1046), fixing the vendored-mode `.rabbit/.rabbit/prompts/` doubling caused by build-prompt.py's unconditional `<repo_root>/.rabbit/prompts` join when RABBIT_ROOT is already `<host>/.rabbit`. Clause (d)'s stdlib list extended with shutil + importlib.util. Added enforcing tests test-dispatch-prompt-path-no-double-rabbit.py and test-dispatch-prompt-path-standalone.py. Numbering stays contiguous 1..8."
+  "spec_no_change_reason": "Spec amended this cycle (bumped 1.19.1 -> 1.20.0, #1079 designed-deprecation cleanup): the defensive relocation shim in scripts/dispatch-spec-creator.py is retired now that contract/scripts/build-prompt.py anchors the prompts dir at the canonical single-`.rabbit` runtime root upstream (#1073) — the in-dispatcher relocation was a verified no-op in both modes. Inv 3 clause (f) rewritten to STATE the upstream guarantee (drops the relocation-mechanism description); clause (d)'s stdlib list narrowed back to argparse/glob/os/subprocess/sys/pathlib (shutil + importlib.util removed). contract.md drops the rabbit-cage runtime_root.py INVOKE (no longer imported). Numbering stays contiguous 1..8."
 }
