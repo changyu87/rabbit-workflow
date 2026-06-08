@@ -18,27 +18,45 @@ writes each feature dir), diff the on-disk dirs against the project-map's
 
   - `feature_dirs_on_disk`: sorted names of dirs present under `features/`,
   - `orphan_feature_dirs`: sorted names present on disk but ABSENT from the
-    project-map's `features` map (including the absent-map case where every
-    on-disk dir is an orphan).
+    project-map's `features` map AND not a by-design greenfield dir.
 
 This is DETECTION + SURFACING only — no auto-delete, no auto-adopt. The
 adopt-vs-proceed decision stays the caller's.
 
+GREENFIELD EXCLUSION (#1042). A dir on disk but ABSENT from project-map.json is
+a TRUE orphan ONLY if its `feature.json` declares NON-EMPTY `paths` — a real
+feature that should be registered but isn't. A greenfield feature has
+`paths: []` in its `feature.json` BY DESIGN: the project-map schema requires
+non-empty paths, so scaffold-feature.py INTENTIONALLY never writes greenfield
+features into project-map.json. Such a dir is NOT an orphan and MUST be excluded
+from `orphan_feature_dirs`. A dir with NO `feature.json`, or an
+unreadable/malformed one, is genuinely inconsistent and IS still surfaced as an
+orphan (the safe classification) — but the detector must NOT crash on it.
+`feature_dirs_on_disk` (the raw scan) still enumerates ALL dirs; only
+`orphan_feature_dirs` gets the greenfield-aware filter.
+
 This test asserts, end-to-end:
 
-  1. Dirs on disk but NO project-map.json -> every on-disk dir is surfaced as
-     an orphan; `feature_dirs_on_disk` enumerates them; `existing` stays false
-     (no map features) so first-run propose flow is unchanged.
-  2. Dirs on disk PARTIALLY represented in project-map.json -> only the dirs
-     absent from the map are orphans; mapped dirs are not.
+  1. Dirs on disk (with NON-EMPTY-paths feature.json) but NO project-map.json
+     -> every such dir is surfaced as an orphan; `feature_dirs_on_disk`
+     enumerates them; `existing` stays false (no map features) so first-run
+     propose flow is unchanged.
+  2. Dirs on disk PARTIALLY represented in project-map.json -> only the
+     non-greenfield dirs absent from the map are orphans; mapped dirs are not.
   3. Map features fully matching on-disk dirs -> no orphans (clean state).
   4. No features/ dir at all -> empty lists, no crash.
   5. Mode-driven: standalone resolves features/ under
      `.rabbit/rabbit-project/features/`.
+  6. Greenfield exclusion: a dir whose feature.json has `paths: []` is absent
+     from the map yet is NOT an orphan; a sibling with non-empty `paths` absent
+     from the map IS an orphan; `feature_dirs_on_disk` still lists both.
+  7. Anomaly classification + no-crash: a dir with NO feature.json and a dir
+     with a MALFORMED feature.json (both absent from the map) are still
+     surfaced as orphans, and the detector does not crash.
 
 Run non-interactively. Exits non-zero on failure.
 
-Version: 0.1.0
+Version: 0.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when existing-decomposition detection is provided
     natively by the rabbit CLI, retiring the companion handoff-scaffold.py
@@ -82,10 +100,26 @@ def _write_project_map(rabbit_project_dir, features):
     return path
 
 
-def _make_feature_dirs(rabbit_project_dir, names):
+def _write_feature_json(feature_dir, paths):
+    """Write a minimal feature.json with the given top-level `paths` (the shape
+    scaffold-feature.py writes). A greenfield feature has `paths: []`."""
+    with open(os.path.join(feature_dir, "feature.json"), "w",
+              encoding="utf-8") as f:
+        json.dump({"name": os.path.basename(feature_dir),
+                   "version": "0.1.0", "paths": paths}, f)
+
+
+def _make_feature_dirs(rabbit_project_dir, names, paths=None):
+    """Create on-disk feature dirs. Each dir gets a feature.json with NON-EMPTY
+    `paths` by default (a real feature that belongs in the project-map), so an
+    unmapped one is a TRUE orphan. Pass `paths=[]` for greenfield dirs."""
+    if paths is None:
+        paths = ["src/**"]
     feats_root = os.path.join(rabbit_project_dir, "features")
     for n in names:
-        os.makedirs(os.path.join(feats_root, n), exist_ok=True)
+        d = os.path.join(feats_root, n)
+        os.makedirs(d, exist_ok=True)
+        _write_feature_json(d, paths)
     # a stray file at the features/ root must NOT be treated as a feature dir
     open(os.path.join(feats_root, ".keep"), "w").close()
     return feats_root
@@ -110,7 +144,7 @@ if not os.path.isfile(SCRIPT):
     fail(f"missing orchestrator script: {SCRIPT}")
 
 
-# --- Check 1: dirs on disk, NO project-map.json -> all are orphans -----------
+# --- Check 1: non-greenfield dirs on disk, NO project-map.json -> orphans ----
 with tempfile.TemporaryDirectory() as td:
     rabbit_root = _make_plugin_tree(td)
     rp = os.path.join(rabbit_root, "rabbit-project")
@@ -188,5 +222,50 @@ with tempfile.TemporaryDirectory() as td5:
     if orphans != {"alpha-feature"}:
         fail("standalone: features/ under .rabbit/rabbit-project must be "
              f"scanned; got orphans {orphans!r}")
+
+# --- Check 6: greenfield (paths=[]) absent from map is NOT an orphan (#1042) --
+# A greenfield feature has paths=[] by design and is INTENTIONALLY never written
+# to project-map.json, so flagging it as an orphan is a false positive. Only the
+# non-empty-paths sibling, absent from the map, is a true orphan.
+with tempfile.TemporaryDirectory() as td6:
+    rabbit_root = _make_plugin_tree(td6)
+    rp = os.path.join(rabbit_root, "rabbit-project")
+    # green-feature: greenfield (paths=[]) — absent from map BY DESIGN.
+    _make_feature_dirs(rp, ["green-feature"], paths=[])
+    # real-feature: non-empty paths, absent from map -> a TRUE orphan.
+    _make_feature_dirs(rp, ["real-feature"], paths=["src/real/**"])
+    res = _run_detect(rabbit_root, td6)
+    on_disk = set(res.get("feature_dirs_on_disk") or [])
+    if on_disk != {"green-feature", "real-feature"}:
+        fail("greenfield: feature_dirs_on_disk must list ALL dirs incl. "
+             f"greenfield; got {on_disk!r}")
+    orphans = set(res.get("orphan_feature_dirs") or [])
+    if "green-feature" in orphans:
+        fail("greenfield: a paths=[] dir absent from the map is NOT an orphan; "
+             f"got {orphans!r}")
+    if orphans != {"real-feature"}:
+        fail("greenfield: only the non-empty-paths dir absent from the map is "
+             f"an orphan; got {orphans!r}")
+
+# --- Check 7: missing / malformed feature.json -> still orphan, no crash ------
+# A dir with NO feature.json or a malformed one is genuinely inconsistent: it
+# cannot be proven greenfield, so the SAFE classification keeps it an orphan,
+# and the detector must NOT crash reading it.
+with tempfile.TemporaryDirectory() as td7:
+    rabbit_root = _make_plugin_tree(td7)
+    rp = os.path.join(rabbit_root, "rabbit-project")
+    feats_root = os.path.join(rp, "features")
+    # no-json-feature: a bare dir, no feature.json at all.
+    os.makedirs(os.path.join(feats_root, "no-json-feature"), exist_ok=True)
+    # bad-json-feature: a feature.json that is not valid JSON.
+    bad = os.path.join(feats_root, "bad-json-feature")
+    os.makedirs(bad, exist_ok=True)
+    with open(os.path.join(bad, "feature.json"), "w", encoding="utf-8") as f:
+        f.write("{ this is not valid json")
+    res = _run_detect(rabbit_root, td7)
+    orphans = set(res.get("orphan_feature_dirs") or [])
+    if orphans != {"no-json-feature", "bad-json-feature"}:
+        fail("anomaly: a missing or malformed feature.json absent from the map "
+             f"must still be surfaced as an orphan; got {orphans!r}")
 
 print("All checks passed.")
