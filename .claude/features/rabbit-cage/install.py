@@ -385,6 +385,7 @@ def write_rabbit_gitignore(dst_root: Path) -> None:
         ".scope-active-*\n"
         ".scope-bypass-once\n"
         ".rabbit-restart-snapshot\n"
+        ".rabbit-prompt-counter\n"
         "__pycache__/\n"
         "*.pyc\n"
     )
