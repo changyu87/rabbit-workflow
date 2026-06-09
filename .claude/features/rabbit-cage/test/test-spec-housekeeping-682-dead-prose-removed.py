@@ -201,7 +201,14 @@ COLLAPSE_MAX = 1
 # (test-restart-advisory-on-disk-change.py), and amended Inv 35(b)/Inv 22h. A
 # real spec addition documenting new test-enforced behavior, not reword
 # re-inflation.
-SPEC_LINE_CEILING = 627
+# Raised 627 -> 628 by #1137, which extended Inv 53 with clause (e): on
+# `--update`, install.py's new untrack_ignored_rabbit_ephemerals helper
+# index-only untracks (`git rm --cached`) any file already TRACKED under
+# `.rabbit/` that now matches the inner ignore list, so existing vendored
+# installs converge without a manual `git rm --cached` step — plus its e2e test
+# (test-install-update-untracks-ignored-ephemerals.py). A real spec addition
+# documenting new test-enforced behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 628
 
 PASS = 0
 FAIL = 0
