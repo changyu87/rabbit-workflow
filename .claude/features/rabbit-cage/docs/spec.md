@@ -1,6 +1,6 @@
 ---
 feature: rabbit-cage
-version: 5.88.2
+version: 5.88.3
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native event dispatchers and artifact publishing that subsume this role
