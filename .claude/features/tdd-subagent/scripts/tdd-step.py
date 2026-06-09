@@ -350,16 +350,30 @@ def _post_test_green_hooks(d):
 
 _ABORT_ACCEPTED_STATES = {"test-red", "impl", "sync-deployed"}
 
+# The mode-marker values that select the vendored scope-marker path. The
+# on-disk `.runtime/mode` value is being renamed from "plugin" to "vendored";
+# every mode comparison that selects the vendored path MUST dual-accept BOTH
+# spellings during the coexistence window so the path stays correct before and
+# after the rename. Kept in lock-step with dispatch-tdd-subagent.py's
+# `_VENDORED_MODES` and rabbit-cage scope-guard's `_VENDORED_MODES`.
+_VENDORED_MODES = ("vendored", "plugin")
+
 
 def _scope_marker_path_for_abort(repo_root, feature_name):
     """Per-mode scope-marker absolute path (Inv 52, mirroring Inv 12).
 
-    Standalone (mode marker absent or != 'plugin'):
+    Standalone (mode marker absent or not in _VENDORED_MODES):
       <repo_root>/.rabbit-scope-active-<feature>
-    Plugin (.rabbit/.runtime/mode == 'plugin' OR .runtime/mode == 'plugin'):
+    Vendored (.rabbit/.runtime/mode or .runtime/mode in _VENDORED_MODES):
       <rabbit_root>/.rabbit/.runtime/scope-active-<feature> (or
       <repo_root>/.runtime/scope-active-<feature> when repo_root IS the
       rabbit-root per Inv 47).
+
+    The mode value is dual-accepted ('vendored' or the legacy 'plugin') to
+    match dispatch-tdd-subagent.py._scope_marker_path / scope-guard's
+    `_VENDORED_MODES` during the rename coexistence window. A raw
+    `== "plugin"` here made a `vendored` marker fall through to the standalone
+    path, so scope-guard could not find the marker in vendored installs.
 
     Logic duplicated from dispatch-tdd-subagent.py._scope_marker_path so
     tdd-step.py has no cross-script import dependency.
@@ -373,11 +387,11 @@ def _scope_marker_path_for_abort(repo_root, feature_name):
          os.path.join(repo_root, ".rabbit", ".runtime",
                       f"scope-active-{feature_name}")),
     )
-    for mode_file, plugin_path in candidates:
+    for mode_file, vendored_path in candidates:
         try:
             with open(mode_file) as f:
-                if f.read().strip() == "plugin":
-                    return plugin_path
+                if f.read().strip() in _VENDORED_MODES:
+                    return vendored_path
         except (OSError, IOError):
             continue
     return os.path.join(repo_root, f".rabbit-scope-active-{feature_name}")
