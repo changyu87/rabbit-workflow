@@ -33,31 +33,38 @@ if '.sh' in src:
 else:
     print("PASS t1b: script does not reference .sh")
 
-# t2 (end-to-end): a .py file without sentinel under target dir must trigger failure
+# t2 (end-to-end): a DISPATCH .py file (wraps build-prompt) without the
+# sentinel under the target dir must trigger failure. Inv 17 scope is
+# dispatch/agent-prompt scripts only (#1132), so the fixture is a dispatch
+# script — a plain .py is intentionally out of scope and would NOT fail.
 TMPDIR = tempfile.mkdtemp()
 try:
-    py_path = os.path.join(TMPDIR, "no_sentinel.py")
+    py_path = os.path.join(TMPDIR, "dispatch_no_sentinel.py")
     with open(py_path, "w") as f:
-        f.write("#!/usr/bin/env python3\nprint('hello')\n")
+        f.write("#!/usr/bin/env python3\n"
+                'BUILD_PROMPT = "../contract/scripts/build-prompt.py"\n'
+                "print('hello')\n")
 
     proc = subprocess.run(
         ["python3", SCRIPT, TMPDIR],
         capture_output=True, text=True
     )
     if proc.returncode == 0:
-        print("FAIL t2: script returned 0 despite .py file lacking sentinel", file=sys.stderr)
+        print("FAIL t2: script returned 0 despite dispatch .py lacking sentinel", file=sys.stderr)
         FAIL = 1
     else:
-        print("PASS t2: script flags .py file missing sentinel")
+        print("PASS t2: script flags dispatch .py file missing sentinel")
 finally:
     shutil.rmtree(TMPDIR, ignore_errors=True)
 
-# t3 (end-to-end): a .py file WITH sentinel must pass
+# t3 (end-to-end): a DISPATCH .py file WITH the sentinel must pass.
 TMPDIR2 = tempfile.mkdtemp()
 try:
-    py_path = os.path.join(TMPDIR2, "with_sentinel.py")
+    py_path = os.path.join(TMPDIR2, "dispatch_with_sentinel.py")
     with open(py_path, "w") as f:
-        f.write("#!/usr/bin/env python3\n# RABBIT-POLICY-BLOCK-v1\nprint('hello')\n")
+        f.write("#!/usr/bin/env python3\n# RABBIT-POLICY-BLOCK-v1\n"
+                'BUILD_PROMPT = "../contract/scripts/build-prompt.py"\n'
+                "print('hello')\n")
 
     proc = subprocess.run(
         ["python3", SCRIPT, TMPDIR2],

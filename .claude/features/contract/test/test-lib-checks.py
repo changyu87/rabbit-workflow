@@ -268,24 +268,31 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         fail("t11b", f"expected passed=False, got {res!r}")
 
-# t5c (CONTRACT-BACKLOG-28): check_sentinel directory-walk branch — given a
-# directory containing a mix of .py files with and without the sentinel, the
-# check must report exactly the missing files.
+# t5c (CONTRACT-BACKLOG-28; rescoped #1132): check_sentinel directory-walk
+# branch — given a directory of DISPATCH scripts (those wrapping build-prompt)
+# with and without the sentinel PLUS a plain non-dispatch lib file, the check
+# must report exactly the dispatch scripts missing the sentinel and MUST NOT
+# flag the plain lib file (Inv 17 scope is dispatch/agent-prompt scripts only).
+_DISPATCH_WRAP = 'BUILD_PROMPT = "../contract/scripts/build-prompt.py"\n'
 with tempfile.TemporaryDirectory() as tmp:
     with open(os.path.join(tmp, "with_sentinel.py"), "w") as f:
-        f.write("# RABBIT-POLICY-BLOCK-v1\nprint('hi')\n")
+        f.write("# RABBIT-POLICY-BLOCK-v1\n" + _DISPATCH_WRAP + "print('hi')\n")
     with open(os.path.join(tmp, "without_sentinel.py"), "w") as f:
-        f.write("print('nope')\n")
+        f.write(_DISPATCH_WRAP + "print('nope')\n")
+    # plain non-dispatch lib file — out of Inv 17 scope, must NOT be flagged.
+    with open(os.path.join(tmp, "plain_lib.py"), "w") as f:
+        f.write("print('plain library, no sentinel expected')\n")
     nested = os.path.join(tmp, "nested")
     os.makedirs(nested)
     with open(os.path.join(nested, "also_without.py"), "w") as f:
-        f.write("print('no')\n")
+        f.write(_DISPATCH_WRAP + "print('no')\n")
     res = checks.check_sentinel(tmp)
     if (isinstance(res, checks.CheckResult) and not res.passed
             and any("without_sentinel.py" in m for m in res.messages)
             and any("also_without.py" in m for m in res.messages)
-            and not any("with_sentinel.py" in m for m in res.messages)):
-        ok("t5c", "check_sentinel directory-walk reports only files missing sentinel")
+            and not any("with_sentinel.py" in m for m in res.messages)
+            and not any("plain_lib.py" in m for m in res.messages)):
+        ok("t5c", "check_sentinel directory-walk reports only dispatch scripts missing sentinel")
     else:
         fail("t5c", f"unexpected result: {res!r}")
 
