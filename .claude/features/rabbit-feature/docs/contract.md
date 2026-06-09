@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.45.0
+version: 1.46.0
 owner: rabbit-workflow team
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
 template_version: 2.0.0
@@ -50,7 +50,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py",
-        "purpose": "Companion script for the rabbit-feature-touch skill (spec-rules.md §4 Script-Backed Orchestration). Owns the skill's computed / mode-aware orchestration: 'create-branch [--multi] <feature-name> <request>' assembles the feat/<name>[-multi]-<keywords> branch and emits JSON {branch,worktree,mode} — standalone does git checkout -b (worktree null); plugin/vendored creates a per-session host-repo worktree OUTSIDE the tracked tree at <host>/.rabbit-worktrees/session-<token>/ via git worktree add -b so concurrent sessions never stomp the shared HEAD; 'resolve-spec-path <feature-name>' prints the resolved spec path (flat docs/spec.md preferred, then legacy docs/spec/spec.md; mode-aware via .rabbit/.runtime/mode); 'resolve-contract-path <feature-name>' mirrors that order for contract.md; 'commit-spec <feature-name> <summary>' stages (mode-aware git add / git add -f), skips on empty diff, else commits 'spec(<name>): update spec for <summary>'. No-arg invocation prints usage and exits 2."
+        "purpose": "Companion script for the rabbit-feature-touch skill (spec-rules.md §4 Script-Backed Orchestration). Owns the skill's computed / mode-aware orchestration: 'create-branch [--multi] <feature-name> <request>' assembles the feat/<name>[-multi]-<keywords> branch and emits JSON {branch,worktree,mode} — standalone does git checkout -b (worktree null); plugin/vendored creates a per-session host-repo worktree OUTSIDE the tracked tree at <host>/.rabbit-worktrees/session-<token>/ via git worktree add -b so concurrent sessions never stomp the shared HEAD; 'resolve-spec-path <feature-name>' prints the resolved spec path (flat docs/spec.md preferred, then legacy docs/spec/spec.md; mode-aware via .rabbit/.runtime/mode); 'resolve-contract-path <feature-name>' mirrors that order for contract.md; 'commit-spec <feature-name> <summary>' stages (mode-aware git add / git add -f), skips on empty diff, else commits 'spec(<name>): update spec for <summary>'; 'dispatch-prompt <feature-name> --spec <path> [--impl-suggestion <path>] [--worktree <path>]' assembles the Step-5 tdd-subagent dispatch argv and, when a per-session worktree value is present, resolves it to an ABSOLUTE path and passes --worktree to dispatch-tdd-subagent.py so the subagent runs inside the worktree (Inv 63); with no worktree the argv is byte-identical to the pre-wiring form. No-arg invocation prints usage and exits 2."
       }
     ],
     "schemas": [],
@@ -90,9 +90,9 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
       },
       {
         "path": ".claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py",
-        "signature": "dispatch-tdd-subagent.py --scope <feature-name> --spec <spec-path> [--impl-suggestion <path>] [--affected-invariants <n,n,...>] [--code-review-full-loop] [--max-iterations N]",
+        "signature": "dispatch-tdd-subagent.py --scope <feature-name> --spec <spec-path> [--impl-suggestion <path>] [--worktree <abs> | --cwd <abs>] [--affected-invariants <n,n,...>] [--code-review-full-loop] [--max-iterations N]",
         "exit": "0=success, 1=feature not found, 2=bad invocation",
-        "lock": "test/test-cross-feature-interface.py asserts --help exits 0 with 'usage:' text (Inv 3)"
+        "lock": "test/test-cross-feature-interface.py asserts --help exits 0 with 'usage:' text (Inv 3); feature-touch.py dispatch-prompt passes --worktree <abs> in vendored mode (Inv 63), consuming the tdd-subagent-owned arg verbatim"
       },
       {
         "path": ".claude/features/contract/scripts/find-feature.py",

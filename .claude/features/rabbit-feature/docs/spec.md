@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.45.0
+version: 1.46.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -636,6 +636,33 @@ their source path and not deployed):
     unchanged. Enforced E2E by
     `test/test-touch-vendored-toolless-worktree.py`.
 
+63. **Step-5 dispatch anchors the subagent at the per-session worktree.**
+    In vendored mode Step 2 produces a per-session worktree (Inv 61), but the
+    Step-5 TDD-subagent dispatch had no mechanism to make the subagent execute
+    inside it: the Agent tool has no cwd parameter, so the subagent inherited
+    the host `.rabbit` cwd (on the host's checked-out branch) and its scope
+    markers, commits, and state transitions landed on the host tree rather than
+    the per-session worktree's HEAD. Per the SKILL.md Authoring Standard
+    (`spec-rules.md` §4 Script-Backed Orchestration), the computed worktree
+    path and the mode-aware branch are OWNED BY the companion `feature-touch.py`
+    via a `dispatch-prompt` subcommand, not assembled inline in SKILL.md prose.
+    The subcommand assembles the `dispatch-tdd-subagent.py` argv from the
+    feature name, the resolved `--spec` path, and an OPTIONAL impl-suggestion
+    path, and is given the create-branch JSON's `worktree` value. When a
+    per-session worktree is present it resolves that value to an ABSOLUTE path
+    (the create-branch output may be repo-relative) and passes
+    `--worktree <absolute-worktree-root>` to `dispatch-tdd-subagent.py`, so the
+    emitted prompt anchors every LOCK marker / `git add`+`commit` / publish
+    `repo_root` / UNLOCK at the worktree. The cross-feature
+    `--worktree`/`--cwd` argument it passes is OWNED BY `tdd-subagent` and is
+    consumed verbatim — this feature only WIRES it. When there is no
+    per-session worktree (STANDALONE mode, or vendored with an empty/absent
+    worktree value) the subcommand MUST NOT pass `--worktree`, and the emitted
+    argv is byte-identical to the pre-wiring form — a hard back-compat
+    requirement. Step 5's SKILL.md body delegates the dispatch-argv assembly to
+    the `dispatch-prompt` subcommand (no inline control-flow bash, preserving
+    Inv 53/60). Enforced E2E by `test/test-touch-dispatch-worktree.py`.
+
 ## What this feature does NOT define
 
 - The TDD subagent's 8-step cycle, the `tdd-step.py` state machine, or
@@ -674,3 +701,4 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-script-backed-clean.py` — Inv 60
 - `test-touch-vendored-worktree-cycle.py` — Inv 61
 - `test-touch-vendored-toolless-worktree.py` — Inv 62
+- `test-touch-dispatch-worktree.py` — Inv 63

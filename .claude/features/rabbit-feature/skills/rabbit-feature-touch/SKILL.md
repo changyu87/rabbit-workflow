@@ -1,7 +1,7 @@
 ---
 name: rabbit-feature-touch
 description: Use when any write, edit, delete, or add operation targets a feature directory, or when a new feature is being created. Not for read-only queries, and NOT for metadata-only writes (filing a rabbit-managed issue, such as a bug or enhancement). Ensures the formal TDD state machine is advanced via tdd-step.py on every feature touch.
-version: 3.11.0
+version: 3.12.0
 owner: rabbit-feature
 deprecation_criterion: when feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code workflow primitives
 ---
@@ -158,19 +158,34 @@ marker is `.rabbit-tdd-autonomous`.
 
 One subagent per feature. Dispatch all in parallel if multiple features.
 
-Shell (assemble the prompt — deterministic). The spec-path resolution is a
-computed step (§4 Script-Backed Orchestration), delegated to the companion
-`resolve-spec-path` subcommand rather than assembled inline:
+Shell (assemble the prompt — deterministic). Both the spec-path resolution and
+the worktree-aware `dispatch-tdd-subagent.py` argv assembly are computed,
+mode-aware steps (§4 Script-Backed Orchestration), so they are delegated to the
+companion `resolve-spec-path` and `dispatch-prompt` subcommands rather than
+assembled inline. In vendored mode Step 2's `create-branch` JSON carries a
+per-session `worktree` path; pass it through to `dispatch-prompt` so the
+subagent runs INSIDE that worktree (its scope marker, commits, and state
+transitions land on the per-session HEAD, never the host's). When there is no
+per-session worktree (standalone, or vendored with a null `worktree`) pass an
+empty value and `dispatch-prompt` emits the byte-identical pre-wiring argv with
+no `--worktree`:
 
-<!-- example: invocation synopsis wiring resolve-spec-path into the dispatch prompt -->
+<!-- example: invocation synopsis wiring resolve-spec-path + dispatch-prompt -->
 ```bash
 spec_arg=$(.claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py \
   resolve-spec-path <feature-name>)
-PROMPT=$(python3 .claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py \
-  --scope <feature-name> \
+dispatch_cmd=$(.claude/features/rabbit-feature/skills/rabbit-feature-touch/scripts/feature-touch.py \
+  dispatch-prompt <feature-name> \
   --spec "$spec_arg" \
-  --impl-suggestion .rabbit/impl-suggestion-<feature-name>.json)
+  --impl-suggestion .rabbit/impl-suggestion-<feature-name>.json \
+  --worktree "<worktree-from-step-2-create-branch-json>")
+PROMPT=$(eval "$dispatch_cmd")
 ```
+
+The `dispatch-prompt` subcommand resolves the `<worktree>` value to an absolute
+path and appends `--worktree <abs>` only when it is non-empty; the worktree arg
+itself is owned by the `dispatch-tdd-subagent.py` contract (Inv 65) and
+consumed verbatim.
 
 Agent tool call (dispatch the assembled prompt — main session only):
 

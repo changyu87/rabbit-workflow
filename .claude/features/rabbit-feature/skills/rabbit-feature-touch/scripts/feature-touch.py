@@ -63,11 +63,31 @@ Subcommands:
       is empty. Commit message pattern:
       `spec(<feature-name>): update spec for <summary>`.
 
+  dispatch-prompt <feature-name> --spec <path> [--impl-suggestion <path>]
+                  [--worktree <path>]
+      Assemble the Step-5 tdd-subagent dispatch argv (a single shell-quoted
+      command line printed to stdout) that the SKILL body runs to produce the
+      subagent prompt. The mode-aware `--worktree` branch is a computed step,
+      so per the SKILL.md Authoring Standard (spec-rules.md §4 Script-Backed
+      Orchestration) it is OWNED HERE rather than assembled inline in the
+      SKILL.md. The argv always carries `--scope <feature-name> --spec <path>`
+      (plus `--impl-suggestion <path>` when given). When the create-branch
+      JSON's `worktree` value is present (a vendored per-session worktree,
+      #1125), the path is resolved to an ABSOLUTE path (the create-branch
+      output may be repo-relative like `.rabbit-worktrees/session-xxxx`) and
+      `--worktree <abs>` is appended so `dispatch-tdd-subagent.py` anchors
+      every emitted LOCK marker / git add+commit / publish repo_root / UNLOCK
+      at the worktree (the `--worktree`/`--cwd` arg is OWNED BY tdd-subagent
+      and consumed verbatim; Inv 65). When there is NO per-session worktree
+      (standalone, or vendored with an empty/absent worktree value) NO
+      `--worktree` is appended and the argv is byte-identical to the
+      pre-wiring form (hard back-compat requirement).
+
 All paths are resolved relative to the repo root, which the script derives
 by walking up from the cwd to the nearest ancestor containing a `.git`
 entry (file or directory, so git worktrees are handled).
 
-Version: 0.8.0
+Version: 0.9.0
 Owner: rabbit-workflow team
 Deprecation criterion: when feature-touch orchestration is natively handled
 by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -77,9 +97,17 @@ from __future__ import annotations
 import json
 import re
 import secrets
+import shlex
 import subprocess
 import sys
 from pathlib import Path
+
+# Cross-feature Step-5 dispatch prompt assembler (owned by tdd-subagent). This
+# feature WIRES the worktree value into its already-shipped --worktree/--cwd
+# arg (#1128, Inv 65); it never modifies the script (contract `never` block).
+_DISPATCH_TDD_SUBAGENT = (
+    ".claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py"
+)
 
 
 def _repo_root(start: Path) -> Path:
@@ -391,16 +419,56 @@ def cmd_commit_spec(feature: str, summary: str) -> int:
     return 0
 
 
+def cmd_dispatch_prompt(
+    feature: str,
+    spec: str,
+    impl_suggestion: str | None,
+    worktree: str | None,
+) -> int:
+    """Assemble the Step-5 tdd-subagent dispatch argv (#1125).
+
+    Prints a single shell-quoted command line to stdout. The argv always
+    invokes dispatch-tdd-subagent.py with `--scope`/`--spec` (and
+    `--impl-suggestion` when given). When a per-session worktree value is
+    present it is resolved to an ABSOLUTE path and appended as
+    `--worktree <abs>`, so the emitted prompt anchors the subagent at the
+    worktree (Inv 63). When the worktree value is absent/empty NO `--worktree`
+    is appended and the argv is byte-identical to the pre-wiring form.
+    """
+    argv = [
+        "python3",
+        _DISPATCH_TDD_SUBAGENT,
+        "--scope",
+        feature,
+        "--spec",
+        spec,
+    ]
+    if impl_suggestion:
+        argv += ["--impl-suggestion", impl_suggestion]
+    # A per-session worktree exists only in vendored mode; standalone (and
+    # vendored with no worktree) emits a null/empty value here, so the back-
+    # compat path appends nothing. Resolve a possibly repo-relative value to
+    # an absolute path so dispatch-tdd-subagent.py anchors its baked slots
+    # regardless of the subagent's inherited cwd.
+    if worktree:
+        argv += ["--worktree", str(Path(worktree).resolve())]
+    # shlex.join is 3.8+; this script targets 3.7, so quote-and-join manually.
+    print(" ".join(shlex.quote(tok) for tok in argv))
+    return 0
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         sys.stderr.write(
             "usage: feature-touch.py "
             "{create-branch|resolve-spec-path|resolve-contract-path"
-            "|commit-spec} ...\n"
+            "|commit-spec|dispatch-prompt} ...\n"
             "  create-branch [--multi] <feature-name> <request>\n"
             "  resolve-spec-path <feature-name>\n"
             "  resolve-contract-path <feature-name>\n"
             "  commit-spec <feature-name> <summary>\n"
+            "  dispatch-prompt <feature-name> --spec <path> "
+            "[--impl-suggestion <path>] [--worktree <path>]\n"
         )
         return 2
     sub = argv[1]
@@ -438,6 +506,41 @@ def main(argv: list[str]) -> int:
             )
             return 2
         return cmd_commit_spec(argv[2], argv[3])
+    if sub == "dispatch-prompt":
+        rest = argv[2:]
+        if not rest:
+            sys.stderr.write(
+                "usage: feature-touch.py dispatch-prompt <feature-name> "
+                "--spec <path> [--impl-suggestion <path>] [--worktree <path>]\n"
+            )
+            return 2
+        feature = rest[0]
+        spec = None
+        impl_suggestion = None
+        worktree = None
+        flags = rest[1:]
+        i = 0
+        while i < len(flags):
+            flag = flags[i]
+            if flag in ("--spec", "--impl-suggestion", "--worktree", "--cwd"):
+                if i + 1 >= len(flags):
+                    sys.stderr.write(f"ERROR: {flag} requires a value\n")
+                    return 2
+                value = flags[i + 1]
+                if flag == "--spec":
+                    spec = value
+                elif flag == "--impl-suggestion":
+                    impl_suggestion = value
+                else:  # --worktree / --cwd
+                    worktree = value
+                i += 2
+                continue
+            sys.stderr.write(f"ERROR: unknown dispatch-prompt flag: {flag}\n")
+            return 2
+        if not spec:
+            sys.stderr.write("ERROR: dispatch-prompt requires --spec <path>\n")
+            return 2
+        return cmd_dispatch_prompt(feature, spec, impl_suggestion, worktree)
     sys.stderr.write(f"unknown subcommand: {sub!r}\n")
     return 2
 
