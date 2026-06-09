@@ -58,6 +58,15 @@ ADVISORY_FRAGMENT = "restart ADVISED"
 # universal Stop turn-end timestamp (Inv 57) uses. `%Z` may render empty in a
 # bare tz so the zone label group is optional.
 TIMESTAMP_RE = re.compile(r"\(as of \d{2}:\d{2}:\d{2}(?: \S+)?\)")
+# Inv 54(c) (#1124): the advisory line renders in YELLOW so it signals
+# advisory/warning severity (distinct from a hard red error) and is not missed.
+# rabbit_print's yellow ANSI open code is ESC[33m; the line ends with the reset
+# ESC[0m. The yellow open MUST precede the advisory phrase on the rendered line.
+YELLOW_OPEN = "\x1b[33m"
+ANSI_RESET = "\x1b[0m"
+# A yellow-wrapped segment that contains the advisory phrase before its reset.
+YELLOW_ADVISORY_RE = re.compile(
+    r"\x1b\[33m[^\x1b]*restart ADVISED \(not required\)[^\x1b]*\x1b\[0m")
 # The auto-evolve advisory marker must NOT be required for this path.
 AE_ADVISORY_MARKER = ".rabbit-auto-evolve-restart-advised"
 # The /rabbit-update install marker — must NOT be required for this path.
@@ -300,6 +309,35 @@ with tempfile.TemporaryDirectory() as td:
         ok("UserPromptSubmit advisory line carries a wall-clock timestamp")
     else:
         bad(f"UserPromptSubmit advisory missing timestamp: sysmsg={ups_msg!r} "
+            f"stderr={ups.stderr.strip()!r}")
+
+
+# --- t11: the surfaced advisory line renders in YELLOW (#1124). --------------
+#     Inv 54(c): the advisory `print` payload carries color yellow so the line
+#     renders with the yellow ANSI marker (ESC[33m … ESC[0m) wrapping the
+#     advisory phrase, on BOTH the Stop and UserPromptSubmit paths. The yellow
+#     open must appear BEFORE the advisory phrase (not the green ESC[32m).
+with tempfile.TemporaryDirectory() as td:
+    r = _build_install_root(Path(td).resolve())
+    _snapshot_session(r)
+    (r / "CLAUDE.md").write_text("# CHANGED for yellow check\n")
+
+    stop = _stop(r)
+    stop_msg = _sysmsg(stop)
+    if (stop.returncode == 0 and ADVISORY_FRAGMENT in stop_msg
+            and YELLOW_ADVISORY_RE.search(stop_msg)):
+        ok("Stop advisory line renders in yellow (ESC[33m wraps the phrase)")
+    else:
+        bad(f"Stop advisory not yellow: sysmsg={stop_msg!r} "
+            f"stderr={stop.stderr.strip()!r}")
+
+    ups = _ups(r)
+    ups_msg = _sysmsg(ups)
+    if (ups.returncode == 0 and ADVISORY_FRAGMENT in ups_msg
+            and YELLOW_ADVISORY_RE.search(ups_msg)):
+        ok("UserPromptSubmit advisory line renders in yellow (ESC[33m)")
+    else:
+        bad(f"UserPromptSubmit advisory not yellow: sysmsg={ups_msg!r} "
             f"stderr={ups.stderr.strip()!r}")
 
 
