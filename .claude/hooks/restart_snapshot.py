@@ -23,12 +23,13 @@ Public API:
     write_session_snapshot(repo_root) -> None
     restart_advisory_payloads(repo_root) -> list[dict]
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-cage)
 Deprecation criterion: when Claude Code reloads hooks/skills/agents in-session
     without a restart, making the stale-load advisory unnecessary.
 """
 
+import datetime
 import hashlib
 import json
 import os
@@ -36,6 +37,11 @@ from pathlib import Path
 
 # The snapshot baseline file (relative to repo_root).
 SNAPSHOT_FILE = ".rabbit-restart-snapshot"
+
+# Inv 54c: the advisory line carries a wall-clock timestamp so the reader can
+# judge freshness. The format matches the universal Stop turn-end timestamp
+# (Inv 57): local wall-clock rendered as "%H:%M:%S %Z".
+_TIMESTAMP_FMT = "%H:%M:%S %Z"
 
 # Restart-sensitive surface set (spec Inv 54a): the on-disk artifacts a running
 # session loads at startup and cannot reload without a restart. The same set
@@ -138,5 +144,19 @@ def restart_advisory_payloads(repo_root):
     current = restart_sensitive_signature(repo_root)
     if current == baseline:
         return []
-    return [{"type": "print", "text": _ADVISORY_TEXT,
+    return [{"type": "print", "text": _advisory_text_with_timestamp(),
              "icon": _ADVISORY_ICON, "color": "green"}]
+
+
+def _advisory_text_with_timestamp(now=None):
+    """Inv 54c: the advisory text suffixed with ` (as of HH:MM:SS ZZZ)` so the
+    reader can judge whether the alert is current or stale. The clock is LOCAL
+    wall-clock with an explicit zone label (`%H:%M:%S %Z`) — the same format the
+    universal Stop turn-end timestamp (Inv 57) uses, so the composite Stop block
+    reads consistently. The optional `now` is an injected aware datetime for
+    deterministic test rendering; the default is the real local clock (an aware
+    local datetime so `%Z` populates with the real zone abbreviation)."""
+    if now is None:
+        now = datetime.datetime.now().astimezone()
+    stamp = now.strftime(_TIMESTAMP_FMT).strip()
+    return f"{_ADVISORY_TEXT} (as of {stamp})"
