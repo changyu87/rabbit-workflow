@@ -35,6 +35,7 @@ UserPromptSubmit dispatchers as subprocesses, and asserts on the emitted JSON.
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -52,6 +53,11 @@ RABBIT_CAGE_FEATURE_JSON = RABBIT_CAGE / "feature.json"
 
 # The advisory must read as OPTIONAL (distinct from any hard pause banner).
 ADVISORY_FRAGMENT = "restart ADVISED"
+# Inv 54(c): the advisory line ends with a wall-clock timestamp so the reader
+# can judge freshness — `(as of HH:MM:SS ZZZ)`, the `%H:%M:%S %Z` format the
+# universal Stop turn-end timestamp (Inv 57) uses. `%Z` may render empty in a
+# bare tz so the zone label group is optional.
+TIMESTAMP_RE = re.compile(r"\(as of \d{2}:\d{2}:\d{2}(?: \S+)?\)")
 # The auto-evolve advisory marker must NOT be required for this path.
 AE_ADVISORY_MARKER = ".rabbit-auto-evolve-restart-advised"
 # The /rabbit-update install marker — must NOT be required for this path.
@@ -268,6 +274,33 @@ with tempfile.TemporaryDirectory() as td:
         ok("bytecode (.pyc) churn → NO false restart advisory")
     else:
         bad(f"bytecode churn wrongly triggered advisory: sysmsg={_sysmsg(stop)!r}")
+
+
+# --- t10: the surfaced advisory line carries a wall-clock timestamp (#1123). --
+#     Inv 54(c): freshness must be judgeable — the line ends with
+#     `(as of HH:MM:SS ZZZ)`, on BOTH the Stop and UserPromptSubmit paths.
+with tempfile.TemporaryDirectory() as td:
+    r = _build_install_root(Path(td).resolve())
+    _snapshot_session(r)
+    (r / "CLAUDE.md").write_text("# CHANGED for timestamp check\n")
+
+    stop = _stop(r)
+    stop_msg = _sysmsg(stop)
+    if (stop.returncode == 0 and ADVISORY_FRAGMENT in stop_msg
+            and TIMESTAMP_RE.search(stop_msg)):
+        ok("Stop advisory line carries a wall-clock timestamp (as of HH:MM:SS)")
+    else:
+        bad(f"Stop advisory missing timestamp: sysmsg={stop_msg!r} "
+            f"stderr={stop.stderr.strip()!r}")
+
+    ups = _ups(r)
+    ups_msg = _sysmsg(ups)
+    if (ups.returncode == 0 and ADVISORY_FRAGMENT in ups_msg
+            and TIMESTAMP_RE.search(ups_msg)):
+        ok("UserPromptSubmit advisory line carries a wall-clock timestamp")
+    else:
+        bad(f"UserPromptSubmit advisory missing timestamp: sysmsg={ups_msg!r} "
+            f"stderr={ups.stderr.strip()!r}")
 
 
 print()
