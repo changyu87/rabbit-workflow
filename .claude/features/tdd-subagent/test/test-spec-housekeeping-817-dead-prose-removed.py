@@ -67,7 +67,9 @@ BANNED_PHRASES = [
 # the ceiling is bumped in lockstep when one lands. Inv 63 (full-vendor-safe
 # --spec resolution) added a new invariant, raising the body to 810 lines.
 # Inv 64 (PR-body close-ref convention) added another, raising it to 836.
-SPEC_LINE_CEILING = 838
+# Inv 65 (--worktree/--cwd absolute-worktree anchoring, #1128) added another,
+# raising it to 872.
+SPEC_LINE_CEILING = 875
 
 PASS = 0
 FAIL = 0

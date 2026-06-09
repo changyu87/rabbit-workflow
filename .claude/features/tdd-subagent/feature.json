@@ -1,6 +1,6 @@
 {
   "name": "tdd-subagent",
-  "version": "5.27.1",
+  "version": "5.28.0",
   "owner": "rabbit-workflow team",
   "status": "active",
   "housekeeping_clean": true,
@@ -60,6 +60,5 @@
     }
   ],
   "deprecation_criterion": "When the TDD cycle is natively supported by the rabbit CLI.",
-  "updated": "2026-06-06",
-  "spec_no_change_reason": "code-compliance fix; Inv 52 already documents the dual-accept scope-marker resolution"
+  "updated": "2026-06-06"
 }

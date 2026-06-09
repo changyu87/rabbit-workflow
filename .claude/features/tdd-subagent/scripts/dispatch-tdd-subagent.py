@@ -6,11 +6,12 @@
 #     --scope <feature-name> \
 #     --spec <spec-path> \
 #     [--impl-suggestion <path>] \
+#     [--worktree <abs-worktree-root> | --cwd <abs-worktree-root>] \
 #     [--code-review-full-loop] \
 #     [--max-iterations N]
 #
 # Output: assembled prompt to stdout. Caller: Agent(model: opus, prompt: stdout).
-# Version: 4.6.0
+# Version: 4.7.0
 # Owner: rabbit-workflow team (tdd-subagent)
 # Deprecation criterion: when TDD cycle is natively supported by rabbit CLI.
 
@@ -331,6 +332,18 @@ def main(argv):
               "provided, embed only those invariants from the spec's "
               "## Invariants section instead of the full spec (Inv 49)"),
     )
+    parser.add_argument(
+        "--worktree", "--cwd", dest="worktree", default=None,
+        help=("absolute worktree root to anchor the emitted prompt's path "
+              "slots against (vendored Strategy D, #1128). When provided, "
+              "feature_dir / tdd_step_py / repo_root / scope_marker_path / "
+              "tdd_report_path are emitted as ABSOLUTE paths under this root "
+              "instead of repo-relative with repo_root='.'. The Agent tool "
+              "has no cwd parameter, so baking absolute worktree paths into "
+              "the prompt makes the subagent operate in the worktree "
+              "regardless of inherited cwd. Omitted: byte-identical "
+              "relative-slot behavior (Inv 58)."),
+    )
     parser.add_argument("--code-review-full-loop", action="store_true")
     parser.add_argument("--max-iterations", type=int, default=3)
 
@@ -345,6 +358,7 @@ def main(argv):
             "ERROR: usage: dispatch-tdd-subagent.py --scope <feature> --spec <path> "
             "[--impl-suggestion <path>] "
             "[--affected-invariants N[,N,...]] "
+            "[--worktree <abs> | --cwd <abs>] "
             "[--code-review-full-loop] [--max-iterations N]\n"
         )
         return 2
@@ -438,20 +452,50 @@ def main(argv):
     # (_scope_marker_path / _tdd_report_path) and the find-feature lookup need
     # real absolute paths to os.path.exists markers at assembly time; only the
     # emitted SLOT STRINGS are relativized.
+    # Inv 65 (issue #1128): when --worktree/--cwd is provided, anchor every
+    # emitted path slot at the ABSOLUTE worktree root instead of emitting
+    # repo-relative slots with repo_root='.'. The Agent tool has no cwd
+    # parameter, so a vendored Strategy-D dispatch inherits the host `.rabbit`
+    # cwd; baking absolute worktree paths into the prompt makes the subagent
+    # anchor every LOCK marker / git add+commit / publish repo_root / UNLOCK
+    # operation at the worktree regardless of inherited cwd. The mode-aware
+    # helpers above resolved real absolute markers under repo_root; we re-root
+    # the repo-RELATIVE form of each onto the absolute worktree so the per-mode
+    # marker/report shape (Inv 12/48) is preserved verbatim, only the prefix
+    # changes from `.`/<rel> to the absolute worktree. When --worktree is
+    # absent the slots are byte-identical to before (Inv 58): repo-relative
+    # paths + repo_root='.'.
+    rel_feature_dir = os.path.relpath(feature_dir, repo_root)
+    rel_tdd_step_py = os.path.relpath(tdd_step_py, repo_root)
+    rel_scope_marker = os.path.relpath(
+        _scope_marker_path(repo_root, feature_name), repo_root)
+    rel_tdd_report = os.path.relpath(
+        _tdd_report_path(repo_root, feature_name), repo_root)
+    if args.worktree:
+        wt = os.path.abspath(args.worktree)
+        slot_repo_root = wt
+        slot_feature_dir = os.path.join(wt, rel_feature_dir)
+        slot_tdd_step_py = os.path.join(wt, rel_tdd_step_py)
+        slot_scope_marker = os.path.join(wt, rel_scope_marker)
+        slot_tdd_report = os.path.join(wt, rel_tdd_report)
+    else:
+        slot_repo_root = "."
+        slot_feature_dir = rel_feature_dir
+        slot_tdd_step_py = rel_tdd_step_py
+        slot_scope_marker = rel_scope_marker
+        slot_tdd_report = rel_tdd_report
     slots = {
         "feature_name": feature_name,
         "spec_content": spec_content,
         "impl_suggestion_block": impl_suggestion_block,
         "bypass_preamble_note": bypass_preamble_note,
-        "feature_dir": os.path.relpath(feature_dir, repo_root),
-        "tdd_step_py": os.path.relpath(tdd_step_py, repo_root),
-        "repo_root": ".",
+        "feature_dir": slot_feature_dir,
+        "tdd_step_py": slot_tdd_step_py,
+        "repo_root": slot_repo_root,
         "max_iterations": str(args.max_iterations),
         "code_review_loop_note": code_review_loop_note,
-        "scope_marker_path": os.path.relpath(
-            _scope_marker_path(repo_root, feature_name), repo_root),
-        "tdd_report_path": os.path.relpath(
-            _tdd_report_path(repo_root, feature_name), repo_root),
+        "scope_marker_path": slot_scope_marker,
+        "tdd_report_path": slot_tdd_report,
     }
     build_prompt_py = os.path.join(
         repo_root, ".claude", "features", "contract", "scripts", "build-prompt.py",

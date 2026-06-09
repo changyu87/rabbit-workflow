@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.27.1
+version: 5.28.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -821,6 +821,41 @@ defined in Inv 55.
     live dispatcher runs with cwd at each operating root and a cwd-relative
     `--spec`, and both assert the resolved spec body is embedded in the
     assembled prompt).
+
+65. **`--worktree`/`--cwd` anchors emitted prompt paths to an absolute
+    worktree root.** `dispatch-tdd-subagent.py` accepts an optional
+    `--worktree <abs>` argument (alias `--cwd <abs>`) carrying an absolute
+    worktree root. When provided, the five filesystem-path slots —
+    `feature_dir`, `tdd_step_py`, `repo_root`, `scope_marker_path`,
+    `tdd_report_path` — are emitted as ABSOLUTE paths under that worktree
+    root instead of repo-relative with `repo_root='.'`. The emitted prompt
+    therefore instructs the subagent to anchor every LOCK marker / `git
+    add`+commit / publish `repo_root` / UNLOCK operation at the absolute
+    worktree path, regardless of the cwd it inherits.
+
+    This is the dispatch-side complement to the Agent tool having no cwd
+    parameter (a design constraint verified upstream): in vendored
+    Strategy-D dispatch the subagent inherits the host `.rabbit` cwd (on
+    main), so cwd-relative slots (Inv 58) would resolve its scope marker /
+    commit / publish / UNLOCK against the HOST tree, landing commits on host
+    main and defeating per-session worktree isolation and the "never write
+    to main" rule. Baking absolute worktree paths into the prompt makes the
+    subagent operate in the worktree no matter what cwd it inherits.
+
+    The per-mode marker/report SHAPE (Inv 12 scope marker, Inv 48
+    tdd-report) is preserved verbatim: the dispatcher computes each path's
+    repo-relative form exactly as in Inv 58, then re-roots it onto the
+    absolute worktree — only the prefix changes from `.`/`<rel>` to the
+    absolute worktree. This change is strictly ADDITIVE and back-compatible:
+    when `--worktree`/`--cwd` is ABSENT the emitted slots are byte-identical
+    to Inv 58 (repo-relative paths + `repo_root='.'`).
+
+    Enforced by `test/test-prompt-worktree-arg.py` (e2e): with `--worktree`
+    (and its `--cwd` alias) every path slot is absolute under the worktree
+    (publish-loop `repo_root`, `feature_dir`, `tdd_step_py`, the LOCK/UNLOCK
+    scope marker, and the STEP 7 tdd-report `Path:`); and a dispatch WITHOUT
+    the flag carries no worktree prefix and keeps `repo_root='.'` plus the
+    relative scope marker (the hard back-compat guarantee).
 
 ## Out of Scope
 

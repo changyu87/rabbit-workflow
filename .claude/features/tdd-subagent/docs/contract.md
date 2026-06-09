@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.27.1
+version: 5.28.0
 template_version: 2.1.0
 owner: rabbit-workflow team
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -19,7 +19,7 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "scripts": [
       {
         "path": ".claude/features/tdd-subagent/scripts/dispatch-tdd-subagent.py",
-        "stdin": "none. Required flags: --scope <feature-name>, --spec <spec-path>. Optional: --impl-suggestion <path>, --code-review-full-loop, --max-iterations N (default 3, min 1).",
+        "stdin": "none. Required flags: --scope <feature-name>, --spec <spec-path>. Optional: --impl-suggestion <path>, --affected-invariants N[,N,...], --worktree <abs-worktree-root> (alias --cwd; when provided, the emitted path slots feature_dir/tdd_step_py/repo_root/scope_marker_path/tdd_report_path are anchored ABSOLUTE under this worktree root instead of repo-relative with repo_root='.', so the dispatched subagent operates in the worktree regardless of inherited cwd — additive, back-compatible; absent => byte-identical relative-slot behavior, Inv 65), --code-review-full-loop, --max-iterations N (default 3, min 1).",
         "spec_resolution": "--spec is resolved relative to the process CURRENT WORKING DIRECTORY (cwd-relative). This makes the dispatch boundary full-vendor-safe with no mode-aware spec-path rewriting: invoking the dispatcher from inside a self-contained vendored worktree (cwd at the rabbit runtime root) resolves the spec exactly as standalone mode does (cwd at the repo root). No contract change is required for the full-vendor worktree cycle.",
         "stdout": "assembled per-feature TDD-cycle prompt with the 8 labelled steps (LOCK, TEST-WRITE, TEST-RED, IMPLEMENT, SYNC-DEPLOYED, CODE-REVIEW, TEST-GREEN, UNLOCK). The script never invokes any agent; callers dispatch the agent with this prompt.",
         "exit": "0=success, 2=invocation error (missing/invalid flag, missing --spec file, unknown --scope feature)"
