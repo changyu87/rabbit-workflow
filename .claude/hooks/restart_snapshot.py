@@ -23,7 +23,7 @@ Public API:
     write_session_snapshot(repo_root) -> None
     restart_advisory_payloads(repo_root) -> list[dict]
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (rabbit-cage)
 Deprecation criterion: when Claude Code reloads hooks/skills/agents in-session
     without a restart, making the stale-load advisory unnecessary.
@@ -145,7 +145,7 @@ def restart_advisory_payloads(repo_root):
     if current == baseline:
         return []
     return [{"type": "print", "text": _advisory_text_with_timestamp(),
-             "icon": _ADVISORY_ICON, "color": "green"}]
+             "icon": _ADVISORY_ICON, "color": "yellow"}]
 
 
 def _advisory_text_with_timestamp(now=None):
