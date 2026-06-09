@@ -6,7 +6,7 @@ function calls sys.exit, prints, or raises on contract-violation conditions.
 
 Per spec Inv 29.
 
-Version: 1.1.0
+Version: 1.2.0
 Owner: rabbit-workflow team (contract)
 Deprecation criterion: when a native rabbit CLI exposes equivalent bindings.
 """
@@ -131,9 +131,35 @@ def check_tests_non_interactive(feature_dir: str) -> CheckResult:
 # else in the codebase is a contract violation.
 _SENTINEL = "RABBIT-POLICY-BLOCK-v1"
 
+# Inv 17's scope is DISPATCH/AGENT-PROMPT SCRIPTS ONLY — the same set Inv 56
+# names: scripts that wrap contract's prompt assembler (build-prompt.py) and so
+# must reproduce the policy-block sentinel. A dispatch script is identified by
+# its source referencing the build-prompt assembler it wraps; ordinary library
+# and test source carry no such reference and is OUT of scope (it should not
+# carry the sentinel — e.g. lib/publish.py, lib/notification_emitter.py,
+# test/run.py). Matching the build-prompt reference rather than the sentinel
+# literal keeps the predicate independent of Inv 56's source-uniqueness rule,
+# which forbids the literal from appearing in dispatch-script source at all.
+_BUILD_PROMPT_REF_RE = re.compile(r"build[-_]prompt")
+
+
+def _is_dispatch_script(text: str) -> bool:
+    """True iff a .py file's source identifies it as a dispatch/agent-prompt
+    script (Inv 17 scope): it references the build-prompt assembler it wraps."""
+    return bool(_BUILD_PROMPT_REF_RE.search(text))
+
 
 def check_sentinel(path: str) -> CheckResult:
-    """Inv 17: dispatch scripts must contain the policy-block sentinel."""
+    """Inv 17: dispatch scripts must contain the policy-block sentinel.
+
+    When PATH is a single file the file is checked directly (callers passing an
+    explicit dispatch-script path are not regressed). When PATH is a directory
+    the walk requires the sentinel ONLY in dispatch/agent-prompt scripts
+    (identified by _is_dispatch_script) — ordinary library and test .py source
+    is out of scope and never flagged, matching Inv 17's documented
+    dispatch-scripts-only intent and the convention that plain library files
+    carry no sentinel.
+    """
     if not os.path.exists(path):
         return CheckResult(False, [f"ERROR: not a file or directory: {path}"])
     missing: List[str] = []
@@ -148,8 +174,11 @@ def check_sentinel(path: str) -> CheckResult:
                     continue
                 fpath = os.path.join(dirpath, fname)
                 with open(fpath) as f:
-                    if _SENTINEL not in f.read():
-                        missing.append(f"MISSING sentinel in: {fpath}")
+                    content = f.read()
+                if not _is_dispatch_script(content):
+                    continue
+                if _SENTINEL not in content:
+                    missing.append(f"MISSING sentinel in: {fpath}")
     if missing:
         return CheckResult(False, missing)
     return CheckResult(True, [f"OK: sentinel present in {path}"])
