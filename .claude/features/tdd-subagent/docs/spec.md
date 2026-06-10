@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.28.0
+version: 5.29.0
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -850,12 +850,33 @@ defined in Inv 55.
     when `--worktree`/`--cwd` is ABSENT the emitted slots are byte-identical
     to Inv 58 (repo-relative paths + `repo_root='.'`).
 
+    The re-root ANCHOR is mode-aware. The slots are relativized
+    against `repo_root`, so the anchor they re-root onto MUST share
+    `repo_root`'s base or the re-rooted absolute paths diverge from the tree
+    the worktree exposes. In standalone mode `repo_root` IS the git toplevel
+    and `--worktree` is that same operating root, so the anchor is the bare
+    `<worktree>`. In vendored Strategy-D dispatch `repo_root` is `RABBIT_ROOT`
+    = the `<host>/.rabbit/` install dir (Inv 47), while `--worktree` is the
+    HOST repo root, where `.rabbit/` is a SUBDIRECTORY; the slots are
+    `.rabbit/`-relative, so re-rooting them onto the bare worktree root would
+    DROP the `.rabbit/` segment (`<worktree>/.claude/...` instead of the real
+    `<worktree>/.rabbit/.claude/...`) and a literal consumer could not find the
+    spec / scope marker / tdd-step.py. The dispatcher detects vendored mode by
+    `repo_root`'s basename being `.rabbit` (mirroring `_rabbit_runtime_root` /
+    scope-guard) and anchors at `<worktree>/.rabbit/` in that case, so the
+    subagent's worktree anchor and the embedded paths share one base.
+
     Enforced by `test/test-prompt-worktree-arg.py` (e2e): with `--worktree`
     (and its `--cwd` alias) every path slot is absolute under the worktree
     (publish-loop `repo_root`, `feature_dir`, `tdd_step_py`, the LOCK/UNLOCK
     scope marker, and the STEP 7 tdd-report `Path:`); and a dispatch WITHOUT
     the flag carries no worktree prefix and keeps `repo_root='.'` plus the
-    relative scope marker (the hard back-compat guarantee).
+    relative scope marker (the hard back-compat guarantee). The vendored
+    `.rabbit/`-prefix anchor is enforced by
+    `test/test-prompt-worktree-vendored-rabbit-prefix.py` (e2e: vendored
+    fixture with `RABBIT_ROOT=<host>/.rabbit` and `--worktree <host>`; every
+    emitted slot carries the `.rabbit/` segment under the worktree, and none
+    leaks the `.rabbit/`-stripped form).
 
 ## Out of Scope
 
