@@ -13,6 +13,18 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.15.1 (flat Protocol step numbers — cosmetic/consistency, #1139):**
+  The Protocol numbered top-level steps 1–4, but Step 4 ("Hand off to
+  scaffold + spec drafting") carried five lettered sub-steps A–E, forcing
+  ambiguous mixed references like "Step 4-D". Promoted the A–E sub-steps to
+  flat sequential Steps 4–8 (Step 4 = Open the decompose-context
+  pass-through, Step 5 = Scaffold, Step 6 = Seed specs, Step 7 = Close the
+  decompose-context pass-through, Step 8 = Report), converted the bold
+  lettered lead-ins to `### Step N — <title>` headings consistent with
+  Steps 1–3, and rewrote the internal cross-reference "Step 4-D below" to
+  "Step 7 below". Prose-only; no command, script invocation, or behavior
+  changed.
+
 - **v0.15.0 (greenfield dirs are not orphans — fix #1040 false positive,
   #1042):** The #1040 orphan detector flagged EVERY feature dir on disk but
   absent from `project-map.json` as an orphan. But a greenfield feature has
