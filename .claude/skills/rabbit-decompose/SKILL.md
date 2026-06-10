@@ -1,7 +1,7 @@
 ---
 name: rabbit-decompose
 description: Propose a feature decomposition for an existing codebase or a high-level spec, interactively iterate with the user until accepted, then orchestrate scaffolding + initial spec drafting per accepted feature. Use when the user wants to start a new rabbit-managed project from a spec/prompt, or when the user wants to retroactively organize an existing codebase into rabbit features. Phrases like "decompose this into features", "propose a feature breakdown", "let's organize this codebase with rabbit", "/rabbit-decompose", "what features should this project have". Do NOT use to revise individual feature specs (that's rabbit-spec-update) or to scaffold a single feature whose name + globs you already know (that's rabbit-feature-scaffold).
-version: 0.15.1
+version: 0.16.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
 ---
@@ -153,6 +153,8 @@ The clear is idempotent (clearing an absent marker is a no-op), so run it uncond
 ### Step 8 — Report
 
 Tell the user: `N` features scaffolded; `M` spec drafts produced; paths to each. Note that the spec drafts are *starting points* — the user reviews and edits before they're final.
+
+**Commit the scaffold before running rabbit-feature-touch (vendored/plugin mode).** The Step 5 plan JSON carries a mode-aware `vendored_commit_warning` field: non-null in **vendored/plugin mode**, null in standalone mode. When it is non-null, surface it verbatim to the user. The scaffolded `.rabbit/rabbit-project/features/<name>/` dirs and seeded specs are NOT committed by decompose, but `rabbit-feature-touch`'s create-branch runs the TDD cycle inside a git **worktree** branched from the host repo's HEAD, and a worktree only contains committed files. So in vendored/plugin mode the user MUST commit the scaffold to the user repo (e.g. a PR to main) BEFORE running `rabbit-feature-touch` on a freshly-decomposed feature — otherwise the worktree does not contain the new feature directory and the TDD subagent has nothing to implement. Standalone mode has no HEAD-based worktree, so the warning does not apply there.
 
 ## What you do NOT do
 
