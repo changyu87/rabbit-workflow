@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.15.0
+version: 0.16.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -297,6 +297,28 @@ constrains only the structural shape.
     rename completes and the old value is no longer emitted anywhere, leaving
     the comparisons checking `"vendored"` alone.
 
+11. In VENDORED (plugin) mode, `rabbit-feature-touch`'s create-branch step runs
+    the TDD subagent inside a per-session git worktree branched from the host
+    repo's HEAD, and a worktree contains only COMMITTED files. rabbit-decompose
+    scaffolds feature dirs and seeds specs under
+    `.rabbit/rabbit-project/features/<name>/` but never commits them, so a
+    freshly-decomposed feature is INVISIBLE to a feature-touch worktree until it
+    is committed to the user repo. The Step 4 hand-off plan JSON emitted
+    by `scripts/handoff-scaffold.py` (the `--features` run, and the `--plan-only`
+    dry run) MUST therefore carry a deterministic, mode-aware
+    `vendored_commit_warning` field: a non-empty string in vendored mode telling
+    the user that the scaffolded `.rabbit/rabbit-project/features/<name>/` dirs
+    and seeded specs MUST be committed to the user repo (e.g. a PR to main)
+    BEFORE running `rabbit-feature-touch`, because feature-touch's worktree
+    branches from HEAD and only sees committed files; and `null` in standalone
+    mode (where the worktree branches from the same repo and no separate commit
+    of `.rabbit` is required). The warning is SCRIPT-tier — the value is emitted
+    by `handoff-scaffold.py`, not hand-assembled by the model. The `SKILL.md`
+    Report step (the final sub-step of the Step 4 hand-off) MUST surface this
+    commit-the-scaffold instruction in vendored mode, anchored to the Report
+    step by its content (not its letter), and the warning wording MUST be
+    vendored/plugin-specific.
+
 ## Tests
 
 `test/run.py` invokes every `test-*.py` file under `test/`. Current
@@ -406,6 +428,14 @@ coverage:
   vendored-location project-map); and greps the whole `test/` suite to confirm
   no strict emitted-`mode == "plugin"` / `!= "plugin"` field assertion remains,
   so a future `detect_mode` flip leaves `test/run.py` fully green).
+- `test-vendored-commit-warning.py` (E2E — asserts Invariant 11: runs
+  `scripts/handoff-scaffold.py --features ... --plan-only` end-to-end against a
+  temp plugin tree and a temp standalone tree, confirming the plan JSON carries
+  a `vendored_commit_warning` field that is a non-empty string in vendored mode
+  naming the commit-before-feature-touch requirement (and citing `worktree` and
+  HEAD) and `null` in standalone mode, that the warning is `detect_mode`-driven
+  (toggling the plugin signature flips it), and that the `SKILL.md` Report step
+  surfaces the vendored commit-the-scaffold instruction).
 
 ## Out of Scope
 

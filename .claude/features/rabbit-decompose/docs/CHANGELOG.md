@@ -13,6 +13,31 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.16.0 (surface a vendored-mode commit-the-scaffold warning, #1140):** In
+  vendored/plugin mode, `rabbit-feature-touch`'s create-branch step runs the TDD
+  subagent inside a per-session git worktree branched from the host repo's HEAD,
+  and a worktree contains only COMMITTED files. rabbit-decompose scaffolds
+  feature dirs and seeds specs under `.rabbit/rabbit-project/features/<name>/`
+  but never commits them and never warned that a commit is required, so a
+  greenfield decompose immediately followed by `rabbit-feature-touch` created a
+  worktree that did NOT contain the new feature dir — the TDD subagent had
+  nothing to implement and the cycle could not proceed. Surfaced the requirement
+  deterministically (script-tier): `scripts/handoff-scaffold.py`'s Step 4 plan
+  JSON (the `--features` run and the `--plan-only` dry run) now carries a
+  mode-aware `vendored_commit_warning` field — a non-empty string in vendored
+  mode telling the user the scaffolded
+  `.rabbit/rabbit-project/features/<name>/` dirs and seeded specs MUST be
+  committed to the user repo (e.g. a PR to main) BEFORE running
+  `rabbit-feature-touch` (because feature-touch's worktree branches from HEAD and
+  only sees committed files), and `null` in standalone mode. The `SKILL.md`
+  Report step surfaces this commit-the-scaffold instruction in vendored mode.
+  Scope kept to rabbit-decompose: rabbit-cage and rabbit-feature-touch are NOT
+  touched. New spec Invariant 11 and E2E `test-vendored-commit-warning.py`.
+  Additive — all prior plan-JSON fields unchanged. Four-way version lockstep
+  bumped 0.15.0 → 0.16.0. Deployed surface changed (source `SKILL.md` body +
+  `handoff-scaffold.py`) — the dispatcher republishes the deployed
+  `rabbit-decompose` skill.
+
 - **v0.15.0 (greenfield dirs are not orphans — fix #1040 false positive,
   #1042):** The #1040 orphan detector flagged EVERY feature dir on disk but
   absent from `project-map.json` as an orphan. But a greenfield feature has

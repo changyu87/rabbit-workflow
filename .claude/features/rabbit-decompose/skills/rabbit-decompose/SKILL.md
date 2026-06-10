@@ -1,7 +1,7 @@
 ---
 name: rabbit-decompose
 description: Propose a feature decomposition for an existing codebase or a high-level spec, interactively iterate with the user until accepted, then orchestrate scaffolding + initial spec drafting per accepted feature. Use when the user wants to start a new rabbit-managed project from a spec/prompt, or when the user wants to retroactively organize an existing codebase into rabbit features. Phrases like "decompose this into features", "propose a feature breakdown", "let's organize this codebase with rabbit", "/rabbit-decompose", "what features should this project have". Do NOT use to revise individual feature specs (that's rabbit-spec-update) or to scaffold a single feature whose name + globs you already know (that's rabbit-feature-scaffold).
-version: 0.15.0
+version: 0.16.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
 ---
@@ -143,6 +143,8 @@ python3 .claude/features/rabbit-decompose/scripts/handoff-scaffold.py --decompos
 The clear is idempotent (clearing an absent marker is a no-op), so run it unconditionally as the final batch step even if an earlier step errored.
 
 **E. Report.** Tell the user: `N` features scaffolded; `M` spec drafts produced; paths to each. Note that the spec drafts are *starting points* — the user reviews and edits before they're final.
+
+**Vendored-mode commit reminder.** The Step 4 hand-off plan JSON from `scripts/handoff-scaffold.py` carries a deterministic, mode-aware `vendored_commit_warning` field — a non-empty string in vendored/plugin mode, `null` in standalone mode. When it is non-null, surface it VERBATIM as part of this Report step: in vendored mode the scaffolded `.rabbit/rabbit-project/features/<name>/` dirs and seeded specs MUST be committed to the user repo (e.g. a PR to `main`) BEFORE running `rabbit-feature-touch`, because feature-touch's create-branch step branches a per-session worktree from the host repo's HEAD and a worktree only sees COMMITTED files — an uncommitted decompose scaffold is invisible to it, so the TDD cycle would have nothing to implement. Do NOT paraphrase the requirement away; the commit step is mandatory in vendored mode. In standalone mode the field is `null` and no extra commit step is needed.
 
 ## What you do NOT do
 

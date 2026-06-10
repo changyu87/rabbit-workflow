@@ -100,7 +100,13 @@ Output (always JSON on stdout):
       "batch_file": "<abs path>" | null,
       "source_root": "<abs path>",
       "features": [ {"name": ..., "globs": [...]}, ... ],
-      "dispatched": <bool>          # false under --plan-only
+      "dispatched": <bool>,         # false under --plan-only
+      "vendored_commit_warning": "<str>" | null   # #1140: non-null in
+                                    # vendored mode, telling the user to commit
+                                    # the scaffold to the user repo BEFORE
+                                    # rabbit-feature-touch (its worktree branches
+                                    # from HEAD and only sees committed files);
+                                    # null in standalone mode
     }
   Step 1 (--source-root):
     {
@@ -135,7 +141,7 @@ both keeps this script correct before AND after that rename. The legacy
 "plugin" arm is removed only after the rename completes and the old value is
 fully retired (coexistence-window deprecation).
 
-Version: 0.8.0
+Version: 0.9.0
 Owner: rabbit-workflow team
 Deprecation criterion: when Step 4 scaffold hand-off is provided natively by
     the rabbit CLI, retiring this companion script.
@@ -163,6 +169,35 @@ from pathlib import Path
 # deprecation: the legacy "plugin" entry is removed only after the #980 rename
 # completes and the old value is fully retired.
 _VENDORED_MODES = ("vendored", "plugin")
+
+
+# Vendored-mode commit-the-scaffold warning (#1140). In vendored/plugin mode,
+# rabbit-feature-touch's create-branch step runs the TDD subagent inside a
+# per-session git worktree branched from the host repo's HEAD, and a worktree
+# contains only COMMITTED files. rabbit-decompose scaffolds feature dirs + seeds
+# specs under `.rabbit/rabbit-project/features/<name>/` but never commits them,
+# so a freshly-decomposed feature is INVISIBLE to a feature-touch worktree until
+# it is committed to the user repo. This SCRIPT-OWNED warning string is emitted
+# in the Step 4 plan JSON's `vendored_commit_warning` field (non-null in
+# vendored mode, null in standalone mode); the SKILL.md Report step surfaces it.
+_VENDORED_COMMIT_WARNING = (
+    "VENDORED MODE: commit the scaffolded "
+    ".rabbit/rabbit-project/features/<name>/ dirs and seeded specs to the user "
+    "repo (e.g. a PR to main) BEFORE running rabbit-feature-touch. "
+    "rabbit-feature-touch branches a per-session worktree from the host repo's "
+    "HEAD, and a worktree only sees COMMITTED files — an uncommitted decompose "
+    "scaffold is invisible to it, so the TDD cycle would have nothing to "
+    "implement."
+)
+
+
+def _vendored_commit_warning(mode: str) -> "str | None":
+    """The mode-aware commit-the-scaffold warning (#1140).
+
+    Returns the non-empty warning string in vendored/plugin mode and None in
+    standalone mode (where feature-touch's worktree branches from the same repo,
+    so no separate commit of `.rabbit` is required)."""
+    return _VENDORED_COMMIT_WARNING if mode in _VENDORED_MODES else None
 
 
 def _err(msg: str) -> None:
@@ -576,6 +611,7 @@ def main(argv) -> int:
             "source_root": source_root,
             "features": features,
             "dispatched": False,
+            "vendored_commit_warning": _vendored_commit_warning(mode),
         }
         if plan_only:
             print(json.dumps(result))
@@ -623,6 +659,7 @@ def main(argv) -> int:
         "source_root": source_root,
         "features": features,
         "dispatched": False,
+        "vendored_commit_warning": _vendored_commit_warning(mode),
     }
     print(json.dumps(result))
     return 0
