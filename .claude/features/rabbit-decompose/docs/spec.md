@@ -1,6 +1,6 @@
 ---
 feature: rabbit-decompose
-version: 0.15.0
+version: 0.15.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native feature-decomposition assistance that supersedes this skill
@@ -258,7 +258,7 @@ constrains only the structural shape.
    `<rabbit_root>/.rabbit/.runtime/decompose-active`. The script's own batch
    dispatch wraps the scaffolder invocation in set-before / clear-after so a
    FAILING scaffolder still clears the marker (try/finally). That self-guard
-   is OWN-ONLY: when a marker is ALREADY present (the `SKILL.md` Step 4-A set
+   is OWN-ONLY: when a marker is ALREADY present (the `SKILL.md` Step 4 set
    it to span the later spec-seed step too), the batch dispatch leaves it
    untouched — it only sets and clears a marker it itself created, so it never
    clears the outer orchestration's marker out from under the spec-seed step.
@@ -311,7 +311,7 @@ coverage:
   direct-dispatch path (the `dispatch-spec-creator.py` input assembler and a
   direct `rabbit-spec-creator` Agent dispatch) and carries no spec-create
   skill-wrapper reference and no standalone non-`creator` dispatch-script name;
-  and that the `SKILL.md` Step 4-B dispatches `rabbit-spec-creator`
+  and that the `SKILL.md` Step 6 dispatches `rabbit-spec-creator`
   directly via `Agent(subagent_type: ...)` at level-1 and states the
   per-feature dispatches may run in parallel).
 - `test-prompts-spec-artifact-agree.py` (E2E — asserts Invariant 1 and the
