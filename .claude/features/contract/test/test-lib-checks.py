@@ -229,6 +229,35 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         fail("t9b", f"expected passed=False, got {res!r}")
 
+# t9c (Inv 16, #1147): an ABSENT template path is OUT OF SCOPE for this check
+# and MUST be vacuously satisfied, NOT a failure. The check fires for every
+# feature's test-green transition via tdd-step.py, but contract's bug-template
+# only exists at the contract feature path; during an unrelated feature's TDD
+# run (e.g. in a worktree / plugin layout that does not carry the template),
+# the path is absent and the check would otherwise emit a spurious
+# 'template-schema-producer consistency check failed' WARNING. A missing file
+# means "no template here to be inconsistent with the schema" -> pass.
+with tempfile.TemporaryDirectory() as tmp:
+    missing = os.path.join(tmp, "no-such-bug-template.json")
+    res = checks.check_template_producer_consistency(missing)
+    if isinstance(res, checks.CheckResult) and res.passed:
+        ok("t9c", "check_template_producer_consistency vacuously passes on absent template")
+    else:
+        fail("t9c", f"expected passed=True (vacuous) on missing template, got {res!r}")
+
+# t9d (#1147): a PRESENT but malformed template (invalid JSON) is a GENUINE
+# inconsistency at its source and MUST still FAIL — the scope relaxation in
+# t9c is strictly about absence, never about a real broken template.
+with tempfile.TemporaryDirectory() as tmp:
+    broken = os.path.join(tmp, "broken-template.json")
+    with open(broken, "w") as f:
+        f.write("{ this is not valid json ")
+    res = checks.check_template_producer_consistency(broken)
+    if isinstance(res, checks.CheckResult) and not res.passed:
+        ok("t9d", "check_template_producer_consistency fails on present malformed template")
+    else:
+        fail("t9d", f"expected passed=False on malformed present template, got {res!r}")
+
 # t10: end-to-end — check_numbered_lists
 with tempfile.TemporaryDirectory() as tmp:
     md = os.path.join(tmp, "clean.md")
@@ -503,6 +532,23 @@ if r.returncode == 0:
     ok("t12-template-producer", "CLI shim exits 0 on real bug-template.json")
 else:
     fail("t12-template-producer", f"shim returned {r.returncode}; stderr={r.stderr!r}")
+
+# t12-template-producer-absent (#1147): end-to-end through the CLI shim, an
+# ABSENT template path MUST exit 0 (vacuous), so an unrelated feature's
+# test-green transition does not surface the spurious WARNING. A genuine
+# inconsistency (present + unknown key) still exits 1 (covered by t9b/t9d).
+with tempfile.TemporaryDirectory() as tmp:
+    absent = os.path.join(tmp, "no-such-bug-template.json")
+    r = subprocess.run(
+        ["python3", os.path.join(ENF_DIR, "check-template-schema-producer-consistency.py"),
+         absent],
+        capture_output=True, text=True,
+    )
+    if r.returncode == 0:
+        ok("t12-template-producer-absent", "CLI shim exits 0 on absent template path")
+    else:
+        fail("t12-template-producer-absent",
+             f"shim returned {r.returncode} on absent path; stderr={r.stderr!r}")
 
 with tempfile.TemporaryDirectory() as tmp:
     md = os.path.join(tmp, "clean.md")
