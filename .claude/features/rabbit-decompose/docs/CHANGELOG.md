@@ -13,6 +13,37 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.16.0 (surface a vendored-mode commit-the-scaffold warning, #1140):**
+  In vendored/plugin mode, `rabbit-feature-touch`'s create-branch runs the TDD
+  subagent inside a per-session git worktree branched from the host repo's
+  HEAD, and a worktree contains only COMMITTED files. rabbit-decompose
+  scaffolds feature dirs and seeds specs under
+  `.rabbit/rabbit-project/features/<name>/` but never commits them and never
+  warned that a commit is required. Result: immediately after a greenfield
+  decompose, running feature-touch on a freshly-decomposed feature created a
+  worktree that did NOT contain the feature directory, so the TDD subagent had
+  nothing to implement and the cycle could not proceed. Fix (in-scope,
+  script-tier): `scripts/handoff-scaffold.py`'s Step-4 plan JSON now carries a
+  mode-aware `vendored_commit_warning` field — a non-empty string in
+  vendored/plugin mode instructing the user to COMMIT the scaffolded
+  `.rabbit/rabbit-project/features/<name>/` dirs and seeded specs to the user
+  repo (e.g. a PR to main) BEFORE running `rabbit-feature-touch`, naming the
+  worktree/HEAD-only-sees-committed reason; `null` in standalone mode (no
+  HEAD-based worktree). `SKILL.md` Step 8 (Report) reflects the same warning,
+  instructing the dispatcher to surface it when non-null. New spec Invariant 11
+  pins the field contract and the mode-aware null/non-null behavior; the Tests
+  section gains the new E2E entry. New E2E
+  `test/test-vendored-commit-warning.py` asserts the plugin tree emits a
+  non-empty warning naming commit / rabbit-feature-touch / worktree, the
+  standalone tree emits null, the decision is `detect_mode`-driven, and
+  `SKILL.md` Step 8 carries the reflected instruction. Additive — all prior
+  plan-JSON fields and behavior are unchanged. Four-way version bump
+  0.15.1 → 0.16.0 (lockstep). Deployed surface changed (source `SKILL.md` body
+  + `handoff-scaffold.py`) — the dispatcher republishes the deployed
+  `rabbit-decompose` skill before merge. Scope: `rabbit-feature-touch` /
+  `rabbit-cage` are NOT edited; the fix lives entirely in rabbit-decompose's
+  Report/handoff surface.
+
 - **v0.15.1 (flat Protocol step numbers — cosmetic/consistency, #1139):**
   The Protocol numbered top-level steps 1–4, but Step 4 ("Hand off to
   scaffold + spec drafting") carried five lettered sub-steps A–E, forcing
