@@ -850,7 +850,7 @@ defined in Inv 55.
     when `--worktree`/`--cwd` is ABSENT the emitted slots are byte-identical
     to Inv 58 (repo-relative paths + `repo_root='.'`).
 
-    The re-root ANCHOR is mode-aware (issue #1146). The slots are relativized
+    The re-root ANCHOR is mode-aware. The slots are relativized
     against `repo_root`, so the anchor they re-root onto MUST share
     `repo_root`'s base or the re-rooted absolute paths diverge from the tree
     the worktree exposes. In standalone mode `repo_root` IS the git toplevel
