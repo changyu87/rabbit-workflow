@@ -54,6 +54,11 @@ declared_features = {c["name"] for c in features_node.get("children", [])}
 on_disk_features = {
     name for name in os.listdir(FEATURES_DIR)
     if os.path.isdir(os.path.join(FEATURES_DIR, name))
+    # Real feature directories never carry a leading dot. Dot-prefixed
+    # entries (e.g. a transient .pytest_cache created when another feature's
+    # pytest suite runs) are git-ignored artifacts, not features, and would
+    # otherwise false-RED this gate (Inv 24, issue #1150).
+    and not name.startswith(".")
 }
 
 # t1: every on-disk feature is declared
