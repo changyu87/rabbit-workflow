@@ -24,6 +24,13 @@ surfaces):
       file) does NOT write the marker.
   r5  a FAILED install (install.py exits non-zero) does NOT write the marker
       even if surfaces appear changed (no false restart alert on failure).
+  r6  (#1152) the marker name `.rabbit-update-restart-needed` is listed in the
+      inner `.rabbit/.gitignore` source of truth (`install._RABBIT_GITIGNORE_BODY`)
+      AND the rendered inner gitignore actually ignores
+      `.rabbit/.rabbit-update-restart-needed` under a vendored `.rabbit/` root
+      (real `write_rabbit_gitignore` + real `git check-ignore`), so the
+      vendored-mode marker is gitignored ephemeral state, never an untracked
+      committed file in the host repo.
 """
 from __future__ import annotations
 
@@ -40,6 +47,7 @@ REPO_ROOT = subprocess.run(
 ).stdout.strip()
 CAGE_DIR = os.path.join(REPO_ROOT, ".claude/features/rabbit-cage")
 UPDATE_PY = os.path.join(CAGE_DIR, "scripts/rabbit-update.py")
+INSTALL_PY = os.path.join(CAGE_DIR, "install.py")
 CONTRACT_RUNTIME = os.path.join(
     REPO_ROOT, ".claude/features/contract/lib/runtime.py")
 
@@ -180,6 +188,43 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         fail_t(5, f"marker wrongly written on failed install: "
                   f"rc={res.returncode} marker={os.path.isfile(_marker_path(tmp))}")
+
+# r6 — (#1152) the vendored-mode marker is gitignored ephemeral state.
+# Load install.py and assert the marker name is in the inner-gitignore source
+# of truth AND the rendered inner `.rabbit/.gitignore` actually ignores
+# `.rabbit/.rabbit-update-restart-needed` under a vendored `.rabbit/` root.
+_ispec = importlib.util.spec_from_file_location("rabbit_install", INSTALL_PY)
+_install = importlib.util.module_from_spec(_ispec)
+_ispec.loader.exec_module(_install)
+
+from pathlib import Path
+
+_body = getattr(_install, "_RABBIT_GITIGNORE_BODY", "")
+if EXPECTED_MARKER in _body:
+    ok("6a", f"{EXPECTED_MARKER!r} listed in _RABBIT_GITIGNORE_BODY")
+else:
+    fail_t("6a", f"{EXPECTED_MARKER!r} NOT in _RABBIT_GITIGNORE_BODY "
+                 "— vendored marker would surface untracked in the host repo")
+
+with tempfile.TemporaryDirectory() as tmp:
+    # Faithful vendored layout: host git repo with a vendored `.rabbit/` dir.
+    host = os.path.join(tmp, "host")
+    rabbit = os.path.join(host, ".rabbit")
+    os.makedirs(rabbit, exist_ok=True)
+    subprocess.run(["git", "-C", host, "init", "-q"], check=True)
+    # Render the inner `.rabbit/.gitignore` via the real installer helper.
+    _install.write_rabbit_gitignore(Path(rabbit))
+    # The marker as it lands in vendored mode (rabbit_root == .rabbit dir).
+    marker_rel = os.path.join(".rabbit", EXPECTED_MARKER)
+    open(os.path.join(rabbit, EXPECTED_MARKER), "w").write("x\n")
+    checked = subprocess.run(
+        ["git", "-C", host, "check-ignore", marker_rel],
+        capture_output=True, text=True)
+    if checked.returncode == 0 and checked.stdout.strip() == marker_rel:
+        ok("6b", f"git ignores {marker_rel} under a vendored .rabbit/ root")
+    else:
+        fail_t("6b", f"{marker_rel} NOT ignored by the inner .rabbit/.gitignore "
+                     f"(rc={checked.returncode} out={checked.stdout.strip()!r})")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")
