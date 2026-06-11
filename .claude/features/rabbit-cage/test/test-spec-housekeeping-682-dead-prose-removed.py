@@ -208,7 +208,14 @@ COLLAPSE_MAX = 1
 # installs converge without a manual `git rm --cached` step — plus its e2e test
 # (test-install-update-untracks-ignored-ephemerals.py). A real spec addition
 # documenting new test-enforced behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 628
+# Raised 628 -> 634 by #1156, which extended Inv 54 with clause (e): the
+# mid-session restart advisory is TIERED by change type — a SKILL.md-only change
+# recommends /reload-skills (no restart), a skill-scripts/-only change recommends
+# nothing, and any hard surface (hook/settings/CLAUDE.md/agent) keeps the full
+# restart advisory; mixed sets take the superset — plus its e2e test
+# (test-restart-advisory-tiered-by-change-type.py). A real spec addition
+# documenting new test-enforced behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 634
 
 PASS = 0
 FAIL = 0
