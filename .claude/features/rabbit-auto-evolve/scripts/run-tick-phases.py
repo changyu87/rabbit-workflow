@@ -28,8 +28,13 @@ longer writes the running marker.
   post-dispatch  the `in-progress` label reconcile (`reconcile-labels.py`,
                  Inv 55) as the FIRST action — add-on-entry, BEFORE merge drains
                  the just-dispatched live set (#882) — then phase 7 (merge ready
-                 PRs from the state's `merge_ready` hint), a post-merge re-sync
-                 to origin/dev when PRs merged (Inv 45), phases 8-10
+                 PRs from the state's `merge_ready` hint; because merge-prs.py
+                 ALWAYS exits 0 and reports partial outcomes per-PR in its stdout
+                 JSON (Inv 6), this step PARSES that stdout and aborts the segment
+                 non-zero on ANY `status: "failed"` row — a `gh pr merge --admin`
+                 that failed — or on unparseable output, rather than swallowing
+                 the failure and refiring the PR forever; #1158), a post-merge
+                 re-sync to origin/dev when PRs merged (Inv 45), phases 8-10
                  (`run-post-merge.py` drain), phase 11 (persist: re-read the
                  on-disk state — already mutated by the phase scripts — drop the
                  transient `merge_ready` key, and pipe through
@@ -59,7 +64,7 @@ A single JSON result object is emitted on stdout. Exit code is 0 on a
 completed segment (including every short-circuit no-op); non-zero on an
 unexpected phase-script failure.
 
-Version: 1.8.0
+Version: 1.9.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -112,6 +117,36 @@ def _merge_ready():
     if not isinstance(ready, list):
         return []
     return [n for n in ready if isinstance(n, int) and not isinstance(n, bool)]
+
+
+def _merge_failures(stdout):
+    """Parse merge-prs.py's stdout JSON array (issue #1158). Returns
+    `(failed_pr_numbers, parse_ok)`:
+
+    - `parse_ok` is False when stdout is not a JSON list of objects (a crashed
+      merge step). The caller treats that as a hard failure — the walk cannot
+      confirm every PR merged.
+    - `failed_pr_numbers` is the list of `pr` values for rows with
+      `status == "failed"` (a `gh pr merge --squash --admin` that failed,
+      recorded by merge-prs.py while it still exits 0 — Inv 6). A
+      `status == "skipped"` row (base-not-accepted / safety-check-failed) is an
+      EXPECTED per-PR outcome and is NOT a failure.
+
+    merge-prs.py ALWAYS exits 0, so this stdout parse — not the exit code — is
+    the authoritative per-PR outcome gate."""
+    try:
+        rows = json.loads(stdout)
+    except (ValueError, TypeError):
+        return [], False
+    if not isinstance(rows, list):
+        return [], False
+    failed = []
+    for row in rows:
+        if not isinstance(row, dict):
+            return [], False
+        if row.get("status") == "failed":
+            failed.append(row.get("pr"))
+    return failed, True
 
 
 def _run(script_name, args, stdin_text=None):
@@ -338,6 +373,34 @@ def run_post_dispatch():
         if merge.returncode != 0:
             result["status"] = "failed"
             result["reason"] = "merge-failed"
+            return result, 1
+
+        # merge-prs.py ALWAYS exits 0 — it reports partial outcomes per-PR in
+        # its stdout JSON array, never via exit code (Inv 6). So the exit-code
+        # check above is NOT sufficient: a `gh pr merge --squash --admin` that
+        # FAILS (e.g. an auth/permission error landing a PR parked at
+        # REVIEW_REQUIRED — the `--admin` override is meant to bypass that
+        # structural required-review, but a genuine permission failure cannot)
+        # is recorded as a per-PR `{status: "failed", reason: "gh-merge-failed:
+        # …"}` row while the script still exits 0. Left unchecked, the segment
+        # would proceed as if the merge succeeded, the PR would stay open, and
+        # the next tick would re-add it to merge_ready forever — an endless
+        # silent refire with no surfaced failure (issue #1158). Parse the
+        # stdout and treat ANY `status == "failed"` row as a HARD segment
+        # abort, naming the failed PRs. A `status == "skipped"` row
+        # (base-not-accepted / safety-check-failed) is an EXPECTED per-PR
+        # outcome and does NOT abort. Unparseable stdout (a crashed merge step)
+        # is itself a hard failure: the walk cannot confirm every PR merged.
+        failed_prs, parse_ok = _merge_failures(merge.stdout)
+        if not parse_ok:
+            result["status"] = "failed"
+            result["reason"] = "merge-output-unparseable"
+            return result, 1
+        if failed_prs:
+            result["status"] = "failed"
+            result["reason"] = (
+                "merge-prs-failed: " + ", ".join(str(p) for p in failed_prs)
+            )
             return result, 1
 
         # Post-merge re-sync to the integration target (Inv 45 / #516).

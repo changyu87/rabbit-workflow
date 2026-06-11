@@ -16,6 +16,38 @@ authoritative).
 
 ## Version notes
 
+- **v0.97.0 — 2026-06-11** — #1158 (bug, priority:critical). The
+  autonomous-evolve merge phase silently swallowed `gh pr merge --squash
+  --admin` failures and refired the affected PR indefinitely instead of
+  surfacing the failure. Root cause: `merge-prs.py` ALWAYS exits 0 — it reports
+  partial outcomes per-PR in its stdout JSON array, recording a failed admin
+  merge as `{pr, status: "failed", reason: "gh-merge-failed: <stderr>"}` while
+  still exiting 0 (Inv 6). `run-tick-phases.py`'s phase-7 merge step checked
+  ONLY `merge.returncode` (always 0), so a failed merge was treated as success:
+  the segment proceeded, the PR stayed open, and the next tick re-added it to
+  `merge_ready` forever. Observed: three MERGEABLE PRs (#1153, #1155, #1157)
+  parked at `REVIEW_REQUIRED` for hours with no surfaced error. The `--admin`
+  override is DESIGNED to bypass `main`'s structural required-review, so a
+  MERGEABLE PR passing `safety-check.py --phase merge` is merged regardless of
+  its `reviewDecision`; a still-failing admin merge is a real
+  auth/permission blocker that must be surfaced, not refired. **Fix:**
+  `run-tick-phases.py` (1.8.0 → 1.9.0) now PARSES `merge-prs.py`'s stdout (new
+  `_merge_failures` helper) and aborts the post-dispatch segment non-zero —
+  naming the failed PRs, BEFORE the post-merge drain — on ANY `status:
+  "failed"` row or on unparseable merge stdout; a `status: "skipped"` row
+  (base-not-accepted / safety-check-failed) is an expected per-PR outcome and
+  does NOT abort. **Spec:** Inv 40 gains the phase-7 merge-failure-surfacing
+  clause and names the new enforcing test scenarios. **Tests:**
+  `test/test-run-tick-phases.py` gains scenarios O (a `status: "failed"` row
+  aborts non-zero before the post-merge drain even though merge-prs.py exits 0,
+  abort reason names the PR), P (a `status: "skipped"` row does NOT abort —
+  post-merge drain still runs), and Q (unparseable merge stdout aborts).
+  Versions bumped 0.96.0 → 0.97.0 across `feature.json`, `docs/spec.md`,
+  `docs/contract.md`, and `skills/rabbit-auto-evolve/SKILL.md` (source +
+  republished deployed copy). No cross-feature contract `provides`/`reads`/
+  `invokes`/`never` schema change — the fix is internal to this feature's tick
+  lifecycle.
+
 - **v0.96.0 — 2026-06-10** — #1154 (bug). The Stop-hook / SessionStart next-tick
   ETA was stale/frozen across refires: it was derived solely from the recurring
   heartbeat cron edge in `.claude/scheduled_tasks.json`, so while the loop

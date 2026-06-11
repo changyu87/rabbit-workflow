@@ -440,6 +440,100 @@ with tempfile.TemporaryDirectory() as d:
 
 
 # ---------------------------------------------------------------------------
+# O — merge-prs.py ALWAYS exits 0 and reports partial outcomes per-PR in its
+# stdout JSON (Inv 6). When it emits a row with status == "failed" (a
+# `gh pr merge --squash --admin` that failed on an auth/permission error, e.g.
+# a PR parked at REVIEW_REQUIRED the admin override could not land), the
+# post-dispatch walk MUST treat that as a HARD segment failure and abort
+# non-zero BEFORE the post-merge drain — never proceed as if the merge
+# succeeded (which would leave the PR open and refire it indefinitely with no
+# surfaced failure). Issue #1158.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir, trace = fresh(d, overrides={
+        "merge-prs.py":
+            "print('[{\"pr\": 111, \"status\": \"failed\", "
+            "\"reason\": \"gh-merge-failed: pull request review required\"}]')",
+    })
+    install_real_update_state(script_dir)
+    write_state(state_dir, dict(VALID_STATE, merge_ready=[111]))
+    proc = run_segment("post-dispatch", repo_root, script_dir, state_dir, trace)
+    if proc.returncode == 0:
+        fail("O: post-dispatch must abort non-zero on a merge-prs.py "
+             "status=failed row (merge-prs.py exits 0; #1158)")
+    else:
+        ok("O: post-dispatch aborted non-zero on a status=failed merge row "
+           "(#1158)")
+    t = read_trace(trace)
+    if "merge-prs.py" not in t:
+        fail(f"O: merge-prs.py did not run; trace={t!r}")
+    elif "run-post-merge.py" in t:
+        fail(f"O: run-post-merge.py ran despite a failed merge row (#1158); "
+             f"trace={t!r}")
+    else:
+        ok("O: run-post-merge.py did NOT run after a failed merge row (#1158)")
+    if "111" not in proc.stdout:
+        fail(f"O: abort reason does not name the failed PR; stdout={proc.stdout!r}")
+    else:
+        ok("O: abort reason names the failed PR #111 (#1158)")
+
+
+# ---------------------------------------------------------------------------
+# P — a status == "skipped" row (base-not-accepted / safety-check-failed) is an
+# EXPECTED per-PR outcome, NOT a failure: the post-dispatch walk does NOT abort
+# on it (it carries on to the post-merge drain and persist). Issue #1158.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir, trace = fresh(d, overrides={
+        "merge-prs.py":
+            "print('[{\"pr\": 111, \"status\": \"skipped\", "
+            "\"reason\": \"safety-check-failed\"}]')",
+    })
+    install_real_update_state(script_dir)
+    write_state(state_dir, dict(VALID_STATE, merge_ready=[111]))
+    proc = run_segment("post-dispatch", repo_root, script_dir, state_dir, trace)
+    if proc.returncode != 0:
+        fail(f"P: a status=skipped merge row must NOT abort (#1158); "
+             f"rc={proc.returncode} stderr={proc.stderr!r}")
+    else:
+        ok("P: post-dispatch exited 0 on a status=skipped merge row (#1158)")
+    t = read_trace(trace)
+    if "run-post-merge.py" not in t:
+        fail(f"P: run-post-merge.py did not run after a skipped merge row "
+             f"(#1158); trace={t!r}")
+    else:
+        ok("P: run-post-merge.py ran after a skipped (non-failure) merge row "
+           "(#1158)")
+
+
+# ---------------------------------------------------------------------------
+# Q — unparseable merge-prs.py stdout (a crashed merge step) is also a hard
+# failure: the walk cannot confirm every PR merged, so it aborts non-zero
+# rather than silently proceeding. Issue #1158.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir, trace = fresh(d, overrides={
+        "merge-prs.py": "print('not json at all')",
+    })
+    install_real_update_state(script_dir)
+    write_state(state_dir, dict(VALID_STATE, merge_ready=[111]))
+    proc = run_segment("post-dispatch", repo_root, script_dir, state_dir, trace)
+    if proc.returncode == 0:
+        fail("Q: post-dispatch must abort non-zero on unparseable merge "
+             "stdout (#1158)")
+    else:
+        ok("Q: post-dispatch aborted non-zero on unparseable merge stdout "
+           "(#1158)")
+    t = read_trace(trace)
+    if "run-post-merge.py" in t:
+        fail(f"Q: run-post-merge.py ran despite unparseable merge stdout "
+             f"(#1158); trace={t!r}")
+    else:
+        ok("Q: run-post-merge.py did NOT run after unparseable merge stdout "
+           "(#1158)")
+
+
+# ---------------------------------------------------------------------------
 # K — a reconcile-labels.py failure NEVER fails the tick (Inv 55: label
 # hygiene must not block evolution). post-dispatch still exits 0 and the
 # reconcile is recorded as having been attempted.

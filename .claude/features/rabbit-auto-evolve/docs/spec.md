@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.96.0
+version: 0.97.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -2740,6 +2740,19 @@ summary is restated here.
       (`run-post-merge.py` drain), phase 11 (persist), an Inv 55 strip-on-exit
       reconcile, then the Inv 56 jitter-artifact refresh.
 
+    **Phase 7 merge-failure surfacing (issue #1158).** `merge-prs.py` ALWAYS
+    exits 0, reporting partial outcomes per-PR in its stdout JSON array (Inv 6).
+    The post-dispatch walk therefore MUST parse that stdout — not trust the exit
+    code — and treat ANY per-PR `status == "failed"` row (a `gh pr merge --squash
+    --admin` that failed on auth/permission) as a HARD segment failure: abort
+    non-zero naming the failed PRs, BEFORE the post-merge drain. The `--admin`
+    override bypasses `main`'s structural required-review, so a MERGEABLE PR
+    passing `safety-check.py --phase merge` is merged regardless of
+    `reviewDecision == REVIEW_REQUIRED`; a still-failing admin merge is a real
+    blocker to surface, never an endless silent refire. A `status == "skipped"`
+    row is an expected per-PR outcome and does NOT abort; unparseable merge
+    stdout is also a hard failure.
+
     The headless tick chains `pre-dispatch -> (skip dispatch) -> post-dispatch`;
     the in-session tick chains `pre-dispatch -> Phase 6 (dispatch) ->
     post-dispatch`. The in-session path differs ONLY by inserting Phase 6, which
@@ -2762,7 +2775,10 @@ summary is restated here.
     its phases against stub phase scripts; `pre-dispatch` short-circuits on the
     stop marker and the running-guard skip verdict; `post-dispatch` merges
     ready PRs, drains post-merge, and persists through the REAL update-state.py
-    dropping `merge_ready`; dispatch NEVER runs inside the walk), by
+    dropping `merge_ready`; dispatch NEVER runs inside the walk; a `merge-prs.py`
+    stdout row with `status == "failed"` aborts non-zero before the post-merge
+    drain though merge-prs.py exits 0, a `status == "skipped"` row does NOT —
+    issue #1158), by
     `test/test-tick-persist-convergence.py` (the in-session path —
     `pre-dispatch` then `post-dispatch` with a no-state-mutation Phase 6 between
     — persists BYTE-IDENTICAL state to the headless tick for the same on-disk
