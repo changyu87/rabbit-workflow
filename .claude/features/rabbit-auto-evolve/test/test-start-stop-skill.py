@@ -79,6 +79,46 @@ def main():
                   file=sys.stderr)
             sys.exit(1)
 
+    # Inv 70 (#1160): the `stop` section MUST document the post-stop refire
+    # cancellation — writing the stop marker alone leaves a pending #refire
+    # session-only one-shot armed, which fires, observes the marker, and halts,
+    # burning one live session turn. The dispatcher (after stop-loop.py) must
+    # CronList, inject the snapshot to `schedule-decision.py cancel-refire`, and
+    # CronDelete each cancel_refire_ids id — preserving the durable heartbeat.
+    stop_m = re.search(
+        r"(?ms)^###\s+`?stop`?\s*$(.+?)(?=^###\s|^##\s|\Z)", text)
+    if not stop_m:
+        print("FAIL: Inv 70: SKILL.md missing `### stop` subcommand section",
+              file=sys.stderr)
+        sys.exit(1)
+    stop_body = stop_m.group(1)
+    inv70_required = [
+        ("schedule-decision.py cancel-refire",
+         "Inv 70: `stop` section must invoke "
+         "`schedule-decision.py cancel-refire` after stop-loop.py"),
+        ("CronList",
+         "Inv 70: `stop` section must describe the CronList snapshot the "
+         "dispatcher passes to cancel-refire"),
+        ("CronDelete",
+         "Inv 70: `stop` section must instruct CronDelete of each "
+         "cancel_refire_ids id"),
+        ("cancel_refire_ids",
+         "Inv 70: `stop` section must name the `cancel_refire_ids` field"),
+        ("RABBIT_AUTO_EVOLVE_CRON_LIST",
+         "Inv 70: `stop` section must name the env var carrying the CronList "
+         "snapshot"),
+    ]
+    for needle, msg in inv70_required:
+        if needle not in stop_body:
+            print(f"FAIL: {msg}", file=sys.stderr)
+            sys.exit(1)
+    # The heartbeat MUST be called out as preserved, never cancelled (Inv 47).
+    if "preserve_heartbeat_ids" not in stop_body:
+        print("FAIL: Inv 70: `stop` section must reference "
+              "`preserve_heartbeat_ids` (the durable heartbeat is NEVER "
+              "cancelled — Inv 47)", file=sys.stderr)
+        sys.exit(1)
+
     # Inv 20: SKILL.md tick documentation must call out end-tick.py on
     # every exit path — not only the normal completion path. The prose
     # must mention each of the four named exit paths so a reader can see

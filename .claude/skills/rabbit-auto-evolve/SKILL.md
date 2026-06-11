@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.98.0
+version: 0.99.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into the integration target, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -172,6 +172,25 @@ run summary, and halts cleanly (the headless tick short-circuits to a clean
 no-op). To stop the cron from firing entirely, run `/rabbit-auto-evolve
 off`, which uninstalls the cron entry. Per Inv 17 the marker write is
 wrapped in a script for the same scope-guard reason as `start`.
+
+**Cancel any armed `#refire` one-shot (DISPATCHER action — Inv 70).**
+Writing the stop marker only halts the NEXT tick; a pending immediate-refire
+one-shot scheduled by a prior tick (Inv 33) is ALREADY armed and would still
+fire, enter a fresh tick, observe the marker, and halt — burning one live
+session turn for nothing. So IMMEDIATELY after `stop-loop.py` returns, the
+dispatcher tears down the armed refire: run `CronList`, pass its result back
+through the `RABBIT_AUTO_EVOLVE_CRON_LIST` env var to
+`python3 .claude/features/rabbit-auto-evolve/scripts/schedule-decision.py cancel-refire`,
+and `CronDelete` every id in the emitted `cancel_refire_ids`. A script cannot
+call `CronList`/`CronDelete` (Claude tool actions, exactly like the Inv 33/47
+create-path dedup), so the cancellation lives in this dispatcher step.
+`cancel-refire` reuses the SAME `is_refire_oneshot` predicate the create-path
+dedup uses, so `cancel_refire_ids` is precisely the pending `#refire`
+session-only one-shots; the durable recurring heartbeat (bare
+`/rabbit-auto-evolve tick`, no marker) is NEVER in `cancel_refire_ids` and is
+listed under `preserve_heartbeat_ids` — leave it UNTOUCHED (Inv 47). An absent
+or empty `CronList` snapshot yields an empty `cancel_refire_ids`, so the step
+is a clean no-op when nothing is armed.
 
 ### `status`
 

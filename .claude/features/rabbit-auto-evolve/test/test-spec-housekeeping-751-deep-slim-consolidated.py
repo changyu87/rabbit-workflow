@@ -231,6 +231,20 @@ POST_1158_ADD_LINES = 16
 # admitted.
 POST_1161_ADD_LINES = 42
 POST_1161_ADD_INVARIANTS = 1
+# #1160 added a NEW invariant (Inv 70): a user `stop` cancels pending #refire
+# session-only one-shots; the durable heartbeat is NEVER cancelled. stop-loop.py
+# wrote the stop marker but left a pending immediate-refire CronCreate one-shot
+# armed, which still fired, observed the marker, and halted — burning one live
+# session turn for a no-op. A script cannot call CronList/CronDelete, so
+# schedule-decision.py gains a `cancel-refire` subcommand emitting
+# {cancel_refire_ids, preserve_heartbeat_ids} from the injected CronList
+# snapshot (reusing the Inv 33/47 is_refire_oneshot predicate); the SKILL.md
+# `stop` section directs the dispatcher to run it after stop-loop.py and
+# CronDelete each id. A genuine bug-fix addition, not slim regression. Mirror
+# the prior headroom so the #751 reduction (>= 150 lines, >= 4 invariants)
+# stays ENFORCED while the #1160 invariant is admitted.
+POST_1160_ADD_LINES = 50
+POST_1160_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
@@ -239,7 +253,7 @@ MAX_TOTAL_LINES = (
     + POST_1004_ADD_LINES + POST_1006_ADD_LINES + POST_1012_ADD_LINES
     + POST_1051_ADD_LINES + POST_1081_ADD_LINES + POST_1091_ADD_LINES
     + POST_1101_ADD_LINES + POST_1109_ADD_LINES + POST_1154_ADD_LINES
-    + POST_1158_ADD_LINES + POST_1161_ADD_LINES
+    + POST_1158_ADD_LINES + POST_1161_ADD_LINES + POST_1160_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -254,7 +268,7 @@ MAX_INVARIANT_COUNT = (
     + POST_966_ADD_INVARIANTS + POST_986_ADD_INVARIANTS
     + POST_1051_ADD_INVARIANTS + POST_1081_ADD_INVARIANTS
     + POST_1091_ADD_INVARIANTS + POST_1101_ADD_INVARIANTS
-    + POST_1161_ADD_INVARIANTS
+    + POST_1161_ADD_INVARIANTS + POST_1160_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---
