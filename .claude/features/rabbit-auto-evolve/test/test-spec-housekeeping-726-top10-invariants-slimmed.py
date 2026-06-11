@@ -120,7 +120,13 @@ BASELINE_TOTAL_LINES = 3594
 # contract's Stop line snap the ETA to it when future; ~24 lines across the Inv 56 next-fire
 # paragraph + enforced-by, the Inv 22 ETA paragraph + reads/enforced-by bullets, the schema
 # field, and the script-table rows) is additive, so the ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 4080
+# The phase-7 merge-failure-surfacing amendment to Inv 40 (#1158: merge-prs.py ALWAYS exits 0
+# and reports partial outcomes per-PR in stdout, so the post-dispatch walk now PARSES that
+# stdout and aborts non-zero on any `status: "failed"` row — a `gh pr merge --squash --admin`
+# that failed on auth/permission — instead of swallowing the failure and refiring the PR
+# forever; the amendment adds the merge-failure-surfacing paragraph + the enforced-by test
+# scenarios to Inv 40; ~16 lines) is additive, so the ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 4095
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

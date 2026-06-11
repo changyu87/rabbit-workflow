@@ -209,6 +209,16 @@ POST_1109_ADD_LINES = 30
 # regression. Mirror the prior headroom so the #751 reduction (>= 150 lines,
 # >= 4 invariants) stays ENFORCED while the #1154 amendment is admitted.
 POST_1154_ADD_LINES = 30
+# #1158 amended Inv 40 (no new invariant): the post-dispatch phase-7 merge step
+# now PARSES merge-prs.py's stdout and aborts non-zero on any `status: "failed"`
+# row — a `gh pr merge --squash --admin` that failed on auth/permission. Because
+# merge-prs.py ALWAYS exits 0 (partial-outcome reporting, Inv 6), the prior
+# exit-code-only check swallowed the failure and refired the parked PR forever.
+# The amendment adds the merge-failure-surfacing paragraph + enforced-by test
+# scenarios to Inv 40 — a genuine bug-fix expansion, not slim regression. Mirror
+# the prior headroom so the #751 reduction (>= 150 lines, >= 4 invariants) stays
+# ENFORCED while the #1158 amendment is admitted.
+POST_1158_ADD_LINES = 16
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
@@ -217,6 +227,7 @@ MAX_TOTAL_LINES = (
     + POST_1004_ADD_LINES + POST_1006_ADD_LINES + POST_1012_ADD_LINES
     + POST_1051_ADD_LINES + POST_1081_ADD_LINES + POST_1091_ADD_LINES
     + POST_1101_ADD_LINES + POST_1109_ADD_LINES + POST_1154_ADD_LINES
+    + POST_1158_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
