@@ -126,7 +126,15 @@ BASELINE_TOTAL_LINES = 3594
 # that failed on auth/permission — instead of swallowing the failure and refiring the PR
 # forever; the amendment adds the merge-failure-surfacing paragraph + the enforced-by test
 # scenarios to Inv 40; ~16 lines) is additive, so the ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 4095
+# The same-feature single-dispatch guard (Inv 69, #1161: plan-batch.py assigned dispatch_shapes
+# per item in isolation, so two work items on the SAME feature dir were both dispatched in one
+# tick and each bumped that feature.json version, producing conflicting PRs; the new top-level
+# invariant keeps at most ONE item per feature dir per tick — the collision key is the union of
+# an item's edit-target dirs — removing the rest from every dispatch-driving surface and
+# surfacing them under the new deferred_same_feature key; ~36 lines across the invariant body
+# and its enforced-by, plus a research-item exemption clause) is additive, so the
+# ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 4140
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

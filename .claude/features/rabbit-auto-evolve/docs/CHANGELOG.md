@@ -16,6 +16,29 @@ authoritative).
 
 ## Version notes
 
+- **v0.98.0 — 2026-06-11** — #1161 (bug, priority:high). `plan-batch.py`
+  dispatched MULTIPLE same-feature-dir issues in parallel in one tick, causing
+  version-bump merge conflicts. Root cause: `dispatch_shapes` is assigned
+  per-item in isolation, so two `work` items both targeting the same feature dir
+  each got `parallel-per-feature` independently — both spun up worktrees from the
+  same base and both bumped that feature's `feature.json` version, producing
+  conflicting PRs. Observed: #1152 and #1156 (both rabbit-cage) both bumped
+  `5.89.0→5.90.0`; PR #1157 conflicted with #1153. **Fix:** plan-batch.py now
+  applies a same-feature single-dispatch guard (Inv 69) AFTER shaping — it walks
+  `selection_order` and keeps AT MOST ONE item per feature dir (collision key =
+  union of `edit_features`/`features`/`feature`). Later items sharing a feature
+  dir are removed from `selection_order`, `dispatch_shapes`, and every other
+  dispatch-driving surface (`cross_scope_items`, `barrier_first`, `groups`,
+  `research_items`, `self_modifying_migrations`, `restart_needed`,
+  `computed_scores`) and surfaced under the new always-present
+  `deferred_same_feature` key. A deferred item is not closed; it re-enters the
+  plan next tick once the first PR merges (Inv 25 preserved). Research items
+  (Inv 27) are EXEMPT — they bump no feature.json. **Spec:** new Inv 69.
+  **Tests:** `test/test-plan-batch.py` gains the `same-feature-single-dispatch`,
+  `same-feature-distinct-ok`, `same-feature-edit-overlap`, and
+  `same-feature-research-exempt` cases; the slim ratchets
+  (`test-spec-housekeeping-726`/`-751`) admit the additive invariant.
+
 - **v0.97.0 — 2026-06-11** — #1158 (bug, priority:critical). The
   autonomous-evolve merge phase silently swallowed `gh pr merge --squash
   --admin` failures and refired the affected PR indefinitely instead of

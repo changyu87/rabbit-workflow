@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.97.0
+version: 0.98.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -4067,6 +4067,46 @@ summary is restated here.
     `closeref-open` / `closeref-closed` / `closeref-mixed` cases, and the
     PRE-merge-snapshot `premerge-snapshot` / `premerge-enum` / `premerge-batch`
     cases).
+
+69. **At most ONE item per feature dir is dispatched per tick (the
+    same-feature single-dispatch guard).** `plan-batch.py` assigns
+    `dispatch_shapes` per item in isolation, so when two `work` items both
+    target the SAME feature dir each was independently shaped
+    `parallel-per-feature` (or barrier) and BOTH were emitted in the same plan.
+    Dispatched concurrently from the SAME base, each runs a full single-feature
+    touch that bumps that feature's `version` in `feature.json`, producing two
+    PRs that bump the same feature from `X→X+1` — a guaranteed version-bump
+    merge conflict on the second PR (the observed instance: #1152 and #1156 both
+    targeting rabbit-cage, both bumping `5.89.0→5.90.0`, PR #1157 conflicting
+    with #1153).
+
+    **THE GUARD.** After Stage-1 selection and Stage-2 shaping, `plan-batch.py`
+    walks `selection_order` in order and keeps AT MOST ONE item per feature dir.
+    The collision key is the UNION of an item's edit-target feature dirs
+    (`edit_features`, falling back to `features`, then the single `feature`
+    label) — two items collide when they share ANY feature dir, since either
+    shared dir would bump the same `feature.json`. The FIRST item (highest
+    composite priority) for a given feature dir is retained; every later item
+    that shares a feature dir with an already-retained item is REMOVED from BOTH
+    `selection_order` and `dispatch_shapes` (and from `cross_scope_items`,
+    `barrier_first`, `groups`, `research_items`, `self_modifying_migrations`,
+    `restart_needed`, and `computed_scores` — it must not survive in any
+    dispatch-driving surface). A removed item is NOT closed and NOT dropped from
+    the queue: it naturally re-enters the plan next tick once the first item's
+    PR merges, so the convergence guarantee (Inv 25) is preserved. The deferred
+    issue numbers are surfaced under the always-present `deferred_same_feature`
+    key (a sorted list, empty when none) so the deferral is observable.
+
+    RESEARCH items (Inv 27) are EXEMPT: they produce findings, edit no code, and
+    bump no `feature.json`, so they can never cause the version-bump conflict
+    this guard prevents. A research item neither claims a feature dir nor is
+    deferred by one — a research item and a work item on the same feature both
+    survive.
+
+    Enforced by `test/test-plan-batch.py` (the `same-feature-single-dispatch`
+    case): two `work` items for the same feature dir yield exactly one in
+    `selection_order` / `dispatch_shapes`, with the second listed under
+    `deferred_same_feature`.
 
 ## Known gaps
 
