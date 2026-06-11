@@ -121,6 +121,27 @@ def _seed_jitter(td: Path, observed: int, cold_start: bool = False) -> None:
     (state_dir / "auto-evolve-tick-jitter.json").write_text(json.dumps(payload))
 
 
+def _seed_jitter_next_fire(td: Path, observed: int, next_fire_at, cold_start: bool = False) -> None:
+    """#1154: write the jitter artifact WITH a `next_fire_at` field — the ACTUAL
+    next scheduled CronCreate event tick-jitter.py derives from the live CronList
+    snapshot. When present and future, the banner ETA snaps to it (the pending
+    immediate-refire), not the stale heartbeat cron edge."""
+    state_dir = td / ".rabbit"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": "1.1.0",
+        "observed_jitter_minutes": observed,
+        "period_minutes": 30,
+        "sample_count": 3,
+        "cold_start": cold_start,
+        "next_fire_at": next_fire_at,
+        "computed_at": "2026-06-04T22:56:00Z",
+        "owner": "rabbit-workflow team",
+        "deprecation_criterion": "n/a",
+    }
+    (state_dir / "auto-evolve-tick-jitter.json").write_text(json.dumps(payload))
+
+
 def _seed(td: Path, names: list[str], content: str = "session") -> None:
     for n in names:
         (td / n).write_text(content)
@@ -352,6 +373,67 @@ with tempfile.TemporaryDirectory() as td_str:
         fail_t("idle-eta-coldstart", f"cold-start must carry no qualifier: {text!r}")
     else:
         ok("idle-eta-coldstart", "no jitter artifact => cold fallback +3 => 14:46")
+
+# --- t4c5 (#1154 CORE): the idle ETA snaps to the ACTUAL next scheduled
+# CronCreate event when the jitter artifact carries a future `next_fire_at` (the
+# pending immediate-refire ~2 min out), NOT the stale heartbeat cron edge. With
+# now=14:20, a heartbeat 13,43 (boundary 14:43) and observed +13 (which alone
+# would render 14:56), but a `next_fire_at` of 14:22 (the live refire one-shot),
+# the banner MUST render 14:22 — the actual next fire — not 14:56. This is the
+# staleness fix: across refires the ETA advances with the live schedule. ---
+with tempfile.TemporaryDirectory() as td_str:
+    td = Path(td_str)
+    _seed(td, [ACTIVE])
+    _seed_state(td)
+    _seed_cadence(td, "13,43 * * * *")
+    _seed_jitter_next_fire(td, 13, "2026-06-04T14:22:00Z")
+    r = _run(td, now="2026-06-04T14:20:00")
+    text = (_parse(r).get("line2") or {}).get("text", "")
+    if ", next tick 14:22" not in text:
+        fail_t("idle-eta-next-fire",
+               f"ETA must snap to the live refire 14:22, not the heartbeat 14:56: {text!r}")
+    elif ", next tick 14:56" in text:
+        fail_t("idle-eta-next-fire",
+               f"ETA must NOT render the stale heartbeat edge 14:56: {text!r}")
+    elif not re.search(r", next tick \d\d:\d\d [A-Za-z0-9+\-]+$", text):
+        fail_t("idle-eta-next-fire", f"ETA not 'HH:MM <zone>' at end: {text!r}")
+    else:
+        ok("idle-eta-next-fire", "ETA snaps to the live next_fire_at refire 14:22 (not stale heartbeat 14:56)")
+
+# --- t4c6 (#1154): a STALE/PAST next_fire_at is ignored — the banner falls back
+# to the heartbeat-cadence + jitter computation rather than rendering a fire that
+# already happened. next_fire_at 14:10 < now 14:20 => fall back to 14:56. ---
+with tempfile.TemporaryDirectory() as td_str:
+    td = Path(td_str)
+    _seed(td, [ACTIVE])
+    _seed_state(td)
+    _seed_cadence(td, "13,43 * * * *")
+    _seed_jitter_next_fire(td, 13, "2026-06-04T14:10:00Z")  # in the past
+    r = _run(td, now="2026-06-04T14:20:00")
+    text = (_parse(r).get("line2") or {}).get("text", "")
+    if ", next tick 14:56" not in text:
+        fail_t("idle-eta-next-fire-stale",
+               f"past next_fire_at must be ignored, falling back to 14:56: {text!r}")
+    elif "14:10" in text:
+        fail_t("idle-eta-next-fire-stale", f"must NOT render a past fire 14:10: {text!r}")
+    else:
+        ok("idle-eta-next-fire-stale", "past next_fire_at ignored => falls back to heartbeat 14:56")
+
+# --- t4c7 (#1154): a null next_fire_at falls back to the heartbeat+jitter
+# computation (the no-CronList-snapshot case), preserving the prior behaviour. ---
+with tempfile.TemporaryDirectory() as td_str:
+    td = Path(td_str)
+    _seed(td, [ACTIVE])
+    _seed_state(td)
+    _seed_cadence(td, "13,43 * * * *")
+    _seed_jitter_next_fire(td, 13, None)  # explicit null
+    r = _run(td, now="2026-06-04T14:20:00")
+    text = (_parse(r).get("line2") or {}).get("text", "")
+    if ", next tick 14:56" not in text:
+        fail_t("idle-eta-next-fire-null",
+               f"null next_fire_at must fall back to heartbeat 14:56: {text!r}")
+    else:
+        ok("idle-eta-next-fire-null", "null next_fire_at => heartbeat+jitter fallback 14:56")
 
 # --- t4d (#844): idle ETA degrades to bare line on an unparseable cadence ---
 with tempfile.TemporaryDirectory() as td_str:

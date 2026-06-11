@@ -141,11 +141,18 @@ def write_state(state_dir, mapping):
         json.dump(mapping, f, indent=2)
 
 
-def run_post_dispatch(repo_root, script_dir, state_dir):
+def run_post_dispatch(repo_root, script_dir, state_dir, cron_list=None, now_iso=None):
     env = os.environ.copy()
     env["RABBIT_AUTO_EVOLVE_SCRIPT_DIR"] = script_dir
     env["RABBIT_AUTO_EVOLVE_REPO_ROOT"] = repo_root
     env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = state_dir
+    # #1154: the dispatcher injects its CronList snapshot in env; the walk
+    # inherits it and passes it through to `tick-jitter.py compute`, which derives
+    # the actual next-fire time from the live schedule (the pending refire).
+    if cron_list is not None:
+        env["RABBIT_AUTO_EVOLVE_CRON_LIST"] = cron_list
+    if now_iso is not None:
+        env["RABBIT_AUTO_EVOLVE_NOW"] = now_iso
     return subprocess.run(
         [sys.executable, WALK, "post-dispatch"],
         cwd=repo_root, capture_output=True, text=True, env=env,
@@ -273,6 +280,59 @@ with tempfile.TemporaryDirectory() as d:
             ok("C: tick status not 'failed' on jitter-compute error")
     except (ValueError, json.JSONDecodeError):
         fail(f"C: post-dispatch stdout not JSON: {proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# D (#1154 E2E) — across refires the Stop-hook ETA tracks the LIVE schedule, not
+#     the stale heartbeat edge. The dispatcher injects its CronList snapshot (a
+#     pending immediate-refire one-shot ~2 min out alongside the 30-min
+#     heartbeat). The walk's `tick-jitter.py compute` derives `next_fire_at` from
+#     that live schedule; banner-status.py then renders the refire time, not the
+#     heartbeat boundary+jitter. Drives the REAL walk -> REAL tick-jitter.py ->
+#     REAL banner-status.py end-to-end.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    repo_root, state_dir, script_dir = fresh(d)
+    write_scheduled_tasks(repo_root, HEARTBEAT_CRON)
+    write_tick_log(state_dir, FIRE_TIMES)
+    write_state(state_dir, dict(VALID_STATE))
+    open(os.path.join(repo_root, ".rabbit-auto-evolve-active"), "w").close()
+
+    # now=14:20; heartbeat boundary 14:43 (+13 jitter => 14:56) but a live refire
+    # pinned at 14:22. The actual next fire is 14:22.
+    cron_list = json.dumps([
+        {"id": "hb", "cron": HEARTBEAT_CRON, "prompt": "/rabbit-auto-evolve tick",
+         "recurring": True, "durable": True},
+        {"id": "rf", "cron": "22 14 * * *",
+         "prompt": "/rabbit-auto-evolve tick #refire",
+         "recurring": False, "durable": False},
+    ])
+    proc = run_post_dispatch(repo_root, script_dir, state_dir,
+                             cron_list=cron_list, now_iso="2026-06-04T14:20:00Z")
+    if proc.returncode != 0:
+        fail(f"D: post-dispatch exit {proc.returncode}; stderr={proc.stderr!r}")
+    else:
+        ok("D: post-dispatch exited 0 with a CronList snapshot")
+
+    artifact = os.path.join(state_dir, "auto-evolve-tick-jitter.json")
+    with open(artifact) as f:
+        rec = json.load(f)
+    if "14:22" in str(rec.get("next_fire_at")):
+        ok("D: artifact next_fire_at snaps to the live refire 14:22")
+    else:
+        fail(f"D: artifact next_fire_at did not track the refire; rec={rec!r}")
+
+    banner = run_banner(repo_root, "2026-06-04T14:20:00")
+    out = json.loads(banner.stdout)
+    line2 = (out.get("line2") or {}).get("text", "")
+    if "next tick 14:22" in line2:
+        ok("D: banner ETA tracks the live refire 14:22 (not the stale 14:56)")
+    else:
+        fail(f"D: banner ETA did not track the live refire; line2={line2!r}")
+    if "next tick 14:56" in line2:
+        fail(f"D: banner still renders the stale heartbeat edge 14:56; line2={line2!r}")
+    else:
+        ok("D: banner no longer renders the stale heartbeat edge 14:56")
 
 
 sys.exit(FAIL)

@@ -16,6 +16,27 @@ authoritative).
 
 ## Version notes
 
+- **v0.96.0 — 2026-06-10** — #1154 (bug). The Stop-hook / SessionStart next-tick
+  ETA was stale/frozen across refires: it was derived solely from the recurring
+  heartbeat cron edge in `.claude/scheduled_tasks.json`, so while the loop
+  self-scheduled immediate-refire one-shots ~2 min out (Inv 33), the displayed
+  ETA stayed pinned to the next heartbeat boundary (up to a full period away) and
+  never advanced as refires fired. `tick-jitter.py` (now script v1.1.0, artifact
+  schema 1.1.0) now also derives `next_fire_at` — the EARLIEST upcoming fire
+  across the dispatcher-injected CronList snapshot (`RABBIT_AUTO_EVOLVE_CRON_LIST`,
+  the pending refire plus the heartbeat) — and persists it to
+  `.rabbit/auto-evolve-tick-jitter.json`. `banner-status.py` snaps the idle ETA
+  to `next_fire_at` when it is non-null and future, falling back to the
+  heartbeat-boundary-plus-jitter computation otherwise (null/past ignored). The
+  artifact is refreshed every tick via the existing `run-tick-phases.py
+  post-dispatch` jitter-compute hygiene step, so the Stop hook reads a fresh
+  next-fire each tick. Inv 56 / Inv 22 extended; enforced by `test-tick-jitter.py`,
+  `test-banner-status.py`, and the `test-tick-jitter-compute-wired.py` E2E.
+  CROSS-FEATURE FOLLOW-UP (out of scope, handed off): `contract`'s Stop line
+  `_auto_evolve_next_tick_eta` should read the same `next_fire_at` field so the
+  Stop line and banner stay byte-for-byte symmetric (Inv 55) when a refire is
+  pending.
+
 - **v0.95.0 — 2026-06-06** — #1109 (bug, priority:high). Fixed a regression
   introduced by #1101 / Inv 68: `merge-prs.py`'s close-ref open-issue
   cross-check ran AFTER `gh pr merge`. Because every accepted base is the

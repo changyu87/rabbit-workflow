@@ -113,7 +113,14 @@ BASELINE_TOTAL_LINES = 3594
 # closed an issue; the amendment adds the PRE-MERGE timing rule + per-PR-batch snapshot prose to
 # Inv 68, the merge-prs step-4 rewording, and the script-table-row extension; ~25 lines) is
 # additive, so the ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 4050
+# The actual-next-fire ETA amendment to Inv 56 / Inv 22 (#1154: the next-tick ETA was stale/
+# frozen across refires because it derived solely from the heartbeat cron edge; tick-jitter.py
+# now also derives `next_fire_at` — the earliest upcoming fire across the dispatcher-injected
+# CronList snapshot, the pending immediate-refire plus the heartbeat — and banner-status.py /
+# contract's Stop line snap the ETA to it when future; ~24 lines across the Inv 56 next-fire
+# paragraph + enforced-by, the Inv 22 ETA paragraph + reads/enforced-by bullets, the schema
+# field, and the script-table rows) is additive, so the ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 4080
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

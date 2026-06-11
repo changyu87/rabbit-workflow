@@ -198,6 +198,17 @@ POST_1101_ADD_INVARIANTS = 1
 # the #751 reduction (>= 150 lines, >= 4 invariants) stays ENFORCED while the
 # #1109 amendment is admitted.
 POST_1109_ADD_LINES = 30
+# #1154 amended Inv 56 / Inv 22 (no new invariant): the next-tick ETA was
+# stale/frozen across refires because it derived solely from the heartbeat cron
+# edge. tick-jitter.py now also derives `next_fire_at` — the earliest upcoming
+# fire across the dispatcher-injected CronList snapshot, the pending immediate-
+# refire plus the heartbeat — and banner-status.py / contract's Stop line snap the
+# ETA to it when future. The amendment adds the Inv 56 next-fire paragraph +
+# enforced-by, the Inv 22 ETA paragraph + reads/enforced-by bullets, the schema
+# field, and the script-table rows — a genuine bug-fix expansion, not slim
+# regression. Mirror the prior headroom so the #751 reduction (>= 150 lines,
+# >= 4 invariants) stays ENFORCED while the #1154 amendment is admitted.
+POST_1154_ADD_LINES = 30
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
@@ -205,7 +216,7 @@ MAX_TOTAL_LINES = (
     + POST_973_ADD_LINES + POST_966_ADD_LINES + POST_986_ADD_LINES
     + POST_1004_ADD_LINES + POST_1006_ADD_LINES + POST_1012_ADD_LINES
     + POST_1051_ADD_LINES + POST_1081_ADD_LINES + POST_1091_ADD_LINES
-    + POST_1101_ADD_LINES + POST_1109_ADD_LINES
+    + POST_1101_ADD_LINES + POST_1109_ADD_LINES + POST_1154_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).

@@ -26,13 +26,27 @@ Subcommands:
   show     Compute and emit the offset record as JSON on stdout (no write).
   compute  Compute and persist the record to the state artifact (also echoes it).
 
+Next-fire ETA (issue #1154): the displayed next-tick ETA was STALE/FROZEN across
+refires because both the banner and the contract Stop line derived it solely from
+the recurring heartbeat cron edge in `.claude/scheduled_tasks.json` — so while the
+loop self-scheduled immediate-refire one-shots ~2 min out (Inv 33), the ETA still
+showed the next heartbeat boundary (up to 30 min away) and never advanced with the
+live schedule. This script now also derives the ACTUAL next scheduled CronCreate
+event from the dispatcher-injected CronList snapshot (RABBIT_AUTO_EVOLVE_CRON_LIST,
+the same channel schedule-decision.py reads): the EARLIEST upcoming fire across all
+live entries (the pending refire AND the heartbeat), persisted as `next_fire_at`.
+When no snapshot is injected `next_fire_at` is null and the consumer falls back to
+the heartbeat-cadence computation. The wall-clock is overridable via
+RABBIT_AUTO_EVOLVE_NOW (ISO-8601) for deterministic tests.
+
 Artifact / stdout schema:
   {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "observed_jitter_minutes": <int >= 0>,
     "period_minutes": <int>,
     "sample_count": <int>,           # recorded fires used (0 on cold start)
     "cold_start": <bool>,
+    "next_fire_at": <ISO-8601 UTC | null>,  # actual next scheduled fire (#1154)
     "computed_at": <ISO-8601 UTC>,
     "owner": "rabbit-workflow team",
     "deprecation_criterion": "..."
@@ -44,7 +58,7 @@ update-state.py), else `<cwd>/.rabbit`. The cadence source is the repo-root
 rabbit-auto-evolve), repo_root via RABBIT_AUTO_EVOLVE_REPO_ROOT else cwd. Always
 exits 0 (a degraded/absent source yields a graceful cold-start record).
 
-Version: 1.0.0
+Version: 1.1.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -59,7 +73,7 @@ import math
 import os
 import sys
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 ARTIFACT_NAME = "auto-evolve-tick-jitter.json"
 TICK_LOG_NAME = "tick.log"
 OWNER = "rabbit-workflow team"
@@ -212,6 +226,91 @@ def _offset_minutes(fire: datetime.datetime, cadence_minutes: set) -> int:
     return 0
 
 
+def _now() -> datetime.datetime:
+    """Wall-clock used solely to derive the actual-next-fire ETA (#1154).
+    Overridable via RABBIT_AUTO_EVOLVE_NOW (ISO-8601) for deterministic tests —
+    a `Z` suffix yields an aware UTC datetime, a bare value a naive one — falling
+    back to the real UTC clock. A malformed override degrades to the real clock."""
+    raw = os.environ.get("RABBIT_AUTO_EVOLVE_NOW")
+    if raw:
+        try:
+            return datetime.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def _cron_list_snapshot() -> list:
+    """Parse the dispatcher-injected CronList snapshot from
+    RABBIT_AUTO_EVOLVE_CRON_LIST (a JSON array). Absent/malformed → []. A script
+    cannot call CronList itself, so the dispatcher passes its result through this
+    env var — the same channel schedule-decision.py reads (Inv 33)."""
+    raw = os.environ.get("RABBIT_AUTO_EVOLVE_CRON_LIST")
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return []
+    return data if isinstance(data, list) else []
+
+
+def _next_fire_for_cron(cron, now: datetime.datetime):
+    """The next wall-clock fire of a `M H * * *`-shaped cron at/after `now+1min`,
+    or None if the MINUTE/HOUR fields are unparseable. Matches the MINUTE field
+    against the HOUR field (`*` = every hour, a single integer = that hour),
+    walking forward minute-by-minute up to 24h. The day-of-month/month/weekday
+    fields are treated as unrestricted — the shape both the recurring heartbeat
+    (`13,43 * * * *`) and the pinned refire one-shot (`M H * * *`, Inv 33) use."""
+    if not isinstance(cron, str):
+        return None
+    parts = cron.split()
+    if len(parts) < 2:
+        return None
+    minutes = _parse_cron_minutes(parts[0])
+    if not minutes:
+        return None
+    hour_field = parts[1].strip()
+    if hour_field == "*":
+        hours = set(range(24))
+    elif hour_field.isdigit() and 0 <= int(hour_field) <= 23:
+        hours = {int(hour_field)}
+    else:
+        return None
+    candidate = now.replace(second=0, microsecond=0) + datetime.timedelta(minutes=1)
+    for _ in range(1440):
+        if candidate.minute in minutes and candidate.hour in hours:
+            return candidate
+        candidate += datetime.timedelta(minutes=1)
+    return None
+
+
+def _next_fire_at(now: datetime.datetime):
+    """#1154: the ACTUAL next scheduled CronCreate event — the EARLIEST upcoming
+    fire across every entry in the dispatcher-injected CronList snapshot (the
+    pending immediate-refire one-shot AND the recurring heartbeat). Returns an
+    ISO-8601 UTC string, or None when no snapshot is injected or no entry yields
+    a parseable upcoming fire (the consumer then falls back to the heartbeat
+    cadence). This is what makes the displayed ETA track the live schedule rather
+    than freezing on a stale heartbeat cron edge across refires."""
+    snapshot = _cron_list_snapshot()
+    if not snapshot:
+        return None
+    fires = []
+    for entry in snapshot:
+        if not isinstance(entry, dict):
+            continue
+        fire = _next_fire_for_cron(entry.get("cron"), now)
+        if fire is not None:
+            fires.append(fire)
+    if not fires:
+        return None
+    earliest = min(fires)
+    if earliest.tzinfo is not None:
+        earliest = earliest.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    return earliest.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _median(values: list) -> int:
     """Integer median of a non-empty list (lower-middle on an even count, so
     the result is always an observed sample — stable for the jitter constant)."""
@@ -235,6 +334,10 @@ def compute_record() -> dict:
         "period_minutes": period,
         "sample_count": 0,
         "cold_start": True,
+        # #1154: the actual next scheduled fire derived from the live CronList
+        # snapshot (null when no snapshot is injected — the consumer then falls
+        # back to the heartbeat cadence). Always present in the schema.
+        "next_fire_at": _next_fire_at(_now()),
         "computed_at": _now_iso(),
         "owner": OWNER,
         "deprecation_criterion": DEPRECATION,
