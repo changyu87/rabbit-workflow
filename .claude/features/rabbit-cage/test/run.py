@@ -60,6 +60,7 @@ SUITES = [
     "test-session-start-auto-resume-wired.py",
     "test-advisory-restart-surfaced.py",
     "test-restart-advisory-on-disk-change.py",
+    "test-restart-advisory-tiered-by-change-type.py",
     "test-plugin-scope-guard-allows-fresh-feature-spec-md.py",
     "test-plugin-scope-guard-denies-non-spec-write-without-marker.py",
     "test-plugin-scope-guard-mid-tdd-still-requires-marker.py",

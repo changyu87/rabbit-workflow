@@ -169,15 +169,19 @@ def _sysmsg(proc) -> str:
         return ""
 
 
-# Each surface: (label, relative path, new content).
+# Each HARD-restart surface: (label, relative path, new content). Under the
+# Inv 54(e) tiering, a `.claude/skills/*/SKILL.md`-only change is NOT a
+# hard-restart surface — it yields the cheaper `/reload-skills` advisory, so it
+# is excluded here and exercised by its own reload-tier case (t1b) below and by
+# test-restart-advisory-tiered-by-change-type.py.
 SURFACES = [
     ("hook", ".claude/hooks/some-hook.py", "# CHANGED hook\n"),
     ("settings", ".claude/settings.json", '{"changed": 2}\n'),
     ("CLAUDE.md", "CLAUDE.md", "# CHANGED claude md\n"),
-    ("skill", ".claude/skills/rabbit-feature-touch/SKILL.md",
-     "# CHANGED skill v2\n"),
     ("agent", ".claude/agents/tdd-subagent.md", "# CHANGED agent v2\n"),
 ]
+# The reload-tier fragment for the SKILL.md-only path (Inv 54(e)).
+RELOAD_FRAGMENT = "reload ADVISED"
 
 
 def _snapshot_session(r):
@@ -187,8 +191,8 @@ def _snapshot_session(r):
     return proc
 
 
-# --- t1..t5: each restart-sensitive surface, changed individually, triggers
-#     the advisory on BOTH Stop and UserPromptSubmit (non-install path). -----
+# --- t1..t4: each HARD-restart surface, changed individually, triggers
+#     the full-restart advisory on BOTH Stop and UserPromptSubmit. -----------
 for label, rel, new in SURFACES:
     with tempfile.TemporaryDirectory() as td:
         r = _build_install_root(Path(td).resolve())
@@ -219,6 +223,31 @@ for label, rel, new in SURFACES:
             bad(f"[{label}] UserPromptSubmit missing advisory: "
                 f"rc={ups.returncode} sysmsg={_sysmsg(ups)!r} "
                 f"stderr={ups.stderr.strip()!r}")
+
+
+# --- t1b: a SKILL.md-only change → the cheaper /reload-skills advisory (Inv
+#     54(e)), NOT the full-restart line, on BOTH Stop and UserPromptSubmit. ---
+with tempfile.TemporaryDirectory() as td:
+    r = _build_install_root(Path(td).resolve())
+    _snapshot_session(r)
+    (r / ".claude/skills/rabbit-feature-touch/SKILL.md").write_text(
+        "# CHANGED skill v2\n")
+    stop = _stop(r)
+    smsg = _sysmsg(stop)
+    if stop.returncode == 0 and RELOAD_FRAGMENT in smsg \
+            and ADVISORY_FRAGMENT not in smsg:
+        ok("[skill] Stop surfaces /reload-skills advisory (not full restart)")
+    else:
+        bad(f"[skill] Stop wrong tier: sysmsg={smsg!r} "
+            f"stderr={stop.stderr.strip()!r}")
+    ups = _ups(r)
+    umsg = _sysmsg(ups)
+    if ups.returncode == 0 and RELOAD_FRAGMENT in umsg \
+            and ADVISORY_FRAGMENT not in umsg:
+        ok("[skill] UserPromptSubmit surfaces /reload-skills advisory")
+    else:
+        bad(f"[skill] UPS wrong tier: sysmsg={umsg!r} "
+            f"stderr={ups.stderr.strip()!r}")
 
 
 # --- t6: NO change at all → no advisory (no false positive). ---------------
