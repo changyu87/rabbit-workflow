@@ -39,7 +39,7 @@ This module has two distinct roles:
      (test-deployed-hooks-execute.py, test-install-publish-loop.py) to exercise
      the publish flow against a freshly copied .claude tree.
 
-Version: 6.9.0
+Version: 6.10.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit's per-project vendored model is superseded
 """
@@ -390,6 +390,7 @@ _RABBIT_GITIGNORE_BODY = (
     ".scope-bypass-once\n"
     ".rabbit-restart-snapshot\n"
     ".rabbit-prompt-counter\n"
+    ".rabbit-update-restart-needed\n"
     "__pycache__/\n"
     "*.pyc\n"
 )
