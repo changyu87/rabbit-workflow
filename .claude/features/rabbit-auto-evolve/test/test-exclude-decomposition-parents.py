@@ -134,6 +134,7 @@ with tempfile.TemporaryDirectory() as td:
     os.makedirs(state_dir)
     _make_feature(repo_root, "feat-a")
     _make_feature(repo_root, "feat-b")
+    _make_feature(repo_root, "feat-c")
 
     # Issues under test:
     #   935 — decomposition PARENT (native rollup total>0)  -> EXCLUDE
@@ -141,12 +142,16 @@ with tempfile.TemporaryDirectory() as td:
     #          (coexistence: native total==0, listed in decomposition_parents)
     #   942 — CHILD (has a parent link, but total==0)        -> INCLUDE
     #   950 — ordinary single-feature issue                  -> INCLUDE
+    # 942 and 950 sit on DISTINCT feature dirs (feat-b vs feat-c) so the
+    # same-feature single-dispatch guard (Inv 69) never defers either — this
+    # test isolates the decomposition-PARENT exclusion, not the per-feature
+    # dispatch cap.
     views = {
         "935": _view(935, "feat-a", "decomposed parent A"),
         "936": _view(936, "feat-a", "decomposed parent B"),
         "942": _view(942, "feat-b", "child sub-issue",
                      body="Sub-issue of parent #935."),
-        "950": _view(950, "feat-b", "ordinary single-feature work"),
+        "950": _view(950, "feat-c", "ordinary single-feature work"),
     }
     # Native rollups: 935 HAS children; 936/942/950 have none of their own.
     summaries = {

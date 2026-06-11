@@ -219,6 +219,18 @@ POST_1154_ADD_LINES = 30
 # the prior headroom so the #751 reduction (>= 150 lines, >= 4 invariants) stays
 # ENFORCED while the #1158 amendment is admitted.
 POST_1158_ADD_LINES = 16
+# #1161 added a NEW invariant (Inv 69): the same-feature single-dispatch guard.
+# plan-batch.py assigned dispatch_shapes per item in isolation, so two work items
+# on the SAME feature dir were both dispatched in one tick and each bumped that
+# feature.json version, producing conflicting PRs. The new top-level invariant
+# keeps at most ONE item per feature dir per tick (collision key = union of an
+# item's edit-target dirs), removing the rest from every dispatch-driving surface
+# and surfacing them under the new deferred_same_feature key. A genuine bug-fix
+# addition, not slim regression. Mirror the prior headroom so the #751 reduction
+# (>= 150 lines, >= 4 invariants) stays ENFORCED while the #1161 invariant is
+# admitted.
+POST_1161_ADD_LINES = 42
+POST_1161_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
@@ -227,7 +239,7 @@ MAX_TOTAL_LINES = (
     + POST_1004_ADD_LINES + POST_1006_ADD_LINES + POST_1012_ADD_LINES
     + POST_1051_ADD_LINES + POST_1081_ADD_LINES + POST_1091_ADD_LINES
     + POST_1101_ADD_LINES + POST_1109_ADD_LINES + POST_1154_ADD_LINES
-    + POST_1158_ADD_LINES
+    + POST_1158_ADD_LINES + POST_1161_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -242,6 +254,7 @@ MAX_INVARIANT_COUNT = (
     + POST_966_ADD_INVARIANTS + POST_986_ADD_INVARIANTS
     + POST_1051_ADD_INVARIANTS + POST_1081_ADD_INVARIANTS
     + POST_1091_ADD_INVARIANTS + POST_1101_ADD_INVARIANTS
+    + POST_1161_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---

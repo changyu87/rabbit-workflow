@@ -145,27 +145,30 @@ if out is not None:
 # Combined batch — only the restart-safe item is flagged; planner writes no
 # marker and emits no human a/b/c question anywhere in its output.
 # ---------------------------------------------------------------------------
+# Each item sits on a DISTINCT feature dir so the same-feature single-dispatch
+# guard (Inv 69) never defers any — this batch tests self-modifying-migration
+# CLASSIFICATION + restart_needed, not the per-feature dispatch cap.
 batch = [
-    {"issue": 901, "feature": "rabbit-auto-evolve",
-     "features": ["rabbit-auto-evolve"], "contract_touch": False,
+    {"issue": 901, "feature": "smm-feat-a",
+     "features": ["smm-feat-a"], "contract_touch": False,
      "priority": "high", "decision": "work",
      "title": "rename marker",
      "body": "rename disk-read marker .rabbit-auto-evolve-running"},
-    {"issue": 902, "feature": "rabbit-auto-evolve",
-     "features": ["rabbit-auto-evolve"], "contract_touch": False,
+    {"issue": 902, "feature": "smm-feat-b",
+     "features": ["smm-feat-b"], "contract_touch": False,
      "priority": "high", "decision": "work",
      "title": "move path",
      "body": "move resolved path .claude/features/rabbit-auto-evolve/"
              "scripts/log-path.py",
      "self_contained": True},
-    {"issue": 903, "feature": "rabbit-auto-evolve",
-     "features": ["rabbit-auto-evolve"], "contract_touch": False,
+    {"issue": 903, "feature": "smm-feat-c",
+     "features": ["smm-feat-c"], "contract_touch": False,
      "priority": "high", "decision": "work",
      "title": "rename agent type",
      "body": "rename the tdd-subagent agent type held in session memory"},
     # A plain non-self-modifying item is NOT tagged.
-    {"issue": 904, "feature": "rabbit-auto-evolve",
-     "features": ["rabbit-auto-evolve"], "contract_touch": False,
+    {"issue": 904, "feature": "smm-feat-d",
+     "features": ["smm-feat-d"], "contract_touch": False,
      "priority": "low", "decision": "work",
      "title": "fix a typo", "body": "fix a docstring typo"},
 ]

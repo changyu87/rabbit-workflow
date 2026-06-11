@@ -73,6 +73,10 @@ else:
 #   All items have contract_touch=true; expect them all in barrier_first,
 #   sorted by priority desc then issue asc; groups must be [].
 # ---------------------------------------------------------------------------
+#   All three share feature dir 'contract', so the same-feature single-dispatch
+#   guard (Inv 69) keeps only the FIRST (critical 300) in barrier_first and
+#   defers the rest — three contract PRs in one tick would each bump contract's
+#   feature.json and conflict.
 items = [
     {"issue": 305, "feature": "contract", "contract_touch": True, "priority": "low"},
     {"issue": 300, "feature": "contract", "contract_touch": True, "priority": "critical"},
@@ -84,21 +88,27 @@ if proc.returncode != 0:
 else:
     try:
         out = json.loads(proc.stdout)
-        # critical (300) before high (310) before low (305)
-        want_barrier = [300, 310, 305]
+        # critical (300) leads; 310 + 305 are same-feature deferrals (Inv 69).
+        want_barrier = [300]
         if out.get("barrier_first") != want_barrier:
             fail(f"contract-only: barrier_first={out.get('barrier_first')!r}, want {want_barrier!r}")
         elif out.get("groups") != []:
             fail(f"contract-only: groups should be empty, got {out.get('groups')!r}")
+        elif out.get("deferred_same_feature") != [305, 310]:
+            fail(f"contract-only: deferred_same_feature="
+                 f"{out.get('deferred_same_feature')!r}, want [305, 310] (Inv 69)")
         else:
-            ok("contract-only: barrier_first sorted, groups empty")
+            ok("contract-only: only the critical contract item dispatched; "
+               "same-feature rest deferred (Inv 69)")
     except json.JSONDecodeError as e:
         fail(f"contract-only: bad JSON ({e}); stdout={proc.stdout!r}")
 
 
 # ---------------------------------------------------------------------------
 # Scenario 2 — Same-feature set (no contract)
-#   3 items share feature 'F'; graph coloring forces 3 separate groups.
+#   3 items share feature 'F'; the same-feature single-dispatch guard (Inv 69)
+#   keeps only the FIRST (highest-priority 401) and defers the other two — they
+#   would otherwise each bump F's feature.json in one tick and conflict.
 # ---------------------------------------------------------------------------
 items = [
     {"issue": 401, "feature": "F", "contract_touch": False, "priority": "high"},
@@ -114,16 +124,18 @@ else:
         if out.get("barrier_first") != []:
             fail(f"same-feature: barrier_first should be empty, got {out.get('barrier_first')!r}")
         groups = out.get("groups", [])
-        if len(groups) != 3:
-            fail(f"same-feature: expected 3 groups, got {len(groups)}: {groups!r}")
-        elif not all(len(g) == 1 for g in groups):
-            fail(f"same-feature: each group should hold one item, got {groups!r}")
+        if groups != [[401]]:
+            fail(f"same-feature: expected a single group [[401]] (Inv 69 keeps "
+                 f"only the first same-feature item), got {groups!r}")
+        elif out.get("selection_order") != [401]:
+            fail(f"same-feature: selection_order should be [401], got "
+                 f"{out.get('selection_order')!r} (Inv 69)")
+        elif out.get("deferred_same_feature") != [402, 403]:
+            fail(f"same-feature: deferred_same_feature="
+                 f"{out.get('deferred_same_feature')!r}, want [402, 403] (Inv 69)")
         else:
-            # Higher priority should color first.
-            if groups[0] != [401]:
-                fail(f"same-feature: group[0] should be [401] (highest priority), got {groups[0]!r}")
-            else:
-                ok("same-feature: 3 groups, one item each, priority order honored")
+            ok("same-feature: only the highest-priority same-feature item "
+               "dispatched; the rest deferred (Inv 69)")
     except json.JSONDecodeError as e:
         fail(f"same-feature: bad JSON ({e}); stdout={proc.stdout!r}")
 
@@ -408,10 +420,12 @@ else:
 #   selection_order (no contract item leads barrier_first unless it also
 #   leads selection_order).
 # ---------------------------------------------------------------------------
+# Distinct feature dirs (incl. the two contract items) so the same-feature
+# guard (Inv 69) never defers any — this scenario tests ORDERING agreement.
 items = [
     {"issue": 1201, "feature": "Fa", "contract_touch": False, "priority": "critical"},
-    {"issue": 1202, "feature": "contract", "contract_touch": True, "priority": "critical"},
-    {"issue": 1203, "feature": "contract", "contract_touch": True, "priority": "low"},
+    {"issue": 1202, "feature": "contract-c", "contract_touch": True, "priority": "critical"},
+    {"issue": 1203, "feature": "contract-l", "contract_touch": True, "priority": "low"},
     {"issue": 1204, "feature": "Fb", "contract_touch": False, "priority": "high"},
 ]
 proc = run_plan(items)
@@ -703,22 +717,26 @@ else:
 #   selection_order over a queue mixing all priorities, contract/non-contract,
 #   and various issue numbers — and barrier_first agreeing with it.
 # ---------------------------------------------------------------------------
+# NOTE: every item carries a DISTINCT feature dir so the same-feature
+# single-dispatch guard (Inv 69) never defers any of them — this scenario tests
+# pure ORDERING, not the dispatch-concurrency guard. The contract barrier is
+# driven by the `contract_touch` flag, not by `feature == "contract"`, so
+# distinct labels (contract-c/-m/-l) keep the barrier-tiebreak intent intact.
 _COMMON = {"decision": "work", "issue_type": "enhancement",
-           "created_at": "2026-05-01T00:00:00Z", "blocked_by": [],
-           "features": ["F"]}
+           "created_at": "2026-05-01T00:00:00Z", "blocked_by": []}
 items = [
     # low tier (rank 3)
     {"issue": 2010, "feature": "Fa", "contract_touch": False, "priority": "low", **_COMMON},
-    {"issue": 2009, "feature": "contract", "contract_touch": True, "priority": "low", **_COMMON},
+    {"issue": 2009, "feature": "contract-l", "contract_touch": True, "priority": "low", **_COMMON},
     # medium tier (rank 2)
     {"issue": 2008, "feature": "Fb", "contract_touch": False, "priority": "medium", **_COMMON},
-    {"issue": 2007, "feature": "contract", "contract_touch": True, "priority": "medium", **_COMMON},
+    {"issue": 2007, "feature": "contract-m", "contract_touch": True, "priority": "medium", **_COMMON},
     # high tier (rank 1)
     {"issue": 2006, "feature": "Fc", "contract_touch": False, "priority": "high", **_COMMON},
     # critical tier (rank 0) — two items to exercise the issue-asc tiebreak
     {"issue": 2005, "feature": "Fd", "contract_touch": False, "priority": "critical", **_COMMON},
     {"issue": 2001, "feature": "Fe", "contract_touch": False, "priority": "critical", **_COMMON},
-    {"issue": 2002, "feature": "contract", "contract_touch": True, "priority": "critical", **_COMMON},
+    {"issue": 2002, "feature": "contract-c", "contract_touch": True, "priority": "critical", **_COMMON},
 ]
 proc = run_plan(items)
 if proc.returncode != 0:
@@ -757,9 +775,11 @@ else:
 #   it asserts the filer label still wins WHEN it is the only differing signal,
 #   so a medium does not silently fall behind a low.
 # ---------------------------------------------------------------------------
+# Distinct feature dirs throughout (incl. the two contract items) so the
+# same-feature guard (Inv 69) never interferes with this ORDERING assertion.
 items = [
-    {"issue": 898, "feature": "contract", "contract_touch": True, "priority": "medium", **_COMMON},
-    {"issue": 894, "feature": "contract", "contract_touch": True, "priority": "low", **_COMMON},
+    {"issue": 898, "feature": "contract-m", "contract_touch": True, "priority": "medium", **_COMMON},
+    {"issue": 894, "feature": "contract-l", "contract_touch": True, "priority": "low", **_COMMON},
     {"issue": 901, "feature": "rabbit-decompose", "contract_touch": False, "priority": "low", **_COMMON},
     {"issue": 889, "feature": "rabbit-cage", "contract_touch": False, "priority": "low", **_COMMON},
 ]
@@ -951,21 +971,23 @@ else:
 #   A genuinely single-feature item (len(features) == 1) with cross_scope:false
 #   still shapes parallel-per-feature (no regression).
 # ---------------------------------------------------------------------------
+# Each item targets DISTINCT feature dirs so the same-feature guard (Inv 69)
+# never defers any — this scenario tests SHAPE routing, not the guard.
 items = [
     # 2-feature item, cross_scope explicitly false, below decompose-threshold.
     # MUST be multi-subagent-barrier AND in cross_scope_items (#984).
-    {"issue": 2101, "feature": "rabbit-cage",
-     "features": ["rabbit-cage", "rabbit-meta"],
+    {"issue": 2101, "feature": "feat-a1",
+     "features": ["feat-a1", "feat-a2"],
      "contract_touch": False, "priority": "medium", "decision": "work",
      "cross_scope": False},
     # genuine single-feature item, cross_scope false -> parallel-per-feature.
-    {"issue": 2102, "feature": "rabbit-cage", "features": ["rabbit-cage"],
+    {"issue": 2102, "feature": "feat-b1", "features": ["feat-b1"],
      "contract_touch": False, "priority": "medium", "decision": "work",
      "cross_scope": False},
     # multi-feature item at/above the decompose-threshold (=3 here) with
     # cross_scope false -> decomposition (#984; threshold behavior intact).
-    {"issue": 2103, "feature": "rabbit-cage",
-     "features": ["rabbit-cage", "rabbit-meta", "rabbit-spec"],
+    {"issue": 2103, "feature": "feat-c1",
+     "features": ["feat-c1", "feat-c2", "feat-c3"],
      "contract_touch": False, "priority": "medium", "decision": "work",
      "cross_scope": False},
 ]
@@ -1020,34 +1042,37 @@ else:
 #     - cross_scope:true still routes to barrier even at edit_features length 1.
 #     - edit_features absent -> fall back to features (backward compat).
 # ---------------------------------------------------------------------------
+# Each item targets DISTINCT edit-target dirs so the same-feature guard
+# (Inv 69) never defers any — this scenario tests SHAPE routing off
+# edit_features, not the guard.
 items = [
     # EDITS one feature, MENTIONS a second (features>1) -> parallel-per-feature.
-    {"issue": 9911, "feature": "rabbit-auto-evolve",
-     "features": ["rabbit-auto-evolve", "rabbit-meta"],
-     "edit_features": ["rabbit-auto-evolve"],
+    {"issue": 9911, "feature": "ase-a",
+     "features": ["ase-a", "ase-mention"],
+     "edit_features": ["ase-a"],
      "contract_touch": False, "priority": "medium", "decision": "work",
      "cross_scope": False},
     # genuine 2-EDIT item -> multi-subagent-barrier + cross_scope_items.
-    {"issue": 9912, "feature": "rabbit-auto-evolve",
-     "features": ["rabbit-auto-evolve", "rabbit-issue"],
-     "edit_features": ["rabbit-auto-evolve", "rabbit-issue"],
+    {"issue": 9912, "feature": "ase-b1",
+     "features": ["ase-b1", "ase-b2"],
+     "edit_features": ["ase-b1", "ase-b2"],
      "contract_touch": False, "priority": "medium", "decision": "work",
      "cross_scope": False},
     # genuine multi-EDIT at/above the decompose-threshold (=3) -> decomposition.
-    {"issue": 9913, "feature": "rabbit-auto-evolve",
-     "features": ["rabbit-auto-evolve", "rabbit-issue", "rabbit-spec"],
-     "edit_features": ["rabbit-auto-evolve", "rabbit-issue", "rabbit-spec"],
+    {"issue": 9913, "feature": "ase-c1",
+     "features": ["ase-c1", "ase-c2", "ase-c3"],
+     "edit_features": ["ase-c1", "ase-c2", "ase-c3"],
      "contract_touch": False, "priority": "medium", "decision": "work",
      "cross_scope": False},
     # cross_scope:true still forces barrier even at edit_features length 1.
-    {"issue": 9914, "feature": "rabbit-auto-evolve",
-     "features": ["rabbit-auto-evolve"],
-     "edit_features": ["rabbit-auto-evolve"],
+    {"issue": 9914, "feature": "ase-d",
+     "features": ["ase-d"],
+     "edit_features": ["ase-d"],
      "contract_touch": False, "priority": "medium", "decision": "work",
      "cross_scope": True},
     # edit_features ABSENT -> fall back to features (length 2) -> barrier.
-    {"issue": 9915, "feature": "rabbit-auto-evolve",
-     "features": ["rabbit-auto-evolve", "rabbit-meta"],
+    {"issue": 9915, "feature": "ase-e1",
+     "features": ["ase-e1", "ase-e2"],
      "contract_touch": False, "priority": "medium", "decision": "work",
      "cross_scope": False},
 ]
@@ -1097,6 +1122,170 @@ else:
                "(#991)")
     except json.JSONDecodeError as e:
         fail(f"edit-target-routing: bad JSON ({e}); stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario — same-feature single-dispatch guard (Inv 69, issue #1161)
+#   Two `work` items both targeting the SAME feature dir must NOT both be
+#   dispatched in one tick: each would independently bump that feature's
+#   feature.json version and the two PRs would conflict. plan-batch.py keeps
+#   AT MOST ONE item per feature dir in selection_order / dispatch_shapes; the
+#   later item(s) are removed and surfaced under deferred_same_feature.
+#   Mirrors the real instance: #1152 + #1156 both targeting rabbit-cage.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 1152, "feature": "rabbit-cage", "contract_touch": False,
+     "priority": "high", "decision": "work"},
+    {"issue": 1156, "feature": "rabbit-cage", "contract_touch": False,
+     "priority": "high", "decision": "work"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"same-feature-single-dispatch: exit {proc.returncode}; "
+         f"stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        shapes = out.get("dispatch_shapes", {})
+        deferred = out.get("deferred_same_feature", None)
+        cage_in_sel = [n for n in sel if n in (1152, 1156)]
+        if len(cage_in_sel) != 1:
+            fail(f"same-feature-single-dispatch: expected exactly ONE "
+                 f"rabbit-cage item in selection_order, got {sel!r} (#1161)")
+        elif cage_in_sel[0] != 1152:
+            fail(f"same-feature-single-dispatch: the FIRST (higher-priority, "
+                 f"lower-issue) item 1152 should be retained, got "
+                 f"{cage_in_sel[0]} (#1161)")
+        elif set(shapes.keys()) != {"1152"}:
+            fail(f"same-feature-single-dispatch: dispatch_shapes must hold "
+                 f"ONLY the retained item, got keys {sorted(shapes.keys())!r} "
+                 f"(#1161)")
+        elif deferred != [1156]:
+            fail(f"same-feature-single-dispatch: deferred_same_feature should "
+                 f"be [1156], got {deferred!r} (#1161)")
+        else:
+            ok("same-feature-single-dispatch: only the first same-feature item "
+               "dispatched; the second deferred (#1161)")
+    except json.JSONDecodeError as e:
+        fail(f"same-feature-single-dispatch: bad JSON ({e}); "
+             f"stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario — same-feature guard is always-present + does not over-defer
+#   distinct-feature items. Two DISTINCT-feature work items both survive and
+#   deferred_same_feature is the always-present empty list.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 2001, "feature": "rabbit-cage", "contract_touch": False,
+     "priority": "high", "decision": "work"},
+    {"issue": 2002, "feature": "rabbit-issue", "contract_touch": False,
+     "priority": "high", "decision": "work"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"same-feature-distinct-ok: exit {proc.returncode}; "
+         f"stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        deferred = out.get("deferred_same_feature", None)
+        if sorted(sel) != [2001, 2002]:
+            fail(f"same-feature-distinct-ok: both distinct-feature items must "
+                 f"survive, got selection_order={sel!r} (#1161)")
+        elif deferred != []:
+            fail(f"same-feature-distinct-ok: deferred_same_feature must be the "
+                 f"always-present empty list, got {deferred!r} (#1161)")
+        else:
+            ok("same-feature-distinct-ok: distinct-feature items both kept; "
+               "deferred_same_feature is [] (#1161)")
+    except json.JSONDecodeError as e:
+        fail(f"same-feature-distinct-ok: bad JSON ({e}); "
+             f"stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario — collision via SHARED edit_features (not just the `feature` label).
+#   Two items whose `feature` labels differ but whose edit_features sets SHARE
+#   a dir would still both bump that shared feature.json -> collide. Only the
+#   first survives.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 3001, "feature": "rabbit-cage",
+     "edit_features": ["rabbit-cage", "shared-dir"],
+     "features": ["rabbit-cage", "shared-dir"],
+     "contract_touch": False, "priority": "high", "decision": "work"},
+    {"issue": 3002, "feature": "rabbit-issue",
+     "edit_features": ["rabbit-issue", "shared-dir"],
+     "features": ["rabbit-issue", "shared-dir"],
+     "contract_touch": False, "priority": "high", "decision": "work"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"same-feature-edit-overlap: exit {proc.returncode}; "
+         f"stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        deferred = out.get("deferred_same_feature", None)
+        if sel != [3001]:
+            fail(f"same-feature-edit-overlap: items sharing edit-target dir "
+                 f"'shared-dir' must collide; only 3001 should survive, got "
+                 f"selection_order={sel!r} (#1161)")
+        elif deferred != [3002]:
+            fail(f"same-feature-edit-overlap: deferred_same_feature should be "
+                 f"[3002], got {deferred!r} (#1161)")
+        else:
+            ok("same-feature-edit-overlap: shared edit-target dir collides; "
+               "second item deferred (#1161)")
+    except json.JSONDecodeError as e:
+        fail(f"same-feature-edit-overlap: bad JSON ({e}); "
+             f"stdout={proc.stdout!r}")
+
+
+# ---------------------------------------------------------------------------
+# Scenario — research items are EXEMPT from the same-feature guard (Inv 69).
+#   A research item produces findings, edits no code, and bumps no
+#   feature.json, so it can never cause the version-bump conflict. A research
+#   item and a work item on the SAME feature dir BOTH survive; neither is
+#   deferred.
+# ---------------------------------------------------------------------------
+items = [
+    {"issue": 4001, "feature": "rabbit-cage", "contract_touch": False,
+     "priority": "high", "decision": "work"},
+    {"issue": 4002, "feature": "rabbit-cage", "contract_touch": False,
+     "priority": "high", "decision": "research"},
+]
+proc = run_plan(items)
+if proc.returncode != 0:
+    fail(f"same-feature-research-exempt: exit {proc.returncode}; "
+         f"stderr={proc.stderr!r}")
+else:
+    try:
+        out = json.loads(proc.stdout)
+        sel = out.get("selection_order", [])
+        deferred = out.get("deferred_same_feature", None)
+        shapes = out.get("dispatch_shapes", {})
+        if sorted(sel) != [4001, 4002]:
+            fail(f"same-feature-research-exempt: both the work item and the "
+                 f"same-feature research item must survive, got "
+                 f"selection_order={sel!r} (#1161)")
+        elif deferred != []:
+            fail(f"same-feature-research-exempt: research exemption must not "
+                 f"defer either item, got deferred_same_feature={deferred!r} "
+                 f"(#1161)")
+        elif shapes.get("4002") != "research":
+            fail(f"same-feature-research-exempt: research item shape="
+                 f"{shapes.get('4002')!r}, want 'research' (#1161)")
+        else:
+            ok("same-feature-research-exempt: research item exempt from the "
+               "guard; work + same-feature research both kept (#1161)")
+    except json.JSONDecodeError as e:
+        fail(f"same-feature-research-exempt: bad JSON ({e}); "
+             f"stdout={proc.stdout!r}")
 
 
 sys.exit(FAIL)

@@ -14,8 +14,25 @@ on stdout:
     "research_items": [700],
     "cross_scope_items": [602],
     "self_modifying_migrations": {"125": "coexistence-window"},
-    "restart_needed": [127]
+    "restart_needed": [127],
+    "deferred_same_feature": [128]
   }
+
+SAME-FEATURE SINGLE-DISPATCH GUARD (Inv 69, issue #1161). After Stage-1
+selection and Stage-2 shaping, plan-batch keeps AT MOST ONE item per feature
+dir per tick. dispatch_shapes is assigned per item in isolation, so two work
+items both targeting the SAME feature dir were each shaped independently and
+BOTH emitted; dispatched concurrently from the same base they each bump that
+feature's feature.json version, so the two PRs conflict (observed: #1152 +
+#1156 both rabbit-cage). The collision key is the UNION of an item's
+edit-target feature dirs (edit_features, falling back to features, then the
+single feature label); two items collide when their sets intersect. The FIRST
+(highest composite priority) item for a feature dir is retained; every later
+item sharing a feature dir is removed from selection_order, dispatch_shapes,
+and every other dispatch-driving surface, then listed under the always-present
+`deferred_same_feature` key (sorted, empty when none). A deferred item is not
+closed — it re-enters the plan next tick once the first PR merges (Inv 25
+preserved).
 
 Two decoupled decisions (Inv 26 / issue #435):
 
@@ -153,7 +170,7 @@ mutations.
 Exit code: 0 on success; non-zero on malformed stdin JSON or invalid
 --max-parallel / --decompose-threshold value.
 
-Version: 1.10.0
+Version: 1.11.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -428,6 +445,31 @@ def _feature_count(item):
     return 1
 
 
+def _feature_dirs(item):
+    """The SET of feature dirs an item will WRITE to — the same-feature
+    collision key (Inv 69). Two items collide when their feature-dir sets
+    intersect, since either shared dir would bump the same feature.json
+    version and the two PRs would conflict.
+
+    Mirrors _feature_count's resolution order exactly (the count and the
+    collision key MUST agree on which dirs an item targets): prefers
+    `edit_features` (the narrow edit-target set emitted by triage-issue.py),
+    falls back to `features` (the full mention set) when `edit_features` is
+    absent or empty — the conservative bias, since an item without the narrow
+    signal may genuinely WRITE to every mentioned feature and under-deferring
+    risks the version-bump conflict this guard exists to prevent — then to the
+    single `feature` label when neither list is present (pre-#435 triage
+    objects). Returns a set of dir names (empty when none is present)."""
+    edits = item.get("edit_features")
+    if isinstance(edits, list) and edits:
+        return {f for f in edits if f}
+    feats = item.get("features")
+    if isinstance(feats, list) and feats:
+        return {f for f in feats if f}
+    feat = item.get("feature")
+    return {feat} if feat else set()
+
+
 def _dispatch_shape(item, decompose_threshold):
     """Stage-2 per-item shape: FIRST fitting shape in preference order.
 
@@ -541,6 +583,52 @@ def plan(items, max_parallel, decompose_threshold):
     # always agree. Research items participate in selection_order by the same
     # composite key (Inv 27 / issue #478).
     selection = sorted(items, key=lambda it: _sort_key(it, fanout_counts))
+
+    # Same-feature single-dispatch guard (Inv 69, issue #1161). dispatch_shapes
+    # is assigned per item in isolation, so two work items both targeting the
+    # SAME feature dir were each independently shaped parallel-per-feature (or
+    # barrier) and BOTH emitted in one plan. Dispatched concurrently from the
+    # same base, each runs a full single-feature touch that bumps that feature's
+    # feature.json version, producing two PRs that bump X->X+1 — a guaranteed
+    # version-bump merge conflict on the second PR (observed: #1152 + #1156 both
+    # rabbit-cage, both 5.89.0->5.90.0, PR #1157 conflicting with #1153). Walk
+    # the composite-priority-ordered selection and keep AT MOST ONE item per
+    # feature dir: the collision key is the UNION of an item's edit-target
+    # feature dirs (_feature_dirs), and two items collide when their sets
+    # INTERSECT (either shared dir bumps the same feature.json). The FIRST
+    # (highest-priority) item for a given dir is retained; every later item that
+    # shares ANY feature dir with an already-retained item is REMOVED from the
+    # plan entirely (it survives in no dispatch-driving surface). A removed item
+    # is NOT closed and NOT dropped from the queue — it re-enters the plan next
+    # tick once the first item's PR merges, preserving the convergence guarantee
+    # (Inv 25). The deferred issue numbers are surfaced under
+    # `deferred_same_feature` (sorted, always present, empty when none).
+    #
+    # RESEARCH items are EXEMPT: they produce findings, edit no code, and bump
+    # no feature.json, so they can never cause the version-bump conflict this
+    # guard exists to prevent. They neither claim a feature dir nor get deferred
+    # by one — a research item and a work item on the same feature both survive.
+    claimed_dirs = set()
+    retained = []
+    deferred_same_feature = []
+    for item in selection:
+        if item.get("decision") == "research":
+            retained.append(item)
+            continue
+        dirs = _feature_dirs(item)
+        if dirs & claimed_dirs:
+            deferred_same_feature.append(item["issue"])
+            continue
+        claimed_dirs |= dirs
+        retained.append(item)
+    selection = retained
+    # Restrict the transparency surface to the items that survive the guard so
+    # computed_scores never advertises a score for an item absent from
+    # selection_order / dispatch_shapes.
+    retained_issue_strs = {str(i["issue"]) for i in selection}
+    computed_scores = {k: v for k, v in computed_scores.items()
+                       if k in retained_issue_strs}
+
     selection_order = [i["issue"] for i in selection]
 
     # Stage 2 — per-item dispatch shape (item-shaped, Inv 26 (b) + Inv 27).
@@ -648,6 +736,12 @@ def plan(items, max_parallel, decompose_threshold):
         "cross_scope_items": sorted(cross_scope_items),
         "self_modifying_migrations": self_modifying_migrations,
         "restart_needed": sorted(restart_needed),
+        # Items deferred this tick by the same-feature single-dispatch guard
+        # (Inv 69, issue #1161), sorted ascending — always present (empty when
+        # none). A deferred item shares a feature dir with a higher-priority
+        # item already in selection_order; it re-enters the plan next tick once
+        # that item's PR merges. Surfaced so the deferral is observable.
+        "deferred_same_feature": sorted(deferred_same_feature),
     }
 
 
