@@ -60,6 +60,17 @@ accumulated session context; the dispatcher/banner reads it fresh each tick.
 The git invocation is overridable via RABBIT_AUTO_EVOLVE_GIT_DESCRIBE_CMD for
 tests; the state dir via RABBIT_AUTO_EVOLVE_STATE_DIR (same as the tick log).
 
+The `cancel-refire` subcommand (Inv 70 / #1160) emits the post-stop
+refire-cancellation instruction set instead of a schedule decision: from the
+dispatcher-injected CronList snapshot (RABBIT_AUTO_EVOLVE_CRON_LIST) it emits
+`{"cancel_refire_ids": [...], "preserve_heartbeat_ids": [...]}`, reusing the
+EXACT `is_refire_oneshot` predicate the create-path dedup uses. A user `stop`
+writes the stop marker (Inv 41) but leaves a pending `#refire` session-only
+one-shot armed; the dispatcher runs CronList, passes it here via
+RABBIT_AUTO_EVOLVE_CRON_LIST, then CronDeletes each `cancel_refire_ids` id.
+The durable/recurring heartbeat is never matched, so it is never cancelled
+(Inv 47); an absent/malformed snapshot yields an empty `cancel_refire_ids`.
+
 Emitted JSON:
   - {"decision": "immediate-refire", "scheduler": "crontab"|"croncreate",
      "prompt": "/rabbit-auto-evolve tick #refire", "when": "~1min",
@@ -88,7 +99,7 @@ Resolution:
 Exit code is always 0 (the verdict is carried in `decision`); non-zero only
 if a fetch|triage|plan pipe stage itself errors.
 
-Version: 1.5.0
+Version: 1.6.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -260,6 +271,44 @@ def _dispatcher_actions(create_refire):
         "delete_refire_ids": delete_ids,
         "preserve_heartbeat_ids": preserve_ids,
         "create_refire": create_refire,
+    }
+
+
+def cancel_refire_actions():
+    """Inv 70 (#1160): emit the cancellation instruction set the DISPATCHER
+    follows immediately after a user `stop`.
+
+    `stop-loop.py` writes the stop marker so the NEXT tick halts (Inv 41), but a
+    pending immediate-refire one-shot (the session-only `#refire` CronCreate
+    armed by a prior tick's Inv 33 decision) is ALREADY scheduled — left alone
+    it still fires, enters a fresh tick, observes the marker, and halts, burning
+    one live Claude session turn for a guaranteed no-op. A script cannot call
+    `CronList`/`CronDelete` (Claude tool actions), so this computes, from the
+    dispatcher-injected snapshot (RABBIT_AUTO_EVOLVE_CRON_LIST):
+
+      - cancel_refire_ids: ids of EVERY pending refire ONE-SHOT to `CronDelete`
+        (each entry matching the SAME `is_refire_oneshot` predicate the
+        create-path dedup uses), so a stop tears down all armed refires;
+      - preserve_heartbeat_ids: heartbeat ids the dispatcher MUST NOT delete.
+
+    The durable/recurring heartbeat (bare `/rabbit-auto-evolve tick`, no marker)
+    is NEVER matched by `is_refire_oneshot`, so it can never land in
+    `cancel_refire_ids` (Inv 47). An absent or malformed snapshot yields an
+    empty `cancel_refire_ids` — a clean no-op when nothing is armed. No I/O
+    beyond the env read; safe to unit-test.
+    """
+    snapshot = _cron_list_snapshot()
+    cancel_ids = [
+        _entry_id(e) for e in snapshot
+        if is_refire_oneshot(e) and _entry_id(e) is not None
+    ]
+    preserve_ids = [
+        _entry_id(e) for e in snapshot
+        if _is_heartbeat(e) and _entry_id(e) is not None
+    ]
+    return {
+        "cancel_refire_ids": cancel_ids,
+        "preserve_heartbeat_ids": preserve_ids,
     }
 
 
@@ -466,11 +515,29 @@ def decide():
 
 
 def main():
-    argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description="Decide the end-of-tick schedule: immediate fresh-context "
                     "refire when work remains, else idle (Inv 33 / D1 / "
                     "#521). Emits the decision JSON on stdout."
-    ).parse_args()
+    )
+    # Default (no subcommand) is the end-of-tick decide path — unchanged for
+    # every existing caller. The optional `cancel-refire` subcommand (Inv 70 /
+    # #1160) emits the post-stop refire-cancellation instruction set instead.
+    parser.add_argument(
+        "command", nargs="?", default="decide",
+        choices=["decide", "cancel-refire"],
+        help="`decide` (default): emit the end-of-tick schedule decision. "
+             "`cancel-refire`: emit {cancel_refire_ids, preserve_heartbeat_ids} "
+             "from the injected CronList snapshot so a user `stop` tears down "
+             "pending #refire one-shots without touching the heartbeat (Inv 70).",
+    )
+    args = parser.parse_args()
+
+    if args.command == "cancel-refire":
+        json.dump(cancel_refire_actions(), sys.stdout)
+        sys.stdout.write("\n")
+        return 0
+
     try:
         result = decide()
     except RuntimeError as e:

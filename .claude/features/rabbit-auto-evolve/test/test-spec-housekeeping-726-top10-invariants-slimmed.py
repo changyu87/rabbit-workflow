@@ -134,7 +134,15 @@ BASELINE_TOTAL_LINES = 3594
 # surfacing them under the new deferred_same_feature key; ~36 lines across the invariant body
 # and its enforced-by, plus a research-item exemption clause) is additive, so the
 # ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 4140
+# The stop-cancels-pending-refire guard (Inv 70, #1160: stop-loop.py wrote the stop marker but
+# left a pending #refire session-only CronCreate one-shot armed, which still fired, observed the
+# marker, and halted — burning one live session turn for a no-op; the new top-level invariant has
+# the dispatcher, after stop-loop.py, run schedule-decision.py's new `cancel-refire` subcommand
+# over the injected CronList snapshot and CronDelete each emitted cancel_refire_ids id, reusing the
+# Inv 33/47 is_refire_oneshot predicate so the durable heartbeat is never cancelled; ~45 lines
+# across the invariant body and its enforced-by plus the script-table-row extension) is additive,
+# so the ceiling is raised once more to absorb it.
+MAX_TOTAL_LINES = 4190
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a

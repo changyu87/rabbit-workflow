@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.98.0
+version: 0.99.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -96,7 +96,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/detect-scheduler.py` | CLI | Probes `crontab -l` (via `RABBIT_CRONTAB_CMD`) and emits `{"scheduler":"crontab"|"croncreate","reason":...}`: crontab where usable, CronCreate fallback where restricted (Inv 34 / D2) |
 | `scripts/running-guard.py` | CLI | Inspects `.rabbit-auto-evolve-running`, clears a STALE marker (mtime/PID), and emits a proceed/skip verdict so a wedged tick never blocks the loop (Inv 35 / D3) |
 | `scripts/tick-log.py` | CLI | Minimal append-only JSON-per-line logger to `.rabbit/tick.log` for heartbeat/guard/schedule decisions; full verbosity config is Inv 37's scope (Inv 36 / D4) |
-| `scripts/schedule-decision.py` | CLI | At tick end/heartbeat, counts DISPATCHABLE work via the `fetch-queue.py \| triage-batch.py \| plan-batch.py` pipe (the plan's `selection_order`, which excludes blocked/deferred items, decomposition parents, and non-work verdicts) and emits `immediate-refire` (near-immediate one-shot) vs `idle`; the dispatcher performs the `CronCreate` one-shot (Inv 33 / D1). Every decision also carries `authoritative_version` — the current version resolved FRESH this tick from `git describe --tags --abbrev=0` with a state `last_tagged_version` fallback (Inv 64) |
+| `scripts/schedule-decision.py` | CLI | At tick end/heartbeat, counts DISPATCHABLE work via the `fetch-queue.py \| triage-batch.py \| plan-batch.py` pipe (the plan's `selection_order`, which excludes blocked/deferred items, decomposition parents, and non-work verdicts) and emits `immediate-refire` (near-immediate one-shot) vs `idle`; the dispatcher performs the `CronCreate` one-shot (Inv 33 / D1). Every decision also carries `authoritative_version` — the current version resolved FRESH this tick from `git describe --tags --abbrev=0` with a state `last_tagged_version` fallback (Inv 64). The `cancel-refire` subcommand (Inv 70) reads the dispatcher-injected `CronList` snapshot and emits `{cancel_refire_ids, preserve_heartbeat_ids}` so a user `stop` tears down pending `#refire` session-only one-shots while NEVER touching the durable heartbeat (reuses the Inv 33/47 `is_refire_oneshot` predicate) |
 | `scripts/refire-guard.py` | CLI | At tick start, reconciles the PRIOR tick's schedule decision from the `.rabbit/tick.log` breadcrumb: a stale `immediate-refire` (no fresh decision after it) + a still-non-empty dispatchable plan + more than a heartbeat-interval elapsed → a dropped refire; appends a LOUD `tick.log` warning and emits `refire_owed: true` so the dispatcher acts (the `CronCreate` stays a Claude action; the guard only DETECTS + SURFACES). Exposes the pure `reconcile()` predicate (Inv 65) |
 | `scripts/log-tick.py` | CLI | Full per-tick observability logger: owns all writes to the append-only JSON-lines log at `.rabbit/auto-evolve.log`; structured kwargs → one record/line, with on/off enable, three verbosity levels, a <2KB per-line cap and 5MB rotation (Inv 37). Distinct from the minimal `tick-log.py` (different file + purpose) |
 | `scripts/log-path.py` | CLI | Prints the absolute path of the `.rabbit/auto-evolve.log` file so a cross-session daemon can `tail -f $(… log-path.py)` (Inv 37) |
@@ -4107,6 +4107,51 @@ summary is restated here.
     case): two `work` items for the same feature dir yield exactly one in
     `selection_order` / `dispatch_shapes`, with the second listed under
     `deferred_same_feature`.
+
+70. **A user `stop` cancels pending `#refire` session-only one-shots; the
+    durable heartbeat is NEVER cancelled.** `stop-loop.py` writes
+    `.rabbit-auto-evolve-stop-requested` (Inv 41) so the NEXT tick's phase-0
+    halts cleanly — but a pending immediate-refire one-shot (the session-only
+    `/rabbit-auto-evolve tick #refire` CronCreate scheduled by a prior tick's
+    Inv 33 decision) is ALREADY armed. Left alone it still fires at its pinned
+    minute, enters a fresh tick, observes the stop marker, and halts — burning a
+    live Claude session turn for a guaranteed no-op. The defect this closes: a
+    `stop` is not fully honored until that armed refire has also been torn down.
+
+    **THE CANCELLATION.** A script cannot call `CronList`/`CronDelete` — those
+    are Claude tool actions (exactly like the Inv 33 / Inv 47 dedup) — so the
+    DISPATCHER, immediately AFTER invoking `stop-loop.py`, MUST run the
+    cancellation step: `CronList`, pass the snapshot back through
+    `RABBIT_AUTO_EVOLVE_CRON_LIST`, invoke
+    `schedule-decision.py cancel-refire`, and `CronDelete` every id in the
+    emitted `cancel_refire_ids`. `cancel-refire` reuses the EXACT same
+    `is_refire_oneshot` predicate (Inv 33 / Inv 47, #559) the create-path dedup
+    uses, so the set it returns is precisely the pending `#refire` session-only
+    one-shots (prompt carries the `#refire` MARKER, non-recurring,
+    non-durable). It emits
+    `{"cancel_refire_ids":[...],"preserve_heartbeat_ids":[...]}`; the durable /
+    recurring heartbeat (bare `/rabbit-auto-evolve tick`, no marker) is NEVER
+    in `cancel_refire_ids` and ALWAYS in `preserve_heartbeat_ids` — the same
+    structural guarantee that protects the heartbeat from the create-path dedup
+    protects it here (Inv 47). An absent or malformed `CronList` snapshot yields
+    an empty `cancel_refire_ids` (a clean no-op — nothing pending to cancel),
+    so the step is safe even when no refire is armed.
+
+    The cancellation is the symmetric counterpart of the Inv 41 stop hold:
+    Inv 41 keeps the loop halted across every FUTURE machine wake-up; Inv 70
+    additionally tears down the ONE already-armed wake-up so the stop takes
+    effect without one final wasted turn. `stop-loop.py` itself is unchanged
+    (it only writes the marker, Inv 17); the cancellation lives in the
+    dispatcher protocol because only Claude can call the Cron tools.
+
+    Enforced by `test/test-cancel-refire.py` (e2e: a `CronList` snapshot
+    mixing a pending `#refire` session-only one-shot with the durable bare-tick
+    heartbeat → `cancel-refire` returns the refire id in `cancel_refire_ids`
+    and the heartbeat id in `preserve_heartbeat_ids`, never the reverse; a
+    snapshot with only a heartbeat → empty `cancel_refire_ids`; an absent
+    snapshot → empty `cancel_refire_ids`) and by `test/test-start-stop-skill.py`
+    (the SKILL.md `stop` section documents the post-stop `cancel-refire`
+    cancellation step).
 
 ## Known gaps
 

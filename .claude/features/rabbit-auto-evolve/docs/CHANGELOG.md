@@ -16,6 +16,24 @@ authoritative).
 
 ## Version notes
 
+- **v0.99.0 — 2026-06-11** — #1160 (bug, priority:low). A user `stop` wrote
+  the `.rabbit-auto-evolve-stop-requested` marker but did NOT cancel a pending
+  `#refire` session-only CronCreate one-shot already armed by a prior tick's
+  Inv 33 decision; that refire still fired at its pinned minute, entered a
+  fresh tick, observed the stop marker, and halted — burning one live Claude
+  session turn for a guaranteed no-op. Fix (Inv 70): a script cannot call
+  `CronList`/`CronDelete`, so `schedule-decision.py` gains a `cancel-refire`
+  subcommand that reads the dispatcher-injected `CronList` snapshot
+  (`RABBIT_AUTO_EVOLVE_CRON_LIST`) and emits
+  `{cancel_refire_ids, preserve_heartbeat_ids}`, reusing the EXACT
+  `is_refire_oneshot` predicate the Inv 33/47 create-path dedup uses; the
+  SKILL.md `stop` section directs the dispatcher to run this immediately after
+  `stop-loop.py` and `CronDelete` each `cancel_refire_ids` id. The durable
+  recurring heartbeat (bare `/rabbit-auto-evolve tick`, no marker) is never in
+  `cancel_refire_ids` and always in `preserve_heartbeat_ids` (Inv 47). An
+  absent/malformed snapshot yields an empty `cancel_refire_ids` (clean no-op).
+  Enforced by `test/test-cancel-refire.py` (e2e) and `test/test-start-stop-skill.py`.
+
 - **v0.98.0 — 2026-06-11** — #1161 (bug, priority:high). `plan-batch.py`
   dispatched MULTIPLE same-feature-dir issues in parallel in one tick, causing
   version-bump merge conflicts. Root cause: `dispatch_shapes` is assigned
