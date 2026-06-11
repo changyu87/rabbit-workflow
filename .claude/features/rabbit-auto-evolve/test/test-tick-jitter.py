@@ -69,10 +69,17 @@ def _seed_tick_log(state_dir: Path, fire_ts: list[str]) -> None:
     (state_dir / TICK_LOG).write_text("\n".join(lines) + "\n")
 
 
-def _run(subcmd: str, repo_root: Path, state_dir: Path) -> subprocess.CompletedProcess:
+def _run(subcmd: str, repo_root: Path, state_dir: Path,
+         cron_list: str | None = None, now: str | None = None) -> subprocess.CompletedProcess:
     env = os.environ.copy()
     env["RABBIT_AUTO_EVOLVE_REPO_ROOT"] = str(repo_root)
     env["RABBIT_AUTO_EVOLVE_STATE_DIR"] = str(state_dir)
+    # #1154: the dispatcher-injected CronList snapshot the actual-next-fire ETA
+    # derivation reads, and an injectable wall-clock for deterministic tests.
+    if cron_list is not None:
+        env["RABBIT_AUTO_EVOLVE_CRON_LIST"] = cron_list
+    if now is not None:
+        env["RABBIT_AUTO_EVOLVE_NOW"] = now
     return subprocess.run(
         [sys.executable, str(SCRIPT), subcmd],
         env=env, capture_output=True, text=True,
@@ -233,6 +240,80 @@ with tempfile.TemporaryDirectory() as root_str, tempfile.TemporaryDirectory() as
         fail_t("no-cadence", f"must not crash on absent cadence; exit {r.returncode}, stderr={r.stderr!r}")
     else:
         ok("no-cadence", "absent cadence degrades gracefully (exit 0)")
+
+# --- t9 (#1154 CORE): next_fire_at snaps to the ACTUAL next scheduled CronCreate
+# event, not the stale heartbeat cron edge. When the dispatcher injects a CronList
+# snapshot carrying a near-future immediate-refire one-shot (`#refire`, ~2 min
+# out) ALONGSIDE the 30-min recurring heartbeat, the actual next fire is the
+# refire, NOT the next heartbeat boundary. `compute` persists that earliest fire
+# as `next_fire_at` (ISO-8601 UTC). now=14:20 + a refire pinned at 14:22 => the
+# actual next fire is 14:22, far earlier than the heartbeat 14:43+jitter. ---
+with tempfile.TemporaryDirectory() as root_str, tempfile.TemporaryDirectory() as st_str:
+    root = Path(root_str)
+    st = Path(st_str)
+    _seed_cadence(root, "13,43 * * * *")
+    cron_list = json.dumps([
+        {"id": "hb", "cron": "13,43 * * * *", "prompt": "/rabbit-auto-evolve tick",
+         "recurring": True, "durable": True},
+        {"id": "rf", "cron": "22 14 * * *", "prompt": "/rabbit-auto-evolve tick #refire",
+         "recurring": False, "durable": False},
+    ])
+    r = _run("compute", root, st, cron_list=cron_list, now="2026-06-04T14:20:00Z")
+    artifact = st / ARTIFACT_NAME
+    if r.returncode != 0:
+        fail_t("next-fire-refire", f"compute exit {r.returncode}; stderr={r.stderr!r}")
+    elif not artifact.is_file():
+        fail_t("next-fire-refire", f"artifact not written: {artifact}")
+    else:
+        data = json.loads(artifact.read_text())
+        nf = data.get("next_fire_at")
+        if nf is None:
+            fail_t("next-fire-refire",
+                   f"next_fire_at must be set from the CronList refire: {data!r}")
+        elif "14:22" not in str(nf):
+            fail_t("next-fire-refire",
+                   f"next_fire_at must snap to the 14:22 refire, not the heartbeat: {nf!r}")
+        else:
+            ok("next-fire-refire",
+               f"next_fire_at snaps to the actual next refire 14:22 (not the heartbeat): {nf}")
+
+# --- t10 (#1154): with NO CronList injected, next_fire_at is null (the banner
+# falls back to the heartbeat-cadence computation). The field is always present
+# in the schema. ---
+with tempfile.TemporaryDirectory() as root_str, tempfile.TemporaryDirectory() as st_str:
+    root = Path(root_str)
+    st = Path(st_str)
+    _seed_cadence(root, "13,43 * * * *")
+    r = _run("compute", root, st)  # no cron_list
+    data = json.loads((st / ARTIFACT_NAME).read_text())
+    if "next_fire_at" not in data:
+        fail_t("next-fire-absent", f"next_fire_at key must always be present: {data!r}")
+    elif data.get("next_fire_at") is not None:
+        fail_t("next-fire-absent",
+               f"next_fire_at must be null with no CronList snapshot: {data!r}")
+    else:
+        ok("next-fire-absent", "no CronList snapshot => next_fire_at is null (banner falls back)")
+
+# --- t11 (#1154): when the CronList carries ONLY the heartbeat (no pending
+# refire), next_fire_at is the next heartbeat boundary itself — so the artifact
+# tracks the live schedule rather than freezing on a stale edge. now=14:20,
+# heartbeat 13,43 => next boundary 14:43. ---
+with tempfile.TemporaryDirectory() as root_str, tempfile.TemporaryDirectory() as st_str:
+    root = Path(root_str)
+    st = Path(st_str)
+    _seed_cadence(root, "13,43 * * * *")
+    cron_list = json.dumps([
+        {"id": "hb", "cron": "13,43 * * * *", "prompt": "/rabbit-auto-evolve tick",
+         "recurring": True, "durable": True},
+    ])
+    r = _run("compute", root, st, cron_list=cron_list, now="2026-06-04T14:20:00Z")
+    data = json.loads((st / ARTIFACT_NAME).read_text())
+    nf = data.get("next_fire_at")
+    if nf is None or "14:43" not in str(nf):
+        fail_t("next-fire-heartbeat",
+               f"next_fire_at must be the next heartbeat boundary 14:43: {nf!r}")
+    else:
+        ok("next-fire-heartbeat", f"heartbeat-only CronList => next_fire_at 14:43: {nf}")
 
 print()
 print(f"Results: {pass_n} passed, {fail_n} failed")

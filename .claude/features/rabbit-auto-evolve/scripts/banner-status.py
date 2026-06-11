@@ -211,6 +211,34 @@ def _jitter_offset_minutes(repo_root: str, period_minutes: int) -> int:
     return min(15, math.ceil(period_minutes * 0.10))
 
 
+def _read_next_fire_at(repo_root: str):
+    """#1154: the ACTUAL next scheduled CronCreate event tick-jitter.py derives
+    from the live CronList snapshot, read from `next_fire_at` in the
+    rabbit-auto-evolve-owned jitter artifact. Returns a timezone-aware UTC
+    datetime, or None when the field is absent/null/unparseable (the caller then
+    falls back to the heartbeat-cadence computation). This is what lets the idle
+    ETA track the live schedule — the pending immediate-refire — rather than
+    freezing on a stale heartbeat cron edge across refires."""
+    path = os.path.join(repo_root, JITTER_FILE)
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    raw = data.get("next_fire_at")
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    try:
+        dt = datetime.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    return dt
+
+
 def _resolve_display_tz(repo_root: str) -> datetime.tzinfo:
     """#1012: resolve the user-configurable display zone by importing contract's
     PUBLIC `contract.lib.runtime.resolve_display_tz` (contract Inv 67). The
@@ -258,7 +286,25 @@ def _next_tick_eta(repo_root: str, now: datetime.datetime):
     `<repo_root>/.claude/scheduled_tasks.json` — the `tasks[]` entry whose
     `prompt` references rabbit-auto-evolve. Only the cron MINUTE field is
     matched against an unrestricted (`*`) HOUR, the shape the heartbeat uses
-    (`13,43 * * * *`)."""
+    (`13,43 * * * *`).
+
+    #1154: BEFORE the heartbeat-cadence walk, prefer the ACTUAL next scheduled
+    CronCreate event tick-jitter.py persisted as `next_fire_at` (derived from the
+    live CronList snapshot). When that field carries a FUTURE wall-clock time the
+    ETA snaps to it — so across refires the displayed minute tracks the live
+    schedule (the pending immediate-refire ~2 min out) rather than freezing on the
+    stale heartbeat cron edge up to a full period away. A null/past/unparseable
+    `next_fire_at` degrades to the heartbeat-cadence computation below."""
+    next_fire = _read_next_fire_at(repo_root)
+    if next_fire is not None:
+        # Treat the stored UTC wall-clock as the display wall-clock (label only),
+        # mirroring the naive-cron-fire handling — the dispatcher pins the refire
+        # in local wall-clock and stores it UTC-stamped, so its HH:MM is the
+        # displayed minute. Compare naive-to-naive against `now`.
+        fire_wall = next_fire.replace(tzinfo=None)
+        if fire_wall > now.replace(second=0, microsecond=0, tzinfo=None):
+            tz = _resolve_display_tz(repo_root)
+            return fire_wall.replace(tzinfo=tz).strftime("%H:%M %Z")
     path = os.path.join(repo_root, ".claude", "scheduled_tasks.json")
     try:
         with open(path) as f:

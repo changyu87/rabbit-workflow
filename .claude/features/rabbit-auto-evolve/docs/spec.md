@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.95.0
+version: 0.96.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1516,13 +1516,22 @@ summary is restated here.
     started-then-idle line carries an ETA; the priority-marker, restart-pending,
     and `{active: false}` lines never do.
 
+    BEFORE the heartbeat-cadence computation, the line prefers the ACTUAL next
+    scheduled CronCreate event persisted by Inv 56 as `next_fire_at` in the
+    jitter artifact: when that field is non-null and FUTURE the ETA snaps to it,
+    so across refires the displayed minute tracks the live schedule (the pending
+    immediate-refire ~2 min out) rather than freezing on the stale heartbeat
+    boundary up to a full period away. A null/past/unparseable `next_fire_at`
+    degrades to the heartbeat-boundary-plus-offset computation above.
+
     The script reads the five runtime markers via `os.path.exists` and
     additionally probes for `.rabbit/auto-evolve-state.json` via
     `os.path.isfile` (the never-started distinction); for the idle ETA it
     reads `.claude/scheduled_tasks.json` for the cadence and the persisted
-    jitter offset `.rabbit/auto-evolve-tick-jitter.json` (Inv 56) for the
-    `observed_jitter_minutes` to add to the boundary — no other filesystem
-    access, no git, no `gh`. Repo root resolution uses the
+    jitter artifact `.rabbit/auto-evolve-tick-jitter.json` (Inv 56) for the
+    `observed_jitter_minutes` to add to the boundary AND for `next_fire_at` to
+    snap the ETA to the live schedule when present and future — no other
+    filesystem access, no git, no `gh`. Repo root resolution uses the
     `RABBIT_AUTO_EVOLVE_REPO_ROOT` env override fallback to `os.getcwd()`
     (matching the marker-write scripts). The wall-clock for the ETA is
     overridable via `RABBIT_AUTO_EVOLVE_NOW` (ISO-8601) for deterministic
@@ -1546,6 +1555,11 @@ summary is restated here.
       qualifier beyond the label. With an injected aware `now` and display zone
       UTC this equals contract's `_auto_evolve_next_tick_eta` byte-for-byte (the
       Inv 55 mirror assertion).
+    - Active only, state file PRESENT, jitter artifact carries a FUTURE
+      `next_fire_at` (a pending immediate-refire) → `line2.text` snaps the ETA to
+      that live fire, NOT the stale heartbeat boundary+offset (Inv 56, #1154); a
+      PAST or `null` `next_fire_at` is ignored and the line falls back to the
+      heartbeat-boundary-plus-offset computation.
     - Active only, state file PRESENT, unparseable cadence → bare idle line,
       no ETA.
     - No rejected wording (`≥`, `(scheduler jitter)`, `(fires when the session
@@ -3563,24 +3577,39 @@ summary is restated here.
     `contract`'s Stop line) can READ the value WITHOUT importing this feature.
     The artifact schema is
     `{schema_version, observed_jitter_minutes (int ≥ 0), period_minutes,
-    sample_count, cold_start (bool), computed_at, owner,
-    deprecation_criterion}`. When there is NO recorded fire history yet,
-    `observed_jitter_minutes` falls back to the documented cold-start bound
-    `min(15, ceil(period_minutes * 0.10))` and `cold_start` is set true; this
-    is clearly a fallback, NOT the empirical value. The `compute` that WRITES the
-    artifact is wired into the shared phase-walk (`run-tick-phases.py
-    post-dispatch`, Inv 40) as a both-paths hygiene step. The CronCreate constraint
-    that jobs fire only while the REPL is idle (never mid-query) means a
-    boundary missed mid-query is DELIVERED at the next idle moment, not
-    silently skipped — but on an idle session every boundary is delivered
-    on time-plus-jitter, which is why the offset is a stable constant. The
-    state-dir resolution honors `RABBIT_AUTO_EVOLVE_STATE_DIR` (matching
+    sample_count, cold_start (bool), next_fire_at (ISO-8601 UTC | null),
+    computed_at, owner, deprecation_criterion}`. When there is NO recorded fire
+    history yet, `observed_jitter_minutes` falls back to the documented
+    cold-start bound `min(15, ceil(period_minutes * 0.10))` and `cold_start` is
+    set true; this is clearly a fallback, NOT the empirical value. The `compute`
+    that WRITES the artifact is wired into the shared phase-walk
+    (`run-tick-phases.py post-dispatch`, Inv 40) as a both-paths hygiene step.
+    The CronCreate constraint that jobs fire only while the REPL is idle (never
+    mid-query) means a boundary missed mid-query is DELIVERED at the next idle
+    moment, not silently skipped — but on an idle session every boundary is
+    delivered on time-plus-jitter, which is why the offset is a stable constant.
+
+    The `next_fire_at` field carries the ACTUAL next scheduled CronCreate event so
+    the displayed next-tick ETA tracks the LIVE schedule rather than freezing on a
+    stale heartbeat cron edge across refires (the ETA was derived solely from the
+    heartbeat cadence, so while the loop self-schedules immediate-refire one-shots
+    ~2 min out per Inv 33 it stayed pinned to the next heartbeat boundary). `compute`
+    derives `next_fire_at` as the EARLIEST upcoming fire across the dispatcher-injected
+    CronList snapshot (the same `RABBIT_AUTO_EVOLVE_CRON_LIST` channel
+    `schedule-decision.py` reads, covering the pending refire AND the heartbeat), or
+    `null` when no snapshot is injected. Consumers (`banner-status.py` and `contract`'s
+    Stop line) snap the ETA to it when non-null and FUTURE, else fall back to the
+    heartbeat computation; a past/null value is ignored.
+
+    The state-dir resolution honors `RABBIT_AUTO_EVOLVE_STATE_DIR` (matching
     `tick-log.py` / `update-state.py`), and the wall-clock is overridable via
     `RABBIT_AUTO_EVOLVE_NOW` (ISO-8601) for deterministic tests. Enforced by
     `test/test-tick-jitter.py` (median over a `+13` fire history; cold-start
-    fallback; log degradation; persisted schema), the `test-banner-status.py`
-    boundary-plus-offset assertions, and `test/test-tick-jitter-compute-wired.py`
-    (the post-dispatch compute wiring: the banner reads the empirical ETA).
+    fallback; log degradation; persisted schema; `next_fire_at` snapping to the live
+    refire / null / the heartbeat boundary), the `test-banner-status.py`
+    boundary-plus-offset and snap-to-`next_fire_at` assertions, and
+    `test/test-tick-jitter-compute-wired.py` (the post-dispatch compute wiring: the
+    banner reads the empirical ETA and tracks the live next-fire edge end-to-end).
 
 57. **The live release track is the `vX.Y.Z` git tags + per-feature
     changelogs — NOT the dead-track root `CHANGELOG.md`.** The canonical,
