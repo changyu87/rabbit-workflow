@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for per-feature scope markers (.rabbit-scope-active-<feature>)."""
+import glob
 import json
 import os
 import subprocess
@@ -63,6 +64,16 @@ global_existed = os.path.isfile(GLOBAL_MARKER)
 global_backup = read(GLOBAL_MARKER) if global_existed else ""
 feature_backup = read(FEATURE_JSON_CAGE)
 
+# Save (and clear) any pre-existing per-feature markers so this test never
+# clobbers a live `.rabbit-scope-active-<feature>` marker written by a
+# concurrent TDD cycle (including this run's own LOCK marker). Mirrors the
+# save/restore convention in test-scope-guard-allowlist.py.
+saved_per_markers = []
+for _p in glob.glob(os.path.join(REPO_ROOT, ".rabbit-scope-active-*")):
+    if os.path.isfile(_p):
+        saved_per_markers.append((_p, read(_p)))
+        os.remove(_p)
+
 # Save the override marker if any (we are using it)
 OVERRIDE = os.path.join(REPO_ROOT, ".rabbit-scope-override")
 override_existed = os.path.isfile(OVERRIDE)
@@ -78,7 +89,8 @@ with open(MARKER_CAGE, "w") as f:
     f.write("rabbit-cage")
 set_cage_tdd_state("test-red")
 
-t1_input = '{"tool_name":"Write","tool_input":{"file_path":".claude/features/rabbit-cage/somefile.txt"}}'
+t1_input = ('{"tool_name":"Write","tool_input":{"file_path":"'
+            + REPO_ROOT + '/.claude/features/rabbit-cage/somefile.txt"}}')
 t1_exit = run_scope_guard(t1_input)
 if t1_exit == 0:
     ok("scope-guard exits 0 (ALLOW) for write to rabbit-cage/ when .rabbit-scope-active-rabbit-cage exists (no global marker)")
@@ -96,7 +108,8 @@ if os.path.isfile(GLOBAL_MARKER):
 with open(MARKER_CAGE, "w") as f:
     f.write("rabbit-cage")
 
-t2_input = '{"tool_name":"Write","tool_input":{"file_path":".claude/features/contract/foo.txt"}}'
+t2_input = ('{"tool_name":"Write","tool_input":{"file_path":"'
+            + REPO_ROOT + '/.claude/features/contract/foo.txt"}}')
 t2_exit = run_scope_guard(t2_input)
 
 sg_src = read(SCOPE_GUARD)
@@ -110,7 +123,6 @@ else:
 # `.rabbit-scope-active-contract` (or `.rabbit-scope-active-<other>`) marker
 # may be present in the live repo from a sibling subagent; that legitimately
 # ALLOWS the t2 write, which would otherwise look like a regression here.
-import glob as _glob
 sibling_contract_marker = os.path.isfile(os.path.join(REPO_ROOT, ".rabbit-scope-active-contract"))
 if sibling_contract_marker:
     ok("skip t3 cross-scope DENY check: sibling .rabbit-scope-active-contract is active (parallel TDD cycle); scope-guard correctly honours that marker")
@@ -132,14 +144,16 @@ with open(MARKER_CAGE, "w") as f:
 with open(MARKER_TDD, "w") as f:
     f.write("tdd-subagent")
 
-t3a_input = '{"tool_name":"Write","tool_input":{"file_path":".claude/features/rabbit-cage/somefile.txt"}}'
+t3a_input = ('{"tool_name":"Write","tool_input":{"file_path":"'
+             + REPO_ROOT + '/.claude/features/rabbit-cage/somefile.txt"}}')
 t3a_exit = run_scope_guard(t3a_input)
 if t3a_exit == 0:
     ok("scope-guard exits 0 (ALLOW) for write to rabbit-cage/ when both per-feature markers coexist")
 else:
     fail_t(f"scope-guard exited {t3a_exit} (expected 0/ALLOW) for rabbit-cage/ with both per-feature markers — rabbit-cage marker not recognized")
 
-t3b_input = '{"tool_name":"Write","tool_input":{"file_path":".claude/features/tdd-subagent/somefile.txt"}}'
+t3b_input = ('{"tool_name":"Write","tool_input":{"file_path":"'
+             + REPO_ROOT + '/.claude/features/tdd-subagent/somefile.txt"}}')
 t3b_exit = run_scope_guard(t3b_input)
 if t3b_exit == 0:
     ok("scope-guard exits 0 (ALLOW) for write to tdd-subagent/ when both per-feature markers coexist")
@@ -165,6 +179,11 @@ else:
 if override_existed:
     with open(OVERRIDE, "w") as f:
         f.write(override_backup)
+
+# Restore any per-feature markers cleared at startup.
+for _p, _content in saved_per_markers:
+    with open(_p, "w") as f:
+        f.write(_content)
 
 print(f"Results: {total - failures} passed, {failures} failed")
 if failures == 0:
