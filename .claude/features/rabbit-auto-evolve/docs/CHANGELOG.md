@@ -16,6 +16,16 @@ authoritative).
 
 ## Version notes
 
+- **v0.100.1 — 2026-06-13** — #1166 (housekeeping). Doc-only fix. The SKILL.md
+  headless-tick self-sync prose still described the integration target as the
+  coexistence-era "dev default, main post-cutover" form, contradicting the
+  completed dev→main cutover. Updated the headless-sync example to state that
+  `sync-tree.py` resolves the target via `integration_target.py`
+  `resolve_target()` (Inv 61), which returns `main` deterministically (no env,
+  no override), so the sync runs `git pull --ff-only origin <integration-target>`
+  (currently `origin main`). No behavior change. Pinned by
+  `test/test-spec-housekeeping-1166-skill-headless-sync-target.py`.
+
 - **v0.100.0 — 2026-06-11** — #1168 (bug, priority:medium). Follow-up to #1160.
   After a `stop`, Inv 70 tore down the armed `#refire` one-shot but the
   RECURRING/durable heartbeat stayed armed. On the `CronCreate`-fallback path the

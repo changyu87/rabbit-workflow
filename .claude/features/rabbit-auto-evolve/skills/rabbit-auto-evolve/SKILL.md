@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.100.0
+version: 0.100.1
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into the integration target, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -610,10 +610,13 @@ Claude:
 - tick-start self-sync (Inv 38) — BEFORE any phase, it runs
   `python3 .claude/features/rabbit-auto-evolve/scripts/sync-tree.py` so the
   cron path also self-syncs to the latest merged scripts. `sync-tree.py`
-  resolves the integration target (Inv 61: dev default, main post-cutover) and
-  runs `git pull --ff-only origin <integration-target>`, NEVER the
-  permission-denied `git merge`. On a dirty/divergent tree it short-circuits to
-  a clean no-op (logged) rather than run stale scripts.
+  resolves the integration target via `integration_target.py`
+  `resolve_target()` (Inv 61) — NOT a hardcoded value. The dev→main cutover is
+  complete, so `resolve_target()` returns `main` deterministically (no env, no
+  override), and the sync runs `git pull --ff-only origin <integration-target>`
+  (currently `origin main`), NEVER the permission-denied `git merge`. On a
+  dirty/divergent tree it short-circuits to a clean no-op (logged) rather than
+  run stale scripts.
 - phase 0 (`stop-check`) + phase 1 (`restart-check`) — if
   `.rabbit-auto-evolve-stop-requested` or `.rabbit-auto-evolve-aborted`
   exists, the tick short-circuits to a clean no-op.
