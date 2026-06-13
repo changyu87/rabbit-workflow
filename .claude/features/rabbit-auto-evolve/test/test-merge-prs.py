@@ -1294,4 +1294,100 @@ with tempfile.TemporaryDirectory() as td:
         fail(f"premerge-batch: expected 2 results, got {len(results)}")
 
 
+# ===========================================================================
+# Issue #1158 — REVIEW_REQUIRED must NOT block an --admin merge; a failing
+# `gh pr merge --squash --admin` (e.g., permission denied for the admin
+# override) must be recorded as status="failed" (NOT status="skipped"), so
+# run-tick-phases.py's _merge_failures gate can surface it as a hard abort
+# rather than silently refiring the PR forever.
+#
+# The --admin flag is intended to bypass REVIEW_REQUIRED. When it genuinely
+# cannot land (the bot lacks admin rights or enforce_admins is on), the
+# failure MUST surface as a hard failure, never as a per-PR skip that would
+# be treated as an expected outcome and allow the loop to proceed as if the
+# merge succeeded.
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# (R1) REVIEW_REQUIRED: `gh pr merge --admin` fails with the GitHub
+# "pull request review required" error. Expected: status=failed,
+# reason starts with 'gh-merge-failed:' and contains the review error.
+# A status=skipped would mean the loop silently ignores the un-merged PR
+# and refiles it indefinitely — the issue #1158 autonomy violation.
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    review_error = "GraphQL: Pull request review required (mergeability)"
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="main", safety_exit=0,
+        merge_exit=1, merge_stderr=review_error,
+    )
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"review-required: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"review-required: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        r = results[0]
+        if r.get("status") == "skipped":
+            fail("review-required: REVIEW_REQUIRED failure recorded as "
+                 "status=skipped — the loop would silently refire this PR "
+                 "forever without surfacing the failure (#1158)")
+        elif r.get("status") != "failed":
+            fail(f"review-required: status {r.get('status')!r} != 'failed'; "
+                 "a gh pr merge --admin failure must be status=failed so "
+                 "run-tick-phases.py's _merge_failures gate aborts (#1158)")
+        elif not r.get("reason", "").startswith("gh-merge-failed"):
+            fail(f"review-required: reason {r.get('reason')!r} must start "
+                 "with 'gh-merge-failed' so the abort names the cause (#1158)")
+        else:
+            ok("review-required: REVIEW_REQUIRED failure → status=failed, "
+               "reason=gh-merge-failed (surfaces to run-tick-phases, #1158)")
+    elif results is not None:
+        fail(f"review-required: expected 1-element array, got {results!r}")
+    # The --admin flag MUST appear in the merge call — it is the bypass attempt.
+    merge_calls = [c for c in _gh_calls(call_log) if "pr merge" in c]
+    if not merge_calls:
+        fail("review-required: gh pr merge was NOT called; no --admin attempt")
+    elif not all("--admin" in c for c in merge_calls):
+        fail(f"review-required: --admin missing from merge call (#1158): "
+             f"{merge_calls!r}")
+    else:
+        ok("review-required: gh pr merge was called with --admin (#1158)")
+
+
+# ---------------------------------------------------------------------------
+# (R2) REVIEW_REQUIRED that the --admin override DOES bypass: `gh pr merge
+# --admin` exits 0. Expected: status=merged — the --admin path is the
+# NORMAL success path for a REVIEW_REQUIRED PR, per issue #973 (Inv 61).
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as td:
+    cwd, env, call_log, item_status_log = _make_env(
+        td, base_ref="main", safety_exit=0, merge_exit=0,
+        merge_sha="bypass999",
+    )
+    proc = _run(cwd, env, "42")
+    if proc.returncode != 0:
+        fail(f"review-bypass: expected exit 0, got {proc.returncode}; "
+             f"stderr={proc.stderr!r}")
+    try:
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        fail(f"review-bypass: stdout not JSON: {e}; stdout={proc.stdout!r}")
+        results = None
+    if results is not None and len(results) == 1:
+        r = results[0]
+        if r.get("status") != "merged":
+            fail(f"review-bypass: --admin bypass succeeded but status "
+                 f"{r.get('status')!r} != 'merged' (#1158/#973)")
+        else:
+            ok("review-bypass: --admin bypass of REVIEW_REQUIRED → status=merged "
+               "(Inv 61 / issue #973 / #1158)")
+    elif results is not None:
+        fail(f"review-bypass: expected 1-element array, got {results!r}")
+
+
 sys.exit(FAIL)
