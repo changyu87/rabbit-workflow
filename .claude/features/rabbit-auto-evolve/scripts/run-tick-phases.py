@@ -34,7 +34,11 @@ longer writes the running marker.
                  non-zero on ANY `status: "failed"` row — a `gh pr merge --admin`
                  that failed — or on unparseable output, rather than swallowing
                  the failure and refiring the PR forever; #1158), a post-merge
-                 re-sync to origin/dev when PRs merged (Inv 45), phases 8-10
+                 re-sync to `origin/<resolved-target>` when PRs merged (Inv 45 —
+                 `sync-tree.py` resolves the integration target via
+                 `integration_target.py` `resolve_target()` and runs
+                 `git pull --ff-only origin <resolved-target>`, NEVER a
+                 hardcoded branch), phases 8-10
                  (`run-post-merge.py` drain), phase 11 (persist: re-read the
                  on-disk state — already mutated by the phase scripts — drop the
                  transient `merge_ready` key, and pipe through
