@@ -16,6 +16,7 @@ authoritative).
 
 ## Version notes
 
+- **v0.100.3 — 2026-06-13** — #1177. Renumber the `start` "Start the loop" step list in SKILL.md (`0.`, `0b.`, `1.`, `2.` → `0.`, `1.`, `2.`, `3.`) to remove the `0b.` list-letter that tripped the contract numbered-lists gate (introduced by #1168/#1169). Numbering-format fix only — start-flow semantics unchanged.
 - **v0.100.2 — 2026-06-13** — #1167 (housekeeping). Code-comment-only fix.
   The `run-tick-phases.py` module docstring described the post-merge
   re-sync step as re-syncing "to origin/dev", contradicting the completed
