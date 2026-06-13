@@ -27,12 +27,22 @@ skill-`scripts/`-only change → nothing; any hook/settings/CLAUDE.md/agent chan
 Best-effort and graceful: any IO error degrades to no advisory (never crashes a
 dispatcher).
 
+Mid-session reload re-baseline (spec Inv 54f): `/reload-skills` is a Claude Code
+built-in that reloads `SKILL.md` definitions WITHOUT starting a session, so it
+never triggers the SessionStart re-baseline above — leaving the reload-tier
+advisory firing forever. When the UserPromptSubmit dispatcher observes a
+`/reload-skills` prompt it calls `rebaseline_skill_tier`, which refreshes ONLY
+the `SKILL.md`-tier keys of the snapshot (so the reload-tier advisory clears)
+while leaving the hard-restart-tier keys (hooks/settings/CLAUDE.md/agents)
+untouched — a genuine hard-restart change still legitimately requires a restart.
+
 Public API:
     restart_sensitive_signature(repo_root) -> dict[str, str]
     write_session_snapshot(repo_root) -> None
     restart_advisory_payloads(repo_root) -> list[dict]
+    rebaseline_skill_tier(repo_root) -> None
 
-Version: 1.3.0
+Version: 1.4.0
 Owner: rabbit-workflow team (rabbit-cage)
 Deprecation criterion: when Claude Code reloads hooks/skills/agents in-session
     without a restart, making the stale-load advisory unnecessary.
@@ -144,6 +154,44 @@ def _read_snapshot(repo_root):
     if not isinstance(data, dict):
         return None
     return data
+
+
+def rebaseline_skill_tier(repo_root):
+    """Inv 54f: re-baseline ONLY the `SKILL.md`-tier keys of the snapshot.
+
+    Invoked by the UserPromptSubmit dispatcher when the submitted prompt is
+    `/reload-skills` — the Claude Code built-in that reloads `SKILL.md`
+    definitions mid-session without a restart (and so never fires the
+    SessionStart re-baseline). After the reload the running session holds the
+    current on-disk skill definitions, so the reload-tier advisory must clear:
+    refresh every `SKILL.md` key (current vs absent) in the snapshot to its
+    current digest, but leave the hard-restart-tier keys (hooks / settings /
+    CLAUDE.md / agents) and the skill-`scripts/` keys EXACTLY as they were, so a
+    genuine hard-restart change still legitimately fires its advisory.
+
+    Surgical: SKILL.md keys present on disk are set to their current sha256;
+    SKILL.md keys that vanished from disk are dropped from the snapshot. No
+    other key is touched. Best-effort: no snapshot, or any IO error, is a
+    silent no-op (never crashes the dispatcher)."""
+    baseline = _read_snapshot(repo_root)
+    if baseline is None:
+        return
+    current = restart_sensitive_signature(repo_root)
+    updated = dict(baseline)
+    # Refresh / drop every SKILL.md key — across both the snapshot and the
+    # current on-disk signature — to the now-loaded state.
+    for key in set(baseline) | set(current):
+        if not _is_skill_md(key):
+            continue
+        if key in current:
+            updated[key] = current[key]
+        else:
+            updated.pop(key, None)
+    try:
+        (Path(repo_root) / SNAPSHOT_FILE).write_text(
+            json.dumps(updated, sort_keys=True) + "\n")
+    except OSError:
+        return
 
 
 def _is_skill_md(rel: str) -> bool:

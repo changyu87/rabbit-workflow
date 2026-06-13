@@ -215,7 +215,13 @@ COLLAPSE_MAX = 1
 # restart advisory; mixed sets take the superset — plus its e2e test
 # (test-restart-advisory-tiered-by-change-type.py). A real spec addition
 # documenting new test-enforced behavior, not reword re-inflation.
-SPEC_LINE_CEILING = 634
+# Raised 634 -> 636 by #1173, which extended Inv 54 with clause (f): the tiered
+# /reload-skills advisory (clause (e)) now CLEARS once the reload actually runs —
+# a /reload-skills UserPromptSubmit prompt re-baselines ONLY the SKILL.md tier of
+# the snapshot, leaving the hard-restart tier intact — plus its e2e test
+# (test-reload-skills-clears-reload-advisory.py). A real spec addition documenting
+# new test-enforced behavior, not reword re-inflation.
+SPEC_LINE_CEILING = 636
 
 PASS = 0
 FAIL = 0
