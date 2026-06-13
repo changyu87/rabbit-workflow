@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.100.2
+version: 0.100.3
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into the integration target, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -138,7 +138,7 @@ type `/rabbit-auto-evolve on` themselves.
    the `.rabbit-auto-evolve-running` marker — that write is owned by the shared
    phase-walk (Inv 42). A MACHINE-fired `tick` NEVER runs this step (see
    "`tick` (internal)" below).
-0b. **Re-arm the durable heartbeat on the croncreate path (DISPATCHER action —
+1. **Re-arm the durable heartbeat on the croncreate path (DISPATCHER action —
    Inv 71).** A prior `stop` DISARMS the durable `CronCreate` heartbeat on the
    `croncreate` fallback (the Inv 71 `cancel-heartbeat` step in the `stop`
    flow), so an explicit user `start` must RE-ARM it. This reuses the EXISTING
@@ -150,7 +150,7 @@ type `/rabbit-auto-evolve on` themselves.
    `tick`, NEVER the USER-intent `start` (Inv 41), so a machine wake-up can
    never cancel a human's stop. On the `crontab` path the heartbeat is the
    system-cron entry and was never disarmed, so there is nothing to re-arm.
-1. Run one `tick` by walking the shared scripted phase-walk — the dispatcher
+2. Run one `tick` by walking the shared scripted phase-walk — the dispatcher
    supplies ONLY Phase 6 (see "`tick` (internal)" below). The walk's
    pre-dispatch segment self-syncs the tree (Inv 38), runs the running-guard
    (Inv 35), and — ONLY when the guard returns `proceed` — writes the
@@ -163,7 +163,7 @@ type `/rabbit-auto-evolve on` themselves.
    run `end-tick.py` and end the turn. On `{"action":"proceed",...}` continue
    to Phase 6. Phase 12 runs `schedule-decision.py` (Inv 33) and the dispatcher
    schedules the immediate-refire when work remains — see "Scheduling" below.
-2. End the turn. The HOUSEKEEPING tick is fired by the **system cron**
+3. End the turn. The HOUSEKEEPING tick is fired by the **system cron**
    installed at `on` (where crontab is available) running `tick-headless.py`;
    the DEVELOPMENT tick (phase 6 dispatch) is re-triggered by the scheduler
    firing `/rabbit-auto-evolve tick` (Inv 32) — a FRESH context on the
