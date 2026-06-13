@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.99.0
+version: 0.100.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -96,7 +96,7 @@ SKILL.md at `skills/rabbit-auto-evolve/SKILL.md`; `model: opus`):
 | `scripts/detect-scheduler.py` | CLI | Probes `crontab -l` (via `RABBIT_CRONTAB_CMD`) and emits `{"scheduler":"crontab"|"croncreate","reason":...}`: crontab where usable, CronCreate fallback where restricted (Inv 34 / D2) |
 | `scripts/running-guard.py` | CLI | Inspects `.rabbit-auto-evolve-running`, clears a STALE marker (mtime/PID), and emits a proceed/skip verdict so a wedged tick never blocks the loop (Inv 35 / D3) |
 | `scripts/tick-log.py` | CLI | Minimal append-only JSON-per-line logger to `.rabbit/tick.log` for heartbeat/guard/schedule decisions; full verbosity config is Inv 37's scope (Inv 36 / D4) |
-| `scripts/schedule-decision.py` | CLI | At tick end/heartbeat, counts DISPATCHABLE work via the `fetch-queue.py \| triage-batch.py \| plan-batch.py` pipe (the plan's `selection_order`, which excludes blocked/deferred items, decomposition parents, and non-work verdicts) and emits `immediate-refire` (near-immediate one-shot) vs `idle`; the dispatcher performs the `CronCreate` one-shot (Inv 33 / D1). Every decision also carries `authoritative_version` — the current version resolved FRESH this tick from `git describe --tags --abbrev=0` with a state `last_tagged_version` fallback (Inv 64). The `cancel-refire` subcommand (Inv 70) reads the dispatcher-injected `CronList` snapshot and emits `{cancel_refire_ids, preserve_heartbeat_ids}` so a user `stop` tears down pending `#refire` session-only one-shots while NEVER touching the durable heartbeat (reuses the Inv 33/47 `is_refire_oneshot` predicate) |
+| `scripts/schedule-decision.py` | CLI | At tick end/heartbeat, counts DISPATCHABLE work via the `fetch-queue.py \| triage-batch.py \| plan-batch.py` pipe (the plan's `selection_order`, which excludes blocked/deferred items, decomposition parents, and non-work verdicts) and emits `immediate-refire` (near-immediate one-shot) vs `idle`; the dispatcher performs the `CronCreate` one-shot (Inv 33 / D1). Every decision also carries `authoritative_version` — the current version resolved FRESH this tick from `git describe --tags --abbrev=0` with a state `last_tagged_version` fallback (Inv 64). The `cancel-refire` subcommand (Inv 70) reads the dispatcher-injected `CronList` snapshot and emits `{cancel_refire_ids, preserve_heartbeat_ids}` so a user `stop` tears down pending `#refire` session-only one-shots while NEVER touching the durable heartbeat (reuses the Inv 33/47 `is_refire_oneshot` predicate). The `cancel-heartbeat` subcommand (Inv 71) resolves the scheduler (via `detect-scheduler.py`) and emits `{scheduler, cancel_heartbeat_ids}` so a user `stop` ALSO disarms the durable `CronCreate` heartbeat on the `croncreate` fallback path (where each empty fire = a live Claude turn) while emitting an empty set on the Claude-free `crontab` path; `start` re-arms it via the existing idempotent bootstrap |
 | `scripts/refire-guard.py` | CLI | At tick start, reconciles the PRIOR tick's schedule decision from the `.rabbit/tick.log` breadcrumb: a stale `immediate-refire` (no fresh decision after it) + a still-non-empty dispatchable plan + more than a heartbeat-interval elapsed → a dropped refire; appends a LOUD `tick.log` warning and emits `refire_owed: true` so the dispatcher acts (the `CronCreate` stays a Claude action; the guard only DETECTS + SURFACES). Exposes the pure `reconcile()` predicate (Inv 65) |
 | `scripts/log-tick.py` | CLI | Full per-tick observability logger: owns all writes to the append-only JSON-lines log at `.rabbit/auto-evolve.log`; structured kwargs → one record/line, with on/off enable, three verbosity levels, a <2KB per-line cap and 5MB rotation (Inv 37). Distinct from the minimal `tick-log.py` (different file + purpose) |
 | `scripts/log-path.py` | CLI | Prints the absolute path of the `.rabbit/auto-evolve.log` file so a cross-session daemon can `tail -f $(… log-path.py)` (Inv 37) |
@@ -4152,6 +4152,66 @@ summary is restated here.
     snapshot → empty `cancel_refire_ids`) and by `test/test-start-stop-skill.py`
     (the SKILL.md `stop` section documents the post-stop `cancel-refire`
     cancellation step).
+
+71. **On the CronCreate-fallback path a user `stop` DISARMS the durable
+    heartbeat; `start` RE-ARMS it.** Inv 70 tears down the already-armed
+    `#refire` ONE-SHOT after a stop, but on the `CronCreate` fallback the
+    RECURRING/durable heartbeat (bare `/rabbit-auto-evolve tick`) is left armed
+    and KEEPS firing — each fire re-enters the SAME live session, observes the
+    stop marker, and halts at phase 0, burning a full live Claude session turn
+    per fire, indefinitely, until the user runs `off`. The cost is path-asymmetric
+    and this invariant is SCOPED to the `croncreate` path alone:
+
+    - **`crontab` path** — the heartbeat is the system-cron entry firing
+      `tick-headless.py`, which is Claude-FREE: its phase-0 stop-check
+      short-circuits with NO Claude turn, so an empty post-stop fire is
+      ≈free. Keeping it armed is fine; `stop` does NOT touch it (only `off`
+      uninstalls the system cron, Inv 1).
+    - **`croncreate` path** — the heartbeat is a durable `CronCreate` entry
+      firing a real `/rabbit-auto-evolve tick` = a LIVE Claude turn. An empty
+      post-stop fire wastes a full turn, so `stop` MUST disarm it and `start`
+      MUST re-arm it.
+
+    **THE DISARM.** A script cannot call `CronList`/`CronDelete` — those are
+    Claude tool actions — so `schedule-decision.py` gains a `cancel-heartbeat`
+    subcommand that resolves the scheduler (via `detect-scheduler.py`, Inv 34)
+    and, from the dispatcher-injected `CronList` snapshot
+    (`RABBIT_AUTO_EVOLVE_CRON_LIST`), emits
+    `{"scheduler":"crontab"|"croncreate","cancel_heartbeat_ids":[...]}`:
+
+    - on the `croncreate` path `cancel_heartbeat_ids` is EVERY heartbeat id —
+      a `CronList` entry that is recurring OR durable and whose prompt does NOT
+      carry the `#refire` marker (the SAME `_is_heartbeat` complement of the
+      Inv 33/47 `is_refire_oneshot` predicate). The refire one-shots are NEVER
+      in `cancel_heartbeat_ids` (Inv 70 owns those).
+    - on the `crontab` path `cancel_heartbeat_ids` is ALWAYS empty — the
+      heartbeat is a system-cron entry, not a `CronCreate` row, and is
+      Claude-free, so there is nothing for the dispatcher to `CronDelete` and
+      keeping it armed costs nothing.
+
+    An absent or malformed snapshot yields an empty `cancel_heartbeat_ids` (a
+    clean no-op). The DISPATCHER, in the SKILL.md `stop` flow, runs
+    `cancel-heartbeat` immediately after the Inv 70 `cancel-refire` step and
+    `CronDelete`s every id in `cancel_heartbeat_ids`.
+
+    **THE RE-ARM.** The `start` flow ALREADY re-creates the durable heartbeat
+    IDEMPOTENTLY on the `croncreate` path (the `on`/`start` bootstrap: `CronList`
+    → `CronCreate(cron="13,43 * * * *", prompt="/rabbit-auto-evolve tick",
+    durable=true)` only if no matching heartbeat exists). After a stop has
+    disarmed it, the next explicit user `start` therefore re-arms it through
+    that same bootstrap — no new mechanism is needed; the SKILL.md `start`
+    section calls this re-arm out explicitly. The re-armed heartbeat MUST fire
+    the INTERNAL `tick`, NEVER the USER-intent `start` (Inv 41), preserving the
+    guarantee that a machine wake-up can never cancel a human's stop.
+
+    Enforced by `test/test-cancel-heartbeat.py` (e2e: a `croncreate` snapshot
+    mixing a durable bare-tick heartbeat with a `#refire` one-shot →
+    `cancel-heartbeat` returns the heartbeat id in `cancel_heartbeat_ids` and
+    NEVER the refire id; the SAME snapshot under the `crontab` scheduler →
+    empty `cancel_heartbeat_ids`; an absent snapshot → empty
+    `cancel_heartbeat_ids`) and by `test/test-start-stop-skill.py` (the SKILL.md
+    `stop` section documents the post-stop `cancel-heartbeat` disarm on the
+    croncreate path, and the `start` section documents the idempotent re-arm).
 
 ## Known gaps
 

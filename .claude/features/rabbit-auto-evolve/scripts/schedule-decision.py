@@ -71,6 +71,19 @@ RABBIT_AUTO_EVOLVE_CRON_LIST, then CronDeletes each `cancel_refire_ids` id.
 The durable/recurring heartbeat is never matched, so it is never cancelled
 (Inv 47); an absent/malformed snapshot yields an empty `cancel_refire_ids`.
 
+The `cancel-heartbeat` subcommand (Inv 71 / #1168) is the symmetric follow-up:
+Inv 70 tears down the armed `#refire` one-shot, but on the `croncreate` fallback
+the RECURRING/durable heartbeat (bare `/rabbit-auto-evolve tick`) is left armed
+and keeps firing a LIVE Claude turn per fire after a stop. `cancel-heartbeat`
+resolves the scheduler (via `detect-scheduler.py`) and emits
+`{"scheduler": ..., "cancel_heartbeat_ids": [...]}`: on the `croncreate` path
+`cancel_heartbeat_ids` is every heartbeat id (the `_is_heartbeat` complement of
+`is_refire_oneshot`); on the Claude-free `crontab` path it is ALWAYS empty (the
+heartbeat is a system-cron entry, not a CronCreate row). The dispatcher
+`CronDelete`s each id after the stop; the next user `start` re-arms the
+heartbeat via the existing idempotent bootstrap. An absent/malformed snapshot
+yields an empty `cancel_heartbeat_ids`.
+
 Emitted JSON:
   - {"decision": "immediate-refire", "scheduler": "crontab"|"croncreate",
      "prompt": "/rabbit-auto-evolve tick #refire", "when": "~1min",
@@ -99,7 +112,7 @@ Resolution:
 Exit code is always 0 (the verdict is carried in `decision`); non-zero only
 if a fetch|triage|plan pipe stage itself errors.
 
-Version: 1.6.0
+Version: 1.7.0
 Owner: rabbit-workflow team (rabbit-auto-evolve)
 Deprecation criterion: when Claude Code or rabbit gains a native always-on
 autonomous-agent mode that supersedes this skill.
@@ -312,6 +325,46 @@ def cancel_refire_actions():
     }
 
 
+def cancel_heartbeat_actions(scheduler):
+    """Inv 71 (#1168): emit the heartbeat DISARM instruction set the DISPATCHER
+    follows after a user `stop`, SCOPED to the CronCreate-fallback path.
+
+    Inv 70 already tears down the armed `#refire` ONE-SHOT, but on the
+    `croncreate` fallback the RECURRING/durable heartbeat (bare
+    `/rabbit-auto-evolve tick`, no marker) is left armed and keeps firing — each
+    fire re-enters the SAME live session, observes the stop marker, and halts at
+    phase 0, burning a full live Claude session turn per fire, indefinitely,
+    until the user runs `off`. The cost is path-asymmetric:
+
+      - `crontab` path — the heartbeat is the system-cron entry firing
+        `tick-headless.py`, which is Claude-FREE; an empty post-stop fire is
+        ≈free, and it is not a `CronCreate` row the dispatcher could
+        `CronDelete`. `cancel_heartbeat_ids` is ALWAYS empty here.
+      - `croncreate` path — the heartbeat is a durable `CronCreate` entry firing
+        a real `/rabbit-auto-evolve tick` (a LIVE Claude turn); `stop` MUST
+        disarm it. `cancel_heartbeat_ids` is every heartbeat id (the
+        `_is_heartbeat` complement of `is_refire_oneshot` — recurring OR durable,
+        no `#refire` marker). The refire one-shots are NEVER matched (Inv 70
+        owns those).
+
+    A script cannot call `CronList`/`CronDelete` (Claude tool actions), so this
+    computes the id set from the dispatcher-injected snapshot
+    (RABBIT_AUTO_EVOLVE_CRON_LIST); the dispatcher then `CronDelete`s each id.
+    An absent or malformed snapshot yields an empty `cancel_heartbeat_ids` (a
+    clean no-op). The next explicit user `start` RE-ARMS the heartbeat via the
+    existing idempotent bootstrap (CronList → create-if-absent). No I/O beyond
+    the env read; safe to unit-test.
+    """
+    if scheduler != "croncreate":
+        return {"scheduler": scheduler, "cancel_heartbeat_ids": []}
+    snapshot = _cron_list_snapshot()
+    cancel_ids = [
+        _entry_id(e) for e in snapshot
+        if _is_heartbeat(e) and _entry_id(e) is not None
+    ]
+    return {"scheduler": scheduler, "cancel_heartbeat_ids": cancel_ids}
+
+
 def _script_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
@@ -522,19 +575,30 @@ def main():
     )
     # Default (no subcommand) is the end-of-tick decide path — unchanged for
     # every existing caller. The optional `cancel-refire` subcommand (Inv 70 /
-    # #1160) emits the post-stop refire-cancellation instruction set instead.
+    # #1160) emits the post-stop refire-cancellation instruction set; the
+    # `cancel-heartbeat` subcommand (Inv 71 / #1168) emits the post-stop
+    # heartbeat-disarm instruction set, scoped to the croncreate path.
     parser.add_argument(
         "command", nargs="?", default="decide",
-        choices=["decide", "cancel-refire"],
+        choices=["decide", "cancel-refire", "cancel-heartbeat"],
         help="`decide` (default): emit the end-of-tick schedule decision. "
              "`cancel-refire`: emit {cancel_refire_ids, preserve_heartbeat_ids} "
              "from the injected CronList snapshot so a user `stop` tears down "
-             "pending #refire one-shots without touching the heartbeat (Inv 70).",
+             "pending #refire one-shots without touching the heartbeat (Inv 70). "
+             "`cancel-heartbeat`: emit {scheduler, cancel_heartbeat_ids} so a "
+             "user `stop` ALSO disarms the durable CronCreate heartbeat on the "
+             "croncreate fallback path (empty on the Claude-free crontab path) "
+             "(Inv 71).",
     )
     args = parser.parse_args()
 
     if args.command == "cancel-refire":
         json.dump(cancel_refire_actions(), sys.stdout)
+        sys.stdout.write("\n")
+        return 0
+
+    if args.command == "cancel-heartbeat":
+        json.dump(cancel_heartbeat_actions(_scheduler()), sys.stdout)
         sys.stdout.write("\n")
         return 0
 

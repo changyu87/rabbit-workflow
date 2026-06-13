@@ -142,7 +142,16 @@ BASELINE_TOTAL_LINES = 3594
 # Inv 33/47 is_refire_oneshot predicate so the durable heartbeat is never cancelled; ~45 lines
 # across the invariant body and its enforced-by plus the script-table-row extension) is additive,
 # so the ceiling is raised once more to absorb it.
-MAX_TOTAL_LINES = 4190
+# The stop-disarms-heartbeat / start-rearms guard (Inv 71, #1168: follow-up to Inv 70 — after a
+# stop the RECURRING/durable heartbeat stayed armed, and on the croncreate fallback each empty
+# post-stop fire burned a full live Claude turn indefinitely; the new top-level invariant has
+# schedule-decision.py's new `cancel-heartbeat` subcommand resolve the scheduler and emit
+# {scheduler, cancel_heartbeat_ids} so a stop ALSO disarms the durable CronCreate heartbeat on
+# the croncreate path while emitting an empty set on the Claude-free crontab path, and the start
+# flow re-arms it via the existing idempotent bootstrap; ~66 lines across the invariant body, its
+# enforced-by, and the schedule-decision script-table-row extension) is additive, so the ceiling
+# is raised once more to absorb it.
+MAX_TOTAL_LINES = 4250
 
 # Load-bearing literals carried by the ten slimmed invariants (Inv 3, 32, 4, 6, 7,
 # 30, 56, 1, 18, 29). Each is a script name, schema field, decision token, or a
