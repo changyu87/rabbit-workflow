@@ -245,6 +245,18 @@ POST_1161_ADD_INVARIANTS = 1
 # stays ENFORCED while the #1160 invariant is admitted.
 POST_1160_ADD_LINES = 50
 POST_1160_ADD_INVARIANTS = 1
+# #1168 added a NEW invariant (Inv 71): a follow-up to Inv 70 — after a stop the
+# RECURRING/durable heartbeat stayed armed, and on the croncreate fallback each
+# empty post-stop fire burned a full live Claude turn indefinitely (until `off`).
+# schedule-decision.py gains a `cancel-heartbeat` subcommand that resolves the
+# scheduler and emits {scheduler, cancel_heartbeat_ids} so a stop ALSO disarms
+# the durable CronCreate heartbeat on the croncreate path while emitting an empty
+# set on the Claude-free crontab path; the start flow re-arms it via the existing
+# idempotent bootstrap. A genuine bug-fix addition, not slim regression. Mirror
+# the prior headroom so the #751 reduction (>= 150 lines, >= 4 invariants) stays
+# ENFORCED while the #1168 invariant is admitted.
+POST_1168_ADD_LINES = 70
+POST_1168_ADD_INVARIANTS = 1
 MAX_TOTAL_LINES = (
     BASELINE_TOTAL_LINES - MIN_LINES_CUT + POST_881_ADD_LINES
     + POST_927_ADD_LINES + POST_948_ADD_LINES + POST_942_ADD_LINES
@@ -254,6 +266,7 @@ MAX_TOTAL_LINES = (
     + POST_1051_ADD_LINES + POST_1081_ADD_LINES + POST_1091_ADD_LINES
     + POST_1101_ADD_LINES + POST_1109_ADD_LINES + POST_1154_ADD_LINES
     + POST_1158_ADD_LINES + POST_1161_ADD_LINES + POST_1160_ADD_LINES
+    + POST_1168_ADD_LINES
 )
 
 # The deep slim must reduce the invariant count (count-floor removed in #750).
@@ -269,6 +282,7 @@ MAX_INVARIANT_COUNT = (
     + POST_1051_ADD_INVARIANTS + POST_1081_ADD_INVARIANTS
     + POST_1091_ADD_INVARIANTS + POST_1101_ADD_INVARIANTS
     + POST_1161_ADD_INVARIANTS + POST_1160_ADD_INVARIANTS
+    + POST_1168_ADD_INVARIANTS
 )
 
 # --- (c) SURVIVAL: load-bearing tokens that MUST still appear in spec.md ---

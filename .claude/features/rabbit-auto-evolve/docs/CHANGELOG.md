@@ -16,6 +16,26 @@ authoritative).
 
 ## Version notes
 
+- **v0.100.0 — 2026-06-11** — #1168 (bug, priority:medium). Follow-up to #1160.
+  After a `stop`, Inv 70 tore down the armed `#refire` one-shot but the
+  RECURRING/durable heartbeat stayed armed. On the `CronCreate`-fallback path the
+  heartbeat fires a real `/rabbit-auto-evolve tick` = a LIVE Claude turn, so each
+  post-stop empty fire re-entered the session, observed the stop marker, halted
+  at phase 0, and burned a full turn — indefinitely, until the user ran `off`.
+  The headless `crontab` path is Claude-free (an empty fire is ≈free), so the fix
+  is SCOPED to `croncreate` (Inv 71). `schedule-decision.py` gains a
+  `cancel-heartbeat` subcommand that resolves the scheduler (via
+  `detect-scheduler.py`) and emits `{scheduler, cancel_heartbeat_ids}`: on the
+  `croncreate` path `cancel_heartbeat_ids` is every heartbeat id (recurring OR
+  durable, no `#refire` marker — the `_is_heartbeat` complement of the Inv 33/47
+  `is_refire_oneshot` predicate); on the `crontab` path it is always empty. An
+  absent/malformed snapshot yields an empty set (clean no-op). The SKILL.md
+  `stop` section directs the dispatcher to run `cancel-heartbeat` after the
+  Inv 70 `cancel-refire` step and `CronDelete` each id; the `start` section
+  documents the idempotent re-arm (the existing `CronList` → create-if-absent
+  bootstrap), firing the INTERNAL `tick`, never the USER-intent `start` (Inv 41).
+  Enforced by `test/test-cancel-heartbeat.py` (e2e) and `test/test-start-stop-skill.py`.
+
 - **v0.99.0 — 2026-06-11** — #1160 (bug, priority:low). A user `stop` wrote
   the `.rabbit-auto-evolve-stop-requested` marker but did NOT cancel a pending
   `#refire` session-only CronCreate one-shot already armed by a prior tick's

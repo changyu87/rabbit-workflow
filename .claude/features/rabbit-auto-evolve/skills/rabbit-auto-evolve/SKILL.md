@@ -1,6 +1,6 @@
 ---
 name: rabbit-auto-evolve
-version: 0.99.0
+version: 0.100.0
 owner: rabbit-workflow team
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
 description: Self-driving rabbit loop that continuously fetches open actionable GitHub issues (valid `feature:` + `priority:` label), triages each one, dispatches TDD subagents to implement actionable work, merges approved PRs into the integration target, tags versioned releases, and is fired on a fixed cadence by a system cron (installed at `on`) until the user issues an explicit stop. Invoke for any natural-language phrasing matching "start auto-evolve", "stop the loop", "auto-evolve status", "let rabbit run", "begin autonomous evolve", "enter auto evolve mode" / "enter auto-evolve mode" (the unhyphenated "auto evolve" spelling counts too), "turn on autonomous evolve" / "enable autonomous evolve", "resume the loop", or any `/rabbit-auto-evolve <subcommand>` form. Invoking `start` from a fresh state auto-routes to `on` and prompts for a Claude restart — no need to run `on` manually first.
@@ -138,6 +138,18 @@ type `/rabbit-auto-evolve on` themselves.
    the `.rabbit-auto-evolve-running` marker — that write is owned by the shared
    phase-walk (Inv 42). A MACHINE-fired `tick` NEVER runs this step (see
    "`tick` (internal)" below).
+0b. **Re-arm the durable heartbeat on the croncreate path (DISPATCHER action —
+   Inv 71).** A prior `stop` DISARMS the durable `CronCreate` heartbeat on the
+   `croncreate` fallback (the Inv 71 `cancel-heartbeat` step in the `stop`
+   flow), so an explicit user `start` must RE-ARM it. This reuses the EXISTING
+   idempotent bootstrap (the same one `on` describes): when the scheduler is
+   `croncreate`, run `CronList` and `CronCreate(cron="13,43 * * * *",
+   prompt="/rabbit-auto-evolve tick", durable=true)` only if no matching
+   heartbeat already exists — idempotent, so a `start` on a host whose heartbeat
+   is still armed is a clean no-op. The re-armed heartbeat fires the INTERNAL
+   `tick`, NEVER the USER-intent `start` (Inv 41), so a machine wake-up can
+   never cancel a human's stop. On the `crontab` path the heartbeat is the
+   system-cron entry and was never disarmed, so there is nothing to re-arm.
 1. Run one `tick` by walking the shared scripted phase-walk — the dispatcher
    supplies ONLY Phase 6 (see "`tick` (internal)" below). The walk's
    pre-dispatch segment self-syncs the tree (Inv 38), runs the running-guard
@@ -191,6 +203,28 @@ session-only one-shots; the durable recurring heartbeat (bare
 listed under `preserve_heartbeat_ids` — leave it UNTOUCHED (Inv 47). An absent
 or empty `CronList` snapshot yields an empty `cancel_refire_ids`, so the step
 is a clean no-op when nothing is armed.
+
+**Disarm the durable heartbeat on the croncreate path (DISPATCHER action —
+Inv 71).** The `cancel-refire` step above leaves the RECURRING/durable
+heartbeat armed. On the `crontab` path that is fine — the heartbeat is a
+system-cron entry firing `tick-headless.py`, which is Claude-FREE, so an empty
+post-stop fire costs ≈nothing and only `off` removes it (Inv 1). But on the
+`croncreate` fallback the heartbeat is a durable `CronCreate` entry firing a
+real `/rabbit-auto-evolve tick` = a LIVE Claude turn; left armed it keeps firing
+forever after the stop, re-entering the session, observing the marker, and
+halting at phase 0 — burning a full turn per fire until the user runs `off`. So
+IMMEDIATELY after the `cancel-refire` step, the dispatcher runs the heartbeat
+disarm: pass the SAME `CronList` result through `RABBIT_AUTO_EVOLVE_CRON_LIST`
+to
+`python3 .claude/features/rabbit-auto-evolve/scripts/schedule-decision.py cancel-heartbeat`,
+which resolves the scheduler (via `detect-scheduler.py`) and emits
+`{scheduler, cancel_heartbeat_ids}`, and `CronDelete` every id in
+`cancel_heartbeat_ids`. On the `croncreate` path `cancel_heartbeat_ids` is every
+heartbeat id (recurring OR durable, no `#refire` marker); on the `crontab` path
+it is ALWAYS empty (nothing to tear down — a clean no-op), as is an absent or
+malformed snapshot. The refire one-shots are NEVER in `cancel_heartbeat_ids`
+(the `cancel-refire` step owns those, Inv 70). The next explicit user `start`
+re-arms the heartbeat (see the `start` section).
 
 ### `status`
 

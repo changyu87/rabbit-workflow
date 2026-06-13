@@ -119,6 +119,32 @@ def main():
               "cancelled — Inv 47)", file=sys.stderr)
         sys.exit(1)
 
+    # Inv 71 (#1168): on the CronCreate-fallback path the `stop` section MUST
+    # ALSO disarm the durable heartbeat. After the Inv 70 cancel-refire step the
+    # dispatcher runs `schedule-decision.py cancel-heartbeat`, which resolves the
+    # scheduler and emits `{scheduler, cancel_heartbeat_ids}`; on the croncreate
+    # path each `cancel_heartbeat_ids` id is CronDeleted (on the Claude-free
+    # crontab path the set is empty, so nothing is torn down).
+    inv71_required = [
+        ("schedule-decision.py cancel-heartbeat",
+         "Inv 71: `stop` section must invoke "
+         "`schedule-decision.py cancel-heartbeat` after the cancel-refire step"),
+        ("cancel_heartbeat_ids",
+         "Inv 71: `stop` section must name the `cancel_heartbeat_ids` field"),
+        ("croncreate",
+         "Inv 71: `stop` section must scope the heartbeat disarm to the "
+         "`croncreate` fallback path"),
+    ]
+    for needle, msg in inv71_required:
+        if needle not in stop_body:
+            print(f"FAIL: {msg}", file=sys.stderr)
+            sys.exit(1)
+
+    # Inv 71 (#1168): the `start` section MUST document the idempotent re-arm of
+    # the durable heartbeat after a stop has disarmed it (the existing
+    # CronList -> create-if-absent bootstrap). The start_body is extracted below;
+    # defer the assertion until after that extraction.
+
     # Inv 20: SKILL.md tick documentation must call out end-tick.py on
     # every exit path — not only the normal completion path. The prose
     # must mention each of the four named exit paths so a reader can see
@@ -212,6 +238,26 @@ def main():
          "when markers exist but bypass-permissions has not loaded"),
     ]
     for needle, msg in inv10_required_phrases:
+        if needle not in start_lower:
+            print(f"FAIL: {msg}", file=sys.stderr)
+            sys.exit(1)
+
+    # Inv 71 (#1168): the `start` section MUST document the idempotent re-arm of
+    # the durable heartbeat (the existing CronList -> create-if-absent
+    # bootstrap), so an explicit user `start` resurrects a heartbeat that a prior
+    # `stop` disarmed on the croncreate path.
+    inv71_start_required = [
+        ("re-arm",
+         "Inv 71: `start` section must describe re-arming the durable "
+         "heartbeat that a prior `stop` disarmed (search-phrase 're-arm')"),
+        ("idempotent",
+         "Inv 71: `start` section must describe the heartbeat re-arm as "
+         "idempotent (CronList -> create-if-absent)"),
+        ("croncreate",
+         "Inv 71: `start` section must scope the heartbeat re-arm to the "
+         "`croncreate` fallback path"),
+    ]
+    for needle, msg in inv71_start_required:
         if needle not in start_lower:
             print(f"FAIL: {msg}", file=sys.stderr)
             sys.exit(1)
