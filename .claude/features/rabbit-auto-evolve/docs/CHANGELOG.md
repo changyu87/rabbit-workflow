@@ -16,6 +16,15 @@ authoritative).
 
 ## Version notes
 
+- **v0.100.2 — 2026-06-13** — #1167 (housekeeping). Code-comment-only fix.
+  The `run-tick-phases.py` module docstring described the post-merge
+  re-sync step as re-syncing "to origin/dev", contradicting the completed
+  dev→main cutover. Updated the docstring to state that `sync-tree.py`
+  resolves the integration target via `integration_target.py`
+  `resolve_target()` (Inv 45 / Inv 61) and runs `git pull --ff-only origin
+  <resolved-target>` rather than a hardcoded branch. No behavior change.
+  Pinned by
+  `test/test-spec-housekeeping-1167-resync-comment-target.py`.
 - **v0.100.1 — 2026-06-13** — #1166 (housekeeping). Doc-only fix. The SKILL.md
   headless-tick self-sync prose still described the integration target as the
   coexistence-era "dev default, main post-cutover" form, contradicting the
