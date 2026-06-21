@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.9.1
+version: 0.10.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -21,10 +21,13 @@ CONSUMING PROJECT's declared features (the user's project under
 standalone) — never on rabbit-workflow's own framework features.
 
 Cleanup runs in two dimensions: the DOC dimension (default, slimming doc
-surfaces) and an OPT-IN CODE dimension (the `--code` selector, simplifying and
-dead-code-pruning the feature's `src/`). In both, reduction is REPORTED, never
-MANDATED: the ONE MANDATORY gate is behavior preserved (the feature's existing
-test suite stays green). When there is dead, redundant, or simplifiable content
+surfaces) and the CODE dimension (the `--code` selector, which is ADDITIVE —
+it runs docs AND code, not docs OR code). `--code` slims doc surfaces first,
+then simplifies and dead-code-prunes the feature's `src/`. `--docs-only`
+selects doc surfaces only and is the explicit escape hatch for cheap doc-only
+waves (same as the default; provided for clarity). In both, reduction is
+REPORTED, never MANDATED: the ONE MANDATORY gate is behavior preserved (the
+feature's existing test suite stays green). When there is dead, redundant, or simplifiable content
 the wave removes it (`verdict: reduced`); when the target is already lean and
 nothing is dead, the wave honestly reports `verdict: no-op` — an already-clean
 SUCCESS, not a failure, never forced into a reword. Reduction is MEASURED with a
@@ -303,17 +306,20 @@ subcommand). The script makes the DECISION; the SKILL performs the resulting
     `vendored` (canonical) / `plugin` (legacy) marker value with a structural
     fallback to a present `rabbit-project/` work tree. Bad invocation exits `2`.
 
-11. The SKILL.md MUST keep the DOC dimension as the DEFAULT and document an
-    OPT-IN CODE dimension selected by `--code`. The code dimension MUST state
-    the priority order — SIMPLIFY first via the in-environment `code-simplifier`
-    agent (preserving all functionality), then DEAD CODE removal applying the
-    coding-rules §6 grep-for-callers protocol to `src/` symbols (none = dead →
-    remove; unverifiable → FLAG a `housekeeping`-tagged sub-issue), then
-    measured `src/` REDUCTION reported honestly — routed through the governed
-    TDD path. It MUST state the ONE MANDATORY gate is behavior preserved (the
-    feature's existing test suite stays green), that an already-clean target is
-    an honest `no-op` SUCCESS, and that cleanup edits only the target feature's
-    `src/`, never cross-feature.
+11. The SKILL.md MUST keep the DOC dimension as the DEFAULT and document the
+    CODE dimension selected by `--code` as ADDITIVE (docs AND code, not docs OR
+    code): `--code` runs doc steps first, then code dimension steps on `src/`.
+    `--docs-only` MUST be documented as the explicit escape hatch for a
+    doc-only wave. The code dimension MUST state the priority order — SIMPLIFY
+    first via the in-environment `code-simplifier` agent (preserving all
+    functionality), then DEAD CODE removal applying the coding-rules §6
+    grep-for-callers protocol to `src/` symbols (none = dead → remove;
+    unverifiable → FLAG a `housekeeping`-tagged sub-issue), then measured `src/`
+    REDUCTION reported honestly — routed through the governed TDD path. It MUST
+    state the ONE MANDATORY gate is behavior preserved (the feature's existing
+    test suite stays green), that an already-clean target is an honest `no-op`
+    SUCCESS, and that cleanup edits only the target feature's `src/`, never
+    cross-feature.
 
 12. `scripts/wave-automerge.py` MUST provide a deterministic `decide`
     subcommand that reads a JSON gating payload on stdin and emits a decision
