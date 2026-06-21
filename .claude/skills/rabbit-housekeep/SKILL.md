@@ -1,7 +1,7 @@
 ---
 name: rabbit-housekeep
-description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole repo — in complexity-sized waves. Each wave proves-it-dead-or-flags every claim, measures before/after line counts, mandates ACTUAL removal (not rewording), and preserves named load-bearing tokens. Also enforces the spec-rules §4 Script-Backed Orchestration standard as a script-tier verify-or-flag dimension: it scans SKILL/agent/command bodies for non-script-backed orchestration steps and flags each. Cross-feature or repo-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or the repo, remove dead prose, scrub historical burden, check that orchestration is script-backed, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "run a reduction wave", "clean up dead prose", "check script-backed orchestration", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
-version: 0.4.0
+description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole project — in complexity-sized waves. The wave targets the CONSUMING PROJECT's declared features, not rabbit's own framework. Each wave proves-it-dead-or-flags every claim, measures before/after line counts, mandates ACTUAL removal (not rewording), and preserves named load-bearing tokens. Also enforces the spec-rules §4 Script-Backed Orchestration standard as a script-tier verify-or-flag dimension: it scans SKILL/agent/command bodies for non-script-backed orchestration steps and flags each. Cross-feature or project-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or their project, remove dead prose, scrub historical burden, check that orchestration is script-backed, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "run a reduction wave", "clean up dead prose", "check script-backed orchestration", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
+version: 0.5.0
 owner: rabbit-workflow team
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
 ---
@@ -69,14 +69,34 @@ Do not paraphrase it — apply it.
   commands (e.g. `git log --oneline -5`) are acceptable inline.
 <!-- END VERBATIM spec-rules.md §4 Script-Backed Orchestration -->
 
+## Scope: the consuming project, not rabbit's self-repo
+
+This skill is user-facing (invocable as `/rabbit-housekeep`). A wave operates on
+the CONSUMING PROJECT's declared features — the project the user is building
+with rabbit — NEVER on rabbit-workflow's own framework features. In a vendored
+install that is `rabbit-project/features/*`; rabbit's own `.claude/features/*`
+are EXCLUDED. In a standalone install the project IS the repo
+(`.claude/features/*`).
+
+Resolve the in-scope feature set deterministically with the mode-aware
+companion script — do not enumerate features by hand:
+
+<!-- example: illustrative invocation, not a live step -->
+```bash
+python3 .claude/features/rabbit-housekeep/scripts/resolve-housekeep-scope.py \
+  list
+```
+
 ## Inputs
 
 Args format: `<target>`
 
 The target is one of:
-- a single feature name (`rabbit-issue`) — a one-wave tidy;
-- a set of feature names (`rabbit-issue rabbit-spec`) — one wave per feature;
-- a repo-wide directive (`--repo` or `all`) — many waves, decomposed.
+- a single project feature name (`user-auth`) — a one-wave tidy;
+- a set of project feature names (`user-auth billing`) — one wave per feature;
+- a project-wide directive (`--repo` or `all`) — many waves, decomposed;
+- omitted — every consuming-project feature
+  (`resolve-housekeep-scope.py list`).
 
 When the target is unclear, ask the user one focused question. Do not guess
 the scope.
