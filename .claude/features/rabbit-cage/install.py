@@ -39,7 +39,7 @@ This module has two distinct roles:
      (test-deployed-hooks-execute.py, test-install-publish-loop.py) to exercise
      the publish flow against a freshly copied .claude tree.
 
-Version: 6.11.1
+Version: 6.12.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit's per-project vendored model is superseded
 """
@@ -180,6 +180,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "scripts/rabbit-project.py",
         "scripts/rabbit-project-set-path.py",
         "scripts/rabbit-project-map.py",
+        "scripts/rabbit-refresh-rebaseline.py",
         "lib/__init__.py",
         "lib/project_map_reader.py",
         "lib/runtime_root.py",

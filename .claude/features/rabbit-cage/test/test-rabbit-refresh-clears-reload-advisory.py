@@ -1,23 +1,29 @@
 #!/usr/bin/env python3
-"""test-reload-skills-clears-reload-advisory.py — e2e: issue #1173 (Inv 54f).
+"""test-rabbit-refresh-clears-reload-advisory.py — e2e: issue #1193 (Inv 54f).
 
-The tiered `/reload-skills` advisory (Inv 54e, issue #1156) must CLEAR after the
-user actually runs `/reload-skills`. Before this fix the snapshot baseline was
-re-written only on SessionStart, so the reload-tier advisory persisted forever:
-`/reload-skills` is a Claude Code built-in that does NOT start a session, so it
-never updated rabbit-cage's snapshot, and the "no restart needed" nag fired on
-every Stop / UserPromptSubmit indefinitely.
+The tiered `reload ADVISED` advisory (Inv 54e) must be CLEARABLE by an action the
+user can take mid-session WITHOUT a full restart. The #1173 wiring tied the clear
+to the submitted prompt `/reload-skills`, but `/reload-skills` is a Claude Code
+CLIENT-LOCAL built-in that reloads `SKILL.md` definitions in-process and NEVER
+fires the UserPromptSubmit hook — so the dispatcher never observed it and
+`rebaseline_skill_tier` was never called. The advisory persisted until a full
+restart, the very thing it advised against.
 
-The fix: when the UserPromptSubmit dispatcher observes the submitted prompt is
-`/reload-skills`, it re-baselines ONLY the `SKILL.md`-tier keys of the snapshot
-(so the reload-tier advisory clears) while leaving the hard-restart-tier keys
-(hooks / settings / CLAUDE.md / agents) UNTOUCHED — a genuine hook/settings/
-CLAUDE.md/agent change still legitimately requires a restart.
+The corrected clearing surface is the `/rabbit-refresh` command, which IS a real
+submitted command whose body runs deterministic `!` bash. Its body now invokes
+`scripts/rabbit-refresh-rebaseline.py`, which re-baselines ONLY the `SKILL.md`
+tier of the snapshot.
 
-This is an end-to-end test: it builds a fake install root with the deployed
-dispatchers + shared lib, runs SessionStart to snapshot, mutates surfaces on
-disk, runs the UserPromptSubmit dispatcher as a subprocess WITH a stdin prompt
-payload, and asserts on the emitted JSON.
+This test exercises the REAL companion script as a subprocess and the REAL
+deployed dispatchers, asserting:
+  - after a SKILL.md change the reload advisory fires;
+  - running rabbit-refresh-rebaseline.py clears it on the next Stop /
+    UserPromptSubmit tick;
+  - a concurrent HARD-restart change (a hook) is NOT cleared by the re-baseline;
+  - a NEW SKILL.md change AFTER the re-baseline still fires a fresh advisory (the
+    clear is not a permanent suppression).
+Also asserts the dead `/reload-skills` prompt-match branch is gone from the
+dispatcher source.
 """
 
 import json
@@ -35,11 +41,11 @@ SESSION_SRC = RABBIT_CAGE / "hooks/session-start-dispatcher.py"
 UPS_SRC = RABBIT_CAGE / "hooks/user-prompt-submit-dispatcher.py"
 DISPATCHER_LIB_SRC = RABBIT_CAGE / "hooks/_dispatcher_lib.py"
 SNAPSHOT_SRC = RABBIT_CAGE / "hooks/restart_snapshot.py"
+REBASELINE_SRC = RABBIT_CAGE / "scripts/rabbit-refresh-rebaseline.py"
 RABBIT_CAGE_FEATURE_JSON = RABBIT_CAGE / "feature.json"
 
 RESTART_FRAGMENT = "restart ADVISED"
 RELOAD_FRAGMENT = "reload ADVISED"
-RELOAD_COMMAND = "/reload-skills"
 SNAPSHOT_FILE = ".rabbit-restart-snapshot"
 
 pass_n = 0
@@ -70,6 +76,14 @@ def _build_install_root(td: Path) -> Path:
     shutil.copy2(DISPATCHER_LIB_SRC, hooks_dir / "_dispatcher_lib.py")
     shutil.copy2(SNAPSHOT_SRC, hooks_dir / "restart_snapshot.py")
 
+    # Deploy the companion script under its feature path so its
+    # `parent.parent / hooks` import of restart_snapshot resolves.
+    cage_dir = install_root / ".claude/features/rabbit-cage"
+    (cage_dir / "scripts").mkdir(parents=True)
+    (cage_dir / "hooks").mkdir(parents=True)
+    shutil.copy2(REBASELINE_SRC, cage_dir / "scripts/rabbit-refresh-rebaseline.py")
+    shutil.copy2(SNAPSHOT_SRC, cage_dir / "hooks/restart_snapshot.py")
+
     (install_root / ".claude/features").mkdir(parents=True, exist_ok=True)
     shutil.copytree(
         REPO / ".claude/features/contract",
@@ -79,8 +93,6 @@ def _build_install_root(td: Path) -> Path:
         REPO / ".claude/features/rabbit-meta",
         install_root / ".claude/features/rabbit-meta",
     )
-    cage_dir = install_root / ".claude/features/rabbit-cage"
-    cage_dir.mkdir(parents=True)
     shutil.copy2(RABBIT_CAGE_FEATURE_JSON, cage_dir / "feature.json")
     pol = install_root / ".claude/features/policy"
     pol.mkdir(parents=True)
@@ -102,10 +114,10 @@ def _build_install_root(td: Path) -> Path:
     return install_root
 
 
-def _run(dispatcher: Path, install_root: Path, stdin: str = ""):
+def _run(target: Path, install_root: Path, stdin: str = ""):
     env = {**os.environ, "RABBIT_ROOT": str(install_root)}
     return subprocess.run(
-        [sys.executable, str(dispatcher)],
+        [sys.executable, str(target)],
         input=stdin,
         capture_output=True,
         text=True,
@@ -126,6 +138,13 @@ def _ups(r, stdin=""):
     return _run(r / ".claude/hooks/user-prompt-submit-dispatcher.py", r, stdin)
 
 
+def _refresh_rebaseline(r):
+    return _run(
+        r / ".claude/features/rabbit-cage/scripts/rabbit-refresh-rebaseline.py",
+        r,
+    )
+
+
 def _sysmsg(proc) -> str:
     out = proc.stdout.strip()
     if not out:
@@ -137,7 +156,7 @@ def _sysmsg(proc) -> str:
 
 
 def _has_reload(msg):
-    return RELOAD_FRAGMENT in msg and RELOAD_COMMAND in msg
+    return RELOAD_FRAGMENT in msg
 
 
 def _has_restart(msg):
@@ -150,93 +169,80 @@ def _snapshot_session(r):
     assert (r / SNAPSHOT_FILE).exists(), "SessionStart must write snapshot"
 
 
-# --- t1: a SKILL.md change + /reload-skills prompt → reload advisory CLEARS. -
+# --- t1: SKILL.md change → reload advisory fires; /rabbit-refresh clears it. --
 with tempfile.TemporaryDirectory() as td:
     r = _build_install_root(Path(td).resolve())
     _snapshot_session(r)
     (r / ".claude/skills/rabbit-feature-touch/SKILL.md").write_text(
         "# CHANGED skill v2\n")
 
-    # Sanity: before the reload prompt, the reload advisory fires.
     pre = _ups(r)
     if not _has_reload(_sysmsg(pre)):
-        bad(f"pre-reload: expected reload advisory; sysmsg={_sysmsg(pre)!r}")
+        bad(f"pre-refresh: expected reload advisory; sysmsg={_sysmsg(pre)!r}")
     else:
-        ok("pre-reload: reload advisory fires on a SKILL.md change")
+        ok("pre-refresh: reload advisory fires on a SKILL.md change")
 
-    # Submit a /reload-skills prompt — the dispatcher should re-baseline the
-    # SKILL.md tier so the advisory clears on THIS emission.
-    reload_stdin = json.dumps(
-        {"hook_event_name": "UserPromptSubmit", "prompt": "/reload-skills"})
-    post = _ups(r, reload_stdin)
-    if post.returncode != 0:
-        bad(f"reload UPS non-zero rc={post.returncode} "
-            f"stderr={post.stderr.strip()!r}")
-    elif _has_reload(_sysmsg(post)):
-        bad(f"reload prompt did NOT clear reload advisory; "
-            f"sysmsg={_sysmsg(post)!r}")
+    rb = _refresh_rebaseline(r)
+    if rb.returncode != 0:
+        bad(f"rebaseline script non-zero rc={rb.returncode} "
+            f"stderr={rb.stderr.strip()!r}")
     else:
-        ok("reload prompt clears the reload advisory on its own emission")
+        ok("rabbit-refresh-rebaseline.py exits 0")
 
-    # After the reload, subsequent ticks (Stop + plain UserPromptSubmit) must
-    # STAY silent — the snapshot's SKILL.md key was re-baselined on disk.
     for name, proc in (("Stop", _stop(r)), ("UserPromptSubmit", _ups(r))):
         msg = _sysmsg(proc)
         if proc.returncode != 0:
-            bad(f"post-reload {name} non-zero rc={proc.returncode}")
+            bad(f"post-refresh {name} non-zero rc={proc.returncode}")
         elif _has_reload(msg):
-            bad(f"post-reload {name} reload advisory persists; sysmsg={msg!r}")
+            bad(f"post-refresh {name} reload advisory persists; sysmsg={msg!r}")
         else:
-            ok(f"post-reload {name} reload advisory stays cleared")
+            ok(f"post-refresh {name} reload advisory cleared")
 
 
-# --- t2: reload does NOT clear a concurrent HARD-restart change. -------------
+# --- t2: /rabbit-refresh does NOT clear a concurrent HARD-restart change. -----
 with tempfile.TemporaryDirectory() as td:
     r = _build_install_root(Path(td).resolve())
     _snapshot_session(r)
-    # BOTH a SKILL.md and a hook change happen since the session snapshot.
     (r / ".claude/skills/rabbit-feature-touch/SKILL.md").write_text(
         "# CHANGED skill v2\n")
     (r / ".claude/hooks/some-hook.py").write_text("# CHANGED hook\n")
 
-    reload_stdin = json.dumps(
-        {"hook_event_name": "UserPromptSubmit", "prompt": "/reload-skills"})
-    post = _ups(r, reload_stdin)
-    msg = _sysmsg(post)
-    if post.returncode != 0:
-        bad(f"mixed reload UPS non-zero rc={post.returncode} "
-            f"stderr={post.stderr.strip()!r}")
-    elif not _has_restart(msg):
-        bad(f"reload wrongly cleared the hard-restart advisory; "
+    rb = _refresh_rebaseline(r)
+    if rb.returncode != 0:
+        bad(f"mixed rebaseline non-zero rc={rb.returncode}")
+    nxt = _stop(r)
+    msg = _sysmsg(nxt)
+    if not _has_restart(msg):
+        bad(f"post-refresh hard-restart advisory wrongly cleared; "
             f"sysmsg={msg!r}")
     else:
-        ok("reload leaves the concurrent hook change's restart advisory intact")
-
-    # And the hard-restart advisory must persist on the NEXT tick too (the
-    # hook tier was never re-baselined).
-    nxt = _stop(r)
-    if not _has_restart(_sysmsg(nxt)):
-        bad(f"post-reload hook restart advisory lost on next tick; "
-            f"sysmsg={_sysmsg(nxt)!r}")
-    else:
-        ok("post-reload hook restart advisory persists on the next tick")
+        ok("post-refresh concurrent hook change still fires restart advisory")
 
 
-# --- t3: a non-/reload-skills prompt does NOT clear the reload advisory. -----
+# --- t3: a NEW SKILL.md change AFTER the re-baseline fires a fresh advisory. --
 with tempfile.TemporaryDirectory() as td:
     r = _build_install_root(Path(td).resolve())
     _snapshot_session(r)
     (r / ".claude/skills/rabbit-feature-touch/SKILL.md").write_text(
         "# CHANGED skill v2\n")
-
-    other_stdin = json.dumps(
-        {"hook_event_name": "UserPromptSubmit", "prompt": "do something else"})
-    post = _ups(r, other_stdin)
-    if not _has_reload(_sysmsg(post)):
-        bad(f"unrelated prompt wrongly cleared reload advisory; "
-            f"sysmsg={_sysmsg(post)!r}")
+    _refresh_rebaseline(r)
+    # The first advisory is cleared; now a SECOND, genuinely new SKILL.md change.
+    (r / ".claude/skills/rabbit-feature-touch/SKILL.md").write_text(
+        "# CHANGED AGAIN skill v3\n")
+    proc = _ups(r)
+    if not _has_reload(_sysmsg(proc)):
+        bad(f"a NEW SKILL.md change after refresh must re-advise; "
+            f"sysmsg={_sysmsg(proc)!r}")
     else:
-        ok("an unrelated prompt leaves the reload advisory firing")
+        ok("a new SKILL.md change after refresh fires a fresh reload advisory")
+
+
+# --- t4: the dead /reload-skills prompt-match branch is gone from dispatcher. -
+ups_text = UPS_SRC.read_text()
+if "/reload-skills" in ups_text and "== _RELOAD_SKILLS_COMMAND" in ups_text:
+    bad("dispatcher still carries the dead /reload-skills prompt-match branch")
+else:
+    ok("dispatcher no longer prompt-matches the client-local /reload-skills")
 
 
 print()
