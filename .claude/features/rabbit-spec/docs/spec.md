@@ -1,6 +1,6 @@
 ---
 feature: rabbit-spec
-version: 1.20.0
+version: 1.21.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code exposes native spec-lifecycle skills that supersede this feature
@@ -198,6 +198,31 @@ handoff so the orchestrator's context stays isolated from the full draft body.
    Enforced by `test/test-script-backed-clean.py` (asserts
    `.claude/features/rabbit-housekeep/scripts/check-script-backed.py scan` of
    the feature dir reports `count: 0`), wired into `test/run.py`.
+
+9. **`rabbit-spec-update` carries an additive intent-only / no-commit mode.**
+   `skills/rabbit-spec-update/SKILL.md` MUST document an opt-in
+   `--intent-only` flag (the no-commit / emit-intent mode) that is OFF by
+   default. The flag is additive and backward-compatible: when it is absent,
+   the skill's default behaviour is UNCHANGED — it edits and writes the
+   target `docs/spec.md` (Step 4) and writes the
+   `.rabbit/impl-suggestion-<feature-name>.json` file (Step 5). When the flag
+   IS present, the skill body MUST direct the skill to:
+   - Run the read-only/analysis steps (Read, Judge, Superpowers) as in the
+     default flow to COMPUTE the intent.
+   - SHORT-CIRCUIT the Step 4 spec edit: it MUST NOT edit or write
+     `docs/spec.md` and MUST NOT commit; the on-disk `docs/spec.md` stays
+     byte-identical. The deferred spec edit is the consumer's job.
+   - EMIT the intent payload as JSON on stdout instead of writing the
+     impl-suggestion FILE, reusing the EXISTING impl-suggestion schema
+     verbatim (the Step 5 object shape: `schema_version`, `feature`,
+     `generated_at`, `request_summary`, `spec_changes`,
+     `implementation_approach`, `affected_files`, `key_invariants`, and the
+     optional `owner` / `deprecation` fields). No new schema is invented;
+     only the sink differs (stdout JSON vs. the impl-suggestion file) and
+     the spec edit/commit is skipped.
+   Both Step 4 and Step 5 MUST carry an intent-only guard so a skill
+   following the body short-circuits correctly. Enforced by
+   `test/test-rabbit-spec-update-intent-only.py`, wired into `test/run.py`.
 
 ## Tech Stack
 

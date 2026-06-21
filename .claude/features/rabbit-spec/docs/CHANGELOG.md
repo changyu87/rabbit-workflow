@@ -25,6 +25,41 @@ Each retirement entry below carries the original invariant number (as it appeare
 
 ## Version notes
 
+- **v1.21.0 (#1197 — rabbit-spec-update intent-only / no-commit mode):**
+  Added an additive, opt-in `--intent-only` flag to
+  `skills/rabbit-spec-update/SKILL.md`. This is the rabbit-spec half of the
+  #1189 -> #1197 -> #1198 chain: a housekeep spec reduction should ride a
+  single full-TDD cycle, but today the skill ALWAYS edits + writes
+  `docs/spec.md`, so when a caller commits that edit BEFORE dispatching the
+  TDD subagent, the subagent's spec-update->test-red transition has no
+  working-tree spec diff. The new mode lets the skill EMIT the spec-intent
+  payload WITHOUT performing the spec edit, so the actual `docs/spec.md`
+  change can be authored later by the consumer under its own scope marker.
+  In intent-only mode the skill runs Read/Judge/Superpowers to COMPUTE the
+  intent, SHORT-CIRCUITS the Step 4 spec edit (no edit/write of
+  `docs/spec.md`, no commit — the file stays byte-identical), and EMITS the
+  same impl-suggestion payload as JSON on stdout instead of writing the
+  `.rabbit/impl-suggestion-<name>.json` FILE. The schema is reused verbatim;
+  only the sink differs. Default behaviour (edit + write) is UNCHANGED when
+  the flag is absent — backward-compatible, additive-by-default. SKILL.md
+  body gains an `## Intent-Only Mode (--intent-only)` section, an Inputs
+  args note, and intent-only guards on Step 4 and Step 5 (v2.8.0 -> v2.9.0).
+  spec.md gains Inv 9 codifying the mode; numbering stays contiguous 1..9 (no
+  renumber, no retirement). New source-inspection test
+  `test/test-rabbit-spec-update-intent-only.py` asserts the flag, the
+  dedicated section, the stdout-JSON emit reusing the impl-suggestion schema,
+  the no-edit/no-commit short-circuit, the unchanged default, and the Step 4
+  guard; auto-wired via `test/run.py`. The stale `spec_no_change_reason`
+  field (it described a PRIOR cycle's spec amendment) was removed from
+  feature.json since the spec is amended this cycle. Four-way version
+  alignment bumped spec.md/contract.md/feature.json 1.20.0 -> 1.21.0
+  (contract JSON content unchanged this cycle — the new stdout-intent output
+  is a behavioural detail of an already-listed skill, not a new cross-feature
+  boundary; version-only bump to satisfy the lockstep assertion). The
+  consumption of this mode by rabbit-feature-touch is #1198 (separate
+  feature). The deployed `.claude/skills/rabbit-spec-update/SKILL.md`
+  requires a dispatcher republish (deployed-skill-match RED until then).
+
 - **v1.20.0 (#1079 — retire the now-redundant relocation shim):** #1073 fixed
   the `.rabbit/.rabbit/prompts/` doubling at its SOURCE — `contract/scripts/
   build-prompt.py` now anchors the prompts dir at the canonical
