@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.8.0
+version: 0.9.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -83,10 +83,15 @@ The skill sizes the work into waves by target complexity:
   child closes.
 
 Each per-feature unit executes through the governed TDD path —
-rabbit-feature-touch, which dispatches the TDD subagent. The housekeeping
-test pattern asserts the MANDATORY behavior-preserved gate (the existing test
-suite stays green) and that the named load-bearing tokens survive; it REPORTS
-the measured `verdict` (`reduced` or `no-op`) but does not mandate reduction.
+rabbit-feature-touch, which dispatches the TDD subagent. The dispatch carries
+the `housekeep: measured reduction wave` signal that feature-touch's
+reduction-wave detection keys on, so the per-feature spec reduction rides ONE
+governed RED->GREEN cycle: the subagent authors the spec reduction and its
+gating test together, with no dispatcher pre-commit of the spec outside the
+cycle and no forced no-spec-change escape hatch. The housekeeping test pattern
+asserts the MANDATORY behavior-preserved gate (the existing test suite stays
+green) and that the named load-bearing tokens survive; it REPORTS the measured
+`verdict` (`reduced` or `no-op`) but does not mandate reduction.
 
 ## Tool-choice tiering
 
