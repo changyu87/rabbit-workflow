@@ -1,6 +1,6 @@
 ---
 feature: rabbit-feature
-version: 1.46.0
+version: 1.47.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: When feature-touch orchestration is natively handled by the rabbit CLI or by Claude Code's native workflow mechanism.
@@ -60,7 +60,8 @@ their source path and not deployed):
 
 - `skills/rabbit-feature-touch/scripts/feature-touch.py` — owns the
   `rabbit-feature-touch` skill's computed / mode-aware orchestration logic
-  (the `resolve-spec-path` and `commit-spec` subcommands), so the SKILL.md
+  (the `resolve-spec-path`, `commit-spec`, `is-reduction-wave`, and
+  `persist-intent` subcommands, among others), so the SKILL.md
   body stays script-tier per the SKILL.md Authoring Standard
   (`spec-rules.md` §4).
 
@@ -663,6 +664,34 @@ their source path and not deployed):
     the `dispatch-prompt` subcommand (no inline control-flow bash, preserving
     Inv 53/60). Enforced E2E by `test/test-touch-dispatch-worktree.py`.
 
+64. **Reduction/intent-carrying Step-3 path (no spec pre-commit).** A
+    housekeep spec-reduction wave is ONE honest RED->GREEN cycle: the TDD
+    subagent authors BOTH the spec reduction AND its gating test under its own
+    scope marker. For that wave, feature-touch MUST NOT pre-commit the spec —
+    pre-committing leaves the subagent's `spec-update -> test-red` gate with no
+    working-tree spec diff, forcing the `--spec-no-change-reason` escape hatch.
+    Per the SKILL.md Authoring Standard (`spec-rules.md` §4 Script-Backed
+    Orchestration), the reduction-path DECISION is a computed step owned by the
+    companion `feature-touch.py is-reduction-wave <request>` subcommand
+    (emitting JSON `{"reduction": true|false}` from the rabbit-housekeep
+    `housekeep: measured reduction wave` request), not judged inline in SKILL.md
+    prose. On the reduction path Step 3 invokes rabbit-spec-update in its
+    `--intent-only` no-commit mode (a rabbit-spec surface this feature CONSUMES;
+    it COMPUTES and EMITS the impl-suggestion payload on stdout while leaving
+    `docs/spec.md` byte-identical and committing nothing), threads the emitted
+    intent into the Step-5 dispatch via the companion
+    `feature-touch.py persist-intent <feature-name>` subcommand (which reads the
+    payload from stdin and writes it to the same
+    `.rabbit/impl-suggestion-<feature-name>.json` file the Step-5 dispatch
+    consumes, editing NOTHING in the feature dir and creating NO commit), and
+    DOES NOT run `commit-spec`. The DEFAULT (non-reduction) path is UNCHANGED:
+    rabbit-spec-update edits the spec and Step 3 runs `commit-spec` as before
+    (Inv 16). The spec reduction itself is the TDD subagent's job — it makes the
+    real `docs/spec.md` edit inside its single cycle, reusing the
+    branch/worktree from Step 2 (no double-branching), satisfying the
+    `spec-update -> test-red` gate WITHOUT `--spec-no-change-reason`. Enforced
+    by `test/test-touch-reduction-intent.py`.
+
 ## What this feature does NOT define
 
 - The TDD subagent's 8-step cycle, the `tdd-step.py` state machine, or
@@ -682,6 +711,7 @@ listed below, each tagged with the invariant(s) it covers.
 - `test-touch-skill.py` — Inv 4, 5, 6, 7, 8, 9, 12, 14, 15, 16, 41, 51, 52
 - `test-touch-skill-authoring-standard.py` — Inv 53, 54, 55
 - `test-touch-docs-resolver.py` — Inv 56
+- `test-touch-reduction-intent.py` — Inv 64
 - `test-scope-skill.py` — Inv 24
 - `test-scope-scripts.py` — Inv 17, 18, 19, 20, 21, 22, 23, 25
 - `test-new-feature-scaffolder.py` — Inv 33
