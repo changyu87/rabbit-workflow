@@ -88,11 +88,18 @@ def _repo_root():
     # dispatcher's main tree. The cwd is the worktree under isolation and the
     # main repo on the headless/main path, so cwd-based resolution is correct
     # for both. RABBIT_ROOT (plugin mode) still wins verbatim, UNLESS cwd is
-    # a per-session LINKED git worktree (#1202): in that case the inherited
-    # RABBIT_ROOT points at the MAIN checkout (stale) while cwd IS the
-    # worktree, so cwd wins. Detection: in a linked worktree
-    # `git rev-parse --git-dir` returns an absolute path under
-    # .git/worktrees/; in the main repo it returns the relative string `.git`.
+    # a per-session LINKED git worktree of the SAME repository that RABBIT_ROOT
+    # belongs to (#1202): in that case the inherited RABBIT_ROOT points at the
+    # MAIN checkout (stale) while cwd IS the worktree, so cwd wins.
+    # Detection: cwd is a linked worktree of the same repo when both
+    # (a) cwd's `git rev-parse --git-dir` is an absolute path containing a
+    #     `worktrees` component, AND
+    # (b) RABBIT_ROOT's `git rev-parse --git-common-dir` resolves to the same
+    #     common git dir as cwd's, confirming they share the same repo.
+    # This gates the worktree-preference on "same repo" so plugin-mode calls
+    # (where RABBIT_ROOT is an unrelated directory) continue to honor
+    # RABBIT_ROOT even when cwd happens to be a linked worktree of a different
+    # repo.
     env = os.environ.get("RABBIT_ROOT")
     cwd_top = ""
     try:
@@ -106,7 +113,7 @@ def _repo_root():
         pass
     if env and cwd_top and cwd_top != env:
         # cwd resolves to a DIFFERENT git toplevel than RABBIT_ROOT.
-        # If cwd is a linked worktree, prefer it over the stale RABBIT_ROOT.
+        # Check if cwd is a linked worktree of the same repo as RABBIT_ROOT.
         try:
             gdir = subprocess.run(
                 ["git", "rev-parse", "--git-dir"],
@@ -119,7 +126,28 @@ def _repo_root():
                 # /repo/.git/worktrees/agent-xxx or
                 # /repo/.claude/worktrees/agent-xxx).
                 if os.path.isabs(git_dir) and "worktrees" in git_dir:
-                    return cwd_top
+                    # Also confirm RABBIT_ROOT belongs to the same repo
+                    # (same git-common-dir). If RABBIT_ROOT has no git
+                    # history (plugin mode temp dir), this check fails and
+                    # we fall through to honor RABBIT_ROOT as before.
+                    cwd_common = subprocess.run(
+                        ["git", "rev-parse", "--git-common-dir"],
+                        capture_output=True, text=True, check=False,
+                    )
+                    rr_common = subprocess.run(
+                        ["git", "-C", env, "rev-parse", "--git-common-dir"],
+                        capture_output=True, text=True, check=False,
+                    )
+                    if (cwd_common.returncode == 0
+                            and rr_common.returncode == 0):
+                        # --git-common-dir may return a relative path;
+                        # resolve each against its respective working dir.
+                        cwd_c = os.path.realpath(
+                            os.path.join(cwd_top, cwd_common.stdout.strip()))
+                        rr_c = os.path.realpath(
+                            os.path.join(env, rr_common.stdout.strip()))
+                        if cwd_c == rr_c:
+                            return cwd_top
         except Exception:
             pass
     if env:
