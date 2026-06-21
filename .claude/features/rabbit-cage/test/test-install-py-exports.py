@@ -72,7 +72,9 @@ def test_exports_file_closure_constants():
 def test_feature_includes_has_expected_features():
     mod = _load_install()
     # rabbit-config dropped from install.py in #780 (retire-rabbit-config step 1).
-    expected = {"contract", "policy", "rabbit-cage", "rabbit-meta", "rabbit-feature", "rabbit-issue", "rabbit-spec", "rabbit-decompose", "tdd-subagent"}
+    # rabbit-housekeep added to the closure in #1181 (skill/command/scripts were
+    # absent from vendored installs — root cause of #1179).
+    expected = {"contract", "policy", "rabbit-cage", "rabbit-meta", "rabbit-feature", "rabbit-issue", "rabbit-spec", "rabbit-decompose", "rabbit-housekeep", "tdd-subagent"}
     actual = set(mod.FEATURE_INCLUDES.keys())
     assert actual == expected, (
         f"FEATURE_INCLUDES key drift: expected {sorted(expected)}, got {sorted(actual)}"
