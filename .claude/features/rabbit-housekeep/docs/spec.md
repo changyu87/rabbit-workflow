@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.7.0
+version: 0.8.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -48,6 +48,11 @@ cross-reference).
   `skills/*/SKILL.md`, `agents/*.md`, and `commands/*.md` bodies for
   orchestration steps that violate the spec-rules §4 Script-Backed
   Orchestration standard (a NEW verify-or-flag dimension).
+- `scripts/wave-automerge.py` — deterministic gated auto-merge DECISION for a
+  user-installed wave's PR: `decide` reads the wave's HANDOFF gates, PR
+  mergeable/CI state, and honest-reduction verdict and emits `merge` only on
+  all-green, else `leave-open` with the failing gate named; `gather` collects
+  the PR-side signals via `gh pr view`.
 - `docs/spec.md`, `docs/contract.md`, `docs/CHANGELOG.md`, `feature.json`,
   `test/run.py` — feature scaffolding.
 
@@ -158,6 +163,53 @@ Exit `0` when the scan ran (regardless of whether findings were emitted), `2`
 on invocation error (missing/bad feature-dir). The verdict is the `count`
 field — the script reports, the caller's verify-or-flag disposition acts.
 
+## Gated wave auto-merge
+
+For a user-installed `/rabbit-housekeep` run (the manual skill invocation, NOT
+the autonomous loop), a wave still CREATES its PR through the
+rabbit-feature-touch path for the audit trail, but on green gates the PR is
+auto-merged to `main` rather than left pending for the user to merge by hand.
+Auto-merge is DEFAULT-ON for housekeep waves — they are mechanical and fully
+gated — with an opt-out: the `--no-automerge` phrase in the housekeep request
+creates the PR and leaves it open, exactly as a plain feature-touch PR. No
+shared trust-mode config exists to reuse today (safety-governance and
+rabbit-cage carry no `auto-merge` / `gated-merge` trust-mode key); aligning the
+opt-out with a future shared trust-mode config is a follow-up enhancement, not
+this feature's job.
+
+The MERGE-OR-LEAVE-OPEN decision is a computed, gate-aware branch, so it is
+SCRIPT-tier (spec-rules §4): `scripts/wave-automerge.py` owns it. The SKILL
+builds the gating payload from the wave's signals — the HANDOFF gates
+(`tdd_state`, `test_result`, `spec_compliance`), the honest-reduction `verdict`
+from Step 7, and the PR-side `mergeable` / `merge_state_status` / `ci_status`
+collected by the script's `gather` subcommand — and asks the script to
+`decide`. The decision is `merge` ONLY when ALL hold: the HANDOFF gates are
+green (`tdd_state: test-green`, `test_result: pass`, `spec_compliance: pass`),
+the PR is mergeable/clean with green CI, AND the honest-reduction outcome held
+(a measured `reduced` OR an honest already-clean `no-op` — a `no-op` is a
+PASSING outcome, per the honest-gate semantics). Any failed gate yields
+`leave-open` with the failing gate NAMED in `reasons`, leaving the PR OPEN for
+human attention.
+
+## wave-automerge.py
+
+Deterministic, stdlib-only (full interface in the script docstring):
+
+- `decide` — read a JSON gating payload on stdin and print a decision object
+  `{"pr", "decision": "merge"|"leave-open", "reasons": [...]}`. Each gate that
+  fails appends a NAMED reason, so a `leave-open` verdict is auditable and
+  locatable. A missing signal a gate requires fails that gate CLOSED — auto-merge
+  is opt-in to safety. The passing reduction verdicts are `reduced` and `no-op`.
+- `gather --pr <N>` — collect the PR-side signals via
+  `gh pr view <N> --json mergeable,mergeStateStatus,statusCheckRollup` and print
+  `{"pr", "mergeable", "merge_state_status", "ci_status"}`; the caller merges
+  these with the HANDOFF gates + verdict before calling `decide`.
+
+Exit `0` on a printed decision (`decide` always exits 0 when the payload
+parsed), `2` on invocation error (bad/empty JSON payload, missing `--pr`, bad
+subcommand). The script makes the DECISION; the SKILL performs the resulting
+`gh pr merge` on a `merge` decision.
+
 ## Invariants
 
 1. `feature.json` MUST declare `status: "active"`, `version: "0.1.0"` or later,
@@ -253,6 +305,20 @@ field — the script reports, the caller's verify-or-flag disposition acts.
     an honest `no-op` SUCCESS, and that cleanup edits only the target feature's
     `src/`, never cross-feature.
 
+12. `scripts/wave-automerge.py` MUST provide a deterministic `decide`
+    subcommand that reads a JSON gating payload on stdin and emits a decision
+    object reporting `decision: "merge"` ONLY when ALL gates hold — the HANDOFF
+    gates green (`tdd_state: test-green`, `test_result: pass`,
+    `spec_compliance: pass`), the PR mergeable/clean with green CI, AND the
+    honest-reduction `verdict` a passing outcome (`reduced` OR `no-op`) — else
+    `decision: "leave-open"` with each failing gate NAMED in `reasons`. A
+    missing required signal fails its gate CLOSED. It MUST also provide a
+    `gather --pr <N>` subcommand that collects the PR-side mergeable / merge
+    state / CI signals via `gh pr view`. Bad invocation exits `2`. The SKILL.md
+    MUST document gated wave auto-merge as DEFAULT-ON for user-installed waves
+    with a `--no-automerge` opt-out, invoke `scripts/wave-automerge.py` for the
+    decision, and merge the PR only on `decision: merge`.
+
 ## Tests
 
 `test/run.py` invokes every `test-*.py` file under `test/`. Coverage:
@@ -285,6 +351,11 @@ field — the script reports, the caller's verify-or-flag disposition acts.
   vendored mode while EXCLUDING rabbit's own and returns `.claude/features/*`
   standalone, bad invocation exits non-zero, and the SKILL.md documents
   consuming-project targeting plus the scope script.
+- `test-wave-automerge.py` — E2E driving `wave-automerge.py decide` with
+  in-payload gating signals (no `gh` shell-out): all-gates-green + `reduced`
+  merges, an honest `no-op` STILL merges, each failed HANDOFF gate / not-clean
+  PR / red CI yields `leave-open` with the gate named in `reasons`, and a
+  bad/empty JSON payload exits `2`.
 
 ## Out of Scope
 

@@ -43,6 +43,7 @@ EXPECTED_SCRIPTS = [
     "scripts/measure-reduction.py",
     "scripts/check-script-backed.py",
     "scripts/resolve-housekeep-scope.py",
+    "scripts/wave-automerge.py",
 ]
 
 

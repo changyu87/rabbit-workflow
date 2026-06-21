@@ -13,6 +13,39 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.8.0 (gated wave auto-merge for user-installed runs, issue #1191):** A
+  user-installed `/rabbit-housekeep` run no longer leaves a green wave's PR
+  pending for the user to merge by hand. The wave still CREATES its PR through
+  the rabbit-feature-touch path for the audit trail; on green gates it is now
+  AUTO-MERGED to `main` (default-ON, with a `--no-automerge` opt-out), and a
+  wave that fails any gate leaves its PR OPEN exactly as before. New companion
+  script `scripts/wave-automerge.py` owns the script-tier decision (spec-rules
+  §4 Script-Backed Orchestration): `decide` reads a JSON gating payload — the
+  HANDOFF gates (`tdd_state`/`test_result`/`spec_compliance`), the
+  honest-reduction `verdict`, and the PR-side `mergeable`/`merge_state_status`/
+  `ci_status` — and emits `decision: merge` ONLY when ALL hold (a `no-op` verdict
+  is a PASSING outcome, per the honest-gate semantics), else `leave-open` with
+  each failing gate NAMED in `reasons`; `gather --pr <N>` collects the PR-side
+  signals via `gh pr view`. The auto-merge step is HOUSEKEEP-SPECIFIC — added to
+  rabbit-housekeep's OWN flow as Step 8, AFTER the rabbit-feature-touch
+  invocation returns a created PR — so feature-touch's PR-only behavior is
+  unchanged for every other feature. No shared trust-mode config exists today to
+  reuse (safety-governance and rabbit-cage carry no `auto-merge`/`gated-merge`
+  key); aligning the opt-out with a future shared trust-mode config is noted as a
+  follow-up. Added SKILL.md Step 8 + the wave-automerge.py interface section,
+  spec Surface/Gated-wave-auto-merge/wave-automerge.py sections + invariant #12,
+  the contract `provides.scripts` entry, command `--no-automerge` usage + Step 3
+  note, and new gate `test-wave-automerge.py` (10 cases, gh-free via in-payload
+  signals). `test-reduction-wave.py` doc-surface ceiling refreshed for the
+  additive growth (SPEC 296->367, CONTRACT 90->91, SKILL 338->384, total
+  724->842) with the new load-bearing tokens added. `wave-automerge.py` is a NEW
+  skill-referenced script, so rabbit-cage's vendored-install closure
+  (`FEATURE_INCLUDES['rabbit-housekeep']` + the skill-referenced-scripts gate)
+  needs a follow-up update owned by rabbit-cage; filed as a discovered issue.
+  feature/spec/contract/SKILL/command versions bumped 0.7.0 -> 0.8.0 in lockstep
+  (Inv 11). SKILL.md + command `.md` are publish surfaces — their deployed copies
+  drift until the dispatcher republishes. Closes #1191.
+
 - **v0.7.0 (honest gate + opt-in code dimension, issue #1190):** Two coupled
   changes. CHANGE A (honest gate): the wave's reduction gate changed from
   "must reduce" to "reduce IF there is dead/redundant/simplifiable content,

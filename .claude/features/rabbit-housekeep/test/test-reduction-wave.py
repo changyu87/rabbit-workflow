@@ -50,12 +50,13 @@ DOC_SURFACES = [SPEC, CONTRACT, SKILL]
 # illustrative-example scanner exemption; v0.5.0: user-facing command +
 # consuming-project scope resolution; v0.6.0: count --docs-only doc-scoped
 # measurement so the mandated test does not flip the verdict, #1187; v0.7.0:
-# honest gate verdict + opt-in --code code dimension, #1190).
+# honest gate verdict + opt-in --code code dimension, #1190; v0.8.0: gated wave
+# auto-merge on green gates for user-installed runs, #1191).
 DOC_CEILING = {
-    SPEC: 296,
-    CONTRACT: 90,
-    SKILL: 338,
-    "__total__": 724,
+    SPEC: 367,
+    CONTRACT: 91,
+    SKILL: 384,
+    "__total__": 842,
 }
 
 PASS = 0
@@ -123,6 +124,13 @@ REQUIRED_TOKENS = [
     # honest gate + opt-in code dimension
     "no-op",
     "code-simplifier",
+    # gated wave auto-merge
+    "wave-automerge.py",
+    "decide",
+    "gather",
+    "--no-automerge",
+    "leave-open",
+    "merge_state_status",
     # exit codes
     "`0` success",
     "`2` invocation error",

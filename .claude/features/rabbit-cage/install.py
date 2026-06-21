@@ -39,7 +39,7 @@ This module has two distinct roles:
      (test-deployed-hooks-execute.py, test-install-publish-loop.py) to exercise
      the publish flow against a freshly copied .claude tree.
 
-Version: 6.11.0
+Version: 6.11.1
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit's per-project vendored model is superseded
 """
@@ -235,6 +235,7 @@ FEATURE_INCLUDES: dict[str, list[str]] = {
         "scripts/measure-reduction.py",
         "scripts/check-script-backed.py",
         "scripts/resolve-housekeep-scope.py",
+        "scripts/wave-automerge.py",
     ],
     "tdd-subagent": [
         "feature.json",
