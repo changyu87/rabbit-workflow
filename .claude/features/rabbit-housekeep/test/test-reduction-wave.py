@@ -24,7 +24,7 @@ doc surfaces and asserts BOTH halves of a wave's contract.
 
 Non-interactive. Exits non-zero on failure.
 
-Version: 0.5.0
+Version: 0.6.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-housekeep is retired.
 """
@@ -53,12 +53,14 @@ DOC_SURFACES = [SPEC, CONTRACT, SKILL]
 # honest gate verdict + opt-in --code code dimension, #1190; v0.8.0: gated wave
 # auto-merge on green gates for user-installed runs, #1191; v0.9.0: single
 # governed TDD cycle for the per-feature spec reduction documented, #1189;
-# v0.9.1: sub-issue routing to consuming project's repo, #1206).
+# v0.9.1: sub-issue routing to consuming project's repo, #1206; v0.10.0:
+# --code is additive (docs AND code, not docs OR code), --docs-only as
+# escape hatch, #1207).
 DOC_CEILING = {
-    SPEC: 377,
+    SPEC: 383,
     CONTRACT: 92,
-    SKILL: 395,
-    "__total__": 864,
+    SKILL: 402,
+    "__total__": 877,
 }
 
 PASS = 0

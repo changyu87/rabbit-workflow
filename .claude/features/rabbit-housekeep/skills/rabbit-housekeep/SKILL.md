@@ -1,7 +1,7 @@
 ---
 name: rabbit-housekeep
-description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole project — in complexity-sized waves. The wave targets the CONSUMING PROJECT's declared features, not rabbit's own framework. Each wave proves-it-dead-or-flags every claim and reports an HONEST measured outcome: it removes dead/redundant/simplifiable content when present, else honestly reports a no-op / already-clean verdict (an already-lean target is a SUCCESS, never forced into a reword). The ONE mandatory gate is behavior preserved (the feature's existing test suite stays green). The default DOC dimension slims doc surfaces; an OPT-IN CODE dimension (--code) simplifies the feature's src/ via the code-simplifier agent (simplify-first) and removes dead src/ symbols via the coding-rules §6 grep-for-callers protocol, routed through the governed TDD path. Also enforces the spec-rules §4 Script-Backed Orchestration standard as a script-tier verify-or-flag dimension: it scans SKILL/agent/command bodies for non-script-backed orchestration steps and flags each. Cross-feature or project-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or their project, simplify a feature's code, remove dead prose or dead code, scrub historical burden, check that orchestration is script-backed, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "simplify this feature's code", "run a reduction wave", "clean up dead prose", "remove dead code", "check script-backed orchestration", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
-version: 0.9.1
+description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole project — in complexity-sized waves. The wave targets the CONSUMING PROJECT's declared features, not rabbit's own framework. Each wave proves-it-dead-or-flags every claim and reports an HONEST measured outcome: it removes dead/redundant/simplifiable content when present, else honestly reports a no-op / already-clean verdict (an already-lean target is a SUCCESS, never forced into a reword). The ONE mandatory gate is behavior preserved (the feature's existing test suite stays green). The default DOC dimension slims doc surfaces; the OPT-IN CODE dimension (--code) adds the code dimension ON TOP of the doc dimension (additive: docs AND code), simplifying the feature's src/ via the code-simplifier agent (simplify-first) and removing dead src/ symbols via the coding-rules §6 grep-for-callers protocol, routed through the governed TDD path. Use --docs-only to run the doc dimension only (cheap escape hatch). Also enforces the spec-rules §4 Script-Backed Orchestration standard as a script-tier verify-or-flag dimension: it scans SKILL/agent/command bodies for non-script-backed orchestration steps and flags each. Cross-feature or project-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or their project, simplify a feature's code, remove dead prose or dead code, scrub historical burden, check that orchestration is script-backed, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "simplify this feature's code", "run a reduction wave", "clean up dead prose", "remove dead code", "check script-backed orchestration", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
+version: 0.10.0
 owner: rabbit-workflow team
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
 ---
@@ -100,7 +100,7 @@ python3 .claude/features/rabbit-housekeep/scripts/resolve-housekeep-scope.py \
 
 ## Inputs
 
-Args format: `<target> [--code]`
+Args format: `<target> [--code] [--docs-only]`
 
 The target is one of:
 - a single project feature name (`user-auth`) — a one-wave tidy;
@@ -109,12 +109,17 @@ The target is one of:
 - omitted — every consuming-project feature
   (`resolve-housekeep-scope.py list`).
 
-The DIMENSION selector is OPT-IN and defaults to the DOC dimension:
-- default (no `--code`) → the DOC dimension: Steps 3-7 operate on the doc
+The DIMENSION selector defaults to the DOC dimension:
+- default (no flag) → the DOC dimension: Steps 3-7 operate on the doc
   surfaces (`docs/spec.md`, `docs/contract.md`, `skills/*/SKILL.md`) measured
   with `count --docs-only`;
-- `--code` → the OPT-IN CODE dimension (below): the wave operates on the
-  feature's `src/` source, measured with `count --code`.
+- `--code` → ADDITIVE: runs BOTH the doc dimension AND the code dimension.
+  The doc steps run first (Steps 3-7 on doc surfaces), then the code
+  dimension steps run on the feature's `src/` (measured with `count --code`).
+  Use when you want a complete tidy of both doc surfaces and source in one
+  wave.
+- `--docs-only` → DOC dimension only (same as the default). Use as an explicit
+  escape hatch for a cheap doc-only wave when `--code` would be too heavy.
 
 When the target or dimension is unclear, ask the user one focused question. Do
 not guess the scope.
@@ -332,14 +337,16 @@ gh pr merge <pr-number> --squash --delete-branch
 On `decision: leave-open`, report to the user that the PR was created and left
 open with the failing gate from `reasons`, and do NOT merge.
 
-## The OPT-IN code dimension (`--code`)
+## The code dimension (`--code`)
 
-The DOC dimension above is the DEFAULT. With `--code` the wave runs a parallel,
-OPT-IN dimension on the target feature's `src/` source. It honors the same
-philosophies: machine-first measurement, BOUNDED SCOPE (edit only the TARGET
-feature's `src/`, never cross-feature), designed deprecation, and coding-rules
-§2 (Simplicity First) + §3 (Surgical Changes). The ONE MANDATORY gate is
-unchanged: behavior preserved (the feature's existing test suite stays green).
+The DOC dimension is the DEFAULT. With `--code` the wave runs BOTH the doc
+dimension AND the code dimension (additive): doc steps execute first (Steps
+3-7 on doc surfaces), then the code dimension operates on the target feature's
+`src/` source. It honors the same philosophies: machine-first measurement,
+BOUNDED SCOPE (edit only the TARGET feature's `src/`, never cross-feature),
+designed deprecation, and coding-rules §2 (Simplicity First) + §3 (Surgical
+Changes). The ONE MANDATORY gate is unchanged: behavior preserved (the
+feature's existing test suite stays green).
 
 The code dimension reuses the wave skeleton (measure BEFORE with `count
 --code`, do the work, measure AFTER, report the honest `verdict`) and runs the

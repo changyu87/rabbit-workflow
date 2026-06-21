@@ -13,6 +13,30 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.10.0 (--code is additive: docs AND code, not docs OR code, issue #1207):**
+  Removed the mutual exclusivity surprise: `--code` now runs BOTH the doc
+  dimension AND the code dimension (additive), not docs OR code. Previously,
+  `--code` replaced the doc dimension entirely — a "complete" tidy of a feature
+  required two invocations (one doc-only, one code-only) and two PRs. With this
+  fix, `--code` runs doc steps first (measure/verify-or-flag/remove doc
+  surfaces), then the code dimension steps (simplify src/ via code-simplifier +
+  dead-src/-symbol pruning via coding-rules §6 grep-for-callers). The default
+  (no flag) stays doc-only for the "cheap by default" tradeoff. Added
+  `--docs-only` as an explicit escape hatch for a doc-only wave when `--code`
+  would be too heavy (same as the default; provided for clarity). No changes to
+  `measure-reduction.py` — the `--docs-only` and `--code` flags remain mutually
+  exclusive at the measurement level; the SKILL runs two separate measurement
+  passes when `--code` is requested (one doc snapshot, one code snapshot). SKILL
+  description, Inputs section, and "The code dimension" section updated to
+  reflect additive semantics. `commands/rabbit-housekeep.md` Usage table updated:
+  `--code` description no longer says "instead of slimming doc surfaces";
+  `--docs-only` added as a documented flag. `docs/spec.md` Purpose section and
+  Invariant #11 updated. New gate `test/test-code-additive.py` (5 cases: SKILL
+  Inputs old exclusive framing absent, --docs-only documented in SKILL, command
+  old exclusive framing absent, --docs-only documented in command, additive
+  signal present in SKILL). Feature/spec/contract/SKILL/command versions bumped
+  0.9.1 -> 0.10.0 in lockstep. Closes #1207.
+
 - **v0.9.1 (wave sub-issues route to consuming project's repo, issue #1206):**
   Housekeep wave sub-issues (filed by Steps 4/5 and the code-dimension §6
   protocol via `file-item.py`) were silently landing in the rabbit framework's
