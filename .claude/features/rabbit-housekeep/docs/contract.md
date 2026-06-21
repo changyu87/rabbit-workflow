@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.5.0
+version: 0.5.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand

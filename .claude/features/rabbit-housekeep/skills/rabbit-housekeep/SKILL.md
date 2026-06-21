@@ -1,7 +1,7 @@
 ---
 name: rabbit-housekeep
 description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole project — in complexity-sized waves. The wave targets the CONSUMING PROJECT's declared features, not rabbit's own framework. Each wave proves-it-dead-or-flags every claim, measures before/after line counts, mandates ACTUAL removal (not rewording), and preserves named load-bearing tokens. Also enforces the spec-rules §4 Script-Backed Orchestration standard as a script-tier verify-or-flag dimension: it scans SKILL/agent/command bodies for non-script-backed orchestration steps and flags each. Cross-feature or project-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or their project, remove dead prose, scrub historical burden, check that orchestration is script-backed, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "run a reduction wave", "clean up dead prose", "check script-backed orchestration", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
-version: 0.5.0
+version: 0.5.1
 owner: rabbit-workflow team
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
 ---
@@ -132,16 +132,15 @@ repo-wide mandate:
      --title "housekeep <name>: measured reduction wave" \
      --description "<scope>" --filed-by rabbit
    ```
-3. Record the parent→children linkage so the decomposed parent closes
-   itself deterministically when every child closes (the parent-close
-   machinery owned by rabbit-auto-evolve):
-   ```bash
-   python3 .claude/features/rabbit-auto-evolve/scripts/record-decomposition.py \
-     <parent#> <child#> [<child#> ...]
-   ```
-   The parent stays OPEN while children are worked; the per-tick drain runs
-   `close-decomposed-parents.py`, which closes the parent once all children
-   close — the machine's job, not a manual step.
+3. Recording the parent→children linkage so the parent closes itself when
+   every child closes is LOOP-ONLY machinery owned by rabbit-auto-evolve, NOT
+   a user step. When the auto-evolve loop drives this it records the linkage via
+   its own `record-decomposition.py`, and the per-tick drain runs
+   `close-decomposed-parents.py` to close the parent — the machine's job. That
+   loop feature is deliberately ABSENT from the vendored install, so this SKILL
+   surface carries NO live invocation of the loop-only script; the reuse is
+   declared in `docs/contract.md` (`invokes.scripts`). In a plain
+   `/rabbit-housekeep` run there is no loop — the user closes the issues.
 
 ### Step 3 — Measure BEFORE
 
