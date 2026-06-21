@@ -49,12 +49,13 @@ DOC_SURFACES = [SPEC, CONTRACT, SKILL]
 # additively (v0.3.0: script-backed-orchestration dimension; v0.4.0:
 # illustrative-example scanner exemption; v0.5.0: user-facing command +
 # consuming-project scope resolution; v0.6.0: count --docs-only doc-scoped
-# measurement so the mandated test does not flip the verdict, #1187).
+# measurement so the mandated test does not flip the verdict, #1187; v0.7.0:
+# honest gate verdict + opt-in --code code dimension, #1190).
 DOC_CEILING = {
-    SPEC: 266,
-    CONTRACT: 86,
-    SKILL: 269,
-    "__total__": 621,
+    SPEC: 296,
+    CONTRACT: 90,
+    SKILL: 338,
+    "__total__": 724,
 }
 
 PASS = 0
@@ -111,12 +112,17 @@ REQUIRED_TOKENS = [
     "measure-reduction.py",
     "count",
     "--docs-only",
+    "--code",
     "diff",
     "total_delta",
     "reduced",
+    "verdict",
     "per_artifact",
     "removed_paths",
     "added_paths",
+    # honest gate + opt-in code dimension
+    "no-op",
+    "code-simplifier",
     # exit codes
     "`0` success",
     "`2` invocation error",

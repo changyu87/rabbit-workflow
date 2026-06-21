@@ -160,10 +160,33 @@ if r1.returncode == 2 and r2.returncode == 2:
 else:
     fail("t6", f"expected exit 2 both; got {r1.returncode}, {r2.returncode}")
 
+# t8: honest verdict — a no-change wave is an honest `no-op`, not a failure.
+# A wave that removes lines reports verdict `reduced`; a wave that changes
+# nothing because nothing was dead reports verdict `no-op`. Reduction is
+# REPORTED, never MANDATED, so an already-clean target passes honestly.
+with tempfile.TemporaryDirectory() as tmp:
+    before = os.path.join(tmp, "before.json")
+    after_same = os.path.join(tmp, "after-same.json")
+    after_less = os.path.join(tmp, "after-less.json")
+    write_snapshot(before, {"spec.md": 100, "__total__": 100})
+    write_snapshot(after_same, {"spec.md": 100, "__total__": 100})
+    write_snapshot(after_less, {"spec.md": 70, "__total__": 70})
+    d_same = json.loads(run("diff", before, after_same).stdout)
+    d_less = json.loads(run("diff", before, after_less).stdout)
+    if (d_same.get("verdict") == "no-op" and d_same.get("reduced") is False
+            and d_less.get("verdict") == "reduced"
+            and d_less.get("reduced") is True):
+        ok("t8", "diff reports verdict no-op for a no-change wave and reduced "
+                 "for a removal (honest already-clean outcome)")
+    else:
+        fail("t8", f"unexpected verdicts: same={d_same}; less={d_less}")
+
 
 def write_feature_tree(root, spec_lines, contract_lines, skill_lines,
-                       changelog_lines, test_lines):
-    """Build a minimal feature tree mirroring rabbit-housekeep's layout."""
+                       changelog_lines, test_lines, src_lines=0):
+    """Build a minimal feature tree mirroring a consuming-project feature's
+    layout. A non-zero src_lines writes a `src/<name>.py` source file so the
+    code-dimension (`--code`) walk has something to count."""
     docs = os.path.join(root, "docs")
     skills = os.path.join(root, "skills", "demo")
     test = os.path.join(root, "test")
@@ -180,6 +203,11 @@ def write_feature_tree(root, spec_lines, contract_lines, skill_lines,
         f.write(body(skill_lines))
     with open(os.path.join(test, "test-demo.py"), "w") as f:
         f.write(body(test_lines))
+    if src_lines:
+        src = os.path.join(root, "src")
+        os.makedirs(src, exist_ok=True)
+        with open(os.path.join(src, "mod.py"), "w") as f:
+            f.write(body(src_lines))
 
 
 # t7: --docs-only scopes the walk to doc surfaces. The #1187 failure mode:
@@ -235,6 +263,47 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         fail("t7", f"docs_keys={docs_keys}; d_all.reduced={d_all['reduced']}; "
                    f"d_docs={d_docs}")
+
+# t9: --code scopes the walk to the feature's `src/` SOURCE files (the code
+# dimension), counting `src/**/*.py` and EXCLUDING docs/, test/, and
+# skills/ — symmetric to --docs-only for the doc dimension. Opt-in: the
+# default whole-tree walk and --docs-only are unchanged.
+with tempfile.TemporaryDirectory() as tmp:
+    import shutil
+    feat = os.path.join(tmp, "demo")
+    # spec 100, contract 50, skill 80, changelog 10, test 30, src 60
+    write_feature_tree(feat, 100, 50, 80, 10, 30, src_lines=60)
+    rc_code = run("count", "--code", feat)
+    code_data = json.loads(rc_code.stdout)
+    code_keys = [k for k in code_data if k != "__total__"]
+    only_src = code_keys and all(
+        os.sep + "src" + os.sep in k and k.endswith(".py") for k in code_keys)
+    excludes_docs = not any(
+        os.sep + "docs" + os.sep in k for k in code_keys)
+    excludes_test = not any(
+        os.sep + "test" + os.sep in k for k in code_keys)
+
+    # A code-dimension reduction is measured the same way: slim src 60->45.
+    before_code = os.path.join(tmp, "before-code.json")
+    with open(before_code, "w") as f:
+        f.write(rc_code.stdout)
+    shutil.rmtree(feat)
+    write_feature_tree(feat, 100, 50, 80, 10, 30, src_lines=45)
+    ra_code = run("count", "--code", feat)
+    after_code = os.path.join(tmp, "after-code.json")
+    with open(after_code, "w") as f:
+        f.write(ra_code.stdout)
+    d_code = json.loads(run("diff", before_code, after_code).stdout)
+
+    if (rc_code.returncode == 0 and only_src and excludes_docs
+            and excludes_test and code_data.get("__total__") == 60
+            and d_code["reduced"] is True and d_code["total_delta"] == -15
+            and d_code.get("verdict") == "reduced"):
+        ok("t9", "count --code scopes to src/ source files; a src reduction "
+                 "is measured the same way (reduced=true)")
+    else:
+        fail("t9", f"code_keys={code_keys}; total={code_data.get('__total__')}; "
+                   f"d_code={d_code}")
 
 print()
 print(f"Results: {PASS} passed, {FAIL} failed")
