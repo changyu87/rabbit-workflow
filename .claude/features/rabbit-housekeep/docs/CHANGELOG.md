@@ -13,6 +13,22 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.9.0 (single governed TDD cycle for the per-feature spec reduction, issue #1189):**
+  Documents on the housekeep surfaces that a measured reduction wave's
+  per-feature spec reduction now rides ONE governed RED->GREEN cycle. The
+  `housekeep: measured reduction wave` request rabbit-housekeep already
+  dispatches is the exact signal rabbit-feature-touch's reduction-wave
+  detection keys on, so feature-touch threads the spec-reduction intent into
+  the dispatch and the TDD subagent authors BOTH the spec reduction AND its
+  gating test inside the single cycle — with no dispatcher pre-commit of the
+  spec outside the cycle and no forced no-spec-change escape hatch. The
+  substantive behavior is delivered transitively by the rabbit-spec /
+  rabbit-feature prerequisites; this wave is the honest housekeep-side
+  acknowledgment plus a regression guard. New test
+  `test/test-reduction-single-tdd.py` pins the signal match, the absence of
+  the retired escape-hatch reference, and the single-TDD framing. No script or
+  behavior change in rabbit-housekeep itself.
+
 - **v0.8.0 (gated wave auto-merge for user-installed runs, issue #1191):** A
   user-installed `/rabbit-housekeep` run no longer leaves a green wave's PR
   pending for the user to merge by hand. The wave still CREATES its PR through

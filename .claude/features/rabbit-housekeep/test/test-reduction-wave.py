@@ -51,12 +51,13 @@ DOC_SURFACES = [SPEC, CONTRACT, SKILL]
 # consuming-project scope resolution; v0.6.0: count --docs-only doc-scoped
 # measurement so the mandated test does not flip the verdict, #1187; v0.7.0:
 # honest gate verdict + opt-in --code code dimension, #1190; v0.8.0: gated wave
-# auto-merge on green gates for user-installed runs, #1191).
+# auto-merge on green gates for user-installed runs, #1191; v0.9.0: single
+# governed TDD cycle for the per-feature spec reduction documented, #1189).
 DOC_CEILING = {
-    SPEC: 367,
+    SPEC: 372,
     CONTRACT: 91,
-    SKILL: 384,
-    "__total__": 842,
+    SKILL: 394,
+    "__total__": 857,
 }
 
 PASS = 0

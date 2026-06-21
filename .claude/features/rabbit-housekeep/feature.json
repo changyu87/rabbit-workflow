@@ -1,6 +1,6 @@
 {
   "name": "rabbit-housekeep",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "owner": "rabbit-workflow team",
   "tdd_state": "test-green",
   "housekeeping_clean": true,
