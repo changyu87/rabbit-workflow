@@ -1,7 +1,7 @@
 ---
 name: rabbit-housekeep
 description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole project — in complexity-sized waves. The wave targets the CONSUMING PROJECT's declared features, not rabbit's own framework. Each wave proves-it-dead-or-flags every claim and reports an HONEST measured outcome: it removes dead/redundant/simplifiable content when present, else honestly reports a no-op / already-clean verdict (an already-lean target is a SUCCESS, never forced into a reword). The ONE mandatory gate is behavior preserved (the feature's existing test suite stays green). The default DOC dimension slims doc surfaces; an OPT-IN CODE dimension (--code) simplifies the feature's src/ via the code-simplifier agent (simplify-first) and removes dead src/ symbols via the coding-rules §6 grep-for-callers protocol, routed through the governed TDD path. Also enforces the spec-rules §4 Script-Backed Orchestration standard as a script-tier verify-or-flag dimension: it scans SKILL/agent/command bodies for non-script-backed orchestration steps and flags each. Cross-feature or project-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or their project, simplify a feature's code, remove dead prose or dead code, scrub historical burden, check that orchestration is script-backed, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "simplify this feature's code", "run a reduction wave", "clean up dead prose", "remove dead code", "check script-backed orchestration", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
-version: 0.7.0
+version: 0.8.0
 owner: rabbit-workflow team
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
 ---
@@ -274,6 +274,52 @@ target was already clean and nothing was dead — a SUCCESS, not a failure. In
 both cases report any `housekeeping`-tagged sub-issues filed for unverifiable
 items and confirm behavior was preserved (the existing test suite stayed green;
 load-bearing tokens survived).
+
+### Step 8 — Auto-merge the wave's PR on green gates
+
+Step 6 delegates to `rabbit-feature-touch`, which CREATES the wave's PR (its
+Step 7) for the audit trail. For a user-installed `/rabbit-housekeep` run the
+PR should not be left pending for the user to merge by hand: when the wave's
+gates are all green, this step MERGES that PR to `main` and cleans up its
+branch/worktree. The PR is still always created — auto-merge only lands it when
+the gates hold. Auto-merge is DEFAULT-ON for housekeep waves (they are
+mechanical and fully gated). A user opts out with the phrase `--no-automerge`
+in the housekeep request; when opted out, the PR is created and left open for
+the user to merge, exactly as a plain feature-touch PR.
+
+The MERGE-OR-LEAVE-OPEN decision is a computed, gate-aware branch, so it is
+SCRIPT-tier (spec-rules §4): `scripts/wave-automerge.py` owns the gating logic
+and the SKILL invokes it. Build the gating payload from the wave's signals —
+the HANDOFF gates from `.rabbit/tdd-report-<name>.json` (`tdd_state`,
+`test_result`, `spec_compliance`), the honest-reduction `verdict` from Step 7,
+and the PR-side `mergeable` / `merge_state_status` / `ci_status` collected by
+the script's `gather` subcommand — then ask the script to `decide`. It emits
+`decision: merge` ONLY when ALL hold: the HANDOFF gates are green
+(`tdd_state: test-green`, `test_result: pass`, `spec_compliance: pass`), the PR
+is mergeable/clean with green CI, AND the honest-reduction outcome held (a
+measured `reduced` OR an honest already-clean `no-op` — a `no-op` is a PASSING
+outcome, never a failure). Any failed gate yields `decision: leave-open` with
+the failing gate NAMED in `reasons`, leaving the PR OPEN for human attention,
+exactly as today.
+
+<!-- example: illustrative invocation, not a live step -->
+```bash
+python3 .claude/features/rabbit-housekeep/scripts/wave-automerge.py \
+  gather --pr <pr-number> > /tmp/housekeep-<name>-prstate.json
+python3 .claude/features/rabbit-housekeep/scripts/wave-automerge.py decide \
+  < /tmp/housekeep-<name>-gates.json
+```
+
+On `decision: merge`, land the PR to `main` with a direct squash merge that also
+deletes the wave's branch:
+
+<!-- example: illustrative invocation, not a live step -->
+```bash
+gh pr merge <pr-number> --squash --delete-branch
+```
+
+On `decision: leave-open`, report to the user that the PR was created and left
+open with the failing gate from `reasons`, and do NOT merge.
 
 ## The OPT-IN code dimension (`--code`)
 
