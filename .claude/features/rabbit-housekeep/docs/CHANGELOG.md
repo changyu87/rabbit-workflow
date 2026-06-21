@@ -13,6 +13,31 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.5.0 (user-facing command + consuming-project scope, issue #1179):**
+  Exposed rabbit-housekeep on the user-facing invocation surface and anchored
+  the wave on the CONSUMING PROJECT. Added the `/rabbit-housekeep` command
+  (`commands/rabbit-housekeep.md`, six-key frontmatter, owner
+  `rabbit-workflow team`, lockstep version) as a THIN entry point that resolves
+  scope deterministically then hands off to the skill, honoring the
+  no-Agent()-nesting constraint. Added `scripts/resolve-housekeep-scope.py`
+  (`list` / `paths`), a mode-aware resolver that enumerates the consuming
+  project's features — `rabbit-project/features/*` in a vendored install
+  (EXCLUDING rabbit's own `.claude/features/*`) and `.claude/features/*`
+  standalone — deliberately differing from `contract/find-feature.py`, which
+  returns BOTH sets. Wired the manifest with a `publish_command` entry and named
+  both new artifacts in `surface`/`provides`. Updated the SKILL.md to document
+  consuming-project targeting and reference the scope script, refreshed the
+  `test-reduction-wave.py` doc-surface ceiling for the additive growth, and
+  added spec invariants #9 (command) and #10 (scope resolution) plus a new E2E
+  gate `test-user-facing-surface.py`. KNOWN GAP (cross-scope, flagged for a
+  follow-up): the vendored installer closure is HARDCODED in rabbit-cage's
+  `install.py` (SKILLS / COMMANDS / FEATURE_INCLUDES) and does NOT include
+  rabbit-housekeep, so a fresh vendored install still ships none of these files;
+  adding the rabbit-housekeep closure entries is owned by rabbit-cage and is out
+  of this feature's scope. The deployed `.claude/skills/` + `.claude/commands/`
+  copies need a dispatcher republish because the source SKILL.md changed and a
+  new command was added.
+
 - **v0.4.0 (illustrative-example scanner exemption, issue #869):** Resolved a
   self-flag: `scripts/check-script-backed.py`, run against rabbit-housekeep
   itself, flagged three `runtime-placeholder` findings in the SKILL.md's OWN

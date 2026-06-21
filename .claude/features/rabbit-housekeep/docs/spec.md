@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.4.0
+version: 0.5.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -12,9 +12,13 @@ status: active
 ## Purpose
 
 rabbit-housekeep distills the housekeeping-wave slim / line-reduction work
-into a first-class, repeatable capability. It manifests ONE skill that runs
-measured verify-or-flag housekeeping against a target in WAVES sized to the
-target's complexity, and decomposes cross-feature scope into per-feature work.
+into a first-class, repeatable, user-facing capability. It manifests ONE skill
+and ONE `/rabbit-housekeep` command that run measured verify-or-flag
+housekeeping against a target in WAVES sized to the target's complexity, and
+decompose cross-feature scope into per-feature work. The wave anchors on the
+CONSUMING PROJECT's declared features (the user's project under
+`rabbit-project/features/*` in a vendored install, or `.claude/features/*`
+standalone) — never on rabbit-workflow's own framework features.
 
 It guards two failure modes: reword-not-remove (reshuffling prose while line
 counts stay flat) and load-bearing deletion (dropping a script name, schema
@@ -25,6 +29,12 @@ housekeeping test asserts named load-bearing tokens survive.
 ## Surface
 
 - `skills/rabbit-housekeep/SKILL.md` — the user-invocable skill.
+- `commands/rabbit-housekeep.md` — the `/rabbit-housekeep` slash command, the
+  user-facing entry point that resolves consuming-project scope and hands off
+  to the skill.
+- `scripts/resolve-housekeep-scope.py` — deterministic, mode-aware resolution
+  of the CONSUMING PROJECT's feature set (vendored: `rabbit-project/features/*`,
+  excluding rabbit's own; standalone: `.claude/features/*`).
 - `scripts/measure-reduction.py` — deterministic per-artifact line accounting
   and before/after reduction diff.
 - `scripts/check-script-backed.py` — deterministic scan of a target feature's
@@ -136,7 +146,9 @@ field — the script reports, the caller's verify-or-flag disposition acts.
 1. `feature.json` MUST declare `status: "active"`, `version: "0.1.0"` or later,
    `owner: "rabbit-workflow team"`, a valid `tdd_state`, non-empty `summary`,
    non-empty `deprecation_criterion`, and a `manifest` containing a
-   `publish_skill` entry sourcing `skills/rabbit-housekeep/SKILL.md`.
+   `publish_skill` entry sourcing `skills/rabbit-housekeep/SKILL.md` AND a
+   `publish_command` entry sourcing `commands/rabbit-housekeep.md`. The
+   `surface.commands` list MUST name the command.
 
 2. `skills/rabbit-housekeep/SKILL.md` MUST exist with YAML frontmatter
    declaring `name: rabbit-housekeep`, a description naming the wave-sized
@@ -189,6 +201,22 @@ field — the script reports, the caller's verify-or-flag disposition acts.
    `housekeeping`-tagged sub-issue naming the file, the step, and the
    conversion target).
 
+9. `commands/rabbit-housekeep.md` MUST exist with YAML frontmatter declaring
+   all six required keys (`name: rabbit-housekeep`, `description`, a `version`
+   in lockstep with `feature.json`, `owner: rabbit-workflow team`, a
+   `deprecation_criterion`, and `template_version`). It is a THIN user-facing
+   entry point: it resolves consuming-project scope via
+   `scripts/resolve-housekeep-scope.py`, hands off to the skill, and honors the
+   no-Agent()-nesting constraint (the skill it invokes is subagent-dispatching).
+
+10. `scripts/resolve-housekeep-scope.py` MUST provide a deterministic, mode-aware
+    `list` subcommand that enumerates the CONSUMING PROJECT's feature names. In
+    a vendored install it MUST return `rabbit-project/features/*` and EXCLUDE
+    rabbit's own framework features under `.claude/features/*`; in a standalone
+    install it MUST return `.claude/features/*`. Mode detection dual-accepts the
+    `vendored` (canonical) / `plugin` (legacy) marker value with a structural
+    fallback to a present `rabbit-project/` work tree. Bad invocation exits `2`.
+
 ## Tests
 
 `test/run.py` invokes every `test-*.py` file under `test/`. Coverage:
@@ -209,6 +237,13 @@ field — the script reports, the caller's verify-or-flag disposition acts.
   block marked illustrative via `<!-- example -->` is skipped while an unmarked
   live step with a placeholder STILL flags, agents/*.md and commands/*.md
   bodies are scanned, and invocation error exits `2`.
+- `test-user-facing-surface.py` — E2E asserting the `/rabbit-housekeep` command
+  exists with the six required frontmatter keys (owner `rabbit-workflow team`,
+  lockstep version), the manifest publishes it and `surface.commands` names it,
+  `resolve-housekeep-scope.py list` returns the consuming project's features in
+  vendored mode while EXCLUDING rabbit's own and returns `.claude/features/*`
+  standalone, bad invocation exits non-zero, and the SKILL.md documents
+  consuming-project targeting plus the scope script.
 
 ## Out of Scope
 

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.4.0
+version: 0.5.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -19,13 +19,16 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     ],
     "scripts": [
       ".claude/features/rabbit-housekeep/scripts/measure-reduction.py",
-      ".claude/features/rabbit-housekeep/scripts/check-script-backed.py"
+      ".claude/features/rabbit-housekeep/scripts/check-script-backed.py",
+      ".claude/features/rabbit-housekeep/scripts/resolve-housekeep-scope.py"
     ],
     "agents": [],
     "files": [],
     "templates": [],
     "schemas": [],
-    "commands": []
+    "commands": [
+      ".claude/features/rabbit-housekeep/commands/rabbit-housekeep.md"
+    ]
   },
   "reads": {
     "files": [
