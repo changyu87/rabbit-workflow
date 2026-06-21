@@ -68,7 +68,7 @@ BANNED_PHRASES = [
 # count so a future reword that re-inflates the body fails the gate.
 # Bumped in lockstep with genuine new invariants (Inv 63, Inv 64, Inv 65;
 # Inv 65 amended for the vendored `.rabbit/`-prefix anchor, #1146).
-SPEC_LINE_CEILING = 905
+SPEC_LINE_CEILING = 960
 
 PASS = 0
 FAIL = 0

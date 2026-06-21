@@ -87,19 +87,45 @@ def _repo_root():
     # toplevel and leak the scope marker / feature.json bookkeeping into the
     # dispatcher's main tree. The cwd is the worktree under isolation and the
     # main repo on the headless/main path, so cwd-based resolution is correct
-    # for both. RABBIT_ROOT (plugin mode) still wins verbatim.
+    # for both. RABBIT_ROOT (plugin mode) still wins verbatim, UNLESS cwd is
+    # a per-session LINKED git worktree (#1202): in that case the inherited
+    # RABBIT_ROOT points at the MAIN checkout (stale) while cwd IS the
+    # worktree, so cwd wins. Detection: in a linked worktree
+    # `git rev-parse --git-dir` returns an absolute path under
+    # .git/worktrees/; in the main repo it returns the relative string `.git`.
     env = os.environ.get("RABBIT_ROOT")
-    if env:
-        return env
+    cwd_top = ""
     try:
         out = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
             capture_output=True, text=True, check=False,
         )
         if out.returncode == 0:
-            return out.stdout.strip()
+            cwd_top = out.stdout.strip()
     except Exception:
         pass
+    if env and cwd_top and cwd_top != env:
+        # cwd resolves to a DIFFERENT git toplevel than RABBIT_ROOT.
+        # If cwd is a linked worktree, prefer it over the stale RABBIT_ROOT.
+        try:
+            gdir = subprocess.run(
+                ["git", "rev-parse", "--git-dir"],
+                capture_output=True, text=True, check=False,
+            )
+            if gdir.returncode == 0:
+                git_dir = gdir.stdout.strip()
+                # A linked worktree's git-dir is an absolute path that
+                # contains a "worktrees" component (e.g.
+                # /repo/.git/worktrees/agent-xxx or
+                # /repo/.claude/worktrees/agent-xxx).
+                if os.path.isabs(git_dir) and "worktrees" in git_dir:
+                    return cwd_top
+        except Exception:
+            pass
+    if env:
+        return env
+    if cwd_top:
+        return cwd_top
     return ""
 
 
