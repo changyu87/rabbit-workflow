@@ -13,6 +13,26 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.5.1 (neutralize loop-only script reference on the deployed surface,
+  issue #1182):** Removed the live invocation of the loop-only
+  `.claude/features/rabbit-auto-evolve/scripts/record-decomposition.py` from
+  the SKILL.md Step 2 decompose block. rabbit-auto-evolve is the self-driving
+  loop feature, deliberately ABSENT from rabbit-cage's vendored install
+  closure; a literal `.claude/features/rabbit-auto-evolve/scripts/<x>.py` path
+  in a shipped SKILL.md body is treated as a referenced-but-missing backing
+  script by both rabbit-cage gates (test-feature-includes-scripts-closure.py /
+  Inv 24 and test-install-ships-skill-referenced-scripts.py / #897+#1035),
+  which would fail once the SKILL ships in the vendored closure (#1181). The
+  block now states in prose that parent→children linkage recording is
+  loop-only machinery handled automatically by the auto-evolve loop, not a
+  user step; the cross-feature reuse stays declared in `docs/contract.md`
+  (`invokes.scripts`), which the gates do not scan. Net SKILL.md reduction of
+  one line (the measured-reduction ceiling holds). Added
+  `test/test-no-loop-only-script-ref.py`, which mirrors the rabbit-cage
+  scanner regex against the SOURCE SKILL.md and asserts no non-shipped
+  loop-only script reference survives. No user-facing behavior change; the
+  command surface is unchanged.
+
 - **v0.5.0 (user-facing command + consuming-project scope, issue #1179):**
   Exposed rabbit-housekeep on the user-facing invocation surface and anchored
   the wave on the CONSUMING PROJECT. Added the `/rabbit-housekeep` command
