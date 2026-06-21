@@ -1,7 +1,7 @@
 ---
 name: rabbit-housekeep
 description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole project — in complexity-sized waves. The wave targets the CONSUMING PROJECT's declared features, not rabbit's own framework. Each wave proves-it-dead-or-flags every claim and reports an HONEST measured outcome: it removes dead/redundant/simplifiable content when present, else honestly reports a no-op / already-clean verdict (an already-lean target is a SUCCESS, never forced into a reword). The ONE mandatory gate is behavior preserved (the feature's existing test suite stays green). The default DOC dimension slims doc surfaces; an OPT-IN CODE dimension (--code) simplifies the feature's src/ via the code-simplifier agent (simplify-first) and removes dead src/ symbols via the coding-rules §6 grep-for-callers protocol, routed through the governed TDD path. Also enforces the spec-rules §4 Script-Backed Orchestration standard as a script-tier verify-or-flag dimension: it scans SKILL/agent/command bodies for non-script-backed orchestration steps and flags each. Cross-feature or project-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or their project, simplify a feature's code, remove dead prose or dead code, scrub historical burden, check that orchestration is script-backed, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "simplify this feature's code", "run a reduction wave", "clean up dead prose", "remove dead code", "check script-backed orchestration", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
-version: 0.8.0
+version: 0.9.0
 owner: rabbit-workflow team
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
 ---
@@ -232,6 +232,16 @@ an ad-hoc edit. Invoke the feature-touch path so the change is test-driven:
 ```
 Skill("rabbit-feature-touch", args: "<name> housekeep: measured reduction wave")
 ```
+
+The `housekeep: measured reduction wave` request is the signal rabbit-feature-
+touch's `is-reduction-wave` detection keys on. On that path the whole reduction
+rides ONE governed RED->GREEN cycle: feature-touch runs rabbit-spec-update in
+its `--intent-only` no-commit mode, threads the spec-reduction intent into the
+dispatch, and the TDD subagent authors BOTH the spec reduction AND its gating
+test inside that single cycle. The dispatcher does NOT pre-edit or pre-commit
+`docs/spec.md` outside the cycle, so there is no forced no-spec-change escape
+hatch — the real spec edit is the subagent's working-tree diff that satisfies
+the `spec-update -> test-red` gate.
 
 The housekeeping test the TDD subagent authors MUST assert:
 - **behavior preserved (the ONE MANDATORY gate)** — the feature's existing
