@@ -13,6 +13,37 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.7.0 (honest gate + opt-in code dimension, issue #1190):** Two coupled
+  changes. CHANGE A (honest gate): the wave's reduction gate changed from
+  "must reduce" to "reduce IF there is dead/redundant/simplifiable content,
+  else honestly report a no-op / already-clean verdict." `measure-reduction.py
+  diff` now emits a `verdict` field (`reduced` when content was removed, else
+  `no-op`) alongside the existing `reduced` boolean; reduction is REPORTED, not
+  MANDATED. The ONE MANDATORY gate is now behavior preserved (the feature's
+  existing test suite stays green). SKILL.md Steps 4/6/7, the "What you do NOT
+  do" list, spec Purpose/Methodology/Waves and invariant #5, and the contract
+  `never` block were updated so an already-lean feature passes honestly instead
+  of being forced into a reword. CHANGE B (opt-in code dimension): added a
+  `--code` selector to `measure-reduction.py count` (a new `_iter_code_surfaces`
+  that scopes a directory argument to `src/**/*.py`, mutually exclusive with
+  `--docs-only`) and a new SKILL.md "OPT-IN code dimension" section. The code
+  dimension keeps the DOC dimension as the default and runs, in priority order,
+  SIMPLIFY (via the in-environment `code-simplifier` agent, declared in
+  `docs/contract.md` `invokes.agents`), then DEAD CODE removal (coding-rules §6
+  grep-for-callers on `src/` symbols; none = dead → remove, unverifiable →
+  FLAG), then honest measured REDUCTION — all through the governed TDD path with
+  the existing test suite as the zero-behavior-loss gate. Added spec invariant
+  #11 (code dimension) and command `--code` usage. New test cases `t8`
+  (verdict no-op/reduced) and `t9` (`count --code` scopes to `src/`) in
+  `test-measure-reduction.py`. `measure-reduction.py` script Version 0.2.0 ->
+  0.3.0; feature/spec/contract/SKILL/command versions bumped 0.6.0 -> 0.7.0 in
+  lockstep (Inv 11). SKILL.md + command `.md` are publish surfaces — their
+  deployed copies drift until the dispatcher republishes. NOTE: rabbit-housekeep
+  is still absent from rabbit-cage's vendored install closure (the v0.5.0 known
+  gap), so no new src-scoped behavior ships in a vendored install yet; the
+  `--code` flag is additive and the default whole-tree / `--docs-only` walks are
+  unchanged. Closes #1190.
+
 - **v0.6.0 (doc-scoped measurement so the mandated test does not flip the
   verdict, issue #1187):** `measure-reduction.py count` walked the ENTIRE
   feature directory, so the +157-line housekeeping e2e test plus baseline

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.6.0
+version: 0.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -51,7 +51,11 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "agents": [
       {
         "name": "tdd-subagent",
-        "purpose": "executes the per-feature reduction wave under the TDD cycle (consumed via rabbit-feature-touch; the housekeeping test pattern asserts measured reduction plus load-bearing-token survival)"
+        "purpose": "executes the per-feature reduction wave under the TDD cycle (consumed via rabbit-feature-touch; the housekeeping test pattern asserts the behavior-preserved gate plus load-bearing-token survival)"
+      },
+      {
+        "name": "code-simplifier",
+        "purpose": "in-environment agent that simplifies and refines a target feature's src/ for clarity, consistency, and maintainability while preserving all functionality; the SIMPLIFY step of the opt-in code dimension (--code), run through the governed TDD path with the existing test suite as the zero-behavior-loss gate"
       }
     ],
     "scripts": [
@@ -73,10 +77,10 @@ Boundary contract for cross-feature consumers. Read the JSON block; ignore prose
     "runtime_markers": []
   },
   "never": [
-    "edits files outside the target feature's directory",
-    "rewords doc surfaces without measured line removal (the measure-reduction.py diff reduced verdict is the gate)",
+    "edits files outside the target feature's directory (doc dimension) or outside the target feature's src/ (code dimension)",
+    "rewords doc surfaces or code to manufacture a diff (reduction is REPORTED not MANDATED; an already-clean target is an honest no-op SUCCESS; the MANDATORY gate is behavior preserved with the existing test suite green)",
     "deletes load-bearing tokens (script names, schema fields, exit codes, decision tables, cross-references) to inflate the line delta",
-    "silently keeps an unverifiable claim instead of flagging it as a housekeeping-tagged sub-issue",
+    "silently keeps an unverifiable claim or applies a risky/cross-scope rewrite instead of flagging it as a housekeeping-tagged sub-issue",
     "is invoked inside an Agent() call (it is a subagent-dispatching skill; doing so creates illegal two-level subagent nesting)"
   ]
 }

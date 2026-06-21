@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.6.0
+version: 0.7.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -20,11 +20,18 @@ CONSUMING PROJECT's declared features (the user's project under
 `rabbit-project/features/*` in a vendored install, or `.claude/features/*`
 standalone) — never on rabbit-workflow's own framework features.
 
-It guards two failure modes: reword-not-remove (reshuffling prose while line
-counts stay flat) and load-bearing deletion (dropping a script name, schema
-field, exit code, decision table, or cross-reference). Reduction is MEASURED
-with a deterministic script — a negative line delta is the gate — and the
-housekeeping test asserts named load-bearing tokens survive.
+Cleanup runs in two dimensions: the DOC dimension (default, slimming doc
+surfaces) and an OPT-IN CODE dimension (the `--code` selector, simplifying and
+dead-code-pruning the feature's `src/`). In both, reduction is REPORTED, never
+MANDATED: the ONE MANDATORY gate is behavior preserved (the feature's existing
+test suite stays green). When there is dead, redundant, or simplifiable content
+the wave removes it (`verdict: reduced`); when the target is already lean and
+nothing is dead, the wave honestly reports `verdict: no-op` — an already-clean
+SUCCESS, not a failure, never forced into a reword. Reduction is MEASURED with a
+deterministic script; the housekeeping test asserts behavior preserved and that
+named load-bearing tokens survive, guarding against load-bearing deletion
+(dropping a script name, schema field, exit code, decision table, or
+cross-reference).
 
 ## Surface
 
@@ -72,8 +79,9 @@ The skill sizes the work into waves by target complexity:
 
 Each per-feature unit executes through the governed TDD path —
 rabbit-feature-touch, which dispatches the TDD subagent. The housekeeping
-test pattern asserts BOTH the measured reduction (`measure-reduction.py diff`
-reports a negative total delta) AND that the named load-bearing tokens survive.
+test pattern asserts the MANDATORY behavior-preserved gate (the existing test
+suite stays green) and that the named load-bearing tokens survive; it REPORTS
+the measured `verdict` (`reduced` or `no-op`) but does not mandate reduction.
 
 ## Tool-choice tiering
 
@@ -90,19 +98,24 @@ reports a negative total delta) AND that the named load-bearing tokens survive.
 Deterministic, stdlib-only, two subcommands (full interface in the script
 docstring):
 
-- `count [--docs-only] <path> ...` — JSON of each text file's line count plus
-  `__total__`; directories walked recursively, binary files skipped. The
-  machine-first BEFORE/AFTER snapshot. With `--docs-only`, a directory argument
-  is restricted to the DOC SURFACES a wave slims (`docs/spec.md`,
-  `docs/contract.md`, `skills/*/SKILL.md`) and EXCLUDES `test/` and
-  `docs/CHANGELOG.md`, so the mandated housekeeping test a wave adds under
-  `test/` does not flip the Step-7 `reduced` verdict to false.
+- `count [--docs-only | --code] <path> ...` — JSON of each text file's line
+  count plus `__total__`; directories walked recursively, binary files skipped.
+  The machine-first BEFORE/AFTER snapshot. With `--docs-only` (the DOC
+  dimension, default), a directory argument is restricted to the DOC SURFACES a
+  wave slims (`docs/spec.md`, `docs/contract.md`, `skills/*/SKILL.md`) and
+  EXCLUDES `test/` and `docs/CHANGELOG.md`, so the mandated housekeeping test a
+  wave adds under `test/` does not flip the Step-7 verdict. With `--code` (the
+  OPT-IN code dimension), a directory argument is restricted to the feature's
+  `src/` source files (`src/**/*.py`), excluding docs/, test/, and skills/ —
+  symmetric to `--docs-only`. The two flags are mutually exclusive.
 - `diff <before.json> <after.json>` — JSON with `per_artifact`,
   `total_delta` (after − before; negative means lines removed), `reduced`
-  (true iff `total_delta < 0`), `removed_paths`, and `added_paths`.
+  (true iff `total_delta < 0`), `verdict` (`reduced` when content was removed,
+  else `no-op`), `removed_paths`, and `added_paths`.
 
-Exit `0` success, `2` invocation error. The reduction verdict is the
-`reduced` field — the script reports, the caller's test gates.
+Exit `0` success, `2` invocation error. The honest outcome is the `verdict`
+field: `reduced` or `no-op` (already-clean SUCCESS). Reduction is REPORTED, not
+MANDATED — the script reports, the caller's test asserts behavior preserved.
 
 ## Script-backed-orchestration verify-or-flag dimension
 
@@ -171,12 +184,15 @@ field — the script reports, the caller's verify-or-flag disposition acts.
 
 5. `scripts/measure-reduction.py` MUST provide deterministic per-artifact line
    accounting via a `count` subcommand and a before/after reduction verdict via
-   a `diff` subcommand whose output reports `total_delta` and a boolean
-   `reduced` flag. `count` MUST accept a `--docs-only` flag that restricts a
+   a `diff` subcommand whose output reports `total_delta`, a boolean `reduced`
+   flag, AND a `verdict` field whose value is `reduced` when content was removed
+   and `no-op` when nothing changed (an honest already-clean outcome, REPORTED
+   not MANDATED). `count` MUST accept a `--docs-only` flag that restricts a
    directory argument to the doc surfaces a wave slims (`docs/spec.md`,
    `docs/contract.md`, `skills/*/SKILL.md`), excluding `test/` and
-   `docs/CHANGELOG.md`, so the mandated housekeeping test a wave adds does not
-   flip the doc-scoped `reduced` verdict.
+   `docs/CHANGELOG.md`, AND a mutually-exclusive `--code` flag that restricts a
+   directory argument to the feature's `src/` source files (`src/**/*.py`),
+   excluding docs/, test/, and skills/.
 
 6. `docs/contract.md` MUST exist with proper frontmatter and a JSON block
    declaring the cross-feature relationships: `invokes` names the TDD subagent
@@ -225,16 +241,30 @@ field — the script reports, the caller's verify-or-flag disposition acts.
     `vendored` (canonical) / `plugin` (legacy) marker value with a structural
     fallback to a present `rabbit-project/` work tree. Bad invocation exits `2`.
 
+11. The SKILL.md MUST keep the DOC dimension as the DEFAULT and document an
+    OPT-IN CODE dimension selected by `--code`. The code dimension MUST state
+    the priority order — SIMPLIFY first via the in-environment `code-simplifier`
+    agent (preserving all functionality), then DEAD CODE removal applying the
+    coding-rules §6 grep-for-callers protocol to `src/` symbols (none = dead →
+    remove; unverifiable → FLAG a `housekeeping`-tagged sub-issue), then
+    measured `src/` REDUCTION reported honestly — routed through the governed
+    TDD path. It MUST state the ONE MANDATORY gate is behavior preserved (the
+    feature's existing test suite stays green), that an already-clean target is
+    an honest `no-op` SUCCESS, and that cleanup edits only the target feature's
+    `src/`, never cross-feature.
+
 ## Tests
 
 `test/run.py` invokes every `test-*.py` file under `test/`. Coverage:
 
 - `test-measure-reduction.py` — E2E driving `count` and `diff` against
   fixture trees: correct totals, removal yields `reduced: true`, reword
-  yields `reduced: false`, invocation error exits `2`, and `count --docs-only`
+  yields `reduced: false`, invocation error exits `2`, `count --docs-only`
   scopes a feature dir to its doc surfaces (excluding `test/` and
   `docs/CHANGELOG.md`) so a docs-shrink-plus-test-grow wave still reports the
-  doc-scoped `reduced: true` verdict.
+  doc-scoped `reduced: true` verdict, `diff` reports an honest `verdict`
+  (`no-op` for a no-change wave, `reduced` for a removal), and `count --code`
+  scopes a feature dir to its `src/` source files.
 - `test-skill-structure.py` — E2E asserting the skill is present and
   manifest-published, the coding-rules §6 block is embedded byte-for-byte
   verbatim, the spec-rules §4 Script-Backed Orchestration block is embedded
