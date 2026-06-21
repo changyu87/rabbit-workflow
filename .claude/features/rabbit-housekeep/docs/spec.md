@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.5.1
+version: 0.6.0
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -90,9 +90,13 @@ reports a negative total delta) AND that the named load-bearing tokens survive.
 Deterministic, stdlib-only, two subcommands (full interface in the script
 docstring):
 
-- `count <path> ...` — JSON of each text file's line count plus `__total__`;
-  directories walked recursively, binary files skipped. The machine-first
-  BEFORE/AFTER snapshot.
+- `count [--docs-only] <path> ...` — JSON of each text file's line count plus
+  `__total__`; directories walked recursively, binary files skipped. The
+  machine-first BEFORE/AFTER snapshot. With `--docs-only`, a directory argument
+  is restricted to the DOC SURFACES a wave slims (`docs/spec.md`,
+  `docs/contract.md`, `skills/*/SKILL.md`) and EXCLUDES `test/` and
+  `docs/CHANGELOG.md`, so the mandated housekeeping test a wave adds under
+  `test/` does not flip the Step-7 `reduced` verdict to false.
 - `diff <before.json> <after.json>` — JSON with `per_artifact`,
   `total_delta` (after − before; negative means lines removed), `reduced`
   (true iff `total_delta < 0`), `removed_paths`, and `added_paths`.
@@ -168,7 +172,11 @@ field — the script reports, the caller's verify-or-flag disposition acts.
 5. `scripts/measure-reduction.py` MUST provide deterministic per-artifact line
    accounting via a `count` subcommand and a before/after reduction verdict via
    a `diff` subcommand whose output reports `total_delta` and a boolean
-   `reduced` flag.
+   `reduced` flag. `count` MUST accept a `--docs-only` flag that restricts a
+   directory argument to the doc surfaces a wave slims (`docs/spec.md`,
+   `docs/contract.md`, `skills/*/SKILL.md`), excluding `test/` and
+   `docs/CHANGELOG.md`, so the mandated housekeeping test a wave adds does not
+   flip the doc-scoped `reduced` verdict.
 
 6. `docs/contract.md` MUST exist with proper frontmatter and a JSON block
    declaring the cross-feature relationships: `invokes` names the TDD subagent
@@ -223,7 +231,10 @@ field — the script reports, the caller's verify-or-flag disposition acts.
 
 - `test-measure-reduction.py` — E2E driving `count` and `diff` against
   fixture trees: correct totals, removal yields `reduced: true`, reword
-  yields `reduced: false`, invocation error exits `2`.
+  yields `reduced: false`, invocation error exits `2`, and `count --docs-only`
+  scopes a feature dir to its doc surfaces (excluding `test/` and
+  `docs/CHANGELOG.md`) so a docs-shrink-plus-test-grow wave still reports the
+  doc-scoped `reduced: true` verdict.
 - `test-skill-structure.py` — E2E asserting the skill is present and
   manifest-published, the coding-rules §6 block is embedded byte-for-byte
   verbatim, the spec-rules §4 Script-Backed Orchestration block is embedded
