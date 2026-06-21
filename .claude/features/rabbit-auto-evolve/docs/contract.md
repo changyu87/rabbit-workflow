@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.100.3
+version: 0.100.4
 template_version: 2.0.0
 ---
 
@@ -13,7 +13,7 @@ template_version: 2.0.0
       {
         "path": ".rabbit/auto-evolve-tick-jitter.json",
         "schema_version": "1.1.0",
-        "rationale": "the empirical CronCreate jitter offset AND the actual next scheduled fire (Inv 56), owned and persisted by rabbit-auto-evolve's tick-jitter.py from the recorded fire history in .rabbit/tick.log and the dispatcher-injected CronList snapshot. Schema: {schema_version, observed_jitter_minutes (int >= 0), period_minutes, sample_count, cold_start (bool), next_fire_at (ISO-8601 UTC | null), computed_at, owner, deprecation_criterion}. Other features (the contract feature's Stop line) READ observed_jitter_minutes to render the boundary-plus-offset ETA, and next_fire_at (when non-null and future) to snap the ETA to the live schedule (the pending immediate-refire) rather than a stale heartbeat cron edge (#1154) — WITHOUT importing this feature"
+        "rationale": "the empirical CronCreate jitter offset AND the actual next scheduled fire (Inv 56), owned and persisted by rabbit-auto-evolve's tick-jitter.py from the recorded fire history in .rabbit/tick.log and the dispatcher-injected CronList snapshot. Schema: {schema_version, observed_jitter_minutes (int >= 0), period_minutes, sample_count, cold_start (bool), next_fire_at (ISO-8601 UTC | null), computed_at, owner, deprecation_criterion}. Other features (the contract feature's Stop line) READ observed_jitter_minutes to render the boundary-plus-offset ETA, and next_fire_at (when non-null and future) to snap the ETA to the live schedule (the pending immediate-refire) rather than a stale heartbeat cron edge — WITHOUT importing this feature"
       }
     ],
     "commands": [],
@@ -22,7 +22,7 @@ template_version: 2.0.0
         "path": ".claude/features/rabbit-auto-evolve/scripts/tick-jitter.py",
         "subcommands": ["compute", "show"],
         "version": "1.1.0",
-        "rationale": "Inv 56: computes the deterministic CronCreate jitter offset as the median of actual_fire_time - nearest_prior_cron_boundary over recent .rabbit/tick.log fires (cold-start fallback min(15, ceil(period*0.10)) when no history), AND derives next_fire_at — the actual next scheduled CronCreate event (the earliest upcoming fire across the dispatcher-injected CronList snapshot, the pending immediate-refire plus the heartbeat; #1154) — persisting both to .rabbit/auto-evolve-tick-jitter.json. `show` emits the recomputed record as JSON on stdout; `compute` writes the artifact. The boundary-plus-offset value and the next_fire_at edge banner-status.py and the contract Stop line render"
+        "rationale": "Inv 56: computes the deterministic CronCreate jitter offset as the median of actual_fire_time - nearest_prior_cron_boundary over recent .rabbit/tick.log fires (cold-start fallback min(15, ceil(period*0.10)) when no history), AND derives next_fire_at — the actual next scheduled CronCreate event (the earliest upcoming fire across the dispatcher-injected CronList snapshot, the pending immediate-refire plus the heartbeat) — persisting both to .rabbit/auto-evolve-tick-jitter.json. `show` emits the recomputed record as JSON on stdout; `compute` writes the artifact. The boundary-plus-offset value and the next_fire_at edge banner-status.py and the contract Stop line render"
       },
       {
         "path": ".claude/features/rabbit-auto-evolve/scripts/advise-restart.py",

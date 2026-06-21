@@ -16,6 +16,17 @@ authoritative).
 
 ## Version notes
 
+- **v0.100.4 — 2026-06-13** — #1185 (housekeeping). Doc-only fix. Scrubbed
+  nine bare `#NNNN` historical-burden issue/PR provenance tags from the
+  spec.md / contract.md BODY surfaces that reddened the contract gate
+  `contract/test/test-spec-bodies-no-historical-tags.py` on main. Each tag
+  was a parenthetical or trailing project-ticket reference; the behavioral
+  prose and all `Inv NN` invariant citations are preserved verbatim. The
+  spec.md Inv 69 worked example that named four specific colliding PR
+  numbers is reworded to describe the version-bump merge-conflict failure
+  mode generically. Pinned by the new same-feature regression guard
+  `test/test-spec-housekeeping-1185-no-historical-tags.py`. No behavior
+  change.
 - **v0.100.3 — 2026-06-13** — #1177. Renumber the `start` "Start the loop" step list in SKILL.md (`0.`, `0b.`, `1.`, `2.` → `0.`, `1.`, `2.`, `3.`) to remove the `0b.` list-letter that tripped the contract numbered-lists gate (introduced by #1168/#1169). Numbering-format fix only — start-flow semantics unchanged.
 - **v0.100.2 — 2026-06-13** — #1167 (housekeeping). Code-comment-only fix.
   The `run-tick-phases.py` module docstring described the post-merge

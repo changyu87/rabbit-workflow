@@ -1,6 +1,6 @@
 ---
 feature: rabbit-auto-evolve
-version: 0.100.3
+version: 0.100.4
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when Claude Code or rabbit gains a native always-on autonomous-agent mode that supersedes this skill
@@ -1557,7 +1557,7 @@ summary is restated here.
       Inv 55 mirror assertion).
     - Active only, state file PRESENT, jitter artifact carries a FUTURE
       `next_fire_at` (a pending immediate-refire) → `line2.text` snaps the ETA to
-      that live fire, NOT the stale heartbeat boundary+offset (Inv 56, #1154); a
+      that live fire, NOT the stale heartbeat boundary+offset (Inv 56); a
       PAST or `null` `next_fire_at` is ignored and the line falls back to the
       heartbeat-boundary-plus-offset computation.
     - Active only, state file PRESENT, unparseable cadence → bare idle line,
@@ -2740,7 +2740,7 @@ summary is restated here.
       (`run-post-merge.py` drain), phase 11 (persist), an Inv 55 strip-on-exit
       reconcile, then the Inv 56 jitter-artifact refresh.
 
-    **Phase 7 merge-failure surfacing (issue #1158).** `merge-prs.py` ALWAYS
+    **Phase 7 merge-failure surfacing.** `merge-prs.py` ALWAYS
     exits 0, reporting partial outcomes per-PR in its stdout JSON array (Inv 6).
     The post-dispatch walk therefore MUST parse that stdout — not trust the exit
     code — and treat ANY per-PR `status == "failed"` row (a `gh pr merge --squash
@@ -2777,8 +2777,8 @@ summary is restated here.
     ready PRs, drains post-merge, and persists through the REAL update-state.py
     dropping `merge_ready`; dispatch NEVER runs inside the walk; a `merge-prs.py`
     stdout row with `status == "failed"` aborts non-zero before the post-merge
-    drain though merge-prs.py exits 0, a `status == "skipped"` row does NOT —
-    issue #1158), by
+    drain though merge-prs.py exits 0, a `status == "skipped"` row does
+    NOT), by
     `test/test-tick-persist-convergence.py` (the in-session path —
     `pre-dispatch` then `post-dispatch` with a no-state-mutation Phase 6 between
     — persists BYTE-IDENTICAL state to the headless tick for the same on-disk
@@ -4076,9 +4076,8 @@ summary is restated here.
     Dispatched concurrently from the SAME base, each runs a full single-feature
     touch that bumps that feature's `version` in `feature.json`, producing two
     PRs that bump the same feature from `X→X+1` — a guaranteed version-bump
-    merge conflict on the second PR (the observed instance: #1152 and #1156 both
-    targeting rabbit-cage, both bumping `5.89.0→5.90.0`, PR #1157 conflicting
-    with #1153).
+    merge conflict on the second PR (two PRs targeting the same feature, both
+    bumping its `feature.json` version identically, collide on merge).
 
     **THE GUARD.** After Stage-1 selection and Stage-2 shaping, `plan-batch.py`
     walks `selection_order` in order and keeps AT MOST ONE item per feature dir.
@@ -4125,7 +4124,7 @@ summary is restated here.
     `RABBIT_AUTO_EVOLVE_CRON_LIST`, invoke
     `schedule-decision.py cancel-refire`, and `CronDelete` every id in the
     emitted `cancel_refire_ids`. `cancel-refire` reuses the EXACT same
-    `is_refire_oneshot` predicate (Inv 33 / Inv 47, #559) the create-path dedup
+    `is_refire_oneshot` predicate (Inv 33 / Inv 47) the create-path dedup
     uses, so the set it returns is precisely the pending `#refire` session-only
     one-shots (prompt carries the `#refire` MARKER, non-recurring,
     non-durable). It emits
