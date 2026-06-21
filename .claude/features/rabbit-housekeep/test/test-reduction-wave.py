@@ -52,12 +52,13 @@ DOC_SURFACES = [SPEC, CONTRACT, SKILL]
 # measurement so the mandated test does not flip the verdict, #1187; v0.7.0:
 # honest gate verdict + opt-in --code code dimension, #1190; v0.8.0: gated wave
 # auto-merge on green gates for user-installed runs, #1191; v0.9.0: single
-# governed TDD cycle for the per-feature spec reduction documented, #1189).
+# governed TDD cycle for the per-feature spec reduction documented, #1189;
+# v0.9.1: sub-issue routing to consuming project's repo, #1206).
 DOC_CEILING = {
-    SPEC: 372,
-    CONTRACT: 91,
-    SKILL: 394,
-    "__total__": 857,
+    SPEC: 377,
+    CONTRACT: 92,
+    SKILL: 395,
+    "__total__": 864,
 }
 
 PASS = 0
@@ -151,6 +152,9 @@ REQUIRED_TOKENS = [
     "subagent-dispatching",
     "two-level",
     "Agent(",
+    # sub-issue routing to consuming project (issue #1206)
+    "resolve-project-remote.py",
+    "RABBIT_ISSUE_REPO",
     # cross-feature relationships
     "rabbit-feature-touch",
     "tdd-subagent",
