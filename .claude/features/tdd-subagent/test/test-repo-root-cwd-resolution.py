@@ -158,14 +158,33 @@ def main():
             ko(f"cwd=main -> _repo_root() returned {resolved_main!r}, "
                f"expected main {os.path.realpath(main_top)!r}")
 
-        # Plugin-mode preserved: RABBIT_ROOT wins regardless of cwd.
-        env2 = os.environ.copy()
-        env2["RABBIT_ROOT"] = main_top
-        rc, out, err = _run_probe(wt_top, env=env2)
-        if rc == 0 and os.path.realpath(out.get("ROOT", "")) == os.path.realpath(main_top):
-            ok("RABBIT_ROOT set -> resolver honors RABBIT_ROOT verbatim (plugin path)")
+        # Plugin-mode preserved: when RABBIT_ROOT is an UNRELATED directory
+        # (a different git repo or no git repo at all), RABBIT_ROOT wins even
+        # when cwd is a linked worktree. Simulate plugin mode by using a second
+        # temp directory as RABBIT_ROOT (no git relationship to cwd's worktree).
+        import tempfile as _tf
+        with _tf.TemporaryDirectory() as plugin_root:
+            env2 = os.environ.copy()
+            env2["RABBIT_ROOT"] = plugin_root
+            rc2, out2, err2 = _run_probe(wt_top, env=env2)
+            if rc2 == 0 and os.path.realpath(out2.get("ROOT", "")) == os.path.realpath(plugin_root):
+                ok("RABBIT_ROOT (unrelated repo) + cwd=worktree -> "
+                   "RABBIT_ROOT honored (plugin path)")
+            else:
+                ko(f"RABBIT_ROOT path: rc={rc2} ROOT={out2.get('ROOT')!r} "
+                   f"err={err2!r}")
+
+        # Worktree of SAME repo: when RABBIT_ROOT is the main checkout and
+        # cwd is a linked worktree of the same repo, cwd wins (#1202 fix).
+        env3 = os.environ.copy()
+        env3["RABBIT_ROOT"] = main_top
+        rc3, out3, err3 = _run_probe(wt_top, env=env3)
+        if rc3 == 0 and os.path.realpath(out3.get("ROOT", "")) == os.path.realpath(wt_top):
+            ok("RABBIT_ROOT=main + cwd=linked-worktree (same repo) -> "
+               "cwd wins over RABBIT_ROOT (#1202)")
         else:
-            ko(f"RABBIT_ROOT path: rc={rc} ROOT={out.get('ROOT')!r} err={err!r}")
+            ko(f"same-repo worktree path: rc={rc3} ROOT={out3.get('ROOT')!r} "
+               f"err={err3!r}")
 
 
 print(f"running repo-root cwd-resolution tests against {TDD_STEP}")

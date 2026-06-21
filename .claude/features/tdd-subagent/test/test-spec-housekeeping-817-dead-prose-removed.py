@@ -70,7 +70,7 @@ BANNED_PHRASES = [
 # Inv 65 (--worktree/--cwd absolute-worktree anchoring, #1128) added another,
 # raising it to 872. Inv 65's vendored `.rabbit/`-prefix-anchor amendment
 # (#1146) raised it to 892.
-SPEC_LINE_CEILING = 905
+SPEC_LINE_CEILING = 960
 
 PASS = 0
 FAIL = 0

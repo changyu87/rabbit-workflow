@@ -1,6 +1,6 @@
 ---
 feature: tdd-subagent
-version: 5.29.0
+version: 5.29.1
 owner: rabbit-workflow team
 template_version: 2.1.0
 deprecation_criterion: When subagent dispatch is replaced by a different orchestration mechanism (e.g., direct rabbit-CLI orchestration without a dispatch-prompt assembler).
@@ -877,6 +877,37 @@ defined in Inv 55.
     fixture with `RABBIT_ROOT=<host>/.rabbit` and `--worktree <host>`; every
     emitted slot carries the `.rabbit/` segment under the worktree, and none
     leaks the `.rabbit/`-stripped form).
+
+66. **`tdd-step.py` prefers cwd-based linked-worktree root over `RABBIT_ROOT`.**
+    When `RABBIT_ROOT` is set in the environment (pointing at the MAIN
+    checkout) but `tdd-step.py` is invoked from within a per-session LINKED
+    git worktree (cwd's git toplevel differs from `RABBIT_ROOT`), the script's
+    `_repo_root()` resolver MUST return the cwd-based git toplevel (the
+    worktree), NOT `RABBIT_ROOT`.
+
+    Detection: in a linked git worktree `git rev-parse --git-dir` returns an
+    absolute path containing a `worktrees` component (e.g.
+    `/repo/.git/worktrees/agent-xxx`); in the main repo it returns the
+    relative string `.git`. When `RABBIT_ROOT` is set, `cwd_top` is non-empty,
+    `cwd_top != RABBIT_ROOT`, and cwd's `--git-dir` is an absolute path
+    containing `worktrees`, the resolver returns `cwd_top`.
+
+    This fixes two failure modes when `RABBIT_ROOT` points at the main
+    checkout but the TDD cycle runs inside a per-session worktree. First, the
+    spec-update -> test-red diff check (`git -C REPO_ROOT diff HEAD`) reads the
+    MAIN tree where the worktree's spec edit is invisible, causing a spurious
+    `--spec-no-change-reason` demand. Second, TDD state writes (scope marker,
+    `feature.json`) leak into the main checkout instead of the worktree.
+
+    Plugin-mode back-compat is preserved: when cwd is NOT a linked worktree
+    (e.g., the process cwd equals the main repo root), the linked-worktree
+    detection yields false and `RABBIT_ROOT` wins as before.
+
+    Enforced by `test/test-worktree-rabbit-root-priority.py` (e2e: real git
+    repo + linked worktree; with `RABBIT_ROOT=<main>` and `cwd=<worktree>` the
+    resolver returns the worktree; with `cwd=<main>` and `RABBIT_ROOT=<main>`,
+    `RABBIT_ROOT` is honored; and the no-`RABBIT_ROOT` Inv 54 path is
+    preserved).
 
 ## Out of Scope
 
