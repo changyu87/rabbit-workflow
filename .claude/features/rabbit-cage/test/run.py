@@ -113,6 +113,7 @@ SUITES = [
     "test-install-e2e-ready-to-run.py",
     "test-install-ships-skill-referenced-scripts.py",
     "test-install-closure-sources-exist.py",
+    "test-install-closure-ships-rabbit-housekeep.py",
     "test-install-no-drift-on-first-run.py",
     "test-show-mode-command.py",
     "test-scope-guard-decompose-context.py",
