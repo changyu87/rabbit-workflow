@@ -47,12 +47,13 @@ DOC_SURFACES = [SPEC, CONTRACT, SKILL]
 # governed touch. The live total must stay at or below this; a reword/bloat
 # that pushed it higher FAILS. Refreshed when a governed touch adds behavior
 # additively (v0.3.0: script-backed-orchestration dimension; v0.4.0:
-# illustrative-example scanner exemption).
+# illustrative-example scanner exemption; v0.5.0: user-facing command +
+# consuming-project scope resolution).
 DOC_CEILING = {
-    SPEC: 220,
-    CONTRACT: 83,
-    SKILL: 238,
-    "__total__": 541,
+    SPEC: 255,
+    CONTRACT: 86,
+    SKILL: 258,
+    "__total__": 599,
 }
 
 PASS = 0
