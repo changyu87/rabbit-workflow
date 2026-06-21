@@ -1,7 +1,7 @@
 ---
 name: "rabbit-housekeep"
 description: "Run a measured verify-or-flag housekeeping wave over the CONSUMING PROJECT's declared features. Default DOC dimension; opt-in --code dimension simplifies a feature's src/."
-version: 0.9.0
+version: 0.9.1
 owner: "rabbit-workflow team"
 deprecation_criterion: "when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand"
 template_version: 1.0.0

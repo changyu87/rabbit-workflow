@@ -13,6 +13,28 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.9.1 (wave sub-issues route to consuming project's repo, issue #1206):**
+  Housekeep wave sub-issues (filed by Steps 4/5 and the code-dimension §6
+  protocol via `file-item.py`) were silently landing in the rabbit framework's
+  own GitHub tracker (`changyu87/rabbit-workflow`) instead of the consuming
+  project's issue tracker. Root cause: `file-item.py` calls `_gh.py`'s
+  `repo_slug()` which defaults to the framework's hardwired repo. Fix: new
+  companion script `scripts/resolve-project-remote.py` (script-tier, per
+  spec-rules §4) resolves the consuming project's GitHub remote URL to an
+  `owner/repo` slug; the wave sets `RABBIT_ISSUE_REPO` to this slug before
+  invoking `file-item.py`, redirecting sub-issues to the consuming project's
+  tracker. The script reads `git remote get-url origin` from the consuming
+  project's directory and supports SSH (`git@github.com:owner/repo.git`) and
+  HTTPS (`https://github.com/owner/repo[.git]`) URL forms; exits `1` when no
+  remote is discoverable (e.g. a non-git directory). SKILL.md Step 2 updated to
+  document the RABBIT_ISSUE_REPO routing mechanism and reference the new script;
+  `resolve-project-remote.py` declared in `feature.json` `surface.scripts` and
+  `docs/contract.md` `provides.scripts`. New gate
+  `test/test-subrepo-routing.py` (5 cases: script exists, URL parsing, non-git
+  exit, SKILL.md documentation, feature.json declaration). Spec `Surface`
+  section extended with the new script entry. Feature/spec/contract/SKILL/command
+  versions bumped 0.9.0 -> 0.9.1 in lockstep. Closes #1206.
+
 - **v0.9.0 (single governed TDD cycle for the per-feature spec reduction, issue #1189):**
   Documents on the housekeep surfaces that a measured reduction wave's
   per-feature spec reduction now rides ONE governed RED->GREEN cycle. The

@@ -1,6 +1,6 @@
 ---
 feature: rabbit-housekeep
-version: 0.9.0
+version: 0.9.1
 owner: rabbit-workflow team
 template_version: 2.0.0
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
@@ -42,6 +42,11 @@ cross-reference).
 - `scripts/resolve-housekeep-scope.py` — deterministic, mode-aware resolution
   of the CONSUMING PROJECT's feature set (vendored: `rabbit-project/features/*`,
   excluding rabbit's own; standalone: `.claude/features/*`).
+- `scripts/resolve-project-remote.py` — resolves the consuming project's GitHub
+  remote URL to an `owner/repo` slug for use as `RABBIT_ISSUE_REPO` when filing
+  wave sub-issues, ensuring sub-issues land in the consuming project's tracker
+  (not the framework's). Reads `git remote get-url origin` from the project
+  directory and parses SSH and HTTPS URL forms.
 - `scripts/measure-reduction.py` — deterministic per-artifact line accounting
   and before/after reduction diff.
 - `scripts/check-script-backed.py` — deterministic scan of a target feature's

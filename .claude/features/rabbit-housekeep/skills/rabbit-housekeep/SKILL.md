@@ -1,7 +1,7 @@
 ---
 name: rabbit-housekeep
 description: Run measured verify-or-flag housekeeping against a target — a single feature, a set of features, or the whole project — in complexity-sized waves. The wave targets the CONSUMING PROJECT's declared features, not rabbit's own framework. Each wave proves-it-dead-or-flags every claim and reports an HONEST measured outcome: it removes dead/redundant/simplifiable content when present, else honestly reports a no-op / already-clean verdict (an already-lean target is a SUCCESS, never forced into a reword). The ONE mandatory gate is behavior preserved (the feature's existing test suite stays green). The default DOC dimension slims doc surfaces; an OPT-IN CODE dimension (--code) simplifies the feature's src/ via the code-simplifier agent (simplify-first) and removes dead src/ symbols via the coding-rules §6 grep-for-callers protocol, routed through the governed TDD path. Also enforces the spec-rules §4 Script-Backed Orchestration standard as a script-tier verify-or-flag dimension: it scans SKILL/agent/command bodies for non-script-backed orchestration steps and flags each. Cross-feature or project-wide scope is decomposed into per-feature sub-issues, each worked through the governed TDD path. Use when the user wants to slim/clean/reduce a feature's docs or their project, simplify a feature's code, remove dead prose or dead code, scrub historical burden, check that orchestration is script-backed, or run a housekeeping pass. Phrases like "housekeep this feature", "slim the specs", "simplify this feature's code", "run a reduction wave", "clean up dead prose", "remove dead code", "check script-backed orchestration", "/rabbit-housekeep". Do NOT use to author new behavior (that's rabbit-feature-touch) or to propose a feature decomposition for a greenfield project (that's rabbit-decompose).
-version: 0.9.0
+version: 0.9.1
 owner: rabbit-workflow team
 deprecation_criterion: when housekeeping is provided natively by the rabbit CLI as a first-class measured-reduction subcommand
 ---
@@ -143,13 +143,14 @@ repo-wide mandate:
    uses: one bounded per-feature unit each).
 2. File one `housekeeping`-tagged per-feature sub-issue per feature via the
    rabbit-issue filing script (contract INVOKE — do not edit rabbit-issue
-   files):
-   ```bash
-   python3 .claude/features/rabbit-issue/scripts/file-item.py \
-     --type enhancement --feature <name> --priority medium \
-     --title "housekeep <name>: measured reduction wave" \
-     --description "<scope>" --filed-by rabbit
-   ```
+   files). Sub-issues must land in the CONSUMING PROJECT's GitHub issue
+   tracker, not the framework's repo. Resolve the consuming project's remote
+   slug first with `scripts/resolve-project-remote.py`, then set
+   `RABBIT_ISSUE_REPO` when invoking `file-item.py` so `_gh.py`'s
+   `repo_slug()` targets the right repo. The `resolve-project-remote.py`
+   script owns this resolution (script-tier, per spec-rules §4): it reads
+   `git remote get-url origin` from the consuming project's directory and
+   parses it to an `owner/repo` slug.
 3. Recording the parent→children linkage so the parent closes itself when
    every child closes is LOOP-ONLY machinery owned by rabbit-auto-evolve, NOT
    a user step. When the auto-evolve loop drives this it records the linkage via
