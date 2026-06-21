@@ -44,6 +44,7 @@ EXPECTED_SCRIPTS = [
     "scripts/check-script-backed.py",
     "scripts/resolve-housekeep-scope.py",
     "scripts/wave-automerge.py",
+    "scripts/resolve-project-remote.py",
 ]
 
 
