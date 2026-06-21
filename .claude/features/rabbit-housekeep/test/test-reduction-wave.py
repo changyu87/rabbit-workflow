@@ -24,7 +24,7 @@ doc surfaces and asserts BOTH halves of a wave's contract.
 
 Non-interactive. Exits non-zero on failure.
 
-Version: 0.4.0
+Version: 0.5.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-housekeep is retired.
 """
@@ -48,12 +48,13 @@ DOC_SURFACES = [SPEC, CONTRACT, SKILL]
 # that pushed it higher FAILS. Refreshed when a governed touch adds behavior
 # additively (v0.3.0: script-backed-orchestration dimension; v0.4.0:
 # illustrative-example scanner exemption; v0.5.0: user-facing command +
-# consuming-project scope resolution).
+# consuming-project scope resolution; v0.6.0: count --docs-only doc-scoped
+# measurement so the mandated test does not flip the verdict, #1187).
 DOC_CEILING = {
-    SPEC: 255,
+    SPEC: 266,
     CONTRACT: 86,
-    SKILL: 258,
-    "__total__": 599,
+    SKILL: 269,
+    "__total__": 621,
 }
 
 PASS = 0
@@ -109,6 +110,7 @@ REQUIRED_TOKENS = [
     # script + interface
     "measure-reduction.py",
     "count",
+    "--docs-only",
     "diff",
     "total_delta",
     "reduced",

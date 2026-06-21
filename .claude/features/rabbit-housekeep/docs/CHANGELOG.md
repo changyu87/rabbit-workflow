@@ -13,6 +13,31 @@ frontmatter, the `version` field in `feature.json`, and the source
 
 ## Version notes
 
+- **v0.6.0 (doc-scoped measurement so the mandated test does not flip the
+  verdict, issue #1187):** `measure-reduction.py count` walked the ENTIRE
+  feature directory, so the +157-line housekeeping e2e test plus baseline
+  fixture a wave MUST add in Step 6 outweighed the genuine doc-surface
+  reduction — Step 7's whole-feature diff reported `reduced: false` even when
+  `docs/spec.md` and `docs/contract.md` were genuinely slimmed, contradicting a
+  successful wave. FIX adds an ADDITIVE `--docs-only` flag to `count` that
+  restricts a directory argument to the DOC SURFACES a wave slims
+  (`docs/spec.md`, `docs/contract.md`, `skills/*/SKILL.md`), excluding `test/`
+  and `docs/CHANGELOG.md` (a wave GROWS the changelog by design). The default
+  whole-tree walk is unchanged, so the install-closure and any other caller
+  that relies on it is unaffected. SKILL.md Steps 3 and 7 now snapshot with
+  `--docs-only` on the SAME doc-scoped baseline so the operator's
+  confirm-success command and the Step-6 in-test gate agree, and Step 6's
+  test-authoring guidance is aligned. New test case `t7` in
+  `test-measure-reduction.py` pins the failure mode: docs shrink, a test file
+  is added, whole-tree diff = `reduced: false`, doc-scoped diff =
+  `reduced: true`. `test-reduction-wave.py` ceiling refreshed
+  (SPEC 255->266, SKILL 258->269, total 599->621) for the additive doc growth,
+  and `--docs-only` added to its load-bearing token set. Inv 5 extended to
+  mandate the flag. `measure-reduction.py` script Version 0.1.0 -> 0.2.0;
+  feature/spec/contract/SKILL/command versions bumped 0.5.1 -> 0.6.0 in
+  lockstep (Inv 11). SKILL.md + command `.md` are publish surfaces — their
+  deployed copies drift until the dispatcher republishes. Closes #1187.
+
 - **v0.5.1 (neutralize loop-only script reference on the deployed surface,
   issue #1182):** Removed the live invocation of the loop-only
   `.claude/features/rabbit-auto-evolve/scripts/record-decomposition.py` from

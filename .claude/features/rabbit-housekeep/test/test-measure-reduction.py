@@ -14,10 +14,15 @@ live repo's contents. Behaviours covered:
       total_delta == 0.
   t5: `diff` surfaces per_artifact before/after/delta and removed_paths.
   t6: invocation error (unknown subcommand / bad diff arity) exits 2.
+  t7: `count --docs-only` over a feature dir restricts the walk to the doc
+      surfaces a wave slims (docs/spec.md, docs/contract.md, skills/*/SKILL.md)
+      and EXCLUDES test/ and docs/CHANGELOG.md, so when the wave slims docs
+      but adds its mandated housekeeping test, the doc-scoped diff still
+      reports reduced=true (the #1187 failure mode, fixed).
 
 Non-interactive. Exits non-zero on failure.
 
-Version: 0.1.0
+Version: 0.2.0
 Owner: rabbit-workflow team
 Deprecation criterion: when rabbit-housekeep is retired.
 """
@@ -154,6 +159,82 @@ if r1.returncode == 2 and r2.returncode == 2:
     ok("t6", "invocation errors exit 2")
 else:
     fail("t6", f"expected exit 2 both; got {r1.returncode}, {r2.returncode}")
+
+
+def write_feature_tree(root, spec_lines, contract_lines, skill_lines,
+                       changelog_lines, test_lines):
+    """Build a minimal feature tree mirroring rabbit-housekeep's layout."""
+    docs = os.path.join(root, "docs")
+    skills = os.path.join(root, "skills", "demo")
+    test = os.path.join(root, "test")
+    for d in (docs, skills, test):
+        os.makedirs(d)
+    body = lambda n: "".join(f"l{i}\n" for i in range(n))
+    with open(os.path.join(docs, "spec.md"), "w") as f:
+        f.write(body(spec_lines))
+    with open(os.path.join(docs, "contract.md"), "w") as f:
+        f.write(body(contract_lines))
+    with open(os.path.join(docs, "CHANGELOG.md"), "w") as f:
+        f.write(body(changelog_lines))
+    with open(os.path.join(skills, "SKILL.md"), "w") as f:
+        f.write(body(skill_lines))
+    with open(os.path.join(test, "test-demo.py"), "w") as f:
+        f.write(body(test_lines))
+
+
+# t7: --docs-only scopes the walk to doc surfaces. The #1187 failure mode:
+# docs shrink, but the wave adds its mandated housekeeping test under test/.
+# A whole-tree count flips reduced->false; --docs-only stays reduced->true.
+with tempfile.TemporaryDirectory() as tmp:
+    feat = os.path.join(tmp, "demo")
+    # BEFORE: spec 100, contract 50, skill 80, changelog 10, test 0
+    write_feature_tree(feat, 100, 50, 80, 10, 0)
+    rb_all = run("count", feat)
+    rb_docs = run("count", "--docs-only", feat)
+    before_all = os.path.join(tmp, "before-all.json")
+    before_docs = os.path.join(tmp, "before-docs.json")
+    with open(before_all, "w") as f:
+        f.write(rb_all.stdout)
+    with open(before_docs, "w") as f:
+        f.write(rb_docs.stdout)
+
+    # AFTER: docs slimmed (spec 100->70, contract 50->40, skill unchanged),
+    # changelog GROWS (10->40), and the wave adds a 157-line test file.
+    import shutil
+    shutil.rmtree(feat)
+    write_feature_tree(feat, 70, 40, 80, 40, 157)
+    ra_all = run("count", feat)
+    ra_docs = run("count", "--docs-only", feat)
+    after_all = os.path.join(tmp, "after-all.json")
+    after_docs = os.path.join(tmp, "after-docs.json")
+    with open(after_all, "w") as f:
+        f.write(ra_all.stdout)
+    with open(after_docs, "w") as f:
+        f.write(ra_docs.stdout)
+
+    # docs-only count must exclude test/ and docs/CHANGELOG.md.
+    docs_keys = [k for k in json.loads(rb_docs.stdout) if k != "__total__"]
+    has_changelog = any(k.endswith("CHANGELOG.md") for k in docs_keys)
+    has_test = any(os.sep + "test" + os.sep in k for k in docs_keys)
+    has_spec = any(k.endswith(os.path.join("docs", "spec.md")) for k in docs_keys)
+    has_contract = any(
+        k.endswith(os.path.join("docs", "contract.md")) for k in docs_keys)
+    has_skill = any(k.endswith("SKILL.md") for k in docs_keys)
+
+    d_all = json.loads(run("diff", before_all, after_all).stdout)
+    d_docs = json.loads(run("diff", before_docs, after_docs).stdout)
+
+    if (rb_docs.returncode == 0 and ra_docs.returncode == 0
+            and has_spec and has_contract and has_skill
+            and not has_changelog and not has_test
+            and d_all["reduced"] is False  # whole-tree: false (the bug)
+            and d_docs["reduced"] is True   # doc-scoped: true (the fix)
+            and d_docs["total_delta"] == -40):
+        ok("t7", "count --docs-only scopes to doc surfaces; reduced=true "
+                 "even when a test is added (#1187)")
+    else:
+        fail("t7", f"docs_keys={docs_keys}; d_all.reduced={d_all['reduced']}; "
+                   f"d_docs={d_docs}")
 
 print()
 print(f"Results: {PASS} passed, {FAIL} failed")
